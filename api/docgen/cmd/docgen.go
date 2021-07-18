@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -15,7 +16,7 @@ func main() {
 
 	groups := make(map[string]*docgen.MethodGroup)
 
-	_, t, permStruct, commonPermStruct := docgen.GetAPIType(os.Args[2], os.Args[3])
+	_, t, permStruct := docgen.GetAPIType(os.Args[2], os.Args[3])
 
 	for i := 0; i < t.NumMethod(); i++ {
 		m := t.Method(i)
@@ -88,12 +89,16 @@ func main() {
 			fmt.Printf("### %s\n", m.Name)
 			fmt.Printf("%s\n\n", m.Comment)
 
-			meth, ok := permStruct.FieldByName(m.Name)
-			if !ok {
-				meth, ok = commonPermStruct.FieldByName(m.Name)
-				if !ok {
-					panic("no perms for method: " + m.Name)
+			var meth reflect.StructField
+			var ok bool
+			for _, ps := range permStruct {
+				meth, ok = ps.FieldByName(m.Name)
+				if ok {
+					break
 				}
+			}
+			if !ok {
+				panic("no perms for method: " + m.Name)
 			}
 
 			perms := meth.Tag.Get("perm")

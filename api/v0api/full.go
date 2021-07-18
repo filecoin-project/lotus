@@ -46,6 +46,7 @@ import (
 // FullNode API is a low-level interface to the Filecoin network full node
 type FullNode interface {
 	Common
+	Net
 
 	// MethodGroup: Chain
 	// The Chain method group contains methods for interacting with the

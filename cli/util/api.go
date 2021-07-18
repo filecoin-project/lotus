@@ -149,7 +149,7 @@ func GetRawAPI(ctx *cli.Context, t repo.RepoType, version string) (string, http.
 	return addr, ainfo.AuthHeader(), nil
 }
 
-func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
+func GetAPI(ctx *cli.Context) (api.CommonNet, jsonrpc.ClientCloser, error) {
 	ti, ok := ctx.App.Metadata["repoType"]
 	if !ok {
 		log.Errorf("unknown repo type, are you sure you want to use GetAPI?")

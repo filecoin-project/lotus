@@ -30,6 +30,8 @@ import (
 type FullNodeStruct struct {
 	CommonStruct
 
+	NetStruct
+
 	Internal struct {
 		BeaconGetEntry func(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
 
@@ -389,6 +391,8 @@ type FullNodeStruct struct {
 
 type FullNodeStub struct {
 	CommonStub
+
+	NetStub
 }
 
 type GatewayStruct struct {

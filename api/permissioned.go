@@ -16,28 +16,33 @@ const (
 var AllPermissions = []auth.Permission{PermRead, PermWrite, PermSign, PermAdmin}
 var DefaultPerms = []auth.Permission{PermRead}
 
+func permissionedProxies(in, out interface{}) {
+	outs := GetInternalStructs(out)
+	for _, o := range outs {
+		auth.PermissionedProxy(AllPermissions, DefaultPerms, in, o)
+	}
+}
+
 func PermissionedStorMinerAPI(a StorageMiner) StorageMiner {
 	var out StorageMinerStruct
-	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.Internal)
-	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.CommonStruct.Internal)
+	permissionedProxies(a, &out)
 	return &out
 }
 
 func PermissionedFullAPI(a FullNode) FullNode {
 	var out FullNodeStruct
-	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.Internal)
-	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.CommonStruct.Internal)
+	permissionedProxies(a, &out)
 	return &out
 }
 
 func PermissionedWorkerAPI(a Worker) Worker {
 	var out WorkerStruct
-	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.Internal)
+	permissionedProxies(a, &out)
 	return &out
 }
 
 func PermissionedWalletAPI(a Wallet) Wallet {
 	var out WalletStruct
-	auth.PermissionedProxy(AllPermissions, DefaultPerms, a, &out.Internal)
+	permissionedProxies(a, &out)
 	return &out
 }

@@ -1,4 +1,4 @@
-package common
+package net
 
 import (
 	"context"
@@ -14,7 +14,7 @@ import (
 
 var cLog = logging.Logger("conngater")
 
-func (a *Libp2pNetAPI) NetBlockAdd(ctx context.Context, acl api.NetBlockList) error {
+func (a *NetAPI) NetBlockAdd(ctx context.Context, acl api.NetBlockList) error {
 	for _, p := range acl.Peers {
 		err := a.ConnGater.BlockPeer(p)
 		if err != nil {
@@ -89,7 +89,7 @@ func (a *Libp2pNetAPI) NetBlockAdd(ctx context.Context, acl api.NetBlockList) er
 	return nil
 }
 
-func (a *Libp2pNetAPI) NetBlockRemove(ctx context.Context, acl api.NetBlockList) error {
+func (a *NetAPI) NetBlockRemove(ctx context.Context, acl api.NetBlockList) error {
 	for _, p := range acl.Peers {
 		err := a.ConnGater.UnblockPeer(p)
 		if err != nil {
@@ -124,7 +124,7 @@ func (a *Libp2pNetAPI) NetBlockRemove(ctx context.Context, acl api.NetBlockList)
 	return nil
 }
 
-func (a *Libp2pNetAPI) NetBlockList(ctx context.Context) (result api.NetBlockList, err error) {
+func (a *NetAPI) NetBlockList(ctx context.Context) (result api.NetBlockList, err error) {
 	result.Peers = a.ConnGater.ListBlockedPeers()
 	for _, ip := range a.ConnGater.ListBlockedAddrs() {
 		result.IPAddrs = append(result.IPAddrs, ip.String())

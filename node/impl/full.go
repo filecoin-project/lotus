@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/common"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/impl/market"
+	"github.com/filecoin-project/lotus/node/impl/net"
 	"github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
@@ -23,6 +24,7 @@ var log = logging.Logger("node")
 
 type FullNodeAPI struct {
 	common.CommonAPI
+	net.NetAPI
 	full.ChainAPI
 	client.API
 	full.MpoolAPI

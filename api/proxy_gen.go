@@ -35,7 +35,7 @@ import (
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	protocol "github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	xerrors "golang.org/x/xerrors"
 )
 
@@ -60,43 +60,9 @@ type CommonStruct struct {
 
 		Discover func(p0 context.Context) (apitypes.OpenRPCDocument, error) `perm:"read"`
 
-		ID func(p0 context.Context) (peer.ID, error) `perm:"read"`
-
 		LogList func(p0 context.Context) ([]string, error) `perm:"write"`
 
 		LogSetLevel func(p0 context.Context, p1 string, p2 string) error `perm:"write"`
-
-		NetAddrsListen func(p0 context.Context) (peer.AddrInfo, error) `perm:"read"`
-
-		NetAgentVersion func(p0 context.Context, p1 peer.ID) (string, error) `perm:"read"`
-
-		NetAutoNatStatus func(p0 context.Context) (NatInfo, error) `perm:"read"`
-
-		NetBandwidthStats func(p0 context.Context) (metrics.Stats, error) `perm:"read"`
-
-		NetBandwidthStatsByPeer func(p0 context.Context) (map[string]metrics.Stats, error) `perm:"read"`
-
-		NetBandwidthStatsByProtocol func(p0 context.Context) (map[protocol.ID]metrics.Stats, error) `perm:"read"`
-
-		NetBlockAdd func(p0 context.Context, p1 NetBlockList) error `perm:"admin"`
-
-		NetBlockList func(p0 context.Context) (NetBlockList, error) `perm:"read"`
-
-		NetBlockRemove func(p0 context.Context, p1 NetBlockList) error `perm:"admin"`
-
-		NetConnect func(p0 context.Context, p1 peer.AddrInfo) error `perm:"write"`
-
-		NetConnectedness func(p0 context.Context, p1 peer.ID) (network.Connectedness, error) `perm:"read"`
-
-		NetDisconnect func(p0 context.Context, p1 peer.ID) error `perm:"write"`
-
-		NetFindPeer func(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error) `perm:"read"`
-
-		NetPeerInfo func(p0 context.Context, p1 peer.ID) (*ExtendedPeerInfo, error) `perm:"read"`
-
-		NetPeers func(p0 context.Context) ([]peer.AddrInfo, error) `perm:"read"`
-
-		NetPubsubScores func(p0 context.Context) ([]PubsubScore, error) `perm:"read"`
 
 		Session func(p0 context.Context) (uuid.UUID, error) `perm:"read"`
 
@@ -109,8 +75,25 @@ type CommonStruct struct {
 type CommonStub struct {
 }
 
+type CommonNetStruct struct {
+	CommonStruct
+
+	NetStruct
+
+	Internal struct {
+	}
+}
+
+type CommonNetStub struct {
+	CommonStub
+
+	NetStub
+}
+
 type FullNodeStruct struct {
 	CommonStruct
+
+	NetStruct
 
 	Internal struct {
 		BeaconGetEntry func(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
@@ -473,6 +456,8 @@ type FullNodeStruct struct {
 
 type FullNodeStub struct {
 	CommonStub
+
+	NetStub
 }
 
 type GatewayStruct struct {
@@ -542,6 +527,47 @@ type GatewayStruct struct {
 type GatewayStub struct {
 }
 
+type NetStruct struct {
+	Internal struct {
+		ID func(p0 context.Context) (peer.ID, error) `perm:"read"`
+
+		NetAddrsListen func(p0 context.Context) (peer.AddrInfo, error) `perm:"read"`
+
+		NetAgentVersion func(p0 context.Context, p1 peer.ID) (string, error) `perm:"read"`
+
+		NetAutoNatStatus func(p0 context.Context) (NatInfo, error) `perm:"read"`
+
+		NetBandwidthStats func(p0 context.Context) (metrics.Stats, error) `perm:"read"`
+
+		NetBandwidthStatsByPeer func(p0 context.Context) (map[string]metrics.Stats, error) `perm:"read"`
+
+		NetBandwidthStatsByProtocol func(p0 context.Context) (map[protocol.ID]metrics.Stats, error) `perm:"read"`
+
+		NetBlockAdd func(p0 context.Context, p1 NetBlockList) error `perm:"admin"`
+
+		NetBlockList func(p0 context.Context) (NetBlockList, error) `perm:"read"`
+
+		NetBlockRemove func(p0 context.Context, p1 NetBlockList) error `perm:"admin"`
+
+		NetConnect func(p0 context.Context, p1 peer.AddrInfo) error `perm:"write"`
+
+		NetConnectedness func(p0 context.Context, p1 peer.ID) (network.Connectedness, error) `perm:"read"`
+
+		NetDisconnect func(p0 context.Context, p1 peer.ID) error `perm:"write"`
+
+		NetFindPeer func(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error) `perm:"read"`
+
+		NetPeerInfo func(p0 context.Context, p1 peer.ID) (*ExtendedPeerInfo, error) `perm:"read"`
+
+		NetPeers func(p0 context.Context) ([]peer.AddrInfo, error) `perm:"read"`
+
+		NetPubsubScores func(p0 context.Context) ([]PubsubScore, error) `perm:"read"`
+	}
+}
+
+type NetStub struct {
+}
+
 type SignableStruct struct {
 	Internal struct {
 		Sign func(p0 context.Context, p1 SignFunc) error ``
@@ -553,6 +579,8 @@ type SignableStub struct {
 
 type StorageMinerStruct struct {
 	CommonStruct
+
+	NetStruct
 
 	Internal struct {
 		ActorAddress func(p0 context.Context) (address.Address, error) `perm:"read"`
@@ -747,6 +775,8 @@ type StorageMinerStruct struct {
 
 type StorageMinerStub struct {
 	CommonStub
+
+	NetStub
 }
 
 type WalletStruct struct {
@@ -871,14 +901,6 @@ func (s *CommonStub) Discover(p0 context.Context) (apitypes.OpenRPCDocument, err
 	return *new(apitypes.OpenRPCDocument), xerrors.New("method not supported")
 }
 
-func (s *CommonStruct) ID(p0 context.Context) (peer.ID, error) {
-	return s.Internal.ID(p0)
-}
-
-func (s *CommonStub) ID(p0 context.Context) (peer.ID, error) {
-	return *new(peer.ID), xerrors.New("method not supported")
-}
-
 func (s *CommonStruct) LogList(p0 context.Context) ([]string, error) {
 	return s.Internal.LogList(p0)
 }
@@ -893,134 +915,6 @@ func (s *CommonStruct) LogSetLevel(p0 context.Context, p1 string, p2 string) err
 
 func (s *CommonStub) LogSetLevel(p0 context.Context, p1 string, p2 string) error {
 	return xerrors.New("method not supported")
-}
-
-func (s *CommonStruct) NetAddrsListen(p0 context.Context) (peer.AddrInfo, error) {
-	return s.Internal.NetAddrsListen(p0)
-}
-
-func (s *CommonStub) NetAddrsListen(p0 context.Context) (peer.AddrInfo, error) {
-	return *new(peer.AddrInfo), xerrors.New("method not supported")
-}
-
-func (s *CommonStruct) NetAgentVersion(p0 context.Context, p1 peer.ID) (string, error) {
-	return s.Internal.NetAgentVersion(p0, p1)
-}
-
-func (s *CommonStub) NetAgentVersion(p0 context.Context, p1 peer.ID) (string, error) {
-	return "", xerrors.New("method not supported")
-}
-
-func (s *CommonStruct) NetAutoNatStatus(p0 context.Context) (NatInfo, error) {
-	return s.Internal.NetAutoNatStatus(p0)
-}
-
-func (s *CommonStub) NetAutoNatStatus(p0 context.Context) (NatInfo, error) {
-	return *new(NatInfo), xerrors.New("method not supported")
-}
-
-func (s *CommonStruct) NetBandwidthStats(p0 context.Context) (metrics.Stats, error) {
-	return s.Internal.NetBandwidthStats(p0)
-}
-
-func (s *CommonStub) NetBandwidthStats(p0 context.Context) (metrics.Stats, error) {
-	return *new(metrics.Stats), xerrors.New("method not supported")
-}
-
-func (s *CommonStruct) NetBandwidthStatsByPeer(p0 context.Context) (map[string]metrics.Stats, error) {
-	return s.Internal.NetBandwidthStatsByPeer(p0)
-}
-
-func (s *CommonStub) NetBandwidthStatsByPeer(p0 context.Context) (map[string]metrics.Stats, error) {
-	return *new(map[string]metrics.Stats), xerrors.New("method not supported")
-}
-
-func (s *CommonStruct) NetBandwidthStatsByProtocol(p0 context.Context) (map[protocol.ID]metrics.Stats, error) {
-	return s.Internal.NetBandwidthStatsByProtocol(p0)
-}
-
-func (s *CommonStub) NetBandwidthStatsByProtocol(p0 context.Context) (map[protocol.ID]metrics.Stats, error) {
-	return *new(map[protocol.ID]metrics.Stats), xerrors.New("method not supported")
-}
-
-func (s *CommonStruct) NetBlockAdd(p0 context.Context, p1 NetBlockList) error {
-	return s.Internal.NetBlockAdd(p0, p1)
-}
-
-func (s *CommonStub) NetBlockAdd(p0 context.Context, p1 NetBlockList) error {
-	return xerrors.New("method not supported")
-}
-
-func (s *CommonStruct) NetBlockList(p0 context.Context) (NetBlockList, error) {
-	return s.Internal.NetBlockList(p0)
-}
-
-func (s *CommonStub) NetBlockList(p0 context.Context) (NetBlockList, error) {
-	return *new(NetBlockList), xerrors.New("method not supported")
-}
-
-func (s *CommonStruct) NetBlockRemove(p0 context.Context, p1 NetBlockList) error {
-	return s.Internal.NetBlockRemove(p0, p1)
-}
-
-func (s *CommonStub) NetBlockRemove(p0 context.Context, p1 NetBlockList) error {
-	return xerrors.New("method not supported")
-}
-
-func (s *CommonStruct) NetConnect(p0 context.Context, p1 peer.AddrInfo) error {
-	return s.Internal.NetConnect(p0, p1)
-}
-
-func (s *CommonStub) NetConnect(p0 context.Context, p1 peer.AddrInfo) error {
-	return xerrors.New("method not supported")
-}
-
-func (s *CommonStruct) NetConnectedness(p0 context.Context, p1 peer.ID) (network.Connectedness, error) {
-	return s.Internal.NetConnectedness(p0, p1)
-}
-
-func (s *CommonStub) NetConnectedness(p0 context.Context, p1 peer.ID) (network.Connectedness, error) {
-	return *new(network.Connectedness), xerrors.New("method not supported")
-}
-
-func (s *CommonStruct) NetDisconnect(p0 context.Context, p1 peer.ID) error {
-	return s.Internal.NetDisconnect(p0, p1)
-}
-
-func (s *CommonStub) NetDisconnect(p0 context.Context, p1 peer.ID) error {
-	return xerrors.New("method not supported")
-}
-
-func (s *CommonStruct) NetFindPeer(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error) {
-	return s.Internal.NetFindPeer(p0, p1)
-}
-
-func (s *CommonStub) NetFindPeer(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error) {
-	return *new(peer.AddrInfo), xerrors.New("method not supported")
-}
-
-func (s *CommonStruct) NetPeerInfo(p0 context.Context, p1 peer.ID) (*ExtendedPeerInfo, error) {
-	return s.Internal.NetPeerInfo(p0, p1)
-}
-
-func (s *CommonStub) NetPeerInfo(p0 context.Context, p1 peer.ID) (*ExtendedPeerInfo, error) {
-	return nil, xerrors.New("method not supported")
-}
-
-func (s *CommonStruct) NetPeers(p0 context.Context) ([]peer.AddrInfo, error) {
-	return s.Internal.NetPeers(p0)
-}
-
-func (s *CommonStub) NetPeers(p0 context.Context) ([]peer.AddrInfo, error) {
-	return *new([]peer.AddrInfo), xerrors.New("method not supported")
-}
-
-func (s *CommonStruct) NetPubsubScores(p0 context.Context) ([]PubsubScore, error) {
-	return s.Internal.NetPubsubScores(p0)
-}
-
-func (s *CommonStub) NetPubsubScores(p0 context.Context) ([]PubsubScore, error) {
-	return *new([]PubsubScore), xerrors.New("method not supported")
 }
 
 func (s *CommonStruct) Session(p0 context.Context) (uuid.UUID, error) {
@@ -2711,6 +2605,142 @@ func (s *GatewayStub) WalletBalance(p0 context.Context, p1 address.Address) (typ
 	return *new(types.BigInt), xerrors.New("method not supported")
 }
 
+func (s *NetStruct) ID(p0 context.Context) (peer.ID, error) {
+	return s.Internal.ID(p0)
+}
+
+func (s *NetStub) ID(p0 context.Context) (peer.ID, error) {
+	return *new(peer.ID), xerrors.New("method not supported")
+}
+
+func (s *NetStruct) NetAddrsListen(p0 context.Context) (peer.AddrInfo, error) {
+	return s.Internal.NetAddrsListen(p0)
+}
+
+func (s *NetStub) NetAddrsListen(p0 context.Context) (peer.AddrInfo, error) {
+	return *new(peer.AddrInfo), xerrors.New("method not supported")
+}
+
+func (s *NetStruct) NetAgentVersion(p0 context.Context, p1 peer.ID) (string, error) {
+	return s.Internal.NetAgentVersion(p0, p1)
+}
+
+func (s *NetStub) NetAgentVersion(p0 context.Context, p1 peer.ID) (string, error) {
+	return "", xerrors.New("method not supported")
+}
+
+func (s *NetStruct) NetAutoNatStatus(p0 context.Context) (NatInfo, error) {
+	return s.Internal.NetAutoNatStatus(p0)
+}
+
+func (s *NetStub) NetAutoNatStatus(p0 context.Context) (NatInfo, error) {
+	return *new(NatInfo), xerrors.New("method not supported")
+}
+
+func (s *NetStruct) NetBandwidthStats(p0 context.Context) (metrics.Stats, error) {
+	return s.Internal.NetBandwidthStats(p0)
+}
+
+func (s *NetStub) NetBandwidthStats(p0 context.Context) (metrics.Stats, error) {
+	return *new(metrics.Stats), xerrors.New("method not supported")
+}
+
+func (s *NetStruct) NetBandwidthStatsByPeer(p0 context.Context) (map[string]metrics.Stats, error) {
+	return s.Internal.NetBandwidthStatsByPeer(p0)
+}
+
+func (s *NetStub) NetBandwidthStatsByPeer(p0 context.Context) (map[string]metrics.Stats, error) {
+	return *new(map[string]metrics.Stats), xerrors.New("method not supported")
+}
+
+func (s *NetStruct) NetBandwidthStatsByProtocol(p0 context.Context) (map[protocol.ID]metrics.Stats, error) {
+	return s.Internal.NetBandwidthStatsByProtocol(p0)
+}
+
+func (s *NetStub) NetBandwidthStatsByProtocol(p0 context.Context) (map[protocol.ID]metrics.Stats, error) {
+	return *new(map[protocol.ID]metrics.Stats), xerrors.New("method not supported")
+}
+
+func (s *NetStruct) NetBlockAdd(p0 context.Context, p1 NetBlockList) error {
+	return s.Internal.NetBlockAdd(p0, p1)
+}
+
+func (s *NetStub) NetBlockAdd(p0 context.Context, p1 NetBlockList) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *NetStruct) NetBlockList(p0 context.Context) (NetBlockList, error) {
+	return s.Internal.NetBlockList(p0)
+}
+
+func (s *NetStub) NetBlockList(p0 context.Context) (NetBlockList, error) {
+	return *new(NetBlockList), xerrors.New("method not supported")
+}
+
+func (s *NetStruct) NetBlockRemove(p0 context.Context, p1 NetBlockList) error {
+	return s.Internal.NetBlockRemove(p0, p1)
+}
+
+func (s *NetStub) NetBlockRemove(p0 context.Context, p1 NetBlockList) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *NetStruct) NetConnect(p0 context.Context, p1 peer.AddrInfo) error {
+	return s.Internal.NetConnect(p0, p1)
+}
+
+func (s *NetStub) NetConnect(p0 context.Context, p1 peer.AddrInfo) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *NetStruct) NetConnectedness(p0 context.Context, p1 peer.ID) (network.Connectedness, error) {
+	return s.Internal.NetConnectedness(p0, p1)
+}
+
+func (s *NetStub) NetConnectedness(p0 context.Context, p1 peer.ID) (network.Connectedness, error) {
+	return *new(network.Connectedness), xerrors.New("method not supported")
+}
+
+func (s *NetStruct) NetDisconnect(p0 context.Context, p1 peer.ID) error {
+	return s.Internal.NetDisconnect(p0, p1)
+}
+
+func (s *NetStub) NetDisconnect(p0 context.Context, p1 peer.ID) error {
+	return xerrors.New("method not supported")
+}
+
+func (s *NetStruct) NetFindPeer(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error) {
+	return s.Internal.NetFindPeer(p0, p1)
+}
+
+func (s *NetStub) NetFindPeer(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error) {
+	return *new(peer.AddrInfo), xerrors.New("method not supported")
+}
+
+func (s *NetStruct) NetPeerInfo(p0 context.Context, p1 peer.ID) (*ExtendedPeerInfo, error) {
+	return s.Internal.NetPeerInfo(p0, p1)
+}
+
+func (s *NetStub) NetPeerInfo(p0 context.Context, p1 peer.ID) (*ExtendedPeerInfo, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *NetStruct) NetPeers(p0 context.Context) ([]peer.AddrInfo, error) {
+	return s.Internal.NetPeers(p0)
+}
+
+func (s *NetStub) NetPeers(p0 context.Context) ([]peer.AddrInfo, error) {
+	return *new([]peer.AddrInfo), xerrors.New("method not supported")
+}
+
+func (s *NetStruct) NetPubsubScores(p0 context.Context) ([]PubsubScore, error) {
+	return s.Internal.NetPubsubScores(p0)
+}
+
+func (s *NetStub) NetPubsubScores(p0 context.Context) ([]PubsubScore, error) {
+	return *new([]PubsubScore), xerrors.New("method not supported")
+}
+
 func (s *SignableStruct) Sign(p0 context.Context, p1 SignFunc) error {
 	return s.Internal.Sign(p0, p1)
 }
@@ -3713,8 +3743,10 @@ func (s *WorkerStub) WaitQuiet(p0 context.Context) error {
 
 var _ ChainIO = new(ChainIOStruct)
 var _ Common = new(CommonStruct)
+var _ CommonNet = new(CommonNetStruct)
 var _ FullNode = new(FullNodeStruct)
 var _ Gateway = new(GatewayStruct)
+var _ Net = new(NetStruct)
 var _ Signable = new(SignableStruct)
 var _ StorageMiner = new(StorageMinerStruct)
 var _ Wallet = new(WalletStruct)
