@@ -45,7 +45,7 @@ func TestBasicPolicyEmptySector(t *testing.T) {
 	exp, err := policy.Expiration(context.Background())
 	require.NoError(t, err)
 
-	assert.Equal(t, 2879, int(exp))
+	assert.Equal(t, 524159, int(exp))
 }
 
 func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
@@ -85,7 +85,7 @@ func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
 	exp, err := policy.Expiration(context.Background(), pieces...)
 	require.NoError(t, err)
 
-	assert.Equal(t, 2890, int(exp))
+	assert.Equal(t, 524170, int(exp))
 }
 
 func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
@@ -112,7 +112,7 @@ func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
 	exp, err := policy.Expiration(context.Background(), pieces...)
 	require.NoError(t, err)
 
-	assert.Equal(t, 2879, int(exp))
+	assert.Equal(t, 524159, int(exp))
 }
 
 func TestMissingDealIsIgnored(t *testing.T) {
@@ -146,5 +146,5 @@ func TestMissingDealIsIgnored(t *testing.T) {
 	exp, err := policy.Expiration(context.Background(), pieces...)
 	require.NoError(t, err)
 
-	assert.Equal(t, 2890, int(exp))
+	assert.Equal(t, 524170, int(exp))
 }
