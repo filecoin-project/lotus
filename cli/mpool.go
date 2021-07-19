@@ -458,12 +458,12 @@ var MpoolReplaceCmd = &cli.Command{
 
 			var mss *lapi.MessageSendSpec
 			if cctx.IsSet("max-fee") {
-				maxFee, err := types.BigFromString(cctx.String("max-fee"))
+				maxFee, err := types.ParseFIL(cctx.String("max-fee"))
 				if err != nil {
 					return fmt.Errorf("parsing max-spend: %w", err)
 				}
 				mss = &lapi.MessageSendSpec{
-					MaxFee: maxFee,
+					MaxFee: abi.TokenAmount(maxFee),
 				}
 			}
 
