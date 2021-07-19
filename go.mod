@@ -26,6 +26,7 @@ require (
 	github.com/elastic/gosigar v0.12.0
 	github.com/etclabscore/go-openrpc-reflect v0.0.36
 	github.com/fatih/color v1.9.0
+	github.com/filecoin-project/dagstore v0.1.0
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
 	github.com/filecoin-project/go-address v0.0.5
 	github.com/filecoin-project/go-bitfield v0.2.4
@@ -34,7 +35,7 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v1.7.0
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20201016201715-d41df56b4f6a
-	github.com/filecoin-project/go-fil-markets v1.6.0-rc1.0.20210719084150-3111d5504a9e
+	github.com/filecoin-project/go-fil-markets v1.6.0-rc1.0.20210719131749-0459d0c576bd
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-padreader v0.0.0-20200903213702-ed5fae088b20
@@ -78,6 +79,7 @@ require (
 	github.com/ipfs/go-fs-lock v0.0.6
 	github.com/ipfs/go-graphsync v0.6.4
 	github.com/ipfs/go-ipfs-blockstore v1.0.3
+	github.com/ipfs/go-ipfs-blocksutil v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-ds-help v1.0.0
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1

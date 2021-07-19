@@ -7,7 +7,6 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	mktdagstore "github.com/filecoin-project/go-fil-markets/dagstore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -23,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/markets/dealfilter"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
@@ -147,7 +147,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
 
 			// DAG Store
-			Override(new(mktdagstore.DagStoreWrapper), modules.DagStoreWrapper),
+			Override(new(dagstore.DagStoreWrapper), modules.DagStoreWrapper),
 
 			// Markets (retrieval)
 			Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter.NewRetrievalProviderNode),
