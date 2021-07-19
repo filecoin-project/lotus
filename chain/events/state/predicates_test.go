@@ -21,7 +21,7 @@ import (
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	adt2 "github.com/filecoin-project/specs-actors/v2/actors/util/adt"
-	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
+	tutils "github.com/filecoin-project/specs-actors/v5/support/testing"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
