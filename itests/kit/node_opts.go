@@ -25,6 +25,10 @@ type nodeOpts struct {
 	rpc           bool
 	ownerKey      *wallet.Key
 	extraNodeOpts []node.Option
+
+	subsystems    MinerSubsystem
+	mainMiner     *TestMiner
+	disableLibp2p bool
 	optBuilders   []OptBuilder
 	proofType     abi.RegisteredSealProof
 }
@@ -42,6 +46,40 @@ type OptBuilder func(activeNodes []*TestFullNode) node.Option
 
 // NodeOpt is a functional option for test nodes.
 type NodeOpt func(opts *nodeOpts) error
+
+func WithAllSubsystems() NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.subsystems = opts.subsystems.Add(SMarkets)
+		opts.subsystems = opts.subsystems.Add(SMining)
+		opts.subsystems = opts.subsystems.Add(SSealing)
+		opts.subsystems = opts.subsystems.Add(SSectorStorage)
+
+		return nil
+	}
+}
+
+func WithSubsystems(systems ...MinerSubsystem) NodeOpt {
+	return func(opts *nodeOpts) error {
+		for _, s := range systems {
+			opts.subsystems = opts.subsystems.Add(s)
+		}
+		return nil
+	}
+}
+
+func DisableLibp2p() NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.disableLibp2p = true
+		return nil
+	}
+}
+
+func MainMiner(m *TestMiner) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.mainMiner = m
+		return nil
+	}
+}
 
 // OwnerBalance specifies the balance to be attributed to a miner's owner
 // account. Only relevant when creating a miner.

@@ -45,6 +45,8 @@ type FullNodeStruct struct {
 
 		ChainGetMessage func(p0 context.Context, p1 cid.Cid) (*types.Message, error) `perm:"read"`
 
+		ChainGetMessagesInTipset func(p0 context.Context, p1 types.TipSetKey) ([]api.Message, error) `perm:"read"`
+
 		ChainGetNode func(p0 context.Context, p1 string) (*api.IpldObject, error) `perm:"read"`
 
 		ChainGetParentMessages func(p0 context.Context, p1 cid.Cid) ([]api.Message, error) `perm:"read"`
@@ -512,6 +514,14 @@ func (s *FullNodeStruct) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types
 
 func (s *FullNodeStub) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.Message, error) {
 	return nil, xerrors.New("method not supported")
+}
+
+func (s *FullNodeStruct) ChainGetMessagesInTipset(p0 context.Context, p1 types.TipSetKey) ([]api.Message, error) {
+	return s.Internal.ChainGetMessagesInTipset(p0, p1)
+}
+
+func (s *FullNodeStub) ChainGetMessagesInTipset(p0 context.Context, p1 types.TipSetKey) ([]api.Message, error) {
+	return *new([]api.Message), xerrors.New("method not supported")
 }
 
 func (s *FullNodeStruct) ChainGetNode(p0 context.Context, p1 string) (*api.IpldObject, error) {

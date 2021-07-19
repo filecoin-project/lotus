@@ -572,7 +572,7 @@ var genesisCarCmd = &cli.Command{
 		}
 		ofile := c.String("out")
 		jrnl := journal.NilJournal()
-		bstor := blockstore.NewMemorySync()
+		bstor := blockstore.WrapIDStore(blockstore.NewMemorySync())
 		sbldr := vm.Syscalls(ffiwrapper.ProofVerifier)
 		_, err := testing.MakeGenesis(ofile, c.Args().First())(bstor, sbldr, jrnl)()
 		return err

@@ -127,6 +127,8 @@ type FullNodeStruct struct {
 
 		ChainGetMessage func(p0 context.Context, p1 cid.Cid) (*types.Message, error) `perm:"read"`
 
+		ChainGetMessagesInTipset func(p0 context.Context, p1 types.TipSetKey) ([]Message, error) `perm:"read"`
+
 		ChainGetNode func(p0 context.Context, p1 string) (*IpldObject, error) `perm:"read"`
 
 		ChainGetParentMessages func(p0 context.Context, p1 cid.Cid) ([]Message, error) `perm:"read"`
@@ -665,6 +667,8 @@ type StorageMinerStruct struct {
 
 		SealingSchedDiag func(p0 context.Context, p1 bool) (interface{}, error) `perm:"admin"`
 
+		SectorAddPieceToAny func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storage.Data, p3 PieceDealInfo) (SectorOffset, error) `perm:"admin"`
+
 		SectorCommitFlush func(p0 context.Context) ([]sealiface.CommitBatchRes, error) `perm:"admin"`
 
 		SectorCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
@@ -702,6 +706,8 @@ type StorageMinerStruct struct {
 		SectorsStatus func(p0 context.Context, p1 abi.SectorNumber, p2 bool) (SectorInfo, error) `perm:"read"`
 
 		SectorsSummary func(p0 context.Context) (map[SectorState]int, error) `perm:"read"`
+
+		SectorsUnsealPiece func(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) error `perm:"admin"`
 
 		SectorsUpdate func(p0 context.Context, p1 abi.SectorNumber, p2 SectorState) error `perm:"admin"`
 
@@ -1095,6 +1101,14 @@ func (s *FullNodeStruct) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types
 
 func (s *FullNodeStub) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.Message, error) {
 	return nil, xerrors.New("method not supported")
+}
+
+func (s *FullNodeStruct) ChainGetMessagesInTipset(p0 context.Context, p1 types.TipSetKey) ([]Message, error) {
+	return s.Internal.ChainGetMessagesInTipset(p0, p1)
+}
+
+func (s *FullNodeStub) ChainGetMessagesInTipset(p0 context.Context, p1 types.TipSetKey) ([]Message, error) {
+	return *new([]Message), xerrors.New("method not supported")
 }
 
 func (s *FullNodeStruct) ChainGetNode(p0 context.Context, p1 string) (*IpldObject, error) {
@@ -3153,6 +3167,14 @@ func (s *StorageMinerStub) SealingSchedDiag(p0 context.Context, p1 bool) (interf
 	return nil, xerrors.New("method not supported")
 }
 
+func (s *StorageMinerStruct) SectorAddPieceToAny(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storage.Data, p3 PieceDealInfo) (SectorOffset, error) {
+	return s.Internal.SectorAddPieceToAny(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStub) SectorAddPieceToAny(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storage.Data, p3 PieceDealInfo) (SectorOffset, error) {
+	return *new(SectorOffset), xerrors.New("method not supported")
+}
+
 func (s *StorageMinerStruct) SectorCommitFlush(p0 context.Context) ([]sealiface.CommitBatchRes, error) {
 	return s.Internal.SectorCommitFlush(p0)
 }
@@ -3303,6 +3325,14 @@ func (s *StorageMinerStruct) SectorsSummary(p0 context.Context) (map[SectorState
 
 func (s *StorageMinerStub) SectorsSummary(p0 context.Context) (map[SectorState]int, error) {
 	return *new(map[SectorState]int), xerrors.New("method not supported")
+}
+
+func (s *StorageMinerStruct) SectorsUnsealPiece(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) error {
+	return s.Internal.SectorsUnsealPiece(p0, p1, p2, p3, p4, p5)
+}
+
+func (s *StorageMinerStub) SectorsUnsealPiece(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) error {
+	return xerrors.New("method not supported")
 }
 
 func (s *StorageMinerStruct) SectorsUpdate(p0 context.Context, p1 abi.SectorNumber, p2 SectorState) error {

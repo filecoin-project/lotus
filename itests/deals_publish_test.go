@@ -11,9 +11,13 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/modules"
+	"github.com/filecoin-project/lotus/storage"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/stretchr/testify/require"
 )
@@ -28,17 +32,35 @@ func TestPublishDealsBatching(t *testing.T) {
 
 	kit.QuietMiningLogs()
 
-	opts := node.Override(new(*storageadapter.DealPublisher),
-		storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{
-			Period:         publishPeriod,
-			MaxDealsPerMsg: maxDealsPerMsg,
-		}),
+	publisherKey, err := wallet.GenerateKey(types.KTSecp256k1)
+	require.NoError(t, err)
+
+	opts := node.Options(
+		node.Override(new(*storageadapter.DealPublisher),
+			storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{
+				Period:         publishPeriod,
+				MaxDealsPerMsg: maxDealsPerMsg,
+			}),
+		),
+		node.Override(new(*storage.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
+			DealPublishControl: []string{
+				publisherKey.Address.String(),
+			},
+			DisableOwnerFallback:  true,
+			DisableWorkerFallback: true,
+		})),
+		kit.LatestActorsAt(-1),
 	)
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ConstructorOpts(opts))
+	client, miner, ens := kit.EnsembleMinimal(t, kit.Account(publisherKey, types.FromFil(10)), kit.MockProofs(), kit.ConstructorOpts(opts))
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
-	dh := kit.NewDealHarness(t, client, miner)
+	_, err = client.WalletImport(ctx, &publisherKey.KeyInfo)
+	require.NoError(t, err)
+
+	miner.SetControlAddresses(publisherKey.Address)
+
+	dh := kit.NewDealHarness(t, client, miner, miner)
 
 	// Starts a deal and waits until it's published
 	runDealTillPublish := func(rseed int) {
@@ -92,6 +114,7 @@ func TestPublishDealsBatching(t *testing.T) {
 			err = pubDealsParams.UnmarshalCBOR(bytes.NewReader(msg.Params))
 			require.NoError(t, err)
 			require.Len(t, pubDealsParams.Deals, int(maxDealsPerMsg))
+			require.Equal(t, publisherKey.Address.String(), msg.From.String())
 		}
 	}
 	require.Equal(t, 1, count)

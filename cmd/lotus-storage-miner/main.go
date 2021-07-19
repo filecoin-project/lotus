@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/fatih/color"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/trace"
@@ -61,9 +62,14 @@ func main() {
 			trace.UnregisterExporter(jaeger)
 			jaeger = tracing.SetupJaegerTracing("lotus/" + cmd.Name)
 
+			if cctx.IsSet("color") {
+				color.NoColor = !cctx.Bool("color")
+			}
+
 			if originBefore != nil {
 				return originBefore(cctx)
 			}
+
 			return nil
 		}
 	}
@@ -81,7 +87,10 @@ func main() {
 				Aliases: []string{"a"},
 			},
 			&cli.BoolFlag{
-				Name: "color",
+				// examined in the Before above
+				Name:        "color",
+				Usage:       "use color in display output",
+				DefaultText: "depends on output being a TTY",
 			},
 			&cli.StringFlag{
 				Name:    "repo",

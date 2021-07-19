@@ -28,7 +28,8 @@ import (
 type DealHarness struct {
 	t      *testing.T
 	client *TestFullNode
-	miner  *TestMiner
+	main   *TestMiner
+	market *TestMiner
 }
 
 type MakeFullDealParams struct {
@@ -62,11 +63,12 @@ type MakeFullDealParams struct {
 }
 
 // NewDealHarness creates a test harness that contains testing utilities for deals.
-func NewDealHarness(t *testing.T, client *TestFullNode, miner *TestMiner) *DealHarness {
+func NewDealHarness(t *testing.T, client *TestFullNode, main *TestMiner, market *TestMiner) *DealHarness {
 	return &DealHarness{
 		t:      t,
 		client: client,
-		miner:  miner,
+		main:   main,
+		market: market,
 	}
 }
 
@@ -97,7 +99,7 @@ func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealPa
 
 // StartDeal starts a storage deal between the client and the miner.
 func (dh *DealHarness) StartDeal(ctx context.Context, fcid cid.Cid, fastRet bool, startEpoch abi.ChainEpoch) *cid.Cid {
-	maddr, err := dh.miner.ActorAddress(ctx)
+	maddr, err := dh.main.ActorAddress(ctx)
 	require.NoError(dh.t, err)
 
 	addr, err := dh.client.WalletDefaultAddress(ctx)
@@ -146,7 +148,7 @@ loop:
 			break loop
 		}
 
-		mds, err := dh.miner.MarketListIncompleteDeals(ctx)
+		mds, err := dh.market.MarketListIncompleteDeals(ctx)
 		require.NoError(dh.t, err)
 
 		var minerState storagemarket.StorageDealStatus
@@ -170,7 +172,7 @@ func (dh *DealHarness) WaitDealPublished(ctx context.Context, deal *cid.Cid) {
 	subCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	updates, err := dh.miner.MarketGetDealUpdates(subCtx)
+	updates, err := dh.market.MarketGetDealUpdates(subCtx)
 	require.NoError(dh.t, err)
 
 	for {
@@ -197,19 +199,19 @@ func (dh *DealHarness) WaitDealPublished(ctx context.Context, deal *cid.Cid) {
 }
 
 func (dh *DealHarness) StartSealingWaiting(ctx context.Context) {
-	snums, err := dh.miner.SectorsList(ctx)
+	snums, err := dh.main.SectorsList(ctx)
 	require.NoError(dh.t, err)
 
 	for _, snum := range snums {
-		si, err := dh.miner.SectorsStatus(ctx, snum, false)
+		si, err := dh.main.SectorsStatus(ctx, snum, false)
 		require.NoError(dh.t, err)
 
 		dh.t.Logf("Sector state: %s", si.State)
 		if si.State == api.SectorState(sealing.WaitDeals) {
-			require.NoError(dh.t, dh.miner.SectorStartSealing(ctx, snum))
+			require.NoError(dh.t, dh.main.SectorStartSealing(ctx, snum))
 		}
 
-		dh.miner.FlushSealingBatches(ctx)
+		dh.main.FlushSealingBatches(ctx)
 	}
 }
 

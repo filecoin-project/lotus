@@ -695,7 +695,7 @@ var StateListActorsCmd = &cli.Command{
 var StateGetActorCmd = &cli.Command{
 	Name:      "get-actor",
 	Usage:     "Print actor information",
-	ArgsUsage: "[actorrAddress]",
+	ArgsUsage: "[actorAddress]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {

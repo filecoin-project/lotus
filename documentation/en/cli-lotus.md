@@ -535,7 +535,7 @@ CATEGORY:
 
 OPTIONS:
    --verbose, -v  print verbose deal details (default: false)
-   --color        use color in display output (default: true)
+   --color        use color in display output (default: depends on output being a TTY)
    --show-failed  show failed/failing deals (default: true)
    --completed    show completed retrievals (default: false)
    --watch        watch deal updates in real-time, rather than a one time list (default: false)
@@ -609,7 +609,7 @@ CATEGORY:
 
 OPTIONS:
    --verbose, -v  print verbose deal details (default: false)
-   --color        use color in display output (default: true)
+   --color        use color in display output (default: depends on output being a TTY)
    --show-failed  show failed/failing deals (default: false)
    --watch        watch deal updates in real-time, rather than a one time list (default: false)
    --help, -h     show help (default: false)
@@ -747,7 +747,7 @@ CATEGORY:
 
 OPTIONS:
    --verbose, -v  print verbose transfer details (default: false)
-   --color        use color in display output (default: true)
+   --color        use color in display output (default: depends on output being a TTY)
    --completed    show completed data transfers (default: false)
    --watch        watch deal updates in real-time, rather than a one time list (default: false)
    --show-failed  show failed/cancelled transfers (default: false)
@@ -1673,7 +1673,7 @@ NAME:
    lotus state get-actor - Print actor information
 
 USAGE:
-   lotus state get-actor [command options] [actorrAddress]
+   lotus state get-actor [command options] [actorAddress]
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -2140,7 +2140,7 @@ USAGE:
    lotus chain export [command options] [outputPath]
 
 OPTIONS:
-   --tipset value             
+   --tipset value             specify tipset to start the export from (default: "@head")
    --recent-stateroots value  specify the number of recent state roots to include in the export (default: 0)
    --skip-old-msgs            (default: false)
    --help, -h                 show help (default: false)
