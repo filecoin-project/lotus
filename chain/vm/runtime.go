@@ -146,7 +146,7 @@ func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 	defer func() {
 		if r := recover(); r != nil {
 			if ar, ok := r.(aerrors.ActorError); ok {
-				log.Warnf("VM.Call failure: %+v", ar)
+				log.Warnf("from: %s, to:%s, vm.call failure: %+v", rt.Caller(), rt.Receiver(), ar)
 				aerr = ar
 				return
 			}
@@ -347,7 +347,7 @@ func (rt *Runtime) Context() context.Context {
 }
 
 func (rt *Runtime) Abortf(code exitcode.ExitCode, msg string, args ...interface{}) {
-	log.Warnf("Abortf: " + fmt.Sprintf(msg, args...))
+	log.Warnf("from: %s, to:%s, Abortf: %s", rt.Caller(), rt.Receiver(), fmt.Sprintf(msg, args...))
 	panic(aerrors.NewfSkip(2, code, msg, args...))
 }
 
@@ -391,7 +391,7 @@ func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m cbor.Marshal
 		if err.IsFatal() {
 			panic(err)
 		}
-		log.Warnf("vmctx send failed: to: %s, method: %d: ret: %d, err: %s", to, method, ret, err)
+		log.Warnf("vmctx send failed: call: %s, from: %s, to: %s, method: %d: ret: %d, err: %s", rt.Caller(), rt.Receiver(), to, method, ret, err)
 		return err.RetCode()
 	}
 	_ = rt.chargeGasSafe(gasOnActorExec)
