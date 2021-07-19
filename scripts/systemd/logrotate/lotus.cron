@@ -1,0 +1,1 @@
+5 0 * * *  /usr/sbin/logrotate /etc/logrotate.d/lotus

@@ -1,0 +1,12 @@
+/var/log/lotus/*.log
+{
+  su lts lts
+  rotate 30
+  copytruncate
+  missingok
+  notifempty
+  dateext
+  dateformat -%Y%m%d_%H%M
+  #compress
+  #delaycompress
+}

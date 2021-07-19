@@ -1,0 +1,42 @@
+[Unit]
+Description=Lotus Worker C2
+After=network.target
+PartOf=lotus-worker-c2s.target
+## Only if lotus-miner and lotus-worker on the same machine
+#After=lotus-miner.service
+#Wants=lotus-miner.service
+
+[Service]
+Environment=GOLOG_FILE="/var/log/lotus/worker-c2-%i.log"
+Environment=GOLOG_LOG_FMT="json"
+Environment=FIL_PROOFS_PARENT_CACHE="/data-param/mainnet/filecoin-parents"
+Environment=FIL_PROOFS_PARAMETER_CACHE="/data-param/mainnet/filecoin-proof-parameters"
+Environment=IPFS_GATEWAY="https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs"
+## !!! CHANGE IT !!!
+## On your lotus-miner machine, $(lotus-miner auth api-info --perm admin)
+## !!! CHANGE IT !!!
+Environment=MINER_API_INFO="eyJhXXXXXXXX2dr0:/ip4/10.1.1.11/tcp/30731/http"
+Environment=LOTUS_WORKER_PATH="/data-u2/c2/%i"
+Environment=TMPDIR="${LOTUS_WORKER_PATH}/tmp"
+## !!! CHANGE IT !!!
+Environment=WORKER_PORT="$((50771 + %i))"
+## !!! CHANGE IT !!!
+Environment=WORKER_IP=10.1.1.31
+Environment=TRUST_PARAMS=1
+Environment=CUDA_VISIBLE_DEVICES=%i
+Environment=RUST_LOG=info
+Environment=FIL_PROOFS_USE_GPU_TREE_BUILDER=1
+Environment=FIL_PROOFS_USE_GPU_COLUMN_BUILDER=1
+Environment=FIL_PROOFS_USE_MULTICORE_SDR=1
+Environment=FIL_PROOFS_MULTICORE_SDR_PRODUCERS=0
+Environment=BIN_DIR="/data-u2/mainnet/bin"
+ExecStart=${BIN_DIR}/lotus-worker run --listen ${WORKER_IP}:${WORKER_PORT} --addpiece=false --precommit1=false --precommit2=false --commit=true
+Restart=on-failure
+RestartSec=10
+
+## !!! CHANGE IT !!!
+User=lts
+Group=lts
+
+[Install]
+WantedBy=multi-user.target
