@@ -1,0 +1,63 @@
+---
+name: Testground slash-command processor
+
+on:
+  repository_dispatch:
+    types:
+      - testground-command
+
+jobs:
+  debug:
+    runs-on: ubuntu-latest
+    steps:
+      - name: debug
+        env:
+          PAYLOAD_CONTEXT: ${{ toJson(github.event.client_payload) }}
+        run: |
+          echo "$PAYLOAD_CONTEXT"
+  testground:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Initial Comment
+        id: comment
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
+          edit-mode: append
+          body: |
+            Beep Boop!
+
+            Running that testground test for you. Once it's complete, I'll update this comment.
+
+            __finished tests below this line__
+            
+            |composition|testground id|status|outcome|
+            |-----------|-------------|------|-------|
+      - name: Code Checkout (default/unspecified)
+        if: ${{ ! github.event.client_payload.slash_command.args.named.ref }}
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.client_payload.github.ref }}
+      - name: Code Checkout (${{ github.event.client_payload.slash_command.args.named.ref }})
+        if: ${{ github.event.client_payload.slash_command.args.named.ref }}
+        uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.client_payload.slash_command.args.named.ref }}
+      - name: Start Testground
+        uses: coryschwartz/testground-github-action@master
+        id: tg
+        with:
+          backend_addr: ${{ github.event.client_payload.slash_command.args.named.backend_addr }}
+          backend_proto: ${{ github.event.client_payload.slash_command.args.named.backend_proto }}
+          plan_directory: ${{ github.event.client_payload.slash_command.args.named.plan_directory }}
+          composition_file: ${{ github.event.client_payload.slash_command.args.named.composition_file }}
+      - name: Update Comment
+        if: ${{ always() }}
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          issue-number: ${{ github.event.client_payload.payload.issue.number }}
+          edit-mode: append
+          comment-id: ${{ steps.comment.outputs.comment-id }}
+          body: |
+            ${{ github.event.client_payload.slash_command.args.named.composition_file }} | ${{ steps.tg.outputs.testground_id }} | ${{ steps.tg.outputs.status }} | ${{ steps.tg.outputs.outcome }}
+
