@@ -66,7 +66,7 @@ func (s *existingSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt 
 	return false, nil
 }
 
-func (s *existingSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *workerHandle) (bool, error) {
+func (s *existingSelector) Cmp(ctx context.Context, task sealtasks.TaskType, _ abi.RegisteredSealProof, a, b *workerHandle) (bool, error) {
 	return a.utilization() < b.utilization(), nil
 }
 
