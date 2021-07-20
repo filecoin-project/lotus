@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 	"os/exec"
 	"path"
 	"strings"
@@ -17,6 +18,11 @@ import (
 var testcases = map[string]interface{}{
 	"default": run.InitializedTestCaseFn(compat),
 }
+
+var (
+	clientVersion     string
+	minerStackVersion string
+)
 
 func main() {
 	run.InvokeMap(testcases)
@@ -40,20 +46,24 @@ func compat(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 
 	runenv.RecordMessage("running main...")
 
-	dir := "/lotus-new"
+	// setting initial versions for client and miner
+	clientVersion = "/lotus-new"
+	minerStackVersion = "/lotus-old"
+
 	genesisCtx, genesisCancel := context.WithCancel(context.Background())
 	defer genesisCancel()
-	go startMinerStackFromGenesis(genesisCtx, runenv, dir)
+	go startMinerStackFromGenesis(genesisCtx, runenv)
+	go startClientStackFromGenesis(genesisCtx, runenv)
 
 	time.Sleep(60 * time.Second)
 
 	//TODO: start another fullnode client - do not use the fullnode from the miner
 
 	runenv.RecordMessage("import file...")
-	datacid := importFile(ctx, dir, "/qbf10.txt")
+	datacid := importFile(ctx, "/qbf10.txt")
 
 	runenv.RecordMessage("got datacid: %s", datacid)
-	dealcid := makeDeal(ctx, dir, datacid)
+	dealcid := makeDeal(ctx, datacid)
 
 	runenv.RecordMessage("got dealcid: %s", dealcid)
 
@@ -61,22 +71,24 @@ func compat(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 	time.Sleep(300 * time.Second)
 
 	runenv.RecordMessage("retrieve file...")
-	retrieveFile(ctx, dir, datacid)
+	retrieveFile(ctx, datacid)
 
 	// kill miner and its full node
 	runenv.RecordMessage("kill miner...")
 	genesisCancel()
 	time.Sleep(20 * time.Second)
 
+	// optionally change miner or client versions
+
 	// restart miner and its full node
 	runenv.RecordMessage("restart miner stack...")
 	ctxAfterRst := context.Background()
-	go startMinerStack(ctxAfterRst, runenv, dir)
+	go startMinerStack(ctxAfterRst, runenv)
 
 	time.Sleep(30 * time.Second)
 
 	runenv.RecordMessage("retrieve file again...")
-	retrieveFile(ctx, dir, datacid)
+	retrieveFile(ctx, datacid)
 
 	//TODO: do another storage deal and retrieval
 	//TODO: do the same retrieval as above
@@ -84,11 +96,14 @@ func compat(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 	return nil
 }
 
-func importFile(ctx context.Context, dir string, filepath string) string {
-	lotusBinary := path.Join(dir, "lotus")
+func importFile(ctx context.Context, filepath string) string {
+	lotusBinary := path.Join(clientVersion, "lotus")
 	importFile := fmt.Sprintf("%s client import %s | awk '{print $4}'", lotusBinary, filepath)
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", importFile)
+	cmd.Env = append(os.Environ(),
+		"LOTUS_PATH=~/.lotus-client",
+	)
 	result, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Fatal(err)
@@ -98,11 +113,14 @@ func importFile(ctx context.Context, dir string, filepath string) string {
 	return datacid
 }
 
-func makeDeal(ctx context.Context, dir string, datacid string) string {
-	lotusBinary := path.Join(dir, "lotus")
+func makeDeal(ctx context.Context, datacid string) string {
+	lotusBinary := path.Join(minerStackVersion, "lotus")
 	makeDeal := fmt.Sprintf("%s client deal %s t01000 0.000000000309210552 1299217", lotusBinary, datacid)
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", makeDeal)
+	cmd.Env = append(os.Environ(),
+		"LOTUS_PATH=~/.lotus-client",
+	)
 	result, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Fatal(err)
@@ -112,11 +130,14 @@ func makeDeal(ctx context.Context, dir string, datacid string) string {
 	return dealcid
 }
 
-func retrieveFile(ctx context.Context, dir string, datacid string) {
-	lotusBinary := path.Join(dir, "lotus")
+func retrieveFile(ctx context.Context, datacid string) {
+	lotusBinary := path.Join(clientVersion, "lotus")
 	makeDeal := fmt.Sprintf("%s client retrieve %s /tmp/file", lotusBinary, datacid)
 
 	cmd := exec.CommandContext(ctx, "sh", "-c", makeDeal)
+	cmd.Env = append(os.Environ(),
+		"LOTUS_PATH=~/.lotus-client",
+	)
 	_, err := cmd.CombinedOutput()
 	if err != nil {
 		log.Fatal(err)

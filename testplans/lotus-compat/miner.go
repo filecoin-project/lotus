@@ -10,7 +10,7 @@ import (
 	"github.com/testground/sdk-go/runtime"
 )
 
-func startMinerStack(ctx context.Context, runenv *runtime.RunEnv, dir string) {
+func startMinerStack(ctx context.Context, runenv *runtime.RunEnv) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatal(err)
@@ -20,17 +20,17 @@ func startMinerStack(ctx context.Context, runenv *runtime.RunEnv, dir string) {
 
 	wg.Add(5)
 	go func() {
-		runLotusDaemon(ctx, runenv, home, dir)
+		runLotusDaemon(ctx, runenv, home)
 		wg.Done()
 	}()
 
 	go func() {
-		runLotusMiner(ctx, runenv, home, dir)
+		runLotusMiner(ctx, runenv, home)
 		wg.Done()
 	}()
 
 	go func() {
-		publishDealsPeriodicallyCmd(ctx, dir)
+		publishDealsPeriodicallyCmd(ctx)
 		wg.Done()
 	}()
 
@@ -42,19 +42,20 @@ func startMinerStack(ctx context.Context, runenv *runtime.RunEnv, dir string) {
 	wg.Wait()
 }
 
-func runLotusDaemon(ctx context.Context, runenv *runtime.RunEnv, home string, dir string) {
+func runLotusDaemon(ctx context.Context, runenv *runtime.RunEnv, home string) {
+	lotusBinary := path.Join(minerStackVersion, "lotus")
 	cmds := [][]string{
-		{path.Join(dir, "lotus"), "daemon", "--genesis=dev.gen", "--bootstrap=false"},
+		{lotusBinary, "daemon", "--genesis=dev.gen", "--bootstrap=false"},
 	}
 
 	runCmdsWithLog(ctx, runenv, path.Join(runenv.TestOutputsPath, "lotus-daemon"), cmds)
 }
 
-func runLotusMiner(ctx context.Context, runenv *runtime.RunEnv, home, dir string) {
+func runLotusMiner(ctx context.Context, runenv *runtime.RunEnv, home string) {
 	cmds := [][]string{
-		{path.Join(dir, "lotus"), "wait-api"}, // wait for lotus node to run
+		{path.Join(minerStackVersion, "lotus"), "wait-api"}, // wait for lotus node to run
 
-		{path.Join(dir, "lotus-miner"), "run", "--nosync"},
+		{path.Join(minerStackVersion, "lotus-miner"), "run", "--nosync"},
 	}
 
 	runCmdsWithLog(ctx, runenv, path.Join(runenv.TestOutputsPath, "lotus-miner"), cmds)

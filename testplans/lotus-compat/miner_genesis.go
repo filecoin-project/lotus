@@ -15,7 +15,7 @@ import (
 	"github.com/testground/sdk-go/runtime"
 )
 
-func startMinerStackFromGenesis(ctx context.Context, runenv *runtime.RunEnv, dir string) {
+func startMinerStackFromGenesis(ctx context.Context, runenv *runtime.RunEnv) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatal(err)
@@ -25,27 +25,27 @@ func startMinerStackFromGenesis(ctx context.Context, runenv *runtime.RunEnv, dir
 
 	wg.Add(5)
 	go func() {
-		runLotusDaemonFromScratch(ctx, runenv, home, dir)
+		runLotusDaemonFromScratch(ctx, runenv, home)
 		wg.Done()
 	}()
 
 	go func() {
-		runLotusMinerFromScratch(ctx, runenv, home, dir)
+		runLotusMinerFromScratch(ctx, runenv, home)
 		wg.Done()
 	}()
 
 	go func() {
-		publishDealsPeriodicallyCmd(ctx, dir)
+		publishDealsPeriodicallyCmd(ctx)
 		wg.Done()
 	}()
 
 	go func() {
-		setSealDelayPeriodically(ctx, dir)
+		setSealDelayPeriodically(ctx)
 		wg.Done()
 	}()
 
 	go func() {
-		setDefaultWalletCmd(ctx, dir)
+		setDefaultWalletCmd(ctx, minerStackVersion)
 		wg.Done()
 	}()
 
@@ -77,26 +77,26 @@ func runCmdsWithLog(ctx context.Context, runenv *runtime.RunEnv, name string, co
 	}
 }
 
-func runLotusDaemonFromScratch(ctx context.Context, runenv *runtime.RunEnv, home string, dir string) {
+func runLotusDaemonFromScratch(ctx context.Context, runenv *runtime.RunEnv, home string) {
 	cmds := [][]string{
-		{path.Join(dir, "lotus-seed"), "genesis", "new", "localnet.json"},
-		{path.Join(dir, "lotus-seed"), "pre-seal", "--sector-size=2048", "--num-sectors=10"},
-		{path.Join(dir, "lotus-seed"), "genesis", "add-miner", "localnet.json",
+		{path.Join(minerStackVersion, "lotus-seed"), "genesis", "new", "localnet.json"},
+		{path.Join(minerStackVersion, "lotus-seed"), "pre-seal", "--sector-size=2048", "--num-sectors=10"},
+		{path.Join(minerStackVersion, "lotus-seed"), "genesis", "add-miner", "localnet.json",
 			filepath.Join(home, ".genesis-sectors", "pre-seal-t01000.json")},
-		{path.Join(dir, "lotus"), "daemon", "--lotus-make-genesis=dev.gen",
+		{path.Join(minerStackVersion, "lotus"), "daemon", "--lotus-make-genesis=dev.gen",
 			"--genesis-template=localnet.json", "--bootstrap=false"},
 	}
 
 	runCmdsWithLog(ctx, runenv, path.Join(runenv.TestOutputsPath, "lotus-daemon-genesis"), cmds)
 }
 
-func runLotusMinerFromScratch(ctx context.Context, runenv *runtime.RunEnv, home, dir string) {
+func runLotusMinerFromScratch(ctx context.Context, runenv *runtime.RunEnv, home string) {
 	cmds := [][]string{
-		{path.Join(dir, "lotus"), "wait-api"}, // wait for lotus node to run
+		{path.Join(minerStackVersion, "lotus"), "wait-api"}, // wait for lotus node to run
 
-		{path.Join(dir, "lotus"), "wallet", "import",
+		{path.Join(minerStackVersion, "lotus"), "wallet", "import",
 			filepath.Join(home, ".genesis-sectors", "pre-seal-t01000.key")},
-		{path.Join(dir, "lotus-miner"), "init", "--genesis-miner", "--actor=t01000", "--sector-size=2048",
+		{path.Join(minerStackVersion, "lotus-miner"), "init", "--genesis-miner", "--actor=t01000", "--sector-size=2048",
 			"--pre-sealed-sectors=" + filepath.Join(home, ".genesis-sectors"),
 			"--pre-sealed-metadata=" + filepath.Join(home, ".genesis-sectors", "pre-seal-t01000.json"),
 			"--nosync"},
@@ -111,13 +111,13 @@ func runLotusMinerFromScratch(ctx context.Context, runenv *runtime.RunEnv, home,
 			"-e", `s/#(\s*AggregateCommits\s*=\s*)true/ \1false/`,
 			filepath.Join(home, ".lotusminer", "config.toml")},
 
-		{path.Join(dir, "lotus-miner"), "run", "--nosync"},
+		{path.Join(minerStackVersion, "lotus-miner"), "run", "--nosync"},
 	}
 
 	runCmdsWithLog(ctx, runenv, path.Join(runenv.TestOutputsPath, "lotus-miner-genesis"), cmds)
 }
 
-func setSealDelayPeriodically(ctx context.Context, dir string) {
+func setSealDelayPeriodically(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -125,13 +125,13 @@ func setSealDelayPeriodically(ctx context.Context, dir string) {
 		case <-time.After(5 * time.Second):
 		}
 
-		cmd := exec.CommandContext(ctx, path.Join(dir, "lotus-miner"),
+		cmd := exec.CommandContext(ctx, path.Join(minerStackVersion, "lotus-miner"),
 			"sectors", "set-seal-delay", "1")
 		cmd.Run() // we ignore errors
 	}
 }
 
-func publishDealsPeriodicallyCmd(ctx context.Context, dir string) {
+func publishDealsPeriodicallyCmd(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -139,7 +139,7 @@ func publishDealsPeriodicallyCmd(ctx context.Context, dir string) {
 		case <-time.After(5 * time.Second):
 		}
 
-		cmd := exec.CommandContext(ctx, path.Join(dir, "lotus-miner"),
+		cmd := exec.CommandContext(ctx, path.Join(minerStackVersion, "lotus-miner"),
 			"storage-deals", "pending-publish", "--publish-now")
 		cmd.Run() // we ignore errors
 	}
