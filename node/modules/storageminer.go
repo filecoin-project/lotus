@@ -588,6 +588,7 @@ func DagStoreWrapper(
 		TransientsDir: filepath.Join(dagStoreDir, "transients"),
 		IndexDir:      filepath.Join(dagStoreDir, "index"),
 		Datastore:     dagStoreDS,
+		GCInterval:    5 * time.Minute,
 	}
 	mountApi := dagstore.NewLotusMountAPI(pieceStore, rpn)
 	dsw, err := dagstore.NewDagStoreWrapper(cfg, mountApi)

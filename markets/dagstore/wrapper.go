@@ -21,7 +21,6 @@ import (
 )
 
 var log = logging.Logger("dagstore-wrapper")
-var gcInterval = 5 * time.Minute
 
 // MarketDAGStoreConfig is the config the market needs to then construct a DAG Store.
 type MarketDAGStoreConfig struct {
@@ -30,6 +29,17 @@ type MarketDAGStoreConfig struct {
 	Datastore          ds.Datastore
 	MaxConcurrentFetch int
 	MaxConcurrentIndex int
+	GCInterval         time.Duration
+}
+
+// DAGStore provides an interface for the DAG store that can be mocked out
+// by tests
+type DAGStore interface {
+	RegisterShard(ctx context.Context, key shard.Key, mnt mount.Mount, out chan dagstore.ShardResult, opts dagstore.RegisterOpts) error
+	AcquireShard(ctx context.Context, key shard.Key, out chan dagstore.ShardResult, _ dagstore.AcquireOpts) error
+	RecoverShard(ctx context.Context, key shard.Key, out chan dagstore.ShardResult, _ dagstore.RecoverOpts) error
+	GC(ctx context.Context) (map[shard.Key]error, error)
+	Close() error
 }
 
 type closableBlockstore struct {
@@ -42,10 +52,11 @@ type Wrapper struct {
 	cancel       context.CancelFunc
 	backgroundWg sync.WaitGroup
 
-	dagStore  *dagstore.DAGStore
-	mountApi  LotusAccessor
-	failureCh chan dagstore.ShardResult
-	traceCh   chan dagstore.Trace
+	dagStore   DAGStore
+	mountApi   LotusAccessor
+	failureCh  chan dagstore.ShardResult
+	traceCh    chan dagstore.Trace
+	gcInterval time.Duration
 }
 
 var _ shared.DagStoreWrapper = (*Wrapper)(nil)
@@ -77,10 +88,11 @@ func NewDagStoreWrapper(cfg MarketDAGStoreConfig, mountApi LotusAccessor) (*Wrap
 	}
 
 	return &Wrapper{
-		dagStore:  dagStore,
-		mountApi:  mountApi,
-		failureCh: failureCh,
-		traceCh:   traceCh,
+		dagStore:   dagStore,
+		mountApi:   mountApi,
+		failureCh:  failureCh,
+		traceCh:    traceCh,
+		gcInterval: cfg.GCInterval,
 	}, nil
 }
 
@@ -96,11 +108,11 @@ func (ds *Wrapper) Start(ctx context.Context) {
 func (ds *Wrapper) background() {
 	defer ds.backgroundWg.Done()
 
-	gcTicker := time.NewTicker(gcInterval)
+	gcTicker := time.NewTicker(ds.gcInterval)
 	defer gcTicker.Stop()
 
 	recoverShardResults := make(chan dagstore.ShardResult, 32)
-	for ds.ctx.Err() != nil {
+	for ds.ctx.Err() == nil {
 		select {
 
 		// GC the DAG store on every tick
