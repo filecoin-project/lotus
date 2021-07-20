@@ -16,7 +16,6 @@ import (
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
-	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
@@ -183,15 +182,16 @@ func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer dtypes.ClientDataT
 func RetrievalClient(lc fx.Lifecycle, h host.Host, r repo.LockedRepo, dt dtypes.ClientDataTransfer, payAPI payapi.PaychAPI, resolver discovery.PeerResolver,
 	ds dtypes.MetadataDS, chainAPI full.ChainAPI, stateAPI full.StateAPI, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
 
-	carStore, err := getRetrievalCarStore(r.Path())
-	if err != nil {
-		return nil, err
+	carsPath := filepath.Join(r.Path(), dagStore, "retrieval-cars")
+
+	if err := os.MkdirAll(carsPath, 0755); err != nil {
+		return nil, xerrors.Errorf("failed to create dir")
 	}
 
 	adapter := retrievaladapter.NewRetrievalClientNode(payAPI, chainAPI, stateAPI)
 	network := rmnet.NewFromLibp2pHost(h)
 	client, err := retrievalimpl.NewClient(network,
-		carStore, dt, adapter, resolver, namespace.Wrap(ds, datastore.NewKey("/retrievals/client")))
+		carsPath, dt, adapter, resolver, namespace.Wrap(ds, datastore.NewKey("/retrievals/client")))
 	if err != nil {
 		return nil, err
 	}
@@ -207,15 +207,6 @@ func RetrievalClient(lc fx.Lifecycle, h host.Host, r repo.LockedRepo, dt dtypes.
 		},
 	})
 	return client, nil
-}
-
-func getRetrievalCarStore(path string) (filestore.CarFileStore, error) {
-	carStorePath := filepath.Join(path, "retrieval-cars")
-	err := os.Mkdir(carStorePath, os.ModePerm)
-	if err != nil {
-		return nil, xerrors.Errorf("could not create directory %s: %w", carStorePath, err)
-	}
-	return filestore.NewLocalCarStore(path)
 }
 
 // ClientBlockstoreRetrievalStoreManager is the default version of the RetrievalStoreManager that runs on multistore

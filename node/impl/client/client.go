@@ -808,14 +808,14 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	}
 	if rs.IsIPFSRetrieval() {
 		// write out the CARv1 blocks of the CARv2 file to the IPFS blockstore.
-		carv2Reader, err := carv2.NewReaderMmap(carV2FilePath)
+		carv2Reader, err := carv2.OpenReader(carV2FilePath)
 		if err != nil {
 			finish(err)
 			return
 		}
 		defer carv2Reader.Close() //nolint:errcheck
 
-		if _, err := car.LoadCar(rs.Blockstore(), carv2Reader.CarV1Reader()); err != nil {
+		if _, err := car.LoadCar(rs.Blockstore(), carv2Reader.DataReader()); err != nil {
 			finish(err)
 			return
 		}
@@ -835,13 +835,13 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			return
 		}
 
-		carv2Reader, err := carv2.NewReaderMmap(carV2FilePath)
+		carv2Reader, err := carv2.OpenReader(carV2FilePath)
 		if err != nil {
 			finish(err)
 			return
 		}
 		defer carv2Reader.Close() //nolint:errcheck
-		if _, err := io.Copy(f, carv2Reader.CarV1Reader()); err != nil {
+		if _, err := io.Copy(f, carv2Reader.DataReader()); err != nil {
 			finish(err)
 			return
 		}

@@ -77,6 +77,7 @@ import (
 )
 
 var StorageCounterDSPrefix = "/storage/nextid"
+var dagStore = "dagStore"
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 	maddrb, err := ds.Get(datastore.NewKey("miner-address"))
@@ -582,7 +583,7 @@ func DagStoreWrapper(
 	pieceStore dtypes.ProviderPieceStore,
 	rpn retrievalmarket.RetrievalProviderNode,
 ) (*dagstore.Wrapper, error) {
-	dagStoreDir := filepath.Join(r.Path(), "dagstore")
+	dagStoreDir := filepath.Join(r.Path(), dagStore)
 	dagStoreDS := namespace.Wrap(ds, datastore.NewKey("/dagstore/provider"))
 	cfg := dagstore.MarketDAGStoreConfig{
 		TransientsDir: filepath.Join(dagStoreDir, "transients"),
@@ -616,7 +617,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	dataTransfer dtypes.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
 	df dtypes.StorageDealFilter,
-	dagStore *dagstore.Wrapper,
+	dsw *dagstore.Wrapper,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
@@ -624,10 +625,12 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 		return nil, err
 	}
 
-	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
-	shardMigrator := storageimpl.NewShardMigrator(address.Address(minerAddress), ds, dagStore, pieceStore, spn)
+	dagStorePath := filepath.Join(r.Path(), dagStore)
 
-	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, dagStore, pieceStore,
+	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
+	shardMigrator := storageimpl.NewShardMigrator(address.Address(minerAddress), dagStorePath, dsw, pieceStore, spn)
+
+	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, dsw, pieceStore,
 		dataTransfer, spn, address.Address(minerAddress), storedAsk, shardMigrator, opt)
 }
 
