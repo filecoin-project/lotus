@@ -56,14 +56,13 @@ func TestDealWithMarketAndMinerNode(t *testing.T) {
 		})
 	}
 
-	// TODO: add 2, 4, 8, more when this graphsync issue is fixed: https://github.com/ipfs/go-graphsync/issues/175#
-	cycles := []int{1}
+	cycles := []int{4}
 	for _, n := range cycles {
 		n := n
 		ns := fmt.Sprintf("%d", n)
 		t.Run(ns+"-fastretrieval-CAR", func(t *testing.T) { runTest(t, n, true, true) })
 		t.Run(ns+"-fastretrieval-NoCAR", func(t *testing.T) { runTest(t, n, true, false) })
-		t.Run(ns+"-stdretrieval-CAR", func(t *testing.T) { runTest(t, n, true, false) })
+		t.Run(ns+"-stdretrieval-CAR", func(t *testing.T) { runTest(t, n, false, true) })
 		t.Run(ns+"-stdretrieval-NoCAR", func(t *testing.T) { runTest(t, n, false, false) })
 	}
 }
@@ -101,8 +100,7 @@ func TestDealCyclesConcurrent(t *testing.T) {
 		})
 	}
 
-	// TODO: add 2, 4, 8, more when this graphsync issue is fixed: https://github.com/ipfs/go-graphsync/issues/175#
-	cycles := []int{2}
+	cycles := []int{2, 4, 8, 16}
 	for _, n := range cycles {
 		n := n
 		ns := fmt.Sprintf("%d", n)
@@ -133,7 +131,10 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 	// so that the deal starts sealing in time
 	startEpoch := abi.ChainEpoch(2 << 12)
 
-	const graphsyncThrottle = 2
+	const (
+		graphsyncThrottle = 2
+		concurrency       = 20
+	)
 	runTest := func(t *testing.T) {
 		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ConstructorOpts(
 			node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(graphsyncThrottle))),
@@ -174,11 +175,10 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 			}
 		}()
 
-		const concurrency = 20
 		t.Logf("running concurrent deals: %d", concurrency)
 
 		dh.RunConcurrentDeals(kit.RunConcurrentDealsOpts{
-			N:             concurrency, // TODO: set to 20 after https://github.com/ipfs/go-graphsync/issues/175 is fixed
+			N:             concurrency,
 			FastRetrieval: true,
 			StartEpoch:    startEpoch,
 		})
