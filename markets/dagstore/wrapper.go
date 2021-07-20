@@ -146,7 +146,12 @@ func (ds *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (carstore.Cl
 
 		// if the DAGStore does not know about the Shard -> register it and then try to acquire it again.
 		log.Warnw("failed to load shard as shard is not registered, will re-register", "pieceCID", pieceCid)
-		if err := shared.RegisterShardSync(ctx, ds, pieceCid, "", false); err != nil {
+		// The path of a transient file that we can ask the DAG Store to use
+		// to perform the Indexing rather than fetching it via the Mount if
+		// we already have a transient file. However, we don't have it here
+		// and therefore we pass an empty file path.
+		carPath := ""
+		if err := shared.RegisterShardSync(ctx, ds, pieceCid, carPath, false); err != nil {
 			return nil, xerrors.Errorf("failed to re-register shard during loading piece CID %s: %w", pieceCid, err)
 		}
 		log.Warnw("successfully re-registered shard", "pieceCID", pieceCid)
