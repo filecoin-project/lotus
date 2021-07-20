@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/network"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
@@ -121,7 +122,7 @@ func TestForkHeightTriggers(t *testing.T) {
 
 	sm, err := NewStateManagerWithUpgradeSchedule(
 		cg.ChainStore(), UpgradeSchedule{{
-			Network: 1,
+			Network: network.Version1,
 			Height:  testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
 				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
@@ -250,7 +251,7 @@ func TestForkRefuseCall(t *testing.T) {
 
 	sm, err := NewStateManagerWithUpgradeSchedule(
 		cg.ChainStore(), UpgradeSchedule{{
-			Network:   1,
+			Network:   network.Version1,
 			Expensive: true,
 			Height:    testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
@@ -365,7 +366,7 @@ func TestForkPreMigration(t *testing.T) {
 
 	sm, err := NewStateManagerWithUpgradeSchedule(
 		cg.ChainStore(), UpgradeSchedule{{
-			Network: 1,
+			Network: network.Version1,
 			Height:  testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
 				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
