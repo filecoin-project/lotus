@@ -1,0 +1,70 @@
+name: Enhancement
+description:  Suggest an improvement to an existing lotus feature.
+labels: [need/triage, kind/enhancement]
+body:
+- type: checkboxes
+  attributes:
+    label: Checklist
+    description: Please check off the following boxes before continuing to create an improvement suggestion!
+    options:
+      - label: This is **not** a new feature or an enhancement to the Filecoin protocol. If it is,  please open an [FIP issue](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0001.md).
+        required: true
+      - label: This is **not** a new feature request. If it is, please file a [feature request](https://github.com/filecoin-project/lotus/issues/new?assignees=&labels=hint%2Fneeds-triaging&template=feature_request.yaml) instead.
+        required: true
+      - label: This is **not** brainstorming ideas. If you have an idea you'd like to discuss, please open a new discussion on [the lotus forum](https://github.com/filecoin-project/lotus/discussions/categories/ideas) and select the category as `Ideas`.
+        required: true
+      - label: I **have** a specific, actionable, and well motivated improvement to propose.
+        required: true
+- type: dropdown 
+  id: component
+  validations:
+    required: true
+  attributes:
+    label: Lotus component
+    description: Please select the lotus component you are propoing improvement for
+    options:
+    - lotus daemon
+    - lotus miner/lotus worker
+    - lotus client
+    - lotus market
+    - lotus JSON-RPC API
+    - Other
+- type: dropdown
+  id: area
+  validations: 
+    required: true
+  attributes:
+    label: Area
+    description: Please select the area
+    options:
+    - syncing
+    - sealing
+    - mining (WinningPoSt)
+    - proving (WindowPoSt)
+    - deal making
+    - api call
+    - message management (mpool)
+    - Other
+- type: textarea
+  id: request
+  attributes:
+    label: What is the motivation behind improvement proposal? What's problem with the existing feature? Please describe.
+    description: A clear and concise description of what the motivation or the current problem is and what is the suggested improvement?
+    placeholder: Ex. Currently lotus... However, as a storage provider, I'd like...
+  validations:
+    required: true
+- type: textarea
+  id: alternates
+  attributes:
+    label: Describe alternatives you've considered
+    description: A clear and concise description of any alternative solutions you've considered.
+  validations:
+    required: false
+- type: textarea
+  id: extra
+  attributes:
+    label: Additional context
+    description: Add any other context, design docs or screenshots about the feature request here.
+  validations:
+    required: false
+
