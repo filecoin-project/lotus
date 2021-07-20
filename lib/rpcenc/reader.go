@@ -80,19 +80,24 @@ func ReaderParamEncoder(addr string) jsonrpc.Option {
 
 type waitReadCloser struct {
 	io.ReadCloser
-	wait chan struct{}
+	wait      chan struct{}
+	closeOnce sync.Once
 }
 
 func (w *waitReadCloser) Read(p []byte) (int, error) {
 	n, err := w.ReadCloser.Read(p)
 	if err != nil {
-		close(w.wait)
+		w.closeOnce.Do(func() {
+			close(w.wait)
+		})
 	}
 	return n, err
 }
 
 func (w *waitReadCloser) Close() error {
-	close(w.wait)
+	w.closeOnce.Do(func() {
+		close(w.wait)
+	})
 	return w.ReadCloser.Close()
 }
 
