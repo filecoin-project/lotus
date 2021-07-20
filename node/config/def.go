@@ -131,6 +131,12 @@ type SealingConfig struct {
 
 	WaitDealsDelay Duration
 
+	// CommittedCapacityDefaultLifetime is the default duration a Committed Capacity (CC)
+	// sector will live before it must be extended or converted into sector containing deals
+	// before it is terminated.
+	// Value must be between 180-540 days inclusive.
+	CommittedCapacityDefaultLifetime Duration
+
 	AlwaysKeepUnsealedCopy bool
 
 	// Run sector finalization before submitting sector proof to the chain
