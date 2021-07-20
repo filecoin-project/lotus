@@ -32,7 +32,6 @@ import (
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
-	mktdagstore "github.com/filecoin-project/go-fil-markets/dagstore"
 	piecefilestore "github.com/filecoin-project/go-fil-markets/filestore"
 	piecestoreimpl "github.com/filecoin-project/go-fil-markets/piecestore/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -66,6 +65,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/markets"
+	"github.com/filecoin-project/lotus/markets/dagstore"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/markets/pricing"
 	lotusminer "github.com/filecoin-project/lotus/miner"
@@ -576,20 +576,36 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 }
 
 func DagStoreWrapper(
+	lc fx.Lifecycle,
 	ds dtypes.MetadataDS,
 	r repo.LockedRepo,
 	pieceStore dtypes.ProviderPieceStore,
 	rpn retrievalmarket.RetrievalProviderNode,
-) (mktdagstore.DagStoreWrapper, error) {
+) (*dagstore.Wrapper, error) {
 	dagStoreDir := filepath.Join(r.Path(), "dagstore")
 	dagStoreDS := namespace.Wrap(ds, datastore.NewKey("/dagstore/provider"))
-	cfg := mktdagstore.MarketDAGStoreConfig{
+	cfg := dagstore.MarketDAGStoreConfig{
 		TransientsDir: filepath.Join(dagStoreDir, "transients"),
 		IndexDir:      filepath.Join(dagStoreDir, "index"),
 		Datastore:     dagStoreDS,
+		GCInterval:    5 * time.Minute,
 	}
-	mountApi := mktdagstore.NewLotusMountAPI(pieceStore, rpn)
-	return mktdagstore.NewDagStoreWrapper(cfg, mountApi)
+	mountApi := dagstore.NewLotusMountAPI(pieceStore, rpn)
+	dsw, err := dagstore.NewDagStoreWrapper(cfg, mountApi)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to create DAG store wrapper: %w", err)
+	}
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			dsw.Start(ctx)
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			return dsw.Close()
+		},
+	})
+	return dsw, nil
 }
 
 func StorageProvider(minerAddress dtypes.MinerAddress,
@@ -600,7 +616,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	dataTransfer dtypes.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
 	df dtypes.StorageDealFilter,
-	dagStore mktdagstore.DagStoreWrapper,
+	dagStore *dagstore.Wrapper,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
@@ -609,9 +625,10 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	}
 
 	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
+	shardMigrator := storageimpl.NewShardMigrator(address.Address(minerAddress), ds, dagStore, pieceStore, spn)
 
 	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, dagStore, pieceStore,
-		dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
+		dataTransfer, spn, address.Address(minerAddress), storedAsk, shardMigrator, opt)
 }
 
 func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
@@ -675,7 +692,7 @@ func RetrievalProvider(
 	dt dtypes.ProviderDataTransfer,
 	pricingFnc dtypes.RetrievalPricingFunc,
 	userFilter dtypes.RetrievalDealFilter,
-	dagStore mktdagstore.DagStoreWrapper,
+	dagStore *dagstore.Wrapper,
 ) (retrievalmarket.RetrievalProvider, error) {
 	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
 	return retrievalimpl.NewProvider(
