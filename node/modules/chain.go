@@ -68,7 +68,7 @@ func MessagePool(lc fx.Lifecycle, mpp messagepool.Provider, ds dtypes.MetadataDS
 			return mp.Close()
 		},
 	})
-	protector.AddProtector(mp.ProtectMessages)
+	protector.AddProtector(mp.ForEachPendingMessage)
 	return mp, nil
 }
 
