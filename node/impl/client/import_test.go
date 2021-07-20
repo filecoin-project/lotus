@@ -29,7 +29,7 @@ func TestImportNormalFileToUnixfsDAG(t *testing.T) {
 	defer os.Remove(carv2File) //nolint:errcheck
 
 	// import a normal file to a Unixfs DAG using a CARv2 read-write blockstore and flush it out to a CARv2 file.
-	tempCARv2Store, err := blockstore.NewReadWrite(carv2File, []cid.Cid{})
+	tempCARv2Store, err := blockstore.OpenReadWrite(carv2File, []cid.Cid{})
 	require.NoError(t, err)
 	bsvc := blockservice.New(tempCARv2Store, offline.Exchange(tempCARv2Store))
 	root, err := importNormalFileToUnixfsDAG(ctx, inputPath, merkledag.NewDAGService(bsvc))
