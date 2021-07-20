@@ -24,7 +24,7 @@ import (
 const unsealedSectorID = abi.SectorNumber(1)
 const sealedSectorID = abi.SectorNumber(2)
 
-func TestLotusMountApiFetchUnsealedPiece(t *testing.T) {
+func TestLotusAccessorFetchUnsealedPiece(t *testing.T) {
 	ctx := context.Background()
 
 	cid1, err := cid.Parse("bafkqaaa")
@@ -93,7 +93,7 @@ func TestLotusMountApiFetchUnsealedPiece(t *testing.T) {
 	}
 }
 
-func TestLotusMountApiGetUnpaddedCARSize(t *testing.T) {
+func TestLotusAccessorGetUnpaddedCARSize(t *testing.T) {
 	cid1, err := cid.Parse("bafkqaaa")
 	require.NoError(t, err)
 

@@ -2,8 +2,10 @@ package dagstore
 
 import (
 	"context"
+	"errors"
 	"io"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -35,23 +37,25 @@ type closableBlockstore struct {
 }
 
 type dagStoreWrapper struct {
-	ctx    context.Context
-	cancel context.CancelFunc
-	wg     sync.WaitGroup
+	ctx          context.Context
+	cancel       context.CancelFunc
+	backgroundWg sync.WaitGroup
 
-	dagStore *dagstore.DAGStore
-	mountApi LotusMountAPI
+	dagStore  *dagstore.DAGStore
+	mountApi  LotusAccessor
+	failureCh chan dagstore.ShardResult
 }
 
 var _ shared.DagStoreWrapper = (*dagStoreWrapper)(nil)
 
-func NewDagStoreWrapper(cfg MarketDAGStoreConfig, mountApi LotusMountAPI) (*dagStoreWrapper, error) {
+func NewDagStoreWrapper(cfg MarketDAGStoreConfig, mountApi LotusAccessor) (*dagStoreWrapper, error) {
 	// construct the DAG Store.
 	registry := mount.NewRegistry()
 	if err := registry.Register(lotusScheme, NewLotusMountTemplate(mountApi)); err != nil {
 		return nil, xerrors.Errorf("failed to create registry: %w", err)
 	}
 
+	// The dagstore will write Shard failures to the `failureCh` here.
 	failureCh := make(chan dagstore.ShardResult, 1)
 	dcfg := dagstore.Config{
 		TransientsDir: cfg.TransientsDir,
@@ -65,37 +69,77 @@ func NewDagStoreWrapper(cfg MarketDAGStoreConfig, mountApi LotusMountAPI) (*dagS
 		return nil, xerrors.Errorf("failed to create DAG store: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	dw := &dagStoreWrapper{
-		ctx:    ctx,
-		cancel: cancel,
-
-		dagStore: dagStore,
-		mountApi: mountApi,
-	}
-
-	dw.wg.Add(1)
-	// the dagstore will write Shard failures to the `failureCh` here. Run a go-routine to handle them.
-	go dw.handleFailures(failureCh)
-
-	return dw, nil
+	return &dagStoreWrapper{
+		dagStore:  dagStore,
+		mountApi:  mountApi,
+		failureCh: failureCh,
+	}, nil
 }
 
-func (ds *dagStoreWrapper) handleFailures(failureCh chan dagstore.ShardResult) {
-	defer ds.wg.Done()
-	ticker := time.NewTicker(gcInterval)
-	defer ticker.Stop()
+func (ds *dagStoreWrapper) Start(ctx context.Context) {
+	ds.ctx, ds.cancel = context.WithCancel(ctx)
 
-	select {
-	case <-ticker.C:
-		_, _ = ds.dagStore.GC(ds.ctx)
-	case f := <-failureCh:
-		log.Errorw("shard failed", "shard-key", f.Key.String(), "error", f.Error)
-		if err := ds.dagStore.RecoverShard(ds.ctx, f.Key, nil, dagstore.RecoverOpts{}); err != nil {
-			log.Warnw("shard recovery failed", "shard-key", f.Key.String(), "error", err)
+	ds.backgroundWg.Add(1)
+
+	// Run a go-routine to handle failures and GC
+	go ds.background(ds.failureCh)
+}
+
+func (ds *dagStoreWrapper) background(failureCh chan dagstore.ShardResult) {
+	defer ds.backgroundWg.Done()
+
+	gcTicker := time.NewTicker(gcInterval)
+	defer gcTicker.Stop()
+
+	recoverShardResults := make(chan dagstore.ShardResult, 32)
+	var recShardResCount int32
+	done := make(chan struct{})
+	defer close(done)
+	go func() {
+		// Consume recover shard results
+		for {
+			select {
+
+			// When the DAG store wrapper shuts down, drain the channel so as
+			// not to block the DAG store
+			case <-done:
+				for i := atomic.LoadInt32(&recShardResCount); i > 0; i-- {
+					res := <-recoverShardResults
+					if res.Error != nil {
+						log.Warnw("shard recovery failed", "shard-key", res.Key.String(), "error", res.Error)
+					}
+				}
+				return
+
+			case res := <-recoverShardResults:
+				atomic.AddInt32(&recShardResCount, -1)
+				if res.Error != nil {
+					log.Warnw("shard recovery failed", "shard-key", res.Key.String(), "error", res.Error)
+				}
+			}
 		}
-	case <-ds.ctx.Done():
-		return
+	}()
+
+	for ds.ctx.Err() != nil {
+		select {
+
+		// GC the DAG store on every tick
+		case <-gcTicker.C:
+			_, _ = ds.dagStore.GC(ds.ctx)
+
+		// Handle shard failures by attempting to recover the shard
+		case f := <-failureCh:
+			atomic.AddInt32(&recShardResCount, 1)
+			log.Warnw("shard failed", "shard-key", f.Key.String(), "error", f.Error)
+			if err := ds.dagStore.RecoverShard(ds.ctx, f.Key, recoverShardResults, dagstore.RecoverOpts{}); err != nil {
+				log.Warnw("shard recovery failed", "shard-key", f.Key.String(), "error", err)
+				atomic.AddInt32(&recShardResCount, -1)
+			}
+
+		// Exit when the DAG store wrapper is shutdown
+		case <-ds.ctx.Done():
+			return
+		}
 	}
 }
 
@@ -105,7 +149,7 @@ func (ds *dagStoreWrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (car
 	err := ds.dagStore.AcquireShard(ctx, key, resch, dagstore.AcquireOpts{})
 
 	if err != nil {
-		if xerrors.Unwrap(err) != dagstore.ErrShardUnknown {
+		if !errors.Is(err, dagstore.ErrShardUnknown) {
 			return nil, xerrors.Errorf("failed to schedule acquire shard for piece CID %s: %w", pieceCid, err)
 		}
 
@@ -122,7 +166,10 @@ func (ds *dagStoreWrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (car
 		}
 	}
 
-	// TODO: Can I rely on AcquireShard to return an error if the context times out?
+	// TODO: The context is not yet being actively monitored by the DAG store,
+	// so we need to select against ctx.Done() until the following issue is
+	// implemented:
+	// https://github.com/filecoin-project/dagstore/issues/39
 	var res dagstore.ShardResult
 	select {
 	case <-ctx.Done():
@@ -163,12 +210,16 @@ func (ds *dagStoreWrapper) RegisterShard(ctx context.Context, pieceCid cid.Cid, 
 }
 
 func (ds *dagStoreWrapper) Close() error {
+	// Cancel the context
+	ds.cancel()
+
+	// Close the DAG store
 	if err := ds.dagStore.Close(); err != nil {
-		return err
+		return xerrors.Errorf("failed to close DAG store: %w", err)
 	}
 
-	ds.cancel()
-	ds.wg.Wait()
+	// Wait for the background go routine to exit
+	ds.backgroundWg.Wait()
 
 	return nil
 }

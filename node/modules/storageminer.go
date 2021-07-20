@@ -576,6 +576,7 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 }
 
 func DagStoreWrapper(
+	lc fx.Lifecycle,
 	ds dtypes.MetadataDS,
 	r repo.LockedRepo,
 	pieceStore dtypes.ProviderPieceStore,
@@ -589,7 +590,21 @@ func DagStoreWrapper(
 		Datastore:     dagStoreDS,
 	}
 	mountApi := dagstore.NewLotusMountAPI(pieceStore, rpn)
-	return dagstore.NewDagStoreWrapper(cfg, mountApi)
+	dsw, err := dagstore.NewDagStoreWrapper(cfg, mountApi)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to create DAG store wrapper: %w", err)
+	}
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			dsw.Start(ctx)
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			return dsw.Close()
+		},
+	})
+	return dsw, nil
 }
 
 func StorageProvider(minerAddress dtypes.MinerAddress,

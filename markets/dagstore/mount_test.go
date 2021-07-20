@@ -2,7 +2,6 @@ package dagstore
 
 import (
 	"context"
-	"fmt"
 	"io/ioutil"
 	"net/url"
 	"strings"
@@ -67,13 +66,13 @@ func TestLotusMount(t *testing.T) {
 }
 
 func TestLotusMountDeserialize(t *testing.T) {
-	api := &lotusMountApiImpl{}
+	api := &lotusAccessor{}
 
 	bgen := blocksutil.NewBlockGenerator()
 	cid := bgen.Next().Cid()
 
 	// success
-	us := fmt.Sprintf(mountURLTemplate, lotusScheme, cid.String())
+	us := lotusScheme + "://" + cid.String()
 	u, err := url.Parse(us)
 	require.NoError(t, err)
 
@@ -84,17 +83,8 @@ func TestLotusMountDeserialize(t *testing.T) {
 	require.Equal(t, cid, mnt.pieceCid)
 	require.Equal(t, api, mnt.api)
 
-	// fails if scheme is not Lotus
-	us = fmt.Sprintf(mountURLTemplate, "http", cid.String())
-	u, err = url.Parse(us)
-	require.NoError(t, err)
-
-	err = mnt.Deserialize(u)
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "does not match")
-
 	// fails if cid is not valid
-	us = fmt.Sprintf(mountURLTemplate, lotusScheme, "rand")
+	us = lotusScheme + "://" + "rand"
 	u, err = url.Parse(us)
 	require.NoError(t, err)
 	err = mnt.Deserialize(u)

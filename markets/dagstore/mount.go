@@ -2,7 +2,6 @@ package dagstore
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"net/url"
 
@@ -13,14 +12,13 @@ import (
 )
 
 const lotusScheme = "lotus"
-const mountURLTemplate = "%s://%s"
 
 var _ mount.Mount = (*LotusMount)(nil)
 
 // LotusMount is the Lotus implementation of a Sharded DAG Store Mount.
 // A Filecoin Piece is treated as a Shard by this implementation.
 type LotusMount struct {
-	api      LotusMountAPI
+	api      LotusAccessor
 	pieceCid cid.Cid
 }
 
@@ -29,11 +27,11 @@ type LotusMount struct {
 // When the registry needs to deserialize a mount it clones the template then
 // calls Deserialize on the cloned instance, which will have a reference to the
 // lotus mount API supplied here.
-func NewLotusMountTemplate(api LotusMountAPI) *LotusMount {
+func NewLotusMountTemplate(api LotusAccessor) *LotusMount {
 	return &LotusMount{api: api}
 }
 
-func NewLotusMount(pieceCid cid.Cid, api LotusMountAPI) (*LotusMount, error) {
+func NewLotusMount(pieceCid cid.Cid, api LotusAccessor) (*LotusMount, error) {
 	return &LotusMount{
 		pieceCid: pieceCid,
 		api:      api,
@@ -41,21 +39,12 @@ func NewLotusMount(pieceCid cid.Cid, api LotusMountAPI) (*LotusMount, error) {
 }
 
 func (l *LotusMount) Serialize() *url.URL {
-	u := fmt.Sprintf(mountURLTemplate, lotusScheme, l.pieceCid.String())
-	url, err := url.Parse(u)
-	if err != nil {
-		// Should never happen
-		panic(xerrors.Errorf("failed to parse mount URL '%s': %w", u, err))
+	return &url.URL{
+		Host: l.pieceCid.String(),
 	}
-
-	return url
 }
 
 func (l *LotusMount) Deserialize(u *url.URL) error {
-	if u.Scheme != lotusScheme {
-		return xerrors.Errorf("scheme '%s' for URL '%s' does not match required scheme '%s'", u.Scheme, u, lotusScheme)
-	}
-
 	pieceCid, err := cid.Decode(u.Host)
 	if err != nil {
 		return xerrors.Errorf("failed to parse PieceCid from host '%s': %w", u.Host, err)
