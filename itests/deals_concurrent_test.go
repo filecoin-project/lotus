@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/stretchr/testify/require"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -56,13 +56,14 @@ func TestDealWithMarketAndMinerNode(t *testing.T) {
 		})
 	}
 
-	cycles := []int{4, 8}
+	// this test is expensive because we don't use mock proofs; do a single cycle.
+	cycles := []int{4}
 	for _, n := range cycles {
 		n := n
 		ns := fmt.Sprintf("%d", n)
 		t.Run(ns+"-fastretrieval-CAR", func(t *testing.T) { runTest(t, n, true, true) })
 		t.Run(ns+"-fastretrieval-NoCAR", func(t *testing.T) { runTest(t, n, true, false) })
-		t.Run(ns+"-stdretrieval-CAR", func(t *testing.T) { runTest(t, n, true, false) })
+		t.Run(ns+"-stdretrieval-CAR", func(t *testing.T) { runTest(t, n, false, true) })
 		t.Run(ns+"-stdretrieval-NoCAR", func(t *testing.T) { runTest(t, n, false, false) })
 	}
 }
@@ -100,7 +101,8 @@ func TestDealCyclesConcurrent(t *testing.T) {
 		})
 	}
 
-	cycles := []int{1, 2, 4, 8}
+	// this test is cheap because we use mock proofs, do various cycles
+	cycles := []int{2, 4, 8, 16}
 	for _, n := range cycles {
 		n := n
 		ns := fmt.Sprintf("%d", n)
@@ -131,10 +133,14 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 	// so that the deal starts sealing in time
 	startEpoch := abi.ChainEpoch(2 << 12)
 
-	const graphsyncThrottle = 2
+	const (
+		graphsyncThrottle = 2
+		concurrency       = 20
+	)
 	runTest := func(t *testing.T) {
 		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ConstructorOpts(
 			node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(graphsyncThrottle))),
+			node.Override(new(dtypes.Graphsync), modules.Graphsync(graphsyncThrottle)),
 		))
 		ens.InterconnectAll().BeginMining(blockTime)
 		dh := kit.NewDealHarness(t, client, miner, miner)
@@ -156,7 +162,7 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 				select {
 				case u := <-du:
 					t.Logf("%d - %s", u.TransferID, datatransfer.Statuses[u.Status])
-					if u.Status == datatransfer.Ongoing {
+					if u.Status == datatransfer.Ongoing && u.Transferred > 0 {
 						ongoing[u.TransferID] = struct{}{}
 					} else {
 						delete(ongoing, u.TransferID)
@@ -171,7 +177,6 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 			}
 		}()
 
-		const concurrency = 20
 		t.Logf("running concurrent deals: %d", concurrency)
 
 		dh.RunConcurrentDeals(kit.RunConcurrentDealsOpts{
