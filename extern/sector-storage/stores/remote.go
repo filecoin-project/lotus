@@ -297,6 +297,32 @@ func (r *Remote) fetch(ctx context.Context, url, outname string) error {
 	}
 }
 
+func (r *Remote) checkAllocated(ctx context.Context, url string, spt abi.RegisteredSealProof, offset, size abi.PaddedPieceSize) (bool, error) {
+	url = fmt.Sprintf("%s/%d/allocated/%d/%d", url, spt, offset.Unpadded(), size.Unpadded())
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return false, xerrors.Errorf("request: %w", err)
+	}
+	req.Header = r.auth.Clone()
+	fmt.Printf("req using header: %#v \n", r.auth)
+	req = req.WithContext(ctx)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return false, xerrors.Errorf("do request: %w", err)
+	}
+	defer resp.Body.Close() // nolint
+
+	switch resp.StatusCode {
+	case http.StatusOK:
+		return true, nil
+	case http.StatusRequestedRangeNotSatisfiable:
+		return false, nil
+	default:
+		return false, xerrors.Errorf("unexpected http response: %d", resp.StatusCode)
+	}
+}
+
 func (r *Remote) MoveStorage(ctx context.Context, s storage.SectorRef, types storiface.SectorFileType) error {
 	// Make sure we have the data local
 	_, _, err := r.AcquireSector(ctx, s, types, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
@@ -417,31 +443,6 @@ func (r *Remote) FsStat(ctx context.Context, id ID) (fsutil.FsStat, error) {
 	defer resp.Body.Close() // nolint
 
 	return out, nil
-}
-
-func (r *Remote) checkAllocated(ctx context.Context, url string, spt abi.RegisteredSealProof, offset, size abi.PaddedPieceSize) (bool, error) {
-	url = fmt.Sprintf("%s/%d/allocated/%d/%d", url, spt, offset.Unpadded(), size.Unpadded())
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return false, xerrors.Errorf("request: %w", err)
-	}
-	req.Header = r.auth.Clone()
-	req = req.WithContext(ctx)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return false, xerrors.Errorf("do request: %w", err)
-	}
-	defer resp.Body.Close() // nolint
-
-	switch resp.StatusCode {
-	case http.StatusOK:
-		return true, nil
-	case http.StatusRequestedRangeNotSatisfiable:
-		return false, nil
-	default:
-		return false, xerrors.Errorf("unexpected http response: %d", resp.StatusCode)
-	}
 }
 
 func (r *Remote) readRemote(ctx context.Context, url string, offset, size abi.PaddedPieceSize) (io.ReadCloser, error) {

@@ -61,7 +61,7 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) {
 	err = miner.SectorMarkForUpgrade(ctx, sl[0])
 	require.NoError(t, err)
 
-	dh := kit.NewDealHarness(t, client, miner)
+	dh := kit.NewDealHarness(t, client, miner, miner)
 	deal, res, inPath := dh.MakeOnlineDeal(ctx, kit.MakeFullDealParams{
 		Rseed:                        6,
 		SuspendUntilCryptoeconStable: true,
@@ -73,9 +73,13 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) {
 
 	{
 		exp, err := client.StateSectorExpiration(ctx, maddr, CC, types.EmptyTSK)
-		require.NoError(t, err)
-		require.NotNil(t, exp)
-		require.Greater(t, 50000, int(exp.OnTime))
+		if err != nil {
+			require.Contains(t, err.Error(), "failed to find sector 3") // already cleaned up
+		} else {
+			require.NoError(t, err)
+			require.NotNil(t, exp)
+			require.Greater(t, 50000, int(exp.OnTime))
+		}
 	}
 	{
 		exp, err := client.StateSectorExpiration(ctx, maddr, Upgraded, types.EmptyTSK)

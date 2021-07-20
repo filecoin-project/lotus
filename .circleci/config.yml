@@ -807,6 +807,11 @@ workflows:
           target: "./itests/gateway_test.go"
       
       - test:
+          name: test-itest-get_messages_in_ts
+          suite: itest-get_messages_in_ts
+          target: "./itests/get_messages_in_ts_test.go"
+      
+      - test:
           name: test-itest-multisig
           suite: itest-multisig
           target: "./itests/multisig_test.go"
@@ -835,6 +840,11 @@ workflows:
           name: test-itest-sector_finalize_early
           suite: itest-sector_finalize_early
           target: "./itests/sector_finalize_early_test.go"
+      
+      - test:
+          name: test-itest-sector_miner_collateral
+          suite: itest-sector_miner_collateral
+          target: "./itests/sector_miner_collateral_test.go"
       
       - test:
           name: test-itest-sector_pledge

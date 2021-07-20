@@ -89,7 +89,7 @@ require (
 	github.com/ipfs/go-ipfs-util v0.0.2
 	github.com/ipfs/go-ipld-cbor v0.0.5
 	github.com/ipfs/go-ipld-format v0.2.0
-	github.com/ipfs/go-log/v2 v2.1.3
+	github.com/ipfs/go-log/v2 v2.3.0
 	github.com/ipfs/go-merkledag v0.3.2
 	github.com/ipfs/go-metrics-interface v0.0.1
 	github.com/ipfs/go-metrics-prometheus v0.0.2
@@ -110,7 +110,7 @@ require (
 	github.com/libp2p/go-libp2p-mplex v0.4.1
 	github.com/libp2p/go-libp2p-noise v0.2.0
 	github.com/libp2p/go-libp2p-peerstore v0.2.7
-	github.com/libp2p/go-libp2p-pubsub v0.4.2-0.20210212194758-6c1addf493eb
+	github.com/libp2p/go-libp2p-pubsub v0.5.0
 	github.com/libp2p/go-libp2p-quic-transport v0.10.0
 	github.com/libp2p/go-libp2p-record v0.1.3
 	github.com/libp2p/go-libp2p-routing-helpers v0.2.3
@@ -119,7 +119,7 @@ require (
 	github.com/libp2p/go-libp2p-yamux v0.5.4
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/mattn/go-colorable v0.1.6 // indirect
-	github.com/mattn/go-isatty v0.0.12
+	github.com/mattn/go-isatty v0.0.13
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/multiformats/go-base32 v0.0.3
@@ -144,7 +144,6 @@ require (
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20190708150250-92bcb0691325
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542
-	go.etcd.io/bbolt v1.3.4
 	go.opencensus.io v0.23.0
 	go.uber.org/dig v1.10.0 // indirect
 	go.uber.org/fx v1.9.0
@@ -164,8 +163,6 @@ require (
 replace github.com/libp2p/go-libp2p-yamux => github.com/libp2p/go-libp2p-yamux v0.5.1
 
 replace github.com/filecoin-project/lotus => ./
-
-replace github.com/golangci/golangci-lint => github.com/golangci/golangci-lint v1.18.0
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 

@@ -8,8 +8,8 @@ import (
 	"github.com/multiformats/go-multihash"
 )
 
-func TestBoltMarkSet(t *testing.T) {
-	testMarkSet(t, "bolt")
+func TestMapMarkSet(t *testing.T) {
+	testMarkSet(t, "map")
 }
 
 func TestBloomMarkSet(t *testing.T) {

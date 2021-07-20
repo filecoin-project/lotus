@@ -121,7 +121,8 @@ var initCmd = &cli.Command{
 		},
 	},
 	Subcommands: []*cli.Command{
-		initRestoreCmd,
+		restoreCmd,
+		serviceCmd,
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus miner")
@@ -317,10 +318,10 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 						Size:     abi.PaddedPieceSize(meta.SectorSize),
 						PieceCID: commD,
 					},
-					DealInfo: &sealing.DealInfo{
+					DealInfo: &lapi.PieceDealInfo{
 						DealID:       dealID,
 						DealProposal: &sector.Deal,
-						DealSchedule: sealing.DealSchedule{
+						DealSchedule: lapi.DealSchedule{
 							StartEpoch: sector.Deal.StartEpoch,
 							EndEpoch:   sector.Deal.EndEpoch,
 						},
@@ -470,7 +471,6 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 				AllowCommit:        true,
 				AllowUnseal:        true,
 			}, wsts, smsts)
-
 			if err != nil {
 				return err
 			}
@@ -734,6 +734,8 @@ func createStorageMiner(ctx context.Context, api v1api.FullNode, peerid peer.ID,
 	return retval.IDAddress, nil
 }
 
+// checkV1ApiSupport uses v0 api version to signal support for v1 API
+// trying to query the v1 api on older lotus versions would get a 404, which can happen for any number of other reasons
 func checkV1ApiSupport(ctx context.Context, cctx *cli.Context) error {
 	// check v0 api version to make sure it supports v1 api
 	api0, closer, err := lcli.GetFullNodeAPI(cctx)

@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -118,13 +119,33 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-miner init' to set it up", minerRepoPath)
 		}
 
+		lr, err := r.Lock(repo.StorageMiner)
+		if err != nil {
+			return err
+		}
+		c, err := lr.Config()
+		if err != nil {
+			return err
+		}
+		cfg, ok := c.(*config.StorageMiner)
+		if !ok {
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+
+		bootstrapLibP2P := cfg.Subsystems.EnableMarkets
+
+		err = lr.Close()
+		if err != nil {
+			return err
+		}
+
 		shutdownChan := make(chan struct{})
 
 		var minerapi api.StorageMiner
 		stop, err := node.New(ctx,
-			node.StorageMiner(&minerapi),
+			node.StorageMiner(&minerapi, cfg.Subsystems),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
-			node.Online(),
+			node.Base(),
 			node.Repo(r),
 
 			node.ApplyIf(func(s *node.Settings) bool { return cctx.IsSet("miner-api") },
@@ -142,14 +163,18 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("getting API endpoint: %w", err)
 		}
 
-		// Bootstrap with full node
-		remoteAddrs, err := nodeApi.NetAddrsListen(ctx)
-		if err != nil {
-			return xerrors.Errorf("getting full node libp2p address: %w", err)
-		}
+		if bootstrapLibP2P {
+			log.Infof("Bootstrapping libp2p network with full node")
 
-		if err := minerapi.NetConnect(ctx, remoteAddrs); err != nil {
-			return xerrors.Errorf("connecting to full node (libp2p): %w", err)
+			// Bootstrap with full node
+			remoteAddrs, err := nodeApi.NetAddrsListen(ctx)
+			if err != nil {
+				return xerrors.Errorf("getting full node libp2p address: %w", err)
+			}
+
+			if err := minerapi.NetConnect(ctx, remoteAddrs); err != nil {
+				return xerrors.Errorf("connecting to full node (libp2p): %w", err)
+			}
 		}
 
 		log.Infof("Remote version %s", v)

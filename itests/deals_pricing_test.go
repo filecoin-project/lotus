@@ -14,7 +14,7 @@ import (
 func TestQuotePriceForUnsealedRetrieval(t *testing.T) {
 	var (
 		ctx       = context.Background()
-		blocktime = time.Second
+		blocktime = 50 * time.Millisecond
 	)
 
 	kit.QuietMiningLogs()
@@ -35,7 +35,7 @@ func TestQuotePriceForUnsealedRetrieval(t *testing.T) {
 	err = miner.MarketSetRetrievalAsk(ctx, ask)
 	require.NoError(t, err)
 
-	dh := kit.NewDealHarness(t, client, miner)
+	dh := kit.NewDealHarness(t, client, miner, miner)
 
 	deal1, res1, _ := dh.MakeOnlineDeal(ctx, kit.MakeFullDealParams{Rseed: 6})
 
@@ -123,7 +123,7 @@ func TestZeroPricePerByteRetrieval(t *testing.T) {
 	err = miner.MarketSetRetrievalAsk(ctx, ask)
 	require.NoError(t, err)
 
-	dh := kit.NewDealHarness(t, client, miner)
+	dh := kit.NewDealHarness(t, client, miner, miner)
 	dh.RunConcurrentDeals(kit.RunConcurrentDealsOpts{
 		N:          1,
 		StartEpoch: startEpoch,

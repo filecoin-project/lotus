@@ -36,10 +36,16 @@ var sealingWorkersCmd = &cli.Command{
 	Name:  "workers",
 	Usage: "list workers",
 	Flags: []cli.Flag{
-		&cli.BoolFlag{Name: "color"},
+		&cli.BoolFlag{
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
-		color.NoColor = !cctx.Bool("color")
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
 
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -127,14 +133,20 @@ var sealingJobsCmd = &cli.Command{
 	Name:  "jobs",
 	Usage: "list running jobs",
 	Flags: []cli.Flag{
-		&cli.BoolFlag{Name: "color"},
+		&cli.BoolFlag{
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
+		},
 		&cli.BoolFlag{
 			Name:  "show-ret-done",
 			Usage: "show returned but not consumed calls",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		color.NoColor = !cctx.Bool("color")
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
 
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {

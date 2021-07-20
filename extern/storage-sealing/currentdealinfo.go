@@ -69,6 +69,10 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 		return dealID, nil, xerrors.Errorf("looking for publish deal message %s: search msg failed: %w", publishCid, err)
 	}
 
+	if lookup == nil {
+		return dealID, nil, xerrors.Errorf("looking for publish deal message %s: not found", publishCid)
+	}
+
 	if lookup.Receipt.ExitCode != exitcode.Ok {
 		return dealID, nil, xerrors.Errorf("looking for publish deal message %s: non-ok exit code: %s", publishCid, lookup.Receipt.ExitCode)
 	}

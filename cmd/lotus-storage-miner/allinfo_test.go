@@ -49,7 +49,7 @@ func TestMinerAllInfo(t *testing.T) {
 
 	t.Run("pre-info-all", run)
 
-	dh := kit.NewDealHarness(t, client, miner)
+	dh := kit.NewDealHarness(t, client, miner, miner)
 	deal, res, inPath := dh.MakeOnlineDeal(context.Background(), kit.MakeFullDealParams{Rseed: 6})
 	outPath := dh.PerformRetrieval(context.Background(), deal, res.Root, false)
 	kit.AssertFilesEqual(t, inPath, outPath)
