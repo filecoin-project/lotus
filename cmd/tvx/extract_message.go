@@ -337,6 +337,9 @@ func resolveFromChain(ctx context.Context, api v0api.FullNode, mcid cid.Cid, blo
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("failed to locate message: %w", err)
 		}
+		if msgInfo == nil {
+			return nil, nil, nil, fmt.Errorf("failed to locate message: not found")
+		}
 
 		log.Printf("located message at tipset %s (height: %d) with exit code: %s", msgInfo.TipSet, msgInfo.Height, msgInfo.Receipt.ExitCode)
 
