@@ -581,7 +581,7 @@ func DagStoreWrapper(
 	r repo.LockedRepo,
 	pieceStore dtypes.ProviderPieceStore,
 	rpn retrievalmarket.RetrievalProviderNode,
-) (shared.DagStoreWrapper, error) {
+) (*dagstore.Wrapper, error) {
 	dagStoreDir := filepath.Join(r.Path(), "dagstore")
 	dagStoreDS := namespace.Wrap(ds, datastore.NewKey("/dagstore/provider"))
 	cfg := dagstore.MarketDAGStoreConfig{
@@ -615,7 +615,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	dataTransfer dtypes.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
 	df dtypes.StorageDealFilter,
-	dagStore shared.DagStoreWrapper,
+	dagStore *dagstore.Wrapper,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
@@ -691,7 +691,7 @@ func RetrievalProvider(
 	dt dtypes.ProviderDataTransfer,
 	pricingFnc dtypes.RetrievalPricingFunc,
 	userFilter dtypes.RetrievalDealFilter,
-	dagStore shared.DagStoreWrapper,
+	dagStore *dagstore.Wrapper,
 ) (retrievalmarket.RetrievalProvider, error) {
 	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
 	return retrievalimpl.NewProvider(

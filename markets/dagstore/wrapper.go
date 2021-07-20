@@ -37,7 +37,7 @@ type closableBlockstore struct {
 	io.Closer
 }
 
-type dagStoreWrapper struct {
+type Wrapper struct {
 	ctx          context.Context
 	cancel       context.CancelFunc
 	backgroundWg sync.WaitGroup
@@ -48,9 +48,9 @@ type dagStoreWrapper struct {
 	traceCh   chan dagstore.Trace
 }
 
-var _ shared.DagStoreWrapper = (*dagStoreWrapper)(nil)
+var _ shared.DagStoreWrapper = (*Wrapper)(nil)
 
-func NewDagStoreWrapper(cfg MarketDAGStoreConfig, mountApi LotusAccessor) (*dagStoreWrapper, error) {
+func NewDagStoreWrapper(cfg MarketDAGStoreConfig, mountApi LotusAccessor) (*Wrapper, error) {
 	// construct the DAG Store.
 	registry := mount.NewRegistry()
 	if err := registry.Register(lotusScheme, NewLotusMountTemplate(mountApi)); err != nil {
@@ -76,7 +76,7 @@ func NewDagStoreWrapper(cfg MarketDAGStoreConfig, mountApi LotusAccessor) (*dagS
 		return nil, xerrors.Errorf("failed to create DAG store: %w", err)
 	}
 
-	return &dagStoreWrapper{
+	return &Wrapper{
 		dagStore:  dagStore,
 		mountApi:  mountApi,
 		failureCh: failureCh,
@@ -84,7 +84,7 @@ func NewDagStoreWrapper(cfg MarketDAGStoreConfig, mountApi LotusAccessor) (*dagS
 	}, nil
 }
 
-func (ds *dagStoreWrapper) Start(ctx context.Context) {
+func (ds *Wrapper) Start(ctx context.Context) {
 	ds.ctx, ds.cancel = context.WithCancel(ctx)
 
 	ds.backgroundWg.Add(1)
@@ -93,7 +93,7 @@ func (ds *dagStoreWrapper) Start(ctx context.Context) {
 	go ds.background()
 }
 
-func (ds *dagStoreWrapper) background() {
+func (ds *Wrapper) background() {
 	defer ds.backgroundWg.Done()
 
 	gcTicker := time.NewTicker(gcInterval)
@@ -134,7 +134,7 @@ func (ds *dagStoreWrapper) background() {
 	}
 }
 
-func (ds *dagStoreWrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (carstore.ClosableBlockstore, error) {
+func (ds *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (carstore.ClosableBlockstore, error) {
 	key := shard.KeyFromCID(pieceCid)
 	resch := make(chan dagstore.ShardResult, 1)
 	err := ds.dagStore.AcquireShard(ctx, key, resch, dagstore.AcquireOpts{})
@@ -179,7 +179,7 @@ func (ds *dagStoreWrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (car
 	return &closableBlockstore{Blockstore: NewReadOnlyBlockstore(bs), Closer: res.Accessor}, nil
 }
 
-func (ds *dagStoreWrapper) RegisterShard(ctx context.Context, pieceCid cid.Cid, carPath string, eagerInit bool, resch chan dagstore.ShardResult) error {
+func (ds *Wrapper) RegisterShard(ctx context.Context, pieceCid cid.Cid, carPath string, eagerInit bool, resch chan dagstore.ShardResult) error {
 	// Create a lotus mount with the piece CID
 	key := shard.KeyFromCID(pieceCid)
 	mt, err := NewLotusMount(pieceCid, ds.mountApi)
@@ -200,7 +200,7 @@ func (ds *dagStoreWrapper) RegisterShard(ctx context.Context, pieceCid cid.Cid, 
 	return nil
 }
 
-func (ds *dagStoreWrapper) Close() error {
+func (ds *Wrapper) Close() error {
 	// Cancel the context
 	ds.cancel()
 
