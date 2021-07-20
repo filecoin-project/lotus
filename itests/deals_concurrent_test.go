@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/stretchr/testify/require"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -56,6 +55,7 @@ func TestDealWithMarketAndMinerNode(t *testing.T) {
 		})
 	}
 
+  // this test is expensive because we don't use mock proofs; do a single cycle.
 	cycles := []int{4}
 	for _, n := range cycles {
 		n := n
@@ -100,6 +100,7 @@ func TestDealCyclesConcurrent(t *testing.T) {
 		})
 	}
 
+  // this test is cheap because we use mock proofs, do various cycles
 	cycles := []int{2, 4, 8, 16}
 	for _, n := range cycles {
 		n := n
