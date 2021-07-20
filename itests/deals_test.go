@@ -39,4 +39,9 @@ func TestDealsWithSealingAndRPC(t *testing.T) {
 		dh.RunConcurrentDeals(kit.RunConcurrentDealsOpts{N: 1, FastRetrieval: true})
 		dh.RunConcurrentDeals(kit.RunConcurrentDealsOpts{N: 1, FastRetrieval: true})
 	})
+
+	t.Run("stdretrieval-carv1", func(t *testing.T) {
+		dh.RunConcurrentDeals(kit.RunConcurrentDealsOpts{N: 1, UseCARFileForStorageDeal: true})
+	})
+
 }

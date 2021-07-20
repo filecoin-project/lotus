@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/lotus/markets/pricing"
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
@@ -44,19 +43,18 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
 
-	"github.com/filecoin-project/lotus/api"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -67,7 +65,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/markets"
+	"github.com/filecoin-project/lotus/markets/dagstore"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
+	"github.com/filecoin-project/lotus/markets/pricing"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -77,6 +77,7 @@ import (
 )
 
 var StorageCounterDSPrefix = "/storage/nextid"
+var dagStore = "dagStore"
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 	maddrb, err := ds.Get(datastore.NewKey("miner-address"))
@@ -383,27 +384,6 @@ func NewProviderPieceStore(lc fx.Lifecycle, ds dtypes.MetadataDS) (dtypes.Provid
 	return ps, nil
 }
 
-func StagingMultiDatastore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.StagingMultiDstore, error) {
-	ctx := helpers.LifecycleCtx(mctx, lc)
-	ds, err := r.Datastore(ctx, "/staging")
-	if err != nil {
-		return nil, xerrors.Errorf("getting datastore out of reop: %w", err)
-	}
-
-	mds, err := multistore.NewMultiDstore(ds)
-	if err != nil {
-		return nil, err
-	}
-
-	lc.Append(fx.Hook{
-		OnStop: func(ctx context.Context) error {
-			return mds.Close()
-		},
-	})
-
-	return mds, nil
-}
-
 // StagingBlockstore creates a blockstore for staging blocks for a miner
 // in a storage deal, prior to sealing
 func StagingBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo) (dtypes.StagingBlockstore, error) {
@@ -596,15 +576,48 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 	}
 }
 
+func DagStoreWrapper(
+	lc fx.Lifecycle,
+	ds dtypes.MetadataDS,
+	r repo.LockedRepo,
+	pieceStore dtypes.ProviderPieceStore,
+	rpn retrievalmarket.RetrievalProviderNode,
+) (*dagstore.Wrapper, error) {
+	dagStoreDir := filepath.Join(r.Path(), dagStore)
+	dagStoreDS := namespace.Wrap(ds, datastore.NewKey("/dagstore/provider"))
+	cfg := dagstore.MarketDAGStoreConfig{
+		TransientsDir: filepath.Join(dagStoreDir, "transients"),
+		IndexDir:      filepath.Join(dagStoreDir, "index"),
+		Datastore:     dagStoreDS,
+		GCInterval:    5 * time.Minute,
+	}
+	mountApi := dagstore.NewLotusMountAPI(pieceStore, rpn)
+	dsw, err := dagstore.NewDagStoreWrapper(cfg, mountApi)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to create DAG store wrapper: %w", err)
+	}
+
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			dsw.Start(ctx)
+			return nil
+		},
+		OnStop: func(context.Context) error {
+			return dsw.Close()
+		},
+	})
+	return dsw, nil
+}
+
 func StorageProvider(minerAddress dtypes.MinerAddress,
 	storedAsk *storedask.StoredAsk,
 	h host.Host, ds dtypes.MetadataDS,
-	mds dtypes.StagingMultiDstore,
 	r repo.LockedRepo,
 	pieceStore dtypes.ProviderPieceStore,
 	dataTransfer dtypes.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
 	df dtypes.StorageDealFilter,
+	dsw *dagstore.Wrapper,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
@@ -612,9 +625,13 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 		return nil, err
 	}
 
-	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
+	dagStorePath := filepath.Join(r.Path(), dagStore)
 
-	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, mds, pieceStore, dataTransfer, spn, address.Address(minerAddress), storedAsk, opt)
+	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
+	shardMigrator := storageimpl.NewShardMigrator(address.Address(minerAddress), dagStorePath, dsw, pieceStore, spn)
+
+	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, dsw, pieceStore,
+		dataTransfer, spn, address.Address(minerAddress), storedAsk, shardMigrator, opt)
 }
 
 func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
@@ -675,14 +692,23 @@ func RetrievalProvider(
 	netwk rmnet.RetrievalMarketNetwork,
 	ds dtypes.MetadataDS,
 	pieceStore dtypes.ProviderPieceStore,
-	mds dtypes.StagingMultiDstore,
 	dt dtypes.ProviderDataTransfer,
 	pricingFnc dtypes.RetrievalPricingFunc,
 	userFilter dtypes.RetrievalDealFilter,
+	dagStore *dagstore.Wrapper,
 ) (retrievalmarket.RetrievalProvider, error) {
 	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
-	return retrievalimpl.NewProvider(address.Address(maddr), adapter, netwk, pieceStore, mds, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
-		retrievalimpl.RetrievalPricingFunc(pricingFnc), opt)
+	return retrievalimpl.NewProvider(
+		address.Address(maddr),
+		adapter,
+		netwk,
+		pieceStore,
+		dagStore,
+		dt,
+		namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
+		retrievalimpl.RetrievalPricingFunc(pricingFnc),
+		opt,
+	)
 }
 
 var WorkerCallsPrefix = datastore.NewKey("/worker/calls")

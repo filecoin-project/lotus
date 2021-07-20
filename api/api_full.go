@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -14,7 +15,6 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -323,7 +323,7 @@ type FullNode interface {
 	// ClientImport imports file under the specified path into filestore.
 	ClientImport(ctx context.Context, ref FileRef) (*ImportRes, error) //perm:admin
 	// ClientRemoveImport removes file import
-	ClientRemoveImport(ctx context.Context, importID multistore.StoreID) error //perm:admin
+	ClientRemoveImport(ctx context.Context, importID importmgr.ImportID) error //perm:admin
 	// ClientStartDeal proposes a deal with a miner.
 	ClientStartDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error) //perm:admin
 	// ClientStatelessDeal fire-and-forget-proposes an offline deal to a miner without subsequent tracking.
@@ -715,16 +715,17 @@ type MinerSectors struct {
 
 type ImportRes struct {
 	Root     cid.Cid
-	ImportID multistore.StoreID
+	ImportID importmgr.ImportID
 }
 
 type Import struct {
-	Key multistore.StoreID
+	Key importmgr.ImportID
 	Err string
 
-	Root     *cid.Cid
-	Source   string
-	FilePath string
+	Root          *cid.Cid
+	Source        string
+	FilePath      string
+	CARv2FilePath string
 }
 
 type DealInfo struct {
@@ -907,7 +908,7 @@ type RetrievalOrder struct {
 	Piece *cid.Cid
 	Size  uint64
 
-	LocalStore *multistore.StoreID // if specified, get data from local store
+	LocalCARV2FilePath string // if specified, get data from a local CARv2 file.
 	// TODO: support offset
 	Total                   types.BigInt
 	UnsealPrice             types.BigInt

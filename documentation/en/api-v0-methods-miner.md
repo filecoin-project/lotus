@@ -688,7 +688,6 @@ Response:
   "SlashEpoch": 10101,
   "FastRetrieval": true,
   "Message": "string value",
-  "StoreID": 12,
   "FundsReserved": "0",
   "Ref": {
     "TransferType": "string value",
@@ -707,7 +706,8 @@ Response:
     "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
     "ID": 3
   },
-  "SectorNumber": 9
+  "SectorNumber": 9,
+  "CARv2FilePath": "string value"
 }
 ```
 

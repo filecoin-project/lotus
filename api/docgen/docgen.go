@@ -13,6 +13,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-multistore"
+	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
@@ -27,7 +29,6 @@ import (
 	filestore2 "github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/go-multistore"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -89,6 +90,7 @@ func init() {
 	addExample(&pid)
 
 	multistoreIDExample := multistore.StoreID(50)
+	storeIDExample := importmgr.ImportID(50)
 
 	addExample(bitfield.NewFromSet([]uint64{5}))
 	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1_1)
@@ -119,6 +121,8 @@ func init() {
 	addExample(time.Minute)
 	addExample(datatransfer.TransferID(3))
 	addExample(datatransfer.Ongoing)
+	addExample(storeIDExample)
+	addExample(&storeIDExample)
 	addExample(multistoreIDExample)
 	addExample(&multistoreIDExample)
 	addExample(retrievalmarket.ClientEventDealAccepted)
@@ -175,7 +179,7 @@ func init() {
 
 	// miner specific
 	addExample(filestore2.Path(".lotusminer/fstmp123"))
-	si := multistore.StoreID(12)
+	si := uint64(12)
 	addExample(&si)
 	addExample(retrievalmarket.DealID(5))
 	addExample(abi.ActorID(1000))

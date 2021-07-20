@@ -25,6 +25,7 @@ import (
 	"github.com/fatih/color"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -34,7 +35,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -174,18 +174,18 @@ var clientDropCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		var ids []multistore.StoreID
+		var ids []uint64
 		for i, s := range cctx.Args().Slice() {
-			id, err := strconv.ParseInt(s, 10, 0)
+			id, err := strconv.ParseUint(s, 10, 64)
 			if err != nil {
 				return xerrors.Errorf("parsing %d-th import ID: %w", i, err)
 			}
 
-			ids = append(ids, multistore.StoreID(id))
+			ids = append(ids, id)
 		}
 
 		for _, id := range ids {
-			if err := api.ClientRemoveImport(ctx, id); err != nil {
+			if err := api.ClientRemoveImport(ctx, importmgr.ImportID(id)); err != nil {
 				return xerrors.Errorf("removing import %d: %w", id, err)
 			}
 		}
@@ -1104,8 +1104,8 @@ var clientRetrieveCmd = &cli.Command{
 			for _, i := range imports {
 				if i.Root != nil && i.Root.Equals(file) {
 					order = &lapi.RetrievalOrder{
-						Root:       file,
-						LocalStore: &i.Key,
+						Root:               file,
+						LocalCARV2FilePath: i.CARv2FilePath,
 
 						Total:       big.Zero(),
 						UnsealPrice: big.Zero(),
