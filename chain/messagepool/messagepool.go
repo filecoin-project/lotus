@@ -367,9 +367,6 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journ
 		j = journal.NilJournal()
 	}
 	us := stmgr.DefaultUpgradeSchedule()
-	if err := us.Validate(); err != nil {
-		return nil, err
-	}
 
 	mp := &MessagePool{
 		ds:             ds,
