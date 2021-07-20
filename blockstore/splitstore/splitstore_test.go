@@ -63,12 +63,31 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		t.Fatal(err)
 	}
 
+	// create a garbage block that is protected with a rgistered protector
+	protected := blocks.NewBlock([]byte("protected!"))
+	err = hot.Put(protected)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// and another one that is not protected
+	unprotected := blocks.NewBlock([]byte("unprotected!"))
+	err = hot.Put(unprotected)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	// open the splitstore
 	ss, err := Open("", ds, hot, cold, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer ss.Close() //nolint
+
+	// register our protector
+	ss.AddProtector(func(protect func(cid.Cid) error) error {
+		return protect(protected.Cid())
+	})
 
 	err = ss.Start(chain)
 	if err != nil {
@@ -132,8 +151,8 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		t.Errorf("expected %d blocks, but got %d", 2, coldCnt)
 	}
 
-	if hotCnt != 10 {
-		t.Errorf("expected %d blocks, but got %d", 10, hotCnt)
+	if hotCnt != 12 {
+		t.Errorf("expected %d blocks, but got %d", 12, hotCnt)
 	}
 
 	// trigger a compaction
@@ -146,12 +165,41 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	coldCnt = countBlocks(cold)
 	hotCnt = countBlocks(hot)
 
-	if coldCnt != 5 {
-		t.Errorf("expected %d cold blocks, but got %d", 5, coldCnt)
+	if coldCnt != 6 {
+		t.Errorf("expected %d cold blocks, but got %d", 6, coldCnt)
 	}
 
-	if hotCnt != 17 {
-		t.Errorf("expected %d hot blocks, but got %d", 17, hotCnt)
+	if hotCnt != 18 {
+		t.Errorf("expected %d hot blocks, but got %d", 18, hotCnt)
+	}
+
+	// ensure our protected block is still there
+	has, err := hot.Has(protected.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !has {
+		t.Fatal("protected block is missing from hotstore")
+	}
+
+	// ensure our unprotected block is in the coldstore now
+	has, err = hot.Has(unprotected.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if has {
+		t.Fatal("unprotected block is still in hotstore")
+	}
+
+	has, err = cold.Has(unprotected.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !has {
+		t.Fatal("unprotected block is missing from coldstore")
 	}
 
 	// Make sure we can revert without panicking.
