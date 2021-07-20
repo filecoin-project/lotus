@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/hashicorp/go-multierror"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
@@ -29,6 +30,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -146,6 +148,8 @@ type MessagePool struct {
 	api Provider
 
 	minGasPrice types.BigInt
+
+	getNtwkVersion func(abi.ChainEpoch) (network.Version, error)
 
 	currentSize int
 
@@ -362,26 +366,31 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journ
 	if j == nil {
 		j = journal.NilJournal()
 	}
+	us := stmgr.DefaultUpgradeSchedule()
+	if err := us.Validate(); err != nil {
+		return nil, err
+	}
 
 	mp := &MessagePool{
-		ds:            ds,
-		addSema:       make(chan struct{}, 1),
-		closer:        make(chan struct{}),
-		repubTk:       build.Clock.Ticker(RepublishInterval),
-		repubTrigger:  make(chan struct{}, 1),
-		localAddrs:    make(map[address.Address]struct{}),
-		pending:       make(map[address.Address]*msgSet),
-		keyCache:      make(map[address.Address]address.Address),
-		minGasPrice:   types.NewInt(0),
-		pruneTrigger:  make(chan struct{}, 1),
-		pruneCooldown: make(chan struct{}, 1),
-		blsSigCache:   cache,
-		sigValCache:   verifcache,
-		changes:       lps.New(50),
-		localMsgs:     namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
-		api:           api,
-		netName:       netName,
-		cfg:           cfg,
+		ds:             ds,
+		addSema:        make(chan struct{}, 1),
+		closer:         make(chan struct{}),
+		repubTk:        build.Clock.Ticker(RepublishInterval),
+		repubTrigger:   make(chan struct{}, 1),
+		localAddrs:     make(map[address.Address]struct{}),
+		pending:        make(map[address.Address]*msgSet),
+		keyCache:       make(map[address.Address]address.Address),
+		minGasPrice:    types.NewInt(0),
+		getNtwkVersion: us.GetNtwkVersion,
+		pruneTrigger:   make(chan struct{}, 1),
+		pruneCooldown:  make(chan struct{}, 1),
+		blsSigCache:    cache,
+		sigValCache:    verifcache,
+		changes:        lps.New(50),
+		localMsgs:      namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
+		api:            api,
+		netName:        netName,
+		cfg:            cfg,
 		evtTypes: [...]journal.EventType{
 			evtTypeMpoolAdd:    j.RegisterEventType("mpool", "add"),
 			evtTypeMpoolRemove: j.RegisterEventType("mpool", "remove"),

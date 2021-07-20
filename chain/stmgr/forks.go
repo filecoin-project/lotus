@@ -296,6 +296,18 @@ func (us UpgradeSchedule) Validate() error {
 	return nil
 }
 
+func (us UpgradeSchedule) GetNtwkVersion(e abi.ChainEpoch) (network.Version, error) {
+	// Traverse from newest to oldest returning upgrade active during epoch e
+	for i := len(us) - 1; i >= 0; i-- {
+		u := us[i]
+		// u.Height is the last epoch before u.Network becomes the active version
+		if u.Height < e {
+			return u.Network, nil
+		}
+	}
+	return network.Version0, xerrors.Errorf("Epoch %d has no defined network version")
+}
+
 func (sm *StateManager) handleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, cb ExecMonitor, ts *types.TipSet) (cid.Cid, error) {
 	retCid := root
 	var err error

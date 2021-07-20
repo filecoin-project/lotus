@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 )
@@ -106,6 +105,8 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 	mp.curTsLk.Lock()
 	curTs := mp.curTs
 	mp.curTsLk.Unlock()
+
+	epoch := curTs.Height()
 
 	var baseFee big.Int
 	if len(curTs.Blocks()) > 0 {
@@ -257,8 +258,14 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 				Code: api.CheckStatusMessageValidity,
 			},
 		}
-
-		if err := m.ValidForBlockInclusion(0, build.NewestNetworkVersion); err != nil {
+		nv, err := mp.getNtwkVersion(epoch)
+		if err != nil {
+			check.OK = false
+			check.Err = fmt.Sprintf("error retrieving network version: %s", err.Error())
+		} else {
+			check.OK = true
+		}
+		if err := m.ValidForBlockInclusion(0, nv); err != nil {
 			check.OK = false
 			check.Err = fmt.Sprintf("syntactically invalid message: %s", err.Error())
 		} else {
@@ -274,7 +281,7 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		// gas checks
 
 		// 4. Min Gas
-		minGas := vm.PricelistByVersion(build.NewestNetworkVersion).OnChainMessage(m.ChainLength())
+		minGas := vm.PricelistByVersion(nv).OnChainMessage(m.ChainLength())
 
 		check = api.MessageCheckStatus{
 			Cid: m.Cid(),
