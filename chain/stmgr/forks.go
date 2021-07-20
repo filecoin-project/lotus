@@ -305,7 +305,7 @@ func (us UpgradeSchedule) GetNtwkVersion(e abi.ChainEpoch) (network.Version, err
 			return u.Network, nil
 		}
 	}
-	return network.Version0, xerrors.Errorf("Epoch %d has no defined network version")
+	return network.Version0, xerrors.Errorf("Epoch %d has no defined network version", e)
 }
 
 func (sm *StateManager) handleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, cb ExecMonitor, ts *types.TipSet) (cid.Cid, error) {
