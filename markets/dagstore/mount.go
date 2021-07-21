@@ -18,8 +18,8 @@ var _ mount.Mount = (*LotusMount)(nil)
 // LotusMount is the Lotus implementation of a Sharded DAG Store Mount.
 // A Filecoin Piece is treated as a Shard by this implementation.
 type LotusMount struct {
-	api      LotusAccessor
-	pieceCid cid.Cid
+	Api      LotusAccessor
+	PieceCid cid.Cid
 }
 
 // This method is called when registering a mount with the DAG store registry.
@@ -28,19 +28,19 @@ type LotusMount struct {
 // calls Deserialize on the cloned instance, which will have a reference to the
 // lotus mount API supplied here.
 func NewLotusMountTemplate(api LotusAccessor) *LotusMount {
-	return &LotusMount{api: api}
+	return &LotusMount{Api: api}
 }
 
 func NewLotusMount(pieceCid cid.Cid, api LotusAccessor) (*LotusMount, error) {
 	return &LotusMount{
-		pieceCid: pieceCid,
-		api:      api,
+		PieceCid: pieceCid,
+		Api:      api,
 	}, nil
 }
 
 func (l *LotusMount) Serialize() *url.URL {
 	return &url.URL{
-		Host: l.pieceCid.String(),
+		Host: l.PieceCid.String(),
 	}
 }
 
@@ -50,14 +50,14 @@ func (l *LotusMount) Deserialize(u *url.URL) error {
 		return xerrors.Errorf("failed to parse PieceCid from host '%s': %w", u.Host, err)
 	}
 
-	l.pieceCid = pieceCid
+	l.PieceCid = pieceCid
 	return nil
 }
 
 func (l *LotusMount) Fetch(ctx context.Context) (mount.Reader, error) {
-	r, err := l.api.FetchUnsealedPiece(ctx, l.pieceCid)
+	r, err := l.Api.FetchUnsealedPiece(ctx, l.PieceCid)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to fetch unsealed piece %s: %w", l.pieceCid, err)
+		return nil, xerrors.Errorf("failed to fetch unsealed piece %s: %w", l.PieceCid, err)
 	}
 	return &readCloser{r}, nil
 }
@@ -76,9 +76,9 @@ func (l *LotusMount) Close() error {
 }
 
 func (l *LotusMount) Stat(_ context.Context) (mount.Stat, error) {
-	size, err := l.api.GetUnpaddedCARSize(l.pieceCid)
+	size, err := l.Api.GetUnpaddedCARSize(l.PieceCid)
 	if err != nil {
-		return mount.Stat{}, xerrors.Errorf("failed to fetch piece size for piece %s: %w", l.pieceCid, err)
+		return mount.Stat{}, xerrors.Errorf("failed to fetch piece size for piece %s: %w", l.PieceCid, err)
 	}
 
 	// TODO Mark false when storage deal expires.

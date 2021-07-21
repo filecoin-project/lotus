@@ -80,8 +80,8 @@ func TestLotusMountDeserialize(t *testing.T) {
 	err = mnt.Deserialize(u)
 	require.NoError(t, err)
 
-	require.Equal(t, cid, mnt.pieceCid)
-	require.Equal(t, api, mnt.api)
+	require.Equal(t, cid, mnt.PieceCid)
+	require.Equal(t, api, mnt.Api)
 
 	// fails if cid is not valid
 	us = lotusScheme + "://" + "rand"
@@ -90,4 +90,31 @@ func TestLotusMountDeserialize(t *testing.T) {
 	err = mnt.Deserialize(u)
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "failed to parse PieceCid")
+}
+
+func TestLotusMountRegistration(t *testing.T) {
+	bgen := blocksutil.NewBlockGenerator()
+	cid := bgen.Next().Cid()
+
+	// success
+	us := lotusScheme + "://" + cid.String()
+	u, err := url.Parse(us)
+	require.NoError(t, err)
+
+	mockCtrl := gomock.NewController(t)
+	// when test is done, assert expectations on all mock objects.
+	defer mockCtrl.Finish()
+
+	mockLotusMountAPI := mock_dagstore.NewMockLotusMountAPI(mockCtrl)
+	registry := mount.NewRegistry()
+	err = registry.Register(lotusScheme, NewLotusMountTemplate(mockLotusMountAPI))
+	require.NoError(t, err)
+
+	mnt, err := registry.Instantiate(u)
+	require.NoError(t, err)
+
+	mockLotusMountAPI.EXPECT().GetUnpaddedCARSize(cid).Return(uint64(100), nil).Times(1)
+	stat, err := mnt.Stat(context.Background())
+	require.NoError(t, err)
+	require.EqualValues(t, 100, stat.Size)
 }
