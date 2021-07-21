@@ -60,7 +60,7 @@ func compat(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 	go startMinerStackFromGenesis(genesisCtx, runenv, clientWalletChan)
 	go startClientStackFromGenesis(genesisCtx, runenv, clientWalletChan)
 
-	time.Sleep(120 * time.Second)
+	time.Sleep(130 * time.Second)
 
 	runenv.RecordMessage("import file...")
 	datacid := importFile(ctx, "/qbf10.txt")
