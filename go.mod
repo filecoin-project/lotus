@@ -26,7 +26,7 @@ require (
 	github.com/elastic/gosigar v0.12.0
 	github.com/etclabscore/go-openrpc-reflect v0.0.36
 	github.com/fatih/color v1.9.0
-	github.com/filecoin-project/dagstore v0.2.1
+	github.com/filecoin-project/dagstore v0.2.2-0.20210721091402-75b75c185369
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
 	github.com/filecoin-project/go-address v0.0.5
 	github.com/filecoin-project/go-bitfield v0.2.4
@@ -35,7 +35,7 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v1.7.0
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20201016201715-d41df56b4f6a
-	github.com/filecoin-project/go-fil-markets v1.6.0-rc1.0.20210721032414-eed1c3b0288c
+	github.com/filecoin-project/go-fil-markets v1.6.0-rc1.0.20210721091828-0693b90f721e
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-padreader v0.0.0-20200903213702-ed5fae088b20
@@ -98,7 +98,7 @@ require (
 	github.com/ipfs/go-unixfs v0.2.6
 	github.com/ipfs/interface-go-ipfs-core v0.2.3
 	github.com/ipld/go-car v0.1.1-0.20201119040415-11b6074b6d4d
-	github.com/ipld/go-car/v2 v2.0.0-beta1
+	github.com/ipld/go-car/v2 v2.0.0-beta1.0.20210721090610-5a9d1b217d25
 	github.com/ipld/go-ipld-prime v0.5.1-0.20201021195245-109253e8a018
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.7.0
