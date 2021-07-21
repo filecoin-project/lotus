@@ -147,6 +147,7 @@ func (ds *Wrapper) background() {
 }
 
 func (ds *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (carstore.ClosableBlockstore, error) {
+	log.Debugf("acquiring shard for piece CID %s", pieceCid)
 	key := shard.KeyFromCID(pieceCid)
 	resch := make(chan dagstore.ShardResult, 1)
 	err := ds.dagStore.AcquireShard(ctx, key, resch, dagstore.AcquireOpts{})
@@ -193,6 +194,7 @@ func (ds *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (carstore.Cl
 		return nil, err
 	}
 
+	log.Debugf("successfully loaded blockstore for piece CID %s", pieceCid)
 	return &closableBlockstore{Blockstore: NewReadOnlyBlockstore(bs), Closer: res.Accessor}, nil
 }
 
