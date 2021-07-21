@@ -26,7 +26,7 @@ func TestLotusMount(t *testing.T) {
 	defer mockCtrl.Finish()
 
 	// create a mock lotus api that returns the reader we want
-	mockLotusMountAPI := mock_dagstore.NewMockLotusMountAPI(mockCtrl)
+	mockLotusMountAPI := mock_dagstore.NewMockLotusAccessor(mockCtrl)
 	mockLotusMountAPI.EXPECT().FetchUnsealedPiece(gomock.Any(), cid).Return(&readCloser{ioutil.NopCloser(strings.NewReader("testing"))}, nil).Times(1)
 	mockLotusMountAPI.EXPECT().FetchUnsealedPiece(gomock.Any(), cid).Return(&readCloser{ioutil.NopCloser(strings.NewReader("testing"))}, nil).Times(1)
 	mockLotusMountAPI.EXPECT().GetUnpaddedCARSize(cid).Return(uint64(100), nil).Times(1)
@@ -105,7 +105,7 @@ func TestLotusMountRegistration(t *testing.T) {
 	// when test is done, assert expectations on all mock objects.
 	defer mockCtrl.Finish()
 
-	mockLotusMountAPI := mock_dagstore.NewMockLotusMountAPI(mockCtrl)
+	mockLotusMountAPI := mock_dagstore.NewMockLotusAccessor(mockCtrl)
 	registry := mount.NewRegistry()
 	err = registry.Register(lotusScheme, NewLotusMountTemplate(mockLotusMountAPI))
 	require.NoError(t, err)
