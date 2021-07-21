@@ -12,6 +12,7 @@ import (
 )
 
 type LotusAccessor interface {
+	Start(ctx context.Context) error
 	FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error)
 	GetUnpaddedCARSize(pieceCid cid.Cid) (uint64, error)
 }
@@ -28,6 +29,30 @@ func NewLotusMountAPI(store piecestore.PieceStore, rm retrievalmarket.RetrievalP
 		pieceStore: store,
 		rm:         rm,
 	}
+}
+
+func (m *lotusAccessor) Start(ctx context.Context) error {
+	// Wait for the piece store to startup
+	ready := make(chan error)
+	m.pieceStore.OnReady(func(err error) {
+		select {
+		case <-ctx.Done():
+		case ready <- err:
+		}
+	})
+
+	select {
+	case <-ctx.Done():
+		return xerrors.Errorf("context cancelled waiting for piece store startup: %w", ctx.Err())
+	case err := <-ready:
+		// Piece store has started up, check if there was an error
+		if err != nil {
+			return err
+		}
+	}
+
+	// Piece store has started up successfully
+	return nil
 }
 
 func (m *lotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
