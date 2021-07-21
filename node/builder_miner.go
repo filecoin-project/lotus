@@ -147,6 +147,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
 
 			// DAG Store
+			Override(new(dagstore.LotusAccessor), modules.NewLotusAccessor),
 			Override(new(*dagstore.Wrapper), modules.DagStoreWrapper),
 
 			// Markets (retrieval)

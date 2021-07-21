@@ -96,20 +96,13 @@ func NewDagStoreWrapper(cfg MarketDAGStoreConfig, mountApi LotusAccessor) (*Wrap
 	}, nil
 }
 
-func (ds *Wrapper) Start(ctx context.Context) error {
+func (ds *Wrapper) Start(ctx context.Context) {
 	ds.ctx, ds.cancel = context.WithCancel(ctx)
-
-	err := ds.mountApi.Start(ctx)
-	if err != nil {
-		return xerrors.Errorf("failed to start mount API: %w", err)
-	}
 
 	ds.backgroundWg.Add(1)
 
 	// Run a go-routine to handle failures, traces and GC
 	go ds.background()
-
-	return nil
 }
 
 func (ds *Wrapper) background() {

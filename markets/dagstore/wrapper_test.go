@@ -189,7 +189,7 @@ func (m mockLotusMount) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid
 	panic("implement me")
 }
 
-func (m mockLotusMount) GetUnpaddedCARSize(pieceCid cid.Cid) (uint64, error) {
+func (m mockLotusMount) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error) {
 	panic("implement me")
 }
 

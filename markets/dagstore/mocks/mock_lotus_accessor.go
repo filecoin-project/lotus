@@ -31,6 +31,10 @@ func NewMockLotusAccessor(ctrl *gomock.Controller) *MockLotusAccessor {
 	return mock
 }
 
+func (mr *MockLotusAccessor) Start(_ context.Context) error {
+	return nil
+}
+
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockLotusAccessor) EXPECT() *MockLotusAccessorMockRecorder {
 	return m.recorder
@@ -52,30 +56,16 @@ func (mr *MockLotusAccessorMockRecorder) FetchUnsealedPiece(ctx, pieceCid interf
 }
 
 // GetUnpaddedCARSize mocks base method.
-func (m *MockLotusAccessor) GetUnpaddedCARSize(pieceCid cid.Cid) (uint64, error) {
+func (m *MockLotusAccessor) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetUnpaddedCARSize", pieceCid)
+	ret := m.ctrl.Call(m, "GetUnpaddedCARSize", ctx, pieceCid)
 	ret0, _ := ret[0].(uint64)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetUnpaddedCARSize indicates an expected call of GetUnpaddedCARSize.
-func (mr *MockLotusAccessorMockRecorder) GetUnpaddedCARSize(pieceCid interface{}) *gomock.Call {
+func (mr *MockLotusAccessorMockRecorder) GetUnpaddedCARSize(ctx, pieceCid interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUnpaddedCARSize", reflect.TypeOf((*MockLotusAccessor)(nil).GetUnpaddedCARSize), pieceCid)
-}
-
-// Start mocks base method.
-func (m *MockLotusAccessor) Start(ctx context.Context) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Start", ctx)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Start indicates an expected call of Start.
-func (mr *MockLotusAccessorMockRecorder) Start(ctx interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Start", reflect.TypeOf((*MockLotusAccessor)(nil).Start), ctx)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetUnpaddedCARSize", reflect.TypeOf((*MockLotusAccessor)(nil).GetUnpaddedCARSize), ctx, pieceCid)
 }

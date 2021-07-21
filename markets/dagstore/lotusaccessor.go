@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -12,22 +13,25 @@ import (
 )
 
 type LotusAccessor interface {
-	Start(ctx context.Context) error
 	FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error)
-	GetUnpaddedCARSize(pieceCid cid.Cid) (uint64, error)
+	GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error)
+	Start(ctx context.Context) error
 }
 
 type lotusAccessor struct {
 	pieceStore piecestore.PieceStore
 	rm         retrievalmarket.RetrievalProviderNode
+
+	readyMgr *shared.ReadyManager
 }
 
 var _ LotusAccessor = (*lotusAccessor)(nil)
 
-func NewLotusMountAPI(store piecestore.PieceStore, rm retrievalmarket.RetrievalProviderNode) *lotusAccessor {
+func NewLotusAccessor(store piecestore.PieceStore, rm retrievalmarket.RetrievalProviderNode) *lotusAccessor {
 	return &lotusAccessor{
 		pieceStore: store,
 		rm:         rm,
+		readyMgr:   shared.NewReadyManager(),
 	}
 }
 
@@ -43,12 +47,17 @@ func (m *lotusAccessor) Start(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		return xerrors.Errorf("context cancelled waiting for piece store startup: %w", ctx.Err())
-	case err := <-ready:
-		// Piece store has started up, check if there was an error
-		if err != nil {
-			return err
+		err := xerrors.Errorf("context cancelled waiting for piece store startup: %w", ctx.Err())
+		if ferr := m.readyMgr.FireReady(err); ferr != nil {
+			log.Warnw("failed to publish ready event", "err", ferr)
 		}
+		return err
+
+	case err := <-ready:
+		if ferr := m.readyMgr.FireReady(err); ferr != nil {
+			log.Warnw("failed to publish ready event", "err", ferr)
+		}
+		return err
 	}
 
 	// Piece store has started up successfully
@@ -56,6 +65,11 @@ func (m *lotusAccessor) Start(ctx context.Context) error {
 }
 
 func (m *lotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
+	err := m.readyMgr.AwaitReady()
+	if err != nil {
+		return nil, err
+	}
+
 	pieceInfo, err := m.pieceStore.GetPieceInfo(pieceCid)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to fetch pieceInfo for piece %s: %w", pieceCid, err)
@@ -100,7 +114,12 @@ func (m *lotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid
 	return nil, lastErr
 }
 
-func (m *lotusAccessor) GetUnpaddedCARSize(pieceCid cid.Cid) (uint64, error) {
+func (m *lotusAccessor) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error) {
+	err := m.readyMgr.AwaitReady()
+	if err != nil {
+		return 0, err
+	}
+
 	pieceInfo, err := m.pieceStore.GetPieceInfo(pieceCid)
 	if err != nil {
 		return 0, xerrors.Errorf("failed to fetch pieceInfo for piece %s: %w", pieceCid, err)
