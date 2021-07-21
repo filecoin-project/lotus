@@ -599,8 +599,7 @@ func DagStoreWrapper(
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			dsw.Start(ctx)
-			return nil
+			return dsw.Start(ctx)
 		},
 		OnStop: func(context.Context) error {
 			return dsw.Close()
