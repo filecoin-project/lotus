@@ -227,7 +227,7 @@ func deleteSplitstoreKeys(lr repo.LockedRepo) error {
 	}
 
 	for _, k := range keys {
-		fmt.Printf("deleting %s from datastore...", k)
+		fmt.Printf("deleting %s from datastore...\n", k)
 		err = ds.Delete(k)
 		if err != nil {
 			return xerrors.Errorf("error deleting key %s from datastore: %w", k, err)
