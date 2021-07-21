@@ -3,6 +3,7 @@ package dagstore
 import (
 	"context"
 	"io"
+	"sync"
 
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -12,26 +13,36 @@ import (
 )
 
 type LotusAccessor interface {
-	Start(ctx context.Context) error
 	FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error)
-	GetUnpaddedCARSize(pieceCid cid.Cid) (uint64, error)
+	GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error)
 }
 
 type lotusAccessor struct {
 	pieceStore piecestore.PieceStore
 	rm         retrievalmarket.RetrievalProviderNode
+
+	startLk  sync.Mutex
+	started  bool
+	startErr error
 }
 
 var _ LotusAccessor = (*lotusAccessor)(nil)
 
-func NewLotusMountAPI(store piecestore.PieceStore, rm retrievalmarket.RetrievalProviderNode) *lotusAccessor {
+func NewLotusAccessor(store piecestore.PieceStore, rm retrievalmarket.RetrievalProviderNode) *lotusAccessor {
 	return &lotusAccessor{
 		pieceStore: store,
 		rm:         rm,
 	}
 }
 
-func (m *lotusAccessor) Start(ctx context.Context) error {
+func (m *lotusAccessor) start(ctx context.Context) error {
+	m.startLk.Lock()
+	defer m.startLk.Unlock()
+
+	if m.started {
+		return m.startErr
+	}
+
 	// Wait for the piece store to startup
 	ready := make(chan error)
 	m.pieceStore.OnReady(func(err error) {
@@ -47,6 +58,7 @@ func (m *lotusAccessor) Start(ctx context.Context) error {
 	case err := <-ready:
 		// Piece store has started up, check if there was an error
 		if err != nil {
+			m.startErr = err
 			return err
 		}
 	}
@@ -56,6 +68,11 @@ func (m *lotusAccessor) Start(ctx context.Context) error {
 }
 
 func (m *lotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
+	err := m.start(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	pieceInfo, err := m.pieceStore.GetPieceInfo(pieceCid)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to fetch pieceInfo for piece %s: %w", pieceCid, err)
@@ -100,7 +117,12 @@ func (m *lotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid
 	return nil, lastErr
 }
 
-func (m *lotusAccessor) GetUnpaddedCARSize(pieceCid cid.Cid) (uint64, error) {
+func (m *lotusAccessor) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error) {
+	err := m.start(ctx)
+	if err != nil {
+		return 0, err
+	}
+
 	pieceInfo, err := m.pieceStore.GetPieceInfo(pieceCid)
 	if err != nil {
 		return 0, xerrors.Errorf("failed to fetch pieceInfo for piece %s: %w", pieceCid, err)

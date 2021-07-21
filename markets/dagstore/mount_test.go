@@ -29,7 +29,7 @@ func TestLotusMount(t *testing.T) {
 	mockLotusMountAPI := mock_dagstore.NewMockLotusAccessor(mockCtrl)
 	mockLotusMountAPI.EXPECT().FetchUnsealedPiece(gomock.Any(), cid).Return(&readCloser{ioutil.NopCloser(strings.NewReader("testing"))}, nil).Times(1)
 	mockLotusMountAPI.EXPECT().FetchUnsealedPiece(gomock.Any(), cid).Return(&readCloser{ioutil.NopCloser(strings.NewReader("testing"))}, nil).Times(1)
-	mockLotusMountAPI.EXPECT().GetUnpaddedCARSize(cid).Return(uint64(100), nil).Times(1)
+	mockLotusMountAPI.EXPECT().GetUnpaddedCARSize(ctx, cid).Return(uint64(100), nil).Times(1)
 
 	mnt, err := NewLotusMount(cid, mockLotusMountAPI)
 	require.NoError(t, err)
@@ -93,6 +93,7 @@ func TestLotusMountDeserialize(t *testing.T) {
 }
 
 func TestLotusMountRegistration(t *testing.T) {
+	ctx := context.Background()
 	bgen := blocksutil.NewBlockGenerator()
 	cid := bgen.Next().Cid()
 
@@ -113,7 +114,7 @@ func TestLotusMountRegistration(t *testing.T) {
 	mnt, err := registry.Instantiate(u)
 	require.NoError(t, err)
 
-	mockLotusMountAPI.EXPECT().GetUnpaddedCARSize(cid).Return(uint64(100), nil).Times(1)
+	mockLotusMountAPI.EXPECT().GetUnpaddedCARSize(ctx, cid).Return(uint64(100), nil).Times(1)
 	stat, err := mnt.Stat(context.Background())
 	require.NoError(t, err)
 	require.EqualValues(t, 100, stat.Size)

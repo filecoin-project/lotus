@@ -591,7 +591,7 @@ func DagStoreWrapper(
 		Datastore:     dagStoreDS,
 		GCInterval:    5 * time.Minute,
 	}
-	mountApi := dagstore.NewLotusMountAPI(pieceStore, rpn)
+	mountApi := dagstore.NewLotusAccessor(pieceStore, rpn)
 	dsw, err := dagstore.NewDagStoreWrapper(cfg, mountApi)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create DAG store wrapper: %w", err)
@@ -599,7 +599,8 @@ func DagStoreWrapper(
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			return dsw.Start(ctx)
+			dsw.Start(ctx)
+			return nil
 		},
 		OnStop: func(context.Context) error {
 			return dsw.Close()

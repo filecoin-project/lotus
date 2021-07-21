@@ -75,8 +75,8 @@ func (l *LotusMount) Close() error {
 	return nil
 }
 
-func (l *LotusMount) Stat(_ context.Context) (mount.Stat, error) {
-	size, err := l.Api.GetUnpaddedCARSize(l.PieceCid)
+func (l *LotusMount) Stat(ctx context.Context) (mount.Stat, error) {
+	size, err := l.Api.GetUnpaddedCARSize(ctx, l.PieceCid)
 	if err != nil {
 		return mount.Stat{}, xerrors.Errorf("failed to fetch piece size for piece %s: %w", l.PieceCid, err)
 	}

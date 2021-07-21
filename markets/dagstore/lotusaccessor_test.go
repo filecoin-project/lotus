@@ -65,7 +65,7 @@ func TestLotusAccessorFetchUnsealedPiece(t *testing.T) {
 			rpn := &mockRPN{
 				sectors: mockData,
 			}
-			api := NewLotusMountAPI(ps, rpn)
+			api := NewLotusAccessor(ps, rpn)
 
 			// Add deals to piece store
 			for _, sectorID := range tc.deals {
@@ -94,12 +94,13 @@ func TestLotusAccessorFetchUnsealedPiece(t *testing.T) {
 }
 
 func TestLotusAccessorGetUnpaddedCARSize(t *testing.T) {
+	ctx := context.Background()
 	cid1, err := cid.Parse("bafkqaaa")
 	require.NoError(t, err)
 
 	ps := getPieceStore(t)
 	rpn := &mockRPN{}
-	api := NewLotusMountAPI(ps, rpn)
+	api := NewLotusAccessor(ps, rpn)
 
 	// Add a deal with data Length 10
 	dealInfo := piecestore.DealInfo{
@@ -109,7 +110,7 @@ func TestLotusAccessorGetUnpaddedCARSize(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check that the data length is correct
-	len, err := api.GetUnpaddedCARSize(cid1)
+	len, err := api.GetUnpaddedCARSize(ctx, cid1)
 	require.NoError(t, err)
 	require.EqualValues(t, 10, len)
 }
@@ -120,14 +121,14 @@ func getPieceStore(t *testing.T) piecestore.PieceStore {
 
 	err = ps.Start(context.Background())
 	require.NoError(t, err)
-
-	ready := make(chan error)
-	ps.OnReady(func(err error) {
-		ready <- err
-	})
-	err = <-ready
-	require.NoError(t, err)
-
+	//
+	//ready := make(chan error)
+	//ps.OnReady(func(err error) {
+	//	ready <- err
+	//})
+	//err = <-ready
+	//require.NoError(t, err)
+	//
 	return ps
 }
 
