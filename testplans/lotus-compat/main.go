@@ -50,17 +50,21 @@ func compat(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 	clientVersion = "/lotus-new"
 	minerStackVersion = "/lotus-old"
 
+	//clientVersion = "/Users/nonsense/code/src/github.com/filecoin-project/lotus"
+	//minerStackVersion = "/Users/nonsense/code/src/github.com/filecoin-project/lotus"
+
 	genesisCtx, genesisCancel := context.WithCancel(context.Background())
 	defer genesisCancel()
-	go startMinerStackFromGenesis(genesisCtx, runenv)
-	go startClientStackFromGenesis(genesisCtx, runenv)
 
-	time.Sleep(60 * time.Second)
+	clientWalletChan := make(chan string)
+	go startMinerStackFromGenesis(genesisCtx, runenv, clientWalletChan)
+	go startClientStackFromGenesis(genesisCtx, runenv, clientWalletChan)
 
-	//TODO: start another fullnode client - do not use the fullnode from the miner
+	time.Sleep(120 * time.Second)
 
 	runenv.RecordMessage("import file...")
 	datacid := importFile(ctx, "/qbf10.txt")
+	//datacid := importFile(ctx, "/Users/nonsense/go.mod")
 
 	runenv.RecordMessage("got datacid: %s", datacid)
 	dealcid := makeDeal(ctx, datacid)
@@ -78,7 +82,7 @@ func compat(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 	genesisCancel()
 	time.Sleep(20 * time.Second)
 
-	// optionally change miner or client versions
+	// TODO: optionally change miner or client versions
 
 	// restart miner and its full node
 	runenv.RecordMessage("restart miner stack...")
@@ -91,7 +95,6 @@ func compat(runenv *runtime.RunEnv, initCtx *run.InitContext) error {
 	retrieveFile(ctx, datacid)
 
 	//TODO: do another storage deal and retrieval
-	//TODO: do the same retrieval as above
 
 	return nil
 }

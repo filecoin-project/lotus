@@ -15,7 +15,7 @@ import (
 	"github.com/testground/sdk-go/runtime"
 )
 
-func startMinerStackFromGenesis(ctx context.Context, runenv *runtime.RunEnv) {
+func startMinerStackFromGenesis(ctx context.Context, runenv *runtime.RunEnv, walletChan chan string) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		log.Fatal(err)
@@ -46,6 +46,18 @@ func startMinerStackFromGenesis(ctx context.Context, runenv *runtime.RunEnv) {
 
 	go func() {
 		setDefaultWalletCmd(ctx, minerStackVersion)
+		wg.Done()
+	}()
+
+	wg.Add(1)
+	go func() {
+		runenv.RecordMessage("miner waiting for wallet from client...")
+
+		wallet := <-walletChan
+
+		runenv.RecordMessage("miner got wallet: %s", wallet)
+		sendFILtoWallet(ctx, minerStackVersion, wallet)
+
 		wg.Done()
 	}()
 
@@ -106,10 +118,10 @@ func runLotusMinerFromScratch(ctx context.Context, runenv *runtime.RunEnv, home 
 		// and commits are aggregated by default.
 		// This means deals could sit at StorageDealAwaitingPreCommit or
 		// StorageDealSealing for a while, going past our 10m test timeout.
-		{"sed", "-ri",
-			"-e", `s/#(\s*BatchPreCommits\s*=\s*)true/ \1false/`,
-			"-e", `s/#(\s*AggregateCommits\s*=\s*)true/ \1false/`,
-			filepath.Join(home, ".lotusminer", "config.toml")},
+		//{"sed", "-ri",
+		//"-e", `s/#(\s*BatchPreCommits\s*=\s*)true/ \1false/`,
+		//"-e", `s/#(\s*AggregateCommits\s*=\s*)true/ \1false/`,
+		//filepath.Join(home, ".lotusminer", "config.toml")},
 
 		{path.Join(minerStackVersion, "lotus-miner"), "run", "--nosync"},
 	}
@@ -162,5 +174,27 @@ func setDefaultWalletCmd(ctx context.Context, dir string) {
 			continue
 		}
 		// TODO: stop once we've set the default wallet once.
+	}
+}
+
+func sendFILtoWallet(ctx context.Context, dir string, wallet string) {
+	lotusBinary := path.Join(dir, "lotus")
+	sendCmd := fmt.Sprintf("%s send %s %d", lotusBinary, wallet, 100)
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(5 * time.Second):
+		}
+
+		fmt.Println("sending funds to wallet with: ", sendCmd)
+		cmd := exec.CommandContext(ctx, "sh", "-c", sendCmd)
+		_, err := cmd.CombinedOutput()
+		if err != nil {
+			fmt.Println("ERROR: ", err.Error())
+			continue
+		}
+		// TODO: stop after we have sent funds to wallet
 	}
 }
