@@ -31,6 +31,10 @@ func NewMockLotusAccessor(ctrl *gomock.Controller) *MockLotusAccessor {
 	return mock
 }
 
+func (mr *MockLotusAccessor) Start(_ context.Context) error {
+	return nil
+}
+
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockLotusAccessor) EXPECT() *MockLotusAccessorMockRecorder {
 	return m.recorder

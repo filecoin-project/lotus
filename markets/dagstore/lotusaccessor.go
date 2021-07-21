@@ -3,8 +3,8 @@ package dagstore
 import (
 	"context"
 	"io"
-	"sync"
 
+	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -15,15 +15,14 @@ import (
 type LotusAccessor interface {
 	FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error)
 	GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error)
+	Start(ctx context.Context) error
 }
 
 type lotusAccessor struct {
 	pieceStore piecestore.PieceStore
 	rm         retrievalmarket.RetrievalProviderNode
 
-	startLk  sync.Mutex
-	started  bool
-	startErr error
+	readyMgr *shared.ReadyManager
 }
 
 var _ LotusAccessor = (*lotusAccessor)(nil)
@@ -32,17 +31,11 @@ func NewLotusAccessor(store piecestore.PieceStore, rm retrievalmarket.RetrievalP
 	return &lotusAccessor{
 		pieceStore: store,
 		rm:         rm,
+		readyMgr:   shared.NewReadyManager(),
 	}
 }
 
-func (m *lotusAccessor) start(ctx context.Context) error {
-	m.startLk.Lock()
-	defer m.startLk.Unlock()
-
-	if m.started {
-		return m.startErr
-	}
-
+func (m *lotusAccessor) Start(ctx context.Context) error {
 	// Wait for the piece store to startup
 	ready := make(chan error)
 	m.pieceStore.OnReady(func(err error) {
@@ -54,13 +47,17 @@ func (m *lotusAccessor) start(ctx context.Context) error {
 
 	select {
 	case <-ctx.Done():
-		return xerrors.Errorf("context cancelled waiting for piece store startup: %w", ctx.Err())
-	case err := <-ready:
-		// Piece store has started up, check if there was an error
-		if err != nil {
-			m.startErr = err
-			return err
+		err := xerrors.Errorf("context cancelled waiting for piece store startup: %w", ctx.Err())
+		if err := m.readyMgr.FireReady(err); err != nil {
+			log.Warnw("failed to pubish ready event", "err", err)
 		}
+		return err
+
+	case err := <-ready:
+		if err := m.readyMgr.FireReady(err); err != nil {
+			log.Warnw("failed to pubish ready event", "err", err)
+		}
+		return err
 	}
 
 	// Piece store has started up successfully
@@ -68,7 +65,7 @@ func (m *lotusAccessor) start(ctx context.Context) error {
 }
 
 func (m *lotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
-	err := m.start(ctx)
+	err := m.readyMgr.AwaitReady()
 	if err != nil {
 		return nil, err
 	}
@@ -118,7 +115,7 @@ func (m *lotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid
 }
 
 func (m *lotusAccessor) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error) {
-	err := m.start(ctx)
+	err := m.readyMgr.AwaitReady()
 	if err != nil {
 		return 0, err
 	}

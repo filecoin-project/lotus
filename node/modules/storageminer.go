@@ -576,12 +576,28 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 	}
 }
 
+func NewLotusAccessor(lc fx.Lifecycle,
+	pieceStore dtypes.ProviderPieceStore,
+	rpn retrievalmarket.RetrievalProviderNode,
+) (dagstore.LotusAccessor, error) {
+	mountApi := dagstore.NewLotusAccessor(pieceStore, rpn)
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			return mountApi.Start(ctx)
+		},
+		OnStop: func(context.Context) error {
+			return nil
+		},
+	})
+
+	return mountApi, nil
+}
+
 func DagStoreWrapper(
 	lc fx.Lifecycle,
 	ds dtypes.MetadataDS,
 	r repo.LockedRepo,
-	pieceStore dtypes.ProviderPieceStore,
-	rpn retrievalmarket.RetrievalProviderNode,
+	lotusAccessor dagstore.LotusAccessor,
 ) (*dagstore.Wrapper, error) {
 	dagStoreDir := filepath.Join(r.Path(), dagStore)
 	dagStoreDS := namespace.Wrap(ds, datastore.NewKey("/dagstore/provider"))
@@ -591,8 +607,8 @@ func DagStoreWrapper(
 		Datastore:     dagStoreDS,
 		GCInterval:    5 * time.Minute,
 	}
-	mountApi := dagstore.NewLotusAccessor(pieceStore, rpn)
-	dsw, err := dagstore.NewDagStoreWrapper(cfg, mountApi)
+
+	dsw, err := dagstore.NewDagStoreWrapper(cfg, lotusAccessor)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create DAG store wrapper: %w", err)
 	}
