@@ -142,13 +142,13 @@ func copyHotstoreToColdstore(lr repo.LockedRepo) error {
 
 		_, err := hot.Backup(bwr, 0)
 		if err != nil {
-			wr.CloseWithError(err)
+			_ = wr.CloseWithError(err)
 			return err
 		}
 
 		err = bwr.Flush()
 		if err != nil {
-			wr.CloseWithError(err)
+			_ = wr.CloseWithError(err)
 			return err
 		}
 
