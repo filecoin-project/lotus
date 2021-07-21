@@ -1,0 +1,300 @@
+{
+  "NetworkVersion": 13,
+  "Accounts": [
+    {
+      "Type": "account",
+      "Balance": "50000000000000000000000000",
+      "Meta": {
+        "Owner": "t3sszb5eomn3a4y6xt4fo33pqwvo4zpapbkh3ngcfvdzkpcqwt22ojexuncmdtmbuumvmub2xdewfdnfqvocua"
+      }
+    }
+  ],
+  "Miners": [
+    {
+      "ID": "t01000",
+      "Owner": "t3sszb5eomn3a4y6xt4fo33pqwvo4zpapbkh3ngcfvdzkpcqwt22ojexuncmdtmbuumvmub2xdewfdnfqvocua",
+      "Worker": "t3sszb5eomn3a4y6xt4fo33pqwvo4zpapbkh3ngcfvdzkpcqwt22ojexuncmdtmbuumvmub2xdewfdnfqvocua",
+      "PeerId": "12D3KooWDBStySruBY6D7ALYa5FRbeB3uUXfGuvjo7qV1nBYHuhK",
+      "MarketBalance": "0",
+      "PowerBalance": "0",
+      "SectorSize": 2048,
+      "Sectors": [
+        {
+          "CommR": {
+            "/": "bagboea4b5abcbon4d4uxotw2rnjwqkeye4espvvcmkg72jyn7yg67vqbxojjnmqj"
+          },
+          "CommD": {
+            "/": "baga6ea4seaqerikhcfk2tl7bxehydqpmmo2xlrdtq6hp6ya7fs2jakim4lkvklq"
+          },
+          "SectorID": 0,
+          "Deal": {
+            "PieceCID": {
+              "/": "baga6ea4seaqerikhcfk2tl7bxehydqpmmo2xlrdtq6hp6ya7fs2jakim4lkvklq"
+            },
+            "PieceSize": 2048,
+            "VerifiedDeal": false,
+            "Client": "t3sszb5eomn3a4y6xt4fo33pqwvo4zpapbkh3ngcfvdzkpcqwt22ojexuncmdtmbuumvmub2xdewfdnfqvocua",
+            "Provider": "t01000",
+            "Label": "0",
+            "StartEpoch": 0,
+            "EndEpoch": 9001,
+            "StoragePricePerEpoch": "0",
+            "ProviderCollateral": "0",
+            "ClientCollateral": "0"
+          },
+          "ProofType": 5
+        },
+        {
+          "CommR": {
+            "/": "bagboea4b5abca2xijpxm52hc3hm75wuswvlorayaijfph4jyqmavchu4yvwaffb3"
+          },
+          "CommD": {
+            "/": "baga6ea4seaqbqgjroshqe6ssodwd55s6oqxjggeg5alsdnu5bvqxhqy6twrymby"
+          },
+          "SectorID": 1,
+          "Deal": {
+            "PieceCID": {
+              "/": "baga6ea4seaqbqgjroshqe6ssodwd55s6oqxjggeg5alsdnu5bvqxhqy6twrymby"
+            },
+            "PieceSize": 2048,
+            "VerifiedDeal": false,
+            "Client": "t3sszb5eomn3a4y6xt4fo33pqwvo4zpapbkh3ngcfvdzkpcqwt22ojexuncmdtmbuumvmub2xdewfdnfqvocua",
+            "Provider": "t01000",
+            "Label": "1",
+            "StartEpoch": 0,
+            "EndEpoch": 9001,
+            "StoragePricePerEpoch": "0",
+            "ProviderCollateral": "0",
+            "ClientCollateral": "0"
+          },
+          "ProofType": 5
+        },
+        {
+          "CommR": {
+            "/": "bagboea4b5abcan2ok3zovd42rq47aynqafae3plo26m2ldctqotn3myddhvpyizc"
+          },
+          "CommD": {
+            "/": "baga6ea4seaqnzz3cakbkxehphgcym6fs44rqzb3tzyu2au3xeynjwq4c2sdq6pi"
+          },
+          "SectorID": 2,
+          "Deal": {
+            "PieceCID": {
+              "/": "baga6ea4seaqnzz3cakbkxehphgcym6fs44rqzb3tzyu2au3xeynjwq4c2sdq6pi"
+            },
+            "PieceSize": 2048,
+            "VerifiedDeal": false,
+            "Client": "t3sszb5eomn3a4y6xt4fo33pqwvo4zpapbkh3ngcfvdzkpcqwt22ojexuncmdtmbuumvmub2xdewfdnfqvocua",
+            "Provider": "t01000",
+            "Label": "2",
+            "StartEpoch": 0,
+            "EndEpoch": 9001,
+            "StoragePricePerEpoch": "0",
+            "ProviderCollateral": "0",
+            "ClientCollateral": "0"
+          },
+          "ProofType": 5
+        },
+        {
+          "CommR": {
+            "/": "bagboea4b5abcbqzsrqvanvr3dzjkkhhwlplszyslkcysdss6ggsjgwltkxegifrd"
+          },
+          "CommD": {
+            "/": "baga6ea4seaqhfmb5jxhmibyrdnapeoryup7qfklbflyoq7rteh5qgtyfpubsgni"
+          },
+          "SectorID": 3,
+          "Deal": {
+            "PieceCID": {
+              "/": "baga6ea4seaqhfmb5jxhmibyrdnapeoryup7qfklbflyoq7rteh5qgtyfpubsgni"
+            },
+            "PieceSize": 2048,
+            "VerifiedDeal": false,
+            "Client": "t3sszb5eomn3a4y6xt4fo33pqwvo4zpapbkh3ngcfvdzkpcqwt22ojexuncmdtmbuumvmub2xdewfdnfqvocua",
+            "Provider": "t01000",
+            "Label": "3",
+            "StartEpoch": 0,
+            "EndEpoch": 9001,
+            "StoragePricePerEpoch": "0",
+            "ProviderCollateral": "0",
+            "ClientCollateral": "0"
+          },
+          "ProofType": 5
+        },
+        {
+          "CommR": {
+            "/": "bagboea4b5abcb3gs2lfgoarjdfgzrtgphmj2uofumyyfar5hb2p4lzrpnvwkt2b3"
+          },
+          "CommD": {
+            "/": "baga6ea4seaqno55wyjxrday6nu7ojzgc4ixrlcoa3x2rbhevppgiudvb4p4vslq"
+          },
+          "SectorID": 4,
+          "Deal": {
+            "PieceCID": {
+              "/": "baga6ea4seaqno55wyjxrday6nu7ojzgc4ixrlcoa3x2rbhevppgiudvb4p4vslq"
+            },
+            "PieceSize": 2048,
+            "VerifiedDeal": false,
+            "Client": "t3sszb5eomn3a4y6xt4fo33pqwvo4zpapbkh3ngcfvdzkpcqwt22ojexuncmdtmbuumvmub2xdewfdnfqvocua",
+            "Provider": "t01000",
+            "Label": "4",
+            "StartEpoch": 0,
+            "EndEpoch": 9001,
+            "StoragePricePerEpoch": "0",
+            "ProviderCollateral": "0",
+            "ClientCollateral": "0"
+          },
+          "ProofType": 5
+        },
+        {
+          "CommR": {
+            "/": "bagboea4b5abcatmlwursqwqblc2icodqawsjwddcaggozaviy56b3gcyscd6v2ig"
+          },
+          "CommD": {
+            "/": "baga6ea4seaqh7djlk3bny7xhpt3g7sk5prkak2rvefo27pak2j4huozlpwudkey"
+          },
+          "SectorID": 5,
+          "Deal": {
+            "PieceCID": {
+              "/": "baga6ea4seaqh7djlk3bny7xhpt3g7sk5prkak2rvefo27pak2j4huozlpwudkey"
+            },
+            "PieceSize": 2048,
+            "VerifiedDeal": false,
+            "Client": "t3sszb5eomn3a4y6xt4fo33pqwvo4zpapbkh3ngcfvdzkpcqwt22ojexuncmdtmbuumvmub2xdewfdnfqvocua",
+            "Provider": "t01000",
+            "Label": "5",
+            "StartEpoch": 0,
+            "EndEpoch": 9001,
+            "StoragePricePerEpoch": "0",
+            "ProviderCollateral": "0",
+            "ClientCollateral": "0"
+          },
+          "ProofType": 5
+        },
+        {
+          "CommR": {
+            "/": "bagboea4b5abca4eif6xdb33st4tsj6fcxv3jvjxg47sohcuc67ev7pvunwofe7in"
+          },
+          "CommD": {
+            "/": "baga6ea4seaqpwiow5zlecqy6wan7n2x46gtbhrephavubbf562pytqxwjznbmda"
+          },
+          "SectorID": 6,
+          "Deal": {
+            "PieceCID": {
+              "/": "baga6ea4seaqpwiow5zlecqy6wan7n2x46gtbhrephavubbf562pytqxwjznbmda"
+            },
+            "PieceSize": 2048,
+            "VerifiedDeal": false,
+            "Client": "t3sszb5eomn3a4y6xt4fo33pqwvo4zpapbkh3ngcfvdzkpcqwt22ojexuncmdtmbuumvmub2xdewfdnfqvocua",
+            "Provider": "t01000",
+            "Label": "6",
+            "StartEpoch": 0,
+            "EndEpoch": 9001,
+            "StoragePricePerEpoch": "0",
+            "ProviderCollateral": "0",
+            "ClientCollateral": "0"
+          },
+          "ProofType": 5
+        },
+        {
+          "CommR": {
+            "/": "bagboea4b5abcbb4rjyibkmwthuk6xqenlhqulhzjna4o3fjleq5fmvif3cpj2ocy"
+          },
+          "CommD": {
+            "/": "baga6ea4seaqfkvvtg2ndmlzi5v4n2xve3if7rbet3namyirah7rv6uhehgsqqgy"
+          },
+          "SectorID": 7,
+          "Deal": {
+            "PieceCID": {
+              "/": "baga6ea4seaqfkvvtg2ndmlzi5v4n2xve3if7rbet3namyirah7rv6uhehgsqqgy"
+            },
+            "PieceSize": 2048,
+            "VerifiedDeal": false,
+            "Client": "t3sszb5eomn3a4y6xt4fo33pqwvo4zpapbkh3ngcfvdzkpcqwt22ojexuncmdtmbuumvmub2xdewfdnfqvocua",
+            "Provider": "t01000",
+            "Label": "7",
+            "StartEpoch": 0,
+            "EndEpoch": 9001,
+            "StoragePricePerEpoch": "0",
+            "ProviderCollateral": "0",
+            "ClientCollateral": "0"
+          },
+          "ProofType": 5
+        },
+        {
+          "CommR": {
+            "/": "bagboea4b5abcadgsgsbhw65ly6wh3jyl2rwwbl7jdfhsw5thrzuhskdevagnu4bb"
+          },
+          "CommD": {
+            "/": "baga6ea4seaqbxmpt7zgkv2s7h6httk6r3odxzorqptxqfab3llkqgwtwamx62di"
+          },
+          "SectorID": 8,
+          "Deal": {
+            "PieceCID": {
+              "/": "baga6ea4seaqbxmpt7zgkv2s7h6httk6r3odxzorqptxqfab3llkqgwtwamx62di"
+            },
+            "PieceSize": 2048,
+            "VerifiedDeal": false,
+            "Client": "t3sszb5eomn3a4y6xt4fo33pqwvo4zpapbkh3ngcfvdzkpcqwt22ojexuncmdtmbuumvmub2xdewfdnfqvocua",
+            "Provider": "t01000",
+            "Label": "8",
+            "StartEpoch": 0,
+            "EndEpoch": 9001,
+            "StoragePricePerEpoch": "0",
+            "ProviderCollateral": "0",
+            "ClientCollateral": "0"
+          },
+          "ProofType": 5
+        },
+        {
+          "CommR": {
+            "/": "bagboea4b5abcbaim35ed7ff5myro4xkrsbcg2f5nbibsb7pmupxhzo7vl4soiwk4"
+          },
+          "CommD": {
+            "/": "baga6ea4seaqhskbmqw2lllkhmfmfwnmi643tnrjbn62j4z35ofxtfppijor2yky"
+          },
+          "SectorID": 9,
+          "Deal": {
+            "PieceCID": {
+              "/": "baga6ea4seaqhskbmqw2lllkhmfmfwnmi643tnrjbn62j4z35ofxtfppijor2yky"
+            },
+            "PieceSize": 2048,
+            "VerifiedDeal": false,
+            "Client": "t3sszb5eomn3a4y6xt4fo33pqwvo4zpapbkh3ngcfvdzkpcqwt22ojexuncmdtmbuumvmub2xdewfdnfqvocua",
+            "Provider": "t01000",
+            "Label": "9",
+            "StartEpoch": 0,
+            "EndEpoch": 9001,
+            "StoragePricePerEpoch": "0",
+            "ProviderCollateral": "0",
+            "ClientCollateral": "0"
+          },
+          "ProofType": 5
+        }
+      ]
+    }
+  ],
+  "NetworkName": "localnet-8fa6bd93-60aa-48d4-b129-f4da5f1e43e7",
+  "VerifregRootKey": {
+    "Type": "multisig",
+    "Balance": "0",
+    "Meta": {
+      "Signers": [
+        "t1ceb34gnsc6qk5dt6n7xg6ycwzasjhbxm3iylkiy"
+      ],
+      "Threshold": 1,
+      "VestingDuration": 0,
+      "VestingStart": 0
+    }
+  },
+  "RemainderAccount": {
+    "Type": "multisig",
+    "Balance": "0",
+    "Meta": {
+      "Signers": [
+        "t1ceb34gnsc6qk5dt6n7xg6ycwzasjhbxm3iylkiy"
+      ],
+      "Threshold": 1,
+      "VestingDuration": 0,
+      "VestingStart": 0
+    }
+  }
+}

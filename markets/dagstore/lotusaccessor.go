@@ -48,14 +48,14 @@ func (m *lotusAccessor) Start(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		err := xerrors.Errorf("context cancelled waiting for piece store startup: %w", ctx.Err())
-		if err := m.readyMgr.FireReady(err); err != nil {
-			log.Warnw("failed to pubish ready event", "err", err)
+		if ferr := m.readyMgr.FireReady(err); ferr != nil {
+			log.Warnw("failed to publish ready event", "err", ferr)
 		}
 		return err
 
 	case err := <-ready:
-		if err := m.readyMgr.FireReady(err); err != nil {
-			log.Warnw("failed to pubish ready event", "err", err)
+		if ferr := m.readyMgr.FireReady(err); ferr != nil {
+			log.Warnw("failed to publish ready event", "err", ferr)
 		}
 		return err
 	}
