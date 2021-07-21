@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/urfave/cli/v2"
@@ -164,7 +165,33 @@ func copyHotstoreToColdstore(lr repo.LockedRepo) error {
 		return cold.Sync()
 	})
 
-	return g.Wait()
+	err = g.Wait()
+	if err != nil {
+		return err
+	}
+
+	// compact + gc the coldstore
+	fmt.Println("compacting coldstore...")
+	nworkers := runtime.NumCPU()
+	if nworkers < 2 {
+		nworkers = 2
+	}
+
+	err = cold.Flatten(nworkers)
+	if err != nil {
+		return xerrors.Errorf("error compacting coldstore: %w", err)
+	}
+
+	fmt.Println("garbage collecting coldstore...")
+	for err == nil {
+		err = cold.RunValueLogGC(0.0625)
+	}
+
+	if err != badger.ErrNoRewrite {
+		return xerrors.Errorf("error garbage collecting coldstore: %w", err)
+	}
+
+	return nil
 }
 
 func deleteSplitstoreDir(lr repo.LockedRepo) error {
