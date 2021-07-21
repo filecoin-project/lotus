@@ -420,7 +420,19 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid, piece *cid.Cid) 
 		if piece != nil && !piece.Equals(*p.PieceCID) {
 			continue
 		}
-		out = append(out, a.makeRetrievalQuery(ctx, p, root, piece, rm.QueryParams{}))
+
+		// do not rely on local data with respect to peer id
+		// fetch an up-to-date miner peer id from chain
+		mi, err := a.StateMinerInfo(ctx, p.Address, types.EmptyTSK)
+		if err != nil {
+			return nil, err
+		}
+		pp := rm.RetrievalPeer{
+			Address: p.Address,
+			ID:      *mi.PeerId,
+		}
+
+		out = append(out, a.makeRetrievalQuery(ctx, pp, root, piece, rm.QueryParams{}))
 	}
 
 	return out, nil
