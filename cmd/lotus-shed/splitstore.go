@@ -93,7 +93,7 @@ var splitstoreRollbackCmd = &cli.Command{
 			return xerrors.Errorf("error deleting splitstore keys: %w", err)
 		}
 
-		fmt.Println("disalbing splitsotre in config...")
+		fmt.Println("disabling splitstore in config...")
 		err = lr.SetConfig(func(cfg interface{}) {
 			cfg.(*config.FullNode).Chainstore.EnableSplitstore = false
 		})
