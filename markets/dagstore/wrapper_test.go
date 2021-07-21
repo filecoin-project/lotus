@@ -181,6 +181,10 @@ func (m *mockDagStore) Close() error {
 type mockLotusMount struct {
 }
 
+func (m mockLotusMount) Start(ctx context.Context) error {
+	return nil
+}
+
 func (m mockLotusMount) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
 	panic("implement me")
 }
