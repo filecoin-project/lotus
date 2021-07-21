@@ -151,6 +151,7 @@ func (ds *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (carstore.Cl
 	key := shard.KeyFromCID(pieceCid)
 	resch := make(chan dagstore.ShardResult, 1)
 	err := ds.dagStore.AcquireShard(ctx, key, resch, dagstore.AcquireOpts{})
+	log.Info("sent message to acquire shard")
 
 	if err != nil {
 		if !errors.Is(err, dagstore.ErrShardUnknown) {
