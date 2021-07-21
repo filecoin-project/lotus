@@ -118,10 +118,10 @@ func runLotusMinerFromScratch(ctx context.Context, runenv *runtime.RunEnv, home 
 		// and commits are aggregated by default.
 		// This means deals could sit at StorageDealAwaitingPreCommit or
 		// StorageDealSealing for a while, going past our 10m test timeout.
-		//{"sed", "-ri",
-		//"-e", `s/#(\s*BatchPreCommits\s*=\s*)true/ \1false/`,
-		//"-e", `s/#(\s*AggregateCommits\s*=\s*)true/ \1false/`,
-		//filepath.Join(home, ".lotusminer", "config.toml")},
+		{"sed", "-ri",
+			"-e", `s/#(\s*BatchPreCommits\s*=\s*)true/ \1false/`,
+			"-e", `s/#(\s*AggregateCommits\s*=\s*)true/ \1false/`,
+			filepath.Join(home, ".lotusminer", "config.toml")},
 
 		{path.Join(minerStackVersion, "lotus-miner"), "run", "--nosync"},
 	}
