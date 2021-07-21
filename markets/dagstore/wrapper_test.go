@@ -47,6 +47,9 @@ func TestWrapperAcquireRecovery(t *testing.T) {
 	}
 	w.dagStore = mock
 
+	err = w.Start(ctx)
+	require.NoError(t, err)
+
 	mybs, err := w.LoadShard(ctx, pieceCid)
 	require.NoError(t, err)
 

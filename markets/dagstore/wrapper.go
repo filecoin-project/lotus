@@ -52,6 +52,9 @@ type Wrapper struct {
 	cancel       context.CancelFunc
 	backgroundWg sync.WaitGroup
 
+	started  chan struct{}
+	startErr error
+
 	dagStore   DAGStore
 	mountApi   LotusAccessor
 	failureCh  chan dagstore.ShardResult
@@ -88,6 +91,7 @@ func NewDagStoreWrapper(cfg MarketDAGStoreConfig, mountApi LotusAccessor) (*Wrap
 	}
 
 	return &Wrapper{
+		started:    make(chan struct{}),
 		dagStore:   dagStore,
 		mountApi:   mountApi,
 		failureCh:  failureCh,
@@ -97,6 +101,26 @@ func NewDagStoreWrapper(cfg MarketDAGStoreConfig, mountApi LotusAccessor) (*Wrap
 }
 
 func (ds *Wrapper) Start(ctx context.Context) error {
+	err := ds.start(ctx)
+	ds.startErr = err
+	close(ds.started)
+	return err
+}
+
+func (ds *Wrapper) awaitStart(ctx context.Context) error {
+	select {
+	case <-ctx.Done():
+		return xerrors.Errorf("timed out waiting on DAG store wrapper startup: %w", ctx.Err())
+	case <-ds.started:
+		if ds.startErr != nil {
+			return xerrors.Errorf("failed to start DAG store wrapper: %w", ds.startErr)
+		}
+	}
+
+	return nil
+}
+
+func (ds *Wrapper) start(ctx context.Context) error {
 	ds.ctx, ds.cancel = context.WithCancel(ctx)
 
 	err := ds.mountApi.Start(ctx)
@@ -154,9 +178,14 @@ func (ds *Wrapper) background() {
 }
 
 func (ds *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (carstore.ClosableBlockstore, error) {
+	err := ds.awaitStart(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	key := shard.KeyFromCID(pieceCid)
 	resch := make(chan dagstore.ShardResult, 1)
-	err := ds.dagStore.AcquireShard(ctx, key, resch, dagstore.AcquireOpts{})
+	err = ds.dagStore.AcquireShard(ctx, key, resch, dagstore.AcquireOpts{})
 
 	if err != nil {
 		if !errors.Is(err, dagstore.ErrShardUnknown) {
@@ -204,6 +233,11 @@ func (ds *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (carstore.Cl
 }
 
 func (ds *Wrapper) RegisterShard(ctx context.Context, pieceCid cid.Cid, carPath string, eagerInit bool, resch chan dagstore.ShardResult) error {
+	err := ds.awaitStart(ctx)
+	if err != nil {
+		return err
+	}
+
 	// Create a lotus mount with the piece CID
 	key := shard.KeyFromCID(pieceCid)
 	mt, err := NewLotusMount(pieceCid, ds.mountApi)
