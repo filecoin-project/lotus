@@ -17,6 +17,7 @@ import (
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
+	carv2 "github.com/ipld/go-car/v2"
 	"github.com/ipld/go-car/v2/blockstore"
 	"github.com/stretchr/testify/require"
 )
@@ -29,7 +30,7 @@ func TestImportNormalFileToUnixfsDAG(t *testing.T) {
 	defer os.Remove(carv2File) //nolint:errcheck
 
 	// import a normal file to a Unixfs DAG using a CARv2 read-write blockstore and flush it out to a CARv2 file.
-	tempCARv2Store, err := blockstore.OpenReadWrite(carv2File, []cid.Cid{})
+	tempCARv2Store, err := blockstore.OpenReadWrite(carv2File, []cid.Cid{}, carv2.ZeroLengthSectionAsEOF(true), blockstore.UseWholeCIDs(true))
 	require.NoError(t, err)
 	bsvc := blockservice.New(tempCARv2Store, offline.Exchange(tempCARv2Store))
 	root, err := importNormalFileToUnixfsDAG(ctx, inputPath, merkledag.NewDAGService(bsvc))
@@ -38,7 +39,7 @@ func TestImportNormalFileToUnixfsDAG(t *testing.T) {
 	require.NoError(t, tempCARv2Store.Finalize())
 
 	// convert the CARv2 file to a normal file again and ensure the contents match.
-	readOnly, err := blockstore.OpenReadOnly(carv2File)
+	readOnly, err := blockstore.OpenReadOnly(carv2File, carv2.ZeroLengthSectionAsEOF(true), blockstore.UseWholeCIDs(true))
 	require.NoError(t, err)
 	defer readOnly.Close() //nolint:errcheck
 	dag := merkledag.NewDAGService(blockservice.New(readOnly, offline.Exchange(readOnly)))

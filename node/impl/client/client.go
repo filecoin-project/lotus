@@ -850,7 +850,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		return
 	}
 
-	readOnly, err := blockstore.OpenReadOnly(carV2FilePath)
+	readOnly, err := blockstore.OpenReadOnly(carV2FilePath, carv2.ZeroLengthSectionAsEOF(true), blockstore.UseWholeCIDs(true))
 	if err != nil {
 		finish(err)
 		return

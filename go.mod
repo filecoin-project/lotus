@@ -26,7 +26,7 @@ require (
 	github.com/elastic/gosigar v0.12.0
 	github.com/etclabscore/go-openrpc-reflect v0.0.36
 	github.com/fatih/color v1.9.0
-	github.com/filecoin-project/dagstore v0.2.0
+	github.com/filecoin-project/dagstore v0.2.1
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
 	github.com/filecoin-project/go-address v0.0.5
 	github.com/filecoin-project/go-bitfield v0.2.4
@@ -35,7 +35,7 @@ require (
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
 	github.com/filecoin-project/go-data-transfer v1.7.0
 	github.com/filecoin-project/go-fil-commcid v0.0.0-20201016201715-d41df56b4f6a
-	github.com/filecoin-project/go-fil-markets v1.6.0-rc1.0.20210720110852-fe035bda3368
+	github.com/filecoin-project/go-fil-markets v1.6.0-rc1.0.20210721032414-eed1c3b0288c
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-padreader v0.0.0-20200903213702-ed5fae088b20
@@ -56,7 +56,7 @@ require (
 	github.com/go-kit/kit v0.10.0
 	github.com/go-ole/go-ole v1.2.4 // indirect
 	github.com/golang/mock v1.5.0
-	github.com/google/uuid v1.1.2
+	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.7.4
 	github.com/gorilla/websocket v1.4.2
 	github.com/hako/durafmt v0.0.0-20200710122514-c0fb7b4da026
@@ -65,9 +65,9 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d
 	github.com/ipfs/bbloom v0.0.4
-	github.com/ipfs/go-bitswap v0.3.2
+	github.com/ipfs/go-bitswap v0.3.4
 	github.com/ipfs/go-block-format v0.0.3
-	github.com/ipfs/go-blockservice v0.1.4
+	github.com/ipfs/go-blockservice v0.1.5
 	github.com/ipfs/go-cid v0.0.8-0.20210716091050-de6c03deae1c
 	github.com/ipfs/go-cidutil v0.0.2
 	github.com/ipfs/go-datastore v0.4.5
@@ -78,7 +78,7 @@ require (
 	github.com/ipfs/go-filestore v1.0.0
 	github.com/ipfs/go-fs-lock v0.0.6
 	github.com/ipfs/go-graphsync v0.6.4
-	github.com/ipfs/go-ipfs-blockstore v1.0.3
+	github.com/ipfs/go-ipfs-blockstore v1.0.4
 	github.com/ipfs/go-ipfs-blocksutil v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.5
 	github.com/ipfs/go-ipfs-ds-help v1.0.0
@@ -98,7 +98,7 @@ require (
 	github.com/ipfs/go-unixfs v0.2.6
 	github.com/ipfs/interface-go-ipfs-core v0.2.3
 	github.com/ipld/go-car v0.1.1-0.20201119040415-11b6074b6d4d
-	github.com/ipld/go-car/v2 v2.0.0-20210716171550-0ae4f9c08a68
+	github.com/ipld/go-car/v2 v2.0.0-beta1
 	github.com/ipld/go-ipld-prime v0.5.1-0.20201021195245-109253e8a018
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.7.0
@@ -139,7 +139,7 @@ require (
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli/v2 v2.2.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20210219115102-f37d292932f2
+	github.com/whyrusleeping/cbor-gen v0.0.0-20210713220151-be142a5ae1a8
 	github.com/whyrusleeping/ledger-filecoin-go v0.9.1-0.20201010031517-c3dcc1bddce4
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20190708150250-92bcb0691325
@@ -147,7 +147,7 @@ require (
 	go.opencensus.io v0.23.0
 	go.uber.org/dig v1.10.0 // indirect
 	go.uber.org/fx v1.9.0
-	go.uber.org/multierr v1.6.0
+	go.uber.org/multierr v1.7.0
 	go.uber.org/zap v1.16.0
 	golang.org/x/net v0.0.0-20210423184538-5f58ad60dda6
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
