@@ -207,6 +207,7 @@ COMMANDS:
    control                Manage control addresses
    propose-change-worker  Propose a worker address change
    confirm-change-worker  Confirm a worker address change
+   compact-allocated      compact allocated sectors bitfield
    help, h                Shows a list of commands or help for one command
 
 OPTIONS:
@@ -358,6 +359,22 @@ USAGE:
 OPTIONS:
    --really-do-it  Actually send transaction performing the action (default: false)
    --help, -h      show help (default: false)
+   
+```
+
+### lotus-miner actor compact-allocated
+```
+NAME:
+   lotus-miner actor compact-allocated - compact allocated sectors bitfield
+
+USAGE:
+   lotus-miner actor compact-allocated [command options] [arguments...]
+
+OPTIONS:
+   --mask-last-offset value  Mask sector IDs from 0 to 'higest_allocated - offset' (default: 0)
+   --mask-upto-n value       Mask sector IDs from 0 to 'n' (default: 0)
+   --really-do-it            Actually send transaction performing the action (default: false)
+   --help, -h                show help (default: false)
    
 ```
 

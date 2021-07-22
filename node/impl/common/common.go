@@ -10,8 +10,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
-
 	"github.com/filecoin-project/lotus/api"
+	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -20,8 +20,6 @@ var session = uuid.New()
 
 type CommonAPI struct {
 	fx.In
-
-	NetAPI
 
 	APISecret    *dtypes.APIAlg
 	ShutdownChan dtypes.ShutdownChan
@@ -48,6 +46,24 @@ func (a *CommonAPI) AuthNew(ctx context.Context, perms []auth.Permission) ([]byt
 	return jwt.Sign(&p, (*jwt.HMACSHA)(a.APISecret))
 }
 
+func (a *CommonAPI) Discover(ctx context.Context) (apitypes.OpenRPCDocument, error) {
+	return build.OpenRPCDiscoverJSON_Full(), nil
+}
+
+func (a *CommonAPI) Version(context.Context) (api.APIVersion, error) {
+	v, err := api.VersionForType(api.RunningNodeType)
+	if err != nil {
+		return api.APIVersion{}, err
+	}
+
+	return api.APIVersion{
+		Version:    build.UserVersion(),
+		APIVersion: v,
+
+		BlockDelay: build.BlockDelaySecs,
+	}, nil
+}
+
 func (a *CommonAPI) LogList(context.Context) ([]string, error) {
 	return logging.GetSubsystems(), nil
 }
@@ -67,18 +83,4 @@ func (a *CommonAPI) Session(ctx context.Context) (uuid.UUID, error) {
 
 func (a *CommonAPI) Closing(ctx context.Context) (<-chan struct{}, error) {
 	return make(chan struct{}), nil // relies on jsonrpc closing
-}
-
-func (a *CommonAPI) Version(context.Context) (api.APIVersion, error) {
-	v, err := api.VersionForType(api.RunningNodeType)
-	if err != nil {
-		return api.APIVersion{}, err
-	}
-
-	return api.APIVersion{
-		Version:    build.UserVersion(),
-		APIVersion: v,
-
-		BlockDelay: build.BlockDelaySecs,
-	}, nil
 }

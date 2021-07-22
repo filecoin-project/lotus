@@ -33,6 +33,8 @@ const UpgradeLiftoffHeight = -5
 
 const UpgradeKumquatHeight = 90
 
+const UpgradePricelistOopsHeight = 119
+
 const UpgradeCalicoHeight = 120
 const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 1)
 

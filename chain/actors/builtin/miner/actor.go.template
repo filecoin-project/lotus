@@ -105,6 +105,7 @@ type State interface {
         // UnallocatedSectorNumbers returns up to count unallocated sector numbers (or less than
         // count if there aren't enough).
 	UnallocatedSectorNumbers(count int) ([]abi.SectorNumber, error)
+	GetAllocatedSectors() (*bitfield.BitField, error)
 
 	// Note that ProvingPeriodStart is deprecated and will be renamed / removed in a future version of actors
 	GetProvingPeriodStart() (abi.ChainEpoch, error)

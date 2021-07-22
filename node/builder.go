@@ -6,6 +6,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/filecoin-project/lotus/node/impl/net"
 	metricsi "github.com/ipfs/go-metrics-interface"
 
 	"github.com/filecoin-project/lotus/api"
@@ -36,7 +37,6 @@ import (
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl/common"
-	"github.com/filecoin-project/lotus/node/impl/common/mock"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -245,11 +245,11 @@ func ConfigCommon(cfg *config.Common, enableLibp2pNode bool) Option {
 		}),
 		ApplyIf(func(s *Settings) bool { return s.Base }), // apply only if Base has already been applied
 		If(!enableLibp2pNode,
-			Override(new(common.NetAPI), From(new(mock.MockNetAPI))),
+			Override(new(api.Net), new(api.NetStub)),
 			Override(new(api.Common), From(new(common.CommonAPI))),
 		),
 		If(enableLibp2pNode,
-			Override(new(common.NetAPI), From(new(common.Libp2pNetAPI))),
+			Override(new(api.Net), From(new(net.NetAPI))),
 			Override(new(api.Common), From(new(common.CommonAPI))),
 			Override(StartListeningKey, lp2p.StartListening(cfg.Libp2p.ListenAddresses)),
 			Override(ConnectionManagerKey, lp2p.ConnectionManager(
@@ -312,12 +312,14 @@ func Repo(r repo.Repo) Option {
 				Override(new(dtypes.BasicStateBlockstore), modules.StateSplitBlockstore),
 				Override(new(dtypes.BaseBlockstore), From(new(dtypes.SplitBlockstore))),
 				Override(new(dtypes.ExposedBlockstore), modules.ExposedSplitBlockstore),
+				Override(new(dtypes.GCReferenceProtector), modules.SplitBlockstoreGCReferenceProtector),
 			),
 			If(!cfg.EnableSplitstore,
 				Override(new(dtypes.BasicChainBlockstore), modules.ChainFlatBlockstore),
 				Override(new(dtypes.BasicStateBlockstore), modules.StateFlatBlockstore),
 				Override(new(dtypes.BaseBlockstore), From(new(dtypes.UniversalBlockstore))),
 				Override(new(dtypes.ExposedBlockstore), From(new(dtypes.UniversalBlockstore))),
+				Override(new(dtypes.GCReferenceProtector), modules.NoopGCReferenceProtector),
 			),
 
 			Override(new(dtypes.ChainBlockstore), From(new(dtypes.BasicChainBlockstore))),
