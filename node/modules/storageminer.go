@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -21,12 +22,15 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+	levelds "github.com/ipfs/go-ds-leveldb"
+	measure "github.com/ipfs/go-ds-measure"
 	graphsync "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	"github.com/ipfs/go-graphsync/storeutil"
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
+	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 
 	"github.com/filecoin-project/go-address"
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
@@ -595,12 +599,15 @@ func NewLotusAccessor(lc fx.Lifecycle,
 
 func DagStoreWrapper(
 	lc fx.Lifecycle,
-	ds dtypes.MetadataDS,
 	r repo.LockedRepo,
 	lotusAccessor dagstore.LotusAccessor,
 ) (*dagstore.Wrapper, error) {
 	dagStoreDir := filepath.Join(r.Path(), dagStore)
-	dagStoreDS := namespace.Wrap(ds, datastore.NewKey("/dagstore/provider"))
+	dagStoreDS, err := createDAGStoreDatastore(dagStoreDir)
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := dagstore.MarketDAGStoreConfig{
 		TransientsDir: filepath.Join(dagStoreDir, "transients"),
 		IndexDir:      filepath.Join(dagStoreDir, "index"),
@@ -623,6 +630,31 @@ func DagStoreWrapper(
 		},
 	})
 	return dsw, nil
+}
+
+// createDAGStoreDatastore creates a datastore under the given base directory
+// for DAG store metadata
+func createDAGStoreDatastore(baseDir string) (datastore.Batching, error) {
+	// Create a datastore directory under the base dir if it doesn't already exist
+	dsDir := path.Join(baseDir, "datastore")
+	if err := os.MkdirAll(dsDir, 0755); err != nil {
+		return nil, xerrors.Errorf("failed to create directory %s for DAG store datastore: %w", dsDir, err)
+	}
+
+	// Create a new LevelDB datastore
+	ds, err := levelds.NewDatastore(dsDir, &levelds.Options{
+		Compression: ldbopts.NoCompression,
+		NoSync:      false,
+		Strict:      ldbopts.StrictAll,
+		ReadOnly:    false,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("failed to open datastore for DAG store: %w", err)
+	}
+
+	// Keep statistics about the datastore
+	mds := measure.New("measure.", ds)
+	return mds, nil
 }
 
 func StorageProvider(minerAddress dtypes.MinerAddress,
