@@ -105,6 +105,35 @@ func (mr *MockFullNodeMockRecorder) BeaconGetEntry(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeaconGetEntry", reflect.TypeOf((*MockFullNode)(nil).BeaconGetEntry), arg0, arg1)
 }
 
+// ChainBlockstoreInfo mocks base method.
+func (m *MockFullNode) ChainBlockstoreInfo(arg0 context.Context) (map[string]interface{}, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainBlockstoreInfo", arg0)
+	ret0, _ := ret[0].(map[string]interface{})
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChainBlockstoreInfo indicates an expected call of ChainBlockstoreInfo.
+func (mr *MockFullNodeMockRecorder) ChainBlockstoreInfo(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainBlockstoreInfo", reflect.TypeOf((*MockFullNode)(nil).ChainBlockstoreInfo), arg0)
+}
+
+// ChainCheckBlockstore mocks base method.
+func (m *MockFullNode) ChainCheckBlockstore(arg0 context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainCheckBlockstore", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ChainCheckBlockstore indicates an expected call of ChainCheckBlockstore.
+func (mr *MockFullNodeMockRecorder) ChainCheckBlockstore(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainCheckBlockstore", reflect.TypeOf((*MockFullNode)(nil).ChainCheckBlockstore), arg0)
+}
+
 // ChainDeleteObj mocks base method.
 func (m *MockFullNode) ChainDeleteObj(arg0 context.Context, arg1 cid.Cid) error {
 	m.ctrl.T.Helper()
@@ -192,6 +221,21 @@ func (m *MockFullNode) ChainGetMessage(arg0 context.Context, arg1 cid.Cid) (*typ
 func (mr *MockFullNodeMockRecorder) ChainGetMessage(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetMessage", reflect.TypeOf((*MockFullNode)(nil).ChainGetMessage), arg0, arg1)
+}
+
+// ChainGetMessagesInTipset mocks base method.
+func (m *MockFullNode) ChainGetMessagesInTipset(arg0 context.Context, arg1 types.TipSetKey) ([]api.Message, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainGetMessagesInTipset", arg0, arg1)
+	ret0, _ := ret[0].([]api.Message)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChainGetMessagesInTipset indicates an expected call of ChainGetMessagesInTipset.
+func (mr *MockFullNodeMockRecorder) ChainGetMessagesInTipset(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetMessagesInTipset", reflect.TypeOf((*MockFullNode)(nil).ChainGetMessagesInTipset), arg0, arg1)
 }
 
 // ChainGetNode mocks base method.

@@ -18,6 +18,8 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/mock"
 	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/stages"
 )
 
@@ -198,7 +200,7 @@ func (sim *Simulation) SetUpgradeHeight(nv network.Version, epoch abi.ChainEpoch
 	if err != nil {
 		return err
 	}
-	sm, err := stmgr.NewStateManagerWithUpgradeSchedule(sim.Node.Chainstore, newUpgradeSchedule)
+	sm, err := stmgr.NewStateManagerWithUpgradeSchedule(sim.Node.Chainstore, vm.Syscalls(mock.Verifier), newUpgradeSchedule)
 	if err != nil {
 		return err
 	}

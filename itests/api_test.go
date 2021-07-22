@@ -121,6 +121,7 @@ func (ts *apiSuite) testSearchMsg(t *testing.T) {
 
 	searchRes, err := full.StateSearchMsg(ctx, types.EmptyTSK, sm.Cid(), lapi.LookbackNoLimit, true)
 	require.NoError(t, err)
+	require.NotNil(t, searchRes)
 
 	require.Equalf(t, res.TipSet, searchRes.TipSet, "search ts: %s, different from wait ts: %s", searchRes.TipSet, res.TipSet)
 }
@@ -186,6 +187,7 @@ func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
 	ens.Miner(&newMiner, full,
 		kit.OwnerAddr(full.DefaultKey),
 		kit.ProofType(abi.RegisteredSealProof_StackedDrg2KiBV1), // we're using v0 actors with old proofs.
+		kit.WithAllSubsystems(),
 	).Start().InterconnectAll()
 
 	ta, err := newMiner.ActorAddress(ctx)

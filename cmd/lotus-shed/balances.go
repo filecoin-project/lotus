@@ -510,13 +510,13 @@ var chainBalanceStateCmd = &cli.Command{
 			return err
 		}
 
-		cs := store.NewChainStore(bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
+		cs := store.NewChainStore(bs, bs, mds, nil)
 		defer cs.Close() //nolint:errcheck
 
 		cst := cbor.NewCborStore(bs)
 		store := adt.WrapStore(ctx, cst)
 
-		sm := stmgr.NewStateManager(cs)
+		sm := stmgr.NewStateManager(cs, vm.Syscalls(ffiwrapper.ProofVerifier))
 
 		tree, err := state.LoadStateTree(cst, sroot)
 		if err != nil {
@@ -731,13 +731,13 @@ var chainPledgeCmd = &cli.Command{
 			return err
 		}
 
-		cs := store.NewChainStore(bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
+		cs := store.NewChainStore(bs, bs, mds, nil)
 		defer cs.Close() //nolint:errcheck
 
 		cst := cbor.NewCborStore(bs)
 		store := adt.WrapStore(ctx, cst)
 
-		sm := stmgr.NewStateManager(cs)
+		sm := stmgr.NewStateManager(cs, vm.Syscalls(ffiwrapper.ProofVerifier))
 
 		state, err := state.LoadStateTree(cst, sroot)
 		if err != nil {

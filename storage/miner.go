@@ -6,11 +6,9 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-bitfield"
-
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/libp2p/go-libp2p-core/host"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -52,7 +50,6 @@ var log = logging.Logger("storageminer")
 type Miner struct {
 	api     fullNodeFilteredAPI
 	feeCfg  config.MinerFeeConfig
-	h       host.Host
 	sealer  sectorstorage.SectorManager
 	ds      datastore.Batching
 	sc      sealing.SectorIDCounter
@@ -89,6 +86,7 @@ type fullNodeFilteredAPI interface {
 	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error)
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorLocation, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
+	StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tok types.TipSetKey) (types.BigInt, error)
 	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]api.Deadline, error)
 	StateMinerPartitions(context.Context, address.Address, uint64, types.TipSetKey) ([]api.Partition, error)
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
@@ -130,7 +128,6 @@ type fullNodeFilteredAPI interface {
 // NewMiner creates a new Miner object.
 func NewMiner(api fullNodeFilteredAPI,
 	maddr address.Address,
-	h host.Host,
 	ds datastore.Batching,
 	sealer sectorstorage.SectorManager,
 	sc sealing.SectorIDCounter,
@@ -143,7 +140,6 @@ func NewMiner(api fullNodeFilteredAPI,
 	m := &Miner{
 		api:     api,
 		feeCfg:  feeCfg,
-		h:       h,
 		sealer:  sealer,
 		ds:      ds,
 		sc:      sc,

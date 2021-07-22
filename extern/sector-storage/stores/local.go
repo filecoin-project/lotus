@@ -158,6 +158,8 @@ func (p *path) sectorPath(sid abi.SectorID, fileType storiface.SectorFileType) s
 	return filepath.Join(p.local, fileType.String(), storiface.SectorName(sid))
 }
 
+type URLs []string
+
 func NewLocal(ctx context.Context, ls LocalStorage, index SectorIndex, urls []string) (*Local, error) {
 	l := &Local{
 		localStorage: ls,

@@ -146,10 +146,14 @@ func GetRawAPI(ctx *cli.Context, t repo.RepoType, version string) (string, http.
 		return "", nil, xerrors.Errorf("could not get DialArgs: %w", err)
 	}
 
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintf(ctx.App.Writer, "using raw API %s endpoint: %s\n", version, addr)
+	}
+
 	return addr, ainfo.AuthHeader(), nil
 }
 
-func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
+func GetAPI(ctx *cli.Context) (api.CommonNet, jsonrpc.ClientCloser, error) {
 	ti, ok := ctx.App.Metadata["repoType"]
 	if !ok {
 		log.Errorf("unknown repo type, are you sure you want to use GetAPI?")
@@ -185,6 +189,10 @@ func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, err
 		return nil, nil, err
 	}
 
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using full node API v0 endpoint:", addr)
+	}
+
 	return client.NewFullNodeRPCV0(ctx.Context, addr, headers)
 }
 
@@ -196,6 +204,10 @@ func GetFullNodeAPIV1(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, e
 	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v1")
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using full node API v1 endpoint:", addr)
 	}
 
 	return client.NewFullNodeRPCV1(ctx.Context, addr, headers)
@@ -242,6 +254,10 @@ func GetStorageMinerAPI(ctx *cli.Context, opts ...GetStorageMinerOption) (api.St
 		addr = u.String()
 	}
 
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using miner API v0 endpoint:", addr)
+	}
+
 	return client.NewStorageMinerRPCV0(ctx.Context, addr, headers)
 }
 
@@ -249,6 +265,10 @@ func GetWorkerAPI(ctx *cli.Context) (api.Worker, jsonrpc.ClientCloser, error) {
 	addr, headers, err := GetRawAPI(ctx, repo.Worker, "v0")
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using worker API v0 endpoint:", addr)
 	}
 
 	return client.NewWorkerRPCV0(ctx.Context, addr, headers)
@@ -260,6 +280,10 @@ func GetGatewayAPI(ctx *cli.Context) (api.Gateway, jsonrpc.ClientCloser, error) 
 		return nil, nil, err
 	}
 
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using gateway API v1 endpoint:", addr)
+	}
+
 	return client.NewGatewayRPCV1(ctx.Context, addr, headers)
 }
 
@@ -267,6 +291,10 @@ func GetGatewayAPIV0(ctx *cli.Context) (v0api.Gateway, jsonrpc.ClientCloser, err
 	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v0")
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using gateway API v0 endpoint:", addr)
 	}
 
 	return client.NewGatewayRPCV0(ctx.Context, addr, headers)
