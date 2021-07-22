@@ -25,6 +25,7 @@ import (
 )
 
 func TestDealPublisher(t *testing.T) {
+	t.Skip("this test randomly fails in various subtests; see issue #6799")
 	testCases := []struct {
 		name                            string
 		publishPeriod                   time.Duration

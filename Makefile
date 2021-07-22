@@ -131,6 +131,9 @@ install-miner:
 install-worker:
 	install -C ./lotus-worker /usr/local/bin/lotus-worker
 
+install-app:
+	install -C ./$(APP) /usr/local/bin/$(APP)
+
 # TOOLS
 
 lotus-seed: $(BUILD_DEPS)
