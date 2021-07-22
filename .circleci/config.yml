@@ -774,6 +774,7 @@ jobs:
               docker push filecoin/lotus:$CIRCLE_TAG
               docker push filecoin/lotus-all-in-one:$CIRCLE_TAG
             fi
+
 workflows:
   version: 2.1
   ci:
