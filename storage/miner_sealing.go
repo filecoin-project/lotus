@@ -134,7 +134,7 @@ func (m *Miner) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnC
 		LastErr: info.LastErr,
 		Log:     log,
 		// on chain info
-		SealProof:          0,
+		SealProof:          info.SectorType,
 		Activation:         0,
 		Expiration:         0,
 		DealWeight:         big.Zero(),
