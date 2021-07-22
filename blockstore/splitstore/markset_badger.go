@@ -29,7 +29,7 @@ type BadgerMarkSet struct {
 
 var _ MarkSet = (*BadgerMarkSet)(nil)
 
-const badgerMarkSetBatchSize = 65536
+var badgerMarkSetBatchSize = 65536
 
 func NewBadgerMarkSetEnv(path string) (MarkSetEnv, error) {
 	msPath := filepath.Join(path, "markset.badger")
