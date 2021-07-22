@@ -8,6 +8,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v2/options"
 	"go.uber.org/zap"
 
 	cid "github.com/ipfs/go-cid"
@@ -57,6 +58,7 @@ func (e *BadgerMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) 
 
 	opts := badger.DefaultOptions(path)
 	opts.SyncWrites = false
+	opts.Compression = options.None
 	opts.Logger = &badgerLogger{
 		SugaredLogger: log.Desugar().WithOptions(zap.AddCallerSkip(1)).Sugar(),
 		skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
@@ -178,6 +180,6 @@ type badgerLogger struct {
 	skip2 *zap.SugaredLogger
 }
 
-func (b *badgerLogger) Warningf(format string, args ...interface{}) {
-	b.skip2.Warnf(format, args...)
-}
+func (b *badgerLogger) Warningf(format string, args ...interface{}) {}
+func (b *badgerLogger) Infof(format string, args ...interface{})    {}
+func (b *badgerLogger) Debugf(format string, args ...interface{})   {}
