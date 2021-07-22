@@ -2,6 +2,16 @@ package main
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path"
+
+	"github.com/filecoin-project/lotus/lib/backupds"
+
+	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/ipfs/go-datastore"
+	dsq "github.com/ipfs/go-datastore/query"
+	logging "github.com/ipfs/go-log/v2"
 
 	lcli "github.com/filecoin-project/lotus/cli"
 
@@ -18,6 +28,7 @@ var marketCmd = &cli.Command{
 	Flags: []cli.Flag{},
 	Subcommands: []*cli.Command{
 		marketDealFeesCmd,
+		marketExportDatastoreCmd,
 	},
 }
 
@@ -99,4 +110,129 @@ var marketDealFeesCmd = &cli.Command{
 
 		return xerrors.New("must provide either --provider or --dealId flag")
 	},
+}
+
+var marketExportDatastoreCmd = &cli.Command{
+	Name:        "export-datastore",
+	Description: "export datastore to a file",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "repo",
+			Usage: "path to the repo",
+		},
+		&cli.StringFlag{
+			Name:  "backup-dir",
+			Usage: "path to the backup directory",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		logging.SetLogLevel("badger", "ERROR") // nolint:errcheck
+
+		backupDir := cctx.String("backup-dir")
+		if backupDir == "" {
+			backupDir = os.TempDir()
+		}
+
+		r, err := repo.NewFS(cctx.String("repo"))
+		if err != nil {
+			return xerrors.Errorf("opening fs repo: %w", err)
+		}
+
+		exists, err := r.Exists()
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return xerrors.Errorf("lotus repo doesn't exist")
+		}
+
+		lr, err := r.Lock(repo.StorageMiner)
+		if err != nil {
+			return err
+		}
+		defer lr.Close() //nolint:errcheck
+
+		namespace := "metadata"
+		ds, err := lr.Datastore(cctx.Context, datastore.NewKey(namespace).String())
+		if err != nil {
+			return err
+		}
+
+		backupRepoDir, err := ioutil.TempDir("", "backup-repo-dir")
+		if err != nil {
+			return err
+		}
+
+		backupRepo, err := repo.NewFS(cctx.String(backupRepoDir))
+		if err != nil {
+			return xerrors.Errorf("opening backup repo: %w", err)
+		}
+
+		lockedBackupRepo, err := backupRepo.Lock(repo.StorageMiner)
+		if err != nil {
+			return err
+		}
+		defer lockedBackupRepo.Close() //nolint:errcheck
+
+		backupDs, err := lockedBackupRepo.Datastore(cctx.Context, datastore.NewKey(namespace).String())
+		if err != nil {
+			return err
+		}
+
+		prefixes := []string{
+			"/deals/provider",
+			"/retrievals/provider",
+			"/storagemarket",
+		}
+		for _, prefix := range prefixes {
+			err := exportPrefix(prefix, ds, backupDs)
+			if err != nil {
+				return err
+			}
+		}
+
+		bds, err := backupds.Wrap(backupDs, "")
+		if err != nil {
+			return xerrors.Errorf("opening backupds: %w", err)
+		}
+
+		fpath := path.Join(backupDir, "datastore.backup")
+		out, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			return xerrors.Errorf("open %s: %w", fpath, err)
+		}
+		if err := bds.Backup(out); err != nil {
+			if cerr := out.Close(); cerr != nil {
+				log.Errorw("error closing backup file while handling backup error", "closeErr", cerr, "backupErr", err)
+			}
+			return xerrors.Errorf("backup error: %w", err)
+		}
+		if err := out.Close(); err != nil {
+			return xerrors.Errorf("closing backup file: %w", err)
+		}
+
+		fmt.Println("Wrote backup file to " + fpath)
+
+		return nil
+	},
+}
+
+func exportPrefix(prefix string, ds datastore.Batching, backupDs datastore.Batching) error {
+	q, err := ds.Query(dsq.Query{
+		Prefix: prefix,
+	})
+	if err != nil {
+		return xerrors.Errorf("datastore query: %w", err)
+	}
+	defer q.Close() //nolint:errcheck
+
+	for res := range q.Next() {
+		fmt.Println("Exporting key " + res.Key)
+		err := backupDs.Put(datastore.NewKey(res.Key), res.Value)
+		if err != nil {
+			return xerrors.Errorf("putting %s to backup datastore: %w", res.Key, err)
+		}
+	}
+
+	return nil
 }
