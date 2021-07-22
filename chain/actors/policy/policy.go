@@ -301,10 +301,6 @@ func GetWinningPoStSectorSetLookback(nwVer network.Version) abi.ChainEpoch {
 	return ChainFinality
 }
 
-func GetMinSectorExpiration() abi.ChainEpoch {
-	return miner5.MinSectorExpiration
-}
-
 func GetMaxSectorExpirationExtension() abi.ChainEpoch {
 	return miner5.MaxSectorExpirationExtension
 }

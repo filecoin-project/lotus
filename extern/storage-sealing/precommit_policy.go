@@ -110,7 +110,7 @@ func (p *BasicPreCommitPolicy) getCCSectorLifetime() (abi.ChainEpoch, error) {
 		ccLifetimeEpochs = policy.GetMaxSectorExpirationExtension()
 	}
 
-	if minExpiration := policy.GetMinSectorExpiration(); ccLifetimeEpochs < minExpiration {
+	if minExpiration := abi.ChainEpoch(miner.MinSectorExpiration); ccLifetimeEpochs < minExpiration {
 		log.Warnf("value for CommittedCapacitySectorLiftime is too short, using default minimum (%d epochs)", minExpiration)
 		return minExpiration, nil
 	}
