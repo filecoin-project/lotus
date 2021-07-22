@@ -345,6 +345,30 @@ func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSet) error {
 		})
 }
 
+func (s *SplitStore) applyProtectors() error {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	count := 0
+	for _, protect := range s.protectors {
+		err := protect(func(c cid.Cid) error {
+			s.trackTxnRef(c)
+			count++
+			return nil
+		})
+
+		if err != nil {
+			return xerrors.Errorf("error applynig protector: %w", err)
+		}
+	}
+
+	if count > 0 {
+		log.Infof("protected %d references through %d protectors", count, len(s.protectors))
+	}
+
+	return nil
+}
+
 // --- Compaction ---
 // Compaction works transactionally with the following algorithm:
 // - We prepare a transaction, whereby all i/o referenced objects through the API are tracked.
@@ -397,6 +421,14 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	// we are ready for concurrent marking
 	s.beginTxnMarking(markSet)
+
+	// 0. track all protected references at beginning of compaction; anything added later should
+	//    be transactionally protected by the write
+	log.Info("protecting references with registered protectors")
+	err = s.applyProtectors()
+	if err != nil {
+		return err
+	}
 
 	// 1. mark reachable objects by walking the chain from the current epoch; we keep state roots
 	//   and messages until the boundary epoch.

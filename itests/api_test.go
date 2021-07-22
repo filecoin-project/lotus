@@ -121,6 +121,7 @@ func (ts *apiSuite) testSearchMsg(t *testing.T) {
 
 	searchRes, err := full.StateSearchMsg(ctx, types.EmptyTSK, sm.Cid(), lapi.LookbackNoLimit, true)
 	require.NoError(t, err)
+	require.NotNil(t, searchRes)
 
 	require.Equalf(t, res.TipSet, searchRes.TipSet, "search ts: %s, different from wait ts: %s", searchRes.TipSet, res.TipSet)
 }

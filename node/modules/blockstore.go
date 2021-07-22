@@ -96,6 +96,14 @@ func SplitBlockstore(cfg *config.Chainstore) func(lc fx.Lifecycle, r repo.Locked
 	}
 }
 
+func SplitBlockstoreGCReferenceProtector(_ fx.Lifecycle, s dtypes.SplitBlockstore) dtypes.GCReferenceProtector {
+	return s.(dtypes.GCReferenceProtector)
+}
+
+func NoopGCReferenceProtector(_ fx.Lifecycle) dtypes.GCReferenceProtector {
+	return dtypes.NoopGCReferenceProtector{}
+}
+
 func ExposedSplitBlockstore(_ fx.Lifecycle, s dtypes.SplitBlockstore) dtypes.ExposedBlockstore {
 	return s.(*splitstore.SplitStore).Expose()
 }
