@@ -34,7 +34,7 @@ type BadgerMarkSet struct {
 
 var _ MarkSet = (*BadgerMarkSet)(nil)
 
-var badgerMarkSetBatchSize = 65536
+var badgerMarkSetBatchSize = 16384
 
 func NewBadgerMarkSetEnv(path string) (MarkSetEnv, error) {
 	msPath := filepath.Join(path, "markset.badger")
@@ -113,13 +113,13 @@ func (s *BadgerMarkSet) Mark(c cid.Cid) error {
 
 	defer func() {
 		s.mx.Lock()
+		defer s.mx.Unlock()
 
 		delete(s.writing, seqno)
 		s.writers--
 		if s.writers == 0 {
 			s.cond.Broadcast()
 		}
-		s.mx.Unlock()
 	}()
 
 	empty := []byte{} // not nil
