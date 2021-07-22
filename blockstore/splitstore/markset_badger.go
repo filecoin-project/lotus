@@ -21,8 +21,10 @@ type BadgerMarkSetEnv struct {
 var _ MarkSetEnv = (*BadgerMarkSetEnv)(nil)
 
 type BadgerMarkSet struct {
-	mx   sync.RWMutex
-	pend map[string]struct{}
+	mx      sync.RWMutex
+	cond    sync.Cond
+	pend    map[string]struct{}
+	writers int
 
 	db   *badger.DB
 	path string
@@ -69,11 +71,14 @@ func (e *BadgerMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) 
 		return nil, xerrors.Errorf("error creating badger markset: %w", err)
 	}
 
-	return &BadgerMarkSet{
+	ms := &BadgerMarkSet{
 		pend: make(map[string]struct{}),
 		db:   db,
 		path: path,
-	}, nil
+	}
+	ms.cond.L = &ms.mx
+
+	return ms, nil
 }
 
 func (e *BadgerMarkSetEnv) Close() error {
@@ -97,12 +102,21 @@ func (s *BadgerMarkSet) Mark(c cid.Cid) error {
 
 	pend := s.pend
 	s.pend = make(map[string]struct{})
-	db := s.db
+	s.writers++
 	s.mx.Unlock()
+
+	defer func() {
+		s.mx.Lock()
+		s.writers--
+		if s.writers == 0 {
+			s.cond.Broadcast()
+		}
+		s.mx.Unlock()
+	}()
 
 	empty := []byte{} // not nil
 
-	batch := db.NewWriteBatch()
+	batch := s.db.NewWriteBatch()
 	defer batch.Cancel()
 
 	for k := range pend {
@@ -156,6 +170,10 @@ func (s *BadgerMarkSet) Close() error {
 
 	if s.pend == nil {
 		return nil
+	}
+
+	for s.writers > 0 {
+		s.cond.Wait()
 	}
 
 	s.pend = nil
