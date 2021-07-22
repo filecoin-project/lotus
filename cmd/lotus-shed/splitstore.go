@@ -24,7 +24,7 @@ import (
 
 var splitstoreCmd = &cli.Command{
 	Name:        "splitstore",
-	Description: "splitstore utiities",
+	Description: "splitstore utilities",
 	Subcommands: []*cli.Command{
 		splitstoreRollbackCmd,
 	},
