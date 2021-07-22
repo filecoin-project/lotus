@@ -282,7 +282,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131328,
+  "APIVersion": 131329,
   "BlockDelay": 42
 }
 ```
@@ -4855,7 +4855,7 @@ Inputs:
 ]
 ```
 
-Response: `13`
+Response: `1300`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
