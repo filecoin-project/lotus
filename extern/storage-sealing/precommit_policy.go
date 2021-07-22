@@ -40,17 +40,19 @@ type BasicPreCommitPolicy struct {
 	getSealingConfig GetSealingConfigFunc
 
 	provingBoundary abi.ChainEpoch
+	provingBuffer   abi.ChainEpoch
 }
 
 // NewBasicPreCommitPolicy produces a BasicPreCommitPolicy.
 //
 // The provided duration is used as the default sector expiry when the sector
 // contains no deals. The proving boundary is used to adjust/align the sector's expiration.
-func NewBasicPreCommitPolicy(api Chain, cfgGetter GetSealingConfigFunc, provingBoundary abi.ChainEpoch) BasicPreCommitPolicy {
+func NewBasicPreCommitPolicy(api Chain, cfgGetter GetSealingConfigFunc, provingBoundary abi.ChainEpoch, provingBuffer abi.ChainEpoch) BasicPreCommitPolicy {
 	return BasicPreCommitPolicy{
 		api:              api,
 		getSealingConfig: cfgGetter,
 		provingBoundary:  provingBoundary,
+		provingBuffer:    provingBuffer,
 	}
 }
 
@@ -102,16 +104,20 @@ func (p *BasicPreCommitPolicy) getCCSectorLifetime() (abi.ChainEpoch, error) {
 		return 0, xerrors.Errorf("sealing config load error: %w", err)
 	}
 
-	sectorExpiration := abi.ChainEpoch(c.CommittedCapacitySectorLifetime.Truncate(builtin.EpochDurationSeconds) / builtin.EpochDurationSeconds)
+	var ccLifetimeEpochs = abi.ChainEpoch(uint64(c.CommittedCapacitySectorLifetime.Truncate(builtin.EpochDurationSeconds).Seconds()) / builtin.EpochDurationSeconds)
+	// if zero value in config, assume maximum sector extension
+	if ccLifetimeEpochs == 0 {
+		ccLifetimeEpochs = policy.GetMaxSectorExpirationExtension()
+	}
 
-	if minExpiration := policy.GetMinSectorExpiration(); sectorExpiration < minExpiration {
+	if minExpiration := policy.GetMinSectorExpiration(); ccLifetimeEpochs < minExpiration {
 		log.Warnf("value for CommittedCapacitySectorLiftime is too short, using default minimum (%d epochs)", minExpiration)
 		return minExpiration, nil
 	}
-	if maxExpiration := policy.GetMaxSectorExpirationExtension(); sectorExpiration > maxExpiration {
+	if maxExpiration := policy.GetMaxSectorExpirationExtension(); ccLifetimeEpochs > maxExpiration {
 		log.Warnf("value for CommittedCapacitySectorLiftime is too long, using default maximum (%d epochs)", maxExpiration)
 		return maxExpiration, nil
 	}
 
-	return sectorExpiration, nil
+	return (ccLifetimeEpochs - p.provingBuffer), nil
 }

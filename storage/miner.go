@@ -180,9 +180,10 @@ func (m *Miner) Run(ctx context.Context) error {
 		// Instantiate a precommit policy.
 		cfg             = sealing.GetSealingConfigFunc(m.getSealConfig)
 		provingBoundary = md.PeriodStart % md.WPoStProvingPeriod
+		provingBuffer   = md.WPoStProvingPeriod * 2
 
 		// TODO: Maybe we update this policy after actor upgrades?
-		pcp = sealing.NewBasicPreCommitPolicy(adaptedAPI, cfg, provingBoundary)
+		pcp = sealing.NewBasicPreCommitPolicy(adaptedAPI, cfg, provingBoundary, provingBuffer)
 
 		// address selector.
 		as = func(ctx context.Context, mi miner.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
