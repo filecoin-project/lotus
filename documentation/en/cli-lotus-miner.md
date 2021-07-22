@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.11.0-rc2
+   1.11.0
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -42,7 +42,7 @@ COMMANDS:
 GLOBAL OPTIONS:
    --actor value, -a value                  specify other actor to check state for (read only)
    --color                                  (default: false)
-   --miner-repo value, --storagerepo value  Specify miner repo path. flag(storagerepo) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
+   --miner-repo value, --storagerepo value  Specify miner repo path. flag(storagerepo) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON (default: "/Users/jennijuju/.lotusminer") [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
    --help, -h                               show help (default: false)
    --version, -v                            print the version (default: false)
 ```
