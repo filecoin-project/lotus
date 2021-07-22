@@ -71,6 +71,13 @@ type Config struct {
 	// which skips moving (as it is a noop, but still takes time to read all the cold objects)
 	// and directly purges cold blocks.
 	DiscardColdBlocks bool
+
+	// HotstoreMessageRetention indicates the hotstore retention policy for messages.
+	// It has the following semantics:
+	// - a value of 0 will only retain messages within the compaction boundary (4 finalities)
+	// - a positive integer indicates the number of finalities, outside the compaction boundary,
+	//   for which messages will be retained in the hotstore.
+	HotStoreMessageRetention uint64
 }
 
 // ChainAccessor allows the Splitstore to access the chain. It will most likely
@@ -128,6 +135,9 @@ type SplitStore struct {
 	txnRefsMx       sync.Mutex
 	txnRefs         map[cid.Cid]struct{}
 	txnMissing      map[cid.Cid]struct{}
+
+	// registered protectors
+	protectors []func(func(cid.Cid) error) error
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
@@ -518,6 +528,13 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 	chain.SubscribeHeadChanges(s.HeadChange)
 
 	return nil
+}
+
+func (s *SplitStore) AddProtector(protector func(func(cid.Cid) error) error) {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	s.protectors = append(s.protectors, protector)
 }
 
 func (s *SplitStore) Close() error {

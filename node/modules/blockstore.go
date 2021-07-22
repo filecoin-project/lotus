@@ -78,8 +78,9 @@ func SplitBlockstore(cfg *config.Chainstore) func(lc fx.Lifecycle, r repo.Locked
 		}
 
 		cfg := &splitstore.Config{
-			MarkSetType:       cfg.Splitstore.MarkSetType,
-			DiscardColdBlocks: cfg.Splitstore.ColdStoreType == "discard",
+			MarkSetType:              cfg.Splitstore.MarkSetType,
+			DiscardColdBlocks:        cfg.Splitstore.ColdStoreType == "discard",
+			HotStoreMessageRetention: cfg.Splitstore.HotStoreMessageRetention,
 		}
 		ss, err := splitstore.Open(path, ds, hot, cold, cfg)
 		if err != nil {
@@ -93,6 +94,18 @@ func SplitBlockstore(cfg *config.Chainstore) func(lc fx.Lifecycle, r repo.Locked
 
 		return ss, err
 	}
+}
+
+func SplitBlockstoreGCReferenceProtector(_ fx.Lifecycle, s dtypes.SplitBlockstore) dtypes.GCReferenceProtector {
+	return s.(dtypes.GCReferenceProtector)
+}
+
+func NoopGCReferenceProtector(_ fx.Lifecycle) dtypes.GCReferenceProtector {
+	return dtypes.NoopGCReferenceProtector{}
+}
+
+func ExposedSplitBlockstore(_ fx.Lifecycle, s dtypes.SplitBlockstore) dtypes.ExposedBlockstore {
+	return s.(*splitstore.SplitStore).Expose()
 }
 
 func StateFlatBlockstore(_ fx.Lifecycle, _ helpers.MetricsCtx, bs dtypes.UniversalBlockstore) (dtypes.BasicStateBlockstore, error) {
