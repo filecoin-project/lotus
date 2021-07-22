@@ -97,6 +97,8 @@ type FullNodeStruct struct {
 
 		ClientGetDealUpdates func(p0 context.Context) (<-chan api.DealInfo, error) `perm:"write"`
 
+		ClientGetRetrievalUpdates func(p0 context.Context) (<-chan api.RetrievalInfo, error) `perm:"write"`
+
 		ClientHasLocal func(p0 context.Context, p1 cid.Cid) (bool, error) `perm:"write"`
 
 		ClientImport func(p0 context.Context, p1 api.FileRef) (*api.ImportRes, error) `perm:"admin"`
@@ -106,6 +108,8 @@ type FullNodeStruct struct {
 		ClientListDeals func(p0 context.Context) ([]api.DealInfo, error) `perm:"write"`
 
 		ClientListImports func(p0 context.Context) ([]api.Import, error) `perm:"write"`
+
+		ClientListRetrievals func(p0 context.Context) ([]api.RetrievalInfo, error) `perm:"write"`
 
 		ClientMinerQueryOffer func(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 *cid.Cid) (api.QueryOffer, error) `perm:"read"`
 
@@ -122,6 +126,8 @@ type FullNodeStruct struct {
 		ClientRetrieveWithEvents func(p0 context.Context, p1 api.RetrievalOrder, p2 *api.FileRef) (<-chan marketevents.RetrievalEvent, error) `perm:"admin"`
 
 		ClientStartDeal func(p0 context.Context, p1 *api.StartDealParams) (*cid.Cid, error) `perm:"admin"`
+
+		ClientStatelessDeal func(p0 context.Context, p1 *api.StartDealParams) (*cid.Cid, error) `perm:"write"`
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
@@ -443,6 +449,8 @@ type GatewayStruct struct {
 
 		StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) ``
 
+		Version func(p0 context.Context) (api.APIVersion, error) ``
+
 		WalletBalance func(p0 context.Context, p1 address.Address) (types.BigInt, error) ``
 	}
 }
@@ -714,6 +722,14 @@ func (s *FullNodeStub) ClientGetDealUpdates(p0 context.Context) (<-chan api.Deal
 	return nil, xerrors.New("method not supported")
 }
 
+func (s *FullNodeStruct) ClientGetRetrievalUpdates(p0 context.Context) (<-chan api.RetrievalInfo, error) {
+	return s.Internal.ClientGetRetrievalUpdates(p0)
+}
+
+func (s *FullNodeStub) ClientGetRetrievalUpdates(p0 context.Context) (<-chan api.RetrievalInfo, error) {
+	return nil, xerrors.New("method not supported")
+}
+
 func (s *FullNodeStruct) ClientHasLocal(p0 context.Context, p1 cid.Cid) (bool, error) {
 	return s.Internal.ClientHasLocal(p0, p1)
 }
@@ -752,6 +768,14 @@ func (s *FullNodeStruct) ClientListImports(p0 context.Context) ([]api.Import, er
 
 func (s *FullNodeStub) ClientListImports(p0 context.Context) ([]api.Import, error) {
 	return *new([]api.Import), xerrors.New("method not supported")
+}
+
+func (s *FullNodeStruct) ClientListRetrievals(p0 context.Context) ([]api.RetrievalInfo, error) {
+	return s.Internal.ClientListRetrievals(p0)
+}
+
+func (s *FullNodeStub) ClientListRetrievals(p0 context.Context) ([]api.RetrievalInfo, error) {
+	return *new([]api.RetrievalInfo), xerrors.New("method not supported")
 }
 
 func (s *FullNodeStruct) ClientMinerQueryOffer(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 *cid.Cid) (api.QueryOffer, error) {
@@ -815,6 +839,14 @@ func (s *FullNodeStruct) ClientStartDeal(p0 context.Context, p1 *api.StartDealPa
 }
 
 func (s *FullNodeStub) ClientStartDeal(p0 context.Context, p1 *api.StartDealParams) (*cid.Cid, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *FullNodeStruct) ClientStatelessDeal(p0 context.Context, p1 *api.StartDealParams) (*cid.Cid, error) {
+	return s.Internal.ClientStatelessDeal(p0, p1)
+}
+
+func (s *FullNodeStub) ClientStatelessDeal(p0 context.Context, p1 *api.StartDealParams) (*cid.Cid, error) {
 	return nil, xerrors.New("method not supported")
 }
 
@@ -2064,6 +2096,14 @@ func (s *GatewayStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) 
 
 func (s *GatewayStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64) (*api.MsgLookup, error) {
 	return nil, xerrors.New("method not supported")
+}
+
+func (s *GatewayStruct) Version(p0 context.Context) (api.APIVersion, error) {
+	return s.Internal.Version(p0)
+}
+
+func (s *GatewayStub) Version(p0 context.Context) (api.APIVersion, error) {
+	return *new(api.APIVersion), xerrors.New("method not supported")
 }
 
 func (s *GatewayStruct) WalletBalance(p0 context.Context, p1 address.Address) (types.BigInt, error) {

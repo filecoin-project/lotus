@@ -238,7 +238,7 @@ var LibP2P = Options(
 	Override(ConnGaterKey, lp2p.ConnGaterOption),
 )
 
-func isType(t repo.RepoType) func(s *Settings) bool {
+func IsType(t repo.RepoType) func(s *Settings) bool {
 	return func(s *Settings) bool { return s.nodeType == t }
 }
 
@@ -299,7 +299,7 @@ var ChainNode = Options(
 	Override(new(*dtypes.MpoolLocker), new(dtypes.MpoolLocker)),
 
 	// Shared graphsync (markets, serving chain)
-	Override(new(dtypes.Graphsync), modules.Graphsync(config.DefaultFullNode().Client.SimultaneousTransfers)),
+	Override(new(dtypes.Graphsync), modules.Graphsync(config.DefaultSimultaneousTransfers)),
 
 	// Service: Wallet
 	Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
@@ -333,6 +333,7 @@ var ChainNode = Options(
 
 	// Lite node API
 	ApplyIf(isLiteNode,
+		Override(new(messagepool.Provider), messagepool.NewProviderLite),
 		Override(new(messagesigner.MpoolNonceAPI), From(new(modules.MpoolNonceAPI))),
 		Override(new(full.ChainModuleAPI), From(new(api.Gateway))),
 		Override(new(full.GasModuleAPI), From(new(api.Gateway))),
@@ -343,6 +344,7 @@ var ChainNode = Options(
 
 	// Full node API / service startup
 	ApplyIf(isFullNode,
+		Override(new(messagepool.Provider), messagepool.NewProvider),
 		Override(new(messagesigner.MpoolNonceAPI), From(new(*messagepool.MessagePool))),
 		Override(new(full.ChainModuleAPI), From(new(full.ChainModule))),
 		Override(new(full.GasModuleAPI), From(new(full.GasModule))),
@@ -373,9 +375,12 @@ var MinerNode = Options(
 	Override(new(*stores.Index), stores.NewIndex),
 	Override(new(stores.SectorIndex), From(new(*stores.Index))),
 	Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
+	Override(new(*stores.Local), modules.LocalStorage),
+	Override(new(*stores.Remote), modules.RemoteStorage),
 	Override(new(*sectorstorage.Manager), modules.SectorStorage),
 	Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
 	Override(new(storiface.WorkerReturn), From(new(sectorstorage.SectorManager))),
+	Override(new(sectorstorage.Unsealer), From(new(*sectorstorage.Manager))),
 
 	// Sector storage: Proofs
 	Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
@@ -398,13 +403,22 @@ var MinerNode = Options(
 	Override(new(dtypes.StagingMultiDstore), modules.StagingMultiDatastore),
 	Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
 	Override(new(dtypes.StagingDAG), modules.StagingDAG),
-	Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync),
+	Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(config.DefaultSimultaneousTransfers)),
 	Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
 	Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 
 	// Markets (retrieval)
+	Override(new(sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),
+	Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(config.DealmakingConfig{
+		RetrievalPricing: &config.RetrievalPricing{
+			Strategy: config.RetrievalPricingDefaultMode,
+			Default:  &config.RetrievalPricingDefault{},
+		},
+	})),
+	Override(new(sectorstorage.PieceProvider), sectorstorage.NewPieceProvider),
 	Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
 	Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(nil)),
+
 	Override(HandleRetrievalKey, modules.HandleRetrieval),
 
 	// Markets (storage)
@@ -454,7 +468,7 @@ func Online() Option {
 		LibP2P,
 
 		ApplyIf(isFullOrLiteNode, ChainNode),
-		ApplyIf(isType(repo.StorageMiner), MinerNode),
+		ApplyIf(IsType(repo.StorageMiner), MinerNode),
 	)
 }
 
@@ -560,6 +574,19 @@ func ConfigStorageMiner(c interface{}) Option {
 		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
 	}
 
+	pricingConfig := cfg.Dealmaking.RetrievalPricing
+	if pricingConfig.Strategy == config.RetrievalPricingExternalMode {
+		if pricingConfig.External == nil {
+			return Error(xerrors.New("retrieval pricing policy has been to set to external but external policy config is nil"))
+		}
+
+		if pricingConfig.External.Path == "" {
+			return Error(xerrors.New("retrieval pricing policy has been to set to external but external script path is empty"))
+		}
+	} else if pricingConfig.Strategy != config.RetrievalPricingDefaultMode {
+		return Error(xerrors.New("retrieval pricing policy must be either default or external"))
+	}
+
 	return Options(
 		ConfigCommon(&cfg.Common),
 
@@ -571,11 +598,15 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(dealfilter.CliRetrievalDealFilter(cfg.Dealmaking.RetrievalFilter))),
 		),
 
+		Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
+
 		Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(&cfg.Fees, storageadapter.PublishMsgConfig{
 			Period:         time.Duration(cfg.Dealmaking.PublishMsgPeriod),
 			MaxDealsPerMsg: cfg.Dealmaking.MaxDealsPerPublishMsg,
 		})),
 		Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees, &cfg.Dealmaking)),
+
+		Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(cfg.Dealmaking.SimultaneousTransfers)),
 
 		Override(new(sectorstorage.SealerConfig), cfg.Storage),
 		Override(new(*storage.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
@@ -649,8 +680,8 @@ func Repo(r repo.Repo) Option {
 
 			Override(new(*dtypes.APIAlg), modules.APISecret),
 
-			ApplyIf(isType(repo.FullNode), ConfigFullNode(c)),
-			ApplyIf(isType(repo.StorageMiner), ConfigStorageMiner(c)),
+			ApplyIf(IsType(repo.FullNode), ConfigFullNode(c)),
+			ApplyIf(IsType(repo.StorageMiner), ConfigStorageMiner(c)),
 		)(settings)
 	}
 }

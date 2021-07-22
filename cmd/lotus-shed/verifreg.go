@@ -67,11 +67,13 @@ var verifRegAddVerifierCmd = &cli.Command{
 			return err
 		}
 
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		srv, err := lcli.GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
 		ctx := lcli.ReqContext(cctx)
 
 		vrk, err := api.StateVerifiedRegistryRootKey(ctx, types.EmptyTSK)
@@ -79,14 +81,21 @@ var verifRegAddVerifierCmd = &cli.Command{
 			return err
 		}
 
-		smsg, err := api.MsigPropose(ctx, vrk, verifreg.Address, big.Zero(), sender, uint64(verifreg.Methods.AddVerifier), params)
+		proto, err := api.MsigPropose(ctx, vrk, verifreg.Address, big.Zero(), sender, uint64(verifreg.Methods.AddVerifier), params)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("message sent, now waiting on cid: %s\n", smsg)
+		sm, _, err := srv.PublishMessage(ctx, proto, false)
+		if err != nil {
+			return err
+		}
 
-		mwait, err := api.StateWaitMsg(ctx, smsg, build.MessageConfidence)
+		msgCid := sm.Cid()
+
+		fmt.Printf("message sent, now waiting on cid: %s\n", msgCid)
+
+		mwait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}

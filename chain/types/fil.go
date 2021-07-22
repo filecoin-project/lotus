@@ -51,6 +51,15 @@ func (f FIL) Short() string {
 	return strings.TrimRight(strings.TrimRight(r.FloatString(3), "0"), ".") + " " + prefix + "FIL"
 }
 
+func (f FIL) Nano() string {
+	r := new(big.Rat).SetFrac(f.Int, big.NewInt(int64(1e9)))
+	if r.Sign() == 0 {
+		return "0"
+	}
+
+	return strings.TrimRight(strings.TrimRight(r.FloatString(9), "0"), ".") + " nFIL"
+}
+
 func (f FIL) Format(s fmt.State, ch rune) {
 	switch ch {
 	case 's', 'v':

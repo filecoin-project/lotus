@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.11.0-dev
+   1.11.0
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -42,7 +42,7 @@ COMMANDS:
 GLOBAL OPTIONS:
    --actor value, -a value                  specify other actor to check state for (read only)
    --color                                  (default: false)
-   --miner-repo value, --storagerepo value  Specify miner repo path. flag(storagerepo) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
+   --miner-repo value, --storagerepo value  Specify miner repo path. flag(storagerepo) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON (default: "/Users/jennijuju/.lotusminer") [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
    --help, -h                               show help (default: false)
    --version, -v                            print the version (default: false)
 ```
@@ -745,7 +745,7 @@ COMMANDS:
    selection  Configure acceptance criteria for retrieval deal proposals
    list       List all active retrieval deals for this miner
    set-ask    Configure the provider's retrieval ask
-   get-ask    Get the provider's current retrieval ask
+   get-ask    Get the provider's current retrieval ask configured by the provider in the ask-store using the set-ask CLI command
    help, h    Shows a list of commands or help for one command
 
 OPTIONS:
@@ -848,7 +848,7 @@ OPTIONS:
 ### lotus-miner retrieval-deals get-ask
 ```
 NAME:
-   lotus-miner retrieval-deals get-ask - Get the provider's current retrieval ask
+   lotus-miner retrieval-deals get-ask - Get the provider's current retrieval ask configured by the provider in the ask-store using the set-ask CLI command
 
 USAGE:
    lotus-miner retrieval-deals get-ask [command options] [arguments...]
@@ -1533,9 +1533,9 @@ USAGE:
    lotus-miner sectors batching command [command options] [arguments...]
 
 COMMANDS:
-   pending-commit     list sectors waiting in commit batch queue
-   pending-precommit  list sectors waiting in precommit batch queue
-   help, h            Shows a list of commands or help for one command
+   commit     list sectors waiting in commit batch queue
+   precommit  list sectors waiting in precommit batch queue
+   help, h    Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h     show help (default: false)
@@ -1543,13 +1543,13 @@ OPTIONS:
    
 ```
 
-#### lotus-miner sectors batching pending-commit
+#### lotus-miner sectors batching commit
 ```
 NAME:
-   lotus-miner sectors batching pending-commit - list sectors waiting in commit batch queue
+   lotus-miner sectors batching commit - list sectors waiting in commit batch queue
 
 USAGE:
-   lotus-miner sectors batching pending-commit [command options] [arguments...]
+   lotus-miner sectors batching commit [command options] [arguments...]
 
 OPTIONS:
    --publish-now  send a batch now (default: false)
@@ -1557,13 +1557,13 @@ OPTIONS:
    
 ```
 
-#### lotus-miner sectors batching pending-precommit
+#### lotus-miner sectors batching precommit
 ```
 NAME:
-   lotus-miner sectors batching pending-precommit - list sectors waiting in precommit batch queue
+   lotus-miner sectors batching precommit - list sectors waiting in precommit batch queue
 
 USAGE:
-   lotus-miner sectors batching pending-precommit [command options] [arguments...]
+   lotus-miner sectors batching precommit [command options] [arguments...]
 
 OPTIONS:
    --publish-now  send a batch now (default: false)

@@ -81,13 +81,13 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			log.Debug("about to fetch messages for block from pubsub")
 			bmsgs, err := FetchMessagesByCids(ctx, ses, blk.BlsMessages)
 			if err != nil {
-				log.Errorf("failed to fetch all bls messages for block received over pubusb: %s; source: %s", err, src)
+				log.Errorf("failed to fetch all bls messages for block received over pubsub: %s; source: %s", err, src)
 				return
 			}
 
 			smsgs, err := FetchSignedMessagesByCids(ctx, ses, blk.SecpkMessages)
 			if err != nil {
-				log.Errorf("failed to fetch all secpk messages for block received over pubusb: %s; source: %s", err, src)
+				log.Errorf("failed to fetch all secpk messages for block received over pubsub: %s; source: %s", err, src)
 				return
 			}
 

@@ -4,6 +4,7 @@
 // +build !calibnet
 // +build !nerpanet
 // +build !butterflynet
+// +build !interopnet
 
 package build
 
@@ -13,7 +14,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
 
@@ -66,8 +66,6 @@ const UpgradeTurboHeight = 712320
 var UpgradeHyperdriveHeight = abi.ChainEpoch(892800)
 
 func init() {
-	policy.SetConsensusMinerMinPower(abi.NewStoragePower(10 << 40))
-
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
 		SetAddressNetwork(address.Mainnet)
 	}

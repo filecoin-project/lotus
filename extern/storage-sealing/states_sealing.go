@@ -101,8 +101,8 @@ func (m *Sealing) padSector(ctx context.Context, sectorID storage.SectorRef, exi
 	return out, nil
 }
 
-func checkTicketExpired(sector SectorInfo, epoch abi.ChainEpoch) bool {
-	return epoch-sector.TicketEpoch > MaxTicketAge // TODO: allow configuring expected seal durations
+func checkTicketExpired(ticket, head abi.ChainEpoch) bool {
+	return head-ticket > MaxTicketAge // TODO: allow configuring expected seal durations
 }
 
 func checkProveCommitExpired(preCommitEpoch, msd abi.ChainEpoch, currEpoch abi.ChainEpoch) bool {
@@ -206,7 +206,7 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 		return nil
 	}
 
-	if checkTicketExpired(sector, height) {
+	if checkTicketExpired(sector.TicketEpoch, height) {
 		pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, tok)
 		if err != nil {
 			log.Errorf("handlePreCommit1: StateSectorPreCommitInfo: api error, not proceeding: %+v", err)
@@ -313,7 +313,7 @@ func (m *Sealing) preCommitParams(ctx statemachine.Context, sector SectorInfo) (
 
 	msd := policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), sector.SectorType)
 
-	if minExpiration := height + msd + miner.MinSectorExpiration + 10; expiration < minExpiration {
+	if minExpiration := sector.TicketEpoch + policy.MaxPreCommitRandomnessLookback + msd + miner.MinSectorExpiration; expiration < minExpiration {
 		expiration = minExpiration
 	}
 	// TODO: enforce a reasonable _maximum_ sector lifetime?
@@ -652,15 +652,15 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 	}
 
 	res, err := m.commiter.AddCommit(ctx.Context(), sector, AggregateInput{
-		info: proof.AggregateSealVerifyInfo{
+		Info: proof.AggregateSealVerifyInfo{
 			Number:                sector.SectorNumber,
 			Randomness:            sector.TicketValue,
 			InteractiveRandomness: sector.SeedValue,
 			SealedCID:             *sector.CommR,
 			UnsealedCID:           *sector.CommD,
 		},
-		proof: sector.Proof, // todo: this correct??
-		spt:   sector.SectorType,
+		Proof: sector.Proof, // todo: this correct??
+		Spt:   sector.SectorType,
 	})
 	if err != nil {
 		return ctx.Send(SectorRetrySubmitCommit{})
