@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	api "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
@@ -25,21 +26,18 @@ type fakeChain struct {
 	h abi.ChainEpoch
 }
 
-func fakeConfigGetter(stub interface{}, t *testing.T) sealing.GetSealingConfigFunc {
+type fakeConfigStub struct {
+	CCSectorLifetime time.Duration
+}
+
+func fakeConfigGetter(stub *fakeConfigStub) sealing.GetSealingConfigFunc {
 	return func() (sealiface.Config, error) {
 		if stub == nil {
 			return sealiface.Config{}, nil
 		}
 
-		castStub, ok := stub.(struct {
-			CCSectorLifetime time.Duration
-		})
-		if !ok {
-			t.Fatal("failed to cast fakeConfig")
-		}
-
 		return sealiface.Config{
-			CommittedCapacitySectorLifetime: castStub.CCSectorLifetime,
+			CommittedCapacitySectorLifetime: stub.CCSectorLifetime,
 		}, nil
 	}
 }
@@ -60,7 +58,7 @@ func fakePieceCid(t *testing.T) cid.Cid {
 }
 
 func TestBasicPolicyEmptySector(t *testing.T) {
-	cfg := fakeConfigGetter(nil, t)
+	cfg := fakeConfigGetter(nil)
 	h := abi.ChainEpoch(55)
 	pBoundary := abi.ChainEpoch(0)
 	pBuffer := abi.ChainEpoch(2)
@@ -76,8 +74,28 @@ func TestBasicPolicyEmptySector(t *testing.T) {
 	assert.Equal(t, int(expected), int(exp))
 }
 
+func TestCustomCCSectorConfig(t *testing.T) {
+	customLifetime := 200 * 24 * time.Hour
+	customLifetimeEpochs := abi.ChainEpoch(int64(customLifetime.Truncate(builtin.EpochDurationSeconds).Seconds()) / builtin.EpochDurationSeconds)
+	cfgStub := fakeConfigStub{CCSectorLifetime: customLifetime}
+	cfg := fakeConfigGetter(&cfgStub)
+	h := abi.ChainEpoch(55)
+	pBoundary := abi.ChainEpoch(0)
+	pBuffer := abi.ChainEpoch(2)
+	pcp := sealing.NewBasicPreCommitPolicy(&fakeChain{h: h}, cfg, pBoundary, pBuffer)
+	exp, err := pcp.Expiration(context.Background())
+
+	require.NoError(t, err)
+
+	// as set when there are no deal pieces
+	expected := h + customLifetimeEpochs - (pBuffer * 2)
+	// as set just before returning within Expiration()
+	expected += miner.WPoStProvingPeriod - (expected % miner.WPoStProvingPeriod) + pBoundary - 1
+	assert.Equal(t, int(expected), int(exp))
+}
+
 func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
-	cfg := fakeConfigGetter(nil, t)
+	cfg := fakeConfigGetter(nil)
 	pPeriod := abi.ChainEpoch(11)
 	policy := sealing.NewBasicPreCommitPolicy(&fakeChain{
 		h: abi.ChainEpoch(55),
@@ -120,7 +138,7 @@ func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
 }
 
 func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
-	cfg := fakeConfigGetter(nil, t)
+	cfg := fakeConfigGetter(nil)
 	policy := sealing.NewBasicPreCommitPolicy(&fakeChain{
 		h: abi.ChainEpoch(55),
 	}, cfg, 0, 0)
@@ -148,7 +166,7 @@ func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
 }
 
 func TestMissingDealIsIgnored(t *testing.T) {
-	cfg := fakeConfigGetter(nil, t)
+	cfg := fakeConfigGetter(nil)
 	policy := sealing.NewBasicPreCommitPolicy(&fakeChain{
 		h: abi.ChainEpoch(55),
 	}, cfg, 11, 0)
