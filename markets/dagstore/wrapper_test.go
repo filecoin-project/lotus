@@ -103,21 +103,6 @@ func TestWrapperBackground(t *testing.T) {
 	case <-mock.gc:
 	}
 
-	// Expect that when a result is sent on the failure channel, the wrapper
-	// will attempt to recover the shard
-	shardKey := shard.KeyFromString("key")
-	w.failureCh <- dagstore.ShardResult{
-		Key: shardKey,
-	}
-	tctx, cancel2 := context.WithTimeout(ctx, time.Second)
-	defer cancel2()
-	select {
-	case <-tctx.Done():
-		require.Fail(t, "failed to call recover")
-	case k := <-mock.recover:
-		require.Equal(t, shardKey, k)
-	}
-
 	// Expect that when the wrapper is closed it will call close on the
 	// DAG store
 	err = w.Close()

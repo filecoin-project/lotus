@@ -20,6 +20,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 )
 
+const maxRecoverAttempts = 1
+
 var log = logging.Logger("dagstore-wrapper")
 
 // MarketDAGStoreConfig is the config the market needs to then construct a DAG Store.
@@ -81,6 +83,7 @@ func NewDagStoreWrapper(cfg MarketDAGStoreConfig, mountApi LotusAccessor) (*Wrap
 		TraceCh:            traceCh,
 		MaxConcurrentFetch: cfg.MaxConcurrentFetch,
 		MaxConcurrentIndex: cfg.MaxConcurrentIndex,
+		RecoverStrategy:    dagstore.RecoverLazy,
 	}
 	dagStore, err := dagstore.NewDAGStore(dcfg)
 	if err != nil {
@@ -99,26 +102,26 @@ func NewDagStoreWrapper(cfg MarketDAGStoreConfig, mountApi LotusAccessor) (*Wrap
 func (ds *Wrapper) Start(ctx context.Context) {
 	ds.ctx, ds.cancel = context.WithCancel(ctx)
 
+	// Run a go-routine to do DagStore GC.
 	ds.backgroundWg.Add(1)
+	go ds.dagStoreGCLoop()
 
-	// Run a go-routine to handle failures, traces and GC
-	go ds.background()
+	// run a go-routine to read the trace for debugging.
+	ds.backgroundWg.Add(1)
+	go ds.traceLoop()
+
+	// Run a go-routine for shard recovery
+	if dss, ok := ds.dagStore.(*dagstore.DAGStore); ok {
+		ds.backgroundWg.Add(1)
+		go dagstore.RecoverImmediately(ds.ctx, dss, ds.failureCh, maxRecoverAttempts, ds.backgroundWg.Done)
+	}
 }
 
-func (ds *Wrapper) background() {
+func (ds *Wrapper) traceLoop() {
 	defer ds.backgroundWg.Done()
 
-	gcTicker := time.NewTicker(ds.gcInterval)
-	defer gcTicker.Stop()
-
-	recoverShardResults := make(chan dagstore.ShardResult, 32)
 	for ds.ctx.Err() == nil {
 		select {
-
-		// GC the DAG store on every tick
-		case <-gcTicker.C:
-			_, _ = ds.dagStore.GC(ds.ctx)
-
 		// Log trace events from the DAG store
 		case tr := <-ds.traceCh:
 			log.Debugw("trace",
@@ -126,18 +129,23 @@ func (ds *Wrapper) background() {
 				"op-type", tr.Op.String(),
 				"after", tr.After.String())
 
-		// Handle shard failures by attempting to recover the shard
-		case f := <-ds.failureCh:
-			log.Warnw("shard failed", "shard-key", f.Key.String(), "error", f.Error)
-			if err := ds.dagStore.RecoverShard(ds.ctx, f.Key, recoverShardResults, dagstore.RecoverOpts{}); err != nil {
-				log.Warnw("shard recovery failed", "shard-key", f.Key.String(), "error", err)
-			}
+		case <-ds.ctx.Done():
+			return
+		}
+	}
+}
 
-		// Consume recover shard results
-		case res := <-recoverShardResults:
-			if res.Error != nil {
-				log.Warnw("shard recovery failed", "shard-key", res.Key.String(), "error", res.Error)
-			}
+func (ds *Wrapper) dagStoreGCLoop() {
+	defer ds.backgroundWg.Done()
+
+	gcTicker := time.NewTicker(ds.gcInterval)
+	defer gcTicker.Stop()
+
+	for ds.ctx.Err() == nil {
+		select {
+		// GC the DAG store on every tick
+		case <-gcTicker.C:
+			_, _ = ds.dagStore.GC(ds.ctx)
 
 		// Exit when the DAG store wrapper is shutdown
 		case <-ds.ctx.Done():
@@ -151,7 +159,7 @@ func (ds *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (carstore.Cl
 	key := shard.KeyFromCID(pieceCid)
 	resch := make(chan dagstore.ShardResult, 1)
 	err := ds.dagStore.AcquireShard(ctx, key, resch, dagstore.AcquireOpts{})
-	log.Info("sent message to acquire shard")
+	log.Debugf("sent message to acquire shard for piece CID %s", pieceCid)
 
 	if err != nil {
 		if !errors.Is(err, dagstore.ErrShardUnknown) {
@@ -216,6 +224,7 @@ func (ds *Wrapper) RegisterShard(ctx context.Context, pieceCid cid.Cid, carPath 
 	if err != nil {
 		return xerrors.Errorf("failed to schedule register shard for piece CID %s: %w", pieceCid, err)
 	}
+	log.Debugf("successfully submitted Register Shard request for piece CID %s with eagerInit=%t", pieceCid, eagerInit)
 
 	return nil
 }
@@ -225,12 +234,16 @@ func (ds *Wrapper) Close() error {
 	ds.cancel()
 
 	// Close the DAG store
+	log.Info("will close the dagstore")
 	if err := ds.dagStore.Close(); err != nil {
 		return xerrors.Errorf("failed to close DAG store: %w", err)
 	}
+	log.Info("dagstore closed")
 
 	// Wait for the background go routine to exit
+	log.Info("waiting for dagstore background wrapper routines to exist")
 	ds.backgroundWg.Wait()
+	log.Info("exited dagstore background warpper routines")
 
 	return nil
 }
