@@ -43,6 +43,7 @@ var actorCmd = &cli.Command{
 		actorControl,
 		actorProposeChangeWorker,
 		actorConfirmChangeWorker,
+		actorCompactAllocatedCmd,
 	},
 }
 
@@ -1075,7 +1076,7 @@ var actorCompactAllocatedCmd = &cli.Command{
 
 			m := cctx.Uint64("mask-last-offset")
 			if last <= m+1 {
-				return xerrors.Errorf("higest allocated sector lower than mask offset %d: %d", m+1, last)
+				return xerrors.Errorf("highest allocated sector lower than mask offset %d: %d", m+1, last)
 			}
 			// securty to not brick a miner
 			if last > 1<<60 {
