@@ -38,6 +38,14 @@ var splitstoreRollbackCmd = &cli.Command{
 			Name:  "repo",
 			Value: "~/.lotus",
 		},
+		&cli.BoolFlag{
+			Name:  "gc-coldstore",
+			Usage: "compact and garbage collect the coldstore after copying the hotstore",
+		},
+		&cli.BoolFlag{
+			Name:  "rewrite-config",
+			Usage: "rewrite the lotus configuration to disable splitstore",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		logging.SetLogLevel("badger", "ERROR") // nolint:errcheck
@@ -76,7 +84,7 @@ var splitstoreRollbackCmd = &cli.Command{
 		}
 
 		fmt.Println("copying hotstore to coldstore...")
-		err = copyHotstoreToColdstore(lr)
+		err = copyHotstoreToColdstore(lr, cctx.Bool("gc-coldstore"))
 		if err != nil {
 			return xerrors.Errorf("error copying hotstore to coldstore: %w", err)
 		}
@@ -93,12 +101,14 @@ var splitstoreRollbackCmd = &cli.Command{
 			return xerrors.Errorf("error deleting splitstore keys: %w", err)
 		}
 
-		fmt.Println("disabling splitstore in config...")
-		err = lr.SetConfig(func(cfg interface{}) {
-			cfg.(*config.FullNode).Chainstore.EnableSplitstore = false
-		})
-		if err != nil {
-			return xerrors.Errorf("error disabling splitstore in config: %w", err)
+		if cctx.Bool("rewrite-config") {
+			fmt.Println("disabling splitstore in config...")
+			err = lr.SetConfig(func(cfg interface{}) {
+				cfg.(*config.FullNode).Chainstore.EnableSplitstore = false
+			})
+			if err != nil {
+				return xerrors.Errorf("error disabling splitstore in config: %w", err)
+			}
 		}
 
 		fmt.Println("splitstore has been rolled back.")
@@ -106,7 +116,7 @@ var splitstoreRollbackCmd = &cli.Command{
 	},
 }
 
-func copyHotstoreToColdstore(lr repo.LockedRepo) error {
+func copyHotstoreToColdstore(lr repo.LockedRepo, gcColdstore bool) error {
 	repoPath := lr.Path()
 	dataPath := filepath.Join(repoPath, "datastore")
 	coldPath := filepath.Join(dataPath, "chain")
@@ -170,25 +180,27 @@ func copyHotstoreToColdstore(lr repo.LockedRepo) error {
 		return err
 	}
 
-	// compact + gc the coldstore
-	fmt.Println("compacting coldstore...")
-	nworkers := runtime.NumCPU()
-	if nworkers < 2 {
-		nworkers = 2
-	}
+	// compact + gc the coldstore if so requested
+	if gcColdstore {
+		fmt.Println("compacting coldstore...")
+		nworkers := runtime.NumCPU()
+		if nworkers < 2 {
+			nworkers = 2
+		}
 
-	err = cold.Flatten(nworkers)
-	if err != nil {
-		return xerrors.Errorf("error compacting coldstore: %w", err)
-	}
+		err = cold.Flatten(nworkers)
+		if err != nil {
+			return xerrors.Errorf("error compacting coldstore: %w", err)
+		}
 
-	fmt.Println("garbage collecting coldstore...")
-	for err == nil {
-		err = cold.RunValueLogGC(0.0625)
-	}
+		fmt.Println("garbage collecting coldstore...")
+		for err == nil {
+			err = cold.RunValueLogGC(0.0625)
+		}
 
-	if err != badger.ErrNoRewrite {
-		return xerrors.Errorf("error garbage collecting coldstore: %w", err)
+		if err != badger.ErrNoRewrite {
+			return xerrors.Errorf("error garbage collecting coldstore: %w", err)
+		}
 	}
 
 	return nil
