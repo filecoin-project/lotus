@@ -251,6 +251,8 @@ type Splitstore struct {
 	ColdStoreType string
 	HotStoreType  string
 	MarkSetType   string
+
+	HotStoreMessageRetention uint64
 }
 
 // // Full Node

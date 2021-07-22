@@ -48,7 +48,7 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 	count := int64(0)
 	xcount := int64(0)
 	missing := int64(0)
-	err := s.walkChain(curTs, epoch, false,
+	err := s.walkChain(curTs, epoch, epoch+1, // we don't load messages in warmup
 		func(c cid.Cid) error {
 			if isUnitaryObject(c) {
 				return errStopWalk
