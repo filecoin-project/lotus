@@ -436,7 +436,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	startMark := time.Now()
 
 	var count int64
-	err = s.walkChain(curTs, boundaryEpoch, inclMsgsEpoch,
+	err = s.walkChain(curTs, boundaryEpoch, inclMsgsEpoch, boundaryEpoch,
 		func(c cid.Cid) error {
 			if isUnitaryObject(c) {
 				return errStopWalk
@@ -631,13 +631,15 @@ func (s *SplitStore) endTxnProtect() {
 	s.txnMissing = nil
 }
 
-func (s *SplitStore) walkChain(ts *types.TipSet, inclState abi.ChainEpoch, inclMsgs abi.ChainEpoch,
+func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs, inclMsgReceipts abi.ChainEpoch,
 	f func(cid.Cid) error) error {
 	visited := cid.NewSet()
 	walked := cid.NewSet()
 	toWalk := ts.Cids()
 	walkCnt := 0
 	scanCnt := 0
+
+	stopWalk := func(_ cid.Cid) error { return errStopWalk }
 
 	walkBlock := func(c cid.Cid) error {
 		if !visited.Visit(c) {
@@ -664,7 +666,6 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState abi.ChainEpoch, inclM
 			if inclMsgs < inclState {
 				// we need to use walkObjectIncomplete here, as messages may be missing early on if we
 				// synced from snapshot and have a long HotStoreMessageRetentionPolicy.
-				stopWalk := func(_ cid.Cid) error { return errStopWalk }
 				if err := s.walkObjectIncomplete(hdr.Messages, walked, f, stopWalk); err != nil {
 					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 				}
@@ -675,14 +676,22 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState abi.ChainEpoch, inclM
 			}
 		}
 
-		// state and message receipts is only retained if within the inclState boundary
-		if hdr.Height >= inclState || hdr.Height == 0 {
-			if hdr.Height > 0 {
+		if hdr.Height >= inclMsgReceipts && hdr.Height > 0 {
+			if inclMsgReceipts < inclState {
+				// we need to use walkObjectIncomplete here, as message receipts may be missing early on if we
+				// synced from snapshot
+				if err := s.walkObjectIncomplete(hdr.ParentMessageReceipts, walked, f, stopWalk); err != nil {
+					return xerrors.Errorf("error walking messages receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
+				}
+			} else {
 				if err := s.walkObject(hdr.ParentMessageReceipts, walked, f); err != nil {
 					return xerrors.Errorf("error walking message receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 				}
 			}
+		}
 
+		// state is only retained if within the inclState boundary, with the exception of genesis
+		if hdr.Height >= inclState || hdr.Height == 0 {
 			if err := s.walkObject(hdr.ParentStateRoot, walked, f); err != nil {
 				return xerrors.Errorf("error walking state root (cid: %s): %w", hdr.ParentStateRoot, err)
 			}
