@@ -20,7 +20,7 @@ type Config struct {
 
 	WaitDealsDelay time.Duration
 
-	CommittedCapacityDefaultLifetime time.Duration
+	CommittedCapacitySectorLifetime time.Duration
 
 	AlwaysKeepUnsealedCopy bool
 

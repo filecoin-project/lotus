@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -178,15 +177,12 @@ func (m *Miner) Run(ctx context.Context) error {
 		// provides extra methods.
 		adaptedAPI = NewSealingAPIAdapter(m.api)
 
-		// sealing configuration.
-		cfg = sealing.GetSealingConfigFunc(m.getSealConfig)
-
 		// Instantiate a precommit policy.
-		defaultDuration = getDefaultSectorExpirationExtension(cfg) - (md.WPoStProvingPeriod * 2)
+		cfg             = sealing.GetSealingConfigFunc(m.getSealConfig)
 		provingBoundary = md.PeriodStart % md.WPoStProvingPeriod
 
 		// TODO: Maybe we update this policy after actor upgrades?
-		pcp = sealing.NewBasicPreCommitPolicy(adaptedAPI, defaultDuration, provingBoundary)
+		pcp = sealing.NewBasicPreCommitPolicy(adaptedAPI, cfg, provingBoundary)
 
 		// address selector.
 		as = func(ctx context.Context, mi miner.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
@@ -201,16 +197,6 @@ func (m *Miner) Run(ctx context.Context) error {
 	go m.sealing.Run(ctx) //nolint:errcheck // logged intside the function
 
 	return nil
-}
-
-func getDefaultSectorExpirationExtension(cfg sealing.GetSealingConfigFunc) abi.ChainEpoch {
-	c, err := cfg()
-	if err != nil {
-		log.Warnf("failed to load sealing config, using default sector extension expiration")
-		log.Errorf("sealing config load error: %s", err.Error())
-		return policy.GetMaxSectorExpirationExtension()
-	}
-	return abi.ChainEpoch(c.CommittedCapacityDefaultLifetime.Truncate(builtin.EpochDurationSeconds))
 }
 
 func (m *Miner) handleSealingNotifications(before, after sealing.SectorInfo) {
