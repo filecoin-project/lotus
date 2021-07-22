@@ -82,24 +82,27 @@ func (e *BadgerMarkSetEnv) Close() error {
 
 func (s *BadgerMarkSet) Mark(c cid.Cid) error {
 	s.mx.Lock()
-	defer s.mx.Unlock()
 
 	if s.pend == nil {
+		s.mx.Unlock()
 		return errMarkSetClosed
 	}
 
 	s.pend[string(c.Hash())] = struct{}{}
 
 	if len(s.pend) < badgerMarkSetBatchSize {
+		s.mx.Unlock()
 		return nil
 	}
 
 	pend := s.pend
 	s.pend = make(map[string]struct{})
+	db := s.db
+	s.mx.Unlock()
 
 	empty := []byte{} // not nil
 
-	batch := s.db.NewWriteBatch()
+	batch := db.NewWriteBatch()
 	defer batch.Cancel()
 
 	for k := range pend {
