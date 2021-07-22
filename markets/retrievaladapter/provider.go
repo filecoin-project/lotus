@@ -54,7 +54,7 @@ func (rpn *retrievalProviderNode) GetMinerWorkerAddress(ctx context.Context, min
 
 func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
 	log.Debugf("get sector %d, offset %d, length %d", sectorID, offset, length)
-	si, err := rpn.sectorsStatus(ctx, sectorID, true)
+	si, err := rpn.sectorsStatus(ctx, sectorID, false)
 	if err != nil {
 		return nil, err
 	}
