@@ -62,8 +62,11 @@ func init() {
 type Config struct {
 	// MarkSetType is the type of mark set to use.
 	//
-	// Only current sane value is "map", but we may add an option for a disk-backed
-	// markset for memory-constrained situations.
+	// The default value is "map", which uses an in-memory map-backed markset.
+	// If you are constrained in memory (i.e. compaction runs out of memory), you
+	// can use "badger", which will use a disk-backed markset using badger.
+	// Note that compaction will take quite a bit longer when using the "badger" option,
+	// but that shouldn't really matter (as long as it is under 7.5hrs).
 	MarkSetType string
 
 	// DiscardColdBlocks indicates whether to skip moving cold blocks to the coldstore.
