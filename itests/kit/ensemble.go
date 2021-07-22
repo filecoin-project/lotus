@@ -635,7 +635,7 @@ func (n *Ensemble) InterconnectAll() *Ensemble {
 }
 
 // Connect connects one full node to the provided full nodes.
-func (n *Ensemble) Connect(from api.Common, to ...api.Common) *Ensemble {
+func (n *Ensemble) Connect(from api.Net, to ...api.Net) *Ensemble {
 	addr, err := from.NetAddrsListen(context.Background())
 	require.NoError(n.t, err)
 
