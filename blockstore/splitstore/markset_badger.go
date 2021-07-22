@@ -24,7 +24,9 @@ type BadgerMarkSet struct {
 	mx      sync.RWMutex
 	cond    sync.Cond
 	pend    map[string]struct{}
+	writing map[int]map[string]struct{}
 	writers int
+	seqno   int
 
 	db   *badger.DB
 	path string
@@ -72,9 +74,10 @@ func (e *BadgerMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) 
 	}
 
 	ms := &BadgerMarkSet{
-		pend: make(map[string]struct{}),
-		db:   db,
-		path: path,
+		pend:    make(map[string]struct{}),
+		writing: make(map[int]map[string]struct{}),
+		db:      db,
+		path:    path,
 	}
 	ms.cond.L = &ms.mx
 
@@ -101,12 +104,17 @@ func (s *BadgerMarkSet) Mark(c cid.Cid) error {
 	}
 
 	pend := s.pend
+	seqno := s.seqno
+	s.seqno++
+	s.writing[seqno] = pend
 	s.pend = make(map[string]struct{})
 	s.writers++
 	s.mx.Unlock()
 
 	defer func() {
 		s.mx.Lock()
+
+		delete(s.writing, seqno)
 		s.writers--
 		if s.writers == 0 {
 			s.cond.Broadcast()
@@ -142,9 +150,17 @@ func (s *BadgerMarkSet) Has(c cid.Cid) (bool, error) {
 	}
 
 	key := c.Hash()
-	_, ok := s.pend[string(key)]
+	pendKey := string(key)
+	_, ok := s.pend[pendKey]
 	if ok {
 		return true, nil
+	}
+
+	for _, wr := range s.writing {
+		_, ok := wr[pendKey]
+		if ok {
+			return true, nil
+		}
 	}
 
 	err := s.db.View(func(txn *badger.Txn) error {
