@@ -20,7 +20,7 @@ func (q requestQueue) Less(i, j int) bool {
 		return q[i].taskType.Less(q[j].taskType)
 	}
 
-	return q[i].sector.Number < q[j].sector.Number // optimize minerActor.NewSectors bitfield
+	return q[i].sector.ID.Number < q[j].sector.ID.Number // optimize minerActor.NewSectors bitfield
 }
 
 func (q requestQueue) Swap(i, j int) {

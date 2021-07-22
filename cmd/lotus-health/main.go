@@ -8,13 +8,14 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/filecoin-project/lotus/api/v0api"
+
 	cid "github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-jsonrpc"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -180,7 +181,7 @@ func checkWindow(window CidWindow, t int) bool {
  * returns a slice of slices of Cids
  * len of slice <= `t` - threshold
  */
-func updateWindow(ctx context.Context, a api.FullNode, w CidWindow, t int, r int, to time.Duration) (CidWindow, error) {
+func updateWindow(ctx context.Context, a v0api.FullNode, w CidWindow, t int, r int, to time.Duration) (CidWindow, error) {
 	head, err := getHead(ctx, a, r, to)
 	if err != nil {
 		return nil, err
@@ -194,7 +195,7 @@ func updateWindow(ctx context.Context, a api.FullNode, w CidWindow, t int, r int
  * retries if API no available
  * returns tipset
  */
-func getHead(ctx context.Context, a api.FullNode, r int, t time.Duration) (*types.TipSet, error) {
+func getHead(ctx context.Context, a v0api.FullNode, r int, t time.Duration) (*types.TipSet, error) {
 	for i := 0; i < r; i++ {
 		head, err := a.ChainHead(ctx)
 		if err != nil && i == (r-1) {
@@ -226,7 +227,7 @@ func appendCIDsToWindow(w CidWindow, c []cid.Cid, t int) CidWindow {
 /*
  * wait for node to sync
  */
-func waitForSyncComplete(ctx context.Context, a api.FullNode, r int, t time.Duration) error {
+func waitForSyncComplete(ctx context.Context, a v0api.FullNode, r int, t time.Duration) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -248,7 +249,7 @@ func waitForSyncComplete(ctx context.Context, a api.FullNode, r int, t time.Dura
  * A thin wrapper around lotus cli GetFullNodeAPI
  * Adds retry logic
  */
-func getFullNodeAPI(ctx *cli.Context, r int, t time.Duration) (api.FullNode, jsonrpc.ClientCloser, error) {
+func getFullNodeAPI(ctx *cli.Context, r int, t time.Duration) (v0api.FullNode, jsonrpc.ClientCloser, error) {
 	for i := 0; i < r; i++ {
 		api, closer, err := lcli.GetFullNodeAPI(ctx)
 		if err != nil && i == (r-1) {

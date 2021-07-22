@@ -1,0 +1,14 @@
+[metadata]
+name = "ping-pong-local"
+author = "yusef"
+
+[global]
+plan = "network"
+case = "ping-pong"
+total_instances = 2
+builder = "docker:go"
+runner = "local:docker"
+
+[[groups]]
+id = "nodes"
+instances = { count = 2 }

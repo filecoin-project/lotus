@@ -2,14 +2,25 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
+	"encoding/json"
 	"fmt"
+	"io"
+	"os"
+	"runtime"
 	"strconv"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/filecoin-project/lotus/build"
 
 	"github.com/filecoin-project/lotus/chain/gen/genesis"
 
 	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 
 	"github.com/docker/go-units"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
@@ -24,6 +35,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -33,7 +45,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -58,8 +69,321 @@ var auditsCmd = &cli.Command{
 	Description: "a collection of utilities for auditing the filecoin chain",
 	Subcommands: []*cli.Command{
 		chainBalanceCmd,
+		chainBalanceSanityCheckCmd,
 		chainBalanceStateCmd,
 		chainPledgeCmd,
+		fillBalancesCmd,
+		duplicatedMessagesCmd,
+	},
+}
+
+var duplicatedMessagesCmd = &cli.Command{
+	Name:  "duplicate-messages",
+	Usage: "Check for duplicate messages included in a tipset.",
+	UsageText: `Check for duplicate messages included in a tipset.
+
+Due to Filecoin's expected consensus, a tipset may include the same message multiple times in
+different blocks. The message will only be executed once.
+
+This command will find such duplicate messages and print them to standard out as newline-delimited
+JSON. Status messages in the form of "H: $HEIGHT ($PROGRESS%)" will be printed to standard error for
+every day of chain processed.
+`,
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:        "parallel",
+			Usage:       "the number of parallel threads for block processing",
+			DefaultText: "half the number of cores",
+		},
+		&cli.IntFlag{
+			Name:        "start",
+			Usage:       "the first epoch to check",
+			DefaultText: "genesis",
+		},
+		&cli.IntFlag{
+			Name:        "end",
+			Usage:       "the last epoch to check",
+			DefaultText: "the current head",
+		},
+		&cli.IntSliceFlag{
+			Name:        "method",
+			Usage:       "filter results by method number",
+			DefaultText: "all methods",
+		},
+		&cli.StringSliceFlag{
+			Name:        "include-to",
+			Usage:       "include only messages to the given address (does not perform address resolution)",
+			DefaultText: "all recipients",
+		},
+		&cli.StringSliceFlag{
+			Name:        "include-from",
+			Usage:       "include only messages from the given address (does not perform address resolution)",
+			DefaultText: "all senders",
+		},
+		&cli.StringSliceFlag{
+			Name:  "exclude-to",
+			Usage: "exclude messages to the given address (does not perform address resolution)",
+		},
+		&cli.StringSliceFlag{
+			Name:  "exclude-from",
+			Usage: "exclude messages from the given address (does not perform address resolution)",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		var head *types.TipSet
+		if cctx.IsSet("end") {
+			epoch := abi.ChainEpoch(cctx.Int("end"))
+			head, err = api.ChainGetTipSetByHeight(ctx, epoch, types.EmptyTSK)
+		} else {
+			head, err = api.ChainHead(ctx)
+		}
+		if err != nil {
+			return err
+		}
+
+		var printLk sync.Mutex
+
+		threads := runtime.NumCPU() / 2
+		if cctx.IsSet("parallel") {
+			threads = cctx.Int("int")
+			if threads <= 0 {
+				return fmt.Errorf("parallelism needs to be at least 1")
+			}
+		} else if threads == 0 {
+			threads = 1 // if we have one core, but who are we kidding...
+		}
+
+		throttle := make(chan struct{}, threads)
+
+		methods := map[abi.MethodNum]bool{}
+		for _, m := range cctx.IntSlice("method") {
+			if m < 0 {
+				return fmt.Errorf("expected method numbers to be non-negative")
+			}
+			methods[abi.MethodNum(m)] = true
+		}
+
+		addressSet := func(flag string) (map[address.Address]bool, error) {
+			if !cctx.IsSet(flag) {
+				return nil, nil
+			}
+			addrs := cctx.StringSlice(flag)
+			set := make(map[address.Address]bool, len(addrs))
+			for _, addrStr := range addrs {
+				addr, err := address.NewFromString(addrStr)
+				if err != nil {
+					return nil, fmt.Errorf("failed to parse address %s: %w", addrStr, err)
+				}
+				set[addr] = true
+			}
+			return set, nil
+		}
+
+		onlyFrom, err := addressSet("include-from")
+		if err != nil {
+			return err
+		}
+		onlyTo, err := addressSet("include-to")
+		if err != nil {
+			return err
+		}
+		excludeFrom, err := addressSet("exclude-from")
+		if err != nil {
+			return err
+		}
+		excludeTo, err := addressSet("exclude-to")
+		if err != nil {
+			return err
+		}
+
+		target := abi.ChainEpoch(cctx.Int("start"))
+		if target < 0 || target > head.Height() {
+			return fmt.Errorf("start height must be greater than 0 and less than the end height")
+		}
+		totalEpochs := head.Height() - target
+
+		for target <= head.Height() {
+			select {
+			case throttle <- struct{}{}:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+
+			go func(ts *types.TipSet) {
+				defer func() {
+					<-throttle
+				}()
+
+				type addrNonce struct {
+					s address.Address
+					n uint64
+				}
+				anonce := func(m *types.Message) addrNonce {
+					return addrNonce{
+						s: m.From,
+						n: m.Nonce,
+					}
+				}
+
+				msgs := map[addrNonce]map[cid.Cid]*types.Message{}
+
+				processMessage := func(c cid.Cid, m *types.Message) {
+					// Filter
+					if len(methods) > 0 && !methods[m.Method] {
+						return
+					}
+					if len(onlyFrom) > 0 && !onlyFrom[m.From] {
+						return
+					}
+					if len(onlyTo) > 0 && !onlyTo[m.To] {
+						return
+					}
+					if excludeFrom[m.From] || excludeTo[m.To] {
+						return
+					}
+
+					// Record
+					msgSet, ok := msgs[anonce(m)]
+					if !ok {
+						msgSet = make(map[cid.Cid]*types.Message, 1)
+						msgs[anonce(m)] = msgSet
+					}
+					msgSet[c] = m
+				}
+
+				encoder := json.NewEncoder(os.Stdout)
+
+				for _, bh := range ts.Blocks() {
+					bms, err := api.ChainGetBlockMessages(ctx, bh.Cid())
+					if err != nil {
+						fmt.Fprintln(os.Stderr, "ERROR: ", err)
+						return
+					}
+
+					for i, m := range bms.BlsMessages {
+						processMessage(bms.Cids[i], m)
+					}
+
+					for i, m := range bms.SecpkMessages {
+						processMessage(bms.Cids[len(bms.BlsMessages)+i], &m.Message)
+					}
+				}
+				for _, ms := range msgs {
+					if len(ms) == 1 {
+						continue
+					}
+					type Msg struct {
+						Cid    string
+						Value  string
+						Method uint64
+					}
+					grouped := map[string][]Msg{}
+					for c, m := range ms {
+						addr := m.To.String()
+						grouped[addr] = append(grouped[addr], Msg{
+							Cid:    c.String(),
+							Value:  types.FIL(m.Value).String(),
+							Method: uint64(m.Method),
+						})
+					}
+					printLk.Lock()
+					err := encoder.Encode(grouped)
+					if err != nil {
+						fmt.Fprintln(os.Stderr, "ERROR: ", err)
+					}
+					printLk.Unlock()
+				}
+			}(head)
+
+			if head.Parents().IsEmpty() {
+				break
+			}
+
+			head, err = api.ChainGetTipSet(ctx, head.Parents())
+			if err != nil {
+				return err
+			}
+
+			if head.Height()%2880 == 0 {
+				printLk.Lock()
+				fmt.Fprintf(os.Stderr, "H: %s (%d%%)\n", head.Height(), (100*(head.Height()-target))/totalEpochs)
+				printLk.Unlock()
+			}
+		}
+
+		for i := 0; i < threads; i++ {
+			select {
+			case throttle <- struct{}{}:
+			case <-ctx.Done():
+				return ctx.Err()
+			}
+
+		}
+
+		printLk.Lock()
+		fmt.Fprintf(os.Stderr, "H: %s (100%%)\n", head.Height())
+		printLk.Unlock()
+
+		return nil
+	},
+}
+
+var chainBalanceSanityCheckCmd = &cli.Command{
+	Name:        "chain-balance-sanity",
+	Description: "Confirms that the total balance of every actor in state is still 2 billion",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "tipset",
+			Usage: "specify tipset to start from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		ts, err := lcli.LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		tsk := ts.Key()
+		actors, err := api.StateListActors(ctx, tsk)
+		if err != nil {
+			return err
+		}
+
+		bal := big.Zero()
+		for _, addr := range actors {
+			act, err := api.StateGetActor(ctx, addr, tsk)
+			if err != nil {
+				return err
+			}
+
+			bal = big.Add(bal, act.Balance)
+		}
+
+		attoBase := big.Mul(big.NewInt(int64(build.FilBase)), big.NewInt(int64(build.FilecoinPrecision)))
+
+		if big.Cmp(attoBase, bal) != 0 {
+			return xerrors.Errorf("sanity check failed (expected %s, actual %s)", attoBase, bal)
+		}
+
+		fmt.Println("sanity check successful")
+
+		return nil
 	},
 }
 
@@ -168,19 +492,26 @@ var chainBalanceStateCmd = &cli.Command{
 
 		defer lkrepo.Close() //nolint:errcheck
 
-		ds, err := lkrepo.Datastore("/chain")
+		bs, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
+		if err != nil {
+			return fmt.Errorf("failed to open blockstore: %w", err)
+		}
+
+		defer func() {
+			if c, ok := bs.(io.Closer); ok {
+				if err := c.Close(); err != nil {
+					log.Warnf("failed to close blockstore: %s", err)
+				}
+			}
+		}()
+
+		mds, err := lkrepo.Datastore(context.Background(), "/metadata")
 		if err != nil {
 			return err
 		}
 
-		mds, err := lkrepo.Datastore("/metadata")
-		if err != nil {
-			return err
-		}
-
-		bs := blockstore.NewBlockstore(ds)
-
-		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
+		cs := store.NewChainStore(bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
+		defer cs.Close() //nolint:errcheck
 
 		cst := cbor.NewCborStore(bs)
 		store := adt.WrapStore(ctx, cst)
@@ -382,19 +713,26 @@ var chainPledgeCmd = &cli.Command{
 
 		defer lkrepo.Close() //nolint:errcheck
 
-		ds, err := lkrepo.Datastore("/chain")
+		bs, err := lkrepo.Blockstore(ctx, repo.UniversalBlockstore)
+		if err != nil {
+			return xerrors.Errorf("failed to open blockstore: %w", err)
+		}
+
+		defer func() {
+			if c, ok := bs.(io.Closer); ok {
+				if err := c.Close(); err != nil {
+					log.Warnf("failed to close blockstore: %s", err)
+				}
+			}
+		}()
+
+		mds, err := lkrepo.Datastore(context.Background(), "/metadata")
 		if err != nil {
 			return err
 		}
 
-		mds, err := lkrepo.Datastore("/metadata")
-		if err != nil {
-			return err
-		}
-
-		bs := blockstore.NewBlockstore(ds)
-
-		cs := store.NewChainStore(bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
+		cs := store.NewChainStore(bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
+		defer cs.Close() //nolint:errcheck
 
 		cst := cbor.NewCborStore(bs)
 		store := adt.WrapStore(ctx, cst)
@@ -468,6 +806,122 @@ var chainPledgeCmd = &cli.Command{
 			fmt.Println("IP ", units.HumanSize(float64(sectorWeight.Uint64())), types.FIL(initialPledge))
 		}
 
+		return nil
+	},
+}
+
+const dateFmt = "1/02/06"
+
+func parseCsv(inp string) ([]time.Time, []address.Address, error) {
+	fi, err := os.Open(inp)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	r := csv.NewReader(fi)
+	recs, err := r.ReadAll()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var addrs []address.Address
+	for _, rec := range recs[1:] {
+		a, err := address.NewFromString(rec[0])
+		if err != nil {
+			return nil, nil, err
+		}
+		addrs = append(addrs, a)
+	}
+
+	var dates []time.Time
+	for _, d := range recs[0][1:] {
+		if len(d) == 0 {
+			continue
+		}
+		p := strings.Split(d, " ")
+		t, err := time.Parse(dateFmt, p[len(p)-1])
+		if err != nil {
+			return nil, nil, err
+		}
+
+		dates = append(dates, t)
+	}
+
+	return dates, addrs, nil
+}
+
+func heightForDate(d time.Time, ts *types.TipSet) abi.ChainEpoch {
+	secs := d.Unix()
+	gents := ts.Blocks()[0].Timestamp
+	gents -= uint64(30 * ts.Height())
+	return abi.ChainEpoch((secs - int64(gents)) / 30)
+}
+
+var fillBalancesCmd = &cli.Command{
+	Name:        "fill-balances",
+	Description: "fill out balances for addresses on dates in given spreadsheet",
+	Flags:       []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		dates, addrs, err := parseCsv(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		ts, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		var tipsets []*types.TipSet
+		for _, d := range dates {
+			h := heightForDate(d, ts)
+			hts, err := api.ChainGetTipSetByHeight(ctx, h, ts.Key())
+			if err != nil {
+				return err
+			}
+			tipsets = append(tipsets, hts)
+		}
+
+		var balances [][]abi.TokenAmount
+		for _, a := range addrs {
+			var b []abi.TokenAmount
+			for _, hts := range tipsets {
+				act, err := api.StateGetActor(ctx, a, hts.Key())
+				if err != nil {
+					if !strings.Contains(err.Error(), "actor not found") {
+						return fmt.Errorf("error for %s at %s: %w", a, hts.Key(), err)
+					}
+					b = append(b, types.NewInt(0))
+					continue
+				}
+				b = append(b, act.Balance)
+			}
+			balances = append(balances, b)
+		}
+
+		var datestrs []string
+		for _, d := range dates {
+			datestrs = append(datestrs, "Balance at "+d.Format(dateFmt))
+		}
+
+		w := csv.NewWriter(os.Stdout)
+		w.Write(append([]string{"Wallet Address"}, datestrs...)) // nolint:errcheck
+		for i := 0; i < len(addrs); i++ {
+			row := []string{addrs[i].String()}
+			for _, b := range balances[i] {
+				row = append(row, types.FIL(b).String())
+			}
+			w.Write(row) // nolint:errcheck
+		}
+		w.Flush()
 		return nil
 	},
 }

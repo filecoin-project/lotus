@@ -1,0 +1,15 @@
+[Unit]
+Description=Lotus Miner
+After=network.target
+
+[Service]
+User=fc
+Group=fc
+ExecStart=/usr/local/bin/lotus-miner run
+Environment=LOTUS_PATH=/var/lib/lotus
+Environment=LOTUS_MINER_PATH=/var/lib/lotus-miner
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=multi-user.target

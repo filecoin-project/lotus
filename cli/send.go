@@ -1,21 +1,16 @@
 package cli
 
 import (
-	"bytes"
-	"context"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
-	"reflect"
 
 	"github.com/urfave/cli/v2"
-	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -43,15 +38,15 @@ var sendCmd = &cli.Command{
 			Usage: "specify gas limit",
 			Value: 0,
 		},
-		&cli.Int64Flag{
+		&cli.Uint64Flag{
 			Name:  "nonce",
 			Usage: "specify the nonce to use",
-			Value: -1,
+			Value: 0,
 		},
 		&cli.Uint64Flag{
 			Name:  "method",
 			Usage: "specify method to invoke",
-			Value: 0,
+			Value: uint64(builtin.MethodSend),
 		},
 		&cli.StringFlag{
 			Name:  "params-json",
@@ -61,21 +56,30 @@ var sendCmd = &cli.Command{
 			Name:  "params-hex",
 			Usage: "specify invocation parameters in hex",
 		},
+		&cli.BoolFlag{
+			Name:  "force",
+			Usage: "Deprecated: use global 'force-send'",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.IsSet("force") {
+			fmt.Println("'force' flag is deprecated, use global flag 'force-send'")
+		}
+
 		if cctx.Args().Len() != 2 {
 			return ShowHelp(cctx, fmt.Errorf("'send' expects two arguments, target and amount"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
 
 		ctx := ReqContext(cctx)
+		var params SendParams
 
-		toAddr, err := address.NewFromString(cctx.Args().Get(0))
+		params.To, err = address.NewFromString(cctx.Args().Get(0))
 		if err != nil {
 			return ShowHelp(cctx, fmt.Errorf("failed to parse target address: %w", err))
 		}
@@ -84,109 +88,74 @@ var sendCmd = &cli.Command{
 		if err != nil {
 			return ShowHelp(cctx, fmt.Errorf("failed to parse amount: %w", err))
 		}
+		params.Val = abi.TokenAmount(val)
 
-		var fromAddr address.Address
-		if from := cctx.String("from"); from == "" {
-			defaddr, err := api.WalletDefaultAddress(ctx)
-			if err != nil {
-				return err
-			}
-
-			fromAddr = defaddr
-		} else {
+		if from := cctx.String("from"); from != "" {
 			addr, err := address.NewFromString(from)
 			if err != nil {
 				return err
 			}
 
-			fromAddr = addr
+			params.From = addr
 		}
 
-		gp, err := types.BigFromString(cctx.String("gas-premium"))
-		if err != nil {
-			return err
-		}
-		gfc, err := types.BigFromString(cctx.String("gas-feecap"))
-		if err != nil {
-			return err
+		if cctx.IsSet("gas-premium") {
+			gp, err := types.BigFromString(cctx.String("gas-premium"))
+			if err != nil {
+				return err
+			}
+			params.GasPremium = &gp
 		}
 
-		method := abi.MethodNum(cctx.Uint64("method"))
+		if cctx.IsSet("gas-feecap") {
+			gfc, err := types.BigFromString(cctx.String("gas-feecap"))
+			if err != nil {
+				return err
+			}
+			params.GasFeeCap = &gfc
+		}
 
-		var params []byte
+		if cctx.IsSet("gas-limit") {
+			limit := cctx.Int64("gas-limit")
+			params.GasLimit = &limit
+		}
+
+		params.Method = abi.MethodNum(cctx.Uint64("method"))
+
 		if cctx.IsSet("params-json") {
-			decparams, err := decodeTypedParams(ctx, api, toAddr, method, cctx.String("params-json"))
+			decparams, err := srv.DecodeTypedParamsFromJSON(ctx, params.To, params.Method, cctx.String("params-json"))
 			if err != nil {
 				return fmt.Errorf("failed to decode json params: %w", err)
 			}
-			params = decparams
+			params.Params = decparams
 		}
 		if cctx.IsSet("params-hex") {
-			if params != nil {
+			if params.Params != nil {
 				return fmt.Errorf("can only specify one of 'params-json' and 'params-hex'")
 			}
 			decparams, err := hex.DecodeString(cctx.String("params-hex"))
 			if err != nil {
 				return fmt.Errorf("failed to decode hex params: %w", err)
 			}
-			params = decparams
+			params.Params = decparams
 		}
 
-		msg := &types.Message{
-			From:       fromAddr,
-			To:         toAddr,
-			Value:      types.BigInt(val),
-			GasPremium: gp,
-			GasFeeCap:  gfc,
-			GasLimit:   cctx.Int64("gas-limit"),
-			Method:     method,
-			Params:     params,
+		if cctx.IsSet("nonce") {
+			n := cctx.Uint64("nonce")
+			params.Nonce = &n
 		}
 
-		if cctx.Int64("nonce") > 0 {
-			msg.Nonce = uint64(cctx.Int64("nonce"))
-			sm, err := api.WalletSignMessage(ctx, fromAddr, msg)
-			if err != nil {
-				return err
-			}
-
-			_, err = api.MpoolPush(ctx, sm)
-			if err != nil {
-				return err
-			}
-			fmt.Println(sm.Cid())
-		} else {
-			sm, err := api.MpoolPushMessage(ctx, msg, nil)
-			if err != nil {
-				return err
-			}
-			fmt.Println(sm.Cid())
+		proto, err := srv.MessageForSend(ctx, params)
+		if err != nil {
+			return xerrors.Errorf("creating message prototype: %w", err)
 		}
 
+		sm, err := InteractiveSend(ctx, cctx, srv, proto)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintf(cctx.App.Writer, "%s\n", sm.Cid())
 		return nil
 	},
-}
-
-func decodeTypedParams(ctx context.Context, fapi api.FullNode, to address.Address, method abi.MethodNum, paramstr string) ([]byte, error) {
-	act, err := fapi.StateGetActor(ctx, to, types.EmptyTSK)
-	if err != nil {
-		return nil, err
-	}
-
-	methodMeta, found := stmgr.MethodsMap[act.Code][method]
-	if !found {
-		return nil, fmt.Errorf("method %d not found on actor %s", method, act.Code)
-	}
-
-	p := reflect.New(methodMeta.Params.Elem()).Interface().(cbg.CBORMarshaler)
-
-	if err := json.Unmarshal([]byte(paramstr), p); err != nil {
-		return nil, fmt.Errorf("unmarshaling input into params type: %w", err)
-	}
-
-	buf := new(bytes.Buffer)
-	if err := p.MarshalCBOR(buf); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
 }

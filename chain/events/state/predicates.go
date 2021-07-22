@@ -1,18 +1,17 @@
 package state
 
 import (
-	"bytes"
 	"context"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	typegen "github.com/whyrusleeping/cbor-gen"
 
-	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
@@ -25,7 +24,7 @@ type UserData interface{}
 
 // ChainAPI abstracts out calls made by this class to external APIs
 type ChainAPI interface {
-	apibstore.ChainIO
+	api.ChainIO
 	StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 }
 
@@ -38,7 +37,7 @@ type StatePredicates struct {
 func NewStatePredicates(api ChainAPI) *StatePredicates {
 	return &StatePredicates{
 		api: api,
-		cst: cbor.NewCborStore(apibstore.NewAPIBlockstore(api)),
+		cst: cbor.NewCborStore(blockstore.NewAPIBlockstore(api)),
 	}
 }
 
@@ -419,179 +418,17 @@ type AddressPair struct {
 	PK address.Address
 }
 
-type InitActorAddressChanges struct {
-	Added    []AddressPair
-	Modified []AddressChange
-	Removed  []AddressPair
-}
-
-type AddressChange struct {
-	From AddressPair
-	To   AddressPair
-}
-
 type DiffInitActorStateFunc func(ctx context.Context, oldState init_.State, newState init_.State) (changed bool, user UserData, err error)
-
-func (i *InitActorAddressChanges) AsKey(key string) (abi.Keyer, error) {
-	addr, err := address.NewFromBytes([]byte(key))
-	if err != nil {
-		return nil, err
-	}
-	return abi.AddrKey(addr), nil
-}
-
-func (i *InitActorAddressChanges) Add(key string, val *typegen.Deferred) error {
-	pkAddr, err := address.NewFromBytes([]byte(key))
-	if err != nil {
-		return err
-	}
-	id := new(typegen.CborInt)
-	if err := id.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
-		return err
-	}
-	idAddr, err := address.NewIDAddress(uint64(*id))
-	if err != nil {
-		return err
-	}
-	i.Added = append(i.Added, AddressPair{
-		ID: idAddr,
-		PK: pkAddr,
-	})
-	return nil
-}
-
-func (i *InitActorAddressChanges) Modify(key string, from, to *typegen.Deferred) error {
-	pkAddr, err := address.NewFromBytes([]byte(key))
-	if err != nil {
-		return err
-	}
-
-	fromID := new(typegen.CborInt)
-	if err := fromID.UnmarshalCBOR(bytes.NewReader(from.Raw)); err != nil {
-		return err
-	}
-	fromIDAddr, err := address.NewIDAddress(uint64(*fromID))
-	if err != nil {
-		return err
-	}
-
-	toID := new(typegen.CborInt)
-	if err := toID.UnmarshalCBOR(bytes.NewReader(to.Raw)); err != nil {
-		return err
-	}
-	toIDAddr, err := address.NewIDAddress(uint64(*toID))
-	if err != nil {
-		return err
-	}
-
-	i.Modified = append(i.Modified, AddressChange{
-		From: AddressPair{
-			ID: fromIDAddr,
-			PK: pkAddr,
-		},
-		To: AddressPair{
-			ID: toIDAddr,
-			PK: pkAddr,
-		},
-	})
-	return nil
-}
-
-func (i *InitActorAddressChanges) Remove(key string, val *typegen.Deferred) error {
-	pkAddr, err := address.NewFromBytes([]byte(key))
-	if err != nil {
-		return err
-	}
-	id := new(typegen.CborInt)
-	if err := id.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
-		return err
-	}
-	idAddr, err := address.NewIDAddress(uint64(*id))
-	if err != nil {
-		return err
-	}
-	i.Removed = append(i.Removed, AddressPair{
-		ID: idAddr,
-		PK: pkAddr,
-	})
-	return nil
-}
 
 func (sp *StatePredicates) OnAddressMapChange() DiffInitActorStateFunc {
 	return func(ctx context.Context, oldState, newState init_.State) (changed bool, user UserData, err error) {
-		addressChanges := &InitActorAddressChanges{
-			Added:    []AddressPair{},
-			Modified: []AddressChange{},
-			Removed:  []AddressPair{},
-		}
-
-		err = oldState.ForEachActor(func(oldId abi.ActorID, oldAddress address.Address) error {
-			oldIdAddress, err := address.NewIDAddress(uint64(oldId))
-			if err != nil {
-				return err
-			}
-
-			newIdAddress, found, err := newState.ResolveAddress(oldAddress)
-			if err != nil {
-				return err
-			}
-
-			if !found {
-				addressChanges.Removed = append(addressChanges.Removed, AddressPair{
-					ID: oldIdAddress,
-					PK: oldAddress,
-				})
-			}
-
-			if oldIdAddress != newIdAddress {
-				addressChanges.Modified = append(addressChanges.Modified, AddressChange{
-					From: AddressPair{
-						ID: oldIdAddress,
-						PK: oldAddress,
-					},
-					To: AddressPair{
-						ID: newIdAddress,
-						PK: oldAddress,
-					},
-				})
-			}
-
-			return nil
-		})
-
+		addressChanges, err := init_.DiffAddressMap(oldState, newState)
 		if err != nil {
 			return false, nil, err
 		}
-
-		err = newState.ForEachActor(func(newId abi.ActorID, newAddress address.Address) error {
-			newIdAddress, err := address.NewIDAddress(uint64(newId))
-			if err != nil {
-				return err
-			}
-
-			_, found, err := newState.ResolveAddress(newAddress)
-			if err != nil {
-				return err
-			}
-
-			if !found {
-				addressChanges.Added = append(addressChanges.Added, AddressPair{
-					ID: newIdAddress,
-					PK: newAddress,
-				})
-			}
-
-			return nil
-		})
-
-		if err != nil {
-			return false, nil, err
-		}
-
-		if len(addressChanges.Added)+len(addressChanges.Removed)+len(addressChanges.Modified) == 0 {
+		if len(addressChanges.Added)+len(addressChanges.Modified)+len(addressChanges.Removed) == 0 {
 			return false, nil, nil
 		}
-
 		return true, addressChanges, nil
 	}
 }

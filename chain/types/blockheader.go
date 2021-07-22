@@ -47,41 +47,24 @@ func NewBeaconEntry(round uint64, data []byte) BeaconEntry {
 }
 
 type BlockHeader struct {
-	Miner address.Address // 0
+	Miner                 address.Address    // 0 unique per block/miner
+	Ticket                *Ticket            // 1 unique per block/miner: should be a valid VRF
+	ElectionProof         *ElectionProof     // 2 unique per block/miner: should be a valid VRF
+	BeaconEntries         []BeaconEntry      // 3 identical for all blocks in same tipset
+	WinPoStProof          []proof2.PoStProof // 4 unique per block/miner
+	Parents               []cid.Cid          // 5 identical for all blocks in same tipset
+	ParentWeight          BigInt             // 6 identical for all blocks in same tipset
+	Height                abi.ChainEpoch     // 7 identical for all blocks in same tipset
+	ParentStateRoot       cid.Cid            // 8 identical for all blocks in same tipset
+	ParentMessageReceipts cid.Cid            // 9 identical for all blocks in same tipset
+	Messages              cid.Cid            // 10 unique per block
+	BLSAggregate          *crypto.Signature  // 11 unique per block: aggrregate of BLS messages from above
+	Timestamp             uint64             // 12 identical for all blocks in same tipset / hard-tied to the value of Height above
+	BlockSig              *crypto.Signature  // 13 unique per block/miner: miner signature
+	ForkSignaling         uint64             // 14 currently unused/undefined
+	ParentBaseFee         abi.TokenAmount    // 15 identical for all blocks in same tipset: the base fee after executing parent tipset
 
-	Ticket *Ticket // 1
-
-	ElectionProof *ElectionProof // 2
-
-	BeaconEntries []BeaconEntry // 3
-
-	WinPoStProof []proof2.PoStProof // 4
-
-	Parents []cid.Cid // 5
-
-	ParentWeight BigInt // 6
-
-	Height abi.ChainEpoch // 7
-
-	ParentStateRoot cid.Cid // 8
-
-	ParentMessageReceipts cid.Cid // 8
-
-	Messages cid.Cid // 10
-
-	BLSAggregate *crypto.Signature // 11
-
-	Timestamp uint64 // 12
-
-	BlockSig *crypto.Signature // 13
-
-	ForkSignaling uint64 // 14
-
-	// ParentBaseFee is the base fee after executing parent tipset
-	ParentBaseFee abi.TokenAmount // 15
-
-	// internal
-	validated bool // true if the signature has been validated
+	validated bool // internal, true if the signature has been validated
 }
 
 func (blk *BlockHeader) ToStorageBlock() (block.Block, error) {

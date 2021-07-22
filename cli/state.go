@@ -3,6 +3,8 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"html/template"
@@ -15,13 +17,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/multiformats/go-multiaddr"
+	"github.com/filecoin-project/lotus/api/v0api"
+
+	"github.com/fatih/color"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -29,19 +34,18 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var stateCmd = &cli.Command{
+var StateCmd = &cli.Command{
 	Name:  "state",
 	Usage: "Interact with and query filecoin chain state",
 	Flags: []cli.Flag{
@@ -51,31 +55,76 @@ var stateCmd = &cli.Command{
 		},
 	},
 	Subcommands: []*cli.Command{
-		statePowerCmd,
-		stateSectorsCmd,
-		stateActiveSectorsCmd,
-		stateListActorsCmd,
-		stateListMinersCmd,
-		stateCircSupplyCmd,
-		stateSectorCmd,
-		stateGetActorCmd,
-		stateLookupIDCmd,
-		stateReplayCmd,
-		stateSectorSizeCmd,
-		stateReadStateCmd,
-		stateListMessagesCmd,
-		stateComputeStateCmd,
-		stateCallCmd,
-		stateGetDealSetCmd,
-		stateWaitMsgCmd,
-		stateSearchMsgCmd,
-		stateMinerInfo,
-		stateMarketCmd,
-		stateExecTraceCmd,
+		StatePowerCmd,
+		StateSectorsCmd,
+		StateActiveSectorsCmd,
+		StateListActorsCmd,
+		StateListMinersCmd,
+		StateCircSupplyCmd,
+		StateSectorCmd,
+		StateGetActorCmd,
+		StateLookupIDCmd,
+		StateReplayCmd,
+		StateSectorSizeCmd,
+		StateReadStateCmd,
+		StateListMessagesCmd,
+		StateComputeStateCmd,
+		StateCallCmd,
+		StateGetDealSetCmd,
+		StateWaitMsgCmd,
+		StateSearchMsgCmd,
+		StateMinerInfo,
+		StateMarketCmd,
+		StateExecTraceCmd,
+		StateNtwkVersionCmd,
+		StateMinerProvingDeadlineCmd,
 	},
 }
 
-var stateMinerInfo = &cli.Command{
+var StateMinerProvingDeadlineCmd = &cli.Command{
+	Name:      "miner-proving-deadline",
+	Usage:     "Retrieve information about a given miner's proving deadline",
+	ArgsUsage: "[minerAddress]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify miner to get information for")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		cd, err := api.StateMinerProvingDeadline(ctx, addr, ts.Key())
+		if err != nil {
+			return xerrors.Errorf("getting miner info: %w", err)
+		}
+
+		fmt.Printf("Period Start:\t%s\n", cd.PeriodStart)
+		fmt.Printf("Index:\t\t%d\n", cd.Index)
+		fmt.Printf("Open:\t\t%s\n", cd.Open)
+		fmt.Printf("Close:\t\t%s\n", cd.Close)
+		fmt.Printf("Challenge:\t%s\n", cd.Challenge)
+		fmt.Printf("FaultCutoff:\t%s\n", cd.FaultCutoff)
+
+		return nil
+	},
+}
+
+var StateMinerInfo = &cli.Command{
 	Name:      "miner-info",
 	Usage:     "Retrieve miner information",
 	ArgsUsage: "[minerAddress]",
@@ -107,14 +156,19 @@ var stateMinerInfo = &cli.Command{
 			return err
 		}
 
+		availableBalance, err := api.StateMinerAvailableBalance(ctx, addr, ts.Key())
+		if err != nil {
+			return xerrors.Errorf("getting miner available balance: %w", err)
+		}
+		fmt.Printf("Available Balance: %s\n", types.FIL(availableBalance))
 		fmt.Printf("Owner:\t%s\n", mi.Owner)
 		fmt.Printf("Worker:\t%s\n", mi.Worker)
 		for i, controlAddress := range mi.ControlAddresses {
 			fmt.Printf("Control %d: \t%s\n", i, controlAddress)
 		}
+
 		fmt.Printf("PeerID:\t%s\n", mi.PeerId)
-		fmt.Printf("SectorSize:\t%s (%d)\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))), mi.SectorSize)
-		fmt.Printf("Multiaddrs: \t")
+		fmt.Printf("Multiaddrs:\t")
 		for _, addr := range mi.Multiaddrs {
 			a, err := multiaddr.NewMultiaddrBytes(addr)
 			if err != nil {
@@ -122,6 +176,33 @@ var stateMinerInfo = &cli.Command{
 			}
 			fmt.Printf("%s ", a)
 		}
+		fmt.Println()
+		fmt.Printf("Consensus Fault End:\t%d\n", mi.ConsensusFaultElapsed)
+
+		fmt.Printf("SectorSize:\t%s (%d)\n", types.SizeStr(types.NewInt(uint64(mi.SectorSize))), mi.SectorSize)
+		pow, err := api.StateMinerPower(ctx, addr, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Byte Power:   %s / %s (%0.4f%%)\n",
+			color.BlueString(types.SizeStr(pow.MinerPower.RawBytePower)),
+			types.SizeStr(pow.TotalPower.RawBytePower),
+			types.BigDivFloat(
+				types.BigMul(pow.MinerPower.RawBytePower, big.NewInt(100)),
+				pow.TotalPower.RawBytePower,
+			),
+		)
+
+		fmt.Printf("Actual Power: %s / %s (%0.4f%%)\n",
+			color.GreenString(types.DeciStr(pow.MinerPower.QualityAdjPower)),
+			types.DeciStr(pow.TotalPower.QualityAdjPower),
+			types.BigDivFloat(
+				types.BigMul(pow.MinerPower.QualityAdjPower, big.NewInt(100)),
+				pow.TotalPower.QualityAdjPower,
+			),
+		)
+
 		fmt.Println()
 
 		cd, err := api.StateMinerProvingDeadline(ctx, addr, ts.Key())
@@ -150,16 +231,19 @@ func ParseTipSetString(ts string) ([]cid.Cid, error) {
 	return cids, nil
 }
 
-func LoadTipSet(ctx context.Context, cctx *cli.Context, api api.FullNode) (*types.TipSet, error) {
+// LoadTipSet gets the tipset from the context, or the head from the API.
+//
+// It always gets the head from the API so commands use a consistent tipset even if time pases.
+func LoadTipSet(ctx context.Context, cctx *cli.Context, api v0api.FullNode) (*types.TipSet, error) {
 	tss := cctx.String("tipset")
 	if tss == "" {
-		return nil, nil
+		return api.ChainHead(ctx)
 	}
 
 	return ParseTipSetRef(ctx, api, tss)
 }
 
-func ParseTipSetRef(ctx context.Context, api api.FullNode, tss string) (*types.TipSet, error) {
+func ParseTipSetRef(ctx context.Context, api v0api.FullNode, tss string) (*types.TipSet, error) {
 	if tss[0] == '@' {
 		if tss == "@head" {
 			return api.ChainHead(ctx)
@@ -191,7 +275,7 @@ func ParseTipSetRef(ctx context.Context, api api.FullNode, tss string) (*types.T
 	return ts, nil
 }
 
-var statePowerCmd = &cli.Command{
+var StatePowerCmd = &cli.Command{
 	Name:      "power",
 	Usage:     "Query network or miner power",
 	ArgsUsage: "[<minerAddress> (optional)]",
@@ -204,17 +288,26 @@ var statePowerCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
 		var maddr address.Address
 		if cctx.Args().Present() {
 			maddr, err = address.NewFromString(cctx.Args().First())
 			if err != nil {
 				return err
 			}
-		}
 
-		ts, err := LoadTipSet(ctx, cctx, api)
-		if err != nil {
-			return err
+			ma, err := api.StateGetActor(ctx, maddr, ts.Key())
+			if err != nil {
+				return err
+			}
+
+			if !builtin.IsStorageMinerActor(ma.Code) {
+				return xerrors.New("provided address does not correspond to a miner actor")
+			}
 		}
 
 		power, err := api.StateMinerPower(ctx, maddr, ts.Key())
@@ -225,8 +318,15 @@ var statePowerCmd = &cli.Command{
 		tp := power.TotalPower
 		if cctx.Args().Present() {
 			mp := power.MinerPower
-			percI := types.BigDiv(types.BigMul(mp.QualityAdjPower, types.NewInt(1000000)), tp.QualityAdjPower)
-			fmt.Printf("%s(%s) / %s(%s) ~= %0.4f%%\n", mp.QualityAdjPower.String(), types.SizeStr(mp.QualityAdjPower), tp.QualityAdjPower.String(), types.SizeStr(tp.QualityAdjPower), float64(percI.Int64())/10000)
+			fmt.Printf(
+				"%s(%s) / %s(%s) ~= %0.4f%%\n",
+				mp.QualityAdjPower.String(), types.SizeStr(mp.QualityAdjPower),
+				tp.QualityAdjPower.String(), types.SizeStr(tp.QualityAdjPower),
+				types.BigDivFloat(
+					types.BigMul(mp.QualityAdjPower, big.NewInt(100)),
+					tp.QualityAdjPower,
+				),
+			)
 		} else {
 			fmt.Printf("%s(%s)\n", tp.QualityAdjPower.String(), types.SizeStr(tp.QualityAdjPower))
 		}
@@ -235,7 +335,7 @@ var statePowerCmd = &cli.Command{
 	},
 }
 
-var stateSectorsCmd = &cli.Command{
+var StateSectorsCmd = &cli.Command{
 	Name:      "sectors",
 	Usage:     "Query the sector set of a miner",
 	ArgsUsage: "[minerAddress]",
@@ -268,14 +368,14 @@ var stateSectorsCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
+			fmt.Printf("%d: %s\n", s.SectorNumber, s.SealedCID)
 		}
 
 		return nil
 	},
 }
 
-var stateActiveSectorsCmd = &cli.Command{
+var StateActiveSectorsCmd = &cli.Command{
 	Name:      "active-sectors",
 	Usage:     "Query the active sector set of a miner",
 	ArgsUsage: "[minerAddress]",
@@ -308,14 +408,14 @@ var stateActiveSectorsCmd = &cli.Command{
 		}
 
 		for _, s := range sectors {
-			fmt.Printf("%d: %x\n", s.SectorNumber, s.SealedCID)
+			fmt.Printf("%d: %s\n", s.SectorNumber, s.SealedCID)
 		}
 
 		return nil
 	},
 }
 
-var stateExecTraceCmd = &cli.Command{
+var StateExecTraceCmd = &cli.Command{
 	Name:      "exec-trace",
 	Usage:     "Get the execution trace of a given message",
 	ArgsUsage: "<messageCid>",
@@ -345,6 +445,9 @@ var stateExecTraceCmd = &cli.Command{
 		lookup, err := capi.StateSearchMsg(ctx, mcid)
 		if err != nil {
 			return err
+		}
+		if lookup == nil {
+			return fmt.Errorf("failed to find message: %s", mcid)
 		}
 
 		ts, err := capi.ChainGetTipSet(ctx, lookup.TipSet)
@@ -383,7 +486,7 @@ var stateExecTraceCmd = &cli.Command{
 	},
 }
 
-var stateReplayCmd = &cli.Command{
+var StateReplayCmd = &cli.Command{
 	Name:      "replay",
 	Usage:     "Replay a particular message",
 	ArgsUsage: "<messageCid>",
@@ -448,7 +551,7 @@ var stateReplayCmd = &cli.Command{
 	},
 }
 
-var stateGetDealSetCmd = &cli.Command{
+var StateGetDealSetCmd = &cli.Command{
 	Name:      "get-deal",
 	Usage:     "View on-chain deal info",
 	ArgsUsage: "[dealId]",
@@ -490,7 +593,7 @@ var stateGetDealSetCmd = &cli.Command{
 	},
 }
 
-var stateListMinersCmd = &cli.Command{
+var StateListMinersCmd = &cli.Command{
 	Name:  "list-miners",
 	Usage: "list all miners in the network",
 	Flags: []cli.Flag{
@@ -546,7 +649,7 @@ var stateListMinersCmd = &cli.Command{
 	},
 }
 
-func getDealsCounts(ctx context.Context, lapi api.FullNode) (map[address.Address]int, error) {
+func getDealsCounts(ctx context.Context, lapi v0api.FullNode) (map[address.Address]int, error) {
 	allDeals, err := lapi.StateMarketDeals(ctx, types.EmptyTSK)
 	if err != nil {
 		return nil, err
@@ -562,7 +665,7 @@ func getDealsCounts(ctx context.Context, lapi api.FullNode) (map[address.Address
 	return out, nil
 }
 
-var stateListActorsCmd = &cli.Command{
+var StateListActorsCmd = &cli.Command{
 	Name:  "list-actors",
 	Usage: "list all actors in the network",
 	Action: func(cctx *cli.Context) error {
@@ -592,10 +695,10 @@ var stateListActorsCmd = &cli.Command{
 	},
 }
 
-var stateGetActorCmd = &cli.Command{
+var StateGetActorCmd = &cli.Command{
 	Name:      "get-actor",
 	Usage:     "Print actor information",
-	ArgsUsage: "[actorrAddress]",
+	ArgsUsage: "[actorAddress]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -636,7 +739,7 @@ var stateGetActorCmd = &cli.Command{
 	},
 }
 
-var stateLookupIDCmd = &cli.Command{
+var StateLookupIDCmd = &cli.Command{
 	Name:      "lookup",
 	Usage:     "Find corresponding ID address",
 	ArgsUsage: "[address]",
@@ -687,7 +790,7 @@ var stateLookupIDCmd = &cli.Command{
 	},
 }
 
-var stateSectorSizeCmd = &cli.Command{
+var StateSectorSizeCmd = &cli.Command{
 	Name:      "sector-size",
 	Usage:     "Look up miners sector size",
 	ArgsUsage: "[minerAddress]",
@@ -724,7 +827,7 @@ var stateSectorSizeCmd = &cli.Command{
 	},
 }
 
-var stateReadStateCmd = &cli.Command{
+var StateReadStateCmd = &cli.Command{
 	Name:      "read-state",
 	Usage:     "View a json representation of an actors state",
 	ArgsUsage: "[actorAddress]",
@@ -766,7 +869,7 @@ var stateReadStateCmd = &cli.Command{
 	},
 }
 
-var stateListMessagesCmd = &cli.Command{
+var StateListMessagesCmd = &cli.Command{
 	Name:  "list-messages",
 	Usage: "list messages on chain matching given criteria",
 	Flags: []cli.Flag{
@@ -820,14 +923,6 @@ var stateListMessagesCmd = &cli.Command{
 			return err
 		}
 
-		if ts == nil {
-			head, err := api.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
-			ts = head
-		}
-
 		windowSize := abi.ChainEpoch(100)
 
 		cur := ts
@@ -879,7 +974,7 @@ var stateListMessagesCmd = &cli.Command{
 	},
 }
 
-var stateComputeStateCmd = &cli.Command{
+var StateComputeStateCmd = &cli.Command{
 	Name:  "compute-state",
 	Usage: "Perform state computations",
 	Flags: []cli.Flag{
@@ -907,6 +1002,10 @@ var stateComputeStateCmd = &cli.Command{
 			Name:  "compute-state-output",
 			Usage: "a json file containing pre-existing compute-state output, to generate html reports without rerunning state changes",
 		},
+		&cli.BoolFlag{
+			Name:  "no-timing",
+			Usage: "don't show timing information in html traces",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -923,13 +1022,6 @@ var stateComputeStateCmd = &cli.Command{
 		}
 
 		h := abi.ChainEpoch(cctx.Uint64("vm-height"))
-		if ts == nil {
-			head, err := api.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
-			ts = head
-		}
 		if h == 0 {
 			h = ts.Height()
 		}
@@ -978,7 +1070,7 @@ var stateComputeStateCmd = &cli.Command{
 		}
 
 		if cctx.Bool("html") {
-			st, err := state.LoadStateTree(cbor.NewCborStore(apibstore.NewAPIBlockstore(api)), stout.Root)
+			st, err := state.LoadStateTree(cbor.NewCborStore(blockstore.NewAPIBlockstore(api)), stout.Root)
 			if err != nil {
 				return xerrors.Errorf("loading state tree: %w", err)
 			}
@@ -998,7 +1090,9 @@ var stateComputeStateCmd = &cli.Command{
 				return c.Code, nil
 			}
 
-			return ComputeStateHTMLTempl(os.Stdout, ts, stout, getCode)
+			_, _ = fmt.Fprintln(os.Stderr, "computed state cid: ", stout.Root)
+
+			return ComputeStateHTMLTempl(os.Stdout, ts, stout, !cctx.Bool("no-timing"), getCode)
 		}
 
 		fmt.Println("computed state cid: ", stout.Root)
@@ -1119,8 +1213,11 @@ var compStateMsg = `
  {{if gt (len .Msg.Params) 0}}
   <div><pre class="params">{{JsonParams ($code) (.Msg.Method) (.Msg.Params) | html}}</pre></div>
  {{end}}
- <div><span class="slow-{{IsSlow .Duration}}-{{IsVerySlow .Duration}}">Took {{.Duration}}</span>, <span class="exit{{IntExit .MsgRct.ExitCode}}">Exit: <b>{{.MsgRct.ExitCode}}</b></span>{{if gt (len .MsgRct.Return) 0}}, Return{{end}}</div>
-
+ {{if PrintTiming}}
+  <div><span class="slow-{{IsSlow .Duration}}-{{IsVerySlow .Duration}}">Took {{.Duration}}</span>, <span class="exit{{IntExit .MsgRct.ExitCode}}">Exit: <b>{{.MsgRct.ExitCode}}</b></span>{{if gt (len .MsgRct.Return) 0}}, Return{{end}}</div>
+ {{else}}
+  <div><span class="exit{{IntExit .MsgRct.ExitCode}}">Exit: <b>{{.MsgRct.ExitCode}}</b></span>{{if gt (len .MsgRct.Return) 0}}, Return{{end}}</div>
+ {{end}}
  {{if gt (len .MsgRct.Return) 0}}
   <div><pre class="ret">{{JsonReturn ($code) (.Msg.Method) (.MsgRct.Return) | html}}</pre></div>
  {{end}}
@@ -1146,7 +1243,7 @@ var compStateMsg = `
  {{range .GasCharges}}
  <tr><td>{{.Name}}{{if .Extra}}:{{.Extra}}{{end}}</td>
  {{template "gasC" .}}
- <td>{{.TimeTaken}}</td>
+ <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
   <td>
    {{ $fImp := FirstImportant .Location }}
    {{ if $fImp }}
@@ -1185,7 +1282,7 @@ var compStateMsg = `
   {{with SumGas .GasCharges}}
   <tr class="sum"><td><b>Sum</b></td>
   {{template "gasC" .}}
-  <td>{{.TimeTaken}}</td>
+  <td>{{if PrintTiming}}{{.TimeTaken}}{{end}}</td>
   <td></td></tr>
   {{end}}
 </table>
@@ -1206,19 +1303,20 @@ type compStateHTMLIn struct {
 	Comp   *api.ComputeStateOutput
 }
 
-func ComputeStateHTMLTempl(w io.Writer, ts *types.TipSet, o *api.ComputeStateOutput, getCode func(addr address.Address) (cid.Cid, error)) error {
+func ComputeStateHTMLTempl(w io.Writer, ts *types.TipSet, o *api.ComputeStateOutput, printTiming bool, getCode func(addr address.Address) (cid.Cid, error)) error {
 	t, err := template.New("compute_state").Funcs(map[string]interface{}{
-		"GetCode":    getCode,
-		"GetMethod":  getMethod,
-		"ToFil":      toFil,
-		"JsonParams": JsonParams,
-		"JsonReturn": jsonReturn,
-		"IsSlow":     isSlow,
-		"IsVerySlow": isVerySlow,
-		"IntExit":    func(i exitcode.ExitCode) int64 { return int64(i) },
-		"SumGas":     sumGas,
-		"CodeStr":    codeStr,
-		"Call":       call,
+		"GetCode":     getCode,
+		"GetMethod":   getMethod,
+		"ToFil":       toFil,
+		"JsonParams":  JsonParams,
+		"JsonReturn":  jsonReturn,
+		"IsSlow":      isSlow,
+		"IsVerySlow":  isVerySlow,
+		"IntExit":     func(i exitcode.ExitCode) int64 { return int64(i) },
+		"SumGas":      sumGas,
+		"CodeStr":     codeStr,
+		"Call":        call,
+		"PrintTiming": func() bool { return printTiming },
 		"FirstImportant": func(locs []types.Loc) *types.Loc {
 			if len(locs) != 0 {
 				for _, l := range locs {
@@ -1299,12 +1397,11 @@ func sumGas(changes []*types.GasTrace) types.GasTrace {
 }
 
 func JsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, error) {
-	methodMeta, found := stmgr.MethodsMap[code][method]
-	if !found {
-		return "", fmt.Errorf("method %d not found on actor %s", method, code)
+	p, err := stmgr.GetParamType(code, method)
+	if err != nil {
+		return "", err
 	}
-	re := reflect.New(methodMeta.Params.Elem())
-	p := re.Interface().(cbg.CBORUnmarshaler)
+
 	if err := p.UnmarshalCBOR(bytes.NewReader(params)); err != nil {
 		return "", err
 	}
@@ -1328,7 +1425,7 @@ func jsonReturn(code cid.Cid, method abi.MethodNum, ret []byte) (string, error) 
 	return string(b), err
 }
 
-var stateWaitMsgCmd = &cli.Command{
+var StateWaitMsgCmd = &cli.Command{
 	Name:      "wait-msg",
 	Usage:     "Wait for a message to appear on chain",
 	ArgsUsage: "[messageCid]",
@@ -1366,35 +1463,11 @@ var stateWaitMsgCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("message was executed in tipset: %s\n", mw.TipSet.Cids())
-		fmt.Printf("Exit Code: %d\n", mw.Receipt.ExitCode)
-		fmt.Printf("Gas Used: %d\n", mw.Receipt.GasUsed)
-		fmt.Printf("Return: %x\n", mw.Receipt.Return)
-		if err := printReceiptReturn(ctx, api, m, mw.Receipt); err != nil {
-			return err
-		}
-
-		return nil
+		return printMsg(ctx, api, msg, mw, m)
 	},
 }
 
-func printReceiptReturn(ctx context.Context, api api.FullNode, m *types.Message, r types.MessageReceipt) error {
-	act, err := api.StateGetActor(ctx, m.To, types.EmptyTSK)
-	if err != nil {
-		return err
-	}
-
-	jret, err := jsonReturn(act.Code, m.Method, r.Return)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(jret)
-
-	return nil
-}
-
-var stateSearchMsgCmd = &cli.Command{
+var StateSearchMsgCmd = &cli.Command{
 	Name:      "search-msg",
 	Usage:     "Search to see whether a message has appeared on chain",
 	ArgsUsage: "[messageCid]",
@@ -1421,22 +1494,64 @@ var stateSearchMsgCmd = &cli.Command{
 			return err
 		}
 
-		if mw != nil {
-			fmt.Printf("message was executed in tipset: %s", mw.TipSet.Cids())
-			fmt.Printf("\nExit Code: %d", mw.Receipt.ExitCode)
-			fmt.Printf("\nGas Used: %d", mw.Receipt.GasUsed)
-			fmt.Printf("\nReturn: %x", mw.Receipt.Return)
-		} else {
-			fmt.Print("message was not found on chain")
+		if mw == nil {
+			return fmt.Errorf("failed to find message: %s", msg)
 		}
-		return nil
+
+		m, err := api.ChainGetMessage(ctx, msg)
+		if err != nil {
+			return err
+		}
+
+		return printMsg(ctx, api, msg, mw, m)
 	},
 }
 
-var stateCallCmd = &cli.Command{
+func printReceiptReturn(ctx context.Context, api v0api.FullNode, m *types.Message, r types.MessageReceipt) error {
+	if len(r.Return) == 0 {
+		return nil
+	}
+
+	act, err := api.StateGetActor(ctx, m.To, types.EmptyTSK)
+	if err != nil {
+		return err
+	}
+
+	jret, err := jsonReturn(act.Code, m.Method, r.Return)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Decoded return value: ", jret)
+
+	return nil
+}
+
+func printMsg(ctx context.Context, api v0api.FullNode, msg cid.Cid, mw *lapi.MsgLookup, m *types.Message) error {
+	if mw == nil {
+		fmt.Println("message was not found on chain")
+		return nil
+	}
+
+	if mw.Message != msg {
+		fmt.Printf("Message was replaced: %s\n", mw.Message)
+	}
+
+	fmt.Printf("Executed in tipset: %s\n", mw.TipSet.Cids())
+	fmt.Printf("Exit Code: %d\n", mw.Receipt.ExitCode)
+	fmt.Printf("Gas Used: %d\n", mw.Receipt.GasUsed)
+	fmt.Printf("Return: %x\n", mw.Receipt.Return)
+	if err := printReceiptReturn(ctx, api, m, mw.Receipt); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+var StateCallCmd = &cli.Command{
 	Name:      "call",
 	Usage:     "Invoke a method on an actor locally",
-	ArgsUsage: "[toAddress methodId <param1 param2 ...> (optional)]",
+	ArgsUsage: "[toAddress methodId params (optional)]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "from",
@@ -1450,8 +1565,13 @@ var stateCallCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "ret",
-			Usage: "specify how to parse output (auto, raw, addr, big)",
-			Value: "auto",
+			Usage: "specify how to parse output (raw, decoded, base64, hex)",
+			Value: "decoded",
+		},
+		&cli.StringFlag{
+			Name:  "encoding",
+			Value: "base64",
+			Usage: "specify params encoding to parse (base64, hex)",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -1492,14 +1612,23 @@ var stateCallCmd = &cli.Command{
 			return fmt.Errorf("failed to parse 'value': %s", err)
 		}
 
-		act, err := api.StateGetActor(ctx, toa, ts.Key())
-		if err != nil {
-			return fmt.Errorf("failed to lookup target actor: %s", err)
-		}
-
-		params, err := parseParamsForMethod(act.Code, method, cctx.Args().Slice()[2:])
-		if err != nil {
-			return fmt.Errorf("failed to parse params: %s", err)
+		var params []byte
+		// If params were passed in, decode them
+		if cctx.Args().Len() > 2 {
+			switch cctx.String("encoding") {
+			case "base64":
+				params, err = base64.StdEncoding.DecodeString(cctx.Args().Get(2))
+				if err != nil {
+					return xerrors.Errorf("decoding base64 value: %w", err)
+				}
+			case "hex":
+				params, err = hex.DecodeString(cctx.Args().Get(2))
+				if err != nil {
+					return xerrors.Errorf("decoding hex value: %w", err)
+				}
+			default:
+				return xerrors.Errorf("unrecognized encoding: %s", cctx.String("encoding"))
+			}
 		}
 
 		ret, err := api.StateCall(ctx, &types.Message{
@@ -1510,138 +1639,43 @@ var stateCallCmd = &cli.Command{
 			Params: params,
 		}, ts.Key())
 		if err != nil {
-			return fmt.Errorf("state call failed: %s", err)
+			return fmt.Errorf("state call failed: %w", err)
 		}
 
 		if ret.MsgRct.ExitCode != 0 {
 			return fmt.Errorf("invocation failed (exit: %d, gasUsed: %d): %s", ret.MsgRct.ExitCode, ret.MsgRct.GasUsed, ret.Error)
 		}
 
-		s, err := formatOutput(cctx.String("ret"), ret.MsgRct.Return)
-		if err != nil {
-			return fmt.Errorf("failed to format output: %s", err)
-		}
+		fmt.Println("Call receipt:")
+		fmt.Printf("Exit code: %d\n", ret.MsgRct.ExitCode)
+		fmt.Printf("Gas Used: %d\n", ret.MsgRct.GasUsed)
 
-		fmt.Printf("gas used: %d\n", ret.MsgRct.GasUsed)
-		fmt.Printf("return: %s\n", s)
+		switch cctx.String("ret") {
+		case "decoded":
+			act, err := api.StateGetActor(ctx, toa, ts.Key())
+			if err != nil {
+				return xerrors.Errorf("getting actor: %w", err)
+			}
+
+			retStr, err := jsonReturn(act.Code, abi.MethodNum(method), ret.MsgRct.Return)
+			if err != nil {
+				return xerrors.Errorf("decoding return: %w", err)
+			}
+
+			fmt.Printf("Return:\n%s\n", retStr)
+		case "raw":
+			fmt.Printf("Return: \n%s\n", ret.MsgRct.Return)
+		case "hex":
+			fmt.Printf("Return: \n%x\n", ret.MsgRct.Return)
+		case "base64":
+			fmt.Printf("Return: \n%s\n", base64.StdEncoding.EncodeToString(ret.MsgRct.Return))
+		}
 
 		return nil
 	},
 }
 
-func formatOutput(t string, val []byte) (string, error) {
-	switch t {
-	case "raw", "hex":
-		return fmt.Sprintf("%x", val), nil
-	case "address", "addr", "a":
-		a, err := address.NewFromBytes(val)
-		if err != nil {
-			return "", err
-		}
-		return a.String(), nil
-	case "big", "int", "bigint":
-		bi := types.BigFromBytes(val)
-		return bi.String(), nil
-	case "fil":
-		bi := types.FIL(types.BigFromBytes(val))
-		return bi.String(), nil
-	case "pid", "peerid", "peer":
-		pid, err := peer.IDFromBytes(val)
-		if err != nil {
-			return "", err
-		}
-
-		return pid.Pretty(), nil
-	case "auto":
-		if len(val) == 0 {
-			return "", nil
-		}
-
-		a, err := address.NewFromBytes(val)
-		if err == nil {
-			return "address: " + a.String(), nil
-		}
-
-		pid, err := peer.IDFromBytes(val)
-		if err == nil {
-			return "peerID: " + pid.Pretty(), nil
-		}
-
-		bi := types.BigFromBytes(val)
-		return "bigint: " + bi.String(), nil
-	default:
-		return "", fmt.Errorf("unrecognized output type: %q", t)
-	}
-}
-
-func parseParamsForMethod(act cid.Cid, method uint64, args []string) ([]byte, error) {
-	if len(args) == 0 {
-		return nil, nil
-	}
-
-	// TODO: consider moving this to a dedicated helper
-	actMeta, ok := stmgr.MethodsMap[act]
-	if !ok {
-		return nil, fmt.Errorf("unknown actor %s", act)
-	}
-
-	methodMeta, ok := actMeta[abi.MethodNum(method)]
-	if !ok {
-		return nil, fmt.Errorf("unknown method %d for actor %s", method, act)
-	}
-
-	paramObj := methodMeta.Params
-	if paramObj.NumField() != len(args) {
-		return nil, fmt.Errorf("not enough arguments given to call that method (expecting %d)", paramObj.NumField())
-	}
-
-	p := reflect.New(paramObj)
-	for i := 0; i < len(args); i++ {
-		switch paramObj.Field(i).Type {
-		case reflect.TypeOf(address.Address{}):
-			a, err := address.NewFromString(args[i])
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse address: %s", err)
-			}
-			p.Elem().Field(i).Set(reflect.ValueOf(a))
-		case reflect.TypeOf(uint64(0)):
-			val, err := strconv.ParseUint(args[i], 10, 64)
-			if err != nil {
-				return nil, err
-			}
-			p.Elem().Field(i).Set(reflect.ValueOf(val))
-		case reflect.TypeOf(abi.ChainEpoch(0)):
-			val, err := strconv.ParseInt(args[i], 10, 64)
-			if err != nil {
-				return nil, err
-			}
-			p.Elem().Field(i).Set(reflect.ValueOf(abi.ChainEpoch(val)))
-		case reflect.TypeOf(big.Int{}):
-			val, err := big.FromString(args[i])
-			if err != nil {
-				return nil, err
-			}
-			p.Elem().Field(i).Set(reflect.ValueOf(val))
-		case reflect.TypeOf(peer.ID("")):
-			pid, err := peer.Decode(args[i])
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse peer ID: %s", err)
-			}
-			p.Elem().Field(i).Set(reflect.ValueOf(pid))
-		default:
-			return nil, fmt.Errorf("unsupported type for call (TODO): %s", paramObj.Field(i).Type)
-		}
-	}
-
-	m := p.Interface().(cbg.CBORMarshaler)
-	buf := new(bytes.Buffer)
-	if err := m.MarshalCBOR(buf); err != nil {
-		return nil, fmt.Errorf("failed to marshal param object: %s", err)
-	}
-	return buf.Bytes(), nil
-}
-
-var stateCircSupplyCmd = &cli.Command{
+var StateCircSupplyCmd = &cli.Command{
 	Name:  "circulating-supply",
 	Usage: "Get the exact current circulating supply of Filecoin",
 	Flags: []cli.Flag{
@@ -1690,10 +1724,10 @@ var stateCircSupplyCmd = &cli.Command{
 	},
 }
 
-var stateSectorCmd = &cli.Command{
+var StateSectorCmd = &cli.Command{
 	Name:      "sector",
 	Usage:     "Get miner sector info",
-	ArgsUsage: "[miner address] [sector number]",
+	ArgsUsage: "[minerAddress] [sectorNumber]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -1704,19 +1738,12 @@ var stateSectorCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		if cctx.Args().Len() != 2 {
-			return xerrors.Errorf("expected 2 params")
+			return xerrors.Errorf("expected 2 params: minerAddress and sectorNumber")
 		}
 
 		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
-		}
-
-		if ts == nil {
-			ts, err = api.ChainHead(ctx)
-			if err != nil {
-				return err
-			}
 		}
 
 		maddr, err := address.NewFromString(cctx.Args().Get(0))
@@ -1732,6 +1759,9 @@ var stateSectorCmd = &cli.Command{
 		si, err := api.StateSectorGetInfo(ctx, maddr, abi.SectorNumber(sid), ts.Key())
 		if err != nil {
 			return err
+		}
+		if si == nil {
+			return xerrors.Errorf("sector %d for miner %s not found", sid, maddr)
 		}
 
 		fmt.Println("SectorNumber: ", si.SectorNumber)
@@ -1761,7 +1791,7 @@ var stateSectorCmd = &cli.Command{
 	},
 }
 
-var stateMarketCmd = &cli.Command{
+var StateMarketCmd = &cli.Command{
 	Name:  "market",
 	Usage: "Inspect the storage market actor",
 	Subcommands: []*cli.Command{
@@ -1802,6 +1832,38 @@ var stateMarketBalanceCmd = &cli.Command{
 
 		fmt.Printf("Escrow: %s\n", types.FIL(balance.Escrow))
 		fmt.Printf("Locked: %s\n", types.FIL(balance.Locked))
+
+		return nil
+	},
+}
+
+var StateNtwkVersionCmd = &cli.Command{
+	Name:  "network-version",
+	Usage: "Returns the network version",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Present() {
+			return ShowHelp(cctx, fmt.Errorf("doesn't expect any arguments"))
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		nv, err := api.StateNetworkVersion(ctx, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Network Version: %d\n", nv)
 
 		return nil
 	},

@@ -7,12 +7,12 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var waitApiCmd = &cli.Command{
+var WaitApiCmd = &cli.Command{
 	Name:  "wait-api",
 	Usage: "Wait for lotus api to come online",
 	Action: func(cctx *cli.Context) error {
 		for i := 0; i < 30; i++ {
-			api, closer, err := GetFullNodeAPI(cctx)
+			api, closer, err := GetAPI(cctx)
 			if err != nil {
 				fmt.Printf("Not online yet... (%s)\n", err)
 				time.Sleep(time.Second)

@@ -311,7 +311,7 @@ FIXME: Maybe mention the `Batching` interface as the developer will stumble upon
 
 FIXME: IPFS blocks vs Filecoin blocks ideally happens before this / here
 
-The [`Blockstore` interface](`github.com/ipfs/go-ipfs-blockstore/blockstore.go`) structures the key-value pair
+The [`Blockstore` interface](`github.com/filecoin-project/lotus/blockstore/blockstore.go`) structures the key-value pair
 into the CID format for the key and the [`Block` interface](`github.com/ipfs/go-block-format/blocks.go`) for the value.
 The `Block` value is just a raw string of bytes addressed by its hash, which is included in the CID key.
 

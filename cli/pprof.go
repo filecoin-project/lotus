@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-var pprofCmd = &cli.Command{
+var PprofCmd = &cli.Command{
 	Name:   "pprof",
 	Hidden: true,
 	Subcommands: []*cli.Command{

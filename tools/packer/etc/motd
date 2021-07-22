@@ -1,0 +1,64 @@
+Your lotus node is up and running!
+
+This image contains the two most important pieces of the lotus filecoin suite, the
+daemon and the miner. The daemon is is configured to download a snapshot and start
+running. In fact, by the time you read this, the daemon may already be in sync.
+Go ahead and make sure everything is working correctly with the following commands.
+
+
+
+To check if the daemon is running:
+
+     systemctl status lotus-daemon
+
+
+
+To check if the daemon is in sync:
+
+    lotus sync status
+
+    **note: When starting lotus for the first time, it will download a chain snapshot.
+            This is a large download and will take several minutes to complete. During
+            this time, the lotus API will not be up yet. Give it time! You can see
+	    progress by looking at the systemd journal.
+
+
+To check if the daemon is connecting to other lotus nodes:
+
+    lotus net peers
+
+
+
+No wallets are crated by default. You can view, create, and delete wallets with
+the lotus command. On this image, lotus is running as the user `fc`.
+Be careful, now. Don't delete a wallet with funds!
+
+    sudo -E -u fc lotus wallet list
+    sudo -E -u fc lotus wallet new bls
+
+
+
+The lotus miner is also installed, but it's not running by default. If you have no
+special disk or worker requirements, you can initialize the lotus-miner repo like this:
+
+    sudo -E -u fc lotus-miner init -o <wallet_you_created_before>
+
+
+
+You only need to do this once, after which, you can enable and start the miner.
+
+    sudo systemctl enable lotus-miner
+    sudo systemctl start lotus-miner
+
+
+
+Do you want to access your lotus daemon remotely? Learn how to setup token authentication
+and use client libraries from lotus docs.
+
+https://docs.filecoin.io/build/lotus/enable-remote-api-access/
+
+
+
+For more information, see             https://docs.filecoin.io/
+Found a bug? let us know!             https://github.com/filecoin-project/lotus
+Chat with us on slack!                https://filecoinproject.slack.com/archives/CEGN061C5

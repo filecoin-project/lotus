@@ -1,9 +1,12 @@
 package vm
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"testing"
+
+	"github.com/filecoin-project/go-state-types/network"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/assert"
@@ -105,10 +108,27 @@ func TestInvokerBasic(t *testing.T) {
 		}
 	}
 
-	_, aerr := code[1](&Runtime{}, []byte{99})
-	if aerrors.IsFatal(aerr) {
-		t.Fatal("err should not be fatal")
+	{
+		_, aerr := code[1](&Runtime{
+			vm: &VM{ntwkVersion: func(ctx context.Context, epoch abi.ChainEpoch) network.Version {
+				return network.Version0
+			}},
+		}, []byte{99})
+		if aerrors.IsFatal(aerr) {
+			t.Fatal("err should not be fatal")
+		}
+		assert.Equal(t, exitcode.ExitCode(1), aerrors.RetCode(aerr), "return code should be 1")
 	}
-	assert.Equal(t, exitcode.ExitCode(1), aerrors.RetCode(aerr), "return code should be 1")
 
+	{
+		_, aerr := code[1](&Runtime{
+			vm: &VM{ntwkVersion: func(ctx context.Context, epoch abi.ChainEpoch) network.Version {
+				return network.Version7
+			}},
+		}, []byte{99})
+		if aerrors.IsFatal(aerr) {
+			t.Fatal("err should not be fatal")
+		}
+		assert.Equal(t, exitcode.ErrSerialization, aerrors.RetCode(aerr), "return code should be %s", 1)
+	}
 }

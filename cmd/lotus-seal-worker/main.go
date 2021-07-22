@@ -28,11 +28,10 @@ import (
 	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/apistruct"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
@@ -50,7 +49,7 @@ const FlagWorkerRepo = "worker-repo"
 const FlagWorkerRepoDeprecation = "workerrepo"
 
 func main() {
-	build.RunningNodeType = build.NodeWorker
+	api.RunningNodeType = api.NodeWorker
 
 	lotuslog.SetupLogLevels()
 
@@ -58,12 +57,16 @@ func main() {
 		runCmd,
 		infoCmd,
 		storageCmd,
+		setCmd,
+		waitQuietCmd,
+		tasksCmd,
 	}
 
 	app := &cli.App{
-		Name:    "lotus-worker",
-		Usage:   "Remote miner worker",
-		Version: build.UserVersion(),
+		Name:                 "lotus-worker",
+		Usage:                "Remote miner worker",
+		Version:              build.UserVersion(),
+		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    FlagWorkerRepo,
@@ -181,7 +184,7 @@ var runCmd = &cli.Command{
 		var closer func()
 		var err error
 		for {
-			nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx, lcli.StorageMinerUseHttp)
+			nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx, cliutil.StorageMinerUseHttp)
 			if err == nil {
 				_, err = nodeApi.Version(ctx)
 				if err == nil {
@@ -208,8 +211,8 @@ var runCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		if v.APIVersion != build.MinerAPIVersion {
-			return xerrors.Errorf("lotus-miner API version doesn't match: expected: %s", api.Version{APIVersion: build.MinerAPIVersion})
+		if v.APIVersion != api.MinerAPIVersion0 {
+			return xerrors.Errorf("lotus-miner API version doesn't match: expected: %s", api.APIVersion{APIVersion: api.MinerAPIVersion0})
 		}
 		log.Infof("Remote version %s", v)
 
@@ -225,7 +228,7 @@ var runCmd = &cli.Command{
 		}
 
 		if cctx.Bool("commit") {
-			if err := paramfetch.GetParams(ctx, build.ParametersJSON(), uint64(ssize)); err != nil {
+			if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(ssize)); err != nil {
 				return xerrors.Errorf("get params: %w", err)
 			}
 		}
@@ -306,7 +309,7 @@ var runCmd = &cli.Command{
 
 			{
 				// init datastore for r.Exists
-				_, err := lr.Datastore("/metadata")
+				_, err := lr.Datastore(context.Background(), "/metadata")
 				if err != nil {
 					return err
 				}
@@ -325,7 +328,7 @@ var runCmd = &cli.Command{
 				log.Error("closing repo", err)
 			}
 		}()
-		ds, err := lr.Datastore("/metadata")
+		ds, err := lr.Datastore(context.Background(), "/metadata")
 		if err != nil {
 			return err
 		}
@@ -354,17 +357,24 @@ var runCmd = &cli.Command{
 		}
 
 		// Setup remote sector store
-		spt, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
-		if err != nil {
-			return xerrors.Errorf("getting proof type: %w", err)
-		}
-
 		sminfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
 		if err != nil {
 			return xerrors.Errorf("could not get api info: %w", err)
 		}
 
-		remote := stores.NewRemote(localStore, nodeApi, sminfo.AuthHeader(), cctx.Int("parallel-fetch-limit"))
+		remote := stores.NewRemote(localStore, nodeApi, sminfo.AuthHeader(), cctx.Int("parallel-fetch-limit"),
+			&stores.DefaultPartialFileHandler{})
+
+		fh := &stores.FetchHandler{Local: localStore, PfHandler: &stores.DefaultPartialFileHandler{}}
+		remoteHandler := func(w http.ResponseWriter, r *http.Request) {
+			if !auth.HasPerm(r.Context(), nil, api.PermAdmin) {
+				w.WriteHeader(401)
+				_ = json.NewEncoder(w).Encode(struct{ Error string }{"unauthorized: missing admin permission"})
+				return
+			}
+
+			fh.ServeHTTP(w, r)
+		}
 
 		// Create / expose the worker
 
@@ -372,7 +382,6 @@ var runCmd = &cli.Command{
 
 		workerApi := &worker{
 			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
-				SealProof: spt,
 				TaskTypes: taskTypes,
 				NoSwap:    cctx.Bool("no-swap"),
 			}, remote, localStore, nodeApi, nodeApi, wsts),
@@ -386,11 +395,11 @@ var runCmd = &cli.Command{
 
 		readerHandler, readerServerOpt := rpcenc.ReaderParamDecoder()
 		rpcServer := jsonrpc.NewServer(readerServerOpt)
-		rpcServer.Register("Filecoin", apistruct.PermissionedWorkerAPI(metrics.MetricedWorkerAPI(workerApi)))
+		rpcServer.Register("Filecoin", api.PermissionedWorkerAPI(metrics.MetricedWorkerAPI(workerApi)))
 
 		mux.Handle("/rpc/v0", rpcServer)
 		mux.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)
-		mux.PathPrefix("/remote").HandlerFunc((&stores.FetchHandler{Local: localStore}).ServeHTTP)
+		mux.PathPrefix("/remote").HandlerFunc(remoteHandler)
 		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
 		ah := &auth.Handler{
@@ -451,14 +460,24 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("getting miner session: %w", err)
 		}
 
+		waitQuietCh := func() chan struct{} {
+			out := make(chan struct{})
+			go func() {
+				workerApi.LocalWorker.WaitQuiet()
+				close(out)
+			}()
+			return out
+		}
+
 		go func() {
 			heartbeats := time.NewTicker(stores.HeartbeatInterval)
 			defer heartbeats.Stop()
 
-			var connected, reconnect bool
+			var redeclareStorage bool
+			var readyCh chan struct{}
 			for {
 				// If we're reconnecting, redeclare storage first
-				if reconnect {
+				if redeclareStorage {
 					log.Info("Redeclaring local storage")
 
 					if err := localStore.Redeclare(ctx); err != nil {
@@ -471,14 +490,13 @@ var runCmd = &cli.Command{
 						}
 						continue
 					}
-
-					connected = false
 				}
 
-				log.Info("Making sure no local tasks are running")
-
 				// TODO: we could get rid of this, but that requires tracking resources for restarted tasks correctly
-				workerApi.LocalWorker.WaitQuiet()
+				if readyCh == nil {
+					log.Info("Making sure no local tasks are running")
+					readyCh = waitQuietCh()
+				}
 
 				for {
 					curSession, err := nodeApi.Session(ctx)
@@ -489,29 +507,28 @@ var runCmd = &cli.Command{
 							minerSession = curSession
 							break
 						}
-
-						if !connected {
-							if err := nodeApi.WorkerConnect(ctx, "http://"+address+"/rpc/v0"); err != nil {
-								log.Errorf("Registering worker failed: %+v", err)
-								cancel()
-								return
-							}
-
-							log.Info("Worker registered successfully, waiting for tasks")
-							connected = true
-						}
 					}
 
 					select {
+					case <-readyCh:
+						if err := nodeApi.WorkerConnect(ctx, "http://"+address+"/rpc/v0"); err != nil {
+							log.Errorf("Registering worker failed: %+v", err)
+							cancel()
+							return
+						}
+
+						log.Info("Worker registered successfully, waiting for tasks")
+
+						readyCh = nil
+					case <-heartbeats.C:
 					case <-ctx.Done():
 						return // graceful shutdown
-					case <-heartbeats.C:
 					}
 				}
 
 				log.Errorf("LOTUS-MINER CONNECTION LOST")
 
-				reconnect = true
+				redeclareStorage = true
 			}
 		}()
 

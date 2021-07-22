@@ -5,6 +5,7 @@ package types
 import (
 	"fmt"
 	"io"
+	"sort"
 
 	abi "github.com/filecoin-project/go-state-types/abi"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
@@ -16,6 +17,8 @@ import (
 )
 
 var _ = xerrors.Errorf
+var _ = cid.Undef
+var _ = sort.Sort
 
 var lengthBufBlockHeader = []byte{144}
 

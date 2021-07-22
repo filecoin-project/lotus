@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 )
 
-var fetchParamCmd = &cli.Command{
+var FetchParamCmd = &cli.Command{
 	Name:      "fetch-params",
 	Usage:     "Fetch proving parameters",
 	ArgsUsage: "[sectorSize]",
@@ -23,7 +23,7 @@ var fetchParamCmd = &cli.Command{
 		}
 		sectorSize := uint64(sectorSizeInt)
 
-		err = paramfetch.GetParams(ReqContext(cctx), build.ParametersJSON(), sectorSize)
+		err = paramfetch.GetParams(ReqContext(cctx), build.ParametersJSON(), build.SrsJSON(), sectorSize)
 		if err != nil {
 			return xerrors.Errorf("fetching proof parameters: %w", err)
 		}

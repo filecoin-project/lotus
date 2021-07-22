@@ -3,12 +3,14 @@ package cli
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path"
+	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -29,36 +31,40 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	types "github.com/filecoin-project/lotus/chain/types"
 )
 
-var chainCmd = &cli.Command{
+var ChainCmd = &cli.Command{
 	Name:  "chain",
 	Usage: "Interact with filecoin blockchain",
 	Subcommands: []*cli.Command{
-		chainHeadCmd,
-		chainGetBlock,
-		chainReadObjCmd,
-		chainDeleteObjCmd,
-		chainStatObjCmd,
-		chainGetMsgCmd,
-		chainSetHeadCmd,
-		chainListCmd,
-		chainGetCmd,
-		chainBisectCmd,
-		chainExportCmd,
-		slashConsensusFault,
-		chainGasPriceCmd,
-		chainInspectUsage,
-		chainDecodeCmd,
+		ChainHeadCmd,
+		ChainGetBlock,
+		ChainReadObjCmd,
+		ChainDeleteObjCmd,
+		ChainStatObjCmd,
+		ChainGetMsgCmd,
+		ChainSetHeadCmd,
+		ChainListCmd,
+		ChainGetCmd,
+		ChainBisectCmd,
+		ChainExportCmd,
+		SlashConsensusFault,
+		ChainGasPriceCmd,
+		ChainInspectUsage,
+		ChainDecodeCmd,
+		ChainEncodeCmd,
+		ChainDisputeSetCmd,
 	},
 }
 
-var chainHeadCmd = &cli.Command{
+var ChainHeadCmd = &cli.Command{
 	Name:  "head",
 	Usage: "Print chain head",
 	Action: func(cctx *cli.Context) error {
@@ -81,7 +87,7 @@ var chainHeadCmd = &cli.Command{
 	},
 }
 
-var chainGetBlock = &cli.Command{
+var ChainGetBlock = &cli.Command{
 	Name:      "getblock",
 	Usage:     "Get a block and print its details",
 	ArgsUsage: "[blockCid]",
@@ -172,7 +178,7 @@ func apiMsgCids(in []lapi.Message) []cid.Cid {
 	return out
 }
 
-var chainReadObjCmd = &cli.Command{
+var ChainReadObjCmd = &cli.Command{
 	Name:      "read-obj",
 	Usage:     "Read the raw bytes of an object",
 	ArgsUsage: "[objectCid]",
@@ -199,7 +205,7 @@ var chainReadObjCmd = &cli.Command{
 	},
 }
 
-var chainDeleteObjCmd = &cli.Command{
+var ChainDeleteObjCmd = &cli.Command{
 	Name:        "delete-obj",
 	Usage:       "Delete an object from the chain blockstore",
 	Description: "WARNING: Removing wrong objects from the chain blockstore may lead to sync issues",
@@ -236,7 +242,7 @@ var chainDeleteObjCmd = &cli.Command{
 	},
 }
 
-var chainStatObjCmd = &cli.Command{
+var ChainStatObjCmd = &cli.Command{
 	Name:      "stat-obj",
 	Usage:     "Collect size and ipld link counts for objs",
 	ArgsUsage: "[cid]",
@@ -283,7 +289,7 @@ var chainStatObjCmd = &cli.Command{
 	},
 }
 
-var chainGetMsgCmd = &cli.Command{
+var ChainGetMsgCmd = &cli.Command{
 	Name:      "getmessage",
 	Usage:     "Get and print a message by its cid",
 	ArgsUsage: "[messageCid]",
@@ -331,7 +337,7 @@ var chainGetMsgCmd = &cli.Command{
 	},
 }
 
-var chainSetHeadCmd = &cli.Command{
+var ChainSetHeadCmd = &cli.Command{
 	Name:      "sethead",
 	Usage:     "manually set the local nodes head tipset (Caution: normally only used for recovery)",
 	ArgsUsage: "[tipsetkey]",
@@ -380,7 +386,7 @@ var chainSetHeadCmd = &cli.Command{
 	},
 }
 
-var chainInspectUsage = &cli.Command{
+var ChainInspectUsage = &cli.Command{
 	Name:  "inspect-usage",
 	Usage: "Inspect block space usage of a given tipset",
 	Flags: []cli.Flag{
@@ -465,6 +471,9 @@ var chainInspectUsage = &cli.Command{
 
 			code, err := lookupActorCode(m.Message.To)
 			if err != nil {
+				if strings.Contains(err.Error(), types.ErrActorNotFound.Error()) {
+					continue
+				}
 				return err
 			}
 
@@ -522,12 +531,12 @@ var chainInspectUsage = &cli.Command{
 	},
 }
 
-var chainListCmd = &cli.Command{
+var ChainListCmd = &cli.Command{
 	Name:    "list",
 	Aliases: []string{"love"},
 	Usage:   "View a segment of the chain",
 	Flags: []cli.Flag{
-		&cli.Uint64Flag{Name: "height"},
+		&cli.Uint64Flag{Name: "height", DefaultText: "current head"},
 		&cli.IntFlag{Name: "count", Value: 30},
 		&cli.StringFlag{
 			Name:  "format",
@@ -635,7 +644,10 @@ var chainListCmd = &cli.Command{
 						gasUsed += r.GasUsed
 					}
 
-					fmt.Printf("\ttipset: \t%d msgs, %d / %d (%0.2f%%)\n", len(msgs), gasUsed, limitSum, 100*float64(gasUsed)/float64(limitSum))
+					gasEfficiency := 100 * float64(gasUsed) / float64(limitSum)
+					gasCapacity := 100 * float64(limitSum) / float64(build.BlockGasLimit)
+
+					fmt.Printf("\ttipset: \t%d msgs, %d (%0.2f%%) / %d (%0.2f%%)\n", len(msgs), gasUsed, gasEfficiency, limitSum, gasCapacity)
 				}
 				fmt.Println()
 			}
@@ -648,7 +660,7 @@ var chainListCmd = &cli.Command{
 	},
 }
 
-var chainGetCmd = &cli.Command{
+var ChainGetCmd = &cli.Command{
 	Name:      "get",
 	Usage:     "Get chain DAG node by path",
 	ArgsUsage: "[path]",
@@ -712,12 +724,6 @@ var chainGetCmd = &cli.Command{
 				return err
 			}
 
-			if ts == nil {
-				ts, err = api.ChainHead(ctx)
-				if err != nil {
-					return err
-				}
-			}
 			p = "/ipfs/" + ts.ParentState().String() + p
 			if cctx.Bool("verbose") {
 				fmt.Println(p)
@@ -796,7 +802,7 @@ var chainGetCmd = &cli.Command{
 
 type apiIpldStore struct {
 	ctx context.Context
-	api lapi.FullNode
+	api v0api.FullNode
 }
 
 func (ht *apiIpldStore) Context() context.Context {
@@ -824,7 +830,7 @@ func (ht *apiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error)
 	panic("No mutations allowed")
 }
 
-func handleAmt(ctx context.Context, api lapi.FullNode, r cid.Cid) error {
+func handleAmt(ctx context.Context, api v0api.FullNode, r cid.Cid) error {
 	s := &apiIpldStore{ctx, api}
 	mp, err := adt.AsArray(s, r)
 	if err != nil {
@@ -837,7 +843,7 @@ func handleAmt(ctx context.Context, api lapi.FullNode, r cid.Cid) error {
 	})
 }
 
-func handleHamtEpoch(ctx context.Context, api lapi.FullNode, r cid.Cid) error {
+func handleHamtEpoch(ctx context.Context, api v0api.FullNode, r cid.Cid) error {
 	s := &apiIpldStore{ctx, api}
 	mp, err := adt.AsMap(s, r)
 	if err != nil {
@@ -855,7 +861,7 @@ func handleHamtEpoch(ctx context.Context, api lapi.FullNode, r cid.Cid) error {
 	})
 }
 
-func handleHamtAddress(ctx context.Context, api lapi.FullNode, r cid.Cid) error {
+func handleHamtAddress(ctx context.Context, api v0api.FullNode, r cid.Cid) error {
 	s := &apiIpldStore{ctx, api}
 	mp, err := adt.AsMap(s, r)
 	if err != nil {
@@ -895,7 +901,7 @@ func printTipSet(format string, ts *types.TipSet) {
 	fmt.Println(format)
 }
 
-var chainBisectCmd = &cli.Command{
+var ChainBisectCmd = &cli.Command{
 	Name:      "bisect",
 	Usage:     "bisect chain for an event",
 	ArgsUsage: "[minHeight maxHeight path shellCommand <shellCommandArgs (if any)>]",
@@ -1018,13 +1024,15 @@ var chainBisectCmd = &cli.Command{
 	},
 }
 
-var chainExportCmd = &cli.Command{
+var ChainExportCmd = &cli.Command{
 	Name:      "export",
 	Usage:     "export chain to a car file",
 	ArgsUsage: "[outputPath]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name: "tipset",
+			Name:  "tipset",
+			Usage: "specify tipset to start the export from",
+			Value: "@head",
 		},
 		&cli.Int64Flag{
 			Name:  "recent-stateroots",
@@ -1096,14 +1104,14 @@ var chainExportCmd = &cli.Command{
 	},
 }
 
-var slashConsensusFault = &cli.Command{
+var SlashConsensusFault = &cli.Command{
 	Name:      "slash-consensus",
 	Usage:     "Report consensus fault",
 	ArgsUsage: "[blockCid1 blockCid2]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:  "miner",
-			Usage: "Miner address",
+			Name:  "from",
+			Usage: "optionally specify the account to report consensus from",
 		},
 		&cli.StringFlag{
 			Name:  "extra",
@@ -1111,11 +1119,13 @@ var slashConsensusFault = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
+
+		a := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
 
 		c1, err := cid.Parse(cctx.Args().Get(0))
@@ -1123,7 +1133,7 @@ var slashConsensusFault = &cli.Command{
 			return xerrors.Errorf("parsing cid 1: %w", err)
 		}
 
-		b1, err := api.ChainGetBlock(ctx, c1)
+		b1, err := a.ChainGetBlock(ctx, c1)
 		if err != nil {
 			return xerrors.Errorf("getting block 1: %w", err)
 		}
@@ -1133,14 +1143,30 @@ var slashConsensusFault = &cli.Command{
 			return xerrors.Errorf("parsing cid 2: %w", err)
 		}
 
-		b2, err := api.ChainGetBlock(ctx, c2)
+		b2, err := a.ChainGetBlock(ctx, c2)
 		if err != nil {
 			return xerrors.Errorf("getting block 2: %w", err)
 		}
 
-		def, err := api.WalletDefaultAddress(ctx)
-		if err != nil {
-			return err
+		if b1.Miner != b2.Miner {
+			return xerrors.Errorf("block1.miner:%s block2.miner:%s", b1.Miner, b2.Miner)
+		}
+
+		var fromAddr address.Address
+		if from := cctx.String("from"); from == "" {
+			defaddr, err := a.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = defaddr
+		} else {
+			addr, err := address.NewFromString(from)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = addr
 		}
 
 		bh1, err := cborutil.Dump(b1)
@@ -1164,7 +1190,7 @@ var slashConsensusFault = &cli.Command{
 				return xerrors.Errorf("parsing cid extra: %w", err)
 			}
 
-			bExtra, err := api.ChainGetBlock(ctx, cExtra)
+			bExtra, err := a.ChainGetBlock(ctx, cExtra)
 			if err != nil {
 				return xerrors.Errorf("getting block extra: %w", err)
 			}
@@ -1182,24 +1208,17 @@ var slashConsensusFault = &cli.Command{
 			return err
 		}
 
-		if cctx.String("miner") == "" {
-			return xerrors.Errorf("--miner flag is required")
+		proto := &api.MessagePrototype{
+			Message: types.Message{
+				To:     b2.Miner,
+				From:   fromAddr,
+				Value:  types.NewInt(0),
+				Method: builtin.MethodsMiner.ReportConsensusFault,
+				Params: enc,
+			},
 		}
 
-		maddr, err := address.NewFromString(cctx.String("miner"))
-		if err != nil {
-			return err
-		}
-
-		msg := &types.Message{
-			To:     maddr,
-			From:   def,
-			Value:  types.NewInt(0),
-			Method: builtin.MethodsMiner.ReportConsensusFault,
-			Params: enc,
-		}
-
-		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
+		smsg, err := InteractiveSend(ctx, cctx, srv, proto)
 		if err != nil {
 			return err
 		}
@@ -1210,7 +1229,7 @@ var slashConsensusFault = &cli.Command{
 	},
 }
 
-var chainGasPriceCmd = &cli.Command{
+var ChainGasPriceCmd = &cli.Command{
 	Name:  "gas-price",
 	Usage: "Estimate gas prices",
 	Action: func(cctx *cli.Context) error {
@@ -1237,7 +1256,7 @@ var chainGasPriceCmd = &cli.Command{
 	},
 }
 
-var chainDecodeCmd = &cli.Command{
+var ChainDecodeCmd = &cli.Command{
 	Name:  "decode",
 	Usage: "decode various types",
 	Subcommands: []*cli.Command{
@@ -1246,14 +1265,19 @@ var chainDecodeCmd = &cli.Command{
 }
 
 var chainDecodeParamsCmd = &cli.Command{
-	Name:  "params",
-	Usage: "Decode message params",
+	Name:      "params",
+	Usage:     "Decode message params",
+	ArgsUsage: "[toAddr method params]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name: "tipset",
 		},
+		&cli.StringFlag{
+			Name:  "encoding",
+			Value: "base64",
+			Usage: "specify input encoding to parse",
+		},
 	},
-	ArgsUsage: "[toAddr method hexParams]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -1276,11 +1300,21 @@ var chainDecodeParamsCmd = &cli.Command{
 			return xerrors.Errorf("parsing method id: %w", err)
 		}
 
-		params, err := hex.DecodeString(cctx.Args().Get(2))
-		if err != nil {
-			return xerrors.Errorf("parsing hex params: %w", err)
+		var params []byte
+		switch cctx.String("encoding") {
+		case "base64":
+			params, err = base64.StdEncoding.DecodeString(cctx.Args().Get(2))
+			if err != nil {
+				return xerrors.Errorf("decoding base64 value: %w", err)
+			}
+		case "hex":
+			params, err = hex.DecodeString(cctx.Args().Get(2))
+			if err != nil {
+				return xerrors.Errorf("decoding hex value: %w", err)
+			}
+		default:
+			return xerrors.Errorf("unrecognized encoding: %s", cctx.String("encoding"))
 		}
-
 		ts, err := LoadTipSet(ctx, cctx, api)
 		if err != nil {
 			return err
@@ -1297,6 +1331,89 @@ var chainDecodeParamsCmd = &cli.Command{
 		}
 
 		fmt.Println(pstr)
+
+		return nil
+	},
+}
+
+var ChainEncodeCmd = &cli.Command{
+	Name:  "encode",
+	Usage: "encode various types",
+	Subcommands: []*cli.Command{
+		chainEncodeParamsCmd,
+	},
+}
+
+var chainEncodeParamsCmd = &cli.Command{
+	Name:      "params",
+	Usage:     "Encodes the given JSON params",
+	ArgsUsage: "[toAddr method params]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name: "tipset",
+		},
+		&cli.StringFlag{
+			Name:  "encoding",
+			Value: "base64",
+			Usage: "specify input encoding to parse",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if cctx.Args().Len() != 3 {
+			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
+		}
+
+		to, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return xerrors.Errorf("parsing toAddr: %w", err)
+		}
+
+		method, err := strconv.ParseInt(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("parsing method id: %w", err)
+		}
+
+		ts, err := LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		act, err := api.StateGetActor(ctx, to, ts.Key())
+		if err != nil {
+			return xerrors.Errorf("getting actor: %w", err)
+		}
+
+		methodMeta, found := stmgr.MethodsMap[act.Code][abi.MethodNum(method)]
+		if !found {
+			return fmt.Errorf("method %d not found on actor %s", method, act.Code)
+		}
+
+		p := reflect.New(methodMeta.Params.Elem()).Interface().(cbg.CBORMarshaler)
+
+		if err := json.Unmarshal([]byte(cctx.Args().Get(2)), p); err != nil {
+			return fmt.Errorf("unmarshaling input into params type: %w", err)
+		}
+
+		buf := new(bytes.Buffer)
+		if err := p.MarshalCBOR(buf); err != nil {
+			return err
+		}
+
+		switch cctx.String("encoding") {
+		case "base64":
+			fmt.Println(base64.StdEncoding.EncodeToString(buf.Bytes()))
+		case "hex":
+			fmt.Println(hex.EncodeToString(buf.Bytes()))
+		default:
+			return xerrors.Errorf("unrecognized encoding: %s", cctx.String("encoding"))
+		}
 
 		return nil
 	},

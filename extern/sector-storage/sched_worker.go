@@ -57,6 +57,7 @@ func (sh *scheduler) runWorker(ctx context.Context, w Worker) error {
 		log.Warnw("duplicated worker added", "id", wid)
 
 		// this is ok, we're already handling this worker in a different goroutine
+		sh.workersLk.Unlock()
 		return nil
 	}
 
@@ -104,14 +105,16 @@ func (sw *schedWorker) handleWorker() {
 	defer sw.heartbeatTimer.Stop()
 
 	for {
-		sched.workersLk.Lock()
-		enabled := worker.enabled
-		sched.workersLk.Unlock()
+		{
+			sched.workersLk.Lock()
+			enabled := worker.enabled
+			sched.workersLk.Unlock()
 
-		// ask for more windows if we need them (non-blocking)
-		if enabled {
-			if !sw.requestWindows() {
-				return // graceful shutdown
+			// ask for more windows if we need them (non-blocking)
+			if enabled {
+				if !sw.requestWindows() {
+					return // graceful shutdown
+				}
 			}
 		}
 
@@ -123,19 +126,30 @@ func (sw *schedWorker) handleWorker() {
 			}
 
 			// session looks good
-			if !enabled {
+			{
 				sched.workersLk.Lock()
+				enabled := worker.enabled
 				worker.enabled = true
 				sched.workersLk.Unlock()
 
-				// we'll send window requests on the next loop
+				if !enabled {
+					// go send window requests
+					break
+				}
 			}
 
 			// wait for more tasks to be assigned by the main scheduler or for the worker
 			// to finish precessing a task
-			update, ok := sw.waitForUpdates()
+			update, pokeSched, ok := sw.waitForUpdates()
 			if !ok {
 				return
+			}
+			if pokeSched {
+				// a task has finished preparing, which can mean that we've freed some space on some worker
+				select {
+				case sched.workerChange <- struct{}{}:
+				default: // workerChange is buffered, and scheduling is global, so it's ok if we don't send here
+				}
 			}
 			if update {
 				break
@@ -251,23 +265,23 @@ func (sw *schedWorker) requestWindows() bool {
 	return true
 }
 
-func (sw *schedWorker) waitForUpdates() (update bool, ok bool) {
+func (sw *schedWorker) waitForUpdates() (update bool, sched bool, ok bool) {
 	select {
 	case <-sw.heartbeatTimer.C:
-		return false, true
+		return false, false, true
 	case w := <-sw.scheduledWindows:
 		sw.worker.wndLk.Lock()
 		sw.worker.activeWindows = append(sw.worker.activeWindows, w)
 		sw.worker.wndLk.Unlock()
-		return true, true
+		return true, false, true
 	case <-sw.taskDone:
 		log.Debugw("task done", "workerid", sw.wid)
-		return true, true
+		return true, true, true
 	case <-sw.sched.closing:
 	case <-sw.worker.closingMgr:
 	}
 
-	return false, false
+	return false, false, false
 }
 
 func (sw *schedWorker) workerCompactWindows() {
@@ -281,8 +295,8 @@ func (sw *schedWorker) workerCompactWindows() {
 			var moved []int
 
 			for ti, todo := range window.todo {
-				needRes := ResourceTable[todo.taskType][sw.sched.spt]
-				if !lower.allocated.canHandleRequest(needRes, sw.wid, "compactWindows", worker.info.Resources) {
+				needRes := ResourceTable[todo.taskType][todo.sector.ProofType]
+				if !lower.allocated.canHandleRequest(needRes, sw.wid, "compactWindows", worker.info) {
 					continue
 				}
 
@@ -337,8 +351,8 @@ assignLoop:
 
 			worker.lk.Lock()
 			for t, todo := range firstWindow.todo {
-				needRes := ResourceTable[todo.taskType][sw.sched.spt]
-				if worker.preparing.canHandleRequest(needRes, sw.wid, "startPreparing", worker.info.Resources) {
+				needRes := ResourceTable[todo.taskType][todo.sector.ProofType]
+				if worker.preparing.canHandleRequest(needRes, sw.wid, "startPreparing", worker.info) {
 					tidx = t
 					break
 				}
@@ -351,11 +365,11 @@ assignLoop:
 
 			todo := firstWindow.todo[tidx]
 
-			log.Debugf("assign worker sector %d", todo.sector.Number)
+			log.Debugf("assign worker sector %d", todo.sector.ID.Number)
 			err := sw.startProcessingTask(sw.taskDone, todo)
 
 			if err != nil {
-				log.Error("startProcessingTask error: %+v", err)
+				log.Errorf("startProcessingTask error: %+v", err)
 				go todo.respond(xerrors.Errorf("startProcessingTask error: %w", err))
 			}
 
@@ -376,7 +390,7 @@ assignLoop:
 func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRequest) error {
 	w, sh := sw.worker, sw.sched
 
-	needRes := ResourceTable[req.taskType][sh.spt]
+	needRes := ResourceTable[req.taskType][req.sector.ProofType]
 
 	w.lk.Lock()
 	w.preparing.add(w.info.Resources, needRes)
@@ -384,7 +398,7 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 
 	go func() {
 		// first run the prepare step (e.g. fetching sector data from other worker)
-		err := req.prepare(req.ctx, sh.workTracker.worker(sw.wid, w.workerRpc))
+		err := req.prepare(req.ctx, sh.workTracker.worker(sw.wid, w.info, w.workerRpc))
 		sh.workersLk.Lock()
 
 		if err != nil {
@@ -410,7 +424,7 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 		}
 
 		// wait (if needed) for resources in the 'active' window
-		err = w.active.withResources(sw.wid, w.info.Resources, needRes, &sh.workersLk, func() error {
+		err = w.active.withResources(sw.wid, w.info, needRes, &sh.workersLk, func() error {
 			w.lk.Lock()
 			w.preparing.free(w.info.Resources, needRes)
 			w.lk.Unlock()
@@ -423,7 +437,7 @@ func (sw *schedWorker) startProcessingTask(taskDone chan struct{}, req *workerRe
 			}
 
 			// Do the work!
-			err = req.work(req.ctx, sh.workTracker.worker(sw.wid, w.workerRpc))
+			err = req.work(req.ctx, sh.workTracker.worker(sw.wid, w.info, w.workerRpc))
 
 			select {
 			case req.ret <- workerResponse{err: err}:
@@ -473,6 +487,6 @@ func (sh *scheduler) workerCleanup(wid WorkerID, w *workerHandle) {
 		}
 		sh.openWindows = newWindows
 
-		log.Debugf("worker %d dropped", wid)
+		log.Debugf("worker %s dropped", wid)
 	}
 }

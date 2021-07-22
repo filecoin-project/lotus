@@ -23,20 +23,28 @@ func load2(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make2(store adt.Store, currRealizedPower abi.StoragePower) (State, error) {
+	out := state2{store: store}
+	out.State = *reward2.ConstructState(currRealizedPower)
+	return &out, nil
+}
+
 type state2 struct {
 	reward2.State
 	store adt.Store
 }
 
-func (s *state2) ThisEpochReward() (abi.StoragePower, error) {
+func (s *state2) ThisEpochReward() (abi.TokenAmount, error) {
 	return s.State.ThisEpochReward, nil
 }
 
 func (s *state2) ThisEpochRewardSmoothed() (builtin.FilterEstimate, error) {
+
 	return builtin.FilterEstimate{
 		PositionEstimate: s.State.ThisEpochRewardSmoothed.PositionEstimate,
 		VelocityEstimate: s.State.ThisEpochRewardSmoothed.VelocityEstimate,
 	}, nil
+
 }
 
 func (s *state2) ThisEpochBaselinePower() (abi.StoragePower, error) {
@@ -55,11 +63,11 @@ func (s *state2) EffectiveNetworkTime() (abi.ChainEpoch, error) {
 	return s.State.EffectiveNetworkTime, nil
 }
 
-func (s *state2) CumsumBaseline() (abi.StoragePower, error) {
+func (s *state2) CumsumBaseline() (reward2.Spacetime, error) {
 	return s.State.CumsumBaseline, nil
 }
 
-func (s *state2) CumsumRealized() (abi.StoragePower, error) {
+func (s *state2) CumsumRealized() (reward2.Spacetime, error) {
 	return s.State.CumsumRealized, nil
 }
 
@@ -83,4 +91,8 @@ func (s *state2) PreCommitDepositForPower(networkQAPower builtin.FilterEstimate,
 			VelocityEstimate: networkQAPower.VelocityEstimate,
 		},
 		sectorWeight), nil
+}
+
+func (s *state2) GetState() interface{} {
+	return &s.State
 }

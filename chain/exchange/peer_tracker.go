@@ -38,20 +38,26 @@ func newPeerTracker(lc fx.Lifecycle, h host.Host, pmgr *peermgr.PeerMgr) *bsPeer
 		pmgr:  pmgr,
 	}
 
-	sub, err := h.EventBus().Subscribe(new(peermgr.NewFilPeer))
+	evtSub, err := h.EventBus().Subscribe(new(peermgr.FilPeerEvt))
 	if err != nil {
 		panic(err)
 	}
 
 	go func() {
-		for newPeer := range sub.Out() {
-			bsPt.addPeer(newPeer.(peermgr.NewFilPeer).Id)
+		for evt := range evtSub.Out() {
+			pEvt := evt.(peermgr.FilPeerEvt)
+			switch pEvt.Type {
+			case peermgr.AddFilPeerEvt:
+				bsPt.addPeer(pEvt.ID)
+			case peermgr.RemoveFilPeerEvt:
+				bsPt.removePeer(pEvt.ID)
+			}
 		}
 	}()
 
 	lc.Append(fx.Hook{
 		OnStop: func(ctx context.Context) error {
-			return sub.Close()
+			return evtSub.Close()
 		},
 	})
 

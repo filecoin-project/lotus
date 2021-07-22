@@ -67,7 +67,7 @@ func ComputeGasOverestimationBurn(gasUsed, gasLimit int64) (int64, int64) {
 	return gasLimit - gasUsed - gasToBurn.Int64(), gasToBurn.Int64()
 }
 
-func ComputeGasOutputs(gasUsed, gasLimit int64, baseFee, feeCap, gasPremium abi.TokenAmount) GasOutputs {
+func ComputeGasOutputs(gasUsed, gasLimit int64, baseFee, feeCap, gasPremium abi.TokenAmount, chargeNetworkFee bool) GasOutputs {
 	gasUsedBig := big.NewInt(gasUsed)
 	out := ZeroGasOutputs()
 
@@ -76,7 +76,12 @@ func ComputeGasOutputs(gasUsed, gasLimit int64, baseFee, feeCap, gasPremium abi.
 		baseFeeToPay = feeCap
 		out.MinerPenalty = big.Mul(big.Sub(baseFee, feeCap), gasUsedBig)
 	}
-	out.BaseFeeBurn = big.Mul(baseFeeToPay, gasUsedBig)
+
+	// If chargeNetworkFee is disabled, just skip computing the BaseFeeBurn. However,
+	// we charge all the other fees regardless.
+	if chargeNetworkFee {
+		out.BaseFeeBurn = big.Mul(baseFeeToPay, gasUsedBig)
+	}
 
 	minerTip := gasPremium
 	if big.Cmp(big.Add(baseFeeToPay, minerTip), feeCap) > 0 {

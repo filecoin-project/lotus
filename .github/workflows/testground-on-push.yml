@@ -1,0 +1,29 @@
+---
+name: Testground PR Checker
+
+on: [push]
+
+jobs:
+  testground:
+    runs-on: ubuntu-latest
+    name: ${{ matrix.composition_file }}
+    strategy:
+      matrix:
+        include:
+          - backend_addr: ci.testground.ipfs.team
+            backend_proto: https
+            plan_directory: testplans/lotus-soup
+            composition_file: testplans/lotus-soup/_compositions/baseline-k8s-3-1.toml
+          - backend_addr: ci.testground.ipfs.team
+            backend_proto: https
+            plan_directory: testplans/lotus-soup
+            composition_file: testplans/lotus-soup/_compositions/paych-stress-k8s.toml
+    steps:
+      - uses: actions/checkout@v2
+      - name: testground run
+        uses: coryschwartz/testground-github-action@v1.1
+        with:
+          backend_addr: ${{ matrix.backend_addr }}
+          backend_proto: ${{ matrix.backend_proto }}
+          plan_directory: ${{ matrix.plan_directory }}
+          composition_file: ${{ matrix.composition_file }}

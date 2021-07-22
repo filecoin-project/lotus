@@ -1,0 +1,75 @@
+package verifreg
+
+import (
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/go-state-types/cbor"
+{{range .versions}}
+	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+{{end}}
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/types"
+)
+
+func init() {
+{{range .versions}}
+	builtin.RegisterActorState(builtin{{.}}.VerifiedRegistryActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load{{.}}(store, root)
+	})
+{{end}}
+}
+
+var (
+	Address = builtin{{.latestVersion}}.VerifiedRegistryActorAddr
+	Methods = builtin{{.latestVersion}}.MethodsVerifiedRegistry
+)
+
+func Load(store adt.Store, act *types.Actor) (State, error) {
+	switch act.Code {
+{{range .versions}}
+	case builtin{{.}}.VerifiedRegistryActorCodeID:
+		return load{{.}}(store, act.Head)
+{{end}}
+	}
+	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+}
+
+func MakeState(store adt.Store, av actors.Version, rootKeyAddress address.Address) (State, error) {
+	switch av {
+{{range .versions}}
+	case actors.Version{{.}}:
+		return make{{.}}(store, rootKeyAddress)
+{{end}}
+}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	switch av {
+{{range .versions}}
+	case actors.Version{{.}}:
+		return builtin{{.}}.VerifiedRegistryActorCodeID, nil
+{{end}}
+	}
+
+	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+}
+
+
+type State interface {
+	cbor.Marshaler
+
+	RootKey() (address.Address, error)
+	VerifiedClientDataCap(address.Address) (bool, abi.StoragePower, error)
+	VerifierDataCap(address.Address) (bool, abi.StoragePower, error)
+	ForEachVerifier(func(addr address.Address, dcap abi.StoragePower) error) error
+	ForEachClient(func(addr address.Address, dcap abi.StoragePower) error) error
+	GetState() interface{}
+}

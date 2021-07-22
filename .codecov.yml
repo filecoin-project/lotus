@@ -5,5 +5,15 @@ ignore:
   - "api/test/*"
   - "gen/**/*"
   - "gen/*"
+  - "cmd/lotus-shed/*"
+  - "cmd/tvx/*"
+  - "cmd/lotus-pcr/*"
+  - "cmd/tvx/*"
+  - "cmd/lotus-chainwatch/*"
+  - "cmd/lotus-health/*"
+  - "cmd/lotus-fountain/*"
+  - "cmd/lotus-townhall/*"
+  - "cmd/lotus-stats/*"
+  - "cmd/lotus-pcr/*"
 github_checks:
   annotations: false

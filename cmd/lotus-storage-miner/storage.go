@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -11,6 +12,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/lotus/api/v0api"
+
+	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
@@ -20,11 +24,14 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
 
 const metaFile = "sectorstore.json"
@@ -40,6 +47,7 @@ stored while moving through the sealing pipeline (references as 'seal').`,
 		storageAttachCmd,
 		storageListCmd,
 		storageFindCmd,
+		storageCleanupCmd,
 	},
 }
 
@@ -83,6 +91,10 @@ over time
 			Name:  "store",
 			Usage: "(for init) use path for long-term storage",
 		},
+		&cli.StringFlag{
+			Name:  "max-storage",
+			Usage: "(for init) limit storage space for sectors (expensive for very large paths!)",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
@@ -116,15 +128,24 @@ over time
 				return err
 			}
 
+			var maxStor int64
+			if cctx.IsSet("max-storage") {
+				maxStor, err = units.RAMInBytes(cctx.String("max-storage"))
+				if err != nil {
+					return xerrors.Errorf("parsing max-storage: %w", err)
+				}
+			}
+
 			cfg := &stores.LocalStorageMeta{
-				ID:       stores.ID(uuid.New().String()),
-				Weight:   cctx.Uint64("weight"),
-				CanSeal:  cctx.Bool("seal"),
-				CanStore: cctx.Bool("store"),
+				ID:         stores.ID(uuid.New().String()),
+				Weight:     cctx.Uint64("weight"),
+				CanSeal:    cctx.Bool("seal"),
+				CanStore:   cctx.Bool("store"),
+				MaxStorage: uint64(maxStor),
 			}
 
 			if !(cfg.CanStore || cfg.CanSeal) {
-				return xerrors.Errorf("must specify at least one of --store of --seal")
+				return xerrors.Errorf("must specify at least one of --store or --seal")
 			}
 
 			b, err := json.MarshalIndent(cfg, "", "  ")
@@ -145,10 +166,19 @@ var storageListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "list local storage paths",
 	Flags: []cli.Flag{
-		&cli.BoolFlag{Name: "color"},
+		&cli.BoolFlag{
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
+		},
+	},
+	Subcommands: []*cli.Command{
+		storageListSectorsCmd,
 	},
 	Action: func(cctx *cli.Context) error {
-		color.NoColor = !cctx.Bool("color")
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
 
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -212,26 +242,66 @@ var storageListCmd = &cli.Command{
 			}
 			ping := time.Now().Sub(pingStart)
 
-			usedPercent := (st.Capacity - st.Available) * 100 / st.Capacity
-
-			percCol := color.FgGreen
-			switch {
-			case usedPercent > 98:
-				percCol = color.FgRed
-			case usedPercent > 90:
-				percCol = color.FgYellow
+			safeRepeat := func(s string, count int) string {
+				if count < 0 {
+					return ""
+				}
+				return strings.Repeat(s, count)
 			}
 
 			var barCols = int64(50)
-			set := (st.Capacity - st.Available) * barCols / st.Capacity
-			used := (st.Capacity - (st.Available + st.Reserved)) * barCols / st.Capacity
-			reserved := set - used
-			bar := strings.Repeat("#", int(used)) + strings.Repeat("*", int(reserved)) + strings.Repeat(" ", int(barCols-set))
 
-			fmt.Printf("\t[%s] %s/%s %s\n", color.New(percCol).Sprint(bar),
-				types.SizeStr(types.NewInt(uint64(st.Capacity-st.Available))),
-				types.SizeStr(types.NewInt(uint64(st.Capacity))),
-				color.New(percCol).Sprintf("%d%%", usedPercent))
+			// filesystem use bar
+			{
+				usedPercent := (st.Capacity - st.FSAvailable) * 100 / st.Capacity
+
+				percCol := color.FgGreen
+				switch {
+				case usedPercent > 98:
+					percCol = color.FgRed
+				case usedPercent > 90:
+					percCol = color.FgYellow
+				}
+
+				set := (st.Capacity - st.FSAvailable) * barCols / st.Capacity
+				used := (st.Capacity - (st.FSAvailable + st.Reserved)) * barCols / st.Capacity
+				reserved := set - used
+				bar := safeRepeat("#", int(used)) + safeRepeat("*", int(reserved)) + safeRepeat(" ", int(barCols-set))
+
+				desc := ""
+				if st.Max > 0 {
+					desc = " (filesystem)"
+				}
+
+				fmt.Printf("\t[%s] %s/%s %s%s\n", color.New(percCol).Sprint(bar),
+					types.SizeStr(types.NewInt(uint64(st.Capacity-st.FSAvailable))),
+					types.SizeStr(types.NewInt(uint64(st.Capacity))),
+					color.New(percCol).Sprintf("%d%%", usedPercent), desc)
+			}
+
+			// optional configured limit bar
+			if st.Max > 0 {
+				usedPercent := st.Used * 100 / st.Max
+
+				percCol := color.FgGreen
+				switch {
+				case usedPercent > 98:
+					percCol = color.FgRed
+				case usedPercent > 90:
+					percCol = color.FgYellow
+				}
+
+				set := st.Used * barCols / st.Max
+				used := (st.Used + st.Reserved) * barCols / st.Max
+				reserved := set - used
+				bar := safeRepeat("#", int(used)) + safeRepeat("*", int(reserved)) + safeRepeat(" ", int(barCols-set))
+
+				fmt.Printf("\t[%s] %s/%s %s (limit)\n", color.New(percCol).Sprint(bar),
+					types.SizeStr(types.NewInt(uint64(st.Used))),
+					types.SizeStr(types.NewInt(uint64(st.Max))),
+					color.New(percCol).Sprintf("%d%%", usedPercent))
+			}
+
 			fmt.Printf("\t%s; %s; %s; Reserved: %s\n",
 				color.YellowString("Unsealed: %d", cnt[0]),
 				color.GreenString("Sealed: %d", cnt[1]),
@@ -407,4 +477,267 @@ var storageFindCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+var storageListSectorsCmd = &cli.Command{
+	Name:  "sectors",
+	Usage: "get list of all sector files",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
+
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		napi, closer2, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer2()
+
+		ctx := lcli.ReqContext(cctx)
+
+		sectors, err := nodeApi.SectorsList(ctx)
+		if err != nil {
+			return xerrors.Errorf("listing sectors: %w", err)
+		}
+
+		maddr, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		aid, err := address.IDFromAddress(maddr)
+		if err != nil {
+			return err
+		}
+
+		mi, err := napi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		sid := func(sn abi.SectorNumber) abi.SectorID {
+			return abi.SectorID{
+				Miner:  abi.ActorID(aid),
+				Number: sn,
+			}
+		}
+
+		type entry struct {
+			id      abi.SectorNumber
+			storage stores.ID
+			ft      storiface.SectorFileType
+			urls    string
+
+			primary, seal, store bool
+
+			state api.SectorState
+		}
+
+		var list []entry
+
+		for _, sector := range sectors {
+			st, err := nodeApi.SectorsStatus(ctx, sector, false)
+			if err != nil {
+				return xerrors.Errorf("getting sector status for sector %d: %w", sector, err)
+			}
+
+			for _, ft := range storiface.PathTypes {
+				si, err := nodeApi.StorageFindSector(ctx, sid(sector), ft, mi.SectorSize, false)
+				if err != nil {
+					return xerrors.Errorf("find sector %d: %w", sector, err)
+				}
+
+				for _, info := range si {
+
+					list = append(list, entry{
+						id:      sector,
+						storage: info.ID,
+						ft:      ft,
+						urls:    strings.Join(info.URLs, ";"),
+
+						primary: info.Primary,
+						seal:    info.CanSeal,
+						store:   info.CanStore,
+
+						state: st.State,
+					})
+				}
+			}
+
+		}
+
+		sort.Slice(list, func(i, j int) bool {
+			if list[i].store != list[j].store {
+				return list[i].store
+			}
+
+			if list[i].storage != list[j].storage {
+				return list[i].storage < list[j].storage
+			}
+
+			if list[i].id != list[j].id {
+				return list[i].id < list[j].id
+			}
+
+			return list[i].ft < list[j].ft
+		})
+
+		tw := tablewriter.New(
+			tablewriter.Col("Storage"),
+			tablewriter.Col("Sector"),
+			tablewriter.Col("Type"),
+			tablewriter.Col("State"),
+			tablewriter.Col("Primary"),
+			tablewriter.Col("Path use"),
+			tablewriter.Col("URLs"),
+		)
+
+		if len(list) == 0 {
+			return nil
+		}
+
+		lastS := list[0].storage
+		sc1, sc2 := color.FgBlue, color.FgCyan
+
+		for _, e := range list {
+			if e.storage != lastS {
+				lastS = e.storage
+				sc1, sc2 = sc2, sc1
+			}
+
+			m := map[string]interface{}{
+				"Storage":  color.New(sc1).Sprint(e.storage),
+				"Sector":   e.id,
+				"Type":     e.ft.String(),
+				"State":    color.New(stateOrder[sealing.SectorState(e.state)].col).Sprint(e.state),
+				"Primary":  maybeStr(e.seal, color.FgGreen, "primary"),
+				"Path use": maybeStr(e.seal, color.FgMagenta, "seal ") + maybeStr(e.store, color.FgCyan, "store"),
+				"URLs":     e.urls,
+			}
+			tw.Write(m)
+		}
+
+		return tw.Flush(os.Stdout)
+	},
+}
+
+func maybeStr(c bool, col color.Attribute, s string) string {
+	if !c {
+		return ""
+	}
+
+	return color.New(col).Sprint(s)
+}
+
+var storageCleanupCmd = &cli.Command{
+	Name:  "cleanup",
+	Usage: "trigger cleanup actions",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "removed",
+			Usage: "cleanup remaining files from removed sectors",
+			Value: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		napi, closer2, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer2()
+
+		ctx := lcli.ReqContext(cctx)
+
+		if cctx.Bool("removed") {
+			if err := cleanupRemovedSectorData(ctx, api, napi); err != nil {
+				return err
+			}
+		}
+
+		// TODO: proving sectors in sealing storage
+
+		return nil
+	},
+}
+
+func cleanupRemovedSectorData(ctx context.Context, api api.StorageMiner, napi v0api.FullNode) error {
+	sectors, err := api.SectorsList(ctx)
+	if err != nil {
+		return err
+	}
+
+	maddr, err := api.ActorAddress(ctx)
+	if err != nil {
+		return err
+	}
+
+	aid, err := address.IDFromAddress(maddr)
+	if err != nil {
+		return err
+	}
+
+	sid := func(sn abi.SectorNumber) abi.SectorID {
+		return abi.SectorID{
+			Miner:  abi.ActorID(aid),
+			Number: sn,
+		}
+	}
+
+	mi, err := napi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	if err != nil {
+		return err
+	}
+
+	toRemove := map[abi.SectorNumber]struct{}{}
+
+	for _, sector := range sectors {
+		st, err := api.SectorsStatus(ctx, sector, false)
+		if err != nil {
+			return xerrors.Errorf("getting sector status for sector %d: %w", sector, err)
+		}
+
+		if sealing.SectorState(st.State) != sealing.Removed {
+			continue
+		}
+
+		for _, ft := range storiface.PathTypes {
+			si, err := api.StorageFindSector(ctx, sid(sector), ft, mi.SectorSize, false)
+			if err != nil {
+				return xerrors.Errorf("find sector %d: %w", sector, err)
+			}
+
+			if len(si) > 0 {
+				toRemove[sector] = struct{}{}
+			}
+		}
+	}
+
+	for sn := range toRemove {
+		fmt.Printf("cleaning up data for sector %d\n", sn)
+		err := api.SectorRemove(ctx, sn)
+		if err != nil {
+			log.Error(err)
+		}
+	}
+
+	return nil
 }

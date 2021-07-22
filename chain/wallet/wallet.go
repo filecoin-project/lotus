@@ -6,18 +6,16 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
-
 	"github.com/filecoin-project/lotus/api"
-	_ "github.com/filecoin-project/lotus/lib/sigs/bls"  // enable bls signatures
-	_ "github.com/filecoin-project/lotus/lib/sigs/secp" // enable secp signatures
-
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
+	_ "github.com/filecoin-project/lotus/lib/sigs/bls"  // enable bls signatures
+	_ "github.com/filecoin-project/lotus/lib/sigs/secp" // enable secp signatures
 )
 
 var log = logging.Logger("wallet")
@@ -270,7 +268,7 @@ func (w *LocalWallet) WalletHas(ctx context.Context, addr address.Address) (bool
 	return k != nil, nil
 }
 
-func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) error {
+func (w *LocalWallet) walletDelete(ctx context.Context, addr address.Address) error {
 	k, err := w.findKey(addr)
 
 	if err != nil {
@@ -308,7 +306,30 @@ func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) er
 	return nil
 }
 
-func (w *LocalWallet) Get() api.WalletAPI {
+func (w *LocalWallet) deleteDefault() {
+	w.lk.Lock()
+	defer w.lk.Unlock()
+	if err := w.keystore.Delete(KDefault); err != nil {
+		if !xerrors.Is(err, types.ErrKeyInfoNotFound) {
+			log.Warnf("failed to unregister current default key: %s", err)
+		}
+	}
+}
+
+func (w *LocalWallet) WalletDelete(ctx context.Context, addr address.Address) error {
+	if err := w.walletDelete(ctx, addr); err != nil {
+		return xerrors.Errorf("wallet delete: %w", err)
+	}
+
+	if def, err := w.GetDefault(); err == nil {
+		if def == addr {
+			w.deleteDefault()
+		}
+	}
+	return nil
+}
+
+func (w *LocalWallet) Get() api.Wallet {
 	if w == nil {
 		return nil
 	}
@@ -316,7 +337,7 @@ func (w *LocalWallet) Get() api.WalletAPI {
 	return w
 }
 
-var _ api.WalletAPI = &LocalWallet{}
+var _ api.Wallet = &LocalWallet{}
 
 func swapMainnetForTestnetPrefix(addr string) (string, error) {
 	aChars := []rune(addr)

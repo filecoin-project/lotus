@@ -19,7 +19,8 @@ func (mp *MessagePool) pruneExcessMessages() error {
 	mp.lk.Lock()
 	defer mp.lk.Unlock()
 
-	if mp.currentSize < mp.cfg.SizeLimitHigh {
+	mpCfg := mp.getConfig()
+	if mp.currentSize < mpCfg.SizeLimitHigh {
 		return nil
 	}
 
@@ -27,7 +28,7 @@ func (mp *MessagePool) pruneExcessMessages() error {
 	case <-mp.pruneCooldown:
 		err := mp.pruneMessages(context.TODO(), ts)
 		go func() {
-			time.Sleep(mp.cfg.PruneCooldown)
+			time.Sleep(mpCfg.PruneCooldown)
 			mp.pruneCooldown <- struct{}{}
 		}()
 		return err
@@ -53,15 +54,21 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 	// protected actors -- not pruned
 	protected := make(map[address.Address]struct{})
 
+	mpCfg := mp.getConfig()
 	// we never prune priority addresses
-	for _, actor := range mp.cfg.PriorityAddrs {
-		protected[actor] = struct{}{}
+	for _, actor := range mpCfg.PriorityAddrs {
+		pk, err := mp.resolveToKey(ctx, actor)
+		if err != nil {
+			log.Debugf("pruneMessages failed to resolve priority address: %s", err)
+		}
+
+		protected[pk] = struct{}{}
 	}
 
 	// we also never prune locally published messages
-	for actor := range mp.localAddrs {
+	mp.forEachLocal(ctx, func(ctx context.Context, actor address.Address) {
 		protected[actor] = struct{}{}
-	}
+	})
 
 	// Collect all messages to track which ones to remove and create chains for block inclusion
 	pruneMsgs := make(map[cid.Cid]*types.SignedMessage, mp.currentSize)
@@ -90,7 +97,7 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 	})
 
 	// Keep messages (remove them from pruneMsgs) from chains while we are under the low water mark
-	loWaterMark := mp.cfg.SizeLimitLow
+	loWaterMark := mpCfg.SizeLimitLow
 keepLoop:
 	for _, chain := range chains {
 		for _, m := range chain.msgs {
@@ -106,7 +113,7 @@ keepLoop:
 	// and remove all messages that are still in pruneMsgs after processing the chains
 	log.Infof("Pruning %d messages", len(pruneMsgs))
 	for _, m := range pruneMsgs {
-		mp.remove(m.Message.From, m.Message.Nonce, false)
+		mp.remove(ctx, m.Message.From, m.Message.Nonce, false)
 	}
 
 	return nil

@@ -18,7 +18,7 @@ const repubMsgLimit = 30
 
 var RepublishBatchDelay = 100 * time.Millisecond
 
-func (mp *MessagePool) republishPendingMessages() error {
+func (mp *MessagePool) republishPendingMessages(ctx context.Context) error {
 	mp.curTsLk.Lock()
 	ts := mp.curTs
 
@@ -32,13 +32,18 @@ func (mp *MessagePool) republishPendingMessages() error {
 	pending := make(map[address.Address]map[uint64]*types.SignedMessage)
 	mp.lk.Lock()
 	mp.republished = nil // clear this to avoid races triggering an early republish
-	for actor := range mp.localAddrs {
-		mset, ok := mp.pending[actor]
+	mp.forEachLocal(ctx, func(ctx context.Context, actor address.Address) {
+		mset, ok, err := mp.getPendingMset(ctx, actor)
+		if err != nil {
+			log.Debugf("failed to get mset: %w", err)
+			return
+		}
+
 		if !ok {
-			continue
+			return
 		}
 		if len(mset.msgs) == 0 {
-			continue
+			return
 		}
 		// we need to copy this while holding the lock to avoid races with concurrent modification
 		pend := make(map[uint64]*types.SignedMessage, len(mset.msgs))
@@ -46,7 +51,8 @@ func (mp *MessagePool) republishPendingMessages() error {
 			pend[nonce] = m
 		}
 		pending[actor] = pend
-	}
+	})
+
 	mp.lk.Unlock()
 	mp.curTsLk.Unlock()
 
@@ -100,7 +106,7 @@ loop:
 			// check the baseFee lower bound -- only republish messages that can be included in the chain
 			// within the next 20 blocks.
 			for _, m := range chain.msgs {
-				if !allowNegativeChains(ts.Height()) && m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
+				if m.Message.GasFeeCap.LessThan(baseFeeLowerBound) {
 					chain.Invalidate()
 					continue loop
 				}
@@ -115,7 +121,7 @@ loop:
 
 		// we can't fit the current chain but there is gas to spare
 		// trim it and push it down
-		chain.Trim(gasLimit, mp, baseFee, true)
+		chain.Trim(gasLimit, mp, baseFee)
 		for j := i; j < len(chains)-1; j++ {
 			if chains[j].Before(chains[j+1]) {
 				break

@@ -1,0 +1,35 @@
+[metadata]
+  name = "stress"
+
+[global]
+  plan = "graphsync"
+  case = "stress"
+  total_instances = 2
+  builder = "docker:go"
+  runner = "cluster:k8s"
+
+[global.build_config]
+  push_registry=true
+  go_proxy_mode="remote"
+  go_proxy_url="http://localhost:8081"
+  registry_type="aws"
+
+[global.run.test_params]
+size      = "10MB"
+latencies = '["50ms", "100ms", "200ms"]'
+bandwidths = '["32MiB", "16MiB", "8MiB", "4MiB", "1MiB"]'
+concurrency = "10"
+
+[[groups]]
+  id = "providers"
+  instances = { count = 1 }
+  [groups.resources]
+    memory = "4096Mi"
+    cpu = "1000m"
+
+[[groups]]
+  id = "requestors"
+  instances = { count = 1 }
+  [groups.resources]
+    memory = "4096Mi"
+    cpu = "1000m"

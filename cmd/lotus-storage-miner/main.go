@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/fatih/color"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/trace"
@@ -26,7 +27,7 @@ const FlagMinerRepo = "miner-repo"
 const FlagMinerRepoDeprecation = "storagerepo"
 
 func main() {
-	build.RunningNodeType = build.NodeMiner
+	api.RunningNodeType = api.NodeMiner
 
 	lotuslog.SetupLogLevels()
 
@@ -61,9 +62,14 @@ func main() {
 			trace.UnregisterExporter(jaeger)
 			jaeger = tracing.SetupJaegerTracing("lotus/" + cmd.Name)
 
+			if cctx.IsSet("color") {
+				color.NoColor = !cctx.Bool("color")
+			}
+
 			if originBefore != nil {
 				return originBefore(cctx)
 			}
+
 			return nil
 		}
 	}
@@ -81,7 +87,10 @@ func main() {
 				Aliases: []string{"a"},
 			},
 			&cli.BoolFlag{
-				Name: "color",
+				// examined in the Before above
+				Name:        "color",
+				Usage:       "use color in display output",
+				DefaultText: "depends on output being a TTY",
 			},
 			&cli.StringFlag{
 				Name:    "repo",
@@ -106,14 +115,20 @@ func main() {
 	lcli.RunApp(app)
 }
 
-func getActorAddress(ctx context.Context, nodeAPI api.StorageMiner, overrideMaddr string) (maddr address.Address, err error) {
-	if overrideMaddr != "" {
-		maddr, err = address.NewFromString(overrideMaddr)
+func getActorAddress(ctx context.Context, cctx *cli.Context) (maddr address.Address, err error) {
+	if cctx.IsSet("actor") {
+		maddr, err = address.NewFromString(cctx.String("actor"))
 		if err != nil {
 			return maddr, err
 		}
 		return
 	}
+
+	nodeAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
+	if err != nil {
+		return address.Undef, err
+	}
+	defer closer()
 
 	maddr, err = nodeAPI.ActorAddress(ctx)
 	if err != nil {

@@ -3,6 +3,7 @@ package store_test
 import (
 	"bytes"
 	"context"
+	"io"
 	"testing"
 
 	datastore "github.com/ipfs/go-datastore"
@@ -10,12 +11,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -51,24 +52,31 @@ func BenchmarkGetRandomness(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	bds, err := lr.Datastore("/chain")
+	bs, err := lr.Blockstore(context.TODO(), repo.UniversalBlockstore)
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	mds, err := lr.Datastore("/metadata")
+	defer func() {
+		if c, ok := bs.(io.Closer); ok {
+			if err := c.Close(); err != nil {
+				b.Logf("WARN: failed to close blockstore: %s", err)
+			}
+		}
+	}()
+
+	mds, err := lr.Datastore(context.Background(), "/metadata")
 	if err != nil {
 		b.Fatal(err)
 	}
 
-	bs := blockstore.NewBlockstore(bds)
-
-	cs := store.NewChainStore(bs, mds, nil, nil)
+	cs := store.NewChainStore(bs, bs, mds, nil, nil)
+	defer cs.Close() //nolint:errcheck
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, err := cs.GetChainRandomness(context.TODO(), last.Cids(), crypto.DomainSeparationTag_SealRandomness, 500, nil)
+		_, err := cs.GetChainRandomnessLookingBack(context.TODO(), last.Cids(), crypto.DomainSeparationTag_SealRandomness, 500, nil)
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -96,8 +104,9 @@ func TestChainExportImport(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nbs := blockstore.NewTemporary()
-	cs := store.NewChainStore(nbs, datastore.NewMapDatastore(), nil, nil)
+	nbs := blockstore.NewMemory()
+	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), nil, nil)
+	defer cs.Close() //nolint:errcheck
 
 	root, err := cs.Import(buf)
 	if err != nil {
@@ -130,8 +139,10 @@ func TestChainExportImportFull(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	nbs := blockstore.NewTemporary()
-	cs := store.NewChainStore(nbs, datastore.NewMapDatastore(), nil, nil)
+	nbs := blockstore.NewMemory()
+	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), nil, nil)
+	defer cs.Close() //nolint:errcheck
+
 	root, err := cs.Import(buf)
 	if err != nil {
 		t.Fatal(err)

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"go.uber.org/fx"
+	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -24,13 +25,13 @@ type MultiWallet struct {
 }
 
 type getif interface {
-	api.WalletAPI
+	api.Wallet
 
 	// workaround for the fact that iface(*struct(nil)) != nil
-	Get() api.WalletAPI
+	Get() api.Wallet
 }
 
-func firstNonNil(wallets ...getif) api.WalletAPI {
+func firstNonNil(wallets ...getif) api.Wallet {
 	for _, w := range wallets {
 		if w.Get() != nil {
 			return w
@@ -40,8 +41,8 @@ func firstNonNil(wallets ...getif) api.WalletAPI {
 	return nil
 }
 
-func nonNil(wallets ...getif) []api.WalletAPI {
-	var out []api.WalletAPI
+func nonNil(wallets ...getif) []api.Wallet {
+	var out []api.Wallet
 	for _, w := range wallets {
 		if w.Get() == nil {
 			continue
@@ -53,21 +54,21 @@ func nonNil(wallets ...getif) []api.WalletAPI {
 	return out
 }
 
-func (m MultiWallet) find(ctx context.Context, address address.Address, wallets ...getif) (api.WalletAPI, error) {
+func (m MultiWallet) find(ctx context.Context, address address.Address, wallets ...getif) (api.Wallet, error) {
 	ws := nonNil(wallets...)
+
+	var merr error
 
 	for _, w := range ws {
 		have, err := w.WalletHas(ctx, address)
-		if err != nil {
-			return nil, err
-		}
+		merr = multierr.Append(merr, err)
 
-		if have {
+		if err == nil && have {
 			return w, nil
 		}
 	}
 
-	return nil, nil
+	return nil, merr
 }
 
 func (m MultiWallet) WalletNew(ctx context.Context, keyType types.KeyType) (address.Address, error) {
@@ -90,7 +91,7 @@ func (m MultiWallet) WalletHas(ctx context.Context, address address.Address) (bo
 }
 
 func (m MultiWallet) WalletList(ctx context.Context) ([]address.Address, error) {
-	var out []address.Address
+	out := make([]address.Address, 0)
 	seen := map[address.Address]struct{}{}
 
 	ws := nonNil(m.Remote, m.Ledger, m.Local)
@@ -167,4 +168,4 @@ func (m MultiWallet) WalletDelete(ctx context.Context, address address.Address) 
 	}
 }
 
-var _ api.WalletAPI = MultiWallet{}
+var _ api.Wallet = MultiWallet{}

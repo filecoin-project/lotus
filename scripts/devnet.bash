@@ -64,7 +64,7 @@ cat > "${BASEDIR}/scripts/create_miner.bash" <<EOF
 #!/usr/bin/env bash
 set -x
 
-lotus wallet import ~/.genesis-sectors/pre-seal-t01000.key
+lotus wallet import --as-default ~/.genesis-sectors/pre-seal-t01000.key
 lotus-miner init --genesis-miner --actor=t01000 --sector-size=2KiB --pre-sealed-sectors=~/.genesis-sectors --pre-sealed-metadata=~/.genesis-sectors/pre-seal-t01000.json --nosync
 EOF
 
@@ -178,6 +178,7 @@ tmux send-keys -t $session:$wcli      "source ${BASEDIR}/scripts/env.$shell" C-m
 tmux send-keys -t $session:$wpledging "source ${BASEDIR}/scripts/env.$shell" C-m
 tmux send-keys -t $session:$wshell "source ${BASEDIR}/scripts/env.$shell" C-m
 
+tmux send-keys -t $session:$wdaemon "lotus-seed pre-seal --sector-size 2KiB --num-sectors 2" C-m
 tmux send-keys -t $session:$wdaemon "lotus-seed genesis new devnet.json" C-m
 tmux send-keys -t $session:$wdaemon "lotus-seed genesis add-miner devnet.json ~/.genesis-sectors/pre-seal-t01000.json" C-m
 tmux send-keys -t $session:$wdaemon "lotus daemon --api 48010 --lotus-make-genesis=dev.gen --genesis-template=devnet.json --bootstrap=false 2>&1 | tee -a ${BASEDIR}/daemon.log" C-m
@@ -186,7 +187,7 @@ export LOTUS_PATH="${BASEDIR}/.lotus"
 ${BASEDIR}/bin/lotus wait-api
 
 tmux send-keys -t $session:$wminer   "${BASEDIR}/scripts/create_miner.bash" C-m
-tmux send-keys -t $session:$wminer   "lotus-miner run --api 48020 --nosync 2>&1 | tee -a ${BASEDIR}/miner.log" C-m
+tmux send-keys -t $session:$wminer   "lotus-miner run --miner-api 48020 --nosync 2>&1 | tee -a ${BASEDIR}/miner.log" C-m
 tmux send-keys -t $session:$wcli     "${BASEDIR}/scripts/monitor.bash" C-m
 tmux send-keys -t $session:$wpleding "${BASEDIR}/scripts/pledge_sectors.bash" C-m
 

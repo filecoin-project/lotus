@@ -21,7 +21,7 @@ import (
 
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
-	"github.com/filecoin-project/lotus/api/apibstore"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -29,7 +29,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
-	"github.com/filecoin-project/lotus/storage"
 )
 
 var actorCmd = &cli.Command{
@@ -56,8 +55,22 @@ var actorSetAddrsCmd = &cli.Command{
 			Usage: "set gas limit",
 			Value: 0,
 		},
+		&cli.BoolFlag{
+			Name:  "unset",
+			Usage: "unset address",
+			Value: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		args := cctx.Args().Slice()
+		unset := cctx.Bool("unset")
+		if len(args) == 0 && !unset {
+			return cli.ShowSubcommandHelp(cctx)
+		}
+		if len(args) > 0 && unset {
+			return fmt.Errorf("unset can only be used with no arguments")
+		}
+
 		nodeAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
@@ -73,7 +86,7 @@ var actorSetAddrsCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		var addrs []abi.Multiaddrs
-		for _, a := range cctx.Args().Slice() {
+		for _, a := range args {
 			maddr, err := ma.NewMultiaddr(a)
 			if err != nil {
 				return fmt.Errorf("failed to parse %q as a multiaddr: %w", a, err)
@@ -310,7 +323,7 @@ var actorRepayDebtCmd = &cli.Command{
 				return err
 			}
 
-			store := adt.WrapStore(ctx, cbor.NewCborStore(apibstore.NewAPIBlockstore(api)))
+			store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
 
 			mst, err := miner.Load(store, mact)
 			if err != nil {
@@ -377,12 +390,15 @@ var actorControlList = &cli.Command{
 			Name: "verbose",
 		},
 		&cli.BoolFlag{
-			Name:  "color",
-			Value: true,
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		color.NoColor = !cctx.Bool("color")
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
 
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -416,9 +432,59 @@ var actorControlList = &cli.Command{
 			tablewriter.Col("balance"),
 		)
 
-		postAddr, err := storage.AddressFor(ctx, api, mi, storage.PoStAddr, types.FromFil(1))
+		ac, err := nodeApi.ActorAddressConfig(ctx)
 		if err != nil {
-			return xerrors.Errorf("getting address for post: %w", err)
+			return err
+		}
+
+		commit := map[address.Address]struct{}{}
+		precommit := map[address.Address]struct{}{}
+		terminate := map[address.Address]struct{}{}
+		dealPublish := map[address.Address]struct{}{}
+		post := map[address.Address]struct{}{}
+
+		for _, ca := range mi.ControlAddresses {
+			post[ca] = struct{}{}
+		}
+
+		for _, ca := range ac.PreCommitControl {
+			ca, err := api.StateLookupID(ctx, ca, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			delete(post, ca)
+			precommit[ca] = struct{}{}
+		}
+
+		for _, ca := range ac.CommitControl {
+			ca, err := api.StateLookupID(ctx, ca, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			delete(post, ca)
+			commit[ca] = struct{}{}
+		}
+
+		for _, ca := range ac.TerminateControl {
+			ca, err := api.StateLookupID(ctx, ca, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			delete(post, ca)
+			terminate[ca] = struct{}{}
+		}
+
+		for _, ca := range ac.DealPublishControl {
+			ca, err := api.StateLookupID(ctx, ca, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			delete(post, ca)
+			dealPublish[ca] = struct{}{}
 		}
 
 		printKey := func(name string, a address.Address) {
@@ -453,8 +519,20 @@ var actorControlList = &cli.Command{
 			if a == mi.Worker {
 				uses = append(uses, color.YellowString("other"))
 			}
-			if a == postAddr {
+			if _, ok := post[a]; ok {
 				uses = append(uses, color.GreenString("post"))
+			}
+			if _, ok := precommit[a]; ok {
+				uses = append(uses, color.CyanString("precommit"))
+			}
+			if _, ok := commit[a]; ok {
+				uses = append(uses, color.BlueString("commit"))
+			}
+			if _, ok := terminate[a]; ok {
+				uses = append(uses, color.YellowString("terminate"))
+			}
+			if _, ok := dealPublish[a]; ok {
+				uses = append(uses, color.MagentaString("deals"))
 			}
 
 			tw.Write(map[string]interface{}{
@@ -591,8 +669,8 @@ var actorControlSet = &cli.Command{
 
 var actorSetOwnerCmd = &cli.Command{
 	Name:      "set-owner",
-	Usage:     "Set owner address",
-	ArgsUsage: "[address]",
+	Usage:     "Set owner address (this command should be invoked twice, first with the old owner as the senderAddress, and then with the new owner)",
+	ArgsUsage: "[newOwnerAddress senderAddress]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "really-do-it",
@@ -606,8 +684,8 @@ var actorSetOwnerCmd = &cli.Command{
 			return nil
 		}
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass address of new owner address")
+		if cctx.NArg() != 2 {
+			return fmt.Errorf("must pass new owner address and sender address")
 		}
 
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
@@ -629,7 +707,17 @@ var actorSetOwnerCmd = &cli.Command{
 			return err
 		}
 
-		newAddr, err := api.StateLookupID(ctx, na, types.EmptyTSK)
+		newAddrId, err := api.StateLookupID(ctx, na, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		fa, err := address.NewFromString(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		fromAddrId, err := api.StateLookupID(ctx, fa, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -644,13 +732,17 @@ var actorSetOwnerCmd = &cli.Command{
 			return err
 		}
 
-		sp, err := actors.SerializeParams(&newAddr)
+		if fromAddrId != mi.Owner && fromAddrId != newAddrId {
+			return xerrors.New("from address must either be the old owner or the new owner")
+		}
+
+		sp, err := actors.SerializeParams(&newAddrId)
 		if err != nil {
 			return xerrors.Errorf("serializing params: %w", err)
 		}
 
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
-			From:   mi.Owner,
+			From:   fromAddrId,
 			To:     maddr,
 			Method: miner.Methods.ChangeOwnerAddress,
 			Value:  big.Zero(),
@@ -660,7 +752,7 @@ var actorSetOwnerCmd = &cli.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		fmt.Println("Propose Message CID:", smsg.Cid())
+		fmt.Println("Message CID:", smsg.Cid())
 
 		// wait for it to get mined into a block
 		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
@@ -670,34 +762,11 @@ var actorSetOwnerCmd = &cli.Command{
 
 		// check it executed successfully
 		if wait.Receipt.ExitCode != 0 {
-			fmt.Println("Propose owner change failed!")
+			fmt.Println("owner change failed!")
 			return err
 		}
 
-		smsg, err = api.MpoolPushMessage(ctx, &types.Message{
-			From:   newAddr,
-			To:     maddr,
-			Method: miner.Methods.ChangeOwnerAddress,
-			Value:  big.Zero(),
-			Params: sp,
-		}, nil)
-		if err != nil {
-			return xerrors.Errorf("mpool push: %w", err)
-		}
-
-		fmt.Println("Approve Message CID:", smsg.Cid())
-
-		// wait for it to get mined into a block
-		wait, err = api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
-		if err != nil {
-			return err
-		}
-
-		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
-			fmt.Println("Approve owner change failed!")
-			return err
-		}
+		fmt.Println("message succeeded!")
 
 		return nil
 	},
@@ -973,7 +1042,7 @@ var actorCompactAllocatedCmd = &cli.Command{
 			return err
 		}
 
-		store := adt.WrapStore(ctx, cbor.NewCborStore(apibstore.NewAPIBlockstore(api)))
+		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
 
 		mst, err := miner.Load(store, mact)
 		if err != nil {

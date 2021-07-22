@@ -45,4 +45,4 @@ func (s *taskSelector) Cmp(ctx context.Context, _ sealtasks.TaskType, a, b *work
 	return a.utilization() < b.utilization(), nil
 }
 
-var _ WorkerSelector = &allocSelector{}
+var _ WorkerSelector = &taskSelector{}

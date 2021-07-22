@@ -235,7 +235,7 @@ var retrievalSetAskCmd = &cli.Command{
 
 var retrievalGetAskCmd = &cli.Command{
 	Name:  "get-ask",
-	Usage: "Get the provider's current retrieval ask",
+	Usage: "Get the provider's current retrieval ask configured by the provider in the ask-store using the set-ask CLI command",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		ctx := lcli.DaemonContext(cctx)

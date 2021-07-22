@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-storage/storage"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
@@ -19,29 +20,13 @@ import (
 // Piece is a tuple of piece and deal info
 type PieceWithDealInfo struct {
 	Piece    abi.PieceInfo
-	DealInfo DealInfo
+	DealInfo api.PieceDealInfo
 }
 
 // Piece is a tuple of piece info and optional deal
 type Piece struct {
 	Piece    abi.PieceInfo
-	DealInfo *DealInfo // nil for pieces which do not appear in deals (e.g. filler pieces)
-}
-
-// DealInfo is a tuple of deal identity and its schedule
-type DealInfo struct {
-	PublishCid   *cid.Cid
-	DealID       abi.DealID
-	DealSchedule DealSchedule
-	KeepUnsealed bool
-}
-
-// DealSchedule communicates the time interval of a storage deal. The deal must
-// appear in a sealed (proven) sector no later than StartEpoch, otherwise it
-// is invalid.
-type DealSchedule struct {
-	StartEpoch abi.ChainEpoch
-	EndEpoch   abi.ChainEpoch
+	DealInfo *api.PieceDealInfo // nil for pieces which do not appear in deals (e.g. filler pieces)
 }
 
 type Log struct {
@@ -70,7 +55,8 @@ type SectorInfo struct {
 	SectorType abi.RegisteredSealProof
 
 	// Packing
-	Pieces []Piece
+	CreationTime int64 // unix seconds
+	Pieces       []Piece
 
 	// PreCommit1
 	TicketValue   abi.SealRandomness
@@ -102,6 +88,10 @@ type SectorInfo struct {
 
 	// Recovery
 	Return ReturnState
+
+	// Termination
+	TerminateMessage *cid.Cid
+	TerminatedAt     abi.ChainEpoch
 
 	// Debug
 	LastErr string
@@ -159,7 +149,7 @@ func (t *SectorInfo) sealingCtx(ctx context.Context) context.Context {
 
 // Returns list of offset/length tuples of sector data ranges which clients
 // requested to keep unsealed
-func (t *SectorInfo) keepUnsealedRanges(invert bool) []storage.Range {
+func (t *SectorInfo) keepUnsealedRanges(invert, alwaysKeep bool) []storage.Range {
 	var out []storage.Range
 
 	var at abi.UnpaddedPieceSize
@@ -170,7 +160,10 @@ func (t *SectorInfo) keepUnsealedRanges(invert bool) []storage.Range {
 		if piece.DealInfo == nil {
 			continue
 		}
-		if piece.DealInfo.KeepUnsealed == invert {
+
+		keep := piece.DealInfo.KeepUnsealed || alwaysKeep
+
+		if keep == invert {
 			continue
 		}
 

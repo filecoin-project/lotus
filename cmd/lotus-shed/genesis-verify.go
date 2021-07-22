@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
@@ -26,7 +27,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 )
 
 type addrInfo struct {
@@ -50,9 +50,10 @@ var genesisVerifyCmd = &cli.Command{
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must pass genesis car file")
 		}
-		bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
+		bs := blockstore.FromDatastore(datastore.NewMapDatastore())
 
-		cs := store.NewChainStore(bs, datastore.NewMapDatastore(), nil, nil)
+		cs := store.NewChainStore(bs, bs, datastore.NewMapDatastore(), nil, nil)
+		defer cs.Close() //nolint:errcheck
 
 		cf := cctx.Args().Get(0)
 		f, err := os.Open(cf)

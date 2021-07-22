@@ -1,13 +1,16 @@
 package sealing
 
 import (
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"time"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-storage/storage"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 )
 
 type mutator interface {
@@ -67,22 +70,33 @@ func (evt SectorStart) apply(state *SectorInfo) {
 type SectorStartCC struct {
 	ID         abi.SectorNumber
 	SectorType abi.RegisteredSealProof
-	Pieces     []Piece
 }
 
 func (evt SectorStartCC) apply(state *SectorInfo) {
 	state.SectorNumber = evt.ID
-	state.Pieces = evt.Pieces
 	state.SectorType = evt.SectorType
 }
 
-type SectorAddPiece struct {
-	NewPiece Piece
-}
+type SectorAddPiece struct{}
 
 func (evt SectorAddPiece) apply(state *SectorInfo) {
-	state.Pieces = append(state.Pieces, evt.NewPiece)
+	if state.CreationTime == 0 {
+		state.CreationTime = time.Now().Unix()
+	}
 }
+
+type SectorPieceAdded struct {
+	NewPieces []Piece
+}
+
+func (evt SectorPieceAdded) apply(state *SectorInfo) {
+	state.Pieces = append(state.Pieces, evt.NewPieces...)
+}
+
+type SectorAddPieceFailed struct{ error }
+
+func (evt SectorAddPieceFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorAddPieceFailed) apply(si *SectorInfo)                     {}
 
 type SectorStartPacking struct{}
 
@@ -134,6 +148,18 @@ func (evt SectorPreCommit2) apply(state *SectorInfo) {
 	state.CommD = &commd
 	commr := evt.Sealed
 	state.CommR = &commr
+}
+
+type SectorPreCommitBatch struct{}
+
+func (evt SectorPreCommitBatch) apply(*SectorInfo) {}
+
+type SectorPreCommitBatchSent struct {
+	Message cid.Cid
+}
+
+func (evt SectorPreCommitBatchSent) apply(state *SectorInfo) {
+	state.PreCommitMessage = &evt.Message
 }
 
 type SectorPreCommitLanded struct {
@@ -219,11 +245,32 @@ func (evt SectorCommitted) apply(state *SectorInfo) {
 	state.Proof = evt.Proof
 }
 
+// like SectorCommitted, but finalizes before sending the proof to the chain
+type SectorProofReady struct {
+	Proof []byte
+}
+
+func (evt SectorProofReady) apply(state *SectorInfo) {
+	state.Proof = evt.Proof
+}
+
+type SectorSubmitCommitAggregate struct{}
+
+func (evt SectorSubmitCommitAggregate) apply(*SectorInfo) {}
+
 type SectorCommitSubmitted struct {
 	Message cid.Cid
 }
 
 func (evt SectorCommitSubmitted) apply(state *SectorInfo) {
+	state.CommitMessage = &evt.Message
+}
+
+type SectorCommitAggregateSent struct {
+	Message cid.Cid
+}
+
+func (evt SectorCommitAggregateSent) apply(state *SectorInfo) {
 	state.CommitMessage = &evt.Message
 }
 
@@ -313,6 +360,32 @@ func (evt SectorFaultReported) apply(state *SectorInfo) {
 }
 
 type SectorFaultedFinal struct{}
+
+// Terminating
+
+type SectorTerminate struct{}
+
+func (evt SectorTerminate) applyGlobal(state *SectorInfo) bool {
+	state.State = Terminating
+	return true
+}
+
+type SectorTerminating struct{ Message *cid.Cid }
+
+func (evt SectorTerminating) apply(state *SectorInfo) {
+	state.TerminateMessage = evt.Message
+}
+
+type SectorTerminated struct{ TerminatedAt abi.ChainEpoch }
+
+func (evt SectorTerminated) apply(state *SectorInfo) {
+	state.TerminatedAt = evt.TerminatedAt
+}
+
+type SectorTerminateFailed struct{ error }
+
+func (evt SectorTerminateFailed) FormatError(xerrors.Printer) (next error) { return evt.error }
+func (evt SectorTerminateFailed) apply(*SectorInfo)                        {}
 
 // External events
 

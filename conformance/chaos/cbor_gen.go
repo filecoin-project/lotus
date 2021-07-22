@@ -5,6 +5,7 @@ package chaos
 import (
 	"fmt"
 	"io"
+	"sort"
 
 	address "github.com/filecoin-project/go-address"
 	abi "github.com/filecoin-project/go-state-types/abi"
@@ -15,6 +16,8 @@ import (
 )
 
 var _ = xerrors.Errorf
+var _ = cid.Undef
+var _ = sort.Sort
 
 var lengthBufState = []byte{130}
 

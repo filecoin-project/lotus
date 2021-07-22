@@ -9,13 +9,13 @@ import (
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 // FullAPI is a JSON-RPC client targeting a full node. It's initialized in a
 // cli.BeforeFunc.
-var FullAPI api.FullNode
+var FullAPI v0api.FullNode
 
 // Closer is the closer for the JSON-RPC client, which must be called on
 // cli.AfterFunc.
@@ -102,7 +102,7 @@ func initialize(c *cli.Context) error {
 	// Make the API client.
 	var err error
 	if FullAPI, Closer, err = lcli.GetFullNodeAPI(c); err != nil {
-		err = fmt.Errorf("failed to locate Lotus node; ")
+		err = fmt.Errorf("failed to locate Lotus node; err: %w", err)
 	}
 	return err
 }
@@ -110,6 +110,22 @@ func initialize(c *cli.Context) error {
 func destroy(_ *cli.Context) error {
 	if Closer != nil {
 		Closer()
+	}
+	return nil
+}
+
+func ensureDir(path string) error {
+	switch fi, err := os.Stat(path); {
+	case os.IsNotExist(err):
+		if err := os.MkdirAll(path, 0755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", path, err)
+		}
+	case err == nil:
+		if !fi.IsDir() {
+			return fmt.Errorf("path %s is not a directory: %w", path, err)
+		}
+	default:
+		return fmt.Errorf("failed to stat directory %s: %w", path, err)
 	}
 	return nil
 }

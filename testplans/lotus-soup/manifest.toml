@@ -1,0 +1,218 @@
+name = "lotus-soup"
+
+[defaults]
+builder = "docker:go"
+runner = "local:docker"
+
+[builders."exec:go"]
+enabled = true
+
+[builders."docker:go"]
+enabled = true
+build_base_image = "iptestground/oni-buildbase:v15-lotus"
+runtime_image = "iptestground/oni-runtime:v10-debug"
+
+[runners."local:exec"]
+enabled = true
+
+[runners."local:docker"]
+enabled = true
+
+[runners."cluster:k8s"]
+enabled = true
+
+######################
+##
+## Testcases
+##
+######################
+
+[[testcases]]
+name = "deals-e2e"
+instances = { min = 1, max = 100, default = 5 }
+
+  [testcases.params]
+  clients   = { type = "int", default = 1 }
+  miners    = { type = "int", default = 1 }
+  balance   = { type = "float", default = 1 }
+  sectors   = { type = "int", default = 1 }
+  role      = { type = "string" }
+
+  genesis_timestamp_offset = { type = "int", default = 0 }
+
+  random_beacon_type = { type = "enum", default = "mock", options = ["mock", "local-drand", "external-drand"] }
+
+  # Params relevant to drand nodes. drand nodes should have role="drand", and must all be
+  # in the same composition group. There must be at least threshold drand nodes.
+  # To get lotus nodes to actually use the drand nodes, you must set random_beacon_type="local-drand"
+  # for the lotus node groups.
+  drand_period = { type = "duration", default="10s" }
+  drand_threshold = { type = "int", default = 2 }
+  drand_gossip_relay = { type = "bool", default = true }
+  drand_log_level = { type = "string", default="info" }
+
+  # Params relevant to pubsub tracing
+  enable_pubsub_tracer = { type = "bool", default = false }
+  mining_mode = { type = "enum", default = "synchronized", options = ["synchronized", "natural"] }
+
+  # Fast retrieval
+  fast_retrieval = { type = "bool", default = false }
+
+  # Bounce connection during push and pull data transfers
+  bounce_conn_data_transfers = { type = "bool", default = false }
+
+
+[[testcases]]
+name = "drand-halting"
+instances = { min = 1, max = 100, default = 5 }
+
+  [testcases.params]
+  clients = { type = "int", default = 1 }
+  miners = { type = "int", default = 1 }
+  balance = { type = "float", default = 1 }
+  sectors = { type = "int", default = 1 }
+  role = { type = "string" }
+  genesis_timestamp_offset = { type = "int", default = 0 }
+
+
+  random_beacon_type = { type = "enum", default = "local-drand", options = ["mock", "local-drand", "external-drand"] }
+
+  # Params relevant to drand nodes. drand nodes should have role="drand", and must all be
+  # in the same composition group. There must be at least threshold drand nodes.
+  # To get lotus nodes to actually use the drand nodes, you must set random_beacon_type="local-drand"
+  # for the lotus node groups.
+  drand_period = { type = "duration", default="10s" }
+  drand_threshold = { type = "int", default = 2 }
+  drand_gossip_relay = { type = "bool", default = true }
+  drand_log_level = { type = "string", default="info" }
+  suspend_events = { type = "string", default="", desc = "a sequence of halt/resume/wait events separated by '->'" }
+  
+  # Params relevant to pubsub tracing
+  enable_pubsub_tracer = { type = "bool", default = false }  # Mining Mode: synchronized -vs- natural time
+  mining_mode = { type = "enum", default = "synchronized", options = ["synchronized", "natural"] }
+
+
+[[testcases]]
+name = "drand-outage"
+instances = { min = 1, max = 100, default = 5 }
+
+  [testcases.params]
+  clients = { type = "int", default = 0 }
+  miners = { type = "int", default = 3 }
+  balance = { type = "float", default = 1 }
+  sectors = { type = "int", default = 1 }
+  role = { type = "string" }
+  genesis_timestamp_offset = { type = "int", default = 0 }
+
+
+  random_beacon_type = { type = "enum", default = "local-drand", options = ["mock", "local-drand", "external-drand"] }
+
+  # Params relevant to drand nodes. drand nodes should have role="drand", and must all be
+  # in the same composition group. There must be at least threshold drand nodes.
+  # To get lotus nodes to actually use the drand nodes, you must set random_beacon_type="local-drand"
+  # for the lotus node groups.
+  drand_period = { type = "duration", default="30s" }
+  drand_catchup_period = { type = "duration", default="10s" }
+  drand_threshold = { type = "int", default = 2 }
+  drand_gossip_relay = { type = "bool", default = true }
+  drand_log_level = { type = "string", default="info" }
+  suspend_events = { type = "string", default="", desc = "a sequence of halt/resume/wait events separated by '->'" }
+  
+  # Params relevant to pubsub tracing
+  enable_pubsub_tracer = { type = "bool", default = false }  # Mining Mode: synchronized -vs- natural time
+  mining_mode = { type = "enum", default = "synchronized", options = ["synchronized", "natural"] }
+
+
+[[testcases]]
+name = "deals-stress"
+instances = { min = 1, max = 100, default = 5 }
+
+  [testcases.params]
+  clients = { type = "int", default = 1 }
+  miners = { type = "int", default = 1 }
+  balance = { type = "float", default = 1 }
+  sectors = { type = "int", default = 1 }
+  role = { type = "string" }
+
+  genesis_timestamp_offset = { type = "int", default = 0 }
+
+  random_beacon_type = { type = "enum", default = "mock", options = ["mock", "local-drand", "external-drand"] }
+
+  # Params relevant to drand nodes. drand nodes should have role="drand", and must all be
+  # in the same composition group. There must be at least threshold drand nodes.
+  # To get lotus nodes to actually use the drand nodes, you must set random_beacon_type="local-drand"
+  # for the lotus node groups.
+  drand_period = { type = "duration", default="10s" }
+  drand_threshold = { type = "int", default = 2 }
+  drand_gossip_relay = { type = "bool", default = true }
+
+  # Params relevant to pubsub tracing
+  enable_pubsub_tracer = { type = "bool", default = false }
+
+  # Mining Mode: synchronized -vs- natural time
+  mining_mode = { type = "enum", default = "synchronized", options = ["synchronized", "natural"] }
+
+  deals = { type = "int", default = 1 }
+  deal_mode = { type = "enum", default = "serial", options = ["serial", "concurrent"] }
+
+
+[[testcases]]
+name = "paych-stress"
+instances = { min = 1, max = 100, default = 5 }
+
+  [testcases.params]
+  clients = { type = "int", default = 1 }
+  miners = { type = "int", default = 1 }
+  balance = { type = "float", default = 1 }
+  sectors = { type = "int", default = 1 }
+  role = { type = "string" }
+  genesis_timestamp_offset = { type = "int", default = 0 }
+
+  random_beacon_type = { type = "enum", default = "local-drand", options = ["mock", "local-drand", "external-drand"] }
+
+  # Params relevant to drand nodes. drand nodes should have role="drand", and must all be
+  # in the same composition group. There must be at least threshold drand nodes.
+  # To get lotus nodes to actually use the drand nodes, you must set random_beacon_type="local-drand"
+  # for the lotus node groups.
+  drand_period = { type = "duration", default="10s" }
+  drand_threshold = { type = "int", default = 2 }
+  drand_gossip_relay = { type = "bool", default = true }
+  drand_log_level = { type = "string", default="info" }
+  suspend_events = { type = "string", default="", desc = "a sequence of halt/resume/wait events separated by '->'" }
+
+  # Params relevant to pubsub tracing
+  enable_pubsub_tracer = { type = "bool", default = false }  # Mining Mode: synchronized -vs- natural time
+  mining_mode = { type = "enum", default = "synchronized", options = ["synchronized", "natural"] }
+
+  # ********** Test-case specific **********
+  increments    = { type = "int", default = "100", desc = "increments in which to send payment vouchers" }
+  lane_count            = { type = "int", default = "256", desc = "lanes to open; vouchers will be distributed across these lanes in round-robin fashion" }
+
+
+[[testcases]]
+name = "recovery-failed-windowed-post"
+instances = { min = 1, max = 100, default = 5 }
+
+  [testcases.params]
+  clients   = { type = "int", default = 1 }
+  miners    = { type = "int", default = 1 }
+  balance   = { type = "int", default = 1 }
+  sectors   = { type = "int", default = 1 }
+  role      = { type = "string" }
+
+  genesis_timestamp_offset = { type = "int", default = 0 }
+
+  random_beacon_type = { type = "enum", default = "mock", options = ["mock", "local-drand", "external-drand"] }
+
+  # Params relevant to drand nodes. drand nodes should have role="drand", and must all be
+  # in the same composition group. There must be at least threshold drand nodes.
+  # To get lotus nodes to actually use the drand nodes, you must set random_beacon_type="local-drand"
+  # for the lotus node groups.
+  drand_period = { type = "duration", default="10s" }
+  drand_threshold = { type = "int", default = 2 }
+  drand_gossip_relay = { type = "bool", default = true }
+  drand_log_level = { type = "string", default="info" }
+
+  # Params relevant to pubsub tracing
+  enable_pubsub_tracer = { type = "bool", default = false }
+  mining_mode = { type = "enum", default = "synchronized", options = ["synchronized", "natural"] }

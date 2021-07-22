@@ -6,12 +6,14 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/filecoin-project/lotus/api/v0api"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/urfave/cli/v2"
 	ledgerfil "github.com/whyrusleeping/ledger-filecoin-go"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -25,6 +27,7 @@ var ledgerCmd = &cli.Command{
 		ledgerListAddressesCmd,
 		ledgerKeyInfoCmd,
 		ledgerSignTestCmd,
+		ledgerShowCmd,
 	},
 }
 
@@ -40,7 +43,7 @@ var ledgerListAddressesCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		var api api.FullNode
+		var api v0api.FullNode
 		if cctx.Bool("print-balances") {
 			a, closer, err := lcli.GetFullNodeAPI(cctx)
 			if err != nil {
@@ -57,6 +60,7 @@ var ledgerListAddressesCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		defer fl.Close() // nolint
 
 		end := 20
 		for i := 0; i < end; i++ {
@@ -166,6 +170,7 @@ var ledgerKeyInfoCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		defer fl.Close() // nolint
 
 		p, err := parseHDPath(cctx.Args().First())
 		if err != nil {
@@ -242,13 +247,46 @@ var ledgerSignTestCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		fmt.Printf("Message: %x\n", b.RawData())
 
 		sig, err := fl.SignSECP256K1(p, b.RawData())
 		if err != nil {
 			return err
 		}
 
-		fmt.Println(sig.SignatureBytes())
+		sigBytes := append([]byte{byte(crypto.SigTypeSecp256k1)}, sig.SignatureBytes()...)
+
+		fmt.Printf("Signature: %x\n", sigBytes)
+
+		return nil
+	},
+}
+
+var ledgerShowCmd = &cli.Command{
+	Name:      "show",
+	ArgsUsage: "[hd path]",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		}
+
+		fl, err := ledgerfil.FindLedgerFilecoinApp()
+		if err != nil {
+			return err
+		}
+		defer fl.Close() // nolint
+
+		p, err := parseHDPath(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		_, _, a, err := fl.ShowAddressPubKeySECP256K1(p)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(a)
 
 		return nil
 	},

@@ -3,10 +3,13 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"time"
+
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/lotus/chain/types"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/ipfs/go-cid"
 
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -51,19 +54,6 @@ type MessageSendSpec struct {
 	MaxFee abi.TokenAmount
 }
 
-var DefaultMessageSendSpec = MessageSendSpec{
-	// MaxFee of 0.1FIL
-	MaxFee: abi.NewTokenAmount(int64(build.FilecoinPrecision) / 10),
-}
-
-func (ms *MessageSendSpec) Get() MessageSendSpec {
-	if ms == nil {
-		return DefaultMessageSendSpec
-	}
-
-	return *ms
-}
-
 type DataTransferChannel struct {
 	TransferID  datatransfer.TransferID
 	Status      datatransfer.Status
@@ -74,6 +64,7 @@ type DataTransferChannel struct {
 	Message     string
 	OtherPeer   peer.ID
 	Transferred uint64
+	Stages      *datatransfer.ChannelStages
 }
 
 // NewDataTransferChannel constructs an API DataTransferChannel type from full channel state snapshot and a host id
@@ -106,4 +97,101 @@ func NewDataTransferChannel(hostID peer.ID, channelState datatransfer.ChannelSta
 		channel.OtherPeer = channelState.Sender()
 	}
 	return channel
+}
+
+type NetBlockList struct {
+	Peers     []peer.ID
+	IPAddrs   []string
+	IPSubnets []string
+}
+
+type ExtendedPeerInfo struct {
+	ID          peer.ID
+	Agent       string
+	Addrs       []string
+	Protocols   []string
+	ConnMgrMeta *ConnMgrInfo
+}
+
+type ConnMgrInfo struct {
+	FirstSeen time.Time
+	Value     int
+	Tags      map[string]int
+	Conns     map[string]time.Time
+}
+
+type NodeStatus struct {
+	SyncStatus  NodeSyncStatus
+	PeerStatus  NodePeerStatus
+	ChainStatus NodeChainStatus
+}
+
+type NodeSyncStatus struct {
+	Epoch  uint64
+	Behind uint64
+}
+
+type NodePeerStatus struct {
+	PeersToPublishMsgs   int
+	PeersToPublishBlocks int
+}
+
+type NodeChainStatus struct {
+	BlocksPerTipsetLast100      float64
+	BlocksPerTipsetLastFinality float64
+}
+
+type CheckStatusCode int
+
+//go:generate go run golang.org/x/tools/cmd/stringer -type=CheckStatusCode -trimprefix=CheckStatus
+const (
+	_ CheckStatusCode = iota
+	// Message Checks
+	CheckStatusMessageSerialize
+	CheckStatusMessageSize
+	CheckStatusMessageValidity
+	CheckStatusMessageMinGas
+	CheckStatusMessageMinBaseFee
+	CheckStatusMessageBaseFee
+	CheckStatusMessageBaseFeeLowerBound
+	CheckStatusMessageBaseFeeUpperBound
+	CheckStatusMessageGetStateNonce
+	CheckStatusMessageNonce
+	CheckStatusMessageGetStateBalance
+	CheckStatusMessageBalance
+)
+
+type CheckStatus struct {
+	Code CheckStatusCode
+	OK   bool
+	Err  string
+	Hint map[string]interface{}
+}
+
+type MessageCheckStatus struct {
+	Cid cid.Cid
+	CheckStatus
+}
+
+type MessagePrototype struct {
+	Message    types.Message
+	ValidNonce bool
+}
+
+type RetrievalInfo struct {
+	PayloadCID   cid.Cid
+	ID           retrievalmarket.DealID
+	PieceCID     *cid.Cid
+	PricePerByte abi.TokenAmount
+	UnsealPrice  abi.TokenAmount
+
+	Status        retrievalmarket.DealStatus
+	Message       string // more information about deal state, particularly errors
+	Provider      peer.ID
+	BytesReceived uint64
+	BytesPaidFor  uint64
+	TotalPaid     abi.TokenAmount
+
+	TransferChannelID *datatransfer.ChannelID
+	DataTransfer      *DataTransferChannel
 }

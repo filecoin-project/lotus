@@ -37,13 +37,14 @@ func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
 	for i := range states {
 		ss := &states[i]
 		out.ActiveSyncs = append(out.ActiveSyncs, api.ActiveSync{
-			Base:    ss.Base,
-			Target:  ss.Target,
-			Stage:   ss.Stage,
-			Height:  ss.Height,
-			Start:   ss.Start,
-			End:     ss.End,
-			Message: ss.Message,
+			WorkerID: ss.WorkerID,
+			Base:     ss.Base,
+			Target:   ss.Target,
+			Stage:    ss.Stage,
+			Height:   ss.Height,
+			Start:    ss.Start,
+			End:      ss.End,
+			Message:  ss.Message,
 		})
 	}
 	return out, nil
@@ -103,7 +104,7 @@ func (a *SyncAPI) SyncIncomingBlocks(ctx context.Context) (<-chan *types.BlockHe
 
 func (a *SyncAPI) SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error {
 	log.Warnf("Marking tipset %s as checkpoint", tsk)
-	return a.Syncer.SetCheckpoint(tsk)
+	return a.Syncer.SyncCheckpoint(ctx, tsk)
 }
 
 func (a *SyncAPI) SyncMarkBad(ctx context.Context, bcid cid.Cid) error {

@@ -1,0 +1,8 @@
+param
+toml
+jupyter
+panel
+holoviews
+ansi2html
+matplotlib
+hvplot

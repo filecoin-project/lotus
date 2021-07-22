@@ -10,6 +10,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/types/mock"
 )
 
+func init() {
+	BootstrapPeerThreshold = 1
+}
+
 var genTs = mock.TipSet(mock.MkBlock(nil, 0, 0))
 
 type syncOp struct {
@@ -28,7 +32,12 @@ func runSyncMgrTest(t *testing.T, tname string, thresh int, tf func(*testing.T, 
 		<-ch
 		return nil
 	}).(*syncManager)
-	sm.bspThresh = thresh
+
+	oldBootstrapPeerThreshold := BootstrapPeerThreshold
+	BootstrapPeerThreshold = thresh
+	defer func() {
+		BootstrapPeerThreshold = oldBootstrapPeerThreshold
+	}()
 
 	sm.Start()
 	defer sm.Stop()
@@ -87,47 +96,67 @@ func TestSyncManagerEdgeCase(t *testing.T) {
 
 	runSyncMgrTest(t, "edgeCase", 1, func(t *testing.T, sm *syncManager, stc chan *syncOp) {
 		sm.SetPeerHead(ctx, "peer1", a)
-		assertGetSyncOp(t, stc, a)
 
 		sm.SetPeerHead(ctx, "peer1", b1)
 		sm.SetPeerHead(ctx, "peer1", b2)
-		// b1 and b2 are being processed
 
-		b1op := <-stc
-		b2op := <-stc
-		if !b1op.ts.Equals(b1) {
-			b1op, b2op = b2op, b1op
+		assertGetSyncOp(t, stc, a)
+
+		// b1 and b2 are in queue after a; the sync manager should pick the heaviest one which is b2
+		bop := <-stc
+		if !bop.ts.Equals(b2) {
+			t.Fatalf("Expected tipset %s to sync, but got %s", b2, bop.ts)
 		}
 
-		sm.SetPeerHead(ctx, "peer2", c2) // c2 is put into activeSyncTips at index 0
-		sm.SetPeerHead(ctx, "peer2", c1) // c1 is put into activeSyncTips at index 1
-		sm.SetPeerHead(ctx, "peer3", b2) // b2 is related to c2 and even though it is actively synced it is put into activeSyncTips index 0
-		sm.SetPeerHead(ctx, "peer1", a)  // a is related to b2 and is put into activeSyncTips index 0
+		sm.SetPeerHead(ctx, "peer2", c2)
+		sm.SetPeerHead(ctx, "peer2", c1)
+		sm.SetPeerHead(ctx, "peer3", b2)
+		sm.SetPeerHead(ctx, "peer1", a)
 
-		b1op.done() // b1 completes first, is related to a, so it pops activeSyncTips index 0
-		// even though correct one is index 1
+		bop.done()
 
-		b2op.done()
-		// b2 completes and is not related to c1, so it leaves activeSyncTips as it is
+		// get the next sync target; it should be c1 as the heaviest tipset but added last (same weight as c2)
+		bop = <-stc
+		if bop.ts.Equals(c2) {
+			// there's a small race and we might get c2 first.
+			// But we should still end on c1.
+			bop.done()
+			bop = <-stc
+		}
 
-		waitUntilAllWorkersAreDone(stc)
+		if !bop.ts.Equals(c1) {
+			t.Fatalf("Expected tipset %s to sync, but got %s", c1, bop.ts)
+		}
 
-		if len(sm.activeSyncTips.buckets) != 0 {
-			t.Errorf("activeSyncTips expected empty but got: %s", sm.activeSyncTips.String())
+		sm.SetPeerHead(ctx, "peer4", d1)
+		sm.SetPeerHead(ctx, "peer5", e1)
+		bop.done()
+
+		// get the last sync target; it should be e1
+		var last *types.TipSet
+		for i := 0; i < 10; {
+			select {
+			case bop = <-stc:
+				bop.done()
+				if last == nil || bop.ts.Height() > last.Height() {
+					last = bop.ts
+				}
+			default:
+				i++
+				time.Sleep(10 * time.Millisecond)
+			}
+		}
+		if !last.Equals(e1) {
+			t.Fatalf("Expected tipset %s to sync, but got %s", e1, last)
+		}
+
+		sm.mx.Lock()
+		activeSyncs := len(sm.state)
+		sm.mx.Unlock()
+		if activeSyncs != 0 {
+			t.Errorf("active syncs expected empty but got: %d", activeSyncs)
 		}
 	})
-}
-
-func waitUntilAllWorkersAreDone(stc chan *syncOp) {
-	for i := 0; i < 10; {
-		select {
-		case so := <-stc:
-			so.done()
-		default:
-			i++
-			time.Sleep(10 * time.Millisecond)
-		}
-	}
 }
 
 func TestSyncManager(t *testing.T) {

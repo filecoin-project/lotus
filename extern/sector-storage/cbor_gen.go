@@ -5,13 +5,17 @@ package sectorstorage
 import (
 	"fmt"
 	"io"
+	"sort"
 
 	sealtasks "github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
+	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 )
 
 var _ = xerrors.Errorf
+var _ = cid.Undef
+var _ = sort.Sort
 
 func (t *Call) MarshalCBOR(w io.Writer) error {
 	if t == nil {
@@ -188,7 +192,8 @@ func (t *Call) UnmarshalCBOR(r io.Reader) error {
 			}
 
 		default:
-			return fmt.Errorf("unknown struct field %d: '%s'", i, name)
+			// Field doesn't exist on this type, so ignore it
+			cbg.ScanForLinks(r, func(cid.Cid) {})
 		}
 	}
 
@@ -199,7 +204,7 @@ func (t *WorkState) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{164}); err != nil {
+	if _, err := w.Write([]byte{166}); err != nil {
 		return err
 	}
 
@@ -282,6 +287,51 @@ func (t *WorkState) MarshalCBOR(w io.Writer) error {
 	if _, err := io.WriteString(w, string(t.WorkError)); err != nil {
 		return err
 	}
+
+	// t.WorkerHostname (string) (string)
+	if len("WorkerHostname") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"WorkerHostname\" was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("WorkerHostname"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("WorkerHostname")); err != nil {
+		return err
+	}
+
+	if len(t.WorkerHostname) > cbg.MaxLength {
+		return xerrors.Errorf("Value in field t.WorkerHostname was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len(t.WorkerHostname))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string(t.WorkerHostname)); err != nil {
+		return err
+	}
+
+	// t.StartTime (int64) (int64)
+	if len("StartTime") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"StartTime\" was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("StartTime"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("StartTime")); err != nil {
+		return err
+	}
+
+	if t.StartTime >= 0 {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajUnsignedInt, uint64(t.StartTime)); err != nil {
+			return err
+		}
+	} else {
+		if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajNegativeInt, uint64(-t.StartTime-1)); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -360,9 +410,47 @@ func (t *WorkState) UnmarshalCBOR(r io.Reader) error {
 
 				t.WorkError = string(sval)
 			}
+			// t.WorkerHostname (string) (string)
+		case "WorkerHostname":
+
+			{
+				sval, err := cbg.ReadStringBuf(br, scratch)
+				if err != nil {
+					return err
+				}
+
+				t.WorkerHostname = string(sval)
+			}
+			// t.StartTime (int64) (int64)
+		case "StartTime":
+			{
+				maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
+				var extraI int64
+				if err != nil {
+					return err
+				}
+				switch maj {
+				case cbg.MajUnsignedInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 positive overflow")
+					}
+				case cbg.MajNegativeInt:
+					extraI = int64(extra)
+					if extraI < 0 {
+						return fmt.Errorf("int64 negative oveflow")
+					}
+					extraI = -1 - extraI
+				default:
+					return fmt.Errorf("wrong type for int64 field: %d", maj)
+				}
+
+				t.StartTime = int64(extraI)
+			}
 
 		default:
-			return fmt.Errorf("unknown struct field %d: '%s'", i, name)
+			// Field doesn't exist on this type, so ignore it
+			cbg.ScanForLinks(r, func(cid.Cid) {})
 		}
 	}
 
@@ -484,7 +572,8 @@ func (t *WorkID) UnmarshalCBOR(r io.Reader) error {
 			}
 
 		default:
-			return fmt.Errorf("unknown struct field %d: '%s'", i, name)
+			// Field doesn't exist on this type, so ignore it
+			cbg.ScanForLinks(r, func(cid.Cid) {})
 		}
 	}
 

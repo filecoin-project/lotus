@@ -38,6 +38,20 @@ func TestWithPriority(t *testing.T) {
 	require.Equal(t, 2222, getPriority(ctx))
 }
 
+var decentWorkerResources = storiface.WorkerResources{
+	MemPhysical: 128 << 30,
+	MemSwap:     200 << 30,
+	MemReserved: 2 << 30,
+	CPUs:        32,
+	GPUs:        []string{"a GPU"},
+}
+
+var constrainedWorkerResources = storiface.WorkerResources{
+	MemPhysical: 1 << 30,
+	MemReserved: 2 << 30,
+	CPUs:        1,
+}
+
 type schedTestWorker struct {
 	name      string
 	taskTypes map[sealtasks.TaskType]struct{}
@@ -45,57 +59,60 @@ type schedTestWorker struct {
 
 	closed  bool
 	session uuid.UUID
+
+	resources       storiface.WorkerResources
+	ignoreResources bool
 }
 
-func (s *schedTestWorker) SealPreCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error) {
+func (s *schedTestWorker) SealPreCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) SealPreCommit2(ctx context.Context, sector abi.SectorID, pc1o storage.PreCommit1Out) (storiface.CallID, error) {
+func (s *schedTestWorker) SealPreCommit2(ctx context.Context, sector storage.SectorRef, pc1o storage.PreCommit1Out) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) SealCommit1(ctx context.Context, sector abi.SectorID, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (storiface.CallID, error) {
+func (s *schedTestWorker) SealCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) SealCommit2(ctx context.Context, sector abi.SectorID, c1o storage.Commit1Out) (storiface.CallID, error) {
+func (s *schedTestWorker) SealCommit2(ctx context.Context, sector storage.SectorRef, c1o storage.Commit1Out) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) FinalizeSector(ctx context.Context, sector abi.SectorID, keepUnsealed []storage.Range) (storiface.CallID, error) {
+func (s *schedTestWorker) FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) ReleaseUnsealed(ctx context.Context, sector abi.SectorID, safeToFree []storage.Range) (storiface.CallID, error) {
+func (s *schedTestWorker) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) Remove(ctx context.Context, sector abi.SectorID) (storiface.CallID, error) {
+func (s *schedTestWorker) Remove(ctx context.Context, sector storage.SectorRef) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) NewSector(ctx context.Context, sector abi.SectorID) (storiface.CallID, error) {
+func (s *schedTestWorker) NewSector(ctx context.Context, sector storage.SectorRef) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) AddPiece(ctx context.Context, sector abi.SectorID, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error) {
+func (s *schedTestWorker) AddPiece(ctx context.Context, sector storage.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) MoveStorage(ctx context.Context, sector abi.SectorID, types storiface.SectorFileType) (storiface.CallID, error) {
+func (s *schedTestWorker) MoveStorage(ctx context.Context, sector storage.SectorRef, types storiface.SectorFileType) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) Fetch(ctx context.Context, id abi.SectorID, ft storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) (storiface.CallID, error) {
+func (s *schedTestWorker) Fetch(ctx context.Context, id storage.SectorRef, ft storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) UnsealPiece(ctx context.Context, id abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, cid cid.Cid) (storiface.CallID, error) {
+func (s *schedTestWorker) UnsealPiece(ctx context.Context, id storage.SectorRef, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, cid cid.Cid) (storiface.CallID, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) ReadPiece(ctx context.Context, writer io.Writer, id abi.SectorID, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (storiface.CallID, error) {
+func (s *schedTestWorker) ReadPiece(ctx context.Context, writer io.Writer, id storage.SectorRef, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (storiface.CallID, error) {
 	panic("implement me")
 }
 
@@ -107,18 +124,11 @@ func (s *schedTestWorker) Paths(ctx context.Context) ([]stores.StoragePath, erro
 	return s.paths, nil
 }
 
-var decentWorkerResources = storiface.WorkerResources{
-	MemPhysical: 128 << 30,
-	MemSwap:     200 << 30,
-	MemReserved: 2 << 30,
-	CPUs:        32,
-	GPUs:        []string{"a GPU"},
-}
-
 func (s *schedTestWorker) Info(ctx context.Context) (storiface.WorkerInfo, error) {
 	return storiface.WorkerInfo{
-		Hostname:  s.name,
-		Resources: decentWorkerResources,
+		Hostname:        s.name,
+		IgnoreResources: s.ignoreResources,
+		Resources:       s.resources,
 	}, nil
 }
 
@@ -137,13 +147,16 @@ func (s *schedTestWorker) Close() error {
 
 var _ Worker = &schedTestWorker{}
 
-func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name string, taskTypes map[sealtasks.TaskType]struct{}) {
+func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name string, taskTypes map[sealtasks.TaskType]struct{}, resources storiface.WorkerResources, ignoreResources bool) {
 	w := &schedTestWorker{
 		name:      name,
 		taskTypes: taskTypes,
 		paths:     []stores.StoragePath{{ID: "bb-8", Weight: 2, LocalPath: "<octopus>food</octopus>", CanSeal: true, CanStore: true}},
 
 		session: uuid.New(),
+
+		resources:       resources,
+		ignoreResources: ignoreResources,
 	}
 
 	for _, path := range w.paths {
@@ -154,9 +167,10 @@ func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name str
 			CanSeal:  path.CanSeal,
 			CanStore: path.CanStore,
 		}, fsutil.FsStat{
-			Capacity:  1 << 40,
-			Available: 1 << 40,
-			Reserved:  3,
+			Capacity:    1 << 40,
+			Available:   1 << 40,
+			FSAvailable: 1 << 40,
+			Reserved:    3,
 		})
 		require.NoError(t, err)
 	}
@@ -165,11 +179,10 @@ func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name str
 }
 
 func TestSchedStartStop(t *testing.T) {
-	spt := abi.RegisteredSealProof_StackedDrg32GiBV1
-	sched := newScheduler(spt)
+	sched := newScheduler()
 	go sched.runSched()
 
-	addTestWorker(t, sched, stores.NewIndex(), "fred", nil)
+	addTestWorker(t, sched, stores.NewIndex(), "fred", nil, decentWorkerResources, false)
 
 	require.NoError(t, sched.Close(context.TODO()))
 }
@@ -183,6 +196,9 @@ func TestSched(t *testing.T) {
 	type workerSpec struct {
 		name      string
 		taskTypes map[sealtasks.TaskType]struct{}
+
+		resources       storiface.WorkerResources
+		ignoreResources bool
 	}
 
 	noopAction := func(ctx context.Context, w Worker) error {
@@ -211,12 +227,15 @@ func TestSched(t *testing.T) {
 			go func() {
 				defer rm.wg.Done()
 
-				sectorNum := abi.SectorID{
-					Miner:  8,
-					Number: sid,
+				sectorRef := storage.SectorRef{
+					ID: abi.SectorID{
+						Miner:  8,
+						Number: sid,
+					},
+					ProofType: spt,
 				}
 
-				err := sched.Schedule(ctx, sectorNum, taskType, sel, func(ctx context.Context, w Worker) error {
+				err := sched.Schedule(ctx, sectorRef, taskType, sel, func(ctx context.Context, w Worker) error {
 					wi, err := w.Info(ctx)
 					require.NoError(t, err)
 
@@ -286,13 +305,13 @@ func TestSched(t *testing.T) {
 		return func(t *testing.T) {
 			index := stores.NewIndex()
 
-			sched := newScheduler(spt)
+			sched := newScheduler()
 			sched.testSync = make(chan struct{})
 
 			go sched.runSched()
 
 			for _, worker := range workers {
-				addTestWorker(t, sched, index, worker.name, worker.taskTypes)
+				addTestWorker(t, sched, index, worker.name, worker.taskTypes, worker.resources, worker.ignoreResources)
 			}
 
 			rm := runMeta{
@@ -319,31 +338,42 @@ func TestSched(t *testing.T) {
 		}
 	}
 
+	// checks behaviour with workers with constrained resources
+	// the first one is not ignoring resource constraints, so we assign to the second worker, who is
+	t.Run("constrained-resources", testFunc([]workerSpec{
+		{name: "fred1", resources: constrainedWorkerResources, taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}}},
+		{name: "fred2", resources: constrainedWorkerResources, ignoreResources: true, taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}}},
+	}, []task{
+		sched("pc1-1", "fred2", 8, sealtasks.TTPreCommit1),
+		taskStarted("pc1-1"),
+		taskDone("pc1-1"),
+	}))
+
 	t.Run("one-pc1", testFunc([]workerSpec{
-		{name: "fred", taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}}},
+		{name: "fred", resources: decentWorkerResources, taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}}},
 	}, []task{
 		sched("pc1-1", "fred", 8, sealtasks.TTPreCommit1),
 		taskDone("pc1-1"),
 	}))
 
 	t.Run("pc1-2workers-1", testFunc([]workerSpec{
-		{name: "fred2", taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit2: {}}},
-		{name: "fred1", taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}}},
+		{name: "fred2", resources: decentWorkerResources, taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit2: {}}},
+		{name: "fred1", resources: decentWorkerResources, taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}}},
 	}, []task{
 		sched("pc1-1", "fred1", 8, sealtasks.TTPreCommit1),
 		taskDone("pc1-1"),
 	}))
 
 	t.Run("pc1-2workers-2", testFunc([]workerSpec{
-		{name: "fred1", taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}}},
-		{name: "fred2", taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit2: {}}},
+		{name: "fred1", resources: decentWorkerResources, taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}}},
+		{name: "fred2", resources: decentWorkerResources, taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit2: {}}},
 	}, []task{
 		sched("pc1-1", "fred1", 8, sealtasks.TTPreCommit1),
 		taskDone("pc1-1"),
 	}))
 
 	t.Run("pc1-block-pc2", testFunc([]workerSpec{
-		{name: "fred", taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}, sealtasks.TTPreCommit2: {}}},
+		{name: "fred", resources: decentWorkerResources, taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}, sealtasks.TTPreCommit2: {}}},
 	}, []task{
 		sched("pc1", "fred", 8, sealtasks.TTPreCommit1),
 		taskStarted("pc1"),
@@ -356,7 +386,7 @@ func TestSched(t *testing.T) {
 	}))
 
 	t.Run("pc2-block-pc1", testFunc([]workerSpec{
-		{name: "fred", taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}, sealtasks.TTPreCommit2: {}}},
+		{name: "fred", resources: decentWorkerResources, taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}, sealtasks.TTPreCommit2: {}}},
 	}, []task{
 		sched("pc2", "fred", 8, sealtasks.TTPreCommit2),
 		taskStarted("pc2"),
@@ -369,7 +399,7 @@ func TestSched(t *testing.T) {
 	}))
 
 	t.Run("pc1-batching", testFunc([]workerSpec{
-		{name: "fred", taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}}},
+		{name: "fred", resources: decentWorkerResources, taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}}},
 	}, []task{
 		sched("t1", "fred", 8, sealtasks.TTPreCommit1),
 		taskStarted("t1"),
@@ -456,7 +486,7 @@ func TestSched(t *testing.T) {
 	// run this one a bunch of times, it had a very annoying tendency to fail randomly
 	for i := 0; i < 40; i++ {
 		t.Run("pc1-pc2-prio", testFunc([]workerSpec{
-			{name: "fred", taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}, sealtasks.TTPreCommit2: {}}},
+			{name: "fred", resources: decentWorkerResources, taskTypes: map[sealtasks.TaskType]struct{}{sealtasks.TTPreCommit1: {}, sealtasks.TTPreCommit2: {}}},
 		}, []task{
 			// fill queues
 			twoPC1("w0", 0, taskStarted),
@@ -518,7 +548,6 @@ func (s slowishSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b 
 var _ WorkerSelector = slowishSelector(true)
 
 func BenchmarkTrySched(b *testing.B) {
-	spt := abi.RegisteredSealProof_StackedDrg32GiBV1
 	logging.SetAllLoggers(logging.LevelInfo)
 	defer logging.SetAllLoggers(logging.LevelDebug)
 	ctx := context.Background()
@@ -528,7 +557,7 @@ func BenchmarkTrySched(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				b.StopTimer()
 
-				sched := newScheduler(spt)
+				sched := newScheduler()
 				sched.workers[WorkerID{}] = &workerHandle{
 					workerRpc: nil,
 					info: storiface.WorkerInfo{
@@ -568,9 +597,8 @@ func BenchmarkTrySched(b *testing.B) {
 }
 
 func TestWindowCompact(t *testing.T) {
-	sh := scheduler{
-		spt: abi.RegisteredSealProof_StackedDrg32GiBV1,
-	}
+	sh := scheduler{}
+	spt := abi.RegisteredSealProof_StackedDrg32GiBV1
 
 	test := func(start [][]sealtasks.TaskType, expect [][]sealtasks.TaskType) func(t *testing.T) {
 		return func(t *testing.T) {
@@ -584,8 +612,11 @@ func TestWindowCompact(t *testing.T) {
 				window := &schedWindow{}
 
 				for _, task := range windowTasks {
-					window.todo = append(window.todo, &workerRequest{taskType: task})
-					window.allocated.add(wh.info.Resources, ResourceTable[task][sh.spt])
+					window.todo = append(window.todo, &workerRequest{
+						taskType: task,
+						sector:   storage.SectorRef{ProofType: spt},
+					})
+					window.allocated.add(wh.info.Resources, ResourceTable[task][spt])
 				}
 
 				wh.activeWindows = append(wh.activeWindows, window)
@@ -604,7 +635,7 @@ func TestWindowCompact(t *testing.T) {
 
 				for ti, task := range tasks {
 					require.Equal(t, task, wh.activeWindows[wi].todo[ti].taskType, "%d, %d", wi, ti)
-					expectRes.add(wh.info.Resources, ResourceTable[task][sh.spt])
+					expectRes.add(wh.info.Resources, ResourceTable[task][spt])
 				}
 
 				require.Equal(t, expectRes.cpuUse, wh.activeWindows[wi].allocated.cpuUse, "%d", wi)

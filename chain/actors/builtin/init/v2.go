@@ -25,6 +25,19 @@ func load2(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make2(store adt.Store, networkName string) (State, error) {
+	out := state2{store: store}
+
+	mr, err := adt2.MakeEmptyMap(store).Root()
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *init2.ConstructState(mr, networkName)
+
+	return &out, nil
+}
+
 type state2 struct {
 	init2.State
 	store adt.Store
@@ -62,6 +75,11 @@ func (s *state2) SetNetworkName(name string) error {
 	return nil
 }
 
+func (s *state2) SetNextID(id abi.ActorID) error {
+	s.State.NextID = id
+	return nil
+}
+
 func (s *state2) Remove(addrs ...address.Address) (err error) {
 	m, err := adt2.AsMap(s.store, s.State.AddressMap)
 	if err != nil {
@@ -78,4 +96,17 @@ func (s *state2) Remove(addrs ...address.Address) (err error) {
 	}
 	s.State.AddressMap = amr
 	return nil
+}
+
+func (s *state2) SetAddressMap(mcid cid.Cid) error {
+	s.State.AddressMap = mcid
+	return nil
+}
+
+func (s *state2) AddressMap() (adt.Map, error) {
+	return adt2.AsMap(s.store, s.State.AddressMap)
+}
+
+func (s *state2) GetState() interface{} {
+	return &s.State
 }

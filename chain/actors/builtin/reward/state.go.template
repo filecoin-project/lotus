@@ -1,0 +1,113 @@
+package reward
+
+import (
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
+	miner{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/miner"
+	reward{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/reward"
+	smoothing{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/smoothing"
+)
+
+var _ State = (*state{{.v}})(nil)
+
+func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
+	out := state{{.v}}{store: store}
+	err := store.Get(store.Context(), root, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func make{{.v}}(store adt.Store, currRealizedPower abi.StoragePower) (State, error) {
+	out := state{{.v}}{store: store}
+	out.State = *reward{{.v}}.ConstructState(currRealizedPower)
+	return &out, nil
+}
+
+type state{{.v}} struct {
+	reward{{.v}}.State
+	store adt.Store
+}
+
+func (s *state{{.v}}) ThisEpochReward() (abi.TokenAmount, error) {
+	return s.State.ThisEpochReward, nil
+}
+
+func (s *state{{.v}}) ThisEpochRewardSmoothed() (builtin.FilterEstimate, error) {
+{{if (ge .v 2)}}
+		return builtin.FilterEstimate{
+		PositionEstimate: s.State.ThisEpochRewardSmoothed.PositionEstimate,
+		VelocityEstimate: s.State.ThisEpochRewardSmoothed.VelocityEstimate,
+	}, nil
+{{else}}
+	return builtin.FromV0FilterEstimate(*s.State.ThisEpochRewardSmoothed), nil
+{{end}}
+}
+
+func (s *state{{.v}}) ThisEpochBaselinePower() (abi.StoragePower, error) {
+	return s.State.ThisEpochBaselinePower, nil
+}
+
+func (s *state{{.v}}) TotalStoragePowerReward() (abi.TokenAmount, error) {
+	return s.State.{{if (ge .v 2)}}TotalStoragePowerReward{{else}}TotalMined{{end}}, nil
+}
+
+func (s *state{{.v}}) EffectiveBaselinePower() (abi.StoragePower, error) {
+	return s.State.EffectiveBaselinePower, nil
+}
+
+func (s *state{{.v}}) EffectiveNetworkTime() (abi.ChainEpoch, error) {
+	return s.State.EffectiveNetworkTime, nil
+}
+
+func (s *state{{.v}}) CumsumBaseline() (reward{{.v}}.Spacetime, error) {
+	return s.State.CumsumBaseline, nil
+}
+
+func (s *state{{.v}}) CumsumRealized() (reward{{.v}}.Spacetime, error) {
+	return s.State.CumsumRealized, nil
+}
+{{if (ge .v 2)}}
+func (s *state{{.v}}) InitialPledgeForPower(qaPower abi.StoragePower, networkTotalPledge abi.TokenAmount, networkQAPower *builtin.FilterEstimate, circSupply abi.TokenAmount) (abi.TokenAmount, error) {
+	return miner{{.v}}.InitialPledgeForPower(
+		qaPower,
+		s.State.ThisEpochBaselinePower,
+		s.State.ThisEpochRewardSmoothed,
+		smoothing{{.v}}.FilterEstimate{
+			PositionEstimate: networkQAPower.PositionEstimate,
+			VelocityEstimate: networkQAPower.VelocityEstimate,
+		},
+		circSupply,
+	), nil
+}
+{{else}}
+func (s *state0) InitialPledgeForPower(sectorWeight abi.StoragePower, networkTotalPledge abi.TokenAmount, networkQAPower *builtin.FilterEstimate, circSupply abi.TokenAmount) (abi.TokenAmount, error) {
+	return miner0.InitialPledgeForPower(
+		sectorWeight,
+		s.State.ThisEpochBaselinePower,
+		networkTotalPledge,
+		s.State.ThisEpochRewardSmoothed,
+		&smoothing0.FilterEstimate{
+			PositionEstimate: networkQAPower.PositionEstimate,
+			VelocityEstimate: networkQAPower.VelocityEstimate,
+		},
+		circSupply), nil
+}
+{{end}}
+func (s *state{{.v}}) PreCommitDepositForPower(networkQAPower builtin.FilterEstimate, sectorWeight abi.StoragePower) (abi.TokenAmount, error) {
+	return miner{{.v}}.PreCommitDepositForPower(s.State.ThisEpochRewardSmoothed,
+		{{if (le .v 0)}}&{{end}}smoothing{{.v}}.FilterEstimate{
+			PositionEstimate: networkQAPower.PositionEstimate,
+			VelocityEstimate: networkQAPower.VelocityEstimate,
+		},
+		sectorWeight), nil
+}
+
+func (s *state{{.v}}) GetState() interface{} {
+	return &s.State
+}

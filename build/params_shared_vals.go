@@ -25,7 +25,7 @@ const UnixfsLinksPerLevel = 1024
 // Consensus / Network
 
 const AllowableClockDriftSecs = uint64(1)
-const NewestNetworkVersion = network.Version6
+const NewestNetworkVersion = network.Version13
 const ActorUpgradeNetworkVersion = network.Version4
 
 // Epochs
@@ -60,6 +60,9 @@ const TicketRandomnessLookback = abi.ChainEpoch(1)
 // Address
 
 const AddressMainnetEnvVar = "_mainnet_"
+
+// the 'f' prefix doesn't matter
+var ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")
 
 // /////
 // Devnet settings
@@ -115,5 +118,5 @@ const PackingEfficiencyNum = 4
 const PackingEfficiencyDenom = 5
 
 // Actor consts
-// TODO: Pull from actors when its made not private
-var MinDealDuration = abi.ChainEpoch(180 * builtin2.EpochsInDay)
+// TODO: pieceSize unused from actors
+var MinDealDuration, MaxDealDuration = policy.DealDurationBounds(0)

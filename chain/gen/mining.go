@@ -9,13 +9,13 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sigs/bls"
 )
 
-func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w api.WalletAPI, bt *api.BlockTemplate) (*types.FullBlock, error) {
+func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w api.Wallet, bt *api.BlockTemplate) (*types.FullBlock, error) {
 
 	pts, err := sm.ChainStore().LoadTipSet(bt.Parents)
 	if err != nil {
@@ -79,7 +79,7 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w api.WalletA
 		}
 	}
 
-	store := sm.ChainStore().Store(ctx)
+	store := sm.ChainStore().ActorStore(ctx)
 	blsmsgroot, err := toArray(store, blsMsgCids)
 	if err != nil {
 		return nil, xerrors.Errorf("building bls amt: %w", err)
@@ -140,35 +140,29 @@ func MinerCreateBlock(ctx context.Context, sm *stmgr.StateManager, w api.WalletA
 }
 
 func aggregateSignatures(sigs []crypto.Signature) (*crypto.Signature, error) {
-	sigsS := make([][]byte, len(sigs))
+	sigsS := make([]ffi.Signature, len(sigs))
 	for i := 0; i < len(sigs); i++ {
-		sigsS[i] = sigs[i].Data
+		copy(sigsS[i][:], sigs[i].Data[:ffi.SignatureBytes])
 	}
 
-	aggregator := new(bls.AggregateSignature).AggregateCompressed(sigsS)
-	if aggregator == nil {
+	aggSig := ffi.Aggregate(sigsS)
+	if aggSig == nil {
 		if len(sigs) > 0 {
 			return nil, xerrors.Errorf("bls.Aggregate returned nil with %d signatures", len(sigs))
 		}
+
+		zeroSig := ffi.CreateZeroSignature()
 
 		// Note: for blst this condition should not happen - nil should not
 		// be returned
 		return &crypto.Signature{
 			Type: crypto.SigTypeBLS,
-			Data: new(bls.Signature).Compress(),
+			Data: zeroSig[:],
 		}, nil
 	}
-	aggSigAff := aggregator.ToAffine()
-	if aggSigAff == nil {
-		return &crypto.Signature{
-			Type: crypto.SigTypeBLS,
-			Data: new(bls.Signature).Compress(),
-		}, nil
-	}
-	aggSig := aggSigAff.Compress()
 	return &crypto.Signature{
 		Type: crypto.SigTypeBLS,
-		Data: aggSig,
+		Data: aggSig[:],
 	}, nil
 }
 

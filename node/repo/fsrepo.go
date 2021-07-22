@@ -2,6 +2,7 @@ package repo
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,6 +13,7 @@ import (
 	"sync"
 
 	"github.com/BurntSushi/toml"
+
 	"github.com/ipfs/go-datastore"
 	fslock "github.com/ipfs/go-fs-lock"
 	logging "github.com/ipfs/go-log/v2"
@@ -20,6 +22,8 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/blockstore"
+	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 
@@ -257,8 +261,19 @@ type fsLockedRepo struct {
 	dsErr  error
 	dsOnce sync.Once
 
+	bs     blockstore.Blockstore
+	bsErr  error
+	bsOnce sync.Once
+	ssPath string
+	ssErr  error
+	ssOnce sync.Once
+
 	storageLk sync.Mutex
 	configLk  sync.Mutex
+}
+
+func (fsr *fsLockedRepo) Readonly() bool {
+	return fsr.readonly
 }
 
 func (fsr *fsLockedRepo) Path() string {
@@ -279,9 +294,78 @@ func (fsr *fsLockedRepo) Close() error {
 		}
 	}
 
+	// type assertion will return ok=false if fsr.bs is nil altogether.
+	if c, ok := fsr.bs.(io.Closer); ok && c != nil {
+		if err := c.Close(); err != nil {
+			return xerrors.Errorf("could not close blockstore: %w", err)
+		}
+	}
+
 	err = fsr.closer.Close()
 	fsr.closer = nil
 	return err
+}
+
+// Blockstore returns a blockstore for the provided data domain.
+func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error) {
+	if domain != UniversalBlockstore {
+		return nil, ErrInvalidBlockstoreDomain
+	}
+
+	fsr.bsOnce.Do(func() {
+		path := fsr.join(filepath.Join(fsDatastore, "chain"))
+		readonly := fsr.readonly
+
+		if err := os.MkdirAll(path, 0755); err != nil {
+			fsr.bsErr = err
+			return
+		}
+
+		opts, err := BadgerBlockstoreOptions(domain, path, readonly)
+		if err != nil {
+			fsr.bsErr = err
+			return
+		}
+
+		//
+		// Tri-state environment variable LOTUS_CHAIN_BADGERSTORE_DISABLE_FSYNC
+		// - unset == the default (currently fsync enabled)
+		// - set with a false-y value == fsync enabled no matter what a future default is
+		// - set with any other value == fsync is disabled ignored defaults (recommended for day-to-day use)
+		//
+		if nosyncBs, nosyncBsSet := os.LookupEnv("LOTUS_CHAIN_BADGERSTORE_DISABLE_FSYNC"); nosyncBsSet {
+			nosyncBs = strings.ToLower(nosyncBs)
+			if nosyncBs == "" || nosyncBs == "0" || nosyncBs == "false" || nosyncBs == "no" {
+				opts.SyncWrites = true
+			} else {
+				opts.SyncWrites = false
+			}
+		}
+
+		bs, err := badgerbs.Open(opts)
+		if err != nil {
+			fsr.bsErr = err
+			return
+		}
+		fsr.bs = blockstore.WrapIDStore(bs)
+	})
+
+	return fsr.bs, fsr.bsErr
+}
+
+func (fsr *fsLockedRepo) SplitstorePath() (string, error) {
+	fsr.ssOnce.Do(func() {
+		path := fsr.join(filepath.Join(fsDatastore, "splitstore"))
+
+		if err := os.MkdirAll(path, 0755); err != nil {
+			fsr.ssErr = err
+			return
+		}
+
+		fsr.ssPath = path
+	})
+
+	return fsr.ssPath, fsr.ssErr
 }
 
 // join joins path elements with fsr.path
@@ -476,17 +560,31 @@ func (fsr *fsLockedRepo) Get(name string) (types.KeyInfo, error) {
 	return res, nil
 }
 
+const KTrashPrefix = "trash-"
+
 // Put saves key info under given name
 func (fsr *fsLockedRepo) Put(name string, info types.KeyInfo) error {
+	return fsr.put(name, info, 0)
+}
+
+func (fsr *fsLockedRepo) put(rawName string, info types.KeyInfo, retries int) error {
 	if err := fsr.stillValid(); err != nil {
 		return err
+	}
+
+	name := rawName
+	if retries > 0 {
+		name = fmt.Sprintf("%s-%d", rawName, retries)
 	}
 
 	encName := base32.RawStdEncoding.EncodeToString([]byte(name))
 	keyPath := fsr.join(fsKeystore, encName)
 
 	_, err := os.Stat(keyPath)
-	if err == nil {
+	if err == nil && strings.HasPrefix(name, KTrashPrefix) {
+		// retry writing the trash-prefixed file with a number suffix
+		return fsr.put(rawName, info, retries+1)
+	} else if err == nil {
 		return xerrors.Errorf("checking key before put '%s': %w", name, types.ErrKeyExists)
 	} else if !os.IsNotExist(err) {
 		return xerrors.Errorf("checking key before put '%s': %w", name, err)

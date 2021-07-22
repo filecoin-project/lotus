@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -13,13 +14,16 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/zerocomm"
 	"github.com/filecoin-project/lotus/genesis"
 )
 
-func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis.Miner, *types.KeyInfo, error) {
+func PreSeal(spt abi.RegisteredSealProof, maddr address.Address, sectors int) (*genesis.Miner, *types.KeyInfo, error) {
 	k, err := wallet.GenerateKey(types.KTBLS)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	ssize, err := spt.SectorSize()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -34,15 +38,10 @@ func PreSeal(ssize abi.SectorSize, maddr address.Address, sectors int) (*genesis
 		Sectors:       make([]*genesis.PreSeal, sectors),
 	}
 
-	st, err := ffiwrapper.SealProofTypeFromSectorSize(ssize)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	for i := range genm.Sectors {
 		preseal := &genesis.PreSeal{}
 
-		preseal.ProofType = st
+		preseal.ProofType = spt
 		preseal.CommD = zerocomm.ZeroPieceCommitment(abi.PaddedPieceSize(ssize).Unpadded())
 		d, _ := commcid.CIDToPieceCommitmentV1(preseal.CommD)
 		r := mock.CommDR(d)

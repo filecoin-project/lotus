@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
@@ -427,7 +427,7 @@ func TestBasicMessageSelection(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	msgs, err := mp.SelectMessages(ts, 1.0)
+	msgs, err := mp.SelectMessages(context.Background(), ts, 1.0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -464,7 +464,7 @@ func TestBasicMessageSelection(t *testing.T) {
 	tma.applyBlock(t, block2)
 
 	// we should have no pending messages in the mpool
-	pend, _ := mp.Pending()
+	pend, _ := mp.Pending(context.TODO())
 	if len(pend) != 0 {
 		t.Fatalf("expected no pending messages, but got %d", len(pend))
 	}
@@ -495,7 +495,7 @@ func TestBasicMessageSelection(t *testing.T) {
 	tma.setStateNonce(a1, 10)
 	tma.setStateNonce(a2, 10)
 
-	msgs, err = mp.SelectMessages(ts3, 1.0)
+	msgs, err = mp.SelectMessages(context.Background(), ts3, 1.0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -569,7 +569,7 @@ func TestMessageSelectionTrimming(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	msgs, err := mp.SelectMessages(ts, 1.0)
+	msgs, err := mp.SelectMessages(context.Background(), ts, 1.0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -633,7 +633,7 @@ func TestPriorityMessageSelection(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	msgs, err := mp.SelectMessages(ts, 1.0)
+	msgs, err := mp.SelectMessages(context.Background(), ts, 1.0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -712,7 +712,7 @@ func TestPriorityMessageSelection2(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	msgs, err := mp.SelectMessages(ts, 1.0)
+	msgs, err := mp.SelectMessages(context.Background(), ts, 1.0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -736,8 +736,6 @@ func TestPriorityMessageSelection2(t *testing.T) {
 }
 
 func TestPriorityMessageSelection3(t *testing.T) {
-	t.Skip("reenable after removing allow negative")
-
 	mp, tma := makeTestMpool()
 
 	// the actors
@@ -784,7 +782,7 @@ func TestPriorityMessageSelection3(t *testing.T) {
 	}
 
 	// test greedy selection
-	msgs, err := mp.SelectMessages(ts, 1.0)
+	msgs, err := mp.SelectMessages(context.Background(), ts, 1.0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -807,7 +805,7 @@ func TestPriorityMessageSelection3(t *testing.T) {
 	}
 
 	// test optimal selection
-	msgs, err = mp.SelectMessages(ts, 0.1)
+	msgs, err = mp.SelectMessages(context.Background(), ts, 0.1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -874,7 +872,7 @@ func TestOptimalMessageSelection1(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	msgs, err := mp.SelectMessages(ts, 0.25)
+	msgs, err := mp.SelectMessages(context.Background(), ts, 0.25)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -943,7 +941,7 @@ func TestOptimalMessageSelection2(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	msgs, err := mp.SelectMessages(ts, 0.1)
+	msgs, err := mp.SelectMessages(context.Background(), ts, 0.1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1022,7 +1020,7 @@ func TestOptimalMessageSelection3(t *testing.T) {
 		}
 	}
 
-	msgs, err := mp.SelectMessages(ts, 0.1)
+	msgs, err := mp.SelectMessages(context.Background(), ts, 0.1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1110,7 +1108,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 	logging.SetLogLevel("messagepool", "error")
 
 	// 1. greedy selection
-	greedyMsgs, err := mp.selectMessagesGreedy(ts, ts)
+	greedyMsgs, err := mp.selectMessagesGreedy(context.Background(), ts, ts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1139,7 +1137,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 		var bestMsgs []*types.SignedMessage
 		for j := 0; j < nMiners; j++ {
 			tq := rng.Float64()
-			msgs, err := mp.SelectMessages(ts, tq)
+			msgs, err := mp.SelectMessages(context.Background(), ts, tq)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1241,6 +1239,9 @@ func TestCompetitiveMessageSelectionExp(t *testing.T) {
 }
 
 func TestCompetitiveMessageSelectionZipf(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping in short mode")
+	}
 	var capacityBoost, rewardBoost, tqReward float64
 	seeds := []int64{1947, 1976, 2020, 2100, 10000, 143324, 432432, 131, 32, 45}
 	for _, seed := range seeds {
@@ -1268,9 +1269,9 @@ func TestGasReward(t *testing.T) {
 		GasReward int64
 	}{
 		{Premium: 100, FeeCap: 200, BaseFee: 100, GasReward: 100},
-		{Premium: 100, FeeCap: 200, BaseFee: 210, GasReward: -10},
+		{Premium: 100, FeeCap: 200, BaseFee: 210, GasReward: -10 * 3},
 		{Premium: 200, FeeCap: 250, BaseFee: 210, GasReward: 40},
-		{Premium: 200, FeeCap: 250, BaseFee: 2000, GasReward: -1750},
+		{Premium: 200, FeeCap: 250, BaseFee: 2000, GasReward: -1750 * 3},
 	}
 
 	mp := new(MessagePool)
@@ -1332,7 +1333,7 @@ readLoop:
 	}
 
 	actorMap := make(map[address.Address]address.Address)
-	actorWallets := make(map[address.Address]api.WalletAPI)
+	actorWallets := make(map[address.Address]api.Wallet)
 
 	for _, m := range msgs {
 		baseNonce := baseNonces[m.Message.From]
@@ -1395,7 +1396,7 @@ readLoop:
 	minGasLimit := int64(0.9 * float64(build.BlockGasLimit))
 
 	// greedy first
-	selected, err := mp.SelectMessages(ts, 1.0)
+	selected, err := mp.SelectMessages(context.Background(), ts, 1.0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1409,7 +1410,7 @@ readLoop:
 	}
 
 	// high quality ticket
-	selected, err = mp.SelectMessages(ts, .8)
+	selected, err = mp.SelectMessages(context.Background(), ts, .8)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1423,7 +1424,7 @@ readLoop:
 	}
 
 	// mid quality ticket
-	selected, err = mp.SelectMessages(ts, .4)
+	selected, err = mp.SelectMessages(context.Background(), ts, .4)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1437,7 +1438,7 @@ readLoop:
 	}
 
 	// low quality ticket
-	selected, err = mp.SelectMessages(ts, .1)
+	selected, err = mp.SelectMessages(context.Background(), ts, .1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1451,7 +1452,7 @@ readLoop:
 	}
 
 	// very low quality ticket
-	selected, err = mp.SelectMessages(ts, .01)
+	selected, err = mp.SelectMessages(context.Background(), ts, .01)
 	if err != nil {
 		t.Fatal(err)
 	}

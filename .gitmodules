@@ -1,16 +1,9 @@
 [submodule "extern/filecoin-ffi"]
 	path = extern/filecoin-ffi
 	url = https://github.com/filecoin-project/filecoin-ffi.git
-	branch = master
 [submodule "extern/serialization-vectors"]
 	path = extern/serialization-vectors
-	url = https://github.com/filecoin-project/serialization-vectors
+	url = https://github.com/filecoin-project/serialization-vectors.git
 [submodule "extern/test-vectors"]
 	path = extern/test-vectors
 	url = https://github.com/filecoin-project/test-vectors.git
-[submodule "extern/fil-blst"]
-	path = extern/fil-blst
-	url = https://github.com/filecoin-project/fil-blst.git
-[submodule "extern/oni"]
-	path = extern/oni
-	url = https://github.com/filecoin-project/oni

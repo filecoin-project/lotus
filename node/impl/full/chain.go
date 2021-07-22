@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/filecoin-project/lotus/build"
+
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -18,7 +20,7 @@ import (
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
-	logging "github.com/ipfs/go-log"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-path"
 	"github.com/ipfs/go-path/resolver"
@@ -31,10 +33,11 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/lib/blockstore"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 var log = logging.Logger("fullnode")
@@ -50,6 +53,8 @@ type ChainModuleAPI interface {
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 }
 
+var _ ChainModuleAPI = *new(api.FullNode)
+
 // ChainModule provides a default implementation of ChainModuleAPI.
 // It can be swapped out with another implementation through Dependency
 // Injection (for example with a thin RPC client).
@@ -57,6 +62,11 @@ type ChainModule struct {
 	fx.In
 
 	Chain *store.ChainStore
+
+	// ExposedBlockstore is the global monolith blockstore that is safe to
+	// expose externally. In the future, this will be segregated into two
+	// blockstores.
+	ExposedBlockstore dtypes.ExposedBlockstore
 }
 
 var _ ChainModuleAPI = (*ChainModule)(nil)
@@ -68,6 +78,11 @@ type ChainAPI struct {
 	ChainModuleAPI
 
 	Chain *store.ChainStore
+
+	// ExposedBlockstore is the global monolith blockstore that is safe to
+	// expose externally. In the future, this will be segregated into two
+	// blockstores.
+	ExposedBlockstore dtypes.ExposedBlockstore
 }
 
 func (m *ChainModule) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
@@ -84,7 +99,12 @@ func (a *ChainAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
 	}
 
-	return a.Chain.GetChainRandomness(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	// Doing this here is slightly nicer than doing it in the chainstore directly, but it's still bad for ChainAPI to reason about network upgrades
+	if randEpoch > build.UpgradeHyperdriveHeight {
+		return a.Chain.GetChainRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	}
+
+	return a.Chain.GetChainRandomnessLookingBack(ctx, pts.Cids(), personalization, randEpoch, entropy)
 }
 
 func (a *ChainAPI) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
@@ -93,7 +113,12 @@ func (a *ChainAPI) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.T
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
 	}
 
-	return a.Chain.GetBeaconRandomness(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	// Doing this here is slightly nicer than doing it in the chainstore directly, but it's still bad for ChainAPI to reason about network upgrades
+	if randEpoch > build.UpgradeHyperdriveHeight {
+		return a.Chain.GetBeaconRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	}
+
+	return a.Chain.GetBeaconRandomnessLookingBack(ctx, pts.Cids(), personalization, randEpoch, entropy)
 }
 
 func (a *ChainAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.BlockHeader, error) {
@@ -203,6 +228,33 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 	return out, nil
 }
 
+func (a *ChainAPI) ChainGetMessagesInTipset(ctx context.Context, tsk types.TipSetKey) ([]api.Message, error) {
+	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return nil, err
+	}
+
+	// genesis block has no parent messages...
+	if ts.Height() == 0 {
+		return nil, nil
+	}
+
+	cm, err := a.Chain.MessagesForTipset(ts)
+	if err != nil {
+		return nil, err
+	}
+
+	var out []api.Message
+	for _, m := range cm {
+		out = append(out, api.Message{
+			Cid:     m.Cid(),
+			Message: m.VMMessage(),
+		})
+	}
+
+	return out, nil
+}
+
 func (m *ChainModule) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
 	ts, err := m.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
@@ -212,7 +264,7 @@ func (m *ChainModule) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpo
 }
 
 func (m *ChainModule) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
-	blk, err := m.Chain.Blockstore().Get(obj)
+	blk, err := m.ExposedBlockstore.Get(obj)
 	if err != nil {
 		return nil, xerrors.Errorf("blockstore get: %w", err)
 	}
@@ -221,15 +273,15 @@ func (m *ChainModule) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, er
 }
 
 func (a *ChainAPI) ChainDeleteObj(ctx context.Context, obj cid.Cid) error {
-	return a.Chain.Blockstore().DeleteBlock(obj)
+	return a.ExposedBlockstore.DeleteBlock(obj)
 }
 
 func (m *ChainModule) ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error) {
-	return m.Chain.Blockstore().Has(obj)
+	return m.ExposedBlockstore.Has(obj)
 }
 
 func (a *ChainAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (api.ObjStat, error) {
-	bs := a.Chain.Blockstore()
+	bs := a.ExposedBlockstore
 	bsvc := blockservice.New(bs, offline.Exchange(bs))
 
 	dag := merkledag.NewDAGService(bsvc)
@@ -514,7 +566,7 @@ func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (*api.IpldObject,
 		return nil, xerrors.Errorf("parsing path: %w", err)
 	}
 
-	bs := a.Chain.Blockstore()
+	bs := a.ExposedBlockstore
 	bsvc := blockservice.New(bs, offline.Exchange(bs))
 
 	dag := merkledag.NewDAGService(bsvc)

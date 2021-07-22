@@ -16,7 +16,7 @@ import (
 )
 
 type remoteWorker struct {
-	api.WorkerAPI
+	api.Worker
 	closer jsonrpc.ClientCloser
 }
 
@@ -33,9 +33,19 @@ func connectRemoteWorker(ctx context.Context, fa api.Common, url string) (*remot
 	headers := http.Header{}
 	headers.Add("Authorization", "Bearer "+string(token))
 
-	wapi, closer, err := client.NewWorkerRPC(context.TODO(), url, headers)
+	wapi, closer, err := client.NewWorkerRPCV0(context.TODO(), url, headers)
 	if err != nil {
 		return nil, xerrors.Errorf("creating jsonrpc client: %w", err)
+	}
+
+	wver, err := wapi.Version(ctx)
+	if err != nil {
+		closer()
+		return nil, err
+	}
+
+	if !wver.EqMajorMinor(api.WorkerAPIVersion0) {
+		return nil, xerrors.Errorf("unsupported worker api version: %s (expected %s)", wver, api.WorkerAPIVersion0)
 	}
 
 	return &remoteWorker{wapi, closer}, nil

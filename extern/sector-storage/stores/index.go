@@ -2,6 +2,8 @@ package stores
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"net/url"
 	gopath "path"
 	"sort"
@@ -25,9 +27,10 @@ var SkippedHeartbeatThresh = HeartbeatInterval * 5
 type ID string
 
 type StorageInfo struct {
-	ID     ID
-	URLs   []string // TODO: Support non-http transports
-	Weight uint64
+	ID         ID
+	URLs       []string // TODO: Support non-http transports
+	Weight     uint64
+	MaxStorage uint64
 
 	CanSeal  bool
 	CanStore bool
@@ -35,7 +38,7 @@ type StorageInfo struct {
 
 type HealthReport struct {
 	Stat fsutil.FsStat
-	Err  error
+	Err  string
 }
 
 type SectorStorageInfo struct {
@@ -63,6 +66,8 @@ type SectorIndex interface { // part of storage-miner api
 	// atomically acquire locks on all sector file types. close ctx to unlock
 	StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error
 	StorageTryLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error)
+
+	StorageList(ctx context.Context) (map[ID][]Decl, error)
 }
 
 type Decl struct {
@@ -154,6 +159,11 @@ func (i *Index) StorageAttach(ctx context.Context, si StorageInfo, st fsutil.FsS
 			i.stores[si.ID].info.URLs = append(i.stores[si.ID].info.URLs, u)
 		}
 
+		i.stores[si.ID].info.Weight = si.Weight
+		i.stores[si.ID].info.MaxStorage = si.MaxStorage
+		i.stores[si.ID].info.CanSeal = si.CanSeal
+		i.stores[si.ID].info.CanStore = si.CanStore
+
 		return nil
 	}
 	i.stores[si.ID] = &storageEntry{
@@ -175,7 +185,11 @@ func (i *Index) StorageReportHealth(ctx context.Context, id ID, report HealthRep
 	}
 
 	ent.fsi = report.Stat
-	ent.heartbeatErr = report.Err
+	if report.Err != "" {
+		ent.heartbeatErr = errors.New(report.Err)
+	} else {
+		ent.heartbeatErr = nil
+	}
 	ent.lastHeartbeat = time.Now()
 
 	return nil
@@ -225,7 +239,7 @@ func (i *Index) StorageDropSector(ctx context.Context, storageID ID, s abi.Secto
 		d := Decl{s, fileType}
 
 		if len(i.sectors[d]) == 0 {
-			return nil
+			continue
 		}
 
 		rewritten := make([]*declMeta, 0, len(i.sectors[d])-1)
@@ -238,7 +252,7 @@ func (i *Index) StorageDropSector(ctx context.Context, storageID ID, s abi.Secto
 		}
 		if len(rewritten) == 0 {
 			delete(i.sectors, d)
-			return nil
+			continue
 		}
 
 		i.sectors[d] = rewritten
@@ -372,7 +386,16 @@ func (i *Index) StorageBestAlloc(ctx context.Context, allocate storiface.SectorF
 
 	var candidates []storageEntry
 
-	spaceReq, err := allocate.SealSpaceUse(ssize)
+	var err error
+	var spaceReq uint64
+	switch pathType {
+	case storiface.PathSealing:
+		spaceReq, err = allocate.SealSpaceUse(ssize)
+	case storiface.PathStorage:
+		spaceReq, err = allocate.StoreSpaceUse(ssize)
+	default:
+		panic(fmt.Sprintf("unexpected pathType: %s", pathType))
+	}
 	if err != nil {
 		return nil, xerrors.Errorf("estimating required space: %w", err)
 	}

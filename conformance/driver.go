@@ -5,6 +5,7 @@ import (
 	gobig "math/big"
 	"os"
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -12,7 +13,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/conformance/chaos"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/lib/blockstore"
 
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"  // enable bls signatures
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp" // enable secp signatures
@@ -71,25 +71,49 @@ type ExecuteTipsetResult struct {
 	AppliedMessages []*types.Message
 	// AppliedResults stores the results of AppliedMessages, in the same order.
 	AppliedResults []*vm.ApplyRet
+
+	// PostBaseFee returns the basefee after applying this tipset.
+	PostBaseFee abi.TokenAmount
+}
+
+type ExecuteTipsetParams struct {
+	Preroot cid.Cid
+	// ParentEpoch is the last epoch in which an actual tipset was processed. This
+	// is used by Lotus for null block counting and cron firing.
+	ParentEpoch abi.ChainEpoch
+	Tipset      *schema.Tipset
+	ExecEpoch   abi.ChainEpoch
+	// Rand is an optional vm.Rand implementation to use. If nil, the driver
+	// will use a vm.Rand that returns a fixed value for all calls.
+	Rand vm.Rand
+	// BaseFee if not nil or zero, will override the basefee of the tipset.
+	BaseFee abi.TokenAmount
 }
 
 // ExecuteTipset executes the supplied tipset on top of the state represented
 // by the preroot CID.
 //
-// parentEpoch is the last epoch in which an actual tipset was processed. This
-// is used by Lotus for null block counting and cron firing.
-//
 // This method returns the the receipts root, the poststate root, and the VM
 // message results. The latter _include_ implicit messages, such as cron ticks
 // and reward withdrawal per miner.
-func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot cid.Cid, parentEpoch abi.ChainEpoch, tipset *schema.Tipset, execEpoch abi.ChainEpoch) (*ExecuteTipsetResult, error) {
+func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params ExecuteTipsetParams) (*ExecuteTipsetResult, error) {
 	var (
+		tipset   = params.Tipset
 		syscalls = vm.Syscalls(ffiwrapper.ProofVerifier)
-		vmRand   = NewFixedRand()
 
-		cs = store.NewChainStore(bs, ds, syscalls, nil)
+		cs = store.NewChainStore(bs, bs, ds, syscalls, nil)
 		sm = stmgr.NewStateManager(cs)
 	)
+
+	if params.Rand == nil {
+		params.Rand = NewFixedRand()
+	}
+
+	if params.BaseFee.NilOrZero() {
+		params.BaseFee = abi.NewTokenAmount(tipset.BaseFee.Int64())
+	}
+
+	defer cs.Close() //nolint:errcheck
 
 	blocks := make([]store.BlockMessages, 0, len(tipset.Blocks))
 	for _, b := range tipset.Blocks {
@@ -117,18 +141,21 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot
 		blocks = append(blocks, sb)
 	}
 
-	var (
-		messages []*types.Message
-		results  []*vm.ApplyRet
+	recordOutputs := &outputRecorder{
+		messages: []*types.Message{},
+		results:  []*vm.ApplyRet{},
+	}
 
-		basefee = abi.NewTokenAmount(tipset.BaseFee.Int64())
+	postcid, receiptsroot, err := sm.ApplyBlocks(context.Background(),
+		params.ParentEpoch,
+		params.Preroot,
+		blocks,
+		params.ExecEpoch,
+		params.Rand,
+		recordOutputs,
+		params.BaseFee,
+		nil,
 	)
-
-	postcid, receiptsroot, err := sm.ApplyBlocks(context.Background(), parentEpoch, preroot, blocks, execEpoch, vmRand, func(_ cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
-		messages = append(messages, msg)
-		results = append(results, ret)
-		return nil
-	}, basefee, nil)
 
 	if err != nil {
 		return nil, err
@@ -137,8 +164,8 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, preroot
 	ret := &ExecuteTipsetResult{
 		ReceiptsRoot:    receiptsroot,
 		PostStateRoot:   postcid,
-		AppliedMessages: messages,
-		AppliedResults:  results,
+		AppliedMessages: recordOutputs.messages,
+		AppliedResults:  recordOutputs.results,
 	}
 	return ret, nil
 }
@@ -251,4 +278,15 @@ func CircSupplyOrDefault(circSupply *gobig.Int) abi.TokenAmount {
 		return DefaultCirculatingSupply
 	}
 	return big.NewFromGo(circSupply)
+}
+
+type outputRecorder struct {
+	messages []*types.Message
+	results  []*vm.ApplyRet
+}
+
+func (o *outputRecorder) MessageApplied(ctx context.Context, ts *types.TipSet, mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet, implicit bool) error {
+	o.messages = append(o.messages, msg)
+	o.results = append(o.results, ret)
+	return nil
 }

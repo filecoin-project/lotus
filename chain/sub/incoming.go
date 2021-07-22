@@ -6,9 +6,18 @@ import (
 	"fmt"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	address "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/messagepool"
+	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/node/impl/client"
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	lru "github.com/hashicorp/golang-lru"
 	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
@@ -21,19 +30,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
-
-	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
-
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain"
-	"github.com/filecoin-project/lotus/chain/messagepool"
-	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/blockstore"
-	"github.com/filecoin-project/lotus/lib/sigs"
-	"github.com/filecoin-project/lotus/metrics"
-	"github.com/filecoin-project/lotus/node/impl/client"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("sub")
@@ -84,20 +81,27 @@ func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *cha
 			log.Debug("about to fetch messages for block from pubsub")
 			bmsgs, err := FetchMessagesByCids(ctx, ses, blk.BlsMessages)
 			if err != nil {
-				log.Errorf("failed to fetch all bls messages for block received over pubusb: %s; source: %s", err, src)
+				log.Errorf("failed to fetch all bls messages for block received over pubsub: %s; source: %s", err, src)
 				return
 			}
 
 			smsgs, err := FetchSignedMessagesByCids(ctx, ses, blk.SecpkMessages)
 			if err != nil {
-				log.Errorf("failed to fetch all secpk messages for block received over pubusb: %s; source: %s", err, src)
+				log.Errorf("failed to fetch all secpk messages for block received over pubsub: %s; source: %s", err, src)
 				return
 			}
 
 			took := build.Clock.Since(start)
-			log.Infow("new block over pubsub", "cid", blk.Header.Cid(), "source", msg.GetFrom(), "msgfetch", took)
+			log.Debugw("new block over pubsub", "cid", blk.Header.Cid(), "source", msg.GetFrom(), "msgfetch", took)
+			if took > 3*time.Second {
+				log.Warnw("Slow msg fetch", "cid", blk.Header.Cid(), "source", msg.GetFrom(), "msgfetch", took)
+			}
 			if delay := build.Clock.Now().Unix() - int64(blk.Header.Timestamp); delay > 5 {
-				log.Warnf("Received block with large delay %d from miner %s", delay, blk.Header.Miner)
+				_ = stats.RecordWithTags(ctx,
+					[]tag.Mutator{tag.Insert(metrics.MinerID, blk.Header.Miner.String())},
+					metrics.BlockDelay.M(delay),
+				)
+				log.Warnw("received block with large delay from miner", "block", blk.Cid(), "delay", delay, "miner", blk.Header.Miner)
 			}
 
 			if s.InformNewBlock(msg.ReceivedFrom, &types.FullBlock{
@@ -337,11 +341,16 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 func (bv *BlockValidator) validateLocalBlock(ctx context.Context, msg *pubsub.Message) pubsub.ValidationResult {
 	stats.Record(ctx, metrics.BlockPublished.M(1))
 
+	if size := msg.Size(); size > 1<<20-1<<15 {
+		log.Errorf("ignoring oversize block (%dB)", size)
+		recordFailure(ctx, metrics.BlockValidationFailure, "oversize_block")
+		return pubsub.ValidationIgnore
+	}
+
 	blk, what, err := bv.decodeAndCheckBlock(msg)
 	if err != nil {
 		log.Errorf("got invalid local block: %s", err)
-		ctx, _ = tag.New(ctx, tag.Insert(metrics.FailureType, what))
-		stats.Record(ctx, metrics.BlockValidationFailure.M(1))
+		recordFailure(ctx, metrics.BlockValidationFailure, what)
 		return pubsub.ValidationIgnore
 	}
 
@@ -383,7 +392,7 @@ func (bv *BlockValidator) isChainNearSynced() bool {
 func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockMsg) error {
 	// TODO there has to be a simpler way to do this without the blockstore dance
 	// block headers use adt0
-	store := blockadt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewTemporary()))
+	store := blockadt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewMemory()))
 	bmArr := blockadt.MakeEmptyArray(store)
 	smArr := blockadt.MakeEmptyArray(store)
 
@@ -498,6 +507,12 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		return mv.validateLocalMessage(ctx, msg)
 	}
 
+	start := time.Now()
+	defer func() {
+		ms := time.Now().Sub(start).Microseconds()
+		stats.Record(ctx, metrics.MessageValidationDuration.M(float64(ms)/1000))
+	}()
+
 	stats.Record(ctx, metrics.MessageReceived.M(1))
 	m, err := types.DecodeSignedMessage(msg.Message.GetData())
 	if err != nil {
@@ -507,7 +522,7 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		return pubsub.ValidationReject
 	}
 
-	if err := mv.mpool.Add(m); err != nil {
+	if err := mv.mpool.Add(ctx, m); err != nil {
 		log.Debugf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
 		ctx, _ = tag.New(
 			ctx,
@@ -529,6 +544,12 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 			return pubsub.ValidationReject
 		}
 	}
+
+	ctx, _ = tag.New(
+		ctx,
+		tag.Upsert(metrics.MsgValid, "true"),
+	)
+
 	stats.Record(ctx, metrics.MessageValidationSuccess.M(1))
 	return pubsub.ValidationAccept
 }
@@ -538,6 +559,13 @@ func (mv *MessageValidator) validateLocalMessage(ctx context.Context, msg *pubsu
 		ctx,
 		tag.Upsert(metrics.Local, "true"),
 	)
+
+	start := time.Now()
+	defer func() {
+		ms := time.Now().Sub(start).Microseconds()
+		stats.Record(ctx, metrics.MessageValidationDuration.M(float64(ms)/1000))
+	}()
+
 	// do some lightweight validation
 	stats.Record(ctx, metrics.MessagePublished.M(1))
 
@@ -548,7 +576,7 @@ func (mv *MessageValidator) validateLocalMessage(ctx context.Context, msg *pubsu
 		return pubsub.ValidationIgnore
 	}
 
-	if m.Size() > 32*1024 {
+	if m.Size() > messagepool.MaxMessageSize {
 		log.Warnf("local message is too large! (%dB)", m.Size())
 		recordFailure(ctx, metrics.MessageValidationFailure, "oversize")
 		return pubsub.ValidationIgnore
@@ -571,6 +599,11 @@ func (mv *MessageValidator) validateLocalMessage(ctx context.Context, msg *pubsu
 		recordFailure(ctx, metrics.MessageValidationFailure, "verify-sig")
 		return pubsub.ValidationIgnore
 	}
+
+	ctx, _ = tag.New(
+		ctx,
+		tag.Upsert(metrics.MsgValid, "true"),
+	)
 
 	stats.Record(ctx, metrics.MessageValidationSuccess.M(1))
 	return pubsub.ValidationAccept

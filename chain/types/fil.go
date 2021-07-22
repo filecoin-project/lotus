@@ -23,6 +23,43 @@ func (f FIL) Unitless() string {
 	return strings.TrimRight(strings.TrimRight(r.FloatString(18), "0"), ".")
 }
 
+var AttoFil = NewInt(1)
+var FemtoFil = BigMul(AttoFil, NewInt(1000))
+var PicoFil = BigMul(FemtoFil, NewInt(1000))
+var NanoFil = BigMul(PicoFil, NewInt(1000))
+
+var unitPrefixes = []string{"a", "f", "p", "n", "μ", "m"}
+
+func (f FIL) Short() string {
+	n := BigInt(f).Abs()
+
+	dn := uint64(1)
+	var prefix string
+	for _, p := range unitPrefixes {
+		if n.LessThan(NewInt(dn * 1000)) {
+			prefix = p
+			break
+		}
+		dn *= 1000
+	}
+
+	r := new(big.Rat).SetFrac(f.Int, big.NewInt(int64(dn)))
+	if r.Sign() == 0 {
+		return "0"
+	}
+
+	return strings.TrimRight(strings.TrimRight(r.FloatString(3), "0"), ".") + " " + prefix + "FIL"
+}
+
+func (f FIL) Nano() string {
+	r := new(big.Rat).SetFrac(f.Int, big.NewInt(int64(1e9)))
+	if r.Sign() == 0 {
+		return "0"
+	}
+
+	return strings.TrimRight(strings.TrimRight(r.FloatString(9), "0"), ".") + " nFIL"
+}
+
 func (f FIL) Format(s fmt.State, ch rune) {
 	switch ch {
 	case 's', 'v':
@@ -47,7 +84,7 @@ func (f FIL) UnmarshalText(text []byte) error {
 }
 
 func ParseFIL(s string) (FIL, error) {
-	suffix := strings.TrimLeft(s, ".1234567890")
+	suffix := strings.TrimLeft(s, "-.1234567890")
 	s = s[:len(s)-len(suffix)]
 	var attofil bool
 	if suffix != "" {
@@ -59,6 +96,10 @@ func ParseFIL(s string) (FIL, error) {
 		default:
 			return FIL{}, fmt.Errorf("unrecognized suffix: %q", suffix)
 		}
+	}
+
+	if len(s) > 50 {
+		return FIL{}, fmt.Errorf("string length too large: %d", len(s))
 	}
 
 	r, ok := new(big.Rat).SetString(s)

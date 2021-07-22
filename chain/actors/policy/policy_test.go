@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
@@ -44,7 +45,7 @@ func TestSupportedProofTypes(t *testing.T) {
 
 // Tests assumptions about policies being the same between actor versions.
 func TestAssumptions(t *testing.T) {
-	require.EqualValues(t, miner0.SupportedProofTypes, miner2.SupportedProofTypes)
+	require.EqualValues(t, miner0.SupportedProofTypes, miner2.PreCommitSealProofTypesV0)
 	require.Equal(t, miner0.PreCommitChallengeDelay, miner2.PreCommitChallengeDelay)
 	require.Equal(t, miner0.MaxSectorExpirationExtension, miner2.MaxSectorExpirationExtension)
 	require.Equal(t, miner0.ChainFinality, miner2.ChainFinality)
@@ -57,14 +58,23 @@ func TestAssumptions(t *testing.T) {
 }
 
 func TestPartitionSizes(t *testing.T) {
-	for p := range abi.PoStSealProofTypes {
-		sizeNew, err := builtin2.PoStProofWindowPoStPartitionSectors(p)
+	for _, p := range abi.SealProofInfos {
+		sizeNew, err := builtin2.PoStProofWindowPoStPartitionSectors(p.WindowPoStProof)
 		require.NoError(t, err)
-		sizeOld, err := builtin0.PoStProofWindowPoStPartitionSectors(p)
+		sizeOld, err := builtin0.PoStProofWindowPoStPartitionSectors(p.WindowPoStProof)
 		if err != nil {
 			// new proof type.
 			continue
 		}
 		require.Equal(t, sizeOld, sizeNew)
 	}
+}
+
+func TestPoStSize(t *testing.T) {
+	v12PoStSize, err := GetMaxPoStPartitions(network.Version12, abi.RegisteredPoStProof_StackedDrgWindow64GiBV1)
+	require.Equal(t, 4, v12PoStSize)
+	require.NoError(t, err)
+	v13PoStSize, err := GetMaxPoStPartitions(network.Version13, abi.RegisteredPoStProof_StackedDrgWindow64GiBV1)
+	require.NoError(t, err)
+	require.Equal(t, 10, v13PoStSize)
 }

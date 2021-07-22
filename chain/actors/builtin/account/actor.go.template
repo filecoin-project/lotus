@@ -1,0 +1,64 @@
+package account
+
+import (
+	"github.com/filecoin-project/lotus/chain/actors"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/types"
+{{range .versions}}
+	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+{{end}}
+)
+
+func init() {
+{{range .versions}}
+	builtin.RegisterActorState(builtin{{.}}.AccountActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load{{.}}(store, root)
+	})
+{{end}}}
+
+var Methods = builtin4.MethodsAccount
+
+func Load(store adt.Store, act *types.Actor) (State, error) {
+	switch act.Code {
+{{range .versions}}
+	case builtin{{.}}.AccountActorCodeID:
+		return load{{.}}(store, act.Head)
+{{end}}
+	}
+	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+}
+
+func MakeState(store adt.Store, av actors.Version, addr address.Address) (State, error) {
+	switch av {
+{{range .versions}}
+	case actors.Version{{.}}:
+		return make{{.}}(store, addr)
+{{end}}
+}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	switch av {
+{{range .versions}}
+	case actors.Version{{.}}:
+		return builtin{{.}}.AccountActorCodeID, nil
+{{end}}
+	}
+
+	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+}
+
+type State interface {
+	cbor.Marshaler
+
+	PubkeyAddress() (address.Address, error)
+	GetState() interface{}
+}

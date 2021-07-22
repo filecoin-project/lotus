@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/types"
 	cw_util "github.com/filecoin-project/lotus/cmd/lotus-chainwatch/util"
 	"github.com/filecoin-project/lotus/lib/parmap"
@@ -28,7 +28,7 @@ var log = logging.Logger("processor")
 type Processor struct {
 	db *sql.DB
 
-	node     api.FullNode
+	node     v0api.FullNode
 	ctxStore *cw_util.APIIpldStore
 
 	genesisTs *types.TipSet
@@ -52,7 +52,7 @@ type actorInfo struct {
 	state string
 }
 
-func NewProcessor(ctx context.Context, db *sql.DB, node api.FullNode, batch int) *Processor {
+func NewProcessor(ctx context.Context, db *sql.DB, node v0api.FullNode, batch int) *Processor {
 	ctxStore := cw_util.NewAPIIpldStore(ctx, node)
 	return &Processor{
 		db:       db,
@@ -146,7 +146,7 @@ func (p *Processor) Start(ctx context.Context) {
 				go func() {
 					defer grp.Done()
 					if err := p.HandleMarketChanges(ctx, actorChanges[builtin2.StorageMarketActorCodeID]); err != nil {
-						log.Errorf("Failed to handle market changes: %w", err)
+						log.Errorf("Failed to handle market changes: %v", err)
 						return
 					}
 				}()
@@ -155,7 +155,7 @@ func (p *Processor) Start(ctx context.Context) {
 				go func() {
 					defer grp.Done()
 					if err := p.HandleMinerChanges(ctx, actorChanges[builtin2.StorageMinerActorCodeID]); err != nil {
-						log.Errorf("Failed to handle miner changes: %w", err)
+						log.Errorf("Failed to handle miner changes: %v", err)
 						return
 					}
 				}()
@@ -164,7 +164,7 @@ func (p *Processor) Start(ctx context.Context) {
 				go func() {
 					defer grp.Done()
 					if err := p.HandleRewardChanges(ctx, actorChanges[builtin2.RewardActorCodeID], nullRounds); err != nil {
-						log.Errorf("Failed to handle reward changes: %w", err)
+						log.Errorf("Failed to handle reward changes: %v", err)
 						return
 					}
 				}()
@@ -173,7 +173,7 @@ func (p *Processor) Start(ctx context.Context) {
 				go func() {
 					defer grp.Done()
 					if err := p.HandlePowerChanges(ctx, actorChanges[builtin2.StoragePowerActorCodeID]); err != nil {
-						log.Errorf("Failed to handle power actor changes: %w", err)
+						log.Errorf("Failed to handle power actor changes: %v", err)
 						return
 					}
 				}()
@@ -182,7 +182,7 @@ func (p *Processor) Start(ctx context.Context) {
 				go func() {
 					defer grp.Done()
 					if err := p.HandleMessageChanges(ctx, toProcess); err != nil {
-						log.Errorf("Failed to handle message changes: %w", err)
+						log.Errorf("Failed to handle message changes: %v", err)
 						return
 					}
 				}()
@@ -191,7 +191,7 @@ func (p *Processor) Start(ctx context.Context) {
 				go func() {
 					defer grp.Done()
 					if err := p.HandleCommonActorsChanges(ctx, actorChanges); err != nil {
-						log.Errorf("Failed to handle common actor changes: %w", err)
+						log.Errorf("Failed to handle common actor changes: %v", err)
 						return
 					}
 				}()

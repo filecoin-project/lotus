@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -12,7 +13,6 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/lib/blockstore"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -24,6 +24,8 @@ var importCarCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("opening fs repo: %w", err)
 		}
+
+		ctx := context.TODO()
 
 		exists, err := r.Exists()
 		if err != nil {
@@ -45,12 +47,18 @@ var importCarCmd = &cli.Command{
 			return xerrors.Errorf("opening the car file: %w", err)
 		}
 
-		ds, err := lr.Datastore("/chain")
+		bs, err := lr.Blockstore(ctx, repo.UniversalBlockstore)
 		if err != nil {
 			return err
 		}
 
-		bs := blockstore.NewBlockstore(ds)
+		defer func() {
+			if c, ok := bs.(io.Closer); ok {
+				if err := c.Close(); err != nil {
+					log.Warnf("failed to close blockstore: %s", err)
+				}
+			}
+		}()
 
 		cr, err := car.NewCarReader(f)
 		if err != nil {
@@ -65,7 +73,7 @@ var importCarCmd = &cli.Command{
 					return err
 				}
 				fmt.Println()
-				return ds.Close()
+				return nil
 			default:
 				if err := f.Close(); err != nil {
 					return err
@@ -94,6 +102,8 @@ var importObjectCmd = &cli.Command{
 			return xerrors.Errorf("opening fs repo: %w", err)
 		}
 
+		ctx := context.TODO()
+
 		exists, err := r.Exists()
 		if err != nil {
 			return err
@@ -108,12 +118,18 @@ var importObjectCmd = &cli.Command{
 		}
 		defer lr.Close() //nolint:errcheck
 
-		ds, err := lr.Datastore("/chain")
+		bs, err := lr.Blockstore(ctx, repo.UniversalBlockstore)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to open blockstore: %w", err)
 		}
 
-		bs := blockstore.NewBlockstore(ds)
+		defer func() {
+			if c, ok := bs.(io.Closer); ok {
+				if err := c.Close(); err != nil {
+					log.Warnf("failed to close blockstore: %s", err)
+				}
+			}
+		}()
 
 		c, err := cid.Decode(cctx.Args().Get(0))
 		if err != nil {

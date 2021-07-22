@@ -73,6 +73,8 @@ const (
 	// MethodInspectRuntime is the identifier for the method that returns the
 	// current runtime values.
 	MethodInspectRuntime
+	// MethodCreateState is the identifier for the method that creates the chaos actor's state.
+	MethodCreateState
 )
 
 // Exports defines the methods this actor exposes publicly.
@@ -87,6 +89,7 @@ func (a Actor) Exports() []interface{} {
 		MethodMutateState:         a.MutateState,
 		MethodAbortWith:           a.AbortWith,
 		MethodInspectRuntime:      a.InspectRuntime,
+		MethodCreateState:         a.CreateState,
 	}
 }
 
@@ -225,6 +228,14 @@ func (a Actor) DeleteActor(rt runtime2.Runtime, beneficiary *address.Address) *a
 type MutateStateArgs struct {
 	Value  string
 	Branch MutateStateBranch
+}
+
+// CreateState creates the chaos actor's state
+func (a Actor) CreateState(rt runtime2.Runtime, _ *abi.EmptyValue) *abi.EmptyValue {
+	rt.ValidateImmediateCallerAcceptAny()
+	rt.StateCreate(&State{})
+
+	return nil
 }
 
 // MutateState attempts to mutate a state value in the actor.

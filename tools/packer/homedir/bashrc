@@ -1,0 +1,12 @@
+PS1="[\h \w] ⨎ "
+
+export PROMT_DIRTRIM=1
+
+# Where to find the lotus repo
+export LOTUS_PATH=/var/lib/lotus
+
+# The miner is not running in this image by default.
+# export LOTUS_MINER_PATH=/var/lib/lotus-miner
+
+# To access the lotus node remotely, the following environment variable may be used.
+# export FULLNODE_API_INFO=<token>:/ip4/<public-ip>/tcp/1234/http

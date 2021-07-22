@@ -1,0 +1,82 @@
+package verifreg
+
+import (
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+
+{{if (ge .v 3)}}	builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
+{{end}}	verifreg{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/verifreg"
+	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
+)
+
+var _ State = (*state{{.v}})(nil)
+
+func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
+	out := state{{.v}}{store: store}
+	err := store.Get(store.Context(), root, &out)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func make{{.v}}(store adt.Store, rootKeyAddress address.Address) (State, error) {
+	out := state{{.v}}{store: store}
+	{{if (le .v 2)}}
+		em, err := adt{{.v}}.MakeEmptyMap(store).Root()
+		if err != nil {
+			return nil, err
+		}
+
+		out.State = *verifreg{{.v}}.ConstructState(em, rootKeyAddress)
+	{{else}}
+		s, err := verifreg{{.v}}.ConstructState(store, rootKeyAddress)
+		if err != nil {
+			return nil, err
+		}
+
+		out.State = *s
+	{{end}}
+	return &out, nil
+}
+
+type state{{.v}} struct {
+	verifreg{{.v}}.State
+	store adt.Store
+}
+
+func (s *state{{.v}}) RootKey() (address.Address, error) {
+	return s.State.RootKey, nil
+}
+
+func (s *state{{.v}}) VerifiedClientDataCap(addr address.Address) (bool, abi.StoragePower, error) {
+	return getDataCap(s.store, actors.Version{{.v}}, s.verifiedClients, addr)
+}
+
+func (s *state{{.v}}) VerifierDataCap(addr address.Address) (bool, abi.StoragePower, error) {
+	return getDataCap(s.store, actors.Version{{.v}}, s.verifiers, addr)
+}
+
+func (s *state{{.v}}) ForEachVerifier(cb func(addr address.Address, dcap abi.StoragePower) error) error {
+	return forEachCap(s.store, actors.Version{{.v}}, s.verifiers, cb)
+}
+
+func (s *state{{.v}}) ForEachClient(cb func(addr address.Address, dcap abi.StoragePower) error) error {
+	return forEachCap(s.store, actors.Version{{.v}}, s.verifiedClients, cb)
+}
+
+func (s *state{{.v}}) verifiedClients() (adt.Map, error) {
+	return adt{{.v}}.AsMap(s.store, s.VerifiedClients{{if (ge .v 3)}}, builtin{{.v}}.DefaultHamtBitwidth{{end}})
+}
+
+func (s *state{{.v}}) verifiers() (adt.Map, error) {
+	return adt{{.v}}.AsMap(s.store, s.Verifiers{{if (ge .v 3)}}, builtin{{.v}}.DefaultHamtBitwidth{{end}})
+}
+
+func (s *state{{.v}}) GetState() interface{} {
+	return &s.State
+}

@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
+	"time"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 
 	"golang.org/x/xerrors"
 
@@ -29,38 +33,43 @@ import (
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/multiformats/go-multibase"
 	mh "github.com/multiformats/go-multihash"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
+	cborutil "github.com/filecoin-project/go-cbor-util"
+	"github.com/filecoin-project/go-commp-utils/ffiwrapper"
+	"github.com/filecoin-project/go-commp-utils/writer"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/discovery"
-	"github.com/filecoin-project/go-fil-markets/pieceio"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/commp"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
+	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 )
 
 var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
 
-const dealStartBufferHours uint64 = 49
+// 8 days ~=  SealDuration + PreCommit + MaxProveCommitDuration + 8 hour buffer
+const dealStartBufferHours uint64 = 8 * 24
 
 type API struct {
 	fx.In
@@ -76,6 +85,7 @@ type API struct {
 	Chain        *store.ChainStore
 
 	Imports dtypes.ClientImportMgr
+	Mds     dtypes.ClientMultiDstore
 
 	CombinedBstore    dtypes.ClientBlockstore // TODO: try to remove
 	RetrievalStoreMgr dtypes.ClientRetrievalStoreManager
@@ -88,7 +98,13 @@ func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.Chain
 	minExp := startEpoch + abi.ChainEpoch(minDuration)
 
 	// Align on miners ProvingPeriodBoundary
-	return minExp + md.WPoStProvingPeriod - (minExp % md.WPoStProvingPeriod) + (md.PeriodStart % md.WPoStProvingPeriod) - 1
+	exp := minExp + md.WPoStProvingPeriod - (minExp % md.WPoStProvingPeriod) + (md.PeriodStart % md.WPoStProvingPeriod) - 1
+	// Should only be possible for miners created around genesis
+	for exp < minExp {
+		exp += md.WPoStProvingPeriod
+	}
+
+	return exp
 }
 
 func (a *API) imgr() *importmgr.Mgr {
@@ -96,8 +112,23 @@ func (a *API) imgr() *importmgr.Mgr {
 }
 
 func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) {
+	return a.dealStarter(ctx, params, false)
+}
+
+func (a *API) ClientStatelessDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) {
+	return a.dealStarter(ctx, params, true)
+}
+
+func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isStateless bool) (*cid.Cid, error) {
 	var storeID *multistore.StoreID
-	if params.Data.TransferType == storagemarket.TTGraphsync {
+	if isStateless {
+		if params.Data.TransferType != storagemarket.TTManual {
+			return nil, xerrors.Errorf("invalid transfer type %s for stateless storage deal", params.Data.TransferType)
+		}
+		if !params.EpochPrice.IsZero() {
+			return nil, xerrors.New("stateless storage deals can only be initiated with storage price of 0")
+		}
+	} else if params.Data.TransferType == storagemarket.TTGraphsync {
 		importIDs := a.imgr().List()
 		for _, importID := range importIDs {
 			info, err := a.imgr().Info(importID)
@@ -120,12 +151,12 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 
 	walletKey, err := a.StateAccountKey(ctx, params.Wallet, types.EmptyTSK)
 	if err != nil {
-		return nil, xerrors.Errorf("failed resolving params.Wallet addr: %w", params.Wallet)
+		return nil, xerrors.Errorf("failed resolving params.Wallet addr (%s): %w", params.Wallet, err)
 	}
 
 	exist, err := a.WalletHas(ctx, walletKey)
 	if err != nil {
-		return nil, xerrors.Errorf("failed getting addr from wallet: %w", params.Wallet)
+		return nil, xerrors.Errorf("failed getting addr from wallet (%s): %w", params.Wallet, err)
 	}
 	if !exist {
 		return nil, xerrors.Errorf("provided address doesn't exist in wallet")
@@ -141,16 +172,9 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		return nil, xerrors.Errorf("failed getting miner's deadline info: %w", err)
 	}
 
-	rt, err := ffiwrapper.SealProofTypeFromSectorSize(mi.SectorSize)
-	if err != nil {
-		return nil, xerrors.Errorf("bad sector size: %w", err)
-	}
-
 	if uint64(params.Data.PieceSize.Padded()) > uint64(mi.SectorSize) {
 		return nil, xerrors.New("data doesn't fit in a sector")
 	}
-
-	providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, mi.SectorSize, *mi.PeerId, mi.Multiaddrs)
 
 	dealStart := params.DealStartEpoch
 	if dealStart <= 0 { // unset, or explicitly 'epoch undefined'
@@ -163,25 +187,122 @@ func (a *API) ClientStartDeal(ctx context.Context, params *api.StartDealParams) 
 		dealStart = ts.Height() + abi.ChainEpoch(dealStartBufferHours*blocksPerHour) // TODO: Get this from storage ask
 	}
 
-	result, err := a.SMDealClient.ProposeStorageDeal(ctx, storagemarket.ProposeStorageDealParams{
-		Addr:          params.Wallet,
-		Info:          &providerInfo,
-		Data:          params.Data,
-		StartEpoch:    dealStart,
-		EndEpoch:      calcDealExpiration(params.MinBlocksDuration, md, dealStart),
-		Price:         params.EpochPrice,
-		Collateral:    params.ProviderCollateral,
-		Rt:            rt,
-		FastRetrieval: params.FastRetrieval,
-		VerifiedDeal:  params.VerifiedDeal,
-		StoreID:       storeID,
-	})
-
+	networkVersion, err := a.StateNetworkVersion(ctx, types.EmptyTSK)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to start deal: %w", err)
+		return nil, xerrors.Errorf("failed to get network version: %w", err)
 	}
 
-	return &result.ProposalCid, nil
+	st, err := miner.PreferredSealProofTypeFromWindowPoStType(networkVersion, mi.WindowPoStProofType)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get seal proof type: %w", err)
+	}
+
+	// regular flow
+	if !isStateless {
+		providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, mi.SectorSize, *mi.PeerId, mi.Multiaddrs)
+
+		result, err := a.SMDealClient.ProposeStorageDeal(ctx, storagemarket.ProposeStorageDealParams{
+			Addr:          params.Wallet,
+			Info:          &providerInfo,
+			Data:          params.Data,
+			StartEpoch:    dealStart,
+			EndEpoch:      calcDealExpiration(params.MinBlocksDuration, md, dealStart),
+			Price:         params.EpochPrice,
+			Collateral:    params.ProviderCollateral,
+			Rt:            st,
+			FastRetrieval: params.FastRetrieval,
+			VerifiedDeal:  params.VerifiedDeal,
+			StoreID:       storeID,
+		})
+
+		if err != nil {
+			return nil, xerrors.Errorf("failed to start deal: %w", err)
+		}
+
+		return &result.ProposalCid, nil
+	}
+
+	//
+	// stateless flow from here to the end
+	//
+
+	dealProposal := &market.DealProposal{
+		PieceCID:             *params.Data.PieceCid,
+		PieceSize:            params.Data.PieceSize.Padded(),
+		Client:               walletKey,
+		Provider:             params.Miner,
+		Label:                params.Data.Root.Encode(multibase.MustNewEncoder('u')),
+		StartEpoch:           dealStart,
+		EndEpoch:             calcDealExpiration(params.MinBlocksDuration, md, dealStart),
+		StoragePricePerEpoch: big.Zero(),
+		ProviderCollateral:   params.ProviderCollateral,
+		ClientCollateral:     big.Zero(),
+		VerifiedDeal:         params.VerifiedDeal,
+	}
+
+	if dealProposal.ProviderCollateral.IsZero() {
+		networkCollateral, err := a.StateDealProviderCollateralBounds(ctx, params.Data.PieceSize.Padded(), params.VerifiedDeal, types.EmptyTSK)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to determine minimum provider collateral: %w", err)
+		}
+		dealProposal.ProviderCollateral = networkCollateral.Min
+	}
+
+	dealProposalSerialized, err := cborutil.Dump(dealProposal)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to serialize deal proposal: %w", err)
+	}
+
+	dealProposalSig, err := a.WalletSign(ctx, walletKey, dealProposalSerialized)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to sign proposal : %w", err)
+	}
+
+	dealProposalSigned := &market.ClientDealProposal{
+		Proposal:        *dealProposal,
+		ClientSignature: *dealProposalSig,
+	}
+	dStream, err := network.NewFromLibp2pHost(a.Host,
+		// params duplicated from .../node/modules/client.go
+		// https://github.com/filecoin-project/lotus/pull/5961#discussion_r629768011
+		network.RetryParameters(time.Second, 5*time.Minute, 15, 5),
+	).NewDealStream(ctx, *mi.PeerId)
+	if err != nil {
+		return nil, xerrors.Errorf("opening dealstream to %s/%s failed: %w", params.Miner, *mi.PeerId, err)
+	}
+
+	if err = dStream.WriteDealProposal(network.Proposal{
+		FastRetrieval: true,
+		DealProposal:  dealProposalSigned,
+		Piece: &storagemarket.DataRef{
+			TransferType: storagemarket.TTManual,
+			Root:         params.Data.Root,
+			PieceCid:     params.Data.PieceCid,
+			PieceSize:    params.Data.PieceSize,
+		},
+	}); err != nil {
+		return nil, xerrors.Errorf("sending deal proposal failed: %w", err)
+	}
+
+	resp, _, err := dStream.ReadDealResponse()
+	if err != nil {
+		return nil, xerrors.Errorf("reading proposal response failed: %w", err)
+	}
+
+	dealProposalIpld, err := cborutil.AsIpld(dealProposalSigned)
+	if err != nil {
+		return nil, xerrors.Errorf("serializing proposal node failed: %w", err)
+	}
+
+	if !dealProposalIpld.Cid().Equals(resp.Response.Proposal) {
+		return nil, xerrors.Errorf("provider returned proposal cid %s but we expected %s", resp.Response.Proposal, dealProposalIpld.Cid())
+	}
+
+	if resp.Response.State != storagemarket.StorageDealWaitingForData {
+		return nil, xerrors.Errorf("provider returned unexpected state %d for proposal %s, with message: %s", resp.Response.State, resp.Response.Proposal, resp.Response.Message)
+	}
+
+	return &resp.Response.Proposal, nil
 }
 
 func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
@@ -190,27 +311,40 @@ func (a *API) ClientListDeals(ctx context.Context) ([]api.DealInfo, error) {
 		return nil, err
 	}
 
+	// Get a map of transfer ID => DataTransfer
+	dataTransfersByID, err := a.transfersByID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	out := make([]api.DealInfo, len(deals))
 	for k, v := range deals {
-		out[k] = api.DealInfo{
-			ProposalCid: v.ProposalCid,
-			DataRef:     v.DataRef,
-			State:       v.State,
-			Message:     v.Message,
-			Provider:    v.Proposal.Provider,
-
-			PieceCID: v.Proposal.PieceCID,
-			Size:     uint64(v.Proposal.PieceSize.Unpadded()),
-
-			PricePerEpoch: v.Proposal.StoragePricePerEpoch,
-			Duration:      uint64(v.Proposal.Duration()),
-			DealID:        v.DealID,
-			CreationTime:  v.CreationTime.Time(),
-			Verified:      v.Proposal.VerifiedDeal,
+		// Find the data transfer associated with this deal
+		var transferCh *api.DataTransferChannel
+		if v.TransferChannelID != nil {
+			if ch, ok := dataTransfersByID[*v.TransferChannelID]; ok {
+				transferCh = &ch
+			}
 		}
+
+		out[k] = a.newDealInfoWithTransfer(transferCh, v)
 	}
 
 	return out, nil
+}
+
+func (a *API) transfersByID(ctx context.Context) (map[datatransfer.ChannelID]api.DataTransferChannel, error) {
+	inProgressChannels, err := a.DataTransfer.InProgressChannels(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	dataTransfersByID := make(map[datatransfer.ChannelID]api.DataTransferChannel, len(inProgressChannels))
+	for id, channelState := range inProgressChannels {
+		ch := api.NewDataTransferChannel(a.Host.ID(), channelState)
+		dataTransfersByID[id] = ch
+	}
+	return dataTransfersByID, nil
 }
 
 func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, error) {
@@ -219,26 +353,15 @@ func (a *API) ClientGetDealInfo(ctx context.Context, d cid.Cid) (*api.DealInfo, 
 		return nil, err
 	}
 
-	return &api.DealInfo{
-		ProposalCid:   v.ProposalCid,
-		State:         v.State,
-		Message:       v.Message,
-		Provider:      v.Proposal.Provider,
-		PieceCID:      v.Proposal.PieceCID,
-		Size:          uint64(v.Proposal.PieceSize.Unpadded()),
-		PricePerEpoch: v.Proposal.StoragePricePerEpoch,
-		Duration:      uint64(v.Proposal.Duration()),
-		DealID:        v.DealID,
-		CreationTime:  v.CreationTime.Time(),
-		Verified:      v.Proposal.VerifiedDeal,
-	}, nil
+	di := a.newDealInfo(ctx, v)
+	return &di, nil
 }
 
 func (a *API) ClientGetDealUpdates(ctx context.Context) (<-chan api.DealInfo, error) {
 	updates := make(chan api.DealInfo)
 
 	unsub := a.SMDealClient.SubscribeToEvents(func(_ storagemarket.ClientEvent, deal storagemarket.ClientDeal) {
-		updates <- newDealInfo(deal)
+		updates <- a.newDealInfo(ctx, deal)
 	})
 
 	go func() {
@@ -247,6 +370,45 @@ func (a *API) ClientGetDealUpdates(ctx context.Context) (<-chan api.DealInfo, er
 	}()
 
 	return updates, nil
+}
+
+func (a *API) newDealInfo(ctx context.Context, v storagemarket.ClientDeal) api.DealInfo {
+	// Find the data transfer associated with this deal
+	var transferCh *api.DataTransferChannel
+	if v.TransferChannelID != nil {
+		state, err := a.DataTransfer.ChannelState(ctx, *v.TransferChannelID)
+
+		// Note: If there was an error just ignore it, as the data transfer may
+		// be not found if it's no longer active
+		if err == nil {
+			ch := api.NewDataTransferChannel(a.Host.ID(), state)
+			ch.Stages = state.Stages()
+			transferCh = &ch
+		}
+	}
+
+	di := a.newDealInfoWithTransfer(transferCh, v)
+	di.DealStages = v.DealStages
+	return di
+}
+
+func (a *API) newDealInfoWithTransfer(transferCh *api.DataTransferChannel, v storagemarket.ClientDeal) api.DealInfo {
+	return api.DealInfo{
+		ProposalCid:       v.ProposalCid,
+		DataRef:           v.DataRef,
+		State:             v.State,
+		Message:           v.Message,
+		Provider:          v.Proposal.Provider,
+		PieceCID:          v.Proposal.PieceCID,
+		Size:              uint64(v.Proposal.PieceSize.Unpadded()),
+		PricePerEpoch:     v.Proposal.StoragePricePerEpoch,
+		Duration:          uint64(v.Proposal.Duration()),
+		DealID:            v.DealID,
+		CreationTime:      v.CreationTime.Time(),
+		Verified:          v.Proposal.VerifiedDeal,
+		TransferChannelID: v.TransferChannelID,
+		DataTransfer:      transferCh,
+	}
 }
 
 func (a *API) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
@@ -274,7 +436,19 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid, piece *cid.Cid) 
 		if piece != nil && !piece.Equals(*p.PieceCID) {
 			continue
 		}
-		out = append(out, a.makeRetrievalQuery(ctx, p, root, piece, rm.QueryParams{}))
+
+		// do not rely on local data with respect to peer id
+		// fetch an up-to-date miner peer id from chain
+		mi, err := a.StateMinerInfo(ctx, p.Address, types.EmptyTSK)
+		if err != nil {
+			return nil, err
+		}
+		pp := rm.RetrievalPeer{
+			Address: p.Address,
+			ID:      *mi.PeerId,
+		}
+
+		out = append(out, a.makeRetrievalQuery(ctx, pp, root, piece, rm.QueryParams{}))
 	}
 
 	return out, nil
@@ -432,6 +606,29 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 	return out, nil
 }
 
+func (a *API) ClientCancelRetrievalDeal(ctx context.Context, dealID retrievalmarket.DealID) error {
+	cerr := make(chan error)
+	go func() {
+		err := a.Retrieval.CancelDeal(dealID)
+
+		select {
+		case cerr <- err:
+		case <-ctx.Done():
+		}
+	}()
+
+	select {
+	case err := <-cerr:
+		if err != nil {
+			return xerrors.Errorf("failed to cancel retrieval deal: %w", err)
+		}
+
+		return nil
+	case <-ctx.Done():
+		return xerrors.Errorf("context timeout while canceling retrieval deal: %w", ctx.Err())
+	}
+}
+
 func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error {
 	events := make(chan marketevents.RetrievalEvent)
 	go a.clientRetrieve(ctx, order, ref, events)
@@ -495,6 +692,8 @@ func readSubscribeEvents(ctx context.Context, dealID retrievalmarket.DealID, sub
 			return nil
 		case rm.DealStatusRejected:
 			return xerrors.Errorf("Retrieval Proposal Rejected: %s", state.Message)
+		case rm.DealStatusCancelled:
+			return xerrors.Errorf("Retrieval was cancelled externally: %s", state.Message)
 		case
 			rm.DealStatusDealNotFound,
 			rm.DealStatusErrored:
@@ -512,86 +711,107 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		}
 	}
 
-	if order.MinerPeer.ID == "" {
-		mi, err := a.StateMinerInfo(ctx, order.Miner, types.EmptyTSK)
-		if err != nil {
-			finish(err)
+	var store retrievalstoremgr.RetrievalStore
+
+	if order.LocalStore == nil {
+		if order.MinerPeer == nil || order.MinerPeer.ID == "" {
+			mi, err := a.StateMinerInfo(ctx, order.Miner, types.EmptyTSK)
+			if err != nil {
+				finish(err)
+				return
+			}
+
+			order.MinerPeer = &retrievalmarket.RetrievalPeer{
+				ID:      *mi.PeerId,
+				Address: order.Miner,
+			}
+		}
+
+		if order.Total.Int == nil {
+			finish(xerrors.Errorf("cannot make retrieval deal for null total"))
 			return
 		}
 
-		order.MinerPeer = retrievalmarket.RetrievalPeer{
-			ID:      *mi.PeerId,
-			Address: order.Miner,
+		if order.Size == 0 {
+			finish(xerrors.Errorf("cannot make retrieval deal for zero bytes"))
+			return
 		}
-	}
 
-	if order.Size == 0 {
-		finish(xerrors.Errorf("cannot make retrieval deal for zero bytes"))
-		return
-	}
+		/*id, st, err := a.imgr().NewStore()
+		if err != nil {
+			return err
+		}
+		if err := a.imgr().AddLabel(id, "source", "retrieval"); err != nil {
+			return err
+		}*/
 
-	/*id, st, err := a.imgr().NewStore()
-	if err != nil {
-		return err
-	}
-	if err := a.imgr().AddLabel(id, "source", "retrieval"); err != nil {
-		return err
-	}*/
+		ppb := types.BigDiv(order.Total, types.NewInt(order.Size))
 
-	ppb := types.BigDiv(order.Total, types.NewInt(order.Size))
+		params, err := rm.NewParamsV1(ppb, order.PaymentInterval, order.PaymentIntervalIncrease, shared.AllSelector(), order.Piece, order.UnsealPrice)
+		if err != nil {
+			finish(xerrors.Errorf("Error in retrieval params: %s", err))
+			return
+		}
 
-	params, err := rm.NewParamsV1(ppb, order.PaymentInterval, order.PaymentIntervalIncrease, shared.AllSelector(), order.Piece, order.UnsealPrice)
-	if err != nil {
-		finish(xerrors.Errorf("Error in retrieval params: %s", err))
-		return
-	}
+		store, err = a.RetrievalStoreMgr.NewStore()
+		if err != nil {
+			finish(xerrors.Errorf("Error setting up new store: %w", err))
+			return
+		}
 
-	store, err := a.RetrievalStoreMgr.NewStore()
-	if err != nil {
-		finish(xerrors.Errorf("Error setting up new store: %w", err))
-		return
-	}
+		defer func() {
+			_ = a.RetrievalStoreMgr.ReleaseStore(store)
+		}()
 
-	defer func() {
-		_ = a.RetrievalStoreMgr.ReleaseStore(store)
-	}()
-
-	// Subscribe to events before retrieving to avoid losing events.
-	subscribeEvents := make(chan retrievalSubscribeEvent, 1)
-	subscribeCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	unsubscribe := a.Retrieval.SubscribeToEvents(func(event rm.ClientEvent, state rm.ClientDealState) {
-		// We'll check the deal IDs inside readSubscribeEvents.
-		if state.PayloadCID.Equals(order.Root) {
-			select {
-			case <-subscribeCtx.Done():
-			case subscribeEvents <- retrievalSubscribeEvent{event, state}:
+		// Subscribe to events before retrieving to avoid losing events.
+		subscribeEvents := make(chan retrievalSubscribeEvent, 1)
+		subscribeCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		unsubscribe := a.Retrieval.SubscribeToEvents(func(event rm.ClientEvent, state rm.ClientDealState) {
+			// We'll check the deal IDs inside readSubscribeEvents.
+			if state.PayloadCID.Equals(order.Root) {
+				select {
+				case <-subscribeCtx.Done():
+				case subscribeEvents <- retrievalSubscribeEvent{event, state}:
+				}
 			}
+		})
+
+		dealID, err := a.Retrieval.Retrieve(
+			ctx,
+			order.Root,
+			params,
+			order.Total,
+			*order.MinerPeer,
+			order.Client,
+			order.Miner,
+			store.StoreID())
+
+		if err != nil {
+			unsubscribe()
+			finish(xerrors.Errorf("Retrieve failed: %w", err))
+			return
 		}
-	})
 
-	dealID, err := a.Retrieval.Retrieve(
-		ctx,
-		order.Root,
-		params,
-		order.Total,
-		order.MinerPeer,
-		order.Client,
-		order.Miner,
-		store.StoreID())
+		err = readSubscribeEvents(ctx, dealID, subscribeEvents, events)
 
-	if err != nil {
 		unsubscribe()
-		finish(xerrors.Errorf("Retrieve failed: %w", err))
-		return
-	}
+		if err != nil {
+			finish(xerrors.Errorf("Retrieve: %w", err))
+			return
+		}
+	} else {
+		// local retrieval
+		st, err := ((*multistore.MultiStore)(a.Mds)).Get(*order.LocalStore)
+		if err != nil {
+			finish(xerrors.Errorf("Retrieve: %w", err))
+			return
+		}
 
-	err = readSubscribeEvents(ctx, dealID, subscribeEvents, events)
-
-	unsubscribe()
-	if err != nil {
-		finish(xerrors.Errorf("Retrieve: %w", err))
-		return
+		store = &multiStoreRetrievalStore{
+			storeID: *order.LocalStore,
+			store:   st,
+		}
 	}
 
 	// If ref is nil, it only fetches the data into the configured blockstore.
@@ -631,6 +851,96 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	return
 }
 
+func (a *API) ClientListRetrievals(ctx context.Context) ([]api.RetrievalInfo, error) {
+	deals, err := a.Retrieval.ListDeals()
+	if err != nil {
+		return nil, err
+	}
+	dataTransfersByID, err := a.transfersByID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]api.RetrievalInfo, 0, len(deals))
+	for _, v := range deals {
+		// Find the data transfer associated with this deal
+		var transferCh *api.DataTransferChannel
+		if v.ChannelID != nil {
+			if ch, ok := dataTransfersByID[*v.ChannelID]; ok {
+				transferCh = &ch
+			}
+		}
+		out = append(out, a.newRetrievalInfoWithTransfer(transferCh, v))
+	}
+	sort.Slice(out, func(a, b int) bool {
+		return out[a].ID < out[b].ID
+	})
+	return out, nil
+}
+
+func (a *API) ClientGetRetrievalUpdates(ctx context.Context) (<-chan api.RetrievalInfo, error) {
+	updates := make(chan api.RetrievalInfo)
+
+	unsub := a.Retrieval.SubscribeToEvents(func(_ rm.ClientEvent, deal rm.ClientDealState) {
+		updates <- a.newRetrievalInfo(ctx, deal)
+	})
+
+	go func() {
+		defer unsub()
+		<-ctx.Done()
+	}()
+
+	return updates, nil
+}
+
+func (a *API) newRetrievalInfoWithTransfer(ch *api.DataTransferChannel, deal rm.ClientDealState) api.RetrievalInfo {
+	return api.RetrievalInfo{
+		PayloadCID:        deal.PayloadCID,
+		ID:                deal.ID,
+		PieceCID:          deal.PieceCID,
+		PricePerByte:      deal.PricePerByte,
+		UnsealPrice:       deal.UnsealPrice,
+		Status:            deal.Status,
+		Message:           deal.Message,
+		Provider:          deal.Sender,
+		BytesReceived:     deal.TotalReceived,
+		BytesPaidFor:      deal.BytesPaidFor,
+		TotalPaid:         deal.FundsSpent,
+		TransferChannelID: deal.ChannelID,
+		DataTransfer:      ch,
+	}
+}
+
+func (a *API) newRetrievalInfo(ctx context.Context, v rm.ClientDealState) api.RetrievalInfo {
+	// Find the data transfer associated with this deal
+	var transferCh *api.DataTransferChannel
+	if v.ChannelID != nil {
+		state, err := a.DataTransfer.ChannelState(ctx, *v.ChannelID)
+
+		// Note: If there was an error just ignore it, as the data transfer may
+		// be not found if it's no longer active
+		if err == nil {
+			ch := api.NewDataTransferChannel(a.Host.ID(), state)
+			ch.Stages = state.Stages()
+			transferCh = &ch
+		}
+	}
+
+	return a.newRetrievalInfoWithTransfer(transferCh, v)
+}
+
+type multiStoreRetrievalStore struct {
+	storeID multistore.StoreID
+	store   *multistore.Store
+}
+
+func (mrs *multiStoreRetrievalStore) StoreID() *multistore.StoreID {
+	return &mrs.storeID
+}
+
+func (mrs *multiStoreRetrievalStore) DAGService() ipld.DAGService {
+	return mrs.store.DAG
+}
+
 func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error) {
 	mi, err := a.StateMinerInfo(ctx, miner, types.EmptyTSK)
 	if err != nil {
@@ -647,20 +957,15 @@ func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Addre
 
 func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet, error) {
 
-	// Hard-code the sector size to 32GiB, because:
-	// - pieceio.GeneratePieceCommitment requires a RegisteredSealProof
+	// Hard-code the sector type to 32GiBV1_1, because:
+	// - ffiwrapper.GeneratePieceCIDFromFile requires a RegisteredSealProof
 	// - commP itself is sector-size independent, with rather low probability of that changing
 	//   ( note how the final rust call is identical for every RegSP type )
 	//   https://github.com/filecoin-project/rust-filecoin-proofs-api/blob/v5.0.0/src/seal.rs#L1040-L1050
 	//
 	// IF/WHEN this changes in the future we will have to be able to calculate
 	// "old style" commP, and thus will need to introduce a version switch or similar
-	arbitrarySectorSize := abi.SectorSize(32 << 30)
-
-	rt, err := ffiwrapper.SealProofTypeFromSectorSize(arbitrarySectorSize)
-	if err != nil {
-		return nil, xerrors.Errorf("bad sector size: %w", err)
-	}
+	arbitraryProofType := abi.RegisteredSealProof_StackedDrg32GiBV1_1
 
 	rdr, err := os.Open(inpath)
 	if err != nil {
@@ -673,7 +978,18 @@ func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet
 		return nil, err
 	}
 
-	commP, pieceSize, err := pieceio.GeneratePieceCommitment(rt, rdr, uint64(stat.Size()))
+	// check that the data is a car file; if it's not, retrieval won't work
+	_, _, err = car.ReadHeader(bufio.NewReader(rdr))
+	if err != nil {
+		return nil, xerrors.Errorf("not a car file: %w", err)
+	}
+
+	if _, err := rdr.Seek(0, io.SeekStart); err != nil {
+		return nil, xerrors.Errorf("seek to start: %w", err)
+	}
+
+	pieceReader, pieceSize := padreader.New(rdr, uint64(stat.Size()))
+	commP, err := ffiwrapper.GeneratePieceCIDFromFile(arbitraryProofType, pieceReader, pieceSize)
 
 	if err != nil {
 		return nil, xerrors.Errorf("computing commP failed: %w", err)
@@ -713,8 +1029,8 @@ func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, e
 func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCIDSize, error) {
 	dag := merkledag.NewDAGService(blockservice.New(a.CombinedBstore, offline.Exchange(a.CombinedBstore)))
 
-	w := &commp.Writer{}
-	bw := bufio.NewWriterSize(w, int(commp.CommPBuf))
+	w := &writer.Writer{}
+	bw := bufio.NewWriterSize(w, int(writer.CommPBuf))
 
 	err := car.WriteCar(ctx, dag, []cid.Cid{root}, w)
 	if err != nil {
@@ -725,7 +1041,8 @@ func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCID
 		return api.DataCIDSize{}, err
 	}
 
-	return w.Sum()
+	dataCIDSize, err := w.Sum()
+	return api.DataCIDSize(dataCIDSize), err
 }
 
 func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath string) error {
@@ -883,23 +1200,6 @@ func (a *API) ClientCancelDataTransfer(ctx context.Context, transferID datatrans
 		return a.DataTransfer.CloseDataTransferChannel(ctx, datatransfer.ChannelID{Initiator: selfPeer, Responder: otherPeer, ID: transferID})
 	}
 	return a.DataTransfer.CloseDataTransferChannel(ctx, datatransfer.ChannelID{Initiator: otherPeer, Responder: selfPeer, ID: transferID})
-}
-
-func newDealInfo(v storagemarket.ClientDeal) api.DealInfo {
-	return api.DealInfo{
-		ProposalCid:   v.ProposalCid,
-		DataRef:       v.DataRef,
-		State:         v.State,
-		Message:       v.Message,
-		Provider:      v.Proposal.Provider,
-		PieceCID:      v.Proposal.PieceCID,
-		Size:          uint64(v.Proposal.PieceSize.Unpadded()),
-		PricePerEpoch: v.Proposal.StoragePricePerEpoch,
-		Duration:      uint64(v.Proposal.Duration()),
-		DealID:        v.DealID,
-		CreationTime:  v.CreationTime.Time(),
-		Verified:      v.Proposal.VerifiedDeal,
-	}
 }
 
 func (a *API) ClientRetrieveTryRestartInsufficientFunds(ctx context.Context, paymentChannel address.Address) error {

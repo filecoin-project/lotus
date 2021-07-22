@@ -6,6 +6,8 @@ import (
 	"sync"
 	"testing"
 
+	"gotest.tools/assert"
+
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/require"
@@ -44,25 +46,43 @@ type fakeCS struct {
 	tipsets map[types.TipSetKey]*types.TipSet
 
 	sub func(rev, app []*types.TipSet)
+
+	callNumberLk sync.Mutex
+	callNumber   map[string]int
 }
 
 func (fcs *fakeCS) ChainHead(ctx context.Context) (*types.TipSet, error) {
+	fcs.callNumberLk.Lock()
+	defer fcs.callNumberLk.Unlock()
+	fcs.callNumber["ChainHead"] = fcs.callNumber["ChainHead"] + 1
 	panic("implement me")
 }
 
 func (fcs *fakeCS) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
+	fcs.callNumberLk.Lock()
+	defer fcs.callNumberLk.Unlock()
+	fcs.callNumber["ChainGetTipSet"] = fcs.callNumber["ChainGetTipSet"] + 1
 	return fcs.tipsets[key], nil
 }
 
-func (fcs *fakeCS) StateGetReceipt(context.Context, cid.Cid, types.TipSetKey) (*types.MessageReceipt, error) {
+func (fcs *fakeCS) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
+	fcs.callNumberLk.Lock()
+	defer fcs.callNumberLk.Unlock()
+	fcs.callNumber["StateSearchMsg"] = fcs.callNumber["StateSearchMsg"] + 1
 	return nil, nil
 }
 
 func (fcs *fakeCS) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
+	fcs.callNumberLk.Lock()
+	defer fcs.callNumberLk.Unlock()
+	fcs.callNumber["StateGetActor"] = fcs.callNumber["StateGetActor"] + 1
 	panic("Not Implemented")
 }
 
 func (fcs *fakeCS) ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error) {
+	fcs.callNumberLk.Lock()
+	defer fcs.callNumberLk.Unlock()
+	fcs.callNumber["ChainGetTipSetByHeight"] = fcs.callNumber["ChainGetTipSetByHeight"] + 1
 	panic("Not Implemented")
 }
 
@@ -113,6 +133,10 @@ func (fcs *fakeCS) makeTs(t *testing.T, parents []cid.Cid, h abi.ChainEpoch, msg
 }
 
 func (fcs *fakeCS) ChainNotify(context.Context) (<-chan []*api.HeadChange, error) {
+	fcs.callNumberLk.Lock()
+	defer fcs.callNumberLk.Unlock()
+	fcs.callNumber["ChainNotify"] = fcs.callNumber["ChainNotify"] + 1
+
 	out := make(chan []*api.HeadChange, 1)
 	best, err := fcs.tsc.best()
 	if err != nil {
@@ -143,6 +167,9 @@ func (fcs *fakeCS) ChainNotify(context.Context) (<-chan []*api.HeadChange, error
 }
 
 func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, blk cid.Cid) (*api.BlockMessages, error) {
+	fcs.callNumberLk.Lock()
+	defer fcs.callNumberLk.Unlock()
+	fcs.callNumber["ChainGetBlockMessages"] = fcs.callNumber["ChainGetBlockMessages"] + 1
 	messages, ok := fcs.blkMsgs[blk]
 	if !ok {
 		return &api.BlockMessages{}, nil
@@ -152,8 +179,8 @@ func (fcs *fakeCS) ChainGetBlockMessages(ctx context.Context, blk cid.Cid) (*api
 	if !ok {
 		return &api.BlockMessages{}, nil
 	}
-	return &api.BlockMessages{BlsMessages: ms.bmsgs, SecpkMessages: ms.smsgs}, nil
 
+	return &api.BlockMessages{BlsMessages: ms.bmsgs, SecpkMessages: ms.smsgs}, nil
 }
 
 func (fcs *fakeCS) fakeMsgs(m fakeMsg) cid.Cid {
@@ -229,13 +256,14 @@ func (fcs *fakeCS) notifDone() {
 	fcs.sync.Unlock()
 }
 
-var _ eventAPI = &fakeCS{}
+var _ EventAPI = &fakeCS{}
 
 func TestAt(t *testing.T) {
 	fcs := &fakeCS{
-		t:   t,
-		h:   1,
-		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
+		t:          t,
+		h:          1,
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+		callNumber: map[string]int{},
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -298,9 +326,10 @@ func TestAt(t *testing.T) {
 
 func TestAtDoubleTrigger(t *testing.T) {
 	fcs := &fakeCS{
-		t:   t,
-		h:   1,
-		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
+		t:          t,
+		h:          1,
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+		callNumber: map[string]int{},
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -340,9 +369,10 @@ func TestAtDoubleTrigger(t *testing.T) {
 
 func TestAtNullTrigger(t *testing.T) {
 	fcs := &fakeCS{
-		t:   t,
-		h:   1,
-		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
+		t:          t,
+		h:          1,
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+		callNumber: map[string]int{},
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -374,9 +404,10 @@ func TestAtNullTrigger(t *testing.T) {
 
 func TestAtNullConf(t *testing.T) {
 	fcs := &fakeCS{
-		t:   t,
-		h:   1,
-		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
+		t:          t,
+		h:          1,
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+		callNumber: map[string]int{},
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -413,9 +444,10 @@ func TestAtNullConf(t *testing.T) {
 
 func TestAtStart(t *testing.T) {
 	fcs := &fakeCS{
-		t:   t,
-		h:   1,
-		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
+		t:          t,
+		h:          1,
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+		callNumber: map[string]int{},
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -447,9 +479,10 @@ func TestAtStart(t *testing.T) {
 
 func TestAtStartConfidence(t *testing.T) {
 	fcs := &fakeCS{
-		t:   t,
-		h:   1,
-		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
+		t:          t,
+		h:          1,
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+		callNumber: map[string]int{},
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -477,9 +510,10 @@ func TestAtStartConfidence(t *testing.T) {
 
 func TestAtChained(t *testing.T) {
 	fcs := &fakeCS{
-		t:   t,
-		h:   1,
-		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
+		t:          t,
+		h:          1,
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+		callNumber: map[string]int{},
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -511,9 +545,10 @@ func TestAtChained(t *testing.T) {
 
 func TestAtChainedConfidence(t *testing.T) {
 	fcs := &fakeCS{
-		t:   t,
-		h:   1,
-		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
+		t:          t,
+		h:          1,
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+		callNumber: map[string]int{},
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -545,9 +580,10 @@ func TestAtChainedConfidence(t *testing.T) {
 
 func TestAtChainedConfidenceNull(t *testing.T) {
 	fcs := &fakeCS{
-		t:   t,
-		h:   1,
-		tsc: newTSCache(2*build.ForkLengthThreshold, nil),
+		t:          t,
+		h:          1,
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+		callNumber: map[string]int{},
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -572,9 +608,9 @@ func TestAtChainedConfidenceNull(t *testing.T) {
 	require.Equal(t, false, reverted)
 }
 
-func matchAddrMethod(to address.Address, m abi.MethodNum) func(msg *types.Message) (matchOnce bool, matched bool, err error) {
-	return func(msg *types.Message) (matchOnce bool, matched bool, err error) {
-		return true, to == msg.To && m == msg.Method, nil
+func matchAddrMethod(to address.Address, m abi.MethodNum) func(msg *types.Message) (matched bool, err error) {
+	return func(msg *types.Message) (matched bool, err error) {
+		return to == msg.To && m == msg.Method, nil
 	}
 }
 
@@ -583,9 +619,10 @@ func TestCalled(t *testing.T) {
 		t: t,
 		h: 1,
 
-		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
-		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
+		msgs:       map[cid.Cid]fakeMsg{},
+		blkMsgs:    map[cid.Cid]cid.Cid{},
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+		callNumber: map[string]int{},
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -795,9 +832,10 @@ func TestCalledTimeout(t *testing.T) {
 		t: t,
 		h: 1,
 
-		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
-		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
+		msgs:       map[cid.Cid]fakeMsg{},
+		blkMsgs:    map[cid.Cid]cid.Cid{},
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+		callNumber: map[string]int{},
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -835,9 +873,10 @@ func TestCalledTimeout(t *testing.T) {
 		t: t,
 		h: 1,
 
-		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
-		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
+		msgs:       map[cid.Cid]fakeMsg{},
+		blkMsgs:    map[cid.Cid]cid.Cid{},
+		callNumber: map[string]int{},
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -869,9 +908,10 @@ func TestCalledOrder(t *testing.T) {
 		t: t,
 		h: 1,
 
-		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
-		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
+		msgs:       map[cid.Cid]fakeMsg{},
+		blkMsgs:    map[cid.Cid]cid.Cid{},
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+		callNumber: map[string]int{},
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -932,9 +972,10 @@ func TestCalledNull(t *testing.T) {
 		t: t,
 		h: 1,
 
-		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
-		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
+		msgs:       map[cid.Cid]fakeMsg{},
+		blkMsgs:    map[cid.Cid]cid.Cid{},
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+		callNumber: map[string]int{},
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -997,9 +1038,10 @@ func TestRemoveTriggersOnMessage(t *testing.T) {
 		t: t,
 		h: 1,
 
-		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
-		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
+		msgs:       map[cid.Cid]fakeMsg{},
+		blkMsgs:    map[cid.Cid]cid.Cid{},
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+		callNumber: map[string]int{},
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -1087,9 +1129,10 @@ func TestStateChanged(t *testing.T) {
 		t: t,
 		h: 1,
 
-		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
-		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
+		msgs:       map[cid.Cid]fakeMsg{},
+		blkMsgs:    map[cid.Cid]cid.Cid{},
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+		callNumber: map[string]int{},
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -1175,9 +1218,10 @@ func TestStateChangedRevert(t *testing.T) {
 		t: t,
 		h: 1,
 
-		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
-		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
+		msgs:       map[cid.Cid]fakeMsg{},
+		blkMsgs:    map[cid.Cid]cid.Cid{},
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+		callNumber: map[string]int{},
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -1253,9 +1297,10 @@ func TestStateChangedTimeout(t *testing.T) {
 		t: t,
 		h: 1,
 
-		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
-		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
+		msgs:       map[cid.Cid]fakeMsg{},
+		blkMsgs:    map[cid.Cid]cid.Cid{},
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+		callNumber: map[string]int{},
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -1293,9 +1338,10 @@ func TestStateChangedTimeout(t *testing.T) {
 		t: t,
 		h: 1,
 
-		msgs:    map[cid.Cid]fakeMsg{},
-		blkMsgs: map[cid.Cid]cid.Cid{},
-		tsc:     newTSCache(2*build.ForkLengthThreshold, nil),
+		msgs:       map[cid.Cid]fakeMsg{},
+		blkMsgs:    map[cid.Cid]cid.Cid{},
+		callNumber: map[string]int{},
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
 	}
 	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
 
@@ -1322,4 +1368,85 @@ func TestStateChangedTimeout(t *testing.T) {
 
 	fcs.advance(0, 5, nil)
 	require.False(t, called)
+}
+
+func TestCalledMultiplePerEpoch(t *testing.T) {
+	fcs := &fakeCS{
+		t: t,
+		h: 1,
+
+		msgs:       map[cid.Cid]fakeMsg{},
+		blkMsgs:    map[cid.Cid]cid.Cid{},
+		callNumber: map[string]int{},
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+	}
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
+
+	events := NewEvents(context.Background(), fcs)
+
+	t0123, err := address.NewFromString("t0123")
+	require.NoError(t, err)
+
+	at := 0
+
+	err = events.Called(func(ts *types.TipSet) (d bool, m bool, e error) {
+		return false, true, nil
+	}, func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (bool, error) {
+		switch at {
+		case 0:
+			require.Equal(t, uint64(1), msg.Nonce)
+			require.Equal(t, abi.ChainEpoch(4), ts.Height())
+		case 1:
+			require.Equal(t, uint64(2), msg.Nonce)
+			require.Equal(t, abi.ChainEpoch(4), ts.Height())
+		default:
+			t.Fatal("apply should only get called twice, at: ", at)
+		}
+		at++
+		return true, nil
+	}, func(_ context.Context, ts *types.TipSet) error {
+		switch at {
+		case 2:
+			require.Equal(t, abi.ChainEpoch(4), ts.Height())
+		case 3:
+			require.Equal(t, abi.ChainEpoch(4), ts.Height())
+		default:
+			t.Fatal("revert should only get called twice, at: ", at)
+		}
+		at++
+		return nil
+	}, 3, 20, matchAddrMethod(t0123, 5))
+	require.NoError(t, err)
+
+	fcs.advance(0, 10, map[int]cid.Cid{
+		1: fcs.fakeMsgs(fakeMsg{
+			bmsgs: []*types.Message{
+				{To: t0123, From: t0123, Method: 5, Nonce: 1},
+				{To: t0123, From: t0123, Method: 5, Nonce: 2},
+			},
+		}),
+	})
+
+	fcs.advance(9, 1, nil)
+}
+
+func TestCachedSameBlock(t *testing.T) {
+	fcs := &fakeCS{
+		t: t,
+		h: 1,
+
+		msgs:       map[cid.Cid]fakeMsg{},
+		blkMsgs:    map[cid.Cid]cid.Cid{},
+		callNumber: map[string]int{},
+		tsc:        newTSCache(2*build.ForkLengthThreshold, nil),
+	}
+	require.NoError(t, fcs.tsc.add(fcs.makeTs(t, nil, 1, dummyCid)))
+
+	_ = NewEvents(context.Background(), fcs)
+
+	fcs.advance(0, 10, map[int]cid.Cid{})
+	assert.Assert(t, fcs.callNumber["ChainGetBlockMessages"] == 20, "expect call ChainGetBlockMessages %d but got ", 20, fcs.callNumber["ChainGetBlockMessages"])
+
+	fcs.advance(5, 10, map[int]cid.Cid{})
+	assert.Assert(t, fcs.callNumber["ChainGetBlockMessages"] == 30, "expect call ChainGetBlockMessages %d but got ", 30, fcs.callNumber["ChainGetBlockMessages"])
 }

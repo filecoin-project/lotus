@@ -14,12 +14,17 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/chain/actors"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
+
+	states0 "github.com/filecoin-project/specs-actors/actors/states"
+	states2 "github.com/filecoin-project/specs-actors/v2/actors/states"
+	states3 "github.com/filecoin-project/specs-actors/v3/actors/states"
+	states4 "github.com/filecoin-project/specs-actors/v4/actors/states"
+	states5 "github.com/filecoin-project/specs-actors/v5/actors/states"
 )
 
 var log = logging.Logger("statetree")
@@ -137,21 +142,20 @@ func (ss *stateSnaps) deleteActor(addr address.Address) {
 
 // VersionForNetwork returns the state tree version for the given network
 // version.
-func VersionForNetwork(ver network.Version) types.StateTreeVersion {
-	if actors.VersionForNetwork(ver) == actors.Version0 {
-		return types.StateTreeVersion0
-	}
-	return types.StateTreeVersion1
-}
-
-func adtForSTVersion(ver types.StateTreeVersion) actors.Version {
+func VersionForNetwork(ver network.Version) (types.StateTreeVersion, error) {
 	switch ver {
-	case types.StateTreeVersion0:
-		return actors.Version0
-	case types.StateTreeVersion1:
-		return actors.Version2
+	case network.Version0, network.Version1, network.Version2, network.Version3:
+		return types.StateTreeVersion0, nil
+	case network.Version4, network.Version5, network.Version6, network.Version7, network.Version8, network.Version9:
+		return types.StateTreeVersion1, nil
+	case network.Version10, network.Version11:
+		return types.StateTreeVersion2, nil
+	case network.Version12:
+		return types.StateTreeVersion3, nil
+	case network.Version13:
+		return types.StateTreeVersion4, nil
 	default:
-		panic("unhandled state tree version")
+		panic(fmt.Sprintf("unsupported network version %d", ver))
 	}
 }
 
@@ -160,7 +164,7 @@ func NewStateTree(cst cbor.IpldStore, ver types.StateTreeVersion) (*StateTree, e
 	switch ver {
 	case types.StateTreeVersion0:
 		// info is undefined
-	case types.StateTreeVersion1:
+	case types.StateTreeVersion1, types.StateTreeVersion2, types.StateTreeVersion3, types.StateTreeVersion4:
 		var err error
 		info, err = cst.Put(context.TODO(), new(types.StateInfo0))
 		if err != nil {
@@ -169,13 +173,46 @@ func NewStateTree(cst cbor.IpldStore, ver types.StateTreeVersion) (*StateTree, e
 	default:
 		return nil, xerrors.Errorf("unsupported state tree version: %d", ver)
 	}
-	root, err := adt.NewMap(adt.WrapStore(context.TODO(), cst), adtForSTVersion(ver))
-	if err != nil {
-		return nil, err
+
+	store := adt.WrapStore(context.TODO(), cst)
+	var hamt adt.Map
+	switch ver {
+	case types.StateTreeVersion0:
+		tree, err := states0.NewTree(store)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create state tree: %w", err)
+		}
+		hamt = tree.Map
+	case types.StateTreeVersion1:
+		tree, err := states2.NewTree(store)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create state tree: %w", err)
+		}
+		hamt = tree.Map
+	case types.StateTreeVersion2:
+		tree, err := states3.NewTree(store)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create state tree: %w", err)
+		}
+		hamt = tree.Map
+	case types.StateTreeVersion3:
+		tree, err := states4.NewTree(store)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create state tree: %w", err)
+		}
+		hamt = tree.Map
+	case types.StateTreeVersion4:
+		tree, err := states5.NewTree(store)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create state tree: %w", err)
+		}
+		hamt = tree.Map
+	default:
+		return nil, xerrors.Errorf("unsupported state tree version: %d", ver)
 	}
 
 	s := &StateTree{
-		root:    root,
+		root:    hamt,
 		info:    info,
 		version: ver,
 		Store:   cst,
@@ -194,30 +231,61 @@ func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
 		root.Version = types.StateTreeVersion0
 	}
 
-	switch root.Version {
-	case types.StateTreeVersion0, types.StateTreeVersion1:
-		// Load the actual state-tree HAMT.
-		nd, err := adt.AsMap(
-			adt.WrapStore(context.TODO(), cst), root.Actors,
-			adtForSTVersion(root.Version),
-		)
-		if err != nil {
-			log.Errorf("loading hamt node %s failed: %s", c, err)
-			return nil, err
-		}
+	store := adt.WrapStore(context.TODO(), cst)
 
-		s := &StateTree{
-			root:    nd,
-			info:    root.Info,
-			version: root.Version,
-			Store:   cst,
-			snaps:   newStateSnaps(),
+	var (
+		hamt adt.Map
+		err  error
+	)
+	switch root.Version {
+	case types.StateTreeVersion0:
+		var tree *states0.Tree
+		tree, err = states0.LoadTree(store, root.Actors)
+		if tree != nil {
+			hamt = tree.Map
 		}
-		s.lookupIDFun = s.lookupIDinternal
-		return s, nil
+	case types.StateTreeVersion1:
+		var tree *states2.Tree
+		tree, err = states2.LoadTree(store, root.Actors)
+		if tree != nil {
+			hamt = tree.Map
+		}
+	case types.StateTreeVersion2:
+		var tree *states3.Tree
+		tree, err = states3.LoadTree(store, root.Actors)
+		if tree != nil {
+			hamt = tree.Map
+		}
+	case types.StateTreeVersion3:
+		var tree *states4.Tree
+		tree, err = states4.LoadTree(store, root.Actors)
+		if tree != nil {
+			hamt = tree.Map
+		}
+	case types.StateTreeVersion4:
+		var tree *states5.Tree
+		tree, err = states5.LoadTree(store, root.Actors)
+		if tree != nil {
+			hamt = tree.Map
+		}
 	default:
 		return nil, xerrors.Errorf("unsupported state tree version: %d", root.Version)
 	}
+	if err != nil {
+		log.Errorf("failed to load state tree: %s", err)
+		return nil, xerrors.Errorf("failed to load state tree: %w", err)
+	}
+
+	s := &StateTree{
+		root:    hamt,
+		info:    root.Info,
+		version: root.Version,
+		Store:   cst,
+		snaps:   newStateSnaps(),
+	}
+	s.lookupIDFun = s.lookupIDinternal
+
+	return s, nil
 }
 
 func (st *StateTree) SetActor(addr address.Address, act *types.Actor) error {
@@ -436,12 +504,38 @@ func (st *StateTree) MutateActor(addr address.Address, f func(*types.Actor) erro
 }
 
 func (st *StateTree) ForEach(f func(address.Address, *types.Actor) error) error {
+	// Walk through layers, if any.
+	seen := make(map[address.Address]struct{})
+	for i := len(st.snaps.layers) - 1; i >= 0; i-- {
+		for addr, op := range st.snaps.layers[i].actors {
+			if _, ok := seen[addr]; ok {
+				continue
+			}
+			seen[addr] = struct{}{}
+			if op.Delete {
+				continue
+			}
+			act := op.Act // copy
+			if err := f(addr, &act); err != nil {
+				return err
+			}
+		}
+
+	}
+
+	// Now walk through the saved actors.
 	var act types.Actor
 	return st.root.ForEach(&act, func(k string) error {
 		act := act // copy
 		addr, err := address.NewFromBytes([]byte(k))
 		if err != nil {
 			return xerrors.Errorf("invalid address (%x) found in state tree key: %w", []byte(k), err)
+		}
+
+		// no need to record anything here, there are no duplicates in the actors HAMT
+		// iself.
+		if _, ok := seen[addr]; ok {
+			return nil
 		}
 
 		return f(addr, &act)
@@ -453,7 +547,7 @@ func (st *StateTree) Version() types.StateTreeVersion {
 	return st.version
 }
 
-func Diff(oldTree, newTree *StateTree) (map[string]types.Actor, error) {
+func Diff(ctx context.Context, oldTree, newTree *StateTree) (map[string]types.Actor, error) {
 	out := map[string]types.Actor{}
 
 	var (
@@ -461,33 +555,38 @@ func Diff(oldTree, newTree *StateTree) (map[string]types.Actor, error) {
 		buf          = bytes.NewReader(nil)
 	)
 	if err := newTree.root.ForEach(&ncval, func(k string) error {
-		var act types.Actor
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			var act types.Actor
 
-		addr, err := address.NewFromBytes([]byte(k))
-		if err != nil {
-			return xerrors.Errorf("address in state tree was not valid: %w", err)
+			addr, err := address.NewFromBytes([]byte(k))
+			if err != nil {
+				return xerrors.Errorf("address in state tree was not valid: %w", err)
+			}
+
+			found, err := oldTree.root.Get(abi.AddrKey(addr), &ocval)
+			if err != nil {
+				return err
+			}
+
+			if found && bytes.Equal(ocval.Raw, ncval.Raw) {
+				return nil // not changed
+			}
+
+			buf.Reset(ncval.Raw)
+			err = act.UnmarshalCBOR(buf)
+			buf.Reset(nil)
+
+			if err != nil {
+				return err
+			}
+
+			out[addr.String()] = act
+
+			return nil
 		}
-
-		found, err := oldTree.root.Get(abi.AddrKey(addr), &ocval)
-		if err != nil {
-			return err
-		}
-
-		if found && bytes.Equal(ocval.Raw, ncval.Raw) {
-			return nil // not changed
-		}
-
-		buf.Reset(ncval.Raw)
-		err = act.UnmarshalCBOR(buf)
-		buf.Reset(nil)
-
-		if err != nil {
-			return err
-		}
-
-		out[addr.String()] = act
-
-		return nil
 	}); err != nil {
 		return nil, err
 	}

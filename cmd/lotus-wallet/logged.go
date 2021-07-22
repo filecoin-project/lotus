@@ -16,7 +16,7 @@ import (
 )
 
 type LoggedWallet struct {
-	under api.WalletAPI
+	under api.Wallet
 }
 
 func (c *LoggedWallet) WalletNew(ctx context.Context, typ types.KeyType) (address.Address, error) {

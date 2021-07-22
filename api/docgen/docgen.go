@@ -1,17 +1,19 @@
-package main
+package docgen
 
 import (
-	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"path/filepath"
 	"reflect"
-	"sort"
 	"strings"
 	"time"
 	"unicode"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
@@ -21,9 +23,8 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	filestore2 "github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-multistore"
@@ -33,9 +34,14 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/apistruct"
+	apitypes "github.com/filecoin-project/lotus/api/types"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -82,8 +88,10 @@ func init() {
 	addExample(pid)
 	addExample(&pid)
 
+	multistoreIDExample := multistore.StoreID(50)
+
 	addExample(bitfield.NewFromSet([]uint64{5}))
-	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1)
+	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1_1)
 	addExample(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1)
 	addExample(abi.ChainEpoch(10101))
 	addExample(crypto.SigTypeBLS)
@@ -106,28 +114,31 @@ func init() {
 	addExample(network.Connected)
 	addExample(dtypes.NetworkName("lotus"))
 	addExample(api.SyncStateStage(1))
-	addExample(build.FullAPIVersion)
+	addExample(api.FullAPIVersion1)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
 	addExample(datatransfer.TransferID(3))
 	addExample(datatransfer.Ongoing)
-	addExample(multistore.StoreID(50))
+	addExample(multistoreIDExample)
+	addExample(&multistoreIDExample)
 	addExample(retrievalmarket.ClientEventDealAccepted)
 	addExample(retrievalmarket.DealStatusNew)
 	addExample(network.ReachabilityPublic)
 	addExample(build.NewestNetworkVersion)
+	addExample(map[string]int{"name": 42})
+	addExample(map[string]time.Time{"name": time.Unix(1615243938, 0).UTC()})
 	addExample(&types.ExecutionTrace{
-		Msg:    exampleValue(reflect.TypeOf(&types.Message{}), nil).(*types.Message),
-		MsgRct: exampleValue(reflect.TypeOf(&types.MessageReceipt{}), nil).(*types.MessageReceipt),
+		Msg:    ExampleValue("init", reflect.TypeOf(&types.Message{}), nil).(*types.Message),
+		MsgRct: ExampleValue("init", reflect.TypeOf(&types.MessageReceipt{}), nil).(*types.MessageReceipt),
 	})
 	addExample(map[string]types.Actor{
-		"t01236": exampleValue(reflect.TypeOf(types.Actor{}), nil).(types.Actor),
+		"t01236": ExampleValue("init", reflect.TypeOf(types.Actor{}), nil).(types.Actor),
 	})
 	addExample(map[string]api.MarketDeal{
-		"t026363": exampleValue(reflect.TypeOf(api.MarketDeal{}), nil).(api.MarketDeal),
+		"t026363": ExampleValue("init", reflect.TypeOf(api.MarketDeal{}), nil).(api.MarketDeal),
 	})
 	addExample(map[string]api.MarketBalance{
-		"t026363": exampleValue(reflect.TypeOf(api.MarketBalance{}), nil).(api.MarketBalance),
+		"t026363": ExampleValue("init", reflect.TypeOf(api.MarketBalance{}), nil).(api.MarketBalance),
 	})
 	addExample(map[string]*pubsub.TopicScoreSnapshot{
 		"/blocks": {
@@ -162,9 +173,139 @@ func init() {
 	// because reflect.TypeOf(maddr) returns the concrete type...
 	ExampleValues[reflect.TypeOf(struct{ A multiaddr.Multiaddr }{}).Field(0).Type] = maddr
 
+	// miner specific
+	addExample(filestore2.Path(".lotusminer/fstmp123"))
+	si := multistore.StoreID(12)
+	addExample(&si)
+	addExample(retrievalmarket.DealID(5))
+	addExample(abi.ActorID(1000))
+	addExample(map[string][]api.SealedRef{
+		"98000": {
+			api.SealedRef{
+				SectorID: 100,
+				Offset:   10 << 20,
+				Size:     1 << 20,
+			},
+		},
+	})
+	addExample(api.SectorState(sealing.Proving))
+	addExample(stores.ID("76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8"))
+	addExample(storiface.FTUnsealed)
+	addExample(storiface.PathSealing)
+	addExample(map[stores.ID][]stores.Decl{
+		"76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8": {
+			{
+				SectorID:       abi.SectorID{Miner: 1000, Number: 100},
+				SectorFileType: storiface.FTSealed,
+			},
+		},
+	})
+	addExample(map[stores.ID]string{
+		"76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8": "/data/path",
+	})
+	addExample(map[uuid.UUID][]storiface.WorkerJob{
+		uuid.MustParse("ef8d99a2-6865-4189-8ffa-9fef0f806eee"): {
+			{
+				ID: storiface.CallID{
+					Sector: abi.SectorID{Miner: 1000, Number: 100},
+					ID:     uuid.MustParse("76081ba0-61bd-45a5-bc08-af05f1c26e5d"),
+				},
+				Sector:   abi.SectorID{Miner: 1000, Number: 100},
+				Task:     sealtasks.TTPreCommit2,
+				RunWait:  0,
+				Start:    time.Unix(1605172927, 0).UTC(),
+				Hostname: "host",
+			},
+		},
+	})
+	addExample(map[uuid.UUID]storiface.WorkerStats{
+		uuid.MustParse("ef8d99a2-6865-4189-8ffa-9fef0f806eee"): {
+			Info: storiface.WorkerInfo{
+				Hostname: "host",
+				Resources: storiface.WorkerResources{
+					MemPhysical: 256 << 30,
+					MemSwap:     120 << 30,
+					MemReserved: 2 << 30,
+					CPUs:        64,
+					GPUs:        []string{"aGPU 1337"},
+				},
+			},
+			Enabled:    true,
+			MemUsedMin: 0,
+			MemUsedMax: 0,
+			GpuUsed:    false,
+			CpuUse:     0,
+		},
+	})
+	addExample(storiface.ErrorCode(0))
+	addExample(map[abi.SectorNumber]string{
+		123: "can't acquire read lock",
+	})
+	addExample(map[api.SectorState]int{
+		api.SectorState(sealing.Proving): 120,
+	})
+	addExample([]abi.SectorNumber{123, 124})
+
+	// worker specific
+	addExample(storiface.AcquireMove)
+	addExample(storiface.UnpaddedByteIndex(abi.PaddedPieceSize(1 << 20).Unpadded()))
+	addExample(map[sealtasks.TaskType]struct{}{
+		sealtasks.TTPreCommit2: {},
+	})
+	addExample(sealtasks.TTCommit2)
+	addExample(apitypes.OpenRPCDocument{
+		"openrpc": "1.2.6",
+		"info": map[string]interface{}{
+			"title":   "Lotus RPC API",
+			"version": "1.2.1/generated=2020-11-22T08:22:42-06:00",
+		},
+		"methods": []interface{}{}},
+	)
+
+	addExample(api.CheckStatusCode(0))
+	addExample(map[string]interface{}{"abc": 123})
 }
 
-func exampleValue(t, parent reflect.Type) interface{} {
+func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
+
+	switch pkg {
+	case "api": // latest
+		switch name {
+		case "FullNode":
+			i = &api.FullNodeStruct{}
+			t = reflect.TypeOf(new(struct{ api.FullNode })).Elem()
+			permStruct = append(permStruct, reflect.TypeOf(api.FullNodeStruct{}.Internal))
+			permStruct = append(permStruct, reflect.TypeOf(api.CommonStruct{}.Internal))
+			permStruct = append(permStruct, reflect.TypeOf(api.NetStruct{}.Internal))
+		case "StorageMiner":
+			i = &api.StorageMinerStruct{}
+			t = reflect.TypeOf(new(struct{ api.StorageMiner })).Elem()
+			permStruct = append(permStruct, reflect.TypeOf(api.StorageMinerStruct{}.Internal))
+			permStruct = append(permStruct, reflect.TypeOf(api.CommonStruct{}.Internal))
+			permStruct = append(permStruct, reflect.TypeOf(api.NetStruct{}.Internal))
+		case "Worker":
+			i = &api.WorkerStruct{}
+			t = reflect.TypeOf(new(struct{ api.Worker })).Elem()
+			permStruct = append(permStruct, reflect.TypeOf(api.WorkerStruct{}.Internal))
+		default:
+			panic("unknown type")
+		}
+	case "v0api":
+		switch name {
+		case "FullNode":
+			i = v0api.FullNodeStruct{}
+			t = reflect.TypeOf(new(struct{ v0api.FullNode })).Elem()
+			permStruct = append(permStruct, reflect.TypeOf(v0api.FullNodeStruct{}.Internal))
+			permStruct = append(permStruct, reflect.TypeOf(v0api.CommonStruct{}.Internal))
+			permStruct = append(permStruct, reflect.TypeOf(v0api.NetStruct{}.Internal))
+		default:
+			panic("unknown type")
+		}
+	}
+	return
+}
+
+func ExampleValue(method string, t, parent reflect.Type) interface{} {
 	v, ok := ExampleValues[t]
 	if ok {
 		return v
@@ -173,25 +314,25 @@ func exampleValue(t, parent reflect.Type) interface{} {
 	switch t.Kind() {
 	case reflect.Slice:
 		out := reflect.New(t).Elem()
-		reflect.Append(out, reflect.ValueOf(exampleValue(t.Elem(), t)))
+		reflect.Append(out, reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
 		return out.Interface()
 	case reflect.Chan:
-		return exampleValue(t.Elem(), nil)
+		return ExampleValue(method, t.Elem(), nil)
 	case reflect.Struct:
-		es := exampleStruct(t, parent)
+		es := exampleStruct(method, t, parent)
 		v := reflect.ValueOf(es).Elem().Interface()
 		ExampleValues[t] = v
 		return v
 	case reflect.Array:
 		out := reflect.New(t).Elem()
 		for i := 0; i < t.Len(); i++ {
-			out.Index(i).Set(reflect.ValueOf(exampleValue(t.Elem(), t)))
+			out.Index(i).Set(reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
 		}
 		return out.Interface()
 
 	case reflect.Ptr:
 		if t.Elem().Kind() == reflect.Struct {
-			es := exampleStruct(t.Elem(), t)
+			es := exampleStruct(method, t.Elem(), t)
 			//ExampleValues[t] = es
 			return es
 		}
@@ -199,10 +340,10 @@ func exampleValue(t, parent reflect.Type) interface{} {
 		return struct{}{}
 	}
 
-	panic(fmt.Sprintf("No example value for type: %s", t))
+	panic(fmt.Sprintf("No example value for type: %s (method '%s')", t, method))
 }
 
-func exampleStruct(t, parent reflect.Type) interface{} {
+func exampleStruct(method string, t, parent reflect.Type) interface{} {
 	ns := reflect.New(t)
 	for i := 0; i < t.NumField(); i++ {
 		f := t.Field(i)
@@ -210,7 +351,7 @@ func exampleStruct(t, parent reflect.Type) interface{} {
 			continue
 		}
 		if strings.Title(f.Name) == f.Name {
-			ns.Elem().Field(i).Set(reflect.ValueOf(exampleValue(f.Type, t)))
+			ns.Elem().Field(i).Set(reflect.ValueOf(ExampleValue(method, f.Type, t)))
 		}
 	}
 
@@ -218,6 +359,7 @@ func exampleStruct(t, parent reflect.Type) interface{} {
 }
 
 type Visitor struct {
+	Root    string
 	Methods map[string]ast.Node
 }
 
@@ -227,7 +369,7 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 		return v
 	}
 
-	if st.Name.Name != "FullNode" {
+	if st.Name.Name != v.Root {
 		return nil
 	}
 
@@ -241,32 +383,43 @@ func (v *Visitor) Visit(node ast.Node) ast.Visitor {
 	return v
 }
 
-const noComment = "There are not yet any comments for this method."
+const NoComment = "There are not yet any comments for this method."
 
-func parseApiASTInfo() (map[string]string, map[string]string) { //nolint:golint
+func ParseApiASTInfo(apiFile, iface, pkg, dir string) (comments map[string]string, groupDocs map[string]string) { //nolint:golint
 	fset := token.NewFileSet()
-	pkgs, err := parser.ParseDir(fset, "./api", nil, parser.AllErrors|parser.ParseComments)
+	apiDir, err := filepath.Abs(dir)
+	if err != nil {
+		fmt.Println("./api filepath absolute error: ", err)
+		return
+	}
+	apiFile, err = filepath.Abs(apiFile)
+	if err != nil {
+		fmt.Println("filepath absolute error: ", err, "file:", apiFile)
+		return
+	}
+	pkgs, err := parser.ParseDir(fset, apiDir, nil, parser.AllErrors|parser.ParseComments)
 	if err != nil {
 		fmt.Println("parse error: ", err)
+		return
 	}
 
-	ap := pkgs["api"]
+	ap := pkgs[pkg]
 
-	f := ap.Files["api/api_full.go"]
+	f := ap.Files[apiFile]
 
 	cmap := ast.NewCommentMap(fset, f, f.Comments)
 
-	v := &Visitor{make(map[string]ast.Node)}
-	ast.Walk(v, pkgs["api"])
+	v := &Visitor{iface, make(map[string]ast.Node)}
+	ast.Walk(v, ap)
 
-	groupDocs := make(map[string]string)
-	out := make(map[string]string)
+	comments = make(map[string]string)
+	groupDocs = make(map[string]string)
 	for mn, node := range v.Methods {
-		cs := cmap.Filter(node).Comments()
-		if len(cs) == 0 {
-			out[mn] = noComment
+		filteredComments := cmap.Filter(node).Comments()
+		if len(filteredComments) == 0 {
+			comments[mn] = NoComment
 		} else {
-			for _, c := range cs {
+			for _, c := range filteredComments {
 				if strings.HasPrefix(c.Text(), "MethodGroup:") {
 					parts := strings.Split(c.Text(), "\n")
 					groupName := strings.TrimSpace(parts[0][12:])
@@ -277,15 +430,19 @@ func parseApiASTInfo() (map[string]string, map[string]string) { //nolint:golint
 				}
 			}
 
-			last := cs[len(cs)-1].Text()
+			l := len(filteredComments) - 1
+			if len(filteredComments) > 1 {
+				l = len(filteredComments) - 2
+			}
+			last := filteredComments[l].Text()
 			if !strings.HasPrefix(last, "MethodGroup:") {
-				out[mn] = last
+				comments[mn] = last
 			} else {
-				out[mn] = noComment
+				comments[mn] = NoComment
 			}
 		}
 	}
-	return out, groupDocs
+	return comments, groupDocs
 }
 
 type MethodGroup struct {
@@ -301,7 +458,7 @@ type Method struct {
 	ResponseExample string
 }
 
-func methodGroupFromName(mn string) string {
+func MethodGroupFromName(mn string) string {
 	i := strings.IndexFunc(mn[1:], func(r rune) bool {
 		return unicode.IsUpper(r)
 	})
@@ -309,113 +466,4 @@ func methodGroupFromName(mn string) string {
 		return ""
 	}
 	return mn[:i+1]
-}
-
-func main() {
-
-	comments, groupComments := parseApiASTInfo()
-
-	groups := make(map[string]*MethodGroup)
-
-	var api struct{ api.FullNode }
-	t := reflect.TypeOf(api)
-	for i := 0; i < t.NumMethod(); i++ {
-		m := t.Method(i)
-
-		groupName := methodGroupFromName(m.Name)
-
-		g, ok := groups[groupName]
-		if !ok {
-			g = new(MethodGroup)
-			g.Header = groupComments[groupName]
-			g.GroupName = groupName
-			groups[groupName] = g
-		}
-
-		var args []interface{}
-		ft := m.Func.Type()
-		for j := 2; j < ft.NumIn(); j++ {
-			inp := ft.In(j)
-			args = append(args, exampleValue(inp, nil))
-		}
-
-		v, err := json.MarshalIndent(args, "", "  ")
-		if err != nil {
-			panic(err)
-		}
-
-		outv := exampleValue(ft.Out(0), nil)
-
-		ov, err := json.MarshalIndent(outv, "", "  ")
-		if err != nil {
-			panic(err)
-		}
-
-		g.Methods = append(g.Methods, &Method{
-			Name:            m.Name,
-			Comment:         comments[m.Name],
-			InputExample:    string(v),
-			ResponseExample: string(ov),
-		})
-	}
-
-	var groupslice []*MethodGroup
-	for _, g := range groups {
-		groupslice = append(groupslice, g)
-	}
-
-	sort.Slice(groupslice, func(i, j int) bool {
-		return groupslice[i].GroupName < groupslice[j].GroupName
-	})
-
-	fmt.Printf("# Groups\n")
-
-	for _, g := range groupslice {
-		fmt.Printf("* [%s](#%s)\n", g.GroupName, g.GroupName)
-		for _, method := range g.Methods {
-			fmt.Printf("  * [%s](#%s)\n", method.Name, method.Name)
-		}
-	}
-
-	permStruct := reflect.TypeOf(apistruct.FullNodeStruct{}.Internal)
-	commonPermStruct := reflect.TypeOf(apistruct.CommonStruct{}.Internal)
-
-	for _, g := range groupslice {
-		g := g
-		fmt.Printf("## %s\n", g.GroupName)
-		fmt.Printf("%s\n\n", g.Header)
-
-		sort.Slice(g.Methods, func(i, j int) bool {
-			return g.Methods[i].Name < g.Methods[j].Name
-		})
-
-		for _, m := range g.Methods {
-			fmt.Printf("### %s\n", m.Name)
-			fmt.Printf("%s\n\n", m.Comment)
-
-			meth, ok := permStruct.FieldByName(m.Name)
-			if !ok {
-				meth, ok = commonPermStruct.FieldByName(m.Name)
-				if !ok {
-					panic("no perms for method: " + m.Name)
-				}
-			}
-
-			perms := meth.Tag.Get("perm")
-
-			fmt.Printf("Perms: %s\n\n", perms)
-
-			if strings.Count(m.InputExample, "\n") > 0 {
-				fmt.Printf("Inputs:\n```json\n%s\n```\n\n", m.InputExample)
-			} else {
-				fmt.Printf("Inputs: `%s`\n\n", m.InputExample)
-			}
-
-			if strings.Count(m.ResponseExample, "\n") > 0 {
-				fmt.Printf("Response:\n```json\n%s\n```\n\n", m.ResponseExample)
-			} else {
-				fmt.Printf("Response: `%s`\n\n", m.ResponseExample)
-			}
-		}
-	}
 }

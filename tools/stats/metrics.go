@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
@@ -115,7 +115,7 @@ func NewPointFrom(p models.Point) *client.Point {
 	return client.NewPointFrom(p)
 }
 
-func RecordTipsetPoints(ctx context.Context, api api.FullNode, pl *PointList, tipset *types.TipSet) error {
+func RecordTipsetPoints(ctx context.Context, api v0api.FullNode, pl *PointList, tipset *types.TipSet) error {
 	cids := []string{}
 	for _, cid := range tipset.Cids() {
 		cids = append(cids, cid.String())
@@ -238,7 +238,7 @@ func (ht *ApiIpldStore) Put(ctx context.Context, v interface{}) (cid.Cid, error)
 	return cid.Undef, fmt.Errorf("Put is not implemented on ApiIpldStore")
 }
 
-func RecordTipsetStatePoints(ctx context.Context, api api.FullNode, pl *PointList, tipset *types.TipSet) error {
+func RecordTipsetStatePoints(ctx context.Context, api v0api.FullNode, pl *PointList, tipset *types.TipSet) error {
 	attoFil := types.NewInt(build.FilecoinPrecision).Int
 
 	//TODO: StatePledgeCollateral API is not implemented and is commented out - re-enable this block once the API is implemented again.
@@ -299,7 +299,7 @@ type msgTag struct {
 	exitcode uint8
 }
 
-func RecordTipsetMessagesPoints(ctx context.Context, api api.FullNode, pl *PointList, tipset *types.TipSet) error {
+func RecordTipsetMessagesPoints(ctx context.Context, api v0api.FullNode, pl *PointList, tipset *types.TipSet) error {
 	cids := tipset.Cids()
 	if len(cids) == 0 {
 		return fmt.Errorf("no cids in tipset")

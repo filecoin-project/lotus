@@ -1,0 +1,132 @@
+package paych
+
+import (
+	"encoding/base64"
+	"fmt"
+
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	big "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/ipfs/go-cid"
+	ipldcbor "github.com/ipfs/go-ipld-cbor"
+
+	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
+{{range .versions}}
+	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+{{end}}
+
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/types"
+)
+
+func init() {
+{{range .versions}}
+	builtin.RegisterActorState(builtin{{.}}.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load{{.}}(store, root)
+	})
+{{end}}}
+
+// Load returns an abstract copy of payment channel state, irregardless of actor version
+func Load(store adt.Store, act *types.Actor) (State, error) {
+	switch act.Code {
+{{range .versions}}
+	case builtin{{.}}.PaymentChannelActorCodeID:
+		return load{{.}}(store, act.Head)
+{{end}}
+	}
+	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
+}
+
+func MakeState(store adt.Store, av actors.Version) (State, error) {
+	switch av {
+{{range .versions}}
+	case actors.Version{{.}}:
+		return make{{.}}(store)
+{{end}}
+}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	switch av {
+{{range .versions}}
+	case actors.Version{{.}}:
+		return builtin{{.}}.PaymentChannelActorCodeID, nil
+{{end}}
+	}
+
+	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+}
+
+// State is an abstract version of payment channel state that works across
+// versions
+type State interface {
+	cbor.Marshaler
+	// Channel owner, who has funded the actor
+	From() (address.Address, error)
+	// Recipient of payouts from channel
+	To() (address.Address, error)
+
+	// Height at which the channel can be `Collected`
+	SettlingAt() (abi.ChainEpoch, error)
+
+	// Amount successfully redeemed through the payment channel, paid out on `Collect()`
+	ToSend() (abi.TokenAmount, error)
+
+	// Get total number of lanes
+	LaneCount() (uint64, error)
+
+	// Iterate lane states
+	ForEachLaneState(cb func(idx uint64, dl LaneState) error) error
+
+	GetState() interface{}
+}
+
+// LaneState is an abstract copy of the state of a single lane
+type LaneState interface {
+	Redeemed() (big.Int, error)
+	Nonce() (uint64, error)
+}
+
+type SignedVoucher = paych0.SignedVoucher
+type ModVerifyParams = paych0.ModVerifyParams
+
+// DecodeSignedVoucher decodes base64 encoded signed voucher.
+func DecodeSignedVoucher(s string) (*SignedVoucher, error) {
+	data, err := base64.RawURLEncoding.DecodeString(s)
+	if err != nil {
+		return nil, err
+	}
+
+	var sv SignedVoucher
+	if err := ipldcbor.DecodeInto(data, &sv); err != nil {
+		return nil, err
+	}
+
+	return &sv, nil
+}
+
+var Methods = builtin{{.latestVersion}}.MethodsPaych
+
+func Message(version actors.Version, from address.Address) MessageBuilder {
+	switch version {
+{{range .versions}}
+	case actors.Version{{.}}:
+		return message{{.}}{from}
+{{end}}
+	default:
+		panic(fmt.Sprintf("unsupported actors version: %d", version))
+	}
+}
+
+type MessageBuilder interface {
+	Create(to address.Address, initialAmount abi.TokenAmount) (*types.Message, error)
+	Update(paych address.Address, voucher *SignedVoucher, secret []byte) (*types.Message, error)
+	Settle(paych address.Address) (*types.Message, error)
+	Collect(paych address.Address) (*types.Message, error)
+}

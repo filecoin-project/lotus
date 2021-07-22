@@ -3,6 +3,13 @@
 <head>
     <title>Sending Funds - Lotus Fountain</title>
     <link rel="stylesheet" type="text/css" href="main.css">
+	<script src="https://www.google.com/recaptcha/api.js"></script>
+	<script>
+   		function onSubmit(token) {
+     	document.getElementById("funds-form").submit();
+   	}
+	</script>
+
 </head>
 <body>
 <div class="Index">
@@ -11,10 +18,13 @@
             [SENDING FUNDS]
         </div>
         <div class="Index-node">
-            <form action='/send' method='get'>
+            <form action='/send' method='post' id='funds-form'>
                 <span>Enter destination address:</span>
-                <input type='text' name='address' style="width: 300px">
-                <button type='submit'>Send Funds</button>
+				<input type='text' name='address' style="width: 300px">
+				<button class="g-recaptcha" 
+						data-sitekey="{{ . }}"
+						data-callback='onSubmit' 
+						data-action='submit'>Send Funds</button>
             </form>
         </div>
     </div>
