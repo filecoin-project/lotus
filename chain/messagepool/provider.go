@@ -9,6 +9,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/chain/messagesigner"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -30,17 +31,28 @@ type Provider interface {
 	MessagesForTipset(*types.TipSet) ([]types.ChainMsg, error)
 	LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error)
 	ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (types.BigInt, error)
+	IsLite() bool
 }
 
 type mpoolProvider struct {
 	sm *stmgr.StateManager
 	ps *pubsub.PubSub
+
+	lite messagesigner.MpoolNonceAPI
 }
 
 var _ Provider = (*mpoolProvider)(nil)
 
 func NewProvider(sm *stmgr.StateManager, ps *pubsub.PubSub) Provider {
 	return &mpoolProvider{sm: sm, ps: ps}
+}
+
+func NewProviderLite(sm *stmgr.StateManager, ps *pubsub.PubSub, noncer messagesigner.MpoolNonceAPI) Provider {
+	return &mpoolProvider{sm: sm, ps: ps, lite: noncer}
+}
+
+func (mpp *mpoolProvider) IsLite() bool {
+	return mpp.lite != nil
 }
 
 func (mpp *mpoolProvider) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) error) *types.TipSet {
@@ -63,6 +75,19 @@ func (mpp *mpoolProvider) PubSubPublish(k string, v []byte) error {
 }
 
 func (mpp *mpoolProvider) GetActorAfter(addr address.Address, ts *types.TipSet) (*types.Actor, error) {
+	if mpp.IsLite() {
+		n, err := mpp.lite.GetNonce(context.TODO(), addr, ts.Key())
+		if err != nil {
+			return nil, xerrors.Errorf("getting nonce over lite: %w", err)
+		}
+		a, err := mpp.lite.GetActor(context.TODO(), addr, ts.Key())
+		if err != nil {
+			return nil, xerrors.Errorf("getting actor over lite: %w", err)
+		}
+		a.Nonce = n
+		return a, nil
+	}
+
 	stcid, _, err := mpp.sm.TipSetState(context.TODO(), ts)
 	if err != nil {
 		return nil, xerrors.Errorf("computing tipset state for GetActor: %w", err)

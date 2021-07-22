@@ -41,6 +41,27 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
+func MakeState(store adt.Store, av actors.Version, signers []address.Address, threshold uint64, startEpoch abi.ChainEpoch, unlockDuration abi.ChainEpoch, initialBalance abi.TokenAmount) (State, error) {
+	switch av {
+{{range .versions}}
+	case actors.Version{{.}}:
+		return make{{.}}(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+{{end}}
+}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	switch av {
+{{range .versions}}
+	case actors.Version{{.}}:
+		return builtin{{.}}.MultisigActorCodeID, nil
+{{end}}
+	}
+
+	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+}
+
 type State interface {
 	cbor.Marshaler
 
@@ -56,6 +77,7 @@ type State interface {
 
 	transactions() (adt.Map, error)
 	decodeTransaction(val *cbg.Deferred) (Transaction, error)
+	GetState() interface{}
 }
 
 type Transaction = msig0.Transaction
@@ -93,6 +115,7 @@ type MessageBuilder interface {
 type ProposalHashData = msig{{.latestVersion}}.ProposalHashData
 type ProposeReturn = msig{{.latestVersion}}.ProposeReturn
 type ProposeParams = msig{{.latestVersion}}.ProposeParams
+type ApproveReturn = msig{{.latestVersion}}.ApproveReturn
 
 func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
 	params := msig{{.latestVersion}}.TxnIDParams{ID: msig{{.latestVersion}}.TxnID(id)}

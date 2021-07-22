@@ -95,11 +95,13 @@ var msigCreateCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("multisigs must have at least one signer"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
 
 		var addrs []address.Address
@@ -146,13 +148,20 @@ var msigCreateCmd = &cli.Command{
 
 		gp := types.NewInt(1)
 
-		msgCid, err := api.MsigCreate(ctx, required, addrs, d, intVal, sendAddr, gp)
+		proto, err := api.MsigCreate(ctx, required, addrs, d, intVal, sendAddr, gp)
 		if err != nil {
 			return err
 		}
 
+		sm, err := InteractiveSend(ctx, cctx, srv, proto)
+		if err != nil {
+			return err
+		}
+
+		msgCid := sm.Cid()
+
 		// wait for it to get mined into a block
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -364,11 +373,13 @@ var msigProposeCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must either pass three or five arguments"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
@@ -426,14 +437,21 @@ var msigProposeCmd = &cli.Command{
 			return fmt.Errorf("actor %s is not a multisig actor", msig)
 		}
 
-		msgCid, err := api.MsigPropose(ctx, msig, dest, types.BigInt(value), from, method, params)
+		proto, err := api.MsigPropose(ctx, msig, dest, types.BigInt(value), from, method, params)
 		if err != nil {
 			return err
 		}
 
+		sm, err := InteractiveSend(ctx, cctx, srv, proto)
+		if err != nil {
+			return err
+		}
+
+		msgCid := sm.Cid()
+
 		fmt.Println("send proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -481,11 +499,13 @@ var msigApproveCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value> [ <method> <params> ]"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
@@ -515,10 +535,17 @@ var msigApproveCmd = &cli.Command{
 
 		var msgCid cid.Cid
 		if cctx.Args().Len() == 2 {
-			msgCid, err = api.MsigApprove(ctx, msig, txid, from)
+			proto, err := api.MsigApprove(ctx, msig, txid, from)
 			if err != nil {
 				return err
 			}
+
+			sm, err := InteractiveSend(ctx, cctx, srv, proto)
+			if err != nil {
+				return err
+			}
+
+			msgCid = sm.Cid()
 		} else {
 			proposer, err := address.NewFromString(cctx.Args().Get(2))
 			if err != nil {
@@ -558,15 +585,22 @@ var msigApproveCmd = &cli.Command{
 				params = p
 			}
 
-			msgCid, err = api.MsigApproveTxnHash(ctx, msig, txid, proposer, dest, types.BigInt(value), from, method, params)
+			proto, err := api.MsigApproveTxnHash(ctx, msig, txid, proposer, dest, types.BigInt(value), from, method, params)
 			if err != nil {
 				return err
 			}
+
+			sm, err := InteractiveSend(ctx, cctx, srv, proto)
+			if err != nil {
+				return err
+			}
+
+			msgCid = sm.Cid()
 		}
 
 		fmt.Println("sent approval in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -598,11 +632,13 @@ var msigRemoveProposeCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address and signer address"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
@@ -630,14 +666,21 @@ var msigRemoveProposeCmd = &cli.Command{
 			from = defaddr
 		}
 
-		msgCid, err := api.MsigRemoveSigner(ctx, msig, from, addr, cctx.Bool("decrease-threshold"))
+		proto, err := api.MsigRemoveSigner(ctx, msig, from, addr, cctx.Bool("decrease-threshold"))
 		if err != nil {
 			return err
 		}
 
+		sm, err := InteractiveSend(ctx, cctx, srv, proto)
+		if err != nil {
+			return err
+		}
+
+		msgCid := sm.Cid()
+
 		fmt.Println("sent remove proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -676,11 +719,13 @@ var msigAddProposeCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address and signer address"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
@@ -708,14 +753,21 @@ var msigAddProposeCmd = &cli.Command{
 			from = defaddr
 		}
 
-		msgCid, err := api.MsigAddPropose(ctx, msig, from, addr, cctx.Bool("increase-threshold"))
+		proto, err := api.MsigAddPropose(ctx, msig, from, addr, cctx.Bool("increase-threshold"))
 		if err != nil {
 			return err
 		}
 
+		sm, err := InteractiveSend(ctx, cctx, srv, proto)
+		if err != nil {
+			return err
+		}
+
+		msgCid := sm.Cid()
+
 		fmt.Fprintln(cctx.App.Writer, "sent add proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -743,11 +795,13 @@ var msigAddApproveCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, proposer address, transaction id, new signer address, whether to increase threshold"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
@@ -790,14 +844,21 @@ var msigAddApproveCmd = &cli.Command{
 			from = defaddr
 		}
 
-		msgCid, err := api.MsigAddApprove(ctx, msig, from, txid, prop, newAdd, inc)
+		proto, err := api.MsigAddApprove(ctx, msig, from, txid, prop, newAdd, inc)
 		if err != nil {
 			return err
 		}
 
+		sm, err := InteractiveSend(ctx, cctx, srv, proto)
+		if err != nil {
+			return err
+		}
+
+		msgCid := sm.Cid()
+
 		fmt.Println("sent add approval in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -825,11 +886,13 @@ var msigAddCancelCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, transaction id, new signer address, whether to increase threshold"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
@@ -867,14 +930,21 @@ var msigAddCancelCmd = &cli.Command{
 			from = defaddr
 		}
 
-		msgCid, err := api.MsigAddCancel(ctx, msig, from, txid, newAdd, inc)
+		proto, err := api.MsigAddCancel(ctx, msig, from, txid, newAdd, inc)
 		if err != nil {
 			return err
 		}
 
+		sm, err := InteractiveSend(ctx, cctx, srv, proto)
+		if err != nil {
+			return err
+		}
+
+		msgCid := sm.Cid()
+
 		fmt.Println("sent add cancellation in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -902,11 +972,13 @@ var msigSwapProposeCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, old signer address, new signer address"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
@@ -939,14 +1011,21 @@ var msigSwapProposeCmd = &cli.Command{
 			from = defaddr
 		}
 
-		msgCid, err := api.MsigSwapPropose(ctx, msig, from, oldAdd, newAdd)
+		proto, err := api.MsigSwapPropose(ctx, msig, from, oldAdd, newAdd)
 		if err != nil {
 			return err
 		}
 
+		sm, err := InteractiveSend(ctx, cctx, srv, proto)
+		if err != nil {
+			return err
+		}
+
+		msgCid := sm.Cid()
+
 		fmt.Println("sent swap proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -974,11 +1053,13 @@ var msigSwapApproveCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, proposer address, transaction id, old signer address, new signer address"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
@@ -1021,14 +1102,21 @@ var msigSwapApproveCmd = &cli.Command{
 			from = defaddr
 		}
 
-		msgCid, err := api.MsigSwapApprove(ctx, msig, from, txid, prop, oldAdd, newAdd)
+		proto, err := api.MsigSwapApprove(ctx, msig, from, txid, prop, oldAdd, newAdd)
 		if err != nil {
 			return err
 		}
 
+		sm, err := InteractiveSend(ctx, cctx, srv, proto)
+		if err != nil {
+			return err
+		}
+
+		msgCid := sm.Cid()
+
 		fmt.Println("sent swap approval in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -1056,11 +1144,13 @@ var msigSwapCancelCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, transaction id, old signer address, new signer address"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
@@ -1098,14 +1188,21 @@ var msigSwapCancelCmd = &cli.Command{
 			from = defaddr
 		}
 
-		msgCid, err := api.MsigSwapCancel(ctx, msig, from, txid, oldAdd, newAdd)
+		proto, err := api.MsigSwapCancel(ctx, msig, from, txid, oldAdd, newAdd)
 		if err != nil {
 			return err
 		}
 
+		sm, err := InteractiveSend(ctx, cctx, srv, proto)
+		if err != nil {
+			return err
+		}
+
+		msgCid := sm.Cid()
+
 		fmt.Println("sent swap cancellation in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -1133,11 +1230,13 @@ var msigLockProposeCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, start epoch, unlock duration, and amount"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
@@ -1185,14 +1284,21 @@ var msigLockProposeCmd = &cli.Command{
 			return actErr
 		}
 
-		msgCid, err := api.MsigPropose(ctx, msig, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
+		proto, err := api.MsigPropose(ctx, msig, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
 		if err != nil {
 			return err
 		}
 
+		sm, err := InteractiveSend(ctx, cctx, srv, proto)
+		if err != nil {
+			return err
+		}
+
+		msgCid := sm.Cid()
+
 		fmt.Println("sent lock proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -1220,11 +1326,13 @@ var msigLockApproveCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, proposer address, tx id, start epoch, unlock duration, and amount"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
@@ -1282,14 +1390,21 @@ var msigLockApproveCmd = &cli.Command{
 			return actErr
 		}
 
-		msgCid, err := api.MsigApproveTxnHash(ctx, msig, txid, prop, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
+		proto, err := api.MsigApproveTxnHash(ctx, msig, txid, prop, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
 		if err != nil {
 			return err
 		}
 
+		sm, err := InteractiveSend(ctx, cctx, srv, proto)
+		if err != nil {
+			return err
+		}
+
+		msgCid := sm.Cid()
+
 		fmt.Println("sent lock approval in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -1313,15 +1428,17 @@ var msigLockCancelCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 6 {
+		if cctx.Args().Len() != 5 {
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address, tx id, start epoch, unlock duration, and amount"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
@@ -1374,14 +1491,21 @@ var msigLockCancelCmd = &cli.Command{
 			return actErr
 		}
 
-		msgCid, err := api.MsigCancel(ctx, msig, txid, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
+		proto, err := api.MsigCancel(ctx, msig, txid, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
 		if err != nil {
 			return err
 		}
 
+		sm, err := InteractiveSend(ctx, cctx, srv, proto)
+		if err != nil {
+			return err
+		}
+
+		msgCid := sm.Cid()
+
 		fmt.Println("sent lock cancellation in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}
@@ -1471,11 +1595,13 @@ var msigProposeThresholdCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("must pass multisig address and new threshold value"))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
 		ctx := ReqContext(cctx)
 
 		msig, err := address.NewFromString(cctx.Args().Get(0))
@@ -1511,14 +1637,21 @@ var msigProposeThresholdCmd = &cli.Command{
 			return actErr
 		}
 
-		msgCid, err := api.MsigPropose(ctx, msig, msig, types.NewInt(0), from, uint64(multisig.Methods.ChangeNumApprovalsThreshold), params)
+		proto, err := api.MsigPropose(ctx, msig, msig, types.NewInt(0), from, uint64(multisig.Methods.ChangeNumApprovalsThreshold), params)
 		if err != nil {
 			return fmt.Errorf("failed to propose change of threshold: %w", err)
 		}
 
+		sm, err := InteractiveSend(ctx, cctx, srv, proto)
+		if err != nil {
+			return err
+		}
+
+		msgCid := sm.Cid()
+
 		fmt.Println("sent change threshold proposal in message: ", msgCid)
 
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
 			return err
 		}

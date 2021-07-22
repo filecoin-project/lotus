@@ -166,13 +166,19 @@ var storageListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "list local storage paths",
 	Flags: []cli.Flag{
-		&cli.BoolFlag{Name: "color"},
+		&cli.BoolFlag{
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
+		},
 	},
 	Subcommands: []*cli.Command{
 		storageListSectorsCmd,
 	},
 	Action: func(cctx *cli.Context) error {
-		color.NoColor = !cctx.Bool("color")
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
 
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
@@ -478,12 +484,15 @@ var storageListSectorsCmd = &cli.Command{
 	Usage: "get list of all sector files",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "color",
-			Value: true,
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		color.NoColor = !cctx.Bool("color")
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
 
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {

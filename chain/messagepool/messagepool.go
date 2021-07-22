@@ -426,6 +426,27 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journ
 	return mp, nil
 }
 
+func (mp *MessagePool) ForEachPendingMessage(f func(cid.Cid) error) error {
+	mp.lk.Lock()
+	defer mp.lk.Unlock()
+
+	for _, mset := range mp.pending {
+		for _, m := range mset.msgs {
+			err := f(m.Cid())
+			if err != nil {
+				return err
+			}
+
+			err = f(m.Message.Cid())
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (address.Address, error) {
 	// check the cache
 	a, f := mp.keyCache[addr]
@@ -948,6 +969,13 @@ func (mp *MessagePool) GetNonce(ctx context.Context, addr address.Address, _ typ
 	return mp.getNonceLocked(ctx, addr, mp.curTs)
 }
 
+// GetActor should not be used. It is only here to satisfy interface mess caused by lite node handling
+func (mp *MessagePool) GetActor(_ context.Context, addr address.Address, _ types.TipSetKey) (*types.Actor, error) {
+	mp.curTsLk.Lock()
+	defer mp.curTsLk.Unlock()
+	return mp.api.GetActorAfter(addr, mp.curTs)
+}
+
 func (mp *MessagePool) getNonceLocked(ctx context.Context, addr address.Address, curTs *types.TipSet) (uint64, error) {
 	stateNonce, err := mp.getStateNonce(ctx, addr, curTs) // sanity check
 	if err != nil {
@@ -973,11 +1001,11 @@ func (mp *MessagePool) getNonceLocked(ctx context.Context, addr address.Address,
 	return stateNonce, nil
 }
 
-func (mp *MessagePool) getStateNonce(ctx context.Context, addr address.Address, curTs *types.TipSet) (uint64, error) {
+func (mp *MessagePool) getStateNonce(ctx context.Context, addr address.Address, ts *types.TipSet) (uint64, error) {
 	done := metrics.Timer(ctx, metrics.MpoolGetNonceDuration)
 	defer done()
 
-	act, err := mp.api.GetActorAfter(addr, curTs)
+	act, err := mp.api.GetActorAfter(addr, ts)
 	if err != nil {
 		return 0, err
 	}

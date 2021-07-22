@@ -1,22 +1,18 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"testing"
 	"time"
 
-	logging "github.com/ipfs/go-log/v2"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/test"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
-	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/node/repo"
-	builder "github.com/filecoin-project/lotus/node/test"
 )
 
 func TestMinerAllInfo(t *testing.T) {
@@ -24,20 +20,9 @@ func TestMinerAllInfo(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 
-	_ = logging.SetLogLevel("*", "INFO")
-
-	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
-	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
-	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
-
 	_test = true
 
-	lotuslog.SetupLogLevels()
-	logging.SetLogLevel("miner", "ERROR")
-	logging.SetLogLevel("chainstore", "ERROR")
-	logging.SetLogLevel("chain", "ERROR")
-	logging.SetLogLevel("sub", "ERROR")
-	logging.SetLogLevel("storageminer", "ERROR")
+	kit.QuietMiningLogs()
 
 	oldDelay := policy.GetPreCommitChallengeDelay()
 	policy.SetPreCommitChallengeDelay(5)
@@ -45,15 +30,15 @@ func TestMinerAllInfo(t *testing.T) {
 		policy.SetPreCommitChallengeDelay(oldDelay)
 	})
 
-	var n []test.TestNode
-	var sn []test.TestStorageNode
+	client, miner, ens := kit.EnsembleMinimal(t)
+	ens.InterconnectAll().BeginMining(time.Second)
 
 	run := func(t *testing.T) {
 		app := cli.NewApp()
 		app.Metadata = map[string]interface{}{
 			"repoType":         repo.StorageMiner,
-			"testnode-full":    n[0],
-			"testnode-storage": sn[0],
+			"testnode-full":    client,
+			"testnode-storage": miner,
 		}
 		api.RunningNodeType = api.NodeMiner
 
@@ -62,15 +47,12 @@ func TestMinerAllInfo(t *testing.T) {
 		require.NoError(t, infoAllCmd.Action(cctx))
 	}
 
-	bp := func(t *testing.T, fullOpts []test.FullNodeOpts, storage []test.StorageMiner) ([]test.TestNode, []test.TestStorageNode) {
-		n, sn = builder.Builder(t, fullOpts, storage)
+	t.Run("pre-info-all", run)
 
-		t.Run("pre-info-all", run)
-
-		return n, sn
-	}
-
-	test.TestDealFlow(t, bp, time.Second, false, false, 0)
+	dh := kit.NewDealHarness(t, client, miner, miner)
+	deal, res, inPath := dh.MakeOnlineDeal(context.Background(), kit.MakeFullDealParams{Rseed: 6})
+	outPath := dh.PerformRetrieval(context.Background(), deal, res.Root, false)
+	kit.AssertFilesEqual(t, inPath, outPath)
 
 	t.Run("post-info-all", run)
 }

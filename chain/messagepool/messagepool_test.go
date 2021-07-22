@@ -106,6 +106,10 @@ func (tma *testMpoolAPI) PutMessage(m types.ChainMsg) (cid.Cid, error) {
 	return cid.Undef, nil
 }
 
+func (tma *testMpoolAPI) IsLite() bool {
+	return false
+}
+
 func (tma *testMpoolAPI) PubSubPublish(string, []byte) error {
 	tma.published++
 	return nil
@@ -201,7 +205,7 @@ func (tma *testMpoolAPI) ChainComputeBaseFee(ctx context.Context, ts *types.TipS
 
 func assertNonce(t *testing.T, mp *MessagePool, addr address.Address, val uint64) {
 	t.Helper()
-	n, err := mp.GetNonce(context.Background(), addr, types.EmptyTSK)
+	n, err := mp.GetNonce(context.TODO(), addr, types.EmptyTSK)
 	if err != nil {
 		t.Fatal(err)
 	}

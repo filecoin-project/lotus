@@ -4,7 +4,6 @@ package api
 
 import (
 	"context"
-	"io"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -128,6 +127,8 @@ type FullNodeStruct struct {
 
 		ChainGetMessage func(p0 context.Context, p1 cid.Cid) (*types.Message, error) `perm:"read"`
 
+		ChainGetMessagesInTipset func(p0 context.Context, p1 types.TipSetKey) ([]Message, error) `perm:"read"`
+
 		ChainGetNode func(p0 context.Context, p1 string) (*IpldObject, error) `perm:"read"`
 
 		ChainGetParentMessages func(p0 context.Context, p1 cid.Cid) ([]Message, error) `perm:"read"`
@@ -180,6 +181,8 @@ type FullNodeStruct struct {
 
 		ClientGetDealUpdates func(p0 context.Context) (<-chan DealInfo, error) `perm:"write"`
 
+		ClientGetRetrievalUpdates func(p0 context.Context) (<-chan RetrievalInfo, error) `perm:"write"`
+
 		ClientHasLocal func(p0 context.Context, p1 cid.Cid) (bool, error) `perm:"write"`
 
 		ClientImport func(p0 context.Context, p1 FileRef) (*ImportRes, error) `perm:"admin"`
@@ -189,6 +192,8 @@ type FullNodeStruct struct {
 		ClientListDeals func(p0 context.Context) ([]DealInfo, error) `perm:"write"`
 
 		ClientListImports func(p0 context.Context) ([]Import, error) `perm:"write"`
+
+		ClientListRetrievals func(p0 context.Context) ([]RetrievalInfo, error) `perm:"write"`
 
 		ClientMinerQueryOffer func(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 *cid.Cid) (QueryOffer, error) `perm:"read"`
 
@@ -205,6 +210,8 @@ type FullNodeStruct struct {
 		ClientRetrieveWithEvents func(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) (<-chan marketevents.RetrievalEvent, error) `perm:"admin"`
 
 		ClientStartDeal func(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) `perm:"admin"`
+
+		ClientStatelessDeal func(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) `perm:"write"`
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
@@ -236,6 +243,12 @@ type FullNodeStruct struct {
 
 		MpoolBatchPushUntrusted func(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error) `perm:"write"`
 
+		MpoolCheckMessages func(p0 context.Context, p1 []*MessagePrototype) ([][]MessageCheckStatus, error) `perm:"read"`
+
+		MpoolCheckPendingMessages func(p0 context.Context, p1 address.Address) ([][]MessageCheckStatus, error) `perm:"read"`
+
+		MpoolCheckReplaceMessages func(p0 context.Context, p1 []*types.Message) ([][]MessageCheckStatus, error) `perm:"read"`
+
 		MpoolClear func(p0 context.Context, p1 bool) error `perm:"write"`
 
 		MpoolGetConfig func(p0 context.Context) (*types.MpoolConfig, error) `perm:"read"`
@@ -256,19 +269,19 @@ type FullNodeStruct struct {
 
 		MpoolSub func(p0 context.Context) (<-chan MpoolUpdate, error) `perm:"read"`
 
-		MsigAddApprove func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 bool) (cid.Cid, error) `perm:"sign"`
+		MsigAddApprove func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 bool) (*MessagePrototype, error) `perm:"sign"`
 
-		MsigAddCancel func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 bool) (cid.Cid, error) `perm:"sign"`
+		MsigAddCancel func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 bool) (*MessagePrototype, error) `perm:"sign"`
 
-		MsigAddPropose func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (cid.Cid, error) `perm:"sign"`
+		MsigAddPropose func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*MessagePrototype, error) `perm:"sign"`
 
-		MsigApprove func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (cid.Cid, error) `perm:"sign"`
+		MsigApprove func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*MessagePrototype, error) `perm:"sign"`
 
-		MsigApproveTxnHash func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 address.Address, p5 types.BigInt, p6 address.Address, p7 uint64, p8 []byte) (cid.Cid, error) `perm:"sign"`
+		MsigApproveTxnHash func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 address.Address, p5 types.BigInt, p6 address.Address, p7 uint64, p8 []byte) (*MessagePrototype, error) `perm:"sign"`
 
-		MsigCancel func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (cid.Cid, error) `perm:"sign"`
+		MsigCancel func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*MessagePrototype, error) `perm:"sign"`
 
-		MsigCreate func(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (cid.Cid, error) `perm:"sign"`
+		MsigCreate func(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (*MessagePrototype, error) `perm:"sign"`
 
 		MsigGetAvailableBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
@@ -278,15 +291,17 @@ type FullNodeStruct struct {
 
 		MsigGetVestingSchedule func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MsigVesting, error) `perm:"read"`
 
-		MsigPropose func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 address.Address, p5 uint64, p6 []byte) (cid.Cid, error) `perm:"sign"`
+		MsigPropose func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 address.Address, p5 uint64, p6 []byte) (*MessagePrototype, error) `perm:"sign"`
 
-		MsigRemoveSigner func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (cid.Cid, error) `perm:"sign"`
+		MsigRemoveSigner func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*MessagePrototype, error) `perm:"sign"`
 
-		MsigSwapApprove func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 address.Address) (cid.Cid, error) `perm:"sign"`
+		MsigSwapApprove func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 address.Address) (*MessagePrototype, error) `perm:"sign"`
 
-		MsigSwapCancel func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (cid.Cid, error) `perm:"sign"`
+		MsigSwapCancel func(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (*MessagePrototype, error) `perm:"sign"`
 
-		MsigSwapPropose func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (cid.Cid, error) `perm:"sign"`
+		MsigSwapPropose func(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (*MessagePrototype, error) `perm:"sign"`
+
+		NodeStatus func(p0 context.Context, p1 bool) (NodeStatus, error) `perm:"read"`
 
 		PaychAllocateLane func(p0 context.Context, p1 address.Address) (uint64, error) `perm:"sign"`
 
@@ -518,6 +533,8 @@ type GatewayStruct struct {
 
 		StateWaitMsg func(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) ``
 
+		Version func(p0 context.Context) (APIVersion, error) ``
+
 		WalletBalance func(p0 context.Context, p1 address.Address) (types.BigInt, error) ``
 	}
 }
@@ -650,6 +667,8 @@ type StorageMinerStruct struct {
 
 		SealingSchedDiag func(p0 context.Context, p1 bool) (interface{}, error) `perm:"admin"`
 
+		SectorAddPieceToAny func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storage.Data, p3 PieceDealInfo) (SectorOffset, error) `perm:"admin"`
+
 		SectorCommitFlush func(p0 context.Context) ([]sealiface.CommitBatchRes, error) `perm:"admin"`
 
 		SectorCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
@@ -687,6 +706,8 @@ type StorageMinerStruct struct {
 		SectorsStatus func(p0 context.Context, p1 abi.SectorNumber, p2 bool) (SectorInfo, error) `perm:"read"`
 
 		SectorsSummary func(p0 context.Context) (map[SectorState]int, error) `perm:"read"`
+
+		SectorsUnsealPiece func(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) error `perm:"admin"`
 
 		SectorsUpdate func(p0 context.Context, p1 abi.SectorNumber, p2 SectorState) error `perm:"admin"`
 
@@ -730,19 +751,19 @@ type StorageMinerStub struct {
 
 type WalletStruct struct {
 	Internal struct {
-		WalletDelete func(p0 context.Context, p1 address.Address) error ``
+		WalletDelete func(p0 context.Context, p1 address.Address) error `perm:"admin"`
 
-		WalletExport func(p0 context.Context, p1 address.Address) (*types.KeyInfo, error) ``
+		WalletExport func(p0 context.Context, p1 address.Address) (*types.KeyInfo, error) `perm:"admin"`
 
-		WalletHas func(p0 context.Context, p1 address.Address) (bool, error) ``
+		WalletHas func(p0 context.Context, p1 address.Address) (bool, error) `perm:"admin"`
 
-		WalletImport func(p0 context.Context, p1 *types.KeyInfo) (address.Address, error) ``
+		WalletImport func(p0 context.Context, p1 *types.KeyInfo) (address.Address, error) `perm:"admin"`
 
-		WalletList func(p0 context.Context) ([]address.Address, error) ``
+		WalletList func(p0 context.Context) ([]address.Address, error) `perm:"admin"`
 
-		WalletNew func(p0 context.Context, p1 types.KeyType) (address.Address, error) ``
+		WalletNew func(p0 context.Context, p1 types.KeyType) (address.Address, error) `perm:"admin"`
 
-		WalletSign func(p0 context.Context, p1 address.Address, p2 []byte, p3 MsgMeta) (*crypto.Signature, error) ``
+		WalletSign func(p0 context.Context, p1 address.Address, p2 []byte, p3 MsgMeta) (*crypto.Signature, error) `perm:"admin"`
 	}
 }
 
@@ -766,8 +787,6 @@ type WorkerStruct struct {
 		Paths func(p0 context.Context) ([]stores.StoragePath, error) `perm:"admin"`
 
 		ProcessSession func(p0 context.Context) (uuid.UUID, error) `perm:"admin"`
-
-		ReadPiece func(p0 context.Context, p1 io.Writer, p2 storage.SectorRef, p3 storiface.UnpaddedByteIndex, p4 abi.UnpaddedPieceSize) (storiface.CallID, error) `perm:"admin"`
 
 		ReleaseUnsealed func(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) `perm:"admin"`
 
@@ -1084,6 +1103,14 @@ func (s *FullNodeStub) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.M
 	return nil, xerrors.New("method not supported")
 }
 
+func (s *FullNodeStruct) ChainGetMessagesInTipset(p0 context.Context, p1 types.TipSetKey) ([]Message, error) {
+	return s.Internal.ChainGetMessagesInTipset(p0, p1)
+}
+
+func (s *FullNodeStub) ChainGetMessagesInTipset(p0 context.Context, p1 types.TipSetKey) ([]Message, error) {
+	return *new([]Message), xerrors.New("method not supported")
+}
+
 func (s *FullNodeStruct) ChainGetNode(p0 context.Context, p1 string) (*IpldObject, error) {
 	return s.Internal.ChainGetNode(p0, p1)
 }
@@ -1292,6 +1319,14 @@ func (s *FullNodeStub) ClientGetDealUpdates(p0 context.Context) (<-chan DealInfo
 	return nil, xerrors.New("method not supported")
 }
 
+func (s *FullNodeStruct) ClientGetRetrievalUpdates(p0 context.Context) (<-chan RetrievalInfo, error) {
+	return s.Internal.ClientGetRetrievalUpdates(p0)
+}
+
+func (s *FullNodeStub) ClientGetRetrievalUpdates(p0 context.Context) (<-chan RetrievalInfo, error) {
+	return nil, xerrors.New("method not supported")
+}
+
 func (s *FullNodeStruct) ClientHasLocal(p0 context.Context, p1 cid.Cid) (bool, error) {
 	return s.Internal.ClientHasLocal(p0, p1)
 }
@@ -1330,6 +1365,14 @@ func (s *FullNodeStruct) ClientListImports(p0 context.Context) ([]Import, error)
 
 func (s *FullNodeStub) ClientListImports(p0 context.Context) ([]Import, error) {
 	return *new([]Import), xerrors.New("method not supported")
+}
+
+func (s *FullNodeStruct) ClientListRetrievals(p0 context.Context) ([]RetrievalInfo, error) {
+	return s.Internal.ClientListRetrievals(p0)
+}
+
+func (s *FullNodeStub) ClientListRetrievals(p0 context.Context) ([]RetrievalInfo, error) {
+	return *new([]RetrievalInfo), xerrors.New("method not supported")
 }
 
 func (s *FullNodeStruct) ClientMinerQueryOffer(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 *cid.Cid) (QueryOffer, error) {
@@ -1393,6 +1436,14 @@ func (s *FullNodeStruct) ClientStartDeal(p0 context.Context, p1 *StartDealParams
 }
 
 func (s *FullNodeStub) ClientStartDeal(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *FullNodeStruct) ClientStatelessDeal(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) {
+	return s.Internal.ClientStatelessDeal(p0, p1)
+}
+
+func (s *FullNodeStub) ClientStatelessDeal(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) {
 	return nil, xerrors.New("method not supported")
 }
 
@@ -1516,6 +1567,30 @@ func (s *FullNodeStub) MpoolBatchPushUntrusted(p0 context.Context, p1 []*types.S
 	return *new([]cid.Cid), xerrors.New("method not supported")
 }
 
+func (s *FullNodeStruct) MpoolCheckMessages(p0 context.Context, p1 []*MessagePrototype) ([][]MessageCheckStatus, error) {
+	return s.Internal.MpoolCheckMessages(p0, p1)
+}
+
+func (s *FullNodeStub) MpoolCheckMessages(p0 context.Context, p1 []*MessagePrototype) ([][]MessageCheckStatus, error) {
+	return *new([][]MessageCheckStatus), xerrors.New("method not supported")
+}
+
+func (s *FullNodeStruct) MpoolCheckPendingMessages(p0 context.Context, p1 address.Address) ([][]MessageCheckStatus, error) {
+	return s.Internal.MpoolCheckPendingMessages(p0, p1)
+}
+
+func (s *FullNodeStub) MpoolCheckPendingMessages(p0 context.Context, p1 address.Address) ([][]MessageCheckStatus, error) {
+	return *new([][]MessageCheckStatus), xerrors.New("method not supported")
+}
+
+func (s *FullNodeStruct) MpoolCheckReplaceMessages(p0 context.Context, p1 []*types.Message) ([][]MessageCheckStatus, error) {
+	return s.Internal.MpoolCheckReplaceMessages(p0, p1)
+}
+
+func (s *FullNodeStub) MpoolCheckReplaceMessages(p0 context.Context, p1 []*types.Message) ([][]MessageCheckStatus, error) {
+	return *new([][]MessageCheckStatus), xerrors.New("method not supported")
+}
+
 func (s *FullNodeStruct) MpoolClear(p0 context.Context, p1 bool) error {
 	return s.Internal.MpoolClear(p0, p1)
 }
@@ -1596,60 +1671,60 @@ func (s *FullNodeStub) MpoolSub(p0 context.Context) (<-chan MpoolUpdate, error) 
 	return nil, xerrors.New("method not supported")
 }
 
-func (s *FullNodeStruct) MsigAddApprove(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 bool) (cid.Cid, error) {
+func (s *FullNodeStruct) MsigAddApprove(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 bool) (*MessagePrototype, error) {
 	return s.Internal.MsigAddApprove(p0, p1, p2, p3, p4, p5, p6)
 }
 
-func (s *FullNodeStub) MsigAddApprove(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 bool) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+func (s *FullNodeStub) MsigAddApprove(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 bool) (*MessagePrototype, error) {
+	return nil, xerrors.New("method not supported")
 }
 
-func (s *FullNodeStruct) MsigAddCancel(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 bool) (cid.Cid, error) {
+func (s *FullNodeStruct) MsigAddCancel(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 bool) (*MessagePrototype, error) {
 	return s.Internal.MsigAddCancel(p0, p1, p2, p3, p4, p5)
 }
 
-func (s *FullNodeStub) MsigAddCancel(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 bool) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+func (s *FullNodeStub) MsigAddCancel(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 bool) (*MessagePrototype, error) {
+	return nil, xerrors.New("method not supported")
 }
 
-func (s *FullNodeStruct) MsigAddPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (cid.Cid, error) {
+func (s *FullNodeStruct) MsigAddPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*MessagePrototype, error) {
 	return s.Internal.MsigAddPropose(p0, p1, p2, p3, p4)
 }
 
-func (s *FullNodeStub) MsigAddPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+func (s *FullNodeStub) MsigAddPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*MessagePrototype, error) {
+	return nil, xerrors.New("method not supported")
 }
 
-func (s *FullNodeStruct) MsigApprove(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (cid.Cid, error) {
+func (s *FullNodeStruct) MsigApprove(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*MessagePrototype, error) {
 	return s.Internal.MsigApprove(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) MsigApprove(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+func (s *FullNodeStub) MsigApprove(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*MessagePrototype, error) {
+	return nil, xerrors.New("method not supported")
 }
 
-func (s *FullNodeStruct) MsigApproveTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 address.Address, p5 types.BigInt, p6 address.Address, p7 uint64, p8 []byte) (cid.Cid, error) {
+func (s *FullNodeStruct) MsigApproveTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 address.Address, p5 types.BigInt, p6 address.Address, p7 uint64, p8 []byte) (*MessagePrototype, error) {
 	return s.Internal.MsigApproveTxnHash(p0, p1, p2, p3, p4, p5, p6, p7, p8)
 }
 
-func (s *FullNodeStub) MsigApproveTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 address.Address, p5 types.BigInt, p6 address.Address, p7 uint64, p8 []byte) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+func (s *FullNodeStub) MsigApproveTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 address.Address, p5 types.BigInt, p6 address.Address, p7 uint64, p8 []byte) (*MessagePrototype, error) {
+	return nil, xerrors.New("method not supported")
 }
 
-func (s *FullNodeStruct) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (cid.Cid, error) {
+func (s *FullNodeStruct) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*MessagePrototype, error) {
 	return s.Internal.MsigCancel(p0, p1, p2, p3, p4, p5, p6, p7)
 }
 
-func (s *FullNodeStub) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+func (s *FullNodeStub) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*MessagePrototype, error) {
+	return nil, xerrors.New("method not supported")
 }
 
-func (s *FullNodeStruct) MsigCreate(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (cid.Cid, error) {
+func (s *FullNodeStruct) MsigCreate(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (*MessagePrototype, error) {
 	return s.Internal.MsigCreate(p0, p1, p2, p3, p4, p5, p6)
 }
 
-func (s *FullNodeStub) MsigCreate(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+func (s *FullNodeStub) MsigCreate(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (*MessagePrototype, error) {
+	return nil, xerrors.New("method not supported")
 }
 
 func (s *FullNodeStruct) MsigGetAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
@@ -1684,44 +1759,52 @@ func (s *FullNodeStub) MsigGetVestingSchedule(p0 context.Context, p1 address.Add
 	return *new(MsigVesting), xerrors.New("method not supported")
 }
 
-func (s *FullNodeStruct) MsigPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 address.Address, p5 uint64, p6 []byte) (cid.Cid, error) {
+func (s *FullNodeStruct) MsigPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 address.Address, p5 uint64, p6 []byte) (*MessagePrototype, error) {
 	return s.Internal.MsigPropose(p0, p1, p2, p3, p4, p5, p6)
 }
 
-func (s *FullNodeStub) MsigPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 address.Address, p5 uint64, p6 []byte) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+func (s *FullNodeStub) MsigPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 address.Address, p5 uint64, p6 []byte) (*MessagePrototype, error) {
+	return nil, xerrors.New("method not supported")
 }
 
-func (s *FullNodeStruct) MsigRemoveSigner(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (cid.Cid, error) {
+func (s *FullNodeStruct) MsigRemoveSigner(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*MessagePrototype, error) {
 	return s.Internal.MsigRemoveSigner(p0, p1, p2, p3, p4)
 }
 
-func (s *FullNodeStub) MsigRemoveSigner(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+func (s *FullNodeStub) MsigRemoveSigner(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*MessagePrototype, error) {
+	return nil, xerrors.New("method not supported")
 }
 
-func (s *FullNodeStruct) MsigSwapApprove(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 address.Address) (cid.Cid, error) {
+func (s *FullNodeStruct) MsigSwapApprove(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 address.Address) (*MessagePrototype, error) {
 	return s.Internal.MsigSwapApprove(p0, p1, p2, p3, p4, p5, p6)
 }
 
-func (s *FullNodeStub) MsigSwapApprove(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 address.Address) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+func (s *FullNodeStub) MsigSwapApprove(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 address.Address) (*MessagePrototype, error) {
+	return nil, xerrors.New("method not supported")
 }
 
-func (s *FullNodeStruct) MsigSwapCancel(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (cid.Cid, error) {
+func (s *FullNodeStruct) MsigSwapCancel(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (*MessagePrototype, error) {
 	return s.Internal.MsigSwapCancel(p0, p1, p2, p3, p4, p5)
 }
 
-func (s *FullNodeStub) MsigSwapCancel(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+func (s *FullNodeStub) MsigSwapCancel(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (*MessagePrototype, error) {
+	return nil, xerrors.New("method not supported")
 }
 
-func (s *FullNodeStruct) MsigSwapPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (cid.Cid, error) {
+func (s *FullNodeStruct) MsigSwapPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (*MessagePrototype, error) {
 	return s.Internal.MsigSwapPropose(p0, p1, p2, p3, p4)
 }
 
-func (s *FullNodeStub) MsigSwapPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+func (s *FullNodeStub) MsigSwapPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (*MessagePrototype, error) {
+	return nil, xerrors.New("method not supported")
+}
+
+func (s *FullNodeStruct) NodeStatus(p0 context.Context, p1 bool) (NodeStatus, error) {
+	return s.Internal.NodeStatus(p0, p1)
+}
+
+func (s *FullNodeStub) NodeStatus(p0 context.Context, p1 bool) (NodeStatus, error) {
+	return *new(NodeStatus), xerrors.New("method not supported")
 }
 
 func (s *FullNodeStruct) PaychAllocateLane(p0 context.Context, p1 address.Address) (uint64, error) {
@@ -2612,6 +2695,14 @@ func (s *GatewayStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, p3
 	return nil, xerrors.New("method not supported")
 }
 
+func (s *GatewayStruct) Version(p0 context.Context) (APIVersion, error) {
+	return s.Internal.Version(p0)
+}
+
+func (s *GatewayStub) Version(p0 context.Context) (APIVersion, error) {
+	return *new(APIVersion), xerrors.New("method not supported")
+}
+
 func (s *GatewayStruct) WalletBalance(p0 context.Context, p1 address.Address) (types.BigInt, error) {
 	return s.Internal.WalletBalance(p0, p1)
 }
@@ -3076,6 +3167,14 @@ func (s *StorageMinerStub) SealingSchedDiag(p0 context.Context, p1 bool) (interf
 	return nil, xerrors.New("method not supported")
 }
 
+func (s *StorageMinerStruct) SectorAddPieceToAny(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storage.Data, p3 PieceDealInfo) (SectorOffset, error) {
+	return s.Internal.SectorAddPieceToAny(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStub) SectorAddPieceToAny(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storage.Data, p3 PieceDealInfo) (SectorOffset, error) {
+	return *new(SectorOffset), xerrors.New("method not supported")
+}
+
 func (s *StorageMinerStruct) SectorCommitFlush(p0 context.Context) ([]sealiface.CommitBatchRes, error) {
 	return s.Internal.SectorCommitFlush(p0)
 }
@@ -3226,6 +3325,14 @@ func (s *StorageMinerStruct) SectorsSummary(p0 context.Context) (map[SectorState
 
 func (s *StorageMinerStub) SectorsSummary(p0 context.Context) (map[SectorState]int, error) {
 	return *new(map[SectorState]int), xerrors.New("method not supported")
+}
+
+func (s *StorageMinerStruct) SectorsUnsealPiece(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) error {
+	return s.Internal.SectorsUnsealPiece(p0, p1, p2, p3, p4, p5)
+}
+
+func (s *StorageMinerStub) SectorsUnsealPiece(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) error {
+	return xerrors.New("method not supported")
 }
 
 func (s *StorageMinerStruct) SectorsUpdate(p0 context.Context, p1 abi.SectorNumber, p2 SectorState) error {
@@ -3482,14 +3589,6 @@ func (s *WorkerStruct) ProcessSession(p0 context.Context) (uuid.UUID, error) {
 
 func (s *WorkerStub) ProcessSession(p0 context.Context) (uuid.UUID, error) {
 	return *new(uuid.UUID), xerrors.New("method not supported")
-}
-
-func (s *WorkerStruct) ReadPiece(p0 context.Context, p1 io.Writer, p2 storage.SectorRef, p3 storiface.UnpaddedByteIndex, p4 abi.UnpaddedPieceSize) (storiface.CallID, error) {
-	return s.Internal.ReadPiece(p0, p1, p2, p3, p4)
-}
-
-func (s *WorkerStub) ReadPiece(p0 context.Context, p1 io.Writer, p2 storage.SectorRef, p3 storiface.UnpaddedByteIndex, p4 abi.UnpaddedPieceSize) (storiface.CallID, error) {
-	return *new(storiface.CallID), xerrors.New("method not supported")
 }
 
 func (s *WorkerStruct) ReleaseUnsealed(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) {

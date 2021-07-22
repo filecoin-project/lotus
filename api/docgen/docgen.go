@@ -261,6 +261,9 @@ func init() {
 		},
 		"methods": []interface{}{}},
 	)
+
+	addExample(api.CheckStatusCode(0))
+	addExample(map[string]interface{}{"abc": 123})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t, permStruct, commonPermStruct reflect.Type) {

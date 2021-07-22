@@ -1,0 +1,76 @@
+name: lotus-filecoin
+base: core20
+version: latest
+summary: filecoin daemon/client
+icon: snap/local/icon.svg
+description: |
+  Filecoin is a peer-to-peer network that stores files on the internet
+  with built-in economic incentives to ensure files are stored reliably over time
+
+  For documentation and additional information, please see the following resources
+
+  https://filecoin.io
+
+  https://fil.org
+
+  https://docs.filecoin.io
+
+  https://github.com/filecoin-project/lotus
+
+grade: devel
+confinement: strict
+
+parts:
+  lotus:
+    plugin: make
+    source: ./
+    build-snaps:
+      - go
+      - rustup
+    build-packages:
+      - git
+      - jq
+      - libhwloc-dev
+      - ocl-icd-opencl-dev
+      - pkg-config
+    stage-packages:
+      - libhwloc15
+      - ocl-icd-libopencl1
+    override-build: |
+      LDFLAGS="" make lotus lotus-miner lotus-worker
+      cp lotus lotus-miner lotus-worker $SNAPCRAFT_PART_INSTALL
+
+apps:
+  lotus:
+    command: lotus
+    plugs:
+      - network
+      - network-bind
+      - home
+    environment:
+      FIL_PROOFS_PARAMETER_CACHE: $SNAP_USER_COMMON/filecoin-proof-parameters
+      LOTUS_PATH: $SNAP_USER_COMMON/lotus
+      LOTUS_MINER_PATH: $SNAP_USER_COMMON/lotus-miner
+      LOTUS_WORKER_PATH: $SNAP_USER_COMMON/lotus-worker
+  lotus-miner:
+    command: lotus-miner
+    plugs:
+      - network
+      - network-bind
+      - opengl
+    environment:
+      FIL_PROOFS_PARAMETER_CACHE: $SNAP_USER_COMMON/filecoin-proof-parameters
+      LOTUS_PATH: $SNAP_USER_COMMON/lotus
+      LOTUS_MINER_PATH: $SNAP_USER_COMMON/lotus-miner
+      LOTUS_WORKER_PATH: $SNAP_USER_COMMON/lotus-worker
+  lotus-worker:
+    command: lotus-worker
+    plugs:
+      - network
+      - network-bind
+      - opengl
+    environment:
+      FIL_PROOFS_PARAMETER_CACHE: $SNAP_USER_COMMON/filecoin-proof-parameters
+      LOTUS_PATH: $SNAP_USER_COMMON/lotus
+      LOTUS_MINER_PATH: $SNAP_USER_COMMON/lotus-miner
+      LOTUS_WORKER_PATH: $SNAP_USER_COMMON/lotus-worker

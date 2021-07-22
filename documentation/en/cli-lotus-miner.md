@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.11.0-dev
+   1.11.1-dev
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -41,7 +41,7 @@ COMMANDS:
 
 GLOBAL OPTIONS:
    --actor value, -a value                  specify other actor to check state for (read only)
-   --color                                  (default: false)
+   --color                                  use color in display output (default: depends on output being a TTY)
    --miner-repo value, --storagerepo value  Specify miner repo path. flag(storagerepo) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
    --help, -h                               show help (default: false)
    --version, -v                            print the version (default: false)
@@ -57,6 +57,7 @@ USAGE:
 
 COMMANDS:
    restore  Initialize a lotus miner repo from a backup
+   service  Initialize a lotus miner sub-service
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
@@ -90,6 +91,24 @@ OPTIONS:
    --config value          config file (config.toml)
    --storage-config value  storage paths config (storage.json)
    --help, -h              show help (default: false)
+   
+```
+
+### lotus-miner init service
+```
+NAME:
+   lotus-miner init service - Initialize a lotus miner sub-service
+
+USAGE:
+   lotus-miner init service [command options] [backupFile]
+
+OPTIONS:
+   --config value            config file (config.toml)
+   --nosync                  don't check full-node sync status (default: false)
+   --type value              type of service to be enabled
+   --api-sealer value        sealer API info (lotus-miner auth api-info --perm=admin)
+   --api-sector-index value  sector Index API info (lotus-miner auth api-info --perm=admin)
+   --help, -h                show help (default: false)
    
 ```
 
@@ -295,7 +314,7 @@ USAGE:
 
 OPTIONS:
    --verbose   (default: false)
-   --color     (default: true)
+   --color     use color in display output (default: depends on output being a TTY)
    --help, -h  show help (default: false)
    
 ```
@@ -745,7 +764,7 @@ COMMANDS:
    selection  Configure acceptance criteria for retrieval deal proposals
    list       List all active retrieval deals for this miner
    set-ask    Configure the provider's retrieval ask
-   get-ask    Get the provider's current retrieval ask
+   get-ask    Get the provider's current retrieval ask configured by the provider in the ask-store using the set-ask CLI command
    help, h    Shows a list of commands or help for one command
 
 OPTIONS:
@@ -848,7 +867,7 @@ OPTIONS:
 ### lotus-miner retrieval-deals get-ask
 ```
 NAME:
-   lotus-miner retrieval-deals get-ask - Get the provider's current retrieval ask
+   lotus-miner retrieval-deals get-ask - Get the provider's current retrieval ask configured by the provider in the ask-store using the set-ask CLI command
 
 USAGE:
    lotus-miner retrieval-deals get-ask [command options] [arguments...]
@@ -888,7 +907,7 @@ USAGE:
 
 OPTIONS:
    --verbose, -v  print verbose transfer details (default: false)
-   --color        use color in display output (default: true)
+   --color        use color in display output (default: depends on output being a TTY)
    --completed    show completed data transfers (default: false)
    --watch        watch deal updates in real-time, rather than a one time list (default: false)
    --show-failed  show failed/cancelled transfers (default: false)
@@ -1344,7 +1363,7 @@ USAGE:
 
 OPTIONS:
    --show-removed  show removed sectors (default: false)
-   --color, -c     (default: true)
+   --color, -c     use color in display output (default: depends on output being a TTY)
    --fast          don't show on-chain info for better performance (default: false)
    --events        display number of events the sector has received (default: false)
    --seal-time     display how long it took for the sector to be sealed (default: false)
@@ -1405,6 +1424,7 @@ OPTIONS:
    --new-expiration value     new expiration epoch (default: 0)
    --v1-sectors               renews all v1 sectors up to the maximum possible lifetime (default: false)
    --tolerance value          when extending v1 sectors, don't try to extend sectors by fewer than this number of epochs (default: 20160)
+   --expiration-ignore value  when extending v1 sectors, skip sectors whose current expiration is less than <ignore> epochs from now (default: 120)
    --expiration-cutoff value  when extending v1 sectors, skip sectors whose current expiration is more than <cutoff> epochs from now (infinity if unspecified) (default: 0)
                               
    --help, -h                 show help (default: false)
@@ -1533,9 +1553,9 @@ USAGE:
    lotus-miner sectors batching command [command options] [arguments...]
 
 COMMANDS:
-   pending-commit     list sectors waiting in commit batch queue
-   pending-precommit  list sectors waiting in precommit batch queue
-   help, h            Shows a list of commands or help for one command
+   commit     list sectors waiting in commit batch queue
+   precommit  list sectors waiting in precommit batch queue
+   help, h    Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h     show help (default: false)
@@ -1543,13 +1563,13 @@ OPTIONS:
    
 ```
 
-#### lotus-miner sectors batching pending-commit
+#### lotus-miner sectors batching commit
 ```
 NAME:
-   lotus-miner sectors batching pending-commit - list sectors waiting in commit batch queue
+   lotus-miner sectors batching commit - list sectors waiting in commit batch queue
 
 USAGE:
-   lotus-miner sectors batching pending-commit [command options] [arguments...]
+   lotus-miner sectors batching commit [command options] [arguments...]
 
 OPTIONS:
    --publish-now  send a batch now (default: false)
@@ -1557,13 +1577,13 @@ OPTIONS:
    
 ```
 
-#### lotus-miner sectors batching pending-precommit
+#### lotus-miner sectors batching precommit
 ```
 NAME:
-   lotus-miner sectors batching pending-precommit - list sectors waiting in precommit batch queue
+   lotus-miner sectors batching precommit - list sectors waiting in precommit batch queue
 
 USAGE:
-   lotus-miner sectors batching pending-precommit [command options] [arguments...]
+   lotus-miner sectors batching precommit [command options] [arguments...]
 
 OPTIONS:
    --publish-now  send a batch now (default: false)
@@ -1739,7 +1759,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --color        (default: false)
+   --color        use color in display output (default: depends on output being a TTY)
    --help, -h     show help (default: false)
    --version, -v  print the version (default: false)
    
@@ -1754,7 +1774,7 @@ USAGE:
    lotus-miner storage list sectors [command options] [arguments...]
 
 OPTIONS:
-   --color     (default: true)
+   --color     use color in display output (default: depends on output being a TTY)
    --help, -h  show help (default: false)
    
 ```
@@ -1816,7 +1836,7 @@ USAGE:
    lotus-miner sealing jobs [command options] [arguments...]
 
 OPTIONS:
-   --color          (default: false)
+   --color          use color in display output (default: depends on output being a TTY)
    --show-ret-done  show returned but not consumed calls (default: false)
    --help, -h       show help (default: false)
    
@@ -1831,7 +1851,7 @@ USAGE:
    lotus-miner sealing workers [command options] [arguments...]
 
 OPTIONS:
-   --color     (default: false)
+   --color     use color in display output (default: depends on output being a TTY)
    --help, -h  show help (default: false)
    
 ```

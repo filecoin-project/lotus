@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io"
 	"runtime"
-	"sync/atomic"
+	"sync"
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
@@ -73,20 +73,16 @@ func (b *badgerLogger) Warningf(format string, args ...interface{}) {
 }
 
 const (
-	stateOpen int64 = iota
+	stateOpen = iota
 	stateClosing
 	stateClosed
 )
 
 // Blockstore is a badger-backed IPLD blockstore.
-//
-// NOTE: once Close() is called, methods will try their best to return
-// ErrBlockstoreClosed. This will guaranteed to happen for all subsequent
-// operation calls after Close() has returned, but it may not happen for
-// operations in progress. Those are likely to fail with a different error.
 type Blockstore struct {
-	// state is accessed atomically
-	state int64
+	stateLk sync.RWMutex
+	state   int
+	viewers sync.WaitGroup
 
 	DB *badger.DB
 
@@ -97,6 +93,8 @@ type Blockstore struct {
 
 var _ blockstore.Blockstore = (*Blockstore)(nil)
 var _ blockstore.Viewer = (*Blockstore)(nil)
+var _ blockstore.BlockstoreIterator = (*Blockstore)(nil)
+var _ blockstore.BlockstoreGC = (*Blockstore)(nil)
 var _ io.Closer = (*Blockstore)(nil)
 
 // Open creates a new badger-backed blockstore, with the supplied options.
@@ -124,53 +122,82 @@ func Open(opts Options) (*Blockstore, error) {
 // Close closes the store. If the store has already been closed, this noops and
 // returns an error, even if the first closure resulted in error.
 func (b *Blockstore) Close() error {
-	if !atomic.CompareAndSwapInt64(&b.state, stateOpen, stateClosing) {
+	b.stateLk.Lock()
+	if b.state != stateOpen {
+		b.stateLk.Unlock()
 		return nil
 	}
+	b.state = stateClosing
+	b.stateLk.Unlock()
 
-	defer atomic.StoreInt64(&b.state, stateClosed)
+	defer func() {
+		b.stateLk.Lock()
+		b.state = stateClosed
+		b.stateLk.Unlock()
+	}()
+
+	// wait for all accesses to complete
+	b.viewers.Wait()
+
 	return b.DB.Close()
+}
+
+func (b *Blockstore) access() error {
+	b.stateLk.RLock()
+	defer b.stateLk.RUnlock()
+
+	if b.state != stateOpen {
+		return ErrBlockstoreClosed
+	}
+
+	b.viewers.Add(1)
+	return nil
+}
+
+func (b *Blockstore) isOpen() bool {
+	b.stateLk.RLock()
+	defer b.stateLk.RUnlock()
+
+	return b.state == stateOpen
 }
 
 // CollectGarbage runs garbage collection on the value log
 func (b *Blockstore) CollectGarbage() error {
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return ErrBlockstoreClosed
+	if err := b.access(); err != nil {
+		return err
+	}
+	defer b.viewers.Done()
+
+	// compact first to gather the necessary statistics for GC
+	nworkers := runtime.NumCPU() / 2
+	if nworkers < 2 {
+		nworkers = 2
 	}
 
-	var err error
+	err := b.DB.Flatten(nworkers)
+	if err != nil {
+		return err
+	}
+
 	for err == nil {
 		err = b.DB.RunValueLogGC(0.125)
 	}
 
 	if err == badger.ErrNoRewrite {
-		// not really an error in this case
+		// not really an error in this case, it signals the end of GC
 		return nil
 	}
 
 	return err
 }
 
-// Compact runs a synchronous compaction
-func (b *Blockstore) Compact() error {
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return ErrBlockstoreClosed
-	}
-
-	nworkers := runtime.NumCPU() / 2
-	if nworkers < 2 {
-		nworkers = 2
-	}
-
-	return b.DB.Flatten(nworkers)
-}
-
 // View implements blockstore.Viewer, which leverages zero-copy read-only
 // access to values.
 func (b *Blockstore) View(cid cid.Cid, fn func([]byte) error) error {
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return ErrBlockstoreClosed
+	if err := b.access(); err != nil {
+		return err
 	}
+	defer b.viewers.Done()
 
 	k, pooled := b.PooledStorageKey(cid)
 	if pooled {
@@ -191,9 +218,10 @@ func (b *Blockstore) View(cid cid.Cid, fn func([]byte) error) error {
 
 // Has implements Blockstore.Has.
 func (b *Blockstore) Has(cid cid.Cid) (bool, error) {
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return false, ErrBlockstoreClosed
+	if err := b.access(); err != nil {
+		return false, err
 	}
+	defer b.viewers.Done()
 
 	k, pooled := b.PooledStorageKey(cid)
 	if pooled {
@@ -221,9 +249,10 @@ func (b *Blockstore) Get(cid cid.Cid) (blocks.Block, error) {
 		return nil, blockstore.ErrNotFound
 	}
 
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return nil, ErrBlockstoreClosed
+	if err := b.access(); err != nil {
+		return nil, err
 	}
+	defer b.viewers.Done()
 
 	k, pooled := b.PooledStorageKey(cid)
 	if pooled {
@@ -250,9 +279,10 @@ func (b *Blockstore) Get(cid cid.Cid) (blocks.Block, error) {
 
 // GetSize implements Blockstore.GetSize.
 func (b *Blockstore) GetSize(cid cid.Cid) (int, error) {
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return -1, ErrBlockstoreClosed
+	if err := b.access(); err != nil {
+		return 0, err
 	}
+	defer b.viewers.Done()
 
 	k, pooled := b.PooledStorageKey(cid)
 	if pooled {
@@ -279,9 +309,10 @@ func (b *Blockstore) GetSize(cid cid.Cid) (int, error) {
 
 // Put implements Blockstore.Put.
 func (b *Blockstore) Put(block blocks.Block) error {
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return ErrBlockstoreClosed
+	if err := b.access(); err != nil {
+		return err
 	}
+	defer b.viewers.Done()
 
 	k, pooled := b.PooledStorageKey(block.Cid())
 	if pooled {
@@ -299,9 +330,10 @@ func (b *Blockstore) Put(block blocks.Block) error {
 
 // PutMany implements Blockstore.PutMany.
 func (b *Blockstore) PutMany(blocks []blocks.Block) error {
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return ErrBlockstoreClosed
+	if err := b.access(); err != nil {
+		return err
 	}
+	defer b.viewers.Done()
 
 	// toReturn tracks the byte slices to return to the pool, if we're using key
 	// prefixing. we can't return each slice to the pool after each Set, because
@@ -338,9 +370,10 @@ func (b *Blockstore) PutMany(blocks []blocks.Block) error {
 
 // DeleteBlock implements Blockstore.DeleteBlock.
 func (b *Blockstore) DeleteBlock(cid cid.Cid) error {
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return ErrBlockstoreClosed
+	if err := b.access(); err != nil {
+		return err
 	}
+	defer b.viewers.Done()
 
 	k, pooled := b.PooledStorageKey(cid)
 	if pooled {
@@ -353,9 +386,10 @@ func (b *Blockstore) DeleteBlock(cid cid.Cid) error {
 }
 
 func (b *Blockstore) DeleteMany(cids []cid.Cid) error {
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return ErrBlockstoreClosed
+	if err := b.access(); err != nil {
+		return err
 	}
+	defer b.viewers.Done()
 
 	// toReturn tracks the byte slices to return to the pool, if we're using key
 	// prefixing. we can't return each slice to the pool after each Set, because
@@ -392,8 +426,8 @@ func (b *Blockstore) DeleteMany(cids []cid.Cid) error {
 
 // AllKeysChan implements Blockstore.AllKeysChan.
 func (b *Blockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
-	if atomic.LoadInt64(&b.state) != stateOpen {
-		return nil, ErrBlockstoreClosed
+	if err := b.access(); err != nil {
+		return nil, err
 	}
 
 	txn := b.DB.NewTransaction(false)
@@ -405,6 +439,7 @@ func (b *Blockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 
 	ch := make(chan cid.Cid)
 	go func() {
+		defer b.viewers.Done()
 		defer close(ch)
 		defer iter.Close()
 
@@ -415,7 +450,7 @@ func (b *Blockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 			if ctx.Err() != nil {
 				return // context has fired.
 			}
-			if atomic.LoadInt64(&b.state) != stateOpen {
+			if !b.isOpen() {
 				// open iterators will run even after the database is closed...
 				return // closing, yield.
 			}
@@ -440,6 +475,56 @@ func (b *Blockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	}()
 
 	return ch, nil
+}
+
+// Implementation of BlockstoreIterator interface
+func (b *Blockstore) ForEachKey(f func(cid.Cid) error) error {
+	if err := b.access(); err != nil {
+		return err
+	}
+	defer b.viewers.Done()
+
+	txn := b.DB.NewTransaction(false)
+	defer txn.Discard()
+
+	opts := badger.IteratorOptions{PrefetchSize: 100}
+	if b.prefixing {
+		opts.Prefix = b.prefix
+	}
+
+	iter := txn.NewIterator(opts)
+	defer iter.Close()
+
+	var buf []byte
+	for iter.Rewind(); iter.Valid(); iter.Next() {
+		if !b.isOpen() {
+			return ErrBlockstoreClosed
+		}
+
+		k := iter.Item().Key()
+		if b.prefixing {
+			k = k[b.prefixLen:]
+		}
+
+		klen := base32.RawStdEncoding.DecodedLen(len(k))
+		if klen > len(buf) {
+			buf = make([]byte, klen)
+		}
+
+		n, err := base32.RawStdEncoding.Decode(buf, k)
+		if err != nil {
+			return err
+		}
+
+		c := cid.NewCidV1(cid.Raw, buf[:n])
+
+		err = f(c)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // HashOnRead implements Blockstore.HashOnRead. It is not supported by this

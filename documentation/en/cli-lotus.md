@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.11.0-dev
+   1.11.1-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -15,12 +15,12 @@ COMMANDS:
    version  Print version
    help, h  Shows a list of commands or help for one command
    BASIC:
-     send      Send funds between accounts
-     wallet    Manage wallet
-     client    Make deals, store data, retrieve data
-     msig      Interact with a multisig wallet
-     verifreg  Interact with the verified registry actor
-     paych     Manage payment channels
+     send     Send funds between accounts
+     wallet   Manage wallet
+     client   Make deals, store data, retrieve data
+     msig     Interact with a multisig wallet
+     filplus  Interact with the verified registry actor used by Filplus
+     paych    Manage payment channels
    DEVELOPER:
      auth          Manage RPC permissions
      mpool         Manage message pool
@@ -32,8 +32,12 @@ COMMANDS:
    NETWORK:
      net   Manage P2P Network
      sync  Inspect or interact with the chain syncer
+   STATUS:
+     status  Check node status
 
 GLOBAL OPTIONS:
+   --interactive  setting to false will disable interactive functionality of commands (default: false)
+   --force-send   if true, will ignore pre-send checks (default: false)
    --help, -h     show help (default: false)
    --version, -v  print the version (default: false)
 ```
@@ -137,7 +141,7 @@ OPTIONS:
    --method value       specify method to invoke (default: 0)
    --params-json value  specify invocation parameters in json
    --params-hex value   specify invocation parameters in hex
-   --force              must be specified for the action to take effect if maybe SysErrInsufficientFunds etc (default: false)
+   --force              Deprecated: use global 'force-send' (default: false)
    --help, -h           show help (default: false)
    
 ```
@@ -373,6 +377,7 @@ COMMANDS:
      find              Find data in the network
      retrieve          Retrieve data from network
      cancel-retrieval  Cancel a retrieval deal by deal ID; this also cancels the associated transfer
+     list-retrievals   List retrieval market deals
    STORAGE:
      deal          Initialize storage deal with a miner
      query-ask     Find a miners ask
@@ -517,6 +522,27 @@ OPTIONS:
    
 ```
 
+### lotus client list-retrievals
+```
+NAME:
+   lotus client list-retrievals - List retrieval market deals
+
+USAGE:
+   lotus client list-retrievals [command options] [arguments...]
+
+CATEGORY:
+   RETRIEVAL
+
+OPTIONS:
+   --verbose, -v  print verbose deal details (default: false)
+   --color        use color in display output (default: depends on output being a TTY)
+   --show-failed  show failed/failing deals (default: true)
+   --completed    show completed retrievals (default: false)
+   --watch        watch deal updates in real-time, rather than a one time list (default: false)
+   --help, -h     show help (default: false)
+   
+```
+
 ### lotus client deal
 ```
 NAME:
@@ -532,8 +558,8 @@ DESCRIPTION:
    Make a deal with a miner.
 dataCid comes from running 'lotus client import'.
 miner is the address of the miner you wish to make a deal with.
-price is measured in FIL/GB/Epoch. Miners usually don't accept a bid
-lower than their advertised ask. You can check a miners listed price
+price is measured in FIL/Epoch. Miners usually don't accept a bid
+lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
 with 'lotus client query-ask <miner address>'.
 duration is how long the miner should store the data for, in blocks.
 The minimum value is 518400 (6 months).
@@ -541,6 +567,7 @@ The minimum value is 518400 (6 months).
 OPTIONS:
    --manual-piece-cid value     manually specify piece commitment for data (dataCid must be to a car file)
    --manual-piece-size value    if manually specifying piece cid, used to specify size (dataCid must be to a car file) (default: 0)
+   --manual-stateless-deal      instructs the node to send an offline deal without registering it with the deallist/fsm (default: false)
    --from value                 specify address to fund the deal with
    --start-epoch value          specify the epoch that the deal should start at (default: -1)
    --fast-retrieval             indicates that data should be available for fast retrieval (default: true)
@@ -582,7 +609,7 @@ CATEGORY:
 
 OPTIONS:
    --verbose, -v  print verbose deal details (default: false)
-   --color        use color in display output (default: true)
+   --color        use color in display output (default: depends on output being a TTY)
    --show-failed  show failed/failing deals (default: false)
    --watch        watch deal updates in real-time, rather than a one time list (default: false)
    --help, -h     show help (default: false)
@@ -720,7 +747,7 @@ CATEGORY:
 
 OPTIONS:
    --verbose, -v  print verbose transfer details (default: false)
-   --color        use color in display output (default: true)
+   --color        use color in display output (default: depends on output being a TTY)
    --completed    show completed data transfers (default: false)
    --watch        watch deal updates in real-time, rather than a one time list (default: false)
    --show-failed  show failed/cancelled transfers (default: false)
@@ -1030,21 +1057,21 @@ OPTIONS:
    
 ```
 
-## lotus verifreg
+## lotus filplus
 ```
 NAME:
-   lotus verifreg - Interact with the verified registry actor
+   lotus filplus - Interact with the verified registry actor used by Filplus
 
 USAGE:
-   lotus verifreg command [command options] [arguments...]
+   lotus filplus command [command options] [arguments...]
 
 COMMANDS:
-   verify-client   give allowance to the specified verified client address
-   list-verifiers  list all verifiers
-   list-clients    list all verified clients
-   check-client    check verified client remaining bytes
-   check-verifier  check verifiers remaining bytes
-   help, h         Shows a list of commands or help for one command
+   grant-datacap           give allowance to the specified verified client address
+   list-notaries           list all notaries
+   list-clients            list all verified clients
+   check-client-datacap    check verified client remaining bytes
+   check-notaries-datacap  check notaries remaining bytes
+   help, h                 Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h     show help (default: false)
@@ -1052,66 +1079,66 @@ OPTIONS:
    
 ```
 
-### lotus verifreg verify-client
+### lotus filplus grant-datacap
 ```
 NAME:
-   lotus verifreg verify-client - give allowance to the specified verified client address
+   lotus filplus grant-datacap - give allowance to the specified verified client address
 
 USAGE:
-   lotus verifreg verify-client [command options] [arguments...]
+   lotus filplus grant-datacap [command options] [arguments...]
 
 OPTIONS:
-   --from value  specify your verifier address to send the message from
+   --from value  specify your notary address to send the message from
    --help, -h    show help (default: false)
    
 ```
 
-### lotus verifreg list-verifiers
+### lotus filplus list-notaries
 ```
 NAME:
-   lotus verifreg list-verifiers - list all verifiers
+   lotus filplus list-notaries - list all notaries
 
 USAGE:
-   lotus verifreg list-verifiers [command options] [arguments...]
+   lotus filplus list-notaries [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help (default: false)
    
 ```
 
-### lotus verifreg list-clients
+### lotus filplus list-clients
 ```
 NAME:
-   lotus verifreg list-clients - list all verified clients
+   lotus filplus list-clients - list all verified clients
 
 USAGE:
-   lotus verifreg list-clients [command options] [arguments...]
+   lotus filplus list-clients [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help (default: false)
    
 ```
 
-### lotus verifreg check-client
+### lotus filplus check-client-datacap
 ```
 NAME:
-   lotus verifreg check-client - check verified client remaining bytes
+   lotus filplus check-client-datacap - check verified client remaining bytes
 
 USAGE:
-   lotus verifreg check-client [command options] [arguments...]
+   lotus filplus check-client-datacap [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help (default: false)
    
 ```
 
-### lotus verifreg check-verifier
+### lotus filplus check-notaries-datacap
 ```
 NAME:
-   lotus verifreg check-verifier - check verifiers remaining bytes
+   lotus filplus check-notaries-datacap - check notaries remaining bytes
 
 USAGE:
-   lotus verifreg check-verifier [command options] [arguments...]
+   lotus filplus check-notaries-datacap [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -1388,6 +1415,7 @@ COMMANDS:
    find      find a message in the mempool
    config    get or set current mpool configuration
    gas-perf  Check gas performance of messages in mempool
+   manage    
    help, h   Shows a list of commands or help for one command
 
 OPTIONS:
@@ -1500,6 +1528,9 @@ OPTIONS:
    --all       print gas performance for all mempool messages (default only prints for local) (default: false)
    --help, -h  show help (default: false)
    
+```
+# nage
+```
 ```
 
 ## lotus state
@@ -1642,7 +1673,7 @@ NAME:
    lotus state get-actor - Print actor information
 
 USAGE:
-   lotus state get-actor [command options] [actorrAddress]
+   lotus state get-actor [command options] [actorAddress]
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -1747,13 +1778,14 @@ NAME:
    lotus state call - Invoke a method on an actor locally
 
 USAGE:
-   lotus state call [command options] [toAddress methodId <param1 param2 ...> (optional)]
+   lotus state call [command options] [toAddress methodId params (optional)]
 
 OPTIONS:
-   --from value   (default: "f00")
-   --value value  specify value field for invocation (default: "0")
-   --ret value    specify how to parse output (auto, raw, addr, big) (default: "auto")
-   --help, -h     show help (default: false)
+   --from value      (default: "f00")
+   --value value     specify value field for invocation (default: "0")
+   --ret value       specify how to parse output (raw, decoded, base64, hex) (default: "decoded")
+   --encoding value  specify params encoding to parse (base64, hex) (default: "base64")
+   --help, -h        show help (default: false)
    
 ```
 
@@ -2108,7 +2140,7 @@ USAGE:
    lotus chain export [command options] [outputPath]
 
 OPTIONS:
-   --tipset value             
+   --tipset value             specify tipset to start the export from (default: "@head")
    --recent-stateroots value  specify the number of recent state roots to include in the export (default: 0)
    --skip-old-msgs            (default: false)
    --help, -h                 show help (default: false)
@@ -2758,5 +2790,22 @@ USAGE:
 OPTIONS:
    --epoch value  checkpoint the tipset at the given epoch (default: 0)
    --help, -h     show help (default: false)
+   
+```
+
+## lotus status
+```
+NAME:
+   lotus status - Check node status
+
+USAGE:
+   lotus status [command options] [arguments...]
+
+CATEGORY:
+   STATUS
+
+OPTIONS:
+   --chain     include chain health status (default: false)
+   --help, -h  show help (default: false)
    
 ```

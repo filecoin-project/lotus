@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/lotus/chain/types"
+
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
@@ -115,4 +118,80 @@ type ConnMgrInfo struct {
 	Value     int
 	Tags      map[string]int
 	Conns     map[string]time.Time
+}
+
+type NodeStatus struct {
+	SyncStatus  NodeSyncStatus
+	PeerStatus  NodePeerStatus
+	ChainStatus NodeChainStatus
+}
+
+type NodeSyncStatus struct {
+	Epoch  uint64
+	Behind uint64
+}
+
+type NodePeerStatus struct {
+	PeersToPublishMsgs   int
+	PeersToPublishBlocks int
+}
+
+type NodeChainStatus struct {
+	BlocksPerTipsetLast100      float64
+	BlocksPerTipsetLastFinality float64
+}
+
+type CheckStatusCode int
+
+//go:generate go run golang.org/x/tools/cmd/stringer -type=CheckStatusCode -trimprefix=CheckStatus
+const (
+	_ CheckStatusCode = iota
+	// Message Checks
+	CheckStatusMessageSerialize
+	CheckStatusMessageSize
+	CheckStatusMessageValidity
+	CheckStatusMessageMinGas
+	CheckStatusMessageMinBaseFee
+	CheckStatusMessageBaseFee
+	CheckStatusMessageBaseFeeLowerBound
+	CheckStatusMessageBaseFeeUpperBound
+	CheckStatusMessageGetStateNonce
+	CheckStatusMessageNonce
+	CheckStatusMessageGetStateBalance
+	CheckStatusMessageBalance
+)
+
+type CheckStatus struct {
+	Code CheckStatusCode
+	OK   bool
+	Err  string
+	Hint map[string]interface{}
+}
+
+type MessageCheckStatus struct {
+	Cid cid.Cid
+	CheckStatus
+}
+
+type MessagePrototype struct {
+	Message    types.Message
+	ValidNonce bool
+}
+
+type RetrievalInfo struct {
+	PayloadCID   cid.Cid
+	ID           retrievalmarket.DealID
+	PieceCID     *cid.Cid
+	PricePerByte abi.TokenAmount
+	UnsealPrice  abi.TokenAmount
+
+	Status        retrievalmarket.DealStatus
+	Message       string // more information about deal state, particularly errors
+	Provider      peer.ID
+	BytesReceived uint64
+	BytesPaidFor  uint64
+	TotalPaid     abi.TokenAmount
+
+	TransferChannelID *datatransfer.ChannelID
+	DataTransfer      *DataTransferChannel
 }

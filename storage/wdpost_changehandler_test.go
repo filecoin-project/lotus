@@ -191,7 +191,7 @@ func (m *mockAPI) wasAbortCalled() bool {
 	return m.abortCalled
 }
 
-func (m *mockAPI) failPost(err error, ts *types.TipSet, deadline *dline.Info) {
+func (m *mockAPI) recordPoStFailure(err error, ts *types.TipSet, deadline *dline.Info) {
 }
 
 func (m *mockAPI) setChangeHandler(ch *changeHandler) {

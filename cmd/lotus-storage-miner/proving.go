@@ -36,8 +36,6 @@ var provingFaultsCmd = &cli.Command{
 	Name:  "faults",
 	Usage: "View the currently known proving faulty sectors information",
 	Action: func(cctx *cli.Context) error {
-		color.NoColor = !cctx.Bool("color")
-
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -90,8 +88,6 @@ var provingInfoCmd = &cli.Command{
 	Name:  "info",
 	Usage: "View current state information",
 	Action: func(cctx *cli.Context) error {
-		color.NoColor = !cctx.Bool("color")
-
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -171,7 +167,7 @@ var provingInfoCmd = &cli.Command{
 
 		var faultPerc float64
 		if proving > 0 {
-			faultPerc = float64(faults*10000/proving) / 100
+			faultPerc = float64(faults * 100 / proving)
 		}
 
 		fmt.Printf("Current Epoch:           %d\n", cd.CurrentEpoch)
@@ -197,8 +193,6 @@ var provingDeadlinesCmd = &cli.Command{
 	Name:  "deadlines",
 	Usage: "View the current proving period deadlines information",
 	Action: func(cctx *cli.Context) error {
-		color.NoColor = !cctx.Bool("color")
-
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err

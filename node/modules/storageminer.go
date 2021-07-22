@@ -8,8 +8,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
+	"github.com/filecoin-project/lotus/markets/pricing"
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
@@ -43,7 +45,7 @@ import (
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-multistore"
-	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
@@ -66,7 +68,6 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/markets"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
-	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -187,6 +188,15 @@ func AddressSelector(addrConf *config.MinerAddressConfig) func() (*storage.Addre
 			as.TerminateControl = append(as.TerminateControl, addr)
 		}
 
+		for _, s := range addrConf.DealPublishControl {
+			addr, err := address.NewFromString(s)
+			if err != nil {
+				return nil, xerrors.Errorf("parsing deal publishing control address: %w", err)
+			}
+
+			as.DealPublishControl = append(as.DealPublishControl, addr)
+		}
+
 		return as, nil
 	}
 }
@@ -197,7 +207,6 @@ type StorageMinerParams struct {
 	Lifecycle          fx.Lifecycle
 	MetricsCtx         helpers.MetricsCtx
 	API                v1api.FullNode
-	Host               host.Host
 	MetadataDS         dtypes.MetadataDS
 	Sealer             sectorstorage.SectorManager
 	SectorIDCounter    sealing.SectorIDCounter
@@ -216,7 +225,6 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			lc     = params.Lifecycle
 			api    = params.API
 			sealer = params.Sealer
-			h      = params.Host
 			sc     = params.SectorIDCounter
 			verif  = params.Verifier
 			prover = params.Prover
@@ -237,7 +245,7 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			return nil, err
 		}
 
-		sm, err := storage.NewMiner(api, maddr, h, ds, sealer, sc, verif, prover, gsd, fc, j, as)
+		sm, err := storage.NewMiner(api, maddr, ds, sealer, sc, verif, prover, gsd, fc, j, as)
 		if err != nil {
 			return nil, err
 		}
@@ -430,13 +438,15 @@ func StagingDAG(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBloc
 
 // StagingGraphsync creates a graphsync instance which reads and writes blocks
 // to the StagingBlockstore
-func StagingGraphsync(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
-	graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
-	loader := storeutil.LoaderForBlockstore(ibs)
-	storer := storeutil.StorerForBlockstore(ibs)
-	gs := graphsync.New(helpers.LifecycleCtx(mctx, lc), graphsyncNetwork, loader, storer, graphsync.RejectAllRequestsByDefault())
+func StagingGraphsync(parallelTransfers uint64) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
+		graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
+		loader := storeutil.LoaderForBlockstore(ibs)
+		storer := storeutil.StorerForBlockstore(ibs)
+		gs := graphsync.New(helpers.LifecycleCtx(mctx, lc), graphsyncNetwork, loader, storer, graphsync.RejectAllRequestsByDefault(), graphsync.MaxInProgressRequests(parallelTransfers))
 
-	return gs
+		return gs
+	}
 }
 
 func SetupBlockProducer(lc fx.Lifecycle, ds dtypes.MetadataDS, api v1api.FullNode, epp gen.WinningPoStProver, sf *slashfilter.SlashFilter, j journal.Journal) (*lotusminer.Miner, error) {
@@ -640,42 +650,60 @@ func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dt
 	}
 }
 
+func RetrievalNetwork(h host.Host) rmnet.RetrievalMarketNetwork {
+	return rmnet.NewFromLibp2pHost(h)
+}
+
+// RetrievalPricingFunc configures the pricing function to use for retrieval deals.
+func RetrievalPricingFunc(cfg config.DealmakingConfig) func(_ dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
+	_ dtypes.ConsiderOfflineRetrievalDealsConfigFunc) dtypes.RetrievalPricingFunc {
+
+	return func(_ dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
+		_ dtypes.ConsiderOfflineRetrievalDealsConfigFunc) dtypes.RetrievalPricingFunc {
+		if cfg.RetrievalPricing.Strategy == config.RetrievalPricingExternalMode {
+			return pricing.ExternalRetrievalPricingFunc(cfg.RetrievalPricing.External.Path)
+		}
+
+		return retrievalimpl.DefaultPricingFunc(cfg.RetrievalPricing.Default.VerifiedDealsFreeTransfer)
+	}
+}
+
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore
-func RetrievalProvider(h host.Host,
-	miner *storage.Miner,
-	sealer sectorstorage.SectorManager,
-	full v1api.FullNode,
+func RetrievalProvider(
+	maddr dtypes.MinerAddress,
+	adapter retrievalmarket.RetrievalProviderNode,
+	netwk rmnet.RetrievalMarketNetwork,
 	ds dtypes.MetadataDS,
 	pieceStore dtypes.ProviderPieceStore,
 	mds dtypes.StagingMultiDstore,
 	dt dtypes.ProviderDataTransfer,
-	onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,
-	offlineOk dtypes.ConsiderOfflineRetrievalDealsConfigFunc,
+	pricingFnc dtypes.RetrievalPricingFunc,
 	userFilter dtypes.RetrievalDealFilter,
 ) (retrievalmarket.RetrievalProvider, error) {
-	adapter := retrievaladapter.NewRetrievalProviderNode(miner, sealer, full)
-
-	maddr, err := minerAddrFromDS(ds)
-	if err != nil {
-		return nil, err
-	}
-
-	netwk := rmnet.NewFromLibp2pHost(h)
 	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
-
-	return retrievalimpl.NewProvider(maddr, adapter, netwk, pieceStore, mds, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")), opt)
+	return retrievalimpl.NewProvider(address.Address(maddr), adapter, netwk, pieceStore, mds, dt, namespace.Wrap(ds, datastore.NewKey("/retrievals/provider")),
+		retrievalimpl.RetrievalPricingFunc(pricingFnc), opt)
 }
 
 var WorkerCallsPrefix = datastore.NewKey("/worker/calls")
 var ManagerWorkPrefix = datastore.NewKey("/stmgr/calls")
 
-func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, sc sectorstorage.SealerConfig, urls sectorstorage.URLs, sa sectorstorage.StorageAuth, ds dtypes.MetadataDS) (*sectorstorage.Manager, error) {
+func LocalStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, urls stores.URLs) (*stores.Local, error) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	return stores.NewLocal(ctx, ls, si, urls)
+}
+
+func RemoteStorage(lstor *stores.Local, si stores.SectorIndex, sa sectorstorage.StorageAuth, sc sectorstorage.SealerConfig) *stores.Remote {
+	return stores.NewRemote(lstor, si, http.Header(sa), sc.ParallelFetchLimit, &stores.DefaultPartialFileHandler{})
+}
+
+func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *stores.Local, stor *stores.Remote, ls stores.LocalStorage, si stores.SectorIndex, sc sectorstorage.SealerConfig, ds dtypes.MetadataDS) (*sectorstorage.Manager, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	wsts := statestore.New(namespace.Wrap(ds, WorkerCallsPrefix))
 	smsts := statestore.New(namespace.Wrap(ds, ManagerWorkPrefix))
 
-	sst, err := sectorstorage.New(ctx, ls, si, sc, urls, sa, wsts, smsts)
+	sst, err := sectorstorage.New(ctx, lstor, stor, ls, si, sc, wsts, smsts)
 	if err != nil {
 		return nil, err
 	}
@@ -696,6 +724,18 @@ func StorageAuth(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.Storage
 	headers := http.Header{}
 	headers.Add("Authorization", "Bearer "+string(token))
 	return sectorstorage.StorageAuth(headers), nil
+}
+
+func StorageAuthWithURL(apiInfo string) func(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
+	return func(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
+		s := strings.Split(apiInfo, ":")
+		if len(s) != 2 {
+			return nil, errors.New("unexpected format of `apiInfo`")
+		}
+		headers := http.Header{}
+		headers.Add("Authorization", "Bearer "+s[0])
+		return sectorstorage.StorageAuth(headers), nil
+	}
 }
 
 func NewConsiderOnlineStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.ConsiderOnlineStorageDealsConfigFunc, error) {
@@ -835,6 +875,10 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				AlwaysKeepUnsealedCopy:    cfg.AlwaysKeepUnsealedCopy,
 				FinalizeEarly:             cfg.FinalizeEarly,
 
+				CollateralFromMinerBalance: cfg.CollateralFromMinerBalance,
+				AvailableBalanceBuffer:     types.FIL(cfg.AvailableBalanceBuffer),
+				DisableCollateralFallback:  cfg.DisableCollateralFallback,
+
 				BatchPreCommits:     cfg.BatchPreCommits,
 				MaxPreCommitBatch:   cfg.MaxPreCommitBatch,
 				PreCommitBatchWait:  config.Duration(cfg.PreCommitBatchWait),
@@ -864,6 +908,10 @@ func ToSealingConfig(cfg *config.StorageMiner) sealiface.Config {
 		WaitDealsDelay:            time.Duration(cfg.Sealing.WaitDealsDelay),
 		AlwaysKeepUnsealedCopy:    cfg.Sealing.AlwaysKeepUnsealedCopy,
 		FinalizeEarly:             cfg.Sealing.FinalizeEarly,
+
+		CollateralFromMinerBalance: cfg.Sealing.CollateralFromMinerBalance,
+		AvailableBalanceBuffer:     types.BigInt(cfg.Sealing.AvailableBalanceBuffer),
+		DisableCollateralFallback:  cfg.Sealing.DisableCollateralFallback,
 
 		BatchPreCommits:     cfg.Sealing.BatchPreCommits,
 		MaxPreCommitBatch:   cfg.Sealing.MaxPreCommitBatch,

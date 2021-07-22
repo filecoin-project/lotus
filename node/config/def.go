@@ -14,6 +14,14 @@ import (
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 )
 
+const (
+	// RetrievalPricingDefault configures the node to use the default retrieval pricing policy.
+	RetrievalPricingDefaultMode = "default"
+	// RetrievalPricingExternal configures the node to use the external retrieval pricing script
+	// configured by the user.
+	RetrievalPricingExternalMode = "external"
+)
+
 // Common is common config between full node and miner
 type Common struct {
 	API    API
@@ -42,11 +50,22 @@ type Backup struct {
 type StorageMiner struct {
 	Common
 
+	Subsystems MinerSubsystemConfig
 	Dealmaking DealmakingConfig
 	Sealing    SealingConfig
 	Storage    sectorstorage.SealerConfig
 	Fees       MinerFeeConfig
 	Addresses  MinerAddressConfig
+}
+
+type MinerSubsystemConfig struct {
+	EnableMining        bool
+	EnableSealing       bool
+	EnableSectorStorage bool
+	EnableMarkets       bool
+
+	SealerApiInfo      string // if EnableSealing == false
+	SectorIndexApiInfo string // if EnableSectorStorage == false
 }
 
 type DealmakingConfig struct {
@@ -70,8 +89,34 @@ type DealmakingConfig struct {
 	// as a multiplier of the minimum collateral bound
 	MaxProviderCollateralMultiplier uint64
 
+	// The maximum number of parallel online data transfers (storage+retrieval)
+	SimultaneousTransfers uint64
+
 	Filter          string
 	RetrievalFilter string
+
+	RetrievalPricing *RetrievalPricing
+}
+
+type RetrievalPricing struct {
+	Strategy string // possible values: "default", "external"
+
+	Default  *RetrievalPricingDefault
+	External *RetrievalPricingExternal
+}
+
+type RetrievalPricingExternal struct {
+	// Path of the external script that will be run to price a retrieval deal.
+	// This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "external".
+	Path string
+}
+
+type RetrievalPricingDefault struct {
+	// VerifiedDealsFreeTransfer configures zero fees for data transfer for a retrieval deal
+	// of a payloadCid that belongs to a verified storage deal.
+	// This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "default".
+	// default value is true
+	VerifiedDealsFreeTransfer bool
 }
 
 type SealingConfig struct {
@@ -90,6 +135,13 @@ type SealingConfig struct {
 
 	// Run sector finalization before submitting sector proof to the chain
 	FinalizeEarly bool
+
+	// Whether to use available miner balance for sector collateral instead of sending it with each message
+	CollateralFromMinerBalance bool
+	// Minimum available balance to keep in the miner actor before sending it with messages
+	AvailableBalanceBuffer types.FIL
+	// Don't send collateral with messages even if there is no available balance in the miner actor
+	DisableCollateralFallback bool
 
 	// enable / disable precommit batching (takes effect after nv13)
 	BatchPreCommits bool
@@ -148,9 +200,10 @@ type MinerFeeConfig struct {
 }
 
 type MinerAddressConfig struct {
-	PreCommitControl []string
-	CommitControl    []string
-	TerminateControl []string
+	PreCommitControl   []string
+	CommitControl      []string
+	TerminateControl   []string
+	DealPublishControl []string
 
 	// DisableOwnerFallback disables usage of the owner address for messages
 	// sent automatically
@@ -195,12 +248,9 @@ type Chainstore struct {
 }
 
 type Splitstore struct {
-	HotStoreType         string
-	TrackingStoreType    string
-	MarkSetType          string
-	EnableFullCompaction bool
-	EnableGC             bool // EXPERIMENTAL
-	Archival             bool
+	ColdStoreType string
+	HotStoreType  string
+	MarkSetType   string
 }
 
 // // Full Node
@@ -271,7 +321,9 @@ func DefaultFullNode() *FullNode {
 		Chainstore: Chainstore{
 			EnableSplitstore: false,
 			Splitstore: Splitstore{
-				HotStoreType: "badger",
+				ColdStoreType: "universal",
+				HotStoreType:  "badger",
+				MarkSetType:   "map",
 			},
 		},
 	}
@@ -288,6 +340,10 @@ func DefaultStorageMiner() *StorageMiner {
 			WaitDealsDelay:            Duration(time.Hour * 6),
 			AlwaysKeepUnsealedCopy:    true,
 			FinalizeEarly:             false,
+
+			CollateralFromMinerBalance: false,
+			AvailableBalanceBuffer:     types.FIL(big.Zero()),
+			DisableCollateralFallback:  false,
 
 			BatchPreCommits:     true,
 			MaxPreCommitBatch:   miner5.PreCommitSectorBatchMaxSize, // up to 256 sectors
@@ -317,6 +373,9 @@ func DefaultStorageMiner() *StorageMiner {
 			// Default to 10 - tcp should still be able to figure this out, and
 			// it's the ratio between 10gbit / 1gbit
 			ParallelFetchLimit: 10,
+
+			// By default use the hardware resource filtering strategy.
+			ResourceFiltering: sectorstorage.ResourceFilteringHardware,
 		},
 
 		Dealmaking: DealmakingConfig{
@@ -333,6 +392,25 @@ func DefaultStorageMiner() *StorageMiner {
 			PublishMsgPeriod:                Duration(time.Hour),
 			MaxDealsPerPublishMsg:           8,
 			MaxProviderCollateralMultiplier: 2,
+
+			SimultaneousTransfers: DefaultSimultaneousTransfers,
+
+			RetrievalPricing: &RetrievalPricing{
+				Strategy: RetrievalPricingDefaultMode,
+				Default: &RetrievalPricingDefault{
+					VerifiedDealsFreeTransfer: true,
+				},
+				External: &RetrievalPricingExternal{
+					Path: "",
+				},
+			},
+		},
+
+		Subsystems: MinerSubsystemConfig{
+			EnableMining:        true,
+			EnableSealing:       true,
+			EnableSectorStorage: true,
+			EnableMarkets:       true,
 		},
 
 		Fees: MinerFeeConfig{
@@ -355,8 +433,10 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		Addresses: MinerAddressConfig{
-			PreCommitControl: []string{},
-			CommitControl:    []string{},
+			PreCommitControl:   []string{},
+			CommitControl:      []string{},
+			TerminateControl:   []string{},
+			DealPublishControl: []string{},
 		},
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"

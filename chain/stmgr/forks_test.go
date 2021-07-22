@@ -123,7 +123,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		cg.ChainStore(), UpgradeSchedule{{
 			Network: 1,
 			Height:  testForkHeight,
-			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecCallback,
+			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
 				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 				cst := ipldcbor.NewCborStore(sm.ChainStore().StateBlockstore())
 
@@ -253,7 +253,7 @@ func TestForkRefuseCall(t *testing.T) {
 			Network:   1,
 			Expensive: true,
 			Height:    testForkHeight,
-			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecCallback,
+			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
 				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 				return root, nil
 			}}})
@@ -297,22 +297,26 @@ func TestForkRefuseCall(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		pts, err := cg.ChainStore().LoadTipSet(ts.TipSet.TipSet().Parents())
+		require.NoError(t, err)
+		parentHeight := pts.Height()
+		currentHeight := ts.TipSet.TipSet().Height()
+
+		// CallWithGas calls _at_ the current tipset.
 		ret, err := sm.CallWithGas(ctx, m, nil, ts.TipSet.TipSet())
-		switch ts.TipSet.TipSet().Height() {
-		case testForkHeight, testForkHeight + 1:
+		if parentHeight <= testForkHeight && currentHeight >= testForkHeight {
 			// If I had a fork, or I _will_ have a fork, it should fail.
 			require.Equal(t, ErrExpensiveFork, err)
-		default:
+		} else {
 			require.NoError(t, err)
 			require.True(t, ret.MsgRct.ExitCode.IsSuccess())
 		}
-		// Call just runs on the parent state for a tipset, so we only
-		// expect an error at the fork height.
+
+		// Call always applies the message to the "next block" after the tipset's parent state.
 		ret, err = sm.Call(ctx, m, ts.TipSet.TipSet())
-		switch ts.TipSet.TipSet().Height() {
-		case testForkHeight + 1:
+		if parentHeight == testForkHeight {
 			require.Equal(t, ErrExpensiveFork, err)
-		default:
+		} else {
 			require.NoError(t, err)
 			require.True(t, ret.MsgRct.ExitCode.IsSuccess())
 		}
@@ -363,7 +367,7 @@ func TestForkPreMigration(t *testing.T) {
 		cg.ChainStore(), UpgradeSchedule{{
 			Network: 1,
 			Height:  testForkHeight,
-			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecCallback,
+			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
 				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 
 				// Make sure the test that should be canceled, is canceled.

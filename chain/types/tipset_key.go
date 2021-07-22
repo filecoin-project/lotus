@@ -47,7 +47,7 @@ func NewTipSetKey(cids ...cid.Cid) TipSetKey {
 func TipSetKeyFromBytes(encoded []byte) (TipSetKey, error) {
 	_, err := decodeKey(encoded)
 	if err != nil {
-		return TipSetKey{}, err
+		return EmptyTSK, err
 	}
 	return TipSetKey{string(encoded)}, nil
 }

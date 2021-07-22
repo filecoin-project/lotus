@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -120,7 +121,8 @@ var initCmd = &cli.Command{
 		},
 	},
 	Subcommands: []*cli.Command{
-		initRestoreCmd,
+		restoreCmd,
+		serviceCmd,
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Initializing lotus miner")
@@ -316,10 +318,10 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 						Size:     abi.PaddedPieceSize(meta.SectorSize),
 						PieceCID: commD,
 					},
-					DealInfo: &sealing.DealInfo{
+					DealInfo: &lapi.PieceDealInfo{
 						DealID:       dealID,
 						DealProposal: &sector.Deal,
-						DealSchedule: sealing.DealSchedule{
+						DealSchedule: lapi.DealSchedule{
 							StartEpoch: sector.Deal.StartEpoch,
 							EndEpoch:   sector.Deal.EndEpoch,
 						},
@@ -453,14 +455,22 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 			wsts := statestore.New(namespace.Wrap(mds, modules.WorkerCallsPrefix))
 			smsts := statestore.New(namespace.Wrap(mds, modules.ManagerWorkPrefix))
 
-			smgr, err := sectorstorage.New(ctx, lr, stores.NewIndex(), sectorstorage.SealerConfig{
+			si := stores.NewIndex()
+
+			lstor, err := stores.NewLocal(ctx, lr, si, nil)
+			if err != nil {
+				return err
+			}
+			stor := stores.NewRemote(lstor, si, http.Header(sa), 10, &stores.DefaultPartialFileHandler{})
+
+			smgr, err := sectorstorage.New(ctx, lstor, stor, lr, si, sectorstorage.SealerConfig{
 				ParallelFetchLimit: 10,
 				AllowAddPiece:      true,
 				AllowPreCommit1:    true,
 				AllowPreCommit2:    true,
 				AllowCommit:        true,
 				AllowUnseal:        true,
-			}, nil, sa, wsts, smsts)
+			}, wsts, smsts)
 			if err != nil {
 				return err
 			}
@@ -724,6 +734,8 @@ func createStorageMiner(ctx context.Context, api v1api.FullNode, peerid peer.ID,
 	return retval.IDAddress, nil
 }
 
+// checkV1ApiSupport uses v0 api version to signal support for v1 API
+// trying to query the v1 api on older lotus versions would get a 404, which can happen for any number of other reasons
 func checkV1ApiSupport(ctx context.Context, cctx *cli.Context) error {
 	// check v0 api version to make sure it supports v1 api
 	api0, closer, err := lcli.GetFullNodeAPI(cctx)
