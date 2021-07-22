@@ -400,7 +400,13 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	currentEpoch := curTs.Height()
 	boundaryEpoch := currentEpoch - CompactionBoundary
 
-	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "boundaryEpoch", boundaryEpoch, "compactionIndex", s.compactionIndex)
+	var inclMsgsEpoch abi.ChainEpoch
+	inclMsgsRange := abi.ChainEpoch(s.cfg.HotStoreMessageRetention) * build.Finality
+	if inclMsgsRange < boundaryEpoch {
+		inclMsgsEpoch = boundaryEpoch - inclMsgsRange
+	}
+
+	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "boundaryEpoch", boundaryEpoch, "inclMsgsEpoch", inclMsgsEpoch, "compactionIndex", s.compactionIndex)
 
 	markSet, err := s.markSetEnv.Create("live", s.markSetSize)
 	if err != nil {
@@ -430,7 +436,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	startMark := time.Now()
 
 	var count int64
-	err = s.walkChain(curTs, boundaryEpoch, true,
+	err = s.walkChain(curTs, boundaryEpoch, inclMsgsEpoch,
 		func(c cid.Cid) error {
 			if isUnitaryObject(c) {
 				return errStopWalk
@@ -625,7 +631,7 @@ func (s *SplitStore) endTxnProtect() {
 	s.txnMissing = nil
 }
 
-func (s *SplitStore) walkChain(ts *types.TipSet, boundary abi.ChainEpoch, inclMsgs bool,
+func (s *SplitStore) walkChain(ts *types.TipSet, inclState abi.ChainEpoch, inclMsgs abi.ChainEpoch,
 	f func(cid.Cid) error) error {
 	visited := cid.NewSet()
 	walked := cid.NewSet()
@@ -653,14 +659,25 @@ func (s *SplitStore) walkChain(ts *types.TipSet, boundary abi.ChainEpoch, inclMs
 			return xerrors.Errorf("error unmarshaling block header (cid: %s): %w", c, err)
 		}
 
-		// we only scan the block if it is at or above the boundary
-		if hdr.Height >= boundary || hdr.Height == 0 {
-			scanCnt++
-			if inclMsgs && hdr.Height > 0 {
+		// message are retained if within the inclMsgs boundary
+		if hdr.Height >= inclMsgs && hdr.Height > 0 {
+			if inclMsgs < inclState {
+				// we need to use walkObjectIncomplete here, as messages may be missing early on if we
+				// synced from snapshot and have a long HotStoreMessageRetentionPolicy.
+				stopWalk := func(_ cid.Cid) error { return errStopWalk }
+				if err := s.walkObjectIncomplete(hdr.Messages, walked, f, stopWalk); err != nil {
+					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
+				}
+			} else {
 				if err := s.walkObject(hdr.Messages, walked, f); err != nil {
 					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 				}
+			}
+		}
 
+		// state and message receipts is only retained if within the inclState boundary
+		if hdr.Height >= inclState || hdr.Height == 0 {
+			if hdr.Height > 0 {
 				if err := s.walkObject(hdr.ParentMessageReceipts, walked, f); err != nil {
 					return xerrors.Errorf("error walking message receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 				}
@@ -669,6 +686,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, boundary abi.ChainEpoch, inclMs
 			if err := s.walkObject(hdr.ParentStateRoot, walked, f); err != nil {
 				return xerrors.Errorf("error walking state root (cid: %s): %w", hdr.ParentStateRoot, err)
 			}
+			scanCnt++
 		}
 
 		if hdr.Height > 0 {
