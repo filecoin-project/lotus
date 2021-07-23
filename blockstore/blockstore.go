@@ -37,8 +37,20 @@ type BlockstoreIterator interface {
 
 // BlockstoreGC is a trait for blockstores that support online garbage collection
 type BlockstoreGC interface {
-	CollectGarbage() error
+	CollectGarbage(options map[interface{}]interface{}) error
 }
+
+// garbage collection options
+type blockstoreMovingGCKey struct{}
+type blockstoreMovingGCPath struct{}
+
+// BlockstoreMovingGC is a garbage collection option that instructs the blockstore
+// to use moving GC if supported.
+var BlockstoreMovingGC = blockstoreMovingGCKey{}
+
+// BlockstoreMovingGCPath is a garbage collection option that specifies an optional
+// target path for moving GC.
+var BlockstoreMovingGCPath = blockstoreMovingGCPath{}
 
 // WrapIDStore wraps the underlying blockstore in an "identity" blockstore.
 // The ID store filters out all puts for blocks with CIDs using the "identity"
