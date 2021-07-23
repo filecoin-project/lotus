@@ -184,16 +184,6 @@ func (s *SplitStore) trackTxnRef(c cid.Cid) {
 		return
 	}
 
-	if s.txnProtect != nil {
-		mark, err := s.txnProtect.Has(c)
-		if err != nil {
-			log.Warnf("error checking markset: %s", err)
-			// track it anyways
-		} else if mark {
-			return
-		}
-	}
-
 	s.txnRefsMx.Lock()
 	s.txnRefs[c] = struct{}{}
 	s.txnRefsMx.Unlock()
@@ -209,25 +199,9 @@ func (s *SplitStore) trackTxnRefMany(cids []cid.Cid) {
 	s.txnRefsMx.Lock()
 	defer s.txnRefsMx.Unlock()
 
-	quiet := false
 	for _, c := range cids {
 		if isUnitaryObject(c) {
 			continue
-		}
-
-		if s.txnProtect != nil {
-			mark, err := s.txnProtect.Has(c)
-			if err != nil {
-				if !quiet {
-					quiet = true
-					log.Warnf("error checking markset: %s", err)
-				}
-				// track it anyways
-			}
-
-			if mark {
-				continue
-			}
 		}
 
 		s.txnRefs[c] = struct{}{}

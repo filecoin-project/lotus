@@ -16,6 +16,15 @@ func TestBloomMarkSet(t *testing.T) {
 	testMarkSet(t, "bloom")
 }
 
+func TestBadgerMarkSet(t *testing.T) {
+	bs := badgerMarkSetBatchSize
+	badgerMarkSetBatchSize = 1
+	t.Cleanup(func() {
+		badgerMarkSetBatchSize = bs
+	})
+	testMarkSet(t, "badger")
+}
+
 func testMarkSet(t *testing.T, lsType string) {
 	t.Helper()
 
