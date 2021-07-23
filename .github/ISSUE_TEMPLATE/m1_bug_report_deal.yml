@@ -12,6 +12,8 @@ body:
         required: true
       - label: I **am** reporting a bug w.r.t one of the [M1 tags](https://github.com/filecoin-project/lotus/discussions/6852#discussioncomment-1043951). If not, choose another issue option [here](https://github.com/filecoin-project/lotus/issues/new/choose).
         required: true
+      - label: I **am** reporting a bug around deal making. If not, create a [M1 Bug Report For Non Deal Making Issue](https://github.com/filecoin-project/lotus/issues/new?assignees=&labels=need%2Ftriage%2Ckind%2Fbug%2CM1-release&template=m1_bug_report_non_deal.yml).
+        required: true
       - label: I have my log level set as instructed [here](https://github.com/filecoin-project/lotus/discussions/6852#discussioncomment-1043678) and have logs available for troubleshooting.
         required: true
       - label: The deal is coming from one of the M1 clients(communitcated in the coordination slack channel).
