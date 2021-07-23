@@ -31,6 +31,7 @@ var marketCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		marketDealFeesCmd,
 		marketExportDatastoreCmd,
+		marketImportDatastoreCmd,
 	},
 }
 
@@ -114,9 +115,11 @@ var marketDealFeesCmd = &cli.Command{
 	},
 }
 
+const mktsMetadataNamespace = "metadata"
+
 var marketExportDatastoreCmd = &cli.Command{
 	Name:        "export-datastore",
-	Description: "export datastore to a file",
+	Description: "export markets datastore key/values to a file",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "repo",
@@ -136,43 +139,37 @@ var marketExportDatastoreCmd = &cli.Command{
 			backupDir = os.TempDir()
 		}
 
-		// Create a new repo at the repo path
-		r, err := repo.NewFS(cctx.String("repo"))
-		if err != nil {
-			return xerrors.Errorf("opening fs repo: %w", err)
-		}
-
-		// Make sure the repo exists
-		exists, err := r.Exists()
-		if err != nil {
-			return err
-		}
-		if !exists {
-			return xerrors.Errorf("lotus repo doesn't exist")
-		}
-
-		// Lock the repo
-		lr, err := r.Lock(repo.StorageMiner)
+		// Open the repo at the repo path
+		repoPath := cctx.String("repo")
+		lr, err := openLockedRepo(repoPath)
 		if err != nil {
 			return err
 		}
 		defer lr.Close() //nolint:errcheck
 
 		// Open the metadata datastore on the repo
-		namespace := "metadata"
-		ds, err := lr.Datastore(cctx.Context, datastore.NewKey(namespace).String())
+		ds, err := lr.Datastore(cctx.Context, datastore.NewKey(mktsMetadataNamespace).String())
 		if err != nil {
-			return err
+			return xerrors.Errorf("opening datastore %s on repo %s: %w", mktsMetadataNamespace, repoPath, err)
 		}
 
 		// Create a tmp datastore that we'll add the exported key / values to
 		// and then backup
-		backupDs, err := levelds.NewDatastore(backupDir, &levelds.Options{
+		backupDsDir := path.Join(backupDir, "markets-backup-datastore")
+		if err := os.MkdirAll(backupDsDir, 0775); err != nil { //nolint:gosec
+			return xerrors.Errorf("creating tmp datastore directory: %w", err)
+		}
+		defer os.RemoveAll(backupDsDir) //nolint:errcheck
+
+		backupDs, err := levelds.NewDatastore(backupDsDir, &levelds.Options{
 			Compression: ldbopts.NoCompression,
 			NoSync:      false,
 			Strict:      ldbopts.StrictAll,
 			ReadOnly:    false,
 		})
+		if err != nil {
+			return xerrors.Errorf("opening backup datastore at %s: %w", backupDir, err)
+		}
 
 		// Export the key / values
 		prefixes := []string{
@@ -197,7 +194,7 @@ var marketExportDatastoreCmd = &cli.Command{
 		fpath := path.Join(backupDir, "markets.datastore.backup")
 		out, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			return xerrors.Errorf("open %s: %w", fpath, err)
+			return xerrors.Errorf("opening backup file %s: %w", fpath, err)
 		}
 
 		// Write the backup to the file
@@ -235,4 +232,78 @@ func exportPrefix(prefix string, ds datastore.Batching, backupDs datastore.Batch
 	}
 
 	return nil
+}
+
+var marketImportDatastoreCmd = &cli.Command{
+	Name:        "import-datastore",
+	Description: "import markets datastore key/values from a backup file",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "repo",
+			Usage: "path to the repo",
+		},
+		&cli.StringFlag{
+			Name:     "backup-path",
+			Usage:    "path to the backup directory",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		logging.SetLogLevel("badger", "ERROR") // nolint:errcheck
+
+		backupPath := cctx.String("backup-path")
+
+		// Open the repo at the repo path
+		lr, err := openLockedRepo(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+		defer lr.Close() //nolint:errcheck
+
+		// Open the metadata datastore on the repo
+		repoDs, err := lr.Datastore(cctx.Context, datastore.NewKey(mktsMetadataNamespace).String())
+		if err != nil {
+			return err
+		}
+
+		r, err := os.Open(backupPath)
+		if err != nil {
+			return xerrors.Errorf("opening backup path %s: %w", backupPath, err)
+		}
+
+		fmt.Println("Importing from backup file " + backupPath)
+		err = backupds.RestoreInto(r, repoDs)
+		if err != nil {
+			return xerrors.Errorf("restoring backup from path %s: %w", backupPath, err)
+		}
+
+		fmt.Println("Completed importing from backup file " + backupPath)
+
+		return nil
+	},
+}
+
+func openLockedRepo(path string) (repo.LockedRepo, error) {
+	// Open the repo at the repo path
+	rpo, err := repo.NewFS(path)
+	if err != nil {
+		return nil, xerrors.Errorf("could not open repo %s: %w", path, err)
+	}
+
+	// Make sure the repo exists
+	exists, err := rpo.Exists()
+	if err != nil {
+		return nil, xerrors.Errorf("checking repo %s exists: %w", path, err)
+	}
+	if !exists {
+		return nil, xerrors.Errorf("repo does not exist: %s", path)
+	}
+
+	// Lock the repo
+	lr, err := rpo.Lock(repo.StorageMiner)
+	if err != nil {
+		return nil, xerrors.Errorf("locking repo %s: %w", path, err)
+	}
+
+	return lr, nil
 }
