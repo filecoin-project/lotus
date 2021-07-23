@@ -20,7 +20,8 @@ COMMANDS:
 
 GLOBAL OPTIONS:
    --worker-repo value, --workerrepo value  Specify worker repo path. flag workerrepo and env WORKER_PATH are DEPRECATION, will REMOVE SOON (default: "~/.lotusworker") [$LOTUS_WORKER_PATH, $WORKER_PATH]
-   --miner-repo value, --storagerepo value  Specify miner repo path. flag storagerepo and env LOTUS_STORAGE_PATH are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
+   --miner-repo value, --storagerepo value  Specify miner repo path. flag storagerepo and env LOTUS_STORAGE_PATH are 
+   DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
    --enable-gpu-proving                     enable use of GPU for mining operations (default: true)
    --help, -h                               show help (default: false)
    --version, -v                            print the version (default: false)
