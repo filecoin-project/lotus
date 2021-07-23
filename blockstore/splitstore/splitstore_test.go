@@ -211,6 +211,11 @@ func TestSplitStoreCompaction(t *testing.T) {
 }
 
 func TestSplitStoreCompactionWithBadger(t *testing.T) {
+	bs := badgerMarkSetBatchSize
+	badgerMarkSetBatchSize = 1
+	t.Cleanup(func() {
+		badgerMarkSetBatchSize = bs
+	})
 	testSplitStore(t, &Config{MarkSetType: "badger"})
 }
 
