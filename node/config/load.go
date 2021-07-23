@@ -131,9 +131,10 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool) ([]byte, error) {
 			// if there is the same line in the default config, comment it out it output
 			if _, found := defaults[strings.TrimSpace(nodeLines[i])]; (cfgDef == nil || found) && len(line) > 0 {
 				line = pad + "#" + line[len(pad):]
-				outLines = append(outLines, line, "")
-			} else {
-				outLines = append(outLines, line)
+			}
+			outLines = append(outLines, line)
+			if len(line) > 0 {
+				outLines = append(outLines, "")
 			}
 		}
 
