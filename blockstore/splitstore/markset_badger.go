@@ -64,6 +64,11 @@ func (e *BadgerMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) 
 	opts.SyncWrites = false
 	opts.CompactL0OnClose = false
 	opts.Compression = options.None
+	// Note: We use FileIO for loading modes to avoid memory thrashing and interference
+	//       between the system blockstore and the markset.
+	//       It was observed that using the default memory mapped option resulted in
+	//       significant interference and unacceptably high block validation times once the markset
+	//       exceeded 1GB in size.
 	opts.TableLoadingMode = options.FileIO
 	opts.ValueLogLoadingMode = options.FileIO
 	opts.Logger = &badgerLogger{
