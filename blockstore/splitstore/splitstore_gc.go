@@ -8,17 +8,24 @@ import (
 )
 
 func (s *SplitStore) gcHotstore() {
-	if err := s.gcBlockstoreOnline(s.hot); err != nil {
+	var opts map[interface{}]interface{}
+	if s.cfg.HotStoreMovingGCFrequency > 0 && s.compactionIndex%int64(s.cfg.HotStoreMovingGCFrequency) == 0 {
+		opts = map[interface{}]interface{}{
+			bstore.BlockstoreMovingGC: true,
+		}
+	}
+
+	if err := s.gcBlockstore(s.hot, opts); err != nil {
 		log.Warnf("error garbage collecting hostore: %s", err)
 	}
 }
 
-func (s *SplitStore) gcBlockstoreOnline(b bstore.Blockstore) error {
+func (s *SplitStore) gcBlockstore(b bstore.Blockstore, opts map[interface{}]interface{}) error {
 	if gc, ok := b.(bstore.BlockstoreGC); ok {
 		log.Info("garbage collecting blockstore")
 		startGC := time.Now()
 
-		if err := gc.CollectGarbage(); err != nil {
+		if err := gc.CollectGarbage(opts); err != nil {
 			return err
 		}
 
@@ -26,5 +33,5 @@ func (s *SplitStore) gcBlockstoreOnline(b bstore.Blockstore) error {
 		return nil
 	}
 
-	return fmt.Errorf("blockstore doesn't support online gc: %T", b)
+	return fmt.Errorf("blockstore doesn't support garbage collection: %T", b)
 }
