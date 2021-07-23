@@ -39,6 +39,8 @@ import (
 	xerrors "golang.org/x/xerrors"
 )
 
+var ErrNotSupported = xerrors.New("method not supported")
+
 type ChainIOStruct struct {
 	Internal struct {
 		ChainHasObj func(p0 context.Context, p1 cid.Cid) (bool, error) ``
@@ -860,2915 +862,4007 @@ type WorkerStub struct {
 }
 
 func (s *ChainIOStruct) ChainHasObj(p0 context.Context, p1 cid.Cid) (bool, error) {
+	if s.Internal.ChainHasObj == nil {
+		return false, ErrNotSupported
+	}
 	return s.Internal.ChainHasObj(p0, p1)
 }
 
 func (s *ChainIOStub) ChainHasObj(p0 context.Context, p1 cid.Cid) (bool, error) {
-	return false, xerrors.New("method not supported")
+	return false, ErrNotSupported
 }
 
 func (s *ChainIOStruct) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, error) {
+	if s.Internal.ChainReadObj == nil {
+		return *new([]byte), ErrNotSupported
+	}
 	return s.Internal.ChainReadObj(p0, p1)
 }
 
 func (s *ChainIOStub) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, error) {
-	return *new([]byte), xerrors.New("method not supported")
+	return *new([]byte), ErrNotSupported
 }
 
 func (s *CommonStruct) AuthNew(p0 context.Context, p1 []auth.Permission) ([]byte, error) {
+	if s.Internal.AuthNew == nil {
+		return *new([]byte), ErrNotSupported
+	}
 	return s.Internal.AuthNew(p0, p1)
 }
 
 func (s *CommonStub) AuthNew(p0 context.Context, p1 []auth.Permission) ([]byte, error) {
-	return *new([]byte), xerrors.New("method not supported")
+	return *new([]byte), ErrNotSupported
 }
 
 func (s *CommonStruct) AuthVerify(p0 context.Context, p1 string) ([]auth.Permission, error) {
+	if s.Internal.AuthVerify == nil {
+		return *new([]auth.Permission), ErrNotSupported
+	}
 	return s.Internal.AuthVerify(p0, p1)
 }
 
 func (s *CommonStub) AuthVerify(p0 context.Context, p1 string) ([]auth.Permission, error) {
-	return *new([]auth.Permission), xerrors.New("method not supported")
+	return *new([]auth.Permission), ErrNotSupported
 }
 
 func (s *CommonStruct) Closing(p0 context.Context) (<-chan struct{}, error) {
+	if s.Internal.Closing == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.Closing(p0)
 }
 
 func (s *CommonStub) Closing(p0 context.Context) (<-chan struct{}, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *CommonStruct) Discover(p0 context.Context) (apitypes.OpenRPCDocument, error) {
+	if s.Internal.Discover == nil {
+		return *new(apitypes.OpenRPCDocument), ErrNotSupported
+	}
 	return s.Internal.Discover(p0)
 }
 
 func (s *CommonStub) Discover(p0 context.Context) (apitypes.OpenRPCDocument, error) {
-	return *new(apitypes.OpenRPCDocument), xerrors.New("method not supported")
+	return *new(apitypes.OpenRPCDocument), ErrNotSupported
 }
 
 func (s *CommonStruct) LogList(p0 context.Context) ([]string, error) {
+	if s.Internal.LogList == nil {
+		return *new([]string), ErrNotSupported
+	}
 	return s.Internal.LogList(p0)
 }
 
 func (s *CommonStub) LogList(p0 context.Context) ([]string, error) {
-	return *new([]string), xerrors.New("method not supported")
+	return *new([]string), ErrNotSupported
 }
 
 func (s *CommonStruct) LogSetLevel(p0 context.Context, p1 string, p2 string) error {
+	if s.Internal.LogSetLevel == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.LogSetLevel(p0, p1, p2)
 }
 
 func (s *CommonStub) LogSetLevel(p0 context.Context, p1 string, p2 string) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *CommonStruct) Session(p0 context.Context) (uuid.UUID, error) {
+	if s.Internal.Session == nil {
+		return *new(uuid.UUID), ErrNotSupported
+	}
 	return s.Internal.Session(p0)
 }
 
 func (s *CommonStub) Session(p0 context.Context) (uuid.UUID, error) {
-	return *new(uuid.UUID), xerrors.New("method not supported")
+	return *new(uuid.UUID), ErrNotSupported
 }
 
 func (s *CommonStruct) Shutdown(p0 context.Context) error {
+	if s.Internal.Shutdown == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.Shutdown(p0)
 }
 
 func (s *CommonStub) Shutdown(p0 context.Context) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *CommonStruct) Version(p0 context.Context) (APIVersion, error) {
+	if s.Internal.Version == nil {
+		return *new(APIVersion), ErrNotSupported
+	}
 	return s.Internal.Version(p0)
 }
 
 func (s *CommonStub) Version(p0 context.Context) (APIVersion, error) {
-	return *new(APIVersion), xerrors.New("method not supported")
+	return *new(APIVersion), ErrNotSupported
 }
 
 func (s *FullNodeStruct) BeaconGetEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
+	if s.Internal.BeaconGetEntry == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.BeaconGetEntry(p0, p1)
 }
 
 func (s *FullNodeStub) BeaconGetEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainBlockstoreInfo(p0 context.Context) (map[string]interface{}, error) {
+	if s.Internal.ChainBlockstoreInfo == nil {
+		return *new(map[string]interface{}), ErrNotSupported
+	}
 	return s.Internal.ChainBlockstoreInfo(p0)
 }
 
 func (s *FullNodeStub) ChainBlockstoreInfo(p0 context.Context) (map[string]interface{}, error) {
-	return *new(map[string]interface{}), xerrors.New("method not supported")
+	return *new(map[string]interface{}), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainCheckBlockstore(p0 context.Context) error {
+	if s.Internal.ChainCheckBlockstore == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ChainCheckBlockstore(p0)
 }
 
 func (s *FullNodeStub) ChainCheckBlockstore(p0 context.Context) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainDeleteObj(p0 context.Context, p1 cid.Cid) error {
+	if s.Internal.ChainDeleteObj == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ChainDeleteObj(p0, p1)
 }
 
 func (s *FullNodeStub) ChainDeleteObj(p0 context.Context, p1 cid.Cid) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainExport(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey) (<-chan []byte, error) {
+	if s.Internal.ChainExport == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ChainExport(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) ChainExport(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey) (<-chan []byte, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetBlock(p0 context.Context, p1 cid.Cid) (*types.BlockHeader, error) {
+	if s.Internal.ChainGetBlock == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ChainGetBlock(p0, p1)
 }
 
 func (s *FullNodeStub) ChainGetBlock(p0 context.Context, p1 cid.Cid) (*types.BlockHeader, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) {
+	if s.Internal.ChainGetBlockMessages == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ChainGetBlockMessages(p0, p1)
 }
 
 func (s *FullNodeStub) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetGenesis(p0 context.Context) (*types.TipSet, error) {
+	if s.Internal.ChainGetGenesis == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ChainGetGenesis(p0)
 }
 
 func (s *FullNodeStub) ChainGetGenesis(p0 context.Context) (*types.TipSet, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.Message, error) {
+	if s.Internal.ChainGetMessage == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ChainGetMessage(p0, p1)
 }
 
 func (s *FullNodeStub) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.Message, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetMessagesInTipset(p0 context.Context, p1 types.TipSetKey) ([]Message, error) {
+	if s.Internal.ChainGetMessagesInTipset == nil {
+		return *new([]Message), ErrNotSupported
+	}
 	return s.Internal.ChainGetMessagesInTipset(p0, p1)
 }
 
 func (s *FullNodeStub) ChainGetMessagesInTipset(p0 context.Context, p1 types.TipSetKey) ([]Message, error) {
-	return *new([]Message), xerrors.New("method not supported")
+	return *new([]Message), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetNode(p0 context.Context, p1 string) (*IpldObject, error) {
+	if s.Internal.ChainGetNode == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ChainGetNode(p0, p1)
 }
 
 func (s *FullNodeStub) ChainGetNode(p0 context.Context, p1 string) (*IpldObject, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetParentMessages(p0 context.Context, p1 cid.Cid) ([]Message, error) {
+	if s.Internal.ChainGetParentMessages == nil {
+		return *new([]Message), ErrNotSupported
+	}
 	return s.Internal.ChainGetParentMessages(p0, p1)
 }
 
 func (s *FullNodeStub) ChainGetParentMessages(p0 context.Context, p1 cid.Cid) ([]Message, error) {
-	return *new([]Message), xerrors.New("method not supported")
+	return *new([]Message), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetParentReceipts(p0 context.Context, p1 cid.Cid) ([]*types.MessageReceipt, error) {
+	if s.Internal.ChainGetParentReceipts == nil {
+		return *new([]*types.MessageReceipt), ErrNotSupported
+	}
 	return s.Internal.ChainGetParentReceipts(p0, p1)
 }
 
 func (s *FullNodeStub) ChainGetParentReceipts(p0 context.Context, p1 cid.Cid) ([]*types.MessageReceipt, error) {
-	return *new([]*types.MessageReceipt), xerrors.New("method not supported")
+	return *new([]*types.MessageReceipt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*HeadChange, error) {
+	if s.Internal.ChainGetPath == nil {
+		return *new([]*HeadChange), ErrNotSupported
+	}
 	return s.Internal.ChainGetPath(p0, p1, p2)
 }
 
 func (s *FullNodeStub) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*HeadChange, error) {
-	return *new([]*HeadChange), xerrors.New("method not supported")
+	return *new([]*HeadChange), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetRandomnessFromBeacon(p0 context.Context, p1 types.TipSetKey, p2 crypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) {
+	if s.Internal.ChainGetRandomnessFromBeacon == nil {
+		return *new(abi.Randomness), ErrNotSupported
+	}
 	return s.Internal.ChainGetRandomnessFromBeacon(p0, p1, p2, p3, p4)
 }
 
 func (s *FullNodeStub) ChainGetRandomnessFromBeacon(p0 context.Context, p1 types.TipSetKey, p2 crypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) {
-	return *new(abi.Randomness), xerrors.New("method not supported")
+	return *new(abi.Randomness), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetRandomnessFromTickets(p0 context.Context, p1 types.TipSetKey, p2 crypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) {
+	if s.Internal.ChainGetRandomnessFromTickets == nil {
+		return *new(abi.Randomness), ErrNotSupported
+	}
 	return s.Internal.ChainGetRandomnessFromTickets(p0, p1, p2, p3, p4)
 }
 
 func (s *FullNodeStub) ChainGetRandomnessFromTickets(p0 context.Context, p1 types.TipSetKey, p2 crypto.DomainSeparationTag, p3 abi.ChainEpoch, p4 []byte) (abi.Randomness, error) {
-	return *new(abi.Randomness), xerrors.New("method not supported")
+	return *new(abi.Randomness), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) {
+	if s.Internal.ChainGetTipSet == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ChainGetTipSet(p0, p1)
 }
 
 func (s *FullNodeStub) ChainGetTipSet(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainGetTipSetByHeight(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) {
+	if s.Internal.ChainGetTipSetByHeight == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ChainGetTipSetByHeight(p0, p1, p2)
 }
 
 func (s *FullNodeStub) ChainGetTipSetByHeight(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainHasObj(p0 context.Context, p1 cid.Cid) (bool, error) {
+	if s.Internal.ChainHasObj == nil {
+		return false, ErrNotSupported
+	}
 	return s.Internal.ChainHasObj(p0, p1)
 }
 
 func (s *FullNodeStub) ChainHasObj(p0 context.Context, p1 cid.Cid) (bool, error) {
-	return false, xerrors.New("method not supported")
+	return false, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainHead(p0 context.Context) (*types.TipSet, error) {
+	if s.Internal.ChainHead == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ChainHead(p0)
 }
 
 func (s *FullNodeStub) ChainHead(p0 context.Context) (*types.TipSet, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainNotify(p0 context.Context) (<-chan []*HeadChange, error) {
+	if s.Internal.ChainNotify == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ChainNotify(p0)
 }
 
 func (s *FullNodeStub) ChainNotify(p0 context.Context) (<-chan []*HeadChange, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, error) {
+	if s.Internal.ChainReadObj == nil {
+		return *new([]byte), ErrNotSupported
+	}
 	return s.Internal.ChainReadObj(p0, p1)
 }
 
 func (s *FullNodeStub) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, error) {
-	return *new([]byte), xerrors.New("method not supported")
+	return *new([]byte), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainSetHead(p0 context.Context, p1 types.TipSetKey) error {
+	if s.Internal.ChainSetHead == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ChainSetHead(p0, p1)
 }
 
 func (s *FullNodeStub) ChainSetHead(p0 context.Context, p1 types.TipSetKey) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainStatObj(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (ObjStat, error) {
+	if s.Internal.ChainStatObj == nil {
+		return *new(ObjStat), ErrNotSupported
+	}
 	return s.Internal.ChainStatObj(p0, p1, p2)
 }
 
 func (s *FullNodeStub) ChainStatObj(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (ObjStat, error) {
-	return *new(ObjStat), xerrors.New("method not supported")
+	return *new(ObjStat), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainTipSetWeight(p0 context.Context, p1 types.TipSetKey) (types.BigInt, error) {
+	if s.Internal.ChainTipSetWeight == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
 	return s.Internal.ChainTipSetWeight(p0, p1)
 }
 
 func (s *FullNodeStub) ChainTipSetWeight(p0 context.Context, p1 types.TipSetKey) (types.BigInt, error) {
-	return *new(types.BigInt), xerrors.New("method not supported")
+	return *new(types.BigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientCalcCommP(p0 context.Context, p1 string) (*CommPRet, error) {
+	if s.Internal.ClientCalcCommP == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ClientCalcCommP(p0, p1)
 }
 
 func (s *FullNodeStub) ClientCalcCommP(p0 context.Context, p1 string) (*CommPRet, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+	if s.Internal.ClientCancelDataTransfer == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ClientCancelDataTransfer(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) ClientCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientCancelRetrievalDeal(p0 context.Context, p1 retrievalmarket.DealID) error {
+	if s.Internal.ClientCancelRetrievalDeal == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ClientCancelRetrievalDeal(p0, p1)
 }
 
 func (s *FullNodeStub) ClientCancelRetrievalDeal(p0 context.Context, p1 retrievalmarket.DealID) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientDataTransferUpdates(p0 context.Context) (<-chan DataTransferChannel, error) {
+	if s.Internal.ClientDataTransferUpdates == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ClientDataTransferUpdates(p0)
 }
 
 func (s *FullNodeStub) ClientDataTransferUpdates(p0 context.Context) (<-chan DataTransferChannel, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientDealPieceCID(p0 context.Context, p1 cid.Cid) (DataCIDSize, error) {
+	if s.Internal.ClientDealPieceCID == nil {
+		return *new(DataCIDSize), ErrNotSupported
+	}
 	return s.Internal.ClientDealPieceCID(p0, p1)
 }
 
 func (s *FullNodeStub) ClientDealPieceCID(p0 context.Context, p1 cid.Cid) (DataCIDSize, error) {
-	return *new(DataCIDSize), xerrors.New("method not supported")
+	return *new(DataCIDSize), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientDealSize(p0 context.Context, p1 cid.Cid) (DataSize, error) {
+	if s.Internal.ClientDealSize == nil {
+		return *new(DataSize), ErrNotSupported
+	}
 	return s.Internal.ClientDealSize(p0, p1)
 }
 
 func (s *FullNodeStub) ClientDealSize(p0 context.Context, p1 cid.Cid) (DataSize, error) {
-	return *new(DataSize), xerrors.New("method not supported")
+	return *new(DataSize), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientFindData(p0 context.Context, p1 cid.Cid, p2 *cid.Cid) ([]QueryOffer, error) {
+	if s.Internal.ClientFindData == nil {
+		return *new([]QueryOffer), ErrNotSupported
+	}
 	return s.Internal.ClientFindData(p0, p1, p2)
 }
 
 func (s *FullNodeStub) ClientFindData(p0 context.Context, p1 cid.Cid, p2 *cid.Cid) ([]QueryOffer, error) {
-	return *new([]QueryOffer), xerrors.New("method not supported")
+	return *new([]QueryOffer), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientGenCar(p0 context.Context, p1 FileRef, p2 string) error {
+	if s.Internal.ClientGenCar == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ClientGenCar(p0, p1, p2)
 }
 
 func (s *FullNodeStub) ClientGenCar(p0 context.Context, p1 FileRef, p2 string) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientGetDealInfo(p0 context.Context, p1 cid.Cid) (*DealInfo, error) {
+	if s.Internal.ClientGetDealInfo == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ClientGetDealInfo(p0, p1)
 }
 
 func (s *FullNodeStub) ClientGetDealInfo(p0 context.Context, p1 cid.Cid) (*DealInfo, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientGetDealStatus(p0 context.Context, p1 uint64) (string, error) {
+	if s.Internal.ClientGetDealStatus == nil {
+		return "", ErrNotSupported
+	}
 	return s.Internal.ClientGetDealStatus(p0, p1)
 }
 
 func (s *FullNodeStub) ClientGetDealStatus(p0 context.Context, p1 uint64) (string, error) {
-	return "", xerrors.New("method not supported")
+	return "", ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientGetDealUpdates(p0 context.Context) (<-chan DealInfo, error) {
+	if s.Internal.ClientGetDealUpdates == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ClientGetDealUpdates(p0)
 }
 
 func (s *FullNodeStub) ClientGetDealUpdates(p0 context.Context) (<-chan DealInfo, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientGetRetrievalUpdates(p0 context.Context) (<-chan RetrievalInfo, error) {
+	if s.Internal.ClientGetRetrievalUpdates == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ClientGetRetrievalUpdates(p0)
 }
 
 func (s *FullNodeStub) ClientGetRetrievalUpdates(p0 context.Context) (<-chan RetrievalInfo, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientHasLocal(p0 context.Context, p1 cid.Cid) (bool, error) {
+	if s.Internal.ClientHasLocal == nil {
+		return false, ErrNotSupported
+	}
 	return s.Internal.ClientHasLocal(p0, p1)
 }
 
 func (s *FullNodeStub) ClientHasLocal(p0 context.Context, p1 cid.Cid) (bool, error) {
-	return false, xerrors.New("method not supported")
+	return false, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientImport(p0 context.Context, p1 FileRef) (*ImportRes, error) {
+	if s.Internal.ClientImport == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ClientImport(p0, p1)
 }
 
 func (s *FullNodeStub) ClientImport(p0 context.Context, p1 FileRef) (*ImportRes, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientListDataTransfers(p0 context.Context) ([]DataTransferChannel, error) {
+	if s.Internal.ClientListDataTransfers == nil {
+		return *new([]DataTransferChannel), ErrNotSupported
+	}
 	return s.Internal.ClientListDataTransfers(p0)
 }
 
 func (s *FullNodeStub) ClientListDataTransfers(p0 context.Context) ([]DataTransferChannel, error) {
-	return *new([]DataTransferChannel), xerrors.New("method not supported")
+	return *new([]DataTransferChannel), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientListDeals(p0 context.Context) ([]DealInfo, error) {
+	if s.Internal.ClientListDeals == nil {
+		return *new([]DealInfo), ErrNotSupported
+	}
 	return s.Internal.ClientListDeals(p0)
 }
 
 func (s *FullNodeStub) ClientListDeals(p0 context.Context) ([]DealInfo, error) {
-	return *new([]DealInfo), xerrors.New("method not supported")
+	return *new([]DealInfo), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientListImports(p0 context.Context) ([]Import, error) {
+	if s.Internal.ClientListImports == nil {
+		return *new([]Import), ErrNotSupported
+	}
 	return s.Internal.ClientListImports(p0)
 }
 
 func (s *FullNodeStub) ClientListImports(p0 context.Context) ([]Import, error) {
-	return *new([]Import), xerrors.New("method not supported")
+	return *new([]Import), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientListRetrievals(p0 context.Context) ([]RetrievalInfo, error) {
+	if s.Internal.ClientListRetrievals == nil {
+		return *new([]RetrievalInfo), ErrNotSupported
+	}
 	return s.Internal.ClientListRetrievals(p0)
 }
 
 func (s *FullNodeStub) ClientListRetrievals(p0 context.Context) ([]RetrievalInfo, error) {
-	return *new([]RetrievalInfo), xerrors.New("method not supported")
+	return *new([]RetrievalInfo), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientMinerQueryOffer(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 *cid.Cid) (QueryOffer, error) {
+	if s.Internal.ClientMinerQueryOffer == nil {
+		return *new(QueryOffer), ErrNotSupported
+	}
 	return s.Internal.ClientMinerQueryOffer(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) ClientMinerQueryOffer(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 *cid.Cid) (QueryOffer, error) {
-	return *new(QueryOffer), xerrors.New("method not supported")
+	return *new(QueryOffer), ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 address.Address) (*storagemarket.StorageAsk, error) {
+	if s.Internal.ClientQueryAsk == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ClientQueryAsk(p0, p1, p2)
 }
 
 func (s *FullNodeStub) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 address.Address) (*storagemarket.StorageAsk, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientRemoveImport(p0 context.Context, p1 multistore.StoreID) error {
+	if s.Internal.ClientRemoveImport == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ClientRemoveImport(p0, p1)
 }
 
 func (s *FullNodeStub) ClientRemoveImport(p0 context.Context, p1 multistore.StoreID) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+	if s.Internal.ClientRestartDataTransfer == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ClientRestartDataTransfer(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) ClientRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientRetrieve(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) error {
+	if s.Internal.ClientRetrieve == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ClientRetrieve(p0, p1, p2)
 }
 
 func (s *FullNodeStub) ClientRetrieve(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) error {
+	if s.Internal.ClientRetrieveTryRestartInsufficientFunds == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ClientRetrieveTryRestartInsufficientFunds(p0, p1)
 }
 
 func (s *FullNodeStub) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientRetrieveWithEvents(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) (<-chan marketevents.RetrievalEvent, error) {
+	if s.Internal.ClientRetrieveWithEvents == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ClientRetrieveWithEvents(p0, p1, p2)
 }
 
 func (s *FullNodeStub) ClientRetrieveWithEvents(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) (<-chan marketevents.RetrievalEvent, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientStartDeal(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) {
+	if s.Internal.ClientStartDeal == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ClientStartDeal(p0, p1)
 }
 
 func (s *FullNodeStub) ClientStartDeal(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientStatelessDeal(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) {
+	if s.Internal.ClientStatelessDeal == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ClientStatelessDeal(p0, p1)
 }
 
 func (s *FullNodeStub) ClientStatelessDeal(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) CreateBackup(p0 context.Context, p1 string) error {
+	if s.Internal.CreateBackup == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.CreateBackup(p0, p1)
 }
 
 func (s *FullNodeStub) CreateBackup(p0 context.Context, p1 string) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) GasEstimateFeeCap(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) {
+	if s.Internal.GasEstimateFeeCap == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
 	return s.Internal.GasEstimateFeeCap(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) GasEstimateFeeCap(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) {
-	return *new(types.BigInt), xerrors.New("method not supported")
+	return *new(types.BigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) GasEstimateGasLimit(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (int64, error) {
+	if s.Internal.GasEstimateGasLimit == nil {
+		return 0, ErrNotSupported
+	}
 	return s.Internal.GasEstimateGasLimit(p0, p1, p2)
 }
 
 func (s *FullNodeStub) GasEstimateGasLimit(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (int64, error) {
-	return 0, xerrors.New("method not supported")
+	return 0, ErrNotSupported
 }
 
 func (s *FullNodeStruct) GasEstimateGasPremium(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (types.BigInt, error) {
+	if s.Internal.GasEstimateGasPremium == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
 	return s.Internal.GasEstimateGasPremium(p0, p1, p2, p3, p4)
 }
 
 func (s *FullNodeStub) GasEstimateGasPremium(p0 context.Context, p1 uint64, p2 address.Address, p3 int64, p4 types.TipSetKey) (types.BigInt, error) {
-	return *new(types.BigInt), xerrors.New("method not supported")
+	return *new(types.BigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) GasEstimateMessageGas(p0 context.Context, p1 *types.Message, p2 *MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) {
+	if s.Internal.GasEstimateMessageGas == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.GasEstimateMessageGas(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) GasEstimateMessageGas(p0 context.Context, p1 *types.Message, p2 *MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MarketAddBalance(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) {
+	if s.Internal.MarketAddBalance == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
 	return s.Internal.MarketAddBalance(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) MarketAddBalance(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+	return *new(cid.Cid), ErrNotSupported
 }
 
 func (s *FullNodeStruct) MarketGetReserved(p0 context.Context, p1 address.Address) (types.BigInt, error) {
+	if s.Internal.MarketGetReserved == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
 	return s.Internal.MarketGetReserved(p0, p1)
 }
 
 func (s *FullNodeStub) MarketGetReserved(p0 context.Context, p1 address.Address) (types.BigInt, error) {
-	return *new(types.BigInt), xerrors.New("method not supported")
+	return *new(types.BigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) MarketReleaseFunds(p0 context.Context, p1 address.Address, p2 types.BigInt) error {
+	if s.Internal.MarketReleaseFunds == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.MarketReleaseFunds(p0, p1, p2)
 }
 
 func (s *FullNodeStub) MarketReleaseFunds(p0 context.Context, p1 address.Address, p2 types.BigInt) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) MarketReserveFunds(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) {
+	if s.Internal.MarketReserveFunds == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
 	return s.Internal.MarketReserveFunds(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) MarketReserveFunds(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+	return *new(cid.Cid), ErrNotSupported
 }
 
 func (s *FullNodeStruct) MarketWithdraw(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) {
+	if s.Internal.MarketWithdraw == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
 	return s.Internal.MarketWithdraw(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) MarketWithdraw(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+	return *new(cid.Cid), ErrNotSupported
 }
 
 func (s *FullNodeStruct) MinerCreateBlock(p0 context.Context, p1 *BlockTemplate) (*types.BlockMsg, error) {
+	if s.Internal.MinerCreateBlock == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MinerCreateBlock(p0, p1)
 }
 
 func (s *FullNodeStub) MinerCreateBlock(p0 context.Context, p1 *BlockTemplate) (*types.BlockMsg, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MinerGetBaseInfo(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*MiningBaseInfo, error) {
+	if s.Internal.MinerGetBaseInfo == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MinerGetBaseInfo(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) MinerGetBaseInfo(p0 context.Context, p1 address.Address, p2 abi.ChainEpoch, p3 types.TipSetKey) (*MiningBaseInfo, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MpoolBatchPush(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error) {
+	if s.Internal.MpoolBatchPush == nil {
+		return *new([]cid.Cid), ErrNotSupported
+	}
 	return s.Internal.MpoolBatchPush(p0, p1)
 }
 
 func (s *FullNodeStub) MpoolBatchPush(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error) {
-	return *new([]cid.Cid), xerrors.New("method not supported")
+	return *new([]cid.Cid), ErrNotSupported
 }
 
 func (s *FullNodeStruct) MpoolBatchPushMessage(p0 context.Context, p1 []*types.Message, p2 *MessageSendSpec) ([]*types.SignedMessage, error) {
+	if s.Internal.MpoolBatchPushMessage == nil {
+		return *new([]*types.SignedMessage), ErrNotSupported
+	}
 	return s.Internal.MpoolBatchPushMessage(p0, p1, p2)
 }
 
 func (s *FullNodeStub) MpoolBatchPushMessage(p0 context.Context, p1 []*types.Message, p2 *MessageSendSpec) ([]*types.SignedMessage, error) {
-	return *new([]*types.SignedMessage), xerrors.New("method not supported")
+	return *new([]*types.SignedMessage), ErrNotSupported
 }
 
 func (s *FullNodeStruct) MpoolBatchPushUntrusted(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error) {
+	if s.Internal.MpoolBatchPushUntrusted == nil {
+		return *new([]cid.Cid), ErrNotSupported
+	}
 	return s.Internal.MpoolBatchPushUntrusted(p0, p1)
 }
 
 func (s *FullNodeStub) MpoolBatchPushUntrusted(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error) {
-	return *new([]cid.Cid), xerrors.New("method not supported")
+	return *new([]cid.Cid), ErrNotSupported
 }
 
 func (s *FullNodeStruct) MpoolCheckMessages(p0 context.Context, p1 []*MessagePrototype) ([][]MessageCheckStatus, error) {
+	if s.Internal.MpoolCheckMessages == nil {
+		return *new([][]MessageCheckStatus), ErrNotSupported
+	}
 	return s.Internal.MpoolCheckMessages(p0, p1)
 }
 
 func (s *FullNodeStub) MpoolCheckMessages(p0 context.Context, p1 []*MessagePrototype) ([][]MessageCheckStatus, error) {
-	return *new([][]MessageCheckStatus), xerrors.New("method not supported")
+	return *new([][]MessageCheckStatus), ErrNotSupported
 }
 
 func (s *FullNodeStruct) MpoolCheckPendingMessages(p0 context.Context, p1 address.Address) ([][]MessageCheckStatus, error) {
+	if s.Internal.MpoolCheckPendingMessages == nil {
+		return *new([][]MessageCheckStatus), ErrNotSupported
+	}
 	return s.Internal.MpoolCheckPendingMessages(p0, p1)
 }
 
 func (s *FullNodeStub) MpoolCheckPendingMessages(p0 context.Context, p1 address.Address) ([][]MessageCheckStatus, error) {
-	return *new([][]MessageCheckStatus), xerrors.New("method not supported")
+	return *new([][]MessageCheckStatus), ErrNotSupported
 }
 
 func (s *FullNodeStruct) MpoolCheckReplaceMessages(p0 context.Context, p1 []*types.Message) ([][]MessageCheckStatus, error) {
+	if s.Internal.MpoolCheckReplaceMessages == nil {
+		return *new([][]MessageCheckStatus), ErrNotSupported
+	}
 	return s.Internal.MpoolCheckReplaceMessages(p0, p1)
 }
 
 func (s *FullNodeStub) MpoolCheckReplaceMessages(p0 context.Context, p1 []*types.Message) ([][]MessageCheckStatus, error) {
-	return *new([][]MessageCheckStatus), xerrors.New("method not supported")
+	return *new([][]MessageCheckStatus), ErrNotSupported
 }
 
 func (s *FullNodeStruct) MpoolClear(p0 context.Context, p1 bool) error {
+	if s.Internal.MpoolClear == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.MpoolClear(p0, p1)
 }
 
 func (s *FullNodeStub) MpoolClear(p0 context.Context, p1 bool) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) MpoolGetConfig(p0 context.Context) (*types.MpoolConfig, error) {
+	if s.Internal.MpoolGetConfig == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MpoolGetConfig(p0)
 }
 
 func (s *FullNodeStub) MpoolGetConfig(p0 context.Context) (*types.MpoolConfig, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MpoolGetNonce(p0 context.Context, p1 address.Address) (uint64, error) {
+	if s.Internal.MpoolGetNonce == nil {
+		return 0, ErrNotSupported
+	}
 	return s.Internal.MpoolGetNonce(p0, p1)
 }
 
 func (s *FullNodeStub) MpoolGetNonce(p0 context.Context, p1 address.Address) (uint64, error) {
-	return 0, xerrors.New("method not supported")
+	return 0, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MpoolPending(p0 context.Context, p1 types.TipSetKey) ([]*types.SignedMessage, error) {
+	if s.Internal.MpoolPending == nil {
+		return *new([]*types.SignedMessage), ErrNotSupported
+	}
 	return s.Internal.MpoolPending(p0, p1)
 }
 
 func (s *FullNodeStub) MpoolPending(p0 context.Context, p1 types.TipSetKey) ([]*types.SignedMessage, error) {
-	return *new([]*types.SignedMessage), xerrors.New("method not supported")
+	return *new([]*types.SignedMessage), ErrNotSupported
 }
 
 func (s *FullNodeStruct) MpoolPush(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) {
+	if s.Internal.MpoolPush == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
 	return s.Internal.MpoolPush(p0, p1)
 }
 
 func (s *FullNodeStub) MpoolPush(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+	return *new(cid.Cid), ErrNotSupported
 }
 
 func (s *FullNodeStruct) MpoolPushMessage(p0 context.Context, p1 *types.Message, p2 *MessageSendSpec) (*types.SignedMessage, error) {
+	if s.Internal.MpoolPushMessage == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MpoolPushMessage(p0, p1, p2)
 }
 
 func (s *FullNodeStub) MpoolPushMessage(p0 context.Context, p1 *types.Message, p2 *MessageSendSpec) (*types.SignedMessage, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MpoolPushUntrusted(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) {
+	if s.Internal.MpoolPushUntrusted == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
 	return s.Internal.MpoolPushUntrusted(p0, p1)
 }
 
 func (s *FullNodeStub) MpoolPushUntrusted(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+	return *new(cid.Cid), ErrNotSupported
 }
 
 func (s *FullNodeStruct) MpoolSelect(p0 context.Context, p1 types.TipSetKey, p2 float64) ([]*types.SignedMessage, error) {
+	if s.Internal.MpoolSelect == nil {
+		return *new([]*types.SignedMessage), ErrNotSupported
+	}
 	return s.Internal.MpoolSelect(p0, p1, p2)
 }
 
 func (s *FullNodeStub) MpoolSelect(p0 context.Context, p1 types.TipSetKey, p2 float64) ([]*types.SignedMessage, error) {
-	return *new([]*types.SignedMessage), xerrors.New("method not supported")
+	return *new([]*types.SignedMessage), ErrNotSupported
 }
 
 func (s *FullNodeStruct) MpoolSetConfig(p0 context.Context, p1 *types.MpoolConfig) error {
+	if s.Internal.MpoolSetConfig == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.MpoolSetConfig(p0, p1)
 }
 
 func (s *FullNodeStub) MpoolSetConfig(p0 context.Context, p1 *types.MpoolConfig) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) MpoolSub(p0 context.Context) (<-chan MpoolUpdate, error) {
+	if s.Internal.MpoolSub == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MpoolSub(p0)
 }
 
 func (s *FullNodeStub) MpoolSub(p0 context.Context) (<-chan MpoolUpdate, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MsigAddApprove(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 bool) (*MessagePrototype, error) {
+	if s.Internal.MsigAddApprove == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MsigAddApprove(p0, p1, p2, p3, p4, p5, p6)
 }
 
 func (s *FullNodeStub) MsigAddApprove(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 bool) (*MessagePrototype, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MsigAddCancel(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 bool) (*MessagePrototype, error) {
+	if s.Internal.MsigAddCancel == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MsigAddCancel(p0, p1, p2, p3, p4, p5)
 }
 
 func (s *FullNodeStub) MsigAddCancel(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 bool) (*MessagePrototype, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MsigAddPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*MessagePrototype, error) {
+	if s.Internal.MsigAddPropose == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MsigAddPropose(p0, p1, p2, p3, p4)
 }
 
 func (s *FullNodeStub) MsigAddPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*MessagePrototype, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MsigApprove(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*MessagePrototype, error) {
+	if s.Internal.MsigApprove == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MsigApprove(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) MsigApprove(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*MessagePrototype, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MsigApproveTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 address.Address, p5 types.BigInt, p6 address.Address, p7 uint64, p8 []byte) (*MessagePrototype, error) {
+	if s.Internal.MsigApproveTxnHash == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MsigApproveTxnHash(p0, p1, p2, p3, p4, p5, p6, p7, p8)
 }
 
 func (s *FullNodeStub) MsigApproveTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 address.Address, p5 types.BigInt, p6 address.Address, p7 uint64, p8 []byte) (*MessagePrototype, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*MessagePrototype, error) {
+	if s.Internal.MsigCancel == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MsigCancel(p0, p1, p2, p3, p4, p5, p6, p7)
 }
 
 func (s *FullNodeStub) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*MessagePrototype, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MsigCreate(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (*MessagePrototype, error) {
+	if s.Internal.MsigCreate == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MsigCreate(p0, p1, p2, p3, p4, p5, p6)
 }
 
 func (s *FullNodeStub) MsigCreate(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (*MessagePrototype, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MsigGetAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
+	if s.Internal.MsigGetAvailableBalance == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
 	return s.Internal.MsigGetAvailableBalance(p0, p1, p2)
 }
 
 func (s *FullNodeStub) MsigGetAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
-	return *new(types.BigInt), xerrors.New("method not supported")
+	return *new(types.BigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) MsigGetPending(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*MsigTransaction, error) {
+	if s.Internal.MsigGetPending == nil {
+		return *new([]*MsigTransaction), ErrNotSupported
+	}
 	return s.Internal.MsigGetPending(p0, p1, p2)
 }
 
 func (s *FullNodeStub) MsigGetPending(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*MsigTransaction, error) {
-	return *new([]*MsigTransaction), xerrors.New("method not supported")
+	return *new([]*MsigTransaction), ErrNotSupported
 }
 
 func (s *FullNodeStruct) MsigGetVested(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) {
+	if s.Internal.MsigGetVested == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
 	return s.Internal.MsigGetVested(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) MsigGetVested(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) {
-	return *new(types.BigInt), xerrors.New("method not supported")
+	return *new(types.BigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) MsigGetVestingSchedule(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MsigVesting, error) {
+	if s.Internal.MsigGetVestingSchedule == nil {
+		return *new(MsigVesting), ErrNotSupported
+	}
 	return s.Internal.MsigGetVestingSchedule(p0, p1, p2)
 }
 
 func (s *FullNodeStub) MsigGetVestingSchedule(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MsigVesting, error) {
-	return *new(MsigVesting), xerrors.New("method not supported")
+	return *new(MsigVesting), ErrNotSupported
 }
 
 func (s *FullNodeStruct) MsigPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 address.Address, p5 uint64, p6 []byte) (*MessagePrototype, error) {
+	if s.Internal.MsigPropose == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MsigPropose(p0, p1, p2, p3, p4, p5, p6)
 }
 
 func (s *FullNodeStub) MsigPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 address.Address, p5 uint64, p6 []byte) (*MessagePrototype, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MsigRemoveSigner(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*MessagePrototype, error) {
+	if s.Internal.MsigRemoveSigner == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MsigRemoveSigner(p0, p1, p2, p3, p4)
 }
 
 func (s *FullNodeStub) MsigRemoveSigner(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 bool) (*MessagePrototype, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MsigSwapApprove(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 address.Address) (*MessagePrototype, error) {
+	if s.Internal.MsigSwapApprove == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MsigSwapApprove(p0, p1, p2, p3, p4, p5, p6)
 }
 
 func (s *FullNodeStub) MsigSwapApprove(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address, p6 address.Address) (*MessagePrototype, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MsigSwapCancel(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (*MessagePrototype, error) {
+	if s.Internal.MsigSwapCancel == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MsigSwapCancel(p0, p1, p2, p3, p4, p5)
 }
 
 func (s *FullNodeStub) MsigSwapCancel(p0 context.Context, p1 address.Address, p2 address.Address, p3 uint64, p4 address.Address, p5 address.Address) (*MessagePrototype, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) MsigSwapPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (*MessagePrototype, error) {
+	if s.Internal.MsigSwapPropose == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MsigSwapPropose(p0, p1, p2, p3, p4)
 }
 
 func (s *FullNodeStub) MsigSwapPropose(p0 context.Context, p1 address.Address, p2 address.Address, p3 address.Address, p4 address.Address) (*MessagePrototype, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) NodeStatus(p0 context.Context, p1 bool) (NodeStatus, error) {
+	if s.Internal.NodeStatus == nil {
+		return *new(NodeStatus), ErrNotSupported
+	}
 	return s.Internal.NodeStatus(p0, p1)
 }
 
 func (s *FullNodeStub) NodeStatus(p0 context.Context, p1 bool) (NodeStatus, error) {
-	return *new(NodeStatus), xerrors.New("method not supported")
+	return *new(NodeStatus), ErrNotSupported
 }
 
 func (s *FullNodeStruct) PaychAllocateLane(p0 context.Context, p1 address.Address) (uint64, error) {
+	if s.Internal.PaychAllocateLane == nil {
+		return 0, ErrNotSupported
+	}
 	return s.Internal.PaychAllocateLane(p0, p1)
 }
 
 func (s *FullNodeStub) PaychAllocateLane(p0 context.Context, p1 address.Address) (uint64, error) {
-	return 0, xerrors.New("method not supported")
+	return 0, ErrNotSupported
 }
 
 func (s *FullNodeStruct) PaychAvailableFunds(p0 context.Context, p1 address.Address) (*ChannelAvailableFunds, error) {
+	if s.Internal.PaychAvailableFunds == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.PaychAvailableFunds(p0, p1)
 }
 
 func (s *FullNodeStub) PaychAvailableFunds(p0 context.Context, p1 address.Address) (*ChannelAvailableFunds, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) PaychAvailableFundsByFromTo(p0 context.Context, p1 address.Address, p2 address.Address) (*ChannelAvailableFunds, error) {
+	if s.Internal.PaychAvailableFundsByFromTo == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.PaychAvailableFundsByFromTo(p0, p1, p2)
 }
 
 func (s *FullNodeStub) PaychAvailableFundsByFromTo(p0 context.Context, p1 address.Address, p2 address.Address) (*ChannelAvailableFunds, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) PaychCollect(p0 context.Context, p1 address.Address) (cid.Cid, error) {
+	if s.Internal.PaychCollect == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
 	return s.Internal.PaychCollect(p0, p1)
 }
 
 func (s *FullNodeStub) PaychCollect(p0 context.Context, p1 address.Address) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+	return *new(cid.Cid), ErrNotSupported
 }
 
 func (s *FullNodeStruct) PaychGet(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (*ChannelInfo, error) {
+	if s.Internal.PaychGet == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.PaychGet(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) PaychGet(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (*ChannelInfo, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) PaychGetWaitReady(p0 context.Context, p1 cid.Cid) (address.Address, error) {
+	if s.Internal.PaychGetWaitReady == nil {
+		return *new(address.Address), ErrNotSupported
+	}
 	return s.Internal.PaychGetWaitReady(p0, p1)
 }
 
 func (s *FullNodeStub) PaychGetWaitReady(p0 context.Context, p1 cid.Cid) (address.Address, error) {
-	return *new(address.Address), xerrors.New("method not supported")
+	return *new(address.Address), ErrNotSupported
 }
 
 func (s *FullNodeStruct) PaychList(p0 context.Context) ([]address.Address, error) {
+	if s.Internal.PaychList == nil {
+		return *new([]address.Address), ErrNotSupported
+	}
 	return s.Internal.PaychList(p0)
 }
 
 func (s *FullNodeStub) PaychList(p0 context.Context) ([]address.Address, error) {
-	return *new([]address.Address), xerrors.New("method not supported")
+	return *new([]address.Address), ErrNotSupported
 }
 
 func (s *FullNodeStruct) PaychNewPayment(p0 context.Context, p1 address.Address, p2 address.Address, p3 []VoucherSpec) (*PaymentInfo, error) {
+	if s.Internal.PaychNewPayment == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.PaychNewPayment(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) PaychNewPayment(p0 context.Context, p1 address.Address, p2 address.Address, p3 []VoucherSpec) (*PaymentInfo, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) PaychSettle(p0 context.Context, p1 address.Address) (cid.Cid, error) {
+	if s.Internal.PaychSettle == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
 	return s.Internal.PaychSettle(p0, p1)
 }
 
 func (s *FullNodeStub) PaychSettle(p0 context.Context, p1 address.Address) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+	return *new(cid.Cid), ErrNotSupported
 }
 
 func (s *FullNodeStruct) PaychStatus(p0 context.Context, p1 address.Address) (*PaychStatus, error) {
+	if s.Internal.PaychStatus == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.PaychStatus(p0, p1)
 }
 
 func (s *FullNodeStub) PaychStatus(p0 context.Context, p1 address.Address) (*PaychStatus, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) PaychVoucherAdd(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 types.BigInt) (types.BigInt, error) {
+	if s.Internal.PaychVoucherAdd == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
 	return s.Internal.PaychVoucherAdd(p0, p1, p2, p3, p4)
 }
 
 func (s *FullNodeStub) PaychVoucherAdd(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 types.BigInt) (types.BigInt, error) {
-	return *new(types.BigInt), xerrors.New("method not supported")
+	return *new(types.BigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) PaychVoucherCheckSpendable(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (bool, error) {
+	if s.Internal.PaychVoucherCheckSpendable == nil {
+		return false, ErrNotSupported
+	}
 	return s.Internal.PaychVoucherCheckSpendable(p0, p1, p2, p3, p4)
 }
 
 func (s *FullNodeStub) PaychVoucherCheckSpendable(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (bool, error) {
-	return false, xerrors.New("method not supported")
+	return false, ErrNotSupported
 }
 
 func (s *FullNodeStruct) PaychVoucherCheckValid(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher) error {
+	if s.Internal.PaychVoucherCheckValid == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.PaychVoucherCheckValid(p0, p1, p2)
 }
 
 func (s *FullNodeStub) PaychVoucherCheckValid(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) PaychVoucherCreate(p0 context.Context, p1 address.Address, p2 types.BigInt, p3 uint64) (*VoucherCreateResult, error) {
+	if s.Internal.PaychVoucherCreate == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.PaychVoucherCreate(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) PaychVoucherCreate(p0 context.Context, p1 address.Address, p2 types.BigInt, p3 uint64) (*VoucherCreateResult, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) PaychVoucherList(p0 context.Context, p1 address.Address) ([]*paych.SignedVoucher, error) {
+	if s.Internal.PaychVoucherList == nil {
+		return *new([]*paych.SignedVoucher), ErrNotSupported
+	}
 	return s.Internal.PaychVoucherList(p0, p1)
 }
 
 func (s *FullNodeStub) PaychVoucherList(p0 context.Context, p1 address.Address) ([]*paych.SignedVoucher, error) {
-	return *new([]*paych.SignedVoucher), xerrors.New("method not supported")
+	return *new([]*paych.SignedVoucher), ErrNotSupported
 }
 
 func (s *FullNodeStruct) PaychVoucherSubmit(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (cid.Cid, error) {
+	if s.Internal.PaychVoucherSubmit == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
 	return s.Internal.PaychVoucherSubmit(p0, p1, p2, p3, p4)
 }
 
 func (s *FullNodeStub) PaychVoucherSubmit(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+	return *new(cid.Cid), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateAccountKey(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
+	if s.Internal.StateAccountKey == nil {
+		return *new(address.Address), ErrNotSupported
+	}
 	return s.Internal.StateAccountKey(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateAccountKey(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
-	return *new(address.Address), xerrors.New("method not supported")
+	return *new(address.Address), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateAllMinerFaults(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) ([]*Fault, error) {
+	if s.Internal.StateAllMinerFaults == nil {
+		return *new([]*Fault), ErrNotSupported
+	}
 	return s.Internal.StateAllMinerFaults(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateAllMinerFaults(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) ([]*Fault, error) {
-	return *new([]*Fault), xerrors.New("method not supported")
+	return *new([]*Fault), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*InvocResult, error) {
+	if s.Internal.StateCall == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateCall(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateCall(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*InvocResult, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateChangedActors(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (map[string]types.Actor, error) {
+	if s.Internal.StateChangedActors == nil {
+		return *new(map[string]types.Actor), ErrNotSupported
+	}
 	return s.Internal.StateChangedActors(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateChangedActors(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (map[string]types.Actor, error) {
-	return *new(map[string]types.Actor), xerrors.New("method not supported")
+	return *new(map[string]types.Actor), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateCirculatingSupply(p0 context.Context, p1 types.TipSetKey) (abi.TokenAmount, error) {
+	if s.Internal.StateCirculatingSupply == nil {
+		return *new(abi.TokenAmount), ErrNotSupported
+	}
 	return s.Internal.StateCirculatingSupply(p0, p1)
 }
 
 func (s *FullNodeStub) StateCirculatingSupply(p0 context.Context, p1 types.TipSetKey) (abi.TokenAmount, error) {
-	return *new(abi.TokenAmount), xerrors.New("method not supported")
+	return *new(abi.TokenAmount), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateCompute(p0 context.Context, p1 abi.ChainEpoch, p2 []*types.Message, p3 types.TipSetKey) (*ComputeStateOutput, error) {
+	if s.Internal.StateCompute == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateCompute(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) StateCompute(p0 context.Context, p1 abi.ChainEpoch, p2 []*types.Message, p3 types.TipSetKey) (*ComputeStateOutput, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateDealProviderCollateralBounds(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (DealCollateralBounds, error) {
+	if s.Internal.StateDealProviderCollateralBounds == nil {
+		return *new(DealCollateralBounds), ErrNotSupported
+	}
 	return s.Internal.StateDealProviderCollateralBounds(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) StateDealProviderCollateralBounds(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (DealCollateralBounds, error) {
-	return *new(DealCollateralBounds), xerrors.New("method not supported")
+	return *new(DealCollateralBounds), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateDecodeParams(p0 context.Context, p1 address.Address, p2 abi.MethodNum, p3 []byte, p4 types.TipSetKey) (interface{}, error) {
+	if s.Internal.StateDecodeParams == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateDecodeParams(p0, p1, p2, p3, p4)
 }
 
 func (s *FullNodeStub) StateDecodeParams(p0 context.Context, p1 address.Address, p2 abi.MethodNum, p3 []byte, p4 types.TipSetKey) (interface{}, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) {
+	if s.Internal.StateGetActor == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateGetActor(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateListActors(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) {
+	if s.Internal.StateListActors == nil {
+		return *new([]address.Address), ErrNotSupported
+	}
 	return s.Internal.StateListActors(p0, p1)
 }
 
 func (s *FullNodeStub) StateListActors(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) {
-	return *new([]address.Address), xerrors.New("method not supported")
+	return *new([]address.Address), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateListMessages(p0 context.Context, p1 *MessageMatch, p2 types.TipSetKey, p3 abi.ChainEpoch) ([]cid.Cid, error) {
+	if s.Internal.StateListMessages == nil {
+		return *new([]cid.Cid), ErrNotSupported
+	}
 	return s.Internal.StateListMessages(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) StateListMessages(p0 context.Context, p1 *MessageMatch, p2 types.TipSetKey, p3 abi.ChainEpoch) ([]cid.Cid, error) {
-	return *new([]cid.Cid), xerrors.New("method not supported")
+	return *new([]cid.Cid), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateListMiners(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) {
+	if s.Internal.StateListMiners == nil {
+		return *new([]address.Address), ErrNotSupported
+	}
 	return s.Internal.StateListMiners(p0, p1)
 }
 
 func (s *FullNodeStub) StateListMiners(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) {
-	return *new([]address.Address), xerrors.New("method not supported")
+	return *new([]address.Address), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateLookupID(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
+	if s.Internal.StateLookupID == nil {
+		return *new(address.Address), ErrNotSupported
+	}
 	return s.Internal.StateLookupID(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateLookupID(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
-	return *new(address.Address), xerrors.New("method not supported")
+	return *new(address.Address), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MarketBalance, error) {
+	if s.Internal.StateMarketBalance == nil {
+		return *new(MarketBalance), ErrNotSupported
+	}
 	return s.Internal.StateMarketBalance(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MarketBalance, error) {
-	return *new(MarketBalance), xerrors.New("method not supported")
+	return *new(MarketBalance), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMarketDeals(p0 context.Context, p1 types.TipSetKey) (map[string]MarketDeal, error) {
+	if s.Internal.StateMarketDeals == nil {
+		return *new(map[string]MarketDeal), ErrNotSupported
+	}
 	return s.Internal.StateMarketDeals(p0, p1)
 }
 
 func (s *FullNodeStub) StateMarketDeals(p0 context.Context, p1 types.TipSetKey) (map[string]MarketDeal, error) {
-	return *new(map[string]MarketDeal), xerrors.New("method not supported")
+	return *new(map[string]MarketDeal), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMarketParticipants(p0 context.Context, p1 types.TipSetKey) (map[string]MarketBalance, error) {
+	if s.Internal.StateMarketParticipants == nil {
+		return *new(map[string]MarketBalance), ErrNotSupported
+	}
 	return s.Internal.StateMarketParticipants(p0, p1)
 }
 
 func (s *FullNodeStub) StateMarketParticipants(p0 context.Context, p1 types.TipSetKey) (map[string]MarketBalance, error) {
-	return *new(map[string]MarketBalance), xerrors.New("method not supported")
+	return *new(map[string]MarketBalance), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*MarketDeal, error) {
+	if s.Internal.StateMarketStorageDeal == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateMarketStorageDeal(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*MarketDeal, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMinerActiveSectors(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
+	if s.Internal.StateMinerActiveSectors == nil {
+		return *new([]*miner.SectorOnChainInfo), ErrNotSupported
+	}
 	return s.Internal.StateMinerActiveSectors(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateMinerActiveSectors(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
-	return *new([]*miner.SectorOnChainInfo), xerrors.New("method not supported")
+	return *new([]*miner.SectorOnChainInfo), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMinerAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
+	if s.Internal.StateMinerAvailableBalance == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
 	return s.Internal.StateMinerAvailableBalance(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateMinerAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
-	return *new(types.BigInt), xerrors.New("method not supported")
+	return *new(types.BigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMinerDeadlines(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]Deadline, error) {
+	if s.Internal.StateMinerDeadlines == nil {
+		return *new([]Deadline), ErrNotSupported
+	}
 	return s.Internal.StateMinerDeadlines(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateMinerDeadlines(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]Deadline, error) {
-	return *new([]Deadline), xerrors.New("method not supported")
+	return *new([]Deadline), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMinerFaults(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (bitfield.BitField, error) {
+	if s.Internal.StateMinerFaults == nil {
+		return *new(bitfield.BitField), ErrNotSupported
+	}
 	return s.Internal.StateMinerFaults(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateMinerFaults(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (bitfield.BitField, error) {
-	return *new(bitfield.BitField), xerrors.New("method not supported")
+	return *new(bitfield.BitField), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMinerInfo(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (miner.MinerInfo, error) {
+	if s.Internal.StateMinerInfo == nil {
+		return *new(miner.MinerInfo), ErrNotSupported
+	}
 	return s.Internal.StateMinerInfo(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateMinerInfo(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (miner.MinerInfo, error) {
-	return *new(miner.MinerInfo), xerrors.New("method not supported")
+	return *new(miner.MinerInfo), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMinerInitialPledgeCollateral(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) {
+	if s.Internal.StateMinerInitialPledgeCollateral == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
 	return s.Internal.StateMinerInitialPledgeCollateral(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) StateMinerInitialPledgeCollateral(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) {
-	return *new(types.BigInt), xerrors.New("method not supported")
+	return *new(types.BigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMinerPartitions(p0 context.Context, p1 address.Address, p2 uint64, p3 types.TipSetKey) ([]Partition, error) {
+	if s.Internal.StateMinerPartitions == nil {
+		return *new([]Partition), ErrNotSupported
+	}
 	return s.Internal.StateMinerPartitions(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) StateMinerPartitions(p0 context.Context, p1 address.Address, p2 uint64, p3 types.TipSetKey) ([]Partition, error) {
-	return *new([]Partition), xerrors.New("method not supported")
+	return *new([]Partition), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMinerPower(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*MinerPower, error) {
+	if s.Internal.StateMinerPower == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateMinerPower(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateMinerPower(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*MinerPower, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMinerPreCommitDepositForPower(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) {
+	if s.Internal.StateMinerPreCommitDepositForPower == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
 	return s.Internal.StateMinerPreCommitDepositForPower(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) StateMinerPreCommitDepositForPower(p0 context.Context, p1 address.Address, p2 miner.SectorPreCommitInfo, p3 types.TipSetKey) (types.BigInt, error) {
-	return *new(types.BigInt), xerrors.New("method not supported")
+	return *new(types.BigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMinerProvingDeadline(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) {
+	if s.Internal.StateMinerProvingDeadline == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateMinerProvingDeadline(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateMinerProvingDeadline(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMinerRecoveries(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (bitfield.BitField, error) {
+	if s.Internal.StateMinerRecoveries == nil {
+		return *new(bitfield.BitField), ErrNotSupported
+	}
 	return s.Internal.StateMinerRecoveries(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateMinerRecoveries(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (bitfield.BitField, error) {
-	return *new(bitfield.BitField), xerrors.New("method not supported")
+	return *new(bitfield.BitField), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMinerSectorAllocated(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (bool, error) {
+	if s.Internal.StateMinerSectorAllocated == nil {
+		return false, ErrNotSupported
+	}
 	return s.Internal.StateMinerSectorAllocated(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) StateMinerSectorAllocated(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (bool, error) {
-	return false, xerrors.New("method not supported")
+	return false, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMinerSectorCount(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MinerSectors, error) {
+	if s.Internal.StateMinerSectorCount == nil {
+		return *new(MinerSectors), ErrNotSupported
+	}
 	return s.Internal.StateMinerSectorCount(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateMinerSectorCount(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MinerSectors, error) {
-	return *new(MinerSectors), xerrors.New("method not supported")
+	return *new(MinerSectors), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMinerSectors(p0 context.Context, p1 address.Address, p2 *bitfield.BitField, p3 types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
+	if s.Internal.StateMinerSectors == nil {
+		return *new([]*miner.SectorOnChainInfo), ErrNotSupported
+	}
 	return s.Internal.StateMinerSectors(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) StateMinerSectors(p0 context.Context, p1 address.Address, p2 *bitfield.BitField, p3 types.TipSetKey) ([]*miner.SectorOnChainInfo, error) {
-	return *new([]*miner.SectorOnChainInfo), xerrors.New("method not supported")
+	return *new([]*miner.SectorOnChainInfo), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateNetworkName(p0 context.Context) (dtypes.NetworkName, error) {
+	if s.Internal.StateNetworkName == nil {
+		return *new(dtypes.NetworkName), ErrNotSupported
+	}
 	return s.Internal.StateNetworkName(p0)
 }
 
 func (s *FullNodeStub) StateNetworkName(p0 context.Context) (dtypes.NetworkName, error) {
-	return *new(dtypes.NetworkName), xerrors.New("method not supported")
+	return *new(dtypes.NetworkName), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey) (apitypes.NetworkVersion, error) {
+	if s.Internal.StateNetworkVersion == nil {
+		return *new(apitypes.NetworkVersion), ErrNotSupported
+	}
 	return s.Internal.StateNetworkVersion(p0, p1)
 }
 
 func (s *FullNodeStub) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey) (apitypes.NetworkVersion, error) {
-	return *new(apitypes.NetworkVersion), xerrors.New("method not supported")
+	return *new(apitypes.NetworkVersion), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateReadState(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*ActorState, error) {
+	if s.Internal.StateReadState == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateReadState(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateReadState(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*ActorState, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*InvocResult, error) {
+	if s.Internal.StateReplay == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateReplay(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateReplay(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid) (*InvocResult, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateSearchMsg(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) {
+	if s.Internal.StateSearchMsg == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateSearchMsg(p0, p1, p2, p3, p4)
 }
 
 func (s *FullNodeStub) StateSearchMsg(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateSectorExpiration(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorExpiration, error) {
+	if s.Internal.StateSectorExpiration == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateSectorExpiration(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) StateSectorExpiration(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorExpiration, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateSectorGetInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorOnChainInfo, error) {
+	if s.Internal.StateSectorGetInfo == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateSectorGetInfo(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) StateSectorGetInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorOnChainInfo, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateSectorPartition(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorLocation, error) {
+	if s.Internal.StateSectorPartition == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateSectorPartition(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) StateSectorPartition(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorLocation, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateSectorPreCommitInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
+	if s.Internal.StateSectorPreCommitInfo == nil {
+		return *new(miner.SectorPreCommitOnChainInfo), ErrNotSupported
+	}
 	return s.Internal.StateSectorPreCommitInfo(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) StateSectorPreCommitInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
-	return *new(miner.SectorPreCommitOnChainInfo), xerrors.New("method not supported")
+	return *new(miner.SectorPreCommitOnChainInfo), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateVMCirculatingSupplyInternal(p0 context.Context, p1 types.TipSetKey) (CirculatingSupply, error) {
+	if s.Internal.StateVMCirculatingSupplyInternal == nil {
+		return *new(CirculatingSupply), ErrNotSupported
+	}
 	return s.Internal.StateVMCirculatingSupplyInternal(p0, p1)
 }
 
 func (s *FullNodeStub) StateVMCirculatingSupplyInternal(p0 context.Context, p1 types.TipSetKey) (CirculatingSupply, error) {
-	return *new(CirculatingSupply), xerrors.New("method not supported")
+	return *new(CirculatingSupply), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateVerifiedClientStatus(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) {
+	if s.Internal.StateVerifiedClientStatus == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateVerifiedClientStatus(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateVerifiedClientStatus(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateVerifiedRegistryRootKey(p0 context.Context, p1 types.TipSetKey) (address.Address, error) {
+	if s.Internal.StateVerifiedRegistryRootKey == nil {
+		return *new(address.Address), ErrNotSupported
+	}
 	return s.Internal.StateVerifiedRegistryRootKey(p0, p1)
 }
 
 func (s *FullNodeStub) StateVerifiedRegistryRootKey(p0 context.Context, p1 types.TipSetKey) (address.Address, error) {
-	return *new(address.Address), xerrors.New("method not supported")
+	return *new(address.Address), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateVerifierStatus(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) {
+	if s.Internal.StateVerifierStatus == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateVerifierStatus(p0, p1, p2)
 }
 
 func (s *FullNodeStub) StateVerifierStatus(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) {
+	if s.Internal.StateWaitMsg == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateWaitMsg(p0, p1, p2, p3, p4)
 }
 
 func (s *FullNodeStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) SyncCheckBad(p0 context.Context, p1 cid.Cid) (string, error) {
+	if s.Internal.SyncCheckBad == nil {
+		return "", ErrNotSupported
+	}
 	return s.Internal.SyncCheckBad(p0, p1)
 }
 
 func (s *FullNodeStub) SyncCheckBad(p0 context.Context, p1 cid.Cid) (string, error) {
-	return "", xerrors.New("method not supported")
+	return "", ErrNotSupported
 }
 
 func (s *FullNodeStruct) SyncCheckpoint(p0 context.Context, p1 types.TipSetKey) error {
+	if s.Internal.SyncCheckpoint == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.SyncCheckpoint(p0, p1)
 }
 
 func (s *FullNodeStub) SyncCheckpoint(p0 context.Context, p1 types.TipSetKey) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) SyncIncomingBlocks(p0 context.Context) (<-chan *types.BlockHeader, error) {
+	if s.Internal.SyncIncomingBlocks == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.SyncIncomingBlocks(p0)
 }
 
 func (s *FullNodeStub) SyncIncomingBlocks(p0 context.Context) (<-chan *types.BlockHeader, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) SyncMarkBad(p0 context.Context, p1 cid.Cid) error {
+	if s.Internal.SyncMarkBad == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.SyncMarkBad(p0, p1)
 }
 
 func (s *FullNodeStub) SyncMarkBad(p0 context.Context, p1 cid.Cid) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) SyncState(p0 context.Context) (*SyncState, error) {
+	if s.Internal.SyncState == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.SyncState(p0)
 }
 
 func (s *FullNodeStub) SyncState(p0 context.Context) (*SyncState, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg) error {
+	if s.Internal.SyncSubmitBlock == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.SyncSubmitBlock(p0, p1)
 }
 
 func (s *FullNodeStub) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) SyncUnmarkAllBad(p0 context.Context) error {
+	if s.Internal.SyncUnmarkAllBad == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.SyncUnmarkAllBad(p0)
 }
 
 func (s *FullNodeStub) SyncUnmarkAllBad(p0 context.Context) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) SyncUnmarkBad(p0 context.Context, p1 cid.Cid) error {
+	if s.Internal.SyncUnmarkBad == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.SyncUnmarkBad(p0, p1)
 }
 
 func (s *FullNodeStub) SyncUnmarkBad(p0 context.Context, p1 cid.Cid) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) SyncValidateTipset(p0 context.Context, p1 types.TipSetKey) (bool, error) {
+	if s.Internal.SyncValidateTipset == nil {
+		return false, ErrNotSupported
+	}
 	return s.Internal.SyncValidateTipset(p0, p1)
 }
 
 func (s *FullNodeStub) SyncValidateTipset(p0 context.Context, p1 types.TipSetKey) (bool, error) {
-	return false, xerrors.New("method not supported")
+	return false, ErrNotSupported
 }
 
 func (s *FullNodeStruct) WalletBalance(p0 context.Context, p1 address.Address) (types.BigInt, error) {
+	if s.Internal.WalletBalance == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
 	return s.Internal.WalletBalance(p0, p1)
 }
 
 func (s *FullNodeStub) WalletBalance(p0 context.Context, p1 address.Address) (types.BigInt, error) {
-	return *new(types.BigInt), xerrors.New("method not supported")
+	return *new(types.BigInt), ErrNotSupported
 }
 
 func (s *FullNodeStruct) WalletDefaultAddress(p0 context.Context) (address.Address, error) {
+	if s.Internal.WalletDefaultAddress == nil {
+		return *new(address.Address), ErrNotSupported
+	}
 	return s.Internal.WalletDefaultAddress(p0)
 }
 
 func (s *FullNodeStub) WalletDefaultAddress(p0 context.Context) (address.Address, error) {
-	return *new(address.Address), xerrors.New("method not supported")
+	return *new(address.Address), ErrNotSupported
 }
 
 func (s *FullNodeStruct) WalletDelete(p0 context.Context, p1 address.Address) error {
+	if s.Internal.WalletDelete == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.WalletDelete(p0, p1)
 }
 
 func (s *FullNodeStub) WalletDelete(p0 context.Context, p1 address.Address) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) WalletExport(p0 context.Context, p1 address.Address) (*types.KeyInfo, error) {
+	if s.Internal.WalletExport == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.WalletExport(p0, p1)
 }
 
 func (s *FullNodeStub) WalletExport(p0 context.Context, p1 address.Address) (*types.KeyInfo, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) WalletHas(p0 context.Context, p1 address.Address) (bool, error) {
+	if s.Internal.WalletHas == nil {
+		return false, ErrNotSupported
+	}
 	return s.Internal.WalletHas(p0, p1)
 }
 
 func (s *FullNodeStub) WalletHas(p0 context.Context, p1 address.Address) (bool, error) {
-	return false, xerrors.New("method not supported")
+	return false, ErrNotSupported
 }
 
 func (s *FullNodeStruct) WalletImport(p0 context.Context, p1 *types.KeyInfo) (address.Address, error) {
+	if s.Internal.WalletImport == nil {
+		return *new(address.Address), ErrNotSupported
+	}
 	return s.Internal.WalletImport(p0, p1)
 }
 
 func (s *FullNodeStub) WalletImport(p0 context.Context, p1 *types.KeyInfo) (address.Address, error) {
-	return *new(address.Address), xerrors.New("method not supported")
+	return *new(address.Address), ErrNotSupported
 }
 
 func (s *FullNodeStruct) WalletList(p0 context.Context) ([]address.Address, error) {
+	if s.Internal.WalletList == nil {
+		return *new([]address.Address), ErrNotSupported
+	}
 	return s.Internal.WalletList(p0)
 }
 
 func (s *FullNodeStub) WalletList(p0 context.Context) ([]address.Address, error) {
-	return *new([]address.Address), xerrors.New("method not supported")
+	return *new([]address.Address), ErrNotSupported
 }
 
 func (s *FullNodeStruct) WalletNew(p0 context.Context, p1 types.KeyType) (address.Address, error) {
+	if s.Internal.WalletNew == nil {
+		return *new(address.Address), ErrNotSupported
+	}
 	return s.Internal.WalletNew(p0, p1)
 }
 
 func (s *FullNodeStub) WalletNew(p0 context.Context, p1 types.KeyType) (address.Address, error) {
-	return *new(address.Address), xerrors.New("method not supported")
+	return *new(address.Address), ErrNotSupported
 }
 
 func (s *FullNodeStruct) WalletSetDefault(p0 context.Context, p1 address.Address) error {
+	if s.Internal.WalletSetDefault == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.WalletSetDefault(p0, p1)
 }
 
 func (s *FullNodeStub) WalletSetDefault(p0 context.Context, p1 address.Address) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) WalletSign(p0 context.Context, p1 address.Address, p2 []byte) (*crypto.Signature, error) {
+	if s.Internal.WalletSign == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.WalletSign(p0, p1, p2)
 }
 
 func (s *FullNodeStub) WalletSign(p0 context.Context, p1 address.Address, p2 []byte) (*crypto.Signature, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) WalletSignMessage(p0 context.Context, p1 address.Address, p2 *types.Message) (*types.SignedMessage, error) {
+	if s.Internal.WalletSignMessage == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.WalletSignMessage(p0, p1, p2)
 }
 
 func (s *FullNodeStub) WalletSignMessage(p0 context.Context, p1 address.Address, p2 *types.Message) (*types.SignedMessage, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) WalletValidateAddress(p0 context.Context, p1 string) (address.Address, error) {
+	if s.Internal.WalletValidateAddress == nil {
+		return *new(address.Address), ErrNotSupported
+	}
 	return s.Internal.WalletValidateAddress(p0, p1)
 }
 
 func (s *FullNodeStub) WalletValidateAddress(p0 context.Context, p1 string) (address.Address, error) {
-	return *new(address.Address), xerrors.New("method not supported")
+	return *new(address.Address), ErrNotSupported
 }
 
 func (s *FullNodeStruct) WalletVerify(p0 context.Context, p1 address.Address, p2 []byte, p3 *crypto.Signature) (bool, error) {
+	if s.Internal.WalletVerify == nil {
+		return false, ErrNotSupported
+	}
 	return s.Internal.WalletVerify(p0, p1, p2, p3)
 }
 
 func (s *FullNodeStub) WalletVerify(p0 context.Context, p1 address.Address, p2 []byte, p3 *crypto.Signature) (bool, error) {
-	return false, xerrors.New("method not supported")
+	return false, ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) {
+	if s.Internal.ChainGetBlockMessages == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ChainGetBlockMessages(p0, p1)
 }
 
 func (s *GatewayStub) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.Message, error) {
+	if s.Internal.ChainGetMessage == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ChainGetMessage(p0, p1)
 }
 
 func (s *GatewayStub) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.Message, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) {
+	if s.Internal.ChainGetTipSet == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ChainGetTipSet(p0, p1)
 }
 
 func (s *GatewayStub) ChainGetTipSet(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainGetTipSetByHeight(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) {
+	if s.Internal.ChainGetTipSetByHeight == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ChainGetTipSetByHeight(p0, p1, p2)
 }
 
 func (s *GatewayStub) ChainGetTipSetByHeight(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainHasObj(p0 context.Context, p1 cid.Cid) (bool, error) {
+	if s.Internal.ChainHasObj == nil {
+		return false, ErrNotSupported
+	}
 	return s.Internal.ChainHasObj(p0, p1)
 }
 
 func (s *GatewayStub) ChainHasObj(p0 context.Context, p1 cid.Cid) (bool, error) {
-	return false, xerrors.New("method not supported")
+	return false, ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainHead(p0 context.Context) (*types.TipSet, error) {
+	if s.Internal.ChainHead == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ChainHead(p0)
 }
 
 func (s *GatewayStub) ChainHead(p0 context.Context) (*types.TipSet, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainNotify(p0 context.Context) (<-chan []*HeadChange, error) {
+	if s.Internal.ChainNotify == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.ChainNotify(p0)
 }
 
 func (s *GatewayStub) ChainNotify(p0 context.Context) (<-chan []*HeadChange, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, error) {
+	if s.Internal.ChainReadObj == nil {
+		return *new([]byte), ErrNotSupported
+	}
 	return s.Internal.ChainReadObj(p0, p1)
 }
 
 func (s *GatewayStub) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, error) {
-	return *new([]byte), xerrors.New("method not supported")
+	return *new([]byte), ErrNotSupported
 }
 
 func (s *GatewayStruct) GasEstimateMessageGas(p0 context.Context, p1 *types.Message, p2 *MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) {
+	if s.Internal.GasEstimateMessageGas == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.GasEstimateMessageGas(p0, p1, p2, p3)
 }
 
 func (s *GatewayStub) GasEstimateMessageGas(p0 context.Context, p1 *types.Message, p2 *MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) MpoolPush(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) {
+	if s.Internal.MpoolPush == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
 	return s.Internal.MpoolPush(p0, p1)
 }
 
 func (s *GatewayStub) MpoolPush(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) {
-	return *new(cid.Cid), xerrors.New("method not supported")
+	return *new(cid.Cid), ErrNotSupported
 }
 
 func (s *GatewayStruct) MsigGetAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
+	if s.Internal.MsigGetAvailableBalance == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
 	return s.Internal.MsigGetAvailableBalance(p0, p1, p2)
 }
 
 func (s *GatewayStub) MsigGetAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
-	return *new(types.BigInt), xerrors.New("method not supported")
+	return *new(types.BigInt), ErrNotSupported
 }
 
 func (s *GatewayStruct) MsigGetPending(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*MsigTransaction, error) {
+	if s.Internal.MsigGetPending == nil {
+		return *new([]*MsigTransaction), ErrNotSupported
+	}
 	return s.Internal.MsigGetPending(p0, p1, p2)
 }
 
 func (s *GatewayStub) MsigGetPending(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*MsigTransaction, error) {
-	return *new([]*MsigTransaction), xerrors.New("method not supported")
+	return *new([]*MsigTransaction), ErrNotSupported
 }
 
 func (s *GatewayStruct) MsigGetVested(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) {
+	if s.Internal.MsigGetVested == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
 	return s.Internal.MsigGetVested(p0, p1, p2, p3)
 }
 
 func (s *GatewayStub) MsigGetVested(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) {
-	return *new(types.BigInt), xerrors.New("method not supported")
+	return *new(types.BigInt), ErrNotSupported
 }
 
 func (s *GatewayStruct) StateAccountKey(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
+	if s.Internal.StateAccountKey == nil {
+		return *new(address.Address), ErrNotSupported
+	}
 	return s.Internal.StateAccountKey(p0, p1, p2)
 }
 
 func (s *GatewayStub) StateAccountKey(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
-	return *new(address.Address), xerrors.New("method not supported")
+	return *new(address.Address), ErrNotSupported
 }
 
 func (s *GatewayStruct) StateDealProviderCollateralBounds(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (DealCollateralBounds, error) {
+	if s.Internal.StateDealProviderCollateralBounds == nil {
+		return *new(DealCollateralBounds), ErrNotSupported
+	}
 	return s.Internal.StateDealProviderCollateralBounds(p0, p1, p2, p3)
 }
 
 func (s *GatewayStub) StateDealProviderCollateralBounds(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (DealCollateralBounds, error) {
-	return *new(DealCollateralBounds), xerrors.New("method not supported")
+	return *new(DealCollateralBounds), ErrNotSupported
 }
 
 func (s *GatewayStruct) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) {
+	if s.Internal.StateGetActor == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateGetActor(p0, p1, p2)
 }
 
 func (s *GatewayStub) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) StateListMiners(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) {
+	if s.Internal.StateListMiners == nil {
+		return *new([]address.Address), ErrNotSupported
+	}
 	return s.Internal.StateListMiners(p0, p1)
 }
 
 func (s *GatewayStub) StateListMiners(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) {
-	return *new([]address.Address), xerrors.New("method not supported")
+	return *new([]address.Address), ErrNotSupported
 }
 
 func (s *GatewayStruct) StateLookupID(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
+	if s.Internal.StateLookupID == nil {
+		return *new(address.Address), ErrNotSupported
+	}
 	return s.Internal.StateLookupID(p0, p1, p2)
 }
 
 func (s *GatewayStub) StateLookupID(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
-	return *new(address.Address), xerrors.New("method not supported")
+	return *new(address.Address), ErrNotSupported
 }
 
 func (s *GatewayStruct) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MarketBalance, error) {
+	if s.Internal.StateMarketBalance == nil {
+		return *new(MarketBalance), ErrNotSupported
+	}
 	return s.Internal.StateMarketBalance(p0, p1, p2)
 }
 
 func (s *GatewayStub) StateMarketBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MarketBalance, error) {
-	return *new(MarketBalance), xerrors.New("method not supported")
+	return *new(MarketBalance), ErrNotSupported
 }
 
 func (s *GatewayStruct) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*MarketDeal, error) {
+	if s.Internal.StateMarketStorageDeal == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateMarketStorageDeal(p0, p1, p2)
 }
 
 func (s *GatewayStub) StateMarketStorageDeal(p0 context.Context, p1 abi.DealID, p2 types.TipSetKey) (*MarketDeal, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) StateMinerInfo(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (miner.MinerInfo, error) {
+	if s.Internal.StateMinerInfo == nil {
+		return *new(miner.MinerInfo), ErrNotSupported
+	}
 	return s.Internal.StateMinerInfo(p0, p1, p2)
 }
 
 func (s *GatewayStub) StateMinerInfo(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (miner.MinerInfo, error) {
-	return *new(miner.MinerInfo), xerrors.New("method not supported")
+	return *new(miner.MinerInfo), ErrNotSupported
 }
 
 func (s *GatewayStruct) StateMinerPower(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*MinerPower, error) {
+	if s.Internal.StateMinerPower == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateMinerPower(p0, p1, p2)
 }
 
 func (s *GatewayStub) StateMinerPower(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*MinerPower, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) StateMinerProvingDeadline(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) {
+	if s.Internal.StateMinerProvingDeadline == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateMinerProvingDeadline(p0, p1, p2)
 }
 
 func (s *GatewayStub) StateMinerProvingDeadline(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*dline.Info, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey) (apitypes.NetworkVersion, error) {
+	if s.Internal.StateNetworkVersion == nil {
+		return *new(apitypes.NetworkVersion), ErrNotSupported
+	}
 	return s.Internal.StateNetworkVersion(p0, p1)
 }
 
 func (s *GatewayStub) StateNetworkVersion(p0 context.Context, p1 types.TipSetKey) (apitypes.NetworkVersion, error) {
-	return *new(apitypes.NetworkVersion), xerrors.New("method not supported")
+	return *new(apitypes.NetworkVersion), ErrNotSupported
 }
 
 func (s *GatewayStruct) StateReadState(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*ActorState, error) {
+	if s.Internal.StateReadState == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateReadState(p0, p1, p2)
 }
 
 func (s *GatewayStub) StateReadState(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*ActorState, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) StateSearchMsg(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) {
+	if s.Internal.StateSearchMsg == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateSearchMsg(p0, p1, p2, p3, p4)
 }
 
 func (s *GatewayStub) StateSearchMsg(p0 context.Context, p1 types.TipSetKey, p2 cid.Cid, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) StateSectorGetInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorOnChainInfo, error) {
+	if s.Internal.StateSectorGetInfo == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateSectorGetInfo(p0, p1, p2, p3)
 }
 
 func (s *GatewayStub) StateSectorGetInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorOnChainInfo, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) StateVerifiedClientStatus(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) {
+	if s.Internal.StateVerifiedClientStatus == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateVerifiedClientStatus(p0, p1, p2)
 }
 
 func (s *GatewayStub) StateVerifiedClientStatus(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*abi.StoragePower, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) {
+	if s.Internal.StateWaitMsg == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.StateWaitMsg(p0, p1, p2, p3, p4)
 }
 
 func (s *GatewayStub) StateWaitMsg(p0 context.Context, p1 cid.Cid, p2 uint64, p3 abi.ChainEpoch, p4 bool) (*MsgLookup, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) Version(p0 context.Context) (APIVersion, error) {
+	if s.Internal.Version == nil {
+		return *new(APIVersion), ErrNotSupported
+	}
 	return s.Internal.Version(p0)
 }
 
 func (s *GatewayStub) Version(p0 context.Context) (APIVersion, error) {
-	return *new(APIVersion), xerrors.New("method not supported")
+	return *new(APIVersion), ErrNotSupported
 }
 
 func (s *GatewayStruct) WalletBalance(p0 context.Context, p1 address.Address) (types.BigInt, error) {
+	if s.Internal.WalletBalance == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
 	return s.Internal.WalletBalance(p0, p1)
 }
 
 func (s *GatewayStub) WalletBalance(p0 context.Context, p1 address.Address) (types.BigInt, error) {
-	return *new(types.BigInt), xerrors.New("method not supported")
+	return *new(types.BigInt), ErrNotSupported
 }
 
 func (s *NetStruct) ID(p0 context.Context) (peer.ID, error) {
+	if s.Internal.ID == nil {
+		return *new(peer.ID), ErrNotSupported
+	}
 	return s.Internal.ID(p0)
 }
 
 func (s *NetStub) ID(p0 context.Context) (peer.ID, error) {
-	return *new(peer.ID), xerrors.New("method not supported")
+	return *new(peer.ID), ErrNotSupported
 }
 
 func (s *NetStruct) NetAddrsListen(p0 context.Context) (peer.AddrInfo, error) {
+	if s.Internal.NetAddrsListen == nil {
+		return *new(peer.AddrInfo), ErrNotSupported
+	}
 	return s.Internal.NetAddrsListen(p0)
 }
 
 func (s *NetStub) NetAddrsListen(p0 context.Context) (peer.AddrInfo, error) {
-	return *new(peer.AddrInfo), xerrors.New("method not supported")
+	return *new(peer.AddrInfo), ErrNotSupported
 }
 
 func (s *NetStruct) NetAgentVersion(p0 context.Context, p1 peer.ID) (string, error) {
+	if s.Internal.NetAgentVersion == nil {
+		return "", ErrNotSupported
+	}
 	return s.Internal.NetAgentVersion(p0, p1)
 }
 
 func (s *NetStub) NetAgentVersion(p0 context.Context, p1 peer.ID) (string, error) {
-	return "", xerrors.New("method not supported")
+	return "", ErrNotSupported
 }
 
 func (s *NetStruct) NetAutoNatStatus(p0 context.Context) (NatInfo, error) {
+	if s.Internal.NetAutoNatStatus == nil {
+		return *new(NatInfo), ErrNotSupported
+	}
 	return s.Internal.NetAutoNatStatus(p0)
 }
 
 func (s *NetStub) NetAutoNatStatus(p0 context.Context) (NatInfo, error) {
-	return *new(NatInfo), xerrors.New("method not supported")
+	return *new(NatInfo), ErrNotSupported
 }
 
 func (s *NetStruct) NetBandwidthStats(p0 context.Context) (metrics.Stats, error) {
+	if s.Internal.NetBandwidthStats == nil {
+		return *new(metrics.Stats), ErrNotSupported
+	}
 	return s.Internal.NetBandwidthStats(p0)
 }
 
 func (s *NetStub) NetBandwidthStats(p0 context.Context) (metrics.Stats, error) {
-	return *new(metrics.Stats), xerrors.New("method not supported")
+	return *new(metrics.Stats), ErrNotSupported
 }
 
 func (s *NetStruct) NetBandwidthStatsByPeer(p0 context.Context) (map[string]metrics.Stats, error) {
+	if s.Internal.NetBandwidthStatsByPeer == nil {
+		return *new(map[string]metrics.Stats), ErrNotSupported
+	}
 	return s.Internal.NetBandwidthStatsByPeer(p0)
 }
 
 func (s *NetStub) NetBandwidthStatsByPeer(p0 context.Context) (map[string]metrics.Stats, error) {
-	return *new(map[string]metrics.Stats), xerrors.New("method not supported")
+	return *new(map[string]metrics.Stats), ErrNotSupported
 }
 
 func (s *NetStruct) NetBandwidthStatsByProtocol(p0 context.Context) (map[protocol.ID]metrics.Stats, error) {
+	if s.Internal.NetBandwidthStatsByProtocol == nil {
+		return *new(map[protocol.ID]metrics.Stats), ErrNotSupported
+	}
 	return s.Internal.NetBandwidthStatsByProtocol(p0)
 }
 
 func (s *NetStub) NetBandwidthStatsByProtocol(p0 context.Context) (map[protocol.ID]metrics.Stats, error) {
-	return *new(map[protocol.ID]metrics.Stats), xerrors.New("method not supported")
+	return *new(map[protocol.ID]metrics.Stats), ErrNotSupported
 }
 
 func (s *NetStruct) NetBlockAdd(p0 context.Context, p1 NetBlockList) error {
+	if s.Internal.NetBlockAdd == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.NetBlockAdd(p0, p1)
 }
 
 func (s *NetStub) NetBlockAdd(p0 context.Context, p1 NetBlockList) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *NetStruct) NetBlockList(p0 context.Context) (NetBlockList, error) {
+	if s.Internal.NetBlockList == nil {
+		return *new(NetBlockList), ErrNotSupported
+	}
 	return s.Internal.NetBlockList(p0)
 }
 
 func (s *NetStub) NetBlockList(p0 context.Context) (NetBlockList, error) {
-	return *new(NetBlockList), xerrors.New("method not supported")
+	return *new(NetBlockList), ErrNotSupported
 }
 
 func (s *NetStruct) NetBlockRemove(p0 context.Context, p1 NetBlockList) error {
+	if s.Internal.NetBlockRemove == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.NetBlockRemove(p0, p1)
 }
 
 func (s *NetStub) NetBlockRemove(p0 context.Context, p1 NetBlockList) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *NetStruct) NetConnect(p0 context.Context, p1 peer.AddrInfo) error {
+	if s.Internal.NetConnect == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.NetConnect(p0, p1)
 }
 
 func (s *NetStub) NetConnect(p0 context.Context, p1 peer.AddrInfo) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *NetStruct) NetConnectedness(p0 context.Context, p1 peer.ID) (network.Connectedness, error) {
+	if s.Internal.NetConnectedness == nil {
+		return *new(network.Connectedness), ErrNotSupported
+	}
 	return s.Internal.NetConnectedness(p0, p1)
 }
 
 func (s *NetStub) NetConnectedness(p0 context.Context, p1 peer.ID) (network.Connectedness, error) {
-	return *new(network.Connectedness), xerrors.New("method not supported")
+	return *new(network.Connectedness), ErrNotSupported
 }
 
 func (s *NetStruct) NetDisconnect(p0 context.Context, p1 peer.ID) error {
+	if s.Internal.NetDisconnect == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.NetDisconnect(p0, p1)
 }
 
 func (s *NetStub) NetDisconnect(p0 context.Context, p1 peer.ID) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *NetStruct) NetFindPeer(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error) {
+	if s.Internal.NetFindPeer == nil {
+		return *new(peer.AddrInfo), ErrNotSupported
+	}
 	return s.Internal.NetFindPeer(p0, p1)
 }
 
 func (s *NetStub) NetFindPeer(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error) {
-	return *new(peer.AddrInfo), xerrors.New("method not supported")
+	return *new(peer.AddrInfo), ErrNotSupported
 }
 
 func (s *NetStruct) NetPeerInfo(p0 context.Context, p1 peer.ID) (*ExtendedPeerInfo, error) {
+	if s.Internal.NetPeerInfo == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.NetPeerInfo(p0, p1)
 }
 
 func (s *NetStub) NetPeerInfo(p0 context.Context, p1 peer.ID) (*ExtendedPeerInfo, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *NetStruct) NetPeers(p0 context.Context) ([]peer.AddrInfo, error) {
+	if s.Internal.NetPeers == nil {
+		return *new([]peer.AddrInfo), ErrNotSupported
+	}
 	return s.Internal.NetPeers(p0)
 }
 
 func (s *NetStub) NetPeers(p0 context.Context) ([]peer.AddrInfo, error) {
-	return *new([]peer.AddrInfo), xerrors.New("method not supported")
+	return *new([]peer.AddrInfo), ErrNotSupported
 }
 
 func (s *NetStruct) NetPubsubScores(p0 context.Context) ([]PubsubScore, error) {
+	if s.Internal.NetPubsubScores == nil {
+		return *new([]PubsubScore), ErrNotSupported
+	}
 	return s.Internal.NetPubsubScores(p0)
 }
 
 func (s *NetStub) NetPubsubScores(p0 context.Context) ([]PubsubScore, error) {
-	return *new([]PubsubScore), xerrors.New("method not supported")
+	return *new([]PubsubScore), ErrNotSupported
 }
 
 func (s *SignableStruct) Sign(p0 context.Context, p1 SignFunc) error {
+	if s.Internal.Sign == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.Sign(p0, p1)
 }
 
 func (s *SignableStub) Sign(p0 context.Context, p1 SignFunc) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ActorAddress(p0 context.Context) (address.Address, error) {
+	if s.Internal.ActorAddress == nil {
+		return *new(address.Address), ErrNotSupported
+	}
 	return s.Internal.ActorAddress(p0)
 }
 
 func (s *StorageMinerStub) ActorAddress(p0 context.Context) (address.Address, error) {
-	return *new(address.Address), xerrors.New("method not supported")
+	return *new(address.Address), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ActorAddressConfig(p0 context.Context) (AddressConfig, error) {
+	if s.Internal.ActorAddressConfig == nil {
+		return *new(AddressConfig), ErrNotSupported
+	}
 	return s.Internal.ActorAddressConfig(p0)
 }
 
 func (s *StorageMinerStub) ActorAddressConfig(p0 context.Context) (AddressConfig, error) {
-	return *new(AddressConfig), xerrors.New("method not supported")
+	return *new(AddressConfig), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ActorSectorSize(p0 context.Context, p1 address.Address) (abi.SectorSize, error) {
+	if s.Internal.ActorSectorSize == nil {
+		return *new(abi.SectorSize), ErrNotSupported
+	}
 	return s.Internal.ActorSectorSize(p0, p1)
 }
 
 func (s *StorageMinerStub) ActorSectorSize(p0 context.Context, p1 address.Address) (abi.SectorSize, error) {
-	return *new(abi.SectorSize), xerrors.New("method not supported")
+	return *new(abi.SectorSize), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storage.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) {
+	if s.Internal.CheckProvable == nil {
+		return *new(map[abi.SectorNumber]string), ErrNotSupported
+	}
 	return s.Internal.CheckProvable(p0, p1, p2, p3)
 }
 
 func (s *StorageMinerStub) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storage.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) {
-	return *new(map[abi.SectorNumber]string), xerrors.New("method not supported")
+	return *new(map[abi.SectorNumber]string), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ComputeProof(p0 context.Context, p1 []builtin.SectorInfo, p2 abi.PoStRandomness) ([]builtin.PoStProof, error) {
+	if s.Internal.ComputeProof == nil {
+		return *new([]builtin.PoStProof), ErrNotSupported
+	}
 	return s.Internal.ComputeProof(p0, p1, p2)
 }
 
 func (s *StorageMinerStub) ComputeProof(p0 context.Context, p1 []builtin.SectorInfo, p2 abi.PoStRandomness) ([]builtin.PoStProof, error) {
-	return *new([]builtin.PoStProof), xerrors.New("method not supported")
+	return *new([]builtin.PoStProof), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) CreateBackup(p0 context.Context, p1 string) error {
+	if s.Internal.CreateBackup == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.CreateBackup(p0, p1)
 }
 
 func (s *StorageMinerStub) CreateBackup(p0 context.Context, p1 string) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsConsiderOfflineRetrievalDeals(p0 context.Context) (bool, error) {
+	if s.Internal.DealsConsiderOfflineRetrievalDeals == nil {
+		return false, ErrNotSupported
+	}
 	return s.Internal.DealsConsiderOfflineRetrievalDeals(p0)
 }
 
 func (s *StorageMinerStub) DealsConsiderOfflineRetrievalDeals(p0 context.Context) (bool, error) {
-	return false, xerrors.New("method not supported")
+	return false, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsConsiderOfflineStorageDeals(p0 context.Context) (bool, error) {
+	if s.Internal.DealsConsiderOfflineStorageDeals == nil {
+		return false, ErrNotSupported
+	}
 	return s.Internal.DealsConsiderOfflineStorageDeals(p0)
 }
 
 func (s *StorageMinerStub) DealsConsiderOfflineStorageDeals(p0 context.Context) (bool, error) {
-	return false, xerrors.New("method not supported")
+	return false, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsConsiderOnlineRetrievalDeals(p0 context.Context) (bool, error) {
+	if s.Internal.DealsConsiderOnlineRetrievalDeals == nil {
+		return false, ErrNotSupported
+	}
 	return s.Internal.DealsConsiderOnlineRetrievalDeals(p0)
 }
 
 func (s *StorageMinerStub) DealsConsiderOnlineRetrievalDeals(p0 context.Context) (bool, error) {
-	return false, xerrors.New("method not supported")
+	return false, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsConsiderOnlineStorageDeals(p0 context.Context) (bool, error) {
+	if s.Internal.DealsConsiderOnlineStorageDeals == nil {
+		return false, ErrNotSupported
+	}
 	return s.Internal.DealsConsiderOnlineStorageDeals(p0)
 }
 
 func (s *StorageMinerStub) DealsConsiderOnlineStorageDeals(p0 context.Context) (bool, error) {
-	return false, xerrors.New("method not supported")
+	return false, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsConsiderUnverifiedStorageDeals(p0 context.Context) (bool, error) {
+	if s.Internal.DealsConsiderUnverifiedStorageDeals == nil {
+		return false, ErrNotSupported
+	}
 	return s.Internal.DealsConsiderUnverifiedStorageDeals(p0)
 }
 
 func (s *StorageMinerStub) DealsConsiderUnverifiedStorageDeals(p0 context.Context) (bool, error) {
-	return false, xerrors.New("method not supported")
+	return false, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsConsiderVerifiedStorageDeals(p0 context.Context) (bool, error) {
+	if s.Internal.DealsConsiderVerifiedStorageDeals == nil {
+		return false, ErrNotSupported
+	}
 	return s.Internal.DealsConsiderVerifiedStorageDeals(p0)
 }
 
 func (s *StorageMinerStub) DealsConsiderVerifiedStorageDeals(p0 context.Context) (bool, error) {
-	return false, xerrors.New("method not supported")
+	return false, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsImportData(p0 context.Context, p1 cid.Cid, p2 string) error {
+	if s.Internal.DealsImportData == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.DealsImportData(p0, p1, p2)
 }
 
 func (s *StorageMinerStub) DealsImportData(p0 context.Context, p1 cid.Cid, p2 string) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsList(p0 context.Context) ([]MarketDeal, error) {
+	if s.Internal.DealsList == nil {
+		return *new([]MarketDeal), ErrNotSupported
+	}
 	return s.Internal.DealsList(p0)
 }
 
 func (s *StorageMinerStub) DealsList(p0 context.Context) ([]MarketDeal, error) {
-	return *new([]MarketDeal), xerrors.New("method not supported")
+	return *new([]MarketDeal), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsPieceCidBlocklist(p0 context.Context) ([]cid.Cid, error) {
+	if s.Internal.DealsPieceCidBlocklist == nil {
+		return *new([]cid.Cid), ErrNotSupported
+	}
 	return s.Internal.DealsPieceCidBlocklist(p0)
 }
 
 func (s *StorageMinerStub) DealsPieceCidBlocklist(p0 context.Context) ([]cid.Cid, error) {
-	return *new([]cid.Cid), xerrors.New("method not supported")
+	return *new([]cid.Cid), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsSetConsiderOfflineRetrievalDeals(p0 context.Context, p1 bool) error {
+	if s.Internal.DealsSetConsiderOfflineRetrievalDeals == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.DealsSetConsiderOfflineRetrievalDeals(p0, p1)
 }
 
 func (s *StorageMinerStub) DealsSetConsiderOfflineRetrievalDeals(p0 context.Context, p1 bool) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsSetConsiderOfflineStorageDeals(p0 context.Context, p1 bool) error {
+	if s.Internal.DealsSetConsiderOfflineStorageDeals == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.DealsSetConsiderOfflineStorageDeals(p0, p1)
 }
 
 func (s *StorageMinerStub) DealsSetConsiderOfflineStorageDeals(p0 context.Context, p1 bool) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsSetConsiderOnlineRetrievalDeals(p0 context.Context, p1 bool) error {
+	if s.Internal.DealsSetConsiderOnlineRetrievalDeals == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.DealsSetConsiderOnlineRetrievalDeals(p0, p1)
 }
 
 func (s *StorageMinerStub) DealsSetConsiderOnlineRetrievalDeals(p0 context.Context, p1 bool) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsSetConsiderOnlineStorageDeals(p0 context.Context, p1 bool) error {
+	if s.Internal.DealsSetConsiderOnlineStorageDeals == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.DealsSetConsiderOnlineStorageDeals(p0, p1)
 }
 
 func (s *StorageMinerStub) DealsSetConsiderOnlineStorageDeals(p0 context.Context, p1 bool) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsSetConsiderUnverifiedStorageDeals(p0 context.Context, p1 bool) error {
+	if s.Internal.DealsSetConsiderUnverifiedStorageDeals == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.DealsSetConsiderUnverifiedStorageDeals(p0, p1)
 }
 
 func (s *StorageMinerStub) DealsSetConsiderUnverifiedStorageDeals(p0 context.Context, p1 bool) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsSetConsiderVerifiedStorageDeals(p0 context.Context, p1 bool) error {
+	if s.Internal.DealsSetConsiderVerifiedStorageDeals == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.DealsSetConsiderVerifiedStorageDeals(p0, p1)
 }
 
 func (s *StorageMinerStub) DealsSetConsiderVerifiedStorageDeals(p0 context.Context, p1 bool) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsSetPieceCidBlocklist(p0 context.Context, p1 []cid.Cid) error {
+	if s.Internal.DealsSetPieceCidBlocklist == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.DealsSetPieceCidBlocklist(p0, p1)
 }
 
 func (s *StorageMinerStub) DealsSetPieceCidBlocklist(p0 context.Context, p1 []cid.Cid) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+	if s.Internal.MarketCancelDataTransfer == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.MarketCancelDataTransfer(p0, p1, p2, p3)
 }
 
 func (s *StorageMinerStub) MarketCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketDataTransferUpdates(p0 context.Context) (<-chan DataTransferChannel, error) {
+	if s.Internal.MarketDataTransferUpdates == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MarketDataTransferUpdates(p0)
 }
 
 func (s *StorageMinerStub) MarketDataTransferUpdates(p0 context.Context) (<-chan DataTransferChannel, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketGetAsk(p0 context.Context) (*storagemarket.SignedStorageAsk, error) {
+	if s.Internal.MarketGetAsk == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MarketGetAsk(p0)
 }
 
 func (s *StorageMinerStub) MarketGetAsk(p0 context.Context) (*storagemarket.SignedStorageAsk, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketGetDealUpdates(p0 context.Context) (<-chan storagemarket.MinerDeal, error) {
+	if s.Internal.MarketGetDealUpdates == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MarketGetDealUpdates(p0)
 }
 
 func (s *StorageMinerStub) MarketGetDealUpdates(p0 context.Context) (<-chan storagemarket.MinerDeal, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketGetRetrievalAsk(p0 context.Context) (*retrievalmarket.Ask, error) {
+	if s.Internal.MarketGetRetrievalAsk == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MarketGetRetrievalAsk(p0)
 }
 
 func (s *StorageMinerStub) MarketGetRetrievalAsk(p0 context.Context) (*retrievalmarket.Ask, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketImportDealData(p0 context.Context, p1 cid.Cid, p2 string) error {
+	if s.Internal.MarketImportDealData == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.MarketImportDealData(p0, p1, p2)
 }
 
 func (s *StorageMinerStub) MarketImportDealData(p0 context.Context, p1 cid.Cid, p2 string) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketListDataTransfers(p0 context.Context) ([]DataTransferChannel, error) {
+	if s.Internal.MarketListDataTransfers == nil {
+		return *new([]DataTransferChannel), ErrNotSupported
+	}
 	return s.Internal.MarketListDataTransfers(p0)
 }
 
 func (s *StorageMinerStub) MarketListDataTransfers(p0 context.Context) ([]DataTransferChannel, error) {
-	return *new([]DataTransferChannel), xerrors.New("method not supported")
+	return *new([]DataTransferChannel), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketListDeals(p0 context.Context) ([]MarketDeal, error) {
+	if s.Internal.MarketListDeals == nil {
+		return *new([]MarketDeal), ErrNotSupported
+	}
 	return s.Internal.MarketListDeals(p0)
 }
 
 func (s *StorageMinerStub) MarketListDeals(p0 context.Context) ([]MarketDeal, error) {
-	return *new([]MarketDeal), xerrors.New("method not supported")
+	return *new([]MarketDeal), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketListIncompleteDeals(p0 context.Context) ([]storagemarket.MinerDeal, error) {
+	if s.Internal.MarketListIncompleteDeals == nil {
+		return *new([]storagemarket.MinerDeal), ErrNotSupported
+	}
 	return s.Internal.MarketListIncompleteDeals(p0)
 }
 
 func (s *StorageMinerStub) MarketListIncompleteDeals(p0 context.Context) ([]storagemarket.MinerDeal, error) {
-	return *new([]storagemarket.MinerDeal), xerrors.New("method not supported")
+	return *new([]storagemarket.MinerDeal), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketListRetrievalDeals(p0 context.Context) ([]retrievalmarket.ProviderDealState, error) {
+	if s.Internal.MarketListRetrievalDeals == nil {
+		return *new([]retrievalmarket.ProviderDealState), ErrNotSupported
+	}
 	return s.Internal.MarketListRetrievalDeals(p0)
 }
 
 func (s *StorageMinerStub) MarketListRetrievalDeals(p0 context.Context) ([]retrievalmarket.ProviderDealState, error) {
-	return *new([]retrievalmarket.ProviderDealState), xerrors.New("method not supported")
+	return *new([]retrievalmarket.ProviderDealState), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketPendingDeals(p0 context.Context) (PendingDealInfo, error) {
+	if s.Internal.MarketPendingDeals == nil {
+		return *new(PendingDealInfo), ErrNotSupported
+	}
 	return s.Internal.MarketPendingDeals(p0)
 }
 
 func (s *StorageMinerStub) MarketPendingDeals(p0 context.Context) (PendingDealInfo, error) {
-	return *new(PendingDealInfo), xerrors.New("method not supported")
+	return *new(PendingDealInfo), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketPublishPendingDeals(p0 context.Context) error {
+	if s.Internal.MarketPublishPendingDeals == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.MarketPublishPendingDeals(p0)
 }
 
 func (s *StorageMinerStub) MarketPublishPendingDeals(p0 context.Context) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+	if s.Internal.MarketRestartDataTransfer == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.MarketRestartDataTransfer(p0, p1, p2, p3)
 }
 
 func (s *StorageMinerStub) MarketRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketSetAsk(p0 context.Context, p1 types.BigInt, p2 types.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error {
+	if s.Internal.MarketSetAsk == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.MarketSetAsk(p0, p1, p2, p3, p4, p5)
 }
 
 func (s *StorageMinerStub) MarketSetAsk(p0 context.Context, p1 types.BigInt, p2 types.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketSetRetrievalAsk(p0 context.Context, p1 *retrievalmarket.Ask) error {
+	if s.Internal.MarketSetRetrievalAsk == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.MarketSetRetrievalAsk(p0, p1)
 }
 
 func (s *StorageMinerStub) MarketSetRetrievalAsk(p0 context.Context, p1 *retrievalmarket.Ask) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MiningBase(p0 context.Context) (*types.TipSet, error) {
+	if s.Internal.MiningBase == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.MiningBase(p0)
 }
 
 func (s *StorageMinerStub) MiningBase(p0 context.Context) (*types.TipSet, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) PiecesGetCIDInfo(p0 context.Context, p1 cid.Cid) (*piecestore.CIDInfo, error) {
+	if s.Internal.PiecesGetCIDInfo == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.PiecesGetCIDInfo(p0, p1)
 }
 
 func (s *StorageMinerStub) PiecesGetCIDInfo(p0 context.Context, p1 cid.Cid) (*piecestore.CIDInfo, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) PiecesGetPieceInfo(p0 context.Context, p1 cid.Cid) (*piecestore.PieceInfo, error) {
+	if s.Internal.PiecesGetPieceInfo == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.PiecesGetPieceInfo(p0, p1)
 }
 
 func (s *StorageMinerStub) PiecesGetPieceInfo(p0 context.Context, p1 cid.Cid) (*piecestore.PieceInfo, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) PiecesListCidInfos(p0 context.Context) ([]cid.Cid, error) {
+	if s.Internal.PiecesListCidInfos == nil {
+		return *new([]cid.Cid), ErrNotSupported
+	}
 	return s.Internal.PiecesListCidInfos(p0)
 }
 
 func (s *StorageMinerStub) PiecesListCidInfos(p0 context.Context) ([]cid.Cid, error) {
-	return *new([]cid.Cid), xerrors.New("method not supported")
+	return *new([]cid.Cid), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) PiecesListPieces(p0 context.Context) ([]cid.Cid, error) {
+	if s.Internal.PiecesListPieces == nil {
+		return *new([]cid.Cid), ErrNotSupported
+	}
 	return s.Internal.PiecesListPieces(p0)
 }
 
 func (s *StorageMinerStub) PiecesListPieces(p0 context.Context) ([]cid.Cid, error) {
-	return *new([]cid.Cid), xerrors.New("method not supported")
+	return *new([]cid.Cid), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) PledgeSector(p0 context.Context) (abi.SectorID, error) {
+	if s.Internal.PledgeSector == nil {
+		return *new(abi.SectorID), ErrNotSupported
+	}
 	return s.Internal.PledgeSector(p0)
 }
 
 func (s *StorageMinerStub) PledgeSector(p0 context.Context) (abi.SectorID, error) {
-	return *new(abi.SectorID), xerrors.New("method not supported")
+	return *new(abi.SectorID), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ReturnAddPiece(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error {
+	if s.Internal.ReturnAddPiece == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ReturnAddPiece(p0, p1, p2, p3)
 }
 
 func (s *StorageMinerStub) ReturnAddPiece(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ReturnFetch(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	if s.Internal.ReturnFetch == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ReturnFetch(p0, p1, p2)
 }
 
 func (s *StorageMinerStub) ReturnFetch(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ReturnFinalizeSector(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	if s.Internal.ReturnFinalizeSector == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ReturnFinalizeSector(p0, p1, p2)
 }
 
 func (s *StorageMinerStub) ReturnFinalizeSector(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ReturnMoveStorage(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	if s.Internal.ReturnMoveStorage == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ReturnMoveStorage(p0, p1, p2)
 }
 
 func (s *StorageMinerStub) ReturnMoveStorage(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ReturnReadPiece(p0 context.Context, p1 storiface.CallID, p2 bool, p3 *storiface.CallError) error {
+	if s.Internal.ReturnReadPiece == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ReturnReadPiece(p0, p1, p2, p3)
 }
 
 func (s *StorageMinerStub) ReturnReadPiece(p0 context.Context, p1 storiface.CallID, p2 bool, p3 *storiface.CallError) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ReturnReleaseUnsealed(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	if s.Internal.ReturnReleaseUnsealed == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ReturnReleaseUnsealed(p0, p1, p2)
 }
 
 func (s *StorageMinerStub) ReturnReleaseUnsealed(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ReturnSealCommit1(p0 context.Context, p1 storiface.CallID, p2 storage.Commit1Out, p3 *storiface.CallError) error {
+	if s.Internal.ReturnSealCommit1 == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ReturnSealCommit1(p0, p1, p2, p3)
 }
 
 func (s *StorageMinerStub) ReturnSealCommit1(p0 context.Context, p1 storiface.CallID, p2 storage.Commit1Out, p3 *storiface.CallError) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ReturnSealCommit2(p0 context.Context, p1 storiface.CallID, p2 storage.Proof, p3 *storiface.CallError) error {
+	if s.Internal.ReturnSealCommit2 == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ReturnSealCommit2(p0, p1, p2, p3)
 }
 
 func (s *StorageMinerStub) ReturnSealCommit2(p0 context.Context, p1 storiface.CallID, p2 storage.Proof, p3 *storiface.CallError) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ReturnSealPreCommit1(p0 context.Context, p1 storiface.CallID, p2 storage.PreCommit1Out, p3 *storiface.CallError) error {
+	if s.Internal.ReturnSealPreCommit1 == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ReturnSealPreCommit1(p0, p1, p2, p3)
 }
 
 func (s *StorageMinerStub) ReturnSealPreCommit1(p0 context.Context, p1 storiface.CallID, p2 storage.PreCommit1Out, p3 *storiface.CallError) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ReturnSealPreCommit2(p0 context.Context, p1 storiface.CallID, p2 storage.SectorCids, p3 *storiface.CallError) error {
+	if s.Internal.ReturnSealPreCommit2 == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ReturnSealPreCommit2(p0, p1, p2, p3)
 }
 
 func (s *StorageMinerStub) ReturnSealPreCommit2(p0 context.Context, p1 storiface.CallID, p2 storage.SectorCids, p3 *storiface.CallError) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ReturnUnsealPiece(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	if s.Internal.ReturnUnsealPiece == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.ReturnUnsealPiece(p0, p1, p2)
 }
 
 func (s *StorageMinerStub) ReturnUnsealPiece(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SealingAbort(p0 context.Context, p1 storiface.CallID) error {
+	if s.Internal.SealingAbort == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.SealingAbort(p0, p1)
 }
 
 func (s *StorageMinerStub) SealingAbort(p0 context.Context, p1 storiface.CallID) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SealingSchedDiag(p0 context.Context, p1 bool) (interface{}, error) {
+	if s.Internal.SealingSchedDiag == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.SealingSchedDiag(p0, p1)
 }
 
 func (s *StorageMinerStub) SealingSchedDiag(p0 context.Context, p1 bool) (interface{}, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorAddPieceToAny(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storage.Data, p3 PieceDealInfo) (SectorOffset, error) {
+	if s.Internal.SectorAddPieceToAny == nil {
+		return *new(SectorOffset), ErrNotSupported
+	}
 	return s.Internal.SectorAddPieceToAny(p0, p1, p2, p3)
 }
 
 func (s *StorageMinerStub) SectorAddPieceToAny(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storage.Data, p3 PieceDealInfo) (SectorOffset, error) {
-	return *new(SectorOffset), xerrors.New("method not supported")
+	return *new(SectorOffset), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorCommitFlush(p0 context.Context) ([]sealiface.CommitBatchRes, error) {
+	if s.Internal.SectorCommitFlush == nil {
+		return *new([]sealiface.CommitBatchRes), ErrNotSupported
+	}
 	return s.Internal.SectorCommitFlush(p0)
 }
 
 func (s *StorageMinerStub) SectorCommitFlush(p0 context.Context) ([]sealiface.CommitBatchRes, error) {
-	return *new([]sealiface.CommitBatchRes), xerrors.New("method not supported")
+	return *new([]sealiface.CommitBatchRes), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorCommitPending(p0 context.Context) ([]abi.SectorID, error) {
+	if s.Internal.SectorCommitPending == nil {
+		return *new([]abi.SectorID), ErrNotSupported
+	}
 	return s.Internal.SectorCommitPending(p0)
 }
 
 func (s *StorageMinerStub) SectorCommitPending(p0 context.Context) ([]abi.SectorID, error) {
-	return *new([]abi.SectorID), xerrors.New("method not supported")
+	return *new([]abi.SectorID), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorGetExpectedSealDuration(p0 context.Context) (time.Duration, error) {
+	if s.Internal.SectorGetExpectedSealDuration == nil {
+		return *new(time.Duration), ErrNotSupported
+	}
 	return s.Internal.SectorGetExpectedSealDuration(p0)
 }
 
 func (s *StorageMinerStub) SectorGetExpectedSealDuration(p0 context.Context) (time.Duration, error) {
-	return *new(time.Duration), xerrors.New("method not supported")
+	return *new(time.Duration), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorGetSealDelay(p0 context.Context) (time.Duration, error) {
+	if s.Internal.SectorGetSealDelay == nil {
+		return *new(time.Duration), ErrNotSupported
+	}
 	return s.Internal.SectorGetSealDelay(p0)
 }
 
 func (s *StorageMinerStub) SectorGetSealDelay(p0 context.Context) (time.Duration, error) {
-	return *new(time.Duration), xerrors.New("method not supported")
+	return *new(time.Duration), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorMarkForUpgrade(p0 context.Context, p1 abi.SectorNumber) error {
+	if s.Internal.SectorMarkForUpgrade == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.SectorMarkForUpgrade(p0, p1)
 }
 
 func (s *StorageMinerStub) SectorMarkForUpgrade(p0 context.Context, p1 abi.SectorNumber) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorPreCommitFlush(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) {
+	if s.Internal.SectorPreCommitFlush == nil {
+		return *new([]sealiface.PreCommitBatchRes), ErrNotSupported
+	}
 	return s.Internal.SectorPreCommitFlush(p0)
 }
 
 func (s *StorageMinerStub) SectorPreCommitFlush(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) {
-	return *new([]sealiface.PreCommitBatchRes), xerrors.New("method not supported")
+	return *new([]sealiface.PreCommitBatchRes), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorPreCommitPending(p0 context.Context) ([]abi.SectorID, error) {
+	if s.Internal.SectorPreCommitPending == nil {
+		return *new([]abi.SectorID), ErrNotSupported
+	}
 	return s.Internal.SectorPreCommitPending(p0)
 }
 
 func (s *StorageMinerStub) SectorPreCommitPending(p0 context.Context) ([]abi.SectorID, error) {
-	return *new([]abi.SectorID), xerrors.New("method not supported")
+	return *new([]abi.SectorID), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorRemove(p0 context.Context, p1 abi.SectorNumber) error {
+	if s.Internal.SectorRemove == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.SectorRemove(p0, p1)
 }
 
 func (s *StorageMinerStub) SectorRemove(p0 context.Context, p1 abi.SectorNumber) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorSetExpectedSealDuration(p0 context.Context, p1 time.Duration) error {
+	if s.Internal.SectorSetExpectedSealDuration == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.SectorSetExpectedSealDuration(p0, p1)
 }
 
 func (s *StorageMinerStub) SectorSetExpectedSealDuration(p0 context.Context, p1 time.Duration) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorSetSealDelay(p0 context.Context, p1 time.Duration) error {
+	if s.Internal.SectorSetSealDelay == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.SectorSetSealDelay(p0, p1)
 }
 
 func (s *StorageMinerStub) SectorSetSealDelay(p0 context.Context, p1 time.Duration) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorStartSealing(p0 context.Context, p1 abi.SectorNumber) error {
+	if s.Internal.SectorStartSealing == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.SectorStartSealing(p0, p1)
 }
 
 func (s *StorageMinerStub) SectorStartSealing(p0 context.Context, p1 abi.SectorNumber) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorTerminate(p0 context.Context, p1 abi.SectorNumber) error {
+	if s.Internal.SectorTerminate == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.SectorTerminate(p0, p1)
 }
 
 func (s *StorageMinerStub) SectorTerminate(p0 context.Context, p1 abi.SectorNumber) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorTerminateFlush(p0 context.Context) (*cid.Cid, error) {
+	if s.Internal.SectorTerminateFlush == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.SectorTerminateFlush(p0)
 }
 
 func (s *StorageMinerStub) SectorTerminateFlush(p0 context.Context) (*cid.Cid, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorTerminatePending(p0 context.Context) ([]abi.SectorID, error) {
+	if s.Internal.SectorTerminatePending == nil {
+		return *new([]abi.SectorID), ErrNotSupported
+	}
 	return s.Internal.SectorTerminatePending(p0)
 }
 
 func (s *StorageMinerStub) SectorTerminatePending(p0 context.Context) ([]abi.SectorID, error) {
-	return *new([]abi.SectorID), xerrors.New("method not supported")
+	return *new([]abi.SectorID), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorsList(p0 context.Context) ([]abi.SectorNumber, error) {
+	if s.Internal.SectorsList == nil {
+		return *new([]abi.SectorNumber), ErrNotSupported
+	}
 	return s.Internal.SectorsList(p0)
 }
 
 func (s *StorageMinerStub) SectorsList(p0 context.Context) ([]abi.SectorNumber, error) {
-	return *new([]abi.SectorNumber), xerrors.New("method not supported")
+	return *new([]abi.SectorNumber), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorsListInStates(p0 context.Context, p1 []SectorState) ([]abi.SectorNumber, error) {
+	if s.Internal.SectorsListInStates == nil {
+		return *new([]abi.SectorNumber), ErrNotSupported
+	}
 	return s.Internal.SectorsListInStates(p0, p1)
 }
 
 func (s *StorageMinerStub) SectorsListInStates(p0 context.Context, p1 []SectorState) ([]abi.SectorNumber, error) {
-	return *new([]abi.SectorNumber), xerrors.New("method not supported")
+	return *new([]abi.SectorNumber), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorsRefs(p0 context.Context) (map[string][]SealedRef, error) {
+	if s.Internal.SectorsRefs == nil {
+		return *new(map[string][]SealedRef), ErrNotSupported
+	}
 	return s.Internal.SectorsRefs(p0)
 }
 
 func (s *StorageMinerStub) SectorsRefs(p0 context.Context) (map[string][]SealedRef, error) {
-	return *new(map[string][]SealedRef), xerrors.New("method not supported")
+	return *new(map[string][]SealedRef), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorsStatus(p0 context.Context, p1 abi.SectorNumber, p2 bool) (SectorInfo, error) {
+	if s.Internal.SectorsStatus == nil {
+		return *new(SectorInfo), ErrNotSupported
+	}
 	return s.Internal.SectorsStatus(p0, p1, p2)
 }
 
 func (s *StorageMinerStub) SectorsStatus(p0 context.Context, p1 abi.SectorNumber, p2 bool) (SectorInfo, error) {
-	return *new(SectorInfo), xerrors.New("method not supported")
+	return *new(SectorInfo), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorsSummary(p0 context.Context) (map[SectorState]int, error) {
+	if s.Internal.SectorsSummary == nil {
+		return *new(map[SectorState]int), ErrNotSupported
+	}
 	return s.Internal.SectorsSummary(p0)
 }
 
 func (s *StorageMinerStub) SectorsSummary(p0 context.Context) (map[SectorState]int, error) {
-	return *new(map[SectorState]int), xerrors.New("method not supported")
+	return *new(map[SectorState]int), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorsUnsealPiece(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) error {
+	if s.Internal.SectorsUnsealPiece == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.SectorsUnsealPiece(p0, p1, p2, p3, p4, p5)
 }
 
 func (s *StorageMinerStub) SectorsUnsealPiece(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorsUpdate(p0 context.Context, p1 abi.SectorNumber, p2 SectorState) error {
+	if s.Internal.SectorsUpdate == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.SectorsUpdate(p0, p1, p2)
 }
 
 func (s *StorageMinerStub) SectorsUpdate(p0 context.Context, p1 abi.SectorNumber, p2 SectorState) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageAddLocal(p0 context.Context, p1 string) error {
+	if s.Internal.StorageAddLocal == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.StorageAddLocal(p0, p1)
 }
 
 func (s *StorageMinerStub) StorageAddLocal(p0 context.Context, p1 string) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageAttach(p0 context.Context, p1 stores.StorageInfo, p2 fsutil.FsStat) error {
+	if s.Internal.StorageAttach == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.StorageAttach(p0, p1, p2)
 }
 
 func (s *StorageMinerStub) StorageAttach(p0 context.Context, p1 stores.StorageInfo, p2 fsutil.FsStat) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageBestAlloc(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]stores.StorageInfo, error) {
+	if s.Internal.StorageBestAlloc == nil {
+		return *new([]stores.StorageInfo), ErrNotSupported
+	}
 	return s.Internal.StorageBestAlloc(p0, p1, p2, p3)
 }
 
 func (s *StorageMinerStub) StorageBestAlloc(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]stores.StorageInfo, error) {
-	return *new([]stores.StorageInfo), xerrors.New("method not supported")
+	return *new([]stores.StorageInfo), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageDeclareSector(p0 context.Context, p1 stores.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) error {
+	if s.Internal.StorageDeclareSector == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.StorageDeclareSector(p0, p1, p2, p3, p4)
 }
 
 func (s *StorageMinerStub) StorageDeclareSector(p0 context.Context, p1 stores.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageDropSector(p0 context.Context, p1 stores.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error {
+	if s.Internal.StorageDropSector == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.StorageDropSector(p0, p1, p2, p3)
 }
 
 func (s *StorageMinerStub) StorageDropSector(p0 context.Context, p1 stores.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageFindSector(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]stores.SectorStorageInfo, error) {
+	if s.Internal.StorageFindSector == nil {
+		return *new([]stores.SectorStorageInfo), ErrNotSupported
+	}
 	return s.Internal.StorageFindSector(p0, p1, p2, p3, p4)
 }
 
 func (s *StorageMinerStub) StorageFindSector(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]stores.SectorStorageInfo, error) {
-	return *new([]stores.SectorStorageInfo), xerrors.New("method not supported")
+	return *new([]stores.SectorStorageInfo), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageInfo(p0 context.Context, p1 stores.ID) (stores.StorageInfo, error) {
+	if s.Internal.StorageInfo == nil {
+		return *new(stores.StorageInfo), ErrNotSupported
+	}
 	return s.Internal.StorageInfo(p0, p1)
 }
 
 func (s *StorageMinerStub) StorageInfo(p0 context.Context, p1 stores.ID) (stores.StorageInfo, error) {
-	return *new(stores.StorageInfo), xerrors.New("method not supported")
+	return *new(stores.StorageInfo), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageList(p0 context.Context) (map[stores.ID][]stores.Decl, error) {
+	if s.Internal.StorageList == nil {
+		return *new(map[stores.ID][]stores.Decl), ErrNotSupported
+	}
 	return s.Internal.StorageList(p0)
 }
 
 func (s *StorageMinerStub) StorageList(p0 context.Context) (map[stores.ID][]stores.Decl, error) {
-	return *new(map[stores.ID][]stores.Decl), xerrors.New("method not supported")
+	return *new(map[stores.ID][]stores.Decl), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageLocal(p0 context.Context) (map[stores.ID]string, error) {
+	if s.Internal.StorageLocal == nil {
+		return *new(map[stores.ID]string), ErrNotSupported
+	}
 	return s.Internal.StorageLocal(p0)
 }
 
 func (s *StorageMinerStub) StorageLocal(p0 context.Context) (map[stores.ID]string, error) {
-	return *new(map[stores.ID]string), xerrors.New("method not supported")
+	return *new(map[stores.ID]string), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageLock(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) error {
+	if s.Internal.StorageLock == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.StorageLock(p0, p1, p2, p3)
 }
 
 func (s *StorageMinerStub) StorageLock(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageReportHealth(p0 context.Context, p1 stores.ID, p2 stores.HealthReport) error {
+	if s.Internal.StorageReportHealth == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.StorageReportHealth(p0, p1, p2)
 }
 
 func (s *StorageMinerStub) StorageReportHealth(p0 context.Context, p1 stores.ID, p2 stores.HealthReport) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageStat(p0 context.Context, p1 stores.ID) (fsutil.FsStat, error) {
+	if s.Internal.StorageStat == nil {
+		return *new(fsutil.FsStat), ErrNotSupported
+	}
 	return s.Internal.StorageStat(p0, p1)
 }
 
 func (s *StorageMinerStub) StorageStat(p0 context.Context, p1 stores.ID) (fsutil.FsStat, error) {
-	return *new(fsutil.FsStat), xerrors.New("method not supported")
+	return *new(fsutil.FsStat), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageTryLock(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) (bool, error) {
+	if s.Internal.StorageTryLock == nil {
+		return false, ErrNotSupported
+	}
 	return s.Internal.StorageTryLock(p0, p1, p2, p3)
 }
 
 func (s *StorageMinerStub) StorageTryLock(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) (bool, error) {
-	return false, xerrors.New("method not supported")
+	return false, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) WorkerConnect(p0 context.Context, p1 string) error {
+	if s.Internal.WorkerConnect == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.WorkerConnect(p0, p1)
 }
 
 func (s *StorageMinerStub) WorkerConnect(p0 context.Context, p1 string) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) WorkerJobs(p0 context.Context) (map[uuid.UUID][]storiface.WorkerJob, error) {
+	if s.Internal.WorkerJobs == nil {
+		return *new(map[uuid.UUID][]storiface.WorkerJob), ErrNotSupported
+	}
 	return s.Internal.WorkerJobs(p0)
 }
 
 func (s *StorageMinerStub) WorkerJobs(p0 context.Context) (map[uuid.UUID][]storiface.WorkerJob, error) {
-	return *new(map[uuid.UUID][]storiface.WorkerJob), xerrors.New("method not supported")
+	return *new(map[uuid.UUID][]storiface.WorkerJob), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) WorkerStats(p0 context.Context) (map[uuid.UUID]storiface.WorkerStats, error) {
+	if s.Internal.WorkerStats == nil {
+		return *new(map[uuid.UUID]storiface.WorkerStats), ErrNotSupported
+	}
 	return s.Internal.WorkerStats(p0)
 }
 
 func (s *StorageMinerStub) WorkerStats(p0 context.Context) (map[uuid.UUID]storiface.WorkerStats, error) {
-	return *new(map[uuid.UUID]storiface.WorkerStats), xerrors.New("method not supported")
+	return *new(map[uuid.UUID]storiface.WorkerStats), ErrNotSupported
 }
 
 func (s *WalletStruct) WalletDelete(p0 context.Context, p1 address.Address) error {
+	if s.Internal.WalletDelete == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.WalletDelete(p0, p1)
 }
 
 func (s *WalletStub) WalletDelete(p0 context.Context, p1 address.Address) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *WalletStruct) WalletExport(p0 context.Context, p1 address.Address) (*types.KeyInfo, error) {
+	if s.Internal.WalletExport == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.WalletExport(p0, p1)
 }
 
 func (s *WalletStub) WalletExport(p0 context.Context, p1 address.Address) (*types.KeyInfo, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *WalletStruct) WalletHas(p0 context.Context, p1 address.Address) (bool, error) {
+	if s.Internal.WalletHas == nil {
+		return false, ErrNotSupported
+	}
 	return s.Internal.WalletHas(p0, p1)
 }
 
 func (s *WalletStub) WalletHas(p0 context.Context, p1 address.Address) (bool, error) {
-	return false, xerrors.New("method not supported")
+	return false, ErrNotSupported
 }
 
 func (s *WalletStruct) WalletImport(p0 context.Context, p1 *types.KeyInfo) (address.Address, error) {
+	if s.Internal.WalletImport == nil {
+		return *new(address.Address), ErrNotSupported
+	}
 	return s.Internal.WalletImport(p0, p1)
 }
 
 func (s *WalletStub) WalletImport(p0 context.Context, p1 *types.KeyInfo) (address.Address, error) {
-	return *new(address.Address), xerrors.New("method not supported")
+	return *new(address.Address), ErrNotSupported
 }
 
 func (s *WalletStruct) WalletList(p0 context.Context) ([]address.Address, error) {
+	if s.Internal.WalletList == nil {
+		return *new([]address.Address), ErrNotSupported
+	}
 	return s.Internal.WalletList(p0)
 }
 
 func (s *WalletStub) WalletList(p0 context.Context) ([]address.Address, error) {
-	return *new([]address.Address), xerrors.New("method not supported")
+	return *new([]address.Address), ErrNotSupported
 }
 
 func (s *WalletStruct) WalletNew(p0 context.Context, p1 types.KeyType) (address.Address, error) {
+	if s.Internal.WalletNew == nil {
+		return *new(address.Address), ErrNotSupported
+	}
 	return s.Internal.WalletNew(p0, p1)
 }
 
 func (s *WalletStub) WalletNew(p0 context.Context, p1 types.KeyType) (address.Address, error) {
-	return *new(address.Address), xerrors.New("method not supported")
+	return *new(address.Address), ErrNotSupported
 }
 
 func (s *WalletStruct) WalletSign(p0 context.Context, p1 address.Address, p2 []byte, p3 MsgMeta) (*crypto.Signature, error) {
+	if s.Internal.WalletSign == nil {
+		return nil, ErrNotSupported
+	}
 	return s.Internal.WalletSign(p0, p1, p2, p3)
 }
 
 func (s *WalletStub) WalletSign(p0 context.Context, p1 address.Address, p2 []byte, p3 MsgMeta) (*crypto.Signature, error) {
-	return nil, xerrors.New("method not supported")
+	return nil, ErrNotSupported
 }
 
 func (s *WorkerStruct) AddPiece(p0 context.Context, p1 storage.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 storage.Data) (storiface.CallID, error) {
+	if s.Internal.AddPiece == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
 	return s.Internal.AddPiece(p0, p1, p2, p3, p4)
 }
 
 func (s *WorkerStub) AddPiece(p0 context.Context, p1 storage.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 storage.Data) (storiface.CallID, error) {
-	return *new(storiface.CallID), xerrors.New("method not supported")
+	return *new(storiface.CallID), ErrNotSupported
 }
 
 func (s *WorkerStruct) Enabled(p0 context.Context) (bool, error) {
+	if s.Internal.Enabled == nil {
+		return false, ErrNotSupported
+	}
 	return s.Internal.Enabled(p0)
 }
 
 func (s *WorkerStub) Enabled(p0 context.Context) (bool, error) {
-	return false, xerrors.New("method not supported")
+	return false, ErrNotSupported
 }
 
 func (s *WorkerStruct) Fetch(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType, p3 storiface.PathType, p4 storiface.AcquireMode) (storiface.CallID, error) {
+	if s.Internal.Fetch == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
 	return s.Internal.Fetch(p0, p1, p2, p3, p4)
 }
 
 func (s *WorkerStub) Fetch(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType, p3 storiface.PathType, p4 storiface.AcquireMode) (storiface.CallID, error) {
-	return *new(storiface.CallID), xerrors.New("method not supported")
+	return *new(storiface.CallID), ErrNotSupported
 }
 
 func (s *WorkerStruct) FinalizeSector(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) {
+	if s.Internal.FinalizeSector == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
 	return s.Internal.FinalizeSector(p0, p1, p2)
 }
 
 func (s *WorkerStub) FinalizeSector(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) {
-	return *new(storiface.CallID), xerrors.New("method not supported")
+	return *new(storiface.CallID), ErrNotSupported
 }
 
 func (s *WorkerStruct) Info(p0 context.Context) (storiface.WorkerInfo, error) {
+	if s.Internal.Info == nil {
+		return *new(storiface.WorkerInfo), ErrNotSupported
+	}
 	return s.Internal.Info(p0)
 }
 
 func (s *WorkerStub) Info(p0 context.Context) (storiface.WorkerInfo, error) {
-	return *new(storiface.WorkerInfo), xerrors.New("method not supported")
+	return *new(storiface.WorkerInfo), ErrNotSupported
 }
 
 func (s *WorkerStruct) MoveStorage(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType) (storiface.CallID, error) {
+	if s.Internal.MoveStorage == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
 	return s.Internal.MoveStorage(p0, p1, p2)
 }
 
 func (s *WorkerStub) MoveStorage(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType) (storiface.CallID, error) {
-	return *new(storiface.CallID), xerrors.New("method not supported")
+	return *new(storiface.CallID), ErrNotSupported
 }
 
 func (s *WorkerStruct) Paths(p0 context.Context) ([]stores.StoragePath, error) {
+	if s.Internal.Paths == nil {
+		return *new([]stores.StoragePath), ErrNotSupported
+	}
 	return s.Internal.Paths(p0)
 }
 
 func (s *WorkerStub) Paths(p0 context.Context) ([]stores.StoragePath, error) {
-	return *new([]stores.StoragePath), xerrors.New("method not supported")
+	return *new([]stores.StoragePath), ErrNotSupported
 }
 
 func (s *WorkerStruct) ProcessSession(p0 context.Context) (uuid.UUID, error) {
+	if s.Internal.ProcessSession == nil {
+		return *new(uuid.UUID), ErrNotSupported
+	}
 	return s.Internal.ProcessSession(p0)
 }
 
 func (s *WorkerStub) ProcessSession(p0 context.Context) (uuid.UUID, error) {
-	return *new(uuid.UUID), xerrors.New("method not supported")
+	return *new(uuid.UUID), ErrNotSupported
 }
 
 func (s *WorkerStruct) ReleaseUnsealed(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) {
+	if s.Internal.ReleaseUnsealed == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
 	return s.Internal.ReleaseUnsealed(p0, p1, p2)
 }
 
 func (s *WorkerStub) ReleaseUnsealed(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) {
-	return *new(storiface.CallID), xerrors.New("method not supported")
+	return *new(storiface.CallID), ErrNotSupported
 }
 
 func (s *WorkerStruct) Remove(p0 context.Context, p1 abi.SectorID) error {
+	if s.Internal.Remove == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.Remove(p0, p1)
 }
 
 func (s *WorkerStub) Remove(p0 context.Context, p1 abi.SectorID) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *WorkerStruct) SealCommit1(p0 context.Context, p1 storage.SectorRef, p2 abi.SealRandomness, p3 abi.InteractiveSealRandomness, p4 []abi.PieceInfo, p5 storage.SectorCids) (storiface.CallID, error) {
+	if s.Internal.SealCommit1 == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
 	return s.Internal.SealCommit1(p0, p1, p2, p3, p4, p5)
 }
 
 func (s *WorkerStub) SealCommit1(p0 context.Context, p1 storage.SectorRef, p2 abi.SealRandomness, p3 abi.InteractiveSealRandomness, p4 []abi.PieceInfo, p5 storage.SectorCids) (storiface.CallID, error) {
-	return *new(storiface.CallID), xerrors.New("method not supported")
+	return *new(storiface.CallID), ErrNotSupported
 }
 
 func (s *WorkerStruct) SealCommit2(p0 context.Context, p1 storage.SectorRef, p2 storage.Commit1Out) (storiface.CallID, error) {
+	if s.Internal.SealCommit2 == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
 	return s.Internal.SealCommit2(p0, p1, p2)
 }
 
 func (s *WorkerStub) SealCommit2(p0 context.Context, p1 storage.SectorRef, p2 storage.Commit1Out) (storiface.CallID, error) {
-	return *new(storiface.CallID), xerrors.New("method not supported")
+	return *new(storiface.CallID), ErrNotSupported
 }
 
 func (s *WorkerStruct) SealPreCommit1(p0 context.Context, p1 storage.SectorRef, p2 abi.SealRandomness, p3 []abi.PieceInfo) (storiface.CallID, error) {
+	if s.Internal.SealPreCommit1 == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
 	return s.Internal.SealPreCommit1(p0, p1, p2, p3)
 }
 
 func (s *WorkerStub) SealPreCommit1(p0 context.Context, p1 storage.SectorRef, p2 abi.SealRandomness, p3 []abi.PieceInfo) (storiface.CallID, error) {
-	return *new(storiface.CallID), xerrors.New("method not supported")
+	return *new(storiface.CallID), ErrNotSupported
 }
 
 func (s *WorkerStruct) SealPreCommit2(p0 context.Context, p1 storage.SectorRef, p2 storage.PreCommit1Out) (storiface.CallID, error) {
+	if s.Internal.SealPreCommit2 == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
 	return s.Internal.SealPreCommit2(p0, p1, p2)
 }
 
 func (s *WorkerStub) SealPreCommit2(p0 context.Context, p1 storage.SectorRef, p2 storage.PreCommit1Out) (storiface.CallID, error) {
-	return *new(storiface.CallID), xerrors.New("method not supported")
+	return *new(storiface.CallID), ErrNotSupported
 }
 
 func (s *WorkerStruct) Session(p0 context.Context) (uuid.UUID, error) {
+	if s.Internal.Session == nil {
+		return *new(uuid.UUID), ErrNotSupported
+	}
 	return s.Internal.Session(p0)
 }
 
 func (s *WorkerStub) Session(p0 context.Context) (uuid.UUID, error) {
-	return *new(uuid.UUID), xerrors.New("method not supported")
+	return *new(uuid.UUID), ErrNotSupported
 }
 
 func (s *WorkerStruct) SetEnabled(p0 context.Context, p1 bool) error {
+	if s.Internal.SetEnabled == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.SetEnabled(p0, p1)
 }
 
 func (s *WorkerStub) SetEnabled(p0 context.Context, p1 bool) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *WorkerStruct) StorageAddLocal(p0 context.Context, p1 string) error {
+	if s.Internal.StorageAddLocal == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.StorageAddLocal(p0, p1)
 }
 
 func (s *WorkerStub) StorageAddLocal(p0 context.Context, p1 string) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *WorkerStruct) TaskDisable(p0 context.Context, p1 sealtasks.TaskType) error {
+	if s.Internal.TaskDisable == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.TaskDisable(p0, p1)
 }
 
 func (s *WorkerStub) TaskDisable(p0 context.Context, p1 sealtasks.TaskType) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *WorkerStruct) TaskEnable(p0 context.Context, p1 sealtasks.TaskType) error {
+	if s.Internal.TaskEnable == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.TaskEnable(p0, p1)
 }
 
 func (s *WorkerStub) TaskEnable(p0 context.Context, p1 sealtasks.TaskType) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 func (s *WorkerStruct) TaskTypes(p0 context.Context) (map[sealtasks.TaskType]struct{}, error) {
+	if s.Internal.TaskTypes == nil {
+		return *new(map[sealtasks.TaskType]struct{}), ErrNotSupported
+	}
 	return s.Internal.TaskTypes(p0)
 }
 
 func (s *WorkerStub) TaskTypes(p0 context.Context) (map[sealtasks.TaskType]struct{}, error) {
-	return *new(map[sealtasks.TaskType]struct{}), xerrors.New("method not supported")
+	return *new(map[sealtasks.TaskType]struct{}), ErrNotSupported
 }
 
 func (s *WorkerStruct) UnsealPiece(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 cid.Cid) (storiface.CallID, error) {
+	if s.Internal.UnsealPiece == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
 	return s.Internal.UnsealPiece(p0, p1, p2, p3, p4, p5)
 }
 
 func (s *WorkerStub) UnsealPiece(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 cid.Cid) (storiface.CallID, error) {
-	return *new(storiface.CallID), xerrors.New("method not supported")
+	return *new(storiface.CallID), ErrNotSupported
 }
 
 func (s *WorkerStruct) Version(p0 context.Context) (Version, error) {
+	if s.Internal.Version == nil {
+		return *new(Version), ErrNotSupported
+	}
 	return s.Internal.Version(p0)
 }
 
 func (s *WorkerStub) Version(p0 context.Context) (Version, error) {
-	return *new(Version), xerrors.New("method not supported")
+	return *new(Version), ErrNotSupported
 }
 
 func (s *WorkerStruct) WaitQuiet(p0 context.Context) error {
+	if s.Internal.WaitQuiet == nil {
+		return ErrNotSupported
+	}
 	return s.Internal.WaitQuiet(p0)
 }
 
 func (s *WorkerStub) WaitQuiet(p0 context.Context) error {
-	return xerrors.New("method not supported")
+	return ErrNotSupported
 }
 
 var _ ChainIO = new(ChainIOStruct)
