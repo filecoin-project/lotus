@@ -1,0 +1,63 @@
+name: Feature request
+description:  Suggest an idea for lotus
+labels: [need/triage, kind/feature]
+body:
+- type: checkboxes
+  attributes:
+    label: Checklist
+    description: Please check off the following boxes before continuing to create a new feature request!
+    options:
+      - label: This is **not** a new feature or an enhancement to the Filecoin protocol. If it is,  please open an [FIP issue](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0001.md).
+        required: true
+      - label: This is **not** brainstorming ideas. If you have an idea you'd like to discuss, please open a new discussion on [the lotus forum](https://github.com/filecoin-project/lotus/discussions/categories/ideas) and select the category as `Ideas`.
+        required: true
+      - label: I **have** a specific, actionable, and well motivated feature request to propose.
+        required: true
+- type: dropdown 
+  id: component
+  validations:
+    required: true
+  attributes:
+    label: Lotus component
+    description: Please select the lotus component you are requesting a new feature for
+    options:
+      - lotus daemon - chain sync
+      - lotus miner - mining and block production
+      - lotus miner/worker - sealing
+      - lotus miner - proving(WindowPoSt)
+      - lotus miner/market - storage deal
+      - lotus miner/market - retrieval deal
+      - lotus client
+      - lotus JSON-RPC API
+      - lotus message management (mpool)
+      - Other
+- type: textarea
+  id: request
+  attributes:
+    label: What is the motivation behind this feature request? Is your feature request related to a problem? Please describe.
+    description: A clear and concise description of what the motivation or the problem is. 
+    placeholder: Ex. I'm always frustrated when [...]
+  validations:
+    required: true
+- type: textarea
+  id: solution
+  attributes:
+    label: Describe the solution you'd like
+    description: A clear and concise description of what you want to happen. 
+  validations:
+    required: true
+- type: textarea
+  id: alternates
+  attributes:
+    label: Describe alternatives you've considered
+    description: A clear and concise description of any alternative solutions or features you've considered.
+  validations:
+    required: false
+- type: textarea
+  id: extra
+  attributes:
+    label: Additional context
+    description: Add any other context, design docs or screenshots about the feature request here.
+  validations:
+    required: false
+
