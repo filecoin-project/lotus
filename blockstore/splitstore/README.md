@@ -32,6 +32,9 @@ or have very constrained hardware with not enough disk space to
 maintain a coldstore, even with garbage collection. It is also appropriate
 for small nodes that are simply watching the chain.
 
+*Warning:* Using the discard store for a general purpose node is discouraged, unless
+you really know what you are doing. Use it at your own risk.
+
 ## Configuration Options
 
 These are options in the `[Chainstore.Splitstore]` section of the configuration:
@@ -45,6 +48,7 @@ These are options in the `[Chainstore.Splitstore]` section of the configuration:
   running without a coldstore. Note that the discard store wraps the initial monolith
   blockstore and discards writes; this is necessary to support syncing from a snapshot.
 - `MarkSetType` -- specifies the type of markset to use during compaction.
+  The markset is the data structure used by compaction/gc to track live objects.
   The default value is `"map"`, which will use an in-memory map; if you are limited
   in memory (or indeed see compaction run out of memory), you can also specify
   `"badger"` which will use an disk backed markset, using badger. This will use
