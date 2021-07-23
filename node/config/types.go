@@ -282,7 +282,8 @@ type Splitstore struct {
 	HotStoreType  string
 	MarkSetType   string
 
-	HotStoreMessageRetention uint64
+	HotStoreMessageRetention  uint64
+	HotStoreMovingGCFrequency uint64
 }
 
 // // Full Node

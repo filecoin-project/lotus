@@ -87,7 +87,7 @@ type Config struct {
 	// A value of 0 disables moving GC entirely.
 	// A positive value is the number of compactions before a moving GC is performed;
 	// a value of 1 will perform moving GC in every compaction.
-	HotStoreMovingGCFrequency uint
+	HotStoreMovingGCFrequency uint64
 }
 
 // ChainAccessor allows the Splitstore to access the chain. It will most likely
