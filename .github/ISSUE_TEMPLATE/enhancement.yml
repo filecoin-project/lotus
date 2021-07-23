@@ -9,7 +9,7 @@ body:
     options:
       - label: This is **not** a new feature or an enhancement to the Filecoin protocol. If it is,  please open an [FIP issue](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0001.md).
         required: true
-      - label: This is **not** a new feature request. If it is, please file a [feature request](https://github.com/filecoin-project/lotus/issues/new?assignees=&labels=hint%2Fneeds-triaging&template=feature_request.yaml) instead.
+      - label: This is **not** a new feature request. If it is, please file a [feature request](https://github.com/filecoin-project/lotus/issues/new?assignees=&labels=need%2Ftriage%2Ckind%2Ffeature&template=feature_request.yml) instead.
         required: true
       - label: This is **not** brainstorming ideas. If you have an idea you'd like to discuss, please open a new discussion on [the lotus forum](https://github.com/filecoin-project/lotus/discussions/categories/ideas) and select the category as `Ideas`.
         required: true
@@ -36,7 +36,7 @@ body:
 - type: textarea
   id: request
   attributes:
-    label: What is the motivation behind improvement proposal? What's problem with the existing feature? Please describe.
+    label: Improvement Suggestion
     description: A clear and concise description of what the motivation or the current problem is and what is the suggested improvement?
     placeholder: Ex. Currently lotus... However, as a storage provider, I'd like...
   validations:

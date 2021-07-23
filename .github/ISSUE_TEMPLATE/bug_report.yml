@@ -11,16 +11,16 @@ body:
         required: true
       - label: This is **not** a question or a support request. If you have any lotus related questions, please ask in the [lotus forum](https://github.com/filecoin-project/lotus/discussions).
         required: true
-      - label: This is **not** a new feature request. If it is, please file a [feature request](https://github.com/filecoin-project/lotus/issues/new?assignees=&labels=hint%2Fneeds-triaging&template=feature_request.yaml) instead.
+      - label: This is **not** a new feature request. If it is, please file a [feature request](https://github.com/filecoin-project/lotus/issues/new?assignees=&labels=need%2Ftriage%2Ckind%2Ffeature&template=feature_request.yml) instead.
         required: true
-      - label: This is **not** an enhancement request. If it is, please file a [improvement suggestion](https://github.com/filecoin-project/lotus/issues/new?assignees=&labels=hint%2Fneeds-triaging&template=enhancement.yaml) instead.
+      - label: This is **not** an enhancement request. If it is, please file a [improvement suggestion](https://github.com/filecoin-project/lotus/issues/new?assignees=&labels=need%2Ftriage%2Ckind%2Fenhancement&template=enhancement.yml) instead.
         required: true
       - label: I **have** searched on the [issue tracker](https://github.com/filecoin-project/lotus/issues) and the [lotus forum](https://github.com/filecoin-project/lotus/discussions), and there is no existing related issue or discussion.
         required: true
       - label: I am running the [`Latest release`](https://github.com/filecoin-project/lotus/releases), or the most recent RC(release canadiate) for the upcoming release or the dev branch(master), or have an issue updating to any of these.
         required: true
       - label: I did not make any code changes to lotus.
-        required: true
+        required: false
 - type: dropdown 
   id: component-and-area
   validations:
@@ -89,4 +89,4 @@ body:
       ...
     render: bash
   validations:
-    required: true
+    required: false
