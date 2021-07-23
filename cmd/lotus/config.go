@@ -1,13 +1,8 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 	"github.com/filecoin-project/lotus/node/repo"
-	"reflect"
-	"strings"
-
-	"github.com/BurntSushi/toml"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -35,19 +30,7 @@ var configDefaultCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		c := config.DefaultFullNode()
 
-		if cctx.Bool("no-comment") {
-			buf := new(bytes.Buffer)
-			_, _ = buf.WriteString("# Default config:\n")
-			e := toml.NewEncoder(buf)
-			if err := e.Encode(c); err != nil {
-				return xerrors.Errorf("encoding default config: %w", err)
-			}
-
-			fmt.Println(buf.String())
-			return nil
-		}
-
-		cb, err := config.ConfigComment(c)
+		cb, err := config.ConfigUpdate(c, nil, !cctx.Bool("no-comment"))
 		if err != nil {
 			return err
 		}
@@ -99,64 +82,12 @@ var configUpdateCmd = &cli.Command{
 
 		cfgDef := config.DefaultFullNode()
 
-		var nodeStr, defStr string
-		{
-			buf := new(bytes.Buffer)
-			e := toml.NewEncoder(buf)
-			if err := e.Encode(cfgDef); err != nil {
-				return xerrors.Errorf("encoding default config: %w", err)
-			}
-
-			defStr = buf.String()
+		updated, err := config.ConfigUpdate(cfgNode, cfgDef, !cctx.Bool("no-comment"))
+		if err != nil {
+			return err
 		}
 
-		{
-			buf := new(bytes.Buffer)
-			e := toml.NewEncoder(buf)
-			if err := e.Encode(cfgNode); err != nil {
-				return xerrors.Errorf("encoding node config: %w", err)
-			}
-
-			nodeStr = buf.String()
-		}
-
-		if !cctx.Bool("no-comment") {
-			defLines := strings.Split(defStr, "\n")
-			defaults := map[string]struct{}{}
-			for i := range defLines {
-				l := strings.TrimSpace(defLines[i])
-				if len(l) == 0 {
-					continue
-				}
-				if l[0] == '#' || l[0] == '[' {
-					continue
-				}
-				defaults[l] = struct{}{}
-			}
-
-			nodeLines := strings.Split(nodeStr, "\n")
-			for i := range nodeLines {
-				if _, found := defaults[strings.TrimSpace(nodeLines[i])]; found {
-					nodeLines[i] = "#" + nodeLines[i]
-				}
-			}
-
-			nodeStr = strings.Join(nodeLines, "\n")
-		}
-
-		// sanity-check that the updated config parses the same way as the current one
-		{
-			cfgUpdated, err := config.FromReader(strings.NewReader(nodeStr), config.DefaultFullNode())
-			if err != nil {
-				return xerrors.Errorf("parsing updated config: %w", err)
-			}
-
-			if !reflect.DeepEqual(cfgNode, cfgUpdated) {
-				return xerrors.Errorf("updated config didn't match current config")
-			}
-		}
-
-		fmt.Println(nodeStr)
+		fmt.Print(string(updated))
 		return nil
 	},
 }

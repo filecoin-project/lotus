@@ -13,7 +13,7 @@ var Doc = map[string][]DocField{
 		{
 			Name: "ListenAddress",
 			Type: "string",
-			Comment: ``,
+			Comment: `Binding address for the Lotus API`,
 		},
 		{
 			Name: "RemoteListenAddress",
