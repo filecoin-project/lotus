@@ -2,9 +2,11 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
+
+	levelds "github.com/ipfs/go-ds-leveldb"
+	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 
 	"github.com/filecoin-project/lotus/lib/backupds"
 
@@ -128,16 +130,19 @@ var marketExportDatastoreCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		logging.SetLogLevel("badger", "ERROR") // nolint:errcheck
 
+		// If the backup dir is not specified, just use the OS temp dir
 		backupDir := cctx.String("backup-dir")
 		if backupDir == "" {
 			backupDir = os.TempDir()
 		}
 
+		// Create a new repo at the repo path
 		r, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {
 			return xerrors.Errorf("opening fs repo: %w", err)
 		}
 
+		// Make sure the repo exists
 		exists, err := r.Exists()
 		if err != nil {
 			return err
@@ -146,39 +151,30 @@ var marketExportDatastoreCmd = &cli.Command{
 			return xerrors.Errorf("lotus repo doesn't exist")
 		}
 
+		// Lock the repo
 		lr, err := r.Lock(repo.StorageMiner)
 		if err != nil {
 			return err
 		}
 		defer lr.Close() //nolint:errcheck
 
+		// Open the metadata datastore on the repo
 		namespace := "metadata"
 		ds, err := lr.Datastore(cctx.Context, datastore.NewKey(namespace).String())
 		if err != nil {
 			return err
 		}
 
-		backupRepoDir, err := ioutil.TempDir("", "backup-repo-dir")
-		if err != nil {
-			return err
-		}
+		// Create a tmp datastore that we'll add the exported key / values to
+		// and then backup
+		backupDs, err := levelds.NewDatastore(backupDir, &levelds.Options{
+			Compression: ldbopts.NoCompression,
+			NoSync:      false,
+			Strict:      ldbopts.StrictAll,
+			ReadOnly:    false,
+		})
 
-		backupRepo, err := repo.NewFS(cctx.String(backupRepoDir))
-		if err != nil {
-			return xerrors.Errorf("opening backup repo: %w", err)
-		}
-
-		lockedBackupRepo, err := backupRepo.Lock(repo.StorageMiner)
-		if err != nil {
-			return err
-		}
-		defer lockedBackupRepo.Close() //nolint:errcheck
-
-		backupDs, err := lockedBackupRepo.Datastore(cctx.Context, datastore.NewKey(namespace).String())
-		if err != nil {
-			return err
-		}
-
+		// Export the key / values
 		prefixes := []string{
 			"/deals/provider",
 			"/retrievals/provider",
@@ -191,16 +187,20 @@ var marketExportDatastoreCmd = &cli.Command{
 			}
 		}
 
+		// Wrap the datastore in a backup datastore
 		bds, err := backupds.Wrap(backupDs, "")
 		if err != nil {
 			return xerrors.Errorf("opening backupds: %w", err)
 		}
 
-		fpath := path.Join(backupDir, "datastore.backup")
+		// Create a file for the backup
+		fpath := path.Join(backupDir, "markets.datastore.backup")
 		out, err := os.OpenFile(fpath, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			return xerrors.Errorf("open %s: %w", fpath, err)
 		}
+
+		// Write the backup to the file
 		if err := bds.Backup(out); err != nil {
 			if cerr := out.Close(); cerr != nil {
 				log.Errorw("error closing backup file while handling backup error", "closeErr", cerr, "backupErr", err)
