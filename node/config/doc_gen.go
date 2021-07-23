@@ -11,304 +11,359 @@ type DocField struct {
 var Doc = map[string][]DocField{
 	"API": []DocField{
 		{
-			Name:    "ListenAddress",
-			Type:    "string",
+			Name: "ListenAddress",
+			Type: "string",
+
 			Comment: `Binding address for the Lotus API`,
 		},
 		{
-			Name:    "RemoteListenAddress",
-			Type:    "string",
+			Name: "RemoteListenAddress",
+			Type: "string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "Timeout",
-			Type:    "Duration",
+			Name: "Timeout",
+			Type: "Duration",
+
 			Comment: ``,
 		},
 	},
 	"Backup": []DocField{
 		{
-			Name:    "DisableMetadataLog",
-			Type:    "bool",
+			Name: "DisableMetadataLog",
+			Type: "bool",
+
 			Comment: ``,
 		},
 	},
 	"BatchFeeConfig": []DocField{
 		{
-			Name:    "Base",
-			Type:    "types.FIL",
+			Name: "Base",
+			Type: "types.FIL",
+
 			Comment: ``,
 		},
 		{
-			Name:    "PerSector",
-			Type:    "types.FIL",
+			Name: "PerSector",
+			Type: "types.FIL",
+
 			Comment: ``,
 		},
 	},
 	"Chainstore": []DocField{
 		{
-			Name:    "EnableSplitstore",
-			Type:    "bool",
+			Name: "EnableSplitstore",
+			Type: "bool",
+
 			Comment: ``,
 		},
 		{
-			Name:    "Splitstore",
-			Type:    "Splitstore",
+			Name: "Splitstore",
+			Type: "Splitstore",
+
 			Comment: ``,
 		},
 	},
 	"Client": []DocField{
 		{
-			Name:    "UseIpfs",
-			Type:    "bool",
+			Name: "UseIpfs",
+			Type: "bool",
+
 			Comment: ``,
 		},
 		{
-			Name:    "IpfsOnlineMode",
-			Type:    "bool",
+			Name: "IpfsOnlineMode",
+			Type: "bool",
+
 			Comment: ``,
 		},
 		{
-			Name:    "IpfsMAddr",
-			Type:    "string",
+			Name: "IpfsMAddr",
+			Type: "string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "IpfsUseForRetrieval",
-			Type:    "bool",
+			Name: "IpfsUseForRetrieval",
+			Type: "bool",
+
 			Comment: ``,
 		},
 		{
-			Name:    "SimultaneousTransfers",
-			Type:    "uint64",
+			Name: "SimultaneousTransfers",
+			Type: "uint64",
+
 			Comment: ``,
 		},
 	},
 	"Common": []DocField{
 		{
-			Name:    "API",
-			Type:    "API",
+			Name: "API",
+			Type: "API",
+
 			Comment: ``,
 		},
 		{
-			Name:    "Backup",
-			Type:    "Backup",
+			Name: "Backup",
+			Type: "Backup",
+
 			Comment: ``,
 		},
 		{
-			Name:    "Libp2p",
-			Type:    "Libp2p",
+			Name: "Libp2p",
+			Type: "Libp2p",
+
 			Comment: ``,
 		},
 		{
-			Name:    "Pubsub",
-			Type:    "Pubsub",
+			Name: "Pubsub",
+			Type: "Pubsub",
+
 			Comment: ``,
 		},
 	},
 	"DealmakingConfig": []DocField{
 		{
-			Name:    "ConsiderOnlineStorageDeals",
-			Type:    "bool",
+			Name: "ConsiderOnlineStorageDeals",
+			Type: "bool",
+
 			Comment: ``,
 		},
 		{
-			Name:    "ConsiderOfflineStorageDeals",
-			Type:    "bool",
+			Name: "ConsiderOfflineStorageDeals",
+			Type: "bool",
+
 			Comment: ``,
 		},
 		{
-			Name:    "ConsiderOnlineRetrievalDeals",
-			Type:    "bool",
+			Name: "ConsiderOnlineRetrievalDeals",
+			Type: "bool",
+
 			Comment: ``,
 		},
 		{
-			Name:    "ConsiderOfflineRetrievalDeals",
-			Type:    "bool",
+			Name: "ConsiderOfflineRetrievalDeals",
+			Type: "bool",
+
 			Comment: ``,
 		},
 		{
-			Name:    "ConsiderVerifiedStorageDeals",
-			Type:    "bool",
+			Name: "ConsiderVerifiedStorageDeals",
+			Type: "bool",
+
 			Comment: ``,
 		},
 		{
-			Name:    "ConsiderUnverifiedStorageDeals",
-			Type:    "bool",
+			Name: "ConsiderUnverifiedStorageDeals",
+			Type: "bool",
+
 			Comment: ``,
 		},
 		{
-			Name:    "PieceCidBlocklist",
-			Type:    "[]cid.Cid",
+			Name: "PieceCidBlocklist",
+			Type: "[]cid.Cid",
+
 			Comment: ``,
 		},
 		{
-			Name:    "ExpectedSealDuration",
-			Type:    "Duration",
+			Name: "ExpectedSealDuration",
+			Type: "Duration",
+
 			Comment: ``,
 		},
 		{
-			Name:    "MaxDealStartDelay",
-			Type:    "Duration",
+			Name: "MaxDealStartDelay",
+			Type: "Duration",
+
 			Comment: `Maximum amount of time proposed deal StartEpoch can be in future`,
 		},
 		{
-			Name:    "PublishMsgPeriod",
-			Type:    "Duration",
+			Name: "PublishMsgPeriod",
+			Type: "Duration",
+
 			Comment: `The amount of time to wait for more deals to arrive before
 publishing`,
 		},
 		{
-			Name:    "MaxDealsPerPublishMsg",
-			Type:    "uint64",
+			Name: "MaxDealsPerPublishMsg",
+			Type: "uint64",
+
 			Comment: `The maximum number of deals to include in a single PublishStorageDeals
 message`,
 		},
 		{
-			Name:    "MaxProviderCollateralMultiplier",
-			Type:    "uint64",
+			Name: "MaxProviderCollateralMultiplier",
+			Type: "uint64",
+
 			Comment: `The maximum collateral that the provider will put up against a deal,
 as a multiplier of the minimum collateral bound`,
 		},
 		{
-			Name:    "SimultaneousTransfers",
-			Type:    "uint64",
+			Name: "SimultaneousTransfers",
+			Type: "uint64",
+
 			Comment: `The maximum number of parallel online data transfers (storage+retrieval)`,
 		},
 		{
-			Name:    "Filter",
-			Type:    "string",
+			Name: "Filter",
+			Type: "string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "RetrievalFilter",
-			Type:    "string",
+			Name: "RetrievalFilter",
+			Type: "string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "RetrievalPricing",
-			Type:    "*RetrievalPricing",
+			Name: "RetrievalPricing",
+			Type: "*RetrievalPricing",
+
 			Comment: ``,
 		},
 	},
 	"FeeConfig": []DocField{
 		{
-			Name:    "DefaultMaxFee",
-			Type:    "types.FIL",
+			Name: "DefaultMaxFee",
+			Type: "types.FIL",
+
 			Comment: ``,
 		},
 	},
 	"FullNode": []DocField{
 		{
-			Name:    "Client",
-			Type:    "Client",
+			Name: "Client",
+			Type: "Client",
+
 			Comment: ``,
 		},
 		{
-			Name:    "Metrics",
-			Type:    "Metrics",
+			Name: "Metrics",
+			Type: "Metrics",
+
 			Comment: ``,
 		},
 		{
-			Name:    "Wallet",
-			Type:    "Wallet",
+			Name: "Wallet",
+			Type: "Wallet",
+
 			Comment: ``,
 		},
 		{
-			Name:    "Fees",
-			Type:    "FeeConfig",
+			Name: "Fees",
+			Type: "FeeConfig",
+
 			Comment: ``,
 		},
 		{
-			Name:    "Chainstore",
-			Type:    "Chainstore",
+			Name: "Chainstore",
+			Type: "Chainstore",
+
 			Comment: ``,
 		},
 	},
 	"Libp2p": []DocField{
 		{
-			Name:    "ListenAddresses",
-			Type:    "[]string",
+			Name: "ListenAddresses",
+			Type: "[]string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "AnnounceAddresses",
-			Type:    "[]string",
+			Name: "AnnounceAddresses",
+			Type: "[]string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "NoAnnounceAddresses",
-			Type:    "[]string",
+			Name: "NoAnnounceAddresses",
+			Type: "[]string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "BootstrapPeers",
-			Type:    "[]string",
+			Name: "BootstrapPeers",
+			Type: "[]string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "ProtectedPeers",
-			Type:    "[]string",
+			Name: "ProtectedPeers",
+			Type: "[]string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "ConnMgrLow",
-			Type:    "uint",
+			Name: "ConnMgrLow",
+			Type: "uint",
+
 			Comment: ``,
 		},
 		{
-			Name:    "ConnMgrHigh",
-			Type:    "uint",
+			Name: "ConnMgrHigh",
+			Type: "uint",
+
 			Comment: ``,
 		},
 		{
-			Name:    "ConnMgrGrace",
-			Type:    "Duration",
+			Name: "ConnMgrGrace",
+			Type: "Duration",
+
 			Comment: ``,
 		},
 	},
 	"Metrics": []DocField{
 		{
-			Name:    "Nickname",
-			Type:    "string",
+			Name: "Nickname",
+			Type: "string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "HeadNotifs",
-			Type:    "bool",
+			Name: "HeadNotifs",
+			Type: "bool",
+
 			Comment: ``,
 		},
 	},
 	"MinerAddressConfig": []DocField{
 		{
-			Name:    "PreCommitControl",
-			Type:    "[]string",
+			Name: "PreCommitControl",
+			Type: "[]string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "CommitControl",
-			Type:    "[]string",
+			Name: "CommitControl",
+			Type: "[]string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "TerminateControl",
-			Type:    "[]string",
+			Name: "TerminateControl",
+			Type: "[]string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "DealPublishControl",
-			Type:    "[]string",
+			Name: "DealPublishControl",
+			Type: "[]string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "DisableOwnerFallback",
-			Type:    "bool",
+			Name: "DisableOwnerFallback",
+			Type: "bool",
+
 			Comment: `DisableOwnerFallback disables usage of the owner address for messages
 sent automatically`,
 		},
 		{
-			Name:    "DisableWorkerFallback",
-			Type:    "bool",
+			Name: "DisableWorkerFallback",
+			Type: "bool",
+
 			Comment: `DisableWorkerFallback disables usage of the worker address for messages
 sent automatically, if control addresses are configured.
 A control address that doesn't have enough funds will still be chosen
@@ -317,121 +372,143 @@ over the worker address if this flag is set.`,
 	},
 	"MinerFeeConfig": []DocField{
 		{
-			Name:    "MaxPreCommitGasFee",
-			Type:    "types.FIL",
+			Name: "MaxPreCommitGasFee",
+			Type: "types.FIL",
+
 			Comment: ``,
 		},
 		{
-			Name:    "MaxCommitGasFee",
-			Type:    "types.FIL",
+			Name: "MaxCommitGasFee",
+			Type: "types.FIL",
+
 			Comment: ``,
 		},
 		{
-			Name:    "MaxPreCommitBatchGasFee",
-			Type:    "BatchFeeConfig",
+			Name: "MaxPreCommitBatchGasFee",
+			Type: "BatchFeeConfig",
+
 			Comment: `maxBatchFee = maxBase + maxPerSector * nSectors`,
 		},
 		{
-			Name:    "MaxCommitBatchGasFee",
-			Type:    "BatchFeeConfig",
+			Name: "MaxCommitBatchGasFee",
+			Type: "BatchFeeConfig",
+
 			Comment: ``,
 		},
 		{
-			Name:    "MaxTerminateGasFee",
-			Type:    "types.FIL",
+			Name: "MaxTerminateGasFee",
+			Type: "types.FIL",
+
 			Comment: ``,
 		},
 		{
-			Name:    "MaxWindowPoStGasFee",
-			Type:    "types.FIL",
+			Name: "MaxWindowPoStGasFee",
+			Type: "types.FIL",
+
 			Comment: ``,
 		},
 		{
-			Name:    "MaxPublishDealsFee",
-			Type:    "types.FIL",
+			Name: "MaxPublishDealsFee",
+			Type: "types.FIL",
+
 			Comment: ``,
 		},
 		{
-			Name:    "MaxMarketBalanceAddFee",
-			Type:    "types.FIL",
+			Name: "MaxMarketBalanceAddFee",
+			Type: "types.FIL",
+
 			Comment: ``,
 		},
 	},
 	"MinerSubsystemConfig": []DocField{
 		{
-			Name:    "EnableMining",
-			Type:    "bool",
+			Name: "EnableMining",
+			Type: "bool",
+
 			Comment: ``,
 		},
 		{
-			Name:    "EnableSealing",
-			Type:    "bool",
+			Name: "EnableSealing",
+			Type: "bool",
+
 			Comment: ``,
 		},
 		{
-			Name:    "EnableSectorStorage",
-			Type:    "bool",
+			Name: "EnableSectorStorage",
+			Type: "bool",
+
 			Comment: ``,
 		},
 		{
-			Name:    "EnableMarkets",
-			Type:    "bool",
+			Name: "EnableMarkets",
+			Type: "bool",
+
 			Comment: ``,
 		},
 		{
-			Name:    "SealerApiInfo",
-			Type:    "string",
+			Name: "SealerApiInfo",
+			Type: "string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "SectorIndexApiInfo",
-			Type:    "string",
+			Name: "SectorIndexApiInfo",
+			Type: "string",
+
 			Comment: ``,
 		},
 	},
 	"Pubsub": []DocField{
 		{
-			Name:    "Bootstrapper",
-			Type:    "bool",
+			Name: "Bootstrapper",
+			Type: "bool",
+
 			Comment: ``,
 		},
 		{
-			Name:    "DirectPeers",
-			Type:    "[]string",
+			Name: "DirectPeers",
+			Type: "[]string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "IPColocationWhitelist",
-			Type:    "[]string",
+			Name: "IPColocationWhitelist",
+			Type: "[]string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "RemoteTracer",
-			Type:    "string",
+			Name: "RemoteTracer",
+			Type: "string",
+
 			Comment: ``,
 		},
 	},
 	"RetrievalPricing": []DocField{
 		{
-			Name:    "Strategy",
-			Type:    "string",
+			Name: "Strategy",
+			Type: "string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "Default",
-			Type:    "*RetrievalPricingDefault",
+			Name: "Default",
+			Type: "*RetrievalPricingDefault",
+
 			Comment: ``,
 		},
 		{
-			Name:    "External",
-			Type:    "*RetrievalPricingExternal",
+			Name: "External",
+			Type: "*RetrievalPricingExternal",
+
 			Comment: ``,
 		},
 	},
 	"RetrievalPricingDefault": []DocField{
 		{
-			Name:    "VerifiedDealsFreeTransfer",
-			Type:    "bool",
+			Name: "VerifiedDealsFreeTransfer",
+			Type: "bool",
+
 			Comment: `VerifiedDealsFreeTransfer configures zero fees for data transfer for a retrieval deal
 of a payloadCid that belongs to a verified storage deal.
 This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "default".
@@ -440,193 +517,229 @@ default value is true`,
 	},
 	"RetrievalPricingExternal": []DocField{
 		{
-			Name:    "Path",
-			Type:    "string",
+			Name: "Path",
+			Type: "string",
+
 			Comment: `Path of the external script that will be run to price a retrieval deal.
 This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "external".`,
 		},
 	},
 	"SealingConfig": []DocField{
 		{
-			Name:    "MaxWaitDealsSectors",
-			Type:    "uint64",
+			Name: "MaxWaitDealsSectors",
+			Type: "uint64",
+
 			Comment: `0 = no limit`,
 		},
 		{
-			Name:    "MaxSealingSectors",
-			Type:    "uint64",
+			Name: "MaxSealingSectors",
+			Type: "uint64",
+
 			Comment: `includes failed, 0 = no limit`,
 		},
 		{
-			Name:    "MaxSealingSectorsForDeals",
-			Type:    "uint64",
+			Name: "MaxSealingSectorsForDeals",
+			Type: "uint64",
+
 			Comment: `includes failed, 0 = no limit`,
 		},
 		{
-			Name:    "WaitDealsDelay",
-			Type:    "Duration",
+			Name: "WaitDealsDelay",
+			Type: "Duration",
+
 			Comment: ``,
 		},
 		{
-			Name:    "AlwaysKeepUnsealedCopy",
-			Type:    "bool",
+			Name: "AlwaysKeepUnsealedCopy",
+			Type: "bool",
+
 			Comment: ``,
 		},
 		{
-			Name:    "FinalizeEarly",
-			Type:    "bool",
+			Name: "FinalizeEarly",
+			Type: "bool",
+
 			Comment: `Run sector finalization before submitting sector proof to the chain`,
 		},
 		{
-			Name:    "CollateralFromMinerBalance",
-			Type:    "bool",
+			Name: "CollateralFromMinerBalance",
+			Type: "bool",
+
 			Comment: `Whether to use available miner balance for sector collateral instead of sending it with each message`,
 		},
 		{
-			Name:    "AvailableBalanceBuffer",
-			Type:    "types.FIL",
+			Name: "AvailableBalanceBuffer",
+			Type: "types.FIL",
+
 			Comment: `Minimum available balance to keep in the miner actor before sending it with messages`,
 		},
 		{
-			Name:    "DisableCollateralFallback",
-			Type:    "bool",
+			Name: "DisableCollateralFallback",
+			Type: "bool",
+
 			Comment: `Don't send collateral with messages even if there is no available balance in the miner actor`,
 		},
 		{
-			Name:    "BatchPreCommits",
-			Type:    "bool",
+			Name: "BatchPreCommits",
+			Type: "bool",
+
 			Comment: `enable / disable precommit batching (takes effect after nv13)`,
 		},
 		{
-			Name:    "MaxPreCommitBatch",
-			Type:    "int",
+			Name: "MaxPreCommitBatch",
+			Type: "int",
+
 			Comment: `maximum precommit batch size - batches will be sent immediately above this size`,
 		},
 		{
-			Name:    "PreCommitBatchWait",
-			Type:    "Duration",
+			Name: "PreCommitBatchWait",
+			Type: "Duration",
+
 			Comment: `how long to wait before submitting a batch after crossing the minimum batch size`,
 		},
 		{
-			Name:    "PreCommitBatchSlack",
-			Type:    "Duration",
+			Name: "PreCommitBatchSlack",
+			Type: "Duration",
+
 			Comment: `time buffer for forceful batch submission before sectors/deal in batch would start expiring`,
 		},
 		{
-			Name:    "AggregateCommits",
-			Type:    "bool",
+			Name: "AggregateCommits",
+			Type: "bool",
+
 			Comment: `enable / disable commit aggregation (takes effect after nv13)`,
 		},
 		{
-			Name:    "MinCommitBatch",
-			Type:    "int",
+			Name: "MinCommitBatch",
+			Type: "int",
+
 			Comment: `maximum batched commit size - batches will be sent immediately above this size`,
 		},
 		{
-			Name:    "MaxCommitBatch",
-			Type:    "int",
+			Name: "MaxCommitBatch",
+			Type: "int",
+
 			Comment: ``,
 		},
 		{
-			Name:    "CommitBatchWait",
-			Type:    "Duration",
+			Name: "CommitBatchWait",
+			Type: "Duration",
+
 			Comment: `how long to wait before submitting a batch after crossing the minimum batch size`,
 		},
 		{
-			Name:    "CommitBatchSlack",
-			Type:    "Duration",
+			Name: "CommitBatchSlack",
+			Type: "Duration",
+
 			Comment: `time buffer for forceful batch submission before sectors/deals in batch would start expiring`,
 		},
 		{
-			Name:    "AggregateAboveBaseFee",
-			Type:    "types.FIL",
+			Name: "AggregateAboveBaseFee",
+			Type: "types.FIL",
+
 			Comment: `network BaseFee below which to stop doing commit aggregation, instead
 submitting proofs to the chain individually`,
 		},
 		{
-			Name:    "TerminateBatchMax",
-			Type:    "uint64",
+			Name: "TerminateBatchMax",
+			Type: "uint64",
+
 			Comment: ``,
 		},
 		{
-			Name:    "TerminateBatchMin",
-			Type:    "uint64",
+			Name: "TerminateBatchMin",
+			Type: "uint64",
+
 			Comment: ``,
 		},
 		{
-			Name:    "TerminateBatchWait",
-			Type:    "Duration",
+			Name: "TerminateBatchWait",
+			Type: "Duration",
+
 			Comment: ``,
 		},
 	},
 	"Splitstore": []DocField{
 		{
-			Name:    "ColdStoreType",
-			Type:    "string",
+			Name: "ColdStoreType",
+			Type: "string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "HotStoreType",
-			Type:    "string",
+			Name: "HotStoreType",
+			Type: "string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "MarkSetType",
-			Type:    "string",
+			Name: "MarkSetType",
+			Type: "string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "HotStoreMessageRetention",
-			Type:    "uint64",
+			Name: "HotStoreMessageRetention",
+			Type: "uint64",
+
 			Comment: ``,
 		},
 	},
 	"StorageMiner": []DocField{
 		{
-			Name:    "Subsystems",
-			Type:    "MinerSubsystemConfig",
+			Name: "Subsystems",
+			Type: "MinerSubsystemConfig",
+
 			Comment: ``,
 		},
 		{
-			Name:    "Dealmaking",
-			Type:    "DealmakingConfig",
+			Name: "Dealmaking",
+			Type: "DealmakingConfig",
+
 			Comment: ``,
 		},
 		{
-			Name:    "Sealing",
-			Type:    "SealingConfig",
+			Name: "Sealing",
+			Type: "SealingConfig",
+
 			Comment: ``,
 		},
 		{
-			Name:    "Storage",
-			Type:    "sectorstorage.SealerConfig",
+			Name: "Storage",
+			Type: "sectorstorage.SealerConfig",
+
 			Comment: ``,
 		},
 		{
-			Name:    "Fees",
-			Type:    "MinerFeeConfig",
+			Name: "Fees",
+			Type: "MinerFeeConfig",
+
 			Comment: ``,
 		},
 		{
-			Name:    "Addresses",
-			Type:    "MinerAddressConfig",
+			Name: "Addresses",
+			Type: "MinerAddressConfig",
+
 			Comment: ``,
 		},
 	},
 	"Wallet": []DocField{
 		{
-			Name:    "RemoteBackend",
-			Type:    "string",
+			Name: "RemoteBackend",
+			Type: "string",
+
 			Comment: ``,
 		},
 		{
-			Name:    "EnableLedger",
-			Type:    "bool",
+			Name: "EnableLedger",
+			Type: "bool",
+
 			Comment: ``,
 		},
 		{
-			Name:    "DisableLocal",
-			Type:    "bool",
+			Name: "DisableLocal",
+			Type: "bool",
+
 			Comment: ``,
 		},
 	},
