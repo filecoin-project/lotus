@@ -471,7 +471,7 @@ func (b *Blockstore) deleteDB(path string) {
 
 // CollectGarbage compacts and runs garbage collection on the value log;
 // implements the BlockstoreGC trait
-func (b *Blockstore) CollectGarbage() error {
+func (b *Blockstore) CollectGarbage(options map[interface{}]interface{}) error {
 	if err := b.access(); err != nil {
 		return err
 	}

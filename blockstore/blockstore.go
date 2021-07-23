@@ -37,8 +37,20 @@ type BlockstoreIterator interface {
 
 // BlockstoreGC is a trait for blockstores that support online garbage collection
 type BlockstoreGC interface {
-	CollectGarbage() error
+	CollectGarbage(options map[interface{}]interface{}) error
 }
+
+// garbage collection options
+type blockstoreMovingGCKey struct{}
+type blockstoreMovingGCPath struct{}
+
+// BlockstoreMovingGC is a garbage collection option that instructs the blockstore
+// to use moving GC if supported.
+var BlockstoreMovingGC = blockstoreMovingGCKey{}
+
+// BlockstoreMovingGCPath is a garbage collection option that specifies an optional
+// target path for moving GC.
+var BlockstoreMovingGCPath = blockstoreMovingGCPath{}
 
 // BlockstoreSize is a trait for on-disk blockstores that can report their size
 type BlockstoreSize interface {
