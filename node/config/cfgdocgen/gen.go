@@ -109,8 +109,8 @@ var Doc = map[string][]DocField{
 
 		for _, f := range typ {
 			fmt.Println("\t\t{")
-			fmt.Printf("\t\t\tName: \"%s\",\n", f.Name)
-			fmt.Printf("\t\t\tType: \"%s\",\n", f.Type)
+			fmt.Printf("\t\t\tName:    \"%s\",\n", f.Name)
+			fmt.Printf("\t\t\tType:    \"%s\",\n", f.Type)
 			fmt.Printf("\t\t\tComment: `%s`,\n", f.Comment)
 			fmt.Println("\t\t},")
 		}

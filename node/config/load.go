@@ -86,7 +86,7 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool) ([]byte, error) {
 		nodeLines := strings.Split(nodeStr, "\n")
 		var outLines []string
 
-		sectionRx := regexp.MustCompile(`[\[.]([^.]+)]`)
+		sectionRx := regexp.MustCompile(`\[(.+)]`)
 		var section string
 
 		for i, line := range nodeLines {
@@ -106,30 +106,24 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool) ([]byte, error) {
 				}
 			}
 
-			pad := strings.Repeat(" ", len(line) - len(strings.TrimLeftFunc(line, unicode.IsSpace)))
+			pad := strings.Repeat(" ", len(line)-len(strings.TrimLeftFunc(line, unicode.IsSpace)))
 
 			// see if we have docs for this field
 			{
 				lf := strings.Fields(line)
 				if len(lf) > 1 {
-					var doc *DocField
-					for _, df := range Doc[section] {
-						if df.Name == lf[0] {
-							doc = &df
-							break
-						}
-					}
+					doc := findDoc(cfgCur, section, lf[0])
 
 					if doc != nil {
 						// found docfield, emit doc comment
 						if len(doc.Comment) > 0 {
 							for _, docLine := range strings.Split(doc.Comment, "\n") {
-								outLines = append(outLines, pad + "# " + docLine)
+								outLines = append(outLines, pad+"# "+docLine)
 							}
-							outLines = append(outLines, pad + "#")
+							outLines = append(outLines, pad+"#")
 						}
 
-						outLines = append(outLines, pad + "# type: " + doc.Type)
+						outLines = append(outLines, pad+"# type: "+doc.Type)
 					}
 				}
 			}
