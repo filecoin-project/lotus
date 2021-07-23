@@ -34,7 +34,8 @@ var Doc = map[string][]DocField{
 			Name: "DisableMetadataLog",
 			Type: "bool",
 
-			Comment: ``,
+			Comment: `Note that in case of metadata corruption it might be much harder to recover
+your node if metadata log is disabled`,
 		},
 	},
 	"BatchFeeConfig": []DocField{
@@ -94,7 +95,8 @@ var Doc = map[string][]DocField{
 			Name: "SimultaneousTransfers",
 			Type: "uint64",
 
-			Comment: ``,
+			Comment: `The maximum number of simultaneous data transfers between the client
+and storage providers`,
 		},
 	},
 	"Common": []DocField{
@@ -128,49 +130,51 @@ var Doc = map[string][]DocField{
 			Name: "ConsiderOnlineStorageDeals",
 			Type: "bool",
 
-			Comment: ``,
+			Comment: `When enabled, the miner can accept online deals`,
 		},
 		{
 			Name: "ConsiderOfflineStorageDeals",
 			Type: "bool",
 
-			Comment: ``,
+			Comment: `When enabled, the miner can accept offline deals`,
 		},
 		{
 			Name: "ConsiderOnlineRetrievalDeals",
 			Type: "bool",
 
-			Comment: ``,
+			Comment: `When enabled, the miner can accept retrieval deals`,
 		},
 		{
 			Name: "ConsiderOfflineRetrievalDeals",
 			Type: "bool",
 
-			Comment: ``,
+			Comment: `When enabled, the miner can accept offline retrieval deals`,
 		},
 		{
 			Name: "ConsiderVerifiedStorageDeals",
 			Type: "bool",
 
-			Comment: ``,
+			Comment: `When enabled, the miner can accept verified deals`,
 		},
 		{
 			Name: "ConsiderUnverifiedStorageDeals",
 			Type: "bool",
 
-			Comment: ``,
+			Comment: `When enabled, the miner can accept unverified deals`,
 		},
 		{
 			Name: "PieceCidBlocklist",
 			Type: "[]cid.Cid",
 
-			Comment: ``,
+			Comment: `A list of Data CIDs to reject when making deals`,
 		},
 		{
 			Name: "ExpectedSealDuration",
 			Type: "Duration",
 
-			Comment: ``,
+			Comment: `Maximum expected amount of time getting the deal into a sealed sector will take
+This includes the time the deal will need to get transferred and published
+before being assigned to a sector`,
 		},
 		{
 			Name: "MaxDealStartDelay",
@@ -182,8 +186,8 @@ var Doc = map[string][]DocField{
 			Name: "PublishMsgPeriod",
 			Type: "Duration",
 
-			Comment: `The amount of time to wait for more deals to arrive before
-publishing`,
+			Comment: `When a deal is ready to publish, the amount of time to wait for more
+deals to be ready to publish before publishing them all as a batch`,
 		},
 		{
 			Name: "MaxDealsPerPublishMsg",
@@ -209,13 +213,15 @@ as a multiplier of the minimum collateral bound`,
 			Name: "Filter",
 			Type: "string",
 
-			Comment: ``,
+			Comment: `A command used for fine-grained evaluation of storage deals
+see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details`,
 		},
 		{
 			Name: "RetrievalFilter",
 			Type: "string",
 
-			Comment: ``,
+			Comment: `A command used for fine-grained evaluation of retrieval deals
+see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details`,
 		},
 		{
 			Name: "RetrievalPricing",
@@ -269,19 +275,23 @@ as a multiplier of the minimum collateral bound`,
 			Name: "ListenAddresses",
 			Type: "[]string",
 
-			Comment: ``,
+			Comment: `Binding address for the libp2p host - 0 means random port.
+Format: multiaddress; see https://multiformats.io/multiaddr/`,
 		},
 		{
 			Name: "AnnounceAddresses",
 			Type: "[]string",
 
-			Comment: ``,
+			Comment: `Addresses to explicitally announce to other peers. If not specified,
+all interface addresses are announced
+Format: multiaddress`,
 		},
 		{
 			Name: "NoAnnounceAddresses",
 			Type: "[]string",
 
-			Comment: ``,
+			Comment: `Addresses to not announce
+Format: multiaddress`,
 		},
 		{
 			Name: "BootstrapPeers",
@@ -333,13 +343,13 @@ as a multiplier of the minimum collateral bound`,
 			Name: "PreCommitControl",
 			Type: "[]string",
 
-			Comment: ``,
+			Comment: `Addresses to send PreCommit messages from`,
 		},
 		{
 			Name: "CommitControl",
 			Type: "[]string",
 
-			Comment: ``,
+			Comment: `Addresses to send Commit messages from`,
 		},
 		{
 			Name: "TerminateControl",
@@ -405,7 +415,7 @@ over the worker address if this flag is set.`,
 			Name: "MaxWindowPoStGasFee",
 			Type: "types.FIL",
 
-			Comment: ``,
+			Comment: `WindowPoSt is a high-value operation, so the default fee should be high.`,
 		},
 		{
 			Name: "MaxPublishDealsFee",
@@ -463,13 +473,18 @@ over the worker address if this flag is set.`,
 			Name: "Bootstrapper",
 			Type: "bool",
 
-			Comment: ``,
+			Comment: `Run the node in bootstrap-node mode`,
 		},
 		{
 			Name: "DirectPeers",
 			Type: "[]string",
 
-			Comment: ``,
+			Comment: `DirectPeers specifies peers with direct peering agreements. These peers are
+connected outside of the mesh, with all (valid) message unconditionally
+forwarded to them. The router will maintain open connections to these peers.
+Note that the peering agreement should be reciprocal with direct peers
+symmetrically configured at both ends.
+Type: Array of multiaddress peerinfo strings, must include peerid (/p2p/12D3K...`,
 		},
 		{
 			Name: "IPColocationWhitelist",
@@ -529,31 +544,37 @@ This parameter is ONLY applicable if the retrieval pricing policy strategy has b
 			Name: "MaxWaitDealsSectors",
 			Type: "uint64",
 
-			Comment: `0 = no limit`,
+			Comment: `Upper bound on how many sectors can be waiting for more deals to be packed in it before it begins sealing at any given time.
+If the miner is accepting multiple deals in parallel, up to MaxWaitDealsSectors of new sectors will be created.
+If more than MaxWaitDealsSectors deals are accepted in parallel, only MaxWaitDealsSectors deals will be processed in parallel
+Note that setting this number too high in relation to deal ingestion rate may result in poor sector packing efficiency
+0 = no limit`,
 		},
 		{
 			Name: "MaxSealingSectors",
 			Type: "uint64",
 
-			Comment: `includes failed, 0 = no limit`,
+			Comment: `Upper bound on how many sectors can be sealing at the same time when creating new CC sectors (0 = unlimited)`,
 		},
 		{
 			Name: "MaxSealingSectorsForDeals",
 			Type: "uint64",
 
-			Comment: `includes failed, 0 = no limit`,
+			Comment: `Upper bound on how many sectors can be sealing at the same time when creating new sectors with deals (0 = unlimited)`,
 		},
 		{
 			Name: "WaitDealsDelay",
 			Type: "Duration",
 
-			Comment: ``,
+			Comment: `Period of time that a newly created sector will wait for more deals to be packed in to before it starts to seal.
+Sectors which are fully filled will start sealing immediately`,
 		},
 		{
 			Name: "AlwaysKeepUnsealedCopy",
 			Type: "bool",
 
-			Comment: ``,
+			Comment: `Whether to keep unsealed copies of deal data regardless of whether the client requested that. This lets the miner
+avoid the relatively high cost of unsealing the data later, at the cost of more storage space`,
 		},
 		{
 			Name: "FinalizeEarly",

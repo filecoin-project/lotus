@@ -30,6 +30,11 @@ type FullNode struct {
 // // Common
 
 type Backup struct {
+	// When set to true disables metadata log (.lotus/kvlog). This can save disk
+	// space by reducing metadata redundancy.
+	//
+	// Note that in case of metadata corruption it might be much harder to recover
+	// your node if metadata log is disabled
 	DisableMetadataLog bool
 }
 
@@ -56,18 +61,28 @@ type MinerSubsystemConfig struct {
 }
 
 type DealmakingConfig struct {
-	ConsiderOnlineStorageDeals     bool
-	ConsiderOfflineStorageDeals    bool
-	ConsiderOnlineRetrievalDeals   bool
-	ConsiderOfflineRetrievalDeals  bool
-	ConsiderVerifiedStorageDeals   bool
+	// When enabled, the miner can accept online deals
+	ConsiderOnlineStorageDeals bool
+	// When enabled, the miner can accept offline deals
+	ConsiderOfflineStorageDeals bool
+	// When enabled, the miner can accept retrieval deals
+	ConsiderOnlineRetrievalDeals bool
+	// When enabled, the miner can accept offline retrieval deals
+	ConsiderOfflineRetrievalDeals bool
+	// When enabled, the miner can accept verified deals
+	ConsiderVerifiedStorageDeals bool
+	// When enabled, the miner can accept unverified deals
 	ConsiderUnverifiedStorageDeals bool
-	PieceCidBlocklist              []cid.Cid
-	ExpectedSealDuration           Duration
+	// A list of Data CIDs to reject when making deals
+	PieceCidBlocklist []cid.Cid
+	// Maximum expected amount of time getting the deal into a sealed sector will take
+	// This includes the time the deal will need to get transferred and published
+	// before being assigned to a sector
+	ExpectedSealDuration Duration
 	// Maximum amount of time proposed deal StartEpoch can be in future
 	MaxDealStartDelay Duration
-	// The amount of time to wait for more deals to arrive before
-	// publishing
+	// When a deal is ready to publish, the amount of time to wait for more
+	// deals to be ready to publish before publishing them all as a batch
 	PublishMsgPeriod Duration
 	// The maximum number of deals to include in a single PublishStorageDeals
 	// message
@@ -79,7 +94,11 @@ type DealmakingConfig struct {
 	// The maximum number of parallel online data transfers (storage+retrieval)
 	SimultaneousTransfers uint64
 
-	Filter          string
+	// A command used for fine-grained evaluation of storage deals
+	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
+	Filter string
+	// A command used for fine-grained evaluation of retrieval deals
+	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
 	RetrievalFilter string
 
 	RetrievalPricing *RetrievalPricing
@@ -107,17 +126,25 @@ type RetrievalPricingDefault struct {
 }
 
 type SealingConfig struct {
+	// Upper bound on how many sectors can be waiting for more deals to be packed in it before it begins sealing at any given time.
+	// If the miner is accepting multiple deals in parallel, up to MaxWaitDealsSectors of new sectors will be created.
+	// If more than MaxWaitDealsSectors deals are accepted in parallel, only MaxWaitDealsSectors deals will be processed in parallel
+	// Note that setting this number too high in relation to deal ingestion rate may result in poor sector packing efficiency
 	// 0 = no limit
 	MaxWaitDealsSectors uint64
 
-	// includes failed, 0 = no limit
+	// Upper bound on how many sectors can be sealing at the same time when creating new CC sectors (0 = unlimited)
 	MaxSealingSectors uint64
 
-	// includes failed, 0 = no limit
+	// Upper bound on how many sectors can be sealing at the same time when creating new sectors with deals (0 = unlimited)
 	MaxSealingSectorsForDeals uint64
 
+	// Period of time that a newly created sector will wait for more deals to be packed in to before it starts to seal.
+	// Sectors which are fully filled will start sealing immediately
 	WaitDealsDelay Duration
 
+	// Whether to keep unsealed copies of deal data regardless of whether the client requested that. This lets the miner
+	// avoid the relatively high cost of unsealing the data later, at the cost of more storage space
 	AlwaysKeepUnsealedCopy bool
 
 	// Run sector finalization before submitting sector proof to the chain
@@ -176,14 +203,17 @@ type MinerFeeConfig struct {
 	MaxPreCommitBatchGasFee BatchFeeConfig
 	MaxCommitBatchGasFee    BatchFeeConfig
 
-	MaxTerminateGasFee     types.FIL
+	MaxTerminateGasFee types.FIL
+	// WindowPoSt is a high-value operation, so the default fee should be high.
 	MaxWindowPoStGasFee    types.FIL
 	MaxPublishDealsFee     types.FIL
 	MaxMarketBalanceAddFee types.FIL
 }
 
 type MinerAddressConfig struct {
-	PreCommitControl   []string
+	// Addresses to send PreCommit messages from
+	PreCommitControl []string
+	// Addresses to send Commit messages from
 	CommitControl      []string
 	TerminateControl   []string
 	DealPublishControl []string
@@ -208,8 +238,15 @@ type API struct {
 
 // Libp2p contains configs for libp2p
 type Libp2p struct {
-	ListenAddresses     []string
-	AnnounceAddresses   []string
+	// Binding address for the libp2p host - 0 means random port.
+	// Format: multiaddress; see https://multiformats.io/multiaddr/
+	ListenAddresses []string
+	// Addresses to explicitally announce to other peers. If not specified,
+	// all interface addresses are announced
+	// Format: multiaddress
+	AnnounceAddresses []string
+	// Addresses to not announce
+	// Format: multiaddress
 	NoAnnounceAddresses []string
 	BootstrapPeers      []string
 	ProtectedPeers      []string
@@ -220,7 +257,14 @@ type Libp2p struct {
 }
 
 type Pubsub struct {
-	Bootstrapper          bool
+	// Run the node in bootstrap-node mode
+	Bootstrapper bool
+	// DirectPeers specifies peers with direct peering agreements. These peers are
+	// connected outside of the mesh, with all (valid) message unconditionally
+	// forwarded to them. The router will maintain open connections to these peers.
+	// Note that the peering agreement should be reciprocal with direct peers
+	// symmetrically configured at both ends.
+	// Type: Array of multiaddress peerinfo strings, must include peerid (/p2p/12D3K...
 	DirectPeers           []string
 	IPColocationWhitelist []string
 	RemoteTracer          string
@@ -247,10 +291,12 @@ type Metrics struct {
 }
 
 type Client struct {
-	UseIpfs               bool
-	IpfsOnlineMode        bool
-	IpfsMAddr             string
-	IpfsUseForRetrieval   bool
+	UseIpfs             bool
+	IpfsOnlineMode      bool
+	IpfsMAddr           string
+	IpfsUseForRetrieval bool
+	// The maximum number of simultaneous data transfers between the client
+	// and storage providers
 	SimultaneousTransfers uint64
 }
 
