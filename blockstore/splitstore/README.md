@@ -59,6 +59,17 @@ These are options in the `[Chainstore.Splitstore]` section of the configuration:
   nodes beyond 4 finalities, while running with the discard coldstore option.
   It is also useful for miners who accept deals and need to lookback messages beyond
   the 4 finalities, which would otherwise hit the coldstore.
+- `HotStoreMovingGCFrequency` -- specifies how frequenty to garbage collect the hotstore
+  using moving GC.
+  The default value is 20, which uses moving GC every 20 compactions; set to 0 to disable moving
+  GC altogether.
+  Rationale: badger supports online GC, and this is used by default. However it has proven to
+  be ineffective in practice with the hotstore size slowly creeping up. In order to address this,
+  we have added moving GC support in our badger wrapper, which can effectively reclaim all space.
+  The downside is that it takes a bit of time to perform a moving GC (about 40min) and you also
+  need enough space to house the new hotstore while the old one is still live.
+  This option controls how frequently to perform moving GC, with the default of 20 corresponding
+  to about once a week.
 
 
 ## Operation
