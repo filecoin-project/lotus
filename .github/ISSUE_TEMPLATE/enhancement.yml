@@ -23,28 +23,16 @@ body:
     label: Lotus component
     description: Please select the lotus component you are propoing improvement for
     options:
-    - lotus daemon
-    - lotus miner/lotus worker
-    - lotus client
-    - lotus market
-    - lotus JSON-RPC API
-    - Other
-- type: dropdown
-  id: area
-  validations: 
-    required: true
-  attributes:
-    label: Area
-    description: Please select the area
-    options:
-    - syncing
-    - sealing
-    - mining (WinningPoSt)
-    - proving (WindowPoSt)
-    - deal making
-    - api call
-    - message management (mpool)
-    - Other
+      - lotus daemon - chain sync
+      - lotus miner - mining and block production
+      - lotus miner/worker - sealing
+      - lotus miner - proving(WindowPoSt)
+      - lotus miner/market - storage deal
+      - lotus miner/market - retrieval deal
+      - lotus client
+      - lotus JSON-RPC API
+      - lotus message management (mpool)
+      - Other
 - type: textarea
   id: request
   attributes:
@@ -53,18 +41,4 @@ body:
     placeholder: Ex. Currently lotus... However, as a storage provider, I'd like...
   validations:
     required: true
-- type: textarea
-  id: alternates
-  attributes:
-    label: Describe alternatives you've considered
-    description: A clear and concise description of any alternative solutions you've considered.
-  validations:
-    required: false
-- type: textarea
-  id: extra
-  attributes:
-    label: Additional context
-    description: Add any other context, design docs or screenshots about the feature request here.
-  validations:
-    required: false
 

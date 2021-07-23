@@ -22,34 +22,22 @@ body:
       - label: I did not make any code changes to lotus.
         required: true
 - type: dropdown 
-  id: component
+  id: component-and-area
   validations:
     required: true
   attributes:
     label: Lotus component
     description: Please select the lotus component you are filing a bug for
     options:
-    - lotus daemon
-    - lotus miner/lotus worker
+    - lotus daemon - chain sync
+    - lotus miner - mining and block production
+    - lotus miner/worker - sealing
+    - lotus miner - proving(WindowPoSt)
+    - lotus miner/market - storage deal
+    - lotus miner/market - retrieval deal
     - lotus client
-    - lotus market
     - lotus JSON-RPC API
-    - Other
-- type: dropdown
-  id: area
-  validations: 
-    required: true
-  attributes:
-    label: Area
-    description: Please select the process you are having issue with
-    options:
-    - syncing
-    - sealing
-    - mining (WinningPoSt)
-    - proving (WindowPoSt)
-    - deal making
-    - api call
-    - message management (mpool)
+    - lotus message management (mpool)
     - Other
 - type: textarea
   id: version
@@ -70,6 +58,7 @@ body:
       This is where you get to tell us what went wrong, when doing so, please try to provide a clear and concise description of the bug with all related information:
       * What you were doding when you experienced the bug?
       * Any *error* messages you saw, *where* you saw them, and what you believe may have caused them (if you have any ideas).
+      * What is the expected behaviour?
       * For sealing issues, include the output of `lotus-miner sectors status --log <sectorId>` for the failed sector(s).
       * For proving issues, include the output of `lotus-miner proving` info.
       * For deal making issues, include the output of `lotus client list-deals -v` and/or `lotus-miner storage-deals|retrieval-deals|data-transfers list [-v]` commands for the deal(s) in question.
@@ -101,12 +90,3 @@ body:
     render: bash
   validations:
     required: true
-- type: textarea
-  id: expected
-  attributes:
-    label: Expected Behavior
-    description: A clear and concise description of what you expected to happen.
-    render: bash
-    placeholder: "By doing... I expect..."
-  validations:
-    required: false

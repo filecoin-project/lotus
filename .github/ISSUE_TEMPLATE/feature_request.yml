@@ -21,28 +21,16 @@ body:
     label: Lotus component
     description: Please select the lotus component you are requesting a new feature for
     options:
-    - lotus daemon
-    - lotus miner/lotus worker
-    - lotus client
-    - lotus market
-    - lotus JSON-RPC API
-    - Other
-- type: dropdown
-  id: area
-  validations: 
-    required: true
-  attributes:
-    label: Area
-    description: Please select the area
-    options:
-    - syncing
-    - sealing
-    - mining (WinningPoSt)
-    - proving (WindowPoSt)
-    - deal making
-    - api call
-    - message management (mpool)
-    - Other
+      - lotus daemon - chain sync
+      - lotus miner - mining and block production
+      - lotus miner/worker - sealing
+      - lotus miner - proving(WindowPoSt)
+      - lotus miner/market - storage deal
+      - lotus miner/market - retrieval deal
+      - lotus client
+      - lotus JSON-RPC API
+      - lotus message management (mpool)
+      - Other
 - type: textarea
   id: request
   attributes:
