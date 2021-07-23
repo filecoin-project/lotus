@@ -477,6 +477,32 @@ func (b *Blockstore) CollectGarbage(options map[interface{}]interface{}) error {
 	}
 	defer b.viewers.Done()
 
+	var movingGC bool
+	movingGCOpt, ok := options[blockstore.BlockstoreMovingGC]
+	if ok {
+		movingGC, ok = movingGCOpt.(bool)
+		if !ok {
+			return fmt.Errorf("incorrect type for moving gc option; expected bool but got %T", movingGCOpt)
+		}
+	}
+
+	if !movingGC {
+		return b.onlineGC()
+	}
+
+	var movingGCPath string
+	movingGCPathOpt, ok := options[blockstore.BlockstoreMovingGCPath]
+	if ok {
+		movingGCPath, ok = movingGCPathOpt.(string)
+		if !ok {
+			return fmt.Errorf("incorrect type for moving gc path option; expected string but got %T", movingGCPathOpt)
+		}
+	}
+
+	return b.moveTo(movingGCPath)
+}
+
+func (b *Blockstore) onlineGC() error {
 	b.lockDB()
 	defer b.unlockDB()
 
