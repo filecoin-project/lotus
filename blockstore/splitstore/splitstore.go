@@ -81,6 +81,13 @@ type Config struct {
 	// - a positive integer indicates the number of finalities, outside the compaction boundary,
 	//   for which messages will be retained in the hotstore.
 	HotStoreMessageRetention uint64
+
+	// HotstoreMovingGCFrequency indicates how frequently to garbage collect the hotstore using
+	// moving GC (if supported by the hotstore).
+	// A value of 0 disables moving GC entirely.
+	// A positive value is the number of compactions before a moving GC is performed;
+	// a value of 1 will perform moving GC in every compaction.
+	HotStoreMovingGCFrequency uint
 }
 
 // ChainAccessor allows the Splitstore to access the chain. It will most likely
