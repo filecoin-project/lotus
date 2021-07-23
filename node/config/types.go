@@ -8,6 +8,8 @@ import (
 )
 
 // // NOTE: ONLY PUT STRUCT DEFINITIONS IN THIS FILE
+// //
+// // After making edits here, run 'make cfgdoc-gen' (or 'make gen')
 
 // Common is common config between full node and miner
 type Common struct {
