@@ -210,6 +210,10 @@ func TestSplitStoreCompaction(t *testing.T) {
 	testSplitStore(t, &Config{MarkSetType: "map"})
 }
 
+func TestSplitStoreCompactionWithBadger(t *testing.T) {
+	testSplitStore(t, &Config{MarkSetType: "badger"})
+}
+
 type mockChain struct {
 	t testing.TB
 
