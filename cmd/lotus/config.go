@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/filecoin-project/lotus/node/repo"
+
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var configCmd = &cli.Command{

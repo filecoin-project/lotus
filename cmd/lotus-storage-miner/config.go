@@ -2,11 +2,12 @@ package main
 
 import (
 	"fmt"
-	"github.com/filecoin-project/lotus/node/repo"
+
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var configCmd = &cli.Command{
@@ -51,7 +52,7 @@ var configUpdateCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		r, err := repo.NewFS(cctx.String("repo"))
+		r, err := repo.NewFS(cctx.String(FlagMinerRepo))
 		if err != nil {
 			return err
 		}

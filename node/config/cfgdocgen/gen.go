@@ -125,7 +125,7 @@ var Doc = map[string][]DocField{
 
 func main() {
 	if err := run(); err != nil {
-		fmt.Printf(err.Error())
+		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 }
