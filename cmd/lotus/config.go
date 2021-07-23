@@ -28,7 +28,7 @@ var configDefaultCmd = &cli.Command{
 	Usage: "Print default node config",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name: "no-comment",
+			Name:  "no-comment",
 			Usage: "don't comment default values",
 		},
 	},
@@ -63,7 +63,7 @@ var configUpdateCmd = &cli.Command{
 	Usage: "Print updated node config",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name: "no-comment",
+			Name:  "no-comment",
 			Usage: "don't comment default values",
 		},
 	},
