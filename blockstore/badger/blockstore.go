@@ -113,7 +113,6 @@ var _ blockstore.Blockstore = (*Blockstore)(nil)
 var _ blockstore.Viewer = (*Blockstore)(nil)
 var _ blockstore.BlockstoreIterator = (*Blockstore)(nil)
 var _ blockstore.BlockstoreGC = (*Blockstore)(nil)
-var _ blockstore.BlockstoreMover = (*Blockstore)(nil)
 var _ io.Closer = (*Blockstore)(nil)
 
 // Open creates a new badger-backed blockstore, with the supplied options.
@@ -221,13 +220,15 @@ func (b *Blockstore) unlockMove(state int) {
 	b.moveMx.Unlock()
 }
 
-// MoveTo implements the BlockstoreMover trait
-func (b *Blockstore) MoveTo(path string, filter func(cid.Cid) bool) error {
-	if err := b.access(); err != nil {
-		return err
-	}
-	defer b.viewers.Done()
-
+// moveTo moves the blockstore to path, and creates a symlink from the current path
+// to the new path; the old blockstore is deleted.
+// If path is empty, then a new path adjacent to the current path is created
+// automatically.
+// The blockstore must accept new writes during the move and ensure that these
+// are persisted to the new blockstore; if a failure occurs aboring the move,
+// then they must be peristed to the old blockstore.
+// In short, the blockstore must not lose data from new writes during the move.
+func (b *Blockstore) moveTo(path string) error {
 	// this inlines moveLock/moveUnlock for the initial state check to prevent a second move
 	// while one is in progress without clobbering state
 	b.moveMx.Lock()
@@ -292,7 +293,7 @@ func (b *Blockstore) MoveTo(path string, filter func(cid.Cid) bool) error {
 	b.unlockMove(moveStateMoving)
 
 	log.Info("copying blockstore")
-	err = b.doCopy(b.db, b.db2, filter)
+	err = b.doCopy(b.db, b.db2, nil)
 	if err != nil {
 		return fmt.Errorf("error moving badger blockstore to %s: %w", path, err)
 	}
@@ -333,6 +334,8 @@ func (b *Blockstore) MoveTo(path string, filter func(cid.Cid) bool) error {
 	return nil
 }
 
+// doCopy copies a badger blockstore to another, with an optional filter; if the filter
+// is not nil, then only cids that satisfy the filter will be copied.
 func (b *Blockstore) doCopy(from, to *badger.DB, filter func(cid.Cid) bool) error {
 	count := 0
 	batch := to.NewWriteBatch()

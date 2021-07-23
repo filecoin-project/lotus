@@ -154,7 +154,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 		return nil
 	})
 	g.Go(func() error {
-		return db.MoveTo("", nil)
+		return db.moveTo("")
 	})
 
 	err = g.Wait()
