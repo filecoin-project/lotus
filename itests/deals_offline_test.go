@@ -9,8 +9,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/require"
 )
@@ -31,7 +29,7 @@ func TestOfflineDealFlow(t *testing.T) {
 		dh := kit.NewDealHarness(t, client, miner, miner)
 
 		// Create a random file and import on the client.
-		res, inFile := client.CreateImportFile(ctx, 1, 0)
+		res, inFile := client.CreateImportFile(ctx, 1, 200)
 
 		// Get the piece size and commP
 		rootCid := res.Root
@@ -39,31 +37,18 @@ func TestOfflineDealFlow(t *testing.T) {
 		require.NoError(t, err)
 		t.Log("FILE CID:", rootCid)
 
-		// Create a storage deal with the miner
-		maddr, err := miner.ActorAddress(ctx)
-		require.NoError(t, err)
-
-		addr, err := client.WalletDefaultAddress(ctx)
-		require.NoError(t, err)
-
-		// Manual storage deal (offline deal)
-		dataRef := &storagemarket.DataRef{
+		dp := dh.DefaultStartDealParams()
+		dp.DealStartEpoch = startEpoch
+		dp.FastRetrieval = fastRet
+		// Replace with params for manual storage deal (offline deal)
+		dp.Data = &storagemarket.DataRef{
 			TransferType: storagemarket.TTManual,
 			Root:         rootCid,
 			PieceCid:     &pieceInfo.PieceCID,
 			PieceSize:    pieceInfo.PieceSize.Unpadded(),
 		}
 
-		proposalCid, err := client.ClientStartDeal(ctx, &api.StartDealParams{
-			Data:              dataRef,
-			Wallet:            addr,
-			Miner:             maddr,
-			EpochPrice:        types.NewInt(1000000),
-			DealStartEpoch:    startEpoch,
-			MinBlocksDuration: uint64(build.MinDealDuration),
-			FastRetrieval:     fastRet,
-		})
-		require.NoError(t, err)
+		proposalCid := dh.StartDeal(ctx, dp)
 
 		// Wait for the deal to reach StorageDealCheckForAcceptance on the client
 		cd, err := client.ClientGetDealInfo(ctx, *proposalCid)
