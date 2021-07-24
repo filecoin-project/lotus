@@ -46,6 +46,10 @@ type MemRepo struct {
 	}
 }
 
+func (mem *MemRepo) Version() (RepoVersion, error) {
+	return LotusRepoVersion, nil
+}
+
 type lockedMemRepo struct {
 	mem *MemRepo
 	t   RepoType
@@ -54,6 +58,10 @@ type lockedMemRepo struct {
 	tempDir string
 	token   *byte
 	sc      *stores.StorageConfig
+}
+
+func (lmem *lockedMemRepo) Version() (RepoVersion, error) {
+	return LotusRepoVersion, nil
 }
 
 func (lmem *lockedMemRepo) GetStorage() (stores.StorageConfig, error) {
