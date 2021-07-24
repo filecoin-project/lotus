@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	commcid "github.com/filecoin-project/go-fil-commcid"
+	commp "github.com/filecoin-project/go-fil-commp-hashhash"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
@@ -14,17 +16,11 @@ import (
 )
 
 func TestOfflineDealFlow(t *testing.T) {
-	blocktime := 10 * time.Millisecond
 
-	// For these tests where the block time is artificially short, just use
-	// a deal start epoch that is guaranteed to be far enough in the future
-	// so that the deal starts sealing in time
-	startEpoch := abi.ChainEpoch(2 << 12)
-
-	runTest := func(t *testing.T, fastRet bool) {
+	runTest := func(t *testing.T, fastRet bool, upscale abi.PaddedPieceSize) {
 		ctx := context.Background()
-		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
-		ens.InterconnectAll().BeginMining(blocktime)
+		client, miner, ens := kit.EnsembleMinimal(t, kit.WithAllSubsystems()) // no mock proofs
+		ens.InterconnectAll().BeginMining(250 * time.Millisecond)
 
 		dh := kit.NewDealHarness(t, client, miner, miner)
 
@@ -37,8 +33,22 @@ func TestOfflineDealFlow(t *testing.T) {
 		require.NoError(t, err)
 		t.Log("FILE CID:", rootCid)
 
+		// test whether padding works as intended
+		if upscale > 0 {
+			newRawCp, err := commp.PadCommP(
+				pieceInfo.PieceCID.Hash()[len(pieceInfo.PieceCID.Hash())-32:],
+				uint64(pieceInfo.PieceSize),
+				uint64(upscale),
+			)
+			require.NoError(t, err)
+
+			pieceInfo.PieceSize = upscale
+			pieceInfo.PieceCID, err = commcid.DataCommitmentV1ToCID(newRawCp)
+			require.NoError(t, err)
+		}
+
 		dp := dh.DefaultStartDealParams()
-		dp.DealStartEpoch = startEpoch
+		dp.DealStartEpoch = abi.ChainEpoch(4 << 10)
 		dp.FastRetrieval = fastRet
 		// Replace with params for manual storage deal (offline deal)
 		dp.Data = &storagemarket.DataRef{
@@ -81,6 +91,7 @@ func TestOfflineDealFlow(t *testing.T) {
 
 	}
 
-	t.Run("stdretrieval", func(t *testing.T) { runTest(t, false) })
-	t.Run("fastretrieval", func(t *testing.T) { runTest(t, true) })
+	t.Run("stdretrieval", func(t *testing.T) { runTest(t, false, 0) })
+	t.Run("fastretrieval", func(t *testing.T) { runTest(t, true, 0) })
+	t.Run("fastretrieval", func(t *testing.T) { runTest(t, true, 1024) })
 }
