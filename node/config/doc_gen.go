@@ -563,6 +563,14 @@ Note that setting this number too high in relation to deal ingestion rate may re
 			Comment: `Upper bound on how many sectors can be sealing at the same time when creating new sectors with deals (0 = unlimited)`,
 		},
 		{
+			Name: "CommittedCapacitySectorLifetime",
+			Type: "Duration",
+
+			Comment: `CommittedCapacitySectorLifetime is the duration a Committed Capacity (CC) sector will
+live before it must be extended or converted into sector containing deals before it is
+terminated. Value must be between 180-540 days inclusive`,
+		},
+		{
 			Name: "WaitDealsDelay",
 			Type: "Duration",
 
