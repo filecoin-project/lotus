@@ -278,11 +278,22 @@ type Chainstore struct {
 }
 
 type Splitstore struct {
+	// ColdStoreType specifies the type of the coldstore.
+	// It can be "universal" (default) or "discard" for discarding cold blocks.
 	ColdStoreType string
-	HotStoreType  string
-	MarkSetType   string
+	// HotStoreType specifies the type of the hotstore.
+	// Only currently supported value is "badger".
+	HotStoreType string
+	// MarkSetType specifies the type of the markset.
+	// It can be "map" (default) for in memory marking or "badger" for on-disk marking.
+	MarkSetType string
 
-	HotStoreMessageRetention  uint64
+	// HotStoreMessageRetention specifies the retention policy for messages, in finalities beyond
+	// the compaction boundary; default is 0.
+	HotStoreMessageRetention uint64
+	// HotStoreMovingGCFrequency specifies how often to perform moving GC on the hotstore.
+	// A value of 0 disables, while a value 1 will do moving GC in every compaction.
+	// Default is 20 (about once a week).
 	HotStoreMovingGCFrequency uint64
 }
 
