@@ -76,7 +76,7 @@ func TestBasicPolicyEmptySector(t *testing.T) {
 
 func TestCustomCCSectorConfig(t *testing.T) {
 	customLifetime := 200 * 24 * time.Hour
-	customLifetimeEpochs := abi.ChainEpoch(int64(customLifetime.Truncate(builtin.EpochDurationSeconds).Seconds()) / builtin.EpochDurationSeconds)
+	customLifetimeEpochs := abi.ChainEpoch(int64(customLifetime.Seconds()) / builtin.EpochDurationSeconds)
 	cfgStub := fakeConfigStub{CCSectorLifetime: customLifetime}
 	cfg := fakeConfigGetter(&cfgStub)
 	h := abi.ChainEpoch(55)
