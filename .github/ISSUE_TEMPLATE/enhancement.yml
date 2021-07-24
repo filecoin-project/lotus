@@ -1,0 +1,44 @@
+name: Enhancement
+description:  Suggest an improvement to an existing lotus feature.
+labels: [need/triage, kind/enhancement]
+body:
+- type: checkboxes
+  attributes:
+    label: Checklist
+    description: Please check off the following boxes before continuing to create an improvement suggestion!
+    options:
+      - label: This is **not** a new feature or an enhancement to the Filecoin protocol. If it is,  please open an [FIP issue](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0001.md).
+        required: true
+      - label: This is **not** a new feature request. If it is, please file a [feature request](https://github.com/filecoin-project/lotus/issues/new?assignees=&labels=need%2Ftriage%2Ckind%2Ffeature&template=feature_request.yml) instead.
+        required: true
+      - label: This is **not** brainstorming ideas. If you have an idea you'd like to discuss, please open a new discussion on [the lotus forum](https://github.com/filecoin-project/lotus/discussions/categories/ideas) and select the category as `Ideas`.
+        required: true
+      - label: I **have** a specific, actionable, and well motivated improvement to propose.
+        required: true
+- type: dropdown 
+  id: component
+  validations:
+    required: true
+  attributes:
+    label: Lotus component
+    description: Please select the lotus component you are propoing improvement for
+    options:
+      - lotus daemon - chain sync
+      - lotus miner - mining and block production
+      - lotus miner/worker - sealing
+      - lotus miner - proving(WindowPoSt)
+      - lotus miner/market - storage deal
+      - lotus miner/market - retrieval deal
+      - lotus client
+      - lotus JSON-RPC API
+      - lotus message management (mpool)
+      - Other
+- type: textarea
+  id: request
+  attributes:
+    label: Improvement Suggestion
+    description: A clear and concise description of what the motivation or the current problem is and what is the suggested improvement?
+    placeholder: Ex. Currently lotus... However, as a storage provider, I'd like...
+  validations:
+    required: true
+

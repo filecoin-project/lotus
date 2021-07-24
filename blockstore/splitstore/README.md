@@ -27,9 +27,38 @@ If you intend to use the discard coldstore, your also need to add the following:
     ColdStoreType = "discard"
 ```
 In general you _should not_ have to use the discard store, unless you
-are running a network booster or have very constrained hardware with
-not enough disk space to maintain a coldstore, even with garbage
-collection.
+are running a network assistive node (like a bootstrapper or booster)
+or have very constrained hardware with not enough disk space to
+maintain a coldstore, even with garbage collection. It is also appropriate
+for small nodes that are simply watching the chain.
+
+*Warning:* Using the discard store for a general purpose node is discouraged, unless
+you really know what you are doing. Use it at your own risk.
+
+## Configuration Options
+
+These are options in the `[Chainstore.Splitstore]` section of the configuration:
+
+- `HotStoreType` -- specifies the type of hotstore to use.
+  The only currently supported option is `"badger"`.
+- `ColdStoreType` -- specifies the type of coldstore to use.
+  The default value is `"universal"`, which will use the initial monolith blockstore
+  as the coldstore.
+  The other possible value is `"discard"`, as outlined above, which is specialized for
+  running without a coldstore. Note that the discard store wraps the initial monolith
+  blockstore and discards writes; this is necessary to support syncing from a snapshot.
+- `MarkSetType` -- specifies the type of markset to use during compaction.
+  The markset is the data structure used by compaction/gc to track live objects.
+  The default value is `"map"`, which will use an in-memory map; if you are limited
+  in memory (or indeed see compaction run out of memory), you can also specify
+  `"badger"` which will use an disk backed markset, using badger. This will use
+  much less memory, but will also make compaction slower.
+- `HotStoreMessageRetention` -- specifies how many finalities, beyond the 4
+  finalities maintained by default, to maintain messages and message receipts in the
+  hotstore. This is useful for assistive nodes that want to support syncing for other
+  nodes beyond 4 finalities, while running with the discard coldstore option.
+  It is also useful for miners who accept deals and need to lookback messages beyond
+  the 4 finalities, which would otherwise hit the coldstore.
 
 
 ## Operation
@@ -67,6 +96,6 @@ Compaction works transactionally with the following algorithm:
   - We delete in small batches taking a lock; each batch is checked again for marks, from the concurrent transactional mark, so as to never delete anything live
 - We then end the transaction and compact/gc the hotstore.
 
-## Coldstore Garbage Collection
+## Garbage Collection
 
 TBD -- see [#6577](https://github.com/filecoin-project/lotus/issues/6577)

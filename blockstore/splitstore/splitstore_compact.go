@@ -184,16 +184,6 @@ func (s *SplitStore) trackTxnRef(c cid.Cid) {
 		return
 	}
 
-	if s.txnProtect != nil {
-		mark, err := s.txnProtect.Has(c)
-		if err != nil {
-			log.Warnf("error checking markset: %s", err)
-			// track it anyways
-		} else if mark {
-			return
-		}
-	}
-
 	s.txnRefsMx.Lock()
 	s.txnRefs[c] = struct{}{}
 	s.txnRefsMx.Unlock()
@@ -209,25 +199,9 @@ func (s *SplitStore) trackTxnRefMany(cids []cid.Cid) {
 	s.txnRefsMx.Lock()
 	defer s.txnRefsMx.Unlock()
 
-	quiet := false
 	for _, c := range cids {
 		if isUnitaryObject(c) {
 			continue
-		}
-
-		if s.txnProtect != nil {
-			mark, err := s.txnProtect.Has(c)
-			if err != nil {
-				if !quiet {
-					quiet = true
-					log.Warnf("error checking markset: %s", err)
-				}
-				// track it anyways
-			}
-
-			if mark {
-				continue
-			}
 		}
 
 		s.txnRefs[c] = struct{}{}
@@ -631,13 +605,15 @@ func (s *SplitStore) endTxnProtect() {
 	s.txnMissing = nil
 }
 
-func (s *SplitStore) walkChain(ts *types.TipSet, inclState abi.ChainEpoch, inclMsgs abi.ChainEpoch,
+func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEpoch,
 	f func(cid.Cid) error) error {
 	visited := cid.NewSet()
 	walked := cid.NewSet()
 	toWalk := ts.Cids()
 	walkCnt := 0
 	scanCnt := 0
+
+	stopWalk := func(_ cid.Cid) error { return errStopWalk }
 
 	walkBlock := func(c cid.Cid) error {
 		if !visited.Visit(c) {
@@ -662,27 +638,28 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState abi.ChainEpoch, inclM
 		// message are retained if within the inclMsgs boundary
 		if hdr.Height >= inclMsgs && hdr.Height > 0 {
 			if inclMsgs < inclState {
-				// we need to use walkObjectIncomplete here, as messages may be missing early on if we
+				// we need to use walkObjectIncomplete here, as messages/receipts may be missing early on if we
 				// synced from snapshot and have a long HotStoreMessageRetentionPolicy.
-				stopWalk := func(_ cid.Cid) error { return errStopWalk }
 				if err := s.walkObjectIncomplete(hdr.Messages, walked, f, stopWalk); err != nil {
 					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
+				}
+
+				if err := s.walkObjectIncomplete(hdr.ParentMessageReceipts, walked, f, stopWalk); err != nil {
+					return xerrors.Errorf("error walking messages receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 				}
 			} else {
 				if err := s.walkObject(hdr.Messages, walked, f); err != nil {
 					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 				}
-			}
-		}
 
-		// state and message receipts is only retained if within the inclState boundary
-		if hdr.Height >= inclState || hdr.Height == 0 {
-			if hdr.Height > 0 {
 				if err := s.walkObject(hdr.ParentMessageReceipts, walked, f); err != nil {
 					return xerrors.Errorf("error walking message receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 				}
 			}
+		}
 
+		// state is only retained if within the inclState boundary, with the exception of genesis
+		if hdr.Height >= inclState || hdr.Height == 0 {
 			if err := s.walkObject(hdr.ParentStateRoot, walked, f); err != nil {
 				return xerrors.Errorf("error walking state root (cid: %s): %w", hdr.ParentStateRoot, err)
 			}

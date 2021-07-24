@@ -13,7 +13,7 @@ COMMANDS:
    init     Initialize a lotus miner repo
    run      Start a lotus miner process
    stop     Stop a running lotus miner
-   config   Output default configuration
+   config   Manage node config
    backup   Create node metadata backup
    version  Print version
    help, h  Shows a list of commands or help for one command
@@ -145,13 +145,47 @@ OPTIONS:
 ## lotus-miner config
 ```
 NAME:
-   lotus-miner config - Output default configuration
+   lotus-miner config - Manage node config
 
 USAGE:
-   lotus-miner config [command options] [arguments...]
+   lotus-miner config command [command options] [arguments...]
+
+COMMANDS:
+   default  Print default node config
+   updated  Print updated node config
+   help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --help, -h     show help (default: false)
+   --version, -v  print the version (default: false)
+   
+```
+
+### lotus-miner config default
+```
+NAME:
+   lotus-miner config default - Print default node config
+
+USAGE:
+   lotus-miner config default [command options] [arguments...]
+
+OPTIONS:
+   --no-comment  don't comment default values (default: false)
+   --help, -h    show help (default: false)
+   
+```
+
+### lotus-miner config updated
+```
+NAME:
+   lotus-miner config updated - Print updated node config
+
+USAGE:
+   lotus-miner config updated [command options] [arguments...]
+
+OPTIONS:
+   --no-comment  don't comment default values (default: false)
+   --help, -h    show help (default: false)
    
 ```
 

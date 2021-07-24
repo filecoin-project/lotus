@@ -32,6 +32,8 @@ func OpenMarkSetEnv(path string, mtype string) (MarkSetEnv, error) {
 		return NewBloomMarkSetEnv()
 	case "map":
 		return NewMapMarkSetEnv()
+	case "badger":
+		return NewBadgerMarkSetEnv(path)
 	default:
 		return nil, xerrors.Errorf("unknown mark set type %s", mtype)
 	}
