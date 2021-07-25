@@ -717,6 +717,17 @@ the compaction boundary; default is 0.`,
 A value of 0 disables, while a value 1 will do moving GC in every compaction.
 Default is 20 (about once a week).`,
 		},
+		{
+			Name: "ReifyColdObjects",
+			Type: "int",
+
+			Comment: `ReifyColdObjects specifies whether the splitstore should automatically reify cold object
+references into the hotstore.
+It has the following possible values:
+- 0 -- don't reify cold objects (default).
+- 1 -- reify cold objects when there is a missing View.
+- 2 -- reify cold objects when there is a missing View or Get access.`,
+		},
 	},
 	"StorageMiner": []DocField{
 		{
