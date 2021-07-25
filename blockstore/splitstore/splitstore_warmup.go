@@ -76,7 +76,7 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 			if err != nil {
 				if err == bstore.ErrNotFound {
 					missing++
-					return nil
+					return errStopWalk
 				}
 				return err
 			}
