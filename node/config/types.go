@@ -295,6 +295,14 @@ type Splitstore struct {
 	// A value of 0 disables, while a value 1 will do moving GC in every compaction.
 	// Default is 20 (about once a week).
 	HotStoreMovingGCFrequency uint64
+
+	// ReifyColdObjects specifies whether the splitstore should automatically reify cold object
+	// references into the hotstore.
+	// It has the following possible values:
+	// - 0 -- don't reify cold objects (default).
+	// - 1 -- reify cold objects when there is a missing View.
+	// - 2 -- reify cold objects when there is a missing View or Get access.
+	ReifyColdObjects int
 }
 
 // // Full Node
