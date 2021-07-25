@@ -83,6 +83,9 @@ type ChainAPI struct {
 	// expose externally. In the future, this will be segregated into two
 	// blockstores.
 	ExposedBlockstore dtypes.ExposedBlockstore
+
+	// BaseBlockstore is the underyling blockstore
+	BaseBlockstore dtypes.BaseBlockstore
 }
 
 func (m *ChainModule) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
@@ -643,4 +646,13 @@ func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipo
 	}()
 
 	return out, nil
+}
+
+func (a *ChainAPI) ChainCheckBlockstore(ctx context.Context) error {
+	checker, ok := a.BaseBlockstore.(interface{ Check() error })
+	if !ok {
+		return xerrors.Errorf("underlying blockstore does not support health checks")
+	}
+
+	return checker.Check()
 }

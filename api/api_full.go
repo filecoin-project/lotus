@@ -164,6 +164,10 @@ type FullNode interface {
 	// If oldmsgskip is set, messages from before the requested roots are also not included.
 	ChainExport(ctx context.Context, nroots abi.ChainEpoch, oldmsgskip bool, tsk types.TipSetKey) (<-chan []byte, error) //perm:read
 
+	// ChainCheckBlockstore performs an (asynchronous) health check on the chain/state blockstore
+	// if supported by the underlying implementation.
+	ChainCheckBlockstore(context.Context) error
+
 	// MethodGroup: Beacon
 	// The Beacon method group contains methods for interacting with the random beacon (DRAND)
 
