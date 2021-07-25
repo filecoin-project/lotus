@@ -107,6 +107,7 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 			} else {
 				missingCnt++
 				write("missing object reference: %s", c)
+				return errStopWalk
 			}
 
 			return nil
