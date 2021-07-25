@@ -88,6 +88,9 @@ type Config struct {
 	// A positive value is the number of compactions before a moving GC is performed;
 	// a value of 1 will perform moving GC in every compaction.
 	HotStoreMovingGCFrequency uint64
+
+	// ReifyColdObjects indicates that cold references should be reified in the hotstore
+	ReifyColdObjects bool
 }
 
 // ChainAccessor allows the Splitstore to access the chain. It will most likely
@@ -256,11 +259,22 @@ func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
 		}
 
 		blk, err = s.cold.Get(cid)
-		if err == nil {
-			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
-
+		if err != nil {
+			return nil, err
 		}
-		return blk, err
+
+		stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
+
+		if s.cfg.ReifyColdObjects {
+			err = s.hot.Put(blk)
+			if err != nil {
+				log.Warnf("error reifying block (cid: %s): %s", cid, err)
+			} else {
+				s.trackTxnRef(cid)
+			}
+		}
+
+		return blk, nil
 
 	default:
 		return nil, err
@@ -440,11 +454,35 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 			s.debug.LogReadMiss(cid)
 		}
 
-		err = s.cold.View(cid, cb)
-		if err == nil {
-			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
+		var data []byte
+		if s.cfg.ReifyColdObjects {
+			err = s.cold.View(cid,
+				func(blkdata []byte) error {
+					data = make([]byte, len(blkdata))
+					copy(data, blkdata)
+					return cb(blkdata)
+				})
+		} else {
+			err = s.cold.View(cid, cb)
 		}
-		return err
+
+		if err != nil {
+			return err
+		}
+
+		stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
+
+		if s.cfg.ReifyColdObjects {
+			blk, err := blocks.NewBlockWithCid(data, cid)
+			if err == nil {
+				err = s.hot.Put(blk)
+			}
+			if err != nil {
+				log.Warnf("error reifying block (cid: %s): %s", cid, err)
+			}
+		}
+
+		return nil
 
 	default:
 		return err
