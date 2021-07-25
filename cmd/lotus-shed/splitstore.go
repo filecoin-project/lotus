@@ -14,9 +14,10 @@ import (
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
+	"go.uber.org/zap"
+
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
-	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -48,8 +49,6 @@ var splitstoreRollbackCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		logging.SetLogLevel("badger", "ERROR") // nolint:errcheck
-
 		r, err := repo.NewFS(cctx.String("repo"))
 		if err != nil {
 			return xerrors.Errorf("error opening fs repo: %w", err)
@@ -122,16 +121,23 @@ func copyHotstoreToColdstore(lr repo.LockedRepo, gcColdstore bool) error {
 	coldPath := filepath.Join(dataPath, "chain")
 	hotPath := filepath.Join(dataPath, "splitstore", "hot.badger")
 
+	blog := &badgerLogger{
+		SugaredLogger: log.Desugar().WithOptions(zap.AddCallerSkip(1)).Sugar(),
+		skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
+	}
+
 	coldOpts, err := repo.BadgerBlockstoreOptions(repo.UniversalBlockstore, coldPath, false)
 	if err != nil {
 		return xerrors.Errorf("error getting coldstore badger options: %w", err)
 	}
 	coldOpts.SyncWrites = false
+	coldOpts.Logger = blog
 
 	hotOpts, err := repo.BadgerBlockstoreOptions(repo.HotBlockstore, hotPath, true)
 	if err != nil {
 		return xerrors.Errorf("error getting hotstore badger options: %w", err)
 	}
+	hotOpts.Logger = blog
 
 	cold, err := badger.Open(coldOpts.Options)
 	if err != nil {
@@ -248,3 +254,13 @@ func deleteSplitstoreKeys(lr repo.LockedRepo) error {
 
 	return nil
 }
+
+// badger logging through go-log
+type badgerLogger struct {
+	*zap.SugaredLogger
+	skip2 *zap.SugaredLogger
+}
+
+func (b *badgerLogger) Warningf(format string, args ...interface{}) {}
+func (b *badgerLogger) Infof(format string, args ...interface{})    {}
+func (b *badgerLogger) Debugf(format string, args ...interface{})   {}
