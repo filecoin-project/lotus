@@ -66,19 +66,19 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 	defer output.Close() //nolint:errcheck
 
 	write := func(format string, args ...interface{}) {
-		_, err := fmt.Fprintf(output, format, args...)
+		_, err := fmt.Fprintf(output, format+"\n", args...)
 		if err != nil {
 			log.Warnf("error writing check output: %s", err)
 		}
 	}
 
 	ts, _ := time.Now().MarshalText()
-	write("---------------------------------------------\n")
-	write("start check at %s\n", ts)
-	write("current epoch: %d\n", currentEpoch)
-	write("boundary epoch: %d\n", boundaryEpoch)
-	write("compaction index: %d\n", s.compactionIndex)
-	write("--\n")
+	write("---------------------------------------------")
+	write("start check at %s", ts)
+	write("current epoch: %d", currentEpoch)
+	write("boundary epoch: %d", boundaryEpoch)
+	write("compaction index: %d", s.compactionIndex)
+	write("--")
 
 	var coldCnt, missingCnt int64
 	err = s.walkChain(curTs, boundaryEpoch, boundaryEpoch,
@@ -114,16 +114,16 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 
 	if err != nil {
 		err = xerrors.Errorf("error walking chain: %w", err)
-		write("ERROR: %s\n", err)
+		write("ERROR: %s", err)
 		return err
 	}
 
 	if coldCnt == 0 && missingCnt == 0 {
 		log.Info("check OK")
-		write("OK\n")
+		write("OK")
 	} else {
 		log.Infow("check failed", "cold", coldCnt, "missing", missingCnt)
-		write("FAILED\n")
+		write("FAILED")
 	}
 
 	return nil
