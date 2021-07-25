@@ -84,7 +84,7 @@ type ChainAPI struct {
 	// blockstores.
 	ExposedBlockstore dtypes.ExposedBlockstore
 
-	// BaseBlockstore is the underyling blockstore
+	// BaseBlockstore is the underlying blockstore
 	BaseBlockstore dtypes.BaseBlockstore
 }
 
