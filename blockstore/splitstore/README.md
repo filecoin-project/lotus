@@ -70,7 +70,13 @@ These are options in the `[Chainstore.Splitstore]` section of the configuration:
   need enough space to house the new hotstore while the old one is still live.
   This option controls how frequently to perform moving GC, with the default of 20 corresponding
   to about once a week.
-
+- `ReifyColdObjects` -- specifies the behaviour of the splitstore on hotstore misses.
+  Possible values are:
+  - 0 -- don't reify cold objects (default).
+  - 1 -- reify cold objects when there is a missing View.
+  - 2 -- reify cold objects when there is a missing View or Get access.
+  Note that we distinguish View from Get, as the former is indicative of state computation or chain
+  walk, while the latter is indicative of chain exchange access from peer syncing.
 
 ## Operation
 
