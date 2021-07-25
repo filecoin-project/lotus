@@ -89,8 +89,12 @@ type Config struct {
 	// a value of 1 will perform moving GC in every compaction.
 	HotStoreMovingGCFrequency uint64
 
-	// ReifyColdObjects indicates that cold references should be reified in the hotstore
-	ReifyColdObjects bool
+	// ReifyColdObjects indicates whether cold references should be reified in the hotstore.
+	// Possible Values:
+	// - 0 -- don't reify cold objects.
+	// - 1 -- reify cold objects when there is a missing View.
+	// - 2 -- reify cold objects when there is a missing View or Get access.
+	ReifyColdObjects int
 }
 
 // ChainAccessor allows the Splitstore to access the chain. It will most likely
@@ -265,7 +269,7 @@ func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
 
 		stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
 
-		if s.cfg.ReifyColdObjects {
+		if s.cfg.ReifyColdObjects > 1 {
 			err = s.hot.Put(blk)
 			if err != nil {
 				log.Warnf("error reifying block (cid: %s): %s", cid, err)
@@ -455,7 +459,7 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 		}
 
 		var data []byte
-		if s.cfg.ReifyColdObjects {
+		if s.cfg.ReifyColdObjects > 0 {
 			err = s.cold.View(cid,
 				func(blkdata []byte) error {
 					data = make([]byte, len(blkdata))
@@ -472,7 +476,7 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 
 		stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
 
-		if s.cfg.ReifyColdObjects {
+		if s.cfg.ReifyColdObjects > 0 {
 			blk, err := blocks.NewBlockWithCid(data, cid)
 			if err == nil {
 				err = s.hot.Put(blk)
