@@ -166,7 +166,7 @@ type FullNode interface {
 
 	// ChainCheckBlockstore performs an (asynchronous) health check on the chain/state blockstore
 	// if supported by the underlying implementation.
-	ChainCheckBlockstore(context.Context) error
+	ChainCheckBlockstore(context.Context) error //perm:read
 
 	// MethodGroup: Beacon
 	// The Beacon method group contains methods for interacting with the random beacon (DRAND)
