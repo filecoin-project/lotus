@@ -118,13 +118,10 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 		return err
 	}
 
-	if coldCnt == 0 && missingCnt == 0 {
-		log.Info("check OK")
-		write("OK")
-	} else {
-		log.Infow("check failed", "cold", coldCnt, "missing", missingCnt)
-		write("FAILED")
-	}
+	log.Infow("check done", "cold", coldCnt, "missing", missingCnt)
+	write("--")
+	write("cold: %d missing: %d", coldCnt, missingCnt)
+	write("DONE")
 
 	return nil
 }
