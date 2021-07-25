@@ -219,6 +219,132 @@ func TestSplitStoreCompactionWithBadger(t *testing.T) {
 	testSplitStore(t, &Config{MarkSetType: "badger"})
 }
 
+func TestSplitstoreReification(t *testing.T) {
+	ds := dssync.MutexWrap(datastore.NewMapDatastore())
+	aBlock := blocks.NewBlock([]byte{1, 2, 3})
+
+	// test1: no reification
+	hot := newMockStore()
+	cold := newMockStore()
+	err := cold.Put(aBlock)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ss, err := Open("", ds, hot, cold, &Config{MarkSetType: "map"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ss.Get(aBlock.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	has, err := hot.Has(aBlock.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if has {
+		t.Fatal("block is unexpectedly in hotstore")
+	}
+	_ = ss.Close()
+
+	// test2: view reification
+	hot = newMockStore()
+	cold = newMockStore()
+	err = cold.Put(aBlock)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ss, err = Open("", ds, hot, cold, &Config{MarkSetType: "map", ReifyColdObjects: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ss.Get(aBlock.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	has, err = hot.Has(aBlock.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if has {
+		t.Fatal("block is unexpectedly in hotstore")
+	}
+
+	err = ss.View(aBlock.Cid(), func(_ []byte) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	has, err = hot.Has(aBlock.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !has {
+		t.Fatal("expected block in hotstore")
+	}
+	_ = ss.Close()
+
+	// test3: Get reification
+	hot = newMockStore()
+	cold = newMockStore()
+	err = cold.Put(aBlock)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ss, err = Open("", ds, hot, cold, &Config{MarkSetType: "map", ReifyColdObjects: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = ss.Get(aBlock.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	has, err = hot.Has(aBlock.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !has {
+		t.Fatal("expected block in hotstore")
+	}
+	_ = ss.Close()
+
+	// test4: View reification when Reify is 2
+	hot = newMockStore()
+	cold = newMockStore()
+	err = cold.Put(aBlock)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ss, err = Open("", ds, hot, cold, &Config{MarkSetType: "map", ReifyColdObjects: 2})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = ss.View(aBlock.Cid(), func(_ []byte) error { return nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	has, err = hot.Has(aBlock.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !has {
+		t.Fatal("expected block in hotstore")
+	}
+	_ = ss.Close()
+}
+
 type mockChain struct {
 	t testing.TB
 
