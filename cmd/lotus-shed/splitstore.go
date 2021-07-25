@@ -19,6 +19,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -28,6 +29,7 @@ var splitstoreCmd = &cli.Command{
 	Description: "splitstore utilities",
 	Subcommands: []*cli.Command{
 		splitstoreRollbackCmd,
+		splitstoreCheckCmd,
 	},
 }
 
@@ -264,3 +266,18 @@ type badgerLogger struct {
 func (b *badgerLogger) Warningf(format string, args ...interface{}) {}
 func (b *badgerLogger) Infof(format string, args ...interface{})    {}
 func (b *badgerLogger) Debugf(format string, args ...interface{})   {}
+
+var splitstoreCheckCmd = &cli.Command{
+	Name:        "check",
+	Description: "runs a healthcheck on a splitstore installation",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+		return api.ChainCheckBlockstore(ctx)
+	},
+}
