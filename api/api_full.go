@@ -166,7 +166,7 @@ type FullNode interface {
 
 	// ChainCheckBlockstore performs an (asynchronous) health check on the chain/state blockstore
 	// if supported by the underlying implementation.
-	ChainCheckBlockstore(context.Context) error //perm:read
+	ChainCheckBlockstore(context.Context) error //perm:admin
 
 	// ChainBlockstoreInfo returns some basic information about the blockstore
 	ChainBlockstoreInfo(context.Context) (map[string]interface{}, error) //perm:read
