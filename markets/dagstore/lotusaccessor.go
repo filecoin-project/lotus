@@ -4,12 +4,12 @@ import (
 	"context"
 	"io"
 
-	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/shared"
 )
 
 type LotusAccessor interface {
@@ -27,7 +27,7 @@ type lotusAccessor struct {
 
 var _ LotusAccessor = (*lotusAccessor)(nil)
 
-func NewLotusAccessor(store piecestore.PieceStore, rm retrievalmarket.RetrievalProviderNode) *lotusAccessor {
+func NewLotusAccessor(store piecestore.PieceStore, rm retrievalmarket.RetrievalProviderNode) LotusAccessor {
 	return &lotusAccessor{
 		pieceStore: store,
 		rm:         rm,
@@ -59,9 +59,6 @@ func (m *lotusAccessor) Start(ctx context.Context) error {
 		}
 		return err
 	}
-
-	// Piece store has started up successfully
-	return nil
 }
 
 func (m *lotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {

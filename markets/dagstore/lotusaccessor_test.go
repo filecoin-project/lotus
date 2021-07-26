@@ -60,6 +60,7 @@ func TestLotusAccessorFetchUnsealedPiece(t *testing.T) {
 	}}
 
 	for _, tc := range testCases {
+		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
 			ps := getPieceStore(t)
 			rpn := &mockRPN{
