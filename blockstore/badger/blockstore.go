@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"runtime"
 	"sync"
 
@@ -84,7 +86,8 @@ type Blockstore struct {
 	state   int
 	viewers sync.WaitGroup
 
-	DB *badger.DB
+	DB   *badger.DB
+	opts Options
 
 	prefixing bool
 	prefix    []byte
@@ -95,6 +98,7 @@ var _ blockstore.Blockstore = (*Blockstore)(nil)
 var _ blockstore.Viewer = (*Blockstore)(nil)
 var _ blockstore.BlockstoreIterator = (*Blockstore)(nil)
 var _ blockstore.BlockstoreGC = (*Blockstore)(nil)
+var _ blockstore.BlockstoreSize = (*Blockstore)(nil)
 var _ io.Closer = (*Blockstore)(nil)
 
 // Open creates a new badger-backed blockstore, with the supplied options.
@@ -109,7 +113,7 @@ func Open(opts Options) (*Blockstore, error) {
 		return nil, fmt.Errorf("failed to open badger blockstore: %w", err)
 	}
 
-	bs := &Blockstore{DB: db}
+	bs := &Blockstore{DB: db, opts: opts}
 	if p := opts.Prefix; p != "" {
 		bs.prefixing = true
 		bs.prefix = []byte(p)
@@ -189,6 +193,37 @@ func (b *Blockstore) CollectGarbage() error {
 	}
 
 	return err
+}
+
+// Size returns the aggregate size of the blockstore
+func (b *Blockstore) Size() (int64, error) {
+	if err := b.access(); err != nil {
+		return 0, err
+	}
+	defer b.viewers.Done()
+
+	lsm, vlog := b.DB.Size()
+	size := lsm + vlog
+
+	if size == 0 {
+		// badger reports a 0 size on symlinked directories... sigh
+		dir := b.opts.Dir
+		entries, err := os.ReadDir(dir)
+		if err != nil {
+			return 0, err
+		}
+
+		for _, e := range entries {
+			path := filepath.Join(dir, e.Name())
+			finfo, err := os.Stat(path)
+			if err != nil {
+				return 0, err
+			}
+			size += finfo.Size()
+		}
+	}
+
+	return size, nil
 }
 
 // View implements blockstore.Viewer, which leverages zero-copy read-only
