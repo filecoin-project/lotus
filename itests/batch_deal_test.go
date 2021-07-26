@@ -90,7 +90,11 @@ func TestBatchDealInput(t *testing.T) {
 				res, _, _, err := kit.CreateImportFile(ctx, client, rseed, piece)
 				require.NoError(t, err)
 
-				deal := dh.StartDeal(ctx, res.Root, false, dealStartEpoch)
+				dp := dh.DefaultStartDealParams()
+				dp.Data.Root = res.Root
+				dp.DealStartEpoch = dealStartEpoch
+
+				deal := dh.StartDeal(ctx, dp)
 				dh.WaitDealSealed(ctx, deal, false, true, checkNoPadding)
 			}
 

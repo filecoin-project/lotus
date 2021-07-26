@@ -1,29 +1,28 @@
-package common
+package net
 
 import (
 	"context"
 	"sort"
 	"strings"
 
+	"go.uber.org/fx"
+
 	"github.com/libp2p/go-libp2p-core/host"
-	metrics "github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	protocol "github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	"github.com/libp2p/go-libp2p/p2p/net/conngater"
 	ma "github.com/multiformats/go-multiaddr"
-	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/api"
-	apitypes "github.com/filecoin-project/lotus/api/types"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 )
 
-type Libp2pNetAPI struct {
+type NetAPI struct {
 	fx.In
 
 	RawHost   lp2p.RawHost
@@ -34,11 +33,15 @@ type Libp2pNetAPI struct {
 	Sk        *dtypes.ScoreKeeper
 }
 
-func (a *Libp2pNetAPI) NetConnectedness(ctx context.Context, pid peer.ID) (network.Connectedness, error) {
+func (a *NetAPI) ID(context.Context) (peer.ID, error) {
+	return a.Host.ID(), nil
+}
+
+func (a *NetAPI) NetConnectedness(ctx context.Context, pid peer.ID) (network.Connectedness, error) {
 	return a.Host.Network().Connectedness(pid), nil
 }
 
-func (a *Libp2pNetAPI) NetPubsubScores(context.Context) ([]api.PubsubScore, error) {
+func (a *NetAPI) NetPubsubScores(context.Context) ([]api.PubsubScore, error) {
 	scores := a.Sk.Get()
 	out := make([]api.PubsubScore, len(scores))
 	i := 0
@@ -54,7 +57,7 @@ func (a *Libp2pNetAPI) NetPubsubScores(context.Context) ([]api.PubsubScore, erro
 	return out, nil
 }
 
-func (a *Libp2pNetAPI) NetPeers(context.Context) ([]peer.AddrInfo, error) {
+func (a *NetAPI) NetPeers(context.Context) ([]peer.AddrInfo, error) {
 	conns := a.Host.Network().Conns()
 	out := make([]peer.AddrInfo, len(conns))
 
@@ -70,7 +73,7 @@ func (a *Libp2pNetAPI) NetPeers(context.Context) ([]peer.AddrInfo, error) {
 	return out, nil
 }
 
-func (a *Libp2pNetAPI) NetPeerInfo(_ context.Context, p peer.ID) (*api.ExtendedPeerInfo, error) {
+func (a *NetAPI) NetPeerInfo(_ context.Context, p peer.ID) (*api.ExtendedPeerInfo, error) {
 	info := &api.ExtendedPeerInfo{ID: p}
 
 	agent, err := a.Host.Peerstore().Get(p, "AgentVersion")
@@ -101,7 +104,7 @@ func (a *Libp2pNetAPI) NetPeerInfo(_ context.Context, p peer.ID) (*api.ExtendedP
 	return info, nil
 }
 
-func (a *Libp2pNetAPI) NetConnect(ctx context.Context, p peer.AddrInfo) error {
+func (a *NetAPI) NetConnect(ctx context.Context, p peer.AddrInfo) error {
 	if swrm, ok := a.Host.Network().(*swarm.Swarm); ok {
 		swrm.Backoff().Clear(p.ID)
 	}
@@ -109,22 +112,22 @@ func (a *Libp2pNetAPI) NetConnect(ctx context.Context, p peer.AddrInfo) error {
 	return a.Host.Connect(ctx, p)
 }
 
-func (a *Libp2pNetAPI) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
+func (a *NetAPI) NetAddrsListen(context.Context) (peer.AddrInfo, error) {
 	return peer.AddrInfo{
 		ID:    a.Host.ID(),
 		Addrs: a.Host.Addrs(),
 	}, nil
 }
 
-func (a *Libp2pNetAPI) NetDisconnect(ctx context.Context, p peer.ID) error {
+func (a *NetAPI) NetDisconnect(ctx context.Context, p peer.ID) error {
 	return a.Host.Network().ClosePeer(p)
 }
 
-func (a *Libp2pNetAPI) NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, error) {
+func (a *NetAPI) NetFindPeer(ctx context.Context, p peer.ID) (peer.AddrInfo, error) {
 	return a.Router.FindPeer(ctx, p)
 }
 
-func (a *Libp2pNetAPI) NetAutoNatStatus(ctx context.Context) (i api.NatInfo, err error) {
+func (a *NetAPI) NetAutoNatStatus(ctx context.Context) (i api.NatInfo, err error) {
 	autonat := a.RawHost.(*basichost.BasicHost).GetAutoNat()
 
 	if autonat == nil {
@@ -148,7 +151,7 @@ func (a *Libp2pNetAPI) NetAutoNatStatus(ctx context.Context) (i api.NatInfo, err
 	}, nil
 }
 
-func (a *Libp2pNetAPI) NetAgentVersion(ctx context.Context, p peer.ID) (string, error) {
+func (a *NetAPI) NetAgentVersion(ctx context.Context, p peer.ID) (string, error) {
 	ag, err := a.Host.Peerstore().Get(p, "AgentVersion")
 	if err != nil {
 		return "", err
@@ -161,11 +164,11 @@ func (a *Libp2pNetAPI) NetAgentVersion(ctx context.Context, p peer.ID) (string, 
 	return ag.(string), nil
 }
 
-func (a *Libp2pNetAPI) NetBandwidthStats(ctx context.Context) (metrics.Stats, error) {
+func (a *NetAPI) NetBandwidthStats(ctx context.Context) (metrics.Stats, error) {
 	return a.Reporter.GetBandwidthTotals(), nil
 }
 
-func (a *Libp2pNetAPI) NetBandwidthStatsByPeer(ctx context.Context) (map[string]metrics.Stats, error) {
+func (a *NetAPI) NetBandwidthStatsByPeer(ctx context.Context) (map[string]metrics.Stats, error) {
 	out := make(map[string]metrics.Stats)
 	for p, s := range a.Reporter.GetBandwidthByPeer() {
 		out[p.String()] = s
@@ -173,14 +176,8 @@ func (a *Libp2pNetAPI) NetBandwidthStatsByPeer(ctx context.Context) (map[string]
 	return out, nil
 }
 
-func (a *Libp2pNetAPI) NetBandwidthStatsByProtocol(ctx context.Context) (map[protocol.ID]metrics.Stats, error) {
+func (a *NetAPI) NetBandwidthStatsByProtocol(ctx context.Context) (map[protocol.ID]metrics.Stats, error) {
 	return a.Reporter.GetBandwidthByProtocol(), nil
 }
 
-func (a *Libp2pNetAPI) Discover(ctx context.Context) (apitypes.OpenRPCDocument, error) {
-	return build.OpenRPCDiscoverJSON_Full(), nil
-}
-
-func (a *Libp2pNetAPI) ID(context.Context) (peer.ID, error) {
-	return a.Host.ID(), nil
-}
+var _ api.Net = &NetAPI{}

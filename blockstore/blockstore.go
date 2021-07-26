@@ -40,6 +40,11 @@ type BlockstoreGC interface {
 	CollectGarbage() error
 }
 
+// BlockstoreSize is a trait for on-disk blockstores that can report their size
+type BlockstoreSize interface {
+	Size() (int64, error)
+}
+
 // WrapIDStore wraps the underlying blockstore in an "identity" blockstore.
 // The ID store filters out all puts for blocks with CIDs using the "identity"
 // hash function. It also extracts inlined blocks from CIDs using the identity

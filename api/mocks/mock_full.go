@@ -105,6 +105,35 @@ func (mr *MockFullNodeMockRecorder) BeaconGetEntry(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "BeaconGetEntry", reflect.TypeOf((*MockFullNode)(nil).BeaconGetEntry), arg0, arg1)
 }
 
+// ChainBlockstoreInfo mocks base method.
+func (m *MockFullNode) ChainBlockstoreInfo(arg0 context.Context) (map[string]interface{}, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainBlockstoreInfo", arg0)
+	ret0, _ := ret[0].(map[string]interface{})
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChainBlockstoreInfo indicates an expected call of ChainBlockstoreInfo.
+func (mr *MockFullNodeMockRecorder) ChainBlockstoreInfo(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainBlockstoreInfo", reflect.TypeOf((*MockFullNode)(nil).ChainBlockstoreInfo), arg0)
+}
+
+// ChainCheckBlockstore mocks base method.
+func (m *MockFullNode) ChainCheckBlockstore(arg0 context.Context) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainCheckBlockstore", arg0)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ChainCheckBlockstore indicates an expected call of ChainCheckBlockstore.
+func (mr *MockFullNodeMockRecorder) ChainCheckBlockstore(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainCheckBlockstore", reflect.TypeOf((*MockFullNode)(nil).ChainCheckBlockstore), arg0)
+}
+
 // ChainDeleteObj mocks base method.
 func (m *MockFullNode) ChainDeleteObj(arg0 context.Context, arg1 cid.Cid) error {
 	m.ctrl.T.Helper()

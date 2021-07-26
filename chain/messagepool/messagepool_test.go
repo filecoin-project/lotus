@@ -105,6 +105,7 @@ func (tma *testMpoolAPI) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) 
 func (tma *testMpoolAPI) PutMessage(m types.ChainMsg) (cid.Cid, error) {
 	return cid.Undef, nil
 }
+
 func (tma *testMpoolAPI) IsLite() bool {
 	return false
 }
@@ -286,7 +287,7 @@ func TestCheckMessageBig(t *testing.T) {
 			From:       from,
 			Value:      types.NewInt(1),
 			Nonce:      0,
-			GasLimit:   50000000,
+			GasLimit:   60000000,
 			GasFeeCap:  types.NewInt(100),
 			GasPremium: types.NewInt(1),
 			Params:     make([]byte, 41<<10), // 41KiB payload

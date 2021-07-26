@@ -12,6 +12,7 @@ VERSION:
 COMMANDS:
    daemon   Start a lotus daemon process
    backup   Create node metadata backup
+   config   Manage node config
    version  Print version
    help, h  Shows a list of commands or help for one command
    BASIC:
@@ -105,6 +106,53 @@ this command must be within this base path
 OPTIONS:
    --offline   create backup without the node running (default: false)
    --help, -h  show help (default: false)
+   
+```
+
+## lotus config
+```
+NAME:
+   lotus config - Manage node config
+
+USAGE:
+   lotus config command [command options] [arguments...]
+
+COMMANDS:
+   default  Print default node config
+   updated  Print updated node config
+   help, h  Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h     show help (default: false)
+   --version, -v  print the version (default: false)
+   
+```
+
+### lotus config default
+```
+NAME:
+   lotus config default - Print default node config
+
+USAGE:
+   lotus config default [command options] [arguments...]
+
+OPTIONS:
+   --no-comment  don't comment default values (default: false)
+   --help, -h    show help (default: false)
+   
+```
+
+### lotus config updated
+```
+NAME:
+   lotus config updated - Print updated node config
+
+USAGE:
+   lotus config updated [command options] [arguments...]
+
+OPTIONS:
+   --no-comment  don't comment default values (default: false)
+   --help, -h    show help (default: false)
    
 ```
 

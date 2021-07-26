@@ -21,10 +21,8 @@ func TestDealsWithSealingAndRPC(t *testing.T) {
 		policy.SetPreCommitChallengeDelay(oldDelay)
 	})
 
-	var blockTime = 50 * time.Millisecond
-
 	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.WithAllSubsystems()) // no mock proofs.
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMining(250 * time.Millisecond)
 	dh := kit.NewDealHarness(t, client, miner, miner)
 
 	t.Run("stdretrieval", func(t *testing.T) {

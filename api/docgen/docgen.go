@@ -270,25 +270,27 @@ func init() {
 	addExample(map[string]interface{}{"abc": 123})
 }
 
-func GetAPIType(name, pkg string) (i interface{}, t, permStruct, commonPermStruct reflect.Type) {
+func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
+
 	switch pkg {
 	case "api": // latest
 		switch name {
 		case "FullNode":
 			i = &api.FullNodeStruct{}
 			t = reflect.TypeOf(new(struct{ api.FullNode })).Elem()
-			permStruct = reflect.TypeOf(api.FullNodeStruct{}.Internal)
-			commonPermStruct = reflect.TypeOf(api.CommonStruct{}.Internal)
+			permStruct = append(permStruct, reflect.TypeOf(api.FullNodeStruct{}.Internal))
+			permStruct = append(permStruct, reflect.TypeOf(api.CommonStruct{}.Internal))
+			permStruct = append(permStruct, reflect.TypeOf(api.NetStruct{}.Internal))
 		case "StorageMiner":
 			i = &api.StorageMinerStruct{}
 			t = reflect.TypeOf(new(struct{ api.StorageMiner })).Elem()
-			permStruct = reflect.TypeOf(api.StorageMinerStruct{}.Internal)
-			commonPermStruct = reflect.TypeOf(api.CommonStruct{}.Internal)
+			permStruct = append(permStruct, reflect.TypeOf(api.StorageMinerStruct{}.Internal))
+			permStruct = append(permStruct, reflect.TypeOf(api.CommonStruct{}.Internal))
+			permStruct = append(permStruct, reflect.TypeOf(api.NetStruct{}.Internal))
 		case "Worker":
 			i = &api.WorkerStruct{}
 			t = reflect.TypeOf(new(struct{ api.Worker })).Elem()
-			permStruct = reflect.TypeOf(api.WorkerStruct{}.Internal)
-			commonPermStruct = reflect.TypeOf(api.WorkerStruct{}.Internal)
+			permStruct = append(permStruct, reflect.TypeOf(api.WorkerStruct{}.Internal))
 		default:
 			panic("unknown type")
 		}
@@ -297,8 +299,9 @@ func GetAPIType(name, pkg string) (i interface{}, t, permStruct, commonPermStruc
 		case "FullNode":
 			i = v0api.FullNodeStruct{}
 			t = reflect.TypeOf(new(struct{ v0api.FullNode })).Elem()
-			permStruct = reflect.TypeOf(v0api.FullNodeStruct{}.Internal)
-			commonPermStruct = reflect.TypeOf(v0api.CommonStruct{}.Internal)
+			permStruct = append(permStruct, reflect.TypeOf(v0api.FullNodeStruct{}.Internal))
+			permStruct = append(permStruct, reflect.TypeOf(v0api.CommonStruct{}.Internal))
+			permStruct = append(permStruct, reflect.TypeOf(v0api.NetStruct{}.Internal))
 		default:
 			panic("unknown type")
 		}

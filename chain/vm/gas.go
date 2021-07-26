@@ -3,12 +3,11 @@ package vm
 import (
 	"fmt"
 
-	"github.com/filecoin-project/lotus/build"
-
 	"github.com/filecoin-project/go-address"
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
 	vmr5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	"github.com/ipfs/go-cid"
@@ -80,8 +79,8 @@ type Pricelist interface {
 	OnVerifyConsensusFault() GasCharge
 }
 
-var prices = map[abi.ChainEpoch]Pricelist{
-	abi.ChainEpoch(0): &pricelistV0{
+var prices = map[network.Version]Pricelist{
+	network.Version0: &pricelistV0{
 		computeGasMulti: 1,
 		storageGasMulti: 1000,
 
@@ -130,7 +129,7 @@ var prices = map[abi.ChainEpoch]Pricelist{
 		verifyPostDiscount:   true,
 		verifyConsensusFault: 495422,
 	},
-	abi.ChainEpoch(build.UpgradeCalicoHeight): &pricelistV0{
+	network.Version6AndAHalf: &pricelistV0{
 		computeGasMulti: 1,
 		storageGasMulti: 1300,
 
@@ -208,21 +207,19 @@ var prices = map[abi.ChainEpoch]Pricelist{
 	},
 }
 
-// PricelistByEpoch finds the latest prices for the given epoch
-func PricelistByEpoch(epoch abi.ChainEpoch) Pricelist {
-	// since we are storing the prices as map or epoch to price
-	// we need to get the price with the highest epoch that is lower or equal to the `epoch` arg
-	bestEpoch := abi.ChainEpoch(0)
-	bestPrice := prices[bestEpoch]
-	for e, pl := range prices {
-		// if `e` happened after `bestEpoch` and `e` is earlier or equal to the target `epoch`
-		if e > bestEpoch && e <= epoch {
-			bestEpoch = e
+// PricelistByVersion finds the latest prices for the given network version
+func PricelistByVersion(version network.Version) Pricelist {
+	bestVersion := network.Version0
+	bestPrice := prices[bestVersion]
+	for nv, pl := range prices {
+		// if `nv > bestVersion` and `nv <= version`
+		if nv > bestVersion && nv <= version {
+			bestVersion = nv
 			bestPrice = pl
 		}
 	}
 	if bestPrice == nil {
-		panic(fmt.Sprintf("bad setup: no gas prices available for epoch %d", epoch))
+		panic(fmt.Sprintf("bad setup: no gas prices available for version %d", version))
 	}
 	return bestPrice
 }

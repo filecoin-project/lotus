@@ -311,6 +311,15 @@ func (s *state4) UnallocatedSectorNumbers(count int) ([]abi.SectorNumber, error)
 	return sectors, nil
 }
 
+func (s *state4) GetAllocatedSectors() (*bitfield.BitField, error) {
+	var allocatedSectors bitfield.BitField
+	if err := s.store.Get(s.store.Context(), s.State.AllocatedSectors, &allocatedSectors); err != nil {
+		return nil, err
+	}
+
+	return &allocatedSectors, nil
+}
+
 func (s *state4) LoadDeadline(idx uint64) (Deadline, error) {
 	dls, err := s.State.LoadDeadlines(s.store)
 	if err != nil {

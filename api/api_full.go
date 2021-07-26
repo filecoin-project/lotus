@@ -58,6 +58,7 @@ const LookbackNoLimit = abi.ChainEpoch(-1)
 // FullNode API is a low-level interface to the Filecoin network full node
 type FullNode interface {
 	Common
+	Net
 
 	// MethodGroup: Chain
 	// The Chain method group contains methods for interacting with the
@@ -162,6 +163,13 @@ type FullNode interface {
 	// state trees.
 	// If oldmsgskip is set, messages from before the requested roots are also not included.
 	ChainExport(ctx context.Context, nroots abi.ChainEpoch, oldmsgskip bool, tsk types.TipSetKey) (<-chan []byte, error) //perm:read
+
+	// ChainCheckBlockstore performs an (asynchronous) health check on the chain/state blockstore
+	// if supported by the underlying implementation.
+	ChainCheckBlockstore(context.Context) error //perm:admin
+
+	// ChainBlockstoreInfo returns some basic information about the blockstore
+	ChainBlockstoreInfo(context.Context) (map[string]interface{}, error) //perm:read
 
 	// MethodGroup: Beacon
 	// The Beacon method group contains methods for interacting with the random beacon (DRAND)

@@ -131,6 +131,9 @@ install-miner:
 install-worker:
 	install -C ./lotus-worker /usr/local/bin/lotus-worker
 
+install-app:
+	install -C ./$(APP) /usr/local/bin/$(APP)
+
 # TOOLS
 
 lotus-seed: $(BUILD_DEPS)
@@ -333,6 +336,9 @@ api-gen:
 	goimports -w api
 .PHONY: api-gen
 
+cfgdoc-gen:
+	go run ./node/config/cfgdocgen > ./node/config/doc_gen.go
+
 appimage: lotus
 	rm -rf appimage-builder-cache || true
 	rm AppDir/io.filecoin.lotus.desktop || true
@@ -370,7 +376,7 @@ docsgen-openrpc-worker: docsgen-openrpc-bin
 
 .PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
 
-gen: actors-gen type-gen method-gen docsgen api-gen circleci
+gen: actors-gen type-gen method-gen cfgdoc-gen docsgen api-gen circleci
 	@echo ">>> IF YOU'VE MODIFIED THE CLI, REMEMBER TO ALSO MAKE docsgen-cli"
 .PHONY: gen
 

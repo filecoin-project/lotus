@@ -62,8 +62,11 @@ func init() {
 type Config struct {
 	// MarkSetType is the type of mark set to use.
 	//
-	// Only current sane value is "map", but we may add an option for a disk-backed
-	// markset for memory-constrained situations.
+	// The default value is "map", which uses an in-memory map-backed markset.
+	// If you are constrained in memory (i.e. compaction runs out of memory), you
+	// can use "badger", which will use a disk-backed markset using badger.
+	// Note that compaction will take quite a bit longer when using the "badger" option,
+	// but that shouldn't really matter (as long as it is under 7.5hrs).
 	MarkSetType string
 
 	// DiscardColdBlocks indicates whether to skip moving cold blocks to the coldstore.
@@ -71,6 +74,13 @@ type Config struct {
 	// which skips moving (as it is a noop, but still takes time to read all the cold objects)
 	// and directly purges cold blocks.
 	DiscardColdBlocks bool
+
+	// HotstoreMessageRetention indicates the hotstore retention policy for messages.
+	// It has the following semantics:
+	// - a value of 0 will only retain messages within the compaction boundary (4 finalities)
+	// - a positive integer indicates the number of finalities, outside the compaction boundary,
+	//   for which messages will be retained in the hotstore.
+	HotStoreMessageRetention uint64
 }
 
 // ChainAccessor allows the Splitstore to access the chain. It will most likely
@@ -92,7 +102,8 @@ type SplitStore struct {
 	compacting int32 // compaction/prune/warmup in progress
 	closing    int32 // the splitstore is closing
 
-	cfg *Config
+	cfg  *Config
+	path string
 
 	mx          sync.Mutex
 	warmupEpoch abi.ChainEpoch // protected by mx
@@ -128,6 +139,9 @@ type SplitStore struct {
 	txnRefsMx       sync.Mutex
 	txnRefs         map[cid.Cid]struct{}
 	txnMissing      map[cid.Cid]struct{}
+
+	// registered protectors
+	protectors []func(func(cid.Cid) error) error
 }
 
 var _ bstore.Blockstore = (*SplitStore)(nil)
@@ -156,6 +170,7 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 	// and now we can make a SplitStore
 	ss := &SplitStore{
 		cfg:        cfg,
+		path:       path,
 		ds:         ds,
 		cold:       cold,
 		hot:        hots,
@@ -518,6 +533,13 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 	chain.SubscribeHeadChanges(s.HeadChange)
 
 	return nil
+}
+
+func (s *SplitStore) AddProtector(protector func(func(cid.Cid) error) error) {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	s.protectors = append(s.protectors, protector)
 }
 
 func (s *SplitStore) Close() error {

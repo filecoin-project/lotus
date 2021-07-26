@@ -13,7 +13,7 @@ COMMANDS:
    init     Initialize a lotus miner repo
    run      Start a lotus miner process
    stop     Stop a running lotus miner
-   config   Output default configuration
+   config   Manage node config
    backup   Create node metadata backup
    version  Print version
    help, h  Shows a list of commands or help for one command
@@ -145,13 +145,47 @@ OPTIONS:
 ## lotus-miner config
 ```
 NAME:
-   lotus-miner config - Output default configuration
+   lotus-miner config - Manage node config
 
 USAGE:
-   lotus-miner config [command options] [arguments...]
+   lotus-miner config command [command options] [arguments...]
+
+COMMANDS:
+   default  Print default node config
+   updated  Print updated node config
+   help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --help, -h     show help (default: false)
+   --version, -v  print the version (default: false)
+   
+```
+
+### lotus-miner config default
+```
+NAME:
+   lotus-miner config default - Print default node config
+
+USAGE:
+   lotus-miner config default [command options] [arguments...]
+
+OPTIONS:
+   --no-comment  don't comment default values (default: false)
+   --help, -h    show help (default: false)
+   
+```
+
+### lotus-miner config updated
+```
+NAME:
+   lotus-miner config updated - Print updated node config
+
+USAGE:
+   lotus-miner config updated [command options] [arguments...]
+
+OPTIONS:
+   --no-comment  don't comment default values (default: false)
+   --help, -h    show help (default: false)
    
 ```
 
@@ -207,6 +241,7 @@ COMMANDS:
    control                Manage control addresses
    propose-change-worker  Propose a worker address change
    confirm-change-worker  Confirm a worker address change
+   compact-allocated      compact allocated sectors bitfield
    help, h                Shows a list of commands or help for one command
 
 OPTIONS:
@@ -358,6 +393,22 @@ USAGE:
 OPTIONS:
    --really-do-it  Actually send transaction performing the action (default: false)
    --help, -h      show help (default: false)
+   
+```
+
+### lotus-miner actor compact-allocated
+```
+NAME:
+   lotus-miner actor compact-allocated - compact allocated sectors bitfield
+
+USAGE:
+   lotus-miner actor compact-allocated [command options] [arguments...]
+
+OPTIONS:
+   --mask-last-offset value  Mask sector IDs from 0 to 'higest_allocated - offset' (default: 0)
+   --mask-upto-n value       Mask sector IDs from 0 to 'n' (default: 0)
+   --really-do-it            Actually send transaction performing the action (default: false)
+   --help, -h                show help (default: false)
    
 ```
 
