@@ -100,7 +100,7 @@ type FullNodeStruct struct {
 
 		ChainBlockstoreInfo func(p0 context.Context) (map[string]interface{}, error) `perm:"read"`
 
-		ChainCheckBlockstore func(p0 context.Context) error `perm:"read"`
+		ChainCheckBlockstore func(p0 context.Context) error `perm:"admin"`
 
 		ChainDeleteObj func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
 

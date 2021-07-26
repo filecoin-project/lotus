@@ -372,7 +372,7 @@ ChainCheckBlockstore performs an (asynchronous) health check on the chain/state 
 if supported by the underlying implementation.
 
 
-Perms: read
+Perms: admin
 
 Inputs: `null`
 
