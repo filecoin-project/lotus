@@ -244,7 +244,7 @@ var marketImportDatastoreCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "backup-path",
-			Usage:    "path to the backup directory",
+			Usage:    "path to the backup file",
 			Required: true,
 		},
 	},
