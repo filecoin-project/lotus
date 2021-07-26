@@ -50,7 +50,9 @@ func TestFirstDealEnablesMining(t *testing.T) {
 	}()
 
 	// now perform the deal.
-	deal := dh.StartDeal(ctx, ref.Root, false, 0)
+	dp := dh.DefaultStartDealParams()
+	dp.Data.Root = ref.Root
+	deal := dh.StartDeal(ctx, dp)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)

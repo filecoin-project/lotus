@@ -6,32 +6,26 @@ import (
 	"testing"
 	"time"
 
+	commcid "github.com/filecoin-project/go-fil-commcid"
+	commp "github.com/filecoin-project/go-fil-commp-hashhash"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/require"
 )
 
 func TestOfflineDealFlow(t *testing.T) {
-	blocktime := 10 * time.Millisecond
 
-	// For these tests where the block time is artificially short, just use
-	// a deal start epoch that is guaranteed to be far enough in the future
-	// so that the deal starts sealing in time
-	startEpoch := abi.ChainEpoch(2 << 12)
-
-	runTest := func(t *testing.T, fastRet bool) {
+	runTest := func(t *testing.T, fastRet bool, upscale abi.PaddedPieceSize) {
 		ctx := context.Background()
-		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
-		ens.InterconnectAll().BeginMining(blocktime)
+		client, miner, ens := kit.EnsembleMinimal(t, kit.WithAllSubsystems()) // no mock proofs
+		ens.InterconnectAll().BeginMining(250 * time.Millisecond)
 
 		dh := kit.NewDealHarness(t, client, miner, miner)
 
 		// Create a random file and import on the client.
-		res, inFile := client.CreateImportFile(ctx, 1, 0)
+		res, inFile := client.CreateImportFile(ctx, 1, 200)
 
 		// Get the piece size and commP
 		rootCid := res.Root
@@ -39,31 +33,32 @@ func TestOfflineDealFlow(t *testing.T) {
 		require.NoError(t, err)
 		t.Log("FILE CID:", rootCid)
 
-		// Create a storage deal with the miner
-		maddr, err := miner.ActorAddress(ctx)
-		require.NoError(t, err)
+		// test whether padding works as intended
+		if upscale > 0 {
+			newRawCp, err := commp.PadCommP(
+				pieceInfo.PieceCID.Hash()[len(pieceInfo.PieceCID.Hash())-32:],
+				uint64(pieceInfo.PieceSize),
+				uint64(upscale),
+			)
+			require.NoError(t, err)
 
-		addr, err := client.WalletDefaultAddress(ctx)
-		require.NoError(t, err)
+			pieceInfo.PieceSize = upscale
+			pieceInfo.PieceCID, err = commcid.DataCommitmentV1ToCID(newRawCp)
+			require.NoError(t, err)
+		}
 
-		// Manual storage deal (offline deal)
-		dataRef := &storagemarket.DataRef{
+		dp := dh.DefaultStartDealParams()
+		dp.DealStartEpoch = abi.ChainEpoch(4 << 10)
+		dp.FastRetrieval = fastRet
+		// Replace with params for manual storage deal (offline deal)
+		dp.Data = &storagemarket.DataRef{
 			TransferType: storagemarket.TTManual,
 			Root:         rootCid,
 			PieceCid:     &pieceInfo.PieceCID,
 			PieceSize:    pieceInfo.PieceSize.Unpadded(),
 		}
 
-		proposalCid, err := client.ClientStartDeal(ctx, &api.StartDealParams{
-			Data:              dataRef,
-			Wallet:            addr,
-			Miner:             maddr,
-			EpochPrice:        types.NewInt(1000000),
-			DealStartEpoch:    startEpoch,
-			MinBlocksDuration: uint64(build.MinDealDuration),
-			FastRetrieval:     fastRet,
-		})
-		require.NoError(t, err)
+		proposalCid := dh.StartDeal(ctx, dp)
 
 		// Wait for the deal to reach StorageDealCheckForAcceptance on the client
 		cd, err := client.ClientGetDealInfo(ctx, *proposalCid)
@@ -96,6 +91,7 @@ func TestOfflineDealFlow(t *testing.T) {
 
 	}
 
-	t.Run("stdretrieval", func(t *testing.T) { runTest(t, false) })
-	t.Run("fastretrieval", func(t *testing.T) { runTest(t, true) })
+	t.Run("stdretrieval", func(t *testing.T) { runTest(t, false, 0) })
+	t.Run("fastretrieval", func(t *testing.T) { runTest(t, true, 0) })
+	t.Run("fastretrieval", func(t *testing.T) { runTest(t, true, 1024) })
 }
