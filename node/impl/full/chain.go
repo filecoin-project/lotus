@@ -656,3 +656,12 @@ func (a *ChainAPI) ChainCheckBlockstore(ctx context.Context) error {
 
 	return checker.Check()
 }
+
+func (a *ChainAPI) ChainBlockstoreInfo(ctx context.Context) (map[string]interface{}, error) {
+	info, ok := a.BaseBlockstore.(interface{ Info() map[string]interface{} })
+	if !ok {
+		return nil, xerrors.Errorf("underlying blockstore does not provide info")
+	}
+
+	return info.Info(), nil
+}

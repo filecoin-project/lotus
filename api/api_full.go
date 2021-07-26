@@ -168,6 +168,9 @@ type FullNode interface {
 	// if supported by the underlying implementation.
 	ChainCheckBlockstore(context.Context) error //perm:read
 
+	// ChainBlockstoreInfo returns some basic information about the blockstore
+	ChainBlockstoreInfo(context.Context) (map[string]interface{}, error) //perm:read
+
 	// MethodGroup: Beacon
 	// The Beacon method group contains methods for interacting with the random beacon (DRAND)
 
