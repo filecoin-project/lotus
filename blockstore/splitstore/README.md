@@ -99,3 +99,17 @@ Compaction works transactionally with the following algorithm:
 ## Garbage Collection
 
 TBD -- see [#6577](https://github.com/filecoin-project/lotus/issues/6577)
+
+## Utilities
+
+`lotus-shed` has a `splitstore` command which provides some utilities:
+
+- `rollback` -- rolls back a splitstore installation.
+  This command copies the hotstore on top of the coldstore, and then deletes the splitstore
+  directory and associated metadata keys.
+  It can also optionally compact/gc the coldstore after the copy (with the `--gc-coldstore` flag)
+  and automatically rewrite the lotus config to disable splitstore (with the `--rewrite-config` flag).
+  Note: the node *must be stopped* before running this command.
+- `check` -- asynchronously runs a basic healthcheck on the splitstore.
+  The results are appended to `<lotus-repo>/datastore/splitstore/check.txt`.
+- `info` -- prints some basic information about the splitstore.
