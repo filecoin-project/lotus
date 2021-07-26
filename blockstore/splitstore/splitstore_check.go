@@ -9,8 +9,10 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/types"
 	cid "github.com/ipfs/go-cid"
+
+	bstore "github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // performs an asynchronous health-check on the splitstore; results are appended to
@@ -125,4 +127,24 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 	write("DONE")
 
 	return nil
+}
+
+// provides some basic information about the splitstore
+func (s *SplitStore) Info() map[string]interface{} {
+	info := make(map[string]interface{})
+	info["base epoch"] = s.baseEpoch
+	info["warmup epoch"] = s.warmupEpoch
+	info["compactions"] = s.compactionIndex
+
+	sizer, ok := s.hot.(bstore.BlockstoreSize)
+	if ok {
+		size, err := sizer.Size()
+		if err != nil {
+			log.Warnf("error getting hotstore size: %s", err)
+		} else {
+			info["hotstore size"] = size
+		}
+	}
+
+	return info
 }
