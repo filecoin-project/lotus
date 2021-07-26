@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/dagstore/index"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -40,7 +41,7 @@ type DAGStore interface {
 	RegisterShard(ctx context.Context, key shard.Key, mnt mount.Mount, out chan dagstore.ShardResult, opts dagstore.RegisterOpts) error
 	AcquireShard(ctx context.Context, key shard.Key, out chan dagstore.ShardResult, _ dagstore.AcquireOpts) error
 	RecoverShard(ctx context.Context, key shard.Key, out chan dagstore.ShardResult, _ dagstore.RecoverOpts) error
-	GC(ctx context.Context) (map[shard.Key]error, error)
+	GC(ctx context.Context) (*dagstore.GCResult, error)
 	Close() error
 }
 
@@ -74,16 +75,22 @@ func NewDagStoreWrapper(cfg MarketDAGStoreConfig, mountApi LotusAccessor) (*Wrap
 	failureCh := make(chan dagstore.ShardResult, 1)
 	// The dagstore will write Trace events to the `traceCh` here.
 	traceCh := make(chan dagstore.Trace, 32)
+
+	irepo, err := index.NewFSRepo(cfg.IndexDir)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to initialise dagstore index repo")
+	}
+
 	dcfg := dagstore.Config{
 		TransientsDir:      cfg.TransientsDir,
-		IndexDir:           cfg.IndexDir,
+		IndexRepo:          irepo,
 		Datastore:          cfg.Datastore,
 		MountRegistry:      registry,
 		FailureCh:          failureCh,
 		TraceCh:            traceCh,
 		MaxConcurrentFetch: cfg.MaxConcurrentFetch,
 		MaxConcurrentIndex: cfg.MaxConcurrentIndex,
-		RecoverStrategy:    dagstore.RecoverLazy,
+		RecoverOnStart:     dagstore.RecoverOnAcquire,
 	}
 	dagStore, err := dagstore.NewDAGStore(dcfg)
 	if err != nil {

@@ -149,7 +149,7 @@ func (m *mockDagStore) RecoverShard(ctx context.Context, key shard.Key, out chan
 	return nil
 }
 
-func (m *mockDagStore) GC(ctx context.Context) (map[shard.Key]error, error) {
+func (m *mockDagStore) GC(ctx context.Context) (*dagstore.GCResult, error) {
 	select {
 	case m.gc <- struct{}{}:
 	default:
