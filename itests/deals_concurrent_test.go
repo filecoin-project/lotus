@@ -186,7 +186,21 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 		cancel()
 		wg.Wait()
 
-		require.LessOrEqual(t, maxOngoing, graphsyncThrottle)
+		// The eventing systems across go-data-transfer and go-graphsync
+		// are racy, and that's why we can't enforce graphsyncThrottle exactly,
+		// without making this test racy.
+		//
+		// Essentially what could happen is that the graphsync layer starts the
+		// next transfer before the go-data-transfer FSM has the opportunity to
+		// move the previously completed transfer to the next stage, thus giving
+		// the appearance that more than graphsyncThrottle transfers are
+		// in progress.
+		//
+		// Concurrency (20) is x10 higher than graphsyncThrottle (2), so if all
+		// 20 transfers are not happening at once, we know the throttle is
+		// in effect. Thus we are a little bit lenient here to account for the
+		// above races and allow up to graphsyncThrottle*2.
+		require.LessOrEqual(t, maxOngoing, graphsyncThrottle*2)
 	}
 
 	runTest(t)
