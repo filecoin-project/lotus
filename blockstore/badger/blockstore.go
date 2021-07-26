@@ -95,6 +95,7 @@ var _ blockstore.Blockstore = (*Blockstore)(nil)
 var _ blockstore.Viewer = (*Blockstore)(nil)
 var _ blockstore.BlockstoreIterator = (*Blockstore)(nil)
 var _ blockstore.BlockstoreGC = (*Blockstore)(nil)
+var _ blockstore.BlockstoreSize = (*Blockstore)(nil)
 var _ io.Closer = (*Blockstore)(nil)
 
 // Open creates a new badger-backed blockstore, with the supplied options.
@@ -189,6 +190,17 @@ func (b *Blockstore) CollectGarbage() error {
 	}
 
 	return err
+}
+
+// Size returns the aggregate size of the blockstore
+func (b *Blockstore) Size() (int64, error) {
+	if err := b.access(); err != nil {
+		return 0, err
+	}
+	defer b.viewers.Done()
+
+	lsm, vlog := b.DB.Size()
+	return lsm + vlog, nil
 }
 
 // View implements blockstore.Viewer, which leverages zero-copy read-only
