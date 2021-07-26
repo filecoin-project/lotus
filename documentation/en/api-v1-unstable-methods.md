@@ -11,6 +11,7 @@
 * [Beacon](#Beacon)
   * [BeaconGetEntry](#BeaconGetEntry)
 * [Chain](#Chain)
+  * [ChainBlockstoreInfo](#ChainBlockstoreInfo)
   * [ChainCheckBlockstore](#ChainCheckBlockstore)
   * [ChainDeleteObj](#ChainDeleteObj)
   * [ChainExport](#ChainExport)
@@ -350,6 +351,21 @@ Response:
 The Chain method group contains methods for interacting with the
 blockchain, but that do not require any form of state computation.
 
+
+### ChainBlockstoreInfo
+ChainBlockstoreInfo returns some basic information about the blockstore
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "abc": 123
+}
+```
 
 ### ChainCheckBlockstore
 ChainCheckBlockstore performs an (asynchronous) health check on the chain/state blockstore

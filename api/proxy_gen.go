@@ -98,6 +98,8 @@ type FullNodeStruct struct {
 	Internal struct {
 		BeaconGetEntry func(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
 
+		ChainBlockstoreInfo func(p0 context.Context) (map[string]interface{}, error) `perm:"read"`
+
 		ChainCheckBlockstore func(p0 context.Context) error `perm:"read"`
 
 		ChainDeleteObj func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
@@ -951,6 +953,14 @@ func (s *FullNodeStruct) BeaconGetEntry(p0 context.Context, p1 abi.ChainEpoch) (
 
 func (s *FullNodeStub) BeaconGetEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
 	return nil, xerrors.New("method not supported")
+}
+
+func (s *FullNodeStruct) ChainBlockstoreInfo(p0 context.Context) (map[string]interface{}, error) {
+	return s.Internal.ChainBlockstoreInfo(p0)
+}
+
+func (s *FullNodeStub) ChainBlockstoreInfo(p0 context.Context) (map[string]interface{}, error) {
+	return *new(map[string]interface{}), xerrors.New("method not supported")
 }
 
 func (s *FullNodeStruct) ChainCheckBlockstore(p0 context.Context) error {
