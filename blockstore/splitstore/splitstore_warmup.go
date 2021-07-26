@@ -9,6 +9,7 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -49,8 +50,11 @@ func (s *SplitStore) warmup(curTs *types.TipSet) error {
 // and headers all the way up to genesis.
 // objects are written in batches so as to minimize overhead.
 func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
+	var boundaryEpoch abi.ChainEpoch
 	epoch := curTs.Height()
-	boundaryEpoch := epoch - WarmupBoundary
+	if WarmupBoundary < epoch {
+		boundaryEpoch = epoch - WarmupBoundary
+	}
 	batchHot := make([]blocks.Block, 0, batchSize)
 	count := int64(0)
 	xcount := int64(0)
