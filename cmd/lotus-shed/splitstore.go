@@ -30,6 +30,7 @@ var splitstoreCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		splitstoreRollbackCmd,
 		splitstoreCheckCmd,
+		splitstoreInfoCmd,
 	},
 }
 
@@ -279,5 +280,31 @@ var splitstoreCheckCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 		return api.ChainCheckBlockstore(ctx)
+	},
+}
+
+var splitstoreInfoCmd = &cli.Command{
+	Name:        "info",
+	Description: "prints some basic splitstore information",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+		info, err := api.ChainBlockstoreInfo(ctx)
+		if err != nil {
+			return err
+		}
+
+		for k, v := range info {
+			fmt.Print(k)
+			fmt.Print(": ")
+			fmt.Println(v)
+		}
+
+		return nil
 	},
 }
