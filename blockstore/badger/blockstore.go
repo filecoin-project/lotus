@@ -96,7 +96,7 @@ type Blockstore struct {
 	state   int
 	viewers sync.WaitGroup
 
-	moveMx    sync.RWMutex
+	moveMx    sync.Mutex
 	moveCond  sync.Cond
 	moveState int
 	rlock     int
