@@ -39,7 +39,7 @@ func TestDealWithMarketAndMinerNode(t *testing.T) {
 	// For these tests where the block time is artificially short, just use
 	// a deal start epoch that is guaranteed to be far enough in the future
 	// so that the deal starts sealing in time
-	startEpoch := abi.ChainEpoch(2 << 12)
+	startEpoch := abi.ChainEpoch(8 << 10)
 
 	runTest := func(t *testing.T, n int, fastRetrieval bool, carExport bool) {
 		api.RunningNodeType = api.NodeMiner // TODO(anteva): fix me
@@ -81,8 +81,6 @@ func TestDealCyclesConcurrent(t *testing.T) {
 
 	kit.QuietMiningLogs()
 
-	blockTime := 10 * time.Millisecond
-
 	// For these tests where the block time is artificially short, just use
 	// a deal start epoch that is guaranteed to be far enough in the future
 	// so that the deal starts sealing in time
@@ -90,7 +88,7 @@ func TestDealCyclesConcurrent(t *testing.T) {
 
 	runTest := func(t *testing.T, n int, fastRetrieval bool, carExport bool) {
 		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
-		ens.InterconnectAll().BeginMining(blockTime)
+		ens.InterconnectAll().BeginMining(250 * time.Millisecond)
 		dh := kit.NewDealHarness(t, client, miner, miner)
 
 		dh.RunConcurrentDeals(kit.RunConcurrentDealsOpts{
@@ -126,8 +124,6 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 		policy.SetPreCommitChallengeDelay(oldDelay)
 	})
 
-	blockTime := 10 * time.Millisecond
-
 	// For these tests where the block time is artificially short, just use
 	// a deal start epoch that is guaranteed to be far enough in the future
 	// so that the deal starts sealing in time
@@ -142,7 +138,7 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 			node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(graphsyncThrottle))),
 			node.Override(new(dtypes.Graphsync), modules.Graphsync(graphsyncThrottle)),
 		))
-		ens.InterconnectAll().BeginMining(blockTime)
+		ens.InterconnectAll().BeginMining(250 * time.Millisecond)
 		dh := kit.NewDealHarness(t, client, miner, miner)
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -190,7 +186,21 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 		cancel()
 		wg.Wait()
 
-		require.LessOrEqual(t, maxOngoing, graphsyncThrottle)
+		// The eventing systems across go-data-transfer and go-graphsync
+		// are racy, and that's why we can't enforce graphsyncThrottle exactly,
+		// without making this test racy.
+		//
+		// Essentially what could happen is that the graphsync layer starts the
+		// next transfer before the go-data-transfer FSM has the opportunity to
+		// move the previously completed transfer to the next stage, thus giving
+		// the appearance that more than graphsyncThrottle transfers are
+		// in progress.
+		//
+		// Concurrency (20) is x10 higher than graphsyncThrottle (2), so if all
+		// 20 transfers are not happening at once, we know the throttle is
+		// in effect. Thus we are a little bit lenient here to account for the
+		// above races and allow up to graphsyncThrottle*2.
+		require.LessOrEqual(t, maxOngoing, graphsyncThrottle*2)
 	}
 
 	runTest(t)
