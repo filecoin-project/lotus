@@ -295,8 +295,6 @@ var visAllocatedSectorsCmd = &cli.Command{
 			var lk sync.Mutex
 			parmap.Par(32, miners, func(a address.Address) {
 				pow, err := api.StateMinerPower(ctx, a, types.EmptyTSK)
-				if err != nil {
-				}
 
 				lk.Lock()
 				if err == nil {
