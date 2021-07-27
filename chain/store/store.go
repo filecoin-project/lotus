@@ -119,7 +119,7 @@ type ChainStore struct {
 	reorgCh        chan<- reorg
 	reorgNotifeeCh chan ReorgNotifee
 
-	mmCache *lru.ARCCache
+	mmCache *lru.ARCCache // msg meta cache (mh.Messages -> secp, bls []cid)
 	tsCache *lru.ARCCache
 
 	evtTypes [1]journal.EventType
