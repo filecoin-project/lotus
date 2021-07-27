@@ -291,7 +291,7 @@ func (b *Blockstore) movingGC() error {
 		dir := filepath.Dir(linkPath)
 		path = filepath.Join(dir, name)
 	}
-	path = fmt.Sprintf("%s.%d", path, time.Now().Unix())
+	path = fmt.Sprintf("%s.%d", path, time.Now().UnixNano())
 
 	log.Infof("moving blockstore from %s to %s", b.opts.Dir, path)
 

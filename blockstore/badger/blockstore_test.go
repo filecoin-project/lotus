@@ -163,72 +163,88 @@ func testMove(t *testing.T, optsF func(string) Options) {
 	}
 
 	// now check that we have all the blocks in have and none in the deleted lists
-	for _, blk := range have {
-		has, err := db.Has(blk.Cid())
-		if err != nil {
-			t.Fatal(err)
+	checkBlocks := func() {
+		for _, blk := range have {
+			has, err := db.Has(blk.Cid())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !has {
+				t.Fatal("missing block")
+			}
+
+			blk2, err := db.Get(blk.Cid())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !bytes.Equal(blk.RawData(), blk2.RawData()) {
+				t.Fatal("data mismatch")
+			}
 		}
 
-		if !has {
-			t.Fatal("missing block")
-		}
+		for _, c := range deleted {
+			has, err := db.Has(c)
+			if err != nil {
+				t.Fatal(err)
+			}
 
-		blk2, err := db.Get(blk.Cid())
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if !bytes.Equal(blk.RawData(), blk2.RawData()) {
-			t.Fatal("data mismatch")
+			if has {
+				t.Fatal("resurrected block")
+			}
 		}
 	}
 
-	for _, c := range deleted {
-		has, err := db.Has(c)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if has {
-			t.Fatal("resurrected block")
-		}
-	}
+	checkBlocks()
 
 	// check the basePath -- it should contain a directory with name db.{timestamp}, soft-linked
 	// to db and nothing else
-	entries, err := os.ReadDir(basePath)
-	if err != nil {
+	checkPath := func() {
+		entries, err := os.ReadDir(basePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(entries) != 2 {
+			t.Fatalf("too many entries; expected %d but got %d", 2, len(entries))
+		}
+
+		var haveDB, haveDBLink bool
+		for _, e := range entries {
+			if e.Name() == "db" {
+				if (e.Type() & os.ModeSymlink) == 0 {
+					t.Fatal("found db, but it's not a symlink")
+				}
+				haveDBLink = true
+				continue
+			}
+			if strings.HasPrefix(e.Name(), "db.") {
+				if !e.Type().IsDir() {
+					t.Fatal("found db prefix, but it's not a directory")
+				}
+				haveDB = true
+				continue
+			}
+		}
+
+		if !haveDB {
+			t.Fatal("db directory is missing")
+		}
+		if !haveDBLink {
+			t.Fatal("db link is missing")
+		}
+	}
+
+	checkPath()
+
+	// now do another FullGC to test the double move and following of symlinks
+	if err := db.CollectGarbage(blockstore.WithFullGC(true)); err != nil {
 		t.Fatal(err)
 	}
 
-	if len(entries) != 2 {
-		t.Fatalf("too many entries; expected %d but got %d", 2, len(entries))
-	}
-
-	var haveDB, haveDBLink bool
-	for _, e := range entries {
-		if e.Name() == "db" {
-			if (e.Type() & os.ModeSymlink) == 0 {
-				t.Fatal("found db, but it's not a symlink")
-			}
-			haveDBLink = true
-			continue
-		}
-		if strings.HasPrefix(e.Name(), "db.") {
-			if !e.Type().IsDir() {
-				t.Fatal("found db prefix, but it's not a directory")
-			}
-			haveDB = true
-			continue
-		}
-	}
-
-	if !haveDB {
-		t.Fatal("db directory is missing")
-	}
-	if !haveDBLink {
-		t.Fatal("db link is missing")
-	}
+	checkBlocks()
+	checkPath()
 }
 
 func TestMoveNoPrefix(t *testing.T) {
