@@ -222,15 +222,14 @@ func (b *Blockstore) unlockMove(state int) {
 	b.moveMx.Unlock()
 }
 
-// moveTo moves the blockstore to path, and creates a symlink from the current path
-// to the new path; the old blockstore is deleted.
-// If path is empty, then a new path adjacent to the current path is created
-// automatically.
-// The blockstore must accept new writes during the move and ensure that these
+// movingGC moves the blockstore to a new path, adjacent to the current path, and creates
+// a symlink from the current path to the new path; the old blockstore is deleted.
+//
+// The blockstore MUST accept new writes during the move and ensure that these
 // are persisted to the new blockstore; if a failure occurs aboring the move,
 // then they must be peristed to the old blockstore.
 // In short, the blockstore must not lose data from new writes during the move.
-func (b *Blockstore) moveTo(path string) error {
+func (b *Blockstore) movingGC() error {
 	// this inlines moveLock/moveUnlock for the initial state check to prevent a second move
 	// while one is in progress without clobbering state
 	b.moveMx.Lock()
@@ -248,9 +247,7 @@ func (b *Blockstore) moveTo(path string) error {
 	b.moveCond.Broadcast()
 	b.moveMx.Unlock()
 
-	if path == "" {
-		path = fmt.Sprintf("%s.%d", b.opts.Dir, time.Now().Unix())
-	}
+	path := fmt.Sprintf("%s.%d", b.opts.Dir, time.Now().Unix())
 
 	defer func() {
 		b.lockMove()
@@ -469,39 +466,6 @@ func (b *Blockstore) deleteDB(path string) {
 	}
 }
 
-// CollectGarbage compacts and runs garbage collection on the value log;
-// implements the BlockstoreGC trait
-func (b *Blockstore) CollectGarbage(options map[interface{}]interface{}) error {
-	if err := b.access(); err != nil {
-		return err
-	}
-	defer b.viewers.Done()
-
-	var movingGC bool
-	movingGCOpt, ok := options[blockstore.BlockstoreMovingGC]
-	if ok {
-		movingGC, ok = movingGCOpt.(bool)
-		if !ok {
-			return fmt.Errorf("incorrect type for moving gc option; expected bool but got %T", movingGCOpt)
-		}
-	}
-
-	if !movingGC {
-		return b.onlineGC()
-	}
-
-	var movingGCPath string
-	movingGCPathOpt, ok := options[blockstore.BlockstoreMovingGCPath]
-	if ok {
-		movingGCPath, ok = movingGCPathOpt.(string)
-		if !ok {
-			return fmt.Errorf("incorrect type for moving gc path option; expected string but got %T", movingGCPathOpt)
-		}
-	}
-
-	return b.moveTo(movingGCPath)
-}
-
 func (b *Blockstore) onlineGC() error {
 	b.lockDB()
 	defer b.unlockDB()
@@ -527,6 +491,29 @@ func (b *Blockstore) onlineGC() error {
 	}
 
 	return err
+}
+
+// CollectGarbage compacts and runs garbage collection on the value log;
+// implements the BlockstoreGC trait
+func (b *Blockstore) CollectGarbage(opts ...blockstore.BlockstoreGCOption) error {
+	if err := b.access(); err != nil {
+		return err
+	}
+	defer b.viewers.Done()
+
+	var options blockstore.BlockstoreGCOptions
+	for _, opt := range opts {
+		err := opt(&options)
+		if err != nil {
+			return err
+		}
+	}
+
+	if options.FullGC {
+		return b.movingGC()
+	}
+
+	return b.onlineGC()
 }
 
 // Size returns the aggregate size of the blockstore

@@ -154,9 +154,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 		return nil
 	})
 	g.Go(func() error {
-		return db.CollectGarbage(map[interface{}]interface{}{
-			blockstore.BlockstoreMovingGC: true,
-		})
+		return db.CollectGarbage(blockstore.WithFullGC(true))
 	})
 
 	err = g.Wait()
