@@ -78,7 +78,7 @@ func mkFakedSigSyscalls(base vm.SyscallBuilder) vm.SyscallBuilder {
 }
 
 // Note: Much of this is brittle, if the methodNum / param / return changes, it will break things
-func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, miners []genesis.Miner, nv network.Version) (cid.Cid, error) {
+func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.SyscallBuilder, sroot cid.Cid, miners []genesis.Miner, nv network.Version) (cid.Cid, error) {
 
 	cst := cbor.NewCborStore(cs.StateBlockstore())
 	av := actors.VersionForNetwork(nv)
@@ -92,7 +92,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 		Epoch:          0,
 		Rand:           &fakeRand{},
 		Bstore:         cs.StateBlockstore(),
-		Syscalls:       mkFakedSigSyscalls(cs.VMSys()),
+		Syscalls:       mkFakedSigSyscalls(sys),
 		CircSupplyCalc: csc,
 		NtwkVersion: func(_ context.Context, _ abi.ChainEpoch) network.Version {
 			return nv

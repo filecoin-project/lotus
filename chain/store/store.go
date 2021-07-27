@@ -19,7 +19,6 @@ import (
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/metrics"
 
@@ -123,8 +122,6 @@ type ChainStore struct {
 	mmCache *lru.ARCCache
 	tsCache *lru.ARCCache
 
-	vmcalls vm.SyscallBuilder
-
 	evtTypes [1]journal.EventType
 	journal  journal.Journal
 
@@ -132,7 +129,7 @@ type ChainStore struct {
 	wg       sync.WaitGroup
 }
 
-func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder, j journal.Journal) *ChainStore {
+func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, j journal.Journal) *ChainStore {
 	c, _ := lru.NewARC(DefaultMsgMetaCacheSize)
 	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
 	if j == nil {
@@ -152,7 +149,6 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 		tipsets:              make(map[abi.ChainEpoch][]cid.Cid),
 		mmCache:              c,
 		tsCache:              tsc,
-		vmcalls:              vmcalls,
 		cancelFn:             cancel,
 		journal:              j,
 	}
@@ -1092,10 +1088,6 @@ func ActorStore(ctx context.Context, bs bstore.Blockstore) adt.Store {
 
 func (cs *ChainStore) ActorStore(ctx context.Context) adt.Store {
 	return ActorStore(ctx, cs.stateBlockstore)
-}
-
-func (cs *ChainStore) VMSys() vm.SyscallBuilder {
-	return cs.vmcalls
 }
 
 func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {

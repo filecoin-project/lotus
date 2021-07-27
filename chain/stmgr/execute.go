@@ -42,7 +42,7 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 			Epoch:          epoch,
 			Rand:           r,
 			Bstore:         sm.cs.StateBlockstore(),
-			Syscalls:       sm.cs.VMSys(),
+			Syscalls:       sm.syscalls,
 			CircSupplyCalc: sm.GetVMCirculatingSupply,
 			NtwkVersion:    sm.GetNtwkVersion,
 			BaseFee:        baseFee,

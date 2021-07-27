@@ -75,6 +75,7 @@ type StateManager struct {
 	stlk                sync.Mutex
 	genesisMsigLk       sync.Mutex
 	newVM               func(context.Context, *vm.VMOpts) (*vm.VM, error)
+	syscalls            vm.SyscallBuilder
 	preIgnitionVesting  []msig0.State
 	postIgnitionVesting []msig0.State
 	postCalicoVesting   []msig0.State
@@ -91,15 +92,15 @@ type treeCache struct {
 	tree *state.StateTree
 }
 
-func NewStateManager(cs *store.ChainStore) *StateManager {
-	sm, err := NewStateManagerWithUpgradeSchedule(cs, DefaultUpgradeSchedule())
+func NewStateManager(cs *store.ChainStore, sys vm.SyscallBuilder) *StateManager {
+	sm, err := NewStateManagerWithUpgradeSchedule(cs, sys, DefaultUpgradeSchedule())
 	if err != nil {
 		panic(fmt.Sprintf("default upgrade schedule is invalid: %s", err))
 	}
 	return sm
 }
 
-func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, us UpgradeSchedule) (*StateManager, error) {
+func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, sys vm.SyscallBuilder, us UpgradeSchedule) (*StateManager, error) {
 	// If we have upgrades, make sure they're in-order and make sense.
 	if err := us.Validate(); err != nil {
 		return nil, err
@@ -141,6 +142,7 @@ func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, us UpgradeSchedule
 		stateMigrations:   stateMigrations,
 		expensiveUpgrades: expensiveUpgrades,
 		newVM:             vm.NewVM,
+		syscalls:          sys,
 		cs:                cs,
 		stCache:           make(map[string][]cid.Cid),
 		tCache: treeCache{
@@ -151,8 +153,8 @@ func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, us UpgradeSchedule
 	}, nil
 }
 
-func NewStateManagerWithUpgradeScheduleAndMonitor(cs *store.ChainStore, us UpgradeSchedule, em ExecMonitor) (*StateManager, error) {
-	sm, err := NewStateManagerWithUpgradeSchedule(cs, us)
+func NewStateManagerWithUpgradeScheduleAndMonitor(cs *store.ChainStore, sys vm.SyscallBuilder, us UpgradeSchedule, em ExecMonitor) (*StateManager, error) {
+	sm, err := NewStateManagerWithUpgradeSchedule(cs, sys, us)
 	if err != nil {
 		return nil, err
 	}

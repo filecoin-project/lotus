@@ -357,7 +357,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		Epoch:          height,
 		Rand:           r,
 		Bstore:         sm.cs.StateBlockstore(),
-		Syscalls:       sm.cs.VMSys(),
+		Syscalls:       sm.syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
@@ -700,8 +700,8 @@ func MinerEligibleToMine(ctx context.Context, sm *StateManager, addr address.Add
 	return true, nil
 }
 
-func CheckTotalFIL(ctx context.Context, sm *StateManager, ts *types.TipSet) (abi.TokenAmount, error) {
-	str, err := state.LoadStateTree(sm.ChainStore().ActorStore(ctx), ts.ParentState())
+func CheckTotalFIL(ctx context.Context, cs *store.ChainStore, ts *types.TipSet) (abi.TokenAmount, error) {
+	str, err := state.LoadStateTree(cs.ActorStore(ctx), ts.ParentState())
 	if err != nil {
 		return abi.TokenAmount{}, err
 	}

@@ -13,8 +13,6 @@ import (
 
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -169,7 +167,7 @@ var stateTreePruneCmd = &cli.Command{
 			return nil
 		}
 
-		cs := store.NewChainStore(bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
+		cs := store.NewChainStore(bs, bs, mds, nil)
 		defer cs.Close() //nolint:errcheck
 
 		if err := cs.Load(); err != nil {
