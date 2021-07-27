@@ -685,25 +685,37 @@ submitting proofs to the chain individually`,
 			Name: "ColdStoreType",
 			Type: "string",
 
-			Comment: ``,
+			Comment: `ColdStoreType specifies the type of the coldstore.
+It can be "universal" (default) or "discard" for discarding cold blocks.`,
 		},
 		{
 			Name: "HotStoreType",
 			Type: "string",
 
-			Comment: ``,
+			Comment: `HotStoreType specifies the type of the hotstore.
+Only currently supported value is "badger".`,
 		},
 		{
 			Name: "MarkSetType",
 			Type: "string",
 
-			Comment: ``,
+			Comment: `MarkSetType specifies the type of the markset.
+It can be "map" (default) for in memory marking or "badger" for on-disk marking.`,
 		},
 		{
 			Name: "HotStoreMessageRetention",
 			Type: "uint64",
 
-			Comment: ``,
+			Comment: `HotStoreMessageRetention specifies the retention policy for messages, in finalities beyond
+the compaction boundary; default is 0.`,
+		},
+		{
+			Name: "HotStoreFullGCFrequency",
+			Type: "uint64",
+
+			Comment: `HotStoreFullGCFrequency specifies how often to perform a full (moving) GC on the hotstore.
+A value of 0 disables, while a value 1 will do full GC in every compaction.
+Default is 20 (about once a week).`,
 		},
 	},
 	"StorageMiner": []DocField{
