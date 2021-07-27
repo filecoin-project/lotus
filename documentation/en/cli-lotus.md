@@ -39,6 +39,7 @@ COMMANDS:
 GLOBAL OPTIONS:
    --interactive  setting to false will disable interactive functionality of commands (default: false)
    --force-send   if true, will ignore pre-send checks (default: false)
+   --vv           enables super verbose mode, useful for debugging the CLI (default: false)
    --help, -h     show help (default: false)
    --version, -v  print the version (default: false)
 ```
