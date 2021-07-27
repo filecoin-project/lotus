@@ -76,28 +76,40 @@ func (b *badgerLogger) Warningf(format string, args ...interface{}) {
 	b.skip2.Warnf(format, args...)
 }
 
+// bsState is the current blockstore state
+type bsState int
+
 const (
-	stateOpen = iota
+	// stateOpen signifies an open blockstore
+	stateOpen bsState = iota
+	// stateClosing signifies a blockstore that is currently closing
 	stateClosing
+	// stateClosed signifies a blockstore that has been colosed
 	stateClosed
 )
 
+type bsMoveState int
+
 const (
-	moveStateNone = iota
+	// moveStateNone signifies that there is no move in progress
+	moveStateNone bsMoveState = iota
+	// moveStateMoving signifies that there is a move  in a progress
 	moveStateMoving
+	// moveStateCleanup signifies that a move has completed or aborted and we are cleaning up
 	moveStateCleanup
+	// moveStateLock signifies that an exclusive lock has been acquired
 	moveStateLock
 )
 
 // Blockstore is a badger-backed IPLD blockstore.
 type Blockstore struct {
 	stateLk sync.RWMutex
-	state   int
+	state   bsState
 	viewers sync.WaitGroup
 
 	moveMx    sync.Mutex
 	moveCond  sync.Cond
-	moveState int
+	moveState bsMoveState
 	rlock     int
 
 	db   *badger.DB
@@ -215,7 +227,7 @@ func (b *Blockstore) lockMove() {
 	}
 }
 
-func (b *Blockstore) unlockMove(state int) {
+func (b *Blockstore) unlockMove(state bsMoveState) {
 	b.moveState = state
 	b.moveCond.Broadcast()
 	b.moveMx.Unlock()
@@ -254,7 +266,7 @@ func (b *Blockstore) movingGC() error {
 		db2 := b.db2
 		b.db2 = nil
 
-		var state int
+		var state bsMoveState
 		if db2 != nil {
 			state = moveStateCleanup
 		} else {
