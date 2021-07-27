@@ -614,7 +614,6 @@ func DagStoreWrapper(
 		Datastore:          dagStoreDS,
 		GCInterval:         1 * time.Minute,
 		MaxConcurrentIndex: 5,
-		MaxConcurrentFetch: 2,
 	}
 
 	dsw, err := dagstore.NewDagStoreWrapper(cfg, lotusAccessor)

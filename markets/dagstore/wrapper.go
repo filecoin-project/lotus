@@ -30,7 +30,6 @@ type MarketDAGStoreConfig struct {
 	TransientsDir      string
 	IndexDir           string
 	Datastore          ds.Datastore
-	MaxConcurrentFetch int
 	MaxConcurrentIndex int
 	GCInterval         time.Duration
 }
