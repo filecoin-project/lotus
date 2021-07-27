@@ -361,19 +361,31 @@ func (b *Blockstore) doCopy(from, to *badger.DB) error {
 	iter := txn.NewIterator(opts)
 	defer iter.Close()
 
-	pooled := make([][]byte, 0, 2*moveBatchSize)
-	getPooled := func(size int) []byte {
-		buf := pool.Get(size)
-		pooled = append(pooled, buf)
+	// allocate a slab to improve performance; buffers larger than 1K will be allocated from the pool
+	var pooled [][]byte
+	const maxSlabSize = 1024
+	slab := make([]byte, moveBatchSize*maxSlabSize)
+	slabStart := 0
+	getSlab := func(size int) []byte {
+		if size > maxSlabSize {
+			buf := pool.Get(size)
+			pooled = append(pooled, buf)
+			return buf
+		}
+
+		slabEnd := slabStart + size
+		buf := slab[slabStart:slabEnd]
+		slabStart = slabEnd
 		return buf
 	}
-	putPooled := func() {
+	resetSlab := func() {
+		slabStart = 0
 		for _, buf := range pooled {
 			pool.Put(buf)
 		}
 		pooled = pooled[:0]
 	}
-	defer putPooled()
+	defer resetSlab()
 
 	for iter.Rewind(); iter.Valid(); iter.Next() {
 		if !b.isOpen() {
@@ -383,12 +395,12 @@ func (b *Blockstore) doCopy(from, to *badger.DB) error {
 		item := iter.Item()
 
 		kk := item.Key()
-		k := getPooled(len(kk))
+		k := getSlab(len(kk))
 		copy(k, kk)
 
 		var v []byte
 		err := item.Value(func(vv []byte) error {
-			v = getPooled(len(vv))
+			v = getSlab(len(vv))
 			copy(v, vv)
 			return nil
 		})
@@ -408,7 +420,7 @@ func (b *Blockstore) doCopy(from, to *badger.DB) error {
 			// Flush discards the transaction, so we need a new batch
 			batch = to.NewWriteBatch()
 			count = 0
-			putPooled()
+			resetSlab()
 		}
 	}
 
