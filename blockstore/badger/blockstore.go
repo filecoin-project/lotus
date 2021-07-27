@@ -112,9 +112,9 @@ type Blockstore struct {
 	moveState bsMoveState
 	rlock     int
 
-	db   *badger.DB
-	db2  *badger.DB // when moving
-	opts Options
+	db     *badger.DB
+	dbNext *badger.DB // when moving
+	opts   Options
 
 	prefixing bool
 	prefix    []byte
@@ -263,8 +263,8 @@ func (b *Blockstore) movingGC() error {
 	defer func() {
 		b.lockMove()
 
-		db2 := b.db2
-		b.db2 = nil
+		db2 := b.dbNext
+		b.dbNext = nil
 
 		var state bsMoveState
 		if db2 != nil {
@@ -316,19 +316,19 @@ func (b *Blockstore) movingGC() error {
 	}
 
 	b.lockMove()
-	b.db2 = db2
+	b.dbNext = db2
 	b.unlockMove(moveStateMoving)
 
 	log.Info("copying blockstore")
-	err = b.doCopy(b.db, b.db2)
+	err = b.doCopy(b.db, b.dbNext)
 	if err != nil {
 		return fmt.Errorf("error moving badger blockstore to %s: %w", path, err)
 	}
 
 	b.lockMove()
 	db1 := b.db
-	b.db = b.db2
-	b.db2 = nil
+	b.db = b.dbNext
+	b.dbNext = nil
 	b.unlockMove(moveStateCleanup)
 
 	err = db1.Close()
@@ -652,8 +652,8 @@ func (b *Blockstore) Put(block blocks.Block) error {
 		return err
 	}
 
-	if b.db2 != nil {
-		if err := put(b.db2); err != nil {
+	if b.dbNext != nil {
+		if err := put(b.dbNext); err != nil {
 			return err
 		}
 	}
@@ -716,8 +716,8 @@ func (b *Blockstore) PutMany(blocks []blocks.Block) error {
 		return err
 	}
 
-	if b.db2 != nil {
-		if err := put(b.db2); err != nil {
+	if b.dbNext != nil {
+		if err := put(b.dbNext); err != nil {
 			return err
 		}
 	}
