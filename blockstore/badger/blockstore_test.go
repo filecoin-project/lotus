@@ -1,12 +1,19 @@
 package badgerbs
 
 import (
+	"bytes"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 
-	blocks "github.com/ipfs/go-block-format"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
+
+	blocks "github.com/ipfs/go-block-format"
+	cid "github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/blockstore"
 )
@@ -88,4 +95,166 @@ func openBlockstore(optsSupplier func(path string) Options) func(tb testing.TB, 
 		tb.Helper()
 		return Open(optsSupplier(path))
 	}
+}
+
+func testMove(t *testing.T, optsF func(string) Options) {
+	basePath, err := ioutil.TempDir("", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	dbPath := filepath.Join(basePath, "db")
+
+	t.Cleanup(func() {
+		_ = os.RemoveAll(basePath)
+	})
+
+	db, err := Open(optsF(dbPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	defer db.Close() //nolint
+
+	var have []blocks.Block
+	var deleted []cid.Cid
+
+	// add some blocks
+	for i := 0; i < 10; i++ {
+		blk := blocks.NewBlock([]byte(fmt.Sprintf("some data %d", i)))
+		err := db.Put(blk)
+		if err != nil {
+			t.Fatal(err)
+		}
+		have = append(have, blk)
+	}
+
+	// delete some of them
+	for i := 5; i < 10; i++ {
+		c := have[i].Cid()
+		err := db.DeleteBlock(c)
+		if err != nil {
+			t.Fatal(err)
+		}
+		deleted = append(deleted, c)
+	}
+	have = have[:5]
+
+	// start a move concurrent with some more puts
+	g := new(errgroup.Group)
+	g.Go(func() error {
+		for i := 10; i < 1000; i++ {
+			blk := blocks.NewBlock([]byte(fmt.Sprintf("some data %d", i)))
+			err := db.Put(blk)
+			if err != nil {
+				return err
+			}
+			have = append(have, blk)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		return db.CollectGarbage(blockstore.WithFullGC(true))
+	})
+
+	err = g.Wait()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// now check that we have all the blocks in have and none in the deleted lists
+	checkBlocks := func() {
+		for _, blk := range have {
+			has, err := db.Has(blk.Cid())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !has {
+				t.Fatal("missing block")
+			}
+
+			blk2, err := db.Get(blk.Cid())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if !bytes.Equal(blk.RawData(), blk2.RawData()) {
+				t.Fatal("data mismatch")
+			}
+		}
+
+		for _, c := range deleted {
+			has, err := db.Has(c)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if has {
+				t.Fatal("resurrected block")
+			}
+		}
+	}
+
+	checkBlocks()
+
+	// check the basePath -- it should contain a directory with name db.{timestamp}, soft-linked
+	// to db and nothing else
+	checkPath := func() {
+		entries, err := os.ReadDir(basePath)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if len(entries) != 2 {
+			t.Fatalf("too many entries; expected %d but got %d", 2, len(entries))
+		}
+
+		var haveDB, haveDBLink bool
+		for _, e := range entries {
+			if e.Name() == "db" {
+				if (e.Type() & os.ModeSymlink) == 0 {
+					t.Fatal("found db, but it's not a symlink")
+				}
+				haveDBLink = true
+				continue
+			}
+			if strings.HasPrefix(e.Name(), "db.") {
+				if !e.Type().IsDir() {
+					t.Fatal("found db prefix, but it's not a directory")
+				}
+				haveDB = true
+				continue
+			}
+		}
+
+		if !haveDB {
+			t.Fatal("db directory is missing")
+		}
+		if !haveDBLink {
+			t.Fatal("db link is missing")
+		}
+	}
+
+	checkPath()
+
+	// now do another FullGC to test the double move and following of symlinks
+	if err := db.CollectGarbage(blockstore.WithFullGC(true)); err != nil {
+		t.Fatal(err)
+	}
+
+	checkBlocks()
+	checkPath()
+}
+
+func TestMoveNoPrefix(t *testing.T) {
+	testMove(t, DefaultOptions)
+}
+
+func TestMoveWithPrefix(t *testing.T) {
+	testMove(t, func(path string) Options {
+		opts := DefaultOptions(path)
+		opts.Prefix = "/prefixed/"
+		return opts
+	})
 }
