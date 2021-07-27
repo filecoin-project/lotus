@@ -159,7 +159,7 @@ var stateTreePruneCmd = &cli.Command{
 		if cctx.Bool("only-ds-gc") {
 			fmt.Println("running datastore gc....")
 			for i := 0; i < cctx.Int("gc-count"); i++ {
-				if err := badgbs.DB.RunValueLogGC(DiscardRatio); err != nil {
+				if err := badgbs.DB().RunValueLogGC(DiscardRatio); err != nil {
 					return xerrors.Errorf("datastore GC failed: %w", err)
 				}
 			}
@@ -206,7 +206,7 @@ var stateTreePruneCmd = &cli.Command{
 			return nil
 		}
 
-		b := badgbs.DB.NewWriteBatch()
+		b := badgbs.DB().NewWriteBatch()
 		defer b.Cancel()
 
 		markForRemoval := func(c cid.Cid) error {
@@ -247,7 +247,7 @@ var stateTreePruneCmd = &cli.Command{
 
 		fmt.Println("running datastore gc....")
 		for i := 0; i < cctx.Int("gc-count"); i++ {
-			if err := badgbs.DB.RunValueLogGC(DiscardRatio); err != nil {
+			if err := badgbs.DB().RunValueLogGC(DiscardRatio); err != nil {
 				return xerrors.Errorf("datastore GC failed: %w", err)
 			}
 		}
