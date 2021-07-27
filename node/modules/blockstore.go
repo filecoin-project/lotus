@@ -78,10 +78,10 @@ func SplitBlockstore(cfg *config.Chainstore) func(lc fx.Lifecycle, r repo.Locked
 		}
 
 		cfg := &splitstore.Config{
-			MarkSetType:               cfg.Splitstore.MarkSetType,
-			DiscardColdBlocks:         cfg.Splitstore.ColdStoreType == "discard",
-			HotStoreMessageRetention:  cfg.Splitstore.HotStoreMessageRetention,
-			HotStoreMovingGCFrequency: cfg.Splitstore.HotStoreMovingGCFrequency,
+			MarkSetType:              cfg.Splitstore.MarkSetType,
+			DiscardColdBlocks:        cfg.Splitstore.ColdStoreType == "discard",
+			HotStoreMessageRetention: cfg.Splitstore.HotStoreMessageRetention,
+			HotStoreFullGCFrequency:  cfg.Splitstore.HotStoreFullGCFrequency,
 		}
 		ss, err := splitstore.Open(path, ds, hot, cold, cfg)
 		if err != nil {

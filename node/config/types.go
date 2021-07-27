@@ -291,10 +291,10 @@ type Splitstore struct {
 	// HotStoreMessageRetention specifies the retention policy for messages, in finalities beyond
 	// the compaction boundary; default is 0.
 	HotStoreMessageRetention uint64
-	// HotStoreMovingGCFrequency specifies how often to perform moving GC on the hotstore.
-	// A value of 0 disables, while a value 1 will do moving GC in every compaction.
+	// HotStoreFullGCFrequency specifies how often to perform a full (moving) GC on the hotstore.
+	// A value of 0 disables, while a value 1 will do full GC in every compaction.
 	// Default is 20 (about once a week).
-	HotStoreMovingGCFrequency uint64
+	HotStoreFullGCFrequency uint64
 }
 
 // // Full Node

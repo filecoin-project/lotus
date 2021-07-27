@@ -73,7 +73,7 @@ func DefaultFullNode() *FullNode {
 				HotStoreType:  "badger",
 				MarkSetType:   "map",
 
-				HotStoreMovingGCFrequency: 20,
+				HotStoreFullGCFrequency: 20,
 			},
 		},
 	}
