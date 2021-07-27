@@ -95,6 +95,7 @@ func (m *lotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid
 			// We want to throttle this path, as these copies will be downloaded
 			// immediately from the storage cluster without any unsealing
 			// necessary.
+			deal := deal // calm the linter
 			err := m.throttle.Do(ctx, func(ctx context.Context) (err error) {
 				// UnsealSector will NOT unseal a sector if we already have an unsealed copy lying around.
 				reader, err = m.rm.UnsealSector(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
