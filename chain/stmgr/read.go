@@ -31,6 +31,14 @@ func (sm *StateManager) ParentState(ts *types.TipSet) (*state.StateTree, error) 
 	return state, nil
 }
 
+func (sm *StateManager) parentState(ts *types.TipSet) cid.Cid {
+	if ts == nil {
+		ts = sm.cs.GetHeaviestTipSet()
+	}
+
+	return ts.ParentState()
+}
+
 func (sm *StateManager) StateTree(st cid.Cid) (*state.StateTree, error) {
 	cst := cbor.NewCborStore(sm.cs.StateBlockstore())
 	state, err := state.LoadStateTree(cst, st)
