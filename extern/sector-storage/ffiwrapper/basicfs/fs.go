@@ -84,3 +84,7 @@ func (b *Provider) AcquireSector(ctx context.Context, id storage.SectorRef, exis
 
 	return out, done, nil
 }
+
+func (b *Provider) AcquireSectorPaths(ctx context.Context, id storage.SectorRef, existing storiface.SectorFileType, ptype storiface.PathType) (storiface.SectorPaths, func(), error) {
+	return b.AcquireSector(ctx, id, existing, 0, ptype)
+}

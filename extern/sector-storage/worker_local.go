@@ -20,6 +20,7 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -153,6 +154,10 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector stor
 			}
 		}
 	}, nil
+}
+
+func (l *localWorkerPathProvider) AcquireSectorPaths(ctx context.Context, sector storage.SectorRef, existing storiface.SectorFileType, sealing storiface.PathType) (storiface.SectorPaths, func(), error) {
+	return storiface.SectorPaths{}, nil, nil
 }
 
 func (l *LocalWorker) ffiExec() (ffiwrapper.Storage, error) {
@@ -506,6 +511,90 @@ func (l *LocalWorker) UnsealPiece(ctx context.Context, sector storage.SectorRef,
 
 		return nil, nil
 	})
+}
+
+func (l *LocalWorker) GenerateWinningPoSt(ctx context.Context, mid abi.ActorID, privsectors ffi.SortedPrivateSectorInfo, randomness abi.PoStRandomness, sectorChallenges *ffi.FallbackChallenges) ([]proof.PoStProof, error) {
+	sb, err := l.executor()
+	if err != nil {
+		return nil, err
+	}
+
+	ps := privsectors.Values()
+	vanillas := make([][]byte, len(ps))
+
+	var rerr error
+	var wg sync.WaitGroup
+	for i, v := range ps {
+		wg.Add(1)
+		go func(index int, sector ffi.PrivateSectorInfo) {
+			defer wg.Done()
+			vanilla, err := l.storage.GenerateSingleVanillaProof(ctx, mid, &sector, sectorChallenges.Challenges[sector.SectorNumber])
+			if err != nil {
+				rerr = multierror.Append(rerr, xerrors.Errorf("get winning sector:%d,vanila failed: %w", sector.SectorNumber, err))
+				return
+			}
+			if vanilla == nil {
+				rerr = multierror.Append(rerr, xerrors.Errorf("get winning sector:%d,vanila is nil", sector.SectorNumber))
+			}
+			vanillas[index] = vanilla
+
+		}(i, ffi.PrivateSectorInfo(v))
+	}
+	wg.Wait()
+
+	if rerr != nil {
+		return nil, rerr
+	}
+
+	return sb.GenerateWinningPoStWithVanilla(ctx, ps[0].PoStProofType, mid, randomness, vanillas)
+}
+
+func (l *LocalWorker) GenerateWindowPoSt(ctx context.Context, mid abi.ActorID, privsectors ffi.SortedPrivateSectorInfo, partitionIdx int, offset int, randomness abi.PoStRandomness, sectorChallenges *ffi.FallbackChallenges) (ffiwrapper.WindowPoStResult, error) {
+	sb, err := l.executor()
+	if err != nil {
+		return ffiwrapper.WindowPoStResult{}, err
+	}
+
+	var slk sync.Mutex
+	var skipped []abi.SectorID
+
+	ps := privsectors.Values()
+
+	out := make([][]byte, len(ps))
+	var wg sync.WaitGroup
+	for i := range ps {
+		wg.Add(1)
+		go func(index int) {
+			defer wg.Done()
+
+			sector := ps[index]
+			vanilla, err := l.storage.GenerateSingleVanillaProof(ctx, mid, &sector, sectorChallenges.Challenges[sector.SectorNumber])
+			if err != nil || vanilla == nil {
+				slk.Lock()
+				skipped = append(skipped, abi.SectorID{
+					Miner:  mid,
+					Number: sector.SectorNumber,
+				})
+				slk.Unlock()
+				log.Errorf("get sector: %d, vanilla: %s, offset: %d", sector.SectorNumber, vanilla, offset+index)
+				return
+			}
+			out[index] = vanilla
+		}(i)
+	}
+
+	wg.Wait()
+	if len(skipped) > 0 {
+		return ffiwrapper.WindowPoStResult{PoStProofs: ffi.PartitionProof{}, Skipped: skipped}, nil
+	}
+
+	PoSts, err := sb.GenerateWindowPoStWithVanilla(ctx, ps[0].PoStProofType, mid, randomness, out, partitionIdx)
+
+	if err != nil {
+		return ffiwrapper.WindowPoStResult{PoStProofs: *PoSts, Skipped: skipped}, err
+	}
+
+	return ffiwrapper.WindowPoStResult{PoStProofs: *PoSts, Skipped: skipped}, nil
 }
 
 func (l *LocalWorker) TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error) {

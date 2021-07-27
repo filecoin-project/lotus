@@ -18,6 +18,9 @@ const (
 	TTProveReplicaUpdate1 TaskType = "seal/v0/provereplicaupdate/1"
 	TTProveReplicaUpdate2 TaskType = "seal/v0/provereplicaupdate/2"
 	TTRegenSectorKey      TaskType = "seal/v0/regensectorkey"
+
+	TTGenerateWindowPoSt  TaskType = "post/v0/windowproof"
+	TTGenerateWinningPoSt TaskType = "post/v0/winningproof"
 )
 
 var order = map[TaskType]int{
@@ -33,6 +36,9 @@ var order = map[TaskType]int{
 	TTUnseal:              1,
 	TTFetch:               -1,
 	TTFinalize:            -2, // most priority
+
+	TTGenerateWindowPoSt:  -3,
+	TTGenerateWinningPoSt: -4,
 }
 
 var shortNames = map[TaskType]string{
@@ -52,6 +58,9 @@ var shortNames = map[TaskType]string{
 	TTProveReplicaUpdate1: "PR1",
 	TTProveReplicaUpdate2: "PR2",
 	TTRegenSectorKey:      "GSK",
+
+	TTGenerateWindowPoSt:  "WDP",
+	TTGenerateWinningPoSt: "WNP",
 }
 
 func (a TaskType) MuchLess(b TaskType) (bool, bool) {

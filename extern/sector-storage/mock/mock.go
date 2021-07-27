@@ -10,6 +10,7 @@ import (
 	"math/rand"
 	"sync"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
@@ -550,6 +551,22 @@ func (mgr *SectorMgr) ReturnProveReplicaUpdate2(ctx context.Context, callID stor
 }
 
 func (mgr *SectorMgr) ReturnGenerateSectorKeyFromData(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
+	panic("not supported")
+}
+
+func (mgr *SectorMgr) GetPartitionSectorsCount(ctx context.Context, prooftype abi.RegisteredPoStProof) (int, error) {
+	panic("not supported")
+}
+
+func (mgr *SectorMgr) GetPartitionVanillaParams(ctx context.Context, proofType abi.RegisteredPoStProof) (string, error) {
+	panic("not supported")
+}
+
+func (mgr *SectorMgr) PubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []proof5.SectorInfo, faults []abi.SectorNumber, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error)) (ffi.SortedPrivateSectorInfo, []abi.SectorID, func(), error) {
+	panic("not supported")
+}
+
+func (mgr *SectorMgr) SplitSortedPrivateSectorInfo(ctx context.Context, privsector ffi.SortedPrivateSectorInfo, offset int, end int) (ffi.SortedPrivateSectorInfo, error) {
 	panic("not supported")
 }
 

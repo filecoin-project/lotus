@@ -42,6 +42,8 @@ type StorageInfo struct {
 
 	Groups  []Group
 	AllowTo []Group
+	// storage path
+	Path string
 }
 
 type HealthReport struct {
@@ -58,6 +60,9 @@ type SectorStorageInfo struct {
 	CanStore bool
 
 	Primary bool
+
+	// storage path
+	Path string
 }
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/index.go -package=mocks . SectorIndex
@@ -79,6 +84,9 @@ type SectorIndex interface { // part of storage-miner api
 	StorageGetLocks(ctx context.Context) (storiface.SectorLocks, error)
 
 	StorageList(ctx context.Context) (map[ID][]Decl, error)
+
+	// get sector storage url for post worker
+	StorageGetUrl(ctx context.Context, s abi.SectorID, ft storiface.SectorFileType) (string, error)
 }
 
 type Decl struct {
@@ -176,6 +184,8 @@ func (i *Index) StorageAttach(ctx context.Context, si StorageInfo, st fsutil.FsS
 		i.stores[si.ID].info.CanStore = si.CanStore
 		i.stores[si.ID].info.Groups = si.Groups
 		i.stores[si.ID].info.AllowTo = si.AllowTo
+
+		i.stores[si.ID].info.Path = si.Path
 
 		return nil
 	}
@@ -350,6 +360,8 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft storif
 			CanStore: st.info.CanStore,
 
 			Primary: isprimary[id],
+
+			Path: st.info.Path,
 		})
 	}
 
@@ -419,6 +431,8 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft storif
 				CanStore: st.info.CanStore,
 
 				Primary: false,
+
+				Path: st.info.Path,
 			})
 		}
 	}
@@ -520,6 +534,51 @@ func (i *Index) FindSector(id abi.SectorID, typ storiface.SectorFileType) ([]ID,
 	}
 
 	return out, nil
+}
+
+func (i *Index) StorageGetUrl(ctx context.Context, s abi.SectorID, ft storiface.SectorFileType) (string, error) {
+	i.lk.RLock()
+	defer i.lk.RUnlock()
+
+	storageIDs := map[ID]uint64{}
+	for _, pathType := range storiface.PathTypes {
+		if ft&pathType == 0 {
+			continue
+		}
+
+		for _, id := range i.sectors[Decl{s, pathType}] {
+			storageIDs[id.storage]++
+		}
+	}
+
+	storages := make([]StorageInfo, 0, len(storageIDs))
+	for id, _ := range storageIDs {
+		st, ok := i.stores[id]
+		if !ok {
+			log.Warnf("storage %s is not present in sector index (referenced by sector %v)", id, s)
+			continue
+		}
+
+		urls := make([]string, len(st.info.URLs))
+		for k, u := range st.info.URLs {
+			urls[k] = u
+		}
+
+		if st.info.CanStore {
+			storages = append(storages, StorageInfo{
+				URLs: urls,
+			})
+		}
+	}
+	if len(storages) == 0 {
+		return "", xerrors.New("cant find sector storage")
+	}
+
+	if len(storages[0].URLs) == 0 {
+		return "", xerrors.New("sector storage url is nil")
+	}
+
+	return storages[0].URLs[0], nil
 }
 
 var _ SectorIndex = &Index{}

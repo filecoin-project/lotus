@@ -31,6 +31,18 @@ func (t *testExec) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, 
 	panic("implement me")
 }
 
+func (t *testExec) GenerateWindowPoStWithVanilla(ctx context.Context, mid abi.ActorID, privsectors ffiwrapper.SortedPrivateSectorInfo, randomness abi.PoStRandomness, vanillas []string) ([]proof.PoStProof, error) {
+	panic("implement me")
+}
+
+func (t *testExec) GenerateWinningPoStWithVanilla(ctx context.Context, mid abi.ActorID, privsectors ffiwrapper.SortedPrivateSectorInfo, randomness abi.PoStRandomness, vanillas []string) ([]proof.PoStProof, error) {
+	panic("implement me")
+}
+
+func (t *testExec) GetSectorVanillaParams(ctx context.Context, index int, partitionVanillaParams string) (string, error) {
+	panic("implement me")
+}
+
 func (t *testExec) SealPreCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storage.PreCommit1Out, error) {
 	panic("implement me")
 }

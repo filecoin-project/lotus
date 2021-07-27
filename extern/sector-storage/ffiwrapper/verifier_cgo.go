@@ -53,6 +53,7 @@ func (sb *Sealer) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 			Number: f,
 		})
 	}
+	log.Infof("========result:%v", proof)
 
 	return proof, faultyIDs, err
 }
@@ -141,7 +142,75 @@ func (proofVerifier) VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoS
 	return ffi.VerifyWindowPoSt(info)
 }
 
-func (proofVerifier) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
+func (proofVerifier) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredPoStProof, mid abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
 	randomness[31] &= 0x3f
-	return ffi.GenerateWinningPoStSectorChallenge(proofType, minerID, randomness, eligibleSectorCount)
+	return ffi.GenerateWinningPoStSectorChallenge(proofType, mid, randomness, eligibleSectorCount)
+}
+
+func (sb *Sealer) PubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []proof5.SectorInfo, faults []abi.SectorNumber, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error)) (ffi.SortedPrivateSectorInfo, []abi.SectorID, func(), error) {
+	fmap := map[abi.SectorNumber]struct{}{}
+	for _, fault := range faults {
+		fmap[fault] = struct{}{}
+	}
+
+	var doneFuncs []func()
+	done := func() {
+		for _, df := range doneFuncs {
+			df()
+		}
+	}
+
+	var skipped []abi.SectorID
+	var out []ffi.PrivateSectorInfo
+	for _, s := range sectorInfo {
+		if _, faulty := fmap[s.SectorNumber]; faulty {
+			continue
+		}
+
+		sid := storage.SectorRef{
+			ID:        abi.SectorID{Miner: mid, Number: s.SectorNumber},
+			ProofType: s.SealProof,
+		}
+
+		paths, d, err := sb.sectors.AcquireSectorPaths(ctx, sid, storiface.FTCache|storiface.FTSealed, storiface.PathStorage)
+		if err != nil {
+			log.Warnw("failed to acquire sector, skipping", "sector", sid.ID, "error", err)
+			skipped = append(skipped, sid.ID)
+			continue
+		}
+		doneFuncs = append(doneFuncs, d)
+
+		postProofType, err := rpt(s.SealProof)
+		if err != nil {
+			done()
+			return ffi.SortedPrivateSectorInfo{}, nil, nil, xerrors.Errorf("acquiring registered PoSt proof from sector info %+v: %w", s, err)
+		}
+
+		out = append(out, ffi.PrivateSectorInfo{
+			CacheDirPath:     paths.Cache,
+			PoStProofType:    postProofType,
+			SealedSectorPath: paths.Sealed,
+			SectorInfo:       s,
+		})
+	}
+
+	privsectors := ffi.NewSortedPrivateSectorInfo(out...)
+
+	return privsectors, skipped, done, nil
+}
+
+func (sb *Sealer) GeneratePoStFallbackSectorChallenges(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, sectorIds []abi.SectorNumber) (*ffi.FallbackChallenges, error) {
+	return ffi.GeneratePoStFallbackSectorChallenges(proofType, minerID, randomness, sectorIds)
+}
+
+func (sb *Sealer) SplitSortedPrivateSectorInfo(ctx context.Context, privsector ffi.SortedPrivateSectorInfo, offset int, end int) (ffi.SortedPrivateSectorInfo, error) {
+	return ffi.SplitSortedPrivateSectorInfo(ctx, privsector, offset, end)
+}
+
+func (sb *Sealer) GenerateWinningPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, vanillas [][]byte) ([]proof5.PoStProof, error) {
+	return ffi.GenerateWinningPoStWithVanilla(proofType, minerID, randomness, vanillas)
+}
+
+func (sb *Sealer) GenerateWindowPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte, partitionIdx int) (*ffi.PartitionProof, error) {
+	return ffi.GenerateSinglePartitionWindowPoStWithVanilla(proofType, minerID, randomness, proofs, uint(partitionIdx))
 }

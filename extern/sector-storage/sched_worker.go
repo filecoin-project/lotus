@@ -38,6 +38,10 @@ func (sh *scheduler) runWorker(ctx context.Context, w Worker) error {
 	if sessID == ClosedWorkerID {
 		return xerrors.Errorf("worker already closed")
 	}
+	tasks, err := w.TaskTypes(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting worker tasks: %w", err)
+	}
 
 	worker := &workerHandle{
 		workerRpc: w,
@@ -47,11 +51,19 @@ func (sh *scheduler) runWorker(ctx context.Context, w Worker) error {
 		active:    &activeResources{},
 		enabled:   true,
 
+		acceptTasks: tasks,
+
 		closingMgr: make(chan struct{}),
 		closedMgr:  make(chan struct{}),
 	}
 
 	wid := storiface.WorkerID(sessID)
+
+	//add worker to post scheduler
+	if sh.windowPoStSched.AddWorker(wid, worker) ||
+		sh.winningPoStSched.AddWorker(wid, worker) {
+		return nil
+	}
 
 	sh.workersLk.Lock()
 	_, exist := sh.workers[wid]

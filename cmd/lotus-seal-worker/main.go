@@ -173,6 +173,17 @@ var runCmd = &cli.Command{
 			Usage: "used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function",
 			Value: "30m",
 		},
+		&cli.BoolFlag{
+			Name:  "windowpost",
+			Usage: "enable window post",
+			Value: false,
+		},
+
+		&cli.BoolFlag{
+			Name:  "winningpost",
+			Usage: "enable winning post",
+			Value: false,
+		},
 	},
 	Before: func(cctx *cli.Context) error {
 		if cctx.IsSet("address") {
@@ -267,6 +278,14 @@ var runCmd = &cli.Command{
 		}
 		if cctx.Bool("commit") {
 			taskTypes = append(taskTypes, sealtasks.TTCommit2)
+		}
+
+		if cctx.Bool("windowpost") {
+			taskTypes = append(taskTypes, sealtasks.TTGenerateWindowPoSt)
+		}
+
+		if cctx.Bool("winningpost") {
+			taskTypes = append(taskTypes, sealtasks.TTGenerateWinningPoSt)
 		}
 
 		if len(taskTypes) == 0 {
