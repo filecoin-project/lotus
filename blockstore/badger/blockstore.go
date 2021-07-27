@@ -309,7 +309,7 @@ func (b *Blockstore) movingGC() error {
 	b.unlockMove(moveStateMoving)
 
 	log.Info("copying blockstore")
-	err = b.doCopy(b.db, b.db2, nil)
+	err = b.doCopy(b.db, b.db2)
 	if err != nil {
 		return fmt.Errorf("error moving badger blockstore to %s: %w", path, err)
 	}
@@ -349,7 +349,7 @@ func (b *Blockstore) movingGC() error {
 
 // doCopy copies a badger blockstore to another, with an optional filter; if the filter
 // is not nil, then only cids that satisfy the filter will be copied.
-func (b *Blockstore) doCopy(from, to *badger.DB, filter func(cid.Cid) bool) error {
+func (b *Blockstore) doCopy(from, to *badger.DB) error {
 	count := 0
 	batch := to.NewWriteBatch()
 	defer batch.Cancel()
@@ -375,7 +375,6 @@ func (b *Blockstore) doCopy(from, to *badger.DB, filter func(cid.Cid) bool) erro
 	}
 	defer putPooled()
 
-	var buf []byte
 	for iter.Rewind(); iter.Valid(); iter.Next() {
 		if !b.isOpen() {
 			return ErrBlockstoreClosed
@@ -384,28 +383,6 @@ func (b *Blockstore) doCopy(from, to *badger.DB, filter func(cid.Cid) bool) erro
 		item := iter.Item()
 
 		kk := item.Key()
-		if filter != nil {
-			k := kk
-			if b.prefixing {
-				k = k[b.prefixLen:]
-			}
-
-			klen := base32.RawStdEncoding.DecodedLen(len(k))
-			if klen > len(buf) {
-				buf = make([]byte, klen)
-			}
-
-			n, err := base32.RawStdEncoding.Decode(buf, k)
-			if err != nil {
-				return err
-			}
-
-			c := cid.NewCidV1(cid.Raw, buf[:n])
-			if !filter(c) {
-				continue
-			}
-		}
-
 		k := getPooled(len(kk))
 		copy(k, kk)
 
