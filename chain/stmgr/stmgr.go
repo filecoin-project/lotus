@@ -354,3 +354,7 @@ func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoc
 	}
 	return sm.latestVersion
 }
+
+func (sm *StateManager) VMSys() vm.SyscallBuilder {
+	return sm.syscalls
+}
