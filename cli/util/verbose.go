@@ -2,15 +2,15 @@ package cliutil
 
 import "github.com/urfave/cli/v2"
 
-// IsSuperVerbose is a global var signalling if we're running in super verbose
-// mode or not (default: false).
-var IsSuperVerbose bool
+// IsVeryVerbose is a global var signalling if the CLI is running in very
+// verbose mode or not (default: false).
+var IsVeryVerbose bool
 
-// FlagSuperVerbose enables super verbose mode, which is useful when debugging
+// FlagVeryVerbose enables very verbose mode, which is useful when debugging
 // the CLI itself. It should be included as a flag on the top-level command
 // (e.g. lotus -vv, lotus-miner -vv).
-var FlagSuperVerbose = &cli.BoolFlag{
+var FlagVeryVerbose = &cli.BoolFlag{
 	Name:        "vv",
-	Usage:       "enables super verbose mode, useful for debugging the CLI",
-	Destination: &IsSuperVerbose,
+	Usage:       "enables very verbose mode, useful for debugging the CLI",
+	Destination: &IsVeryVerbose,
 }

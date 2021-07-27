@@ -146,7 +146,7 @@ func GetRawAPI(ctx *cli.Context, t repo.RepoType, version string) (string, http.
 		return "", nil, xerrors.Errorf("could not get DialArgs: %w", err)
 	}
 
-	if IsSuperVerbose {
+	if IsVeryVerbose {
 		_, _ = fmt.Fprintf(ctx.App.Writer, "using raw API %s endpoint: %s\n", version, addr)
 	}
 
@@ -189,7 +189,7 @@ func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, err
 		return nil, nil, err
 	}
 
-	if IsSuperVerbose {
+	if IsVeryVerbose {
 		_, _ = fmt.Fprintln(ctx.App.Writer, "using full node API v0 endpoint:", addr)
 	}
 
@@ -206,7 +206,7 @@ func GetFullNodeAPIV1(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, e
 		return nil, nil, err
 	}
 
-	if IsSuperVerbose {
+	if IsVeryVerbose {
 		_, _ = fmt.Fprintln(ctx.App.Writer, "using full node API v1 endpoint:", addr)
 	}
 
@@ -254,7 +254,7 @@ func GetStorageMinerAPI(ctx *cli.Context, opts ...GetStorageMinerOption) (api.St
 		addr = u.String()
 	}
 
-	if IsSuperVerbose {
+	if IsVeryVerbose {
 		_, _ = fmt.Fprintln(ctx.App.Writer, "using miner API v0 endpoint:", addr)
 	}
 
@@ -267,7 +267,7 @@ func GetWorkerAPI(ctx *cli.Context) (api.Worker, jsonrpc.ClientCloser, error) {
 		return nil, nil, err
 	}
 
-	if IsSuperVerbose {
+	if IsVeryVerbose {
 		_, _ = fmt.Fprintln(ctx.App.Writer, "using worker API v0 endpoint:", addr)
 	}
 
@@ -280,7 +280,7 @@ func GetGatewayAPI(ctx *cli.Context) (api.Gateway, jsonrpc.ClientCloser, error) 
 		return nil, nil, err
 	}
 
-	if IsSuperVerbose {
+	if IsVeryVerbose {
 		_, _ = fmt.Fprintln(ctx.App.Writer, "using gateway API v1 endpoint:", addr)
 	}
 
@@ -293,7 +293,7 @@ func GetGatewayAPIV0(ctx *cli.Context) (v0api.Gateway, jsonrpc.ClientCloser, err
 		return nil, nil, err
 	}
 
-	if IsSuperVerbose {
+	if IsVeryVerbose {
 		_, _ = fmt.Fprintln(ctx.App.Writer, "using gateway API v0 endpoint:", addr)
 	}
 

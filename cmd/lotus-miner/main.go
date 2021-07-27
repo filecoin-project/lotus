@@ -106,7 +106,7 @@ func main() {
 				Value:   "~/.lotusminer", // TODO: Consider XDG_DATA_HOME
 				Usage:   fmt.Sprintf("Specify miner repo path. flag(%s) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON", FlagMinerRepoDeprecation),
 			},
-			cliutil.FlagSuperVerbose,
+			cliutil.FlagVeryVerbose,
 		},
 
 		Commands: append(local, lcli.CommonCommands...),

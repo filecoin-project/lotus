@@ -82,7 +82,7 @@ func main() {
 				Name:  "force-send",
 				Usage: "if true, will ignore pre-send checks",
 			},
-			cliutil.FlagSuperVerbose,
+			cliutil.FlagVeryVerbose,
 		},
 
 		Commands: append(local, lcli.Commands...),
