@@ -35,6 +35,7 @@ import (
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -729,3 +730,93 @@ func MakeMsgGasCost(msg *types.Message, ret *vm.ApplyRet) api.MsgGasCost {
 		TotalCost:          big.Sub(msg.RequiredFunds(), ret.GasCosts.Refund),
 	}
 }
+
+func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]address.Address, error) {
+	stateTree, err := sm.StateTree(sm.parentState(ts))
+	if err != nil {
+		return nil, err
+	}
+
+	var out []address.Address
+	err = stateTree.ForEach(func(addr address.Address, act *types.Actor) error {
+		out = append(out, addr)
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return out, nil
+}
+
+func (sm *StateManager) GetPaychState(ctx context.Context, addr address.Address, ts *types.TipSet) (*types.Actor, paych.State, error) {
+	st, err := sm.ParentState(ts)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	act, err := st.GetActor(addr)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	actState, err := paych.Load(sm.cs.ActorStore(ctx), act)
+	if err != nil {
+		return nil, nil, err
+	}
+	return act, actState, nil
+}
+
+func (sm *StateManager) GetMarketState(ctx context.Context, ts *types.TipSet) (market.State, error) {
+	st, err := sm.ParentState(ts)
+	if err != nil {
+		return nil, err
+	}
+
+	act, err := st.GetActor(market.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	actState, err := market.Load(sm.cs.ActorStore(ctx), act)
+	if err != nil {
+		return nil, err
+	}
+	return actState, nil
+}
+
+func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address, ts *types.TipSet) (api.MarketBalance, error) {
+	mstate, err := sm.GetMarketState(ctx, ts)
+	if err != nil {
+		return api.MarketBalance{}, err
+	}
+
+	addr, err = sm.LookupID(ctx, addr, ts)
+	if err != nil {
+		return api.MarketBalance{}, err
+	}
+
+	var out api.MarketBalance
+
+	et, err := mstate.EscrowTable()
+	if err != nil {
+		return api.MarketBalance{}, err
+	}
+	out.Escrow, err = et.Get(addr)
+	if err != nil {
+		return api.MarketBalance{}, xerrors.Errorf("getting escrow balance: %w", err)
+	}
+
+	lt, err := mstate.LockedTable()
+	if err != nil {
+		return api.MarketBalance{}, err
+	}
+	out.Locked, err = lt.Get(addr)
+	if err != nil {
+		return api.MarketBalance{}, xerrors.Errorf("getting locked balance: %w", err)
+	}
+
+	return out, nil
+}
+
+var _ StateManagerAPI = (*StateManager)(nil)
