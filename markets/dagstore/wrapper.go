@@ -82,13 +82,14 @@ func NewDagStoreWrapper(cfg MarketDAGStoreConfig, mountApi LotusAccessor) (*Wrap
 	}
 
 	dcfg := dagstore.Config{
-		TransientsDir:      cfg.TransientsDir,
-		IndexRepo:          irepo,
-		Datastore:          cfg.Datastore,
-		MountRegistry:      registry,
-		FailureCh:          failureCh,
-		TraceCh:            traceCh,
-		MaxConcurrentFetch: cfg.MaxConcurrentFetch,
+		TransientsDir: cfg.TransientsDir,
+		IndexRepo:     irepo,
+		Datastore:     cfg.Datastore,
+		MountRegistry: registry,
+		FailureCh:     failureCh,
+		TraceCh:       traceCh,
+		// not limiting fetches globally, as the Lotus mount does
+		// conditional throttling.
 		MaxConcurrentIndex: cfg.MaxConcurrentIndex,
 		RecoverOnStart:     dagstore.RecoverOnAcquire,
 	}

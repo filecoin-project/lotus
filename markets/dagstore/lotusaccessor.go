@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/filecoin-project/dagstore/throttle"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -11,6 +12,11 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 )
+
+// MaxConcurrentUnsealedFetches caps the amount of concurrent fetches for
+// unsealed pieces, so that we don't saturate IO or the network too much,
+// especially when bulk processing (e.g. at migration).
+var MaxConcurrentUnsealedFetches = 3
 
 type LotusAccessor interface {
 	FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error)
@@ -21,8 +27,8 @@ type LotusAccessor interface {
 type lotusAccessor struct {
 	pieceStore piecestore.PieceStore
 	rm         retrievalmarket.RetrievalProviderNode
-
-	readyMgr *shared.ReadyManager
+	throttle   throttle.Throttler
+	readyMgr   *shared.ReadyManager
 }
 
 var _ LotusAccessor = (*lotusAccessor)(nil)
@@ -31,6 +37,7 @@ func NewLotusAccessor(store piecestore.PieceStore, rm retrievalmarket.RetrievalP
 	return &lotusAccessor{
 		pieceStore: store,
 		rm:         rm,
+		throttle:   throttle.Fixed(MaxConcurrentUnsealedFetches),
 		readyMgr:   shared.NewReadyManager(),
 	}
 }
@@ -84,11 +91,16 @@ func (m *lotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid
 			continue
 		}
 		if isUnsealed {
-			// UnsealSector will NOT unseal a sector if we already have an unsealed copy lying around.
-			reader, err := m.rm.UnsealSector(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
-			if err == nil {
-				return reader, nil
-			}
+			var reader io.ReadCloser
+			// We want to throttle this path, as these copies will be downloaded
+			// immediately from the storage cluster without any unsealing
+			// necessary.
+			err := m.throttle.Do(ctx, func(ctx context.Context) (err error) {
+				// UnsealSector will NOT unseal a sector if we already have an unsealed copy lying around.
+				reader, err = m.rm.UnsealSector(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
+				return err
+			})
+			return reader, err
 		}
 	}
 

@@ -4,12 +4,16 @@ import (
 	"bytes"
 	"context"
 	"io"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -118,6 +122,57 @@ func TestLotusAccessorGetUnpaddedCARSize(t *testing.T) {
 	require.EqualValues(t, 10, len)
 }
 
+func TestThrottle(t *testing.T) {
+	ctx := context.Background()
+	cid1, err := cid.Parse("bafkqaaa")
+	require.NoError(t, err)
+
+	ps := getPieceStore(t)
+	rpn := &mockRPN{
+		sectors: map[abi.SectorNumber]string{
+			unsealedSectorID: "foo",
+		},
+	}
+	api := NewLotusAccessor(ps, rpn)
+	require.NoError(t, api.Start(ctx))
+
+	// Add a deal with data Length 10
+	dealInfo := piecestore.DealInfo{
+		SectorID: unsealedSectorID,
+		Length:   10,
+	}
+	err = ps.AddDealForPiece(cid1, dealInfo)
+	require.NoError(t, err)
+
+	// hold the lock to block.
+	rpn.lk.Lock()
+
+	// fetch the piece concurrently.
+	errgrp, ctx := errgroup.WithContext(context.Background())
+	for i := 0; i < 10; i++ {
+		errgrp.Go(func() error {
+			r, err := api.FetchUnsealedPiece(ctx, cid1)
+			if err == nil {
+				_ = r.Close()
+			}
+			return err
+		})
+	}
+
+	time.Sleep(500 * time.Millisecond)
+	require.EqualValues(t, MaxConcurrentUnsealedFetches, atomic.LoadInt32(&rpn.calls)) // throttled
+
+	// allow to proceed.
+	rpn.lk.Unlock()
+
+	// allow all to finish.
+	err = errgrp.Wait()
+	require.NoError(t, err)
+
+	require.EqualValues(t, 10, atomic.LoadInt32(&rpn.calls)) // throttled
+
+}
+
 func getPieceStore(t *testing.T) piecestore.PieceStore {
 	ps, err := piecestoreimpl.NewPieceStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 	require.NoError(t, err)
@@ -128,10 +183,16 @@ func getPieceStore(t *testing.T) piecestore.PieceStore {
 }
 
 type mockRPN struct {
+	calls   int32        // guarded by atomic
+	lk      sync.RWMutex // lock to simulate blocks.
 	sectors map[abi.SectorNumber]string
 }
 
 func (m *mockRPN) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
+	atomic.AddInt32(&m.calls, 1)
+	m.lk.RLock()
+	defer m.lk.RUnlock()
+
 	data, ok := m.sectors[sectorID]
 	if !ok {
 		panic("sector not found")
