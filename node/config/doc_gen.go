@@ -710,11 +710,11 @@ It can be "map" (default) for in memory marking or "badger" for on-disk marking.
 the compaction boundary; default is 0.`,
 		},
 		{
-			Name: "HotStoreMovingGCFrequency",
+			Name: "HotStoreFullGCFrequency",
 			Type: "uint64",
 
-			Comment: `HotStoreMovingGCFrequency specifies how often to perform moving GC on the hotstore.
-A value of 0 disables, while a value 1 will do moving GC in every compaction.
+			Comment: `HotStoreFullGCFrequency specifies how often to perform a full (moving) GC on the hotstore.
+A value of 0 disables, while a value 1 will do full GC in every compaction.
 Default is 20 (about once a week).`,
 		},
 	},
