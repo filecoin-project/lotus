@@ -63,13 +63,8 @@ Testing an RC:
     - [ ] (optional) let a sector go faulty, and see it be recovered
     
 - [ ] **Stage 2 - Community Testing**
-  - [ ] Inform beta miners (@lotus-early-testers-miner in Filecoin Slack #fil-lotus)
-  - [ ] Inform close ecosystem partners to test their projects (@lotus-early-testers-eco-dev in Filecoin slack #fil-lotus-dev)
-    - [ ] Powergate
-    - [ ] Glif
-    - [ ] Stats dashboard
-    - [ ] Sentinel
-    - [ ] Protofire
+  - [ ] Inform beta lotus users (@lotus-early-testers in Filecoin Slack #fil-lotus)
+
 
 - [ ] **Stage 3 - Community Prod Testing**
   - [ ] Documentation
