@@ -92,7 +92,7 @@ BINS+=lotus
 
 lotus-miner: $(BUILD_DEPS)
 	rm -f lotus-miner
-	go build $(GOFLAGS) -o lotus-miner ./cmd/lotus-storage-miner
+	go build $(GOFLAGS) -o lotus-miner ./cmd/lotus-miner
 .PHONY: lotus-miner
 BINS+=lotus-miner
 
