@@ -322,29 +322,26 @@ func (b *Blockstore) movingGC() error {
 
 	err = db1.Close()
 	if err != nil {
-		log.Warnf("error closing badger db: %s", err)
+		log.Warnf("error closing old badger db: %s", err)
 	}
 
 	dbpath := b.opts.Dir
 	oldpath := fmt.Sprintf("%s.old.%d", dbpath, time.Now().Unix())
 
-	ok := true
-	err = os.Rename(dbpath, oldpath)
-	if err != nil {
-		// this is bad, but not catastrophic; new data will be written in db2 and user can fix
-		log.Errorf("error renaming badger db dir from %s to %s; USER ACTION REQUIRED", dbpath, oldpath)
-		ok = false
+	if err = os.Rename(dbpath, oldpath); err != nil {
+		// this is not catastrophic in the sense that we have not lost any data.
+		// but it is pretty bad, as the db path points to the old db, while we are now using to the new
+		// db; we can't continue and leave a ticking bomb for the next restart.
+		// so a panic is appropriate and user can fix.
+		panic(fmt.Errorf("error renaming old badger db dir from %s to %s: %w; USER ACTION REQUIRED", dbpath, oldpath, err)) //nolint
 	}
 
-	if ok {
-		err = os.Symlink(path, dbpath)
-		if err != nil {
-			// ditto, this is bad, but not catastrophic; user can fix
-			log.Errorf("error symlinking badger db dir from %s to %s; USER ACTION REQUIRED", path, dbpath)
-		}
-
-		b.deleteDB(oldpath)
+	if err = os.Symlink(path, dbpath); err != nil {
+		// same here; the db path is pointing to the void. panic and let the user fix.
+		panic(fmt.Errorf("error symlinking new badger db dir from %s to %s: %w; USER ACTION REQUIRED", path, dbpath, err)) //nolint
 	}
+
+	b.deleteDB(oldpath)
 
 	log.Info("moving blockstore done")
 	return nil
