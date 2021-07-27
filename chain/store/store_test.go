@@ -157,7 +157,7 @@ func TestChainExportImportFull(t *testing.T) {
 		t.Fatal("imported chain differed from exported chain")
 	}
 
-	sm := stmgr.NewStateManager(cs)
+	sm := stmgr.NewStateManager(cs, nil)
 	for i := 0; i < 100; i++ {
 		ts, err := cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(i), nil, false)
 		if err != nil {
