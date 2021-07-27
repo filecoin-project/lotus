@@ -247,7 +247,7 @@ func (b *Blockstore) movingGC() error {
 	b.moveCond.Broadcast()
 	b.moveMx.Unlock()
 
-	path := fmt.Sprintf("%s.%d", b.opts.Dir, time.Now().Unix())
+	var path string
 
 	defer func() {
 		b.lockMove()
@@ -275,6 +275,23 @@ func (b *Blockstore) movingGC() error {
 			b.unlockMove(moveStateNone)
 		}
 	}()
+
+	// we resolve symlinks to create the new path in the adjacent to the old path.
+	// this allows the user to symlink the db directory into a separate filesystem.
+	basePath := b.opts.Dir
+	linkPath, err := filepath.EvalSymlinks(basePath)
+	if err != nil {
+		return fmt.Errorf("error resolving symlink %s: %w", basePath, err)
+	}
+
+	if basePath == linkPath {
+		path = basePath
+	} else {
+		name := filepath.Base(basePath)
+		dir := filepath.Dir(linkPath)
+		path = filepath.Join(dir, name)
+	}
+	path = fmt.Sprintf("%s.%d", path, time.Now().Unix())
 
 	log.Infof("moving blockstore from %s to %s", b.opts.Dir, path)
 
