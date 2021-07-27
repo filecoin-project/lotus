@@ -821,6 +821,11 @@ workflows:
           target: "./itests/deals_offline_test.go"
       
       - test:
+          name: test-itest-deals_padding
+          suite: itest-deals_padding
+          target: "./itests/deals_padding_test.go"
+      
+      - test:
           name: test-itest-deals_power
           suite: itest-deals_power
           target: "./itests/deals_power_test.go"
