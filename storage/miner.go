@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -179,19 +178,17 @@ func (m *Miner) Run(ctx context.Context) error {
 		adaptedAPI = NewSealingAPIAdapter(m.api)
 
 		// Instantiate a precommit policy.
-		defaultDuration = policy.GetMaxSectorExpirationExtension() - (md.WPoStProvingPeriod * 2)
+		cfg             = sealing.GetSealingConfigFunc(m.getSealConfig)
 		provingBoundary = md.PeriodStart % md.WPoStProvingPeriod
+		provingBuffer   = md.WPoStProvingPeriod * 2
 
 		// TODO: Maybe we update this policy after actor upgrades?
-		pcp = sealing.NewBasicPreCommitPolicy(adaptedAPI, defaultDuration, provingBoundary)
+		pcp = sealing.NewBasicPreCommitPolicy(adaptedAPI, cfg, provingBoundary, provingBuffer)
 
 		// address selector.
 		as = func(ctx context.Context, mi miner.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
 			return m.addrSel.AddressFor(ctx, m.api, mi, use, goodFunds, minFunds)
 		}
-
-		// sealing configuration.
-		cfg = sealing.GetSealingConfigFunc(m.getSealConfig)
 	)
 
 	// Instantiate the sealing FSM.
