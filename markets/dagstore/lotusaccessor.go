@@ -54,30 +54,8 @@ func NewLotusAccessor(store piecestore.PieceStore, rm retrievalmarket.RetrievalP
 	}
 }
 
-func (m *lotusAccessor) Start(ctx context.Context) error {
-	// Wait for the piece store to startup
-	ready := make(chan error)
-	m.pieceStore.OnReady(func(err error) {
-		select {
-		case <-ctx.Done():
-		case ready <- err:
-		}
-	})
-
-	select {
-	case <-ctx.Done():
-		err := xerrors.Errorf("context cancelled waiting for piece store startup: %w", ctx.Err())
-		if ferr := m.readyMgr.FireReady(err); ferr != nil {
-			log.Warnw("failed to publish ready event", "err", ferr)
-		}
-		return err
-
-	case err := <-ready:
-		if ferr := m.readyMgr.FireReady(err); ferr != nil {
-			log.Warnw("failed to publish ready event", "err", ferr)
-		}
-		return err
-	}
+func (m *lotusAccessor) Start(_ context.Context) error {
+	return m.readyMgr.FireReady(nil)
 }
 
 func (m *lotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {

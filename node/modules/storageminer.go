@@ -585,8 +585,15 @@ func NewLotusAccessor(lc fx.Lifecycle,
 	rpn retrievalmarket.RetrievalProviderNode,
 ) (dagstore.LotusAccessor, error) {
 	mountApi := dagstore.NewLotusAccessor(pieceStore, rpn)
+	ready := make(chan error, 1)
+	pieceStore.OnReady(func(err error) {
+		ready <- err
+	})
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
+			if err := <-ready; err != nil {
+				return fmt.Errorf("aborting dagstore start; piecestore failed to start: %s", err)
+			}
 			return mountApi.Start(ctx)
 		},
 		OnStop: func(context.Context) error {
