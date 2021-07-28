@@ -77,6 +77,10 @@ func (s *SplitStore) reifyWorker(workch chan cid.Cid) {
 func (s *SplitStore) doReify(c cid.Cid) {
 	defer s.reifyDone(c)
 
+	s.txnLk.RLock()
+	s.trackTxnRef(c)
+	s.txnLk.RUnlock()
+
 	var toreify []cid.Cid
 	err := s.walkObject(c, cid.NewSet(),
 		func(c cid.Cid) error {

@@ -252,7 +252,6 @@ func (s *SplitStore) iHas(cid cid.Cid, reify bool) (bool, error) {
 	has, err = s.cold.Has(cid)
 	if has && err == nil {
 		s.reifyColdObject(cid)
-		s.trackTxnRef(cid)
 	}
 
 	return has, err
@@ -292,7 +291,6 @@ func (s *SplitStore) iGet(cid cid.Cid, reify bool) (blocks.Block, error) {
 			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
 			if reify {
 				s.reifyColdObject(cid)
-				s.trackTxnRef(cid)
 			}
 		}
 		return blk, err
@@ -336,7 +334,6 @@ func (s *SplitStore) iGetSize(cid cid.Cid, reify bool) (int, error) {
 			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
 			if reify {
 				s.reifyColdObject(cid)
-				s.trackTxnRef(cid)
 			}
 		}
 		return size, err
@@ -492,7 +489,6 @@ func (s *SplitStore) iView(cid cid.Cid, reify bool, cb func([]byte) error) error
 			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
 			if reify {
 				s.reifyColdObject(cid)
-				s.trackTxnRef(cid)
 			}
 		}
 		return err
