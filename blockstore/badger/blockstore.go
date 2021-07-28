@@ -258,16 +258,16 @@ func (b *Blockstore) movingGC() error {
 	b.moveCond.Broadcast()
 	b.moveMx.Unlock()
 
-	var path string
+	var newPath string
 
 	defer func() {
 		b.lockMove()
 
-		db2 := b.dbNext
+		dbNext := b.dbNext
 		b.dbNext = nil
 
 		var state bsMoveState
-		if db2 != nil {
+		if dbNext != nil {
 			state = moveStateCleanup
 		} else {
 			state = moveStateNone
@@ -275,12 +275,13 @@ func (b *Blockstore) movingGC() error {
 
 		b.unlockMove(state)
 
-		if db2 != nil {
-			err := db2.Close()
+		if dbNext != nil {
+			// the move failed and we have a left-over db; delete it.
+			err := dbNext.Close()
 			if err != nil {
 				log.Warnf("error closing badger db: %s", err)
 			}
-			b.deleteDB(path)
+			b.deleteDB(newPath)
 
 			b.lockMove()
 			b.unlockMove(moveStateNone)
@@ -296,63 +297,71 @@ func (b *Blockstore) movingGC() error {
 	}
 
 	if basePath == linkPath {
-		path = basePath
+		newPath = basePath
 	} else {
+		// we do this dance to create a name adjacent to the current one, while avoiding clown
+		// shoes with multiple moves (i.e. we can't just take the basename of the linkPath, as it
+		// could have been created in a previous move and have the timestamp suffix, which would then
+		// perpetuate itself.
 		name := filepath.Base(basePath)
 		dir := filepath.Dir(linkPath)
-		path = filepath.Join(dir, name)
+		newPath = filepath.Join(dir, name)
 	}
-	path = fmt.Sprintf("%s.%d", path, time.Now().UnixNano())
+	newPath = fmt.Sprintf("%s.%d", newPath, time.Now().UnixNano())
 
-	log.Infof("moving blockstore from %s to %s", b.opts.Dir, path)
+	log.Infof("moving blockstore from %s to %s", b.opts.Dir, newPath)
 
 	opts := b.opts
-	opts.Dir = path
-	opts.ValueDir = path
+	opts.Dir = newPath
+	opts.ValueDir = newPath
 
-	db2, err := badger.Open(opts.Options)
+	dbNew, err := badger.Open(opts.Options)
 	if err != nil {
-		return fmt.Errorf("failed to open badger blockstore in %s: %w", path, err)
+		return fmt.Errorf("failed to open badger blockstore in %s: %w", newPath, err)
 	}
 
 	b.lockMove()
-	b.dbNext = db2
+	b.dbNext = dbNew
 	b.unlockMove(moveStateMoving)
 
 	log.Info("copying blockstore")
 	err = b.doCopy(b.db, b.dbNext)
 	if err != nil {
-		return fmt.Errorf("error moving badger blockstore to %s: %w", path, err)
+		return fmt.Errorf("error moving badger blockstore to %s: %w", newPath, err)
 	}
 
 	b.lockMove()
-	db1 := b.db
+	dbOld := b.db
 	b.db = b.dbNext
 	b.dbNext = nil
 	b.unlockMove(moveStateCleanup)
 
-	err = db1.Close()
+	err = dbOld.Close()
 	if err != nil {
 		log.Warnf("error closing old badger db: %s", err)
 	}
 
-	dbpath := b.opts.Dir
-	oldpath := fmt.Sprintf("%s.old.%d", dbpath, time.Now().Unix())
+	// this is the canonical db path; this is where our db lives.
+	dbPath := b.opts.Dir
 
-	if err = os.Rename(dbpath, oldpath); err != nil {
+	// we first move the existing db out of the way, and only delete it after we have symlinked the
+	// new db to the canonical path
+	backupPath := fmt.Sprintf("%s.old.%d", dbPath, time.Now().Unix())
+	if err = os.Rename(dbPath, backupPath); err != nil {
 		// this is not catastrophic in the sense that we have not lost any data.
 		// but it is pretty bad, as the db path points to the old db, while we are now using to the new
 		// db; we can't continue and leave a ticking bomb for the next restart.
 		// so a panic is appropriate and user can fix.
-		panic(fmt.Errorf("error renaming old badger db dir from %s to %s: %w; USER ACTION REQUIRED", dbpath, oldpath, err)) //nolint
+		panic(fmt.Errorf("error renaming old badger db dir from %s to %s: %w; USER ACTION REQUIRED", dbPath, backupPath, err)) //nolint
 	}
 
-	if err = os.Symlink(path, dbpath); err != nil {
+	if err = os.Symlink(newPath, dbPath); err != nil {
 		// same here; the db path is pointing to the void. panic and let the user fix.
-		panic(fmt.Errorf("error symlinking new badger db dir from %s to %s: %w; USER ACTION REQUIRED", path, dbpath, err)) //nolint
+		panic(fmt.Errorf("error symlinking new badger db dir from %s to %s: %w; USER ACTION REQUIRED", newPath, dbPath, err)) //nolint
 	}
 
-	b.deleteDB(oldpath)
+	// the delete follows symlinks
+	b.deleteDB(backupPath)
 
 	log.Info("moving blockstore done")
 	return nil
@@ -390,19 +399,19 @@ func (b *Blockstore) doCopy(from, to *badger.DB) error {
 
 func (b *Blockstore) deleteDB(path string) {
 	// follow symbolic links, otherwise the data wil be left behind
-	lpath, err := filepath.EvalSymlinks(path)
+	linkPath, err := filepath.EvalSymlinks(path)
 	if err != nil {
 		log.Warnf("error resolving symlinks in %s", path)
 		return
 	}
 
-	log.Infof("removing data directory %s", lpath)
-	if err := os.RemoveAll(lpath); err != nil {
-		log.Warnf("error deleting db at %s: %s", lpath, err)
+	log.Infof("removing data directory %s", linkPath)
+	if err := os.RemoveAll(linkPath); err != nil {
+		log.Warnf("error deleting db at %s: %s", linkPath, err)
 		return
 	}
 
-	if path != lpath {
+	if path != linkPath {
 		log.Infof("removing link %s", path)
 		if err := os.Remove(path); err != nil {
 			log.Warnf("error removing symbolic link %s", err)
