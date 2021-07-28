@@ -377,7 +377,7 @@ func (b *Blockstore) symlink(path, linkTo string) error {
 
 	resolvedLinkDir, err := filepath.EvalSymlinks(filepath.Dir(linkTo))
 	if err != nil {
-		return fmt.Errorf("error resolving links in %s: %W", linkTo, err)
+		return fmt.Errorf("error resolving links in %s: %w", linkTo, err)
 	}
 
 	if resolvedPathDir == resolvedLinkDir {
