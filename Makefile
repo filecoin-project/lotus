@@ -169,12 +169,6 @@ lotus-fountain:
 .PHONY: lotus-fountain
 BINS+=lotus-fountain
 
-lotus-chainwatch:
-	rm -f lotus-chainwatch
-	$(GOCC) build $(GOFLAGS) -o lotus-chainwatch ./cmd/lotus-chainwatch
-.PHONY: lotus-chainwatch
-BINS+=lotus-chainwatch
-
 lotus-bench:
 	rm -f lotus-bench
 	$(GOCC) build -o lotus-bench ./cmd/lotus-bench
@@ -223,9 +217,6 @@ tvx:
 .PHONY: tvx
 BINS+=tvx
 
-install-chainwatch: lotus-chainwatch
-	install -C ./lotus-chainwatch /usr/local/bin/lotus-chainwatch
-
 lotus-sim: $(BUILD_DEPS)
 	rm -f lotus-sim
 	$(GOCC) build $(GOFLAGS) -o lotus-sim ./cmd/lotus-sim
@@ -250,21 +241,13 @@ install-miner-service: install-miner install-daemon-service
 	@echo
 	@echo "lotus-miner service installed. Don't forget to run 'sudo systemctl start lotus-miner' to start it and 'sudo systemctl enable lotus-miner' for it to be enabled on startup."
 
-install-chainwatch-service: install-chainwatch install-daemon-service
-	mkdir -p /etc/systemd/system
-	mkdir -p /var/log/lotus
-	install -C -m 0644 ./scripts/lotus-chainwatch.service /etc/systemd/system/lotus-chainwatch.service
-	systemctl daemon-reload
-	@echo
-	@echo "chainwatch service installed. Don't forget to run 'sudo systemctl start lotus-chainwatch' to start it and 'sudo systemctl enable lotus-chainwatch' for it to be enabled on startup."
-
 install-main-services: install-miner-service
 
-install-all-services: install-main-services install-chainwatch-service
+install-all-services: install-main-services
 
 install-services: install-main-services
 
-clean-daemon-service: clean-miner-service clean-chainwatch-service
+clean-daemon-service: clean-miner-service
 	-systemctl stop lotus-daemon
 	-systemctl disable lotus-daemon
 	rm -f /etc/systemd/system/lotus-daemon.service
@@ -274,12 +257,6 @@ clean-miner-service:
 	-systemctl stop lotus-miner
 	-systemctl disable lotus-miner
 	rm -f /etc/systemd/system/lotus-miner.service
-	systemctl daemon-reload
-
-clean-chainwatch-service:
-	-systemctl stop lotus-chainwatch
-	-systemctl disable lotus-chainwatch
-	rm -f /etc/systemd/system/lotus-chainwatch.service
 	systemctl daemon-reload
 
 clean-main-services: clean-daemon-service
