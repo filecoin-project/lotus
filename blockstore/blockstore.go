@@ -60,6 +60,11 @@ type BlockstoreSize interface {
 	Size() (int64, error)
 }
 
+// BlockstoreHotView is a trait for blockstores that support a notion of hot views
+type BlockstoreHotView interface {
+	HotView() Blockstore
+}
+
 // WrapIDStore wraps the underlying blockstore in an "identity" blockstore.
 // The ID store filters out all puts for blocks with CIDs using the "identity"
 // hash function. It also extracts inlined blocks from CIDs using the identity
