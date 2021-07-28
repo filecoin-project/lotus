@@ -123,6 +123,8 @@ func TestLotusAccessorGetUnpaddedCARSize(t *testing.T) {
 }
 
 func TestThrottle(t *testing.T) {
+	MaxConcurrentStorageCalls = 3
+
 	ctx := context.Background()
 	cid1, err := cid.Parse("bafkqaaa")
 	require.NoError(t, err)
@@ -160,7 +162,7 @@ func TestThrottle(t *testing.T) {
 	}
 
 	time.Sleep(500 * time.Millisecond)
-	require.EqualValues(t, MaxConcurrentUnsealedFetches, atomic.LoadInt32(&rpn.calls)) // throttled
+	require.EqualValues(t, MaxConcurrentStorageCalls, atomic.LoadInt32(&rpn.calls)) // throttled
 
 	// allow to proceed.
 	rpn.lk.Unlock()
