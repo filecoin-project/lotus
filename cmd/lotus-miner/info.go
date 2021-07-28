@@ -103,14 +103,14 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Println()
 
-	if subsystems.Has(api.SectorStorageSubsystem) {
+	if subsystems.Has(api.SubsystemSectorStorage) {
 		err := handleMiningInfo(ctx, cctx, fullapi, nodeApi)
 		if err != nil {
 			return err
 		}
 	}
 
-	if subsystems.Has(api.MarketsSubsystem) {
+	if subsystems.Has(api.SubsystemMarkets) {
 		err := handleMarketsInfo(ctx, nodeApi)
 		if err != nil {
 			return err

@@ -23,8 +23,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
-	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
@@ -48,10 +48,10 @@ import (
 type StorageMinerAPI struct {
 	fx.In
 
-	Subsystems api.MinerSubsystems
-
 	api.Common
 	api.Net
+
+	EnabledSubsystems api.MinerSubsystems
 
 	Full        api.FullNode
 	LocalStore  *stores.Local
@@ -706,7 +706,7 @@ func (sm *StorageMinerAPI) ComputeProof(ctx context.Context, ssi []builtin.Secto
 }
 
 func (sm *StorageMinerAPI) RuntimeSubsystems(context.Context) (res api.MinerSubsystems, err error) {
-	return sm.Subsystems, nil
+	return sm.EnabledSubsystems, nil
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}
