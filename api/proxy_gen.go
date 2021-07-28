@@ -699,6 +699,8 @@ type StorageMinerStruct struct {
 
 		ReturnUnsealPiece func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
 
+		RuntimeSubsystems func(p0 context.Context) (MinerSubsystems, error) `perm:"read"`
+
 		SealingAbort func(p0 context.Context, p1 storiface.CallID) error `perm:"admin"`
 
 		SealingSchedDiag func(p0 context.Context, p1 bool) (interface{}, error) `perm:"admin"`
@@ -4093,6 +4095,17 @@ func (s *StorageMinerStruct) ReturnUnsealPiece(p0 context.Context, p1 storiface.
 
 func (s *StorageMinerStub) ReturnUnsealPiece(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
 	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) RuntimeSubsystems(p0 context.Context) (MinerSubsystems, error) {
+	if s.Internal.RuntimeSubsystems == nil {
+		return *new(MinerSubsystems), ErrNotSupported
+	}
+	return s.Internal.RuntimeSubsystems(p0)
+}
+
+func (s *StorageMinerStub) RuntimeSubsystems(p0 context.Context) (MinerSubsystems, error) {
+	return *new(MinerSubsystems), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SealingAbort(p0 context.Context, p1 storiface.CallID) error {

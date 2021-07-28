@@ -94,6 +94,8 @@
   * [ReturnSealPreCommit1](#ReturnSealPreCommit1)
   * [ReturnSealPreCommit2](#ReturnSealPreCommit2)
   * [ReturnUnsealPiece](#ReturnUnsealPiece)
+* [Runtime](#Runtime)
+  * [RuntimeSubsystems](#RuntimeSubsystems)
 * [Sealing](#Sealing)
   * [SealingAbort](#SealingAbort)
   * [SealingSchedDiag](#SealingSchedDiag)
@@ -1521,6 +1523,18 @@ Inputs:
 ```
 
 Response: `{}`
+
+## Runtime
+
+
+### RuntimeSubsystems
+
+
+Perms: read
+
+Inputs: `null`
+
+Response: `null`
 
 ## Sealing
 
