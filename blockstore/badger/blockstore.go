@@ -370,9 +370,17 @@ func (b *Blockstore) movingGC() error {
 // symlink creates a symlink from path to linkPath; the link is relative if the two are
 // in the same directory
 func (b *Blockstore) symlink(path, linkTo string) error {
-	pathDir := filepath.Dir(path)
-	linkDir := filepath.Dir(linkTo)
-	if pathDir == linkDir {
+	resolvedPathDir, err := filepath.EvalSymlinks(filepath.Dir(path))
+	if err != nil {
+		return fmt.Errorf("error resolving links in %s: %w", path, err)
+	}
+
+	resolvedLinkDir, err := filepath.EvalSymlinks(filepath.Dir(linkTo))
+	if err != nil {
+		return fmt.Errorf("error resolving links in %s: %W", linkTo, err)
+	}
+
+	if resolvedPathDir == resolvedLinkDir {
 		path = filepath.Base(path)
 	}
 
