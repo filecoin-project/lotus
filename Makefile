@@ -17,6 +17,8 @@ MODULES:=
 CLEAN:=
 BINS:=
 
+GOCC?=go
+
 ldflags=-X=github.com/filecoin-project/lotus/build.CurrentCommit=+git.$(subst -,.,$(shell git describe --always --match=NeVeRmAtCh --dirty 2>/dev/null || git rev-parse --short HEAD 2>/dev/null))
 ifneq ($(strip $(LDFLAGS)),)
 	ldflags+=-extldflags=$(LDFLAGS)
@@ -85,32 +87,32 @@ interopnet: build-devnets
 
 lotus: $(BUILD_DEPS)
 	rm -f lotus
-	go build $(GOFLAGS) -o lotus ./cmd/lotus
+	$(GOCC) build $(GOFLAGS) -o lotus ./cmd/lotus
 
 .PHONY: lotus
 BINS+=lotus
 
 lotus-miner: $(BUILD_DEPS)
 	rm -f lotus-miner
-	go build $(GOFLAGS) -o lotus-miner ./cmd/lotus-miner
+	$(GOCC) build $(GOFLAGS) -o lotus-miner ./cmd/lotus-miner
 .PHONY: lotus-miner
 BINS+=lotus-miner
 
 lotus-worker: $(BUILD_DEPS)
 	rm -f lotus-worker
-	go build $(GOFLAGS) -o lotus-worker ./cmd/lotus-seal-worker
+	$(GOCC) build $(GOFLAGS) -o lotus-worker ./cmd/lotus-seal-worker
 .PHONY: lotus-worker
 BINS+=lotus-worker
 
 lotus-shed: $(BUILD_DEPS)
 	rm -f lotus-shed
-	go build $(GOFLAGS) -o lotus-shed ./cmd/lotus-shed
+	$(GOCC) build $(GOFLAGS) -o lotus-shed ./cmd/lotus-shed
 .PHONY: lotus-shed
 BINS+=lotus-shed
 
 lotus-gateway: $(BUILD_DEPS)
 	rm -f lotus-gateway
-	go build $(GOFLAGS) -o lotus-gateway ./cmd/lotus-gateway
+	$(GOCC) build $(GOFLAGS) -o lotus-gateway ./cmd/lotus-gateway
 .PHONY: lotus-gateway
 BINS+=lotus-gateway
 
@@ -138,19 +140,19 @@ install-app:
 
 lotus-seed: $(BUILD_DEPS)
 	rm -f lotus-seed
-	go build $(GOFLAGS) -o lotus-seed ./cmd/lotus-seed
+	$(GOCC) build $(GOFLAGS) -o lotus-seed ./cmd/lotus-seed
 
 .PHONY: lotus-seed
 BINS+=lotus-seed
 
 benchmarks:
-	go run github.com/whyrusleeping/bencher ./... > bench.json
+	$(GOCC) run github.com/whyrusleeping/bencher ./... > bench.json
 	@echo Submitting results
 	@curl -X POST 'http://benchmark.kittyhawk.wtf/benchmark' -d '@bench.json' -u "${benchmark_http_cred}"
 .PHONY: benchmarks
 
 lotus-pond: 2k
-	go build -o lotus-pond ./lotuspond
+	$(GOCC) build -o lotus-pond ./lotuspond
 .PHONY: lotus-pond
 BINS+=lotus-pond
 
@@ -163,7 +165,7 @@ lotus-pond-app: lotus-pond-front lotus-pond
 
 lotus-townhall:
 	rm -f lotus-townhall
-	go build -o lotus-townhall ./cmd/lotus-townhall
+	$(GOCC) build -o lotus-townhall ./cmd/lotus-townhall
 .PHONY: lotus-townhall
 BINS+=lotus-townhall
 
@@ -176,61 +178,61 @@ lotus-townhall-app: lotus-touch lotus-townhall-front
 
 lotus-fountain:
 	rm -f lotus-fountain
-	go build -o lotus-fountain ./cmd/lotus-fountain
+	$(GOCC) build -o lotus-fountain ./cmd/lotus-fountain
 .PHONY: lotus-fountain
 BINS+=lotus-fountain
 
 lotus-chainwatch:
 	rm -f lotus-chainwatch
-	go build $(GOFLAGS) -o lotus-chainwatch ./cmd/lotus-chainwatch
+	$(GOCC) build $(GOFLAGS) -o lotus-chainwatch ./cmd/lotus-chainwatch
 .PHONY: lotus-chainwatch
 BINS+=lotus-chainwatch
 
 lotus-bench:
 	rm -f lotus-bench
-	go build -o lotus-bench ./cmd/lotus-bench
+	$(GOCC) build -o lotus-bench ./cmd/lotus-bench
 .PHONY: lotus-bench
 BINS+=lotus-bench
 
 lotus-stats:
 	rm -f lotus-stats
-	go build $(GOFLAGS) -o lotus-stats ./cmd/lotus-stats
+	$(GOCC) build $(GOFLAGS) -o lotus-stats ./cmd/lotus-stats
 .PHONY: lotus-stats
 BINS+=lotus-stats
 
 lotus-pcr:
 	rm -f lotus-pcr
-	go build $(GOFLAGS) -o lotus-pcr ./cmd/lotus-pcr
+	$(GOCC) build $(GOFLAGS) -o lotus-pcr ./cmd/lotus-pcr
 .PHONY: lotus-pcr
 BINS+=lotus-pcr
 
 lotus-health:
 	rm -f lotus-health
-	go build -o lotus-health ./cmd/lotus-health
+	$(GOCC) build -o lotus-health ./cmd/lotus-health
 .PHONY: lotus-health
 BINS+=lotus-health
 
 lotus-wallet:
 	rm -f lotus-wallet
-	go build -o lotus-wallet ./cmd/lotus-wallet
+	$(GOCC) build -o lotus-wallet ./cmd/lotus-wallet
 .PHONY: lotus-wallet
 BINS+=lotus-wallet
 
 lotus-keygen:
 	rm -f lotus-keygen
-	go build -o lotus-keygen ./cmd/lotus-keygen
+	$(GOCC) build -o lotus-keygen ./cmd/lotus-keygen
 .PHONY: lotus-keygen
 BINS+=lotus-keygen
 
 testground:
-	go build -tags testground -o /dev/null ./cmd/lotus
+	$(GOCC) build -tags testground -o /dev/null ./cmd/lotus
 .PHONY: testground
 BINS+=testground
 
 
 tvx:
 	rm -f tvx
-	go build -o tvx ./cmd/tvx
+	$(GOCC) build -o tvx ./cmd/tvx
 .PHONY: tvx
 BINS+=tvx
 
@@ -239,7 +241,7 @@ install-chainwatch: lotus-chainwatch
 
 lotus-sim: $(BUILD_DEPS)
 	rm -f lotus-sim
-	go build $(GOFLAGS) -o lotus-sim ./cmd/lotus-sim
+	$(GOCC) build $(GOFLAGS) -o lotus-sim ./cmd/lotus-sim
 .PHONY: lotus-sim
 BINS+=lotus-sim
 
@@ -319,25 +321,25 @@ dist-clean:
 .PHONY: dist-clean
 
 type-gen: api-gen
-	go run ./gen/main.go
-	go generate -x ./...
+	$(GOCC) run ./gen/main.go
+	$(GOCC) generate -x ./...
 	goimports -w api/
 
 method-gen: api-gen
-	(cd ./lotuspond/front/src/chain && go run ./methodgen.go)
+	(cd ./lotuspond/front/src/chain && $(GOCC) run ./methodgen.go)
 
 actors-gen:
-	go run ./chain/actors/agen
-	go fmt ./...
+	$(GOCC) run ./chain/actors/agen
+	$(GOCC) fmt ./...
 
 api-gen:
-	go run ./gen/api
+	$(GOCC) run ./gen/api
 	goimports -w api
 	goimports -w api
 .PHONY: api-gen
 
 cfgdoc-gen:
-	go run ./node/config/cfgdocgen > ./node/config/doc_gen.go
+	$(GOCC) run ./node/config/cfgdocgen > ./node/config/doc_gen.go
 
 appimage: lotus
 	rm -rf appimage-builder-cache || true
@@ -351,9 +353,9 @@ appimage: lotus
 docsgen: docsgen-md docsgen-openrpc
 
 docsgen-md-bin: api-gen actors-gen
-	go build $(GOFLAGS) -o docgen-md ./api/docgen/cmd
+	$(GOCC) build $(GOFLAGS) -o docgen-md ./api/docgen/cmd
 docsgen-openrpc-bin: api-gen actors-gen
-	go build $(GOFLAGS) -o docgen-openrpc ./api/docgen-openrpc/cmd
+	$(GOCC) build $(GOFLAGS) -o docgen-openrpc ./api/docgen-openrpc/cmd
 
 docsgen-md: docsgen-md-full docsgen-md-storage docsgen-md-worker
 
@@ -393,4 +395,4 @@ print-%:
 	@echo $*=$($*)
 
 circleci:
-	go generate -x ./.circleci
+	$(GOCC) generate -x ./.circleci
