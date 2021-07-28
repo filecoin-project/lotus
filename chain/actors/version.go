@@ -22,6 +22,10 @@ const (
 
 // Converts a network version into an actors adt version.
 func VersionForNetwork(version network.Version) Version {
+	// Handle previous api version (1 - 13)
+	if version > network.Version0 && version < network.Version1 {
+		version = version * network.Version1 // assumes (1) even spacing between integer network numbers and (2) network.Version0 == 0
+	}
 	switch version {
 	case network.Version0, network.Version1, network.Version2, network.Version3:
 		return Version0
