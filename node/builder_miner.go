@@ -72,7 +72,7 @@ func ConfigStorageMiner(c interface{}) Option {
 	return Options(
 		ConfigCommon(&cfg.Common, enableLibp2pNode),
 
-		Override(new([]api.MinerSubsystem), modules.AddMinerSubsystems(cfg.Subsystems)),
+		Override(new(api.MinerSubsystems), modules.AddMinerSubsystems(cfg.Subsystems)),
 		Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
 		Override(new(*stores.Local), modules.LocalStorage),
 		Override(new(*stores.Remote), modules.RemoteStorage),
@@ -216,7 +216,6 @@ func StorageMiner(out *api.StorageMiner, subsystemsCfg config.MinerSubsystemConf
 
 		func(s *Settings) error {
 			resAPI := &impl.StorageMinerAPI{}
-
 			s.invokes[ExtractApiKey] = fx.Populate(resAPI)
 			*out = resAPI
 			return nil
