@@ -93,27 +93,29 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 		return &ErrBadCommD{xerrors.Errorf("on chain CommD differs from sector: %s != %s", commD, si.CommD)}
 	}
 
-	ticketEarliest := height - policy.MaxPreCommitRandomnessLookback
-
-	if si.TicketEpoch < ticketEarliest {
-		return &ErrExpiredTicket{xerrors.Errorf("ticket expired: seal height: %d, head: %d", si.TicketEpoch+policy.SealRandomnessLookback, height)}
-	}
-
 	pci, err := api.StateSectorPreCommitInfo(ctx, maddr, si.SectorNumber, tok)
 	if err != nil {
 		if err == ErrSectorAllocated {
+			//committed P2 message  but commit C2 message too late, pci should be null in this case
 			return &ErrSectorNumberAllocated{err}
 		}
 		return &ErrApi{xerrors.Errorf("getting precommit info: %w", err)}
 	}
 
 	if pci != nil {
+		// committed P2 message
 		if pci.Info.SealRandEpoch != si.TicketEpoch {
 			return &ErrBadTicket{xerrors.Errorf("bad ticket epoch: %d != %d", pci.Info.SealRandEpoch, si.TicketEpoch)}
 		}
 		return &ErrPrecommitOnChain{xerrors.Errorf("precommit already on chain")}
 	}
 
+	//never commit P2 message before, check ticket expiration
+	ticketEarliest := height - policy.MaxPreCommitRandomnessLookback
+
+	if si.TicketEpoch < ticketEarliest {
+		return &ErrExpiredTicket{xerrors.Errorf("ticket expired: seal height: %d, head: %d", si.TicketEpoch+policy.SealRandomnessLookback, height)}
+	}
 	return nil
 }
 
