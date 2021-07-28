@@ -250,7 +250,7 @@ func (s *SplitStore) iHas(cid cid.Cid, reify bool) (bool, error) {
 	}
 
 	has, err = s.cold.Has(cid)
-	if has && err != nil {
+	if has && err == nil {
 		s.reifyColdObject(cid)
 		s.trackTxnRef(cid)
 	}
