@@ -163,19 +163,6 @@ lotus-pond-front:
 lotus-pond-app: lotus-pond-front lotus-pond
 .PHONY: lotus-pond-app
 
-lotus-townhall:
-	rm -f lotus-townhall
-	$(GOCC) build -o lotus-townhall ./cmd/lotus-townhall
-.PHONY: lotus-townhall
-BINS+=lotus-townhall
-
-lotus-townhall-front:
-	(cd ./cmd/lotus-townhall/townhall && npm i && npm run build)
-.PHONY: lotus-townhall-front
-
-lotus-townhall-app: lotus-touch lotus-townhall-front
-.PHONY: lotus-townhall-app
-
 lotus-fountain:
 	rm -f lotus-fountain
 	$(GOCC) build -o lotus-fountain ./cmd/lotus-fountain
