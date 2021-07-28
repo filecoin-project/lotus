@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/api/v0api"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 
 	"github.com/filecoin-project/lotus/api"
@@ -50,13 +49,7 @@ var infoCmd = &cli.Command{
 }
 
 func infoCmdAct(cctx *cli.Context) error {
-	minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-	if err != nil {
-		return err
-	}
-	defer closer()
-
-	marketsApi, closer, err := lcli.GetMarketsAPI(cctx)
+	nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 	if err != nil {
 		return err
 	}
@@ -70,19 +63,12 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	ctx := lcli.ReqContext(cctx)
 
-	subsystems, err := minerApi.RuntimeSubsystems(ctx)
+	subsystems, err := nodeApi.RuntimeSubsystems(ctx)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("Enabled subsystems (from miner API):", subsystems)
-
-	subsystems, err = marketsApi.RuntimeSubsystems(ctx)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("Enabled subsystems (from markets API):", subsystems)
+	fmt.Println("Enabled subsystems:", subsystems)
 
 	fmt.Print("Chain: ")
 
@@ -116,303 +102,288 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Println()
 
-	err = handleMiningInfo(ctx, cctx, fullapi, minerApi)
-	if err != nil {
-		return err
-	}
-
-	err = handleMarketsInfo(ctx, marketsApi)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.FullNode, nodeApi api.StorageMiner) error {
-	maddr, err := getActorAddress(ctx, cctx)
-	if err != nil {
-		return err
-	}
-
-	mact, err := fullapi.StateGetActor(ctx, maddr, types.EmptyTSK)
-	if err != nil {
-		return err
-	}
-
-	tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(fullapi), blockstore.NewMemory())
-	mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
-	if err != nil {
-		return err
-	}
-
-	// Sector size
-	mi, err := fullapi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-	if err != nil {
-		return err
-	}
-
-	ssize := types.SizeStr(types.NewInt(uint64(mi.SectorSize)))
-	fmt.Printf("Miner: %s (%s sectors)\n", color.BlueString("%s", maddr), ssize)
-
-	pow, err := fullapi.StateMinerPower(ctx, maddr, types.EmptyTSK)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("Power: %s / %s (%0.4f%%)\n",
-		color.GreenString(types.DeciStr(pow.MinerPower.QualityAdjPower)),
-		types.DeciStr(pow.TotalPower.QualityAdjPower),
-		types.BigDivFloat(
-			types.BigMul(pow.MinerPower.QualityAdjPower, big.NewInt(100)),
-			pow.TotalPower.QualityAdjPower,
-		),
-	)
-
-	fmt.Printf("\tRaw: %s / %s (%0.4f%%)\n",
-		color.BlueString(types.SizeStr(pow.MinerPower.RawBytePower)),
-		types.SizeStr(pow.TotalPower.RawBytePower),
-		types.BigDivFloat(
-			types.BigMul(pow.MinerPower.RawBytePower, big.NewInt(100)),
-			pow.TotalPower.RawBytePower,
-		),
-	)
-	secCounts, err := fullapi.StateMinerSectorCount(ctx, maddr, types.EmptyTSK)
-	if err != nil {
-		return err
-	}
-
-	proving := secCounts.Active + secCounts.Faulty
-	nfaults := secCounts.Faulty
-	fmt.Printf("\tCommitted: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Live), types.NewInt(uint64(mi.SectorSize)))))
-	if nfaults == 0 {
-		fmt.Printf("\tProving: %s\n", types.SizeStr(types.BigMul(types.NewInt(proving), types.NewInt(uint64(mi.SectorSize)))))
-	} else {
-		var faultyPercentage float64
-		if secCounts.Live != 0 {
-			faultyPercentage = float64(100*nfaults) / float64(secCounts.Live)
-		}
-		fmt.Printf("\tProving: %s (%s Faulty, %.2f%%)\n",
-			types.SizeStr(types.BigMul(types.NewInt(proving), types.NewInt(uint64(mi.SectorSize)))),
-			types.SizeStr(types.BigMul(types.NewInt(nfaults), types.NewInt(uint64(mi.SectorSize)))),
-			faultyPercentage)
-	}
-
-	if !pow.HasMinPower {
-		fmt.Print("Below minimum power threshold, no blocks will be won")
-	} else {
-
-		winRatio := new(corebig.Rat).SetFrac(
-			types.BigMul(pow.MinerPower.QualityAdjPower, types.NewInt(build.BlocksPerEpoch)).Int,
-			pow.TotalPower.QualityAdjPower.Int,
-		)
-
-		if winRatioFloat, _ := winRatio.Float64(); winRatioFloat > 0 {
-
-			// if the corresponding poisson distribution isn't infinitely small then
-			// throw it into the mix as well, accounting for multi-wins
-			winRationWithPoissonFloat := -math.Expm1(-winRatioFloat)
-			winRationWithPoisson := new(corebig.Rat).SetFloat64(winRationWithPoissonFloat)
-			if winRationWithPoisson != nil {
-				winRatio = winRationWithPoisson
-				winRatioFloat = winRationWithPoissonFloat
-			}
-
-			weekly, _ := new(corebig.Rat).Mul(
-				winRatio,
-				new(corebig.Rat).SetInt64(7*builtin.EpochsInDay),
-			).Float64()
-
-			avgDuration, _ := new(corebig.Rat).Mul(
-				new(corebig.Rat).SetInt64(builtin.EpochDurationSeconds),
-				new(corebig.Rat).Inv(winRatio),
-			).Float64()
-
-			fmt.Print("Projected average block win rate: ")
-			color.Blue(
-				"%.02f/week (every %s)",
-				weekly,
-				(time.Second * time.Duration(avgDuration)).Truncate(time.Second).String(),
-			)
-
-			// Geometric distribution of P(Y < k) calculated as described in https://en.wikipedia.org/wiki/Geometric_distribution#Probability_Outcomes_Examples
-			// https://www.wolframalpha.com/input/?i=t+%3E+0%3B+p+%3E+0%3B+p+%3C+1%3B+c+%3E+0%3B+c+%3C1%3B+1-%281-p%29%5E%28t%29%3Dc%3B+solve+t
-			// t == how many dice-rolls (epochs) before win
-			// p == winRate == ( minerPower / netPower )
-			// c == target probability of win ( 99.9% in this case )
-			fmt.Print("Projected block win with ")
-			color.Green(
-				"99.9%% probability every %s",
-				(time.Second * time.Duration(
-					builtin.EpochDurationSeconds*math.Log(1-0.999)/
-						math.Log(1-winRatioFloat),
-				)).Truncate(time.Second).String(),
-			)
-			fmt.Println("(projections DO NOT account for future network and miner growth)")
-		}
-	}
-
-	fmt.Println()
-
-	spendable := big.Zero()
-
-	// NOTE: there's no need to unlock anything here. Funds only
-	// vest on deadline boundaries, and they're unlocked by cron.
-	lockedFunds, err := mas.LockedFunds()
-	if err != nil {
-		return xerrors.Errorf("getting locked funds: %w", err)
-	}
-	availBalance, err := mas.AvailableBalance(mact.Balance)
-	if err != nil {
-		return xerrors.Errorf("getting available balance: %w", err)
-	}
-	spendable = big.Add(spendable, availBalance)
-
-	fmt.Printf("Miner Balance:    %s\n", color.YellowString("%s", types.FIL(mact.Balance).Short()))
-	fmt.Printf("      PreCommit:  %s\n", types.FIL(lockedFunds.PreCommitDeposits).Short())
-	fmt.Printf("      Pledge:     %s\n", types.FIL(lockedFunds.InitialPledgeRequirement).Short())
-	fmt.Printf("      Vesting:    %s\n", types.FIL(lockedFunds.VestingFunds).Short())
-	colorTokenAmount("      Available:  %s\n", availBalance)
-
-	mb, err := fullapi.StateMarketBalance(ctx, maddr, types.EmptyTSK)
-	if err != nil {
-		return xerrors.Errorf("getting market balance: %w", err)
-	}
-	spendable = big.Add(spendable, big.Sub(mb.Escrow, mb.Locked))
-
-	fmt.Printf("Market Balance:   %s\n", types.FIL(mb.Escrow).Short())
-	fmt.Printf("       Locked:    %s\n", types.FIL(mb.Locked).Short())
-	colorTokenAmount("       Available: %s\n", big.Sub(mb.Escrow, mb.Locked))
-
-	wb, err := fullapi.WalletBalance(ctx, mi.Worker)
-	if err != nil {
-		return xerrors.Errorf("getting worker balance: %w", err)
-	}
-	spendable = big.Add(spendable, wb)
-	color.Cyan("Worker Balance:   %s", types.FIL(wb).Short())
-	if len(mi.ControlAddresses) > 0 {
-		cbsum := big.Zero()
-		for _, ca := range mi.ControlAddresses {
-			b, err := fullapi.WalletBalance(ctx, ca)
-			if err != nil {
-				return xerrors.Errorf("getting control address balance: %w", err)
-			}
-			cbsum = big.Add(cbsum, b)
-		}
-		spendable = big.Add(spendable, cbsum)
-
-		fmt.Printf("       Control:   %s\n", types.FIL(cbsum).Short())
-	}
-	colorTokenAmount("Total Spendable:  %s\n", spendable)
-
-	fmt.Println()
-
-	if !cctx.Bool("hide-sectors-info") {
-		fmt.Println("Sectors:")
-		err = sectorsInfo(ctx, nodeApi)
+	if subsystems.Has(api.SectorStorageSubsystem) {
+		maddr, err := getActorAddress(ctx, cctx)
 		if err != nil {
 			return err
 		}
-	}
 
-	// TODO: grab actr state / info
-	//  * Sealed sectors (count / bytes)
-	//  * Power
-
-	return nil
-}
-
-func handleMarketsInfo(ctx context.Context, nodeApi api.StorageMiner) error {
-	deals, err := nodeApi.MarketListIncompleteDeals(ctx)
-	if err != nil {
-		return err
-	}
-
-	type dealStat struct {
-		count, verifCount int
-		bytes, verifBytes uint64
-	}
-	dsAdd := func(ds *dealStat, deal storagemarket.MinerDeal) {
-		ds.count++
-		ds.bytes += uint64(deal.Proposal.PieceSize)
-		if deal.Proposal.VerifiedDeal {
-			ds.verifCount++
-			ds.verifBytes += uint64(deal.Proposal.PieceSize)
-		}
-	}
-
-	showDealStates := map[storagemarket.StorageDealStatus]struct{}{
-		storagemarket.StorageDealActive:             {},
-		storagemarket.StorageDealTransferring:       {},
-		storagemarket.StorageDealStaged:             {},
-		storagemarket.StorageDealAwaitingPreCommit:  {},
-		storagemarket.StorageDealSealing:            {},
-		storagemarket.StorageDealPublish:            {},
-		storagemarket.StorageDealCheckForAcceptance: {},
-		storagemarket.StorageDealPublishing:         {},
-	}
-
-	var total dealStat
-	perState := map[storagemarket.StorageDealStatus]*dealStat{}
-	for _, deal := range deals {
-		if _, ok := showDealStates[deal.State]; !ok {
-			continue
-		}
-		if perState[deal.State] == nil {
-			perState[deal.State] = new(dealStat)
+		mact, err := fullapi.StateGetActor(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
 		}
 
-		dsAdd(&total, deal)
-		dsAdd(perState[deal.State], deal)
-	}
+		tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(fullapi), blockstore.NewMemory())
+		mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
+		if err != nil {
+			return err
+		}
 
-	type wstr struct {
-		str    string
-		status storagemarket.StorageDealStatus
-	}
-	sorted := make([]wstr, 0, len(perState))
-	for status, stat := range perState {
-		st := strings.TrimPrefix(storagemarket.DealStates[status], "StorageDeal")
-		sorted = append(sorted, wstr{
-			str:    fmt.Sprintf("      %s:\t%d\t\t%s\t(Verified: %d\t%s)\n", st, stat.count, types.SizeStr(types.NewInt(stat.bytes)), stat.verifCount, types.SizeStr(types.NewInt(stat.verifBytes))),
-			status: status,
-		},
+		// Sector size
+		mi, err := fullapi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		ssize := types.SizeStr(types.NewInt(uint64(mi.SectorSize)))
+		fmt.Printf("Miner: %s (%s sectors)\n", color.BlueString("%s", maddr), ssize)
+
+		pow, err := fullapi.StateMinerPower(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Power: %s / %s (%0.4f%%)\n",
+			color.GreenString(types.DeciStr(pow.MinerPower.QualityAdjPower)),
+			types.DeciStr(pow.TotalPower.QualityAdjPower),
+			types.BigDivFloat(
+				types.BigMul(pow.MinerPower.QualityAdjPower, big.NewInt(100)),
+				pow.TotalPower.QualityAdjPower,
+			),
 		)
-	}
-	sort.Slice(sorted, func(i, j int) bool {
-		if sorted[i].status == storagemarket.StorageDealActive || sorted[j].status == storagemarket.StorageDealActive {
-			return sorted[i].status == storagemarket.StorageDealActive
+
+		fmt.Printf("\tRaw: %s / %s (%0.4f%%)\n",
+			color.BlueString(types.SizeStr(pow.MinerPower.RawBytePower)),
+			types.SizeStr(pow.TotalPower.RawBytePower),
+			types.BigDivFloat(
+				types.BigMul(pow.MinerPower.RawBytePower, big.NewInt(100)),
+				pow.TotalPower.RawBytePower,
+			),
+		)
+		secCounts, err := fullapi.StateMinerSectorCount(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
 		}
-		return sorted[i].status > sorted[j].status
-	})
 
-	fmt.Println()
-	fmt.Printf("Storage Deals: %d, %s\n", total.count, types.SizeStr(types.NewInt(total.bytes)))
-
-	tw := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
-	for _, e := range sorted {
-		_, _ = tw.Write([]byte(e.str))
-	}
-
-	_ = tw.Flush()
-	fmt.Println()
-
-	retrievals, err := nodeApi.MarketListRetrievalDeals(ctx)
-	if err != nil {
-		return xerrors.Errorf("getting retrieval deal list: %w", err)
-	}
-
-	var retrComplete dealStat
-	for _, retrieval := range retrievals {
-		if retrieval.Status == retrievalmarket.DealStatusCompleted {
-			retrComplete.count++
-			retrComplete.bytes += retrieval.TotalSent
+		proving := secCounts.Active + secCounts.Faulty
+		nfaults := secCounts.Faulty
+		fmt.Printf("\tCommitted: %s\n", types.SizeStr(types.BigMul(types.NewInt(secCounts.Live), types.NewInt(uint64(mi.SectorSize)))))
+		if nfaults == 0 {
+			fmt.Printf("\tProving: %s\n", types.SizeStr(types.BigMul(types.NewInt(proving), types.NewInt(uint64(mi.SectorSize)))))
+		} else {
+			var faultyPercentage float64
+			if secCounts.Live != 0 {
+				faultyPercentage = float64(100*nfaults) / float64(secCounts.Live)
+			}
+			fmt.Printf("\tProving: %s (%s Faulty, %.2f%%)\n",
+				types.SizeStr(types.BigMul(types.NewInt(proving), types.NewInt(uint64(mi.SectorSize)))),
+				types.SizeStr(types.BigMul(types.NewInt(nfaults), types.NewInt(uint64(mi.SectorSize)))),
+				faultyPercentage)
 		}
+
+		if !pow.HasMinPower {
+			fmt.Print("Below minimum power threshold, no blocks will be won")
+		} else {
+
+			winRatio := new(corebig.Rat).SetFrac(
+				types.BigMul(pow.MinerPower.QualityAdjPower, types.NewInt(build.BlocksPerEpoch)).Int,
+				pow.TotalPower.QualityAdjPower.Int,
+			)
+
+			if winRatioFloat, _ := winRatio.Float64(); winRatioFloat > 0 {
+
+				// if the corresponding poisson distribution isn't infinitely small then
+				// throw it into the mix as well, accounting for multi-wins
+				winRationWithPoissonFloat := -math.Expm1(-winRatioFloat)
+				winRationWithPoisson := new(corebig.Rat).SetFloat64(winRationWithPoissonFloat)
+				if winRationWithPoisson != nil {
+					winRatio = winRationWithPoisson
+					winRatioFloat = winRationWithPoissonFloat
+				}
+
+				weekly, _ := new(corebig.Rat).Mul(
+					winRatio,
+					new(corebig.Rat).SetInt64(7*builtin.EpochsInDay),
+				).Float64()
+
+				avgDuration, _ := new(corebig.Rat).Mul(
+					new(corebig.Rat).SetInt64(builtin.EpochDurationSeconds),
+					new(corebig.Rat).Inv(winRatio),
+				).Float64()
+
+				fmt.Print("Projected average block win rate: ")
+				color.Blue(
+					"%.02f/week (every %s)",
+					weekly,
+					(time.Second * time.Duration(avgDuration)).Truncate(time.Second).String(),
+				)
+
+				// Geometric distribution of P(Y < k) calculated as described in https://en.wikipedia.org/wiki/Geometric_distribution#Probability_Outcomes_Examples
+				// https://www.wolframalpha.com/input/?i=t+%3E+0%3B+p+%3E+0%3B+p+%3C+1%3B+c+%3E+0%3B+c+%3C1%3B+1-%281-p%29%5E%28t%29%3Dc%3B+solve+t
+				// t == how many dice-rolls (epochs) before win
+				// p == winRate == ( minerPower / netPower )
+				// c == target probability of win ( 99.9% in this case )
+				fmt.Print("Projected block win with ")
+				color.Green(
+					"99.9%% probability every %s",
+					(time.Second * time.Duration(
+						builtin.EpochDurationSeconds*math.Log(1-0.999)/
+							math.Log(1-winRatioFloat),
+					)).Truncate(time.Second).String(),
+				)
+				fmt.Println("(projections DO NOT account for future network and miner growth)")
+			}
+		}
+
+		fmt.Println()
+
+		spendable := big.Zero()
+
+		// NOTE: there's no need to unlock anything here. Funds only
+		// vest on deadline boundaries, and they're unlocked by cron.
+		lockedFunds, err := mas.LockedFunds()
+		if err != nil {
+			return xerrors.Errorf("getting locked funds: %w", err)
+		}
+		availBalance, err := mas.AvailableBalance(mact.Balance)
+		if err != nil {
+			return xerrors.Errorf("getting available balance: %w", err)
+		}
+		spendable = big.Add(spendable, availBalance)
+
+		fmt.Printf("Miner Balance:    %s\n", color.YellowString("%s", types.FIL(mact.Balance).Short()))
+		fmt.Printf("      PreCommit:  %s\n", types.FIL(lockedFunds.PreCommitDeposits).Short())
+		fmt.Printf("      Pledge:     %s\n", types.FIL(lockedFunds.InitialPledgeRequirement).Short())
+		fmt.Printf("      Vesting:    %s\n", types.FIL(lockedFunds.VestingFunds).Short())
+		colorTokenAmount("      Available:  %s\n", availBalance)
+
+		mb, err := fullapi.StateMarketBalance(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("getting market balance: %w", err)
+		}
+		spendable = big.Add(spendable, big.Sub(mb.Escrow, mb.Locked))
+
+		fmt.Printf("Market Balance:   %s\n", types.FIL(mb.Escrow).Short())
+		fmt.Printf("       Locked:    %s\n", types.FIL(mb.Locked).Short())
+		colorTokenAmount("       Available: %s\n", big.Sub(mb.Escrow, mb.Locked))
+
+		wb, err := fullapi.WalletBalance(ctx, mi.Worker)
+		if err != nil {
+			return xerrors.Errorf("getting worker balance: %w", err)
+		}
+		spendable = big.Add(spendable, wb)
+		color.Cyan("Worker Balance:   %s", types.FIL(wb).Short())
+		if len(mi.ControlAddresses) > 0 {
+			cbsum := big.Zero()
+			for _, ca := range mi.ControlAddresses {
+				b, err := fullapi.WalletBalance(ctx, ca)
+				if err != nil {
+					return xerrors.Errorf("getting control address balance: %w", err)
+				}
+				cbsum = big.Add(cbsum, b)
+			}
+			spendable = big.Add(spendable, cbsum)
+
+			fmt.Printf("       Control:   %s\n", types.FIL(cbsum).Short())
+		}
+		colorTokenAmount("Total Spendable:  %s\n", spendable)
+
+		fmt.Println()
+
+		if !cctx.Bool("hide-sectors-info") {
+			fmt.Println("Sectors:")
+			err = sectorsInfo(ctx, nodeApi)
+			if err != nil {
+				return err
+			}
+		}
+
+		// TODO: grab actr state / info
+		//  * Sealed sectors (count / bytes)
+		//  * Power
 	}
 
-	fmt.Printf("Retrieval Deals (complete): %d, %s\n", retrComplete.count, types.SizeStr(types.NewInt(retrComplete.bytes)))
+	if subsystems.Has(api.MarketsSubsystem) {
+		deals, err := nodeApi.MarketListIncompleteDeals(ctx)
+		if err != nil {
+			return err
+		}
 
-	fmt.Println()
+		type dealStat struct {
+			count, verifCount int
+			bytes, verifBytes uint64
+		}
+		dsAdd := func(ds *dealStat, deal storagemarket.MinerDeal) {
+			ds.count++
+			ds.bytes += uint64(deal.Proposal.PieceSize)
+			if deal.Proposal.VerifiedDeal {
+				ds.verifCount++
+				ds.verifBytes += uint64(deal.Proposal.PieceSize)
+			}
+		}
+
+		showDealStates := map[storagemarket.StorageDealStatus]struct{}{
+			storagemarket.StorageDealActive:             {},
+			storagemarket.StorageDealTransferring:       {},
+			storagemarket.StorageDealStaged:             {},
+			storagemarket.StorageDealAwaitingPreCommit:  {},
+			storagemarket.StorageDealSealing:            {},
+			storagemarket.StorageDealPublish:            {},
+			storagemarket.StorageDealCheckForAcceptance: {},
+			storagemarket.StorageDealPublishing:         {},
+		}
+
+		var total dealStat
+		perState := map[storagemarket.StorageDealStatus]*dealStat{}
+		for _, deal := range deals {
+			if _, ok := showDealStates[deal.State]; !ok {
+				continue
+			}
+			if perState[deal.State] == nil {
+				perState[deal.State] = new(dealStat)
+			}
+
+			dsAdd(&total, deal)
+			dsAdd(perState[deal.State], deal)
+		}
+
+		type wstr struct {
+			str    string
+			status storagemarket.StorageDealStatus
+		}
+		sorted := make([]wstr, 0, len(perState))
+		for status, stat := range perState {
+			st := strings.TrimPrefix(storagemarket.DealStates[status], "StorageDeal")
+			sorted = append(sorted, wstr{
+				str:    fmt.Sprintf("      %s:\t%d\t\t%s\t(Verified: %d\t%s)\n", st, stat.count, types.SizeStr(types.NewInt(stat.bytes)), stat.verifCount, types.SizeStr(types.NewInt(stat.verifBytes))),
+				status: status,
+			},
+			)
+		}
+		sort.Slice(sorted, func(i, j int) bool {
+			if sorted[i].status == storagemarket.StorageDealActive || sorted[j].status == storagemarket.StorageDealActive {
+				return sorted[i].status == storagemarket.StorageDealActive
+			}
+			return sorted[i].status > sorted[j].status
+		})
+
+		fmt.Printf("Storage Deals: %d, %s\n", total.count, types.SizeStr(types.NewInt(total.bytes)))
+
+		tw := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
+		for _, e := range sorted {
+			_, _ = tw.Write([]byte(e.str))
+		}
+
+		_ = tw.Flush()
+		fmt.Println()
+
+		retrievals, err := nodeApi.MarketListRetrievalDeals(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting retrieval deal list: %w", err)
+		}
+
+		var retrComplete dealStat
+		for _, retrieval := range retrievals {
+			if retrieval.Status == retrievalmarket.DealStatusCompleted {
+				retrComplete.count++
+				retrComplete.bytes += retrieval.TotalSent
+			}
+		}
+
+		fmt.Printf("Retrieval Deals (complete): %d, %s\n", retrComplete.count, types.SizeStr(types.NewInt(retrComplete.bytes)))
+
+		fmt.Println()
+	}
 
 	return nil
 }

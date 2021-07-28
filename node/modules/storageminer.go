@@ -1008,18 +1008,19 @@ func mutateCfg(r repo.LockedRepo, mutator func(*config.StorageMiner)) error {
 	return multierr.Combine(typeErr, setConfigErr)
 }
 
-func ExtractEnabledMinerSubsystems(cfg config.MinerSubsystemConfig) (res api.MinerSubsystems) {
+func AddMinerSubsystems(cfg config.MinerSubsystemConfig) (res api.MinerSubsystems) {
 	if cfg.EnableMining {
-		res = append(res, api.SubsystemMining)
+		res = append(res, api.MiningSubsystem)
 	}
 	if cfg.EnableSealing {
-		res = append(res, api.SubsystemSealing)
+		res = append(res, api.SealingSubsystem)
 	}
 	if cfg.EnableSectorStorage {
-		res = append(res, api.SubsystemSectorStorage)
+		res = append(res, api.SectorStorageSubsystem)
 	}
 	if cfg.EnableMarkets {
-		res = append(res, api.SubsystemMarkets)
+		res = append(res, api.MarketsSubsystem)
 	}
-	return res
+
+	return
 }
