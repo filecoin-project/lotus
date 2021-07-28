@@ -104,7 +104,7 @@ func infoCmdAct(cctx *cli.Context) error {
 	fmt.Println()
 
 	if subsystems.Has(api.SectorStorageSubsystem) {
-		err := handleMiningInfo(cctx, ctx, fullapi, nodeApi)
+		err := handleMiningInfo(ctx, cctx, fullapi, nodeApi)
 		if err != nil {
 			return err
 		}
@@ -120,7 +120,7 @@ func infoCmdAct(cctx *cli.Context) error {
 	return nil
 }
 
-func handleMiningInfo(cctx *cli.Context, ctx context.Context, fullapi v0api.FullNode, nodeApi api.StorageMiner) error {
+func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.FullNode, nodeApi api.StorageMiner) error {
 	maddr, err := getActorAddress(ctx, cctx)
 	if err != nil {
 		return err
