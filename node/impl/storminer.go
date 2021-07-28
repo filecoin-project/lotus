@@ -48,6 +48,8 @@ import (
 type StorageMinerAPI struct {
 	fx.In
 
+	Subsystems api.MinerSubsystems
+
 	api.Common
 	api.Net
 
@@ -701,6 +703,10 @@ func (sm *StorageMinerAPI) Discover(ctx context.Context) (apitypes.OpenRPCDocume
 
 func (sm *StorageMinerAPI) ComputeProof(ctx context.Context, ssi []builtin.SectorInfo, rand abi.PoStRandomness) ([]builtin.PoStProof, error) {
 	return sm.Epp.ComputeProof(ctx, ssi, rand)
+}
+
+func (sm *StorageMinerAPI) RuntimeSubsystems(context.Context) (res api.MinerSubsystems, err error) {
+	return sm.Subsystems, nil
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}

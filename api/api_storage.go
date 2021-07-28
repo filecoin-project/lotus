@@ -166,6 +166,8 @@ type StorageMiner interface {
 	MarketPendingDeals(ctx context.Context) (PendingDealInfo, error)                                                             //perm:write
 	MarketPublishPendingDeals(ctx context.Context) error                                                                         //perm:admin
 
+	RuntimeSubsystems(ctx context.Context) (MinerSubsystems, error) //perm:read
+
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error //perm:admin
 	DealsList(ctx context.Context) ([]MarketDeal, error)                         //perm:admin
 	DealsConsiderOnlineStorageDeals(context.Context) (bool, error)               //perm:admin
