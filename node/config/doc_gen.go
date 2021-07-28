@@ -246,12 +246,6 @@ see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-f
 			Comment: ``,
 		},
 		{
-			Name: "Metrics",
-			Type: "Metrics",
-
-			Comment: ``,
-		},
-		{
 			Name: "Wallet",
 			Type: "Wallet",
 
@@ -320,20 +314,6 @@ Format: multiaddress`,
 		{
 			Name: "ConnMgrGrace",
 			Type: "Duration",
-
-			Comment: ``,
-		},
-	},
-	"Metrics": []DocField{
-		{
-			Name: "Nickname",
-			Type: "string",
-
-			Comment: ``,
-		},
-		{
-			Name: "HeadNotifs",
-			Type: "bool",
 
 			Comment: ``,
 		},
