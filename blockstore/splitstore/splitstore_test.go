@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -218,6 +219,126 @@ func TestSplitStoreCompactionWithBadger(t *testing.T) {
 		badgerMarkSetBatchSize = bs
 	})
 	testSplitStore(t, &Config{MarkSetType: "badger"})
+}
+
+func testSplitStoreReification(t *testing.T, f func(blockstore.Blockstore, cid.Cid) error) {
+	ds := dssync.MutexWrap(datastore.NewMapDatastore())
+	hot := newMockStore()
+	cold := newMockStore()
+
+	mkRandomBlock := func() blocks.Block {
+		data := make([]byte, 128)
+		_, err := rand.Read(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return blocks.NewBlock(data)
+	}
+
+	block1 := mkRandomBlock()
+	block2 := mkRandomBlock()
+	block3 := mkRandomBlock()
+
+	hdr := mock.MkBlock(nil, 0, 0)
+	hdr.Messages = block1.Cid()
+	hdr.ParentMessageReceipts = block2.Cid()
+	hdr.ParentStateRoot = block3.Cid()
+	block4, err := hdr.ToStorageBlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	allBlocks := []blocks.Block{block1, block2, block3, block4}
+	for _, blk := range allBlocks {
+		err := cold.Put(blk)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	ss, err := Open("", ds, hot, cold, &Config{MarkSetType: "map"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ss.Close() //nolint
+
+	go ss.reifyOrchestrator()
+
+	waitForReification := func() {
+		for {
+			ss.reifyMx.Lock()
+			ready := len(ss.reifyPend) == 0 && len(ss.reifyInProgress) == 0
+			ss.reifyMx.Unlock()
+
+			if ready {
+				return
+			}
+
+			time.Sleep(time.Millisecond)
+		}
+	}
+
+	// first access using the standard view
+	err = f(ss, block4.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// nothing should be reified
+	waitForReification()
+	for _, blk := range allBlocks {
+		has, err := hot.Has(blk.Cid())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if has {
+			t.Fatal("block unexpectedly reified")
+		}
+	}
+
+	// now make the hot/reifying view and ensure access reifies
+	rss := ss.HotView()
+	err = f(rss, block4.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// everything should be reified
+	waitForReification()
+	for i, blk := range allBlocks {
+		has, err := hot.Has(blk.Cid())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !has {
+			t.Fatalf("block%d was not reified", i+1)
+		}
+	}
+}
+
+func TestSplitStoreReification(t *testing.T) {
+	t.Log("test reification with Has")
+	testSplitStoreReification(t, func(s blockstore.Blockstore, c cid.Cid) error {
+		_, err := s.Has(c)
+		return err
+	})
+	t.Log("test reification with Get")
+	testSplitStoreReification(t, func(s blockstore.Blockstore, c cid.Cid) error {
+		_, err := s.Get(c)
+		return err
+	})
+	t.Log("test reification with GetSize")
+	testSplitStoreReification(t, func(s blockstore.Blockstore, c cid.Cid) error {
+		_, err := s.GetSize(c)
+		return err
+	})
+	t.Log("test reification with View")
+	testSplitStoreReification(t, func(s blockstore.Blockstore, c cid.Cid) error {
+		return s.View(c, func(_ []byte) error { return nil })
+	})
 }
 
 type mockChain struct {
