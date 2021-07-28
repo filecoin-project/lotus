@@ -23,7 +23,6 @@ type Common struct {
 type FullNode struct {
 	Common
 	Client     Client
-	Metrics    Metrics
 	Wallet     Wallet
 	Fees       FeeConfig
 	Chainstore Chainstore
@@ -298,12 +297,6 @@ type Splitstore struct {
 }
 
 // // Full Node
-
-type Metrics struct {
-	Nickname   string
-	HeadNotifs bool
-}
-
 type Client struct {
 	UseIpfs             bool
 	IpfsOnlineMode      bool
