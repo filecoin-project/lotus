@@ -72,7 +72,7 @@ func ConfigStorageMiner(c interface{}) Option {
 	return Options(
 		ConfigCommon(&cfg.Common, enableLibp2pNode),
 
-		Override(new(api.MinerSubsystems), modules.PopulateEnabledMinerSubsystems(cfg.Subsystems)),
+		Override(new(api.MinerSubsystems), modules.ExtractEnabledMinerSubsystems(cfg.Subsystems)),
 		Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
 		Override(new(*stores.Local), modules.LocalStorage),
 		Override(new(*stores.Remote), modules.RemoteStorage),

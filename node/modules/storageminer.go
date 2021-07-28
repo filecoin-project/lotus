@@ -1008,7 +1008,7 @@ func mutateCfg(r repo.LockedRepo, mutator func(*config.StorageMiner)) error {
 	return multierr.Combine(typeErr, setConfigErr)
 }
 
-func PopulateEnabledMinerSubsystems(cfg config.MinerSubsystemConfig) (res api.MinerSubsystems) {
+func ExtractEnabledMinerSubsystems(cfg config.MinerSubsystemConfig) (res api.MinerSubsystems) {
 	if cfg.EnableMining {
 		res = append(res, api.SubsystemMining)
 	}
@@ -1021,5 +1021,5 @@ func PopulateEnabledMinerSubsystems(cfg config.MinerSubsystemConfig) (res api.Mi
 	if cfg.EnableMarkets {
 		res = append(res, api.SubsystemMarkets)
 	}
-	return
+	return res
 }
