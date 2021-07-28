@@ -101,8 +101,8 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 		tipset   = params.Tipset
 		syscalls = vm.Syscalls(ffiwrapper.ProofVerifier)
 
-		cs = store.NewChainStore(bs, bs, ds, syscalls, nil)
-		sm = stmgr.NewStateManager(cs)
+		cs = store.NewChainStore(bs, bs, ds, nil)
+		sm = stmgr.NewStateManager(cs, syscalls)
 	)
 
 	if params.Rand == nil {
@@ -196,7 +196,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 
 	// dummy state manager; only to reference the GetNetworkVersion method,
 	// which does not depend on state.
-	sm := stmgr.NewStateManager(nil)
+	sm := stmgr.NewStateManager(nil, nil)
 
 	vmOpts := &vm.VMOpts{
 		StateBase: params.Preroot,

@@ -246,12 +246,6 @@ see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-f
 			Comment: ``,
 		},
 		{
-			Name: "Metrics",
-			Type: "Metrics",
-
-			Comment: ``,
-		},
-		{
 			Name: "Wallet",
 			Type: "Wallet",
 
@@ -320,20 +314,6 @@ Format: multiaddress`,
 		{
 			Name: "ConnMgrGrace",
 			Type: "Duration",
-
-			Comment: ``,
-		},
-	},
-	"Metrics": []DocField{
-		{
-			Name: "Nickname",
-			Type: "string",
-
-			Comment: ``,
-		},
-		{
-			Name: "HeadNotifs",
-			Type: "bool",
 
 			Comment: ``,
 		},
@@ -563,6 +543,14 @@ Note that setting this number too high in relation to deal ingestion rate may re
 			Comment: `Upper bound on how many sectors can be sealing at the same time when creating new sectors with deals (0 = unlimited)`,
 		},
 		{
+			Name: "CommittedCapacitySectorLifetime",
+			Type: "Duration",
+
+			Comment: `CommittedCapacitySectorLifetime is the duration a Committed Capacity (CC) sector will
+live before it must be extended or converted into sector containing deals before it is
+terminated. Value must be between 180-540 days inclusive`,
+		},
+		{
 			Name: "WaitDealsDelay",
 			Type: "Duration",
 
@@ -685,25 +673,37 @@ submitting proofs to the chain individually`,
 			Name: "ColdStoreType",
 			Type: "string",
 
-			Comment: ``,
+			Comment: `ColdStoreType specifies the type of the coldstore.
+It can be "universal" (default) or "discard" for discarding cold blocks.`,
 		},
 		{
 			Name: "HotStoreType",
 			Type: "string",
 
-			Comment: ``,
+			Comment: `HotStoreType specifies the type of the hotstore.
+Only currently supported value is "badger".`,
 		},
 		{
 			Name: "MarkSetType",
 			Type: "string",
 
-			Comment: ``,
+			Comment: `MarkSetType specifies the type of the markset.
+It can be "map" (default) for in memory marking or "badger" for on-disk marking.`,
 		},
 		{
 			Name: "HotStoreMessageRetention",
 			Type: "uint64",
 
-			Comment: ``,
+			Comment: `HotStoreMessageRetention specifies the retention policy for messages, in finalities beyond
+the compaction boundary; default is 0.`,
+		},
+		{
+			Name: "HotStoreFullGCFrequency",
+			Type: "uint64",
+
+			Comment: `HotStoreFullGCFrequency specifies how often to perform a full (moving) GC on the hotstore.
+A value of 0 disables, while a value 1 will do full GC in every compaction.
+Default is 20 (about once a week).`,
 		},
 	},
 	"StorageMiner": []DocField{
