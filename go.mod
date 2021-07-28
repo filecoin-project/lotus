@@ -36,7 +36,7 @@ require (
 	github.com/filecoin-project/go-data-transfer v1.7.0
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
-	github.com/filecoin-project/go-fil-markets v1.6.1-0.20210728154311-0f78d8382144
+	github.com/filecoin-project/go-fil-markets v1.6.1-0.20210728161335-f48398347830
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-padreader v0.0.0-20210723183308-812a16dc01b1
