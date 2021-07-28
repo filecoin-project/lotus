@@ -23,7 +23,6 @@ type Common struct {
 type FullNode struct {
 	Common
 	Client     Client
-	Metrics    Metrics
 	Wallet     Wallet
 	Fees       FeeConfig
 	Chainstore Chainstore
@@ -283,20 +282,26 @@ type Chainstore struct {
 }
 
 type Splitstore struct {
+	// ColdStoreType specifies the type of the coldstore.
+	// It can be "universal" (default) or "discard" for discarding cold blocks.
 	ColdStoreType string
-	HotStoreType  string
-	MarkSetType   string
+	// HotStoreType specifies the type of the hotstore.
+	// Only currently supported value is "badger".
+	HotStoreType string
+	// MarkSetType specifies the type of the markset.
+	// It can be "map" (default) for in memory marking or "badger" for on-disk marking.
+	MarkSetType string
 
+	// HotStoreMessageRetention specifies the retention policy for messages, in finalities beyond
+	// the compaction boundary; default is 0.
 	HotStoreMessageRetention uint64
+	// HotStoreFullGCFrequency specifies how often to perform a full (moving) GC on the hotstore.
+	// A value of 0 disables, while a value 1 will do full GC in every compaction.
+	// Default is 20 (about once a week).
+	HotStoreFullGCFrequency uint64
 }
 
 // // Full Node
-
-type Metrics struct {
-	Nickname   string
-	HeadNotifs bool
-}
-
 type Client struct {
 	UseIpfs             bool
 	IpfsOnlineMode      bool

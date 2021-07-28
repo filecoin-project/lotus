@@ -88,7 +88,11 @@ func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealPa
 		dh.t.Logf("deal-making continuing; current height is %d", ts.Height())
 	}
 
-	deal = dh.StartDeal(ctx, res.Root, params.FastRet, params.StartEpoch)
+	dp := dh.DefaultStartDealParams()
+	dp.Data.Root = res.Root
+	dp.DealStartEpoch = params.StartEpoch
+	dp.FastRetrieval = params.FastRet
+	deal = dh.StartDeal(ctx, dp)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
@@ -97,29 +101,28 @@ func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealPa
 	return deal, res, path
 }
 
-// StartDeal starts a storage deal between the client and the miner.
-func (dh *DealHarness) StartDeal(ctx context.Context, fcid cid.Cid, fastRet bool, startEpoch abi.ChainEpoch) *cid.Cid {
-	maddr, err := dh.main.ActorAddress(ctx)
-	require.NoError(dh.t, err)
-
-	addr, err := dh.client.WalletDefaultAddress(ctx)
-	require.NoError(dh.t, err)
-
-	deal, err := dh.client.ClientStartDeal(ctx, &api.StartDealParams{
-		Data: &storagemarket.DataRef{
-			TransferType: storagemarket.TTGraphsync,
-			Root:         fcid,
-		},
-		Wallet:            addr,
-		Miner:             maddr,
+func (dh *DealHarness) DefaultStartDealParams() api.StartDealParams {
+	dp := api.StartDealParams{
+		Data:              &storagemarket.DataRef{TransferType: storagemarket.TTGraphsync},
 		EpochPrice:        types.NewInt(1000000),
-		DealStartEpoch:    startEpoch,
 		MinBlocksDuration: uint64(build.MinDealDuration),
-		FastRetrieval:     fastRet,
-	})
+	}
+
+	var err error
+	dp.Miner, err = dh.main.ActorAddress(context.Background())
 	require.NoError(dh.t, err)
 
-	return deal
+	dp.Wallet, err = dh.client.WalletDefaultAddress(context.Background())
+	require.NoError(dh.t, err)
+
+	return dp
+}
+
+// StartDeal starts a storage deal between the client and the miner.
+func (dh *DealHarness) StartDeal(ctx context.Context, dealParams api.StartDealParams) *cid.Cid {
+	dealProposalCid, err := dh.client.ClientStartDeal(ctx, &dealParams)
+	require.NoError(dh.t, err)
+	return dealProposalCid
 }
 
 // WaitDealSealed waits until the deal is sealed.

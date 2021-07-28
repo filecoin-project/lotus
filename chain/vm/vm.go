@@ -641,15 +641,6 @@ func (vm *VM) ShouldBurn(ctx context.Context, st *state.StateTree, msg *types.Me
 	return true, nil
 }
 
-func (vm *VM) ActorBalance(addr address.Address) (types.BigInt, aerrors.ActorError) {
-	act, err := vm.cstate.GetActor(addr)
-	if err != nil {
-		return types.EmptyInt, aerrors.Absorb(err, 1, "failed to find actor")
-	}
-
-	return act.Balance, nil
-}
-
 type vmFlushKey struct{}
 
 func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {

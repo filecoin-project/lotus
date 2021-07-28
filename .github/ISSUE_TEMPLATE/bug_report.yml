@@ -43,13 +43,14 @@ body:
   id: version
   attributes:
     label: Lotus Version
+    render: text
     description: Enter the output of `lotus version` and `lotus-miner version` if applicable.
     placeholder: |
       e.g. 
       Daemon:1.11.0-rc2+debug+git.0519cd371.dirty+api1.3.0 
       Local: lotus version 1.11.0-rc2+debug+git.0519cd371.dirty
   validations:
-    reuiqred: true
+    required: true
 - type: textarea
   id: Description
   attributes:
@@ -62,19 +63,18 @@ body:
       * For sealing issues, include the output of `lotus-miner sectors status --log <sectorId>` for the failed sector(s).
       * For proving issues, include the output of `lotus-miner proving` info.
       * For deal making issues, include the output of `lotus client list-deals -v` and/or `lotus-miner storage-deals|retrieval-deals|data-transfers list [-v]` commands for the deal(s) in question.
-    render: bash
   validations:
     required: true
 - type: textarea
   id: extraInfo
   attributes:
     label: Logging Information
+    render: text
     description: |
       Please provide debug logs of the problem, remember you can get set log level control for:
       * lotus: use `lotus log list` to get all log systems available and set level by `lotus log set-level`. An example can be found [here](https://docs.filecoin.io/get-started/lotus/configuration-and-advanced-usage/#log-level-control).
       * lotus-miner:`lotus-miner log list` to get all log systems available and set level by `lotus-miner log set-level
       If you don't provide detailed logs when you raise the issue it will almost certainly be the first request I make before furthur diagnosing the problem.
-      render: bash
   validations:
     required: true
 - type: textarea
@@ -87,6 +87,5 @@ body:
       2. Do '...'
       3. See error '...'
       ...
-    render: bash
   validations:
     required: false

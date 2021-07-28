@@ -59,6 +59,15 @@ These are options in the `[Chainstore.Splitstore]` section of the configuration:
   nodes beyond 4 finalities, while running with the discard coldstore option.
   It is also useful for miners who accept deals and need to lookback messages beyond
   the 4 finalities, which would otherwise hit the coldstore.
+- `HotStoreFullGCFrequency` -- specifies how frequenty to garbage collect the hotstore
+  using full (moving) GC.
+  The default value is 20, which uses full GC every 20 compactions (about once a week);
+  set to 0 to disable full GC altogether.
+  Rationale: badger supports online GC, and this is used by default. However it has proven to
+  be ineffective in practice with the hotstore size slowly creeping up. In order to address this,
+  we have added moving GC support in our badger wrapper, which can effectively reclaim all space.
+  The downside is that it takes a bit longer to perform a moving GC and you also need enough
+  space to house the new hotstore while the old one is still live.
 
 
 ## Operation
@@ -99,3 +108,17 @@ Compaction works transactionally with the following algorithm:
 ## Garbage Collection
 
 TBD -- see [#6577](https://github.com/filecoin-project/lotus/issues/6577)
+
+## Utilities
+
+`lotus-shed` has a `splitstore` command which provides some utilities:
+
+- `rollback` -- rolls back a splitstore installation.
+  This command copies the hotstore on top of the coldstore, and then deletes the splitstore
+  directory and associated metadata keys.
+  It can also optionally compact/gc the coldstore after the copy (with the `--gc-coldstore` flag)
+  and automatically rewrite the lotus config to disable splitstore (with the `--rewrite-config` flag).
+  Note: the node *must be stopped* before running this command.
+- `check` -- asynchronously runs a basic healthcheck on the splitstore.
+  The results are appended to `<lotus-repo>/datastore/splitstore/check.txt`.
+- `info` -- prints some basic information about the splitstore.

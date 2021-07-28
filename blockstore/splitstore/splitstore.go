@@ -81,6 +81,13 @@ type Config struct {
 	// - a positive integer indicates the number of finalities, outside the compaction boundary,
 	//   for which messages will be retained in the hotstore.
 	HotStoreMessageRetention uint64
+
+	// HotstoreFullGCFrequency indicates how frequently (in terms of compactions) to garbage collect
+	// the hotstore using full (moving) GC if supported by the hotstore.
+	// A value of 0 disables full GC entirely.
+	// A positive value is the number of compactions before a full GC is performed;
+	// a value of 1 will perform full GC in every compaction.
+	HotStoreFullGCFrequency uint64
 }
 
 // ChainAccessor allows the Splitstore to access the chain. It will most likely
@@ -102,7 +109,8 @@ type SplitStore struct {
 	compacting int32 // compaction/prune/warmup in progress
 	closing    int32 // the splitstore is closing
 
-	cfg *Config
+	cfg  *Config
+	path string
 
 	mx          sync.Mutex
 	warmupEpoch abi.ChainEpoch // protected by mx
@@ -169,6 +177,7 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 	// and now we can make a SplitStore
 	ss := &SplitStore{
 		cfg:        cfg,
+		path:       path,
 		ds:         ds,
 		cold:       cold,
 		hot:        hots,
