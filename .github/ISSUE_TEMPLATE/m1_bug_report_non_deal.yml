@@ -36,10 +36,11 @@ body:
 - type: textarea
   id: version
   attributes:
+    render: text
     label: Lotus Tag and  Version
     description: Enter the  lotus tag, output of `lotus version` and `lotus-miner version`.
   validations:
-    reuiqred: true
+    required: true
 - type: textarea
   id: Description
   attributes:
@@ -51,19 +52,18 @@ body:
       * What is the expected behaviour?
       * For sealing issues, include the output of `lotus-miner sectors status --log <sectorId>` for the failed sector(s).
       * For proving issues, include the output of `lotus-miner proving` info.
-    render: bash
   validations:
     required: true
 - type: textarea
   id: extraInfo
   attributes:
     label: Logging Information
+    render: text
     description: |
       Please provide debug logs of the problem, remember you can get set log level control for:
       * lotus: use `lotus log list` to get all log systems available and set level by `lotus log set-level`. An example can be found [here](https://docs.filecoin.io/get-started/lotus/configuration-and-advanced-usage/#log-level-control).
       * lotus-miner:`lotus-miner log list` to get all log systems available and set level by `lotus-miner log set-level
       If you don't provide detailed logs when you raise the issue it will almost certainly be the first request I make before furthur diagnosing the problem.
-    render: bash
   validations:
     required: true
 - type: textarea
@@ -76,6 +76,5 @@ body:
       2. Do '...'
       3. See error '...'
       ...
-    render: bash
   validations:
     required: false
