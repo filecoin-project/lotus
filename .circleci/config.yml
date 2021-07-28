@@ -735,6 +735,45 @@ jobs:
       - packer/build:
           template: tools/packer/lotus.pkr.hcl
           args: "-var ci_workspace_bins=./linux-nerpanet -var lotus_network=nerpanet -var git_tag=$CIRCLE_TAG"
+  publish-dockerhub:
+    description: publish to dockerhub
+    machine:
+      image: ubuntu-2004:202010-01
+    parameters:
+      tag:
+        type: string
+        default: latest
+    steps:
+      - checkout
+      - run:
+          name: dockerhub login
+          command: echo $DOCKERHUB_PASSWORD | docker login --username $DOCKERHUB_USERNAME --password-stdin
+      - run:
+          name: docker build
+          command: |
+            docker build --target lotus -t filecoin/lotus:<< parameters.tag >> -f Dockerfile.lotus .
+            docker build --target lotus-all-in-one -t filecoin/lotus-all-in-one:<< parameters.tag >> -f Dockerfile.lotus .
+            if [[ ! -z $CIRCLE_SHA1 ]]; then
+              docker build --target lotus -t filecoin/lotus:$CIRCLE_SHA1 -f Dockerfile.lotus .
+              docker build --target lotus-all-in-one -t filecoin/lotus-all-in-one:$CIRCLE_SHA1 -f Dockerfile.lotus .
+            fi
+            if [[ ! -z $CIRCLE_TAG ]]; then
+              docker build --target lotus -t filecoin/lotus:$CIRCLE_TAG -f Dockerfile.lotus .
+              docker build --target lotus-all-in-one -t filecoin/lotus-all-in-one:$CIRCLE_TAG -f Dockerfile.lotus .
+            fi
+      - run:
+          name: docker push
+          command: |
+            docker push filecoin/lotus:<< parameters.tag >>
+            docker push filecoin/lotus-all-in-one:<< parameters.tag >>
+            if [[ ! -z $CIRCLE_SHA1 ]]; then
+              docker push filecoin/lotus:$CIRCLE_SHA1
+              docker push filecoin/lotus-all-in-one:$CIRCLE_SHA1
+            fi
+            if [[ ! -z $CIRCLE_TAG ]]; then
+              docker push filecoin/lotus:$CIRCLE_TAG
+              docker push filecoin/lotus-all-in-one:$CIRCLE_TAG
+            fi
 
 workflows:
   version: 2.1
@@ -782,6 +821,11 @@ workflows:
           target: "./itests/deals_offline_test.go"
       
       - test:
+          name: test-itest-deals_padding
+          suite: itest-deals_padding
+          target: "./itests/deals_padding_test.go"
+      
+      - test:
           name: test-itest-deals_power
           suite: itest-deals_power
           target: "./itests/deals_power_test.go"
@@ -807,9 +851,19 @@ workflows:
           target: "./itests/gateway_test.go"
       
       - test:
+          name: test-itest-get_messages_in_ts
+          suite: itest-get_messages_in_ts
+          target: "./itests/get_messages_in_ts_test.go"
+      
+      - test:
           name: test-itest-multisig
           suite: itest-multisig
           target: "./itests/multisig_test.go"
+      
+      - test:
+          name: test-itest-nonce
+          suite: itest-nonce
+          target: "./itests/nonce_test.go"
       
       - test:
           name: test-itest-paych_api
@@ -830,6 +884,11 @@ workflows:
           name: test-itest-sector_finalize_early
           suite: itest-sector_finalize_early
           target: "./itests/sector_finalize_early_test.go"
+      
+      - test:
+          name: test-itest-sector_miner_collateral
+          suite: itest-sector_miner_collateral
+          target: "./itests/sector_miner_collateral_test.go"
       
       - test:
           name: test-itest-sector_pledge
@@ -1002,6 +1061,16 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - publish-dockerhub:
+          name: publish-dockerhub
+          tag: stable
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
 
   nightly:
     triggers:
@@ -1015,3 +1084,6 @@ workflows:
       - publish-snapcraft:
           name: publish-snapcraft-nightly
           channel: edge
+      - publish-dockerhub:
+          name: publish-dockerhub-nightly
+          tag: nightly

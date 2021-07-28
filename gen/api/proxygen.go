@@ -298,6 +298,9 @@ import (
 	}
 
 	err = doTemplate(w, m, `
+
+var ErrNotSupported = xerrors.New("method not supported")
+
 {{range .Infos}}
 type {{.Name}}Struct struct {
 {{range .Include}}
@@ -321,11 +324,14 @@ type {{.Name}}Stub struct {
 {{$name := .Name}}
 {{range .Methods}}
 func (s *{{$name}}Struct) {{.Name}}({{.NamedParams}}) ({{.Results}}) {
+	if s.Internal.{{.Name}} == nil {
+		return {{.DefRes}}ErrNotSupported
+	}
 	return s.Internal.{{.Name}}({{.ParamNames}})
 }
 
 func (s *{{$name}}Stub) {{.Name}}({{.NamedParams}}) ({{.Results}}) {
-	return {{.DefRes}}xerrors.New("method not supported")
+	return {{.DefRes}}ErrNotSupported
 }
 {{end}}
 {{end}}

@@ -75,6 +75,10 @@ func (mgr *SectorMgr) NewSector(ctx context.Context, sector storage.SectorRef) e
 	return nil
 }
 
+func (mgr *SectorMgr) SectorsUnsealPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error {
+	panic("SectorMgr: unsealing piece: implement me")
+}
+
 func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorID storage.SectorRef, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
 	log.Warn("Add piece: ", sectorID, size, sectorID.ProofType)
 
@@ -494,10 +498,6 @@ func (mgr *SectorMgr) ReturnReadPiece(ctx context.Context, callID storiface.Call
 
 func (mgr *SectorMgr) ReturnFetch(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
 	panic("not supported")
-}
-
-func (mgr *SectorMgr) SectorsUnsealPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error {
-	return nil
 }
 
 func (m mockVerifProver) VerifySeal(svi proof5.SealVerifyInfo) (bool, error) {

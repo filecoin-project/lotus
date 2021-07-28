@@ -213,11 +213,17 @@ func TestWindowPostBaseFeeNoBurn(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	sched := kit.DefaultTestUpgradeSchedule
+	lastUpgradeHeight := sched[len(sched)-1].Height
+
 	och := build.UpgradeClausHeight
-	build.UpgradeClausHeight = 10
+	build.UpgradeClausHeight = lastUpgradeHeight + 1
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
 	ens.InterconnectAll().BeginMining(blocktime)
+
+	// Wait till all upgrades are done and we've passed the clause epoch.
+	client.WaitTillChain(ctx, kit.HeightAtLeast(build.UpgradeClausHeight+1))
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
@@ -267,6 +273,12 @@ func TestWindowPostBaseFeeBurn(t *testing.T) {
 	opts := kit.ConstructorOpts(kit.LatestActorsAt(-1))
 	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
 	ens.InterconnectAll().BeginMining(blocktime)
+
+	// Ideally we'd be a bit more precise here, but getting the information we need from the
+	// test framework is more work than it's worth.
+	//
+	// We just need to wait till all upgrades are done.
+	client.WaitTillChain(ctx, kit.HeightAtLeast(20))
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)

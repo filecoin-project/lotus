@@ -13,8 +13,6 @@ import (
 
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
 	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -161,7 +159,7 @@ var stateTreePruneCmd = &cli.Command{
 		if cctx.Bool("only-ds-gc") {
 			fmt.Println("running datastore gc....")
 			for i := 0; i < cctx.Int("gc-count"); i++ {
-				if err := badgbs.DB.RunValueLogGC(DiscardRatio); err != nil {
+				if err := badgbs.DB().RunValueLogGC(DiscardRatio); err != nil {
 					return xerrors.Errorf("datastore GC failed: %w", err)
 				}
 			}
@@ -169,7 +167,7 @@ var stateTreePruneCmd = &cli.Command{
 			return nil
 		}
 
-		cs := store.NewChainStore(bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), nil)
+		cs := store.NewChainStore(bs, bs, mds, nil)
 		defer cs.Close() //nolint:errcheck
 
 		if err := cs.Load(); err != nil {
@@ -208,7 +206,7 @@ var stateTreePruneCmd = &cli.Command{
 			return nil
 		}
 
-		b := badgbs.DB.NewWriteBatch()
+		b := badgbs.DB().NewWriteBatch()
 		defer b.Cancel()
 
 		markForRemoval := func(c cid.Cid) error {
@@ -249,7 +247,7 @@ var stateTreePruneCmd = &cli.Command{
 
 		fmt.Println("running datastore gc....")
 		for i := 0; i < cctx.Int("gc-count"); i++ {
-			if err := badgbs.DB.RunValueLogGC(DiscardRatio); err != nil {
+			if err := badgbs.DB().RunValueLogGC(DiscardRatio); err != nil {
 				return xerrors.Errorf("datastore GC failed: %w", err)
 			}
 		}
