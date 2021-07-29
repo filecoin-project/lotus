@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"go.uber.org/fx"
@@ -57,6 +58,8 @@ type StorageMinerAPI struct {
 	LocalStore  *stores.Local
 	RemoteStore *stores.Remote
 
+	DS dtypes.MetadataDS
+
 	// Markets
 	PieceStore        dtypes.ProviderPieceStore         `optional:"true"`
 	StorageProvider   storagemarket.StorageProvider     `optional:"true"`
@@ -76,7 +79,6 @@ type StorageMinerAPI struct {
 	AddrSel                *storage.AddressSelector
 
 	Epp gen.WinningPoStProver `optional:"true"`
-	DS  dtypes.MetadataDS
 
 	ConsiderOnlineStorageDealsConfigFunc        dtypes.ConsiderOnlineStorageDealsConfigFunc        `optional:"true"`
 	SetConsiderOnlineStorageDealsConfigFunc     dtypes.SetConsiderOnlineStorageDealsConfigFunc     `optional:"true"`
@@ -121,7 +123,12 @@ func (sm *StorageMinerAPI) WorkerJobs(ctx context.Context) (map[uuid.UUID][]stor
 }
 
 func (sm *StorageMinerAPI) ActorAddress(context.Context) (address.Address, error) {
-	return sm.Miner.Address(), nil
+	maddrb, err := sm.DS.Get(datastore.NewKey("miner-address"))
+	if err != nil {
+		return address.Undef, err
+	}
+
+	return address.NewFromBytes(maddrb)
 }
 
 func (sm *StorageMinerAPI) MiningBase(ctx context.Context) (*types.TipSet, error) {
