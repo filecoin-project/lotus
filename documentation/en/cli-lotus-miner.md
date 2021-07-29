@@ -43,6 +43,7 @@ GLOBAL OPTIONS:
    --actor value, -a value                  specify other actor to check state for (read only)
    --color                                  use color in display output (default: depends on output being a TTY)
    --miner-repo value, --storagerepo value  Specify miner repo path. flag(storagerepo) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
+   --markets-repo value                     Markets repo path [$LOTUS_MARKETS_PATH]
    --call-on-markets                        (experimental; may be removed) call this command against a markets node; use only with common commands like net, auth, pprof, etc. whose target may be ambiguous (default: false)
    --vv                                     enables very verbose mode, useful for debugging the CLI (default: false)
    --help, -h                               show help (default: false)
