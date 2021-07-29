@@ -146,7 +146,7 @@ func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.Act
 	defer func() {
 		if r := recover(); r != nil {
 			if ar, ok := r.(aerrors.ActorError); ok {
-				log.Warnf("VM.Call failure: %+v", ar)
+				log.Warnf("VM.Call failure in call from: %s to %s: %+v", rt.Caller(), rt.Receiver(), ar)
 				aerr = ar
 				return
 			}
@@ -229,7 +229,7 @@ func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparat
 func (rt *Runtime) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
 	var err error
 	var res []byte
-	if rt.vm.GetNtwkVersion(rt.ctx, randEpoch) >= network.Version13 {
+	if randEpoch > build.UpgradeHyperdriveHeight {
 		res, err = rt.vm.rand.GetBeaconRandomnessLookingForward(rt.ctx, personalization, randEpoch, entropy)
 	} else {
 		res, err = rt.vm.rand.GetBeaconRandomnessLookingBack(rt.ctx, personalization, randEpoch, entropy)
@@ -391,7 +391,7 @@ func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m cbor.Marshal
 		if err.IsFatal() {
 			panic(err)
 		}
-		log.Warnf("vmctx send failed: to: %s, method: %d: ret: %d, err: %s", to, method, ret, err)
+		log.Warnf("vmctx send failed: from: %s to: %s, method: %d: err: %s", rt.Receiver(), to, method, err)
 		return err.RetCode()
 	}
 	_ = rt.chargeGasSafe(gasOnActorExec)

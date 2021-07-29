@@ -27,6 +27,19 @@ func load5(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make5(store adt.Store, networkName string) (State, error) {
+	out := state5{store: store}
+
+	s, err := init5.ConstructState(store, networkName)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
+
+	return &out, nil
+}
+
 type state5 struct {
 	init5.State
 	store adt.Store
@@ -64,6 +77,11 @@ func (s *state5) SetNetworkName(name string) error {
 	return nil
 }
 
+func (s *state5) SetNextID(id abi.ActorID) error {
+	s.State.NextID = id
+	return nil
+}
+
 func (s *state5) Remove(addrs ...address.Address) (err error) {
 	m, err := adt5.AsMap(s.store, s.State.AddressMap, builtin5.DefaultHamtBitwidth)
 	if err != nil {
@@ -82,6 +100,15 @@ func (s *state5) Remove(addrs ...address.Address) (err error) {
 	return nil
 }
 
-func (s *state5) addressMap() (adt.Map, error) {
-	return adt5.AsMap(s.store, s.AddressMap, builtin5.DefaultHamtBitwidth)
+func (s *state5) SetAddressMap(mcid cid.Cid) error {
+	s.State.AddressMap = mcid
+	return nil
+}
+
+func (s *state5) AddressMap() (adt.Map, error) {
+	return adt5.AsMap(s.store, s.State.AddressMap, builtin5.DefaultHamtBitwidth)
+}
+
+func (s *state5) GetState() interface{} {
+	return &s.State
 }

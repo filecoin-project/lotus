@@ -7,7 +7,7 @@ orbs:
 executors:
   golang:
     docker:
-      - image: circleci/golang:1.15.5
+      - image: circleci/golang:1.16.4
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -112,7 +112,7 @@ jobs:
       - run:
           command: make debug
 
-  test: &test
+  test:
     description: |
       Run tests with gotestsum.
     parameters: &test-params
@@ -123,23 +123,20 @@ jobs:
         type: string
         default: "-timeout 30m"
         description: Flags passed to go test.
-      packages:
+      target:
         type: string
         default: "./..."
         description: Import paths of packages to be tested.
-      winpost-test:
+      proofs-log-test:
         type: string
         default: "0"
-      deadline-test:
-        type: string
-        default: "0"
-      test-suite-name:
+      suite:
         type: string
         default: unit
         description: Test suite name to report to CircleCI.
       gotestsum-format:
         type: string
-        default: pkgname-and-test-fails
+        default: standard-verbose
         description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
       coverage:
         type: string
@@ -147,7 +144,7 @@ jobs:
         description: Coverage flag. Set to the empty string to disable.
       codecov-upload:
         type: boolean
-        default: false
+        default: true
         description: |
           Upload coverage report to https://codecov.io/. Requires the codecov API token to be
           set as an environment variable for private projects.
@@ -165,25 +162,24 @@ jobs:
       - run:
           name: go test
           environment:
-            LOTUS_TEST_WINDOW_POST: << parameters.winpost-test >>
-            LOTUS_TEST_DEADLINE_TOGGLING: << parameters.deadline-test >>
+            TEST_RUSTPROOFS_LOGS: << parameters.proofs-log-test >>
             SKIP_CONFORMANCE: "1"
           command: |
-            mkdir -p /tmp/test-reports/<< parameters.test-suite-name >>
+            mkdir -p /tmp/test-reports/<< parameters.suite >>
             mkdir -p /tmp/test-artifacts
             gotestsum \
               --format << parameters.gotestsum-format >> \
-              --junitfile /tmp/test-reports/<< parameters.test-suite-name >>/junit.xml \
-              --jsonfile /tmp/test-artifacts/<< parameters.test-suite-name >>.json \
+              --junitfile /tmp/test-reports/<< parameters.suite >>/junit.xml \
+              --jsonfile /tmp/test-artifacts/<< parameters.suite >>.json \
               -- \
               << parameters.coverage >> \
               << parameters.go-test-flags >> \
-              << parameters.packages >>
+              << parameters.target >>
           no_output_timeout: 30m
       - store_test_results:
           path: /tmp/test-reports
       - store_artifacts:
-          path: /tmp/test-artifacts/<< parameters.test-suite-name >>.json
+          path: /tmp/test-artifacts/<< parameters.suite >>.json
       - when:
           condition: << parameters.codecov-upload >>
           steps:
@@ -194,24 +190,6 @@ jobs:
                 command: |
                   bash <(curl -s https://codecov.io/bash)
 
-  test-chain:
-    <<: *test
-  test-node:
-    <<: *test
-  test-storage:
-    <<: *test
-  test-cli:
-    <<: *test
-  test-short:
-    <<: *test
-  test-window-post:
-    <<: *test
-  test-window-post-dispute:
-    <<: *test
-  test-deadline-toggling:
-    <<: *test
-  test-terminate:
-    <<: *test
   test-conformance:
     description: |
       Run tests using a corpus of interoperable test vectors for Filecoin 
@@ -331,7 +309,7 @@ jobs:
       - run: cd extern/filecoin-ffi && make
       - run:
           name: "go get lotus@master"
-          command: cd testplans/lotus-soup && go mod edit -replace=github.com/filecoin-project/lotus=../..
+          command: cd testplans/lotus-soup && go mod edit -replace=github.com/filecoin-project/lotus=../.. && go mod tidy
       - run:
           name: "build lotus-soup testplan"
           command: pushd testplans/lotus-soup && go build -tags=testground .
@@ -379,8 +357,8 @@ jobs:
       - run:
           name: Install go
           command: |
-            curl -O https://dl.google.com/go/go1.15.5.darwin-amd64.pkg && \
-            sudo installer -pkg go1.15.5.darwin-amd64.pkg -target /
+            curl -O https://dl.google.com/go/go1.16.4.darwin-amd64.pkg && \
+            sudo installer -pkg go1.16.4.darwin-amd64.pkg -target /
       - run:
           name: Install pkg-config
           command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
@@ -456,11 +434,12 @@ jobs:
           name: prepare workspace
           command: |
             mkdir appimage
-            mv Lotus-latest-x86_64.AppImage appimage
+            mv Lotus-*.AppImage appimage
       - persist_to_workspace:
           root: "."
           paths:
             - appimage
+
 
   gofmt:
     executor: golang
@@ -470,7 +449,7 @@ jobs:
       - run:
           command: "! go fmt ./... 2>&1 | read"
 
-  cbor-gen-check:
+  gen-check:
     executor: golang
     steps:
       - install-deps
@@ -478,7 +457,10 @@ jobs:
       - run: make deps
       - run: go install golang.org/x/tools/cmd/goimports
       - run: go install github.com/hannahhoward/cbor-gen-for
-      - run: make type-gen
+      - run: make gen
+      - run: git --no-pager diff
+      - run: git --no-pager diff --quiet
+      - run: make docsgen-cli
       - run: git --no-pager diff
       - run: git --no-pager diff --quiet
 
@@ -560,6 +542,33 @@ jobs:
       - run:
           name: Publish release
           command: ./scripts/publish-release.sh
+
+  publish-snapcraft:
+    description: build and push snapcraft
+    machine:
+      image: ubuntu-2004:202104-01
+    resource_class: 2xlarge
+    parameters:
+      channel:
+        type: string
+        default: "edge"
+        description: snapcraft channel
+    steps:
+      - checkout
+      - run:
+          name: install snapcraft
+          command: sudo snap install snapcraft --classic
+      - run:
+          name: create snapcraft config file
+          command: |
+            mkdir -p ~/.config/snapcraft
+            echo "$SNAPCRAFT_LOGIN_FILE" | base64 -d > ~/.config/snapcraft/snapcraft.cfg
+      - run:
+          name: build snap
+          command: snapcraft --use-lxd
+      - run:
+          name: publish snap
+          command: snapcraft push *.snap --release << parameters.channel >>
 
   build-and-push-image:
     description: build and push docker images to public AWS ECR registry
@@ -726,6 +735,45 @@ jobs:
       - packer/build:
           template: tools/packer/lotus.pkr.hcl
           args: "-var ci_workspace_bins=./linux-nerpanet -var lotus_network=nerpanet -var git_tag=$CIRCLE_TAG"
+  publish-dockerhub:
+    description: publish to dockerhub
+    machine:
+      image: ubuntu-2004:202010-01
+    parameters:
+      tag:
+        type: string
+        default: latest
+    steps:
+      - checkout
+      - run:
+          name: dockerhub login
+          command: echo $DOCKERHUB_PASSWORD | docker login --username $DOCKERHUB_USERNAME --password-stdin
+      - run:
+          name: docker build
+          command: |
+            docker build --target lotus -t filecoin/lotus:<< parameters.tag >> -f Dockerfile.lotus .
+            docker build --target lotus-all-in-one -t filecoin/lotus-all-in-one:<< parameters.tag >> -f Dockerfile.lotus .
+            if [[ ! -z $CIRCLE_SHA1 ]]; then
+              docker build --target lotus -t filecoin/lotus:$CIRCLE_SHA1 -f Dockerfile.lotus .
+              docker build --target lotus-all-in-one -t filecoin/lotus-all-in-one:$CIRCLE_SHA1 -f Dockerfile.lotus .
+            fi
+            if [[ ! -z $CIRCLE_TAG ]]; then
+              docker build --target lotus -t filecoin/lotus:$CIRCLE_TAG -f Dockerfile.lotus .
+              docker build --target lotus-all-in-one -t filecoin/lotus-all-in-one:$CIRCLE_TAG -f Dockerfile.lotus .
+            fi
+      - run:
+          name: docker push
+          command: |
+            docker push filecoin/lotus:<< parameters.tag >>
+            docker push filecoin/lotus-all-in-one:<< parameters.tag >>
+            if [[ ! -z $CIRCLE_SHA1 ]]; then
+              docker push filecoin/lotus:$CIRCLE_SHA1
+              docker push filecoin/lotus-all-in-one:$CIRCLE_SHA1
+            fi
+            if [[ ! -z $CIRCLE_TAG ]]; then
+              docker push filecoin/lotus:$CIRCLE_TAG
+              docker push filecoin/lotus-all-in-one:$CIRCLE_TAG
+            fi
 
 workflows:
   version: 2.1
@@ -735,61 +783,173 @@ workflows:
           concurrency: "16"   # expend all docker 2xlarge CPUs.
       - mod-tidy-check
       - gofmt
-      - cbor-gen-check
+      - gen-check
       - docs-check
       - test:
-          codecov-upload: true
-          test-suite-name: full
-      - test-chain:
-          codecov-upload: true
-          test-suite-name: chain
-          packages: "./chain/..."
-      - test-node:
-          codecov-upload: true
-          test-suite-name: node
-          packages: "./node/..."
-      - test-storage:
-          codecov-upload: true
-          test-suite-name: storage
-          packages: "./storage/... ./extern/..."
-      - test-cli:
-          codecov-upload: true
-          test-suite-name: cli
-          packages: "./cli/... ./cmd/... ./api/..."
-      - test-window-post:
-          codecov-upload: true
-          go-test-flags: "-run=TestWindowedPost"
-          winpost-test: "1"
-          test-suite-name: window-post
-      - test-window-post-dispute:
-          codecov-upload: true
-          go-test-flags: "-run=TestWindowPostDispute"
-          winpost-test: "1"
-          test-suite-name: window-post-dispute
-      - test-terminate:
-          codecov-upload: true
-          go-test-flags: "-run=TestTerminate"
-          winpost-test: "1"
-          test-suite-name: terminate
-      - test-deadline-toggling:
-          codecov-upload: true
-          go-test-flags: "-run=TestDeadlineToggling"
-          deadline-test: "1"
-          test-suite-name: deadline-toggling
-      - test-short:
-          go-test-flags: "--timeout 10m --short"
-          test-suite-name: short
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+          name: test-itest-api
+          suite: itest-api
+          target: "./itests/api_test.go"
+      
+      - test:
+          name: test-itest-batch_deal
+          suite: itest-batch_deal
+          target: "./itests/batch_deal_test.go"
+      
+      - test:
+          name: test-itest-ccupgrade
+          suite: itest-ccupgrade
+          target: "./itests/ccupgrade_test.go"
+      
+      - test:
+          name: test-itest-cli
+          suite: itest-cli
+          target: "./itests/cli_test.go"
+      
+      - test:
+          name: test-itest-deadlines
+          suite: itest-deadlines
+          target: "./itests/deadlines_test.go"
+      
+      - test:
+          name: test-itest-deals_concurrent
+          suite: itest-deals_concurrent
+          target: "./itests/deals_concurrent_test.go"
+      
+      - test:
+          name: test-itest-deals_offline
+          suite: itest-deals_offline
+          target: "./itests/deals_offline_test.go"
+      
+      - test:
+          name: test-itest-deals_padding
+          suite: itest-deals_padding
+          target: "./itests/deals_padding_test.go"
+      
+      - test:
+          name: test-itest-deals_power
+          suite: itest-deals_power
+          target: "./itests/deals_power_test.go"
+      
+      - test:
+          name: test-itest-deals_pricing
+          suite: itest-deals_pricing
+          target: "./itests/deals_pricing_test.go"
+      
+      - test:
+          name: test-itest-deals_publish
+          suite: itest-deals_publish
+          target: "./itests/deals_publish_test.go"
+      
+      - test:
+          name: test-itest-deals
+          suite: itest-deals
+          target: "./itests/deals_test.go"
+      
+      - test:
+          name: test-itest-gateway
+          suite: itest-gateway
+          target: "./itests/gateway_test.go"
+      
+      - test:
+          name: test-itest-get_messages_in_ts
+          suite: itest-get_messages_in_ts
+          target: "./itests/get_messages_in_ts_test.go"
+      
+      - test:
+          name: test-itest-multisig
+          suite: itest-multisig
+          target: "./itests/multisig_test.go"
+      
+      - test:
+          name: test-itest-nonce
+          suite: itest-nonce
+          target: "./itests/nonce_test.go"
+      
+      - test:
+          name: test-itest-paych_api
+          suite: itest-paych_api
+          target: "./itests/paych_api_test.go"
+      
+      - test:
+          name: test-itest-paych_cli
+          suite: itest-paych_cli
+          target: "./itests/paych_cli_test.go"
+      
+      - test:
+          name: test-itest-sdr_upgrade
+          suite: itest-sdr_upgrade
+          target: "./itests/sdr_upgrade_test.go"
+      
+      - test:
+          name: test-itest-sector_finalize_early
+          suite: itest-sector_finalize_early
+          target: "./itests/sector_finalize_early_test.go"
+      
+      - test:
+          name: test-itest-sector_miner_collateral
+          suite: itest-sector_miner_collateral
+          target: "./itests/sector_miner_collateral_test.go"
+      
+      - test:
+          name: test-itest-sector_pledge
+          suite: itest-sector_pledge
+          target: "./itests/sector_pledge_test.go"
+      
+      - test:
+          name: test-itest-sector_terminate
+          suite: itest-sector_terminate
+          target: "./itests/sector_terminate_test.go"
+      
+      - test:
+          name: test-itest-tape
+          suite: itest-tape
+          target: "./itests/tape_test.go"
+      
+      - test:
+          name: test-itest-verifreg
+          suite: itest-verifreg
+          target: "./itests/verifreg_test.go"
+      
+      - test:
+          name: test-itest-wdpost_dispute
+          suite: itest-wdpost_dispute
+          target: "./itests/wdpost_dispute_test.go"
+      
+      - test:
+          name: test-itest-wdpost
+          suite: itest-wdpost
+          target: "./itests/wdpost_test.go"
+      
+      - test:
+          name: test-unit-cli
+          suite: utest-unit-cli
+          target: "./cli/... ./cmd/... ./api/..."
+      - test:
+          name: test-unit-node
+          suite: utest-unit-node
+          target: "./node/..."
+      - test:
+          name: test-unit-rest
+          suite: utest-unit-rest
+          target: "./api/... ./blockstore/... ./build/... ./chain/... ./cli/... ./cmd/... ./conformance/... ./extern/... ./gateway/... ./journal/... ./lib/... ./markets/... ./node/... ./paychmgr/... ./storage/... ./tools/..."
+      - test:
+          name: test-unit-storage
+          suite: utest-unit-storage
+          target: "./storage/... ./extern/..."
+      - test:
+          go-test-flags: "-run=TestMulticoreSDR"
+          suite: multicore-sdr-check
+          target: "./extern/sector-storage/ffiwrapper"
+          proofs-log-test: "1"
       - test-conformance:
-          test-suite-name: conformance
-          packages: "./conformance"
+          suite: conformance
+          codecov-upload: false
+          target: "./conformance"
       - test-conformance:
           name: test-conformance-bleeding-edge
-          test-suite-name: conformance-bleeding-edge
-          packages: "./conformance"
+          codecov-upload: false
+          suite: conformance-bleeding-edge
+          target: "./conformance"
           vectors-branch: master
       - trigger-testplans:
           filters:
@@ -798,37 +958,27 @@ workflows:
                 - master
       - build-debug
       - build-all:
-          requires:
-            - test-short
           filters:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-ntwk-calibration:
-          requires:
-            - test-short
           filters:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-ntwk-butterfly:
-          requires:
-            - test-short
           filters:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-ntwk-nerpa:
-          requires:
-            - test-short
           filters:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-lotus-soup
       - build-macos:
-          requires:
-            - test-short
           filters:
             branches:
               ignore:
@@ -837,8 +987,6 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-appimage:
-          requires:
-            - test-short
           filters:
             branches:
               ignore:
@@ -858,7 +1006,6 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-
       - build-and-push-image:
           dockerfile: Dockerfile.lotus
           path: .
@@ -904,3 +1051,39 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - publish-snapcraft:
+          name: publish-snapcraft-stable
+          channel: stable
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - publish-dockerhub:
+          name: publish-dockerhub
+          tag: stable
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 0 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - publish-snapcraft:
+          name: publish-snapcraft-nightly
+          channel: edge
+      - publish-dockerhub:
+          name: publish-dockerhub-nightly
+          tag: nightly

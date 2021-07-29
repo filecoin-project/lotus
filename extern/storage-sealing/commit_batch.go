@@ -7,10 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/network"
-
-	"github.com/filecoin-project/lotus/chain/actors"
-
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -18,19 +14,27 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	"github.com/filecoin-project/lotus/node/config"
 )
 
 const arp = abi.RegisteredAggregationProof_SnarkPackV1
+
+var aggFeeNum = big.NewInt(110)
+var aggFeeDen = big.NewInt(100)
+
+//go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_commit_batcher.go -package=mocks . CommitBatcherApi
 
 type CommitBatcherApi interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
@@ -41,12 +45,13 @@ type CommitBatcherApi interface {
 	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorPreCommitOnChainInfo, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
 	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
+	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
 }
 
 type AggregateInput struct {
-	spt   abi.RegisteredSealProof
-	info  proof5.AggregateSealVerifyInfo
-	proof []byte
+	Spt   abi.RegisteredSealProof
+	Info  proof5.AggregateSealVerifyInfo
+	Proof []byte
 }
 
 type CommitBatcher struct {
@@ -101,6 +106,7 @@ func (b *CommitBatcher) run() {
 		panic(err)
 	}
 
+	timer := time.NewTimer(b.batchWait(cfg.CommitBatchWait, cfg.CommitBatchSlack))
 	for {
 		if forceRes != nil {
 			forceRes <- lastMsg
@@ -116,7 +122,7 @@ func (b *CommitBatcher) run() {
 			return
 		case <-b.notify:
 			sendAboveMax = true
-		case <-b.batchWait(cfg.CommitBatchWait, cfg.CommitBatchSlack):
+		case <-timer.C:
 			// do nothing
 		case fr := <-b.force: // user triggered
 			forceRes = fr
@@ -127,17 +133,26 @@ func (b *CommitBatcher) run() {
 		if err != nil {
 			log.Warnw("CommitBatcher processBatch error", "error", err)
 		}
+
+		if !timer.Stop() {
+			select {
+			case <-timer.C:
+			default:
+			}
+		}
+
+		timer.Reset(b.batchWait(cfg.CommitBatchWait, cfg.CommitBatchSlack))
 	}
 }
 
-func (b *CommitBatcher) batchWait(maxWait, slack time.Duration) <-chan time.Time {
+func (b *CommitBatcher) batchWait(maxWait, slack time.Duration) time.Duration {
 	now := time.Now()
 
 	b.lk.Lock()
 	defer b.lk.Unlock()
 
 	if len(b.todo) == 0 {
-		return nil
+		return maxWait
 	}
 
 	var cutoff time.Time
@@ -155,12 +170,12 @@ func (b *CommitBatcher) batchWait(maxWait, slack time.Duration) <-chan time.Time
 	}
 
 	if cutoff.IsZero() {
-		return time.After(maxWait)
+		return maxWait
 	}
 
 	cutoff = cutoff.Add(-slack)
 	if cutoff.Before(now) {
-		return time.After(time.Nanosecond) // can't return 0
+		return time.Nanosecond // can't return 0
 	}
 
 	wait := cutoff.Sub(now)
@@ -168,7 +183,7 @@ func (b *CommitBatcher) batchWait(maxWait, slack time.Duration) <-chan time.Time
 		wait = maxWait
 	}
 
-	return time.After(wait)
+	return wait
 }
 
 func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes, error) {
@@ -191,8 +206,26 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 
 	var res []sealiface.CommitBatchRes
 
-	if total < cfg.MinCommitBatch || total < miner5.MinAggregatedSectors {
-		res, err = b.processIndividually()
+	individual := (total < cfg.MinCommitBatch) || (total < miner5.MinAggregatedSectors)
+
+	if !individual && !cfg.AggregateAboveBaseFee.Equals(big.Zero()) {
+		tok, _, err := b.api.ChainHead(b.mctx)
+		if err != nil {
+			return nil, err
+		}
+
+		bf, err := b.api.ChainBaseFee(b.mctx, tok)
+		if err != nil {
+			return nil, xerrors.Errorf("couldn't get base fee: %w", err)
+		}
+
+		if bf.LessThan(cfg.AggregateAboveBaseFee) {
+			individual = true
+		}
+	}
+
+	if individual {
+		res, err = b.processIndividually(cfg)
 	} else {
 		res, err = b.processBatch(cfg)
 	}
@@ -227,7 +260,9 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 
 	total := len(b.todo)
 
-	var res sealiface.CommitBatchRes
+	res := sealiface.CommitBatchRes{
+		FailedSectors: map[abi.SectorNumber]string{},
+	}
 
 	params := miner5.ProveCommitAggregateParams{
 		SectorNumbers: bitfield.New(),
@@ -254,7 +289,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		collateral = big.Add(collateral, sc)
 
 		params.SectorNumbers.Set(uint64(id))
-		infos = append(infos, p.info)
+		infos = append(infos, p.Info)
 	}
 
 	sort.Slice(infos, func(i, j int) bool {
@@ -262,7 +297,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 	})
 
 	for _, info := range infos {
-		proofs = append(proofs, b.todo[info.Number].proof)
+		proofs = append(proofs, b.todo[info.Number].Proof)
 	}
 
 	mid, err := address.IDFromAddress(b.maddr)
@@ -272,7 +307,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 
 	params.AggregateProof, err = b.prover.AggregateSealProofs(proof5.AggregateSealVerifyProofAndInfos{
 		Miner:          abi.ActorID(mid),
-		SealProof:      b.todo[infos[0].Number].spt,
+		SealProof:      b.todo[infos[0].Number].Spt,
 		AggregateProof: arp,
 		Infos:          infos,
 	}, proofs)
@@ -303,16 +338,22 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting network version: %s", err)
 	}
 
-	aggFee := policy.AggregateNetworkFee(nv, len(infos), bf)
+	aggFee := big.Div(big.Mul(policy.AggregateNetworkFee(nv, len(infos), bf), aggFeeNum), aggFeeDen)
 
-	goodFunds := big.Add(maxFee, big.Add(collateral, aggFee))
+	needFunds := big.Add(collateral, aggFee)
+	needFunds, err = collateralSendAmount(b.mctx, b.api, b.maddr, cfg, needFunds)
+	if err != nil {
+		return []sealiface.CommitBatchRes{res}, err
+	}
 
-	from, _, err := b.addrSel(b.mctx, mi, api.CommitAddr, goodFunds, collateral)
+	goodFunds := big.Add(maxFee, needFunds)
+
+	from, _, err := b.addrSel(b.mctx, mi, api.CommitAddr, goodFunds, needFunds)
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("no good address found: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.ProveCommitAggregate, collateral, maxFee, enc.Bytes())
+	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.ProveCommitAggregate, needFunds, maxFee, enc.Bytes())
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("sending message failed: %w", err)
 	}
@@ -324,10 +365,24 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 	return []sealiface.CommitBatchRes{res}, nil
 }
 
-func (b *CommitBatcher) processIndividually() ([]sealiface.CommitBatchRes, error) {
+func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.CommitBatchRes, error) {
 	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't get miner info: %w", err)
+	}
+
+	avail := types.TotalFilecoinInt
+
+	if cfg.CollateralFromMinerBalance && !cfg.DisableCollateralFallback {
+		avail, err = b.api.StateMinerAvailableBalance(b.mctx, b.maddr, nil)
+		if err != nil {
+			return nil, xerrors.Errorf("getting available miner balance: %w", err)
+		}
+
+		avail = big.Sub(avail, cfg.AvailableBalanceBuffer)
+		if avail.LessThan(big.Zero()) {
+			avail = big.Zero()
+		}
 	}
 
 	tok, _, err := b.api.ChainHead(b.mctx)
@@ -339,10 +394,11 @@ func (b *CommitBatcher) processIndividually() ([]sealiface.CommitBatchRes, error
 
 	for sn, info := range b.todo {
 		r := sealiface.CommitBatchRes{
-			Sectors: []abi.SectorNumber{sn},
+			Sectors:       []abi.SectorNumber{sn},
+			FailedSectors: map[abi.SectorNumber]string{},
 		}
 
-		mcid, err := b.processSingle(mi, sn, info, tok)
+		mcid, err := b.processSingle(cfg, mi, &avail, sn, info, tok)
 		if err != nil {
 			log.Errorf("process single error: %+v", err) // todo: return to user
 			r.FailedSectors[sn] = err.Error()
@@ -356,11 +412,11 @@ func (b *CommitBatcher) processIndividually() ([]sealiface.CommitBatchRes, error
 	return res, nil
 }
 
-func (b *CommitBatcher) processSingle(mi miner.MinerInfo, sn abi.SectorNumber, info AggregateInput, tok TipSetToken) (cid.Cid, error) {
+func (b *CommitBatcher) processSingle(cfg sealiface.Config, mi miner.MinerInfo, avail *abi.TokenAmount, sn abi.SectorNumber, info AggregateInput, tok TipSetToken) (cid.Cid, error) {
 	enc := new(bytes.Buffer)
 	params := &miner.ProveCommitSectorParams{
 		SectorNumber: sn,
-		Proof:        info.proof,
+		Proof:        info.Proof,
 	}
 
 	if err := params.MarshalCBOR(enc); err != nil {
@@ -370,6 +426,19 @@ func (b *CommitBatcher) processSingle(mi miner.MinerInfo, sn abi.SectorNumber, i
 	collateral, err := b.getSectorCollateral(sn, tok)
 	if err != nil {
 		return cid.Undef, err
+	}
+
+	if cfg.CollateralFromMinerBalance {
+		c := big.Sub(collateral, *avail)
+		*avail = big.Sub(*avail, collateral)
+		collateral = c
+
+		if collateral.LessThan(big.Zero()) {
+			collateral = big.Zero()
+		}
+		if (*avail).LessThan(big.Zero()) {
+			*avail = big.Zero()
+		}
 	}
 
 	goodFunds := big.Add(collateral, big.Int(b.feeCfg.MaxCommitGasFee))
@@ -445,7 +514,7 @@ func (b *CommitBatcher) Pending(ctx context.Context) ([]abi.SectorID, error) {
 	for _, s := range b.todo {
 		res = append(res, abi.SectorID{
 			Miner:  abi.ActorID(mid),
-			Number: s.info.Number,
+			Number: s.Info.Number,
 		})
 	}
 

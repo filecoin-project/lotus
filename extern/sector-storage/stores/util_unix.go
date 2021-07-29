@@ -2,8 +2,10 @@ package stores
 
 import (
 	"bytes"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/mitchellh/go-homedir"
@@ -33,7 +35,18 @@ func move(from, to string) error {
 	//  can do better
 
 	var errOut bytes.Buffer
-	cmd := exec.Command("/usr/bin/env", "mv", "-t", toDir, from) // nolint
+
+	var cmd *exec.Cmd
+	if runtime.GOOS == "darwin" {
+		if err := os.MkdirAll(toDir, 0777); err != nil {
+			return xerrors.Errorf("failed exec MkdirAll: %s", err)
+		}
+
+		cmd = exec.Command("/usr/bin/env", "mv", from, toDir) // nolint
+	} else {
+		cmd = exec.Command("/usr/bin/env", "mv", "-t", toDir, from) // nolint
+	}
+
 	cmd.Stderr = &errOut
 	if err := cmd.Run(); err != nil {
 		return xerrors.Errorf("exec mv (stderr: %s): %w", strings.TrimSpace(errOut.String()), err)

@@ -6,16 +6,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/filecoin-project/lotus/node/impl/net"
 	metricsi "github.com/ipfs/go-metrics-interface"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain"
-	"github.com/filecoin-project/lotus/chain/exchange"
-	rpcstmgr "github.com/filecoin-project/lotus/chain/stmgr/rpc"
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/node/hello"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/system"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -33,52 +27,22 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-fil-markets/discovery"
-	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
-
-	storage2 "github.com/filecoin-project/specs-storage/storage"
-
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/gen"
-	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
-	"github.com/filecoin-project/lotus/chain/market"
-	"github.com/filecoin-project/lotus/chain/messagepool"
-	"github.com/filecoin-project/lotus/chain/messagesigner"
-	"github.com/filecoin-project/lotus/chain/metrics"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
-	"github.com/filecoin-project/lotus/chain/wallet/remotewallet"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
-	"github.com/filecoin-project/lotus/markets/dealfilter"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
-	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/impl/common"
-	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/paychmgr"
-	"github.com/filecoin-project/lotus/paychmgr/settler"
-	"github.com/filecoin-project/lotus/storage"
-	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
 //nolint:deadcode,varcheck
@@ -167,9 +131,11 @@ type Settings struct {
 
 	nodeType repo.RepoType
 
-	Online bool // Online option applied
+	Base   bool // Base option applied
 	Config bool // Config option applied
 	Lite   bool // Start node in "lite" mode
+
+	enableLibp2pNode bool
 }
 
 // Basic lotus-app services
@@ -238,7 +204,7 @@ var LibP2P = Options(
 	Override(ConnGaterKey, lp2p.ConnGaterOption),
 )
 
-func isType(t repo.RepoType) func(s *Settings) bool {
+func IsType(t repo.RepoType) func(s *Settings) bool {
 	return func(s *Settings) bool { return s.nodeType == t }
 }
 
@@ -246,243 +212,22 @@ func isFullOrLiteNode(s *Settings) bool { return s.nodeType == repo.FullNode }
 func isFullNode(s *Settings) bool       { return s.nodeType == repo.FullNode && !s.Lite }
 func isLiteNode(s *Settings) bool       { return s.nodeType == repo.FullNode && s.Lite }
 
-// Chain node provides access to the Filecoin blockchain, by setting up a full
-// validator node, or by delegating some actions to other nodes (lite mode)
-var ChainNode = Options(
-	// Full node or lite node
-	// TODO: Fix offline mode
-
-	// Consensus settings
-	Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
-	Override(new(stmgr.UpgradeSchedule), stmgr.DefaultUpgradeSchedule()),
-	Override(new(dtypes.NetworkName), modules.NetworkName),
-	Override(new(modules.Genesis), modules.ErrorGenesis),
-	Override(new(dtypes.AfterGenesisSet), modules.SetGenesis),
-	Override(SetGenesisKey, modules.DoSetGenesis),
-	Override(new(beacon.Schedule), modules.RandomSchedule),
-
-	// Network bootstrap
-	Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
-	Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
-
-	// Consensus: crypto dependencies
-	Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
-
-	// Consensus: VM
-	Override(new(vm.SyscallBuilder), vm.Syscalls),
-
-	// Consensus: Chain storage/access
-	Override(new(*store.ChainStore), modules.ChainStore),
-	Override(new(*stmgr.StateManager), modules.StateManager),
-	Override(new(dtypes.ChainBitswap), modules.ChainBitswap),
-	Override(new(dtypes.ChainBlockService), modules.ChainBlockService), // todo: unused
-
-	// Consensus: Chain sync
-
-	// We don't want the SyncManagerCtor to be used as an fx constructor, but rather as a value.
-	// It will be called implicitly by the Syncer constructor.
-	Override(new(chain.SyncManagerCtor), func() chain.SyncManagerCtor { return chain.NewSyncManager }),
-	Override(new(*chain.Syncer), modules.NewSyncer),
-	Override(new(exchange.Client), exchange.NewClient),
-
-	// Chain networking
-	Override(new(*hello.Service), hello.NewHelloService),
-	Override(new(exchange.Server), exchange.NewServer),
-	Override(new(*peermgr.PeerMgr), peermgr.NewPeerMgr),
-
-	// Chain mining API dependencies
-	Override(new(*slashfilter.SlashFilter), modules.NewSlashFilter),
-
-	// Service: Message Pool
-	Override(new(dtypes.DefaultMaxFeeFunc), modules.NewDefaultMaxFeeFunc),
-	Override(new(*messagepool.MessagePool), modules.MessagePool),
-	Override(new(*dtypes.MpoolLocker), new(dtypes.MpoolLocker)),
-
-	// Shared graphsync (markets, serving chain)
-	Override(new(dtypes.Graphsync), modules.Graphsync(config.DefaultFullNode().Client.SimultaneousTransfers)),
-
-	// Service: Wallet
-	Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
-	Override(new(*wallet.LocalWallet), wallet.NewWallet),
-	Override(new(wallet.Default), From(new(*wallet.LocalWallet))),
-	Override(new(api.Wallet), From(new(wallet.MultiWallet))),
-
-	// Service: Payment channels
-	Override(new(paychmgr.PaychAPI), From(new(modules.PaychAPI))),
-	Override(new(*paychmgr.Store), modules.NewPaychStore),
-	Override(new(*paychmgr.Manager), modules.NewManager),
-	Override(HandlePaymentChannelManagerKey, modules.HandlePaychManager),
-	Override(SettlePaymentChannelsKey, settler.SettlePaymentChannels),
-
-	// Markets (common)
-	Override(new(*discoveryimpl.Local), modules.NewLocalDiscovery),
-
-	// Markets (retrieval)
-	Override(new(discovery.PeerResolver), modules.RetrievalResolver),
-	Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient),
-	Override(new(dtypes.ClientDataTransfer), modules.NewClientGraphsyncDataTransfer),
-
-	// Markets (storage)
-	Override(new(*market.FundManager), market.NewFundManager),
-	Override(new(dtypes.ClientDatastore), modules.NewClientDatastore),
-	Override(new(storagemarket.StorageClient), modules.StorageClient),
-	Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
-	Override(HandleMigrateClientFundsKey, modules.HandleMigrateClientFunds),
-
-	Override(new(*full.GasPriceCache), full.NewGasPriceCache),
-
-	// Lite node API
-	ApplyIf(isLiteNode,
-		Override(new(messagesigner.MpoolNonceAPI), From(new(modules.MpoolNonceAPI))),
-		Override(new(full.ChainModuleAPI), From(new(api.Gateway))),
-		Override(new(full.GasModuleAPI), From(new(api.Gateway))),
-		Override(new(full.MpoolModuleAPI), From(new(api.Gateway))),
-		Override(new(full.StateModuleAPI), From(new(api.Gateway))),
-		Override(new(stmgr.StateManagerAPI), rpcstmgr.NewRPCStateManager),
-	),
-
-	// Full node API / service startup
-	ApplyIf(isFullNode,
-		Override(new(messagesigner.MpoolNonceAPI), From(new(*messagepool.MessagePool))),
-		Override(new(full.ChainModuleAPI), From(new(full.ChainModule))),
-		Override(new(full.GasModuleAPI), From(new(full.GasModule))),
-		Override(new(full.MpoolModuleAPI), From(new(full.MpoolModule))),
-		Override(new(full.StateModuleAPI), From(new(full.StateModule))),
-		Override(new(stmgr.StateManagerAPI), From(new(*stmgr.StateManager))),
-
-		Override(RunHelloKey, modules.RunHello),
-		Override(RunChainExchangeKey, modules.RunChainExchange),
-		Override(RunPeerMgrKey, modules.RunPeerMgr),
-		Override(HandleIncomingMessagesKey, modules.HandleIncomingMessages),
-		Override(HandleIncomingBlocksKey, modules.HandleIncomingBlocks),
-	),
-)
-
-var MinerNode = Options(
-	// API dependencies
-	Override(new(api.Common), From(new(common.CommonAPI))),
-	Override(new(sectorstorage.StorageAuth), modules.StorageAuth),
-
-	// Actor config
-	Override(new(dtypes.MinerAddress), modules.MinerAddress),
-	Override(new(dtypes.MinerID), modules.MinerID),
-	Override(new(abi.RegisteredSealProof), modules.SealProofType),
-	Override(new(dtypes.NetworkName), modules.StorageNetworkName),
-
-	// Sector storage
-	Override(new(*stores.Index), stores.NewIndex),
-	Override(new(stores.SectorIndex), From(new(*stores.Index))),
-	Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
-	Override(new(*sectorstorage.Manager), modules.SectorStorage),
-	Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
-	Override(new(storiface.WorkerReturn), From(new(sectorstorage.SectorManager))),
-
-	// Sector storage: Proofs
-	Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
-	Override(new(ffiwrapper.Prover), ffiwrapper.ProofProver),
-	Override(new(storage2.Prover), From(new(sectorstorage.SectorManager))),
-
-	// Sealing
-	Override(new(sealing.SectorIDCounter), modules.SectorIDCounter),
-	Override(GetParamsKey, modules.GetParams),
-
-	// Mining / proving
-	Override(new(*slashfilter.SlashFilter), modules.NewSlashFilter),
-	Override(new(*storage.Miner), modules.StorageMiner(config.DefaultStorageMiner().Fees)),
-	Override(new(*miner.Miner), modules.SetupBlockProducer),
-	Override(new(gen.WinningPoStProver), storage.NewWinningPoStProver),
-
-	Override(new(*storage.AddressSelector), modules.AddressSelector(nil)),
-
-	// Markets
-	Override(new(dtypes.StagingMultiDstore), modules.StagingMultiDatastore),
-	Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
-	Override(new(dtypes.StagingDAG), modules.StagingDAG),
-	Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync),
-	Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
-	Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
-
-	// Markets (retrieval)
-	Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
-	Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(nil)),
-	Override(HandleRetrievalKey, modules.HandleRetrieval),
-
-	// Markets (storage)
-	Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
-	Override(new(*storedask.StoredAsk), modules.NewStorageAsk),
-	Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(nil)),
-	Override(new(storagemarket.StorageProvider), modules.StorageProvider),
-	Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{})),
-	Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(nil, nil)),
-	Override(HandleMigrateProviderFundsKey, modules.HandleMigrateProviderFunds),
-	Override(HandleDealsKey, modules.HandleDeals),
-
-	// Config (todo: get a real property system)
-	Override(new(dtypes.ConsiderOnlineStorageDealsConfigFunc), modules.NewConsiderOnlineStorageDealsConfigFunc),
-	Override(new(dtypes.SetConsiderOnlineStorageDealsConfigFunc), modules.NewSetConsideringOnlineStorageDealsFunc),
-	Override(new(dtypes.ConsiderOnlineRetrievalDealsConfigFunc), modules.NewConsiderOnlineRetrievalDealsConfigFunc),
-	Override(new(dtypes.SetConsiderOnlineRetrievalDealsConfigFunc), modules.NewSetConsiderOnlineRetrievalDealsConfigFunc),
-	Override(new(dtypes.StorageDealPieceCidBlocklistConfigFunc), modules.NewStorageDealPieceCidBlocklistConfigFunc),
-	Override(new(dtypes.SetStorageDealPieceCidBlocklistConfigFunc), modules.NewSetStorageDealPieceCidBlocklistConfigFunc),
-	Override(new(dtypes.ConsiderOfflineStorageDealsConfigFunc), modules.NewConsiderOfflineStorageDealsConfigFunc),
-	Override(new(dtypes.SetConsiderOfflineStorageDealsConfigFunc), modules.NewSetConsideringOfflineStorageDealsFunc),
-	Override(new(dtypes.ConsiderOfflineRetrievalDealsConfigFunc), modules.NewConsiderOfflineRetrievalDealsConfigFunc),
-	Override(new(dtypes.SetConsiderOfflineRetrievalDealsConfigFunc), modules.NewSetConsiderOfflineRetrievalDealsConfigFunc),
-	Override(new(dtypes.ConsiderVerifiedStorageDealsConfigFunc), modules.NewConsiderVerifiedStorageDealsConfigFunc),
-	Override(new(dtypes.SetConsiderVerifiedStorageDealsConfigFunc), modules.NewSetConsideringVerifiedStorageDealsFunc),
-	Override(new(dtypes.ConsiderUnverifiedStorageDealsConfigFunc), modules.NewConsiderUnverifiedStorageDealsConfigFunc),
-	Override(new(dtypes.SetConsiderUnverifiedStorageDealsConfigFunc), modules.NewSetConsideringUnverifiedStorageDealsFunc),
-	Override(new(dtypes.SetSealingConfigFunc), modules.NewSetSealConfigFunc),
-	Override(new(dtypes.GetSealingConfigFunc), modules.NewGetSealConfigFunc),
-	Override(new(dtypes.SetExpectedSealDurationFunc), modules.NewSetExpectedSealDurationFunc),
-	Override(new(dtypes.GetExpectedSealDurationFunc), modules.NewGetExpectedSealDurationFunc),
-	Override(new(dtypes.SetMaxDealStartDelayFunc), modules.NewSetMaxDealStartDelayFunc),
-	Override(new(dtypes.GetMaxDealStartDelayFunc), modules.NewGetMaxDealStartDelayFunc),
-)
-
-// Online sets up basic libp2p node
-func Online() Option {
-
+func Base() Option {
 	return Options(
-		// make sure that online is applied before Config.
-		// This is important because Config overrides some of Online units
-		func(s *Settings) error { s.Online = true; return nil },
+		func(s *Settings) error { s.Base = true; return nil }, // mark Base as applied
 		ApplyIf(func(s *Settings) bool { return s.Config },
-			Error(errors.New("the Online option must be set before Config option")),
+			Error(errors.New("the Base() option must be set before Config option")),
 		),
-
-		LibP2P,
-
+		ApplyIf(func(s *Settings) bool { return s.enableLibp2pNode },
+			LibP2P,
+		),
 		ApplyIf(isFullOrLiteNode, ChainNode),
-		ApplyIf(isType(repo.StorageMiner), MinerNode),
-	)
-}
-
-func StorageMiner(out *api.StorageMiner) Option {
-	return Options(
-		ApplyIf(func(s *Settings) bool { return s.Config },
-			Error(errors.New("the StorageMiner option must be set before Config option")),
-		),
-		ApplyIf(func(s *Settings) bool { return s.Online },
-			Error(errors.New("the StorageMiner option must be set before Online option")),
-		),
-
-		func(s *Settings) error {
-			s.nodeType = repo.StorageMiner
-			return nil
-		},
-
-		func(s *Settings) error {
-			resAPI := &impl.StorageMinerAPI{}
-			s.invokes[ExtractApiKey] = fx.Populate(resAPI)
-			*out = resAPI
-			return nil
-		},
+		ApplyIf(IsType(repo.StorageMiner), MinerNode),
 	)
 }
 
 // Config sets up constructors based on the provided Config
-func ConfigCommon(cfg *config.Common) Option {
+func ConfigCommon(cfg *config.Common, enableLibp2pNode bool) Option {
 	return Options(
 		func(s *Settings) error { s.Config = true; return nil },
 		Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
@@ -491,14 +236,21 @@ func ConfigCommon(cfg *config.Common) Option {
 		Override(SetApiEndpointKey, func(lr repo.LockedRepo, e dtypes.APIEndpoint) error {
 			return lr.SetAPIEndpoint(e)
 		}),
-		Override(new(sectorstorage.URLs), func(e dtypes.APIEndpoint) (sectorstorage.URLs, error) {
+		Override(new(stores.URLs), func(e dtypes.APIEndpoint) (stores.URLs, error) {
 			ip := cfg.API.RemoteListenAddress
 
-			var urls sectorstorage.URLs
+			var urls stores.URLs
 			urls = append(urls, "http://"+ip+"/remote") // TODO: This makes no assumptions, and probably could...
 			return urls, nil
 		}),
-		ApplyIf(func(s *Settings) bool { return s.Online },
+		ApplyIf(func(s *Settings) bool { return s.Base }), // apply only if Base has already been applied
+		If(!enableLibp2pNode,
+			Override(new(api.Net), new(api.NetStub)),
+			Override(new(api.Common), From(new(common.CommonAPI))),
+		),
+		If(enableLibp2pNode,
+			Override(new(api.Net), From(new(net.NetAPI))),
+			Override(new(api.Common), From(new(common.CommonAPI))),
 			Override(StartListeningKey, lp2p.StartListening(cfg.Libp2p.ListenAddresses)),
 			Override(ConnectionManagerKey, lp2p.ConnectionManager(
 				cfg.Libp2p.ConnMgrLow,
@@ -511,75 +263,12 @@ func ConfigCommon(cfg *config.Common) Option {
 			ApplyIf(func(s *Settings) bool { return len(cfg.Libp2p.BootstrapPeers) > 0 },
 				Override(new(dtypes.BootstrapPeers), modules.ConfigBootstrap(cfg.Libp2p.BootstrapPeers)),
 			),
+
+			Override(AddrsFactoryKey, lp2p.AddrsFactory(
+				cfg.Libp2p.AnnounceAddresses,
+				cfg.Libp2p.NoAnnounceAddresses)),
 		),
-		Override(AddrsFactoryKey, lp2p.AddrsFactory(
-			cfg.Libp2p.AnnounceAddresses,
-			cfg.Libp2p.NoAnnounceAddresses)),
 		Override(new(dtypes.MetadataDS), modules.Datastore(cfg.Backup.DisableMetadataLog)),
-	)
-}
-
-func ConfigFullNode(c interface{}) Option {
-	cfg, ok := c.(*config.FullNode)
-	if !ok {
-		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
-	}
-
-	ipfsMaddr := cfg.Client.IpfsMAddr
-	return Options(
-		ConfigCommon(&cfg.Common),
-
-		If(cfg.Client.UseIpfs,
-			Override(new(dtypes.ClientBlockstore), modules.IpfsClientBlockstore(ipfsMaddr, cfg.Client.IpfsOnlineMode)),
-			If(cfg.Client.IpfsUseForRetrieval,
-				Override(new(dtypes.ClientRetrievalStoreManager), modules.ClientBlockstoreRetrievalStoreManager),
-			),
-		),
-		Override(new(dtypes.Graphsync), modules.Graphsync(cfg.Client.SimultaneousTransfers)),
-
-		If(cfg.Metrics.HeadNotifs,
-			Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
-		),
-
-		If(cfg.Wallet.RemoteBackend != "",
-			Override(new(*remotewallet.RemoteWallet), remotewallet.SetupRemoteWallet(cfg.Wallet.RemoteBackend)),
-		),
-		If(cfg.Wallet.EnableLedger,
-			Override(new(*ledgerwallet.LedgerWallet), ledgerwallet.NewWallet),
-		),
-		If(cfg.Wallet.DisableLocal,
-			Unset(new(*wallet.LocalWallet)),
-			Override(new(wallet.Default), wallet.NilDefault),
-		),
-	)
-}
-
-func ConfigStorageMiner(c interface{}) Option {
-	cfg, ok := c.(*config.StorageMiner)
-	if !ok {
-		return Error(xerrors.Errorf("invalid config from repo, got: %T", c))
-	}
-
-	return Options(
-		ConfigCommon(&cfg.Common),
-
-		If(cfg.Dealmaking.Filter != "",
-			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(dealfilter.CliStorageDealFilter(cfg.Dealmaking.Filter))),
-		),
-
-		If(cfg.Dealmaking.RetrievalFilter != "",
-			Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(dealfilter.CliRetrievalDealFilter(cfg.Dealmaking.RetrievalFilter))),
-		),
-
-		Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(&cfg.Fees, storageadapter.PublishMsgConfig{
-			Period:         time.Duration(cfg.Dealmaking.PublishMsgPeriod),
-			MaxDealsPerMsg: cfg.Dealmaking.MaxDealsPerPublishMsg,
-		})),
-		Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees, &cfg.Dealmaking)),
-
-		Override(new(sectorstorage.SealerConfig), cfg.Storage),
-		Override(new(*storage.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
-		Override(new(*storage.Miner), modules.StorageMiner(cfg.Fees)),
 	)
 }
 
@@ -612,19 +301,25 @@ func Repo(r repo.Repo) Option {
 			Override(new(dtypes.UniversalBlockstore), modules.UniversalBlockstore),
 
 			If(cfg.EnableSplitstore,
+				If(cfg.Splitstore.ColdStoreType == "universal",
+					Override(new(dtypes.ColdBlockstore), From(new(dtypes.UniversalBlockstore)))),
+				If(cfg.Splitstore.ColdStoreType == "discard",
+					Override(new(dtypes.ColdBlockstore), modules.DiscardColdBlockstore)),
 				If(cfg.Splitstore.HotStoreType == "badger",
 					Override(new(dtypes.HotBlockstore), modules.BadgerHotBlockstore)),
 				Override(new(dtypes.SplitBlockstore), modules.SplitBlockstore(cfg)),
 				Override(new(dtypes.BasicChainBlockstore), modules.ChainSplitBlockstore),
 				Override(new(dtypes.BasicStateBlockstore), modules.StateSplitBlockstore),
 				Override(new(dtypes.BaseBlockstore), From(new(dtypes.SplitBlockstore))),
-				Override(new(dtypes.ExposedBlockstore), From(new(dtypes.SplitBlockstore))),
+				Override(new(dtypes.ExposedBlockstore), modules.ExposedSplitBlockstore),
+				Override(new(dtypes.GCReferenceProtector), modules.SplitBlockstoreGCReferenceProtector),
 			),
 			If(!cfg.EnableSplitstore,
 				Override(new(dtypes.BasicChainBlockstore), modules.ChainFlatBlockstore),
 				Override(new(dtypes.BasicStateBlockstore), modules.StateFlatBlockstore),
 				Override(new(dtypes.BaseBlockstore), From(new(dtypes.UniversalBlockstore))),
 				Override(new(dtypes.ExposedBlockstore), From(new(dtypes.UniversalBlockstore))),
+				Override(new(dtypes.GCReferenceProtector), modules.NoopGCReferenceProtector),
 			),
 
 			Override(new(dtypes.ChainBlockstore), From(new(dtypes.BasicChainBlockstore))),
@@ -649,35 +344,10 @@ func Repo(r repo.Repo) Option {
 
 			Override(new(*dtypes.APIAlg), modules.APISecret),
 
-			ApplyIf(isType(repo.FullNode), ConfigFullNode(c)),
-			ApplyIf(isType(repo.StorageMiner), ConfigStorageMiner(c)),
+			ApplyIf(IsType(repo.FullNode), ConfigFullNode(c)),
+			ApplyIf(IsType(repo.StorageMiner), ConfigStorageMiner(c)),
 		)(settings)
 	}
-}
-
-type FullOption = Option
-
-func Lite(enable bool) FullOption {
-	return func(s *Settings) error {
-		s.Lite = enable
-		return nil
-	}
-}
-
-func FullAPI(out *api.FullNode, fopts ...FullOption) Option {
-	return Options(
-		func(s *Settings) error {
-			s.nodeType = repo.FullNode
-			return nil
-		},
-		Options(fopts...),
-		func(s *Settings) error {
-			resAPI := &impl.FullNodeAPI{}
-			s.invokes[ExtractApiKey] = fx.Populate(resAPI)
-			*out = resAPI
-			return nil
-		},
-	)
 }
 
 type StopFunc func(context.Context) error

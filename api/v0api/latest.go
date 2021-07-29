@@ -5,8 +5,15 @@ import (
 )
 
 type Common = api.Common
+type Net = api.Net
+type CommonNet = api.CommonNet
+
 type CommonStruct = api.CommonStruct
 type CommonStub = api.CommonStub
+type NetStruct = api.NetStruct
+type NetStub = api.NetStub
+type CommonNetStruct = api.CommonNetStruct
+type CommonNetStub = api.CommonNetStub
 
 type StorageMiner = api.StorageMiner
 type StorageMinerStruct = api.StorageMinerStruct

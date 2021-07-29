@@ -52,7 +52,7 @@ var genesisVerifyCmd = &cli.Command{
 		}
 		bs := blockstore.FromDatastore(datastore.NewMapDatastore())
 
-		cs := store.NewChainStore(bs, bs, datastore.NewMapDatastore(), nil, nil)
+		cs := store.NewChainStore(bs, bs, datastore.NewMapDatastore(), nil)
 		defer cs.Close() //nolint:errcheck
 
 		cf := cctx.Args().Get(0)
@@ -66,9 +66,7 @@ var genesisVerifyCmd = &cli.Command{
 			return err
 		}
 
-		sm := stmgr.NewStateManager(cs)
-
-		total, err := stmgr.CheckTotalFIL(context.TODO(), sm, ts)
+		total, err := stmgr.CheckTotalFIL(context.TODO(), cs, ts)
 		if err != nil {
 			return err
 		}

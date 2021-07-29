@@ -230,7 +230,7 @@ func (tu *syncTestUtil) pushTsExpectErr(to int, fts *store.FullTipSet, experr bo
 	}
 }
 
-func (tu *syncTestUtil) mineOnBlock(blk *store.FullTipSet, to int, miners []int, wait, fail bool, msgs [][]*types.SignedMessage, nulls abi.ChainEpoch) *store.FullTipSet {
+func (tu *syncTestUtil) mineOnBlock(blk *store.FullTipSet, to int, miners []int, wait, fail bool, msgs [][]*types.SignedMessage, nulls abi.ChainEpoch, push bool) *store.FullTipSet {
 	if miners == nil {
 		for i := range tu.g.Miners {
 			miners = append(miners, i)
@@ -247,7 +247,7 @@ func (tu *syncTestUtil) mineOnBlock(blk *store.FullTipSet, to int, miners []int,
 	var nts *store.FullTipSet
 	var err error
 	if msgs != nil {
-		nts, err = tu.g.NextTipSetFromMinersWithMessagesAndNulls(blk.TipSet(), maddrs, msgs, 0)
+		nts, err = tu.g.NextTipSetFromMinersWithMessagesAndNulls(blk.TipSet(), maddrs, msgs, nulls)
 		require.NoError(tu.t, err)
 	} else {
 		mt, err := tu.g.NextTipSetFromMiners(blk.TipSet(), maddrs, nulls)
@@ -255,17 +255,19 @@ func (tu *syncTestUtil) mineOnBlock(blk *store.FullTipSet, to int, miners []int,
 		nts = mt.TipSet
 	}
 
-	if fail {
-		tu.pushTsExpectErr(to, nts, true)
-	} else {
-		tu.pushFtsAndWait(to, nts, wait)
+	if push {
+		if fail {
+			tu.pushTsExpectErr(to, nts, true)
+		} else {
+			tu.pushFtsAndWait(to, nts, wait)
+		}
 	}
 
 	return nts
 }
 
 func (tu *syncTestUtil) mineNewBlock(src int, miners []int) {
-	mts := tu.mineOnBlock(tu.g.CurTipset, src, miners, true, false, nil, 0)
+	mts := tu.mineOnBlock(tu.g.CurTipset, src, miners, true, false, nil, 0, true)
 	tu.g.CurTipset = mts
 }
 
@@ -279,7 +281,7 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 
 	stop, err := node.New(tu.ctx,
 		node.FullAPI(&out),
-		node.Online(),
+		node.Base(),
 		node.Repo(sourceRepo),
 		node.MockHost(tu.mn),
 		node.Test(),
@@ -310,10 +312,11 @@ func (tu *syncTestUtil) addClientNode() int {
 
 	var out api.FullNode
 
+	r := repo.NewMemory(nil)
 	stop, err := node.New(tu.ctx,
 		node.FullAPI(&out),
-		node.Online(),
-		node.Repo(repo.NewMemory(nil)),
+		node.Base(),
+		node.Repo(r),
 		node.MockHost(tu.mn),
 		node.Test(),
 
@@ -404,12 +407,15 @@ func (tu *syncTestUtil) checkpointTs(node int, tsk types.TipSetKey) {
 	require.NoError(tu.t, tu.nds[node].SyncCheckpoint(context.TODO(), tsk))
 }
 
+func (tu *syncTestUtil) nodeHasTs(node int, tsk types.TipSetKey) bool {
+	_, err := tu.nds[node].ChainGetTipSet(context.TODO(), tsk)
+	return err == nil
+}
+
 func (tu *syncTestUtil) waitUntilNodeHasTs(node int, tsk types.TipSetKey) {
-	for {
-		_, err := tu.nds[node].ChainGetTipSet(context.TODO(), tsk)
-		if err != nil {
-			break
-		}
+	for !tu.nodeHasTs(node, tsk) {
+		// Time to allow for syncing and validation
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	// Time to allow for syncing and validation
@@ -434,12 +440,18 @@ func (tu *syncTestUtil) waitUntilSyncTarget(to int, target *types.TipSet) {
 		tu.t.Fatal(err)
 	}
 
-	// TODO: some sort of timeout?
-	for n := range hc {
-		for _, c := range n {
-			if c.Val.Equals(target) {
-				return
+	timeout := time.After(5 * time.Second)
+
+	for {
+		select {
+		case n := <-hc:
+			for _, c := range n {
+				if c.Val.Equals(target) {
+					return
+				}
 			}
+		case <-timeout:
+			tu.t.Fatal("waitUntilSyncTarget timeout")
 		}
 	}
 }
@@ -500,7 +512,7 @@ func TestSyncBadTimestamp(t *testing.T) {
 	fmt.Println("BASE: ", base.Cids())
 	tu.printHeads()
 
-	a1 := tu.mineOnBlock(base, 0, nil, false, true, nil, 0)
+	a1 := tu.mineOnBlock(base, 0, nil, false, true, nil, 0, true)
 
 	tu.g.Timestamper = nil
 	require.NoError(t, tu.g.ResyncBankerNonce(a1.TipSet()))
@@ -509,7 +521,7 @@ func TestSyncBadTimestamp(t *testing.T) {
 
 	fmt.Println("After mine bad block!")
 	tu.printHeads()
-	a2 := tu.mineOnBlock(base, 0, nil, true, false, nil, 0)
+	a2 := tu.mineOnBlock(base, 0, nil, true, false, nil, 0, true)
 
 	tu.waitUntilSync(0, client)
 
@@ -553,7 +565,7 @@ func TestSyncBadWinningPoSt(t *testing.T) {
 	tu.g.SetWinningPoStProver(tu.g.Miners[1], &badWpp{})
 
 	// now ensure that new blocks are not accepted
-	tu.mineOnBlock(base, client, nil, false, true, nil, 0)
+	tu.mineOnBlock(base, client, nil, false, true, nil, 0, true)
 }
 
 func (tu *syncTestUtil) loadChainToNode(to int) {
@@ -576,15 +588,20 @@ func TestSyncFork(t *testing.T) {
 	tu.loadChainToNode(p1)
 	tu.loadChainToNode(p2)
 
-	phead := func() {
+	printHead := func() {
 		h1, err := tu.nds[1].ChainHead(tu.ctx)
 		require.NoError(tu.t, err)
 
 		h2, err := tu.nds[2].ChainHead(tu.ctx)
 		require.NoError(tu.t, err)
 
-		fmt.Println("Node 1: ", h1.Cids(), h1.Parents(), h1.Height())
-		fmt.Println("Node 2: ", h2.Cids(), h1.Parents(), h2.Height())
+		w1, err := tu.nds[1].(*impl.FullNodeAPI).ChainAPI.Chain.Weight(tu.ctx, h1)
+		require.NoError(tu.t, err)
+		w2, err := tu.nds[2].(*impl.FullNodeAPI).ChainAPI.Chain.Weight(tu.ctx, h2)
+		require.NoError(tu.t, err)
+
+		fmt.Println("Node 1: ", h1.Cids(), h1.Parents(), h1.Height(), w1)
+		fmt.Println("Node 2: ", h2.Cids(), h2.Parents(), h2.Height(), w2)
 		//time.Sleep(time.Second * 2)
 		fmt.Println()
 		fmt.Println()
@@ -592,25 +609,27 @@ func TestSyncFork(t *testing.T) {
 		fmt.Println()
 	}
 
-	phead()
+	printHead()
 
 	base := tu.g.CurTipset
 	fmt.Println("Mining base: ", base.TipSet().Cids(), base.TipSet().Height())
 
 	// The two nodes fork at this point into 'a' and 'b'
-	a1 := tu.mineOnBlock(base, p1, []int{0}, true, false, nil, 0)
-	a := tu.mineOnBlock(a1, p1, []int{0}, true, false, nil, 0)
-	a = tu.mineOnBlock(a, p1, []int{0}, true, false, nil, 0)
+	a1 := tu.mineOnBlock(base, p1, []int{0}, true, false, nil, 0, true)
+	a := tu.mineOnBlock(a1, p1, []int{0}, true, false, nil, 0, true)
+	a = tu.mineOnBlock(a, p1, []int{0}, true, false, nil, 0, true)
 
 	require.NoError(t, tu.g.ResyncBankerNonce(a1.TipSet()))
 	// chain B will now be heaviest
-	b := tu.mineOnBlock(base, p2, []int{1}, true, false, nil, 0)
-	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0)
-	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0)
-	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0)
+	b := tu.mineOnBlock(base, p2, []int{1}, true, false, nil, 0, true)
+	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0, true)
+	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0, true)
+	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0, true)
 
 	fmt.Println("A: ", a.Cids(), a.TipSet().Height())
 	fmt.Println("B: ", b.Cids(), b.TipSet().Height())
+
+	printHead()
 
 	// Now for the fun part!!
 
@@ -619,7 +638,7 @@ func TestSyncFork(t *testing.T) {
 	tu.waitUntilSyncTarget(p1, b.TipSet())
 	tu.waitUntilSyncTarget(p2, b.TipSet())
 
-	phead()
+	printHead()
 }
 
 // This test crafts a tipset with 2 blocks, A and B.
@@ -669,13 +688,13 @@ func TestDuplicateNonce(t *testing.T) {
 		msgs[k] = []*types.SignedMessage{makeMsg(tu.g.Miners[k])}
 	}
 
-	ts1 := tu.mineOnBlock(base, 0, []int{0, 1}, true, false, msgs, 0)
+	ts1 := tu.mineOnBlock(base, 0, []int{0, 1}, true, false, msgs, 0, true)
 
 	tu.waitUntilSyncTarget(0, ts1.TipSet())
 
 	// mine another tipset
 
-	ts2 := tu.mineOnBlock(ts1, 0, []int{0, 1}, true, false, make([][]*types.SignedMessage, 2), 0)
+	ts2 := tu.mineOnBlock(ts1, 0, []int{0, 1}, true, false, make([][]*types.SignedMessage, 2), 0, true)
 	tu.waitUntilSyncTarget(0, ts2.TipSet())
 
 	var includedMsg cid.Cid
@@ -761,7 +780,7 @@ func TestBadNonce(t *testing.T) {
 	msgs := make([][]*types.SignedMessage, 1)
 	msgs[0] = []*types.SignedMessage{makeBadMsg()}
 
-	tu.mineOnBlock(base, 0, []int{0}, true, true, msgs, 0)
+	tu.mineOnBlock(base, 0, []int{0}, true, true, msgs, 0, true)
 }
 
 // This test introduces a block that has 2 messages, with the same sender, and same nonce.
@@ -815,7 +834,7 @@ func TestMismatchedNoncesRobustID(t *testing.T) {
 	msgs := make([][]*types.SignedMessage, 1)
 	msgs[0] = []*types.SignedMessage{makeMsg(false), makeMsg(true)}
 
-	tu.mineOnBlock(base, 0, []int{0}, true, true, msgs, 0)
+	tu.mineOnBlock(base, 0, []int{0}, true, true, msgs, 0, true)
 }
 
 // This test introduces a block that has 2 messages, with the same sender, and nonces N and N+1 (so both can be included in a block)
@@ -869,7 +888,7 @@ func TestMatchedNoncesRobustID(t *testing.T) {
 	msgs := make([][]*types.SignedMessage, 1)
 	msgs[0] = []*types.SignedMessage{makeMsg(ba.Nonce, false), makeMsg(ba.Nonce+1, true)}
 
-	tu.mineOnBlock(base, 0, []int{0}, true, false, msgs, 0)
+	tu.mineOnBlock(base, 0, []int{0}, true, false, msgs, 0, true)
 }
 
 func BenchmarkSyncBasic(b *testing.B) {
@@ -920,8 +939,6 @@ func TestSyncInputs(t *testing.T) {
 }
 
 func TestSyncCheckpointHead(t *testing.T) {
-	t.Skip("flaky")
-
 	H := 10
 	tu := prepSyncTest(t, H)
 
@@ -936,19 +953,19 @@ func TestSyncCheckpointHead(t *testing.T) {
 	fmt.Println("Mining base: ", base.TipSet().Cids(), base.TipSet().Height())
 
 	// The two nodes fork at this point into 'a' and 'b'
-	a1 := tu.mineOnBlock(base, p1, []int{0}, true, false, nil, 0)
-	a := tu.mineOnBlock(a1, p1, []int{0}, true, false, nil, 0)
-	a = tu.mineOnBlock(a, p1, []int{0}, true, false, nil, 0)
+	a1 := tu.mineOnBlock(base, p1, []int{0}, true, false, nil, 0, true)
+	a := tu.mineOnBlock(a1, p1, []int{0}, true, false, nil, 0, true)
+	a = tu.mineOnBlock(a, p1, []int{0}, true, false, nil, 0, true)
 
 	tu.waitUntilSyncTarget(p1, a.TipSet())
 	tu.checkpointTs(p1, a.TipSet().Key())
 
 	require.NoError(t, tu.g.ResyncBankerNonce(a1.TipSet()))
 	// chain B will now be heaviest
-	b := tu.mineOnBlock(base, p2, []int{1}, true, false, nil, 0)
-	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0)
-	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0)
-	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0)
+	b := tu.mineOnBlock(base, p2, []int{1}, true, false, nil, 0, true)
+	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0, true)
+	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0, true)
+	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0, true)
 
 	fmt.Println("A: ", a.Cids(), a.TipSet().Height())
 	fmt.Println("B: ", b.Cids(), b.TipSet().Height())
@@ -959,13 +976,16 @@ func TestSyncCheckpointHead(t *testing.T) {
 	tu.connect(p1, p2)
 	tu.waitUntilNodeHasTs(p1, b.TipSet().Key())
 	p1Head := tu.getHead(p1)
-	require.Equal(tu.t, p1Head, a.TipSet())
+	require.True(tu.t, p1Head.Equals(a.TipSet()))
 	tu.assertBad(p1, b.TipSet())
+
+	// Should be able to switch forks.
+	tu.checkpointTs(p1, b.TipSet().Key())
+	p1Head = tu.getHead(p1)
+	require.True(tu.t, p1Head.Equals(b.TipSet()))
 }
 
 func TestSyncCheckpointEarlierThanHead(t *testing.T) {
-	t.Skip("flaky")
-
 	H := 10
 	tu := prepSyncTest(t, H)
 
@@ -980,19 +1000,19 @@ func TestSyncCheckpointEarlierThanHead(t *testing.T) {
 	fmt.Println("Mining base: ", base.TipSet().Cids(), base.TipSet().Height())
 
 	// The two nodes fork at this point into 'a' and 'b'
-	a1 := tu.mineOnBlock(base, p1, []int{0}, true, false, nil, 0)
-	a := tu.mineOnBlock(a1, p1, []int{0}, true, false, nil, 0)
-	a = tu.mineOnBlock(a, p1, []int{0}, true, false, nil, 0)
+	a1 := tu.mineOnBlock(base, p1, []int{0}, true, false, nil, 0, true)
+	a := tu.mineOnBlock(a1, p1, []int{0}, true, false, nil, 0, true)
+	a = tu.mineOnBlock(a, p1, []int{0}, true, false, nil, 0, true)
 
 	tu.waitUntilSyncTarget(p1, a.TipSet())
 	tu.checkpointTs(p1, a1.TipSet().Key())
 
 	require.NoError(t, tu.g.ResyncBankerNonce(a1.TipSet()))
 	// chain B will now be heaviest
-	b := tu.mineOnBlock(base, p2, []int{1}, true, false, nil, 0)
-	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0)
-	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0)
-	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0)
+	b := tu.mineOnBlock(base, p2, []int{1}, true, false, nil, 0, true)
+	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0, true)
+	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0, true)
+	b = tu.mineOnBlock(b, p2, []int{1}, true, false, nil, 0, true)
 
 	fmt.Println("A: ", a.Cids(), a.TipSet().Height())
 	fmt.Println("B: ", b.Cids(), b.TipSet().Height())
@@ -1003,8 +1023,13 @@ func TestSyncCheckpointEarlierThanHead(t *testing.T) {
 	tu.connect(p1, p2)
 	tu.waitUntilNodeHasTs(p1, b.TipSet().Key())
 	p1Head := tu.getHead(p1)
-	require.Equal(tu.t, p1Head, a.TipSet())
+	require.True(tu.t, p1Head.Equals(a.TipSet()))
 	tu.assertBad(p1, b.TipSet())
+
+	// Should be able to switch forks.
+	tu.checkpointTs(p1, b.TipSet().Key())
+	p1Head = tu.getHead(p1)
+	require.True(tu.t, p1Head.Equals(b.TipSet()))
 }
 
 func TestDrandNull(t *testing.T) {
@@ -1025,7 +1050,7 @@ func TestDrandNull(t *testing.T) {
 	pers := crypto.DomainSeparationTag_WinningPoStChallengeSeed
 
 	beforeNull := tu.g.CurTipset
-	afterNull := tu.mineOnBlock(beforeNull, p0, nil, false, false, nil, 2)
+	afterNull := tu.mineOnBlock(beforeNull, p0, nil, false, false, nil, 2, true)
 	nullHeight := beforeNull.TipSet().Height() + 1
 	if afterNull.TipSet().Height() == nullHeight {
 		t.Fatal("didn't inject nulls as expected")
@@ -1042,14 +1067,14 @@ func TestDrandNull(t *testing.T) {
 	require.Equal(t, []byte(rand), expectedRand)
 
 	// zoom zoom to past the v5 upgrade by injecting many many nulls
-	postUpgrade := tu.mineOnBlock(afterNull, p0, nil, false, false, nil, v5h)
+	postUpgrade := tu.mineOnBlock(afterNull, p0, nil, false, false, nil, v5h, true)
 	nv, err := tu.nds[p0].StateNetworkVersion(tu.ctx, postUpgrade.TipSet().Key())
 	require.NoError(t, err)
 	if nv != network.Version13 {
 		t.Fatal("expect to be v13 by now")
 	}
 
-	afterNull = tu.mineOnBlock(postUpgrade, p0, nil, false, false, nil, 2)
+	afterNull = tu.mineOnBlock(postUpgrade, p0, nil, false, false, nil, 2, true)
 	nullHeight = postUpgrade.TipSet().Height() + 1
 	if afterNull.TipSet().Height() == nullHeight {
 		t.Fatal("didn't inject nulls as expected")
@@ -1080,4 +1105,23 @@ func TestDrandNull(t *testing.T) {
 	require.Equal(t, rand0, rand1)
 
 	build.UpgradeHyperdriveHeight = ov5h
+}
+
+func TestInvalidHeight(t *testing.T) {
+	H := 50
+	tu := prepSyncTest(t, H)
+
+	client := tu.addClientNode()
+
+	require.NoError(t, tu.mn.LinkAll())
+	tu.connect(client, 0)
+	tu.waitUntilSync(0, client)
+
+	base := tu.g.CurTipset
+
+	for i := 0; i < 5; i++ {
+		base = tu.mineOnBlock(base, 0, nil, false, false, nil, 0, false)
+	}
+
+	tu.mineOnBlock(base, 0, nil, false, true, nil, -1, true)
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/ipfs/go-blockservice"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -59,8 +58,7 @@ func ChainBlockService(bs dtypes.ExposedBlockstore, rem dtypes.ChainBitswap) dty
 	return blockservice.New(bs, rem)
 }
 
-func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds dtypes.MetadataDS, nn dtypes.NetworkName, j journal.Journal) (*messagepool.MessagePool, error) {
-	mpp := messagepool.NewProvider(sm, ps)
+func MessagePool(lc fx.Lifecycle, mpp messagepool.Provider, ds dtypes.MetadataDS, nn dtypes.NetworkName, j journal.Journal, protector dtypes.GCReferenceProtector) (*messagepool.MessagePool, error) {
 	mp, err := messagepool.New(mpp, ds, nn, j)
 	if err != nil {
 		return nil, xerrors.Errorf("constructing mpool: %w", err)
@@ -70,11 +68,12 @@ func MessagePool(lc fx.Lifecycle, sm *stmgr.StateManager, ps *pubsub.PubSub, ds 
 			return mp.Close()
 		},
 	})
+	protector.AddProtector(mp.ForEachPendingMessage)
 	return mp, nil
 }
 
-func ChainStore(lc fx.Lifecycle, cbs dtypes.ChainBlockstore, sbs dtypes.StateBlockstore, ds dtypes.MetadataDS, basebs dtypes.BaseBlockstore, syscalls vm.SyscallBuilder, j journal.Journal) *store.ChainStore {
-	chain := store.NewChainStore(cbs, sbs, ds, syscalls, j)
+func ChainStore(lc fx.Lifecycle, cbs dtypes.ChainBlockstore, sbs dtypes.StateBlockstore, ds dtypes.MetadataDS, basebs dtypes.BaseBlockstore, j journal.Journal) *store.ChainStore {
+	chain := store.NewChainStore(cbs, sbs, ds, j)
 
 	if err := chain.Load(); err != nil {
 		log.Warnf("loading chain state from disk: %s", err)
@@ -101,14 +100,14 @@ func ChainStore(lc fx.Lifecycle, cbs dtypes.ChainBlockstore, sbs dtypes.StateBlo
 	return chain
 }
 
-func NetworkName(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, us stmgr.UpgradeSchedule, _ dtypes.AfterGenesisSet) (dtypes.NetworkName, error) {
+func NetworkName(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, syscalls vm.SyscallBuilder, us stmgr.UpgradeSchedule, _ dtypes.AfterGenesisSet) (dtypes.NetworkName, error) {
 	if !build.Devnet {
 		return "testnetnet", nil
 	}
 
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	sm, err := stmgr.NewStateManagerWithUpgradeSchedule(cs, us)
+	sm, err := stmgr.NewStateManagerWithUpgradeSchedule(cs, syscalls, us)
 	if err != nil {
 		return "", err
 	}

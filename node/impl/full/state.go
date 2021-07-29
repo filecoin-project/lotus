@@ -426,7 +426,7 @@ func (a *StateAPI) StateReplay(ctx context.Context, tsk types.TipSetKey, mc cid.
 	}, nil
 }
 
-func (m *StateModule) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
+func (m *StateModule) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (a *types.Actor, err error) {
 	ts, err := m.Chain.GetTipSetFromKey(tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -705,7 +705,7 @@ func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.
 		return nil, xerrors.Errorf("failed to load new state tree: %w", err)
 	}
 
-	return state.Diff(oldTree, newTree)
+	return state.Diff(ctx, oldTree, newTree)
 }
 
 func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MinerSectors, error) {
@@ -808,8 +808,31 @@ func (a *StateAPI) StateListMessages(ctx context.Context, match *api.MessageMatc
 
 	if match.To == address.Undef && match.From == address.Undef {
 		return nil, xerrors.Errorf("must specify at least To or From in message filter")
+	} else if match.To != address.Undef {
+		_, err := a.StateLookupID(ctx, match.To, tsk)
+
+		// if the recipient doesn't exist at the start point, we're not gonna find any matches
+		if xerrors.Is(err, types.ErrActorNotFound) {
+			return nil, nil
+		}
+
+		if err != nil {
+			return nil, xerrors.Errorf("looking up match.To: %w", err)
+		}
+	} else if match.From != address.Undef {
+		_, err := a.StateLookupID(ctx, match.From, tsk)
+
+		// if the sender doesn't exist at the start point, we're not gonna find any matches
+		if xerrors.Is(err, types.ErrActorNotFound) {
+			return nil, nil
+		}
+
+		if err != nil {
+			return nil, xerrors.Errorf("looking up match.From: %w", err)
+		}
 	}
 
+	// TODO: This should probably match on both ID and robust address, no?
 	matchFunc := func(msg *types.Message) bool {
 		if match.From != address.Undef && match.From != msg.From {
 			return false

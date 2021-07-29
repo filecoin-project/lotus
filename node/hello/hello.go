@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	xerrors "golang.org/x/xerrors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
@@ -13,7 +13,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	protocol "github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p-core/protocol"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/lotus/build"
@@ -22,6 +22,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 )
+
+// TODO(TEST): missing test coverage.
 
 const ProtocolID = "/fil/hello/1.0.0"
 
@@ -33,12 +35,14 @@ type HelloMessage struct {
 	HeaviestTipSetWeight big.Int
 	GenesisHash          cid.Cid
 }
+
 type LatencyMessage struct {
 	TArrival int64
 	TSent    int64
 }
 
 type NewStreamFunc func(context.Context, peer.ID, ...protocol.ID) (inet.Stream, error)
+
 type Service struct {
 	h host.Host
 
@@ -62,7 +66,6 @@ func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, pm
 }
 
 func (hs *Service) HandleStream(s inet.Stream) {
-
 	var hmsg HelloMessage
 	if err := cborutil.ReadCborRPC(s, &hmsg); err != nil {
 		log.Infow("failed to read hello message, disconnecting", "error", err)
@@ -77,7 +80,7 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		"hash", hmsg.GenesisHash)
 
 	if hmsg.GenesisHash != hs.syncer.Genesis.Cids()[0] {
-		log.Warnf("other peer has different genesis! (%s)", hmsg.GenesisHash)
+		log.Debugf("other peer has different genesis! (%s)", hmsg.GenesisHash)
 		_ = s.Conn().Close()
 		return
 	}
@@ -121,7 +124,6 @@ func (hs *Service) HandleStream(s inet.Stream) {
 		log.Debugf("Got new tipset through Hello: %s from %s", ts.Cids(), s.Conn().RemotePeer())
 		hs.syncer.InformNewHead(s.Conn().RemotePeer(), ts)
 	}
-
 }
 
 func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {

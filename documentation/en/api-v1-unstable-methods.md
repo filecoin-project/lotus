@@ -11,12 +11,15 @@
 * [Beacon](#Beacon)
   * [BeaconGetEntry](#BeaconGetEntry)
 * [Chain](#Chain)
+  * [ChainBlockstoreInfo](#ChainBlockstoreInfo)
+  * [ChainCheckBlockstore](#ChainCheckBlockstore)
   * [ChainDeleteObj](#ChainDeleteObj)
   * [ChainExport](#ChainExport)
   * [ChainGetBlock](#ChainGetBlock)
   * [ChainGetBlockMessages](#ChainGetBlockMessages)
   * [ChainGetGenesis](#ChainGetGenesis)
   * [ChainGetMessage](#ChainGetMessage)
+  * [ChainGetMessagesInTipset](#ChainGetMessagesInTipset)
   * [ChainGetNode](#ChainGetNode)
   * [ChainGetParentMessages](#ChainGetParentMessages)
   * [ChainGetParentReceipts](#ChainGetParentReceipts)
@@ -44,11 +47,13 @@
   * [ClientGetDealInfo](#ClientGetDealInfo)
   * [ClientGetDealStatus](#ClientGetDealStatus)
   * [ClientGetDealUpdates](#ClientGetDealUpdates)
+  * [ClientGetRetrievalUpdates](#ClientGetRetrievalUpdates)
   * [ClientHasLocal](#ClientHasLocal)
   * [ClientImport](#ClientImport)
   * [ClientListDataTransfers](#ClientListDataTransfers)
   * [ClientListDeals](#ClientListDeals)
   * [ClientListImports](#ClientListImports)
+  * [ClientListRetrievals](#ClientListRetrievals)
   * [ClientMinerQueryOffer](#ClientMinerQueryOffer)
   * [ClientQueryAsk](#ClientQueryAsk)
   * [ClientRemoveImport](#ClientRemoveImport)
@@ -57,6 +62,7 @@
   * [ClientRetrieveTryRestartInsufficientFunds](#ClientRetrieveTryRestartInsufficientFunds)
   * [ClientRetrieveWithEvents](#ClientRetrieveWithEvents)
   * [ClientStartDeal](#ClientStartDeal)
+  * [ClientStatelessDeal](#ClientStatelessDeal)
 * [Create](#Create)
   * [CreateBackup](#CreateBackup)
 * [Gas](#Gas)
@@ -82,6 +88,9 @@
   * [MpoolBatchPush](#MpoolBatchPush)
   * [MpoolBatchPushMessage](#MpoolBatchPushMessage)
   * [MpoolBatchPushUntrusted](#MpoolBatchPushUntrusted)
+  * [MpoolCheckMessages](#MpoolCheckMessages)
+  * [MpoolCheckPendingMessages](#MpoolCheckPendingMessages)
+  * [MpoolCheckReplaceMessages](#MpoolCheckReplaceMessages)
   * [MpoolClear](#MpoolClear)
   * [MpoolGetConfig](#MpoolGetConfig)
   * [MpoolGetNonce](#MpoolGetNonce)
@@ -126,6 +135,8 @@
   * [NetPeerInfo](#NetPeerInfo)
   * [NetPeers](#NetPeers)
   * [NetPubsubScores](#NetPubsubScores)
+* [Node](#Node)
+  * [NodeStatus](#NodeStatus)
 * [Paych](#Paych)
   * [PaychAllocateLane](#PaychAllocateLane)
   * [PaychAvailableFunds](#PaychAvailableFunds)
@@ -273,7 +284,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131328,
+  "APIVersion": 131329,
   "BlockDelay": 42
 }
 ```
@@ -340,6 +351,32 @@ Response:
 The Chain method group contains methods for interacting with the
 blockchain, but that do not require any form of state computation.
 
+
+### ChainBlockstoreInfo
+ChainBlockstoreInfo returns some basic information about the blockstore
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "abc": 123
+}
+```
+
+### ChainCheckBlockstore
+ChainCheckBlockstore performs an (asynchronous) health check on the chain/state blockstore
+if supported by the underlying implementation.
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `{}`
 
 ### ChainDeleteObj
 ChainDeleteObj deletes node referenced by the given CID
@@ -526,6 +563,28 @@ Response:
   }
 }
 ```
+
+### ChainGetMessagesInTipset
+ChainGetMessagesInTipset returns message stores in current tipset
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `null`
 
 ### ChainGetNode
 
@@ -1193,6 +1252,54 @@ Response:
 }
 ```
 
+### ClientGetRetrievalUpdates
+ClientGetRetrievalUpdates returns status of updated retrieval deals
+
+
+Perms: write
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "PayloadCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "ID": 5,
+  "PieceCID": null,
+  "PricePerByte": "0",
+  "UnsealPrice": "0",
+  "Status": 0,
+  "Message": "string value",
+  "Provider": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "BytesReceived": 42,
+  "BytesPaidFor": 42,
+  "TotalPaid": "0",
+  "TransferChannelID": {
+    "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "ID": 3
+  },
+  "DataTransfer": {
+    "TransferID": 3,
+    "Status": 1,
+    "BaseCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "IsInitiator": true,
+    "IsSender": true,
+    "Voucher": "string value",
+    "Message": "string value",
+    "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Transferred": 42,
+    "Stages": {
+      "Stages": null
+    }
+  }
+}
+```
+
 ### ClientHasLocal
 ClientHasLocal indicates whether a certain CID is locally stored.
 
@@ -1258,6 +1365,16 @@ Response: `null`
 
 ### ClientListImports
 ClientListImports lists imported files and their root CIDs
+
+
+Perms: write
+
+Inputs: `null`
+
+Response: `null`
+
+### ClientListRetrievals
+ClientListRetrievals returns information about retrievals made by the local client
 
 
 Perms: write
@@ -1470,6 +1587,39 @@ ClientStartDeal proposes a deal with a miner.
 
 
 Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Data": {
+      "TransferType": "string value",
+      "Root": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "PieceCid": null,
+      "PieceSize": 1024,
+      "RawBlockSize": 42
+    },
+    "Wallet": "f01234",
+    "Miner": "f01234",
+    "EpochPrice": "0",
+    "MinBlocksDuration": 42,
+    "ProviderCollateral": "0",
+    "DealStartEpoch": 10101,
+    "FastRetrieval": true,
+    "VerifiedDeal": true
+  }
+]
+```
+
+Response: `null`
+
+### ClientStatelessDeal
+ClientStatelessDeal fire-and-forget-proposes an offline deal to a miner without subsequent tracking.
+
+
+Perms: write
 
 Inputs:
 ```json
@@ -1991,6 +2141,51 @@ Inputs:
 
 Response: `null`
 
+### MpoolCheckMessages
+MpoolCheckMessages performs logical checks on a batch of messages
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  null
+]
+```
+
+Response: `null`
+
+### MpoolCheckPendingMessages
+MpoolCheckPendingMessages performs logical checks for all pending messages from a given address
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234"
+]
+```
+
+Response: `null`
+
+### MpoolCheckReplaceMessages
+MpoolCheckReplaceMessages performs logical checks on pending messages with replacement
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  null
+]
+```
+
+Response: `null`
+
 ### MpoolClear
 MpoolClear clears pending messages from the mpool
 
@@ -2324,7 +2519,22 @@ Inputs:
 Response:
 ```json
 {
-  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  "Message": {
+    "Version": 42,
+    "To": "f01234",
+    "From": "f01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
+  },
+  "ValidNonce": true
 }
 ```
 
@@ -2350,7 +2560,22 @@ Inputs:
 Response:
 ```json
 {
-  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  "Message": {
+    "Version": 42,
+    "To": "f01234",
+    "From": "f01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
+  },
+  "ValidNonce": true
 }
 ```
 
@@ -2375,7 +2600,22 @@ Inputs:
 Response:
 ```json
 {
-  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  "Message": {
+    "Version": 42,
+    "To": "f01234",
+    "From": "f01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
+  },
+  "ValidNonce": true
 }
 ```
 
@@ -2398,7 +2638,22 @@ Inputs:
 Response:
 ```json
 {
-  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  "Message": {
+    "Version": 42,
+    "To": "f01234",
+    "From": "f01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
+  },
+  "ValidNonce": true
 }
 ```
 
@@ -2430,7 +2685,22 @@ Inputs:
 Response:
 ```json
 {
-  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  "Message": {
+    "Version": 42,
+    "To": "f01234",
+    "From": "f01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
+  },
+  "ValidNonce": true
 }
 ```
 
@@ -2458,7 +2728,22 @@ Inputs:
 Response:
 ```json
 {
-  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  "Message": {
+    "Version": 42,
+    "To": "f01234",
+    "From": "f01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
+  },
+  "ValidNonce": true
 }
 ```
 
@@ -2485,7 +2770,22 @@ Inputs:
 Response:
 ```json
 {
-  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  "Message": {
+    "Version": 42,
+    "To": "f01234",
+    "From": "f01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
+  },
+  "ValidNonce": true
 }
 ```
 
@@ -2622,7 +2922,22 @@ Inputs:
 Response:
 ```json
 {
-  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  "Message": {
+    "Version": 42,
+    "To": "f01234",
+    "From": "f01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
+  },
+  "ValidNonce": true
 }
 ```
 
@@ -2649,7 +2964,22 @@ Inputs:
 Response:
 ```json
 {
-  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  "Message": {
+    "Version": 42,
+    "To": "f01234",
+    "From": "f01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
+  },
+  "ValidNonce": true
 }
 ```
 
@@ -2676,7 +3006,22 @@ Inputs:
 Response:
 ```json
 {
-  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  "Message": {
+    "Version": 42,
+    "To": "f01234",
+    "From": "f01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
+  },
+  "ValidNonce": true
 }
 ```
 
@@ -2702,7 +3047,22 @@ Inputs:
 Response:
 ```json
 {
-  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  "Message": {
+    "Version": 42,
+    "To": "f01234",
+    "From": "f01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
+  },
+  "ValidNonce": true
 }
 ```
 
@@ -2727,7 +3087,22 @@ Inputs:
 Response:
 ```json
 {
-  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  "Message": {
+    "Version": 42,
+    "To": "f01234",
+    "From": "f01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
+  },
+  "ValidNonce": true
 }
 ```
 
@@ -2744,8 +3119,8 @@ Inputs: `null`
 Response:
 ```json
 {
-  "Addrs": null,
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Addrs": []
 }
 ```
 
@@ -2894,8 +3269,8 @@ Inputs:
 ```json
 [
   {
-    "Addrs": null,
-    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Addrs": []
   }
 ]
 ```
@@ -2945,8 +3320,8 @@ Inputs:
 Response:
 ```json
 {
-  "Addrs": null,
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Addrs": []
 }
 ```
 
@@ -2999,6 +3374,40 @@ Perms: read
 Inputs: `null`
 
 Response: `null`
+
+## Node
+These methods are general node management and status commands
+
+
+### NodeStatus
+There are not yet any comments for this method.
+
+Perms: read
+
+Inputs:
+```json
+[
+  true
+]
+```
+
+Response:
+```json
+{
+  "SyncStatus": {
+    "Epoch": 42,
+    "Behind": 42
+  },
+  "PeerStatus": {
+    "PeersToPublishMsgs": 123,
+    "PeersToPublishBlocks": 123
+  },
+  "ChainStatus": {
+    "BlocksPerTipsetLast100": 12.3,
+    "BlocksPerTipsetLastFinality": 12.3
+  }
+}
+```
 
 ## Paych
 The Paych methods are for interacting with and managing payment channels
@@ -4474,7 +4883,7 @@ Inputs:
 ]
 ```
 
-Response: `13`
+Response: `1300`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.

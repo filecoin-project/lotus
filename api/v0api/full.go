@@ -46,6 +46,7 @@ import (
 // FullNode API is a low-level interface to the Filecoin network full node
 type FullNode interface {
 	Common
+	Net
 
 	// MethodGroup: Chain
 	// The Chain method group contains methods for interacting with the
@@ -91,6 +92,9 @@ type FullNode interface {
 	// ChainGetParentMessages returns messages stored in parent tipset of the
 	// specified block.
 	ChainGetParentMessages(ctx context.Context, blockCid cid.Cid) ([]api.Message, error) //perm:read
+
+	// ChainGetMessagesInTipset returns message stores in current tipset
+	ChainGetMessagesInTipset(ctx context.Context, tsk types.TipSetKey) ([]api.Message, error) //perm:read
 
 	// ChainGetTipSetByHeight looks back for a tipset at the specified epoch.
 	// If there are no blocks at the specified epoch, a tipset at an earlier epoch
@@ -304,6 +308,8 @@ type FullNode interface {
 	ClientRemoveImport(ctx context.Context, importID multistore.StoreID) error //perm:admin
 	// ClientStartDeal proposes a deal with a miner.
 	ClientStartDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) //perm:admin
+	// ClientStatelessDeal fire-and-forget-proposes an offline deal to a miner without subsequent tracking.
+	ClientStatelessDeal(ctx context.Context, params *api.StartDealParams) (*cid.Cid, error) //perm:write
 	// ClientGetDealInfo returns the latest information about a given deal.
 	ClientGetDealInfo(context.Context, cid.Cid) (*api.DealInfo, error) //perm:read
 	// ClientListDeals returns information about the deals made by the local client.
@@ -324,6 +330,10 @@ type FullNode interface {
 	// of status updates.
 	ClientRetrieveWithEvents(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) (<-chan marketevents.RetrievalEvent, error) //perm:admin
 	// ClientQueryAsk returns a signed StorageAsk from the specified miner.
+	// ClientListRetrievals returns information about retrievals made by the local client
+	ClientListRetrievals(ctx context.Context) ([]api.RetrievalInfo, error) //perm:write
+	// ClientGetRetrievalUpdates returns status of updated retrieval deals
+	ClientGetRetrievalUpdates(ctx context.Context) (<-chan api.RetrievalInfo, error)                         //perm:write
 	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error) //perm:read
 	// ClientCalcCommP calculates the CommP and data size of the specified CID
 	ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCIDSize, error) //perm:read
@@ -623,7 +633,7 @@ type FullNode interface {
 	// proposal. This method of approval can be used to ensure you only approve
 	// exactly the transaction you think you are.
 	// It takes the following params: <multisig address>, <proposed message ID>, <proposer address>, <recipient address>, <value to transfer>,
-	// <sender address of the approve msg>, <method to call in the proposed message>, <params to include in the proposed message>
+	// <sender address of the approve msg>, <method to call in the approved message>, <params to include in the proposed message>
 	MsigApproveTxnHash(context.Context, address.Address, uint64, address.Address, address.Address, types.BigInt, address.Address, uint64, []byte) (cid.Cid, error) //perm:sign
 
 	// MsigCancel cancels a previously-proposed multisig message

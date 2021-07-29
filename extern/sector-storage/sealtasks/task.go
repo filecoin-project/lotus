@@ -11,21 +11,19 @@ const (
 
 	TTFinalize TaskType = "seal/v0/finalize"
 
-	TTFetch        TaskType = "seal/v0/fetch"
-	TTUnseal       TaskType = "seal/v0/unseal"
-	TTReadUnsealed TaskType = "seal/v0/unsealread"
+	TTFetch  TaskType = "seal/v0/fetch"
+	TTUnseal TaskType = "seal/v0/unseal"
 )
 
 var order = map[TaskType]int{
-	TTAddPiece:     6, // least priority
-	TTPreCommit1:   5,
-	TTPreCommit2:   4,
-	TTCommit2:      3,
-	TTCommit1:      2,
-	TTUnseal:       1,
-	TTFetch:        -1,
-	TTReadUnsealed: -1,
-	TTFinalize:     -2, // most priority
+	TTAddPiece:   6, // least priority
+	TTPreCommit1: 5,
+	TTPreCommit2: 4,
+	TTCommit2:    3,
+	TTCommit1:    2,
+	TTUnseal:     1,
+	TTFetch:      -1,
+	TTFinalize:   -2, // most priority
 }
 
 var shortNames = map[TaskType]string{
@@ -38,9 +36,8 @@ var shortNames = map[TaskType]string{
 
 	TTFinalize: "FIN",
 
-	TTFetch:        "GET",
-	TTUnseal:       "UNS",
-	TTReadUnsealed: "RD",
+	TTFetch:  "GET",
+	TTUnseal: "UNS",
 }
 
 func (a TaskType) MuchLess(b TaskType) (bool, bool) {

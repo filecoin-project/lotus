@@ -26,6 +26,27 @@ func Wrap(proxyT, wrapperT, impl interface{}) interface{} {
 		}))
 	}
 
+	for i := 0; i < proxy.Elem().NumField(); i++ {
+		if proxy.Elem().Type().Field(i).Name == "Internal" {
+			continue
+		}
+
+		subProxy := proxy.Elem().Field(i).FieldByName("Internal")
+		for i := 0; i < ri.NumMethod(); i++ {
+			mt := ri.Type().Method(i)
+			if subProxy.FieldByName(mt.Name).Kind() == reflect.Invalid {
+				continue
+			}
+
+			fn := ri.Method(i)
+			of := subProxy.FieldByName(mt.Name)
+
+			subProxy.FieldByName(mt.Name).Set(reflect.MakeFunc(of.Type(), func(args []reflect.Value) (results []reflect.Value) {
+				return fn.Call(args)
+			}))
+		}
+	}
+
 	wp := reflect.New(reflect.TypeOf(wrapperT).Elem())
 	wp.Elem().Field(0).Set(proxy)
 	return wp.Interface()
