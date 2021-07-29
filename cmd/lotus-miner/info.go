@@ -50,7 +50,13 @@ var infoCmd = &cli.Command{
 }
 
 func infoCmdAct(cctx *cli.Context) error {
-	nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+	minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+	if err != nil {
+		return err
+	}
+	defer closer()
+
+	marketsApi, closer, err := lcli.GetMarketsAPI(cctx)
 	if err != nil {
 		return err
 	}
@@ -64,12 +70,19 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	ctx := lcli.ReqContext(cctx)
 
-	subsystems, err := nodeApi.RuntimeSubsystems(ctx)
+	subsystems, err := minerApi.RuntimeSubsystems(ctx)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println("Enabled subsystems:", subsystems)
+	fmt.Println("Enabled subsystems (from miner API):", subsystems)
+
+	subsystems, err = marketsApi.RuntimeSubsystems(ctx)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Enabled subsystems (from markets API):", subsystems)
 
 	fmt.Print("Chain: ")
 
@@ -103,18 +116,14 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Println()
 
-	if subsystems.Has(api.SubsystemSectorStorage) {
-		err := handleMiningInfo(ctx, cctx, fullapi, nodeApi)
-		if err != nil {
-			return err
-		}
+	err = handleMiningInfo(ctx, cctx, fullapi, minerApi)
+	if err != nil {
+		return err
 	}
 
-	if subsystems.Has(api.SubsystemMarkets) {
-		err := handleMarketsInfo(ctx, nodeApi)
-		if err != nil {
-			return err
-		}
+	err = handleMarketsInfo(ctx, marketsApi)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -377,6 +386,7 @@ func handleMarketsInfo(ctx context.Context, nodeApi api.StorageMiner) error {
 		return sorted[i].status > sorted[j].status
 	})
 
+	fmt.Println()
 	fmt.Printf("Storage Deals: %d, %s\n", total.count, types.SizeStr(types.NewInt(total.bytes)))
 
 	tw := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)

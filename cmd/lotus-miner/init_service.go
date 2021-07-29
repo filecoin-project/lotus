@@ -71,7 +71,12 @@ var serviceCmd = &cli.Command{
 			return xerrors.Errorf("--api-sector-index is required without the sector storage module enabled")
 		}
 
-		if err := restore(ctx, cctx, &stores.StorageConfig{}, func(cfg *config.StorageMiner) error {
+		repoPath := cctx.String(FlagMarketsRepo)
+		if repoPath == "" {
+			return xerrors.Errorf("please provide Lotus markets repo path via flag %s", FlagMarketsRepo)
+		}
+
+		if err := restore(ctx, cctx, repoPath, &stores.StorageConfig{}, func(cfg *config.StorageMiner) error {
 			cfg.Subsystems.EnableMarkets = es.Contains(MarketsService)
 			cfg.Subsystems.EnableMining = false
 			cfg.Subsystems.EnableSealing = false

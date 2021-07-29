@@ -73,7 +73,7 @@ var storageDealSelectionShowCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List storage deal proposal selection criteria",
 	Action: func(cctx *cli.Context) error {
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -100,7 +100,7 @@ var storageDealSelectionResetCmd = &cli.Command{
 	Name:  "reset",
 	Usage: "Reset storage deal proposal selection criteria to default values",
 	Action: func(cctx *cli.Context) error {
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -148,7 +148,7 @@ var storageDealSelectionRejectCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -215,7 +215,13 @@ var setAskCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := lcli.DaemonContext(cctx)
 
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		marketsApi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -252,12 +258,12 @@ var setAskCmd = &cli.Command{
 			return xerrors.Errorf("cannot parse max-piece-size to quantity of bytes: %w", err)
 		}
 
-		maddr, err := api.ActorAddress(ctx)
+		maddr, err := minerApi.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
 
-		ssize, err := api.ActorSectorSize(ctx, maddr)
+		ssize, err := minerApi.ActorSectorSize(ctx, maddr)
 		if err != nil {
 			return err
 		}
@@ -272,7 +278,7 @@ var setAskCmd = &cli.Command{
 			return xerrors.Errorf("max piece size (w/bit-padding) %s cannot exceed miner sector size %s", types.SizeStr(types.NewInt(uint64(max))), types.SizeStr(types.NewInt(uint64(smax))))
 		}
 
-		return api.MarketSetAsk(ctx, types.BigInt(pri), types.BigInt(vpri), abi.ChainEpoch(qty), abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
+		return marketsApi.MarketSetAsk(ctx, types.BigInt(pri), types.BigInt(vpri), abi.ChainEpoch(qty), abi.PaddedPieceSize(min), abi.PaddedPieceSize(max))
 	},
 }
 
@@ -289,7 +295,7 @@ var getAskCmd = &cli.Command{
 		}
 		defer closer()
 
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -352,7 +358,7 @@ var dealsImportDataCmd = &cli.Command{
 	Usage:     "Manually import data for a deal",
 	ArgsUsage: "<proposal CID> <file>",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -390,7 +396,7 @@ var dealsListCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -494,7 +500,7 @@ var getBlocklistCmd = &cli.Command{
 		&CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -524,7 +530,7 @@ var setBlocklistCmd = &cli.Command{
 	ArgsUsage: "[<path-of-file-containing-newline-delimited-piece-CIDs> (optional, will read from stdin if omitted)]",
 	Flags:     []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -570,7 +576,7 @@ var resetBlocklistCmd = &cli.Command{
 	Usage: "Remove all entries from the miner's piece CID blocklist",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -634,7 +640,7 @@ var marketRestartTransfer = &cli.Command{
 		if !cctx.Args().Present() {
 			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
 		}
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -699,7 +705,7 @@ var marketCancelTransfer = &cli.Command{
 		if !cctx.Args().Present() {
 			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
 		}
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -775,7 +781,7 @@ var transfersListCmd = &cli.Command{
 			color.NoColor = !cctx.Bool("color")
 		}
 
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -842,7 +848,7 @@ var dealsPendingPublish = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
