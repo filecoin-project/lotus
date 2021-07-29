@@ -78,7 +78,7 @@ func EnvsForRepo(t repo.RepoType) (current []string, deprecated []string) {
 		return []string{"WORKER_API_INFO"}, nil
 	case repo.Markets:
 		// support split markets-miner and monolith deployments.
-		return []string{"MARKETS_API_INFO, MINER_API_INFO"}, nil
+		return []string{"MARKETS_API_INFO", "MINER_API_INFO"}, nil
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
@@ -125,12 +125,12 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 	repoFlags := flagsForRepo(t)
 	for _, f := range repoFlags {
 		// cannot use ctx.IsSet because it ignores default values
-		f := ctx.String(f)
-		if f == "" {
+		path := ctx.String(f)
+		if path == "" {
 			continue
 		}
 
-		p, err := homedir.Expand(ctx.String(f))
+		p, err := homedir.Expand(path)
 		if err != nil {
 			return APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", f, err)
 		}
