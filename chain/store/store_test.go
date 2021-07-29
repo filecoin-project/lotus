@@ -70,7 +70,7 @@ func BenchmarkGetRandomness(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	cs := store.NewChainStore(bs, bs, mds, nil, nil)
+	cs := store.NewChainStore(bs, bs, mds, nil)
 	defer cs.Close() //nolint:errcheck
 
 	b.ResetTimer()
@@ -105,7 +105,7 @@ func TestChainExportImport(t *testing.T) {
 	}
 
 	nbs := blockstore.NewMemory()
-	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), nil, nil)
+	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), nil)
 	defer cs.Close() //nolint:errcheck
 
 	root, err := cs.Import(buf)
@@ -140,7 +140,7 @@ func TestChainExportImportFull(t *testing.T) {
 	}
 
 	nbs := blockstore.NewMemory()
-	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), nil, nil)
+	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), nil)
 	defer cs.Close() //nolint:errcheck
 
 	root, err := cs.Import(buf)
@@ -157,7 +157,7 @@ func TestChainExportImportFull(t *testing.T) {
 		t.Fatal("imported chain differed from exported chain")
 	}
 
-	sm := stmgr.NewStateManager(cs)
+	sm := stmgr.NewStateManager(cs, nil)
 	for i := 0; i < 100; i++ {
 		ts, err := cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(i), nil, false)
 		if err != nil {
