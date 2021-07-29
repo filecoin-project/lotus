@@ -52,6 +52,21 @@ const (
 	Markets
 )
 
+func (t RepoType) String() string {
+	s := [...]string{
+		"__invalid__",
+		"FullNode",
+		"StorageMiner",
+		"Worker",
+		"Wallet",
+		"Markets",
+	}
+	if t < 0 || int(t) > len(s) {
+		return "__invalid__"
+	}
+	return s[t]
+}
+
 func defConfForType(t RepoType) interface{} {
 	switch t {
 	case FullNode:

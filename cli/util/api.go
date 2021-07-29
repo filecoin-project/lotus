@@ -124,7 +124,9 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 
 	repoFlags := flagsForRepo(t)
 	for _, f := range repoFlags {
-		if !ctx.IsSet(f) {
+		// cannot use ctx.IsSet because it ignores default values
+		f := ctx.String(f)
+		if f == "" {
 			continue
 		}
 
