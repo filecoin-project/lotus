@@ -62,23 +62,23 @@ func flagsForRepo(t repo.RepoType) []string {
 	}
 }
 
-// EnvsForRepo returns the environment variables to use in order of precedence
+// EnvsForAPIInfos returns the environment variables to use in order of precedence
 // to determine the API endpoint of the specified node type.
 //
 // It returns the current variables and deprecated ones separately, so that
 // the user can log a warning when deprecated ones are found to be in use.
-func EnvsForRepo(t repo.RepoType) (current []string, deprecated []string) {
+func EnvsForAPIInfos(t repo.RepoType) (primary string, fallbacks []string, deprecated []string) {
 	switch t {
 	case repo.FullNode:
-		return []string{"FULLNODE_API_INFO"}, nil
+		return "FULLNODE_API_INFO", nil, nil
 	case repo.StorageMiner:
 		// TODO remove deprecated deprecation period
-		return []string{"MINER_API_INFO"}, []string{"STORAGE_API_INFO"}
+		return "MINER_API_INFO", nil, []string{"STORAGE_API_INFO"}
 	case repo.Worker:
-		return []string{"WORKER_API_INFO"}, nil
+		return "WORKER_API_INFO", nil, nil
 	case repo.Markets:
 		// support split markets-miner and monolith deployments.
-		return []string{"MARKETS_API_INFO", "MINER_API_INFO"}, nil
+		return "MARKETS_API_INFO", []string{"MINER_API_INFO"}, nil
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
@@ -106,18 +106,20 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 		return APIInfo{Addr: strma}, nil
 	}
 
-	currentEnv, deprecatedEnv := EnvsForRepo(t)
-	for _, env := range currentEnv {
-		env, ok := os.LookupEnv(env)
-		if ok {
-			return ParseApiInfo(env), nil
-		}
+	//
+	// Note: it is not correct/intuitive to prefer environment variables over
+	// CLI flags (repo flags below).
+	//
+	primaryEnv, fallbacksEnvs, deprecatedEnvs := EnvsForAPIInfos(t)
+	env, ok := os.LookupEnv(primaryEnv)
+	if ok {
+		return ParseApiInfo(env), nil
 	}
 
-	for _, env := range deprecatedEnv {
+	for _, env := range deprecatedEnvs {
 		env, ok := os.LookupEnv(env)
 		if ok {
-			log.Warnf("Using deprecated env(%s) value, please use env(%s) instead.", env, currentEnv)
+			log.Warnf("Using deprecated env(%s) value, please use env(%s) instead.", env, primaryEnv)
 			return ParseApiInfo(env), nil
 		}
 	}
@@ -154,6 +156,13 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 			Addr:  ma.String(),
 			Token: token,
 		}, nil
+	}
+
+	for _, env := range fallbacksEnvs {
+		env, ok := os.LookupEnv(env)
+		if ok {
+			return ParseApiInfo(env), nil
+		}
 	}
 
 	return APIInfo{}, fmt.Errorf("could not determine API endpoint for node type: %v", t)
