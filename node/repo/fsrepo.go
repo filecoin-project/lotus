@@ -49,13 +49,16 @@ const (
 	StorageMiner
 	Worker
 	Wallet
+	Markets
 )
 
 func defConfForType(t RepoType) interface{} {
 	switch t {
 	case FullNode:
 		return config.DefaultFullNode()
-	case StorageMiner:
+	case StorageMiner, Markets:
+		// markets is a specialised miner service
+		// this taxonomy needs to be cleaned up
 		return config.DefaultStorageMiner()
 	case Worker:
 		return &struct{}{}
