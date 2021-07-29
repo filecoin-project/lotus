@@ -22,10 +22,7 @@ import (
 
 var log = logging.Logger("main")
 
-const (
-	FlagMinerRepo   = "miner-repo"
-	FlagMarketsRepo = "markets-repo"
-)
+const FlagMinerRepo = "miner-repo"
 
 // TODO remove after deprecation period
 const FlagMinerRepoDeprecation = "storagerepo"
@@ -79,10 +76,10 @@ func main() {
 	}
 
 	app := &cli.App{
-		Name:                 "lotus-miner",
-		Usage:                "Filecoin decentralized storage network miner",
-		Version:              build.UserVersion(),
-		EnableBashCompletion: true,
+		Name:     "lotus-miner",
+		Usage:    "Filecoin decentralized storage network miner",
+		Version:  build.UserVersion(),
+		Commands: append(local, lcli.CommonCommands...),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "actor",
@@ -109,18 +106,13 @@ func main() {
 				Value:   "~/.lotusminer", // TODO: Consider XDG_DATA_HOME
 				Usage:   fmt.Sprintf("Specify miner repo path. flag(%s) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON", FlagMinerRepoDeprecation),
 			},
-			&cli.StringFlag{
-				Name:    FlagMarketsRepo,
-				EnvVars: []string{"LOTUS_MARKETS_PATH"},
-				Usage:   fmt.Sprintf("Markets repo path"),
-			},
 			&cli.BoolFlag{
 				Name:  "call-on-markets",
 				Usage: "(experimental; may be removed) call this command against a markets node; use only with common commands like net, auth, pprof, etc. whose target may be ambiguous",
 			},
 			cliutil.FlagVeryVerbose,
 		},
-		Commands: append(local, lcli.CommonCommands...),
+		EnableBashCompletion: true,
 		Before: func(c *cli.Context) error {
 			// this command is explicitly called on markets, inform
 			// common commands by overriding the repoType.
