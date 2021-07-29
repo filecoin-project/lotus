@@ -1531,7 +1531,7 @@ OPTIONS:
    --gas-premium value  gas price for new message (pay to miner, attoFIL/GasUnit)
    --gas-limit value    gas limit for new message (GasUnit) (default: 0)
    --auto               automatically reprice the specified message (default: false)
-   --max-fee value      Spend up to X attoFIL for this message (applicable for auto mode)
+   --fee-limit value    Spend up to X attoFIL for this message (applicable for auto mode)
    --help, -h           show help (default: false)
    
 ```
