@@ -273,7 +273,7 @@ func LoadStateTree(cst cbor.IpldStore, c cid.Cid) (*StateTree, error) {
 	}
 	if err != nil {
 		log.Errorf("failed to load state tree: %s", err)
-		return nil, xerrors.Errorf("failed to load state tree: %w", err)
+		return nil, xerrors.Errorf("failed to load state tree %s: %w", c, err)
 	}
 
 	s := &StateTree{

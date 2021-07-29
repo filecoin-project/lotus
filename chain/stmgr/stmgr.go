@@ -221,7 +221,7 @@ func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Ad
 	// First try to resolve the actor in the parent state, so we don't have to compute anything.
 	tree, err := state.LoadStateTree(cst, ts.ParentState())
 	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to load parent state tree: %w", err)
+		return address.Undef, xerrors.Errorf("failed to load parent state tree at tipset %s: %w", ts.Parents(), err)
 	}
 
 	resolved, err := vm.ResolveToKeyAddr(tree, cst, addr)
@@ -232,12 +232,12 @@ func (sm *StateManager) ResolveToKeyAddress(ctx context.Context, addr address.Ad
 	// If that fails, compute the tip-set and try again.
 	st, _, err := sm.TipSetState(ctx, ts)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("resolve address failed to get tipset state: %w", err)
+		return address.Undef, xerrors.Errorf("resolve address failed to get tipset %s state: %w", ts, err)
 	}
 
 	tree, err = state.LoadStateTree(cst, st)
 	if err != nil {
-		return address.Undef, xerrors.Errorf("failed to load state tree")
+		return address.Undef, xerrors.Errorf("failed to load state tree at tipset %s: %w", ts, err)
 	}
 
 	return vm.ResolveToKeyAddr(tree, cst, addr)
