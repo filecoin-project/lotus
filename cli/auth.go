@@ -128,7 +128,7 @@ var AuthApiInfoToken = &cli.Command{
 
 		// TODO: Log in audit log when it is implemented
 
-		currentEnv, _ := cliutil.EnvsForAPIInfos(t)
+		currentEnv, _, _ := cliutil.EnvsForAPIInfos(t)
 		fmt.Printf("%s=%s:%s\n", currentEnv, string(token), ainfo.Addr)
 		return nil
 	},
