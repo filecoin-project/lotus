@@ -245,6 +245,21 @@ func testMove(t *testing.T, optsF func(string) Options) {
 
 	checkBlocks()
 	checkPath()
+
+	// reopen the db to make sure our relative link works:
+	err = db.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	db, err = Open(optsF(dbPath))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// db.Close() is already deferred
+
+	checkBlocks()
 }
 
 func TestMoveNoPrefix(t *testing.T) {
