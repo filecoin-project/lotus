@@ -381,7 +381,7 @@ var MpoolReplaceCmd = &cli.Command{
 			Usage: "automatically reprice the specified message",
 		},
 		&cli.StringFlag{
-			Name:  "max-fee",
+			Name:  "fee-limit",
 			Usage: "Spend up to X attoFIL for this message (applicable for auto mode)",
 		},
 	},
@@ -457,13 +457,13 @@ var MpoolReplaceCmd = &cli.Command{
 			minRBF := messagepool.ComputeMinRBF(msg.GasPremium)
 
 			var mss *lapi.MessageSendSpec
-			if cctx.IsSet("max-fee") {
-				maxFee, err := types.BigFromString(cctx.String("max-fee"))
+			if cctx.IsSet("fee-limit") {
+				maxFee, err := types.ParseFIL(cctx.String("fee-limit"))
 				if err != nil {
 					return fmt.Errorf("parsing max-spend: %w", err)
 				}
 				mss = &lapi.MessageSendSpec{
-					MaxFee: maxFee,
+					MaxFee: abi.TokenAmount(maxFee),
 				}
 			}
 
