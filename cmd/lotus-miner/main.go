@@ -76,10 +76,10 @@ func main() {
 	}
 
 	app := &cli.App{
-		Name:     "lotus-miner",
-		Usage:    "Filecoin decentralized storage network miner",
-		Version:  build.UserVersion(),
-		Commands: append(local, lcli.CommonCommands...),
+		Name:                 "lotus-miner",
+		Usage:                "Filecoin decentralized storage network miner",
+		Version:              build.UserVersion(),
+		EnableBashCompletion: true,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "actor",
@@ -112,7 +112,7 @@ func main() {
 			},
 			cliutil.FlagVeryVerbose,
 		},
-		EnableBashCompletion: true,
+		Commands: append(local, lcli.CommonCommands...),
 		Before: func(c *cli.Context) error {
 			// this command is explicitly called on markets, inform
 			// common commands by overriding the repoType.
