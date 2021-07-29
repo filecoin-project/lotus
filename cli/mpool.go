@@ -382,7 +382,7 @@ var MpoolReplaceCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "fee-limit",
-			Usage: "Spend up to X attoFIL for this message (applicable for auto mode)",
+			Usage: "Spend up to X FIL for this message in units of FIL. Previously when flag was `max-fee` units were in attoFIL. Applicable for auto mode",
 		},
 	},
 	ArgsUsage: "<from nonce> | <message-cid>",
