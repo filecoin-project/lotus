@@ -117,7 +117,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 	for _, env := range deprecatedEnv {
 		env, ok := os.LookupEnv(env)
 		if ok {
-			log.Warnf("Use deprecation env(%s) value, please use env(%s) instead.", env, currentEnv)
+			log.Warnf("Using deprecated env(%s) value, please use env(%s) instead.", env, currentEnv)
 			return ParseApiInfo(env), nil
 		}
 	}
@@ -125,6 +125,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 	repoFlags := flagsForRepo(t)
 	for _, f := range repoFlags {
 		if !ctx.IsSet(f) {
+			fmt.Println("not set", f)
 			continue
 		}
 
@@ -154,7 +155,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 		}, nil
 	}
 
-	return APIInfo{}, fmt.Errorf("could not determine API endpoint for node type: %s", t)
+	return APIInfo{}, fmt.Errorf("could not determine API endpoint for node type: %v", t)
 }
 
 func GetRawAPI(ctx *cli.Context, t repo.RepoType, version string) (string, http.Header, error) {
@@ -297,6 +298,11 @@ func GetWorkerAPI(ctx *cli.Context) (api.Worker, jsonrpc.ClientCloser, error) {
 }
 
 func GetMarketsAPI(ctx *cli.Context) (api.StorageMiner, jsonrpc.ClientCloser, error) {
+	// to support lotus-miner cli tests.
+	if tn, ok := ctx.App.Metadata["testnode-storage"]; ok {
+		return tn.(api.StorageMiner), func() {}, nil
+	}
+
 	addr, headers, err := GetRawAPI(ctx, repo.Markets, "v0")
 	if err != nil {
 		return nil, nil, err
