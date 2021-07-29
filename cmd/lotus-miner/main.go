@@ -23,6 +23,7 @@ import (
 var log = logging.Logger("main")
 
 const FlagMinerRepo = "miner-repo"
+const FlagMarketsRepo = "markets-repo"
 
 // TODO remove after deprecation period
 const FlagMinerRepoDeprecation = "storagerepo"
@@ -105,6 +106,11 @@ func main() {
 				EnvVars: []string{"LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH"},
 				Value:   "~/.lotusminer", // TODO: Consider XDG_DATA_HOME
 				Usage:   fmt.Sprintf("Specify miner repo path. flag(%s) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON", FlagMinerRepoDeprecation),
+			},
+			&cli.StringFlag{
+				Name:    FlagMarketsRepo,
+				EnvVars: []string{"LOTUS_MARKETS_PATH"},
+				Usage:   fmt.Sprintf("Markets repo path"),
 			},
 			&cli.BoolFlag{
 				Name:  "call-on-markets",
