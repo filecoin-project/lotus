@@ -27,9 +27,9 @@ const (
 	metadataTraceContext = "traceContext"
 )
 
-// The flags passed on the command line with the listen address of the API
-// server (only used by the tests), in the order of precedence they should be
-// applied for the requested kind of node.
+// flagsForAPI returns flags passed on the command line with the listen address
+// of the API server (only used by the tests), in the order of precedence they
+// should be applied for the requested kind of node.
 func flagsForAPI(t repo.RepoType) []string {
 	switch t {
 	case repo.FullNode:
