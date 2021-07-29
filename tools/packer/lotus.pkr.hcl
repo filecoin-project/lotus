@@ -53,7 +53,7 @@ source "amazon-ebs" "lotus" {
   instance_type = "t2.micro"
   source_ami_filter {
     filters = {
-      name = "ubuntu/images/*ubuntu-focal-20.04-amd64-server-*"
+      name = "ubuntu/images/*ubuntu-focal-18.04-amd64-server-*"
       root-device-type = "ebs"
       virtualization-type = "hvm"
     }
@@ -67,7 +67,7 @@ source "digitalocean" "lotus" {
   droplet_name = "lotus-${var.lotus_network}"
   size = "s-1vcpu-1gb"
   region = "nyc3"
-  image = "ubuntu-20-04-x64"
+  image = "ubuntu-18-04-x64"
   snapshot_name = "lotus-${var.lotus_network}-${var.git_tag}-${local.timestamp}"
   ssh_username = "root"
 }
