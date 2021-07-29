@@ -386,6 +386,7 @@ func handleMarketsInfo(ctx context.Context, nodeApi api.StorageMiner) error {
 		return sorted[i].status > sorted[j].status
 	})
 
+	fmt.Println()
 	fmt.Printf("Storage Deals: %d, %s\n", total.count, types.SizeStr(types.NewInt(total.bytes)))
 
 	tw := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
