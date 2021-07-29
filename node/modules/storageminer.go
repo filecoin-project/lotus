@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -615,13 +616,23 @@ func DagStoreWrapper(
 		return nil, err
 	}
 
+	var maxCopies = 2
+	// TODO replace env with config.toml attribute.
+	v, ok := os.LookupEnv("LOTUS_DAGSTORE_COPY_CONCURRENCY")
+	if ok {
+		concurrency, err := strconv.Atoi(v)
+		if err == nil {
+			maxCopies = concurrency
+		}
+	}
+
 	cfg := dagstore.MarketDAGStoreConfig{
 		TransientsDir:       filepath.Join(dagStoreDir, "transients"),
 		IndexDir:            filepath.Join(dagStoreDir, "index"),
 		Datastore:           dagStoreDS,
 		GCInterval:          1 * time.Minute,
 		MaxConcurrentIndex:  5,
-		MaxConcurrentCopies: 2,
+		MaxConcurrentCopies: maxCopies,
 	}
 
 	dsw, err := dagstore.NewDagStoreWrapper(cfg, lotusAccessor)
