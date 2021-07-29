@@ -43,6 +43,7 @@ type DAGStore interface {
 	RecoverShard(ctx context.Context, key shard.Key, out chan dagstore.ShardResult, _ dagstore.RecoverOpts) error
 	GC(ctx context.Context) (*dagstore.GCResult, error)
 	Close() error
+	Start(ctx context.Context) error
 }
 
 type closableBlockstore struct {
@@ -108,7 +109,7 @@ func NewDagStoreWrapper(cfg MarketDAGStoreConfig, mountApi LotusAccessor) (*Wrap
 	}, nil
 }
 
-func (ds *Wrapper) Start(ctx context.Context) {
+func (ds *Wrapper) Start(ctx context.Context) error {
 	ds.ctx, ds.cancel = context.WithCancel(ctx)
 
 	// Run a go-routine to do DagStore GC.
@@ -124,6 +125,8 @@ func (ds *Wrapper) Start(ctx context.Context) {
 		ds.backgroundWg.Add(1)
 		go dagstore.RecoverImmediately(ds.ctx, dss, ds.failureCh, maxRecoverAttempts, ds.backgroundWg.Done)
 	}
+
+	return  ds.dagStore.Start(ctx)
 }
 
 func (ds *Wrapper) traceLoop() {
