@@ -175,10 +175,10 @@ func GetRawAPI(ctx *cli.Context, t repo.RepoType, version string) (string, http.
 	return addr, ainfo.AuthHeader(), nil
 }
 
-func GetAPI(ctx *cli.Context) (api.CommonNet, jsonrpc.ClientCloser, error) {
+func GetCommonAPI(ctx *cli.Context) (api.CommonNet, jsonrpc.ClientCloser, error) {
 	ti, ok := ctx.App.Metadata["repoType"]
 	if !ok {
-		log.Errorf("unknown repo type, are you sure you want to use GetAPI?")
+		log.Errorf("unknown repo type, are you sure you want to use GetCommonAPI?")
 		ti = repo.FullNode
 	}
 	t, ok := ti.(repo.RepoType)
@@ -294,6 +294,22 @@ func GetWorkerAPI(ctx *cli.Context) (api.Worker, jsonrpc.ClientCloser, error) {
 	}
 
 	return client.NewWorkerRPCV0(ctx.Context, addr, headers)
+}
+
+func GetMarketsAPI(ctx *cli.Context) (api.StorageMiner, jsonrpc.ClientCloser, error) {
+	addr, headers, err := GetRawAPI(ctx, repo.Markets, "v0")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using markets API v0 endpoint:", addr)
+	}
+
+	// the markets node is a specialised miner's node, supporting only the
+	// markets API, which is a subset of the miner API. All non-markets
+	// operations will error out with "unsupported".
+	return client.NewStorageMinerRPCV0(ctx.Context, addr, headers)
 }
 
 func GetGatewayAPI(ctx *cli.Context) (api.Gateway, jsonrpc.ClientCloser, error) {
