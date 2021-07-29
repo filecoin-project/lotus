@@ -1097,7 +1097,12 @@ func (cs *ChainStore) ChainBlockstore() bstore.Blockstore {
 // stores are both backed by the same physical store, albeit with different
 // caching policies, but in the future they will segregate.
 func (cs *ChainStore) StateBlockstore() bstore.Blockstore {
-	return cs.stateBlockstore
+	bs := cs.stateBlockstore
+	if hotviewer, ok := bs.(bstore.BlockstoreHotView); ok {
+		bs = hotviewer.HotView()
+	}
+
+	return bs
 }
 
 func ActorStore(ctx context.Context, bs bstore.Blockstore) adt.Store {
