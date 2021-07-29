@@ -355,7 +355,7 @@ func (b *Blockstore) movingGC() error {
 		panic(fmt.Errorf("error renaming old badger db dir from %s to %s: %w; USER ACTION REQUIRED", dbPath, backupPath, err)) //nolint
 	}
 
-	if err = b.symlink(newPath, dbPath); err != nil {
+	if err = symlink(newPath, dbPath); err != nil {
 		// same here; the db path is pointing to the void. panic and let the user fix.
 		panic(fmt.Errorf("error symlinking new badger db dir from %s to %s: %w; USER ACTION REQUIRED", newPath, dbPath, err)) //nolint
 	}
@@ -369,7 +369,7 @@ func (b *Blockstore) movingGC() error {
 
 // symlink creates a symlink from path to linkTo; the link is relative if the two are
 // in the same directory
-func (b *Blockstore) symlink(path, linkTo string) error {
+func symlink(path, linkTo string) error {
 	resolvedPathDir, err := filepath.EvalSymlinks(filepath.Dir(path))
 	if err != nil {
 		return fmt.Errorf("error resolving links in %s: %w", path, err)
