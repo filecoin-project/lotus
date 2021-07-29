@@ -110,7 +110,7 @@ func (cs *ChainStore) BlockMsgsForTipset(ts *types.TipSet) ([]BlockMessages, err
 	cst := cbor.NewCborStore(cs.stateBlockstore)
 	st, err := state.LoadStateTree(cst, ts.Blocks()[0].ParentStateRoot)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to load state tree")
+		return nil, xerrors.Errorf("failed to load state tree at tipset %s: %w", ts, err)
 	}
 
 	selectMsg := func(m *types.Message) (bool, error) {
