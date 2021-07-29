@@ -53,7 +53,7 @@ source "amazon-ebs" "lotus" {
   instance_type = "t2.micro"
   source_ami_filter {
     filters = {
-      name = "ubuntu/images/*ubuntu-focal-18.04-amd64-server-*"
+      name = "ubuntu/images/*ubuntu-bionic-18.04-amd64-server-*"
       root-device-type = "ebs"
       virtualization-type = "hvm"
     }
