@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/api/v0api"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 
 	"github.com/filecoin-project/lotus/api"
@@ -49,13 +50,19 @@ var infoCmd = &cli.Command{
 }
 
 func infoCmdAct(cctx *cli.Context) error {
-	nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+	minerApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 	if err != nil {
 		return err
 	}
 	defer closer()
 
-	api, acloser, err := lcli.GetFullNodeAPI(cctx)
+	marketsApi, closer, err := lcli.GetMarketsAPI(cctx)
+	if err != nil {
+		return err
+	}
+	defer closer()
+
+	fullapi, acloser, err := lcli.GetFullNodeAPI(cctx)
 	if err != nil {
 		return err
 	}
@@ -63,9 +70,23 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	ctx := lcli.ReqContext(cctx)
 
+	subsystems, err := minerApi.RuntimeSubsystems(ctx)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Enabled subsystems (from miner API):", subsystems)
+
+	subsystems, err = marketsApi.RuntimeSubsystems(ctx)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Enabled subsystems (from markets API):", subsystems)
+
 	fmt.Print("Chain: ")
 
-	head, err := api.ChainHead(ctx)
+	head, err := fullapi.ChainHead(ctx)
 	if err != nil {
 		return err
 	}
@@ -95,24 +116,38 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Println()
 
+	err = handleMiningInfo(ctx, cctx, fullapi, minerApi)
+	if err != nil {
+		return err
+	}
+
+	err = handleMarketsInfo(ctx, marketsApi)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.FullNode, nodeApi api.StorageMiner) error {
 	maddr, err := getActorAddress(ctx, cctx)
 	if err != nil {
 		return err
 	}
 
-	mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
+	mact, err := fullapi.StateGetActor(ctx, maddr, types.EmptyTSK)
 	if err != nil {
 		return err
 	}
 
-	tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(api), blockstore.NewMemory())
+	tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(fullapi), blockstore.NewMemory())
 	mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
 	if err != nil {
 		return err
 	}
 
 	// Sector size
-	mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	mi, err := fullapi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 	if err != nil {
 		return err
 	}
@@ -120,7 +155,7 @@ func infoCmdAct(cctx *cli.Context) error {
 	ssize := types.SizeStr(types.NewInt(uint64(mi.SectorSize)))
 	fmt.Printf("Miner: %s (%s sectors)\n", color.BlueString("%s", maddr), ssize)
 
-	pow, err := api.StateMinerPower(ctx, maddr, types.EmptyTSK)
+	pow, err := fullapi.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	if err != nil {
 		return err
 	}
@@ -142,7 +177,7 @@ func infoCmdAct(cctx *cli.Context) error {
 			pow.TotalPower.RawBytePower,
 		),
 	)
-	secCounts, err := api.StateMinerSectorCount(ctx, maddr, types.EmptyTSK)
+	secCounts, err := fullapi.StateMinerSectorCount(ctx, maddr, types.EmptyTSK)
 	if err != nil {
 		return err
 	}
@@ -219,6 +254,75 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Println()
 
+	spendable := big.Zero()
+
+	// NOTE: there's no need to unlock anything here. Funds only
+	// vest on deadline boundaries, and they're unlocked by cron.
+	lockedFunds, err := mas.LockedFunds()
+	if err != nil {
+		return xerrors.Errorf("getting locked funds: %w", err)
+	}
+	availBalance, err := mas.AvailableBalance(mact.Balance)
+	if err != nil {
+		return xerrors.Errorf("getting available balance: %w", err)
+	}
+	spendable = big.Add(spendable, availBalance)
+
+	fmt.Printf("Miner Balance:    %s\n", color.YellowString("%s", types.FIL(mact.Balance).Short()))
+	fmt.Printf("      PreCommit:  %s\n", types.FIL(lockedFunds.PreCommitDeposits).Short())
+	fmt.Printf("      Pledge:     %s\n", types.FIL(lockedFunds.InitialPledgeRequirement).Short())
+	fmt.Printf("      Vesting:    %s\n", types.FIL(lockedFunds.VestingFunds).Short())
+	colorTokenAmount("      Available:  %s\n", availBalance)
+
+	mb, err := fullapi.StateMarketBalance(ctx, maddr, types.EmptyTSK)
+	if err != nil {
+		return xerrors.Errorf("getting market balance: %w", err)
+	}
+	spendable = big.Add(spendable, big.Sub(mb.Escrow, mb.Locked))
+
+	fmt.Printf("Market Balance:   %s\n", types.FIL(mb.Escrow).Short())
+	fmt.Printf("       Locked:    %s\n", types.FIL(mb.Locked).Short())
+	colorTokenAmount("       Available: %s\n", big.Sub(mb.Escrow, mb.Locked))
+
+	wb, err := fullapi.WalletBalance(ctx, mi.Worker)
+	if err != nil {
+		return xerrors.Errorf("getting worker balance: %w", err)
+	}
+	spendable = big.Add(spendable, wb)
+	color.Cyan("Worker Balance:   %s", types.FIL(wb).Short())
+	if len(mi.ControlAddresses) > 0 {
+		cbsum := big.Zero()
+		for _, ca := range mi.ControlAddresses {
+			b, err := fullapi.WalletBalance(ctx, ca)
+			if err != nil {
+				return xerrors.Errorf("getting control address balance: %w", err)
+			}
+			cbsum = big.Add(cbsum, b)
+		}
+		spendable = big.Add(spendable, cbsum)
+
+		fmt.Printf("       Control:   %s\n", types.FIL(cbsum).Short())
+	}
+	colorTokenAmount("Total Spendable:  %s\n", spendable)
+
+	fmt.Println()
+
+	if !cctx.Bool("hide-sectors-info") {
+		fmt.Println("Sectors:")
+		err = sectorsInfo(ctx, nodeApi)
+		if err != nil {
+			return err
+		}
+	}
+
+	// TODO: grab actr state / info
+	//  * Sealed sectors (count / bytes)
+	//  * Power
+
+	return nil
+}
+
+func handleMarketsInfo(ctx context.Context, nodeApi api.StorageMiner) error {
 	deals, err := nodeApi.MarketListIncompleteDeals(ctx)
 	if err != nil {
 		return err
@@ -282,6 +386,7 @@ func infoCmdAct(cctx *cli.Context) error {
 		return sorted[i].status > sorted[j].status
 	})
 
+	fmt.Println()
 	fmt.Printf("Storage Deals: %d, %s\n", total.count, types.SizeStr(types.NewInt(total.bytes)))
 
 	tw := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
@@ -309,70 +414,6 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	fmt.Println()
 
-	spendable := big.Zero()
-
-	// NOTE: there's no need to unlock anything here. Funds only
-	// vest on deadline boundaries, and they're unlocked by cron.
-	lockedFunds, err := mas.LockedFunds()
-	if err != nil {
-		return xerrors.Errorf("getting locked funds: %w", err)
-	}
-	availBalance, err := mas.AvailableBalance(mact.Balance)
-	if err != nil {
-		return xerrors.Errorf("getting available balance: %w", err)
-	}
-	spendable = big.Add(spendable, availBalance)
-
-	fmt.Printf("Miner Balance:    %s\n", color.YellowString("%s", types.FIL(mact.Balance).Short()))
-	fmt.Printf("      PreCommit:  %s\n", types.FIL(lockedFunds.PreCommitDeposits).Short())
-	fmt.Printf("      Pledge:     %s\n", types.FIL(lockedFunds.InitialPledgeRequirement).Short())
-	fmt.Printf("      Vesting:    %s\n", types.FIL(lockedFunds.VestingFunds).Short())
-	colorTokenAmount("      Available:  %s\n", availBalance)
-
-	mb, err := api.StateMarketBalance(ctx, maddr, types.EmptyTSK)
-	if err != nil {
-		return xerrors.Errorf("getting market balance: %w", err)
-	}
-	spendable = big.Add(spendable, big.Sub(mb.Escrow, mb.Locked))
-
-	fmt.Printf("Market Balance:   %s\n", types.FIL(mb.Escrow).Short())
-	fmt.Printf("       Locked:    %s\n", types.FIL(mb.Locked).Short())
-	colorTokenAmount("       Available: %s\n", big.Sub(mb.Escrow, mb.Locked))
-
-	wb, err := api.WalletBalance(ctx, mi.Worker)
-	if err != nil {
-		return xerrors.Errorf("getting worker balance: %w", err)
-	}
-	spendable = big.Add(spendable, wb)
-	color.Cyan("Worker Balance:   %s", types.FIL(wb).Short())
-	if len(mi.ControlAddresses) > 0 {
-		cbsum := big.Zero()
-		for _, ca := range mi.ControlAddresses {
-			b, err := api.WalletBalance(ctx, ca)
-			if err != nil {
-				return xerrors.Errorf("getting control address balance: %w", err)
-			}
-			cbsum = big.Add(cbsum, b)
-		}
-		spendable = big.Add(spendable, cbsum)
-
-		fmt.Printf("       Control:   %s\n", types.FIL(cbsum).Short())
-	}
-	colorTokenAmount("Total Spendable:  %s\n", spendable)
-
-	fmt.Println()
-
-	if !cctx.Bool("hide-sectors-info") {
-		fmt.Println("Sectors:")
-		err = sectorsInfo(ctx, nodeApi)
-		if err != nil {
-			return err
-		}
-	}
-
-	// TODO: grab actr state / info
-	//  * Sealed sectors (count / bytes)
-	//  * Power
 	return nil
 }
 

@@ -18,10 +18,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
-	metrics "github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	protocol "github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 
@@ -47,11 +47,12 @@ import (
 )
 
 var ExampleValues = map[reflect.Type]interface{}{
-	reflect.TypeOf(auth.Permission("")): auth.Permission("write"),
-	reflect.TypeOf(""):                  "string value",
-	reflect.TypeOf(uint64(42)):          uint64(42),
-	reflect.TypeOf(byte(7)):             byte(7),
-	reflect.TypeOf([]byte{}):            []byte("byte array"),
+	reflect.TypeOf(api.MinerSubsystem(0)): api.MinerSubsystem(1),
+	reflect.TypeOf(auth.Permission("")):   auth.Permission("write"),
+	reflect.TypeOf(""):                    "string value",
+	reflect.TypeOf(uint64(42)):            uint64(42),
+	reflect.TypeOf(byte(7)):               byte(7),
+	reflect.TypeOf([]byte{}):              []byte("byte array"),
 }
 
 func addExample(v interface{}) {
@@ -268,6 +269,12 @@ func init() {
 
 	addExample(api.CheckStatusCode(0))
 	addExample(map[string]interface{}{"abc": 123})
+	addExample(api.MinerSubsystems{
+		api.SubsystemMining,
+		api.SubsystemSealing,
+		api.SubsystemSectorStorage,
+		api.SubsystemMarkets,
+	})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

@@ -17,7 +17,7 @@ import (
 	"gopkg.in/cheggaaa/pb.v1"
 
 	"github.com/filecoin-project/go-address"
-	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/big"
 
 	lapi "github.com/filecoin-project/lotus/api"
@@ -72,7 +72,9 @@ var restoreCmd = &cli.Command{
 			}
 		}
 
-		if err := restore(ctx, cctx, storageCfg, nil, func(api lapi.FullNode, maddr address.Address, peerid peer.ID, mi miner.MinerInfo) error {
+		repoPath := cctx.String(FlagMinerRepo)
+
+		if err := restore(ctx, cctx, repoPath, storageCfg, nil, func(api lapi.FullNode, maddr address.Address, peerid peer.ID, mi miner.MinerInfo) error {
 			log.Info("Checking proof parameters")
 
 			if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(mi.SectorSize)); err != nil {
@@ -94,7 +96,7 @@ var restoreCmd = &cli.Command{
 	},
 }
 
-func restore(ctx context.Context, cctx *cli.Context, strConfig *stores.StorageConfig, manageConfig func(*config.StorageMiner) error, after func(api lapi.FullNode, addr address.Address, peerid peer.ID, mi miner.MinerInfo) error) error {
+func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfig *stores.StorageConfig, manageConfig func(*config.StorageMiner) error, after func(api lapi.FullNode, addr address.Address, peerid peer.ID, mi miner.MinerInfo) error) error {
 	if cctx.Args().Len() != 1 {
 		return xerrors.Errorf("expected 1 argument")
 	}
@@ -142,8 +144,7 @@ func restore(ctx context.Context, cctx *cli.Context, strConfig *stores.StorageCo
 
 	log.Info("Checking if repo exists")
 
-	repoPath := cctx.String(FlagMinerRepo)
-	r, err := repo.NewFS(repoPath)
+	r, err := repo.NewFS(targetPath)
 	if err != nil {
 		return err
 	}

@@ -39,7 +39,7 @@ var retrievalDealSelectionShowCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List retrieval deal proposal selection criteria",
 	Action: func(cctx *cli.Context) error {
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -66,7 +66,7 @@ var retrievalDealSelectionResetCmd = &cli.Command{
 	Name:  "reset",
 	Usage: "Reset retrieval deal proposal selection criteria to default values",
 	Action: func(cctx *cli.Context) error {
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -98,7 +98,7 @@ var retrievalDealSelectionRejectCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		smapi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		smapi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -126,7 +126,7 @@ var retrievalDealsListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List all active retrieval deals for this miner",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -186,7 +186,7 @@ var retrievalSetAskCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := lcli.DaemonContext(cctx)
 
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -240,7 +240,7 @@ var retrievalGetAskCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := lcli.DaemonContext(cctx)
 
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		api, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -252,13 +252,13 @@ var retrievalGetAskCmd = &cli.Command{
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		fmt.Fprintf(w, "Price per Byte\tUnseal Price\tPayment Interval\tPayment Interval Increase\n")
+		_, _ = fmt.Fprintf(w, "Price per Byte\tUnseal Price\tPayment Interval\tPayment Interval Increase\n")
 		if ask == nil {
-			fmt.Fprintf(w, "<miner does not have an retrieval ask set>\n")
+			_, _ = fmt.Fprintf(w, "<miner does not have an retrieval ask set>\n")
 			return w.Flush()
 		}
 
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+		_, _ = fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
 			types.FIL(ask.PricePerByte),
 			types.FIL(ask.UnsealPrice),
 			units.BytesSize(float64(ask.PaymentInterval)),
