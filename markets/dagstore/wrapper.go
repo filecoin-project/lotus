@@ -126,7 +126,7 @@ func (ds *Wrapper) Start(ctx context.Context) error {
 		go dagstore.RecoverImmediately(ds.ctx, dss, ds.failureCh, maxRecoverAttempts, ds.backgroundWg.Done)
 	}
 
-	return  ds.dagStore.Start(ctx)
+	return ds.dagStore.Start(ctx)
 }
 
 func (ds *Wrapper) traceLoop() {
