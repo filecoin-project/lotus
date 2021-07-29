@@ -128,7 +128,6 @@ var AuthApiInfoToken = &cli.Command{
 
 		// TODO: Log in audit log when it is implemented
 
-		// WARN: this is unable to tell
 		currentEnv, _ := cliutil.EnvsForRepo(t)
 		fmt.Printf("%s=%s:%s\n", currentEnv, string(token), ainfo.Addr)
 		return nil
