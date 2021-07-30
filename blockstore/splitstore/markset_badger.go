@@ -34,6 +34,15 @@ type BadgerMarkSet struct {
 
 var _ MarkSet = (*BadgerMarkSet)(nil)
 
+type BadgerMarkSetVisitor struct {
+	pend map[string]struct{}
+
+	db   *badger.DB
+	path string
+}
+
+var _ MarkSetVisitor = (*BadgerMarkSetVisitor)(nil)
+
 var badgerMarkSetBatchSize = 16384
 
 func NewBadgerMarkSetEnv(path string) (MarkSetEnv, error) {
@@ -90,6 +99,50 @@ func (e *BadgerMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) 
 	ms.cond.L = &ms.mx
 
 	return ms, nil
+}
+
+func (e *BadgerMarkSetEnv) CreateVisitor(name string, sizeHint int64) (MarkSetVisitor, error) {
+	path := filepath.Join(e.path, name)
+
+	// clean up first
+	err := os.RemoveAll(path)
+	if err != nil {
+		return nil, xerrors.Errorf("error clearing markset directory: %w", err)
+	}
+
+	err = os.MkdirAll(path, 0755) //nolint:gosec
+	if err != nil {
+		return nil, xerrors.Errorf("error creating markset directory: %w", err)
+	}
+
+	opts := badger.DefaultOptions(path)
+	opts.SyncWrites = false
+	opts.CompactL0OnClose = false
+	opts.Compression = options.None
+	// Note: We use FileIO for loading modes to avoid memory thrashing and interference
+	//       between the system blockstore and the markset.
+	//       It was observed that using the default memory mapped option resulted in
+	//       significant interference and unacceptably high block validation times once the markset
+	//       exceeded 1GB in size.
+	opts.TableLoadingMode = options.FileIO
+	opts.ValueLogLoadingMode = options.FileIO
+	opts.Logger = &badgerLogger{
+		SugaredLogger: log.Desugar().WithOptions(zap.AddCallerSkip(1)).Sugar(),
+		skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
+	}
+
+	db, err := badger.Open(opts)
+	if err != nil {
+		return nil, xerrors.Errorf("error creating badger markset: %w", err)
+	}
+
+	v := &BadgerMarkSetVisitor{
+		pend: make(map[string]struct{}),
+		db:   db,
+		path: path,
+	}
+
+	return v, nil
 }
 
 func (e *BadgerMarkSetEnv) Close() error {
@@ -218,6 +271,82 @@ func (s *BadgerMarkSet) Close() error {
 }
 
 func (s *BadgerMarkSet) SetConcurrent() {}
+
+func (v *BadgerMarkSetVisitor) Visit(c cid.Cid) (bool, error) {
+	if v.pend == nil {
+		return false, errMarkSetClosed
+	}
+
+	key := c.Hash()
+	pendKey := string(key)
+	_, ok := v.pend[pendKey]
+	if ok {
+		return false, nil
+	}
+
+	err := v.db.View(func(txn *badger.Txn) error {
+		_, err := txn.Get(key)
+		return err
+	})
+
+	switch err {
+	case nil:
+		return false, nil
+
+	case badger.ErrKeyNotFound:
+		v.pend[pendKey] = struct{}{}
+
+		if len(v.pend) < badgerMarkSetBatchSize {
+			return true, nil
+		}
+
+		pend := v.pend
+		v.pend = make(map[string]struct{})
+
+		empty := []byte{} // not nil
+
+		batch := v.db.NewWriteBatch()
+		defer batch.Cancel()
+
+		for k := range pend {
+			if err := batch.Set([]byte(k), empty); err != nil {
+				return false, err
+			}
+		}
+
+		err := batch.Flush()
+		if err != nil {
+			return false, xerrors.Errorf("error flushing batch to badger markset: %w", err)
+		}
+
+		return true, nil
+
+	default:
+		return false, xerrors.Errorf("error checking badger markset: %w", err)
+	}
+}
+
+func (v *BadgerMarkSetVisitor) Close() error {
+	if v.pend == nil {
+		return nil
+	}
+
+	v.pend = nil
+	db := v.db
+	v.db = nil
+
+	err := db.Close()
+	if err != nil {
+		return xerrors.Errorf("error closing badger markset: %w", err)
+	}
+
+	err = os.RemoveAll(v.path)
+	if err != nil {
+		return xerrors.Errorf("error deleting badger markset: %w", err)
+	}
+
+	return nil
+}
 
 // badger logging through go-log
 type badgerLogger struct {

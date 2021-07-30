@@ -19,12 +19,24 @@ type MapMarkSet struct {
 
 var _ MarkSet = (*MapMarkSet)(nil)
 
+type MapMarkSetVisitor struct {
+	set map[string]struct{}
+}
+
+var _ MarkSetVisitor = (*MapMarkSetVisitor)(nil)
+
 func NewMapMarkSetEnv() (*MapMarkSetEnv, error) {
 	return &MapMarkSetEnv{}, nil
 }
 
 func (e *MapMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) {
 	return &MapMarkSet{
+		set: make(map[string]struct{}, sizeHint),
+	}, nil
+}
+
+func (e *MapMarkSetEnv) CreateVisitor(name string, sizeHint int64) (MarkSetVisitor, error) {
+	return &MapMarkSetVisitor{
 		set: make(map[string]struct{}, sizeHint),
 	}, nil
 }
@@ -72,4 +84,23 @@ func (s *MapMarkSet) Close() error {
 
 func (s *MapMarkSet) SetConcurrent() {
 	s.ts = true
+}
+
+func (v *MapMarkSetVisitor) Visit(c cid.Cid) (bool, error) {
+	if v.set == nil {
+		return false, errMarkSetClosed
+	}
+
+	key := string(c.Hash())
+	if _, ok := v.set[key]; ok {
+		return false, nil
+	}
+
+	v.set[key] = struct{}{}
+	return true, nil
+}
+
+func (v *MapMarkSetVisitor) Close() error {
+	v.set = nil
+	return nil
 }

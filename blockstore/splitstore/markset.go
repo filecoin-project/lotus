@@ -21,8 +21,14 @@ type MarkSet interface {
 	SetConcurrent()
 }
 
+type MarkSetVisitor interface {
+	ObjectVisitor
+	Close() error
+}
+
 type MarkSetEnv interface {
 	Create(name string, sizeHint int64) (MarkSet, error)
+	CreateVisitor(name string, sizeHint int64) (MarkSetVisitor, error)
 	Close() error
 }
 

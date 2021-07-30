@@ -53,6 +53,10 @@ func (e *BloomMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) {
 	return &BloomMarkSet{salt: salt, bf: bf}, nil
 }
 
+func (e *BloomMarkSetEnv) CreateVisitor(name string, sizeHint int64) (MarkSetVisitor, error) {
+	return nil, xerrors.Errorf("bloom mark set does not support visitors due to false positives")
+}
+
 func (e *BloomMarkSetEnv) Close() error {
 	return nil
 }
