@@ -45,7 +45,9 @@ func TestLotusAccessorFetchUnsealedPiece(t *testing.T) {
 		name        string
 		deals       []abi.SectorNumber
 		fetchedData string
-		expectErr   bool
+		isUnsealed  bool
+
+		expectErr bool
 	}{{
 		// Expect error if there is no deal info for piece CID
 		name:      "no deals",
@@ -56,11 +58,13 @@ func TestLotusAccessorFetchUnsealedPiece(t *testing.T) {
 		name:        "prefer unsealed deal",
 		deals:       []abi.SectorNumber{unsealedSectorID, sealedSectorID},
 		fetchedData: unsealedSectorData,
+		isUnsealed:  true,
 	}, {
 		// Expect the API to unseal the data if there are no unsealed deals
 		name:        "unseal if necessary",
 		deals:       []abi.SectorNumber{sealedSectorID},
 		fetchedData: sealedSectorData,
+		isUnsealed:  false,
 	}}
 
 	for _, tc := range testCases {
@@ -95,6 +99,10 @@ func TestLotusAccessorFetchUnsealedPiece(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, tc.fetchedData, string(bz))
+
+			uns, err := api.IsUnsealed(ctx, cid1)
+			require.NoError(t, err)
+			require.Equal(t, tc.isUnsealed, uns)
 		})
 	}
 }
@@ -179,8 +187,14 @@ func getPieceStore(t *testing.T) piecestore.PieceStore {
 	ps, err := piecestoreimpl.NewPieceStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 	require.NoError(t, err)
 
+	ch := make(chan struct{}, 1)
+	ps.OnReady(func(_ error) {
+		ch <- struct{}{}
+	})
+
 	err = ps.Start(context.Background())
 	require.NoError(t, err)
+	<-ch
 	return ps
 }
 

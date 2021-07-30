@@ -33,6 +33,7 @@ var MaxConcurrentStorageCalls = func() int {
 type LotusAccessor interface {
 	FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error)
 	GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error)
+	IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error)
 	Start(ctx context.Context) error
 }
 
@@ -56,6 +57,54 @@ func NewLotusAccessor(store piecestore.PieceStore, rm retrievalmarket.RetrievalP
 
 func (m *lotusAccessor) Start(_ context.Context) error {
 	return m.readyMgr.FireReady(nil)
+}
+
+func (m *lotusAccessor) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error) {
+	err := m.readyMgr.AwaitReady()
+	if err != nil {
+		return false, xerrors.Errorf("failed while waiting for accessor to start: %w", err)
+	}
+
+	var pieceInfo piecestore.PieceInfo
+	err = m.throttle.Do(ctx, func(ctx context.Context) (err error) {
+		pieceInfo, err = m.pieceStore.GetPieceInfo(pieceCid)
+		return err
+	})
+
+	if err != nil {
+		return false, xerrors.Errorf("failed to fetch pieceInfo for piece %s: %w", pieceCid, err)
+	}
+
+	if len(pieceInfo.Deals) == 0 {
+		return false, xerrors.Errorf("no storage deals found for piece %s", pieceCid)
+	}
+
+	// check if we have an unsealed deal for the given piece in any of the unsealed sectors.
+	for _, deal := range pieceInfo.Deals {
+		deal := deal
+
+		var isUnsealed bool
+		// Throttle this path to avoid flooding the storage subsystem.
+		err := m.throttle.Do(ctx, func(ctx context.Context) (err error) {
+			isUnsealed, err = m.rm.IsUnsealed(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
+			if err != nil {
+				return fmt.Errorf("failed to check if sector %d for deal %d was unsealed: %w", deal.SectorID, deal.DealID, err)
+			}
+			return nil
+		})
+
+		if err != nil {
+			log.Warnf("failed to check/retrieve unsealed sector: %s", err)
+			continue // move on to the next match.
+		}
+
+		if isUnsealed {
+			return true, nil
+		}
+	}
+
+	// we don't have an unsealed sector containing the piece
+	return false, nil
 }
 
 func (m *lotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {

@@ -82,11 +82,16 @@ func (l *LotusMount) Stat(ctx context.Context) (mount.Stat, error) {
 	if err != nil {
 		return mount.Stat{}, xerrors.Errorf("failed to fetch piece size for piece %s: %w", l.PieceCid, err)
 	}
+	isUnsealed, err := l.Api.IsUnsealed(ctx, l.PieceCid)
+	if err != nil {
+		return mount.Stat{}, xerrors.Errorf("failed to verify if we have the unsealed piece %s: %w", l.PieceCid, err)
+	}
 
 	// TODO Mark false when storage deal expires.
 	return mount.Stat{
 		Exists: true,
 		Size:   int64(size),
+		Ready:  isUnsealed,
 	}, nil
 }
 
