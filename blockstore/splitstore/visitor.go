@@ -26,3 +26,7 @@ var _ ObjectVisitor = (*cidSetVisitor)(nil)
 func (v *cidSetVisitor) Visit(c cid.Cid) (bool, error) {
 	return v.set.Visit(c), nil
 }
+
+func tmpVisitor() ObjectVisitor {
+	return &cidSetVisitor{set: cid.NewSet()}
+}
