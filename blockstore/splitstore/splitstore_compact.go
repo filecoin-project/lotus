@@ -296,17 +296,33 @@ func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSet) error {
 				return errStopWalk
 			}
 
-			mark, err := markSet.Has(c)
-			if err != nil {
-				return xerrors.Errorf("error checking markset: %w", err)
+			visitor, ok := markSet.(MarkSetVisitor)
+			if ok {
+				visit, err := visitor.Visit(c)
+				if err != nil {
+					return xerrors.Errorf("error visiting object: %w", err)
+				}
+
+				if !visit {
+					return errStopWalk
+				}
+			} else {
+				mark, err := markSet.Has(c)
+				if err != nil {
+					return xerrors.Errorf("error checking markset: %w", err)
+				}
+
+				// it's marked, nothing to do
+				if mark {
+					return errStopWalk
+				}
+
+				if err = markSet.Mark(c); err != nil {
+					return xerrors.Errorf("error marking object: %w", err)
+				}
 			}
 
-			// it's marked, nothing to do
-			if mark {
-				return errStopWalk
-			}
-
-			return markSet.Mark(c)
+			return nil
 		},
 		func(c cid.Cid) error {
 			if s.txnMissing != nil {
@@ -416,17 +432,32 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 				return errStopWalk
 			}
 
-			has, err := markSet.Has(c)
-			if err != nil {
-				return xerrors.Errorf("error checking markset: %w", err)
-			}
+			if visitor, ok := markSet.(MarkSetVisitor); ok {
+				visit, err := visitor.Visit(c)
+				if err != nil {
+					return xerrors.Errorf("error visiting object: %w", err)
+				}
 
-			if has {
-				return errStopWalk
+				if !visit {
+					return errStopWalk
+				}
+			} else {
+				has, err := markSet.Has(c)
+				if err != nil {
+					return xerrors.Errorf("error checking markset: %w", err)
+				}
+
+				if has {
+					return errStopWalk
+				}
+
+				if err = markSet.Mark(c); err != nil {
+					return xerrors.Errorf("error marking: %w", err)
+				}
 			}
 
 			count++
-			return markSet.Mark(c)
+			return nil
 		})
 
 	if err != nil {
@@ -1111,17 +1142,33 @@ func (s *SplitStore) waitForMissingRefs(markSet MarkSet) {
 						return errStopWalk
 					}
 
-					mark, err := markSet.Has(c)
-					if err != nil {
-						return xerrors.Errorf("error checking markset for %s: %w", c, err)
-					}
+					visitor, ok := markSet.(MarkSetVisitor)
+					if ok {
+						visit, err := visitor.Visit(c)
+						if err != nil {
+							return xerrors.Errorf("error visiting object: %w", err)
+						}
 
-					if mark {
-						return errStopWalk
+						if !visit {
+							return errStopWalk
+						}
+					} else {
+						mark, err := markSet.Has(c)
+						if err != nil {
+							return xerrors.Errorf("error checking markset for %s: %w", c, err)
+						}
+
+						if mark {
+							return errStopWalk
+						}
+
+						if err = markSet.Mark(c); err != nil {
+							return xerrors.Errorf("error marking object: %w", err)
+						}
 					}
 
 					count++
-					return markSet.Mark(c)
+					return nil
 				},
 				func(c cid.Cid) error {
 					missing[c] = struct{}{}
