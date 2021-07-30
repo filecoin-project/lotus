@@ -16,6 +16,11 @@ import (
 )
 
 type ReaderHandler struct {
+	readApi func(ctx context.Context, r io.Reader) ([]byte, error)
+}
+
+func (h *ReaderHandler) ReadAllApi(ctx context.Context, r io.Reader) ([]byte, error) {
+	return h.readApi(ctx, r)
 }
 
 func (h *ReaderHandler) ReadAll(ctx context.Context, r io.Reader) ([]byte, error) {
@@ -87,4 +92,58 @@ func TestNullReaderProxy(t *testing.T) {
 	n, err := client.ReadNullLen(context.TODO(), sealing.NewNullReader(1016))
 	require.NoError(t, err)
 	require.Equal(t, int64(1016), n)
+}
+
+func TestReaderRedirect(t *testing.T) {
+	var allClient struct {
+		ReadAll func(ctx context.Context, r io.Reader) ([]byte, error)
+	}
+
+	{
+		allServerHandler := &ReaderHandler{}
+		readerHandler, readerServerOpt := ReaderParamDecoder()
+		rpcServer := jsonrpc.NewServer(readerServerOpt)
+		rpcServer.Register("ReaderHandler", allServerHandler)
+
+		mux := mux.NewRouter()
+		mux.Handle("/rpc/v0", rpcServer)
+		mux.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)
+
+		testServ := httptest.NewServer(mux)
+		defer testServ.Close()
+
+		re := ReaderParamEncoder("http://" + testServ.Listener.Addr().String() + "/rpc/streams/v0/push")
+		closer, err := jsonrpc.NewMergeClient(context.Background(), "ws://"+testServ.Listener.Addr().String()+"/rpc/v0", "ReaderHandler", []interface{}{&allClient}, nil, re)
+		require.NoError(t, err)
+
+		defer closer()
+	}
+
+	var redirClient struct {
+		ReadAllApi func(ctx context.Context, r io.Reader) ([]byte, error)
+	}
+
+	{
+		allServerHandler := &ReaderHandler{readApi: allClient.ReadAll}
+		readerHandler, readerServerOpt := ReaderParamDecoder()
+		rpcServer := jsonrpc.NewServer(readerServerOpt)
+		rpcServer.Register("ReaderHandler", allServerHandler)
+
+		mux := mux.NewRouter()
+		mux.Handle("/rpc/v0", rpcServer)
+		mux.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)
+
+		testServ := httptest.NewServer(mux)
+		defer testServ.Close()
+
+		re := ReaderParamEncoder("http://" + testServ.Listener.Addr().String() + "/rpc/streams/v0/push")
+		closer, err := jsonrpc.NewMergeClient(context.Background(), "ws://"+testServ.Listener.Addr().String()+"/rpc/v0", "ReaderHandler", []interface{}{&redirClient}, nil, re)
+		require.NoError(t, err)
+
+		defer closer()
+	}
+
+	read, err := redirClient.ReadAllApi(context.TODO(), strings.NewReader("rediracted pooooootato"))
+	require.NoError(t, err)
+	require.Equal(t, "rediracted pooooootato", string(read), "potatoes weren't equal")
 }
