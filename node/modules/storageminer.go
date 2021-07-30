@@ -627,12 +627,12 @@ func DagStoreWrapper(
 	}
 
 	cfg := dagstore.MarketDAGStoreConfig{
-		TransientsDir:       filepath.Join(dagStoreDir, "transients"),
-		IndexDir:            filepath.Join(dagStoreDir, "index"),
-		Datastore:           dagStoreDS,
-		GCInterval:          1 * time.Minute,
-		MaxConcurrentIndex:  5,
-		MaxConcurrentCopies: maxCopies,
+		TransientsDir:             filepath.Join(dagStoreDir, "transients"),
+		IndexDir:                  filepath.Join(dagStoreDir, "index"),
+		Datastore:                 dagStoreDS,
+		GCInterval:                1 * time.Minute,
+		MaxConcurrentIndex:        5,
+		MaxConcurrentReadyFetches: maxCopies,
 	}
 
 	dsw, err := dagstore.NewDagStoreWrapper(cfg, lotusAccessor)

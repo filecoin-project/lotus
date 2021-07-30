@@ -27,12 +27,12 @@ var log = logging.Logger("dagstore-wrapper")
 
 // MarketDAGStoreConfig is the config the market needs to then construct a DAG Store.
 type MarketDAGStoreConfig struct {
-	TransientsDir       string
-	IndexDir            string
-	Datastore           ds.Datastore
-	MaxConcurrentIndex  int
-	MaxConcurrentCopies int
-	GCInterval          time.Duration
+	TransientsDir             string
+	IndexDir                  string
+	Datastore                 ds.Datastore
+	MaxConcurrentIndex        int
+	MaxConcurrentReadyFetches int
+	GCInterval                time.Duration
 }
 
 // DAGStore provides an interface for the DAG store that can be mocked out
@@ -91,9 +91,9 @@ func NewDagStoreWrapper(cfg MarketDAGStoreConfig, mountApi LotusAccessor) (*Wrap
 		TraceCh:       traceCh,
 		// not limiting fetches globally, as the Lotus mount does
 		// conditional throttling.
-		MaxConcurrentIndex:  cfg.MaxConcurrentIndex,
-		MaxConcurrentCopies: cfg.MaxConcurrentCopies,
-		RecoverOnStart:      dagstore.RecoverOnAcquire,
+		MaxConcurrentIndex:        cfg.MaxConcurrentIndex,
+		MaxConcurrentReadyFetches: cfg.MaxConcurrentReadyFetches,
+		RecoverOnStart:            dagstore.RecoverOnAcquire,
 	}
 	dagStore, err := dagstore.NewDAGStore(dcfg)
 	if err != nil {
