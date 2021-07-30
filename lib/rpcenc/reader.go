@@ -254,6 +254,10 @@ func (w *rpcReader) Close() error {
 }
 
 func (w *rpcReader) redirect(to string) bool {
+	if w.postBody != nil {
+		return false
+	}
+
 	done := false
 
 	w.beginOnce.Do(func() {

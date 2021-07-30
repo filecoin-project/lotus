@@ -10,6 +10,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
@@ -20,6 +21,18 @@ type ReaderHandler struct {
 }
 
 func (h *ReaderHandler) ReadAllApi(ctx context.Context, r io.Reader) ([]byte, error) {
+	return h.readApi(ctx, r)
+}
+
+func (h *ReaderHandler) ReadStartAndApi(ctx context.Context, r io.Reader) ([]byte, error) {
+	n, err := r.Read([]byte{0})
+	if err != nil {
+		return nil, err
+	}
+	if n != 1 {
+		return nil, xerrors.Errorf("not one")
+	}
+
 	return h.readApi(ctx, r)
 }
 
@@ -121,6 +134,7 @@ func TestReaderRedirect(t *testing.T) {
 
 	var redirClient struct {
 		ReadAllApi func(ctx context.Context, r io.Reader) ([]byte, error)
+		ReadStartAndApi func(ctx context.Context, r io.Reader) ([]byte, error)
 	}
 
 	{
@@ -143,7 +157,13 @@ func TestReaderRedirect(t *testing.T) {
 		defer closer()
 	}
 
+	// redirect
 	read, err := redirClient.ReadAllApi(context.TODO(), strings.NewReader("rediracted pooooootato"))
 	require.NoError(t, err)
 	require.Equal(t, "rediracted pooooootato", string(read), "potatoes weren't equal")
+
+	// proxy (because we started reading locally)
+	read, err = redirClient.ReadStartAndApi(context.TODO(), strings.NewReader("rediracted pooooootato"))
+	require.NoError(t, err)
+	require.Equal(t, "ediracted pooooootato", string(read), "otatoes weren't equal")
 }
