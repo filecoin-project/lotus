@@ -58,36 +58,9 @@ func NewBadgerMarkSetEnv(path string) (MarkSetEnv, error) {
 func (e *BadgerMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) {
 	path := filepath.Join(e.path, name)
 
-	// clean up first
-	err := os.RemoveAll(path)
+	db, err := openTransientBadgerDB(path)
 	if err != nil {
-		return nil, xerrors.Errorf("error clearing markset directory: %w", err)
-	}
-
-	err = os.MkdirAll(path, 0755) //nolint:gosec
-	if err != nil {
-		return nil, xerrors.Errorf("error creating markset directory: %w", err)
-	}
-
-	opts := badger.DefaultOptions(path)
-	opts.SyncWrites = false
-	opts.CompactL0OnClose = false
-	opts.Compression = options.None
-	// Note: We use FileIO for loading modes to avoid memory thrashing and interference
-	//       between the system blockstore and the markset.
-	//       It was observed that using the default memory mapped option resulted in
-	//       significant interference and unacceptably high block validation times once the markset
-	//       exceeded 1GB in size.
-	opts.TableLoadingMode = options.FileIO
-	opts.ValueLogLoadingMode = options.FileIO
-	opts.Logger = &badgerLogger{
-		SugaredLogger: log.Desugar().WithOptions(zap.AddCallerSkip(1)).Sugar(),
-		skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
-	}
-
-	db, err := badger.Open(opts)
-	if err != nil {
-		return nil, xerrors.Errorf("error creating badger markset: %w", err)
+		return nil, xerrors.Errorf("error creating badger db: %w", err)
 	}
 
 	ms := &BadgerMarkSet{
@@ -104,36 +77,9 @@ func (e *BadgerMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) 
 func (e *BadgerMarkSetEnv) CreateVisitor(name string, sizeHint int64) (MarkSetVisitor, error) {
 	path := filepath.Join(e.path, name)
 
-	// clean up first
-	err := os.RemoveAll(path)
+	db, err := openTransientBadgerDB(path)
 	if err != nil {
-		return nil, xerrors.Errorf("error clearing markset directory: %w", err)
-	}
-
-	err = os.MkdirAll(path, 0755) //nolint:gosec
-	if err != nil {
-		return nil, xerrors.Errorf("error creating markset directory: %w", err)
-	}
-
-	opts := badger.DefaultOptions(path)
-	opts.SyncWrites = false
-	opts.CompactL0OnClose = false
-	opts.Compression = options.None
-	// Note: We use FileIO for loading modes to avoid memory thrashing and interference
-	//       between the system blockstore and the markset.
-	//       It was observed that using the default memory mapped option resulted in
-	//       significant interference and unacceptably high block validation times once the markset
-	//       exceeded 1GB in size.
-	opts.TableLoadingMode = options.FileIO
-	opts.ValueLogLoadingMode = options.FileIO
-	opts.Logger = &badgerLogger{
-		SugaredLogger: log.Desugar().WithOptions(zap.AddCallerSkip(1)).Sugar(),
-		skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
-	}
-
-	db, err := badger.Open(opts)
-	if err != nil {
-		return nil, xerrors.Errorf("error creating badger markset: %w", err)
+		return nil, xerrors.Errorf("error creating badger db: %w", err)
 	}
 
 	v := &BadgerMarkSetVisitor{
@@ -257,17 +203,7 @@ func (s *BadgerMarkSet) Close() error {
 	db := s.db
 	s.db = nil
 
-	err := db.Close()
-	if err != nil {
-		return xerrors.Errorf("error closing badger markset: %w", err)
-	}
-
-	err = os.RemoveAll(s.path)
-	if err != nil {
-		return xerrors.Errorf("error deleting badger markset: %w", err)
-	}
-
-	return nil
+	return closeTransientBadgerDB(db, s.path)
 }
 
 func (s *BadgerMarkSet) SetConcurrent() {}
@@ -335,12 +271,47 @@ func (v *BadgerMarkSetVisitor) Close() error {
 	db := v.db
 	v.db = nil
 
+	return closeTransientBadgerDB(db, v.path)
+}
+
+func openTransientBadgerDB(path string) (*badger.DB, error) {
+	// clean up first
+	err := os.RemoveAll(path)
+	if err != nil {
+		return nil, xerrors.Errorf("error clearing markset directory: %w", err)
+	}
+
+	err = os.MkdirAll(path, 0755) //nolint:gosec
+	if err != nil {
+		return nil, xerrors.Errorf("error creating markset directory: %w", err)
+	}
+
+	opts := badger.DefaultOptions(path)
+	opts.SyncWrites = false
+	opts.CompactL0OnClose = false
+	opts.Compression = options.None
+	// Note: We use FileIO for loading modes to avoid memory thrashing and interference
+	//       between the system blockstore and the markset.
+	//       It was observed that using the default memory mapped option resulted in
+	//       significant interference and unacceptably high block validation times once the markset
+	//       exceeded 1GB in size.
+	opts.TableLoadingMode = options.FileIO
+	opts.ValueLogLoadingMode = options.FileIO
+	opts.Logger = &badgerLogger{
+		SugaredLogger: log.Desugar().WithOptions(zap.AddCallerSkip(1)).Sugar(),
+		skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
+	}
+
+	return badger.Open(opts)
+}
+
+func closeTransientBadgerDB(db *badger.DB, path string) error {
 	err := db.Close()
 	if err != nil {
 		return xerrors.Errorf("error closing badger markset: %w", err)
 	}
 
-	err = os.RemoveAll(v.path)
+	err = os.RemoveAll(path)
 	if err != nil {
 		return xerrors.Errorf("error deleting badger markset: %w", err)
 	}
