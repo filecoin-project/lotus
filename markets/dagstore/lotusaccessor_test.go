@@ -45,9 +45,9 @@ func TestLotusAccessorFetchUnsealedPiece(t *testing.T) {
 		name        string
 		deals       []abi.SectorNumber
 		fetchedData string
-		isUnsealed bool
+		isUnsealed  bool
 
-		expectErr   bool
+		expectErr bool
 	}{{
 		// Expect error if there is no deal info for piece CID
 		name:      "no deals",
@@ -58,13 +58,13 @@ func TestLotusAccessorFetchUnsealedPiece(t *testing.T) {
 		name:        "prefer unsealed deal",
 		deals:       []abi.SectorNumber{unsealedSectorID, sealedSectorID},
 		fetchedData: unsealedSectorData,
-		isUnsealed: true,
+		isUnsealed:  true,
 	}, {
 		// Expect the API to unseal the data if there are no unsealed deals
 		name:        "unseal if necessary",
 		deals:       []abi.SectorNumber{sealedSectorID},
 		fetchedData: sealedSectorData,
-		isUnsealed: false,
+		isUnsealed:  false,
 	}}
 
 	for _, tc := range testCases {
@@ -194,7 +194,7 @@ func getPieceStore(t *testing.T) piecestore.PieceStore {
 
 	err = ps.Start(context.Background())
 	require.NoError(t, err)
-	<- ch
+	<-ch
 	return ps
 }
 

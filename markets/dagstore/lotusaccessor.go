@@ -65,7 +65,6 @@ func (m *lotusAccessor) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool,
 		return false, xerrors.Errorf("failed while waiting for accessor to start: %w", err)
 	}
 
-
 	var pieceInfo piecestore.PieceInfo
 	err = m.throttle.Do(ctx, func(ctx context.Context) (err error) {
 		pieceInfo, err = m.pieceStore.GetPieceInfo(pieceCid)

@@ -92,7 +92,8 @@ func TestWrapperBackground(t *testing.T) {
 	w.dagStore = mock
 
 	// Start up the wrapper
-	w.Start(ctx)
+	err = w.Start(ctx)
+	require.NoError(t, err)
 
 	// Expect GC to be called automatically
 	tctx, cancel := context.WithTimeout(ctx, time.Second)

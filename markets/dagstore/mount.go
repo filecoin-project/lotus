@@ -91,7 +91,7 @@ func (l *LotusMount) Stat(ctx context.Context) (mount.Stat, error) {
 	return mount.Stat{
 		Exists: true,
 		Size:   int64(size),
-		Ready: isUnsealed,
+		Ready:  isUnsealed,
 	}, nil
 }
 
