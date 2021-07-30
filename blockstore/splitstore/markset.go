@@ -24,6 +24,7 @@ type MarkSet interface {
 type MarkSetVisitor interface {
 	ObjectVisitor
 	Close() error
+	SetConcurrent()
 }
 
 type MarkSetEnv interface {

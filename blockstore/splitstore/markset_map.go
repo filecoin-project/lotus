@@ -18,27 +18,24 @@ type MapMarkSet struct {
 }
 
 var _ MarkSet = (*MapMarkSet)(nil)
-
-type MapMarkSetVisitor struct {
-	set map[string]struct{}
-}
-
-var _ MarkSetVisitor = (*MapMarkSetVisitor)(nil)
+var _ MarkSetVisitor = (*MapMarkSet)(nil)
 
 func NewMapMarkSetEnv() (*MapMarkSetEnv, error) {
 	return &MapMarkSetEnv{}, nil
 }
 
-func (e *MapMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) {
+func (e *MapMarkSetEnv) create(name string, sizeHint int64) (*MapMarkSet, error) {
 	return &MapMarkSet{
 		set: make(map[string]struct{}, sizeHint),
 	}, nil
 }
 
+func (e *MapMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) {
+	return e.create(name, sizeHint)
+}
+
 func (e *MapMarkSetEnv) CreateVisitor(name string, sizeHint int64) (MarkSetVisitor, error) {
-	return &MapMarkSetVisitor{
-		set: make(map[string]struct{}, sizeHint),
-	}, nil
+	return e.create(name, sizeHint)
 }
 
 func (e *MapMarkSetEnv) Close() error {
@@ -73,6 +70,25 @@ func (s *MapMarkSet) Has(cid cid.Cid) (bool, error) {
 	return ok, nil
 }
 
+func (s *MapMarkSet) Visit(c cid.Cid) (bool, error) {
+	if s.ts {
+		s.mx.Lock()
+		defer s.mx.Unlock()
+	}
+
+	if s.set == nil {
+		return false, errMarkSetClosed
+	}
+
+	key := string(c.Hash())
+	if _, ok := s.set[key]; ok {
+		return false, nil
+	}
+
+	s.set[key] = struct{}{}
+	return true, nil
+}
+
 func (s *MapMarkSet) Close() error {
 	if s.ts {
 		s.mx.Lock()
@@ -84,23 +100,4 @@ func (s *MapMarkSet) Close() error {
 
 func (s *MapMarkSet) SetConcurrent() {
 	s.ts = true
-}
-
-func (v *MapMarkSetVisitor) Visit(c cid.Cid) (bool, error) {
-	if v.set == nil {
-		return false, errMarkSetClosed
-	}
-
-	key := string(c.Hash())
-	if _, ok := v.set[key]; ok {
-		return false, nil
-	}
-
-	v.set[key] = struct{}{}
-	return true, nil
-}
-
-func (v *MapMarkSetVisitor) Close() error {
-	v.set = nil
-	return nil
 }
