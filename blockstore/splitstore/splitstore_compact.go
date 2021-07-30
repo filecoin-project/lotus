@@ -616,7 +616,7 @@ func (s *SplitStore) endTxnProtect() {
 
 func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEpoch,
 	visitor ObjectVisitor, f func(cid.Cid) error) error {
-	walked := cid.NewSet()
+	var walked *cid.Set
 	toWalk := ts.Cids()
 	walkCnt := 0
 	scanCnt := 0
@@ -687,6 +687,10 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 			return err
 		}
 
+		// the walk is BFS, so we can reset the walked set in every iteration and avoid building up
+		// a set that contains all blocks (1M epochs -> 5M blocks -> 200MB worth of memory and growing
+		// over time)
+		walked = cid.NewSet()
 		walking := toWalk
 		toWalk = nil
 		for _, c := range walking {
