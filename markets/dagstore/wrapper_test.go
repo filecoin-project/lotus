@@ -127,6 +127,10 @@ type mockDagStore struct {
 	close   chan struct{}
 }
 
+func (m *mockDagStore) Start(_ context.Context) error {
+	return nil
+}
+
 func (m *mockDagStore) RegisterShard(ctx context.Context, key shard.Key, mnt mount.Mount, out chan dagstore.ShardResult, opts dagstore.RegisterOpts) error {
 	m.register <- key
 	out <- dagstore.ShardResult{Key: key}
@@ -175,6 +179,10 @@ func (m mockLotusMount) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid
 }
 
 func (m mockLotusMount) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error) {
+	panic("implement me")
+}
+
+func (m mockLotusMount) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error) {
 	panic("implement me")
 }
 

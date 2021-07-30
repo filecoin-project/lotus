@@ -27,6 +27,9 @@ func TestLotusMount(t *testing.T) {
 
 	// create a mock lotus api that returns the reader we want
 	mockLotusMountAPI := mock_dagstore.NewMockLotusAccessor(mockCtrl)
+
+	mockLotusMountAPI.EXPECT().IsUnsealed(gomock.Any(), cid).Return(true, nil).Times(1)
+
 	mockLotusMountAPI.EXPECT().FetchUnsealedPiece(gomock.Any(), cid).Return(&readCloser{ioutil.NopCloser(strings.NewReader("testing"))}, nil).Times(1)
 	mockLotusMountAPI.EXPECT().FetchUnsealedPiece(gomock.Any(), cid).Return(&readCloser{ioutil.NopCloser(strings.NewReader("testing"))}, nil).Times(1)
 	mockLotusMountAPI.EXPECT().GetUnpaddedCARSize(ctx, cid).Return(uint64(100), nil).Times(1)
@@ -114,8 +117,10 @@ func TestLotusMountRegistration(t *testing.T) {
 	mnt, err := registry.Instantiate(u)
 	require.NoError(t, err)
 
+	mockLotusMountAPI.EXPECT().IsUnsealed(ctx, cid).Return(true, nil)
 	mockLotusMountAPI.EXPECT().GetUnpaddedCARSize(ctx, cid).Return(uint64(100), nil).Times(1)
 	stat, err := mnt.Stat(context.Background())
 	require.NoError(t, err)
 	require.EqualValues(t, 100, stat.Size)
+	require.True(t, stat.Ready)
 }

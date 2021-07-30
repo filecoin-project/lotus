@@ -179,8 +179,14 @@ func getPieceStore(t *testing.T) piecestore.PieceStore {
 	ps, err := piecestoreimpl.NewPieceStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 	require.NoError(t, err)
 
+	ch := make(chan struct{}, 1)
+	ps.OnReady(func(_ error) {
+		ch <- struct{}{}
+	})
+
 	err = ps.Start(context.Background())
 	require.NoError(t, err)
+	<- ch
 	return ps
 }
 
