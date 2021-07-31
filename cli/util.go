@@ -45,6 +45,12 @@ func parseTipSet(ctx context.Context, api v0api.FullNode, vals []string) (*types
 }
 
 func EpochTime(curr, e abi.ChainEpoch) string {
+	if build.BuildType == build.BuildMainnet {
+		start := time.Date(2020,8,24,22,0,0,0, time.UTC)
+		eTime := start.Add(time.Second*time.Duration(int64(build.BlockDelaySecs)*int64(e)))
+		return fmt.Sprintf("%d (%s)", e, eTime.Format("2006-01-02 15:04 MST"))
+	}
+
 	switch {
 	case curr > e:
 		return fmt.Sprintf("%d (%s ago)", e, durafmt.Parse(time.Second*time.Duration(int64(build.BlockDelaySecs)*int64(curr-e))).LimitFirstN(2))
