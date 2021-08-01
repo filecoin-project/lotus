@@ -11,6 +11,7 @@ import (
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/urfave/cli/v2"
+	"go.uber.org/multierr"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
@@ -29,6 +30,7 @@ var splitstoreCmd = &cli.Command{
 	Description: "splitstore utilities",
 	Subcommands: []*cli.Command{
 		splitstoreRollbackCmd,
+		splitstoreClearCmd,
 		splitstoreCheckCmd,
 		splitstoreInfoCmd,
 	},
@@ -114,6 +116,65 @@ var splitstoreRollbackCmd = &cli.Command{
 		}
 
 		fmt.Println("splitstore has been rolled back.")
+		return nil
+	},
+}
+
+var splitstoreClearCmd = &cli.Command{
+	Name:        "clear",
+	Description: "clears a splitstore installation for restart from snapshot",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "repo",
+			Value: "~/.lotus",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		r, err := repo.NewFS(cctx.String("repo"))
+		if err != nil {
+			return xerrors.Errorf("error opening fs repo: %w", err)
+		}
+
+		exists, err := r.Exists()
+		if err != nil {
+			return err
+		}
+		if !exists {
+			return xerrors.Errorf("lotus repo doesn't exist")
+		}
+
+		lr, err := r.Lock(repo.FullNode)
+		if err != nil {
+			return xerrors.Errorf("error locking repo: %w", err)
+		}
+		defer lr.Close() //nolint:errcheck
+
+		cfg, err := lr.Config()
+		if err != nil {
+			return xerrors.Errorf("error getting config: %w", err)
+		}
+
+		fncfg, ok := cfg.(*config.FullNode)
+		if !ok {
+			return xerrors.Errorf("wrong config type: %T", cfg)
+		}
+
+		if !fncfg.Chainstore.EnableSplitstore {
+			return xerrors.Errorf("splitstore is not enabled")
+		}
+
+		fmt.Println("clearing splitstore directory...")
+		err = clearSplitstoreDir(lr)
+		if err != nil {
+			return xerrors.Errorf("error clearing splitstore directory: %w", err)
+		}
+
+		fmt.Println("deleting splitstore keys from metadata datastore...")
+		err = deleteSplitstoreKeys(lr)
+		if err != nil {
+			return xerrors.Errorf("error deleting splitstore keys: %w", err)
+		}
+
 		return nil
 	},
 }
@@ -222,6 +283,30 @@ func deleteSplitstoreDir(lr repo.LockedRepo) error {
 	}
 
 	return os.RemoveAll(path)
+}
+
+func clearSplitstoreDir(lr repo.LockedRepo) error {
+	path, err := lr.SplitstorePath()
+	if err != nil {
+		return xerrors.Errorf("error getting splitstore path: %w", err)
+	}
+
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return xerrors.Errorf("error reading splitstore directory %s: %W", path, err)
+	}
+
+	var result error
+	for _, e := range entries {
+		target := filepath.Join(path, e.Name())
+		err = os.RemoveAll(target)
+		if err != nil {
+			log.Errorf("error removing %s: %s", target, err)
+			result = multierr.Append(result, err)
+		}
+	}
+
+	return result
 }
 
 func deleteSplitstoreKeys(lr repo.LockedRepo) error {
