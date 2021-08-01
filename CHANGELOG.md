@@ -1,10 +1,12 @@
 # Lotus changelog
 
-# 1.11.1-rc1 / 2021-07-27
+# 1.11.1-rc2 / 2021-08-01
 
-This is the first release candidate for the **highly-recommended** but optional Lotus v1.11.1 release that introduces many deal making and datastore improvements and new features along with other bug fixes. A more organized and detailed release note will be shared in the next few days with future RCs, highlights are:
-- [lotus-miner market subsystem](https://docs.filecoin.io/mine/lotus/split-markets-miners/#frontmatter-title)
-- [splistore](https://github.com/filecoin-project/lotus/blob/master/blockstore/splitstore/README.md)
+> Note: for discussion about this release, please comment [here](https://github.com/filecoin-project/lotus/discussions/6904)
+
+This is the second release candidate for the **highly-recommended** but optional Lotus v1.11.1 release that introduces many deal making and datastore improvements and new features along with other bug fixes. A more organized and detailed release note will be shared in the next few days with future RCs, highlights are:
+- **Experimental** [lotus-miner market subsystem](https://docs.filecoin.io/mine/lotus/split-markets-miners/#frontmatter-title)
+- **Under Testing** [splistore](https://github.com/filecoin-project/lotus/blob/master/blockstore/splitstore/README.md)
 
 - github.com/filecoin-project/lotus:
   - Merge branch 'releases' into release/v1.11.1
