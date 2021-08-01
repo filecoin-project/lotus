@@ -119,6 +119,7 @@ TBD -- see [#6577](https://github.com/filecoin-project/lotus/issues/6577)
   It can also optionally compact/gc the coldstore after the copy (with the `--gc-coldstore` flag)
   and automatically rewrite the lotus config to disable splitstore (with the `--rewrite-config` flag).
   Note: the node *must be stopped* before running this command.
+- `clear` -- clears a splitstore installation for restart from snapshot.
 - `check` -- asynchronously runs a basic healthcheck on the splitstore.
   The results are appended to `<lotus-repo>/datastore/splitstore/check.txt`.
 - `info` -- prints some basic information about the splitstore.
