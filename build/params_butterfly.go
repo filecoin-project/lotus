@@ -28,6 +28,7 @@ var UpgradeAssemblyHeight = abi.ChainEpoch(30)
 const UpgradeTapeHeight = 60
 const UpgradeLiftoffHeight = -5
 const UpgradeKumquatHeight = 90
+const UpgradePricelistOopsHeight = 119
 const UpgradeCalicoHeight = 120
 const UpgradePersianHeight = 150
 const UpgradeClausHeight = 180
@@ -46,6 +47,8 @@ func init() {
 	SetAddressNetwork(address.Testnet)
 
 	Devnet = true
+
+	BuildType = BuildButterflynet
 }
 
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)

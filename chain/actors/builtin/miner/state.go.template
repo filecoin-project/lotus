@@ -8,6 +8,7 @@ import (
 {{end}}
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
@@ -32,6 +33,12 @@ func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
 	if err != nil {
 		return nil, err
 	}
+	return &out, nil
+}
+
+func make{{.v}}(store adt.Store) (State, error) {
+	out := state{{.v}}{store: store}
+	out.State = miner{{.v}}.State{}
 	return &out, nil
 }
 
@@ -203,6 +210,26 @@ func (s *state{{.v}}) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCom
 	return &ret, nil
 }
 
+func (s *state{{.v}}) ForEachPrecommittedSector(cb func(SectorPreCommitOnChainInfo) error) error {
+{{if (ge .v 3) -}}
+	precommitted, err := adt{{.v}}.AsMap(s.store, s.State.PreCommittedSectors, builtin{{.v}}.DefaultHamtBitwidth)
+{{- else -}}
+	precommitted, err := adt{{.v}}.AsMap(s.store, s.State.PreCommittedSectors)
+{{- end}}
+	if err != nil {
+		return err
+	}
+
+	var info miner{{.v}}.SectorPreCommitOnChainInfo
+	if err := precommitted.ForEach(&info, func(_ string) error {
+		return cb(fromV{{.v}}SectorPreCommitOnChainInfo(info))
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *state{{.v}}) LoadSectors(snos *bitfield.BitField) ([]*SectorOnChainInfo, error) {
 	sectors, err := miner{{.v}}.LoadSectors(s.store, s.State.Sectors)
 	if err != nil {
@@ -236,13 +263,68 @@ func (s *state{{.v}}) LoadSectors(snos *bitfield.BitField) ([]*SectorOnChainInfo
 	return infos, nil
 }
 
-func (s *state{{.v}}) IsAllocated(num abi.SectorNumber) (bool, error) {
+func (s *state{{.v}}) loadAllocatedSectorNumbers() (bitfield.BitField, error) {
 	var allocatedSectors bitfield.BitField
-	if err := s.store.Get(s.store.Context(), s.State.AllocatedSectors, &allocatedSectors); err != nil {
+	err := s.store.Get(s.store.Context(), s.State.AllocatedSectors, &allocatedSectors)
+	return allocatedSectors, err
+}
+
+func (s *state{{.v}}) IsAllocated(num abi.SectorNumber) (bool, error) {
+	allocatedSectors, err := s.loadAllocatedSectorNumbers()
+	if err != nil {
 		return false, err
 	}
 
 	return allocatedSectors.IsSet(uint64(num))
+}
+
+func (s *state{{.v}}) GetProvingPeriodStart() (abi.ChainEpoch, error) {
+	return s.State.ProvingPeriodStart, nil
+}
+
+func (s *state{{.v}}) UnallocatedSectorNumbers(count int) ([]abi.SectorNumber, error) {
+	allocatedSectors, err := s.loadAllocatedSectorNumbers()
+	if err != nil {
+		return nil, err
+	}
+
+	allocatedRuns, err := allocatedSectors.RunIterator()
+	if err != nil {
+		return nil, err
+	}
+
+	unallocatedRuns, err := rle.Subtract(
+		&rle.RunSliceIterator{Runs: []rle.Run{ {Val: true, Len: abi.MaxSectorNumber} }},
+		allocatedRuns,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	iter, err := rle.BitsFromRuns(unallocatedRuns)
+	if err != nil {
+		return nil, err
+	}
+
+	sectors := make([]abi.SectorNumber, 0, count)
+	for iter.HasNext() && len(sectors) < count {
+		nextNo, err := iter.Next()
+		if err != nil {
+			return nil, err
+		}
+		sectors = append(sectors, abi.SectorNumber(nextNo))
+	}
+
+	return sectors, nil
+}
+
+func (s *state{{.v}}) GetAllocatedSectors() (*bitfield.BitField, error) {
+	var allocatedSectors bitfield.BitField
+	if err := s.store.Get(s.store.Context(), s.State.AllocatedSectors, &allocatedSectors); err != nil {
+		return nil, err
+	}
+
+	return &allocatedSectors, nil
 }
 
 func (s *state{{.v}}) LoadDeadline(idx uint64) (Deadline, error) {
@@ -366,6 +448,45 @@ func (s *state{{.v}}) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (Secto
 	return fromV{{.v}}SectorPreCommitOnChainInfo(sp), nil
 }
 
+func (s *state{{.v}}) EraseAllUnproven() error {
+	{{if (ge .v 2)}}
+		dls, err := s.State.LoadDeadlines(s.store)
+		if err != nil {
+			return err
+		}
+
+		err = dls.ForEach(s.store, func(dindx uint64, dl *miner{{.v}}.Deadline) error {
+			ps, err := dl.PartitionsArray(s.store)
+			if err != nil {
+				return err
+			}
+
+			var part miner{{.v}}.Partition
+			err = ps.ForEach(&part, func(pindx int64) error {
+				_ = part.ActivateUnproven()
+				err = ps.Set(uint64(pindx), &part)
+				return nil
+			})
+
+			if err != nil {
+				return err
+			}
+
+			dl.Partitions, err = ps.Root()
+			if err != nil {
+				return err
+			}
+
+			return dls.UpdateDeadline(s.store, dindx, dl)
+		})
+
+		return s.State.SaveDeadlines(s.store, dls)
+	{{else}}
+		// field doesn't exist until v2
+	{{end}}
+	return nil
+}
+
 func (d *deadline{{.v}}) LoadPartition(idx uint64) (Partition, error) {
 	p, err := d.Deadline.LoadPartition(d.store, idx)
 	if err != nil {
@@ -457,4 +578,8 @@ func fromV{{.v}}SectorPreCommitOnChainInfo(v{{.v}} miner{{.v}}.SectorPreCommitOn
 {{else}}
 	return (SectorPreCommitOnChainInfo)(v0)
 {{end}}
+}
+
+func (s *state{{.v}}) GetState() interface{} {
+	return &s.State
 }

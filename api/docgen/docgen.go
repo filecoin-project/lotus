@@ -16,10 +16,10 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
-	metrics "github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	protocol "github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 
@@ -46,11 +46,12 @@ import (
 )
 
 var ExampleValues = map[reflect.Type]interface{}{
-	reflect.TypeOf(auth.Permission("")): auth.Permission("write"),
-	reflect.TypeOf(""):                  "string value",
-	reflect.TypeOf(uint64(42)):          uint64(42),
-	reflect.TypeOf(byte(7)):             byte(7),
-	reflect.TypeOf([]byte{}):            []byte("byte array"),
+	reflect.TypeOf(api.MinerSubsystem(0)): api.MinerSubsystem(1),
+	reflect.TypeOf(auth.Permission("")):   auth.Permission("write"),
+	reflect.TypeOf(""):                    "string value",
+	reflect.TypeOf(uint64(42)):            uint64(42),
+	reflect.TypeOf(byte(7)):               byte(7),
+	reflect.TypeOf([]byte{}):              []byte("byte array"),
 }
 
 func addExample(v interface{}) {
@@ -261,27 +262,38 @@ func init() {
 		},
 		"methods": []interface{}{}},
 	)
+
+	addExample(api.CheckStatusCode(0))
+	addExample(map[string]interface{}{"abc": 123})
+	addExample(api.MinerSubsystems{
+		api.SubsystemMining,
+		api.SubsystemSealing,
+		api.SubsystemSectorStorage,
+		api.SubsystemMarkets,
+	})
 }
 
-func GetAPIType(name, pkg string) (i interface{}, t, permStruct, commonPermStruct reflect.Type) {
+func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
+
 	switch pkg {
 	case "api": // latest
 		switch name {
 		case "FullNode":
 			i = &api.FullNodeStruct{}
 			t = reflect.TypeOf(new(struct{ api.FullNode })).Elem()
-			permStruct = reflect.TypeOf(api.FullNodeStruct{}.Internal)
-			commonPermStruct = reflect.TypeOf(api.CommonStruct{}.Internal)
+			permStruct = append(permStruct, reflect.TypeOf(api.FullNodeStruct{}.Internal))
+			permStruct = append(permStruct, reflect.TypeOf(api.CommonStruct{}.Internal))
+			permStruct = append(permStruct, reflect.TypeOf(api.NetStruct{}.Internal))
 		case "StorageMiner":
 			i = &api.StorageMinerStruct{}
 			t = reflect.TypeOf(new(struct{ api.StorageMiner })).Elem()
-			permStruct = reflect.TypeOf(api.StorageMinerStruct{}.Internal)
-			commonPermStruct = reflect.TypeOf(api.CommonStruct{}.Internal)
+			permStruct = append(permStruct, reflect.TypeOf(api.StorageMinerStruct{}.Internal))
+			permStruct = append(permStruct, reflect.TypeOf(api.CommonStruct{}.Internal))
+			permStruct = append(permStruct, reflect.TypeOf(api.NetStruct{}.Internal))
 		case "Worker":
 			i = &api.WorkerStruct{}
 			t = reflect.TypeOf(new(struct{ api.Worker })).Elem()
-			permStruct = reflect.TypeOf(api.WorkerStruct{}.Internal)
-			commonPermStruct = reflect.TypeOf(api.WorkerStruct{}.Internal)
+			permStruct = append(permStruct, reflect.TypeOf(api.WorkerStruct{}.Internal))
 		default:
 			panic("unknown type")
 		}
@@ -290,8 +302,9 @@ func GetAPIType(name, pkg string) (i interface{}, t, permStruct, commonPermStruc
 		case "FullNode":
 			i = v0api.FullNodeStruct{}
 			t = reflect.TypeOf(new(struct{ v0api.FullNode })).Elem()
-			permStruct = reflect.TypeOf(v0api.FullNodeStruct{}.Internal)
-			commonPermStruct = reflect.TypeOf(v0api.CommonStruct{}.Internal)
+			permStruct = append(permStruct, reflect.TypeOf(v0api.FullNodeStruct{}.Internal))
+			permStruct = append(permStruct, reflect.TypeOf(v0api.CommonStruct{}.Internal))
+			permStruct = append(permStruct, reflect.TypeOf(v0api.NetStruct{}.Internal))
 		default:
 			panic("unknown type")
 		}

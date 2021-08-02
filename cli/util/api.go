@@ -2,6 +2,7 @@ package cliutil
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -27,112 +28,154 @@ const (
 	metadataTraceContext = "traceContext"
 )
 
-// The flag passed on the command line with the listen address of the API
-// server (only used by the tests)
-func flagForAPI(t repo.RepoType) string {
+// flagsForAPI returns flags passed on the command line with the listen address
+// of the API server (only used by the tests), in the order of precedence they
+// should be applied for the requested kind of node.
+func flagsForAPI(t repo.RepoType) []string {
 	switch t {
 	case repo.FullNode:
-		return "api-url"
+		return []string{"api-url"}
 	case repo.StorageMiner:
-		return "miner-api-url"
+		return []string{"miner-api-url"}
 	case repo.Worker:
-		return "worker-api-url"
+		return []string{"worker-api-url"}
+	case repo.Markets:
+		// support split markets-miner and monolith deployments.
+		return []string{"markets-api-url", "miner-api-url"}
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
 }
 
-func flagForRepo(t repo.RepoType) string {
+func flagsForRepo(t repo.RepoType) []string {
 	switch t {
 	case repo.FullNode:
-		return "repo"
+		return []string{"repo"}
 	case repo.StorageMiner:
-		return "miner-repo"
+		return []string{"miner-repo"}
 	case repo.Worker:
-		return "worker-repo"
+		return []string{"worker-repo"}
+	case repo.Markets:
+		// support split markets-miner and monolith deployments.
+		return []string{"markets-repo", "miner-repo"}
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
 }
 
-func EnvForRepo(t repo.RepoType) string {
+// EnvsForAPIInfos returns the environment variables to use in order of precedence
+// to determine the API endpoint of the specified node type.
+//
+// It returns the current variables and deprecated ones separately, so that
+// the user can log a warning when deprecated ones are found to be in use.
+func EnvsForAPIInfos(t repo.RepoType) (primary string, fallbacks []string, deprecated []string) {
 	switch t {
 	case repo.FullNode:
-		return "FULLNODE_API_INFO"
+		return "FULLNODE_API_INFO", nil, nil
 	case repo.StorageMiner:
-		return "MINER_API_INFO"
+		// TODO remove deprecated deprecation period
+		return "MINER_API_INFO", nil, []string{"STORAGE_API_INFO"}
 	case repo.Worker:
-		return "WORKER_API_INFO"
+		return "WORKER_API_INFO", nil, nil
+	case repo.Markets:
+		// support split markets-miner and monolith deployments.
+		return "MARKETS_API_INFO", []string{"MINER_API_INFO"}, nil
 	default:
 		panic(fmt.Sprintf("Unknown repo type: %v", t))
 	}
 }
 
-// TODO remove after deprecation period
-func envForRepoDeprecation(t repo.RepoType) string {
-	switch t {
-	case repo.FullNode:
-		return "FULLNODE_API_INFO"
-	case repo.StorageMiner:
-		return "STORAGE_API_INFO"
-	case repo.Worker:
-		return "WORKER_API_INFO"
-	default:
-		panic(fmt.Sprintf("Unknown repo type: %v", t))
-	}
-}
-
+// GetAPIInfo returns the API endpoint to use for the specified kind of repo.
+//
+// The order of precedence is as follows:
+//
+//  1. *-api-url command line flags.
+//  2. *_API_INFO environment variables
+//  3. deprecated *_API_INFO environment variables
+//  4. *-repo command line flags.
 func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 	// Check if there was a flag passed with the listen address of the API
 	// server (only used by the tests)
-	apiFlag := flagForAPI(t)
-	if ctx.IsSet(apiFlag) {
-		strma := ctx.String(apiFlag)
+	apiFlags := flagsForAPI(t)
+	for _, f := range apiFlags {
+		if !ctx.IsSet(f) {
+			continue
+		}
+		strma := ctx.String(f)
 		strma = strings.TrimSpace(strma)
 
 		return APIInfo{Addr: strma}, nil
 	}
 
-	envKey := EnvForRepo(t)
-	env, ok := os.LookupEnv(envKey)
-	if !ok {
-		// TODO remove after deprecation period
-		envKey = envForRepoDeprecation(t)
-		env, ok = os.LookupEnv(envKey)
-		if ok {
-			log.Warnf("Use deprecation env(%s) value, please use env(%s) instead.", envKey, EnvForRepo(t))
-		}
-	}
+	//
+	// Note: it is not correct/intuitive to prefer environment variables over
+	// CLI flags (repo flags below).
+	//
+	primaryEnv, fallbacksEnvs, deprecatedEnvs := EnvsForAPIInfos(t)
+	env, ok := os.LookupEnv(primaryEnv)
 	if ok {
 		return ParseApiInfo(env), nil
 	}
 
-	repoFlag := flagForRepo(t)
-
-	p, err := homedir.Expand(ctx.String(repoFlag))
-	if err != nil {
-		return APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", repoFlag, err)
+	for _, env := range deprecatedEnvs {
+		env, ok := os.LookupEnv(env)
+		if ok {
+			log.Warnf("Using deprecated env(%s) value, please use env(%s) instead.", env, primaryEnv)
+			return ParseApiInfo(env), nil
+		}
 	}
 
-	r, err := repo.NewFS(p)
-	if err != nil {
-		return APIInfo{}, xerrors.Errorf("could not open repo at path: %s; %w", p, err)
+	repoFlags := flagsForRepo(t)
+	for _, f := range repoFlags {
+		// cannot use ctx.IsSet because it ignores default values
+		path := ctx.String(f)
+		if path == "" {
+			continue
+		}
+
+		p, err := homedir.Expand(path)
+		if err != nil {
+			return APIInfo{}, xerrors.Errorf("could not expand home dir (%s): %w", f, err)
+		}
+
+		r, err := repo.NewFS(p)
+		if err != nil {
+			return APIInfo{}, xerrors.Errorf("could not open repo at path: %s; %w", p, err)
+		}
+
+		exists, err := r.Exists()
+		if err != nil {
+			return APIInfo{}, xerrors.Errorf("repo.Exists returned an error: %w", err)
+		}
+
+		if !exists {
+			return APIInfo{}, errors.New("repo directory does not exist. Make sure your configuration is correct")
+		}
+
+		ma, err := r.APIEndpoint()
+		if err != nil {
+			return APIInfo{}, xerrors.Errorf("could not get api endpoint: %w", err)
+		}
+
+		token, err := r.APIToken()
+		if err != nil {
+			log.Warnf("Couldn't load CLI token, capabilities may be limited: %v", err)
+		}
+
+		return APIInfo{
+			Addr:  ma.String(),
+			Token: token,
+		}, nil
 	}
 
-	ma, err := r.APIEndpoint()
-	if err != nil {
-		return APIInfo{}, xerrors.Errorf("could not get api endpoint: %w", err)
+	for _, env := range fallbacksEnvs {
+		env, ok := os.LookupEnv(env)
+		if ok {
+			return ParseApiInfo(env), nil
+		}
 	}
 
-	token, err := r.APIToken()
-	if err != nil {
-		log.Warnf("Couldn't load CLI token, capabilities may be limited: %v", err)
-	}
-
-	return APIInfo{
-		Addr:  ma.String(),
-		Token: token,
-	}, nil
+	return APIInfo{}, fmt.Errorf("could not determine API endpoint for node type: %v", t)
 }
 
 func GetRawAPI(ctx *cli.Context, t repo.RepoType, version string) (string, http.Header, error) {
@@ -146,13 +189,17 @@ func GetRawAPI(ctx *cli.Context, t repo.RepoType, version string) (string, http.
 		return "", nil, xerrors.Errorf("could not get DialArgs: %w", err)
 	}
 
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintf(ctx.App.Writer, "using raw API %s endpoint: %s\n", version, addr)
+	}
+
 	return addr, ainfo.AuthHeader(), nil
 }
 
-func GetAPI(ctx *cli.Context) (api.Common, jsonrpc.ClientCloser, error) {
+func GetCommonAPI(ctx *cli.Context) (api.CommonNet, jsonrpc.ClientCloser, error) {
 	ti, ok := ctx.App.Metadata["repoType"]
 	if !ok {
-		log.Errorf("unknown repo type, are you sure you want to use GetAPI?")
+		log.Errorf("unknown repo type, are you sure you want to use GetCommonAPI?")
 		ti = repo.FullNode
 	}
 	t, ok := ti.(repo.RepoType)
@@ -185,6 +232,10 @@ func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, err
 		return nil, nil, err
 	}
 
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using full node API v0 endpoint:", addr)
+	}
+
 	return client.NewFullNodeRPCV0(ctx.Context, addr, headers)
 }
 
@@ -196,6 +247,10 @@ func GetFullNodeAPIV1(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, e
 	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v1")
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using full node API v1 endpoint:", addr)
 	}
 
 	return client.NewFullNodeRPCV1(ctx.Context, addr, headers)
@@ -242,6 +297,10 @@ func GetStorageMinerAPI(ctx *cli.Context, opts ...GetStorageMinerOption) (api.St
 		addr = u.String()
 	}
 
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using miner API v0 endpoint:", addr)
+	}
+
 	return client.NewStorageMinerRPCV0(ctx.Context, addr, headers)
 }
 
@@ -251,13 +310,42 @@ func GetWorkerAPI(ctx *cli.Context) (api.Worker, jsonrpc.ClientCloser, error) {
 		return nil, nil, err
 	}
 
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using worker API v0 endpoint:", addr)
+	}
+
 	return client.NewWorkerRPCV0(ctx.Context, addr, headers)
+}
+
+func GetMarketsAPI(ctx *cli.Context) (api.StorageMiner, jsonrpc.ClientCloser, error) {
+	// to support lotus-miner cli tests.
+	if tn, ok := ctx.App.Metadata["testnode-storage"]; ok {
+		return tn.(api.StorageMiner), func() {}, nil
+	}
+
+	addr, headers, err := GetRawAPI(ctx, repo.Markets, "v0")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using markets API v0 endpoint:", addr)
+	}
+
+	// the markets node is a specialised miner's node, supporting only the
+	// markets API, which is a subset of the miner API. All non-markets
+	// operations will error out with "unsupported".
+	return client.NewStorageMinerRPCV0(ctx.Context, addr, headers)
 }
 
 func GetGatewayAPI(ctx *cli.Context) (api.Gateway, jsonrpc.ClientCloser, error) {
 	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v1")
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using gateway API v1 endpoint:", addr)
 	}
 
 	return client.NewGatewayRPCV1(ctx.Context, addr, headers)
@@ -267,6 +355,10 @@ func GetGatewayAPIV0(ctx *cli.Context) (v0api.Gateway, jsonrpc.ClientCloser, err
 	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v0")
 	if err != nil {
 		return nil, nil, err
+	}
+
+	if IsVeryVerbose {
+		_, _ = fmt.Fprintln(ctx.App.Writer, "using gateway API v0 endpoint:", addr)
 	}
 
 	return client.NewGatewayRPCV0(ctx.Context, addr, headers)

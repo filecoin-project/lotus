@@ -73,6 +73,24 @@ func (t SectorFileType) SealSpaceUse(ssize abi.SectorSize) (uint64, error) {
 	return need, nil
 }
 
+func (t SectorFileType) StoreSpaceUse(ssize abi.SectorSize) (uint64, error) {
+	var need uint64
+	for _, pathType := range PathTypes {
+		if !t.Has(pathType) {
+			continue
+		}
+
+		oh, ok := FsOverheadFinalized[pathType]
+		if !ok {
+			return 0, xerrors.Errorf("no finalized overhead info for %s", pathType)
+		}
+
+		need += uint64(oh) * uint64(ssize) / FSOverheadDen
+	}
+
+	return need, nil
+}
+
 func (t SectorFileType) All() [FileTypes]bool {
 	var out [FileTypes]bool
 

@@ -39,28 +39,32 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 	}
 
 	bstate := ts.ParentState()
-	bheight := ts.Height()
+	pts, err := sm.cs.LoadTipSet(ts.Parents())
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load parent tipset: %w", err)
+	}
+	pheight := pts.Height()
 
 	// If we have to run an expensive migration, and we're not at genesis,
 	// return an error because the migration will take too long.
 	//
 	// We allow this at height 0 for at-genesis migrations (for testing).
-	if bheight-1 > 0 && sm.hasExpensiveFork(ctx, bheight-1) {
+	if pheight > 0 && sm.hasExpensiveFork(ctx, pheight) {
 		return nil, ErrExpensiveFork
 	}
 
 	// Run the (not expensive) migration.
-	bstate, err := sm.handleStateForks(ctx, bstate, bheight-1, nil, ts)
+	bstate, err = sm.handleStateForks(ctx, bstate, pheight, nil, ts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
 
 	vmopt := &vm.VMOpts{
 		StateBase:      bstate,
-		Epoch:          bheight,
+		Epoch:          pheight + 1,
 		Rand:           store.NewChainRand(sm.cs, ts.Cids()),
 		Bstore:         sm.cs.StateBlockstore(),
-		Syscalls:       sm.cs.VMSys(),
+		Syscalls:       sm.syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        types.NewInt(0),
@@ -155,6 +159,11 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		return nil, xerrors.Errorf("computing tipset state: %w", err)
 	}
 
+	state, err = sm.handleStateForks(ctx, state, ts.Height(), nil, ts)
+	if err != nil {
+		return nil, fmt.Errorf("failed to handle fork: %w", err)
+	}
+
 	r := store.NewChainRand(sm.cs, ts.Cids())
 
 	if span.IsRecordingEvents() {
@@ -167,10 +176,10 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 
 	vmopt := &vm.VMOpts{
 		StateBase:      state,
-		Epoch:          ts.Height(),
+		Epoch:          ts.Height() + 1,
 		Rand:           r,
 		Bstore:         sm.cs.StateBlockstore(),
-		Syscalls:       sm.cs.VMSys(),
+		Syscalls:       sm.syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
@@ -239,24 +248,18 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 var errHaltExecution = fmt.Errorf("halt")
 
 func (sm *StateManager) Replay(ctx context.Context, ts *types.TipSet, mcid cid.Cid) (*types.Message, *vm.ApplyRet, error) {
-	var outm *types.Message
-	var outr *vm.ApplyRet
+	var finder messageFinder
+	// message to find
+	finder.mcid = mcid
 
-	_, _, err := sm.computeTipSetState(ctx, ts, func(c cid.Cid, m *types.Message, ret *vm.ApplyRet) error {
-		if c == mcid {
-			outm = m
-			outr = ret
-			return errHaltExecution
-		}
-		return nil
-	})
+	_, _, err := sm.computeTipSetState(ctx, ts, &finder)
 	if err != nil && !xerrors.Is(err, errHaltExecution) {
 		return nil, nil, xerrors.Errorf("unexpected error during execution: %w", err)
 	}
 
-	if outr == nil {
+	if finder.outr == nil {
 		return nil, nil, xerrors.Errorf("given message not found in tipset")
 	}
 
-	return outm, outr, nil
+	return finder.outm, finder.outr, nil
 }

@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -198,6 +200,7 @@ func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeS
 	sys := vm.Syscalls(&genFakeVerifier{})
 
 	tpl := genesis.Template{
+		NetworkVersion: network.Version0,
 		Accounts: []genesis.Actor{
 			{
 				Type:    genesis.TAccount,
@@ -230,7 +233,7 @@ func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeS
 		return nil, xerrors.Errorf("make genesis block failed: %w", err)
 	}
 
-	cs := store.NewChainStore(bs, bs, ds, sys, j)
+	cs := store.NewChainStore(bs, bs, ds, j)
 
 	genfb := &types.FullBlock{Header: genb.Genesis}
 	gents := store.NewFullTipSet([]*types.FullBlock{genfb})
@@ -244,7 +247,7 @@ func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeS
 		mgen[genesis2.MinerAddress(uint64(i))] = &wppProvider{}
 	}
 
-	sm, err := stmgr.NewStateManagerWithUpgradeSchedule(cs, us)
+	sm, err := stmgr.NewStateManagerWithUpgradeSchedule(cs, sys, us)
 	if err != nil {
 		return nil, xerrors.Errorf("initing stmgr: %w", err)
 	}

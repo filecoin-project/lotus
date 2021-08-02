@@ -32,10 +32,10 @@ import (
 var _ sealing.SealingAPI = new(SealingAPIAdapter)
 
 type SealingAPIAdapter struct {
-	delegate storageMinerApi
+	delegate fullNodeFilteredAPI
 }
 
-func NewSealingAPIAdapter(api storageMinerApi) SealingAPIAdapter {
+func NewSealingAPIAdapter(api fullNodeFilteredAPI) SealingAPIAdapter {
 	return SealingAPIAdapter{delegate: api}
 }
 
@@ -74,6 +74,15 @@ func (s SealingAPIAdapter) StateMinerInfo(ctx context.Context, maddr address.Add
 
 	// TODO: update storage-fsm to just StateMinerInfo
 	return s.delegate.StateMinerInfo(ctx, maddr, tsk)
+}
+
+func (s SealingAPIAdapter) StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tok sealing.TipSetToken) (big.Int, error) {
+	tsk, err := types.TipSetKeyFromBytes(tok)
+	if err != nil {
+		return big.Zero(), xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
+	}
+
+	return s.delegate.StateMinerAvailableBalance(ctx, maddr, tsk)
 }
 
 func (s SealingAPIAdapter) StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tok sealing.TipSetToken) (address.Address, error) {

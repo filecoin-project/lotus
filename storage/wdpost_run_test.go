@@ -40,7 +40,7 @@ import (
 type mockStorageMinerAPI struct {
 	partitions     []api.Partition
 	pushedMessages chan *types.Message
-	storageMinerApi
+	fullNodeFilteredAPI
 }
 
 func newMockStorageMinerAPI() *mockStorageMinerAPI {
@@ -401,4 +401,4 @@ func (m *mockStorageMinerAPI) WalletHas(ctx context.Context, address address.Add
 	return true, nil
 }
 
-var _ storageMinerApi = &mockStorageMinerAPI{}
+var _ fullNodeFilteredAPI = &mockStorageMinerAPI{}

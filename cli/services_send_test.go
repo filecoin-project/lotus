@@ -9,10 +9,9 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/api"
-	mocks "github.com/filecoin-project/lotus/api/v0api/v0mocks"
+	mocks "github.com/filecoin-project/lotus/api/mocks"
 	types "github.com/filecoin-project/lotus/chain/types"
 	gomock "github.com/golang/mock/gomock"
-	cid "github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -61,6 +60,7 @@ func setupMockSrvcs(t *testing.T) (*ServicesImpl, *mocks.MockFullNode) {
 	return srvcs, mockApi
 }
 
+// linter doesn't like dead code, so these are commented out.
 func fakeSign(msg *types.Message) *types.SignedMessage {
 	return &types.SignedMessage{
 		Message:   *msg,
@@ -68,15 +68,15 @@ func fakeSign(msg *types.Message) *types.SignedMessage {
 	}
 }
 
-func makeMessageSigner() (*cid.Cid, interface{}) {
-	smCid := cid.Undef
-	return &smCid,
-		func(_ context.Context, msg *types.Message, _ *api.MessageSendSpec) (*types.SignedMessage, error) {
-			sm := fakeSign(msg)
-			smCid = sm.Cid()
-			return sm, nil
-		}
-}
+//func makeMessageSigner() (*cid.Cid, interface{}) {
+//smCid := cid.Undef
+//return &smCid,
+//func(_ context.Context, msg *types.Message, _ *api.MessageSendSpec) (*types.SignedMessage, error) {
+//sm := fakeSign(msg)
+//smCid = sm.Cid()
+//return sm, nil
+//}
+//}
 
 type MessageMatcher SendParams
 
@@ -84,10 +84,12 @@ var _ gomock.Matcher = MessageMatcher{}
 
 // Matches returns whether x is a match.
 func (mm MessageMatcher) Matches(x interface{}) bool {
-	m, ok := x.(*types.Message)
+	proto, ok := x.(*api.MessagePrototype)
 	if !ok {
 		return false
 	}
+
+	m := &proto.Message
 
 	if mm.From != address.Undef && mm.From != m.From {
 		return false
@@ -151,47 +153,12 @@ func TestSendService(t *testing.T) {
 
 	t.Run("happy", func(t *testing.T) {
 		params := params
-		srvcs, mockApi := setupMockSrvcs(t)
+		srvcs, _ := setupMockSrvcs(t)
 		defer srvcs.Close() //nolint:errcheck
-		msgCid, sign := makeMessageSigner()
-		gomock.InOrder(
-			mockApi.EXPECT().WalletBalance(ctxM, params.From).Return(types.NewInt(balance), nil),
-			mockApi.EXPECT().MpoolPushMessage(ctxM, MessageMatcher(params), nil).DoAndReturn(sign),
-		)
 
-		c, err := srvcs.Send(ctx, params)
+		proto, err := srvcs.MessageForSend(ctx, params)
 		assert.NoError(t, err)
-		assert.Equal(t, *msgCid, c)
-	})
-
-	t.Run("balance-too-low", func(t *testing.T) {
-		params := params
-		srvcs, mockApi := setupMockSrvcs(t)
-		defer srvcs.Close() //nolint:errcheck
-		gomock.InOrder(
-			mockApi.EXPECT().WalletBalance(ctxM, a1).Return(types.NewInt(balance-200), nil),
-			// no MpoolPushMessage
-		)
-
-		c, err := srvcs.Send(ctx, params)
-		assert.Equal(t, c, cid.Undef)
-		assert.ErrorIs(t, err, ErrSendBalanceTooLow)
-	})
-
-	t.Run("force", func(t *testing.T) {
-		params := params
-		params.Force = true
-		srvcs, mockApi := setupMockSrvcs(t)
-		defer srvcs.Close() //nolint:errcheck
-		msgCid, sign := makeMessageSigner()
-		gomock.InOrder(
-			mockApi.EXPECT().WalletBalance(ctxM, a1).Return(types.NewInt(balance-200), nil).AnyTimes(),
-			mockApi.EXPECT().MpoolPushMessage(ctxM, MessageMatcher(params), nil).DoAndReturn(sign),
-		)
-
-		c, err := srvcs.Send(ctx, params)
-		assert.NoError(t, err)
-		assert.Equal(t, *msgCid, c)
+		assert.True(t, MessageMatcher(params).Matches(proto))
 	})
 
 	t.Run("default-from", func(t *testing.T) {
@@ -202,16 +169,14 @@ func TestSendService(t *testing.T) {
 
 		srvcs, mockApi := setupMockSrvcs(t)
 		defer srvcs.Close() //nolint:errcheck
-		msgCid, sign := makeMessageSigner()
+
 		gomock.InOrder(
 			mockApi.EXPECT().WalletDefaultAddress(ctxM).Return(a1, nil),
-			mockApi.EXPECT().WalletBalance(ctxM, a1).Return(types.NewInt(balance), nil),
-			mockApi.EXPECT().MpoolPushMessage(ctxM, mm, nil).DoAndReturn(sign),
 		)
 
-		c, err := srvcs.Send(ctx, params)
+		proto, err := srvcs.MessageForSend(ctx, params)
 		assert.NoError(t, err)
-		assert.Equal(t, *msgCid, c)
+		assert.True(t, mm.Matches(proto))
 	})
 
 	t.Run("set-nonce", func(t *testing.T) {
@@ -220,26 +185,12 @@ func TestSendService(t *testing.T) {
 		params.Nonce = &n
 		mm := MessageMatcher(params)
 
-		srvcs, mockApi := setupMockSrvcs(t)
+		srvcs, _ := setupMockSrvcs(t)
 		defer srvcs.Close() //nolint:errcheck
-		_, _ = mm, mockApi
 
-		var sm *types.SignedMessage
-		gomock.InOrder(
-			mockApi.EXPECT().WalletBalance(ctxM, a1).Return(types.NewInt(balance), nil),
-			mockApi.EXPECT().WalletSignMessage(ctxM, a1, mm).DoAndReturn(
-				func(_ context.Context, _ address.Address, msg *types.Message) (*types.SignedMessage, error) {
-					sm = fakeSign(msg)
-
-					// now we expect MpoolPush with that SignedMessage
-					mockApi.EXPECT().MpoolPush(ctxM, sm).Return(sm.Cid(), nil)
-					return sm, nil
-				}),
-		)
-
-		c, err := srvcs.Send(ctx, params)
+		proto, err := srvcs.MessageForSend(ctx, params)
 		assert.NoError(t, err)
-		assert.Equal(t, sm.Cid(), c)
+		assert.True(t, mm.Matches(proto))
 	})
 
 	t.Run("gas-params", func(t *testing.T) {
@@ -251,16 +202,14 @@ func TestSendService(t *testing.T) {
 		gp := big.NewInt(10)
 		params.GasPremium = &gp
 
-		srvcs, mockApi := setupMockSrvcs(t)
-		defer srvcs.Close() //nolint:errcheck
-		msgCid, sign := makeMessageSigner()
-		gomock.InOrder(
-			mockApi.EXPECT().WalletBalance(ctxM, params.From).Return(types.NewInt(balance), nil),
-			mockApi.EXPECT().MpoolPushMessage(ctxM, MessageMatcher(params), nil).DoAndReturn(sign),
-		)
+		mm := MessageMatcher(params)
 
-		c, err := srvcs.Send(ctx, params)
+		srvcs, _ := setupMockSrvcs(t)
+		defer srvcs.Close() //nolint:errcheck
+
+		proto, err := srvcs.MessageForSend(ctx, params)
 		assert.NoError(t, err)
-		assert.Equal(t, *msgCid, c)
+		assert.True(t, mm.Matches(proto))
+
 	})
 }

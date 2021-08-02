@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/hashicorp/go-multierror"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
@@ -29,6 +30,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -146,6 +148,8 @@ type MessagePool struct {
 	api Provider
 
 	minGasPrice types.BigInt
+
+	getNtwkVersion func(abi.ChainEpoch) (network.Version, error)
 
 	currentSize int
 
@@ -362,26 +366,28 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journ
 	if j == nil {
 		j = journal.NilJournal()
 	}
+	us := stmgr.DefaultUpgradeSchedule()
 
 	mp := &MessagePool{
-		ds:            ds,
-		addSema:       make(chan struct{}, 1),
-		closer:        make(chan struct{}),
-		repubTk:       build.Clock.Ticker(RepublishInterval),
-		repubTrigger:  make(chan struct{}, 1),
-		localAddrs:    make(map[address.Address]struct{}),
-		pending:       make(map[address.Address]*msgSet),
-		keyCache:      make(map[address.Address]address.Address),
-		minGasPrice:   types.NewInt(0),
-		pruneTrigger:  make(chan struct{}, 1),
-		pruneCooldown: make(chan struct{}, 1),
-		blsSigCache:   cache,
-		sigValCache:   verifcache,
-		changes:       lps.New(50),
-		localMsgs:     namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
-		api:           api,
-		netName:       netName,
-		cfg:           cfg,
+		ds:             ds,
+		addSema:        make(chan struct{}, 1),
+		closer:         make(chan struct{}),
+		repubTk:        build.Clock.Ticker(RepublishInterval),
+		repubTrigger:   make(chan struct{}, 1),
+		localAddrs:     make(map[address.Address]struct{}),
+		pending:        make(map[address.Address]*msgSet),
+		keyCache:       make(map[address.Address]address.Address),
+		minGasPrice:    types.NewInt(0),
+		getNtwkVersion: us.GetNtwkVersion,
+		pruneTrigger:   make(chan struct{}, 1),
+		pruneCooldown:  make(chan struct{}, 1),
+		blsSigCache:    cache,
+		sigValCache:    verifcache,
+		changes:        lps.New(50),
+		localMsgs:      namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
+		api:            api,
+		netName:        netName,
+		cfg:            cfg,
 		evtTypes: [...]journal.EventType{
 			evtTypeMpoolAdd:    j.RegisterEventType("mpool", "add"),
 			evtTypeMpoolRemove: j.RegisterEventType("mpool", "remove"),
@@ -424,6 +430,27 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journ
 	}()
 
 	return mp, nil
+}
+
+func (mp *MessagePool) ForEachPendingMessage(f func(cid.Cid) error) error {
+	mp.lk.Lock()
+	defer mp.lk.Unlock()
+
+	for _, mset := range mp.pending {
+		for _, m := range mset.msgs {
+			err := f(m.Cid())
+			if err != nil {
+				return err
+			}
+
+			err = f(m.Message.Cid())
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 func (mp *MessagePool) resolveToKey(ctx context.Context, addr address.Address) (address.Address, error) {
@@ -589,8 +616,7 @@ func (mp *MessagePool) addLocal(ctx context.Context, m *types.SignedMessage) err
 // For non local messages, if the message cannot be included in the next 20 blocks it returns
 // a (soft) validation error.
 func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.TipSet, local bool) (bool, error) {
-	epoch := curTs.Height()
-	minGas := vm.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
+	minGas := vm.PricelistByVersion(build.NewestNetworkVersion).OnChainMessage(m.ChainLength())
 
 	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total(), build.NewestNetworkVersion); err != nil {
 		return false, xerrors.Errorf("message will not be included in a block: %w", err)
@@ -948,6 +974,13 @@ func (mp *MessagePool) GetNonce(ctx context.Context, addr address.Address, _ typ
 	return mp.getNonceLocked(ctx, addr, mp.curTs)
 }
 
+// GetActor should not be used. It is only here to satisfy interface mess caused by lite node handling
+func (mp *MessagePool) GetActor(_ context.Context, addr address.Address, _ types.TipSetKey) (*types.Actor, error) {
+	mp.curTsLk.Lock()
+	defer mp.curTsLk.Unlock()
+	return mp.api.GetActorAfter(addr, mp.curTs)
+}
+
 func (mp *MessagePool) getNonceLocked(ctx context.Context, addr address.Address, curTs *types.TipSet) (uint64, error) {
 	stateNonce, err := mp.getStateNonce(ctx, addr, curTs) // sanity check
 	if err != nil {
@@ -973,11 +1006,11 @@ func (mp *MessagePool) getNonceLocked(ctx context.Context, addr address.Address,
 	return stateNonce, nil
 }
 
-func (mp *MessagePool) getStateNonce(ctx context.Context, addr address.Address, curTs *types.TipSet) (uint64, error) {
+func (mp *MessagePool) getStateNonce(ctx context.Context, addr address.Address, ts *types.TipSet) (uint64, error) {
 	done := metrics.Timer(ctx, metrics.MpoolGetNonceDuration)
 	defer done()
 
-	act, err := mp.api.GetActorAfter(addr, curTs)
+	act, err := mp.api.GetActorAfter(addr, ts)
 	if err != nil {
 		return 0, err
 	}

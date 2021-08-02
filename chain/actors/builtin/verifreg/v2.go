@@ -23,6 +23,19 @@ func load2(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
+func make2(store adt.Store, rootKeyAddress address.Address) (State, error) {
+	out := state2{store: store}
+
+	em, err := adt2.MakeEmptyMap(store).Root()
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *verifreg2.ConstructState(em, rootKeyAddress)
+
+	return &out, nil
+}
+
 type state2 struct {
 	verifreg2.State
 	store adt.Store
@@ -54,4 +67,8 @@ func (s *state2) verifiedClients() (adt.Map, error) {
 
 func (s *state2) verifiers() (adt.Map, error) {
 	return adt2.AsMap(s.store, s.Verifiers)
+}
+
+func (s *state2) GetState() interface{} {
+	return &s.State
 }

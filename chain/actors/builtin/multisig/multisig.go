@@ -76,6 +76,51 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
+func MakeState(store adt.Store, av actors.Version, signers []address.Address, threshold uint64, startEpoch abi.ChainEpoch, unlockDuration abi.ChainEpoch, initialBalance abi.TokenAmount) (State, error) {
+	switch av {
+
+	case actors.Version0:
+		return make0(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
+	case actors.Version2:
+		return make2(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
+	case actors.Version3:
+		return make3(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
+	case actors.Version4:
+		return make4(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
+	case actors.Version5:
+		return make5(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
+	}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
+func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	switch av {
+
+	case actors.Version0:
+		return builtin0.MultisigActorCodeID, nil
+
+	case actors.Version2:
+		return builtin2.MultisigActorCodeID, nil
+
+	case actors.Version3:
+		return builtin3.MultisigActorCodeID, nil
+
+	case actors.Version4:
+		return builtin4.MultisigActorCodeID, nil
+
+	case actors.Version5:
+		return builtin5.MultisigActorCodeID, nil
+
+	}
+
+	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
+}
+
 type State interface {
 	cbor.Marshaler
 
@@ -91,6 +136,7 @@ type State interface {
 
 	transactions() (adt.Map, error)
 	decodeTransaction(val *cbg.Deferred) (Transaction, error)
+	GetState() interface{}
 }
 
 type Transaction = msig0.Transaction
@@ -140,6 +186,7 @@ type MessageBuilder interface {
 type ProposalHashData = msig5.ProposalHashData
 type ProposeReturn = msig5.ProposeReturn
 type ProposeParams = msig5.ProposeParams
+type ApproveReturn = msig5.ApproveReturn
 
 func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
 	params := msig5.TxnIDParams{ID: msig5.TxnID(id)}

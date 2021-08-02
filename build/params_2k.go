@@ -24,29 +24,30 @@ var UpgradeIgnitionHeight = abi.ChainEpoch(-2)
 var UpgradeRefuelHeight = abi.ChainEpoch(-3)
 var UpgradeTapeHeight = abi.ChainEpoch(-4)
 
-var UpgradeAssemblyHeight = abi.ChainEpoch(5)
-var UpgradeLiftoffHeight = abi.ChainEpoch(-5)
+var UpgradeAssemblyHeight = abi.ChainEpoch(-5)
+var UpgradeLiftoffHeight = abi.ChainEpoch(-6)
 
-var UpgradeKumquatHeight = abi.ChainEpoch(6)
-var UpgradeCalicoHeight = abi.ChainEpoch(7)
-var UpgradePersianHeight = abi.ChainEpoch(8)
-var UpgradeOrangeHeight = abi.ChainEpoch(9)
-var UpgradeClausHeight = abi.ChainEpoch(10)
+var UpgradeKumquatHeight = abi.ChainEpoch(-7)
+var UpgradePricelistOopsHeight = abi.ChainEpoch(-8)
+var UpgradeCalicoHeight = abi.ChainEpoch(-9)
+var UpgradePersianHeight = abi.ChainEpoch(-10)
+var UpgradeOrangeHeight = abi.ChainEpoch(-11)
+var UpgradeClausHeight = abi.ChainEpoch(-12)
 
-var UpgradeTrustHeight = abi.ChainEpoch(11)
+var UpgradeTrustHeight = abi.ChainEpoch(-13)
 
-var UpgradeNorwegianHeight = abi.ChainEpoch(12)
+var UpgradeNorwegianHeight = abi.ChainEpoch(-14)
 
-var UpgradeTurboHeight = abi.ChainEpoch(13)
+var UpgradeTurboHeight = abi.ChainEpoch(-15)
 
-var UpgradeHyperdriveHeight = abi.ChainEpoch(14)
+var UpgradeHyperdriveHeight = abi.ChainEpoch(-16)
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }
 
 func init() {
-	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
+	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1, abi.RegisteredSealProof_StackedDrg8MiBV1)
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
 	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
 	policy.SetPreCommitChallengeDelay(abi.ChainEpoch(10))

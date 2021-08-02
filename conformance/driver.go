@@ -101,8 +101,8 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 		tipset   = params.Tipset
 		syscalls = vm.Syscalls(ffiwrapper.ProofVerifier)
 
-		cs = store.NewChainStore(bs, bs, ds, syscalls, nil)
-		sm = stmgr.NewStateManager(cs)
+		cs = store.NewChainStore(bs, bs, ds, nil)
+		sm = stmgr.NewStateManager(cs, syscalls)
 	)
 
 	if params.Rand == nil {
@@ -141,16 +141,11 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 		blocks = append(blocks, sb)
 	}
 
-	var (
-		messages []*types.Message
-		results  []*vm.ApplyRet
-	)
-
-	recordOutputs := func(_ cid.Cid, msg *types.Message, ret *vm.ApplyRet) error {
-		messages = append(messages, msg)
-		results = append(results, ret)
-		return nil
+	recordOutputs := &outputRecorder{
+		messages: []*types.Message{},
+		results:  []*vm.ApplyRet{},
 	}
+
 	postcid, receiptsroot, err := sm.ApplyBlocks(context.Background(),
 		params.ParentEpoch,
 		params.Preroot,
@@ -169,8 +164,8 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 	ret := &ExecuteTipsetResult{
 		ReceiptsRoot:    receiptsroot,
 		PostStateRoot:   postcid,
-		AppliedMessages: messages,
-		AppliedResults:  results,
+		AppliedMessages: recordOutputs.messages,
+		AppliedResults:  recordOutputs.results,
 	}
 	return ret, nil
 }
@@ -201,7 +196,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 
 	// dummy state manager; only to reference the GetNetworkVersion method,
 	// which does not depend on state.
-	sm := stmgr.NewStateManager(nil)
+	sm := stmgr.NewStateManager(nil, nil)
 
 	vmOpts := &vm.VMOpts{
 		StateBase: params.Preroot,
@@ -283,4 +278,15 @@ func CircSupplyOrDefault(circSupply *gobig.Int) abi.TokenAmount {
 		return DefaultCirculatingSupply
 	}
 	return big.NewFromGo(circSupply)
+}
+
+type outputRecorder struct {
+	messages []*types.Message
+	results  []*vm.ApplyRet
+}
+
+func (o *outputRecorder) MessageApplied(ctx context.Context, ts *types.TipSet, mcid cid.Cid, msg *types.Message, ret *vm.ApplyRet, implicit bool) error {
+	o.messages = append(o.messages, msg)
+	o.results = append(o.results, ret)
+	return nil
 }

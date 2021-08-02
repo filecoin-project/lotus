@@ -8,8 +8,10 @@ import (
 	"strings"
 
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 )
 
 var mathCmd = &cli.Command{
@@ -17,6 +19,7 @@ var mathCmd = &cli.Command{
 	Usage: "utility commands around doing math on a list of numbers",
 	Subcommands: []*cli.Command{
 		mathSumCmd,
+		mathAggFeesCmd,
 	},
 }
 
@@ -97,6 +100,33 @@ var mathSumCmd = &cli.Command{
 		default:
 			return fmt.Errorf("Unknown format")
 		}
+
+		return nil
+	},
+}
+
+var mathAggFeesCmd = &cli.Command{
+	Name: "agg-fees",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:     "size",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "base-fee",
+			Usage:    "baseFee aFIL",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		as := cctx.Int("size")
+
+		bf, err := types.BigFromString(cctx.String("base-fee"))
+		if err != nil {
+			return xerrors.Errorf("parsing basefee: %w", err)
+		}
+
+		fmt.Println(types.FIL(miner5.AggregateNetworkFee(as, bf)))
 
 		return nil
 	},

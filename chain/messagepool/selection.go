@@ -11,9 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	tbig "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-actors/v3/actors/builtin"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -705,17 +703,6 @@ func (*MessagePool) getGasPerf(gasReward *big.Int, gasLimit int64) float64 {
 	return r
 }
 
-func isMessageMute(m *types.Message, ts *types.TipSet) bool {
-	if api.RunningNodeType != api.NodeFull || ts.Height() > build.UpgradeTurboHeight {
-		return false
-	}
-
-	if m.To == builtin.StoragePowerActorAddr {
-		return m.Method == builtin.MethodsPower.CreateMiner
-	}
-	return false
-}
-
 func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint64]*types.SignedMessage, baseFee types.BigInt, ts *types.TipSet) []*msgChain {
 	// collect all messages
 	msgs := make([]*types.SignedMessage, 0, len(mset))
@@ -762,7 +749,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 		}
 		curNonce++
 
-		minGas := vm.PricelistByEpoch(ts.Height()).OnChainMessage(m.ChainLength()).Total()
+		minGas := vm.PricelistByVersion(build.NewestNetworkVersion).OnChainMessage(m.ChainLength()).Total()
 		if m.Message.GasLimit < minGas {
 			break
 		}
@@ -774,10 +761,6 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 
 		required := m.Message.RequiredFunds().Int
 		if balance.Cmp(required) < 0 {
-			break
-		}
-
-		if isMessageMute(&m.Message, ts) {
 			break
 		}
 
