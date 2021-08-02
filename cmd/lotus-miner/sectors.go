@@ -588,6 +588,10 @@ var sectorsRenewCmd = &cli.Command{
 			Name:  "sector-file",
 			Usage: "provide a file containing one sector number in each line, ignoring above selecting criteria",
 		},
+		&cli.StringFlag{
+			Name:  "exclude",
+			Usage: "optionally provide a file containing excluding sectors",
+		},
 		&cli.Int64Flag{
 			Name:  "extension",
 			Usage: "try to extend selected sectors by this number of epochs",
@@ -686,6 +690,29 @@ var sectorsRenewCmd = &cli.Command{
 			return err
 		}
 
+		excludeSet := make(map[uint64]struct{})
+
+		if cctx.IsSet("exclude") {
+			file, err := os.Open(cctx.String("exclude"))
+			if err != nil {
+				return err
+			}
+			defer file.Close()
+
+			scanner := bufio.NewScanner(file)
+
+			for scanner.Scan() {
+				line := scanner.Text()
+
+				id, err := strconv.ParseUint(line, 10, 64)
+				if err != nil {
+					return xerrors.Errorf("could not parse %s as sector id: %s", line, err)
+				}
+
+				excludeSet[id] = struct{}{}
+			}
+		}
+
 		var sis []*miner.SectorOnChainInfo
 
 		if cctx.IsSet("sector-file") {
@@ -710,14 +737,17 @@ var sectorsRenewCmd = &cli.Command{
 					return xerrors.Errorf("sector %d is not active", id)
 				}
 
-				sis = append(sis, si)
+				if _, exclude := excludeSet[id]; !exclude {
+					sis = append(sis, si)
+				}
 			}
-
 		} else {
 			for _, si := range activeSet {
 				if si.Expiration >= currEpoch+abi.ChainEpoch(cctx.Int64("lower-cutoff")) &&
 					si.Expiration <= currEpoch+abi.ChainEpoch(cctx.Int64("upper-cutoff")) {
-					sis = append(sis, si)
+					if _, exclude := excludeSet[uint64(si.SectorNumber)]; !exclude {
+						sis = append(sis, si)
+					}
 				}
 			}
 		}
