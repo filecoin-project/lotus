@@ -135,7 +135,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, parent *Runti
 		gasAvailable:     msg.GasLimit,
 		depth:            0,
 		numActorsCreated: 0,
-		pricelist:        PricelistByEpoch(vm.blockHeight),
+		pricelist:        PricelistByVersion(vm.ntwkVersion(ctx, vm.blockHeight)),
 		allowInternal:    true,
 		callerValidated:  false,
 		executionTrace:   types.ExecutionTrace{Msg: msg},
@@ -255,8 +255,10 @@ func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
 }
 
 type Rand interface {
-	GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
-	GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetChainRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetChainRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetBeaconRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetBeaconRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
 }
 
 type ApplyRet struct {
@@ -422,7 +424,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		return nil, err
 	}
 
-	pl := PricelistByEpoch(vm.blockHeight)
+	pl := PricelistByVersion(vm.ntwkVersion(ctx, vm.blockHeight))
 
 	msgGas := pl.OnChainMessage(cmsg.ChainLength())
 	msgGasCost := msgGas.Total()
@@ -437,6 +439,8 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 			},
 			GasCosts: &gasOutputs,
 			Duration: time.Since(start),
+			ActorErr: aerrors.Newf(exitcode.SysErrOutOfGas,
+				"message gas limit does not cover on-chain gas costs"),
 		}, nil
 	}
 
@@ -566,7 +570,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		gasUsed = 0
 	}
 
-	burn, err := vm.ShouldBurn(st, msg, errcode)
+	burn, err := vm.ShouldBurn(ctx, st, msg, errcode)
 	if err != nil {
 		return nil, xerrors.Errorf("deciding whether should burn failed: %w", err)
 	}
@@ -609,36 +613,32 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	}, nil
 }
 
-func (vm *VM) ShouldBurn(st *state.StateTree, msg *types.Message, errcode exitcode.ExitCode) (bool, error) {
-	// Check to see if we should burn funds. We avoid burning on successful
-	// window post. This won't catch _indirect_ window post calls, but this
-	// is the best we can get for now.
-	if vm.blockHeight > build.UpgradeClausHeight && errcode == exitcode.Ok && msg.Method == miner.Methods.SubmitWindowedPoSt {
-		// Ok, we've checked the _method_, but we still need to check
-		// the target actor. It would be nice if we could just look at
-		// the trace, but I'm not sure if that's safe?
-		if toActor, err := st.GetActor(msg.To); err != nil {
-			// If the actor wasn't found, we probably deleted it or something. Move on.
-			if !xerrors.Is(err, types.ErrActorNotFound) {
-				// Otherwise, this should never fail and something is very wrong.
-				return false, xerrors.Errorf("failed to lookup target actor: %w", err)
+func (vm *VM) ShouldBurn(ctx context.Context, st *state.StateTree, msg *types.Message, errcode exitcode.ExitCode) (bool, error) {
+	if vm.ntwkVersion(ctx, vm.blockHeight) <= network.Version12 {
+		// Check to see if we should burn funds. We avoid burning on successful
+		// window post. This won't catch _indirect_ window post calls, but this
+		// is the best we can get for now.
+		if vm.blockHeight > build.UpgradeClausHeight && errcode == exitcode.Ok && msg.Method == miner.Methods.SubmitWindowedPoSt {
+			// Ok, we've checked the _method_, but we still need to check
+			// the target actor. It would be nice if we could just look at
+			// the trace, but I'm not sure if that's safe?
+			if toActor, err := st.GetActor(msg.To); err != nil {
+				// If the actor wasn't found, we probably deleted it or something. Move on.
+				if !xerrors.Is(err, types.ErrActorNotFound) {
+					// Otherwise, this should never fail and something is very wrong.
+					return false, xerrors.Errorf("failed to lookup target actor: %w", err)
+				}
+			} else if builtin.IsStorageMinerActor(toActor.Code) {
+				// Ok, this is a storage miner and we've processed a window post. Remove the burn.
+				return false, nil
 			}
-		} else if builtin.IsStorageMinerActor(toActor.Code) {
-			// Ok, this is a storage miner and we've processed a window post. Remove the burn.
-			return false, nil
 		}
+
+		return true, nil
 	}
 
+	// Any "don't burn" rules from Network v13 onwards go here, for now we always return true
 	return true, nil
-}
-
-func (vm *VM) ActorBalance(addr address.Address) (types.BigInt, aerrors.ActorError) {
-	act, err := vm.cstate.GetActor(addr)
-	if err != nil {
-		return types.EmptyInt, aerrors.Absorb(err, 1, "failed to find actor")
-	}
-
-	return act.Balance, nil
 }
 
 type vmFlushKey struct{}
@@ -660,6 +660,12 @@ func (vm *VM) Flush(ctx context.Context) (cid.Cid, error) {
 	}
 
 	return root, nil
+}
+
+// Get the buffered blockstore associated with the VM. This includes any temporary blocks produced
+// during this VM's execution.
+func (vm *VM) ActorStore(ctx context.Context) adt.Store {
+	return adt.WrapStore(ctx, vm.cst)
 }
 
 func linksForObj(blk block.Block, cb func(cid.Cid)) error {

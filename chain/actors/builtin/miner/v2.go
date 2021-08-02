@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
+	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
@@ -204,6 +205,22 @@ func (s *state2) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOn
 	return &ret, nil
 }
 
+func (s *state2) ForEachPrecommittedSector(cb func(SectorPreCommitOnChainInfo) error) error {
+	precommitted, err := adt2.AsMap(s.store, s.State.PreCommittedSectors)
+	if err != nil {
+		return err
+	}
+
+	var info miner2.SectorPreCommitOnChainInfo
+	if err := precommitted.ForEach(&info, func(_ string) error {
+		return cb(fromV2SectorPreCommitOnChainInfo(info))
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (s *state2) LoadSectors(snos *bitfield.BitField) ([]*SectorOnChainInfo, error) {
 	sectors, err := miner2.LoadSectors(s.store, s.State.Sectors)
 	if err != nil {
@@ -237,9 +254,15 @@ func (s *state2) LoadSectors(snos *bitfield.BitField) ([]*SectorOnChainInfo, err
 	return infos, nil
 }
 
-func (s *state2) IsAllocated(num abi.SectorNumber) (bool, error) {
+func (s *state2) loadAllocatedSectorNumbers() (bitfield.BitField, error) {
 	var allocatedSectors bitfield.BitField
-	if err := s.store.Get(s.store.Context(), s.State.AllocatedSectors, &allocatedSectors); err != nil {
+	err := s.store.Get(s.store.Context(), s.State.AllocatedSectors, &allocatedSectors)
+	return allocatedSectors, err
+}
+
+func (s *state2) IsAllocated(num abi.SectorNumber) (bool, error) {
+	allocatedSectors, err := s.loadAllocatedSectorNumbers()
+	if err != nil {
 		return false, err
 	}
 
@@ -248,6 +271,51 @@ func (s *state2) IsAllocated(num abi.SectorNumber) (bool, error) {
 
 func (s *state2) GetProvingPeriodStart() (abi.ChainEpoch, error) {
 	return s.State.ProvingPeriodStart, nil
+}
+
+func (s *state2) UnallocatedSectorNumbers(count int) ([]abi.SectorNumber, error) {
+	allocatedSectors, err := s.loadAllocatedSectorNumbers()
+	if err != nil {
+		return nil, err
+	}
+
+	allocatedRuns, err := allocatedSectors.RunIterator()
+	if err != nil {
+		return nil, err
+	}
+
+	unallocatedRuns, err := rle.Subtract(
+		&rle.RunSliceIterator{Runs: []rle.Run{{Val: true, Len: abi.MaxSectorNumber}}},
+		allocatedRuns,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	iter, err := rle.BitsFromRuns(unallocatedRuns)
+	if err != nil {
+		return nil, err
+	}
+
+	sectors := make([]abi.SectorNumber, 0, count)
+	for iter.HasNext() && len(sectors) < count {
+		nextNo, err := iter.Next()
+		if err != nil {
+			return nil, err
+		}
+		sectors = append(sectors, abi.SectorNumber(nextNo))
+	}
+
+	return sectors, nil
+}
+
+func (s *state2) GetAllocatedSectors() (*bitfield.BitField, error) {
+	var allocatedSectors bitfield.BitField
+	if err := s.store.Get(s.store.Context(), s.State.AllocatedSectors, &allocatedSectors); err != nil {
+		return nil, err
+	}
+
+	return &allocatedSectors, nil
 }
 
 func (s *state2) LoadDeadline(idx uint64) (Deadline, error) {

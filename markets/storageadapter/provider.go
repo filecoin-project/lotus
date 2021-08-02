@@ -95,11 +95,11 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 		return nil, xerrors.Errorf("deal.PublishCid can't be nil")
 	}
 
-	sdInfo := sealing.DealInfo{
+	sdInfo := api.PieceDealInfo{
 		DealID:       deal.DealID,
 		DealProposal: &deal.Proposal,
 		PublishCid:   deal.PublishCid,
-		DealSchedule: sealing.DealSchedule{
+		DealSchedule: api.DealSchedule{
 			StartEpoch: deal.ClientDealProposal.Proposal.StartEpoch,
 			EndEpoch:   deal.ClientDealProposal.Proposal.EndEpoch,
 		},
@@ -240,19 +240,19 @@ func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context
 
 	// TODO: better strategy (e.g. look for already unsealed)
 	var best api.SealedRef
-	var bestSi sealing.SectorInfo
+	var bestSi api.SectorInfo
 	for _, r := range refs {
-		si, err := n.secb.Miner.GetSectorInfo(r.SectorID)
+		si, err := n.secb.SectorBuilder.SectorsStatus(ctx, r.SectorID, false)
 		if err != nil {
 			return 0, 0, 0, xerrors.Errorf("getting sector info: %w", err)
 		}
-		if si.State == sealing.Proving {
+		if si.State == api.SectorState(sealing.Proving) {
 			best = r
 			bestSi = si
 			break
 		}
 	}
-	if bestSi.State == sealing.UndefinedSectorState {
+	if bestSi.State == api.SectorState(sealing.UndefinedSectorState) {
 		return 0, 0, 0, xerrors.New("no sealed sector found")
 	}
 	return best.SectorID, best.Offset, best.Size.Padded(), nil

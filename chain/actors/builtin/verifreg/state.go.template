@@ -9,7 +9,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
 {{if (ge .v 3)}}	builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
-{{end}} verifreg{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/verifreg"
+{{end}}	verifreg{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/verifreg"
 	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
 )
 

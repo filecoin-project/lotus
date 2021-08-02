@@ -92,6 +92,7 @@ var clientCmd = &cli.Command{
 		WithCategory("retrieval", clientFindCmd),
 		WithCategory("retrieval", clientRetrieveCmd),
 		WithCategory("retrieval", clientCancelRetrievalDealCmd),
+		WithCategory("retrieval", clientListRetrievalsCmd),
 		WithCategory("util", clientCommPCmd),
 		WithCategory("util", clientCarGenCmd),
 		WithCategory("util", clientBalancesCmd),
@@ -307,8 +308,8 @@ var clientDealCmd = &cli.Command{
 	Description: `Make a deal with a miner.
 dataCid comes from running 'lotus client import'.
 miner is the address of the miner you wish to make a deal with.
-price is measured in FIL/GB/Epoch. Miners usually don't accept a bid
-lower than their advertised ask. You can check a miners listed price
+price is measured in FIL/Epoch. Miners usually don't accept a bid
+lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
 with 'lotus client query-ask <miner address>'.
 duration is how long the miner should store the data for, in blocks.
 The minimum value is 518400 (6 months).`,
@@ -1184,6 +1185,8 @@ var clientRetrieveCmd = &cli.Command{
 			return xerrors.Errorf("error setting up retrieval: %w", err)
 		}
 
+		var prevStatus retrievalmarket.DealStatus
+
 		for {
 			select {
 			case evt, ok := <-updates:
@@ -1194,19 +1197,220 @@ var clientRetrieveCmd = &cli.Command{
 						retrievalmarket.ClientEvents[evt.Event],
 						retrievalmarket.DealStatuses[evt.Status],
 					)
-				} else {
-					afmt.Println("Success")
-					return nil
+					prevStatus = evt.Status
 				}
 
 				if evt.Err != "" {
 					return xerrors.Errorf("retrieval failed: %s", evt.Err)
 				}
+
+				if !ok {
+					if prevStatus == retrievalmarket.DealStatusCompleted {
+						afmt.Println("Success")
+					} else {
+						afmt.Printf("saw final deal state %s instead of expected success state DealStatusCompleted\n",
+							retrievalmarket.DealStatuses[prevStatus])
+					}
+					return nil
+				}
+
 			case <-ctx.Done():
 				return xerrors.Errorf("retrieval timed out")
 			}
 		}
 	},
+}
+
+var clientListRetrievalsCmd = &cli.Command{
+	Name:  "list-retrievals",
+	Usage: "List retrieval market deals",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "verbose",
+			Aliases: []string{"v"},
+			Usage:   "print verbose deal details",
+		},
+		&cli.BoolFlag{
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
+		},
+		&cli.BoolFlag{
+			Name:  "show-failed",
+			Usage: "show failed/failing deals",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "completed",
+			Usage: "show completed retrievals",
+		},
+		&cli.BoolFlag{
+			Name:  "watch",
+			Usage: "watch deal updates in real-time, rather than a one time list",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		verbose := cctx.Bool("verbose")
+		watch := cctx.Bool("watch")
+		showFailed := cctx.Bool("show-failed")
+		completed := cctx.Bool("completed")
+
+		localDeals, err := api.ClientListRetrievals(ctx)
+		if err != nil {
+			return err
+		}
+
+		if watch {
+			updates, err := api.ClientGetRetrievalUpdates(ctx)
+			if err != nil {
+				return err
+			}
+
+			for {
+				tm.Clear()
+				tm.MoveCursor(1, 1)
+
+				err = outputRetrievalDeals(ctx, tm.Screen, localDeals, verbose, showFailed, completed)
+				if err != nil {
+					return err
+				}
+
+				tm.Flush()
+
+				select {
+				case <-ctx.Done():
+					return nil
+				case updated := <-updates:
+					var found bool
+					for i, existing := range localDeals {
+						if existing.ID == updated.ID {
+							localDeals[i] = updated
+							found = true
+							break
+						}
+					}
+					if !found {
+						localDeals = append(localDeals, updated)
+					}
+				}
+			}
+		}
+
+		return outputRetrievalDeals(ctx, cctx.App.Writer, localDeals, verbose, showFailed, completed)
+	},
+}
+
+func isTerminalError(status retrievalmarket.DealStatus) bool {
+	// should patch this in go-fil-markets but to solve the problem immediate and not have buggy output
+	return retrievalmarket.IsTerminalError(status) || status == retrievalmarket.DealStatusErrored || status == retrievalmarket.DealStatusCancelled
+}
+func outputRetrievalDeals(ctx context.Context, out io.Writer, localDeals []lapi.RetrievalInfo, verbose bool, showFailed bool, completed bool) error {
+	var deals []api.RetrievalInfo
+	for _, deal := range localDeals {
+		if !showFailed && isTerminalError(deal.Status) {
+			continue
+		}
+		if !completed && retrievalmarket.IsTerminalSuccess(deal.Status) {
+			continue
+		}
+		deals = append(deals, deal)
+	}
+
+	tableColumns := []tablewriter.Column{
+		tablewriter.Col("PayloadCID"),
+		tablewriter.Col("DealId"),
+		tablewriter.Col("Provider"),
+		tablewriter.Col("Status"),
+		tablewriter.Col("PricePerByte"),
+		tablewriter.Col("Received"),
+		tablewriter.Col("TotalPaid"),
+	}
+
+	if verbose {
+		tableColumns = append(tableColumns,
+			tablewriter.Col("PieceCID"),
+			tablewriter.Col("UnsealPrice"),
+			tablewriter.Col("BytesPaidFor"),
+			tablewriter.Col("TransferChannelID"),
+			tablewriter.Col("TransferStatus"),
+		)
+	}
+	tableColumns = append(tableColumns, tablewriter.NewLineCol("Message"))
+
+	w := tablewriter.New(tableColumns...)
+
+	for _, d := range deals {
+		w.Write(toRetrievalOutput(d, verbose))
+	}
+
+	return w.Flush(out)
+}
+
+func toRetrievalOutput(d api.RetrievalInfo, verbose bool) map[string]interface{} {
+
+	payloadCID := d.PayloadCID.String()
+	provider := d.Provider.String()
+	if !verbose {
+		payloadCID = ellipsis(payloadCID, 8)
+		provider = ellipsis(provider, 8)
+	}
+
+	retrievalOutput := map[string]interface{}{
+		"PayloadCID":   payloadCID,
+		"DealId":       d.ID,
+		"Provider":     provider,
+		"Status":       retrievalStatusString(d.Status),
+		"PricePerByte": types.FIL(d.PricePerByte),
+		"Received":     units.BytesSize(float64(d.BytesReceived)),
+		"TotalPaid":    types.FIL(d.TotalPaid),
+		"Message":      d.Message,
+	}
+
+	if verbose {
+		transferChannelID := ""
+		if d.TransferChannelID != nil {
+			transferChannelID = d.TransferChannelID.String()
+		}
+		transferStatus := ""
+		if d.DataTransfer != nil {
+			transferStatus = datatransfer.Statuses[d.DataTransfer.Status]
+		}
+		pieceCID := ""
+		if d.PieceCID != nil {
+			pieceCID = d.PieceCID.String()
+		}
+
+		retrievalOutput["PieceCID"] = pieceCID
+		retrievalOutput["UnsealPrice"] = types.FIL(d.UnsealPrice)
+		retrievalOutput["BytesPaidFor"] = units.BytesSize(float64(d.BytesPaidFor))
+		retrievalOutput["TransferChannelID"] = transferChannelID
+		retrievalOutput["TransferStatus"] = transferStatus
+	}
+	return retrievalOutput
+}
+
+func retrievalStatusString(status retrievalmarket.DealStatus) string {
+	s := retrievalmarket.DealStatuses[status]
+
+	switch {
+	case isTerminalError(status):
+		return color.RedString(s)
+	case retrievalmarket.IsTerminalSuccess(status):
+		return color.GreenString(s)
+	default:
+		return s
+	}
 }
 
 var clientInspectDealCmd = &cli.Command{
@@ -1556,7 +1760,7 @@ var clientQueryAskCmd = &cli.Command{
 				return xerrors.Errorf("failed to get peerID for miner: %w", err)
 			}
 
-			if *mi.PeerId == peer.ID("SETME") {
+			if mi.PeerId == nil || *mi.PeerId == peer.ID("SETME") {
 				return fmt.Errorf("the miner hasn't initialized yet")
 			}
 
@@ -1601,9 +1805,9 @@ var clientListDeals = &cli.Command{
 			Usage:   "print verbose deal details",
 		},
 		&cli.BoolFlag{
-			Name:  "color",
-			Usage: "use color in display output",
-			Value: true,
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
 		},
 		&cli.BoolFlag{
 			Name:  "show-failed",
@@ -1615,6 +1819,10 @@ var clientListDeals = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -1623,7 +1831,6 @@ var clientListDeals = &cli.Command{
 		ctx := ReqContext(cctx)
 
 		verbose := cctx.Bool("verbose")
-		color := cctx.Bool("color")
 		watch := cctx.Bool("watch")
 		showFailed := cctx.Bool("show-failed")
 
@@ -1642,7 +1849,7 @@ var clientListDeals = &cli.Command{
 				tm.Clear()
 				tm.MoveCursor(1, 1)
 
-				err = outputStorageDeals(ctx, tm.Screen, api, localDeals, verbose, color, showFailed)
+				err = outputStorageDeals(ctx, tm.Screen, api, localDeals, verbose, showFailed)
 				if err != nil {
 					return err
 				}
@@ -1668,7 +1875,7 @@ var clientListDeals = &cli.Command{
 			}
 		}
 
-		return outputStorageDeals(ctx, cctx.App.Writer, api, localDeals, verbose, color, showFailed)
+		return outputStorageDeals(ctx, cctx.App.Writer, api, localDeals, verbose, showFailed)
 	},
 }
 
@@ -1691,7 +1898,7 @@ func dealFromDealInfo(ctx context.Context, full v0api.FullNode, head *types.TipS
 	}
 }
 
-func outputStorageDeals(ctx context.Context, out io.Writer, full v0api.FullNode, localDeals []lapi.DealInfo, verbose bool, color bool, showFailed bool) error {
+func outputStorageDeals(ctx context.Context, out io.Writer, full v0api.FullNode, localDeals []lapi.DealInfo, verbose bool, showFailed bool) error {
 	sort.Slice(localDeals, func(i, j int) bool {
 		return localDeals[i].CreationTime.Before(localDeals[j].CreationTime)
 	})
@@ -1743,7 +1950,7 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full v0api.FullNode,
 				d.LocalDeal.ProposalCid,
 				d.LocalDeal.DealID,
 				d.LocalDeal.Provider,
-				dealStateString(color, d.LocalDeal.State),
+				dealStateString(d.LocalDeal.State),
 				onChain,
 				slashed,
 				d.LocalDeal.PieceCID,
@@ -1792,7 +1999,7 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full v0api.FullNode,
 			"DealCid":   propcid,
 			"DealId":    d.LocalDeal.DealID,
 			"Provider":  d.LocalDeal.Provider,
-			"State":     dealStateString(color, d.LocalDeal.State),
+			"State":     dealStateString(d.LocalDeal.State),
 			"On Chain?": onChain,
 			"Slashed?":  slashed,
 			"PieceCID":  piece,
@@ -1807,12 +2014,8 @@ func outputStorageDeals(ctx context.Context, out io.Writer, full v0api.FullNode,
 	return w.Flush(out)
 }
 
-func dealStateString(c bool, state storagemarket.StorageDealStatus) string {
+func dealStateString(state storagemarket.StorageDealStatus) string {
 	s := storagemarket.DealStates[state]
-	if !c {
-		return s
-	}
-
 	switch state {
 	case storagemarket.StorageDealError, storagemarket.StorageDealExpired:
 		return color.RedString(s)
@@ -2131,9 +2334,9 @@ var clientListTransfers = &cli.Command{
 			Usage:   "print verbose transfer details",
 		},
 		&cli.BoolFlag{
-			Name:  "color",
-			Usage: "use color in display output",
-			Value: true,
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
 		},
 		&cli.BoolFlag{
 			Name:  "completed",
@@ -2149,6 +2352,10 @@ var clientListTransfers = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -2163,7 +2370,6 @@ var clientListTransfers = &cli.Command{
 
 		verbose := cctx.Bool("verbose")
 		completed := cctx.Bool("completed")
-		color := cctx.Bool("color")
 		watch := cctx.Bool("watch")
 		showFailed := cctx.Bool("show-failed")
 		if watch {
@@ -2177,7 +2383,7 @@ var clientListTransfers = &cli.Command{
 
 				tm.MoveCursor(1, 1)
 
-				OutputDataTransferChannels(tm.Screen, channels, verbose, completed, color, showFailed)
+				OutputDataTransferChannels(tm.Screen, channels, verbose, completed, showFailed)
 
 				tm.Flush()
 
@@ -2202,13 +2408,13 @@ var clientListTransfers = &cli.Command{
 				}
 			}
 		}
-		OutputDataTransferChannels(os.Stdout, channels, verbose, completed, color, showFailed)
+		OutputDataTransferChannels(os.Stdout, channels, verbose, completed, showFailed)
 		return nil
 	},
 }
 
 // OutputDataTransferChannels generates table output for a list of channels
-func OutputDataTransferChannels(out io.Writer, channels []lapi.DataTransferChannel, verbose, completed, color, showFailed bool) {
+func OutputDataTransferChannels(out io.Writer, channels []lapi.DataTransferChannel, verbose, completed, showFailed bool) {
 	sort.Slice(channels, func(i, j int) bool {
 		return channels[i].TransferID < channels[j].TransferID
 	})
@@ -2238,7 +2444,7 @@ func OutputDataTransferChannels(out io.Writer, channels []lapi.DataTransferChann
 		tablewriter.Col("Voucher"),
 		tablewriter.NewLineCol("Message"))
 	for _, channel := range sendingChannels {
-		w.Write(toChannelOutput(color, "Sending To", channel, verbose))
+		w.Write(toChannelOutput("Sending To", channel, verbose))
 	}
 	w.Flush(out) //nolint:errcheck
 
@@ -2252,17 +2458,13 @@ func OutputDataTransferChannels(out io.Writer, channels []lapi.DataTransferChann
 		tablewriter.Col("Voucher"),
 		tablewriter.NewLineCol("Message"))
 	for _, channel := range receivingChannels {
-		w.Write(toChannelOutput(color, "Receiving From", channel, verbose))
+		w.Write(toChannelOutput("Receiving From", channel, verbose))
 	}
 	w.Flush(out) //nolint:errcheck
 }
 
-func channelStatusString(useColor bool, status datatransfer.Status) string {
+func channelStatusString(status datatransfer.Status) string {
 	s := datatransfer.Statuses[status]
-	if !useColor {
-		return s
-	}
-
 	switch status {
 	case datatransfer.Failed, datatransfer.Cancelled:
 		return color.RedString(s)
@@ -2273,7 +2475,7 @@ func channelStatusString(useColor bool, status datatransfer.Status) string {
 	}
 }
 
-func toChannelOutput(useColor bool, otherPartyColumn string, channel lapi.DataTransferChannel, verbose bool) map[string]interface{} {
+func toChannelOutput(otherPartyColumn string, channel lapi.DataTransferChannel, verbose bool) map[string]interface{} {
 	rootCid := channel.BaseCID.String()
 	otherParty := channel.OtherPeer.String()
 	if !verbose {
@@ -2293,7 +2495,7 @@ func toChannelOutput(useColor bool, otherPartyColumn string, channel lapi.DataTr
 
 	return map[string]interface{}{
 		"ID":             channel.TransferID,
-		"Status":         channelStatusString(useColor, channel.Status),
+		"Status":         channelStatusString(channel.Status),
 		otherPartyColumn: otherParty,
 		"Root Cid":       rootCid,
 		"Initiated?":     initiated,

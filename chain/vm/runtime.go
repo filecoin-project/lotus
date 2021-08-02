@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	rtt "github.com/filecoin-project/go-state-types/rt"
 	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
-	rt2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
+	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	"go.opencensus.io/trace"
@@ -54,8 +54,8 @@ func (m *Message) ValueReceived() abi.TokenAmount {
 var EnableGasTracing = false
 
 type Runtime struct {
-	rt2.Message
-	rt2.Syscalls
+	rt5.Message
+	rt5.Syscalls
 
 	ctx context.Context
 
@@ -79,6 +79,10 @@ type Runtime struct {
 	callerValidated   bool
 	lastGasChargeTime time.Time
 	lastGasCharge     *types.GasTrace
+}
+
+func (rt *Runtime) BaseFee() abi.TokenAmount {
+	return rt.vm.baseFee
 }
 
 func (rt *Runtime) NetworkVersion() network.Version {
@@ -136,13 +140,13 @@ func (rt *Runtime) StorePut(x cbor.Marshaler) cid.Cid {
 }
 
 var _ rt0.Runtime = (*Runtime)(nil)
-var _ rt2.Runtime = (*Runtime)(nil)
+var _ rt5.Runtime = (*Runtime)(nil)
 
 func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.ActorError) {
 	defer func() {
 		if r := recover(); r != nil {
 			if ar, ok := r.(aerrors.ActorError); ok {
-				log.Warnf("VM.Call failure: %+v", ar)
+				log.Warnf("VM.Call failure in call from: %s to %s: %+v", rt.Caller(), rt.Receiver(), ar)
 				aerr = ar
 				return
 			}
@@ -208,17 +212,31 @@ func (rt *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) 
 }
 
 func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	res, err := rt.vm.rand.GetChainRandomness(rt.ctx, personalization, randEpoch, entropy)
+	var err error
+	var res []byte
+	if randEpoch > build.UpgradeHyperdriveHeight {
+		res, err = rt.vm.rand.GetChainRandomnessLookingForward(rt.ctx, personalization, randEpoch, entropy)
+	} else {
+		res, err = rt.vm.rand.GetChainRandomnessLookingBack(rt.ctx, personalization, randEpoch, entropy)
+	}
+
 	if err != nil {
-		panic(aerrors.Fatalf("could not get randomness: %s", err))
+		panic(aerrors.Fatalf("could not get ticket randomness: %s", err))
 	}
 	return res
 }
 
 func (rt *Runtime) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	res, err := rt.vm.rand.GetBeaconRandomness(rt.ctx, personalization, randEpoch, entropy)
+	var err error
+	var res []byte
+	if randEpoch > build.UpgradeHyperdriveHeight {
+		res, err = rt.vm.rand.GetBeaconRandomnessLookingForward(rt.ctx, personalization, randEpoch, entropy)
+	} else {
+		res, err = rt.vm.rand.GetBeaconRandomnessLookingBack(rt.ctx, personalization, randEpoch, entropy)
+	}
+
 	if err != nil {
-		panic(aerrors.Fatalf("could not get randomness: %s", err))
+		panic(aerrors.Fatalf("could not get beacon randomness: %s", err))
 	}
 	return res
 }
@@ -373,7 +391,7 @@ func (rt *Runtime) Send(to address.Address, method abi.MethodNum, m cbor.Marshal
 		if err.IsFatal() {
 			panic(err)
 		}
-		log.Warnf("vmctx send failed: to: %s, method: %d: ret: %d, err: %s", to, method, ret, err)
+		log.Warnf("vmctx send failed: from: %s to: %s, method: %d: err: %s", rt.Receiver(), to, method, err)
 		return err.RetCode()
 	}
 	_ = rt.chargeGasSafe(gasOnActorExec)

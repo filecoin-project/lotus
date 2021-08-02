@@ -253,10 +253,10 @@ var importBenchCmd = &cli.Command{
 		}
 
 		metadataDs := datastore.NewMapDatastore()
-		cs := store.NewChainStore(bs, bs, metadataDs, vm.Syscalls(verifier), nil)
+		cs := store.NewChainStore(bs, bs, metadataDs, nil)
 		defer cs.Close() //nolint:errcheck
 
-		stm := stmgr.NewStateManager(cs)
+		stm := stmgr.NewStateManager(cs, vm.Syscalls(verifier))
 
 		var carFile *os.File
 		// open the CAR file if one is provided.

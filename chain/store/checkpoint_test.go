@@ -18,7 +18,7 @@ func TestChainCheckpoint(t *testing.T) {
 	// Let the first miner mine some blocks.
 	last := cg.CurTipset.TipSet()
 	for i := 0; i < 4; i++ {
-		ts, err := cg.NextTipSetFromMiners(last, cg.Miners[:1])
+		ts, err := cg.NextTipSetFromMiners(last, cg.Miners[:1], 0)
 		require.NoError(t, err)
 
 		last = ts.TipSet.TipSet()
@@ -57,7 +57,7 @@ func TestChainCheckpoint(t *testing.T) {
 	// Let the second miner miner mine a fork
 	last = checkpointParents
 	for i := 0; i < 4; i++ {
-		ts, err := cg.NextTipSetFromMiners(last, cg.Miners[1:])
+		ts, err := cg.NextTipSetFromMiners(last, cg.Miners[1:], 0)
 		require.NoError(t, err)
 
 		last = ts.TipSet.TipSet()

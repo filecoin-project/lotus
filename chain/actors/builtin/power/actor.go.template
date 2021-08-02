@@ -101,7 +101,7 @@ type Claim struct {
 
 func AddClaims(a Claim, b Claim) Claim {
 	return Claim{
-		RawBytePower:	 big.Add(a.RawBytePower, b.RawBytePower),
+		RawBytePower:    big.Add(a.RawBytePower, b.RawBytePower),
 		QualityAdjPower: big.Add(a.QualityAdjPower, b.QualityAdjPower),
 	}
 }

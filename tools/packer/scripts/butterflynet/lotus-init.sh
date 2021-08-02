@@ -6,7 +6,7 @@
 GATE="$LOTUS_PATH"/date_initialized
 
 # Don't init if already initialized.
-if [ -f "GATE" ]; then
+if [ -f "$GATE" ]; then
 	echo lotus already initialized.
 	exit 0
 fi

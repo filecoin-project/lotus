@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/json"
+	corebig "math/big"
 	"os"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	filbig "github.com/filecoin-project/go-state-types/big"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
@@ -21,13 +23,16 @@ type networkTotalsOutput struct {
 }
 
 type networkTotals struct {
-	UniqueCids        int   `json:"total_unique_cids"`
-	UniqueProviders   int   `json:"total_unique_providers"`
-	UniqueClients     int   `json:"total_unique_clients"`
-	TotalDeals        int   `json:"total_num_deals"`
-	TotalBytes        int64 `json:"total_stored_data_size"`
-	FilplusTotalDeals int   `json:"filplus_total_num_deals"`
-	FilplusTotalBytes int64 `json:"filplus_total_stored_data_size"`
+	QaNetworkPower       filbig.Int `json:"total_qa_power"`
+	RawNetworkPower      filbig.Int `json:"total_raw_capacity"`
+	CapacityCarryingData float64    `json:"capacity_fraction_carrying_data"`
+	UniqueCids           int        `json:"total_unique_cids"`
+	UniqueProviders      int        `json:"total_unique_providers"`
+	UniqueClients        int        `json:"total_unique_clients"`
+	TotalDeals           int        `json:"total_num_deals"`
+	TotalBytes           int64      `json:"total_stored_data_size"`
+	FilplusTotalDeals    int        `json:"filplus_total_num_deals"`
+	FilplusTotalBytes    int64      `json:"filplus_total_stored_data_size"`
 
 	seenClient   map[address.Address]bool
 	seenProvider map[address.Address]bool
@@ -66,10 +71,17 @@ var storageStatsCmd = &cli.Command{
 			return err
 		}
 
+		power, err := api.StateMinerPower(ctx, address.Address{}, head.Key())
+		if err != nil {
+			return err
+		}
+
 		netTotals := networkTotals{
-			seenClient:   make(map[address.Address]bool),
-			seenProvider: make(map[address.Address]bool),
-			seenPieceCid: make(map[cid.Cid]bool),
+			QaNetworkPower:  power.TotalPower.QualityAdjPower,
+			RawNetworkPower: power.TotalPower.RawBytePower,
+			seenClient:      make(map[address.Address]bool),
+			seenProvider:    make(map[address.Address]bool),
+			seenPieceCid:    make(map[cid.Cid]bool),
 		}
 
 		deals, err := api.StateMarketDeals(ctx, head.Key())
@@ -102,6 +114,11 @@ var storageStatsCmd = &cli.Command{
 		netTotals.UniqueCids = len(netTotals.seenPieceCid)
 		netTotals.UniqueClients = len(netTotals.seenClient)
 		netTotals.UniqueProviders = len(netTotals.seenProvider)
+
+		netTotals.CapacityCarryingData, _ = new(corebig.Rat).SetFrac(
+			corebig.NewInt(netTotals.TotalBytes),
+			netTotals.RawNetworkPower.Int,
+		).Float64()
 
 		return json.NewEncoder(os.Stdout).Encode(
 			networkTotalsOutput{

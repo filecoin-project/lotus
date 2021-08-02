@@ -507,6 +507,12 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		return mv.validateLocalMessage(ctx, msg)
 	}
 
+	start := time.Now()
+	defer func() {
+		ms := time.Now().Sub(start).Microseconds()
+		stats.Record(ctx, metrics.MessageValidationDuration.M(float64(ms)/1000))
+	}()
+
 	stats.Record(ctx, metrics.MessageReceived.M(1))
 	m, err := types.DecodeSignedMessage(msg.Message.GetData())
 	if err != nil {
@@ -516,7 +522,7 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 		return pubsub.ValidationReject
 	}
 
-	if err := mv.mpool.Add(m); err != nil {
+	if err := mv.mpool.Add(ctx, m); err != nil {
 		log.Debugf("failed to add message from network to message pool (From: %s, To: %s, Nonce: %d, Value: %s): %s", m.Message.From, m.Message.To, m.Message.Nonce, types.FIL(m.Message.Value), err)
 		ctx, _ = tag.New(
 			ctx,
@@ -538,6 +544,12 @@ func (mv *MessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubs
 			return pubsub.ValidationReject
 		}
 	}
+
+	ctx, _ = tag.New(
+		ctx,
+		tag.Upsert(metrics.MsgValid, "true"),
+	)
+
 	stats.Record(ctx, metrics.MessageValidationSuccess.M(1))
 	return pubsub.ValidationAccept
 }
@@ -547,6 +559,13 @@ func (mv *MessageValidator) validateLocalMessage(ctx context.Context, msg *pubsu
 		ctx,
 		tag.Upsert(metrics.Local, "true"),
 	)
+
+	start := time.Now()
+	defer func() {
+		ms := time.Now().Sub(start).Microseconds()
+		stats.Record(ctx, metrics.MessageValidationDuration.M(float64(ms)/1000))
+	}()
+
 	// do some lightweight validation
 	stats.Record(ctx, metrics.MessagePublished.M(1))
 
@@ -557,7 +576,7 @@ func (mv *MessageValidator) validateLocalMessage(ctx context.Context, msg *pubsu
 		return pubsub.ValidationIgnore
 	}
 
-	if m.Size() > 32*1024 {
+	if m.Size() > messagepool.MaxMessageSize {
 		log.Warnf("local message is too large! (%dB)", m.Size())
 		recordFailure(ctx, metrics.MessageValidationFailure, "oversize")
 		return pubsub.ValidationIgnore
@@ -580,6 +599,11 @@ func (mv *MessageValidator) validateLocalMessage(ctx context.Context, msg *pubsu
 		recordFailure(ctx, metrics.MessageValidationFailure, "verify-sig")
 		return pubsub.ValidationIgnore
 	}
+
+	ctx, _ = tag.New(
+		ctx,
+		tag.Upsert(metrics.MsgValid, "true"),
+	)
 
 	stats.Record(ctx, metrics.MessageValidationSuccess.M(1))
 	return pubsub.ValidationAccept

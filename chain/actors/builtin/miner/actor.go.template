@@ -22,6 +22,7 @@ import (
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
+	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 {{range .versions}}
 	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
 {{end}}
@@ -97,9 +98,14 @@ type State interface {
 	FindSector(abi.SectorNumber) (*SectorLocation, error)
 	GetSectorExpiration(abi.SectorNumber) (*SectorExpiration, error)
 	GetPrecommittedSector(abi.SectorNumber) (*SectorPreCommitOnChainInfo, error)
+	ForEachPrecommittedSector(func(SectorPreCommitOnChainInfo) error) error
 	LoadSectors(sectorNos *bitfield.BitField) ([]*SectorOnChainInfo, error)
 	NumLiveSectors() (uint64, error)
 	IsAllocated(abi.SectorNumber) (bool, error)
+        // UnallocatedSectorNumbers returns up to count unallocated sector numbers (or less than
+        // count if there aren't enough).
+	UnallocatedSectorNumbers(count int) ([]abi.SectorNumber, error)
+	GetAllocatedSectors() (*bitfield.BitField, error)
 
 	// Note that ProvingPeriodStart is deprecated and will be renamed / removed in a future version of actors
 	GetProvingPeriodStart() (abi.ChainEpoch, error)
@@ -143,26 +149,26 @@ type Partition interface {
 }
 
 type SectorOnChainInfo struct {
-	SectorNumber		  abi.SectorNumber
-	SealProof			  abi.RegisteredSealProof
-	SealedCID			  cid.Cid
-	DealIDs				  []abi.DealID
-	Activation			  abi.ChainEpoch
-	Expiration			  abi.ChainEpoch
-	DealWeight			  abi.DealWeight
-	VerifiedDealWeight	  abi.DealWeight
-	InitialPledge		  abi.TokenAmount
-	ExpectedDayReward	  abi.TokenAmount
+	SectorNumber          abi.SectorNumber
+	SealProof             abi.RegisteredSealProof
+	SealedCID             cid.Cid
+	DealIDs               []abi.DealID
+	Activation            abi.ChainEpoch
+	Expiration            abi.ChainEpoch
+	DealWeight            abi.DealWeight
+	VerifiedDealWeight    abi.DealWeight
+	InitialPledge         abi.TokenAmount
+	ExpectedDayReward     abi.TokenAmount
 	ExpectedStoragePledge abi.TokenAmount
 }
 
 type SectorPreCommitInfo = miner0.SectorPreCommitInfo
 
 type SectorPreCommitOnChainInfo struct {
-	Info			   SectorPreCommitInfo
+	Info               SectorPreCommitInfo
 	PreCommitDeposit   abi.TokenAmount
-	PreCommitEpoch	   abi.ChainEpoch
-	DealWeight		   abi.DealWeight
+	PreCommitEpoch     abi.ChainEpoch
+	DealWeight         abi.DealWeight
 	VerifiedDealWeight abi.DealWeight
 }
 
@@ -176,6 +182,7 @@ type DeclareFaultsRecoveredParams = miner0.DeclareFaultsRecoveredParams
 type SubmitWindowedPoStParams = miner0.SubmitWindowedPoStParams
 type ProveCommitSectorParams = miner0.ProveCommitSectorParams
 type DisputeWindowedPoStParams = miner3.DisputeWindowedPoStParams
+type ProveCommitAggregateParams = miner5.ProveCommitAggregateParams
 
 func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.RegisteredPoStProof) (abi.RegisteredSealProof, error) {
 	// We added support for the new proofs in network version 7, and removed support for the old
@@ -231,17 +238,17 @@ func WinningPoStProofTypeFromWindowPoStProofType(nver network.Version, proof abi
 }
 
 type MinerInfo struct {
-	Owner					   address.Address	 // Must be an ID-address.
-	Worker					   address.Address	 // Must be an ID-address.
-	NewWorker				   address.Address	 // Must be an ID-address.
-	ControlAddresses		   []address.Address // Must be an ID-addresses.
-	WorkerChangeEpoch		   abi.ChainEpoch
-	PeerId					   *peer.ID
-	Multiaddrs				   []abi.Multiaddrs
-	WindowPoStProofType		   abi.RegisteredPoStProof
-	SectorSize				   abi.SectorSize
+	Owner                      address.Address   // Must be an ID-address.
+	Worker                     address.Address   // Must be an ID-address.
+	NewWorker                  address.Address   // Must be an ID-address.
+	ControlAddresses           []address.Address // Must be an ID-addresses.
+	WorkerChangeEpoch          abi.ChainEpoch
+	PeerId                     *peer.ID
+	Multiaddrs                 []abi.Multiaddrs
+	WindowPoStProofType        abi.RegisteredPoStProof
+	SectorSize                 abi.SectorSize
 	WindowPoStPartitionSectors uint64
-	ConsensusFaultElapsed	   abi.ChainEpoch
+	ConsensusFaultElapsed      abi.ChainEpoch
 }
 
 func (mi MinerInfo) IsController(addr address.Address) bool {
@@ -272,25 +279,25 @@ type SectorLocation struct {
 }
 
 type SectorChanges struct {
-	Added	 []SectorOnChainInfo
+	Added    []SectorOnChainInfo
 	Extended []SectorExtensions
-	Removed	 []SectorOnChainInfo
+	Removed  []SectorOnChainInfo
 }
 
 type SectorExtensions struct {
 	From SectorOnChainInfo
-	To	 SectorOnChainInfo
+	To   SectorOnChainInfo
 }
 
 type PreCommitChanges struct {
-	Added	[]SectorPreCommitOnChainInfo
+	Added   []SectorPreCommitOnChainInfo
 	Removed []SectorPreCommitOnChainInfo
 }
 
 type LockedFunds struct {
-	VestingFunds			 abi.TokenAmount
+	VestingFunds             abi.TokenAmount
 	InitialPledgeRequirement abi.TokenAmount
-	PreCommitDeposits		 abi.TokenAmount
+	PreCommitDeposits        abi.TokenAmount
 }
 
 func (lf LockedFunds) TotalLockedFunds() abi.TokenAmount {

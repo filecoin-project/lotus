@@ -25,7 +25,7 @@ const UnixfsLinksPerLevel = 1024
 // Consensus / Network
 
 const AllowableClockDriftSecs = uint64(1)
-const NewestNetworkVersion = network.Version12
+const NewestNetworkVersion = network.Version13
 const ActorUpgradeNetworkVersion = network.Version4
 
 // Epochs

@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/mattn/go-isatty"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/trace"
@@ -11,10 +12,13 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/tracing"
 	"github.com/filecoin-project/lotus/node/repo"
 )
+
+var log = logging.Logger("main")
 
 var AdvanceBlockCmd *cli.Command
 
@@ -26,6 +30,7 @@ func main() {
 	local := []*cli.Command{
 		DaemonCmd,
 		backupCmd,
+		configCmd,
 	}
 	if AdvanceBlockCmd != nil {
 		local = append(local, AdvanceBlockCmd)
@@ -77,6 +82,7 @@ func main() {
 				Name:  "force-send",
 				Usage: "if true, will ignore pre-send checks",
 			},
+			cliutil.FlagVeryVerbose,
 		},
 
 		Commands: append(local, lcli.Commands...),

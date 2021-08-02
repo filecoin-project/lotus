@@ -536,7 +536,7 @@ var ChainListCmd = &cli.Command{
 	Aliases: []string{"love"},
 	Usage:   "View a segment of the chain",
 	Flags: []cli.Flag{
-		&cli.Uint64Flag{Name: "height"},
+		&cli.Uint64Flag{Name: "height", DefaultText: "current head"},
 		&cli.IntFlag{Name: "count", Value: 30},
 		&cli.StringFlag{
 			Name:  "format",
@@ -1030,7 +1030,9 @@ var ChainExportCmd = &cli.Command{
 	ArgsUsage: "[outputPath]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name: "tipset",
+			Name:  "tipset",
+			Usage: "specify tipset to start the export from",
+			Value: "@head",
 		},
 		&cli.Int64Flag{
 			Name:  "recent-stateroots",

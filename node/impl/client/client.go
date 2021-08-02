@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sort"
 	"time"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -67,7 +68,8 @@ import (
 
 var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
 
-const dealStartBufferHours uint64 = 49
+// 8 days ~=  SealDuration + PreCommit + MaxProveCommitDuration + 8 hour buffer
+const dealStartBufferHours uint64 = 8 * 24
 
 type API struct {
 	fx.In
@@ -149,12 +151,12 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 
 	walletKey, err := a.StateAccountKey(ctx, params.Wallet, types.EmptyTSK)
 	if err != nil {
-		return nil, xerrors.Errorf("failed resolving params.Wallet addr: %w", params.Wallet)
+		return nil, xerrors.Errorf("failed resolving params.Wallet addr (%s): %w", params.Wallet, err)
 	}
 
 	exist, err := a.WalletHas(ctx, walletKey)
 	if err != nil {
-		return nil, xerrors.Errorf("failed getting addr from wallet: %w", params.Wallet)
+		return nil, xerrors.Errorf("failed getting addr from wallet (%s): %w", params.Wallet, err)
 	}
 	if !exist {
 		return nil, xerrors.Errorf("provided address doesn't exist in wallet")
@@ -434,7 +436,19 @@ func (a *API) ClientFindData(ctx context.Context, root cid.Cid, piece *cid.Cid) 
 		if piece != nil && !piece.Equals(*p.PieceCID) {
 			continue
 		}
-		out = append(out, a.makeRetrievalQuery(ctx, p, root, piece, rm.QueryParams{}))
+
+		// do not rely on local data with respect to peer id
+		// fetch an up-to-date miner peer id from chain
+		mi, err := a.StateMinerInfo(ctx, p.Address, types.EmptyTSK)
+		if err != nil {
+			return nil, err
+		}
+		pp := rm.RetrievalPeer{
+			Address: p.Address,
+			ID:      *mi.PeerId,
+		}
+
+		out = append(out, a.makeRetrievalQuery(ctx, pp, root, piece, rm.QueryParams{}))
 	}
 
 	return out, nil
@@ -678,6 +692,8 @@ func readSubscribeEvents(ctx context.Context, dealID retrievalmarket.DealID, sub
 			return nil
 		case rm.DealStatusRejected:
 			return xerrors.Errorf("Retrieval Proposal Rejected: %s", state.Message)
+		case rm.DealStatusCancelled:
+			return xerrors.Errorf("Retrieval was cancelled externally: %s", state.Message)
 		case
 			rm.DealStatusDealNotFound,
 			rm.DealStatusErrored:
@@ -833,6 +849,83 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	}
 	finish(files.WriteTo(file, ref.Path))
 	return
+}
+
+func (a *API) ClientListRetrievals(ctx context.Context) ([]api.RetrievalInfo, error) {
+	deals, err := a.Retrieval.ListDeals()
+	if err != nil {
+		return nil, err
+	}
+	dataTransfersByID, err := a.transfersByID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]api.RetrievalInfo, 0, len(deals))
+	for _, v := range deals {
+		// Find the data transfer associated with this deal
+		var transferCh *api.DataTransferChannel
+		if v.ChannelID != nil {
+			if ch, ok := dataTransfersByID[*v.ChannelID]; ok {
+				transferCh = &ch
+			}
+		}
+		out = append(out, a.newRetrievalInfoWithTransfer(transferCh, v))
+	}
+	sort.Slice(out, func(a, b int) bool {
+		return out[a].ID < out[b].ID
+	})
+	return out, nil
+}
+
+func (a *API) ClientGetRetrievalUpdates(ctx context.Context) (<-chan api.RetrievalInfo, error) {
+	updates := make(chan api.RetrievalInfo)
+
+	unsub := a.Retrieval.SubscribeToEvents(func(_ rm.ClientEvent, deal rm.ClientDealState) {
+		updates <- a.newRetrievalInfo(ctx, deal)
+	})
+
+	go func() {
+		defer unsub()
+		<-ctx.Done()
+	}()
+
+	return updates, nil
+}
+
+func (a *API) newRetrievalInfoWithTransfer(ch *api.DataTransferChannel, deal rm.ClientDealState) api.RetrievalInfo {
+	return api.RetrievalInfo{
+		PayloadCID:        deal.PayloadCID,
+		ID:                deal.ID,
+		PieceCID:          deal.PieceCID,
+		PricePerByte:      deal.PricePerByte,
+		UnsealPrice:       deal.UnsealPrice,
+		Status:            deal.Status,
+		Message:           deal.Message,
+		Provider:          deal.Sender,
+		BytesReceived:     deal.TotalReceived,
+		BytesPaidFor:      deal.BytesPaidFor,
+		TotalPaid:         deal.FundsSpent,
+		TransferChannelID: deal.ChannelID,
+		DataTransfer:      ch,
+	}
+}
+
+func (a *API) newRetrievalInfo(ctx context.Context, v rm.ClientDealState) api.RetrievalInfo {
+	// Find the data transfer associated with this deal
+	var transferCh *api.DataTransferChannel
+	if v.ChannelID != nil {
+		state, err := a.DataTransfer.ChannelState(ctx, *v.ChannelID)
+
+		// Note: If there was an error just ignore it, as the data transfer may
+		// be not found if it's no longer active
+		if err == nil {
+			ch := api.NewDataTransferChannel(a.Host.ID(), state)
+			ch.Stages = state.Stages()
+			transferCh = &ch
+		}
+	}
+
+	return a.newRetrievalInfoWithTransfer(transferCh, v)
 }
 
 type multiStoreRetrievalStore struct {

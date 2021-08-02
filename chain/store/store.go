@@ -1,33 +1,24 @@
 package store
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"io"
 	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"golang.org/x/sync/errgroup"
 
-	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/minio/blake2b-simd"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-
-	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/metrics"
 
@@ -45,9 +36,6 @@ import (
 	"github.com/ipfs/go-datastore/query"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/ipld/go-car"
-	carutil "github.com/ipld/go-car/util"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"github.com/whyrusleeping/pubsub"
 	"golang.org/x/xerrors"
 )
@@ -131,10 +119,8 @@ type ChainStore struct {
 	reorgCh        chan<- reorg
 	reorgNotifeeCh chan ReorgNotifee
 
-	mmCache *lru.ARCCache
+	mmCache *lru.ARCCache // msg meta cache (mh.Messages -> secp, bls []cid)
 	tsCache *lru.ARCCache
-
-	vmcalls vm.SyscallBuilder
 
 	evtTypes [1]journal.EventType
 	journal  journal.Journal
@@ -143,7 +129,7 @@ type ChainStore struct {
 	wg       sync.WaitGroup
 }
 
-func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, vmcalls vm.SyscallBuilder, j journal.Journal) *ChainStore {
+func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, j journal.Journal) *ChainStore {
 	c, _ := lru.NewARC(DefaultMsgMetaCacheSize)
 	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
 	if j == nil {
@@ -163,7 +149,6 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 		tipsets:              make(map[abi.ChainEpoch][]cid.Cid),
 		mmCache:              c,
 		tsCache:              tsc,
-		vmcalls:              vmcalls,
 		cancelFn:             cancel,
 		journal:              j,
 	}
@@ -402,7 +387,20 @@ func (cs *ChainStore) PutTipSet(ctx context.Context, ts *types.TipSet) error {
 // internal state as our new head, if and only if it is heavier than the current
 // head and does not exceed the maximum fork length.
 func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipSet) error {
-	cs.heaviestLk.Lock()
+	for {
+		cs.heaviestLk.Lock()
+		if len(cs.reorgCh) < reorgChBuf/2 {
+			break
+		}
+		cs.heaviestLk.Unlock()
+		log.Errorf("reorg channel is heavily backlogged, waiting a bit before trying to take process new tipsets")
+		select {
+		case <-time.After(time.Second / 2):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+
 	defer cs.heaviestLk.Unlock()
 	w, err := cs.Weight(ctx, ts)
 	if err != nil {
@@ -527,8 +525,10 @@ type reorg struct {
 	new *types.TipSet
 }
 
+const reorgChBuf = 32
+
 func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNotifee) chan<- reorg {
-	out := make(chan reorg, 32)
+	out := make(chan reorg, reorgChBuf)
 	notifees := make([]ReorgNotifee, len(initialNotifees))
 	copy(notifees, initialNotifees)
 
@@ -970,27 +970,6 @@ func (cs *ChainStore) PersistBlockHeaders(b ...*types.BlockHeader) error {
 	return err
 }
 
-type storable interface {
-	ToStorageBlock() (block.Block, error)
-}
-
-func PutMessage(bs bstore.Blockstore, m storable) (cid.Cid, error) {
-	b, err := m.ToStorageBlock()
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	if err := bs.Put(b); err != nil {
-		return cid.Undef, err
-	}
-
-	return b.Cid(), nil
-}
-
-func (cs *ChainStore) PutMessage(m storable) (cid.Cid, error) {
-	return PutMessage(cs.chainBlockstore, m)
-}
-
 func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) {
 	// Hold lock for the whole function for now, if it becomes a problem we can
 	// fix pretty easily
@@ -1062,187 +1041,6 @@ func (cs *ChainStore) GetGenesis() (*types.BlockHeader, error) {
 	return cs.GetBlock(c)
 }
 
-func (cs *ChainStore) GetCMessage(c cid.Cid) (types.ChainMsg, error) {
-	m, err := cs.GetMessage(c)
-	if err == nil {
-		return m, nil
-	}
-	if err != bstore.ErrNotFound {
-		log.Warnf("GetCMessage: unexpected error getting unsigned message: %s", err)
-	}
-
-	return cs.GetSignedMessage(c)
-}
-
-func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
-	var msg *types.Message
-	err := cs.chainLocalBlockstore.View(c, func(b []byte) (err error) {
-		msg, err = types.DecodeMessage(b)
-		return err
-	})
-	return msg, err
-}
-
-func (cs *ChainStore) GetSignedMessage(c cid.Cid) (*types.SignedMessage, error) {
-	var msg *types.SignedMessage
-	err := cs.chainLocalBlockstore.View(c, func(b []byte) (err error) {
-		msg, err = types.DecodeSignedMessage(b)
-		return err
-	})
-	return msg, err
-}
-
-func (cs *ChainStore) readAMTCids(root cid.Cid) ([]cid.Cid, error) {
-	ctx := context.TODO()
-	// block headers use adt0, for now.
-	a, err := blockadt.AsArray(cs.ActorStore(ctx), root)
-	if err != nil {
-		return nil, xerrors.Errorf("amt load: %w", err)
-	}
-
-	var (
-		cids    []cid.Cid
-		cborCid cbg.CborCid
-	)
-	if err := a.ForEach(&cborCid, func(i int64) error {
-		c := cid.Cid(cborCid)
-		cids = append(cids, c)
-		return nil
-	}); err != nil {
-		return nil, xerrors.Errorf("failed to traverse amt: %w", err)
-	}
-
-	if uint64(len(cids)) != a.Length() {
-		return nil, xerrors.Errorf("found %d cids, expected %d", len(cids), a.Length())
-	}
-
-	return cids, nil
-}
-
-type BlockMessages struct {
-	Miner         address.Address
-	BlsMessages   []types.ChainMsg
-	SecpkMessages []types.ChainMsg
-	WinCount      int64
-}
-
-func (cs *ChainStore) BlockMsgsForTipset(ts *types.TipSet) ([]BlockMessages, error) {
-	applied := make(map[address.Address]uint64)
-
-	selectMsg := func(m *types.Message) (bool, error) {
-		// The first match for a sender is guaranteed to have correct nonce -- the block isn't valid otherwise
-		if _, ok := applied[m.From]; !ok {
-			applied[m.From] = m.Nonce
-		}
-
-		if applied[m.From] != m.Nonce {
-			return false, nil
-		}
-
-		applied[m.From]++
-
-		return true, nil
-	}
-
-	var out []BlockMessages
-	for _, b := range ts.Blocks() {
-
-		bms, sms, err := cs.MessagesForBlock(b)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to get messages for block: %w", err)
-		}
-
-		bm := BlockMessages{
-			Miner:         b.Miner,
-			BlsMessages:   make([]types.ChainMsg, 0, len(bms)),
-			SecpkMessages: make([]types.ChainMsg, 0, len(sms)),
-			WinCount:      b.ElectionProof.WinCount,
-		}
-
-		for _, bmsg := range bms {
-			b, err := selectMsg(bmsg.VMMessage())
-			if err != nil {
-				return nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
-			}
-
-			if b {
-				bm.BlsMessages = append(bm.BlsMessages, bmsg)
-			}
-		}
-
-		for _, smsg := range sms {
-			b, err := selectMsg(smsg.VMMessage())
-			if err != nil {
-				return nil, xerrors.Errorf("failed to decide whether to select message for block: %w", err)
-			}
-
-			if b {
-				bm.SecpkMessages = append(bm.SecpkMessages, smsg)
-			}
-		}
-
-		out = append(out, bm)
-	}
-
-	return out, nil
-}
-
-func (cs *ChainStore) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
-	bmsgs, err := cs.BlockMsgsForTipset(ts)
-	if err != nil {
-		return nil, err
-	}
-
-	var out []types.ChainMsg
-	for _, bm := range bmsgs {
-		for _, blsm := range bm.BlsMessages {
-			out = append(out, blsm)
-		}
-
-		for _, secm := range bm.SecpkMessages {
-			out = append(out, secm)
-		}
-	}
-
-	return out, nil
-}
-
-type mmCids struct {
-	bls   []cid.Cid
-	secpk []cid.Cid
-}
-
-func (cs *ChainStore) ReadMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error) {
-	o, ok := cs.mmCache.Get(mmc)
-	if ok {
-		mmcids := o.(*mmCids)
-		return mmcids.bls, mmcids.secpk, nil
-	}
-
-	cst := cbor.NewCborStore(cs.chainLocalBlockstore)
-	var msgmeta types.MsgMeta
-	if err := cst.Get(context.TODO(), mmc, &msgmeta); err != nil {
-		return nil, nil, xerrors.Errorf("failed to load msgmeta (%s): %w", mmc, err)
-	}
-
-	blscids, err := cs.readAMTCids(msgmeta.BlsMessages)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("loading bls message cids for block: %w", err)
-	}
-
-	secpkcids, err := cs.readAMTCids(msgmeta.SecpkMessages)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("loading secpk message cids for block: %w", err)
-	}
-
-	cs.mmCache.Add(mmc, &mmCids{
-		bls:   blscids,
-		secpk: secpkcids,
-	})
-
-	return blscids, secpkcids, nil
-}
-
 // GetPath returns the sequence of atomic head change operations that
 // need to be applied in order to switch the head of the chain from the `from`
 // tipset to the `to` tipset.
@@ -1270,71 +1068,6 @@ func (cs *ChainStore) GetPath(ctx context.Context, from types.TipSetKey, to type
 	return path, nil
 }
 
-func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
-	blscids, secpkcids, err := cs.ReadMsgMetaCids(b.Messages)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	blsmsgs, err := cs.LoadMessagesFromCids(blscids)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("loading bls messages for block: %w", err)
-	}
-
-	secpkmsgs, err := cs.LoadSignedMessagesFromCids(secpkcids)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("loading secpk messages for block: %w", err)
-	}
-
-	return blsmsgs, secpkmsgs, nil
-}
-
-func (cs *ChainStore) GetParentReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
-	ctx := context.TODO()
-	// block headers use adt0, for now.
-	a, err := blockadt.AsArray(cs.ActorStore(ctx), b.ParentMessageReceipts)
-	if err != nil {
-		return nil, xerrors.Errorf("amt load: %w", err)
-	}
-
-	var r types.MessageReceipt
-	if found, err := a.Get(uint64(i), &r); err != nil {
-		return nil, err
-	} else if !found {
-		return nil, xerrors.Errorf("failed to find receipt %d", i)
-	}
-
-	return &r, nil
-}
-
-func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*types.Message, error) {
-	msgs := make([]*types.Message, 0, len(cids))
-	for i, c := range cids {
-		m, err := cs.GetMessage(c)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", c, i, err)
-		}
-
-		msgs = append(msgs, m)
-	}
-
-	return msgs, nil
-}
-
-func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.SignedMessage, error) {
-	msgs := make([]*types.SignedMessage, 0, len(cids))
-	for i, c := range cids {
-		m, err := cs.GetSignedMessage(c)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", c, i, err)
-		}
-
-		msgs = append(msgs, m)
-	}
-
-	return msgs, nil
-}
-
 // ChainBlockstore returns the chain blockstore. Currently the chain and state
 // // stores are both backed by the same physical store, albeit with different
 // // caching policies, but in the future they will segregate.
@@ -1357,10 +1090,6 @@ func (cs *ChainStore) ActorStore(ctx context.Context) adt.Store {
 	return ActorStore(ctx, cs.stateBlockstore)
 }
 
-func (cs *ChainStore) VMSys() vm.SyscallBuilder {
-	return cs.vmcalls
-}
-
 func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 	var out []*types.FullBlock
 
@@ -1381,92 +1110,6 @@ func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
 		out = append(out, fb)
 	}
 	return NewFullTipSet(out), nil
-}
-
-func DrawRandomness(rbase []byte, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	h := blake2b.New256()
-	if err := binary.Write(h, binary.BigEndian, int64(pers)); err != nil {
-		return nil, xerrors.Errorf("deriving randomness: %w", err)
-	}
-	VRFDigest := blake2b.Sum256(rbase)
-	_, err := h.Write(VRFDigest[:])
-	if err != nil {
-		return nil, xerrors.Errorf("hashing VRFDigest: %w", err)
-	}
-	if err := binary.Write(h, binary.BigEndian, round); err != nil {
-		return nil, xerrors.Errorf("deriving randomness: %w", err)
-	}
-	_, err = h.Write(entropy)
-	if err != nil {
-		return nil, xerrors.Errorf("hashing entropy: %w", err)
-	}
-
-	return h.Sum(nil), nil
-}
-
-func (cs *ChainStore) GetBeaconRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	_, span := trace.StartSpan(ctx, "store.GetBeaconRandomness")
-	defer span.End()
-	span.AddAttributes(trace.Int64Attribute("round", int64(round)))
-
-	ts, err := cs.LoadTipSet(types.NewTipSetKey(blks...))
-	if err != nil {
-		return nil, err
-	}
-
-	if round > ts.Height() {
-		return nil, xerrors.Errorf("cannot draw randomness from the future")
-	}
-
-	searchHeight := round
-	if searchHeight < 0 {
-		searchHeight = 0
-	}
-
-	randTs, err := cs.GetTipsetByHeight(ctx, searchHeight, ts, true)
-	if err != nil {
-		return nil, err
-	}
-
-	be, err := cs.GetLatestBeaconEntry(randTs)
-	if err != nil {
-		return nil, err
-	}
-
-	// if at (or just past -- for null epochs) appropriate epoch
-	// or at genesis (works for negative epochs)
-	return DrawRandomness(be.Data, pers, round, entropy)
-}
-
-func (cs *ChainStore) GetChainRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	_, span := trace.StartSpan(ctx, "store.GetChainRandomness")
-	defer span.End()
-	span.AddAttributes(trace.Int64Attribute("round", int64(round)))
-
-	ts, err := cs.LoadTipSet(types.NewTipSetKey(blks...))
-	if err != nil {
-		return nil, err
-	}
-
-	if round > ts.Height() {
-		return nil, xerrors.Errorf("cannot draw randomness from the future")
-	}
-
-	searchHeight := round
-	if searchHeight < 0 {
-		searchHeight = 0
-	}
-
-	randTs, err := cs.GetTipsetByHeight(ctx, searchHeight, ts, true)
-	if err != nil {
-		return nil, err
-	}
-
-	mtb := randTs.MinTicketBlock()
-
-	// if at (or just past -- for null epochs) appropriate epoch
-	// or at genesis (works for negative epochs)
-	return DrawRandomness(mtb.Ticket.VRFProof, pers, round, entropy)
 }
 
 // GetTipsetByHeight returns the tipset on the chain behind 'ts' at the given
@@ -1504,245 +1147,4 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 	}
 
 	return cs.LoadTipSet(lbts.Parents())
-}
-
-func recurseLinks(bs bstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
-	if root.Prefix().Codec != cid.DagCBOR {
-		return in, nil
-	}
-
-	data, err := bs.Get(root)
-	if err != nil {
-		return nil, xerrors.Errorf("recurse links get (%s) failed: %w", root, err)
-	}
-
-	var rerr error
-	err = cbg.ScanForLinks(bytes.NewReader(data.RawData()), func(c cid.Cid) {
-		if rerr != nil {
-			// No error return on ScanForLinks :(
-			return
-		}
-
-		// traversed this already...
-		if !walked.Visit(c) {
-			return
-		}
-
-		in = append(in, c)
-		var err error
-		in, err = recurseLinks(bs, walked, c, in)
-		if err != nil {
-			rerr = err
-		}
-	})
-	if err != nil {
-		return nil, xerrors.Errorf("scanning for links failed: %w", err)
-	}
-
-	return in, rerr
-}
-
-func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, w io.Writer) error {
-	h := &car.CarHeader{
-		Roots:   ts.Cids(),
-		Version: 1,
-	}
-
-	if err := car.WriteHeader(h, w); err != nil {
-		return xerrors.Errorf("failed to write car header: %s", err)
-	}
-
-	unionBs := bstore.Union(cs.stateBlockstore, cs.chainBlockstore)
-	return cs.WalkSnapshot(ctx, ts, inclRecentRoots, skipOldMsgs, true, func(c cid.Cid) error {
-		blk, err := unionBs.Get(c)
-		if err != nil {
-			return xerrors.Errorf("writing object to car, bs.Get: %w", err)
-		}
-
-		if err := carutil.LdWrite(w, c.Bytes(), blk.RawData()); err != nil {
-			return xerrors.Errorf("failed to write block to car output: %w", err)
-		}
-
-		return nil
-	})
-}
-
-func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs, skipMsgReceipts bool, cb func(cid.Cid) error) error {
-	if ts == nil {
-		ts = cs.GetHeaviestTipSet()
-	}
-
-	seen := cid.NewSet()
-	walked := cid.NewSet()
-
-	blocksToWalk := ts.Cids()
-	currentMinHeight := ts.Height()
-
-	walkChain := func(blk cid.Cid) error {
-		if !seen.Visit(blk) {
-			return nil
-		}
-
-		if err := cb(blk); err != nil {
-			return err
-		}
-
-		data, err := cs.chainBlockstore.Get(blk)
-		if err != nil {
-			return xerrors.Errorf("getting block: %w", err)
-		}
-
-		var b types.BlockHeader
-		if err := b.UnmarshalCBOR(bytes.NewBuffer(data.RawData())); err != nil {
-			return xerrors.Errorf("unmarshaling block header (cid=%s): %w", blk, err)
-		}
-
-		if currentMinHeight > b.Height {
-			currentMinHeight = b.Height
-			if currentMinHeight%builtin.EpochsInDay == 0 {
-				log.Infow("export", "height", currentMinHeight)
-			}
-		}
-
-		var cids []cid.Cid
-		if !skipOldMsgs || b.Height > ts.Height()-inclRecentRoots {
-			if walked.Visit(b.Messages) {
-				mcids, err := recurseLinks(cs.chainBlockstore, walked, b.Messages, []cid.Cid{b.Messages})
-				if err != nil {
-					return xerrors.Errorf("recursing messages failed: %w", err)
-				}
-				cids = mcids
-			}
-		}
-
-		if b.Height > 0 {
-			for _, p := range b.Parents {
-				blocksToWalk = append(blocksToWalk, p)
-			}
-		} else {
-			// include the genesis block
-			cids = append(cids, b.Parents...)
-		}
-
-		out := cids
-
-		if b.Height == 0 || b.Height > ts.Height()-inclRecentRoots {
-			if walked.Visit(b.ParentStateRoot) {
-				cids, err := recurseLinks(cs.stateBlockstore, walked, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
-				if err != nil {
-					return xerrors.Errorf("recursing genesis state failed: %w", err)
-				}
-
-				out = append(out, cids...)
-			}
-
-			if !skipMsgReceipts && walked.Visit(b.ParentMessageReceipts) {
-				out = append(out, b.ParentMessageReceipts)
-			}
-		}
-
-		for _, c := range out {
-			if seen.Visit(c) {
-				if c.Prefix().Codec != cid.DagCBOR {
-					continue
-				}
-
-				if err := cb(c); err != nil {
-					return err
-				}
-
-			}
-		}
-
-		return nil
-	}
-
-	log.Infow("export started")
-	exportStart := build.Clock.Now()
-
-	for len(blocksToWalk) > 0 {
-		next := blocksToWalk[0]
-		blocksToWalk = blocksToWalk[1:]
-		if err := walkChain(next); err != nil {
-			return xerrors.Errorf("walk chain failed: %w", err)
-		}
-	}
-
-	log.Infow("export finished", "duration", build.Clock.Now().Sub(exportStart).Seconds())
-
-	return nil
-}
-
-func (cs *ChainStore) Import(r io.Reader) (*types.TipSet, error) {
-	// TODO: writing only to the state blockstore is incorrect.
-	//  At this time, both the state and chain blockstores are backed by the
-	//  universal store. When we physically segregate the stores, we will need
-	//  to route state objects to the state blockstore, and chain objects to
-	//  the chain blockstore.
-	header, err := car.LoadCar(cs.StateBlockstore(), r)
-	if err != nil {
-		return nil, xerrors.Errorf("loadcar failed: %w", err)
-	}
-
-	root, err := cs.LoadTipSet(types.NewTipSetKey(header.Roots...))
-	if err != nil {
-		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
-	}
-
-	return root, nil
-}
-
-func (cs *ChainStore) GetLatestBeaconEntry(ts *types.TipSet) (*types.BeaconEntry, error) {
-	cur := ts
-	for i := 0; i < 20; i++ {
-		cbe := cur.Blocks()[0].BeaconEntries
-		if len(cbe) > 0 {
-			return &cbe[len(cbe)-1], nil
-		}
-
-		if cur.Height() == 0 {
-			return nil, xerrors.Errorf("made it back to genesis block without finding beacon entry")
-		}
-
-		next, err := cs.LoadTipSet(cur.Parents())
-		if err != nil {
-			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
-		}
-		cur = next
-	}
-
-	if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
-		return &types.BeaconEntry{
-			Data: []byte{9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9},
-		}, nil
-	}
-
-	return nil, xerrors.Errorf("found NO beacon entries in the 20 latest tipsets")
-}
-
-type chainRand struct {
-	cs   *ChainStore
-	blks []cid.Cid
-}
-
-func NewChainRand(cs *ChainStore, blks []cid.Cid) vm.Rand {
-	return &chainRand{
-		cs:   cs,
-		blks: blks,
-	}
-}
-
-func (cr *chainRand) GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return cr.cs.GetChainRandomness(ctx, cr.blks, pers, round, entropy)
-}
-
-func (cr *chainRand) GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return cr.cs.GetBeaconRandomness(ctx, cr.blks, pers, round, entropy)
-}
-
-func (cs *ChainStore) GetTipSetFromKey(tsk types.TipSetKey) (*types.TipSet, error) {
-	if tsk.IsEmpty() {
-		return cs.GetHeaviestTipSet(), nil
-	}
-	return cs.LoadTipSet(tsk)
 }

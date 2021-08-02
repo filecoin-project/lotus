@@ -12,7 +12,8 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/ipfs/go-cid"
 
-	msig{{.latestVersion}} "github.com/filecoin-project/specs-actors/v4/actors/builtin/multisig"
+	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
+	msig{{.latestVersion}} "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/builtin/multisig"
 {{range .versions}}
 	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
 {{end}}
@@ -79,7 +80,7 @@ type State interface {
 	GetState() interface{}
 }
 
-type Transaction = msig{{.latestVersion}}.Transaction
+type Transaction = msig0.Transaction
 
 var Methods = builtin{{.latestVersion}}.MethodsMultisig
 
@@ -88,7 +89,7 @@ func Message(version actors.Version, from address.Address) MessageBuilder {
 {{range .versions}}
 	case actors.Version{{.}}:
 		return message{{.}}{{"{"}}{{if (ge . 2)}}message0{from}{{else}}from{{end}}}
-{{end}} default:
+{{end}}	default:
 		panic(fmt.Sprintf("unsupported actors version: %d", version))
 	}
 }
@@ -114,6 +115,7 @@ type MessageBuilder interface {
 type ProposalHashData = msig{{.latestVersion}}.ProposalHashData
 type ProposeReturn = msig{{.latestVersion}}.ProposeReturn
 type ProposeParams = msig{{.latestVersion}}.ProposeParams
+type ApproveReturn = msig{{.latestVersion}}.ApproveReturn
 
 func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
 	params := msig{{.latestVersion}}.TxnIDParams{ID: msig{{.latestVersion}}.TxnID(id)}

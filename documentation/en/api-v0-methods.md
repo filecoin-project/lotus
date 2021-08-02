@@ -17,6 +17,7 @@
   * [ChainGetBlockMessages](#ChainGetBlockMessages)
   * [ChainGetGenesis](#ChainGetGenesis)
   * [ChainGetMessage](#ChainGetMessage)
+  * [ChainGetMessagesInTipset](#ChainGetMessagesInTipset)
   * [ChainGetNode](#ChainGetNode)
   * [ChainGetParentMessages](#ChainGetParentMessages)
   * [ChainGetParentReceipts](#ChainGetParentReceipts)
@@ -44,11 +45,13 @@
   * [ClientGetDealInfo](#ClientGetDealInfo)
   * [ClientGetDealStatus](#ClientGetDealStatus)
   * [ClientGetDealUpdates](#ClientGetDealUpdates)
+  * [ClientGetRetrievalUpdates](#ClientGetRetrievalUpdates)
   * [ClientHasLocal](#ClientHasLocal)
   * [ClientImport](#ClientImport)
   * [ClientListDataTransfers](#ClientListDataTransfers)
   * [ClientListDeals](#ClientListDeals)
   * [ClientListImports](#ClientListImports)
+  * [ClientListRetrievals](#ClientListRetrievals)
   * [ClientMinerQueryOffer](#ClientMinerQueryOffer)
   * [ClientQueryAsk](#ClientQueryAsk)
   * [ClientRemoveImport](#ClientRemoveImport)
@@ -277,7 +280,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131328,
+  "APIVersion": 131329,
   "BlockDelay": 42
 }
 ```
@@ -530,6 +533,28 @@ Response:
   }
 }
 ```
+
+### ChainGetMessagesInTipset
+ChainGetMessagesInTipset returns message stores in current tipset
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `null`
 
 ### ChainGetNode
 
@@ -1197,6 +1222,54 @@ Response:
 }
 ```
 
+### ClientGetRetrievalUpdates
+ClientGetRetrievalUpdates returns status of updated retrieval deals
+
+
+Perms: write
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "PayloadCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "ID": 5,
+  "PieceCID": null,
+  "PricePerByte": "0",
+  "UnsealPrice": "0",
+  "Status": 0,
+  "Message": "string value",
+  "Provider": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "BytesReceived": 42,
+  "BytesPaidFor": 42,
+  "TotalPaid": "0",
+  "TransferChannelID": {
+    "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "ID": 3
+  },
+  "DataTransfer": {
+    "TransferID": 3,
+    "Status": 1,
+    "BaseCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "IsInitiator": true,
+    "IsSender": true,
+    "Voucher": "string value",
+    "Message": "string value",
+    "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Transferred": 42,
+    "Stages": {
+      "Stages": null
+    }
+  }
+}
+```
+
 ### ClientHasLocal
 ClientHasLocal indicates whether a certain CID is locally stored.
 
@@ -1270,6 +1343,17 @@ Inputs: `null`
 
 Response: `null`
 
+### ClientListRetrievals
+ClientQueryAsk returns a signed StorageAsk from the specified miner.
+ClientListRetrievals returns information about retrievals made by the local client
+
+
+Perms: write
+
+Inputs: `null`
+
+Response: `null`
+
 ### ClientMinerQueryOffer
 ClientMinerQueryOffer returns a QueryOffer for the specific miner and file.
 
@@ -1310,7 +1394,6 @@ Response:
 ```
 
 ### ClientQueryAsk
-ClientQueryAsk returns a signed StorageAsk from the specified miner.
 
 
 Perms: read
@@ -2445,7 +2528,7 @@ using both transaction ID and a hash of the parameters used in the
 proposal. This method of approval can be used to ensure you only approve
 exactly the transaction you think you are.
 It takes the following params: <multisig address>, <proposed message ID>, <proposer address>, <recipient address>, <value to transfer>,
-<sender address of the approve msg>, <method to call in the proposed message>, <params to include in the proposed message>
+<sender address of the approve msg>, <method to call in the approved message>, <params to include in the proposed message>
 
 
 Perms: sign
@@ -2781,8 +2864,8 @@ Inputs: `null`
 Response:
 ```json
 {
-  "Addrs": null,
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Addrs": []
 }
 ```
 
@@ -2931,8 +3014,8 @@ Inputs:
 ```json
 [
   {
-    "Addrs": null,
-    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Addrs": []
   }
 ]
 ```
@@ -2982,8 +3065,8 @@ Inputs:
 Response:
 ```json
 {
-  "Addrs": null,
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Addrs": []
 }
 ```
 
@@ -4551,7 +4634,7 @@ Inputs:
 ]
 ```
 
-Response: `12`
+Response: `1300`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.

@@ -4,32 +4,29 @@ import (
 	"context"
 	"fmt"
 	"net"
-	"net/http"
 	"os"
 
-	"contrib.go.opencensus.io/exporter/prometheus"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/gateway"
-	"github.com/gorilla/mux"
-	logging "github.com/ipfs/go-log/v2"
-	promclient "github.com/prometheus/client_golang/prometheus"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats/view"
-	"go.opencensus.io/tag"
+	"golang.org/x/xerrors"
+
+	logging "github.com/ipfs/go-log/v2"
+
+	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-state-types/abi"
+
+	manet "github.com/multiformats/go-multiaddr/net"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-jsonrpc"
-
-	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
-	"github.com/filecoin-project/lotus/api/v0api"
-	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/gateway"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/node"
 )
 
 var log = logging.Logger("gateway")
@@ -140,10 +137,6 @@ var runCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		log.Info("Starting lotus gateway")
 
-		ctx := lcli.ReqContext(cctx)
-		ctx, cancel := context.WithCancel(ctx)
-		defer cancel()
-
 		// Register all metric views
 		if err := view.Register(
 			metrics.ChainNodeViews...,
@@ -157,70 +150,44 @@ var runCmd = &cli.Command{
 		}
 		defer closer()
 
-		address := cctx.String("listen")
-		mux := mux.NewRouter()
+		var (
+			lookbackCap  = cctx.Duration("api-max-lookback")
+			address      = cctx.String("listen")
+			waitLookback = abi.ChainEpoch(cctx.Int64("api-wait-lookback-limit"))
+		)
 
-		log.Info("Setting up API endpoint at " + address)
-
-		serveRpc := func(path string, hnd interface{}) {
-			serverOptions := make([]jsonrpc.ServerOption, 0)
-			if maxRequestSize := cctx.Int("api-max-req-size"); maxRequestSize != 0 {
-				serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(int64(maxRequestSize)))
-			}
-			rpcServer := jsonrpc.NewServer(serverOptions...)
-			rpcServer.Register("Filecoin", hnd)
-
-			mux.Handle(path, rpcServer)
+		serverOptions := make([]jsonrpc.ServerOption, 0)
+		if maxRequestSize := cctx.Int("api-max-req-size"); maxRequestSize != 0 {
+			serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(int64(maxRequestSize)))
 		}
 
-		lookbackCap := cctx.Duration("api-max-lookback")
+		log.Info("setting up API endpoint at " + address)
 
-		waitLookback := abi.ChainEpoch(cctx.Int64("api-wait-lookback-limit"))
+		addr, err := net.ResolveTCPAddr("tcp", address)
+		if err != nil {
+			return xerrors.Errorf("failed to resolve endpoint address: %w", err)
+		}
 
-		ma := metrics.MetricedGatewayAPI(gateway.NewNode(api, lookbackCap, waitLookback))
+		maddr, err := manet.FromNetAddr(addr)
+		if err != nil {
+			return xerrors.Errorf("failed to convert endpoint address to multiaddr: %w", err)
+		}
 
-		serveRpc("/rpc/v1", ma)
-		serveRpc("/rpc/v0", lapi.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), ma))
+		gwapi := gateway.NewNode(api, lookbackCap, waitLookback)
+		h, err := gateway.Handler(gwapi, serverOptions...)
+		if err != nil {
+			return xerrors.Errorf("failed to set up gateway HTTP handler")
+		}
 
-		registry := promclient.DefaultRegisterer.(*promclient.Registry)
-		exporter, err := prometheus.NewExporter(prometheus.Options{
-			Registry:  registry,
-			Namespace: "lotus_gw",
+		stopFunc, err := node.ServeRPC(h, "lotus-gateway", maddr)
+		if err != nil {
+			return xerrors.Errorf("failed to serve rpc endpoint: %w", err)
+		}
+
+		<-node.MonitorShutdown(nil, node.ShutdownHandler{
+			Component: "rpc",
+			StopFunc:  stopFunc,
 		})
-		if err != nil {
-			return err
-		}
-		mux.Handle("/debug/metrics", exporter)
-
-		mux.PathPrefix("/").Handler(http.DefaultServeMux)
-
-		/*ah := &auth.Handler{
-			Verify: nodeApi.AuthVerify,
-			Next:   mux.ServeHTTP,
-		}*/
-
-		srv := &http.Server{
-			Handler: mux,
-			BaseContext: func(listener net.Listener) context.Context {
-				ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-gateway"))
-				return ctx
-			},
-		}
-
-		go func() {
-			<-ctx.Done()
-			log.Warn("Shutting down...")
-			if err := srv.Shutdown(context.TODO()); err != nil {
-				log.Errorf("shutting down RPC server failed: %s", err)
-			}
-			log.Warn("Graceful shutdown successful")
-		}()
-
-		nl, err := net.Listen("tcp", address)
-		if err != nil {
-			return err
-		}
-
-		return srv.Serve(nl)
+		return nil
 	},
 }

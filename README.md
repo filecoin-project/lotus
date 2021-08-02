@@ -18,7 +18,9 @@ Lotus is an implementation of the Filecoin Distributed Storage Network. For more
 
 ## Building & Documentation
 
-For instructions on how to build, install and setup lotus, please visit [https://docs.filecoin.io/get-started/lotus](https://docs.filecoin.io/get-started/lotus/).
+> Note: The default `master` branch is the dev branch, please use with caution. For the latest stable version, checkout the most recent [`Latest release`](https://github.com/filecoin-project/lotus/releases).
+ 
+For complete instructions on how to build, install and setup lotus, please visit [https://docs.filecoin.io/get-started/lotus](https://docs.filecoin.io/get-started/lotus/). Basic build instructions can be found further down in this readme.
 
 ## Reporting a Vulnerability
 
@@ -49,6 +51,88 @@ When implementing a change:
 6. Add tests.
 7. Title the PR in a meaningful way and describe the rationale and the thought process in the PR description.
 8. Write clean, thoughtful, and detailed [commit messages](https://chris.beams.io/posts/git-commit/). This is even more important than the PR description, because commit messages are stored _inside_ the Git history. One good rule is: if you are happy posting the commit message as the PR description, then it's a good commit message.
+
+## Basic Build Instructions
+**System-specific Software Dependencies**:
+
+Building Lotus requires some system dependencies, usually provided by your distribution.
+
+Ubuntu/Debian:
+```
+sudo apt install mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y && sudo apt upgrade -y
+```
+
+Fedora:
+```
+sudo dnf -y install gcc make git bzr jq pkgconfig mesa-libOpenCL mesa-libOpenCL-devel opencl-headers ocl-icd ocl-icd-devel clang llvm wget hwloc libhwloc-dev
+```
+
+For other distributions you can find the required dependencies [here.](https://docs.filecoin.io/get-started/lotus/installation/#system-specific) For instructions specific to macOS, you can find them [here.](https://docs.filecoin.io/get-started/lotus/installation/#macos)
+
+#### Go
+
+To build Lotus, you need a working installation of [Go 1.16.4 or higher](https://golang.org/dl/):
+
+```bash
+wget -c https://golang.org/dl/go1.16.4.linux-amd64.tar.gz -O - | sudo tar -xz -C /usr/local
+```
+
+**TIP:**
+You'll need to add `/usr/local/go/bin` to your path. For most Linux distributions you can run something like:
+
+```shell
+echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.bashrc && source ~/.bashrc
+```
+
+See the [official Golang installation instructions](https://golang.org/doc/install) if you get stuck.
+
+### Build and install Lotus
+
+Once all the dependencies are installed, you can build and install the Lotus suite (`lotus`, `lotus-miner`, and `lotus-worker`).
+
+1. Clone the repository:
+
+   ```sh
+   git clone https://github.com/filecoin-project/lotus.git
+   cd lotus/
+   ```
+   
+Note: The default branch `master` is the dev branch where the latest new features, bug fixes and improvement are in. However, if you want to run lotus on Filecoin mainnet and want to run a production-ready lotus, get the latest release[ here](https://github.com/filecoin-project/lotus/releases).
+
+2. To join mainnet, checkout the [latest release](https://github.com/filecoin-project/lotus/releases).
+
+   If you are changing networks from a previous Lotus installation or there has been a network reset, read the [Switch networks guide](https://docs.filecoin.io/get-started/lotus/switch-networks/) before proceeding.
+
+   For networks other than mainnet, look up the current branch or tag/commit for the network you want to join in the [Filecoin networks dashboard](https://network.filecoin.io), then build Lotus for your specific network below.
+
+   ```sh
+   git checkout <tag_or_branch>
+   # For example:
+   git checkout <vX.X.X> # tag for a release
+   ```
+
+   Currently, the latest code on the _master_ branch corresponds to mainnet.
+
+3. If you are in China, see "[Lotus: tips when running in China](https://docs.filecoin.io/get-started/lotus/tips-running-in-china/)".
+4. This build instruction uses the prebuilt proofs binaries. If you want to build the proof binaries from source check the [complete instructions](https://docs.filecoin.io/get-started/lotus/installation/#build-and-install-lotus). Note, if you are building the proof binaries from source, [installing rustup](https://docs.filecoin.io/get-started/lotus/installation/#rustup) is also needed.
+
+5. Build and install Lotus:
+
+   ```sh
+   make clean all #mainnet
+
+   # Or to join a testnet or devnet:
+   make clean calibnet # Calibration with min 32GiB sectors
+   make clean nerpanet # Nerpa with min 512MiB sectors
+
+   sudo make install
+   ```
+
+   This will put `lotus`, `lotus-miner` and `lotus-worker` in `/usr/local/bin`.
+
+   `lotus` will use the `$HOME/.lotus` folder by default for storage (configuration, chain data, wallets, etc). See [advanced options](https://docs.filecoin.io/get-started/lotus/configuration-and-advanced-usage/) for information on how to customize the Lotus folder.
+
+6. You should now have Lotus installed. You can now [start the Lotus daemon and sync the chain](https://docs.filecoin.io/get-started/lotus/installation/#start-the-lotus-daemon-and-sync-the-chain).
 
 ## License
 

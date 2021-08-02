@@ -427,7 +427,7 @@ func TestBasicMessageSelection(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	msgs, err := mp.SelectMessages(ts, 1.0)
+	msgs, err := mp.SelectMessages(context.Background(), ts, 1.0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -464,7 +464,7 @@ func TestBasicMessageSelection(t *testing.T) {
 	tma.applyBlock(t, block2)
 
 	// we should have no pending messages in the mpool
-	pend, _ := mp.Pending()
+	pend, _ := mp.Pending(context.TODO())
 	if len(pend) != 0 {
 		t.Fatalf("expected no pending messages, but got %d", len(pend))
 	}
@@ -495,7 +495,7 @@ func TestBasicMessageSelection(t *testing.T) {
 	tma.setStateNonce(a1, 10)
 	tma.setStateNonce(a2, 10)
 
-	msgs, err = mp.SelectMessages(ts3, 1.0)
+	msgs, err = mp.SelectMessages(context.Background(), ts3, 1.0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -569,7 +569,7 @@ func TestMessageSelectionTrimming(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	msgs, err := mp.SelectMessages(ts, 1.0)
+	msgs, err := mp.SelectMessages(context.Background(), ts, 1.0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -633,7 +633,7 @@ func TestPriorityMessageSelection(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	msgs, err := mp.SelectMessages(ts, 1.0)
+	msgs, err := mp.SelectMessages(context.Background(), ts, 1.0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -712,7 +712,7 @@ func TestPriorityMessageSelection2(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	msgs, err := mp.SelectMessages(ts, 1.0)
+	msgs, err := mp.SelectMessages(context.Background(), ts, 1.0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -782,7 +782,7 @@ func TestPriorityMessageSelection3(t *testing.T) {
 	}
 
 	// test greedy selection
-	msgs, err := mp.SelectMessages(ts, 1.0)
+	msgs, err := mp.SelectMessages(context.Background(), ts, 1.0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -805,7 +805,7 @@ func TestPriorityMessageSelection3(t *testing.T) {
 	}
 
 	// test optimal selection
-	msgs, err = mp.SelectMessages(ts, 0.1)
+	msgs, err = mp.SelectMessages(context.Background(), ts, 0.1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -872,7 +872,7 @@ func TestOptimalMessageSelection1(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	msgs, err := mp.SelectMessages(ts, 0.25)
+	msgs, err := mp.SelectMessages(context.Background(), ts, 0.25)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -941,7 +941,7 @@ func TestOptimalMessageSelection2(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
-	msgs, err := mp.SelectMessages(ts, 0.1)
+	msgs, err := mp.SelectMessages(context.Background(), ts, 0.1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1020,7 +1020,7 @@ func TestOptimalMessageSelection3(t *testing.T) {
 		}
 	}
 
-	msgs, err := mp.SelectMessages(ts, 0.1)
+	msgs, err := mp.SelectMessages(context.Background(), ts, 0.1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1108,7 +1108,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 	logging.SetLogLevel("messagepool", "error")
 
 	// 1. greedy selection
-	greedyMsgs, err := mp.selectMessagesGreedy(ts, ts)
+	greedyMsgs, err := mp.selectMessagesGreedy(context.Background(), ts, ts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1137,7 +1137,7 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 		var bestMsgs []*types.SignedMessage
 		for j := 0; j < nMiners; j++ {
 			tq := rng.Float64()
-			msgs, err := mp.SelectMessages(ts, tq)
+			msgs, err := mp.SelectMessages(context.Background(), ts, tq)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -1396,7 +1396,7 @@ readLoop:
 	minGasLimit := int64(0.9 * float64(build.BlockGasLimit))
 
 	// greedy first
-	selected, err := mp.SelectMessages(ts, 1.0)
+	selected, err := mp.SelectMessages(context.Background(), ts, 1.0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1410,7 +1410,7 @@ readLoop:
 	}
 
 	// high quality ticket
-	selected, err = mp.SelectMessages(ts, .8)
+	selected, err = mp.SelectMessages(context.Background(), ts, .8)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1424,7 +1424,7 @@ readLoop:
 	}
 
 	// mid quality ticket
-	selected, err = mp.SelectMessages(ts, .4)
+	selected, err = mp.SelectMessages(context.Background(), ts, .4)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1438,7 +1438,7 @@ readLoop:
 	}
 
 	// low quality ticket
-	selected, err = mp.SelectMessages(ts, .1)
+	selected, err = mp.SelectMessages(context.Background(), ts, .1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1452,7 +1452,7 @@ readLoop:
 	}
 
 	// very low quality ticket
-	selected, err = mp.SelectMessages(ts, .01)
+	selected, err = mp.SelectMessages(context.Background(), ts, .01)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -23,6 +23,8 @@ import (
 
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 
+	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -46,6 +48,10 @@ func init() {
 	builtin.RegisterActorState(builtin4.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load4(store, root)
 	})
+
+	builtin.RegisterActorState(builtin5.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load5(store, root)
+	})
 }
 
 // Load returns an abstract copy of payment channel state, irregardless of actor version
@@ -63,6 +69,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	case builtin4.PaymentChannelActorCodeID:
 		return load4(store, act.Head)
+
+	case builtin5.PaymentChannelActorCodeID:
+		return load5(store, act.Head)
 
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
@@ -83,6 +92,9 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 	case actors.Version4:
 		return make4(store)
 
+	case actors.Version5:
+		return make5(store)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -101,6 +113,9 @@ func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	case actors.Version4:
 		return builtin4.PaymentChannelActorCodeID, nil
+
+	case actors.Version5:
+		return builtin5.PaymentChannelActorCodeID, nil
 
 	}
 
@@ -155,7 +170,7 @@ func DecodeSignedVoucher(s string) (*SignedVoucher, error) {
 	return &sv, nil
 }
 
-var Methods = builtin4.MethodsPaych
+var Methods = builtin5.MethodsPaych
 
 func Message(version actors.Version, from address.Address) MessageBuilder {
 	switch version {
@@ -171,6 +186,9 @@ func Message(version actors.Version, from address.Address) MessageBuilder {
 
 	case actors.Version4:
 		return message4{from}
+
+	case actors.Version5:
+		return message5{from}
 
 	default:
 		panic(fmt.Sprintf("unsupported actors version: %d", version))

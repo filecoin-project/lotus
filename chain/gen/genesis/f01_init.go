@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
@@ -181,8 +182,9 @@ func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, i
 	}
 
 	act := &types.Actor{
-		Code: actcid,
-		Head: statecid,
+		Code:    actcid,
+		Head:    statecid,
+		Balance: big.Zero(),
 	}
 
 	return counter, act, keyToId, nil

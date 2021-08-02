@@ -11,12 +11,15 @@
 * [Beacon](#Beacon)
   * [BeaconGetEntry](#BeaconGetEntry)
 * [Chain](#Chain)
+  * [ChainBlockstoreInfo](#ChainBlockstoreInfo)
+  * [ChainCheckBlockstore](#ChainCheckBlockstore)
   * [ChainDeleteObj](#ChainDeleteObj)
   * [ChainExport](#ChainExport)
   * [ChainGetBlock](#ChainGetBlock)
   * [ChainGetBlockMessages](#ChainGetBlockMessages)
   * [ChainGetGenesis](#ChainGetGenesis)
   * [ChainGetMessage](#ChainGetMessage)
+  * [ChainGetMessagesInTipset](#ChainGetMessagesInTipset)
   * [ChainGetNode](#ChainGetNode)
   * [ChainGetParentMessages](#ChainGetParentMessages)
   * [ChainGetParentReceipts](#ChainGetParentReceipts)
@@ -44,11 +47,13 @@
   * [ClientGetDealInfo](#ClientGetDealInfo)
   * [ClientGetDealStatus](#ClientGetDealStatus)
   * [ClientGetDealUpdates](#ClientGetDealUpdates)
+  * [ClientGetRetrievalUpdates](#ClientGetRetrievalUpdates)
   * [ClientHasLocal](#ClientHasLocal)
   * [ClientImport](#ClientImport)
   * [ClientListDataTransfers](#ClientListDataTransfers)
   * [ClientListDeals](#ClientListDeals)
   * [ClientListImports](#ClientListImports)
+  * [ClientListRetrievals](#ClientListRetrievals)
   * [ClientMinerQueryOffer](#ClientMinerQueryOffer)
   * [ClientQueryAsk](#ClientQueryAsk)
   * [ClientRemoveImport](#ClientRemoveImport)
@@ -279,7 +284,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131328,
+  "APIVersion": 131329,
   "BlockDelay": 42
 }
 ```
@@ -346,6 +351,32 @@ Response:
 The Chain method group contains methods for interacting with the
 blockchain, but that do not require any form of state computation.
 
+
+### ChainBlockstoreInfo
+ChainBlockstoreInfo returns some basic information about the blockstore
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "abc": 123
+}
+```
+
+### ChainCheckBlockstore
+ChainCheckBlockstore performs an (asynchronous) health check on the chain/state blockstore
+if supported by the underlying implementation.
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `{}`
 
 ### ChainDeleteObj
 ChainDeleteObj deletes node referenced by the given CID
@@ -532,6 +563,28 @@ Response:
   }
 }
 ```
+
+### ChainGetMessagesInTipset
+ChainGetMessagesInTipset returns message stores in current tipset
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `null`
 
 ### ChainGetNode
 
@@ -1199,6 +1252,54 @@ Response:
 }
 ```
 
+### ClientGetRetrievalUpdates
+ClientGetRetrievalUpdates returns status of updated retrieval deals
+
+
+Perms: write
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "PayloadCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  "ID": 5,
+  "PieceCID": null,
+  "PricePerByte": "0",
+  "UnsealPrice": "0",
+  "Status": 0,
+  "Message": "string value",
+  "Provider": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "BytesReceived": 42,
+  "BytesPaidFor": 42,
+  "TotalPaid": "0",
+  "TransferChannelID": {
+    "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "ID": 3
+  },
+  "DataTransfer": {
+    "TransferID": 3,
+    "Status": 1,
+    "BaseCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "IsInitiator": true,
+    "IsSender": true,
+    "Voucher": "string value",
+    "Message": "string value",
+    "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Transferred": 42,
+    "Stages": {
+      "Stages": null
+    }
+  }
+}
+```
+
 ### ClientHasLocal
 ClientHasLocal indicates whether a certain CID is locally stored.
 
@@ -1264,6 +1365,16 @@ Response: `null`
 
 ### ClientListImports
 ClientListImports lists imported files and their root CIDs
+
+
+Perms: write
+
+Inputs: `null`
+
+Response: `null`
+
+### ClientListRetrievals
+ClientListRetrievals returns information about retrievals made by the local client
 
 
 Perms: write
@@ -3008,8 +3119,8 @@ Inputs: `null`
 Response:
 ```json
 {
-  "Addrs": null,
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Addrs": []
 }
 ```
 
@@ -3158,8 +3269,8 @@ Inputs:
 ```json
 [
   {
-    "Addrs": null,
-    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Addrs": []
   }
 ]
 ```
@@ -3209,8 +3320,8 @@ Inputs:
 Response:
 ```json
 {
-  "Addrs": null,
-  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "Addrs": []
 }
 ```
 
@@ -4772,7 +4883,7 @@ Inputs:
 ]
 ```
 
-Response: `12`
+Response: `1300`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.

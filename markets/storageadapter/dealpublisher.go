@@ -7,27 +7,33 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/node/config"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
+	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/storage"
 )
 
 type dealPublisherAPI interface {
 	ChainHead(context.Context) (*types.TipSet, error)
 	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
+
+	WalletBalance(context.Context, address.Address) (types.BigInt, error)
+	WalletHas(context.Context, address.Address) (bool, error)
+	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
+	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 }
 
 // DealPublisher batches deal publishing so that many deals can be included in
@@ -40,6 +46,7 @@ type dealPublisherAPI interface {
 // publish message with all deals in the queue.
 type DealPublisher struct {
 	api dealPublisherAPI
+	as  *storage.AddressSelector
 
 	ctx      context.Context
 	Shutdown context.CancelFunc
@@ -87,14 +94,14 @@ type PublishMsgConfig struct {
 func NewDealPublisher(
 	feeConfig *config.MinerFeeConfig,
 	publishMsgCfg PublishMsgConfig,
-) func(lc fx.Lifecycle, full api.FullNode) *DealPublisher {
-	return func(lc fx.Lifecycle, full api.FullNode) *DealPublisher {
+) func(lc fx.Lifecycle, full api.FullNode, as *storage.AddressSelector) *DealPublisher {
+	return func(lc fx.Lifecycle, full api.FullNode, as *storage.AddressSelector) *DealPublisher {
 		maxFee := abi.NewTokenAmount(0)
 		if feeConfig != nil {
 			maxFee = abi.TokenAmount(feeConfig.MaxPublishDealsFee)
 		}
 		publishSpec := &api.MessageSendSpec{MaxFee: maxFee}
-		dp := newDealPublisher(full, publishMsgCfg, publishSpec)
+		dp := newDealPublisher(full, as, publishMsgCfg, publishSpec)
 		lc.Append(fx.Hook{
 			OnStop: func(ctx context.Context) error {
 				dp.Shutdown()
@@ -107,12 +114,14 @@ func NewDealPublisher(
 
 func newDealPublisher(
 	dpapi dealPublisherAPI,
+	as *storage.AddressSelector,
 	publishMsgCfg PublishMsgConfig,
 	publishSpec *api.MessageSendSpec,
 ) *DealPublisher {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &DealPublisher{
 		api:                   dpapi,
+		as:                    as,
 		ctx:                   ctx,
 		Shutdown:              cancel,
 		maxDealsPerPublishMsg: publishMsgCfg.MaxDealsPerMsg,
@@ -345,9 +354,14 @@ func (p *DealPublisher) publishDealProposals(deals []market2.ClientDealProposal)
 		return cid.Undef, xerrors.Errorf("serializing PublishStorageDeals params failed: %w", err)
 	}
 
+	addr, _, err := p.as.AddressFor(p.ctx, p.api, mi, api.DealPublishAddr, big.Zero(), big.Zero())
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("selecting address for publishing deals: %w", err)
+	}
+
 	smsg, err := p.api.MpoolPushMessage(p.ctx, &types.Message{
 		To:     market.Address,
-		From:   mi.Worker,
+		From:   addr,
 		Value:  types.NewInt(0),
 		Method: market.Methods.PublishStorageDeals,
 		Params: params,

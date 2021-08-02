@@ -38,7 +38,7 @@ type msgChain struct {
 	prev         *msgChain
 }
 
-func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) (msgs []*types.SignedMessage, err error) {
+func (mp *MessagePool) SelectMessages(ctx context.Context, ts *types.TipSet, tq float64) (msgs []*types.SignedMessage, err error) {
 	mp.curTsLk.Lock()
 	defer mp.curTsLk.Unlock()
 
@@ -49,9 +49,9 @@ func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) (msgs []*typ
 	// than any other block, then we don't bother with optimal selection because the
 	// first block will always have higher effective performance
 	if tq > 0.84 {
-		msgs, err = mp.selectMessagesGreedy(mp.curTs, ts)
+		msgs, err = mp.selectMessagesGreedy(ctx, mp.curTs, ts)
 	} else {
-		msgs, err = mp.selectMessagesOptimal(mp.curTs, ts, tq)
+		msgs, err = mp.selectMessagesOptimal(ctx, mp.curTs, ts, tq)
 	}
 
 	if err != nil {
@@ -65,7 +65,7 @@ func (mp *MessagePool) SelectMessages(ts *types.TipSet, tq float64) (msgs []*typ
 	return msgs, nil
 }
 
-func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) selectMessagesOptimal(ctx context.Context, curTs, ts *types.TipSet, tq float64) ([]*types.SignedMessage, error) {
 	start := time.Now()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
@@ -91,7 +91,7 @@ func (mp *MessagePool) selectMessagesOptimal(curTs, ts *types.TipSet, tq float64
 
 	// 0b. Select all priority messages that fit in the block
 	minGas := int64(gasguess.MinGas)
-	result, gasLimit := mp.selectPriorityMessages(pending, baseFee, ts)
+	result, gasLimit := mp.selectPriorityMessages(ctx, pending, baseFee, ts)
 
 	// have we filled the block?
 	if gasLimit < minGas {
@@ -389,7 +389,7 @@ tailLoop:
 	return result, nil
 }
 
-func (mp *MessagePool) selectMessagesGreedy(curTs, ts *types.TipSet) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) selectMessagesGreedy(ctx context.Context, curTs, ts *types.TipSet) ([]*types.SignedMessage, error) {
 	start := time.Now()
 
 	baseFee, err := mp.api.ChainComputeBaseFee(context.TODO(), ts)
@@ -415,7 +415,7 @@ func (mp *MessagePool) selectMessagesGreedy(curTs, ts *types.TipSet) ([]*types.S
 
 	// 0b. Select all priority messages that fit in the block
 	minGas := int64(gasguess.MinGas)
-	result, gasLimit := mp.selectPriorityMessages(pending, baseFee, ts)
+	result, gasLimit := mp.selectPriorityMessages(ctx, pending, baseFee, ts)
 
 	// have we filled the block?
 	if gasLimit < minGas {
@@ -525,7 +525,7 @@ tailLoop:
 	return result, nil
 }
 
-func (mp *MessagePool) selectPriorityMessages(pending map[address.Address]map[uint64]*types.SignedMessage, baseFee types.BigInt, ts *types.TipSet) ([]*types.SignedMessage, int64) {
+func (mp *MessagePool) selectPriorityMessages(ctx context.Context, pending map[address.Address]map[uint64]*types.SignedMessage, baseFee types.BigInt, ts *types.TipSet) ([]*types.SignedMessage, int64) {
 	start := time.Now()
 	defer func() {
 		if dt := time.Since(start); dt > time.Millisecond {
@@ -541,10 +541,16 @@ func (mp *MessagePool) selectPriorityMessages(pending map[address.Address]map[ui
 	var chains []*msgChain
 	priority := mpCfg.PriorityAddrs
 	for _, actor := range priority {
-		mset, ok := pending[actor]
+		pk, err := mp.resolveToKey(ctx, actor)
+		if err != nil {
+			log.Debugf("mpooladdlocal failed to resolve sender: %s", err)
+			return nil, gasLimit
+		}
+
+		mset, ok := pending[pk]
 		if ok {
 			// remove actor from pending set as we are already processed these messages
-			delete(pending, actor)
+			delete(pending, pk)
 			// create chains for the priority actor
 			next := mp.createMessageChains(actor, mset, baseFee, ts)
 			chains = append(chains, next...)
@@ -646,8 +652,7 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 		inSync = true
 	}
 
-	// first add our current pending messages
-	for a, mset := range mp.pending {
+	mp.forEachPending(func(a address.Address, mset *msgSet) {
 		if inSync {
 			// no need to copy the map
 			result[a] = mset.msgs
@@ -660,7 +665,7 @@ func (mp *MessagePool) getPendingMessages(curTs, ts *types.TipSet) (map[address.
 			result[a] = msetCopy
 
 		}
-	}
+	})
 
 	// we are in sync, that's the happy path
 	if inSync {
@@ -744,7 +749,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 		}
 		curNonce++
 
-		minGas := vm.PricelistByEpoch(ts.Height()).OnChainMessage(m.ChainLength()).Total()
+		minGas := vm.PricelistByVersion(build.NewestNetworkVersion).OnChainMessage(m.ChainLength()).Total()
 		if m.Message.GasLimit < minGas {
 			break
 		}

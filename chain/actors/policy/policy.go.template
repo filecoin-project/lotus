@@ -3,6 +3,8 @@ package policy
 import (
 	"sort"
 
+	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -19,9 +21,9 @@ import (
 )
 
 const (
-	ChainFinality				   = miner{{.latestVersion}}.ChainFinality
-	SealRandomnessLookback		   = ChainFinality
-	PaychSettleDelay			   = paych{{.latestVersion}}.SettleDelay
+	ChainFinality                  = miner{{.latestVersion}}.ChainFinality
+	SealRandomnessLookback         = ChainFinality
+	PaychSettleDelay               = paych{{.latestVersion}}.SettleDelay
 	MaxPreCommitRandomnessLookback = builtin{{.latestVersion}}.EpochsInDay + SealRandomnessLookback
 )
 
@@ -31,9 +33,11 @@ func SetSupportedProofTypes(types ...abi.RegisteredSealProof) {
 	{{range .versions}}
 		{{if (eq . 0)}}
 			miner{{.}}.SupportedProofTypes = make(map[abi.RegisteredSealProof]struct{}, len(types))
-		{{else}}
+		{{else if (le . 4)}}
 			miner{{.}}.PreCommitSealProofTypesV0 = make(map[abi.RegisteredSealProof]struct{}, len(types))
 			miner{{.}}.PreCommitSealProofTypesV7 = make(map[abi.RegisteredSealProof]struct{}, len(types)*2)
+			miner{{.}}.PreCommitSealProofTypesV8 = make(map[abi.RegisteredSealProof]struct{}, len(types))
+		{{else}}
 			miner{{.}}.PreCommitSealProofTypesV8 = make(map[abi.RegisteredSealProof]struct{}, len(types))
 		{{end}}
 	{{end}}
@@ -51,15 +55,24 @@ func AddSupportedProofTypes(types ...abi.RegisteredSealProof) {
 		// Set for all miner versions.
 
 		{{range .versions}}
-			{{if (eq . 0)}}
-				miner{{.}}.SupportedProofTypes[t] = struct{}{}
-			{{else}}
-				miner{{.}}.PreCommitSealProofTypesV0[t] = struct{}{}
-				miner{{.}}.PreCommitSealProofTypesV7[t] = struct{}{}
-				miner{{.}}.PreCommitSealProofTypesV7[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
-				miner{{.}}.PreCommitSealProofTypesV8[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
-			{{end}}
-		{{end}}
+            {{if (eq . 0)}}
+        	    miner{{.}}.SupportedProofTypes[t] = struct{}{}
+            {{else if (le . 4)}}
+                miner{{.}}.PreCommitSealProofTypesV0[t] = struct{}{}
+                miner{{.}}.PreCommitSealProofTypesV7[t] = struct{}{}
+                miner{{.}}.PreCommitSealProofTypesV7[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
+                miner{{.}}.PreCommitSealProofTypesV8[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
+            {{else}}
+                miner{{.}}.PreCommitSealProofTypesV8[t+abi.RegisteredSealProof_StackedDrg2KiBV1_1] = struct{}{}
+                wpp, err := t.RegisteredWindowPoStProof()
+                if err != nil {
+                    // Fine to panic, this is a test-only method
+                    panic(err)
+                }
+
+                miner{{.}}.WindowPoStProofTypes[wpp] = struct{}{}
+            {{end}}
+        {{end}}
 	}
 }
 
@@ -119,6 +132,20 @@ func GetMaxProveCommitDuration(ver actors.Version, t abi.RegisteredSealProof) ab
 	}
 }
 
+// SetProviderCollateralSupplyTarget sets the percentage of normalized circulating
+// supply that must be covered by provider collateral in a deal. This should
+// only be used for testing.
+func SetProviderCollateralSupplyTarget(num, denom big.Int) {
+{{range .versions}}
+	{{if (ge . 2)}}
+	market{{.}}.ProviderCollateralSupplyTarget = builtin{{.}}.BigFrac{
+		Numerator:   num,
+		Denominator: denom,
+	}
+	{{end}}
+{{end}}
+}
+
 func DealProviderCollateralBounds(
 	size abi.PaddedPieceSize, verified bool,
 	rawBytePower, qaPower, baselinePower abi.StoragePower,
@@ -169,13 +196,13 @@ func GetMaxSectorExpirationExtension() abi.ChainEpoch {
 	return miner{{.latestVersion}}.MaxSectorExpirationExtension
 }
 
-// TODO: we'll probably need to abstract over this better in the future.
-func GetMaxPoStPartitions(p abi.RegisteredPoStProof) (int, error) {
+func GetMaxPoStPartitions(nv network.Version, p abi.RegisteredPoStProof) (int, error) {
 	sectorsPerPart, err := builtin{{.latestVersion}}.PoStProofWindowPoStPartitionSectors(p)
 	if err != nil {
 		return 0, err
 	}
-	return int(miner{{.latestVersion}}.AddressedSectorsMax / sectorsPerPart), nil
+	maxSectors := uint64(GetAddressedSectorsMax(nv))
+	return int(maxSectors / sectorsPerPart), nil
 }
 
 func GetDefaultSectorSize() abi.SectorSize {
@@ -197,9 +224,13 @@ func GetDefaultSectorSize() abi.SectorSize {
 	return szs[0]
 }
 
+func GetDefaultAggregationProof() abi.RegisteredAggregationProof {
+	return abi.RegisteredAggregationProof_SnarkPackV1
+}
+
 func GetSectorMaxLifetime(proof abi.RegisteredSealProof, nwVer network.Version) abi.ChainEpoch {
 	if nwVer <= network.Version10 {
-		return builtin{{.latestVersion}}.SealProofPoliciesV0[proof].SectorMaxLifetime
+		return builtin4.SealProofPoliciesV0[proof].SectorMaxLifetime
 	}
 
 	return builtin{{.latestVersion}}.SealProofPoliciesV11[proof].SectorMaxLifetime
@@ -227,6 +258,21 @@ func GetDeclarationsMax(nwVer network.Version) int {
 				return miner{{.}}.DeclarationsMax
 			{{end}}
 		{{end}}
+	default:
+		panic("unsupported network version")
+	}
+}
+
+func AggregateNetworkFee(nwVer network.Version, aggregateSize int, baseFee abi.TokenAmount) abi.TokenAmount {
+    switch actors.VersionForNetwork(nwVer) {
+	    {{range .versions}}
+	    case actors.Version{{.}}:
+            {{if (le . 4)}}
+                return big.Zero()
+            {{else}}
+                return miner{{.}}.AggregateNetworkFee(aggregateSize, baseFee)
+            {{end}}
+        {{end}}
 	default:
 		panic("unsupported network version")
 	}

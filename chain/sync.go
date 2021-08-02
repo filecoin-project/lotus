@@ -727,6 +727,11 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock, use
 	}
 
 	// fast checks first
+
+	if h.Height <= baseTs.Height() {
+		return xerrors.Errorf("block height not greater than parent height: %d != %d", h.Height, baseTs.Height())
+	}
+
 	nulls := h.Height - (baseTs.Height() + 1)
 	if tgtTs := baseTs.MinTimestamp() + build.BlockDelaySecs*uint64(nulls+1); h.Timestamp != tgtTs {
 		return xerrors.Errorf("block has wrong timestamp: %d != %d", h.Timestamp, tgtTs)
@@ -1054,14 +1059,15 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		return xerrors.Errorf("failed to load base state tree: %w", err)
 	}
 
-	pl := vm.PricelistByEpoch(baseTs.Height())
+	nv := syncer.sm.GetNtwkVersion(ctx, b.Header.Height)
+	pl := vm.PricelistByVersion(nv)
 	var sumGasLimit int64
 	checkMsg := func(msg types.ChainMsg) error {
 		m := msg.VMMessage()
 
 		// Phase 1: syntactic validation, as defined in the spec
 		minGas := pl.OnChainMessage(msg.ChainLength())
-		if err := m.ValidForBlockInclusion(minGas.Total(), syncer.sm.GetNtwkVersion(ctx, b.Header.Height)); err != nil {
+		if err := m.ValidForBlockInclusion(minGas.Total(), nv); err != nil {
 			return err
 		}
 
@@ -1074,9 +1080,19 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 
 		// Phase 2: (Partial) semantic validation:
 		// the sender exists and is an account actor, and the nonces make sense
-		if _, ok := nonces[m.From]; !ok {
+		var sender address.Address
+		if nv >= network.Version13 {
+			sender, err = st.LookupID(m.From)
+			if err != nil {
+				return err
+			}
+		} else {
+			sender = m.From
+		}
+
+		if _, ok := nonces[sender]; !ok {
 			// `GetActor` does not validate that this is an account actor.
-			act, err := st.GetActor(m.From)
+			act, err := st.GetActor(sender)
 			if err != nil {
 				return xerrors.Errorf("failed to get actor: %w", err)
 			}
@@ -1084,13 +1100,13 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 			if !builtin.IsAccountActor(act.Code) {
 				return xerrors.New("Sender must be an account actor")
 			}
-			nonces[m.From] = act.Nonce
+			nonces[sender] = act.Nonce
 		}
 
-		if nonces[m.From] != m.Nonce {
-			return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", nonces[m.From], m.Nonce)
+		if nonces[sender] != m.Nonce {
+			return xerrors.Errorf("wrong nonce (exp: %d, got: %d)", nonces[sender], m.Nonce)
 		}
-		nonces[m.From]++
+		nonces[sender]++
 
 		return nil
 	}

@@ -43,10 +43,10 @@ func (m message{{.v}}) Create(
 {{end}}
 	// Set up constructor parameters for multisig
 	msigParams := &multisig{{.v}}.ConstructorParams{
-		Signers:			   signers,
+		Signers:               signers,
 		NumApprovalsThreshold: threshold,
-		UnlockDuration:		   unlockDuration,{{if (ge .v 2)}}
-		StartEpoch:			   unlockStart,{{end}}
+		UnlockDuration:        unlockDuration,{{if (ge .v 2)}}
+		StartEpoch:            unlockStart,{{end}}
 	}
 
 	enc, actErr := actors.SerializeParams(msigParams)
@@ -56,7 +56,7 @@ func (m message{{.v}}) Create(
 
 	// new actors are created by invoking 'exec' on the init actor with the constructor params
 	execParams := &init{{.v}}.ExecParams{
-		CodeCID:		   builtin{{.v}}.MultisigActorCodeID,
+		CodeCID:           builtin{{.v}}.MultisigActorCodeID,
 		ConstructorParams: enc,
 	}
 
@@ -66,11 +66,11 @@ func (m message{{.v}}) Create(
 	}
 
 	return &types.Message{
-		To:		init_.Address,
-		From:	m.from,
+		To:     init_.Address,
+		From:   m.from,
 		Method: builtin{{.v}}.MethodsInit.Exec,
 		Params: enc,
-		Value:	initialAmount,
+		Value:  initialAmount,
 	}, nil
 }
 
@@ -96,8 +96,8 @@ func (m message0) Propose(msig, to address.Address, amt abi.TokenAmount,
 	}
 
 	enc, actErr := actors.SerializeParams(&multisig0.ProposeParams{
-		To:		to,
-		Value:	amt,
+		To:     to,
+		Value:  amt,
 		Method: method,
 		Params: params,
 	})
@@ -106,9 +106,9 @@ func (m message0) Propose(msig, to address.Address, amt abi.TokenAmount,
 	}
 
 	return &types.Message{
-		To:		msig,
-		From:	m.from,
-		Value:	abi.NewTokenAmount(0),
+		To:     msig,
+		From:   m.from,
+		Value:  abi.NewTokenAmount(0),
 		Method: builtin0.MethodsMultisig.Propose,
 		Params: enc,
 	}, nil
@@ -121,9 +121,9 @@ func (m message0) Approve(msig address.Address, txID uint64, hashData *ProposalH
 	}
 
 	return &types.Message{
-		To:		msig,
-		From:	m.from,
-		Value:	types.NewInt(0),
+		To:     msig,
+		From:   m.from,
+		Value:  types.NewInt(0),
 		Method: builtin0.MethodsMultisig.Approve,
 		Params: enc,
 	}, nil
@@ -136,9 +136,9 @@ func (m message0) Cancel(msig address.Address, txID uint64, hashData *ProposalHa
 	}
 
 	return &types.Message{
-		To:		msig,
-		From:	m.from,
-		Value:	types.NewInt(0),
+		To:     msig,
+		From:   m.from,
+		Value:  types.NewInt(0),
 		Method: builtin0.MethodsMultisig.Cancel,
 		Params: enc,
 	}, nil

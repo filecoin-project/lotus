@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 )
 
 //                       MODIFYING THE API INTERFACE
@@ -40,6 +41,7 @@ import (
 // StorageMiner is a low-level interface to the Filecoin network storage miner node
 type StorageMiner interface {
 	Common
+	Net
 
 	ActorAddress(context.Context) (address.Address, error) //perm:read
 
@@ -53,6 +55,13 @@ type StorageMiner interface {
 
 	// Get the status of a given sector by ID
 	SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (SectorInfo, error) //perm:read
+
+	// Add piece to an open sector. If no sectors with enough space are open,
+	// either a new sector will be created, or this call will block until more
+	// sectors can be created.
+	SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storage.Data, d PieceDealInfo) (SectorOffset, error) //perm:admin
+
+	SectorsUnsealPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error //perm:admin
 
 	// List all staged sectors
 	SectorsList(context.Context) ([]abi.SectorNumber, error) //perm:read
@@ -91,6 +100,16 @@ type StorageMiner interface {
 	// SectorTerminatePending returns a list of pending sector terminations to be sent in the next batch message
 	SectorTerminatePending(ctx context.Context) ([]abi.SectorID, error)  //perm:admin
 	SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber) error //perm:admin
+	// SectorPreCommitFlush immediately sends a PreCommit message with sectors batched for PreCommit.
+	// Returns null if message wasn't sent
+	SectorPreCommitFlush(ctx context.Context) ([]sealiface.PreCommitBatchRes, error) //perm:admin
+	// SectorPreCommitPending returns a list of pending PreCommit sectors to be sent in the next batch message
+	SectorPreCommitPending(ctx context.Context) ([]abi.SectorID, error) //perm:admin
+	// SectorCommitFlush immediately sends a Commit message with sectors aggregated for Commit.
+	// Returns null if message wasn't sent
+	SectorCommitFlush(ctx context.Context) ([]sealiface.CommitBatchRes, error) //perm:admin
+	// SectorCommitPending returns a list of pending Commit sectors to be sent in the next aggregate message
+	SectorCommitPending(ctx context.Context) ([]abi.SectorID, error) //perm:admin
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error                              //perm:admin retry:true
@@ -124,8 +143,8 @@ type StorageMiner interface {
 	StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]stores.StorageInfo, error)           //perm:admin
 	StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error                                          //perm:admin
 	StorageTryLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error)                               //perm:admin
+	StorageList(ctx context.Context) (map[stores.ID][]stores.Decl, error)                                                                                               //perm:admin
 
-	StorageList(ctx context.Context) (map[stores.ID][]stores.Decl, error) //perm:admin
 	StorageLocal(ctx context.Context) (map[stores.ID]string, error)       //perm:admin
 	StorageStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) //perm:admin
 
@@ -146,6 +165,10 @@ type StorageMiner interface {
 	MarketCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error //perm:write
 	MarketPendingDeals(ctx context.Context) (PendingDealInfo, error)                                                             //perm:write
 	MarketPublishPendingDeals(ctx context.Context) error                                                                         //perm:admin
+
+	// RuntimeSubsystems returns the subsystems that are enabled
+	// in this instance.
+	RuntimeSubsystems(ctx context.Context) (MinerSubsystems, error) //perm:read
 
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error //perm:admin
 	DealsList(ctx context.Context) ([]MarketDeal, error)                         //perm:admin
@@ -268,15 +291,17 @@ type AddrUse int
 const (
 	PreCommitAddr AddrUse = iota
 	CommitAddr
+	DealPublishAddr
 	PoStAddr
 
 	TerminateSectorsAddr
 )
 
 type AddressConfig struct {
-	PreCommitControl []address.Address
-	CommitControl    []address.Address
-	TerminateControl []address.Address
+	PreCommitControl   []address.Address
+	CommitControl      []address.Address
+	TerminateControl   []address.Address
+	DealPublishControl []address.Address
 
 	DisableOwnerFallback  bool
 	DisableWorkerFallback bool
@@ -288,4 +313,26 @@ type PendingDealInfo struct {
 	Deals              []market.ClientDealProposal
 	PublishPeriodStart time.Time
 	PublishPeriod      time.Duration
+}
+
+type SectorOffset struct {
+	Sector abi.SectorNumber
+	Offset abi.PaddedPieceSize
+}
+
+// DealInfo is a tuple of deal identity and its schedule
+type PieceDealInfo struct {
+	PublishCid   *cid.Cid
+	DealID       abi.DealID
+	DealProposal *market.DealProposal
+	DealSchedule DealSchedule
+	KeepUnsealed bool
+}
+
+// DealSchedule communicates the time interval of a storage deal. The deal must
+// appear in a sealed (proven) sector no later than StartEpoch, otherwise it
+// is invalid.
+type DealSchedule struct {
+	StartEpoch abi.ChainEpoch
+	EndEpoch   abi.ChainEpoch
 }
