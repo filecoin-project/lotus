@@ -575,14 +575,12 @@ var sectorsRenewCmd = &cli.Command{
 	Usage: "Renew expiring sectors while not exceeding each sector's max life",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
-			Name:  "lower-cutoff",
-			Usage: "skip sectors whose current expiration is less than <lower-cutoff> epochs from now",
-			Value: 120,
+			Name:  "from",
+			Usage: "only consider sectors whose current expiration epoch is in the range of [from, to], <from> defaults to: now + 120",
 		},
 		&cli.Int64Flag{
-			Name:  "upper-cutoff",
-			Usage: "skip sectors whose current expiration is more than <upper-cutoff> epochs from now",
-			Value: 86400,
+			Name:  "to",
+			Usage: "only consider sectors whose current expiration epoch is in the range of [from, to], <to> defaults to: now + 86400",
 		},
 		&cli.StringFlag{
 			Name:  "sector-file",
@@ -742,9 +740,19 @@ var sectorsRenewCmd = &cli.Command{
 				}
 			}
 		} else {
+			from := currEpoch + 120
+			to := currEpoch + 86400
+
+			if cctx.IsSet("from") {
+				from = abi.ChainEpoch(cctx.Int64("from"))
+			}
+
+			if cctx.IsSet("to") {
+				to = abi.ChainEpoch(cctx.Int64("to"))
+			}
+
 			for _, si := range activeSet {
-				if si.Expiration >= currEpoch+abi.ChainEpoch(cctx.Int64("lower-cutoff")) &&
-					si.Expiration <= currEpoch+abi.ChainEpoch(cctx.Int64("upper-cutoff")) {
+				if si.Expiration >= from && si.Expiration <= to {
 					if _, exclude := excludeSet[uint64(si.SectorNumber)]; !exclude {
 						sis = append(sis, si)
 					}
