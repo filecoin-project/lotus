@@ -692,6 +692,8 @@ jobs:
     executor:
       name: packer/default
       packer-version: 1.6.6
+    environment:
+      PACKER_LOG: "1"
     steps:
       - checkout
       - attach_workspace:
@@ -704,6 +706,8 @@ jobs:
     executor:
       name: packer/default
       packer-version: 1.6.6
+    environment:
+      PACKER_LOG: "1"
     steps:
       - checkout
       - attach_workspace:
@@ -716,6 +720,8 @@ jobs:
     executor:
       name: packer/default
       packer-version: 1.6.6
+    environment:
+      PACKER_LOG: "1"
     steps:
       - checkout
       - attach_workspace:
@@ -728,6 +734,8 @@ jobs:
     executor:
       name: packer/default
       packer-version: 1.6.6
+    environment:
+      PACKER_LOG: "1"
     steps:
       - checkout
       - attach_workspace:
