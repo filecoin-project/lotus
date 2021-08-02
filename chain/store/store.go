@@ -293,27 +293,36 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*api.HeadChange
 	}}
 
 	go func() {
-		defer close(out)
-		var unsubOnce sync.Once
+		defer func() {
+			// Tell the caller we're done first, the following may block for a bit.
+			close(out)
+
+			// Unsubscribe.
+			cs.bestTips.Unsub(subch)
+
+			// Drain the channel.
+			for range subch {
+			}
+		}()
 
 		for {
 			select {
 			case val, ok := <-subch:
 				if !ok {
-					log.Warn("chain head sub exit loop")
+					// Shutting down.
+					return
+				}
+				select {
+				case out <- val.([]*api.HeadChange):
+				default:
+					log.Errorf("closing head change subscription due to slow reader")
 					return
 				}
 				if len(out) > 5 {
 					log.Warnf("head change sub is slow, has %d buffered entries", len(out))
 				}
-				select {
-				case out <- val.([]*api.HeadChange):
-				case <-ctx.Done():
-				}
 			case <-ctx.Done():
-				unsubOnce.Do(func() {
-					go cs.bestTips.Unsub(subch)
-				})
+				return
 			}
 		}
 	}()
