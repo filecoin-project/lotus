@@ -19,8 +19,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
-	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
+	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -490,13 +489,8 @@ var sectorsCheckExpireCmd = &cli.Command{
 			tablewriter.Col("MaxExtendNow"))
 
 		for _, sector := range sectors {
-			maxLifetime, err := builtin3.SealProofSectorMaximumLifetime(sector.SealProof, nv)
-			if err != nil {
-				return err
-			}
-			MaxExpiration := sector.Activation + maxLifetime
-
-			MaxExtendNow := currEpoch + miner3.MaxSectorExpirationExtension
+			MaxExpiration := sector.Activation + policy.GetSectorMaxLifetime(sector.SealProof, nv)
+			MaxExtendNow := currEpoch + policy.GetMaxSectorExpirationExtension()
 
 			if MaxExtendNow > MaxExpiration {
 				MaxExtendNow = MaxExpiration
@@ -528,7 +522,7 @@ type PseudoExtendSectorExpirationParams struct {
 	Extensions []PseudoExpirationExtension
 }
 
-func NewPseudoExtendParams(p *miner3.ExtendSectorExpirationParams) (*PseudoExtendSectorExpirationParams, error) {
+func NewPseudoExtendParams(p *miner5.ExtendSectorExpirationParams) (*PseudoExtendSectorExpirationParams, error) {
 	res := PseudoExtendSectorExpirationParams{}
 	for _, ext := range p.Extensions {
 		scount, err := ext.Sectors.Count()
@@ -747,7 +741,7 @@ var sectorsRenewCmd = &cli.Command{
 				newExp = abi.ChainEpoch(cctx.Int64("new-expiration"))
 			}
 
-			maxExtendNow := currEpoch + miner3.MaxSectorExpirationExtension
+			maxExtendNow := currEpoch + policy.GetMaxSectorExpirationExtension()
 			if newExp > maxExtendNow {
 				newExp = maxExtendNow
 			}
@@ -787,9 +781,9 @@ var sectorsRenewCmd = &cli.Command{
 			}
 		}
 
-		var params []miner3.ExtendSectorExpirationParams
+		var params []miner5.ExtendSectorExpirationParams
 
-		p := miner3.ExtendSectorExpirationParams{}
+		p := miner5.ExtendSectorExpirationParams{}
 		scount := 0
 
 		for l, exts := range extensions {
@@ -797,11 +791,11 @@ var sectorsRenewCmd = &cli.Command{
 				scount += len(numbers)
 				if scount > policy.GetAddressedSectorsMax(nv) || len(p.Extensions) == policy.GetDeclarationsMax(nv) {
 					params = append(params, p)
-					p = miner3.ExtendSectorExpirationParams{}
+					p = miner5.ExtendSectorExpirationParams{}
 					scount = len(numbers)
 				}
 
-				p.Extensions = append(p.Extensions, miner3.ExpirationExtension{
+				p.Extensions = append(p.Extensions, miner5.ExpirationExtension{
 					Deadline:      l.Deadline,
 					Partition:     l.Partition,
 					Sectors:       bitfield.NewFromSet(numbers),
@@ -861,11 +855,11 @@ var sectorsRenewCmd = &cli.Command{
 			}
 
 			smsg, err := fullApi.MpoolPushMessage(ctx, &types.Message{
-				From:      mi.Worker,
-				To:        maddr,
-				Method:    miner.Methods.ExtendSectorExpiration,
-				Value:     big.Zero(),
-				Params:    sp,
+				From:   mi.Worker,
+				To:     maddr,
+				Method: miner.Methods.ExtendSectorExpiration,
+				Value:  big.Zero(),
+				Params: sp,
 			}, spec)
 			if err != nil {
 				return xerrors.Errorf("mpool push message: %w", err)
@@ -929,7 +923,7 @@ var sectorsExtendCmd = &cli.Command{
 			return err
 		}
 
-		var params []miner3.ExtendSectorExpirationParams
+		var params []miner5.ExtendSectorExpirationParams
 
 		if cctx.Bool("v1-sectors") {
 
@@ -982,7 +976,7 @@ var sectorsExtendCmd = &cli.Command{
 				}
 
 				// Set the new expiration to 48 hours less than the theoretical maximum lifetime
-				newExp := ml - (miner3.WPoStProvingPeriod * 2) + si.Activation
+				newExp := ml - (miner5.WPoStProvingPeriod * 2) + si.Activation
 				if withinTolerance(si.Expiration, newExp) || si.Expiration >= newExp {
 					continue
 				}
@@ -1017,7 +1011,7 @@ var sectorsExtendCmd = &cli.Command{
 				}
 			}
 
-			p := miner3.ExtendSectorExpirationParams{}
+			p := miner5.ExtendSectorExpirationParams{}
 			scount := 0
 
 			for l, exts := range extensions {
@@ -1025,11 +1019,11 @@ var sectorsExtendCmd = &cli.Command{
 					scount += len(numbers)
 					if scount > policy.GetAddressedSectorsMax(nv) || len(p.Extensions) == policy.GetDeclarationsMax(nv) {
 						params = append(params, p)
-						p = miner3.ExtendSectorExpirationParams{}
+						p = miner5.ExtendSectorExpirationParams{}
 						scount = len(numbers)
 					}
 
-					p.Extensions = append(p.Extensions, miner3.ExpirationExtension{
+					p.Extensions = append(p.Extensions, miner5.ExpirationExtension{
 						Deadline:      l.Deadline,
 						Partition:     l.Partition,
 						Sectors:       bitfield.NewFromSet(numbers),
@@ -1067,11 +1061,11 @@ var sectorsExtendCmd = &cli.Command{
 				sectors[*p] = append(sectors[*p], id)
 			}
 
-			p := miner3.ExtendSectorExpirationParams{}
+			p := miner5.ExtendSectorExpirationParams{}
 			for l, numbers := range sectors {
 
 				// TODO: Dedup with above loop
-				p.Extensions = append(p.Extensions, miner3.ExpirationExtension{
+				p.Extensions = append(p.Extensions, miner5.ExpirationExtension{
 					Deadline:      l.Deadline,
 					Partition:     l.Partition,
 					Sectors:       bitfield.NewFromSet(numbers),
