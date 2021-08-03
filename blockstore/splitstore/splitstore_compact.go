@@ -211,7 +211,7 @@ func (s *SplitStore) trackTxnRefMany(cids []cid.Cid) {
 }
 
 // protect all pending transactional references
-func (s *SplitStore) protectTxnRefs(markSet MarkSet) error {
+func (s *SplitStore) protectTxnRefs(markSet MarkSetVisitor) error {
 	for {
 		var txnRefs map[cid.Cid]struct{}
 
@@ -283,7 +283,7 @@ func (s *SplitStore) protectTxnRefs(markSet MarkSet) error {
 
 // transactionally protect a reference by walking the object and marking.
 // concurrent markings are short circuited by checking the markset.
-func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSet) error {
+func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSetVisitor) error {
 	if err := s.checkClosing(); err != nil {
 		return err
 	}
@@ -296,30 +296,13 @@ func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSet) error {
 				return errStopWalk
 			}
 
-			visitor, ok := markSet.(MarkSetVisitor)
-			if ok {
-				visit, err := visitor.Visit(c)
-				if err != nil {
-					return xerrors.Errorf("error visiting object: %w", err)
-				}
+			visit, err := markSet.Visit(c)
+			if err != nil {
+				return xerrors.Errorf("error visiting object: %w", err)
+			}
 
-				if !visit {
-					return errStopWalk
-				}
-			} else {
-				mark, err := markSet.Has(c)
-				if err != nil {
-					return xerrors.Errorf("error checking markset: %w", err)
-				}
-
-				// it's marked, nothing to do
-				if mark {
-					return errStopWalk
-				}
-
-				if err = markSet.Mark(c); err != nil {
-					return xerrors.Errorf("error marking object: %w", err)
-				}
+			if !visit {
+				return errStopWalk
 			}
 
 			return nil
@@ -398,7 +381,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "boundaryEpoch", boundaryEpoch, "inclMsgsEpoch", inclMsgsEpoch, "compactionIndex", s.compactionIndex)
 
-	markSet, err := s.markSetEnv.Create("live", s.markSetSize)
+	markSet, err := s.markSetEnv.CreateVisitor("live", s.markSetSize)
 	if err != nil {
 		return xerrors.Errorf("error creating mark set: %w", err)
 	}
@@ -432,28 +415,13 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 				return errStopWalk
 			}
 
-			if visitor, ok := markSet.(MarkSetVisitor); ok {
-				visit, err := visitor.Visit(c)
-				if err != nil {
-					return xerrors.Errorf("error visiting object: %w", err)
-				}
+			visit, err := markSet.Visit(c)
+			if err != nil {
+				return xerrors.Errorf("error visiting object: %w", err)
+			}
 
-				if !visit {
-					return errStopWalk
-				}
-			} else {
-				has, err := markSet.Has(c)
-				if err != nil {
-					return xerrors.Errorf("error checking markset: %w", err)
-				}
-
-				if has {
-					return errStopWalk
-				}
-
-				if err = markSet.Mark(c); err != nil {
-					return xerrors.Errorf("error marking: %w", err)
-				}
+			if !visit {
+				return errStopWalk
 			}
 
 			count++
@@ -618,12 +586,8 @@ func (s *SplitStore) beginTxnProtect() {
 	s.txnMissing = make(map[cid.Cid]struct{})
 }
 
-func (s *SplitStore) beginTxnMarking(markSet MarkSet) {
+func (s *SplitStore) beginTxnMarking(markSet MarkSetVisitor) {
 	markSet.SetConcurrent()
-
-	s.txnLk.Lock()
-	s.txnProtect = markSet
-	s.txnLk.Unlock()
 }
 
 func (s *SplitStore) endTxnProtect() {
@@ -634,13 +598,7 @@ func (s *SplitStore) endTxnProtect() {
 		return
 	}
 
-	// release markset memory
-	if s.txnProtect != nil {
-		_ = s.txnProtect.Close()
-	}
-
 	s.txnActive = false
-	s.txnProtect = nil
 	s.txnRefs = nil
 	s.txnMissing = nil
 }
@@ -1037,7 +995,7 @@ func (s *SplitStore) purgeBatch(cids []cid.Cid, deleteBatch func([]cid.Cid) erro
 	return nil
 }
 
-func (s *SplitStore) purge(cids []cid.Cid, markSet MarkSet) error {
+func (s *SplitStore) purge(cids []cid.Cid, markSet MarkSetVisitor) error {
 	deadCids := make([]cid.Cid, 0, batchSize)
 	var purgeCnt, liveCnt int
 	defer func() {
@@ -1103,7 +1061,7 @@ func (s *SplitStore) purge(cids []cid.Cid, markSet MarkSet) error {
 // have this gem[TM].
 // My best guess is that they are parent message receipts or yet to be computed state roots; magik
 // thinks the cause may be block validation.
-func (s *SplitStore) waitForMissingRefs(markSet MarkSet) {
+func (s *SplitStore) waitForMissingRefs(markSet MarkSetVisitor) {
 	s.txnLk.Lock()
 	missing := s.txnMissing
 	s.txnMissing = nil
@@ -1142,29 +1100,13 @@ func (s *SplitStore) waitForMissingRefs(markSet MarkSet) {
 						return errStopWalk
 					}
 
-					visitor, ok := markSet.(MarkSetVisitor)
-					if ok {
-						visit, err := visitor.Visit(c)
-						if err != nil {
-							return xerrors.Errorf("error visiting object: %w", err)
-						}
+					visit, err := markSet.Visit(c)
+					if err != nil {
+						return xerrors.Errorf("error visiting object: %w", err)
+					}
 
-						if !visit {
-							return errStopWalk
-						}
-					} else {
-						mark, err := markSet.Has(c)
-						if err != nil {
-							return xerrors.Errorf("error checking markset for %s: %w", c, err)
-						}
-
-						if mark {
-							return errStopWalk
-						}
-
-						if err = markSet.Mark(c); err != nil {
-							return xerrors.Errorf("error marking object: %w", err)
-						}
+					if !visit {
+						return errStopWalk
 					}
 
 					count++

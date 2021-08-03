@@ -142,7 +142,6 @@ type SplitStore struct {
 	txnViews        int
 	txnViewsWaiting bool
 	txnActive       bool
-	txnProtect      MarkSet
 	txnRefsMx       sync.Mutex
 	txnRefs         map[cid.Cid]struct{}
 	txnMissing      map[cid.Cid]struct{}
