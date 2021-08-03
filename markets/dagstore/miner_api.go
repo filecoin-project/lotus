@@ -37,17 +37,17 @@ type MinerAPI interface {
 	Start(ctx context.Context) error
 }
 
-type lotusAccessor struct {
+type minerAPI struct {
 	pieceStore piecestore.PieceStore
 	rm         retrievalmarket.RetrievalProviderNode
 	throttle   throttle.Throttler
 	readyMgr   *shared.ReadyManager
 }
 
-var _ MinerAPI = (*lotusAccessor)(nil)
+var _ MinerAPI = (*minerAPI)(nil)
 
 func NewMinerAPI(store piecestore.PieceStore, rm retrievalmarket.RetrievalProviderNode) MinerAPI {
-	return &lotusAccessor{
+	return &minerAPI{
 		pieceStore: store,
 		rm:         rm,
 		throttle:   throttle.Fixed(MaxConcurrentStorageCalls),
@@ -55,11 +55,11 @@ func NewMinerAPI(store piecestore.PieceStore, rm retrievalmarket.RetrievalProvid
 	}
 }
 
-func (m *lotusAccessor) Start(_ context.Context) error {
+func (m *minerAPI) Start(_ context.Context) error {
 	return m.readyMgr.FireReady(nil)
 }
 
-func (m *lotusAccessor) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error) {
+func (m *minerAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error) {
 	err := m.readyMgr.AwaitReady()
 	if err != nil {
 		return false, xerrors.Errorf("failed while waiting for accessor to start: %w", err)
@@ -107,7 +107,7 @@ func (m *lotusAccessor) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool,
 	return false, nil
 }
 
-func (m *lotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
+func (m *minerAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
 	err := m.readyMgr.AwaitReady()
 	if err != nil {
 		return nil, err
@@ -179,7 +179,7 @@ func (m *lotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid
 	return nil, lastErr
 }
 
-func (m *lotusAccessor) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error) {
+func (m *minerAPI) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error) {
 	err := m.readyMgr.AwaitReady()
 	if err != nil {
 		return 0, err

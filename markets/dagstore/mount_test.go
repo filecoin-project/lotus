@@ -69,7 +69,7 @@ func TestLotusMount(t *testing.T) {
 }
 
 func TestLotusMountDeserialize(t *testing.T) {
-	api := &lotusAccessor{}
+	api := &minerAPI{}
 
 	bgen := blocksutil.NewBlockGenerator()
 	cid := bgen.Next().Cid()
