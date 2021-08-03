@@ -9,12 +9,13 @@ import (
 
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
+
 	mdagstore "github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
-	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 )
 
 const (
@@ -109,7 +110,7 @@ func extractDAGStoreConfig(r repo.LockedRepo) (config.DAGStoreConfig, error) {
 	if err != nil {
 		return config.DAGStoreConfig{}, xerrors.Errorf("could not load config: %w", err)
 	}
-	mcfg, ok := cfg.(config.StorageMiner)
+	mcfg, ok := cfg.(*config.StorageMiner)
 	if !ok {
 		return config.DAGStoreConfig{}, xerrors.Errorf("config not expected type; expected config.StorageMiner, got: %T", cfg)
 	}

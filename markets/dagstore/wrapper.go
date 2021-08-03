@@ -90,7 +90,7 @@ func NewDAGStore(cfg config.DAGStoreConfig, mountApi MinerAPI) (*dagstore.DAGSto
 		mountApi:   mountApi,
 		failureCh:  failureCh,
 		traceCh:    traceCh,
-		gcInterval: cfg.GCInterval,
+		gcInterval: time.Duration(cfg.GCIntervalMillis) * time.Millisecond,
 	}
 
 	return dagst, w, nil

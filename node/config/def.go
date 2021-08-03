@@ -195,7 +195,7 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxConcurrentIndex:         5,
 			MaxConcurrentReadyFetches:  2,
 			MaxConcurrencyStorageCalls: 100,
-			GCInterval:                 time.Minute,
+			GCIntervalMillis:           60000,
 		},
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"

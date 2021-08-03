@@ -8,8 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/node/config"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/node/config"
 
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/dagstore/mount"
@@ -28,10 +29,10 @@ func TestWrapperAcquireRecovery(t *testing.T) {
 
 	// Create a DAG store wrapper
 	dagst, w, err := NewDAGStore(config.DAGStoreConfig{
-		TransientsDir: t.TempDir(),
-		IndexDir:      t.TempDir(),
-		DatastoreDir:  t.TempDir(),
-		GCInterval:    time.Millisecond,
+		TransientsDir:    t.TempDir(),
+		IndexDir:         t.TempDir(),
+		DatastoreDir:     t.TempDir(),
+		GCIntervalMillis: 1,
 	}, mockLotusMount{})
 	require.NoError(t, err)
 
@@ -81,10 +82,10 @@ func TestWrapperBackground(t *testing.T) {
 
 	// Create a DAG store wrapper
 	dagst, w, err := NewDAGStore(config.DAGStoreConfig{
-		TransientsDir: t.TempDir(),
-		IndexDir:      t.TempDir(),
-		DatastoreDir:  t.TempDir(),
-		GCInterval:    time.Millisecond,
+		TransientsDir:    t.TempDir(),
+		IndexDir:         t.TempDir(),
+		DatastoreDir:     t.TempDir(),
+		GCIntervalMillis: 1,
 	}, mockLotusMount{})
 	require.NoError(t, err)
 
