@@ -61,6 +61,13 @@ func main() {
 					"LOTUS_MONITOR_MINERS",
 				},
 			},
+			&cli.BoolFlag{
+				Name:  "gateway-api",
+				Usage: "limit the api to only what is availble through the lotus gateway",
+				EnvVars: []string{
+					"LOTUS_MONITOR_USE_GATEWAY",
+				},
+			},
 		},
 		Action: func(cctx *cli.Context) error {
 			api, closer, err := cliutil.GetFullNodeAPI(cctx)
