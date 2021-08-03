@@ -128,6 +128,10 @@ var splitstoreClearCmd = &cli.Command{
 			Name:  "repo",
 			Value: "~/.lotus",
 		},
+		&cli.BoolFlag{
+			Name:  "keys-only",
+			Usage: "only delete splitstore keys",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		r, err := repo.NewFS(cctx.String("repo"))
@@ -163,10 +167,12 @@ var splitstoreClearCmd = &cli.Command{
 			return xerrors.Errorf("splitstore is not enabled")
 		}
 
-		fmt.Println("clearing splitstore directory...")
-		err = clearSplitstoreDir(lr)
-		if err != nil {
-			return xerrors.Errorf("error clearing splitstore directory: %w", err)
+		if !cctx.Bool("keys-only") {
+			fmt.Println("clearing splitstore directory...")
+			err = clearSplitstoreDir(lr)
+			if err != nil {
+				return xerrors.Errorf("error clearing splitstore directory: %w", err)
+			}
 		}
 
 		fmt.Println("deleting splitstore keys from metadata datastore...")
