@@ -23,8 +23,8 @@ import (
 func NewLotusAccessor(lc fx.Lifecycle,
 	pieceStore dtypes.ProviderPieceStore,
 	rpn retrievalmarket.RetrievalProviderNode,
-) (dagstore.LotusAccessor, error) {
-	mountApi := dagstore.NewLotusAccessor(pieceStore, rpn)
+) (dagstore.MinerAPI, error) {
+	mountApi := dagstore.NewMinerAPI(pieceStore, rpn)
 	ready := make(chan error, 1)
 	pieceStore.OnReady(func(err error) {
 		ready <- err
@@ -47,7 +47,7 @@ func NewLotusAccessor(lc fx.Lifecycle,
 func DAGStoreWrapper(
 	lc fx.Lifecycle,
 	r repo.LockedRepo,
-	lotusAccessor dagstore.LotusAccessor,
+	lotusAccessor dagstore.MinerAPI,
 ) (*dagstore.Wrapper, error) {
 	dir := filepath.Join(r.Path(), dagStore)
 	ds, err := newDAGStoreDatastore(dir)
@@ -74,7 +74,7 @@ func DAGStoreWrapper(
 		MaxConcurrentReadyFetches: maxCopies,
 	}
 
-	dsw, err := dagstore.NewDagStoreWrapper(cfg, lotusAccessor)
+	dsw, err := dagstore.NewWrapper(cfg, lotusAccessor)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create DAG store wrapper: %w", err)
 	}

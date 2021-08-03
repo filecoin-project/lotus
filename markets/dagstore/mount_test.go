@@ -84,7 +84,7 @@ func TestLotusMountDeserialize(t *testing.T) {
 	require.NoError(t, err)
 
 	require.Equal(t, cid, mnt.PieceCid)
-	require.Equal(t, api, mnt.Api)
+	require.Equal(t, api, mnt.API)
 
 	// fails if cid is not valid
 	us = lotusScheme + "://" + "rand"

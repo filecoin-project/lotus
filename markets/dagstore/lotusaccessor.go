@@ -30,7 +30,7 @@ var MaxConcurrentStorageCalls = func() int {
 	return 100
 }()
 
-type LotusAccessor interface {
+type MinerAPI interface {
 	FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error)
 	GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error)
 	IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error)
@@ -44,9 +44,9 @@ type lotusAccessor struct {
 	readyMgr   *shared.ReadyManager
 }
 
-var _ LotusAccessor = (*lotusAccessor)(nil)
+var _ MinerAPI = (*lotusAccessor)(nil)
 
-func NewLotusAccessor(store piecestore.PieceStore, rm retrievalmarket.RetrievalProviderNode) LotusAccessor {
+func NewMinerAPI(store piecestore.PieceStore, rm retrievalmarket.RetrievalProviderNode) MinerAPI {
 	return &lotusAccessor{
 		pieceStore: store,
 		rm:         rm,

@@ -74,7 +74,7 @@ func TestLotusAccessorFetchUnsealedPiece(t *testing.T) {
 			rpn := &mockRPN{
 				sectors: mockData,
 			}
-			api := NewLotusAccessor(ps, rpn)
+			api := NewMinerAPI(ps, rpn)
 			require.NoError(t, api.Start(ctx))
 
 			// Add deals to piece store
@@ -114,7 +114,7 @@ func TestLotusAccessorGetUnpaddedCARSize(t *testing.T) {
 
 	ps := getPieceStore(t)
 	rpn := &mockRPN{}
-	api := NewLotusAccessor(ps, rpn)
+	api := NewMinerAPI(ps, rpn)
 	require.NoError(t, api.Start(ctx))
 
 	// Add a deal with data Length 10
@@ -143,7 +143,7 @@ func TestThrottle(t *testing.T) {
 			unsealedSectorID: "foo",
 		},
 	}
-	api := NewLotusAccessor(ps, rpn)
+	api := NewMinerAPI(ps, rpn)
 	require.NoError(t, api.Start(ctx))
 
 	// Add a deal with data Length 10

@@ -26,7 +26,7 @@ func TestWrapperAcquireRecovery(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a DAG store wrapper
-	w, err := NewDagStoreWrapper(MarketDAGStoreConfig{
+	w, err := NewWrapper(MarketDAGStoreConfig{
 		TransientsDir: t.TempDir(),
 		IndexDir:      t.TempDir(),
 		GCInterval:    time.Millisecond,
@@ -45,7 +45,7 @@ func TestWrapperAcquireRecovery(t *testing.T) {
 		},
 		register: make(chan shard.Key, 1),
 	}
-	w.dagStore = mock
+	w.dagst = mock
 
 	mybs, err := w.LoadShard(ctx, pieceCid)
 	require.NoError(t, err)
@@ -76,7 +76,7 @@ func TestWrapperBackground(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a DAG store wrapper
-	w, err := NewDagStoreWrapper(MarketDAGStoreConfig{
+	w, err := NewWrapper(MarketDAGStoreConfig{
 		TransientsDir: t.TempDir(),
 		IndexDir:      t.TempDir(),
 		GCInterval:    time.Millisecond,
@@ -89,7 +89,7 @@ func TestWrapperBackground(t *testing.T) {
 		recover: make(chan shard.Key, 1),
 		close:   make(chan struct{}, 1),
 	}
-	w.dagStore = mock
+	w.dagst = mock
 
 	// Start up the wrapper
 	err = w.Start(ctx)
