@@ -48,6 +48,7 @@ func NewBadgerMarkSetEnv(path string) (MarkSetEnv, error) {
 }
 
 func (e *BadgerMarkSetEnv) create(name string, sizeHint int64) (*BadgerMarkSet, error) {
+	name += ".tmp"
 	path := filepath.Join(e.path, name)
 
 	db, err := openTransientBadgerDB(path)
