@@ -87,14 +87,7 @@ func (s *BadgerMarkSet) Mark(c cid.Cid) error {
 		return errMarkSetClosed
 	}
 
-	s.pend[string(c.Hash())] = struct{}{}
-
-	if len(s.pend) < badgerMarkSetBatchSize {
-		s.mx.Unlock()
-		return nil
-	}
-
-	return s.putPending()
+	return s.put(string(c.Hash()))
 }
 
 func (s *BadgerMarkSet) Has(c cid.Cid) (bool, error) {
@@ -153,13 +146,7 @@ func (s *BadgerMarkSet) Visit(c cid.Cid) (bool, error) {
 		}
 	}
 
-	s.pend[pendKey] = struct{}{}
-	if len(s.pend) < badgerMarkSetBatchSize {
-		s.mx.Unlock()
-		return true, nil
-	}
-
-	if err := s.putPending(); err != nil {
+	if err := s.put(pendKey); err != nil {
 		return false, err
 	}
 
@@ -203,8 +190,14 @@ func (s *BadgerMarkSet) tryDB(key []byte) (has bool, err error) {
 	}
 }
 
-// writer holds the exclusive lock; putPending releases it
-func (s *BadgerMarkSet) putPending() error {
+// writer holds the exclusive lock; put releases it
+func (s *BadgerMarkSet) put(key string) error {
+	s.pend[key] = struct{}{}
+	if len(s.pend) < badgerMarkSetBatchSize {
+		s.mx.Unlock()
+		return nil
+	}
+
 	pend := s.pend
 	seqno := s.seqno
 	s.seqno++
