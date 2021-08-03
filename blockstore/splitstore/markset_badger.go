@@ -25,7 +25,6 @@ type BadgerMarkSet struct {
 	cond    sync.Cond
 	pend    map[string]struct{}
 	writing map[int]map[string]struct{}
-	writers int
 	seqno   int
 	version int
 
@@ -236,17 +235,15 @@ func (s *BadgerMarkSet) putPending() error {
 	s.seqno++
 	s.writing[seqno] = pend
 	s.pend = make(map[string]struct{})
-	s.writers++
 	s.mx.Unlock()
 
 	defer func() {
 		s.mx.Lock()
 		defer s.mx.Unlock()
 
-		delete(s.writing, seqno)
 		s.version++
-		s.writers--
-		if s.writers == 0 {
+		delete(s.writing, seqno)
+		if len(s.writing) == 0 {
 			s.cond.Broadcast()
 		}
 	}()
@@ -278,7 +275,7 @@ func (s *BadgerMarkSet) Close() error {
 		return nil
 	}
 
-	for s.writers > 0 {
+	for len(s.writing) > 0 {
 		s.cond.Wait()
 	}
 
