@@ -9,7 +9,7 @@ import (
 
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/ipld/go-car"
+	"github.com/ipld/go-car/v2"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -60,7 +60,8 @@ var importCarCmd = &cli.Command{
 			}
 		}()
 
-		cr, err := car.NewCarReader(f)
+		// TODO should the CLI expose an option for ZeroLengthSectionAsEOF?
+		cr, err := car.NewBlockReader(f, car.ZeroLengthSectionAsEOF(true))
 		if err != nil {
 			return err
 		}
