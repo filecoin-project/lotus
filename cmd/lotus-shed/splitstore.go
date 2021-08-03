@@ -93,10 +93,16 @@ var splitstoreRollbackCmd = &cli.Command{
 			return xerrors.Errorf("error copying hotstore to coldstore: %w", err)
 		}
 
+		fmt.Println("clearing splitstore directory...")
+		err = clearSplitstoreDir(lr)
+		if err != nil {
+			return xerrors.Errorf("error clearing splitstore directory: %w", err)
+		}
+
 		fmt.Println("deleting splitstore directory...")
 		err = deleteSplitstoreDir(lr)
 		if err != nil {
-			return xerrors.Errorf("error deleting splitstore directory: %w", err)
+			log.Warnf("error deleting splitstore directory: %s", err)
 		}
 
 		fmt.Println("deleting splitstore keys from metadata datastore...")
