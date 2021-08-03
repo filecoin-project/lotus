@@ -21,7 +21,7 @@ type tipSetCache struct {
 	mu sync.RWMutex
 
 	cache []*types.TipSet
-	start int
+	start int // chain head (end)
 	len   int
 
 	storage tsCacheAPI
@@ -42,8 +42,15 @@ func (tsc *tipSetCache) add(ts *types.TipSet) error {
 	defer tsc.mu.Unlock()
 
 	if tsc.len > 0 {
-		if tsc.cache[tsc.start].Height() >= ts.Height() {
+		best := tsc.cache[tsc.start]
+		if best.Height() >= ts.Height() {
 			return xerrors.Errorf("tipSetCache.add: expected new tipset height to be at least %d, was %d", tsc.cache[tsc.start].Height()+1, ts.Height())
+		}
+		if best.Key() != ts.Parents() {
+			return xerrors.Errorf(
+				"tipSetCache.add: expected new tipset %s (%d) to follow %s (%d), its parents are %s",
+				ts.Key(), ts.Height(), best.Key(), best.Height(), best.Parents(),
+			)
 		}
 	}
 

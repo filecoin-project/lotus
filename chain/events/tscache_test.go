@@ -6,56 +6,12 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
 )
-
-func TestTsCache(t *testing.T) {
-	tsc := newTSCache(50, &tsCacheAPIFailOnStorageCall{t: t})
-
-	h := abi.ChainEpoch(75)
-
-	a, _ := address.NewFromString("t00")
-
-	add := func() {
-		ts, err := types.NewTipSet([]*types.BlockHeader{{
-			Miner:                 a,
-			Height:                h,
-			ParentStateRoot:       dummyCid,
-			Messages:              dummyCid,
-			ParentMessageReceipts: dummyCid,
-			BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS},
-			BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS},
-		}})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := tsc.add(ts); err != nil {
-			t.Fatal(err)
-		}
-		h++
-	}
-
-	for i := 0; i < 9000; i++ {
-		if i%90 > 60 {
-			best, err := tsc.best()
-			if err != nil {
-				t.Fatal(err, "; i:", i)
-				return
-			}
-			if err := tsc.revert(best); err != nil {
-				t.Fatal(err, "; i:", i)
-				return
-			}
-			h--
-		} else {
-			add()
-		}
-	}
-
-}
 
 type tsCacheAPIFailOnStorageCall struct {
 	t *testing.T
@@ -70,77 +26,123 @@ func (tc *tsCacheAPIFailOnStorageCall) ChainHead(ctx context.Context) (*types.Ti
 	return &types.TipSet{}, nil
 }
 
-func TestTsCacheNulls(t *testing.T) {
-	tsc := newTSCache(50, &tsCacheAPIFailOnStorageCall{t: t})
+type cacheHarness struct {
+	t *testing.T
 
-	h := abi.ChainEpoch(75)
+	miner  address.Address
+	tsc    *tipSetCache
+	height abi.ChainEpoch
+}
 
-	a, _ := address.NewFromString("t00")
-	add := func() {
-		ts, err := types.NewTipSet([]*types.BlockHeader{{
-			Miner:                 a,
-			Height:                h,
-			ParentStateRoot:       dummyCid,
-			Messages:              dummyCid,
-			ParentMessageReceipts: dummyCid,
-			BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS},
-			BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS},
-		}})
-		if err != nil {
-			t.Fatal(err)
-		}
-		if err := tsc.add(ts); err != nil {
-			t.Fatal(err)
-		}
-		h++
+func newCacheharness(t *testing.T) *cacheHarness {
+	a, err := address.NewFromString("t00")
+	require.NoError(t, err)
+
+	h := &cacheHarness{
+		t:      t,
+		tsc:    newTSCache(50, &tsCacheAPIFailOnStorageCall{t: t}),
+		height: 75,
+		miner:  a,
 	}
+	h.addWithParents(nil)
+	return h
+}
 
-	add()
-	add()
-	add()
-	h += 5
+func (h *cacheHarness) addWithParents(parents []cid.Cid) {
+	ts, err := types.NewTipSet([]*types.BlockHeader{{
+		Miner:                 h.miner,
+		Height:                h.height,
+		ParentStateRoot:       dummyCid,
+		Messages:              dummyCid,
+		ParentMessageReceipts: dummyCid,
+		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS},
+		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS},
+		Parents:               parents,
+	}})
+	require.NoError(h.t, err)
+	require.NoError(h.t, h.tsc.add(ts))
+	h.height++
+}
 
-	add()
-	add()
+func (h *cacheHarness) add() {
+	last, err := h.tsc.best()
+	require.NoError(h.t, err)
+	h.addWithParents(last.Cids())
+}
 
-	best, err := tsc.best()
+func (h *cacheHarness) revert() {
+	best, err := h.tsc.best()
+	require.NoError(h.t, err)
+	err = h.tsc.revert(best)
+	require.NoError(h.t, err)
+	h.height--
+}
+
+func (h *cacheHarness) skip(n abi.ChainEpoch) {
+	h.height += n
+}
+
+func TestTsCache(t *testing.T) {
+	h := newCacheharness(t)
+
+	for i := 0; i < 9000; i++ {
+		if i%90 > 60 {
+			h.revert()
+		} else {
+			h.add()
+		}
+	}
+}
+
+func TestTsCacheNulls(t *testing.T) {
+	h := newCacheharness(t)
+
+	h.add()
+	h.add()
+	h.add()
+	h.skip(5)
+
+	h.add()
+	h.add()
+
+	best, err := h.tsc.best()
 	require.NoError(t, err)
-	require.Equal(t, h-1, best.Height())
+	require.Equal(t, h.height-1, best.Height())
 
-	ts, err := tsc.get(h - 1)
+	ts, err := h.tsc.get(h.height - 1)
 	require.NoError(t, err)
-	require.Equal(t, h-1, ts.Height())
+	require.Equal(t, h.height-1, ts.Height())
 
-	ts, err = tsc.get(h - 2)
+	ts, err = h.tsc.get(h.height - 2)
 	require.NoError(t, err)
-	require.Equal(t, h-2, ts.Height())
+	require.Equal(t, h.height-2, ts.Height())
 
-	ts, err = tsc.get(h - 3)
+	ts, err = h.tsc.get(h.height - 3)
 	require.NoError(t, err)
 	require.Nil(t, ts)
 
-	ts, err = tsc.get(h - 8)
+	ts, err = h.tsc.get(h.height - 8)
 	require.NoError(t, err)
-	require.Equal(t, h-8, ts.Height())
+	require.Equal(t, h.height-8, ts.Height())
 
-	best, err = tsc.best()
+	best, err = h.tsc.best()
 	require.NoError(t, err)
-	require.NoError(t, tsc.revert(best))
+	require.NoError(t, h.tsc.revert(best))
 
-	best, err = tsc.best()
+	best, err = h.tsc.best()
 	require.NoError(t, err)
-	require.NoError(t, tsc.revert(best))
+	require.NoError(t, h.tsc.revert(best))
 
-	best, err = tsc.best()
+	best, err = h.tsc.best()
 	require.NoError(t, err)
-	require.Equal(t, h-8, best.Height())
+	require.Equal(t, h.height-8, best.Height())
 
-	h += 50
-	add()
+	h.skip(50)
+	h.add()
 
-	ts, err = tsc.get(h - 1)
+	ts, err = h.tsc.get(h.height - 1)
 	require.NoError(t, err)
-	require.Equal(t, h-1, ts.Height())
+	require.Equal(t, h.height-1, ts.Height())
 }
 
 type tsCacheAPIStorageCallCounter struct {
@@ -165,4 +167,23 @@ func TestTsCacheEmpty(t *testing.T) {
 	_, err := tsc.best()
 	require.NoError(t, err)
 	require.Equal(t, 1, callCounter.chainHead)
+}
+
+func TestTsCacheSkip(t *testing.T) {
+	h := newCacheharness(t)
+
+	ts, err := types.NewTipSet([]*types.BlockHeader{{
+		Miner:                 h.miner,
+		Height:                h.height,
+		ParentStateRoot:       dummyCid,
+		Messages:              dummyCid,
+		ParentMessageReceipts: dummyCid,
+		BlockSig:              &crypto.Signature{Type: crypto.SigTypeBLS},
+		BLSAggregate:          &crypto.Signature{Type: crypto.SigTypeBLS},
+		// With parents that don't match the last block.
+		Parents: nil,
+	}})
+	require.NoError(h.t, err)
+	err = h.tsc.add(ts)
+	require.Error(t, err)
 }
