@@ -67,7 +67,7 @@ source "digitalocean" "lotus" {
   droplet_name = "lotus-${var.lotus_network}"
   size = "s-1vcpu-1gb"
   region = "nyc3"
-  image = "ubuntu-18-04-x64"
+  image = "ubuntu-20-04-x64"
   snapshot_name = "lotus-${var.lotus_network}-${var.git_tag}-${local.timestamp}"
   ssh_username = "root"
 }
