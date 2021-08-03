@@ -709,7 +709,7 @@ Response:
     "ID": 3
   },
   "SectorNumber": 9,
-  "CARv2FilePath": "string value"
+  "InboundCAR": "string value"
 }
 ```
 
