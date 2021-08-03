@@ -1,55 +1,65 @@
 package main
 
 import (
-	"math/big"
 	"net/http"
 	"os"
 	"time"
 
 	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/urfave/cli/v2"
-	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
-	"go.opencensus.io/tag"
 
 	logging "github.com/ipfs/go-log/v2"
 
-	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/types"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 )
 
-var (
-	log = logging.Logger("main")
+type recorderFunc func(*cli.Context, v0api.FullNode, chan error)
 
-	keyAddress  = tag.MustNewKey("address")
-	balMetric   = stats.Int64("actor/balance", "actor blance", "FIL")
-	nonceMetric = stats.Int64("actor/nonce", "nonce", "n")
-	balanceView = &view.View{
-		Name:        "actor/balance",
-		Measure:     balMetric,
-		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{keyAddress},
-	}
-	nonceView = &view.View{
-		Name:        "actor/nonce",
-		Measure:     nonceMetric,
-		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{keyAddress},
+var (
+	log       = logging.Logger("lotus-monitor")
+	recorders = []recorderFunc{
+		actorRecorder,
+		minerRecorder,
 	}
 )
 
 func main() {
 	app := &cli.App{
-		Name:        "wallet-monitor",
-		Usage:       "monitor wallet addresses",
+		Name:        "lotus-monitor",
+		Usage:       "monitor actor addresses",
 		Version:     build.UserVersion(),
-		Description: "Export wallet balances as metrics",
+		Description: "Export actor attributes as prometheus metrics",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:  "listen",
-				Value: "0.0.0.0:8888",
+				Value: "0.0.0.0:0",
+				EnvVars: []string{
+					"LOTUS_MONITOR_LISTEN",
+				},
+			},
+			&cli.DurationFlag{
+				Name:  "poll",
+				Value: time.Minute,
+				EnvVars: []string{
+					"LOTUS_MONITOR_POLL_FREQUENCY",
+				},
+			},
+			&cli.StringSliceFlag{
+				Name:  "actors",
+				Usage: "Actor or Wallet addresses to monitor",
+				EnvVars: []string{
+					"LOTUS_MONITOR_ACTORS",
+				},
+			},
+			&cli.StringSliceFlag{
+				Name:  "miners",
+				Usage: "Miner addresses to monitor",
+				EnvVars: []string{
+					"LOTUS_MONITOR_MINERS",
+				},
 			},
 		},
 		Action: func(cctx *cli.Context) error {
@@ -64,7 +74,7 @@ func main() {
 			}
 
 			pe, err := prometheus.NewExporter(prometheus.Options{
-				Namespace: "walletmonitor",
+				Namespace: "lotusmonitor",
 			})
 			if err != nil {
 				log.Fatalw("failed to create the Prometheus stats exporter", "err", err)
@@ -78,28 +88,11 @@ func main() {
 				}
 			}()
 
-			for range time.Tick(time.Minute) {
-				for _, arg := range cctx.Args().Slice() {
-					addr, err := address.NewFromString(arg)
-					if err != nil {
-						log.Warnw("invalid address will not be monitored", "address", arg, "err", err)
-					}
-					ctx, _ := tag.New(cctx.Context, tag.Insert(keyAddress, addr.String()))
-					actor, err := api.StateGetActor(ctx, addr, types.TipSetKey{})
-					if err != nil {
-						log.Warnw("could not get actor", "address", arg, "err", err)
-					}
-					if actor == nil {
-						log.Warnw("actor not found", "actor", arg)
-						continue
-					}
-					var fil big.Int
-					fil.Div(actor.Balance.Int, big.NewInt(1000000000000000000))
-					stats.Record(ctx, balMetric.M(fil.Int64()))
-					stats.Record(ctx, nonceMetric.M(int64(actor.Nonce)))
-				}
+			recordErrs := make(chan error)
+			for _, f := range recorders {
+				go f(cctx, api, recordErrs)
 			}
-
+			errorRecorder(cctx, recordErrs)
 			return nil
 		},
 	}
