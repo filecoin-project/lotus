@@ -3,14 +3,12 @@ package dagstore
 import (
 	"context"
 	"errors"
-	"io"
 	"sync"
 	"time"
 
 	"github.com/filecoin-project/dagstore/index"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	bstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
@@ -44,11 +42,6 @@ type DAGStore interface {
 	GC(ctx context.Context) (*dagstore.GCResult, error)
 	Close() error
 	Start(ctx context.Context) error
-}
-
-type closableBlockstore struct {
-	bstore.Blockstore
-	io.Closer
 }
 
 type Wrapper struct {
@@ -216,7 +209,7 @@ func (ds *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (carstore.Cl
 	}
 
 	log.Debugf("successfully loaded blockstore for piece CID %s", pieceCid)
-	return &closableBlockstore{Blockstore: NewReadOnlyBlockstore(bs), Closer: res.Accessor}, nil
+	return &Blockstore{ReadBlockstore: bs, Closer: res.Accessor}, nil
 }
 
 func (ds *Wrapper) RegisterShard(ctx context.Context, pieceCid cid.Cid, carPath string, eagerInit bool, resch chan dagstore.ShardResult) error {
