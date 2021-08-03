@@ -188,6 +188,15 @@ func DefaultStorageMiner() *StorageMiner {
 			TerminateControl:   []string{},
 			DealPublishControl: []string{},
 		},
+
+		DAGStore: DAGStoreConfig{
+			// zero value paths for transients, indices, datastore.
+			// by default they'll end up under the node repo.
+			MaxConcurrentIndex:         5,
+			MaxConcurrentReadyFetches:  2,
+			MaxConcurrencyStorageCalls: 100,
+			GCInterval:                 time.Minute,
+		},
 	}
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
 	cfg.Common.API.RemoteListenAddress = "127.0.0.1:2345"

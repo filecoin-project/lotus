@@ -55,7 +55,7 @@ func TestLotusMount(t *testing.T) {
 	// serialize url then deserialize from mount template -> should get back
 	// the same mount
 	url := mnt.Serialize()
-	mnt2 := NewLotusMountTemplate(mockLotusMountAPI)
+	mnt2 := mountTemplate(mockLotusMountAPI)
 	err = mnt2.Deserialize(url)
 	require.NoError(t, err)
 
@@ -79,7 +79,7 @@ func TestLotusMountDeserialize(t *testing.T) {
 	u, err := url.Parse(us)
 	require.NoError(t, err)
 
-	mnt := NewLotusMountTemplate(api)
+	mnt := mountTemplate(api)
 	err = mnt.Deserialize(u)
 	require.NoError(t, err)
 
@@ -111,7 +111,7 @@ func TestLotusMountRegistration(t *testing.T) {
 
 	mockLotusMountAPI := mock_dagstore.NewMockLotusAccessor(mockCtrl)
 	registry := mount.NewRegistry()
-	err = registry.Register(lotusScheme, NewLotusMountTemplate(mockLotusMountAPI))
+	err = registry.Register(lotusScheme, mountTemplate(mockLotusMountAPI))
 	require.NoError(t, err)
 
 	mnt, err := registry.Instantiate(u)

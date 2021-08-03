@@ -15,22 +15,23 @@ const lotusScheme = "lotus"
 
 var _ mount.Mount = (*LotusMount)(nil)
 
-// LotusMount is the Lotus implementation of a Sharded DAG Store Mount.
-// A Filecoin Piece is treated as a Shard by this implementation.
-type LotusMount struct {
-	API      MinerAPI
-	PieceCid cid.Cid
-}
-
-// NewLotusMountTemplate is called when registering a mount with
-// the DAG store registry.
+// mountTemplate returns a templated LotusMount containing the supplied API.
 //
-// The DAG store registry receives an instance of the mount (a "template").
+// It is called when registering a mount type with the mount registry
+// of the DAG store. It is used to reinstantiate mounts after a restart.
+//
 // When the registry needs to deserialize a mount it clones the template then
 // calls Deserialize on the cloned instance, which will have a reference to the
 // lotus mount API supplied here.
-func NewLotusMountTemplate(api MinerAPI) *LotusMount {
+func mountTemplate(api MinerAPI) *LotusMount {
 	return &LotusMount{API: api}
+}
+
+// LotusMount is a DAGStore mount implementation that fetches deal data
+// from a PieceCID.
+type LotusMount struct {
+	API      MinerAPI
+	PieceCid cid.Cid
 }
 
 func NewLotusMount(pieceCid cid.Cid, api MinerAPI) (*LotusMount, error) {
@@ -51,7 +52,6 @@ func (l *LotusMount) Deserialize(u *url.URL) error {
 	if err != nil {
 		return xerrors.Errorf("failed to parse PieceCid from host '%s': %w", u.Host, err)
 	}
-
 	l.PieceCid = pieceCid
 	return nil
 }

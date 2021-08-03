@@ -6,25 +6,39 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
 
+	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/lotus/markets/dagstore"
+	mdagstore "github.com/filecoin-project/lotus/markets/dagstore"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/ipfs/go-datastore"
-	levelds "github.com/ipfs/go-ds-leveldb"
-	measure "github.com/ipfs/go-ds-measure"
-	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 )
 
-func NewLotusAccessor(lc fx.Lifecycle,
-	pieceStore dtypes.ProviderPieceStore,
-	rpn retrievalmarket.RetrievalProviderNode,
-) (dagstore.MinerAPI, error) {
-	mountApi := dagstore.NewMinerAPI(pieceStore, rpn)
+const (
+	EnvDAGStoreCopyConcurrency = "LOTUS_DAGSTORE_COPY_CONCURRENCY"
+	DefaultDAGStoreDir         = "dagStore"
+)
+
+// NewMinerAPI creates a new MinerAPI adaptor for the dagstore mounts.
+func NewMinerAPI(lc fx.Lifecycle, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, rpn retrievalmarket.RetrievalProviderNode) (mdagstore.MinerAPI, error) {
+	cfg, err := extractDAGStoreConfig(r)
+	if err != nil {
+		return nil, err
+	}
+
+	// caps the amount of concurrent calls to the storage, so that we don't
+	// spam it during heavy processes like bulk migration.
+	if v, ok := os.LookupEnv("LOTUS_DAGSTORE_MOUNT_CONCURRENCY"); ok {
+		concurrency, err := strconv.Atoi(v)
+		if err == nil {
+			cfg.MaxConcurrencyStorageCalls = concurrency
+		}
+	}
+
+	mountApi := mdagstore.NewMinerAPI(pieceStore, rpn, cfg.MaxConcurrencyStorageCalls)
 	ready := make(chan error, 1)
 	pieceStore.OnReady(func(err error) {
 		ready <- err
@@ -44,72 +58,60 @@ func NewLotusAccessor(lc fx.Lifecycle,
 	return mountApi, nil
 }
 
-func DAGStoreWrapper(
-	lc fx.Lifecycle,
-	r repo.LockedRepo,
-	lotusAccessor dagstore.MinerAPI,
-) (*dagstore.Wrapper, error) {
-	dir := filepath.Join(r.Path(), dagStore)
-	ds, err := newDAGStoreDatastore(dir)
+// DAGStore constructs a DAG store using the supplied minerAPI, and the
+// user configuration. It returns both the DAGStore and the Wrapper suitable for
+// passing to markets.
+func DAGStore(lc fx.Lifecycle, r repo.LockedRepo, minerAPI mdagstore.MinerAPI) (*dagstore.DAGStore, *mdagstore.Wrapper, error) {
+	cfg, err := extractDAGStoreConfig(r)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	var maxCopies = 2
-	// TODO replace env with config.toml attribute.
-	v, ok := os.LookupEnv("LOTUS_DAGSTORE_COPY_CONCURRENCY")
+	// populate default directories if not explicitly set in the config.
+	defaultDir := filepath.Join(r.Path(), DefaultDAGStoreDir)
+	if cfg.TransientsDir == "" {
+		cfg.TransientsDir = filepath.Join(defaultDir, "transients")
+	}
+	if cfg.IndexDir == "" {
+		cfg.IndexDir = filepath.Join(defaultDir, "index")
+	}
+	if cfg.DatastoreDir == "" {
+		cfg.DatastoreDir = filepath.Join(defaultDir, "datastore")
+	}
+
+	v, ok := os.LookupEnv(EnvDAGStoreCopyConcurrency)
 	if ok {
 		concurrency, err := strconv.Atoi(v)
 		if err == nil {
-			maxCopies = concurrency
+			cfg.MaxConcurrentReadyFetches = concurrency
 		}
 	}
 
-	cfg := dagstore.MarketDAGStoreConfig{
-		TransientsDir:             filepath.Join(dir, "transients"),
-		IndexDir:                  filepath.Join(dir, "index"),
-		Datastore:                 ds,
-		GCInterval:                1 * time.Minute,
-		MaxConcurrentIndex:        5,
-		MaxConcurrentReadyFetches: maxCopies,
-	}
-
-	dsw, err := dagstore.NewWrapper(cfg, lotusAccessor)
+	dagst, w, err := mdagstore.NewDAGStore(cfg, minerAPI)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to create DAG store wrapper: %w", err)
+		return nil, nil, xerrors.Errorf("failed to create DAG store: %w", err)
 	}
 
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			return dsw.Start(ctx)
+			return w.Start(ctx)
 		},
 		OnStop: func(context.Context) error {
-			return dsw.Close()
+			return w.Close()
 		},
 	})
-	return dsw, nil
+
+	return dagst, w, nil
 }
 
-// newDAGStoreDatastore creates a datastore under the given base directory
-// for dagstore metadata.
-func newDAGStoreDatastore(baseDir string) (datastore.Batching, error) {
-	// Create a datastore directory under the base dir if it doesn't already exist
-	dsDir := filepath.Join(baseDir, "datastore")
-	if err := os.MkdirAll(dsDir, 0755); err != nil {
-		return nil, xerrors.Errorf("failed to create directory %s for DAG store datastore: %w", dsDir, err)
-	}
-
-	// Create a new LevelDB datastore
-	ds, err := levelds.NewDatastore(dsDir, &levelds.Options{
-		Compression: ldbopts.NoCompression,
-		NoSync:      false,
-		Strict:      ldbopts.StrictAll,
-		ReadOnly:    false,
-	})
+func extractDAGStoreConfig(r repo.LockedRepo) (config.DAGStoreConfig, error) {
+	cfg, err := r.Config()
 	if err != nil {
-		return nil, xerrors.Errorf("failed to open datastore for DAG store: %w", err)
+		return config.DAGStoreConfig{}, xerrors.Errorf("could not load config: %w", err)
 	}
-	// Keep statistics about the datastore
-	mds := measure.New("measure.", ds)
-	return mds, nil
+	mcfg, ok := cfg.(config.StorageMiner)
+	if !ok {
+		return config.DAGStoreConfig{}, xerrors.Errorf("config not expected type; expected config.StorageMiner, got: %T", cfg)
+	}
+	return mcfg.DAGStore, nil
 }

@@ -3,82 +3,73 @@ package dagstore
 import (
 	"context"
 	"errors"
+	"os"
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/dagstore/index"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
+	levelds "github.com/ipfs/go-ds-leveldb"
+	measure "github.com/ipfs/go-ds-measure"
 	logging "github.com/ipfs/go-log/v2"
+	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/node/config"
+
 	"github.com/filecoin-project/dagstore"
+	"github.com/filecoin-project/dagstore/index"
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/dagstore/shard"
-	"github.com/filecoin-project/go-fil-markets/carstore"
-	"github.com/filecoin-project/go-fil-markets/shared"
+
+	"github.com/filecoin-project/go-fil-markets/stores"
 )
 
 const maxRecoverAttempts = 1
 
 var log = logging.Logger("dagstore-wrapper")
 
-// MarketDAGStoreConfig is the config the market needs to then construct a DAG Store.
-type MarketDAGStoreConfig struct {
-	TransientsDir             string
-	IndexDir                  string
-	Datastore                 ds.Datastore
-	MaxConcurrentIndex        int
-	MaxConcurrentReadyFetches int
-	GCInterval                time.Duration
-}
-
-// DAGStore provides an interface for the DAG store that can be mocked out
-// by tests
-type DAGStore interface {
-	RegisterShard(ctx context.Context, key shard.Key, mnt mount.Mount, out chan dagstore.ShardResult, opts dagstore.RegisterOpts) error
-	AcquireShard(ctx context.Context, key shard.Key, out chan dagstore.ShardResult, _ dagstore.AcquireOpts) error
-	RecoverShard(ctx context.Context, key shard.Key, out chan dagstore.ShardResult, _ dagstore.RecoverOpts) error
-	GC(ctx context.Context) (*dagstore.GCResult, error)
-	Close() error
-	Start(ctx context.Context) error
-}
-
 type Wrapper struct {
 	ctx          context.Context
 	cancel       context.CancelFunc
 	backgroundWg sync.WaitGroup
 
-	dagst      DAGStore
+	dagst      dagstore.Interface
 	mountApi   MinerAPI
 	failureCh  chan dagstore.ShardResult
 	traceCh    chan dagstore.Trace
 	gcInterval time.Duration
 }
 
-var _ shared.DagStoreWrapper = (*Wrapper)(nil)
+var _ stores.DAGStoreWrapper = (*Wrapper)(nil)
 
-func NewWrapper(cfg MarketDAGStoreConfig, mountApi MinerAPI) (*Wrapper, error) {
+func NewDAGStore(cfg config.DAGStoreConfig, mountApi MinerAPI) (*dagstore.DAGStore, *Wrapper, error) {
 	// construct the DAG Store.
 	registry := mount.NewRegistry()
-	if err := registry.Register(lotusScheme, NewLotusMountTemplate(mountApi)); err != nil {
-		return nil, xerrors.Errorf("failed to create registry: %w", err)
+	if err := registry.Register(lotusScheme, mountTemplate(mountApi)); err != nil {
+		return nil, nil, xerrors.Errorf("failed to create registry: %w", err)
 	}
 
 	// The dagstore will write Shard failures to the `failureCh` here.
 	failureCh := make(chan dagstore.ShardResult, 1)
+
 	// The dagstore will write Trace events to the `traceCh` here.
 	traceCh := make(chan dagstore.Trace, 32)
 
+	dstore, err := newDatastore(cfg.DatastoreDir)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("failed to create dagstore datastore in %s: %w", cfg.DatastoreDir, err)
+	}
+
 	irepo, err := index.NewFSRepo(cfg.IndexDir)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to initialise dagstore index repo")
+		return nil, nil, xerrors.Errorf("failed to initialise dagstore index repo")
 	}
 
 	dcfg := dagstore.Config{
 		TransientsDir: cfg.TransientsDir,
 		IndexRepo:     irepo,
-		Datastore:     cfg.Datastore,
+		Datastore:     dstore,
 		MountRegistry: registry,
 		FailureCh:     failureCh,
 		TraceCh:       traceCh,
@@ -88,18 +79,44 @@ func NewWrapper(cfg MarketDAGStoreConfig, mountApi MinerAPI) (*Wrapper, error) {
 		MaxConcurrentReadyFetches: cfg.MaxConcurrentReadyFetches,
 		RecoverOnStart:            dagstore.RecoverOnAcquire,
 	}
-	dagStore, err := dagstore.NewDAGStore(dcfg)
+
+	dagst, err := dagstore.NewDAGStore(dcfg)
 	if err != nil {
-		return nil, xerrors.Errorf("failed to create DAG store: %w", err)
+		return nil, nil, xerrors.Errorf("failed to create DAG store: %w", err)
 	}
 
-	return &Wrapper{
-		dagst:      dagStore,
+	w := &Wrapper{
+		dagst:      dagst,
 		mountApi:   mountApi,
 		failureCh:  failureCh,
 		traceCh:    traceCh,
 		gcInterval: cfg.GCInterval,
-	}, nil
+	}
+
+	return dagst, w, nil
+}
+
+// newDatastore creates a datastore under the given base directory
+// for dagstore metadata.
+func newDatastore(dir string) (ds.Batching, error) {
+	// Create the datastore directory if it doesn't exist yet.
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil, xerrors.Errorf("failed to create directory %s for DAG store datastore: %w", dir, err)
+	}
+
+	// Create a new LevelDB datastore
+	dstore, err := levelds.NewDatastore(dir, &levelds.Options{
+		Compression: ldbopts.NoCompression,
+		NoSync:      false,
+		Strict:      ldbopts.StrictAll,
+		ReadOnly:    false,
+	})
+	if err != nil {
+		return nil, xerrors.Errorf("failed to open datastore for DAG store: %w", err)
+	}
+	// Keep statistics about the datastore
+	mds := measure.New("measure.", dstore)
+	return mds, nil
 }
 
 func (w *Wrapper) Start(ctx context.Context) error {
@@ -159,7 +176,7 @@ func (w *Wrapper) gcLoop() {
 	}
 }
 
-func (w *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (carstore.ClosableBlockstore, error) {
+func (w *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (stores.ClosableBlockstore, error) {
 	log.Debugf("acquiring shard for piece CID %s", pieceCid)
 
 	key := shard.KeyFromCID(pieceCid)
@@ -179,7 +196,7 @@ func (w *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (carstore.Clo
 		// we already have a transient file. However, we don't have it here
 		// and therefore we pass an empty file path.
 		carPath := ""
-		if err := shared.RegisterShardSync(ctx, w, pieceCid, carPath, false); err != nil {
+		if err := stores.RegisterShardSync(ctx, w, pieceCid, carPath, false); err != nil {
 			return nil, xerrors.Errorf("failed to re-register shard during loading piece CID %s: %w", pieceCid, err)
 		}
 		log.Warnw("successfully re-registered shard", "pieceCID", pieceCid)

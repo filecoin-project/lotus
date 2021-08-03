@@ -182,7 +182,7 @@ func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer dtypes.ClientDataT
 func RetrievalClient(lc fx.Lifecycle, h host.Host, r repo.LockedRepo, dt dtypes.ClientDataTransfer, payAPI payapi.PaychAPI, resolver discovery.PeerResolver,
 	ds dtypes.MetadataDS, chainAPI full.ChainAPI, stateAPI full.StateAPI, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
 
-	carsPath := filepath.Join(r.Path(), dagStore, "retrieval-cars")
+	carsPath := filepath.Join(r.Path(), DefaultDAGStoreDir, "retrieval-cars")
 
 	if err := os.MkdirAll(carsPath, 0755); err != nil {
 		return nil, xerrors.Errorf("failed to create dir")

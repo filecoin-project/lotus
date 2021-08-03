@@ -1,10 +1,11 @@
 package config
 
 import (
-	"github.com/ipfs/go-cid"
+	"time"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/ipfs/go-cid"
 )
 
 // // NOTE: ONLY PUT STRUCT DEFINITIONS IN THIS FILE
@@ -50,6 +51,17 @@ type StorageMiner struct {
 	Storage    sectorstorage.SealerConfig
 	Fees       MinerFeeConfig
 	Addresses  MinerAddressConfig
+	DAGStore   DAGStoreConfig
+}
+
+type DAGStoreConfig struct {
+	TransientsDir              string
+	IndexDir                   string
+	DatastoreDir               string
+	MaxConcurrentIndex         int
+	MaxConcurrentReadyFetches  int
+	MaxConcurrencyStorageCalls int
+	GCInterval                 time.Duration
 }
 
 type MinerSubsystemConfig struct {

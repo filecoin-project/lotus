@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/node/config"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/dagstore"
@@ -26,12 +27,15 @@ func TestWrapperAcquireRecovery(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a DAG store wrapper
-	w, err := NewWrapper(MarketDAGStoreConfig{
+	dagst, w, err := NewDAGStore(config.DAGStoreConfig{
 		TransientsDir: t.TempDir(),
 		IndexDir:      t.TempDir(),
+		DatastoreDir:  t.TempDir(),
 		GCInterval:    time.Millisecond,
 	}, mockLotusMount{})
 	require.NoError(t, err)
+
+	defer dagst.Close()
 
 	// Return an error from acquire shard the first time
 	acquireShardErr := make(chan error, 1)
@@ -76,12 +80,15 @@ func TestWrapperBackground(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a DAG store wrapper
-	w, err := NewWrapper(MarketDAGStoreConfig{
+	dagst, w, err := NewDAGStore(config.DAGStoreConfig{
 		TransientsDir: t.TempDir(),
 		IndexDir:      t.TempDir(),
+		DatastoreDir:  t.TempDir(),
 		GCInterval:    time.Millisecond,
 	}, mockLotusMount{})
 	require.NoError(t, err)
+
+	defer dagst.Close()
 
 	// Create a mock DAG store in place of the real DAG store
 	mock := &mockDagStore{
@@ -126,6 +133,18 @@ type mockDagStore struct {
 	gc      chan struct{}
 	recover chan shard.Key
 	close   chan struct{}
+}
+
+func (m *mockDagStore) DestroyShard(ctx context.Context, key shard.Key, out chan dagstore.ShardResult, _ dagstore.DestroyOpts) error {
+	panic("implement me")
+}
+
+func (m *mockDagStore) GetShardInfo(k shard.Key) (dagstore.ShardInfo, error) {
+	panic("implement me")
+}
+
+func (m *mockDagStore) AllShardsInfo() dagstore.AllShardsInfo {
+	panic("implement me")
 }
 
 func (m *mockDagStore) Start(_ context.Context) error {

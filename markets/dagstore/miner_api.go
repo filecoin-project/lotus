@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
-	"strconv"
 
 	"github.com/filecoin-project/dagstore/throttle"
 	"github.com/ipfs/go-cid"
@@ -15,20 +13,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 )
-
-// MaxConcurrentStorageCalls caps the amount of concurrent calls to the
-// storage, so that we don't spam it during heavy processes like bulk migration.
-var MaxConcurrentStorageCalls = func() int {
-	// TODO replace env with config.toml attribute.
-	v, ok := os.LookupEnv("LOTUS_DAGSTORE_MOUNT_CONCURRENCY")
-	if ok {
-		concurrency, err := strconv.Atoi(v)
-		if err == nil {
-			return concurrency
-		}
-	}
-	return 100
-}()
 
 type MinerAPI interface {
 	FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error)
@@ -46,11 +30,11 @@ type minerAPI struct {
 
 var _ MinerAPI = (*minerAPI)(nil)
 
-func NewMinerAPI(store piecestore.PieceStore, rm retrievalmarket.RetrievalProviderNode) MinerAPI {
+func NewMinerAPI(store piecestore.PieceStore, rm retrievalmarket.RetrievalProviderNode, concurrency int) MinerAPI {
 	return &minerAPI{
 		pieceStore: store,
 		rm:         rm,
-		throttle:   throttle.Fixed(MaxConcurrentStorageCalls),
+		throttle:   throttle.Fixed(concurrency),
 		readyMgr:   shared.NewReadyManager(),
 	}
 }

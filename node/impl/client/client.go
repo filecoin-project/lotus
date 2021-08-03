@@ -10,8 +10,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/filecoin-project/go-fil-markets/filestorecaradapter"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/ipld/go-car"
 	carv2 "github.com/ipld/go-car/v2"
 	"github.com/ipld/go-car/v2/blockstore"
 
@@ -26,7 +25,7 @@ import (
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/ipfs/go-merkledag"
 	unixfile "github.com/ipfs/go-unixfs/file"
-	"github.com/ipld/go-car"
+
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
@@ -47,6 +46,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
+	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
 
@@ -54,6 +54,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/markets/utils"
@@ -188,17 +189,17 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 		providerInfo := utils.NewStorageProviderInfo(params.Miner, mi.Worker, mi.SectorSize, *mi.PeerId, mi.Multiaddrs)
 
 		result, err := a.SMDealClient.ProposeStorageDeal(ctx, storagemarket.ProposeStorageDealParams{
-			Addr:                   params.Wallet,
-			Info:                   &providerInfo,
-			Data:                   params.Data,
-			StartEpoch:             dealStart,
-			EndEpoch:               calcDealExpiration(params.MinBlocksDuration, md, dealStart),
-			Price:                  params.EpochPrice,
-			Collateral:             params.ProviderCollateral,
-			Rt:                     st,
-			FastRetrieval:          params.FastRetrieval,
-			VerifiedDeal:           params.VerifiedDeal,
-			FilestoreCARv2FilePath: CARV2FilePath,
+			Addr:          params.Wallet,
+			Info:          &providerInfo,
+			Data:          params.Data,
+			StartEpoch:    dealStart,
+			EndEpoch:      calcDealExpiration(params.MinBlocksDuration, md, dealStart),
+			Price:         params.EpochPrice,
+			Collateral:    params.ProviderCollateral,
+			Rt:            st,
+			FastRetrieval: params.FastRetrieval,
+			VerifiedDeal:  params.VerifiedDeal,
+			IndexedCAR:    CARV2FilePath,
 		})
 
 		if err != nil {
@@ -519,7 +520,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 			}
 		}()
 
-		root, err = a.importNormalFileToFilestoreCARv2(ctx, id, ref.Path, carFile)
+		root, err = a.doImport(ctx, ref.Path, carFile)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to import normal file to CARv2: %w", err)
 		}
@@ -1031,21 +1032,21 @@ func (w *lenWriter) Write(p []byte) (n int, err error) {
 }
 
 func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, error) {
-	fc, err := a.imgr().FilestoreCARV2FilePathFor(root)
+	path, err := a.imgr().FilestoreCARV2FilePathFor(root)
 	if err != nil {
 		return api.DataSize{}, xerrors.Errorf("failed to find CARv2 file for root: %w", err)
 	}
-	if len(fc) == 0 {
+	if len(path) == 0 {
 		return api.DataSize{}, xerrors.New("no CARv2 file for root")
 	}
 
-	rdOnly, err := filestorecaradapter.NewReadOnlyFileStore(fc)
+	fs, err := stores.ReadOnlyFilestore(path)
 	if err != nil {
-		return api.DataSize{}, xerrors.Errorf("failed to open read only filestore: %w", err)
+		return api.DataSize{}, xerrors.Errorf("failed to open filestore from carv2 in path %s: %w", path, err)
 	}
-	defer rdOnly.Close() //nolint:errcheck
+	defer fs.Close() //nolint:errcheck
 
-	dag := merkledag.NewDAGService(blockservice.New(rdOnly, offline.Exchange(rdOnly)))
+	dag := merkledag.NewDAGService(blockservice.New(fs, offline.Exchange(fs)))
 	w := lenWriter(0)
 
 	err = car.WriteCar(ctx, dag, []cid.Cid{root}, &w)
@@ -1062,21 +1063,21 @@ func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, e
 }
 
 func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCIDSize, error) {
-	fc, err := a.imgr().FilestoreCARV2FilePathFor(root)
+	path, err := a.imgr().FilestoreCARV2FilePathFor(root)
 	if err != nil {
 		return api.DataCIDSize{}, xerrors.Errorf("failed to find CARv2 file for root: %w", err)
 	}
-	if len(fc) == 0 {
+	if len(path) == 0 {
 		return api.DataCIDSize{}, xerrors.New("no CARv2 file for root")
 	}
 
-	rdOnly, err := filestorecaradapter.NewReadOnlyFileStore(fc)
+	fs, err := stores.ReadOnlyFilestore(path)
 	if err != nil {
-		return api.DataCIDSize{}, xerrors.Errorf("failed to open read only blockstore: %w", err)
+		return api.DataCIDSize{}, xerrors.Errorf("failed to open filestore from carv2 in path %s: %w", path, err)
 	}
-	defer rdOnly.Close() //nolint:errcheck
+	defer fs.Close() //nolint:errcheck
 
-	dag := merkledag.NewDAGService(blockservice.New(rdOnly, offline.Exchange(rdOnly)))
+	dag := merkledag.NewDAGService(blockservice.New(fs, offline.Exchange(fs)))
 	w := &writer.Writer{}
 	bw := bufio.NewWriterSize(w, int(writer.CommPBuf))
 
@@ -1095,22 +1096,20 @@ func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCID
 
 func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath string) error {
 	id := importmgr.ImportID(rand.Uint64())
-	tmpCARv2File, err := a.imgr().NewTempFile(id)
+	tmp, err := a.imgr().NewTempFile(id)
 	if err != nil {
 		return xerrors.Errorf("failed to create temp file: %w", err)
 	}
-	defer os.Remove(tmpCARv2File) //nolint:errcheck
+	defer os.Remove(tmp) //nolint:errcheck
 
-	root, err := a.importNormalFileToFilestoreCARv2(ctx, id, ref.Path, tmpCARv2File)
+	root, err := a.doImport(ctx, ref.Path, tmp)
 	if err != nil {
 		return xerrors.Errorf("failed to import normal file to CARv2")
 	}
 
-	// generate a deterministic CARv1 payload from the UnixFS DAG by doing an IPLD
-	// traversal over the Unixfs DAG in the CARv2 file using the "all selector" i.e the entire DAG selector.
-	fs, err := filestorecaradapter.NewReadOnlyFileStore(tmpCARv2File)
+	fs, err := stores.ReadOnlyFilestore(tmp)
 	if err != nil {
-		return xerrors.Errorf("failed to open read only CARv2 blockstore: %w", err)
+		return xerrors.Errorf("failed to open filestore from carv2 in path %s: %w", tmp, err)
 	}
 	defer fs.Close() //nolint:errcheck
 
