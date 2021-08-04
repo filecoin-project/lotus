@@ -36,7 +36,7 @@ func TestWrapperAcquireRecovery(t *testing.T) {
 	}, mockLotusMount{})
 	require.NoError(t, err)
 
-	defer dagst.Close()
+	defer dagst.Close() //nolint:errcheck
 
 	// Return an error from acquire shard the first time
 	acquireShardErr := make(chan error, 1)
@@ -89,7 +89,7 @@ func TestWrapperBackground(t *testing.T) {
 	}, mockLotusMount{})
 	require.NoError(t, err)
 
-	defer dagst.Close()
+	defer dagst.Close() //nolint:errcheck
 
 	// Create a mock DAG store in place of the real DAG store
 	mock := &mockDagStore{

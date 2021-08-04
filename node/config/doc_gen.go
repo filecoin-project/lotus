@@ -177,11 +177,12 @@ subsystem.
 Default value: 100.`,
 		},
 		{
-			Name: "GCIntervalMillis",
-			Type: "int",
+			Name: "GCInterval",
+			Type: "Duration",
 
-			Comment: `The number of milliseconds between calls to periodic dagstore GC.
-Default value: 60000 (60 seconds = 1 minute).`,
+			Comment: `The time between calls to periodic dagstore GC, in time.Duration string
+representation, e.g. 1m, 5m, 1h.
+Default value: 1 minute.`,
 		},
 	},
 	"DealmakingConfig": []DocField{

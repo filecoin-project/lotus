@@ -6,7 +6,6 @@ import (
 	"os"
 
 	"github.com/filecoin-project/go-fil-markets/stores"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil"
@@ -20,6 +19,8 @@ import (
 	"github.com/ipld/go-car/v2"
 	"github.com/ipld/go-car/v2/blockstore"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/build"
 )
 
 // doImport takes a standard file (src), forms a UnixFS DAG, and writes a
@@ -38,7 +39,7 @@ func (a *API) doImport(ctx context.Context, src string, dst string) (cid.Cid, er
 	}
 	_ = f.Close() // close; we only want the path.
 	tmp := f.Name()
-	defer os.Remove(tmp)
+	defer os.Remove(tmp) //nolint:errcheck
 
 	// Step 1. Compute the UnixFS DAG and write it to a CARv2 file to get
 	// the root CID of the DAG.
