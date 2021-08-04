@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-statemachine/fsm"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	levelds "github.com/ipfs/go-ds-leveldb"
@@ -18,15 +17,17 @@ import (
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/providerstates"
 	"github.com/filecoin-project/lotus/node/config"
+
+	"github.com/filecoin-project/go-statemachine/fsm"
 
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/dagstore/index"
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/dagstore/shard"
 
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/providerstates"
 	"github.com/filecoin-project/go-fil-markets/stores"
 )
 

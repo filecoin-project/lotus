@@ -127,31 +127,11 @@ and storage providers`,
 	},
 	"DAGStoreConfig": []DocField{
 		{
-			Name: "TransientsDir",
+			Name: "RootDir",
 			Type: "string",
 
-			Comment: `Path to the transients directory. The transients directory caches
-unsealed deals that have been fetched from the storage subsystem for
-serving retrievals. When empty or omitted, the default value applies.
-Default value: $LOTUS_MARKETS_PATH/dagStore/transients (split deployment)
-or $LOTUS_MINER_PATH/dagStore/transients (monolith deployment)`,
-		},
-		{
-			Name: "IndexDir",
-			Type: "string",
-
-			Comment: `Path to indices directory. When empty or omitted, the default value applies.
-Default value: $LOTUS_MARKETS_PATH/dagStore/index (split deployment)
-or $LOTUS_MINER_PATH/dagStore/index (monolith deployment)`,
-		},
-		{
-			Name: "DatastoreDir",
-			Type: "string",
-
-			Comment: `Path to datastore directory. The datastore is a KV store tracking the
-state of shards known to the DAG store.
-Default value: $LOTUS_MARKETS_PATH/dagStore/datastore (split deployment)
-or $LOTUS_MINER_PATH/dagStore/datastore (monolith deployment)`,
+			Comment: `Default value: $LOTUS_MARKETS_PATH/dagStore (split deployment) or
+$LOTUS_MINER_PATH/dagStore (monolith deployment)`,
 		},
 		{
 			Name: "MaxConcurrentIndex",
