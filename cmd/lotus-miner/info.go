@@ -17,8 +17,8 @@ import (
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/tools/stats"
 )
 
 var infoCmd = &cli.Command{
@@ -328,7 +329,7 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.Full
 
 	if cctx.IsSet("blocks") {
 		fmt.Println("Produced newest blocks:")
-		err = producedBlocks(ctx, cctx.Int("blocks"), head, maddr, fullapi)
+		err = producedBlocks(ctx, cctx.Int("blocks"), maddr, fullapi)
 		if err != nil {
 			return err
 		}
@@ -542,8 +543,12 @@ func colorTokenAmount(format string, amount abi.TokenAmount) {
 	}
 }
 
-func producedBlocks(ctx context.Context, count int, head *types.TipSet, maddr address.Address, napi v0api.FullNode) error {
+func producedBlocks(ctx context.Context, count int, maddr address.Address, napi v0api.FullNode) error {
 	var err error
+	head, err := napi.ChainHead(ctx)
+	if err != nil {
+		return err
+	}
 	ts := head
 	fmt.Printf(" Epoch   | Block ID                                                       | Reward\n")
 	for count > 0 {
@@ -556,7 +561,7 @@ func producedBlocks(ctx context.Context, count int, head *types.TipSet, maddr ad
 					return err
 				}
 
-				rewardActorState, err := reward.Load(cw_util.NewAPIIpldStore(ctx, napi), rewardActor)
+				rewardActorState, err := reward.Load(stats.NewApiIpldStore(ctx, napi), rewardActor)
 				if err != nil {
 					return err
 				}
