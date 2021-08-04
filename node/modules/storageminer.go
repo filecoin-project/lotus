@@ -19,16 +19,6 @@ import (
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
-	piecefilestore "github.com/filecoin-project/go-fil-markets/filestore"
-	piecestoreimpl "github.com/filecoin-project/go-fil-markets/piecestore/impl"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
-	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
-	"github.com/filecoin-project/go-fil-markets/shared"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
-	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
-	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -46,6 +36,17 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/routing"
+
+	piecefilestore "github.com/filecoin-project/go-fil-markets/filestore"
+	piecestoreimpl "github.com/filecoin-project/go-fil-markets/piecestore/impl"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
+	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
+	"github.com/filecoin-project/go-fil-markets/shared"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
+	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -590,13 +591,20 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 		return nil, err
 	}
 
-	dagStorePath := filepath.Join(r.Path(), DefaultDAGStoreDir)
-
 	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
-	shardMigrator := storageimpl.NewShardMigrator(address.Address(minerAddress), dagStorePath, dsw, pieceStore, spn)
 
-	return storageimpl.NewProvider(net, namespace.Wrap(ds, datastore.NewKey("/deals/provider")), store, dsw, pieceStore,
-		dataTransfer, spn, address.Address(minerAddress), storedAsk, shardMigrator, opt)
+	return storageimpl.NewProvider(
+		net,
+		namespace.Wrap(ds, datastore.NewKey("/deals/provider")),
+		store,
+		dsw,
+		pieceStore,
+		dataTransfer,
+		spn,
+		address.Address(minerAddress),
+		storedAsk,
+		opt,
+	)
 }
 
 func RetrievalDealFilter(userFilter dtypes.RetrievalDealFilter) func(onlineOk dtypes.ConsiderOnlineRetrievalDealsConfigFunc,

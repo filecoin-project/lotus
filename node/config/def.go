@@ -189,9 +189,6 @@ func DefaultStorageMiner() *StorageMiner {
 			DealPublishControl: []string{},
 		},
 
-		// The default DAGStoreConfig doesn't define any paths for transients,
-		// indices and the datastore. Empty values will lead to these being
-		// placed under <repo>/dagStore.
 		DAGStore: DAGStoreConfig{
 			MaxConcurrentIndex:         5,
 			MaxConcurrentReadyFetches:  2,
