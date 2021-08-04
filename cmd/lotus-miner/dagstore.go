@@ -118,7 +118,7 @@ var dagstoreGcCmd = &cli.Command{
 		}
 
 		for _, e := range collected {
-			if e.Error == nil {
+			if e.Error == "" {
 				_, _ = fmt.Fprintln(os.Stdout, e.Key, "success")
 			} else {
 				_, _ = fmt.Fprintln(os.Stdout, e.Key, "failed:", e.Error)

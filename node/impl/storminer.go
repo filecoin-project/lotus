@@ -564,7 +564,12 @@ func (sm *StorageMinerAPI) DagstoreListShards(ctx context.Context) ([]api.Dagsto
 		ret = append(ret, api.DagstoreShardInfo{
 			Key:   k.String(),
 			State: i.ShardState.String(),
-			Error: i.Error,
+			Error: func() string {
+				if i.Error == nil {
+					return ""
+				}
+				return i.Error.Error()
+			}(),
 		})
 	}
 	return ret, nil
@@ -624,8 +629,13 @@ func (sm *StorageMinerAPI) DagstoreGC(ctx context.Context) ([]api.DagstoreGCResu
 	ret := make([]api.DagstoreGCResult, 0, len(res.Shards))
 	for k, err := range res.Shards {
 		ret = append(ret, api.DagstoreGCResult{
-			Key:   k.String(),
-			Error: err,
+			Key: k.String(),
+			Error: func() string {
+				if err == nil {
+					return ""
+				}
+				return err.Error()
+			}(),
 		})
 	}
 

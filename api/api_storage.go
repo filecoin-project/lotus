@@ -355,12 +355,12 @@ type DealSchedule struct {
 type DagstoreShardInfo struct {
 	Key   string
 	State string
-	Error error
+	Error string
 }
 
 // DagstoreGCResult is the serialized form of dagstore.GCResult that we expose
 // through JSON-RPC to avoid clients having to depend on the dagstore lib.
 type DagstoreGCResult struct {
 	Key   string
-	Error error
+	Error string
 }

@@ -278,12 +278,12 @@ func init() {
 	})
 	addExample(api.DagstoreGCResult{
 		Key:   "baga6ea4seaqecmtz7iak33dsfshi627abz4i4665dfuzr3qfs4bmad6dx3iigdq",
-		Error: nil,
+		Error: "<error>",
 	})
 	addExample(api.DagstoreShardInfo{
 		Key:   "baga6ea4seaqecmtz7iak33dsfshi627abz4i4665dfuzr3qfs4bmad6dx3iigdq",
 		State: "ShardStateAvailable",
-		Error: nil,
+		Error: "<error>",
 	})
 }
 
