@@ -86,9 +86,10 @@ type DAGStoreConfig struct {
 	// Default value: 100.
 	MaxConcurrencyStorageCalls int
 
-	// The number of milliseconds between calls to periodic dagstore GC.
-	// Default value: 60000 (60 seconds = 1 minute).
-	GCIntervalMillis int
+	// The time between calls to periodic dagstore GC, in time.Duration string
+	// representation, e.g. 1m, 5m, 1h.
+	// Default value: 1 minute.
+	GCInterval Duration
 }
 
 type MinerSubsystemConfig struct {
