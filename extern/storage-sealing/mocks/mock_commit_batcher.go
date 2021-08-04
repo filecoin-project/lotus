@@ -12,6 +12,7 @@ import (
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
 	network "github.com/filecoin-project/go-state-types/network"
+	api "github.com/filecoin-project/lotus/api"
 	miner "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -118,21 +119,6 @@ func (mr *MockCommitBatcherApiMockRecorder) StateMinerInfo(arg0, arg1, arg2 inte
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerInfo", reflect.TypeOf((*MockCommitBatcherApi)(nil).StateMinerInfo), arg0, arg1, arg2)
 }
 
-// StateMinerInitialPledgeCollateral mocks base method.
-func (m *MockCommitBatcherApi) StateMinerInitialPledgeCollateral(arg0 context.Context, arg1 address.Address, arg2 miner0.SectorPreCommitInfo, arg3 sealing.TipSetToken) (big.Int, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateMinerInitialPledgeCollateral", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(big.Int)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StateMinerInitialPledgeCollateral indicates an expected call of StateMinerInitialPledgeCollateral.
-func (mr *MockCommitBatcherApiMockRecorder) StateMinerInitialPledgeCollateral(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerInitialPledgeCollateral", reflect.TypeOf((*MockCommitBatcherApi)(nil).StateMinerInitialPledgeCollateral), arg0, arg1, arg2, arg3)
-}
-
 // StateNetworkVersion mocks base method.
 func (m *MockCommitBatcherApi) StateNetworkVersion(arg0 context.Context, arg1 sealing.TipSetToken) (network.Version, error) {
 	m.ctrl.T.Helper()
@@ -146,6 +132,21 @@ func (m *MockCommitBatcherApi) StateNetworkVersion(arg0 context.Context, arg1 se
 func (mr *MockCommitBatcherApiMockRecorder) StateNetworkVersion(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateNetworkVersion", reflect.TypeOf((*MockCommitBatcherApi)(nil).StateNetworkVersion), arg0, arg1)
+}
+
+// StatePledgeCollateral mocks base method.
+func (m *MockCommitBatcherApi) StatePledgeCollateral(arg0 context.Context, arg1 address.Address, arg2 miner0.SectorPreCommitInfo, arg3 sealing.TipSetToken) (*api.PledgeCollateral, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StatePledgeCollateral", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*api.PledgeCollateral)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StatePledgeCollateral indicates an expected call of StatePledgeCollateral.
+func (mr *MockCommitBatcherApiMockRecorder) StatePledgeCollateral(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatePledgeCollateral", reflect.TypeOf((*MockCommitBatcherApi)(nil).StatePledgeCollateral), arg0, arg1, arg2, arg3)
 }
 
 // StateSectorPreCommitInfo mocks base method.

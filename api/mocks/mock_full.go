@@ -2439,21 +2439,6 @@ func (mr *MockFullNodeMockRecorder) StateMinerInfo(arg0, arg1, arg2 interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerInfo", reflect.TypeOf((*MockFullNode)(nil).StateMinerInfo), arg0, arg1, arg2)
 }
 
-// StateMinerInitialPledgeCollateral mocks base method.
-func (m *MockFullNode) StateMinerInitialPledgeCollateral(arg0 context.Context, arg1 address.Address, arg2 miner0.SectorPreCommitInfo, arg3 types.TipSetKey) (big.Int, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateMinerInitialPledgeCollateral", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(big.Int)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StateMinerInitialPledgeCollateral indicates an expected call of StateMinerInitialPledgeCollateral.
-func (mr *MockFullNodeMockRecorder) StateMinerInitialPledgeCollateral(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerInitialPledgeCollateral", reflect.TypeOf((*MockFullNode)(nil).StateMinerInitialPledgeCollateral), arg0, arg1, arg2, arg3)
-}
-
 // StateMinerPartitions mocks base method.
 func (m *MockFullNode) StateMinerPartitions(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 types.TipSetKey) ([]api.Partition, error) {
 	m.ctrl.T.Helper()
@@ -2482,21 +2467,6 @@ func (m *MockFullNode) StateMinerPower(arg0 context.Context, arg1 address.Addres
 func (mr *MockFullNodeMockRecorder) StateMinerPower(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerPower", reflect.TypeOf((*MockFullNode)(nil).StateMinerPower), arg0, arg1, arg2)
-}
-
-// StateMinerPreCommitDepositForPower mocks base method.
-func (m *MockFullNode) StateMinerPreCommitDepositForPower(arg0 context.Context, arg1 address.Address, arg2 miner0.SectorPreCommitInfo, arg3 types.TipSetKey) (big.Int, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateMinerPreCommitDepositForPower", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(big.Int)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StateMinerPreCommitDepositForPower indicates an expected call of StateMinerPreCommitDepositForPower.
-func (mr *MockFullNodeMockRecorder) StateMinerPreCommitDepositForPower(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerPreCommitDepositForPower", reflect.TypeOf((*MockFullNode)(nil).StateMinerPreCommitDepositForPower), arg0, arg1, arg2, arg3)
 }
 
 // StateMinerProvingDeadline mocks base method.
@@ -2604,7 +2574,7 @@ func (mr *MockFullNodeMockRecorder) StateNetworkVersion(arg0, arg1 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateNetworkVersion", reflect.TypeOf((*MockFullNode)(nil).StateNetworkVersion), arg0, arg1)
 }
 
-// StatePledgeCollateral mocks base method
+// StatePledgeCollateral mocks base method.
 func (m *MockFullNode) StatePledgeCollateral(arg0 context.Context, arg1 address.Address, arg2 miner0.SectorPreCommitInfo, arg3 types.TipSetKey) (*api.PledgeCollateral, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StatePledgeCollateral", arg0, arg1, arg2, arg3)
@@ -2613,13 +2583,13 @@ func (m *MockFullNode) StatePledgeCollateral(arg0 context.Context, arg1 address.
 	return ret0, ret1
 }
 
-// StatePledgeCollateral indicates an expected call of StatePledgeCollateral
+// StatePledgeCollateral indicates an expected call of StatePledgeCollateral.
 func (mr *MockFullNodeMockRecorder) StatePledgeCollateral(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StatePledgeCollateral", reflect.TypeOf((*MockFullNode)(nil).StatePledgeCollateral), arg0, arg1, arg2, arg3)
 }
 
-// StateReadState mocks base method
+// StateReadState mocks base method.
 func (m *MockFullNode) StateReadState(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (*api.ActorState, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateReadState", arg0, arg1, arg2)
