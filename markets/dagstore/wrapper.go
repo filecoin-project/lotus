@@ -3,7 +3,9 @@ package dagstore
 import (
 	"context"
 	"errors"
+	"math"
 	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -17,25 +19,33 @@ import (
 
 	"github.com/filecoin-project/lotus/node/config"
 
+	"github.com/filecoin-project/go-statemachine/fsm"
+
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/dagstore/index"
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/dagstore/shard"
 
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/providerstates"
 	"github.com/filecoin-project/go-fil-markets/stores"
 )
 
-const maxRecoverAttempts = 1
+const (
+	maxRecoverAttempts = 1
+	shardRegMarker     = ".shard-registration-complete"
+)
 
-var log = logging.Logger("dagstore-wrapper")
+var log = logging.Logger("dagstore")
 
 type Wrapper struct {
 	ctx          context.Context
 	cancel       context.CancelFunc
 	backgroundWg sync.WaitGroup
 
+	cfg        config.DAGStoreConfig
 	dagst      dagstore.Interface
-	mountApi   MinerAPI
+	minerAPI   MinerAPI
 	failureCh  chan dagstore.ShardResult
 	traceCh    chan dagstore.Trace
 	gcInterval time.Duration
@@ -56,18 +66,24 @@ func NewDAGStore(cfg config.DAGStoreConfig, mountApi MinerAPI) (*dagstore.DAGSto
 	// The dagstore will write Trace events to the `traceCh` here.
 	traceCh := make(chan dagstore.Trace, 32)
 
-	dstore, err := newDatastore(cfg.DatastoreDir)
+	var (
+		transientsDir = filepath.Join(cfg.RootDir, "transients")
+		datastoreDir  = filepath.Join(cfg.RootDir, "datastore")
+		indexDir      = filepath.Join(cfg.RootDir, "index")
+	)
+
+	dstore, err := newDatastore(datastoreDir)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("failed to create dagstore datastore in %s: %w", cfg.DatastoreDir, err)
+		return nil, nil, xerrors.Errorf("failed to create dagstore datastore in %s: %w", datastoreDir, err)
 	}
 
-	irepo, err := index.NewFSRepo(cfg.IndexDir)
+	irepo, err := index.NewFSRepo(indexDir)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("failed to initialise dagstore index repo")
 	}
 
 	dcfg := dagstore.Config{
-		TransientsDir: cfg.TransientsDir,
+		TransientsDir: transientsDir,
 		IndexRepo:     irepo,
 		Datastore:     dstore,
 		MountRegistry: registry,
@@ -86,8 +102,9 @@ func NewDAGStore(cfg config.DAGStoreConfig, mountApi MinerAPI) (*dagstore.DAGSto
 	}
 
 	w := &Wrapper{
+		cfg:        cfg,
 		dagst:      dagst,
-		mountApi:   mountApi,
+		minerAPI:   mountApi,
 		failureCh:  failureCh,
 		traceCh:    traceCh,
 		gcInterval: time.Duration(cfg.GCInterval),
@@ -233,7 +250,7 @@ func (w *Wrapper) LoadShard(ctx context.Context, pieceCid cid.Cid) (stores.Closa
 func (w *Wrapper) RegisterShard(ctx context.Context, pieceCid cid.Cid, carPath string, eagerInit bool, resch chan dagstore.ShardResult) error {
 	// Create a lotus mount with the piece CID
 	key := shard.KeyFromCID(pieceCid)
-	mt, err := NewLotusMount(pieceCid, w.mountApi)
+	mt, err := NewLotusMount(pieceCid, w.minerAPI)
 	if err != nil {
 		return xerrors.Errorf("failed to create lotus mount for piece CID %s: %w", pieceCid, err)
 	}
@@ -250,6 +267,138 @@ func (w *Wrapper) RegisterShard(ctx context.Context, pieceCid cid.Cid, carPath s
 	log.Debugf("successfully submitted Register Shard request for piece CID %s with eagerInit=%t", pieceCid, eagerInit)
 
 	return nil
+}
+
+func (w *Wrapper) MigrateDeals(ctx context.Context, deals []storagemarket.MinerDeal) (bool, error) {
+	log := log.Named("migrator")
+
+	// Check if all deals have already been registered as shards
+	isComplete, err := w.registrationComplete()
+	if err != nil {
+		return false, xerrors.Errorf("failed to get dagstore migration status: %w", err)
+	}
+	if isComplete {
+		// All deals have been registered as shards, bail out
+		log.Info("no shard migration necessary; already marked complete")
+		return false, nil
+	}
+
+	log.Infow("registering shards for all active deals in sealing subsystem", "count", len(deals))
+
+	inSealingSubsystem := make(map[fsm.StateKey]struct{}, len(providerstates.StatesKnownBySealingSubsystem))
+	for _, s := range providerstates.StatesKnownBySealingSubsystem {
+		inSealingSubsystem[s] = struct{}{}
+	}
+
+	// channel where results will be received, and channel where the total
+	// number of registered shards will be sent.
+	resch := make(chan dagstore.ShardResult, 32)
+	totalCh := make(chan int)
+	doneCh := make(chan struct{})
+
+	// Start making progress consuming results. We won't know how many to
+	// actually consume until we register all shards.
+	//
+	// If there are any problems registering shards, just log an error
+	go func() {
+		defer close(doneCh)
+
+		var total = math.MaxInt64
+		var res dagstore.ShardResult
+		for rcvd := 0; rcvd < total; {
+			select {
+			case total = <-totalCh:
+				// we now know the total number of registered shards
+				// nullify so that we no longer consume from it after closed.
+				close(totalCh)
+				totalCh = nil
+			case res = <-resch:
+				rcvd++
+				if res.Error == nil {
+					log.Infow("async shard registration completed successfully", "shard_key", res.Key)
+				} else {
+					log.Warnw("async shard registration failed", "shard_key", res.Key, "error", res.Error)
+				}
+			}
+		}
+	}()
+
+	// Filter for deals that are handed off.
+	//
+	// If the deal has not yet been handed off to the sealing subsystem, we
+	// don't need to call RegisterShard in this migration; RegisterShard will
+	// be called in the new code once the deal reaches the state where it's
+	// handed off to the sealing subsystem.
+	var registered int
+	for _, deal := range deals {
+		if deal.Ref.PieceCid == nil {
+			log.Warnw("deal has nil piece CID; skipping", "deal_id", deal.DealID)
+			continue
+		}
+
+		// enrich log statements in this iteration with deal ID and piece CID.
+		log := log.With("deal_id", deal.DealID, "piece_cid", deal.Ref.PieceCid)
+
+		// Filter for deals that have been handed off to the sealing subsystem
+		if _, ok := inSealingSubsystem[deal.State]; !ok {
+			log.Infow("deal not ready; skipping")
+			continue
+		}
+
+		log.Infow("registering deal in dagstore with lazy init")
+
+		// Register the deal as a shard with the DAG store with lazy initialization.
+		// The index will be populated the first time the deal is retrieved, or
+		// through the bulk initialization script.
+		err = w.RegisterShard(ctx, *deal.Ref.PieceCid, "", false, resch)
+		if err != nil {
+			log.Warnw("failed to register shard", "error", err)
+			continue
+		}
+		registered++
+	}
+
+	log.Infow("finished registering all shards", "total", registered)
+	totalCh <- registered
+	<-doneCh
+
+	log.Infow("confirmed registration of all shards")
+
+	// Completed registering all shards, so mark the migration as complete
+	err = w.markRegistrationComplete()
+	if err != nil {
+		log.Errorf("failed to mark shards as registered: %s", err)
+	} else {
+		log.Info("successfully marked migration as complete")
+	}
+
+	log.Infow("dagstore migration complete")
+
+	return true, nil
+}
+
+// Check for the existence of a "marker" file indicating that the migration
+// has completed
+func (w *Wrapper) registrationComplete() (bool, error) {
+	path := filepath.Join(w.cfg.RootDir, shardRegMarker)
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+// Create a "marker" file indicating that the migration has completed
+func (w *Wrapper) markRegistrationComplete() error {
+	path := filepath.Join(w.cfg.RootDir, shardRegMarker)
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	return file.Close()
 }
 
 func (w *Wrapper) Close() error {

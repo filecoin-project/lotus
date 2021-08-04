@@ -8,9 +8,10 @@ import (
 	"strconv"
 
 	"github.com/filecoin-project/dagstore"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 
 	mdagstore "github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/node/config"
@@ -68,16 +69,9 @@ func DAGStore(lc fx.Lifecycle, r repo.LockedRepo, minerAPI mdagstore.MinerAPI) (
 		return nil, nil, err
 	}
 
-	// populate default directories if not explicitly set in the config.
-	defaultDir := filepath.Join(r.Path(), DefaultDAGStoreDir)
-	if cfg.TransientsDir == "" {
-		cfg.TransientsDir = filepath.Join(defaultDir, "transients")
-	}
-	if cfg.IndexDir == "" {
-		cfg.IndexDir = filepath.Join(defaultDir, "index")
-	}
-	if cfg.DatastoreDir == "" {
-		cfg.DatastoreDir = filepath.Join(defaultDir, "datastore")
+	// fall back to default root directory if not explicitly set in the config.
+	if cfg.RootDir == "" {
+		cfg.RootDir = filepath.Join(r.Path(), DefaultDAGStoreDir)
 	}
 
 	v, ok := os.LookupEnv(EnvDAGStoreCopyConcurrency)

@@ -54,23 +54,19 @@ type StorageMiner struct {
 }
 
 type DAGStoreConfig struct {
-	// Path to the transients directory. The transients directory caches
-	// unsealed deals that have been fetched from the storage subsystem for
-	// serving retrievals. When empty or omitted, the default value applies.
-	// Default value: $LOTUS_MARKETS_PATH/dagStore/transients (split deployment)
-	// or $LOTUS_MINER_PATH/dagStore/transients (monolith deployment)
-	TransientsDir string
-
-	// Path to indices directory. When empty or omitted, the default value applies.
-	// Default value: $LOTUS_MARKETS_PATH/dagStore/index (split deployment)
-	// or $LOTUS_MINER_PATH/dagStore/index (monolith deployment)
-	IndexDir string
-
-	// Path to datastore directory. The datastore is a KV store tracking the
-	// state of shards known to the DAG store.
-	// Default value: $LOTUS_MARKETS_PATH/dagStore/datastore (split deployment)
-	// or $LOTUS_MINER_PATH/dagStore/datastore (monolith deployment)
-	DatastoreDir string
+	// Path to the dagstore root directory. This directory contains three
+	// subdirectories, which can be symlinked to alternative locations if
+	// need be:
+	//
+	//  - ./transients: caches unsealed deals that have been fetched from the
+	//    storage subsystem for serving retrievals.
+	//  - ./indices: stores shard indices.
+	//  - ./datastore: holds the KV store tracking the state of every shard
+	//    known to the DAG store.
+	//
+	// Default value: $LOTUS_MARKETS_PATH/dagStore (split deployment) or
+	// $LOTUS_MINER_PATH/dagStore (monolith deployment)
+	RootDir string
 
 	// The maximum amount of indexing jobs that can run simultaneously.
 	// Default value: 5.

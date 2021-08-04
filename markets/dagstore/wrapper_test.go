@@ -29,10 +29,8 @@ func TestWrapperAcquireRecovery(t *testing.T) {
 
 	// Create a DAG store wrapper
 	dagst, w, err := NewDAGStore(config.DAGStoreConfig{
-		TransientsDir: t.TempDir(),
-		IndexDir:      t.TempDir(),
-		DatastoreDir:  t.TempDir(),
-		GCInterval:    config.Duration(1 * time.Millisecond),
+		RootDir:    t.TempDir(),
+		GCInterval: config.Duration(1 * time.Millisecond),
 	}, mockLotusMount{})
 	require.NoError(t, err)
 
@@ -82,10 +80,8 @@ func TestWrapperBackground(t *testing.T) {
 
 	// Create a DAG store wrapper
 	dagst, w, err := NewDAGStore(config.DAGStoreConfig{
-		TransientsDir: t.TempDir(),
-		IndexDir:      t.TempDir(),
-		DatastoreDir:  t.TempDir(),
-		GCInterval:    config.Duration(1 * time.Millisecond),
+		RootDir:    t.TempDir(),
+		GCInterval: config.Duration(1 * time.Millisecond),
 	}, mockLotusMount{})
 	require.NoError(t, err)
 
