@@ -7,7 +7,6 @@ import (
 
 	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/urfave/cli/v2"
-	"go.opencensus.io/stats/view"
 
 	logging "github.com/ipfs/go-log/v2"
 
@@ -48,14 +47,14 @@ func main() {
 				},
 			},
 			&cli.StringSliceFlag{
-				Name:  "actors",
+				Name:  "actor",
 				Usage: "Actor or Wallet addresses to monitor",
 				EnvVars: []string{
 					"LOTUS_MONITOR_ACTORS",
 				},
 			},
 			&cli.StringSliceFlag{
-				Name:  "miners",
+				Name:  "miner",
 				Usage: "Miner addresses to monitor",
 				EnvVars: []string{
 					"LOTUS_MONITOR_MINERS",
@@ -75,10 +74,6 @@ func main() {
 				return err
 			}
 			defer closer()
-
-			if err := view.Register(balanceView, nonceView); err != nil {
-				return err
-			}
 
 			pe, err := prometheus.NewExporter(prometheus.Options{
 				Namespace: "lotusmonitor",
@@ -103,7 +98,5 @@ func main() {
 			return nil
 		},
 	}
-	if err := app.Run(os.Args); err != nil {
-		log.Fatalf("%+v", err)
-	}
+	app.Run(os.Args)
 }
