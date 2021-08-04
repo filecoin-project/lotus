@@ -13,12 +13,13 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/filecoin-project/specs-storage/storage"
+
+	"github.com/filecoin-project/go-fil-markets/piecestore"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
@@ -165,6 +166,17 @@ type StorageMiner interface {
 	MarketCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error //perm:write
 	MarketPendingDeals(ctx context.Context) (PendingDealInfo, error)                                                             //perm:write
 	MarketPublishPendingDeals(ctx context.Context) error                                                                         //perm:admin
+
+	// DagstoreListShards returns information about all shards known to the
+	// DAG store. Only available on nodes running the markets subsystem.
+	DagstoreListShards(ctx context.Context) ([]DagstoreShardInfo, error) //perm:read
+
+	// DagstoreInitializeShard initializes an uninitialized shard by acquiring
+	// it and releasing it as soon as it's ready.
+	DagstoreInitializeShard(ctx context.Context, key string) error //perm:write
+
+	// DagstoreGC runs garbage collection on the DAG store.
+	DagstoreGC(ctx context.Context) ([]DagstoreGCResult, error) //perm:admin
 
 	// RuntimeSubsystems returns the subsystems that are enabled
 	// in this instance.
@@ -335,4 +347,20 @@ type PieceDealInfo struct {
 type DealSchedule struct {
 	StartEpoch abi.ChainEpoch
 	EndEpoch   abi.ChainEpoch
+}
+
+// DagstoreShardInfo is the serialized form of dagstore.DagstoreShardInfo that
+// we expose through JSON-RPC to avoid clients having to depend on the
+// dagstore lib.
+type DagstoreShardInfo struct {
+	Key   string
+	State string
+	Error error
+}
+
+// DagstoreGCResult is the serialized form of dagstore.GCResult that we expose
+// through JSON-RPC to avoid clients having to depend on the dagstore lib.
+type DagstoreGCResult struct {
+	Key   string
+	Error error
 }

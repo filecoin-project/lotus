@@ -603,6 +603,12 @@ type StorageMinerStruct struct {
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
+		DagstoreGC func(p0 context.Context) ([]DagstoreGCResult, error) `perm:"admin"`
+
+		DagstoreInitializeShard func(p0 context.Context, p1 string) error `perm:"write"`
+
+		DagstoreListShards func(p0 context.Context) ([]DagstoreShardInfo, error) `perm:"read"`
+
 		DealsConsiderOfflineRetrievalDeals func(p0 context.Context) (bool, error) `perm:"admin"`
 
 		DealsConsiderOfflineStorageDeals func(p0 context.Context) (bool, error) `perm:"admin"`
@@ -3567,6 +3573,39 @@ func (s *StorageMinerStruct) CreateBackup(p0 context.Context, p1 string) error {
 
 func (s *StorageMinerStub) CreateBackup(p0 context.Context, p1 string) error {
 	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) DagstoreGC(p0 context.Context) ([]DagstoreGCResult, error) {
+	if s.Internal.DagstoreGC == nil {
+		return *new([]DagstoreGCResult), ErrNotSupported
+	}
+	return s.Internal.DagstoreGC(p0)
+}
+
+func (s *StorageMinerStub) DagstoreGC(p0 context.Context) ([]DagstoreGCResult, error) {
+	return *new([]DagstoreGCResult), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) DagstoreInitializeShard(p0 context.Context, p1 string) error {
+	if s.Internal.DagstoreInitializeShard == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.DagstoreInitializeShard(p0, p1)
+}
+
+func (s *StorageMinerStub) DagstoreInitializeShard(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) DagstoreListShards(p0 context.Context) ([]DagstoreShardInfo, error) {
+	if s.Internal.DagstoreListShards == nil {
+		return *new([]DagstoreShardInfo), ErrNotSupported
+	}
+	return s.Internal.DagstoreListShards(p0)
+}
+
+func (s *StorageMinerStub) DagstoreListShards(p0 context.Context) ([]DagstoreShardInfo, error) {
+	return *new([]DagstoreShardInfo), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsConsiderOfflineRetrievalDeals(p0 context.Context) (bool, error) {

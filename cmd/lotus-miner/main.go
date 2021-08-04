@@ -5,13 +5,15 @@ import (
 	"fmt"
 
 	"github.com/fatih/color"
-	cliutil "github.com/filecoin-project/lotus/cli/util"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
+	cliutil "github.com/filecoin-project/lotus/cli/util"
+
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -46,6 +48,7 @@ func main() {
 		lcli.WithCategory("market", storageDealsCmd),
 		lcli.WithCategory("market", retrievalDealsCmd),
 		lcli.WithCategory("market", dataTransfersCmd),
+		lcli.WithCategory("market", dagstoreCmd),
 		lcli.WithCategory("storage", sectorsCmd),
 		lcli.WithCategory("storage", provingCmd),
 		lcli.WithCategory("storage", storageCmd),

@@ -18,6 +18,10 @@
   * [ComputeProof](#ComputeProof)
 * [Create](#Create)
   * [CreateBackup](#CreateBackup)
+* [Dagstore](#Dagstore)
+  * [DagstoreGC](#DagstoreGC)
+  * [DagstoreInitializeShard](#DagstoreInitializeShard)
+  * [DagstoreListShards](#DagstoreListShards)
 * [Deals](#Deals)
   * [DealsConsiderOfflineRetrievalDeals](#DealsConsiderOfflineRetrievalDeals)
   * [DealsConsiderOfflineStorageDeals](#DealsConsiderOfflineStorageDeals)
@@ -344,6 +348,46 @@ Inputs:
 ```
 
 Response: `{}`
+
+## Dagstore
+
+
+### DagstoreGC
+DagstoreGC runs garbage collection on the DAG store.
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `null`
+
+### DagstoreInitializeShard
+DagstoreInitializeShard initializes an uninitialized shard by acquiring
+it and releasing it as soon as it's ready.
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
+
+### DagstoreListShards
+DagstoreListShards returns information about all shards known to the
+DAG store. Only available on nodes running the markets subsystem.
+
+
+Perms: read
+
+Inputs: `null`
+
+Response: `null`
 
 ## Deals
 
