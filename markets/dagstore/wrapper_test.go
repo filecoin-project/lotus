@@ -10,6 +10,8 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/node/config"
+
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/dagstore/shard"
@@ -26,12 +28,15 @@ func TestWrapperAcquireRecovery(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a DAG store wrapper
-	w, err := NewDagStoreWrapper(MarketDAGStoreConfig{
+	dagst, w, err := NewDAGStore(config.DAGStoreConfig{
 		TransientsDir: t.TempDir(),
 		IndexDir:      t.TempDir(),
-		GCInterval:    time.Millisecond,
+		DatastoreDir:  t.TempDir(),
+		GCInterval:    config.Duration(1 * time.Millisecond),
 	}, mockLotusMount{})
 	require.NoError(t, err)
+
+	defer dagst.Close() //nolint:errcheck
 
 	// Return an error from acquire shard the first time
 	acquireShardErr := make(chan error, 1)
@@ -45,7 +50,7 @@ func TestWrapperAcquireRecovery(t *testing.T) {
 		},
 		register: make(chan shard.Key, 1),
 	}
-	w.dagStore = mock
+	w.dagst = mock
 
 	mybs, err := w.LoadShard(ctx, pieceCid)
 	require.NoError(t, err)
@@ -76,12 +81,15 @@ func TestWrapperBackground(t *testing.T) {
 	ctx := context.Background()
 
 	// Create a DAG store wrapper
-	w, err := NewDagStoreWrapper(MarketDAGStoreConfig{
+	dagst, w, err := NewDAGStore(config.DAGStoreConfig{
 		TransientsDir: t.TempDir(),
 		IndexDir:      t.TempDir(),
-		GCInterval:    time.Millisecond,
+		DatastoreDir:  t.TempDir(),
+		GCInterval:    config.Duration(1 * time.Millisecond),
 	}, mockLotusMount{})
 	require.NoError(t, err)
+
+	defer dagst.Close() //nolint:errcheck
 
 	// Create a mock DAG store in place of the real DAG store
 	mock := &mockDagStore{
@@ -89,7 +97,7 @@ func TestWrapperBackground(t *testing.T) {
 		recover: make(chan shard.Key, 1),
 		close:   make(chan struct{}, 1),
 	}
-	w.dagStore = mock
+	w.dagst = mock
 
 	// Start up the wrapper
 	err = w.Start(ctx)
@@ -126,6 +134,18 @@ type mockDagStore struct {
 	gc      chan struct{}
 	recover chan shard.Key
 	close   chan struct{}
+}
+
+func (m *mockDagStore) DestroyShard(ctx context.Context, key shard.Key, out chan dagstore.ShardResult, _ dagstore.DestroyOpts) error {
+	panic("implement me")
+}
+
+func (m *mockDagStore) GetShardInfo(k shard.Key) (dagstore.ShardInfo, error) {
+	panic("implement me")
+}
+
+func (m *mockDagStore) AllShardsInfo() dagstore.AllShardsInfo {
+	panic("implement me")
 }
 
 func (m *mockDagStore) Start(_ context.Context) error {

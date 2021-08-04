@@ -66,6 +66,7 @@ var (
 	AutoNATSvcKey        = special{10} // Libp2p option
 	BandwidthReporterKey = special{11} // Libp2p option
 	ConnGaterKey         = special{12} // libp2p option
+	DAGStoreKey          = special{13} // constructor returns multiple values
 )
 
 type invoke int

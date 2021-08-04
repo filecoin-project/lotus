@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
-	"strconv"
 
 	"github.com/filecoin-project/dagstore/throttle"
 	"github.com/ipfs/go-cid"
@@ -16,50 +14,36 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 )
 
-// MaxConcurrentStorageCalls caps the amount of concurrent calls to the
-// storage, so that we don't spam it during heavy processes like bulk migration.
-var MaxConcurrentStorageCalls = func() int {
-	// TODO replace env with config.toml attribute.
-	v, ok := os.LookupEnv("LOTUS_DAGSTORE_MOUNT_CONCURRENCY")
-	if ok {
-		concurrency, err := strconv.Atoi(v)
-		if err == nil {
-			return concurrency
-		}
-	}
-	return 100
-}()
-
-type LotusAccessor interface {
+type MinerAPI interface {
 	FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error)
 	GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error)
 	IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error)
 	Start(ctx context.Context) error
 }
 
-type lotusAccessor struct {
+type minerAPI struct {
 	pieceStore piecestore.PieceStore
 	rm         retrievalmarket.RetrievalProviderNode
 	throttle   throttle.Throttler
 	readyMgr   *shared.ReadyManager
 }
 
-var _ LotusAccessor = (*lotusAccessor)(nil)
+var _ MinerAPI = (*minerAPI)(nil)
 
-func NewLotusAccessor(store piecestore.PieceStore, rm retrievalmarket.RetrievalProviderNode) LotusAccessor {
-	return &lotusAccessor{
+func NewMinerAPI(store piecestore.PieceStore, rm retrievalmarket.RetrievalProviderNode, concurrency int) MinerAPI {
+	return &minerAPI{
 		pieceStore: store,
 		rm:         rm,
-		throttle:   throttle.Fixed(MaxConcurrentStorageCalls),
+		throttle:   throttle.Fixed(concurrency),
 		readyMgr:   shared.NewReadyManager(),
 	}
 }
 
-func (m *lotusAccessor) Start(_ context.Context) error {
+func (m *minerAPI) Start(_ context.Context) error {
 	return m.readyMgr.FireReady(nil)
 }
 
-func (m *lotusAccessor) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error) {
+func (m *minerAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error) {
 	err := m.readyMgr.AwaitReady()
 	if err != nil {
 		return false, xerrors.Errorf("failed while waiting for accessor to start: %w", err)
@@ -107,7 +91,7 @@ func (m *lotusAccessor) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool,
 	return false, nil
 }
 
-func (m *lotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
+func (m *minerAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
 	err := m.readyMgr.AwaitReady()
 	if err != nil {
 		return nil, err
@@ -179,7 +163,7 @@ func (m *lotusAccessor) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid
 	return nil, lastErr
 }
 
-func (m *lotusAccessor) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error) {
+func (m *minerAPI) GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error) {
 	err := m.readyMgr.AwaitReady()
 	if err != nil {
 		return 0, err

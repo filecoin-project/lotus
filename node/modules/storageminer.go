@@ -7,31 +7,13 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
-
-	"github.com/ipfs/go-bitswap"
-	"github.com/ipfs/go-bitswap/network"
-	"github.com/ipfs/go-blockservice"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	levelds "github.com/ipfs/go-ds-leveldb"
-	measure "github.com/ipfs/go-ds-measure"
-	graphsync "github.com/ipfs/go-graphsync/impl"
-	gsnet "github.com/ipfs/go-graphsync/network"
-	"github.com/ipfs/go-graphsync/storeutil"
-	"github.com/ipfs/go-merkledag"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/routing"
-	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 
 	"github.com/filecoin-project/go-address"
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
@@ -52,6 +34,18 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
+	"github.com/ipfs/go-bitswap"
+	"github.com/ipfs/go-bitswap/network"
+	"github.com/ipfs/go-blockservice"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
+	graphsync "github.com/ipfs/go-graphsync/impl"
+	gsnet "github.com/ipfs/go-graphsync/network"
+	"github.com/ipfs/go-graphsync/storeutil"
+	"github.com/ipfs/go-merkledag"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/routing"
 
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -82,7 +76,6 @@ import (
 )
 
 var StorageCounterDSPrefix = "/storage/nextid"
-var dagStore = "dagStore"
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 	maddrb, err := ds.Get(datastore.NewKey("miner-address"))
@@ -581,101 +574,6 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 	}
 }
 
-func NewLotusAccessor(lc fx.Lifecycle,
-	pieceStore dtypes.ProviderPieceStore,
-	rpn retrievalmarket.RetrievalProviderNode,
-) (dagstore.LotusAccessor, error) {
-	mountApi := dagstore.NewLotusAccessor(pieceStore, rpn)
-	ready := make(chan error, 1)
-	pieceStore.OnReady(func(err error) {
-		ready <- err
-	})
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			if err := <-ready; err != nil {
-				return fmt.Errorf("aborting dagstore start; piecestore failed to start: %s", err)
-			}
-			return mountApi.Start(ctx)
-		},
-		OnStop: func(context.Context) error {
-			return nil
-		},
-	})
-
-	return mountApi, nil
-}
-
-func DagStoreWrapper(
-	lc fx.Lifecycle,
-	r repo.LockedRepo,
-	lotusAccessor dagstore.LotusAccessor,
-) (*dagstore.Wrapper, error) {
-	dagStoreDir := filepath.Join(r.Path(), dagStore)
-	dagStoreDS, err := createDAGStoreDatastore(dagStoreDir)
-	if err != nil {
-		return nil, err
-	}
-
-	var maxCopies = 2
-	// TODO replace env with config.toml attribute.
-	v, ok := os.LookupEnv("LOTUS_DAGSTORE_COPY_CONCURRENCY")
-	if ok {
-		concurrency, err := strconv.Atoi(v)
-		if err == nil {
-			maxCopies = concurrency
-		}
-	}
-
-	cfg := dagstore.MarketDAGStoreConfig{
-		TransientsDir:             filepath.Join(dagStoreDir, "transients"),
-		IndexDir:                  filepath.Join(dagStoreDir, "index"),
-		Datastore:                 dagStoreDS,
-		GCInterval:                1 * time.Minute,
-		MaxConcurrentIndex:        5,
-		MaxConcurrentReadyFetches: maxCopies,
-	}
-
-	dsw, err := dagstore.NewDagStoreWrapper(cfg, lotusAccessor)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to create DAG store wrapper: %w", err)
-	}
-
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			return dsw.Start(ctx)
-		},
-		OnStop: func(context.Context) error {
-			return dsw.Close()
-		},
-	})
-	return dsw, nil
-}
-
-// createDAGStoreDatastore creates a datastore under the given base directory
-// for DAG store metadata
-func createDAGStoreDatastore(baseDir string) (datastore.Batching, error) {
-	// Create a datastore directory under the base dir if it doesn't already exist
-	dsDir := path.Join(baseDir, "datastore")
-	if err := os.MkdirAll(dsDir, 0755); err != nil {
-		return nil, xerrors.Errorf("failed to create directory %s for DAG store datastore: %w", dsDir, err)
-	}
-
-	// Create a new LevelDB datastore
-	ds, err := levelds.NewDatastore(dsDir, &levelds.Options{
-		Compression: ldbopts.NoCompression,
-		NoSync:      false,
-		Strict:      ldbopts.StrictAll,
-		ReadOnly:    false,
-	})
-	if err != nil {
-		return nil, xerrors.Errorf("failed to open datastore for DAG store: %w", err)
-	}
-
-	// Keep statistics about the datastore
-	mds := measure.New("measure.", ds)
-	return mds, nil
-}
-
 func StorageProvider(minerAddress dtypes.MinerAddress,
 	storedAsk *storedask.StoredAsk,
 	h host.Host, ds dtypes.MetadataDS,
@@ -692,7 +590,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 		return nil, err
 	}
 
-	dagStorePath := filepath.Join(r.Path(), dagStore)
+	dagStorePath := filepath.Join(r.Path(), DefaultDAGStoreDir)
 
 	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
 	shardMigrator := storageimpl.NewShardMigrator(address.Address(minerAddress), dagStorePath, dsw, pieceStore, spn)

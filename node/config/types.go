@@ -50,6 +50,46 @@ type StorageMiner struct {
 	Storage    sectorstorage.SealerConfig
 	Fees       MinerFeeConfig
 	Addresses  MinerAddressConfig
+	DAGStore   DAGStoreConfig
+}
+
+type DAGStoreConfig struct {
+	// Path to the transients directory. The transients directory caches
+	// unsealed deals that have been fetched from the storage subsystem for
+	// serving retrievals. When empty or omitted, the default value applies.
+	// Default value: $LOTUS_MARKETS_PATH/dagStore/transients (split deployment)
+	// or $LOTUS_MINER_PATH/dagStore/transients (monolith deployment)
+	TransientsDir string
+
+	// Path to indices directory. When empty or omitted, the default value applies.
+	// Default value: $LOTUS_MARKETS_PATH/dagStore/index (split deployment)
+	// or $LOTUS_MINER_PATH/dagStore/index (monolith deployment)
+	IndexDir string
+
+	// Path to datastore directory. The datastore is a KV store tracking the
+	// state of shards known to the DAG store.
+	// Default value: $LOTUS_MARKETS_PATH/dagStore/datastore (split deployment)
+	// or $LOTUS_MINER_PATH/dagStore/datastore (monolith deployment)
+	DatastoreDir string
+
+	// The maximum amount of indexing jobs that can run simultaneously.
+	// Default value: 5.
+	MaxConcurrentIndex int
+
+	// The maximum amount of unsealed deals that can be fetched simultaneously
+	// from the storage subsystem.
+	// Default value: 2.
+	MaxConcurrentReadyFetches int
+
+	// The maximum number of simultaneous inflight API calls to the storage
+	// subsystem.
+	// Default value: 100.
+	MaxConcurrencyStorageCalls int
+
+	// The time between calls to periodic dagstore GC, in time.Duration string
+	// representation, e.g. 1m, 5m, 1h.
+	// Default value: 1 minute.
+	GCInterval Duration
 }
 
 type MinerSubsystemConfig struct {

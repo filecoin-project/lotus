@@ -74,7 +74,7 @@ func TestLotusAccessorFetchUnsealedPiece(t *testing.T) {
 			rpn := &mockRPN{
 				sectors: mockData,
 			}
-			api := NewLotusAccessor(ps, rpn)
+			api := NewMinerAPI(ps, rpn, 100)
 			require.NoError(t, api.Start(ctx))
 
 			// Add deals to piece store
@@ -114,7 +114,7 @@ func TestLotusAccessorGetUnpaddedCARSize(t *testing.T) {
 
 	ps := getPieceStore(t)
 	rpn := &mockRPN{}
-	api := NewLotusAccessor(ps, rpn)
+	api := NewMinerAPI(ps, rpn, 100)
 	require.NoError(t, api.Start(ctx))
 
 	// Add a deal with data Length 10
@@ -131,8 +131,6 @@ func TestLotusAccessorGetUnpaddedCARSize(t *testing.T) {
 }
 
 func TestThrottle(t *testing.T) {
-	MaxConcurrentStorageCalls = 3
-
 	ctx := context.Background()
 	cid1, err := cid.Parse("bafkqaaa")
 	require.NoError(t, err)
@@ -143,7 +141,7 @@ func TestThrottle(t *testing.T) {
 			unsealedSectorID: "foo",
 		},
 	}
-	api := NewLotusAccessor(ps, rpn)
+	api := NewMinerAPI(ps, rpn, 3)
 	require.NoError(t, api.Start(ctx))
 
 	// Add a deal with data Length 10
@@ -170,7 +168,7 @@ func TestThrottle(t *testing.T) {
 	}
 
 	time.Sleep(500 * time.Millisecond)
-	require.EqualValues(t, MaxConcurrentStorageCalls, atomic.LoadInt32(&rpn.calls)) // throttled
+	require.EqualValues(t, 3, atomic.LoadInt32(&rpn.calls)) // throttled
 
 	// allow to proceed.
 	rpn.lk.Unlock()

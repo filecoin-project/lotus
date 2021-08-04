@@ -4,12 +4,11 @@ import (
 	"context"
 	"io"
 	"io/ioutil"
-	"math/rand"
 	"os"
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/go-fil-markets/filestorecaradapter"
+	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -22,39 +21,50 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestImportNormalFileToUnixfsDAG(t *testing.T) {
+// This test uses a full "dense" CARv2, and not a filestore (positional mapping).
+func TestRoundtripUnixFS_Dense(t *testing.T) {
 	ctx := context.Background()
-	inputPath, inputContents := genNormalInputFile(t)
+
+	inputPath, inputContents := genInputFile(t)
 	defer os.Remove(inputPath) //nolint:errcheck
-	carv2File := genTmpFile(t)
+
+	carv2File := newTmpFile(t)
 	defer os.Remove(carv2File) //nolint:errcheck
 
-	// import a normal file to a Unixfs DAG using a CARv2 read-write blockstore and flush it out to a CARv2 file.
-	tempCARv2Store, err := blockstore.OpenReadWrite(carv2File, []cid.Cid{}, carv2.ZeroLengthSectionAsEOF(true), blockstore.UseWholeCIDs(true))
+	// import a file to a Unixfs DAG using a CARv2 read/write blockstore.
+	path, err := blockstore.OpenReadWrite(carv2File, nil,
+		carv2.ZeroLengthSectionAsEOF(true),
+		blockstore.UseWholeCIDs(true))
 	require.NoError(t, err)
-	bsvc := blockservice.New(tempCARv2Store, offline.Exchange(tempCARv2Store))
-	root, err := importNormalFileToUnixfsDAG(ctx, inputPath, merkledag.NewDAGService(bsvc))
+
+	bsvc := blockservice.New(path, offline.Exchange(path))
+	dags := merkledag.NewDAGService(bsvc)
+
+	root, err := buildUnixFS(ctx, inputPath, dags)
 	require.NoError(t, err)
 	require.NotEqual(t, cid.Undef, root)
-	require.NoError(t, tempCARv2Store.Finalize())
+	require.NoError(t, path.Finalize())
 
-	// convert the CARv2 file to a normal file again and ensure the contents match.
-	readOnly, err := blockstore.OpenReadOnly(carv2File, carv2.ZeroLengthSectionAsEOF(true), blockstore.UseWholeCIDs(true))
+	// reconstruct the file.
+	readOnly, err := blockstore.OpenReadOnly(carv2File,
+		carv2.ZeroLengthSectionAsEOF(true),
+		blockstore.UseWholeCIDs(true))
 	require.NoError(t, err)
 	defer readOnly.Close() //nolint:errcheck
-	dag := merkledag.NewDAGService(blockservice.New(readOnly, offline.Exchange(readOnly)))
 
-	nd, err := dag.Get(ctx, root)
-	require.NoError(t, err)
-	file, err := unixfile.NewUnixfsFile(ctx, dag, nd)
+	dags = merkledag.NewDAGService(blockservice.New(readOnly, offline.Exchange(readOnly)))
+
+	nd, err := dags.Get(ctx, root)
 	require.NoError(t, err)
 
-	tmpOutput := genTmpFile(t)
+	file, err := unixfile.NewUnixfsFile(ctx, dags, nd)
+	require.NoError(t, err)
+
+	tmpOutput := newTmpFile(t)
 	defer os.Remove(tmpOutput) //nolint:errcheck
 	require.NoError(t, files.WriteTo(file, tmpOutput))
 
 	// ensure contents of the initial input file and the output file are identical.
-
 	fo, err := os.Open(tmpOutput)
 	require.NoError(t, err)
 	bz2, err := ioutil.ReadAll(fo)
@@ -63,35 +73,36 @@ func TestImportNormalFileToUnixfsDAG(t *testing.T) {
 	require.Equal(t, inputContents, bz2)
 }
 
-func TestImportNormalFileToCARv2(t *testing.T) {
+func TestRoundtripUnixFS_Filestore(t *testing.T) {
 	ctx := context.Background()
 	a := &API{
 		Imports: &importmgr.Mgr{},
 	}
-	importID := importmgr.ImportID(rand.Uint64())
 
-	inputFilePath, inputContents := genNormalInputFile(t)
+	inputFilePath, inputContents := genInputFile(t)
 	defer os.Remove(inputFilePath) //nolint:errcheck
 
-	outputCARv2 := genTmpFile(t)
-	defer os.Remove(outputCARv2) //nolint:errcheck
+	path := newTmpFile(t)
+	defer os.Remove(path) //nolint:errcheck
 
-	root, err := a.importNormalFileToFilestoreCARv2(ctx, importID, inputFilePath, outputCARv2)
+	root, err := a.doImport(ctx, inputFilePath, path)
 	require.NoError(t, err)
 	require.NotEqual(t, cid.Undef, root)
 
 	// convert the CARv2 to a normal file again and ensure the contents match
-	readOnly, err := filestorecaradapter.NewReadOnlyFileStore(outputCARv2)
+	fs, err := stores.ReadOnlyFilestore(path)
 	require.NoError(t, err)
-	defer readOnly.Close() //nolint:errcheck
-	dag := merkledag.NewDAGService(blockservice.New(readOnly, offline.Exchange(readOnly)))
+	defer fs.Close() //nolint:errcheck
 
-	nd, err := dag.Get(ctx, root)
-	require.NoError(t, err)
-	file, err := unixfile.NewUnixfsFile(ctx, dag, nd)
+	dags := merkledag.NewDAGService(blockservice.New(fs, offline.Exchange(fs)))
+
+	nd, err := dags.Get(ctx, root)
 	require.NoError(t, err)
 
-	tmpOutput := genTmpFile(t)
+	file, err := unixfile.NewUnixfsFile(ctx, dags, nd)
+	require.NoError(t, err)
+
+	tmpOutput := newTmpFile(t)
 	defer os.Remove(tmpOutput) //nolint:errcheck
 	require.NoError(t, files.WriteTo(file, tmpOutput))
 
@@ -104,14 +115,14 @@ func TestImportNormalFileToCARv2(t *testing.T) {
 	require.Equal(t, inputContents, bz2)
 }
 
-func genTmpFile(t *testing.T) string {
+func newTmpFile(t *testing.T) string {
 	f, err := os.CreateTemp("", "")
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
 	return f.Name()
 }
 
-func genNormalInputFile(t *testing.T) (filepath string, contents []byte) {
+func genInputFile(t *testing.T) (filepath string, contents []byte) {
 	s := strings.Repeat("abcde", 100)
 	tmp, err := os.CreateTemp("", "")
 	require.NoError(t, err)

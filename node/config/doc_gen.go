@@ -125,6 +125,66 @@ and storage providers`,
 			Comment: ``,
 		},
 	},
+	"DAGStoreConfig": []DocField{
+		{
+			Name: "TransientsDir",
+			Type: "string",
+
+			Comment: `Path to the transients directory. The transients directory caches
+unsealed deals that have been fetched from the storage subsystem for
+serving retrievals. When empty or omitted, the default value applies.
+Default value: $LOTUS_MARKETS_PATH/dagStore/transients (split deployment)
+or $LOTUS_MINER_PATH/dagStore/transients (monolith deployment)`,
+		},
+		{
+			Name: "IndexDir",
+			Type: "string",
+
+			Comment: `Path to indices directory. When empty or omitted, the default value applies.
+Default value: $LOTUS_MARKETS_PATH/dagStore/index (split deployment)
+or $LOTUS_MINER_PATH/dagStore/index (monolith deployment)`,
+		},
+		{
+			Name: "DatastoreDir",
+			Type: "string",
+
+			Comment: `Path to datastore directory. The datastore is a KV store tracking the
+state of shards known to the DAG store.
+Default value: $LOTUS_MARKETS_PATH/dagStore/datastore (split deployment)
+or $LOTUS_MINER_PATH/dagStore/datastore (monolith deployment)`,
+		},
+		{
+			Name: "MaxConcurrentIndex",
+			Type: "int",
+
+			Comment: `The maximum amount of indexing jobs that can run simultaneously.
+Default value: 5.`,
+		},
+		{
+			Name: "MaxConcurrentReadyFetches",
+			Type: "int",
+
+			Comment: `The maximum amount of unsealed deals that can be fetched simultaneously
+from the storage subsystem.
+Default value: 2.`,
+		},
+		{
+			Name: "MaxConcurrencyStorageCalls",
+			Type: "int",
+
+			Comment: `The maximum number of simultaneous inflight API calls to the storage
+subsystem.
+Default value: 100.`,
+		},
+		{
+			Name: "GCInterval",
+			Type: "Duration",
+
+			Comment: `The time between calls to periodic dagstore GC, in time.Duration string
+representation, e.g. 1m, 5m, 1h.
+Default value: 1 minute.`,
+		},
+	},
 	"DealmakingConfig": []DocField{
 		{
 			Name: "ConsiderOnlineStorageDeals",
@@ -752,6 +812,12 @@ Default is 20 (about once a week).`,
 		{
 			Name: "Addresses",
 			Type: "MinerAddressConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "DAGStore",
+			Type: "DAGStoreConfig",
 
 			Comment: ``,
 		},
