@@ -10,19 +10,16 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 )
 
-type recorderFunc func(*cli.Context, v0api.FullNode, chan error)
+type recorderFunc func(*cli.Context, address.Address, v0api.FullNode, chan error)
 
 var (
-	log       = logging.Logger("lotus-monitor")
-	recorders = []recorderFunc{
-		actorRecorder,
-		minerRecorder,
-	}
+	log = logging.Logger("lotus-monitor")
 )
 
 func main() {
@@ -91,9 +88,8 @@ func main() {
 			}()
 
 			recordErrs := make(chan error)
-			for _, f := range recorders {
-				go f(cctx, api, recordErrs)
-			}
+			go longPoll(cctx, api, recordErrs, minerRecorder, cctx.StringSlice("miner"))
+			go longPoll(cctx, api, recordErrs, actorRecorder, cctx.StringSlice("actor"))
 			errorRecorder(cctx, recordErrs)
 			return nil
 		},
