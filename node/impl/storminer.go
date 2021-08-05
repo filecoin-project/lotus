@@ -3,22 +3,28 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
+	"github.com/filecoin-project/dagstore"
+	"github.com/filecoin-project/dagstore/shard"
 	"github.com/filecoin-project/go-jsonrpc/auth"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/gen"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/build"
 
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -34,6 +40,8 @@ import (
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 
+	sto "github.com/filecoin-project/specs-storage/storage"
+
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -42,7 +50,6 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
-	sto "github.com/filecoin-project/specs-storage/storage"
 )
 
 type StorageMinerAPI struct {
@@ -65,6 +72,7 @@ type StorageMinerAPI struct {
 	DealPublisher     *storageadapter.DealPublisher     `optional:"true"`
 	SectorBlocks      *sectorblocks.SectorBlocks        `optional:"true"`
 	Host              host.Host                         `optional:"true"`
+	DAGStore          *dagstore.DAGStore                `optional:"true"`
 
 	// Miner / storage
 	Miner       *storage.Miner              `optional:"true"`
@@ -97,6 +105,8 @@ type StorageMinerAPI struct {
 	GetExpectedSealDurationFunc                 dtypes.GetExpectedSealDurationFunc                 `optional:"true"`
 	SetExpectedSealDurationFunc                 dtypes.SetExpectedSealDurationFunc                 `optional:"true"`
 }
+
+var _ api.StorageMiner = &StorageMinerAPI{}
 
 func (sm *StorageMinerAPI) ServeRemote(perm bool) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -545,6 +555,204 @@ func (sm *StorageMinerAPI) MarketPublishPendingDeals(ctx context.Context) error 
 	return nil
 }
 
+func (sm *StorageMinerAPI) DagstoreListShards(ctx context.Context) ([]api.DagstoreShardInfo, error) {
+	if sm.DAGStore == nil {
+		return nil, fmt.Errorf("dagstore not available on this node")
+	}
+	info := sm.DAGStore.AllShardsInfo()
+	ret := make([]api.DagstoreShardInfo, 0, len(info))
+	for k, i := range info {
+		ret = append(ret, api.DagstoreShardInfo{
+			Key:   k.String(),
+			State: i.ShardState.String(),
+			Error: func() string {
+				if i.Error == nil {
+					return ""
+				}
+				return i.Error.Error()
+			}(),
+		})
+	}
+	return ret, nil
+}
+
+func (sm *StorageMinerAPI) DagstoreInitializeShard(ctx context.Context, key string) error {
+	if sm.DAGStore == nil {
+		return fmt.Errorf("dagstore not available on this node")
+	}
+
+	k := shard.KeyFromString(key)
+
+	info, err := sm.DAGStore.GetShardInfo(k)
+	if err != nil {
+		return fmt.Errorf("failed to get shard info: %w", err)
+	}
+	if st := info.ShardState; st != dagstore.ShardStateNew {
+		return fmt.Errorf("cannot initialize shard; expected state ShardStateNew, was: %s", st.String())
+	}
+
+	ch := make(chan dagstore.ShardResult, 1)
+	if err = sm.DAGStore.AcquireShard(ctx, k, ch, dagstore.AcquireOpts{}); err != nil {
+		return fmt.Errorf("failed to acquire shard: %w", err)
+	}
+
+	var res dagstore.ShardResult
+	select {
+	case res = <-ch:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	if err := res.Error; err != nil {
+		return fmt.Errorf("failed to acquire shard: %w", err)
+	}
+
+	if res.Accessor != nil {
+		err = res.Accessor.Close()
+		if err != nil {
+			log.Warnw("failed to close shard accessor; continuing", "shard_key", k, "error", err)
+		}
+	}
+
+	return nil
+}
+
+func (sm *StorageMinerAPI) DagstoreInitializeAll(ctx context.Context, params api.DagstoreInitializeAllParams) (<-chan api.DagstoreShardResult, error) {
+	if sm.DAGStore == nil {
+		return nil, fmt.Errorf("dagstore not available on this node")
+	}
+
+	// prepare the thottler tokens.
+	var throttle chan struct{}
+	if c := params.MaxConcurrency; c > 0 {
+		throttle = make(chan struct{}, c)
+		for i := 0; i < c; i++ {
+			throttle <- struct{}{}
+		}
+	}
+
+	info := sm.DAGStore.AllShardsInfo()
+	var uninit []string
+	for k, i := range info {
+		if i.ShardState != dagstore.ShardStateNew {
+			continue
+		}
+		uninit = append(uninit, k.String())
+	}
+
+	if len(uninit) == 0 {
+		out := make(chan api.DagstoreShardResult)
+		close(out)
+		return out, nil
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(uninit))
+
+	// response channel must be closed when we're done, or the context is cancelled.
+	// this buffering is necessary to prevent inflight children goroutines from
+	// publishing to a closed channel (res) when the context is cancelled.
+	out := make(chan api.DagstoreShardResult, 32) // internal buffer.
+	res := make(chan api.DagstoreShardResult, 32) // returned to caller.
+
+	go func() {
+		close(res) // close the caller channel.
+
+		pending := len(uninit)
+		for pending > 0 {
+			select {
+			case res <- <-out:
+				pending--
+				continue
+			case <-throttle:
+				// acquired a throttle token, proceed.
+			case <-ctx.Done():
+				return
+			}
+
+			next := uninit[0]
+			uninit = uninit[1:]
+
+			go func() {
+				err := sm.DagstoreInitializeShard(ctx, next)
+				throttle <- struct{}{}
+
+				r := api.DagstoreShardResult{Key: next}
+				if err == nil {
+					r.Success = true
+				} else {
+					r.Success = false
+					r.Error = err.Error()
+				}
+
+				select {
+				case out <- r:
+				case <-ctx.Done():
+				}
+			}()
+		}
+
+	}()
+
+	return res, nil
+
+}
+
+func (sm *StorageMinerAPI) DagstoreRecoverShard(ctx context.Context, key string) error {
+	if sm.DAGStore == nil {
+		return fmt.Errorf("dagstore not available on this node")
+	}
+
+	k := shard.KeyFromString(key)
+
+	info, err := sm.DAGStore.GetShardInfo(k)
+	if err != nil {
+		return fmt.Errorf("failed to get shard info: %w", err)
+	}
+	if st := info.ShardState; st != dagstore.ShardStateErrored {
+		return fmt.Errorf("cannot recover shard; expected state ShardStateErrored, was: %s", st.String())
+	}
+
+	ch := make(chan dagstore.ShardResult, 1)
+	if err = sm.DAGStore.RecoverShard(ctx, k, ch, dagstore.RecoverOpts{}); err != nil {
+		return fmt.Errorf("failed to recover shard: %w", err)
+	}
+
+	var res dagstore.ShardResult
+	select {
+	case res = <-ch:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	return res.Error
+}
+
+func (sm *StorageMinerAPI) DagstoreGC(ctx context.Context) ([]api.DagstoreShardResult, error) {
+	if sm.DAGStore == nil {
+		return nil, fmt.Errorf("dagstore not available on this node")
+	}
+
+	res, err := sm.DAGStore.GC(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to gc: %w", err)
+	}
+
+	ret := make([]api.DagstoreShardResult, 0, len(res.Shards))
+	for k, err := range res.Shards {
+		r := api.DagstoreShardResult{Key: k.String()}
+		if err == nil {
+			r.Success = true
+		} else {
+			r.Success = false
+			r.Error = err.Error()
+		}
+		ret = append(ret, r)
+	}
+
+	return ret, nil
+}
+
 func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]api.MarketDeal, error) {
 	return sm.listDeals(ctx)
 }
@@ -708,5 +916,3 @@ func (sm *StorageMinerAPI) ComputeProof(ctx context.Context, ssi []builtin.Secto
 func (sm *StorageMinerAPI) RuntimeSubsystems(context.Context) (res api.MinerSubsystems, err error) {
 	return sm.EnabledSubsystems, nil
 }
-
-var _ api.StorageMiner = &StorageMinerAPI{}

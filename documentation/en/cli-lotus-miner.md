@@ -29,6 +29,7 @@ COMMANDS:
      storage-deals    Manage storage deals and related configuration
      retrieval-deals  Manage retrieval deals and related configuration
      data-transfers   Manage data transfers
+     dagstore         Manage the dagstore on the markets subsystem
    NETWORK:
      net  Manage P2P Network
    RETRIEVAL:
@@ -997,6 +998,80 @@ OPTIONS:
    --initiator             specify only transfers where peer is/is not initiator (default: false)
    --cancel-timeout value  time to wait for cancel to be sent to client (default: 5s)
    --help, -h              show help (default: false)
+   
+```
+
+## lotus-miner dagstore
+```
+NAME:
+   lotus-miner dagstore - Manage the dagstore on the markets subsystem
+
+USAGE:
+   lotus-miner dagstore command [command options] [arguments...]
+
+COMMANDS:
+   list-shards       List all shards known to the dagstore, with their current status
+   initialize-shard  Initialize the specified shard
+   initialize-all    Initialize all uninitialized shards, streaming results as they're produced
+   gc                Garbage collect the dagstore
+   help, h           Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h     show help (default: false)
+   --version, -v  print the version (default: false)
+   
+```
+
+### lotus-miner dagstore list-shards
+```
+NAME:
+   lotus-miner dagstore list-shards - List all shards known to the dagstore, with their current status
+
+USAGE:
+   lotus-miner dagstore list-shards [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner dagstore initialize-shard
+```
+NAME:
+   lotus-miner dagstore initialize-shard - Initialize the specified shard
+
+USAGE:
+   lotus-miner dagstore initialize-shard [command options] [key]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner dagstore initialize-all
+```
+NAME:
+   lotus-miner dagstore initialize-all - Initialize all uninitialized shards, streaming results as they're produced
+
+USAGE:
+   lotus-miner dagstore initialize-all [command options] [arguments...]
+
+OPTIONS:
+   --concurrency value  maximum shards to initialize concurrently at a time; use 0 for unlimited (default: 0)
+   --help, -h           show help (default: false)
+   
+```
+
+### lotus-miner dagstore gc
+```
+NAME:
+   lotus-miner dagstore gc - Garbage collect the dagstore
+
+USAGE:
+   lotus-miner dagstore gc [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
    
 ```
 

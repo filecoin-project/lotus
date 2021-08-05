@@ -14,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-multistore"
-	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-filestore"
@@ -24,6 +23,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
+
+	"github.com/filecoin-project/lotus/node/repo/importmgr"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	filestore2 "github.com/filecoin-project/go-fil-markets/filestore"
@@ -274,6 +275,15 @@ func init() {
 		api.SubsystemSealing,
 		api.SubsystemSectorStorage,
 		api.SubsystemMarkets,
+	})
+	addExample(api.DagstoreShardResult{
+		Key:   "baga6ea4seaqecmtz7iak33dsfshi627abz4i4665dfuzr3qfs4bmad6dx3iigdq",
+		Error: "<error>",
+	})
+	addExample(api.DagstoreShardInfo{
+		Key:   "baga6ea4seaqecmtz7iak33dsfshi627abz4i4665dfuzr3qfs4bmad6dx3iigdq",
+		State: "ShardStateAvailable",
+		Error: "<error>",
 	})
 }
 
