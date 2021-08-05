@@ -113,6 +113,11 @@ type FullNode interface {
 	// will be returned.
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error) //perm:read
 
+	// ChainGetTipSetAfterHeight looks back for a tipset at the specified epoch.
+	// If there are no blocks at the specified epoch, the first non-nil tipset at a later epoch
+	// will be returned.
+	ChainGetTipSetAfterHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error) //perm:read
+
 	// ChainReadObj reads ipld nodes referenced by the specified CID from chain
 	// blockstore and returns raw bytes.
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error) //perm:read
