@@ -629,6 +629,11 @@ func (sm *StorageMinerAPI) DagstoreInitializeAll(ctx context.Context, params api
 		for i := 0; i < c; i++ {
 			throttle <- struct{}{}
 		}
+	} else {
+		// zero concurrency means no limit; a closed channel will always
+		// be receivable.
+		throttle = make(chan struct{})
+		close(throttle)
 	}
 
 	info := sm.DAGStore.AllShardsInfo()
