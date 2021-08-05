@@ -609,6 +609,8 @@ type StorageMinerStruct struct {
 
 		DagstoreListShards func(p0 context.Context) ([]DagstoreShardInfo, error) `perm:"read"`
 
+		DagstoreRecoverShard func(p0 context.Context, p1 string) error `perm:"write"`
+
 		DealsConsiderOfflineRetrievalDeals func(p0 context.Context) (bool, error) `perm:"admin"`
 
 		DealsConsiderOfflineStorageDeals func(p0 context.Context) (bool, error) `perm:"admin"`
@@ -3606,6 +3608,17 @@ func (s *StorageMinerStruct) DagstoreListShards(p0 context.Context) ([]DagstoreS
 
 func (s *StorageMinerStub) DagstoreListShards(p0 context.Context) ([]DagstoreShardInfo, error) {
 	return *new([]DagstoreShardInfo), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) DagstoreRecoverShard(p0 context.Context, p1 string) error {
+	if s.Internal.DagstoreRecoverShard == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.DagstoreRecoverShard(p0, p1)
+}
+
+func (s *StorageMinerStub) DagstoreRecoverShard(p0 context.Context, p1 string) error {
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsConsiderOfflineRetrievalDeals(p0 context.Context) (bool, error) {

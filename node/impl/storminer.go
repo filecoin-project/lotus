@@ -616,6 +616,36 @@ func (sm *StorageMinerAPI) DagstoreInitializeShard(ctx context.Context, key stri
 	return nil
 }
 
+func (sm *StorageMinerAPI) DagstoreRecoverShard(ctx context.Context, key string) error {
+	if sm.DAGStore == nil {
+		return fmt.Errorf("dagstore not available on this node")
+	}
+
+	k := shard.KeyFromString(key)
+
+	info, err := sm.DAGStore.GetShardInfo(k)
+	if err != nil {
+		return fmt.Errorf("failed to get shard info: %w", err)
+	}
+	if st := info.ShardState; st != dagstore.ShardStateErrored {
+		return fmt.Errorf("cannot recover shard; expected state ShardStateErrored, was: %s", st.String())
+	}
+
+	ch := make(chan dagstore.ShardResult, 1)
+	if err = sm.DAGStore.RecoverShard(ctx, k, ch, dagstore.RecoverOpts{}); err != nil {
+		return fmt.Errorf("failed to recover shard: %w", err)
+	}
+
+	var res dagstore.ShardResult
+	select {
+	case res = <-ch:
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	return res.Error
+}
+
 func (sm *StorageMinerAPI) DagstoreGC(ctx context.Context) ([]api.DagstoreGCResult, error) {
 	if sm.DAGStore == nil {
 		return nil, fmt.Errorf("dagstore not available on this node")
