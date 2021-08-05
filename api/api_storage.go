@@ -197,8 +197,17 @@ type StorageMiner interface {
 	// error.
 	DagstoreRecoverShard(ctx context.Context, key string) error //perm:write
 
+	// DagstoreInitializeAll initializes all uninitialized shards in bulk,
+	// according to the policy passed in the parameters.
+	//
+	// It is recommended to set a maximum concurrency to avoid extreme
+	// IO pressure if the storage subsystem has a large amount of deals.
+	//
+	// It returns the result for each shard it attempted to initialize.
+	DagstoreInitializeAll(ctx context.Context, params DagstoreInitializeAllParams) (<-chan DagstoreShardResult, error) //perm:write
+
 	// DagstoreGC runs garbage collection on the DAG store.
-	DagstoreGC(ctx context.Context) ([]DagstoreGCResult, error) //perm:admin
+	DagstoreGC(ctx context.Context) ([]DagstoreShardResult, error) //perm:admin
 
 	// RuntimeSubsystems returns the subsystems that are enabled
 	// in this instance.
@@ -380,9 +389,13 @@ type DagstoreShardInfo struct {
 	Error string
 }
 
-// DagstoreGCResult is the serialized form of dagstore.GCResult that we expose
-// through JSON-RPC to avoid clients having to depend on the dagstore lib.
-type DagstoreGCResult struct {
-	Key   string
-	Error string
+// DagstoreShardResult enumerates results per shard.
+type DagstoreShardResult struct {
+	Key     string
+	Success bool
+	Error   string
+}
+
+type DagstoreInitializeAllParams struct {
+	MaxConcurrency int
 }

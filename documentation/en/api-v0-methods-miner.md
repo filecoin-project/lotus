@@ -20,6 +20,7 @@
   * [CreateBackup](#CreateBackup)
 * [Dagstore](#Dagstore)
   * [DagstoreGC](#DagstoreGC)
+  * [DagstoreInitializeAll](#DagstoreInitializeAll)
   * [DagstoreInitializeShard](#DagstoreInitializeShard)
   * [DagstoreListShards](#DagstoreListShards)
   * [DagstoreRecoverShard](#DagstoreRecoverShard)
@@ -362,6 +363,36 @@ Perms: admin
 Inputs: `null`
 
 Response: `null`
+
+### DagstoreInitializeAll
+DagstoreInitializeAll initializes all uninitialized shards in bulk,
+according to the policy passed in the parameters.
+
+It is recommended to set a maximum concurrency to avoid extreme
+IO pressure if the storage subsystem has a large amount of deals.
+
+It returns the result for each shard it attempted to initialize.
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  {
+    "MaxConcurrency": 123
+  }
+]
+```
+
+Response:
+```json
+{
+  "Key": "baga6ea4seaqecmtz7iak33dsfshi627abz4i4665dfuzr3qfs4bmad6dx3iigdq",
+  "Success": false,
+  "Error": "\u003cerror\u003e"
+}
+```
 
 ### DagstoreInitializeShard
 DagstoreInitializeShard initializes an uninitialized shard.

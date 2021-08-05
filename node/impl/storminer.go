@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	"github.com/filecoin-project/dagstore"
@@ -616,6 +617,87 @@ func (sm *StorageMinerAPI) DagstoreInitializeShard(ctx context.Context, key stri
 	return nil
 }
 
+func (sm *StorageMinerAPI) DagstoreInitializeAll(ctx context.Context, params api.DagstoreInitializeAllParams) (<-chan api.DagstoreShardResult, error) {
+	if sm.DAGStore == nil {
+		return nil, fmt.Errorf("dagstore not available on this node")
+	}
+
+	// prepare the thottler tokens.
+	var throttle chan struct{}
+	if c := params.MaxConcurrency; c > 0 {
+		throttle = make(chan struct{}, c)
+		for i := 0; i < c; i++ {
+			throttle <- struct{}{}
+		}
+	}
+
+	info := sm.DAGStore.AllShardsInfo()
+	var uninit []string
+	for k, i := range info {
+		if i.ShardState != dagstore.ShardStateNew {
+			continue
+		}
+		uninit = append(uninit, k.String())
+	}
+
+	if len(uninit) == 0 {
+		out := make(chan api.DagstoreShardResult)
+		close(out)
+		return out, nil
+	}
+
+	var wg sync.WaitGroup
+	wg.Add(len(uninit))
+
+	// response channel must be closed when we're done, or the context is cancelled.
+	// this buffering is necessary to prevent inflight children goroutines from
+	// publishing to a closed channel (res) when the context is cancelled.
+	out := make(chan api.DagstoreShardResult, 32) // internal buffer.
+	res := make(chan api.DagstoreShardResult, 32) // returned to caller.
+
+	go func() {
+		close(res) // close the caller channel.
+
+		pending := len(uninit)
+		for pending > 0 {
+			select {
+			case res <- <-out:
+				pending--
+				continue
+			case <-throttle:
+				// acquired a throttle token, proceed.
+			case <-ctx.Done():
+				return
+			}
+
+			next := uninit[0]
+			uninit = uninit[1:]
+
+			go func() {
+				err := sm.DagstoreInitializeShard(ctx, next)
+				throttle <- struct{}{}
+
+				r := api.DagstoreShardResult{Key: next}
+				if err == nil {
+					r.Success = true
+				} else {
+					r.Success = false
+					r.Error = err.Error()
+				}
+
+				select {
+				case out <- r:
+				case <-ctx.Done():
+				}
+			}()
+		}
+
+	}()
+
+	return res, nil
+
+}
+
 func (sm *StorageMinerAPI) DagstoreRecoverShard(ctx context.Context, key string) error {
 	if sm.DAGStore == nil {
 		return fmt.Errorf("dagstore not available on this node")
@@ -646,7 +728,7 @@ func (sm *StorageMinerAPI) DagstoreRecoverShard(ctx context.Context, key string)
 	return res.Error
 }
 
-func (sm *StorageMinerAPI) DagstoreGC(ctx context.Context) ([]api.DagstoreGCResult, error) {
+func (sm *StorageMinerAPI) DagstoreGC(ctx context.Context) ([]api.DagstoreShardResult, error) {
 	if sm.DAGStore == nil {
 		return nil, fmt.Errorf("dagstore not available on this node")
 	}
@@ -656,17 +738,16 @@ func (sm *StorageMinerAPI) DagstoreGC(ctx context.Context) ([]api.DagstoreGCResu
 		return nil, fmt.Errorf("failed to gc: %w", err)
 	}
 
-	ret := make([]api.DagstoreGCResult, 0, len(res.Shards))
+	ret := make([]api.DagstoreShardResult, 0, len(res.Shards))
 	for k, err := range res.Shards {
-		ret = append(ret, api.DagstoreGCResult{
-			Key: k.String(),
-			Error: func() string {
-				if err == nil {
-					return ""
-				}
-				return err.Error()
-			}(),
-		})
+		r := api.DagstoreShardResult{Key: k.String()}
+		if err == nil {
+			r.Success = true
+		} else {
+			r.Success = false
+			r.Error = err.Error()
+		}
+		ret = append(ret, r)
 	}
 
 	return ret, nil
