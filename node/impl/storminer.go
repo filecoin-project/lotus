@@ -575,6 +575,7 @@ func (sm *StorageMinerAPI) DagstoreListShards(ctx context.Context) ([]api.Dagsto
 		})
 	}
 
+	// order by key.
 	sort.SliceStable(ret, func(i, j int) bool {
 		return ret[i].Key < ret[j].Key
 	})
@@ -687,7 +688,7 @@ func (sm *StorageMinerAPI) DagstoreInitializeAll(ctx context.Context, params api
 					Key:     k,
 					Event:   "start",
 					Total:   total,
-					Current: i,
+					Current: i + 1, // start with 1
 				}
 				select {
 				case out <- r:
