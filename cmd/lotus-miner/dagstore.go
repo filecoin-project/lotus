@@ -62,7 +62,7 @@ var dagstoreListShardsCmd = &cli.Command{
 				"Key": s.Key,
 				"State": func() string {
 					if c, ok := colors[s.State]; ok {
-						return color.New(c).Sprint(s)
+						return color.New(c).Sprint(s.State)
 					}
 					return s.State
 				}(),
@@ -170,9 +170,9 @@ var dagstoreGcCmd = &cli.Command{
 
 		for _, e := range collected {
 			if e.Error == "" {
-				_, _ = fmt.Fprintln(os.Stdout, e.Key, "success")
+				_, _ = fmt.Fprintln(os.Stdout, e.Key, color.New(color.FgGreen).Sprint("SUCCESS"))
 			} else {
-				_, _ = fmt.Fprintln(os.Stdout, e.Key, "failed:", e.Error)
+				_, _ = fmt.Fprintln(os.Stdout, e.Key, color.New(color.FgRed).Sprint("ERROR"), e.Error)
 			}
 		}
 

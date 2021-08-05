@@ -656,7 +656,7 @@ func (sm *StorageMinerAPI) DagstoreInitializeAll(ctx context.Context, params api
 	res := make(chan api.DagstoreShardResult, 32) // returned to caller.
 
 	go func() {
-		close(res) // close the caller channel.
+		defer close(res) // close the caller channel.
 
 		pending := len(uninit)
 		for pending > 0 {
