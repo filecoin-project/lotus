@@ -18,6 +18,7 @@ var dagstoreCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		dagstoreListShardsCmd,
 		dagstoreInitializeShardCmd,
+		dagstoreRecoverShardCmd,
 		dagstoreInitializeAllCmd,
 		dagstoreGcCmd,
 	},
@@ -96,6 +97,27 @@ var dagstoreInitializeShardCmd = &cli.Command{
 	},
 }
 
+var dagstoreRecoverShardCmd = &cli.Command{
+	Name:      "recover-shard",
+	ArgsUsage: "[key]",
+	Usage:     "Attempt to recover a shard in errored state",
+	Action: func(cctx *cli.Context) error {
+		if cctx.NArg() != 1 {
+			return fmt.Errorf("must provide a single shard key")
+		}
+
+		marketsApi, closer, err := lcli.GetMarketsAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		return marketsApi.DagstoreRecoverShard(ctx, cctx.Args().First())
+	},
+}
+
 var dagstoreInitializeAllCmd = &cli.Command{
 	Name:  "initialize-all",
 	Usage: "Initialize all uninitialized shards, streaming results as they're produced",
@@ -128,14 +150,20 @@ var dagstoreInitializeAllCmd = &cli.Command{
 
 		for {
 			select {
-			case res, ok := <-ch:
+			case evt, ok := <-ch:
 				if !ok {
 					return nil
 				}
-				if res.Success {
-					_, _ = fmt.Fprintln(os.Stdout, res.Key, color.New(color.FgGreen).Sprint("SUCCESS"))
+				_, _ = fmt.Fprintf(os.Stdout, color.New(color.BgHiBlack).Sprintf("(%d/%d)", evt.Current, evt.Total))
+				_, _ = fmt.Fprintf(os.Stdout, " ")
+				if evt.Event == "start" {
+					_, _ = fmt.Fprintln(os.Stdout, evt.Key, color.New(color.Reset).Sprint("STARTING"))
 				} else {
-					_, _ = fmt.Fprintln(os.Stdout, res.Key, color.New(color.FgRed).Sprint("ERROR"), res.Error)
+					if evt.Success {
+						_, _ = fmt.Fprintln(os.Stdout, evt.Key, color.New(color.FgGreen).Sprint("SUCCESS"))
+					} else {
+						_, _ = fmt.Fprintln(os.Stdout, evt.Key, color.New(color.FgRed).Sprint("ERROR"), evt.Error)
+					}
 				}
 
 			case <-ctx.Done():

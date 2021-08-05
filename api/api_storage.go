@@ -203,8 +203,8 @@ type StorageMiner interface {
 	// It is recommended to set a maximum concurrency to avoid extreme
 	// IO pressure if the storage subsystem has a large amount of deals.
 	//
-	// It returns the result for each shard it attempted to initialize.
-	DagstoreInitializeAll(ctx context.Context, params DagstoreInitializeAllParams) (<-chan DagstoreShardResult, error) //perm:write
+	// It returns a stream of events to report progress.
+	DagstoreInitializeAll(ctx context.Context, params DagstoreInitializeAllParams) (<-chan DagstoreInitializeAllEvent, error) //perm:write
 
 	// DagstoreGC runs garbage collection on the DAG store.
 	DagstoreGC(ctx context.Context) ([]DagstoreShardResult, error) //perm:admin
@@ -398,4 +398,14 @@ type DagstoreShardResult struct {
 
 type DagstoreInitializeAllParams struct {
 	MaxConcurrency int
+}
+
+// DagstoreInitializeAllEvent represents an initialization event.
+type DagstoreInitializeAllEvent struct {
+	Key     string
+	Event   string // "start", "end"
+	Success bool
+	Error   string
+	Total   int
+	Current int
 }

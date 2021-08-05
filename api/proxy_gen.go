@@ -605,7 +605,7 @@ type StorageMinerStruct struct {
 
 		DagstoreGC func(p0 context.Context) ([]DagstoreShardResult, error) `perm:"admin"`
 
-		DagstoreInitializeAll func(p0 context.Context, p1 DagstoreInitializeAllParams) (<-chan DagstoreShardResult, error) `perm:"write"`
+		DagstoreInitializeAll func(p0 context.Context, p1 DagstoreInitializeAllParams) (<-chan DagstoreInitializeAllEvent, error) `perm:"write"`
 
 		DagstoreInitializeShard func(p0 context.Context, p1 string) error `perm:"write"`
 
@@ -3590,14 +3590,14 @@ func (s *StorageMinerStub) DagstoreGC(p0 context.Context) ([]DagstoreShardResult
 	return *new([]DagstoreShardResult), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DagstoreInitializeAll(p0 context.Context, p1 DagstoreInitializeAllParams) (<-chan DagstoreShardResult, error) {
+func (s *StorageMinerStruct) DagstoreInitializeAll(p0 context.Context, p1 DagstoreInitializeAllParams) (<-chan DagstoreInitializeAllEvent, error) {
 	if s.Internal.DagstoreInitializeAll == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.DagstoreInitializeAll(p0, p1)
 }
 
-func (s *StorageMinerStub) DagstoreInitializeAll(p0 context.Context, p1 DagstoreInitializeAllParams) (<-chan DagstoreShardResult, error) {
+func (s *StorageMinerStub) DagstoreInitializeAll(p0 context.Context, p1 DagstoreInitializeAllParams) (<-chan DagstoreInitializeAllEvent, error) {
 	return nil, ErrNotSupported
 }
 

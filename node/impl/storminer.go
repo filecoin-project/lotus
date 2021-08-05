@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sort"
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/filecoin-project/dagstore"
@@ -559,6 +559,7 @@ func (sm *StorageMinerAPI) DagstoreListShards(ctx context.Context) ([]api.Dagsto
 	if sm.DAGStore == nil {
 		return nil, fmt.Errorf("dagstore not available on this node")
 	}
+
 	info := sm.DAGStore.AllShardsInfo()
 	ret := make([]api.DagstoreShardInfo, 0, len(info))
 	for k, i := range info {
@@ -573,6 +574,11 @@ func (sm *StorageMinerAPI) DagstoreListShards(ctx context.Context) ([]api.Dagsto
 			}(),
 		})
 	}
+
+	sort.SliceStable(ret, func(i, j int) bool {
+		return ret[i].Key < ret[j].Key
+	})
+
 	return ret, nil
 }
 
@@ -617,7 +623,7 @@ func (sm *StorageMinerAPI) DagstoreInitializeShard(ctx context.Context, key stri
 	return nil
 }
 
-func (sm *StorageMinerAPI) DagstoreInitializeAll(ctx context.Context, params api.DagstoreInitializeAllParams) (<-chan api.DagstoreShardResult, error) {
+func (sm *StorageMinerAPI) DagstoreInitializeAll(ctx context.Context, params api.DagstoreInitializeAllParams) (<-chan api.DagstoreInitializeAllEvent, error) {
 	if sm.DAGStore == nil {
 		return nil, fmt.Errorf("dagstore not available on this node")
 	}
@@ -629,11 +635,6 @@ func (sm *StorageMinerAPI) DagstoreInitializeAll(ctx context.Context, params api
 		for i := 0; i < c; i++ {
 			throttle <- struct{}{}
 		}
-	} else {
-		// zero concurrency means no limit; a closed channel will always
-		// be receivable.
-		throttle = make(chan struct{})
-		close(throttle)
 	}
 
 	info := sm.DAGStore.AllShardsInfo()
@@ -645,44 +646,59 @@ func (sm *StorageMinerAPI) DagstoreInitializeAll(ctx context.Context, params api
 		uninit = append(uninit, k.String())
 	}
 
-	if len(uninit) == 0 {
-		out := make(chan api.DagstoreShardResult)
+	total := len(uninit)
+	if total == 0 {
+		out := make(chan api.DagstoreInitializeAllEvent)
 		close(out)
 		return out, nil
 	}
 
-	var wg sync.WaitGroup
-	wg.Add(len(uninit))
-
 	// response channel must be closed when we're done, or the context is cancelled.
 	// this buffering is necessary to prevent inflight children goroutines from
 	// publishing to a closed channel (res) when the context is cancelled.
-	out := make(chan api.DagstoreShardResult, 32) // internal buffer.
-	res := make(chan api.DagstoreShardResult, 32) // returned to caller.
+	out := make(chan api.DagstoreInitializeAllEvent, 32) // internal buffer.
+	res := make(chan api.DagstoreInitializeAllEvent, 32) // returned to caller.
 
+	// pump events back to caller.
+	// two events per shard.
 	go func() {
-		defer close(res) // close the caller channel.
+		defer close(res)
 
-		pending := len(uninit)
-		for pending > 0 {
+		for i := 0; i < total*2; i++ {
 			select {
 			case res <- <-out:
-				pending--
-				continue
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	go func() {
+		for i, k := range uninit {
+			select {
 			case <-throttle:
 				// acquired a throttle token, proceed.
 			case <-ctx.Done():
 				return
 			}
 
-			next := uninit[0]
-			uninit = uninit[1:]
+			go func(k string, i int) {
+				r := api.DagstoreInitializeAllEvent{
+					Key:     k,
+					Event:   "start",
+					Total:   total,
+					Current: i,
+				}
+				select {
+				case out <- r:
+				case <-ctx.Done():
+					return
+				}
 
-			go func() {
-				err := sm.DagstoreInitializeShard(ctx, next)
+				err := sm.DagstoreInitializeShard(ctx, k)
 				throttle <- struct{}{}
 
-				r := api.DagstoreShardResult{Key: next}
+				r.Event = "end"
 				if err == nil {
 					r.Success = true
 				} else {
@@ -694,9 +710,8 @@ func (sm *StorageMinerAPI) DagstoreInitializeAll(ctx context.Context, params api
 				case out <- r:
 				case <-ctx.Done():
 				}
-			}()
+			}(k, i)
 		}
-
 	}()
 
 	return res, nil

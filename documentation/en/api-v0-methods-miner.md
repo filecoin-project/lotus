@@ -371,7 +371,7 @@ according to the policy passed in the parameters.
 It is recommended to set a maximum concurrency to avoid extreme
 IO pressure if the storage subsystem has a large amount of deals.
 
-It returns the result for each shard it attempted to initialize.
+It returns a stream of events to report progress.
 
 
 Perms: write
@@ -388,9 +388,12 @@ Inputs:
 Response:
 ```json
 {
-  "Key": "baga6ea4seaqecmtz7iak33dsfshi627abz4i4665dfuzr3qfs4bmad6dx3iigdq",
-  "Success": false,
-  "Error": "\u003cerror\u003e"
+  "Key": "string value",
+  "Event": "string value",
+  "Success": true,
+  "Error": "string value",
+  "Total": 123,
+  "Current": 123
 }
 ```
 

@@ -1012,6 +1012,7 @@ USAGE:
 COMMANDS:
    list-shards       List all shards known to the dagstore, with their current status
    initialize-shard  Initialize the specified shard
+   recover-shard     Attempt to recover a shard in errored state
    initialize-all    Initialize all uninitialized shards, streaming results as they're produced
    gc                Garbage collect the dagstore
    help, h           Shows a list of commands or help for one command
@@ -1042,6 +1043,19 @@ NAME:
 
 USAGE:
    lotus-miner dagstore initialize-shard [command options] [key]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner dagstore recover-shard
+```
+NAME:
+   lotus-miner dagstore recover-shard - Attempt to recover a shard in errored state
+
+USAGE:
+   lotus-miner dagstore recover-shard [command options] [key]
 
 OPTIONS:
    --help, -h  show help (default: false)
