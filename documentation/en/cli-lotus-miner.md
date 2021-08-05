@@ -1012,6 +1012,7 @@ USAGE:
 COMMANDS:
    list-shards       List all shards known to the dagstore, with their current status
    initialize-shard  Initialize the specified shard
+   initialize-all    Initialize all uninitialized shards, streaming results as they're produced
    gc                Garbage collect the dagstore
    help, h           Shows a list of commands or help for one command
 
@@ -1044,6 +1045,20 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner dagstore initialize-all
+```
+NAME:
+   lotus-miner dagstore initialize-all - Initialize all uninitialized shards, streaming results as they're produced
+
+USAGE:
+   lotus-miner dagstore initialize-all [command options] [arguments...]
+
+OPTIONS:
+   --concurrency value  maximum shards to initialize concurrently at a time; use 0 for unlimited (default: 0)
+   --help, -h           show help (default: false)
    
 ```
 

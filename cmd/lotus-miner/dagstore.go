@@ -7,6 +7,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 
+	"github.com/filecoin-project/lotus/api"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 )
@@ -17,6 +18,7 @@ var dagstoreCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		dagstoreListShardsCmd,
 		dagstoreInitializeShardCmd,
+		dagstoreInitializeAllCmd,
 		dagstoreGcCmd,
 	},
 }
@@ -91,6 +93,55 @@ var dagstoreInitializeShardCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		return marketsApi.DagstoreInitializeShard(ctx, cctx.Args().First())
+	},
+}
+
+var dagstoreInitializeAllCmd = &cli.Command{
+	Name:  "initialize-all",
+	Usage: "Initialize all uninitialized shards, streaming results as they're produced",
+	Flags: []cli.Flag{
+		&cli.UintFlag{
+			Name:     "concurrency",
+			Usage:    "maximum shards to initialize concurrently at a time; use 0 for unlimited",
+			Required: true,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		concurrency := cctx.Uint("concurrency")
+
+		marketsApi, closer, err := lcli.GetMarketsAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		params := api.DagstoreInitializeAllParams{
+			MaxConcurrency: int(concurrency),
+		}
+
+		ch, err := marketsApi.DagstoreInitializeAll(ctx, params)
+		if err != nil {
+			return err
+		}
+
+		for {
+			select {
+			case res, ok := <-ch:
+				if !ok {
+					return nil
+				}
+				if res.Success {
+					_, _ = fmt.Fprintln(os.Stdout, res.Key, color.New(color.FgGreen).Sprint("SUCCESS"))
+				} else {
+					_, _ = fmt.Fprintln(os.Stdout, res.Key, color.New(color.FgRed).Sprint("ERROR"), res.Error)
+				}
+
+			case <-ctx.Done():
+				return fmt.Errorf("aborted")
+			}
+		}
 	},
 }
 
