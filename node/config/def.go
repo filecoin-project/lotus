@@ -191,7 +191,6 @@ func DefaultStorageMiner() *StorageMiner {
 
 		DAGStore: DAGStoreConfig{
 			MaxConcurrentIndex:         5,
-			MaxConcurrentReadyFetches:  2,
 			MaxConcurrencyStorageCalls: 100,
 			GCInterval:                 Duration(1 * time.Minute),
 		},
