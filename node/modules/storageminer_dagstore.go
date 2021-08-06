@@ -21,7 +21,7 @@ import (
 
 const (
 	EnvDAGStoreCopyConcurrency = "LOTUS_DAGSTORE_COPY_CONCURRENCY"
-	DefaultDAGStoreDir         = "dagStore"
+	DefaultDAGStoreDir         = "dagstore"
 )
 
 // NewMinerAPI creates a new MinerAPI adaptor for the dagstore mounts.
