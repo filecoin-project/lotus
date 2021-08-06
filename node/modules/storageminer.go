@@ -586,7 +586,15 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	dsw *dagstore.Wrapper,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
-	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
+
+	// Create a directory under the repo path for temporary files
+	repoTmpPath := filepath.Join(r.Path(), "tmp")
+	err := os.MkdirAll(repoTmpPath, 0755) //nolint: gosec
+	if err != nil {
+		return nil, xerrors.Errorf("creating tmp dir for storage provider repo: %w", err)
+	}
+
+	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(repoTmpPath))
 	if err != nil {
 		return nil, err
 	}
