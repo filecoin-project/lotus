@@ -49,7 +49,6 @@ func TestPublishDealsBatching(t *testing.T) {
 			DisableOwnerFallback:  true,
 			DisableWorkerFallback: true,
 		})),
-		kit.LatestActorsAt(-1),
 	)
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.Account(publisherKey, types.FromFil(10)), kit.MockProofs(), kit.ConstructorOpts(opts))

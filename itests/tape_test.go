@@ -8,10 +8,8 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/node"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,20 +28,12 @@ func testTapeFix(t *testing.T, blocktime time.Duration, after bool) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	upgradeSchedule := stmgr.UpgradeSchedule{{
-		Network:   build.ActorUpgradeNetworkVersion,
-		Height:    1,
-		Migration: stmgr.UpgradeActorsV2,
-	}}
+	networkVersion := network.Version4
 	if after {
-		upgradeSchedule = append(upgradeSchedule, stmgr.Upgrade{
-			Network: network.Version5,
-			Height:  2,
-		})
+		networkVersion = network.Version5
 	}
 
-	nopts := kit.ConstructorOpts(node.Override(new(stmgr.UpgradeSchedule), upgradeSchedule))
-	_, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), nopts)
+	_, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.GenesisNetworkVersion(networkVersion))
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	sid, err := miner.PledgeSector(ctx)
