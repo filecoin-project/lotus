@@ -154,8 +154,8 @@ var dagstoreInitializeAllCmd = &cli.Command{
 				if !ok {
 					return nil
 				}
-				_, _ = fmt.Fprintf(os.Stdout, color.New(color.BgHiBlack).Sprintf("(%d/%d)", evt.Current, evt.Total))
-				_, _ = fmt.Fprintf(os.Stdout, " ")
+				_, _ = fmt.Fprint(os.Stdout, color.New(color.BgHiBlack).Sprintf("(%d/%d)", evt.Current, evt.Total))
+				_, _ = fmt.Fprint(os.Stdout, " ")
 				if evt.Event == "start" {
 					_, _ = fmt.Fprintln(os.Stdout, evt.Key, color.New(color.Reset).Sprint("STARTING"))
 				} else {
