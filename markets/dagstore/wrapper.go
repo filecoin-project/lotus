@@ -408,14 +408,14 @@ func (w *Wrapper) Close() error {
 	// Close the DAG store
 	log.Info("will close the dagstore")
 	if err := w.dagst.Close(); err != nil {
-		return xerrors.Errorf("failed to close DAG store: %w", err)
+		return xerrors.Errorf("failed to close dagstore: %w", err)
 	}
 	log.Info("dagstore closed")
 
 	// Wait for the background go routine to exit
-	log.Info("waiting for dagstore background wrapper routines to exist")
+	log.Info("waiting for dagstore background wrapper goroutines to exit")
 	w.backgroundWg.Wait()
-	log.Info("exited dagstore background warpper routines")
+	log.Info("exited dagstore background wrapper goroutines")
 
 	return nil
 }
