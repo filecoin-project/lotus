@@ -132,6 +132,8 @@ type FullNodeStruct struct {
 
 		ChainGetTipSet func(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) `perm:"read"`
 
+		ChainGetTipSetAfterHeight func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) `perm:"read"`
+
 		ChainGetTipSetByHeight func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) `perm:"read"`
 
 		ChainHasObj func(p0 context.Context, p1 cid.Cid) (bool, error) `perm:"read"`
@@ -473,6 +475,8 @@ type GatewayStruct struct {
 		ChainGetMessage func(p0 context.Context, p1 cid.Cid) (*types.Message, error) ``
 
 		ChainGetTipSet func(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) ``
+
+		ChainGetTipSetAfterHeight func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) ``
 
 		ChainGetTipSetByHeight func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) ``
 
@@ -1168,6 +1172,17 @@ func (s *FullNodeStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetKey) 
 }
 
 func (s *FullNodeStub) ChainGetTipSet(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) ChainGetTipSetAfterHeight(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) {
+	if s.Internal.ChainGetTipSetAfterHeight == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ChainGetTipSetAfterHeight(p0, p1, p2)
+}
+
+func (s *FullNodeStub) ChainGetTipSetAfterHeight(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) {
 	return nil, ErrNotSupported
 }
 
@@ -2994,6 +3009,17 @@ func (s *GatewayStruct) ChainGetTipSet(p0 context.Context, p1 types.TipSetKey) (
 }
 
 func (s *GatewayStub) ChainGetTipSet(p0 context.Context, p1 types.TipSetKey) (*types.TipSet, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) ChainGetTipSetAfterHeight(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) {
+	if s.Internal.ChainGetTipSetAfterHeight == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ChainGetTipSetAfterHeight(p0, p1, p2)
+}
+
+func (s *GatewayStub) ChainGetTipSetAfterHeight(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) (*types.TipSet, error) {
 	return nil, ErrNotSupported
 }
 
