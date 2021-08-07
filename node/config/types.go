@@ -64,8 +64,8 @@ type DAGStoreConfig struct {
 	//  - ./datastore: holds the KV store tracking the state of every shard
 	//    known to the DAG store.
 	//
-	// Default value: $LOTUS_MARKETS_PATH/dagStore (split deployment) or
-	// $LOTUS_MINER_PATH/dagStore (monolith deployment)
+	// Default value: $LOTUS_MARKETS_PATH/dagstore (split deployment) or
+	// $LOTUS_MINER_PATH/dagstore (monolith deployment)
 	RootDir string
 
 	// The maximum amount of indexing jobs that can run simultaneously.
@@ -74,7 +74,7 @@ type DAGStoreConfig struct {
 
 	// The maximum amount of unsealed deals that can be fetched simultaneously
 	// from the storage subsystem.
-	// Default value: 2.
+	// Default value: 0.
 	MaxConcurrentReadyFetches int
 
 	// The maximum number of simultaneous inflight API calls to the storage
