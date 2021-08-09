@@ -10,6 +10,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -46,6 +47,17 @@ func (w *WrapperV1Full) StateGetReceipt(ctx context.Context, msg cid.Cid, from t
 	}
 
 	return &ml.Receipt, nil
+}
+
+func (w *WrapperV1Full) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
+	v, err := w.FullNode.StateNetworkVersion(ctx, tsk)
+	if err != nil {
+		return network.VersionMax, err
+	}
+	// v0 needs to return consistent network versions. With increased step size between network versions
+	// we must divide by step size
+	stepSize := network.Version1 - network.Version0
+	return v / stepSize, nil
 }
 
 func (w *WrapperV1Full) Version(ctx context.Context) (api.APIVersion, error) {
