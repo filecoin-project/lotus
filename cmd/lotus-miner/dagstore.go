@@ -120,16 +120,21 @@ var dagstoreRecoverShardCmd = &cli.Command{
 
 var dagstoreInitializeAllCmd = &cli.Command{
 	Name:  "initialize-all",
-	Usage: "Initialize all uninitialized shards, streaming results as they're produced",
+	Usage: "Initialize all uninitialized shards, streaming results as they're produced; only shards for unsealed pieces are initialized by default",
 	Flags: []cli.Flag{
 		&cli.UintFlag{
 			Name:     "concurrency",
 			Usage:    "maximum shards to initialize concurrently at a time; use 0 for unlimited",
 			Required: true,
 		},
+		&cli.BoolFlag{
+			Name:  "include-sealed",
+			Usage: "initialize sealed pieces as well",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		concurrency := cctx.Uint("concurrency")
+		sealed := cctx.Bool("sealed")
 
 		marketsApi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
@@ -141,6 +146,7 @@ var dagstoreInitializeAllCmd = &cli.Command{
 
 		params := api.DagstoreInitializeAllParams{
 			MaxConcurrency: int(concurrency),
+			IncludeSealed:  sealed,
 		}
 
 		ch, err := marketsApi.DagstoreInitializeAll(ctx, params)

@@ -398,6 +398,7 @@ type DagstoreShardResult struct {
 
 type DagstoreInitializeAllParams struct {
 	MaxConcurrency int
+	IncludeSealed  bool
 }
 
 // DagstoreInitializeAllEvent represents an initialization event.
