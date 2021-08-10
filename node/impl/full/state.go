@@ -1332,13 +1332,16 @@ func (m *StateModule) StateDealProviderCollateralBounds(ctx context.Context, siz
 		return api.DealCollateralBounds{}, xerrors.Errorf("getting reward baseline power: %w", err)
 	}
 
-	min, max := policy.DealProviderCollateralBounds(size,
+	min, max, err := policy.DealProviderCollateralBounds(size,
 		verified,
 		powClaim.RawBytePower,
 		powClaim.QualityAdjPower,
 		rewPow,
 		circ.FilCirculating,
 		m.StateManager.GetNtwkVersion(ctx, ts.Height()))
+	if err != nil {
+		return api.DealCollateralBounds{}, xerrors.Errorf("getting deal provider coll bounds: %w", err)
+	}
 	return api.DealCollateralBounds{
 		Min: types.BigDiv(types.BigMul(min, dealProviderCollateralNum), dealProviderCollateralDen),
 		Max: max,

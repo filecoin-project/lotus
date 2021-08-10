@@ -561,7 +561,15 @@ var sectorsExtendCmd = &cli.Command{
 			for l, exts := range extensions {
 				for newExp, numbers := range exts {
 					scount += len(numbers)
-					if scount > policy.GetAddressedSectorsMax(nv) || len(p.Extensions) == policy.GetDeclarationsMax(nv) {
+					addressedMax, err := policy.GetAddressedSectorsMax(nv)
+					if err != nil {
+						return xerrors.Errorf("failed to get addressed sectors max")
+					}
+					declMax, err := policy.GetDeclarationsMax(nv)
+					if err != nil {
+						return xerrors.Errorf("failed to get declarations max")
+					}
+					if scount > addressedMax || len(p.Extensions) == declMax {
 						params = append(params, p)
 						p = miner3.ExtendSectorExpirationParams{}
 						scount = len(numbers)
