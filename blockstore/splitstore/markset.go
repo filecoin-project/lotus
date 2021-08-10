@@ -41,8 +41,6 @@ type MarkSetEnv interface {
 
 func OpenMarkSetEnv(path string, mtype string) (MarkSetEnv, error) {
 	switch mtype {
-	case "bloom":
-		return NewBloomMarkSetEnv()
 	case "map":
 		return NewMapMarkSetEnv()
 	case "badger":

@@ -14,10 +14,6 @@ func TestMapMarkSet(t *testing.T) {
 	testMarkSetVisitor(t, "map")
 }
 
-func TestBloomMarkSet(t *testing.T) {
-	testMarkSet(t, "bloom")
-}
-
 func TestBadgerMarkSet(t *testing.T) {
 	bs := badgerMarkSetBatchSize
 	badgerMarkSetBatchSize = 1
