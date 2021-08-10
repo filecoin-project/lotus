@@ -12,7 +12,10 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/testnodes"
 	tut "github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+
 	"github.com/filecoin-project/lotus/node/config"
+
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 )
 
 func TestShardRegistration(t *testing.T) {
@@ -53,29 +56,37 @@ func TestShardRegistration(t *testing.T) {
 		// Should be registered
 		State:        storagemarket.StorageDealSealing,
 		SectorNumber: unsealedSector1,
-		Ref: &storagemarket.DataRef{
-			PieceCid: &pieceCidUnsealed,
+		ClientDealProposal: market.ClientDealProposal{
+			Proposal: market.DealProposal{
+				PieceCID: pieceCidUnsealed,
+			},
 		},
 	}, {
 		// Should be registered with lazy registration (because sector is sealed)
 		State:        storagemarket.StorageDealSealing,
 		SectorNumber: sealedSector,
-		Ref: &storagemarket.DataRef{
-			PieceCid: &pieceCidSealed,
+		ClientDealProposal: market.ClientDealProposal{
+			Proposal: market.DealProposal{
+				PieceCID: pieceCidSealed,
+			},
 		},
 	}, {
 		// Should be ignored because deal is no longer active
 		State:        storagemarket.StorageDealError,
 		SectorNumber: unsealedSector2,
-		Ref: &storagemarket.DataRef{
-			PieceCid: &pieceCidUnsealed2,
+		ClientDealProposal: market.ClientDealProposal{
+			Proposal: market.DealProposal{
+				PieceCID: pieceCidUnsealed2,
+			},
 		},
 	}, {
 		// Should be ignored because deal is not yet sealing
 		State:        storagemarket.StorageDealFundsReserved,
 		SectorNumber: unsealedSector3,
-		Ref: &storagemarket.DataRef{
-			PieceCid: &pieceCidUnsealed3,
+		ClientDealProposal: market.ClientDealProposal{
+			Proposal: market.DealProposal{
+				PieceCID: pieceCidUnsealed3,
+			},
 		},
 	}}
 
