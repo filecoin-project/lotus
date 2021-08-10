@@ -271,7 +271,7 @@ func (bb *BlockBuilder) StateManager() *stmgr.StateManager {
 }
 
 // ActorsVersion returns the actors version for the target block.
-func (bb *BlockBuilder) ActorsVersion() actors.Version {
+func (bb *BlockBuilder) ActorsVersion() (actors.Version, error) {
 	return actors.VersionForNetwork(bb.NetworkVersion())
 }
 

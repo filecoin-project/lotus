@@ -88,7 +88,11 @@ func (ca *channelAccessor) messageBuilder(ctx context.Context, from address.Addr
 		return nil, err
 	}
 
-	return paych.Message(actors.VersionForNetwork(nwVersion), from), nil
+	av, err := actors.VersionForNetwork(nwVersion)
+	if err != nil {
+		return nil, err
+	}
+	return paych.Message(av, from), nil
 }
 
 func (ca *channelAccessor) getChannelInfo(addr address.Address) (*ChannelInfo, error) {
