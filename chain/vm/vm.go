@@ -135,7 +135,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, parent *Runti
 		gasAvailable:     msg.GasLimit,
 		depth:            0,
 		numActorsCreated: 0,
-		pricelist:        PricelistByVersion(vm.ntwkVersion(ctx, vm.blockHeight)),
+		pricelist:        PricelistByEpoch(vm.blockHeight),
 		allowInternal:    true,
 		callerValidated:  false,
 		executionTrace:   types.ExecutionTrace{Msg: msg},
@@ -424,7 +424,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 		return nil, err
 	}
 
-	pl := PricelistByVersion(vm.ntwkVersion(ctx, vm.blockHeight))
+	pl := PricelistByEpoch(vm.blockHeight)
 
 	msgGas := pl.OnChainMessage(cmsg.ChainLength())
 	msgGasCost := msgGas.Total()

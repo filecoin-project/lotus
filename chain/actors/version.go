@@ -25,7 +25,7 @@ func VersionForNetwork(version network.Version) (Version, error) {
 	switch version {
 	case network.Version0, network.Version1, network.Version2, network.Version3:
 		return Version0, nil
-	case network.Version4, network.Version5, network.Version6, network.Version6AndAHalf, network.Version7, network.Version8, network.Version9:
+	case network.Version4, network.Version5, network.Version6, network.Version7, network.Version8, network.Version9:
 		return Version2, nil
 	case network.Version10, network.Version11:
 		return Version3, nil

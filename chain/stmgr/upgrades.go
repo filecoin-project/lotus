@@ -73,10 +73,6 @@ func DefaultUpgradeSchedule() UpgradeSchedule {
 		Network:   network.Version6,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradePricelistOopsHeight,
-		Network:   network.Version6AndAHalf,
-		Migration: nil,
-	}, {
 		Height:    build.UpgradeCalicoHeight,
 		Network:   network.Version7,
 		Migration: UpgradeCalico,
