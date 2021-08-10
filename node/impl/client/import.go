@@ -16,8 +16,6 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-unixfs/importer/balanced"
 	ihelper "github.com/ipfs/go-unixfs/importer/helpers"
-	"github.com/ipld/go-car/v2"
-	"github.com/ipld/go-car/v2/blockstore"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
@@ -63,11 +61,9 @@ func (a *API) doImport(ctx context.Context, src string, dst string) (cid.Cid, er
 
 	// Step 2. We now have the root of the UnixFS DAG, and we can write the
 	// final CAR for real under `dst`.
-	bs, err := blockstore.OpenReadWrite(dst, []cid.Cid{root},
-		car.ZeroLengthSectionAsEOF(true),
-		blockstore.UseWholeCIDs(true))
+	bs, err := stores.ReadWriteFilestore(dst, root)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create a carv2 read/write blockstore: %w", err)
+		return cid.Undef, xerrors.Errorf("failed to create a carv2 read/write filestore: %w", err)
 	}
 
 	bsvc = blockservice.New(bs, offline.Exchange(bs))
@@ -78,7 +74,7 @@ func (a *API) doImport(ctx context.Context, src string, dst string) (cid.Cid, er
 		return cid.Undef, xerrors.Errorf("failed to create UnixFS DAG with carv2 blockstore: %w", err)
 	}
 
-	if err := bs.Finalize(); err != nil {
+	if err := bs.Close(); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to finalize car blockstore: %w", err)
 	}
 
