@@ -111,7 +111,7 @@ func (o *observer) listenHeadChangesOnce(ctx context.Context) error {
 		}
 
 		if err := o.applyChanges(ctx, changes); err != nil {
-			return xerrors.Errorf("failed to apply head changes: %w", err)
+			return xerrors.Errorf("failed catch-up head changes: %w", err)
 		}
 	}
 

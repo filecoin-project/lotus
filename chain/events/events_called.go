@@ -393,7 +393,7 @@ type StateMatchFunc func(oldTs, newTs *types.TipSet) (bool, StateChange, error)
 // * `StateChangeHandler` is called when the specified state change was observed
 //    on-chain, and a confidence threshold was reached, or the specified `timeout`
 //    height was reached with no state change observed. When this callback is
-//    invoked on a timeout, `oldState` and `newState` are set to nil.
+//    invoked on a timeout, `oldTs` and `states are set to nil.
 //    This callback returns a boolean specifying whether further notifications
 //    should be sent, like `more` return param from `CheckFunc` above.
 //
