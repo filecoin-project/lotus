@@ -13,10 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-const (
-	RFC3339nocolon = "2006-01-02T150405Z0700"
-	currentjson    = "lotus-journal.ndjson"
-)
+const RFC3339nocolon = "2006-01-02T150405Z0700"
 
 // fsJournal is a basic journal backed by files on a filesystem.
 type fsJournal struct {
@@ -118,18 +115,7 @@ func (f *fsJournal) rollJournalFile() error {
 		_ = f.fi.Close()
 	}
 
-	current := filepath.Join(f.dir, currentjson)
-	if _, err := os.Stat(current); err == nil {
-		newname := filepath.Join(f.dir, fmt.Sprintf("lotus-journal-%s.ndjson", build.Clock.Now().Format(RFC3339nocolon)))
-		os.Rename(current, newname)
-		f.old.PushFront(newname)
-		if f.old.Len() > f.keep {
-			e := f.old.Back()
-			os.Remove(e.Value.(string))
-			f.old.Remove(e)
-		}
-	}
-	nfi, err := os.Create(current)
+	nfi, err := os.Create(filepath.Join(f.dir, fmt.Sprintf("lotus-journal-%s.ndjson", build.Clock.Now().Format(RFC3339nocolon))))
 	if err != nil {
 		return xerrors.Errorf("failed to open journal file: %w", err)
 	}
@@ -137,6 +123,12 @@ func (f *fsJournal) rollJournalFile() error {
 	f.fi = nfi
 	f.fSize = 0
 
+	f.old.PushFront(nfi.Name())
+	if f.old.Len() > f.keep {
+		e := f.old.Back()
+		os.Remove(e.Value.(string))
+		f.old.Remove(e)
+	}
 	return nil
 }
 
