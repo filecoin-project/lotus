@@ -42,6 +42,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	retrievalimpl "github.com/filecoin-project/go-fil-markets/retrievalmarket/impl"
 	rmnet "github.com/filecoin-project/go-fil-markets/retrievalmarket/network"
+	"github.com/filecoin-project/go-fil-markets/sectoraccessor"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
@@ -670,6 +671,7 @@ func RetrievalPricingFunc(cfg config.DealmakingConfig) func(_ dtypes.ConsiderOnl
 func RetrievalProvider(
 	maddr dtypes.MinerAddress,
 	adapter retrievalmarket.RetrievalProviderNode,
+	sa sectoraccessor.SectorAccessor,
 	netwk rmnet.RetrievalMarketNetwork,
 	ds dtypes.MetadataDS,
 	pieceStore dtypes.ProviderPieceStore,
@@ -682,6 +684,7 @@ func RetrievalProvider(
 	return retrievalimpl.NewProvider(
 		address.Address(maddr),
 		adapter,
+		sa,
 		netwk,
 		pieceStore,
 		dagStore,

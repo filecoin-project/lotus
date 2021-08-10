@@ -53,10 +53,10 @@ type Wrapper struct {
 
 var _ stores.DAGStoreWrapper = (*Wrapper)(nil)
 
-func NewDAGStore(cfg config.DAGStoreConfig, mountApi MinerAPI) (*dagstore.DAGStore, *Wrapper, error) {
+func NewDAGStore(cfg config.DAGStoreConfig, minerApi MinerAPI) (*dagstore.DAGStore, *Wrapper, error) {
 	// construct the DAG Store.
 	registry := mount.NewRegistry()
-	if err := registry.Register(lotusScheme, mountTemplate(mountApi)); err != nil {
+	if err := registry.Register(lotusScheme, mountTemplate(minerApi)); err != nil {
 		return nil, nil, xerrors.Errorf("failed to create registry: %w", err)
 	}
 
@@ -104,7 +104,7 @@ func NewDAGStore(cfg config.DAGStoreConfig, mountApi MinerAPI) (*dagstore.DAGSto
 	w := &Wrapper{
 		cfg:        cfg,
 		dagst:      dagst,
-		minerAPI:   mountApi,
+		minerAPI:   minerApi,
 		failureCh:  failureCh,
 		traceCh:    traceCh,
 		gcInterval: time.Duration(cfg.GCInterval),
