@@ -34,6 +34,8 @@ type MarkSetEnv interface {
 	// CreateVisitor is like Create, but returns a wider interface that supports atomic visits.
 	// It may not be supported by some markset types (e.g. bloom).
 	CreateVisitor(name string, sizeHint int64) (MarkSetVisitor, error)
+	// SupportsVisitor returns true if the marksets created by this environment support the visitor interface.
+	SupportsVisitor() bool
 	Close() error
 }
 

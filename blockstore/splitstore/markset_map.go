@@ -38,6 +38,8 @@ func (e *MapMarkSetEnv) CreateVisitor(name string, sizeHint int64) (MarkSetVisit
 	return e.create(name, sizeHint)
 }
 
+func (e *MapMarkSetEnv) SupportsVisitor() bool { return true }
+
 func (e *MapMarkSetEnv) Close() error {
 	return nil
 }

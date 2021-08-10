@@ -76,6 +76,8 @@ func (e *BadgerMarkSetEnv) CreateVisitor(name string, sizeHint int64) (MarkSetVi
 	return e.create(name, sizeHint)
 }
 
+func (e *BadgerMarkSetEnv) SupportsVisitor() bool { return true }
+
 func (e *BadgerMarkSetEnv) Close() error {
 	return os.RemoveAll(e.path)
 }
