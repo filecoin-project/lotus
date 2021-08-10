@@ -331,13 +331,10 @@ func (w *Wrapper) MigrateDeals(ctx context.Context, deals []storagemarket.MinerD
 	// handed off to the sealing subsystem.
 	var registered int
 	for _, deal := range deals {
-		if deal.Ref.PieceCid == nil {
-			log.Warnw("deal has nil piece CID; skipping", "deal_id", deal.DealID)
-			continue
-		}
+		pieceCid := deal.Proposal.PieceCID
 
 		// enrich log statements in this iteration with deal ID and piece CID.
-		log := log.With("deal_id", deal.DealID, "piece_cid", deal.Ref.PieceCid)
+		log := log.With("deal_id", deal.DealID, "piece_cid", pieceCid)
 
 		// Filter for deals that have been handed off to the sealing subsystem
 		if _, ok := inSealingSubsystem[deal.State]; !ok {
@@ -350,7 +347,7 @@ func (w *Wrapper) MigrateDeals(ctx context.Context, deals []storagemarket.MinerD
 		// Register the deal as a shard with the DAG store with lazy initialization.
 		// The index will be populated the first time the deal is retrieved, or
 		// through the bulk initialization script.
-		err = w.RegisterShard(ctx, *deal.Ref.PieceCid, "", false, resch)
+		err = w.RegisterShard(ctx, pieceCid, "", false, resch)
 		if err != nil {
 			log.Warnw("failed to register shard", "error", err)
 			continue
