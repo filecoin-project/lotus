@@ -57,24 +57,23 @@ type DAGStoreConfig struct {
 	// Path to the dagstore root directory. This directory contains three
 	// subdirectories, which can be symlinked to alternative locations if
 	// need be:
-	//
 	//  - ./transients: caches unsealed deals that have been fetched from the
 	//    storage subsystem for serving retrievals.
 	//  - ./indices: stores shard indices.
 	//  - ./datastore: holds the KV store tracking the state of every shard
 	//    known to the DAG store.
-	//
-	// Default value: $LOTUS_MARKETS_PATH/dagstore (split deployment) or
-	// $LOTUS_MINER_PATH/dagstore (monolith deployment)
+	// Default value: <LOTUS_MARKETS_PATH>/dagstore (split deployment) or
+	// <LOTUS_MINER_PATH>/dagstore (monolith deployment)
 	RootDir string
 
 	// The maximum amount of indexing jobs that can run simultaneously.
+	// 0 means unlimited.
 	// Default value: 5.
 	MaxConcurrentIndex int
 
 	// The maximum amount of unsealed deals that can be fetched simultaneously
-	// from the storage subsystem.
-	// Default value: 0.
+	// from the storage subsystem. 0 means unlimited.
+	// Default value: 0 (unlimited).
 	MaxConcurrentReadyFetches int
 
 	// The maximum number of simultaneous inflight API calls to the storage
