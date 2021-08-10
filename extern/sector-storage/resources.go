@@ -30,9 +30,11 @@ type Resources struct {
  48 * 0.66 = 31
 
  48 *0.33 = 16
+
+ 48 *0.16 = 8
 */
 // var ParallelNum uint64 = 92
-var ParallelNum uint64 = 33
+var ParallelNum uint64 = 16
 var ParallelDenom uint64 = 100
 
 // TODO: Take NUMA into account
