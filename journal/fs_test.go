@@ -18,14 +18,15 @@ func TestRollingRemovesOldFiles(t *testing.T) {
 	j := newtestfsjournal(t, lr, 0, 3)
 	dir := filepath.Join(lr.Path(), "journal")
 	for i := 0; i <= j.keep; i++ {
-		time.Sleep(time.Second)
 		files, _ := os.ReadDir(dir)
 		req.Lenf(files, i, "add one file for every roll before max keep")
 		j.rollJournalFile()
+		// there is a lag between when the file is Create()'d and when it appears.
+		// it's actually a pretty long delay.
+		time.Sleep(time.Second)
 	}
 	// on the last iteration, one of the files should have been pruned,
 	// so we should still have only the maximum kept files.
-	time.Sleep(time.Second)
 	files, _ := os.ReadDir(dir)
 	req.Lenf(files, j.keep, "files are not being pruned from the journal directory")
 }
