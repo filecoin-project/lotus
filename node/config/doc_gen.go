@@ -130,8 +130,8 @@ and storage providers`,
 			Name: "RootDir",
 			Type: "string",
 
-			Comment: `Default value: $LOTUS_MARKETS_PATH/dagStore (split deployment) or
-$LOTUS_MINER_PATH/dagStore (monolith deployment)`,
+			Comment: `Default value: $LOTUS_MARKETS_PATH/dagstore (split deployment) or
+$LOTUS_MINER_PATH/dagstore (monolith deployment)`,
 		},
 		{
 			Name: "MaxConcurrentIndex",
@@ -146,7 +146,7 @@ Default value: 5.`,
 
 			Comment: `The maximum amount of unsealed deals that can be fetched simultaneously
 from the storage subsystem.
-Default value: 2.`,
+Default value: 0.`,
 		},
 		{
 			Name: "MaxConcurrencyStorageCalls",

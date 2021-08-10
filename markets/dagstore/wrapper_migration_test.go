@@ -17,7 +17,7 @@ import (
 
 func TestShardRegistration(t *testing.T) {
 	ps := tut.NewTestPieceStore()
-	providerNode := testnodes.NewTestRetrievalProviderNode()
+	sa := testnodes.NewTestSectorAccessor()
 
 	ctx := context.Background()
 	cids := tut.GenerateCids(4)
@@ -82,7 +82,7 @@ func TestShardRegistration(t *testing.T) {
 	cfg := config.DefaultStorageMiner().DAGStore
 	cfg.RootDir = t.TempDir()
 
-	mapi := NewMinerAPI(ps, providerNode, 10)
+	mapi := NewMinerAPI(ps, sa, 10)
 	dagst, w, err := NewDAGStore(cfg, mapi)
 	require.NoError(t, err)
 	require.NotNil(t, dagst)
