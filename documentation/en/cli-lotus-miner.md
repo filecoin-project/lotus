@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.11.1-m1.3.4
+   1.11.1-m1.3.5
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -1013,7 +1013,7 @@ COMMANDS:
    list-shards       List all shards known to the dagstore, with their current status
    initialize-shard  Initialize the specified shard
    recover-shard     Attempt to recover a shard in errored state
-   initialize-all    Initialize all uninitialized shards, streaming results as they're produced
+   initialize-all    Initialize all uninitialized shards, streaming results as they're produced; only shards for unsealed pieces are initialized by default
    gc                Garbage collect the dagstore
    help, h           Shows a list of commands or help for one command
 
@@ -1065,13 +1065,14 @@ OPTIONS:
 ### lotus-miner dagstore initialize-all
 ```
 NAME:
-   lotus-miner dagstore initialize-all - Initialize all uninitialized shards, streaming results as they're produced
+   lotus-miner dagstore initialize-all - Initialize all uninitialized shards, streaming results as they're produced; only shards for unsealed pieces are initialized by default
 
 USAGE:
    lotus-miner dagstore initialize-all [command options] [arguments...]
 
 OPTIONS:
    --concurrency value  maximum shards to initialize concurrently at a time; use 0 for unlimited (default: 0)
+   --include-sealed     initialize sealed pieces as well (default: false)
    --help, -h           show help (default: false)
    
 ```
