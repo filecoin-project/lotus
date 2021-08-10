@@ -173,18 +173,23 @@ func GetMaxProveCommitDuration(ver actors.Version, t abi.RegisteredSealProof) (a
 	switch ver {
 
 	case actors.Version0:
+
 		return miner0.MaxSealDuration[t], nil
 
 	case actors.Version2:
+
 		return miner2.MaxProveCommitDuration[t], nil
 
 	case actors.Version3:
+
 		return miner3.MaxProveCommitDuration[t], nil
 
 	case actors.Version4:
+
 		return miner4.MaxProveCommitDuration[t], nil
 
 	case actors.Version5:
+
 		return miner5.MaxProveCommitDuration[t], nil
 
 	default:
@@ -231,22 +236,27 @@ func DealProviderCollateralBounds(
 	switch v {
 
 	case actors.Version0:
+
 		min, max := market0.DealProviderCollateralBounds(size, verified, rawBytePower, qaPower, baselinePower, circulatingFil, nwVer)
 		return min, max, nil
 
 	case actors.Version2:
+
 		min, max := market2.DealProviderCollateralBounds(size, verified, rawBytePower, qaPower, baselinePower, circulatingFil)
 		return min, max, nil
 
 	case actors.Version3:
+
 		min, max := market3.DealProviderCollateralBounds(size, verified, rawBytePower, qaPower, baselinePower, circulatingFil)
 		return min, max, nil
 
 	case actors.Version4:
+
 		min, max := market4.DealProviderCollateralBounds(size, verified, rawBytePower, qaPower, baselinePower, circulatingFil)
 		return min, max, nil
 
 	case actors.Version5:
+
 		min, max := market5.DealProviderCollateralBounds(size, verified, rawBytePower, qaPower, baselinePower, circulatingFil)
 		return min, max, nil
 
@@ -404,7 +414,7 @@ func GetDeclarationsMax(nwVer network.Version) (int, error) {
 		return miner5.DeclarationsMax, nil
 
 	default:
-		panic("unsupported network version")
+		return 0, xerrors.Errorf("unsupported network version")
 	}
 }
 
