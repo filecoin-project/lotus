@@ -32,7 +32,6 @@ const UpgradeTapeHeight = 60
 
 const UpgradeKumquatHeight = 90
 
-const UpgradePricelistOopsHeight = 99
 const UpgradeCalicoHeight = 100
 const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 1)
 
