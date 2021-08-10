@@ -7,6 +7,7 @@ import (
 	"io"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"sort"
 	"time"
 
@@ -61,6 +62,7 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/node/repo/importmgr"
 )
 
@@ -68,6 +70,7 @@ var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
 
 // 8 days ~=  SealDuration + PreCommit + MaxProveCommitDuration + 8 hour buffer
 const dealStartBufferHours uint64 = 8 * 24
+const DefaultDAGStoreDir = "dagstore"
 
 type API struct {
 	fx.In
@@ -88,6 +91,7 @@ type API struct {
 	Host         host.Host
 
 	RetrievalStoreMgr dtypes.ClientRetrievalStoreManager
+	Repo              repo.LockedRepo
 }
 
 func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -779,6 +783,13 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			}
 		})
 
+		tmpCarv2FilePath, err := a.getTmpCarV2FilePath()
+		if err != nil {
+			unsubscribe()
+			finish(xerrors.Errorf("Retrieve failed: %w", err))
+			return
+		}
+
 		resp, err := a.Retrieval.Retrieve(
 			ctx,
 			order.Root,
@@ -786,7 +797,8 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			order.Total,
 			*order.MinerPeer,
 			order.Client,
-			order.Miner)
+			order.Miner,
+			tmpCarv2FilePath)
 
 		if err != nil {
 			unsubscribe()
@@ -885,6 +897,17 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	finish(files.WriteTo(file, ref.Path))
 
 	return
+}
+
+// TODO: Come up with a better mechanism for creating the tmp CARv2 file path
+func (a *API) getTmpCarV2FilePath() (string, error) {
+	carsPath := filepath.Join(a.Repo.Path(), DefaultDAGStoreDir, "retrieval-cars")
+
+	if err := os.MkdirAll(carsPath, 0755); err != nil {
+		return "", xerrors.Errorf("failed to create dir")
+	}
+
+	return filepath.Join(carsPath, fmt.Sprintf("%d.car", time.Now().UnixNano())), nil
 }
 
 func (a *API) ClientListRetrievals(ctx context.Context) ([]api.RetrievalInfo, error) {

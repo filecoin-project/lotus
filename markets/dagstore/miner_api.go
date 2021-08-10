@@ -23,17 +23,17 @@ type MinerAPI interface {
 
 type minerAPI struct {
 	pieceStore piecestore.PieceStore
-	rm         retrievalmarket.RetrievalProviderNode
+	sa         retrievalmarket.SectorAccessor
 	throttle   throttle.Throttler
 	readyMgr   *shared.ReadyManager
 }
 
 var _ MinerAPI = (*minerAPI)(nil)
 
-func NewMinerAPI(store piecestore.PieceStore, rm retrievalmarket.RetrievalProviderNode, concurrency int) MinerAPI {
+func NewMinerAPI(store piecestore.PieceStore, sa retrievalmarket.SectorAccessor, concurrency int) MinerAPI {
 	return &minerAPI{
 		pieceStore: store,
-		rm:         rm,
+		sa:         sa,
 		throttle:   throttle.Fixed(concurrency),
 		readyMgr:   shared.NewReadyManager(),
 	}
@@ -70,7 +70,7 @@ func (m *minerAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, erro
 		var isUnsealed bool
 		// Throttle this path to avoid flooding the storage subsystem.
 		err := m.throttle.Do(ctx, func(ctx context.Context) (err error) {
-			isUnsealed, err = m.rm.IsUnsealed(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
+			isUnsealed, err = m.sa.IsUnsealed(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
 			if err != nil {
 				return fmt.Errorf("failed to check if sector %d for deal %d was unsealed: %w", deal.SectorID, deal.DealID, err)
 			}
@@ -119,7 +119,7 @@ func (m *minerAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io
 		// Throttle this path to avoid flooding the storage subsystem.
 		var reader io.ReadCloser
 		err := m.throttle.Do(ctx, func(ctx context.Context) (err error) {
-			isUnsealed, err := m.rm.IsUnsealed(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
+			isUnsealed, err := m.sa.IsUnsealed(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
 			if err != nil {
 				return fmt.Errorf("failed to check if sector %d for deal %d was unsealed: %w", deal.SectorID, deal.DealID, err)
 			}
@@ -127,7 +127,7 @@ func (m *minerAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io
 				return nil
 			}
 			// Because we know we have an unsealed copy, this UnsealSector call will actually not perform any unsealing.
-			reader, err = m.rm.UnsealSector(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
+			reader, err = m.sa.UnsealSector(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
 			return err
 		})
 
@@ -149,7 +149,7 @@ func (m *minerAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io
 		// block for a long time with the current PoRep
 		//
 		// This path is unthrottled.
-		reader, err := m.rm.UnsealSector(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
+		reader, err := m.sa.UnsealSector(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
 		if err != nil {
 			lastErr = xerrors.Errorf("failed to unseal deal %d: %w", deal.DealID, err)
 			log.Warn(lastErr.Error())

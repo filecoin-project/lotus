@@ -65,15 +65,15 @@ type StorageMinerAPI struct {
 	RemoteStore *stores.Remote
 
 	// Markets
-	PieceStore            dtypes.ProviderPieceStore             `optional:"true"`
-	StorageProvider       storagemarket.StorageProvider         `optional:"true"`
-	RetrievalProvider     retrievalmarket.RetrievalProvider     `optional:"true"`
-	RetrievalProviderNode retrievalmarket.RetrievalProviderNode `optional:"true"`
-	DataTransfer          dtypes.ProviderDataTransfer           `optional:"true"`
-	DealPublisher         *storageadapter.DealPublisher         `optional:"true"`
-	SectorBlocks          *sectorblocks.SectorBlocks            `optional:"true"`
-	Host                  host.Host                             `optional:"true"`
-	DAGStore              *dagstore.DAGStore                    `optional:"true"`
+	PieceStore        dtypes.ProviderPieceStore         `optional:"true"`
+	StorageProvider   storagemarket.StorageProvider     `optional:"true"`
+	RetrievalProvider retrievalmarket.RetrievalProvider `optional:"true"`
+	SectorAccessor    retrievalmarket.SectorAccessor    `optional:"true"`
+	DataTransfer      dtypes.ProviderDataTransfer       `optional:"true"`
+	DealPublisher     *storageadapter.DealPublisher     `optional:"true"`
+	SectorBlocks      *sectorblocks.SectorBlocks        `optional:"true"`
+	Host              host.Host                         `optional:"true"`
+	DAGStore          *dagstore.DAGStore                `optional:"true"`
 
 	// Miner / storage
 	Miner       *storage.Miner              `optional:"true"`
@@ -630,8 +630,8 @@ func (sm *StorageMinerAPI) DagstoreInitializeAll(ctx context.Context, params api
 		return nil, fmt.Errorf("dagstore not available on this node")
 	}
 
-	if sm.RetrievalProviderNode == nil {
-		return nil, fmt.Errorf("retrieval provider node not available on this node")
+	if sm.SectorAccessor == nil {
+		return nil, fmt.Errorf("sector accessor not available on this node")
 	}
 
 	// prepare the thottler tokens.
@@ -670,7 +670,7 @@ func (sm *StorageMinerAPI) DagstoreInitializeAll(ctx context.Context, params api
 
 			var isUnsealed bool
 			for _, d := range pi.Deals {
-				isUnsealed, err = sm.RetrievalProviderNode.IsUnsealed(ctx, d.SectorID, d.Offset.Unpadded(), d.Length.Unpadded())
+				isUnsealed, err = sm.SectorAccessor.IsUnsealed(ctx, d.SectorID, d.Offset.Unpadded(), d.Length.Unpadded())
 				if err != nil {
 					log.Warnw("DagstoreInitializeAll: failed to get unsealed status; skipping deal", "deal_id", d.DealID, "error", err)
 					continue

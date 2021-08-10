@@ -670,6 +670,7 @@ func RetrievalPricingFunc(cfg config.DealmakingConfig) func(_ dtypes.ConsiderOnl
 func RetrievalProvider(
 	maddr dtypes.MinerAddress,
 	adapter retrievalmarket.RetrievalProviderNode,
+	sa retrievalmarket.SectorAccessor,
 	netwk rmnet.RetrievalMarketNetwork,
 	ds dtypes.MetadataDS,
 	pieceStore dtypes.ProviderPieceStore,
@@ -682,6 +683,7 @@ func RetrievalProvider(
 	return retrievalimpl.NewProvider(
 		address.Address(maddr),
 		adapter,
+		sa,
 		netwk,
 		pieceStore,
 		dagStore,

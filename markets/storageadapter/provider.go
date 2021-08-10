@@ -7,7 +7,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/fx"
@@ -58,12 +57,10 @@ type ProviderNodeAdapter struct {
 	maxDealCollateralMultiplier uint64
 	dsMatcher                   *dealStateMatcher
 	scMgr                       *SectorCommittedManager
-
-	rpn retrievalmarket.RetrievalProviderNode
 }
 
-func NewProviderNodeAdapter(fc *config.MinerFeeConfig, dc *config.DealmakingConfig) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher, rpn retrievalmarket.RetrievalProviderNode) storagemarket.StorageProviderNode {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher, rpn retrievalmarket.RetrievalProviderNode) storagemarket.StorageProviderNode {
+func NewProviderNodeAdapter(fc *config.MinerFeeConfig, dc *config.DealmakingConfig) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher) storagemarket.StorageProviderNode {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher) storagemarket.StorageProviderNode {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
 		ev := events.NewEvents(ctx, full)
@@ -84,7 +81,6 @@ func NewProviderNodeAdapter(fc *config.MinerFeeConfig, dc *config.DealmakingConf
 			na.maxDealCollateralMultiplier = dc.MaxProviderCollateralMultiplier
 		}
 		na.scMgr = NewSectorCommittedManager(ev, na, &apiWrapper{api: full})
-		na.rpn = rpn
 
 		return na
 	}
@@ -424,10 +420,6 @@ func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID
 	}
 
 	return nil
-}
-
-func (n *ProviderNodeAdapter) IsUnsealed(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (bool, error) {
-	return n.rpn.IsUnsealed(ctx, sectorID, offset, length)
 }
 
 var _ storagemarket.StorageProviderNode = &ProviderNodeAdapter{}

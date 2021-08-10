@@ -380,7 +380,8 @@ Inputs:
 ```json
 [
   {
-    "MaxConcurrency": 123
+    "MaxConcurrency": 123,
+    "IncludeSealed": true
   }
 ]
 ```

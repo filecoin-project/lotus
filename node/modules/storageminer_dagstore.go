@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/filecoin-project/dagstore"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 
 	mdagstore "github.com/filecoin-project/lotus/markets/dagstore"
@@ -25,7 +25,7 @@ const (
 )
 
 // NewMinerAPI creates a new MinerAPI adaptor for the dagstore mounts.
-func NewMinerAPI(lc fx.Lifecycle, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, rpn retrievalmarket.RetrievalProviderNode) (mdagstore.MinerAPI, error) {
+func NewMinerAPI(lc fx.Lifecycle, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, sa retrievalmarket.SectorAccessor) (mdagstore.MinerAPI, error) {
 	cfg, err := extractDAGStoreConfig(r)
 	if err != nil {
 		return nil, err
@@ -40,7 +40,7 @@ func NewMinerAPI(lc fx.Lifecycle, r repo.LockedRepo, pieceStore dtypes.ProviderP
 		}
 	}
 
-	mountApi := mdagstore.NewMinerAPI(pieceStore, rpn, cfg.MaxConcurrencyStorageCalls)
+	mountApi := mdagstore.NewMinerAPI(pieceStore, sa, cfg.MaxConcurrencyStorageCalls)
 	ready := make(chan error, 1)
 	pieceStore.OnReady(func(err error) {
 		ready <- err
