@@ -10,7 +10,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/go-fil-markets/sectoraccessor"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 )
 
@@ -23,14 +23,14 @@ type MinerAPI interface {
 
 type minerAPI struct {
 	pieceStore piecestore.PieceStore
-	sa         sectoraccessor.SectorAccessor
+	sa         retrievalmarket.SectorAccessor
 	throttle   throttle.Throttler
 	readyMgr   *shared.ReadyManager
 }
 
 var _ MinerAPI = (*minerAPI)(nil)
 
-func NewMinerAPI(store piecestore.PieceStore, sa sectoraccessor.SectorAccessor, concurrency int) MinerAPI {
+func NewMinerAPI(store piecestore.PieceStore, sa retrievalmarket.SectorAccessor, concurrency int) MinerAPI {
 	return &minerAPI{
 		pieceStore: store,
 		sa:         sa,

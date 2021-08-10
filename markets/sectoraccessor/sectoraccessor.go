@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/sectoraccessor"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	specstorage "github.com/filecoin-project/specs-storage/storage"
 
@@ -32,9 +32,9 @@ type sectorAccessor struct {
 	full  v1api.FullNode
 }
 
-var _ sectoraccessor.SectorAccessor = (*sectorAccessor)(nil)
+var _ retrievalmarket.SectorAccessor = (*sectorAccessor)(nil)
 
-func NewSectorAccessor(maddr dtypes.MinerAddress, secb sectorblocks.SectorBuilder, pp sectorstorage.PieceProvider, full v1api.FullNode) sectoraccessor.SectorAccessor {
+func NewSectorAccessor(maddr dtypes.MinerAddress, secb sectorblocks.SectorBuilder, pp sectorstorage.PieceProvider, full v1api.FullNode) retrievalmarket.SectorAccessor {
 	return &sectorAccessor{address.Address(maddr), secb, pp, full}
 }
 

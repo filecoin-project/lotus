@@ -10,8 +10,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/filecoin-project/go-fil-markets/sectoraccessor"
-
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/dagstore/shard"
 	"github.com/filecoin-project/go-jsonrpc/auth"
@@ -70,7 +68,7 @@ type StorageMinerAPI struct {
 	PieceStore        dtypes.ProviderPieceStore         `optional:"true"`
 	StorageProvider   storagemarket.StorageProvider     `optional:"true"`
 	RetrievalProvider retrievalmarket.RetrievalProvider `optional:"true"`
-	SectorAccessor    sectoraccessor.SectorAccessor     `optional:"true"`
+	SectorAccessor    retrievalmarket.SectorAccessor    `optional:"true"`
 	DataTransfer      dtypes.ProviderDataTransfer       `optional:"true"`
 	DealPublisher     *storageadapter.DealPublisher     `optional:"true"`
 	SectorBlocks      *sectorblocks.SectorBlocks        `optional:"true"`

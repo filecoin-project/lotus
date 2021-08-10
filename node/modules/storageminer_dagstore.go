@@ -11,7 +11,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/dagstore"
-	"github.com/filecoin-project/go-fil-markets/sectoraccessor"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 
 	mdagstore "github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/node/config"
@@ -25,7 +25,7 @@ const (
 )
 
 // NewMinerAPI creates a new MinerAPI adaptor for the dagstore mounts.
-func NewMinerAPI(lc fx.Lifecycle, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, sa sectoraccessor.SectorAccessor) (mdagstore.MinerAPI, error) {
+func NewMinerAPI(lc fx.Lifecycle, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, sa retrievalmarket.SectorAccessor) (mdagstore.MinerAPI, error) {
 	cfg, err := extractDAGStoreConfig(r)
 	if err != nil {
 		return nil, err

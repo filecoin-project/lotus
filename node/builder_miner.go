@@ -4,9 +4,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/filecoin-project/go-fil-markets/sectoraccessor"
-	lotussectoraccessor "github.com/filecoin-project/lotus/markets/sectoraccessor"
-
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -28,6 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/markets/dealfilter"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
+	"github.com/filecoin-project/lotus/markets/sectoraccessor"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/config"
@@ -155,7 +153,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(DAGStoreKey, modules.DAGStore),
 
 			// Markets (retrieval)
-			Override(new(sectoraccessor.SectorAccessor), lotussectoraccessor.NewSectorAccessor),
+			Override(new(retrievalmarket.SectorAccessor), sectoraccessor.NewSectorAccessor),
 			Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter.NewRetrievalProviderNode),
 			Override(new(rmnet.RetrievalMarketNetwork), modules.RetrievalNetwork),
 			Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
