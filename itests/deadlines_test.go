@@ -75,9 +75,8 @@ func TestDeadlineToggling(t *testing.T) {
 		minerD kit.TestMiner
 		minerE kit.TestMiner
 	)
-	opts := []kit.NodeOpt{kit.ConstructorOpts(kit.NetworkUpgradeAt(network.Version12, upgradeH))}
-	opts = append(opts, kit.WithAllSubsystems())
-	ens := kit.NewEnsemble(t, kit.MockProofs()).
+	opts := []kit.NodeOpt{kit.WithAllSubsystems()}
+	ens := kit.NewEnsemble(t, kit.MockProofs(), kit.TurboUpgradeAt(upgradeH)).
 		FullNode(&client, opts...).
 		Miner(&minerA, &client, opts...).
 		Start().

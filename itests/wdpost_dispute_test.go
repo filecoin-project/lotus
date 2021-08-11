@@ -39,8 +39,7 @@ func TestWindowPostDispute(t *testing.T) {
 	// it doesn't submit proofs.
 	//
 	// Then we're going to manually submit bad proofs.
-	opts := []kit.NodeOpt{kit.ConstructorOpts(kit.LatestActorsAt(-1))}
-	opts = append(opts, kit.WithAllSubsystems())
+	opts := []kit.NodeOpt{kit.WithAllSubsystems()}
 	ens := kit.NewEnsemble(t, kit.MockProofs()).
 		FullNode(&client, opts...).
 		Miner(&chainMiner, &client, opts...).
@@ -220,8 +219,7 @@ func TestWindowPostDisputeFails(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	opts := kit.ConstructorOpts(kit.LatestActorsAt(-1))
-	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	defaultFrom, err := client.WalletDefaultAddress(ctx)

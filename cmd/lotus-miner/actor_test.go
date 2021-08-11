@@ -10,7 +10,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/network"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 
@@ -34,9 +33,7 @@ func TestWorkerKeyChange(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	blocktime := 1 * time.Millisecond
-	client1, client2, miner, ens := kit.EnsembleTwoOne(t, kit.MockProofs(),
-		kit.ConstructorOpts(kit.InstantaneousNetworkVersion(network.Version13)),
-	)
+	client1, client2, miner, ens := kit.EnsembleTwoOne(t, kit.MockProofs())
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	output := bytes.NewBuffer(nil)

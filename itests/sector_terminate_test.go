@@ -24,8 +24,7 @@ func TestTerminate(t *testing.T) {
 		ctx       = context.Background()
 	)
 
-	opts := kit.ConstructorOpts(kit.LatestActorsAt(-1))
-	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.PresealSectors(nSectors), opts)
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.PresealSectors(nSectors))
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	maddr, err := miner.ActorAddress(ctx)
@@ -50,7 +49,7 @@ func TestTerminate(t *testing.T) {
 		di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 		require.NoError(t, err)
 
-		waitUntil := di.PeriodStart + di.WPoStProvingPeriod + 20 // 20 is some slack for the proof to be submitted + applied
+		waitUntil := di.Open + di.WPoStProvingPeriod
 		t.Logf("End for head.Height > %d", waitUntil)
 
 		ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
@@ -62,7 +61,7 @@ func TestTerminate(t *testing.T) {
 	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 	require.Equal(t, p.MinerPower, p.TotalPower)
-	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*uint64(nSectors)))
+	require.Equal(t, types.NewInt(uint64(ssz)*uint64(nSectors)), p.MinerPower.RawBytePower)
 
 	t.Log("Terminate a sector")
 

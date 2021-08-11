@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
@@ -47,8 +48,9 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	opts := kit.ConstructorOpts(kit.LatestActorsAt(upgradeHeight))
-	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
+	client, miner, ens := kit.EnsembleMinimal(t,
+		kit.MockProofs(),
+		kit.LatestActorsAt(upgradeHeight))
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	miner.PledgeSectors(ctx, nSectors, 0, nil)
@@ -63,7 +65,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	require.NoError(t, err)
 
 	t.Log("Running one proving period")
-	waitUntil := di.PeriodStart + di.WPoStProvingPeriod + 2
+	waitUntil := di.Open + di.WPoStProvingPeriod
 	t.Logf("End for head.Height > %d", waitUntil)
 
 	ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
@@ -139,7 +141,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	require.NoError(t, err)
 
 	t.Log("Go through another PP, wait for sectors to become faulty")
-	waitUntil = di.PeriodStart + di.WPoStProvingPeriod + 2
+	waitUntil = di.Open + di.WPoStProvingPeriod
 	t.Logf("End for head.Height > %d", waitUntil)
 
 	ts = client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
@@ -161,7 +163,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 	di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	waitUntil = di.PeriodStart + di.WPoStProvingPeriod + 2
+	waitUntil = di.Open + di.WPoStProvingPeriod
 	t.Logf("End for head.Height > %d", waitUntil)
 
 	ts = client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
@@ -184,7 +186,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 		di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 		require.NoError(t, err)
 
-		waitUntil := di.PeriodStart + di.WPoStProvingPeriod + 2
+		waitUntil := di.Open + di.WPoStProvingPeriod
 		t.Logf("End for head.Height > %d\n", waitUntil)
 
 		ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
@@ -213,17 +215,12 @@ func TestWindowPostBaseFeeNoBurn(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	sched := kit.DefaultTestUpgradeSchedule
-	lastUpgradeHeight := sched[len(sched)-1].Height
-
 	och := build.UpgradeClausHeight
-	build.UpgradeClausHeight = lastUpgradeHeight + 1
+	build.UpgradeClausHeight = 0
+	t.Cleanup(func() { build.UpgradeClausHeight = och })
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.GenesisNetworkVersion(network.Version9))
 	ens.InterconnectAll().BeginMining(blocktime)
-
-	// Wait till all upgrades are done and we've passed the clause epoch.
-	client.WaitTillChain(ctx, kit.HeightAtLeast(build.UpgradeClausHeight+1))
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
@@ -256,8 +253,6 @@ waitForProof:
 	require.NoError(t, err)
 
 	require.Equal(t, pmr.GasCost.BaseFeeBurn, big.Zero())
-
-	build.UpgradeClausHeight = och
 }
 
 func TestWindowPostBaseFeeBurn(t *testing.T) {
@@ -270,15 +265,8 @@ func TestWindowPostBaseFeeBurn(t *testing.T) {
 
 	blocktime := 2 * time.Millisecond
 
-	opts := kit.ConstructorOpts(kit.LatestActorsAt(-1))
-	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
 	ens.InterconnectAll().BeginMining(blocktime)
-
-	// Ideally we'd be a bit more precise here, but getting the information we need from the
-	// test framework is more work than it's worth.
-	//
-	// We just need to wait till all upgrades are done.
-	client.WaitTillChain(ctx, kit.HeightAtLeast(20))
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
