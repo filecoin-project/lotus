@@ -760,8 +760,9 @@ github.com/ipld/go-car v0.1.1-0.20200923150018-8cdef32e2da4/go.mod h1:xrMEcuSq+D
 github.com/ipld/go-car v0.1.1-0.20201119040415-11b6074b6d4d h1:iphSzTuPqyDgH7WUVZsdqUnQNzYgIblsVr1zhVNA33U=
 github.com/ipld/go-car v0.1.1-0.20201119040415-11b6074b6d4d/go.mod h1:2Gys8L8MJ6zkh1gktTSXreY63t4UbyvNp5JaudTyxHQ=
 github.com/ipld/go-car/v2 v2.0.0-beta1.0.20210721090610-5a9d1b217d25/go.mod h1:I2ACeeg6XNBe5pdh5TaR7Ambhfa7If9KXxmXgZsYENU=
-github.com/ipld/go-car/v2 v2.0.0-beta1.0.20210803143113-d0e44a62f0a3 h1:TPOuaAmTWpzWFbGPsJ+QJsR6Qc+fnHKgvtA6Jy2A22w=
 github.com/ipld/go-car/v2 v2.0.0-beta1.0.20210803143113-d0e44a62f0a3/go.mod h1:I2ACeeg6XNBe5pdh5TaR7Ambhfa7If9KXxmXgZsYENU=
+github.com/ipld/go-car/v2 v2.0.2 h1:R1oIAPwrGp26mEFzcGf5bfTZAAHDOkaVnZTEVebaWX4=
+github.com/ipld/go-car/v2 v2.0.2/go.mod h1:I2ACeeg6XNBe5pdh5TaR7Ambhfa7If9KXxmXgZsYENU=
 github.com/ipld/go-ipld-prime v0.0.2-0.20191108012745-28a82f04c785/go.mod h1:bDDSvVz7vaK12FNvMeRYnpRFkSUPNQOiCYQezMD/P3w=
 github.com/ipld/go-ipld-prime v0.0.2-0.20200428162820-8b59dc292b8e/go.mod h1:uVIwe/u0H4VdKv3kaN1ck7uCb6yD9cFLS9/ELyXbsw8=
 github.com/ipld/go-ipld-prime v0.5.1-0.20200828233916-988837377a7f/go.mod h1:0xEgdD6MKbZ1vF0GC+YcR/C4SQCAlRuOjIJ2i0HxqzM=
