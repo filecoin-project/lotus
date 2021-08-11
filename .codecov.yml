@@ -2,7 +2,7 @@ comment: off
 ignore:
   # Auto generated
   - "^.*_gen.go$"
-  - "^.*/mocks_full.go$"
+  - "^.*/mock_full.go$"
   - "^chain/actors/builtin/[^/]*/(message|state|v)[0-4]\\.go$" # We test the latest version only.
   # Tests
   - "api/test/**"
