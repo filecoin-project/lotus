@@ -27,7 +27,18 @@ var dagstoreCmd = &cli.Command{
 var dagstoreListShardsCmd = &cli.Command{
 	Name:  "list-shards",
 	Usage: "List all shards known to the dagstore, with their current status",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
+
 		marketsApi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
@@ -80,7 +91,18 @@ var dagstoreInitializeShardCmd = &cli.Command{
 	Name:      "initialize-shard",
 	ArgsUsage: "[key]",
 	Usage:     "Initialize the specified shard",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
+
 		if cctx.NArg() != 1 {
 			return fmt.Errorf("must provide a single shard key")
 		}
@@ -101,7 +123,18 @@ var dagstoreRecoverShardCmd = &cli.Command{
 	Name:      "recover-shard",
 	ArgsUsage: "[key]",
 	Usage:     "Attempt to recover a shard in errored state",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
+
 		if cctx.NArg() != 1 {
 			return fmt.Errorf("must provide a single shard key")
 		}
@@ -131,8 +164,17 @@ var dagstoreInitializeAllCmd = &cli.Command{
 			Name:  "include-sealed",
 			Usage: "initialize sealed pieces as well",
 		},
+		&cli.BoolFlag{
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
+
 		concurrency := cctx.Uint("concurrency")
 		sealed := cctx.Bool("sealed")
 
@@ -182,8 +224,18 @@ var dagstoreInitializeAllCmd = &cli.Command{
 var dagstoreGcCmd = &cli.Command{
 	Name:  "gc",
 	Usage: "Garbage collect the dagstore",
-
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
+
 		marketsApi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
