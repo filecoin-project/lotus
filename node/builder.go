@@ -6,13 +6,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/filecoin-project/lotus/node/impl/net"
-	metricsi "github.com/ipfs/go-metrics-interface"
-
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/system"
-
 	logging "github.com/ipfs/go-log/v2"
+	metricsi "github.com/ipfs/go-metrics-interface"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -27,6 +22,9 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
+
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -34,15 +32,18 @@ import (
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/impl/common"
+	"github.com/filecoin-project/lotus/node/impl/net"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/system"
 )
 
 //nolint:deadcode,varcheck
@@ -335,7 +336,8 @@ func Repo(r repo.Repo) Option {
 			Override(new(dtypes.ClientImportMgr), modules.ClientImportMgr),
 
 			Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
-			Override(new(dtypes.ClientRetrievalStoreManager), modules.ClientBlockstoreRetrievalStoreManager(false)),
+			Override(new(storageimpl.BlockstoreAccessor), modules.NewStorageMarketBlockstoreAccessor(false)),
+			Override(new(retrievaladapter.BlockstoreManager), modules.NewRetrievalMarketBlockstoreManager(false)),
 
 			Override(new(ci.PrivKey), lp2p.PrivKey),
 			Override(new(ci.PubKey), ci.PrivKey.GetPublic),

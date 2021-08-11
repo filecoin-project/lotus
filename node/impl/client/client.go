@@ -7,14 +7,12 @@ import (
 	"io"
 	"math/rand"
 	"os"
-	"path/filepath"
 	"sort"
 	"time"
 
-	"github.com/ipld/go-car"
-	carv2 "github.com/ipld/go-car/v2"
-	"github.com/ipld/go-car/v2/blockstore"
+	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 
+	"github.com/ipld/go-car"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-padreader"
@@ -23,10 +21,7 @@ import (
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	files "github.com/ipfs/go-ipfs-files"
 	"github.com/ipfs/go-merkledag"
-	unixfile "github.com/ipfs/go-unixfs/file"
-
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
@@ -90,7 +85,7 @@ type API struct {
 	DataTransfer dtypes.ClientDataTransfer
 	Host         host.Host
 
-	RetrievalStoreMgr dtypes.ClientRetrievalStoreManager
+	BlockstoreManager retrievaladapter.BlockstoreManager
 	Repo              repo.LockedRepo
 }
 
@@ -121,7 +116,6 @@ func (a *API) ClientStatelessDeal(ctx context.Context, params *api.StartDealPara
 }
 
 func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isStateless bool) (*cid.Cid, error) {
-	var CARV2FilePath string
 	if isStateless {
 		if params.Data.TransferType != storagemarket.TTManual {
 			return nil, xerrors.Errorf("invalid transfer type %s for stateless storage deal", params.Data.TransferType)
@@ -137,7 +131,6 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 		if fc == "" {
 			return nil, xerrors.New("no CARv2 file path for deal")
 		}
-		CARV2FilePath = fc
 	}
 
 	walletKey, err := a.StateAccountKey(ctx, params.Wallet, types.EmptyTSK)
@@ -203,7 +196,6 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 			Rt:            st,
 			FastRetrieval: params.FastRetrieval,
 			VerifiedDeal:  params.VerifiedDeal,
-			IndexedCAR:    CARV2FilePath,
 		})
 
 		if err != nil {
@@ -736,8 +728,8 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		}
 	}
 
-	var carV2FilePath string
-	if order.LocalCARV2FilePath == "" {
+	fileAlreadyRetrieved := order.LocalCARV2FilePath != ""
+	if !fileAlreadyRetrieved {
 		if order.MinerPeer == nil || order.MinerPeer.ID == "" {
 			mi, err := a.StateMinerInfo(ctx, order.Miner, types.EmptyTSK)
 			if err != nil {
@@ -783,22 +775,14 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			}
 		})
 
-		tmpCarv2FilePath, err := a.getTmpCarV2FilePath()
-		if err != nil {
-			unsubscribe()
-			finish(xerrors.Errorf("Retrieve failed: %w", err))
-			return
-		}
-
-		resp, err := a.Retrieval.Retrieve(
+		dealID, err := a.Retrieval.Retrieve(
 			ctx,
 			order.Root,
 			params,
 			order.Total,
 			*order.MinerPeer,
 			order.Client,
-			order.Miner,
-			tmpCarv2FilePath)
+			order.Miner)
 
 		if err != nil {
 			unsubscribe()
@@ -806,7 +790,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			return
 		}
 
-		err = readSubscribeEvents(ctx, resp.DealID, subscribeEvents, events)
+		err = readSubscribeEvents(ctx, dealID, subscribeEvents, events)
 
 		unsubscribe()
 		if err != nil {
@@ -814,36 +798,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			return
 		}
 
-		carV2FilePath = resp.CarFilePath
-		// remove the temp CARv2 file when retrieval is complete
-		defer os.Remove(carV2FilePath) //nolint:errcheck
-	} else {
-		carV2FilePath = order.LocalCARV2FilePath
-	}
-
-	// TODO We only support this currently for the IPFS Retrieval use case
-	// where users want to write out filecoin retrievals directly to IPFS.
-	// If users haven' configured the Ipfs retrieval flag, the blockstore we get here will be a "no-op" blockstore.
-	// write out the CARv2 file to the retrieval block-store (which is really an IPFS node behind the scenes).
-	rs, err := a.RetrievalStoreMgr.NewStore()
-	defer a.RetrievalStoreMgr.ReleaseStore(rs) //nolint:errcheck
-	if err != nil {
-		finish(xerrors.Errorf("Error setting up new store: %w", err))
-		return
-	}
-	if rs.IsIPFSRetrieval() {
-		// write out the CARv1 blocks of the CARv2 file to the IPFS blockstore.
-		carv2Reader, err := carv2.OpenReader(carV2FilePath)
-		if err != nil {
-			finish(err)
-			return
-		}
-		defer carv2Reader.Close() //nolint:errcheck
-
-		if _, err := car.LoadCar(rs.Blockstore(), carv2Reader.DataReader()); err != nil {
-			finish(err)
-			return
-		}
+		defer a.BlockstoreManager.Cleanup(order.Root) //nolint:errcheck
 	}
 
 	// If ref is nil, it only fetches the data into the configured blockstore.
@@ -853,61 +808,22 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	}
 
 	if ref.IsCAR {
+		// TODO: handle the case where the file already existed locally
+		// if fileAlreadyRetrieved {...}
+
 		// user wants a CAR file, transform the CARv2 to a CARv1 and write it out.
-		f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			finish(err)
-			return
-		}
-
-		carv2Reader, err := carv2.OpenReader(carV2FilePath)
-		if err != nil {
-			finish(err)
-			return
-		}
-		defer carv2Reader.Close() //nolint:errcheck
-		if _, err := io.Copy(f, carv2Reader.DataReader()); err != nil {
-			finish(err)
-			return
-		}
-
-		finish(f.Close())
-		return
-	}
-
-	readOnly, err := blockstore.OpenReadOnly(carV2FilePath, carv2.ZeroLengthSectionAsEOF(true), blockstore.UseWholeCIDs(true))
-	if err != nil {
+		err := a.BlockstoreManager.WriteCarV1(ctx, order.Root, ref.Path)
 		finish(err)
 		return
 	}
-	defer readOnly.Close() //nolint:errcheck
-	bsvc := blockservice.New(readOnly, offline.Exchange(readOnly))
-	dag := merkledag.NewDAGService(bsvc)
 
-	nd, err := dag.Get(ctx, order.Root)
-	if err != nil {
-		finish(xerrors.Errorf("ClientRetrieve: %w", err))
-		return
-	}
-	file, err := unixfile.NewUnixfsFile(ctx, dag, nd)
-	if err != nil {
-		finish(xerrors.Errorf("ClientRetrieve: %w", err))
-		return
-	}
-	finish(files.WriteTo(file, ref.Path))
+	// TODO: handle the case where the file already existed locally
+	// if fileAlreadyRetrieved {...}
 
-	return
-}
-
-// TODO: Come up with a better mechanism for creating the tmp CARv2 file path
-func (a *API) getTmpCarV2FilePath() (string, error) {
-	carsPath := filepath.Join(a.Repo.Path(), DefaultDAGStoreDir, "retrieval-cars")
-
-	if err := os.MkdirAll(carsPath, 0755); err != nil {
-		return "", xerrors.Errorf("failed to create dir")
-	}
-
-	return filepath.Join(carsPath, fmt.Sprintf("%d.car", time.Now().UnixNano())), nil
+	// ref indicates that user wants a regular file, so transform the blocks
+	// into a unix fs dag and write to the output path
+	err := a.BlockstoreManager.WriteUnixFSFile(ctx, order.Root, ref.Path)
+	finish(err)
 }
 
 func (a *API) ClientListRetrievals(ctx context.Context) ([]api.RetrievalInfo, error) {

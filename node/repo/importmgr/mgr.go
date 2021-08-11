@@ -21,9 +21,9 @@ var log = logging.Logger("importmgr")
 type ImportID uint64
 
 type Mgr struct {
-	ds       datastore.Batching
-	repoPath string
-	counter  *shared.TimeCounter
+	ds      datastore.Batching
+	tmpDir  string
+	counter *shared.TimeCounter
 }
 
 type Label string
@@ -35,11 +35,11 @@ const (
 	LFileStoreCARv2FilePath = "CARv2Path" // path of the full CARv2 file or a CARv2 file that can serve as the backing store for a Filestore.
 )
 
-func New(ds datastore.Batching, repoPath string) *Mgr {
+func New(ds datastore.Batching, tmpDir string) *Mgr {
 	return &Mgr{
-		repoPath: repoPath,
-		ds:       datastore.NewLogDatastore(namespace.Wrap(ds, datastore.NewKey("/stores")), "storess"),
-		counter:  shared.NewTimeCounter(),
+		tmpDir:  tmpDir,
+		ds:      datastore.NewLogDatastore(namespace.Wrap(ds, datastore.NewKey("/stores")), "storess"),
+		counter: shared.NewTimeCounter(),
 	}
 }
 
@@ -158,7 +158,7 @@ func (m *Mgr) FilestoreCARV2FilePathFor(dagRoot cid.Cid) (string, error) {
 }
 
 func (m *Mgr) NewTempFile(importID ImportID) (string, error) {
-	file, err := ioutil.TempFile(m.repoPath, fmt.Sprintf("%d", importID))
+	file, err := ioutil.TempFile(m.tmpDir, fmt.Sprintf("%d", importID))
 	if err != nil {
 		return "", xerrors.Errorf("failed to create temp file: %w", err)
 	}
