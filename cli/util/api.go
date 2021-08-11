@@ -236,7 +236,19 @@ func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, err
 		_, _ = fmt.Fprintln(ctx.App.Writer, "using full node API v0 endpoint:", addr)
 	}
 
-	return client.NewFullNodeRPCV0(ctx.Context, addr, headers)
+	v0API, closer, err := client.NewFullNodeRPCV0(ctx.Context, addr, headers)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	v, err := v0API.Version(ctx.Context)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !v.APIVersion.EqMajorMinor(api.FullAPIVersion0) {
+		return nil, nil, xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", api.FullAPIVersion0, v.APIVersion)
+	}
+	return v0API, closer, nil
 }
 
 func GetFullNodeAPIV1(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, error) {
@@ -253,7 +265,19 @@ func GetFullNodeAPIV1(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, e
 		_, _ = fmt.Fprintln(ctx.App.Writer, "using full node API v1 endpoint:", addr)
 	}
 
-	return client.NewFullNodeRPCV1(ctx.Context, addr, headers)
+	v1API, closer, err := client.NewFullNodeRPCV1(ctx.Context, addr, headers)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	v, err := v1API.Version(ctx.Context)
+	if err != nil {
+		return nil, nil, err
+	}
+	if !v.APIVersion.EqMajorMinor(api.FullAPIVersion1) {
+		return nil, nil, xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", api.FullAPIVersion1, v.APIVersion)
+	}
+	return v1API, closer, nil
 }
 
 type GetStorageMinerOptions struct {
