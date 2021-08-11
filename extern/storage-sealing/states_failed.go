@@ -63,9 +63,10 @@ func (m *Sealing) handleSealPrecommit2Failed(ctx statemachine.Context, sector Se
 		return err
 	}
 
-	if sector.PreCommit2Fails > 3 {
-		return ctx.Send(SectorRetrySealPreCommit1{})
-	}
+	// 按照默然代码 取消 失败3次就从PC2到PC1
+	// if sector.PreCommit2Fails > 3 {
+	// 	return ctx.Send(SectorRetrySealPreCommit1{})
+	// }
 
 	return ctx.Send(SectorRetrySealPreCommit2{})
 }
@@ -111,7 +112,9 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 			log.Errorf("handlePreCommitFailed: api error, not proceeding: %+v", err)
 			return nil
 		case *ErrBadCommD: // TODO: Should this just back to packing? (not really needed since handlePreCommit1 will do that too)
-			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad CommD error: %w", err)})
+			// return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad CommD error: %w", err)})
+			// 默然代码
+			return ctx.Send(SectorRetryComputeProof{})
 		case *ErrExpiredTicket:
 			return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("ticket expired error: %w", err)})
 		case *ErrBadTicket:
@@ -174,9 +177,10 @@ func (m *Sealing) handleComputeProofFailed(ctx statemachine.Context, sector Sect
 		return err
 	}
 
-	if sector.InvalidProofs > 1 {
-		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("consecutive compute fails")})
-	}
+	// 按照默然代码 取消 生成不正确proof
+	// if sector.InvalidProofs > 1 {
+	// 	return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("consecutive compute fails")})
+	// }
 
 	return ctx.Send(SectorRetryComputeProof{})
 }
