@@ -1060,7 +1060,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 	}
 
 	nv := syncer.sm.GetNtwkVersion(ctx, b.Header.Height)
-	pl := vm.PricelistByVersion(nv)
+	pl := vm.PricelistByEpoch(baseTs.Height())
 	var sumGasLimit int64
 	checkMsg := func(msg types.ChainMsg) error {
 		m := msg.VMMessage()
