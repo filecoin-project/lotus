@@ -30,13 +30,17 @@ type heightEvents struct {
 	lastGc                    abi.ChainEpoch //nolint:structcheck
 }
 
-func newHeightEvents(api EventAPI, gcConfidence abi.ChainEpoch) *heightEvents {
-	return &heightEvents{
+func newHeightEvents(api EventAPI, obs *observer, gcConfidence abi.ChainEpoch) *heightEvents {
+	he := &heightEvents{
 		api:            api,
 		gcConfidence:   gcConfidence,
 		tsHeights:      map[abi.ChainEpoch][]*heightHandler{},
 		triggerHeights: map[abi.ChainEpoch][]*heightHandler{},
 	}
+	he.lk.Lock()
+	he.head = obs.Observe((*heightEventsObserver)(he))
+	he.lk.Unlock()
+	return he
 }
 
 // ChainAt invokes the specified `HeightHandler` when the chain reaches the
@@ -69,15 +73,6 @@ func (e *heightEvents) ChainAt(ctx context.Context, hnd HeightHandler, rev Rever
 	e.lk.Lock()
 	for {
 		head := e.head
-
-		// If we haven't initialized yet, store the trigger and move on.
-		if head == nil {
-			e.triggerHeights[triggerAt] = append(e.triggerHeights[triggerAt], handler)
-			e.tsHeights[h] = append(e.tsHeights[h], handler)
-			e.lk.Unlock()
-			return nil
-		}
-
 		if head.Height() >= h {
 			// Head is past the handler height. We at least need to stash the tipset to
 			// avoid doing this from the main event loop.
@@ -150,10 +145,6 @@ func (e *heightEvents) ChainAt(ctx context.Context, hnd HeightHandler, rev Rever
 			return nil
 		}
 	}
-}
-
-func (e *heightEvents) observer() TipSetObserver {
-	return (*heightEventsObserver)(e)
 }
 
 // Updates the head and garbage collects if we're 2x over our garbage collection confidence period.

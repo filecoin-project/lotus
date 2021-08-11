@@ -18,25 +18,26 @@ import (
 type observer struct {
 	api EventAPI
 
-	lk           sync.Mutex
 	gcConfidence abi.ChainEpoch
 
 	ready chan struct{}
 
+	lk        sync.Mutex
 	head      *types.TipSet
 	maxHeight abi.ChainEpoch
-
 	observers []TipSetObserver
 }
 
-func newObserver(api EventAPI, gcConfidence abi.ChainEpoch) *observer {
-	return &observer{
+func newObserver(api *cache, gcConfidence abi.ChainEpoch) *observer {
+	obs := &observer{
 		api:          api,
 		gcConfidence: gcConfidence,
 
 		ready:     make(chan struct{}),
 		observers: []TipSetObserver{},
 	}
+	obs.Observe(api.observer())
+	return obs
 }
 
 func (o *observer) start(ctx context.Context) error {
@@ -100,12 +101,18 @@ func (o *observer) listenHeadChangesOnce(ctx context.Context) error {
 		return xerrors.Errorf("expected first head notification type to be 'current', was '%s'", cur[0].Type)
 	}
 
-	head := cur[0].Val
+	curHead := cur[0].Val
+
+	o.lk.Lock()
 	if o.head == nil {
-		o.head = head
+		o.head = curHead
 		close(o.ready)
-	} else if !o.head.Equals(head) {
-		changes, err := o.api.ChainGetPath(ctx, o.head.Key(), head.Key())
+	}
+	startHead := o.head
+	o.lk.Unlock()
+
+	if !startHead.Equals(curHead) {
+		changes, err := o.api.ChainGetPath(ctx, startHead.Key(), curHead.Key())
 		if err != nil {
 			return xerrors.Errorf("failed to get path from last applied tipset to head: %w", err)
 		}
@@ -152,18 +159,23 @@ func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) err
 	ctx, span := trace.StartSpan(ctx, "events.HeadChange")
 	span.AddAttributes(trace.Int64Attribute("reverts", int64(len(rev))))
 	span.AddAttributes(trace.Int64Attribute("applies", int64(len(app))))
+
+	o.lk.Lock()
+	head := o.head
+	o.lk.Unlock()
+
 	defer func() {
-		span.AddAttributes(trace.Int64Attribute("endHeight", int64(o.head.Height())))
+		span.AddAttributes(trace.Int64Attribute("endHeight", int64(head.Height())))
 		span.End()
 	}()
 
 	// NOTE: bailing out here if the head isn't what we expected is fine. We'll re-start the
 	// entire process and handle any strange reorgs.
 	for i, from := range rev {
-		if !from.Equals(o.head) {
+		if !from.Equals(head) {
 			return xerrors.Errorf(
 				"expected to revert %s (%d), reverting %s (%d)",
-				o.head.Key(), o.head.Height(), from.Key(), from.Height(),
+				head.Key(), head.Height(), from.Key(), from.Height(),
 			)
 		}
 		var to *types.TipSet
@@ -171,7 +183,7 @@ func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) err
 			// If we have more reverts, the next revert is the next head.
 			to = rev[i+1]
 		} else {
-			// At the end of the revert sequenece, we need to looup the joint tipset
+			// At the end of the revert sequenece, we need to lookup the joint tipset
 			// between the revert sequence and the apply sequence.
 			var err error
 			to, err = o.api.ChainGetTipSet(ctx, from.Parents())
@@ -181,9 +193,14 @@ func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) err
 			}
 		}
 
-		// Get the observers late in case an observer registers/unregisters itself.
+		// Get the current observers and atomically set the head.
+		//
+		// 1. We need to get the observers every time in case some registered/deregistered.
+		// 2. We need to atomically set the head so new observers don't see events twice or
+		// skip them.
 		o.lk.Lock()
 		observers := o.observers
+		o.head = to
 		o.lk.Unlock()
 
 		for _, obs := range observers {
@@ -196,39 +213,43 @@ func (o *observer) headChange(ctx context.Context, rev, app []*types.TipSet) err
 			log.Errorf("reverted past finality, from %d to %d", o.maxHeight, to.Height())
 		}
 
-		o.head = to
+		head = to
 	}
 
 	for _, to := range app {
-		if to.Parents() != o.head.Key() {
+		if to.Parents() != head.Key() {
 			return xerrors.Errorf(
 				"cannot apply %s (%d) with parents %s on top of %s (%d)",
-				to.Key(), to.Height(), to.Parents(), o.head.Key(), o.head.Height(),
+				to.Key(), to.Height(), to.Parents(), head.Key(), head.Height(),
 			)
 		}
 
-		// Get the observers late in case an observer registers/unregisters itself.
 		o.lk.Lock()
 		observers := o.observers
+		o.head = to
 		o.lk.Unlock()
 
 		for _, obs := range observers {
-			if err := obs.Apply(ctx, o.head, to); err != nil {
+			if err := obs.Apply(ctx, head, to); err != nil {
 				log.Errorf("observer %T failed to revert tipset %s (%d) with: %s", obs, to.Key(), to.Height(), err)
 			}
 		}
-		o.head = to
 		if to.Height() > o.maxHeight {
 			o.maxHeight = to.Height()
 		}
 
+		head = to
 	}
 	return nil
 }
 
-// TODO: add a confidence level so we can have observers with difference levels of confidence
-func (o *observer) Observe(obs TipSetObserver) {
+// Observe registers the observer, and returns the current tipset. The observer is guaranteed to
+// observe events starting at this tipset.
+//
+// Returns nil if the observer hasn't started yet (but still registers).
+func (o *observer) Observe(obs TipSetObserver) *types.TipSet {
 	o.lk.Lock()
 	defer o.lk.Unlock()
 	o.observers = append(o.observers, obs)
+	return o.head
 }

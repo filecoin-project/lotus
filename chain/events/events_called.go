@@ -69,9 +69,8 @@ type queuedEvent struct {
 type hcEvents struct {
 	cs EventAPI
 
+	lk     sync.Mutex
 	lastTs *types.TipSet
-
-	lk sync.Mutex
 
 	ctr triggerID
 
@@ -93,7 +92,7 @@ type hcEvents struct {
 	watcherEvents
 }
 
-func newHCEvents(api EventAPI) *hcEvents {
+func newHCEvents(api EventAPI, obs *observer) *hcEvents {
 	e := &hcEvents{
 		cs:          api,
 		confQueue:   map[triggerH]map[msgH][]*queuedEvent{},
@@ -105,14 +104,15 @@ func newHCEvents(api EventAPI) *hcEvents {
 	e.messageEvents = newMessageEvents(e, api)
 	e.watcherEvents = newWatcherEvents(e, api)
 
+	// We need to take the lock as the observer could immediately try calling us.
+	e.lk.Lock()
+	e.lastTs = obs.Observe((*hcEventsObserver)(e))
+	e.lk.Unlock()
+
 	return e
 }
 
 type hcEventsObserver hcEvents
-
-func (e *hcEvents) observer() TipSetObserver {
-	return (*hcEventsObserver)(e)
-}
 
 func (e *hcEventsObserver) Apply(ctx context.Context, from, to *types.TipSet) error {
 	e.lk.Lock()
@@ -284,14 +284,9 @@ func (e *hcEvents) onHeadChanged(ctx context.Context, check CheckFunc, hnd Event
 	defer e.lk.Unlock()
 
 	// Check if the event has already occurred
-	more := true
-	done := false
-	if e.lastTs != nil {
-		var err error
-		done, more, err = check(ctx, e.lastTs)
-		if err != nil {
-			return 0, xerrors.Errorf("called check error (h: %d): %w", e.lastTs.Height(), err)
-		}
+	done, more, err := check(ctx, e.lastTs)
+	if err != nil {
+		return 0, xerrors.Errorf("called check error (h: %d): %w", e.lastTs.Height(), err)
 	}
 	if done {
 		timeout = NoTimeout

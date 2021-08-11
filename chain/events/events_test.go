@@ -875,8 +875,6 @@ func TestCalledTimeout(t *testing.T) {
 	events, err = NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
 
-	fcs.advance(0, 1, 0, nil)
-
 	err = events.Called(context.Background(), func(ctx context.Context, ts *types.TipSet) (d bool, m bool, e error) {
 		return true, true, nil
 	}, func(msg *types.Message, rec *types.MessageReceipt, ts *types.TipSet, curH abi.ChainEpoch) (bool, error) {
@@ -1297,8 +1295,6 @@ func TestStateChangedTimeout(t *testing.T) {
 	fcs = newFakeCS(t)
 	events, err = NewEvents(context.Background(), fcs)
 	require.NoError(t, err)
-
-	fcs.advance(0, 1, 0, nil)
 
 	err = events.StateChanged(func(ctx context.Context, ts *types.TipSet) (d bool, m bool, e error) {
 		return true, true, nil

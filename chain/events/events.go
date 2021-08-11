@@ -50,16 +50,12 @@ func NewEventsWithConfidence(ctx context.Context, api EventAPI, gcConfidence abi
 	cache := newCache(api, gcConfidence)
 
 	ob := newObserver(cache, gcConfidence)
-	he := newHeightEvents(cache, gcConfidence)
-	headChange := newHCEvents(cache)
-
-	// Cache first. Observers are ordered and we always want to fill the cache first.
-	ob.Observe(cache.observer())
-	ob.Observe(he.observer())
-	ob.Observe(headChange.observer())
 	if err := ob.start(ctx); err != nil {
 		return nil, err
 	}
+
+	he := newHeightEvents(cache, ob, gcConfidence)
+	headChange := newHCEvents(cache, ob)
 
 	return &Events{ob, he, headChange}, nil
 }
