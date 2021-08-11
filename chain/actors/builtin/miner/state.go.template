@@ -479,12 +479,15 @@ func (s *state{{.v}}) EraseAllUnproven() error {
 
 			return dls.UpdateDeadline(s.store, dindx, dl)
 		})
+		if err != nil {
+			return err
+		}
 
 		return s.State.SaveDeadlines(s.store, dls)
 	{{else}}
 		// field doesn't exist until v2
+                return nil
 	{{end}}
-	return nil
 }
 
 func (d *deadline{{.v}}) LoadPartition(idx uint64) (Partition, error) {

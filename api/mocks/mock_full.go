@@ -343,6 +343,21 @@ func (mr *MockFullNodeMockRecorder) ChainGetTipSet(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetTipSet", reflect.TypeOf((*MockFullNode)(nil).ChainGetTipSet), arg0, arg1)
 }
 
+// ChainGetTipSetAfterHeight mocks base method.
+func (m *MockFullNode) ChainGetTipSetAfterHeight(arg0 context.Context, arg1 abi.ChainEpoch, arg2 types.TipSetKey) (*types.TipSet, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainGetTipSetAfterHeight", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*types.TipSet)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChainGetTipSetAfterHeight indicates an expected call of ChainGetTipSetAfterHeight.
+func (mr *MockFullNodeMockRecorder) ChainGetTipSetAfterHeight(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetTipSetAfterHeight", reflect.TypeOf((*MockFullNode)(nil).ChainGetTipSetAfterHeight), arg0, arg1, arg2)
+}
+
 // ChainGetTipSetByHeight mocks base method.
 func (m *MockFullNode) ChainGetTipSetByHeight(arg0 context.Context, arg1 abi.ChainEpoch, arg2 types.TipSetKey) (*types.TipSet, error) {
 	m.ctrl.T.Helper()

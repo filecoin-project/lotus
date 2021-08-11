@@ -27,6 +27,7 @@
   * [ChainGetRandomnessFromBeacon](#ChainGetRandomnessFromBeacon)
   * [ChainGetRandomnessFromTickets](#ChainGetRandomnessFromTickets)
   * [ChainGetTipSet](#ChainGetTipSet)
+  * [ChainGetTipSetAfterHeight](#ChainGetTipSetAfterHeight)
   * [ChainGetTipSetByHeight](#ChainGetTipSetByHeight)
   * [ChainHasObj](#ChainHasObj)
   * [ChainHead](#ChainHead)
@@ -746,6 +747,38 @@ Perms: read
 Inputs:
 ```json
 [
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Cids": null,
+  "Blocks": null,
+  "Height": 0
+}
+```
+
+### ChainGetTipSetAfterHeight
+ChainGetTipSetAfterHeight looks back for a tipset at the specified epoch.
+If there are no blocks at the specified epoch, the first non-nil tipset at a later epoch
+will be returned.
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  10101,
   [
     {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
