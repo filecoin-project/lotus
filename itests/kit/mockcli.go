@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
 	lcli "github.com/urfave/cli/v2"
@@ -19,7 +20,7 @@ type MockCLI struct {
 	out  *bytes.Buffer
 }
 
-func NewMockCLI(ctx context.Context, t *testing.T, cmds []*lcli.Command) *MockCLI {
+func NewMockCLI(ctx context.Context, t *testing.T, cmds []*lcli.Command, nodeType api.NodeType) *MockCLI {
 	// Create a CLI App with an --api-url flag so that we can specify which node
 	// the command should be executed against
 	app := &lcli.App{
@@ -31,6 +32,8 @@ func NewMockCLI(ctx context.Context, t *testing.T, cmds []*lcli.Command) *MockCL
 		},
 		Commands: cmds,
 	}
+	// Set node type
+	api.RunningNodeType = nodeType
 
 	var out bytes.Buffer
 	app.Writer = &out

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/itests/kit"
 
@@ -42,7 +43,7 @@ func TestPaymentChannelsBasic(t *testing.T) {
 	creatorAddr, receiverAddr := startPaychCreatorReceiverMiner(ctx, t, &paymentCreator, &paymentReceiver, blocktime)
 
 	// Create mock CLI
-	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands)
+	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands, api.NodeFull)
 	creatorCLI := mockCLI.Client(paymentCreator.ListenAddr)
 	receiverCLI := mockCLI.Client(paymentReceiver.ListenAddr)
 
@@ -98,7 +99,7 @@ func TestPaymentChannelStatus(t *testing.T) {
 	creatorAddr, receiverAddr := startPaychCreatorReceiverMiner(ctx, t, &paymentCreator, &paymentReceiver, blocktime)
 
 	// Create mock CLI
-	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands)
+	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands, api.NodeFull)
 	creatorCLI := mockCLI.Client(paymentCreator.ListenAddr)
 
 	// creator: paych status-by-from-to <creator> <receiver>
@@ -178,7 +179,7 @@ func TestPaymentChannelVouchers(t *testing.T) {
 	creatorAddr, receiverAddr := startPaychCreatorReceiverMiner(ctx, t, &paymentCreator, &paymentReceiver, blocktime)
 
 	// Create mock CLI
-	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands)
+	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands, api.NodeFull)
 	creatorCLI := mockCLI.Client(paymentCreator.ListenAddr)
 	receiverCLI := mockCLI.Client(paymentReceiver.ListenAddr)
 
@@ -310,7 +311,7 @@ func TestPaymentChannelVoucherCreateShortfall(t *testing.T) {
 	creatorAddr, receiverAddr := startPaychCreatorReceiverMiner(ctx, t, &paymentCreator, &paymentReceiver, blocktime)
 
 	// Create mock CLI
-	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands)
+	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands, api.NodeFull)
 	creatorCLI := mockCLI.Client(paymentCreator.ListenAddr)
 
 	// creator: paych add-funds <creator> <receiver> <amount>
