@@ -58,7 +58,6 @@ var GetMarketsAPI = cliutil.GetMarketsAPI
 var GetWorkerAPI = cliutil.GetWorkerAPI
 
 var CommonCommands = []*cli.Command{
-	// NetCmd: no longer a common command, since lotus-miner nodes without a markets subsystem no longer run a libp2p node
 	AuthCmd,
 	LogCmd,
 	WaitApiCmd,
