@@ -236,19 +236,7 @@ func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, err
 		_, _ = fmt.Fprintln(ctx.App.Writer, "using full node API v0 endpoint:", addr)
 	}
 
-	v0API, closer, err := client.NewFullNodeRPCV0(ctx.Context, addr, headers)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	v, err := v0API.Version(ctx.Context)
-	if err != nil {
-		return nil, nil, err
-	}
-	if !v.APIVersion.EqMajorMinor(api.FullAPIVersion0) {
-		return nil, nil, xerrors.Errorf("Remote API version didn't match (expected %s, remote %s)", api.FullAPIVersion0, v.APIVersion)
-	}
-	return v0API, closer, nil
+	return client.NewFullNodeRPCV0(ctx.Context, addr, headers)
 }
 
 func GetFullNodeAPIV1(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, error) {
