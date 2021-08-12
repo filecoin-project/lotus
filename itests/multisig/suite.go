@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -19,6 +20,8 @@ func RunMultisigTests(t *testing.T, client *kit.TestFullNode) {
 	ctx := context.Background()
 	mockCLI := kit.NewMockCLI(ctx, t, cli.Commands)
 	clientCLI := mockCLI.Client(client.ListenAddr)
+	// msig tests run against a full node
+	api.RunningNodeType = api.NodeFull
 
 	// Create some wallets on the node to use for testing multisig
 	var walletAddrs []address.Address
