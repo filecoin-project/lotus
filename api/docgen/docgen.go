@@ -24,8 +24,6 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 
-	"github.com/filecoin-project/lotus/node/repo/importmgr"
-
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	filestore2 "github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -45,6 +43,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/repo/imports"
 )
 
 var ExampleValues = map[reflect.Type]interface{}{
@@ -92,7 +91,7 @@ func init() {
 	addExample(&pid)
 
 	multistoreIDExample := multistore.StoreID(50)
-	storeIDExample := imports.ImportID(50)
+	storeIDExample := imports.ID(50)
 
 	addExample(bitfield.NewFromSet([]uint64{5}))
 	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1_1)

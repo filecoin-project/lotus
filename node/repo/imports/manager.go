@@ -93,7 +93,7 @@ func (m *Manager) AddLabel(id ID, key LabelKey, value LabelValue) error {
 	return m.ds.Put(id.dsKey(), meta)
 }
 
-// List returns all import IDs known by this ImportMgr.
+// List returns all import IDs known by this Manager.
 func (m *Manager) List() ([]ID, error) {
 	var keys []ID
 

@@ -21,7 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/node/repo/importmgr"
+	"github.com/filecoin-project/lotus/node/repo/imports"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
@@ -121,7 +121,7 @@ type FullNodeStruct struct {
 
 		ClientQueryAsk func(p0 context.Context, p1 peer.ID, p2 address.Address) (*storagemarket.StorageAsk, error) `perm:"read"`
 
-		ClientRemoveImport func(p0 context.Context, p1 imports.ImportID) error `perm:"admin"`
+		ClientRemoveImport func(p0 context.Context, p1 imports.ID) error `perm:"admin"`
 
 		ClientRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
@@ -939,14 +939,14 @@ func (s *FullNodeStub) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 address
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientRemoveImport(p0 context.Context, p1 imports.ImportID) error {
+func (s *FullNodeStruct) ClientRemoveImport(p0 context.Context, p1 imports.ID) error {
 	if s.Internal.ClientRemoveImport == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ClientRemoveImport(p0, p1)
 }
 
-func (s *FullNodeStub) ClientRemoveImport(p0 context.Context, p1 imports.ImportID) error {
+func (s *FullNodeStub) ClientRemoveImport(p0 context.Context, p1 imports.ID) error {
 	return ErrNotSupported
 }
 

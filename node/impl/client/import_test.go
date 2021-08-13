@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-fil-markets/stores"
-	"github.com/filecoin-project/lotus/node/repo/importmgr"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
@@ -19,6 +18,8 @@ import (
 	carv2 "github.com/ipld/go-car/v2"
 	"github.com/ipld/go-car/v2/blockstore"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/lotus/node/repo/imports"
 )
 
 // This test uses a full "dense" CARv2, and not a filestore (positional mapping).
@@ -76,7 +77,7 @@ func TestRoundtripUnixFS_Dense(t *testing.T) {
 func TestRoundtripUnixFS_Filestore(t *testing.T) {
 	ctx := context.Background()
 	a := &API{
-		Imports: &imports.Mgr{},
+		Imports: &imports.Manager{},
 	}
 
 	inputFilePath, inputContents := genInputFile(t)

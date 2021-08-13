@@ -64,7 +64,6 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/node/repo/importmgr"
 )
 
 var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)

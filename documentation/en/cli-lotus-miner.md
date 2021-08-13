@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.11.1-m1.3.5
+   1.11.1-m1.3.6
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -1032,6 +1032,7 @@ USAGE:
    lotus-miner dagstore list-shards [command options] [arguments...]
 
 OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
    --help, -h  show help (default: false)
    
 ```
@@ -1045,6 +1046,7 @@ USAGE:
    lotus-miner dagstore initialize-shard [command options] [key]
 
 OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
    --help, -h  show help (default: false)
    
 ```
@@ -1058,6 +1060,7 @@ USAGE:
    lotus-miner dagstore recover-shard [command options] [key]
 
 OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
    --help, -h  show help (default: false)
    
 ```
@@ -1073,6 +1076,7 @@ USAGE:
 OPTIONS:
    --concurrency value  maximum shards to initialize concurrently at a time; use 0 for unlimited (default: 0)
    --include-sealed     initialize sealed pieces as well (default: false)
+   --color              use color in display output (default: depends on output being a TTY)
    --help, -h           show help (default: false)
    
 ```
@@ -1086,6 +1090,7 @@ USAGE:
    lotus-miner dagstore gc [command options] [arguments...]
 
 OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
    --help, -h  show help (default: false)
    
 ```

@@ -38,7 +38,7 @@ import (
 	payapi "github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/node/repo/importmgr"
+	"github.com/filecoin-project/lotus/node/repo/imports"
 	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 )
 
@@ -77,7 +77,7 @@ func HandleMigrateClientFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, wallet full
 }
 
 func ClientImportMgr(ds dtypes.MetadataDS, r repo.LockedRepo) dtypes.ClientImportMgr {
-	return imports.New(namespace.Wrap(ds, datastore.NewKey("/client")), r.Path())
+	return imports.NewManager(namespace.Wrap(ds, datastore.NewKey("/client")), r.Path())
 }
 
 // TODO Ge this to work when we work on IPFS integration. What we effectively need here is a cross-shard/cross-CAR files index for the Storage client's imports.
