@@ -485,7 +485,7 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, paylo
 }
 
 func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.ImportRes, finalErr error) {
-	id, err := a.imgr().NewStore()
+	id, err := a.imgr().CreateImport()
 	if err != nil {
 		return nil, err
 	}
@@ -493,7 +493,8 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 	var root cid.Cid
 	var carFile string
 	if ref.IsCAR {
-		// if user has given us a CAR file -> just ensure it's either a v1 or a v2, has one root and save it as it is as markets can do deal making for both.
+		// if user has given us a CAR file -> just ensure it's either a v1 or a
+		// v2, has one root and save it as it is as markets can do deal making for both.
 		f, err := os.Open(ref.Path)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to open CAR file: %w", err)
@@ -536,7 +537,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 	if err := a.imgr().AddLabel(id, importmgr.LFileName, ref.Path); err != nil {
 		return nil, err
 	}
-	if err := a.imgr().AddLabel(id, importmgr.LFileStoreCARv2FilePath, carFile); err != nil {
+	if err := a.imgr().AddLabel(id, importmgr.LCARPath, carFile); err != nil {
 		return nil, err
 	}
 	if err := a.imgr().AddLabel(id, importmgr.LRootCid, root.String()); err != nil {
@@ -556,7 +557,7 @@ func (a *API) ClientRemoveImport(ctx context.Context, importID importmgr.ImportI
 	}
 
 	// remove the CARv2 file if we've created one.
-	if path := info.Labels[importmgr.LFileStoreCARv2FilePath]; path != "" {
+	if path := info.Labels[importmgr.LCARPath]; path != "" {
 		_ = os.Remove(path)
 	}
 
@@ -613,7 +614,7 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 			Key:           id,
 			Source:        info.Labels[importmgr.LSource],
 			FilePath:      info.Labels[importmgr.LFileName],
-			CARv2FilePath: info.Labels[importmgr.LFileStoreCARv2FilePath],
+			CARv2FilePath: info.Labels[importmgr.LCARPath],
 		}
 
 		if info.Labels[importmgr.LRootCid] != "" {
