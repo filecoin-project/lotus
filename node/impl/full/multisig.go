@@ -30,8 +30,12 @@ func (a *MsigAPI) messageBuilder(ctx context.Context, from address.Address) (mul
 	if err != nil {
 		return nil, err
 	}
+	av, err := actors.VersionForNetwork(nver)
+	if err != nil {
+		return nil, err
+	}
 
-	return multisig.Message(actors.VersionForNetwork(nver), from), nil
+	return multisig.Message(av, from), nil
 }
 
 // TODO: remove gp (gasPrice) from arguments

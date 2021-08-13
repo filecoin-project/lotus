@@ -281,7 +281,7 @@ func (mp *MessagePool) checkMessages(ctx context.Context, msgs []*types.Message,
 		// gas checks
 
 		// 4. Min Gas
-		minGas := vm.PricelistByVersion(nv).OnChainMessage(m.ChainLength())
+		minGas := vm.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
 
 		check = api.MessageCheckStatus{
 			Cid: m.Cid(),

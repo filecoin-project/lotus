@@ -143,7 +143,14 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 			return nil, 0, allocated, xerrors.Errorf("getTicket: StateNetworkVersion: api error, not proceeding: %+v", err)
 		}
 
-		msd := policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), sector.SectorType)
+		av, err := actors.VersionForNetwork(nv)
+		if err != nil {
+			return nil, 0, allocated, xerrors.Errorf("getTicket: actor version for network error, not proceeding: %w", err)
+		}
+		msd, err := policy.GetMaxProveCommitDuration(av, sector.SectorType)
+		if err != nil {
+			return nil, 0, allocated, xerrors.Errorf("getTicket: max prove commit duration policy error, not proceeding: %w", err)
+		}
 
 		if checkProveCommitExpired(pci.PreCommitEpoch, msd, epoch) {
 			return nil, 0, allocated, xerrors.Errorf("ticket expired for precommitted sector")
@@ -223,7 +230,16 @@ func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) 
 			return nil
 		}
 
-		msd := policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), sector.SectorType)
+		av, err := actors.VersionForNetwork(nv)
+		if err != nil {
+			log.Errorf("handlePreCommit1: VersionForNetwork error, not proceeding: %w", err)
+			return nil
+		}
+		msd, err := policy.GetMaxProveCommitDuration(av, sector.SectorType)
+		if err != nil {
+			log.Errorf("handlePreCommit1: GetMaxProveCommitDuration error, not proceeding: %w", err)
+			return nil
+		}
 
 		// if height >  PreCommitEpoch + msd, there is no need to recalculate
 		if checkProveCommitExpired(pci.PreCommitEpoch, msd, height) {
@@ -311,7 +327,14 @@ func (m *Sealing) preCommitParams(ctx statemachine.Context, sector SectorInfo) (
 		return nil, big.Zero(), nil, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("failed to get network version: %w", err)})
 	}
 
-	msd := policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), sector.SectorType)
+	av, err := actors.VersionForNetwork(nv)
+	if err != nil {
+		return nil, big.Zero(), nil, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("failed to get actors version: %w", err)})
+	}
+	msd, err := policy.GetMaxProveCommitDuration(av, sector.SectorType)
+	if err != nil {
+		return nil, big.Zero(), nil, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("failed to get max prove commit duration: %w", err)})
+	}
 
 	if minExpiration := sector.TicketEpoch + policy.MaxPreCommitRandomnessLookback + msd + miner.MinSectorExpiration; expiration < minExpiration {
 		expiration = minExpiration

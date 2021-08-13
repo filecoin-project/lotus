@@ -616,7 +616,8 @@ func (mp *MessagePool) addLocal(ctx context.Context, m *types.SignedMessage) err
 // For non local messages, if the message cannot be included in the next 20 blocks it returns
 // a (soft) validation error.
 func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.TipSet, local bool) (bool, error) {
-	minGas := vm.PricelistByVersion(build.NewestNetworkVersion).OnChainMessage(m.ChainLength())
+	epoch := curTs.Height()
+	minGas := vm.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
 
 	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total(), build.NewestNetworkVersion); err != nil {
 		return false, xerrors.Errorf("message will not be included in a block: %w", err)
