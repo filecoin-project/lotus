@@ -1,28 +1,32 @@
 
-# `lotus` Release Flow
+<!-- TOC -->
 
-## Table of Contents
-- [Purpose](#Purpose)
-- [High-level summary](#High-level summary)
-- [Motivation and Requirements](#Motivation and Requirements)
-- [Adopted Conventions](#Adopted Conventions)
-  - [Major releases](#Major releases)
-  - [Mandatory releases](#Mandatory releases)
-  - [Feature releases](#Feature releases)
-  - [Examples Scenarios(#Examples Scenarios)
-- [Release Cycle](#release-cycle)
-  - [Patch Releases](#patch-releases)
-- [Performing a Release](#performing-a-release)
-- [Security Fix Policy](#Security Fix Policy)
-- [FAQ](#FAQ)
-  - [Why aren't Go major versions used more?](#Why aren't Go major versions used more?)
-- [RRelated Items](#Related Items)
+- [`lotus` Release Flow](#lotus-release-flow)
+  - [Purpose](#purpose)
+  - [High-level Summary](#high-level-summary)
+  - [Motivation and Requirements](#motivation-and-requirements)
+  - [Adopted Conventions](#adopted-conventions)
+    - [Major Releases](#major-releases)
+    - [Mandatory Releases](#mandatory-releases)
+    - [Feature Releases](#feature-releases)
+    - [Examples Scenarios](#examples-scenarios)
+  - [Release Cycle](#release-cycle)
+    - [Patch Releases](#patch-releases)
+    - [Performing a Release](#performing-a-release)
+    - [Security Fix Policy](#security-fix-policy)
+  - [FAQ](#faq)
+    - [Why aren't Go major versions used more?](#why-arent-go-major-versions-used-more)
+  - [Related Items](#related-items)
+
+<!-- /TOC -->
+
+# `lotus` Release Flow
 
 ## Purpose
 
-This document aims to describe how the Lotus team plans to ship releases of the Lotus implementation of Filecoin. Interested parties can expect new releases to come out as described in this document.
+This document aims to describe how the Lotus team plans to ship releases of the Lotus implementation of Filecoin network. Interested parties can expect new releases to come out as described in this document.
 
-## High-level summary
+## High-level Summary
 
 - **Major releases** (1.0.0, 2.0.0, etc.) are reserved for significant changes to the Filecoin protocol that transform the network and its usecases. Such changes could include the addition of new Virtual Machines to the protocol, major upgrades to the Proofs of Replication used by Filecoin, etc.
 - Even minor releases (1.2.0, 1.4.0, etc.) of the Lotus software correspond to **mandatory releases** as they ship Filecoin network upgrades. Users **must** upgrade to these releases before a certain time in order to keep in sync with the Filecoin network. We aim to ensure there is at least one week before the upgrade deadline.
@@ -47,11 +51,11 @@ In order to achieve this, we need the following from our release process and con
 
 This section describes the conventions we have adopted. Users of Lotus are encouraged to review this in detail so as to be informed when new Lotus releases are shipped.
 
-### Major releases
+### Major Releases
 
 Bumps to the Lotus major version number (1.0.0, 2.0.0, etc.) are reserved for significant changes to the Filecoin protocol that dramatically transform the network itself. Such changes could include the addition of new Virtual Machines to the protocol, major upgrades to the Proofs of Replication used by Filecoin, etc. These releases are expected to take lots of time to develop and will be rare.  See also "Why aren't Go major versions used more?" below.
 
-### Mandatory releases
+### Mandatory Releases
 
 Even bumps to the Lotus minor version number (1.2.0, 1.4.0, etc.) are reserved for **mandatory releases** that ship Filecoin network upgrades. Users **must** upgrade to these releases before a certain time in order to keep in sync with the Filecoin network.
 
@@ -63,7 +67,7 @@ Mandatory releases are somewhat sensitive since all Lotus users are forced to up
 
 Users should generally aim to always upgrade to a new even minor version release since they either introduce a mandatory network upgrade or a critical fix.
 
-### Feature releases
+### Feature Releases
 
 All releases under an odd minor version number indicate **feature releases**. These could include releases such as 1.3.0, 1.3.1, 1.5.2, etc. 
 
@@ -135,4 +139,4 @@ Golang tightly couples source code with versioning (major versions beyond v1 lea
 ## Related Items
 
 1. [Release Issue template](https://github.com/filecoin-project/lotus/blob/master/documentation/misc/RELEASE_ISSUE_TEMPLATE.md)
-2. [GitHub discussion](https://github.com/filecoin-project/lotus/discussions/5889) that fed into this document
+2. [Lotus Release Flow Discussion](https://github.com/filecoin-project/lotus/discussions/7053): Leave a comment if you have any questions or feedbacks with regard to the lotus release flow.
