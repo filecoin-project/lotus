@@ -431,8 +431,8 @@ var sectorsCheckExpireCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:  "cutoff",
-			Usage: "skip sectors whose current expiration is more than <cutoff> epochs from now",
-			Value: 86400,
+			Usage: "skip sectors whose current expiration is more than <cutoff> epochs from now, defaults to 60 days",
+			Value: 172800,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -576,11 +576,11 @@ var sectorsRenewCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:  "from",
-			Usage: "only consider sectors whose current expiration epoch is in the range of [from, to], <from> defaults to: now + 120",
+			Usage: "only consider sectors whose current expiration epoch is in the range of [from, to], <from> defaults to: now + 120 (1 hour)",
 		},
 		&cli.Int64Flag{
 			Name:  "to",
-			Usage: "only consider sectors whose current expiration epoch is in the range of [from, to], <to> defaults to: now + 86400",
+			Usage: "only consider sectors whose current expiration epoch is in the range of [from, to], <to> defaults to: now + 92160 (32 days)",
 		},
 		&cli.StringFlag{
 			Name:  "sector-file",
@@ -592,7 +592,7 @@ var sectorsRenewCmd = &cli.Command{
 		},
 		&cli.Int64Flag{
 			Name:  "extension",
-			Usage: "try to extend selected sectors by this number of epochs",
+			Usage: "try to extend selected sectors by this number of epochs, defaults to 540 days",
 			Value: 1555200,
 		},
 		&cli.Int64Flag{
@@ -601,17 +601,17 @@ var sectorsRenewCmd = &cli.Command{
 		},
 		&cli.Int64Flag{
 			Name:  "tolerance",
-			Usage: "don't try to extend sectors by fewer than this number of epochs",
+			Usage: "don't try to extend sectors by fewer than this number of epochs, defaults to 7 days",
 			Value: 20160,
-		},
-		&cli.BoolFlag{
-			Name:  "really-do-it",
-			Usage: "pass this flag to really renew sectors, otherwise will only print out json representation of parameters",
 		},
 		&cli.StringFlag{
 			Name:  "max-fee",
 			Usage: "use up to this amount of attoFIL for one message. pass this flag to avoid message congestion.",
 			Value: "0",
+		},
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "pass this flag to really renew sectors, otherwise will only print out json representation of parameters",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -730,18 +730,20 @@ var sectorsRenewCmd = &cli.Command{
 					return xerrors.Errorf("could not parse %s as sector id: %s", line, err)
 				}
 
+				if _, exclude := excludeSet[id]; exclude {
+					continue
+				}
+
 				si, found := activeSectorsInfo[abi.SectorNumber(id)]
 				if !found {
 					return xerrors.Errorf("sector %d is not active", id)
 				}
 
-				if _, exclude := excludeSet[id]; !exclude {
-					sis = append(sis, si)
-				}
+				sis = append(sis, si)
 			}
 		} else {
 			from := currEpoch + 120
-			to := currEpoch + 86400
+			to := currEpoch + 92160
 
 			if cctx.IsSet("from") {
 				from = abi.ChainEpoch(cctx.Int64("from"))
