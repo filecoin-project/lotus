@@ -1,7 +1,6 @@
 package dtypes
 
 import (
-	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-graphsync"
@@ -14,7 +13,8 @@ import (
 	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/node/repo/importmgr"
+	"github.com/filecoin-project/lotus/node/repo/imports"
+	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 )
 
 // MetadataDS stores metadata. By default it's namespaced under /metadata in
@@ -69,7 +69,7 @@ type (
 type ChainBitswap exchange.Interface
 type ChainBlockService bserv.BlockService
 
-type ClientImportMgr *importmgr.Mgr
+type ClientImportMgr *imports.Manager
 type ClientBlockstore blockstore.BasicBlockstore
 type ClientDealStore *statestore.StateStore
 type ClientRequestValidator *requestvalidation.UnifiedRequestValidator

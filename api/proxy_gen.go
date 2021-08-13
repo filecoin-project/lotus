@@ -188,7 +188,7 @@ type FullNodeStruct struct {
 
 		ClientQueryAsk func(p0 context.Context, p1 peer.ID, p2 address.Address) (*storagemarket.StorageAsk, error) `perm:"read"`
 
-		ClientRemoveImport func(p0 context.Context, p1 importmgr.ImportID) error `perm:"admin"`
+		ClientRemoveImport func(p0 context.Context, p1 imports.ImportID) error `perm:"admin"`
 
 		ClientRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
@@ -1489,14 +1489,14 @@ func (s *FullNodeStub) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 address
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientRemoveImport(p0 context.Context, p1 importmgr.ImportID) error {
+func (s *FullNodeStruct) ClientRemoveImport(p0 context.Context, p1 imports.ImportID) error {
 	if s.Internal.ClientRemoveImport == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ClientRemoveImport(p0, p1)
 }
 
-func (s *FullNodeStub) ClientRemoveImport(p0 context.Context, p1 importmgr.ImportID) error {
+func (s *FullNodeStub) ClientRemoveImport(p0 context.Context, p1 imports.ImportID) error {
 	return ErrNotSupported
 }
 

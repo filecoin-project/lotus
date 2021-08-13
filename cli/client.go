@@ -185,7 +185,7 @@ var clientDropCmd = &cli.Command{
 		}
 
 		for _, id := range ids {
-			if err := api.ClientRemoveImport(ctx, importmgr.ImportID(id)); err != nil {
+			if err := api.ClientRemoveImport(ctx, imports.ImportID(id)); err != nil {
 				return xerrors.Errorf("removing import %d: %w", id, err)
 			}
 		}

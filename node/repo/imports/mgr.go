@@ -1,4 +1,4 @@
-package importmgr
+package imports
 
 import (
 	"encoding/json"
@@ -18,13 +18,13 @@ import (
 
 var log = logging.Logger("importmgr")
 
-type ImportID uint64
+type ID uint64
 
-func (id ImportID) dsKey() datastore.Key {
+func (id ID) dsKey() datastore.Key {
 	return datastore.NewKey(fmt.Sprintf("%d", id))
 }
 
-type Mgr struct {
+type Manager struct {
 	ds      datastore.Batching
 	rootDir string
 	counter *shared.TimeCounter
@@ -40,11 +40,11 @@ const (
 	LCARPath  = "carpath"  // Path of the CARv2 file containing the imported data.
 )
 
-func New(ds datastore.Batching, rootDir string) *Mgr {
+func NewManager(ds datastore.Batching, rootDir string) *Manager {
 	ds = namespace.Wrap(ds, datastore.NewKey("/stores"))
 	ds = datastore.NewLogDatastore(ds, "storess")
 
-	return &Mgr{
+	return &Manager{
 		ds:      ds,
 		rootDir: rootDir,
 		counter: shared.NewTimeCounter(),
@@ -56,8 +56,8 @@ type StoreMeta struct {
 }
 
 // CreateImport initializes a new import and returns its ID.
-func (m *Mgr) CreateImport() (ImportID, error) {
-	id := ImportID(m.counter.Next())
+func (m *Manager) CreateImport() (ID, error) {
+	id := ID(m.counter.Next())
 
 	meta, err := json.Marshal(&StoreMeta{Labels: map[LabelKey]LabelValue{
 		LSource: "unknown",
@@ -72,7 +72,7 @@ func (m *Mgr) CreateImport() (ImportID, error) {
 
 // AddLabel adds a label associated with an import, such as the source,
 // car path, CID, etc.
-func (m *Mgr) AddLabel(id ImportID, key LabelKey, value LabelValue) error {
+func (m *Manager) AddLabel(id ID, key LabelKey, value LabelValue) error {
 	meta, err := m.ds.Get(id.dsKey())
 	if err != nil {
 		return xerrors.Errorf("getting metadata form datastore: %w", err)
@@ -94,8 +94,8 @@ func (m *Mgr) AddLabel(id ImportID, key LabelKey, value LabelValue) error {
 }
 
 // List returns all import IDs known by this ImportMgr.
-func (m *Mgr) List() ([]ImportID, error) {
-	var keys []ImportID
+func (m *Manager) List() ([]ID, error) {
+	var keys []ID
 
 	qres, err := m.ds.Query(query.Query{KeysOnly: true})
 	if err != nil {
@@ -113,14 +113,14 @@ func (m *Mgr) List() ([]ImportID, error) {
 		if err != nil {
 			return nil, xerrors.Errorf("failed to parse key %s to uint64, err=%w", r.Key, err)
 		}
-		keys = append(keys, ImportID(id))
+		keys = append(keys, ID(id))
 	}
 
 	return keys, nil
 }
 
 // Info returns the metadata known to this store for the specified import ID.
-func (m *Mgr) Info(id ImportID) (*StoreMeta, error) {
+func (m *Manager) Info(id ID) (*StoreMeta, error) {
 	meta, err := m.ds.Get(id.dsKey())
 	if err != nil {
 		return nil, xerrors.Errorf("getting metadata form datastore: %w", err)
@@ -135,7 +135,7 @@ func (m *Mgr) Info(id ImportID) (*StoreMeta, error) {
 }
 
 // Remove drops all data associated with the supplied import ID.
-func (m *Mgr) Remove(id ImportID) error {
+func (m *Manager) Remove(id ID) error {
 	if err := m.ds.Delete(id.dsKey()); err != nil {
 		return xerrors.Errorf("removing import metadata: %w", err)
 	}
@@ -143,7 +143,7 @@ func (m *Mgr) Remove(id ImportID) error {
 	return nil
 }
 
-func (m *Mgr) FilestoreCARV2FilePathFor(dagRoot cid.Cid) (string, error) {
+func (m *Manager) FilestoreCARV2FilePathFor(dagRoot cid.Cid) (string, error) {
 	importIDs, err := m.List()
 	if err != nil {
 		return "", xerrors.Errorf("failed to fetch import IDs: %w", err)
@@ -171,7 +171,7 @@ func (m *Mgr) FilestoreCARV2FilePathFor(dagRoot cid.Cid) (string, error) {
 	return "", nil
 }
 
-func (m *Mgr) NewTempFile(importID ImportID) (string, error) {
+func (m *Manager) NewTempFile(importID ID) (string, error) {
 	file, err := ioutil.TempFile(m.rootDir, fmt.Sprintf("%d", importID))
 	if err != nil {
 		return "", xerrors.Errorf("failed to create temp file: %w", err)

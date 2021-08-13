@@ -92,7 +92,7 @@ func init() {
 	addExample(&pid)
 
 	multistoreIDExample := multistore.StoreID(50)
-	storeIDExample := importmgr.ImportID(50)
+	storeIDExample := imports.ImportID(50)
 
 	addExample(bitfield.NewFromSet([]uint64{5}))
 	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1_1)

@@ -52,6 +52,7 @@ import (
 	"github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
 
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
+	"github.com/filecoin-project/lotus/node/repo/imports"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -108,7 +109,7 @@ func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.Chain
 	return exp
 }
 
-func (a *API) imgr() *importmgr.Mgr {
+func (a *API) imgr() *imports.Manager {
 	return a.Imports
 }
 
@@ -531,16 +532,16 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 		}
 	}
 
-	if err := a.imgr().AddLabel(id, importmgr.LSource, "import"); err != nil {
+	if err := a.imgr().AddLabel(id, imports.LSource, "import"); err != nil {
 		return nil, err
 	}
-	if err := a.imgr().AddLabel(id, importmgr.LFileName, ref.Path); err != nil {
+	if err := a.imgr().AddLabel(id, imports.LFileName, ref.Path); err != nil {
 		return nil, err
 	}
-	if err := a.imgr().AddLabel(id, importmgr.LCARPath, carFile); err != nil {
+	if err := a.imgr().AddLabel(id, imports.LCARPath, carFile); err != nil {
 		return nil, err
 	}
-	if err := a.imgr().AddLabel(id, importmgr.LRootCid, root.String()); err != nil {
+	if err := a.imgr().AddLabel(id, imports.LRootCid, root.String()); err != nil {
 		return nil, err
 	}
 
@@ -550,14 +551,14 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 	}, nil
 }
 
-func (a *API) ClientRemoveImport(ctx context.Context, importID importmgr.ImportID) error {
+func (a *API) ClientRemoveImport(ctx context.Context, importID imports.ID) error {
 	info, err := a.imgr().Info(importID)
 	if err != nil {
 		return xerrors.Errorf("failed to fetch import info: %w", err)
 	}
 
 	// remove the CARv2 file if we've created one.
-	if path := info.Labels[importmgr.LCARPath]; path != "" {
+	if path := info.Labels[imports.LCARPath]; path != "" {
 		_ = os.Remove(path)
 	}
 
@@ -566,7 +567,7 @@ func (a *API) ClientRemoveImport(ctx context.Context, importID importmgr.ImportI
 
 func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, error) {
 	// write payload to temp file
-	tmpPath, err := a.imgr().NewTempFile(importmgr.ImportID(rand.Uint64()))
+	tmpPath, err := a.imgr().NewTempFile(imports.ID(rand.Uint64()))
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -612,13 +613,13 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 
 		ai := api.Import{
 			Key:           id,
-			Source:        info.Labels[importmgr.LSource],
-			FilePath:      info.Labels[importmgr.LFileName],
-			CARv2FilePath: info.Labels[importmgr.LCARPath],
+			Source:        info.Labels[imports.LSource],
+			FilePath:      info.Labels[imports.LFileName],
+			CARv2FilePath: info.Labels[imports.LCARPath],
 		}
 
-		if info.Labels[importmgr.LRootCid] != "" {
-			c, err := cid.Parse(info.Labels[importmgr.LRootCid])
+		if info.Labels[imports.LRootCid] != "" {
+			c, err := cid.Parse(info.Labels[imports.LRootCid])
 			if err != nil {
 				ai.Err = err.Error()
 			} else {
@@ -1119,7 +1120,7 @@ func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCID
 }
 
 func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath string) error {
-	id := importmgr.ImportID(rand.Uint64())
+	id := imports.ID(rand.Uint64())
 	tmp, err := a.imgr().NewTempFile(id)
 	if err != nil {
 		return xerrors.Errorf("failed to create temp file: %w", err)

@@ -77,7 +77,7 @@ func HandleMigrateClientFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, wallet full
 }
 
 func ClientImportMgr(ds dtypes.MetadataDS, r repo.LockedRepo) dtypes.ClientImportMgr {
-	return importmgr.New(namespace.Wrap(ds, datastore.NewKey("/client")), r.Path())
+	return imports.New(namespace.Wrap(ds, datastore.NewKey("/client")), r.Path())
 }
 
 // TODO Ge this to work when we work on IPFS integration. What we effectively need here is a cross-shard/cross-CAR files index for the Storage client's imports.

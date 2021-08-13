@@ -76,7 +76,7 @@ func TestRoundtripUnixFS_Dense(t *testing.T) {
 func TestRoundtripUnixFS_Filestore(t *testing.T) {
 	ctx := context.Background()
 	a := &API{
-		Imports: &importmgr.Mgr{},
+		Imports: &imports.Mgr{},
 	}
 
 	inputFilePath, inputContents := genInputFile(t)
