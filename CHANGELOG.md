@@ -6,7 +6,10 @@ This is a **highly recommended** release of Lotus that have many bug fixes, impr
 
 ## Highlights
 - Miner SimultaneousTransfers config ([filecoin-project/lotus#6612](https://github.com/filecoin-project/lotus/pull/6612))
-  - Set `SimultaneousTransfers` in lotus miner config to configure the maximum number of parallel online data transfers, including both storage and retrieval deals.
+  - Set `SimultaneousTransfers` in lotus miner config to configure the maximum number of parallel online data transfers for retrieval deals.
+    > Note: This Changelog is updated after lotus v1.11.0 was released, and originally it was stated that
+    *Set `SimultaneousTransfers` in lotus miner config to configure the maximum number of parallel online data
+    transfers, including *both* storage and retrieval deals.* while it only applies for retrieval deals.
 - Dynamic Retrieval pricing ([filecoin-project/lotus#6175](https://github.com/filecoin-project/lotus/pull/6175))
   - Customize your retrieval ask price, see a quick tutorial [here](https://github.com/filecoin-project/lotus/discussions/6780).
 - Robust message management  ([filecoin-project/lotus#5822](https://github.com/filecoin-project/lotus/pull/5822))

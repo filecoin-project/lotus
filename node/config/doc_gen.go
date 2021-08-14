@@ -95,8 +95,7 @@ your node if metadata log is disabled`,
 			Name: "SimultaneousTransfers",
 			Type: "uint64",
 
-			Comment: `The maximum number of simultaneous data transfers between the client
-and storage providers`,
+			Comment: `The maximum number of simultaneous data transfers between the storage provider and retrieval client`,
 		},
 	},
 	"Common": []DocField{
@@ -207,7 +206,7 @@ as a multiplier of the minimum collateral bound`,
 			Name: "SimultaneousTransfers",
 			Type: "uint64",
 
-			Comment: `The maximum number of parallel online data transfers (storage+retrieval)`,
+			Comment: `The maximum number of parallel online data transfers for retrieval deals`,
 		},
 		{
 			Name: "Filter",
