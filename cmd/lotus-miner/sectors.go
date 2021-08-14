@@ -462,6 +462,9 @@ var sectorsCheckExpireCmd = &cli.Command{
 		}
 
 		sectors, err := fullApi.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
 
 		n := 0
 		for _, s := range sectors {
@@ -545,8 +548,12 @@ func NewPseudoExtendParams(p *miner5.ExtendSectorExpirationParams) (*PseudoExten
 	return &res, nil
 }
 
-// Example: {1,3,4,5,8,9} -> "1,3-5,8-9"
+// ArrayToString Example: {1,3,4,5,8,9} -> "1,3-5,8-9"
 func ArrayToString(array []uint64) string {
+	sort.Slice(array, func(i, j int) bool {
+		return array[i] < array[j]
+	})
+
 	var sarray []string
 	s := ""
 
@@ -555,7 +562,9 @@ func ArrayToString(array []uint64) string {
 			s = strconv.FormatUint(elm, 10)
 			continue
 		}
-		if elm == array[i-1]+1 {
+		if elm == array[i-1] {
+			continue // filter out duplicates
+		} else if elm == array[i-1]+1 {
 			s = strings.Split(s, "-")[0] + "-" + strconv.FormatUint(elm, 10)
 		} else {
 			sarray = append(sarray, s)
@@ -568,6 +577,33 @@ func ArrayToString(array []uint64) string {
 	}
 
 	return strings.Join(sarray, ",")
+}
+
+func getSectorsFromFile(filePath string) ([]uint64, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	scanner := bufio.NewScanner(file)
+	sectors := make([]uint64, 0)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		id, err := strconv.ParseUint(line, 10, 64)
+		if err != nil {
+			return nil, xerrors.Errorf("could not parse %s as sector id: %s", line, err)
+		}
+
+		sectors = append(sectors, id)
+	}
+
+	if err = file.Close(); err != nil {
+		return nil, err
+	}
+
+	return sectors, nil
 }
 
 var sectorsRenewCmd = &cli.Command{
@@ -606,7 +642,7 @@ var sectorsRenewCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "max-fee",
-			Usage: "use up to this amount of attoFIL for one message. pass this flag to avoid message congestion.",
+			Usage: "use up to this amount of FIL for one message. pass this flag to avoid message congestion.",
 			Value: "0",
 		},
 		&cli.BoolFlag{
@@ -615,12 +651,12 @@ var sectorsRenewCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		mf, err := types.BigFromString(cctx.String("max-fee"))
+		mf, err := types.ParseFIL(cctx.String("max-fee"))
 		if err != nil {
 			return err
 		}
 
-		spec := &api.MessageSendSpec{MaxFee: mf}
+		spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(mf)}
 
 		fullApi, nCloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
@@ -691,22 +727,12 @@ var sectorsRenewCmd = &cli.Command{
 		excludeSet := make(map[uint64]struct{})
 
 		if cctx.IsSet("exclude") {
-			file, err := os.Open(cctx.String("exclude"))
+			excludeSectors, err := getSectorsFromFile(cctx.String("exclude"))
 			if err != nil {
 				return err
 			}
-			defer file.Close()
 
-			scanner := bufio.NewScanner(file)
-
-			for scanner.Scan() {
-				line := scanner.Text()
-
-				id, err := strconv.ParseUint(line, 10, 64)
-				if err != nil {
-					return xerrors.Errorf("could not parse %s as sector id: %s", line, err)
-				}
-
+			for _, id := range excludeSectors {
 				excludeSet[id] = struct{}{}
 			}
 		}
@@ -714,22 +740,12 @@ var sectorsRenewCmd = &cli.Command{
 		var sis []*miner.SectorOnChainInfo
 
 		if cctx.IsSet("sector-file") {
-			file, err := os.Open(cctx.String("sector-file"))
+			sectors, err := getSectorsFromFile(cctx.String("sector-file"))
 			if err != nil {
 				return err
 			}
-			defer file.Close()
 
-			scanner := bufio.NewScanner(file)
-
-			for scanner.Scan() {
-				line := scanner.Text()
-
-				id, err := strconv.ParseUint(line, 10, 64)
-				if err != nil {
-					return xerrors.Errorf("could not parse %s as sector id: %s", line, err)
-				}
-
+			for _, id := range sectors {
 				if _, exclude := excludeSet[id]; exclude {
 					continue
 				}
@@ -861,9 +877,9 @@ var sectorsRenewCmd = &cli.Command{
 
 		stotal := 0
 
-		for _, p := range params {
+		for i := range params {
 			scount := 0
-			for _, ext := range p.Extensions {
+			for _, ext := range params[i].Extensions {
 				count, err := ext.Sectors.Count()
 				if err != nil {
 					return err
@@ -874,7 +890,7 @@ var sectorsRenewCmd = &cli.Command{
 			stotal += scount
 
 			if !cctx.Bool("really-do-it") {
-				pp, err := NewPseudoExtendParams(&p)
+				pp, err := NewPseudoExtendParams(&params[i])
 				if err != nil {
 					return err
 				}
@@ -889,7 +905,7 @@ var sectorsRenewCmd = &cli.Command{
 				continue
 			}
 
-			sp, aerr := actors.SerializeParams(&p)
+			sp, aerr := actors.SerializeParams(&params[i])
 			if aerr != nil {
 				return xerrors.Errorf("serializing params: %w", err)
 			}
@@ -908,7 +924,7 @@ var sectorsRenewCmd = &cli.Command{
 			fmt.Println(smsg.Cid())
 		}
 
-		fmt.Printf("Totally %d sectors renewed\n", stotal)
+		fmt.Printf("%d sectors renewed\n", stotal)
 
 		return nil
 	},
