@@ -2,6 +2,8 @@ package client
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 
@@ -9,9 +11,10 @@ import (
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 	chunker "github.com/ipfs/go-ipfs-chunker"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	files2 "github.com/ipfs/go-ipfs-files"
+	"github.com/ipfs/go-ipfs-files"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-unixfs/importer/balanced"
@@ -21,9 +24,22 @@ import (
 	"github.com/filecoin-project/lotus/build"
 )
 
-// doImport takes a standard file (src), forms a UnixFS DAG, and writes a
-// CARv2 file with positional mapping (backed by the go-filestore library).
-func (a *API) doImport(ctx context.Context, src string, dst string) (cid.Cid, error) {
+func unixFSCidBuilder() (cid.Builder, error) {
+	prefix, err := merkledag.PrefixForCidVersion(1)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize UnixFS CID Builder: %w", err)
+	}
+	prefix.MhType = DefaultHashFunction
+	b := cidutil.InlineBuilder{
+		Builder: prefix,
+		Limit:   126,
+	}
+	return b, nil
+}
+
+// createUnixFSFilestore takes a standard file whose path is src, forms a UnixFS DAG, and
+// writes a CARv2 file with positional mapping (backed by the go-filestore library).
+func (a *API) createUnixFSFilestore(ctx context.Context, srcPath string, dstPath string) (cid.Cid, error) {
 	// This method uses a two-phase approach with a staging CAR blockstore and
 	// a final CAR blockstore.
 	//
@@ -31,11 +47,29 @@ func (a *API) doImport(ctx context.Context, src string, dst string) (cid.Cid, er
 	//
 	// TODO: do we need to chunk twice? Isn't the first output already in the
 	//  right order? Can't we just copy the CAR file and replace the header?
+
+	src, err := os.Open(srcPath)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to open input file: %w", err)
+	}
+	defer src.Close() //nolint:errcheck
+
+	stat, err := src.Stat()
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to stat file :%w", err)
+	}
+
+	file, err := files.NewReaderPathFile(srcPath, src, stat)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to create reader path file: %w", err)
+	}
+
 	f, err := ioutil.TempFile("", "")
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create temp file: %w", err)
 	}
 	_ = f.Close() // close; we only want the path.
+
 	tmp := f.Name()
 	defer os.Remove(tmp) //nolint:errcheck
 
@@ -46,10 +80,7 @@ func (a *API) doImport(ctx context.Context, src string, dst string) (cid.Cid, er
 		return cid.Undef, xerrors.Errorf("failed to create temporary filestore: %w", err)
 	}
 
-	bsvc := blockservice.New(fstore, offline.Exchange(fstore))
-	dags := merkledag.NewDAGService(bsvc)
-
-	root, err := buildUnixFS(ctx, src, dags)
+	finalRoot1, err := buildUnixFS(ctx, file, fstore, true)
 	if err != nil {
 		_ = fstore.Close()
 		return cid.Undef, xerrors.Errorf("failed to import file to store to compute root: %w", err)
@@ -61,14 +92,17 @@ func (a *API) doImport(ctx context.Context, src string, dst string) (cid.Cid, er
 
 	// Step 2. We now have the root of the UnixFS DAG, and we can write the
 	// final CAR for real under `dst`.
-	bs, err := stores.ReadWriteFilestore(dst, root)
+	bs, err := stores.ReadWriteFilestore(dstPath, finalRoot1)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create a carv2 read/write filestore: %w", err)
 	}
 
-	bsvc = blockservice.New(bs, offline.Exchange(bs))
-	dags = merkledag.NewDAGService(bsvc)
-	finalRoot, err := buildUnixFS(ctx, src, dags)
+	// rewind file to the beginning.
+	if _, err := src.Seek(0, 0); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to rewind file: %w", err)
+	}
+
+	finalRoot2, err := buildUnixFS(ctx, file, bs, true)
 	if err != nil {
 		_ = bs.Close()
 		return cid.Undef, xerrors.Errorf("failed to create UnixFS DAG with carv2 blockstore: %w", err)
@@ -78,52 +112,34 @@ func (a *API) doImport(ctx context.Context, src string, dst string) (cid.Cid, er
 		return cid.Undef, xerrors.Errorf("failed to finalize car blockstore: %w", err)
 	}
 
-	if root != finalRoot {
+	if finalRoot1 != finalRoot2 {
 		return cid.Undef, xerrors.New("roots do not match")
 	}
 
-	return root, nil
+	return finalRoot1, nil
 }
 
-// buildUnixFS builds a UnixFS DAG out of the supplied ordinary file,
+// buildUnixFS builds a UnixFS DAG out of the supplied reader,
 // and imports the DAG into the supplied service.
-func buildUnixFS(ctx context.Context, src string, dag ipld.DAGService) (cid.Cid, error) {
-	f, err := os.Open(src)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to open input file: %w", err)
-	}
-	defer f.Close() //nolint:errcheck
-
-	stat, err := f.Stat()
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to stat file :%w", err)
-	}
-
-	file, err := files2.NewReaderPathFile(src, f, stat)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create reader path file: %w", err)
-	}
-
-	bufDs := ipld.NewBufferedDAG(ctx, dag)
-
-	prefix, err := merkledag.PrefixForCidVersion(1)
+func buildUnixFS(ctx context.Context, reader io.Reader, into bstore.Blockstore, filestore bool) (cid.Cid, error) {
+	b, err := unixFSCidBuilder()
 	if err != nil {
 		return cid.Undef, err
 	}
-	prefix.MhType = DefaultHashFunction
+
+	bsvc := blockservice.New(into, offline.Exchange(into))
+	dags := merkledag.NewDAGService(bsvc)
+	bufdag := ipld.NewBufferedDAG(ctx, dags)
 
 	params := ihelper.DagBuilderParams{
-		Maxlinks:  build.UnixfsLinksPerLevel,
-		RawLeaves: true,
-		CidBuilder: cidutil.InlineBuilder{
-			Builder: prefix,
-			Limit:   126,
-		},
-		Dagserv: bufDs,
-		NoCopy:  true,
+		Maxlinks:   build.UnixfsLinksPerLevel,
+		RawLeaves:  true,
+		CidBuilder: b,
+		Dagserv:    bufdag,
+		NoCopy:     filestore,
 	}
 
-	db, err := params.New(chunker.NewSizeSplitter(file, int64(build.UnixfsChunkSize)))
+	db, err := params.New(chunker.NewSizeSplitter(reader, int64(build.UnixfsChunkSize)))
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -132,7 +148,7 @@ func buildUnixFS(ctx context.Context, src string, dag ipld.DAGService) (cid.Cid,
 		return cid.Undef, err
 	}
 
-	if err := bufDs.Commit(); err != nil {
+	if err := bufdag.Commit(); err != nil {
 		return cid.Undef, err
 	}
 

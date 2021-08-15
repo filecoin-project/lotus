@@ -2,19 +2,19 @@ package client
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"sort"
 	"time"
 
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/ipld/go-car"
 	carv2 "github.com/ipld/go-car/v2"
 	"github.com/ipld/go-car/v2/blockstore"
-
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-padreader"
@@ -41,6 +41,7 @@ import (
 	"github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	"github.com/filecoin-project/go-commp-utils/writer"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -48,6 +49,8 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
+	"github.com/filecoin-project/lotus/markets/retrievaladapter"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
 
@@ -85,13 +88,14 @@ type API struct {
 	Retrieval    rm.RetrievalClient
 	Chain        *store.ChainStore
 
-	Imports dtypes.ClientImportMgr
+	// accessors for imports and retrievals.
+	Imports                dtypes.ClientImportMgr
+	RtvlBlockstoreAccessor retrievalmarket.BlockstoreAccessor
 
 	DataTransfer dtypes.ClientDataTransfer
 	Host         host.Host
 
-	RetrievalStoreMgr dtypes.ClientRetrievalStoreManager
-	Repo              repo.LockedRepo
+	Repo repo.LockedRepo
 }
 
 func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -108,7 +112,8 @@ func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.Chain
 	return exp
 }
 
-func (a *API) imgr() *imports.Manager {
+// importManager converts the injected type to the required type.
+func (a *API) importManager() *imports.Manager {
 	return a.Imports
 }
 
@@ -121,7 +126,6 @@ func (a *API) ClientStatelessDeal(ctx context.Context, params *api.StartDealPara
 }
 
 func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isStateless bool) (*cid.Cid, error) {
-	var CARV2FilePath string
 	if isStateless {
 		if params.Data.TransferType != storagemarket.TTManual {
 			return nil, xerrors.Errorf("invalid transfer type %s for stateless storage deal", params.Data.TransferType)
@@ -130,14 +134,13 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 			return nil, xerrors.New("stateless storage deals can only be initiated with storage price of 0")
 		}
 	} else if params.Data.TransferType == storagemarket.TTGraphsync {
-		fc, err := a.imgr().FilestoreCARV2FilePathFor(params.Data.Root)
+		fc, err := a.importManager().CARPathFor(params.Data.Root)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to find CARv2 file path: %w", err)
 		}
 		if fc == "" {
 			return nil, xerrors.New("no CARv2 file path for deal")
 		}
-		CARV2FilePath = fc
 	}
 
 	walletKey, err := a.StateAccountKey(ctx, params.Wallet, types.EmptyTSK)
@@ -203,7 +206,6 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 			Rt:            st,
 			FastRetrieval: params.FastRetrieval,
 			VerifiedDeal:  params.VerifiedDeal,
-			IndexedCAR:    CARV2FilePath,
 		})
 
 		if err != nil {
@@ -404,7 +406,7 @@ func (a *API) newDealInfoWithTransfer(transferCh *api.DataTransferChannel, v sto
 
 func (a *API) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
 	// TODO: check if we have the ENTIRE dag
-	fc, err := a.imgr().FilestoreCARV2FilePathFor(root)
+	fc, err := a.importManager().CARPathFor(root)
 	if err != nil {
 		return false, err
 	}
@@ -484,22 +486,29 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, paylo
 	}
 }
 
-func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.ImportRes, finalErr error) {
-	id, err := a.imgr().CreateImport()
+// TODO check
+func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.ImportRes, err error) {
+	var (
+		imgr    = a.importManager()
+		id      imports.ID
+		root    cid.Cid
+		carPath string
+	)
+
+	id, err = imgr.CreateImport()
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to create import: %w", err)
 	}
 
-	var root cid.Cid
-	var carFile string
 	if ref.IsCAR {
-		// if user has given us a CAR file -> just ensure it's either a v1 or a
-		// v2, has one root and save it as it is as markets can do deal making for both.
+		// user gave us a CAR fil, use it as-is
+		// validate that it's either a carv1 or carv2, and has one root.
 		f, err := os.Open(ref.Path)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to open CAR file: %w", err)
 		}
 		defer f.Close() //nolint:errcheck
+
 		hd, _, err := car.ReadHeader(bufio.NewReader(f))
 		if err != nil {
 			return nil, xerrors.Errorf("failed to read CAR header: %w", err)
@@ -511,97 +520,186 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 			return nil, xerrors.Errorf("car version must be 1 or 2, is %d", hd.Version)
 		}
 
-		carFile = ref.Path
+		carPath = ref.Path
 		root = hd.Roots[0]
 	} else {
-		carFile, err = a.imgr().NewTempFile(id)
+		carPath, err = imgr.AllocateCAR(id)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to create temp CARv2 file: %w", err)
+			return nil, xerrors.Errorf("failed to create car path for import: %w", err)
 		}
-		// make sure to remove the CARv2 file if anything goes wrong from here on.
+
+		// remove the import if something went wrong.
 		defer func() {
-			if finalErr != nil {
-				_ = os.Remove(carFile)
+			if err != nil {
+				_ = os.Remove(carPath)
+				_ = imgr.Remove(id)
 			}
 		}()
 
-		root, err = a.doImport(ctx, ref.Path, carFile)
+		// perform the unixfs chunking.
+		root, err = a.createUnixFSFilestore(ctx, ref.Path, carPath)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to import normal file to CARv2: %w", err)
+			return nil, xerrors.Errorf("failed to import file using unixfs: %w", err)
 		}
 	}
 
-	if err := a.imgr().AddLabel(id, imports.LSource, "import"); err != nil {
+	if err = imgr.AddLabel(id, imports.LSource, "import"); err != nil {
 		return nil, err
 	}
-	if err := a.imgr().AddLabel(id, imports.LFileName, ref.Path); err != nil {
+	if err = imgr.AddLabel(id, imports.LFileName, ref.Path); err != nil {
 		return nil, err
 	}
-	if err := a.imgr().AddLabel(id, imports.LCARPath, carFile); err != nil {
+	if err = imgr.AddLabel(id, imports.LCARPath, carPath); err != nil {
 		return nil, err
 	}
-	if err := a.imgr().AddLabel(id, imports.LRootCid, root.String()); err != nil {
+	if err = imgr.AddLabel(id, imports.LRootCid, root.String()); err != nil {
 		return nil, err
 	}
-
 	return &api.ImportRes{
 		Root:     root,
 		ImportID: id,
 	}, nil
 }
 
-func (a *API) ClientRemoveImport(ctx context.Context, importID imports.ID) error {
-	info, err := a.imgr().Info(importID)
+func (a *API) ClientRemoveImport(ctx context.Context, id imports.ID) error {
+	info, err := a.importManager().Info(id)
 	if err != nil {
-		return xerrors.Errorf("failed to fetch import info: %w", err)
+		return xerrors.Errorf("failed to get import metadata: %w", err)
 	}
 
-	// remove the CARv2 file if we've created one.
-	if path := info.Labels[imports.LCARPath]; path != "" {
+	owner := info.Labels[imports.LCAROwner]
+	path := info.Labels[imports.LCARPath]
+
+	// CARv2 file was not provided by the user, delete it.
+	if path != "" && owner == imports.CAROwnerImportMgr {
 		_ = os.Remove(path)
 	}
 
-	return a.imgr().Remove(importID)
+	return a.importManager().Remove(id)
 }
 
+// ClientImportLocal imports a standard file into this node as a UnixFS payload,
+// storing it in a CARv2 file. Note that this method is NOT integrated with the
+// IPFS blockstore. That is, if client-side IPFS integration is enabled, this
+// method won't import the file into that
 func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, error) {
+	file := files.NewReaderFile(r)
+
 	// write payload to temp file
-	tmpPath, err := a.imgr().NewTempFile(imports.ID(rand.Uint64()))
+	id, err := a.importManager().CreateImport()
 	if err != nil {
 		return cid.Undef, err
 	}
-	defer os.Remove(tmpPath) //nolint:errcheck
-	tmpF, err := os.Open(tmpPath)
-	if err != nil {
-		return cid.Undef, err
-	}
-	defer tmpF.Close() //nolint:errcheck
-	if _, err := io.Copy(tmpF, r); err != nil {
-		return cid.Undef, err
-	}
-	if err := tmpF.Close(); err != nil {
+	if err := a.importManager().AddLabel(id, imports.LSource, "import-local"); err != nil {
 		return cid.Undef, err
 	}
 
-	res, err := a.ClientImport(ctx, api.FileRef{
-		Path:  tmpPath,
-		IsCAR: false,
-	})
+	path, err := a.importManager().AllocateCAR(id)
 	if err != nil {
 		return cid.Undef, err
 	}
-	return res.Root, nil
+
+	// writing a carv2 requires knowing the root ahead of time, which makes
+	// streaming cases impossible.
+	// https://github.com/ipld/go-car/issues/196
+	// we work around this limitation by informing a placeholder root CID of the
+	// same length as our unixfs chunking strategy will generate.
+	// once the DAG is formed and the root is calculated, we overwrite the
+	// inner carv1 header with the final root.
+
+	b, err := unixFSCidBuilder()
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	// placeholder payload needs to be larger than inline CID threshold; 256
+	// bytes is a safe value.
+	placeholderRoot, err := b.Sum(make([]byte, 256))
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to calculate placeholder root: %w", err)
+	}
+
+	bs, err := blockstore.OpenReadWrite(path, []cid.Cid{placeholderRoot}, blockstore.UseWholeCIDs(true))
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to create carv2 read/write blockstore: %w", err)
+	}
+
+	root, err := buildUnixFS(ctx, file, bs, false)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to build unixfs dag: %w", err)
+	}
+
+	err = bs.Finalize()
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to finalize carv2 read/write blockstore: %w", err)
+	}
+
+	// record the root in the import manager.
+	if err := a.importManager().AddLabel(id, imports.LRootCid, root.String()); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to record root CID in import manager: %w", err)
+	}
+
+	// now go ahead and overwrite the root in the carv1 header.
+	reader, err := carv2.OpenReader(path)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to create car reader: %w", err)
+	}
+
+	// save the header offset.
+	headerOff := reader.Header.DataOffset
+
+	// read the old header.
+	dr := reader.DataReader()
+	header, err := readHeader(dr)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to read car reader: %w", err)
+	}
+	_ = reader.Close() // close the CAR reader.
+
+	// write the old header into a buffer.
+	var oldBuf bytes.Buffer
+	if err = writeHeader(header, &oldBuf); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to write header into buffer: %w", err)
+	}
+
+	// replace the root.
+	header.Roots = []cid.Cid{root}
+
+	// write the new header into a buffer.
+	var newBuf bytes.Buffer
+	err = writeHeader(header, &newBuf)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to write header into buffer: %w", err)
+	}
+
+	// verify the length matches.
+	if newBuf.Len() != oldBuf.Len() {
+		return cid.Undef, xerrors.Errorf("failed to replace carv1 header; length mismatch (old: %d, new: %d)", oldBuf.Len(), newBuf.Len())
+	}
+
+	// open the file again, seek to the header position, and write.
+	f, err := os.OpenFile(path, os.O_WRONLY, 0755)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to open car: %w", err)
+	}
+	defer f.Close()
+
+	n, err := f.WriteAt(newBuf.Bytes(), int64(headerOff))
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to write new header to car (bytes written: %d): %w", n, err)
+	}
+	return root, nil
 }
 
-func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
-	importIDs, err := a.imgr().List()
+func (a *API) ClientListImports(_ context.Context) ([]api.Import, error) {
+	ids, err := a.importManager().List()
 	if err != nil {
 		return nil, xerrors.Errorf("failed to fetch imports: %w", err)
 	}
 
-	out := make([]api.Import, len(importIDs))
-	for i, id := range importIDs {
-		info, err := a.imgr().Info(id)
+	out := make([]api.Import, len(ids))
+	for i, id := range ids {
+		info, err := a.importManager().Info(id)
 		if err != nil {
 			out[i] = api.Import{
 				Key: id,
@@ -611,10 +709,10 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 		}
 
 		ai := api.Import{
-			Key:           id,
-			Source:        info.Labels[imports.LSource],
-			FilePath:      info.Labels[imports.LFileName],
-			CARv2FilePath: info.Labels[imports.LCARPath],
+			Key:      id,
+			Source:   info.Labels[imports.LSource],
+			FilePath: info.Labels[imports.LFileName],
+			CARPath:  info.Labels[imports.LCARPath],
 		}
 
 		if info.Labels[imports.LRootCid] != "" {
@@ -737,8 +835,26 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		}
 	}
 
-	var carV2FilePath string
-	if order.LocalCARV2FilePath == "" {
+	// summary:
+	// 1. if we're retrieving from an import, FromLocalCAR will be informed.
+	//    Open as a Filestore and populate the target CAR or UnixFS export from it.
+	//    (cannot use ExtractV1File because user wants a dense CAR, not a ref CAR/filestore)
+	// 2. if we're using an IPFS blockstore for retrieval, retrieve into it,
+	//    then extract the CAR or UnixFS export from it.
+	// 3. if we have to retrieve, perform a CARv2 retrieval, then extract
+	//    the CARv1 (with ExtractV1File) or UnixFS export from it.
+
+	// this indicates we're proxying to IPFS.
+	proxyBss, isIPFS := a.RtvlBlockstoreAccessor.(*retrievaladapter.ProxyBlockstoreAccessor)
+	carBss, isCAR := a.RtvlBlockstoreAccessor.(*retrievaladapter.CARBlockstoreAccessor)
+
+	if !isIPFS && !isCAR {
+		finish(xerrors.Errorf("unsupported retrieval blockstore accessor"))
+		return
+	}
+
+	carPath := order.FromLocalCAR
+	if carPath == "" {
 		if order.MinerPeer == nil || order.MinerPeer.ID == "" {
 			mi, err := a.StateMinerInfo(ctx, order.Miner, types.EmptyTSK)
 			if err != nil {
@@ -784,22 +900,17 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			}
 		})
 
-		tmpCarv2FilePath, err := a.getTmpCarV2FilePath()
-		if err != nil {
-			unsubscribe()
-			finish(xerrors.Errorf("Retrieve failed: %w", err))
-			return
-		}
-
-		resp, err := a.Retrieval.Retrieve(
+		id := a.Retrieval.NextID()
+		id, err = a.Retrieval.Retrieve(
 			ctx,
+			id,
 			order.Root,
 			params,
 			order.Total,
 			*order.MinerPeer,
 			order.Client,
 			order.Miner,
-			tmpCarv2FilePath)
+		)
 
 		if err != nil {
 			unsubscribe()
@@ -807,7 +918,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			return
 		}
 
-		err = readSubscribeEvents(ctx, resp.DealID, subscribeEvents, events)
+		err = readSubscribeEvents(ctx, id, subscribeEvents, events)
 
 		unsubscribe()
 		if err != nil {
@@ -815,74 +926,56 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			return
 		}
 
-		carV2FilePath = resp.CarFilePath
-		// remove the temp CARv2 file when retrieval is complete
-		defer os.Remove(carV2FilePath) //nolint:errcheck
-	} else {
-		carV2FilePath = order.LocalCARV2FilePath
+		carPath = carBss.PathFor(id)
 	}
 
-	// TODO We only support this currently for the IPFS Retrieval use case
-	// where users want to write out filecoin retrievals directly to IPFS.
-	// If users haven' configured the Ipfs retrieval flag, the blockstore we get here will be a "no-op" blockstore.
-	// write out the CARv2 file to the retrieval block-store (which is really an IPFS node behind the scenes).
-	rs, err := a.RetrievalStoreMgr.NewStore()
-	defer a.RetrievalStoreMgr.ReleaseStore(rs) //nolint:errcheck
-	if err != nil {
-		finish(xerrors.Errorf("Error setting up new store: %w", err))
-		return
-	}
-	if rs.IsIPFSRetrieval() {
-		// write out the CARv1 blocks of the CARv2 file to the IPFS blockstore.
-		carv2Reader, err := carv2.OpenReader(carV2FilePath)
-		if err != nil {
-			finish(err)
-			return
-		}
-		defer carv2Reader.Close() //nolint:errcheck
-
-		if _, err := car.LoadCar(rs.Blockstore(), carv2Reader.DataReader()); err != nil {
-			finish(err)
-			return
-		}
-	}
-
-	// If ref is nil, it only fetches the data into the configured blockstore.
-	if ref == nil {
+	switch {
+	case ref == nil:
+		// If ref is nil, it only fetches the data into the configured blockstore
+		// (if fetching from network).
 		finish(nil)
 		return
-	}
 
-	if ref.IsCAR {
-		// user wants a CAR file, transform the CARv2 to a CARv1 and write it out.
+	case ref.IsCAR && isIPFS:
+		// generating a CARv1 from IPFS.
 		f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			finish(err)
 			return
 		}
 
-		carv2Reader, err := carv2.OpenReader(carV2FilePath)
+		bs := proxyBss.Blockstore
+		dags := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
+		err = car.WriteCar(ctx, dags, []cid.Cid{order.Root}, f)
 		if err != nil {
 			finish(err)
 			return
 		}
-		defer carv2Reader.Close() //nolint:errcheck
-		if _, err := io.Copy(f, carv2Reader.DataReader()); err != nil {
-			finish(err)
-			return
-		}
-
 		finish(f.Close())
 		return
-	}
 
-	readOnly, err := blockstore.OpenReadOnly(carV2FilePath, carv2.ZeroLengthSectionAsEOF(true), blockstore.UseWholeCIDs(true))
-	if err != nil {
+	case ref.IsCAR:
+		// generating a CARv1 from the CARv2 where we stored the retrieval.
+		err := carv2.ExtractV1File(carPath, ref.Path)
 		finish(err)
 		return
 	}
-	defer readOnly.Close() //nolint:errcheck
-	bsvc := blockservice.New(readOnly, offline.Exchange(readOnly))
+
+	// we are extracting a UnixFS file.
+	var bs bstore.Blockstore
+	if isIPFS {
+		bs = proxyBss.Blockstore
+	} else {
+		cbs, err := stores.ReadOnlyFilestore(carPath)
+		if err != nil {
+			finish(err)
+			return
+		}
+		defer cbs.Close() //nolint:errcheck
+		bs = cbs
+	}
+
+	bsvc := blockservice.New(bs, offline.Exchange(bs))
 	dag := merkledag.NewDAGService(bsvc)
 
 	nd, err := dag.Get(ctx, order.Root)
@@ -895,9 +988,8 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		finish(xerrors.Errorf("ClientRetrieve: %w", err))
 		return
 	}
-	finish(files.WriteTo(file, ref.Path))
 
-	return
+	finish(files.WriteTo(file, ref.Path))
 }
 
 // TODO: Come up with a better mechanism for creating the tmp CARv2 file path
@@ -1056,7 +1148,7 @@ func (w *lenWriter) Write(p []byte) (n int, err error) {
 }
 
 func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, error) {
-	path, err := a.imgr().FilestoreCARV2FilePathFor(root)
+	path, err := a.importManager().CARPathFor(root)
 	if err != nil {
 		return api.DataSize{}, xerrors.Errorf("failed to find CARv2 file for root: %w", err)
 	}
@@ -1087,7 +1179,7 @@ func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, e
 }
 
 func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCIDSize, error) {
-	path, err := a.imgr().FilestoreCARV2FilePathFor(root)
+	path, err := a.importManager().CARPathFor(root)
 	if err != nil {
 		return api.DataCIDSize{}, xerrors.Errorf("failed to find CARv2 file for root: %w", err)
 	}
@@ -1119,26 +1211,36 @@ func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCID
 }
 
 func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath string) error {
-	id := imports.ID(rand.Uint64())
-	tmp, err := a.imgr().NewTempFile(id)
+	// create a temporary import to represent this job and obtain a staging CAR.
+	id, err := a.importManager().CreateImport()
 	if err != nil {
-		return xerrors.Errorf("failed to create temp file: %w", err)
+		return xerrors.Errorf("failed to create temporary import: %w", err)
+	}
+	defer a.importManager().Remove(id) //nolint:errcheck
+
+	tmp, err := a.importManager().AllocateCAR(id)
+	if err != nil {
+		return xerrors.Errorf("failed to allocate temporary CAR: %w", err)
 	}
 	defer os.Remove(tmp) //nolint:errcheck
 
-	root, err := a.doImport(ctx, ref.Path, tmp)
+	// geneate and import the UnixFS DAG into a filestore (positional reference) CAR.
+	root, err := a.createUnixFSFilestore(ctx, ref.Path, tmp)
 	if err != nil {
-		return xerrors.Errorf("failed to import normal file to CARv2")
+		return xerrors.Errorf("failed to import file using unixfs: %w", err)
 	}
 
+	// open the positional reference CAR as a filestore.
 	fs, err := stores.ReadOnlyFilestore(tmp)
 	if err != nil {
 		return xerrors.Errorf("failed to open filestore from carv2 in path %s: %w", tmp, err)
 	}
 	defer fs.Close() //nolint:errcheck
 
+	// build a dense deterministic CAR (dense = containing filled leaves)
 	ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
-	allSelector := ssb.ExploreRecursive(selector.RecursionLimitNone(),
+	allSelector := ssb.ExploreRecursive(
+		selector.RecursionLimitNone(),
 		ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
 	sc := car.NewSelectiveCar(ctx, fs, []car.Dag{{Root: root, Selector: allSelector}})
 	f, err := os.Create(outputPath)

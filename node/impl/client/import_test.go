@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"io/ioutil"
@@ -8,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
@@ -18,6 +18,8 @@ import (
 	carv2 "github.com/ipld/go-car/v2"
 	"github.com/ipld/go-car/v2/blockstore"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-fil-markets/stores"
 
 	"github.com/filecoin-project/lotus/node/repo/imports"
 )
@@ -33,18 +35,15 @@ func TestRoundtripUnixFS_Dense(t *testing.T) {
 	defer os.Remove(carv2File) //nolint:errcheck
 
 	// import a file to a Unixfs DAG using a CARv2 read/write blockstore.
-	path, err := blockstore.OpenReadWrite(carv2File, nil,
+	bs, err := blockstore.OpenReadWrite(carv2File, nil,
 		carv2.ZeroLengthSectionAsEOF(true),
 		blockstore.UseWholeCIDs(true))
 	require.NoError(t, err)
 
-	bsvc := blockservice.New(path, offline.Exchange(path))
-	dags := merkledag.NewDAGService(bsvc)
-
-	root, err := buildUnixFS(ctx, inputPath, dags)
+	root, err := buildUnixFS(ctx, bytes.NewBuffer(inputContents), bs, false)
 	require.NoError(t, err)
 	require.NotEqual(t, cid.Undef, root)
-	require.NoError(t, path.Finalize())
+	require.NoError(t, bs.Finalize())
 
 	// reconstruct the file.
 	readOnly, err := blockstore.OpenReadOnly(carv2File,
@@ -53,7 +52,7 @@ func TestRoundtripUnixFS_Dense(t *testing.T) {
 	require.NoError(t, err)
 	defer readOnly.Close() //nolint:errcheck
 
-	dags = merkledag.NewDAGService(blockservice.New(readOnly, offline.Exchange(readOnly)))
+	dags := merkledag.NewDAGService(blockservice.New(readOnly, offline.Exchange(readOnly)))
 
 	nd, err := dags.Get(ctx, root)
 	require.NoError(t, err)
@@ -80,18 +79,18 @@ func TestRoundtripUnixFS_Filestore(t *testing.T) {
 		Imports: &imports.Manager{},
 	}
 
-	inputFilePath, inputContents := genInputFile(t)
-	defer os.Remove(inputFilePath) //nolint:errcheck
+	inputPath, inputContents := genInputFile(t)
+	defer os.Remove(inputPath) //nolint:errcheck
 
-	path := newTmpFile(t)
-	defer os.Remove(path) //nolint:errcheck
+	dst := newTmpFile(t)
+	defer os.Remove(dst) //nolint:errcheck
 
-	root, err := a.doImport(ctx, inputFilePath, path)
+	root, err := a.createUnixFSFilestore(ctx, inputPath, dst)
 	require.NoError(t, err)
 	require.NotEqual(t, cid.Undef, root)
 
 	// convert the CARv2 to a normal file again and ensure the contents match
-	fs, err := stores.ReadOnlyFilestore(path)
+	fs, err := stores.ReadOnlyFilestore(dst)
 	require.NoError(t, err)
 	defer fs.Close() //nolint:errcheck
 

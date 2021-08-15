@@ -14,6 +14,11 @@ import (
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
+	"github.com/libp2p/go-libp2p-core/host"
+
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -23,12 +28,9 @@ import (
 	storageimpl "github.com/filecoin-project/go-fil-markets/storagemarket/impl"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/ipfs/go-datastore"
-	"github.com/ipfs/go-datastore/namespace"
-	"github.com/libp2p/go-libp2p-core/host"
-
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/markets/storageadapter"
+
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/markets"
@@ -39,7 +41,6 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/node/repo/imports"
-	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 )
 
 func HandleMigrateClientFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, wallet full.WalletAPI, fundMgr *market.FundManager) {
@@ -76,12 +77,19 @@ func HandleMigrateClientFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, wallet full
 	})
 }
 
-func ClientImportMgr(ds dtypes.MetadataDS, r repo.LockedRepo) dtypes.ClientImportMgr {
-	return imports.NewManager(namespace.Wrap(ds, datastore.NewKey("/client")), r.Path())
+func ClientImportMgr(ds dtypes.MetadataDS, r repo.LockedRepo) (dtypes.ClientImportMgr, error) {
+	// store the imports under the repo's `imports` subdirectory.
+	dir := filepath.Join(r.Path(), "imports")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil, xerrors.Errorf("failed to create directory %s: %w", dir, err)
+	}
+
+	ns := namespace.Wrap(ds, datastore.NewKey("/client"))
+	return imports.NewManager(ns, dir), nil
 }
 
-// TODO Ge this to work when we work on IPFS integration. What we effectively need here is a cross-shard/cross-CAR files index for the Storage client's imports.
-func ClientBlockstore(imgr dtypes.ClientImportMgr) dtypes.ClientBlockstore {
+// TODO this should be removed.
+func ClientBlockstore() dtypes.ClientBlockstore {
 	// in most cases this is now unused in normal operations -- however, it's important to preserve for the IPFS use case
 	return blockstore.WrapIDStore(blockstore.FromDatastore(datastore.NewMapDatastore()))
 }
@@ -151,13 +159,30 @@ func NewClientDatastore(ds dtypes.MetadataDS) dtypes.ClientDatastore {
 	return namespace.Wrap(ds, datastore.NewKey("/deals/client"))
 }
 
-func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer dtypes.ClientDataTransfer, discovery *discoveryimpl.Local, deals dtypes.ClientDatastore, scn storagemarket.StorageClientNode, j journal.Journal) (storagemarket.StorageClient, error) {
+// StorageBlockstoreAccessor returns the default storage blockstore accessor
+// from the import manager.
+func StorageBlockstoreAccessor(importmgr dtypes.ClientImportMgr) storagemarket.BlockstoreAccessor {
+	return storageadapter.NewImportsBlockstoreAccessor(importmgr)
+}
+
+// RetrievalBlockstoreAccessor returns the default retrieval blockstore accessor
+// using the subdirectory `retrievals` under the repo.
+func RetrievalBlockstoreAccessor(r repo.LockedRepo) (retrievalmarket.BlockstoreAccessor, error) {
+	dir := filepath.Join(r.Path(), "retrievals")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return nil, xerrors.Errorf("failed to create directory %s: %w", dir, err)
+	}
+	return retrievaladapter.NewCARBlockstoreAccessor(dir), nil
+}
+
+func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer dtypes.ClientDataTransfer, discovery *discoveryimpl.Local,
+	deals dtypes.ClientDatastore, scn storagemarket.StorageClientNode, accessor storagemarket.BlockstoreAccessor, j journal.Journal) (storagemarket.StorageClient, error) {
 	// go-fil-markets protocol retries:
 	// 1s, 5s, 25s, 2m5s, 5m x 11 ~= 1 hour
 	marketsRetryParams := smnet.RetryParameters(time.Second, 5*time.Minute, 15, 5)
 	net := smnet.NewFromLibp2pHost(h, marketsRetryParams)
 
-	c, err := storageimpl.NewClient(net, dataTransfer, discovery, deals, scn, storageimpl.DealPollingInterval(time.Second))
+	c, err := storageimpl.NewClient(net, dataTransfer, discovery, deals, scn, accessor, storageimpl.DealPollingInterval(time.Second))
 	if err != nil {
 		return nil, err
 	}
@@ -180,12 +205,12 @@ func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer dtypes.ClientDataT
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore
 func RetrievalClient(lc fx.Lifecycle, h host.Host, r repo.LockedRepo, dt dtypes.ClientDataTransfer, payAPI payapi.PaychAPI, resolver discovery.PeerResolver,
-	ds dtypes.MetadataDS, chainAPI full.ChainAPI, stateAPI full.StateAPI, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
+	ds dtypes.MetadataDS, chainAPI full.ChainAPI, stateAPI full.StateAPI, accessor retrievalmarket.BlockstoreAccessor, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
 
 	adapter := retrievaladapter.NewRetrievalClientNode(payAPI, chainAPI, stateAPI)
 	network := rmnet.NewFromLibp2pHost(h)
-	client, err := retrievalimpl.NewClient(network,
-		dt, adapter, resolver, namespace.Wrap(ds, datastore.NewKey("/retrievals/client")))
+	ds = namespace.Wrap(ds, datastore.NewKey("/retrievals/client"))
+	client, err := retrievalimpl.NewClient(network, dt, adapter, resolver, ds, accessor)
 	if err != nil {
 		return nil, err
 	}
@@ -201,11 +226,4 @@ func RetrievalClient(lc fx.Lifecycle, h host.Host, r repo.LockedRepo, dt dtypes.
 		},
 	})
 	return client, nil
-}
-
-// ClientBlockstoreRetrievalStoreManager is the default version of the RetrievalStoreManager that runs on multistore
-func ClientBlockstoreRetrievalStoreManager(isIpfsRetrieval bool) func(bs dtypes.ClientBlockstore) (dtypes.ClientRetrievalStoreManager, error) {
-	return func(bs dtypes.ClientBlockstore) (dtypes.ClientRetrievalStoreManager, error) {
-		return retrievalstoremgr.NewBlockstoreRetrievalStoreManager(bs, isIpfsRetrieval), nil
-	}
 }

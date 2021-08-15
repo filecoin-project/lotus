@@ -12,12 +12,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
+
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -730,10 +731,21 @@ type Import struct {
 	Key imports.ID
 	Err string
 
-	Root          *cid.Cid
-	Source        string
-	FilePath      string
-	CARv2FilePath string
+	Root *cid.Cid
+
+	// Source is the provenance of the import, e.g. "import", "unknown", else.
+	// Currently useless but may be used in the future.
+	Source string
+
+	// FilePath is the path of the original file. It is important that the file
+	// is retained at this path, because it will be referenced during
+	// the transfer (when we do the UnixFS chunking, we don't duplicate the
+	// leaves, but rather point to chunks of the original data through
+	// positional references).
+	FilePath string
+
+	// CARPath is the path of the CAR file containing the DAG for this import.
+	CARPath string
 }
 
 type DealInfo struct {
@@ -916,7 +928,7 @@ type RetrievalOrder struct {
 	Piece *cid.Cid
 	Size  uint64
 
-	LocalCARV2FilePath string // if specified, get data from a local CARv2 file.
+	FromLocalCAR string // if specified, get data from a local CARv2 file.
 	// TODO: support offset
 	Total                   types.BigInt
 	UnsealPrice             types.BigInt

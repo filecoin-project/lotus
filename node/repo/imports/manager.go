@@ -3,10 +3,10 @@ package imports
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strconv"
 
-	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore/query"
 	logging "github.com/ipfs/go-log/v2"
@@ -14,6 +14,8 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+
+	"github.com/filecoin-project/go-fil-markets/shared"
 )
 
 var log = logging.Logger("importmgr")
@@ -34,40 +36,96 @@ type LabelKey = string
 type LabelValue = string
 
 const (
-	LSource   = "source"   // Function which created the import
-	LRootCid  = "root"     // Root CID
-	LFileName = "filename" // Local file path of the source file.
-	LCARPath  = "carpath"  // Path of the CARv2 file containing the imported data.
+	CAROwnerImportMgr = "importmgr"
+	CAROwnerUser      = "user"
+)
+
+const (
+	LSource   = LabelKey("source")    // Function which created the import
+	LRootCid  = LabelKey("root")      // Root CID
+	LFileName = LabelKey("filename")  // Local file path of the source file.
+	LCARPath  = LabelKey("car_path")  // Path of the CARv2 file containing the imported data.
+	LCAROwner = LabelKey("car_owner") // Owner of the CAR; "importmgr" is us; "user" or empty is them.
 )
 
 func NewManager(ds datastore.Batching, rootDir string) *Manager {
 	ds = namespace.Wrap(ds, datastore.NewKey("/stores"))
 	ds = datastore.NewLogDatastore(ds, "storess")
 
-	return &Manager{
+	m := &Manager{
 		ds:      ds,
 		rootDir: rootDir,
 		counter: shared.NewTimeCounter(),
 	}
+
+	return m
 }
 
-type StoreMeta struct {
+type Meta struct {
 	Labels map[LabelKey]LabelValue
 }
 
-// CreateImport initializes a new import and returns its ID.
-func (m *Manager) CreateImport() (ID, error) {
-	id := ID(m.counter.Next())
+// CreateImport initializes a new import, returning its ID and optionally a
+// CAR path where to place the data, if requested.
+func (m *Manager) CreateImport() (id ID, err error) {
+	id = ID(m.counter.Next())
 
-	meta, err := json.Marshal(&StoreMeta{Labels: map[LabelKey]LabelValue{
+	meta := &Meta{Labels: map[LabelKey]LabelValue{
 		LSource: "unknown",
-	}})
+	}}
+
+	metajson, err := json.Marshal(meta)
 	if err != nil {
-		return 0, xerrors.Errorf("marshaling empty store metadata: %w", err)
+		return 0, xerrors.Errorf("marshaling store metadata: %w", err)
+	}
+
+	err = m.ds.Put(id.dsKey(), metajson)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to insert import metadata: %w", err)
+	}
+
+	return id, err
+}
+
+// AllocateCAR creates a new CAR allocated to the supplied import under the
+// root directory.
+func (m *Manager) AllocateCAR(id ID) (path string, err error) {
+	meta, err := m.ds.Get(id.dsKey())
+	if err != nil {
+		return "", xerrors.Errorf("getting metadata form datastore: %w", err)
+	}
+
+	var sm Meta
+	if err := json.Unmarshal(meta, &sm); err != nil {
+		return "", xerrors.Errorf("unmarshaling store meta: %w", err)
+	}
+
+	// refuse if a CAR path already exists.
+	if curr := sm.Labels[LCARPath]; curr != "" {
+		return "", xerrors.Errorf("import CAR already exists at %s: %w", curr, err)
+	}
+
+	path = filepath.Join(m.rootDir, fmt.Sprintf("%d.car", id))
+	file, err := os.Create(path)
+	if err != nil {
+		return "", xerrors.Errorf("failed to create car file for import: %w", err)
+	}
+
+	// close the file before returning the path.
+	if err := file.Close(); err != nil {
+		return "", xerrors.Errorf("failed to close temp file: %w", err)
+	}
+
+	// record the path and ownership.
+	sm.Labels[LCARPath] = path
+	sm.Labels[LCAROwner] = CAROwnerImportMgr
+
+	if meta, err = json.Marshal(sm); err != nil {
+		return "", xerrors.Errorf("marshaling store metadata: %w", err)
 	}
 
 	err = m.ds.Put(id.dsKey(), meta)
-	return id, err
+	return path, err
 }
 
 // AddLabel adds a label associated with an import, such as the source,
@@ -78,7 +136,7 @@ func (m *Manager) AddLabel(id ID, key LabelKey, value LabelValue) error {
 		return xerrors.Errorf("getting metadata form datastore: %w", err)
 	}
 
-	var sm StoreMeta
+	var sm Meta
 	if err := json.Unmarshal(meta, &sm); err != nil {
 		return xerrors.Errorf("unmarshaling store meta: %w", err)
 	}
@@ -120,13 +178,13 @@ func (m *Manager) List() ([]ID, error) {
 }
 
 // Info returns the metadata known to this store for the specified import ID.
-func (m *Manager) Info(id ID) (*StoreMeta, error) {
+func (m *Manager) Info(id ID) (*Meta, error) {
 	meta, err := m.ds.Get(id.dsKey())
 	if err != nil {
 		return nil, xerrors.Errorf("getting metadata form datastore: %w", err)
 	}
 
-	var sm StoreMeta
+	var sm Meta
 	if err := json.Unmarshal(meta, &sm); err != nil {
 		return nil, xerrors.Errorf("unmarshaling store meta: %w", err)
 	}
@@ -139,20 +197,19 @@ func (m *Manager) Remove(id ID) error {
 	if err := m.ds.Delete(id.dsKey()); err != nil {
 		return xerrors.Errorf("removing import metadata: %w", err)
 	}
-
 	return nil
 }
 
-func (m *Manager) FilestoreCARV2FilePathFor(dagRoot cid.Cid) (string, error) {
-	importIDs, err := m.List()
+func (m *Manager) CARPathFor(dagRoot cid.Cid) (string, error) {
+	ids, err := m.List()
 	if err != nil {
 		return "", xerrors.Errorf("failed to fetch import IDs: %w", err)
 	}
 
-	for _, importID := range importIDs {
-		info, err := m.Info(importID)
+	for _, id := range ids {
+		info, err := m.Info(id)
 		if err != nil {
-			log.Errorf("failed to fetch info, importID=%d: %s", importID, err)
+			log.Errorf("failed to fetch info, importID=%d: %s", id, err)
 			continue
 		}
 		if info.Labels[LRootCid] == "" {
@@ -169,18 +226,4 @@ func (m *Manager) FilestoreCARV2FilePathFor(dagRoot cid.Cid) (string, error) {
 	}
 
 	return "", nil
-}
-
-func (m *Manager) NewTempFile(importID ID) (string, error) {
-	file, err := ioutil.TempFile(m.rootDir, fmt.Sprintf("%d", importID))
-	if err != nil {
-		return "", xerrors.Errorf("failed to create temp file: %w", err)
-	}
-
-	// close the file as we need to return the path here.
-	if err := file.Close(); err != nil {
-		return "", xerrors.Errorf("failed to close temp file: %w", err)
-	}
-
-	return file.Name(), nil
 }

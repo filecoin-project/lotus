@@ -36,7 +36,7 @@ require (
 	github.com/filecoin-project/go-data-transfer v1.7.3
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
-	github.com/filecoin-project/go-fil-markets v1.6.3-0.20210811182620-1237843e237c
+	github.com/filecoin-project/go-fil-markets v1.6.3-0.20210815233218-8025f5c1a128
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-padreader v0.0.0-20210723183308-812a16dc01b1
@@ -99,7 +99,7 @@ require (
 	github.com/ipfs/go-unixfs v0.2.6
 	github.com/ipfs/interface-go-ipfs-core v0.2.3
 	github.com/ipld/go-car v0.1.1-0.20201119040415-11b6074b6d4d
-	github.com/ipld/go-car/v2 v2.0.2
+	github.com/ipld/go-car/v2 v2.0.3-0.20210811121346-c514a30114d7
 	github.com/ipld/go-ipld-prime v0.5.1-0.20201021195245-109253e8a018
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/lib/pq v1.7.0
@@ -129,6 +129,7 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.3.1
 	github.com/multiformats/go-multibase v0.0.3
 	github.com/multiformats/go-multihash v0.0.15
+	github.com/multiformats/go-varint v0.0.6
 	github.com/open-rpc/meta-schema v0.0.0-20201029221707-1b72ef2ea333
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a

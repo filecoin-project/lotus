@@ -24,7 +24,6 @@ import (
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -32,10 +31,13 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
@@ -1104,8 +1106,8 @@ var clientRetrieveCmd = &cli.Command{
 			for _, i := range imports {
 				if i.Root != nil && i.Root.Equals(file) {
 					order = &lapi.RetrievalOrder{
-						Root:               file,
-						LocalCARV2FilePath: i.CARv2FilePath,
+						Root:         file,
+						FromLocalCAR: i.CARPath,
 
 						Total:       big.Zero(),
 						UnsealPrice: big.Zero(),

@@ -6,8 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/filecoin-project/lotus/node/impl/net"
 	metricsi "github.com/ipfs/go-metrics-interface"
+
+	"github.com/filecoin-project/lotus/node/impl/net"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/system"
@@ -335,7 +336,6 @@ func Repo(r repo.Repo) Option {
 			Override(new(dtypes.ClientImportMgr), modules.ClientImportMgr),
 
 			Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
-			Override(new(dtypes.ClientRetrievalStoreManager), modules.ClientBlockstoreRetrievalStoreManager(false)),
 
 			Override(new(ci.PrivKey), lp2p.PrivKey),
 			Override(new(ci.PubKey), ci.PrivKey.GetPublic),

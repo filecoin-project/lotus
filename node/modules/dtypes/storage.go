@@ -8,13 +8,13 @@ import (
 	format "github.com/ipfs/go-ipld-format"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-statestore"
+
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
-	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/node/repo/imports"
-	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
 )
 
 // MetadataDS stores metadata. By default it's namespaced under /metadata in
@@ -74,7 +74,6 @@ type ClientBlockstore blockstore.BasicBlockstore
 type ClientDealStore *statestore.StateStore
 type ClientRequestValidator *requestvalidation.UnifiedRequestValidator
 type ClientDatastore datastore.Batching
-type ClientRetrievalStoreManager retrievalstoremgr.RetrievalStoreManager
 
 type Graphsync graphsync.GraphExchange
 
