@@ -23,6 +23,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 )
 
@@ -35,7 +36,10 @@ func TestImportLocal(t *testing.T) {
 	im := imports.NewManager(ds, dir)
 	ctx := context.Background()
 
-	a := &API{Imports: im}
+	a := &API{
+		Imports:                   im,
+		StorageBlockstoreAccessor: storageadapter.NewImportsBlockstoreAccessor(im),
+	}
 
 	b, err := testdata.ReadFile("testdata/payload.txt")
 	require.NoError(t, err)
