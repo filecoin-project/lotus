@@ -2,6 +2,7 @@ package client
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -9,8 +10,11 @@ import (
 	"sort"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-
+	bstore "github.com/ipfs/go-ipfs-blockstore"
+	unixfile "github.com/ipfs/go-unixfs/file"
+	"github.com/ipld/go-car"
+	carv2 "github.com/ipld/go-car/v2"
+	"github.com/ipld/go-car/v2/blockstore"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-padreader"
@@ -18,16 +22,9 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-cidutil"
-	chunker "github.com/ipfs/go-ipfs-chunker"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	files "github.com/ipfs/go-ipfs-files"
-	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
-	unixfile "github.com/ipfs/go-unixfs/file"
-	"github.com/ipfs/go-unixfs/importer/balanced"
-	ihelper "github.com/ipfs/go-unixfs/importer/helpers"
-	"github.com/ipld/go-car"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
@@ -42,34 +39,41 @@ import (
 	"github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	"github.com/filecoin-project/go-commp-utils/writer"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
-	"github.com/filecoin-project/go-multistore"
+	"github.com/filecoin-project/go-fil-markets/stores"
+
+	"github.com/filecoin-project/lotus/markets/retrievaladapter"
+	"github.com/filecoin-project/lotus/markets/storageadapter"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
 
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
+	"github.com/filecoin-project/lotus/node/repo/imports"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/node/repo/importmgr"
-	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
 
 // 8 days ~=  SealDuration + PreCommit + MaxProveCommitDuration + 8 hour buffer
 const dealStartBufferHours uint64 = 8 * 24
+const DefaultDAGStoreDir = "dagstore"
 
 type API struct {
 	fx.In
@@ -84,13 +88,15 @@ type API struct {
 	Retrieval    rm.RetrievalClient
 	Chain        *store.ChainStore
 
-	Imports dtypes.ClientImportMgr
-	Mds     dtypes.ClientMultiDstore
+	// accessors for imports and retrievals.
+	Imports                   dtypes.ClientImportMgr
+	StorageBlockstoreAccessor storagemarket.BlockstoreAccessor
+	RtvlBlockstoreAccessor    retrievalmarket.BlockstoreAccessor
 
-	CombinedBstore    dtypes.ClientBlockstore // TODO: try to remove
-	RetrievalStoreMgr dtypes.ClientRetrievalStoreManager
-	DataTransfer      dtypes.ClientDataTransfer
-	Host              host.Host
+	DataTransfer dtypes.ClientDataTransfer
+	Host         host.Host
+
+	Repo repo.LockedRepo
 }
 
 func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.ChainEpoch) abi.ChainEpoch {
@@ -107,7 +113,8 @@ func calcDealExpiration(minDuration uint64, md *dline.Info, startEpoch abi.Chain
 	return exp
 }
 
-func (a *API) imgr() *importmgr.Mgr {
+// importManager converts the injected type to the required type.
+func (a *API) importManager() *imports.Manager {
 	return a.Imports
 }
 
@@ -120,7 +127,6 @@ func (a *API) ClientStatelessDeal(ctx context.Context, params *api.StartDealPara
 }
 
 func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isStateless bool) (*cid.Cid, error) {
-	var storeID *multistore.StoreID
 	if isStateless {
 		if params.Data.TransferType != storagemarket.TTManual {
 			return nil, xerrors.Errorf("invalid transfer type %s for stateless storage deal", params.Data.TransferType)
@@ -129,24 +135,16 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 			return nil, xerrors.New("stateless storage deals can only be initiated with storage price of 0")
 		}
 	} else if params.Data.TransferType == storagemarket.TTGraphsync {
-		importIDs := a.imgr().List()
-		for _, importID := range importIDs {
-			info, err := a.imgr().Info(importID)
-			if err != nil {
-				continue
-			}
-			if info.Labels[importmgr.LRootCid] == "" {
-				continue
-			}
-			c, err := cid.Parse(info.Labels[importmgr.LRootCid])
-			if err != nil {
-				continue
-			}
-			if c.Equals(params.Data.Root) {
-				storeID = &importID //nolint
-				break
-			}
+		bs, onDone, err := a.dealBlockstore(params.Data.Root)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to find blockstore for root CID: %w", err)
 		}
+		if has, err := bs.Has(params.Data.Root); err != nil {
+			return nil, xerrors.Errorf("failed to query blockstore for root CID: %w", err)
+		} else if !has {
+			return nil, xerrors.Errorf("failed to find root CID in blockstore: %w", err)
+		}
+		onDone()
 	}
 
 	walletKey, err := a.StateAccountKey(ctx, params.Wallet, types.EmptyTSK)
@@ -212,7 +210,6 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 			Rt:            st,
 			FastRetrieval: params.FastRetrieval,
 			VerifiedDeal:  params.VerifiedDeal,
-			StoreID:       storeID,
 		})
 
 		if err != nil {
@@ -411,17 +408,12 @@ func (a *API) newDealInfoWithTransfer(transferCh *api.DataTransferChannel, v sto
 	}
 }
 
-func (a *API) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
-	// TODO: check if we have the ENTIRE dag
-
-	offExch := merkledag.NewDAGService(blockservice.New(a.Imports.Blockstore, offline.Exchange(a.Imports.Blockstore)))
-	_, err := offExch.Get(ctx, root)
-	if err == ipld.ErrNotFound {
-		return false, nil
-	}
+func (a *API) ClientHasLocal(_ context.Context, root cid.Cid) (bool, error) {
+	_, onDone, err := a.dealBlockstore(root)
 	if err != nil {
 		return false, err
 	}
+	onDone()
 	return true, nil
 }
 
@@ -495,88 +487,219 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, paylo
 	}
 }
 
-func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (*api.ImportRes, error) {
-	id, st, err := a.imgr().NewStore()
+func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.ImportRes, err error) {
+	var (
+		imgr    = a.importManager()
+		id      imports.ID
+		root    cid.Cid
+		carPath string
+	)
+
+	id, err = imgr.CreateImport()
 	if err != nil {
-		return nil, err
-	}
-	if err := a.imgr().AddLabel(id, importmgr.LSource, "import"); err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("failed to create import: %w", err)
 	}
 
-	if err := a.imgr().AddLabel(id, importmgr.LFileName, ref.Path); err != nil {
-		return nil, err
+	if ref.IsCAR {
+		// user gave us a CAR fil, use it as-is
+		// validate that it's either a carv1 or carv2, and has one root.
+		f, err := os.Open(ref.Path)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to open CAR file: %w", err)
+		}
+		defer f.Close() //nolint:errcheck
+
+		hd, _, err := car.ReadHeader(bufio.NewReader(f))
+		if err != nil {
+			return nil, xerrors.Errorf("failed to read CAR header: %w", err)
+		}
+		if len(hd.Roots) != 1 {
+			return nil, xerrors.New("car file can have one and only one header")
+		}
+		if hd.Version != 1 && hd.Version != 2 {
+			return nil, xerrors.Errorf("car version must be 1 or 2, is %d", hd.Version)
+		}
+
+		carPath = ref.Path
+		root = hd.Roots[0]
+	} else {
+		carPath, err = imgr.AllocateCAR(id)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to create car path for import: %w", err)
+		}
+
+		// remove the import if something went wrong.
+		defer func() {
+			if err != nil {
+				_ = os.Remove(carPath)
+				_ = imgr.Remove(id)
+			}
+		}()
+
+		// perform the unixfs chunking.
+		root, err = a.createUnixFSFilestore(ctx, ref.Path, carPath)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to import file using unixfs: %w", err)
+		}
 	}
 
-	nd, err := a.clientImport(ctx, ref, st)
-	if err != nil {
+	if err = imgr.AddLabel(id, imports.LSource, "import"); err != nil {
 		return nil, err
 	}
-
-	if err := a.imgr().AddLabel(id, importmgr.LRootCid, nd.String()); err != nil {
+	if err = imgr.AddLabel(id, imports.LFileName, ref.Path); err != nil {
 		return nil, err
 	}
-
+	if err = imgr.AddLabel(id, imports.LCARPath, carPath); err != nil {
+		return nil, err
+	}
+	if err = imgr.AddLabel(id, imports.LRootCid, root.String()); err != nil {
+		return nil, err
+	}
 	return &api.ImportRes{
-		Root:     nd,
+		Root:     root,
 		ImportID: id,
 	}, nil
 }
 
-func (a *API) ClientRemoveImport(ctx context.Context, importID multistore.StoreID) error {
-	return a.imgr().Remove(importID)
+func (a *API) ClientRemoveImport(ctx context.Context, id imports.ID) error {
+	info, err := a.importManager().Info(id)
+	if err != nil {
+		return xerrors.Errorf("failed to get import metadata: %w", err)
+	}
+
+	owner := info.Labels[imports.LCAROwner]
+	path := info.Labels[imports.LCARPath]
+
+	// CARv2 file was not provided by the user, delete it.
+	if path != "" && owner == imports.CAROwnerImportMgr {
+		_ = os.Remove(path)
+	}
+
+	return a.importManager().Remove(id)
 }
 
-func (a *API) ClientImportLocal(ctx context.Context, f io.Reader) (cid.Cid, error) {
-	file := files.NewReaderFile(f)
+// ClientImportLocal imports a standard file into this node as a UnixFS payload,
+// storing it in a CARv2 file. Note that this method is NOT integrated with the
+// IPFS blockstore. That is, if client-side IPFS integration is enabled, this
+// method won't import the file into that
+func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, error) {
+	file := files.NewReaderFile(r)
 
-	id, st, err := a.imgr().NewStore()
+	// write payload to temp file
+	id, err := a.importManager().CreateImport()
 	if err != nil {
 		return cid.Undef, err
 	}
-	if err := a.imgr().AddLabel(id, "source", "import-local"); err != nil {
-		return cid.Cid{}, err
+	if err := a.importManager().AddLabel(id, imports.LSource, "import-local"); err != nil {
+		return cid.Undef, err
 	}
 
-	bufferedDS := ipld.NewBufferedDAG(ctx, st.DAG)
-
-	prefix, err := merkledag.PrefixForCidVersion(1)
+	path, err := a.importManager().AllocateCAR(id)
 	if err != nil {
 		return cid.Undef, err
 	}
-	prefix.MhType = DefaultHashFunction
 
-	params := ihelper.DagBuilderParams{
-		Maxlinks:  build.UnixfsLinksPerLevel,
-		RawLeaves: true,
-		CidBuilder: cidutil.InlineBuilder{
-			Builder: prefix,
-			Limit:   126,
-		},
-		Dagserv: bufferedDS,
-	}
+	// writing a carv2 requires knowing the root ahead of time, which makes
+	// streaming cases impossible.
+	// https://github.com/ipld/go-car/issues/196
+	// we work around this limitation by informing a placeholder root CID of the
+	// same length as our unixfs chunking strategy will generate.
+	// once the DAG is formed and the root is calculated, we overwrite the
+	// inner carv1 header with the final root.
 
-	db, err := params.New(chunker.NewSizeSplitter(file, int64(build.UnixfsChunkSize)))
+	b, err := unixFSCidBuilder()
 	if err != nil {
 		return cid.Undef, err
 	}
-	nd, err := balanced.Layout(db)
+
+	// placeholder payload needs to be larger than inline CID threshold; 256
+	// bytes is a safe value.
+	placeholderRoot, err := b.Sum(make([]byte, 256))
 	if err != nil {
-		return cid.Undef, err
-	}
-	if err := a.imgr().AddLabel(id, "root", nd.Cid().String()); err != nil {
-		return cid.Cid{}, err
+		return cid.Undef, xerrors.Errorf("failed to calculate placeholder root: %w", err)
 	}
 
-	return nd.Cid(), bufferedDS.Commit()
+	bs, err := blockstore.OpenReadWrite(path, []cid.Cid{placeholderRoot}, blockstore.UseWholeCIDs(true))
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to create carv2 read/write blockstore: %w", err)
+	}
+
+	root, err := buildUnixFS(ctx, file, bs, false)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to build unixfs dag: %w", err)
+	}
+
+	err = bs.Finalize()
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to finalize carv2 read/write blockstore: %w", err)
+	}
+
+	// record the root in the import manager.
+	if err := a.importManager().AddLabel(id, imports.LRootCid, root.String()); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to record root CID in import manager: %w", err)
+	}
+
+	// now go ahead and overwrite the root in the carv1 header.
+	reader, err := carv2.OpenReader(path)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to create car reader: %w", err)
+	}
+
+	// save the header offset.
+	headerOff := reader.Header.DataOffset
+
+	// read the old header.
+	dr := reader.DataReader()
+	header, err := readHeader(dr)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to read car reader: %w", err)
+	}
+	_ = reader.Close() // close the CAR reader.
+
+	// write the old header into a buffer.
+	var oldBuf bytes.Buffer
+	if err = writeHeader(header, &oldBuf); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to write header into buffer: %w", err)
+	}
+
+	// replace the root.
+	header.Roots = []cid.Cid{root}
+
+	// write the new header into a buffer.
+	var newBuf bytes.Buffer
+	err = writeHeader(header, &newBuf)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to write header into buffer: %w", err)
+	}
+
+	// verify the length matches.
+	if newBuf.Len() != oldBuf.Len() {
+		return cid.Undef, xerrors.Errorf("failed to replace carv1 header; length mismatch (old: %d, new: %d)", oldBuf.Len(), newBuf.Len())
+	}
+
+	// open the file again, seek to the header position, and write.
+	f, err := os.OpenFile(path, os.O_WRONLY, 0755)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to open car: %w", err)
+	}
+	defer f.Close() //nolint:errcheck
+
+	n, err := f.WriteAt(newBuf.Bytes(), int64(headerOff))
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to write new header to car (bytes written: %d): %w", n, err)
+	}
+	return root, nil
 }
 
-func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
-	importIDs := a.imgr().List()
+func (a *API) ClientListImports(_ context.Context) ([]api.Import, error) {
+	ids, err := a.importManager().List()
+	if err != nil {
+		return nil, xerrors.Errorf("failed to fetch imports: %w", err)
+	}
 
-	out := make([]api.Import, len(importIDs))
-	for i, id := range importIDs {
-		info, err := a.imgr().Info(id)
+	out := make([]api.Import, len(ids))
+	for i, id := range ids {
+		info, err := a.importManager().Info(id)
 		if err != nil {
 			out[i] = api.Import{
 				Key: id,
@@ -587,12 +710,13 @@ func (a *API) ClientListImports(ctx context.Context) ([]api.Import, error) {
 
 		ai := api.Import{
 			Key:      id,
-			Source:   info.Labels[importmgr.LSource],
-			FilePath: info.Labels[importmgr.LFileName],
+			Source:   info.Labels[imports.LSource],
+			FilePath: info.Labels[imports.LFileName],
+			CARPath:  info.Labels[imports.LCARPath],
 		}
 
-		if info.Labels[importmgr.LRootCid] != "" {
-			c, err := cid.Parse(info.Labels[importmgr.LRootCid])
+		if info.Labels[imports.LRootCid] != "" {
+			c, err := cid.Parse(info.Labels[imports.LRootCid])
 			if err != nil {
 				ai.Err = err.Error()
 			} else {
@@ -660,7 +784,7 @@ type retrievalSubscribeEvent struct {
 	state rm.ClientDealState
 }
 
-func readSubscribeEvents(ctx context.Context, dealID retrievalmarket.DealID, subscribeEvents chan retrievalSubscribeEvent, events chan marketevents.RetrievalEvent) error {
+func consumeAllEvents(ctx context.Context, dealID retrievalmarket.DealID, subscribeEvents chan retrievalSubscribeEvent, events chan marketevents.RetrievalEvent) error {
 	for {
 		var subscribeEvent retrievalSubscribeEvent
 		select {
@@ -711,9 +835,28 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		}
 	}
 
-	var store retrievalstoremgr.RetrievalStore
+	// summary:
+	// 1. if we're retrieving from an import, FromLocalCAR will be informed.
+	//    Open as a Filestore and populate the target CAR or UnixFS export from it.
+	//    (cannot use ExtractV1File because user wants a dense CAR, not a ref CAR/filestore)
+	// 2. if we're using an IPFS blockstore for retrieval, retrieve into it,
+	//    then extract the CAR or UnixFS export from it.
+	// 3. if we have to retrieve, perform a CARv2 retrieval, then extract
+	//    the CARv1 (with ExtractV1File) or UnixFS export from it.
 
-	if order.LocalStore == nil {
+	// this indicates we're proxying to IPFS.
+	proxyBss, retrieveIntoIPFS := a.RtvlBlockstoreAccessor.(*retrievaladapter.ProxyBlockstoreAccessor)
+	carBss, retrieveIntoCAR := a.RtvlBlockstoreAccessor.(*retrievaladapter.CARBlockstoreAccessor)
+
+	carPath := order.FromLocalCAR
+	if carPath == "" {
+		if !retrieveIntoIPFS && !retrieveIntoCAR {
+			// we actually need to retrieve from the network, but we don't
+			// recognize the blockstore accessor.
+			finish(xerrors.Errorf("unsupported retrieval blockstore accessor"))
+			return
+		}
+
 		if order.MinerPeer == nil || order.MinerPeer.ID == "" {
 			mi, err := a.StateMinerInfo(ctx, order.Miner, types.EmptyTSK)
 			if err != nil {
@@ -737,14 +880,6 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			return
 		}
 
-		/*id, st, err := a.imgr().NewStore()
-		if err != nil {
-			return err
-		}
-		if err := a.imgr().AddLabel(id, "source", "retrieval"); err != nil {
-			return err
-		}*/
-
 		ppb := types.BigDiv(order.Total, types.NewInt(order.Size))
 
 		params, err := rm.NewParamsV1(ppb, order.PaymentInterval, order.PaymentIntervalIncrease, shared.AllSelector(), order.Piece, order.UnsealPrice)
@@ -753,22 +888,12 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			return
 		}
 
-		store, err = a.RetrievalStoreMgr.NewStore()
-		if err != nil {
-			finish(xerrors.Errorf("Error setting up new store: %w", err))
-			return
-		}
-
-		defer func() {
-			_ = a.RetrievalStoreMgr.ReleaseStore(store)
-		}()
-
 		// Subscribe to events before retrieving to avoid losing events.
 		subscribeEvents := make(chan retrievalSubscribeEvent, 1)
 		subscribeCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		unsubscribe := a.Retrieval.SubscribeToEvents(func(event rm.ClientEvent, state rm.ClientDealState) {
-			// We'll check the deal IDs inside readSubscribeEvents.
+			// We'll check the deal IDs inside consumeAllEvents.
 			if state.PayloadCID.Equals(order.Root) {
 				select {
 				case <-subscribeCtx.Done():
@@ -777,15 +902,17 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			}
 		})
 
-		dealID, err := a.Retrieval.Retrieve(
+		id := a.Retrieval.NextID()
+		id, err = a.Retrieval.Retrieve(
 			ctx,
+			id,
 			order.Root,
 			params,
 			order.Total,
 			*order.MinerPeer,
 			order.Client,
 			order.Miner,
-			store.StoreID())
+		)
 
 		if err != nil {
 			unsubscribe()
@@ -793,62 +920,82 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			return
 		}
 
-		err = readSubscribeEvents(ctx, dealID, subscribeEvents, events)
+		err = consumeAllEvents(ctx, id, subscribeEvents, events)
 
 		unsubscribe()
 		if err != nil {
 			finish(xerrors.Errorf("Retrieve: %w", err))
 			return
 		}
-	} else {
-		// local retrieval
-		st, err := ((*multistore.MultiStore)(a.Mds)).Get(*order.LocalStore)
-		if err != nil {
-			finish(xerrors.Errorf("Retrieve: %w", err))
-			return
-		}
 
-		store = &multiStoreRetrievalStore{
-			storeID: *order.LocalStore,
-			store:   st,
+		if retrieveIntoCAR {
+			carPath = carBss.PathFor(id)
 		}
 	}
 
-	// If ref is nil, it only fetches the data into the configured blockstore.
 	if ref == nil {
+		// If ref is nil, it only fetches the data into the configured blockstore
+		// (if fetching from network).
 		finish(nil)
 		return
 	}
 
-	rdag := store.DAGService()
-
+	// Are we outputting a CAR?
 	if ref.IsCAR {
-		f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			finish(err)
+		if retrieveIntoIPFS {
+			// generating a CARv1 from IPFS.
+			f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				finish(err)
+				return
+			}
+
+			bs := proxyBss.Blockstore
+			dags := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
+			err = car.WriteCar(ctx, dags, []cid.Cid{order.Root}, f)
+			if err != nil {
+				finish(err)
+				return
+			}
+			finish(f.Close())
 			return
 		}
-		err = car.WriteCar(ctx, rdag, []cid.Cid{order.Root}, f)
-		if err != nil {
-			finish(err)
-			return
-		}
-		finish(f.Close())
+
+		// generating a CARv1 from the CARv2 where we stored the retrieval.
+		err := carv2.ExtractV1File(carPath, ref.Path)
+		finish(err)
 		return
 	}
 
-	nd, err := rdag.Get(ctx, order.Root)
+	// we are extracting a UnixFS file.
+	var bs bstore.Blockstore
+	if retrieveIntoIPFS {
+		bs = proxyBss.Blockstore
+	} else {
+		cbs, err := stores.ReadOnlyFilestore(carPath)
+		if err != nil {
+			finish(err)
+			return
+		}
+		defer cbs.Close() //nolint:errcheck
+		bs = cbs
+	}
+
+	bsvc := blockservice.New(bs, offline.Exchange(bs))
+	dag := merkledag.NewDAGService(bsvc)
+
+	nd, err := dag.Get(ctx, order.Root)
 	if err != nil {
 		finish(xerrors.Errorf("ClientRetrieve: %w", err))
 		return
 	}
-	file, err := unixfile.NewUnixfsFile(ctx, rdag, nd)
+	file, err := unixfile.NewUnixfsFile(ctx, dag, nd)
 	if err != nil {
 		finish(xerrors.Errorf("ClientRetrieve: %w", err))
 		return
 	}
+
 	finish(files.WriteTo(file, ref.Path))
-	return
 }
 
 func (a *API) ClientListRetrievals(ctx context.Context) ([]api.RetrievalInfo, error) {
@@ -928,19 +1075,6 @@ func (a *API) newRetrievalInfo(ctx context.Context, v rm.ClientDealState) api.Re
 	return a.newRetrievalInfoWithTransfer(transferCh, v)
 }
 
-type multiStoreRetrievalStore struct {
-	storeID multistore.StoreID
-	store   *multistore.Store
-}
-
-func (mrs *multiStoreRetrievalStore) StoreID() *multistore.StoreID {
-	return &mrs.storeID
-}
-
-func (mrs *multiStoreRetrievalStore) DAGService() ipld.DAGService {
-	return mrs.store.DAG
-}
-
 func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error) {
 	mi, err := a.StateMinerInfo(ctx, miner, types.EmptyTSK)
 	if err != nil {
@@ -1009,11 +1143,16 @@ func (w *lenWriter) Write(p []byte) (n int, err error) {
 }
 
 func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, error) {
-	dag := merkledag.NewDAGService(blockservice.New(a.CombinedBstore, offline.Exchange(a.CombinedBstore)))
+	bs, onDone, err := a.dealBlockstore(root)
+	if err != nil {
+		return api.DataSize{}, err
+	}
+	defer onDone()
 
-	w := lenWriter(0)
+	dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
 
-	err := car.WriteCar(ctx, dag, []cid.Cid{root}, &w)
+	var w lenWriter
+	err = car.WriteCar(ctx, dag, []cid.Cid{root}, &w)
 	if err != nil {
 		return api.DataSize{}, err
 	}
@@ -1027,12 +1166,17 @@ func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, e
 }
 
 func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCIDSize, error) {
-	dag := merkledag.NewDAGService(blockservice.New(a.CombinedBstore, offline.Exchange(a.CombinedBstore)))
+	bs, onDone, err := a.dealBlockstore(root)
+	if err != nil {
+		return api.DataCIDSize{}, err
+	}
+	defer onDone()
 
+	dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
 	w := &writer.Writer{}
 	bw := bufio.NewWriterSize(w, int(writer.CommPBuf))
 
-	err := car.WriteCar(ctx, dag, []cid.Cid{root}, w)
+	err = car.WriteCar(ctx, dag, []cid.Cid{root}, w)
 	if err != nil {
 		return api.DataCIDSize{}, err
 	}
@@ -1046,111 +1190,47 @@ func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCID
 }
 
 func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath string) error {
-	id, st, err := a.imgr().NewStore()
+	// create a temporary import to represent this job and obtain a staging CAR.
+	id, err := a.importManager().CreateImport()
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to create temporary import: %w", err)
 	}
-	if err := a.imgr().AddLabel(id, "source", "gen-car"); err != nil {
-		return err
-	}
+	defer a.importManager().Remove(id) //nolint:errcheck
 
-	bufferedDS := ipld.NewBufferedDAG(ctx, st.DAG)
-	c, err := a.clientImport(ctx, ref, st)
-
+	tmp, err := a.importManager().AllocateCAR(id)
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to allocate temporary CAR: %w", err)
+	}
+	defer os.Remove(tmp) //nolint:errcheck
+
+	// generate and import the UnixFS DAG into a filestore (positional reference) CAR.
+	root, err := a.createUnixFSFilestore(ctx, ref.Path, tmp)
+	if err != nil {
+		return xerrors.Errorf("failed to import file using unixfs: %w", err)
 	}
 
-	// TODO: does that defer mean to remove the whole blockstore?
-	defer bufferedDS.Remove(ctx, c) //nolint:errcheck
+	// open the positional reference CAR as a filestore.
+	fs, err := stores.ReadOnlyFilestore(tmp)
+	if err != nil {
+		return xerrors.Errorf("failed to open filestore from carv2 in path %s: %w", tmp, err)
+	}
+	defer fs.Close() //nolint:errcheck
+
+	// build a dense deterministic CAR (dense = containing filled leaves)
 	ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
-
-	// entire DAG selector
-	allSelector := ssb.ExploreRecursive(selector.RecursionLimitNone(),
+	allSelector := ssb.ExploreRecursive(
+		selector.RecursionLimitNone(),
 		ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
-
+	sc := car.NewSelectiveCar(ctx, fs, []car.Dag{{Root: root, Selector: allSelector}})
 	f, err := os.Create(outputPath)
 	if err != nil {
 		return err
 	}
-
-	sc := car.NewSelectiveCar(ctx, st.Bstore, []car.Dag{{Root: c, Selector: allSelector}})
 	if err = sc.Write(f); err != nil {
-		return err
+		return xerrors.Errorf("failed to write CAR to output file: %w", err)
 	}
 
 	return f.Close()
-}
-
-func (a *API) clientImport(ctx context.Context, ref api.FileRef, store *multistore.Store) (cid.Cid, error) {
-	f, err := os.Open(ref.Path)
-	if err != nil {
-		return cid.Undef, err
-	}
-	defer f.Close() //nolint:errcheck
-
-	stat, err := f.Stat()
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	file, err := files.NewReaderPathFile(ref.Path, f, stat)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	if ref.IsCAR {
-		var st car.Store
-		if store.Fstore == nil {
-			st = store.Bstore
-		} else {
-			st = store.Fstore
-		}
-		result, err := car.LoadCar(st, file)
-		if err != nil {
-			return cid.Undef, err
-		}
-
-		if len(result.Roots) != 1 {
-			return cid.Undef, xerrors.New("cannot import car with more than one root")
-		}
-
-		return result.Roots[0], nil
-	}
-
-	bufDs := ipld.NewBufferedDAG(ctx, store.DAG)
-
-	prefix, err := merkledag.PrefixForCidVersion(1)
-	if err != nil {
-		return cid.Undef, err
-	}
-	prefix.MhType = DefaultHashFunction
-
-	params := ihelper.DagBuilderParams{
-		Maxlinks:  build.UnixfsLinksPerLevel,
-		RawLeaves: true,
-		CidBuilder: cidutil.InlineBuilder{
-			Builder: prefix,
-			Limit:   126,
-		},
-		Dagserv: bufDs,
-		NoCopy:  true,
-	}
-
-	db, err := params.New(chunker.NewSizeSplitter(file, int64(build.UnixfsChunkSize)))
-	if err != nil {
-		return cid.Undef, err
-	}
-	nd, err := balanced.Layout(db)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	if err := bufDs.Commit(); err != nil {
-		return cid.Undef, err
-	}
-
-	return nd.Cid(), nil
 }
 
 func (a *API) ClientListDataTransfers(ctx context.Context) ([]api.DataTransferChannel, error) {
@@ -1213,4 +1293,28 @@ func (a *API) ClientGetDealStatus(ctx context.Context, statusCode uint64) (strin
 	}
 
 	return ststr, nil
+}
+
+// dealBlockstore picks the source blockstore for a storage deal; either the
+// IPFS blockstore, or an import CARv2 file. It also returns a function that
+// must be called when done.
+func (a *API) dealBlockstore(root cid.Cid) (bstore.Blockstore, func(), error) {
+	switch acc := a.StorageBlockstoreAccessor.(type) {
+	case *storageadapter.ImportsBlockstoreAccessor:
+		bs, err := acc.Get(root)
+		if err != nil {
+			return nil, nil, xerrors.Errorf("no import found for root %s: %w", root, err)
+		}
+
+		doneFn := func() {
+			_ = acc.Done(root) //nolint:errcheck
+		}
+		return bs, doneFn, nil
+
+	case *storageadapter.ProxyBlockstoreAccessor:
+		return acc.Blockstore, func() {}, nil
+
+	default:
+		return nil, nil, xerrors.Errorf("unsupported blockstore accessor type: %T", acc)
+	}
 }

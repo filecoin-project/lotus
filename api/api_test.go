@@ -76,7 +76,7 @@ func TestReturnTypes(t *testing.T) {
 						seen[typ] = struct{}{}
 
 						if typ.Kind() == reflect.Interface && typ != bareIface && !typ.Implements(jmarsh) {
-							t.Error("methods can't return interfaces", m.Name)
+							t.Error("methods can't return interfaces or struct types not implementing json.Marshaller", m.Name)
 						}
 
 						switch typ.Kind() {

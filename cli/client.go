@@ -24,7 +24,6 @@ import (
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -32,11 +31,13 @@ import (
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
@@ -46,6 +47,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
+	"github.com/filecoin-project/lotus/node/repo/imports"
 )
 
 var CidBaseFlag = cli.StringFlag{
@@ -174,18 +176,18 @@ var clientDropCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		var ids []multistore.StoreID
+		var ids []uint64
 		for i, s := range cctx.Args().Slice() {
-			id, err := strconv.ParseInt(s, 10, 0)
+			id, err := strconv.ParseUint(s, 10, 64)
 			if err != nil {
 				return xerrors.Errorf("parsing %d-th import ID: %w", i, err)
 			}
 
-			ids = append(ids, multistore.StoreID(id))
+			ids = append(ids, id)
 		}
 
 		for _, id := range ids {
-			if err := api.ClientRemoveImport(ctx, id); err != nil {
+			if err := api.ClientRemoveImport(ctx, imports.ID(id)); err != nil {
 				return xerrors.Errorf("removing import %d: %w", id, err)
 			}
 		}
@@ -1104,8 +1106,8 @@ var clientRetrieveCmd = &cli.Command{
 			for _, i := range imports {
 				if i.Root != nil && i.Root.Equals(file) {
 					order = &lapi.RetrievalOrder{
-						Root:       file,
-						LocalStore: &i.Key,
+						Root:         file,
+						FromLocalCAR: i.CARPath,
 
 						Total:       big.Zero(),
 						UnsealPrice: big.Zero(),

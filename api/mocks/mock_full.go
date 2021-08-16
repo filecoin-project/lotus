@@ -14,7 +14,6 @@ import (
 	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	auth "github.com/filecoin-project/go-jsonrpc/auth"
-	multistore "github.com/filecoin-project/go-multistore"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
@@ -26,6 +25,7 @@ import (
 	types "github.com/filecoin-project/lotus/chain/types"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	dtypes "github.com/filecoin-project/lotus/node/modules/dtypes"
+	imports "github.com/filecoin-project/lotus/node/repo/imports"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	paych "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	gomock "github.com/golang/mock/gomock"
@@ -775,7 +775,7 @@ func (mr *MockFullNodeMockRecorder) ClientQueryAsk(arg0, arg1, arg2 interface{})
 }
 
 // ClientRemoveImport mocks base method.
-func (m *MockFullNode) ClientRemoveImport(arg0 context.Context, arg1 multistore.StoreID) error {
+func (m *MockFullNode) ClientRemoveImport(arg0 context.Context, arg1 imports.ID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ClientRemoveImport", arg0, arg1)
 	ret0, _ := ret[0].(error)

@@ -5,6 +5,7 @@ package hello
 import (
 	"fmt"
 	"io"
+	"math"
 	"sort"
 
 	abi "github.com/filecoin-project/go-state-types/abi"
@@ -15,6 +16,7 @@ import (
 
 var _ = xerrors.Errorf
 var _ = cid.Undef
+var _ = math.E
 var _ = sort.Sort
 
 var lengthBufHelloMessage = []byte{132}
