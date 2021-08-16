@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-ipfs-blockstore"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"

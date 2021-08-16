@@ -682,7 +682,7 @@ func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, erro
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to open car: %w", err)
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errcheck
 
 	n, err := f.WriteAt(newBuf.Bytes(), int64(headerOff))
 	if err != nil {
