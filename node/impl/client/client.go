@@ -135,13 +135,16 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 			return nil, xerrors.New("stateless storage deals can only be initiated with storage price of 0")
 		}
 	} else if params.Data.TransferType == storagemarket.TTGraphsync {
-		fc, err := a.importManager().CARPathFor(params.Data.Root)
+		bs, onDone, err := a.dealBlockstore(params.Data.Root)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to find CARv2 file path: %w", err)
+			return nil, xerrors.Errorf("failed to find blockstore for root CID: %w", err)
 		}
-		if fc == "" {
-			return nil, xerrors.New("no CARv2 file path for deal")
+		if has, err := bs.Has(params.Data.Root); err != nil {
+			return nil, xerrors.Errorf("failed to query blockstore for root CID: %w", err)
+		} else if !has {
+			return nil, xerrors.Errorf("failed to find root CID in blockstore: %w", err)
 		}
+		onDone()
 	}
 
 	walletKey, err := a.StateAccountKey(ctx, params.Wallet, types.EmptyTSK)
