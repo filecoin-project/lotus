@@ -1230,7 +1230,7 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 	}
 	defer os.Remove(tmp) //nolint:errcheck
 
-	// geneate and import the UnixFS DAG into a filestore (positional reference) CAR.
+	// generate and import the UnixFS DAG into a filestore (positional reference) CAR.
 	root, err := a.createUnixFSFilestore(ctx, ref.Path, tmp)
 	if err != nil {
 		return xerrors.Errorf("failed to import file using unixfs: %w", err)
