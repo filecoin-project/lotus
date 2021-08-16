@@ -12,7 +12,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 
 	"github.com/docker/go-units"
 	"github.com/google/uuid"
@@ -414,10 +413,6 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 	}
 	defer lr.Close() //nolint:errcheck
 
-	if err := makeDealStaging(lr); err != nil {
-		return err
-	}
-
 	log.Info("Initializing libp2p identity")
 
 	p2pSk, err := makeHostKey(lr)
@@ -554,56 +549,6 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 		return err
 	}
 
-	return nil
-}
-
-func makeDealStaging(lr repo.LockedRepo) error {
-	dir := filepath.Join(lr.Path(), "deal-staging")
-	dirInfo, err := os.Stat(dir)
-	if err == nil {
-		if !dirInfo.IsDir() {
-			return xerrors.Errorf("%s is not a directory", dir)
-		}
-		// The dir exists already, below migration has already occurred.
-		return nil
-	}
-
-	// if the directory doesn't exist, create it
-	if os.IsNotExist(err) {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return xerrors.Errorf("failed to mk directory %s for deal staging: %w", dir, err)
-		}
-	} else { // if we failed for other reasons, abort.
-		return err
-	}
-
-	// if this is the first time we created the directory, symlink all staged deals into it. "Migration"
-	// get a list of files in the miner repo
-	dirEntries, err := os.ReadDir(lr.Path())
-	if err != nil {
-		return xerrors.Errorf("failed to list directory %s for deal staging: %w", lr.Path(), err)
-	}
-
-	for _, entry := range dirEntries {
-		// ignore directories, they are not the deals.
-		if entry.IsDir() {
-			continue
-		}
-		// the FileStore from fil-storage-market creates temporary staged deal files with the pattern "fstmp"
-		// https://github.com/filecoin-project/go-fil-markets/blob/00ff81e477d846ac0cb58a0c7d1c2e9afb5ee1db/filestore/filestore.go#L69
-		if strings.Contains(entry.Name(), "fstmp") {
-			// from the miner repo
-			oldPath := filepath.Join(lr.Path(), entry.Name())
-			// to its subdir "deal-staging"
-			newPath := filepath.Join(dir, entry.Name())
-			// create a symbolic link in the new deal staging directory to preserve existing staged deals.
-			// all future staged deals will be created here.
-			if err := os.Symlink(oldPath, newPath); err != nil {
-				return xerrors.Errorf("failed to symlink %s to %s: %w", oldPath, newPath, err)
-			}
-			log.Infow("symlinked staged deal", "oldPath", oldPath, "newPath", newPath)
-		}
-	}
 	return nil
 }
 
