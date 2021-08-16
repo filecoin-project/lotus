@@ -12,6 +12,7 @@ import (
 	"time"
 
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	unixfile "github.com/ipfs/go-unixfs/file"
 	"github.com/ipld/go-car"
 	carv2 "github.com/ipld/go-car/v2"
 	"github.com/ipld/go-car/v2/blockstore"
@@ -25,8 +26,6 @@ import (
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	files "github.com/ipfs/go-ipfs-files"
 	"github.com/ipfs/go-merkledag"
-	unixfile "github.com/ipfs/go-unixfs/file"
-
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
@@ -49,6 +48,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
+
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -784,7 +784,7 @@ type retrievalSubscribeEvent struct {
 	state rm.ClientDealState
 }
 
-func readSubscribeEvents(ctx context.Context, dealID retrievalmarket.DealID, subscribeEvents chan retrievalSubscribeEvent, events chan marketevents.RetrievalEvent) error {
+func consumeAllEvents(ctx context.Context, dealID retrievalmarket.DealID, subscribeEvents chan retrievalSubscribeEvent, events chan marketevents.RetrievalEvent) error {
 	for {
 		var subscribeEvent retrievalSubscribeEvent
 		select {
@@ -845,16 +845,18 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	//    the CARv1 (with ExtractV1File) or UnixFS export from it.
 
 	// this indicates we're proxying to IPFS.
-	proxyBss, isIPFS := a.RtvlBlockstoreAccessor.(*retrievaladapter.ProxyBlockstoreAccessor)
-	carBss, isCAR := a.RtvlBlockstoreAccessor.(*retrievaladapter.CARBlockstoreAccessor)
-
-	if !isIPFS && !isCAR {
-		finish(xerrors.Errorf("unsupported retrieval blockstore accessor"))
-		return
-	}
+	proxyBss, retrieveIntoIPFS := a.RtvlBlockstoreAccessor.(*retrievaladapter.ProxyBlockstoreAccessor)
+	carBss, retrieveIntoCAR := a.RtvlBlockstoreAccessor.(*retrievaladapter.CARBlockstoreAccessor)
 
 	carPath := order.FromLocalCAR
 	if carPath == "" {
+		if !retrieveIntoIPFS && !retrieveIntoCAR {
+			// we actually need to retrieve from the network, but we don't
+			// recognize the blockstore accessor.
+			finish(xerrors.Errorf("unsupported retrieval blockstore accessor"))
+			return
+		}
+
 		if order.MinerPeer == nil || order.MinerPeer.ID == "" {
 			mi, err := a.StateMinerInfo(ctx, order.Miner, types.EmptyTSK)
 			if err != nil {
@@ -891,7 +893,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		subscribeCtx, cancel := context.WithCancel(ctx)
 		defer cancel()
 		unsubscribe := a.Retrieval.SubscribeToEvents(func(event rm.ClientEvent, state rm.ClientDealState) {
-			// We'll check the deal IDs inside readSubscribeEvents.
+			// We'll check the deal IDs inside consumeAllEvents.
 			if state.PayloadCID.Equals(order.Root) {
 				select {
 				case <-subscribeCtx.Done():
@@ -918,7 +920,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			return
 		}
 
-		err = readSubscribeEvents(ctx, id, subscribeEvents, events)
+		err = consumeAllEvents(ctx, id, subscribeEvents, events)
 
 		unsubscribe()
 		if err != nil {
@@ -926,35 +928,39 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			return
 		}
 
-		carPath = carBss.PathFor(id)
+		if retrieveIntoCAR {
+			carPath = carBss.PathFor(id)
+		}
 	}
 
-	switch {
-	case ref == nil:
+	if ref == nil {
 		// If ref is nil, it only fetches the data into the configured blockstore
 		// (if fetching from network).
 		finish(nil)
 		return
+	}
 
-	case ref.IsCAR && isIPFS:
-		// generating a CARv1 from IPFS.
-		f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			finish(err)
+	// Are we outputting a CAR?
+	if ref.IsCAR {
+		if retrieveIntoIPFS {
+			// generating a CARv1 from IPFS.
+			f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
+			if err != nil {
+				finish(err)
+				return
+			}
+
+			bs := proxyBss.Blockstore
+			dags := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
+			err = car.WriteCar(ctx, dags, []cid.Cid{order.Root}, f)
+			if err != nil {
+				finish(err)
+				return
+			}
+			finish(f.Close())
 			return
 		}
 
-		bs := proxyBss.Blockstore
-		dags := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
-		err = car.WriteCar(ctx, dags, []cid.Cid{order.Root}, f)
-		if err != nil {
-			finish(err)
-			return
-		}
-		finish(f.Close())
-		return
-
-	case ref.IsCAR:
 		// generating a CARv1 from the CARv2 where we stored the retrieval.
 		err := carv2.ExtractV1File(carPath, ref.Path)
 		finish(err)
@@ -963,7 +969,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 
 	// we are extracting a UnixFS file.
 	var bs bstore.Blockstore
-	if isIPFS {
+	if retrieveIntoIPFS {
 		bs = proxyBss.Blockstore
 	} else {
 		cbs, err := stores.ReadOnlyFilestore(carPath)
