@@ -607,7 +607,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	df dtypes.StorageDealFilter,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
-	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(r.Path()))
+	store, err := piecefilestore.NewLocalFileStore(piecefilestore.OsPath(filepath.Join(r.Path(), "deal-staging")))
 	if err != nil {
 		return nil, err
 	}
