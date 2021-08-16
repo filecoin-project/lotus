@@ -1376,6 +1376,8 @@ COMMANDS:
    refs               List References to sectors
    update-state       ADVANCED: manually update the state of a sector, this may aid in error recovery
    pledge             store random data in a sector
+   check-expire       Inspect expiring sectors
+   renew              Renew expiring sectors while not exceeding each sector's max life
    extend             Extend sector expiration
    terminate          Terminate sector on-chain then remove (WARNING: This means losing power and collateral for the removed sector)
    remove             Forcefully remove a sector (WARNING: This means losing power and collateral for the removed sector (use 'terminate' for lower penalty))
@@ -1463,6 +1465,42 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner sectors check-expire
+```
+NAME:
+   lotus-miner sectors check-expire - Inspect expiring sectors
+
+USAGE:
+   lotus-miner sectors check-expire [command options] [arguments...]
+
+OPTIONS:
+   --cutoff value  skip sectors whose current expiration is more than <cutoff> epochs from now, defaults to 60 days (default: 172800)
+   --help, -h      show help (default: false)
+   
+```
+
+### lotus-miner sectors renew
+```
+NAME:
+   lotus-miner sectors renew - Renew expiring sectors while not exceeding each sector's max life
+
+USAGE:
+   lotus-miner sectors renew [command options] [arguments...]
+
+OPTIONS:
+   --from value            only consider sectors whose current expiration epoch is in the range of [from, to], <from> defaults to: now + 120 (1 hour) (default: 0)
+   --to value              only consider sectors whose current expiration epoch is in the range of [from, to], <to> defaults to: now + 92160 (32 days) (default: 0)
+   --sector-file value     provide a file containing one sector number in each line, ignoring above selecting criteria
+   --exclude value         optionally provide a file containing excluding sectors
+   --extension value       try to extend selected sectors by this number of epochs, defaults to 540 days (default: 1555200)
+   --new-expiration value  try to extend selected sectors to this epoch, ignoring extension (default: 0)
+   --tolerance value       don't try to extend sectors by fewer than this number of epochs, defaults to 7 days (default: 20160)
+   --max-fee value         use up to this amount of FIL for one message. pass this flag to avoid message congestion. (default: "0")
+   --really-do-it          pass this flag to really renew sectors, otherwise will only print out json representation of parameters (default: false)
+   --help, -h              show help (default: false)
    
 ```
 
