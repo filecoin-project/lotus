@@ -7,10 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/network"
-
-	"github.com/filecoin-project/lotus/chain/actors"
-
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -18,13 +14,16 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	"github.com/filecoin-project/lotus/node/config"
@@ -46,6 +45,7 @@ type CommitBatcherApi interface {
 	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorPreCommitOnChainInfo, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
 	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
+	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
 }
 
 type AggregateInput struct {
@@ -225,7 +225,7 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 	}
 
 	if individual {
-		res, err = b.processIndividually()
+		res, err = b.processIndividually(cfg)
 	} else {
 		res, err = b.processBatch(cfg)
 	}
@@ -338,9 +338,18 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting network version: %s", err)
 	}
 
-	aggFee := big.Div(big.Mul(policy.AggregateNetworkFee(nv, len(infos), bf), aggFeeNum), aggFeeDen)
+	aggFeeRaw, err := policy.AggregateNetworkFee(nv, len(infos), bf)
+	if err != nil {
+		log.Errorf("getting aggregate network fee: %s", err)
+		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting aggregate network fee: %s", err)
+	}
+	aggFee := big.Div(big.Mul(aggFeeRaw, aggFeeNum), aggFeeDen)
 
 	needFunds := big.Add(collateral, aggFee)
+	needFunds, err = collateralSendAmount(b.mctx, b.api, b.maddr, cfg, needFunds)
+	if err != nil {
+		return []sealiface.CommitBatchRes{res}, err
+	}
 
 	goodFunds := big.Add(maxFee, needFunds)
 
@@ -361,10 +370,24 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 	return []sealiface.CommitBatchRes{res}, nil
 }
 
-func (b *CommitBatcher) processIndividually() ([]sealiface.CommitBatchRes, error) {
+func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.CommitBatchRes, error) {
 	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't get miner info: %w", err)
+	}
+
+	avail := types.TotalFilecoinInt
+
+	if cfg.CollateralFromMinerBalance && !cfg.DisableCollateralFallback {
+		avail, err = b.api.StateMinerAvailableBalance(b.mctx, b.maddr, nil)
+		if err != nil {
+			return nil, xerrors.Errorf("getting available miner balance: %w", err)
+		}
+
+		avail = big.Sub(avail, cfg.AvailableBalanceBuffer)
+		if avail.LessThan(big.Zero()) {
+			avail = big.Zero()
+		}
 	}
 
 	tok, _, err := b.api.ChainHead(b.mctx)
@@ -380,7 +403,7 @@ func (b *CommitBatcher) processIndividually() ([]sealiface.CommitBatchRes, error
 			FailedSectors: map[abi.SectorNumber]string{},
 		}
 
-		mcid, err := b.processSingle(mi, sn, info, tok)
+		mcid, err := b.processSingle(cfg, mi, &avail, sn, info, tok)
 		if err != nil {
 			log.Errorf("process single error: %+v", err) // todo: return to user
 			r.FailedSectors[sn] = err.Error()
@@ -394,7 +417,7 @@ func (b *CommitBatcher) processIndividually() ([]sealiface.CommitBatchRes, error
 	return res, nil
 }
 
-func (b *CommitBatcher) processSingle(mi miner.MinerInfo, sn abi.SectorNumber, info AggregateInput, tok TipSetToken) (cid.Cid, error) {
+func (b *CommitBatcher) processSingle(cfg sealiface.Config, mi miner.MinerInfo, avail *abi.TokenAmount, sn abi.SectorNumber, info AggregateInput, tok TipSetToken) (cid.Cid, error) {
 	enc := new(bytes.Buffer)
 	params := &miner.ProveCommitSectorParams{
 		SectorNumber: sn,
@@ -408,6 +431,19 @@ func (b *CommitBatcher) processSingle(mi miner.MinerInfo, sn abi.SectorNumber, i
 	collateral, err := b.getSectorCollateral(sn, tok)
 	if err != nil {
 		return cid.Undef, err
+	}
+
+	if cfg.CollateralFromMinerBalance {
+		c := big.Sub(collateral, *avail)
+		*avail = big.Sub(*avail, collateral)
+		collateral = c
+
+		if collateral.LessThan(big.Zero()) {
+			collateral = big.Zero()
+		}
+		if (*avail).LessThan(big.Zero()) {
+			*avail = big.Zero()
+		}
 	}
 
 	goodFunds := big.Add(collateral, big.Int(b.feeCfg.MaxCommitGasFee))
@@ -527,8 +563,18 @@ func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
 		log.Errorf("getting precommit info: %s", err)
 		return time.Now(), err
 	}
+	av, err := actors.VersionForNetwork(nv)
+	if err != nil {
+		log.Errorf("unsupported network vrsion: %s", err)
+		return time.Now(), err
+	}
+	mpcd, err := policy.GetMaxProveCommitDuration(av, si.SectorType)
+	if err != nil {
+		log.Errorf("getting max prove commit duration: %s", err)
+		return time.Now(), err
+	}
 
-	cutoffEpoch := pci.PreCommitEpoch + policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), si.SectorType)
+	cutoffEpoch := pci.PreCommitEpoch + mpcd
 
 	for _, p := range si.Pieces {
 		if p.DealInfo == nil {

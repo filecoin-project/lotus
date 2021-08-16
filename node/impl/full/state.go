@@ -705,7 +705,7 @@ func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.
 		return nil, xerrors.Errorf("failed to load new state tree: %w", err)
 	}
 
-	return state.Diff(oldTree, newTree)
+	return state.Diff(ctx, oldTree, newTree)
 }
 
 func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MinerSectors, error) {
@@ -1332,13 +1332,16 @@ func (m *StateModule) StateDealProviderCollateralBounds(ctx context.Context, siz
 		return api.DealCollateralBounds{}, xerrors.Errorf("getting reward baseline power: %w", err)
 	}
 
-	min, max := policy.DealProviderCollateralBounds(size,
+	min, max, err := policy.DealProviderCollateralBounds(size,
 		verified,
 		powClaim.RawBytePower,
 		powClaim.QualityAdjPower,
 		rewPow,
 		circ.FilCirculating,
 		m.StateManager.GetNtwkVersion(ctx, ts.Height()))
+	if err != nil {
+		return api.DealCollateralBounds{}, xerrors.Errorf("getting deal provider coll bounds: %w", err)
+	}
 	return api.DealCollateralBounds{
 		Min: types.BigDiv(types.BigMul(min, dealProviderCollateralNum), dealProviderCollateralDen),
 		Max: max,

@@ -8,12 +8,21 @@ import (
 	"github.com/multiformats/go-multihash"
 )
 
-func TestBoltMarkSet(t *testing.T) {
-	testMarkSet(t, "bolt")
+func TestMapMarkSet(t *testing.T) {
+	testMarkSet(t, "map")
 }
 
 func TestBloomMarkSet(t *testing.T) {
 	testMarkSet(t, "bloom")
+}
+
+func TestBadgerMarkSet(t *testing.T) {
+	bs := badgerMarkSetBatchSize
+	badgerMarkSetBatchSize = 1
+	t.Cleanup(func() {
+		badgerMarkSetBatchSize = bs
+	})
+	testMarkSet(t, "badger")
 }
 
 func testMarkSet(t *testing.T, lsType string) {

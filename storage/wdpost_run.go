@@ -659,6 +659,7 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, di dline.Info, t
 
 				if !bytes.Equal(checkRand, rand) {
 					log.Warnw("windowpost randomness changed", "old", rand, "new", checkRand, "ts-height", ts.Height(), "challenge-height", di.Challenge, "tsk", ts.Key())
+					rand = checkRand
 					continue
 				}
 
@@ -738,8 +739,12 @@ func (s *WindowPoStScheduler) batchPartitions(partitions []api.Partition, nv net
 	}
 
 	// Also respect the AddressedPartitionsMax (which is the same as DeclarationsMax (which is all really just MaxPartitionsPerDeadline))
-	if partitionsPerMsg > policy.GetDeclarationsMax(nv) {
-		partitionsPerMsg = policy.GetDeclarationsMax(nv)
+	declMax, err := policy.GetDeclarationsMax(nv)
+	if err != nil {
+		return nil, xerrors.Errorf("getting max declarations: %w", err)
+	}
+	if partitionsPerMsg > declMax {
+		partitionsPerMsg = declMax
 	}
 
 	// The number of messages will be:

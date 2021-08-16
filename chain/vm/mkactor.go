@@ -54,7 +54,12 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, add
 		return nil, address.Undef, aerrors.Escalate(err, "registering actor address")
 	}
 
-	act, aerr := makeActor(actors.VersionForNetwork(rt.NetworkVersion()), addr)
+	av, err := actors.VersionForNetwork(rt.NetworkVersion())
+	if err != nil {
+		return nil, address.Undef, aerrors.Escalate(err, "unsupported network version")
+	}
+
+	act, aerr := makeActor(av, addr)
 	if aerr != nil {
 		return nil, address.Undef, aerr
 	}

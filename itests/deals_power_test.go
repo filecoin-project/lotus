@@ -24,13 +24,13 @@ func TestFirstDealEnablesMining(t *testing.T) {
 
 	ens := kit.NewEnsemble(t, kit.MockProofs())
 	ens.FullNode(&client)
-	ens.Miner(&genMiner, &client)
-	ens.Miner(&provider, &client, kit.PresealSectors(0))
+	ens.Miner(&genMiner, &client, kit.WithAllSubsystems())
+	ens.Miner(&provider, &client, kit.WithAllSubsystems(), kit.PresealSectors(0))
 	ens.Start().InterconnectAll().BeginMining(50 * time.Millisecond)
 
 	ctx := context.Background()
 
-	dh := kit.NewDealHarness(t, &client, &provider)
+	dh := kit.NewDealHarness(t, &client, &provider, &provider)
 
 	ref, _ := client.CreateImportFile(ctx, 5, 0)
 
@@ -50,7 +50,9 @@ func TestFirstDealEnablesMining(t *testing.T) {
 	}()
 
 	// now perform the deal.
-	deal := dh.StartDeal(ctx, ref.Root, false, 0)
+	dp := dh.DefaultStartDealParams()
+	dp.Data.Root = ref.Root
+	deal := dh.StartDeal(ctx, dp)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)

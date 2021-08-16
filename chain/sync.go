@@ -727,6 +727,11 @@ func (syncer *Syncer) ValidateBlock(ctx context.Context, b *types.FullBlock, use
 	}
 
 	// fast checks first
+
+	if h.Height <= baseTs.Height() {
+		return xerrors.Errorf("block height not greater than parent height: %d != %d", h.Height, baseTs.Height())
+	}
+
 	nulls := h.Height - (baseTs.Height() + 1)
 	if tgtTs := baseTs.MinTimestamp() + build.BlockDelaySecs*uint64(nulls+1); h.Timestamp != tgtTs {
 		return xerrors.Errorf("block has wrong timestamp: %d != %d", h.Timestamp, tgtTs)
@@ -1054,6 +1059,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		return xerrors.Errorf("failed to load base state tree: %w", err)
 	}
 
+	nv := syncer.sm.GetNtwkVersion(ctx, b.Header.Height)
 	pl := vm.PricelistByEpoch(baseTs.Height())
 	var sumGasLimit int64
 	checkMsg := func(msg types.ChainMsg) error {
@@ -1061,7 +1067,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 
 		// Phase 1: syntactic validation, as defined in the spec
 		minGas := pl.OnChainMessage(msg.ChainLength())
-		if err := m.ValidForBlockInclusion(minGas.Total(), syncer.sm.GetNtwkVersion(ctx, b.Header.Height)); err != nil {
+		if err := m.ValidForBlockInclusion(minGas.Total(), nv); err != nil {
 			return err
 		}
 
@@ -1075,7 +1081,7 @@ func (syncer *Syncer) checkBlockMessages(ctx context.Context, b *types.FullBlock
 		// Phase 2: (Partial) semantic validation:
 		// the sender exists and is an account actor, and the nonces make sense
 		var sender address.Address
-		if syncer.sm.GetNtwkVersion(ctx, b.Header.Height) >= network.Version13 {
+		if nv >= network.Version13 {
 			sender, err = st.LookupID(m.From)
 			if err != nil {
 				return err

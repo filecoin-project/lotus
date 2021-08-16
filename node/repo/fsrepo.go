@@ -49,13 +49,31 @@ const (
 	StorageMiner
 	Worker
 	Wallet
+	Markets
 )
+
+func (t RepoType) String() string {
+	s := [...]string{
+		"__invalid__",
+		"FullNode",
+		"StorageMiner",
+		"Worker",
+		"Wallet",
+		"Markets",
+	}
+	if t < 0 || int(t) > len(s) {
+		return "__invalid__"
+	}
+	return s[t]
+}
 
 func defConfForType(t RepoType) interface{} {
 	switch t {
 	case FullNode:
 		return config.DefaultFullNode()
-	case StorageMiner:
+	case StorageMiner, Markets:
+		// markets is a specialised miner service
+		// this taxonomy needs to be cleaned up
 		return config.DefaultStorageMiner()
 	case Worker:
 		return &struct{}{}
@@ -325,6 +343,21 @@ func (fsr *fsLockedRepo) Blockstore(ctx context.Context, domain BlockstoreDomain
 		if err != nil {
 			fsr.bsErr = err
 			return
+		}
+
+		//
+		// Tri-state environment variable LOTUS_CHAIN_BADGERSTORE_DISABLE_FSYNC
+		// - unset == the default (currently fsync enabled)
+		// - set with a false-y value == fsync enabled no matter what a future default is
+		// - set with any other value == fsync is disabled ignored defaults (recommended for day-to-day use)
+		//
+		if nosyncBs, nosyncBsSet := os.LookupEnv("LOTUS_CHAIN_BADGERSTORE_DISABLE_FSYNC"); nosyncBsSet {
+			nosyncBs = strings.ToLower(nosyncBs)
+			if nosyncBs == "" || nosyncBs == "0" || nosyncBs == "false" || nosyncBs == "no" {
+				opts.SyncWrites = true
+			} else {
+				opts.SyncWrites = false
+			}
 		}
 
 		bs, err := badgerbs.Open(opts)

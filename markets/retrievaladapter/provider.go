@@ -4,37 +4,42 @@ import (
 	"context"
 	"io"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
 
 	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	"github.com/filecoin-project/lotus/storage"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-state-types/abi"
 	specstorage "github.com/filecoin-project/specs-storage/storage"
+
+	logging "github.com/ipfs/go-log/v2"
 )
 
 var log = logging.Logger("retrievaladapter")
 
 type retrievalProviderNode struct {
-	miner *storage.Miner
+	maddr address.Address
+	secb  sectorblocks.SectorBuilder
 	pp    sectorstorage.PieceProvider
 	full  v1api.FullNode
 }
 
 // NewRetrievalProviderNode returns a new node adapter for a retrieval provider that talks to the
 // Lotus Node
-func NewRetrievalProviderNode(miner *storage.Miner, pp sectorstorage.PieceProvider, full v1api.FullNode) retrievalmarket.RetrievalProviderNode {
-	return &retrievalProviderNode{miner, pp, full}
+func NewRetrievalProviderNode(maddr dtypes.MinerAddress, secb sectorblocks.SectorBuilder, pp sectorstorage.PieceProvider, full v1api.FullNode) retrievalmarket.RetrievalProviderNode {
+	return &retrievalProviderNode{address.Address(maddr), secb, pp, full}
 }
 
 func (rpn *retrievalProviderNode) GetMinerWorkerAddress(ctx context.Context, miner address.Address, tok shared.TipSetToken) (address.Address, error) {
@@ -49,13 +54,12 @@ func (rpn *retrievalProviderNode) GetMinerWorkerAddress(ctx context.Context, min
 
 func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
 	log.Debugf("get sector %d, offset %d, length %d", sectorID, offset, length)
-
-	si, err := rpn.miner.GetSectorInfo(sectorID)
+	si, err := rpn.sectorsStatus(ctx, sectorID, false)
 	if err != nil {
 		return nil, err
 	}
 
-	mid, err := address.IDFromAddress(rpn.miner.Address())
+	mid, err := address.IDFromAddress(rpn.maddr)
 	if err != nil {
 		return nil, err
 	}
@@ -65,7 +69,7 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi
 			Miner:  abi.ActorID(mid),
 			Number: sectorID,
 		},
-		ProofType: si.SectorType,
+		ProofType: si.SealProof,
 	}
 
 	var commD cid.Cid
@@ -75,7 +79,7 @@ func (rpn *retrievalProviderNode) UnsealSector(ctx context.Context, sectorID abi
 
 	// Get a reader for the piece, unsealing the piece if necessary
 	log.Debugf("read piece in sector %d, offset %d, length %d from miner %d", sectorID, offset, length, mid)
-	r, unsealed, err := rpn.pp.ReadPiece(ctx, ref, storiface.UnpaddedByteIndex(offset), length, si.TicketValue, commD)
+	r, unsealed, err := rpn.pp.ReadPiece(ctx, ref, storiface.UnpaddedByteIndex(offset), length, si.Ticket.Value, commD)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to unseal piece from sector %d: %w", sectorID, err)
 	}
@@ -101,12 +105,12 @@ func (rpn *retrievalProviderNode) GetChainHead(ctx context.Context) (shared.TipS
 }
 
 func (rpn *retrievalProviderNode) IsUnsealed(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (bool, error) {
-	si, err := rpn.miner.GetSectorInfo(sectorID)
+	si, err := rpn.sectorsStatus(ctx, sectorID, true)
 	if err != nil {
-		return false, xerrors.Errorf("failed to get sectorinfo, err=%s", err)
+		return false, xerrors.Errorf("failed to get sector info: %w", err)
 	}
 
-	mid, err := address.IDFromAddress(rpn.miner.Address())
+	mid, err := address.IDFromAddress(rpn.maddr)
 	if err != nil {
 		return false, err
 	}
@@ -116,7 +120,7 @@ func (rpn *retrievalProviderNode) IsUnsealed(ctx context.Context, sectorID abi.S
 			Miner:  abi.ActorID(mid),
 			Number: sectorID,
 		},
-		ProofType: si.SectorType,
+		ProofType: si.SealProof,
 	}
 
 	log.Debugf("will call IsUnsealed now sector=%+v, offset=%d, size=%d", sectorID, offset, length)
@@ -135,10 +139,14 @@ func (rpn *retrievalProviderNode) GetRetrievalPricingInput(ctx context.Context, 
 	}
 	tsk := head.Key()
 
+	var mErr error
+
 	for _, dealID := range storageDeals {
 		ds, err := rpn.full.StateMarketStorageDeal(ctx, dealID, tsk)
 		if err != nil {
-			return resp, xerrors.Errorf("failed to look up deal %d on chain: err=%w", dealID, err)
+			log.Warnf("failed to look up deal %d on chain: err=%w", dealID, err)
+			mErr = multierror.Append(mErr, err)
+			continue
 		}
 		if ds.Proposal.VerifiedDeal {
 			resp.VerifiedDeal = true
@@ -158,8 +166,46 @@ func (rpn *retrievalProviderNode) GetRetrievalPricingInput(ctx context.Context, 
 	// Note: The piece size can never actually be zero. We only use it to here
 	// to assert that we didn't find a matching piece.
 	if resp.PieceSize == 0 {
-		return resp, xerrors.New("failed to find matching piece")
+		if mErr == nil {
+			return resp, xerrors.New("failed to find matching piece")
+		}
+
+		return resp, xerrors.Errorf("failed to fetch storage deal state: %w", mErr)
 	}
 
 	return resp, nil
+}
+
+func (rpn *retrievalProviderNode) sectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {
+	sInfo, err := rpn.secb.SectorsStatus(ctx, sid, false)
+	if err != nil {
+		return api.SectorInfo{}, err
+	}
+
+	if !showOnChainInfo {
+		return sInfo, nil
+	}
+
+	onChainInfo, err := rpn.full.StateSectorGetInfo(ctx, rpn.maddr, sid, types.EmptyTSK)
+	if err != nil {
+		return sInfo, err
+	}
+	if onChainInfo == nil {
+		return sInfo, nil
+	}
+	sInfo.SealProof = onChainInfo.SealProof
+	sInfo.Activation = onChainInfo.Activation
+	sInfo.Expiration = onChainInfo.Expiration
+	sInfo.DealWeight = onChainInfo.DealWeight
+	sInfo.VerifiedDealWeight = onChainInfo.VerifiedDealWeight
+	sInfo.InitialPledge = onChainInfo.InitialPledge
+
+	ex, err := rpn.full.StateSectorExpiration(ctx, rpn.maddr, sid, types.EmptyTSK)
+	if err != nil {
+		return sInfo, nil
+	}
+	sInfo.OnTime = ex.OnTime
+	sInfo.Early = ex.Early
+
+	return sInfo, nil
 }

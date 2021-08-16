@@ -94,10 +94,13 @@
   * [ReturnSealPreCommit1](#ReturnSealPreCommit1)
   * [ReturnSealPreCommit2](#ReturnSealPreCommit2)
   * [ReturnUnsealPiece](#ReturnUnsealPiece)
+* [Runtime](#Runtime)
+  * [RuntimeSubsystems](#RuntimeSubsystems)
 * [Sealing](#Sealing)
   * [SealingAbort](#SealingAbort)
   * [SealingSchedDiag](#SealingSchedDiag)
 * [Sector](#Sector)
+  * [SectorAddPieceToAny](#SectorAddPieceToAny)
   * [SectorCommitFlush](#SectorCommitFlush)
   * [SectorCommitPending](#SectorCommitPending)
   * [SectorGetExpectedSealDuration](#SectorGetExpectedSealDuration)
@@ -118,6 +121,7 @@
   * [SectorsRefs](#SectorsRefs)
   * [SectorsStatus](#SectorsStatus)
   * [SectorsSummary](#SectorsSummary)
+  * [SectorsUnsealPiece](#SectorsUnsealPiece)
   * [SectorsUpdate](#SectorsUpdate)
 * [Storage](#Storage)
   * [StorageAddLocal](#StorageAddLocal)
@@ -227,6 +231,7 @@ Response:
   "PreCommitControl": null,
   "CommitControl": null,
   "TerminateControl": null,
+  "DealPublishControl": null,
   "DisableOwnerFallback": true,
   "DisableWorkerFallback": true
 }
@@ -1519,6 +1524,28 @@ Inputs:
 
 Response: `{}`
 
+## Runtime
+
+
+### RuntimeSubsystems
+RuntimeSubsystems returns the subsystems that are enabled
+in this instance.
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+[
+  "Mining",
+  "Sealing",
+  "SectorStorage",
+  "Markets"
+]
+```
+
 ## Sealing
 
 
@@ -1559,6 +1586,54 @@ Response: `{}`
 
 ## Sector
 
+
+### SectorAddPieceToAny
+Add piece to an open sector. If no sectors with enough space are open,
+either a new sector will be created, or this call will block until more
+sectors can be created.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  1024,
+  {},
+  {
+    "PublishCid": null,
+    "DealID": 5432,
+    "DealProposal": {
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "PieceSize": 1032,
+      "VerifiedDeal": true,
+      "Client": "f01234",
+      "Provider": "f01234",
+      "Label": "string value",
+      "StartEpoch": 10101,
+      "EndEpoch": 10101,
+      "StoragePricePerEpoch": "0",
+      "ProviderCollateral": "0",
+      "ClientCollateral": "0"
+    },
+    "DealSchedule": {
+      "StartEpoch": 10101,
+      "EndEpoch": 10101
+    },
+    "KeepUnsealed": true
+  }
+]
+```
+
+Response:
+```json
+{
+  "Sector": 9,
+  "Offset": 1032
+}
+```
 
 ### SectorCommitFlush
 SectorCommitFlush immediately sends a Commit message with sectors aggregated for Commit.
@@ -1859,6 +1934,30 @@ Response:
   "Proving": 120
 }
 ```
+
+### SectorsUnsealPiece
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
+  },
+  1040384,
+  1024,
+  null,
+  null
+]
+```
+
+Response: `{}`
 
 ### SectorsUpdate
 

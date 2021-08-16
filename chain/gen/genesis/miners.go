@@ -81,7 +81,10 @@ func mkFakedSigSyscalls(base vm.SyscallBuilder) vm.SyscallBuilder {
 func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid, miners []genesis.Miner, nv network.Version) (cid.Cid, error) {
 
 	cst := cbor.NewCborStore(cs.StateBlockstore())
-	av := actors.VersionForNetwork(nv)
+	av, err := actors.VersionForNetwork(nv)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to get network version: %w", err)
+	}
 
 	csc := func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error) {
 		return big.Zero(), nil
@@ -291,7 +294,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sroot cid.Cid
 			return cid.Undef, xerrors.Errorf("setting power state: %w", err)
 		}
 
-		rewact, err := SetupRewardActor(ctx, cs.StateBlockstore(), big.Zero(), actors.VersionForNetwork(nv))
+		rewact, err := SetupRewardActor(ctx, cs.StateBlockstore(), big.Zero(), av)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("setup reward actor: %w", err)
 		}

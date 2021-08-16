@@ -7,7 +7,6 @@ import (
 	"syscall"
 
 	"github.com/detailyang/go-fallocate"
-	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
@@ -15,6 +14,8 @@ import (
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+
+	logging "github.com/ipfs/go-log/v2"
 )
 
 var log = logging.Logger("partialfile")
