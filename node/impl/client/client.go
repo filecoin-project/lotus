@@ -405,15 +405,12 @@ func (a *API) newDealInfoWithTransfer(transferCh *api.DataTransferChannel, v sto
 	}
 }
 
-func (a *API) ClientHasLocal(ctx context.Context, root cid.Cid) (bool, error) {
-	// TODO: check if we have the ENTIRE dag
-	fc, err := a.importManager().CARPathFor(root)
+func (a *API) ClientHasLocal(_ context.Context, root cid.Cid) (bool, error) {
+	_, onDone, err := a.dealBlockstore(root)
 	if err != nil {
 		return false, err
 	}
-	if len(fc) == 0 {
-		return false, nil
-	}
+	onDone()
 	return true, nil
 }
 
@@ -487,7 +484,6 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, paylo
 	}
 }
 
-// TODO check
 func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.ImportRes, err error) {
 	var (
 		imgr    = a.importManager()
@@ -1144,29 +1140,16 @@ func (w *lenWriter) Write(p []byte) (n int, err error) {
 }
 
 func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, error) {
-	var bs bstore.Blockstore
-
-	// pick the source blockstore; either the ipfs blockstore, or an import CARv2 file.
-	switch acc := a.StorageBlockstoreAccessor.(type) {
-	case *storageadapter.ImportsBlockstoreAccessor:
-		var err error
-		bs, err = acc.Get(root)
-		if err != nil {
-			return api.DataSize{}, xerrors.Errorf("no import found for root %s: %w", root, err)
-		}
-		defer acc.Done(root) //nolint:errcheck
-
-	case *storageadapter.ProxyBlockstoreAccessor:
-		bs = acc.Blockstore
-
-	default:
-		return api.DataSize{}, xerrors.Errorf("unsupported blockstore accessor type: %T", acc)
+	bs, onDone, err := a.dealBlockstore(root)
+	if err != nil {
+		return api.DataSize{}, err
 	}
+	defer onDone()
 
 	dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
 
 	var w lenWriter
-	err := car.WriteCar(ctx, dag, []cid.Cid{root}, &w)
+	err = car.WriteCar(ctx, dag, []cid.Cid{root}, &w)
 	if err != nil {
 		return api.DataSize{}, err
 	}
@@ -1180,21 +1163,13 @@ func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, e
 }
 
 func (a *API) ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCIDSize, error) {
-	path, err := a.importManager().CARPathFor(root)
+	bs, onDone, err := a.dealBlockstore(root)
 	if err != nil {
-		return api.DataCIDSize{}, xerrors.Errorf("failed to find CARv2 file for root: %w", err)
+		return api.DataCIDSize{}, err
 	}
-	if len(path) == 0 {
-		return api.DataCIDSize{}, xerrors.New("no CARv2 file for root")
-	}
+	defer onDone()
 
-	fs, err := stores.ReadOnlyFilestore(path)
-	if err != nil {
-		return api.DataCIDSize{}, xerrors.Errorf("failed to open filestore from carv2 in path %s: %w", path, err)
-	}
-	defer fs.Close() //nolint:errcheck
-
-	dag := merkledag.NewDAGService(blockservice.New(fs, offline.Exchange(fs)))
+	dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
 	w := &writer.Writer{}
 	bw := bufio.NewWriterSize(w, int(writer.CommPBuf))
 
@@ -1315,4 +1290,28 @@ func (a *API) ClientGetDealStatus(ctx context.Context, statusCode uint64) (strin
 	}
 
 	return ststr, nil
+}
+
+// dealBlockstore picks the source blockstore for a storage deal; either the
+// IPFS blockstore, or an import CARv2 file. It also returns a function that
+// must be called when done.
+func (a *API) dealBlockstore(root cid.Cid) (bstore.Blockstore, func(), error) {
+	switch acc := a.StorageBlockstoreAccessor.(type) {
+	case *storageadapter.ImportsBlockstoreAccessor:
+		bs, err := acc.Get(root)
+		if err != nil {
+			return nil, nil, xerrors.Errorf("no import found for root %s: %w", root, err)
+		}
+
+		doneFn := func() {
+			_ = acc.Done(root) //nolint:errcheck
+		}
+		return bs, doneFn, nil
+
+	case *storageadapter.ProxyBlockstoreAccessor:
+		return acc.Blockstore, func() {}, nil
+
+	default:
+		return nil, nil, xerrors.Errorf("unsupported blockstore accessor type: %T", acc)
+	}
 }
