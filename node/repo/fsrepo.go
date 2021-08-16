@@ -147,7 +147,7 @@ func (fsr *FsRepo) SetConfigPath(cfgPath string) {
 	fsr.configPath = cfgPath
 }
 
-func (fsr *FsRepo) Exists() (bool, error) {
+func (fsr *FsRepo) Exists(t RepoType) (bool, error) {
 	dsAbsent, err := fsr.datastoreAbsent()
 	if err != nil {
 		return false, err
@@ -159,6 +159,16 @@ func (fsr *FsRepo) Exists() (bool, error) {
 	vabsent, err := fsr.versionAbsent()
 	if err != nil {
 		return false, err
+	}
+	if vabsent { // setup version file
+		if err := fsr.initVersion(t); err != nil {
+			return false, err
+		}
+		// check again after init
+		vabsent, err = fsr.versionAbsent()
+		if err != nil {
+			return false, err
+		}
 	}
 	return !(dsAbsent && ksAbsent && vabsent), err
 }
@@ -192,7 +202,7 @@ func (fsr *FsRepo) versionAbsent() (bool, error) {
 }
 
 func (fsr *FsRepo) Init(t RepoType) error {
-	exist, err := fsr.Exists()
+	exist, err := fsr.Exists(t)
 	if err != nil {
 		return err
 	}

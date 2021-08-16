@@ -180,7 +180,7 @@ var initCmd = &cli.Command{
 			return err
 		}
 
-		ok, err := r.Exists()
+		ok, err := r.Exists(repo.StorageMiner)
 		if err != nil {
 			return err
 		}

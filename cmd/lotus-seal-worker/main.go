@@ -265,7 +265,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		ok, err := r.Exists()
+		ok, err := r.Exists(repo.Worker)
 		if err != nil {
 			return err
 		}
