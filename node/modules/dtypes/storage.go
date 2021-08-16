@@ -1,22 +1,18 @@
 package dtypes
 
 import (
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-statestore"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-graphsync"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
-	format "github.com/ipfs/go-ipld-format"
 
-	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
-	"github.com/filecoin-project/go-multistore"
-
-	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
-	"github.com/filecoin-project/go-statestore"
+	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/node/repo/importmgr"
-	"github.com/filecoin-project/lotus/node/repo/retrievalstoremgr"
+	"github.com/filecoin-project/lotus/node/repo/imports"
 )
 
 // MetadataDS stores metadata. By default it's namespaced under /metadata in
@@ -71,13 +67,11 @@ type (
 type ChainBitswap exchange.Interface
 type ChainBlockService bserv.BlockService
 
-type ClientMultiDstore *multistore.MultiStore
-type ClientImportMgr *importmgr.Mgr
+type ClientImportMgr *imports.Manager
 type ClientBlockstore blockstore.BasicBlockstore
 type ClientDealStore *statestore.StateStore
 type ClientRequestValidator *requestvalidation.UnifiedRequestValidator
 type ClientDatastore datastore.Batching
-type ClientRetrievalStoreManager retrievalstoremgr.RetrievalStoreManager
 
 type Graphsync graphsync.GraphExchange
 
@@ -92,7 +86,5 @@ type ProviderRequestValidator *requestvalidation.UnifiedRequestValidator
 // ProviderDataTransfer is a data transfer manager for the provider
 type ProviderDataTransfer datatransfer.Manager
 
-type StagingDAG format.DAGService
 type StagingBlockstore blockstore.BasicBlockstore
 type StagingGraphsync graphsync.GraphExchange
-type StagingMultiDstore *multistore.MultiStore

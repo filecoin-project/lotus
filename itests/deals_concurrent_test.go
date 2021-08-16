@@ -108,7 +108,7 @@ func TestDealCyclesConcurrent(t *testing.T) {
 		ns := fmt.Sprintf("%d", n)
 		t.Run(ns+"-fastretrieval-CAR", func(t *testing.T) { runTest(t, n, true, true) })
 		t.Run(ns+"-fastretrieval-NoCAR", func(t *testing.T) { runTest(t, n, true, false) })
-		t.Run(ns+"-stdretrieval-CAR", func(t *testing.T) { runTest(t, n, true, false) })
+		t.Run(ns+"-stdretrieval-CAR", func(t *testing.T) { runTest(t, n, false, true) })
 		t.Run(ns+"-stdretrieval-NoCAR", func(t *testing.T) { runTest(t, n, false, false) })
 	}
 }

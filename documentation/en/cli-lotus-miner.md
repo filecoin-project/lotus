@@ -29,6 +29,7 @@ COMMANDS:
      storage-deals    Manage storage deals and related configuration
      retrieval-deals  Manage retrieval deals and related configuration
      data-transfers   Manage data transfers
+     dagstore         Manage the dagstore on the markets subsystem
    NETWORK:
      net  Manage P2P Network
    RETRIEVAL:
@@ -997,6 +998,100 @@ OPTIONS:
    --initiator             specify only transfers where peer is/is not initiator (default: false)
    --cancel-timeout value  time to wait for cancel to be sent to client (default: 5s)
    --help, -h              show help (default: false)
+   
+```
+
+## lotus-miner dagstore
+```
+NAME:
+   lotus-miner dagstore - Manage the dagstore on the markets subsystem
+
+USAGE:
+   lotus-miner dagstore command [command options] [arguments...]
+
+COMMANDS:
+   list-shards       List all shards known to the dagstore, with their current status
+   initialize-shard  Initialize the specified shard
+   recover-shard     Attempt to recover a shard in errored state
+   initialize-all    Initialize all uninitialized shards, streaming results as they're produced; only shards for unsealed pieces are initialized by default
+   gc                Garbage collect the dagstore
+   help, h           Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h     show help (default: false)
+   --version, -v  print the version (default: false)
+   
+```
+
+### lotus-miner dagstore list-shards
+```
+NAME:
+   lotus-miner dagstore list-shards - List all shards known to the dagstore, with their current status
+
+USAGE:
+   lotus-miner dagstore list-shards [command options] [arguments...]
+
+OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner dagstore initialize-shard
+```
+NAME:
+   lotus-miner dagstore initialize-shard - Initialize the specified shard
+
+USAGE:
+   lotus-miner dagstore initialize-shard [command options] [key]
+
+OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner dagstore recover-shard
+```
+NAME:
+   lotus-miner dagstore recover-shard - Attempt to recover a shard in errored state
+
+USAGE:
+   lotus-miner dagstore recover-shard [command options] [key]
+
+OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner dagstore initialize-all
+```
+NAME:
+   lotus-miner dagstore initialize-all - Initialize all uninitialized shards, streaming results as they're produced; only shards for unsealed pieces are initialized by default
+
+USAGE:
+   lotus-miner dagstore initialize-all [command options] [arguments...]
+
+OPTIONS:
+   --concurrency value  maximum shards to initialize concurrently at a time; use 0 for unlimited (default: 0)
+   --include-sealed     initialize sealed pieces as well (default: false)
+   --color              use color in display output (default: depends on output being a TTY)
+   --help, -h           show help (default: false)
+   
+```
+
+### lotus-miner dagstore gc
+```
+NAME:
+   lotus-miner dagstore gc - Garbage collect the dagstore
+
+USAGE:
+   lotus-miner dagstore gc [command options] [arguments...]
+
+OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
    
 ```
 

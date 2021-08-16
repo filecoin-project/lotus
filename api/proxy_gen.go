@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
@@ -29,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/repo/imports"
 	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -190,7 +190,7 @@ type FullNodeStruct struct {
 
 		ClientQueryAsk func(p0 context.Context, p1 peer.ID, p2 address.Address) (*storagemarket.StorageAsk, error) `perm:"read"`
 
-		ClientRemoveImport func(p0 context.Context, p1 multistore.StoreID) error `perm:"admin"`
+		ClientRemoveImport func(p0 context.Context, p1 imports.ID) error `perm:"admin"`
 
 		ClientRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
@@ -606,6 +606,16 @@ type StorageMinerStruct struct {
 		ComputeProof func(p0 context.Context, p1 []builtin.SectorInfo, p2 abi.PoStRandomness) ([]builtin.PoStProof, error) `perm:"read"`
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
+
+		DagstoreGC func(p0 context.Context) ([]DagstoreShardResult, error) `perm:"admin"`
+
+		DagstoreInitializeAll func(p0 context.Context, p1 DagstoreInitializeAllParams) (<-chan DagstoreInitializeAllEvent, error) `perm:"write"`
+
+		DagstoreInitializeShard func(p0 context.Context, p1 string) error `perm:"write"`
+
+		DagstoreListShards func(p0 context.Context) ([]DagstoreShardInfo, error) `perm:"read"`
+
+		DagstoreRecoverShard func(p0 context.Context, p1 string) error `perm:"write"`
 
 		DealsConsiderOfflineRetrievalDeals func(p0 context.Context) (bool, error) `perm:"admin"`
 
@@ -1494,14 +1504,14 @@ func (s *FullNodeStub) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 address
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientRemoveImport(p0 context.Context, p1 multistore.StoreID) error {
+func (s *FullNodeStruct) ClientRemoveImport(p0 context.Context, p1 imports.ID) error {
 	if s.Internal.ClientRemoveImport == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ClientRemoveImport(p0, p1)
 }
 
-func (s *FullNodeStub) ClientRemoveImport(p0 context.Context, p1 multistore.StoreID) error {
+func (s *FullNodeStub) ClientRemoveImport(p0 context.Context, p1 imports.ID) error {
 	return ErrNotSupported
 }
 
@@ -3592,6 +3602,61 @@ func (s *StorageMinerStruct) CreateBackup(p0 context.Context, p1 string) error {
 }
 
 func (s *StorageMinerStub) CreateBackup(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) DagstoreGC(p0 context.Context) ([]DagstoreShardResult, error) {
+	if s.Internal.DagstoreGC == nil {
+		return *new([]DagstoreShardResult), ErrNotSupported
+	}
+	return s.Internal.DagstoreGC(p0)
+}
+
+func (s *StorageMinerStub) DagstoreGC(p0 context.Context) ([]DagstoreShardResult, error) {
+	return *new([]DagstoreShardResult), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) DagstoreInitializeAll(p0 context.Context, p1 DagstoreInitializeAllParams) (<-chan DagstoreInitializeAllEvent, error) {
+	if s.Internal.DagstoreInitializeAll == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.DagstoreInitializeAll(p0, p1)
+}
+
+func (s *StorageMinerStub) DagstoreInitializeAll(p0 context.Context, p1 DagstoreInitializeAllParams) (<-chan DagstoreInitializeAllEvent, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *StorageMinerStruct) DagstoreInitializeShard(p0 context.Context, p1 string) error {
+	if s.Internal.DagstoreInitializeShard == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.DagstoreInitializeShard(p0, p1)
+}
+
+func (s *StorageMinerStub) DagstoreInitializeShard(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) DagstoreListShards(p0 context.Context) ([]DagstoreShardInfo, error) {
+	if s.Internal.DagstoreListShards == nil {
+		return *new([]DagstoreShardInfo), ErrNotSupported
+	}
+	return s.Internal.DagstoreListShards(p0)
+}
+
+func (s *StorageMinerStub) DagstoreListShards(p0 context.Context) ([]DagstoreShardInfo, error) {
+	return *new([]DagstoreShardInfo), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) DagstoreRecoverShard(p0 context.Context, p1 string) error {
+	if s.Internal.DagstoreRecoverShard == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.DagstoreRecoverShard(p0, p1)
+}
+
+func (s *StorageMinerStub) DagstoreRecoverShard(p0 context.Context, p1 string) error {
 	return ErrNotSupported
 }
 
