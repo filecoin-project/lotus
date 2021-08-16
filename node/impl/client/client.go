@@ -50,6 +50,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/stores"
 
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
+	"github.com/filecoin-project/lotus/markets/storageadapter"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
@@ -89,8 +90,9 @@ type API struct {
 	Chain        *store.ChainStore
 
 	// accessors for imports and retrievals.
-	Imports                dtypes.ClientImportMgr
-	RtvlBlockstoreAccessor retrievalmarket.BlockstoreAccessor
+	Imports                   dtypes.ClientImportMgr
+	StorageBlockstoreAccessor storagemarket.BlockstoreAccessor
+	RtvlBlockstoreAccessor    retrievalmarket.BlockstoreAccessor
 
 	DataTransfer dtypes.ClientDataTransfer
 	Host         host.Host
@@ -1154,24 +1156,33 @@ func (w *lenWriter) Write(p []byte) (n int, err error) {
 }
 
 func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, error) {
-	path, err := a.importManager().CARPathFor(root)
-	if err != nil {
-		return api.DataSize{}, xerrors.Errorf("failed to find CARv2 file for root: %w", err)
-	}
-	if len(path) == 0 {
-		return api.DataSize{}, xerrors.New("no CARv2 file for root")
+	var bs bstore.Blockstore
+
+	// pick the source blockstore; either the ipfs blockstore, or an import CARv2 file.
+	proxyBss, storeFromIPFS := a.StorageBlockstoreAccessor.(*storageadapter.ProxyBlockstoreAccessor)
+	if !storeFromIPFS {
+		path, err := a.importManager().CARPathFor(root)
+		if err != nil {
+			return api.DataSize{}, xerrors.Errorf("failed to find carv2 import for root: %w", err)
+		}
+		if len(path) == 0 {
+			return api.DataSize{}, xerrors.New("no carv2 import for root")
+		}
+
+		fs, err := stores.ReadOnlyFilestore(path)
+		if err != nil {
+			return api.DataSize{}, xerrors.Errorf("failed to open filestore from carv2 in path %s: %w", path, err)
+		}
+		defer fs.Close() //nolint:errcheck
+
+	} else {
+		bs = proxyBss.Blockstore
 	}
 
-	fs, err := stores.ReadOnlyFilestore(path)
-	if err != nil {
-		return api.DataSize{}, xerrors.Errorf("failed to open filestore from carv2 in path %s: %w", path, err)
-	}
-	defer fs.Close() //nolint:errcheck
+	dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
 
-	dag := merkledag.NewDAGService(blockservice.New(fs, offline.Exchange(fs)))
 	w := lenWriter(0)
-
-	err = car.WriteCar(ctx, dag, []cid.Cid{root}, &w)
+	err := car.WriteCar(ctx, dag, []cid.Cid{root}, &w)
 	if err != nil {
 		return api.DataSize{}, err
 	}
