@@ -145,7 +145,10 @@ func (fs *FundingStage) PackMessages(ctx context.Context, bb *blockbuilder.Block
 
 	store := bb.ActorStore()
 	epoch := bb.Height()
-	actorsVersion := bb.ActorsVersion()
+	actorsVersion, err := bb.ActorsVersion()
+	if err != nil {
+		return err
+	}
 
 	var accounts, multisigs int
 	defer func() {

@@ -6,6 +6,8 @@ import (
 	"os"
 	"sort"
 
+	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
 	"github.com/fatih/color"
@@ -171,6 +173,24 @@ var genesisVerifyCmd = &cli.Command{
 			}
 			fmt.Printf("]\n")
 		}
+
+		act, err := stree.GetActor(_init.Address)
+		if err != nil {
+			return err
+		}
+
+		ias, err := _init.Load(store, act)
+		if err != nil {
+			return err
+		}
+
+		nn, err := ias.NetworkName()
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("Network name: ", nn)
+
 		return nil
 	},
 }

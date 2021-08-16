@@ -28,7 +28,6 @@ var UpgradeAssemblyHeight = abi.ChainEpoch(-5)
 var UpgradeLiftoffHeight = abi.ChainEpoch(-6)
 
 var UpgradeKumquatHeight = abi.ChainEpoch(-7)
-var UpgradePricelistOopsHeight = abi.ChainEpoch(-8)
 var UpgradeCalicoHeight = abi.ChainEpoch(-9)
 var UpgradePersianHeight = abi.ChainEpoch(-10)
 var UpgradeOrangeHeight = abi.ChainEpoch(-11)

@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/messagepool"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
@@ -114,6 +115,7 @@ type Ensemble struct {
 		bms       map[*TestMiner]*BlockMiner
 	}
 	genesis struct {
+		version  network.Version
 		miners   []genesis.Miner
 		accounts []genesis.Actor
 	}
@@ -129,6 +131,12 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 
 	n := &Ensemble{t: t, options: &options}
 	n.active.bms = make(map[*TestMiner]*BlockMiner)
+
+	for _, up := range options.upgradeSchedule {
+		if up.Height < 0 {
+			n.genesis.version = up.Network
+		}
+	}
 
 	// add accounts from ensemble options to genesis.
 	for _, acc := range options.accounts {
@@ -173,7 +181,7 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 
 // Miner enrolls a new miner, using the provided full node for chain
 // interactions.
-func (n *Ensemble) Miner(miner *TestMiner, full *TestFullNode, opts ...NodeOpt) *Ensemble {
+func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeOpt) *Ensemble {
 	require.NotNil(n.t, full, "full node required when instantiating miner")
 
 	options := DefaultNodeOpts
@@ -208,11 +216,15 @@ func (n *Ensemble) Miner(miner *TestMiner, full *TestFullNode, opts ...NodeOpt) 
 			genm    *genesis.Miner
 		)
 
+		// Default 2KiB sector for the network version
+		proofType, err := miner.SealProofTypeFromSectorSize(2<<10, n.genesis.version)
+		require.NoError(n.t, err)
+
 		// create the preseal commitment.
 		if n.options.mockProofs {
-			genm, k, err = mockstorage.PreSeal(abi.RegisteredSealProof_StackedDrg2KiBV1, actorAddr, sectors)
+			genm, k, err = mockstorage.PreSeal(proofType, actorAddr, sectors)
 		} else {
-			genm, k, err = seed.PreSeal(actorAddr, abi.RegisteredSealProof_StackedDrg2KiBV1, 0, sectors, tdir, []byte("make genesis mem random"), nil, true)
+			genm, k, err = seed.PreSeal(actorAddr, proofType, 0, sectors, tdir, []byte("make genesis mem random"), nil, true)
 		}
 		require.NoError(n.t, err)
 
@@ -237,7 +249,7 @@ func (n *Ensemble) Miner(miner *TestMiner, full *TestFullNode, opts ...NodeOpt) 
 	rl, err := net.Listen("tcp", "127.0.0.1:")
 	require.NoError(n.t, err)
 
-	*miner = TestMiner{
+	*minerNode = TestMiner{
 		t:              n.t,
 		ActorAddr:      actorAddr,
 		OwnerKey:       ownerKey,
@@ -247,10 +259,10 @@ func (n *Ensemble) Miner(miner *TestMiner, full *TestFullNode, opts ...NodeOpt) 
 		RemoteListener: rl,
 	}
 
-	miner.Libp2p.PeerID = peerId
-	miner.Libp2p.PrivKey = privkey
+	minerNode.Libp2p.PeerID = peerId
+	minerNode.Libp2p.PrivKey = privkey
 
-	n.inactive.miners = append(n.inactive.miners, miner)
+	n.inactive.miners = append(n.inactive.miners, minerNode)
 
 	return n
 }
@@ -283,6 +295,9 @@ func (n *Ensemble) Start() *Ensemble {
 
 			// so that we subscribe to pubsub topics immediately
 			node.Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(true)),
+
+			// upgrades
+			node.Override(new(stmgr.UpgradeSchedule), n.options.upgradeSchedule),
 		}
 
 		// append any node builder options.
@@ -510,6 +525,9 @@ func (n *Ensemble) Start() *Ensemble {
 				scfg.Storage.ResourceFiltering = sectorstorage.ResourceFilteringDisabled
 				return scfg.Storage
 			}),
+
+			// upgrades
+			node.Override(new(stmgr.UpgradeSchedule), n.options.upgradeSchedule),
 		}
 
 		// append any node builder options.
@@ -693,7 +711,7 @@ func (n *Ensemble) generateGenesis() *genesis.Template {
 	}
 
 	templ := &genesis.Template{
-		NetworkVersion:   network.Version0,
+		NetworkVersion:   n.genesis.version,
 		Accounts:         n.genesis.accounts,
 		Miners:           n.genesis.miners,
 		NetworkName:      "test",

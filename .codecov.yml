@@ -1,19 +1,29 @@
 comment: off
 ignore:
-  - "**/cbor_gen.go"
-  - "api/test/**/*"
-  - "api/test/*"
-  - "gen/**/*"
-  - "gen/*"
-  - "cmd/lotus-shed/*"
-  - "cmd/tvx/*"
-  - "cmd/lotus-pcr/*"
-  - "cmd/tvx/*"
-  - "cmd/lotus-chainwatch/*"
-  - "cmd/lotus-health/*"
-  - "cmd/lotus-fountain/*"
-  - "cmd/lotus-townhall/*"
-  - "cmd/lotus-stats/*"
-  - "cmd/lotus-pcr/*"
+  # Auto generated
+  - "^.*_gen.go$"
+  - "^.*/mock_full.go$"
+  - "^chain/actors/builtin/[^/]*/(message|state|v)[0-4]\\.go$" # We test the latest version only.
+  # Tests
+  - "api/test/**"
+  - "conformance/**"
+  # Generators
+  - "gen/**"
+  - "chain/actors/agen/**"
+  # Non-critical utilities
+  - "cmd/lotus-shed/**"
+  - "cmd/tvx/**"
+  - "cmd/lotus-pcr/**"
+  - "cmd/tvx/**"
+  - "cmd/lotus-health/**"
+  - "cmd/lotus-fountain/**"
+  - "cmd/lotus-stats/**"
+  - "cmd/lotus-pcr/**"
+  - "cmd/lotus-sim/**"
+  - "cmd/lotus-bench/**"
+  - "cmd/lotus-seed/**"
+  - "cmd/chain-noise/**"
+  - "api/docgen/**"
+  - "api/docgen-openrpc/**"
 github_checks:
   annotations: false

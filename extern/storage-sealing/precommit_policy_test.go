@@ -9,7 +9,6 @@ import (
 	api "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
@@ -60,17 +59,14 @@ func fakePieceCid(t *testing.T) cid.Cid {
 func TestBasicPolicyEmptySector(t *testing.T) {
 	cfg := fakeConfigGetter(nil)
 	h := abi.ChainEpoch(55)
-	pBoundary := abi.ChainEpoch(0)
 	pBuffer := abi.ChainEpoch(2)
-	pcp := sealing.NewBasicPreCommitPolicy(&fakeChain{h: h}, cfg, pBoundary, pBuffer)
+	pcp := sealing.NewBasicPreCommitPolicy(&fakeChain{h: h}, cfg, pBuffer)
 	exp, err := pcp.Expiration(context.Background())
 
 	require.NoError(t, err)
 
 	// as set when there are no deal pieces
-	expected := h + policy.GetMaxSectorExpirationExtension() - (pBuffer * 2)
-	// as set just before returning within Expiration()
-	expected += miner.WPoStProvingPeriod - (expected % miner.WPoStProvingPeriod) + pBoundary - 1
+	expected := h + policy.GetMaxSectorExpirationExtension() - pBuffer
 	assert.Equal(t, int(expected), int(exp))
 }
 
@@ -80,27 +76,23 @@ func TestCustomCCSectorConfig(t *testing.T) {
 	cfgStub := fakeConfigStub{CCSectorLifetime: customLifetime}
 	cfg := fakeConfigGetter(&cfgStub)
 	h := abi.ChainEpoch(55)
-	pBoundary := abi.ChainEpoch(0)
 	pBuffer := abi.ChainEpoch(2)
-	pcp := sealing.NewBasicPreCommitPolicy(&fakeChain{h: h}, cfg, pBoundary, pBuffer)
+	pcp := sealing.NewBasicPreCommitPolicy(&fakeChain{h: h}, cfg, pBuffer)
 	exp, err := pcp.Expiration(context.Background())
 
 	require.NoError(t, err)
 
 	// as set when there are no deal pieces
-	expected := h + customLifetimeEpochs - (pBuffer * 2)
-	// as set just before returning within Expiration()
-	expected += miner.WPoStProvingPeriod - (expected % miner.WPoStProvingPeriod) + pBoundary - 1
+	expected := h + customLifetimeEpochs - pBuffer
 	assert.Equal(t, int(expected), int(exp))
 }
 
 func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
 	cfg := fakeConfigGetter(nil)
-	pPeriod := abi.ChainEpoch(11)
 	policy := sealing.NewBasicPreCommitPolicy(&fakeChain{
 		h: abi.ChainEpoch(55),
-	}, cfg, pPeriod, 2)
-	longestDealEpochEnd := abi.ChainEpoch(100)
+	}, cfg, 2)
+	longestDealEpochEnd := abi.ChainEpoch(547300)
 	pieces := []sealing.Piece{
 		{
 			Piece: abi.PieceInfo{
@@ -111,7 +103,7 @@ func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
 				DealID: abi.DealID(42),
 				DealSchedule: api.DealSchedule{
 					StartEpoch: abi.ChainEpoch(70),
-					EndEpoch:   abi.ChainEpoch(75),
+					EndEpoch:   abi.ChainEpoch(547275),
 				},
 			},
 		},
@@ -133,15 +125,14 @@ func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
 	exp, err := policy.Expiration(context.Background(), pieces...)
 	require.NoError(t, err)
 
-	expected := longestDealEpochEnd + miner.WPoStProvingPeriod - (longestDealEpochEnd % miner.WPoStProvingPeriod) + pPeriod - 1
-	assert.Equal(t, int(expected), int(exp))
+	assert.Equal(t, int(longestDealEpochEnd), int(exp))
 }
 
 func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
 	cfg := fakeConfigGetter(nil)
 	policy := sealing.NewBasicPreCommitPolicy(&fakeChain{
 		h: abi.ChainEpoch(55),
-	}, cfg, 0, 0)
+	}, cfg, 0)
 
 	pieces := []sealing.Piece{
 		{
@@ -162,14 +153,15 @@ func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
 	exp, err := policy.Expiration(context.Background(), pieces...)
 	require.NoError(t, err)
 
-	assert.Equal(t, 1558079, int(exp))
+	// Treated as a CC sector, so expiration becomes currEpoch + maxLifetime = 55 + 1555200
+	assert.Equal(t, 1555255, int(exp))
 }
 
 func TestMissingDealIsIgnored(t *testing.T) {
 	cfg := fakeConfigGetter(nil)
 	policy := sealing.NewBasicPreCommitPolicy(&fakeChain{
 		h: abi.ChainEpoch(55),
-	}, cfg, 11, 0)
+	}, cfg, 0)
 
 	pieces := []sealing.Piece{
 		{
@@ -181,7 +173,7 @@ func TestMissingDealIsIgnored(t *testing.T) {
 				DealID: abi.DealID(44),
 				DealSchedule: api.DealSchedule{
 					StartEpoch: abi.ChainEpoch(1),
-					EndEpoch:   abi.ChainEpoch(10),
+					EndEpoch:   abi.ChainEpoch(547300),
 				},
 			},
 		},
@@ -197,5 +189,5 @@ func TestMissingDealIsIgnored(t *testing.T) {
 	exp, err := policy.Expiration(context.Background(), pieces...)
 	require.NoError(t, err)
 
-	assert.Equal(t, 1558090, int(exp))
+	assert.Equal(t, 547300, int(exp))
 }

@@ -110,8 +110,8 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 	}
 
 	p, offset, err := n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
-	curTime := time.Now()
-	for time.Since(curTime) < addPieceRetryTimeout {
+	curTime := build.Clock.Now()
+	for build.Clock.Since(curTime) < addPieceRetryTimeout {
 		if !xerrors.Is(err, sealing.ErrTooManySectorsSealing) {
 			if err != nil {
 				log.Errorf("failed to addPiece for deal %d, err: %v", deal.DealID, err)
@@ -119,7 +119,7 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 			break
 		}
 		select {
-		case <-time.After(addPieceRetryWait):
+		case <-build.Clock.After(addPieceRetryWait):
 			p, offset, err = n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
 		case <-ctx.Done():
 			return nil, xerrors.New("context expired while waiting to retry AddPiece")

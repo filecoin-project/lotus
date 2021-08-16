@@ -415,7 +415,7 @@ var actorControlList = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := getActorAddress(ctx, cctx)
 		if err != nil {
 			return err
 		}

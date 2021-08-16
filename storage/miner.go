@@ -113,6 +113,7 @@ type fullNodeFilteredAPI interface {
 	ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
+	ChainGetTipSetAfterHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
@@ -178,12 +179,10 @@ func (m *Miner) Run(ctx context.Context) error {
 		adaptedAPI = NewSealingAPIAdapter(m.api)
 
 		// Instantiate a precommit policy.
-		cfg             = sealing.GetSealingConfigFunc(m.getSealConfig)
-		provingBoundary = md.PeriodStart % md.WPoStProvingPeriod
-		provingBuffer   = md.WPoStProvingPeriod * 2
+		cfg           = sealing.GetSealingConfigFunc(m.getSealConfig)
+		provingBuffer = md.WPoStProvingPeriod * 2
 
-		// TODO: Maybe we update this policy after actor upgrades?
-		pcp = sealing.NewBasicPreCommitPolicy(adaptedAPI, cfg, provingBoundary, provingBuffer)
+		pcp = sealing.NewBasicPreCommitPolicy(adaptedAPI, cfg, provingBuffer)
 
 		// address selector.
 		as = func(ctx context.Context, mi miner.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
