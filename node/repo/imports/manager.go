@@ -217,7 +217,7 @@ func (m *Manager) CARPathFor(dagRoot cid.Cid) (string, error) {
 		}
 		c, err := cid.Parse(info.Labels[LRootCid])
 		if err != nil {
-			log.Errorf("failed to parse Root cid %s: %w", info.Labels[LRootCid], err)
+			log.Errorf("failed to parse root cid %s: %s", info.Labels[LRootCid], err)
 			continue
 		}
 		if c.Equals(dagRoot) {
