@@ -57,7 +57,7 @@ var configUpdateCmd = &cli.Command{
 			return err
 		}
 
-		ok, err := r.Exists()
+		ok, err := r.Exists(repo.FullNode)
 		if err != nil {
 			return err
 		}

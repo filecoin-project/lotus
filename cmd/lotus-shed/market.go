@@ -291,7 +291,7 @@ func openLockedRepo(path string) (repo.LockedRepo, error) {
 	}
 
 	// Make sure the repo exists
-	exists, err := rpo.Exists()
+	exists, err := rpo.Exists(repo.StorageMiner)
 	if err != nil {
 		return nil, xerrors.Errorf("checking repo %s exists: %w", path, err)
 	}

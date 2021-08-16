@@ -62,7 +62,7 @@ var datastoreListCmd = &cli.Command{
 			return xerrors.Errorf("opening fs repo: %w", err)
 		}
 
-		exists, err := r.Exists()
+		exists, err := r.Exists(repo.RepoType(cctx.Int("repo-type")))
 		if err != nil {
 			return err
 		}
@@ -128,7 +128,7 @@ var datastoreGetCmd = &cli.Command{
 			return xerrors.Errorf("opening fs repo: %w", err)
 		}
 
-		exists, err := r.Exists()
+		exists, err := r.Exists(repo.RepoType(cctx.Int("repo-type")))
 		if err != nil {
 			return err
 		}

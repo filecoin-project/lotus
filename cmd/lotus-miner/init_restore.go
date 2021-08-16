@@ -149,7 +149,7 @@ func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfi
 		return err
 	}
 
-	ok, err := r.Exists()
+	ok, err := r.Exists(repo.StorageMiner)
 	if err != nil {
 		return err
 	}

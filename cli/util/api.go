@@ -143,7 +143,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 			return APIInfo{}, xerrors.Errorf("could not open repo at path: %s; %w", p, err)
 		}
 
-		exists, err := r.Exists()
+		exists, err := r.Exists(t)
 		if err != nil {
 			return APIInfo{}, xerrors.Errorf("repo.Exists returned an error: %w", err)
 		}

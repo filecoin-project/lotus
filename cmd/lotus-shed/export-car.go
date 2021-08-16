@@ -59,7 +59,7 @@ var exportCarCmd = &cli.Command{
 			return xerrors.Errorf("opening fs repo: %w", err)
 		}
 
-		exists, err := r.Exists()
+		exists, err := r.Exists(repo.FullNode)
 		if err != nil {
 			return err
 		}

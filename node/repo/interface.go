@@ -31,6 +31,7 @@ var (
 	ErrNoAPIToken        = errors.New("API token not set")
 	ErrRepoAlreadyLocked = errors.New("repo is already locked (lotus daemon already running)")
 	ErrClosedRepo        = errors.New("repo is no longer open")
+	ErrNoVersion         = errors.New("repo version not set")
 
 	// ErrInvalidBlockstoreDomain is returned by LockedRepo#Blockstore() when
 	// an unrecognized domain is requested.
@@ -46,6 +47,9 @@ type Repo interface {
 
 	// Lock locks the repo for exclusive use.
 	Lock(RepoType) (LockedRepo, error)
+
+	// Version returns the version of the repo.
+	Version() (RepoVersion, error)
 }
 
 type LockedRepo interface {
@@ -91,4 +95,7 @@ type LockedRepo interface {
 
 	// Readonly returns true if the repo is readonly
 	Readonly() bool
+
+	// Version returns the version of the repo.
+	Version() (RepoVersion, error)
 }

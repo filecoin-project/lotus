@@ -32,7 +32,7 @@ func BackupCmd(repoFlag string, rt repo.RepoType, getApi BackupApiFn) *cli.Comma
 			return err
 		}
 
-		ok, err := r.Exists()
+		ok, err := r.Exists(rt)
 		if err != nil {
 			return err
 		}

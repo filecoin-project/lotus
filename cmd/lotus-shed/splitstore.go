@@ -59,7 +59,7 @@ var splitstoreRollbackCmd = &cli.Command{
 			return xerrors.Errorf("error opening fs repo: %w", err)
 		}
 
-		exists, err := r.Exists()
+		exists, err := r.Exists(repo.FullNode)
 		if err != nil {
 			return err
 		}
@@ -145,7 +145,7 @@ var splitstoreClearCmd = &cli.Command{
 			return xerrors.Errorf("error opening fs repo: %w", err)
 		}
 
-		exists, err := r.Exists()
+		exists, err := r.Exists(repo.FullNode)
 		if err != nil {
 			return err
 		}

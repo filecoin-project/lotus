@@ -27,7 +27,7 @@ var importCarCmd = &cli.Command{
 
 		ctx := context.TODO()
 
-		exists, err := r.Exists()
+		exists, err := r.Exists(repo.FullNode)
 		if err != nil {
 			return err
 		}
@@ -104,7 +104,7 @@ var importObjectCmd = &cli.Command{
 
 		ctx := context.TODO()
 
-		exists, err := r.Exists()
+		exists, err := r.Exists(repo.FullNode)
 		if err != nil {
 			return err
 		}

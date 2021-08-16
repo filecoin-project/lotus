@@ -845,7 +845,15 @@ var sectorsRenewCmd = &cli.Command{
 		for l, exts := range extensions {
 			for newExp, numbers := range exts {
 				scount += len(numbers)
-				if scount > policy.GetAddressedSectorsMax(nv) || len(p.Extensions) == policy.GetDeclarationsMax(nv) {
+				addrSectorsMax, err := policy.GetAddressedSectorsMax(nv)
+				if err != nil {
+					return err
+				}
+				declMax, err := policy.GetDeclarationsMax(nv)
+				if err != nil {
+					return err
+				}
+				if scount > addrSectorsMax || len(p.Extensions) == declMax {
 					params = append(params, p)
 					p = miner5.ExtendSectorExpirationParams{}
 					scount = len(numbers)
