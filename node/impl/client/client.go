@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"sort"
 	"time"
 
@@ -1000,17 +999,6 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	finish(files.WriteTo(file, ref.Path))
 }
 
-// TODO: Come up with a better mechanism for creating the tmp CARv2 file path
-func (a *API) getTmpCarV2FilePath() (string, error) {
-	carsPath := filepath.Join(a.Repo.Path(), DefaultDAGStoreDir, "retrieval-cars")
-
-	if err := os.MkdirAll(carsPath, 0755); err != nil {
-		return "", xerrors.Errorf("failed to create dir")
-	}
-
-	return filepath.Join(carsPath, fmt.Sprintf("%d.car", time.Now().UnixNano())), nil
-}
-
 func (a *API) ClientListRetrievals(ctx context.Context) ([]api.RetrievalInfo, error) {
 	deals, err := a.Retrieval.ListDeals()
 	if err != nil {
@@ -1159,29 +1147,25 @@ func (a *API) ClientDealSize(ctx context.Context, root cid.Cid) (api.DataSize, e
 	var bs bstore.Blockstore
 
 	// pick the source blockstore; either the ipfs blockstore, or an import CARv2 file.
-	proxyBss, storeFromIPFS := a.StorageBlockstoreAccessor.(*storageadapter.ProxyBlockstoreAccessor)
-	if !storeFromIPFS {
-		path, err := a.importManager().CARPathFor(root)
+	switch acc := a.StorageBlockstoreAccessor.(type) {
+	case *storageadapter.ImportsBlockstoreAccessor:
+		var err error
+		bs, err = acc.Get(root)
 		if err != nil {
-			return api.DataSize{}, xerrors.Errorf("failed to find carv2 import for root: %w", err)
+			return api.DataSize{}, xerrors.Errorf("no import found for root %s: %w", root, err)
 		}
-		if len(path) == 0 {
-			return api.DataSize{}, xerrors.New("no carv2 import for root")
-		}
+		defer acc.Done(root) //nolint:errcheck
 
-		fs, err := stores.ReadOnlyFilestore(path)
-		if err != nil {
-			return api.DataSize{}, xerrors.Errorf("failed to open filestore from carv2 in path %s: %w", path, err)
-		}
-		defer fs.Close() //nolint:errcheck
+	case *storageadapter.ProxyBlockstoreAccessor:
+		bs = acc.Blockstore
 
-	} else {
-		bs = proxyBss.Blockstore
+	default:
+		return api.DataSize{}, xerrors.Errorf("unsupported blockstore accessor type: %T", acc)
 	}
 
 	dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
 
-	w := lenWriter(0)
+	var w lenWriter
 	err := car.WriteCar(ctx, dag, []cid.Cid{root}, &w)
 	if err != nil {
 		return api.DataSize{}, err
