@@ -58,6 +58,45 @@ func NewManager(ds datastore.Batching, rootDir string) *Manager {
 		counter: shared.NewTimeCounter(),
 	}
 
+	log.Info("sanity checking imports")
+
+	ids, err := m.List()
+	if err != nil {
+		log.Warnw("failed to enumerate imports on initialization", "error", err)
+		return m
+	}
+
+	var broken int
+	for _, id := range ids {
+		log := log.With("id", id)
+
+		info, err := m.Info(id)
+		if err != nil {
+			log.Warnw("failed to query metadata for import; skipping", "error", err)
+			continue
+		}
+
+		log = log.With("source", info.Labels[LSource], "root", info.Labels[LRootCid], "original", info.Labels[LFileName])
+
+		path, ok := info.Labels[LCARPath]
+		if !ok {
+			broken++
+			log.Warnw("import lacks carv2 path; import will not work; please reimport")
+			continue
+		}
+
+		stat, err := os.Stat(path)
+		if err != nil {
+			broken++
+			log.Warnw("import has missing/broken carv2; please reimport", "error", err)
+			continue
+		}
+
+		log.Infow("import ok", "size", stat.Size())
+	}
+
+	log.Infow("sanity check completed", "broken", broken, "total", len(ids))
+
 	return m
 }
 
