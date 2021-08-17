@@ -993,22 +993,6 @@ func mutateCfg(r repo.LockedRepo, mutator func(*config.StorageMiner)) error {
 	return multierr.Combine(typeErr, setConfigErr)
 }
 
-func ExtractEnabledMinerSubsystems(cfg config.MinerSubsystemConfig) (res api.MinerSubsystems) {
-	if cfg.EnableMining {
-		res = append(res, api.SubsystemMining)
-	}
-	if cfg.EnableSealing {
-		res = append(res, api.SubsystemSealing)
-	}
-	if cfg.EnableSectorStorage {
-		res = append(res, api.SubsystemSectorStorage)
-	}
-	if cfg.EnableMarkets {
-		res = append(res, api.SubsystemMarkets)
-	}
-	return res
-}
-
 func migrateDealStaging(oldPath, newPath string) error {
 	dirInfo, err := os.Stat(newPath)
 	if err == nil {
@@ -1060,4 +1044,20 @@ func migrateDealStaging(oldPath, newPath string) error {
 		}
 	}
 	return nil
+}
+
+func ExtractEnabledMinerSubsystems(cfg config.MinerSubsystemConfig) (res api.MinerSubsystems) {
+	if cfg.EnableMining {
+		res = append(res, api.SubsystemMining)
+	}
+	if cfg.EnableSealing {
+		res = append(res, api.SubsystemSealing)
+	}
+	if cfg.EnableSectorStorage {
+		res = append(res, api.SubsystemSectorStorage)
+	}
+	if cfg.EnableMarkets {
+		res = append(res, api.SubsystemMarkets)
+	}
+	return res
 }
