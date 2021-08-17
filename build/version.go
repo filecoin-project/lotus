@@ -39,7 +39,7 @@ func buildType() string {
 	}
 }
 
-// BuildVersion is the local build version, set by build system
+// BuildVersion is the local build version
 const BuildVersion = "1.11.2-dev"
 
 func UserVersion() string {
