@@ -837,6 +837,16 @@ var sectorsRenewCmd = &cli.Command{
 			}
 		}
 
+		addressedMax, err := policy.GetAddressedSectorsMax(nv)
+		if err != nil {
+			return xerrors.Errorf("failed to get addressed sectors max: %w", err)
+		}
+
+		declMax, err := policy.GetDeclarationsMax(nv)
+		if err != nil {
+			return xerrors.Errorf("failed to get declarations max: %w", err)
+		}
+
 		var params []miner5.ExtendSectorExpirationParams
 
 		p := miner5.ExtendSectorExpirationParams{}
@@ -845,15 +855,8 @@ var sectorsRenewCmd = &cli.Command{
 		for l, exts := range extensions {
 			for newExp, numbers := range exts {
 				scount += len(numbers)
-				addrSectors, err := policy.GetAddressedSectorsMax(nv)
-				if err != nil {
-					return err
-				}
-				declMax, err := policy.GetDeclarationsMax(nv)
-				if err != nil {
-					return err
-				}
-				if scount > addrSectors || len(p.Extensions) == declMax {
+
+				if scount > addressedMax || len(p.Extensions) == declMax {
 					params = append(params, p)
 					p = miner5.ExtendSectorExpirationParams{}
 					scount = len(numbers)
@@ -1075,20 +1078,23 @@ var sectorsExtendCmd = &cli.Command{
 				}
 			}
 
+			addressedMax, err := policy.GetAddressedSectorsMax(nv)
+			if err != nil {
+				return xerrors.Errorf("failed to get addressed sectors max: %w", err)
+			}
+
+			declMax, err := policy.GetDeclarationsMax(nv)
+			if err != nil {
+				return xerrors.Errorf("failed to get declarations max: %w", err)
+			}
+
 			p := miner5.ExtendSectorExpirationParams{}
 			scount := 0
 
 			for l, exts := range extensions {
 				for newExp, numbers := range exts {
 					scount += len(numbers)
-					addressedMax, err := policy.GetAddressedSectorsMax(nv)
-					if err != nil {
-						return xerrors.Errorf("failed to get addressed sectors max")
-					}
-					declMax, err := policy.GetDeclarationsMax(nv)
-					if err != nil {
-						return xerrors.Errorf("failed to get declarations max")
-					}
+
 					if scount > addressedMax || len(p.Extensions) == declMax {
 						params = append(params, p)
 						p = miner5.ExtendSectorExpirationParams{}
