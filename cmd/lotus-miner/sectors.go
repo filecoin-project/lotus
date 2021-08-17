@@ -427,25 +427,6 @@ var sectorsRefsCmd = &cli.Command{
 	},
 }
 
-func epochTime(curr, e abi.ChainEpoch) string {
-	if build.BuildType == build.BuildMainnet {
-		start := time.Date(2020, 8, 24, 22, 0, 0, 0, time.UTC)
-		eTime := start.Add(time.Second * time.Duration(int64(build.BlockDelaySecs)*int64(e)))
-		return fmt.Sprintf("%d (%s)", e, eTime.Format("06-01-02 15:04 MST"))
-	}
-
-	switch {
-	case curr > e:
-		return fmt.Sprintf("%d (%s ago)", e, durafmt.Parse(time.Second*time.Duration(int64(build.BlockDelaySecs)*int64(curr-e))).LimitFirstN(2))
-	case curr == e:
-		return fmt.Sprintf("%d (now)", e)
-	case curr < e:
-		return fmt.Sprintf("%d (in %s)", e, durafmt.Parse(time.Second*time.Duration(int64(build.BlockDelaySecs)*int64(e-curr))).LimitFirstN(2))
-	}
-
-	panic("math broke")
-}
-
 var sectorsCheckExpireCmd = &cli.Command{
 	Name:  "check-expire",
 	Usage: "Inspect expiring sectors",
@@ -533,98 +514,6 @@ var sectorsCheckExpireCmd = &cli.Command{
 
 		return tw.Flush(os.Stdout)
 	},
-}
-
-type PseudoExpirationExtension struct {
-	Deadline      uint64
-	Partition     uint64
-	Sectors       string
-	NewExpiration abi.ChainEpoch
-}
-
-type PseudoExtendSectorExpirationParams struct {
-	Extensions []PseudoExpirationExtension
-}
-
-func NewPseudoExtendParams(p *miner5.ExtendSectorExpirationParams) (*PseudoExtendSectorExpirationParams, error) {
-	res := PseudoExtendSectorExpirationParams{}
-	for _, ext := range p.Extensions {
-		scount, err := ext.Sectors.Count()
-		if err != nil {
-			return nil, err
-		}
-
-		sectors, err := ext.Sectors.All(scount)
-		if err != nil {
-			return nil, err
-		}
-
-		res.Extensions = append(res.Extensions, PseudoExpirationExtension{
-			Deadline:      ext.Deadline,
-			Partition:     ext.Partition,
-			Sectors:       ArrayToString(sectors),
-			NewExpiration: ext.NewExpiration,
-		})
-	}
-	return &res, nil
-}
-
-// ArrayToString Example: {1,3,4,5,8,9} -> "1,3-5,8-9"
-func ArrayToString(array []uint64) string {
-	sort.Slice(array, func(i, j int) bool {
-		return array[i] < array[j]
-	})
-
-	var sarray []string
-	s := ""
-
-	for i, elm := range array {
-		if i == 0 {
-			s = strconv.FormatUint(elm, 10)
-			continue
-		}
-		if elm == array[i-1] {
-			continue // filter out duplicates
-		} else if elm == array[i-1]+1 {
-			s = strings.Split(s, "-")[0] + "-" + strconv.FormatUint(elm, 10)
-		} else {
-			sarray = append(sarray, s)
-			s = strconv.FormatUint(elm, 10)
-		}
-	}
-
-	if s != "" {
-		sarray = append(sarray, s)
-	}
-
-	return strings.Join(sarray, ",")
-}
-
-func getSectorsFromFile(filePath string) ([]uint64, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-
-	scanner := bufio.NewScanner(file)
-	sectors := make([]uint64, 0)
-
-	for scanner.Scan() {
-		line := scanner.Text()
-
-		id, err := strconv.ParseUint(line, 10, 64)
-		if err != nil {
-			return nil, xerrors.Errorf("could not parse %s as sector id: %s", line, err)
-		}
-
-		sectors = append(sectors, id)
-	}
-
-	if err = file.Close(); err != nil {
-		return nil, err
-	}
-
-	return sectors, nil
 }
 
 var sectorsRenewCmd = &cli.Command{
@@ -922,7 +811,7 @@ var sectorsRenewCmd = &cli.Command{
 			stotal += scount
 
 			if !cctx.Bool("really-do-it") {
-				pp, err := NewPseudoExtendParams(&params[i])
+				pp, err := newPseudoExtendParams(&params[i])
 				if err != nil {
 					return err
 				}
@@ -1676,4 +1565,115 @@ func yesno(b bool) string {
 		return color.GreenString("YES")
 	}
 	return color.RedString("NO")
+}
+
+func epochTime(curr, e abi.ChainEpoch) string {
+	if build.BuildType == build.BuildMainnet {
+		start := time.Date(2020, 8, 24, 22, 0, 0, 0, time.UTC)
+		eTime := start.Add(time.Second * time.Duration(int64(build.BlockDelaySecs)*int64(e)))
+		return fmt.Sprintf("%d (%s)", e, eTime.Format("06-01-02 15:04 MST"))
+	}
+
+	switch {
+	case curr > e:
+		return fmt.Sprintf("%d (%s ago)", e, durafmt.Parse(time.Second*time.Duration(int64(build.BlockDelaySecs)*int64(curr-e))).LimitFirstN(2))
+	case curr == e:
+		return fmt.Sprintf("%d (now)", e)
+	case curr < e:
+		return fmt.Sprintf("%d (in %s)", e, durafmt.Parse(time.Second*time.Duration(int64(build.BlockDelaySecs)*int64(e-curr))).LimitFirstN(2))
+	}
+
+	panic("math broke")
+}
+
+func getSectorsFromFile(filePath string) ([]uint64, error) {
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	scanner := bufio.NewScanner(file)
+	sectors := make([]uint64, 0)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+
+		id, err := strconv.ParseUint(line, 10, 64)
+		if err != nil {
+			return nil, xerrors.Errorf("could not parse %s as sector id: %s", line, err)
+		}
+
+		sectors = append(sectors, id)
+	}
+
+	if err = file.Close(); err != nil {
+		return nil, err
+	}
+
+	return sectors, nil
+}
+
+type pseudoExpirationExtension struct {
+	Deadline      uint64
+	Partition     uint64
+	Sectors       string
+	NewExpiration abi.ChainEpoch
+}
+
+type pseudoExtendSectorExpirationParams struct {
+	Extensions []pseudoExpirationExtension
+}
+
+func newPseudoExtendParams(p *miner5.ExtendSectorExpirationParams) (*pseudoExtendSectorExpirationParams, error) {
+	res := pseudoExtendSectorExpirationParams{}
+	for _, ext := range p.Extensions {
+		scount, err := ext.Sectors.Count()
+		if err != nil {
+			return nil, err
+		}
+
+		sectors, err := ext.Sectors.All(scount)
+		if err != nil {
+			return nil, err
+		}
+
+		res.Extensions = append(res.Extensions, pseudoExpirationExtension{
+			Deadline:      ext.Deadline,
+			Partition:     ext.Partition,
+			Sectors:       ArrayToString(sectors),
+			NewExpiration: ext.NewExpiration,
+		})
+	}
+	return &res, nil
+}
+
+// ArrayToString Example: {1,3,4,5,8,9} -> "1,3-5,8-9"
+func ArrayToString(array []uint64) string {
+	sort.Slice(array, func(i, j int) bool {
+		return array[i] < array[j]
+	})
+
+	var sarray []string
+	s := ""
+
+	for i, elm := range array {
+		if i == 0 {
+			s = strconv.FormatUint(elm, 10)
+			continue
+		}
+		if elm == array[i-1] {
+			continue // filter out duplicates
+		} else if elm == array[i-1]+1 {
+			s = strings.Split(s, "-")[0] + "-" + strconv.FormatUint(elm, 10)
+		} else {
+			sarray = append(sarray, s)
+			s = strconv.FormatUint(elm, 10)
+		}
+	}
+
+	if s != "" {
+		sarray = append(sarray, s)
+	}
+
+	return strings.Join(sarray, ",")
 }
