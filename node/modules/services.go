@@ -30,6 +30,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/sub"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/journal/fsjournal"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/hello"
@@ -237,7 +238,7 @@ func RandomSchedule(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Sche
 }
 
 func OpenFilesystemJournal(lr repo.LockedRepo, lc fx.Lifecycle, disabled journal.DisabledEvents) (journal.Journal, error) {
-	jrnl, err := journal.OpenFSJournal(lr, disabled)
+	jrnl, err := fsjournal.OpenFSJournal(lr, disabled)
 	if err != nil {
 		return nil, err
 	}
