@@ -74,6 +74,8 @@ func ConfigStorageMiner(c interface{}) Option {
 	return Options(
 		ConfigCommon(&cfg.Common, enableLibp2pNode),
 
+		Override(CheckFDLimit, modules.CheckFdLimit(100_000)), // recommend at least 100k FD limit to miners
+
 		Override(new(api.MinerSubsystems), modules.ExtractEnabledMinerSubsystems(cfg.Subsystems)),
 		Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
 		Override(new(*stores.Local), modules.LocalStorage),

@@ -11,7 +11,7 @@ import (
 
 func init() {
 	supportsFDManagement = true
-	getLimit = freebsdGetLimit
+	GetLimit = freebsdGetLimit
 	setLimit = freebsdSetLimit
 }
 

@@ -17,7 +17,7 @@ var (
 	supportsFDManagement = false
 
 	// getlimit returns the soft and hard limits of file descriptors counts
-	getLimit func() (uint64, uint64, error)
+	GetLimit func() (uint64, uint64, error)
 	// set limit sets the soft and hard limits of file descriptors counts
 	setLimit func(uint64, uint64) error
 )
@@ -61,7 +61,7 @@ func ManageFdLimit() (changed bool, newLimit uint64, err error) {
 		targetLimit = userLimit
 	}
 
-	soft, hard, err := getLimit()
+	soft, hard, err := GetLimit()
 	if err != nil {
 		return false, 0, err
 	}
