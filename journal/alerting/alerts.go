@@ -2,6 +2,7 @@ package alerting
 
 import (
 	"encoding/json"
+	"sort"
 	"sync"
 	"time"
 
@@ -126,4 +127,23 @@ func (a *Alerting) Resolve(at AlertType, message interface{}) {
 
 		return alert
 	})
+}
+
+func (a *Alerting) GetAlerts() []Alert {
+	a.lk.Lock()
+	defer a.lk.Unlock()
+
+	out := make([]Alert, 0, len(a.alerts))
+	for _, alert := range a.alerts {
+		out = append(out, alert)
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Type.System != out[j].Type.System {
+			return out[i].Type.System < out[j].Type.System
+		}
+
+		return out[i].Type.Subsystem < out[j].Type.Subsystem
+	})
+
+	return out
 }

@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
+	"github.com/filecoin-project/lotus/journal/alerting"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
@@ -62,6 +63,8 @@ type CommonStruct struct {
 		Closing func(p0 context.Context) (<-chan struct{}, error) `perm:"read"`
 
 		Discover func(p0 context.Context) (apitypes.OpenRPCDocument, error) `perm:"read"`
+
+		LogAlerts func(p0 context.Context) ([]alerting.Alert, error) ``
 
 		LogList func(p0 context.Context) ([]string, error) `perm:"write"`
 
@@ -944,6 +947,17 @@ func (s *CommonStruct) Discover(p0 context.Context) (apitypes.OpenRPCDocument, e
 
 func (s *CommonStub) Discover(p0 context.Context) (apitypes.OpenRPCDocument, error) {
 	return *new(apitypes.OpenRPCDocument), ErrNotSupported
+}
+
+func (s *CommonStruct) LogAlerts(p0 context.Context) ([]alerting.Alert, error) {
+	if s.Internal.LogAlerts == nil {
+		return *new([]alerting.Alert), ErrNotSupported
+	}
+	return s.Internal.LogAlerts(p0)
+}
+
+func (s *CommonStub) LogAlerts(p0 context.Context) ([]alerting.Alert, error) {
+	return *new([]alerting.Alert), ErrNotSupported
 }
 
 func (s *CommonStruct) LogList(p0 context.Context) ([]string, error) {
