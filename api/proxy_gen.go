@@ -64,7 +64,7 @@ type CommonStruct struct {
 
 		Discover func(p0 context.Context) (apitypes.OpenRPCDocument, error) `perm:"read"`
 
-		LogAlerts func(p0 context.Context) ([]alerting.Alert, error) ``
+		LogAlerts func(p0 context.Context) ([]alerting.Alert, error) `perm:"admin"`
 
 		LogList func(p0 context.Context) ([]string, error) `perm:"write"`
 

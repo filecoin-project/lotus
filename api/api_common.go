@@ -36,7 +36,7 @@ type Common interface {
 
 	// LogAlerts returns list of all, active and inactive alerts tracked by the
 	// node
-	LogAlerts(ctx context.Context) ([]alerting.Alert, error)
+	LogAlerts(ctx context.Context) ([]alerting.Alert, error) //perm:admin
 
 	// MethodGroup: Common
 

@@ -506,6 +506,7 @@ USAGE:
 COMMANDS:
    list       List log systems
    set-level  Set log level
+   alerts     Get alert states
    help, h    Shows a list of commands or help for one command
 
 OPTIONS:
@@ -558,6 +559,20 @@ DESCRIPTION:
 OPTIONS:
    --system value  limit to log system
    --help, -h      show help (default: false)
+   
+```
+
+### lotus-miner log alerts
+```
+NAME:
+   lotus-miner log alerts - Get alert states
+
+USAGE:
+   lotus-miner log alerts [command options] [arguments...]
+
+OPTIONS:
+   --all       get all (active and inactive) alerts (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
