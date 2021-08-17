@@ -12,6 +12,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
+	"github.com/hako/durafmt"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -23,6 +24,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -425,6 +427,25 @@ var sectorsRefsCmd = &cli.Command{
 	},
 }
 
+func epochTime(curr, e abi.ChainEpoch) string {
+	if build.BuildType == build.BuildMainnet {
+		start := time.Date(2020, 8, 24, 22, 0, 0, 0, time.UTC)
+		eTime := start.Add(time.Second * time.Duration(int64(build.BlockDelaySecs)*int64(e)))
+		return fmt.Sprintf("%d (%s)", e, eTime.Format("06-01-02 15:04 MST"))
+	}
+
+	switch {
+	case curr > e:
+		return fmt.Sprintf("%d (%s ago)", e, durafmt.Parse(time.Second*time.Duration(int64(build.BlockDelaySecs)*int64(curr-e))).LimitFirstN(2))
+	case curr == e:
+		return fmt.Sprintf("%d (now)", e)
+	case curr < e:
+		return fmt.Sprintf("%d (in %s)", e, durafmt.Parse(time.Second*time.Duration(int64(build.BlockDelaySecs)*int64(e-curr))).LimitFirstN(2))
+	}
+
+	panic("math broke")
+}
+
 var sectorsCheckExpireCmd = &cli.Command{
 	Name:  "check-expire",
 	Usage: "Inspect expiring sectors",
@@ -503,10 +524,10 @@ var sectorsCheckExpireCmd = &cli.Command{
 				"ID":            sector.SectorNumber,
 				"SealProof":     sector.SealProof,
 				"InitialPledge": types.FIL(sector.InitialPledge).Short(),
-				"Activation":    lcli.EpochTime(currEpoch, sector.Activation),
-				"Expiration":    lcli.EpochTime(currEpoch, sector.Expiration),
-				"MaxExpiration": lcli.EpochTime(currEpoch, MaxExpiration),
-				"MaxExtendNow":  lcli.EpochTime(currEpoch, MaxExtendNow),
+				"Activation":    epochTime(currEpoch, sector.Activation),
+				"Expiration":    epochTime(currEpoch, sector.Expiration),
+				"MaxExpiration": epochTime(currEpoch, MaxExpiration),
+				"MaxExtendNow":  epochTime(currEpoch, MaxExtendNow),
 			})
 		}
 
