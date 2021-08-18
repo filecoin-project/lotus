@@ -47,7 +47,7 @@ body:
       - label: lotus message management (mpool)
         required: false
       - label:  Other
-    required: true
+        required: false
 - type: textarea
   id: version
   attributes:
