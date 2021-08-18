@@ -11,6 +11,7 @@ import (
 )
 
 var log = logging.Logger("alerting")
+
 // Alerting provides simple stateful alert system. Consumers can register alerts,
 // which can be raised and resolved.
 //
@@ -29,6 +30,7 @@ type AlertType struct {
 
 // AlertEvent contains information about alert state transition
 type AlertEvent struct {
+	Type    string // either 'raised' or 'resolved'
 	Message json.RawMessage
 	Time    time.Time
 }
@@ -105,6 +107,7 @@ func (a *Alerting) Raise(at AlertType, message interface{}) {
 	a.update(at, message, func(alert Alert, rawMsg json.RawMessage) Alert {
 		alert.Active = true
 		alert.LastActive = &AlertEvent{
+			Type:    "raised",
 			Message: rawMsg,
 			Time:    time.Now(),
 		}
@@ -124,12 +127,13 @@ func (a *Alerting) Resolve(at AlertType, message interface{}) {
 	a.update(at, message, func(alert Alert, rawMsg json.RawMessage) Alert {
 		alert.Active = false
 		alert.LastResolved = &AlertEvent{
+			Type:    "resolved",
 			Message: rawMsg,
 			Time:    time.Now(),
 		}
 
 		a.j.RecordEvent(alert.journalType, func() interface{} {
-			return alert.LastResolved // todo log something more useful
+			return alert.LastResolved
 		})
 
 		return alert
