@@ -2,7 +2,7 @@
 
 # v1.11.2-rc1 / 2021-08-18
 
-This is the first release candidate for Lotus v1.11.1 release that introduces dagstore and many deal-making and market subsystem improvements and new features along with other bug fixes. More detailed changelog will be provided later. One of the most existing new feature we are introducing is **[Experimental Dagstore](https://docs.filecoin.io/mine/lotus/dagstore/#conceptual-overview)**:
+This is the first release candidate for Lotus v1.11.1 release that introduces dagstore and many deal-making and market subsystem improvements and new features along with other bug fixes. More detailed changelog will be provided later. One of the most existing new feature we are introducing is **[Dagstore](https://docs.filecoin.io/mine/lotus/dagstore/#conceptual-overview)**:
 - The dagstore is a component of the markets subsystem in lotus-miner. It is a sharded store to hold large IPLD graphs efficiently, packaged as location-transparent attachable CAR files and it replaces the former Badger staging blockstore. It is designed to provide high efficiency and throughput, and minimize resource utilization during deal-making operations.
 - You can read more about dagstore's concepts, terminolog and so on [here](https://docs.filecoin.io/mine/lotus/dagstore/#conceptual-overview).
 - **Note**:**When you first start your lotus-miner or market subsystem with this release, a one-time/first-time dagstore migration will be triggered**. Read this [section](https://docs.filecoin.io/mine/lotus/dagstore/#first-time-migration) to learn what the process does, what to expect and how monitor it.
