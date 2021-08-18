@@ -39,7 +39,7 @@ require (
 	github.com/filecoin-project/go-fil-markets v1.8.0
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-multistore v0.0.3
-	github.com/filecoin-project/go-padreader v0.0.0-20210723183308-812a16dc01b1
+	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20210614165157-25a6c7769498
 	github.com/filecoin-project/go-state-types v0.1.1-0.20210810190654-139e0e79e69e
 	github.com/filecoin-project/go-statemachine v1.0.1
