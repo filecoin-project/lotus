@@ -442,7 +442,6 @@ var sectorsCheckExpireCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-
 		fullApi, nCloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -578,77 +577,105 @@ var sectorsRenewCmd = &cli.Command{
 			return err
 		}
 
+		// Step 1: Create location (deadline & partition) map for all active sectors
+		asl, err := getActiveSectorsLocation(ctx, fullApi, maddr)
+		if err != nil {
+			return err
+		}
+
 		head, err := fullApi.ChainHead(ctx)
 		if err != nil {
 			return err
 		}
 		currEpoch := head.Height()
 
+		// Step 2: Select renewable sectors according to user-provided selecting criteria
+		selected, err := selectRenewableSectors(ctx, cctx, fullApi, currEpoch, maddr)
+		if err != nil {
+			return err
+		}
+
 		nv, err := fullApi.StateNetworkVersion(ctx, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
-		activeSet, err := fullApi.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
+		// Step 3: Sort selected sectors by their location and new expiration epoch
+		extensions, err := genExtensions(cctx, currEpoch, nv, asl, selected)
 		if err != nil {
 			return err
 		}
 
-		activeSectorsInfo := make(map[abi.SectorNumber]*miner.SectorOnChainInfo, len(activeSet))
-		for _, info := range activeSet {
-			activeSectorsInfo[info.SectorNumber] = info
-		}
-
-		mact, err := fullApi.StateGetActor(ctx, maddr, types.EmptyTSK)
+		// Step 4: Generate mpool-ready extension params
+		params, err := genExtensionParams(nv, extensions)
 		if err != nil {
 			return err
 		}
 
-		tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(fullApi), blockstore.NewMemory())
-		mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
-		if err != nil {
-			return err
-		}
-
-		excludeSet := make(map[uint64]struct{})
-
-		if cctx.IsSet("exclude") {
-			excludeSectors, err := getSectorsFromFile(cctx.String("exclude"))
-			if err != nil {
-				return err
-			}
-
-			for _, id := range excludeSectors {
-				excludeSet[id] = struct{}{}
-			}
-		}
-
-		selected, err := selectRenewableSectors(cctx, currEpoch, activeSet, activeSectorsInfo, excludeSet)
-		if err != nil {
-			return err
-		}
-
-		asl, err := getActiveSectorsLocation(mas)
-		if err != nil {
-			return err
-		}
-
-		extensions, err := genExtensions(cctx, currEpoch, selected, asl, nv)
-		if err != nil {
-			return err
-		}
-
-		params, err := genExtensionParams(extensions, nv)
-		if err != nil {
-			return err
-		}
-
+		// Step 5: Handle extension params: display or send messages
 		return handleExtensionParams(ctx, cctx, fullApi, maddr, params)
 	},
 }
 
-func selectRenewableSectors(cctx *cli.Context, currEpoch abi.ChainEpoch, activeSet []*miner.SectorOnChainInfo,
-	activeSectorsInfo map[abi.SectorNumber]*miner.SectorOnChainInfo, excludeSet map[uint64]struct{}) ([]*miner.SectorOnChainInfo, error) {
+func getActiveSectorsLocation(ctx context.Context, fullApi v0api.FullNode, maddr address.Address) (map[abi.SectorNumber]*miner.SectorLocation, error) {
+	mact, err := fullApi.StateGetActor(ctx, maddr, types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+
+	tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(fullApi), blockstore.NewMemory())
+	mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
+	if err != nil {
+		return nil, err
+	}
+
+	asl := make(map[abi.SectorNumber]*miner.SectorLocation)
+
+	if err := mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
+		return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
+			pas, err := part.ActiveSectors()
+			if err != nil {
+				return err
+			}
+
+			return pas.ForEach(func(i uint64) error {
+				asl[abi.SectorNumber(i)] = &miner.SectorLocation{
+					Deadline:  dlIdx,
+					Partition: partIdx,
+				}
+				return nil
+			})
+		})
+	}); err != nil {
+		return nil, err
+	}
+
+	return asl, nil
+}
+
+func selectRenewableSectors(ctx context.Context, cctx *cli.Context, fullApi v0api.FullNode, currEpoch abi.ChainEpoch, maddr address.Address) ([]*miner.SectorOnChainInfo, error) {
+	activeSet, err := fullApi.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+
+	activeSectorsInfo := make(map[abi.SectorNumber]*miner.SectorOnChainInfo, len(activeSet))
+	for _, info := range activeSet {
+		activeSectorsInfo[info.SectorNumber] = info
+	}
+
+	excludeSet := make(map[uint64]struct{})
+
+	if cctx.IsSet("exclude") {
+		excludeSectors, err := getSectorsFromFile(cctx.String("exclude"))
+		if err != nil {
+			return nil, err
+		}
+
+		for _, id := range excludeSectors {
+			excludeSet[id] = struct{}{}
+		}
+	}
 
 	var selected []*miner.SectorOnChainInfo
 
@@ -694,33 +721,8 @@ func selectRenewableSectors(cctx *cli.Context, currEpoch abi.ChainEpoch, activeS
 	return selected, nil
 }
 
-func getActiveSectorsLocation(mas miner.State) (map[abi.SectorNumber]*miner.SectorLocation, error) {
-	asl := make(map[abi.SectorNumber]*miner.SectorLocation)
-
-	if err := mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
-		return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
-			pas, err := part.ActiveSectors()
-			if err != nil {
-				return err
-			}
-
-			return pas.ForEach(func(i uint64) error {
-				asl[abi.SectorNumber(i)] = &miner.SectorLocation{
-					Deadline:  dlIdx,
-					Partition: partIdx,
-				}
-				return nil
-			})
-		})
-	}); err != nil {
-		return nil, err
-	}
-
-	return asl, nil
-}
-
-func genExtensions(cctx *cli.Context, currEpoch abi.ChainEpoch, selected []*miner.SectorOnChainInfo,
-	asl map[abi.SectorNumber]*miner.SectorLocation, nv apitypes.NetworkVersion) (map[miner.SectorLocation]map[abi.ChainEpoch][]uint64, error) {
+func genExtensions(cctx *cli.Context, currEpoch abi.ChainEpoch, nv apitypes.NetworkVersion, asl map[abi.SectorNumber]*miner.SectorLocation,
+	selected []*miner.SectorOnChainInfo) (map[miner.SectorLocation]map[abi.ChainEpoch][]uint64, error) {
 
 	extensions := map[miner.SectorLocation]map[abi.ChainEpoch][]uint64{}
 
@@ -784,7 +786,7 @@ func genExtensions(cctx *cli.Context, currEpoch abi.ChainEpoch, selected []*mine
 	return extensions, nil
 }
 
-func genExtensionParams(extensions map[miner.SectorLocation]map[abi.ChainEpoch][]uint64, nv apitypes.NetworkVersion) ([]miner5.ExtendSectorExpirationParams, error) {
+func genExtensionParams(nv apitypes.NetworkVersion, extensions map[miner.SectorLocation]map[abi.ChainEpoch][]uint64) ([]miner5.ExtendSectorExpirationParams, error) {
 	addressedMax, err := policy.GetAddressedSectorsMax(nv)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get addressed sectors max: %w", err)
@@ -794,6 +796,7 @@ func genExtensionParams(extensions map[miner.SectorLocation]map[abi.ChainEpoch][
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get declarations max: %w", err)
 	}
+
 	var params []miner5.ExtendSectorExpirationParams
 
 	p := miner5.ExtendSectorExpirationParams{}
@@ -828,7 +831,7 @@ func genExtensionParams(extensions map[miner.SectorLocation]map[abi.ChainEpoch][
 
 func handleExtensionParams(ctx context.Context, cctx *cli.Context, fullApi v0api.FullNode, maddr address.Address, params []miner5.ExtendSectorExpirationParams) error {
 	if len(params) == 0 {
-		fmt.Println("nothing to extend")
+		fmt.Println("nothing to renew")
 		return nil
 	}
 
