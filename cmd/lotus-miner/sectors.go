@@ -1690,40 +1690,51 @@ func newPseudoExtendParams(p *miner5.ExtendSectorExpirationParams) (*pseudoExten
 		res.Extensions = append(res.Extensions, pseudoExpirationExtension{
 			Deadline:      ext.Deadline,
 			Partition:     ext.Partition,
-			Sectors:       ArrayToString(sectors),
+			Sectors:       SliceToString(sectors),
 			NewExpiration: ext.NewExpiration,
 		})
 	}
 	return &res, nil
 }
 
-// ArrayToString Example: {1,3,4,5,8,9} -> "1,3-5,8-9"
-func ArrayToString(array []uint64) string {
-	sort.Slice(array, func(i, j int) bool {
-		return array[i] < array[j]
+// SliceToString Example: {1,3,4,5,8,9} -> "1,3-5,8-9"
+func SliceToString(sli []uint64) string {
+	if len(sli) == 0 {
+		return ""
+	}
+
+	sort.Slice(sli, func(i, j int) bool {
+		return sli[i] < sli[j]
 	})
 
-	var sarray []string
-	s := ""
+	var segments [][2]uint64
+	start := sli[0]
+	end := sli[0]
 
-	for i, elm := range array {
-		if i == 0 {
-			s = strconv.FormatUint(elm, 10)
-			continue
-		}
-		if elm == array[i-1] {
-			continue // filter out duplicates
-		} else if elm == array[i-1]+1 {
-			s = strings.Split(s, "-")[0] + "-" + strconv.FormatUint(elm, 10)
+	for _, elm := range sli[1:] {
+		if elm == end || elm == end+1 {
+			end = elm
 		} else {
-			sarray = append(sarray, s)
-			s = strconv.FormatUint(elm, 10)
+			segments = append(segments, [2]uint64{start, end})
+			start = elm
+			end = elm
 		}
 	}
 
-	if s != "" {
-		sarray = append(sarray, s)
+	segments = append(segments, [2]uint64{start, end})
+
+	var ss []string
+
+	for _, seg := range segments {
+		start := seg[0]
+		end := seg[1]
+
+		if end == start {
+			ss = append(ss, strconv.FormatUint(start, 10))
+		} else {
+			ss = append(ss, strconv.FormatUint(start, 10)+"-"+strconv.FormatUint(end, 10))
+		}
 	}
 
-	return strings.Join(sarray, ",")
+	return strings.Join(ss, ",")
 }
