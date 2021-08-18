@@ -11,7 +11,10 @@ import (
 )
 
 var log = logging.Logger("alerting")
-
+// Alerting provides simple stateful alert system. Consumers can register alerts,
+// which can be raised and resolved.
+//
+// When an alert is raised or resolved, a related journal entry is recorded.
 type Alerting struct {
 	j journal.Journal
 
@@ -19,10 +22,12 @@ type Alerting struct {
 	alerts map[AlertType]Alert
 }
 
+// AlertType is a unique alert identifier
 type AlertType struct {
 	System, Subsystem string
 }
 
+// AlertEvent contains information about alert state transition
 type AlertEvent struct {
 	Message json.RawMessage
 	Time    time.Time
@@ -93,6 +98,7 @@ func (a *Alerting) update(at AlertType, message interface{}, upd func(Alert, jso
 	a.alerts[at] = upd(alert, rawMsg)
 }
 
+// Raise marks the alert condition as active and records related event in the journal
 func (a *Alerting) Raise(at AlertType, message interface{}) {
 	log.Errorw("alert raised", "type", at, "message", message)
 
@@ -111,6 +117,7 @@ func (a *Alerting) Raise(at AlertType, message interface{}) {
 	})
 }
 
+// Resolve marks the alert condition as resolved and records related event in the journal
 func (a *Alerting) Resolve(at AlertType, message interface{}) {
 	log.Errorw("alert resolved", "type", at, "message", message)
 
@@ -122,13 +129,14 @@ func (a *Alerting) Resolve(at AlertType, message interface{}) {
 		}
 
 		a.j.RecordEvent(alert.journalType, func() interface{} {
-			return alert.LastResolved
+			return alert.LastResolved // todo log something more useful
 		})
 
 		return alert
 	})
 }
 
+// GetAlerts returns all registered (active and inactive) alerts
 func (a *Alerting) GetAlerts() []Alert {
 	a.lk.Lock()
 	defer a.lk.Unlock()
