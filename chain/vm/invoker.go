@@ -231,7 +231,7 @@ func DumpActorState(act *types.Actor, b []byte) (interface{}, error) {
 		return nil, nil
 	}
 
-	i := NewActorRegistry() // TODO: register builtins in init block
+	i := NewActorRegistry()
 
 	actInfo, ok := i.actors[act.Code]
 	if !ok {

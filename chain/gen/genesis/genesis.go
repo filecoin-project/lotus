@@ -474,7 +474,7 @@ func createMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *state
 	return nil
 }
 
-func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot cid.Cid, template genesis.Template, keyIDs map[address.Address]address.Address, nv network.Version) (cid.Cid, error) {
+func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.SyscallBuilder, stateroot cid.Cid, template genesis.Template, keyIDs map[address.Address]address.Address, nv network.Version) (cid.Cid, error) {
 	verifNeeds := make(map[address.Address]abi.PaddedPieceSize)
 	var sum abi.PaddedPieceSize
 
@@ -483,7 +483,7 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, stateroot ci
 		Epoch:          0,
 		Rand:           &fakeRand{},
 		Bstore:         cs.StateBlockstore(),
-		Syscalls:       mkFakedSigSyscalls(cs.VMSys()),
+		Syscalls:       mkFakedSigSyscalls(sys),
 		CircSupplyCalc: nil,
 		NtwkVersion: func(_ context.Context, _ abi.ChainEpoch) network.Version {
 			return nv
@@ -562,15 +562,15 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	}
 
 	// temp chainstore
-	cs := store.NewChainStore(bs, bs, datastore.NewMapDatastore(), sys, j)
+	cs := store.NewChainStore(bs, bs, datastore.NewMapDatastore(), j)
 
 	// Verify PreSealed Data
-	stateroot, err = VerifyPreSealedData(ctx, cs, stateroot, template, keyIDs, template.NetworkVersion)
+	stateroot, err = VerifyPreSealedData(ctx, cs, sys, stateroot, template, keyIDs, template.NetworkVersion)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to verify presealed data: %w", err)
 	}
 
-	stateroot, err = SetupStorageMiners(ctx, cs, stateroot, template.Miners, template.NetworkVersion)
+	stateroot, err = SetupStorageMiners(ctx, cs, sys, stateroot, template.Miners, template.NetworkVersion)
 	if err != nil {
 		return nil, xerrors.Errorf("setup miners failed: %w", err)
 	}

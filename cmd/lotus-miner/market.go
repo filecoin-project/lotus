@@ -591,7 +591,7 @@ var setSealDurationCmd = &cli.Command{
 	Usage:     "Set the expected time, in minutes, that you expect sealing sectors to take. Deals that start before this duration will be rejected.",
 	ArgsUsage: "<minutes>",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}

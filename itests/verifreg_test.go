@@ -42,7 +42,7 @@ func TestVerifiedClientTopUp(t *testing.T) {
 			node, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(),
 				kit.RootVerifier(rootKey, abi.NewTokenAmount(bal.Int64())),
 				kit.Account(verifierKey, abi.NewTokenAmount(bal.Int64())), // assign some balance to the verifier so they can send an AddClient message.
-				kit.ConstructorOpts(kit.InstantaneousNetworkVersion(nv)))
+				kit.GenesisNetworkVersion(nv))
 
 			ens.InterconnectAll().BeginMining(blockTime)
 

@@ -36,6 +36,7 @@ type TargetAPI interface {
 	ChainGetNode(ctx context.Context, p string) (*api.IpldObject, error)
 	ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
+	ChainGetTipSetAfterHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
@@ -163,32 +164,48 @@ func (gw *Node) ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types
 }
 
 func (gw *Node) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
+	if err := gw.checkTipSetHeight(ctx, h, tsk); err != nil {
+		return nil, err
+	}
+
+	return gw.target.ChainGetTipSetByHeight(ctx, h, tsk)
+}
+
+func (gw *Node) ChainGetTipSetAfterHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
+	if err := gw.checkTipSetHeight(ctx, h, tsk); err != nil {
+		return nil, err
+	}
+
+	return gw.target.ChainGetTipSetAfterHeight(ctx, h, tsk)
+}
+
+func (gw *Node) checkTipSetHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) error {
 	var ts *types.TipSet
 	if tsk.IsEmpty() {
 		head, err := gw.target.ChainHead(ctx)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		ts = head
 	} else {
 		gts, err := gw.target.ChainGetTipSet(ctx, tsk)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		ts = gts
 	}
 
 	// Check if the tipset key refers to gw tipset that's too far in the past
 	if err := gw.checkTipset(ts); err != nil {
-		return nil, err
+		return err
 	}
 
 	// Check if the height is too far in the past
 	if err := gw.checkTipsetHeight(ts, h); err != nil {
-		return nil, err
+		return err
 	}
 
-	return gw.target.ChainGetTipSetByHeight(ctx, h, tsk)
+	return nil
 }
 
 func (gw *Node) ChainGetNode(ctx context.Context, p string) (*api.IpldObject, error) {

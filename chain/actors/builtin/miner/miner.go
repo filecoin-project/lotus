@@ -61,7 +61,7 @@ func init() {
 
 var Methods = builtin5.MethodsMiner
 
-// Unchanged between v0, v2, v3, and v4 actors
+// Unchanged between v0, v2, v3, v4, and v5 actors
 var WPoStProvingPeriod = miner0.WPoStProvingPeriod
 var WPoStPeriodDeadlines = miner0.WPoStPeriodDeadlines
 var WPoStChallengeWindow = miner0.WPoStChallengeWindow

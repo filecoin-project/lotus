@@ -83,7 +83,14 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 	write("--")
 
 	var coldCnt, missingCnt int64
-	err = s.walkChain(curTs, boundaryEpoch, boundaryEpoch,
+
+	visitor, err := s.markSetEnv.CreateVisitor("check", 0)
+	if err != nil {
+		return xerrors.Errorf("error creating visitor: %w", err)
+	}
+	defer visitor.Close() //nolint
+
+	err = s.walkChain(curTs, boundaryEpoch, boundaryEpoch, visitor,
 		func(c cid.Cid) error {
 			if isUnitaryObject(c) {
 				return errStopWalk

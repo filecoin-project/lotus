@@ -6,8 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/filecoin-project/lotus/node/impl/net"
 	metricsi "github.com/ipfs/go-metrics-interface"
+
+	"github.com/filecoin-project/lotus/node/impl/net"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/system"
@@ -66,6 +67,7 @@ var (
 	AutoNATSvcKey        = special{10} // Libp2p option
 	BandwidthReporterKey = special{11} // Libp2p option
 	ConnGaterKey         = special{12} // libp2p option
+	DAGStoreKey          = special{13} // constructor returns multiple values
 )
 
 type invoke int
@@ -332,10 +334,9 @@ func Repo(r repo.Repo) Option {
 			),
 
 			Override(new(dtypes.ClientImportMgr), modules.ClientImportMgr),
-			Override(new(dtypes.ClientMultiDstore), modules.ClientMultiDatastore),
 
 			Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
-			Override(new(dtypes.ClientRetrievalStoreManager), modules.ClientRetrievalStoreManager),
+
 			Override(new(ci.PrivKey), lp2p.PrivKey),
 			Override(new(ci.PubKey), ci.PrivKey.GetPublic),
 			Override(new(peer.ID), peer.IDFromPublicKey),

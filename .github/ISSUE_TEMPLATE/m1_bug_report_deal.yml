@@ -35,10 +35,11 @@ body:
 - type: textarea
   id: version
   attributes:
+    render: text
     label: Lotus Tag and  Version
     description: Enter the  lotus tag, output of `lotus version` and `lotus-miner version`.
   validations:
-    reuiqred: true
+    required: true
 - type: textarea
   id: Description
   attributes:
@@ -48,7 +49,6 @@ body:
       * What you were doding when you experienced the bug?
       * Any *error* messages you saw, *where* you saw them, and what you believe may have caused them (if you have any ideas).
       * What is the expected behaviour?
-    render: bash
   validations:
     required: true
 - type: textarea
@@ -72,6 +72,7 @@ body:
 - type: textarea
   id: logging
   attributes:
+    render: text
     label: Logging Information
     description: Please link to the whole of the miner logs on your side of the transaction. You can upload the logs to a [gist](https://gist.github.com).
   validations:
@@ -86,6 +87,5 @@ body:
       2. Do '...'
       3. See error '...'
       ...
-    render: bash
   validations:
     required: false

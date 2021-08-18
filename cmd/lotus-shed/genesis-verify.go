@@ -6,6 +6,8 @@ import (
 	"os"
 	"sort"
 
+	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
 	"github.com/fatih/color"
@@ -52,7 +54,7 @@ var genesisVerifyCmd = &cli.Command{
 		}
 		bs := blockstore.FromDatastore(datastore.NewMapDatastore())
 
-		cs := store.NewChainStore(bs, bs, datastore.NewMapDatastore(), nil, nil)
+		cs := store.NewChainStore(bs, bs, datastore.NewMapDatastore(), nil)
 		defer cs.Close() //nolint:errcheck
 
 		cf := cctx.Args().Get(0)
@@ -66,9 +68,7 @@ var genesisVerifyCmd = &cli.Command{
 			return err
 		}
 
-		sm := stmgr.NewStateManager(cs)
-
-		total, err := stmgr.CheckTotalFIL(context.TODO(), sm, ts)
+		total, err := stmgr.CheckTotalFIL(context.TODO(), cs, ts)
 		if err != nil {
 			return err
 		}
@@ -173,6 +173,24 @@ var genesisVerifyCmd = &cli.Command{
 			}
 			fmt.Printf("]\n")
 		}
+
+		act, err := stree.GetActor(_init.Address)
+		if err != nil {
+			return err
+		}
+
+		ias, err := _init.Load(store, act)
+		if err != nil {
+			return err
+		}
+
+		nn, err := ias.NetworkName()
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("Network name: ", nn)
+
 		return nil
 	},
 }

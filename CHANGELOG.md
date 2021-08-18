@@ -175,7 +175,6 @@ This is a  **highly recommended** but optional Lotus v1.11.1 release that introd
 | turuslan | 1 | +1/-1 | 1 |
 | Kirk Baird | 1 | +0/-0 | 1 |
 
-
 # 1.11.0 / 2021-07-22
 
 This is a **highly recommended** release of Lotus that have many bug fixes, improvements and new features. 
@@ -429,13 +428,6 @@ Contributors
 | @zhoutian527 | 1 | +2/-2 | 1 |
 | @ribasushi| 1 | +1/-1 | 1 |
 
-
-<<<<<<< HEAD
-||||||| merged common ancestors
->>>>>>>>> Temporary merge branch 2
-=======
->>>>>>> releases
->>>>>>> releases
 # 1.10.0 / 2021-06-23
 
 This is a mandatory release of Lotus that introduces Filecoin network v13, codenamed the HyperDrive upgrade. The

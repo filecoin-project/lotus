@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -114,6 +113,7 @@ type fullNodeFilteredAPI interface {
 	ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
 	ChainGetTipSetByHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
+	ChainGetTipSetAfterHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
@@ -179,19 +179,15 @@ func (m *Miner) Run(ctx context.Context) error {
 		adaptedAPI = NewSealingAPIAdapter(m.api)
 
 		// Instantiate a precommit policy.
-		defaultDuration = policy.GetMaxSectorExpirationExtension() - (md.WPoStProvingPeriod * 2)
-		provingBoundary = md.PeriodStart % md.WPoStProvingPeriod
+		cfg           = sealing.GetSealingConfigFunc(m.getSealConfig)
+		provingBuffer = md.WPoStProvingPeriod * 2
 
-		// TODO: Maybe we update this policy after actor upgrades?
-		pcp = sealing.NewBasicPreCommitPolicy(adaptedAPI, defaultDuration, provingBoundary)
+		pcp = sealing.NewBasicPreCommitPolicy(adaptedAPI, cfg, provingBuffer)
 
 		// address selector.
 		as = func(ctx context.Context, mi miner.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
 			return m.addrSel.AddressFor(ctx, m.api, mi, use, goodFunds, minFunds)
 		}
-
-		// sealing configuration.
-		cfg = sealing.GetSealingConfigFunc(m.getSealConfig)
 	)
 
 	// Instantiate the sealing FSM.

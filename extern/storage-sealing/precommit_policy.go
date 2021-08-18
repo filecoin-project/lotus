@@ -3,11 +3,13 @@ package sealing
 import (
 	"context"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-
-	"github.com/filecoin-project/go-state-types/network"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
 type PreCommitPolicy interface {
@@ -34,21 +36,21 @@ type Chain interface {
 // If we're in Mode 2: The pre-commit expiration epoch will be set to the
 // current epoch + the provided default duration.
 type BasicPreCommitPolicy struct {
-	api Chain
+	api              Chain
+	getSealingConfig GetSealingConfigFunc
 
-	provingBoundary abi.ChainEpoch
-	duration        abi.ChainEpoch
+	provingBuffer abi.ChainEpoch
 }
 
 // NewBasicPreCommitPolicy produces a BasicPreCommitPolicy.
 //
 // The provided duration is used as the default sector expiry when the sector
 // contains no deals. The proving boundary is used to adjust/align the sector's expiration.
-func NewBasicPreCommitPolicy(api Chain, duration abi.ChainEpoch, provingBoundary abi.ChainEpoch) BasicPreCommitPolicy {
+func NewBasicPreCommitPolicy(api Chain, cfgGetter GetSealingConfigFunc, provingBuffer abi.ChainEpoch) BasicPreCommitPolicy {
 	return BasicPreCommitPolicy{
-		api:             api,
-		provingBoundary: provingBoundary,
-		duration:        duration,
+		api:              api,
+		getSealingConfig: cfgGetter,
+		provingBuffer:    provingBuffer,
 	}
 }
 
@@ -79,11 +81,46 @@ func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...Piece) (abi
 	}
 
 	if end == nil {
-		tmp := epoch + p.duration
+		// no deal pieces, get expiration for committed capacity sector
+		expirationDuration, err := p.getCCSectorLifetime()
+		if err != nil {
+			return 0, err
+		}
+
+		tmp := epoch + expirationDuration
 		end = &tmp
 	}
 
-	*end += miner.WPoStProvingPeriod - (*end % miner.WPoStProvingPeriod) + p.provingBoundary - 1
+	// Ensure there is at least one day for the PC message to land without falling below min sector lifetime
+	// TODO: The "one day" should probably be a config, though it doesn't matter too much
+	minExp := epoch + policy.GetMinSectorExpiration() + miner.WPoStProvingPeriod
+	if *end < minExp {
+		end = &minExp
+	}
 
 	return *end, nil
+}
+
+func (p *BasicPreCommitPolicy) getCCSectorLifetime() (abi.ChainEpoch, error) {
+	c, err := p.getSealingConfig()
+	if err != nil {
+		return 0, xerrors.Errorf("sealing config load error: %w", err)
+	}
+
+	var ccLifetimeEpochs = abi.ChainEpoch(uint64(c.CommittedCapacitySectorLifetime.Seconds()) / builtin.EpochDurationSeconds)
+	// if zero value in config, assume maximum sector extension
+	if ccLifetimeEpochs == 0 {
+		ccLifetimeEpochs = policy.GetMaxSectorExpirationExtension()
+	}
+
+	if minExpiration := abi.ChainEpoch(miner.MinSectorExpiration); ccLifetimeEpochs < minExpiration {
+		log.Warnf("value for CommittedCapacitySectorLiftime is too short, using default minimum (%d epochs)", minExpiration)
+		return minExpiration, nil
+	}
+	if maxExpiration := policy.GetMaxSectorExpirationExtension(); ccLifetimeEpochs > maxExpiration {
+		log.Warnf("value for CommittedCapacitySectorLiftime is too long, using default maximum (%d epochs)", maxExpiration)
+		return maxExpiration, nil
+	}
+
+	return ccLifetimeEpochs - p.provingBuffer, nil
 }

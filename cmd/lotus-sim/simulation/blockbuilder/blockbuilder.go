@@ -83,7 +83,7 @@ func NewBlockBuilder(ctx context.Context, logger *zap.SugaredLogger, sm *stmgr.S
 		Epoch:          parentTs.Height() + 1,
 		Rand:           r,
 		Bstore:         sm.ChainStore().StateBlockstore(),
-		Syscalls:       sm.ChainStore().VMSys(),
+		Syscalls:       sm.VMSys(),
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        abi.NewTokenAmount(0),
