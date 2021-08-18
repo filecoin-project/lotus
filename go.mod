@@ -160,8 +160,6 @@ require (
 	gotest.tools v2.2.0+incompatible
 )
 
-replace github.com/multiformats/go-multihash => github.com/multiformats/go-multihash v0.0.14
-
 replace github.com/libp2p/go-libp2p-yamux => github.com/libp2p/go-libp2p-yamux v0.5.1
 
 replace github.com/filecoin-project/lotus => ./
