@@ -65,6 +65,8 @@ func (et EventType) Enabled() bool {
 	return et.safe && et.enabled
 }
 
+//go:generate go run github.com/golang/mock/mockgen -destination=mockjournal/journal.go -package=mockjournal . Journal
+
 // Journal represents an audit trail of system actions.
 //
 // Every entry is tagged with a timestamp, a system name, and an event name.
