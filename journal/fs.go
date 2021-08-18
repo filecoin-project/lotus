@@ -109,9 +109,17 @@ func (f *fsJournal) rollJournalFile() error {
 		_ = f.fi.Close()
 	}
 
-	nfi, err := os.Create(filepath.Join(f.dir, fmt.Sprintf("lotus-journal-%s.ndjson", build.Clock.Now().Format(RFC3339nocolon))))
+	// check if journal file exists
+	if _, err := os.Stat(filepath.Join(f.dir, "lotus-journal.json")); err == nil {
+		err := os.Rename(filepath.Join(f.dir, "lotus-journal.json"), filepath.Join(f.dir, fmt.Sprintf("lotus-journal-%s.ndjson", build.Clock.Now().Format(RFC3339nocolon))))
+		if err != nil {
+			return xerrors.Errorf("failed to roll journal file: %w", err)
+		}
+	}
+
+	nfi, err := os.Create(filepath.Join(f.dir, "lotus-journal.json"))
 	if err != nil {
-		return xerrors.Errorf("failed to open journal file: %w", err)
+		return xerrors.Errorf("failed to create journal file: %w", err)
 	}
 
 	f.fi = nfi
