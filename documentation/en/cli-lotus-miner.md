@@ -1472,6 +1472,7 @@ COMMANDS:
    update-state       ADVANCED: manually update the state of a sector, this may aid in error recovery
    pledge             store random data in a sector
    check-expire       Inspect expiring sectors
+   expired            Get or cleanup expired sectors
    renew              Renew expiring sectors while not exceeding each sector's max life
    extend             Extend sector expiration
    terminate          Terminate sector on-chain then remove (WARNING: This means losing power and collateral for the removed sector)
@@ -1574,6 +1575,22 @@ USAGE:
 OPTIONS:
    --cutoff value  skip sectors whose current expiration is more than <cutoff> epochs from now, defaults to 60 days (default: 172800)
    --help, -h      show help (default: false)
+   
+```
+
+### lotus-miner sectors expired
+```
+NAME:
+   lotus-miner sectors expired - Get or cleanup expired sectors
+
+USAGE:
+   lotus-miner sectors expired [command options] [arguments...]
+
+OPTIONS:
+   --show-removed         show removed sectors (default: false)
+   --remove-expired       remove expired sectors (default: false)
+   --expired-epoch value  epoch at which to check sector expirations (default: WinningPoSt lookback epoch)
+   --help, -h             show help (default: false)
    
 ```
 

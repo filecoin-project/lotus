@@ -1517,13 +1517,26 @@ var sectorsUpdateCmd = &cli.Command{
 }
 
 var sectorsExpiredCmd = &cli.Command{
-	Name:      "expired",
-	Usage:     "Get or cleanup expired sectors",
-	ArgsUsage: "<sectorNum>",
-	Flags:     []cli.Flag{
+	Name:  "expired",
+	Usage: "Get or cleanup expired sectors",
+	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "show-removed",
 			Usage: "show removed sectors",
+		},
+		&cli.BoolFlag{
+			Name:  "remove-expired",
+			Usage: "remove expired sectors",
+		},
+
+		&cli.Int64Flag{
+			Name:   "confirm-remove-count",
+			Hidden: true,
+		},
+		&cli.Int64Flag{
+			Name:        "expired-epoch",
+			Usage:       "epoch at which to check sector expirations",
+			DefaultText: "WinningPoSt lookback epoch",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -1563,14 +1576,21 @@ var sectorsExpiredCmd = &cli.Command{
 			return xerrors.Errorf("getting chain head: %w", err)
 		}
 
-		nv, err := fullApi.StateNetworkVersion(ctx, head.Key())
-		if err != nil {
-			return xerrors.Errorf("getting network version: %w", err)
+		lbEpoch := abi.ChainEpoch(cctx.Int64("expired-epoch"))
+		if !cctx.IsSet("expired-epoch") {
+			nv, err := fullApi.StateNetworkVersion(ctx, head.Key())
+			if err != nil {
+				return xerrors.Errorf("getting network version: %w", err)
+			}
+
+			lbEpoch = head.Height() - policy.GetWinningPoStSectorSetLookback(nv)
+			if lbEpoch < 0 {
+				return xerrors.Errorf("too early to terminate sectors")
+			}
 		}
 
-		lbEpoch := head.Height() - policy.GetWinningPoStSectorSetLookback(nv)
-		if lbEpoch < 0 {
-			return xerrors.Errorf("too early to terminate sectors")
+		if cctx.IsSet("confirm-remove-count") && !cctx.IsSet("expired-epoch") {
+			return xerrors.Errorf("--expired-epoch must be specified with --confirm-remove-count")
 		}
 
 		lbts, err := fullApi.ChainGetTipSetByHeight(ctx, lbEpoch, head.Key())
@@ -1611,8 +1631,14 @@ var sectorsExpiredCmd = &cli.Command{
 			return err
 		}
 
+		if cctx.Bool("remove-expired") {
+			color.Red("Removing sectors:\n")
+		}
+
 		// toCheck now only contains sectors which either failed to precommit or are expired/terminated
 		fmt.Printf("Sector\tState\tExpiration\n")
+
+		var toRemove []abi.SectorNumber
 
 		err = toCheck.ForEach(func(u uint64) error {
 			s := abi.SectorNumber(u)
@@ -1623,16 +1649,50 @@ var sectorsExpiredCmd = &cli.Command{
 				return nil
 			}
 
-			if !cctx.Bool("show-removed") && st.State == api.SectorState(sealing.Removed) {
-				return nil
+			rmMsg := ""
+
+			if st.State == api.SectorState(sealing.Removed) {
+				if cctx.IsSet("confirm-remove-count") || !cctx.Bool("show-removed") {
+					return nil
+				}
+			} else { // not removed
+				toRemove = append(toRemove, s)
 			}
 
-			fmt.Printf("%d:\t%s\t%s\n", s, st.State, lcli.EpochTime(head.Height(), st.Expiration))
+			fmt.Printf("%d%s\t%s\t%s\n", s, rmMsg, st.State, lcli.EpochTime(head.Height(), st.Expiration))
 
 			return nil
 		})
 		if err != nil {
 			return err
+		}
+
+		if cctx.Bool("remove-expired") {
+			if !cctx.IsSet("confirm-remove-count") {
+				fmt.Println()
+				fmt.Println(color.YellowString("All"), color.GreenString("%d", len(toRemove)), color.YellowString("sectors listed above will be removed\n"))
+				fmt.Println(color.YellowString("To confirm removal of the above sectors, including\n all related sealed and unsealed data, run:\n"))
+				fmt.Println(color.RedString("lotus-miner sectors expired --remove-expired --confirm-remove-count=%d --expired-epoch=%d\n", len(toRemove), lbts.Height()))
+				fmt.Println(color.YellowString("WARNING: This operation is irreversible"))
+				return nil
+			}
+
+			fmt.Println()
+
+			if int64(len(toRemove)) != cctx.Int64("confirm-remove-count") {
+				return xerrors.Errorf("value of confirm-remove-count doesn't match the number of sectors which can be removed (%d)", len(toRemove))
+			}
+
+			for _, number := range toRemove {
+				fmt.Printf("Removing sector\t%s:\t", color.YellowString("%d", number))
+
+				err := nodeApi.SectorRemove(ctx, number)
+				if err != nil {
+					color.Red("ERROR: %s\n", err.Error())
+				} else {
+					color.Green("OK\n")
+				}
+			}
 		}
 
 		return nil
