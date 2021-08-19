@@ -1520,9 +1520,14 @@ var sectorsExpiredCmd = &cli.Command{
 	Name:      "expired",
 	Usage:     "Get or cleanup expired sectors",
 	ArgsUsage: "<sectorNum>",
-	Flags:     []cli.Flag{},
+	Flags:     []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "show-removed",
+			Usage: "show removed sectors",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -1535,7 +1540,7 @@ var sectorsExpiredCmd = &cli.Command{
 		defer nCloser()
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := api.ActorAddress(ctx)
+		maddr, err := nodeApi.ActorAddress(ctx)
 		if err != nil {
 			return xerrors.Errorf("getting actor address: %w", err)
 		}
@@ -1543,7 +1548,7 @@ var sectorsExpiredCmd = &cli.Command{
 		// toCheck is a working bitfield which will only contain terminated sectors
 		toCheck := bitfield.New()
 		{
-			sectors, err := api.SectorsList(ctx)
+			sectors, err := nodeApi.SectorsList(ctx)
 			if err != nil {
 				return xerrors.Errorf("getting sector list: %w", err)
 			}
@@ -1607,8 +1612,23 @@ var sectorsExpiredCmd = &cli.Command{
 		}
 
 		// toCheck now only contains sectors which either failed to precommit or are expired/terminated
+		fmt.Printf("Sector\tState\tExpiration\n")
+
 		err = toCheck.ForEach(func(u uint64) error {
-			fmt.Println(u)
+			s := abi.SectorNumber(u)
+
+			st, err := nodeApi.SectorsStatus(ctx, s, true)
+			if err != nil {
+				fmt.Printf("%d:\tError getting status: %s\n", u, err)
+				return nil
+			}
+
+			if !cctx.Bool("show-removed") && st.State == api.SectorState(sealing.Removed) {
+				return nil
+			}
+
+			fmt.Printf("%d:\t%s\t%s\n", s, st.State, lcli.EpochTime(head.Height(), st.Expiration))
+
 			return nil
 		})
 		if err != nil {
