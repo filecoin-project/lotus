@@ -44,6 +44,7 @@ var sectorsCmd = &cli.Command{
 		sectorsUpdateCmd,
 		sectorsPledgeCmd,
 		sectorsCheckExpireCmd,
+		sectorsExpiredCmd,
 		sectorsRenewCmd,
 		sectorsExtendCmd,
 		sectorsTerminateCmd,
@@ -1512,6 +1513,109 @@ var sectorsUpdateCmd = &cli.Command{
 		}
 
 		return nodeApi.SectorsUpdate(ctx, abi.SectorNumber(id), api.SectorState(cctx.Args().Get(1)))
+	},
+}
+
+var sectorsExpiredCmd = &cli.Command{
+	Name:      "expired",
+	Usage:     "Get or cleanup expired sectors",
+	ArgsUsage: "<sectorNum>",
+	Flags:     []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		fullApi, nCloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return xerrors.Errorf("getting fullnode api: %w", err)
+		}
+		defer nCloser()
+		ctx := lcli.ReqContext(cctx)
+
+		maddr, err := api.ActorAddress(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting actor address: %w", err)
+		}
+
+		// toCheck is a working bitfield which will only contain terminated sectors
+		toCheck := bitfield.New()
+		{
+			sectors, err := api.SectorsList(ctx)
+			if err != nil {
+				return xerrors.Errorf("getting sector list: %w", err)
+			}
+
+			for _, sector := range sectors {
+				toCheck.Set(uint64(sector))
+			}
+		}
+
+		head, err := fullApi.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting chain head: %w", err)
+		}
+
+		nv, err := fullApi.StateNetworkVersion(ctx, head.Key())
+		if err != nil {
+			return xerrors.Errorf("getting network version: %w", err)
+		}
+
+		lbEpoch := head.Height() - policy.GetWinningPoStSectorSetLookback(nv)
+		if lbEpoch < 0 {
+			return xerrors.Errorf("too early to terminate sectors")
+		}
+
+		lbts, err := fullApi.ChainGetTipSetByHeight(ctx, lbEpoch, head.Key())
+		if err != nil {
+			return xerrors.Errorf("getting lookback tipset: %w", err)
+		}
+
+		mact, err := fullApi.StateGetActor(ctx, maddr, lbts.Key())
+		if err != nil {
+			return err
+		}
+
+		tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(fullApi), blockstore.NewMemory())
+		mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
+		if err != nil {
+			return err
+		}
+
+		alloc, err := mas.GetAllocatedSectors()
+		if err != nil {
+			return xerrors.Errorf("getting allocated sectors: %w", err)
+		}
+
+		// only allocated sectors can be expired,
+		toCheck, err = bitfield.IntersectBitField(toCheck, *alloc)
+
+		if err := mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
+			return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
+				live, err := part.LiveSectors()
+				if err != nil {
+					return err
+				}
+
+				toCheck, err = bitfield.SubtractBitField(toCheck, live)
+				return err
+			})
+		}); err != nil {
+			return err
+		}
+
+		// toCheck now only contains sectors which either failed to precommit or are expired/terminated
+		err = toCheck.ForEach(func(u uint64) error {
+			fmt.Println(u)
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		return nil
 	},
 }
 
