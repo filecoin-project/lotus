@@ -1616,6 +1616,9 @@ var sectorsExpiredCmd = &cli.Command{
 
 		// only allocated sectors can be expired,
 		toCheck, err = bitfield.IntersectBitField(toCheck, *alloc)
+		if err != nil {
+			return xerrors.Errorf("intersecting bitfields: %w", err)
+		}
 
 		if err := mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
 			return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
