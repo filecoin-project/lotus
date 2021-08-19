@@ -212,7 +212,13 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 }
 
 func (sm *StorageMinerAPI) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r sto.Data, d api.PieceDealInfo) (api.SectorOffset, error) {
-	return sm.Miner.SectorAddPieceToAny(ctx, size, r, d)
+	so, err := sm.Miner.SectorAddPieceToAny(ctx, size, r, d)
+	if err != nil {
+		// jsonrpc doesn't support returning values with errors, make sure we never do that
+		return api.SectorOffset{}, err
+	}
+
+	return so, nil
 }
 
 func (sm *StorageMinerAPI) SectorsUnsealPiece(ctx context.Context, sector sto.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error {
