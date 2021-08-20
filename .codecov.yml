@@ -49,17 +49,9 @@ coverage:
           - "api"
           - "journal"
       cli: 
-        target: 100%
+        target: auto
         threshold: 0.1%
         informational: true
         paths: 
           - "cli"
           - "cmd"
-        
-
-          
-          
-      
-
-
-        
