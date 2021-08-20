@@ -27,3 +27,10 @@ ignore:
   - "api/docgen-openrpc/**"
 github_checks:
   annotations: false
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        threshold: 0.1%
+        
