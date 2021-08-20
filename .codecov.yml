@@ -15,7 +15,6 @@ coverage:
           - "scripts"
           - "gen"
           - "build"
-
       markets: 
         target: auto
         threshold: 0.1%
