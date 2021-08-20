@@ -1,7 +1,62 @@
 coverage:
   status:
     project:
-      default:
+      tools-and-tests:
         target: auto
         threshold: 0.1%
+        informational: true
+        paths:
+          - "testplans"
+          - "tools"
+          - "system"
+          - "snap"
+          - "lotuspond"
+          - "conformance"
+          - "scripts"
+          - "gen"
+          - "build"
+
+      markets: 
+        target: auto
+        threshold: 0.1%
+        paths: 
+          - "markets"
+          - "paychmgr"
+      miner: 
+        target: auto
+        threshold: 0.1%
+        paths: 
+          - "miner"
+          - "storage"
+      chain:
+        target: auto
+        threshold: 0.1%
+        paths:
+          - "chain"
+      node: 
+        target: auto
+        threshold: 0.1%
+        paths: 
+          - "node"
+          - "blockstore"
+          - "metrics"
+          - "lib"
+          - "genesis"
+          - "gateway"
+          - "api"
+          - "journal"
+      cli: 
+        target: auto
+        theshold: 0.1%
+        informational: true
+        paths: 
+          - "cli"
+          - "cmd"
+        
+
+          
+          
+      
+
+
         
