@@ -434,6 +434,8 @@ type FullNode interface {
 	StateListMessages(ctx context.Context, match *MessageMatch, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error) //perm:read
 	// StateDecodeParams attempts to decode the provided params, based on the recipient actor address and method number.
 	StateDecodeParams(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error) //perm:read
+	// StateEncodeParams attempts to encode the provided json params to the binary from
+	StateEncodeParams(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error) //perm:read
 
 	// StateNetworkName returns the name of the network the node is synced to
 	StateNetworkName(context.Context) (dtypes.NetworkName, error) //perm:read

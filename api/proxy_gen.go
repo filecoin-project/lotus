@@ -4,6 +4,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -341,6 +342,8 @@ type FullNodeStruct struct {
 		StateDealProviderCollateralBounds func(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (DealCollateralBounds, error) `perm:"read"`
 
 		StateDecodeParams func(p0 context.Context, p1 address.Address, p2 abi.MethodNum, p3 []byte, p4 types.TipSetKey) (interface{}, error) `perm:"read"`
+
+		StateEncodeParams func(p0 context.Context, p1 cid.Cid, p2 abi.MethodNum, p3 json.RawMessage) ([]byte, error) `perm:"read"`
 
 		StateGetActor func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) `perm:"read"`
 
@@ -2338,6 +2341,17 @@ func (s *FullNodeStruct) StateDecodeParams(p0 context.Context, p1 address.Addres
 
 func (s *FullNodeStub) StateDecodeParams(p0 context.Context, p1 address.Address, p2 abi.MethodNum, p3 []byte, p4 types.TipSetKey) (interface{}, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateEncodeParams(p0 context.Context, p1 cid.Cid, p2 abi.MethodNum, p3 json.RawMessage) ([]byte, error) {
+	if s.Internal.StateEncodeParams == nil {
+		return *new([]byte), ErrNotSupported
+	}
+	return s.Internal.StateEncodeParams(p0, p1, p2, p3)
+}
+
+func (s *FullNodeStub) StateEncodeParams(p0 context.Context, p1 cid.Cid, p2 abi.MethodNum, p3 json.RawMessage) ([]byte, error) {
+	return *new([]byte), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) {
