@@ -15,7 +15,7 @@ func TestStorageDealMissingBlock(t *testing.T) {
 	ctx := context.Background()
 
 	// enable 512MiB proofs so we can conduct larger transfers.
-	kit.EnableLargeSectors()
+	kit.EnableLargeSectors(t)
 	kit.QuietMiningLogs()
 
 	client, miner, ens := kit.EnsembleMinimal(t,
