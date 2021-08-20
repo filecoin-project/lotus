@@ -50,7 +50,7 @@ coverage:
           - "journal"
       cli: 
         target: 100%
-        theshold: 0.1%
+        threshold: 0.1%
         informational: false
         paths: 
           - "cli"
