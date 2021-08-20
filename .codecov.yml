@@ -18,27 +18,27 @@ coverage:
       markets: 
         target: auto
         threshold: 0.1%
-        informational: true        
+        informational: false        
         paths: 
           - "markets"
           - "paychmgr"
       miner: 
         target: auto
         threshold: 0.1%
-        informational: true        
+        informational: false       
         paths: 
           - "miner"
           - "storage"
       chain:
         target: auto
         threshold: 0.1%
-        informational: true        
+        informational: false
         paths:
           - "chain"
       node: 
         target: auto
         threshold: 0.1%
-        informational: true
+        informational: false
         paths: 
           - "node"
           - "blockstore"
@@ -51,7 +51,7 @@ coverage:
       cli: 
         target: 100%
         threshold: 0.1%
-        informational: false
+        informational: true
         paths: 
           - "cli"
           - "cmd"
