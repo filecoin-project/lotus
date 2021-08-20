@@ -2297,11 +2297,12 @@ NAME:
    lotus chain encode params - Encodes the given JSON params
 
 USAGE:
-   lotus chain encode params [command options] [toAddr method params]
+   lotus chain encode params [command options] [dest method params]
 
 OPTIONS:
    --tipset value    
    --encoding value  specify input encoding to parse (default: "base64")
+   --to-code         interpret dest as code CID instead of as address (default: false)
    --help, -h        show help (default: false)
    
 ```
