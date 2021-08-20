@@ -17,6 +17,14 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-storedcounter"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
+	"github.com/ipfs/go-datastore"
+	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
+	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
@@ -43,13 +51,6 @@ import (
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/mockstorage"
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
-	"github.com/ipfs/go-datastore"
-	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
-	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
-	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -216,11 +217,11 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 			genm    *genesis.Miner
 		)
 
-		// Default 2KiB sector for the network version
-		proofType, err := miner.SealProofTypeFromSectorSize(2<<10, n.genesis.version)
+		// Will use 2KiB sectors by default (default value of sectorSize).
+		proofType, err := miner.SealProofTypeFromSectorSize(options.sectorSize, n.genesis.version)
 		require.NoError(n.t, err)
 
-		// create the preseal commitment.
+		// Create the preseal commitment.
 		if n.options.mockProofs {
 			genm, k, err = mockstorage.PreSeal(proofType, actorAddr, sectors)
 		} else {
@@ -363,10 +364,19 @@ func (n *Ensemble) Start() *Ensemble {
 			if m.options.mainMiner == nil {
 				// this is a miner created after genesis, so it won't have a preseal.
 				// we need to create it on chain.
+
+				// we get the proof type for the requested sector size, for
+				// the current network version.
+				nv, err := m.FullNode.FullNode.StateNetworkVersion(ctx, types.EmptyTSK)
+				require.NoError(n.t, err)
+
+				proofType, err := miner.SealProofTypeFromSectorSize(m.options.sectorSize, nv)
+				require.NoError(n.t, err)
+
 				params, aerr := actors.SerializeParams(&power2.CreateMinerParams{
 					Owner:         m.OwnerKey.Address,
 					Worker:        m.OwnerKey.Address,
-					SealProofType: m.options.proofType,
+					SealProofType: proofType,
 					Peer:          abi.PeerID(m.Libp2p.PeerID),
 				})
 				require.NoError(n.t, aerr)
