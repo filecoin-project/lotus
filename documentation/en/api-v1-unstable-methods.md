@@ -164,6 +164,7 @@
   * [StateCompute](#StateCompute)
   * [StateDealProviderCollateralBounds](#StateDealProviderCollateralBounds)
   * [StateDecodeParams](#StateDecodeParams)
+  * [StateEncodeParams](#StateEncodeParams)
   * [StateGetActor](#StateGetActor)
   * [StateListActors](#StateListActors)
   * [StateListMessages](#StateListMessages)
@@ -4183,6 +4184,25 @@ Inputs:
 ```
 
 Response: `{}`
+
+### StateEncodeParams
+StateEncodeParams attempts to encode the provided json params to the binary from
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  1,
+  null
+]
+```
+
+Response: `"Ynl0ZSBhcnJheQ=="`
 
 ### StateGetActor
 StateGetActor returns the indicated actor's nonce and balance.

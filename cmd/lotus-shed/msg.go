@@ -14,6 +14,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -23,7 +24,11 @@ import (
 )
 
 var msgCmd = &cli.Command{
-	Name:      "msg",
+	Name: "msg",
+	Subcommands: []*cli.Command{
+		msgParamsCmd,
+		msgActorParamsCmd,
+	},
 	Usage:     "Translate message between various formats",
 	ArgsUsage: "Message in any form",
 	Action: func(cctx *cli.Context) error {
@@ -277,4 +282,114 @@ func messageFromCID(cctx *cli.Context, c cid.Cid) (types.ChainMsg, error) {
 	}
 
 	return messageFromBytes(cctx, msgb)
+}
+
+var msgParamsCmd = &cli.Command{
+	Name:      "encode-params",
+	Usage:     "convert json params to binary (for given dest address)",
+	ArgsUsage: "[json params]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "to",
+			Usage:    "dest address",
+			Required: true,
+		},
+		&cli.Int64Flag{
+			Name:     "method",
+			Aliases:  []string{"m"},
+			Usage:    "method number",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:    "encoding",
+			Aliases: []string{"e"},
+			Usage:   "out encoding (b64, hex)",
+			Value:   "b64",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		svc, err := lcli.GetFullNodeServices(cctx)
+		if err != nil {
+			return err
+		}
+		defer svc.Close() // nolint
+
+		ctx := lcli.ReqContext(cctx)
+
+		to, err := address.NewFromString(cctx.String("to"))
+		if err != nil {
+			return xerrors.Errorf("parsing to addr: %w", err)
+		}
+
+		p, err := svc.DecodeTypedParamsFromJSON(ctx, to, abi.MethodNum(cctx.Int64("method")), cctx.Args().First())
+		if err != nil {
+			return xerrors.Errorf("decoding json params: %w", err)
+		}
+
+		switch cctx.String("encoding") {
+		case "b64":
+			fmt.Println(base64.StdEncoding.EncodeToString(p))
+		case "hex":
+			fmt.Println(hex.EncodeToString(p))
+		default:
+			return xerrors.Errorf("unknown encoding")
+		}
+
+		return nil
+	},
+}
+
+var msgActorParamsCmd = &cli.Command{
+	Name:      "encode-params-code",
+	Usage:     "convert json params to binary (for given actor code)",
+	ArgsUsage: "[json params]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "to",
+			Usage:    "dest actor code cid",
+			Required: true,
+		},
+		&cli.Int64Flag{
+			Name:     "method",
+			Aliases:  []string{"m"},
+			Usage:    "method number",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:    "encoding",
+			Aliases: []string{"e"},
+			Usage:   "out encoding (b64, hex)",
+			Value:   "b64",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, done, err := lcli.GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer done()
+
+		ctx := lcli.ReqContext(cctx)
+
+		to, err := cid.Parse(cctx.String("to"))
+		if err != nil {
+			return xerrors.Errorf("parsing to addr: %w", err)
+		}
+
+		p, err := api.StateEncodeParams(ctx, to, abi.MethodNum(cctx.Int64("method")), json.RawMessage(cctx.Args().First()))
+		if err != nil {
+			return xerrors.Errorf("decoding json params: %w", err)
+		}
+
+		switch cctx.String("encoding") {
+		case "b64":
+			fmt.Println(base64.StdEncoding.EncodeToString(p))
+		case "hex":
+			fmt.Println(hex.EncodeToString(p))
+		default:
+			return xerrors.Errorf("unknown encoding")
+		}
+
+		return nil
+	},
 }

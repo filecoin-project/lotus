@@ -6,6 +6,7 @@ package mocks
 
 import (
 	context "context"
+	json "encoding/json"
 	reflect "reflect"
 
 	address "github.com/filecoin-project/go-address"
@@ -2242,6 +2243,21 @@ func (m *MockFullNode) StateDecodeParams(arg0 context.Context, arg1 address.Addr
 func (mr *MockFullNodeMockRecorder) StateDecodeParams(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateDecodeParams", reflect.TypeOf((*MockFullNode)(nil).StateDecodeParams), arg0, arg1, arg2, arg3, arg4)
+}
+
+// StateEncodeParams mocks base method.
+func (m *MockFullNode) StateEncodeParams(arg0 context.Context, arg1 cid.Cid, arg2 abi.MethodNum, arg3 json.RawMessage) ([]byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateEncodeParams", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateEncodeParams indicates an expected call of StateEncodeParams.
+func (mr *MockFullNodeMockRecorder) StateEncodeParams(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateEncodeParams", reflect.TypeOf((*MockFullNode)(nil).StateEncodeParams), arg0, arg1, arg2, arg3)
 }
 
 // StateGetActor mocks base method.
