@@ -2,12 +2,12 @@
 
 # v1.11.2-rc1 / 2021-08-18
 
-This is the first release candidate for Lotus v1.11.1 release that introduces dagstore and many deal-making and market subsystem improvements and new features along with other bug fixes. More detailed changelog will be provided later. One of the most existing new feature we are introducing is **[Dagstore](https://docs.filecoin.io/mine/lotus/dagstore/#conceptual-overview)**:
+This is the first release candidate for Lotus v1.11.2 release that introduces dagstore and many deal-making and market subsystem improvements and new features along with other bug fixes. More detailed changelog will be provided later. One of the most existing new feature we are introducing is **[Dagstore](https://docs.filecoin.io/mine/lotus/dagstore/#conceptual-overview)**:
 - The dagstore is a component of the markets subsystem in lotus-miner. It is a sharded store to hold large IPLD graphs efficiently, packaged as location-transparent attachable CAR files and it replaces the former Badger staging blockstore. It is designed to provide high efficiency and throughput, and minimize resource utilization during deal-making operations.
 - You can read more about dagstore's concepts, terminolog and so on [here](https://docs.filecoin.io/mine/lotus/dagstore/#conceptual-overview).
 - **Note**:**When you first start your lotus-miner or market subsystem with this release, a one-time/first-time dagstore migration will be triggered**. Read this [section](https://docs.filecoin.io/mine/lotus/dagstore/#first-time-migration) to learn what the process does, what to expect and how monitor it.
   - That being said, few things to note:
-    -  it is highly recommended that to **wait all ongoing data transfer to finish or cancel inbound storage deals that are still transferring**, using the `lotus-miner data-transfers cancel` command before upgrade your market nodes. Reason being the new dagstore changes attributes in the internal deal state objects, and the paths to the staging CARs were the deal data was being placed will be lost. 
+    -  it is highly recommended to **wait all ongoing data transfer to finish or cancel inbound storage deals that are still transferring**, using the `lotus-miner data-transfers cancel` command before upgrade your market nodes. Reason being that the new dagstore changes attributes in the internal deal state objects, and the paths to the staging CARs where the deal data was being placed will be lost. 
     - Rollback Alert(from v1.11.2-rcX to any version lower): If a storage deal is initiated with M1/v1.11.2 release, it needs to get to the `StorageDealAwaitingPrecommit` state before the you can do a version rollback or the markets process may panic. 
 - There are a few known bugs that we are actively working on and will be fixed in v1.11.2-rc2.
 
