@@ -1553,24 +1553,6 @@ var sectorsExpiredCmd = &cli.Command{
 		defer nCloser()
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := nodeApi.ActorAddress(ctx)
-		if err != nil {
-			return xerrors.Errorf("getting actor address: %w", err)
-		}
-
-		// toCheck is a working bitfield which will only contain terminated sectors
-		toCheck := bitfield.New()
-		{
-			sectors, err := nodeApi.SectorsList(ctx)
-			if err != nil {
-				return xerrors.Errorf("getting sector list: %w", err)
-			}
-
-			for _, sector := range sectors {
-				toCheck.Set(uint64(sector))
-			}
-		}
-
 		head, err := fullApi.ChainHead(ctx)
 		if err != nil {
 			return xerrors.Errorf("getting chain head: %w", err)
@@ -1596,6 +1578,24 @@ var sectorsExpiredCmd = &cli.Command{
 		lbts, err := fullApi.ChainGetTipSetByHeight(ctx, lbEpoch, head.Key())
 		if err != nil {
 			return xerrors.Errorf("getting lookback tipset: %w", err)
+		}
+
+		maddr, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting actor address: %w", err)
+		}
+
+		// toCheck is a working bitfield which will only contain terminated sectors
+		toCheck := bitfield.New()
+		{
+			sectors, err := nodeApi.SectorsList(ctx)
+			if err != nil {
+				return xerrors.Errorf("getting sector list: %w", err)
+			}
+
+			for _, sector := range sectors {
+				toCheck.Set(uint64(sector))
+			}
 		}
 
 		mact, err := fullApi.StateGetActor(ctx, maddr, lbts.Key())
