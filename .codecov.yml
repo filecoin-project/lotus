@@ -1,5 +1,6 @@
 coverage:
   status:
+    patch: off
     project:
       tools-and-tests:
         target: auto
