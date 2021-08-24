@@ -44,6 +44,7 @@ var sectorsCmd = &cli.Command{
 		sectorsUpdateCmd,
 		sectorsPledgeCmd,
 		sectorsCheckExpireCmd,
+		sectorsExpiredCmd,
 		sectorsRenewCmd,
 		sectorsExtendCmd,
 		sectorsTerminateCmd,
@@ -1512,6 +1513,192 @@ var sectorsUpdateCmd = &cli.Command{
 		}
 
 		return nodeApi.SectorsUpdate(ctx, abi.SectorNumber(id), api.SectorState(cctx.Args().Get(1)))
+	},
+}
+
+var sectorsExpiredCmd = &cli.Command{
+	Name:  "expired",
+	Usage: "Get or cleanup expired sectors",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "show-removed",
+			Usage: "show removed sectors",
+		},
+		&cli.BoolFlag{
+			Name:  "remove-expired",
+			Usage: "remove expired sectors",
+		},
+
+		&cli.Int64Flag{
+			Name:   "confirm-remove-count",
+			Hidden: true,
+		},
+		&cli.Int64Flag{
+			Name:        "expired-epoch",
+			Usage:       "epoch at which to check sector expirations",
+			DefaultText: "WinningPoSt lookback epoch",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		fullApi, nCloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return xerrors.Errorf("getting fullnode api: %w", err)
+		}
+		defer nCloser()
+		ctx := lcli.ReqContext(cctx)
+
+		head, err := fullApi.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting chain head: %w", err)
+		}
+
+		lbEpoch := abi.ChainEpoch(cctx.Int64("expired-epoch"))
+		if !cctx.IsSet("expired-epoch") {
+			nv, err := fullApi.StateNetworkVersion(ctx, head.Key())
+			if err != nil {
+				return xerrors.Errorf("getting network version: %w", err)
+			}
+
+			lbEpoch = head.Height() - policy.GetWinningPoStSectorSetLookback(nv)
+			if lbEpoch < 0 {
+				return xerrors.Errorf("too early to terminate sectors")
+			}
+		}
+
+		if cctx.IsSet("confirm-remove-count") && !cctx.IsSet("expired-epoch") {
+			return xerrors.Errorf("--expired-epoch must be specified with --confirm-remove-count")
+		}
+
+		lbts, err := fullApi.ChainGetTipSetByHeight(ctx, lbEpoch, head.Key())
+		if err != nil {
+			return xerrors.Errorf("getting lookback tipset: %w", err)
+		}
+
+		maddr, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting actor address: %w", err)
+		}
+
+		// toCheck is a working bitfield which will only contain terminated sectors
+		toCheck := bitfield.New()
+		{
+			sectors, err := nodeApi.SectorsList(ctx)
+			if err != nil {
+				return xerrors.Errorf("getting sector list: %w", err)
+			}
+
+			for _, sector := range sectors {
+				toCheck.Set(uint64(sector))
+			}
+		}
+
+		mact, err := fullApi.StateGetActor(ctx, maddr, lbts.Key())
+		if err != nil {
+			return err
+		}
+
+		tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(fullApi), blockstore.NewMemory())
+		mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
+		if err != nil {
+			return err
+		}
+
+		alloc, err := mas.GetAllocatedSectors()
+		if err != nil {
+			return xerrors.Errorf("getting allocated sectors: %w", err)
+		}
+
+		// only allocated sectors can be expired,
+		toCheck, err = bitfield.IntersectBitField(toCheck, *alloc)
+		if err != nil {
+			return xerrors.Errorf("intersecting bitfields: %w", err)
+		}
+
+		if err := mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
+			return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
+				live, err := part.LiveSectors()
+				if err != nil {
+					return err
+				}
+
+				toCheck, err = bitfield.SubtractBitField(toCheck, live)
+				return err
+			})
+		}); err != nil {
+			return err
+		}
+
+		if cctx.Bool("remove-expired") {
+			color.Red("Removing sectors:\n")
+		}
+
+		// toCheck now only contains sectors which either failed to precommit or are expired/terminated
+		fmt.Printf("Sector\tState\tExpiration\n")
+
+		var toRemove []abi.SectorNumber
+
+		err = toCheck.ForEach(func(u uint64) error {
+			s := abi.SectorNumber(u)
+
+			st, err := nodeApi.SectorsStatus(ctx, s, true)
+			if err != nil {
+				fmt.Printf("%d:\tError getting status: %s\n", u, err)
+				return nil
+			}
+
+			rmMsg := ""
+
+			if st.State == api.SectorState(sealing.Removed) {
+				if cctx.IsSet("confirm-remove-count") || !cctx.Bool("show-removed") {
+					return nil
+				}
+			} else { // not removed
+				toRemove = append(toRemove, s)
+			}
+
+			fmt.Printf("%d%s\t%s\t%s\n", s, rmMsg, st.State, lcli.EpochTime(head.Height(), st.Expiration))
+
+			return nil
+		})
+		if err != nil {
+			return err
+		}
+
+		if cctx.Bool("remove-expired") {
+			if !cctx.IsSet("confirm-remove-count") {
+				fmt.Println()
+				fmt.Println(color.YellowString("All"), color.GreenString("%d", len(toRemove)), color.YellowString("sectors listed above will be removed\n"))
+				fmt.Println(color.YellowString("To confirm removal of the above sectors, including\n all related sealed and unsealed data, run:\n"))
+				fmt.Println(color.RedString("lotus-miner sectors expired --remove-expired --confirm-remove-count=%d --expired-epoch=%d\n", len(toRemove), lbts.Height()))
+				fmt.Println(color.YellowString("WARNING: This operation is irreversible"))
+				return nil
+			}
+
+			fmt.Println()
+
+			if int64(len(toRemove)) != cctx.Int64("confirm-remove-count") {
+				return xerrors.Errorf("value of confirm-remove-count doesn't match the number of sectors which can be removed (%d)", len(toRemove))
+			}
+
+			for _, number := range toRemove {
+				fmt.Printf("Removing sector\t%s:\t", color.YellowString("%d", number))
+
+				err := nodeApi.SectorRemove(ctx, number)
+				if err != nil {
+					color.Red("ERROR: %s\n", err.Error())
+				} else {
+					color.Green("OK\n")
+				}
+			}
+		}
+
+		return nil
 	},
 }
 

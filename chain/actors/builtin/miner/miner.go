@@ -200,10 +200,21 @@ type Deadline interface {
 }
 
 type Partition interface {
+	// AllSectors returns all sector numbers in this partition, including faulty, unproven, and terminated sectors
 	AllSectors() (bitfield.BitField, error)
+
+	// Subset of sectors detected/declared faulty and not yet recovered (excl. from PoSt).
+	// Faults ∩ Terminated = ∅
 	FaultySectors() (bitfield.BitField, error)
+
+	// Subset of faulty sectors expected to recover on next PoSt
+	// Recoveries ∩ Terminated = ∅
 	RecoveringSectors() (bitfield.BitField, error)
+
+	// Live sectors are those that are not terminated (but may be faulty).
 	LiveSectors() (bitfield.BitField, error)
+
+	// Active sectors are those that are neither terminated nor faulty nor unproven, i.e. actively contributing power.
 	ActiveSectors() (bitfield.BitField, error)
 }
 
