@@ -47,8 +47,12 @@ func (t *TimedCacheBlockstore) Start(_ context.Context) error {
 		return fmt.Errorf("already started")
 	}
 	t.closeCh = make(chan struct{})
+
+	// Create this timer before starting the goroutine. Otherwise, creating the timer will race
+	// with addint time to the mock clock, and we could add time _first_, then stall waiting for
+	// a timer that'll never fire.
+	ticker := t.clock.Ticker(t.interval)
 	go func() {
-		ticker := t.clock.Ticker(t.interval)
 		defer ticker.Stop()
 		for {
 			select {
