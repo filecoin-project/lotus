@@ -257,7 +257,7 @@ func (p *DealPublisher) publishAllDeals() {
 
 	// Filter out any deals that have been cancelled
 	p.filterCancelledDeals()
-	deals := p.pending[:]
+	deals := p.pending
 	p.pending = nil
 
 	// Send the publish message
@@ -384,12 +384,12 @@ func pieceCids(deals []market2.ClientDealProposal) string {
 
 // filter out deals that have been cancelled
 func (p *DealPublisher) filterCancelledDeals() {
-	i := 0
+	filtered := p.pending[:0]
 	for _, pd := range p.pending {
-		if pd.ctx.Err() == nil {
-			p.pending[i] = pd
-			i++
+		if pd.ctx.Err() != nil {
+			continue
 		}
+		filtered = append(filtered, pd)
 	}
-	p.pending = p.pending[:i]
+	p.pending = filtered
 }
