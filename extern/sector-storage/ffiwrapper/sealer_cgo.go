@@ -45,7 +45,7 @@ func (sb *Sealer) NewSector(ctx context.Context, sector storage.SectorRef) error
 	return nil
 }
 
-func (sb *Sealer) AddPiece(ctx context.Context, sector storage.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, file storage.Data) (abi.PieceInfo, error) {
+func (sb *Sealer) AddPiece(ctx context.Context, sector storage.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, expectPieceCid *cid.Cid, file storage.Data) (abi.PieceInfo, error) {
 	// TODO: allow tuning those:
 	chunk := abi.PaddedPieceSize(4 << 20)
 	parallel := runtime.NumCPU()
@@ -183,6 +183,67 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector storage.SectorRef, existi
 		return abi.PieceInfo{}, xerrors.Errorf("closing padded writer: %w", err)
 	}
 
+	var piece abi.PieceInfo
+
+	{
+		if len(piecePromises) == 1 {
+			piece, err = piecePromises[0]()
+			if err != nil {
+				return abi.PieceInfo{}, err
+			}
+		} else {
+			var payloadRoundedBytes abi.PaddedPieceSize
+			pieceCids := make([]abi.PieceInfo, len(piecePromises))
+			for i, promise := range piecePromises {
+				pinfo, err := promise()
+				if err != nil {
+					return abi.PieceInfo{}, err
+				}
+
+				pieceCids[i] = pinfo
+				payloadRoundedBytes += pinfo.Size
+			}
+
+			pieceCID, err := ffi.GenerateUnsealedCID(sector.ProofType, pieceCids)
+			if err != nil {
+				return abi.PieceInfo{}, xerrors.Errorf("generate unsealed CID: %w", err)
+			}
+
+			// validate that the pieceCID was properly formed
+			if _, err := commcid.CIDToPieceCommitmentV1(pieceCID); err != nil {
+				return abi.PieceInfo{}, err
+			}
+
+			if payloadRoundedBytes < pieceSize.Padded() {
+				paddedCid, err := commpffi.ZeroPadPieceCommitment(pieceCID, payloadRoundedBytes.Unpadded(), pieceSize)
+				if err != nil {
+					return abi.PieceInfo{}, xerrors.Errorf("failed to pad data: %w", err)
+				}
+
+				pieceCID = paddedCid
+			}
+
+			piece = abi.PieceInfo{
+				Size:     pieceSize.Padded(),
+				PieceCID: pieceCID,
+			}
+		}
+	}
+
+	if expectPieceCid == nil {
+		log.Warnw("call to AddPiece with nil expected piece CID")
+	}
+
+	if expectPieceCid != nil && !piece.PieceCID.Equals(*expectPieceCid) {
+		if err := stagedFile.Close(); err != nil {
+			log.Errorw("addPiece: error closing stagedFile with bad pieceCID", "error", err)
+		}
+
+		// We haven't marked the piece as allocated yet, and returning an error here
+		// will make storage-fsm overwrite the bad piece
+		return abi.PieceInfo{}, xerrors.Errorf("pieceCIDs didn't match: expected %s, got %s (size: %d)", expectPieceCid, piece.PieceCID, piece.Size)
+	}
+
 	if err := stagedFile.MarkAllocated(storiface.UnpaddedByteIndex(offset).Padded(), pieceSize.Padded()); err != nil {
 		return abi.PieceInfo{}, xerrors.Errorf("marking data range as allocated: %w", err)
 	}
@@ -192,45 +253,7 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector storage.SectorRef, existi
 	}
 	stagedFile = nil
 
-	if len(piecePromises) == 1 {
-		return piecePromises[0]()
-	}
-
-	var payloadRoundedBytes abi.PaddedPieceSize
-	pieceCids := make([]abi.PieceInfo, len(piecePromises))
-	for i, promise := range piecePromises {
-		pinfo, err := promise()
-		if err != nil {
-			return abi.PieceInfo{}, err
-		}
-
-		pieceCids[i] = pinfo
-		payloadRoundedBytes += pinfo.Size
-	}
-
-	pieceCID, err := ffi.GenerateUnsealedCID(sector.ProofType, pieceCids)
-	if err != nil {
-		return abi.PieceInfo{}, xerrors.Errorf("generate unsealed CID: %w", err)
-	}
-
-	// validate that the pieceCID was properly formed
-	if _, err := commcid.CIDToPieceCommitmentV1(pieceCID); err != nil {
-		return abi.PieceInfo{}, err
-	}
-
-	if payloadRoundedBytes < pieceSize.Padded() {
-		paddedCid, err := commpffi.ZeroPadPieceCommitment(pieceCID, payloadRoundedBytes.Unpadded(), pieceSize)
-		if err != nil {
-			return abi.PieceInfo{}, xerrors.Errorf("failed to pad data: %w", err)
-		}
-
-		pieceCID = paddedCid
-	}
-
-	return abi.PieceInfo{
-		Size:     pieceSize.Padded(),
-		PieceCID: pieceCID,
-	}, nil
+	return piece, nil
 }
 
 func (sb *Sealer) pieceCid(spt abi.RegisteredSealProof, in []byte) (cid.Cid, error) {

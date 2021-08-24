@@ -68,7 +68,7 @@ func (s *seal) precommit(t *testing.T, sb *Sealer, id storage.SectorRef, done fu
 
 	var err error
 	r := data(id.ID.Number, dlen)
-	s.pi, err = sb.AddPiece(context.TODO(), id, []abi.UnpaddedPieceSize{}, dlen, r)
+	s.pi, err = sb.AddPiece(context.TODO(), id, []abi.UnpaddedPieceSize{}, dlen, nil, r)
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
@@ -762,7 +762,7 @@ func TestAddPiece512M(t *testing.T) {
 			Number: 0,
 		},
 		ProofType: abi.RegisteredSealProof_StackedDrg512MiBV1_1,
-	}, nil, sz, io.LimitReader(r, int64(sz)))
+	}, nil, sz, nil, io.LimitReader(r, int64(sz)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -805,7 +805,7 @@ func BenchmarkAddPiece512M(b *testing.B) {
 				Number: abi.SectorNumber(i),
 			},
 			ProofType: abi.RegisteredSealProof_StackedDrg512MiBV1_1,
-		}, nil, sz, io.LimitReader(&nullreader.Reader{}, int64(sz)))
+		}, nil, sz, nil, io.LimitReader(&nullreader.Reader{}, int64(sz)))
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -848,7 +848,7 @@ func TestAddPiece512MPadded(t *testing.T) {
 			Number: 0,
 		},
 		ProofType: abi.RegisteredSealProof_StackedDrg512MiBV1_1,
-	}, nil, sz, io.LimitReader(r, int64(sz/4)))
+	}, nil, sz, nil, io.LimitReader(r, int64(sz/4)))
 	if err != nil {
 		t.Fatalf("add piece failed: %s", err)
 	}

@@ -146,11 +146,11 @@ func TestSimple(t *testing.T) {
 		ProofType: abi.RegisteredSealProof_StackedDrg2KiBV1,
 	}
 
-	pi, err := m.AddPiece(ctx, sid, nil, 1016, strings.NewReader(strings.Repeat("testthis", 127)))
+	pi, err := m.AddPiece(ctx, sid, nil, 1016, nil, strings.NewReader(strings.Repeat("testthis", 127)))
 	require.NoError(t, err)
 	require.Equal(t, abi.PaddedPieceSize(1024), pi.Size)
 
-	piz, err := m.AddPiece(ctx, sid, nil, 1016, bytes.NewReader(make([]byte, 1016)[:]))
+	piz, err := m.AddPiece(ctx, sid, nil, 1016, nil, bytes.NewReader(make([]byte, 1016)[:]))
 	require.NoError(t, err)
 	require.Equal(t, abi.PaddedPieceSize(1024), piz.Size)
 
@@ -185,11 +185,11 @@ func TestRedoPC1(t *testing.T) {
 		ProofType: abi.RegisteredSealProof_StackedDrg2KiBV1,
 	}
 
-	pi, err := m.AddPiece(ctx, sid, nil, 1016, strings.NewReader(strings.Repeat("testthis", 127)))
+	pi, err := m.AddPiece(ctx, sid, nil, 1016, nil, strings.NewReader(strings.Repeat("testthis", 127)))
 	require.NoError(t, err)
 	require.Equal(t, abi.PaddedPieceSize(1024), pi.Size)
 
-	piz, err := m.AddPiece(ctx, sid, nil, 1016, bytes.NewReader(make([]byte, 1016)[:]))
+	piz, err := m.AddPiece(ctx, sid, nil, 1016, nil, bytes.NewReader(make([]byte, 1016)[:]))
 	require.NoError(t, err)
 	require.Equal(t, abi.PaddedPieceSize(1024), piz.Size)
 
@@ -239,11 +239,11 @@ func TestRestartManager(t *testing.T) {
 				ProofType: abi.RegisteredSealProof_StackedDrg2KiBV1,
 			}
 
-			pi, err := m.AddPiece(ctx, sid, nil, 1016, strings.NewReader(strings.Repeat("testthis", 127)))
+			pi, err := m.AddPiece(ctx, sid, nil, 1016, nil, strings.NewReader(strings.Repeat("testthis", 127)))
 			require.NoError(t, err)
 			require.Equal(t, abi.PaddedPieceSize(1024), pi.Size)
 
-			piz, err := m.AddPiece(ctx, sid, nil, 1016, bytes.NewReader(make([]byte, 1016)[:]))
+			piz, err := m.AddPiece(ctx, sid, nil, 1016, nil, bytes.NewReader(make([]byte, 1016)[:]))
 			require.NoError(t, err)
 			require.Equal(t, abi.PaddedPieceSize(1024), piz.Size)
 
@@ -347,7 +347,7 @@ func TestRestartWorker(t *testing.T) {
 	go func() {
 		defer close(apDone)
 
-		_, err := m.AddPiece(ctx, sid, nil, 1016, strings.NewReader(strings.Repeat("testthis", 127)))
+		_, err := m.AddPiece(ctx, sid, nil, 1016, nil, strings.NewReader(strings.Repeat("testthis", 127)))
 		require.Error(t, err)
 	}()
 

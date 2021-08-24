@@ -829,7 +829,7 @@ type WalletStub struct {
 
 type WorkerStruct struct {
 	Internal struct {
-		AddPiece func(p0 context.Context, p1 storage.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 storage.Data) (storiface.CallID, error) `perm:"admin"`
+		AddPiece func(p0 context.Context, p1 storage.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 *cid.Cid, p5 storage.Data) (storiface.CallID, error) `perm:"admin"`
 
 		Enabled func(p0 context.Context) (bool, error) `perm:"admin"`
 
@@ -4730,14 +4730,14 @@ func (s *WalletStub) WalletSign(p0 context.Context, p1 address.Address, p2 []byt
 	return nil, ErrNotSupported
 }
 
-func (s *WorkerStruct) AddPiece(p0 context.Context, p1 storage.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 storage.Data) (storiface.CallID, error) {
+func (s *WorkerStruct) AddPiece(p0 context.Context, p1 storage.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 *cid.Cid, p5 storage.Data) (storiface.CallID, error) {
 	if s.Internal.AddPiece == nil {
 		return *new(storiface.CallID), ErrNotSupported
 	}
-	return s.Internal.AddPiece(p0, p1, p2, p3, p4)
+	return s.Internal.AddPiece(p0, p1, p2, p3, p4, p5)
 }
 
-func (s *WorkerStub) AddPiece(p0 context.Context, p1 storage.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 storage.Data) (storiface.CallID, error) {
+func (s *WorkerStub) AddPiece(p0 context.Context, p1 storage.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 *cid.Cid, p5 storage.Data) (storiface.CallID, error) {
 	return *new(storiface.CallID), ErrNotSupported
 }
 

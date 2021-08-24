@@ -7,6 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -88,7 +89,9 @@ func (m *Sealing) padSector(ctx context.Context, sectorID storage.SectorRef, exi
 
 	out := make([]abi.PieceInfo, len(sizes))
 	for i, size := range sizes {
-		ppi, err := m.sealer.AddPiece(ctx, sectorID, existingPieceSizes, size, NewNullReader(size))
+		expectCid := zerocomm.ZeroPieceCommitment(size)
+
+		ppi, err := m.sealer.AddPiece(ctx, sectorID, existingPieceSizes, size, &expectCid, NewNullReader(size))
 		if err != nil {
 			return nil, xerrors.Errorf("add piece: %w", err)
 		}

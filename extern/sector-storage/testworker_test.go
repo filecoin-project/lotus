@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/google/uuid"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
@@ -58,9 +59,9 @@ func (t *testWorker) asyncCall(sector storage.SectorRef, work func(ci storiface.
 	return ci, nil
 }
 
-func (t *testWorker) AddPiece(ctx context.Context, sector storage.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error) {
+func (t *testWorker) AddPiece(ctx context.Context, sector storage.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, exp *cid.Cid, pieceData storage.Data) (storiface.CallID, error) {
 	return t.asyncCall(sector, func(ci storiface.CallID) {
-		p, err := t.mockSeal.AddPiece(ctx, sector, pieceSizes, newPieceSize, pieceData)
+		p, err := t.mockSeal.AddPiece(ctx, sector, pieceSizes, newPieceSize, exp, pieceData)
 		if err := t.ret.ReturnAddPiece(ctx, ci, p, toCallError(err)); err != nil {
 			log.Error(err)
 		}

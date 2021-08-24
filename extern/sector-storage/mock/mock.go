@@ -79,7 +79,7 @@ func (mgr *SectorMgr) SectorsUnsealPiece(ctx context.Context, sector storage.Sec
 	panic("SectorMgr: unsealing piece: implement me")
 }
 
-func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorID storage.SectorRef, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
+func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorID storage.SectorRef, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, exp *cid.Cid, r io.Reader) (abi.PieceInfo, error) {
 	log.Warn("Add piece: ", sectorID, size, sectorID.ProofType)
 
 	var b bytes.Buffer
@@ -108,8 +108,11 @@ func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorID storage.SectorRef, 
 	ss.pieces = append(ss.pieces, c)
 	ss.lk.Unlock()
 
-	return abi.PieceInfo{
+	if exp != nil && !c.Equals(*exp) {
+		return abi.PieceInfo{}, xerrors.Errorf("pieces didn't match")
+	}
 
+	return abi.PieceInfo{
 		Size:     size.Padded(),
 		PieceCID: c,
 	}, nil
@@ -414,7 +417,7 @@ func (mgr *SectorMgr) StageFakeData(mid abi.ActorID, spt abi.RegisteredSealProof
 		ProofType: spt,
 	}
 
-	pi, err := mgr.AddPiece(context.TODO(), id, nil, usize, bytes.NewReader(buf))
+	pi, err := mgr.AddPiece(context.TODO(), id, nil, usize, nil, bytes.NewReader(buf))
 	if err != nil {
 		return storage.SectorRef{}, nil, err
 	}

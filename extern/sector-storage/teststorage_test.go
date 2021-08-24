@@ -63,7 +63,7 @@ func (t *testExec) NewSector(ctx context.Context, sector storage.SectorRef) erro
 	panic("implement me")
 }
 
-func (t *testExec) AddPiece(ctx context.Context, sector storage.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (abi.PieceInfo, error) {
+func (t *testExec) AddPiece(ctx context.Context, sector storage.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, exp *cid.Cid, pieceData storage.Data) (abi.PieceInfo, error) {
 	resp := make(chan apres)
 	t.apch <- resp
 	ar := <-resp

@@ -309,7 +309,7 @@ func (p *pieceProviderTestHarness) addPiece(t *testing.T, pieceData []byte) abi.
 	}
 
 	size := abi.UnpaddedPieceSize(len(pieceData))
-	pieceInfo, err := p.mgr.AddPiece(p.ctx, p.sector, existing, size, bytes.NewReader(pieceData))
+	pieceInfo, err := p.mgr.AddPiece(p.ctx, p.sector, existing, size, nil, bytes.NewReader(pieceData))
 	require.NoError(t, err)
 
 	p.addedPieces = append(p.addedPieces, pieceInfo)

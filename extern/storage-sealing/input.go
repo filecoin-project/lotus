@@ -9,6 +9,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statemachine"
@@ -187,10 +188,13 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 		offset += padLength.Unpadded()
 
 		for _, p := range pads {
+			expectCid := zerocomm.ZeroPieceCommitment(p.Unpadded())
+
 			ppi, err := m.sealer.AddPiece(sectorstorage.WithPriority(ctx.Context(), DealSectorPriority),
 				m.minerSector(sector.SectorType, sector.SectorNumber),
 				pieceSizes,
 				p.Unpadded(),
+				&expectCid,
 				NewNullReader(p.Unpadded()))
 			if err != nil {
 				err = xerrors.Errorf("writing padding piece: %w", err)
@@ -208,6 +212,7 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 			m.minerSector(sector.SectorType, sector.SectorNumber),
 			pieceSizes,
 			deal.size,
+			&deal.deal.DealProposal.PieceCID,
 			deal.data)
 		if err != nil {
 			err = xerrors.Errorf("writing piece: %w", err)

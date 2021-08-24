@@ -280,7 +280,7 @@ func (m *Manager) NewSector(ctx context.Context, sector storage.SectorRef) error
 	return nil
 }
 
-func (m *Manager) AddPiece(ctx context.Context, sector storage.SectorRef, existingPieces []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
+func (m *Manager) AddPiece(ctx context.Context, sector storage.SectorRef, existingPieces []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, exp *cid.Cid, r io.Reader) (abi.PieceInfo, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -298,7 +298,7 @@ func (m *Manager) AddPiece(ctx context.Context, sector storage.SectorRef, existi
 
 	var out abi.PieceInfo
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTAddPiece, selector, schedNop, func(ctx context.Context, w Worker) error {
-		p, err := m.waitSimpleCall(ctx)(w.AddPiece(ctx, sector, existingPieces, sz, r))
+		p, err := m.waitSimpleCall(ctx)(w.AddPiece(ctx, sector, existingPieces, sz, exp, r))
 		if err != nil {
 			return err
 		}

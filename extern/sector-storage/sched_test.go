@@ -96,7 +96,7 @@ func (s *schedTestWorker) NewSector(ctx context.Context, sector storage.SectorRe
 	panic("implement me")
 }
 
-func (s *schedTestWorker) AddPiece(ctx context.Context, sector storage.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error) {
+func (s *schedTestWorker) AddPiece(ctx context.Context, sector storage.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, exp *cid.Cid, pieceData storage.Data) (storiface.CallID, error) {
 	panic("implement me")
 }
 
