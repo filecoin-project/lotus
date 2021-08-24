@@ -228,11 +228,15 @@ func (p *DealPublisher) waitForMoreDeals() {
 	// Set a timeout to wait for more deals to arrive
 	log.Infof("waiting publish deals queue period of %s before publishing", p.publishPeriod)
 	ctx, cancel := context.WithCancel(p.ctx)
+
+	// Create the timer _before_ taking the current time so publishPeriod+timeout is always >=
+	// the actual timer timeout.
+	timer := build.Clock.Timer(p.publishPeriod)
+
 	p.publishPeriodStart = build.Clock.Now()
 	p.cancelWaitForMoreDeals = cancel
 
 	go func() {
-		timer := build.Clock.Timer(p.publishPeriod)
 		select {
 		case <-ctx.Done():
 			timer.Stop()
