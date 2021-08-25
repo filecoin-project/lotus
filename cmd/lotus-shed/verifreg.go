@@ -28,7 +28,8 @@ var verifRegCmd = &cli.Command{
 	Usage: "Interact with the verified registry actor",
 	Flags: []cli.Flag{},
 	Subcommands: []*cli.Command{
-		verifRegAddVerifierCmd,
+		verifRegAddVerifierFromMsigCmd,
+		verifRegAddVerifierFromAccountCmd,
 		verifRegVerifyClientCmd,
 		verifRegListVerifiersCmd,
 		verifRegListClientsCmd,
@@ -37,7 +38,7 @@ var verifRegCmd = &cli.Command{
 	},
 }
 
-var verifRegAddVerifierCmd = &cli.Command{
+var verifRegAddVerifierFromMsigCmd = &cli.Command{
 	Name:      "add-verifier",
 	Usage:     "make a given account a verifier",
 	ArgsUsage: "<message sender> <new verifier> <allowance>",
@@ -105,6 +106,71 @@ var verifRegAddVerifierCmd = &cli.Command{
 		}
 
 		//TODO: Internal msg might still have failed
+		return nil
+
+	},
+}
+
+var verifRegAddVerifierFromAccountCmd = &cli.Command{
+	Name:      "add-verifier-from-account",
+	Usage:     "make a given account a verifier",
+	ArgsUsage: "<verifier root key> <new verifier> <allowance>",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 3 {
+			return fmt.Errorf("must specify three arguments: sender, verifier, and allowance")
+		}
+
+		sender, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		verifier, err := address.NewFromString(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		allowance, err := types.BigFromString(cctx.Args().Get(2))
+		if err != nil {
+			return err
+		}
+
+		// TODO: ActorUpgrade: Abstract
+		params, err := actors.SerializeParams(&verifreg2.AddVerifierParams{Address: verifier, Allowance: allowance})
+		if err != nil {
+			return err
+		}
+
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		msg := &types.Message{
+			To:     verifreg.Address,
+			From:   sender,
+			Method: verifreg.Methods.AddVerifier,
+			Params: params,
+		}
+
+		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("message sent, now waiting on cid: %s\n", smsg.Cid())
+
+		mwait, err := api.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		if mwait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("failed to add verified client: %d", mwait.Receipt.ExitCode)
+		}
+
 		return nil
 
 	},
