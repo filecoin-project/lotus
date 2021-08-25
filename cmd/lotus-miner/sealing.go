@@ -102,24 +102,30 @@ var sealingWorkersCmd = &cli.Command{
 			ramBarsRes := int(stat.Info.Resources.MemReserved * barCols / stat.Info.Resources.MemPhysical)
 			ramBarsUsed := int(stat.MemUsedMin * barCols / stat.Info.Resources.MemPhysical)
 			ramRepeatSpace := int(barCols) - (ramBarsUsed + ramBarsRes)
-			var ramBar string
+
+			colorFunc := color.YellowString
 			if ramRepeatSpace < 0 {
 				ramRepeatSpace = 0
-				ramBar = color.RedString(strings.Repeat("|", ramBarsRes)) +
-					color.GreenString(strings.Repeat("|", ramBarsUsed)) +
-					strings.Repeat(" ", ramRepeatSpace)
-			} else {
-				ramBar = color.YellowString(strings.Repeat("|", ramBarsRes)) +
-					color.GreenString(strings.Repeat("|", ramBarsUsed)) +
-					strings.Repeat(" ", ramRepeatSpace)
+				colorFunc = color.RedString
 			}
+
+			ramBar := colorFunc(strings.Repeat("|", ramBarsRes)) +
+				color.GreenString(strings.Repeat("|", ramBarsUsed)) +
+				strings.Repeat(" ", ramRepeatSpace)
 
 			vmem := stat.Info.Resources.MemPhysical + stat.Info.Resources.MemSwap
 
 			vmemBarsRes := int(stat.Info.Resources.MemReserved * barCols / vmem)
 			vmemBarsUsed := int(stat.MemUsedMax * barCols / vmem)
 			vmemRepeatSpace := int(barCols) - (vmemBarsUsed + vmemBarsRes)
-			vmemBar := color.YellowString(strings.Repeat("|", vmemBarsRes)) +
+
+			colorFunc = color.YellowString
+			if vmemRepeatSpace < 0 {
+				vmemRepeatSpace = 0
+				colorFunc = color.RedString
+			}
+
+			vmemBar := colorFunc(strings.Repeat("|", vmemBarsRes)) +
 				color.GreenString(strings.Repeat("|", vmemBarsUsed)) +
 				strings.Repeat(" ", vmemRepeatSpace)
 
