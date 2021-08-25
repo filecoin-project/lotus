@@ -748,7 +748,10 @@ func (sm *StorageMinerAPI) DagstoreInitializeAll(ctx context.Context, params api
 				}
 
 				err := sm.DagstoreInitializeShard(ctx, k)
-				throttle <- struct{}{}
+
+				if throttle != nil {
+					throttle <- struct{}{}
+				}
 
 				r.Event = "end"
 				if err == nil {
