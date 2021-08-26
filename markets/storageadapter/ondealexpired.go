@@ -101,7 +101,7 @@ func (mgr *DealExpiryManager) OnDealExpiredOrSlashed(ctx context.Context, publis
 	// and the chain has advanced to the confidence height
 	stateChanged := func(ts *types.TipSet, ts2 *types.TipSet, states events.StateChange, h abi.ChainEpoch) (more bool, err error) {
 		// Check if the deal has already expired
-		if ts2 == nil || res.MarketDeal.Proposal.EndEpoch <= ts2.Height() {
+		if res.MarketDeal.Proposal.EndEpoch <= h {
 			onDealExpired(nil)
 			return false, nil
 		}
@@ -143,7 +143,7 @@ func (mgr *DealExpiryManager) OnDealExpiredOrSlashed(ctx context.Context, publis
 	match := mgr.dsMatcher.matcher(ctx, res.DealID)
 
 	// Wait until after the end epoch for the deal and then timeout
-	timeout := (res.MarketDeal.Proposal.EndEpoch - head.Height()) + 1
+	timeout := res.MarketDeal.Proposal.EndEpoch + 1
 	if err := mgr.demAPI.StateChanged(checkFunc, stateChanged, revert, int(build.MessageConfidence)+1, timeout, match); err != nil {
 		return xerrors.Errorf("failed to set up state changed handler: %w", err)
 	}
