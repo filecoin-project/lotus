@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/journal/alerting"
 )
 
 var infoCmd = &cli.Command{
@@ -115,6 +116,21 @@ func infoCmdAct(cctx *cli.Context) error {
 	fmt.Printf(" [basefee %s]", color.New(gasCol...).Sprint(types.FIL(basefee).Short()))
 
 	fmt.Println()
+
+	alerts, err := minerApi.LogAlerts(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting alerts: %w", err)
+	}
+
+	activeAlerts := make([]alerting.Alert, 0)
+	for _, alert := range alerts {
+		if alert.Active {
+			activeAlerts = append(activeAlerts, alert)
+		}
+	}
+	if len(activeAlerts) > 0 {
+		fmt.Printf("%s (check %s)\n", color.RedString("⚠ %d Active alerts", len(activeAlerts)), color.YellowString("lotus-miner log alerts"))
+	}
 
 	err = handleMiningInfo(ctx, cctx, fullapi, minerApi)
 	if err != nil {

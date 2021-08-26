@@ -28,10 +28,12 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/journal/alerting"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
@@ -81,6 +83,9 @@ const (
 
 	// System processes.
 	InitMemoryWatchdog
+
+	// health checks
+	CheckFDLimit
 
 	// libp2p
 	PstoreAddSelfKeysKey
@@ -146,6 +151,9 @@ func defaults() []Option {
 		// global system journal.
 		Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		Override(new(journal.Journal), modules.OpenFilesystemJournal),
+		Override(new(*alerting.Alerting), alerting.NewAlertingSystem),
+
+		Override(CheckFDLimit, modules.CheckFdLimit(build.DefaultFDLimit)),
 
 		Override(new(system.MemoryConstraints), modules.MemoryConstraints),
 		Override(InitMemoryWatchdog, modules.MemoryWatchdog),

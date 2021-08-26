@@ -23,6 +23,7 @@ import (
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	miner "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	types "github.com/filecoin-project/lotus/chain/types"
+	alerting "github.com/filecoin-project/lotus/journal/alerting"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	dtypes "github.com/filecoin-project/lotus/node/modules/dtypes"
 	imports "github.com/filecoin-project/lotus/node/repo/imports"
@@ -948,6 +949,21 @@ func (m *MockFullNode) ID(arg0 context.Context) (peer.ID, error) {
 func (mr *MockFullNodeMockRecorder) ID(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockFullNode)(nil).ID), arg0)
+}
+
+// LogAlerts mocks base method.
+func (m *MockFullNode) LogAlerts(arg0 context.Context) ([]alerting.Alert, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LogAlerts", arg0)
+	ret0, _ := ret[0].([]alerting.Alert)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LogAlerts indicates an expected call of LogAlerts.
+func (mr *MockFullNodeMockRecorder) LogAlerts(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LogAlerts", reflect.TypeOf((*MockFullNode)(nil).LogAlerts), arg0)
 }
 
 // LogList mocks base method.
