@@ -1,3 +1,18 @@
+ignore:
+  # Auto generated
+  - "^.*_gen.go$"
+  - "^.*/mock_full.go$"
+  # Old actors.
+  - "^chain/actors/builtin/[^/]*/(message|state|v)[0-4]\\.go$" # We test the latest version only.
+  # Tests
+  - "api/test/**"
+  - "conformance/**"
+  # Generators
+  - "gen/**"
+  - "chain/actors/agen/**"
+  # Non-critical utilities
+  - "api/docgen/**"
+  - "api/docgen-openrpc/**"
 coverage:
   status:
     patch: off
@@ -36,7 +51,7 @@ coverage:
         informational: false
         paths:
           - "chain"
-      node: 
+      node:
         target: auto
         threshold: 0.5%
         informational: false
