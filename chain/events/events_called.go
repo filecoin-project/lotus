@@ -157,7 +157,7 @@ func (e *hcEvents) processHeadChangeEvent(rev, app []*types.TipSet) error {
 			// Apply any queued events and timeouts that were targeted at the
 			// current chain height
 			e.applyWithConfidence(ts, at)
-			e.applyTimeouts(ts)
+			e.applyTimeouts(at)
 		}
 
 		// Update the latest known tipset
@@ -273,8 +273,8 @@ func (e *hcEvents) applyWithConfidence(ts *types.TipSet, height abi.ChainEpoch) 
 }
 
 // Apply any timeouts that expire at this height
-func (e *hcEvents) applyTimeouts(ts *types.TipSet) {
-	triggers, ok := e.timeouts[ts.Height()]
+func (e *hcEvents) applyTimeouts(at abi.ChainEpoch) {
+	triggers, ok := e.timeouts[at]
 	if !ok {
 		return // nothing to do
 	}
@@ -288,14 +288,14 @@ func (e *hcEvents) applyTimeouts(ts *types.TipSet) {
 			continue
 		}
 
-		timeoutTs, err := e.tsc.get(ts.Height() - abi.ChainEpoch(trigger.confidence))
+		timeoutTs, err := e.tsc.get(at - abi.ChainEpoch(trigger.confidence))
 		if err != nil {
-			log.Errorf("events: applyTimeouts didn't find tipset for event; wanted %d; current %d", ts.Height()-abi.ChainEpoch(trigger.confidence), ts.Height())
+			log.Errorf("events: applyTimeouts didn't find tipset for event; wanted %d; current %d", at-abi.ChainEpoch(trigger.confidence), at)
 		}
 
-		more, err := trigger.handle(nil, nil, timeoutTs, ts.Height())
+		more, err := trigger.handle(nil, nil, timeoutTs, at)
 		if err != nil {
-			log.Errorf("chain trigger (call @H %d, called @ %d) failed: %s", timeoutTs.Height(), ts.Height(), err)
+			log.Errorf("chain trigger (call @H %d, called @ %d) failed: %s", timeoutTs.Height(), at, err)
 			continue // don't revert failed calls
 		}
 
