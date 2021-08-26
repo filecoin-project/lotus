@@ -8,7 +8,7 @@ import (
 
 func init() {
 	supportsFDManagement = true
-	GetLimit = unixGetLimit
+	getLimit = unixGetLimit
 	setLimit = unixSetLimit
 }
 

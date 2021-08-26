@@ -7,13 +7,14 @@ import (
 
 func CheckFdLimit(min uint64) func(al *alerting.Alerting) {
 	return func(al *alerting.Alerting) {
-		if ulimit.GetLimit == nil {
+		soft, _, err := ulimit.GetLimit()
+
+		if err == ulimit.ErrUnsupported {
+			log.Warn("FD limit monitoring not available")
 			return
 		}
 
 		alert := al.AddAlertType("process", "fd-limit")
-
-		soft, _, err := ulimit.GetLimit()
 		if err != nil {
 			al.Raise(alert, map[string]string{
 				"message": "failed to get FD limit",
