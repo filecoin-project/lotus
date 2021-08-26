@@ -1255,72 +1255,80 @@ func TestStateChangedRevert(t *testing.T) {
 }
 
 func TestStateChangedTimeout(t *testing.T) {
-	fcs := newFakeCS(t)
+	timeoutHeight := abi.ChainEpoch(20)
+	confidence := 3
 
-	events, err := NewEvents(context.Background(), fcs)
-	require.NoError(t, err)
+	testCases := []struct {
+		name          string
+		checkFn       CheckFunc
+		nilBlocks     []int
+		expectTimeout bool
+	}{{
+		// Verify that the state changed timeout is called at the expected height
+		name: "state changed timeout",
+		checkFn: func(ctx context.Context, ts *types.TipSet) (d bool, m bool, e error) {
+			return false, true, nil
+		},
+		expectTimeout: true,
+	}, {
+		// Verify that the state changed timeout is called even if the timeout
+		// falls on nil block
+		name: "state changed timeout falls on nil block",
+		checkFn: func(ctx context.Context, ts *types.TipSet) (d bool, m bool, e error) {
+			return false, true, nil
+		},
+		nilBlocks:     []int{20, 21, 22, 23},
+		expectTimeout: true,
+	}, {
+		// Verify that the state changed timeout is not called if the check
+		// function reports that it's complete
+		name: "no timeout callback if check func reports done",
+		checkFn: func(ctx context.Context, ts *types.TipSet) (d bool, m bool, e error) {
+			return true, true, nil
+		},
+		expectTimeout: false,
+	}}
 
-	called := false
+	for _, tc := range testCases {
+		tc := tc
+		t.Run(tc.name, func(t *testing.T) {
+			fcs := newFakeCS(t)
 
-	err = events.StateChanged(func(ctx context.Context, ts *types.TipSet) (d bool, m bool, e error) {
-		return false, true, nil
-	}, func(oldTs, newTs *types.TipSet, data StateChange, curH abi.ChainEpoch) (bool, error) {
-		if data != nil {
-			require.Equal(t, oldTs.Key(), newTs.Parents())
-		}
-		called = true
-		require.Nil(t, data)
-		require.Equal(t, abi.ChainEpoch(20), newTs.Height())
-		require.Equal(t, abi.ChainEpoch(23), curH)
-		return false, nil
-	}, func(_ context.Context, ts *types.TipSet) error {
-		t.Fatal("revert on timeout")
-		return nil
-	}, 3, 20, func(oldTs, newTs *types.TipSet) (bool, StateChange, error) {
-		require.Equal(t, oldTs.Key(), newTs.Parents())
-		return false, nil, nil
-	})
+			events, err := NewEvents(context.Background(), fcs)
+			require.NoError(t, err)
 
-	require.NoError(t, err)
+			// Track whether the callback was called
+			called := false
 
-	fcs.advance(0, 21, 0, nil)
-	require.False(t, called)
+			// Set up state change tracking that will timeout at the given height
+			err = events.StateChanged(
+				tc.checkFn,
+				func(oldTs, newTs *types.TipSet, data StateChange, curH abi.ChainEpoch) (bool, error) {
+					// Expect the callback to be called at the timeout height with nil data
+					called = true
+					require.Nil(t, data)
+					require.Equal(t, timeoutHeight, newTs.Height())
+					require.Equal(t, timeoutHeight+abi.ChainEpoch(confidence), curH)
+					return false, nil
+				}, func(_ context.Context, ts *types.TipSet) error {
+					t.Fatal("revert on timeout")
+					return nil
+				}, confidence, timeoutHeight, func(oldTs, newTs *types.TipSet) (bool, StateChange, error) {
+					return false, nil, nil
+				})
 
-	fcs.advance(0, 5, 0, nil)
-	require.True(t, called)
-	called = false
+			require.NoError(t, err)
 
-	// with check func reporting done
+			// Advance to timeout height
+			fcs.advance(0, int(timeoutHeight)+1, 0, nil)
+			require.False(t, called)
 
-	fcs = newFakeCS(t)
-	events, err = NewEvents(context.Background(), fcs)
-	require.NoError(t, err)
-
-	err = events.StateChanged(func(ctx context.Context, ts *types.TipSet) (d bool, m bool, e error) {
-		return true, true, nil
-	}, func(oldTs, newTs *types.TipSet, data StateChange, curH abi.ChainEpoch) (bool, error) {
-		if data != nil {
-			require.Equal(t, oldTs.Key(), newTs.Parents())
-		}
-		called = true
-		require.Nil(t, data)
-		require.Equal(t, abi.ChainEpoch(20), newTs.Height())
-		require.Equal(t, abi.ChainEpoch(23), curH)
-		return false, nil
-	}, func(_ context.Context, ts *types.TipSet) error {
-		t.Fatal("revert on timeout")
-		return nil
-	}, 3, 20, func(oldTs, newTs *types.TipSet) (bool, StateChange, error) {
-		require.Equal(t, oldTs.Key(), newTs.Parents())
-		return false, nil, nil
-	})
-	require.NoError(t, err)
-
-	fcs.advance(0, 21, 0, nil)
-	require.False(t, called)
-
-	fcs.advance(0, 5, 0, nil)
-	require.False(t, called)
+			// Advance past timeout height
+			fcs.advance(0, 5, 0, nil, tc.nilBlocks...)
+			require.Equal(t, tc.expectTimeout, called)
+			called = false
+		})
+	}
 }
 
 func TestCalledMultiplePerEpoch(t *testing.T) {

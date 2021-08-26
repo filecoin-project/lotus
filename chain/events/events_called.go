@@ -145,7 +145,7 @@ func (e *hcEventsObserver) Apply(ctx context.Context, from, to *types.TipSet) er
 		// Apply any queued events and timeouts that were targeted at the
 		// current chain height
 		e.applyWithConfidence(ctx, at)
-		e.applyTimeouts(ctx, to)
+		e.applyTimeouts(ctx, at, to)
 	}
 	return nil
 }
@@ -242,8 +242,8 @@ func (e *hcEventsObserver) applyWithConfidence(ctx context.Context, height abi.C
 }
 
 // Apply any timeouts that expire at this height
-func (e *hcEventsObserver) applyTimeouts(ctx context.Context, ts *types.TipSet) {
-	triggers, ok := e.timeouts[ts.Height()]
+func (e *hcEventsObserver) applyTimeouts(ctx context.Context, at abi.ChainEpoch, ts *types.TipSet) {
+	triggers, ok := e.timeouts[at]
 	if !ok {
 		return // nothing to do
 	}
@@ -258,14 +258,14 @@ func (e *hcEventsObserver) applyTimeouts(ctx context.Context, ts *types.TipSet) 
 		}
 
 		// This should be cached.
-		timeoutTs, err := e.cs.ChainGetTipSetAfterHeight(ctx, ts.Height()-abi.ChainEpoch(trigger.confidence), ts.Key())
+		timeoutTs, err := e.cs.ChainGetTipSetAfterHeight(ctx, at-abi.ChainEpoch(trigger.confidence), ts.Key())
 		if err != nil {
-			log.Errorf("events: applyTimeouts didn't find tipset for event; wanted %d; current %d", ts.Height()-abi.ChainEpoch(trigger.confidence), ts.Height())
+			log.Errorf("events: applyTimeouts didn't find tipset for event; wanted %d; current %d", at-abi.ChainEpoch(trigger.confidence), at)
 		}
 
-		more, err := trigger.handle(ctx, nil, nil, timeoutTs, ts.Height())
+		more, err := trigger.handle(ctx, nil, nil, timeoutTs, at)
 		if err != nil {
-			log.Errorf("chain trigger (call @H %d, called @ %d) failed: %s", timeoutTs.Height(), ts.Height(), err)
+			log.Errorf("chain trigger (call @H %d, called @ %d) failed: %s", timeoutTs.Height(), at, err)
 			continue // don't revert failed calls
 		}
 
