@@ -816,6 +816,11 @@ workflows:
           target: "./itests/deals_concurrent_test.go"
       
       - test:
+          name: test-itest-deals_expiry
+          suite: itest-deals_expiry
+          target: "./itests/deals_expiry_test.go"
+      
+      - test:
           name: test-itest-deals_offline
           suite: itest-deals_offline
           target: "./itests/deals_offline_test.go"
