@@ -80,7 +80,7 @@ func TestDealExpiry(t *testing.T) {
 		clientDeals, err := client.ClientListDeals(ctx)
 		require.NoError(t, err)
 
-		t.Logf("Client deal state: %s", storagemarket.DealStates[clientDeals[0].State])
+		t.Logf("Client deal state: %s\n", storagemarket.DealStates[clientDeals[0].State])
 
 		// Expect the deal to eventually expire on the client and the miner
 		if clientDeals[0].State == storagemarket.StorageDealExpired {
