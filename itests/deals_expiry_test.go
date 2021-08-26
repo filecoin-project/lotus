@@ -5,25 +5,23 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/lotus/itests/kit"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	market3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
 	market4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/market"
 	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
-	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/lotus/itests/kit"
 )
 
 // Test that the deal state eventually moves to "Expired" on both client and miner
 func TestDealExpiry(t *testing.T) {
 	kit.QuietMiningLogs()
 
-	// reset minimum deal duration to 0, so we can make very short-lived deals.
-	// NOTE: this will need updating with every new specs-actors version.
-	market2.DealMinDuration = 0
-	market3.DealMinDuration = 0
-	market4.DealMinDuration = 0
-	market5.DealMinDuration = 0
+	resetMinDealDuration(t)
 
 	ctx := context.Background()
 
@@ -68,18 +66,8 @@ func TestDealExpiry(t *testing.T) {
 
 		t.Logf("Chain height: %d", ts.Height())
 
-		// Get the miner deal
-		minerDeals, err := miner1.MarketListIncompleteDeals(ctx)
-		require.NoError(t, err)
-		require.Greater(t, len(minerDeals), 0)
-
-		var minerDeal *storagemarket.MinerDeal
-		for _, d := range minerDeals {
-			if d.ProposalCid == *dealProposalCid {
-				minerDeal = &d
-			}
-		}
-		require.NotNil(t, minerDeal)
+		// Get the miner deal from the proposal CID
+		minerDeal := getMinerDeal(ctx, t, miner1, *dealProposalCid)
 
 		t.Logf("Miner deal:")
 		t.Logf("  %s -> %s", minerDeal.Proposal.Client, minerDeal.Proposal.Provider)
@@ -114,4 +102,39 @@ func TestDealExpiry(t *testing.T) {
 
 		time.Sleep(2 * time.Second)
 	}
+}
+
+func getMinerDeal(ctx context.Context, t *testing.T, miner1 kit.TestMiner, dealProposalCid cid.Cid) storagemarket.MinerDeal {
+	minerDeals, err := miner1.MarketListIncompleteDeals(ctx)
+	require.NoError(t, err)
+	require.Greater(t, len(minerDeals), 0)
+
+	for _, d := range minerDeals {
+		if d.ProposalCid == dealProposalCid {
+			return d
+		}
+	}
+	t.Fatalf("miner deal with proposal CID %s not found", dealProposalCid)
+	return storagemarket.MinerDeal{}
+}
+
+// reset minimum deal duration to 0, so we can make very short-lived deals.
+// NOTE: this will need updating with every new specs-actors version.
+func resetMinDealDuration(t *testing.T) {
+	m2 := market2.DealMinDuration
+	m3 := market3.DealMinDuration
+	m4 := market4.DealMinDuration
+	m5 := market5.DealMinDuration
+
+	market2.DealMinDuration = 0
+	market3.DealMinDuration = 0
+	market4.DealMinDuration = 0
+	market5.DealMinDuration = 0
+
+	t.Cleanup(func() {
+		market2.DealMinDuration = m2
+		market3.DealMinDuration = m3
+		market4.DealMinDuration = m4
+		market5.DealMinDuration = m5
+	})
 }
