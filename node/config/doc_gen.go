@@ -349,22 +349,35 @@ Format: multiaddress`,
 			Comment: ``,
 		},
 		{
+			Name: "DisableNatPortMap",
+			Type: "bool",
+
+			Comment: `When not disabled (default), lotus asks NAT devices (e.g., routers), to
+open up an external port and forward it to the port lotus is running on.
+When this works (i.e., when your router supports NAT port forwarding),
+it makes the local lotus node accessible from the public internet`,
+		},
+		{
 			Name: "ConnMgrLow",
 			Type: "uint",
 
-			Comment: ``,
+			Comment: `ConnMgrLow is the number of connections that the basic connection manager
+will trim down to.`,
 		},
 		{
 			Name: "ConnMgrHigh",
 			Type: "uint",
 
-			Comment: ``,
+			Comment: `ConnMgrHigh is the number of connections that, when exceeded, will trigger
+a connection GC operation. Note: protected/recently formed connections don't
+count towards this limit.`,
 		},
 		{
 			Name: "ConnMgrGrace",
 			Type: "Duration",
 
-			Comment: ``,
+			Comment: `ConnMgrGrace is a time duration that new connections are immune from being
+closed by the connection manager.`,
 		},
 	},
 	"MinerAddressConfig": []DocField{
