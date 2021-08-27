@@ -26,7 +26,6 @@ func LoadVector(t *testing.T, f string, out interface{}) {
 }
 
 func TestBlockHeaderVectors(t *testing.T) {
-	t.Skip("we need to regenerate for beacon")
 	var headers []HeaderVector
 	LoadVector(t, "block_headers.json", &headers)
 
@@ -65,8 +64,6 @@ func TestMessageSigningVectors(t *testing.T) {
 }
 
 func TestUnsignedMessageVectors(t *testing.T) {
-	t.Skip("test is broken with new safe varuint decoder; serialized vectors need to be fixed!")
-
 	var msvs []UnsignedMessageVector
 	LoadVector(t, "unsigned_messages.json", &msvs)
 
