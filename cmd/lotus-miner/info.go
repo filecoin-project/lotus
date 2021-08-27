@@ -17,19 +17,21 @@ import (
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/api/v0api"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/journal/alerting"
@@ -45,6 +47,10 @@ var infoCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "hide-sectors-info",
 			Usage: "hide sectors info",
+		},
+		&cli.IntFlag{
+			Name:  "blocks",
+			Usage: "Log of produced <blocks> newest blocks and rewards(Miner Fee excluded)",
 		},
 	},
 	Action: infoCmdAct,
@@ -157,6 +163,7 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.Full
 	}
 
 	tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(fullapi), blockstore.NewMemory())
+
 	mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
 	if err != nil {
 		return err
@@ -164,6 +171,7 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.Full
 
 	// Sector size
 	mi, err := fullapi.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+
 	if err != nil {
 		return err
 	}
@@ -194,6 +202,7 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.Full
 		),
 	)
 	secCounts, err := fullapi.StateMinerSectorCount(ctx, maddr, types.EmptyTSK)
+
 	if err != nil {
 		return err
 	}
@@ -291,6 +300,7 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.Full
 	colorTokenAmount("      Available:  %s\n", availBalance)
 
 	mb, err := fullapi.StateMarketBalance(ctx, maddr, types.EmptyTSK)
+
 	if err != nil {
 		return xerrors.Errorf("getting market balance: %w", err)
 	}
@@ -301,6 +311,7 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.Full
 	colorTokenAmount("       Available: %s\n", big.Sub(mb.Escrow, mb.Locked))
 
 	wb, err := fullapi.WalletBalance(ctx, mi.Worker)
+
 	if err != nil {
 		return xerrors.Errorf("getting worker balance: %w", err)
 	}
@@ -331,6 +342,13 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.Full
 		}
 	}
 
+	if cctx.IsSet("blocks") {
+		fmt.Println("Produced newest blocks:")
+		err = producedBlocks(ctx, cctx.Int("blocks"), maddr, fullapi)
+		if err != nil {
+			return err
+		}
+	}
 	// TODO: grab actr state / info
 	//  * Sealed sectors (count / bytes)
 	//  * Power
@@ -500,8 +518,8 @@ func init() {
 	}
 }
 
-func sectorsInfo(ctx context.Context, napi api.StorageMiner) error {
-	summary, err := napi.SectorsSummary(ctx)
+func sectorsInfo(ctx context.Context, mapi api.StorageMiner) error {
+	summary, err := mapi.SectorsSummary(ctx)
 	if err != nil {
 		return err
 	}
@@ -538,4 +556,48 @@ func colorTokenAmount(format string, amount abi.TokenAmount) {
 	} else {
 		color.Red(format, types.FIL(amount).Short())
 	}
+}
+
+func producedBlocks(ctx context.Context, count int, maddr address.Address, napi v0api.FullNode) error {
+	var err error
+	head, err := napi.ChainHead(ctx)
+	if err != nil {
+		return err
+	}
+
+	tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(napi), blockstore.NewMemory())
+
+	ts := head
+	fmt.Printf(" Epoch   | Block ID                                                       | Reward\n")
+	for count > 0 {
+		tsk := ts.Key()
+		bhs := ts.Blocks()
+		for _, bh := range bhs {
+			if bh.Miner == maddr {
+				rewardActor, err := napi.StateGetActor(ctx, reward.Address, tsk)
+				if err != nil {
+					return err
+				}
+
+				rewardActorState, err := reward.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), rewardActor)
+				if err != nil {
+					return err
+				}
+				blockReward, err := rewardActorState.ThisEpochReward()
+				if err != nil {
+					return err
+				}
+				fmt.Printf("%8d | %s | %s\n", ts.Height(), bh.Cid(),
+					types.BigDiv(types.BigMul(types.NewInt(uint64(bh.ElectionProof.WinCount)),
+						blockReward), types.NewInt(uint64(builtin.ExpectedLeadersPerEpoch))))
+				count--
+			}
+		}
+		tsk = ts.Parents()
+		ts, err = napi.ChainGetTipSet(ctx, tsk)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
