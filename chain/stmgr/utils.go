@@ -143,13 +143,14 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 	}
 
 	for i := ts.Height(); i < height; i++ {
-		// handle state forks
+		// Technically, the tipset we're passing in here should be ts+1, but that may not exist.
 		base, err = sm.handleStateForks(ctx, base, i, &InvocationTracer{trace: &trace}, ts)
 		if err != nil {
 			return cid.Undef, nil, xerrors.Errorf("error handling state forks: %w", err)
 		}
 
-		// TODO: should we also run cron here?
+		// We intentionally don't run cron here, as we may be trying to look into the
+		// future. It's not guaranteed to be accurate... but that's fine.
 	}
 
 	r := store.NewChainRand(sm.cs, ts.Cids())
