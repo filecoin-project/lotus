@@ -47,7 +47,7 @@ func newHeightEvents(api EventAPI, obs *observer, gcConfidence abi.ChainEpoch) *
 // specified height+confidence threshold. If the chain is rolled-back under the
 // specified height, `RevertHandler` will be called.
 //
-// ts passed to handlers is the tipset at the specified, or above, if lower tipsets were null
+// ts passed to handlers is the tipset at the specified epoch, or above if lower tipsets were null.
 //
 // The context governs cancellations of this call, it won't cancel the event handler.
 func (e *heightEvents) ChainAt(ctx context.Context, hnd HeightHandler, rev RevertHandler, confidence int, h abi.ChainEpoch) error {

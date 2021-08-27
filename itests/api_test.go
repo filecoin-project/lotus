@@ -195,7 +195,7 @@ func (ts *apiSuite) testSlowNotify(t *testing.T) {
 
 	full.WaitTillChain(ctx, kit.HeightAtLeast(baseHeight+100))
 
-	// Make sure they were all closed.
+	// Make sure they were all closed, draining any buffered events first.
 	for _, ch := range newHeadsChans {
 		var ok bool
 		for ok {
