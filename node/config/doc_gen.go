@@ -349,6 +349,15 @@ Format: multiaddress`,
 			Comment: ``,
 		},
 		{
+			Name: "DisableNatPortMap",
+			Type: "bool",
+
+			Comment: `When not disabled (default), lotus asks NAT devices (e.g., routers), to
+open up an external port and forward it to the port lotus is running on.
+When this works (i.e., when your router supports NAT port forwarding),
+it makes the local lotus node accessible from the public internet`,
+		},
+		{
 			Name: "ConnMgrLow",
 			Type: "uint",
 

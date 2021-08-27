@@ -195,7 +195,6 @@ var LibP2P = Options(
 	Override(new(routing.Routing), lp2p.Routing),
 
 	// Services
-	Override(NatPortMapKey, lp2p.NatPortMap),
 	Override(BandwidthReporterKey, lp2p.BandwidthCounter),
 	Override(AutoNATSvcKey, lp2p.AutoNATService),
 
@@ -277,6 +276,8 @@ func ConfigCommon(cfg *config.Common, enableLibp2pNode bool) Option {
 			Override(AddrsFactoryKey, lp2p.AddrsFactory(
 				cfg.Libp2p.AnnounceAddresses,
 				cfg.Libp2p.NoAnnounceAddresses)),
+
+			If(!cfg.Libp2p.DisableNatPortMap, Override(NatPortMapKey, lp2p.NatPortMap)),
 		),
 		Override(new(dtypes.MetadataDS), modules.Datastore(cfg.Backup.DisableMetadataLog)),
 	)

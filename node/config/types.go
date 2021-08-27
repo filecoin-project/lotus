@@ -292,6 +292,12 @@ type Libp2p struct {
 	BootstrapPeers      []string
 	ProtectedPeers      []string
 
+	// When not disabled (default), lotus asks NAT devices (e.g., routers), to
+	// open up an external port and forward it to the port lotus is running on.
+	// When this works (i.e., when your router supports NAT port forwarding),
+	// it makes the local lotus node accessible from the public internet
+	DisableNatPortMap bool
+
 	ConnMgrLow   uint
 	ConnMgrHigh  uint
 	ConnMgrGrace Duration
