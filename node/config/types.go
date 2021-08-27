@@ -298,8 +298,15 @@ type Libp2p struct {
 	// it makes the local lotus node accessible from the public internet
 	DisableNatPortMap bool
 
-	ConnMgrLow   uint
-	ConnMgrHigh  uint
+	// ConnMgrLow is the number of connections that the basic connection manager
+	// will trim down to.
+	ConnMgrLow uint
+	// ConnMgrHigh is the number of connections that, when exceeded, will trigger
+	// a connection GC operation. Note: protected/recently formed connections don't
+	// count towards this limit.
+	ConnMgrHigh uint
+	// ConnMgrGrace is a time duration that new connections are immune from being
+	// closed by the connection manager.
 	ConnMgrGrace Duration
 }
 
