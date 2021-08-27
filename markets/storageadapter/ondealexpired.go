@@ -108,7 +108,7 @@ func (mgr *DealExpiryManager) OnDealExpiredOrSlashed(ctx context.Context, publis
 
 		// Timeout waiting for state change
 		if states == nil {
-			log.Error("timed out waiting for deal expiry")
+			log.Errorf("timed out waiting for deal expiry for deal with piece CID %s", proposal.PieceCID)
 			return false, nil
 		}
 
@@ -124,7 +124,7 @@ func (mgr *DealExpiryManager) OnDealExpiredOrSlashed(ctx context.Context, publis
 		}
 
 		// Deal was slashed
-		if deal.To == nil {
+		if deal.To == nil || deal.To.SlashEpoch > 0 {
 			onDealSlashed(ts2.Height(), nil)
 			return false, nil
 		}

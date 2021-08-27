@@ -851,6 +851,11 @@ workflows:
           target: "./itests/deals_publish_test.go"
       
       - test:
+          name: test-itest-deals_slash
+          suite: itest-deals_slash
+          target: "./itests/deals_slash_test.go"
+      
+      - test:
           name: test-itest-deals
           suite: itest-deals
           target: "./itests/deals_test.go"
