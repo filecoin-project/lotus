@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/mattn/go-isatty"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -567,13 +568,23 @@ func producedBlocks(ctx context.Context, count int, maddr address.Address, napi 
 
 	tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(napi), blockstore.NewMemory())
 
+	tty := isatty.IsTerminal(os.Stderr.Fd())
+
 	ts := head
 	fmt.Printf(" Epoch   | Block ID                                                       | Reward\n")
 	for count > 0 {
 		tsk := ts.Key()
 		bhs := ts.Blocks()
 		for _, bh := range bhs {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+
 			if bh.Miner == maddr {
+				if tty {
+					_, _ = fmt.Fprint(os.Stderr, "\r\x1b[0K")
+				}
+
 				rewardActor, err := napi.StateGetActor(ctx, reward.Address, tsk)
 				if err != nil {
 					return err
@@ -587,10 +598,14 @@ func producedBlocks(ctx context.Context, count int, maddr address.Address, napi 
 				if err != nil {
 					return err
 				}
-				fmt.Printf("%8d | %s | %s\n", ts.Height(), bh.Cid(),
-					types.BigDiv(types.BigMul(types.NewInt(uint64(bh.ElectionProof.WinCount)),
-						blockReward), types.NewInt(uint64(builtin.ExpectedLeadersPerEpoch))))
+
+				minerReward := types.BigDiv(types.BigMul(types.NewInt(uint64(bh.ElectionProof.WinCount)),
+					blockReward), types.NewInt(uint64(builtin.ExpectedLeadersPerEpoch)))
+
+				fmt.Printf("%8d | %s | %s\n", ts.Height(), bh.Cid(), types.FIL(minerReward))
 				count--
+			} else if tty && bh.Height%120 == 0 {
+				_, _ = fmt.Fprintf(os.Stderr, "\r\x1b[0KChecking epoch %s", lcli.EpochTime(head.Height(), bh.Height))
 			}
 		}
 		tsk = ts.Parents()
@@ -599,5 +614,10 @@ func producedBlocks(ctx context.Context, count int, maddr address.Address, napi 
 			return err
 		}
 	}
+
+	if tty {
+		_, _ = fmt.Fprint(os.Stderr, "\r\x1b[0K")
+	}
+
 	return nil
 }

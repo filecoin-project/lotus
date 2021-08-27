@@ -123,7 +123,7 @@ type State interface {
 	cbor.Marshaler
 
 	ThisEpochBaselinePower() (abi.StoragePower, error)
-	ThisEpochReward() (abi.TokenAmount, error)
+	ThisEpochReward() (abi.StoragePower, error)
 	ThisEpochRewardSmoothed() (builtin.FilterEstimate, error)
 
 	EffectiveBaselinePower() (abi.StoragePower, error)
