@@ -430,6 +430,7 @@ COMMANDS:
 
 OPTIONS:
    --hide-sectors-info  hide sectors info (default: false)
+   --blocks value       Log of produced <blocks> newest blocks and rewards(Miner Fee excluded) (default: 0)
    --help, -h           show help (default: false)
    --version, -v        print the version (default: false)
    
