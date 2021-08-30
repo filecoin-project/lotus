@@ -36,7 +36,6 @@ type MakeFullDealParams struct {
 	Rseed                    int
 	FastRet                  bool
 	StartEpoch               abi.ChainEpoch
-	MinBlocksDuration        uint64
 	UseCARFileForStorageDeal bool
 
 	// SuspendUntilCryptoeconStable suspends deal-making, until cryptoecon
@@ -98,9 +97,6 @@ func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealPa
 	dp.Data.Root = res.Root
 	dp.DealStartEpoch = params.StartEpoch
 	dp.FastRetrieval = params.FastRet
-	if params.MinBlocksDuration > 0 {
-		dp.MinBlocksDuration = params.MinBlocksDuration
-	}
 	deal = dh.StartDeal(ctx, dp)
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
