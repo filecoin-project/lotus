@@ -139,9 +139,29 @@ NAME:
    lotus-miner stop - Stop a running lotus miner
 
 USAGE:
-   lotus-miner stop [command options] [arguments...]
+   lotus-miner stop command [command options] [arguments...]
+
+COMMANDS:
+   check    Determine if and when stopping the miner is safe
+   help, h  Shows a list of commands or help for one command
 
 OPTIONS:
+   --force        Stop the miner without running any safety checks first (default: false)
+   --help, -h     show help (default: false)
+   --version, -v  print the version (default: false)
+   
+```
+
+### lotus-miner stop check
+```
+NAME:
+   lotus-miner stop check - Determine if and when stopping the miner is safe
+
+USAGE:
+   lotus-miner stop check [command options] [arguments...]
+
+OPTIONS:
+   --json      produce machine-readable JSON output (default: false)
    --help, -h  show help (default: false)
    
 ```
