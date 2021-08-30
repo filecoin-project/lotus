@@ -49,7 +49,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 			}
 			ts = pts
 		}
-	} else {
+	} else if ts.Height() > 0 {
 		pts, err := sm.cs.LoadTipSet(ts.Parents())
 		if err != nil {
 			return nil, xerrors.Errorf("failed to load parent tipset: %w", err)
@@ -58,6 +58,9 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		if sm.hasExpensiveFork(pheight) {
 			return nil, ErrExpensiveFork
 		}
+	} else {
+		// We can't get the parent tipset in this case.
+		pheight = ts.Height() - 1
 	}
 
 	bstate := ts.ParentState()
