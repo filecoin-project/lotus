@@ -358,11 +358,12 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 			return nil, err
 		}
 
-		trw := newTracerWrapper(tr, build.BlocksTopic(in.Nn))
+		lt := newLotusTracer(tr)
+		trw := newTracerWrapper(tr, lt, build.BlocksTopic(in.Nn))
 		options = append(options, pubsub.WithEventTracer(trw))
 	} else {
 		// still instantiate a tracer for collecting metrics
-		trw := newTracerWrapper(nil)
+		trw := newTracerWrapper(nil, nil)
 		options = append(options, pubsub.WithEventTracer(trw))
 	}
 
@@ -374,7 +375,11 @@ func HashMsgId(m *pubsub_pb.Message) string {
 	return string(hash[:])
 }
 
-func newTracerWrapper(tr pubsub.EventTracer, topics ...string) pubsub.EventTracer {
+func newTracerWrapper(
+	lp2pTracer pubsub.EventTracer,
+	lotusTracer pubsub.EventTracer,
+	topics ...string,
+) pubsub.EventTracer {
 	var topicsMap map[string]struct{}
 	if len(topics) > 0 {
 		topicsMap = make(map[string]struct{})
@@ -383,12 +388,13 @@ func newTracerWrapper(tr pubsub.EventTracer, topics ...string) pubsub.EventTrace
 		}
 	}
 
-	return &tracerWrapper{tr: tr, topics: topicsMap}
+	return &tracerWrapper{lp2pTracer: lp2pTracer, lotusTracer: lotusTracer, topics: topicsMap}
 }
 
 type tracerWrapper struct {
-	tr     pubsub.EventTracer
-	topics map[string]struct{}
+	lp2pTracer  pubsub.EventTracer
+	lotusTracer pubsub.EventTracer
+	topics      map[string]struct{}
 }
 
 func (trw *tracerWrapper) traceMessage(topic string) bool {
@@ -406,33 +412,61 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 	switch evt.GetType() {
 	case pubsub_pb.TraceEvent_PUBLISH_MESSAGE:
 		stats.Record(context.TODO(), metrics.PubsubPublishMessage.M(1))
-		if trw.tr != nil && trw.traceMessage(evt.GetPublishMessage().GetTopic()) {
-			trw.tr.Trace(evt)
+		if trw.traceMessage(evt.GetPublishMessage().GetTopic()) {
+			if trw.lp2pTracer != nil {
+				trw.lp2pTracer.Trace(evt)
+			}
+
+			if trw.lotusTracer != nil {
+				trw.lotusTracer.Trace(evt)
+			}
 		}
 	case pubsub_pb.TraceEvent_DELIVER_MESSAGE:
 		stats.Record(context.TODO(), metrics.PubsubDeliverMessage.M(1))
-		if trw.tr != nil && trw.traceMessage(evt.GetDeliverMessage().GetTopic()) {
-			trw.tr.Trace(evt)
+		if trw.traceMessage(evt.GetDeliverMessage().GetTopic()) {
+			if trw.lp2pTracer != nil {
+				trw.lp2pTracer.Trace(evt)
+			}
+
+			if trw.lotusTracer != nil {
+				trw.lotusTracer.Trace(evt)
+			}
 		}
 	case pubsub_pb.TraceEvent_REJECT_MESSAGE:
 		stats.Record(context.TODO(), metrics.PubsubRejectMessage.M(1))
 	case pubsub_pb.TraceEvent_DUPLICATE_MESSAGE:
 		stats.Record(context.TODO(), metrics.PubsubDuplicateMessage.M(1))
 	case pubsub_pb.TraceEvent_JOIN:
-		if trw.tr != nil {
-			trw.tr.Trace(evt)
+		if trw.lp2pTracer != nil {
+			trw.lp2pTracer.Trace(evt)
+		}
+
+		if trw.lotusTracer != nil {
+			trw.lotusTracer.Trace(evt)
 		}
 	case pubsub_pb.TraceEvent_LEAVE:
-		if trw.tr != nil {
-			trw.tr.Trace(evt)
+		if trw.lp2pTracer != nil {
+			trw.lp2pTracer.Trace(evt)
+		}
+
+		if trw.lotusTracer != nil {
+			trw.lotusTracer.Trace(evt)
 		}
 	case pubsub_pb.TraceEvent_GRAFT:
-		if trw.tr != nil {
-			trw.tr.Trace(evt)
+		if trw.lp2pTracer != nil {
+			trw.lp2pTracer.Trace(evt)
+		}
+
+		if trw.lotusTracer != nil {
+			trw.lotusTracer.Trace(evt)
 		}
 	case pubsub_pb.TraceEvent_PRUNE:
-		if trw.tr != nil {
-			trw.tr.Trace(evt)
+		if trw.lp2pTracer != nil {
+			trw.lp2pTracer.Trace(evt)
+		}
+
+		if trw.lotusTracer != nil {
+			trw.lotusTracer.Trace(evt)
 		}
 	case pubsub_pb.TraceEvent_RECV_RPC:
 		stats.Record(context.TODO(), metrics.PubsubRecvRPC.M(1))
