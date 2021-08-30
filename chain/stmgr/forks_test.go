@@ -310,7 +310,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 	nullStart := abi.ChainEpoch(testForkHeight - nullsBefore)
 	nullLength := abi.ChainEpoch(nullsBefore + nullsAfter)
 
-	for i := 0; i < 50; i++ {
+	for i := 0; i < testForkHeight*2; i++ {
 		pts := cg.CurTipset.TipSet()
 		skip := abi.ChainEpoch(0)
 		if pts.Height() == nullStart {
