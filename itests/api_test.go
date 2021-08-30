@@ -7,14 +7,14 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/stretchr/testify/require"
+
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/stretchr/testify/require"
 )
 
 func TestAPI(t *testing.T) {
@@ -186,7 +186,7 @@ func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
 	var newMiner kit.TestMiner
 	ens.Miner(&newMiner, full,
 		kit.OwnerAddr(full.DefaultKey),
-		kit.ProofType(abi.RegisteredSealProof_StackedDrg2KiBV1), // we're using v0 actors with old proofs.
+		kit.SectorSize(2<<10),
 		kit.WithAllSubsystems(),
 	).Start().InterconnectAll()
 

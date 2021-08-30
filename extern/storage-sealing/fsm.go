@@ -351,6 +351,13 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		log.Errorw("update sector stats", "error", err)
 	}
 
+	// todo: drop this, use Context iface everywhere
+	wrapCtx := func(f func(Context, SectorInfo) error) func(statemachine.Context, SectorInfo) error {
+		return func(ctx statemachine.Context, info SectorInfo) error {
+			return f(&ctx, info)
+		}
+	}
+
 	switch state.State {
 	// Happy path
 	case Empty:
@@ -413,7 +420,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	case DealsExpired:
 		return m.handleDealsExpired, processed, nil
 	case RecoverDealIDs:
-		return m.handleRecoverDealIDs, processed, nil
+		return wrapCtx(m.HandleRecoverDealIDs), processed, nil
 
 	// Post-seal
 	case Proving:

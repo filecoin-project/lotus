@@ -811,6 +811,11 @@ workflows:
           target: "./itests/deadlines_test.go"
       
       - test:
+          name: test-itest-deals_512mb
+          suite: itest-deals_512mb
+          target: "./itests/deals_512mb_test.go"
+      
+      - test:
           name: test-itest-deals_concurrent
           suite: itest-deals_concurrent
           target: "./itests/deals_concurrent_test.go"

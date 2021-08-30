@@ -21,19 +21,19 @@ const (
 )
 
 // Converts a network version into an actors adt version.
-func VersionForNetwork(version network.Version) Version {
+func VersionForNetwork(version network.Version) (Version, error) {
 	switch version {
 	case network.Version0, network.Version1, network.Version2, network.Version3:
-		return Version0
-	case network.Version4, network.Version5, network.Version6, network.Version6AndAHalf, network.Version7, network.Version8, network.Version9:
-		return Version2
+		return Version0, nil
+	case network.Version4, network.Version5, network.Version6, network.Version7, network.Version8, network.Version9:
+		return Version2, nil
 	case network.Version10, network.Version11:
-		return Version3
+		return Version3, nil
 	case network.Version12:
-		return Version4
+		return Version4, nil
 	case network.Version13:
-		return Version5
+		return Version5, nil
 	default:
-		panic(fmt.Sprintf("unsupported network version %d", version))
+		return -1, fmt.Errorf("unsupported network version %d", version)
 	}
 }

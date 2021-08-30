@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.11.2-dev
+   1.11.3-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -2297,11 +2297,12 @@ NAME:
    lotus chain encode params - Encodes the given JSON params
 
 USAGE:
-   lotus chain encode params [command options] [toAddr method params]
+   lotus chain encode params [command options] [dest method params]
 
 OPTIONS:
    --tipset value    
    --encoding value  specify input encoding to parse (default: "base64")
+   --to-code         interpret dest as code CID instead of as address (default: false)
    --help, -h        show help (default: false)
    
 ```
@@ -2365,6 +2366,7 @@ USAGE:
 COMMANDS:
    list       List log systems
    set-level  Set log level
+   alerts     Get alert states
    help, h    Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2417,6 +2419,20 @@ DESCRIPTION:
 OPTIONS:
    --system value  limit to log system
    --help, -h      show help (default: false)
+   
+```
+
+### lotus log alerts
+```
+NAME:
+   lotus log alerts - Get alert states
+
+USAGE:
+   lotus log alerts [command options] [arguments...]
+
+OPTIONS:
+   --all       get all (active and inactive) alerts (default: false)
+   --help, -h  show help (default: false)
    
 ```
 

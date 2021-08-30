@@ -5,6 +5,7 @@ package storiface
 import (
 	"fmt"
 	"io"
+	"math"
 	"sort"
 
 	cid "github.com/ipfs/go-cid"
@@ -14,6 +15,7 @@ import (
 
 var _ = xerrors.Errorf
 var _ = cid.Undef
+var _ = math.E
 var _ = sort.Sort
 
 func (t *CallID) MarshalCBOR(w io.Writer) error {

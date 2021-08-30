@@ -1,4 +1,4 @@
-package journal
+package fsjournal
 
 import (
 	"container/list"
@@ -7,17 +7,21 @@ import (
 	"os"
 	"path/filepath"
 
+	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/repo"
 )
+
+var log = logging.Logger("fsjournal")
 
 const RFC3339nocolon = "2006-01-02T150405Z0700"
 
 // fsJournal is a basic journal backed by files on a filesystem.
 type fsJournal struct {
-	EventTypeRegistry
+	journal.EventTypeRegistry
 
 	dir       string
 	sizeLimit int64
@@ -28,7 +32,7 @@ type fsJournal struct {
 	keep int
 	old  *list.List
 
-	incoming chan *Event
+	incoming chan *journal.Event
 
 	closing chan struct{}
 	closed  chan struct{}
@@ -36,19 +40,19 @@ type fsJournal struct {
 
 // OpenFSJournal constructs a rolling filesystem journal, with a default
 // per-file size limit of 1GiB.
-func OpenFSJournal(lr repo.LockedRepo, disabled DisabledEvents) (Journal, error) {
+func OpenFSJournal(lr repo.LockedRepo, disabled journal.DisabledEvents) (journal.Journal, error) {
 	dir := filepath.Join(lr.Path(), "journal")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to mk directory %s for file journal: %w", dir, err)
 	}
 
 	f := &fsJournal{
-		EventTypeRegistry: NewEventTypeRegistry(disabled),
+		EventTypeRegistry: journal.NewEventTypeRegistry(disabled),
 		dir:               dir,
 		sizeLimit:         1 << 30,
 		keep:              3,
 		old:               list.New(),
-		incoming:          make(chan *Event, 32),
+		incoming:          make(chan *journal.Event, 32),
 		closing:           make(chan struct{}),
 		closed:            make(chan struct{}),
 	}
@@ -62,7 +66,7 @@ func OpenFSJournal(lr repo.LockedRepo, disabled DisabledEvents) (Journal, error)
 	return f, nil
 }
 
-func (f *fsJournal) RecordEvent(evtType EventType, supplier func() interface{}) {
+func (f *fsJournal) RecordEvent(evtType journal.EventType, supplier func() interface{}) {
 	defer func() {
 		if r := recover(); r != nil {
 			log.Warnf("recovered from panic while recording journal event; type=%s, err=%v", evtType, r)
@@ -73,7 +77,7 @@ func (f *fsJournal) RecordEvent(evtType EventType, supplier func() interface{}) 
 		return
 	}
 
-	je := &Event{
+	je := &journal.Event{
 		EventType: evtType,
 		Timestamp: build.Clock.Now(),
 		Data:      supplier(),
@@ -91,7 +95,7 @@ func (f *fsJournal) Close() error {
 	return nil
 }
 
-func (f *fsJournal) putEvent(evt *Event) error {
+func (f *fsJournal) putEvent(evt *journal.Event) error {
 	b, err := json.Marshal(evt)
 	if err != nil {
 		return err
@@ -114,10 +118,23 @@ func (f *fsJournal) rollJournalFile() error {
 	if f.fi != nil {
 		_ = f.fi.Close()
 	}
+	current := filepath.Join(f.dir, "lotus-journal.ndjson")
+	rolled := filepath.Join(f.dir, fmt.Sprintf(
+		"lotus-journal-%s.ndjson",
+		build.Clock.Now().Format(RFC3339nocolon),
+	))
 
-	nfi, err := os.Create(filepath.Join(f.dir, fmt.Sprintf("lotus-journal-%s.ndjson", build.Clock.Now().Format(RFC3339nocolon))))
+	// check if journal file exists
+	if fi, err := os.Stat(current); err == nil && !fi.IsDir() {
+		err := os.Rename(current, rolled)
+		if err != nil {
+			return xerrors.Errorf("failed to roll journal file: %w", err)
+		}
+	}
+
+	nfi, err := os.Create(current)
 	if err != nil {
-		return xerrors.Errorf("failed to open journal file: %w", err)
+		return xerrors.Errorf("failed to create journal file: %w", err)
 	}
 
 	f.fi = nfi

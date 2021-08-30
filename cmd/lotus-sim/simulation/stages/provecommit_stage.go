@@ -280,7 +280,11 @@ func (stage *ProveCommitStage) packProveCommitsMiner(
 // It will drop any pre-commits that have already expired.
 func (stage *ProveCommitStage) loadMiner(ctx context.Context, bb *blockbuilder.BlockBuilder, addr address.Address) error {
 	epoch := bb.Height()
-	av := bb.ActorsVersion()
+	av, err := bb.ActorsVersion()
+	if err != nil {
+		return err
+	}
+
 	minerState, err := loadMiner(bb.ActorStore(), bb.ParentStateTree(), addr)
 	if err != nil {
 		return err
@@ -291,7 +295,10 @@ func (stage *ProveCommitStage) loadMiner(ctx context.Context, bb *blockbuilder.B
 	var total, dropped int
 	err = minerState.ForEachPrecommittedSector(func(info miner.SectorPreCommitOnChainInfo) error {
 		total++
-		msd := policy.GetMaxProveCommitDuration(av, info.Info.SealProof)
+		msd, err := policy.GetMaxProveCommitDuration(av, info.Info.SealProof)
+		if err != nil {
+			return err
+		}
 		if epoch > info.PreCommitEpoch+msd {
 			dropped++
 			return nil
@@ -327,7 +334,10 @@ func (stage *ProveCommitStage) filterProveCommits(
 	}
 
 	nextEpoch := bb.Height()
-	av := bb.ActorsVersion()
+	av, err := bb.ActorsVersion()
+	if err != nil {
+		return nil, err
+	}
 
 	good := make([]abi.SectorNumber, 0, len(snos))
 	for _, sno := range snos {
@@ -338,7 +348,10 @@ func (stage *ProveCommitStage) filterProveCommits(
 		if info == nil {
 			continue
 		}
-		msd := policy.GetMaxProveCommitDuration(av, info.Info.SealProof)
+		msd, err := policy.GetMaxProveCommitDuration(av, info.Info.SealProof)
+		if err != nil {
+			return nil, err
+		}
 		if nextEpoch > info.PreCommitEpoch+msd {
 			continue
 		}

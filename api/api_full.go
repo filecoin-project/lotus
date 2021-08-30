@@ -12,13 +12,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-multistore"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
+
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -29,6 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/repo/imports"
 )
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_full.go -package=mocks . FullNode
@@ -336,7 +337,7 @@ type FullNode interface {
 	// ClientImport imports file under the specified path into filestore.
 	ClientImport(ctx context.Context, ref FileRef) (*ImportRes, error) //perm:admin
 	// ClientRemoveImport removes file import
-	ClientRemoveImport(ctx context.Context, importID multistore.StoreID) error //perm:admin
+	ClientRemoveImport(ctx context.Context, importID imports.ID) error //perm:admin
 	// ClientStartDeal proposes a deal with a miner.
 	ClientStartDeal(ctx context.Context, params *StartDealParams) (*cid.Cid, error) //perm:admin
 	// ClientStatelessDeal fire-and-forget-proposes an offline deal to a miner without subsequent tracking.
@@ -433,6 +434,8 @@ type FullNode interface {
 	StateListMessages(ctx context.Context, match *MessageMatch, tsk types.TipSetKey, toht abi.ChainEpoch) ([]cid.Cid, error) //perm:read
 	// StateDecodeParams attempts to decode the provided params, based on the recipient actor address and method number.
 	StateDecodeParams(ctx context.Context, toAddr address.Address, method abi.MethodNum, params []byte, tsk types.TipSetKey) (interface{}, error) //perm:read
+	// StateEncodeParams attempts to encode the provided json params to the binary from
+	StateEncodeParams(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error) //perm:read
 
 	// StateNetworkName returns the name of the network the node is synced to
 	StateNetworkName(context.Context) (dtypes.NetworkName, error) //perm:read
@@ -728,16 +731,28 @@ type MinerSectors struct {
 
 type ImportRes struct {
 	Root     cid.Cid
-	ImportID multistore.StoreID
+	ImportID imports.ID
 }
 
 type Import struct {
-	Key multistore.StoreID
+	Key imports.ID
 	Err string
 
-	Root     *cid.Cid
-	Source   string
+	Root *cid.Cid
+
+	// Source is the provenance of the import, e.g. "import", "unknown", else.
+	// Currently useless but may be used in the future.
+	Source string
+
+	// FilePath is the path of the original file. It is important that the file
+	// is retained at this path, because it will be referenced during
+	// the transfer (when we do the UnixFS chunking, we don't duplicate the
+	// leaves, but rather point to chunks of the original data through
+	// positional references).
 	FilePath string
+
+	// CARPath is the path of the CAR file containing the DAG for this import.
+	CARPath string
 }
 
 type DealInfo struct {
@@ -920,7 +935,7 @@ type RetrievalOrder struct {
 	Piece *cid.Cid
 	Size  uint64
 
-	LocalStore *multistore.StoreID // if specified, get data from local store
+	FromLocalCAR string // if specified, get data from a local CARv2 file.
 	// TODO: support offset
 	Total                   types.BigInt
 	UnsealPrice             types.BigInt

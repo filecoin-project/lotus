@@ -142,7 +142,6 @@ type SplitStore struct {
 	txnViews        int
 	txnViewsWaiting bool
 	txnActive       bool
-	txnProtect      MarkSet
 	txnRefsMx       sync.Mutex
 	txnRefs         map[cid.Cid]struct{}
 	txnMissing      map[cid.Cid]struct{}
@@ -172,6 +171,10 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 	markSetEnv, err := OpenMarkSetEnv(path, cfg.MarkSetType)
 	if err != nil {
 		return nil, err
+	}
+
+	if !markSetEnv.SupportsVisitor() {
+		return nil, xerrors.Errorf("markset type does not support atomic visitors")
 	}
 
 	// and now we can make a SplitStore

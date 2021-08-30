@@ -28,6 +28,13 @@ type TestFullNode struct {
 	options nodeOpts
 }
 
+func (f *TestFullNode) ClientImportCARFile(ctx context.Context, rseed int, size int) (res *api.ImportRes, carv1FilePath string, origFilePath string) {
+	carv1FilePath, origFilePath = CreateRandomCARv1(f.t, rseed, size)
+	res, err := f.ClientImport(ctx, api.FileRef{Path: carv1FilePath, IsCAR: true})
+	require.NoError(f.t, err)
+	return res, carv1FilePath, origFilePath
+}
+
 // CreateImportFile creates a random file with the specified seed and size, and
 // imports it into the full node.
 func (f *TestFullNode) CreateImportFile(ctx context.Context, rseed int, size int) (res *api.ImportRes, path string) {

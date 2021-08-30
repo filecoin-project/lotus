@@ -308,7 +308,7 @@ func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub
 			return pubsub.ValidationReject
 		}
 
-		log.Warnf("cannot validate block message; unknown miner or miner that doesn't meet min power in unsynced chain")
+		log.Warnf("cannot validate block message; unknown miner or miner that doesn't meet min power in unsynced chain: %s", blk.Header.Cid())
 		return pubsub.ValidationIgnore
 	}
 

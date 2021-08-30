@@ -575,7 +575,6 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storage.SectorRef, 
 }
 
 func (m *Manager) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) error {
-	log.Warnw("ReleaseUnsealed todo")
 	return nil
 }
 

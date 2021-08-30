@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	apitypes "github.com/filecoin-project/lotus/api/types"
+	"github.com/filecoin-project/lotus/journal/alerting"
 
 	"github.com/google/uuid"
 
@@ -32,6 +33,10 @@ type Common interface {
 
 	LogList(context.Context) ([]string, error)         //perm:write
 	LogSetLevel(context.Context, string, string) error //perm:write
+
+	// LogAlerts returns list of all, active and inactive alerts tracked by the
+	// node
+	LogAlerts(ctx context.Context) ([]alerting.Alert, error) //perm:admin
 
 	// MethodGroup: Common
 

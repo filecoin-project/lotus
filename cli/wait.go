@@ -22,7 +22,7 @@ var WaitApiCmd = &cli.Command{
 
 			ctx := ReqContext(cctx)
 
-			_, err = api.ID(ctx)
+			_, err = api.Version(ctx)
 			if err != nil {
 				return err
 			}

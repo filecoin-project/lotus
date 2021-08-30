@@ -4,6 +4,10 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/stmgr"
+
 	"github.com/filecoin-project/lotus/chain/wallet"
 )
 
@@ -19,16 +23,25 @@ type ensembleOpts struct {
 	verifiedRoot genesisAccount
 	accounts     []genesisAccount
 	mockProofs   bool
+
+	upgradeSchedule stmgr.UpgradeSchedule
 }
 
 var DefaultEnsembleOpts = ensembleOpts{
 	pastOffset: 10000000 * time.Second, // time sufficiently in the past to trigger catch-up mining.
+	upgradeSchedule: stmgr.UpgradeSchedule{{
+		Height:  -1,
+		Network: build.NewestNetworkVersion,
+	}},
 }
 
 // MockProofs activates mock proofs for the entire ensemble.
 func MockProofs() EnsembleOpt {
 	return func(opts *ensembleOpts) error {
 		opts.mockProofs = true
+		// since we're using mock proofs, we don't need to download
+		// proof parameters
+		build.DisableBuiltinAssets = true
 		return nil
 	}
 }

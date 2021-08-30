@@ -7,22 +7,24 @@
 Influx configuration can be configured through env variables.
 
 ```
-INFLUX_ADDR="http://localhost:8086"
-INFLUX_USER=""
-INFLUX_PASS=""
+LOTUS_STATS_INFLUX_ADDR="http://localhost:8086"
+LOTUS_STATS_INFLUX_USER=""
+LOTUS_STATS_INFLUX_PASS=""
 ```
 
 ## Usage
 
-lotus-stats will be default look in `~/.lotus` to connect to a running daemon and resume collecting stats from last record block height.
+lotus-stats will look in `~/.lotus` to connect to a running daemon and resume collecting stats from last record block height.
 
 For other usage see `./lotus-stats --help`
 
 ```
 go build -o lotus-stats *.go 
-. env.stats && ./lotus-stats
+. env.stats && ./lotus-stats run
 ```
 
+For large networks there is an additional query in the `Top Miner Power` table, which can be toggled on to only show miners larger
+than 1 PiB. This is a good option to enable to reduce the number of miners listed when viewing mainnet stats.
 
 ## Development
 
@@ -37,3 +39,8 @@ docker-compose up -d
 ```
 
 The default username and password for grafana are both `admin`.
+
+## Updating the dashboard
+
+After importing the provided dashboard in `chain.dashboard.json`, you may make changes to the dashboard. To export
+the dashboard to be commited back to the project, make sure the option "sharing externally" is toggled on.

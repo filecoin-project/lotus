@@ -6,8 +6,9 @@ import (
 	"os"
 	"time"
 
-	"github.com/filecoin-project/lotus/node/impl/net"
 	metricsi "github.com/ipfs/go-metrics-interface"
+
+	"github.com/filecoin-project/lotus/node/impl/net"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/system"
@@ -27,10 +28,12 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/journal/alerting"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
@@ -66,6 +69,7 @@ var (
 	AutoNATSvcKey        = special{10} // Libp2p option
 	BandwidthReporterKey = special{11} // Libp2p option
 	ConnGaterKey         = special{12} // libp2p option
+	DAGStoreKey          = special{13} // constructor returns multiple values
 )
 
 type invoke int
@@ -79,6 +83,9 @@ const (
 
 	// System processes.
 	InitMemoryWatchdog
+
+	// health checks
+	CheckFDLimit
 
 	// libp2p
 	PstoreAddSelfKeysKey
@@ -144,6 +151,9 @@ func defaults() []Option {
 		// global system journal.
 		Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		Override(new(journal.Journal), modules.OpenFilesystemJournal),
+		Override(new(*alerting.Alerting), alerting.NewAlertingSystem),
+
+		Override(CheckFDLimit, modules.CheckFdLimit(build.DefaultFDLimit)),
 
 		Override(new(system.MemoryConstraints), modules.MemoryConstraints),
 		Override(InitMemoryWatchdog, modules.MemoryWatchdog),
@@ -185,7 +195,6 @@ var LibP2P = Options(
 	Override(new(routing.Routing), lp2p.Routing),
 
 	// Services
-	Override(NatPortMapKey, lp2p.NatPortMap),
 	Override(BandwidthReporterKey, lp2p.BandwidthCounter),
 	Override(AutoNATSvcKey, lp2p.AutoNATService),
 
@@ -267,6 +276,8 @@ func ConfigCommon(cfg *config.Common, enableLibp2pNode bool) Option {
 			Override(AddrsFactoryKey, lp2p.AddrsFactory(
 				cfg.Libp2p.AnnounceAddresses,
 				cfg.Libp2p.NoAnnounceAddresses)),
+
+			If(!cfg.Libp2p.DisableNatPortMap, Override(NatPortMapKey, lp2p.NatPortMap)),
 		),
 		Override(new(dtypes.MetadataDS), modules.Datastore(cfg.Backup.DisableMetadataLog)),
 	)
@@ -332,10 +343,9 @@ func Repo(r repo.Repo) Option {
 			),
 
 			Override(new(dtypes.ClientImportMgr), modules.ClientImportMgr),
-			Override(new(dtypes.ClientMultiDstore), modules.ClientMultiDatastore),
 
 			Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
-			Override(new(dtypes.ClientRetrievalStoreManager), modules.ClientRetrievalStoreManager),
+
 			Override(new(ci.PrivKey), lp2p.PrivKey),
 			Override(new(ci.PubKey), ci.PrivKey.GetPublic),
 			Override(new(peer.ID), peer.IDFromPublicKey),

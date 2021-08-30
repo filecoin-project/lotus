@@ -59,7 +59,15 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 	count := int64(0)
 	xcount := int64(0)
 	missing := int64(0)
-	err := s.walkChain(curTs, boundaryEpoch, epoch+1, // we don't load messages/receipts in warmup
+
+	visitor, err := s.markSetEnv.CreateVisitor("warmup", 0)
+	if err != nil {
+		return xerrors.Errorf("error creating visitor: %w", err)
+	}
+	defer visitor.Close() //nolint
+
+	err = s.walkChain(curTs, boundaryEpoch, epoch+1, // we don't load messages/receipts in warmup
+		visitor,
 		func(c cid.Cid) error {
 			if isUnitaryObject(c) {
 				return errStopWalk

@@ -6,6 +6,7 @@ package mocks
 
 import (
 	context "context"
+	json "encoding/json"
 	reflect "reflect"
 
 	address "github.com/filecoin-project/go-address"
@@ -14,7 +15,6 @@ import (
 	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	auth "github.com/filecoin-project/go-jsonrpc/auth"
-	multistore "github.com/filecoin-project/go-multistore"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
@@ -24,8 +24,10 @@ import (
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	miner "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	types "github.com/filecoin-project/lotus/chain/types"
+	alerting "github.com/filecoin-project/lotus/journal/alerting"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	dtypes "github.com/filecoin-project/lotus/node/modules/dtypes"
+	imports "github.com/filecoin-project/lotus/node/repo/imports"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	paych "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	gomock "github.com/golang/mock/gomock"
@@ -775,7 +777,7 @@ func (mr *MockFullNodeMockRecorder) ClientQueryAsk(arg0, arg1, arg2 interface{})
 }
 
 // ClientRemoveImport mocks base method.
-func (m *MockFullNode) ClientRemoveImport(arg0 context.Context, arg1 multistore.StoreID) error {
+func (m *MockFullNode) ClientRemoveImport(arg0 context.Context, arg1 imports.ID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ClientRemoveImport", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -992,6 +994,21 @@ func (m *MockFullNode) ID(arg0 context.Context) (peer.ID, error) {
 func (mr *MockFullNodeMockRecorder) ID(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockFullNode)(nil).ID), arg0)
+}
+
+// LogAlerts mocks base method.
+func (m *MockFullNode) LogAlerts(arg0 context.Context) ([]alerting.Alert, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LogAlerts", arg0)
+	ret0, _ := ret[0].([]alerting.Alert)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LogAlerts indicates an expected call of LogAlerts.
+func (mr *MockFullNodeMockRecorder) LogAlerts(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LogAlerts", reflect.TypeOf((*MockFullNode)(nil).LogAlerts), arg0)
 }
 
 // LogList mocks base method.
@@ -2242,6 +2259,21 @@ func (m *MockFullNode) StateDecodeParams(arg0 context.Context, arg1 address.Addr
 func (mr *MockFullNodeMockRecorder) StateDecodeParams(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateDecodeParams", reflect.TypeOf((*MockFullNode)(nil).StateDecodeParams), arg0, arg1, arg2, arg3, arg4)
+}
+
+// StateEncodeParams mocks base method.
+func (m *MockFullNode) StateEncodeParams(arg0 context.Context, arg1 cid.Cid, arg2 abi.MethodNum, arg3 json.RawMessage) ([]byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateEncodeParams", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateEncodeParams indicates an expected call of StateEncodeParams.
+func (mr *MockFullNodeMockRecorder) StateEncodeParams(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateEncodeParams", reflect.TypeOf((*MockFullNode)(nil).StateEncodeParams), arg0, arg1, arg2, arg3)
 }
 
 // StateGetActor mocks base method.

@@ -3,8 +3,10 @@ package full
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"strconv"
 
+	"github.com/filecoin-project/go-state-types/cbor"
 	cid "github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -495,6 +497,24 @@ func (a *StateAPI) StateDecodeParams(ctx context.Context, toAddr address.Address
 	}
 
 	return paramType, nil
+}
+
+func (a *StateAPI) StateEncodeParams(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error) {
+	paramType, err := stmgr.GetParamType(toActCode, method)
+	if err != nil {
+		return nil, xerrors.Errorf("getting params type: %w", err)
+	}
+
+	if err := json.Unmarshal(params, &paramType); err != nil {
+		return nil, xerrors.Errorf("json unmarshal: %w", err)
+	}
+
+	var cbb bytes.Buffer
+	if err := paramType.(cbor.Marshaler).MarshalCBOR(&cbb); err != nil {
+		return nil, xerrors.Errorf("cbor marshal: %w", err)
+	}
+
+	return cbb.Bytes(), nil
 }
 
 // This is on StateAPI because miner.Miner requires this, and MinerAPI requires miner.Miner
@@ -1332,13 +1352,16 @@ func (m *StateModule) StateDealProviderCollateralBounds(ctx context.Context, siz
 		return api.DealCollateralBounds{}, xerrors.Errorf("getting reward baseline power: %w", err)
 	}
 
-	min, max := policy.DealProviderCollateralBounds(size,
+	min, max, err := policy.DealProviderCollateralBounds(size,
 		verified,
 		powClaim.RawBytePower,
 		powClaim.QualityAdjPower,
 		rewPow,
 		circ.FilCirculating,
 		m.StateManager.GetNtwkVersion(ctx, ts.Height()))
+	if err != nil {
+		return api.DealCollateralBounds{}, xerrors.Errorf("getting deal provider coll bounds: %w", err)
+	}
 	return api.DealCollateralBounds{
 		Min: types.BigDiv(types.BigMul(min, dealProviderCollateralNum), dealProviderCollateralDen),
 		Max: max,
