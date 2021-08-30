@@ -49,6 +49,30 @@ func ScoreKeeper() *dtypes.ScoreKeeper {
 	return new(dtypes.ScoreKeeper)
 }
 
+type PeerScoreTracker interface {
+	UpdatePeerScore(scores map[peer.ID]*pubsub.PeerScoreSnapshot)
+}
+
+type peerScoreTracker struct {
+	sk *dtypes.ScoreKeeper
+	lt LotusTracer
+}
+
+func newPeerScoreTracker(lt LotusTracer, sk *dtypes.ScoreKeeper) PeerScoreTracker {
+	return &peerScoreTracker{
+		sk: sk,
+		lt: lt,
+	}
+}
+
+func (pst *peerScoreTracker) UpdatePeerScore(scores map[peer.ID]*pubsub.PeerScoreSnapshot) {
+	if pst.lt != nil {
+		pst.lt.TracePeerScore(scores)
+	}
+
+	pst.sk.Update(scores)
+}
+
 type GossipIn struct {
 	fx.In
 	Mctx helpers.MetricsCtx
@@ -272,7 +296,6 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 				OpportunisticGraftThreshold: OpportunisticGraftScoreThreshold,
 			},
 		),
-		pubsub.WithPeerScoreInspect(in.Sk.Update, 10*time.Second),
 	}
 
 	// enable Peer eXchange on bootstrappers
@@ -359,12 +382,18 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		}
 
 		lt := newLotusTracer(tr)
+		pst := newPeerScoreTracker(lt, in.Sk)
 		trw := newTracerWrapper(tr, lt, build.BlocksTopic(in.Nn))
+
 		options = append(options, pubsub.WithEventTracer(trw))
+		options = append(options, pubsub.WithPeerScoreInspect(pst.UpdatePeerScore, 10*time.Second))
 	} else {
 		// still instantiate a tracer for collecting metrics
 		trw := newTracerWrapper(nil, nil)
 		options = append(options, pubsub.WithEventTracer(trw))
+
+		pst := newPeerScoreTracker(nil, in.Sk)
+		options = append(options, pubsub.WithPeerScoreInspect(pst.UpdatePeerScore, 10*time.Second))
 	}
 
 	return pubsub.NewGossipSub(helpers.LifecycleCtx(in.Mctx, in.Lc), in.Host, options...)
