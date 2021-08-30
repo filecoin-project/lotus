@@ -264,6 +264,7 @@ var sealBenchCmd = &cli.Command{
 		var sealTimings []SealingResult
 		var extendedSealedSectors []saproof7.ExtendedSectorInfo
 		var sealedSectors []saproof7.SectorInfo
+		var bo BenchResults
 
 		if robench == "" {
 			var err error
@@ -276,12 +277,21 @@ var sealBenchCmd = &cli.Command{
 			if err != nil {
 				return xerrors.Errorf("failed to run seals: %w", err)
 			}
+
 			for _, s := range extendedSealedSectors {
 				sealedSectors = append(sealedSectors, proof.SectorInfo{
 					SealedCID:    s.SealedCID,
 					SectorNumber: s.SectorNumber,
 					SealProof:    s.SealProof,
 				})
+			}
+
+			bo.SectorSize = sectorSize
+			bo.SectorNumber = sectorNumber
+			bo.SealingResults = sealTimings
+
+			if err := bo.SumSealingTime(); err != nil {
+				return err
 			}
 		} else {
 			// TODO: implement sbfs.List() and use that for all cases (preexisting sectorbuilder or not)
@@ -318,15 +328,6 @@ var sealBenchCmd = &cli.Command{
 					SealProof:    s.ProofType,
 				})
 			}
-		}
-
-		bo := BenchResults{
-			SectorSize:     sectorSize,
-			SectorNumber:   sectorNumber,
-			SealingResults: sealTimings,
-		}
-		if err := bo.SumSealingTime(); err != nil {
-			return err
 		}
 
 		var challenge [32]byte
