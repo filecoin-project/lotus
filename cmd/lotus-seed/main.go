@@ -154,16 +154,16 @@ var preSealCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			return seed.WriteGenesisMiner(maddr, sbroot, gm, key)
-		} else {
-			gm, key, err := seed.PreSeal(maddr, spt, abi.SectorNumber(c.Uint64("sector-offset")), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")), k, c.Bool("fake-sectors"))
-			if err != nil {
-				return err
-			}
+
 			return seed.WriteGenesisMiner(maddr, sbroot, gm, key)
 		}
 
-		return nil
+		gm, key, err := seed.PreSeal(maddr, spt, abi.SectorNumber(c.Uint64("sector-offset")), c.Int("num-sectors"), sbroot, []byte(c.String("ticket-preimage")), k, c.Bool("fake-sectors"))
+		if err != nil {
+			return err
+		}
+
+		return seed.WriteGenesisMiner(maddr, sbroot, gm, key)
 	},
 }
 
