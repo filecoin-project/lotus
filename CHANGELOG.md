@@ -2,24 +2,32 @@
 
 # v1.11.2-rc1 / 2021-08-23
 
-This is the first release candidate for Lotus v1.11.2 release that introduces dagstore and many deal-making and market subsystem improvements and new features along with other bug fixes. More detailed changelog will be provided later. One of the most exciting new features we are introducing is **[Dagstore](https://docs.filecoin.io/mine/lotus/dagstore/#conceptual-overview)**:
+This is the second release candidate for Lotus v1.11.2 release that includes a proof patch for v1.11.2-rc1.
+lotus v1.11.2 introduces dagstore and many deal-making and market subsystem improvements and new features along with other bug fixes. More detailed changelog will be provided later. One of the most exciting new features we are introducing is **[Dagstore](https://docs.filecoin.io/mine/lotus/dagstore/#conceptual-overview)**:
 - The dagstore is a component of the markets subsystem in lotus-miner. It is a sharded store to hold large IPLD graphs efficiently, packaged as location-transparent attachable CAR files and it replaces the former Badger staging blockstore. It is designed to provide high efficiency and throughput, and minimize resource utilization during deal-making operations.
 - You can read more about dagstore's concepts, terminolog and so on [here](https://docs.filecoin.io/mine/lotus/dagstore/#conceptual-overview).
 - **Note**:**When you first start your lotus-miner or market subsystem with this release, a one-time/first-time dagstore migration will be triggered**. Read this [section](https://docs.filecoin.io/mine/lotus/dagstore/#first-time-migration) to learn what the process does, what to expect and how monitor it.
   - That being said, few things to note:
     -  it is highly recommended to **wait all ongoing data transfer to finish or cancel inbound storage deals that are still transferring**, using the `lotus-miner data-transfers cancel` command before upgrade your market nodes. Reason being that the new dagstore changes attributes in the internal deal state objects, and the paths to the staging CARs where the deal data was being placed will be lost. 
     - Rollback Alert(from v1.11.2-rcX to any version lower): If a storage deal is initiated with M1/v1.11.2 release, it needs to get to the `StorageDealAwaitingPrecommit` state before the you can do a version rollback or the markets process may panic. 
-- There are a few known bugs that we are actively working on and will be fixed in v1.11.2-rc2.
 
 ## Changelog
 - github.com/filecoin-project/lotus:
-  - Update markets, dt and graphsync ([filecoin-project/lotus#7160](https://github.com/filecoin-project/lotus/pull/7160))
+  - bump the version
+  - update ffi to b4e4271db8f6e961934cd6ffff44fda3c610b9c0 per #7207
+  - upgrade go-data-transfer; propagate deal cancellations.
+  - Fix typos
+  - Apply suggestions from code review
+  - Update CHANGELOG.md
+  - fix docsgen
+  - lotus v1.11.2-rc prep
+  -  Update markets, dt and graphsync ([filecoin-project/lotus#7160](https://github.com/filecoin-project/lotus/pull/7160))
   - sealing: Fix RecoverDealIDs loop with changed PieceCID ([filecoin-project/lotus#7117](https://github.com/filecoin-project/lotus/pull/7117))
   - api/command for encoding actor params ([filecoin-project/lotus#7150](https://github.com/filecoin-project/lotus/pull/7150))
   - Fix nits and see if codecov works now with auto ([filecoin-project/lotus#7151](https://github.com/filecoin-project/lotus/pull/7151))
   - Codecov Projects ([filecoin-project/lotus#7147](https://github.com/filecoin-project/lotus/pull/7147))
-  - shed: Support raw encoding in cid id  ([filecoin-project/lotus#7149](https://github.com/filecoin-project/lotus/pull/7149))
-  - rpcenc: Support reader redirect ([filecoin-project/lotus#6952](https://github.com/filecoin-project/lotus/pull/6952))
+  - shed: Support raw encoding in cid id ([filecoin-project/lotus#7149](https://github.com/filecoin-project/lotus/pull/7149))
+  - rpcenc: Support reader redirect  ([filecoin-project/lotus#6952](https://github.com/filecoin-project/lotus/pull/6952))
   - Fix error handling in SectorAddPieceToAny api impl ([filecoin-project/lotus#7135](https://github.com/filecoin-project/lotus/pull/7135))
   - add rice box to required binaries ([filecoin-project/lotus#7125](https://github.com/filecoin-project/lotus/pull/7125))
   - remove m1 templates and make area selection multi-optionable ([filecoin-project/lotus#7121](https://github.com/filecoin-project/lotus/pull/7121))
@@ -83,44 +91,57 @@ This is the first release candidate for Lotus v1.11.2 release that introduces da
   - bump master version to v1.11.2-dev ([filecoin-project/lotus#6903](https://github.com/filecoin-project/lotus/pull/6903))
   - releases -> master for v1.11.0 ([filecoin-project/lotus#6894](https://github.com/filecoin-project/lotus/pull/6894))
   - Reduce entropy in the chain package ([filecoin-project/lotus#6889](https://github.com/filecoin-project/lotus/pull/6889))
-- github.com/filecoin-project/go-data-transfer (v1.7.2 -> v1.7.3):
+- github.com/filecoin-project/go-data-transfer (v1.7.2 -> v1.7.8):
+  - send cancel async (#245) ([filecoin-project/go-data-transfer#245](https://github.com/filecoin-project/go-data-transfer/pull/245))
+  - release: v1.7.7 ([filecoin-project/go-data-transfer#242](https://github.com/filecoin-project/go-data-transfer/pull/242))
+  - reduce channel monitor log verbosity (#241) ([filecoin-project/go-data-transfer#241](https://github.com/filecoin-project/go-data-transfer/pull/241))
+  - release: v1.7.6 ([filecoin-project/go-data-transfer#239](https://github.com/filecoin-project/go-data-transfer/pull/239))
+  - feat: improve graphsync transport logging (#238) ([filecoin-project/go-data-transfer#238](https://github.com/filecoin-project/go-data-transfer/pull/238))
+  - Log completion message flow (#236) ([filecoin-project/go-data-transfer#236](https://github.com/filecoin-project/go-data-transfer/pull/236))
+  - Handle data-sent and data-queued events in the TransferFinished state (#233) ([filecoin-project/go-data-transfer#233](https://github.com/filecoin-project/go-data-transfer/pull/233))
+  - Log closing of completion channel (#232) ([filecoin-project/go-data-transfer#232](https://github.com/filecoin-project/go-data-transfer/pull/232))
+  - fix log statement. (#230) ([filecoin-project/go-data-transfer#230](https://github.com/filecoin-project/go-data-transfer/pull/230))
   - Simplify graphsync cancel (#229) ([filecoin-project/go-data-transfer#229](https://github.com/filecoin-project/go-data-transfer/pull/229))
-- github.com/filecoin-project/go-fil-markets (v1.6.2 -> v1.8.0):
+- github.com/filecoin-project/go-fil-markets (v1.6.2 -> v1.8.1):
+  - Update data-transfer and graphsync (#611) ([filecoin-project/go-fil-markets#611](https://github.com/filecoin-project/go-fil-markets/pull/611))
+  - close file descriptors + log piece handoff to sealing subsystem (#609) ([filecoin-project/go-fil-markets#609](https://github.com/filecoin-project/go-fil-markets/pull/609))
   - release: v1.8.0. (#605) ([filecoin-project/go-fil-markets#605](https://github.com/filecoin-project/go-fil-markets/pull/605))
   - Revert "refactor: pass deal proposal instead of deal ID to OnDealExpiredOrSlashed (#476)" (#604) ([filecoin-project/go-fil-markets#604](https://github.com/filecoin-project/go-fil-markets/pull/604))
   - migrate to DAG store + CARv2 blockstores for storage and retrieval (#576) ([filecoin-project/go-fil-markets#576](https://github.com/filecoin-project/go-fil-markets/pull/576))
   - release: 1.7.0 (#597) ([filecoin-project/go-fil-markets#597](https://github.com/filecoin-project/go-fil-markets/pull/597))
   - refactor: pass deal proposal instead of deal ID to OnDealExpiredOrSlashed (#476) ([filecoin-project/go-fil-markets#476](https://github.com/filecoin-project/go-fil-markets/pull/476))
 
-## Contributors
+Contributors
 
 | Contributor | Commits | Lines ± | Files Changed |
 |-------------|---------|---------|---------------|
-| Łukasz Magiera | 15 | +3695/-8102 | 83 |
-| raulk | 4 | +4169/-1661 | 103 |
-| Aarsh Shah | 3 | +4729/-1025 | 86 |
+| Łukasz Magiera | 23 | +5040/-8389 | 114 |
+| Aarsh Shah | 11 | +4859/-1078 | 101 |
+| raulk | 5 | +4170/-1662 | 104 |
 | vyzo | 30 | +1092/-702 | 49 |
 | Anton Evangelatov | 6 | +630/-472 | 19 |
+| ZenGround0 | 31 | +556/-274 | 74 |
 | He Weidong | 16 | +680/-128 | 16 |
-| Raúl Kripalani | 15 | +441/-275 | 47 |
-| ZenGround0 | 20 | +466/-212 | 63 |
+| Raúl Kripalani | 16 | +444/-277 | 49 |
 | Steven Allen | 11 | +403/-259 | 48 |
-| Jennifer Wang | 7 | +109/-249 | 20 |
-| dirkmc | 3 | +148/-114 | 17 |
+| Jennifer Wang | 11 | +231/-257 | 31 |
+| dirkmc | 5 | +204/-138 | 20 |
 | Mike Greenberg | 7 | +178/-77 | 17 |
 | Dragan Z | 1 | +138/-0 | 1 |
 | Frrist | 1 | +63/-56 | 2 |
-| Aayush Rajasekaran | 5 | +62/-38 | 11 |
+| Aayush Rajasekaran | 7 | +74/-42 | 13 |
 | frrist | 2 | +67/-6 | 6 |
 | hannahhoward | 2 | +13/-11 | 3 |
 | Cory Schwartz | 1 | +16/-6 | 3 |
 | whyrusleeping | 1 | +7/-7 | 1 |
 | hunjixin | 1 | +8/-6 | 1 |
 | aarshkshah1992 | 1 | +6/-6 | 2 |
+| Dirk McCormick | 2 | +8/-0 | 2 |
 | mx | 2 | +6/-1 | 2 |
 | Travis Person | 1 | +3/-2 | 1 |
+| Jiaying Wang | 2 | +2/-2 | 2 |
 | Peter Rabbitson | 1 | +1/-2 | 2 |
-| Jiaying Wang | 1 | +1/-1 | 1 |
+
 
 # 1.11.1 / 2021-08-16
 
