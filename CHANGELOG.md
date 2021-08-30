@@ -1,6 +1,6 @@
 # Lotus changelog
 
-# v1.11.2-rc1 / 2021-08-23
+# v1.11.2-rc2 / 2021-08-30
 
 This is the second release candidate for Lotus v1.11.2 release that includes a proof patch for v1.11.2-rc1.
 lotus v1.11.2 introduces dagstore and many deal-making and market subsystem improvements and new features along with other bug fixes. More detailed changelog will be provided later. One of the most exciting new features we are introducing is **[Dagstore](https://docs.filecoin.io/mine/lotus/dagstore/#conceptual-overview)**:
