@@ -525,7 +525,7 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 			earliest := abi.ChainEpoch(sealEpochs) + ht
 			if deal.Proposal.StartEpoch < earliest {
 				log.Warnw("proposed deal would start before sealing can be completed; rejecting storage deal proposal from client", "piece_cid", deal.Proposal.PieceCID, "client", deal.Client.String(), "seal_duration", sealDuration, "earliest", earliest, "curepoch", ht)
-				return false, fmt.Sprintf("proposed deal start epoch %s too early, cannot seal a sector before %s", deal.Proposal.StartEpoch, earliest), nil
+				return false, fmt.Sprintf("cannot seal a sector before %s", deal.Proposal.StartEpoch), nil
 			}
 
 			sd, err := startDelay()
