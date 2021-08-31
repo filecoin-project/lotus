@@ -31,7 +31,6 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
 	dstore "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -294,27 +293,36 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*api.HeadChange
 	}}
 
 	go func() {
-		defer close(out)
-		var unsubOnce sync.Once
+		defer func() {
+			// Tell the caller we're done first, the following may block for a bit.
+			close(out)
+
+			// Unsubscribe.
+			cs.bestTips.Unsub(subch)
+
+			// Drain the channel.
+			for range subch {
+			}
+		}()
 
 		for {
 			select {
 			case val, ok := <-subch:
 				if !ok {
-					log.Warn("chain head sub exit loop")
+					// Shutting down.
+					return
+				}
+				select {
+				case out <- val.([]*api.HeadChange):
+				default:
+					log.Errorf("closing head change subscription due to slow reader")
 					return
 				}
 				if len(out) > 5 {
 					log.Warnf("head change sub is slow, has %d buffered entries", len(out))
 				}
-				select {
-				case out <- val.([]*api.HeadChange):
-				case <-ctx.Done():
-				}
 			case <-ctx.Done():
-				unsubOnce.Do(func() {
-					go cs.bestTips.Unsub(subch)
-				})
+				return
 			}
 		}
 	}()
@@ -642,7 +650,7 @@ func (cs *ChainStore) FlushValidationCache() error {
 	return FlushValidationCache(cs.metadataDs)
 }
 
-func FlushValidationCache(ds datastore.Batching) error {
+func FlushValidationCache(ds dstore.Batching) error {
 	log.Infof("clearing block validation cache...")
 
 	dsWalk, err := ds.Query(query.Query{
@@ -674,7 +682,7 @@ func FlushValidationCache(ds datastore.Batching) error {
 	for _, k := range allKeys {
 		if strings.HasPrefix(k.Key, blockValidationCacheKeyPrefix.String()) {
 			delCnt++
-			batch.Delete(datastore.RawKey(k.Key)) // nolint:errcheck
+			batch.Delete(dstore.RawKey(k.Key)) // nolint:errcheck
 		}
 	}
 

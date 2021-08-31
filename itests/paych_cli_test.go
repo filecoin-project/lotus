@@ -381,8 +381,9 @@ func checkVoucherOutput(t *testing.T, list string, vouchers []voucherSpec) {
 // waitForHeight waits for the node to reach the given chain epoch
 func waitForHeight(ctx context.Context, t *testing.T, node kit.TestFullNode, height abi.ChainEpoch) {
 	atHeight := make(chan struct{})
-	chainEvents := events.NewEvents(ctx, node)
-	err := chainEvents.ChainAt(func(ctx context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
+	chainEvents, err := events.NewEvents(ctx, node)
+	require.NoError(t, err)
+	err = chainEvents.ChainAt(ctx, func(ctx context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
 		close(atHeight)
 		return nil
 	}, nil, 1, height)

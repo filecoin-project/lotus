@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
+	logging "github.com/ipfs/go-log/v2"
 )
 
 func TestAPI(t *testing.T) {
@@ -39,6 +40,7 @@ func runAPITest(t *testing.T, opts ...interface{}) {
 	t.Run("testConnectTwo", ts.testConnectTwo)
 	t.Run("testMining", ts.testMining)
 	t.Run("testMiningReal", ts.testMiningReal)
+	t.Run("testSlowNotify", ts.testSlowNotify)
 	t.Run("testSearchMsg", ts.testSearchMsg)
 	t.Run("testNonGenesisMiner", ts.testNonGenesisMiner)
 }
@@ -167,6 +169,51 @@ func (ts *apiSuite) testMiningReal(t *testing.T) {
 	}()
 
 	ts.testMining(t)
+}
+
+func (ts *apiSuite) testSlowNotify(t *testing.T) {
+	_ = logging.SetLogLevel("rpc", "ERROR")
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	full, miner, _ := kit.EnsembleMinimal(t, ts.opts...)
+
+	// Subscribe a bunch of times to make sure we fill up any RPC buffers.
+	var newHeadsChans []<-chan []*lapi.HeadChange
+	for i := 0; i < 100; i++ {
+		newHeads, err := full.ChainNotify(ctx)
+		require.NoError(t, err)
+		newHeadsChans = append(newHeadsChans, newHeads)
+	}
+
+	initHead := (<-newHeadsChans[0])[0]
+	baseHeight := initHead.Val.Height()
+
+	bm := kit.NewBlockMiner(t, miner)
+	bm.MineBlocks(ctx, time.Microsecond)
+
+	full.WaitTillChain(ctx, kit.HeightAtLeast(baseHeight+100))
+
+	// Make sure they were all closed, draining any buffered events first.
+	for _, ch := range newHeadsChans {
+		var ok bool
+		for ok {
+			select {
+			case _, ok = <-ch:
+			default:
+				t.Fatal("expected new heads channel to be closed")
+			}
+		}
+	}
+
+	// Make sure we can resubscribe and everything still works.
+	newHeads, err := full.ChainNotify(ctx)
+	require.NoError(t, err)
+	for i := 0; i < 10; i++ {
+		_, ok := <-newHeads
+		require.True(t, ok, "notify channel closed")
+	}
 }
 
 func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
