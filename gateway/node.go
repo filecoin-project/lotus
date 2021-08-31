@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -19,7 +22,6 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/lotus/node/impl/full"
-	"github.com/ipfs/go-cid"
 )
 
 const (
@@ -218,6 +220,14 @@ func (gw *Node) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, erro
 }
 
 func (gw *Node) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*api.HeadChange, error) {
+	if err := gw.checkTipsetKey(ctx, from); err != nil {
+		return nil, xerrors.Errorf("gateway: checking 'from' tipset: %w", err)
+	}
+
+	if err := gw.checkTipsetKey(ctx, to); err != nil {
+		return nil, xerrors.Errorf("gateway: checking 'to' tipset: %w", err)
+	}
+
 	return gw.target.ChainGetPath(ctx, from, to)
 }
 
