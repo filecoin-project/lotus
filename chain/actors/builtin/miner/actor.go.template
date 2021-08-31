@@ -157,6 +157,12 @@ type Partition interface {
 
 	// Active sectors are those that are neither terminated nor faulty nor unproven, i.e. actively contributing power.
 	ActiveSectors() (bitfield.BitField, error)
+
+	// Unproven sectors in this partition. This bitfield will be cleared on
+	// a successful window post (or at the end of the partition's next
+	// deadline). At that time, any still unproven sectors will be added to
+	// the faulty sector bitfield.
+	UnprovenSectors() (bitfield.BitField, error)
 }
 
 type SectorOnChainInfo struct {

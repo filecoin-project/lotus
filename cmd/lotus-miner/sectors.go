@@ -1628,9 +1628,28 @@ var sectorsExpiredCmd = &cli.Command{
 				}
 
 				toCheck, err = bitfield.SubtractBitField(toCheck, live)
+				if err != nil {
+					return err
+				}
+
+				unproven, err := part.UnprovenSectors()
+				if err != nil {
+					return err
+				}
+
+				toCheck, err = bitfield.SubtractBitField(toCheck, unproven)
+
 				return err
 			})
 		}); err != nil {
+			return err
+		}
+
+		err = mas.ForEachPrecommittedSector(func(pci miner.SectorPreCommitOnChainInfo) error {
+			toCheck.Unset(uint64(pci.Info.SectorNumber))
+			return nil
+		})
+		if err != nil {
 			return err
 		}
 

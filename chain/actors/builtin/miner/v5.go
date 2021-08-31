@@ -531,6 +531,10 @@ func (p *partition5) RecoveringSectors() (bitfield.BitField, error) {
 	return p.Partition.Recoveries, nil
 }
 
+func (p *partition5) UnprovenSectors() (bitfield.BitField, error) {
+	return p.Partition.Unproven, nil
+}
+
 func fromV5SectorOnChainInfo(v5 miner5.SectorOnChainInfo) SectorOnChainInfo {
 
 	return SectorOnChainInfo{
