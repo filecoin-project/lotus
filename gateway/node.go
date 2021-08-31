@@ -3,8 +3,10 @@ package gateway
 import (
 	"context"
 	"fmt"
-	"golang.org/x/xerrors"
 	"time"
+
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -20,7 +22,6 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/lotus/node/impl/full"
-	"github.com/ipfs/go-cid"
 )
 
 const (
