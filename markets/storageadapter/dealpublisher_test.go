@@ -381,6 +381,10 @@ func (d *dpAPI) StateLookupID(ctx context.Context, a address.Address, key types.
 	panic("don't call me")
 }
 
+func (d *dpAPI) StateCall(ctx context.Context, message *types.Message, key types.TipSetKey) (*api.InvocResult, error) {
+	return &api.InvocResult{MsgRct: &types.MessageReceipt{ExitCode: 0}}, nil
+}
+
 func getClientActor(t *testing.T) address.Address {
 	return tutils.NewActorAddr(t, "client")
 }
