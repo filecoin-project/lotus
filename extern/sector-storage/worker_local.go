@@ -482,6 +482,53 @@ func (l *LocalWorker) Paths(ctx context.Context) ([]stores.StoragePath, error) {
 	return l.localStore.Local(ctx)
 }
 
+func (l *LocalWorker) memInfo() (memPhysical uint64, memVirtual uint64, memReserved uint64, err error) {
+	h, err := sysinfo.Host()
+	if err != nil {
+		return 0, 0, 0, err
+	}
+
+	mem, err := h.Memory()
+	if err != nil {
+		return 0, 0, 0, err
+	}
+	memPhysical = mem.Total
+	memAvail := mem.Free
+	memSwap := mem.VirtualTotal
+	swapAvail := mem.VirtualFree
+
+	if cgMemMax, cgMemUsed, cgSwapMax, cgSwapUsed, err := cgroupV1Mem(); err == nil {
+		if cgMemMax > 0 && cgMemMax < memPhysical {
+			memPhysical = cgMemMax
+			memAvail = cgMemMax - cgMemUsed
+		}
+		if cgSwapMax > 0 && cgSwapMax < memSwap {
+			memSwap = cgSwapMax
+			swapAvail = cgSwapMax - cgSwapUsed
+		}
+	}
+
+	if cgMemMax, cgMemUsed, cgSwapMax, cgSwapUsed, err := cgroupV2Mem(); err == nil {
+		if cgMemMax > 0 && cgMemMax < memPhysical {
+			memPhysical = cgMemMax
+			memAvail = cgMemMax - cgMemUsed
+		}
+		if cgSwapMax > 0 && cgSwapMax < memSwap {
+			memSwap = cgSwapMax
+			swapAvail = cgSwapMax - cgSwapUsed
+		}
+	}
+
+	if l.noSwap {
+		memSwap = 0
+		swapAvail = 0
+	}
+
+	memReserved = memPhysical + memSwap - memAvail - swapAvail
+
+	return memPhysical, memSwap, memReserved, nil
+}
+
 func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 	hostname, err := os.Hostname() // TODO: allow overriding from config
 	if err != nil {
@@ -493,28 +540,18 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 		log.Errorf("getting gpu devices failed: %+v", err)
 	}
 
-	h, err := sysinfo.Host()
-	if err != nil {
-		return storiface.WorkerInfo{}, xerrors.Errorf("getting host info: %w", err)
-	}
-
-	mem, err := h.Memory()
+	memPhysical, memSwap, memReserved, err := l.memInfo()
 	if err != nil {
 		return storiface.WorkerInfo{}, xerrors.Errorf("getting memory info: %w", err)
-	}
-
-	memSwap := mem.VirtualTotal
-	if l.noSwap {
-		memSwap = 0
 	}
 
 	return storiface.WorkerInfo{
 		Hostname:        hostname,
 		IgnoreResources: l.ignoreResources,
 		Resources: storiface.WorkerResources{
-			MemPhysical: mem.Total,
+			MemPhysical: memPhysical,
 			MemSwap:     memSwap,
-			MemReserved: mem.VirtualUsed + mem.Total - mem.Available, // TODO: sub this process
+			MemReserved: memReserved,
 			CPUs:        uint64(runtime.NumCPU()),
 			GPUs:        gpus,
 		},
