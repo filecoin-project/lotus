@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"fmt"
+	"golang.org/x/xerrors"
 	"time"
 
 	"github.com/filecoin-project/go-address"
@@ -218,6 +219,14 @@ func (gw *Node) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, erro
 }
 
 func (gw *Node) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*api.HeadChange, error) {
+	if err := gw.checkTipsetKey(ctx, from); err != nil {
+		return nil, xerrors.Errorf("gateway: checking 'from' tipset: %w", err)
+	}
+
+	if err := gw.checkTipsetKey(ctx, to); err != nil {
+		return nil, xerrors.Errorf("gateway: checking 'to' tipset: %w", err)
+	}
+
 	return gw.target.ChainGetPath(ctx, from, to)
 }
 
