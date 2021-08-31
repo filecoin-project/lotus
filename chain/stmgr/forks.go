@@ -41,8 +41,11 @@ type MigrationCache interface {
 // - The oldState is the state produced by the upgrade epoch.
 // - The returned newState is the new state that will be used by the next epoch.
 // - The height is the upgrade epoch height (already executed).
-// - The tipset is the tipset for the last non-null block before the upgrade. Do
-//   not assume that ts.Height() is the upgrade height.
+// - The tipset is the first non-null tipset after the upgrade height (the tipset in
+//   which the upgrade is executed). Do not assume that ts.Height() is the upgrade height.
+//
+// NOTE: In StateCompute and CallWithGas, the passed tipset is actually the tipset _before_ the
+// upgrade. The tipset should really only be used for referencing the "current chain".
 type MigrationFunc func(
 	ctx context.Context,
 	sm *StateManager, cache MigrationCache,
@@ -208,7 +211,19 @@ func (sm *StateManager) handleStateForks(ctx context.Context, root cid.Cid, heig
 	return retCid, nil
 }
 
-func (sm *StateManager) hasExpensiveFork(ctx context.Context, height abi.ChainEpoch) bool {
+// Returns true executing tipsets between the specified heights would trigger an expensive
+// migration. NOTE: migrations occurring _at_ the target height are not included, as they're
+// executed _after_ the target height.
+func (sm *StateManager) hasExpensiveForkBetween(parent, height abi.ChainEpoch) bool {
+	for h := parent; h < height; h++ {
+		if _, ok := sm.expensiveUpgrades[h]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func (sm *StateManager) hasExpensiveFork(height abi.ChainEpoch) bool {
 	_, ok := sm.expensiveUpgrades[height]
 	return ok
 }

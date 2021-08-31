@@ -99,7 +99,6 @@ func (sm *StateManager) ApplyBlocks(ctx context.Context, parentEpoch abi.ChainEp
 		}
 
 		// handle state forks
-		// XXX: The state tree
 		newState, err := sm.handleStateForks(ctx, pstate, i, em, ts)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("error handling state forks: %w", err)
