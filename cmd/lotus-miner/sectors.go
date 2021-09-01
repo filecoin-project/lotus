@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"sort"
@@ -85,12 +86,23 @@ var sectorsStatusCmd = &cli.Command{
 	ArgsUsage: "<sectorNum>",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "log",
-			Usage: "display event log",
+			Name:    "log",
+			Usage:   "display event log",
+			Aliases: []string{"l"},
 		},
 		&cli.BoolFlag{
-			Name:  "on-chain-info",
-			Usage: "show sector on chain info",
+			Name:    "on-chain-info",
+			Usage:   "show sector on chain info",
+			Aliases: []string{"c"},
+		},
+		&cli.BoolFlag{
+			Name:    "partition-info",
+			Usage:   "show partition related info",
+			Aliases: []string{"p"},
+		},
+		&cli.BoolFlag{
+			Name:  "proof",
+			Usage: "print snark proof bytes as hex",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -126,7 +138,9 @@ var sectorsStatusCmd = &cli.Command{
 		fmt.Printf("SeedH:\t\t%d\n", status.Seed.Epoch)
 		fmt.Printf("Precommit:\t%s\n", status.PreCommitMsg)
 		fmt.Printf("Commit:\t\t%s\n", status.CommitMsg)
-		fmt.Printf("Proof:\t\t%x\n", status.Proof)
+		if cctx.Bool("proof") {
+			fmt.Printf("Proof:\t\t%x\n", status.Proof)
+		}
 		fmt.Printf("Deals:\t\t%v\n", status.Deals)
 		fmt.Printf("Retries:\t%d\n", status.Retries)
 		if status.LastErr != "" {
@@ -144,6 +158,93 @@ var sectorsStatusCmd = &cli.Command{
 			fmt.Printf("\nExpiration Info\n")
 			fmt.Printf("OnTime:\t\t%v\n", status.OnTime)
 			fmt.Printf("Early:\t\t%v\n", status.Early)
+		}
+
+		if cctx.Bool("partition-info") {
+			fullApi, nCloser, err := lcli.GetFullNodeAPI(cctx)
+			if err != nil {
+				return err
+			}
+			defer nCloser()
+
+			maddr, err := getActorAddress(ctx, cctx)
+			if err != nil {
+				return err
+			}
+
+			mact, err := fullApi.StateGetActor(ctx, maddr, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			tbs := blockstore.NewTieredBstore(blockstore.NewAPIBlockstore(fullApi), blockstore.NewMemory())
+			mas, err := miner.Load(adt.WrapStore(ctx, cbor.NewCborStore(tbs)), mact)
+			if err != nil {
+				return err
+			}
+
+			errFound := errors.New("found")
+			if err := mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
+				return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
+					pas, err := part.AllSectors()
+					if err != nil {
+						return err
+					}
+
+					set, err := pas.IsSet(id)
+					if err != nil {
+						return err
+					}
+					if set {
+						fmt.Printf("\nDeadline:\t%d\n", dlIdx)
+						fmt.Printf("Partition:\t%d\n", partIdx)
+
+						checkIn := func(name string, bg func() (bitfield.BitField, error)) error {
+							bf, err := bg()
+							if err != nil {
+								return err
+							}
+
+							set, err := bf.IsSet(id)
+							if err != nil {
+								return err
+							}
+							setstr := "no"
+							if set {
+								setstr = "yes"
+							}
+							fmt.Printf("%s:   \t%s\n", name, setstr)
+							return nil
+						}
+
+						if err := checkIn("Unproven", part.UnprovenSectors); err != nil {
+							return err
+						}
+						if err := checkIn("Live", part.LiveSectors); err != nil {
+							return err
+						}
+						if err := checkIn("Active", part.ActiveSectors); err != nil {
+							return err
+						}
+						if err := checkIn("Faulty", part.FaultySectors); err != nil {
+							return err
+						}
+						if err := checkIn("Recovering", part.RecoveringSectors); err != nil {
+							return err
+						}
+
+						return errFound
+					}
+
+					return nil
+				})
+			}); err != errFound {
+				if err != nil {
+					return err
+				}
+
+				fmt.Println("\nNot found in any partition")
+			}
 		}
 
 		if cctx.Bool("log") {
