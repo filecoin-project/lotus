@@ -3,10 +3,12 @@ package sectorstorage
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"reflect"
 	"runtime"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -544,16 +546,41 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 		return storiface.WorkerInfo{}, xerrors.Errorf("getting memory info: %w", err)
 	}
 
+	resourceOpts := make(map[string]string)
+	for tt := range l.acceptTasks {
+		ttShort := tt.Short()
+		for _, res_opt := range []string{"_MAX_MEMORY", "_MIN_MEMORY", "_MAX_PARALLELISM", "_BASE_MIN_MEMORY", "_GPU_UTILIZATION"} {
+			n := ttShort + res_opt
+			if val, ok := os.LookupEnv(n); ok {
+				resourceOpts[n] = val
+			}
+		}
+	}
+	if _, ok := resourceOpts["PC1_MAX_PARALLELISM"]; !ok {
+		if os.Getenv("FIL_PROOFS_USE_MULTICORE_SDR") == "1" {
+			pc1MulticoreSDRProducers := 3
+			if pc1MulticoreSDRProducersEnv := os.Getenv("FIL_PROOFS_MULTICORE_SDR_PRODUCERS"); pc1MulticoreSDRProducersEnv != "" {
+				pc1MulticoreSDRProducers, err = strconv.Atoi(pc1MulticoreSDRProducersEnv)
+				if err != nil {
+					log.Errorf("FIL_PROOFS_MULTICORE_SDR_PRODUCERS is not an integer: %+v", err)
+					pc1MulticoreSDRProducers = 3
+				}
+			}
+			resourceOpts["PC1_MAX_PARALLELISM"] = fmt.Sprintf("%d", 1+pc1MulticoreSDRProducers)
+		}
+	}
+
 	return storiface.WorkerInfo{
 		Hostname:        hostname,
 		IgnoreResources: l.ignoreResources,
 		Resources: storiface.WorkerResources{
-			MemPhysical: memPhysical,
-			MemUsed:     memUsed,
-			MemSwap:     memSwap,
-			MemSwapUsed: memSwapUsed,
-			CPUs:        uint64(runtime.NumCPU()),
-			GPUs:        gpus,
+			MemPhysical:  memPhysical,
+			MemUsed:      memUsed,
+			MemSwap:      memSwap,
+			MemSwapUsed:  memSwapUsed,
+			CPUs:         uint64(runtime.NumCPU()),
+			GPUs:         gpus,
+			ResourceOpts: resourceOpts,
 		},
 	}, nil
 }
