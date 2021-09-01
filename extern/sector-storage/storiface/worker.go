@@ -32,8 +32,9 @@ type WorkerResources struct {
 	MemSwap     uint64
 	MemSwapUsed uint64
 
-	CPUs uint64 // Logical cores
-	GPUs []string
+	CPUs         uint64 // Logical cores
+	GPUs         []string
+	ResourceOpts map[string]string
 }
 
 type WorkerStats struct {

@@ -1,9 +1,12 @@
 package sectorstorage
 
 import (
+	"strconv"
+
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 type Resources struct {
@@ -42,6 +45,51 @@ func (r Resources) Threads(wcpus uint64) uint64 {
 	}
 
 	return uint64(r.MaxParallelism)
+}
+
+func (r *Resources) customizeForWorker(taskShortName string, wid WorkerID, info storiface.WorkerInfo) {
+	// update needed resources with worker options
+	if o, ok := info.Resources.ResourceOpts[taskShortName+"_MAX_MEMORY"]; ok {
+		i, err := strconv.ParseUint(o, 10, 64)
+		if err != nil {
+			log.Errorf("unable to parse %s_MAX_MEMORY value %s: %e", taskShortName, o, err)
+		} else {
+			r.MaxMemory = i
+		}
+	}
+	if o, ok := info.Resources.ResourceOpts[taskShortName+"_MIN_MEMORY"]; ok {
+		i, err := strconv.ParseUint(o, 10, 64)
+		if err != nil {
+			log.Errorf("unable to parse %s_MIN_MEMORY value %s: %e", taskShortName, o, err)
+		} else {
+			r.MinMemory = i
+		}
+	}
+	if o, ok := info.Resources.ResourceOpts[taskShortName+"_BASE_MIN_MEMORY"]; ok {
+		i, err := strconv.ParseUint(o, 10, 64)
+		if err != nil {
+			log.Errorf("unable to parse %s_BASE_MIN_MEMORY value %s: %e", taskShortName, o, err)
+		} else {
+			r.BaseMinMemory = i
+		}
+	}
+	if o, ok := info.Resources.ResourceOpts[taskShortName+"_MAX_PARALLELISM"]; ok {
+		i, err := strconv.Atoi(o)
+		if err != nil {
+			log.Errorf("unable to parse %s_MAX_PARALLELISM value %s: %e", taskShortName, o, err)
+		} else {
+			r.MaxParallelism = i
+		}
+	}
+	if o, ok := info.Resources.ResourceOpts[taskShortName+"_GPU_UTILIZATION"]; ok {
+		i, err := strconv.ParseFloat(o, 64)
+		if err != nil {
+			log.Errorf("unable to parse %s_GPU_UTILIZATION value %s: %e", taskShortName, o, err)
+		} else {
+			r.GPUUtilization = i
+		}
+	}
+	log.Debugf("resources required for %s on %s(%s): %+v", taskShortName, wid, info.Hostname, r)
 }
 
 var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources{
