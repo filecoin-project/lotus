@@ -1,3 +1,4 @@
+//go:build !nodaemon
 // +build !nodaemon
 
 package main
@@ -477,7 +478,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return err
 	}
 
-	j, err := fsjournal.OpenFSJournal(lr, journal.EnvDisabledEvents())
+	j, err := fsjournal.OpenFSJournal(lr, journal.EnvDisabledEvents(), journal.EnvMaxSize, journal.EnvMaxBackups)
 	if err != nil {
 		return xerrors.Errorf("failed to open journal: %w", err)
 	}

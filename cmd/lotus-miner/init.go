@@ -480,7 +480,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 				return err
 			}
 
-			j, err := fsjournal.OpenFSJournal(lr, journal.EnvDisabledEvents())
+			j, err := fsjournal.OpenFSJournal(lr, journal.EnvDisabledEvents(), journal.EnvMaxSize, journal.EnvMaxBackups)
 			if err != nil {
 				return fmt.Errorf("failed to open filesystem journal: %w", err)
 			}

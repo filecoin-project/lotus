@@ -238,7 +238,7 @@ func RandomSchedule(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Sche
 }
 
 func OpenFilesystemJournal(lr repo.LockedRepo, lc fx.Lifecycle, disabled journal.DisabledEvents) (journal.Journal, error) {
-	jrnl, err := fsjournal.OpenFSJournal(lr, disabled)
+	jrnl, err := fsjournal.OpenFSJournal(lr, disabled, journal.EnvMaxSize, journal.EnvMaxBackups)
 	if err != nil {
 		return nil, err
 	}
