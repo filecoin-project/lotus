@@ -22,15 +22,15 @@ const RFC3339nocolon = "2006-01-02T150405Z0700"
 type fsJournal struct {
 	journal.EventTypeRegistry
 
-	dir       string
-	sizeLimit int64
+	dir     string
+	maxSize int64
 
 	fi    *os.File
 	fSize int64
 
-	keep int64
-	old  []string
-	cur  int64
+	maxBackups int64
+	backups    []string
+	cur        int64
 
 	incoming chan *journal.Event
 
@@ -40,26 +40,31 @@ type fsJournal struct {
 
 // OpenFSJournal constructs a rolling filesystem journal, with a default
 // per-file size limit of 1GiB.
-func OpenFSJournal(lr repo.LockedRepo, disabled journal.DisabledEvents) (journal.Journal, error) {
+func OpenFSJournal(lr repo.LockedRepo, disabled journal.DisabledEvents, maxSize int64, maxBackups int64) (journal.Journal, error) {
 	dir := filepath.Join(lr.Path(), "journal")
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to mk directory %s for file journal: %w", dir, err)
 	}
-
+	var backuplen int64
+	if maxBackups > 0 {
+		backuplen = maxBackups
+	}
 	f := &fsJournal{
 		EventTypeRegistry: journal.NewEventTypeRegistry(disabled),
 		dir:               dir,
-		sizeLimit:         journal.EnvMaxSize,
-		keep:              journal.EnvMaxBackups,
-		old:               make([]string, journal.EnvMaxBackups),
+		maxSize:           maxSize,
+		maxBackups:        maxBackups,
+		backups:           make([]string, backuplen),
 		cur:               0,
 		incoming:          make(chan *journal.Event, 32),
 		closing:           make(chan struct{}),
 		closed:            make(chan struct{}),
 	}
 
-	if err := f.rollJournalFile(); err != nil {
-		return nil, err
+	if maxSize != 0 {
+		if err := f.rollJournalFile(); err != nil {
+			return nil, err
+		}
 	}
 
 	go f.runLoop()
@@ -108,7 +113,8 @@ func (f *fsJournal) putEvent(evt *journal.Event) error {
 
 	f.fSize += int64(n)
 
-	if f.sizeLimit > 0 && f.fSize >= f.sizeLimit {
+	if f.maxSize > 0 && f.fSize >= f.maxSize {
+		fmt.Println("ok, so its here?")
 		f.rollJournalFile()
 	}
 
@@ -125,11 +131,23 @@ func (f *fsJournal) rollJournalFile() error {
 		build.Clock.Now().Format(RFC3339nocolon),
 	))
 
-	// check if journal file exists
-	if fi, err := os.Stat(current); err == nil && !fi.IsDir() {
-		err := os.Rename(current, rolled)
-		if err != nil {
-			return xerrors.Errorf("failed to roll journal file: %w", err)
+	// journal rotation
+	if f.maxBackups != 0 {
+		// check if journal file exists
+		if fi, err := os.Stat(current); err == nil && !fi.IsDir() {
+			err := os.Rename(current, rolled)
+			if err != nil {
+				return xerrors.Errorf("failed to roll journal file: %w", err)
+			}
+		}
+
+		// when maxBackups is a positive number, delete old journals
+		if f.maxBackups > 0 {
+			if r := f.backups[f.cur]; r != "" {
+				os.Remove(r)
+			}
+			f.backups[f.cur] = rolled
+			f.cur = (f.cur + 1) % f.maxBackups
 		}
 	}
 
@@ -137,15 +155,8 @@ func (f *fsJournal) rollJournalFile() error {
 	if err != nil {
 		return xerrors.Errorf("failed to create journal file: %w", err)
 	}
-
 	f.fi = nfi
 	f.fSize = 0
-
-	if r := f.old[f.cur]; r != "" {
-		os.Remove(r)
-	}
-	f.old[f.cur] = nfi.Name()
-	f.cur = (f.cur + 1) % journal.EnvMaxBackups
 	return nil
 }
 
@@ -155,11 +166,13 @@ func (f *fsJournal) runLoop() {
 		close(f.closed)
 	}()
 
-	for f.sizeLimit != 0 {
+	for {
 		select {
 		case je := <-f.incoming:
-			if err := f.putEvent(je); err != nil {
-				log.Errorw("failed to write out journal event", "event", je, "err", err)
+			if f.maxSize != 0 {
+				if err := f.putEvent(je); err != nil {
+					log.Errorw("failed to write out journal event", "event", je, "err", err)
+				}
 			}
 		case <-f.closing:
 			_ = f.fi.Close()
