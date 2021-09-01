@@ -710,11 +710,8 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 		Proof: sector.Proof, // todo: this correct??
 		Spt:   sector.SectorType,
 	})
-	if err != nil {
-		return ctx.Send(SectorRetrySubmitCommit{})
-	}
 
-	if res.Error != "" {
+	if err != nil || res.Error != "" {
 		tok, _, err := m.Api.ChainHead(ctx.Context())
 		if err != nil {
 			log.Errorf("handleSubmitCommit: api error, not proceeding: %+v", err)

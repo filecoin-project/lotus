@@ -135,7 +135,7 @@ func TestHappyPathFinalizeEarly(t *testing.T) {
 	require.Equal(m.t, m.state.State, SubmitCommitAggregate)
 
 	m.planSingle(SectorCommitAggregateSent{})
-	require.Equal(m.t, m.state.State, CommitWait)
+	require.Equal(m.t, m.state.State, CommitAggregateWait)
 
 	m.planSingle(SectorProving{})
 	require.Equal(m.t, m.state.State, FinalizeSector)
