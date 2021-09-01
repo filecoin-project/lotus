@@ -3,8 +3,10 @@ package fsjournal
 import (
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"sort"
 
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
@@ -16,7 +18,10 @@ import (
 
 var log = logging.Logger("fsjournal")
 
-const RFC3339nocolon = "2006-01-02T150405Z0700"
+const (
+	RFC3339nocolon  = "2006-01-02T150405Z0700"
+	currentFilename = "lotus-journal.ndjson"
+)
 
 // fsJournal is a basic journal backed by files on a filesystem.
 type fsJournal struct {
@@ -59,6 +64,30 @@ func OpenFSJournal(lr repo.LockedRepo, disabled journal.DisabledEvents, maxSize 
 		incoming:          make(chan *journal.Event, 32),
 		closing:           make(chan struct{}),
 		closed:            make(chan struct{}),
+	}
+
+	// load existing journal file names, if there are any.
+	if files, err := os.ReadDir(f.dir); err != nil {
+		finfos := make([]fs.FileInfo, 0)
+		for _, de := range files {
+			if de.IsDir() || de.Name() == currentFilename {
+				continue
+			}
+			if fi, err := de.Info(); err != nil {
+				finfos = append(finfos, fi)
+			}
+		}
+		sort.Slice(finfos, func(i, j int) bool {
+			return finfos[i].ModTime().After(finfos[j].ModTime())
+		})
+		for i, fi := range finfos {
+			fullName := filepath.Join(f.dir, fi.Name())
+			if i < int(backuplen) {
+				f.backups[i] = fullName
+			} else {
+				os.Remove(fullName)
+			}
+		}
 	}
 
 	if maxSize != 0 {
@@ -125,7 +154,7 @@ func (f *fsJournal) rollJournalFile() error {
 	if f.fi != nil {
 		_ = f.fi.Close()
 	}
-	current := filepath.Join(f.dir, "lotus-journal.ndjson")
+	current := filepath.Join(f.dir, currentFilename)
 	rolled := filepath.Join(f.dir, fmt.Sprintf(
 		"lotus-journal-%s.ndjson",
 		build.Clock.Now().Format(RFC3339nocolon),
