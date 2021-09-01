@@ -1,12 +1,8 @@
 package journal
 
 import (
-	"container/list"
-	"os"
-	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/stretchr/testify/require"
 )
 
@@ -50,18 +46,4 @@ func TestDisabledEvents(t *testing.T) {
 func TestParseDisableEvents(t *testing.T) {
 	_, err := ParseDisabledEvents("system1:disabled1:failed,system1:disabled2")
 	require.Error(t, err)
-}
-
-func newtestfsjournal(t *testing.T, lr repo.LockedRepo, sizeLimit int64, keep int) *fsJournal {
-	req := require.New(t)
-	dir := filepath.Join(lr.Path(), "journal")
-	req.NoErrorf(os.MkdirAll(dir, 0755), "could not make journal directory")
-
-	j := &fsJournal{
-		dir:       dir,
-		sizeLimit: sizeLimit,
-		keep:      keep,
-		old:       list.New(),
-	}
-	return j
 }
