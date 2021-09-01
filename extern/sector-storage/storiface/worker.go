@@ -42,8 +42,8 @@ type WorkerStats struct {
 
 	MemUsedMin uint64
 	MemUsedMax uint64
-	GpuUsed    bool   // nolint
-	CpuUse     uint64 // nolint
+	GpuUsed    float64 // nolint
+	CpuUse     uint64  // nolint
 }
 
 const (

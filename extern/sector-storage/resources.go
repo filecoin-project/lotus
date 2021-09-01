@@ -11,7 +11,7 @@ type Resources struct {
 	MaxMemory uint64 // Memory required (swap + ram)
 
 	MaxParallelism int // -1 = multithread
-	CanGPU         bool
+	GPUUtilization float64
 
 	BaseMinMemory uint64 // What Must be in RAM for decent perf (shared between threads)
 }
@@ -135,7 +135,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
 			MinMemory: 30 << 30,
 
 			MaxParallelism: -1,
-			CanGPU:         true,
+			GPUUtilization: 1.0,
 
 			BaseMinMemory: 1 << 30,
 		},
@@ -144,7 +144,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
 			MinMemory: 15 << 30,
 
 			MaxParallelism: -1,
-			CanGPU:         true,
+			GPUUtilization: 1.0,
 
 			BaseMinMemory: 1 << 30,
 		},
@@ -221,7 +221,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
 			MinMemory: 60 << 30,
 
 			MaxParallelism: -1,
-			CanGPU:         true,
+			GPUUtilization: 1.0,
 
 			BaseMinMemory: 64 << 30, // params
 		},
@@ -230,7 +230,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
 			MinMemory: 30 << 30,
 
 			MaxParallelism: -1,
-			CanGPU:         true,
+			GPUUtilization: 1.0,
 
 			BaseMinMemory: 32 << 30, // params
 		},
@@ -239,7 +239,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
 			MinMemory: 1 << 30,
 
 			MaxParallelism: 1, // This is fine
-			CanGPU:         true,
+			GPUUtilization: 1.0,
 
 			BaseMinMemory: 10 << 30,
 		},
@@ -248,7 +248,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
 			MinMemory: 2 << 10,
 
 			MaxParallelism: 1,
-			CanGPU:         true,
+			GPUUtilization: 1.0,
 
 			BaseMinMemory: 2 << 10,
 		},
@@ -257,7 +257,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
 			MinMemory: 8 << 20,
 
 			MaxParallelism: 1,
-			CanGPU:         true,
+			GPUUtilization: 1.0,
 
 			BaseMinMemory: 8 << 20,
 		},
@@ -268,7 +268,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
 			MinMemory: 1 << 20,
 
 			MaxParallelism: 0,
-			CanGPU:         false,
+			GPUUtilization: 0,
 
 			BaseMinMemory: 0,
 		},
@@ -277,7 +277,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
 			MinMemory: 1 << 20,
 
 			MaxParallelism: 0,
-			CanGPU:         false,
+			GPUUtilization: 0,
 
 			BaseMinMemory: 0,
 		},
@@ -286,7 +286,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
 			MinMemory: 1 << 20,
 
 			MaxParallelism: 0,
-			CanGPU:         false,
+			GPUUtilization: 0,
 
 			BaseMinMemory: 0,
 		},
@@ -295,7 +295,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
 			MinMemory: 1 << 20,
 
 			MaxParallelism: 0,
-			CanGPU:         false,
+			GPUUtilization: 0,
 
 			BaseMinMemory: 0,
 		},
@@ -304,7 +304,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
 			MinMemory: 1 << 20,
 
 			MaxParallelism: 0,
-			CanGPU:         false,
+			GPUUtilization: 0,
 
 			BaseMinMemory: 0,
 		},
