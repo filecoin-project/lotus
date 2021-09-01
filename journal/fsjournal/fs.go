@@ -1,7 +1,6 @@
 package fsjournal
 
 import (
-	"container/list"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -30,7 +29,8 @@ type fsJournal struct {
 	fSize int64
 
 	keep int64
-	old  *list.List
+	old  []string
+	cur  int64
 
 	incoming chan *journal.Event
 
@@ -51,7 +51,8 @@ func OpenFSJournal(lr repo.LockedRepo, disabled journal.DisabledEvents) (journal
 		dir:               dir,
 		sizeLimit:         journal.EnvMaxSize,
 		keep:              journal.EnvMaxBackups,
-		old:               list.New(),
+		old:               make([]string, journal.EnvMaxBackups),
+		cur:               0,
 		incoming:          make(chan *journal.Event, 32),
 		closing:           make(chan struct{}),
 		closed:            make(chan struct{}),
@@ -107,8 +108,8 @@ func (f *fsJournal) putEvent(evt *journal.Event) error {
 
 	f.fSize += int64(n)
 
-	if f.fSize >= f.sizeLimit {
-		_ = f.rollJournalFile()
+	if f.sizeLimit > 0 && f.fSize >= f.sizeLimit {
+		f.rollJournalFile()
 	}
 
 	return nil
@@ -140,19 +141,21 @@ func (f *fsJournal) rollJournalFile() error {
 	f.fi = nfi
 	f.fSize = 0
 
-	f.old.PushFront(nfi.Name())
-	if int64(f.old.Len()) > f.keep {
-		e := f.old.Back()
-		os.Remove(e.Value.(string))
-		f.old.Remove(e)
+	if r := f.old[f.cur]; r != "" {
+		os.Remove(r)
 	}
+	f.old[f.cur] = nfi.Name()
+	f.cur = (f.cur + 1) % journal.EnvMaxBackups
 	return nil
 }
 
 func (f *fsJournal) runLoop() {
-	defer close(f.closed)
+	defer func() {
+		log.Info("closing journal")
+		close(f.closed)
+	}()
 
-	for {
+	for f.sizeLimit != 0 {
 		select {
 		case je := <-f.incoming:
 			if err := f.putEvent(je); err != nil {
