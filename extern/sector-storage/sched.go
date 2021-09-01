@@ -114,7 +114,7 @@ type workerDisableReq struct {
 type activeResources struct {
 	memUsedMin uint64
 	memUsedMax uint64
-	gpuUsed    bool
+	gpuUsed    float64
 	cpuUse     uint64
 
 	cond    *sync.Cond

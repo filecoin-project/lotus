@@ -89,7 +89,7 @@ var sealingWorkersCmd = &cli.Command{
 		for _, stat := range st {
 			gpuUse := "not "
 			gpuCol := color.FgBlue
-			if stat.GpuUsed {
+			if stat.GpuUsed > 0 {
 				gpuCol = color.FgGreen
 				gpuUse = ""
 			}
@@ -132,6 +132,12 @@ var sealingWorkersCmd = &cli.Command{
 				types.SizeStr(types.NewInt(vmemTasks+vmemReserved)),
 				types.SizeStr(types.NewInt(vmemTotal)))
 
+			if len(stat.Info.Resources.GPUs) > 0 {
+				gpuBar := barString(float64(len(stat.Info.Resources.GPUs)), 0, stat.GpuUsed)
+				fmt.Printf("\tGPU:  [%s] %.f%% %.2f/%d gpu(s) in use\n", color.GreenString(gpuBar),
+					stat.GpuUsed*100/float64(len(stat.Info.Resources.GPUs)),
+					stat.GpuUsed, len(stat.Info.Resources.GPUs))
+			}
 			for _, gpu := range stat.Info.Resources.GPUs {
 				fmt.Printf("\tGPU: %s\n", color.New(gpuCol).Sprintf("%s, %sused", gpu, gpuUse))
 			}

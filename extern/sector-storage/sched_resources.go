@@ -31,8 +31,8 @@ func (a *activeResources) hasWorkWaiting() bool {
 }
 
 func (a *activeResources) add(wr storiface.WorkerResources, r Resources) {
-	if r.CanGPU {
-		a.gpuUsed = true
+	if r.GPUUtilization > 0 {
+		a.gpuUsed += r.GPUUtilization
 	}
 	a.cpuUse += r.Threads(wr.CPUs)
 	a.memUsedMin += r.MinMemory
@@ -40,8 +40,8 @@ func (a *activeResources) add(wr storiface.WorkerResources, r Resources) {
 }
 
 func (a *activeResources) free(wr storiface.WorkerResources, r Resources) {
-	if r.CanGPU {
-		a.gpuUsed = false
+	if r.GPUUtilization > 0 {
+		a.gpuUsed -= r.GPUUtilization
 	}
 	a.cpuUse -= r.Threads(wr.CPUs)
 	a.memUsedMin -= r.MinMemory
@@ -89,9 +89,9 @@ func (a *activeResources) canHandleRequest(needRes Resources, wid WorkerID, call
 		return false
 	}
 
-	if len(res.GPUs) > 0 && needRes.CanGPU {
-		if a.gpuUsed {
-			log.Debugf("sched: not scheduling on worker %s for %s; GPU in use", wid, caller)
+	if len(res.GPUs) > 0 && needRes.GPUUtilization > 0 {
+		if a.gpuUsed+needRes.GPUUtilization > float64(len(res.GPUs)) {
+			log.Debugf("sched: not scheduling on worker %s for %s; GPU(s) in use", wid, caller)
 			return false
 		}
 	}
