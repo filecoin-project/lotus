@@ -29,7 +29,7 @@ type fsJournal struct {
 	fi    *os.File
 	fSize int64
 
-	keep int
+	keep int64
 	old  *list.List
 
 	incoming chan *journal.Event
@@ -49,8 +49,8 @@ func OpenFSJournal(lr repo.LockedRepo, disabled journal.DisabledEvents) (journal
 	f := &fsJournal{
 		EventTypeRegistry: journal.NewEventTypeRegistry(disabled),
 		dir:               dir,
-		sizeLimit:         1 << 30,
-		keep:              3,
+		sizeLimit:         journal.EnvMaxSize,
+		keep:              journal.EnvMaxBackups,
 		old:               list.New(),
 		incoming:          make(chan *journal.Event, 32),
 		closing:           make(chan struct{}),
@@ -141,7 +141,7 @@ func (f *fsJournal) rollJournalFile() error {
 	f.fSize = 0
 
 	f.old.PushFront(nfi.Name())
-	if f.old.Len() > f.keep {
+	if int64(f.old.Len()) > f.keep {
 		e := f.old.Back()
 		os.Remove(e.Value.(string))
 		f.old.Remove(e)
