@@ -31,7 +31,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	tstats "github.com/filecoin-project/lotus/tools/stats"
+	tsync "github.com/filecoin-project/lotus/tools/stats/sync"
 )
 
 func UpdateChainState(t *testkit.TestEnvironment, m *testkit.LotusMiner) error {
@@ -40,7 +40,7 @@ func UpdateChainState(t *testkit.TestEnvironment, m *testkit.LotusMiner) error {
 
 	ctx := context.Background()
 
-	tipsetsCh, err := tstats.GetTips(ctx, &v0api.WrapperV1Full{FullNode: m.FullApi}, abi.ChainEpoch(height), headlag)
+	tipsetsCh, err := tsync.BufferedTipsetChannel(ctx, &v0api.WrapperV1Full{FullNode: m.FullApi}, abi.ChainEpoch(height), headlag)
 	if err != nil {
 		return err
 	}
