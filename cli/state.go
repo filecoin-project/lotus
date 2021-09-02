@@ -1367,7 +1367,7 @@ func codeStr(c cid.Cid) string {
 }
 
 func getMethod(code cid.Cid, method abi.MethodNum) string {
-	return stmgr.MethodsMap[code][method].Name
+	return filcns.NewActorRegistry().Methods[code][method].Name // todo: use remote
 }
 
 func toFil(f types.BigInt) types.FIL {
@@ -1412,7 +1412,7 @@ func JsonParams(code cid.Cid, method abi.MethodNum, params []byte) (string, erro
 }
 
 func jsonReturn(code cid.Cid, method abi.MethodNum, ret []byte) (string, error) {
-	methodMeta, found := stmgr.MethodsMap[code][method]
+	methodMeta, found := filcns.NewActorRegistry().Methods[code][method] // TODO: use remote
 	if !found {
 		return "", fmt.Errorf("method %d not found on actor %s", method, code)
 	}

@@ -22,8 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
-var MethodsMap map[cid.Cid]map[abi.MethodNum]vm.MethodMeta
-
 func GetReturnType(ctx context.Context, sm *StateManager, to address.Address, method abi.MethodNum, ts *types.TipSet) (cbg.CBORUnmarshaler, error) {
 	act, err := sm.LoadActor(ctx, to, ts)
 	if err != nil {
