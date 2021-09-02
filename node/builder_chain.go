@@ -1,6 +1,8 @@
 package node
 
 import (
+	"os"
+
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -112,12 +114,14 @@ var ChainNode = Options(
 
 	// Markets (retrieval)
 	Override(new(discovery.PeerResolver), modules.RetrievalResolver),
+	Override(new(retrievalmarket.BlockstoreAccessor), modules.RetrievalBlockstoreAccessor),
 	Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient),
 	Override(new(dtypes.ClientDataTransfer), modules.NewClientGraphsyncDataTransfer),
 
 	// Markets (storage)
 	Override(new(*market.FundManager), market.NewFundManager),
 	Override(new(dtypes.ClientDatastore), modules.NewClientDatastore),
+	Override(new(storagemarket.BlockstoreAccessor), modules.StorageBlockstoreAccessor),
 	Override(new(storagemarket.StorageClient), modules.StorageClient),
 	Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
 	Override(HandleMigrateClientFundsKey, modules.HandleMigrateClientFunds),
@@ -165,10 +169,48 @@ func ConfigFullNode(c interface{}) Option {
 	return Options(
 		ConfigCommon(&cfg.Common, enableLibp2pNode),
 
+		Override(new(dtypes.UniversalBlockstore), modules.UniversalBlockstore),
+
+		If(cfg.Chainstore.EnableSplitstore,
+			If(cfg.Chainstore.Splitstore.ColdStoreType == "universal",
+				Override(new(dtypes.ColdBlockstore), From(new(dtypes.UniversalBlockstore)))),
+			If(cfg.Chainstore.Splitstore.ColdStoreType == "discard",
+				Override(new(dtypes.ColdBlockstore), modules.DiscardColdBlockstore)),
+			If(cfg.Chainstore.Splitstore.HotStoreType == "badger",
+				Override(new(dtypes.HotBlockstore), modules.BadgerHotBlockstore)),
+			Override(new(dtypes.SplitBlockstore), modules.SplitBlockstore(&cfg.Chainstore)),
+			Override(new(dtypes.BasicChainBlockstore), modules.ChainSplitBlockstore),
+			Override(new(dtypes.BasicStateBlockstore), modules.StateSplitBlockstore),
+			Override(new(dtypes.BaseBlockstore), From(new(dtypes.SplitBlockstore))),
+			Override(new(dtypes.ExposedBlockstore), modules.ExposedSplitBlockstore),
+			Override(new(dtypes.GCReferenceProtector), modules.SplitBlockstoreGCReferenceProtector),
+		),
+		If(!cfg.Chainstore.EnableSplitstore,
+			Override(new(dtypes.BasicChainBlockstore), modules.ChainFlatBlockstore),
+			Override(new(dtypes.BasicStateBlockstore), modules.StateFlatBlockstore),
+			Override(new(dtypes.BaseBlockstore), From(new(dtypes.UniversalBlockstore))),
+			Override(new(dtypes.ExposedBlockstore), From(new(dtypes.UniversalBlockstore))),
+			Override(new(dtypes.GCReferenceProtector), modules.NoopGCReferenceProtector),
+		),
+
+		Override(new(dtypes.ChainBlockstore), From(new(dtypes.BasicChainBlockstore))),
+		Override(new(dtypes.StateBlockstore), From(new(dtypes.BasicStateBlockstore))),
+
+		If(os.Getenv("LOTUS_ENABLE_CHAINSTORE_FALLBACK") == "1",
+			Override(new(dtypes.ChainBlockstore), modules.FallbackChainBlockstore),
+			Override(new(dtypes.StateBlockstore), modules.FallbackStateBlockstore),
+			Override(SetupFallbackBlockstoresKey, modules.InitFallbackBlockstores),
+		),
+
+		Override(new(dtypes.ClientImportMgr), modules.ClientImportMgr),
+
+		Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
+
 		If(cfg.Client.UseIpfs,
 			Override(new(dtypes.ClientBlockstore), modules.IpfsClientBlockstore(ipfsMaddr, cfg.Client.IpfsOnlineMode)),
+			Override(new(storagemarket.BlockstoreAccessor), modules.IpfsStorageBlockstoreAccessor),
 			If(cfg.Client.IpfsUseForRetrieval,
-				Override(new(dtypes.ClientRetrievalStoreManager), modules.ClientBlockstoreRetrievalStoreManager),
+				Override(new(retrievalmarket.BlockstoreAccessor), modules.IpfsRetrievalBlockstoreAccessor),
 			),
 		),
 		Override(new(dtypes.Graphsync), modules.Graphsync(cfg.Client.SimultaneousTransfers)),

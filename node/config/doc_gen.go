@@ -125,6 +125,55 @@ and storage providers`,
 			Comment: ``,
 		},
 	},
+	"DAGStoreConfig": []DocField{
+		{
+			Name: "RootDir",
+			Type: "string",
+
+			Comment: `Path to the dagstore root directory. This directory contains three
+subdirectories, which can be symlinked to alternative locations if
+need be:
+- ./transients: caches unsealed deals that have been fetched from the
+storage subsystem for serving retrievals.
+- ./indices: stores shard indices.
+- ./datastore: holds the KV store tracking the state of every shard
+known to the DAG store.
+Default value: <LOTUS_MARKETS_PATH>/dagstore (split deployment) or
+<LOTUS_MINER_PATH>/dagstore (monolith deployment)`,
+		},
+		{
+			Name: "MaxConcurrentIndex",
+			Type: "int",
+
+			Comment: `The maximum amount of indexing jobs that can run simultaneously.
+0 means unlimited.
+Default value: 5.`,
+		},
+		{
+			Name: "MaxConcurrentReadyFetches",
+			Type: "int",
+
+			Comment: `The maximum amount of unsealed deals that can be fetched simultaneously
+from the storage subsystem. 0 means unlimited.
+Default value: 0 (unlimited).`,
+		},
+		{
+			Name: "MaxConcurrencyStorageCalls",
+			Type: "int",
+
+			Comment: `The maximum number of simultaneous inflight API calls to the storage
+subsystem.
+Default value: 100.`,
+		},
+		{
+			Name: "GCInterval",
+			Type: "Duration",
+
+			Comment: `The time between calls to periodic dagstore GC, in time.Duration string
+representation, e.g. 1m, 5m, 1h.
+Default value: 1 minute.`,
+		},
+	},
 	"DealmakingConfig": []DocField{
 		{
 			Name: "ConsiderOnlineStorageDeals",
@@ -300,22 +349,35 @@ Format: multiaddress`,
 			Comment: ``,
 		},
 		{
+			Name: "DisableNatPortMap",
+			Type: "bool",
+
+			Comment: `When not disabled (default), lotus asks NAT devices (e.g., routers), to
+open up an external port and forward it to the port lotus is running on.
+When this works (i.e., when your router supports NAT port forwarding),
+it makes the local lotus node accessible from the public internet`,
+		},
+		{
 			Name: "ConnMgrLow",
 			Type: "uint",
 
-			Comment: ``,
+			Comment: `ConnMgrLow is the number of connections that the basic connection manager
+will trim down to.`,
 		},
 		{
 			Name: "ConnMgrHigh",
 			Type: "uint",
 
-			Comment: ``,
+			Comment: `ConnMgrHigh is the number of connections that, when exceeded, will trigger
+a connection GC operation. Note: protected/recently formed connections don't
+count towards this limit.`,
 		},
 		{
 			Name: "ConnMgrGrace",
 			Type: "Duration",
 
-			Comment: ``,
+			Comment: `ConnMgrGrace is a time duration that new connections are immune from being
+closed by the connection manager.`,
 		},
 	},
 	"MinerAddressConfig": []DocField{
@@ -740,6 +802,12 @@ Default is 20 (about once a week).`,
 		{
 			Name: "Addresses",
 			Type: "MinerAddressConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "DAGStore",
+			Type: "DAGStoreConfig",
 
 			Comment: ``,
 		},

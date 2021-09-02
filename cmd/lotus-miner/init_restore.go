@@ -223,6 +223,12 @@ func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfi
 		}
 	} else {
 		log.Warn("--storage-config NOT SET. NO SECTOR PATHS WILL BE CONFIGURED")
+		// setting empty config to allow miner to be started
+		if err := lr.SetStorage(func(sc *stores.StorageConfig) {
+			sc.StoragePaths = append(sc.StoragePaths, stores.LocalPath{})
+		}); err != nil {
+			return xerrors.Errorf("set storage config: %w", err)
+		}
 	}
 
 	log.Info("Restoring metadata backup")

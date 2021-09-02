@@ -107,6 +107,12 @@ func (lmem *lockedMemRepo) Path() string {
 	}
 
 	if lmem.t == StorageMiner {
+		// this is required due to the method makeDealStaging from cmd/lotus-storage-miner/init.go
+		// deal-staging is the directory deal files are staged in before being sealed into sectors
+		// for offline deal flow.
+		if err := os.MkdirAll(filepath.Join(t, "deal-staging"), 0755); err != nil {
+			panic(err)
+		}
 		if err := config.WriteStorageFile(filepath.Join(t, fsStorageConfig), stores.StorageConfig{
 			StoragePaths: []stores.LocalPath{
 				{Path: t},

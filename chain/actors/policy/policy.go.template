@@ -4,6 +4,7 @@ import (
 	"sort"
 
 	"github.com/filecoin-project/go-state-types/big"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
@@ -117,18 +118,18 @@ func SetMinVerifiedDealSize(size abi.StoragePower) {
 	{{end}}
 }
 
-func GetMaxProveCommitDuration(ver actors.Version, t abi.RegisteredSealProof) abi.ChainEpoch {
+func GetMaxProveCommitDuration(ver actors.Version, t abi.RegisteredSealProof) (abi.ChainEpoch, error) {
 	switch ver {
 		{{range .versions}}
 			case actors.Version{{.}}:
 				{{if (eq . 0)}}
-					return miner{{.}}.MaxSealDuration[t]
+					return miner{{.}}.MaxSealDuration[t], nil
 				{{else}}
-					return miner{{.}}.MaxProveCommitDuration[t]
+					return miner{{.}}.MaxProveCommitDuration[t], nil
 				{{end}}
 		{{end}}
 	default:
-		panic("unsupported actors version")
+		return 0, xerrors.Errorf("unsupported actors version")
 	}
 }
 
@@ -150,18 +151,24 @@ func DealProviderCollateralBounds(
 	size abi.PaddedPieceSize, verified bool,
 	rawBytePower, qaPower, baselinePower abi.StoragePower,
 	circulatingFil abi.TokenAmount, nwVer network.Version,
-) (min, max abi.TokenAmount) {
-	switch actors.VersionForNetwork(nwVer) {
+) (min, max abi.TokenAmount, err error) {
+	v, err := actors.VersionForNetwork(nwVer)
+	if err != nil {
+		return big.Zero(), big.Zero(), err
+	}
+	switch v {
 		{{range .versions}}
 			case actors.Version{{.}}:
 				{{if (eq . 0)}}
-					return market{{.}}.DealProviderCollateralBounds(size, verified, rawBytePower, qaPower, baselinePower, circulatingFil, nwVer)
+					min, max := market{{.}}.DealProviderCollateralBounds(size, verified, rawBytePower, qaPower, baselinePower, circulatingFil, nwVer)
+					return min, max, nil
 				{{else}}
-					return market{{.}}.DealProviderCollateralBounds(size, verified, rawBytePower, qaPower, baselinePower, circulatingFil)
+					min, max := market{{.}}.DealProviderCollateralBounds(size, verified, rawBytePower, qaPower, baselinePower, circulatingFil)
+					return min, max, nil
 				{{end}}
 		{{end}}
 	default:
-		panic("unsupported actors version")
+		return big.Zero(), big.Zero(), xerrors.Errorf("unsupported actors version")
 	}
 }
 
@@ -196,13 +203,20 @@ func GetMaxSectorExpirationExtension() abi.ChainEpoch {
 	return miner{{.latestVersion}}.MaxSectorExpirationExtension
 }
 
+func GetMinSectorExpiration() abi.ChainEpoch {
+	return miner{{.latestVersion}}.MinSectorExpiration
+}
+
 func GetMaxPoStPartitions(nv network.Version, p abi.RegisteredPoStProof) (int, error) {
 	sectorsPerPart, err := builtin{{.latestVersion}}.PoStProofWindowPoStPartitionSectors(p)
 	if err != nil {
 		return 0, err
 	}
-	maxSectors := uint64(GetAddressedSectorsMax(nv))
-	return int(maxSectors / sectorsPerPart), nil
+	maxSectors, err := GetAddressedSectorsMax(nv)
+	if err != nil {
+		return 0, err
+	}
+	return int(uint64(maxSectors) / sectorsPerPart), nil
 }
 
 func GetDefaultSectorSize() abi.SectorSize {
@@ -236,44 +250,56 @@ func GetSectorMaxLifetime(proof abi.RegisteredSealProof, nwVer network.Version) 
 	return builtin{{.latestVersion}}.SealProofPoliciesV11[proof].SectorMaxLifetime
 }
 
-func GetAddressedSectorsMax(nwVer network.Version) int {
-	switch actors.VersionForNetwork(nwVer) {
+func GetAddressedSectorsMax(nwVer network.Version) (int, error) {
+	v, err := actors.VersionForNetwork(nwVer)
+	if err != nil {
+		return 0, err
+	}
+	switch v {
 		{{range .versions}}
 			case actors.Version{{.}}:
-				return miner{{.}}.AddressedSectorsMax
+				return miner{{.}}.AddressedSectorsMax, nil
 		{{end}}
 	default:
-		panic("unsupported network version")
+		return 0, xerrors.Errorf("unsupported network version")
 	}
 }
 
-func GetDeclarationsMax(nwVer network.Version) int {
-	switch actors.VersionForNetwork(nwVer) {
+func GetDeclarationsMax(nwVer network.Version) (int, error) {
+	v, err := actors.VersionForNetwork(nwVer)
+	if err != nil {
+		return 0, err
+	}
+	switch v {
 		{{range .versions}}
 		case actors.Version{{.}}:
 			{{if (eq . 0)}}
-				// TODO: Should we instead panic here since the concept doesn't exist yet?
-				return miner{{.}}.AddressedPartitionsMax
+				// TODO: Should we instead error here since the concept doesn't exist yet?
+				return miner{{.}}.AddressedPartitionsMax, nil
 			{{else}}
-				return miner{{.}}.DeclarationsMax
+				return miner{{.}}.DeclarationsMax, nil
 			{{end}}
 		{{end}}
 	default:
-		panic("unsupported network version")
+		return 0, xerrors.Errorf("unsupported network version")
 	}
 }
 
-func AggregateNetworkFee(nwVer network.Version, aggregateSize int, baseFee abi.TokenAmount) abi.TokenAmount {
-    switch actors.VersionForNetwork(nwVer) {
+func AggregateNetworkFee(nwVer network.Version, aggregateSize int, baseFee abi.TokenAmount) (abi.TokenAmount, error) {
+   v, err := actors.VersionForNetwork(nwVer)
+	if err != nil {
+		return big.Zero(), err
+	}
+	switch v {
 	    {{range .versions}}
 	    case actors.Version{{.}}:
             {{if (le . 4)}}
-                return big.Zero()
+                return big.Zero(), nil
             {{else}}
-                return miner{{.}}.AggregateNetworkFee(aggregateSize, baseFee)
+                return miner{{.}}.AggregateNetworkFee(aggregateSize, baseFee), nil
             {{end}}
         {{end}}
 	default:
-		panic("unsupported network version")
+		return big.Zero(), xerrors.Errorf("unsupported network version")
 	}
 }

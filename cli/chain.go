@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"reflect"
 	"sort"
 	"strconv"
 	"strings"
@@ -1347,7 +1346,7 @@ var ChainEncodeCmd = &cli.Command{
 var chainEncodeParamsCmd = &cli.Command{
 	Name:      "params",
 	Usage:     "Encodes the given JSON params",
-	ArgsUsage: "[toAddr method params]",
+	ArgsUsage: "[dest method params]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name: "tipset",
@@ -1357,22 +1356,14 @@ var chainEncodeParamsCmd = &cli.Command{
 			Value: "base64",
 			Usage: "specify input encoding to parse",
 		},
+		&cli.BoolFlag{
+			Name:  "to-code",
+			Usage: "interpret dest as code CID instead of as address",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-		ctx := ReqContext(cctx)
-
 		if cctx.Args().Len() != 3 {
 			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
-		}
-
-		to, err := address.NewFromString(cctx.Args().First())
-		if err != nil {
-			return xerrors.Errorf("parsing toAddr: %w", err)
 		}
 
 		method, err := strconv.ParseInt(cctx.Args().Get(1), 10, 64)
@@ -1380,39 +1371,50 @@ var chainEncodeParamsCmd = &cli.Command{
 			return xerrors.Errorf("parsing method id: %w", err)
 		}
 
-		ts, err := LoadTipSet(ctx, cctx, api)
-		if err != nil {
-			return err
-		}
+		ctx := ReqContext(cctx)
 
-		act, err := api.StateGetActor(ctx, to, ts.Key())
-		if err != nil {
-			return xerrors.Errorf("getting actor: %w", err)
-		}
+		var p []byte
+		if !cctx.Bool("to-code") {
+			svc, err := GetFullNodeServices(cctx)
+			if err != nil {
+				return err
+			}
+			defer svc.Close() // nolint
 
-		methodMeta, found := stmgr.MethodsMap[act.Code][abi.MethodNum(method)]
-		if !found {
-			return fmt.Errorf("method %d not found on actor %s", method, act.Code)
-		}
+			to, err := address.NewFromString(cctx.Args().First())
+			if err != nil {
+				return xerrors.Errorf("parsing to addr: %w", err)
+			}
 
-		p := reflect.New(methodMeta.Params.Elem()).Interface().(cbg.CBORMarshaler)
+			p, err = svc.DecodeTypedParamsFromJSON(ctx, to, abi.MethodNum(method), cctx.Args().Get(2))
+			if err != nil {
+				return xerrors.Errorf("decoding json params: %w", err)
+			}
+		} else {
+			api, done, err := GetFullNodeAPIV1(cctx)
+			if err != nil {
+				return err
+			}
+			defer done()
 
-		if err := json.Unmarshal([]byte(cctx.Args().Get(2)), p); err != nil {
-			return fmt.Errorf("unmarshaling input into params type: %w", err)
-		}
+			to, err := cid.Parse(cctx.Args().First())
+			if err != nil {
+				return xerrors.Errorf("parsing to addr: %w", err)
+			}
 
-		buf := new(bytes.Buffer)
-		if err := p.MarshalCBOR(buf); err != nil {
-			return err
+			p, err = api.StateEncodeParams(ctx, to, abi.MethodNum(method), json.RawMessage(cctx.Args().Get(2)))
+			if err != nil {
+				return xerrors.Errorf("decoding json params: %w", err)
+			}
 		}
 
 		switch cctx.String("encoding") {
-		case "base64":
-			fmt.Println(base64.StdEncoding.EncodeToString(buf.Bytes()))
+		case "base64", "b64":
+			fmt.Println(base64.StdEncoding.EncodeToString(p))
 		case "hex":
-			fmt.Println(hex.EncodeToString(buf.Bytes()))
+			fmt.Println(hex.EncodeToString(p))
 		default:
-			return xerrors.Errorf("unrecognized encoding: %s", cctx.String("encoding"))
+			return xerrors.Errorf("unknown encoding")
 		}
 
 		return nil

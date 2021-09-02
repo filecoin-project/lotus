@@ -50,11 +50,14 @@ type clientApi struct {
 	full.MpoolAPI
 }
 
-func NewClientNodeAdapter(mctx helpers.MetricsCtx, lc fx.Lifecycle, stateapi full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, fundmgr *market.FundManager) storagemarket.StorageClientNode {
+func NewClientNodeAdapter(mctx helpers.MetricsCtx, lc fx.Lifecycle, stateapi full.StateAPI, chain full.ChainAPI, mpool full.MpoolAPI, fundmgr *market.FundManager) (storagemarket.StorageClientNode, error) {
 	capi := &clientApi{chain, stateapi, mpool}
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	ev := events.NewEvents(ctx, capi)
+	ev, err := events.NewEvents(ctx, capi)
+	if err != nil {
+		return nil, err
+	}
 	a := &ClientNodeAdapter{
 		clientApi: capi,
 
@@ -63,7 +66,7 @@ func NewClientNodeAdapter(mctx helpers.MetricsCtx, lc fx.Lifecycle, stateapi ful
 		dsMatcher: newDealStateMatcher(state.NewStatePredicates(state.WrapFastAPI(capi))),
 	}
 	a.scMgr = NewSectorCommittedManager(ev, a, &apiWrapper{api: capi})
-	return a
+	return a, nil
 }
 
 func (c *ClientNodeAdapter) ListStorageProviders(ctx context.Context, encodedTs shared.TipSetToken) ([]*storagemarket.StorageProviderInfo, error) {
@@ -262,7 +265,7 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 	}
 
 	// Called immediately to check if the deal has already expired or been slashed
-	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
+	checkFunc := func(ctx context.Context, ts *types.TipSet) (done bool, more bool, err error) {
 		if ts == nil {
 			// keep listening for events
 			return false, true, nil

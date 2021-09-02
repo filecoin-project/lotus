@@ -17,6 +17,7 @@ import (
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -203,9 +204,9 @@ func (p *DealPublisher) processNewDeal(pdeal *pendingDeal) {
 	log.Infof("add deal with piece CID %s to publish deals queue - %d deals in queue (max queue size %d)",
 		pdeal.deal.Proposal.PieceCID, len(p.pending), p.maxDealsPerPublishMsg)
 
-	// If the maximum number of deals per message has been reached,
-	// send a publish message
-	if uint64(len(p.pending)) >= p.maxDealsPerPublishMsg {
+	// If the maximum number of deals per message has been reached or we're not batching, send a
+	// publish message
+	if uint64(len(p.pending)) >= p.maxDealsPerPublishMsg || p.publishPeriod == 0 {
 		log.Infof("publish deals queue has reached max size of %d, publishing deals", p.maxDealsPerPublishMsg)
 		p.publishAllDeals()
 		return
@@ -218,7 +219,7 @@ func (p *DealPublisher) processNewDeal(pdeal *pendingDeal) {
 func (p *DealPublisher) waitForMoreDeals() {
 	// Check if we're already waiting for deals
 	if !p.publishPeriodStart.IsZero() {
-		elapsed := time.Since(p.publishPeriodStart)
+		elapsed := build.Clock.Since(p.publishPeriodStart)
 		log.Infof("%s elapsed of / %s until publish deals queue is published",
 			elapsed, p.publishPeriod)
 		return
@@ -227,11 +228,15 @@ func (p *DealPublisher) waitForMoreDeals() {
 	// Set a timeout to wait for more deals to arrive
 	log.Infof("waiting publish deals queue period of %s before publishing", p.publishPeriod)
 	ctx, cancel := context.WithCancel(p.ctx)
-	p.publishPeriodStart = time.Now()
+
+	// Create the timer _before_ taking the current time so publishPeriod+timeout is always >=
+	// the actual timer timeout.
+	timer := build.Clock.Timer(p.publishPeriod)
+
+	p.publishPeriodStart = build.Clock.Now()
 	p.cancelWaitForMoreDeals = cancel
 
 	go func() {
-		timer := time.NewTimer(p.publishPeriod)
 		select {
 		case <-ctx.Done():
 			timer.Stop()
@@ -256,7 +261,7 @@ func (p *DealPublisher) publishAllDeals() {
 
 	// Filter out any deals that have been cancelled
 	p.filterCancelledDeals()
-	deals := p.pending[:]
+	deals := p.pending
 	p.pending = nil
 
 	// Send the publish message
@@ -383,12 +388,12 @@ func pieceCids(deals []market2.ClientDealProposal) string {
 
 // filter out deals that have been cancelled
 func (p *DealPublisher) filterCancelledDeals() {
-	i := 0
+	filtered := p.pending[:0]
 	for _, pd := range p.pending {
-		if pd.ctx.Err() == nil {
-			p.pending[i] = pd
-			i++
+		if pd.ctx.Err() != nil {
+			continue
 		}
+		filtered = append(filtered, pd)
 	}
-	p.pending = p.pending[:i]
+	p.pending = filtered
 }

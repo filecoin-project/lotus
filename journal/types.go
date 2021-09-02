@@ -4,11 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
-	logging "github.com/ipfs/go-log/v2"
 )
-
-var log = logging.Logger("journal")
 
 var (
 	// DefaultDisabledEvents lists the journal events disabled by
@@ -68,6 +64,8 @@ func (et EventType) String() string {
 func (et EventType) Enabled() bool {
 	return et.safe && et.enabled
 }
+
+//go:generate go run github.com/golang/mock/mockgen -destination=mockjournal/journal.go -package=mockjournal . Journal
 
 // Journal represents an audit trail of system actions.
 //

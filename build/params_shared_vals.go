@@ -1,3 +1,4 @@
+//go:build !testground
 // +build !testground
 
 package build
@@ -26,7 +27,6 @@ const UnixfsLinksPerLevel = 1024
 
 const AllowableClockDriftSecs = uint64(1)
 const NewestNetworkVersion = network.Version13
-const ActorUpgradeNetworkVersion = network.Version4
 
 // Epochs
 const ForkLengthThreshold = Finality

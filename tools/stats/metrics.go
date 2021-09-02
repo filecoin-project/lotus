@@ -267,7 +267,11 @@ func RecordTipsetStatePoints(ctx context.Context, api v0api.FullNode, pl *PointL
 		return err
 	}
 
-	p = NewPoint("chain.power", totalPower.TotalPower.QualityAdjPower.Int64())
+	// We divide the power into gibibytes because 2^63 bytes is 8 exbibytes which is smaller than the Filecoin Mainnet.
+	// Dividing by a gibibyte gives us more room to work with. This will allow the dashboard to report network and miner
+	// sizes up to 8192 yobibytes.
+	gibi := types.NewInt(1024 * 1024 * 1024)
+	p = NewPoint("chain.power", types.BigDiv(totalPower.TotalPower.QualityAdjPower, gibi).Int64())
 	pl.AddPoint(p)
 
 	powerActor, err := api.StateGetActor(ctx, power.Address, tipset.Key())
@@ -281,11 +285,12 @@ func RecordTipsetStatePoints(ctx context.Context, api v0api.FullNode, pl *PointL
 	}
 
 	return powerActorState.ForEachClaim(func(addr address.Address, claim power.Claim) error {
-		if claim.QualityAdjPower.Int64() == 0 {
+		// BigCmp returns 0 if values are equal
+		if types.BigCmp(claim.QualityAdjPower, types.NewInt(0)) == 0 {
 			return nil
 		}
 
-		p = NewPoint("chain.miner_power", claim.QualityAdjPower.Int64())
+		p = NewPoint("chain.miner_power", types.BigDiv(claim.QualityAdjPower, gibi).Int64())
 		p.AddTag("miner", addr.String())
 		pl.AddPoint(p)
 

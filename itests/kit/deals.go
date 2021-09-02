@@ -33,9 +33,10 @@ type DealHarness struct {
 }
 
 type MakeFullDealParams struct {
-	Rseed      int
-	FastRet    bool
-	StartEpoch abi.ChainEpoch
+	Rseed                    int
+	FastRet                  bool
+	StartEpoch               abi.ChainEpoch
+	UseCARFileForStorageDeal bool
 
 	// SuspendUntilCryptoeconStable suspends deal-making, until cryptoecon
 	// parameters are stabilised. This affects projected collateral, and tests
@@ -78,7 +79,11 @@ func NewDealHarness(t *testing.T, client *TestFullNode, main *TestMiner, market 
 //
 // TODO: convert input parameters to struct, and add size as an input param.
 func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealParams) (deal *cid.Cid, res *api.ImportRes, path string) {
-	res, path = dh.client.CreateImportFile(ctx, params.Rseed, 0)
+	if params.UseCARFileForStorageDeal {
+		res, _, path = dh.client.ClientImportCARFile(ctx, params.Rseed, 200)
+	} else {
+		res, path = dh.client.CreateImportFile(ctx, params.Rseed, 0)
+	}
 
 	dh.t.Logf("FILE CID: %s", res.Root)
 
@@ -284,10 +289,11 @@ func (dh *DealHarness) ExtractFileFromCAR(ctx context.Context, file *os.File) (o
 }
 
 type RunConcurrentDealsOpts struct {
-	N             int
-	FastRetrieval bool
-	CarExport     bool
-	StartEpoch    abi.ChainEpoch
+	N                        int
+	FastRetrieval            bool
+	CarExport                bool
+	StartEpoch               abi.ChainEpoch
+	UseCARFileForStorageDeal bool
 }
 
 func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
@@ -307,9 +313,10 @@ func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
 			dh.t.Logf("making storage deal %d/%d", i, opts.N)
 
 			deal, res, inPath := dh.MakeOnlineDeal(context.Background(), MakeFullDealParams{
-				Rseed:      5 + i,
-				FastRet:    opts.FastRetrieval,
-				StartEpoch: opts.StartEpoch,
+				Rseed:                    5 + i,
+				FastRet:                  opts.FastRetrieval,
+				StartEpoch:               opts.StartEpoch,
+				UseCARFileForStorageDeal: opts.UseCARFileForStorageDeal,
 			})
 
 			dh.t.Logf("retrieving deal %d/%d", i, opts.N)

@@ -1,15 +1,28 @@
 package modules
 
 import (
+	bstore "github.com/ipfs/go-ipfs-blockstore"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/multiformats/go-multiaddr"
 
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/markets/retrievaladapter"
+	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
+
+func IpfsStorageBlockstoreAccessor(ipfsBlockstore dtypes.ClientBlockstore) storagemarket.BlockstoreAccessor {
+	return storageadapter.NewFixedBlockstoreAccessor(bstore.Blockstore(ipfsBlockstore))
+}
+
+func IpfsRetrievalBlockstoreAccessor(ipfsBlockstore dtypes.ClientBlockstore) retrievalmarket.BlockstoreAccessor {
+	return retrievaladapter.NewFixedBlockstoreAccessor(bstore.Blockstore(ipfsBlockstore))
+}
 
 // IpfsClientBlockstore returns a ClientBlockstore implementation backed by an IPFS node.
 // If ipfsMaddr is empty, a local IPFS node is assumed considering IPFS_PATH configuration.

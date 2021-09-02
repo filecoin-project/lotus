@@ -1,10 +1,5 @@
-// +build !debug
-// +build !2k
-// +build !testground
-// +build !calibnet
-// +build !nerpanet
-// +build !butterflynet
-// +build !interopnet
+//go:build !debug && !2k && !testground && !calibnet && !nerpanet && !butterflynet && !interopnet
+// +build !debug,!2k,!testground,!calibnet,!nerpanet,!butterflynet,!interopnet
 
 package build
 
@@ -45,7 +40,6 @@ const UpgradeLiftoffHeight = 148888
 
 const UpgradeKumquatHeight = 170000
 
-const UpgradePricelistOopsHeight = 265199
 const UpgradeCalicoHeight = 265200
 const UpgradePersianHeight = UpgradeCalicoHeight + (builtin2.EpochsInHour * 60)
 

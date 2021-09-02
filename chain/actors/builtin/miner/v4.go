@@ -467,10 +467,12 @@ func (s *state4) EraseAllUnproven() error {
 
 		return dls.UpdateDeadline(s.store, dindx, dl)
 	})
+	if err != nil {
+		return err
+	}
 
 	return s.State.SaveDeadlines(s.store, dls)
 
-	return nil
 }
 
 func (d *deadline4) LoadPartition(idx uint64) (Partition, error) {
@@ -527,6 +529,10 @@ func (p *partition4) FaultySectors() (bitfield.BitField, error) {
 
 func (p *partition4) RecoveringSectors() (bitfield.BitField, error) {
 	return p.Partition.Recoveries, nil
+}
+
+func (p *partition4) UnprovenSectors() (bitfield.BitField, error) {
+	return p.Partition.Unproven, nil
 }
 
 func fromV4SectorOnChainInfo(v4 miner4.SectorOnChainInfo) SectorOnChainInfo {

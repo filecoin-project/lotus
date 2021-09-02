@@ -32,7 +32,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
@@ -45,9 +44,6 @@ var log = logging.Logger("storageadapter")
 type ProviderNodeAdapter struct {
 	v1api.FullNode
 
-	// this goes away with the data transfer module
-	dag dtypes.StagingDAG
-
 	secb *sectorblocks.SectorBlocks
 	ev   *events.Events
 
@@ -59,15 +55,17 @@ type ProviderNodeAdapter struct {
 	scMgr                       *SectorCommittedManager
 }
 
-func NewProviderNodeAdapter(fc *config.MinerFeeConfig, dc *config.DealmakingConfig) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher) storagemarket.StorageProviderNode {
-	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, dag dtypes.StagingDAG, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher) storagemarket.StorageProviderNode {
+func NewProviderNodeAdapter(fc *config.MinerFeeConfig, dc *config.DealmakingConfig) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher) (storagemarket.StorageProviderNode, error) {
+	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, secb *sectorblocks.SectorBlocks, full v1api.FullNode, dealPublisher *DealPublisher) (storagemarket.StorageProviderNode, error) {
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
-		ev := events.NewEvents(ctx, full)
+		ev, err := events.NewEvents(ctx, full)
+		if err != nil {
+			return nil, err
+		}
 		na := &ProviderNodeAdapter{
 			FullNode: full,
 
-			dag:           dag,
 			secb:          secb,
 			ev:            ev,
 			dealPublisher: dealPublisher,
@@ -82,7 +80,7 @@ func NewProviderNodeAdapter(fc *config.MinerFeeConfig, dc *config.DealmakingConf
 		}
 		na.scMgr = NewSectorCommittedManager(ev, na, &apiWrapper{api: full})
 
-		return na
+		return na, nil
 	}
 }
 
@@ -107,8 +105,8 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 	}
 
 	p, offset, err := n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
-	curTime := time.Now()
-	for time.Since(curTime) < addPieceRetryTimeout {
+	curTime := build.Clock.Now()
+	for build.Clock.Since(curTime) < addPieceRetryTimeout {
 		if !xerrors.Is(err, sealing.ErrTooManySectorsSealing) {
 			if err != nil {
 				log.Errorf("failed to addPiece for deal %d, err: %v", deal.DealID, err)
@@ -116,7 +114,7 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 			break
 		}
 		select {
-		case <-time.After(addPieceRetryWait):
+		case <-build.Clock.After(addPieceRetryWait):
 			p, offset, err = n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
 		case <-ctx.Done():
 			return nil, xerrors.New("context expired while waiting to retry AddPiece")
@@ -345,7 +343,7 @@ func (n *ProviderNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID
 	}
 
 	// Called immediately to check if the deal has already expired or been slashed
-	checkFunc := func(ts *types.TipSet) (done bool, more bool, err error) {
+	checkFunc := func(ctx context.Context, ts *types.TipSet) (done bool, more bool, err error) {
 		if ts == nil {
 			// keep listening for events
 			return false, true, nil

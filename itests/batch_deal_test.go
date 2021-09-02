@@ -18,6 +18,7 @@ import (
 )
 
 func TestBatchDealInput(t *testing.T) {
+	t.Skip("this test is disabled as it's flaky: #4611")
 	kit.QuietMiningLogs()
 
 	var (

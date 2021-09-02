@@ -17,6 +17,14 @@ import (
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 )
 
+//go:generate go run github.com/golang/mock/mockgen -destination=mocks/statemachine.go -package=mocks . Context
+
+// Context is a go-statemachine context
+type Context interface {
+	Context() context.Context
+	Send(evt interface{}) error
+}
+
 // Piece is a tuple of piece and deal info
 type PieceWithDealInfo struct {
 	Piece    abi.PieceInfo

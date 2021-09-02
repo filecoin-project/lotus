@@ -211,7 +211,7 @@ func (s *SplitStore) trackTxnRefMany(cids []cid.Cid) {
 }
 
 // protect all pending transactional references
-func (s *SplitStore) protectTxnRefs(markSet MarkSet) error {
+func (s *SplitStore) protectTxnRefs(markSet MarkSetVisitor) error {
 	for {
 		var txnRefs map[cid.Cid]struct{}
 
@@ -283,30 +283,29 @@ func (s *SplitStore) protectTxnRefs(markSet MarkSet) error {
 
 // transactionally protect a reference by walking the object and marking.
 // concurrent markings are short circuited by checking the markset.
-func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSet) error {
+func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSetVisitor) error {
 	if err := s.checkClosing(); err != nil {
 		return err
 	}
 
 	// Note: cold objects are deleted heaviest first, so the consituents of an object
 	// cannot be deleted before the object itself.
-	return s.walkObjectIncomplete(root, cid.NewSet(),
+	return s.walkObjectIncomplete(root, tmpVisitor(),
 		func(c cid.Cid) error {
 			if isUnitaryObject(c) {
 				return errStopWalk
 			}
 
-			mark, err := markSet.Has(c)
+			visit, err := markSet.Visit(c)
 			if err != nil {
-				return xerrors.Errorf("error checking markset: %w", err)
+				return xerrors.Errorf("error visiting object: %w", err)
 			}
 
-			// it's marked, nothing to do
-			if mark {
+			if !visit {
 				return errStopWalk
 			}
 
-			return markSet.Mark(c)
+			return nil
 		},
 		func(c cid.Cid) error {
 			if s.txnMissing != nil {
@@ -382,7 +381,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "boundaryEpoch", boundaryEpoch, "inclMsgsEpoch", inclMsgsEpoch, "compactionIndex", s.compactionIndex)
 
-	markSet, err := s.markSetEnv.Create("live", s.markSetSize)
+	markSet, err := s.markSetEnv.CreateVisitor("live", s.markSetSize)
 	if err != nil {
 		return xerrors.Errorf("error creating mark set: %w", err)
 	}
@@ -410,14 +409,23 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	startMark := time.Now()
 
 	var count int64
-	err = s.walkChain(curTs, boundaryEpoch, inclMsgsEpoch,
+	err = s.walkChain(curTs, boundaryEpoch, inclMsgsEpoch, &noopVisitor{},
 		func(c cid.Cid) error {
 			if isUnitaryObject(c) {
 				return errStopWalk
 			}
 
+			visit, err := markSet.Visit(c)
+			if err != nil {
+				return xerrors.Errorf("error visiting object: %w", err)
+			}
+
+			if !visit {
+				return errStopWalk
+			}
+
 			count++
-			return markSet.Mark(c)
+			return nil
 		})
 
 	if err != nil {
@@ -578,12 +586,8 @@ func (s *SplitStore) beginTxnProtect() {
 	s.txnMissing = make(map[cid.Cid]struct{})
 }
 
-func (s *SplitStore) beginTxnMarking(markSet MarkSet) {
+func (s *SplitStore) beginTxnMarking(markSet MarkSetVisitor) {
 	markSet.SetConcurrent()
-
-	s.txnLk.Lock()
-	s.txnProtect = markSet
-	s.txnLk.Unlock()
 }
 
 func (s *SplitStore) endTxnProtect() {
@@ -594,21 +598,14 @@ func (s *SplitStore) endTxnProtect() {
 		return
 	}
 
-	// release markset memory
-	if s.txnProtect != nil {
-		_ = s.txnProtect.Close()
-	}
-
 	s.txnActive = false
-	s.txnProtect = nil
 	s.txnRefs = nil
 	s.txnMissing = nil
 }
 
 func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEpoch,
-	f func(cid.Cid) error) error {
-	visited := cid.NewSet()
-	walked := cid.NewSet()
+	visitor ObjectVisitor, f func(cid.Cid) error) error {
+	var walked *cid.Set
 	toWalk := ts.Cids()
 	walkCnt := 0
 	scanCnt := 0
@@ -616,7 +613,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 	stopWalk := func(_ cid.Cid) error { return errStopWalk }
 
 	walkBlock := func(c cid.Cid) error {
-		if !visited.Visit(c) {
+		if !walked.Visit(c) {
 			return nil
 		}
 
@@ -640,19 +637,19 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 			if inclMsgs < inclState {
 				// we need to use walkObjectIncomplete here, as messages/receipts may be missing early on if we
 				// synced from snapshot and have a long HotStoreMessageRetentionPolicy.
-				if err := s.walkObjectIncomplete(hdr.Messages, walked, f, stopWalk); err != nil {
+				if err := s.walkObjectIncomplete(hdr.Messages, visitor, f, stopWalk); err != nil {
 					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 				}
 
-				if err := s.walkObjectIncomplete(hdr.ParentMessageReceipts, walked, f, stopWalk); err != nil {
+				if err := s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, f, stopWalk); err != nil {
 					return xerrors.Errorf("error walking messages receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 				}
 			} else {
-				if err := s.walkObject(hdr.Messages, walked, f); err != nil {
+				if err := s.walkObject(hdr.Messages, visitor, f); err != nil {
 					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 				}
 
-				if err := s.walkObject(hdr.ParentMessageReceipts, walked, f); err != nil {
+				if err := s.walkObject(hdr.ParentMessageReceipts, visitor, f); err != nil {
 					return xerrors.Errorf("error walking message receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 				}
 			}
@@ -660,7 +657,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 
 		// state is only retained if within the inclState boundary, with the exception of genesis
 		if hdr.Height >= inclState || hdr.Height == 0 {
-			if err := s.walkObject(hdr.ParentStateRoot, walked, f); err != nil {
+			if err := s.walkObject(hdr.ParentStateRoot, visitor, f); err != nil {
 				return xerrors.Errorf("error walking state root (cid: %s): %w", hdr.ParentStateRoot, err)
 			}
 			scanCnt++
@@ -679,6 +676,10 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 			return err
 		}
 
+		// the walk is BFS, so we can reset the walked set in every iteration and avoid building up
+		// a set that contains all blocks (1M epochs -> 5M blocks -> 200MB worth of memory and growing
+		// over time)
+		walked = cid.NewSet()
 		walking := toWalk
 		toWalk = nil
 		for _, c := range walking {
@@ -693,8 +694,13 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 	return nil
 }
 
-func (s *SplitStore) walkObject(c cid.Cid, walked *cid.Set, f func(cid.Cid) error) error {
-	if !walked.Visit(c) {
+func (s *SplitStore) walkObject(c cid.Cid, visitor ObjectVisitor, f func(cid.Cid) error) error {
+	visit, err := visitor.Visit(c)
+	if err != nil {
+		return xerrors.Errorf("error visiting object: %w", err)
+	}
+
+	if !visit {
 		return nil
 	}
 
@@ -716,7 +722,7 @@ func (s *SplitStore) walkObject(c cid.Cid, walked *cid.Set, f func(cid.Cid) erro
 	}
 
 	var links []cid.Cid
-	err := s.view(c, func(data []byte) error {
+	err = s.view(c, func(data []byte) error {
 		return cbg.ScanForLinks(bytes.NewReader(data), func(c cid.Cid) {
 			links = append(links, c)
 		})
@@ -727,7 +733,7 @@ func (s *SplitStore) walkObject(c cid.Cid, walked *cid.Set, f func(cid.Cid) erro
 	}
 
 	for _, c := range links {
-		err := s.walkObject(c, walked, f)
+		err := s.walkObject(c, visitor, f)
 		if err != nil {
 			return xerrors.Errorf("error walking link (cid: %s): %w", c, err)
 		}
@@ -737,8 +743,13 @@ func (s *SplitStore) walkObject(c cid.Cid, walked *cid.Set, f func(cid.Cid) erro
 }
 
 // like walkObject, but the object may be potentially incomplete (references missing)
-func (s *SplitStore) walkObjectIncomplete(c cid.Cid, walked *cid.Set, f, missing func(cid.Cid) error) error {
-	if !walked.Visit(c) {
+func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, missing func(cid.Cid) error) error {
+	visit, err := visitor.Visit(c)
+	if err != nil {
+		return xerrors.Errorf("error visiting object: %w", err)
+	}
+
+	if !visit {
 		return nil
 	}
 
@@ -777,7 +788,7 @@ func (s *SplitStore) walkObjectIncomplete(c cid.Cid, walked *cid.Set, f, missing
 	}
 
 	var links []cid.Cid
-	err := s.view(c, func(data []byte) error {
+	err = s.view(c, func(data []byte) error {
 		return cbg.ScanForLinks(bytes.NewReader(data), func(c cid.Cid) {
 			links = append(links, c)
 		})
@@ -788,7 +799,7 @@ func (s *SplitStore) walkObjectIncomplete(c cid.Cid, walked *cid.Set, f, missing
 	}
 
 	for _, c := range links {
-		err := s.walkObjectIncomplete(c, walked, f, missing)
+		err := s.walkObjectIncomplete(c, visitor, f, missing)
 		if err != nil {
 			return xerrors.Errorf("error walking link (cid: %s): %w", c, err)
 		}
@@ -984,7 +995,7 @@ func (s *SplitStore) purgeBatch(cids []cid.Cid, deleteBatch func([]cid.Cid) erro
 	return nil
 }
 
-func (s *SplitStore) purge(cids []cid.Cid, markSet MarkSet) error {
+func (s *SplitStore) purge(cids []cid.Cid, markSet MarkSetVisitor) error {
 	deadCids := make([]cid.Cid, 0, batchSize)
 	var purgeCnt, liveCnt int
 	defer func() {
@@ -1050,7 +1061,7 @@ func (s *SplitStore) purge(cids []cid.Cid, markSet MarkSet) error {
 // have this gem[TM].
 // My best guess is that they are parent message receipts or yet to be computed state roots; magik
 // thinks the cause may be block validation.
-func (s *SplitStore) waitForMissingRefs(markSet MarkSet) {
+func (s *SplitStore) waitForMissingRefs(markSet MarkSetVisitor) {
 	s.txnLk.Lock()
 	missing := s.txnMissing
 	s.txnMissing = nil
@@ -1079,27 +1090,27 @@ func (s *SplitStore) waitForMissingRefs(markSet MarkSet) {
 		}
 
 		towalk := missing
-		walked := cid.NewSet()
+		visitor := tmpVisitor()
 		missing = make(map[cid.Cid]struct{})
 
 		for c := range towalk {
-			err := s.walkObjectIncomplete(c, walked,
+			err := s.walkObjectIncomplete(c, visitor,
 				func(c cid.Cid) error {
 					if isUnitaryObject(c) {
 						return errStopWalk
 					}
 
-					mark, err := markSet.Has(c)
+					visit, err := markSet.Visit(c)
 					if err != nil {
-						return xerrors.Errorf("error checking markset for %s: %w", c, err)
+						return xerrors.Errorf("error visiting object: %w", err)
 					}
 
-					if mark {
+					if !visit {
 						return errStopWalk
 					}
 
 					count++
-					return markSet.Mark(c)
+					return nil
 				},
 				func(c cid.Cid) error {
 					missing[c] = struct{}{}

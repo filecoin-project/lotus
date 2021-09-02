@@ -149,7 +149,10 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, nil, xerrors.Errorf("making new state tree: %w", err)
 	}
 
-	av := actors.VersionForNetwork(template.NetworkVersion)
+	av, err := actors.VersionForNetwork(template.NetworkVersion)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("getting network version: %w", err)
+	}
 
 	// Create system actor
 

@@ -23,7 +23,7 @@ func (m *Sealing) handleFaultReported(ctx statemachine.Context, sector SectorInf
 		return xerrors.Errorf("entered fault reported state without a FaultReportMsg cid")
 	}
 
-	mw, err := m.api.StateWaitMsg(ctx.Context(), *sector.FaultReportMsg)
+	mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.FaultReportMsg)
 	if err != nil {
 		return xerrors.Errorf("failed to wait for fault declaration: %w", err)
 	}
@@ -45,7 +45,7 @@ func (m *Sealing) handleTerminating(ctx statemachine.Context, sector SectorInfo)
 	// * Check for correct termination
 	// * wait for expiration (+winning lookback?)
 
-	si, err := m.api.StateSectorGetInfo(ctx.Context(), m.maddr, sector.SectorNumber, nil)
+	si, err := m.Api.StateSectorGetInfo(ctx.Context(), m.maddr, sector.SectorNumber, nil)
 	if err != nil {
 		return ctx.Send(SectorTerminateFailed{xerrors.Errorf("getting sector info: %w", err)})
 	}
@@ -53,7 +53,7 @@ func (m *Sealing) handleTerminating(ctx statemachine.Context, sector SectorInfo)
 	if si == nil {
 		// either already terminated or not committed yet
 
-		pci, err := m.api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, nil)
+		pci, err := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, nil)
 		if err != nil {
 			return ctx.Send(SectorTerminateFailed{xerrors.Errorf("checking precommit presence: %w", err)})
 		}
@@ -81,7 +81,7 @@ func (m *Sealing) handleTerminateWait(ctx statemachine.Context, sector SectorInf
 		return xerrors.New("entered TerminateWait with nil TerminateMessage")
 	}
 
-	mw, err := m.api.StateWaitMsg(ctx.Context(), *sector.TerminateMessage)
+	mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.TerminateMessage)
 	if err != nil {
 		return ctx.Send(SectorTerminateFailed{xerrors.Errorf("waiting for terminate message to land on chain: %w", err)})
 	}
@@ -95,12 +95,12 @@ func (m *Sealing) handleTerminateWait(ctx statemachine.Context, sector SectorInf
 
 func (m *Sealing) handleTerminateFinality(ctx statemachine.Context, sector SectorInfo) error {
 	for {
-		tok, epoch, err := m.api.ChainHead(ctx.Context())
+		tok, epoch, err := m.Api.ChainHead(ctx.Context())
 		if err != nil {
 			return ctx.Send(SectorTerminateFailed{xerrors.Errorf("getting chain head: %w", err)})
 		}
 
-		nv, err := m.api.StateNetworkVersion(ctx.Context(), tok)
+		nv, err := m.Api.StateNetworkVersion(ctx.Context(), tok)
 		if err != nil {
 			return ctx.Send(SectorTerminateFailed{xerrors.Errorf("getting network version: %w", err)})
 		}
@@ -129,7 +129,6 @@ func (m *Sealing) handleRemoving(ctx statemachine.Context, sector SectorInfo) er
 
 func (m *Sealing) handleProvingSector(ctx statemachine.Context, sector SectorInfo) error {
 	// TODO: track sector health / expiration
-	log.Infof("Proving sector %d", sector.SectorNumber)
 
 	cfg, err := m.getConfig()
 	if err != nil {
