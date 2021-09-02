@@ -1532,13 +1532,14 @@ USAGE:
    lotus-miner sectors list [command options] [arguments...]
 
 OPTIONS:
-   --show-removed  show removed sectors (default: false)
-   --color, -c     use color in display output (default: depends on output being a TTY)
-   --fast          don't show on-chain info for better performance (default: false)
-   --events        display number of events the sector has received (default: false)
-   --seal-time     display how long it took for the sector to be sealed (default: false)
-   --states value  filter sectors by a comma-separated list of states
-   --help, -h      show help (default: false)
+   --show-removed, -r  show removed sectors (default: false)
+   --color, -c         use color in display output (default: depends on output being a TTY)
+   --fast, -f          don't show on-chain info for better performance (default: false)
+   --events, -e        display number of events the sector has received (default: false)
+   --seal-time         display how long it took for the sector to be sealed (default: false)
+   --states value      filter sectors by a comma-separated list of states
+   --unproven, -u      only show sectors which aren't in the 'Proving' state (default: false)
+   --help, -h          show help (default: false)
    
 ```
 
