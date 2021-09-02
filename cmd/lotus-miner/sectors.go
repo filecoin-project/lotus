@@ -394,10 +394,20 @@ var sectorsListCmd = &cli.Command{
 				_, inASet := activeIDs[s]
 
 				dw, vp := .0, .0
-				if st.Expiration-st.Activation > 0 {
+				estimate := st.Expiration-st.Activation <= 0
+				if !estimate {
 					rdw := big.Add(st.DealWeight, st.VerifiedDealWeight)
 					dw = float64(big.Div(rdw, big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
 					vp = float64(big.Div(big.Mul(st.VerifiedDealWeight, big.NewInt(9)), big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
+				} else {
+					for _, piece := range st.Pieces {
+						if piece.DealInfo != nil {
+							dw += float64(piece.Piece.Size)
+							if piece.DealInfo.DealProposal != nil && piece.DealInfo.DealProposal.VerifiedDeal {
+								vp += float64(piece.Piece.Size) * 9
+							}
+						}
+					}
 				}
 
 				var deals int
@@ -433,17 +443,23 @@ var sectorsListCmd = &cli.Command{
 						m["Expiration"] = "n/a"
 					} else {
 						m["Expiration"] = lcli.EpochTime(head.Height(), exp)
-
-						if !fast && deals > 0 {
-							m["DealWeight"] = units.BytesSize(dw)
-							if vp > 0 {
-								m["VerifiedPower"] = color.GreenString(units.BytesSize(vp))
-							}
-						}
-
 						if st.Early > 0 {
 							m["RecoveryTimeout"] = color.YellowString(lcli.EpochTime(head.Height(), st.Early))
 						}
+					}
+				}
+
+				if !fast && deals > 0 {
+					estWrap := func(s string) string {
+						if !estimate {
+							return s
+						}
+						return fmt.Sprintf("[%s]", s)
+					}
+
+					m["DealWeight"] = estWrap(units.BytesSize(dw))
+					if vp > 0 {
+						m["VerifiedPower"] = estWrap(color.GreenString(units.BytesSize(vp)))
 					}
 				}
 
