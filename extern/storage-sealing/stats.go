@@ -37,7 +37,7 @@ func (ss *SectorStats) updateSector(cfg sealiface.Config, id abi.SectorID, st Se
 		ss.totals[oldst]--
 	}
 
-	sst := toStatState(st)
+	sst := toStatState(st, cfg.FinalizeEarly)
 	ss.bySector[id] = sst
 	ss.totals[sst]++
 
