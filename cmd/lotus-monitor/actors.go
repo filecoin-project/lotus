@@ -106,7 +106,6 @@ func actorRecorder(cctx *cli.Context, addr address.Address, api v0api.FullNode, 
 	var dcap64 int64
 	if dcap != nil {
 		dcap64 = dcap.Int64()
-	} else {
 		stats.Record(ctx, actorDatacapMetric.M(dcap64))
 	}
 }
