@@ -257,7 +257,7 @@ var importBenchCmd = &cli.Command{
 		cs := store.NewChainStore(bs, bs, metadataDs, filcns.Weight, nil)
 		defer cs.Close() //nolint:errcheck
 
-		stm, err := stmgr.NewStateManager(cs, filcns.TipSetExecutor(), vm.Syscalls(verifier), filcns.DefaultUpgradeSchedule())
+		stm, err := stmgr.NewStateManager(cs, filcns.NewTipSetExecutor(), vm.Syscalls(verifier), filcns.DefaultUpgradeSchedule())
 		if err != nil {
 			return err
 		}

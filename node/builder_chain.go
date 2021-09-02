@@ -69,7 +69,7 @@ var ChainNode = Options(
 	// Consensus: Chain storage/access
 	Override(new(chain.Genesis), chain.LoadGenesis),
 	Override(new(store.WeightFunc), filcns.Weight),
-	Override(new(stmgr.Executor), filcns.TipSetExecutor()),
+	Override(new(stmgr.Executor), filcns.NewTipSetExecutor()),
 	Override(new(consensus.Consensus), filcns.NewFilecoinExpectedConsensus),
 	Override(new(*store.ChainStore), modules.ChainStore),
 	Override(new(*stmgr.StateManager), modules.StateManager),

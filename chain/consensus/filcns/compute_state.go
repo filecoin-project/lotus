@@ -51,13 +51,13 @@ func NewActorRegistry() *vm.ActorRegistry {
 	return inv
 }
 
-type tipSetExecutor struct{}
+type TipSetExecutor struct{}
 
-func TipSetExecutor() *tipSetExecutor {
-	return &tipSetExecutor{}
+func NewTipSetExecutor() *TipSetExecutor {
+	return &TipSetExecutor{}
 }
 
-func (t *tipSetExecutor) NewActorRegistry() *vm.ActorRegistry {
+func (t *TipSetExecutor) NewActorRegistry() *vm.ActorRegistry {
 	return NewActorRegistry()
 }
 
@@ -67,7 +67,7 @@ type FilecoinBlockMessages struct {
 	WinCount int64
 }
 
-func (t *tipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []FilecoinBlockMessages, epoch abi.ChainEpoch, r vm.Rand, em stmgr.ExecMonitor, baseFee abi.TokenAmount, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
+func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []FilecoinBlockMessages, epoch abi.ChainEpoch, r vm.Rand, em stmgr.ExecMonitor, baseFee abi.TokenAmount, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
 	done := metrics.Timer(ctx, metrics.VMApplyBlocksTotal)
 	defer done()
 
@@ -256,7 +256,7 @@ func (t *tipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 	return st, rectroot, nil
 }
 
-func (t *tipSetExecutor) ExecuteTipSet(ctx context.Context, sm *stmgr.StateManager, ts *types.TipSet, em stmgr.ExecMonitor) (stateroot cid.Cid, rectsroot cid.Cid, err error) {
+func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context, sm *stmgr.StateManager, ts *types.TipSet, em stmgr.ExecMonitor) (stateroot cid.Cid, rectsroot cid.Cid, err error) {
 	ctx, span := trace.StartSpan(ctx, "computeTipSetState")
 	defer span.End()
 
@@ -299,4 +299,4 @@ func (t *tipSetExecutor) ExecuteTipSet(ctx context.Context, sm *stmgr.StateManag
 	return t.ApplyBlocks(ctx, sm, parentEpoch, pstate, fbmsgs, blks[0].Height, r, em, baseFee, ts)
 }
 
-var _ stmgr.Executor = &tipSetExecutor{}
+var _ stmgr.Executor = &TipSetExecutor{}

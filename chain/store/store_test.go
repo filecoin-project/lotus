@@ -158,7 +158,7 @@ func TestChainExportImportFull(t *testing.T) {
 		t.Fatal("imported chain differed from exported chain")
 	}
 
-	sm, err := stmgr.NewStateManager(cs, filcns.TipSetExecutor(), nil, filcns.DefaultUpgradeSchedule())
+	sm, err := stmgr.NewStateManager(cs, filcns.NewTipSetExecutor(), nil, filcns.DefaultUpgradeSchedule())
 	if err != nil {
 		t.Fatal(err)
 	}

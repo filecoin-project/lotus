@@ -201,7 +201,7 @@ func (sim *Simulation) SetUpgradeHeight(nv network.Version, epoch abi.ChainEpoch
 	if err != nil {
 		return err
 	}
-	sm, err := stmgr.NewStateManager(sim.Node.Chainstore, filcns.TipSetExecutor(), vm.Syscalls(mock.Verifier), newUpgradeSchedule)
+	sm, err := stmgr.NewStateManager(sim.Node.Chainstore, filcns.NewTipSetExecutor(), vm.Syscalls(mock.Verifier), newUpgradeSchedule)
 	if err != nil {
 		return err
 	}

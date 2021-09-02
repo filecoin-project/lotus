@@ -246,7 +246,7 @@ func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeS
 		mgen[genesis2.MinerAddress(uint64(i))] = &wppProvider{}
 	}
 
-	sm, err := stmgr.NewStateManager(cs, filcns.TipSetExecutor(), sys, us)
+	sm, err := stmgr.NewStateManager(cs, filcns.NewTipSetExecutor(), sys, us)
 	if err != nil {
 		return nil, xerrors.Errorf("initing stmgr: %w", err)
 	}
