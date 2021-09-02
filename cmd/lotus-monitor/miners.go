@@ -70,7 +70,15 @@ var (
 )
 
 func init() {
-	view.Register(minerQualityAdjPowerView, minerRawPowerView, minerFaultCountView, minerRecoveryCountView, minerBalanceView)
+	if err := view.Register(
+		minerQualityAdjPowerView,
+		minerRawPowerView,
+		minerFaultCountView,
+		minerRecoveryCountView,
+		minerBalanceView,
+	); err != nil {
+		log.Fatalf("cannot register miner views: %w", err)
+	}
 }
 
 func minerRecorder(cctx *cli.Context, addr address.Address, api v0api.FullNode, errs chan error) {
@@ -79,9 +87,10 @@ func minerRecorder(cctx *cli.Context, addr address.Address, api v0api.FullNode, 
 	if err != nil {
 		log.Warnw("could not get miner power", "address", addr, "err", err)
 		errs <- err
+	} else {
+		stats.Record(ctx, minerQualityAdjPowerMetric.M(mp.MinerPower.QualityAdjPower.Int64()))
+		stats.Record(ctx, minerRawPowerMetric.M(mp.MinerPower.RawBytePower.Int64()))
 	}
-	stats.Record(ctx, minerQualityAdjPowerMetric.M(mp.MinerPower.QualityAdjPower.Int64()))
-	stats.Record(ctx, minerRawPowerMetric.M(mp.MinerPower.RawBytePower.Int64()))
 
 	if !cctx.Bool("gateway-api") {
 		mf, err := api.StateMinerFaults(ctx, addr, types.EmptyTSK)
@@ -93,8 +102,9 @@ func minerRecorder(cctx *cli.Context, addr address.Address, api v0api.FullNode, 
 		if err != nil {
 			log.Warnw("could not get fault count", "address", addr, "err", err)
 			errs <- err
+		} else {
+			stats.Record(ctx, minerFaultCountMetric.M(int64(faultCount)))
 		}
-		stats.Record(ctx, minerFaultCountMetric.M(int64(faultCount)))
 
 		mr, err := api.StateMinerRecoveries(ctx, addr, types.EmptyTSK)
 		if err != nil {
@@ -105,14 +115,15 @@ func minerRecorder(cctx *cli.Context, addr address.Address, api v0api.FullNode, 
 		if err != nil {
 			log.Warnw("could not get revoery count", "address", addr, "err", err)
 			errs <- err
+		} else {
+			stats.Record(ctx, minerRecoveryCountMetric.M(int64(recoveryCount)))
 		}
-
-		stats.Record(ctx, minerRecoveryCountMetric.M(int64(recoveryCount)))
 		ma, err := api.StateMinerAvailableBalance(ctx, addr, types.EmptyTSK)
 		if err != nil {
 			log.Warnw("could not get miner available balance", "address", addr, "err", err)
 			errs <- err
+		} else {
+			stats.Record(ctx, minerBalanceMetric.M(filBalance(ma)))
 		}
-		stats.Record(ctx, minerBalanceMetric.M(filBalance(ma)))
 	}
 }

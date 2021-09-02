@@ -63,7 +63,15 @@ var (
 )
 
 func init() {
-	view.Register(actorBalanceView, actorNonceView, actorQualityAdjPowerView, actorRawPowerView, actorDatacapView)
+	if err := view.Register(
+		actorBalanceView,
+		actorNonceView,
+		actorQualityAdjPowerView,
+		actorRawPowerView,
+		actorDatacapView,
+	); err != nil {
+		log.Fatalf("cannot register actor views: %w", err)
+	}
 }
 
 func actorRecorder(cctx *cli.Context, addr address.Address, api v0api.FullNode, errs chan error) {
@@ -76,17 +84,19 @@ func actorRecorder(cctx *cli.Context, addr address.Address, api v0api.FullNode, 
 	if actor == nil {
 		log.Warnw("actor not found", "actor", addr)
 		errs <- err
+	} else {
+		stats.Record(ctx, actorBalanceMetric.M(filBalance(actor.Balance)))
+		stats.Record(ctx, actorNonceMetric.M(int64(actor.Nonce)))
 	}
-	stats.Record(ctx, actorBalanceMetric.M(filBalance(actor.Balance)))
-	stats.Record(ctx, actorNonceMetric.M(int64(actor.Nonce)))
 
 	_, power, err := verifiedPower(ctx, api, addr)
 	if err != nil {
 		log.Warnw("encountered an error looking up power", "addr", addr, "err", err)
 		errs <- err
+	} else {
+		stats.Record(ctx, actorQualityAdjPowerMetric.M(power.Int64()))
+		stats.Record(ctx, actorRawPowerMetric.M(power.Int64()))
 	}
-	stats.Record(ctx, actorQualityAdjPowerMetric.M(power.Int64()))
-	stats.Record(ctx, actorRawPowerMetric.M(power.Int64()))
 
 	dcap, err := api.StateVerifiedClientStatus(ctx, addr, types.EmptyTSK)
 	if err != nil {
@@ -96,6 +106,7 @@ func actorRecorder(cctx *cli.Context, addr address.Address, api v0api.FullNode, 
 	var dcap64 int64
 	if dcap != nil {
 		dcap64 = dcap.Int64()
+	} else {
+		stats.Record(ctx, actorDatacapMetric.M(dcap64))
 	}
-	stats.Record(ctx, actorDatacapMetric.M(dcap64))
 }

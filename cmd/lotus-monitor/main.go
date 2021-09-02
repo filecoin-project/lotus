@@ -59,7 +59,7 @@ func main() {
 			},
 			&cli.BoolFlag{
 				Name:  "gateway-api",
-				Usage: "limit the api to only what is availble through the lotus gateway",
+				Usage: "limit the api to only what is available through the lotus gateway",
 				EnvVars: []string{
 					"LOTUS_MONITOR_USE_GATEWAY",
 				},
@@ -94,5 +94,8 @@ func main() {
 			return nil
 		},
 	}
-	app.Run(os.Args)
+	if err := app.Run(os.Args); err != nil {
+		log.Errorf("%+v", err)
+	}
+
 }

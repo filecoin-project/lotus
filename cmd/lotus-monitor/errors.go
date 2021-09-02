@@ -19,7 +19,9 @@ var (
 )
 
 func init() {
-	view.Register(errCountView)
+	if err := view.Register(errCountView); err != nil {
+		log.Fatalf("cannot register error recorder view: %w", err)
+	}
 }
 
 func errorRecorder(cctx *cli.Context, errs chan error) {
