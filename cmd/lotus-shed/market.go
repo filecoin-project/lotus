@@ -1,27 +1,29 @@
 package main
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
 
-	levelds "github.com/ipfs/go-ds-leveldb"
-	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
-
-	"github.com/filecoin-project/lotus/lib/backupds"
-
-	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
+	levelds "github.com/ipfs/go-ds-leveldb"
 	logging "github.com/ipfs/go-log/v2"
-
-	lcli "github.com/filecoin-project/lotus/cli"
+	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+
+	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/backupds"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var marketCmd = &cli.Command{
@@ -32,6 +34,8 @@ var marketCmd = &cli.Command{
 		marketDealFeesCmd,
 		marketExportDatastoreCmd,
 		marketImportDatastoreCmd,
+		marketGetProviderDealCmd,
+		marketSetProviderDealStatusCmd,
 	},
 }
 
@@ -306,4 +310,123 @@ func openLockedRepo(path string) (repo.LockedRepo, error) {
 	}
 
 	return lr, nil
+}
+
+const provStgDealPrefix = "/deals/provider/1"
+
+// Get the raw data for a provider storage deal
+var marketGetProviderDealCmd = &cli.Command{
+	Name:        "get-provider-deal",
+	Description: "output raw provider storage deal info",
+	ArgsUsage:   "[proposalCID]",
+	Action: func(cctx *cli.Context) error {
+		logging.SetLogLevel("badger", "ERROR") // nolint:errcheck
+
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("first argument should be proposal CID")
+		}
+
+		lr, err := openLockedRepo(cctx.String("repo"))
+		if err != nil {
+			return xerrors.Errorf("opening repo: %w", err)
+		}
+		defer lr.Close() //nolint:errcheck
+
+		ds, err := lr.Datastore(context.Background(), datastore.NewKey("metadata").String())
+		if err != nil {
+			return err
+		}
+
+		dsKey := provStgDealPrefix + "/" + cctx.Args().First()
+		val, err := ds.Get(datastore.NewKey(dsKey))
+		if err != nil {
+			return xerrors.Errorf("getting from datastore: %w", err)
+		}
+
+		return printDeal(val)
+	},
+}
+
+// Manually set the status of a provider storage deal
+var marketSetProviderDealStatusCmd = &cli.Command{
+	Name:        "set-provider-deal-status",
+	Description: "set status of deal",
+	ArgsUsage:   "[proposalCID status]",
+	Action: func(cctx *cli.Context) error {
+		logging.SetLogLevel("badger", "ERROR") // nolint:errcheck
+
+		if cctx.Args().Len() != 2 {
+			return xerrors.Errorf("required args: proposal CID, status")
+		}
+
+		dealStatusStr := cctx.Args().Get(1)
+		dealStatus, err := dealStatusFromString(dealStatusStr)
+		if err != nil {
+			return err
+		}
+
+		lr, err := openLockedRepo(cctx.String("repo"))
+		if err != nil {
+			return xerrors.Errorf("opening repo: %w", err)
+		}
+		defer lr.Close() //nolint:errcheck
+
+		ds, err := lr.Datastore(context.Background(), datastore.NewKey("metadata").String())
+		if err != nil {
+			return err
+		}
+
+		// Get deal state
+		dsKey := datastore.NewKey(provStgDealPrefix + "/" + cctx.Args().First())
+		val, err := ds.Get(dsKey)
+		if err != nil {
+			return xerrors.Errorf("getting from datastore: %w", err)
+		}
+
+		var deal storagemarket.MinerDeal
+		if err := deal.UnmarshalCBOR(bytes.NewReader(val)); err != nil {
+			return xerrors.Errorf("unmarshaling cbor: %w", err)
+		}
+
+		// Update deal state
+		deal.State = dealStatus
+
+		// Store updated state
+		buf := new(bytes.Buffer)
+		if err := deal.MarshalCBOR(buf); err != nil {
+			return xerrors.Errorf("remarshaling cbor: %w", err)
+		}
+
+		dealBytes := buf.Bytes()
+		if err := ds.Put(dsKey, dealBytes); err != nil {
+			return xerrors.Errorf("saving deal to datastore: %w", err)
+		}
+
+		return printDeal(dealBytes)
+	},
+}
+
+func dealStatusFromString(str string) (storagemarket.StorageDealStatus, error) {
+	for st, name := range storagemarket.DealStates {
+		if str == name {
+			return st, nil
+		}
+	}
+
+	return 0, xerrors.Errorf("unrecognized deal status %s", str)
+}
+
+func printDeal(val []byte) error {
+	var deal storagemarket.MinerDeal
+	if err := deal.UnmarshalCBOR(bytes.NewReader(val)); err != nil {
+		return xerrors.Errorf("unmarshaling cbor: %w", err)
+	}
+	s, err := json.Marshal(&deal)
+	if err != nil {
+		return xerrors.Errorf("remarshaling as json: %w", err)
+	}
+
+	fmt.Println(string(s))
+
+	return nil
 }
