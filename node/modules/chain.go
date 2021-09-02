@@ -17,13 +17,13 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
@@ -58,8 +58,8 @@ func ChainBlockService(bs dtypes.ExposedBlockstore, rem dtypes.ChainBitswap) dty
 	return blockservice.New(bs, rem)
 }
 
-func MessagePool(lc fx.Lifecycle, mpp messagepool.Provider, ds dtypes.MetadataDS, nn dtypes.NetworkName, j journal.Journal, protector dtypes.GCReferenceProtector) (*messagepool.MessagePool, error) {
-	mp, err := messagepool.New(mpp, ds, nn, j)
+func MessagePool(lc fx.Lifecycle, us stmgr.UpgradeSchedule, mpp messagepool.Provider, ds dtypes.MetadataDS, nn dtypes.NetworkName, j journal.Journal, protector dtypes.GCReferenceProtector) (*messagepool.MessagePool, error) {
+	mp, err := messagepool.New(mpp, ds, us, nn, j)
 	if err != nil {
 		return nil, xerrors.Errorf("constructing mpool: %w", err)
 	}
@@ -72,8 +72,15 @@ func MessagePool(lc fx.Lifecycle, mpp messagepool.Provider, ds dtypes.MetadataDS
 	return mp, nil
 }
 
-func ChainStore(lc fx.Lifecycle, cbs dtypes.ChainBlockstore, sbs dtypes.StateBlockstore, ds dtypes.MetadataDS, basebs dtypes.BaseBlockstore, j journal.Journal) *store.ChainStore {
-	chain := store.NewChainStore(cbs, sbs, ds, j)
+func ChainStore(lc fx.Lifecycle,
+	cbs dtypes.ChainBlockstore,
+	sbs dtypes.StateBlockstore,
+	ds dtypes.MetadataDS,
+	basebs dtypes.BaseBlockstore,
+	weight store.WeightFunc,
+	j journal.Journal) *store.ChainStore {
+
+	chain := store.NewChainStore(cbs, sbs, ds, weight, j)
 
 	if err := chain.Load(); err != nil {
 		log.Warnf("loading chain state from disk: %s", err)
@@ -100,14 +107,20 @@ func ChainStore(lc fx.Lifecycle, cbs dtypes.ChainBlockstore, sbs dtypes.StateBlo
 	return chain
 }
 
-func NetworkName(mctx helpers.MetricsCtx, lc fx.Lifecycle, cs *store.ChainStore, syscalls vm.SyscallBuilder, us stmgr.UpgradeSchedule, _ dtypes.AfterGenesisSet) (dtypes.NetworkName, error) {
+func NetworkName(mctx helpers.MetricsCtx,
+	lc fx.Lifecycle,
+	cs *store.ChainStore,
+	tsexec stmgr.Executor,
+	syscalls vm.SyscallBuilder,
+	us stmgr.UpgradeSchedule,
+	_ dtypes.AfterGenesisSet) (dtypes.NetworkName, error) {
 	if !build.Devnet {
 		return "testnetnet", nil
 	}
 
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	sm, err := stmgr.NewStateManagerWithUpgradeSchedule(cs, syscalls, us)
+	sm, err := stmgr.NewStateManager(cs, tsexec, syscalls, us)
 	if err != nil {
 		return "", err
 	}
@@ -126,7 +139,8 @@ type SyncerParams struct {
 	SyncMgrCtor  chain.SyncManagerCtor
 	Host         host.Host
 	Beacon       beacon.Schedule
-	Verifier     ffiwrapper.Verifier
+	Gent         chain.Genesis
+	Consensus    consensus.Consensus
 }
 
 func NewSyncer(params SyncerParams) (*chain.Syncer, error) {
@@ -138,9 +152,8 @@ func NewSyncer(params SyncerParams) (*chain.Syncer, error) {
 		smCtor = params.SyncMgrCtor
 		h      = params.Host
 		b      = params.Beacon
-		v      = params.Verifier
 	)
-	syncer, err := chain.NewSyncer(ds, sm, ex, smCtor, h.ConnManager(), h.ID(), b, v)
+	syncer, err := chain.NewSyncer(ds, sm, ex, smCtor, h.ConnManager(), h.ID(), b, params.Gent, params.Consensus)
 	if err != nil {
 		return nil, err
 	}

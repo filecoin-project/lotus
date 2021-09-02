@@ -8,7 +8,8 @@ import (
 	"github.com/multiformats/go-multihash"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/stmgr"
+
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 )
 
 func main() {
@@ -44,7 +45,7 @@ func main() {
 
 	out := map[string][]string{}
 
-	for c, methods := range stmgr.MethodsMap {
+	for c, methods := range filcns.NewActorRegistry().Methods {
 		cmh, err := multihash.Decode(c.Hash())
 		if err != nil {
 			panic(err)

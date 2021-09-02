@@ -66,7 +66,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 	bstate := ts.ParentState()
 
 	// Run the (not expensive) migration.
-	bstate, err := sm.handleStateForks(ctx, bstate, pheight, nil, ts)
+	bstate, err := sm.HandleStateForks(ctx, bstate, pheight, nil, ts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
@@ -76,7 +76,8 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		Epoch:          pheight + 1,
 		Rand:           store.NewChainRand(sm.cs, ts.Cids()),
 		Bstore:         sm.cs.StateBlockstore(),
-		Syscalls:       sm.syscalls,
+		Actors:         sm.tsExec.NewActorRegistry(),
+		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        types.NewInt(0),
@@ -179,7 +180,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 	}
 
 	// Technically, the tipset we're passing in here should be ts+1, but that may not exist.
-	state, err = sm.handleStateForks(ctx, state, ts.Height(), nil, ts)
+	state, err = sm.HandleStateForks(ctx, state, ts.Height(), nil, ts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
@@ -199,7 +200,8 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		Epoch:          ts.Height() + 1,
 		Rand:           r,
 		Bstore:         sm.cs.StateBlockstore(),
-		Syscalls:       sm.syscalls,
+		Actors:         sm.tsExec.NewActorRegistry(),
+		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
@@ -272,7 +274,7 @@ func (sm *StateManager) Replay(ctx context.Context, ts *types.TipSet, mcid cid.C
 	// message to find
 	finder.mcid = mcid
 
-	_, _, err := sm.computeTipSetState(ctx, ts, &finder)
+	_, _, err := sm.tsExec.ExecuteTipSet(ctx, sm, ts, &finder)
 	if err != nil && !xerrors.Is(err, errHaltExecution) {
 		return nil, nil, xerrors.Errorf("unexpected error during execution: %w", err)
 	}

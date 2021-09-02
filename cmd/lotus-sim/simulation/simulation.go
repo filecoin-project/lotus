@@ -16,6 +16,7 @@ import (
 
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -35,7 +36,7 @@ type config struct {
 // upgradeSchedule constructs an stmgr.StateManager upgrade schedule, overriding any network upgrade
 // epochs as specified in the config.
 func (c *config) upgradeSchedule() (stmgr.UpgradeSchedule, error) {
-	upgradeSchedule := stmgr.DefaultUpgradeSchedule()
+	upgradeSchedule := filcns.DefaultUpgradeSchedule()
 	expected := make(map[network.Version]struct{}, len(c.Upgrades))
 	for nv := range c.Upgrades {
 		expected[nv] = struct{}{}
@@ -200,7 +201,7 @@ func (sim *Simulation) SetUpgradeHeight(nv network.Version, epoch abi.ChainEpoch
 	if err != nil {
 		return err
 	}
-	sm, err := stmgr.NewStateManagerWithUpgradeSchedule(sim.Node.Chainstore, vm.Syscalls(mock.Verifier), newUpgradeSchedule)
+	sm, err := stmgr.NewStateManager(sim.Node.Chainstore, filcns.NewTipSetExecutor(), vm.Syscalls(mock.Verifier), newUpgradeSchedule)
 	if err != nil {
 		return err
 	}

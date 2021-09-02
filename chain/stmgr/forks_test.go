@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/gen"
 	. "github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -120,8 +121,8 @@ func TestForkHeightTriggers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	sm, err := NewStateManagerWithUpgradeSchedule(
-		cg.ChainStore(), cg.StateManager().VMSys(), UpgradeSchedule{{
+	sm, err := NewStateManager(
+		cg.ChainStore(), filcns.NewTipSetExecutor(), cg.StateManager().VMSys(), UpgradeSchedule{{
 			Network: network.Version1,
 			Height:  testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
@@ -162,7 +163,7 @@ func TestForkHeightTriggers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	inv := vm.NewActorRegistry()
+	inv := filcns.NewActorRegistry()
 	inv.Register(nil, testActor{})
 
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (*vm.VM, error) {
@@ -263,8 +264,8 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 	}
 
 	var migrationCount int
-	sm, err := NewStateManagerWithUpgradeSchedule(
-		cg.ChainStore(), cg.StateManager().VMSys(), UpgradeSchedule{{
+	sm, err := NewStateManager(
+		cg.ChainStore(), filcns.NewTipSetExecutor(), cg.StateManager().VMSys(), UpgradeSchedule{{
 			Network:   network.Version1,
 			Expensive: true,
 			Height:    testForkHeight,
@@ -277,7 +278,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 		t.Fatal(err)
 	}
 
-	inv := vm.NewActorRegistry()
+	inv := filcns.NewActorRegistry()
 	inv.Register(nil, testActor{})
 
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (*vm.VM, error) {
@@ -398,8 +399,8 @@ func TestForkPreMigration(t *testing.T) {
 
 	counter := make(chan struct{}, 10)
 
-	sm, err := NewStateManagerWithUpgradeSchedule(
-		cg.ChainStore(), cg.StateManager().VMSys(), UpgradeSchedule{{
+	sm, err := NewStateManager(
+		cg.ChainStore(), filcns.NewTipSetExecutor(), cg.StateManager().VMSys(), UpgradeSchedule{{
 			Network: network.Version1,
 			Height:  testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
@@ -496,7 +497,7 @@ func TestForkPreMigration(t *testing.T) {
 		require.NoError(t, sm.Stop(context.Background()))
 	}()
 
-	inv := vm.NewActorRegistry()
+	inv := filcns.NewActorRegistry()
 	inv.Register(nil, testActor{})
 
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (*vm.VM, error) {
