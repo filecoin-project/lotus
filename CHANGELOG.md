@@ -1,5 +1,9 @@
 # Lotus changelog
 
+# 1.10.2 / 2021-09-02
+
+update the most recent qtls version so it is buildable with go v1.17.
+
 # 1.10.1 / 2021-07-05
 
 This is an optional but **highly recommended** release of Lotus that has many bug fixes and improvements based on the feedback we got from the community since HyperDrive.
