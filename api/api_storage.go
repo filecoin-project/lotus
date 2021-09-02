@@ -267,6 +267,11 @@ type SectorLog struct {
 	Message string
 }
 
+type SectorPiece struct {
+	Piece    abi.PieceInfo
+	DealInfo *PieceDealInfo // nil for pieces which do not appear in deals (e.g. filler pieces)
+}
+
 type SectorInfo struct {
 	SectorID     abi.SectorNumber
 	State        SectorState
@@ -274,6 +279,7 @@ type SectorInfo struct {
 	CommR        *cid.Cid
 	Proof        []byte
 	Deals        []abi.DealID
+	Pieces       []SectorPiece
 	Ticket       SealTicket
 	Seed         SealSeed
 	PreCommitMsg *cid.Cid
