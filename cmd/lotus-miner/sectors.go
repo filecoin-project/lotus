@@ -266,8 +266,9 @@ var sectorsListCmd = &cli.Command{
 	Usage: "List sectors",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "show-removed",
-			Usage: "show removed sectors",
+			Name:    "show-removed",
+			Usage:   "show removed sectors",
+			Aliases: []string{"r"},
 		},
 		&cli.BoolFlag{
 			Name:        "color",
@@ -276,12 +277,14 @@ var sectorsListCmd = &cli.Command{
 			Aliases:     []string{"c"},
 		},
 		&cli.BoolFlag{
-			Name:  "fast",
-			Usage: "don't show on-chain info for better performance",
+			Name:    "fast",
+			Usage:   "don't show on-chain info for better performance",
+			Aliases: []string{"f"},
 		},
 		&cli.BoolFlag{
-			Name:  "events",
-			Usage: "display number of events the sector has received",
+			Name:    "events",
+			Usage:   "display number of events the sector has received",
+			Aliases: []string{"e"},
 		},
 		&cli.BoolFlag{
 			Name:  "seal-time",
@@ -290,6 +293,11 @@ var sectorsListCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "states",
 			Usage: "filter sectors by a comma-separated list of states",
+		},
+		&cli.BoolFlag{
+			Name:    "unproven",
+			Usage:   "only show sectors which aren't in the 'Proving' state",
+			Aliases: []string{"u"},
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -314,17 +322,33 @@ var sectorsListCmd = &cli.Command{
 		var list []abi.SectorNumber
 
 		showRemoved := cctx.Bool("show-removed")
-		states := cctx.String("states")
+		var states []api.SectorState
+		if cctx.IsSet("states") && cctx.IsSet("unproven") {
+			return xerrors.Errorf("only one of --states or --unproven can be specified at once")
+		}
+
+		if cctx.IsSet("states") {
+			showRemoved = true
+			sList := strings.Split(cctx.String("states"), ",")
+			states = make([]api.SectorState, len(sList))
+			for i := range sList {
+				states[i] = api.SectorState(sList[i])
+			}
+		}
+
+		if cctx.Bool("unproven") {
+			for state := range sealing.ExistSectorStateList {
+				if state == sealing.Proving {
+					continue
+				}
+				states = append(states, api.SectorState(state))
+			}
+		}
+
 		if len(states) == 0 {
 			list, err = nodeApi.SectorsList(ctx)
 		} else {
-			showRemoved = true
-			sList := strings.Split(states, ",")
-			ss := make([]api.SectorState, len(sList))
-			for i := range sList {
-				ss[i] = api.SectorState(sList[i])
-			}
-			list, err = nodeApi.SectorsListInStates(ctx, ss)
+			list, err = nodeApi.SectorsListInStates(ctx, states)
 		}
 
 		if err != nil {
