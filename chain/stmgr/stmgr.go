@@ -2,7 +2,6 @@ package stmgr
 
 import (
 	"context"
-	"fmt"
 	"sync"
 
 	"github.com/ipfs/go-cid"
@@ -52,6 +51,11 @@ type migration struct {
 	cache         *nv10.MemMigrationCache
 }
 
+type Executor interface {
+	NewActorRegistry() *vm.ActorRegistry
+	ExecuteTipSet(ctx context.Context, sm *StateManager, ts *types.TipSet, em ExecMonitor) (stateroot cid.Cid, rectsroot cid.Cid, err error)
+}
+
 type StateManager struct {
 	cs *store.ChainStore
 
@@ -75,7 +79,7 @@ type StateManager struct {
 	stlk                sync.Mutex
 	genesisMsigLk       sync.Mutex
 	newVM               func(context.Context, *vm.VMOpts) (*vm.VM, error)
-	syscalls            vm.SyscallBuilder
+	Syscalls            vm.SyscallBuilder
 	preIgnitionVesting  []msig0.State
 	postIgnitionVesting []msig0.State
 	postCalicoVesting   []msig0.State
@@ -83,6 +87,7 @@ type StateManager struct {
 	genesisPledge      abi.TokenAmount
 	genesisMarketFunds abi.TokenAmount
 
+	tsExec        Executor
 	tsExecMonitor ExecMonitor
 }
 
@@ -92,15 +97,7 @@ type treeCache struct {
 	tree *state.StateTree
 }
 
-func NewStateManager(cs *store.ChainStore, sys vm.SyscallBuilder) *StateManager {
-	sm, err := NewStateManagerWithUpgradeSchedule(cs, sys, DefaultUpgradeSchedule())
-	if err != nil {
-		panic(fmt.Sprintf("default upgrade schedule is invalid: %s", err))
-	}
-	return sm
-}
-
-func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, sys vm.SyscallBuilder, us UpgradeSchedule) (*StateManager, error) {
+func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule) (*StateManager, error) {
 	// If we have upgrades, make sure they're in-order and make sense.
 	if err := us.Validate(); err != nil {
 		return nil, err
@@ -142,8 +139,9 @@ func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, sys vm.SyscallBuil
 		stateMigrations:   stateMigrations,
 		expensiveUpgrades: expensiveUpgrades,
 		newVM:             vm.NewVM,
-		syscalls:          sys,
+		Syscalls:          sys,
 		cs:                cs,
+		tsExec:            exec,
 		stCache:           make(map[string][]cid.Cid),
 		tCache: treeCache{
 			root: cid.Undef,
@@ -153,8 +151,8 @@ func NewStateManagerWithUpgradeSchedule(cs *store.ChainStore, sys vm.SyscallBuil
 	}, nil
 }
 
-func NewStateManagerWithUpgradeScheduleAndMonitor(cs *store.ChainStore, sys vm.SyscallBuilder, us UpgradeSchedule, em ExecMonitor) (*StateManager, error) {
-	sm, err := NewStateManagerWithUpgradeSchedule(cs, sys, us)
+func NewStateManagerWithUpgradeScheduleAndMonitor(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, em ExecMonitor) (*StateManager, error) {
+	sm, err := NewStateManager(cs, exec, sys, us)
 	if err != nil {
 		return nil, err
 	}
@@ -344,6 +342,12 @@ func (sm *StateManager) SetVMConstructor(nvm func(context.Context, *vm.VMOpts) (
 	sm.newVM = nvm
 }
 
+func (sm *StateManager) VMConstructor() func(context.Context, *vm.VMOpts) (*vm.VM, error) {
+	return func(ctx context.Context, opts *vm.VMOpts) (*vm.VM, error) {
+		return sm.newVM(ctx, opts)
+	}
+}
+
 func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
 	// The epochs here are the _last_ epoch for every version, or -1 if the
 	// version is disabled.
@@ -356,5 +360,5 @@ func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoc
 }
 
 func (sm *StateManager) VMSys() vm.SyscallBuilder {
-	return sm.syscalls
+	return sm.Syscalls
 }

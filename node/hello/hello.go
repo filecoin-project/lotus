@@ -2,6 +2,7 @@ package hello
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -48,10 +49,11 @@ type Service struct {
 
 	cs     *store.ChainStore
 	syncer *chain.Syncer
+	cons   consensus.Consensus
 	pmgr   *peermgr.PeerMgr
 }
 
-func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, pmgr peermgr.MaybePeerMgr) *Service {
+func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, cons consensus.Consensus, pmgr peermgr.MaybePeerMgr) *Service {
 	if pmgr.Mgr == nil {
 		log.Warn("running without peer manager")
 	}
@@ -61,6 +63,7 @@ func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, pm
 
 		cs:     cs,
 		syncer: syncer,
+		cons:   cons,
 		pmgr:   pmgr.Mgr,
 	}
 }

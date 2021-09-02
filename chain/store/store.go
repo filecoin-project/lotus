@@ -87,6 +87,8 @@ type HeadChangeEvt struct {
 	ApplyCount  int
 }
 
+type WeightFunc func(ctx context.Context, stateBs bstore.Blockstore, ts *types.TipSet) (types.BigInt, error)
+
 // ChainStore is the main point of access to chain data.
 //
 // Raw chain data is stored in the Blockstore, with relevant markers (genesis,
@@ -100,6 +102,8 @@ type ChainStore struct {
 	chainBlockstore bstore.Blockstore
 	stateBlockstore bstore.Blockstore
 	metadataDs      dstore.Batching
+
+	weight WeightFunc
 
 	chainLocalBlockstore bstore.Blockstore
 
@@ -128,7 +132,7 @@ type ChainStore struct {
 	wg       sync.WaitGroup
 }
 
-func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, j journal.Journal) *ChainStore {
+func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, weight WeightFunc, j journal.Journal) *ChainStore {
 	c, _ := lru.NewARC(DefaultMsgMetaCacheSize)
 	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
 	if j == nil {
@@ -143,6 +147,7 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 		chainBlockstore:      chainBs,
 		stateBlockstore:      stateBs,
 		chainLocalBlockstore: localbs,
+		weight:               weight,
 		metadataDs:           ds,
 		bestTips:             pubsub.New(64),
 		tipsets:              make(map[abi.ChainEpoch][]cid.Cid),
@@ -410,11 +415,11 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipS
 	}
 
 	defer cs.heaviestLk.Unlock()
-	w, err := cs.Weight(ctx, ts)
+	w, err := cs.weight(ctx, cs.StateBlockstore(), ts)
 	if err != nil {
 		return err
 	}
-	heaviestW, err := cs.Weight(ctx, cs.heaviest)
+	heaviestW, err := cs.weight(ctx, cs.StateBlockstore(), cs.heaviest)
 	if err != nil {
 		return err
 	}
@@ -1155,4 +1160,8 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 	}
 
 	return cs.LoadTipSet(lbts.Parents())
+}
+
+func (cs *ChainStore) Weight(ctx context.Context, hts *types.TipSet) (types.BigInt, error) { // todo remove
+	return cs.weight(ctx, cs.StateBlockstore(), hts)
 }

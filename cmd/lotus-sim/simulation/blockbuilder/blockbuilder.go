@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 
@@ -83,6 +84,7 @@ func NewBlockBuilder(ctx context.Context, logger *zap.SugaredLogger, sm *stmgr.S
 		Epoch:          parentTs.Height() + 1,
 		Rand:           r,
 		Bstore:         sm.ChainStore().StateBlockstore(),
+		Actors:         filcns.NewActorRegistry(),
 		Syscalls:       sm.VMSys(),
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NtwkVersion:    sm.GetNtwkVersion,

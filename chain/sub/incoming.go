@@ -2,41 +2,32 @@ package sub
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	address "github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/messagepool"
-	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/impl/client"
-	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	lru "github.com/hashicorp/golang-lru"
 	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("sub")
-
-var ErrSoftFailure = errors.New("soft validation failure")
-var ErrInsufficientPower = errors.New("incoming block's miner does not have minimum power")
 
 var msgCidPrefix = cid.Prefix{
 	Version:  1,
@@ -225,11 +216,11 @@ type BlockValidator struct {
 	blacklist func(peer.ID)
 
 	// necessary for block validation
-	chain *store.ChainStore
-	stmgr *stmgr.StateManager
+	chain     *store.ChainStore
+	consensus consensus.Consensus
 }
 
-func NewBlockValidator(self peer.ID, chain *store.ChainStore, stmgr *stmgr.StateManager, blacklist func(peer.ID)) *BlockValidator {
+func NewBlockValidator(self peer.ID, chain *store.ChainStore, cns consensus.Consensus, blacklist func(peer.ID)) *BlockValidator {
 	p, _ := lru.New2Q(4096)
 	return &BlockValidator{
 		self:       self,
@@ -238,7 +229,7 @@ func NewBlockValidator(self peer.ID, chain *store.ChainStore, stmgr *stmgr.State
 		blacklist:  blacklist,
 		recvBlocks: newBlockReceiptCache(),
 		chain:      chain,
-		stmgr:      stmgr,
+		consensus:  cns,
 	}
 }
 
@@ -260,214 +251,35 @@ func (bv *BlockValidator) flagPeer(p peer.ID) {
 	bv.peers.Add(p, v.(int)+1)
 }
 
-func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
-	if pid == bv.self {
-		return bv.validateLocalBlock(ctx, msg)
-	}
-
-	// track validation time
-	begin := build.Clock.Now()
+func (bv *BlockValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) (res pubsub.ValidationResult) {
 	defer func() {
-		log.Debugf("block validation time: %s", build.Clock.Since(begin))
+		if rerr := recover(); rerr != nil {
+			err := xerrors.Errorf("validate block: %s", rerr)
+			recordFailure(ctx, metrics.BlockValidationFailure, err.Error())
+			bv.flagPeer(pid)
+			res = pubsub.ValidationReject
+			return
+		}
 	}()
 
-	stats.Record(ctx, metrics.BlockReceived.M(1))
+	var what string
+	res, what = bv.consensus.ValidateBlockPubsub(ctx, pid == bv.self, msg)
+	if res == pubsub.ValidationAccept {
+		// it's a good block! make sure we've only seen it once
+		if count := bv.recvBlocks.add(msg.ValidatorData.(*types.BlockMsg).Cid()); count > 0 {
+			if pid == bv.self {
+				log.Warnf("local block has been seen %d times; ignoring", count)
+			}
 
-	recordFailureFlagPeer := func(what string) {
+			// TODO: once these changes propagate to the network, we can consider
+			// dropping peers who send us the same block multiple times
+			return pubsub.ValidationIgnore
+		}
+	} else {
 		recordFailure(ctx, metrics.BlockValidationFailure, what)
-		bv.flagPeer(pid)
 	}
 
-	blk, what, err := bv.decodeAndCheckBlock(msg)
-	if err != nil {
-		log.Error("got invalid block over pubsub: ", err)
-		recordFailureFlagPeer(what)
-		return pubsub.ValidationReject
-	}
-
-	// validate the block meta: the Message CID in the header must match the included messages
-	err = bv.validateMsgMeta(ctx, blk)
-	if err != nil {
-		log.Warnf("error validating message metadata: %s", err)
-		recordFailureFlagPeer("invalid_block_meta")
-		return pubsub.ValidationReject
-	}
-
-	// we want to ensure that it is a block from a known miner; we reject blocks from unknown miners
-	// to prevent spam attacks.
-	// the logic works as follows: we lookup the miner in the chain for its key.
-	// if we can find it then it's a known miner and we can validate the signature.
-	// if we can't find it, we check whether we are (near) synced in the chain.
-	// if we are not synced we cannot validate the block and we must ignore it.
-	// if we are synced and the miner is unknown, then the block is rejcected.
-	key, err := bv.checkPowerAndGetWorkerKey(ctx, blk.Header)
-	if err != nil {
-		if err != ErrSoftFailure && bv.isChainNearSynced() {
-			log.Warnf("received block from unknown miner or miner that doesn't meet min power over pubsub; rejecting message")
-			recordFailureFlagPeer("unknown_miner")
-			return pubsub.ValidationReject
-		}
-
-		log.Warnf("cannot validate block message; unknown miner or miner that doesn't meet min power in unsynced chain: %s", blk.Header.Cid())
-		return pubsub.ValidationIgnore
-	}
-
-	err = sigs.CheckBlockSignature(ctx, blk.Header, key)
-	if err != nil {
-		log.Errorf("block signature verification failed: %s", err)
-		recordFailureFlagPeer("signature_verification_failed")
-		return pubsub.ValidationReject
-	}
-
-	if blk.Header.ElectionProof.WinCount < 1 {
-		log.Errorf("block is not claiming to be winning")
-		recordFailureFlagPeer("not_winning")
-		return pubsub.ValidationReject
-	}
-
-	// it's a good block! make sure we've only seen it once
-	if bv.recvBlocks.add(blk.Header.Cid()) > 0 {
-		// TODO: once these changes propagate to the network, we can consider
-		// dropping peers who send us the same block multiple times
-		return pubsub.ValidationIgnore
-	}
-
-	// all good, accept the block
-	msg.ValidatorData = blk
-	stats.Record(ctx, metrics.BlockValidationSuccess.M(1))
-	return pubsub.ValidationAccept
-}
-
-func (bv *BlockValidator) validateLocalBlock(ctx context.Context, msg *pubsub.Message) pubsub.ValidationResult {
-	stats.Record(ctx, metrics.BlockPublished.M(1))
-
-	if size := msg.Size(); size > 1<<20-1<<15 {
-		log.Errorf("ignoring oversize block (%dB)", size)
-		recordFailure(ctx, metrics.BlockValidationFailure, "oversize_block")
-		return pubsub.ValidationIgnore
-	}
-
-	blk, what, err := bv.decodeAndCheckBlock(msg)
-	if err != nil {
-		log.Errorf("got invalid local block: %s", err)
-		recordFailure(ctx, metrics.BlockValidationFailure, what)
-		return pubsub.ValidationIgnore
-	}
-
-	if count := bv.recvBlocks.add(blk.Header.Cid()); count > 0 {
-		log.Warnf("local block has been seen %d times; ignoring", count)
-		return pubsub.ValidationIgnore
-	}
-
-	msg.ValidatorData = blk
-	stats.Record(ctx, metrics.BlockValidationSuccess.M(1))
-	return pubsub.ValidationAccept
-}
-
-func (bv *BlockValidator) decodeAndCheckBlock(msg *pubsub.Message) (*types.BlockMsg, string, error) {
-	blk, err := types.DecodeBlockMsg(msg.GetData())
-	if err != nil {
-		return nil, "invalid", xerrors.Errorf("error decoding block: %w", err)
-	}
-
-	if count := len(blk.BlsMessages) + len(blk.SecpkMessages); count > build.BlockMessageLimit {
-		return nil, "too_many_messages", fmt.Errorf("block contains too many messages (%d)", count)
-	}
-
-	// make sure we have a signature
-	if blk.Header.BlockSig == nil {
-		return nil, "missing_signature", fmt.Errorf("block without a signature")
-	}
-
-	return blk, "", nil
-}
-
-func (bv *BlockValidator) isChainNearSynced() bool {
-	ts := bv.chain.GetHeaviestTipSet()
-	timestamp := ts.MinTimestamp()
-	timestampTime := time.Unix(int64(timestamp), 0)
-	return build.Clock.Since(timestampTime) < 6*time.Hour
-}
-
-func (bv *BlockValidator) validateMsgMeta(ctx context.Context, msg *types.BlockMsg) error {
-	// TODO there has to be a simpler way to do this without the blockstore dance
-	// block headers use adt0
-	store := blockadt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewMemory()))
-	bmArr := blockadt.MakeEmptyArray(store)
-	smArr := blockadt.MakeEmptyArray(store)
-
-	for i, m := range msg.BlsMessages {
-		c := cbg.CborCid(m)
-		if err := bmArr.Set(uint64(i), &c); err != nil {
-			return err
-		}
-	}
-
-	for i, m := range msg.SecpkMessages {
-		c := cbg.CborCid(m)
-		if err := smArr.Set(uint64(i), &c); err != nil {
-			return err
-		}
-	}
-
-	bmroot, err := bmArr.Root()
-	if err != nil {
-		return err
-	}
-
-	smroot, err := smArr.Root()
-	if err != nil {
-		return err
-	}
-
-	mrcid, err := store.Put(store.Context(), &types.MsgMeta{
-		BlsMessages:   bmroot,
-		SecpkMessages: smroot,
-	})
-
-	if err != nil {
-		return err
-	}
-
-	if msg.Header.Messages != mrcid {
-		return fmt.Errorf("messages didn't match root cid in header")
-	}
-
-	return nil
-}
-
-func (bv *BlockValidator) checkPowerAndGetWorkerKey(ctx context.Context, bh *types.BlockHeader) (address.Address, error) {
-	// we check that the miner met the minimum power at the lookback tipset
-
-	baseTs := bv.chain.GetHeaviestTipSet()
-	lbts, lbst, err := stmgr.GetLookbackTipSetForRound(ctx, bv.stmgr, baseTs, bh.Height)
-	if err != nil {
-		log.Warnf("failed to load lookback tipset for incoming block: %s", err)
-		return address.Undef, ErrSoftFailure
-	}
-
-	key, err := stmgr.GetMinerWorkerRaw(ctx, bv.stmgr, lbst, bh.Miner)
-	if err != nil {
-		log.Warnf("failed to resolve worker key for miner %s: %s", bh.Miner, err)
-		return address.Undef, ErrSoftFailure
-	}
-
-	// NOTE: we check to see if the miner was eligible in the lookback
-	// tipset - 1 for historical reasons. DO NOT use the lookback state
-	// returned by GetLookbackTipSetForRound.
-
-	eligible, err := stmgr.MinerEligibleToMine(ctx, bv.stmgr, bh.Miner, baseTs, lbts)
-	if err != nil {
-		log.Warnf("failed to determine if incoming block's miner has minimum power: %s", err)
-		return address.Undef, ErrSoftFailure
-	}
-
-	if !eligible {
-		log.Warnf("incoming block's miner is ineligible")
-		return address.Undef, ErrInsufficientPower
-	}
-
-	return key, nil
+	return res
 }
 
 type blockReceiptCache struct {

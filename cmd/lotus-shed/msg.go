@@ -8,7 +8,6 @@ import (
 	"fmt"
 
 	"github.com/fatih/color"
-
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"

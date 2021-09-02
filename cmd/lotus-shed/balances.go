@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 
 	"github.com/filecoin-project/lotus/chain/gen/genesis"
 
@@ -510,13 +511,16 @@ var chainBalanceStateCmd = &cli.Command{
 			return err
 		}
 
-		cs := store.NewChainStore(bs, bs, mds, nil)
+		cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
 		defer cs.Close() //nolint:errcheck
 
 		cst := cbor.NewCborStore(bs)
 		store := adt.WrapStore(ctx, cst)
 
-		sm := stmgr.NewStateManager(cs, vm.Syscalls(ffiwrapper.ProofVerifier))
+		sm, err := stmgr.NewStateManager(cs, filcns.TipSetExecutor(), vm.Syscalls(ffiwrapper.ProofVerifier), filcns.DefaultUpgradeSchedule())
+		if err != nil {
+			return err
+		}
 
 		tree, err := state.LoadStateTree(cst, sroot)
 		if err != nil {
@@ -731,14 +735,16 @@ var chainPledgeCmd = &cli.Command{
 			return err
 		}
 
-		cs := store.NewChainStore(bs, bs, mds, nil)
+		cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
 		defer cs.Close() //nolint:errcheck
 
 		cst := cbor.NewCborStore(bs)
 		store := adt.WrapStore(ctx, cst)
 
-		sm := stmgr.NewStateManager(cs, vm.Syscalls(ffiwrapper.ProofVerifier))
-
+		sm, err := stmgr.NewStateManager(cs, filcns.TipSetExecutor(), vm.Syscalls(ffiwrapper.ProofVerifier), filcns.DefaultUpgradeSchedule())
+		if err != nil {
+			return err
+		}
 		state, err := state.LoadStateTree(cst, sroot)
 		if err != nil {
 			return err

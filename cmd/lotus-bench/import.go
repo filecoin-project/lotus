@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -253,10 +254,13 @@ var importBenchCmd = &cli.Command{
 		}
 
 		metadataDs := datastore.NewMapDatastore()
-		cs := store.NewChainStore(bs, bs, metadataDs, nil)
+		cs := store.NewChainStore(bs, bs, metadataDs, filcns.Weight, nil)
 		defer cs.Close() //nolint:errcheck
 
-		stm := stmgr.NewStateManager(cs, vm.Syscalls(verifier))
+		stm, err := stmgr.NewStateManager(cs, filcns.TipSetExecutor(), vm.Syscalls(verifier), filcns.DefaultUpgradeSchedule())
+		if err != nil {
+			return err
+		}
 
 		var carFile *os.File
 		// open the CAR file if one is provided.

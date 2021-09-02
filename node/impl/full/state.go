@@ -29,7 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -88,6 +88,8 @@ type StateAPI struct {
 	StateManager  *stmgr.StateManager
 	Chain         *store.ChainStore
 	Beacon        beacon.Schedule
+	Consensus     consensus.Consensus
+	TsExec        stmgr.Executor
 }
 
 func (a *StateAPI) StateNetworkName(ctx context.Context) (dtypes.NetworkName, error) {
@@ -469,7 +471,7 @@ func (a *StateAPI) StateReadState(ctx context.Context, actor address.Address, ts
 		return nil, xerrors.Errorf("getting actor head: %w", err)
 	}
 
-	oif, err := vm.DumpActorState(act, blk.RawData())
+	oif, err := vm.DumpActorState(a.TsExec.NewActorRegistry(), act, blk.RawData())
 	if err != nil {
 		return nil, xerrors.Errorf("dumping actor state (a:%s): %w", actor, err)
 	}
@@ -487,7 +489,7 @@ func (a *StateAPI) StateDecodeParams(ctx context.Context, toAddr address.Address
 		return nil, xerrors.Errorf("getting actor: %w", err)
 	}
 
-	paramType, err := stmgr.GetParamType(act.Code, method)
+	paramType, err := stmgr.GetParamType(a.TsExec.NewActorRegistry(), act.Code, method)
 	if err != nil {
 		return nil, xerrors.Errorf("getting params type: %w", err)
 	}
@@ -500,7 +502,7 @@ func (a *StateAPI) StateDecodeParams(ctx context.Context, toAddr address.Address
 }
 
 func (a *StateAPI) StateEncodeParams(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error) {
-	paramType, err := stmgr.GetParamType(toActCode, method)
+	paramType, err := stmgr.GetParamType(a.TsExec.NewActorRegistry(), toActCode, method)
 	if err != nil {
 		return nil, xerrors.Errorf("getting params type: %w", err)
 	}
@@ -524,9 +526,12 @@ func (a *StateAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, 
 }
 
 func (a *StateAPI) MinerCreateBlock(ctx context.Context, bt *api.BlockTemplate) (*types.BlockMsg, error) {
-	fblk, err := gen.MinerCreateBlock(ctx, a.StateManager, a.Wallet, bt)
+	fblk, err := a.Consensus.CreateBlock(ctx, a.Wallet, bt)
 	if err != nil {
 		return nil, err
+	}
+	if fblk == nil {
+		return nil, nil
 	}
 
 	var out types.BlockMsg
