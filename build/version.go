@@ -40,7 +40,7 @@ func buildType() string {
 }
 
 // BuildVersion is the local build version
-const BuildVersion = "1.11.2-rc2"
+const BuildVersion = "1.11.2"
 
 func UserVersion() string {
 	if os.Getenv("LOTUS_VERSION_IGNORE_COMMIT") == "1" {
