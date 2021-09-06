@@ -257,7 +257,7 @@ as a multiplier of the minimum collateral bound`,
 			Type: "int64",
 
 			Comment: `The maximum allowed disk usage size in bytes of staging deals not yet
-passed to the sealing node by the markets service`,
+passed to the sealing node by the markets service. 0 is unlimited.`,
 		},
 		{
 			Name: "SimultaneousTransfers",

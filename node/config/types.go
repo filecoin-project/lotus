@@ -127,7 +127,7 @@ type DealmakingConfig struct {
 	// as a multiplier of the minimum collateral bound
 	MaxProviderCollateralMultiplier uint64
 	// The maximum allowed disk usage size in bytes of staging deals not yet
-	// passed to the sealing node by the markets service
+	// passed to the sealing node by the markets service. 0 is unlimited.
 	MaxStagingDealsBytes int64
 	// The maximum number of parallel online data transfers (storage+retrieval)
 	SimultaneousTransfers uint64
