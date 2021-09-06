@@ -2,12 +2,11 @@
 
 # v1.11.2 / 2021-09-06
 
-lotus v1.11.2 is a feature release that's **highly recommend ALL lotus users to upgrade**, including node operators, 
+lotus v1.11.2 is a feature release that's **highly recommended ALL lotus users to upgrade**, including node operators, 
 storage providers and clients. 
 
 ## Highlights
-- 🌟🌟🌟 Introduce Dagstore and CARv2 for deal-making (#6671) ([filecoin-project/lotus#6671](https://github.
-  com/filecoin-project/lotus/pull/6671))
+- 🌟🌟🌟 Introduce Dagstore and CARv2 for deal-making (#6671) ([filecoin-project/lotus#6671](https://github.com/filecoin-project/lotus/pull/6671))
   - **[lotus miner markets' Dagstore](https://docs.filecoin.io/mine/lotus/dagstore/#conceptual-overview)** is a 
     component of the `markets` subsystem in lotus-miner. It is a sharded store to hold large IPLD graphs efficiently,
     packaged as  location-transparent attachable CAR files and it replaces the former Badger staging blockstore. It 
@@ -19,12 +18,15 @@ storage providers and clients.
     making, therefore, it's highly recommended to lotus users to go through [Lotus Miner: About the markets dagstore](https://docs.filecoin.io/mine/lotus/dagstore/#conceptual-overview) thoroughly to learn more about Dagstore's 
     conceptual overview, terminology, directory structure, configuration and so on.
   - **Note**: 
-    - When you first start your lotus-miner or market subsystem with this release, a one-time/first-time **dagstore 
-      migration** will be triggered which replaces the former Badger staging blockstore with dagstore. We highly 
-      recommend storage providers to read this [section](https://docs.filecoin. io/mine/lotus/dagstore/#first-time-migration) to learn more about
+    - When you first start your lotus-miner or market subsystem with this release, a one-time/first-time **dagstore migration** will be triggered which replaces the former Badger staging blockstore with dagstore. We highly 
+      recommend storage providers to read this [section](https://docs.filecoin.io/mine/lotus/dagstore/#first-time-migration) to learn more about
       what the process does, what to expect and how monitor it.
     - It is highly recommended to **wait all ongoing data transfer to finish or cancel inbound storage deals that 
       are still transferring**, using the `lotus-miner data-transfers cancel` command before upgrade your market nodes. Reason being that the new dagstore changes attributes in the internal deal state objects, and the paths to the staging CARs where the deal data was being placed will be lost.
+    - ‼️Having your dags initialized will become important in the near feature for you to provide a better storage
+          and retrieval service. We'd suggest you to start [forced bulk initialization] soon if possible as this process
+          places relatively high IP workload on your storage system and is better to be carried out gradually and over a
+          longer timeframe. Read how to do properly perform a force bulk initialization [here](https://docs.filecoin.io/mine/lotus/dagstore/#forcing-bulk-initialization).
     - ⏮ Rollback Alert(from v1.11.2-rcX to any version lower): If a storages deal is initiated with M1/v1.11.2(-rcX)
       release, it needs to get to the `StorageDealAwaitingPrecommit` state before you can do a version rollback or the markets process may panic.
   - 💙 **Special thanks to [MinerX fellows for testing and providing valuable feedbacks](https://github.com/filecoin-project/lotus/discussions/6852) for Dagstore in the past month!** 
