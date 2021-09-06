@@ -1,147 +1,151 @@
 # Lotus changelog
 
-# v1.11.2-rc2 / 2021-08-30
+# v1.11.2 / 2021-09-06
 
-This is the second release candidate for Lotus v1.11.2 release that includes a proof patch for v1.11.2-rc1.
-lotus v1.11.2 introduces dagstore and many deal-making and market subsystem improvements and new features along with other bug fixes. More detailed changelog will be provided later. One of the most exciting new features we are introducing is **[Dagstore](https://docs.filecoin.io/mine/lotus/dagstore/#conceptual-overview)**:
-- The dagstore is a component of the markets subsystem in lotus-miner. It is a sharded store to hold large IPLD graphs efficiently, packaged as location-transparent attachable CAR files and it replaces the former Badger staging blockstore. It is designed to provide high efficiency and throughput, and minimize resource utilization during deal-making operations.
-- You can read more about dagstore's concepts, terminolog and so on [here](https://docs.filecoin.io/mine/lotus/dagstore/#conceptual-overview).
-- **Note**:**When you first start your lotus-miner or market subsystem with this release, a one-time/first-time dagstore migration will be triggered**. Read this [section](https://docs.filecoin.io/mine/lotus/dagstore/#first-time-migration) to learn what the process does, what to expect and how monitor it.
-  - That being said, few things to note:
-    -  it is highly recommended to **wait all ongoing data transfer to finish or cancel inbound storage deals that are still transferring**, using the `lotus-miner data-transfers cancel` command before upgrade your market nodes. Reason being that the new dagstore changes attributes in the internal deal state objects, and the paths to the staging CARs where the deal data was being placed will be lost. 
-    - Rollback Alert(from v1.11.2-rcX to any version lower): If a storage deal is initiated with M1/v1.11.2 release, it needs to get to the `StorageDealAwaitingPrecommit` state before the you can do a version rollback or the markets process may panic. 
+lotus v1.11.2 is a feature release that's **highly recommend ALL lotus users to upgrade**, including node operators, 
+storage providers and clients. 
 
-## Changelog
-- github.com/filecoin-project/lotus:
-  - bump the version
-  - update ffi to b4e4271db8f6e961934cd6ffff44fda3c610b9c0 per #7207
-  - upgrade go-data-transfer; propagate deal cancellations.
-  - Fix typos
-  - Apply suggestions from code review
-  - Update CHANGELOG.md
-  - fix docsgen
-  - lotus v1.11.2-rc prep
-  -  Update markets, dt and graphsync ([filecoin-project/lotus#7160](https://github.com/filecoin-project/lotus/pull/7160))
-  - sealing: Fix RecoverDealIDs loop with changed PieceCID ([filecoin-project/lotus#7117](https://github.com/filecoin-project/lotus/pull/7117))
-  - api/command for encoding actor params ([filecoin-project/lotus#7150](https://github.com/filecoin-project/lotus/pull/7150))
-  - Fix nits and see if codecov works now with auto ([filecoin-project/lotus#7151](https://github.com/filecoin-project/lotus/pull/7151))
-  - Codecov Projects ([filecoin-project/lotus#7147](https://github.com/filecoin-project/lotus/pull/7147))
-  - shed: Support raw encoding in cid id ([filecoin-project/lotus#7149](https://github.com/filecoin-project/lotus/pull/7149))
-  - rpcenc: Support reader redirect  ([filecoin-project/lotus#6952](https://github.com/filecoin-project/lotus/pull/6952))
-  - Fix error handling in SectorAddPieceToAny api impl ([filecoin-project/lotus#7135](https://github.com/filecoin-project/lotus/pull/7135))
-  - add rice box to required binaries ([filecoin-project/lotus#7125](https://github.com/filecoin-project/lotus/pull/7125))
-  - remove m1 templates and make area selection multi-optionable ([filecoin-project/lotus#7121](https://github.com/filecoin-project/lotus/pull/7121))
-  - upgrade upstream dependencies. ([filecoin-project/lotus#7115](https://github.com/filecoin-project/lotus/pull/7115))
-  - Remove replace directive for multihash dep (#7113) ([filecoin-project/lotus#7113](https://github.com/filecoin-project/lotus/pull/7113))
-  - Update to latest FFI ([filecoin-project/lotus#7110](https://github.com/filecoin-project/lotus/pull/7110))
-  - release -> master ([filecoin-project/lotus#7105](https://github.com/filecoin-project/lotus/pull/7105))
-  - fix(miner): always create miner deal staging directory (#7098) ([filecoin-project/lotus#7098](https://github.com/filecoin-project/lotus/pull/7098))
-  - integrate DAG store and CARv2 in deal-making (#6671) ([filecoin-project/lotus#6671](https://github.com/filecoin-project/lotus/pull/6671))
-  - fix build after merging #6097. (#7096) ([filecoin-project/lotus#7096](https://github.com/filecoin-project/lotus/pull/7096))
-  - feat(miner deals): create subdir to miner repo for staged deals ([filecoin-project/lotus#6853](https://github.com/filecoin-project/lotus/pull/6853))
-  - Extending sectors: more practical and flexible tools ([filecoin-project/lotus#6097](https://github.com/filecoin-project/lotus/pull/6097))
-  -  ([filecoin-project/lotus#7088](https://github.com/filecoin-project/lotus/pull/7088))
-  - Lotus release process  - how we make releases ([filecoin-project/lotus#6944](https://github.com/filecoin-project/lotus/pull/6944))
-  - Strict major minor version checking on v0 and v1 apis ([filecoin-project/lotus#7038](https://github.com/filecoin-project/lotus/pull/7038))
-  -  ([filecoin-project/lotus#7042](https://github.com/filecoin-project/lotus/pull/7042))
-  - Test with latest actors version ([filecoin-project/lotus#6998](https://github.com/filecoin-project/lotus/pull/6998))
-  - codecov: fix mock name ([filecoin-project/lotus#7039](https://github.com/filecoin-project/lotus/pull/7039))
-  - codecov: fix regexes ([filecoin-project/lotus#7037](https://github.com/filecoin-project/lotus/pull/7037))
-  - Magically increase code coverage ([filecoin-project/lotus#7036](https://github.com/filecoin-project/lotus/pull/7036))
-  - fix: don't check for t_aux when proving ([filecoin-project/lotus#7011](https://github.com/filecoin-project/lotus/pull/7011))
-  - Support --actor in miner actor control list ([filecoin-project/lotus#7027](https://github.com/filecoin-project/lotus/pull/7027))
-  - PreCommitPolicy: Don't try to align expirations on proving period boundaries ([filecoin-project/lotus#7018](https://github.com/filecoin-project/lotus/pull/7018))
-  - revert pricelist by version to pricelist by epoch ([filecoin-project/lotus#7022](https://github.com/filecoin-project/lotus/pull/7022))
-  - Shed: Include network name in genesis-verify ([filecoin-project/lotus#7019](https://github.com/filecoin-project/lotus/pull/7019))
-  - Dont panic if input is bad ([filecoin-project/lotus#7007](https://github.com/filecoin-project/lotus/pull/7007))
-  - Reduce splitstore memory usage during chain walks ([filecoin-project/lotus#6949](https://github.com/filecoin-project/lotus/pull/6949))
-  - fix: vet actors shims ([filecoin-project/lotus#6999](https://github.com/filecoin-project/lotus/pull/6999))
-  - fix: more logging in maybeStartBatch error ([filecoin-project/lotus#6996](https://github.com/filecoin-project/lotus/pull/6996))
-  - fix flaky TestDealPublisher and re-enable ([filecoin-project/lotus#6991](https://github.com/filecoin-project/lotus/pull/6991))
-  - feat: add ChainGetTipSetAfterHeight ([filecoin-project/lotus#6990](https://github.com/filecoin-project/lotus/pull/6990))
-  - Remove forgotten non-functioning config from the pre-mainnet days ([filecoin-project/lotus#6970](https://github.com/filecoin-project/lotus/pull/6970))
-  - lotus-shed splitstore clear command ([filecoin-project/lotus#6967](https://github.com/filecoin-project/lotus/pull/6967))
-  - add explicit error msg if repo dir does not exist ([filecoin-project/lotus#6909](https://github.com/filecoin-project/lotus/pull/6909))
-  - update go-libp2p-pubsub to v0.5.4 ([filecoin-project/lotus#6958](https://github.com/filecoin-project/lotus/pull/6958))
-  - chore: disable flaky test ([filecoin-project/lotus#6957](https://github.com/filecoin-project/lotus/pull/6957))
-  - Test/pledge batching msg prop ([filecoin-project/lotus#6537](https://github.com/filecoin-project/lotus/pull/6537))
-  - set buildtype in nerpa and butterfly ([filecoin-project/lotus#6085](https://github.com/filecoin-project/lotus/pull/6085))
-  - reasonable max value for initial sector expiration ([filecoin-project/lotus#6099](https://github.com/filecoin-project/lotus/pull/6099))
-  - fix skipCount ([filecoin-project/lotus#6940](https://github.com/filecoin-project/lotus/pull/6940))
-  - fix bug in MpoolPending message exclusion ([filecoin-project/lotus#6945](https://github.com/filecoin-project/lotus/pull/6945))
-  - Improve formatting of workers CLI ([filecoin-project/lotus#6942](https://github.com/filecoin-project/lotus/pull/6942))
-  - support MARKETS_API_INFO env var, and markets-repo, markets-api-url CLI flags. ([filecoin-project/lotus#6936](https://github.com/filecoin-project/lotus/pull/6936))
-  - Update state machine deps for logging ([filecoin-project/lotus#6941](https://github.com/filecoin-project/lotus/pull/6941))
-  - Update deps for more logging in data transfer and markets ([filecoin-project/lotus#6937](https://github.com/filecoin-project/lotus/pull/6937))
-  - release v1.11.1 backport -> master ([filecoin-project/lotus#6929](https://github.com/filecoin-project/lotus/pull/6929))
-  - make: set default GOCC earlier ([filecoin-project/lotus#6932](https://github.com/filecoin-project/lotus/pull/6932))
-  - Moving GC Followup ([filecoin-project/lotus#6905](https://github.com/filecoin-project/lotus/pull/6905))
-  - PR #5109 + suggested fix ([filecoin-project/lotus#6927](https://github.com/filecoin-project/lotus/pull/6927))
-  - Log more call context during errors ([filecoin-project/lotus#6918](https://github.com/filecoin-project/lotus/pull/6918))
-  - make: fix version check when using gotip ([filecoin-project/lotus#6916](https://github.com/filecoin-project/lotus/pull/6916))
-  - polish(errors): better state tree errors ([filecoin-project/lotus#6923](https://github.com/filecoin-project/lotus/pull/6923))
-  - Update to branches with improved logging ([filecoin-project/lotus#6919](https://github.com/filecoin-project/lotus/pull/6919))
-  - adding an RuntimeSubsystems API to storage miner; fix `lotus-miner info` ([filecoin-project/lotus#6906](https://github.com/filecoin-project/lotus/pull/6906))
-  - fix ticket check ([filecoin-project/lotus#6882](https://github.com/filecoin-project/lotus/pull/6882))
-  - update go-libp2p-pubsub to v0.5.3 ([filecoin-project/lotus#6907](https://github.com/filecoin-project/lotus/pull/6907))
-  - Configurable CC Sector Expiration ([filecoin-project/lotus#6803](https://github.com/filecoin-project/lotus/pull/6803))
-  - Drop townhall/chainwatch ([filecoin-project/lotus#6912](https://github.com/filecoin-project/lotus/pull/6912))
-  - make: Allow setting Go compiler with GOCC ([filecoin-project/lotus#6911](https://github.com/filecoin-project/lotus/pull/6911))
-  - chore: fixup issue templates ([filecoin-project/lotus#6899](https://github.com/filecoin-project/lotus/pull/6899))
-  - bump master version to v1.11.2-dev ([filecoin-project/lotus#6903](https://github.com/filecoin-project/lotus/pull/6903))
-  - releases -> master for v1.11.0 ([filecoin-project/lotus#6894](https://github.com/filecoin-project/lotus/pull/6894))
-  - Reduce entropy in the chain package ([filecoin-project/lotus#6889](https://github.com/filecoin-project/lotus/pull/6889))
+## Highlights
+- 🌟🌟🌟 Introduce Dagstore and CARv2 for deal-making (#6671) ([filecoin-project/lotus#6671](https://github.
+  com/filecoin-project/lotus/pull/6671))
+  - **[lotus miner markets' Dagstore](https://docs.filecoin.io/mine/lotus/dagstore/#conceptual-overview)** is a 
+    component of the `markets` subsystem in lotus-miner. It is a sharded store to hold large IPLD graphs efficiently,
+    packaged as  location-transparent attachable CAR files and it replaces the former Badger staging blockstore. It 
+    is designed to provide high efficiency and throughput, and minimize resource utilization during deal-making operations.  
+    The dagstore also leverages the indexing features of [CARv2](https://github.com/ipld/ipld/blob/master/specs/transport/car/carv2/index.md) to enable plan CAR files to act as read and write 
+    blockstores, which are served as the direct medium for data exchanges in markets for both storage and retrieval 
+    deal making without requiring intermediate buffers.
+  - In the future, lotus will leverage and interact with Dagstore a lot for new features and improvements for deal 
+    making, therefore, it's highly recommended to lotus users to go through [Lotus Miner: About the markets dagstore](https://docs.filecoin.io/mine/lotus/dagstore/#conceptual-overview) thoroughly to learn more about Dagstore's 
+    conceptual overview, terminology, directory structure, configuration and so on.
+  - **Note**: 
+    - When you first start your lotus-miner or market subsystem with this release, a one-time/first-time **dagstore 
+      migration** will be triggered which replaces the former Badger staging blockstore with dagstore. We highly 
+      recommend storage providers to read this [section](https://docs.filecoin. io/mine/lotus/dagstore/#first-time-migration) to learn more about
+      what the process does, what to expect and how monitor it.
+    - It is highly recommended to **wait all ongoing data transfer to finish or cancel inbound storage deals that 
+      are still transferring**, using the `lotus-miner data-transfers cancel` command before upgrade your market nodes. Reason being that the new dagstore changes attributes in the internal deal state objects, and the paths to the staging CARs where the deal data was being placed will be lost.
+    - ⏮ Rollback Alert(from v1.11.2-rcX to any version lower): If a storages deal is initiated with M1/v1.11.2(-rcX)
+      release, it needs to get to the `StorageDealAwaitingPrecommit` state before you can do a version rollback or the markets process may panic.
+  - 💙 **Special thanks to [MinerX fellows for testing and providing valuable feedbacks](https://github.com/filecoin-project/lotus/discussions/6852) for Dagstore in the past month!** 
+- 🌟🌟 rpcenc: Support reader redirect ([filecoin-project/lotus#6952](https://github.com/filecoin-project/lotus/pull/6952))
+  - This allows market processes to send piece bytes directly to workers involved on `AddPiece`.
+- Extending sectors: more practical and flexible tools ([filecoin-project/lotus#6097](https://github.com/filecoin-project/lotus/pull/6097))
+    - `lotus-miner sectors check-expire` to inspect expiring sectors.
+    - `lotus-miner sectors renew` for renewing expiring sectors, see the command help menu for customizable option 
+      like `extension`, `new-expiration` and so on.
+- ‼️ MpoolReplaceCmd ( lotus mpool replace`) now takes FIL for fee-limit ([filecoin-project/lotus#6927](https://github.com/filecoin-project/lotus/pull/6927))
+- Drop townhall/chainwatch ([filecoin-project/lotus#6912](https://github.com/filecoin-project/lotus/pull/6912))
+    - ChainWatch is no longer supported by lotus.
+- Configurable CC Sector Expiration ([filecoin-project/lotus#6803](https://github.com/filecoin-project/lotus/pull/6803))
+    - Set `CommittedCapacitySectorLifetime` in lotus-miner/config.toml to specify the default expiration for a new CC 
+      sector, value must be between 180-540 days inclusive.
+
+## New Features
+- api/command for encoding actor params ([filecoin-project/lotus#7150](https://github.com/filecoin-project/lotus/pull/7150))
+- shed: Support raw encoding in cid id ([filecoin-project/lotus#7149](https://github.com/filecoin-project/lotus/pull/7149))
+- feat(miner deals): create subdir to miner repo for staged deals ([filecoin-project/lotus#6853](https://github.com/filecoin-project/lotus/pull/6853))
+- Support --actor in miner actor control list ([filecoin-project/lotus#7027](https://github.com/filecoin-project/lotus/pull/7027))
+- Shed: Include network name in genesis-verify ([filecoin-project/lotus#7019](https://github.com/filecoin-project/lotus/pull/7019))
+- feat: add ChainGetTipSetAfterHeight ([filecoin-project/lotus#6990](https://github.com/filecoin-project/lotus/pull/6990))
+- lotus-shed splitstore clear command ([filecoin-project/lotus#6967](https://github.com/filecoin-project/lotus/pull/6967))
+
+## Improvements
+- improve get api error messages ([filecoin-project/lotus#7088](https://github.com/filecoin-project/lotus/pull/7088))
+- Strict major minor version checking on v0 and v1 apis ([filecoin-project/lotus#7038](https://github.com/filecoin-project/lotus/pull/7038))
+- make lotus-miner net commands hit markets subsystem. ([filecoin-project/lotus#7042](https://github.com/filecoin-project/lotus/pull/7042))
+- Test with latest actors version ([filecoin-project/lotus#6998](https://github.com/filecoin-project/lotus/pull/6998))
+- Reduce splitstore memory usage during chain walks ([filecoin-project/lotus#6949](https://github.com/filecoin-project/lotus/pull/6949))
+- Remove forgotten non-functioning config from the pre-mainnet days ([filecoin-project/lotus#6970](https://github.com/filecoin-project/lotus/pull/6970))
+- add explicit error msg if repo dir does not exist ([filecoin-project/lotus#6909](https://github.com/filecoin-project/lotus/pull/6909))
+- Test/pledge batching msg prop ([filecoin-project/lotus#6537](https://github.com/filecoin-project/lotus/pull/6537))
+- reasonable max value for initial sector expiration ([filecoin-project/lotus#6099](https://github.com/filecoin-project/lotus/pull/6099))
+- support MARKETS_API_INFO env var, and markets-repo, markets-api-url CLI flags. ([filecoin-project/lotus#6936](https://github.com/filecoin-project/lotus/pull/6936))
+- Improve formatting of workers CLI ([filecoin-project/lotus#6942](https://github.com/filecoin-project/lotus/pull/6942))
+- make: set default GOCC earlier ([filecoin-project/lotus#6932](https://github.com/filecoin-project/lotus/pull/6932))
+- Moving GC Followup ([filecoin-project/lotus#6905](https://github.com/filecoin-project/lotus/pull/6905))
+- Log more call context during errors ([filecoin-project/lotus#6918](https://github.com/filecoin-project/lotus/pull/6918))
+- polish(errors): better state tree errors ([filecoin-project/lotus#6923](https://github.com/filecoin-project/lotus/pull/6923))
+- adding an RuntimeSubsystems API to storage miner; fix `lotus-miner info` ([filecoin-project/lotus#6906](https://github.com/filecoin-project/lotus/pull/6906))
+- Reduce entropy in the chain package ([filecoin-project/lotus#6889](https://github.com/filecoin-project/lotus/pull/6889))
+- make: Allow setting Go compiler with GOCC ([filecoin-project/lotus#6911](https://github.com/filecoin-project/lotus/pull/6911))
+
+## Bug Fixes
+- sealing: Fix RecoverDealIDs loop with changed PieceCID ([filecoin-project/lotus#7117](https://github.com/filecoin-project/lotus/pull/7117))
+- Fix error handling in SectorAddPieceToAny api impl ([filecoin-project/lotus#7135](https://github.com/filecoin-project/lotus/pull/7135))
+- add rice box to required binaries ([filecoin-project/lotus#7125](https://github.com/filecoin-project/lotus/pull/7125))
+- fix(miner): always create miner deal staging directory (#7098) ([filecoin-project/lotus#7098](https://github.com/filecoin-project/lotus/pull/7098))
+- fix build after merging #6097. (#7096) ([filecoin-project/lotus#7096](https://github.com/filecoin-project/lotus/pull/7096))
+- fix: don't check for t_aux when proving ([filecoin-project/lotus#7011](https://github.com/filecoin-project/lotus/pull/7011))
+- fix: vet actors shims ([filecoin-project/lotus#6999](https://github.com/filecoin-project/lotus/pull/6999))
+- fix: more logging in maybeStartBatch error ([filecoin-project/lotus#6996](https://github.com/filecoin-project/lotus/pull/6996))
+- fix flaky TestDealPublisher and re-enable ([filecoin-project/lotus#6991](https://github.com/filecoin-project/lotus/pull/6991))
+- fix skipCount ([filecoin-project/lotus#6940](https://github.com/filecoin-project/lotus/pull/6940))
+- fix bug in MpoolPending message exclusion ([filecoin-project/lotus#6945](https://github.com/filecoin-project/lotus/pull/6945))
+- PreCommitPolicy: Don't try to align expirations on proving period boundaries ([filecoin-project/lotus#7018](https://github.com/filecoin-project/lotus/pull/7018))
+- make: fix version check when using gotip ([filecoin-project/lotus#6916](https://github.com/filecoin-project/lotus/pull/6916))
+- fix ticket check ([filecoin-project/lotus#6882](https://github.com/filecoin-project/lotus/pull/6882))
+
+## Dependency Updates
 - github.com/filecoin-project/go-data-transfer (v1.7.2 -> v1.7.8):
-  - send cancel async (#245) ([filecoin-project/go-data-transfer#245](https://github.com/filecoin-project/go-data-transfer/pull/245))
-  - release: v1.7.7 ([filecoin-project/go-data-transfer#242](https://github.com/filecoin-project/go-data-transfer/pull/242))
-  - reduce channel monitor log verbosity (#241) ([filecoin-project/go-data-transfer#241](https://github.com/filecoin-project/go-data-transfer/pull/241))
-  - release: v1.7.6 ([filecoin-project/go-data-transfer#239](https://github.com/filecoin-project/go-data-transfer/pull/239))
-  - feat: improve graphsync transport logging (#238) ([filecoin-project/go-data-transfer#238](https://github.com/filecoin-project/go-data-transfer/pull/238))
-  - Log completion message flow (#236) ([filecoin-project/go-data-transfer#236](https://github.com/filecoin-project/go-data-transfer/pull/236))
-  - Handle data-sent and data-queued events in the TransferFinished state (#233) ([filecoin-project/go-data-transfer#233](https://github.com/filecoin-project/go-data-transfer/pull/233))
-  - Log closing of completion channel (#232) ([filecoin-project/go-data-transfer#232](https://github.com/filecoin-project/go-data-transfer/pull/232))
-  - fix log statement. (#230) ([filecoin-project/go-data-transfer#230](https://github.com/filecoin-project/go-data-transfer/pull/230))
-  - Simplify graphsync cancel (#229) ([filecoin-project/go-data-transfer#229](https://github.com/filecoin-project/go-data-transfer/pull/229))
 - github.com/filecoin-project/go-fil-markets (v1.6.2 -> v1.8.1):
-  - Update data-transfer and graphsync (#611) ([filecoin-project/go-fil-markets#611](https://github.com/filecoin-project/go-fil-markets/pull/611))
-  - close file descriptors + log piece handoff to sealing subsystem (#609) ([filecoin-project/go-fil-markets#609](https://github.com/filecoin-project/go-fil-markets/pull/609))
-  - release: v1.8.0. (#605) ([filecoin-project/go-fil-markets#605](https://github.com/filecoin-project/go-fil-markets/pull/605))
-  - Revert "refactor: pass deal proposal instead of deal ID to OnDealExpiredOrSlashed (#476)" (#604) ([filecoin-project/go-fil-markets#604](https://github.com/filecoin-project/go-fil-markets/pull/604))
-  - migrate to DAG store + CARv2 blockstores for storage and retrieval (#576) ([filecoin-project/go-fil-markets#576](https://github.com/filecoin-project/go-fil-markets/pull/576))
-  - release: 1.7.0 (#597) ([filecoin-project/go-fil-markets#597](https://github.com/filecoin-project/go-fil-markets/pull/597))
-  - refactor: pass deal proposal instead of deal ID to OnDealExpiredOrSlashed (#476) ([filecoin-project/go-fil-markets#476](https://github.com/filecoin-project/go-fil-markets/pull/476))
+- update go-libp2p-pubsub to v0.5.4 ([filecoin-project/lotus#6958](https://github.com/filecoin-project/lotus/pull/6958))
+- integrate the proof patch: tag proofs-v9-revert-deps-hotfix
+- Update markets, dt and graphsync ([filecoin-project/lotus#7160](https://github.com/filecoin-project/lotus/pull/7160))
+- Remove replace directive for multihash dep (#7113) ([filecoin-project/lotus#7113](https://github.com/filecoin-project/lotus/pull/7113))
+- upgrade upstream dependencies. ([filecoin-project/lotus#7115](https://github.com/filecoin-project/lotus/pull/7115))
+- Update to latest FFI ([filecoin-project/lotus#7110](https://github.com/filecoin-project/lotus/pull/7110))
+- Update state machine deps for logging ([filecoin-project/lotus#6941](https://github.com/filecoin-project/lotus/pull/6941))
+- Update deps for more logging in data transfer and markets ([filecoin-project/lotus#6937](https://github.com/filecoin-project/lotus/pull/6937))
+- Update to branches with improved logging ([filecoin-project/lotus#6919](https://github.com/filecoin-project/lotus/pull/6919))
+- update go-libp2p-pubsub to v0.5.3 ([filecoin-project/lotus#6907](https://github.com/filecoin-project/lotus/pull/6907))
+
+## Others
+- Fix nits and see if codecov works now with auto ([filecoin-project/lotus#7151](https://github.com/filecoin-project/lotus/pull/7151))
+- Codecov Projects ([filecoin-project/lotus#7147](https://github.com/filecoin-project/lotus/pull/7147))
+- remove m1 templates and make area selection multi-optionable ([filecoin-project/lotus#7121](https://github.com/filecoin-project/lotus/pull/7121))
+- release -> master ([filecoin-project/lotus#7105](https://github.com/filecoin-project/lotus/pull/7105))
+- Lotus release process  - how we make releases ([filecoin-project/lotus#6944](https://github.com/filecoin-project/lotus/pull/6944))
+- codecov: fix mock name ([filecoin-project/lotus#7039](https://github.com/filecoin-project/lotus/pull/7039))  
+- codecov: fix regexes ([filecoin-project/lotus#7037](https://github.com/filecoin-project/lotus/pull/7037))
+- chore: disable flaky test ([filecoin-project/lotus#6957](https://github.com/filecoin-project/lotus/pull/6957))  
+- set buildtype in nerpa and butterfly ([filecoin-project/lotus#6085](https://github.com/filecoin-project/lotus/pull/6085))  
+- release v1.11.1 backport -> master ([filecoin-project/lotus#6929](https://github.com/filecoin-project/lotus/pull/6929))
+- chore: fixup issue templates ([filecoin-project/lotus#6899](https://github.com/filecoin-project/lotus/pull/6899))
+- bump master version to v1.11.2-dev ([filecoin-project/lotus#6903](https://github.com/filecoin-project/lotus/pull/6903))
+- releases -> master for v1.11.0 ([filecoin-project/lotus#6894](https://github.com/filecoin-project/lotus/pull/6894))
+
 
 Contributors
 
 | Contributor | Commits | Lines ± | Files Changed |
 |-------------|---------|---------|---------------|
-| Łukasz Magiera | 23 | +5040/-8389 | 114 |
-| Aarsh Shah | 11 | +4859/-1078 | 101 |
-| raulk | 5 | +4170/-1662 | 104 |
-| vyzo | 30 | +1092/-702 | 49 |
-| Anton Evangelatov | 6 | +630/-472 | 19 |
-| ZenGround0 | 31 | +556/-274 | 74 |
-| He Weidong | 16 | +680/-128 | 16 |
-| Raúl Kripalani | 16 | +444/-277 | 49 |
-| Steven Allen | 11 | +403/-259 | 48 |
-| Jennifer Wang | 11 | +231/-257 | 31 |
-| dirkmc | 5 | +204/-138 | 20 |
-| Mike Greenberg | 7 | +178/-77 | 17 |
-| Dragan Z | 1 | +138/-0 | 1 |
-| Frrist | 1 | +63/-56 | 2 |
-| Aayush Rajasekaran | 7 | +74/-42 | 13 |
-| frrist | 2 | +67/-6 | 6 |
-| hannahhoward | 2 | +13/-11 | 3 |
-| Cory Schwartz | 1 | +16/-6 | 3 |
-| whyrusleeping | 1 | +7/-7 | 1 |
-| hunjixin | 1 | +8/-6 | 1 |
-| aarshkshah1992 | 1 | +6/-6 | 2 |
-| Dirk McCormick | 2 | +8/-0 | 2 |
-| mx | 2 | +6/-1 | 2 |
-| Travis Person | 1 | +3/-2 | 1 |
-| Jiaying Wang | 2 | +2/-2 | 2 |
-| Peter Rabbitson | 1 | +1/-2 | 2 |
-
+| @magik6k | 23 | +5040/-8389 | 114 |
+| @aarshkshah1992 | 11 | +4859/-1078 | 101 |
+| @raulk | 5 | +4170/-1662 | 104 |
+| @vyzo | 30 | +1092/-702 | 49 |
+| @nonsense | 6 | +630/-472 | 19 |
+| @ZenGround0 | 31 | +556/-274 | 74 |
+| @He Weidong | 16 | +680/-128 | 16 |
+| @raulk | 16 | +444/-277 | 49 |
+| @Stebalien | 11 | +403/-259 | 48 |
+| @jennijuju| 17 | +276/-281 | 42 |
+| @dirkmc | 5 | +204/-138 | 20 |
+| @placer14 | 7 | +178/-77 | 17 |
+| @BlocksOnAChain | 1 | +138/-0 | 1 |
+| @Frrist | 1 | +63/-56 | 2 |
+| @arajasek | 7 | +74/-42 | 13 |
+| @frrist | 2 | +67/-6 | 6 |
+| @hannahhoward | 2 | +13/-11 | 3 |
+| @coryschwartz | 1 | +16/-6 | 3 |
+| @whyrusleeping | 1 | +7/-7 | 1 |
+| @hunjixin | 1 | +8/-6 | 1 |
+| @aarshkshah1992 | 1 | +6/-6 | 2 |
+| @dirkmc | 2 | +8/-0 | 2 |
+| @mx | 2 | +6/-1 | 2 |
+| @travisperson | 1 | +3/-2 | 1 |
+| @jennijuju | 2 | +2/-2 | 2 |
+| @ribasushi | 1 | +1/-2 | 2 |
 
 # 1.11.1 / 2021-08-16
 
