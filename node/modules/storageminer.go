@@ -542,9 +542,8 @@ func BasicDealFilter(cfg config.DealmakingConfig, user dtypes.StorageDealFilter)
 				return false, "miner error", err
 			}
 
-			diskUsageGiB := diskUsageBytes / 1024 / 1024 / 1024
-			if cfg.MaxStagingDealsGiB != 0 && diskUsageGiB >= cfg.MaxStagingDealsGiB {
-				log.Errorw("proposed deal rejected because there are too many deals in the staging area at the moment", "MaxStagingDealsGiB", cfg.MaxStagingDealsGiB, "DiskUsageGiB", diskUsageGiB)
+			if cfg.MaxStagingDealsBytes != 0 && diskUsageBytes >= cfg.MaxStagingDealsBytes {
+				log.Errorw("proposed deal rejected because there are too many deals in the staging area at the moment", "MaxStagingDealsBytes", cfg.MaxStagingDealsBytes, "DiskUsageBytes", diskUsageBytes)
 				return false, "cannot accept deal as miner is overloaded at the moment - there are too many staging deals being processed", nil
 			}
 

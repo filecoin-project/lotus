@@ -253,11 +253,11 @@ message`,
 as a multiplier of the minimum collateral bound`,
 		},
 		{
-			Name: "MaxStagingDealsGiB",
+			Name: "MaxStagingDealsBytes",
 			Type: "int64",
 
-			Comment: `The maximum size of staging deals not yet passed to the sealing node,
-that the markets service can accept`,
+			Comment: `The maximum allowed disk usage size in bytes of staging deals not yet
+passed to the sealing node by the markets service`,
 		},
 		{
 			Name: "SimultaneousTransfers",
