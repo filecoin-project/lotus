@@ -442,14 +442,16 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi v1api.FullNode, ds dtypes.Metada
 		storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
 }
 
-func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
+func BasicDealFilter(cfg config.DealmakingConfig, user dtypes.StorageDealFilter) func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
 	offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
 	verifiedOk dtypes.ConsiderVerifiedStorageDealsConfigFunc,
 	unverifiedOk dtypes.ConsiderUnverifiedStorageDealsConfigFunc,
 	blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
 	expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc,
 	startDelay dtypes.GetMaxDealStartDelayFunc,
-	spn storagemarket.StorageProviderNode) dtypes.StorageDealFilter {
+	spn storagemarket.StorageProviderNode,
+	r repo.LockedRepo,
+) dtypes.StorageDealFilter {
 	return func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
 		offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
 		verifiedOk dtypes.ConsiderVerifiedStorageDealsConfigFunc,
@@ -457,7 +459,9 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 		blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
 		expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc,
 		startDelay dtypes.GetMaxDealStartDelayFunc,
-		spn storagemarket.StorageProviderNode) dtypes.StorageDealFilter {
+		spn storagemarket.StorageProviderNode,
+		r repo.LockedRepo,
+	) dtypes.StorageDealFilter {
 
 		return func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error) {
 			b, err := onlineOk()
@@ -531,6 +535,17 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 			sd, err := startDelay()
 			if err != nil {
 				return false, "miner error", err
+			}
+
+			diskUsageBytes, err := r.DiskUsage(r.Path() + "/deal-staging")
+			if err != nil {
+				return false, "miner error", err
+			}
+
+			diskUsageGiB := diskUsageBytes / 1024 / 1024 / 1024
+			if cfg.MaxStagingDealsGiB != 0 && diskUsageGiB >= cfg.MaxStagingDealsGiB {
+				log.Errorw("proposed deal rejected because there are too many deals in the staging area at the moment", "MaxStagingDealsGiB", cfg.MaxStagingDealsGiB, "DiskUsageGiB", diskUsageGiB)
+				return false, "cannot accept deal as miner is overloaded at the moment - there are too many staging deals being processed", nil
 			}
 
 			// Reject if it's more than 7 days in the future

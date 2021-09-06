@@ -253,6 +253,13 @@ message`,
 as a multiplier of the minimum collateral bound`,
 		},
 		{
+			Name: "MaxStagingDealsGiB",
+			Type: "int64",
+
+			Comment: `The maximum size of staging deals not yet passed to the sealing node,
+that the markets service can accept`,
+		},
+		{
 			Name: "SimultaneousTransfers",
 			Type: "uint64",
 
