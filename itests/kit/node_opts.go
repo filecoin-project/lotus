@@ -27,11 +27,12 @@ type nodeOpts struct {
 	ownerKey      *wallet.Key
 	extraNodeOpts []node.Option
 
-	subsystems    MinerSubsystem
-	mainMiner     *TestMiner
-	disableLibp2p bool
-	optBuilders   []OptBuilder
-	sectorSize    abi.SectorSize
+	subsystems           MinerSubsystem
+	mainMiner            *TestMiner
+	disableLibp2p        bool
+	optBuilders          []OptBuilder
+	sectorSize           abi.SectorSize
+	maxStagingDealsBytes int64
 }
 
 // DefaultNodeOpts are the default options that will be applied to test nodes.
@@ -64,6 +65,13 @@ func WithSubsystems(systems ...MinerSubsystem) NodeOpt {
 		for _, s := range systems {
 			opts.subsystems = opts.subsystems.Add(s)
 		}
+		return nil
+	}
+}
+
+func WithMaxStagingDealsBytes(size int64) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.maxStagingDealsBytes = size
 		return nil
 	}
 }

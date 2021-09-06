@@ -165,7 +165,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			// Markets (storage)
 			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
 			Override(new(*storedask.StoredAsk), modules.NewStorageAsk),
-			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(nil)),
+			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(cfg.Dealmaking, nil)),
 			Override(new(storagemarket.StorageProvider), modules.StorageProvider),
 			Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{})),
 			Override(HandleMigrateProviderFundsKey, modules.HandleMigrateProviderFunds),
@@ -192,7 +192,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(dtypes.GetMaxDealStartDelayFunc), modules.NewGetMaxDealStartDelayFunc),
 
 			If(cfg.Dealmaking.Filter != "",
-				Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(dealfilter.CliStorageDealFilter(cfg.Dealmaking.Filter))),
+				Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(cfg.Dealmaking, dealfilter.CliStorageDealFilter(cfg.Dealmaking.Filter))),
 			),
 
 			If(cfg.Dealmaking.RetrievalFilter != "",
