@@ -26,7 +26,7 @@ var piecesListPiecesCmd = &cli.Command{
 	Name:  "list-pieces",
 	Usage: "list registered pieces",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -49,7 +49,7 @@ var piecesListCidInfosCmd = &cli.Command{
 	Name:  "list-cids",
 	Usage: "list registered payload CIDs",
 	Action: func(cctx *cli.Context) error {
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -76,7 +76,7 @@ var piecesInfoCmd = &cli.Command{
 			return lcli.ShowHelp(cctx, fmt.Errorf("must specify piece cid"))
 		}
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -111,7 +111,7 @@ var piecesCidInfoCmd = &cli.Command{
 			return lcli.ShowHelp(cctx, fmt.Errorf("must specify payload cid"))
 		}
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		nodeApi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
 		}

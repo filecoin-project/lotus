@@ -66,6 +66,8 @@ func init() {
 	//miner.WPoStChallengeLookback = abi.ChainEpoch(2)
 
 	Devnet = false
+
+	BuildType = BuildNerpanet
 }
 
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)

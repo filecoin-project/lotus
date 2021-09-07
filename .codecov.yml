@@ -1,19 +1,57 @@
-comment: off
-ignore:
-  - "**/cbor_gen.go"
-  - "api/test/**/*"
-  - "api/test/*"
-  - "gen/**/*"
-  - "gen/*"
-  - "cmd/lotus-shed/*"
-  - "cmd/tvx/*"
-  - "cmd/lotus-pcr/*"
-  - "cmd/tvx/*"
-  - "cmd/lotus-chainwatch/*"
-  - "cmd/lotus-health/*"
-  - "cmd/lotus-fountain/*"
-  - "cmd/lotus-townhall/*"
-  - "cmd/lotus-stats/*"
-  - "cmd/lotus-pcr/*"
-github_checks:
-  annotations: false
+coverage:
+  status:
+    project:
+      tools-and-tests:
+        target: auto
+        threshold: 0.5%
+        informational: true
+        paths:
+          - "testplans"
+          - "tools"
+          - "system"
+          - "snap"
+          - "lotuspond"
+          - "conformance"
+          - "scripts"
+          - "gen"
+          - "build"
+      markets: 
+        target: auto
+        threshold: 0.5%
+        informational: false        
+        paths: 
+          - "markets"
+          - "paychmgr"
+      miner: 
+        target: auto
+        threshold: 0.5%
+        informational: false       
+        paths: 
+          - "miner"
+          - "storage"
+      chain:
+        target: auto
+        threshold: 0.5%
+        informational: false
+        paths:
+          - "chain"
+      node: 
+        target: auto
+        threshold: 0.5%
+        informational: false
+        paths: 
+          - "node"
+          - "blockstore"
+          - "metrics"
+          - "lib"
+          - "genesis"
+          - "gateway"
+          - "api"
+          - "journal"
+      cli: 
+        target: auto
+        threshold: 0.5%
+        informational: true
+        paths: 
+          - "cli"
+          - "cmd"

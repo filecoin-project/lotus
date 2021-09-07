@@ -467,10 +467,12 @@ func (s *state3) EraseAllUnproven() error {
 
 		return dls.UpdateDeadline(s.store, dindx, dl)
 	})
+	if err != nil {
+		return err
+	}
 
 	return s.State.SaveDeadlines(s.store, dls)
 
-	return nil
 }
 
 func (d *deadline3) LoadPartition(idx uint64) (Partition, error) {

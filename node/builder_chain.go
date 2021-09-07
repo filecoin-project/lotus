@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/messagesigner"
-	"github.com/filecoin-project/lotus/chain/metrics"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	rpcstmgr "github.com/filecoin-project/lotus/chain/stmgr/rpc"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -113,12 +112,14 @@ var ChainNode = Options(
 
 	// Markets (retrieval)
 	Override(new(discovery.PeerResolver), modules.RetrievalResolver),
+	Override(new(retrievalmarket.BlockstoreAccessor), modules.RetrievalBlockstoreAccessor),
 	Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient),
 	Override(new(dtypes.ClientDataTransfer), modules.NewClientGraphsyncDataTransfer),
 
 	// Markets (storage)
 	Override(new(*market.FundManager), market.NewFundManager),
 	Override(new(dtypes.ClientDatastore), modules.NewClientDatastore),
+	Override(new(storagemarket.BlockstoreAccessor), modules.StorageBlockstoreAccessor),
 	Override(new(storagemarket.StorageClient), modules.StorageClient),
 	Override(new(storagemarket.StorageClientNode), storageadapter.NewClientNodeAdapter),
 	Override(HandleMigrateClientFundsKey, modules.HandleMigrateClientFunds),
@@ -168,15 +169,12 @@ func ConfigFullNode(c interface{}) Option {
 
 		If(cfg.Client.UseIpfs,
 			Override(new(dtypes.ClientBlockstore), modules.IpfsClientBlockstore(ipfsMaddr, cfg.Client.IpfsOnlineMode)),
+			Override(new(storagemarket.BlockstoreAccessor), modules.IpfsStorageBlockstoreAccessor),
 			If(cfg.Client.IpfsUseForRetrieval,
-				Override(new(dtypes.ClientRetrievalStoreManager), modules.ClientBlockstoreRetrievalStoreManager),
+				Override(new(retrievalmarket.BlockstoreAccessor), modules.IpfsRetrievalBlockstoreAccessor),
 			),
 		),
 		Override(new(dtypes.Graphsync), modules.Graphsync(cfg.Client.SimultaneousTransfers)),
-
-		If(cfg.Metrics.HeadNotifs,
-			Override(HeadMetricsKey, metrics.SendHeadNotifs(cfg.Metrics.Nickname)),
-		),
 
 		If(cfg.Wallet.RemoteBackend != "",
 			Override(new(*remotewallet.RemoteWallet), remotewallet.SetupRemoteWallet(cfg.Wallet.RemoteBackend)),

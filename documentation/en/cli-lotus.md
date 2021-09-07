@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.11.1
+   1.11.2
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -1531,7 +1531,7 @@ OPTIONS:
    --gas-premium value  gas price for new message (pay to miner, attoFIL/GasUnit)
    --gas-limit value    gas limit for new message (GasUnit) (default: 0)
    --auto               automatically reprice the specified message (default: false)
-   --max-fee value      Spend up to X attoFIL for this message (applicable for auto mode)
+   --fee-limit max-fee  Spend up to X FIL for this message in units of FIL. Previously when flag was max-fee units were in attoFIL. Applicable for auto mode
    --help, -h           show help (default: false)
    
 ```
@@ -2297,11 +2297,12 @@ NAME:
    lotus chain encode params - Encodes the given JSON params
 
 USAGE:
-   lotus chain encode params [command options] [toAddr method params]
+   lotus chain encode params [command options] [dest method params]
 
 OPTIONS:
    --tipset value    
    --encoding value  specify input encoding to parse (default: "base64")
+   --to-code         interpret dest as code CID instead of as address (default: false)
    --help, -h        show help (default: false)
    
 ```

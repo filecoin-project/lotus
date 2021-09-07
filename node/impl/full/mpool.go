@@ -84,9 +84,10 @@ func (a *MpoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*ty
 			if mpts.Equals(ts) {
 				return pending, nil
 			}
-			// different blocks in tipsets
 
-			have, err := a.Mpool.MessagesForBlocks(ts.Blocks())
+			// different blocks in tipsets of the same height
+			// we exclude messages that have been included in blocks in the mpool tipset
+			have, err := a.Mpool.MessagesForBlocks(mpts.Blocks())
 			if err != nil {
 				return nil, xerrors.Errorf("getting messages for base ts: %w", err)
 			}

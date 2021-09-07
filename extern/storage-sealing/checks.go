@@ -93,27 +93,29 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 		return &ErrBadCommD{xerrors.Errorf("on chain CommD differs from sector: %s != %s", commD, si.CommD)}
 	}
 
-	ticketEarliest := height - policy.MaxPreCommitRandomnessLookback
-
-	if si.TicketEpoch < ticketEarliest {
-		return &ErrExpiredTicket{xerrors.Errorf("ticket expired: seal height: %d, head: %d", si.TicketEpoch+policy.SealRandomnessLookback, height)}
-	}
-
 	pci, err := api.StateSectorPreCommitInfo(ctx, maddr, si.SectorNumber, tok)
 	if err != nil {
 		if err == ErrSectorAllocated {
+			//committed P2 message  but commit C2 message too late, pci should be null in this case
 			return &ErrSectorNumberAllocated{err}
 		}
 		return &ErrApi{xerrors.Errorf("getting precommit info: %w", err)}
 	}
 
 	if pci != nil {
+		// committed P2 message
 		if pci.Info.SealRandEpoch != si.TicketEpoch {
 			return &ErrBadTicket{xerrors.Errorf("bad ticket epoch: %d != %d", pci.Info.SealRandEpoch, si.TicketEpoch)}
 		}
 		return &ErrPrecommitOnChain{xerrors.Errorf("precommit already on chain")}
 	}
 
+	//never commit P2 message before, check ticket expiration
+	ticketEarliest := height - policy.MaxPreCommitRandomnessLookback
+
+	if si.TicketEpoch < ticketEarliest {
+		return &ErrExpiredTicket{xerrors.Errorf("ticket expired: seal height: %d, head: %d", si.TicketEpoch+policy.SealRandomnessLookback, height)}
+	}
 	return nil
 }
 
@@ -122,7 +124,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		return &ErrBadSeed{xerrors.Errorf("seed epoch was not set")}
 	}
 
-	pci, err := m.api.StateSectorPreCommitInfo(ctx, m.maddr, si.SectorNumber, tok)
+	pci, err := m.Api.StateSectorPreCommitInfo(ctx, m.maddr, si.SectorNumber, tok)
 	if err == ErrSectorAllocated {
 		// not much more we can check here, basically try to wait for commit,
 		// and hope that this will work
@@ -150,7 +152,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		return err
 	}
 
-	seed, err := m.api.ChainGetRandomnessFromBeacon(ctx, tok, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, si.SeedEpoch, buf.Bytes())
+	seed, err := m.Api.ChainGetRandomnessFromBeacon(ctx, tok, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, si.SeedEpoch, buf.Bytes())
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)}
 	}
@@ -179,7 +181,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		return &ErrInvalidProof{xerrors.New("invalid proof (compute error?)")}
 	}
 
-	if err := checkPieces(ctx, m.maddr, si, m.api); err != nil {
+	if err := checkPieces(ctx, m.maddr, si, m.Api); err != nil {
 		return err
 	}
 

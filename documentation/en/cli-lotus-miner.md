@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.11.1
+   1.11.2
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -29,6 +29,7 @@ COMMANDS:
      storage-deals    Manage storage deals and related configuration
      retrieval-deals  Manage retrieval deals and related configuration
      data-transfers   Manage data transfers
+     dagstore         Manage the dagstore on the markets subsystem
    NETWORK:
      net  Manage P2P Network
    RETRIEVAL:
@@ -1000,6 +1001,100 @@ OPTIONS:
    
 ```
 
+## lotus-miner dagstore
+```
+NAME:
+   lotus-miner dagstore - Manage the dagstore on the markets subsystem
+
+USAGE:
+   lotus-miner dagstore command [command options] [arguments...]
+
+COMMANDS:
+   list-shards       List all shards known to the dagstore, with their current status
+   initialize-shard  Initialize the specified shard
+   recover-shard     Attempt to recover a shard in errored state
+   initialize-all    Initialize all uninitialized shards, streaming results as they're produced; only shards for unsealed pieces are initialized by default
+   gc                Garbage collect the dagstore
+   help, h           Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h     show help (default: false)
+   --version, -v  print the version (default: false)
+   
+```
+
+### lotus-miner dagstore list-shards
+```
+NAME:
+   lotus-miner dagstore list-shards - List all shards known to the dagstore, with their current status
+
+USAGE:
+   lotus-miner dagstore list-shards [command options] [arguments...]
+
+OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner dagstore initialize-shard
+```
+NAME:
+   lotus-miner dagstore initialize-shard - Initialize the specified shard
+
+USAGE:
+   lotus-miner dagstore initialize-shard [command options] [key]
+
+OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner dagstore recover-shard
+```
+NAME:
+   lotus-miner dagstore recover-shard - Attempt to recover a shard in errored state
+
+USAGE:
+   lotus-miner dagstore recover-shard [command options] [key]
+
+OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner dagstore initialize-all
+```
+NAME:
+   lotus-miner dagstore initialize-all - Initialize all uninitialized shards, streaming results as they're produced; only shards for unsealed pieces are initialized by default
+
+USAGE:
+   lotus-miner dagstore initialize-all [command options] [arguments...]
+
+OPTIONS:
+   --concurrency value  maximum shards to initialize concurrently at a time; use 0 for unlimited (default: 0)
+   --include-sealed     initialize sealed pieces as well (default: false)
+   --color              use color in display output (default: depends on output being a TTY)
+   --help, -h           show help (default: false)
+   
+```
+
+### lotus-miner dagstore gc
+```
+NAME:
+   lotus-miner dagstore gc - Garbage collect the dagstore
+
+USAGE:
+   lotus-miner dagstore gc [command options] [arguments...]
+
+OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
+   
+```
+
 ## lotus-miner net
 ```
 NAME:
@@ -1376,6 +1471,8 @@ COMMANDS:
    refs               List References to sectors
    update-state       ADVANCED: manually update the state of a sector, this may aid in error recovery
    pledge             store random data in a sector
+   check-expire       Inspect expiring sectors
+   renew              Renew expiring sectors while not exceeding each sector's max life
    extend             Extend sector expiration
    terminate          Terminate sector on-chain then remove (WARNING: This means losing power and collateral for the removed sector)
    remove             Forcefully remove a sector (WARNING: This means losing power and collateral for the removed sector (use 'terminate' for lower penalty))
@@ -1463,6 +1560,42 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner sectors check-expire
+```
+NAME:
+   lotus-miner sectors check-expire - Inspect expiring sectors
+
+USAGE:
+   lotus-miner sectors check-expire [command options] [arguments...]
+
+OPTIONS:
+   --cutoff value  skip sectors whose current expiration is more than <cutoff> epochs from now, defaults to 60 days (default: 172800)
+   --help, -h      show help (default: false)
+   
+```
+
+### lotus-miner sectors renew
+```
+NAME:
+   lotus-miner sectors renew - Renew expiring sectors while not exceeding each sector's max life
+
+USAGE:
+   lotus-miner sectors renew [command options] [arguments...]
+
+OPTIONS:
+   --from value            only consider sectors whose current expiration epoch is in the range of [from, to], <from> defaults to: now + 120 (1 hour) (default: 0)
+   --to value              only consider sectors whose current expiration epoch is in the range of [from, to], <to> defaults to: now + 92160 (32 days) (default: 0)
+   --sector-file value     provide a file containing one sector number in each line, ignoring above selecting criteria
+   --exclude value         optionally provide a file containing excluding sectors
+   --extension value       try to extend selected sectors by this number of epochs, defaults to 540 days (default: 1555200)
+   --new-expiration value  try to extend selected sectors to this epoch, ignoring extension (default: 0)
+   --tolerance value       don't try to extend sectors by fewer than this number of epochs, defaults to 7 days (default: 20160)
+   --max-fee value         use up to this amount of FIL for one message. pass this flag to avoid message congestion. (default: "0")
+   --really-do-it          pass this flag to really renew sectors, otherwise will only print out json representation of parameters (default: false)
+   --help, -h              show help (default: false)
    
 ```
 

@@ -481,7 +481,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return xerrors.Errorf("failed to open journal: %w", err)
 	}
 
-	cst := store.NewChainStore(bs, bs, mds, vm.Syscalls(ffiwrapper.ProofVerifier), j)
+	cst := store.NewChainStore(bs, bs, mds, j)
 	defer cst.Close() //nolint:errcheck
 
 	log.Infof("importing chain from %s...", fname)
@@ -517,7 +517,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return err
 	}
 
-	stm := stmgr.NewStateManager(cst)
+	stm := stmgr.NewStateManager(cst, vm.Syscalls(ffiwrapper.ProofVerifier))
 
 	if !snapshot {
 		log.Infof("validating imported chain...")

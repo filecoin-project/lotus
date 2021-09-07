@@ -186,7 +186,7 @@ func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
 	var newMiner kit.TestMiner
 	ens.Miner(&newMiner, full,
 		kit.OwnerAddr(full.DefaultKey),
-		kit.ProofType(abi.RegisteredSealProof_StackedDrg2KiBV1), // we're using v0 actors with old proofs.
+		kit.ProofType(abi.RegisteredSealProof_StackedDrg2KiBV1_1),
 		kit.WithAllSubsystems(),
 	).Start().InterconnectAll()
 

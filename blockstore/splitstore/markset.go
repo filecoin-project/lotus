@@ -21,15 +21,26 @@ type MarkSet interface {
 	SetConcurrent()
 }
 
+type MarkSetVisitor interface {
+	MarkSet
+	ObjectVisitor
+}
+
 type MarkSetEnv interface {
+	// Create creates a new markset within the environment.
+	// name is a unique name for this markset, mapped to the filesystem in disk-backed environments
+	// sizeHint is a hint about the expected size of the markset
 	Create(name string, sizeHint int64) (MarkSet, error)
+	// CreateVisitor is like Create, but returns a wider interface that supports atomic visits.
+	// It may not be supported by some markset types (e.g. bloom).
+	CreateVisitor(name string, sizeHint int64) (MarkSetVisitor, error)
+	// SupportsVisitor returns true if the marksets created by this environment support the visitor interface.
+	SupportsVisitor() bool
 	Close() error
 }
 
 func OpenMarkSetEnv(path string, mtype string) (MarkSetEnv, error) {
 	switch mtype {
-	case "bloom":
-		return NewBloomMarkSetEnv()
 	case "map":
 		return NewMapMarkSetEnv()
 	case "badger":

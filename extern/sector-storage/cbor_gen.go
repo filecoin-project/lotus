@@ -5,6 +5,7 @@ package sectorstorage
 import (
 	"fmt"
 	"io"
+	"math"
 	"sort"
 
 	sealtasks "github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
@@ -15,6 +16,7 @@ import (
 
 var _ = xerrors.Errorf
 var _ = cid.Undef
+var _ = math.E
 var _ = sort.Sort
 
 func (t *Call) MarshalCBOR(w io.Writer) error {

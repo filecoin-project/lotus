@@ -125,6 +125,55 @@ and storage providers`,
 			Comment: ``,
 		},
 	},
+	"DAGStoreConfig": []DocField{
+		{
+			Name: "RootDir",
+			Type: "string",
+
+			Comment: `Path to the dagstore root directory. This directory contains three
+subdirectories, which can be symlinked to alternative locations if
+need be:
+- ./transients: caches unsealed deals that have been fetched from the
+storage subsystem for serving retrievals.
+- ./indices: stores shard indices.
+- ./datastore: holds the KV store tracking the state of every shard
+known to the DAG store.
+Default value: <LOTUS_MARKETS_PATH>/dagstore (split deployment) or
+<LOTUS_MINER_PATH>/dagstore (monolith deployment)`,
+		},
+		{
+			Name: "MaxConcurrentIndex",
+			Type: "int",
+
+			Comment: `The maximum amount of indexing jobs that can run simultaneously.
+0 means unlimited.
+Default value: 5.`,
+		},
+		{
+			Name: "MaxConcurrentReadyFetches",
+			Type: "int",
+
+			Comment: `The maximum amount of unsealed deals that can be fetched simultaneously
+from the storage subsystem. 0 means unlimited.
+Default value: 0 (unlimited).`,
+		},
+		{
+			Name: "MaxConcurrencyStorageCalls",
+			Type: "int",
+
+			Comment: `The maximum number of simultaneous inflight API calls to the storage
+subsystem.
+Default value: 100.`,
+		},
+		{
+			Name: "GCInterval",
+			Type: "Duration",
+
+			Comment: `The time between calls to periodic dagstore GC, in time.Duration string
+representation, e.g. 1m, 5m, 1h.
+Default value: 1 minute.`,
+		},
+	},
 	"DealmakingConfig": []DocField{
 		{
 			Name: "ConsiderOnlineStorageDeals",
@@ -246,12 +295,6 @@ see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-f
 			Comment: ``,
 		},
 		{
-			Name: "Metrics",
-			Type: "Metrics",
-
-			Comment: ``,
-		},
-		{
 			Name: "Wallet",
 			Type: "Wallet",
 
@@ -320,20 +363,6 @@ Format: multiaddress`,
 		{
 			Name: "ConnMgrGrace",
 			Type: "Duration",
-
-			Comment: ``,
-		},
-	},
-	"Metrics": []DocField{
-		{
-			Name: "Nickname",
-			Type: "string",
-
-			Comment: ``,
-		},
-		{
-			Name: "HeadNotifs",
-			Type: "bool",
 
 			Comment: ``,
 		},
@@ -563,6 +592,14 @@ Note that setting this number too high in relation to deal ingestion rate may re
 			Comment: `Upper bound on how many sectors can be sealing at the same time when creating new sectors with deals (0 = unlimited)`,
 		},
 		{
+			Name: "CommittedCapacitySectorLifetime",
+			Type: "Duration",
+
+			Comment: `CommittedCapacitySectorLifetime is the duration a Committed Capacity (CC) sector will
+live before it must be extended or converted into sector containing deals before it is
+terminated. Value must be between 180-540 days inclusive`,
+		},
+		{
 			Name: "WaitDealsDelay",
 			Type: "Duration",
 
@@ -752,6 +789,12 @@ Default is 20 (about once a week).`,
 		{
 			Name: "Addresses",
 			Type: "MinerAddressConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "DAGStore",
+			Type: "DAGStoreConfig",
 
 			Comment: ``,
 		},
