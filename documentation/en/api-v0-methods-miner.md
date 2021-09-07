@@ -2019,6 +2019,7 @@ Response:
   "CommR": null,
   "Proof": "Ynl0ZSBhcnJheQ==",
   "Deals": null,
+  "Pieces": null,
   "Ticket": {
     "Value": null,
     "Epoch": 10101
