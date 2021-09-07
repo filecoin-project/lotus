@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-if [ ! -z DOCKER_LOTUS_IMPORT_SNAPSHOT ]; then
+if [ ! -z $DOCKER_LOTUS_IMPORT_SNAPSHOT ]; then
 	GATE="$LOTUS_PATH"/date_initialized
 	# Don't init if already initialized.
 	if [ ! -f "$GATE" ]; then
@@ -12,7 +12,7 @@ if [ ! -z DOCKER_LOTUS_IMPORT_SNAPSHOT ]; then
 fi
 
 # import wallet, if provided
-if [ ! -z DOCKER_LOTUS_IMPORT_WALLET ]; then
+if [ ! -z $DOCKER_LOTUS_IMPORT_WALLET ]; then
 	/usr/local/bin/lotus-shed keyinfo import "$DOCKER_LOTUS_IMPORT_WALLET"
 fi
 
