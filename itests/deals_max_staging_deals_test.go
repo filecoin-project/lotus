@@ -33,13 +33,11 @@ func TestMaxStagingDeals(t *testing.T) {
 	list, err := client.ClientListImports(ctx)
 	require.NoError(t, err)
 	require.Len(t, list, 1)
-	require.Equal(t, res.Root, *list[0].Root)
 
 	res2, _ := client.CreateImportFile(ctx, 0, 4096)
 	list, err = client.ClientListImports(ctx)
 	require.NoError(t, err)
 	require.Len(t, list, 2)
-	require.Equal(t, res2.Root, *list[1].Root)
 
 	// first deal stays in staging area, and is not yet passed to the sealing subsystem
 	dp := dh.DefaultStartDealParams()
