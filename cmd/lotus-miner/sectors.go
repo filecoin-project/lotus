@@ -396,18 +396,20 @@ var sectorsListCmd = &cli.Command{
 			_, inSSet := commitedIDs[s]
 			_, inASet := activeIDs[s]
 
+			const verifiedPowerGainMul = 9
+
 			dw, vp := .0, .0
 			estimate := st.Expiration-st.Activation <= 0
 			if !estimate {
 				rdw := big.Add(st.DealWeight, st.VerifiedDealWeight)
 				dw = float64(big.Div(rdw, big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
-				vp = float64(big.Div(big.Mul(st.VerifiedDealWeight, big.NewInt(9)), big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
+				vp = float64(big.Div(big.Mul(st.VerifiedDealWeight, big.NewInt(verifiedPowerGainMul)), big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
 			} else {
 				for _, piece := range st.Pieces {
 					if piece.DealInfo != nil {
 						dw += float64(piece.Piece.Size)
 						if piece.DealInfo.DealProposal != nil && piece.DealInfo.DealProposal.VerifiedDeal {
-							vp += float64(piece.Piece.Size) * 9
+							vp += float64(piece.Piece.Size) * verifiedPowerGainMul
 						}
 					}
 				}
@@ -494,7 +496,7 @@ var sectorsListCmd = &cli.Command{
 				start := time.Unix(int64(st.Log[0].Timestamp), 0)
 
 				for _, sectorLog := range st.Log {
-					if sectorLog.Kind == "event;sealing.SectorProving" {
+					if sectorLog.Kind == "event;sealing.SectorProving" { // todo: figure out a good way to not hardcode
 						end := time.Unix(int64(sectorLog.Timestamp), 0)
 						dur := end.Sub(start)
 
