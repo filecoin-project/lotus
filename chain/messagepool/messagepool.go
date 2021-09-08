@@ -11,6 +11,10 @@ import (
 	"sync"
 	"time"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
+
+	"github.com/minio/blake2b-simd"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -751,11 +755,13 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 func sigCacheKey(m *types.SignedMessage) (string, error) {
 	switch m.Signature.Type {
 	case crypto.SigTypeBLS:
-		if len(m.Signature.Data) < 90 {
-			return "", fmt.Errorf("bls signature too short")
+		if len(m.Signature.Data) != ffi.SignatureBytes {
+			return "", fmt.Errorf("bls signature incorrectly sized")
 		}
 
-		return string(m.Cid().Bytes()) + string(m.Signature.Data[64:]), nil
+		hashCache := blake2b.Sum256(append(m.Cid().Bytes(), m.Signature.Data...))
+
+		return string(hashCache[:]), nil
 	case crypto.SigTypeSecp256k1:
 		return string(m.Cid().Bytes()), nil
 	default:
