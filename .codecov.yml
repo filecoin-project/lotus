@@ -40,7 +40,7 @@ coverage:
           - "paychmgr"
       miner: 
         target: auto
-        threshold: 1%
+        threshold: 1.5%
         informational: false       
         paths: 
           - "miner"
