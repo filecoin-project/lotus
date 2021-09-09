@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"sort"
 	"strings"
@@ -30,6 +31,17 @@ var sealingCmd = &cli.Command{
 		sealingSchedDiagCmd,
 		sealingAbortCmd,
 	},
+}
+
+var barCols = float64(64)
+
+func barString(total, y, g float64) string {
+	yBars := int(math.Round(y / total * barCols))
+	gBars := int(math.Round(g / total * barCols))
+	eBars := int(barCols) - yBars - gBars
+	return color.YellowString(strings.Repeat("|", yBars)) +
+		color.GreenString(strings.Repeat("|", gBars)) +
+		strings.Repeat(" ", eBars)
 }
 
 var sealingWorkersCmd = &cli.Command{
@@ -89,55 +101,36 @@ var sealingWorkersCmd = &cli.Command{
 
 			fmt.Printf("Worker %s, host %s%s\n", stat.id, color.MagentaString(stat.Info.Hostname), disabled)
 
-			var barCols = uint64(64)
-			cpuBars := int(stat.CpuUse * barCols / stat.Info.Resources.CPUs)
-			cpuBar := strings.Repeat("|", cpuBars)
-			if int(barCols)-cpuBars >= 0 {
-				cpuBar += strings.Repeat(" ", int(barCols)-cpuBars)
-			}
-
 			fmt.Printf("\tCPU:  [%s] %d/%d core(s) in use\n",
-				color.GreenString(cpuBar), stat.CpuUse, stat.Info.Resources.CPUs)
+				barString(float64(stat.Info.Resources.CPUs), 0, float64(stat.CpuUse)), stat.CpuUse, stat.Info.Resources.CPUs)
 
-			ramBarsRes := int(stat.Info.Resources.MemReserved * barCols / stat.Info.Resources.MemPhysical)
-			ramBarsUsed := int(stat.MemUsedMin * barCols / stat.Info.Resources.MemPhysical)
-			ramRepeatSpace := int(barCols) - (ramBarsUsed + ramBarsRes)
-
-			colorFunc := color.YellowString
-			if ramRepeatSpace < 0 {
-				ramRepeatSpace = 0
-				colorFunc = color.RedString
+			ramTotal := stat.Info.Resources.MemPhysical
+			ramTasks := stat.MemUsedMin
+			ramUsed := stat.Info.Resources.MemUsed
+			var ramReserved uint64 = 0
+			if ramUsed > ramTasks {
+				ramReserved = ramUsed - ramTasks
 			}
-
-			ramBar := colorFunc(strings.Repeat("|", ramBarsRes)) +
-				color.GreenString(strings.Repeat("|", ramBarsUsed)) +
-				strings.Repeat(" ", ramRepeatSpace)
-
-			vmem := stat.Info.Resources.MemPhysical + stat.Info.Resources.MemSwap
-
-			vmemBarsRes := int(stat.Info.Resources.MemReserved * barCols / vmem)
-			vmemBarsUsed := int(stat.MemUsedMax * barCols / vmem)
-			vmemRepeatSpace := int(barCols) - (vmemBarsUsed + vmemBarsRes)
-
-			colorFunc = color.YellowString
-			if vmemRepeatSpace < 0 {
-				vmemRepeatSpace = 0
-				colorFunc = color.RedString
-			}
-
-			vmemBar := colorFunc(strings.Repeat("|", vmemBarsRes)) +
-				color.GreenString(strings.Repeat("|", vmemBarsUsed)) +
-				strings.Repeat(" ", vmemRepeatSpace)
+			ramBar := barString(float64(ramTotal), float64(ramReserved), float64(ramTasks))
 
 			fmt.Printf("\tRAM:  [%s] %d%% %s/%s\n", ramBar,
-				(stat.Info.Resources.MemReserved+stat.MemUsedMin)*100/stat.Info.Resources.MemPhysical,
-				types.SizeStr(types.NewInt(stat.Info.Resources.MemReserved+stat.MemUsedMin)),
+				(ramTasks+ramReserved)*100/stat.Info.Resources.MemPhysical,
+				types.SizeStr(types.NewInt(ramTasks+ramUsed)),
 				types.SizeStr(types.NewInt(stat.Info.Resources.MemPhysical)))
 
+			vmemTotal := stat.Info.Resources.MemPhysical + stat.Info.Resources.MemSwap
+			vmemTasks := stat.MemUsedMax
+			vmemUsed := stat.Info.Resources.MemUsed + stat.Info.Resources.MemSwapUsed
+			var vmemReserved uint64 = 0
+			if vmemUsed > vmemTasks {
+				vmemReserved = vmemUsed - vmemTasks
+			}
+			vmemBar := barString(float64(vmemTotal), float64(vmemReserved), float64(vmemTasks))
+
 			fmt.Printf("\tVMEM: [%s] %d%% %s/%s\n", vmemBar,
-				(stat.Info.Resources.MemReserved+stat.MemUsedMax)*100/vmem,
-				types.SizeStr(types.NewInt(stat.Info.Resources.MemReserved+stat.MemUsedMax)),
-				types.SizeStr(types.NewInt(vmem)))
+				(vmemTasks+vmemReserved)*100/vmemTotal,
+				types.SizeStr(types.NewInt(vmemTasks+vmemReserved)),
+				types.SizeStr(types.NewInt(vmemTotal)))
 
 			for _, gpu := range stat.Info.Resources.GPUs {
 				fmt.Printf("\tGPU: %s\n", color.New(gpuCol).Sprintf("%s, %sused", gpu, gpuUse))

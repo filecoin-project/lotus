@@ -61,17 +61,26 @@ func (a *activeResources) canHandleRequest(needRes Resources, wid WorkerID, call
 	}
 
 	res := info.Resources
+
 	// TODO: dedupe needRes.BaseMinMemory per task type (don't add if that task is already running)
-	minNeedMem := res.MemReserved + a.memUsedMin + needRes.MinMemory + needRes.BaseMinMemory
-	if minNeedMem > res.MemPhysical {
-		log.Debugf("sched: not scheduling on worker %s for %s; not enough physical memory - need: %dM, have %dM", wid, caller, minNeedMem/mib, res.MemPhysical/mib)
+	memNeeded := needRes.MinMemory + needRes.BaseMinMemory
+	memUsed := a.memUsedMin
+	// assume that MemUsed can be swapped, so only check it in the vmem Check
+	memAvail := res.MemPhysical - memUsed
+	if memNeeded > memAvail {
+		log.Debugf("sched: not scheduling on worker %s for %s; not enough physical memory - need: %dM, have %dM available", wid, caller, memNeeded/mib, memAvail/mib)
 		return false
 	}
 
-	maxNeedMem := res.MemReserved + a.memUsedMax + needRes.MaxMemory + needRes.BaseMinMemory
+	vmemNeeded := needRes.MaxMemory + needRes.BaseMinMemory
+	vmemUsed := a.memUsedMax
+	if vmemUsed < res.MemUsed+res.MemSwapUsed {
+		vmemUsed = res.MemUsed + res.MemSwapUsed
+	}
+	vmemAvail := res.MemPhysical + res.MemSwap - vmemUsed
 
-	if maxNeedMem > res.MemSwap+res.MemPhysical {
-		log.Debugf("sched: not scheduling on worker %s for %s; not enough virtual memory - need: %dM, have %dM", wid, caller, maxNeedMem/mib, (res.MemSwap+res.MemPhysical)/mib)
+	if vmemNeeded > vmemAvail {
+		log.Debugf("sched: not scheduling on worker %s for %s; not enough virtual memory - need: %dM, have %dM available", wid, caller, vmemNeeded/mib, vmemAvail/mib)
 		return false
 	}
 
@@ -96,12 +105,21 @@ func (a *activeResources) utilization(wr storiface.WorkerResources) float64 {
 	cpu := float64(a.cpuUse) / float64(wr.CPUs)
 	max = cpu
 
-	memMin := float64(a.memUsedMin+wr.MemReserved) / float64(wr.MemPhysical)
+	memUsed := a.memUsedMin
+	if memUsed < wr.MemUsed {
+		memUsed = wr.MemUsed
+	}
+	memMin := float64(memUsed) / float64(wr.MemPhysical)
 	if memMin > max {
 		max = memMin
 	}
 
-	memMax := float64(a.memUsedMax+wr.MemReserved) / float64(wr.MemPhysical+wr.MemSwap)
+	vmemUsed := a.memUsedMax
+	if a.memUsedMax < wr.MemUsed+wr.MemSwapUsed {
+		vmemUsed = wr.MemUsed + wr.MemSwapUsed
+	}
+	memMax := float64(vmemUsed) / float64(wr.MemPhysical+wr.MemSwap)
+
 	if memMax > max {
 		max = memMax
 	}

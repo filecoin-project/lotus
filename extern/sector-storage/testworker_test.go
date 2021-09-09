@@ -108,8 +108,8 @@ func (t *testWorker) Info(ctx context.Context) (storiface.WorkerInfo, error) {
 		Hostname: "testworkerer",
 		Resources: storiface.WorkerResources{
 			MemPhysical: res.MinMemory * 3,
+			MemUsed:     res.MinMemory,
 			MemSwap:     0,
-			MemReserved: res.MinMemory,
 			CPUs:        32,
 			GPUs:        nil,
 		},

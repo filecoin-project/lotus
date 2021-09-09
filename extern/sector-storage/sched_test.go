@@ -41,14 +41,16 @@ func TestWithPriority(t *testing.T) {
 var decentWorkerResources = storiface.WorkerResources{
 	MemPhysical: 128 << 30,
 	MemSwap:     200 << 30,
-	MemReserved: 2 << 30,
+	MemUsed:     1 << 30,
+	MemSwapUsed: 1 << 30,
 	CPUs:        32,
 	GPUs:        []string{"a GPU"},
 }
 
 var constrainedWorkerResources = storiface.WorkerResources{
 	MemPhysical: 1 << 30,
-	MemReserved: 2 << 30,
+	MemUsed:     1 << 30,
+	MemSwapUsed: 1 << 30,
 	CPUs:        1,
 }
 
