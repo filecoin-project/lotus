@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -21,8 +22,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multibase"
 	"github.com/urfave/cli/v2"
-	"go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 	"golang.org/x/xerrors"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -345,7 +344,6 @@ var storageDealsCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		dealsImportDataCmd,
 		dealsListCmd,
-		dealsListWithTransfersCmd,
 		storageDealSelectionCmd,
 		setAskCmd,
 		getAskCmd,
@@ -390,6 +388,11 @@ var dealsListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List all deals for this miner",
 	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "format",
+			Usage: "output format of data, `json` and `table` are supported",
+			Value: "table",
+		},
 		&cli.BoolFlag{
 			Name:    "verbose",
 			Aliases: []string{"v"},
@@ -398,65 +401,80 @@ var dealsListCmd = &cli.Command{
 			Name:  "watch",
 			Usage: "watch deal updates in real-time, rather than a one time list",
 		},
+		&cli.BoolFlag{
+			Name:  "with-transfers",
+			Usage: "include information about transfers together with deals",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetMarketsAPI(cctx)
+		switch cctx.String("format") {
+		case "table":
+			return listDealsWithTable(cctx)
+		case "json":
+			return listDealsWithJSON(cctx)
+		}
+
+		return fmt.Errorf("unknown format: %s; use `table` or `json`", cctx.String("format"))
+	},
+}
+
+func listDealsWithTable(cctx *cli.Context) error {
+	api, closer, err := lcli.GetMarketsAPI(cctx)
+	if err != nil {
+		return err
+	}
+	defer closer()
+
+	ctx := lcli.DaemonContext(cctx)
+
+	deals, err := api.MarketListIncompleteDeals(ctx)
+	if err != nil {
+		return err
+	}
+
+	verbose := cctx.Bool("verbose")
+	watch := cctx.Bool("watch")
+
+	if watch {
+		updates, err := api.MarketGetDealUpdates(ctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
 
-		ctx := lcli.DaemonContext(cctx)
+		for {
+			tm.Clear()
+			tm.MoveCursor(1, 1)
 
-		deals, err := api.MarketListIncompleteDeals(ctx)
-		if err != nil {
-			return err
-		}
-
-		verbose := cctx.Bool("verbose")
-		watch := cctx.Bool("watch")
-
-		if watch {
-			updates, err := api.MarketGetDealUpdates(ctx)
+			err = outputStorageDealsTable(tm.Output, deals, verbose)
 			if err != nil {
 				return err
 			}
 
-			for {
-				tm.Clear()
-				tm.MoveCursor(1, 1)
+			tm.Flush()
 
-				err = outputStorageDeals(tm.Output, deals, verbose)
-				if err != nil {
-					return err
+			select {
+			case <-ctx.Done():
+				return nil
+			case updated := <-updates:
+				var found bool
+				for i, existing := range deals {
+					if existing.ProposalCid.Equals(updated.ProposalCid) {
+						deals[i] = updated
+						found = true
+						break
+					}
 				}
-
-				tm.Flush()
-
-				select {
-				case <-ctx.Done():
-					return nil
-				case updated := <-updates:
-					var found bool
-					for i, existing := range deals {
-						if existing.ProposalCid.Equals(updated.ProposalCid) {
-							deals[i] = updated
-							found = true
-							break
-						}
-					}
-					if !found {
-						deals = append(deals, updated)
-					}
+				if !found {
+					deals = append(deals, updated)
 				}
 			}
 		}
+	}
 
-		return outputStorageDeals(os.Stdout, deals, verbose)
-	},
+	return outputStorageDealsTable(os.Stdout, deals, verbose)
 }
 
-func outputStorageDeals(out io.Writer, deals []storagemarket.MinerDeal, verbose bool) error {
+func outputStorageDealsTable(out io.Writer, deals []storagemarket.MinerDeal, verbose bool) error {
 	sort.Slice(deals, func(i, j int) bool {
 		return deals[i].CreationTime.Time().Before(deals[j].CreationTime.Time())
 	})
@@ -896,85 +914,72 @@ var dealsPendingPublish = &cli.Command{
 	},
 }
 
-var dealsListWithTransfersCmd = &cli.Command{
-	Name:    "list-with-transfers",
-	Aliases: []string{"lwt"},
-	Usage:   "List all deals with corresponding data transfers for this miner",
-	Action: func(cctx *cli.Context) error {
-		node, closer, err := lcli.GetMarketsAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
+func listDealsWithJSON(cctx *cli.Context) error {
+	node, closer, err := lcli.GetMarketsAPI(cctx)
+	if err != nil {
+		return err
+	}
+	defer closer()
 
-		ctx := lcli.DaemonContext(cctx)
+	ctx := lcli.DaemonContext(cctx)
 
-		deals, err := node.MarketListIncompleteDeals(ctx)
-		if err != nil {
-			return err
-		}
+	deals, err := node.MarketListIncompleteDeals(ctx)
+	if err != nil {
+		return err
+	}
 
-		channels, err := node.MarketListDataTransfers(ctx)
-		if err != nil {
-			return err
-		}
+	channels, err := node.MarketListDataTransfers(ctx)
+	if err != nil {
+		return err
+	}
 
-		sort.Slice(deals, func(i, j int) bool {
-			return deals[i].CreationTime.Time().Before(deals[j].CreationTime.Time())
-		})
+	sort.Slice(deals, func(i, j int) bool {
+		return deals[i].CreationTime.Time().Before(deals[j].CreationTime.Time())
+	})
 
-		channelsByTransferID := map[datatransfer.TransferID]api.DataTransferChannel{}
-		for _, c := range channels {
-			channelsByTransferID[c.TransferID] = c
-		}
+	channelsByTransferID := map[datatransfer.TransferID]api.DataTransferChannel{}
+	for _, c := range channels {
+		channelsByTransferID[c.TransferID] = c
+	}
 
-		cfg := zap.Config{
-			Level:    zap.NewAtomicLevelAt(zap.InfoLevel),
-			Encoding: "json",
-			EncoderConfig: zapcore.EncoderConfig{
-				TimeKey:        zapcore.OmitKey,
-				LevelKey:       zapcore.OmitKey,
-				NameKey:        zapcore.OmitKey,
-				CallerKey:      zapcore.OmitKey,
-				FunctionKey:    zapcore.OmitKey,
-				MessageKey:     zapcore.OmitKey,
-				StacktraceKey:  zapcore.OmitKey,
-				LineEnding:     zapcore.DefaultLineEnding,
-				EncodeLevel:    zapcore.LowercaseLevelEncoder,
-				EncodeTime:     zapcore.EpochTimeEncoder,
-				EncodeDuration: zapcore.SecondsDurationEncoder,
-				EncodeCaller:   zapcore.ShortCallerEncoder,
-			},
-			OutputPaths:      []string{"stdout"},
-			ErrorOutputPaths: []string{"stdout"},
-		}
+	w := json.NewEncoder(os.Stdout)
 
-		logger, _ := cfg.Build()
-		defer logger.Sync()
+	for _, deal := range deals {
+		val := struct {
+			DateTime        string                   `json:"datetime"`
+			VerifiedDeal    bool                     `json:"verified-deal"`
+			ProposalCID     string                   `json:"proposal-cid"`
+			DealID          abi.DealID               `json:"deal-id"`
+			DealStatus      string                   `json:"deal-status"`
+			Client          string                   `json:"client"`
+			PieceSize       string                   `json:"piece-size"`
+			Price           types.FIL                `json:"price"`
+			DurationEpochs  abi.ChainEpoch           `json:"duration-epochs"`
+			TransferID      *datatransfer.TransferID `json:"transfer-id,omitempty"`
+			TransferStatus  string                   `json:"transfer-status,omitempty"`
+			TransferredData string                   `json:"transferred-data,omitempty"`
+		}{}
 
-		for _, deal := range deals {
-			fil := types.FIL(types.BigMul(deal.Proposal.StoragePricePerEpoch, types.NewInt(uint64(deal.Proposal.Duration()))))
+		val.DateTime = deal.CreationTime.Time().Format(time.RFC3339)
+		val.VerifiedDeal = deal.Proposal.VerifiedDeal
+		val.ProposalCID = deal.ProposalCid.String()
+		val.DealID = deal.DealID
+		val.DealStatus = storagemarket.DealStates[deal.State]
+		val.Client = deal.Proposal.Client.String()
+		val.PieceSize = units.BytesSize(float64(deal.Proposal.PieceSize))
+		val.Price = types.FIL(types.BigMul(deal.Proposal.StoragePricePerEpoch, types.NewInt(uint64(deal.Proposal.Duration()))))
+		val.DurationEpochs = deal.Proposal.Duration()
 
-			if deal.TransferChannelId != nil {
-				if c, ok := channelsByTransferID[deal.TransferChannelId.ID]; ok {
-					logger.Info("",
-						zap.String("datetime", deal.CreationTime.Time().Format(time.RFC3339)),
-						zap.Bool("verified-deal", deal.Proposal.VerifiedDeal),
-						zap.String("proposal-cid", deal.ProposalCid.String()),
-						zap.Uint64("deal-id", uint64(deal.DealID)),
-						zap.String("deal-status", storagemarket.DealStates[deal.State]),
-						zap.String("client", deal.Proposal.Client.String()),
-						zap.String("piece-size", units.BytesSize(float64(deal.Proposal.PieceSize))),
-						zap.String("price", fil.String()),
-						zap.Int64("duration-epochs", int64(deal.Proposal.Duration())),
-						zap.Uint64("transfer-id", uint64(c.TransferID)),
-						zap.String("transfer-status", datatransfer.Statuses[c.Status]),
-						zap.String("transferred-data", units.BytesSize(float64(c.Transferred))),
-					)
-				}
+		if deal.TransferChannelId != nil {
+			if c, ok := channelsByTransferID[deal.TransferChannelId.ID]; ok {
+				val.TransferID = &c.TransferID
+				val.TransferStatus = datatransfer.Statuses[c.Status]
+				val.TransferredData = units.BytesSize(float64(c.Transferred))
 			}
 		}
 
-		return nil
-	},
+		w.Encode(val)
+	}
+
+	return nil
 }
