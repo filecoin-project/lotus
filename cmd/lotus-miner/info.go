@@ -377,14 +377,18 @@ func handleMarketsInfo(ctx context.Context, nodeApi api.StorageMiner) error {
 	}
 
 	showDealStates := map[storagemarket.StorageDealStatus]struct{}{
-		storagemarket.StorageDealActive:             {},
-		storagemarket.StorageDealTransferring:       {},
-		storagemarket.StorageDealStaged:             {},
-		storagemarket.StorageDealAwaitingPreCommit:  {},
-		storagemarket.StorageDealSealing:            {},
-		storagemarket.StorageDealPublish:            {},
-		storagemarket.StorageDealCheckForAcceptance: {},
-		storagemarket.StorageDealPublishing:         {},
+		storagemarket.StorageDealActive:               {},
+		storagemarket.StorageDealAcceptWait:           {},
+		storagemarket.StorageDealReserveProviderFunds: {},
+		storagemarket.StorageDealProviderFunding:      {},
+		storagemarket.StorageDealTransferring:         {},
+		storagemarket.StorageDealValidating:           {},
+		storagemarket.StorageDealStaged:               {},
+		storagemarket.StorageDealAwaitingPreCommit:    {},
+		storagemarket.StorageDealSealing:              {},
+		storagemarket.StorageDealPublish:              {},
+		storagemarket.StorageDealCheckForAcceptance:   {},
+		storagemarket.StorageDealPublishing:           {},
 	}
 
 	var total dealStat
