@@ -3,6 +3,7 @@ package dagstore
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -396,6 +397,29 @@ func (w *Wrapper) markRegistrationComplete() error {
 		return err
 	}
 	return file.Close()
+}
+
+// Get all the pieces that contain a block
+func (w *Wrapper) GetPiecesContainingBlock(blockCID cid.Cid) ([]cid.Cid, error) {
+	// Pieces are stored as "shards" in the DAG store
+	shardKeys, err := w.dagst.GetShardKeysForCid(blockCID)
+	if err != nil {
+		return nil, xerrors.Errorf("getting pieces containing block %s: %w", blockCID, err)
+	}
+
+	// Convert from shard key to cid
+	pieceCids := make([]cid.Cid, 0, len(shardKeys))
+	for _, k := range shardKeys {
+		c, err := cid.Parse(k.String())
+		if err != nil {
+			prefix := fmt.Sprintf("getting pieces containing block %s:", blockCID)
+			return nil, xerrors.Errorf(prefix+" converting shard key %s to piece cid: %w", k, err)
+		}
+
+		pieceCids = append(pieceCids, c)
+	}
+
+	return pieceCids, nil
 }
 
 func (w *Wrapper) Close() error {

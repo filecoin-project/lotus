@@ -303,15 +303,19 @@ func (dh *DealHarness) StartSealingWaiting(ctx context.Context) {
 	}
 }
 
-func (dh *DealHarness) PerformRetrieval(ctx context.Context, deal *cid.Cid, root cid.Cid, carExport bool) (path string) {
+func (dh *DealHarness) PerformRetrieval(ctx context.Context, dealCid *cid.Cid, root cid.Cid, carExport bool) (path string) {
 	// perform retrieval.
-	info, err := dh.client.ClientGetDealInfo(ctx, *deal)
+	info, err := dh.client.ClientGetDealInfo(ctx, *dealCid)
 	require.NoError(dh.t, err)
 
 	offers, err := dh.client.ClientFindData(ctx, root, &info.PieceCID)
 	require.NoError(dh.t, err)
 	require.NotEmpty(dh.t, offers, "no offers")
 
+	return dh.PerformRetrievalForOffer(ctx, carExport, offers[0])
+}
+
+func (dh *DealHarness) PerformRetrievalForOffer(ctx context.Context, carExport bool, offer api.QueryOffer) string {
 	carFile, err := ioutil.TempFile(dh.t.TempDir(), "ret-car")
 	require.NoError(dh.t, err)
 
@@ -325,7 +329,8 @@ func (dh *DealHarness) PerformRetrieval(ctx context.Context, deal *cid.Cid, root
 		IsCAR: carExport,
 	}
 
-	updates, err := dh.client.ClientRetrieveWithEvents(ctx, offers[0].Order(caddr), ref)
+	order := offer.Order(caddr)
+	updates, err := dh.client.ClientRetrieveWithEvents(ctx, order, ref)
 	require.NoError(dh.t, err)
 
 	for update := range updates {

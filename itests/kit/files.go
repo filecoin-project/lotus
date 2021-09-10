@@ -29,7 +29,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const unixfsChunkSize uint64 = 1 << 10
+const unixfsChunkSize int64 = 1 << 10
 
 var defaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
 
@@ -54,7 +54,7 @@ func CreateRandomFile(t *testing.T, rseed, size int) (path string) {
 
 // CreateRandomFile creates a  normal file with the provided seed and the
 // provided size and then transforms it to a CARv1 file and returns it.
-func CreateRandomCARv1(t *testing.T, rseed, size int) (carV1FilePath string, origFilePath string) {
+func CreateRandomCARv1(t *testing.T, rseed, size int, opts ...GeneratedDAGOpts) (carV1FilePath string, origFilePath string) {
 	ctx := context.Background()
 	if size == 0 {
 		size = 1600
@@ -75,7 +75,7 @@ func CreateRandomCARv1(t *testing.T, rseed, size int) (carV1FilePath string, ori
 	bs := bstore.NewBlockstore(dssync.MutexWrap(ds.NewMapDatastore()))
 	dagSvc := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
 
-	root := writeUnixfsDAG(ctx, t, file, dagSvc)
+	root := writeUnixfsDAG(ctx, t, file, dagSvc, opts...)
 
 	// create a CARv1 file from the DAG
 	tmp, err := os.CreateTemp(t.TempDir(), "randcarv1")
@@ -92,7 +92,20 @@ func CreateRandomCARv1(t *testing.T, rseed, size int) (carV1FilePath string, ori
 	return tmp.Name(), file.Name()
 }
 
-func writeUnixfsDAG(ctx context.Context, t *testing.T, rd io.Reader, dag ipldformat.DAGService) cid.Cid {
+type GeneratedDAGOpts struct {
+	ChunkSize int64
+	Maxlinks  int
+}
+
+func writeUnixfsDAG(ctx context.Context, t *testing.T, rd io.Reader, dag ipldformat.DAGService, opts ...GeneratedDAGOpts) cid.Cid {
+	dagOpts := GeneratedDAGOpts{
+		ChunkSize: unixfsChunkSize,
+		Maxlinks:  1024,
+	}
+	if len(opts) > 0 {
+		dagOpts = opts[0]
+	}
+
 	rpf := files.NewReaderFile(rd)
 
 	// generate the dag and get the root
@@ -103,7 +116,7 @@ func writeUnixfsDAG(ctx context.Context, t *testing.T, rd io.Reader, dag ipldfor
 
 	bufferedDS := ipldformat.NewBufferedDAG(ctx, dag)
 	params := ihelper.DagBuilderParams{
-		Maxlinks:  1024,
+		Maxlinks:  dagOpts.Maxlinks,
 		RawLeaves: true,
 		CidBuilder: cidutil.InlineBuilder{
 			Builder: prefix,
@@ -112,7 +125,7 @@ func writeUnixfsDAG(ctx context.Context, t *testing.T, rd io.Reader, dag ipldfor
 		Dagserv: bufferedDS,
 	}
 
-	db, err := params.New(chunk.NewSizeSplitter(rpf, int64(unixfsChunkSize)))
+	db, err := params.New(chunk.NewSizeSplitter(rpf, dagOpts.ChunkSize))
 	require.NoError(t, err)
 
 	nd, err := balanced.Layout(db)
