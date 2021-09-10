@@ -974,7 +974,10 @@ func listDealsWithJSON(cctx *cli.Context) error {
 			}
 		}
 
-		w.Encode(val)
+		err := w.Encode(val)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
