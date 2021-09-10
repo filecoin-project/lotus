@@ -21,6 +21,8 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multibase"
 	"github.com/urfave/cli/v2"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 	"golang.org/x/xerrors"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
@@ -28,6 +30,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -342,6 +345,7 @@ var storageDealsCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		dealsImportDataCmd,
 		dealsListCmd,
+		dealsListWithTransfersCmd,
 		storageDealSelectionCmd,
 		setAskCmd,
 		getAskCmd,
@@ -888,6 +892,89 @@ var dealsPendingPublish = &cli.Command{
 		}
 
 		fmt.Println("No deals queued to be published")
+		return nil
+	},
+}
+
+var dealsListWithTransfersCmd = &cli.Command{
+	Name:    "list-with-transfers",
+	Aliases: []string{"lwt"},
+	Usage:   "List all deals with corresponding data transfers for this miner",
+	Action: func(cctx *cli.Context) error {
+		node, closer, err := lcli.GetMarketsAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.DaemonContext(cctx)
+
+		deals, err := node.MarketListIncompleteDeals(ctx)
+		if err != nil {
+			return err
+		}
+
+		channels, err := node.MarketListDataTransfers(ctx)
+		if err != nil {
+			return err
+		}
+
+		sort.Slice(deals, func(i, j int) bool {
+			return deals[i].CreationTime.Time().Before(deals[j].CreationTime.Time())
+		})
+
+		channelsByTransferID := map[datatransfer.TransferID]api.DataTransferChannel{}
+		for _, c := range channels {
+			channelsByTransferID[c.TransferID] = c
+		}
+
+		cfg := zap.Config{
+			Level:    zap.NewAtomicLevelAt(zap.InfoLevel),
+			Encoding: "json",
+			EncoderConfig: zapcore.EncoderConfig{
+				TimeKey:        zapcore.OmitKey,
+				LevelKey:       zapcore.OmitKey,
+				NameKey:        zapcore.OmitKey,
+				CallerKey:      zapcore.OmitKey,
+				FunctionKey:    zapcore.OmitKey,
+				MessageKey:     zapcore.OmitKey,
+				StacktraceKey:  zapcore.OmitKey,
+				LineEnding:     zapcore.DefaultLineEnding,
+				EncodeLevel:    zapcore.LowercaseLevelEncoder,
+				EncodeTime:     zapcore.EpochTimeEncoder,
+				EncodeDuration: zapcore.SecondsDurationEncoder,
+				EncodeCaller:   zapcore.ShortCallerEncoder,
+			},
+			OutputPaths:      []string{"stdout"},
+			ErrorOutputPaths: []string{"stdout"},
+		}
+
+		logger, _ := cfg.Build()
+		defer logger.Sync()
+
+		for _, deal := range deals {
+			fil := types.FIL(types.BigMul(deal.Proposal.StoragePricePerEpoch, types.NewInt(uint64(deal.Proposal.Duration()))))
+
+			if deal.TransferChannelId != nil {
+				if c, ok := channelsByTransferID[deal.TransferChannelId.ID]; ok {
+					logger.Info("",
+						zap.String("datetime", deal.CreationTime.Time().Format(time.RFC3339)),
+						zap.Bool("verified-deal", deal.Proposal.VerifiedDeal),
+						zap.String("proposal-cid", deal.ProposalCid.String()),
+						zap.Uint64("deal-id", uint64(deal.DealID)),
+						zap.String("deal-status", storagemarket.DealStates[deal.State]),
+						zap.String("client", deal.Proposal.Client.String()),
+						zap.String("piece-size", units.BytesSize(float64(deal.Proposal.PieceSize))),
+						zap.String("price", fil.String()),
+						zap.Int64("duration-epochs", int64(deal.Proposal.Duration())),
+						zap.Uint64("transfer-id", uint64(c.TransferID)),
+						zap.String("transfer-status", datatransfer.Statuses[c.Status]),
+						zap.String("transferred-data", units.BytesSize(float64(c.Transferred))),
+					)
+				}
+			}
+		}
+
 		return nil
 	},
 }
