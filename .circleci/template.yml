@@ -368,11 +368,6 @@ jobs:
           command: |
             curl https://sh.rustup.rs -sSf | sh -s -- -y
       - run:
-          name: Install jq
-          command: |
-            curl --location https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64 --output /usr/local/bin/jq
-            chmod +x /usr/local/bin/jq
-      - run:
           name: Install hwloc
           command: |
             mkdir ~/hwloc
