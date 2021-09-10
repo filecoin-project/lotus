@@ -1,5 +1,5 @@
 package tracer
 
 type TracerTransport interface {
-	Transport(jsonEvent []byte)
+	Transport(jsonEvent []byte) error
 }
