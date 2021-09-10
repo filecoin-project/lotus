@@ -401,10 +401,6 @@ var dealsListCmd = &cli.Command{
 			Name:  "watch",
 			Usage: "watch deal updates in real-time, rather than a one time list",
 		},
-		&cli.BoolFlag{
-			Name:  "with-transfers",
-			Usage: "include information about transfers together with deals",
-		},
 	},
 	Action: func(cctx *cli.Context) error {
 		switch cctx.String("format") {
