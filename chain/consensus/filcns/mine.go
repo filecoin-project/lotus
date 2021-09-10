@@ -65,7 +65,7 @@ func (filec *FilecoinEC) CreateBlock(ctx context.Context, w api.Wallet, bt *api.
 			}
 
 			blsMsgCids = append(blsMsgCids, c)
-		} else {
+		} else if msg.Signature.Type == crypto.SigTypeSecp256k1 {
 			c, err := filec.sm.ChainStore().PutMessage(msg)
 			if err != nil {
 				return nil, err
@@ -74,6 +74,8 @@ func (filec *FilecoinEC) CreateBlock(ctx context.Context, w api.Wallet, bt *api.
 			secpkMsgCids = append(secpkMsgCids, c)
 			secpkMessages = append(secpkMessages, msg)
 
+		} else {
+			return nil, xerrors.Errorf("unknown sig type: %d", msg.Signature.Type)
 		}
 	}
 
