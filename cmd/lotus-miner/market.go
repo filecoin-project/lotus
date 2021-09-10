@@ -390,7 +390,7 @@ var dealsListCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "format",
-			Usage: "output format of data, `json` and `table` are supported",
+			Usage: "output format of data, supported: table, json",
 			Value: "table",
 		},
 		&cli.BoolFlag{
