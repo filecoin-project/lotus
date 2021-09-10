@@ -1,4 +1,4 @@
-package lp2p
+package tracer
 
 import (
 	peer "github.com/libp2p/go-libp2p-core/peer"
@@ -6,14 +6,16 @@ import (
 	pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"
 )
 
-func newLotusTracer(tr pubsub.EventTracer) LotusTracer {
+func newLotusTracer(et pubsub.EventTracer, tt TracerTransport) LotusTracer {
 	return &lotusTracer{
-		tr: tr,
+		et: et,
+		tt: tt,
 	}
 }
 
 type lotusTracer struct {
-	tr pubsub.EventTracer
+	et pubsub.EventTracer
+	tt TracerTransport
 }
 
 type LotusTracer interface {
