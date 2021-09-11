@@ -577,7 +577,7 @@ func TestMessageSelectionTrimming(t *testing.T) {
 
 	expected := int(build.BlockGasLimit / gasLimit)
 	if len(msgs) != expected {
-		t.Fatalf("expected %d messages, bug got %d", expected, len(msgs))
+		t.Fatalf("expected %d messages, but got %d", expected, len(msgs))
 	}
 
 	mGasLimit := int64(0)
@@ -978,7 +978,7 @@ func TestOptimalMessageSelection2(t *testing.T) {
 func TestOptimalMessageSelection3(t *testing.T) {
 	// this test uses 10 actors sending a block of messages to each other, with the the first
 	// actors paying higher gas premium than the subsequent actors.
-	// We select with a low ticket quality; the chain depenent merging algorithm should pick
+	// We select with a low ticket quality; the chain dependent merging algorithm should pick
 	// messages from the median actor from the start
 	mp, tma := makeTestMpool()
 
@@ -1109,10 +1109,12 @@ func testCompetitiveMessageSelection(t *testing.T, rng *rand.Rand, getPremium fu
 	logging.SetLogLevel("messagepool", "error")
 
 	// 1. greedy selection
-	greedyMsgs, err := mp.selectMessagesGreedy(context.Background(), ts, ts)
+	gm, err := mp.selectMessagesGreedy(context.Background(), ts, ts)
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	greedyMsgs := gm.msgs
 
 	totalGreedyCapacity := 0.0
 	totalGreedyReward := 0.0
