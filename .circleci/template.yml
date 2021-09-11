@@ -348,7 +348,7 @@ jobs:
   build-macos:
     description: build darwin lotus binary
     macos:
-      xcode: "10.0.0"
+      xcode: "12.5.0"
     working_directory: ~/go/src/github.com/filecoin-project/lotus
     steps:
       - prepare:
@@ -838,14 +838,7 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-lotus-soup
-      - build-macos:
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-macos
       - build-appimage:
           filters:
             branches:
