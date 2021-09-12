@@ -320,9 +320,9 @@ func submitBadProof(
 	}
 
 	commEpoch := di.Open
-	commRand, err := client.ChainGetRandomnessFromTickets(
-		ctx, head.Key(), crypto.DomainSeparationTag_PoStChainCommit,
-		commEpoch, nil,
+	commRand, err := client.StateGetRandomnessFromTickets(
+		ctx, crypto.DomainSeparationTag_PoStChainCommit,
+		commEpoch, nil, head.Key(),
 	)
 	if err != nil {
 		return err
