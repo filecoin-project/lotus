@@ -63,6 +63,10 @@ func (mp *MessagePool) SelectMessages(ctx context.Context, ts *types.TipSet, tq 
 		return nil, err
 	}
 
+	if sm == nil {
+		return nil, nil
+	}
+
 	// one last sanity check
 	if len(sm.msgs) > build.BlockMessageLimit {
 		sm.msgs = sm.msgs[:build.BlockMessageLimit]
