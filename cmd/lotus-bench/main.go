@@ -282,9 +282,9 @@ var recoveryCmd = &cli.Command{
 		sealTimings.PreCommit2 = precommit2.Sub(pc2Start)
 
 		fmt.Printf("----\nresults (v28) (%d)\n", sectorSize)
-		fmt.Printf("seal: addPiece: %s (%s)\n", sealTimings.AddPiece, bps(abi.SectorSize(sectorSize), 1, sealTimings.AddPiece))
-		fmt.Printf("seal: preCommit phase 1: %s (%s)\n", sealTimings.PreCommit1, bps(abi.SectorSize(sectorSize), 1, sealTimings.PreCommit1))
-		fmt.Printf("seal: preCommit phase 2: %s (%s)\n", sealTimings.PreCommit2, bps(abi.SectorSize(sectorSize), 1, sealTimings.PreCommit2))
+		fmt.Printf("seal: addPiece: %s (%s)\n", sealTimings.AddPiece, bps(sectorSize, 1, sealTimings.AddPiece))
+		fmt.Printf("seal: preCommit phase 1: %s (%s)\n", sealTimings.PreCommit1, bps(sectorSize, 1, sealTimings.PreCommit1))
+		fmt.Printf("seal: preCommit phase 2: %s (%s)\n", sealTimings.PreCommit2, bps(sectorSize, 1, sealTimings.PreCommit2))
 
 		fmt.Printf("----\n")
 		fmt.Printf("%v \n", sectorfullname)
