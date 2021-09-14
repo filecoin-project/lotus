@@ -689,12 +689,6 @@ var actorSetOwnerCmd = &cli.Command{
 			return fmt.Errorf("must pass new owner address and sender address")
 		}
 
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -723,7 +717,7 @@ var actorSetOwnerCmd = &cli.Command{
 			return err
 		}
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		maddr, err := getActorAddress(ctx, cctx)
 		if err != nil {
 			return err
 		}
