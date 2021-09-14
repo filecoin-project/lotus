@@ -104,7 +104,7 @@ func main() {
 			&cli.StringFlag{
 				Name:    "actor",
 				Value:   "",
-				Usage:   "specify other actor to check state for (read only)",
+				Usage:   "specify other actor to query / manipulate",
 				Aliases: []string{"a"},
 			},
 			&cli.BoolFlag{
