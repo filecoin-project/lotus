@@ -78,12 +78,12 @@ type workerHandle struct {
 
 	info storiface.WorkerInfo
 
-	preparing *activeResources
-	active    *activeResources
+	preparing *activeResources // use with workerHandle.lk
+	active    *activeResources // use with workerHandle.lk
 
-	lk sync.Mutex
+	lk sync.Mutex // can be taken inside sched.workersLk.RLock
 
-	wndLk         sync.Mutex
+	wndLk         sync.Mutex // can be taken inside sched.workersLk.RLock
 	activeWindows []*schedWindow
 
 	enabled bool
