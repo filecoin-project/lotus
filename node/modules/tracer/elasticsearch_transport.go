@@ -8,10 +8,11 @@ import (
 
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
-	logging "github.com/ipfs/go-log/v2"
 )
 
-var rpclog = logging.Logger("elasticsearch")
+const (
+	ElasticSearch_INDEX = "pubsub"
+)
 
 func NewElasticSearchTransport() (TracerTransport, error) {
 	es, err := elasticsearch.NewDefaultClient()
@@ -31,7 +32,7 @@ type elasticSearchTransport struct {
 
 func (est *elasticSearchTransport) Transport(jsonEvent []byte) error {
 	req := esapi.IndexRequest{
-		Index:      "PeerScore",
+		Index:      ElasticSearch_INDEX,
 		DocumentID: "1", // todo
 		Body:       strings.NewReader(string(jsonEvent)),
 		Refresh:    "true",
@@ -51,8 +52,6 @@ func (est *elasticSearchTransport) Transport(jsonEvent []byte) error {
 		var r map[string]interface{}
 		if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
 			return err
-		} else {
-			rpclog.Infof("[%s] %s; version=%d", res.Status(), r["result"], int(r["_version"].(float64)))
 		}
 	}
 	return nil
