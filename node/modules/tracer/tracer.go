@@ -12,7 +12,7 @@ import (
 
 var log = logging.Logger("lotus-tracer")
 
-func NewLotusTracer(tt TracerTransport, pid peer.ID) LotusTracer {
+func NewLotusTracer(tt []TracerTransport, pid peer.ID) LotusTracer {
 	return &lotusTracer{
 		tt:  tt,
 		pid: pid,
@@ -20,7 +20,7 @@ func NewLotusTracer(tt TracerTransport, pid peer.ID) LotusTracer {
 }
 
 type lotusTracer struct {
-	tt  TracerTransport
+	tt  []TracerTransport
 	pid peer.ID
 }
 
@@ -67,10 +67,13 @@ func (lt *lotusTracer) TraceLotusEvent(evt *LotusTraceEvent) {
 		return
 	}
 
-	err = lt.tt.Transport(jsonEvent)
-	if err != nil {
-		log.Errorf("error while transporting peer scores: %s", err)
+	for _, t := range lt.tt {
+		err = t.Transport(jsonEvent)
+		if err != nil {
+			log.Errorf("error while transporting peer scores: %s", err)
+		}
 	}
+
 }
 
 func (lt *lotusTracer) Trace(evt *pubsub_pb.TraceEvent) {
@@ -80,8 +83,10 @@ func (lt *lotusTracer) Trace(evt *pubsub_pb.TraceEvent) {
 		return
 	}
 
-	err = lt.tt.Transport(jsonEvent)
-	if err != nil {
-		log.Errorf("error while transporting trace event: %s", err)
+	for _, t := range lt.tt {
+		err = t.Transport(jsonEvent)
+		if err != nil {
+			log.Errorf("error while transporting trace event: %s", err)
+		}
 	}
 }

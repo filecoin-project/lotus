@@ -310,6 +310,7 @@ type Pubsub struct {
 	IPColocationWhitelist []string
 	RemoteTracer          string
 	JsonTracerFile        string
+	ElasticSearchTracer   string
 }
 
 type Chainstore struct {

@@ -375,6 +375,9 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 
 		jsonTransport := tracer.NewJsonTracerTransport(out)
 		lt = tracer.NewLotusTracer(jsonTransport, in.Host.ID())
+	} else if in.Cfg.ElasticSearchTracer != "" {
+		elasticSearchTransport := tracer.NewElasticSearchTransport()
+		lt = tracer.NewLotusTracer(elasticSearchTransport, in.Host.ID())
 	}
 
 	// tracer
