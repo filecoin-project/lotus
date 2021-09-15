@@ -48,7 +48,7 @@ func (est *elasticSearchTransport) Transport(event TracerTransportEvent) error {
 
 	jsonEvent, err := json.Marshal(e)
 	if err != nil {
-		return fmt.Errorf("error while marshaling peer score: %s", err)
+		return fmt.Errorf("error while marshaling event: %s", err)
 	}
 
 	req := esapi.IndexRequest{
