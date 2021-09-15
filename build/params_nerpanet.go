@@ -45,6 +45,8 @@ const UpgradeNorwegianHeight = 201000
 const UpgradeTurboHeight = 203000
 const UpgradeHyperdriveHeight = 379178
 
+const UpgradeChocolateHeight = 999999999
+
 func init() {
 	// Minimum block production power is set to 4 TiB
 	// Rationale is to discourage small-scale miners from trying to take over the network
