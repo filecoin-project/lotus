@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net"
+	"os"
 	"time"
 
 	host "github.com/libp2p/go-libp2p-core/host"
@@ -21,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/node/modules/tracer"
 )
 
 func init() {
@@ -55,10 +57,10 @@ type PeerScoreTracker interface {
 
 type peerScoreTracker struct {
 	sk *dtypes.ScoreKeeper
-	lt LotusTracer
+	lt tracer.LotusTracer
 }
 
-func newPeerScoreTracker(lt LotusTracer, sk *dtypes.ScoreKeeper) PeerScoreTracker {
+func newPeerScoreTracker(lt tracer.LotusTracer, sk *dtypes.ScoreKeeper) PeerScoreTracker {
 	return &peerScoreTracker{
 		sk: sk,
 		lt: lt,
@@ -67,7 +69,7 @@ func newPeerScoreTracker(lt LotusTracer, sk *dtypes.ScoreKeeper) PeerScoreTracke
 
 func (pst *peerScoreTracker) UpdatePeerScore(scores map[peer.ID]*pubsub.PeerScoreSnapshot) {
 	if pst.lt != nil {
-		pst.lt.TracePeerScore(scores)
+		pst.lt.PeerScores(scores)
 	}
 
 	pst.sk.Update(scores)
@@ -364,6 +366,17 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 				pubsub.NewAllowlistSubscriptionFilter(allowTopics...),
 				100)))
 
+	var lt tracer.LotusTracer
+	if in.Cfg.JsonTracerFile != "" {
+		out, err := os.OpenFile(in.Cfg.JsonTracerFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0660)
+		if err != nil {
+			return nil, err
+		}
+
+		jsonTransport := tracer.NewJsonTracerTransport(out)
+		lt = tracer.NewLotusTracer(jsonTransport, in.Host.ID())
+	}
+
 	// tracer
 	if in.Cfg.RemoteTracer != "" {
 		a, err := ma.NewMultiaddr(in.Cfg.RemoteTracer)
@@ -381,7 +394,6 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 			return nil, err
 		}
 
-		lt := newLotusTracer(tr)
 		pst := newPeerScoreTracker(lt, in.Sk)
 		trw := newTracerWrapper(tr, lt, build.BlocksTopic(in.Nn))
 
