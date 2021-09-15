@@ -117,7 +117,8 @@ type activeResources struct {
 	gpuUsed    bool
 	cpuUse     uint64
 
-	cond *sync.Cond
+	cond    *sync.Cond
+	waiting int
 }
 
 type workerRequest struct {
