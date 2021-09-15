@@ -13,16 +13,16 @@ import (
 
 var rpclog = logging.Logger("elasticsearch")
 
-func NewElasticSearchTransport() TracerTransport {
+func NewElasticSearchTransport() (TracerTransport, error) {
 	es, err := elasticsearch.NewDefaultClient()
 
 	if err != nil {
-		rpclog.Fatalf("Error on creating elastic search client: %+v", err)
+		return nil, err
 	}
 
 	return &elasticSearchTransport{
 		cl: es,
-	}
+	}, nil
 }
 
 type elasticSearchTransport struct {
