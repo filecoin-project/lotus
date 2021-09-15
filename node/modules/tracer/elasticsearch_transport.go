@@ -12,6 +12,9 @@ import (
 
 const (
 	ElasticSearch_INDEX = "pubsub"
+
+	ElasticSearch_DOC_LOTUS  = "doc_lotus"
+	ElasticSearch_DOC_PUBSUB = "doc_pubsub"
 )
 
 func NewElasticSearchTransport() (TracerTransport, error) {
@@ -30,10 +33,27 @@ type elasticSearchTransport struct {
 	cl *elasticsearch.Client
 }
 
-func (est *elasticSearchTransport) Transport(jsonEvent []byte) error {
+func (est *elasticSearchTransport) Transport(event TracerTransportEvent) error {
+	var e interface{}
+	var docId string
+	if event.lotusTraceEvent != nil {
+		e = *event.lotusTraceEvent
+		docId = ElasticSearch_DOC_LOTUS
+	} else if event.pubsubTraceEvent != nil {
+		e = *event.pubsubTraceEvent
+		docId = ElasticSearch_DOC_PUBSUB
+	} else {
+		return nil
+	}
+
+	jsonEvent, err := json.Marshal(e)
+	if err != nil {
+		return fmt.Errorf("error while marshaling peer score: %s", err)
+	}
+
 	req := esapi.IndexRequest{
 		Index:      ElasticSearch_INDEX,
-		DocumentID: "1", // todo
+		DocumentID: docId,
 		Body:       strings.NewReader(string(jsonEvent)),
 		Refresh:    "true",
 	}

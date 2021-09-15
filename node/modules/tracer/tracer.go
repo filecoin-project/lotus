@@ -1,7 +1,6 @@
 package tracer
 
 import (
-	"encoding/json"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -61,14 +60,11 @@ func (lt *lotusTracer) PeerScores(scores map[peer.ID]*pubsub.PeerScoreSnapshot) 
 }
 
 func (lt *lotusTracer) TraceLotusEvent(evt *LotusTraceEvent) {
-	jsonEvent, err := json.Marshal(evt)
-	if err != nil {
-		log.Errorf("error while marshaling peer score: %s", err)
-		return
-	}
-
 	for _, t := range lt.tt {
-		err = t.Transport(jsonEvent)
+		err := t.Transport(TracerTransportEvent{
+			lotusTraceEvent:  evt,
+			pubsubTraceEvent: nil,
+		})
 		if err != nil {
 			log.Errorf("error while transporting peer scores: %s", err)
 		}
@@ -77,14 +73,11 @@ func (lt *lotusTracer) TraceLotusEvent(evt *LotusTraceEvent) {
 }
 
 func (lt *lotusTracer) Trace(evt *pubsub_pb.TraceEvent) {
-	jsonEvent, err := json.Marshal(evt)
-	if err != nil {
-		log.Errorf("error while marshaling tracer event: %s", err)
-		return
-	}
-
 	for _, t := range lt.tt {
-		err = t.Transport(jsonEvent)
+		err := t.Transport(TracerTransportEvent{
+			lotusTraceEvent:  nil,
+			pubsubTraceEvent: evt,
+		})
 		if err != nil {
 			log.Errorf("error while transporting trace event: %s", err)
 		}
