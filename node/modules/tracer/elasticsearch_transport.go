@@ -67,12 +67,6 @@ func (est *elasticSearchTransport) Transport(evt TracerTransportEvent) error {
 
 	if res.IsError() {
 		return fmt.Errorf("[%s] Error indexing document ID=%s", res.Status(), req.DocumentID)
-	} else {
-		// Deserialize the response into a map.
-		var r map[string]interface{}
-		if err := json.NewDecoder(res.Body).Decode(&r); err != nil {
-			return err
-		}
 	}
 	return nil
 }
