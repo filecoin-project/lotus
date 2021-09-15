@@ -33,20 +33,20 @@ type elasticSearchTransport struct {
 	cl *elasticsearch.Client
 }
 
-func (est *elasticSearchTransport) Transport(event TracerTransportEvent) error {
+func (est *elasticSearchTransport) Transport(evt TracerTransportEvent) error {
 	var e interface{}
 	var docId string
-	if event.lotusTraceEvent != nil {
-		e = *event.lotusTraceEvent
+	if evt.lotusTraceEvent != nil {
+		e = *evt.lotusTraceEvent
 		docId = ElasticSearch_DOC_LOTUS
-	} else if event.pubsubTraceEvent != nil {
-		e = *event.pubsubTraceEvent
+	} else if evt.pubsubTraceEvent != nil {
+		e = *evt.pubsubTraceEvent
 		docId = ElasticSearch_DOC_PUBSUB
 	} else {
 		return nil
 	}
 
-	jsonEvent, err := json.Marshal(e)
+	jsonEvt, err := json.Marshal(e)
 	if err != nil {
 		return fmt.Errorf("error while marshaling event: %s", err)
 	}
@@ -54,7 +54,7 @@ func (est *elasticSearchTransport) Transport(event TracerTransportEvent) error {
 	req := esapi.IndexRequest{
 		Index:      ElasticSearch_INDEX,
 		DocumentID: docId,
-		Body:       strings.NewReader(string(jsonEvent)),
+		Body:       strings.NewReader(string(jsonEvt)),
 		Refresh:    "true",
 	}
 

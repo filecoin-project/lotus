@@ -3,7 +3,7 @@ package tracer
 import pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"
 
 type TracerTransport interface {
-	Transport(jsonEvent TracerTransportEvent) error
+	Transport(evt TracerTransportEvent) error
 }
 
 type TracerTransportEvent struct {
