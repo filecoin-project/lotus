@@ -527,6 +527,12 @@ Type: Array of multiaddress peerinfo strings, must include peerid (/p2p/12D3K...
 
 			Comment: ``,
 		},
+		{
+			Name: "JsonTracerFile",
+			Type: "string",
+
+			Comment: ``,
+		},
 	},
 	"RetrievalPricing": []DocField{
 		{
