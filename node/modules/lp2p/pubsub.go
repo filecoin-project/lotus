@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"net"
-	"os"
 	"time"
 
 	host "github.com/libp2p/go-libp2p-core/host"
@@ -368,11 +367,11 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 
 	var transports []tracer.TracerTransport
 	if in.Cfg.JsonTracerFile != "" {
-		out, err := os.OpenFile(in.Cfg.JsonTracerFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0660)
+		jsonTransport, err := tracer.NewJsonTracerTransport(in.Cfg.JsonTracerFile)
 		if err != nil {
 			return nil, err
 		}
-		jsonTransport := tracer.NewJsonTracerTransport(out)
+
 		transports = append(transports, jsonTransport)
 	}
 	if in.Cfg.ElasticSearchTracer != "" {

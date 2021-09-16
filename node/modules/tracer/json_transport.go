@@ -10,10 +10,15 @@ type jsonTracerTransport struct {
 	out *os.File
 }
 
-func NewJsonTracerTransport(out *os.File) TracerTransport {
+func NewJsonTracerTransport(file string) (TracerTransport, error) {
+	out, err := os.OpenFile(file, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0660)
+	if err != nil {
+		return nil, err
+	}
+
 	return &jsonTracerTransport{
 		out: out,
-	}
+	}, nil
 }
 
 func (jtt *jsonTracerTransport) Transport(evt TracerTransportEvent) error {
