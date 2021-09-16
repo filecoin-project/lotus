@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/elastic/go-elasticsearch/v7"
@@ -17,8 +18,20 @@ const (
 	ElasticSearch_DOC_PUBSUB = "doc_pubsub"
 )
 
-func NewElasticSearchTransport() (TracerTransport, error) {
-	es, err := elasticsearch.NewDefaultClient()
+func NewElasticSearchTransport(connectionString string) (TracerTransport, error) {
+	conUrl, err := url.Parse(connectionString)
+
+	username := conUrl.User.Username()
+	password, _ := conUrl.User.Password()
+	cfg := elasticsearch.Config{
+		Addresses: []string{
+			"https://" + conUrl.Host,
+		},
+		Username: username,
+		Password: password,
+	}
+
+	es, err := elasticsearch.NewClient(cfg)
 
 	if err != nil {
 		return nil, err
