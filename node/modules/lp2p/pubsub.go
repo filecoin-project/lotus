@@ -409,7 +409,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		options = append(options, pubsub.WithPeerScoreInspect(pst.UpdatePeerScore, 10*time.Second))
 	} else {
 		// still instantiate a tracer for collecting metrics
-		trw := newTracerWrapper(nil, nil)
+		trw := newTracerWrapper(nil, lt)
 		options = append(options, pubsub.WithEventTracer(trw))
 
 		pst := newPeerScoreTracker(nil, in.Sk)
