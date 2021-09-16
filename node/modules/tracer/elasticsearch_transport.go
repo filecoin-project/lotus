@@ -51,10 +51,10 @@ func (est *elasticSearchTransport) Transport(evt TracerTransportEvent) error {
 	var docId string
 	if evt.lotusTraceEvent != nil {
 		e = *evt.lotusTraceEvent
-		docId = ElasticSearch_DOC_LOTUS
+		docId = ElasticSearch_DOC_PUBSUB
 	} else if evt.pubsubTraceEvent != nil {
 		e = *evt.pubsubTraceEvent
-		docId = ElasticSearch_DOC_LOTUS
+		docId = ElasticSearch_DOC_PUBSUB
 	} else {
 		return nil
 	}
