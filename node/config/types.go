@@ -311,6 +311,7 @@ type Pubsub struct {
 	RemoteTracer          string
 	JsonTracerFile        string
 	ElasticSearchTracer   string
+	TracerSourceAuth      string
 }
 
 type Chainstore struct {

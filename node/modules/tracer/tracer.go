@@ -11,16 +11,18 @@ import (
 
 var log = logging.Logger("lotus-tracer")
 
-func NewLotusTracer(tt []TracerTransport, pid peer.ID) LotusTracer {
+func NewLotusTracer(tt []TracerTransport, pid peer.ID, sourceAuth string) LotusTracer {
 	return &lotusTracer{
 		tt:  tt,
 		pid: pid,
+		sa:  sourceAuth,
 	}
 }
 
 type lotusTracer struct {
 	tt  []TracerTransport
 	pid peer.ID
+	sa  string
 }
 
 const (
@@ -32,6 +34,7 @@ type LotusTraceEvent struct {
 	PeerID     []byte                    `json:"peerID,omitempty"`
 	Timestamp  *int64                    `json:"timestamp,omitempty"`
 	PeerScores *TraceEvent_PeerScores    `json:"peerScores,omitempty"`
+	SourceAuth string                    `json:"sourceAuth,omitempty"`
 }
 
 type TraceEvent_PeerScores struct {
@@ -48,9 +51,10 @@ type LotusTracer interface {
 func (lt *lotusTracer) PeerScores(scores map[peer.ID]*pubsub.PeerScoreSnapshot) {
 	now := time.Now().UnixNano()
 	evt := &LotusTraceEvent{
-		Type:      *TraceEvent_PEER_SCORES.Enum(),
-		PeerID:    []byte(lt.pid),
-		Timestamp: &now,
+		Type:       *TraceEvent_PEER_SCORES.Enum(),
+		PeerID:     []byte(lt.pid),
+		Timestamp:  &now,
+		SourceAuth: lt.sa,
 		PeerScores: &TraceEvent_PeerScores{
 			Scores: scores,
 		},
