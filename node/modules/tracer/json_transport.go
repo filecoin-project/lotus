@@ -36,6 +36,6 @@ func (jtt *jsonTracerTransport) Transport(evt TracerTransportEvent) error {
 		return fmt.Errorf("error while marshaling event: %s", err)
 	}
 
-	_, err = jtt.out.Write(jsonEvt)
+	_, err = jtt.out.WriteString(string(jsonEvt) + "\n")
 	return err
 }
