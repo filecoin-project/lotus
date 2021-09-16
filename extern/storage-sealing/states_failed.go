@@ -394,6 +394,11 @@ func (m *Sealing) HandleRecoverDealIDs(ctx Context, sector SectorInfo) error {
 			failed[i] = xerrors.Errorf("getting current deal info for piece %d: %w", i, err)
 		}
 
+		if res.MarketDeal == nil {
+			failed[i] = xerrors.Errorf("nil market deal (%d,%d,%d,%s)", i, sector.SectorNumber, p.DealInfo.DealID, p.Piece.PieceCID)
+			continue
+		}
+
 		if res.MarketDeal.Proposal.PieceCID != p.Piece.PieceCID {
 			failed[i] = xerrors.Errorf("recovered piece (%d) deal in sector %d (dealid %d) has different PieceCID %s != %s", i, sector.SectorNumber, p.DealInfo.DealID, p.Piece.PieceCID, res.MarketDeal.Proposal.PieceCID)
 			continue
