@@ -1,7 +1,6 @@
 package tracer
 
 import (
-	"encoding/json"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -12,7 +11,7 @@ import (
 
 var log = logging.Logger("lotus-tracer")
 
-func NewLotusTracer(tt TracerTransport, pid peer.ID) LotusTracer {
+func NewLotusTracer(tt []TracerTransport, pid peer.ID) LotusTracer {
 	return &lotusTracer{
 		tt:  tt,
 		pid: pid,
@@ -20,7 +19,7 @@ func NewLotusTracer(tt TracerTransport, pid peer.ID) LotusTracer {
 }
 
 type lotusTracer struct {
-	tt  TracerTransport
+	tt  []TracerTransport
 	pid peer.ID
 }
 
@@ -61,27 +60,26 @@ func (lt *lotusTracer) PeerScores(scores map[peer.ID]*pubsub.PeerScoreSnapshot) 
 }
 
 func (lt *lotusTracer) TraceLotusEvent(evt *LotusTraceEvent) {
-	jsonEvent, err := json.Marshal(evt)
-	if err != nil {
-		log.Errorf("error while marshaling peer score: %s", err)
-		return
+	for _, t := range lt.tt {
+		err := t.Transport(TracerTransportEvent{
+			lotusTraceEvent:  evt,
+			pubsubTraceEvent: nil,
+		})
+		if err != nil {
+			log.Errorf("error while transporting peer scores: %s", err)
+		}
 	}
 
-	err = lt.tt.Transport(jsonEvent)
-	if err != nil {
-		log.Errorf("error while transporting peer scores: %s", err)
-	}
 }
 
 func (lt *lotusTracer) Trace(evt *pubsub_pb.TraceEvent) {
-	jsonEvent, err := json.Marshal(evt)
-	if err != nil {
-		log.Errorf("error while marshaling tracer event: %s", err)
-		return
-	}
-
-	err = lt.tt.Transport(jsonEvent)
-	if err != nil {
-		log.Errorf("error while transporting trace event: %s", err)
+	for _, t := range lt.tt {
+		err := t.Transport(TracerTransportEvent{
+			lotusTraceEvent:  nil,
+			pubsubTraceEvent: evt,
+		})
+		if err != nil {
+			log.Errorf("error while transporting trace event: %s", err)
+		}
 	}
 }

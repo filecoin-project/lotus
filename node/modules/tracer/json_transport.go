@@ -1,6 +1,8 @@
 package tracer
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
 )
 
@@ -14,7 +16,21 @@ func NewJsonTracerTransport(out *os.File) TracerTransport {
 	}
 }
 
-func (jtt *jsonTracerTransport) Transport(jsonEvent []byte) error {
-	_, err := jtt.out.Write(jsonEvent)
+func (jtt *jsonTracerTransport) Transport(evt TracerTransportEvent) error {
+	var e interface{}
+	if evt.lotusTraceEvent != nil {
+		e = *evt.lotusTraceEvent
+	} else if evt.pubsubTraceEvent != nil {
+		e = *evt.pubsubTraceEvent
+	} else {
+		return nil
+	}
+
+	jsonEvt, err := json.Marshal(e)
+	if err != nil {
+		return fmt.Errorf("error while marshaling event: %s", err)
+	}
+
+	_, err = jtt.out.Write(jsonEvt)
 	return err
 }

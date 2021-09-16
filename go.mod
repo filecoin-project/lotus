@@ -22,6 +22,7 @@ require (
 	github.com/drand/drand v1.2.1
 	github.com/drand/kyber v1.1.4
 	github.com/dustin/go-humanize v1.0.0
+	github.com/elastic/go-elasticsearch/v7 v7.14.0
 	github.com/elastic/go-sysinfo v1.3.0
 	github.com/elastic/gosigar v0.12.0
 	github.com/etclabscore/go-openrpc-reflect v0.0.36

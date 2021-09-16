@@ -533,6 +533,12 @@ Type: Array of multiaddress peerinfo strings, must include peerid (/p2p/12D3K...
 
 			Comment: ``,
 		},
+		{
+			Name: "ElasticSearchTracer",
+			Type: "string",
+
+			Comment: ``,
+		},
 	},
 	"RetrievalPricing": []DocField{
 		{

@@ -366,16 +366,25 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 				pubsub.NewAllowlistSubscriptionFilter(allowTopics...),
 				100)))
 
-	var lt tracer.LotusTracer
+	var transports []tracer.TracerTransport
 	if in.Cfg.JsonTracerFile != "" {
 		out, err := os.OpenFile(in.Cfg.JsonTracerFile, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0660)
 		if err != nil {
 			return nil, err
 		}
-
 		jsonTransport := tracer.NewJsonTracerTransport(out)
-		lt = tracer.NewLotusTracer(jsonTransport, in.Host.ID())
+		transports = append(transports, jsonTransport)
 	}
+	if in.Cfg.ElasticSearchTracer != "" {
+		elasticSearchTransport, err := tracer.NewElasticSearchTransport(
+			in.Cfg.ElasticSearchTracer,
+		)
+		if err != nil {
+			return nil, err
+		}
+		transports = append(transports, elasticSearchTransport)
+	}
+	lt := tracer.NewLotusTracer(transports, in.Host.ID())
 
 	// tracer
 	if in.Cfg.RemoteTracer != "" {
