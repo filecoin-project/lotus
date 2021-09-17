@@ -3,6 +3,7 @@ package sealing_test
 import (
 	"bytes"
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/network"
@@ -23,6 +24,64 @@ import (
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/mocks"
 )
+
+func TestStateRecoverDealIDsErredDealInfo(t *testing.T) {
+	mockCtrl := gomock.NewController(t)
+	defer mockCtrl.Finish()
+
+	ctx := context.Background()
+
+	api := mocks.NewMockSealingAPI(mockCtrl)
+
+	fakeSealing := &sealing.Sealing{
+		Api:      api,
+		DealInfo: &sealing.CurrentDealInfoManager{CDAPI: api},
+	}
+
+	sctx := mocks.NewMockContext(mockCtrl)
+	sctx.EXPECT().Context().AnyTimes().Return(ctx)
+
+	api.EXPECT().ChainHead(ctx).Times(1).Return(nil, abi.ChainEpoch(10), nil)
+
+	var dealId abi.DealID = 12
+	dealProposal := market.DealProposal{
+		PieceCID: idCid("newPieceCID"),
+	}
+
+	api.EXPECT().StateMarketStorageDealProposal(ctx, dealId, nil).Return(dealProposal, nil)
+
+	pc := idCid("publishCID")
+
+	// expect GetCurrentDealInfo
+	{
+		api.EXPECT().StateSearchMsg(ctx, pc).Return(&sealing.MsgLookup{
+			Receipt: sealing.MessageReceipt{
+				ExitCode: exitcode.Ok,
+				Return: cborRet(&market.PublishStorageDealsReturn{
+					IDs: []abi.DealID{dealId},
+				}),
+			},
+		}, nil)
+		api.EXPECT().StateMarketStorageDeal(ctx, dealId, nil).Return(nil, errors.New("deal may not have completed sealing or slashed"))
+	}
+
+	sctx.EXPECT().Send(sealing.SectorRemove{}).Return(nil)
+
+	err := fakeSealing.HandleRecoverDealIDs(sctx, sealing.SectorInfo{
+		Pieces: []sealing.Piece{
+			{
+				DealInfo: &api2.PieceDealInfo{
+					DealID:     dealId,
+					PublishCid: &pc,
+				},
+				Piece: abi.PieceInfo{
+					PieceCID: idCid("oldPieceCID"),
+				},
+			},
+		},
+	})
+	require.NoError(t, err)
+}
 
 func TestStateRecoverDealIDs(t *testing.T) {
 	mockCtrl := gomock.NewController(t)
