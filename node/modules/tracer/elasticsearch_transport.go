@@ -14,10 +14,7 @@ import (
 )
 
 const (
-	ElasticSearch_INDEX = "lotus2"
-
-	ElasticSearch_DOC_LOTUS  = "doc_lotus"
-	ElasticSearch_DOC_PUBSUB = "doc_pubsub"
+	ElasticSearch_INDEX = "lotus-pubsub"
 )
 
 func NewElasticSearchTransport(connectionString string) (TracerTransport, error) {
@@ -55,13 +52,11 @@ type elasticSearchTransport struct {
 
 func (est *elasticSearchTransport) Transport(evt TracerTransportEvent) error {
 	var e interface{}
-	var docId string
+
 	if evt.lotusTraceEvent != nil {
 		e = *evt.lotusTraceEvent
-		docId = ElasticSearch_DOC_PUBSUB
 	} else if evt.pubsubTraceEvent != nil {
 		e = *evt.pubsubTraceEvent
-		docId = ElasticSearch_DOC_PUBSUB
 	} else {
 		return nil
 	}
@@ -72,10 +67,9 @@ func (est *elasticSearchTransport) Transport(evt TracerTransportEvent) error {
 	}
 
 	req := esapi.IndexRequest{
-		Index:      ElasticSearch_INDEX,
-		DocumentID: docId,
-		Body:       strings.NewReader(string(jsonEvt)),
-		Refresh:    "true",
+		Index:   ElasticSearch_INDEX,
+		Body:    strings.NewReader(string(jsonEvt)),
+		Refresh: "true",
 	}
 
 	// Perform the request with the client.
