@@ -3,34 +3,25 @@ package itests
 import (
 	"bufio"
 	"context"
-	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
 
-	"github.com/ipld/go-car/v2/blockstore"
-
-	"github.com/filecoin-project/lotus/api"
-
+	"github.com/filecoin-project/go-state-types/abi"
 	ipld "github.com/ipfs/go-ipld-format"
-
-	"github.com/filecoin-project/go-fil-markets/shared"
-
 	"github.com/ipld/go-car"
-
+	"github.com/ipld/go-car/v2/blockstore"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
-
+	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/node/modules"
 
-	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/itests/kit"
-	logging "github.com/ipfs/go-log/v2"
+	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/modules"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 func TestDealRetrieveByAnyCid(t *testing.T) {
@@ -46,12 +37,8 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 	})
 
 	// Allow 8MB sectors
-	kit.EnableLargeSectors(t)
 	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg8MiBV1)
 	kit.QuietMiningLogs()
-	//logging.SetLogLevel("dagstore.invidx", "debug")
-	logging.SetLogLevel("markets-rtvl", "debug")
-	logging.SetLogLevel("markets-rtvl-reval", "debug")
 
 	// For these tests where the block time is artificially short, just use
 	// a deal start epoch that is guaranteed to be far enough in the future
@@ -68,7 +55,7 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 	}
 	bsaOpt := kit.ConstructorOpts(node.Override(new(storagemarket.BlockstoreAccessor), bsaFn))
 
-	// Allow 512MB sectors
+	// Allow 8MB sectors
 	eightMBSectorsOpt := kit.SectorSize(8 << 20)
 
 	// Create a client, and a miner with its own full node
@@ -77,10 +64,14 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 
 	dh := kit.NewDealHarness(t, client, miner, miner)
 
-	//res, path := client.CreateImportFile(ctx, 5, 140*1024*1024)
+	// Generate a DAG with multiple levels, so that we can test the case where
+	// the client requests a CID for a block which is not the root block but
+	// does have a subtree below it in the DAG
 	dagOpts := kit.GeneratedDAGOpts{
+		// Max size of a block
 		ChunkSize: 1024,
-		Maxlinks:  10,
+		// Max links from a block to other blocks
+		Maxlinks: 10,
 	}
 	carv1FilePath, _ := kit.CreateRandomCARv1(t, 5, 100*1024, dagOpts)
 	res, err := client.ClientImport(ctx, api.FileRef{Path: carv1FilePath, IsCAR: true})
@@ -102,11 +93,7 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 		nd, err := ipld.Decode(blk)
 		require.NoError(t, err)
 
-		fmt.Println(i, c, len(nd.Links()))
-
-		if i > 100 {
-			break
-		}
+		t.Log(i, c, len(nd.Links()))
 	}
 
 	// Create a storage deal
@@ -130,9 +117,10 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 	info, err := client.ClientGetDealInfo(ctx, *dealCid)
 	require.NoError(t, err)
 
+	// Make retrievals against CIDs at different levels in the DAG
 	cidIndices := []int{1, 11, 27, 32, 47}
 	for _, val := range cidIndices {
-		fmt.Println("performing retrieval for cid at index", val)
+		t.Logf("performing retrieval for cid at index %d", val)
 
 		targetCid := cids[val]
 		offer, err := client.ClientMinerQueryOffer(ctx, miner.ActorAddr, targetCid, &info.PieceCID)
@@ -165,18 +153,7 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 		require.NoError(t, tmp.Close())
 		require.NoError(t, rd.Close())
 
-		originalF, err := os.Open(tmp.Name())
-		require.NoError(t, err)
-		obz, err := ioutil.ReadAll(originalF)
-		require.NoError(t, err)
-
-		rf, err := os.Open(outputCar)
-		require.NoError(t, err)
-		bz, err := ioutil.ReadAll(rf)
-		require.NoError(t, err)
-		require.EqualValues(t, obz, bz)
-		fmt.Println("car files match")
+		kit.AssertFilesEqual(t, tmp.Name(), outputCar)
+		t.Log("car files match")
 	}
-
-	fmt.Println("finished test")
 }
