@@ -76,6 +76,12 @@ func main() {
 				Usage:   fmt.Sprintf("Specify worker repo path. flag %s and env WORKER_PATH are DEPRECATION, will REMOVE SOON", FlagWorkerRepoDeprecation),
 			},
 			&cli.StringFlag{
+				Name:    "panic-reports",
+				EnvVars: []string{"LOTUS_PANIC_REPORT_PATH"},
+				Hidden:  true,
+				Value:   "~/.lotus", // should follow --repo default
+			},
+			&cli.StringFlag{
 				Name:    "miner-repo",
 				Aliases: []string{"storagerepo"},
 				EnvVars: []string{"LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH"},
@@ -89,6 +95,14 @@ func main() {
 			},
 		},
 
+		After: func(c *cli.Context) error {
+			if r := recover(); r != nil {
+				// Generate report in LOTUS_PATH and re-raise panic
+				build.GeneratePanicReport(c.String("panic-reports"), c.String(FlagWorkerRepo), c.App.Name)
+				panic(r)
+			}
+			return nil
+		},
 		Commands: local,
 	}
 	app.Setup()
