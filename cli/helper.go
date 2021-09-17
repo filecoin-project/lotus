@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/filecoin-project/lotus/build"
 	ufcli "github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 )
@@ -32,6 +33,13 @@ func ShowHelp(cctx *ufcli.Context, err error) error {
 }
 
 func RunApp(app *ufcli.App) {
+	defer func() {
+		if r := recover(); r != nil {
+			// Generate report in LOTUS_PATH and re-raise panic
+			build.GeneratePanicReport(os.Getenv("LOTUS_PATH"), "app_panic")
+			panic(r)
+		}
+	}()
 	if err := app.Run(os.Args); err != nil {
 		if os.Getenv("LOTUS_DEV") != "" {
 			log.Warnf("%+v", err)
