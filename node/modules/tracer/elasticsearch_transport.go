@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	ElasticSearch_INDEX = "pubsub"
+	ElasticSearch_INDEX = "lotus"
 
 	ElasticSearch_DOC_LOTUS  = "doc_lotus"
 	ElasticSearch_DOC_PUBSUB = "doc_pubsub"
