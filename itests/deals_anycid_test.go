@@ -4,9 +4,12 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/ipld/go-car/v2/blockstore"
 
 	"github.com/filecoin-project/lotus/api"
 
@@ -128,25 +131,52 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 	require.NoError(t, err)
 
 	cidIndices := []int{1, 11, 27, 32, 47}
-
 	for _, val := range cidIndices {
 		fmt.Println("performing retrieval for cid at index", val)
+
 		targetCid := cids[val]
 		offer, err := client.ClientMinerQueryOffer(ctx, miner.ActorAddr, targetCid, &info.PieceCID)
 		require.NoError(t, err)
 		require.Empty(t, offer.Err)
 
-		outPath := dh.PerformRetrievalForOffer(ctx, true, offer)
-		_, err = os.Stat(outPath)
+		// retrieve in a CAR file and ensure roots match
+		outputCar := dh.PerformRetrievalForOffer(ctx, true, offer)
+		_, err = os.Stat(outputCar)
 		require.NoError(t, err)
-
-		f, err := os.Open(outPath)
+		f, err := os.Open(outputCar)
 		require.NoError(t, err)
-		defer f.Close()
-
 		ch, _, _ := car.ReadHeader(bufio.NewReader(f))
 		require.EqualValues(t, ch.Roots[0], targetCid)
+		require.NoError(t, f.Close())
+
+		// create CAR from original file starting at targetCid and ensure it matches the retrieved CAR file.
+		tmp, err := os.CreateTemp(t.TempDir(), "randcarv1")
+		require.NoError(t, err)
+		rd, err := blockstore.OpenReadOnly(carv1FilePath, blockstore.UseWholeCIDs(true))
+		require.NoError(t, err)
+		err = car.NewSelectiveCar(
+			ctx,
+			rd,
+			[]car.Dag{{
+				Root:     targetCid,
+				Selector: shared.AllSelector(),
+			}},
+		).Write(tmp)
+		require.NoError(t, tmp.Close())
+		require.NoError(t, rd.Close())
+
+		originalF, err := os.Open(tmp.Name())
+		require.NoError(t, err)
+		obz, err := ioutil.ReadAll(originalF)
+		require.NoError(t, err)
+
+		rf, err := os.Open(outputCar)
+		require.NoError(t, err)
+		bz, err := ioutil.ReadAll(rf)
+		require.NoError(t, err)
+		require.EqualValues(t, obz, bz)
+		fmt.Println("car files match")
 	}
 
-	fmt.Println("finised test")
+	fmt.Println("finished test")
 }
