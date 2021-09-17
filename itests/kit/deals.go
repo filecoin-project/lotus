@@ -316,16 +316,16 @@ func (dh *DealHarness) PerformRetrieval(ctx context.Context, dealCid *cid.Cid, r
 }
 
 func (dh *DealHarness) PerformRetrievalForOffer(ctx context.Context, carExport bool, offer api.QueryOffer) string {
-	carFile, err := ioutil.TempFile(dh.t.TempDir(), "ret-car")
+	outputF, err := ioutil.TempFile(dh.t.TempDir(), "ret-car")
 	require.NoError(dh.t, err)
 
-	defer carFile.Close() //nolint:errcheck
+	defer outputF.Close() //nolint:errcheck
 
 	caddr, err := dh.client.WalletDefaultAddress(ctx)
 	require.NoError(dh.t, err)
 
 	ref := &api.FileRef{
-		Path:  carFile.Name(),
+		Path:  outputF.Name(),
 		IsCAR: carExport,
 	}
 
@@ -337,12 +337,7 @@ func (dh *DealHarness) PerformRetrievalForOffer(ctx context.Context, carExport b
 		require.Emptyf(dh.t, update.Err, "retrieval failed: %s", update.Err)
 	}
 
-	ret := carFile.Name()
-	if carExport {
-		actualFile := dh.ExtractFileFromCAR(ctx, carFile)
-		ret = actualFile.Name()
-		_ = actualFile.Close() //nolint:errcheck
-	}
+	ret := outputF.Name()
 
 	return ret
 }

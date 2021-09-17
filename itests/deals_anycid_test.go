@@ -1,6 +1,7 @@
 package itests
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
@@ -76,9 +77,9 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 	//res, path := client.CreateImportFile(ctx, 5, 140*1024*1024)
 	dagOpts := kit.GeneratedDAGOpts{
 		ChunkSize: 1024,
-		Maxlinks:  2,
+		Maxlinks:  10,
 	}
-	carv1FilePath, _ := kit.CreateRandomCARv1(t, 5, 8*1024, dagOpts)
+	carv1FilePath, _ := kit.CreateRandomCARv1(t, 5, 100*1024, dagOpts)
 	res, err := client.ClientImport(ctx, api.FileRef{Path: carv1FilePath, IsCAR: true})
 	require.NoError(t, err)
 
@@ -91,7 +92,6 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 	prepared, err := sc.Prepare()
 	require.NoError(t, err)
 	cids := prepared.Cids()
-	//	fmt.Println(cids)
 	for i, c := range cids {
 		blk, err := bs.Get(c)
 		require.NoError(t, err)
@@ -127,17 +127,26 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 	info, err := client.ClientGetDealInfo(ctx, *dealCid)
 	require.NoError(t, err)
 
-	//targetCid := res.Root
-	targetCid := cids[1]
-	offer, err := client.ClientMinerQueryOffer(ctx, miner.ActorAddr, targetCid, &info.PieceCID)
-	require.NoError(t, err)
-	require.Empty(t, offer.Err)
+	cidIndices := []int{1, 11, 27, 32, 47}
 
-	outPath := dh.PerformRetrievalForOffer(ctx, false, offer)
-	stat, err := os.Stat(outPath)
-	require.NoError(t, err)
-	fmt.Println(stat)
+	for _, val := range cidIndices {
+		fmt.Println("performing retrieval for cid at index", val)
+		targetCid := cids[val]
+		offer, err := client.ClientMinerQueryOffer(ctx, miner.ActorAddr, targetCid, &info.PieceCID)
+		require.NoError(t, err)
+		require.Empty(t, offer.Err)
 
-	// TODO: compare stored vs retrieved blocks
-	//kit.AssertFilesEqual(t, path, outPath)
+		outPath := dh.PerformRetrievalForOffer(ctx, true, offer)
+		_, err = os.Stat(outPath)
+		require.NoError(t, err)
+
+		f, err := os.Open(outPath)
+		require.NoError(t, err)
+		defer f.Close()
+
+		ch, _, _ := car.ReadHeader(bufio.NewReader(f))
+		require.EqualValues(t, ch.Roots[0], targetCid)
+	}
+
+	fmt.Println("finised test")
 }
