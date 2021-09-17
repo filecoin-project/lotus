@@ -37,7 +37,7 @@ var PanicReportJournalTail = defaultJournalTail
 func GeneratePanicReport(persistPath, repoPath, label string) {
 	// make sure we always dump the latest logs on the way out
 	// especially since we're probably panicking
-	defer panicLog.Sync()
+	defer panicLog.Sync() //nolint:errcheck
 
 	if persistPath == "" {
 		panicLog.Error("persist path is empty, aborting panic report generation")
@@ -71,7 +71,7 @@ func writeStackTrace(file string) {
 	if err != nil {
 		panicLog.Error(err.Error())
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errheck
 
 	if _, err := f.Write(debug.Stack()); err != nil {
 		panicLog.Error(err.Error())
@@ -90,7 +90,7 @@ func writeProfile(profileType string, file string) {
 		panicLog.Error(err.Error())
 		return
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errheck
 
 	if err := p.WriteTo(f, 0); err != nil {
 		panicLog.Error(err.Error())
@@ -108,7 +108,7 @@ func writeJournalTail(tailLen int, repoPath, file string) {
 		panicLog.Error(err.Error())
 		return
 	}
-	defer f.Close()
+	defer f.Close() //nolint:errheck
 
 	jPath, err := getLatestJournalFilePath(repoPath)
 	if err != nil {
