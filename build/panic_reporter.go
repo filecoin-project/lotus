@@ -14,11 +14,11 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 )
 
-var panicLog = logging.Logger("panic_reporter")
+var panicLog = logging.Logger("panic-reporter")
 
 // PanicReportingPath is the name of the subdir created within the repoPath path
 // provided to GeneratePanicReport
-var PanicReportingPath = "panic_reports"
+var PanicReportingPath = "lotus_panic_reports"
 
 // PanicReportJournalTail is the number of lines captured from the end of
 // the lotus journal to be included in the panic report.
@@ -26,19 +26,20 @@ var PanicReportJournalTail = 500
 
 // GeneratePanicReport produces a timestamped dump of the application state
 // for inspection and debugging purposes. Call this function from any place
-// where a panic or severe error needs to be examined. `repoPath` is the path
-// where the report should be written. `label` is an optional string to include
+// where a panic or severe error needs to be examined. `persistPath` is the
+// path where the reports should be saved. `repoPath` is the path where the
+// journal should be read from. `label` is an optional string to include
 // next to the report timestamp.
-func GeneratePanicReport(repoPath string, label string) {
+func GeneratePanicReport(persistPath, repoPath, label string) {
 	// make sure we always dump the latest logs on the way out
 	// especially since we're probably panicking
 	defer panicLog.Sync()
 
-	if repoPath == "" {
-		panicLog.Error("repo path is empty, aborting panic report generation")
+	if persistPath == "" {
+		panicLog.Error("persist path is empty, aborting panic report generation")
 		return
 	}
-	reportPath := filepath.Join(repoPath, PanicReportingPath, generateReportName(label))
+	reportPath := filepath.Join(persistPath, PanicReportingPath, generateReportName(label))
 	panicLog.Warnf("generating panic report at %s", reportPath)
 	syscall.Umask(0)
 	err := os.MkdirAll(reportPath, 0755)
@@ -85,6 +86,11 @@ func writeProfile(profileType string, file string) {
 }
 
 func writeJournalTail(tailLen int, repoPath, file string) {
+	if repoPath == "" {
+		panicLog.Warn("repo path is empty, aborting copy of journal log")
+		return
+	}
+
 	f, err := os.Create(file)
 	if err != nil {
 		panicLog.Error(err.Error())
