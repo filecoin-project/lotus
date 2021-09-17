@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime/debug"
 	"runtime/pprof"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -14,15 +15,18 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 )
 
-var panicLog = logging.Logger("panic-reporter")
+var (
+	panicLog           = logging.Logger("panic-reporter")
+	defaultJournalTail = 500
+)
 
 // PanicReportingPath is the name of the subdir created within the repoPath path
 // provided to GeneratePanicReport
-var PanicReportingPath = "lotus_panic_reports"
+var PanicReportingPath = "lotus-panic-reports"
 
 // PanicReportJournalTail is the number of lines captured from the end of
 // the lotus journal to be included in the panic report.
-var PanicReportJournalTail = 500
+var PanicReportJournalTail = defaultJournalTail
 
 // GeneratePanicReport produces a timestamped dump of the application state
 // for inspection and debugging purposes. Call this function from any place
@@ -39,6 +43,14 @@ func GeneratePanicReport(persistPath, repoPath, label string) {
 		panicLog.Error("persist path is empty, aborting panic report generation")
 		return
 	}
+	tl := os.Getenv("LOTUS_PANIC_JOURNAL_LOOKBACK")
+	if tl != "" && PanicReportJournalTail == defaultJournalTail {
+		i, err := strconv.Atoi(tl)
+		if err == nil {
+			PanicReportJournalTail = i
+		}
+	}
+
 	reportPath := filepath.Join(persistPath, PanicReportingPath, generateReportName(label))
 	panicLog.Warnf("generating panic report at %s", reportPath)
 	syscall.Umask(0)
