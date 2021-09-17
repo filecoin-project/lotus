@@ -132,6 +132,10 @@ type mockDagStore struct {
 	close   chan struct{}
 }
 
+func (m *mockDagStore) GetShardKeysForCid(c cid.Cid) ([]shard.Key, error) {
+	panic("implement me")
+}
+
 func (m *mockDagStore) DestroyShard(ctx context.Context, key shard.Key, out chan dagstore.ShardResult, _ dagstore.DestroyOpts) error {
 	panic("implement me")
 }
