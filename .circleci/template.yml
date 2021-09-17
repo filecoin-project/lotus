@@ -92,6 +92,9 @@ jobs:
       - run: sudo apt-get install npm
       - run:
           command: make buildall
+      - run:
+          name: check tag and version output match
+          command: ./scripts/version-check.sh ./lotus
       - store_artifacts:
           path: lotus
       - store_artifacts:
@@ -383,6 +386,9 @@ jobs:
       - run:
           command: make build
           no_output_timeout: 30m
+      - run:
+          name: check tag and version output match
+          command: ./scripts/version-check.sh ./lotus
       - store_artifacts:
           path: lotus
       - store_artifacts:
