@@ -497,7 +497,7 @@ func (fr *fakeRand) GetChainRandomnessLookingBack(ctx context.Context, personali
 	return out, nil
 }
 
-func (fr *fakeRand) GetBeaconRandomnessLookingForward(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) GetLatestBeaconRandomnessLookingForward(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return out, nil

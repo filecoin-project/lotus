@@ -605,7 +605,7 @@ func (mca mca) StateGetRandomnessFromBeacon(ctx context.Context, personalization
 	}
 
 	if mca.sm.GetNtwkVersion(ctx, randEpoch) >= network.Version13 {
-		return mca.sm.ChainStore().GetBeaconRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
+		return mca.sm.ChainStore().GetLatestBeaconRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
 	}
 
 	return mca.sm.ChainStore().GetBeaconRandomnessLookingBack(ctx, pts.Cids(), personalization, randEpoch, entropy)

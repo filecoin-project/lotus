@@ -41,7 +41,7 @@ func (cs *ChainStore) GetBeaconRandomnessLookingBack(ctx context.Context, blks [
 	return cs.GetBeaconRandomness(ctx, blks, pers, round, entropy, true)
 }
 
-func (cs *ChainStore) GetBeaconRandomnessLookingForward(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (cs *ChainStore) GetLatestBeaconRandomnessLookingForward(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	return cs.GetBeaconRandomness(ctx, blks, pers, round, entropy, false)
 }
 
@@ -170,8 +170,8 @@ func (cr *chainRand) GetBeaconRandomnessLookingBack(ctx context.Context, pers cr
 	return cr.cs.GetBeaconRandomnessLookingBack(ctx, cr.blks, pers, round, entropy)
 }
 
-func (cr *chainRand) GetBeaconRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return cr.cs.GetBeaconRandomnessLookingForward(ctx, cr.blks, pers, round, entropy)
+func (cr *chainRand) GetLatestBeaconRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return cr.cs.GetLatestBeaconRandomnessLookingForward(ctx, cr.blks, pers, round, entropy)
 }
 
 func (cs *ChainStore) GetTipSetFromKey(tsk types.TipSetKey) (*types.TipSet, error) {
