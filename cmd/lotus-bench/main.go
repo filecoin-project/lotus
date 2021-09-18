@@ -586,7 +586,7 @@ var commit1Cmd = &cli.Command{
 		mid := abi.ActorID(amid)
 
 		// seedH
-		seedH := int64(c.Int64("seedH"))
+		seedH := c.Int64("seedH")
 		// seed
 		var seedStr = c.String("seed")
 		if len(seedStr) != 64 {
@@ -796,7 +796,7 @@ var commit2Cmd = &cli.Command{
 
 		ref := storage.SectorRef{
 			ID: abi.SectorID{
-				Miner:  abi.ActorID(mid),
+				Miner:  mid,
 				Number: abi.SectorNumber(c2in.SectorNum),
 			},
 			ProofType: spt(abi.SectorSize(c2in.SectorSize)),
