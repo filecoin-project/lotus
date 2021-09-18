@@ -77,7 +77,7 @@ func BenchmarkGetRandomness(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		_, err := cs.GetChainRandomnessLookingBack(context.TODO(), last.Cids(), crypto.DomainSeparationTag_SealRandomness, 500, nil)
+		_, err := cg.StateManager().GetRandomnessFromTickets(context.TODO(), crypto.DomainSeparationTag_SealRandomness, 500, nil, last.Key())
 		if err != nil {
 			b.Fatal(err)
 		}
@@ -158,7 +158,7 @@ func TestChainExportImportFull(t *testing.T) {
 		t.Fatal("imported chain differed from exported chain")
 	}
 
-	sm, err := stmgr.NewStateManager(cs, filcns.NewTipSetExecutor(), nil, filcns.DefaultUpgradeSchedule())
+	sm, err := stmgr.NewStateManager(cs, filcns.NewTipSetExecutor(), nil, filcns.DefaultUpgradeSchedule(), cg.BeaconSchedule())
 	if err != nil {
 		t.Fatal(err)
 	}

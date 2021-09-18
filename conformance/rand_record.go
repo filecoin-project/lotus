@@ -45,11 +45,11 @@ func (r *RecordingRand) loadHead() {
 	r.head = head.Key()
 }
 
-func (r *RecordingRand) GetChainRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (r *RecordingRand) GetChainRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	return r.getChainRandomness(ctx, pers, round, entropy)
 }
 
-func (r *RecordingRand) GetChainRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (r *RecordingRand) GetChainRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	return r.getChainRandomness(ctx, pers, round, entropy)
 }
 
@@ -79,17 +79,21 @@ func (r *RecordingRand) getChainRandomness(ctx context.Context, pers crypto.Doma
 	return ret, err
 }
 
-func (r *RecordingRand) GetBeaconRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (r *RecordingRand) GetBeaconRandomnessV3(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	return r.getBeaconRandomness(ctx, pers, round, entropy)
 }
 
-func (r *RecordingRand) GetBeaconRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (r *RecordingRand) GetBeaconRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return r.getBeaconRandomness(ctx, pers, round, entropy)
+}
+
+func (r *RecordingRand) GetBeaconRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	return r.getBeaconRandomness(ctx, pers, round, entropy)
 }
 
 func (r *RecordingRand) getBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	r.once.Do(r.loadHead)
-	ret, err := r.api.ChainGetRandomnessFromBeacon(ctx, r.head, pers, round, entropy)
+	ret, err := r.api.StateGetRandomnessFromBeacon(ctx, pers, round, entropy, r.head)
 	if err != nil {
 		return ret, err
 	}
