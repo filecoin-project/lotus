@@ -1444,7 +1444,9 @@ func (a *StateAPI) StateGetRandomnessFromBeacon(ctx context.Context, personaliza
 
 	rnv := a.StateManager.GetNtwkVersion(ctx, randEpoch)
 
-	if rnv >= network.Version13 {
+	if rnv >= network.Version14 {
+		return a.Chain.GetBeaconRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	} else if rnv == network.Version13 {
 		return a.Chain.GetLatestBeaconRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
 	}
 

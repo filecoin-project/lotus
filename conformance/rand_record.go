@@ -87,9 +87,13 @@ func (r *RecordingRand) GetBeaconRandomnessLookingBack(ctx context.Context, pers
 	return r.getBeaconRandomness(ctx, pers, round, entropy)
 }
 
+func (r *RecordingRand) GetLatestBeaconRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return r.getBeaconRandomness(ctx, pers, round, entropy)
+}
+
 func (r *RecordingRand) getBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	r.once.Do(r.loadHead)
-	ret, err := r.api.ChainGetRandomnessFromBeacon(ctx, r.head, pers, round, entropy)
+	ret, err := r.api.StateGetRandomnessFromBeacon(ctx, pers, round, entropy, r.head)
 	if err != nil {
 		return ret, err
 	}

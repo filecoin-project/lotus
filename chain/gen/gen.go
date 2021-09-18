@@ -307,6 +307,10 @@ func (cg *ChainGen) ChainStore() *store.ChainStore {
 	return cg.cs
 }
 
+func (cg *ChainGen) BeaconSchedule() beacon.Schedule {
+	return cg.beacon
+}
+
 func (cg *ChainGen) Genesis() *types.BlockHeader {
 	return cg.genesis
 }
@@ -397,12 +401,15 @@ type MinedTipSet struct {
 }
 
 func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
-	mts, err := cg.NextTipSetFromMiners(cg.CurTipset.TipSet(), cg.Miners, 0)
+	return cg.NextTipSetWithNulls(0)
+}
+
+func (cg *ChainGen) NextTipSetWithNulls(nulls abi.ChainEpoch) (*MinedTipSet, error) {
+	mts, err := cg.NextTipSetFromMiners(cg.CurTipset.TipSet(), cg.Miners, nulls)
 	if err != nil {
 		return nil, err
 	}
 
-	cg.CurTipset = mts.TipSet
 	return mts, nil
 }
 
@@ -604,7 +611,10 @@ func (mca mca) StateGetRandomnessFromBeacon(ctx context.Context, personalization
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
 	}
 
-	if mca.sm.GetNtwkVersion(ctx, randEpoch) >= network.Version13 {
+	rnv := mca.sm.GetNtwkVersion(ctx, randEpoch)
+	if rnv >= network.Version14 {
+		return mca.sm.ChainStore().GetBeaconRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	} else if rnv == network.Version13 {
 		return mca.sm.ChainStore().GetLatestBeaconRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
 	}
 

@@ -235,7 +235,9 @@ func (rt *Runtime) GetRandomnessFromBeacon(personalization crypto.DomainSeparati
 	var res []byte
 
 	rnv := rt.vm.ntwkVersion(rt.ctx, randEpoch)
-	if rnv >= network.Version13 {
+	if rnv >= network.Version14 {
+		res, err = rt.vm.rand.GetBeaconRandomnessLookingForward(rt.ctx, personalization, randEpoch, entropy)
+	} else if rnv == network.Version13 {
 		res, err = rt.vm.rand.GetLatestBeaconRandomnessLookingForward(rt.ctx, personalization, randEpoch, entropy)
 	} else {
 		res, err = rt.vm.rand.GetBeaconRandomnessLookingBack(rt.ctx, personalization, randEpoch, entropy)

@@ -81,6 +81,10 @@ func (r *ReplayingRand) GetBeaconRandomnessLookingBack(ctx context.Context, pers
 	return r.getBeaconRandomness(ctx, pers, round, entropy, true)
 }
 
+func (r *ReplayingRand) GetLatestBeaconRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return r.getBeaconRandomness(ctx, pers, round, entropy, true)
+}
+
 func (r *ReplayingRand) getBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte, lookback bool) ([]byte, error) {
 	rule := schema.RandomnessRule{
 		Kind:                schema.RandomnessBeacon,

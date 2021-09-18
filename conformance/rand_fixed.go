@@ -34,3 +34,7 @@ func (r *fixedRand) GetBeaconRandomnessLookingForward(_ context.Context, _ crypt
 func (r *fixedRand) GetBeaconRandomnessLookingBack(_ context.Context, _ crypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) ([]byte, error) {
 	return []byte("i_am_random_____i_am_random_____"), nil // 32 bytes.
 }
+
+func (r *fixedRand) GetLatestBeaconRandomnessLookingForward(_ context.Context, _ crypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) ([]byte, error) {
+	return []byte("i_am_random_____i_am_random_____"), nil // 32 bytes.
+}

@@ -38,14 +38,57 @@ func DrawRandomness(rbase []byte, pers crypto.DomainSeparationTag, round abi.Cha
 }
 
 func (cs *ChainStore) GetBeaconRandomnessLookingBack(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return cs.GetBeaconRandomness(ctx, blks, pers, round, entropy, true)
+	randTs, err := cs.GetBeaconRandomnessTipset(ctx, blks, pers, round, entropy, true)
+	if err != nil {
+		return nil, err
+	}
+
+	be, err := cs.GetLatestBeaconEntry(randTs)
+	if err != nil {
+		return nil, err
+	}
+
+	// if at (or just past -- for null epochs) appropriate epoch
+	// or at genesis (works for negative epochs)
+	return DrawRandomness(be.Data, pers, round, entropy)
 }
 
 func (cs *ChainStore) GetLatestBeaconRandomnessLookingForward(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return cs.GetBeaconRandomness(ctx, blks, pers, round, entropy, false)
+	randTs, err := cs.GetBeaconRandomnessTipset(ctx, blks, pers, round, entropy, false)
+	if err != nil {
+		return nil, err
+	}
+
+	be, err := cs.GetLatestBeaconEntry(randTs)
+	if err != nil {
+		return nil, err
+	}
+
+	// if at (or just past -- for null epochs) appropriate epoch
+	// or at genesis (works for negative epochs)
+	return DrawRandomness(be.Data, pers, round, entropy)
 }
 
-func (cs *ChainStore) GetBeaconRandomness(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte, lookback bool) ([]byte, error) {
+func (cs *ChainStore) GetBeaconRandomnessLookingForward(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	randTs, err := cs.GetBeaconRandomnessTipset(ctx, blks, pers, round, entropy, false)
+	if err != nil {
+		return nil, err
+	}
+
+	be, err := cs.ExtractBeaconEntryForRound(randTs, uint64(round))
+	if err != nil {
+		log.Errorf("failed to get beacon entry as expected: %w", err)
+		// If this failed for some reason, just use the latest entry (lest we halt the chain)
+		be, err = cs.GetLatestBeaconEntry(randTs)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return DrawRandomness(be.Data, pers, round, entropy)
+}
+
+func (cs *ChainStore) GetBeaconRandomnessTipset(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte, lookback bool) (*types.TipSet, error) {
 	_, span := trace.StartSpan(ctx, "store.GetBeaconRandomness")
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("round", int64(round)))
@@ -69,14 +112,46 @@ func (cs *ChainStore) GetBeaconRandomness(ctx context.Context, blks []cid.Cid, p
 		return nil, err
 	}
 
-	be, err := cs.GetLatestBeaconEntry(randTs)
-	if err != nil {
-		return nil, err
+	return randTs, nil
+}
+
+func (cs *ChainStore) GetLatestBeaconEntry(ts *types.TipSet) (*types.BeaconEntry, error) {
+	cur := ts
+	for i := 0; i < 20; i++ {
+		cbe := cur.Blocks()[0].BeaconEntries
+		if len(cbe) > 0 {
+			return &cbe[len(cbe)-1], nil
+		}
+
+		if cur.Height() == 0 {
+			return nil, xerrors.Errorf("made it back to genesis block without finding beacon entry")
+		}
+
+		next, err := cs.LoadTipSet(cur.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
+		}
+		cur = next
 	}
 
-	// if at (or just past -- for null epochs) appropriate epoch
-	// or at genesis (works for negative epochs)
-	return DrawRandomness(be.Data, pers, round, entropy)
+	if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
+		return &types.BeaconEntry{
+			Data: []byte{9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9},
+		}, nil
+	}
+
+	return nil, xerrors.Errorf("found NO beacon entries in the 20 latest tipsets")
+}
+
+func (cs *ChainStore) ExtractBeaconEntryForRound(ts *types.TipSet, round uint64) (*types.BeaconEntry, error) {
+	cbe := ts.Blocks()[0].BeaconEntries
+	for _, v := range cbe {
+		if v.Round == round {
+			return &v, nil
+		}
+	}
+
+	return nil, xerrors.Errorf("didn't find beacon for round %d in tipset %s", round, ts.Key())
 }
 
 func (cs *ChainStore) GetChainRandomnessLookingBack(ctx context.Context, blks []cid.Cid, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
@@ -118,34 +193,6 @@ func (cs *ChainStore) GetChainRandomness(ctx context.Context, blks []cid.Cid, pe
 	return DrawRandomness(mtb.Ticket.VRFProof, pers, round, entropy)
 }
 
-func (cs *ChainStore) GetLatestBeaconEntry(ts *types.TipSet) (*types.BeaconEntry, error) {
-	cur := ts
-	for i := 0; i < 20; i++ {
-		cbe := cur.Blocks()[0].BeaconEntries
-		if len(cbe) > 0 {
-			return &cbe[len(cbe)-1], nil
-		}
-
-		if cur.Height() == 0 {
-			return nil, xerrors.Errorf("made it back to genesis block without finding beacon entry")
-		}
-
-		next, err := cs.LoadTipSet(cur.Parents())
-		if err != nil {
-			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
-		}
-		cur = next
-	}
-
-	if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
-		return &types.BeaconEntry{
-			Data: []byte{9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9},
-		}, nil
-	}
-
-	return nil, xerrors.Errorf("found NO beacon entries in the 20 latest tipsets")
-}
-
 type chainRand struct {
 	cs   *ChainStore
 	blks []cid.Cid
@@ -158,20 +205,29 @@ func NewChainRand(cs *ChainStore, blks []cid.Cid) vm.Rand {
 	}
 }
 
+// network v0-12
 func (cr *chainRand) GetChainRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	return cr.cs.GetChainRandomnessLookingBack(ctx, cr.blks, pers, round, entropy)
 }
 
+// network v13 and on
 func (cr *chainRand) GetChainRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	return cr.cs.GetChainRandomnessLookingForward(ctx, cr.blks, pers, round, entropy)
 }
 
+// network v0-12
 func (cr *chainRand) GetBeaconRandomnessLookingBack(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	return cr.cs.GetBeaconRandomnessLookingBack(ctx, cr.blks, pers, round, entropy)
 }
 
+// network v13
 func (cr *chainRand) GetLatestBeaconRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	return cr.cs.GetLatestBeaconRandomnessLookingForward(ctx, cr.blks, pers, round, entropy)
+}
+
+// network v14 and on
+func (cr *chainRand) GetBeaconRandomnessLookingForward(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	return cr.cs.GetBeaconRandomnessLookingForward(ctx, cr.blks, pers, round, entropy)
 }
 
 func (cs *ChainStore) GetTipSetFromKey(tsk types.TipSetKey) (*types.TipSet, error) {
