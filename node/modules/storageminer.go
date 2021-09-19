@@ -866,12 +866,13 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 	return func(cfg sealiface.Config) (err error) {
 		err = mutateCfg(r, func(c *config.StorageMiner) {
 			c.Sealing = config.SealingConfig{
-				MaxWaitDealsSectors:       cfg.MaxWaitDealsSectors,
-				MaxSealingSectors:         cfg.MaxSealingSectors,
-				MaxSealingSectorsForDeals: cfg.MaxSealingSectorsForDeals,
-				WaitDealsDelay:            config.Duration(cfg.WaitDealsDelay),
-				AlwaysKeepUnsealedCopy:    cfg.AlwaysKeepUnsealedCopy,
-				FinalizeEarly:             cfg.FinalizeEarly,
+				MaxWaitDealsSectors:             cfg.MaxWaitDealsSectors,
+				MaxSealingSectors:               cfg.MaxSealingSectors,
+				MaxSealingSectorsForDeals:       cfg.MaxSealingSectorsForDeals,
+				CommittedCapacitySectorLifetime: config.Duration(cfg.CommittedCapacitySectorLifetime),
+				WaitDealsDelay:                  config.Duration(cfg.WaitDealsDelay),
+				AlwaysKeepUnsealedCopy:          cfg.AlwaysKeepUnsealedCopy,
+				FinalizeEarly:                   cfg.FinalizeEarly,
 
 				CollateralFromMinerBalance: cfg.CollateralFromMinerBalance,
 				AvailableBalanceBuffer:     types.FIL(cfg.AvailableBalanceBuffer),
@@ -900,12 +901,13 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 
 func ToSealingConfig(cfg *config.StorageMiner) sealiface.Config {
 	return sealiface.Config{
-		MaxWaitDealsSectors:       cfg.Sealing.MaxWaitDealsSectors,
-		MaxSealingSectors:         cfg.Sealing.MaxSealingSectors,
-		MaxSealingSectorsForDeals: cfg.Sealing.MaxSealingSectorsForDeals,
-		WaitDealsDelay:            time.Duration(cfg.Sealing.WaitDealsDelay),
-		AlwaysKeepUnsealedCopy:    cfg.Sealing.AlwaysKeepUnsealedCopy,
-		FinalizeEarly:             cfg.Sealing.FinalizeEarly,
+		MaxWaitDealsSectors:             cfg.Sealing.MaxWaitDealsSectors,
+		MaxSealingSectors:               cfg.Sealing.MaxSealingSectors,
+		MaxSealingSectorsForDeals:       cfg.Sealing.MaxSealingSectorsForDeals,
+		CommittedCapacitySectorLifetime: time.Duration(cfg.Sealing.CommittedCapacitySectorLifetime),
+		WaitDealsDelay:                  time.Duration(cfg.Sealing.WaitDealsDelay),
+		AlwaysKeepUnsealedCopy:          cfg.Sealing.AlwaysKeepUnsealedCopy,
+		FinalizeEarly:                   cfg.Sealing.FinalizeEarly,
 
 		CollateralFromMinerBalance: cfg.Sealing.CollateralFromMinerBalance,
 		AvailableBalanceBuffer:     types.BigInt(cfg.Sealing.AvailableBalanceBuffer),
