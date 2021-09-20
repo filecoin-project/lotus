@@ -71,7 +71,6 @@ OPTIONS:
    --restore value           restore from backup file
    --restore-config value    config file to use when restoring from backup
    --help, -h                show help (default: false)
-   --version, -v             print the version (default: false)
    
 ```
 
@@ -98,11 +97,11 @@ USAGE:
 
 DESCRIPTION:
    The backup command writes a copy of node metadata under the specified path
-
-Online backups:
-For security reasons, the daemon must be have LOTUS_BACKUP_BASE_PATH env var set
-to a path where backup files are supposed to be saved, and the path specified in
-this command must be within this base path
+   
+   Online backups:
+   For security reasons, the daemon must be have LOTUS_BACKUP_BASE_PATH env var set
+   to a path where backup files are supposed to be saved, and the path specified in
+   this command must be within this base path
 
 OPTIONS:
    --offline   create backup without the node running (default: false)
@@ -124,8 +123,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -218,8 +216,7 @@ COMMANDS:
    help, h      Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -372,8 +369,7 @@ COMMANDS:
    help, h   Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -445,8 +441,7 @@ COMMANDS:
      cancel-transfer   Force cancel a data transfer
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -607,13 +602,13 @@ CATEGORY:
 
 DESCRIPTION:
    Make a deal with a miner.
-dataCid comes from running 'lotus client import'.
-miner is the address of the miner you wish to make a deal with.
-price is measured in FIL/Epoch. Miners usually don't accept a bid
-lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
-with 'lotus client query-ask <miner address>'.
-duration is how long the miner should store the data for, in blocks.
-The minimum value is 518400 (6 months).
+   dataCid comes from running 'lotus client import'.
+   miner is the address of the miner you wish to make a deal with.
+   price is measured in FIL/Epoch. Miners usually don't accept a bid
+   lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
+   with 'lotus client query-ask <miner address>'.
+   duration is how long the miner should store the data for, in blocks.
+   The minimum value is 518400 (6 months).
 
 OPTIONS:
    --manual-piece-cid value     manually specify piece commitment for data (dataCid must be to a car file)
@@ -873,7 +868,6 @@ COMMANDS:
 OPTIONS:
    --confidence value  number of block confirmations to wait for (default: 5)
    --help, -h          show help (default: false)
-   --version, -v       print the version (default: false)
    
 ```
 
@@ -1125,8 +1119,7 @@ COMMANDS:
    help, h               Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1215,8 +1208,7 @@ COMMANDS:
    help, h            Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1265,8 +1257,7 @@ COMMANDS:
    help, h         Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1417,8 +1408,7 @@ COMMANDS:
    help, h       Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1470,8 +1460,7 @@ COMMANDS:
    help, h   Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1621,7 +1610,6 @@ COMMANDS:
 OPTIONS:
    --tipset value  specify tipset to call method on (pass comma separated array of cids)
    --help, -h      show help (default: false)
-   --version, -v   print the version (default: false)
    
 ```
 
@@ -1906,8 +1894,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1992,8 +1979,7 @@ COMMANDS:
    help, h          Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2064,10 +2050,9 @@ USAGE:
 
 DESCRIPTION:
    Collect object size and ipld link count for an object.
-
-   When a base is provided it will be walked first, and all links visisted
-   will be ignored when the passed in object is walked.
-
+   
+      When a base is provided it will be walked first, and all links visisted
+      will be ignored when the passed in object is walked.
 
 OPTIONS:
    --base value  ignore links found in this obj
@@ -2117,34 +2102,33 @@ USAGE:
 
 DESCRIPTION:
    Get ipld node under a specified path:
-
-   lotus chain get /ipfs/[cid]/some/path
-
-   Path prefixes:
-   - /ipfs/[cid], /ipld/[cid] - traverse IPLD path
-   - /pstate - traverse from head.ParentStateRoot
-
-   Note:
-   You can use special path elements to traverse through some data structures:
-   - /ipfs/[cid]/@H:elem - get 'elem' from hamt
-   - /ipfs/[cid]/@Hi:123 - get varint elem 123 from hamt
-   - /ipfs/[cid]/@Hu:123 - get uvarint elem 123 from hamt
-   - /ipfs/[cid]/@Ha:t01 - get element under Addr(t01).Bytes
-   - /ipfs/[cid]/@A:10   - get 10th amt element
-   - .../@Ha:t01/@state  - get pretty map-based actor state
-
-   List of --as-type types:
-   - raw
-   - block
-   - message
-   - smessage, signedmessage
-   - actor
-   - amt
-   - hamt-epoch
-   - hamt-address
-   - cronevent
-   - account-state
-
+   
+      lotus chain get /ipfs/[cid]/some/path
+   
+      Path prefixes:
+      - /ipfs/[cid], /ipld/[cid] - traverse IPLD path
+      - /pstate - traverse from head.ParentStateRoot
+   
+      Note:
+      You can use special path elements to traverse through some data structures:
+      - /ipfs/[cid]/@H:elem - get 'elem' from hamt
+      - /ipfs/[cid]/@Hi:123 - get varint elem 123 from hamt
+      - /ipfs/[cid]/@Hu:123 - get uvarint elem 123 from hamt
+      - /ipfs/[cid]/@Ha:t01 - get element under Addr(t01).Bytes
+      - /ipfs/[cid]/@A:10   - get 10th amt element
+      - .../@Ha:t01/@state  - get pretty map-based actor state
+   
+      List of --as-type types:
+      - raw
+      - block
+      - message
+      - smessage, signedmessage
+      - actor
+      - amt
+      - hamt-epoch
+      - hamt-address
+      - cronevent
+      - account-state
 
 OPTIONS:
    --as-type value  specify type to interpret output as
@@ -2164,18 +2148,17 @@ USAGE:
 
 DESCRIPTION:
    Bisect the chain state tree:
-
-   lotus chain bisect [min height] [max height] '1/2/3/state/path' 'shell command' 'args'
-
-   Returns the first tipset in which condition is true
-                  v
-   [start] FFFFFFFTTT [end]
-
-   Example: find height at which deal ID 100 000 appeared
-    - lotus chain bisect 1 32000 '@Ha:t03/1' jq -e '.[2] > 100000'
-
-   For special path elements see 'chain get' help
-
+   
+      lotus chain bisect [min height] [max height] '1/2/3/state/path' 'shell command' 'args'
+   
+      Returns the first tipset in which condition is true
+                     v
+      [start] FFFFFFFTTT [end]
+   
+      Example: find height at which deal ID 100 000 appeared
+       - lotus chain bisect 1 32000 '@Ha:t03/1' jq -e '.[2] > 100000'
+   
+      For special path elements see 'chain get' help
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -2255,8 +2238,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2288,8 +2270,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2326,7 +2307,6 @@ OPTIONS:
    --max-fee value  Spend up to X FIL per DisputeWindowedPoSt message
    --from value     optionally specify the account to send messages from
    --help, -h       show help (default: false)
-   --version, -v    print the version (default: false)
    
 ```
 
@@ -2372,8 +2352,7 @@ COMMANDS:
    help, h    Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2400,23 +2379,22 @@ USAGE:
 
 DESCRIPTION:
    Set the log level for logging systems:
-
-   The system flag can be specified multiple times.
-
-   eg) log set-level --system chain --system chainxchg debug
-
-   Available Levels:
-   debug
-   info
-   warn
-   error
-
-   Environment Variables:
-   GOLOG_LOG_LEVEL - Default log level for all log systems
-   GOLOG_LOG_FMT   - Change output log format (json, nocolor)
-   GOLOG_FILE      - Write logs to file
-   GOLOG_OUTPUT    - Specify whether to output to file, stderr, stdout or a combination, i.e. file+stderr
-
+   
+      The system flag can be specified multiple times.
+   
+      eg) log set-level --system chain --system chainxchg debug
+   
+      Available Levels:
+      debug
+      info
+      warn
+      error
+   
+      Environment Variables:
+      GOLOG_LOG_LEVEL - Default log level for all log systems
+      GOLOG_LOG_FMT   - Change output log format (json, nocolor)
+      GOLOG_FILE      - Write logs to file
+      GOLOG_OUTPUT    - Specify whether to output to file, stderr, stdout or a combination, i.e. file+stderr
 
 OPTIONS:
    --system value  limit to log system
@@ -2492,8 +2470,7 @@ COMMANDS:
    help, h       Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2621,8 +2598,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2641,8 +2617,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2700,8 +2675,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2775,8 +2749,7 @@ COMMANDS:
    help, h     Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
