@@ -786,6 +786,11 @@ workflows:
           target: "./itests/deals_512mb_test.go"
       
       - test:
+          name: test-itest-deals_anycid
+          suite: itest-deals_anycid
+          target: "./itests/deals_anycid_test.go"
+      
+      - test:
           name: test-itest-deals_concurrent
           suite: itest-deals_concurrent
           target: "./itests/deals_concurrent_test.go"
