@@ -5,12 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/elastic/go-elasticsearch/v7"
 	"github.com/elastic/go-elasticsearch/v7/esapi"
-	"github.com/elastic/go-elasticsearch/v7/estransport"
 )
 
 const (
@@ -28,11 +26,6 @@ func NewElasticSearchTransport(connectionString string) (TracerTransport, error)
 		},
 		Username: username,
 		Password: password,
-		Logger: &estransport.CurlLogger{
-			Output:             os.Stdout,
-			EnableRequestBody:  true,
-			EnableResponseBody: true,
-		},
 	}
 
 	es, err := elasticsearch.NewClient(cfg)
