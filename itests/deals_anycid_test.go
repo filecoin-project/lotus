@@ -150,6 +150,7 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 				Selector: shared.AllSelector(),
 			}},
 		).Write(tmp)
+		require.NoError(t, err)
 		require.NoError(t, tmp.Close())
 		require.NoError(t, rd.Close())
 

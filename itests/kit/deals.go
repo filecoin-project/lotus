@@ -377,6 +377,7 @@ type RunConcurrentDealsOpts struct {
 }
 
 func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
+	ctx := context.Background()
 	errgrp, _ := errgroup.WithContext(context.Background())
 	for i := 0; i < opts.N; i++ {
 		i := i
@@ -402,7 +403,18 @@ func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
 			dh.t.Logf("retrieving deal %d/%d", i, opts.N)
 
 			outPath := dh.PerformRetrieval(context.Background(), deal, res.Root, opts.CarExport)
-			AssertFilesEqual(dh.t, inPath, outPath)
+
+			if opts.CarExport {
+				f, err := os.Open(outPath)
+				require.NoError(dh.t, err)
+				actualFile := dh.ExtractFileFromCAR(ctx, f)
+				require.NoError(dh.t, f.Close())
+
+				AssertFilesEqual(dh.t, inPath, actualFile.Name())
+			} else {
+				AssertFilesEqual(dh.t, inPath, outPath)
+			}
+
 			return nil
 		})
 	}
