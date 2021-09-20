@@ -20,9 +20,9 @@ var (
 	defaultJournalTail = 500
 )
 
-// PanicReportingPath is the name of the subdir created within the repoPath path
-// provided to GeneratePanicReport
-var PanicReportingPath = "lotus-panic-reports"
+// PanicReportingPath is the name of the subdir created within the repoPath
+// path provided to GeneratePanicReport
+var PanicReportingPath = "panic-reports"
 
 // PanicReportJournalTail is the number of lines captured from the end of
 // the lotus journal to be included in the panic report.
@@ -39,10 +39,17 @@ func GeneratePanicReport(persistPath, repoPath, label string) {
 	// especially since we're probably panicking
 	defer panicLog.Sync() //nolint:errcheck
 
-	if persistPath == "" {
-		panicLog.Error("persist path is empty, aborting panic report generation")
+	if persistPath == "" && repoPath == "" {
+		panicLog.Warn("missing persist and repo paths, aborting panic report creation")
 		return
 	}
+
+	reportPath := filepath.Join(repoPath, PanicReportingPath, generateReportName(label))
+	if persistPath != "" {
+		reportPath = filepath.Join(persistPath, generateReportName(label))
+	}
+	panicLog.Warnf("generating panic report at %s", reportPath)
+
 	tl := os.Getenv("LOTUS_PANIC_JOURNAL_LOOKBACK")
 	if tl != "" && PanicReportJournalTail == defaultJournalTail {
 		i, err := strconv.Atoi(tl)
@@ -51,8 +58,6 @@ func GeneratePanicReport(persistPath, repoPath, label string) {
 		}
 	}
 
-	reportPath := filepath.Join(persistPath, PanicReportingPath, generateReportName(label))
-	panicLog.Warnf("generating panic report at %s", reportPath)
 	syscall.Umask(0)
 	err := os.MkdirAll(reportPath, 0755)
 	if err != nil {
@@ -60,10 +65,28 @@ func GeneratePanicReport(persistPath, repoPath, label string) {
 		return
 	}
 
+	writeAppVersion(filepath.Join(reportPath, "version"))
 	writeStackTrace(filepath.Join(reportPath, "stacktrace.dump"))
 	writeProfile("goroutines", filepath.Join(reportPath, "goroutines.pprof.gz"))
 	writeProfile("heap", filepath.Join(reportPath, "heap.pprof.gz"))
 	writeJournalTail(PanicReportJournalTail, repoPath, filepath.Join(reportPath, "journal.ndjson"))
+}
+
+func writeAppVersion(file string) {
+	f, err := os.Create(file)
+	if err != nil {
+		panicLog.Error(err.Error())
+	}
+	defer f.Close() //nolint:errcheck
+
+	ignoreCommitBefore := os.Getenv("LOTUS_VERSION_IGNORE_COMMIT")
+	os.Setenv("LOTUS_VERSION_IGNORE_COMMIT", "")                       //nolint:errcheck
+	defer os.Setenv("LOTUS_VERSION_IGNORE_COMMIT", ignoreCommitBefore) //nolint:errcheck
+
+	versionString := []byte(UserVersion() + "\n")
+	if _, err := f.Write(versionString); err != nil {
+		panicLog.Error(err.Error())
+	}
 }
 
 func writeStackTrace(file string) {
@@ -71,7 +94,7 @@ func writeStackTrace(file string) {
 	if err != nil {
 		panicLog.Error(err.Error())
 	}
-	defer f.Close() //nolint:errheck
+	defer f.Close() //nolint:errcheck
 
 	if _, err := f.Write(debug.Stack()); err != nil {
 		panicLog.Error(err.Error())
@@ -90,7 +113,7 @@ func writeProfile(profileType string, file string) {
 		panicLog.Error(err.Error())
 		return
 	}
-	defer f.Close() //nolint:errheck
+	defer f.Close() //nolint:errcheck
 
 	if err := p.WriteTo(f, 0); err != nil {
 		panicLog.Error(err.Error())
@@ -108,7 +131,7 @@ func writeJournalTail(tailLen int, repoPath, file string) {
 		panicLog.Error(err.Error())
 		return
 	}
-	defer f.Close() //nolint:errheck
+	defer f.Close() //nolint:errcheck
 
 	jPath, err := getLatestJournalFilePath(repoPath)
 	if err != nil {
