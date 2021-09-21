@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"strconv"
 
+	"github.com/filecoin-project/go-state-types/crypto"
+
 	"github.com/filecoin-project/go-state-types/cbor"
 	cid "github.com/ipfs/go-cid"
 	"go.uber.org/fx"
@@ -1417,4 +1419,35 @@ func (m *StateModule) StateNetworkVersion(ctx context.Context, tsk types.TipSetK
 	// TODO: Height-1 to be consistent with the rest of the APIs?
 	// But that's likely going to break a bunch of stuff.
 	return m.StateManager.GetNtwkVersion(ctx, ts.Height()), nil
+}
+
+func (a *StateAPI) StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
+	pts, err := a.Chain.LoadTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset key: %w", err)
+	}
+
+	rnv := a.StateManager.GetNtwkVersion(ctx, randEpoch)
+
+	if rnv >= network.Version13 {
+		return a.Chain.GetChainRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	}
+
+	return a.Chain.GetChainRandomnessLookingBack(ctx, pts.Cids(), personalization, randEpoch, entropy)
+}
+
+func (a *StateAPI) StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
+	pts, err := a.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	rnv := a.StateManager.GetNtwkVersion(ctx, randEpoch)
+
+	if rnv >= network.Version13 {
+		return a.Chain.GetBeaconRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	}
+
+	return a.Chain.GetBeaconRandomnessLookingBack(ctx, pts.Cids(), personalization, randEpoch, entropy)
+
 }

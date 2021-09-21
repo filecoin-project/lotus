@@ -3,6 +3,8 @@ package v0api
 import (
 	"context"
 
+	"github.com/filecoin-project/go-state-types/crypto"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
 	"golang.org/x/xerrors"
@@ -182,6 +184,14 @@ func (w *WrapperV1Full) MsigRemoveSigner(ctx context.Context, msig address.Addre
 	}
 
 	return w.executePrototype(ctx, p)
+}
+
+func (w *WrapperV1Full) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return w.StateGetRandomnessFromTickets(ctx, personalization, randEpoch, entropy, tsk)
+}
+
+func (w *WrapperV1Full) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+	return w.StateGetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, tsk)
 }
 
 var _ FullNode = &WrapperV1Full{}
