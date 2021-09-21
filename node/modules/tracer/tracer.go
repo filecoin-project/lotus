@@ -11,16 +11,18 @@ import (
 
 var log = logging.Logger("lotus-tracer")
 
-func NewLotusTracer(tt []TracerTransport, pid peer.ID) LotusTracer {
+func NewLotusTracer(tt []TracerTransport, pid peer.ID, sourceAuth string) LotusTracer {
 	return &lotusTracer{
 		tt:  tt,
 		pid: pid,
+		sa:  sourceAuth,
 	}
 }
 
 type lotusTracer struct {
 	tt  []TracerTransport
 	pid peer.ID
+	sa  string
 }
 
 const (
@@ -28,10 +30,11 @@ const (
 )
 
 type LotusTraceEvent struct {
-	Type      pubsub_pb.TraceEvent_Type `json:"type,omitempty"`
-	PeerID    string                    `json:"peerID,omitempty"`
-	Timestamp *int64                    `json:"timestamp,omitempty"`
-	PeerScore TraceEvent_PeerScore      `json:"peerScore,omitempty"`
+	Type       pubsub_pb.TraceEvent_Type `json:"type,omitempty"`
+	PeerID     string                    `json:"peerID,omitempty"`
+	Timestamp  *int64                    `json:"timestamp,omitempty"`
+	PeerScore  TraceEvent_PeerScore      `json:"peerScore,omitempty"`
+	SourceAuth string                    `json:"sourceAuth,omitempty"`
 }
 
 type TraceEvent_PeerScore struct {
@@ -50,10 +53,11 @@ func (lt *lotusTracer) PeerScores(scores map[peer.ID]*pubsub.PeerScoreSnapshot) 
 	now := time.Now().UnixNano()
 	for pid, score := range scores {
 		evt := &LotusTraceEvent{
-			Type:      *TraceEvent_PEER_SCORES.Enum(),
-			PeerID:    lt.pid.Pretty(),
-			Timestamp: &now,
-			PeerScore: TraceEvent_PeerScore{PeerID: pid.Pretty(), Score: float32(score.Score)},
+			Type:       *TraceEvent_PEER_SCORES.Enum(),
+			PeerID:     lt.pid.Pretty(),
+			Timestamp:  &now,
+			SourceAuth: lt.sa,
+			PeerScore:  TraceEvent_PeerScore{PeerID: pid.Pretty(), Score: float32(score.Score)},
 		}
 
 		lt.TraceLotusEvent(evt)

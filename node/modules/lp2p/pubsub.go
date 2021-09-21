@@ -383,7 +383,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		}
 		transports = append(transports, elasticSearchTransport)
 	}
-	lt := tracer.NewLotusTracer(transports, in.Host.ID())
+	lt := tracer.NewLotusTracer(transports, in.Host.ID(), in.Cfg.TracerSourceAuth)
 
 	// tracer
 	if in.Cfg.RemoteTracer != "" {
