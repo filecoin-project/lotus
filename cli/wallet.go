@@ -2,12 +2,19 @@ package cli
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
+	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"io/ioutil"
 	"os"
 	"strings"
+	"text/tabwriter"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -43,6 +50,26 @@ var walletNew = &cli.Command{
 	Name:      "new",
 	Usage:     "Generate a new key of the given type",
 	ArgsUsage: "[bls|secp256k1 (default secp256k1)]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the create message from (Use local Default address when not set)",
+		},
+		&cli.StringFlag{
+			Name:  "value",
+			Usage: "initial funds to give to multisig",
+			Value: "0",
+		},
+		&cli.Int64Flag{
+			Name:  "required",
+			Usage: "number of required approvals (uses number of signers provided if omitted)",
+		},
+		&cli.StringFlag{
+			Name:  "duration",
+			Usage: "length of the period over which funds unlock",
+			Value: "0",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -56,13 +83,107 @@ var walletNew = &cli.Command{
 			t = "secp256k1"
 		}
 
-		nk, err := api.WalletNew(ctx, types.KeyType(t))
-		if err != nil {
-			return err
+		keyType := types.KeyType(t)
+		if !keyType.CheckMultiSig() {
+			nk, err := api.WalletNew(ctx, keyType)
+			if err != nil {
+				return err
+			}
+
+			fmt.Println(nk.String())
+		} else {
+			var addrs []address.Address
+			if cctx.Args().Len() == 1 {
+				localAddrs, err := api.WalletList(ctx)
+				if err != nil {
+					return err
+				}
+
+				for _, a := range localAddrs {
+					if a.Protocol() == address.BLS || a.Protocol() == address.SECP256K1 {
+						addrs = append(addrs, a)
+					}
+				}
+			} else {
+				for i, a := range cctx.Args().Slice() {
+					if i == 0 {
+						continue
+					}
+					addr, err := address.NewFromString(a)
+					if err != nil {
+						return err
+					}
+
+					if addr.Protocol() == address.ID || addr.Protocol() == address.Actor {
+						return fmt.Errorf("signer address(%s) protocol is %", addr, addr.Protocol())
+					}
+
+					addrs = append(addrs, addr)
+				}
+			}
+
+			if len(addrs) < 2 {
+				return fmt.Errorf("There must be more than one signer for multiple signer addresses")
+			}
+
+			var sendAddr address.Address
+			if send := cctx.String("from"); send == "" {
+				defaddr, err := api.WalletDefaultAddress(ctx)
+				if err != nil {
+					return err
+				}
+
+				sendAddr = defaddr
+			} else {
+				addr, err := address.NewFromString(send)
+				if err != nil {
+					return err
+				}
+
+				sendAddr = addr
+			}
+
+			val := cctx.String("value")
+
+			filval, err := types.ParseFIL(val)
+			if err != nil {
+				return err
+			}
+
+			intVal := types.BigInt(filval)
+
+			required := cctx.Uint64("required")
+			if required == 0 {
+				required = uint64(len(addrs))
+			}
+			d := abi.ChainEpoch(cctx.Uint64("duration"))
+
+			gp := types.NewInt(1)
+
+			proto, err := api.MsigCreate(ctx, required, addrs, d, intVal, sendAddr, gp)
+
+			wait, err := api.StateWaitMsg(ctx, proto, uint64(cctx.Int("confidence")))
+			if err != nil {
+				return err
+			}
+
+			// check it executed successfully
+			if wait.Receipt.ExitCode != 0 {
+				fmt.Fprintln(cctx.App.Writer, "actor creation failed!")
+				return err
+			}
+
+			var execreturn init2.ExecReturn
+			if err := execreturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
+				return err
+			}
+			fmt.Fprintln(cctx.App.Writer, "Created new multisig: ", execreturn.IDAddress, execreturn.RobustAddress)
+
+			err = api.WalletMsigImport(ctx, execreturn.IDAddress, execreturn.RobustAddress)
+			if err != nil {
+				return err
+			}
 		}
-
-		fmt.Println(nk.String())
-
 		return nil
 	},
 }
@@ -85,6 +206,10 @@ var walletList = &cli.Command{
 			Name:    "market",
 			Usage:   "Output market balances",
 			Aliases: []string{"m"},
+		},
+		&cli.BoolFlag{
+			Name:  "details",
+			Usage: "Output msig address details",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -112,11 +237,80 @@ var walletList = &cli.Command{
 			tablewriter.Col("Nonce"),
 			tablewriter.Col("Default"),
 			tablewriter.NewLineCol("Error"))
-
+		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
 		for _, addr := range addrs {
 			if cctx.Bool("addr-only") {
 				fmt.Println(addr.String())
 			} else {
+				if addr.Protocol() == address.Actor && cctx.Bool("details") {
+					maddr := addr
+					head, err := api.ChainHead(ctx)
+					if err != nil {
+						fmt.Printf("msig(%s) err:\n", addr, err)
+						continue
+					}
+
+					act, err := api.StateGetActor(ctx, maddr, head.Key())
+					if err != nil {
+						fmt.Printf("msig(%s) err:\n", addr, err)
+						continue
+					}
+
+					mstate, err := multisig.Load(store, act)
+					if err != nil {
+						fmt.Printf("msig(%s) err:\n", addr, err)
+						continue
+					}
+					locked, err := mstate.LockedBalance(head.Height())
+					if err != nil {
+						fmt.Printf("msig(%s) err:\n", addr, err)
+						continue
+					}
+
+					signers, err := mstate.Signers()
+					if err != nil {
+						fmt.Printf("\tmsig(%s) err:\n", addr, err)
+						continue
+					}
+					threshold, err := mstate.Threshold()
+					if err != nil {
+						fmt.Printf("msig(%s) err:\n", addr, err)
+						continue
+					}
+
+					fmt.Fprintf(cctx.App.Writer, "msig address: %s\n", addr)
+					fmt.Fprintf(cctx.App.Writer, "\tBalance: %s\n", types.FIL(act.Balance))
+					fmt.Fprintf(cctx.App.Writer, "\tSpendable: %s\n", types.FIL(types.BigSub(act.Balance, locked)))
+					fmt.Fprintf(cctx.App.Writer, "\tThreshold: %d / %d\n", threshold, len(signers))
+					fmt.Fprintf(cctx.App.Writer, "\tSigners: \n")
+
+					signerTable := tabwriter.NewWriter(cctx.App.Writer, 8, 4, 2, ' ', 0)
+					fmt.Fprintf(signerTable, "\t\tID\tAddress\n")
+					for _, s := range signers {
+						signerActor, err := api.StateAccountKey(ctx, s, types.EmptyTSK)
+						if err != nil {
+							fmt.Fprintf(signerTable, "\t\t%s\t%s\n", s, "N/A")
+						} else {
+							fmt.Fprintf(signerTable, "\t\t%s\t%s\n", s, signerActor)
+						}
+					}
+					if err := signerTable.Flush(); err != nil {
+						continue
+					}
+
+					pending := make(map[int64]multisig.Transaction)
+					if err := mstate.ForEachPendingTxn(func(id int64, txn multisig.Transaction) error {
+						pending[id] = txn
+						return nil
+					}); err != nil {
+						fmt.Printf("msig(%s) err:\n", addr, err)
+						continue
+					}
+
+					fmt.Fprintln(cctx.App.Writer, "\nTransactions: ", len(pending))
+					continue
+				}
+
 				a, err := api.StateGetActor(ctx, addr, types.EmptyTSK)
 				if err != nil {
 					if !strings.Contains(err.Error(), "actor not found") {

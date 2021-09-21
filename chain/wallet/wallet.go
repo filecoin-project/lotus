@@ -21,9 +21,10 @@ import (
 var log = logging.Logger("wallet")
 
 const (
-	KNamePrefix  = "wallet-"
-	KTrashPrefix = "trash-"
-	KDefault     = "default"
+	KNamePrefix     = "wallet-"
+	KMsigNamePrefix = "walletmsig-"
+	KTrashPrefix    = "trash-"
+	KDefault        = "default"
 )
 
 type LocalWallet struct {
@@ -160,6 +161,24 @@ func (w *LocalWallet) WalletImport(ctx context.Context, ki *types.KeyInfo) (addr
 	return k.Address, nil
 }
 
+func (w *LocalWallet) WalletMsigImport(ctx context.Context, idAddress address.Address, robustAddress address.Address) error {
+	log.Infof("WalletMsigImport idAddress:%s, robustAddress:%s", idAddress.String(), robustAddress.String())
+
+	w.lk.Lock()
+	defer w.lk.Unlock()
+
+	keyinfo := types.KeyInfo{
+		Type:       types.KTMsig,
+		PrivateKey: idAddress.Bytes(),
+	}
+
+	if err := w.keystore.Put(KMsigNamePrefix+robustAddress.String(), keyinfo); err != nil {
+		return xerrors.Errorf("saving to keystore: %w", err)
+	}
+
+	return nil
+}
+
 func (w *LocalWallet) WalletList(ctx context.Context) ([]address.Address, error) {
 	all, err := w.keystore.List()
 	if err != nil {
@@ -171,8 +190,9 @@ func (w *LocalWallet) WalletList(ctx context.Context) ([]address.Address, error)
 	seen := map[address.Address]struct{}{}
 	out := make([]address.Address, 0, len(all))
 	for _, a := range all {
-		if strings.HasPrefix(a, KNamePrefix) {
+		if strings.HasPrefix(a, KNamePrefix) || strings.HasPrefix(a, KMsigNamePrefix) {
 			name := strings.TrimPrefix(a, KNamePrefix)
+			name = strings.TrimPrefix(name, KMsigNamePrefix)
 			addr, err := address.NewFromString(name)
 			if err != nil {
 				return nil, xerrors.Errorf("converting name to address: %w", err)
@@ -261,6 +281,15 @@ func (w *LocalWallet) WalletNew(ctx context.Context, typ types.KeyType) (address
 }
 
 func (w *LocalWallet) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
+	if addr.Protocol() == address.Actor {
+		if _, err := w.keystore.Get(KMsigNamePrefix + addr.String()); err != nil {
+			log.Infof("LocalWallet WalletHas false. err:%w", err)
+			return false, nil
+		}
+		log.Infof("LocalWallet WalletHas true.")
+		return true, nil
+	}
+
 	k, err := w.findKey(addr)
 	if err != nil {
 		return false, err
@@ -269,6 +298,23 @@ func (w *LocalWallet) WalletHas(ctx context.Context, addr address.Address) (bool
 }
 
 func (w *LocalWallet) walletDelete(ctx context.Context, addr address.Address) error {
+	if addr.Protocol() == address.Actor {
+		//The multi sign address does not have a real key and does not need to be kept in the trash
+		if err := w.keystore.Delete(KMsigNamePrefix + addr.String()); err != nil {
+			return xerrors.Errorf("failed to delete key %s: %w", addr, err)
+		}
+
+		tAddr, err := swapMainnetForTestnetPrefix(addr.String())
+		if err != nil {
+			return xerrors.Errorf("failed to swap prefixes: %w", err)
+		}
+
+		log.Infof("walletDelete tAddr: %s", tAddr)
+		// TODO: Does this always error in the not-found case? Just ignoring an error return for now.
+		_ = w.keystore.Delete(KMsigNamePrefix + tAddr)
+		return nil
+	}
+
 	k, err := w.findKey(addr)
 
 	if err != nil {

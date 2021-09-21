@@ -323,6 +323,8 @@ type FullNode interface {
 	WalletExport(context.Context, address.Address) (*types.KeyInfo, error) //perm:admin
 	// WalletImport receives a KeyInfo, which includes a private key, and imports it into the wallet.
 	WalletImport(context.Context, *types.KeyInfo) (address.Address, error) //perm:admin
+	// Walletmsigimport receives the idaddress and robustaddress of the multisig wallet and imports them into the wallet.
+	WalletMsigImport(context.Context, address.Address, address.Address) error //perm:admin
 	// WalletDelete deletes an address from the wallet.
 	WalletDelete(context.Context, address.Address) error //perm:admin
 	// WalletValidateAddress validates whether a given string can be decoded as a well-formed address
