@@ -7,12 +7,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 
@@ -32,6 +34,7 @@ var walletCmd = &cli.Command{
 	Name:  "wallet",
 	Usage: "Manage wallet",
 	Subcommands: []*cli.Command{
+		walletApprove,
 		walletNew,
 		walletList,
 		walletBalance,
@@ -43,6 +46,83 @@ var walletCmd = &cli.Command{
 		walletVerify,
 		walletDelete,
 		walletMarket,
+	},
+}
+
+var walletApprove = &cli.Command{
+	Name:      "approve",
+	Usage:     "Approve a multisig transfer message",
+	ArgsUsage: "[multisigAddress messageId]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the approve message from (Use local Default address when not set，But it must belong to the signers)",
+		},
+	},
+
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() < 2 {
+			return ShowHelp(cctx, fmt.Errorf("must pass at least multisig address and message ID"))
+		}
+
+		srv, err := GetFullNodeServices(cctx)
+		if err != nil {
+			return err
+		}
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
+		ctx := ReqContext(cctx)
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		txid, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		proto, err := api.MsigApprove(ctx, msig, txid, from)
+		if err != nil {
+			return err
+		}
+
+		sm, err := InteractiveSend(ctx, cctx, srv, proto)
+		if err != nil {
+			return err
+		}
+
+		msgCid := sm.Cid()
+
+		fmt.Println("sent approval in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("approve returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		return nil
 	},
 }
 
