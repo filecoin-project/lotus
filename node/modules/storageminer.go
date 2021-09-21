@@ -70,7 +70,10 @@ import (
 	"github.com/filecoin-project/lotus/storage"
 )
 
-var StorageCounterDSPrefix = "/storage/nextid"
+var (
+	StorageCounterDSPrefix = "/storage/nextid"
+	StagingAreaDirName     = "deal-staging"
+)
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 	maddrb, err := ds.Get(datastore.NewKey("miner-address"))
@@ -536,7 +539,8 @@ func BasicDealFilter(cfg config.DealmakingConfig, user dtypes.StorageDealFilter)
 				return false, "miner error", err
 			}
 
-			diskUsageBytes, err := r.DiskUsage(r.Path() + "/deal-staging")
+			dir := filepath.Join(r.Path(), StagingAreaDirName)
+			diskUsageBytes, err := r.DiskUsage(dir)
 			if err != nil {
 				return false, "miner error", err
 			}
@@ -574,7 +578,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 
-	dir := filepath.Join(r.Path(), "deal-staging")
+	dir := filepath.Join(r.Path(), StagingAreaDirName)
 
 	// migrate temporary files that were created directly under the repo, by
 	// moving them to the new directory and symlinking them.
