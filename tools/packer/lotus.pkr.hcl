@@ -78,6 +78,15 @@ build {
     "source.digitalocean.lotus",
   ]
 
+  provisioner "file" {
+    source = "./tools/packer/etc/motd"
+    destination = "motd"
+  }
+  provisioner "file" {
+    source = "./tools/packer/homedir/bashrc"
+    destination = ".bashrc"
+  }
+
   # build it.
   provisioner "shell" {
     script = "./tools/packer/setup.sh"
