@@ -92,6 +92,9 @@ jobs:
       - run: sudo apt-get install npm
       - run:
           command: make buildall
+      - run:
+          name: check tag and version output match
+          command: ./scripts/version-check.sh ./lotus
       - store_artifacts:
           path: lotus
       - store_artifacts:
@@ -348,7 +351,7 @@ jobs:
   build-macos:
     description: build darwin lotus binary
     macos:
-      xcode: "10.0.0"
+      xcode: "12.5.0"
     working_directory: ~/go/src/github.com/filecoin-project/lotus
     steps:
       - prepare:
@@ -383,6 +386,9 @@ jobs:
       - run:
           command: make build
           no_output_timeout: 30m
+      - run:
+          name: check tag and version output match
+          command: ./scripts/version-check.sh ./lotus
       - store_artifacts:
           path: lotus
       - store_artifacts:
@@ -983,14 +989,7 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-lotus-soup
-      - build-macos:
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-macos
       - build-appimage:
           filters:
             branches:
