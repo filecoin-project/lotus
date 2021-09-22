@@ -1,115 +1,115 @@
 # Lotus changelog
 
-# v1.11.3-rc1 / 2021-09-08
+# v1.11.3-rc2 / 2021-09-21
 
-This is the first release candidate for lotus v1.11.3. Changelog will be updated later.
+This is the second release candidate for lotus v1.11.3. Detailed changelog will be updated upon final release.
 
 ## Changelog
 
 - github.com/filecoin-project/lotus:
-    - version bump v1.11.3-rc1
-    - update to proof v0.9.2 ([filecoin-project/lotus#7297](https://github.com/filecoin-project/lotus/pull/7297))
-    - Show deal sizes is sealing sectors ([filecoin-project/lotus#7261](https://github.com/filecoin-project/lotus/pull/7261))
-    - docker entrypoint.sh missing variable escape character ([filecoin-project/lotus#7291](https://github.com/filecoin-project/lotus/pull/7291))
-    - Update go-graphsync v0.9.1 ([filecoin-project/lotus#7294](https://github.com/filecoin-project/lotus/pull/7294))
-    - itests: remove cid equality comparison ([filecoin-project/lotus#7292](https://github.com/filecoin-project/lotus/pull/7292))
-    - v1.11.2 -> master ([filecoin-project/lotus#7288](https://github.com/filecoin-project/lotus/pull/7288))
-    - fix index out of range ([filecoin-project/lotus#7273](https://github.com/filecoin-project/lotus/pull/7273))
-    - dealpublisher: Fully validate deals before publishing ([filecoin-project/lotus#7234](https://github.com/filecoin-project/lotus/pull/7234))
-    - introduce MaxStagingDealsBytes - reject new deals if our staging deals area is full ([filecoin-project/lotus#7276](https://github.com/filecoin-project/lotus/pull/7276))
-    - Update to unified go-graphsync v0.9.0 ([filecoin-project/lotus#7197](https://github.com/filecoin-project/lotus/pull/7197))
-    - Increase threshold from 0.5% to 1% ([filecoin-project/lotus#7262](https://github.com/filecoin-project/lotus/pull/7262))
-    - integrate the proof patch: tag proofs-v9-revert-deps-hotfix ([filecoin-project/lotus#7260](https://github.com/filecoin-project/lotus/pull/7260))
-    - update to go-fil-markets v1.11.0 ([filecoin-project/lotus#7253](https://github.com/filecoin-project/lotus/pull/7253))
-    - Add partition info to the 'sectors status' command ([filecoin-project/lotus#7246](https://github.com/filecoin-project/lotus/pull/7246))
-    - sealing: Fix sector state accounting with FinalizeEarly ([filecoin-project/lotus#7256](https://github.com/filecoin-project/lotus/pull/7256))
-    - chain: Cleanup consensus logic ([filecoin-project/lotus#7255](https://github.com/filecoin-project/lotus/pull/7255))
-    - builder: Handle chainstore config in ConfigFullNode ([filecoin-project/lotus#7232](https://github.com/filecoin-project/lotus/pull/7232))
-    - sealing: Fix retry loop in SubmitCommitAggregate ([filecoin-project/lotus#7245](https://github.com/filecoin-project/lotus/pull/7245))
-    - fix: correctly handle null blocks when detecting an expensive fork ([filecoin-project/lotus#7210](https://github.com/filecoin-project/lotus/pull/7210))
-    - sectors expired: Handle precomitted and unproven sectors correctly ([filecoin-project/lotus#7236](https://github.com/filecoin-project/lotus/pull/7236))
-    - stores: Fix reserved disk usage log spam ([filecoin-project/lotus#7233](https://github.com/filecoin-project/lotus/pull/7233))
-    - gateway: check tipsets in ChainGetPath ([filecoin-project/lotus#7230](https://github.com/filecoin-project/lotus/pull/7230))
-    - Refactor events subsystem ([filecoin-project/lotus#7000](https://github.com/filecoin-project/lotus/pull/7000))
-    - test: re-enable disabled tests ([filecoin-project/lotus#7211](https://github.com/filecoin-project/lotus/pull/7211))
-    - fix: make lotus soup use the correct dependencies ([filecoin-project/lotus#7221](https://github.com/filecoin-project/lotus/pull/7221))
-    - upgrade go-data-transfer; propagate deal cancellations. ([filecoin-project/lotus#7208](https://github.com/filecoin-project/lotus/pull/7208))
-    - revert changes to OnDealExpiredOrChanged in #5431 #7201 ([filecoin-project/lotus#7220](https://github.com/filecoin-project/lotus/pull/7220))
-    - Reduce lotus-miner startup spam ([filecoin-project/lotus#7205](https://github.com/filecoin-project/lotus/pull/7205))
-    - config for disabling NAT port mapping ([filecoin-project/lotus#7204](https://github.com/filecoin-project/lotus/pull/7204))
-    - Add optional mined block list to miner info ([filecoin-project/lotus#7202](https://github.com/filecoin-project/lotus/pull/7202))
-    -  ([filecoin-project/lotus#7201](https://github.com/filecoin-project/lotus/pull/7201))
-    - fix: init restore adds empty storage.json ([filecoin-project/lotus#7025](https://github.com/filecoin-project/lotus/pull/7025))
-    - Insert miner and network power data as gibibytes to avoid int64 overflows ([filecoin-project/lotus#7194](https://github.com/filecoin-project/lotus/pull/7194))
-    - sealing: Check piece CIDs after AddPiece ([filecoin-project/lotus#7185](https://github.com/filecoin-project/lotus/pull/7185))
-    - markets: OnDealExpiredOrSlashed - get deal by proposal instead of deal ID ([filecoin-project/lotus#5431](https://github.com/filecoin-project/lotus/pull/5431))
-    - Revert "Merge pull request #7187 from filecoin-project/test/disable-broken-testground" ([filecoin-project/lotus#7191](https://github.com/filecoin-project/lotus/pull/7191))
-    - ci: exclude cruft from code coverage ([filecoin-project/lotus#7189](https://github.com/filecoin-project/lotus/pull/7189))
-    - fix: disable broken testground integration test ([filecoin-project/lotus#7187](https://github.com/filecoin-project/lotus/pull/7187))
-    - Incoming: improve a log message ([filecoin-project/lotus#7181](https://github.com/filecoin-project/lotus/pull/7181))
-    - Simple alert system; FD limit alerts ([filecoin-project/lotus#7108](https://github.com/filecoin-project/lotus/pull/7108))
-    - journal: make current log file have a fixed named (#7112) ([filecoin-project/lotus#7112](https://github.com/filecoin-project/lotus/pull/7112))
-    - call string.Repeat always with positive int ([filecoin-project/lotus#7104](https://github.com/filecoin-project/lotus/pull/7104))
-    - Bump version to v1.11.3-dev ([filecoin-project/lotus#7180](https://github.com/filecoin-project/lotus/pull/7180))
-    - Fix throttling bug ([filecoin-project/lotus#7177](https://github.com/filecoin-project/lotus/pull/7177))
-    - fix: make TestTimedCacheBlockstoreSimple pass reliably ([filecoin-project/lotus#7174](https://github.com/filecoin-project/lotus/pull/7174))
-    - Shed: Create a verifreg command for when VRK isn't a multisig ([filecoin-project/lotus#7099](https://github.com/filecoin-project/lotus/pull/7099))
-    - fix TestDealPublisher ([filecoin-project/lotus#7173](https://github.com/filecoin-project/lotus/pull/7173))
-    - test: disable flaky TestBatchDealInput ([filecoin-project/lotus#7176](https://github.com/filecoin-project/lotus/pull/7176))
-    - itests: support larger sector sizes; add large deal test. ([filecoin-project/lotus#7148](https://github.com/filecoin-project/lotus/pull/7148))
-    - Turn off patch ([filecoin-project/lotus#7172](https://github.com/filecoin-project/lotus/pull/7172))
-    - miner: Command to list/remove expired sectors ([filecoin-project/lotus#7140](https://github.com/filecoin-project/lotus/pull/7140))
-    - Ignore nil throttler ([filecoin-project/lotus#7169](https://github.com/filecoin-project/lotus/pull/7169))
-    - test: disable flaky TestSimultaneousTransferLimit ([filecoin-project/lotus#7153](https://github.com/filecoin-project/lotus/pull/7153))
+  - bump lotus version to v1.11.3-rc2
+  - fix(deps): use go-graphsync v0.9.3 with hotfix
+  - feat(deps): update go-graphsync v0.9.2
+  - unit test where StateMarketStorageDeal return nil, err
+  - GetCurrentDealInfo err: handle correctly err case
+  - update to ffi to update-bellperson-proofs-v9-0-2 ([filecoin-project/lotus#7369](https://github.com/filecoin-project/lotus/pull/7369))
+  - fix bug for CommittedCapacitySectorLifetime ([filecoin-project/lotus#7337](https://github.com/filecoin-project/lotus/pull/7337))
+  - feat(ci): include version/cli checks in tagged releases ([filecoin-project/lotus#7331](https://github.com/filecoin-project/lotus/pull/7331))
+  - fix a panic in HandleRecoverDealIDs ([filecoin-project/lotus#7336](https://github.com/filecoin-project/lotus/pull/7336))
+  - build macOS CI ([filecoin-project/lotus#7307](https://github.com/filecoin-project/lotus/pull/7307))
+  - remove job to install jq
+  - v1.11.3-rc1 ([filecoin-project/lotus#7299](https://github.com/filecoin-project/lotus/pull/7299))
+  - update to proof v0.9.2 ([filecoin-project/lotus#7297](https://github.com/filecoin-project/lotus/pull/7297))
+  - Show deal sizes is sealing sectors ([filecoin-project/lotus#7261](https://github.com/filecoin-project/lotus/pull/7261))
+  - docker entrypoint.sh missing variable escape character ([filecoin-project/lotus#7291](https://github.com/filecoin-project/lotus/pull/7291))
+  - Update go-graphsync v0.9.1 ([filecoin-project/lotus#7294](https://github.com/filecoin-project/lotus/pull/7294))
+  - itests: remove cid equality comparison ([filecoin-project/lotus#7292](https://github.com/filecoin-project/lotus/pull/7292))
+  - v1.11.2 -> master ([filecoin-project/lotus#7288](https://github.com/filecoin-project/lotus/pull/7288))
+  - fix index out of range ([filecoin-project/lotus#7273](https://github.com/filecoin-project/lotus/pull/7273))
+  - dealpublisher: Fully validate deals before publishing ([filecoin-project/lotus#7234](https://github.com/filecoin-project/lotus/pull/7234))
+  - introduce MaxStagingDealsBytes - reject new deals if our staging deals area is full ([filecoin-project/lotus#7276](https://github.com/filecoin-project/lotus/pull/7276))
+  - Update to unified go-graphsync v0.9.0 ([filecoin-project/lotus#7197](https://github.com/filecoin-project/lotus/pull/7197))
+  - Increase threshold from 0.5% to 1% ([filecoin-project/lotus#7262](https://github.com/filecoin-project/lotus/pull/7262))
+  - integrate the proof patch: tag proofs-v9-revert-deps-hotfix ([filecoin-project/lotus#7260](https://github.com/filecoin-project/lotus/pull/7260))
+  - update to go-fil-markets v1.11.0 ([filecoin-project/lotus#7253](https://github.com/filecoin-project/lotus/pull/7253))
+  - Add partition info to the 'sectors status' command ([filecoin-project/lotus#7246](https://github.com/filecoin-project/lotus/pull/7246))
+  - sealing: Fix sector state accounting with FinalizeEarly ([filecoin-project/lotus#7256](https://github.com/filecoin-project/lotus/pull/7256))
+  - chain: Cleanup consensus logic ([filecoin-project/lotus#7255](https://github.com/filecoin-project/lotus/pull/7255))
+  - builder: Handle chainstore config in ConfigFullNode ([filecoin-project/lotus#7232](https://github.com/filecoin-project/lotus/pull/7232))
+  - sealing: Fix retry loop in SubmitCommitAggregate ([filecoin-project/lotus#7245](https://github.com/filecoin-project/lotus/pull/7245))
+  - fix: correctly handle null blocks when detecting an expensive fork ([filecoin-project/lotus#7210](https://github.com/filecoin-project/lotus/pull/7210))
+  - sectors expired: Handle precomitted and unproven sectors correctly ([filecoin-project/lotus#7236](https://github.com/filecoin-project/lotus/pull/7236))
+  - stores: Fix reserved disk usage log spam ([filecoin-project/lotus#7233](https://github.com/filecoin-project/lotus/pull/7233))
+  - gateway: check tipsets in ChainGetPath ([filecoin-project/lotus#7230](https://github.com/filecoin-project/lotus/pull/7230))
+  - Refactor events subsystem ([filecoin-project/lotus#7000](https://github.com/filecoin-project/lotus/pull/7000))
+  - test: re-enable disabled tests ([filecoin-project/lotus#7211](https://github.com/filecoin-project/lotus/pull/7211))
+  - fix: make lotus soup use the correct dependencies ([filecoin-project/lotus#7221](https://github.com/filecoin-project/lotus/pull/7221))
+  - upgrade go-data-transfer; propagate deal cancellations. ([filecoin-project/lotus#7208](https://github.com/filecoin-project/lotus/pull/7208))
+  - revert changes to OnDealExpiredOrChanged in #5431 #7201 ([filecoin-project/lotus#7220](https://github.com/filecoin-project/lotus/pull/7220))
+  - Reduce lotus-miner startup spam ([filecoin-project/lotus#7205](https://github.com/filecoin-project/lotus/pull/7205))
+  - config for disabling NAT port mapping ([filecoin-project/lotus#7204](https://github.com/filecoin-project/lotus/pull/7204))
+  - Add optional mined block list to miner info ([filecoin-project/lotus#7202](https://github.com/filecoin-project/lotus/pull/7202))
+  -  ([filecoin-project/lotus#7201](https://github.com/filecoin-project/lotus/pull/7201))
+  - fix: init restore adds empty storage.json ([filecoin-project/lotus#7025](https://github.com/filecoin-project/lotus/pull/7025))
+  - Insert miner and network power data as gibibytes to avoid int64 overflows ([filecoin-project/lotus#7194](https://github.com/filecoin-project/lotus/pull/7194))
+  - sealing: Check piece CIDs after AddPiece ([filecoin-project/lotus#7185](https://github.com/filecoin-project/lotus/pull/7185))
+  - markets: OnDealExpiredOrSlashed - get deal by proposal instead of deal ID ([filecoin-project/lotus#5431](https://github.com/filecoin-project/lotus/pull/5431))
+  - Revert "Merge pull request #7187 from filecoin-project/test/disable-broken-testground" ([filecoin-project/lotus#7191](https://github.com/filecoin-project/lotus/pull/7191))
+  - ci: exclude cruft from code coverage ([filecoin-project/lotus#7189](https://github.com/filecoin-project/lotus/pull/7189))
+  - fix: disable broken testground integration test ([filecoin-project/lotus#7187](https://github.com/filecoin-project/lotus/pull/7187))
+  - Incoming: improve a log message ([filecoin-project/lotus#7181](https://github.com/filecoin-project/lotus/pull/7181))
+  - Simple alert system; FD limit alerts ([filecoin-project/lotus#7108](https://github.com/filecoin-project/lotus/pull/7108))
+  - journal: make current log file have a fixed named (#7112) ([filecoin-project/lotus#7112](https://github.com/filecoin-project/lotus/pull/7112))
+  - call string.Repeat always with positive int ([filecoin-project/lotus#7104](https://github.com/filecoin-project/lotus/pull/7104))
+  - Bump version to v1.11.3-dev ([filecoin-project/lotus#7180](https://github.com/filecoin-project/lotus/pull/7180))
+  - Fix throttling bug ([filecoin-project/lotus#7177](https://github.com/filecoin-project/lotus/pull/7177))
+  - fix: make TestTimedCacheBlockstoreSimple pass reliably ([filecoin-project/lotus#7174](https://github.com/filecoin-project/lotus/pull/7174))
+  - Shed: Create a verifreg command for when VRK isn't a multisig ([filecoin-project/lotus#7099](https://github.com/filecoin-project/lotus/pull/7099))
+  - fix TestDealPublisher ([filecoin-project/lotus#7173](https://github.com/filecoin-project/lotus/pull/7173))
+  - test: disable flaky TestBatchDealInput ([filecoin-project/lotus#7176](https://github.com/filecoin-project/lotus/pull/7176))
+  - itests: support larger sector sizes; add large deal test. ([filecoin-project/lotus#7148](https://github.com/filecoin-project/lotus/pull/7148))
+  - Turn off patch ([filecoin-project/lotus#7172](https://github.com/filecoin-project/lotus/pull/7172))
+  - miner: Command to list/remove expired sectors ([filecoin-project/lotus#7140](https://github.com/filecoin-project/lotus/pull/7140))
+  - Ignore nil throttler ([filecoin-project/lotus#7169](https://github.com/filecoin-project/lotus/pull/7169))
+  - test: disable flaky TestSimultaneousTransferLimit ([filecoin-project/lotus#7153](https://github.com/filecoin-project/lotus/pull/7153))
 - github.com/filecoin-project/go-data-transfer (v1.7.8 -> v1.10.1):
-    - docs(CHANGELOG): update for 1.10.1
-    - Fix parallel transfers between same two peers (#254) ([filecoin-project/go-data-transfer#254](https://github.com/filecoin-project/go-data-transfer/pull/254))
-    - release: v1.10.0 ([filecoin-project/go-data-transfer#253](https://github.com/filecoin-project/go-data-transfer/pull/253))
-    - feat: integrate graphsync-v0.9.0 (#252) ([filecoin-project/go-data-transfer#252](https://github.com/filecoin-project/go-data-transfer/pull/252))
-    - release: v1.9.0 ([filecoin-project/go-data-transfer#251](https://github.com/filecoin-project/go-data-transfer/pull/251))
-    - fix: ensure graphsync transport only closes complete channel once (#250) ([filecoin-project/go-data-transfer#250](https://github.com/filecoin-project/go-data-transfer/pull/250))
-    - revert: integration of graphsync-v0.9.0 until we are ready to test the whole stack with it (#249) ([filecoin-project/go-data-transfer#249](https://github.com/filecoin-project/go-data-transfer/pull/249))
-    - v1.8.0 release ([filecoin-project/go-data-transfer#247](https://github.com/filecoin-project/go-data-transfer/pull/247))
-    - Update  to unified go graphsync v0.9.0 (#246) ([filecoin-project/go-data-transfer#246](https://github.com/filecoin-project/go-data-transfer/pull/246))
+  - docs(CHANGELOG): update for 1.10.1
+  - Fix parallel transfers between same two peers (#254) ([filecoin-project/go-data-transfer#254](https://github.com/filecoin-project/go-data-transfer/pull/254))
+  - release: v1.10.0 ([filecoin-project/go-data-transfer#253](https://github.com/filecoin-project/go-data-transfer/pull/253))
+  - feat: integrate graphsync-v0.9.0 (#252) ([filecoin-project/go-data-transfer#252](https://github.com/filecoin-project/go-data-transfer/pull/252))
+  - release: v1.9.0 ([filecoin-project/go-data-transfer#251](https://github.com/filecoin-project/go-data-transfer/pull/251))
+  - fix: ensure graphsync transport only closes complete channel once (#250) ([filecoin-project/go-data-transfer#250](https://github.com/filecoin-project/go-data-transfer/pull/250))
+  - revert: integration of graphsync-v0.9.0 until we are ready to test the whole stack with it (#249) ([filecoin-project/go-data-transfer#249](https://github.com/filecoin-project/go-data-transfer/pull/249))
+  - v1.8.0 release ([filecoin-project/go-data-transfer#247](https://github.com/filecoin-project/go-data-transfer/pull/247))
+  - Update  to unified go graphsync v0.9.0 (#246) ([filecoin-project/go-data-transfer#246](https://github.com/filecoin-project/go-data-transfer/pull/246))
 - github.com/filecoin-project/go-fil-markets (v1.8.1 -> v1.12.0):
-    - release: v1.12.0
-    - Update to unified graphsync v0.9.0 (#627) ([filecoin-project/go-fil-markets#627](https://github.com/filecoin-project/go-fil-markets/pull/627))
-    - release: v1.11.0 ([filecoin-project/go-fil-markets#626](https://github.com/filecoin-project/go-fil-markets/pull/626))
-    - feat: upgrade to go-data-transfer v1.9.0 (#625) ([filecoin-project/go-fil-markets#625](https://github.com/filecoin-project/go-fil-markets/pull/625))
-    - Revert "Update to unified graphsync v0.9.0 (#615)" (#624) ([filecoin-project/go-fil-markets#624](https://github.com/filecoin-project/go-fil-markets/pull/624))
-    - Update to unified graphsync v0.9.0 (#615) ([filecoin-project/go-fil-markets#615](https://github.com/filecoin-project/go-fil-markets/pull/615))
-    - fix: TestCancelDataTransfer (#622) ([filecoin-project/go-fil-markets#622](https://github.com/filecoin-project/go-fil-markets/pull/622))
-    - rm go-multistore dependency. (#619) ([filecoin-project/go-fil-markets#619](https://github.com/filecoin-project/go-fil-markets/pull/619))
-    - revert: OnDealExpiredOrSlashed changes (#620) ([filecoin-project/go-fil-markets#620](https://github.com/filecoin-project/go-fil-markets/pull/620))
-    - fix(ci): include node in circle orb to fix docsgen (#618) ([filecoin-project/go-fil-markets#618](https://github.com/filecoin-project/go-fil-markets/pull/618))
-    - release: v1.9.0 ([filecoin-project/go-fil-markets#617](https://github.com/filecoin-project/go-fil-markets/pull/617))
-    - refactor: pass deal proposal instead of deal ID to OnDealExpiredOrSlashed (#616) ([filecoin-project/go-fil-markets#616](https://github.com/filecoin-project/go-fil-markets/pull/616))
-    - fix: reject storage deals where the end epoch is too far in the future (#612) ([filecoin-project/go-fil-markets#612](https://github.com/filecoin-project/go-fil-markets/pull/612))
+  - release: v1.12.0
+  - Update to unified graphsync v0.9.0 (#627) ([filecoin-project/go-fil-markets#627](https://github.com/filecoin-project/go-fil-markets/pull/627))
+  - release: v1.11.0 ([filecoin-project/go-fil-markets#626](https://github.com/filecoin-project/go-fil-markets/pull/626))
+  - feat: upgrade to go-data-transfer v1.9.0 (#625) ([filecoin-project/go-fil-markets#625](https://github.com/filecoin-project/go-fil-markets/pull/625))
+  - Revert "Update to unified graphsync v0.9.0 (#615)" (#624) ([filecoin-project/go-fil-markets#624](https://github.com/filecoin-project/go-fil-markets/pull/624))
+  - Update to unified graphsync v0.9.0 (#615) ([filecoin-project/go-fil-markets#615](https://github.com/filecoin-project/go-fil-markets/pull/615))
+  - fix: TestCancelDataTransfer (#622) ([filecoin-project/go-fil-markets#622](https://github.com/filecoin-project/go-fil-markets/pull/622))
+  - rm go-multistore dependency. (#619) ([filecoin-project/go-fil-markets#619](https://github.com/filecoin-project/go-fil-markets/pull/619))
+  - revert: OnDealExpiredOrSlashed changes (#620) ([filecoin-project/go-fil-markets#620](https://github.com/filecoin-project/go-fil-markets/pull/620))
+  - fix(ci): include node in circle orb to fix docsgen (#618) ([filecoin-project/go-fil-markets#618](https://github.com/filecoin-project/go-fil-markets/pull/618))
+  - release: v1.9.0 ([filecoin-project/go-fil-markets#617](https://github.com/filecoin-project/go-fil-markets/pull/617))
+  - refactor: pass deal proposal instead of deal ID to OnDealExpiredOrSlashed (#616) ([filecoin-project/go-fil-markets#616](https://github.com/filecoin-project/go-fil-markets/pull/616))
+  - fix: reject storage deals where the end epoch is too far in the future (#612) ([filecoin-project/go-fil-markets#612](https://github.com/filecoin-project/go-fil-markets/pull/612))
 
 Contributors
 
 | Contributor | Commits | Lines ± | Files Changed |
 |-------------|---------|---------|---------------|
-| Łukasz Magiera | 38 | +3306/-1825 | 178 |
+| Łukasz Magiera | 39 | +3311/-1825 | 179 |
 | Steven Allen | 23 | +1935/-1417 | 84 |
 | dirkmc | 12 | +921/-732 | 111 |
 | Dirk McCormick | 12 | +663/-790 | 30 |
 | Hannah Howard | 3 | +482/-275 | 46 |
 | Travis Person | 1 | +317/-65 | 5 |
-| hannahhoward | 5 | +251/-50 | 12 |
-| Anton Evangelatov | 7 | +198/-37 | 17 |
+| hannahhoward | 7 | +257/-55 | 16 |
+| Anton Evangelatov | 9 | +258/-37 | 19 |
 | Raúl Kripalani | 4 | +127/-36 | 13 |
-| raulk | 1 | +43/-60 | 15 |
-| Aayush Rajasekaran | 4 | +74/-8 | 10 |
-| Frank | 2 | +68/-8 | 3 |
-| Adrian Lanzafame | 1 | +16/-2 | 1 |
-| Aarsh Shah | 2 | +11/-6 | 2 |
-| Jennifer Wang | 3 | +7/-7 | 9 |
-| ZenGround0 | 2 | +7/-6 | 2 |
-| KAYUII | 2 | +4/-4 | 2 |
-| lanzafame | 1 | +6/-0 | 1 |
-| Jacob Heun | 1 | +3/-3 | 1 |
-| frank | 1 | +4/-0 | 1 |
 
 # v1.11.2 / 2021-09-06
 
