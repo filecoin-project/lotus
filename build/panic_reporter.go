@@ -79,11 +79,7 @@ func writeAppVersion(file string) {
 	}
 	defer f.Close() //nolint:errcheck
 
-	ignoreCommitBefore := os.Getenv("LOTUS_VERSION_IGNORE_COMMIT")
-	os.Setenv("LOTUS_VERSION_IGNORE_COMMIT", "")                       //nolint:errcheck
-	defer os.Setenv("LOTUS_VERSION_IGNORE_COMMIT", ignoreCommitBefore) //nolint:errcheck
-
-	versionString := []byte(UserVersion() + "\n")
+	versionString := []byte(BuildVersion + buildType() + CurrentCommit + "\n")
 	if _, err := f.Write(versionString); err != nil {
 		panicLog.Error(err.Error())
 	}
