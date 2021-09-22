@@ -1,0 +1,23 @@
+#!/usr/bin/make -f
+
+%:
+	touch build/.filecoin-install
+	touch build/.update-modules
+	dh $@ --buildsystem=golang
+
+override_dh_auto_test:
+	echo go test ./...
+
+override_dh_auto_build:
+	touch build/.filecoin-install
+	touch build/.update-modules
+	HOME="$(CURDIR)/.cache" RUSTUP_HOME="$(CURDIR)/_rustup" CARGO_HOME="$(CURDIR)/_cargo" GOPATH="$(CURDIR)/_gopath" LDFLAGS="" make
+
+override_dh_auto_install:
+	mkdir -p debian/lotus/usr/bin
+	mkdir -p debian/lotus/usr/lib/systemd/system
+	cp lotus debian/lotus/usr/bin
+	cp lotus-miner debian/lotus/usr/bin
+	cp lotus-worker debian/lotus/usr/bin
+	install -C -m 0644 scripts/lotus-daemon.service debian/lotus/usr/lib/systemd/system/lotus-daemon.service
+	install -C -m 0644 scripts/lotus-miner.service debian/lotus/usr/lib/systemd/system/lotus-miner.service

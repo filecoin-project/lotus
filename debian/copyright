@@ -1,0 +1,8 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: lotus
+Upstream-Contact: Lotus team <infra-accounts@protocol.ai>
+Source: https://github.com/filecoin-project/lotus
+
+Files: *
+Copyright: 2019 Filecoin
+License: Apache/MIT

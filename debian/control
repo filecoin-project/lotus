@@ -1,0 +1,31 @@
+Source: lotus
+Maintainer: Lotus Team <infra-accounts@protocol.ai>
+Uploaders: Lotus Team <infra-accounts@protocol.ai>
+Section: net
+Testsuite: autopkgtest-pkg-go
+Priority: optional
+Build-Depends: debhelper-compat (= 13),
+               dh-golang,
+               golang (>= 1.16),
+               pkg-config,
+               git,
+               jq,
+               libhwloc-dev,
+               ocl-icd-opencl-dev
+Standards-Version: 4.5.0
+Vcs-Browser: https://github.com/filecoin-project/lotus
+Vcs-Git: https://github.com/filecoin-project/lotus.git
+Homepage: https://filecoin.io
+Rules-Requires-Root: no
+XS-Go-Import-Path: github.com/filecoin-project/lotus
+
+Package: lotus
+Architecture: amd64
+Depends: ${misc:Depends},
+         ${shlibs:Depends},
+         libhwloc15,
+         ocl-icd-libopencl1,
+         ca-certificates
+Built-Using: ${misc:Built-Using}
+Description: Implementation of the Filecoin protocol, written in Go
+ Filecoin is a decentralized storage network designed to store humanity's most important information.
