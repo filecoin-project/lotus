@@ -719,8 +719,8 @@ github.com/ipfs/go-ipfs-files v0.0.3/go.mod h1:INEFm0LL2LWXBhNJ2PMIIb2w45hpXgPjN
 github.com/ipfs/go-ipfs-files v0.0.4/go.mod h1:INEFm0LL2LWXBhNJ2PMIIb2w45hpXgPjNoE7yA8Y1d4=
 github.com/ipfs/go-ipfs-files v0.0.8 h1:8o0oFJkJ8UkO/ABl8T6ac6tKF3+NIpj67aAB6ZpusRg=
 github.com/ipfs/go-ipfs-files v0.0.8/go.mod h1:wiN/jSG8FKyk7N0WyctKSvq3ljIa2NNTiZB55kpTdOs=
-github.com/ipfs/go-ipfs-http-client v0.1.0-update-libp2p h1:Op7bvpRkNRE6RFPtxlL8gP8UT4sMYnkWbkpBaBr37Po=
-github.com/ipfs/go-ipfs-http-client v0.1.0-update-libp2p/go.mod h1:8e2dQbntMZKxLfny+tyXJ7bJHZFERp/2vyzZdvkeLMc=
+github.com/ipfs/go-ipfs-http-client v0.0.6 h1:k2QllZyP7Fz5hMgsX5hvHfn1WPG9Ngdy5WknQ7JNhBM=
+github.com/ipfs/go-ipfs-http-client v0.0.6/go.mod h1:8e2dQbntMZKxLfny+tyXJ7bJHZFERp/2vyzZdvkeLMc=
 github.com/ipfs/go-ipfs-posinfo v0.0.1 h1:Esoxj+1JgSjX0+ylc0hUmJCOv6V2vFoZiETLR6OtpRs=
 github.com/ipfs/go-ipfs-posinfo v0.0.1/go.mod h1:SwyeVP+jCwiDu0C313l/8jg6ZxM0qqtlt2a0vILTc1A=
 github.com/ipfs/go-ipfs-pq v0.0.1/go.mod h1:LWIqQpqfRG3fNc5XsnIhz/wQ2XXGyugQwls7BgUmUfY=
