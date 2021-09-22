@@ -123,7 +123,6 @@ Note: The default branch `master` is the dev branch where the latest new feature
 
    # Or to join a testnet or devnet:
    make clean calibnet # Calibration with min 32GiB sectors
-   make clean nerpanet # Nerpa with min 512MiB sectors
 
    sudo make install
    ```
