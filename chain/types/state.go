@@ -15,7 +15,7 @@ const (
 	StateTreeVersion2
 	// StateTreeVersion3 corresponds to actors v4.
 	StateTreeVersion3
-	// StateTreeVersion4 corresponds to actors v5.
+	// StateTreeVersion4 corresponds to actors v5, v6.
 	StateTreeVersion4
 )
 
