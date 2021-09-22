@@ -1,8 +1,3 @@
-variable "ci_workspace_bins" {
-  type = string
-  default = "./linux"
-}
-
 variable "lotus_network" {
   type = string
   default = "mainnet"
