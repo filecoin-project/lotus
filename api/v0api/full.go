@@ -600,6 +600,11 @@ type FullNode interface {
 	// StateNetworkVersion returns the network version at the given tipset
 	StateNetworkVersion(context.Context, types.TipSetKey) (apitypes.NetworkVersion, error) //perm:read
 
+	// StateGetRandomnessFromTickets is used to sample the chain for randomness.
+	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
+	// StateGetRandomnessFromBeacon is used to sample the beacon for randomness.
+	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
+
 	// MethodGroup: Msig
 	// The Msig methods are used to interact with multisig wallets on the
 	// filecoin network

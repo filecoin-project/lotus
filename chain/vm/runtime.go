@@ -214,7 +214,9 @@ func (rt *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) 
 func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
 	var err error
 	var res []byte
-	if randEpoch > build.UpgradeHyperdriveHeight {
+
+	rnv := rt.vm.ntwkVersion(rt.ctx, randEpoch)
+	if rnv >= network.Version13 {
 		res, err = rt.vm.rand.GetChainRandomnessLookingForward(rt.ctx, personalization, randEpoch, entropy)
 	} else {
 		res, err = rt.vm.rand.GetChainRandomnessLookingBack(rt.ctx, personalization, randEpoch, entropy)
@@ -229,7 +231,9 @@ func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparat
 func (rt *Runtime) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
 	var err error
 	var res []byte
-	if randEpoch > build.UpgradeHyperdriveHeight {
+
+	rnv := rt.vm.ntwkVersion(rt.ctx, randEpoch)
+	if rnv >= network.Version13 {
 		res, err = rt.vm.rand.GetBeaconRandomnessLookingForward(rt.ctx, personalization, randEpoch, entropy)
 	} else {
 		res, err = rt.vm.rand.GetBeaconRandomnessLookingBack(rt.ctx, personalization, randEpoch, entropy)
