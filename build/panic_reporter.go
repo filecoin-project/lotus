@@ -79,7 +79,7 @@ func writeAppVersion(file string) {
 	}
 	defer f.Close() //nolint:errcheck
 
-	versionString := []byte(BuildVersion + buildType() + CurrentCommit + "\n")
+	versionString := []byte(BuildVersion + BuildTypeString() + CurrentCommit + "\n")
 	if _, err := f.Write(versionString); err != nil {
 		panicLog.Error(err.Error())
 	}
