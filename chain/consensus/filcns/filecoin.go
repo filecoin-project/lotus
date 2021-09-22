@@ -530,6 +530,12 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 
 	smArr := blockadt.MakeEmptyArray(tmpstore)
 	for i, m := range b.SecpkMessages {
+		if filec.sm.GetNtwkVersion(ctx, b.Header.Height) >= network.Version14 {
+			if m.Signature.Type != crypto.SigTypeSecp256k1 {
+				return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
+			}
+		}
+
 		if err := checkMsg(m); err != nil {
 			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
 		}
