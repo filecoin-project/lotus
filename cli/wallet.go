@@ -195,7 +195,7 @@ var walletNew = &cli.Command{
 					}
 
 					if addr.Protocol() == address.ID || addr.Protocol() == address.Actor {
-						return fmt.Errorf("signer address(%s) protocol is %", addr, addr.Protocol())
+						return fmt.Errorf("signer address(%s) protocol is %d", addr, addr.Protocol())
 					}
 
 					addrs = append(addrs, addr)
@@ -326,35 +326,35 @@ var walletList = &cli.Command{
 					maddr := addr
 					head, err := api.ChainHead(ctx)
 					if err != nil {
-						fmt.Printf("msig(%s) err:\n", addr, err)
+						fmt.Printf("msig(%s) err:%w\n", addr, err)
 						continue
 					}
 
 					act, err := api.StateGetActor(ctx, maddr, head.Key())
 					if err != nil {
-						fmt.Printf("msig(%s) err:\n", addr, err)
+						fmt.Printf("msig(%s) err:%w\n", addr, err)
 						continue
 					}
 
 					mstate, err := multisig.Load(store, act)
 					if err != nil {
-						fmt.Printf("msig(%s) err:\n", addr, err)
+						fmt.Printf("msig(%s) err:%w\n", addr, err)
 						continue
 					}
 					locked, err := mstate.LockedBalance(head.Height())
 					if err != nil {
-						fmt.Printf("msig(%s) err:\n", addr, err)
+						fmt.Printf("msig(%s) err:%w\n", addr, err)
 						continue
 					}
 
 					signers, err := mstate.Signers()
 					if err != nil {
-						fmt.Printf("\tmsig(%s) err:\n", addr, err)
+						fmt.Printf("\tmsig(%s) err:%w\n", addr, err)
 						continue
 					}
 					threshold, err := mstate.Threshold()
 					if err != nil {
-						fmt.Printf("msig(%s) err:\n", addr, err)
+						fmt.Printf("msig(%s) err:%w\n", addr, err)
 						continue
 					}
 
@@ -383,7 +383,7 @@ var walletList = &cli.Command{
 						pending[id] = txn
 						return nil
 					}); err != nil {
-						fmt.Printf("msig(%s) err:\n", addr, err)
+						fmt.Printf("msig(%s) err:%w\n", addr, err)
 						continue
 					}
 
