@@ -241,6 +241,9 @@ var walletNew = &cli.Command{
 			gp := types.NewInt(1)
 
 			proto, err := api.MsigCreate(ctx, required, addrs, d, intVal, sendAddr, gp)
+			if err != nil {
+				return err
+			}
 
 			wait, err := api.StateWaitMsg(ctx, proto, uint64(cctx.Int("confidence")))
 			if err != nil {
