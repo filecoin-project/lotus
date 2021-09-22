@@ -47,5 +47,11 @@ ufw default allow outgoing
 ufw allow ssh
 ufw allow 5678   #libp2p
 
+# This takes a while on AWS, so generate some output
+while sleep 120
+do
+	echo still running
+done &
+
 # Digitalocean Cleanup Script
 curl -s https://raw.githubusercontent.com/digitalocean/marketplace-partners/master/scripts/90-cleanup.sh | bash
