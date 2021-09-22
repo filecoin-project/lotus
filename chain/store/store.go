@@ -424,7 +424,13 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipS
 		return err
 	}
 
-	if w.GreaterThan(heaviestW) {
+	heavier := w.GreaterThan(heaviestW)
+	if w.Equals(heaviestW) && !ts.Equals(cs.heaviest) {
+		log.Errorw("weight draw", "currTs", cs.heaviest, "ts", ts)
+		heavier = breakWeightTie(ts, cs.heaviest)
+	}
+
+	if heavier {
 		// TODO: don't do this for initial sync. Now that we don't have a
 		// difference between 'bootstrap sync' and 'caught up' sync, we need
 		// some other heuristic.
@@ -438,9 +444,8 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipS
 		}
 
 		return cs.takeHeaviestTipSet(ctx, ts)
-	} else if w.Equals(heaviestW) && !ts.Equals(cs.heaviest) {
-		log.Errorw("weight draw", "currTs", cs.heaviest, "ts", ts)
 	}
+
 	return nil
 }
 
@@ -1164,4 +1169,23 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 
 func (cs *ChainStore) Weight(ctx context.Context, hts *types.TipSet) (types.BigInt, error) { // todo remove
 	return cs.weight(ctx, cs.StateBlockstore(), hts)
+}
+
+// true if ts1 wins according to the filecoin tie-break rule
+func breakWeightTie(ts1, ts2 *types.TipSet) bool {
+	s := len(ts1.Blocks())
+	if s > len(ts2.Blocks()) {
+		s = len(ts2.Blocks())
+	}
+
+	// blocks are already sorted by ticket
+	for i := 0; i < s; i++ {
+		if ts1.Blocks()[i].Ticket.Less(ts2.Blocks()[i].Ticket) {
+			log.Infof("weight tie broken in favour of %s", ts1.Key())
+			return true
+		}
+	}
+
+	log.Infof("weight tie left unbroken, default to %s", ts2.Key())
+	return false
 }
