@@ -216,6 +216,7 @@
   * [WalletExport](#WalletExport)
   * [WalletHas](#WalletHas)
   * [WalletImport](#WalletImport)
+  * [WalletMsigImport](#WalletMsigImport)
   * [WalletList](#WalletList)
   * [WalletNew](#WalletNew)
   * [WalletSetDefault](#WalletSetDefault)
@@ -5637,6 +5638,24 @@ Inputs:
 ```
 
 Response: `"f01234"`
+
+### WalletMSigImport
+Walletmsigimport receives the idaddress and robustaddress of the multisig wallet and imports them into the wallet.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "IDAddress": "t01234",
+    "RobustAddress": "t2abcd"
+  }
+]
+```
+
+Response: `null`
 
 ### WalletList
 WalletList lists all the addresses in the wallet.
