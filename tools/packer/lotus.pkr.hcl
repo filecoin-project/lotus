@@ -53,7 +53,7 @@ source "amazon-ebs" "lotus" {
   instance_type = "t2.micro"
   source_ami_filter {
     filters = {
-      name = "ubuntu/images/*ubuntu-focal-20.04-amd64-server-*"
+      name = "ubuntu/images/*ubuntu-hirsute-21.04-amd64-server-*"
       root-device-type = "ebs"
       virtualization-type = "hvm"
     }
@@ -67,7 +67,7 @@ source "digitalocean" "lotus" {
   droplet_name = "lotus-${var.lotus_network}"
   size = "s-1vcpu-1gb"
   region = "nyc3"
-  image = "ubuntu-20-04-x64"
+  image = "ubuntu-21-04-x64"
   snapshot_name = "lotus-${var.lotus_network}-${var.git_tag}-${local.timestamp}"
   ssh_username = "root"
 }
@@ -78,41 +78,6 @@ build {
     "source.digitalocean.lotus",
   ]
 
-  # Lotus software (from CI workspace)
-  provisioner "file" {
-    source = "${var.ci_workspace_bins}/lotus"
-    destination = "lotus"
-  }
-  provisioner "file" {
-    source = "${var.ci_workspace_bins}/lotus-miner"
-    destination = "lotus-miner"
-  }
-  # First run script
-  provisioner "file" {
-    source = "./tools/packer/scripts/${var.lotus_network}/lotus-init.sh"
-    destination = "lotus-init.sh"
-  }
-  # Systemd service units.
-  provisioner "file" {
-    source = "./tools/packer/systemd/lotus-daemon.service"
-    destination = "lotus-daemon.service"
-  }
-  provisioner "file" {
-    source = "./tools/packer/systemd/lotus-miner.service"
-    destination = "lotus-miner.service"
-  }
-  provisioner "file" {
-    source = "./tools/packer/repo/config.toml"
-    destination = "config.toml"
-  }
-  provisioner "file" {
-    source = "./tools/packer/etc/motd"
-    destination = "motd"
-  }
-  provisioner "file" {
-    source = "./tools/packer/homedir/bashrc"
-    destination = ".bashrc"
-  }
   # build it.
   provisioner "shell" {
     script = "./tools/packer/setup.sh"

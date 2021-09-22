@@ -17,32 +17,13 @@ then
 	exec sudo su -c "$cmd_str"
 fi
 
-MANAGED_BINS=( lotus lotus-miner lotus-init.sh )
 MANAGED_FILES=(
-  /lib/systemd/system/lotus-daemon.service
-	/lib/systemd/system/lotus-miner.service
 	/etc/motd
-	/var/lib/lotus/config.toml
 )
 
-# install libs.
 export DEBIAN_FRONTEND=noninteractive
-apt-get update
-apt-get -y install libhwloc15 ocl-icd-libopencl1 ufw
-apt-get -y upgrade -q -y -u -o Dpkg::Options::="--force-confold"
-ln -s /usr/lib/x86_64-linux-gnu/libhwloc.so.15 /usr/lib/x86_64-linux-gnu/libhwloc.so.5
-
-# Create lotus user
-useradd -c "lotus system account" -r fc
-install -o fc -g fc -d /var/lib/lotus
-install -o fc -g fc -d /var/lib/lotus-miner
-
-# Install software
-for i in "${MANAGED_BINS[@]}"
-do
-	install -o root -g root -m 755 -t /usr/local/bin $i
-	rm $i
-done
+apt-add-repository -y ppa:protocollabs/lotus
+apt -y install lotus
 
 # Install systemd and other files.
 # Because packer doesn't copy files with root permisison,
@@ -65,3 +46,6 @@ ufw default deny incoming
 ufw default allow outgoing
 ufw allow ssh
 ufw allow 5678   #libp2p
+
+# Digitalocean Cleanup Script
+curl -s https://raw.githubusercontent.com/digitalocean/marketplace-partners/master/scripts/90-cleanup.sh | bash
