@@ -72,6 +72,12 @@ var actorSetAddrsCmd = &cli.Command{
 			return fmt.Errorf("unset can only be used with no arguments")
 		}
 
+		nodeAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -97,7 +103,7 @@ var actorSetAddrsCmd = &cli.Command{
 			addrs = append(addrs, maddrNop2p.Bytes())
 		}
 
-		maddr, err := getActorAddress(ctx, cctx)
+		maddr, err := nodeAPI.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -143,6 +149,12 @@ var actorSetPeeridCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		nodeAPI, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -156,7 +168,7 @@ var actorSetPeeridCmd = &cli.Command{
 			return fmt.Errorf("failed to parse input as a peerId: %w", err)
 		}
 
-		maddr, err := getActorAddress(ctx, cctx)
+		maddr, err := nodeAPI.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -196,6 +208,12 @@ var actorWithdrawCmd = &cli.Command{
 	Usage:     "withdraw available balance",
 	ArgsUsage: "[amount (FIL)]",
 	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -204,7 +222,7 @@ var actorWithdrawCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := getActorAddress(ctx, cctx)
+		maddr, err := nodeApi.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -268,6 +286,12 @@ var actorRepayDebtCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -276,7 +300,7 @@ var actorRepayDebtCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := getActorAddress(ctx, cctx)
+		maddr, err := nodeApi.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -543,6 +567,12 @@ var actorControlSet = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -551,7 +581,7 @@ var actorControlSet = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := getActorAddress(ctx, cctx)
+		maddr, err := nodeApi.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -753,6 +783,12 @@ var actorProposeChangeWorker = &cli.Command{
 			return fmt.Errorf("must pass address of new worker address")
 		}
 
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -771,7 +807,7 @@ var actorProposeChangeWorker = &cli.Command{
 			return err
 		}
 
-		maddr, err := getActorAddress(ctx, cctx)
+		maddr, err := nodeApi.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -862,6 +898,12 @@ var actorConfirmChangeWorker = &cli.Command{
 			return fmt.Errorf("must pass address of new worker address")
 		}
 
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -880,7 +922,7 @@ var actorConfirmChangeWorker = &cli.Command{
 			return err
 		}
 
-		maddr, err := getActorAddress(ctx, cctx)
+		maddr, err := nodeApi.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
@@ -971,6 +1013,12 @@ var actorCompactAllocatedCmd = &cli.Command{
 			return fmt.Errorf("must pass address of new owner address")
 		}
 
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -979,7 +1027,7 @@ var actorCompactAllocatedCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := getActorAddress(ctx, cctx)
+		maddr, err := nodeApi.ActorAddress(ctx)
 		if err != nil {
 			return err
 		}
