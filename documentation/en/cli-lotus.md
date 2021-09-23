@@ -188,6 +188,7 @@ OPTIONS:
    --gas-limit value    specify gas limit (default: 0)
    --nonce value        specify the nonce to use (default: 0)
    --method value       specify method to invoke (default: 0)
+   --msig value         Specify multi sign wallet address(It must be set to initiate multi sign address transfer)
    --params-json value  specify invocation parameters in json
    --params-hex value   specify invocation parameters in hex
    --force              Deprecated: use global 'force-send' (default: false)
@@ -204,6 +205,7 @@ USAGE:
    lotus wallet command [command options] [arguments...]
 
 COMMANDS:
+   approve      Approve a multisig transfer message
    new          Generate a new key of the given type
    list         List wallet address
    balance      Get account balance
@@ -223,6 +225,20 @@ OPTIONS:
    
 ```
 
+### lotus wallet approve
+```
+NAME:
+   lotus wallet approve - Approve a multisig transfer message
+
+USAGE:
+   lotus wallet approve [command options] [multisigAddress messageId]
+
+OPTIONS:
+   --from value  account to send the approve message from (Use local Default address when not set，But it must belong to the signers)
+   --help, -h    show help (default: false)
+   
+```
+
 ### lotus wallet new
 ```
 NAME:
@@ -232,7 +248,11 @@ USAGE:
    lotus wallet new [command options] [bls|secp256k1 (default secp256k1)]
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --from value      account to send the create message from (Use local Default address when not set)
+   --value value     initial funds to give to multisig (default: "0")
+   --required value  number of required approvals (uses number of signers provided if omitted) (default: 0)
+   --duration value  length of the period over which funds unlock (default: "0")
+   --help, -h        show help (default: false)
    
 ```
 
@@ -248,6 +268,7 @@ OPTIONS:
    --addr-only, -a  Only print addresses (default: false)
    --id, -i         Output ID addresses (default: false)
    --market, -m     Output market balances (default: false)
+   --details        Output msig address details (default: false)
    --help, -h       show help (default: false)
    
 ```
