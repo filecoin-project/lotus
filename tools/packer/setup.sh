@@ -19,11 +19,12 @@ fi
 
 MANAGED_FILES=(
 	/etc/motd
+	/etc/apt/apt.conf.d/50unattended-upgrades
 )
 
 export DEBIAN_FRONTEND=noninteractive
 apt-add-repository -y ppa:protocollabs/lotus
-apt -y install lotus
+apt -y install lotus unattended-upgrades
 
 # Install systemd and other files.
 # Because packer doesn't copy files with root permisison,
@@ -39,6 +40,7 @@ done
 # Enable services
 systemctl daemon-reload
 systemctl enable lotus-daemon
+systemctl enable apt-daily-upgrade
 
 # Setup firewall
 yes | ufw enable

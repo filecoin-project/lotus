@@ -980,6 +980,7 @@ workflows:
           path: .
           repo: lotus-dev
           tag: '${CIRCLE_SHA1:0:8}'
+      - publish-packer-mainnet
       - publish-packer-mainnet:
           filters:
             branches:

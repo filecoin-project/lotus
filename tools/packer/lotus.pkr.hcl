@@ -78,6 +78,10 @@ build {
     destination = "motd"
   }
   provisioner "file" {
+    source = "./tools/packer/etc/apt/apt.conf.d/50unattended-upgrades"
+    destination = "50unattended-upgrades"
+  }
+  provisioner "file" {
     source = "./tools/packer/homedir/bashrc"
     destination = ".bashrc"
   }
