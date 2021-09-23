@@ -16,7 +16,7 @@ function validate_lotus_version_matches_tag(){
   # get version
   lotus_raw_version=`${lotus_path} --version`
   # grep for version string
-  lotus_actual_version=`echo ${lotus_raw_version} | grep -oE '[0-9]+.[0-9]+.[0-9]+'`
+  lotus_actual_version=`echo ${lotus_raw_version} | grep -oE '[0-9]+\.[0-9]+\.[0-9]+'`
 
   # trim leading 'v'
   tag=${2#v}
