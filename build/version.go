@@ -12,7 +12,6 @@ const (
 	BuildDebug        = 0x3
 	BuildCalibnet     = 0x4
 	BuildInteropnet   = 0x5
-	BuildNerpanet     = 0x6
 	BuildButterflynet = 0x7
 )
 
@@ -30,8 +29,6 @@ func buildType() string {
 		return "+calibnet"
 	case BuildInteropnet:
 		return "+interopnet"
-	case BuildNerpanet:
-		return "+nerpanet"
 	case BuildButterflynet:
 		return "+butterflynet"
 	default:
