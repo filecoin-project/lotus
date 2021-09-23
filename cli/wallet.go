@@ -6,28 +6,26 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
-	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
 	"text/tabwriter"
 
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
+	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 )
 
 var walletCmd = &cli.Command{
