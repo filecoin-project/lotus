@@ -379,9 +379,9 @@ type FullNodeStruct struct {
 
 		WalletImport func(p0 context.Context, p1 *types.KeyInfo) (address.Address, error) `perm:"admin"`
 
-		WalletMsigImport func(p0 context.Context, p1 address.Address, p2 address.Address) error `perm:"admin"`
-
 		WalletList func(p0 context.Context) ([]address.Address, error) `perm:"write"`
+
+		WalletMsigImport func(p0 context.Context, p1 address.Address, p2 address.Address) error `perm:"admin"`
 
 		WalletNew func(p0 context.Context, p1 types.KeyType) (address.Address, error) `perm:"write"`
 
@@ -2364,17 +2364,6 @@ func (s *FullNodeStub) WalletImport(p0 context.Context, p1 *types.KeyInfo) (addr
 	return *new(address.Address), ErrNotSupported
 }
 
-func (s *FullNodeStruct) WalletMsigImport(p0 context.Context, p1 address.Address, p2 address.Address) error {
-	if s.Internal.WalletMsigImport == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.WalletMsigImport(p0, p1, p2)
-}
-
-func (s *FullNodeStub) WalletMsigImport(p0 context.Context, p1 address.Address, p2 address.Address) error {
-	return ErrNotSupported
-}
-
 func (s *FullNodeStruct) WalletList(p0 context.Context) ([]address.Address, error) {
 	if s.Internal.WalletList == nil {
 		return *new([]address.Address), ErrNotSupported
@@ -2384,6 +2373,17 @@ func (s *FullNodeStruct) WalletList(p0 context.Context) ([]address.Address, erro
 
 func (s *FullNodeStub) WalletList(p0 context.Context) ([]address.Address, error) {
 	return *new([]address.Address), ErrNotSupported
+}
+
+func (s *FullNodeStruct) WalletMsigImport(p0 context.Context, p1 address.Address, p2 address.Address) error {
+	if s.Internal.WalletMsigImport == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.WalletMsigImport(p0, p1, p2)
+}
+
+func (s *FullNodeStub) WalletMsigImport(p0 context.Context, p1 address.Address, p2 address.Address) error {
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) WalletNew(p0 context.Context, p1 types.KeyType) (address.Address, error) {

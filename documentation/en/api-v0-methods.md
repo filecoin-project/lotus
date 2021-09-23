@@ -216,8 +216,8 @@
   * [WalletExport](#WalletExport)
   * [WalletHas](#WalletHas)
   * [WalletImport](#WalletImport)
-  * [WalletMsigImport](#WalletMsigImport)
   * [WalletList](#WalletList)
+  * [WalletMsigImport](#WalletMsigImport)
   * [WalletNew](#WalletNew)
   * [WalletSetDefault](#WalletSetDefault)
   * [WalletSign](#WalletSign)
@@ -5639,24 +5639,6 @@ Inputs:
 
 Response: `"f01234"`
 
-### WalletMSigImport
-Walletmsigimport receives the idaddress and robustaddress of the multisig wallet and imports them into the wallet.
-
-
-Perms: admin
-
-Inputs:
-```json
-[
-  {
-    "IDAddress": "t01234",
-    "RobustAddress": "t2abcd"
-  }
-]
-```
-
-Response: `null`
-
 ### WalletList
 WalletList lists all the addresses in the wallet.
 
@@ -5666,6 +5648,22 @@ Perms: write
 Inputs: `null`
 
 Response: `null`
+
+### WalletMsigImport
+Walletmsigimport receives the idaddress and robustaddress of the multisig wallet and imports them into the wallet.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "f01234",
+  "f01234"
+]
+```
+
+Response: `{}`
 
 ### WalletNew
 WalletNew creates a new address in the wallet with the given sigType.
