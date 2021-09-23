@@ -26,7 +26,7 @@ require (
 	github.com/ipfs/go-log/v2 v2.3.0
 	github.com/ipfs/go-merkledag v0.3.2
 	github.com/ipfs/go-unixfs v0.2.6
-	github.com/ipld/go-car v0.1.1-0.20201119040415-11b6074b6d4d
+	github.com/ipld/go-car v0.3.1-null-padded-files
 	github.com/kpacha/opencensus-influxdb v0.0.0-20181102202715-663e2683a27c
 	github.com/libp2p/go-libp2p v0.15.0
 	github.com/libp2p/go-libp2p-core v0.9.0

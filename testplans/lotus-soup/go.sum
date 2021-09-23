@@ -943,8 +943,8 @@ github.com/ipfs/go-ipfs-files v0.0.3/go.mod h1:INEFm0LL2LWXBhNJ2PMIIb2w45hpXgPjN
 github.com/ipfs/go-ipfs-files v0.0.4/go.mod h1:INEFm0LL2LWXBhNJ2PMIIb2w45hpXgPjNoE7yA8Y1d4=
 github.com/ipfs/go-ipfs-files v0.0.8 h1:8o0oFJkJ8UkO/ABl8T6ac6tKF3+NIpj67aAB6ZpusRg=
 github.com/ipfs/go-ipfs-files v0.0.8/go.mod h1:wiN/jSG8FKyk7N0WyctKSvq3ljIa2NNTiZB55kpTdOs=
-github.com/ipfs/go-ipfs-http-client v0.1.0-update-libp2p h1:Op7bvpRkNRE6RFPtxlL8gP8UT4sMYnkWbkpBaBr37Po=
-github.com/ipfs/go-ipfs-http-client v0.1.0-update-libp2p/go.mod h1:8e2dQbntMZKxLfny+tyXJ7bJHZFERp/2vyzZdvkeLMc=
+github.com/ipfs/go-ipfs-http-client v0.0.6 h1:k2QllZyP7Fz5hMgsX5hvHfn1WPG9Ngdy5WknQ7JNhBM=
+github.com/ipfs/go-ipfs-http-client v0.0.6/go.mod h1:8e2dQbntMZKxLfny+tyXJ7bJHZFERp/2vyzZdvkeLMc=
 github.com/ipfs/go-ipfs-posinfo v0.0.1 h1:Esoxj+1JgSjX0+ylc0hUmJCOv6V2vFoZiETLR6OtpRs=
 github.com/ipfs/go-ipfs-posinfo v0.0.1/go.mod h1:SwyeVP+jCwiDu0C313l/8jg6ZxM0qqtlt2a0vILTc1A=
 github.com/ipfs/go-ipfs-pq v0.0.1/go.mod h1:LWIqQpqfRG3fNc5XsnIhz/wQ2XXGyugQwls7BgUmUfY=
@@ -1019,8 +1019,9 @@ github.com/ipfs/iptb-plugins v0.3.0/go.mod h1:5QtOvckeIw4bY86gSH4fgh3p3gCSMn3FmI
 github.com/ipld/go-car v0.1.0/go.mod h1:RCWzaUh2i4mOEkB3W45Vc+9jnS/M6Qay5ooytiBHl3g=
 github.com/ipld/go-car v0.1.1-0.20200923150018-8cdef32e2da4/go.mod h1:xrMEcuSq+D1vEwl+YAXsg/JfA98XGpXDwnkIL4Aimqw=
 github.com/ipld/go-car v0.1.1-0.20201119040415-11b6074b6d4d/go.mod h1:2Gys8L8MJ6zkh1gktTSXreY63t4UbyvNp5JaudTyxHQ=
-github.com/ipld/go-car v0.3.1-0.20210601190600-f512dac51e8e h1:iTAJWTWEMe0Lx8JwRaIYrYgDuI9bVzkgogGz43Yv9Eo=
 github.com/ipld/go-car v0.3.1-0.20210601190600-f512dac51e8e/go.mod h1:wUxBdwOLA9/0HZBi3fnTBzla0MuwlqgJLyrhOg1XaKI=
+github.com/ipld/go-car v0.3.1-null-padded-files h1:FMD0Ce4tAM9P5aq7yklw2jnVK3ZuoJ4xK6vkL9VLmxs=
+github.com/ipld/go-car v0.3.1-null-padded-files/go.mod h1:wUxBdwOLA9/0HZBi3fnTBzla0MuwlqgJLyrhOg1XaKI=
 github.com/ipld/go-car/v2 v2.0.0-beta1.0.20210721090610-5a9d1b217d25/go.mod h1:I2ACeeg6XNBe5pdh5TaR7Ambhfa7If9KXxmXgZsYENU=
 github.com/ipld/go-car/v2 v2.0.2/go.mod h1:I2ACeeg6XNBe5pdh5TaR7Ambhfa7If9KXxmXgZsYENU=
 github.com/ipld/go-car/v2 v2.0.3-0.20210811121346-c514a30114d7 h1:6Z0beJSZNsRY+7udoqUl4gQ/tqtrPuRvDySrlsvbqZA=
