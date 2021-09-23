@@ -1,13 +1,15 @@
 [Unit]
 Description=Lotus Miner
 After=network.target
-After=lotus-daemon.service
-Wants=lotus-daemon.service
 
 [Service]
+User=fc
+Group=fc
 ExecStart=/usr/local/bin/lotus-miner run
-Environment=GOLOG_FILE="/var/log/lotus/miner.log"
-Environment=GOLOG_LOG_FMT="json"
+Environment=LOTUS_PATH=/var/lib/lotus
+Environment=LOTUS_MINER_PATH=/var/lib/lotus-miner
+Restart=always
+RestartSec=30
 
 [Install]
 WantedBy=multi-user.target

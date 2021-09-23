@@ -13,6 +13,13 @@ $(warning Your Golang version is go$(shell expr $(GOVERSION) / 1000000).$(shell 
 $(error Update Golang to version to at least 1.16.0)
 endif
 
+DESTDIR?=/
+PREFIX?=/usr
+
+BINDIR=$(DESTDIR)$(PREFIX)/bin
+SYSTEMDDIR=$(DESTDIR)/usr/lib/systemd/system
+SHAREDIR=$(DESTDIR)$(PREFIX)/share
+
 # git modules that need to be loaded
 MODULES:=
 
@@ -54,6 +61,15 @@ $(MODULES): build/.update-modules ;
 build/.update-modules:
 	git submodule update --init --recursive
 	touch $@
+
+$(BINDIR):
+	mkdir -p $(BINDIR)
+
+$(SYSTEMDDIR):
+	mkdir -p $(SYSTEMDDIR)
+
+$(SHAREDIR):
+	mkdir -p $(SHAREDIR)
 
 # end git modules
 
@@ -122,19 +138,28 @@ an existing lotus binary in your PATH. This may cause problems if you don't run 
 
 .PHONY: build
 
-install: install-daemon install-miner install-worker
+install: install-daemon install-miner install-worker install-services install-completions
 
-install-daemon:
-	install -C ./lotus /usr/local/bin/lotus
+install-daemon: lotus $(BINDIR)
+	install -o root -g root -m 755 -s ./lotus $(BINDIR)/lotus
+	install -C -o root -g root -m 755 ./scripts/lotus-init.sh $(BINDIR)/lotus-init.sh
 
-install-miner:
-	install -C ./lotus-miner /usr/local/bin/lotus-miner
+install-miner: lotus-miner $(BINDIR)
+	install -o root -g root -m 755 -s ./lotus-miner $(BINDIR)/lotus-miner
 
-install-worker:
-	install -C ./lotus-worker /usr/local/bin/lotus-worker
+install-worker: lotus-worker $(BINDIR)
+	install -o root -g root -m 755 -s ./lotus-worker $(BINDIR)lotus-worker
 
-install-app:
-	install -C ./$(APP) /usr/local/bin/$(APP)
+uninstall-daemon:
+	rm $(BINDIR)/lotus
+
+uninstall-lotus-miner:
+	rm $(BINDIR)/lotus-miner
+
+uninstall-lotus-worker:
+	rm $(BINDIR)/lotus-worker
+
+uninstall-daemons: uninstall-daemon uninstall-lotus-miner uninstall-lotus-worker
 
 # TOOLS
 
@@ -226,54 +251,52 @@ BINS+=lotus-sim
 
 # SYSTEMD
 
-install-daemon-service: install-daemon
-	mkdir -p /etc/systemd/system
-	mkdir -p /var/log/lotus
-	install -C -m 0644 ./scripts/lotus-daemon.service /etc/systemd/system/lotus-daemon.service
+install-daemon-service: install-daemon $(SYSTEMDDIR)
+	install -C -o root -g root -m 0644 ./scripts/lotus-daemon.service $(SYSTEMDDIR)/lotus-daemon.service
 	systemctl daemon-reload
 	@echo
 	@echo "lotus-daemon service installed. Don't forget to run 'sudo systemctl start lotus-daemon' to start it and 'sudo systemctl enable lotus-daemon' for it to be enabled on startup."
 
-install-miner-service: install-miner install-daemon-service
-	mkdir -p /etc/systemd/system
-	mkdir -p /var/log/lotus
-	install -C -m 0644 ./scripts/lotus-miner.service /etc/systemd/system/lotus-miner.service
+install-miner-service: install-miner install-daemon-service $(SYSTEMDDIR)
+	mkdir -p $(DESTDIR)/etc/systemd/system
+	install -C -o root -g root -m 0644 ./scripts/lotus-miner.service $(SYSTEMDDIR)/lotus-miner.service
 	systemctl daemon-reload
 	@echo
 	@echo "lotus-miner service installed. Don't forget to run 'sudo systemctl start lotus-miner' to start it and 'sudo systemctl enable lotus-miner' for it to be enabled on startup."
 
-install-main-services: install-miner-service
 
-install-all-services: install-main-services
-
-install-services: install-main-services
-
-clean-daemon-service: clean-miner-service
+uninstall-daemon-service:
 	-systemctl stop lotus-daemon
 	-systemctl disable lotus-daemon
-	rm -f /etc/systemd/system/lotus-daemon.service
+	rm -f $(SYSTEMDDIR)/lotus-daemon.service
 	systemctl daemon-reload
 
-clean-miner-service:
+uninstall-miner-service:
 	-systemctl stop lotus-miner
 	-systemctl disable lotus-miner
-	rm -f /etc/systemd/system/lotus-miner.service
+	rm -f $(SYSTEMDDIR)/lotus-miner.service
 	systemctl daemon-reload
 
-clean-main-services: clean-daemon-service
 
-clean-all-services: clean-main-services
+install-services: install-daemon-service install-miner-service
 
-clean-services: clean-all-services
+uninstall-services: uninstall-daemon-service uninstall-miner-service
+
+uninstall: uninstall-daemons uninstall-services uninstall-completions
 
 # MISC
 
 buildall: $(BINS)
 
-install-completions:
-	mkdir -p /usr/share/bash-completion/completions /usr/local/share/zsh/site-functions/
-	install -C ./scripts/bash-completion/lotus /usr/share/bash-completion/completions/lotus
-	install -C ./scripts/zsh-completion/lotus /usr/local/share/zsh/site-functions/_lotus
+install-completions: $(SHAREDIR)
+	mkdir -p $(SHAREDIR)/bash-completion/completions
+	mkdir -p $(SHAREDIR)/zsh/site-functions/
+	install -C ./scripts/bash-completion/lotus $(SHAREDIR)/bash-completion/completions/lotus
+	install -C ./scripts/zsh-completion/lotus $(SHAREDIR)/zsh/site-functions/_lotus
+
+uninstall-completions:
+	rm $(SHAREDIR)/bash-completion/completions/lotus
+	rm $(SHAREDIR)/zsh/site-functions/_lotus
 
 clean:
 	rm -rf $(CLEAN) $(BINS)
