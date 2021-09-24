@@ -26,7 +26,7 @@ func NewElasticSearchTransport(connectionString string) (TracerTransport, error)
 	password, _ := conUrl.User.Password()
 	cfg := elasticsearch.Config{
 		Addresses: []string{
-			conUrl.Scheme + conUrl.Host,
+			conUrl.Scheme + "://" + conUrl.Host,
 		},
 		Username: username,
 		Password: password,
