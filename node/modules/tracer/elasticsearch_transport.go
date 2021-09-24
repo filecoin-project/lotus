@@ -18,11 +18,15 @@ const (
 func NewElasticSearchTransport(connectionString string) (TracerTransport, error) {
 	conUrl, err := url.Parse(connectionString)
 
+	if err != nil {
+		return nil, err
+	}
+
 	username := conUrl.User.Username()
 	password, _ := conUrl.User.Password()
 	cfg := elasticsearch.Config{
 		Addresses: []string{
-			"https://" + conUrl.Host,
+			conUrl.Scheme + conUrl.Host,
 		},
 		Username: username,
 		Password: password,
