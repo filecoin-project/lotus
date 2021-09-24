@@ -153,6 +153,22 @@ var DaemonCmd = &cli.Command{
 			Name:  "restore-config",
 			Usage: "config file to use when restoring from backup",
 		},
+		&cli.StringFlag{
+			Name:  "trace-to-json",
+			Usage: "starts tracer and outputs to json file defined with this flag",
+		},
+		&cli.StringFlag{
+			Name:  "trace-to-elasticsearch",
+			Usage: "starts tracer and outputs to elasticsearch, flag must contain connection string for elasticsearch",
+		},
+		&cli.StringFlag{
+			Name:  "elasticsearch-index",
+			Usage: "configure elasticearch index name if elasticsearch tracer is configured",
+		},
+		&cli.StringFlag{
+			Name:  "trace-source-auth",
+			Usage: "auth token for trusted source of traces",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		isLite := cctx.Bool("lite")
@@ -192,6 +208,14 @@ var DaemonCmd = &cli.Command{
 		default:
 			return fmt.Errorf("unrecognized profile type: %q", profile)
 		}
+
+		traceToJsonFile := cctx.String("trace-to-json")
+
+		traceToElasticsearch := cctx.String("trace-to-elasticsearch")
+
+		elasticsearchIndex := cctx.String("elasticsearch-index")
+
+		traceSourceAuth := cctx.String("trace-source-auth")
 
 		ctx, _ := tag.New(context.Background(),
 			tag.Insert(metrics.Version, build.BuildVersion),
@@ -319,6 +343,10 @@ var DaemonCmd = &cli.Command{
 
 			node.Override(new(dtypes.Bootstrapper), isBootstrapper),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
+			node.Override(new(dtypes.JsonTracerFile), traceToJsonFile),
+			node.Override(new(dtypes.ElasticSearchTracer), traceToElasticsearch),
+			node.Override(new(dtypes.ElasticSearchTracer), elasticsearchIndex),
+			node.Override(new(dtypes.TracerSourceAuth), traceSourceAuth),
 
 			genesis,
 			liteModeDeps,
