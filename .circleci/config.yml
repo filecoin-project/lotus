@@ -693,7 +693,7 @@ jobs:
           at: "."
       - packer/build:
           template: tools/packer/lotus.pkr.hcl
-          args: "-var -var lotus_network=mainnet -var git_tag=$CIRCLE_TAG"
+          args: "-var lotus_network=mainnet -var git_tag=$CIRCLE_TAG"
   publish-dockerhub:
     description: publish to dockerhub
     machine:
