@@ -528,13 +528,19 @@ Type: Array of multiaddress peerinfo strings, must include peerid (/p2p/12D3K...
 			Comment: ``,
 		},
 		{
-			Name: "JsonTracerFile",
+			Name: "JsonTracer",
 			Type: "string",
 
 			Comment: ``,
 		},
 		{
 			Name: "ElasticSearchTracer",
+			Type: "string",
+
+			Comment: ``,
+		},
+		{
+			Name: "TracerSourceAuth",
 			Type: "string",
 
 			Comment: ``,

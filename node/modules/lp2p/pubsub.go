@@ -366,8 +366,8 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 				100)))
 
 	var transports []tracer.TracerTransport
-	if in.Cfg.JsonTracerFile != "" {
-		jsonTransport, err := tracer.NewJsonTracerTransport(in.Cfg.JsonTracerFile)
+	if in.Cfg.JsonTracer != "" {
+		jsonTransport, err := tracer.NewJsonTracerTransport(in.Cfg.JsonTracer)
 		if err != nil {
 			return nil, err
 		}

@@ -309,7 +309,7 @@ type Pubsub struct {
 	DirectPeers           []string
 	IPColocationWhitelist []string
 	RemoteTracer          string
-	JsonTracerFile        string
+	JsonTracer            string
 	ElasticSearchTracer   string
 	TracerSourceAuth      string
 }
