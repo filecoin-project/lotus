@@ -40,7 +40,6 @@ done
 # Enable services
 systemctl daemon-reload
 systemctl enable lotus-daemon
-systemctl enable apt-daily-upgrade
 
 # Setup firewall
 yes | ufw enable
