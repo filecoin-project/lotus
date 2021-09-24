@@ -162,10 +162,6 @@ var DaemonCmd = &cli.Command{
 			Usage: "starts tracer and outputs to elasticsearch, flag must contain connection string for elasticsearch",
 		},
 		&cli.StringFlag{
-			Name:  "elasticsearch-index",
-			Usage: "configure elasticearch index name if elasticsearch tracer is configured",
-		},
-		&cli.StringFlag{
 			Name:  "trace-source-auth",
 			Usage: "auth token for trusted source of traces",
 		},
@@ -212,8 +208,6 @@ var DaemonCmd = &cli.Command{
 		traceToJsonFile := cctx.String("trace-to-json")
 
 		traceToElasticsearch := cctx.String("trace-to-elasticsearch")
-
-		elasticsearchIndex := cctx.String("elasticsearch-index")
 
 		traceSourceAuth := cctx.String("trace-source-auth")
 
@@ -345,7 +339,6 @@ var DaemonCmd = &cli.Command{
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
 			node.Override(new(dtypes.JsonTracerFile), traceToJsonFile),
 			node.Override(new(dtypes.ElasticSearchTracer), traceToElasticsearch),
-			node.Override(new(dtypes.ElasticSearchTracer), elasticsearchIndex),
 			node.Override(new(dtypes.TracerSourceAuth), traceSourceAuth),
 
 			genesis,

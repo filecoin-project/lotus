@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	ElasticSearch_INDEX = "lotus-pubsub"
+	ElasticSearch_INDEX_DEFAULT = "lotus-pubsub"
 )
 
-func NewElasticSearchTransport(connectionString string) (TracerTransport, error) {
+func NewElasticSearchTransport(connectionString string, elasticsearchIndex string) (TracerTransport, error) {
 	conUrl, err := url.Parse(connectionString)
 
 	if err != nil {
@@ -38,13 +38,22 @@ func NewElasticSearchTransport(connectionString string) (TracerTransport, error)
 		return nil, err
 	}
 
+	var esIndex string
+	if elasticsearchIndex != "" {
+		esIndex = elasticsearchIndex
+	} else {
+		esIndex = ElasticSearch_INDEX_DEFAULT
+	}
+
 	return &elasticSearchTransport{
-		cl: es,
+		cl:      es,
+		esIndex: esIndex,
 	}, nil
 }
 
 type elasticSearchTransport struct {
-	cl *elasticsearch.Client
+	cl      *elasticsearch.Client
+	esIndex string
 }
 
 func (est *elasticSearchTransport) Transport(evt TracerTransportEvent) error {
