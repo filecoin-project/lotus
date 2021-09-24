@@ -1,5 +1,5 @@
 package dtypes
 
-type JsonTracerFile string
+type JsonTracer string
 type ElasticSearchTracer string
 type TracerSourceAuth string

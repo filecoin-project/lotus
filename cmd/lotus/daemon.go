@@ -1,3 +1,4 @@
+//go:build !nodaemon
 // +build !nodaemon
 
 package main
@@ -205,12 +206,6 @@ var DaemonCmd = &cli.Command{
 			return fmt.Errorf("unrecognized profile type: %q", profile)
 		}
 
-		traceToJsonFile := cctx.String("trace-to-json")
-
-		traceToElasticsearch := cctx.String("trace-to-elasticsearch")
-
-		traceSourceAuth := cctx.String("trace-source-auth")
-
 		ctx, _ := tag.New(context.Background(),
 			tag.Insert(metrics.Version, build.BuildVersion),
 			tag.Insert(metrics.Commit, build.CurrentCommit),
@@ -328,6 +323,10 @@ var DaemonCmd = &cli.Command{
 			log.Warnf("unable to inject prometheus ipfs/go-metrics exporter; some metrics will be unavailable; err: %s", err)
 		}
 
+		traceToJsonFile := cctx.String("trace-to-json")
+		traceToElasticsearch := cctx.String("trace-to-elasticsearch")
+		traceSourceAuth := cctx.String("trace-source-auth")
+
 		var api api.FullNode
 		stop, err := node.New(ctx,
 			node.FullAPI(&api, node.Lite(isLite)),
@@ -337,7 +336,7 @@ var DaemonCmd = &cli.Command{
 
 			node.Override(new(dtypes.Bootstrapper), isBootstrapper),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
-			node.Override(new(dtypes.JsonTracerFile), traceToJsonFile),
+			node.Override(new(dtypes.JsonTracer), traceToJsonFile),
 			node.Override(new(dtypes.ElasticSearchTracer), traceToElasticsearch),
 			node.Override(new(dtypes.TracerSourceAuth), traceSourceAuth),
 
