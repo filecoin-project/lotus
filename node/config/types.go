@@ -311,6 +311,7 @@ type Pubsub struct {
 	RemoteTracer          string
 	JsonTracer            string
 	ElasticSearchTracer   string
+	ElasticSearchIndex    string
 	TracerSourceAuth      string
 }
 
