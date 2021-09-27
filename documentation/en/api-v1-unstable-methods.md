@@ -8,8 +8,6 @@
 * [Auth](#Auth)
   * [AuthNew](#AuthNew)
   * [AuthVerify](#AuthVerify)
-* [Beacon](#Beacon)
-  * [BeaconGetEntry](#BeaconGetEntry)
 * [Chain](#Chain)
   * [ChainBlockstoreInfo](#ChainBlockstoreInfo)
   * [ChainCheckBlockstore](#ChainCheckBlockstore)
@@ -165,6 +163,7 @@
   * [StateDecodeParams](#StateDecodeParams)
   * [StateEncodeParams](#StateEncodeParams)
   * [StateGetActor](#StateGetActor)
+  * [StateGetBeaconEntry](#StateGetBeaconEntry)
   * [StateGetRandomnessFromBeacon](#StateGetRandomnessFromBeacon)
   * [StateGetRandomnessFromTickets](#StateGetRandomnessFromTickets)
   * [StateListActors](#StateListActors)
@@ -322,33 +321,6 @@ Inputs:
 ```
 
 Response: `null`
-
-## Beacon
-The Beacon method group contains methods for interacting with the random beacon (DRAND)
-
-
-### BeaconGetEntry
-BeaconGetEntry returns the beacon entry for the given filecoin epoch. If
-the entry has not yet been produced, the call will block until the entry
-becomes available
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  10101
-]
-```
-
-Response:
-```json
-{
-  "Round": 42,
-  "Data": "Ynl0ZSBhcnJheQ=="
-}
-```
 
 ## Chain
 The Chain method group contains methods for interacting with the
@@ -4196,6 +4168,29 @@ Response:
   },
   "Nonce": 42,
   "Balance": "0"
+}
+```
+
+### StateGetBeaconEntry
+StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If
+the entry has not yet been produced, the call will block until the entry
+becomes available
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  10101
+]
+```
+
+Response:
+```json
+{
+  "Round": 42,
+  "Data": "Ynl0ZSBhcnJheQ=="
 }
 ```
 

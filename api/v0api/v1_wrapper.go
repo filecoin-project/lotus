@@ -194,4 +194,8 @@ func (w *WrapperV1Full) ChainGetRandomnessFromBeacon(ctx context.Context, tsk ty
 	return w.StateGetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, tsk)
 }
 
+func (w *WrapperV1Full) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+	return w.StateGetBeaconEntry(ctx, epoch)
+}
+
 var _ FullNode = &WrapperV1Full{}

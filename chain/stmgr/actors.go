@@ -313,7 +313,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		prev = &types.BeaconEntry{}
 	}
 
-	entries, err := beacon.BeaconEntriesForBlock(ctx, bcs, round, ts.Height(), *prev)
+	entries, err := beacon.BeaconEntriesForBlock(ctx, bcs, sm.GetNtwkVersion(ctx, round), round, ts.Height(), *prev)
 	if err != nil {
 		return nil, err
 	}

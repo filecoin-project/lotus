@@ -102,8 +102,6 @@ type FullNodeStruct struct {
 	NetStruct
 
 	Internal struct {
-		BeaconGetEntry func(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
-
 		ChainBlockstoreInfo func(p0 context.Context) (map[string]interface{}, error) `perm:"read"`
 
 		ChainCheckBlockstore func(p0 context.Context) error `perm:"admin"`
@@ -345,6 +343,8 @@ type FullNodeStruct struct {
 		StateEncodeParams func(p0 context.Context, p1 cid.Cid, p2 abi.MethodNum, p3 json.RawMessage) ([]byte, error) `perm:"read"`
 
 		StateGetActor func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) `perm:"read"`
+
+		StateGetBeaconEntry func(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
 
 		StateGetRandomnessFromBeacon func(p0 context.Context, p1 crypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) `perm:"read"`
 
@@ -1015,17 +1015,6 @@ func (s *CommonStruct) Version(p0 context.Context) (APIVersion, error) {
 
 func (s *CommonStub) Version(p0 context.Context) (APIVersion, error) {
 	return *new(APIVersion), ErrNotSupported
-}
-
-func (s *FullNodeStruct) BeaconGetEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
-	if s.Internal.BeaconGetEntry == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.BeaconGetEntry(p0, p1)
-}
-
-func (s *FullNodeStub) BeaconGetEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
-	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainBlockstoreInfo(p0 context.Context) (map[string]interface{}, error) {
@@ -2356,6 +2345,17 @@ func (s *FullNodeStruct) StateGetActor(p0 context.Context, p1 address.Address, p
 }
 
 func (s *FullNodeStub) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateGetBeaconEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
+	if s.Internal.StateGetBeaconEntry == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.StateGetBeaconEntry(p0, p1)
+}
+
+func (s *FullNodeStub) StateGetBeaconEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
 	return nil, ErrNotSupported
 }
 

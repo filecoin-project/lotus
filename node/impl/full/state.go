@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -1452,4 +1453,23 @@ func (a *StateAPI) StateGetRandomnessFromBeacon(ctx context.Context, personaliza
 
 	return a.Chain.GetBeaconRandomnessLookingBack(ctx, pts.Cids(), personalization, randEpoch, entropy)
 
+}
+
+func (a *StateAPI) StateGetBeaconEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+	b := a.Beacon.BeaconForEpoch(epoch)
+	rr := b.MaxBeaconRoundForEpoch(a.StateManager.GetNtwkVersion(ctx, epoch), epoch)
+	e := b.Entry(ctx, rr)
+
+	select {
+	case be, ok := <-e:
+		if !ok {
+			return nil, fmt.Errorf("beacon get returned no value")
+		}
+		if be.Err != nil {
+			return nil, be.Err
+		}
+		return &be.Entry, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }

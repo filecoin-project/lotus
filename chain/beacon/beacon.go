@@ -3,6 +3,8 @@ package beacon
 import (
 	"context"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
@@ -42,10 +44,10 @@ type BeaconPoint struct {
 type RandomBeacon interface {
 	Entry(context.Context, uint64) <-chan Response
 	VerifyEntry(types.BeaconEntry, types.BeaconEntry) error
-	MaxBeaconRoundForEpoch(abi.ChainEpoch) uint64
+	MaxBeaconRoundForEpoch(network.Version, abi.ChainEpoch) uint64
 }
 
-func ValidateBlockValues(bSchedule Schedule, h *types.BlockHeader, parentEpoch abi.ChainEpoch,
+func ValidateBlockValues(bSchedule Schedule, nv network.Version, h *types.BlockHeader, parentEpoch abi.ChainEpoch,
 	prevEntry types.BeaconEntry) error {
 	{
 		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
@@ -65,7 +67,7 @@ func ValidateBlockValues(bSchedule Schedule, h *types.BlockHeader, parentEpoch a
 
 	// TODO: fork logic
 	b := bSchedule.BeaconForEpoch(h.Height)
-	maxRound := b.MaxBeaconRoundForEpoch(h.Height)
+	maxRound := b.MaxBeaconRoundForEpoch(nv, h.Height)
 	if maxRound == prevEntry.Round {
 		if len(h.BeaconEntries) != 0 {
 			return xerrors.Errorf("expected not to have any beacon entries in this block, got %d", len(h.BeaconEntries))
@@ -92,13 +94,13 @@ func ValidateBlockValues(bSchedule Schedule, h *types.BlockHeader, parentEpoch a
 	return nil
 }
 
-func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, epoch abi.ChainEpoch, parentEpoch abi.ChainEpoch, prev types.BeaconEntry) ([]types.BeaconEntry, error) {
+func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, nv network.Version, epoch abi.ChainEpoch, parentEpoch abi.ChainEpoch, prev types.BeaconEntry) ([]types.BeaconEntry, error) {
 	{
 		parentBeacon := bSchedule.BeaconForEpoch(parentEpoch)
 		currBeacon := bSchedule.BeaconForEpoch(epoch)
 		if parentBeacon != currBeacon {
 			// Fork logic
-			round := currBeacon.MaxBeaconRoundForEpoch(epoch)
+			round := currBeacon.MaxBeaconRoundForEpoch(nv, epoch)
 			out := make([]types.BeaconEntry, 2)
 			rch := currBeacon.Entry(ctx, round-1)
 			res := <-rch
@@ -120,7 +122,7 @@ func BeaconEntriesForBlock(ctx context.Context, bSchedule Schedule, epoch abi.Ch
 
 	start := build.Clock.Now()
 
-	maxRound := beacon.MaxBeaconRoundForEpoch(epoch)
+	maxRound := beacon.MaxBeaconRoundForEpoch(nv, epoch)
 	if maxRound == prev.Round {
 		return nil, nil
 	}

@@ -171,14 +171,6 @@ type FullNode interface {
 	// ChainBlockstoreInfo returns some basic information about the blockstore
 	ChainBlockstoreInfo(context.Context) (map[string]interface{}, error) //perm:read
 
-	// MethodGroup: Beacon
-	// The Beacon method group contains methods for interacting with the random beacon (DRAND)
-
-	// BeaconGetEntry returns the beacon entry for the given filecoin epoch. If
-	// the entry has not yet been produced, the call will block until the entry
-	// becomes available
-	BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) //perm:read
-
 	// GasEstimateFeeCap estimates gas fee cap
 	GasEstimateFeeCap(context.Context, *types.Message, int64, types.TipSetKey) (types.BigInt, error) //perm:read
 
@@ -589,6 +581,11 @@ type FullNode interface {
 	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
 	// StateGetRandomnessFromBeacon is used to sample the beacon for randomness.
 	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
+
+	// StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If
+	// the entry has not yet been produced, the call will block until the entry
+	// becomes available
+	StateGetBeaconEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) //perm:read
 
 	// MethodGroup: Msig
 	// The Msig methods are used to interact with multisig wallets on the
