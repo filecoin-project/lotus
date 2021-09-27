@@ -73,7 +73,7 @@ func (est *elasticSearchTransport) Transport(evt TracerTransportEvent) error {
 	}
 
 	req := esapi.IndexRequest{
-		Index:   ElasticSearch_INDEX,
+		Index:   est.esIndex,
 		Body:    strings.NewReader(string(jsonEvt)),
 		Refresh: "true",
 	}
