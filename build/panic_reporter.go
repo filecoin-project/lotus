@@ -8,7 +8,7 @@ import (
 	"runtime/debug"
 	"runtime/pprof"
 	"strconv"
-	"syscall"
+	"strings"
 	"time"
 
 	"github.com/icza/backscanner"
@@ -58,8 +58,7 @@ func GeneratePanicReport(persistPath, repoPath, label string) {
 		}
 	}
 
-	syscall.Umask(0)
-	err := os.MkdirAll(reportPath, 0755)
+	err := os.MkdirAll(reportPath, 0644)
 	if err != nil {
 		panicLog.Error(err.Error())
 		return
@@ -157,11 +156,7 @@ func writeJournalTail(tailLen int, repoPath, file string) {
 			}
 			break
 		}
-		if _, err := f.Write(line); err != nil {
-			panicLog.Error(err.Error())
-			break
-		}
-		if _, err := f.Write([]byte("\n")); err != nil {
+		if _, err := f.Write(append(line, "\n"...)); err != nil {
 			panicLog.Error(err.Error())
 			break
 		}
@@ -179,5 +174,6 @@ func getLatestJournalFilePath(repoPath string) (string, error) {
 }
 
 func generateReportName(label string) string {
-	return fmt.Sprintf("report_%s_%s", label, time.Now().Format("2006-01-02T150405Z0700"))
+	label = strings.ReplaceAll(label, " ", "")
+	return fmt.Sprintf("report_%s_%s", label, time.Now().Format("2006-01-02T150405"))
 }
