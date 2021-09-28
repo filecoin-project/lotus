@@ -58,7 +58,7 @@ func GeneratePanicReport(persistPath, repoPath, label string) {
 		}
 	}
 
-	err := os.MkdirAll(reportPath, 0644)
+	err := os.MkdirAll(reportPath, 0755)
 	if err != nil {
 		panicLog.Error(err.Error())
 		return
@@ -156,7 +156,11 @@ func writeJournalTail(tailLen int, repoPath, file string) {
 			}
 			break
 		}
-		if _, err := f.Write(append(line, "\n"...)); err != nil {
+		if _, err := f.Write(line); err != nil {
+			panicLog.Error(err.Error())
+			break
+		}
+		if _, err := f.Write([]byte("\n")); err != nil {
 			panicLog.Error(err.Error())
 			break
 		}
