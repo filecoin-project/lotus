@@ -314,8 +314,8 @@ github.com/filecoin-project/go-fil-commcid v0.1.0/go.mod h1:Eaox7Hvus1JgPrL5+M3+
 github.com/filecoin-project/go-fil-commp-hashhash v0.1.0 h1:imrrpZWEHRnNqqv0tN7LXep5bFEVOVmQWHJvl2mgsGo=
 github.com/filecoin-project/go-fil-commp-hashhash v0.1.0/go.mod h1:73S8WSEWh9vr0fDJVnKADhfIv/d6dCbAGaAGWbdJEI8=
 github.com/filecoin-project/go-fil-markets v1.0.5-0.20201113164554-c5eba40d5335/go.mod h1:AJySOJC00JRWEZzRG2KsfUnqEf5ITXxeX09BE9N4f9c=
-github.com/filecoin-project/go-fil-markets v1.12.0 h1:RpU5bLaMADVrU4CgLxKMGHC2ZUocNV35uINxogQCf00=
-github.com/filecoin-project/go-fil-markets v1.12.0/go.mod h1:XuuZFaFujI47nrgfQJiq7jWB+6rRya6nm7Sj6uXQ80U=
+github.com/filecoin-project/go-fil-markets v1.12.1-0.20210928130555-19c6605ee301 h1:7wbYOcw6IdBBo3b/zxoVDacJT8OJi5lY93XPDj8wGzQ=
+github.com/filecoin-project/go-fil-markets v1.12.1-0.20210928130555-19c6605ee301/go.mod h1:XuuZFaFujI47nrgfQJiq7jWB+6rRya6nm7Sj6uXQ80U=
 github.com/filecoin-project/go-hamt-ipld v0.1.5 h1:uoXrKbCQZ49OHpsTCkrThPNelC4W3LPEk0OrS/ytIBM=
 github.com/filecoin-project/go-hamt-ipld v0.1.5/go.mod h1:6Is+ONR5Cd5R6XZoCse1CWaXZc0Hdb/JeX+EQCQzX24=
 github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0 h1:b3UDemBYN2HNfk3KOXNuxgTTxlWi3xVvbQP0IT38fvM=

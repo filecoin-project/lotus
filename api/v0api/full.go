@@ -335,6 +335,8 @@ type FullNode interface {
 	// ClientGetRetrievalUpdates returns status of updated retrieval deals
 	ClientGetRetrievalUpdates(ctx context.Context) (<-chan api.RetrievalInfo, error)                         //perm:write
 	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error) //perm:read
+	// ClientQueryRetrievalAsk gets the retrieval ask (cost of retrieval) from the miner
+	ClientQueryRetrievalAsk(ctx context.Context, p peer.ID, miner address.Address) (*retrievalmarket.Ask, error) //perm:read
 	// ClientCalcCommP calculates the CommP and data size of the specified CID
 	ClientDealPieceCID(ctx context.Context, root cid.Cid) (api.DataCIDSize, error) //perm:read
 	// ClientCalcCommP calculates the CommP for a specified file
@@ -712,5 +714,5 @@ type FullNode interface {
 	// method requires that the lotus daemon is running with the
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
 	// the path specified when calling CreateBackup is within the base path
-	CreateBackup(ctx context.Context, fpath string) error //perm:admin
+	CreateBackup(ctx context.Context, fpath string) error
 }

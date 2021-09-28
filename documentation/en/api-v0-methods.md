@@ -54,6 +54,7 @@
   * [ClientListRetrievals](#ClientListRetrievals)
   * [ClientMinerQueryOffer](#ClientMinerQueryOffer)
   * [ClientQueryAsk](#ClientQueryAsk)
+  * [ClientQueryRetrievalAsk](#ClientQueryRetrievalAsk)
   * [ClientRemoveImport](#ClientRemoveImport)
   * [ClientRestartDataTransfer](#ClientRestartDataTransfer)
   * [ClientRetrieve](#ClientRetrieve)
@@ -1423,6 +1424,30 @@ Response:
 }
 ```
 
+### ClientQueryRetrievalAsk
+ClientQueryRetrievalAsk gets the retrieval ask (cost of retrieval) from the miner
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "f01234"
+]
+```
+
+Response:
+```json
+{
+  "PricePerByte": "0",
+  "UnsealPrice": "0",
+  "PaymentInterval": 42,
+  "PaymentIntervalIncrease": 42
+}
+```
+
 ### ClientRemoveImport
 ClientRemoveImport removes file import
 
@@ -1631,7 +1656,7 @@ LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
 the path specified when calling CreateBackup is within the base path
 
 
-Perms: admin
+Perms: 
 
 Inputs:
 ```json

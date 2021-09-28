@@ -55,6 +55,7 @@
   * [ClientListRetrievals](#ClientListRetrievals)
   * [ClientMinerQueryOffer](#ClientMinerQueryOffer)
   * [ClientQueryAsk](#ClientQueryAsk)
+  * [ClientQueryRetrievalAsk](#ClientQueryRetrievalAsk)
   * [ClientRemoveImport](#ClientRemoveImport)
   * [ClientRestartDataTransfer](#ClientRestartDataTransfer)
   * [ClientRetrieve](#ClientRetrieve)
@@ -1432,6 +1433,30 @@ Response:
   "Timestamp": 10101,
   "Expiry": 10101,
   "SeqNo": 42
+}
+```
+
+### ClientQueryRetrievalAsk
+ClientQueryRetrievalAsk gets the retrieval ask (cost of retrieval) from the miner
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+  "f01234"
+]
+```
+
+Response:
+```json
+{
+  "PricePerByte": "0",
+  "UnsealPrice": "0",
+  "PaymentInterval": 42,
+  "PaymentIntervalIncrease": 42
 }
 ```
 

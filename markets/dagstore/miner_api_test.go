@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/crypto"
+
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
@@ -231,6 +233,10 @@ func (m *mockRPN) SavePaymentVoucher(ctx context.Context, paymentChannel address
 }
 
 func (m *mockRPN) GetRetrievalPricingInput(ctx context.Context, pieceCID cid.Cid, storageDeals []abi.DealID) (retrievalmarket.PricingInput, error) {
+	panic("implement me")
+}
+
+func (m *mockRPN) SignBytes(ctx context.Context, a address.Address, i []byte) (*crypto.Signature, error) {
 	panic("implement me")
 }
 

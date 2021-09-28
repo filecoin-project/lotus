@@ -41,6 +41,10 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode *TestFullNode)
 	out := clientCLI.RunCmd("client", "query-ask", minerAddr.String())
 	require.Regexp(t, regexp.MustCompile("Ask:"), out)
 
+	// client query-retrieval-ask <Miner addr>
+	out = clientCLI.RunCmd("client", "query-retrieval-ask", minerAddr.String())
+	require.Regexp(t, regexp.MustCompile("Ask:"), out)
+
 	// Create a deal (non-interactive)
 	// client deal --start-epoch=<start epoch> <cid> <miner addr> 1000000attofil <duration>
 	res, _, _, err := CreateImportFile(ctx, clientNode, 1, 0)

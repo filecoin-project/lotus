@@ -731,6 +731,21 @@ func (mr *MockFullNodeMockRecorder) ClientQueryAsk(arg0, arg1, arg2 interface{})
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientQueryAsk", reflect.TypeOf((*MockFullNode)(nil).ClientQueryAsk), arg0, arg1, arg2)
 }
 
+// ClientQueryRetrievalAsk mocks base method.
+func (m *MockFullNode) ClientQueryRetrievalAsk(arg0 context.Context, arg1 peer.ID, arg2 address.Address) (*retrievalmarket.Ask, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientQueryRetrievalAsk", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*retrievalmarket.Ask)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ClientQueryRetrievalAsk indicates an expected call of ClientQueryRetrievalAsk.
+func (mr *MockFullNodeMockRecorder) ClientQueryRetrievalAsk(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientQueryRetrievalAsk", reflect.TypeOf((*MockFullNode)(nil).ClientQueryRetrievalAsk), arg0, arg1, arg2)
+}
+
 // ClientRemoveImport mocks base method.
 func (m *MockFullNode) ClientRemoveImport(arg0 context.Context, arg1 imports.ID) error {
 	m.ctrl.T.Helper()

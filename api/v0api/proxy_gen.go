@@ -121,6 +121,8 @@ type FullNodeStruct struct {
 
 		ClientQueryAsk func(p0 context.Context, p1 peer.ID, p2 address.Address) (*storagemarket.StorageAsk, error) `perm:"read"`
 
+		ClientQueryRetrievalAsk func(p0 context.Context, p1 peer.ID, p2 address.Address) (*retrievalmarket.Ask, error) `perm:"read"`
+
 		ClientRemoveImport func(p0 context.Context, p1 imports.ID) error `perm:"admin"`
 
 		ClientRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
@@ -135,7 +137,7 @@ type FullNodeStruct struct {
 
 		ClientStatelessDeal func(p0 context.Context, p1 *api.StartDealParams) (*cid.Cid, error) `perm:"write"`
 
-		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
+		CreateBackup func(p0 context.Context, p1 string) error ``
 
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
@@ -940,6 +942,17 @@ func (s *FullNodeStruct) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 addre
 }
 
 func (s *FullNodeStub) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 address.Address) (*storagemarket.StorageAsk, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) ClientQueryRetrievalAsk(p0 context.Context, p1 peer.ID, p2 address.Address) (*retrievalmarket.Ask, error) {
+	if s.Internal.ClientQueryRetrievalAsk == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ClientQueryRetrievalAsk(p0, p1, p2)
+}
+
+func (s *FullNodeStub) ClientQueryRetrievalAsk(p0 context.Context, p1 peer.ID, p2 address.Address) (*retrievalmarket.Ask, error) {
 	return nil, ErrNotSupported
 }
 

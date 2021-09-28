@@ -91,6 +91,7 @@ var clientCmd = &cli.Command{
 		WithCategory("data", clientDropCmd),
 		WithCategory("data", clientLocalCmd),
 		WithCategory("data", clientStat),
+		WithCategory("retrieval", clientQueryRetrievalAskCmd),
 		WithCategory("retrieval", clientFindCmd),
 		WithCategory("retrieval", clientRetrieveCmd),
 		WithCategory("retrieval", clientCancelRetrievalDealCmd),
@@ -1749,24 +1750,9 @@ var clientQueryAskCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		var pid peer.ID
-		if pidstr := cctx.String("peerid"); pidstr != "" {
-			p, err := peer.Decode(pidstr)
-			if err != nil {
-				return err
-			}
-			pid = p
-		} else {
-			mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-			if err != nil {
-				return xerrors.Errorf("failed to get peerID for miner: %w", err)
-			}
-
-			if mi.PeerId == nil || *mi.PeerId == peer.ID("SETME") {
-				return fmt.Errorf("the miner hasn't initialized yet")
-			}
-
-			pid = *mi.PeerId
+		pid, err := getPeerID(ctx, cctx.String("peerid"), api, maddr)
+		if err != nil {
+			return err
 		}
 
 		ask, err := api.ClientQueryAsk(ctx, pid, maddr)
@@ -1795,6 +1781,84 @@ var clientQueryAskCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+var clientQueryRetrievalAskCmd = &cli.Command{
+	Name:      "query-retrieval-ask",
+	Usage:     "Get a miner's retrieval ask",
+	ArgsUsage: "[minerAddress]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "peerid",
+			Usage: "specify peer ID of node to make query against",
+		},
+		&cli.Int64Flag{
+			Name:  "size",
+			Usage: "data size in bytes",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+		if cctx.NArg() != 1 {
+			afmt.Println("Usage: query-retrieval-ask [minerAddress]")
+			return nil
+		}
+
+		maddr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		pid, err := getPeerID(ctx, cctx.String("peerid"), api, maddr)
+		if err != nil {
+			return err
+		}
+
+		ask, err := api.ClientQueryRetrievalAsk(ctx, pid, maddr)
+		if err != nil {
+			return err
+		}
+
+		afmt.Printf("Ask: %s\n", maddr)
+		afmt.Printf("Unseal price: %s\n", types.FIL(ask.UnsealPrice))
+		afmt.Printf("Price per byte: %s\n", types.FIL(ask.PricePerByte))
+		afmt.Printf("Payment interval: %s\n", types.SizeStr(types.NewInt(ask.PaymentInterval)))
+		afmt.Printf("Payment interval increase: %s\n", types.SizeStr(types.NewInt(ask.PaymentIntervalIncrease)))
+
+		size := cctx.Int64("size")
+		if size == 0 {
+			return nil
+		}
+		transferPrice := types.BigMul(ask.PricePerByte, types.NewInt(uint64(size)))
+		totalPrice := types.BigAdd(ask.UnsealPrice, transferPrice)
+		afmt.Printf("Total price: %s\n", types.FIL(totalPrice))
+
+		return nil
+	},
+}
+
+func getPeerID(ctx context.Context, pidstr string, api v0api.FullNode, maddr address.Address) (peer.ID, error) {
+	if pidstr != "" {
+		return peer.Decode(pidstr)
+	}
+
+	mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+	if err != nil {
+		return "", xerrors.Errorf("failed to get peerID for miner: %w", err)
+	}
+
+	if mi.PeerId == nil || *mi.PeerId == "SETME" {
+		return "", fmt.Errorf("the miner hasn't initialized yet")
+	}
+
+	return *mi.PeerId, nil
 }
 
 var clientListDeals = &cli.Command{

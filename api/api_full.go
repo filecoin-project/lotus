@@ -361,6 +361,8 @@ type FullNode interface {
 	ClientGetRetrievalUpdates(ctx context.Context) (<-chan RetrievalInfo, error) //perm:write
 	// ClientQueryAsk returns a signed StorageAsk from the specified miner.
 	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error) //perm:read
+	// ClientQueryRetrievalAsk gets the retrieval ask (cost of retrieval) from the miner
+	ClientQueryRetrievalAsk(ctx context.Context, p peer.ID, miner address.Address) (*retrievalmarket.Ask, error) //perm:read
 	// ClientCalcCommP calculates the CommP and data size of the specified CID
 	ClientDealPieceCID(ctx context.Context, root cid.Cid) (DataCIDSize, error) //perm:read
 	// ClientCalcCommP calculates the CommP for a specified file

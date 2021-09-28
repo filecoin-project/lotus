@@ -3,6 +3,8 @@ package retrievaladapter
 import (
 	"context"
 
+	"github.com/filecoin-project/go-state-types/crypto"
+
 	"github.com/hashicorp/go-multierror"
 	"golang.org/x/xerrors"
 
@@ -105,4 +107,17 @@ func (rpn *retrievalProviderNode) GetRetrievalPricingInput(ctx context.Context, 
 	}
 
 	return resp, nil
+}
+
+func (rpn *retrievalProviderNode) SignBytes(ctx context.Context, signer address.Address, b []byte) (*crypto.Signature, error) {
+	signer, err := rpn.full.StateAccountKey(ctx, signer, types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+
+	localSignature, err := rpn.full.WalletSign(ctx, signer, b)
+	if err != nil {
+		return nil, err
+	}
+	return localSignature, nil
 }

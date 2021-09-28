@@ -3,6 +3,9 @@ package retrievaladapter
 import (
 	"context"
 
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/lotus/lib/sigs"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
@@ -111,4 +114,14 @@ func (rcn *retrievalClientNode) GetKnownAddresses(ctx context.Context, p retriev
 	}
 
 	return multiaddrs, nil
+}
+
+func (rcn *retrievalClientNode) VerifySignature(ctx context.Context, sig crypto.Signature, addr address.Address, input []byte, encodedTs shared.TipSetToken) (bool, error) {
+	addr, err := rcn.stateAPI.StateAccountKey(ctx, addr, types.EmptyTSK)
+	if err != nil {
+		return false, err
+	}
+
+	err = sigs.Verify(&sig, addr, input)
+	return err == nil, err
 }

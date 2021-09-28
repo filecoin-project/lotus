@@ -1086,6 +1086,7 @@ func (a *API) newRetrievalInfo(ctx context.Context, v rm.ClientDealState) api.Re
 	return a.newRetrievalInfoWithTransfer(transferCh, v)
 }
 
+// ClientQueryAsk gets the provider's storage ask (how much does storage cost)
 func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error) {
 	mi, err := a.StateMinerInfo(ctx, miner, types.EmptyTSK)
 	if err != nil {
@@ -1098,6 +1099,23 @@ func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Addre
 		return nil, err
 	}
 	return ask, nil
+}
+
+// ClientQueryRetrievalAsk gets the provider's retrieval ask (how much does retrieval cost)
+func (a *API) ClientQueryRetrievalAsk(ctx context.Context, p peer.ID, miner address.Address) (*rm.Ask, error) {
+	// Get the miner info so that we can get the worker address, which is
+	// needed to verify the signature of the response
+	mi, err := a.StateMinerInfo(ctx, miner, types.EmptyTSK)
+	if err != nil {
+		return nil, xerrors.Errorf("failed getting miner info: %w", err)
+	}
+
+	pp := rm.RetrievalPeer{
+		Address: miner,
+		ID:      p,
+	}
+
+	return a.Retrieval.GetAsk(ctx, pp, mi.Worker)
 }
 
 func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet, error) {
