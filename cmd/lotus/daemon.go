@@ -1,3 +1,4 @@
+//go:build !nodaemon
 // +build !nodaemon
 
 package main
@@ -152,6 +153,18 @@ var DaemonCmd = &cli.Command{
 		&cli.PathFlag{
 			Name:  "restore-config",
 			Usage: "config file to use when restoring from backup",
+		},
+		&cli.StringFlag{
+			Name:  "trace-to-json",
+			Usage: "starts tracer and outputs to json file defined with this flag",
+		},
+		&cli.StringFlag{
+			Name:  "trace-to-elasticsearch",
+			Usage: "starts tracer and outputs to elasticsearch, flag must contain connection string for elasticsearch",
+		},
+		&cli.StringFlag{
+			Name:  "trace-source-auth",
+			Usage: "auth token for trusted source of traces",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -310,6 +323,10 @@ var DaemonCmd = &cli.Command{
 			log.Warnf("unable to inject prometheus ipfs/go-metrics exporter; some metrics will be unavailable; err: %s", err)
 		}
 
+		traceToJsonFile := cctx.String("trace-to-json")
+		traceToElasticsearch := cctx.String("trace-to-elasticsearch")
+		traceSourceAuth := cctx.String("trace-source-auth")
+
 		var api api.FullNode
 		stop, err := node.New(ctx,
 			node.FullAPI(&api, node.Lite(isLite)),
@@ -319,6 +336,9 @@ var DaemonCmd = &cli.Command{
 
 			node.Override(new(dtypes.Bootstrapper), isBootstrapper),
 			node.Override(new(dtypes.ShutdownChan), shutdownChan),
+			node.Override(new(dtypes.JsonTracer), traceToJsonFile),
+			node.Override(new(dtypes.ElasticSearchTracer), traceToElasticsearch),
+			node.Override(new(dtypes.TracerSourceAuth), traceSourceAuth),
 
 			genesis,
 			liteModeDeps,

@@ -309,6 +309,10 @@ type Pubsub struct {
 	DirectPeers           []string
 	IPColocationWhitelist []string
 	RemoteTracer          string
+	JsonTracer            string
+	ElasticSearchTracer   string
+	ElasticSearchIndex    string
+	TracerSourceAuth      string
 }
 
 type Chainstore struct {
