@@ -37,9 +37,21 @@ type LotusTraceEvent struct {
 	SourceAuth string                    `json:"sourceAuth,omitempty"`
 }
 
+type TopicScore struct {
+	Topic                    string        `json:"topic"`
+	TimeInMesh               time.Duration `json:"timeInMesh"`
+	FirstMessageDeliveries   float64       `json:"firstMessageDeliveries"`
+	MeshMessageDeliveries    float64       `json:"meshMessageDeliveries"`
+	InvalidMessageDeliveries float64       `json:"invalidMessageDeliveries"`
+}
+
 type TraceEventPeerScore struct {
-	PeerID string  `json:"peerID"`
-	Score  float32 `json:"score"`
+	PeerID             string       `json:"peerID"`
+	Score              float64      `json:"score"`
+	AppSpecificScore   float64      `json:"appSpecificScore"`
+	IPColocationFactor float64      `json:"ipColocationFactor"`
+	BehaviourPenalty   float64      `json:"behaviourPenalty"`
+	Topics             []TopicScore `json:"topics"`
 }
 
 type LotusTracer interface {
@@ -52,12 +64,30 @@ type LotusTracer interface {
 func (lt *lotusTracer) PeerScores(scores map[peer.ID]*pubsub.PeerScoreSnapshot) {
 	now := time.Now().UnixNano()
 	for pid, score := range scores {
+		var topics []TopicScore
+		for topic, snapshot := range score.Topics {
+			topics = append(topics, TopicScore{
+				Topic:                    topic,
+				TimeInMesh:               snapshot.TimeInMesh,
+				FirstMessageDeliveries:   snapshot.FirstMessageDeliveries,
+				MeshMessageDeliveries:    snapshot.MeshMessageDeliveries,
+				InvalidMessageDeliveries: snapshot.InvalidMessageDeliveries,
+			})
+		}
+
 		evt := &LotusTraceEvent{
 			Type:       *TraceEventPeerScores.Enum(),
 			PeerID:     lt.pid.Pretty(),
 			Timestamp:  &now,
 			SourceAuth: lt.sa,
-			PeerScore:  TraceEventPeerScore{PeerID: pid.Pretty(), Score: float32(score.Score)},
+			PeerScore: TraceEventPeerScore{
+				PeerID:             pid.Pretty(),
+				Score:              score.Score,
+				AppSpecificScore:   score.AppSpecificScore,
+				IPColocationFactor: score.IPColocationFactor,
+				BehaviourPenalty:   score.BehaviourPenalty,
+				Topics:             topics,
+			},
 		}
 
 		lt.TraceLotusEvent(evt)
