@@ -126,7 +126,9 @@ type DealmakingConfig struct {
 	// The maximum collateral that the provider will put up against a deal,
 	// as a multiplier of the minimum collateral bound
 	MaxProviderCollateralMultiplier uint64
-
+	// The maximum allowed disk usage size in bytes of staging deals not yet
+	// passed to the sealing node by the markets service. 0 is unlimited.
+	MaxStagingDealsBytes int64
 	// The maximum number of parallel online data transfers (storage+retrieval)
 	SimultaneousTransfers uint64
 
@@ -292,8 +294,21 @@ type Libp2p struct {
 	BootstrapPeers      []string
 	ProtectedPeers      []string
 
-	ConnMgrLow   uint
-	ConnMgrHigh  uint
+	// When not disabled (default), lotus asks NAT devices (e.g., routers), to
+	// open up an external port and forward it to the port lotus is running on.
+	// When this works (i.e., when your router supports NAT port forwarding),
+	// it makes the local lotus node accessible from the public internet
+	DisableNatPortMap bool
+
+	// ConnMgrLow is the number of connections that the basic connection manager
+	// will trim down to.
+	ConnMgrLow uint
+	// ConnMgrHigh is the number of connections that, when exceeded, will trigger
+	// a connection GC operation. Note: protected/recently formed connections don't
+	// count towards this limit.
+	ConnMgrHigh uint
+	// ConnMgrGrace is a time duration that new connections are immune from being
+	// closed by the connection manager.
 	ConnMgrGrace Duration
 }
 

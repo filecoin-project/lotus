@@ -297,6 +297,10 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		infos = append(infos, p.Info)
 	}
 
+	if len(infos) == 0 {
+		return nil, nil
+	}
+
 	sort.Slice(infos, func(i, j int) bool {
 		return infos[i].Number < infos[j].Number
 	})

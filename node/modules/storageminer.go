@@ -394,9 +394,8 @@ func StagingBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 func StagingGraphsync(parallelTransfers uint64) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
 		graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
-		loader := storeutil.LoaderForBlockstore(ibs)
-		storer := storeutil.StorerForBlockstore(ibs)
-		gs := graphsync.New(helpers.LifecycleCtx(mctx, lc), graphsyncNetwork, loader, storer, graphsync.RejectAllRequestsByDefault(), graphsync.MaxInProgressRequests(parallelTransfers))
+		lsys := storeutil.LinkSystemForBlockstore(ibs)
+		gs := graphsync.New(helpers.LifecycleCtx(mctx, lc), graphsyncNetwork, lsys, graphsync.RejectAllRequestsByDefault(), graphsync.MaxInProgressRequests(parallelTransfers))
 
 		return gs
 	}
@@ -442,14 +441,16 @@ func NewStorageAsk(ctx helpers.MetricsCtx, fapi v1api.FullNode, ds dtypes.Metada
 		storagemarket.MaxPieceSize(abi.PaddedPieceSize(mi.SectorSize)))
 }
 
-func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
+func BasicDealFilter(cfg config.DealmakingConfig, user dtypes.StorageDealFilter) func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
 	offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
 	verifiedOk dtypes.ConsiderVerifiedStorageDealsConfigFunc,
 	unverifiedOk dtypes.ConsiderUnverifiedStorageDealsConfigFunc,
 	blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
 	expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc,
 	startDelay dtypes.GetMaxDealStartDelayFunc,
-	spn storagemarket.StorageProviderNode) dtypes.StorageDealFilter {
+	spn storagemarket.StorageProviderNode,
+	r repo.LockedRepo,
+) dtypes.StorageDealFilter {
 	return func(onlineOk dtypes.ConsiderOnlineStorageDealsConfigFunc,
 		offlineOk dtypes.ConsiderOfflineStorageDealsConfigFunc,
 		verifiedOk dtypes.ConsiderVerifiedStorageDealsConfigFunc,
@@ -457,7 +458,9 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 		blocklistFunc dtypes.StorageDealPieceCidBlocklistConfigFunc,
 		expectedSealTimeFunc dtypes.GetExpectedSealDurationFunc,
 		startDelay dtypes.GetMaxDealStartDelayFunc,
-		spn storagemarket.StorageProviderNode) dtypes.StorageDealFilter {
+		spn storagemarket.StorageProviderNode,
+		r repo.LockedRepo,
+	) dtypes.StorageDealFilter {
 
 		return func(ctx context.Context, deal storagemarket.MinerDeal) (bool, string, error) {
 			b, err := onlineOk()
@@ -531,6 +534,16 @@ func BasicDealFilter(user dtypes.StorageDealFilter) func(onlineOk dtypes.Conside
 			sd, err := startDelay()
 			if err != nil {
 				return false, "miner error", err
+			}
+
+			diskUsageBytes, err := r.DiskUsage(r.Path() + "/deal-staging")
+			if err != nil {
+				return false, "miner error", err
+			}
+
+			if cfg.MaxStagingDealsBytes != 0 && diskUsageBytes >= cfg.MaxStagingDealsBytes {
+				log.Errorw("proposed deal rejected because there are too many deals in the staging area at the moment", "MaxStagingDealsBytes", cfg.MaxStagingDealsBytes, "DiskUsageBytes", diskUsageBytes)
+				return false, "cannot accept deal as miner is overloaded at the moment - there are too many staging deals being processed", nil
 			}
 
 			// Reject if it's more than 7 days in the future
@@ -853,12 +866,13 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 	return func(cfg sealiface.Config) (err error) {
 		err = mutateCfg(r, func(c *config.StorageMiner) {
 			c.Sealing = config.SealingConfig{
-				MaxWaitDealsSectors:       cfg.MaxWaitDealsSectors,
-				MaxSealingSectors:         cfg.MaxSealingSectors,
-				MaxSealingSectorsForDeals: cfg.MaxSealingSectorsForDeals,
-				WaitDealsDelay:            config.Duration(cfg.WaitDealsDelay),
-				AlwaysKeepUnsealedCopy:    cfg.AlwaysKeepUnsealedCopy,
-				FinalizeEarly:             cfg.FinalizeEarly,
+				MaxWaitDealsSectors:             cfg.MaxWaitDealsSectors,
+				MaxSealingSectors:               cfg.MaxSealingSectors,
+				MaxSealingSectorsForDeals:       cfg.MaxSealingSectorsForDeals,
+				CommittedCapacitySectorLifetime: config.Duration(cfg.CommittedCapacitySectorLifetime),
+				WaitDealsDelay:                  config.Duration(cfg.WaitDealsDelay),
+				AlwaysKeepUnsealedCopy:          cfg.AlwaysKeepUnsealedCopy,
+				FinalizeEarly:                   cfg.FinalizeEarly,
 
 				CollateralFromMinerBalance: cfg.CollateralFromMinerBalance,
 				AvailableBalanceBuffer:     types.FIL(cfg.AvailableBalanceBuffer),
@@ -887,12 +901,13 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 
 func ToSealingConfig(cfg *config.StorageMiner) sealiface.Config {
 	return sealiface.Config{
-		MaxWaitDealsSectors:       cfg.Sealing.MaxWaitDealsSectors,
-		MaxSealingSectors:         cfg.Sealing.MaxSealingSectors,
-		MaxSealingSectorsForDeals: cfg.Sealing.MaxSealingSectorsForDeals,
-		WaitDealsDelay:            time.Duration(cfg.Sealing.WaitDealsDelay),
-		AlwaysKeepUnsealedCopy:    cfg.Sealing.AlwaysKeepUnsealedCopy,
-		FinalizeEarly:             cfg.Sealing.FinalizeEarly,
+		MaxWaitDealsSectors:             cfg.Sealing.MaxWaitDealsSectors,
+		MaxSealingSectors:               cfg.Sealing.MaxSealingSectors,
+		MaxSealingSectorsForDeals:       cfg.Sealing.MaxSealingSectorsForDeals,
+		CommittedCapacitySectorLifetime: time.Duration(cfg.Sealing.CommittedCapacitySectorLifetime),
+		WaitDealsDelay:                  time.Duration(cfg.Sealing.WaitDealsDelay),
+		AlwaysKeepUnsealedCopy:          cfg.Sealing.AlwaysKeepUnsealedCopy,
+		FinalizeEarly:                   cfg.Sealing.FinalizeEarly,
 
 		CollateralFromMinerBalance: cfg.Sealing.CollateralFromMinerBalance,
 		AvailableBalanceBuffer:     types.BigInt(cfg.Sealing.AvailableBalanceBuffer),

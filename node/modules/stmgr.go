@@ -8,8 +8,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 )
 
-func StateManager(lc fx.Lifecycle, cs *store.ChainStore, sys vm.SyscallBuilder, us stmgr.UpgradeSchedule) (*stmgr.StateManager, error) {
-	sm, err := stmgr.NewStateManagerWithUpgradeSchedule(cs, sys, us)
+func StateManager(lc fx.Lifecycle, cs *store.ChainStore, exec stmgr.Executor, sys vm.SyscallBuilder, us stmgr.UpgradeSchedule) (*stmgr.StateManager, error) {
+	sm, err := stmgr.NewStateManager(cs, exec, sys, us)
 	if err != nil {
 		return nil, err
 	}

@@ -103,10 +103,11 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	creatorStore := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(paymentCreator)))
 
 	// wait for the receiver to submit their vouchers
-	ev := events.NewEvents(ctx, paymentCreator)
+	ev, err := events.NewEvents(ctx, paymentCreator)
+	require.NoError(t, err)
 	preds := state.NewStatePredicates(paymentCreator)
 	finished := make(chan struct{})
-	err = ev.StateChanged(func(ts *types.TipSet) (done bool, more bool, err error) {
+	err = ev.StateChanged(func(ctx context.Context, ts *types.TipSet) (done bool, more bool, err error) {
 		act, err := paymentCreator.StateGetActor(ctx, channel, ts.Key())
 		if err != nil {
 			return false, false, err

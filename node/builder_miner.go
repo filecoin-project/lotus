@@ -15,6 +15,7 @@ import (
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
@@ -73,6 +74,8 @@ func ConfigStorageMiner(c interface{}) Option {
 
 	return Options(
 		ConfigCommon(&cfg.Common, enableLibp2pNode),
+
+		Override(CheckFDLimit, modules.CheckFdLimit(build.MinerFDLimit)), // recommend at least 100k FD limit to miners
 
 		Override(new(api.MinerSubsystems), modules.ExtractEnabledMinerSubsystems(cfg.Subsystems)),
 		Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
@@ -162,7 +165,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			// Markets (storage)
 			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
 			Override(new(*storedask.StoredAsk), modules.NewStorageAsk),
-			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(nil)),
+			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(cfg.Dealmaking, nil)),
 			Override(new(storagemarket.StorageProvider), modules.StorageProvider),
 			Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{})),
 			Override(HandleMigrateProviderFundsKey, modules.HandleMigrateProviderFunds),
@@ -189,7 +192,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(dtypes.GetMaxDealStartDelayFunc), modules.NewGetMaxDealStartDelayFunc),
 
 			If(cfg.Dealmaking.Filter != "",
-				Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(dealfilter.CliStorageDealFilter(cfg.Dealmaking.Filter))),
+				Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(cfg.Dealmaking, dealfilter.CliStorageDealFilter(cfg.Dealmaking.Filter))),
 			),
 
 			If(cfg.Dealmaking.RetrievalFilter != "",

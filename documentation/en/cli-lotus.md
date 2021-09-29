@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.11.2
+   1.11.3
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -2366,6 +2366,7 @@ USAGE:
 COMMANDS:
    list       List log systems
    set-level  Set log level
+   alerts     Get alert states
    help, h    Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2418,6 +2419,20 @@ DESCRIPTION:
 OPTIONS:
    --system value  limit to log system
    --help, -h      show help (default: false)
+   
+```
+
+### lotus log alerts
+```
+NAME:
+   lotus log alerts - Get alert states
+
+USAGE:
+   lotus log alerts [command options] [arguments...]
+
+OPTIONS:
+   --all       get all (active and inactive) alerts (default: false)
+   --help, -h  show help (default: false)
    
 ```
 

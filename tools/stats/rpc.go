@@ -139,7 +139,10 @@ func GetTips(ctx context.Context, api v0api.FullNode, lastHeight abi.ChainEpoch,
 
 		for {
 			select {
-			case changes := <-notif:
+			case changes, ok := <-notif:
+				if !ok {
+					return
+				}
 				for _, change := range changes {
 					log.Infow("Head event", "height", change.Val.Height(), "type", change.Type)
 

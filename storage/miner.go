@@ -116,6 +116,7 @@ type fullNodeFilteredAPI interface {
 	ChainGetTipSetAfterHeight(context.Context, abi.ChainEpoch, types.TipSetKey) (*types.TipSet, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
+	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*api.HeadChange, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error)
@@ -167,28 +168,29 @@ func (m *Miner) Run(ctx context.Context) error {
 		return xerrors.Errorf("getting miner info: %w", err)
 	}
 
-	var (
-		// consumer of chain head changes.
-		evts        = events.NewEvents(ctx, m.api)
-		evtsAdapter = NewEventsAdapter(evts)
+	// consumer of chain head changes.
+	evts, err := events.NewEvents(ctx, m.api)
+	if err != nil {
+		return xerrors.Errorf("failed to subscribe to events: %w", err)
+	}
+	evtsAdapter := NewEventsAdapter(evts)
 
-		// Create a shim to glue the API required by the sealing component
-		// with the API that Lotus is capable of providing.
-		// The shim translates between "tipset tokens" and tipset keys, and
-		// provides extra methods.
-		adaptedAPI = NewSealingAPIAdapter(m.api)
+	// Create a shim to glue the API required by the sealing component
+	// with the API that Lotus is capable of providing.
+	// The shim translates between "tipset tokens" and tipset keys, and
+	// provides extra methods.
+	adaptedAPI := NewSealingAPIAdapter(m.api)
 
-		// Instantiate a precommit policy.
-		cfg           = sealing.GetSealingConfigFunc(m.getSealConfig)
-		provingBuffer = md.WPoStProvingPeriod * 2
+	// Instantiate a precommit policy.
+	cfg := sealing.GetSealingConfigFunc(m.getSealConfig)
+	provingBuffer := md.WPoStProvingPeriod * 2
 
-		pcp = sealing.NewBasicPreCommitPolicy(adaptedAPI, cfg, provingBuffer)
+	pcp := sealing.NewBasicPreCommitPolicy(adaptedAPI, cfg, provingBuffer)
 
-		// address selector.
-		as = func(ctx context.Context, mi miner.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
-			return m.addrSel.AddressFor(ctx, m.api, mi, use, goodFunds, minFunds)
-		}
-	)
+	// address selector.
+	as := func(ctx context.Context, mi miner.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
+		return m.addrSel.AddressFor(ctx, m.api, mi, use, goodFunds, minFunds)
+	}
 
 	// Instantiate the sealing FSM.
 	m.sealing = sealing.New(ctx, adaptedAPI, m.feeCfg, evtsAdapter, m.maddr, m.ds, m.sealer, m.sc, m.verif, m.prover, &pcp, cfg, m.handleSealingNotifications, as)

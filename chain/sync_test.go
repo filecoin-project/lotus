@@ -28,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -105,7 +106,7 @@ func prepSyncTest(t testing.TB, h int) *syncTestUtil {
 
 		mn: mocknet.New(ctx),
 		g:  g,
-		us: stmgr.DefaultUpgradeSchedule(),
+		us: filcns.DefaultUpgradeSchedule(),
 	}
 
 	tu.addSourceNode(h)
@@ -125,19 +126,19 @@ func prepSyncTestWithV5Height(t testing.TB, h int, v5height abi.ChainEpoch) *syn
 		// prepare for upgrade.
 		Network:   network.Version9,
 		Height:    1,
-		Migration: stmgr.UpgradeActorsV2,
+		Migration: filcns.UpgradeActorsV2,
 	}, {
 		Network:   network.Version10,
 		Height:    2,
-		Migration: stmgr.UpgradeActorsV3,
+		Migration: filcns.UpgradeActorsV3,
 	}, {
 		Network:   network.Version12,
 		Height:    3,
-		Migration: stmgr.UpgradeActorsV4,
+		Migration: filcns.UpgradeActorsV4,
 	}, {
 		Network:   network.Version13,
 		Height:    v5height,
-		Migration: stmgr.UpgradeActorsV5,
+		Migration: filcns.UpgradeActorsV5,
 	}}
 
 	g, err := gen.NewGeneratorWithUpgradeSchedule(sched)

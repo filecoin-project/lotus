@@ -1,9 +1,25 @@
+ignore:
+  # Auto generated
+  - "^.*_gen.go$"
+  - "^.*/mock_full.go$"
+  # Old actors.
+  - "^chain/actors/builtin/[^/]*/(message|state|v)[0-4]\\.go$" # We test the latest version only.
+  # Tests
+  - "api/test/**"
+  - "conformance/**"
+  # Generators
+  - "gen/**"
+  - "chain/actors/agen/**"
+  # Non-critical utilities
+  - "api/docgen/**"
+  - "api/docgen-openrpc/**"
 coverage:
   status:
+    patch: off
     project:
       tools-and-tests:
         target: auto
-        threshold: 0.5%
+        threshold: 1%
         informational: true
         paths:
           - "testplans"
@@ -17,27 +33,27 @@ coverage:
           - "build"
       markets: 
         target: auto
-        threshold: 0.5%
+        threshold: 1%
         informational: false        
         paths: 
           - "markets"
           - "paychmgr"
       miner: 
         target: auto
-        threshold: 0.5%
+        threshold: 1.5%
         informational: false       
         paths: 
           - "miner"
           - "storage"
       chain:
         target: auto
-        threshold: 0.5%
+        threshold: 1%
         informational: false
         paths:
           - "chain"
-      node: 
+      node:
         target: auto
-        threshold: 0.5%
+        threshold: 1%
         informational: false
         paths: 
           - "node"
@@ -50,7 +66,7 @@ coverage:
           - "journal"
       cli: 
         target: auto
-        threshold: 0.5%
+        threshold: 1%
         informational: true
         paths: 
           - "cli"

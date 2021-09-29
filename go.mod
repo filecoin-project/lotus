@@ -33,12 +33,11 @@ require (
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-commp-utils v0.1.1-0.20210427191551-70bf140d31c7
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
-	github.com/filecoin-project/go-data-transfer v1.7.8
+	github.com/filecoin-project/go-data-transfer v1.10.1
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
-	github.com/filecoin-project/go-fil-markets v1.8.1
+	github.com/filecoin-project/go-fil-markets v1.12.0
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
-	github.com/filecoin-project/go-multistore v0.0.3
 	github.com/filecoin-project/go-padreader v0.0.0-20210723183308-812a16dc01b1
 	github.com/filecoin-project/go-paramfetch v0.0.2-0.20210614165157-25a6c7769498
 	github.com/filecoin-project/go-state-types v0.1.1-0.20210810190654-139e0e79e69e
@@ -78,7 +77,7 @@ require (
 	github.com/ipfs/go-ds-pebble v0.0.2-0.20200921225637-ce220f8ac459
 	github.com/ipfs/go-filestore v1.0.0
 	github.com/ipfs/go-fs-lock v0.0.6
-	github.com/ipfs/go-graphsync v0.6.9
+	github.com/ipfs/go-graphsync v0.9.3
 	github.com/ipfs/go-ipfs-blockstore v1.0.4
 	github.com/ipfs/go-ipfs-blocksutil v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.5
@@ -98,9 +97,9 @@ require (
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.6
 	github.com/ipfs/interface-go-ipfs-core v0.2.3
-	github.com/ipld/go-car v0.1.1-0.20201119040415-11b6074b6d4d
+	github.com/ipld/go-car v0.3.1-0.20210601190600-f512dac51e8e
 	github.com/ipld/go-car/v2 v2.0.3-0.20210811121346-c514a30114d7
-	github.com/ipld/go-ipld-prime v0.5.1-0.20201021195245-109253e8a018
+	github.com/ipld/go-ipld-prime v0.12.0
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/libp2p/go-eventbus v0.2.1
@@ -131,7 +130,7 @@ require (
 	github.com/multiformats/go-varint v0.0.6
 	github.com/open-rpc/meta-schema v0.0.0-20201029221707-1b72ef2ea333
 	github.com/opentracing/opentracing-go v1.2.0
-	github.com/polydawn/refmt v0.0.0-20190809202753-05966cbd336a
+	github.com/polydawn/refmt v0.0.0-20201211092308-30ac6d18308e
 	github.com/prometheus/client_golang v1.10.0
 	github.com/raulk/clock v1.1.0
 	github.com/raulk/go-watchdog v1.0.1
@@ -161,8 +160,6 @@ require (
 )
 
 replace github.com/libp2p/go-libp2p-yamux => github.com/libp2p/go-libp2p-yamux v0.5.1
-
-replace github.com/filecoin-project/lotus => ./
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 

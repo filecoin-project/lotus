@@ -1,22 +1,25 @@
-package store
+package filcns
 
 import (
 	"context"
 	"math/big"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
-
-	big2 "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/state"
-	"github.com/filecoin-project/lotus/chain/types"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
+
+	big2 "github.com/filecoin-project/go-state-types/big"
+
+	bstore "github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var zero = types.NewInt(0)
 
-func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {
+func Weight(ctx context.Context, stateBs bstore.Blockstore, ts *types.TipSet) (types.BigInt, error) {
 	if ts == nil {
 		return types.NewInt(0), nil
 	}
@@ -28,7 +31,7 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 
 	tpow := big2.Zero()
 	{
-		cst := cbor.NewCborStore(cs.StateBlockstore())
+		cst := cbor.NewCborStore(stateBs)
 		state, err := state.LoadStateTree(cst, ts.ParentState())
 		if err != nil {
 			return types.NewInt(0), xerrors.Errorf("load state tree: %w", err)
@@ -39,7 +42,7 @@ func (cs *ChainStore) Weight(ctx context.Context, ts *types.TipSet) (types.BigIn
 			return types.NewInt(0), xerrors.Errorf("get power actor: %w", err)
 		}
 
-		powState, err := power.Load(cs.ActorStore(ctx), act)
+		powState, err := power.Load(store.ActorStore(ctx, stateBs), act)
 		if err != nil {
 			return types.NewInt(0), xerrors.Errorf("failed to load power actor state: %w", err)
 		}

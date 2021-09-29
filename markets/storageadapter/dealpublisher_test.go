@@ -6,24 +6,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/crypto"
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/ipfs/go-cid"
 	"github.com/raulk/clock"
+	"golang.org/x/xerrors"
 
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/exitcode"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
-	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/api"
 )
 
 func TestDealPublisher(t *testing.T) {
@@ -41,6 +42,7 @@ func TestDealPublisher(t *testing.T) {
 		expiredDeals                    int
 		dealCountAfterPublishPeriod     int
 		expectedDealsPerMsg             []int
+		failOne                         bool
 	}{{
 		name:                         "publish one deal within publish period",
 		publishPeriod:                10 * time.Millisecond,
@@ -93,6 +95,14 @@ func TestDealPublisher(t *testing.T) {
 		ctxCancelledWithinPublishPeriod: 0,
 		dealCountAfterPublishPeriod:     2,
 		expectedDealsPerMsg:             []int{1, 1, 1, 1},
+	}, {
+		name:                         "one deal failing doesn't fail the entire batch",
+		publishPeriod:                10 * time.Millisecond,
+		maxDealsPerMsg:               5,
+		dealCountWithinPublishPeriod: 2,
+		dealCountAfterPublishPeriod:  0,
+		failOne:                      true,
+		expectedDealsPerMsg:          []int{1},
 	}}
 
 	for _, tc := range testCases {
@@ -112,14 +122,18 @@ func TestDealPublisher(t *testing.T) {
 
 			// Publish deals within publish period
 			for i := 0; i < tc.dealCountWithinPublishPeriod; i++ {
-				deal := publishDeal(t, dp, false, false)
-				dealsToPublish = append(dealsToPublish, deal)
+				if tc.failOne && i == 1 {
+					publishDeal(t, dp, i, false, false)
+				} else {
+					deal := publishDeal(t, dp, 0, false, false)
+					dealsToPublish = append(dealsToPublish, deal)
+				}
 			}
 			for i := 0; i < tc.ctxCancelledWithinPublishPeriod; i++ {
-				publishDeal(t, dp, true, false)
+				publishDeal(t, dp, 0, true, false)
 			}
 			for i := 0; i < tc.expiredDeals; i++ {
-				publishDeal(t, dp, false, true)
+				publishDeal(t, dp, 0, false, true)
 			}
 
 			// Wait until publish period has elapsed
@@ -151,7 +165,7 @@ func TestDealPublisher(t *testing.T) {
 
 			// Publish deals after publish period
 			for i := 0; i < tc.dealCountAfterPublishPeriod; i++ {
-				deal := publishDeal(t, dp, false, false)
+				deal := publishDeal(t, dp, 0, false, false)
 				dealsToPublish = append(dealsToPublish, deal)
 			}
 
@@ -187,12 +201,12 @@ func TestForcePublish(t *testing.T) {
 	// Queue three deals for publishing, one with a cancelled context
 	var dealsToPublish []market.ClientDealProposal
 	// 1. Regular deal
-	deal := publishDeal(t, dp, false, false)
+	deal := publishDeal(t, dp, 0, false, false)
 	dealsToPublish = append(dealsToPublish, deal)
 	// 2. Deal with cancelled context
-	publishDeal(t, dp, true, false)
+	publishDeal(t, dp, 0, true, false)
 	// 3. Regular deal
-	deal = publishDeal(t, dp, false, false)
+	deal = publishDeal(t, dp, 0, false, false)
 	dealsToPublish = append(dealsToPublish, deal)
 
 	// Allow a moment for them to be queued
@@ -217,7 +231,7 @@ func TestForcePublish(t *testing.T) {
 	checkPublishedDeals(t, dpapi, dealsToPublish, []int{2})
 }
 
-func publishDeal(t *testing.T, dp *DealPublisher, ctxCancelled bool, expired bool) market.ClientDealProposal {
+func publishDeal(t *testing.T, dp *DealPublisher, invalid int, ctxCancelled bool, expired bool) market.ClientDealProposal {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
@@ -238,6 +252,7 @@ func publishDeal(t *testing.T, dp *DealPublisher, ctxCancelled bool, expired boo
 			Provider:   getProviderActor(t),
 			StartEpoch: startEpoch,
 			EndEpoch:   abi.ChainEpoch(120),
+			PieceSize:  abi.PaddedPieceSize(invalid), // pass invalid into StateCall below
 		},
 		ClientSignature: crypto.Signature{
 			Type: crypto.SigTypeSecp256k1,
@@ -253,7 +268,7 @@ func publishDeal(t *testing.T, dp *DealPublisher, ctxCancelled bool, expired boo
 			return
 		}
 
-		if ctxCancelled || expired {
+		if ctxCancelled || expired || invalid == 1 {
 			require.Error(t, err)
 		} else {
 			require.NoError(t, err)
@@ -379,6 +394,19 @@ func (d *dpAPI) StateAccountKey(ctx context.Context, a address.Address, key type
 
 func (d *dpAPI) StateLookupID(ctx context.Context, a address.Address, key types.TipSetKey) (address.Address, error) {
 	panic("don't call me")
+}
+
+func (d *dpAPI) StateCall(ctx context.Context, message *types.Message, key types.TipSetKey) (*api.InvocResult, error) {
+	var p market2.PublishStorageDealsParams
+	if err := p.UnmarshalCBOR(bytes.NewReader(message.Params)); err != nil {
+		return nil, xerrors.Errorf("unmarshal market params: %w", err)
+	}
+
+	exit := exitcode.Ok
+	if p.Deals[0].Proposal.PieceSize == 1 {
+		exit = exitcode.ErrIllegalState
+	}
+	return &api.InvocResult{MsgRct: &types.MessageReceipt{ExitCode: exit}}, nil
 }
 
 func getClientActor(t *testing.T) address.Address {

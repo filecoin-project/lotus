@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"errors"
-	"os"
 	"time"
 
 	metricsi "github.com/ipfs/go-metrics-interface"
@@ -28,10 +27,12 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/journal/alerting"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
@@ -81,6 +82,9 @@ const (
 
 	// System processes.
 	InitMemoryWatchdog
+
+	// health checks
+	CheckFDLimit
 
 	// libp2p
 	PstoreAddSelfKeysKey
@@ -146,6 +150,9 @@ func defaults() []Option {
 		// global system journal.
 		Override(new(journal.DisabledEvents), journal.EnvDisabledEvents),
 		Override(new(journal.Journal), modules.OpenFilesystemJournal),
+		Override(new(*alerting.Alerting), alerting.NewAlertingSystem),
+
+		Override(CheckFDLimit, modules.CheckFdLimit(build.DefaultFDLimit)),
 
 		Override(new(system.MemoryConstraints), modules.MemoryConstraints),
 		Override(InitMemoryWatchdog, modules.MemoryWatchdog),
@@ -187,7 +194,6 @@ var LibP2P = Options(
 	Override(new(routing.Routing), lp2p.Routing),
 
 	// Services
-	Override(NatPortMapKey, lp2p.NatPortMap),
 	Override(BandwidthReporterKey, lp2p.BandwidthCounter),
 	Override(AutoNATSvcKey, lp2p.AutoNATService),
 
@@ -269,6 +275,8 @@ func ConfigCommon(cfg *config.Common, enableLibp2pNode bool) Option {
 			Override(AddrsFactoryKey, lp2p.AddrsFactory(
 				cfg.Libp2p.AnnounceAddresses,
 				cfg.Libp2p.NoAnnounceAddresses)),
+
+			If(!cfg.Libp2p.DisableNatPortMap, Override(NatPortMapKey, lp2p.NatPortMap)),
 		),
 		Override(new(dtypes.MetadataDS), modules.Datastore(cfg.Backup.DisableMetadataLog)),
 	)
@@ -284,58 +292,8 @@ func Repo(r repo.Repo) Option {
 		if err != nil {
 			return err
 		}
-
-		var cfg *config.Chainstore
-		switch settings.nodeType {
-		case repo.FullNode:
-			cfgp, ok := c.(*config.FullNode)
-			if !ok {
-				return xerrors.Errorf("invalid config from repo, got: %T", c)
-			}
-			cfg = &cfgp.Chainstore
-		default:
-			cfg = &config.Chainstore{}
-		}
-
 		return Options(
 			Override(new(repo.LockedRepo), modules.LockedRepo(lr)), // module handles closing
-
-			Override(new(dtypes.UniversalBlockstore), modules.UniversalBlockstore),
-
-			If(cfg.EnableSplitstore,
-				If(cfg.Splitstore.ColdStoreType == "universal",
-					Override(new(dtypes.ColdBlockstore), From(new(dtypes.UniversalBlockstore)))),
-				If(cfg.Splitstore.ColdStoreType == "discard",
-					Override(new(dtypes.ColdBlockstore), modules.DiscardColdBlockstore)),
-				If(cfg.Splitstore.HotStoreType == "badger",
-					Override(new(dtypes.HotBlockstore), modules.BadgerHotBlockstore)),
-				Override(new(dtypes.SplitBlockstore), modules.SplitBlockstore(cfg)),
-				Override(new(dtypes.BasicChainBlockstore), modules.ChainSplitBlockstore),
-				Override(new(dtypes.BasicStateBlockstore), modules.StateSplitBlockstore),
-				Override(new(dtypes.BaseBlockstore), From(new(dtypes.SplitBlockstore))),
-				Override(new(dtypes.ExposedBlockstore), modules.ExposedSplitBlockstore),
-				Override(new(dtypes.GCReferenceProtector), modules.SplitBlockstoreGCReferenceProtector),
-			),
-			If(!cfg.EnableSplitstore,
-				Override(new(dtypes.BasicChainBlockstore), modules.ChainFlatBlockstore),
-				Override(new(dtypes.BasicStateBlockstore), modules.StateFlatBlockstore),
-				Override(new(dtypes.BaseBlockstore), From(new(dtypes.UniversalBlockstore))),
-				Override(new(dtypes.ExposedBlockstore), From(new(dtypes.UniversalBlockstore))),
-				Override(new(dtypes.GCReferenceProtector), modules.NoopGCReferenceProtector),
-			),
-
-			Override(new(dtypes.ChainBlockstore), From(new(dtypes.BasicChainBlockstore))),
-			Override(new(dtypes.StateBlockstore), From(new(dtypes.BasicStateBlockstore))),
-
-			If(os.Getenv("LOTUS_ENABLE_CHAINSTORE_FALLBACK") == "1",
-				Override(new(dtypes.ChainBlockstore), modules.FallbackChainBlockstore),
-				Override(new(dtypes.StateBlockstore), modules.FallbackStateBlockstore),
-				Override(SetupFallbackBlockstoresKey, modules.InitFallbackBlockstores),
-			),
-
-			Override(new(dtypes.ClientImportMgr), modules.ClientImportMgr),
-
-			Override(new(dtypes.ClientBlockstore), modules.ClientBlockstore),
 
 			Override(new(ci.PrivKey), lp2p.PrivKey),
 			Override(new(ci.PubKey), ci.PrivKey.GetPublic),

@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
@@ -20,41 +21,52 @@ import (
 
 var ErrExpensiveFork = errors.New("refusing explicit call due to state fork at epoch")
 
+// Call applies the given message to the given tipset's parent state, at the epoch following the
+// tipset's parent. In the presence of null blocks, the height at which the message is invoked may
+// be less than the specified tipset.
+//
+// - If no tipset is specified, the first tipset without an expensive migration is used.
+// - If executing a message at a given tipset would trigger an expensive migration, the call will
+//   fail with ErrExpensiveFork.
 func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.TipSet) (*api.InvocResult, error) {
 	ctx, span := trace.StartSpan(ctx, "statemanager.Call")
 	defer span.End()
 
+	var pheight abi.ChainEpoch = -1
+
 	// If no tipset is provided, try to find one without a fork.
 	if ts == nil {
 		ts = sm.cs.GetHeaviestTipSet()
-
 		// Search back till we find a height with no fork, or we reach the beginning.
-		for ts.Height() > 0 && sm.hasExpensiveFork(ctx, ts.Height()-1) {
-			var err error
-			ts, err = sm.cs.GetTipSetFromKey(ts.Parents())
+		for ts.Height() > 0 {
+			pts, err := sm.cs.GetTipSetFromKey(ts.Parents())
 			if err != nil {
 				return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
 			}
+			if !sm.hasExpensiveFork(pts.Height()) {
+				pheight = pts.Height()
+				break
+			}
+			ts = pts
 		}
+	} else if ts.Height() > 0 {
+		pts, err := sm.cs.LoadTipSet(ts.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load parent tipset: %w", err)
+		}
+		pheight = pts.Height()
+		if sm.hasExpensiveFork(pheight) {
+			return nil, ErrExpensiveFork
+		}
+	} else {
+		// We can't get the parent tipset in this case.
+		pheight = ts.Height() - 1
 	}
 
 	bstate := ts.ParentState()
-	pts, err := sm.cs.LoadTipSet(ts.Parents())
-	if err != nil {
-		return nil, xerrors.Errorf("failed to load parent tipset: %w", err)
-	}
-	pheight := pts.Height()
-
-	// If we have to run an expensive migration, and we're not at genesis,
-	// return an error because the migration will take too long.
-	//
-	// We allow this at height 0 for at-genesis migrations (for testing).
-	if pheight > 0 && sm.hasExpensiveFork(ctx, pheight) {
-		return nil, ErrExpensiveFork
-	}
 
 	// Run the (not expensive) migration.
-	bstate, err = sm.handleStateForks(ctx, bstate, pheight, nil, ts)
+	bstate, err := sm.HandleStateForks(ctx, bstate, pheight, nil, ts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
@@ -64,7 +76,8 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		Epoch:          pheight + 1,
 		Rand:           store.NewChainRand(sm.cs, ts.Cids()),
 		Bstore:         sm.cs.StateBlockstore(),
-		Syscalls:       sm.syscalls,
+		Actors:         sm.tsExec.NewActorRegistry(),
+		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        types.NewInt(0),
@@ -140,18 +153,25 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		// run the fork logic in `sm.TipSetState`. We need the _current_
 		// height to have no fork, because we'll run it inside this
 		// function before executing the given message.
-		for ts.Height() > 0 && (sm.hasExpensiveFork(ctx, ts.Height()) || sm.hasExpensiveFork(ctx, ts.Height()-1)) {
-			var err error
-			ts, err = sm.cs.GetTipSetFromKey(ts.Parents())
+		for ts.Height() > 0 {
+			pts, err := sm.cs.GetTipSetFromKey(ts.Parents())
 			if err != nil {
 				return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
 			}
-		}
-	}
+			if !sm.hasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
+				break
+			}
 
-	// When we're not at the genesis block, make sure we don't have an expensive migration.
-	if ts.Height() > 0 && (sm.hasExpensiveFork(ctx, ts.Height()) || sm.hasExpensiveFork(ctx, ts.Height()-1)) {
-		return nil, ErrExpensiveFork
+			ts = pts
+		}
+	} else if ts.Height() > 0 {
+		pts, err := sm.cs.GetTipSetFromKey(ts.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
+		}
+		if sm.hasExpensiveForkBetween(pts.Height(), ts.Height()+1) {
+			return nil, ErrExpensiveFork
+		}
 	}
 
 	state, _, err := sm.TipSetState(ctx, ts)
@@ -159,7 +179,8 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		return nil, xerrors.Errorf("computing tipset state: %w", err)
 	}
 
-	state, err = sm.handleStateForks(ctx, state, ts.Height(), nil, ts)
+	// Technically, the tipset we're passing in here should be ts+1, but that may not exist.
+	state, err = sm.HandleStateForks(ctx, state, ts.Height(), nil, ts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
@@ -179,7 +200,8 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		Epoch:          ts.Height() + 1,
 		Rand:           r,
 		Bstore:         sm.cs.StateBlockstore(),
-		Syscalls:       sm.syscalls,
+		Actors:         sm.tsExec.NewActorRegistry(),
+		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NtwkVersion:    sm.GetNtwkVersion,
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
@@ -252,7 +274,7 @@ func (sm *StateManager) Replay(ctx context.Context, ts *types.TipSet, mcid cid.C
 	// message to find
 	finder.mcid = mcid
 
-	_, _, err := sm.computeTipSetState(ctx, ts, &finder)
+	_, _, err := sm.tsExec.ExecuteTipSet(ctx, sm, ts, &finder)
 	if err != nil && !xerrors.Is(err, errHaltExecution) {
 		return nil, nil, xerrors.Errorf("unexpected error during execution: %w", err)
 	}

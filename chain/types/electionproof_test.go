@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"math/big"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -129,17 +128,25 @@ func BenchmarkWinCounts(b *testing.B) {
 }
 
 func TestWinCounts(t *testing.T) {
-	t.SkipNow()
 	totalPower := NewInt(100)
-	power := NewInt(30)
+	power := NewInt(20)
 
-	f, _ := os.Create("output.wins")
-	fmt.Fprintf(f, "wins\n")
-	ep := &ElectionProof{VRFProof: nil}
-	for i := uint64(0); i < 1000000; i++ {
-		i := i + 1000000
-		ep.VRFProof = []byte{byte(i), byte(i >> 8), byte(i >> 16), byte(i >> 24), byte(i >> 32)}
-		j := ep.ComputeWinCount(power, totalPower)
-		fmt.Fprintf(f, "%d\n", j)
+	count := uint64(1000000)
+	total := uint64(0)
+	ep := &ElectionProof{VRFProof: make([]byte, 5)}
+	for i := uint64(0); i < count; i++ {
+		w := i + count
+		ep.VRFProof[0] = byte(w)
+		ep.VRFProof[1] = byte(w >> 8)
+		ep.VRFProof[2] = byte(w >> 16)
+		ep.VRFProof[3] = byte(w >> 24)
+		ep.VRFProof[4] = byte(w >> 32)
+
+		total += uint64(ep.ComputeWinCount(power, totalPower))
 	}
+	// We have 1/5 of the power, so we expect to win 1 block per epoch on average. Plus or minus
+	// 1%.
+	avgWins := float64(total) / float64(count)
+	assert.GreaterOrEqual(t, avgWins, 1.0-0.01)
+	assert.LessOrEqual(t, avgWins, 1.0+0.01)
 }
