@@ -309,10 +309,19 @@ type Pubsub struct {
 	DirectPeers           []string
 	IPColocationWhitelist []string
 	RemoteTracer          string
-	JsonTracer            string
-	ElasticSearchTracer   string
-	ElasticSearchIndex    string
-	TracerSourceAuth      string
+	// Path to file that will be used to output tracer content in JSON format.
+	// If present tracer will save data to defined file.
+	// Format: file path
+	JsonTracer string
+	// Connection string for elasticsearch instance.
+	// If present tracer will save data to elasticsearch.
+	// Format: https://<username>:<password>@<elasticsearch_url>:<port>/
+	ElasticSearchTracer string
+	// Name of elasticsearch index that will be used to save tracer data.
+	// This property is used only if ElasticSearchTracer propery is set.
+	ElasticSearchIndex string
+	// Auth token that will be passed with logs to elasticsearch - used for weighted peers score.
+	TracerSourceAuth string
 }
 
 type Chainstore struct {

@@ -531,19 +531,30 @@ Type: Array of multiaddress peerinfo strings, must include peerid (/p2p/12D3K...
 			Name: "JsonTracer",
 			Type: "string",
 
-			Comment: ``,
+			Comment: `Path to file that will be used to output tracer content in JSON format.
+If present tracer will save data to defined file.
+Format: file path`,
 		},
 		{
 			Name: "ElasticSearchTracer",
 			Type: "string",
 
-			Comment: ``,
+			Comment: `Connection string for elasticsearch instance.
+If present tracer will save data to elasticsearch.
+Format: https://<username>:<password>@<elasticsearch_url>:<port>/`,
+		},
+		{
+			Name: "ElasticSearchIndex",
+			Type: "string",
+
+			Comment: `Name of elasticsearch index that will be used to save tracer data.
+This property is used only if ElasticSearchTracer propery is set.`,
 		},
 		{
 			Name: "TracerSourceAuth",
 			Type: "string",
 
-			Comment: ``,
+			Comment: `Auth token that will be passed with logs to elasticsearch - used for weighted peers score.`,
 		},
 	},
 	"RetrievalPricing": []DocField{
