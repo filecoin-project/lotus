@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	ElasticSearch_INDEX_DEFAULT = "lotus-pubsub"
+	ElasticSearchDefaultIndex = "lotus-pubsub"
 )
 
 func NewElasticSearchTransport(connectionString string, elasticsearchIndex string) (TracerTransport, error) {
@@ -42,7 +42,7 @@ func NewElasticSearchTransport(connectionString string, elasticsearchIndex strin
 	if elasticsearchIndex != "" {
 		esIndex = elasticsearchIndex
 	} else {
-		esIndex = ElasticSearch_INDEX_DEFAULT
+		esIndex = ElasticSearchDefaultIndex
 	}
 
 	return &elasticSearchTransport{
@@ -83,10 +83,15 @@ func (est *elasticSearchTransport) Transport(evt TracerTransportEvent) error {
 	if err != nil {
 		return err
 	}
-	defer res.Body.Close()
+
+	err = res.Body.Close()
+	if err != nil {
+		return err
+	}
 
 	if res.IsError() {
 		return fmt.Errorf("[%s] Error indexing document ID=%s", res.Status(), req.DocumentID)
 	}
+
 	return nil
 }
