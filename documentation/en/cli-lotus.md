@@ -388,6 +388,7 @@ USAGE:
 OPTIONS:
    --wallet value, -w value   Specify address to withdraw funds to, otherwise it will use the default wallet address
    --address value, -a value  Market address to withdraw from (account or miner actor address, defaults to --wallet address)
+   --confidence value         number of block confirmations to wait for (default: 5)
    --help, -h                 show help (default: false)
    
 ```

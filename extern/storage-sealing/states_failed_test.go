@@ -5,6 +5,8 @@ import (
 	"context"
 	"testing"
 
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+
 	"github.com/golang/mock/gomock"
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
@@ -52,7 +54,7 @@ func TestStateRecoverDealIDs(t *testing.T) {
 		api.EXPECT().StateSearchMsg(ctx, pc).Return(&sealing.MsgLookup{
 			Receipt: sealing.MessageReceipt{
 				ExitCode: exitcode.Ok,
-				Return: cborRet(&market.PublishStorageDealsReturn{
+				Return: cborRet(&market0.PublishStorageDealsReturn{
 					IDs: []abi.DealID{dealId},
 				}),
 			},

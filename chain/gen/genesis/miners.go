@@ -193,12 +193,22 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 				if err != nil {
 					return xerrors.Errorf("failed to create genesis miner (publish deals): %w", err)
 				}
-				var ids market.PublishStorageDealsReturn
-				if err := ids.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
-					return xerrors.Errorf("unmarsahling publishStorageDeals result: %w", err)
+
+				retval, err := market.DecodePublishStorageDealsReturn(ret, nv)
+				if err != nil {
+					return xerrors.Errorf("failed to create genesis miner (decoding published deals): %w", err)
 				}
 
-				minerInfos[i].dealIDs = append(minerInfos[i].dealIDs, ids.IDs...)
+				ids, err := retval.DealIDs()
+				if err != nil {
+					return xerrors.Errorf("failed to create genesis miner (getting published dealIDs): %w", err)
+				}
+
+				if len(ids) != len(params.Deals) {
+					return xerrors.Errorf("failed to create genesis miner (at least one deal was invalid on publication")
+				}
+
+				minerInfos[i].dealIDs = append(minerInfos[i].dealIDs, ids...)
 				return nil
 			}
 

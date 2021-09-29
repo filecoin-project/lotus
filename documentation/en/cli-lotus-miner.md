@@ -278,7 +278,8 @@ USAGE:
    lotus-miner actor withdraw [command options] [amount (FIL)]
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --confidence value  number of block confirmations to wait for (default: 5)
+   --help, -h          show help (default: false)
    
 ```
 

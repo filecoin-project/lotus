@@ -8,6 +8,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/network"
+
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+
 	"golang.org/x/net/context"
 	"golang.org/x/xerrors"
 
@@ -207,7 +211,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 			},
 			targetProposal: &proposal,
 			expectedDealID: zeroDealID,
-			expectedError:  xerrors.Errorf("looking for publish deal message %s: unmarshalling message return: cbor input should be of type array", dummyCid),
+			expectedError:  xerrors.Errorf("looking for publish deal message %s: decoding message return: failed to unmarshal PublishStorageDealsReturn: cbor input should be of type array", dummyCid),
 		},
 	}
 	runTestCase := func(testCase string, data testCaseData) {
@@ -305,9 +309,13 @@ func (mapi *CurrentDealInfoMockAPI) StateSearchMsg(ctx context.Context, c cid.Ci
 	return mapi.SearchMessageLookup, mapi.SearchMessageErr
 }
 
+func (mapi *CurrentDealInfoMockAPI) StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error) {
+	return network.Version0, nil
+}
+
 func makePublishDealsReturnBytes(t *testing.T, dealIDs []abi.DealID) []byte {
 	buf := new(bytes.Buffer)
-	dealsReturn := market.PublishStorageDealsReturn{
+	dealsReturn := market0.PublishStorageDealsReturn{
 		IDs: dealIDs,
 	}
 	err := dealsReturn.MarshalCBOR(buf)
