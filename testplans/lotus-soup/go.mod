@@ -16,8 +16,9 @@ require (
 	github.com/filecoin-project/lotus v0.0.0-00010101000000-000000000000
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/google/uuid v1.2.0
-	github.com/gorilla/mux v1.7.4
+	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/go-multierror v1.1.0
+	github.com/influxdata/influxdb v1.9.4 // indirect
 	github.com/ipfs/go-cid v0.1.0
 	github.com/ipfs/go-datastore v0.4.5
 	github.com/ipfs/go-ipfs-files v0.0.8
