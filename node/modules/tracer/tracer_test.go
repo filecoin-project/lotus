@@ -15,7 +15,7 @@ type testTracerTransport struct {
 	executeTest func(t *testing.T, evt TracerTransportEvent)
 }
 
-const peerIdA peer.ID = "12D3KooWAbSVMgRejb6ECg6fRTkCPGCfu8396msZVryu8ivcz44G"
+const peerIDA peer.ID = "12D3KooWAbSVMgRejb6ECg6fRTkCPGCfu8396msZVryu8ivcz44G"
 
 func NewTestTraceTransport(t *testing.T, executeTest func(t *testing.T, evt TracerTransportEvent)) TracerTransport {
 	return &testTracerTransport{
@@ -32,14 +32,14 @@ func (ttt *testTracerTransport) Transport(evt TracerTransportEvent) error {
 func TestTracer_PeerScores(t *testing.T) {
 
 	testTransport := NewTestTraceTransport(t, func(t *testing.T, evt TracerTransportEvent) {
-		require.Equal(t, peerIdA.Pretty(), evt.lotusTraceEvent.PeerID)
+		require.Equal(t, peerIDA.Pretty(), evt.lotusTraceEvent.PeerID)
 		require.Equal(t, "source-auth-token-test", evt.lotusTraceEvent.SourceAuth)
 		require.Equal(t, float64(32), evt.lotusTraceEvent.PeerScore.Score)
 
 		n := time.Now().UnixNano()
 		require.LessOrEqual(t, *evt.lotusTraceEvent.Timestamp, n)
 
-		require.Equal(t, peerIdA.Pretty(), evt.lotusTraceEvent.PeerScore.PeerID)
+		require.Equal(t, peerIDA.Pretty(), evt.lotusTraceEvent.PeerScore.PeerID)
 		require.Equal(t, 1, len(evt.lotusTraceEvent.PeerScore.Topics))
 
 		topic := evt.lotusTraceEvent.PeerScore.Topics[0]
@@ -49,7 +49,7 @@ func TestTracer_PeerScores(t *testing.T) {
 
 	lt := NewLotusTracer(
 		[]TracerTransport{testTransport},
-		peerIdA,
+		peerIDA,
 		"source-auth-token-test",
 	)
 
@@ -59,7 +59,7 @@ func TestTracer_PeerScores(t *testing.T) {
 	}
 
 	m := make(map[peer.ID]*pubsub.PeerScoreSnapshot)
-	m[peerIdA] = &pubsub.PeerScoreSnapshot{
+	m[peerIDA] = &pubsub.PeerScoreSnapshot{
 		Score:  float64(32),
 		Topics: topics,
 	}
@@ -68,11 +68,10 @@ func TestTracer_PeerScores(t *testing.T) {
 }
 
 func TestTracer_PubSubTrace(t *testing.T) {
-	now := time.Now()
-	n := int64(now.Unix())
+	n := time.Now().Unix()
 
 	testTransport := NewTestTraceTransport(t, func(t *testing.T, evt TracerTransportEvent) {
-		require.Equal(t, []byte(peerIdA), evt.pubsubTraceEvent.PeerID)
+		require.Equal(t, []byte(peerIDA), evt.pubsubTraceEvent.PeerID)
 		require.Equal(t, &n, evt.pubsubTraceEvent.Timestamp)
 	})
 
@@ -83,7 +82,7 @@ func TestTracer_PubSubTrace(t *testing.T) {
 	)
 
 	lt.Trace(&pubsub_pb.TraceEvent{
-		PeerID:    []byte(peerIdA),
+		PeerID:    []byte(peerIDA),
 		Timestamp: &n,
 	})
 
@@ -91,11 +90,11 @@ func TestTracer_PubSubTrace(t *testing.T) {
 
 func TestTracer_MultipleTransports(t *testing.T) {
 	testTransportA := NewTestTraceTransport(t, func(t *testing.T, evt TracerTransportEvent) {
-		require.Equal(t, []byte(peerIdA), evt.pubsubTraceEvent.PeerID)
+		require.Equal(t, []byte(peerIDA), evt.pubsubTraceEvent.PeerID)
 	})
 
 	testTransportB := NewTestTraceTransport(t, func(t *testing.T, evt TracerTransportEvent) {
-		require.Equal(t, []byte(peerIdA), evt.pubsubTraceEvent.PeerID)
+		require.Equal(t, []byte(peerIDA), evt.pubsubTraceEvent.PeerID)
 	})
 
 	executeTest := NewLotusTracer(
@@ -105,6 +104,6 @@ func TestTracer_MultipleTransports(t *testing.T) {
 	)
 
 	executeTest.Trace(&pubsub_pb.TraceEvent{
-		PeerID: []byte(peerIdA),
+		PeerID: []byte(peerIDA),
 	})
 }
