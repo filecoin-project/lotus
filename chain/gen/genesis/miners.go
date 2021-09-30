@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/rand"
 
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -399,11 +401,24 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 				}
 
 				// Commit one-by-one, otherwise pledge math tends to explode
-				confirmParams := &builtin0.ConfirmSectorProofsParams{
-					Sectors: []abi.SectorNumber{preseal.SectorID},
+				var paramBytes []byte
+
+				if av >= actors.Version6 {
+					// TODO: fixup
+					confirmParams := &builtin6.ConfirmSectorProofsParams{
+						Sectors: []abi.SectorNumber{preseal.SectorID},
+					}
+
+					paramBytes = mustEnc(confirmParams)
+				} else {
+					confirmParams := &builtin0.ConfirmSectorProofsParams{
+						Sectors: []abi.SectorNumber{preseal.SectorID},
+					}
+
+					paramBytes = mustEnc(confirmParams)
 				}
 
-				_, err = doExecValue(ctx, vm, minerInfos[i].maddr, power.Address, big.Zero(), miner.Methods.ConfirmSectorProofsValid, mustEnc(confirmParams))
+				_, err = doExecValue(ctx, vm, minerInfos[i].maddr, power.Address, big.Zero(), miner.Methods.ConfirmSectorProofsValid, paramBytes)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
 				}

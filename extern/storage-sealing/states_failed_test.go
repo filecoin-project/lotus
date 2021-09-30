@@ -5,6 +5,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 
 	"github.com/golang/mock/gomock"
@@ -59,6 +61,7 @@ func TestStateRecoverDealIDs(t *testing.T) {
 				}),
 			},
 		}, nil)
+		api.EXPECT().StateNetworkVersion(ctx, nil).Return(network.Version0, nil)
 		api.EXPECT().StateMarketStorageDeal(ctx, dealId, nil).Return(&api2.MarketDeal{
 			Proposal: dealProposal,
 		}, nil)
