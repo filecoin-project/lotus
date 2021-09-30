@@ -174,11 +174,12 @@ func TestPrecommitBatcher(t *testing.T) {
 
 			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(miner.MinerInfo{Owner: t0123, Worker: t0123}, nil)
 			for _, number := range expect {
+				numClone := number
 				s.EXPECT().SendMsg(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), funMatcher(func(i interface{}) bool {
 					b := i.([]byte)
 					var params miner5.PreCommitSectorParams
 					require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b)))
-					require.Equal(t, number, params.SectorNumber)
+					require.Equal(t, numClone, params.SectorNumber)
 					return true
 				}))
 			}
