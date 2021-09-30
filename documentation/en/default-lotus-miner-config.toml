@@ -207,6 +207,12 @@
   # env var: LOTUS_DEALMAKING_SIMULTANEOUSTRANSFERS
   #SimultaneousTransfers = 20
 
+  # Minimum start epoch buffer to give time for sealing of sector with deal.
+  #
+  # type: uint64
+  # env var: LOTUS_DEALMAKING_STARTEPOCHSEALINGBUFFER
+  #StartEpochSealingBuffer = 480
+
   # A command used for fine-grained evaluation of storage deals
   # see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
   #
