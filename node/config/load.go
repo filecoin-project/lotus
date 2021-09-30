@@ -125,6 +125,8 @@ func ConfigUpdate(cfgCur, cfgDef interface{}, comment bool) ([]byte, error) {
 
 						outLines = append(outLines, pad+"# type: "+doc.Type)
 					}
+
+					outLines = append(outLines, pad+"# env var: LOTUS_"+strings.ToUpper(strings.ReplaceAll(section, ".", "_"))+"_"+strings.ToUpper(lf[0]))
 				}
 			}
 

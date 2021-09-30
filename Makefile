@@ -341,7 +341,7 @@ docsgen-openrpc-worker: docsgen-openrpc-bin
 .PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
 
 gen: actors-gen type-gen method-gen cfgdoc-gen docsgen api-gen circleci
-	@echo ">>> IF YOU'VE MODIFIED THE CLI, REMEMBER TO ALSO MAKE docsgen-cli"
+	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO MAKE docsgen-cli"
 .PHONY: gen
 
 snap: lotus lotus-miner lotus-worker
@@ -351,6 +351,8 @@ snap: lotus lotus-miner lotus-worker
 # separate from gen because it needs binaries
 docsgen-cli: lotus lotus-miner lotus-worker
 	python ./scripts/generate-lotus-cli.py
+	./lotus config default > documentation/en/default-lotus-config.toml
+	./lotus-miner config default > documentation/en/default-lotus-miner-config.toml
 .PHONY: docsgen-cli
 
 print-%:
