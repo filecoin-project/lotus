@@ -117,7 +117,7 @@ func main() {
 				Name:    "panic-reports",
 				EnvVars: []string{"LOTUS_PANIC_REPORT_PATH"},
 				Hidden:  true,
-				Value:   "~/.lotus", // should follow --repo default
+				Value:   "~/.lotusminer", // should follow --repo default
 			},
 			&cli.StringFlag{
 				Name:    "repo",
@@ -155,7 +155,7 @@ func main() {
 		After: func(c *cli.Context) error {
 			if r := recover(); r != nil {
 				// Generate report in LOTUS_PATH and re-raise panic
-				build.GeneratePanicReport(c.String("panic-reports"), c.String("repo"), c.App.Name)
+				build.GeneratePanicReport(c.String("panic-reports"), c.String(FlagMinerRepo), c.App.Name)
 				panic(r)
 			}
 			return nil
