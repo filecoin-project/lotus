@@ -79,7 +79,7 @@ func main() {
 				Name:    "panic-reports",
 				EnvVars: []string{"LOTUS_PANIC_REPORT_PATH"},
 				Hidden:  true,
-				Value:   "~/.lotus", // should follow --repo default
+				Value:   "~/.lotusworker", // should follow --repo default
 			},
 			&cli.StringFlag{
 				Name:    "miner-repo",
