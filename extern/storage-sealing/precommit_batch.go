@@ -278,7 +278,7 @@ func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi miner.MinerInf
 	enc := new(bytes.Buffer)
 
 	if err := params.pci.MarshalCBOR(enc); err != nil {
-		return cid.Undef, xerrors.Errorf("marshaling commit params: %w", err)
+		return cid.Undef, xerrors.Errorf("marshaling precommit params: %w", err)
 	}
 
 	deposit := params.deposit
@@ -299,7 +299,7 @@ func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi miner.MinerInf
 
 	from, _, err := b.addrSel(b.mctx, mi, api.PreCommitAddr, goodFunds, deposit)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("no good address to send commit message from: %w", err)
+		return cid.Undef, xerrors.Errorf("no good address to send precommit message from: %w", err)
 	}
 
 	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.PreCommitSector, deposit, big.Int(b.feeCfg.MaxPreCommitGasFee), enc.Bytes())
