@@ -101,7 +101,7 @@ func DefaultStorageMiner() *StorageMiner {
 			PreCommitBatchWait:  Duration(24 * time.Hour),           // this should be less than 31.5 hours, which is the expiration of a precommit ticket
 			PreCommitBatchSlack: Duration(3 * time.Hour),            // time buffer for forceful batch submission before sectors/deals in batch would start expiring, higher value will lower the chances for message fail due to expiration
 
-			CommittedCapacitySectorLifetime: Duration(builtin.EpochDurationSeconds * policy.GetMaxSectorExpirationExtension()),
+			CommittedCapacitySectorLifetime: Duration(builtin.EpochDurationSeconds * uint64(policy.GetMaxSectorExpirationExtension()) * uint64(time.Second)),
 
 			AggregateCommits: true,
 			MinCommitBatch:   miner5.MinAggregatedSectors, // per FIP13, we must have at least four proofs to aggregate, where 4 is the cross over point where aggregation wins out on single provecommit gas costs
