@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync/atomic"
 
+	"github.com/filecoin-project/lotus/chain/rand"
+
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
@@ -280,7 +282,7 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context, sm *stmgr.StateManag
 		parentEpoch = parent.Height
 	}
 
-	r := store.NewChainRand(sm.ChainStore(), ts.Cids())
+	r := rand.NewStateRand(sm.ChainStore(), ts.Cids(), sm.Beacon())
 
 	blkmsgs, err := sm.ChainStore().BlockMsgsForTipset(ts)
 	if err != nil {

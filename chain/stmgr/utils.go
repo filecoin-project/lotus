@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/filecoin-project/lotus/chain/rand"
+
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -77,7 +79,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		// future. It's not guaranteed to be accurate... but that's fine.
 	}
 
-	r := store.NewChainRand(sm.cs, ts.Cids())
+	r := rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon)
 	vmopt := &vm.VMOpts{
 		StateBase:      base,
 		Epoch:          height,

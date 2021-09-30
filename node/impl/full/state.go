@@ -1422,32 +1422,10 @@ func (m *StateModule) StateNetworkVersion(ctx context.Context, tsk types.TipSetK
 }
 
 func (a *StateAPI) StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
-	pts, err := a.Chain.LoadTipSet(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset key: %w", err)
-	}
-
-	rnv := a.StateManager.GetNtwkVersion(ctx, randEpoch)
-
-	if rnv >= network.Version13 {
-		return a.Chain.GetChainRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
-	}
-
-	return a.Chain.GetChainRandomnessLookingBack(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	return a.StateManager.GetRandomnessFromTickets(ctx, personalization, randEpoch, entropy, tsk)
 }
 
 func (a *StateAPI) StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
-	pts, err := a.Chain.GetTipSetFromKey(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
-	}
-
-	rnv := a.StateManager.GetNtwkVersion(ctx, randEpoch)
-
-	if rnv >= network.Version13 {
-		return a.Chain.GetBeaconRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
-	}
-
-	return a.Chain.GetBeaconRandomnessLookingBack(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	return a.StateManager.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, tsk)
 
 }
