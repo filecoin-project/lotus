@@ -40,6 +40,21 @@ func (m *MockPreCommitBatcherApi) EXPECT() *MockPreCommitBatcherApiMockRecorder 
 	return m.recorder
 }
 
+// ChainBaseFee mocks base method.
+func (m *MockPreCommitBatcherApi) ChainBaseFee(arg0 context.Context, arg1 sealing.TipSetToken) (big.Int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainBaseFee", arg0, arg1)
+	ret0, _ := ret[0].(big.Int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChainBaseFee indicates an expected call of ChainBaseFee.
+func (mr *MockPreCommitBatcherApiMockRecorder) ChainBaseFee(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainBaseFee", reflect.TypeOf((*MockPreCommitBatcherApi)(nil).ChainBaseFee), arg0, arg1)
+}
+
 // ChainHead mocks base method.
 func (m *MockPreCommitBatcherApi) ChainHead(arg0 context.Context) (sealing.TipSetToken, abi.ChainEpoch, error) {
 	m.ctrl.T.Helper()

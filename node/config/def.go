@@ -109,7 +109,8 @@ func DefaultStorageMiner() *StorageMiner {
 			CommitBatchWait:  Duration(24 * time.Hour),    // this can be up to 30 days
 			CommitBatchSlack: Duration(1 * time.Hour),     // time buffer for forceful batch submission before sectors/deals in batch would start expiring, higher value will lower the chances for message fail due to expiration
 
-			AggregateAboveBaseFee: types.FIL(types.BigMul(types.PicoFil, types.NewInt(150))), // 0.15 nFIL
+			BatchPreCommitAboveBaseFee: types.FIL(types.BigMul(types.PicoFil, types.NewInt(320))), // 0.32 nFIL
+			AggregateAboveBaseFee:      types.FIL(types.BigMul(types.PicoFil, types.NewInt(320))), // 0.32 nFIL
 
 			TerminateBatchMin:  1,
 			TerminateBatchMax:  100,

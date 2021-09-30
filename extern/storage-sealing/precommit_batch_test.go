@@ -54,10 +54,11 @@ func TestPrecommitBatcher(t *testing.T) {
 			WaitDealsDelay:            time.Hour * 6,
 			AlwaysKeepUnsealedCopy:    true,
 
-			BatchPreCommits:     true,
-			MaxPreCommitBatch:   maxBatch,
-			PreCommitBatchWait:  24 * time.Hour,
-			PreCommitBatchSlack: 3 * time.Hour,
+			BatchPreCommits:            true,
+			MaxPreCommitBatch:          maxBatch,
+			PreCommitBatchWait:         24 * time.Hour,
+			PreCommitBatchSlack:        3 * time.Hour,
+			BatchPreCommitAboveBaseFee: big.NewInt(10000),
 
 			AggregateCommits: true,
 			MinCommitBatch:   miner5.MinAggregatedSectors,
@@ -149,6 +150,9 @@ func TestPrecommitBatcher(t *testing.T) {
 
 	expectSend := func(expect []abi.SectorNumber) action {
 		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *sealing.PreCommitBatcher) promise {
+			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
+			s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(big.NewInt(10001), nil)
+
 			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(miner.MinerInfo{Owner: t0123, Worker: t0123}, nil)
 			s.EXPECT().SendMsg(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), funMatcher(func(i interface{}) bool {
 				b := i.([]byte)
@@ -159,6 +163,25 @@ func TestPrecommitBatcher(t *testing.T) {
 				}
 				return true
 			}))
+			return nil
+		}
+	}
+
+	expectSendsSingle := func(expect []abi.SectorNumber) action {
+		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *sealing.PreCommitBatcher) promise {
+			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
+			s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(big.NewInt(9999), nil)
+
+			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(miner.MinerInfo{Owner: t0123, Worker: t0123}, nil)
+			for _, number := range expect {
+				s.EXPECT().SendMsg(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), funMatcher(func(i interface{}) bool {
+					b := i.([]byte)
+					var params miner5.PreCommitSectorParams
+					require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b)))
+					require.Equal(t, number, params.SectorNumber)
+					return true
+				}))
+			}
 			return nil
 		}
 	}
@@ -208,6 +231,12 @@ func TestPrecommitBatcher(t *testing.T) {
 		"addMax": {
 			actions: []action{
 				expectSend(getSectors(maxBatch)),
+				addSectors(getSectors(maxBatch)),
+			},
+		},
+		"addMax-belowBaseFee": {
+			actions: []action{
+				expectSendsSingle(getSectors(maxBatch)),
 				addSectors(getSectors(maxBatch)),
 			},
 		},

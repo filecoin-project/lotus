@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	"github.com/filecoin-project/lotus/node/config"
 )
@@ -31,6 +32,7 @@ type PreCommitBatcherApi interface {
 	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
 	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
+	ChainBaseFee(context.Context, TipSetToken) (abi.TokenAmount, error)
 }
 
 type preCommitEntry struct {
@@ -185,8 +187,30 @@ func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBat
 		return nil, nil
 	}
 
+	individual := false
+	if !cfg.BatchPreCommitAboveBaseFee.Equals(big.Zero()) {
+		tok, _, err := b.api.ChainHead(b.mctx)
+		if err != nil {
+			return nil, err
+		}
+
+		bf, err := b.api.ChainBaseFee(b.mctx, tok)
+		if err != nil {
+			return nil, xerrors.Errorf("couldn't get base fee: %w", err)
+		}
+
+		if bf.LessThan(cfg.BatchPreCommitAboveBaseFee) { // todo: only enable after nv14?
+			individual = true
+		}
+	}
+
 	// todo support multiple batches
-	res, err := b.processBatch(cfg)
+	var res []sealiface.PreCommitBatchRes
+	if !individual {
+		res, err = b.processBatch(cfg)
+	} else {
+		res, err = b.processIndividually(cfg)
+	}
 	if err != nil && len(res) == 0 {
 		return nil, err
 	}
@@ -208,6 +232,82 @@ func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBat
 	}
 
 	return res, nil
+}
+
+func (b *PreCommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.PreCommitBatchRes, error) {
+	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, nil)
+	if err != nil {
+		return nil, xerrors.Errorf("couldn't get miner info: %w", err)
+	}
+
+	avail := types.TotalFilecoinInt
+
+	if cfg.CollateralFromMinerBalance && !cfg.DisableCollateralFallback {
+		avail, err = b.api.StateMinerAvailableBalance(b.mctx, b.maddr, nil)
+		if err != nil {
+			return nil, xerrors.Errorf("getting available miner balance: %w", err)
+		}
+
+		avail = big.Sub(avail, cfg.AvailableBalanceBuffer)
+		if avail.LessThan(big.Zero()) {
+			avail = big.Zero()
+		}
+	}
+
+	var res []sealiface.PreCommitBatchRes
+
+	for sn, info := range b.todo {
+		r := sealiface.PreCommitBatchRes{
+			Sectors: []abi.SectorNumber{sn},
+		}
+
+		mcid, err := b.processSingle(cfg, mi, &avail, info)
+		if err != nil {
+			r.Error = err.Error()
+		} else {
+			r.Msg = &mcid
+		}
+
+		res = append(res, r)
+	}
+
+	return res, nil
+}
+
+func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi miner.MinerInfo, avail *abi.TokenAmount, params *preCommitEntry) (cid.Cid, error) {
+	enc := new(bytes.Buffer)
+
+	if err := params.pci.MarshalCBOR(enc); err != nil {
+		return cid.Undef, xerrors.Errorf("marshaling commit params: %w", err)
+	}
+
+	deposit := params.deposit
+	if cfg.CollateralFromMinerBalance {
+		c := big.Sub(deposit, *avail)
+		*avail = big.Sub(*avail, deposit)
+		deposit = c
+
+		if deposit.LessThan(big.Zero()) {
+			deposit = big.Zero()
+		}
+		if (*avail).LessThan(big.Zero()) {
+			*avail = big.Zero()
+		}
+	}
+
+	goodFunds := big.Add(deposit, big.Int(b.feeCfg.MaxPreCommitGasFee))
+
+	from, _, err := b.addrSel(b.mctx, mi, api.PreCommitAddr, goodFunds, deposit)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("no good address to send commit message from: %w", err)
+	}
+
+	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.PreCommitSector, deposit, big.Int(b.feeCfg.MaxPreCommitGasFee), enc.Bytes())
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("pushing message to mpool: %w", err)
+	}
+
+	return mcid, nil
 }
 
 func (b *PreCommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.PreCommitBatchRes, error) {
