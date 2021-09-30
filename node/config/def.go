@@ -65,7 +65,8 @@ func DefaultFullNode() *FullNode {
 			DefaultMaxFee: DefaultDefaultMaxFee,
 		},
 		Client: Client{
-			SimultaneousTransfers: DefaultSimultaneousTransfers,
+			SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
+			SimultaneousTransfersForRetrieval: DefaultSimultaneousTransfers,
 		},
 		Chainstore: Chainstore{
 			EnableSplitstore: false,
@@ -146,7 +147,8 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxDealsPerPublishMsg:           8,
 			MaxProviderCollateralMultiplier: 2,
 
-			SimultaneousTransfers: DefaultSimultaneousTransfers,
+			SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
+			SimultaneousTransfersForRetrieval: DefaultSimultaneousTransfers,
 
 			RetrievalPricing: &RetrievalPricing{
 				Strategy: RetrievalPricingDefaultMode,
