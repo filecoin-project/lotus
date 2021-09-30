@@ -22,6 +22,8 @@ type Config struct {
 
 	CommittedCapacitySectorLifetime time.Duration
 
+	StartEpochSealingBuffer abi.ChainEpoch
+
 	AlwaysKeepUnsealedCopy bool
 
 	FinalizeEarly bool

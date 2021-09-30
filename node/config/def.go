@@ -149,6 +149,8 @@ func DefaultStorageMiner() *StorageMiner {
 
 			SimultaneousTransfers: DefaultSimultaneousTransfers,
 
+			StartEpochSealingBuffer: 480, // 480 epochs buffer == 4 hours from adding deal to sector to sector being sealed
+
 			RetrievalPricing: &RetrievalPricing{
 				Strategy: RetrievalPricingDefaultMode,
 				Default: &RetrievalPricingDefault{

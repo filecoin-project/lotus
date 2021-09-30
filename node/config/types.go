@@ -131,6 +131,8 @@ type DealmakingConfig struct {
 	MaxStagingDealsBytes int64
 	// The maximum number of parallel online data transfers (storage+retrieval)
 	SimultaneousTransfers uint64
+	// Minimum start epoch buffer to give time for sealing of sector with deal.
+	StartEpochSealingBuffer uint64
 
 	// A command used for fine-grained evaluation of storage deals
 	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details

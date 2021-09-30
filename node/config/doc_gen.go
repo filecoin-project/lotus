@@ -266,6 +266,12 @@ passed to the sealing node by the markets service. 0 is unlimited.`,
 			Comment: `The maximum number of parallel online data transfers (storage+retrieval)`,
 		},
 		{
+			Name: "StartEpochSealingBuffer",
+			Type: "uint64",
+
+			Comment: `Minimum start epoch buffer to give time for sealing of sector with deal.`,
+		},
+		{
 			Name: "Filter",
 			Type: "string",
 
