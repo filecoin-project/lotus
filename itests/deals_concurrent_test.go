@@ -139,8 +139,8 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 	)
 	runTest := func(t *testing.T) {
 		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ConstructorOpts(
-			node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(graphsyncThrottle))),
-			node.Override(new(dtypes.Graphsync), modules.Graphsync(graphsyncThrottle)),
+			node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(graphsyncThrottle, graphsyncThrottle))),
+			node.Override(new(dtypes.Graphsync), modules.Graphsync(graphsyncThrottle, graphsyncThrottle)),
 		))
 		ens.InterconnectAll().BeginMining(250 * time.Millisecond)
 		dh := kit.NewDealHarness(t, client, miner, miner)
