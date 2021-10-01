@@ -219,6 +219,10 @@ type SealingConfig struct {
 	// time buffer for forceful batch submission before sectors/deals in batch would start expiring
 	CommitBatchSlack Duration
 
+	// network BaseFee below which to stop doing precommit batching, instead
+	// sending precommit messages to the chain individually
+	BatchPreCommitAboveBaseFee types.FIL
+
 	// network BaseFee below which to stop doing commit aggregation, instead
 	// submitting proofs to the chain individually
 	AggregateAboveBaseFee types.FIL
