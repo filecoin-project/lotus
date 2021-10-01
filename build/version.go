@@ -15,7 +15,7 @@ const (
 	BuildButterflynet = 0x7
 )
 
-func buildType() string {
+func BuildTypeString() string {
 	switch BuildType {
 	case BuildDefault:
 		return ""
@@ -44,5 +44,5 @@ func UserVersion() string {
 		return BuildVersion
 	}
 
-	return BuildVersion + buildType() + CurrentCommit
+	return BuildVersion + BuildTypeString() + CurrentCommit
 }
