@@ -932,6 +932,8 @@ func ToSealingConfig(cfg *config.StorageMiner) sealiface.Config {
 		TerminateBatchMax:  cfg.Sealing.TerminateBatchMax,
 		TerminateBatchMin:  cfg.Sealing.TerminateBatchMin,
 		TerminateBatchWait: time.Duration(cfg.Sealing.TerminateBatchWait),
+
+		StartEpochSealingBuffer: abi.ChainEpoch(cfg.Dealmaking.StartEpochSealingBuffer),
 	}
 }
 

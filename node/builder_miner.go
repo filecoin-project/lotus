@@ -199,8 +199,9 @@ func ConfigStorageMiner(c interface{}) Option {
 				Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(dealfilter.CliRetrievalDealFilter(cfg.Dealmaking.RetrievalFilter))),
 			),
 			Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(&cfg.Fees, storageadapter.PublishMsgConfig{
-				Period:         time.Duration(cfg.Dealmaking.PublishMsgPeriod),
-				MaxDealsPerMsg: cfg.Dealmaking.MaxDealsPerPublishMsg,
+				Period:                  time.Duration(cfg.Dealmaking.PublishMsgPeriod),
+				MaxDealsPerMsg:          cfg.Dealmaking.MaxDealsPerPublishMsg,
+				StartEpochSealingBuffer: cfg.Dealmaking.StartEpochSealingBuffer,
 			})),
 			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees, &cfg.Dealmaking)),
 		),
