@@ -45,6 +45,7 @@ var (
 	// miner
 	TaskType, _       = tag.NewKey("task_type")
 	WorkerHostname, _ = tag.NewKey("worker_hostname")
+	StorageID, _      = tag.NewKey("storage_id")
 )
 
 // Measures
@@ -96,6 +97,17 @@ var (
 	WorkerCallsReturnedCount     = stats.Int64("sealing/worker_calls_returned_count", "Counter of returned worker tasks", stats.UnitDimensionless)
 	WorkerCallsReturnedDuration  = stats.Float64("sealing/worker_calls_returned_ms", "Counter of returned worker tasks", stats.UnitMilliseconds)
 	WorkerUntrackedCallsReturned = stats.Int64("sealing/worker_untracked_calls_returned", "Counter of returned untracked worker tasks", stats.UnitDimensionless)
+
+	StorageFSAvailable      = stats.Float64("storage/path_fs_available_frac", "Fraction of filesystem available storage", stats.UnitDimensionless)
+	StorageAvailable        = stats.Float64("storage/path_available_frac", "Fraction of available storage", stats.UnitDimensionless)
+	StorageReserved         = stats.Float64("storage/path_reserved_frac", "Fraction of reserved storage", stats.UnitDimensionless)
+	StorageLimitUsed        = stats.Float64("storage/path_limit_used_frac", "Fraction of used optional storage limit", stats.UnitDimensionless)
+	StorageCapacityBytes    = stats.Int64("storage/path_capacity_bytes", "storage path capacity", stats.UnitBytes)
+	StorageFSAvailableBytes = stats.Int64("storage/path_fs_available_bytes", "filesystem available storage bytes", stats.UnitBytes)
+	StorageAvailableBytes   = stats.Int64("storage/path_available_bytes", "available storage bytes", stats.UnitBytes)
+	StorageReservedBytes    = stats.Int64("storage/path_reserved_bytes", "reserved storage bytes", stats.UnitBytes)
+	StorageLimitUsedBytes   = stats.Int64("storage/path_limit_used_bytes", "used optional storage limit bytes", stats.UnitBytes)
+	StorageLimitMaxBytes    = stats.Int64("storage/path_limit_max_bytes", "optional storage limit", stats.UnitBytes)
 
 	// splitstore
 	SplitstoreMiss                  = stats.Int64("splitstore/miss", "Number of misses in hotstre access", stats.UnitDimensionless)
@@ -296,6 +308,56 @@ var (
 		Aggregation: workMillisecondsDistribution,
 		TagKeys:     []tag.Key{TaskType, WorkerHostname},
 	}
+	StorageFSAvailableView = &view.View{
+		Measure:     StorageFSAvailable,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
+	StorageAvailableView = &view.View{
+		Measure:     StorageAvailable,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
+	StorageReservedView = &view.View{
+		Measure:     StorageReserved,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
+	StorageLimitUsedView = &view.View{
+		Measure:     StorageLimitUsed,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
+	StorageCapacityBytesView = &view.View{
+		Measure:     StorageCapacityBytes,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
+	StorageFSAvailableBytesView = &view.View{
+		Measure:     StorageFSAvailableBytes,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
+	StorageAvailableBytesView = &view.View{
+		Measure:     StorageAvailableBytes,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
+	StorageReservedBytesView = &view.View{
+		Measure:     StorageReservedBytes,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
+	StorageLimitUsedBytesView = &view.View{
+		Measure:     StorageLimitUsedBytes,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
+	StorageLimitMaxBytesView = &view.View{
+		Measure:     StorageLimitMaxBytes,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
 
 	// splitstore
 	SplitstoreMissView = &view.View{
@@ -379,6 +441,14 @@ var MinerNodeViews = append([]*view.View{
 	WorkerCallsReturnedCountView,
 	WorkerUntrackedCallsReturnedView,
 	WorkerCallsReturnedDurationView,
+	StorageFSAvailableView,
+	StorageAvailableView,
+	StorageReservedView,
+	StorageLimitUsedView,
+	StorageFSAvailableBytesView,
+	StorageAvailableBytesView,
+	StorageReservedBytesView,
+	StorageLimitUsedBytesView,
 }, DefaultViews...)
 
 // SinceInMilliseconds returns the duration of time since the provide time as a float64.
