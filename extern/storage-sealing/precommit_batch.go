@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -33,6 +35,7 @@ type PreCommitBatcherApi interface {
 	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
 	ChainBaseFee(context.Context, TipSetToken) (abi.TokenAmount, error)
+	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
 }
 
 type preCommitEntry struct {
@@ -187,27 +190,31 @@ func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBat
 		return nil, nil
 	}
 
+	tok, _, err := b.api.ChainHead(b.mctx)
+	if err != nil {
+		return nil, err
+	}
+
+	bf, err := b.api.ChainBaseFee(b.mctx, tok)
+	if err != nil {
+		return nil, xerrors.Errorf("couldn't get base fee: %w", err)
+	}
+
+	// TODO: Drop this once nv14 has come and gone
+	nv, err := b.api.StateNetworkVersion(b.mctx, tok)
+	if err != nil {
+		return nil, xerrors.Errorf("couldn't get network version: %w", err)
+	}
+
 	individual := false
-	if !cfg.BatchPreCommitAboveBaseFee.Equals(big.Zero()) {
-		tok, _, err := b.api.ChainHead(b.mctx)
-		if err != nil {
-			return nil, err
-		}
-
-		bf, err := b.api.ChainBaseFee(b.mctx, tok)
-		if err != nil {
-			return nil, xerrors.Errorf("couldn't get base fee: %w", err)
-		}
-
-		if bf.LessThan(cfg.BatchPreCommitAboveBaseFee) { // todo: only enable after nv14?
-			individual = true
-		}
+	if !cfg.BatchPreCommitAboveBaseFee.Equals(big.Zero()) && bf.LessThan(cfg.BatchPreCommitAboveBaseFee) && nv >= network.Version14 {
+		individual = true
 	}
 
 	// todo support multiple batches
 	var res []sealiface.PreCommitBatchRes
 	if !individual {
-		res, err = b.processBatch(cfg)
+		res, err = b.processBatch(cfg, tok, bf, nv)
 	} else {
 		res, err = b.processIndividually(cfg)
 	}
@@ -310,7 +317,7 @@ func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi miner.MinerInf
 	return mcid, nil
 }
 
-func (b *PreCommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.PreCommitBatchRes, error) {
+func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tok TipSetToken, bf abi.TokenAmount, nv network.Version) ([]sealiface.PreCommitBatchRes, error) {
 	params := miner5.PreCommitSectorBatchParams{}
 	deposit := big.Zero()
 	var res sealiface.PreCommitBatchRes
@@ -326,11 +333,6 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.PreCo
 		deposit = big.Add(deposit, p.deposit)
 	}
 
-	deposit, err := collateralSendAmount(b.mctx, b.api, b.maddr, cfg, deposit)
-	if err != nil {
-		return []sealiface.PreCommitBatchRes{res}, err
-	}
-
 	enc := new(bytes.Buffer)
 	if err := params.MarshalCBOR(enc); err != nil {
 		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("couldn't serialize PreCommitSectorBatchParams: %w", err)
@@ -342,14 +344,29 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.PreCo
 	}
 
 	maxFee := b.feeCfg.MaxPreCommitBatchGasFee.FeeForSectors(len(params.Sectors))
-	goodFunds := big.Add(deposit, maxFee)
+
+	aggFeeRaw, err := policy.AggregatePreCommitNetworkFee(nv, len(params.Sectors), bf)
+	if err != nil {
+		log.Errorf("getting aggregate precommit network fee: %s", err)
+		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("getting aggregate precommit network fee: %s", err)
+	}
+
+	aggFee := big.Div(big.Mul(aggFeeRaw, aggFeeNum), aggFeeDen)
+
+	needFunds := big.Add(deposit, aggFee)
+	needFunds, err = collateralSendAmount(b.mctx, b.api, b.maddr, cfg, needFunds)
+	if err != nil {
+		return []sealiface.PreCommitBatchRes{res}, err
+	}
+
+	goodFunds := big.Add(maxFee, needFunds)
 
 	from, _, err := b.addrSel(b.mctx, mi, api.PreCommitAddr, goodFunds, deposit)
 	if err != nil {
 		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("no good address found: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.PreCommitSectorBatch, deposit, maxFee, enc.Bytes())
+	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.PreCommitSectorBatch, needFunds, maxFee, enc.Bytes())
 	if err != nil {
 		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("sending message failed: %w", err)
 	}

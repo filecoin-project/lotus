@@ -8,13 +8,16 @@ import (
 	"testing"
 	"time"
 
+	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
+
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -44,7 +47,7 @@ func TestPrecommitBatcher(t *testing.T) {
 		return t0123, big.Zero(), nil
 	}
 
-	maxBatch := miner5.PreCommitSectorBatchMaxSize
+	maxBatch := miner6.PreCommitSectorBatchMaxSize
 
 	cfg := func() (sealiface.Config, error) {
 		return sealiface.Config{
@@ -61,8 +64,8 @@ func TestPrecommitBatcher(t *testing.T) {
 			BatchPreCommitAboveBaseFee: big.NewInt(10000),
 
 			AggregateCommits: true,
-			MinCommitBatch:   miner5.MinAggregatedSectors,
-			MaxCommitBatch:   miner5.MaxAggregatedSectors,
+			MinCommitBatch:   miner6.MinAggregatedSectors,
+			MaxCommitBatch:   miner6.MaxAggregatedSectors,
 			CommitBatchWait:  24 * time.Hour,
 			CommitBatchSlack: 1 * time.Hour,
 
@@ -152,11 +155,12 @@ func TestPrecommitBatcher(t *testing.T) {
 		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *sealing.PreCommitBatcher) promise {
 			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
 			s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(big.NewInt(10001), nil)
+			s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version14, nil)
 
 			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(miner.MinerInfo{Owner: t0123, Worker: t0123}, nil)
 			s.EXPECT().SendMsg(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), funMatcher(func(i interface{}) bool {
 				b := i.([]byte)
-				var params miner5.PreCommitSectorBatchParams
+				var params miner6.PreCommitSectorBatchParams
 				require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b)))
 				for s, number := range expect {
 					require.Equal(t, number, params.Sectors[s].SectorNumber)
@@ -171,13 +175,14 @@ func TestPrecommitBatcher(t *testing.T) {
 		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *sealing.PreCommitBatcher) promise {
 			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
 			s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(big.NewInt(9999), nil)
+			s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version14, nil)
 
 			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(miner.MinerInfo{Owner: t0123, Worker: t0123}, nil)
 			for _, number := range expect {
 				numClone := number
 				s.EXPECT().SendMsg(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), funMatcher(func(i interface{}) bool {
 					b := i.([]byte)
-					var params miner5.PreCommitSectorParams
+					var params miner6.PreCommitSectorParams
 					require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b)))
 					require.Equal(t, numClone, params.SectorNumber)
 					return true

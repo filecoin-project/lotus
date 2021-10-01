@@ -195,7 +195,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 				if err != nil {
 					return xerrors.Errorf("failed to create genesis miner (publish deals): %w", err)
 				}
-
 				retval, err := market.DecodePublishStorageDealsReturn(ret, nv)
 				if err != nil {
 					return xerrors.Errorf("failed to create genesis miner (decoding published deals): %w", err)

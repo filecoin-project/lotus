@@ -474,7 +474,7 @@ func GetDeclarationsMax(nwVer network.Version) (int, error) {
 	}
 }
 
-func AggregateNetworkFee(nwVer network.Version, aggregateSize int, baseFee abi.TokenAmount) (abi.TokenAmount, error) {
+func AggregateProveCommitNetworkFee(nwVer network.Version, aggregateSize int, baseFee abi.TokenAmount) (abi.TokenAmount, error) {
 	v, err := actors.VersionForNetwork(nwVer)
 	if err != nil {
 		return big.Zero(), err
@@ -503,7 +503,43 @@ func AggregateNetworkFee(nwVer network.Version, aggregateSize int, baseFee abi.T
 
 	case actors.Version6:
 
-		return miner6.AggregateNetworkFee(aggregateSize, baseFee), nil
+		return miner6.AggregateProveCommitNetworkFee(aggregateSize, baseFee), nil
+
+	default:
+		return big.Zero(), xerrors.Errorf("unsupported network version")
+	}
+}
+
+func AggregatePreCommitNetworkFee(nwVer network.Version, aggregateSize int, baseFee abi.TokenAmount) (abi.TokenAmount, error) {
+	v, err := actors.VersionForNetwork(nwVer)
+	if err != nil {
+		return big.Zero(), err
+	}
+	switch v {
+
+	case actors.Version0:
+
+		return big.Zero(), nil
+
+	case actors.Version2:
+
+		return big.Zero(), nil
+
+	case actors.Version3:
+
+		return big.Zero(), nil
+
+	case actors.Version4:
+
+		return big.Zero(), nil
+
+	case actors.Version5:
+
+		return big.Zero(), nil
+
+	case actors.Version6:
+
+		return miner6.AggregatePreCommitNetworkFee(aggregateSize, baseFee), nil
 
 	default:
 		return big.Zero(), xerrors.Errorf("unsupported network version")
