@@ -9,6 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"go.uber.org/fx"
 
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -20,7 +21,14 @@ func Graphsync(parallelTransfersForStorage uint64, parallelTransfersForRetrieval
 		graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
 		lsys := storeutil.LinkSystemForBlockstore(clientBs)
 
-		gs := graphsyncimpl.New(helpers.LifecycleCtx(mctx, lc), graphsyncNetwork, lsys, graphsyncimpl.RejectAllRequestsByDefault(), graphsyncimpl.MaxInProgressIncomingRequests(parallelTransfersForStorage), graphsyncimpl.MaxInProgressOutgoingRequests(parallelTransfersForRetrieval))
+		gs := graphsyncimpl.New(helpers.LifecycleCtx(mctx, lc),
+			graphsyncNetwork,
+			lsys,
+			graphsyncimpl.RejectAllRequestsByDefault(),
+			graphsyncimpl.MaxInProgressIncomingRequests(parallelTransfersForStorage),
+			graphsyncimpl.MaxInProgressOutgoingRequests(parallelTransfersForRetrieval),
+			graphsyncimpl.MaxLinksPerIncomingRequests(config.MaxTraversalLinks),
+			graphsyncimpl.MaxLinksPerOutgoingRequests(config.MaxTraversalLinks))
 		chainLinkSystem := storeutil.LinkSystemForBlockstore(chainBs)
 		err := gs.RegisterPersistenceOption("chainstore", chainLinkSystem)
 		if err != nil {

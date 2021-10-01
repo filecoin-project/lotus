@@ -36,7 +36,7 @@ require (
 	github.com/filecoin-project/go-data-transfer v1.10.1
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
-	github.com/filecoin-project/go-fil-markets v1.12.0
+	github.com/filecoin-project/go-fil-markets v1.12.1-0.20211001234640-53b12f3d08e5
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-padreader v0.0.0-20210723183308-812a16dc01b1
 	github.com/filecoin-project/go-paramfetch v0.0.2
@@ -97,9 +97,9 @@ require (
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.6
 	github.com/ipfs/interface-go-ipfs-core v0.4.0
-	github.com/ipld/go-car v0.3.1-0.20210601190600-f512dac51e8e
+	github.com/ipld/go-car v0.3.2-0.20211001225732-32d0d9933823
 	github.com/ipld/go-car/v2 v2.0.3-0.20210811121346-c514a30114d7
-	github.com/ipld/go-ipld-prime v0.12.3-0.20210929125341-05d5528bd84e
+	github.com/ipld/go-ipld-prime v0.12.3-0.20210930132912-0b3aef3ca569
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/libp2p/go-eventbus v0.2.1
