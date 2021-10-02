@@ -6,6 +6,7 @@ package build
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
@@ -15,6 +16,8 @@ import (
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }
+
+const GenesisNetworkVersion = network.Version0
 
 const BootstrappersFile = "calibnet.pi"
 const GenesisFile = "calibnet.car"

@@ -112,7 +112,7 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 	stateMigrations := make(map[abi.ChainEpoch]*migration, len(us))
 	expensiveUpgrades := make(map[abi.ChainEpoch]struct{}, len(us))
 	var networkVersions []versionSpec
-	lastVersion := network.Version0
+	lastVersion := build.GenesisNetworkVersion
 	if len(us) > 0 {
 		// If we have any upgrades, process them and create a version
 		// schedule.
