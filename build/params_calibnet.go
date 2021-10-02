@@ -53,7 +53,7 @@ const UpgradeTurboHeight = 390
 
 const UpgradeHyperdriveHeight = 420
 
-const UpgradeChocolateHeight = 999999999
+const UpgradeChocolateHeight = 312746
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(32 << 30))
