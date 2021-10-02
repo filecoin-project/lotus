@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 
@@ -19,6 +20,8 @@ import (
 
 const BootstrappersFile = "interopnet.pi"
 const GenesisFile = "interopnet.car"
+
+const GenesisNetworkVersion = network.Version13
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 

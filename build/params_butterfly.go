@@ -6,6 +6,7 @@ package build
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
@@ -15,6 +16,8 @@ import (
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }
+
+const GenesisNetworkVersion = network.Version13
 
 const BootstrappersFile = "butterflynet.pi"
 const GenesisFile = "butterflynet.car"
@@ -38,7 +41,7 @@ const UpgradeTrustHeight = -13
 const UpgradeNorwegianHeight = -14
 const UpgradeTurboHeight = -15
 const UpgradeHyperdriveHeight = -16
-const UpgradeChocolateHeight = 3950
+const UpgradeChocolateHeight = 6360
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2 << 30))

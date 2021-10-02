@@ -10,12 +10,15 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 )
 
 const BootstrappersFile = ""
 const GenesisFile = ""
+
+const GenesisNetworkVersion = network.Version14
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 

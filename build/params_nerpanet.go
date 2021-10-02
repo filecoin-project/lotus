@@ -5,6 +5,7 @@ package build
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/ipfs/go-cid"
 
@@ -15,6 +16,8 @@ import (
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }
+
+const GenesisNetworkVersion = network.Version0
 
 const BootstrappersFile = "nerpanet.pi"
 const GenesisFile = "nerpanet.car"
