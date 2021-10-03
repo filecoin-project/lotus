@@ -475,6 +475,7 @@ func (sw *schedWorker) startProcessingTask(req *workerRequest) error {
 			case sw.taskDone <- struct{}{}:
 			case <-sh.closing:
 				log.Warnf("scheduler closed while sending response (prepare error: %+v)", err)
+			default: // there is a notification pending already
 			}
 
 			select {
@@ -496,6 +497,7 @@ func (sw *schedWorker) startProcessingTask(req *workerRequest) error {
 			select {
 			case sw.taskDone <- struct{}{}:
 			case <-sh.closing:
+			default: // there is a notification pending already
 			}
 
 			// Do the work!
@@ -550,6 +552,7 @@ func (sw *schedWorker) startProcessingReadyTask(req *workerRequest) error {
 		case sw.taskDone <- struct{}{}:
 		case <-sh.closing:
 			log.Warnf("scheduler closed while sending response (prepare error: %+v)", err)
+		default: // there is a notification pending already
 		}
 
 		w.lk.Unlock()
