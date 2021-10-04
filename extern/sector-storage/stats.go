@@ -15,6 +15,7 @@ func (m *Manager) WorkerStats() map[uuid.UUID]storiface.WorkerStats {
 	out := map[uuid.UUID]storiface.WorkerStats{}
 
 	for id, handle := range m.sched.workers {
+		handle.lk.Lock()
 		out[uuid.UUID(id)] = storiface.WorkerStats{
 			Info:    handle.info,
 			Enabled: handle.enabled,
@@ -24,6 +25,7 @@ func (m *Manager) WorkerStats() map[uuid.UUID]storiface.WorkerStats {
 			GpuUsed:    handle.active.gpuUsed,
 			CpuUse:     handle.active.cpuUse,
 		}
+		handle.lk.Unlock()
 	}
 
 	return out

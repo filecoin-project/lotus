@@ -20,7 +20,7 @@ func Graphsync(parallelTransfers uint64) func(mctx helpers.MetricsCtx, lc fx.Lif
 		graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
 		lsys := storeutil.LinkSystemForBlockstore(clientBs)
 
-		gs := graphsyncimpl.New(helpers.LifecycleCtx(mctx, lc), graphsyncNetwork, lsys, graphsyncimpl.RejectAllRequestsByDefault(), graphsyncimpl.MaxInProgressRequests(parallelTransfers))
+		gs := graphsyncimpl.New(helpers.LifecycleCtx(mctx, lc), graphsyncNetwork, lsys, graphsyncimpl.RejectAllRequestsByDefault(), graphsyncimpl.MaxInProgressIncomingRequests(parallelTransfers))
 		chainLinkSystem := storeutil.LinkSystemForBlockstore(chainBs)
 		err := gs.RegisterPersistenceOption("chainstore", chainLinkSystem)
 		if err != nil {

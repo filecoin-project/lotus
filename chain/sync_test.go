@@ -1057,7 +1057,7 @@ func TestDrandNull(t *testing.T) {
 		t.Fatal("didn't inject nulls as expected")
 	}
 
-	rand, err := tu.nds[p0].ChainGetRandomnessFromBeacon(tu.ctx, afterNull.TipSet().Key(), pers, nullHeight, entropy)
+	rand, err := tu.nds[p0].StateGetRandomnessFromBeacon(tu.ctx, pers, nullHeight, entropy, afterNull.TipSet().Key())
 	require.NoError(t, err)
 
 	// calculate the expected randomness based on the beacon BEFORE the null
@@ -1081,7 +1081,7 @@ func TestDrandNull(t *testing.T) {
 		t.Fatal("didn't inject nulls as expected")
 	}
 
-	rand0, err := tu.nds[p0].ChainGetRandomnessFromBeacon(tu.ctx, afterNull.TipSet().Key(), pers, nullHeight, entropy)
+	rand0, err := tu.nds[p0].StateGetRandomnessFromBeacon(tu.ctx, pers, nullHeight, entropy, afterNull.TipSet().Key())
 	require.NoError(t, err)
 
 	// calculate the expected randomness based on the beacon AFTER the null
@@ -1101,7 +1101,7 @@ func TestDrandNull(t *testing.T) {
 	require.Equal(tu.t, p1Head.Key(), afterNull.TipSet().Key())
 
 	// Yes, p1 sources the same randomness as p0
-	rand1, err := tu.nds[p1].ChainGetRandomnessFromBeacon(tu.ctx, afterNull.TipSet().Key(), pers, nullHeight, entropy)
+	rand1, err := tu.nds[p1].StateGetRandomnessFromBeacon(tu.ctx, pers, nullHeight, entropy, afterNull.TipSet().Key())
 	require.NoError(t, err)
 	require.Equal(t, rand0, rand1)
 

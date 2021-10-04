@@ -21,7 +21,7 @@ import (
 
 	influxdb "github.com/kpacha/opencensus-influxdb"
 	ma "github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr-net"
+	manet "github.com/multiformats/go-multiaddr/net"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 )

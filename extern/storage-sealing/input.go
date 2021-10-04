@@ -274,6 +274,21 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 		return api.SectorOffset{}, xerrors.Errorf("getting proposal CID: %w", err)
 	}
 
+	cfg, err := m.getConfig()
+	if err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("getting config: %w", err)
+	}
+
+	_, head, err := m.Api.ChainHead(ctx)
+	if err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("couldnt get chain head: %w", err)
+	}
+	if head+cfg.StartEpochSealingBuffer > deal.DealProposal.StartEpoch {
+		return api.SectorOffset{}, xerrors.Errorf(
+			"cannot add piece for deal with piece CID %s: current epoch %d has passed deal proposal start epoch %d",
+			deal.DealProposal.PieceCID, head, deal.DealProposal.StartEpoch)
+	}
+
 	m.inputLk.Lock()
 	if _, exist := m.pendingPieces[proposalCID(deal)]; exist {
 		m.inputLk.Unlock()

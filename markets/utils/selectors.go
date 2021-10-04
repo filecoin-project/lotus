@@ -28,15 +28,13 @@ func TraverseDag(
 	visitCallback traversal.AdvVisitFn,
 ) error {
 
-	var parsedSelector selector.Selector
 	if optionalSelector == nil {
-		parsedSelector = selectorparse.CommonSelector_MatchAllRecursively
-	} else {
-		var err error
-		parsedSelector, err = selector.ParseSelector(optionalSelector)
-		if err != nil {
-			return err
-		}
+		optionalSelector = selectorparse.CommonSelector_MatchAllRecursively
+	}
+
+	parsedSelector, err := selector.ParseSelector(optionalSelector)
+	if err != nil {
+		return err
 	}
 
 	// not sure what this is for TBH: we also provide ctx in  &traversal.Config{}

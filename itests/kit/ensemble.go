@@ -475,7 +475,7 @@ func (n *Ensemble) Start() *Ensemble {
 		ks, err := lr.KeyStore()
 		require.NoError(n.t, err)
 
-		pk, err := m.Libp2p.PrivKey.Bytes()
+		pk, err := libp2pcrypto.MarshalPrivateKey(m.Libp2p.PrivKey)
 		require.NoError(n.t, err)
 
 		err = ks.Put("libp2p-host", types.KeyInfo{

@@ -59,10 +59,11 @@ type DealPublisher struct {
 	publishPeriod         time.Duration
 	publishSpec           *api.MessageSendSpec
 
-	lk                     sync.Mutex
-	pending                []*pendingDeal
-	cancelWaitForMoreDeals context.CancelFunc
-	publishPeriodStart     time.Time
+	lk                      sync.Mutex
+	pending                 []*pendingDeal
+	cancelWaitForMoreDeals  context.CancelFunc
+	publishPeriodStart      time.Time
+	startEpochSealingBuffer abi.ChainEpoch
 }
 
 // A deal that is queued to be published
@@ -93,6 +94,8 @@ type PublishMsgConfig struct {
 	// The maximum number of deals to include in a single PublishStorageDeals
 	// message
 	MaxDealsPerMsg uint64
+	// Minimum start epoch buffer to give time for sealing of sector with deal
+	StartEpochSealingBuffer uint64
 }
 
 func NewDealPublisher(
@@ -124,13 +127,14 @@ func newDealPublisher(
 ) *DealPublisher {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &DealPublisher{
-		api:                   dpapi,
-		as:                    as,
-		ctx:                   ctx,
-		Shutdown:              cancel,
-		maxDealsPerPublishMsg: publishMsgCfg.MaxDealsPerMsg,
-		publishPeriod:         publishMsgCfg.Period,
-		publishSpec:           publishSpec,
+		api:                     dpapi,
+		as:                      as,
+		ctx:                     ctx,
+		Shutdown:                cancel,
+		maxDealsPerPublishMsg:   publishMsgCfg.MaxDealsPerMsg,
+		publishPeriod:           publishMsgCfg.Period,
+		startEpochSealingBuffer: abi.ChainEpoch(publishMsgCfg.StartEpochSealingBuffer),
+		publishSpec:             publishSpec,
 	}
 }
 
@@ -329,7 +333,7 @@ func (p *DealPublisher) validateDeal(deal market2.ClientDealProposal) error {
 	if err != nil {
 		return err
 	}
-	if head.Height() > deal.Proposal.StartEpoch {
+	if head.Height()+p.startEpochSealingBuffer > deal.Proposal.StartEpoch {
 		return xerrors.Errorf(
 			"cannot publish deal with piece CID %s: current epoch %d has passed deal proposal start epoch %d",
 			deal.Proposal.PieceCID, head.Height(), deal.Proposal.StartEpoch)

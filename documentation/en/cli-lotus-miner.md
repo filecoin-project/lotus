@@ -41,7 +41,7 @@ COMMANDS:
      sealing  interact with sealing pipeline
 
 GLOBAL OPTIONS:
-   --actor value, -a value                  specify other actor to check state for (read only)
+   --actor value, -a value                  specify other actor to query / manipulate
    --color                                  use color in display output (default: depends on output being a TTY)
    --miner-repo value, --storagerepo value  Specify miner repo path. flag(storagerepo) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
    --markets-repo value                     Markets repo path [$LOTUS_MARKETS_PATH]
@@ -658,9 +658,10 @@ USAGE:
    lotus-miner storage-deals list [command options] [arguments...]
 
 OPTIONS:
-   --verbose, -v  (default: false)
-   --watch        watch deal updates in real-time, rather than a one time list (default: false)
-   --help, -h     show help (default: false)
+   --format value  output format of data, supported: table, json (default: "table")
+   --verbose, -v   (default: false)
+   --watch         watch deal updates in real-time, rather than a one time list (default: false)
+   --help, -h      show help (default: false)
    
 ```
 
