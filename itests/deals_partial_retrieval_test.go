@@ -25,12 +25,14 @@ import (
 // use the mainnet carfile as text fixture: it will always be here
 // https://dweb.link/ipfs/bafy2bzacecnamqgqmifpluoeldx7zzglxcljo6oja4vrmtj7432rphldpdmm2/8/1/8/1/0/1/0
 var (
-	sourceCar      = "../build/genesis/mainnet.car"
-	carRoot, _     = cid.Parse("bafy2bzacecnamqgqmifpluoeldx7zzglxcljo6oja4vrmtj7432rphldpdmm2")
-	carCommp, _    = cid.Parse("baga6ea4seaqmrivgzei3fmx5qxtppwankmtou6zvigyjaveu3z2zzwhysgzuina")
-	carPieceSize   = abi.PaddedPieceSize(2097152)
-	textSelector   = textselector.Expression("8/1/8/1/0/1/0")
-	expectedResult = "fil/1/storagepower"
+	sourceCar               = "../build/genesis/mainnet.car"
+	carRoot, _              = cid.Parse("bafy2bzacecnamqgqmifpluoeldx7zzglxcljo6oja4vrmtj7432rphldpdmm2")
+	carCommp, _             = cid.Parse("baga6ea4seaqmrivgzei3fmx5qxtppwankmtou6zvigyjaveu3z2zzwhysgzuina")
+	carPieceSize            = abi.PaddedPieceSize(2097152)
+	textSelector            = textselector.Expression("8/1/8/1/0/1/0")
+	textSelectorNonLink     = textselector.Expression("8/1/8/1/0/1")
+	textSelectorNonexistent = textselector.Expression("42")
+	expectedResult          = "fil/1/storagepower"
 )
 
 func TestPartialRetrieval(t *testing.T) {
@@ -121,6 +123,40 @@ func TestPartialRetrieval(t *testing.T) {
 			time.Sleep(time.Second)
 		}
 	}
+
+	// ensure non-existent paths fail
+	require.EqualError(
+		t,
+		testGenesisRetrieval(
+			ctx,
+			client,
+			api.RetrievalOrder{
+				FromLocalCAR:          sourceCar,
+				Root:                  carRoot,
+				DatamodelPathSelector: &textSelectorNonexistent,
+			},
+			&api.FileRef{},
+			nil,
+		),
+		fmt.Sprintf("retrieval failed: path selection '%s' does not match a node within %s", textSelectorNonexistent, carRoot),
+	)
+
+	// ensure non-boundary retrievals fail
+	require.EqualError(
+		t,
+		testGenesisRetrieval(
+			ctx,
+			client,
+			api.RetrievalOrder{
+				FromLocalCAR:          sourceCar,
+				Root:                  carRoot,
+				DatamodelPathSelector: &textSelectorNonLink,
+			},
+			&api.FileRef{},
+			nil,
+		),
+		fmt.Sprintf("retrieval failed: error while locating partial retrieval sub-root: unsupported selection path '%s' does not correspond to a node boundary (a.k.a. CID link)", textSelectorNonLink),
+	)
 }
 
 func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrder api.RetrievalOrder, retRef *api.FileRef, outFile *os.File) error {

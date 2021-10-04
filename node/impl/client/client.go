@@ -1039,22 +1039,28 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			selspec.Node(),
 			func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
 				if r == traversal.VisitReason_SelectionMatch {
+
+					if p.LastBlock.Path.String() != p.Path.String() {
+						return xerrors.Errorf("unsupported selection path '%s' does not correspond to a node boundary (a.k.a. CID link)", p.Path.String())
+					}
+
 					cidLnk, castOK := p.LastBlock.Link.(cidlink.Link)
 					if !castOK {
 						return xerrors.Errorf("cidlink cast unexpectedly failed on '%s'", p.LastBlock.Link.String())
 					}
+
 					root = cidLnk.Cid
 					subRootFound = true
 				}
 				return nil
 			},
 		); err != nil {
-			finish(xerrors.Errorf("Finding partial retrieval sub-root: %w", err))
+			finish(xerrors.Errorf("error while locating partial retrieval sub-root: %w", err))
 			return
 		}
 
 		if !subRootFound {
-			finish(xerrors.Errorf("Path selection '%s' does not match a node within %s", order.DatamodelPathSelector, root))
+			finish(xerrors.Errorf("path selection '%s' does not match a node within %s", *order.DatamodelPathSelector, root))
 			return
 		}
 	}
