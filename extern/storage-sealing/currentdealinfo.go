@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -20,6 +22,7 @@ type CurrentDealInfoAPI interface {
 	StateLookupID(context.Context, address.Address, TipSetToken) (address.Address, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, TipSetToken) (*api.MarketDeal, error)
 	StateSearchMsg(context.Context, cid.Cid) (*MsgLookup, error)
+	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
 }
 
 type CurrentDealInfo struct {
@@ -77,27 +80,38 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 		return dealID, nil, xerrors.Errorf("looking for publish deal message %s: non-ok exit code: %s", publishCid, lookup.Receipt.ExitCode)
 	}
 
-	var retval market.PublishStorageDealsReturn
-	if err := retval.UnmarshalCBOR(bytes.NewReader(lookup.Receipt.Return)); err != nil {
-		return dealID, nil, xerrors.Errorf("looking for publish deal message %s: unmarshalling message return: %w", publishCid, err)
+	nv, err := mgr.CDAPI.StateNetworkVersion(ctx, lookup.TipSetTok)
+	if err != nil {
+		return dealID, nil, xerrors.Errorf("getting network version: %w", err)
 	}
 
+	retval, err := market.DecodePublishStorageDealsReturn(lookup.Receipt.Return, nv)
+	if err != nil {
+		return dealID, nil, xerrors.Errorf("looking for publish deal message %s: decoding message return: %w", publishCid, err)
+	}
+
+	dealIDs, err := retval.DealIDs()
+	if err != nil {
+		return dealID, nil, xerrors.Errorf("looking for publish deal message %s: getting dealIDs: %w", publishCid, err)
+	}
+
+	// TODO: Can we delete this? We're well past the point when we first introduced the proposals into sealing deal info
 	// Previously, publish deals messages contained a single deal, and the
 	// deal proposal was not included in the sealing deal info.
 	// So check if the proposal is nil and check the number of deals published
 	// in the message.
 	if proposal == nil {
-		if len(retval.IDs) > 1 {
+		if len(dealIDs) > 1 {
 			return dealID, nil, xerrors.Errorf(
 				"getting deal ID from publish deal message %s: "+
 					"no deal proposal supplied but message return value has more than one deal (%d deals)",
-				publishCid, len(retval.IDs))
+				publishCid, len(dealIDs))
 		}
 
 		// There is a single deal in this publish message and no deal proposal
 		// was supplied, so we have nothing to compare against. Just assume
-		// the deal ID is correct.
-		return retval.IDs[0], lookup.TipSetTok, nil
+		// the deal ID is correct and that it was valid
+		return dealIDs[0], lookup.TipSetTok, nil
 	}
 
 	// Get the parameters to the publish deals message
@@ -129,13 +143,22 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 		return dealID, nil, xerrors.Errorf("could not find deal in publish deals message %s", publishCid)
 	}
 
-	if dealIdx >= len(retval.IDs) {
+	if dealIdx >= len(dealIDs) {
 		return dealID, nil, xerrors.Errorf(
 			"deal index %d out of bounds of deals (len %d) in publish deals message %s",
-			dealIdx, len(retval.IDs), publishCid)
+			dealIdx, len(dealIDs), publishCid)
 	}
 
-	return retval.IDs[dealIdx], lookup.TipSetTok, nil
+	valid, err := retval.IsDealValid(uint64(dealIdx))
+	if err != nil {
+		return dealID, nil, xerrors.Errorf("determining deal validity: %w", err)
+	}
+
+	if !valid {
+		return dealID, nil, xerrors.New("deal was invalid at publication")
+	}
+
+	return dealIDs[dealIdx], lookup.TipSetTok, nil
 }
 
 func (mgr *CurrentDealInfoManager) CheckDealEquality(ctx context.Context, tok TipSetToken, p1, p2 market.DealProposal) (bool, error) {
@@ -165,6 +188,7 @@ type CurrentDealInfoTskAPI interface {
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*api.MarketDeal, error)
 	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
+	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
 }
 
 type CurrentDealInfoAPIAdapter struct {
@@ -208,6 +232,15 @@ func (c *CurrentDealInfoAPIAdapter) StateSearchMsg(ctx context.Context, k cid.Ci
 		TipSetTok: wmsg.TipSet.Bytes(),
 		Height:    wmsg.Height,
 	}, nil
+}
+
+func (c *CurrentDealInfoAPIAdapter) StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error) {
+	tsk, err := types.TipSetKeyFromBytes(tok)
+	if err != nil {
+		return network.VersionMax, xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
+	}
+
+	return c.CurrentDealInfoTskAPI.StateNetworkVersion(ctx, tsk)
 }
 
 var _ CurrentDealInfoAPI = (*CurrentDealInfoAPIAdapter)(nil)

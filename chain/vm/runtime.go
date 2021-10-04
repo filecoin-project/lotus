@@ -17,6 +17,7 @@ import (
 	rtt "github.com/filecoin-project/go-state-types/rt"
 	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
+	rt6 "github.com/filecoin-project/specs-actors/v6/actors/runtime"
 	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	"go.opencensus.io/trace"
@@ -141,6 +142,7 @@ func (rt *Runtime) StorePut(x cbor.Marshaler) cid.Cid {
 
 var _ rt0.Runtime = (*Runtime)(nil)
 var _ rt5.Runtime = (*Runtime)(nil)
+var _ rt6.Runtime = (*Runtime)(nil)
 
 func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.ActorError) {
 	defer func() {
@@ -216,10 +218,11 @@ func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparat
 	var res []byte
 
 	rnv := rt.vm.ntwkVersion(rt.ctx, randEpoch)
+
 	if rnv >= network.Version13 {
-		res, err = rt.vm.rand.GetChainRandomnessLookingForward(rt.ctx, personalization, randEpoch, entropy)
+		res, err = rt.vm.rand.GetChainRandomnessV2(rt.ctx, personalization, randEpoch, entropy)
 	} else {
-		res, err = rt.vm.rand.GetChainRandomnessLookingBack(rt.ctx, personalization, randEpoch, entropy)
+		res, err = rt.vm.rand.GetChainRandomnessV1(rt.ctx, personalization, randEpoch, entropy)
 	}
 
 	if err != nil {
@@ -233,10 +236,12 @@ func (rt *Runtime) GetRandomnessFromBeacon(personalization crypto.DomainSeparati
 	var res []byte
 
 	rnv := rt.vm.ntwkVersion(rt.ctx, randEpoch)
-	if rnv >= network.Version13 {
-		res, err = rt.vm.rand.GetBeaconRandomnessLookingForward(rt.ctx, personalization, randEpoch, entropy)
+	if rnv >= network.Version14 {
+		res, err = rt.vm.rand.GetBeaconRandomnessV3(rt.ctx, personalization, randEpoch, entropy)
+	} else if rnv == network.Version13 {
+		res, err = rt.vm.rand.GetBeaconRandomnessV2(rt.ctx, personalization, randEpoch, entropy)
 	} else {
-		res, err = rt.vm.rand.GetBeaconRandomnessLookingBack(rt.ctx, personalization, randEpoch, entropy)
+		res, err = rt.vm.rand.GetBeaconRandomnessV1(rt.ctx, personalization, randEpoch, entropy)
 	}
 
 	if err != nil {
