@@ -5,15 +5,19 @@ package build
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/ipfs/go-cid"
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }
+
+const GenesisNetworkVersion = network.Version0
 
 const BootstrappersFile = "nerpanet.pi"
 const GenesisFile = "nerpanet.car"
@@ -45,6 +49,8 @@ const UpgradeNorwegianHeight = 201000
 const UpgradeTurboHeight = 203000
 const UpgradeHyperdriveHeight = 379178
 
+const UpgradeChocolateHeight = 999999999
+
 func init() {
 	// Minimum block production power is set to 4 TiB
 	// Rationale is to discourage small-scale miners from trying to take over the network
@@ -69,6 +75,9 @@ func init() {
 	Devnet = false
 
 	BuildType = BuildNerpanet
+
+	// To test out what this proposal would like on devnets / testnets: https://github.com/filecoin-project/FIPs/pull/190
+	miner6.FaultMaxAge = miner6.WPoStProvingPeriod * 42
 }
 
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)

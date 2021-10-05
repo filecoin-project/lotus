@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/filecoin-project/lotus/chain/rand"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -14,7 +16,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 )
@@ -74,7 +75,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 	vmopt := &vm.VMOpts{
 		StateBase:      bstate,
 		Epoch:          pheight + 1,
-		Rand:           store.NewChainRand(sm.cs, ts.Cids()),
+		Rand:           rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon),
 		Bstore:         sm.cs.StateBlockstore(),
 		Actors:         sm.tsExec.NewActorRegistry(),
 		Syscalls:       sm.Syscalls,
@@ -185,7 +186,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
 
-	r := store.NewChainRand(sm.cs, ts.Cids())
+	r := rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon)
 
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
