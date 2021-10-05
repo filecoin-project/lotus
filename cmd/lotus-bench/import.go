@@ -257,7 +257,8 @@ var importBenchCmd = &cli.Command{
 		cs := store.NewChainStore(bs, bs, metadataDs, filcns.Weight, nil)
 		defer cs.Close() //nolint:errcheck
 
-		stm, err := stmgr.NewStateManager(cs, filcns.NewTipSetExecutor(), vm.Syscalls(verifier), filcns.DefaultUpgradeSchedule())
+		// TODO: We need to supply the actual beacon after v14
+		stm, err := stmgr.NewStateManager(cs, filcns.NewTipSetExecutor(), vm.Syscalls(verifier), filcns.DefaultUpgradeSchedule(), nil)
 		if err != nil {
 			return err
 		}

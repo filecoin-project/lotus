@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync/atomic"
 
+	"github.com/filecoin-project/lotus/chain/rand"
+
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
@@ -19,6 +21,7 @@ import (
 	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
 	exported4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/exported"
 	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
+	exported6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/exported"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -42,6 +45,7 @@ func NewActorRegistry() *vm.ActorRegistry {
 	inv.Register(vm.ActorsVersionPredicate(actors.Version3), exported3.BuiltinActors()...)
 	inv.Register(vm.ActorsVersionPredicate(actors.Version4), exported4.BuiltinActors()...)
 	inv.Register(vm.ActorsVersionPredicate(actors.Version5), exported5.BuiltinActors()...)
+	inv.Register(vm.ActorsVersionPredicate(actors.Version6), exported6.BuiltinActors()...)
 
 	return inv
 }
@@ -278,7 +282,7 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context, sm *stmgr.StateManag
 		parentEpoch = parent.Height
 	}
 
-	r := store.NewChainRand(sm.ChainStore(), ts.Cids())
+	r := rand.NewStateRand(sm.ChainStore(), ts.Cids(), sm.Beacon())
 
 	blkmsgs, err := sm.ChainStore().BlockMsgsForTipset(ts)
 	if err != nil {

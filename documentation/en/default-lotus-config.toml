@@ -108,11 +108,18 @@
   #IpfsUseForRetrieval = false
 
   # The maximum number of simultaneous data transfers between the client
-  # and storage providers
+  # and storage providers for storage deals
   #
   # type: uint64
-  # env var: LOTUS_CLIENT_SIMULTANEOUSTRANSFERS
-  #SimultaneousTransfers = 20
+  # env var: LOTUS_CLIENT_SIMULTANEOUSTRANSFERSFORSTORAGE
+  #SimultaneousTransfersForStorage = 20
+
+  # The maximum number of simultaneous data transfers between the client
+  # and storage providers for retrieval deals
+  #
+  # type: uint64
+  # env var: LOTUS_CLIENT_SIMULTANEOUSTRANSFERSFORRETRIEVAL
+  #SimultaneousTransfersForRetrieval = 20
 
 
 [Wallet]

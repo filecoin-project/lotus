@@ -201,11 +201,17 @@
   # env var: LOTUS_DEALMAKING_MAXSTAGINGDEALSBYTES
   #MaxStagingDealsBytes = 0
 
-  # The maximum number of parallel online data transfers (storage+retrieval)
+  # The maximum number of parallel online data transfers for storage deals
   #
   # type: uint64
-  # env var: LOTUS_DEALMAKING_SIMULTANEOUSTRANSFERS
-  #SimultaneousTransfers = 20
+  # env var: LOTUS_DEALMAKING_SIMULTANEOUSTRANSFERSFORSTORAGE
+  #SimultaneousTransfersForStorage = 20
+
+  # The maximum number of parallel online data transfers for retrieval deals
+  #
+  # type: uint64
+  # env var: LOTUS_DEALMAKING_SIMULTANEOUSTRANSFERSFORRETRIEVAL
+  #SimultaneousTransfersForRetrieval = 20
 
   # Minimum start epoch buffer to give time for sealing of sector with deal.
   #
@@ -361,12 +367,19 @@
   # env var: LOTUS_SEALING_COMMITBATCHSLACK
   #CommitBatchSlack = "1h0m0s"
 
+  # network BaseFee below which to stop doing precommit batching, instead
+  # sending precommit messages to the chain individually
+  #
+  # type: types.FIL
+  # env var: LOTUS_SEALING_BATCHPRECOMMITABOVEBASEFEE
+  #BatchPreCommitAboveBaseFee = "0.00000000032 FIL"
+
   # network BaseFee below which to stop doing commit aggregation, instead
   # submitting proofs to the chain individually
   #
   # type: types.FIL
   # env var: LOTUS_SEALING_AGGREGATEABOVEBASEFEE
-  #AggregateAboveBaseFee = "0.00000000015 FIL"
+  #AggregateAboveBaseFee = "0.00000000032 FIL"
 
   # type: uint64
   # env var: LOTUS_SEALING_TERMINATEBATCHMAX

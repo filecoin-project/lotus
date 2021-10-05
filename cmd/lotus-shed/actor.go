@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 
@@ -43,6 +44,11 @@ var actorWithdrawCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "actor",
 			Usage: "specify the address of miner actor",
+		},
+		&cli.IntFlag{
+			Name:  "confidence",
+			Usage: "number of block confirmations to wait for",
+			Value: int(build.MessageConfidence),
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -119,6 +125,28 @@ var actorWithdrawCmd = &cli.Command{
 		}
 
 		fmt.Printf("Requested rewards withdrawal in message %s\n", smsg.Cid())
+
+		// wait for it to get mined into a block
+		wait, err := nodeAPI.StateWaitMsg(ctx, smsg.Cid(), uint64(cctx.Int("confidence")))
+		if err != nil {
+			return err
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			fmt.Println(cctx.App.Writer, "withdrawal failed!")
+			return err
+		}
+
+		var withdrawn abi.TokenAmount
+		if err := withdrawn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
+			return err
+		}
+
+		fmt.Printf("Successfully withdrew %s FIL\n", withdrawn)
+		if withdrawn != amount {
+			fmt.Printf("Note that this is less than the requested amount of %s FIL\n", amount)
+		}
 
 		return nil
 	},
