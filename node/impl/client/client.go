@@ -54,6 +54,7 @@ import (
 	"github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
 
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 
 	"github.com/filecoin-project/lotus/api"
@@ -981,6 +982,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 				Root:     order.Root,
 				Selector: sel,
 			}},
+			car.MaxTraversalLinks(config.MaxTraversalLinks),
 		).Write(f)
 		if err != nil {
 			finish(err)
@@ -1232,7 +1234,11 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 	allSelector := ssb.ExploreRecursive(
 		selector.RecursionLimitNone(),
 		ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
-	sc := car.NewSelectiveCar(ctx, fs, []car.Dag{{Root: root, Selector: allSelector}})
+	sc := car.NewSelectiveCar(ctx,
+		fs,
+		[]car.Dag{{Root: root, Selector: allSelector}},
+		car.MaxTraversalLinks(config.MaxTraversalLinks),
+	)
 	f, err := os.Create(outputPath)
 	if err != nil {
 		return err

@@ -201,11 +201,17 @@
   # env var: LOTUS_DEALMAKING_MAXSTAGINGDEALSBYTES
   #MaxStagingDealsBytes = 0
 
-  # The maximum number of parallel online data transfers (storage+retrieval)
+  # The maximum number of parallel online data transfers for storage deals
   #
   # type: uint64
-  # env var: LOTUS_DEALMAKING_SIMULTANEOUSTRANSFERS
-  #SimultaneousTransfers = 20
+  # env var: LOTUS_DEALMAKING_SIMULTANEOUSTRANSFERSFORSTORAGE
+  #SimultaneousTransfersForStorage = 20
+
+  # The maximum number of parallel online data transfers for retrieval deals
+  #
+  # type: uint64
+  # env var: LOTUS_DEALMAKING_SIMULTANEOUSTRANSFERSFORRETRIEVAL
+  #SimultaneousTransfersForRetrieval = 20
 
   # Minimum start epoch buffer to give time for sealing of sector with deal.
   #
