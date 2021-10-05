@@ -8,8 +8,8 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/drand/drand v1.2.1
 	github.com/filecoin-project/go-address v0.0.5
-	github.com/filecoin-project/go-data-transfer v1.10.1
-	github.com/filecoin-project/go-fil-markets v1.12.0
+	github.com/filecoin-project/go-data-transfer v1.11.1
+	github.com/filecoin-project/go-fil-markets v1.13.1
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-state-types v0.1.1-0.20210915140513-d354ccf10379
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
@@ -26,7 +26,7 @@ require (
 	github.com/ipfs/go-log/v2 v2.3.0
 	github.com/ipfs/go-merkledag v0.3.2
 	github.com/ipfs/go-unixfs v0.2.6
-	github.com/ipld/go-car v0.3.1-0.20210601190600-f512dac51e8e
+	github.com/ipld/go-car v0.3.2-0.20211001225732-32d0d9933823
 	github.com/kpacha/opencensus-influxdb v0.0.0-20181102202715-663e2683a27c
 	github.com/libp2p/go-libp2p v0.14.2
 	github.com/libp2p/go-libp2p-core v0.8.6

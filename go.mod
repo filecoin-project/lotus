@@ -33,10 +33,10 @@ require (
 	github.com/filecoin-project/go-cbor-util v0.0.0-20191219014500-08c40a1e63a2
 	github.com/filecoin-project/go-commp-utils v0.1.1-0.20210427191551-70bf140d31c7
 	github.com/filecoin-project/go-crypto v0.0.0-20191218222705-effae4ea9f03
-	github.com/filecoin-project/go-data-transfer v1.10.1
+	github.com/filecoin-project/go-data-transfer v1.11.1
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
-	github.com/filecoin-project/go-fil-markets v1.12.0
+	github.com/filecoin-project/go-fil-markets v1.13.1
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
 	github.com/filecoin-project/go-padreader v0.0.0-20210723183308-812a16dc01b1
 	github.com/filecoin-project/go-paramfetch v0.0.2
@@ -79,7 +79,7 @@ require (
 	github.com/ipfs/go-ds-pebble v0.0.2-0.20200921225637-ce220f8ac459
 	github.com/ipfs/go-filestore v1.0.0
 	github.com/ipfs/go-fs-lock v0.0.6
-	github.com/ipfs/go-graphsync v0.10.0-rc3
+	github.com/ipfs/go-graphsync v0.10.0
 	github.com/ipfs/go-ipfs-blockstore v1.0.4
 	github.com/ipfs/go-ipfs-blocksutil v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.5
@@ -87,7 +87,7 @@ require (
 	github.com/ipfs/go-ipfs-exchange-interface v0.0.1
 	github.com/ipfs/go-ipfs-exchange-offline v0.0.1
 	github.com/ipfs/go-ipfs-files v0.0.8
-	github.com/ipfs/go-ipfs-http-client v0.0.5
+	github.com/ipfs/go-ipfs-http-client v0.0.6
 	github.com/ipfs/go-ipfs-routing v0.1.0
 	github.com/ipfs/go-ipfs-util v0.0.2
 	github.com/ipfs/go-ipld-cbor v0.0.5
@@ -98,10 +98,10 @@ require (
 	github.com/ipfs/go-metrics-prometheus v0.0.2
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.6
-	github.com/ipfs/interface-go-ipfs-core v0.2.3
-	github.com/ipld/go-car v0.3.1-0.20210601190600-f512dac51e8e
+	github.com/ipfs/interface-go-ipfs-core v0.4.0
+	github.com/ipld/go-car v0.3.2-0.20211001225732-32d0d9933823
 	github.com/ipld/go-car/v2 v2.0.3-0.20210811121346-c514a30114d7
-	github.com/ipld/go-ipld-prime v0.12.3-0.20210929125341-05d5528bd84e
+	github.com/ipld/go-ipld-prime v0.12.3
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/libp2p/go-eventbus v0.2.1
