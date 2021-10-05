@@ -810,6 +810,11 @@ workflows:
           target: "./itests/deals_padding_test.go"
       
       - test:
+          name: test-itest-deals_partial_retrieval
+          suite: itest-deals_partial_retrieval
+          target: "./itests/deals_partial_retrieval_test.go"
+      
+      - test:
           name: test-itest-deals_power
           suite: itest-deals_power
           target: "./itests/deals_power_test.go"
