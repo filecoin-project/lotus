@@ -10,11 +10,15 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 )
 
 const BootstrappersFile = ""
 const GenesisFile = ""
+
+const GenesisNetworkVersion = network.Version14
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
@@ -41,6 +45,8 @@ var UpgradeNorwegianHeight = abi.ChainEpoch(-14)
 var UpgradeTurboHeight = abi.ChainEpoch(-15)
 
 var UpgradeHyperdriveHeight = abi.ChainEpoch(-16)
+
+var UpgradeChocolateHeight = abi.ChainEpoch(-17)
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
@@ -82,8 +88,12 @@ func init() {
 	UpgradeNorwegianHeight = getUpgradeHeight("LOTUS_NORWEGIAN_HEIGHT", UpgradeNorwegianHeight)
 	UpgradeTurboHeight = getUpgradeHeight("LOTUS_ACTORSV4_HEIGHT", UpgradeTurboHeight)
 	UpgradeHyperdriveHeight = getUpgradeHeight("LOTUS_HYPERDRIVE_HEIGHT", UpgradeHyperdriveHeight)
+	UpgradeChocolateHeight = getUpgradeHeight("LOTUS_CHOCOLATE_HEIGHT", UpgradeChocolateHeight)
 
 	BuildType |= Build2k
+
+	// To test out what this proposal would like on devnets / testnets: https://github.com/filecoin-project/FIPs/pull/190
+	miner6.FaultMaxAge = miner6.WPoStProvingPeriod * 42
 }
 
 const BlockDelaySecs = uint64(4)

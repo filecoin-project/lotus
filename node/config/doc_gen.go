@@ -718,6 +718,13 @@ avoid the relatively high cost of unsealing the data later, at the cost of more 
 			Comment: `time buffer for forceful batch submission before sectors/deals in batch would start expiring`,
 		},
 		{
+			Name: "BatchPreCommitAboveBaseFee",
+			Type: "types.FIL",
+
+			Comment: `network BaseFee below which to stop doing precommit batching, instead
+sending precommit messages to the chain individually`,
+		},
+		{
 			Name: "AggregateAboveBaseFee",
 			Type: "types.FIL",
 

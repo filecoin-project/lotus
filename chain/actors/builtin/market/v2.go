@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -228,4 +229,30 @@ func fromV2DealProposal(v2 market2.DealProposal) DealProposal {
 
 func (s *state2) GetState() interface{} {
 	return &s.State
+}
+
+var _ PublishStorageDealsReturn = (*publishStorageDealsReturn2)(nil)
+
+func decodePublishStorageDealsReturn2(b []byte) (PublishStorageDealsReturn, error) {
+	var retval market2.PublishStorageDealsReturn
+	if err := retval.UnmarshalCBOR(bytes.NewReader(b)); err != nil {
+		return nil, xerrors.Errorf("failed to unmarshal PublishStorageDealsReturn: %w", err)
+	}
+
+	return &publishStorageDealsReturn2{retval}, nil
+}
+
+type publishStorageDealsReturn2 struct {
+	market2.PublishStorageDealsReturn
+}
+
+func (r *publishStorageDealsReturn2) IsDealValid(index uint64) (bool, error) {
+
+	// PublishStorageDeals only succeeded if all deals were valid in this version of actors
+	return true, nil
+
+}
+
+func (r *publishStorageDealsReturn2) DealIDs() ([]abi.DealID, error) {
+	return r.IDs, nil
 }

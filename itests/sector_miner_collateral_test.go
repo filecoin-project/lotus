@@ -53,6 +53,7 @@ func TestMinerBalanceCollateral(t *testing.T) {
 						AvailableBalanceBuffer:     big.Zero(),
 						DisableCollateralFallback:  false,
 						AggregateAboveBaseFee:      big.Zero(),
+						BatchPreCommitAboveBaseFee: big.Zero(),
 					}, nil
 				}, nil
 			})),
