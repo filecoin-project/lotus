@@ -155,7 +155,7 @@ func TestPartialRetrieval(t *testing.T) {
 			&api.FileRef{},
 			nil,
 		),
-		fmt.Sprintf("retrieval failed: error while locating partial retrieval sub-root: unsupported selection path '%s' does not correspond to a node boundary (a.k.a. CID link)", textSelectorNonLink),
+		fmt.Sprintf("retrieval failed: error while locating partial retrieval sub-root: unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", textSelectorNonLink),
 	)
 }
 

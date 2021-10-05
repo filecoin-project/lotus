@@ -1043,7 +1043,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 				if r == traversal.VisitReason_SelectionMatch {
 
 					if p.LastBlock.Path.String() != p.Path.String() {
-						return xerrors.Errorf("unsupported selection path '%s' does not correspond to a node boundary (a.k.a. CID link)", p.Path.String())
+						return xerrors.Errorf("unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", p.Path.String())
 					}
 
 					cidLnk, castOK := p.LastBlock.Link.(cidlink.Link)
