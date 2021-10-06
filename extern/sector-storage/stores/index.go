@@ -37,6 +37,9 @@ type StorageInfo struct {
 
 	CanSeal  bool
 	CanStore bool
+
+	Groups  []string
+	AllowTo []string
 }
 
 type HealthReport struct {
@@ -168,6 +171,8 @@ func (i *Index) StorageAttach(ctx context.Context, si StorageInfo, st fsutil.FsS
 		i.stores[si.ID].info.MaxStorage = si.MaxStorage
 		i.stores[si.ID].info.CanSeal = si.CanSeal
 		i.stores[si.ID].info.CanStore = si.CanStore
+		i.stores[si.ID].info.Groups = si.Groups
+		i.stores[si.ID].info.AllowTo = si.AllowTo
 
 		return nil
 	}
