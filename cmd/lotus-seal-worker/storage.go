@@ -51,6 +51,14 @@ var storageAttachCmd = &cli.Command{
 			Name:  "max-storage",
 			Usage: "(for init) limit storage space for sectors (expensive for very large paths!)",
 		},
+		&cli.StringSliceFlag{
+			Name:  "groups",
+			Usage: "path group names",
+		},
+		&cli.StringSliceFlag{
+			Name:  "allow-to",
+			Usage: "group names to which data from this path can be sent (allow all if not specified)",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetWorkerAPI(cctx)
@@ -98,6 +106,8 @@ var storageAttachCmd = &cli.Command{
 				CanSeal:    cctx.Bool("seal"),
 				CanStore:   cctx.Bool("store"),
 				MaxStorage: uint64(maxStor),
+				Groups:     cctx.StringSlice("groups"),
+				AllowTo:    cctx.StringSlice("allow-to"),
 			}
 
 			if !(cfg.CanStore || cfg.CanSeal) {
