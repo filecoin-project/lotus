@@ -166,6 +166,7 @@ type StorageMiner interface {
 	MarketCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error //perm:write
 	MarketPendingDeals(ctx context.Context) (PendingDealInfo, error)                                                             //perm:write
 	MarketPublishPendingDeals(ctx context.Context) error                                                                         //perm:admin
+	MarketRetryPublishDeal(ctx context.Context, propcid cid.Cid) error                                                           //perm:admin
 
 	// DagstoreListShards returns information about all shards known to the
 	// DAG store. Only available on nodes running the markets subsystem.

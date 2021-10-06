@@ -61,6 +61,7 @@
   * [MarketPendingDeals](#MarketPendingDeals)
   * [MarketPublishPendingDeals](#MarketPublishPendingDeals)
   * [MarketRestartDataTransfer](#MarketRestartDataTransfer)
+  * [MarketRetryPublishDeal](#MarketRetryPublishDeal)
   * [MarketSetAsk](#MarketSetAsk)
   * [MarketSetRetrievalAsk](#MarketSetRetrievalAsk)
 * [Mining](#Mining)
@@ -944,6 +945,22 @@ Inputs:
   3,
   "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   true
+]
+```
+
+Response: `{}`
+
+### MarketRetryPublishDeal
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 ]
 ```
 
