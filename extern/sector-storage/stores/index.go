@@ -393,7 +393,7 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft storif
 				}
 
 				if !allow {
-					log.Debugf("not selecting on %s, not in allowed group, allow %#v; path has %#v", st.info.ID, allowTo, st.info.Groups)
+					log.Debugf("not selecting on %s, not in allowed group, allow %+v; path has %+v", st.info.ID, allowTo, st.info.Groups)
 					continue
 				}
 			}
