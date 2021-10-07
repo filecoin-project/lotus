@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.11.4-dev
+   1.13.1-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -409,6 +409,7 @@ USAGE:
 OPTIONS:
    --wallet value, -w value   Specify address to withdraw funds to, otherwise it will use the default wallet address
    --address value, -a value  Market address to withdraw from (account or miner actor address, defaults to --wallet address)
+   --confidence value         number of block confirmations to wait for (default: 5)
    --help, -h                 show help (default: false)
    
 ```
@@ -565,13 +566,14 @@ CATEGORY:
    RETRIEVAL
 
 OPTIONS:
-   --from value      address to send transactions from
-   --car             export to a car file instead of a regular file (default: false)
-   --miner value     miner address for retrieval, if not present it'll use local discovery
-   --maxPrice value  maximum price the client is willing to consider (default: 0.01 FIL)
-   --pieceCid value  require data to be retrieved from a specific Piece CID
-   --allow-local     (default: false)
-   --help, -h        show help (default: false)
+   --from value                     address to send transactions from
+   --car                            export to a car file instead of a regular file (default: false)
+   --miner value                    miner address for retrieval, if not present it'll use local discovery
+   --datamodel-path-selector value  a rudimentary (DM-level-only) text-path selector, allowing for sub-selection within a deal
+   --maxPrice value                 maximum price the client is willing to consider (default: 0.01 FIL)
+   --pieceCid value                 require data to be retrieved from a specific Piece CID
+   --allow-local                    (default: false)
+   --help, -h                       show help (default: false)
    
 ```
 

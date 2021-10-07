@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/rand"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -219,7 +221,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
 		}
 
-		vrfBase, err := store.DrawRandomness(rBeacon.Data, crypto.DomainSeparationTag_ElectionProofProduction, h.Height, buf.Bytes())
+		vrfBase, err := rand.DrawRandomness(rBeacon.Data, crypto.DomainSeparationTag_ElectionProofProduction, h.Height, buf.Bytes())
 		if err != nil {
 			return xerrors.Errorf("could not draw randomness: %w", err)
 		}
@@ -283,7 +285,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 			beaconBase = h.BeaconEntries[len(h.BeaconEntries)-1]
 		}
 
-		vrfBase, err := store.DrawRandomness(beaconBase.Data, crypto.DomainSeparationTag_TicketProduction, h.Height-build.TicketRandomnessLookback, buf.Bytes())
+		vrfBase, err := rand.DrawRandomness(beaconBase.Data, crypto.DomainSeparationTag_TicketProduction, h.Height-build.TicketRandomnessLookback, buf.Bytes())
 		if err != nil {
 			return xerrors.Errorf("failed to compute vrf base for ticket: %w", err)
 		}
@@ -388,7 +390,7 @@ func (filec *FilecoinEC) VerifyWinningPoStProof(ctx context.Context, nv network.
 		rbase = h.BeaconEntries[len(h.BeaconEntries)-1]
 	}
 
-	rand, err := store.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, h.Height, buf.Bytes())
+	rand, err := rand.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, h.Height, buf.Bytes())
 	if err != nil {
 		return xerrors.Errorf("failed to get randomness for verifying winning post proof: %w", err)
 	}
@@ -530,6 +532,12 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 
 	smArr := blockadt.MakeEmptyArray(tmpstore)
 	for i, m := range b.SecpkMessages {
+		if filec.sm.GetNtwkVersion(ctx, b.Header.Height) >= network.Version14 {
+			if m.Signature.Type != crypto.SigTypeSecp256k1 {
+				return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
+			}
+		}
+
 		if err := checkMsg(m); err != nil {
 			return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
 		}

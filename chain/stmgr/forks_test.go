@@ -158,7 +158,7 @@ func TestForkHeightTriggers(t *testing.T) {
 				}
 
 				return st.Flush(ctx)
-			}}})
+			}}}, cg.BeaconSchedule())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +273,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 				migrationCount++
 				return root, nil
-			}}})
+			}}}, cg.BeaconSchedule())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -488,7 +488,7 @@ func TestForkPreMigration(t *testing.T) {
 					return nil
 				},
 			}}},
-		})
+		}, cg.BeaconSchedule())
 	if err != nil {
 		t.Fatal(err)
 	}

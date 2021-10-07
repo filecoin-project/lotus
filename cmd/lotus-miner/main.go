@@ -114,6 +114,12 @@ func main() {
 				DefaultText: "depends on output being a TTY",
 			},
 			&cli.StringFlag{
+				Name:    "panic-reports",
+				EnvVars: []string{"LOTUS_PANIC_REPORT_PATH"},
+				Hidden:  true,
+				Value:   "~/.lotusminer", // should follow --repo default
+			},
+			&cli.StringFlag{
 				Name:    "repo",
 				EnvVars: []string{"LOTUS_PATH"},
 				Hidden:  true,
@@ -143,6 +149,14 @@ func main() {
 			// common commands by overriding the repoType.
 			if c.Bool("call-on-markets") {
 				c.App.Metadata["repoType"] = repo.Markets
+			}
+			return nil
+		},
+		After: func(c *cli.Context) error {
+			if r := recover(); r != nil {
+				// Generate report in LOTUS_PATH and re-raise panic
+				build.GeneratePanicReport(c.String("panic-reports"), c.String(FlagMinerRepo), c.App.Name)
+				panic(r)
 			}
 			return nil
 		},

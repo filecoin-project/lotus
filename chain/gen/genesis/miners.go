@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/rand"
 
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -193,12 +195,21 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 				if err != nil {
 					return xerrors.Errorf("failed to create genesis miner (publish deals): %w", err)
 				}
-				var ids market.PublishStorageDealsReturn
-				if err := ids.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
-					return xerrors.Errorf("unmarsahling publishStorageDeals result: %w", err)
+				retval, err := market.DecodePublishStorageDealsReturn(ret, nv)
+				if err != nil {
+					return xerrors.Errorf("failed to create genesis miner (decoding published deals): %w", err)
 				}
 
-				minerInfos[i].dealIDs = append(minerInfos[i].dealIDs, ids.IDs...)
+				ids, err := retval.DealIDs()
+				if err != nil {
+					return xerrors.Errorf("failed to create genesis miner (getting published dealIDs): %w", err)
+				}
+
+				if len(ids) != len(params.Deals) {
+					return xerrors.Errorf("failed to create genesis miner (at least one deal was invalid on publication")
+				}
+
+				minerInfos[i].dealIDs = append(minerInfos[i].dealIDs, ids...)
 				return nil
 			}
 
@@ -389,11 +400,24 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 				}
 
 				// Commit one-by-one, otherwise pledge math tends to explode
-				confirmParams := &builtin0.ConfirmSectorProofsParams{
-					Sectors: []abi.SectorNumber{preseal.SectorID},
+				var paramBytes []byte
+
+				if av >= actors.Version6 {
+					// TODO: fixup
+					confirmParams := &builtin6.ConfirmSectorProofsParams{
+						Sectors: []abi.SectorNumber{preseal.SectorID},
+					}
+
+					paramBytes = mustEnc(confirmParams)
+				} else {
+					confirmParams := &builtin0.ConfirmSectorProofsParams{
+						Sectors: []abi.SectorNumber{preseal.SectorID},
+					}
+
+					paramBytes = mustEnc(confirmParams)
 				}
 
-				_, err = doExecValue(ctx, vm, minerInfos[i].maddr, power.Address, big.Zero(), miner.Methods.ConfirmSectorProofsValid, mustEnc(confirmParams))
+				_, err = doExecValue(ctx, vm, minerInfos[i].maddr, power.Address, big.Zero(), miner.Methods.ConfirmSectorProofsValid, paramBytes)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
 				}
@@ -485,25 +509,31 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 // TODO: copied from actors test harness, deduplicate or remove from here
 type fakeRand struct{}
 
-func (fr *fakeRand) GetChainRandomnessLookingForward(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) GetChainRandomnessV2(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
 	return out, nil
 }
 
-func (fr *fakeRand) GetChainRandomnessLookingBack(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) GetChainRandomnessV1(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
 	return out, nil
 }
 
-func (fr *fakeRand) GetBeaconRandomnessLookingForward(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) GetBeaconRandomnessV3(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return out, nil
 }
 
-func (fr *fakeRand) GetBeaconRandomnessLookingBack(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) GetBeaconRandomnessV2(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	out := make([]byte, 32)
+	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
+	return out, nil
+}
+
+func (fr *fakeRand) GetBeaconRandomnessV1(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return out, nil

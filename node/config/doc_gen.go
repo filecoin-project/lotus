@@ -92,11 +92,18 @@ your node if metadata log is disabled`,
 			Comment: ``,
 		},
 		{
-			Name: "SimultaneousTransfers",
+			Name: "SimultaneousTransfersForStorage",
 			Type: "uint64",
 
 			Comment: `The maximum number of simultaneous data transfers between the client
-and storage providers`,
+and storage providers for storage deals`,
+		},
+		{
+			Name: "SimultaneousTransfersForRetrieval",
+			Type: "uint64",
+
+			Comment: `The maximum number of simultaneous data transfers between the client
+and storage providers for retrieval deals`,
 		},
 	},
 	"Common": []DocField{
@@ -260,10 +267,22 @@ as a multiplier of the minimum collateral bound`,
 passed to the sealing node by the markets service. 0 is unlimited.`,
 		},
 		{
-			Name: "SimultaneousTransfers",
+			Name: "SimultaneousTransfersForStorage",
 			Type: "uint64",
 
-			Comment: `The maximum number of parallel online data transfers (storage+retrieval)`,
+			Comment: `The maximum number of parallel online data transfers for storage deals`,
+		},
+		{
+			Name: "SimultaneousTransfersForRetrieval",
+			Type: "uint64",
+
+			Comment: `The maximum number of parallel online data transfers for retrieval deals`,
+		},
+		{
+			Name: "StartEpochSealingBuffer",
+			Type: "uint64",
+
+			Comment: `Minimum start epoch buffer to give time for sealing of sector with deal.`,
 		},
 		{
 			Name: "Filter",
@@ -710,6 +729,13 @@ avoid the relatively high cost of unsealing the data later, at the cost of more 
 			Type: "Duration",
 
 			Comment: `time buffer for forceful batch submission before sectors/deals in batch would start expiring`,
+		},
+		{
+			Name: "BatchPreCommitAboveBaseFee",
+			Type: "types.FIL",
+
+			Comment: `network BaseFee below which to stop doing precommit batching, instead
+sending precommit messages to the chain individually`,
 		},
 		{
 			Name: "AggregateAboveBaseFee",

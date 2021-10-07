@@ -28,6 +28,7 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/metrics/proxy"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -204,7 +205,7 @@ var runCmd = &cli.Command{
 			w = &LoggedWallet{under: w}
 		}
 
-		rpcApi := metrics.MetricedWalletAPI(w)
+		rpcApi := proxy.MetricedWalletAPI(w)
 		if !cctx.Bool("disable-auth") {
 			rpcApi = api.PermissionedWalletAPI(rpcApi)
 		}

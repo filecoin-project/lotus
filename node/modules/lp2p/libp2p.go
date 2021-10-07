@@ -42,7 +42,7 @@ func PrivKey(ks types.KeyStore) (crypto.PrivKey, error) {
 	if err != nil {
 		return nil, err
 	}
-	kbytes, err := pk.Bytes()
+	kbytes, err := crypto.MarshalPrivateKey(pk)
 	if err != nil {
 		return nil, err
 	}

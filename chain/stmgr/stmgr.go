@@ -4,6 +4,10 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/lotus/chain/rand"
+
+	"github.com/filecoin-project/lotus/chain/beacon"
+
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -11,6 +15,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
 	// Used for genesis.
@@ -89,6 +94,7 @@ type StateManager struct {
 
 	tsExec        Executor
 	tsExecMonitor ExecMonitor
+	beacon        beacon.Schedule
 }
 
 // Caches a single state tree
@@ -97,7 +103,7 @@ type treeCache struct {
 	tree *state.StateTree
 }
 
-func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule) (*StateManager, error) {
+func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, beacon beacon.Schedule) (*StateManager, error) {
 	// If we have upgrades, make sure they're in-order and make sense.
 	if err := us.Validate(); err != nil {
 		return nil, err
@@ -106,7 +112,7 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 	stateMigrations := make(map[abi.ChainEpoch]*migration, len(us))
 	expensiveUpgrades := make(map[abi.ChainEpoch]struct{}, len(us))
 	var networkVersions []versionSpec
-	lastVersion := network.Version0
+	lastVersion := build.GenesisNetworkVersion
 	if len(us) > 0 {
 		// If we have any upgrades, process them and create a version
 		// schedule.
@@ -143,6 +149,7 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 		cs:                cs,
 		tsExec:            exec,
 		stCache:           make(map[string][]cid.Cid),
+		beacon:            beacon,
 		tCache: treeCache{
 			root: cid.Undef,
 			tree: nil,
@@ -151,8 +158,8 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 	}, nil
 }
 
-func NewStateManagerWithUpgradeScheduleAndMonitor(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, em ExecMonitor) (*StateManager, error) {
-	sm, err := NewStateManager(cs, exec, sys, us)
+func NewStateManagerWithUpgradeScheduleAndMonitor(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder, us UpgradeSchedule, b beacon.Schedule, em ExecMonitor) (*StateManager, error) {
+	sm, err := NewStateManager(cs, exec, sys, us, b)
 	if err != nil {
 		return nil, err
 	}
@@ -197,6 +204,10 @@ func (sm *StateManager) Stop(ctx context.Context) error {
 
 func (sm *StateManager) ChainStore() *store.ChainStore {
 	return sm.cs
+}
+
+func (sm *StateManager) Beacon() beacon.Schedule {
+	return sm.beacon
 }
 
 // ResolveToKeyAddress is similar to `vm.ResolveToKeyAddr` but does not allow `Actor` type of addresses.
@@ -361,4 +372,39 @@ func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoc
 
 func (sm *StateManager) VMSys() vm.SyscallBuilder {
 	return sm.Syscalls
+}
+
+func (sm *StateManager) GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
+	pts, err := sm.ChainStore().GetTipSetFromKey(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon)
+	rnv := sm.GetNtwkVersion(ctx, randEpoch)
+
+	if rnv >= network.Version14 {
+		return r.GetBeaconRandomnessV3(ctx, personalization, randEpoch, entropy)
+	} else if rnv == network.Version13 {
+		return r.GetBeaconRandomnessV2(ctx, personalization, randEpoch, entropy)
+	}
+
+	return r.GetBeaconRandomnessV1(ctx, personalization, randEpoch, entropy)
+
+}
+
+func (sm *StateManager) GetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
+	pts, err := sm.ChainStore().LoadTipSet(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset key: %w", err)
+	}
+
+	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon)
+	rnv := sm.GetNtwkVersion(ctx, randEpoch)
+
+	if rnv >= network.Version13 {
+		return r.GetChainRandomnessV2(ctx, personalization, randEpoch, entropy)
+	}
+
+	return r.GetChainRandomnessV1(ctx, personalization, randEpoch, entropy)
 }

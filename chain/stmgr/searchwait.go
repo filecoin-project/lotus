@@ -252,22 +252,27 @@ func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid, vmm
 
 		if m.VMMessage().From == vmm.From { // cheaper to just check origin first
 			if m.VMMessage().Nonce == vmm.Nonce {
-				if allowReplaced && m.VMMessage().EqualCall(vmm) {
-					if m.Cid() != msg {
-						log.Warnw("found message with equal nonce and call params but different CID",
-							"wanted", msg, "found", m.Cid(), "nonce", vmm.Nonce, "from", vmm.From)
-					}
-
-					pr, err := sm.cs.GetParentReceipt(ts.Blocks()[0], i)
-					if err != nil {
-						return nil, cid.Undef, err
-					}
-					return pr, m.Cid(), nil
+				if !m.VMMessage().EqualCall(vmm) {
+					// this is an entirely different message, fail
+					return nil, cid.Undef, xerrors.Errorf("found message with equal nonce as the one we are looking for that is NOT a valid replacement message (F:%s n %d, TS: %s n%d)",
+						msg, vmm.Nonce, m.Cid(), m.VMMessage().Nonce)
 				}
 
-				// this should be that message
-				return nil, cid.Undef, xerrors.Errorf("found message with equal nonce as the one we are looking for (F:%s n %d, TS: %s n%d)",
-					msg, vmm.Nonce, m.Cid(), m.VMMessage().Nonce)
+				if m.Cid() != msg {
+					if !allowReplaced {
+						log.Warnw("found message with equal nonce and call params but different CID",
+							"wanted", msg, "found", m.Cid(), "nonce", vmm.Nonce, "from", vmm.From)
+						return nil, cid.Undef, xerrors.Errorf("found message with equal nonce as the one we are looking for (F:%s n %d, TS: %s n%d)",
+							msg, vmm.Nonce, m.Cid(), m.VMMessage().Nonce)
+					}
+				}
+
+				pr, err := sm.cs.GetParentReceipt(ts.Blocks()[0], i)
+				if err != nil {
+					return nil, cid.Undef, err
+				}
+
+				return pr, m.Cid(), nil
 			}
 			if m.VMMessage().Nonce < vmm.Nonce {
 				return nil, cid.Undef, nil // don't bother looking further

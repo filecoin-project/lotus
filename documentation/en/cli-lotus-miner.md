@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.11.4-dev
+   1.13.1-dev
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -278,7 +278,8 @@ USAGE:
    lotus-miner actor withdraw [command options] [amount (FIL)]
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --confidence value  number of block confirmations to wait for (default: 5)
+   --help, -h          show help (default: false)
    
 ```
 
@@ -658,9 +659,10 @@ USAGE:
    lotus-miner storage-deals list [command options] [arguments...]
 
 OPTIONS:
-   --verbose, -v  (default: false)
-   --watch        watch deal updates in real-time, rather than a one time list (default: false)
-   --help, -h     show help (default: false)
+   --format value  output format of data, supported: table, json (default: "table")
+   --verbose, -v   (default: false)
+   --watch         watch deal updates in real-time, rather than a one time list (default: false)
+   --help, -h      show help (default: false)
    
 ```
 

@@ -2,6 +2,8 @@ package config
 
 import (
 	"encoding"
+	"os"
+	"strconv"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -23,6 +25,16 @@ const (
 	// configured by the user.
 	RetrievalPricingExternalMode = "external"
 )
+
+// MaxTraversalLinks configures the maximum number of links to traverse in a DAG while calculating
+// CommP and traversing a DAG with graphsync; invokes a budget on DAG depth and density.
+var MaxTraversalLinks uint64 = 32 * (1 << 20)
+
+func init() {
+	if envMaxTraversal, err := strconv.ParseUint(os.Getenv("LOTUS_MAX_TRAVERSAL_LINKS"), 10, 64); err == nil {
+		MaxTraversalLinks = envMaxTraversal
+	}
+}
 
 func (b *BatchFeeConfig) FeeForSectors(nSectors int) abi.TokenAmount {
 	return big.Add(big.Int(b.Base), big.Mul(big.NewInt(int64(nSectors)), big.Int(b.PerSector)))
@@ -65,7 +77,8 @@ func DefaultFullNode() *FullNode {
 			DefaultMaxFee: DefaultDefaultMaxFee,
 		},
 		Client: Client{
-			SimultaneousTransfers: DefaultSimultaneousTransfers,
+			SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
+			SimultaneousTransfersForRetrieval: DefaultSimultaneousTransfers,
 		},
 		Chainstore: Chainstore{
 			EnableSplitstore: false,
@@ -101,7 +114,7 @@ func DefaultStorageMiner() *StorageMiner {
 			PreCommitBatchWait:  Duration(24 * time.Hour),           // this should be less than 31.5 hours, which is the expiration of a precommit ticket
 			PreCommitBatchSlack: Duration(3 * time.Hour),            // time buffer for forceful batch submission before sectors/deals in batch would start expiring, higher value will lower the chances for message fail due to expiration
 
-			CommittedCapacitySectorLifetime: Duration(builtin.EpochDurationSeconds * policy.GetMaxSectorExpirationExtension()),
+			CommittedCapacitySectorLifetime: Duration(builtin.EpochDurationSeconds * uint64(policy.GetMaxSectorExpirationExtension()) * uint64(time.Second)),
 
 			AggregateCommits: true,
 			MinCommitBatch:   miner5.MinAggregatedSectors, // per FIP13, we must have at least four proofs to aggregate, where 4 is the cross over point where aggregation wins out on single provecommit gas costs
@@ -109,7 +122,8 @@ func DefaultStorageMiner() *StorageMiner {
 			CommitBatchWait:  Duration(24 * time.Hour),    // this can be up to 30 days
 			CommitBatchSlack: Duration(1 * time.Hour),     // time buffer for forceful batch submission before sectors/deals in batch would start expiring, higher value will lower the chances for message fail due to expiration
 
-			AggregateAboveBaseFee: types.FIL(types.BigMul(types.PicoFil, types.NewInt(150))), // 0.15 nFIL
+			BatchPreCommitAboveBaseFee: types.FIL(types.BigMul(types.PicoFil, types.NewInt(320))), // 0.32 nFIL
+			AggregateAboveBaseFee:      types.FIL(types.BigMul(types.PicoFil, types.NewInt(320))), // 0.32 nFIL
 
 			TerminateBatchMin:  1,
 			TerminateBatchMax:  100,
@@ -146,7 +160,10 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxDealsPerPublishMsg:           8,
 			MaxProviderCollateralMultiplier: 2,
 
-			SimultaneousTransfers: DefaultSimultaneousTransfers,
+			SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
+			SimultaneousTransfersForRetrieval: DefaultSimultaneousTransfers,
+
+			StartEpochSealingBuffer: 480, // 480 epochs buffer == 4 hours from adding deal to sector to sector being sealed
 
 			RetrievalPricing: &RetrievalPricing{
 				Strategy: RetrievalPricingDefaultMode,

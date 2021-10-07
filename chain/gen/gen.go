@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/rand"
+
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-address"
@@ -246,11 +248,6 @@ func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeS
 		mgen[genesis2.MinerAddress(uint64(i))] = &wppProvider{}
 	}
 
-	sm, err := stmgr.NewStateManager(cs, filcns.NewTipSetExecutor(), sys, us)
-	if err != nil {
-		return nil, xerrors.Errorf("initing stmgr: %w", err)
-	}
-
 	miners := []address.Address{maddr1, maddr2}
 
 	beac := beacon.Schedule{{Start: 0, Beacon: beacon.NewMockBeacon(time.Second)}}
@@ -258,6 +255,11 @@ func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeS
 	//if err != nil {
 	//return nil, xerrors.Errorf("creating drand beacon: %w", err)
 	//}
+
+	sm, err := stmgr.NewStateManager(cs, filcns.NewTipSetExecutor(), sys, us, beac)
+	if err != nil {
+		return nil, xerrors.Errorf("initing stmgr: %w", err)
+	}
 
 	gen := &ChainGen{
 		bs:           bs,
@@ -295,6 +297,10 @@ func NewGeneratorWithUpgradeSchedule(us stmgr.UpgradeSchedule) (*ChainGen, error
 	return NewGeneratorWithSectorsAndUpgradeSchedule(1, us)
 }
 
+func (cg *ChainGen) Blockstore() blockstore.Blockstore {
+	return cg.bs
+}
+
 func (cg *ChainGen) StateManager() *stmgr.StateManager {
 	return cg.sm
 }
@@ -305,6 +311,10 @@ func (cg *ChainGen) SetStateManager(sm *stmgr.StateManager) {
 
 func (cg *ChainGen) ChainStore() *store.ChainStore {
 	return cg.cs
+}
+
+func (cg *ChainGen) BeaconSchedule() beacon.Schedule {
+	return cg.beacon
 }
 
 func (cg *ChainGen) Genesis() *types.BlockHeader {
@@ -365,7 +375,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		buf.Write(pts.MinTicket().VRFProof)
 	}
 
-	ticketRand, err := store.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_TicketProduction, round-build.TicketRandomnessLookback, buf.Bytes())
+	ticketRand, err := rand.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_TicketProduction, round-build.TicketRandomnessLookback, buf.Bytes())
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -397,12 +407,15 @@ type MinedTipSet struct {
 }
 
 func (cg *ChainGen) NextTipSet() (*MinedTipSet, error) {
-	mts, err := cg.NextTipSetFromMiners(cg.CurTipset.TipSet(), cg.Miners, 0)
+	return cg.NextTipSetWithNulls(0)
+}
+
+func (cg *ChainGen) NextTipSetWithNulls(nulls abi.ChainEpoch) (*MinedTipSet, error) {
+	mts, err := cg.NextTipSetFromMiners(cg.CurTipset.TipSet(), cg.Miners, nulls)
 	if err != nil {
 		return nil, err
 	}
 
-	cg.CurTipset = mts.TipSet
 	return mts, nil
 }
 
@@ -586,29 +599,11 @@ type mca struct {
 }
 
 func (mca mca) StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
-	pts, err := mca.sm.ChainStore().LoadTipSet(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset key: %w", err)
-	}
-
-	if mca.sm.GetNtwkVersion(ctx, randEpoch) >= network.Version13 {
-		return mca.sm.ChainStore().GetChainRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
-	}
-
-	return mca.sm.ChainStore().GetChainRandomnessLookingBack(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	return mca.sm.GetRandomnessFromTickets(ctx, personalization, randEpoch, entropy, tsk)
 }
 
 func (mca mca) StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
-	pts, err := mca.sm.ChainStore().LoadTipSet(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset key: %w", err)
-	}
-
-	if mca.sm.GetNtwkVersion(ctx, randEpoch) >= network.Version13 {
-		return mca.sm.ChainStore().GetBeaconRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
-	}
-
-	return mca.sm.ChainStore().GetBeaconRandomnessLookingBack(ctx, pts.Cids(), personalization, randEpoch, entropy)
+	return mca.sm.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, tsk)
 }
 
 func (mca mca) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
@@ -644,7 +639,7 @@ func IsRoundWinner(ctx context.Context, ts *types.TipSet, round abi.ChainEpoch,
 		return nil, xerrors.Errorf("failed to cbor marshal address: %w", err)
 	}
 
-	electionRand, err := store.DrawRandomness(brand.Data, crypto.DomainSeparationTag_ElectionProofProduction, round, buf.Bytes())
+	electionRand, err := rand.DrawRandomness(brand.Data, crypto.DomainSeparationTag_ElectionProofProduction, round, buf.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to draw randomness: %w", err)
 	}
