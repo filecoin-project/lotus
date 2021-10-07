@@ -1,10 +1,10 @@
 # Lotus changelog
 
-# v1.13.0-rc1 / 2021-10-06
+# v1.13.0-rc2 / 2021-10-06
 
-This is the first release candidates for lotus v1.13.0, a recommended lotus release that supports the upcoming 
+This is the second release candidates for lotus v1.13.0, a recommended lotus release that supports the upcoming 
 [Network v14 Chocolate upgrade](https://github.com/filecoin-project/lotus/discussions/7431).
-This feature release includes latest functionality and improvements, like data transfer rate-limiting, rust-proof-ffi experimental CUDA support and so on. We *highly recommend* users like storage providers, data brokers, and so on upgrading your nodes and all subsystems to this release!
+This feature release includes latest functionality and improvements, like data transfer rate-limiting, rust-proof-ffi experimental CUDA support and so on. We *highly recommend* users like storage providers, data brokers, and so on to upgrade your nodes and all subsystems to this release!
 
 > Note: This release candidate sets the upgrade epoch for calibration net, however, it does not set the Network v14 
 > Chocolate upgrade for mainnet. FIPs(FIP0020-0025) included are based on optimistic acceptance, things may well 
@@ -13,7 +13,7 @@ This feature release includes latest functionality and improvements, like data t
 ## Highlights
 - Enable separate storage and retrieval transfer limits ([filecoin-project/lotus#7405](https://github.com/filecoin-project/lotus/pull/7405))
 - Update proofs to v10.0.0 ([filecoin-project/lotus#7420](https://github.com/filecoin-project/lotus/pull/7420))
-- update to go-graphsync v0.10.0
+- update to go-graphsync v0.10.1
 
 ## New Features
 - Feat/datamodel selector retrieval ([filecoin-project/lotus#6393](https://github.com/filecoin-project/lotus/pull/6393))
@@ -75,7 +75,7 @@ This feature release includes latest functionality and improvements, like data t
 - remove nerpanet related code  ([filecoin-project/lotus#7373](https://github.com/filecoin-project/lotus/pull/7373))
 - sync branch main with master on updates ([filecoin-project/lotus#7366](https://github.com/filecoin-project/lotus/pull/7366))
 - remove job to install jq ([filecoin-project/lotus#7309](https://github.com/filecoin-project/lotus/pull/7309))
-
+- restore filters for the build-macos job ([filecoin-project/lotus#7309](https://github.com/filecoin-project/lotus/pull/7455))
 ## Contributors
 
 | Contributor | Commits | Lines ± | Files Changed |
