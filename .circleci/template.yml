@@ -318,7 +318,7 @@ jobs:
           command: pushd testplans/lotus-soup && mkdir -p $HOME/testground && cp env-ci.toml $HOME/testground/.env.toml && echo 'endpoint="https://ci.testground.ipfs.team"' >> $HOME/testground/.env.toml && echo 'user="circleci"' >> $HOME/testground/.env.toml
       - run:
           name: "prepare testground home dir and link test plans"
-          command: mkdir -p $HOME/testground/plans && ln -s $(pwd)/testplans/lotus-soup $HOME/testground/plans/lotus-soup && ln -s $(pwd)/testplans/graphsync $HOME/testground/plans/graphsync
+          command: mkdir -p $HOME/testground/plans && ln -s $(pwd)/testplans/lotus-soup $HOME/testground/plans/lotus-soup
       - run:
           name: "go get lotus@master"
           command: cd testplans/lotus-soup && go get github.com/filecoin-project/lotus@master
@@ -328,10 +328,6 @@ jobs:
       - run:
           name: "trigger payment channel stress testplan on taas"
           command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/paych-stress-k8s.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
-      - run:
-          name: "trigger graphsync testplan on taas"
-          command: ~/testground-cli run composition -f $HOME/testground/plans/graphsync/_compositions/stress-k8s.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
-
 
   build-macos:
     description: build darwin lotus binary
