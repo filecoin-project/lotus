@@ -170,7 +170,7 @@ var sendCmd = &cli.Command{
 
 			msgCid := sm.Cid()
 
-			fmt.Println("send proposal in message: ", msgCid)
+			fmt.Printf("send proposal in message: %s\n", msgCid)
 
 			wait, err := api2.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 			if err != nil {
