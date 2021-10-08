@@ -180,6 +180,20 @@ func (c *InteractiveWallet) WalletImport(ctx context.Context, ki *types.KeyInfo)
 	return c.under.WalletImport(ctx, ki)
 }
 
+func (c *InteractiveWallet) WalletMsigImport(ctx context.Context, idAddress address.Address, robustAddress address.Address) error {
+	err := c.accept(func() error {
+		fmt.Println("-----")
+		fmt.Println("ACTION: WalletImport - Import private key")
+		fmt.Printf("TYPE: Msig\n")
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return c.under.WalletMsigImport(ctx, idAddress, robustAddress)
+}
+
 func (c *InteractiveWallet) WalletDelete(ctx context.Context, addr address.Address) error {
 	err := c.accept(func() error {
 		fmt.Println("-----")

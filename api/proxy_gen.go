@@ -454,6 +454,8 @@ type FullNodeStruct struct {
 
 		WalletList func(p0 context.Context) ([]address.Address, error) `perm:"write"`
 
+		WalletMsigImport func(p0 context.Context, p1 address.Address, p2 address.Address) error `perm:"admin"`
+
 		WalletNew func(p0 context.Context, p1 types.KeyType) (address.Address, error) `perm:"write"`
 
 		WalletSetDefault func(p0 context.Context, p1 address.Address) error `perm:"write"`
@@ -822,6 +824,8 @@ type WalletStruct struct {
 		WalletImport func(p0 context.Context, p1 *types.KeyInfo) (address.Address, error) `perm:"admin"`
 
 		WalletList func(p0 context.Context) ([]address.Address, error) `perm:"admin"`
+
+		WalletMsigImport func(p0 context.Context, p1 address.Address, p2 address.Address) error `perm:"admin"`
 
 		WalletNew func(p0 context.Context, p1 types.KeyType) (address.Address, error) `perm:"admin"`
 
@@ -2953,6 +2957,17 @@ func (s *FullNodeStub) WalletList(p0 context.Context) ([]address.Address, error)
 	return *new([]address.Address), ErrNotSupported
 }
 
+func (s *FullNodeStruct) WalletMsigImport(p0 context.Context, p1 address.Address, p2 address.Address) error {
+	if s.Internal.WalletMsigImport == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.WalletMsigImport(p0, p1, p2)
+}
+
+func (s *FullNodeStub) WalletMsigImport(p0 context.Context, p1 address.Address, p2 address.Address) error {
+	return ErrNotSupported
+}
+
 func (s *FullNodeStruct) WalletNew(p0 context.Context, p1 types.KeyType) (address.Address, error) {
 	if s.Internal.WalletNew == nil {
 		return *new(address.Address), ErrNotSupported
@@ -4733,6 +4748,17 @@ func (s *WalletStruct) WalletList(p0 context.Context) ([]address.Address, error)
 
 func (s *WalletStub) WalletList(p0 context.Context) ([]address.Address, error) {
 	return *new([]address.Address), ErrNotSupported
+}
+
+func (s *WalletStruct) WalletMsigImport(p0 context.Context, p1 address.Address, p2 address.Address) error {
+	if s.Internal.WalletMsigImport == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.WalletMsigImport(p0, p1, p2)
+}
+
+func (s *WalletStub) WalletMsigImport(p0 context.Context, p1 address.Address, p2 address.Address) error {
+	return ErrNotSupported
 }
 
 func (s *WalletStruct) WalletNew(p0 context.Context, p1 types.KeyType) (address.Address, error) {

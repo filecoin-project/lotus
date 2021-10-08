@@ -152,6 +152,17 @@ func (m MultiWallet) WalletImport(ctx context.Context, info *types.KeyInfo) (add
 	return w.WalletImport(ctx, info)
 }
 
+func (m MultiWallet) WalletMsigImport(ctx context.Context, idAddress address.Address, robustAddress address.Address) error {
+	var local getif = m.Local
+
+	w := firstNonNil(m.Remote, local)
+	if w == nil {
+		return xerrors.Errorf("no wallet backends configured")
+	}
+
+	return w.WalletMsigImport(ctx, idAddress, robustAddress)
+}
+
 func (m MultiWallet) WalletDelete(ctx context.Context, address address.Address) error {
 	for {
 		w, err := m.find(ctx, address, m.Remote, m.Ledger, m.Local)

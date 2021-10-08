@@ -1,17 +1,18 @@
 package cli
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
+	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 )
 
 var sendCmd = &cli.Command{
@@ -47,6 +48,10 @@ var sendCmd = &cli.Command{
 			Name:  "method",
 			Usage: "specify method to invoke",
 			Value: uint64(builtin.MethodSend),
+		},
+		&cli.StringFlag{
+			Name:  "msig",
+			Usage: "Specify multi sign wallet address(It must be set to initiate multi sign address transfer)",
 		},
 		&cli.StringFlag{
 			Name:  "params-json",
@@ -143,6 +148,52 @@ var sendCmd = &cli.Command{
 		if cctx.IsSet("nonce") {
 			n := cctx.Uint64("nonce")
 			params.Nonce = &n
+		}
+
+		if msig := cctx.String("msig"); msig != "" {
+			msigAddr, err := address.NewFromString(msig)
+			if err != nil {
+				return err
+			}
+
+			api2 := srv.FullNodeAPI()
+
+			proto, err := api2.MsigPropose(ctx, msigAddr, params.To, params.Val, params.From, 0, []byte(""))
+			if err != nil {
+				return err
+			}
+
+			sm, err := InteractiveSend(ctx, cctx, srv, proto)
+			if err != nil {
+				return err
+			}
+
+			msgCid := sm.Cid()
+
+			fmt.Printf("send proposal in message: %s\n", msgCid)
+
+			wait, err := api2.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+			if err != nil {
+				return err
+			}
+
+			if wait.Receipt.ExitCode != 0 {
+				return fmt.Errorf("proposal returned exit %d", wait.Receipt.ExitCode)
+			}
+
+			var retval msig2.ProposeReturn
+			if err := retval.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
+				return fmt.Errorf("failed to unmarshal propose return value: %w", err)
+			}
+
+			fmt.Printf("Transaction ID: %d\n", retval.TxnID)
+			if retval.Applied {
+				fmt.Printf("Transaction was executed during propose\n")
+				fmt.Printf("Exit Code: %d\n", retval.Code)
+				fmt.Printf("Return Value: %x\n", retval.Ret)
+			}
+
+			return nil
 		}
 
 		proto, err := srv.MessageForSend(ctx, params)
