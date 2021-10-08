@@ -912,14 +912,13 @@ var dealsPendingPublish = &cli.Command{
 }
 
 var dealsRetryPublish = &cli.Command{
-	Name:  "retry-publish",
-	Usage: "retry publishing a deal",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name: "proposal-cid",
-		},
-	},
+	Name:      "retry-publish",
+	Usage:     "retry publishing a deal",
+	ArgsUsage: "<proposal CID>",
 	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		}
 		api, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
 			return err
@@ -927,7 +926,10 @@ var dealsRetryPublish = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		cid, err := cid.Decode(cctx.String("proposal-cid"))
+		propcid := cctx.Args().First()
+		fmt.Printf("retrying deal with proposal-cid: %s\n", propcid)
+
+		cid, err := cid.Decode(propcid)
 		if err != nil {
 			return err
 		}

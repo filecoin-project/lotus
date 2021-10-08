@@ -22,7 +22,7 @@ var (
 	publishPeriod  = 1 * time.Second
 	maxDealsPerMsg = uint64(2) // Set max deals per publish deals message to 2
 
-	blockTime = 10 * time.Millisecond
+	blockTime = 3 * time.Millisecond
 )
 
 func TestDealsRetryLackOfFunds(t *testing.T) {
@@ -93,7 +93,7 @@ func TestDealsRetryLackOfFunds(t *testing.T) {
 	propcid := *deal
 
 	go func() {
-		time.Sleep(20 * time.Second)
+		time.Sleep(3 * time.Second)
 
 		kit.SendFunds(ctx, t, minerFullNode, publishStorageDealKey.Address, types.FromFil(1))
 

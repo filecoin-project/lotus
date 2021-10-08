@@ -832,11 +832,10 @@ NAME:
    lotus-miner storage-deals retry-publish - retry publishing a deal
 
 USAGE:
-   lotus-miner storage-deals retry-publish [command options] [arguments...]
+   lotus-miner storage-deals retry-publish [command options] <proposal CID>
 
 OPTIONS:
-   --proposal-cid value  
-   --help, -h            show help (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
