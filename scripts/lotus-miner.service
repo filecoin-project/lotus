@@ -1,11 +1,12 @@
 [Unit]
 Description=Lotus Miner
-After=network.target
+After=network-online.target
+Requires=network-online.target
 
 [Service]
-User=fc
-Group=fc
-ExecStart=/usr/local/bin/lotus-miner run
+User=lotus
+Group=lotus
+ExecStart=/usr/bin/lotus-miner run
 Environment=LOTUS_PATH=/var/lib/lotus
 Environment=LOTUS_MINER_PATH=/var/lib/lotus-miner
 Restart=always

@@ -62,15 +62,6 @@ build/.update-modules:
 	git submodule update --init --recursive
 	touch $@
 
-$(BINDIR):
-	mkdir -p $(BINDIR)
-
-$(SYSTEMDDIR):
-	mkdir -p $(SYSTEMDDIR)
-
-$(SHAREDIR):
-	mkdir -p $(SHAREDIR)
-
 # end git modules
 
 ## MAIN BINARIES
@@ -140,15 +131,15 @@ an existing lotus binary in your PATH. This may cause problems if you don't run 
 
 install: install-daemon install-miner install-worker install-services install-completions
 
-install-daemon: lotus $(BINDIR)
-	install -o root -g root -m 755 -s ./lotus $(BINDIR)/lotus
-	install -C -o root -g root -m 755 ./scripts/lotus-init.sh $(BINDIR)/lotus-init.sh
+install-daemon: lotus
+	install -D -s -m 755 ./lotus $(BINDIR)/lotus
+	install -D -C -m 755 ./scripts/lotus-init.sh $(BINDIR)/lotus-init.sh
 
-install-miner: lotus-miner $(BINDIR)
-	install -o root -g root -m 755 -s ./lotus-miner $(BINDIR)/lotus-miner
+install-miner: lotus-miner
+	install -D -s -m 755 ./lotus-miner $(BINDIR)/lotus-miner
 
-install-worker: lotus-worker $(BINDIR)
-	install -o root -g root -m 755 -s ./lotus-worker $(BINDIR)lotus-worker
+install-worker: lotus-worker
+	install -D -s -m 755 ./lotus-worker $(BINDIR)/lotus-worker
 
 uninstall-daemon:
 	rm $(BINDIR)/lotus
@@ -251,31 +242,30 @@ BINS+=lotus-sim
 
 # SYSTEMD
 
-install-daemon-service: install-daemon $(SYSTEMDDIR)
-	install -C -o root -g root -m 0644 ./scripts/lotus-daemon.service $(SYSTEMDDIR)/lotus-daemon.service
-	systemctl daemon-reload
+install-daemon-service: install-daemon
+	install -D -C -m 0644 ./scripts/lotus-daemon.service $(SYSTEMDDIR)/lotus-daemon.service
+	systemctl daemon-reload || echo systemctl daemon-reload failed during lotus install $?
 	@echo
 	@echo "lotus-daemon service installed. Don't forget to run 'sudo systemctl start lotus-daemon' to start it and 'sudo systemctl enable lotus-daemon' for it to be enabled on startup."
 
-install-miner-service: install-miner install-daemon-service $(SYSTEMDDIR)
-	mkdir -p $(DESTDIR)/etc/systemd/system
-	install -C -o root -g root -m 0644 ./scripts/lotus-miner.service $(SYSTEMDDIR)/lotus-miner.service
-	systemctl daemon-reload
+install-miner-service: install-miner install-daemon-service
+	install -D -C -m 0644 ./scripts/lotus-miner.service $(SYSTEMDDIR)/lotus-miner.service
+	systemctl daemon-reload || echo systemctl daemon-reload failed during lotus-miner install $?
 	@echo
 	@echo "lotus-miner service installed. Don't forget to run 'sudo systemctl start lotus-miner' to start it and 'sudo systemctl enable lotus-miner' for it to be enabled on startup."
 
 
 uninstall-daemon-service:
-	-systemctl stop lotus-daemon
-	-systemctl disable lotus-daemon
+	systemctl stop lotus-daemon || echo failed to stop lotus-daemon $?
+	systemctl disable lotus-daemon || echo failed to disable lotus-daemon $?
 	rm -f $(SYSTEMDDIR)/lotus-daemon.service
-	systemctl daemon-reload
+	systemctl daemon-reload || echo systemctl daemon-reload failed during lotus uninstall $?
 
 uninstall-miner-service:
-	-systemctl stop lotus-miner
-	-systemctl disable lotus-miner
+	systemctl stop lotus-miner || echo failed to stop lotus-miner $?
+	systemctl disable lotus-miner || echo failed to disable lotus-miner $?
 	rm -f $(SYSTEMDDIR)/lotus-miner.service
-	systemctl daemon-reload
+	systemctl daemon-reload || echo systemctl daemon-reload failed during lotus-miner uninstall $?
 
 
 install-services: install-daemon-service install-miner-service
@@ -288,11 +278,9 @@ uninstall: uninstall-daemons uninstall-services uninstall-completions
 
 buildall: $(BINS)
 
-install-completions: $(SHAREDIR)
-	mkdir -p $(SHAREDIR)/bash-completion/completions
-	mkdir -p $(SHAREDIR)/zsh/site-functions/
-	install -C ./scripts/bash-completion/lotus $(SHAREDIR)/bash-completion/completions/lotus
-	install -C ./scripts/zsh-completion/lotus $(SHAREDIR)/zsh/site-functions/_lotus
+install-completions:
+	install -D -C ./scripts/bash-completion/lotus $(SHAREDIR)/bash-completion/completions/lotus
+	install -D -C ./scripts/zsh-completion/lotus $(SHAREDIR)/zsh/site-functions/_lotus
 
 uninstall-completions:
 	rm $(SHAREDIR)/bash-completion/completions/lotus
