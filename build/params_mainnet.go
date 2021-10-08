@@ -64,8 +64,8 @@ const UpgradeTurboHeight = 712320
 // 2021-06-30T22:00:00Z
 var UpgradeHyperdriveHeight = abi.ChainEpoch(892800)
 
-// ???
-var UpgradeChocolateHeight = abi.ChainEpoch(999999999)
+// 2021-10-26T13:30:00Z
+var UpgradeChocolateHeight = abi.ChainEpoch(1231620)
 
 func init() {
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
