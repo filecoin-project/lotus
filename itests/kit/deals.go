@@ -177,6 +177,41 @@ loop:
 	}
 }
 
+// WaitDealSealedQuiet waits until the deal is sealed, without logging anything.
+func (dh *DealHarness) WaitDealSealedQuiet(ctx context.Context, deal *cid.Cid, noseal, noSealStart bool, cb func()) {
+loop:
+	for {
+		di, err := dh.client.ClientGetDealInfo(ctx, *deal)
+		require.NoError(dh.t, err)
+
+		switch di.State {
+		case storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing:
+			if noseal {
+				return
+			}
+			if !noSealStart {
+				dh.StartSealingWaiting(ctx)
+			}
+		case storagemarket.StorageDealProposalRejected:
+			dh.t.Fatal("deal rejected")
+		case storagemarket.StorageDealFailing:
+			dh.t.Fatal("deal failed")
+		case storagemarket.StorageDealError:
+			dh.t.Fatal("deal errored", di.Message)
+		case storagemarket.StorageDealActive:
+			break loop
+		}
+
+		_, err = dh.market.MarketListIncompleteDeals(ctx)
+		require.NoError(dh.t, err)
+
+		time.Sleep(time.Second / 2)
+		if cb != nil {
+			cb()
+		}
+	}
+}
+
 func (dh *DealHarness) ExpectDealFailure(ctx context.Context, deal *cid.Cid, errs string) error {
 	for {
 		di, err := dh.client.ClientGetDealInfo(ctx, *deal)

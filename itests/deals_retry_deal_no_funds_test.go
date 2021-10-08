@@ -169,7 +169,7 @@ func TestDealsRetryLackOfFunds_blockInPublishDeal(t *testing.T) {
 
 	dealSealed := make(chan struct{})
 	go func() {
-		dh.WaitDealSealed(ctx, deal, false, false, nil)
+		dh.WaitDealSealedQuiet(ctx, deal, false, false, nil)
 		dealSealed <- struct{}{}
 	}()
 
