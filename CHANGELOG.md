@@ -1,6 +1,6 @@
 # Lotus changelog
 
-# v1.12.0-rc1 / 2021-10-01
+# v1.12.0-rc2 / 2021-10-08
 
 This is the first release candidate for lotus v1.11.3. Changelog will be updated later.
 
