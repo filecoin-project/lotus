@@ -10,6 +10,8 @@ import (
 	"os"
 	"strings"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/lotus/build"
 
 	"github.com/urfave/cli/v2"
@@ -634,14 +636,21 @@ var walletMarketWithdraw = &cli.Command{
 			return err
 		}
 
-		var withdrawn abi.TokenAmount
-		if err := withdrawn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
+		nv, err := api.StateNetworkVersion(ctx, wait.TipSet)
+		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Successfully withdrew %s FIL\n", withdrawn)
-		if withdrawn != amt {
-			fmt.Printf("Note that this is less than the requested amount of %s FIL\n", amt)
+		if nv >= network.Version14 {
+			var withdrawn abi.TokenAmount
+			if err := withdrawn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
+				return err
+			}
+
+			fmt.Printf("Successfully withdrew %s FIL\n", withdrawn)
+			if withdrawn != amt {
+				fmt.Printf("Note that this is less than the requested amount of %s FIL\n", amt)
+			}
 		}
 
 		return nil

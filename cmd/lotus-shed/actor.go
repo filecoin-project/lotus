@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -138,14 +140,21 @@ var actorWithdrawCmd = &cli.Command{
 			return err
 		}
 
-		var withdrawn abi.TokenAmount
-		if err := withdrawn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
+		nv, err := nodeAPI.StateNetworkVersion(ctx, wait.TipSet)
+		if err != nil {
 			return err
 		}
 
-		fmt.Printf("Successfully withdrew %s FIL\n", withdrawn)
-		if withdrawn != amount {
-			fmt.Printf("Note that this is less than the requested amount of %s FIL\n", amount)
+		if nv >= network.Version14 {
+			var withdrawn abi.TokenAmount
+			if err := withdrawn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
+				return err
+			}
+
+			fmt.Printf("Successfully withdrew %s FIL\n", withdrawn)
+			if withdrawn != amount {
+				fmt.Printf("Note that this is less than the requested amount of %s FIL\n", amount)
+			}
 		}
 
 		return nil
