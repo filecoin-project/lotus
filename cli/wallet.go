@@ -648,7 +648,7 @@ var walletMarketWithdraw = &cli.Command{
 			}
 
 			fmt.Printf("Successfully withdrew %s FIL\n", withdrawn)
-			if withdrawn.LessThan(amount) {
+			if withdrawn.LessThan(amt) {
 				fmt.Printf("Note that this is less than the requested amount of %s FIL\n", amt)
 			}
 		}
