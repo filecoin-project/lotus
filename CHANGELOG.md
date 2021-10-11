@@ -1,60 +1,49 @@
 # Lotus changelog
 
-# v1.12.0-rc1 / 2021-10-01
+# v1.12.0-rc2 / 2021-10-11
 
-This is the first release candidate for lotus v1.11.3. Changelog will be updated later.
+This is the second release candidates of v1.12.0, a mandatory release of Lotus that introduces Filecoin Network v14, 
+codenamed the Chocolate upgrade. The Filecoin mainnet will upgrade at epoch 1231620, on 2021-10-26T13:30:00Z. 
 
-## Changelog
-- github.com/filecoin-project/lotus:
-  - bump the version to v1.12.0-rc1
-  - Upgrade to actors v6-rc1
-  - Set Chocolate upgrade epoch for butterfly
-  - reset of the butterfly network
-  - reset butterfly network
+> FIPs(FIP0020-0025) were included are based on optimistic acceptance, things may well change according to the result of FIP last calls on Oct 11th.
+
+## New Features
+- Implement and support [FIP-0024](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0024.md)
+  (BatchBalancer & BatchDiscount Post-HyperDrive Adjustment）: 
   - Precommit batch balancer support/config ([filecoin-project/lotus#7410](https://github.com/filecoin-project/lotus/pull/7410))
-  - Extend FaultMaxAge to 6 weeks for actors v6 on test networks only ([filecoin-project/lotus#7421](https://github.com/filecoin-project/lotus/pull/7421))
-  - Update to actors master ([filecoin-project/lotus#7404](https://github.com/filecoin-project/lotus/pull/7404))
-  - Fix Drand fetching around null tipsets ([filecoin-project/lotus#7376](https://github.com/filecoin-project/lotus/pull/7376))
+
+## Improvements
+- Implement [FIP-0023](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0023.md) (Break ties between tipsets of equal weight)
   - ChainStore: Add a tiebreaker rule for tipsets of equal weight ([filecoin-project/lotus#7378](https://github.com/filecoin-project/lotus/pull/7378))
-  - Sync: Sanity check msg siggy type ([filecoin-project/lotus#7379](https://github.com/filecoin-project/lotus/pull/7379))
-  - Add v6 actors ([filecoin-project/lotus#7357](https://github.com/filecoin-project/lotus/pull/7357))
-  - Randomness: Move getters from ChainAPI to StateAPI
+- Sync: Sanity check msg siggy type ([filecoin-project/lotus#7379](https://github.com/filecoin-project/lotus/pull/7379))
+- Randomness: Move getters from ChainAPI to StateAPI
+
+## Bug Fixes
+- Fix Drand fetching around null tipsets ([filecoin-project/lotus#7376](https://github.com/filecoin-project/lotus/pull/7376))
+
+## Dependency Updates
+- Add v6 actors ([filecoin-project/lotus#7357](https://github.com/filecoin-project/lotus/pull/7357))
 - github.com/filecoin-project/go-state-types (v0.1.1-0.20210810190654-139e0e79e69e -> v0.1.1-0.20210915140513-d354ccf10379):
-  - Add v14
-- github.com/filecoin-project/specs-actors/v6 (null -> v6.0.0-20211001193936-c3afe7fa3c5c):
-  - Better logging (#1503) ([filecoin-project/specs-actors#1503](https://github.com/filecoin-project/specs-actors/pull/1503))
-  - Defensive programming: harden power actor against seal verify failures (#1502) ([filecoin-project/specs-actors#1502](https://github.com/filecoin-project/specs-actors/pull/1502))
-  - BatchBalancer fee charged on precommit aggregate (#1497) ([filecoin-project/specs-actors#1497](https://github.com/filecoin-project/specs-actors/pull/1497))
-  - Fix #1486 (#1489) ([filecoin-project/specs-actors#1489](https://github.com/filecoin-project/specs-actors/pull/1489))
-  - Sector extension deal weight bug fix  (#1498) ([filecoin-project/specs-actors#1498](https://github.com/filecoin-project/specs-actors/pull/1498))
-  - Fip 0021 (#1487) ([filecoin-project/specs-actors#1487](https://github.com/filecoin-project/specs-actors/pull/1487))
-  - Fix #176 (swap to xerrors from pkg/errors) (#1494) ([filecoin-project/specs-actors#1494](https://github.com/filecoin-project/specs-actors/pull/1494))
-  - Merge branch 'master' of github.com:filecoin-project/specs-actors
-  - Merge branch 'fix-799'
-  - compute the hash of the proposal iff the proposal hash is present (#1365) ([filecoin-project/specs-actors#1365](https://github.com/filecoin-project/specs-actors/pull/1365))
-  - Revert "Remove cc upgrade (#1473)" (#1475) ([filecoin-project/specs-actors#1475](https://github.com/filecoin-project/specs-actors/pull/1475))
-  - Remove cc upgrade (#1473) ([filecoin-project/specs-actors#1473](https://github.com/filecoin-project/specs-actors/pull/1473))
-  - Update to v6 (#1468) ([filecoin-project/specs-actors#1468](https://github.com/filecoin-project/specs-actors/pull/1468))
-  - go state types version revert (#1467) ([filecoin-project/specs-actors#1467](https://github.com/filecoin-project/specs-actors/pull/1467))
-  - Adjust code for subtle change in go-multihash 0.0.15 (#1463) ([filecoin-project/specs-actors#1463](https://github.com/filecoin-project/specs-actors/pull/1463))
-  - Bump go state types (#1464) ([filecoin-project/specs-actors#1464](https://github.com/filecoin-project/specs-actors/pull/1464))
-  - Create CODEOWNERS (#1465) ([filecoin-project/specs-actors#1465](https://github.com/filecoin-project/specs-actors/pull/1465))
-  - Test deterministic offset (#1462) ([filecoin-project/specs-actors#1462](https://github.com/filecoin-project/specs-actors/pull/1462))
+
+## Others
+- v1.12.0-rc1 prep ([filecoin-project/lotus#7426](https://github.com/filecoin-project/lotus/pull/7426)
+- Extend FaultMaxAge to 6 weeks for actors v6 on test networks only ([filecoin-project/lotus#7421](https://github.com/filecoin-project/lotus/pull/7421))
 
 Contributors
 
 | Contributor | Commits | Lines ± | Files Changed |
 |-------------|---------|---------|---------------|
-| ZenGround0 | 12 | +4202/-2752 | 187 |
-| Aayush Rajasekaran | 19 | +4491/-825 | 169 |
-| c r | 4 | +1276/-435 | 37 |
-| Claudia Richoux | 12 | +1350/-209 | 43 |
-| Łukasz Magiera | 1 | +171/-13 | 8 |
-| Steven Allen | 2 | +115/-12 | 6 |
-| Travis Person | 2 | +19/-19 | 7 |
-| Peter Rabbitson | 1 | +5/-3 | 1 |
-| Jennifer Wang | 1 | +4/-4 | 7 |
-| Steve Loeppky | 1 | +6/-0 | 1 |
+| @ZenGround0 | 12 | +4202/-2752 | 187 |
+| @arajasek | 25 | +4567/-854 | 190 |
+| @laudiacay | 4 | +1276/-435 | 37 |
+| @laudiacay | 12 | +1350/-209 | 43 |
+| @magik6k |  1 | +171/-13 | 8 |
+| @Stebalien | 2 | +115/-12 | 6 |
+| @jennijuju | 7 | +73/-34 | 26 |
+| @travisperson | 2 | +19/-19 | 7 |
+| @coryschwartz | 1 | +16/-2 | 2 |
+| @Kubuxu | 5 | +5/-5 | 5 |
+| @ribasushi | 1 | +5/-3 | 1 |
 
 # v1.11.3 / 2021-09-29
 

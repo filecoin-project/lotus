@@ -12,7 +12,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
-	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 )
 
 const BootstrappersFile = ""
@@ -92,8 +91,6 @@ func init() {
 
 	BuildType |= Build2k
 
-	// To test out what this proposal would like on devnets / testnets: https://github.com/filecoin-project/FIPs/pull/190
-	miner6.FaultMaxAge = miner6.WPoStProvingPeriod * 42
 }
 
 const BlockDelaySecs = uint64(4)
