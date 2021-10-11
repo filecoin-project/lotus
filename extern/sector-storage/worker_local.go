@@ -331,11 +331,11 @@ func (l *LocalWorker) SealPreCommit1(ctx context.Context, sector storage.SectorR
 
 		{
 			// cleanup previous failed attempts if they exist
-			if err := l.storage.Remove(ctx, sector.ID, storiface.FTSealed, true); err != nil {
+			if err := l.storage.Remove(ctx, sector.ID, storiface.FTSealed, true, nil); err != nil {
 				return nil, xerrors.Errorf("cleaning up sealed data: %w", err)
 			}
 
-			if err := l.storage.Remove(ctx, sector.ID, storiface.FTCache, true); err != nil {
+			if err := l.storage.Remove(ctx, sector.ID, storiface.FTCache, true, nil); err != nil {
 				return nil, xerrors.Errorf("cleaning up cache data: %w", err)
 			}
 		}
@@ -394,7 +394,7 @@ func (l *LocalWorker) FinalizeSector(ctx context.Context, sector storage.SectorR
 		}
 
 		if len(keepUnsealed) == 0 {
-			if err := l.storage.Remove(ctx, sector.ID, storiface.FTUnsealed, true); err != nil {
+			if err := l.storage.Remove(ctx, sector.ID, storiface.FTUnsealed, true, nil); err != nil {
 				return nil, xerrors.Errorf("removing unsealed data: %w", err)
 			}
 		}
@@ -410,13 +410,13 @@ func (l *LocalWorker) ReleaseUnsealed(ctx context.Context, sector storage.Sector
 func (l *LocalWorker) Remove(ctx context.Context, sector abi.SectorID) error {
 	var err error
 
-	if rerr := l.storage.Remove(ctx, sector, storiface.FTSealed, true); rerr != nil {
+	if rerr := l.storage.Remove(ctx, sector, storiface.FTSealed, true, nil); rerr != nil {
 		err = multierror.Append(err, xerrors.Errorf("removing sector (sealed): %w", rerr))
 	}
-	if rerr := l.storage.Remove(ctx, sector, storiface.FTCache, true); rerr != nil {
+	if rerr := l.storage.Remove(ctx, sector, storiface.FTCache, true, nil); rerr != nil {
 		err = multierror.Append(err, xerrors.Errorf("removing sector (cache): %w", rerr))
 	}
-	if rerr := l.storage.Remove(ctx, sector, storiface.FTUnsealed, true); rerr != nil {
+	if rerr := l.storage.Remove(ctx, sector, storiface.FTUnsealed, true, nil); rerr != nil {
 		err = multierror.Append(err, xerrors.Errorf("removing sector (unsealed): %w", rerr))
 	}
 
