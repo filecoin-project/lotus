@@ -352,6 +352,7 @@ var storageDealsCmd = &cli.Command{
 		resetBlocklistCmd,
 		setSealDurationCmd,
 		dealsPendingPublish,
+		dealsRetryPublish,
 	},
 }
 
@@ -906,6 +907,36 @@ var dealsPendingPublish = &cli.Command{
 		}
 
 		fmt.Println("No deals queued to be published")
+		return nil
+	},
+}
+
+var dealsRetryPublish = &cli.Command{
+	Name:      "retry-publish",
+	Usage:     "retry publishing a deal",
+	ArgsUsage: "<proposal CID>",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		}
+		api, closer, err := lcli.GetMarketsAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		propcid := cctx.Args().First()
+		fmt.Printf("retrying deal with proposal-cid: %s\n", propcid)
+
+		cid, err := cid.Decode(propcid)
+		if err != nil {
+			return err
+		}
+		if err := api.MarketRetryPublishDeal(ctx, cid); err != nil {
+			return xerrors.Errorf("retrying publishing deal: %w", err)
+		}
+		fmt.Println("retried to publish deal")
 		return nil
 	},
 }

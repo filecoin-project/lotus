@@ -629,6 +629,7 @@ COMMANDS:
    reset-blocklist    Remove all entries from the miner's piece CID blocklist
    set-seal-duration  Set the expected time, in minutes, that you expect sealing sectors to take. Deals that start before this duration will be rejected.
    pending-publish    list deals waiting in publish queue
+   retry-publish      retry publishing a deal
    help, h            Shows a list of commands or help for one command
 
 OPTIONS:
@@ -822,6 +823,19 @@ USAGE:
 OPTIONS:
    --publish-now  send a publish message now (default: false)
    --help, -h     show help (default: false)
+   
+```
+
+### lotus-miner storage-deals retry-publish
+```
+NAME:
+   lotus-miner storage-deals retry-publish - retry publishing a deal
+
+USAGE:
+   lotus-miner storage-deals retry-publish [command options] <proposal CID>
+
+OPTIONS:
+   --help, -h  show help (default: false)
    
 ```
 

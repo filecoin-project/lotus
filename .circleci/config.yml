@@ -826,6 +826,11 @@ workflows:
           target: "./itests/deals_publish_test.go"
       
       - test:
+          name: test-itest-deals_retry_deal_no_funds
+          suite: itest-deals_retry_deal_no_funds
+          target: "./itests/deals_retry_deal_no_funds_test.go"
+      
+      - test:
           name: test-itest-deals
           suite: itest-deals
           target: "./itests/deals_test.go"

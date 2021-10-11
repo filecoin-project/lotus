@@ -683,6 +683,8 @@ type StorageMinerStruct struct {
 
 		MarketRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
+		MarketRetryPublishDeal func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
+
 		MarketSetAsk func(p0 context.Context, p1 types.BigInt, p2 types.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error `perm:"admin"`
 
 		MarketSetRetrievalAsk func(p0 context.Context, p1 *retrievalmarket.Ask) error `perm:"admin"`
@@ -4017,6 +4019,17 @@ func (s *StorageMinerStruct) MarketRestartDataTransfer(p0 context.Context, p1 da
 }
 
 func (s *StorageMinerStub) MarketRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) MarketRetryPublishDeal(p0 context.Context, p1 cid.Cid) error {
+	if s.Internal.MarketRetryPublishDeal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.MarketRetryPublishDeal(p0, p1)
+}
+
+func (s *StorageMinerStub) MarketRetryPublishDeal(p0 context.Context, p1 cid.Cid) error {
 	return ErrNotSupported
 }
 
