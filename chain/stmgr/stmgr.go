@@ -134,9 +134,6 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 			})
 			lastVersion = upgrade.Network
 		}
-	} else {
-		// Otherwise, go directly to the latest version.
-		lastVersion = build.NewestNetworkVersion
 	}
 
 	return &StateManager{
