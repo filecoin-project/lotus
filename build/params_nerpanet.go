@@ -10,7 +10,6 @@ import (
 	"github.com/ipfs/go-cid"
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
@@ -76,8 +75,6 @@ func init() {
 
 	BuildType = BuildNerpanet
 
-	// To test out what this proposal would like on devnets / testnets: https://github.com/filecoin-project/FIPs/pull/190
-	miner6.FaultMaxAge = miner6.WPoStProvingPeriod * 42
 }
 
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)
