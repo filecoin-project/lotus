@@ -6,10 +6,6 @@ This is the second release candidates for lotus v1.13.0, a recommended lotus rel
 [Network v14 Chocolate upgrade](https://github.com/filecoin-project/lotus/discussions/7431).
 This feature release includes latest functionality and improvements, like data transfer rate-limiting, rust-proof-ffi experimental CUDA support and so on. We *highly recommend* users like storage providers, data brokers, and so on to upgrade your nodes and all subsystems to this release!
 
-> Note: This release candidate sets the upgrade epoch for calibration net, however, it does not set the Network v14 
-> Chocolate upgrade for mainnet. FIPs(FIP0020-0025) included are based on optimistic acceptance, things may well 
-> change according to the result of FIP last calls.
-
 ## Highlights
 - Enable separate storage and retrieval transfer limits ([filecoin-project/lotus#7405](https://github.com/filecoin-project/lotus/pull/7405))
 - Update proofs to v10.0.0 ([filecoin-project/lotus#7420](https://github.com/filecoin-project/lotus/pull/7420))
@@ -68,6 +64,30 @@ This feature release includes latest functionality and improvements, like data t
   - Create CODEOWNERS (#1465) ([filecoin-project/specs-actors#1465](https://github.com/filecoin-project/specs-actors/pull/1465))
   - Test deterministic offset (#1462) ([filecoin-project/specs-actors#1462](https://github.com/filecoin-project/specs-actors/pull/1462)
 - Update go-libp2p to v0.15.0 ([filecoin-project/lotus#7362](https://github.com/filecoin-project/lotus/pull/7362))
+on optimistic acceptance, things may well change according to the result of FIP last calls on Oct 11th.
+
+## New Features
+- Implement and support [FIP-0024](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0024.md)
+  (BatchBalancer & BatchDiscount Post-HyperDrive Adjustment）: 
+  - Precommit batch balancer support/config ([filecoin-project/lotus#7410](https://github.com/filecoin-project/lotus/pull/7410))
+
+## Improvements
+- Implement [FIP-0023](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0023.md) (Break ties between tipsets of equal weight)
+  - ChainStore: Add a tiebreaker rule for tipsets of equal weight ([filecoin-project/lotus#7378](https://github.com/filecoin-project/lotus/pull/7378))
+- Sync: Sanity check msg siggy type ([filecoin-project/lotus#7379](https://github.com/filecoin-project/lotus/pull/7379))
+- Randomness: Move getters from ChainAPI to StateAPI
+
+## Bug Fixes
+- Fix Drand fetching around null tipsets ([filecoin-project/lotus#7376](https://github.com/filecoin-project/lotus/pull/7376))
+
+## Dependency Updates
+- Add v6 actors ([filecoin-project/lotus#7357](https://github.com/filecoin-project/lotus/pull/7357))
+- github.com/filecoin-project/go-state-types (v0.1.1-0.20210810190654-139e0e79e69e -> v0.1.1-0.20210915140513-d354ccf10379):
+
+## Others
+- v1.12.0-rc1 prep ([filecoin-project/lotus#7426](https://github.com/filecoin-project/lotus/pull/7426)
+- Extend FaultMaxAge to 6 weeks for actors v6 on test networks only ([filecoin-project/lotus#7421](https://github.com/filecoin-project/lotus/pull/7421))
+>>>>>>> release/v1.12.0
 
 ## Others
 - Chocolate to master ([filecoin-project/lotus#7440](https://github.com/filecoin-project/lotus/pull/7440))
@@ -80,6 +100,7 @@ This feature release includes latest functionality and improvements, like data t
 
 | Contributor | Commits | Lines ± | Files Changed |
 |-------------|---------|---------|---------------|
+<<<<<<< HEAD
 | ZenGround0 | 12 | +4202/-2752 | 187 |
 | Aayush Rajasekaran | 28 | +5023/-1059 | 213 |
 | c r | 4 | +1276/-435 | 37 |
@@ -104,6 +125,30 @@ This feature release includes latest functionality and improvements, like data t
 | Adrian Lanzafame | 1 | +3/-3 | 1 |
 | swift-mx | 1 | +1/-1 | 1 |
 
+||||||| 41be8fc9e
+| ZenGround0 | 12 | +4202/-2752 | 187 |
+| Aayush Rajasekaran | 19 | +4491/-825 | 169 |
+| c r | 4 | +1276/-435 | 37 |
+| Claudia Richoux | 12 | +1350/-209 | 43 |
+| Łukasz Magiera | 1 | +171/-13 | 8 |
+| Steven Allen | 2 | +115/-12 | 6 |
+| Travis Person | 2 | +19/-19 | 7 |
+| Peter Rabbitson | 1 | +5/-3 | 1 |
+| Jennifer Wang | 1 | +4/-4 | 7 |
+| Steve Loeppky | 1 | +6/-0 | 1 |
+=======
+| @ZenGround0 | 12 | +4202/-2752 | 187 |
+| @arajasek | 25 | +4567/-854 | 190 |
+| @laudiacay | 4 | +1276/-435 | 37 |
+| @laudiacay | 12 | +1350/-209 | 43 |
+| @magik6k |  1 | +171/-13 | 8 |
+| @Stebalien | 2 | +115/-12 | 6 |
+| @jennijuju | 7 | +73/-34 | 26 |
+| @travisperson | 2 | +19/-19 | 7 |
+| @coryschwartz | 1 | +16/-2 | 2 |
+| @Kubuxu | 5 | +5/-5 | 5 |
+| @ribasushi | 1 | +5/-3 | 1 |
+>>>>>>> release/v1.12.0
 
 # v1.11.3 / 2021-09-29
 
