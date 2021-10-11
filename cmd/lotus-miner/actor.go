@@ -282,7 +282,8 @@ var actorWithdrawCmd = &cli.Command{
 		fmt.Printf("Requested rewards withdrawal in message %s\n", smsg.Cid())
 
 		// wait for it to get mined into a block
-		fmt.Printf("waiting for %x epochs for confirmation..\n", uint64(cctx.Int("confidence")))
+		fmt.Printf("waiting for %d epochs for confirmation..\n", uint64(cctx.Int("confidence")))
+
 		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), uint64(cctx.Int("confidence")))
 		if err != nil {
 			return err
