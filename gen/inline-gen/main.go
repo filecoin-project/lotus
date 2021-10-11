@@ -47,46 +47,68 @@ func main() {
 
 		state := stateGlobal
 
+		rewrite := false
+
 		for i, line := range lines {
-			ln := i+1
+			ln := i + 1
 			switch state {
 			case stateGlobal:
 				outLines = append(outLines, line)
-				if line == `/* inline-gen template` {
+				if strings.TrimSpace(line) == `/* inline-gen template` {
 					state = stateTemplate
 					fmt.Printf("template section start %s:%d\n", path, ln)
 				}
 			case stateTemplate:
 				outLines = append(outLines, line) // output all template lines
 
-				if line == `inline-gen start */` {
+				if strings.TrimSpace(line) == `inline-gen start */` {
 					state = stateGen
 					fmt.Printf("generated section start %s:%d\n", path, ln)
 					continue
 				}
 				templateLines = append(templateLines, line)
 			case stateGen:
-				if line != `//inline-gen end` {
+				if strings.TrimSpace(line) != `//inline-gen end` {
 					continue
 				}
-				state = stateGlobal
-				fmt.Printf("inline gen:\n")
-				fmt.Println(strings.Join(templateLines, "\n"))
+				fmt.Printf("generated section end %s:%d\n", path, ln)
 
-				tpl, err := template.New("").Parse(strings.Join(templateLines, "\n"))
+				state = stateGlobal
+				rewrite = true
+
+				tpl, err := template.New("").Funcs(template.FuncMap{
+					"import": func(v float64) string {
+						if v == 0 {
+							return "/"
+						}
+						return fmt.Sprintf("/v%d/", int(v))
+					},
+				}).Parse(strings.Join(templateLines, "\n"))
 				if err != nil {
 					fmt.Printf("%s:%d: parsing template: %s\n", path, ln, err)
 					os.Exit(1)
 				}
+
 				var b bytes.Buffer
 				err = tpl.Execute(&b, data)
+				if err != nil {
+					fmt.Printf("%s:%d: executing template: %s\n", path, ln, err)
+					os.Exit(1)
+				}
 
 				outLines = append(outLines, strings.Split(b.String(), "\n")...)
-				fmt.Println("inline gen-ed:\n", b.String())
-
 				outLines = append(outLines, line)
+				templateLines = nil
 			}
 		}
+
+		if rewrite {
+			fmt.Printf("write %s\n", path)
+			if err := ioutil.WriteFile(path, []byte(strings.Join(outLines, "\n")), 0664); err != nil {
+				return err
+			}
+		}
+
 		return nil
 	})
 	if err != nil {
