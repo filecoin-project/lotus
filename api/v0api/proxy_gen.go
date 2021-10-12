@@ -267,6 +267,10 @@ type FullNodeStruct struct {
 
 		StateGetActor func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) `perm:"read"`
 
+		StateGetRandomnessFromBeacon func(p0 context.Context, p1 crypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) `perm:"read"`
+
+		StateGetRandomnessFromTickets func(p0 context.Context, p1 crypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) `perm:"read"`
+
 		StateGetReceipt func(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (*types.MessageReceipt, error) `perm:"read"`
 
 		StateListActors func(p0 context.Context, p1 types.TipSetKey) ([]address.Address, error) `perm:"read"`
@@ -1740,6 +1744,28 @@ func (s *FullNodeStruct) StateGetActor(p0 context.Context, p1 address.Address, p
 
 func (s *FullNodeStub) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateGetRandomnessFromBeacon(p0 context.Context, p1 crypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) {
+	if s.Internal.StateGetRandomnessFromBeacon == nil {
+		return *new(abi.Randomness), ErrNotSupported
+	}
+	return s.Internal.StateGetRandomnessFromBeacon(p0, p1, p2, p3, p4)
+}
+
+func (s *FullNodeStub) StateGetRandomnessFromBeacon(p0 context.Context, p1 crypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) {
+	return *new(abi.Randomness), ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateGetRandomnessFromTickets(p0 context.Context, p1 crypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) {
+	if s.Internal.StateGetRandomnessFromTickets == nil {
+		return *new(abi.Randomness), ErrNotSupported
+	}
+	return s.Internal.StateGetRandomnessFromTickets(p0, p1, p2, p3, p4)
+}
+
+func (s *FullNodeStub) StateGetRandomnessFromTickets(p0 context.Context, p1 crypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) {
+	return *new(abi.Randomness), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateGetReceipt(p0 context.Context, p1 cid.Cid, p2 types.TipSetKey) (*types.MessageReceipt, error) {

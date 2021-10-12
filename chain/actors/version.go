@@ -8,9 +8,9 @@ import (
 
 type Version int
 
-var LatestVersion = 5
+var LatestVersion = 6
 
-var Versions = []int{0, 2, 3, 4, LatestVersion}
+var Versions = []int{0, 2, 3, 4, 5, LatestVersion}
 
 const (
 	Version0 Version = 0
@@ -18,6 +18,7 @@ const (
 	Version3 Version = 3
 	Version4 Version = 4
 	Version5 Version = 5
+	Version6 Version = 6
 )
 
 // Converts a network version into an actors adt version.
@@ -33,6 +34,8 @@ func VersionForNetwork(version network.Version) (Version, error) {
 		return Version4, nil
 	case network.Version13:
 		return Version5, nil
+	case network.Version14:
+		return Version6, nil
 	default:
 		return -1, fmt.Errorf("unsupported network version %d", version)
 	}

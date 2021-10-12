@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"strconv"
 
+	"github.com/filecoin-project/go-state-types/crypto"
+
 	"github.com/filecoin-project/go-state-types/cbor"
 	cid "github.com/ipfs/go-cid"
 	"go.uber.org/fx"
@@ -1417,4 +1419,13 @@ func (m *StateModule) StateNetworkVersion(ctx context.Context, tsk types.TipSetK
 	// TODO: Height-1 to be consistent with the rest of the APIs?
 	// But that's likely going to break a bunch of stuff.
 	return m.StateManager.GetNtwkVersion(ctx, ts.Height()), nil
+}
+
+func (a *StateAPI) StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
+	return a.StateManager.GetRandomnessFromTickets(ctx, personalization, randEpoch, entropy, tsk)
+}
+
+func (a *StateAPI) StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
+	return a.StateManager.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, tsk)
+
 }

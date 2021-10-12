@@ -5,6 +5,7 @@ package build
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/ipfs/go-cid"
 
@@ -14,6 +15,8 @@ import (
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }
+
+const GenesisNetworkVersion = network.Version0
 
 const BootstrappersFile = "nerpanet.pi"
 const GenesisFile = "nerpanet.car"
@@ -45,6 +48,8 @@ const UpgradeNorwegianHeight = 201000
 const UpgradeTurboHeight = 203000
 const UpgradeHyperdriveHeight = 379178
 
+const UpgradeChocolateHeight = 999999999
+
 func init() {
 	// Minimum block production power is set to 4 TiB
 	// Rationale is to discourage small-scale miners from trying to take over the network
@@ -69,6 +74,7 @@ func init() {
 	Devnet = false
 
 	BuildType = BuildNerpanet
+
 }
 
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)

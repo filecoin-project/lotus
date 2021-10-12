@@ -11,6 +11,7 @@ import (
 	address "github.com/filecoin-project/go-address"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
+	network "github.com/filecoin-project/go-state-types/network"
 	miner "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	gomock "github.com/golang/mock/gomock"
@@ -38,6 +39,21 @@ func NewMockPreCommitBatcherApi(ctrl *gomock.Controller) *MockPreCommitBatcherAp
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockPreCommitBatcherApi) EXPECT() *MockPreCommitBatcherApiMockRecorder {
 	return m.recorder
+}
+
+// ChainBaseFee mocks base method.
+func (m *MockPreCommitBatcherApi) ChainBaseFee(arg0 context.Context, arg1 sealing.TipSetToken) (big.Int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainBaseFee", arg0, arg1)
+	ret0, _ := ret[0].(big.Int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChainBaseFee indicates an expected call of ChainBaseFee.
+func (mr *MockPreCommitBatcherApiMockRecorder) ChainBaseFee(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainBaseFee", reflect.TypeOf((*MockPreCommitBatcherApi)(nil).ChainBaseFee), arg0, arg1)
 }
 
 // ChainHead mocks base method.
@@ -99,4 +115,19 @@ func (m *MockPreCommitBatcherApi) StateMinerInfo(arg0 context.Context, arg1 addr
 func (mr *MockPreCommitBatcherApiMockRecorder) StateMinerInfo(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerInfo", reflect.TypeOf((*MockPreCommitBatcherApi)(nil).StateMinerInfo), arg0, arg1, arg2)
+}
+
+// StateNetworkVersion mocks base method.
+func (m *MockPreCommitBatcherApi) StateNetworkVersion(arg0 context.Context, arg1 sealing.TipSetToken) (network.Version, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateNetworkVersion", arg0, arg1)
+	ret0, _ := ret[0].(network.Version)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateNetworkVersion indicates an expected call of StateNetworkVersion.
+func (mr *MockPreCommitBatcherApiMockRecorder) StateNetworkVersion(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateNetworkVersion", reflect.TypeOf((*MockPreCommitBatcherApi)(nil).StateNetworkVersion), arg0, arg1)
 }

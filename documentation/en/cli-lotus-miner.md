@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.11.3
+   1.12.0
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -278,7 +278,8 @@ USAGE:
    lotus-miner actor withdraw [command options] [amount (FIL)]
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --confidence value  number of block confirmations to wait for (default: 5)
+   --help, -h          show help (default: false)
    
 ```
 

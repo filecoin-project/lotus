@@ -5,6 +5,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/filecoin-project/specs-actors/v6/actors/migration/nv14"
+
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
@@ -137,7 +139,25 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 			DontStartWithin: 15,
 			StopWithin:      5,
 		}},
-		Expensive: true}}
+		Expensive: true,
+	}, {
+		Height:    build.UpgradeChocolateHeight,
+		Network:   network.Version14,
+		Migration: UpgradeActorsV6,
+		PreMigrations: []stmgr.PreMigration{{
+			PreMigration:    PreUpgradeActorsV6,
+			StartWithin:     120,
+			DontStartWithin: 60,
+			StopWithin:      35,
+		}, {
+			PreMigration:    PreUpgradeActorsV6,
+			StartWithin:     30,
+			DontStartWithin: 15,
+			StopWithin:      5,
+		}},
+		Expensive: true,
+	},
+	}
 
 	for _, u := range updates {
 		if u.Height < 0 {
@@ -1063,6 +1083,92 @@ func upgradeActorsV5Common(
 
 	// Perform the migration
 	newHamtRoot, err := nv13.MigrateStateTree(ctx, store, stateRoot.Actors, epoch, config, migrationLogger{}, cache)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("upgrading to actors v5: %w", err)
+	}
+
+	// Persist the result.
+	newRoot, err := store.Put(ctx, &types.StateRoot{
+		Version: types.StateTreeVersion4,
+		Actors:  newHamtRoot,
+		Info:    stateRoot.Info,
+	})
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
+	}
+
+	// Persist the new tree.
+
+	{
+		from := buf
+		to := buf.Read()
+
+		if err := vm.Copy(ctx, from, to, newRoot); err != nil {
+			return cid.Undef, xerrors.Errorf("copying migrated tree: %w", err)
+		}
+	}
+
+	return newRoot, nil
+}
+
+func UpgradeActorsV6(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+	// Use all the CPUs except 3.
+	workerCount := runtime.NumCPU() - 3
+	if workerCount <= 0 {
+		workerCount = 1
+	}
+
+	config := nv14.Config{
+		MaxWorkers:        uint(workerCount),
+		JobQueueSize:      1000,
+		ResultQueueSize:   100,
+		ProgressLogPeriod: 10 * time.Second,
+	}
+
+	newRoot, err := upgradeActorsV6Common(ctx, sm, cache, root, epoch, ts, config)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("migrating actors v5 state: %w", err)
+	}
+
+	return newRoot, nil
+}
+
+func PreUpgradeActorsV6(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
+	// Use half the CPUs for pre-migration, but leave at least 3.
+	workerCount := runtime.NumCPU()
+	if workerCount <= 4 {
+		workerCount = 1
+	} else {
+		workerCount /= 2
+	}
+	config := nv14.Config{MaxWorkers: uint(workerCount)}
+	_, err := upgradeActorsV6Common(ctx, sm, cache, root, epoch, ts, config)
+	return err
+}
+
+func upgradeActorsV6Common(
+	ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache,
+	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
+	config nv14.Config,
+) (cid.Cid, error) {
+	buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), blockstore.NewMemorySync())
+	store := store.ActorStore(ctx, buf)
+
+	// Load the state root.
+	var stateRoot types.StateRoot
+	if err := store.Get(ctx, root, &stateRoot); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to decode state root: %w", err)
+	}
+
+	if stateRoot.Version != types.StateTreeVersion4 {
+		return cid.Undef, xerrors.Errorf(
+			"expected state root version 4 for actors v6 upgrade, got %d",
+			stateRoot.Version,
+		)
+	}
+
+	// Perform the migration
+	newHamtRoot, err := nv14.MigrateStateTree(ctx, store, stateRoot.Actors, epoch, config, migrationLogger{}, cache)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("upgrading to actors v5: %w", err)
 	}

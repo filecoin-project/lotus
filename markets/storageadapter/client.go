@@ -6,6 +6,9 @@ import (
 	"bytes"
 	"context"
 
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -18,9 +21,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
-
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -108,10 +108,10 @@ func (c *ClientNodeAdapter) VerifySignature(ctx context.Context, sig crypto.Sign
 func (c *ClientNodeAdapter) AddFunds(ctx context.Context, addr address.Address, amount abi.TokenAmount) (cid.Cid, error) {
 	// (Provider Node API)
 	smsg, err := c.MpoolPushMessage(ctx, &types.Message{
-		To:     miner2.StorageMarketActorAddr,
+		To:     marketactor.Address,
 		From:   addr,
 		Value:  amount,
-		Method: miner2.MethodsMarket.AddBalance,
+		Method: builtin6.MethodsMarket.AddBalance,
 	}, nil)
 	if err != nil {
 		return cid.Undef, err
@@ -171,19 +171,20 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 			break
 		}
 	}
+
 	if !pubOk {
 		return 0, xerrors.Errorf("deal wasn't published by storage provider: from=%s, provider=%s,%+v", pubmsg.From, deal.Proposal.Provider, pubAddrs)
 	}
 
-	if pubmsg.To != miner2.StorageMarketActorAddr {
+	if pubmsg.To != marketactor.Address {
 		return 0, xerrors.Errorf("deal publish message wasn't set to StorageMarket actor (to=%s)", pubmsg.To)
 	}
 
-	if pubmsg.Method != miner2.MethodsMarket.PublishStorageDeals {
+	if pubmsg.Method != builtin6.MethodsMarket.PublishStorageDeals {
 		return 0, xerrors.Errorf("deal publish message called incorrect method (method=%s)", pubmsg.Method)
 	}
 
-	var params market2.PublishStorageDealsParams
+	var params marketactor.PublishStorageDealsParams
 	if err := params.UnmarshalCBOR(bytes.NewReader(pubmsg.Params)); err != nil {
 		return 0, err
 	}
@@ -215,12 +216,37 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, xerrors.Errorf("deal publish failed: exit=%d", ret.Receipt.ExitCode)
 	}
 
-	var res market2.PublishStorageDealsReturn
-	if err := res.UnmarshalCBOR(bytes.NewReader(ret.Receipt.Return)); err != nil {
-		return 0, err
+	nv, err := c.StateNetworkVersion(ctx, ret.TipSet)
+	if err != nil {
+		return 0, xerrors.Errorf("getting network version: %w", err)
 	}
 
-	return res.IDs[dealIdx], nil
+	res, err := marketactor.DecodePublishStorageDealsReturn(ret.Receipt.Return, nv)
+	if err != nil {
+		return 0, xerrors.Errorf("decoding deal publish return: %w", err)
+	}
+
+	dealIDs, err := res.DealIDs()
+	if err != nil {
+		return 0, xerrors.Errorf("getting dealIDs: %w", err)
+	}
+
+	if dealIdx >= len(dealIDs) {
+		return 0, xerrors.Errorf(
+			"deal index %d out of bounds of deals (len %d) in publish deals message %s",
+			dealIdx, len(dealIDs), pubmsg.Cid())
+	}
+
+	valid, err := res.IsDealValid(uint64(dealIdx))
+	if err != nil {
+		return 0, xerrors.Errorf("determining deal validity: %w", err)
+	}
+
+	if !valid {
+		return 0, xerrors.New("deal was invalid at publication")
+	}
+
+	return dealIDs[dealIdx], nil
 }
 
 var clientOverestimation = struct {
@@ -243,12 +269,12 @@ func (c *ClientNodeAdapter) DealProviderCollateralBounds(ctx context.Context, si
 }
 
 // TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
-func (c *ClientNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
+func (c *ClientNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal market0.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
 	return c.scMgr.OnDealSectorPreCommitted(ctx, provider, marketactor.DealProposal(proposal), *publishCid, cb)
 }
 
 // TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
-func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
+func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market0.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
 	return c.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, marketactor.DealProposal(proposal), *publishCid, cb)
 }
 
@@ -342,7 +368,7 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 	return nil
 }
 
-func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal market2.DealProposal) (*market2.ClientDealProposal, error) {
+func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal market0.DealProposal) (*marketactor.ClientDealProposal, error) {
 	// TODO: output spec signed proposal
 	buf, err := cborutil.Dump(&proposal)
 	if err != nil {
@@ -361,7 +387,7 @@ func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Add
 		return nil, err
 	}
 
-	return &market2.ClientDealProposal{
+	return &marketactor.ClientDealProposal{
 		Proposal:        proposal,
 		ClientSignature: *sig,
 	}, nil
