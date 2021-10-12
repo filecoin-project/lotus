@@ -1,28 +1,49 @@
 # Lotus changelog
 
-# v1.12.0-rc2 / 2021-10-11
+# v1.12.0 / 2021-10-12
 
-This is the second release candidates of v1.12.0, a mandatory release of Lotus that introduces Filecoin Network v14, 
-codenamed the Chocolate upgrade. The Filecoin mainnet will upgrade at epoch 1231620, on 2021-10-26T13:30:00Z. 
+This is a mandatory release of Lotus that introduces [Filecoin Network v14](https://github.com/filecoin-project/community/discussions/74#discussioncomment-1398542), codenamed the Chocolate upgrade. The Filecoin mainnet will upgrade at epoch 1231620, on 2021-10-26T13:30:00Z. 
 
-> FIPs(FIP0020-0025) were included are based on optimistic acceptance, things may well change according to the result of FIP last calls on Oct 11th.
+The Chocolate upgrade introduces the following FIPs:
 
-## New Features
-- Implement and support [FIP-0024](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0024.md)
-  (BatchBalancer & BatchDiscount Post-HyperDrive Adjustment）: 
+- [FIP-0020](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0020.md): Add return value to `WithdrawBalance`
+- [FIP-0021](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0021.md): Correct quality calculation on expiration
+- [FIP-0022](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0022.md): Bad deals don't fail PublishStorageDeals
+- [FIP-0023](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0023.md): Break ties between tipsets of equal weight
+- [FIP-0024](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0024.md): BatchBalancer & BatchDiscount Post-HyperDrive Adjustment
+- [FIP-0026](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0026.md): Extend sector faulty period from 2 weeks to 6 weeks
+
+Note that this release is built on top of lotus v1.11.3. Enterprising users like storage providers, data brokers and others are recommended to use lotus v1.13.0 for latest new features, improvements and bug fixes.
+
+## New Features and Changes
+- Implement and support [FIP-0024](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0024.md) BatchBalancer & BatchDiscount Post-HyperDrive Adjustment: 
   - Precommit batch balancer support/config ([filecoin-project/lotus#7410](https://github.com/filecoin-project/lotus/pull/7410))
+    - Set `BatchPreCommitAboveBaseFee` to decide whether sending out a PreCommits in individual messages or in a batch.
+    - The default value of `BatchPreCommitAboveBaseFee` and `AggregateAboveBaseFee` are now updated to 0.32nanoFIL.
+- The amount of FIL withdrawn from `WithdrawBalance` from miner or market via lotus CLI is now printed out upon message landing on the chain.
 
 ## Improvements
 - Implement [FIP-0023](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0023.md) (Break ties between tipsets of equal weight)
   - ChainStore: Add a tiebreaker rule for tipsets of equal weight ([filecoin-project/lotus#7378](https://github.com/filecoin-project/lotus/pull/7378))
-- Sync: Sanity check msg siggy type ([filecoin-project/lotus#7379](https://github.com/filecoin-project/lotus/pull/7379))
 - Randomness: Move getters from ChainAPI to StateAPI
 
 ## Bug Fixes
 - Fix Drand fetching around null tipsets ([filecoin-project/lotus#7376](https://github.com/filecoin-project/lotus/pull/7376))
 
 ## Dependency Updates
-- Add v6 actors ([filecoin-project/lotus#7357](https://github.com/filecoin-project/lotus/pull/7357))
+- Add v6 actors
+  - **Protocol changes**
+     - Multisig Approve only hashes when hash in params
+     - FIP 0020 WithdrawBalance methods return withdrawn value
+     - FIP 0021 Fix bug in power calculation when extending verified deals sectors
+     - FIP 0022 PublishStorageDeals drops errors in batch
+     - FIP 0024 BatchBalancer update and burn added to PreCommitBatch
+     - FIP 0026 Add FaultMaxAge extension
+     - Reduce calls to power and reward actors by passing values from power cron
+     - Defensive programming hardening power cron against programmer error
+  - **Implementation changes**
+     - Move to xerrors
+     - Improved logging: burn events are not logged with reasons and burned value.
 - github.com/filecoin-project/go-state-types (v0.1.1-0.20210810190654-139e0e79e69e -> v0.1.1-0.20210915140513-d354ccf10379):
 
 ## Others
