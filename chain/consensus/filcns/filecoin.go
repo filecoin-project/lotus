@@ -823,7 +823,7 @@ func (filec *FilecoinEC) checkPowerAndGetWorkerKey(ctx context.Context, bh *type
 
 	key, err := stmgr.GetMinerWorkerRaw(ctx, filec.sm, lbst, bh.Miner)
 	if err != nil {
-		log.Warnf("failed to resolve worker key for miner %s: %s", bh.Miner, err)
+		log.Warnf("failed to resolve worker key for miner %s and block height %d: %s", bh.Miner, bh.Height, err)
 		return address.Undef, ErrSoftFailure
 	}
 
