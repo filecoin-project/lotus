@@ -31,7 +31,7 @@ Note that this release is built on top of lotus v1.11.3. Enterprising users like
 - Fix Drand fetching around null tipsets ([filecoin-project/lotus#7376](https://github.com/filecoin-project/lotus/pull/7376))
 
 ## Dependency Updates
-- Add v6 actors
+- Add [v6 actors](https://github.com/filecoin-project/specs-actors/releases/tag/v6.0.0)
   - **Protocol changes**
      - Multisig Approve only hashes when hash in params
      - FIP 0020 WithdrawBalance methods return withdrawn value
