@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# v1.13.0-rc2 / 2021-10-06
+# v1.13.0-rc3 / 2021-10-12
 
-This is the second release candidates for lotus v1.13.0, a recommended lotus release that supports the upcoming 
+This is the third release candidates for lotus v1.13.0, a recommended lotus release that supports the upcoming 
 [Network v14 Chocolate upgrade](https://github.com/filecoin-project/lotus/discussions/7431).
 This feature release includes latest functionality and improvements, like data transfer rate-limiting, rust-proof-ffi experimental CUDA support and so on. We *highly recommend* users like storage providers, data brokers, and so on to upgrade your nodes and all subsystems to this release!
 
