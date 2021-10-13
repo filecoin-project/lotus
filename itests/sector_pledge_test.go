@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -59,8 +60,7 @@ func TestPledgeBatching(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		opts := kit.ConstructorOpts(kit.LatestActorsAt(-1))
-		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
+		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
 		ens.InterconnectAll().BeginMining(blockTime)
 
 		client.WaitTillChain(ctx, kit.HeightAtLeast(10))
@@ -117,8 +117,7 @@ func TestPledgeMaxBatching(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		opts := kit.ConstructorOpts(kit.LatestActorsAt(-1))
-		client, full, miner, ens := kit.EnsembleTwoOne(t, kit.MockProofs(), opts)
+		_, full, miner, ens := kit.EnsembleTwoOne(t, kit.MockProofs())
 		ens.InterconnectAll().BeginMining(blockTime)
 		m, ok := miner.StorageMiner.(*impl.StorageMinerAPI)
 		require.True(t, ok)
@@ -126,8 +125,6 @@ func TestPledgeMaxBatching(t *testing.T) {
 		require.NoError(t, err)
 		cfg.MinCommitBatch = miner5.MaxAggregatedSectors
 		require.NoError(t, m.SetSealingConfigFunc(cfg))
-
-		client.WaitTillChain(ctx, kit.HeightAtLeast(10))
 
 		toCheck := miner.StartPledge(ctx, nSectors, 0, nil)
 		var lastSectorNo abi.SectorNumber
@@ -191,8 +188,8 @@ func TestPledgeBeforeNv13(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		opts := kit.ConstructorOpts(kit.LatestActorsAt(1000000000))
-		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
+		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(),
+			kit.GenesisNetworkVersion(network.Version12))
 		ens.InterconnectAll().BeginMining(blocktime)
 
 		client.WaitTillChain(ctx, kit.HeightAtLeast(10))

@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.11.2-dev
+   1.13.1-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -388,6 +388,7 @@ USAGE:
 OPTIONS:
    --wallet value, -w value   Specify address to withdraw funds to, otherwise it will use the default wallet address
    --address value, -a value  Market address to withdraw from (account or miner actor address, defaults to --wallet address)
+   --confidence value         number of block confirmations to wait for (default: 5)
    --help, -h                 show help (default: false)
    
 ```
@@ -544,13 +545,14 @@ CATEGORY:
    RETRIEVAL
 
 OPTIONS:
-   --from value      address to send transactions from
-   --car             export to a car file instead of a regular file (default: false)
-   --miner value     miner address for retrieval, if not present it'll use local discovery
-   --maxPrice value  maximum price the client is willing to consider (default: 0.01 FIL)
-   --pieceCid value  require data to be retrieved from a specific Piece CID
-   --allow-local     (default: false)
-   --help, -h        show help (default: false)
+   --from value                     address to send transactions from
+   --car                            export to a car file instead of a regular file (default: false)
+   --miner value                    miner address for retrieval, if not present it'll use local discovery
+   --datamodel-path-selector value  a rudimentary (DM-level-only) text-path selector, allowing for sub-selection within a deal
+   --maxPrice value                 maximum price the client is willing to consider (default: 0.01 FIL)
+   --pieceCid value                 require data to be retrieved from a specific Piece CID
+   --allow-local                    (default: false)
+   --help, -h                       show help (default: false)
    
 ```
 
@@ -2297,11 +2299,12 @@ NAME:
    lotus chain encode params - Encodes the given JSON params
 
 USAGE:
-   lotus chain encode params [command options] [toAddr method params]
+   lotus chain encode params [command options] [dest method params]
 
 OPTIONS:
    --tipset value    
    --encoding value  specify input encoding to parse (default: "base64")
+   --to-code         interpret dest as code CID instead of as address (default: false)
    --help, -h        show help (default: false)
    
 ```
@@ -2365,6 +2368,7 @@ USAGE:
 COMMANDS:
    list       List log systems
    set-level  Set log level
+   alerts     Get alert states
    help, h    Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2417,6 +2421,20 @@ DESCRIPTION:
 OPTIONS:
    --system value  limit to log system
    --help, -h      show help (default: false)
+   
+```
+
+### lotus log alerts
+```
+NAME:
+   lotus log alerts - Get alert states
+
+USAGE:
+   lotus log alerts [command options] [arguments...]
+
+OPTIONS:
+   --all       get all (active and inactive) alerts (default: false)
+   --help, -h  show help (default: false)
    
 ```
 

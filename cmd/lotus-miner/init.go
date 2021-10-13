@@ -51,6 +51,7 @@ import (
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/journal/fsjournal"
 	storageminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -479,7 +480,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 				return err
 			}
 
-			j, err := journal.OpenFSJournal(lr, journal.EnvDisabledEvents())
+			j, err := fsjournal.OpenFSJournal(lr, journal.EnvDisabledEvents())
 			if err != nil {
 				return fmt.Errorf("failed to open filesystem journal: %w", err)
 			}
@@ -563,7 +564,7 @@ func makeHostKey(lr repo.LockedRepo) (crypto.PrivKey, error) {
 		return nil, err
 	}
 
-	kbytes, err := pk.Bytes()
+	kbytes, err := crypto.MarshalPrivateKey(pk)
 	if err != nil {
 		return nil, err
 	}

@@ -33,6 +33,8 @@ import (
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 )
 
 func init() {
@@ -57,11 +59,15 @@ func init() {
 		return load5(store, root)
 	})
 
+	builtin.RegisterActorState(builtin6.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load6(store, root)
+	})
+
 }
 
-var Methods = builtin5.MethodsMiner
+var Methods = builtin6.MethodsMiner
 
-// Unchanged between v0, v2, v3, and v4 actors
+// Unchanged between v0, v2, v3, v4, and v5 actors
 var WPoStProvingPeriod = miner0.WPoStProvingPeriod
 var WPoStPeriodDeadlines = miner0.WPoStPeriodDeadlines
 var WPoStChallengeWindow = miner0.WPoStChallengeWindow
@@ -93,6 +99,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	case builtin5.StorageMinerActorCodeID:
 		return load5(store, act.Head)
 
+	case builtin6.StorageMinerActorCodeID:
+		return load6(store, act.Head)
+
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
@@ -115,6 +124,9 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 	case actors.Version5:
 		return make5(store)
 
+	case actors.Version6:
+		return make6(store)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -136,6 +148,9 @@ func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	case actors.Version5:
 		return builtin5.StorageMinerActorCodeID, nil
+
+	case actors.Version6:
+		return builtin6.StorageMinerActorCodeID, nil
 
 	}
 
@@ -200,11 +215,28 @@ type Deadline interface {
 }
 
 type Partition interface {
+	// AllSectors returns all sector numbers in this partition, including faulty, unproven, and terminated sectors
 	AllSectors() (bitfield.BitField, error)
+
+	// Subset of sectors detected/declared faulty and not yet recovered (excl. from PoSt).
+	// Faults ∩ Terminated = ∅
 	FaultySectors() (bitfield.BitField, error)
+
+	// Subset of faulty sectors expected to recover on next PoSt
+	// Recoveries ∩ Terminated = ∅
 	RecoveringSectors() (bitfield.BitField, error)
+
+	// Live sectors are those that are not terminated (but may be faulty).
 	LiveSectors() (bitfield.BitField, error)
+
+	// Active sectors are those that are neither terminated nor faulty nor unproven, i.e. actively contributing power.
 	ActiveSectors() (bitfield.BitField, error)
+
+	// Unproven sectors in this partition. This bitfield will be cleared on
+	// a successful window post (or at the end of the partition's next
+	// deadline). At that time, any still unproven sectors will be added to
+	// the faulty sector bitfield.
+	UnprovenSectors() (bitfield.BitField, error)
 }
 
 type SectorOnChainInfo struct {

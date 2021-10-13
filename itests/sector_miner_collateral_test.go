@@ -30,7 +30,6 @@ func TestMinerBalanceCollateral(t *testing.T) {
 		defer cancel()
 
 		opts := kit.ConstructorOpts(
-			kit.LatestActorsAt(-1),
 			node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.GetSealingConfigFunc), func() (dtypes.GetSealingConfigFunc, error) {
 				return func() (sealiface.Config, error) {
 					return sealiface.Config{
@@ -54,11 +53,13 @@ func TestMinerBalanceCollateral(t *testing.T) {
 						AvailableBalanceBuffer:     big.Zero(),
 						DisableCollateralFallback:  false,
 						AggregateAboveBaseFee:      big.Zero(),
+						BatchPreCommitAboveBaseFee: big.Zero(),
 					}, nil
 				}, nil
 			})),
 		)
 		full, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
+
 		ens.InterconnectAll().BeginMining(blockTime)
 		full.WaitTillChain(ctx, kit.HeightAtLeast(10))
 

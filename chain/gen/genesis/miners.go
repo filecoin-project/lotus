@@ -6,29 +6,7 @@ import (
 	"fmt"
 	"math/rand"
 
-	power4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/power"
-
-	reward4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/reward"
-
-	market4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/market"
-
-	"github.com/filecoin-project/lotus/chain/actors"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-
-	"github.com/filecoin-project/lotus/chain/actors/policy"
-
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-
-	"github.com/filecoin-project/go-state-types/network"
-
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -39,12 +17,29 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
+
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	reward2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/reward"
+	market4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/market"
+	power4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/power"
+	reward4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/reward"
 	runtime5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -81,7 +76,10 @@ func mkFakedSigSyscalls(base vm.SyscallBuilder) vm.SyscallBuilder {
 func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.SyscallBuilder, sroot cid.Cid, miners []genesis.Miner, nv network.Version) (cid.Cid, error) {
 
 	cst := cbor.NewCborStore(cs.StateBlockstore())
-	av := actors.VersionForNetwork(nv)
+	av, err := actors.VersionForNetwork(nv)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to get network version: %w", err)
+	}
 
 	csc := func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error) {
 		return big.Zero(), nil
@@ -92,6 +90,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 		Epoch:          0,
 		Rand:           &fakeRand{},
 		Bstore:         cs.StateBlockstore(),
+		Actors:         filcns.NewActorRegistry(),
 		Syscalls:       mkFakedSigSyscalls(sys),
 		CircSupplyCalc: csc,
 		NtwkVersion: func(_ context.Context, _ abi.ChainEpoch) network.Version {
@@ -196,12 +195,21 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 				if err != nil {
 					return xerrors.Errorf("failed to create genesis miner (publish deals): %w", err)
 				}
-				var ids market.PublishStorageDealsReturn
-				if err := ids.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
-					return xerrors.Errorf("unmarsahling publishStorageDeals result: %w", err)
+				retval, err := market.DecodePublishStorageDealsReturn(ret, nv)
+				if err != nil {
+					return xerrors.Errorf("failed to create genesis miner (decoding published deals): %w", err)
 				}
 
-				minerInfos[i].dealIDs = append(minerInfos[i].dealIDs, ids.IDs...)
+				ids, err := retval.DealIDs()
+				if err != nil {
+					return xerrors.Errorf("failed to create genesis miner (getting published dealIDs): %w", err)
+				}
+
+				if len(ids) != len(params.Deals) {
+					return xerrors.Errorf("failed to create genesis miner (at least one deal was invalid on publication")
+				}
+
+				minerInfos[i].dealIDs = append(minerInfos[i].dealIDs, ids...)
 				return nil
 			}
 
@@ -291,7 +299,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 			return cid.Undef, xerrors.Errorf("setting power state: %w", err)
 		}
 
-		rewact, err := SetupRewardActor(ctx, cs.StateBlockstore(), big.Zero(), actors.VersionForNetwork(nv))
+		rewact, err := SetupRewardActor(ctx, cs.StateBlockstore(), big.Zero(), av)
 		if err != nil {
 			return cid.Undef, xerrors.Errorf("setup reward actor: %w", err)
 		}
@@ -392,17 +400,30 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 				}
 
 				// Commit one-by-one, otherwise pledge math tends to explode
-				confirmParams := &builtin0.ConfirmSectorProofsParams{
-					Sectors: []abi.SectorNumber{preseal.SectorID},
+				var paramBytes []byte
+
+				if av >= actors.Version6 {
+					// TODO: fixup
+					confirmParams := &builtin6.ConfirmSectorProofsParams{
+						Sectors: []abi.SectorNumber{preseal.SectorID},
+					}
+
+					paramBytes = mustEnc(confirmParams)
+				} else {
+					confirmParams := &builtin0.ConfirmSectorProofsParams{
+						Sectors: []abi.SectorNumber{preseal.SectorID},
+					}
+
+					paramBytes = mustEnc(confirmParams)
 				}
 
-				_, err = doExecValue(ctx, vm, minerInfos[i].maddr, power.Address, big.Zero(), miner.Methods.ConfirmSectorProofsValid, mustEnc(confirmParams))
+				_, err = doExecValue(ctx, vm, minerInfos[i].maddr, power.Address, big.Zero(), miner.Methods.ConfirmSectorProofsValid, paramBytes)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
 				}
 
-				if av > actors.Version2 {
-					// post v2, we need to explicitly Claim this power since ConfirmSectorProofsValid doesn't do it anymore
+				if av >= actors.Version2 {
+					// post v0, we need to explicitly Claim this power since ConfirmSectorProofsValid doesn't do it anymore
 					claimParams := &power4.UpdateClaimedPowerParams{
 						RawByteDelta:         types.NewInt(uint64(m.SectorSize)),
 						QualityAdjustedDelta: sectorWeight,
@@ -488,25 +509,31 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 // TODO: copied from actors test harness, deduplicate or remove from here
 type fakeRand struct{}
 
-func (fr *fakeRand) GetChainRandomnessLookingForward(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) GetChainRandomnessV2(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
 	return out, nil
 }
 
-func (fr *fakeRand) GetChainRandomnessLookingBack(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) GetChainRandomnessV1(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
 	return out, nil
 }
 
-func (fr *fakeRand) GetBeaconRandomnessLookingForward(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) GetBeaconRandomnessV3(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return out, nil
 }
 
-func (fr *fakeRand) GetBeaconRandomnessLookingBack(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) GetBeaconRandomnessV2(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	out := make([]byte, 32)
+	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
+	return out, nil
+}
+
+func (fr *fakeRand) GetBeaconRandomnessV1(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return out, nil
@@ -534,7 +561,6 @@ func dealWeight(ctx context.Context, vm *vm.VM, maddr address.Address, dealIDs [
 			SectorExpiry: sectorExpiry,
 		}
 
-		var dealWeights market0.VerifyDealsForActivationReturn
 		ret, err := doExecValue(ctx, vm,
 			market.Address,
 			maddr,
@@ -545,11 +571,23 @@ func dealWeight(ctx context.Context, vm *vm.VM, maddr address.Address, dealIDs [
 		if err != nil {
 			return big.Zero(), big.Zero(), err
 		}
-		if err := dealWeights.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
+		var weight, verifiedWeight abi.DealWeight
+		if av < actors.Version2 {
+			var dealWeights market0.VerifyDealsForActivationReturn
+			err = dealWeights.UnmarshalCBOR(bytes.NewReader(ret))
+			weight = dealWeights.DealWeight
+			verifiedWeight = dealWeights.VerifiedDealWeight
+		} else {
+			var dealWeights market2.VerifyDealsForActivationReturn
+			err = dealWeights.UnmarshalCBOR(bytes.NewReader(ret))
+			weight = dealWeights.DealWeight
+			verifiedWeight = dealWeights.VerifiedDealWeight
+		}
+		if err != nil {
 			return big.Zero(), big.Zero(), err
 		}
 
-		return dealWeights.DealWeight, dealWeights.VerifiedDealWeight, nil
+		return weight, verifiedWeight, nil
 	}
 	params := &market4.VerifyDealsForActivationParams{Sectors: []market4.SectorDeals{{
 		SectorExpiry: sectorExpiry,
@@ -581,7 +619,8 @@ func currentEpochBlockReward(ctx context.Context, vm *vm.VM, maddr address.Addre
 	}
 
 	// TODO: This hack should move to reward actor wrapper
-	if av <= actors.Version2 {
+	switch av {
+	case actors.Version0:
 		var epochReward reward0.ThisEpochRewardReturn
 
 		if err := epochReward.UnmarshalCBOR(bytes.NewReader(rwret)); err != nil {
@@ -589,6 +628,14 @@ func currentEpochBlockReward(ctx context.Context, vm *vm.VM, maddr address.Addre
 		}
 
 		return epochReward.ThisEpochBaselinePower, *epochReward.ThisEpochRewardSmoothed, nil
+	case actors.Version2:
+		var epochReward reward2.ThisEpochRewardReturn
+
+		if err := epochReward.UnmarshalCBOR(bytes.NewReader(rwret)); err != nil {
+			return big.Zero(), builtin.FilterEstimate{}, err
+		}
+
+		return epochReward.ThisEpochBaselinePower, builtin.FilterEstimate(epochReward.ThisEpochRewardSmoothed), nil
 	}
 
 	var epochReward reward4.ThisEpochRewardReturn

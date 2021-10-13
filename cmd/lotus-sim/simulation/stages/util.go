@@ -44,8 +44,7 @@ func sectorsFromClaim(sectorSize abi.SectorSize, c power.Claim) int64 {
 }
 
 func postChainCommitInfo(ctx context.Context, bb *blockbuilder.BlockBuilder, epoch abi.ChainEpoch) (abi.Randomness, error) {
-	cs := bb.StateManager().ChainStore()
 	ts := bb.ParentTipSet()
-	commitRand, err := cs.GetChainRandomness(ctx, ts.Cids(), crypto.DomainSeparationTag_PoStChainCommit, epoch, nil, true)
+	commitRand, err := bb.StateManager().GetRandomnessFromTickets(ctx, crypto.DomainSeparationTag_PoStChainCommit, epoch, nil, ts.Key())
 	return commitRand, err
 }

@@ -10,7 +10,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -29,7 +29,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/api"
@@ -50,6 +49,7 @@ type ChainModuleAPI interface {
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
 	ChainGetTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
+	ChainGetTipSetAfterHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 }
 
@@ -77,7 +77,8 @@ type ChainAPI struct {
 	WalletAPI
 	ChainModuleAPI
 
-	Chain *store.ChainStore
+	Chain  *store.ChainStore
+	TsExec stmgr.Executor
 
 	// ExposedBlockstore is the global monolith blockstore that is safe to
 	// expose externally. In the future, this will be segregated into two
@@ -94,34 +95,6 @@ func (m *ChainModule) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange
 
 func (m *ChainModule) ChainHead(context.Context) (*types.TipSet, error) {
 	return m.Chain.GetHeaviestTipSet(), nil
-}
-
-func (a *ChainAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	pts, err := a.Chain.LoadTipSet(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset key: %w", err)
-	}
-
-	// Doing this here is slightly nicer than doing it in the chainstore directly, but it's still bad for ChainAPI to reason about network upgrades
-	if randEpoch > build.UpgradeHyperdriveHeight {
-		return a.Chain.GetChainRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
-	}
-
-	return a.Chain.GetChainRandomnessLookingBack(ctx, pts.Cids(), personalization, randEpoch, entropy)
-}
-
-func (a *ChainAPI) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
-	pts, err := a.Chain.LoadTipSet(tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset key: %w", err)
-	}
-
-	// Doing this here is slightly nicer than doing it in the chainstore directly, but it's still bad for ChainAPI to reason about network upgrades
-	if randEpoch > build.UpgradeHyperdriveHeight {
-		return a.Chain.GetBeaconRandomnessLookingForward(ctx, pts.Cids(), personalization, randEpoch, entropy)
-	}
-
-	return a.Chain.GetBeaconRandomnessLookingBack(ctx, pts.Cids(), personalization, randEpoch, entropy)
 }
 
 func (a *ChainAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.BlockHeader, error) {
@@ -266,6 +239,14 @@ func (m *ChainModule) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpo
 	return m.Chain.GetTipsetByHeight(ctx, h, ts, true)
 }
 
+func (m *ChainModule) ChainGetTipSetAfterHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
+	ts, err := m.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+	return m.Chain.GetTipsetByHeight(ctx, h, ts, false)
+}
+
 func (m *ChainModule) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
 	blk, err := m.ExposedBlockstore.Get(obj)
 	if err != nil {
@@ -385,7 +366,7 @@ func (s stringKey) Key() string {
 
 // TODO: ActorUpgrade: this entire function is a problem (in theory) as we don't know the HAMT version.
 // In practice, hamt v0 should work "just fine" for reading.
-func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.NodeGetter, nd ipld.Node, names []string) (*ipld.Link, []string, error) {
+func resolveOnce(bs blockstore.Blockstore, tse stmgr.Executor) func(ctx context.Context, ds ipld.NodeGetter, nd ipld.Node, names []string) (*ipld.Link, []string, error) {
 	return func(ctx context.Context, ds ipld.NodeGetter, nd ipld.Node, names []string) (*ipld.Link, []string, error) {
 		store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
 
@@ -459,7 +440,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 				}, nil, nil
 			}
 
-			return resolveOnce(bs)(ctx, ds, n, names[1:])
+			return resolveOnce(bs, tse)(ctx, ds, n, names[1:])
 		}
 
 		if strings.HasPrefix(names[0], "@A:") {
@@ -508,7 +489,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 				}, nil, nil
 			}
 
-			return resolveOnce(bs)(ctx, ds, n, names[1:])
+			return resolveOnce(bs, tse)(ctx, ds, n, names[1:])
 		}
 
 		if names[0] == "@state" {
@@ -522,7 +503,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 				return nil, nil, xerrors.Errorf("getting actor head for @state: %w", err)
 			}
 
-			m, err := vm.DumpActorState(&act, head.RawData())
+			m, err := vm.DumpActorState(tse.NewActorRegistry(), &act, head.RawData())
 			if err != nil {
 				return nil, nil, err
 			}
@@ -556,7 +537,7 @@ func resolveOnce(bs blockstore.Blockstore) func(ctx context.Context, ds ipld.Nod
 				}, nil, nil
 			}
 
-			return resolveOnce(bs)(ctx, ds, n, names[1:])
+			return resolveOnce(bs, tse)(ctx, ds, n, names[1:])
 		}
 
 		return nd.ResolveLink(names)
@@ -576,7 +557,7 @@ func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (*api.IpldObject,
 
 	r := &resolver.Resolver{
 		DAG:         dag,
-		ResolveOnce: resolveOnce(bs),
+		ResolveOnce: resolveOnce(bs, a.TsExec),
 	}
 
 	node, err := r.ResolvePath(ctx, ip)

@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	eventbus "github.com/libp2p/go-eventbus"
@@ -30,6 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/sub"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/journal/fsjournal"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/hello"
@@ -135,11 +137,19 @@ func waitForSync(stmgr *stmgr.StateManager, epochs int, subscribe func()) {
 	})
 }
 
-func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, s *chain.Syncer, bserv dtypes.ChainBlockService, chain *store.ChainStore, stmgr *stmgr.StateManager, h host.Host, nn dtypes.NetworkName) {
+func HandleIncomingBlocks(mctx helpers.MetricsCtx,
+	lc fx.Lifecycle,
+	ps *pubsub.PubSub,
+	s *chain.Syncer,
+	bserv dtypes.ChainBlockService,
+	chain *store.ChainStore,
+	cns consensus.Consensus,
+	h host.Host,
+	nn dtypes.NetworkName) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	v := sub.NewBlockValidator(
-		h.ID(), chain, stmgr,
+		h.ID(), chain, cns,
 		func(p peer.ID) {
 			ps.BlacklistPeer(p)
 			h.ConnManager().TagPeer(p, "badblock", -1000)
@@ -237,7 +247,7 @@ func RandomSchedule(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Sche
 }
 
 func OpenFilesystemJournal(lr repo.LockedRepo, lc fx.Lifecycle, disabled journal.DisabledEvents) (journal.Journal, error) {
-	jrnl, err := journal.OpenFSJournal(lr, disabled)
+	jrnl, err := fsjournal.OpenFSJournal(lr, disabled)
 	if err != nil {
 		return nil, err
 	}

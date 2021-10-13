@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-if [ ! -z DOCKER_LOTUS_MINER_INIT ]; then
+if [ ! -z $DOCKER_LOTUS_MINER_INIT ]; then
 	GATE="$LOTUS_PATH"/date_initialized
 
 	# Don't init if already initialized.
-	if [ -f "GATE" ]; then
+	if [ -f "$GATE" ]; then
 		echo lotus-miner already initialized.
 		exit 0
 	fi

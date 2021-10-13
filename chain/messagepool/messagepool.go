@@ -11,6 +11,10 @@ import (
 	"sync"
 	"time"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
+
+	"github.com/minio/blake2b-simd"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -354,7 +358,7 @@ func (ms *msgSet) toSlice() []*types.SignedMessage {
 	return set
 }
 
-func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journal.Journal) (*MessagePool, error) {
+func New(api Provider, ds dtypes.MetadataDS, us stmgr.UpgradeSchedule, netName dtypes.NetworkName, j journal.Journal) (*MessagePool, error) {
 	cache, _ := lru.New2Q(build.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q(build.VerifSigCacheSize)
 
@@ -366,7 +370,6 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journ
 	if j == nil {
 		j = journal.NilJournal()
 	}
-	us := stmgr.DefaultUpgradeSchedule()
 
 	mp := &MessagePool{
 		ds:             ds,
@@ -616,7 +619,8 @@ func (mp *MessagePool) addLocal(ctx context.Context, m *types.SignedMessage) err
 // For non local messages, if the message cannot be included in the next 20 blocks it returns
 // a (soft) validation error.
 func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.TipSet, local bool) (bool, error) {
-	minGas := vm.PricelistByVersion(build.NewestNetworkVersion).OnChainMessage(m.ChainLength())
+	epoch := curTs.Height()
+	minGas := vm.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
 
 	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total(), build.NewestNetworkVersion); err != nil {
 		return false, xerrors.Errorf("message will not be included in a block: %w", err)
@@ -751,11 +755,13 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 func sigCacheKey(m *types.SignedMessage) (string, error) {
 	switch m.Signature.Type {
 	case crypto.SigTypeBLS:
-		if len(m.Signature.Data) < 90 {
-			return "", fmt.Errorf("bls signature too short")
+		if len(m.Signature.Data) != ffi.SignatureBytes {
+			return "", fmt.Errorf("bls signature incorrectly sized")
 		}
 
-		return string(m.Cid().Bytes()) + string(m.Signature.Data[64:]), nil
+		hashCache := blake2b.Sum256(append(m.Cid().Bytes(), m.Signature.Data...))
+
+		return string(hashCache[:]), nil
 	case crypto.SigTypeSecp256k1:
 		return string(m.Cid().Bytes()), nil
 	default:

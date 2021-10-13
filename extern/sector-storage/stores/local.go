@@ -114,7 +114,12 @@ func (p *path) stat(ls LocalStorage) (fsutil.FsStat, error) {
 				used, err = ls.DiskUsage(p)
 			}
 			if err != nil {
-				log.Debugf("getting disk usage of '%s': %+v", p.sectorPath(id, fileType), err)
+				// we don't care about 'not exist' errors, as storage can be
+				// reserved before any files are written, so this error is not
+				// unexpected
+				if !os.IsNotExist(err) {
+					log.Warnf("getting disk usage of '%s': %+v", p.sectorPath(id, fileType), err)
+				}
 				continue
 			}
 

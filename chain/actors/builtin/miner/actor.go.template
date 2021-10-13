@@ -38,7 +38,7 @@ func init() {
 
 var Methods = builtin{{.latestVersion}}.MethodsMiner
 
-// Unchanged between v0, v2, v3, and v4 actors
+// Unchanged between v0, v2, v3, v4, and v5 actors
 var WPoStProvingPeriod = miner0.WPoStProvingPeriod
 var WPoStPeriodDeadlines = miner0.WPoStPeriodDeadlines
 var WPoStChallengeWindow = miner0.WPoStChallengeWindow
@@ -141,11 +141,28 @@ type Deadline interface {
 }
 
 type Partition interface {
+	// AllSectors returns all sector numbers in this partition, including faulty, unproven, and terminated sectors
 	AllSectors() (bitfield.BitField, error)
+
+	// Subset of sectors detected/declared faulty and not yet recovered (excl. from PoSt).
+	// Faults ∩ Terminated = ∅
 	FaultySectors() (bitfield.BitField, error)
+
+	// Subset of faulty sectors expected to recover on next PoSt
+	// Recoveries ∩ Terminated = ∅
 	RecoveringSectors() (bitfield.BitField, error)
+
+	// Live sectors are those that are not terminated (but may be faulty).
 	LiveSectors() (bitfield.BitField, error)
+
+	// Active sectors are those that are neither terminated nor faulty nor unproven, i.e. actively contributing power.
 	ActiveSectors() (bitfield.BitField, error)
+
+	// Unproven sectors in this partition. This bitfield will be cleared on
+	// a successful window post (or at the end of the partition's next
+	// deadline). At that time, any still unproven sectors will be added to
+	// the faulty sector bitfield.
+	UnprovenSectors() (bitfield.BitField, error)
 }
 
 type SectorOnChainInfo struct {

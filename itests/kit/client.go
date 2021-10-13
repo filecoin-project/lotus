@@ -26,7 +26,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode *TestFullNode)
 	defer cancel()
 
 	// Create mock CLI
-	mockCLI := NewMockCLI(ctx, t, cmds)
+	mockCLI := NewMockCLI(ctx, t, cmds, api.NodeFull)
 	clientCLI := mockCLI.Client(clientNode.ListenAddr)
 
 	// Get the Miner address

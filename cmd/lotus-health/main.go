@@ -128,7 +128,7 @@ var watchHeadCmd = &cli.Command{
 			return
 		}()
 
-		restart, err := notifyHandler(name, nCh, sCh)
+		restart, err := notifyHandler(ctx, name, nCh, sCh)
 		if err != nil {
 			return err
 		}

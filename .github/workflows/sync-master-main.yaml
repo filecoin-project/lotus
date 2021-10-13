@@ -1,0 +1,14 @@
+name: sync-master-main
+on:
+  push:
+    branches:
+      - master
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: update remote branch main
+        run: |
+          # overrides the remote branch (origin:github) `main`
+          git push origin --force master:main

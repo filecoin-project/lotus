@@ -229,6 +229,11 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 	} else {
 		res, err = b.processBatch(cfg)
 	}
+
+	if err != nil {
+		log.Warnf("CommitBatcher maybeStartBatch individual:%v processBatch %v", individual, err)
+	}
+
 	if err != nil && len(res) == 0 {
 		return nil, err
 	}
@@ -292,6 +297,10 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		infos = append(infos, p.Info)
 	}
 
+	if len(infos) == 0 {
+		return nil, nil
+	}
+
 	sort.Slice(infos, func(i, j int) bool {
 		return infos[i].Number < infos[j].Number
 	})
@@ -338,7 +347,13 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting network version: %s", err)
 	}
 
-	aggFee := big.Div(big.Mul(policy.AggregateNetworkFee(nv, len(infos), bf), aggFeeNum), aggFeeDen)
+	aggFeeRaw, err := policy.AggregateProveCommitNetworkFee(nv, len(infos), bf)
+	if err != nil {
+		log.Errorf("getting aggregate commit network fee: %s", err)
+		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting aggregate commit network fee: %s", err)
+	}
+
+	aggFee := big.Div(big.Mul(aggFeeRaw, aggFeeNum), aggFeeDen)
 
 	needFunds := big.Add(collateral, aggFee)
 	needFunds, err = collateralSendAmount(b.mctx, b.api, b.maddr, cfg, needFunds)
@@ -558,8 +573,18 @@ func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
 		log.Errorf("getting precommit info: %s", err)
 		return time.Now(), err
 	}
+	av, err := actors.VersionForNetwork(nv)
+	if err != nil {
+		log.Errorf("unsupported network vrsion: %s", err)
+		return time.Now(), err
+	}
+	mpcd, err := policy.GetMaxProveCommitDuration(av, si.SectorType)
+	if err != nil {
+		log.Errorf("getting max prove commit duration: %s", err)
+		return time.Now(), err
+	}
 
-	cutoffEpoch := pci.PreCommitEpoch + policy.GetMaxProveCommitDuration(actors.VersionForNetwork(nv), si.SectorType)
+	cutoffEpoch := pci.PreCommitEpoch + mpcd
 
 	for _, p := range si.Pieces {
 		if p.DealInfo == nil {

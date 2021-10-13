@@ -14,7 +14,6 @@ import (
 	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	auth "github.com/filecoin-project/go-jsonrpc/auth"
-	multistore "github.com/filecoin-project/go-multistore"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
@@ -24,8 +23,10 @@ import (
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	miner "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	types "github.com/filecoin-project/lotus/chain/types"
+	alerting "github.com/filecoin-project/lotus/journal/alerting"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	dtypes "github.com/filecoin-project/lotus/node/modules/dtypes"
+	imports "github.com/filecoin-project/lotus/node/repo/imports"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	paych "github.com/filecoin-project/specs-actors/actors/builtin/paych"
 	gomock "github.com/golang/mock/gomock"
@@ -731,7 +732,7 @@ func (mr *MockFullNodeMockRecorder) ClientQueryAsk(arg0, arg1, arg2 interface{})
 }
 
 // ClientRemoveImport mocks base method.
-func (m *MockFullNode) ClientRemoveImport(arg0 context.Context, arg1 multistore.StoreID) error {
+func (m *MockFullNode) ClientRemoveImport(arg0 context.Context, arg1 imports.ID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ClientRemoveImport", arg0, arg1)
 	ret0, _ := ret[0].(error)
@@ -948,6 +949,21 @@ func (m *MockFullNode) ID(arg0 context.Context) (peer.ID, error) {
 func (mr *MockFullNodeMockRecorder) ID(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ID", reflect.TypeOf((*MockFullNode)(nil).ID), arg0)
+}
+
+// LogAlerts mocks base method.
+func (m *MockFullNode) LogAlerts(arg0 context.Context) ([]alerting.Alert, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "LogAlerts", arg0)
+	ret0, _ := ret[0].([]alerting.Alert)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// LogAlerts indicates an expected call of LogAlerts.
+func (mr *MockFullNodeMockRecorder) LogAlerts(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LogAlerts", reflect.TypeOf((*MockFullNode)(nil).LogAlerts), arg0)
 }
 
 // LogList mocks base method.
@@ -2153,6 +2169,36 @@ func (m *MockFullNode) StateGetActor(arg0 context.Context, arg1 address.Address,
 func (mr *MockFullNodeMockRecorder) StateGetActor(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetActor", reflect.TypeOf((*MockFullNode)(nil).StateGetActor), arg0, arg1, arg2)
+}
+
+// StateGetRandomnessFromBeacon mocks base method.
+func (m *MockFullNode) StateGetRandomnessFromBeacon(arg0 context.Context, arg1 crypto.DomainSeparationTag, arg2 abi.ChainEpoch, arg3 []byte, arg4 types.TipSetKey) (abi.Randomness, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetRandomnessFromBeacon", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(abi.Randomness)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetRandomnessFromBeacon indicates an expected call of StateGetRandomnessFromBeacon.
+func (mr *MockFullNodeMockRecorder) StateGetRandomnessFromBeacon(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetRandomnessFromBeacon", reflect.TypeOf((*MockFullNode)(nil).StateGetRandomnessFromBeacon), arg0, arg1, arg2, arg3, arg4)
+}
+
+// StateGetRandomnessFromTickets mocks base method.
+func (m *MockFullNode) StateGetRandomnessFromTickets(arg0 context.Context, arg1 crypto.DomainSeparationTag, arg2 abi.ChainEpoch, arg3 []byte, arg4 types.TipSetKey) (abi.Randomness, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetRandomnessFromTickets", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(abi.Randomness)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetRandomnessFromTickets indicates an expected call of StateGetRandomnessFromTickets.
+func (mr *MockFullNodeMockRecorder) StateGetRandomnessFromTickets(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetRandomnessFromTickets", reflect.TypeOf((*MockFullNode)(nil).StateGetRandomnessFromTickets), arg0, arg1, arg2, arg3, arg4)
 }
 
 // StateGetReceipt mocks base method.

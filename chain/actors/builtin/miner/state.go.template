@@ -479,12 +479,15 @@ func (s *state{{.v}}) EraseAllUnproven() error {
 
 			return dls.UpdateDeadline(s.store, dindx, dl)
 		})
+		if err != nil {
+			return err
+		}
 
 		return s.State.SaveDeadlines(s.store, dls)
 	{{else}}
 		// field doesn't exist until v2
+                return nil
 	{{end}}
-	return nil
 }
 
 func (d *deadline{{.v}}) LoadPartition(idx uint64) (Partition, error) {
@@ -544,6 +547,10 @@ func (p *partition{{.v}}) FaultySectors() (bitfield.BitField, error) {
 
 func (p *partition{{.v}}) RecoveringSectors() (bitfield.BitField, error) {
 	return p.Partition.Recoveries, nil
+}
+
+func (p *partition{{.v}}) UnprovenSectors() (bitfield.BitField, error) {
+	return {{if (ge .v 2)}}p.Partition.Unproven{{else}}bitfield.New(){{end}}, nil
 }
 
 func fromV{{.v}}SectorOnChainInfo(v{{.v}} miner{{.v}}.SectorOnChainInfo) SectorOnChainInfo {

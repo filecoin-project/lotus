@@ -1,3 +1,4 @@
+//go:build interopnet
 // +build interopnet
 
 package build
@@ -10,13 +11,15 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 )
 
 const BootstrappersFile = "interopnet.pi"
 const GenesisFile = "interopnet.car"
+
+const GenesisNetworkVersion = network.Version13
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
@@ -31,7 +34,6 @@ var UpgradeAssemblyHeight = abi.ChainEpoch(-5)
 var UpgradeLiftoffHeight = abi.ChainEpoch(-6)
 
 var UpgradeKumquatHeight = abi.ChainEpoch(-7)
-var UpgradePricelistOopsHeight = abi.ChainEpoch(-8)
 var UpgradeCalicoHeight = abi.ChainEpoch(-9)
 var UpgradePersianHeight = abi.ChainEpoch(-10)
 var UpgradeOrangeHeight = abi.ChainEpoch(-11)
@@ -44,6 +46,7 @@ var UpgradeNorwegianHeight = abi.ChainEpoch(-14)
 var UpgradeTurboHeight = abi.ChainEpoch(-15)
 
 var UpgradeHyperdriveHeight = abi.ChainEpoch(-16)
+var UpgradeChocolateHeight = abi.ChainEpoch(-17)
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
@@ -93,6 +96,7 @@ func init() {
 	BuildType |= BuildInteropnet
 	SetAddressNetwork(address.Testnet)
 	Devnet = true
+
 }
 
 const BlockDelaySecs = uint64(builtin2.EpochDurationSeconds)

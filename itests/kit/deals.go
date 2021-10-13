@@ -2,9 +2,11 @@ package kit
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -33,9 +35,10 @@ type DealHarness struct {
 }
 
 type MakeFullDealParams struct {
-	Rseed      int
-	FastRet    bool
-	StartEpoch abi.ChainEpoch
+	Rseed                    int
+	FastRet                  bool
+	StartEpoch               abi.ChainEpoch
+	UseCARFileForStorageDeal bool
 
 	// SuspendUntilCryptoeconStable suspends deal-making, until cryptoecon
 	// parameters are stabilised. This affects projected collateral, and tests
@@ -78,7 +81,11 @@ func NewDealHarness(t *testing.T, client *TestFullNode, main *TestMiner, market 
 //
 // TODO: convert input parameters to struct, and add size as an input param.
 func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealParams) (deal *cid.Cid, res *api.ImportRes, path string) {
-	res, path = dh.client.CreateImportFile(ctx, params.Rseed, 0)
+	if params.UseCARFileForStorageDeal {
+		res, _, path = dh.client.ClientImportCARFile(ctx, params.Rseed, 200)
+	} else {
+		res, path = dh.client.CreateImportFile(ctx, params.Rseed, 0)
+	}
 
 	dh.t.Logf("FILE CID: %s", res.Root)
 
@@ -167,6 +174,84 @@ loop:
 		if cb != nil {
 			cb()
 		}
+	}
+}
+
+// WaitDealSealedQuiet waits until the deal is sealed, without logging anything.
+func (dh *DealHarness) WaitDealSealedQuiet(ctx context.Context, deal *cid.Cid, noseal, noSealStart bool, cb func()) {
+loop:
+	for {
+		di, err := dh.client.ClientGetDealInfo(ctx, *deal)
+		require.NoError(dh.t, err)
+
+		switch di.State {
+		case storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing:
+			if noseal {
+				return
+			}
+			if !noSealStart {
+				dh.StartSealingWaiting(ctx)
+			}
+		case storagemarket.StorageDealProposalRejected:
+			dh.t.Fatal("deal rejected")
+		case storagemarket.StorageDealFailing:
+			dh.t.Fatal("deal failed")
+		case storagemarket.StorageDealError:
+			dh.t.Fatal("deal errored", di.Message)
+		case storagemarket.StorageDealActive:
+			break loop
+		}
+
+		_, err = dh.market.MarketListIncompleteDeals(ctx)
+		require.NoError(dh.t, err)
+
+		time.Sleep(time.Second / 2)
+		if cb != nil {
+			cb()
+		}
+	}
+}
+
+func (dh *DealHarness) ExpectDealFailure(ctx context.Context, deal *cid.Cid, errs string) error {
+	for {
+		di, err := dh.client.ClientGetDealInfo(ctx, *deal)
+		require.NoError(dh.t, err)
+
+		switch di.State {
+		case storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing:
+			return fmt.Errorf("deal is sealing, and we expected an error: %s", errs)
+		case storagemarket.StorageDealProposalRejected:
+			if strings.Contains(di.Message, errs) {
+				return nil
+			}
+			return fmt.Errorf("unexpected error: %s ; expected: %s", di.Message, errs)
+		case storagemarket.StorageDealFailing:
+			if strings.Contains(di.Message, errs) {
+				return nil
+			}
+			return fmt.Errorf("unexpected error: %s ; expected: %s", di.Message, errs)
+		case storagemarket.StorageDealError:
+			if strings.Contains(di.Message, errs) {
+				return nil
+			}
+			return fmt.Errorf("unexpected error: %s ; expected: %s", di.Message, errs)
+		case storagemarket.StorageDealActive:
+			return errors.New("expected to get an error, but didn't get one")
+		}
+
+		mds, err := dh.market.MarketListIncompleteDeals(ctx)
+		require.NoError(dh.t, err)
+
+		var minerState storagemarket.StorageDealStatus
+		for _, md := range mds {
+			if md.DealID == di.DealID {
+				minerState = md.State
+				break
+			}
+		}
+
+		dh.t.Logf("Deal %d state: client:%s provider:%s\n", di.DealID, storagemarket.DealStates[di.State], storagemarket.DealStates[minerState])
+		time.Sleep(time.Second / 2)
 	}
 }
 
@@ -284,10 +369,11 @@ func (dh *DealHarness) ExtractFileFromCAR(ctx context.Context, file *os.File) (o
 }
 
 type RunConcurrentDealsOpts struct {
-	N             int
-	FastRetrieval bool
-	CarExport     bool
-	StartEpoch    abi.ChainEpoch
+	N                        int
+	FastRetrieval            bool
+	CarExport                bool
+	StartEpoch               abi.ChainEpoch
+	UseCARFileForStorageDeal bool
 }
 
 func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
@@ -307,9 +393,10 @@ func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
 			dh.t.Logf("making storage deal %d/%d", i, opts.N)
 
 			deal, res, inPath := dh.MakeOnlineDeal(context.Background(), MakeFullDealParams{
-				Rseed:      5 + i,
-				FastRet:    opts.FastRetrieval,
-				StartEpoch: opts.StartEpoch,
+				Rseed:                    5 + i,
+				FastRet:                  opts.FastRetrieval,
+				StartEpoch:               opts.StartEpoch,
+				UseCARFileForStorageDeal: opts.UseCARFileForStorageDeal,
 			})
 
 			dh.t.Logf("retrieving deal %d/%d", i, opts.N)

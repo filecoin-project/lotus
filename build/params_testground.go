@@ -1,3 +1,4 @@
+//go:build testground
 // +build testground
 
 // This file makes hardcoded parameters (const) configurable as vars.
@@ -82,28 +83,30 @@ var (
 	UpgradeBreezeHeight      abi.ChainEpoch = -1
 	BreezeGasTampingDuration abi.ChainEpoch = 0
 
-	UpgradeSmokeHeight         abi.ChainEpoch = -1
-	UpgradeIgnitionHeight      abi.ChainEpoch = -2
-	UpgradeRefuelHeight        abi.ChainEpoch = -3
-	UpgradeTapeHeight          abi.ChainEpoch = -4
-	UpgradeAssemblyHeight      abi.ChainEpoch = 10
-	UpgradeLiftoffHeight       abi.ChainEpoch = -5
-	UpgradeKumquatHeight       abi.ChainEpoch = -6
-	UpgradePricelistOopsHeight abi.ChainEpoch = -7
-	UpgradeCalicoHeight        abi.ChainEpoch = -8
-	UpgradePersianHeight       abi.ChainEpoch = -9
-	UpgradeOrangeHeight        abi.ChainEpoch = -10
-	UpgradeClausHeight         abi.ChainEpoch = -11
-	UpgradeTrustHeight         abi.ChainEpoch = -12
-	UpgradeNorwegianHeight     abi.ChainEpoch = -13
-	UpgradeTurboHeight         abi.ChainEpoch = -14
-	UpgradeHyperdriveHeight    abi.ChainEpoch = -15
+	UpgradeSmokeHeight      abi.ChainEpoch = -1
+	UpgradeIgnitionHeight   abi.ChainEpoch = -2
+	UpgradeRefuelHeight     abi.ChainEpoch = -3
+	UpgradeTapeHeight       abi.ChainEpoch = -4
+	UpgradeAssemblyHeight   abi.ChainEpoch = 10
+	UpgradeLiftoffHeight    abi.ChainEpoch = -5
+	UpgradeKumquatHeight    abi.ChainEpoch = -6
+	UpgradeCalicoHeight     abi.ChainEpoch = -8
+	UpgradePersianHeight    abi.ChainEpoch = -9
+	UpgradeOrangeHeight     abi.ChainEpoch = -10
+	UpgradeClausHeight      abi.ChainEpoch = -11
+	UpgradeTrustHeight      abi.ChainEpoch = -12
+	UpgradeNorwegianHeight  abi.ChainEpoch = -13
+	UpgradeTurboHeight      abi.ChainEpoch = -14
+	UpgradeHyperdriveHeight abi.ChainEpoch = -15
+	UpgradeChocolateHeight  abi.ChainEpoch = -16
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandMainnet,
 	}
 
-	NewestNetworkVersion       = network.Version11
+	GenesisNetworkVersion = network.Version0
+
+	NewestNetworkVersion       = network.Version14
 	ActorUpgradeNetworkVersion = network.Version4
 
 	Devnet      = true

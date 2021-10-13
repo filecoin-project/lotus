@@ -113,7 +113,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorCommitFailed{}, CommitFailed),
 	),
 	SubmitCommitAggregate: planOne(
-		on(SectorCommitAggregateSent{}, CommitWait),
+		on(SectorCommitAggregateSent{}, CommitAggregateWait),
 		on(SectorCommitFailed{}, CommitFailed),
 		on(SectorRetrySubmitCommit{}, SubmitCommit),
 	),
@@ -135,7 +135,11 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 
 	// Sealing errors
 
-	AddPieceFailed: planOne(),
+	AddPieceFailed: planOne(
+		on(SectorRetryWaitDeals{}, WaitDeals),
+		apply(SectorStartPacking{}),
+		apply(SectorAddPiece{}),
+	),
 	SealPreCommit1Failed: planOne(
 		on(SectorRetrySealPreCommit1{}, PreCommit1),
 	),
@@ -331,9 +335,9 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 				*<- Committing    |
 				|   |        ^--> CommitFailed
 				|   v             ^
-		        |   SubmitCommit  |
-		        |   |             |
-		        |   v             |
+			        |   SubmitCommit  |
+		        	|   |             |
+		        	|   v             |
 				*<- CommitWait ---/
 				|   |
 				|   v
@@ -349,6 +353,13 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	if err := m.onUpdateSector(context.TODO(), state); err != nil {
 		log.Errorw("update sector stats", "error", err)
+	}
+
+	// todo: drop this, use Context iface everywhere
+	wrapCtx := func(f func(Context, SectorInfo) error) func(statemachine.Context, SectorInfo) error {
+		return func(ctx statemachine.Context, info SectorInfo) error {
+			return f(&ctx, info)
+		}
 	}
 
 	switch state.State {
@@ -393,6 +404,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleFinalizeSector, processed, nil
 
 	// Handled failure modes
+	case AddPieceFailed:
+		return m.handleAddPieceFailed, processed, nil
 	case SealPreCommit1Failed:
 		return m.handleSealPrecommit1Failed, processed, nil
 	case SealPreCommit2Failed:
@@ -413,7 +426,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	case DealsExpired:
 		return m.handleDealsExpired, processed, nil
 	case RecoverDealIDs:
-		return m.handleRecoverDealIDs, processed, nil
+		return wrapCtx(m.HandleRecoverDealIDs), processed, nil
 
 	// Post-seal
 	case Proving:

@@ -27,6 +27,7 @@ func TestDealWithMarketAndMinerNode(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
+
 	t.Skip("skipping due to flakiness: see #6956")
 
 	kit.QuietMiningLogs()
@@ -107,12 +108,14 @@ func TestDealCyclesConcurrent(t *testing.T) {
 		ns := fmt.Sprintf("%d", n)
 		t.Run(ns+"-fastretrieval-CAR", func(t *testing.T) { runTest(t, n, true, true) })
 		t.Run(ns+"-fastretrieval-NoCAR", func(t *testing.T) { runTest(t, n, true, false) })
-		t.Run(ns+"-stdretrieval-CAR", func(t *testing.T) { runTest(t, n, true, false) })
+		t.Run(ns+"-stdretrieval-CAR", func(t *testing.T) { runTest(t, n, false, true) })
 		t.Run(ns+"-stdretrieval-NoCAR", func(t *testing.T) { runTest(t, n, false, false) })
 	}
 }
 
 func TestSimultanenousTransferLimit(t *testing.T) {
+	t.Skip("skipping as flaky #7152")
+
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
@@ -136,8 +139,8 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 	)
 	runTest := func(t *testing.T) {
 		client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.ConstructorOpts(
-			node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(graphsyncThrottle))),
-			node.Override(new(dtypes.Graphsync), modules.Graphsync(graphsyncThrottle)),
+			node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(graphsyncThrottle, graphsyncThrottle))),
+			node.Override(new(dtypes.Graphsync), modules.Graphsync(graphsyncThrottle, graphsyncThrottle)),
 		))
 		ens.InterconnectAll().BeginMining(250 * time.Millisecond)
 		dh := kit.NewDealHarness(t, client, miner, miner)

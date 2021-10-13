@@ -19,6 +19,7 @@ import (
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -41,7 +42,7 @@ var EmptyObjectCid cid.Cid
 
 // TryCreateAccountActor creates account actors from only BLS/SECP256K1 addresses.
 func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, address.Address, aerrors.ActorError) {
-	if err := rt.chargeGasSafe(PricelistByVersion(rt.NetworkVersion()).OnCreateActor()); err != nil {
+	if err := rt.chargeGasSafe(PricelistByEpoch(rt.height).OnCreateActor()); err != nil {
 		return nil, address.Undef, err
 	}
 
@@ -54,7 +55,12 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, add
 		return nil, address.Undef, aerrors.Escalate(err, "registering actor address")
 	}
 
-	act, aerr := makeActor(actors.VersionForNetwork(rt.NetworkVersion()), addr)
+	av, err := actors.VersionForNetwork(rt.NetworkVersion())
+	if err != nil {
+		return nil, address.Undef, aerrors.Escalate(err, "unsupported network version")
+	}
+
+	act, aerr := makeActor(av, addr)
 	if aerr != nil {
 		return nil, address.Undef, aerr
 	}
@@ -108,6 +114,8 @@ func newAccountActor(ver actors.Version) *types.Actor {
 		code = builtin4.AccountActorCodeID
 	case actors.Version5:
 		code = builtin5.AccountActorCodeID
+	case actors.Version6:
+		code = builtin6.AccountActorCodeID
 	default:
 		panic("unsupported actors version")
 	}

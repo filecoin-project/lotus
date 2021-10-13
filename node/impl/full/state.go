@@ -3,8 +3,12 @@ package full
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"strconv"
 
+	"github.com/filecoin-project/go-state-types/crypto"
+
+	"github.com/filecoin-project/go-state-types/cbor"
 	cid "github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -27,7 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -86,6 +90,8 @@ type StateAPI struct {
 	StateManager  *stmgr.StateManager
 	Chain         *store.ChainStore
 	Beacon        beacon.Schedule
+	Consensus     consensus.Consensus
+	TsExec        stmgr.Executor
 }
 
 func (a *StateAPI) StateNetworkName(ctx context.Context) (dtypes.NetworkName, error) {
@@ -467,7 +473,7 @@ func (a *StateAPI) StateReadState(ctx context.Context, actor address.Address, ts
 		return nil, xerrors.Errorf("getting actor head: %w", err)
 	}
 
-	oif, err := vm.DumpActorState(act, blk.RawData())
+	oif, err := vm.DumpActorState(a.TsExec.NewActorRegistry(), act, blk.RawData())
 	if err != nil {
 		return nil, xerrors.Errorf("dumping actor state (a:%s): %w", actor, err)
 	}
@@ -485,7 +491,7 @@ func (a *StateAPI) StateDecodeParams(ctx context.Context, toAddr address.Address
 		return nil, xerrors.Errorf("getting actor: %w", err)
 	}
 
-	paramType, err := stmgr.GetParamType(act.Code, method)
+	paramType, err := stmgr.GetParamType(a.TsExec.NewActorRegistry(), act.Code, method)
 	if err != nil {
 		return nil, xerrors.Errorf("getting params type: %w", err)
 	}
@@ -497,6 +503,24 @@ func (a *StateAPI) StateDecodeParams(ctx context.Context, toAddr address.Address
 	return paramType, nil
 }
 
+func (a *StateAPI) StateEncodeParams(ctx context.Context, toActCode cid.Cid, method abi.MethodNum, params json.RawMessage) ([]byte, error) {
+	paramType, err := stmgr.GetParamType(a.TsExec.NewActorRegistry(), toActCode, method)
+	if err != nil {
+		return nil, xerrors.Errorf("getting params type: %w", err)
+	}
+
+	if err := json.Unmarshal(params, &paramType); err != nil {
+		return nil, xerrors.Errorf("json unmarshal: %w", err)
+	}
+
+	var cbb bytes.Buffer
+	if err := paramType.(cbor.Marshaler).MarshalCBOR(&cbb); err != nil {
+		return nil, xerrors.Errorf("cbor marshal: %w", err)
+	}
+
+	return cbb.Bytes(), nil
+}
+
 // This is on StateAPI because miner.Miner requires this, and MinerAPI requires miner.Miner
 func (a *StateAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, epoch abi.ChainEpoch, tsk types.TipSetKey) (*api.MiningBaseInfo, error) {
 	// XXX: Gets the state by computing the tipset state, instead of looking at the parent.
@@ -504,9 +528,12 @@ func (a *StateAPI) MinerGetBaseInfo(ctx context.Context, maddr address.Address, 
 }
 
 func (a *StateAPI) MinerCreateBlock(ctx context.Context, bt *api.BlockTemplate) (*types.BlockMsg, error) {
-	fblk, err := gen.MinerCreateBlock(ctx, a.StateManager, a.Wallet, bt)
+	fblk, err := a.Consensus.CreateBlock(ctx, a.Wallet, bt)
 	if err != nil {
 		return nil, err
+	}
+	if fblk == nil {
+		return nil, nil
 	}
 
 	var out types.BlockMsg
@@ -1332,13 +1359,16 @@ func (m *StateModule) StateDealProviderCollateralBounds(ctx context.Context, siz
 		return api.DealCollateralBounds{}, xerrors.Errorf("getting reward baseline power: %w", err)
 	}
 
-	min, max := policy.DealProviderCollateralBounds(size,
+	min, max, err := policy.DealProviderCollateralBounds(size,
 		verified,
 		powClaim.RawBytePower,
 		powClaim.QualityAdjPower,
 		rewPow,
 		circ.FilCirculating,
 		m.StateManager.GetNtwkVersion(ctx, ts.Height()))
+	if err != nil {
+		return api.DealCollateralBounds{}, xerrors.Errorf("getting deal provider coll bounds: %w", err)
+	}
 	return api.DealCollateralBounds{
 		Min: types.BigDiv(types.BigMul(min, dealProviderCollateralNum), dealProviderCollateralDen),
 		Max: max,
@@ -1389,4 +1419,13 @@ func (m *StateModule) StateNetworkVersion(ctx context.Context, tsk types.TipSetK
 	// TODO: Height-1 to be consistent with the rest of the APIs?
 	// But that's likely going to break a bunch of stuff.
 	return m.StateManager.GetNtwkVersion(ctx, ts.Height()), nil
+}
+
+func (a *StateAPI) StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
+	return a.StateManager.GetRandomnessFromTickets(ctx, personalization, randEpoch, entropy, tsk)
+}
+
+func (a *StateAPI) StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
+	return a.StateManager.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, tsk)
+
 }

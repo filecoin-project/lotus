@@ -516,5 +516,111 @@
     "AddVerifiedClient",
     "UseBytes",
     "RestoreBytes"
+  ],
+  "fil/6/account": [
+    "Send",
+    "Constructor",
+    "PubkeyAddress"
+  ],
+  "fil/6/cron": [
+    "Send",
+    "Constructor",
+    "EpochTick"
+  ],
+  "fil/6/init": [
+    "Send",
+    "Constructor",
+    "Exec"
+  ],
+  "fil/6/multisig": [
+    "Send",
+    "Constructor",
+    "Propose",
+    "Approve",
+    "Cancel",
+    "AddSigner",
+    "RemoveSigner",
+    "SwapSigner",
+    "ChangeNumApprovalsThreshold",
+    "LockBalance"
+  ],
+  "fil/6/paymentchannel": [
+    "Send",
+    "Constructor",
+    "UpdateChannelState",
+    "Settle",
+    "Collect"
+  ],
+  "fil/6/reward": [
+    "Send",
+    "Constructor",
+    "AwardBlockReward",
+    "ThisEpochReward",
+    "UpdateNetworkKPI"
+  ],
+  "fil/6/storagemarket": [
+    "Send",
+    "Constructor",
+    "AddBalance",
+    "WithdrawBalance",
+    "PublishStorageDeals",
+    "VerifyDealsForActivation",
+    "ActivateDeals",
+    "OnMinerSectorsTerminate",
+    "ComputeDataCommitment",
+    "CronTick"
+  ],
+  "fil/6/storageminer": [
+    "Send",
+    "Constructor",
+    "ControlAddresses",
+    "ChangeWorkerAddress",
+    "ChangePeerID",
+    "SubmitWindowedPoSt",
+    "PreCommitSector",
+    "ProveCommitSector",
+    "ExtendSectorExpiration",
+    "TerminateSectors",
+    "DeclareFaults",
+    "DeclareFaultsRecovered",
+    "OnDeferredCronEvent",
+    "CheckSectorProven",
+    "ApplyRewards",
+    "ReportConsensusFault",
+    "WithdrawBalance",
+    "ConfirmSectorProofsValid",
+    "ChangeMultiaddrs",
+    "CompactPartitions",
+    "CompactSectorNumbers",
+    "ConfirmUpdateWorkerKey",
+    "RepayDebt",
+    "ChangeOwnerAddress",
+    "DisputeWindowedPoSt",
+    "PreCommitSectorBatch",
+    "ProveCommitAggregate"
+  ],
+  "fil/6/storagepower": [
+    "Send",
+    "Constructor",
+    "CreateMiner",
+    "UpdateClaimedPower",
+    "EnrollCronEvent",
+    "OnEpochTickEnd",
+    "UpdatePledgeTotal",
+    "SubmitPoRepForBulkVerify",
+    "CurrentTotalPower"
+  ],
+  "fil/6/system": [
+    "Send",
+    "Constructor"
+  ],
+  "fil/6/verifiedregistry": [
+    "Send",
+    "Constructor",
+    "AddVerifier",
+    "RemoveVerifier",
+    "AddVerifiedClient",
+    "UseBytes",
+    "RestoreBytes"
   ]
 }
