@@ -64,7 +64,6 @@ This feature release includes latest functionality and improvements, like data t
   - Create CODEOWNERS (#1465) ([filecoin-project/specs-actors#1465](https://github.com/filecoin-project/specs-actors/pull/1465))
   - Test deterministic offset (#1462) ([filecoin-project/specs-actors#1462](https://github.com/filecoin-project/specs-actors/pull/1462)
 - Update go-libp2p to v0.15.0 ([filecoin-project/lotus#7362](https://github.com/filecoin-project/lotus/pull/7362))
-on optimistic acceptance, things may well change according to the result of FIP last calls on Oct 11th.
 
 ## Others
 - Chocolate to master ([filecoin-project/lotus#7440](https://github.com/filecoin-project/lotus/pull/7440))
