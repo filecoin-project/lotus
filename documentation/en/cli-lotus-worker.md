@@ -7,7 +7,7 @@ USAGE:
    lotus-worker [global options] command [command options] [arguments...]
 
 VERSION:
-   1.13.0-rc2
+   1.13.0-rc3
 
 COMMANDS:
    run         Start lotus worker
