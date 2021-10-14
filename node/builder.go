@@ -374,6 +374,13 @@ func WithRepoType(repoType repo.RepoType) func(s *Settings) error {
 	}
 }
 
+func WithEnableLibp2pNode(enable bool) func(s *Settings) error {
+	return func(s *Settings) error {
+		s.enableLibp2pNode = enable
+		return nil
+	}
+}
+
 func WithInvokesKey(i invoke, resApi interface{}) func(s *Settings) error {
 	return func(s *Settings) error {
 		s.invokes[i] = fx.Populate(resApi)
