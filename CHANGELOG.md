@@ -1,6 +1,6 @@
 # Lotus changelog
 
-# v1.13.0-rc3 / 2021-10-12
+# v1.13.0-rc3 / 2021-10-13
 
 This is the third release candidates for lotus v1.13.0, a recommended lotus release that supports the upcoming 
 [Network v14 Chocolate upgrade](https://github.com/filecoin-project/lotus/discussions/7431).
@@ -36,33 +36,15 @@ This feature release includes latest functionality and improvements, like data t
 ## Bug Fixes
 - StateSearchMsg: Correct usage of the allowReplaced flag ([filecoin-project/lotus#7450](https://github.com/filecoin-project/lotus/pull/7450))
 - fix staging area path buildup ([filecoin-project/lotus#7363](https://github.com/filecoin-project/lotus/pull/7363))
-- Randomness: Move getters from ChainAPI to StateAPI ([filecoin-project/lotus#7322](https://github.com/filecoin-project/lotus/pull/7322))
 - storagemgr: Cleanup workerLk around worker resources ([filecoin-project/lotus#7334](https://github.com/filecoin-project/lotus/pull/7334))
 - fix: check padSector Cid ([filecoin-project/lotus#7310](https://github.com/filecoin-project/lotus/pull/7310))
+- sealing: Recover sectors after failed AddPiece ([filecoin-project/lotus#7492](https://github.com/filecoin-project/lotus/pull/7492))
+- fix: support node instantiation in external packages ([filecoin-project/lotus#7511](https://github.com/filecoin-project/lotus/pull/7511))
 
 ## Dependency Updates
 - github.com/filecoin-project/go-data-transfer (v1.10.1 -> v1.11.1):
 - github.com/filecoin-project/go-fil-markets (v1.12.0 -> v1.13.1):
 - github.com/filecoin-project/go-paramfetch (v0.0.2-0.20210614165157-25a6c7769498 -> v0.0.2):
-- github.com/filecoin-project/specs-actors/v6-rc1:
-  - Better logging (#1503) ([filecoin-project/specs-actors#1503](https://github.com/filecoin-project/specs-actors/pull/1503))
-  - Defensive programming: harden power actor against seal verify failures (#1502) ([filecoin-project/specs-actors#1502](https://github.com/filecoin-project/specs-actors/pull/1502))
-  - BatchBalancer fee charged on precommit aggregate (#1497) ([filecoin-project/specs-actors#1497](https://github.com/filecoin-project/specs-actors/pull/1497))
-  - Fix #1486 (#1489) ([filecoin-project/specs-actors#1489](https://github.com/filecoin-project/specs-actors/pull/1489))
-  - Sector extension deal weight bug fix  (#1498) ([filecoin-project/specs-actors#1498](https://github.com/filecoin-project/specs-actors/pull/1498))
-  - Fip 0021 (#1487) ([filecoin-project/specs-actors#1487](https://github.com/filecoin-project/specs-actors/pull/1487))
-  - Fix #176 (swap to xerrors from pkg/errors) (#1494) ([filecoin-project/specs-actors#1494](https://github.com/filecoin-project/specs-actors/pull/1494))
-  - Merge branch 'master' of github.com:filecoin-project/specs-actors
-  - Merge branch 'fix-799'
-  - compute the hash of the proposal iff the proposal hash is present (#1365) ([filecoin-project/specs-actors#1365](https://github.com/filecoin-project/specs-actors/pull/1365))
-  - Revert "Remove cc upgrade (#1473)" (#1475) ([filecoin-project/specs-actors#1475](https://github.com/filecoin-project/specs-actors/pull/1475))
-  - Remove cc upgrade (#1473) ([filecoin-project/specs-actors#1473](https://github.com/filecoin-project/specs-actors/pull/1473))
-  - Update to v6 (#1468) ([filecoin-project/specs-actors#1468](https://github.com/filecoin-project/specs-actors/pull/1468))
-  - go state types version revert (#1467) ([filecoin-project/specs-actors#1467](https://github.com/filecoin-project/specs-actors/pull/1467))
-  - Adjust code for subtle change in go-multihash 0.0.15 (#1463) ([filecoin-project/specs-actors#1463](https://github.com/filecoin-project/specs-actors/pull/1463))
-  - Bump go state types (#1464) ([filecoin-project/specs-actors#1464](https://github.com/filecoin-project/specs-actors/pull/1464))
-  - Create CODEOWNERS (#1465) ([filecoin-project/specs-actors#1465](https://github.com/filecoin-project/specs-actors/pull/1465))
-  - Test deterministic offset (#1462) ([filecoin-project/specs-actors#1462](https://github.com/filecoin-project/specs-actors/pull/1462)
 - Update go-libp2p to v0.15.0 ([filecoin-project/lotus#7362](https://github.com/filecoin-project/lotus/pull/7362))
 
 ## Others
@@ -77,28 +59,26 @@ This feature release includes latest functionality and improvements, like data t
 
 | Contributor | Commits | Lines ± | Files Changed |
 |-------------|---------|---------|---------------|
-| ZenGround0 | 12 | +4202/-2752 | 187 |
-| Aayush Rajasekaran | 28 | +5023/-1059 | 213 |
-| c r | 4 | +1276/-435 | 37 |
-| Claudia Richoux | 12 | +1350/-209 | 43 |
-| Łukasz Magiera | 10 | +1214/-68 | 30 |
 | dirkmc | 8 | +845/-375 | 55 |
+| Łukasz Magiera | 10 | +1056/-60 | 26 |
 | Aarsh Shah | 6 | +813/-259 | 16 |
-| Peter Rabbitson | 5 | +498/-74 | 19 |
+| Aayush Rajasekaran | 10 | +552/-251 | 43 |
+| Peter Rabbitson | 6 | +505/-78 | 22 |
+| Jennifer Wang | 6 | +197/-288 | 33 |
 | Anton Evangelatov | 10 | +335/-139 | 19 |
 | Mike Greenberg | 15 | +336/-67 | 26 |
-| Jennifer Wang | 7 | +66/-206 | 26 |
 | Dirk McCormick | 8 | +149/-55 | 16 |
-| Steven Allen | 2 | +115/-12 | 6 |
-| hannahhoward | 3 | +53/-30 | 15 |
-| Rod Vagg | 3 | +58/-10 | 7 |
-| Jiaying Wang | 1 | +0/-56 | 1 |
-| Travis Person | 3 | +33/-19 | 8 |
+| hannahhoward | 4 | +56/-32 | 17 |
+| Rod Vagg | 4 | +61/-13 | 9 |
+| Jiaying Wang | 2 | +0/-57 | 2 |
 | Hannah Howard | 1 | +33/-18 | 7 |
-| Jakub Sztandera | 3 | +22/-11 | 4 |
+| Jakub Sztandera | 8 | +27/-16 | 9 |
+| Cory Schwartz | 1 | +16/-2 | 2 |
+| Travis Person | 1 | +14/-0 | 1 |
+| frrist | 1 | +12/-0 | 2 |
 | ognots | 1 | +0/-10 | 2 |
-| Steve Loeppky | 1 | +6/-0 | 1 |
 | Adrian Lanzafame | 1 | +3/-3 | 1 |
+| jennijuju | 1 | +2/-2 | 1 |
 | swift-mx | 1 | +1/-1 | 1 |
 
 # v1.12.0 / 2021-10-12
