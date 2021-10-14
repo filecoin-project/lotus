@@ -195,3 +195,10 @@ type RetrievalInfo struct {
 	TransferChannelID *datatransfer.ChannelID
 	DataTransfer      *DataTransferChannel
 }
+
+type SealingPipelineState struct {
+	TaskJobsCount             map[string]int
+	MaxWaitDealsSectors       uint64
+	MaxSealingSectors         uint64
+	MaxSealingSectorsForDeals uint64
+}

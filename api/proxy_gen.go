@@ -727,6 +727,8 @@ type StorageMinerStruct struct {
 
 		SealingAbort func(p0 context.Context, p1 storiface.CallID) error `perm:"admin"`
 
+		SealingPipelineState func(p0 context.Context) (*SealingPipelineState, error) `perm:"admin"`
+
 		SealingSchedDiag func(p0 context.Context, p1 bool) (interface{}, error) `perm:"admin"`
 
 		SectorAddPieceToAny func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storage.Data, p3 PieceDealInfo) (SectorOffset, error) `perm:"admin"`
@@ -4262,6 +4264,17 @@ func (s *StorageMinerStruct) SealingAbort(p0 context.Context, p1 storiface.CallI
 
 func (s *StorageMinerStub) SealingAbort(p0 context.Context, p1 storiface.CallID) error {
 	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SealingPipelineState(p0 context.Context) (*SealingPipelineState, error) {
+	if s.Internal.SealingPipelineState == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.SealingPipelineState(p0)
+}
+
+func (s *StorageMinerStub) SealingPipelineState(p0 context.Context) (*SealingPipelineState, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SealingSchedDiag(p0 context.Context, p1 bool) (interface{}, error) {

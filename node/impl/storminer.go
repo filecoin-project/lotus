@@ -47,6 +47,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
@@ -59,6 +60,8 @@ type StorageMinerAPI struct {
 	api.Net
 
 	EnabledSubsystems api.MinerSubsystems
+
+	Config *config.StorageMiner
 
 	Full        api.FullNode
 	LocalStore  *stores.Local
@@ -121,6 +124,28 @@ func (sm *StorageMinerAPI) ServeRemote(perm bool) func(w http.ResponseWriter, r 
 
 		sm.StorageMgr.ServeHTTP(w, r)
 	}
+}
+
+func (sm *StorageMinerAPI) SealingPipelineState(ctx context.Context) (*api.SealingPipelineState, error) {
+	jobs, err := sm.WorkerJobs(ctx)
+	if err != nil {
+		return nil, xerrors.Errorf("getting worker jobs: %w", err)
+	}
+
+	jobsCount := make(map[string]int)
+
+	for _, wj := range jobs {
+		for _, j := range wj {
+			jobsCount[j.Task.Short()] = jobsCount[j.Task.Short()] + 1
+		}
+	}
+
+	return &api.SealingPipelineState{
+		TaskJobsCount:             jobsCount,
+		MaxWaitDealsSectors:       sm.Config.Sealing.MaxWaitDealsSectors,
+		MaxSealingSectors:         sm.Config.Sealing.MaxSealingSectors,
+		MaxSealingSectorsForDeals: sm.Config.Sealing.MaxSealingSectorsForDeals,
+	}, nil
 }
 
 func (sm *StorageMinerAPI) WorkerStats(context.Context) (map[uuid.UUID]storiface.WorkerStats, error) {
