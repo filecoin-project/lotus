@@ -99,7 +99,7 @@ require (
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.6
 	github.com/ipfs/interface-go-ipfs-core v0.4.0
-	github.com/ipld/go-car v0.3.2-0.20211001222544-c93f5367a75c
+	github.com/ipld/go-car v0.3.2
 	github.com/ipld/go-car/v2 v2.0.3-0.20210811121346-c514a30114d7
 	github.com/ipld/go-codec-dagpb v1.3.0
 	github.com/ipld/go-ipld-prime v0.12.3

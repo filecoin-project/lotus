@@ -790,8 +790,9 @@ github.com/ipfs/iptb v1.4.0/go.mod h1:1rzHpCYtNp87/+hTxG5TfCVn/yMY3dKnLn8tBiMfdm
 github.com/ipfs/iptb-plugins v0.3.0 h1:C1rpq1o5lUZtaAOkLIox5akh6ba4uk/3RwWc6ttVxw0=
 github.com/ipfs/iptb-plugins v0.3.0/go.mod h1:5QtOvckeIw4bY86gSH4fgh3p3gCSMn3FmIKr4gaBncA=
 github.com/ipld/go-car v0.1.0/go.mod h1:RCWzaUh2i4mOEkB3W45Vc+9jnS/M6Qay5ooytiBHl3g=
-github.com/ipld/go-car v0.3.2-0.20211001222544-c93f5367a75c h1:lUNcb71DmG/GSEim2UqDiOcm6E+jqNzo3gWH4JSjOqg=
 github.com/ipld/go-car v0.3.2-0.20211001222544-c93f5367a75c/go.mod h1:lIyfp4c4fs4qMQYBWPjHzT7fXxtw5r/Sj4QBVnTaoJc=
+github.com/ipld/go-car v0.3.2 h1:V9wt/80FNfbMRWSD98W5br6fyjUAyVgI2lDOTZX16Lg=
+github.com/ipld/go-car v0.3.2/go.mod h1:WEjynkVt04dr0GwJhry0KlaTeSDEiEYyMPOxDBQ17KE=
 github.com/ipld/go-car/v2 v2.0.0-beta1.0.20210721090610-5a9d1b217d25/go.mod h1:I2ACeeg6XNBe5pdh5TaR7Ambhfa7If9KXxmXgZsYENU=
 github.com/ipld/go-car/v2 v2.0.2/go.mod h1:I2ACeeg6XNBe5pdh5TaR7Ambhfa7If9KXxmXgZsYENU=
 github.com/ipld/go-car/v2 v2.0.3-0.20210811121346-c514a30114d7 h1:6Z0beJSZNsRY+7udoqUl4gQ/tqtrPuRvDySrlsvbqZA=
