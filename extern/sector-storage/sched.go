@@ -155,8 +155,9 @@ func newScheduler() *scheduler {
 		schedQueue: &requestQueue{},
 
 		workTracker: &workTracker{
-			done:    map[storiface.CallID]struct{}{},
-			running: map[storiface.CallID]trackedWork{},
+			done:     map[storiface.CallID]struct{}{},
+			running:  map[storiface.CallID]trackedWork{},
+			prepared: map[storiface.CallID]trackedWork{},
 		},
 
 		info: make(chan func(interface{})),

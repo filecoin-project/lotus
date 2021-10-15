@@ -50,7 +50,7 @@ func (m *Manager) WorkerJobs() map[uuid.UUID][]storiface.WorkerJob {
 					ID:      storiface.UndefCall,
 					Sector:  request.sector.ID,
 					Task:    request.taskType,
-					RunWait: wi + 1,
+					RunWait: wi + 2,
 					Start:   request.start,
 				})
 			}
