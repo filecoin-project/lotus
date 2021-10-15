@@ -72,13 +72,14 @@ func (wt *workTracker) track(ctx context.Context, ready chan struct{}, wid Worke
 			return callID, err
 		}
 
-		tracked := func() trackedWork {
+		tracked := func(rw int) trackedWork {
 			return trackedWork{
 				job: storiface.WorkerJob{
-					ID:     callID,
-					Sector: sid.ID,
-					Task:   task,
-					Start:  time.Now(),
+					ID:      callID,
+					Sector:  sid.ID,
+					Task:    task,
+					Start:   time.Now(),
+					RunWait: rw,
 				},
 				worker:         wid,
 				workerHostname: wi.Hostname,
@@ -90,7 +91,7 @@ func (wt *workTracker) track(ctx context.Context, ready chan struct{}, wid Worke
 		case <-ctx.Done():
 			return callID, ctx.Err()
 		default:
-			wt.prepared[callID] = tracked()
+			wt.prepared[callID] = tracked(storiface.RWPrepared)
 
 			wt.lk.Unlock()
 			select {
@@ -111,7 +112,7 @@ func (wt *workTracker) track(ctx context.Context, ready chan struct{}, wid Worke
 			delete(wt.prepared, callID)
 		}
 
-		wt.running[callID] = tracked()
+		wt.running[callID] = tracked(storiface.RWRunning)
 
 		ctx, _ = tag.New(
 			ctx,
@@ -136,16 +137,20 @@ func (wt *workTracker) worker(wid WorkerID, wi storiface.WorkerInfo, w Worker) *
 	}
 }
 
-func (wt *workTracker) Running() []trackedWork {
+func (wt *workTracker) Running() ([]trackedWork, []trackedWork) {
 	wt.lk.Lock()
 	defer wt.lk.Unlock()
 
-	out := make([]trackedWork, 0, len(wt.running))
+	running := make([]trackedWork, 0, len(wt.running))
 	for _, job := range wt.running {
-		out = append(out, job)
+		running = append(running, job)
+	}
+	prepared := make([]trackedWork, 0, len(wt.prepared))
+	for _, job := range wt.prepared {
+		prepared = append(prepared, job)
 	}
 
-	return out
+	return running, prepared
 }
 
 type trackedWorker struct {

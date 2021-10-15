@@ -224,8 +224,10 @@ var sealingJobsCmd = &cli.Command{
 		for _, l := range lines {
 			state := "running"
 			switch {
-			case l.RunWait > 0:
+			case l.RunWait > 1:
 				state = fmt.Sprintf("assigned(%d)", l.RunWait-1)
+			case l.RunWait == storiface.RWPrepared:
+				state = "prepared"
 			case l.RunWait == storiface.RWRetDone:
 				if !cctx.Bool("show-ret-done") {
 					continue
