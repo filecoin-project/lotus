@@ -55,6 +55,8 @@ type SectorStorageInfo struct {
 	Primary bool
 }
 
+//go:generate go run github.com/golang/mock/mockgen -destination=mocks/index.go -package=mocks . SectorIndex
+
 type SectorIndex interface { // part of storage-miner api
 	StorageAttach(context.Context, StorageInfo, fsutil.FsStat) error
 	StorageInfo(context.Context, ID) (StorageInfo, error)
