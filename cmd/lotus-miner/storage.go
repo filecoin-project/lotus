@@ -322,9 +322,16 @@ var storageListCmd = &cli.Command{
 				if si.CanStore {
 					fmt.Print(color.CyanString("Store"))
 				}
-				fmt.Println("")
 			} else {
 				fmt.Print(color.HiYellowString("Use: ReadOnly"))
+			}
+			fmt.Println()
+
+			if len(si.Groups) > 0 {
+				fmt.Printf("\tGroups: %s\n", strings.Join(si.Groups, ", "))
+			}
+			if len(si.AllowTo) > 0 {
+				fmt.Printf("\tAllowTo: %s\n", strings.Join(si.AllowTo, ", "))
 			}
 
 			if localPath, ok := local[s.ID]; ok {
