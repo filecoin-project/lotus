@@ -18,7 +18,7 @@ import (
 	   {{range .actorVersions}}
 	   	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"{{end}}
 
-	   inline-gen start */
+	/* inline-gen start */
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -27,7 +27,7 @@ import (
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
-	//inline-gen end
+	/* inline-gen end */
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -116,7 +116,7 @@ func newAccountActor(ver actors.Version) *types.Actor {
 	   {{range .actorVersions}}
 		case actors.Version{{.}}:
 			code = builtin{{.}}.AccountActorCodeID{{end}}
-	   inline-gen start */
+	/* inline-gen start */
 
 	case actors.Version0:
 		code = builtin0.AccountActorCodeID
@@ -130,7 +130,7 @@ func newAccountActor(ver actors.Version) *types.Actor {
 		code = builtin5.AccountActorCodeID
 	case actors.Version6:
 		code = builtin6.AccountActorCodeID
-		//inline-gen end
+		/* inline-gen end */
 	default:
 		panic("unsupported actors version")
 	}

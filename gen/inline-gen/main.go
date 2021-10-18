@@ -61,14 +61,14 @@ func main() {
 			case stateTemplate:
 				outLines = append(outLines, line) // output all template lines
 
-				if strings.TrimSpace(line) == `inline-gen start */` {
+				if strings.TrimSpace(line) == `/* inline-gen start */` {
 					state = stateGen
 					fmt.Printf("generated section start %s:%d\n", path, ln)
 					continue
 				}
 				templateLines = append(templateLines, line)
 			case stateGen:
-				if strings.TrimSpace(line) != `//inline-gen end` {
+				if strings.TrimSpace(line) != `/* inline-gen end */` {
 					continue
 				}
 				fmt.Printf("generated section end %s:%d\n", path, ln)

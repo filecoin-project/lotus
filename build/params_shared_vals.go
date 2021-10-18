@@ -32,11 +32,11 @@ const AllowableClockDriftSecs = uint64(1)
 
 const NewestNetworkVersion = network.Version{{.latestNetworkVersion}}
 
-inline-gen start */
+/* inline-gen start */
 
 const NewestNetworkVersion = network.Version14
 
-//inline-gen end
+/* inline-gen end */
 
 // Epochs
 const ForkLengthThreshold = Finality

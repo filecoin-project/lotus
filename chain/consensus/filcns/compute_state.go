@@ -20,7 +20,7 @@ import (
 	   {{range .actorVersions}}
 	   	exported{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin/exported"{{end}}
 
-	   inline-gen start */
+	/* inline-gen start */
 
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
 	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
@@ -29,7 +29,7 @@ import (
 	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
 	exported6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/exported"
 
-	//inline-gen end
+	/* inline-gen end */
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -51,7 +51,7 @@ func NewActorRegistry() *vm.ActorRegistry {
 	{{range .actorVersions}}
 	inv.Register(vm.ActorsVersionPredicate(actors.Version{{.}}), exported{{.}}.BuiltinActors()...){{end}}
 
-	inline-gen start */
+	/* inline-gen start */
 
 	inv.Register(vm.ActorsVersionPredicate(actors.Version0), exported0.BuiltinActors()...)
 	inv.Register(vm.ActorsVersionPredicate(actors.Version2), exported2.BuiltinActors()...)
@@ -60,7 +60,7 @@ func NewActorRegistry() *vm.ActorRegistry {
 	inv.Register(vm.ActorsVersionPredicate(actors.Version5), exported5.BuiltinActors()...)
 	inv.Register(vm.ActorsVersionPredicate(actors.Version6), exported6.BuiltinActors()...)
 
-	//inline-gen end
+	/* inline-gen end */
 
 	return inv
 }
