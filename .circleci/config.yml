@@ -348,7 +348,7 @@ jobs:
   build-macos:
     description: build darwin lotus binary
     macos:
-      xcode: "10.0.0"
+      xcode: "12.5.0"
     working_directory: ~/go/src/github.com/filecoin-project/lotus
     steps:
       - prepare:
@@ -370,8 +370,8 @@ jobs:
       - run:
           name: Install jq
           command: |
-            curl --location https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64 --output /usr/local/bin/jq
-            chmod +x /usr/local/bin/jq
+            sudo curl --location https://github.com/stedolan/jq/releases/download/jq-1.6/jq-osx-amd64 --output /usr/local/bin/jq
+            sudo chmod +x /usr/local/bin/jq
       - run:
           name: Install hwloc
           command: |
@@ -435,6 +435,8 @@ jobs:
           command: |
             mkdir appimage
             mv Lotus-*.AppImage appimage
+      - store_artifacts:
+          path: appimage
       - persist_to_workspace:
           root: "."
           paths:
@@ -957,11 +959,7 @@ workflows:
               only:
                 - master
       - build-debug
-      - build-all:
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-all
       - build-ntwk-calibration:
           filters:
             tags:
@@ -978,22 +976,8 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-lotus-soup
-      - build-macos:
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - build-appimage:
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-macos
+      - build-appimage
       - publish:
           requires:
             - build-all
