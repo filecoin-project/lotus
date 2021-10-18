@@ -83,6 +83,9 @@ func main() {
 						}
 						return fmt.Sprintf("/v%d/", int(v))
 					},
+					"add": func(a, b float64) float64 {
+						return a + b
+					},
 				}).Parse(strings.Join(templateLines, "\n"))
 				if err != nil {
 					fmt.Printf("%s:%d: parsing template: %s\n", path, ln, err)

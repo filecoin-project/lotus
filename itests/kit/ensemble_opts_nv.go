@@ -38,14 +38,25 @@ func SDRUpgradeAt(calico, persian abi.ChainEpoch) EnsembleOpt {
 }
 
 func LatestActorsAt(upgradeHeight abi.ChainEpoch) EnsembleOpt {
+	/* inline-gen template
+		return UpgradeSchedule(stmgr.Upgrade{
+			Network: network.Version{{add .latestNetworkVersion -1}},
+			Height:  -1,
+		}, stmgr.Upgrade{
+			Network:   network.Version{{.latestNetworkVersion}},
+			Height:    upgradeHeight,
+			Migration: filcns.UpgradeActorsV{{.latestActorsVersion}},
+		})
+	inline-gen start */
 	return UpgradeSchedule(stmgr.Upgrade{
-		Network: network.Version12,
+		Network: network.Version13,
 		Height:  -1,
 	}, stmgr.Upgrade{
-		Network:   network.Version13,
+		Network:   network.Version14,
 		Height:    upgradeHeight,
-		Migration: filcns.UpgradeActorsV5,
+		Migration: filcns.UpgradeActorsV6,
 	})
+	//inline-gen end
 }
 
 func TurboUpgradeAt(upgradeHeight abi.ChainEpoch) EnsembleOpt {

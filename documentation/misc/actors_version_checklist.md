@@ -13,5 +13,5 @@
 - [ ] Update `chain/stmgr/forks.go`
   - [ ] Schedule
   - [ ] Migration
-- [ ] Update upgrade schedule in `api/test/test.go` and `chain/sync_test.go`
+- [ ] Update upgrade schedule in `chain/sync_test.go`
 - [ ] Register in init in `chain/stmgr/utils.go`
