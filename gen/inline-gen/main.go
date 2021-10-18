@@ -29,6 +29,9 @@ func main() {
 	}
 
 	err = filepath.WalkDir(os.Args[1], func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 		if d.IsDir() {
 			return nil
 		}
