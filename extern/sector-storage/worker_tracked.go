@@ -73,6 +73,9 @@ func (wt *workTracker) track(ctx context.Context, ready chan struct{}, wid Worke
 		}
 	}
 
+	wt.lk.Lock()
+	defer wt.lk.Unlock()
+
 	select {
 	case <-ready:
 	case <-ctx.Done():
@@ -83,6 +86,7 @@ func (wt *workTracker) track(ctx context.Context, ready chan struct{}, wid Worke
 		wt.prepared[prepID] = tracked(storiface.RWPrepared, storiface.UndefCall)
 
 		wt.lk.Unlock()
+
 		select {
 		case <-ready:
 		case <-ctx.Done():
@@ -100,8 +104,7 @@ func (wt *workTracker) track(ctx context.Context, ready chan struct{}, wid Worke
 		return callID, err
 	}
 
-	wt.lk.Lock()
-	defer wt.lk.Unlock()
+
 
 	_, done := wt.done[callID]
 	if done {
