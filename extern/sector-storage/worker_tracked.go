@@ -104,8 +104,6 @@ func (wt *workTracker) track(ctx context.Context, ready chan struct{}, wid Worke
 		return callID, err
 	}
 
-
-
 	_, done := wt.done[callID]
 	if done {
 		delete(wt.done, callID)
