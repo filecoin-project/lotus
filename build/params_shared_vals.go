@@ -28,7 +28,15 @@ const UnixfsLinksPerLevel = 1024
 const AllowableClockDriftSecs = uint64(1)
 
 // TODO: This is still terrible...What's the impact of updating this before mainnet actually upgrades
+/* inline-gen template
+
+const NewestNetworkVersion = network.Version{{.latestNetworkVersion}}
+
+/* inline-gen start */
+
 const NewestNetworkVersion = network.Version14
+
+/* inline-gen end */
 
 // Epochs
 const ForkLengthThreshold = Finality

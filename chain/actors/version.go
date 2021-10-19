@@ -8,9 +8,21 @@ import (
 
 type Version int
 
+/* inline-gen template
+
+var LatestVersion = {{.latestActorsVersion}}
+
+var Versions = []int{ {{range .actorVersions}} {{.}}, {{end}} }
+
+const ({{range .actorVersions}}
+	Version{{.}} Version = {{.}}{{end}}
+)
+
+/* inline-gen start */
+
 var LatestVersion = 6
 
-var Versions = []int{0, 2, 3, 4, 5, LatestVersion}
+var Versions = []int{0, 2, 3, 4, 5, 6}
 
 const (
 	Version0 Version = 0
@@ -20,6 +32,8 @@ const (
 	Version5 Version = 5
 	Version6 Version = 6
 )
+
+/* inline-gen end */
 
 // Converts a network version into an actors adt version.
 func VersionForNetwork(version network.Version) (Version, error) {
