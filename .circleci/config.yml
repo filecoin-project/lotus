@@ -285,21 +285,6 @@ jobs:
           root: "."
           paths:
             - linux-butterflynet
-  build-ntwk-nerpa:
-    description: |
-      Compile lotus binaries for the nerpa network
-    parameters:
-      <<: *test-params
-    executor: << parameters.executor >>
-    steps:
-      - install-deps
-      - prepare
-      - run: make nerpanet
-      - run: mkdir linux-nerpanet && mv lotus lotus-miner lotus-worker linux-nerpanet
-      - persist_to_workspace:
-          root: "."
-          paths:
-            - linux-nerpanet
   build-lotus-soup:
     description: |
       Compile `lotus-soup` Testground test plan
@@ -724,18 +709,6 @@ jobs:
       - packer/build:
           template: tools/packer/lotus.pkr.hcl
           args: "-var ci_workspace_bins=./linux-butterflynet -var lotus_network=butterflynet -var git_tag=$CIRCLE_TAG"
-  publish-packer-nerpanet:
-    description: build and push AWS IAM and DigitalOcean droplet.
-    executor:
-      name: packer/default
-      packer-version: 1.6.6
-    steps:
-      - checkout
-      - attach_workspace:
-          at: "."
-      - packer/build:
-          template: tools/packer/lotus.pkr.hcl
-          args: "-var ci_workspace_bins=./linux-nerpanet -var lotus_network=nerpanet -var git_tag=$CIRCLE_TAG"
   publish-dockerhub:
     description: publish to dockerhub
     machine:
@@ -835,6 +808,11 @@ workflows:
           name: test-itest-deals_padding
           suite: itest-deals_padding
           target: "./itests/deals_padding_test.go"
+      
+      - test:
+          name: test-itest-deals_partial_retrieval
+          suite: itest-deals_partial_retrieval
+          target: "./itests/deals_partial_retrieval_test.go"
       
       - test:
           name: test-itest-deals_power
@@ -983,11 +961,6 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - build-ntwk-nerpa:
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-lotus-soup
       - build-macos:
           filters:
@@ -1045,16 +1018,6 @@ workflows:
       - publish-packer-butterflynet:
           requires:
             - build-ntwk-butterfly
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - publish-packer-nerpanet:
-          requires:
-            - build-ntwk-nerpa
           filters:
             branches:
               ignore:

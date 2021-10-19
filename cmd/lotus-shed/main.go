@@ -61,6 +61,7 @@ func main() {
 		minerTypesCmd,
 		minerMultisigsCmd,
 		splitstoreCmd,
+		fr32Cmd,
 	}
 
 	app := &cli.App{

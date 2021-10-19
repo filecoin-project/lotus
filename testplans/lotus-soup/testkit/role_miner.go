@@ -164,7 +164,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 			return nil, err
 		}
 
-		kbytes, err := priv.Bytes()
+		kbytes, err := libp2pcrypto.MarshalPrivateKey(priv)
 		if err != nil {
 			return nil, err
 		}

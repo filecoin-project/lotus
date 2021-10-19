@@ -218,6 +218,7 @@ func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparat
 	var res []byte
 
 	rnv := rt.vm.ntwkVersion(rt.ctx, randEpoch)
+
 	if rnv >= network.Version13 {
 		res, err = rt.vm.rand.GetChainRandomnessV2(rt.ctx, personalization, randEpoch, entropy)
 	} else {

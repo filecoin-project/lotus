@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
-	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/metrics/proxy"
 	"github.com/gorilla/mux"
 	promclient "github.com/prometheus/client_golang/prometheus"
 )
@@ -23,7 +23,7 @@ func Handler(a api.Gateway, opts ...jsonrpc.ServerOption) (http.Handler, error) 
 		m.Handle(path, rpcServer)
 	}
 
-	ma := metrics.MetricedGatewayAPI(a)
+	ma := proxy.MetricedGatewayAPI(a)
 
 	serveRpc("/rpc/v1", ma)
 	serveRpc("/rpc/v0", api.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), ma))

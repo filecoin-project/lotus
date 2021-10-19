@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.12.0
+   1.13.0
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -41,7 +41,7 @@ COMMANDS:
      sealing  interact with sealing pipeline
 
 GLOBAL OPTIONS:
-   --actor value, -a value                  specify other actor to check state for (read only)
+   --actor value, -a value                  specify other actor to query / manipulate
    --color                                  use color in display output (default: depends on output being a TTY)
    --miner-repo value, --storagerepo value  Specify miner repo path. flag(storagerepo) and env(LOTUS_STORAGE_PATH) are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
    --markets-repo value                     Markets repo path [$LOTUS_MARKETS_PATH]
@@ -659,9 +659,10 @@ USAGE:
    lotus-miner storage-deals list [command options] [arguments...]
 
 OPTIONS:
-   --verbose, -v  (default: false)
-   --watch        watch deal updates in real-time, rather than a one time list (default: false)
-   --help, -h     show help (default: false)
+   --format value  output format of data, supported: table, json (default: "table")
+   --verbose, -v   (default: false)
+   --watch         watch deal updates in real-time, rather than a one time list (default: false)
+   --help, -h      show help (default: false)
    
 ```
 
@@ -1533,13 +1534,14 @@ USAGE:
    lotus-miner sectors list [command options] [arguments...]
 
 OPTIONS:
-   --show-removed  show removed sectors (default: false)
-   --color, -c     use color in display output (default: depends on output being a TTY)
-   --fast          don't show on-chain info for better performance (default: false)
-   --events        display number of events the sector has received (default: false)
-   --seal-time     display how long it took for the sector to be sealed (default: false)
-   --states value  filter sectors by a comma-separated list of states
-   --help, -h      show help (default: false)
+   --show-removed, -r  show removed sectors (default: false)
+   --color, -c         use color in display output (default: depends on output being a TTY)
+   --fast, -f          don't show on-chain info for better performance (default: false)
+   --events, -e        display number of events the sector has received (default: false)
+   --seal-time         display how long it took for the sector to be sealed (default: false)
+   --states value      filter sectors by a comma-separated list of states
+   --unproven, -u      only show sectors which aren't in the 'Proving' state (default: false)
+   --help, -h          show help (default: false)
    
 ```
 

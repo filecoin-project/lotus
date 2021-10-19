@@ -14,7 +14,7 @@ import (
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"github.com/ipld/go-car"
 	carv2 "github.com/ipld/go-car/v2"
-	"github.com/ipld/go-car/v2/blockstore"
+	carv2bs "github.com/ipld/go-car/v2/blockstore"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-padreader"
@@ -24,10 +24,15 @@ import (
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	files "github.com/ipfs/go-ipfs-files"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
+	"github.com/ipld/go-ipld-prime"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	basicnode "github.com/ipld/go-ipld-prime/node/basic"
+	"github.com/ipld/go-ipld-prime/traversal"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
+	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multibase"
@@ -41,7 +46,6 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 
 	"github.com/filecoin-project/go-fil-markets/discovery"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -55,6 +59,7 @@ import (
 	"github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
 
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 
 	"github.com/filecoin-project/lotus/api"
@@ -68,6 +73,8 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 )
+
+var log = logging.Logger("client")
 
 var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
 
@@ -91,7 +98,7 @@ type API struct {
 	// accessors for imports and retrievals.
 	Imports                   dtypes.ClientImportMgr
 	StorageBlockstoreAccessor storagemarket.BlockstoreAccessor
-	RtvlBlockstoreAccessor    retrievalmarket.BlockstoreAccessor
+	RtvlBlockstoreAccessor    rm.BlockstoreAccessor
 
 	DataTransfer dtypes.ClientDataTransfer
 	Host         host.Host
@@ -501,7 +508,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 	}
 
 	if ref.IsCAR {
-		// user gave us a CAR fil, use it as-is
+		// user gave us a CAR file, use it as-is
 		// validate that it's either a carv1 or carv2, and has one root.
 		f, err := os.Open(ref.Path)
 		if err != nil {
@@ -619,7 +626,7 @@ func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, erro
 		return cid.Undef, xerrors.Errorf("failed to calculate placeholder root: %w", err)
 	}
 
-	bs, err := blockstore.OpenReadWrite(path, []cid.Cid{placeholderRoot}, blockstore.UseWholeCIDs(true))
+	bs, err := carv2bs.OpenReadWrite(path, []cid.Cid{placeholderRoot}, carv2bs.UseWholeCIDs(true))
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create carv2 read/write blockstore: %w", err)
 	}
@@ -730,7 +737,7 @@ func (a *API) ClientListImports(_ context.Context) ([]api.Import, error) {
 	return out, nil
 }
 
-func (a *API) ClientCancelRetrievalDeal(ctx context.Context, dealID retrievalmarket.DealID) error {
+func (a *API) ClientCancelRetrievalDeal(ctx context.Context, dealID rm.DealID) error {
 	cerr := make(chan error)
 	go func() {
 		err := a.Retrieval.CancelDeal(dealID)
@@ -784,7 +791,7 @@ type retrievalSubscribeEvent struct {
 	state rm.ClientDealState
 }
 
-func consumeAllEvents(ctx context.Context, dealID retrievalmarket.DealID, subscribeEvents chan retrievalSubscribeEvent, events chan marketevents.RetrievalEvent) error {
+func consumeAllEvents(ctx context.Context, dealID rm.DealID, subscribeEvents chan retrievalSubscribeEvent, events chan marketevents.RetrievalEvent) error {
 	for {
 		var subscribeEvent retrievalSubscribeEvent
 		select {
@@ -835,24 +842,52 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		}
 	}
 
+	sel := shared.AllSelector()
+	if order.DatamodelPathSelector != nil {
+
+		ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
+
+		selspec, err := textselector.SelectorSpecFromPath(
+
+			*order.DatamodelPathSelector,
+
+			// URGH - this is a direct copy from https://github.com/filecoin-project/go-fil-markets/blob/v1.12.0/shared/selectors.go#L10-L16
+			// Unable to use it because we need the SelectorSpec, and markets exposes just a reified node
+			ssb.ExploreRecursive(
+				selector.RecursionLimitNone(),
+				ssb.ExploreAll(ssb.ExploreRecursiveEdge()),
+			),
+		)
+		if err != nil {
+			finish(xerrors.Errorf("failed to parse text-selector '%s': %w", *order.DatamodelPathSelector, err))
+			return
+		}
+
+		sel = selspec.Node()
+		log.Infof("partial retrieval of datamodel-path-selector %s/*", *order.DatamodelPathSelector)
+	}
+
 	// summary:
-	// 1. if we're retrieving from an import, FromLocalCAR will be informed.
-	//    Open as a Filestore and populate the target CAR or UnixFS export from it.
-	//    (cannot use ExtractV1File because user wants a dense CAR, not a ref CAR/filestore)
+	// 1. if we're retrieving from an import, FromLocalCAR will be set.
+	//    Skip the retrieval itself, and use the provided car as a blockstore further down
+	//    to extract a CAR or UnixFS export from.
 	// 2. if we're using an IPFS blockstore for retrieval, retrieve into it,
-	//    then extract the CAR or UnixFS export from it.
-	// 3. if we have to retrieve, perform a CARv2 retrieval, then extract
-	//    the CARv1 (with ExtractV1File) or UnixFS export from it.
+	//    then use the virtual blockstore to extract a CAR or UnixFS export from it.
+	// 3. if we have to retrieve, perform a CARv2 retrieval, then either
+	//    extract the CARv1 (with ExtractV1File) or use it as a blockstore further down.
 
 	// this indicates we're proxying to IPFS.
 	proxyBss, retrieveIntoIPFS := a.RtvlBlockstoreAccessor.(*retrievaladapter.ProxyBlockstoreAccessor)
+
 	carBss, retrieveIntoCAR := a.RtvlBlockstoreAccessor.(*retrievaladapter.CARBlockstoreAccessor)
 
 	carPath := order.FromLocalCAR
+
+	// we actually need to retrieve from the network
 	if carPath == "" {
+
 		if !retrieveIntoIPFS && !retrieveIntoCAR {
-			// we actually need to retrieve from the network, but we don't
-			// recognize the blockstore accessor.
+			// we don't recognize the blockstore accessor.
 			finish(xerrors.Errorf("unsupported retrieval blockstore accessor"))
 			return
 		}
@@ -864,7 +899,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 				return
 			}
 
-			order.MinerPeer = &retrievalmarket.RetrievalPeer{
+			order.MinerPeer = &rm.RetrievalPeer{
 				ID:      *mi.PeerId,
 				Address: order.Miner,
 			}
@@ -882,7 +917,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 
 		ppb := types.BigDiv(order.Total, types.NewInt(order.Size))
 
-		params, err := rm.NewParamsV1(ppb, order.PaymentInterval, order.PaymentIntervalIncrease, shared.AllSelector(), order.Piece, order.UnsealPrice)
+		params, err := rm.NewParamsV1(ppb, order.PaymentInterval, order.PaymentIntervalIncrease, sel, order.Piece, order.UnsealPrice)
 		if err != nil {
 			finish(xerrors.Errorf("Error in retrieval params: %s", err))
 			return
@@ -940,37 +975,10 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		return
 	}
 
-	// Are we outputting a CAR?
-	if ref.IsCAR {
-		if retrieveIntoIPFS {
-			// generating a CARv1 from IPFS.
-			f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
-			if err != nil {
-				finish(err)
-				return
-			}
-
-			bs := proxyBss.Blockstore
-			dags := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
-			err = car.WriteCar(ctx, dags, []cid.Cid{order.Root}, f)
-			if err != nil {
-				finish(err)
-				return
-			}
-			finish(f.Close())
-			return
-		}
-
-		// generating a CARv1 from the CARv2 where we stored the retrieval.
-		err := carv2.ExtractV1File(carPath, ref.Path)
-		finish(err)
-		return
-	}
-
-	// we are extracting a UnixFS file.
-	var bs bstore.Blockstore
+	// determine where did the retrieval go
+	var retrievalBs bstore.Blockstore
 	if retrieveIntoIPFS {
-		bs = proxyBss.Blockstore
+		retrievalBs = proxyBss.Blockstore
 	} else {
 		cbs, err := stores.ReadOnlyFilestore(carPath)
 		if err != nil {
@@ -978,18 +986,93 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 			return
 		}
 		defer cbs.Close() //nolint:errcheck
-		bs = cbs
+		retrievalBs = cbs
 	}
 
-	bsvc := blockservice.New(bs, offline.Exchange(bs))
-	dag := merkledag.NewDAGService(bsvc)
+	// Are we outputting a CAR?
+	if ref.IsCAR {
 
-	nd, err := dag.Get(ctx, order.Root)
+		// not IPFS and we do full selection - just extract the CARv1 from the CARv2 we stored the retrieval in
+		if !retrieveIntoIPFS && order.DatamodelPathSelector == nil {
+			finish(carv2.ExtractV1File(carPath, ref.Path))
+			return
+		}
+
+		// generating a CARv1 from the configured blockstore
+		f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			finish(err)
+			return
+		}
+
+		err = car.NewSelectiveCar(
+			ctx,
+			retrievalBs,
+			[]car.Dag{{
+				Root:     order.Root,
+				Selector: sel,
+			}},
+			car.MaxTraversalLinks(config.MaxTraversalLinks),
+		).Write(f)
+		if err != nil {
+			finish(err)
+			return
+		}
+
+		finish(f.Close())
+		return
+	}
+
+	// we are extracting a UnixFS file.
+	ds := merkledag.NewDAGService(blockservice.New(retrievalBs, offline.Exchange(retrievalBs)))
+	root := order.Root
+
+	// if we used a selector - need to find the sub-root the user actually wanted to retrieve
+	if order.DatamodelPathSelector != nil {
+
+		var subRootFound bool
+
+		// no err check - we just compiled this before starting, but now we do not wrap a `*`
+		selspec, _ := textselector.SelectorSpecFromPath(*order.DatamodelPathSelector, nil) //nolint:errcheck
+		if err := utils.TraverseDag(
+			ctx,
+			ds,
+			root,
+			selspec.Node(),
+			func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
+				if r == traversal.VisitReason_SelectionMatch {
+
+					if p.LastBlock.Path.String() != p.Path.String() {
+						return xerrors.Errorf("unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", p.Path.String())
+					}
+
+					cidLnk, castOK := p.LastBlock.Link.(cidlink.Link)
+					if !castOK {
+						return xerrors.Errorf("cidlink cast unexpectedly failed on '%s'", p.LastBlock.Link.String())
+					}
+
+					root = cidLnk.Cid
+					subRootFound = true
+				}
+				return nil
+			},
+		); err != nil {
+			finish(xerrors.Errorf("error while locating partial retrieval sub-root: %w", err))
+			return
+		}
+
+		if !subRootFound {
+			finish(xerrors.Errorf("path selection '%s' does not match a node within %s", *order.DatamodelPathSelector, root))
+			return
+		}
+	}
+
+	nd, err := ds.Get(ctx, root)
 	if err != nil {
 		finish(xerrors.Errorf("ClientRetrieve: %w", err))
 		return
 	}
-	file, err := unixfile.NewUnixfsFile(ctx, dag, nd)
+	file, err := unixfile.NewUnixfsFile(ctx, ds, nd)
 	if err != nil {
 		finish(xerrors.Errorf("ClientRetrieve: %w", err))
 		return
@@ -1221,7 +1304,11 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 	allSelector := ssb.ExploreRecursive(
 		selector.RecursionLimitNone(),
 		ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
-	sc := car.NewSelectiveCar(ctx, fs, []car.Dag{{Root: root, Selector: allSelector}})
+	sc := car.NewSelectiveCar(ctx,
+		fs,
+		[]car.Dag{{Root: root, Selector: allSelector}},
+		car.MaxTraversalLinks(config.MaxTraversalLinks),
+	)
 	f, err := os.Create(outputPath)
 	if err != nil {
 		return err
