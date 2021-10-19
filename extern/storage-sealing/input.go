@@ -473,7 +473,7 @@ func (m *Sealing) createSector(ctx context.Context, cfg sealiface.Config, sp abi
 	}
 
 	// update stats early, fsm planner would do that async
-	m.stats.updateSector(cfg, m.minerSectorID(sid), UndefinedSectorState)
+	m.stats.updateSector(ctx, cfg, m.minerSectorID(sid), UndefinedSectorState)
 
 	return sid, nil
 }

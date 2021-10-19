@@ -1,6 +1,10 @@
 package sealing
 
 import (
+	"context"
+	"github.com/filecoin-project/lotus/metrics"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/tag"
 	"sync"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -20,11 +24,12 @@ const (
 type SectorStats struct {
 	lk sync.Mutex
 
-	bySector map[abi.SectorID]statSectorState
+	bySector map[abi.SectorID]SectorState
+	byState  map[SectorState]int64
 	totals   [nsst]uint64
 }
 
-func (ss *SectorStats) updateSector(cfg sealiface.Config, id abi.SectorID, st SectorState) (updateInput bool) {
+func (ss *SectorStats) updateSector(ctx context.Context, cfg sealiface.Config, id abi.SectorID, st SectorState) (updateInput bool) {
 	ss.lk.Lock()
 	defer ss.lk.Unlock()
 
@@ -34,12 +39,20 @@ func (ss *SectorStats) updateSector(cfg sealiface.Config, id abi.SectorID, st Se
 	// update totals
 	oldst, found := ss.bySector[id]
 	if found {
-		ss.totals[oldst]--
+		ss.totals[toStatState(oldst, cfg.FinalizeEarly)]--
+		ss.byState[oldst]--
+
+		mctx, _ := tag.New(ctx, tag.Upsert(metrics.SectorState, string(oldst)))
+		stats.Record(mctx, metrics.SectorStates.M(ss.byState[oldst]))
 	}
 
 	sst := toStatState(st, cfg.FinalizeEarly)
-	ss.bySector[id] = sst
+	ss.bySector[id] = st
 	ss.totals[sst]++
+	ss.byState[st]++
+
+	mctx, _ := tag.New(ctx, tag.Upsert(metrics.SectorState, string(st)))
+	stats.Record(mctx, metrics.SectorStates.M(ss.byState[st]))
 
 	// check if we may need be able to process more deals
 	sealing := ss.curSealingLocked()

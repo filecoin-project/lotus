@@ -46,6 +46,7 @@ var (
 	TaskType, _       = tag.NewKey("task_type")
 	WorkerHostname, _ = tag.NewKey("worker_hostname")
 	StorageID, _      = tag.NewKey("storage_id")
+	SectorState, _    = tag.NewKey("sector_state")
 )
 
 // Measures
@@ -97,6 +98,8 @@ var (
 	WorkerCallsReturnedCount     = stats.Int64("sealing/worker_calls_returned_count", "Counter of returned worker tasks", stats.UnitDimensionless)
 	WorkerCallsReturnedDuration  = stats.Float64("sealing/worker_calls_returned_ms", "Counter of returned worker tasks", stats.UnitMilliseconds)
 	WorkerUntrackedCallsReturned = stats.Int64("sealing/worker_untracked_calls_returned", "Counter of returned untracked worker tasks", stats.UnitDimensionless)
+
+	SectorStates = stats.Int64("sealing/states", "Number of sectors in each state", stats.UnitDimensionless)
 
 	StorageFSAvailable      = stats.Float64("storage/path_fs_available_frac", "Fraction of filesystem available storage", stats.UnitDimensionless)
 	StorageAvailable        = stats.Float64("storage/path_available_frac", "Fraction of available storage", stats.UnitDimensionless)
@@ -308,6 +311,11 @@ var (
 		Aggregation: workMillisecondsDistribution,
 		TagKeys:     []tag.Key{TaskType, WorkerHostname},
 	}
+	SectorStatesView = &view.View{
+		Measure:     SectorStates,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{SectorState},
+	}
 	StorageFSAvailableView = &view.View{
 		Measure:     StorageFSAvailable,
 		Aggregation: view.LastValue(),
@@ -441,14 +449,17 @@ var MinerNodeViews = append([]*view.View{
 	WorkerCallsReturnedCountView,
 	WorkerUntrackedCallsReturnedView,
 	WorkerCallsReturnedDurationView,
+	SectorStatesView,
 	StorageFSAvailableView,
 	StorageAvailableView,
 	StorageReservedView,
 	StorageLimitUsedView,
+	StorageCapacityBytesView,
 	StorageFSAvailableBytesView,
 	StorageAvailableBytesView,
 	StorageReservedBytesView,
 	StorageLimitUsedBytesView,
+	StorageLimitMaxBytesView,
 }, DefaultViews...)
 
 // SinceInMilliseconds returns the duration of time since the provide time as a float64.
