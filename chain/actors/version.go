@@ -10,7 +10,7 @@ type Version int
 
 /* inline-gen template
 
-var LatestVersion = 6
+var LatestVersion = {{.latestActorsVersion}}
 
 var Versions = []int{ {{range .actorVersions}} {{.}}, {{end}} }
 
