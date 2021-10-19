@@ -2,13 +2,15 @@ package sealing
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/metrics"
-	"go.opencensus.io/stats"
-	"go.opencensus.io/tag"
 	"sync"
 
+	"go.opencensus.io/stats"
+	"go.opencensus.io/tag"
+
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
+	"github.com/filecoin-project/lotus/metrics"
 )
 
 type statSectorState int
