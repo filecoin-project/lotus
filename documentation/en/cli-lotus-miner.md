@@ -1913,9 +1913,10 @@ USAGE:
    lotus-miner proving check [command options] <deadlineIdx>
 
 OPTIONS:
-   --only-bad  print only bad sectors (default: false)
-   --slow      run slower checks (default: false)
-   --help, -h  show help (default: false)
+   --only-bad          print only bad sectors (default: false)
+   --slow              run slower checks (default: false)
+   --storage-id value  filter sectors by storage path (path id)
+   --help, -h          show help (default: false)
    
 ```
 
