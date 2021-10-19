@@ -9,7 +9,7 @@ This feature release includes the latest functionalities and improvements, like 
 ## Highlights
 - Enable separate storage and retrieval transfer limits ([filecoin-project/lotus#7405](https://github.com/filecoin-project/lotus/pull/7405))
     - `SimultaneousTransfer` is now replaced by `SimultaneousTransfersForStorage` and `SimultaneousTransfersForRetrieval`, where users may set the amount of ongoing data transfer for storage and retrieval deals in parallel separately. The default value for both is set to 20. 
-    - If you are using the lotus client, these two configuration variables are under the `Client` session in `./lotus/config.toml`.
+    - If you are using the lotus client, these two configuration variables are under the `Client` section in `./lotus/config.toml`.
     - If you are a service provider, these two configuration variables should be set under the `Dealmaking` section in `/.lotusminer/config.toml`.
 - Update proofs to v10.0.0 ([filecoin-project/lotus#7420](https://github.com/filecoin-project/lotus/pull/7420))
     - This version supports CUDA. To enable CUDA instead of openCL, build lotus with `FFI_USE_CUDA=1 FFI_BUILD_FROM_SOURCE=1 ...`.
