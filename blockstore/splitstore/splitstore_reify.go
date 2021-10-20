@@ -53,9 +53,6 @@ func (s *SplitStore) reifyOrchestrator() {
 
 		reifyPend := s.reifyPend
 		s.reifyPend = make(map[cid.Cid]struct{})
-		for c := range reifyPend {
-			s.reifyInProgress[c] = struct{}{}
-		}
 		s.reifyMx.Unlock()
 
 		for c := range reifyPend {
@@ -75,8 +72,6 @@ func (s *SplitStore) reifyWorker(workch chan cid.Cid) {
 }
 
 func (s *SplitStore) doReify(c cid.Cid) {
-	defer s.reifyDone(c)
-
 	s.txnLk.RLock()
 	s.trackTxnRef(c)
 	s.txnLk.RUnlock()
@@ -85,6 +80,17 @@ func (s *SplitStore) doReify(c cid.Cid) {
 	err := s.walkObject(c, tmpVisitor(),
 		func(c cid.Cid) error {
 			if isUnitaryObject(c) {
+				return errStopWalk
+			}
+
+			s.reifyMx.Lock()
+			_, inProgress := s.reifyInProgress[c]
+			if !inProgress {
+				s.reifyInProgress[c] = struct{}{}
+			}
+			s.reifyMx.Unlock()
+
+			if inProgress {
 				return errStopWalk
 			}
 
@@ -100,6 +106,18 @@ func (s *SplitStore) doReify(c cid.Cid) {
 			toreify = append(toreify, c)
 			return nil
 		})
+
+	defer func() {
+		if len(toreify) == 0 {
+			return
+		}
+
+		s.reifyMx.Lock()
+		for _, c := range toreify {
+			delete(s.reifyInProgress, c)
+		}
+		s.reifyMx.Unlock()
+	}()
 
 	if err != nil {
 		log.Warnf("error walking cold object for reification (cid: %s): %s", c, err)
@@ -129,11 +147,4 @@ func (s *SplitStore) doReify(c cid.Cid) {
 	if err != nil {
 		log.Warnf("error reifying cold object (cid: %s): %s", c, err)
 	}
-}
-
-func (s *SplitStore) reifyDone(c cid.Cid) {
-	s.reifyMx.Lock()
-	defer s.reifyMx.Unlock()
-
-	delete(s.reifyInProgress, c)
 }
