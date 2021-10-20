@@ -226,7 +226,7 @@ func (s *SplitStore) Has(cid cid.Cid) (bool, error) {
 	return s.iHas(cid, false)
 }
 
-func (s *SplitStore) iHas(cid cid.Cid, reify bool) (bool, error) {
+func (s *SplitStore) iHas(cid cid.Cid, reify bool) (has bool, err error) {
 	if isIdentiyCid(cid) {
 		return true, nil
 	}
@@ -234,23 +234,19 @@ func (s *SplitStore) iHas(cid cid.Cid, reify bool) (bool, error) {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	has, err := s.hot.Has(cid)
+	defer func() {
+		if has && err == nil {
+			s.trackTxnRef(cid)
+		}
+	}()
 
-	if err != nil {
+	has, err = s.hot.Has(cid)
+	if has || err != nil {
 		return has, err
 	}
 
-	if has {
-		s.trackTxnRef(cid)
-		return true, nil
-	}
-
-	if !reify {
-		return s.cold.Has(cid)
-	}
-
 	has, err = s.cold.Has(cid)
-	if has && err == nil {
+	if has && err == nil && reify {
 		s.reifyColdObject(cid)
 	}
 
@@ -261,7 +257,7 @@ func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
 	return s.iGet(cid, false)
 }
 
-func (s *SplitStore) iGet(cid cid.Cid, reify bool) (blocks.Block, error) {
+func (s *SplitStore) iGet(cid cid.Cid, reify bool) (blk blocks.Block, err error) {
 	if isIdentiyCid(cid) {
 		data, err := decodeIdentityCid(cid)
 		if err != nil {
@@ -274,13 +270,15 @@ func (s *SplitStore) iGet(cid cid.Cid, reify bool) (blocks.Block, error) {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	blk, err := s.hot.Get(cid)
+	defer func() {
+		if err == nil {
+			s.trackTxnRef(cid)
+		}
+	}()
+
+	blk, err = s.hot.Get(cid)
 
 	switch err {
-	case nil:
-		s.trackTxnRef(cid)
-		return blk, nil
-
 	case bstore.ErrNotFound:
 		if s.isWarm() {
 			s.debug.LogReadMiss(cid)
@@ -296,7 +294,7 @@ func (s *SplitStore) iGet(cid cid.Cid, reify bool) (blocks.Block, error) {
 		return blk, err
 
 	default:
-		return nil, err
+		return blk, err
 	}
 }
 
@@ -304,7 +302,7 @@ func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 	return s.iGetSize(cid, false)
 }
 
-func (s *SplitStore) iGetSize(cid cid.Cid, reify bool) (int, error) {
+func (s *SplitStore) iGetSize(cid cid.Cid, reify bool) (size int, err error) {
 	if isIdentiyCid(cid) {
 		data, err := decodeIdentityCid(cid)
 		if err != nil {
@@ -317,13 +315,15 @@ func (s *SplitStore) iGetSize(cid cid.Cid, reify bool) (int, error) {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	size, err := s.hot.GetSize(cid)
+	defer func() {
+		if err == nil {
+			s.trackTxnRef(cid)
+		}
+	}()
+
+	size, err = s.hot.GetSize(cid)
 
 	switch err {
-	case nil:
-		s.trackTxnRef(cid)
-		return size, nil
-
 	case bstore.ErrNotFound:
 		if s.isWarm() {
 			s.debug.LogReadMiss(cid)
@@ -339,7 +339,7 @@ func (s *SplitStore) iGetSize(cid cid.Cid, reify bool) (int, error) {
 		return size, err
 
 	default:
-		return 0, err
+		return size, err
 	}
 }
 
