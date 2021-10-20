@@ -82,7 +82,7 @@ func (s *SplitStore) doReify(c cid.Cid) {
 	s.txnLk.RUnlock()
 
 	var toreify []cid.Cid
-	err := s.walkObject(c, cid.NewSet(),
+	err := s.walkObject(c, tmpVisitor(),
 		func(c cid.Cid) error {
 			if isUnitaryObject(c) {
 				return errStopWalk
