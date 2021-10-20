@@ -464,7 +464,9 @@ func (sw *schedWorker) startProcessingTask(req *workerRequest) error {
 
 	go func() {
 		// first run the prepare step (e.g. fetching sector data from other worker)
-		err := req.prepare(req.ctx, sh.workTracker.worker(sw.wid, w.info, w.workerRpc))
+		tw := sh.workTracker.worker(sw.wid, w.info, w.workerRpc)
+		tw.start()
+		err := req.prepare(req.ctx, tw)
 		w.lk.Lock()
 
 		if err != nil {
@@ -488,6 +490,14 @@ func (sw *schedWorker) startProcessingTask(req *workerRequest) error {
 			return
 		}
 
+		tw = sh.workTracker.worker(sw.wid, w.info, w.workerRpc)
+
+		// start tracking work first early in case we need to wait for resources
+		werr := make(chan error, 1)
+		go func() {
+			werr <- req.work(req.ctx, tw)
+		}()
+
 		// wait (if needed) for resources in the 'active' window
 		err = w.active.withResources(sw.wid, w.info, needRes, &w.lk, func() error {
 			w.preparing.free(w.info.Resources, needRes)
@@ -501,7 +511,8 @@ func (sw *schedWorker) startProcessingTask(req *workerRequest) error {
 			}
 
 			// Do the work!
-			err = req.work(req.ctx, sh.workTracker.worker(sw.wid, w.info, w.workerRpc))
+			tw.start()
+			err = <-werr
 
 			select {
 			case req.ret <- workerResponse{err: err}:
@@ -534,7 +545,9 @@ func (sw *schedWorker) startProcessingReadyTask(req *workerRequest) error {
 
 	go func() {
 		// Do the work!
-		err := req.work(req.ctx, sh.workTracker.worker(sw.wid, w.info, w.workerRpc))
+		tw := sh.workTracker.worker(sw.wid, w.info, w.workerRpc)
+		tw.start()
+		err := req.work(req.ctx, tw)
 
 		select {
 		case req.ret <- workerResponse{err: err}:
