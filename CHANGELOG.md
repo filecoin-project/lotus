@@ -1,7 +1,5 @@
 # Lotus changelog
 
-<<<<<<< HEAD
-=======
 # v1.13.0 / 2021-10-18
 
 Lotus v1.13.0 is a *highly recommended* feature release for all lotus users(i.e: storage providers, data brokers, application developers and so on) that supports the upcoming 
@@ -95,7 +93,6 @@ This feature release includes the latest functionalities and improvements, like 
 | @jennijuju | 1 | +2/-2 | 1 |
 | @swift-mx | 1 | +1/-1 | 1 |
 
->>>>>>> releases
 # v1.12.0 / 2021-10-12
 
 This is a mandatory release of Lotus that introduces [Filecoin Network v14](https://github.com/filecoin-project/community/discussions/74#discussioncomment-1398542), codenamed the Chocolate upgrade. The Filecoin mainnet will upgrade at epoch 1231620, on 2021-10-26T13:30:00Z. 
@@ -147,6 +144,9 @@ Note that this release is built on top of lotus v1.11.3. Enterprising users like
 - Extend FaultMaxAge to 6 weeks for actors v6 on test networks only ([filecoin-project/lotus#7421](https://github.com/filecoin-project/lotus/pull/7421))
 
 ## Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
 | @ZenGround0 | 12 | +4202/-2752 | 187 |
 | @arajasek | 25 | +4567/-854 | 190 |
 | @laudiacay | 4 | +1276/-435 | 37 |
