@@ -246,7 +246,7 @@ func (s *SplitStore) iHas(cid cid.Cid, reify bool) (has bool, err error) {
 	}
 
 	has, err = s.cold.Has(cid)
-	if has && err == nil && reify {
+	if has && err == nil && reify && s.isWarm() {
 		s.reifyColdObject(cid)
 	}
 
@@ -287,7 +287,7 @@ func (s *SplitStore) iGet(cid cid.Cid, reify bool) (blk blocks.Block, err error)
 		blk, err = s.cold.Get(cid)
 		if err == nil {
 			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
-			if reify {
+			if reify && s.isWarm() {
 				s.reifyColdObject(cid)
 			}
 		}
@@ -332,7 +332,7 @@ func (s *SplitStore) iGetSize(cid cid.Cid, reify bool) (size int, err error) {
 		size, err = s.cold.GetSize(cid)
 		if err == nil {
 			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
-			if reify {
+			if reify && s.isWarm() {
 				s.reifyColdObject(cid)
 			}
 		}
@@ -487,7 +487,7 @@ func (s *SplitStore) iView(cid cid.Cid, reify bool, cb func([]byte) error) error
 		err = s.cold.View(cid, cb)
 		if err == nil {
 			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
-			if reify {
+			if reify && s.isWarm() {
 				s.reifyColdObject(cid)
 			}
 		}

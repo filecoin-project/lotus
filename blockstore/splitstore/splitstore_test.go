@@ -263,6 +263,7 @@ func testSplitStoreReification(t *testing.T, f func(blockstore.Blockstore, cid.C
 	}
 	defer ss.Close() //nolint
 
+	ss.warmupEpoch = 1
 	go ss.reifyOrchestrator()
 
 	waitForReification := func() {
