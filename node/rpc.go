@@ -99,7 +99,11 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 		m.HandleFunc("/rest/v0/import", handleImportFunc)
 	}
 
+	// status
+	m.HandleFunc("/healthz", handleAPIStatus(a.(*impl.FullNodeAPI)))
+
 	// debugging
+
 	m.Handle("/debug/metrics", metrics.Exporter())
 	m.Handle("/debug/pprof-set/block", handleFractionOpt("BlockProfileRate", runtime.SetBlockProfileRate))
 	m.Handle("/debug/pprof-set/mutex", handleFractionOpt("MutexProfileFraction", func(x int) {
@@ -140,6 +144,17 @@ func MinerHandler(a api.StorageMiner, permissioned bool) (http.Handler, error) {
 		Next:   m.ServeHTTP,
 	}
 	return ah, nil
+}
+
+func handleAPIStatus(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		resp := make(map[string]string)
+		resp["API"] = "OK"
+		_ = json.NewEncoder(w).Encode(resp)
+		return
+
+	}
 }
 
 func handleImport(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.Request) {
