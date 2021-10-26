@@ -276,6 +276,8 @@ type FullNodeStruct struct {
 
 		MsigGetAvailableBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
+		MsigGetLockedBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) `perm:"read"`
+
 		MsigGetPending func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*MsigTransaction, error) `perm:"read"`
 
 		MsigGetVested func(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
@@ -501,6 +503,8 @@ type GatewayStruct struct {
 		MpoolPush func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) ``
 
 		MsigGetAvailableBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) ``
+
+		MsigGetLockedBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) ``
 
 		MsigGetPending func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*MsigTransaction, error) ``
 
@@ -1976,6 +1980,17 @@ func (s *FullNodeStub) MsigGetAvailableBalance(p0 context.Context, p1 address.Ad
 	return *new(types.BigInt), ErrNotSupported
 }
 
+func (s *FullNodeStruct) MsigGetLockedBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
+	if s.Internal.MsigGetLockedBalance == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
+	return s.Internal.MsigGetLockedBalance(p0, p1, p2)
+}
+
+func (s *FullNodeStub) MsigGetLockedBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
+	return *new(types.BigInt), ErrNotSupported
+}
+
 func (s *FullNodeStruct) MsigGetPending(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*MsigTransaction, error) {
 	if s.Internal.MsigGetPending == nil {
 		return *new([]*MsigTransaction), ErrNotSupported
@@ -3161,6 +3176,17 @@ func (s *GatewayStruct) MsigGetAvailableBalance(p0 context.Context, p1 address.A
 }
 
 func (s *GatewayStub) MsigGetAvailableBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
+	return *new(types.BigInt), ErrNotSupported
+}
+
+func (s *GatewayStruct) MsigGetLockedBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
+	if s.Internal.MsigGetLockedBalance == nil {
+		return *new(types.BigInt), ErrNotSupported
+	}
+	return s.Internal.MsigGetLockedBalance(p0, p1, p2)
+}
+
+func (s *GatewayStub) MsigGetLockedBalance(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) {
 	return *new(types.BigInt), ErrNotSupported
 }
 

@@ -47,6 +47,7 @@ type TargetAPI interface {
 	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
 	MpoolPushUntrusted(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
 	MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
+	MsigGetLockedBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
 	MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)
 	MsigGetPending(ctx context.Context, addr address.Address, ts types.TipSetKey) ([]*api.MsigTransaction, error)
 	StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
@@ -254,6 +255,14 @@ func (gw *Node) MsigGetAvailableBalance(ctx context.Context, addr address.Addres
 	}
 
 	return gw.target.MsigGetAvailableBalance(ctx, addr, tsk)
+}
+
+func (gw *Node) MsigGetLockedBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
+	if err := gw.checkTipsetKey(ctx, tsk); err != nil {
+		return types.NewInt(0), err
+	}
+
+	return gw.target.MsigGetLockedBalance(ctx, addr, tsk)
 }
 
 func (gw *Node) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {

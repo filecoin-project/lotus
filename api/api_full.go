@@ -597,6 +597,10 @@ type FullNode interface {
 
 	// MsigGetAvailableBalance returns the portion of a multisig's balance that can be withdrawn or spent
 	MsigGetAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error) //perm:read
+
+	// MsigGetLockedBalance returns the portion of a multisig's balance that is locked
+	MsigGetLockedBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error) //perm:read
+
 	// MsigGetVestingSchedule returns the vesting details of a given multisig.
 	MsigGetVestingSchedule(context.Context, address.Address, types.TipSetKey) (MsigVesting, error) //perm:read
 	// MsigGetVested returns the amount of FIL that vested in a multisig in a certain period.

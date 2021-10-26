@@ -42,6 +42,7 @@ import (
 )
 
 type StateModuleAPI interface {
+	MsigGetLockedBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
 	MsigGetAvailableBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error)
 	MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error)
 	MsigGetPending(ctx context.Context, addr address.Address, tsk types.TipSetKey) ([]*api.MsigTransaction, error)
@@ -935,6 +936,27 @@ func (m *StateModule) MsigGetAvailableBalance(ctx context.Context, addr address.
 		return types.EmptyInt, xerrors.Errorf("failed to compute locked multisig balance: %w", err)
 	}
 	return types.BigSub(act.Balance, locked), nil
+}
+
+func (m *StateModule) MsigGetLockedBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
+	ts, err := m.Chain.GetTipSetFromKey(tsk)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	act, err := m.StateManager.LoadActor(ctx, addr, ts)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor: %w", err)
+	}
+	msas, err := multisig.Load(m.Chain.ActorStore(ctx), act)
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to load multisig actor state: %w", err)
+	}
+	locked, err := msas.LockedBalance(ts.Height())
+	if err != nil {
+		return types.EmptyInt, xerrors.Errorf("failed to compute locked multisig balance: %w", err)
+	}
+	return locked, nil
 }
 
 func (a *StateAPI) MsigGetVestingSchedule(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MsigVesting, error) {

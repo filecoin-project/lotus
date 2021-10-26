@@ -210,6 +210,10 @@ func (m *mockGatewayDepsAPI) MsigGetAvailableBalance(ctx context.Context, addr a
 	panic("implement me")
 }
 
+func (m *mockGatewayDepsAPI) MsigGetLockedBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (types.BigInt, error) {
+	panic("implement me")
+}
+
 func (m *mockGatewayDepsAPI) MsigGetVested(ctx context.Context, addr address.Address, start types.TipSetKey, end types.TipSetKey) (types.BigInt, error) {
 	panic("implement me")
 }

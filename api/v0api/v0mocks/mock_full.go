@@ -1412,6 +1412,21 @@ func (mr *MockFullNodeMockRecorder) MsigGetAvailableBalance(arg0, arg1, arg2 int
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MsigGetAvailableBalance", reflect.TypeOf((*MockFullNode)(nil).MsigGetAvailableBalance), arg0, arg1, arg2)
 }
 
+// MsigGetLockedBalance mocks base method.
+func (m *MockFullNode) MsigGetLockedBalance(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (big.Int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MsigGetLockedBalance", arg0, arg1, arg2)
+	ret0, _ := ret[0].(big.Int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MsigGetLockedBalance indicates an expected call of MsigGetLockedBalance.
+func (mr *MockFullNodeMockRecorder) MsigGetLockedBalance(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MsigGetLockedBalance", reflect.TypeOf((*MockFullNode)(nil).MsigGetLockedBalance), arg0, arg1, arg2)
+}
+
 // MsigGetPending mocks base method.
 func (m *MockFullNode) MsigGetPending(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) ([]*api.MsigTransaction, error) {
 	m.ctrl.T.Helper()
