@@ -106,6 +106,7 @@
   * [RuntimeSubsystems](#RuntimeSubsystems)
 * [Sealing](#Sealing)
   * [SealingAbort](#SealingAbort)
+  * [SealingPipelineState](#SealingPipelineState)
   * [SealingSchedDiag](#SealingSchedDiag)
 * [Sector](#Sector)
   * [SectorAddPieceToAny](#SectorAddPieceToAny)
@@ -1709,6 +1710,25 @@ Inputs:
 ```
 
 Response: `{}`
+
+### SealingPipelineState
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "TasksStats": {
+    "name": 42
+  },
+  "MaxWaitDealsSectors": 42,
+  "MaxSealingSectors": 42,
+  "MaxSealingSectorsForDeals": 42
+}
+```
 
 ### SealingSchedDiag
 SealingSchedDiag dumps internal sealing scheduler state

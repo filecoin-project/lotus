@@ -10,6 +10,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/fatih/color"
 	"github.com/google/uuid"
 	"github.com/urfave/cli/v2"
@@ -29,6 +30,7 @@ var sealingCmd = &cli.Command{
 		sealingWorkersCmd,
 		sealingSchedDiagCmd,
 		sealingAbortCmd,
+		sealingStateCmd,
 	},
 }
 
@@ -143,6 +145,34 @@ var sealingWorkersCmd = &cli.Command{
 				fmt.Printf("\tGPU: %s\n", color.New(gpuCol).Sprintf("%s, %sused", gpu, gpuUse))
 			}
 		}
+
+		return nil
+	},
+}
+
+var sealingStateCmd = &cli.Command{
+	Name:  "state",
+	Usage: "state of sealing pipeline",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
+
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		res, err := api.SealingPipelineState(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting worker jobs: %w", err)
+		}
+
+		spew.Dump(res)
 
 		return nil
 	},
