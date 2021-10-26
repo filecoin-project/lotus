@@ -356,7 +356,13 @@ The minimum value is 518400 (6 months).`,
 		&CidBaseFlag,
 	},
 	Action: func(cctx *cli.Context) error {
+		
+		expectedArgsMsg := "expected 4 args: dataCid, miner, price, duration"
+		
 		if !cctx.Args().Present() {
+			if cctx.Bool("manual-stateless-deal") {
+				return xerrors.New("--manual-stateless-deal can not be combined with interactive deal mode: you must specify the " + expectedArgsMsg)
+			}
 			return interactiveDeal(cctx)
 		}
 
@@ -369,7 +375,7 @@ The minimum value is 518400 (6 months).`,
 		afmt := NewAppFmt(cctx.App)
 
 		if cctx.NArg() != 4 {
-			return xerrors.New("expected 4 args: dataCid, miner, price, duration")
+			return xerrors.New(expectedArgsMsg)
 		}
 
 		// [data, miner, price, dur]
