@@ -3,6 +3,7 @@ package types
 import (
 	"encoding"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/abi"
 	"math/big"
 	"strings"
 
@@ -120,6 +121,13 @@ func ParseFIL(s string) (FIL, error) {
 	}
 
 	return FIL{r.Num()}, nil
+}
+
+
+func ParseAttoFilToFIL(atto abi.TokenAmount) string {
+	vfil := big.NewFloat(0)
+	vfil.Add(vfil, new(big.Float).SetInt(atto.Int))
+	return new(big.Float).Quo(vfil, big.NewFloat(float64(build.FilecoinPrecision))).String() + " FIL"
 }
 
 func MustParseFIL(s string) FIL {
