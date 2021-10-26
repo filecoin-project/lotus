@@ -220,8 +220,8 @@ var filplusCheckClientCmd = &cli.Command{
 }
 
 var filplusCheckNotaryCmd = &cli.Command{
-	Name:  "check-notaries-datacap",
-	Usage: "check notaries remaining bytes",
+	Name:  "check-notary-datacap",
+	Usage: "check a notary's remaining bytes",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify notary address to check")
