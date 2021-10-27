@@ -257,7 +257,7 @@ var actorWithdrawCmd = &cli.Command{
 			amount = abi.TokenAmount(f)
 
 			if amount.GreaterThan(available) {
-				return xerrors.Errorf("can't withdraw more funds than available; requested: %s; available: %s", amount, available)
+				return xerrors.Errorf("can't withdraw more funds than available; requested: %s; available: %s", types.FIL(amount), types.FIL(available))
 			}
 		}
 
@@ -306,9 +306,9 @@ var actorWithdrawCmd = &cli.Command{
 				return err
 			}
 
-			fmt.Printf("Successfully withdrew %s FIL\n", withdrawn)
+			fmt.Printf("Successfully withdrew %s \n", types.FIL(withdrawn))
 			if withdrawn.LessThan(amount) {
-				fmt.Printf("Note that this is less than the requested amount of %s FIL\n", amount)
+				fmt.Printf("Note that this is less than the requested amount of %s\n", types.FIL(amount))
 			}
 		}
 
