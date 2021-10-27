@@ -68,7 +68,7 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, add
 		return nil, address.Undef, aerrors.Escalate(err, "unsupported network version")
 	}
 
-	act, aerr := makeActor(av, addr)
+	act, aerr := makeAccountActor(av, addr)
 	if aerr != nil {
 		return nil, address.Undef, aerr
 	}
@@ -95,7 +95,7 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, add
 	return act, addrID, nil
 }
 
-func makeActor(ver actors.Version, addr address.Address) (*types.Actor, aerrors.ActorError) {
+func makeAccountActor(ver actors.Version, addr address.Address) (*types.Actor, aerrors.ActorError) {
 	switch addr.Protocol() {
 	case address.BLS, address.SECP256K1:
 		return newAccountActor(ver), nil
