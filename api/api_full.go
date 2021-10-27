@@ -291,7 +291,7 @@ type FullNode interface {
 
 	// // UX ?
 
-	// MethodGroup: Wallet
+	// MethodGroup: WalletF
 
 	// WalletNew creates a new address in the wallet with the given sigType.
 	// Available key types: bls, secp256k1, secp256k1-ledger
