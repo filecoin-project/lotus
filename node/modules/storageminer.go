@@ -39,7 +39,6 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	graphsync "github.com/ipfs/go-graphsync/impl"
-	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	"github.com/ipfs/go-graphsync/storeutil"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -396,7 +395,7 @@ func StagingBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 
 // StagingGraphsync creates a graphsync instance which reads and writes blocks
 // to the StagingBlockstore
-func StagingGraphsync(parallelTransfersForStorage uint64, parallelTransfersForRetrieval uint64) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
+func StagingGraphsync(parallelTransfersForStorage uint64, parallelTransfersForStoragePerPeer uint64, parallelTransfersForRetrieval uint64) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
 		graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
 		lsys := storeutil.LinkSystemForBlockstore(ibs)
@@ -405,9 +404,10 @@ func StagingGraphsync(parallelTransfersForStorage uint64, parallelTransfersForRe
 			lsys,
 			graphsync.RejectAllRequestsByDefault(),
 			graphsync.MaxInProgressIncomingRequests(parallelTransfersForRetrieval),
+			graphsync.MaxInProgressIncomingRequestsPerPeer(parallelTransfersForStoragePerPeer),
 			graphsync.MaxInProgressOutgoingRequests(parallelTransfersForStorage),
-			graphsyncimpl.MaxLinksPerIncomingRequests(config.MaxTraversalLinks),
-			graphsyncimpl.MaxLinksPerOutgoingRequests(config.MaxTraversalLinks))
+			graphsync.MaxLinksPerIncomingRequests(config.MaxTraversalLinks),
+			graphsync.MaxLinksPerOutgoingRequests(config.MaxTraversalLinks))
 
 		graphsyncStats(mctx, lc, gs)
 

@@ -160,8 +160,9 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxDealsPerPublishMsg:           8,
 			MaxProviderCollateralMultiplier: 2,
 
-			SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
-			SimultaneousTransfersForRetrieval: DefaultSimultaneousTransfers,
+			SimultaneousTransfersForStorage:          DefaultSimultaneousTransfers,
+			SimultaneousTransfersForStoragePerClient: 0,
+			SimultaneousTransfersForRetrieval:        DefaultSimultaneousTransfers,
 
 			StartEpochSealingBuffer: 480, // 480 epochs buffer == 4 hours from adding deal to sector to sector being sealed
 
