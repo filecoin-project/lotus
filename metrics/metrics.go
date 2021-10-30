@@ -142,7 +142,7 @@ var (
 		Description: "Lotus node information",
 		Measure:     LotusInfo,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{Version, Commit},
+		TagKeys:     []tag.Key{Version, Commit, NodeType},
 	}
 	ChainNodeHeightView = &view.View{
 		Measure:     ChainNodeHeight,
