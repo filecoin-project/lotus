@@ -1,3 +1,4 @@
+//stm: #unit
 package config
 
 import (
@@ -14,6 +15,7 @@ func TestDecodeNothing(t *testing.T) {
 	assert := assert.New(t)
 
 	{
+		//stm: @NODE_CONFIG_001
 		cfg, err := FromFile(os.DevNull, DefaultFullNode())
 		assert.Nil(err, "error should be nil")
 		assert.Equal(DefaultFullNode(), cfg,
@@ -21,6 +23,7 @@ func TestDecodeNothing(t *testing.T) {
 	}
 
 	{
+		//stm: @NODE_CONFIG_002
 		cfg, err := FromFile("./does-not-exist.toml", DefaultFullNode())
 		assert.Nil(err, "error should be nil")
 		assert.Equal(DefaultFullNode(), cfg,

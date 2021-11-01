@@ -1,3 +1,4 @@
+//stm: #unit
 package repo
 
 import (
@@ -6,5 +7,6 @@ import (
 
 func TestMemBasic(t *testing.T) {
 	repo := NewMemory(nil)
+	//stm: @REPO_MEM_001
 	basicTest(t, repo)
 }
