@@ -15,6 +15,7 @@ func TestMonitorShutdown(t *testing.T) {
 	// Three shutdown handlers.
 	var wg sync.WaitGroup
 	wg.Add(3)
+	//stm: @NODE_SHUTDOWN_001
 	h := ShutdownHandler{
 		Component: "handler",
 		StopFunc: func(_ context.Context) error {
@@ -23,6 +24,7 @@ func TestMonitorShutdown(t *testing.T) {
 		},
 	}
 
+	//stm: @NODE_SHUTDOWN_002
 	finishCh := MonitorShutdown(signalCh, h, h, h)
 
 	// Nothing here after 10ms.
