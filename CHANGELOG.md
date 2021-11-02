@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# v1.13.1-rc1 / 2021-10-26
+# v1.13.1-rc2 / 2021-11-02
 
-This is the first release candidate for lotus optional release v1.13.1. More detailed changelog will be updated later.
+This is the second release candidate for lotus optional release v1.13.1. More detailed changelog will be updated later.
 
 > For release related questions, leave a comment at https://github.com/filecoin-project/lotus/issues/7567.
 
@@ -46,6 +46,7 @@ This is the first release candidate for lotus optional release v1.13.1. More det
     - Update go-graphsync v0.10.1 ([filecoin-project/lotus#7457](https://github.com/filecoin-project/lotus/pull/7457))
     - restore filters for the build-macos job ([filecoin-project/lotus#7455](https://github.com/filecoin-project/lotus/pull/7455))
     - bump master to v1.13.1-dev ([filecoin-project/lotus#7451](https://github.com/filecoin-project/lotus/pull/7451))
+    - update go-libp2p-pubsub to v0.5.6 (([filecoin-project/lotus#7451](https://github.com/filecoin-project/lotus/pull/7451)))
 - github.com/filecoin-project/go-address (v0.0.5 -> v0.0.6):
     - fix: reject 64bit addresses ([filecoin-project/go-address#20](https://github.com/filecoin-project/go-address/pull/20))
 - github.com/filecoin-project/go-cbor-util (v0.0.0-20191219014500-08c40a1e63a2 -> v0.0.1):
