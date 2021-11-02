@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# v1.13.1-rc1 / 2021-10-26
+# v1.13.1-rc2 / 2021-11-02
 
-This is the first release candidate for lotus optional release v1.13.1. More detailed changelog will be updated later.
+This is the second release candidate for lotus optional release v1.13.1. More detailed changelog will be updated later.
 
 > For release related questions, leave a comment at https://github.com/filecoin-project/lotus/issues/7567.
 
