@@ -2450,7 +2450,8 @@ CATEGORY:
    DEVELOPER
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --timeout value  duration to wait till fail (default: 30s)
+   --help, -h       show help (default: false)
    
 ```
 
