@@ -1,3 +1,4 @@
+//stm: #unit
 package client
 
 import (
@@ -44,10 +45,12 @@ func TestImportLocal(t *testing.T) {
 	b, err := testdata.ReadFile("testdata/payload.txt")
 	require.NoError(t, err)
 
+	//stm: @CLIENT_IMPORT_003
 	root, err := a.ClientImportLocal(ctx, bytes.NewReader(b))
 	require.NoError(t, err)
 	require.NotEqual(t, cid.Undef, root)
 
+	//stm: @CLIENT_IMPORT_004
 	list, err := a.ClientListImports(ctx)
 	require.NoError(t, err)
 	require.Len(t, list, 1)
@@ -68,6 +71,7 @@ func TestImportLocal(t *testing.T) {
 	// retrieve as UnixFS.
 	out1 := filepath.Join(dir, "retrieval1.data") // as unixfs
 	out2 := filepath.Join(dir, "retrieval2.data") // as car
+	//stm: @CLIENT_IMPORT_005
 	err = a.ClientRetrieve(ctx, order, &api.FileRef{
 		Path: out1,
 	})
@@ -84,6 +88,7 @@ func TestImportLocal(t *testing.T) {
 	require.NoError(t, err)
 
 	// open the CARv2 being custodied by the import manager
+	//stm: @CLIENT_IMPORT_006
 	orig, err := carv2.OpenReader(it.CARPath)
 	require.NoError(t, err)
 
@@ -94,6 +99,7 @@ func TestImportLocal(t *testing.T) {
 	require.EqualValues(t, 1, exported.Version)
 	require.EqualValues(t, 2, orig.Version)
 
+	//stm: @CLIENT_IMPORT_007
 	origRoots, err := orig.Roots()
 	require.NoError(t, err)
 	require.Len(t, origRoots, 1)

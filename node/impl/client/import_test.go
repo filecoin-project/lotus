@@ -1,3 +1,4 @@
+//stm: #unit
 package client
 
 import (
@@ -35,11 +36,13 @@ func TestRoundtripUnixFS_Dense(t *testing.T) {
 	defer os.Remove(carv2File) //nolint:errcheck
 
 	// import a file to a Unixfs DAG using a CARv2 read/write blockstore.
+	//stm: @CLIENT_IMPORT_001, @CLIENT_BLOCKSTORE_001
 	bs, err := blockstore.OpenReadWrite(carv2File, nil,
 		carv2.ZeroLengthSectionAsEOF(true),
 		blockstore.UseWholeCIDs(true))
 	require.NoError(t, err)
 
+	//stm: @CLIENT_IMPORT_001
 	root, err := buildUnixFS(ctx, bytes.NewBuffer(inputContents), bs, false)
 	require.NoError(t, err)
 	require.NotEqual(t, cid.Undef, root)
@@ -85,11 +88,13 @@ func TestRoundtripUnixFS_Filestore(t *testing.T) {
 	dst := newTmpFile(t)
 	defer os.Remove(dst) //nolint:errcheck
 
+	//stm: @CLIENT_FS_001
 	root, err := a.createUnixFSFilestore(ctx, inputPath, dst)
 	require.NoError(t, err)
 	require.NotEqual(t, cid.Undef, root)
 
 	// convert the CARv2 to a normal file again and ensure the contents match
+	//stm: @CLIENT_FS_002
 	fs, err := stores.ReadOnlyFilestore(dst)
 	require.NoError(t, err)
 	defer fs.Close() //nolint:errcheck
@@ -116,6 +121,7 @@ func TestRoundtripUnixFS_Filestore(t *testing.T) {
 }
 
 func newTmpFile(t *testing.T) string {
+	//stm: @CLIENT_FS_003
 	f, err := os.CreateTemp("", "")
 	require.NoError(t, err)
 	require.NoError(t, f.Close())
@@ -123,6 +129,7 @@ func newTmpFile(t *testing.T) string {
 }
 
 func genInputFile(t *testing.T) (filepath string, contents []byte) {
+	//stm: @CLIENT_FS_004
 	s := strings.Repeat("abcde", 100)
 	tmp, err := os.CreateTemp("", "")
 	require.NoError(t, err)
