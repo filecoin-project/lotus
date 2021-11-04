@@ -4698,7 +4698,7 @@ Inputs:
 ]
 ```
 
-Response: `14`
+Response: `15`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
