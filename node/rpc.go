@@ -99,7 +99,7 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 		m.HandleFunc("/rest/v0/import", handleImportFunc)
 	}
 
-	// status
+	// node health
 	m.HandleFunc("/healthz", handleAPIStatus(a.(*impl.FullNodeAPI)))
 
 	// debugging
@@ -148,10 +148,53 @@ func MinerHandler(a api.StorageMiner, permissioned bool) (http.Handler, error) {
 
 func handleAPIStatus(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		resp := make(map[string]string)
-		resp["API"] = "OK"
+		// Parse query params
+		syncStatusQuery := r.URL.Query().Get("syncstatus")
+		peerStatusQuery := r.URL.Query().Get("peerstatus")
+
+		// Status Response
+		resp := make(map[string]interface{})
+
+		// Get Node Status
+		nodeStatus, err := a.NodeStatus(r.Context(), false)
+
+		if err != nil {
+
+			w.WriteHeader(500)
+			resp["status"] = "unhealthy"
+
+			_ = json.NewEncoder(w).Encode(resp)
+
+			return
+		}
+
+		// Build response
+		if syncStatusQuery != "" {
+			// Check Sync Status
+			resp["component"] = "sync"
+			if nodeStatus.SyncStatus.Epoch != 0 {
+				resp["status"] = "OK"
+			} else {
+				resp["status"] = "unhealthy"
+			}
+		} else if peerStatusQuery != "" {
+			// Check Peer Status
+			resp["component"] = "peer"
+			if nodeStatus.PeerStatus.PeersToPublishBlocks != 0 {
+				resp["status"] = "OK"
+			} else {
+				resp["status"] = "unhealthy"
+			}
+		} else {
+			// API status
+			resp["component"] = "api"
+			resp["status"] = "OK"
+		}
+		if resp["status"] == "unhealthy" {
+			w.WriteHeader(500)
+		}
 		_ = json.NewEncoder(w).Encode(resp)
+
 		return
 
 	}
