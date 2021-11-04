@@ -6,6 +6,8 @@ package ffiwrapper
 import (
 	"context"
 
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -118,6 +120,11 @@ func (proofVerifier) VerifySeal(info proof5.SealVerifyInfo) (bool, error) {
 
 func (proofVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
 	return ffi.VerifyAggregateSeals(aggregate)
+}
+
+func (proofVerifier) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (bool, error) {
+	//TODO: do the thing
+	return false, nil
 }
 
 func (proofVerifier) VerifyWinningPoSt(ctx context.Context, info proof5.WinningPoStVerifyInfo) (bool, error) {

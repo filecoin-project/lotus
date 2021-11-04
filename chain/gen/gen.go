@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	"github.com/filecoin-project/lotus/chain/rand"
 
 	"github.com/filecoin-project/go-state-types/network"
@@ -683,6 +685,10 @@ func (m genFakeVerifier) VerifySeal(svi proof5.SealVerifyInfo) (bool, error) {
 }
 
 func (m genFakeVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
+	panic("not supported")
+}
+
+func (m genFakeVerifier) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (bool, error) {
 	panic("not supported")
 }
 
