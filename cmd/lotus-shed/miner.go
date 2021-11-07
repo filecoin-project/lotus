@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
 	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
 
 	"github.com/docker/go-units"
@@ -34,6 +36,84 @@ var minerCmd = &cli.Command{
 	Subcommands: []*cli.Command{
 		minerUnpackInfoCmd,
 		minerCreateCmd,
+		minerFaultsCmd,
+	},
+}
+
+var minerFaultsCmd = &cli.Command{
+	Name:      "faults",
+	Usage:     "Display a list of faulty sectors for a SP",
+	ArgsUsage: "[minerAddress]",
+	Flags: []cli.Flag{
+		&cli.Uint64Flag{
+			Name:  "expiring-in",
+			Usage: "only list sectors that are expiring in the next <n> epochs",
+			Value: 0,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass miner address")
+		}
+
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		m, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		faultBf, err := api.StateMinerFaults(ctx, m, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		faults, err := faultBf.All(miner2.SectorsMax)
+		if err != nil {
+			return err
+		}
+
+		if len(faults) == 0 {
+			fmt.Println("no faults")
+			return nil
+		}
+
+		expEpoch := abi.ChainEpoch(cctx.Uint64("expiring-in"))
+
+		if expEpoch == 0 {
+			fmt.Print("faulty sectors: ")
+			for _, v := range faults {
+				fmt.Printf("%d ", v)
+			}
+
+			return nil
+		}
+
+		h, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("faulty sectors expiring in the next %d epochs: ", expEpoch)
+		for _, v := range faults {
+			ss, err := api.StateSectorExpiration(ctx, m, abi.SectorNumber(v), types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			if ss.Early < h.Height()+expEpoch {
+				fmt.Printf("%d ", v)
+			}
+		}
+
+		return nil
 	},
 }
 
