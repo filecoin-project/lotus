@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -15,6 +16,7 @@ import (
 	"github.com/ipld/go-car"
 	carv2 "github.com/ipld/go-car/v2"
 	carv2bs "github.com/ipld/go-car/v2/blockstore"
+	"github.com/ipld/go-ipld-prime/datamodel"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-padreader"
@@ -845,26 +847,35 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 	sel := selectorparse.CommonSelector_ExploreAllRecursively
 	if order.DatamodelPathSelector != nil {
 
-		ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
+		if strings.HasPrefix(string(*order.DatamodelPathSelector), "{") {
+			var err error
+			sel, err = selectorparse.ParseJSONSelector(string(*order.DatamodelPathSelector))
+			if err != nil {
+				finish(xerrors.Errorf("failed to parse json-selector '%s': %w", *order.DatamodelPathSelector, err))
+				return
+			}
+		} else {
+			ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 
-		selspec, err := textselector.SelectorSpecFromPath(
+			selspec, err := textselector.SelectorSpecFromPath(
 
-			*order.DatamodelPathSelector,
+				*order.DatamodelPathSelector,
 
-			// URGH - this is a direct copy from https://github.com/filecoin-project/go-fil-markets/blob/v1.12.0/shared/selectors.go#L10-L16
-			// Unable to use it because we need the SelectorSpec, and markets exposes just a reified node
-			ssb.ExploreRecursive(
-				selector.RecursionLimitNone(),
-				ssb.ExploreAll(ssb.ExploreRecursiveEdge()),
-			),
-		)
-		if err != nil {
-			finish(xerrors.Errorf("failed to parse text-selector '%s': %w", *order.DatamodelPathSelector, err))
-			return
+				// URGH - this is a direct copy from https://github.com/filecoin-project/go-fil-markets/blob/v1.12.0/shared/selectors.go#L10-L16
+				// Unable to use it because we need the SelectorSpec, and markets exposes just a reified node
+				ssb.ExploreRecursive(
+					selector.RecursionLimitNone(),
+					ssb.ExploreAll(ssb.ExploreRecursiveEdge()),
+				),
+			)
+			if err != nil {
+				finish(xerrors.Errorf("failed to parse text-selector '%s': %w", *order.DatamodelPathSelector, err))
+				return
+			}
+
+			sel = selspec.Node()
+			log.Infof("partial retrieval of datamodel-path-selector %s/*", *order.DatamodelPathSelector)
 		}
-
-		sel = selspec.Node()
-		log.Infof("partial retrieval of datamodel-path-selector %s/*", *order.DatamodelPathSelector)
 	}
 
 	// summary:
@@ -1032,13 +1043,21 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 
 		var subRootFound bool
 
+		var sel datamodel.Node
+
 		// no err check - we just compiled this before starting, but now we do not wrap a `*`
-		selspec, _ := textselector.SelectorSpecFromPath(*order.DatamodelPathSelector, nil) //nolint:errcheck
+		if strings.HasPrefix(string(*order.DatamodelPathSelector), "{") {
+			sel, _ = selectorparse.ParseJSONSelector(string(*order.DatamodelPathSelector))
+		} else {
+			selspec, _ := textselector.SelectorSpecFromPath(*order.DatamodelPathSelector, nil) //nolint:errcheck
+			sel = selspec.Node()
+		}
+
 		if err := utils.TraverseDag(
 			ctx,
 			ds,
 			root,
-			selspec.Node(),
+			sel,
 			func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
 				if r == traversal.VisitReason_SelectionMatch {
 
@@ -1046,9 +1065,13 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 						return xerrors.Errorf("unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", p.Path.String())
 					}
 
+					if p.LastBlock.Link == nil {
+						return nil
+					}
+
 					cidLnk, castOK := p.LastBlock.Link.(cidlink.Link)
 					if !castOK {
-						return xerrors.Errorf("cidlink cast unexpectedly failed on '%s'", p.LastBlock.Link.String())
+						return xerrors.Errorf("cidlink cast unexpectedly failed on '%s'", p.LastBlock.Link)
 					}
 
 					root = cidLnk.Cid
