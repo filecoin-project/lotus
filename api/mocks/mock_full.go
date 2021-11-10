@@ -816,6 +816,20 @@ func (mr *MockFullNodeMockRecorder) ClientRetrieveTryRestartInsufficientFunds(ar
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientRetrieveTryRestartInsufficientFunds", reflect.TypeOf((*MockFullNode)(nil).ClientRetrieveTryRestartInsufficientFunds), arg0, arg1)
 }
 
+// ClientRetrieveWait mocks base method.
+func (m *MockFullNode) ClientRetrieveWait(arg0 context.Context, arg1 retrievalmarket.DealID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientRetrieveWait", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ClientRetrieveWait indicates an expected call of ClientRetrieveWait.
+func (mr *MockFullNodeMockRecorder) ClientRetrieveWait(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientRetrieveWait", reflect.TypeOf((*MockFullNode)(nil).ClientRetrieveWait), arg0, arg1)
+}
+
 // ClientStartDeal mocks base method.
 func (m *MockFullNode) ClientStartDeal(arg0 context.Context, arg1 *api.StartDealParams) (*cid.Cid, error) {
 	m.ctrl.T.Helper()

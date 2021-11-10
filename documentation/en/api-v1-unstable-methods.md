@@ -60,6 +60,7 @@
   * [ClientRestartDataTransfer](#ClientRestartDataTransfer)
   * [ClientRetrieve](#ClientRetrieve)
   * [ClientRetrieveTryRestartInsufficientFunds](#ClientRetrieveTryRestartInsufficientFunds)
+  * [ClientRetrieveWait](#ClientRetrieveWait)
   * [ClientStartDeal](#ClientStartDeal)
   * [ClientStatelessDeal](#ClientStatelessDeal)
 * [Create](#Create)
@@ -1544,6 +1545,21 @@ Inputs:
 ```json
 [
   "f01234"
+]
+```
+
+Response: `{}`
+
+### ClientRetrieveWait
+ClientRetrieveWait waits for retrieval to be complete
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  5
 ]
 ```
 
