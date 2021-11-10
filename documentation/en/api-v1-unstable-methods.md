@@ -41,6 +41,7 @@
   * [ClientDataTransferUpdates](#ClientDataTransferUpdates)
   * [ClientDealPieceCID](#ClientDealPieceCID)
   * [ClientDealSize](#ClientDealSize)
+  * [ClientExport](#ClientExport)
   * [ClientFindData](#ClientFindData)
   * [ClientGenCar](#ClientGenCar)
   * [ClientGetDealInfo](#ClientGetDealInfo)
@@ -59,7 +60,6 @@
   * [ClientRestartDataTransfer](#ClientRestartDataTransfer)
   * [ClientRetrieve](#ClientRetrieve)
   * [ClientRetrieveTryRestartInsufficientFunds](#ClientRetrieveTryRestartInsufficientFunds)
-  * [ClientRetrieveWithEvents](#ClientRetrieveWithEvents)
   * [ClientStartDeal](#ClientStartDeal)
   * [ClientStatelessDeal](#ClientStatelessDeal)
 * [Create](#Create)
@@ -1055,6 +1055,32 @@ Response:
 }
 ```
 
+### ClientExport
+ClientExport exports a file stored in the local filestore to a system file
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Root": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "DatamodelPathSelector": "Links/21/Hash/Links/42/Hash",
+    "FromLocalCAR": "string value",
+    "DealID": 5
+  },
+  {
+    "Path": "string value",
+    "IsCAR": true
+  }
+]
+```
+
+Response: `{}`
+
 ### ClientFindData
 ClientFindData identifies peers that have a certain file, and returns QueryOffers (one per peer).
 
@@ -1282,7 +1308,8 @@ Response:
     "Stages": {
       "Stages": null
     }
-  }
+  },
+  "Event": 5
 }
 ```
 
@@ -1484,7 +1511,6 @@ Inputs:
     "Piece": null,
     "DatamodelPathSelector": "Links/21/Hash/Links/42/Hash",
     "Size": 42,
-    "FromLocalCAR": "string value",
     "Total": "0",
     "UnsealPrice": "0",
     "PaymentInterval": 42,
@@ -1496,15 +1522,16 @@ Inputs:
       "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
       "PieceCID": null
     }
-  },
-  {
-    "Path": "string value",
-    "IsCAR": true
   }
 ]
 ```
 
-Response: `{}`
+Response:
+```json
+{
+  "DealID": 5
+}
+```
 
 ### ClientRetrieveTryRestartInsufficientFunds
 ClientRetrieveTryRestartInsufficientFunds attempts to restart stalled retrievals on a given payment channel
@@ -1521,54 +1548,6 @@ Inputs:
 ```
 
 Response: `{}`
-
-### ClientRetrieveWithEvents
-ClientRetrieveWithEvents initiates the retrieval of a file, as specified in the order, and provides a channel
-of status updates.
-
-
-Perms: admin
-
-Inputs:
-```json
-[
-  {
-    "Root": {
-      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
-    },
-    "Piece": null,
-    "DatamodelPathSelector": "Links/21/Hash/Links/42/Hash",
-    "Size": 42,
-    "FromLocalCAR": "string value",
-    "Total": "0",
-    "UnsealPrice": "0",
-    "PaymentInterval": 42,
-    "PaymentIntervalIncrease": 42,
-    "Client": "f01234",
-    "Miner": "f01234",
-    "MinerPeer": {
-      "Address": "f01234",
-      "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-      "PieceCID": null
-    }
-  },
-  {
-    "Path": "string value",
-    "IsCAR": true
-  }
-]
-```
-
-Response:
-```json
-{
-  "Event": 5,
-  "Status": 0,
-  "BytesReceived": 42,
-  "FundsSpent": "0",
-  "Err": "string value"
-}
-```
 
 ### ClientStartDeal
 ClientStartDeal proposes a deal with a miner.

@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -56,14 +58,11 @@ func TestPartialRetrieval(t *testing.T) {
 	for _, fullCycle := range []bool{false, true} {
 
 		var retOrder api.RetrievalOrder
+		var eref api.ExportRef
 
 		if !fullCycle {
-
-			retOrder.FromLocalCAR = sourceCar
-			retOrder.Root = carRoot
-
+			eref.FromLocalCAR = sourceCar
 		} else {
-
 			dp := dh.DefaultStartDealParams()
 			dp.Data = &storagemarket.DataRef{
 				// FIXME: figure out how to do this with an online partial transfer
@@ -96,6 +95,8 @@ func TestPartialRetrieval(t *testing.T) {
 		}
 
 		retOrder.DatamodelPathSelector = &textSelector
+		eref.DatamodelPathSelector = &textSelector
+		eref.Root = carRoot
 
 		// test retrieval of either data or constructing a partial selective-car
 		for _, retrieveAsCar := range []bool{false, true} {
@@ -107,6 +108,7 @@ func TestPartialRetrieval(t *testing.T) {
 				ctx,
 				client,
 				retOrder,
+				eref,
 				&api.FileRef{
 					Path:  outFile.Name(),
 					IsCAR: retrieveAsCar,
@@ -131,8 +133,11 @@ func TestPartialRetrieval(t *testing.T) {
 			ctx,
 			client,
 			api.RetrievalOrder{
-				FromLocalCAR:          sourceCar,
 				Root:                  carRoot,
+				DatamodelPathSelector: &textSelectorNonexistent,
+			},
+			api.ExportRef{
+				FromLocalCAR:          sourceCar,
 				DatamodelPathSelector: &textSelectorNonexistent,
 			},
 			&api.FileRef{},
@@ -148,8 +153,11 @@ func TestPartialRetrieval(t *testing.T) {
 			ctx,
 			client,
 			api.RetrievalOrder{
-				FromLocalCAR:          sourceCar,
 				Root:                  carRoot,
+				DatamodelPathSelector: &textSelectorNonLink,
+			},
+			api.ExportRef{
+				FromLocalCAR:          sourceCar,
 				DatamodelPathSelector: &textSelectorNonLink,
 			},
 			&api.FileRef{},
@@ -159,7 +167,7 @@ func TestPartialRetrieval(t *testing.T) {
 	)
 }
 
-func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrder api.RetrievalOrder, retRef *api.FileRef, outFile *os.File) error {
+func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrder api.RetrievalOrder, eref api.ExportRef, retRef *api.FileRef, outFile *os.File) error {
 
 	if retOrder.Total.Nil() {
 		retOrder.Total = big.Zero()
@@ -168,7 +176,19 @@ func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrde
 		retOrder.UnsealPrice = big.Zero()
 	}
 
-	err := client.ClientRetrieve(ctx, retOrder, retRef)
+	if eref.FromLocalCAR == "" {
+		rr, err := client.ClientRetrieve(ctx, retOrder)
+		if err != nil {
+			return err
+		}
+		eref.DealID = rr.DealID
+
+		if err := client.ClientRetrieveWait(ctx, rr.DealID); err != nil {
+			return xerrors.Errorf("retrieval wait: %w", err)
+		}
+	}
+
+	err := client.ClientExport(ctx, eref, *retRef)
 	if err != nil {
 		return err
 	}

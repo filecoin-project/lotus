@@ -352,6 +352,8 @@ type FullNode interface {
 	ClientMinerQueryOffer(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (QueryOffer, error) //perm:read
 	// ClientRetrieve initiates the retrieval of a file, as specified in the order.
 	ClientRetrieve(ctx context.Context, params RetrievalOrder) (*RestrievalRes, error) //perm:admin
+	// ClientRetrieveWait waits for retrieval to be complete
+	ClientRetrieveWait(ctx context.Context, deal retrievalmarket.DealID) error //perm:admin
 	// ClientExport exports a file stored in the local filestore to a system file
 	ClientExport(ctx context.Context, exportRef ExportRef, fileRef FileRef) error //perm:admin
 	// ClientListRetrievals returns information about retrievals made by the local client

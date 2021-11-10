@@ -859,6 +859,56 @@ func (a *API) doRetrieval(ctx context.Context, order api.RetrievalOrder, sel dat
 	return id, nil
 }
 
+func (a *API) ClientRetrieveWait(ctx context.Context, deal rm.DealID) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	subscribeEvents := make(chan rm.ClientDealState, 1)
+
+	unsubscribe := a.Retrieval.SubscribeToEvents(func(event rm.ClientEvent, state rm.ClientDealState) {
+		// We'll check the deal IDs inside consumeAllEvents.
+		if state.ID != deal {
+			return
+		}
+		select {
+		case <-ctx.Done():
+		case subscribeEvents <- state:
+		}
+	})
+	defer unsubscribe()
+
+	{
+		state, err := a.Retrieval.GetDeal(deal)
+		if err != nil {
+			return xerrors.Errorf("getting deal state: %w", err)
+		}
+		select {
+		case subscribeEvents <- state:
+		default: // already have an event queued from the subscription
+		}
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return xerrors.New("Retrieval Timed Out")
+		case state := <-subscribeEvents:
+			switch state.Status {
+			case rm.DealStatusCompleted:
+				return nil
+			case rm.DealStatusRejected:
+				return xerrors.Errorf("Retrieval Proposal Rejected: %s", state.Message)
+			case rm.DealStatusCancelled:
+				return xerrors.Errorf("Retrieval was cancelled externally: %s", state.Message)
+			case
+				rm.DealStatusDealNotFound,
+				rm.DealStatusErrored:
+				return xerrors.Errorf("Retrieval Error: %s", state.Message)
+			}
+		}
+	}
+}
+
 func (a *API) ClientExport(ctx context.Context, exportRef api.ExportRef, ref api.FileRef) error {
 	proxyBss, retrieveIntoIPFS := a.RtvlBlockstoreAccessor.(*retrievaladapter.ProxyBlockstoreAccessor)
 	carBss, retrieveIntoCAR := a.RtvlBlockstoreAccessor.(*retrievaladapter.CARBlockstoreAccessor)

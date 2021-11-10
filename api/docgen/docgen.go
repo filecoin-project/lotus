@@ -91,6 +91,7 @@ func init() {
 
 	storeIDExample := imports.ID(50)
 	textSelExample := textselector.Expression("Links/21/Hash/Links/42/Hash")
+	clientEvent := retrievalmarket.ClientEventDealAccepted
 
 	addExample(bitfield.NewFromSet([]uint64{5}))
 	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1_1)
@@ -122,6 +123,8 @@ func init() {
 	addExample(datatransfer.Ongoing)
 	addExample(storeIDExample)
 	addExample(&storeIDExample)
+	addExample(clientEvent)
+	addExample(&clientEvent)
 	addExample(retrievalmarket.ClientEventDealAccepted)
 	addExample(retrievalmarket.DealStatusNew)
 	addExample(&textSelExample)

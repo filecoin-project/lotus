@@ -1111,8 +1111,8 @@ var clientRetrieveCmd = &cli.Command{
 			for _, i := range imports {
 				if i.Root != nil && i.Root.Equals(file) {
 					eref = &lapi.ExportRef{
-						Root:                  file,
-						FromLocalCAR:          i.CARPath,
+						Root:         file,
+						FromLocalCAR: i.CARPath,
 					}
 					break
 				}

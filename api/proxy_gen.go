@@ -199,6 +199,8 @@ type FullNodeStruct struct {
 
 		ClientRetrieveTryRestartInsufficientFunds func(p0 context.Context, p1 address.Address) error `perm:"write"`
 
+		ClientRetrieveWait func(p0 context.Context, p1 retrievalmarket.DealID) error `perm:"admin"`
+
 		ClientStartDeal func(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) `perm:"admin"`
 
 		ClientStatelessDeal func(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) `perm:"write"`
@@ -1562,6 +1564,17 @@ func (s *FullNodeStruct) ClientRetrieveTryRestartInsufficientFunds(p0 context.Co
 }
 
 func (s *FullNodeStub) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) error {
+	return ErrNotSupported
+}
+
+func (s *FullNodeStruct) ClientRetrieveWait(p0 context.Context, p1 retrievalmarket.DealID) error {
+	if s.Internal.ClientRetrieveWait == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.ClientRetrieveWait(p0, p1)
+}
+
+func (s *FullNodeStub) ClientRetrieveWait(p0 context.Context, p1 retrievalmarket.DealID) error {
 	return ErrNotSupported
 }
 
