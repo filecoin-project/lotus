@@ -137,13 +137,14 @@ func TestPartialRetrieval(t *testing.T) {
 				DatamodelPathSelector: &textSelectorNonexistent,
 			},
 			api.ExportRef{
+				Root:                  carRoot,
 				FromLocalCAR:          sourceCar,
 				DatamodelPathSelector: &textSelectorNonexistent,
 			},
 			&api.FileRef{},
 			nil,
 		),
-		fmt.Sprintf("retrieval failed: path selection '%s' does not match a node within %s", textSelectorNonexistent, carRoot),
+		fmt.Sprintf("path selection does not match a node within %s", carRoot),
 	)
 
 	// ensure non-boundary retrievals fail
@@ -157,13 +158,14 @@ func TestPartialRetrieval(t *testing.T) {
 				DatamodelPathSelector: &textSelectorNonLink,
 			},
 			api.ExportRef{
+				Root:                  carRoot,
 				FromLocalCAR:          sourceCar,
 				DatamodelPathSelector: &textSelectorNonLink,
 			},
 			&api.FileRef{},
 			nil,
 		),
-		fmt.Sprintf("retrieval failed: error while locating partial retrieval sub-root: unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", textSelectorNonLink),
+		fmt.Sprintf("error while locating partial retrieval sub-root: unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", textSelectorNonLink),
 	)
 }
 
