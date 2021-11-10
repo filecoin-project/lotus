@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/google/uuid"
+	cid "github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
@@ -62,6 +63,33 @@ func (t *testWorker) AddPiece(ctx context.Context, sector storage.SectorRef, pie
 	return t.asyncCall(sector, func(ci storiface.CallID) {
 		p, err := t.mockSeal.AddPiece(ctx, sector, pieceSizes, newPieceSize, pieceData)
 		if err := t.ret.ReturnAddPiece(ctx, ci, p, toCallError(err)); err != nil {
+			log.Error(err)
+		}
+	})
+}
+
+func (t *testWorker) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, pieces []abi.PieceInfo) (storiface.CallID, error) {
+	return t.asyncCall(sector, func(ci storiface.CallID) {
+		out, err := t.mockSeal.ReplicaUpdate(ctx, sector, pieces)
+		if err := t.ret.ReturnReplicaUpdate(ctx, ci, out, toCallError(err)); err != nil {
+			log.Error(err)
+		}
+	})
+}
+
+func (t *testWorker) ProveReplicaUpdate1(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid) (storiface.CallID, error) {
+	return t.asyncCall(sector, func(ci storiface.CallID) {
+		vanillaProofs, err := t.mockSeal.ProveReplicaUpdate1(ctx, sector, sectorKey, newSealed, newUnsealed)
+		if err := t.ret.ReturnProveReplicaUpdate1(ctx, ci, vanillaProofs, toCallError(err)); err != nil {
+			log.Error(err)
+		}
+	})
+}
+
+func (t *testWorker) ProveReplicaUpdate2(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid, vanillaProofs storage.ReplicaVanillaProofs) (storiface.CallID, error) {
+	return t.asyncCall(sector, func(ci storiface.CallID) {
+		proof, err := t.mockSeal.ProveReplicaUpdate2(ctx, sector, sectorKey, newSealed, newUnsealed, vanillaProofs)
+		if err := t.ret.ReturnProveReplicaUpdate2(ctx, ci, proof, toCallError(err)); err != nil {
 			log.Error(err)
 		}
 	})
