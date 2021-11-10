@@ -1,3 +1,4 @@
+//go:build !testground
 // +build !testground
 
 package build
@@ -25,7 +26,17 @@ const UnixfsLinksPerLevel = 1024
 // Consensus / Network
 
 const AllowableClockDriftSecs = uint64(1)
-const NewestNetworkVersion = network.Version13
+
+// TODO: This is still terrible...What's the impact of updating this before mainnet actually upgrades
+/* inline-gen template
+
+const NewestNetworkVersion = network.Version{{.latestNetworkVersion}}
+
+/* inline-gen start */
+
+const NewestNetworkVersion = network.Version14
+
+/* inline-gen end */
 
 // Epochs
 const ForkLengthThreshold = Finality

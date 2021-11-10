@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -28,6 +29,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -350,6 +352,7 @@ var storageDealsCmd = &cli.Command{
 		resetBlocklistCmd,
 		setSealDurationCmd,
 		dealsPendingPublish,
+		dealsRetryPublish,
 	},
 }
 
@@ -386,6 +389,11 @@ var dealsListCmd = &cli.Command{
 	Name:  "list",
 	Usage: "List all deals for this miner",
 	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "format",
+			Usage: "output format of data, supported: table, json",
+			Value: "table",
+		},
 		&cli.BoolFlag{
 			Name:    "verbose",
 			Aliases: []string{"v"},
@@ -396,63 +404,74 @@ var dealsListCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := lcli.GetMarketsAPI(cctx)
+		switch cctx.String("format") {
+		case "table":
+			return listDealsWithTable(cctx)
+		case "json":
+			return listDealsWithJSON(cctx)
+		}
+
+		return fmt.Errorf("unknown format: %s; use `table` or `json`", cctx.String("format"))
+	},
+}
+
+func listDealsWithTable(cctx *cli.Context) error {
+	api, closer, err := lcli.GetMarketsAPI(cctx)
+	if err != nil {
+		return err
+	}
+	defer closer()
+
+	ctx := lcli.DaemonContext(cctx)
+
+	deals, err := api.MarketListIncompleteDeals(ctx)
+	if err != nil {
+		return err
+	}
+
+	verbose := cctx.Bool("verbose")
+	watch := cctx.Bool("watch")
+
+	if watch {
+		updates, err := api.MarketGetDealUpdates(ctx)
 		if err != nil {
 			return err
 		}
-		defer closer()
 
-		ctx := lcli.DaemonContext(cctx)
+		for {
+			tm.Clear()
+			tm.MoveCursor(1, 1)
 
-		deals, err := api.MarketListIncompleteDeals(ctx)
-		if err != nil {
-			return err
-		}
-
-		verbose := cctx.Bool("verbose")
-		watch := cctx.Bool("watch")
-
-		if watch {
-			updates, err := api.MarketGetDealUpdates(ctx)
+			err = outputStorageDealsTable(tm.Output, deals, verbose)
 			if err != nil {
 				return err
 			}
 
-			for {
-				tm.Clear()
-				tm.MoveCursor(1, 1)
+			tm.Flush()
 
-				err = outputStorageDeals(tm.Output, deals, verbose)
-				if err != nil {
-					return err
+			select {
+			case <-ctx.Done():
+				return nil
+			case updated := <-updates:
+				var found bool
+				for i, existing := range deals {
+					if existing.ProposalCid.Equals(updated.ProposalCid) {
+						deals[i] = updated
+						found = true
+						break
+					}
 				}
-
-				tm.Flush()
-
-				select {
-				case <-ctx.Done():
-					return nil
-				case updated := <-updates:
-					var found bool
-					for i, existing := range deals {
-						if existing.ProposalCid.Equals(updated.ProposalCid) {
-							deals[i] = updated
-							found = true
-							break
-						}
-					}
-					if !found {
-						deals = append(deals, updated)
-					}
+				if !found {
+					deals = append(deals, updated)
 				}
 			}
 		}
+	}
 
-		return outputStorageDeals(os.Stdout, deals, verbose)
-	},
+	return outputStorageDealsTable(os.Stdout, deals, verbose)
 }
 
-func outputStorageDeals(out io.Writer, deals []storagemarket.MinerDeal, verbose bool) error {
+func outputStorageDealsTable(out io.Writer, deals []storagemarket.MinerDeal, verbose bool) error {
 	sort.Slice(deals, func(i, j int) bool {
 		return deals[i].CreationTime.Time().Before(deals[j].CreationTime.Time())
 	})
@@ -890,4 +909,107 @@ var dealsPendingPublish = &cli.Command{
 		fmt.Println("No deals queued to be published")
 		return nil
 	},
+}
+
+var dealsRetryPublish = &cli.Command{
+	Name:      "retry-publish",
+	Usage:     "retry publishing a deal",
+	ArgsUsage: "<proposal CID>",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		}
+		api, closer, err := lcli.GetMarketsAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		propcid := cctx.Args().First()
+		fmt.Printf("retrying deal with proposal-cid: %s\n", propcid)
+
+		cid, err := cid.Decode(propcid)
+		if err != nil {
+			return err
+		}
+		if err := api.MarketRetryPublishDeal(ctx, cid); err != nil {
+			return xerrors.Errorf("retrying publishing deal: %w", err)
+		}
+		fmt.Println("retried to publish deal")
+		return nil
+	},
+}
+
+func listDealsWithJSON(cctx *cli.Context) error {
+	node, closer, err := lcli.GetMarketsAPI(cctx)
+	if err != nil {
+		return err
+	}
+	defer closer()
+
+	ctx := lcli.DaemonContext(cctx)
+
+	deals, err := node.MarketListIncompleteDeals(ctx)
+	if err != nil {
+		return err
+	}
+
+	channels, err := node.MarketListDataTransfers(ctx)
+	if err != nil {
+		return err
+	}
+
+	sort.Slice(deals, func(i, j int) bool {
+		return deals[i].CreationTime.Time().Before(deals[j].CreationTime.Time())
+	})
+
+	channelsByTransferID := map[datatransfer.TransferID]api.DataTransferChannel{}
+	for _, c := range channels {
+		channelsByTransferID[c.TransferID] = c
+	}
+
+	w := json.NewEncoder(os.Stdout)
+
+	for _, deal := range deals {
+		val := struct {
+			DateTime        string                   `json:"datetime"`
+			VerifiedDeal    bool                     `json:"verified-deal"`
+			ProposalCID     string                   `json:"proposal-cid"`
+			DealID          abi.DealID               `json:"deal-id"`
+			DealStatus      string                   `json:"deal-status"`
+			Client          string                   `json:"client"`
+			PieceSize       string                   `json:"piece-size"`
+			Price           types.FIL                `json:"price"`
+			DurationEpochs  abi.ChainEpoch           `json:"duration-epochs"`
+			TransferID      *datatransfer.TransferID `json:"transfer-id,omitempty"`
+			TransferStatus  string                   `json:"transfer-status,omitempty"`
+			TransferredData string                   `json:"transferred-data,omitempty"`
+		}{}
+
+		val.DateTime = deal.CreationTime.Time().Format(time.RFC3339)
+		val.VerifiedDeal = deal.Proposal.VerifiedDeal
+		val.ProposalCID = deal.ProposalCid.String()
+		val.DealID = deal.DealID
+		val.DealStatus = storagemarket.DealStates[deal.State]
+		val.Client = deal.Proposal.Client.String()
+		val.PieceSize = units.BytesSize(float64(deal.Proposal.PieceSize))
+		val.Price = types.FIL(types.BigMul(deal.Proposal.StoragePricePerEpoch, types.NewInt(uint64(deal.Proposal.Duration()))))
+		val.DurationEpochs = deal.Proposal.Duration()
+
+		if deal.TransferChannelId != nil {
+			if c, ok := channelsByTransferID[deal.TransferChannelId.ID]; ok {
+				val.TransferID = &c.TransferID
+				val.TransferStatus = datatransfer.Statuses[c.Status]
+				val.TransferredData = units.BytesSize(float64(c.Transferred))
+			}
+		}
+
+		err := w.Encode(val)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

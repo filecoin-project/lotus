@@ -2,12 +2,17 @@ package cli
 
 import (
 	"bufio"
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
+
+	"github.com/filecoin-project/go-state-types/network"
+
+	"github.com/filecoin-project/lotus/build"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -528,6 +533,11 @@ var walletMarketWithdraw = &cli.Command{
 			Usage:   "Market address to withdraw from (account or miner actor address, defaults to --wallet address)",
 			Aliases: []string{"a"},
 		},
+		&cli.IntFlag{
+			Name:  "confidence",
+			Usage: "number of block confirmations to wait for",
+			Value: int(build.MessageConfidence),
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -613,6 +623,35 @@ var walletMarketWithdraw = &cli.Command{
 		}
 
 		fmt.Printf("WithdrawBalance message cid: %s\n", smsg)
+
+		// wait for it to get mined into a block
+		wait, err := api.StateWaitMsg(ctx, smsg, uint64(cctx.Int("confidence")))
+		if err != nil {
+			return err
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			fmt.Println(cctx.App.Writer, "withdrawal failed!")
+			return err
+		}
+
+		nv, err := api.StateNetworkVersion(ctx, wait.TipSet)
+		if err != nil {
+			return err
+		}
+
+		if nv >= network.Version14 {
+			var withdrawn abi.TokenAmount
+			if err := withdrawn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
+				return err
+			}
+
+			fmt.Printf("Successfully withdrew %s \n", types.FIL(withdrawn))
+			if withdrawn.LessThan(amt) {
+				fmt.Printf("Note that this is less than the requested amount of %s \n", types.FIL(amt))
+			}
+		}
 
 		return nil
 	},

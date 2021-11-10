@@ -557,6 +557,10 @@ func (sm *StorageMinerAPI) MarketPendingDeals(ctx context.Context) (api.PendingD
 	return sm.DealPublisher.PendingDeals(), nil
 }
 
+func (sm *StorageMinerAPI) MarketRetryPublishDeal(ctx context.Context, propcid cid.Cid) error {
+	return sm.StorageProvider.RetryDealPublishing(propcid)
+}
+
 func (sm *StorageMinerAPI) MarketPublishPendingDeals(ctx context.Context) error {
 	sm.DealPublisher.ForcePublishPendingDeals()
 	return nil
@@ -748,7 +752,10 @@ func (sm *StorageMinerAPI) DagstoreInitializeAll(ctx context.Context, params api
 				}
 
 				err := sm.DagstoreInitializeShard(ctx, k)
-				throttle <- struct{}{}
+
+				if throttle != nil {
+					throttle <- struct{}{}
+				}
 
 				r.Event = "end"
 				if err == nil {

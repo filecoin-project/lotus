@@ -9,6 +9,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statemachine"
@@ -59,6 +60,10 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 				return ctx.Send(SectorAddPiece{})
 			},
 		}
+	} else {
+		// make sure we're only accounting for pieces which were correctly added
+		// (note that m.assignedPieces[sid] will always be empty here)
+		m.openSectors[sid].used = used
 	}
 
 	go func() {
@@ -187,6 +192,8 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 		offset += padLength.Unpadded()
 
 		for _, p := range pads {
+			expectCid := zerocomm.ZeroPieceCommitment(p.Unpadded())
+
 			ppi, err := m.sealer.AddPiece(sectorstorage.WithPriority(ctx.Context(), DealSectorPriority),
 				m.minerSector(sector.SectorType, sector.SectorNumber),
 				pieceSizes,
@@ -194,6 +201,11 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 				NewNullReader(p.Unpadded()))
 			if err != nil {
 				err = xerrors.Errorf("writing padding piece: %w", err)
+				deal.accepted(sector.SectorNumber, offset, err)
+				return ctx.Send(SectorAddPieceFailed{err})
+			}
+			if !ppi.PieceCID.Equals(expectCid) {
+				err = xerrors.Errorf("got unexpected padding piece CID: expected:%s, got:%s", expectCid, ppi.PieceCID)
 				deal.accepted(sector.SectorNumber, offset, err)
 				return ctx.Send(SectorAddPieceFailed{err})
 			}
@@ -211,6 +223,11 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 			deal.data)
 		if err != nil {
 			err = xerrors.Errorf("writing piece: %w", err)
+			deal.accepted(sector.SectorNumber, offset, err)
+			return ctx.Send(SectorAddPieceFailed{err})
+		}
+		if !ppi.PieceCID.Equals(deal.deal.DealProposal.PieceCID) {
+			err = xerrors.Errorf("got unexpected piece CID: expected:%s, got:%s", deal.deal.DealProposal.PieceCID, ppi.PieceCID)
 			deal.accepted(sector.SectorNumber, offset, err)
 			return ctx.Send(SectorAddPieceFailed{err})
 		}
@@ -232,9 +249,7 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 }
 
 func (m *Sealing) handleAddPieceFailed(ctx statemachine.Context, sector SectorInfo) error {
-	log.Errorf("No recovery plan for AddPiece failing")
-	// todo: cleanup sector / just go retry (requires adding offset param to AddPiece in sector-storage for this to be safe)
-	return nil
+	return ctx.Send(SectorRetryWaitDeals{})
 }
 
 func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, data storage.Data, deal api.PieceDealInfo) (api.SectorOffset, error) {
@@ -259,6 +274,21 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 
 	if _, err := deal.DealProposal.Cid(); err != nil {
 		return api.SectorOffset{}, xerrors.Errorf("getting proposal CID: %w", err)
+	}
+
+	cfg, err := m.getConfig()
+	if err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("getting config: %w", err)
+	}
+
+	_, head, err := m.Api.ChainHead(ctx)
+	if err != nil {
+		return api.SectorOffset{}, xerrors.Errorf("couldnt get chain head: %w", err)
+	}
+	if head+cfg.StartEpochSealingBuffer > deal.DealProposal.StartEpoch {
+		return api.SectorOffset{}, xerrors.Errorf(
+			"cannot add piece for deal with piece CID %s: current epoch %d has passed deal proposal start epoch %d",
+			deal.DealProposal.PieceCID, head, deal.DealProposal.StartEpoch)
 	}
 
 	m.inputLk.Lock()
@@ -443,7 +473,7 @@ func (m *Sealing) createSector(ctx context.Context, cfg sealiface.Config, sp abi
 	}
 
 	// update stats early, fsm planner would do that async
-	m.stats.updateSector(cfg, m.minerSectorID(sid), UndefinedSectorState)
+	m.stats.updateSector(ctx, cfg, m.minerSectorID(sid), UndefinedSectorState)
 
 	return sid, nil
 }

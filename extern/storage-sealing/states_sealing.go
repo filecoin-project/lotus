@@ -7,6 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -88,9 +89,14 @@ func (m *Sealing) padSector(ctx context.Context, sectorID storage.SectorRef, exi
 
 	out := make([]abi.PieceInfo, len(sizes))
 	for i, size := range sizes {
+		expectCid := zerocomm.ZeroPieceCommitment(size)
+
 		ppi, err := m.sealer.AddPiece(ctx, sectorID, existingPieceSizes, size, NewNullReader(size))
 		if err != nil {
 			return nil, xerrors.Errorf("add piece: %w", err)
+		}
+		if !expectCid.Equals(ppi.PieceCID) {
+			return nil, xerrors.Errorf("got unexpected padding piece CID: expected:%s, got:%s", expectCid, ppi.PieceCID)
 		}
 
 		existingPieceSizes = append(existingPieceSizes, size)
@@ -161,7 +167,7 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 		return nil, 0, allocated, xerrors.Errorf("sector %s precommitted but expired", sector.SectorNumber)
 	}
 
-	rand, err := m.Api.ChainGetRandomnessFromTickets(ctx.Context(), tok, crypto.DomainSeparationTag_SealRandomness, ticketEpoch, buf.Bytes())
+	rand, err := m.Api.StateGetRandomnessFromTickets(ctx.Context(), crypto.DomainSeparationTag_SealRandomness, ticketEpoch, buf.Bytes(), tok)
 	if err != nil {
 		return nil, 0, allocated, err
 	}
@@ -516,7 +522,7 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 		if err := m.maddr.MarshalCBOR(buf); err != nil {
 			return err
 		}
-		rand, err := m.Api.ChainGetRandomnessFromBeacon(ectx, tok, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, randHeight, buf.Bytes())
+		rand, err := m.Api.StateGetRandomnessFromBeacon(ectx, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, randHeight, buf.Bytes(), tok)
 		if err != nil {
 			err = xerrors.Errorf("failed to get randomness for computing seal proof (ch %d; rh %d; tsk %x): %w", curH, randHeight, tok, err)
 
@@ -704,11 +710,8 @@ func (m *Sealing) handleSubmitCommitAggregate(ctx statemachine.Context, sector S
 		Proof: sector.Proof, // todo: this correct??
 		Spt:   sector.SectorType,
 	})
-	if err != nil {
-		return ctx.Send(SectorRetrySubmitCommit{})
-	}
 
-	if res.Error != "" {
+	if err != nil || res.Error != "" {
 		tok, _, err := m.Api.ChainHead(ctx.Context())
 		if err != nil {
 			log.Errorf("handleSubmitCommit: api error, not proceeding: %+v", err)

@@ -7,8 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/crypto"
-
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 
@@ -28,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -105,7 +104,7 @@ func prepSyncTest(t testing.TB, h int) *syncTestUtil {
 
 		mn: mocknet.New(ctx),
 		g:  g,
-		us: stmgr.DefaultUpgradeSchedule(),
+		us: filcns.DefaultUpgradeSchedule(),
 	}
 
 	tu.addSourceNode(h)
@@ -125,19 +124,23 @@ func prepSyncTestWithV5Height(t testing.TB, h int, v5height abi.ChainEpoch) *syn
 		// prepare for upgrade.
 		Network:   network.Version9,
 		Height:    1,
-		Migration: stmgr.UpgradeActorsV2,
+		Migration: filcns.UpgradeActorsV2,
 	}, {
 		Network:   network.Version10,
 		Height:    2,
-		Migration: stmgr.UpgradeActorsV3,
+		Migration: filcns.UpgradeActorsV3,
 	}, {
 		Network:   network.Version12,
 		Height:    3,
-		Migration: stmgr.UpgradeActorsV4,
+		Migration: filcns.UpgradeActorsV4,
 	}, {
 		Network:   network.Version13,
 		Height:    v5height,
-		Migration: stmgr.UpgradeActorsV5,
+		Migration: filcns.UpgradeActorsV5,
+	}, {
+		Network:   network.Version14,
+		Height:    v5height + 10,
+		Migration: filcns.UpgradeActorsV6,
 	}}
 
 	g, err := gen.NewGeneratorWithUpgradeSchedule(sched)
@@ -1030,81 +1033,6 @@ func TestSyncCheckpointEarlierThanHead(t *testing.T) {
 	tu.checkpointTs(p1, b.TipSet().Key())
 	p1Head = tu.getHead(p1)
 	require.True(tu.t, p1Head.Equals(b.TipSet()))
-}
-
-func TestDrandNull(t *testing.T) {
-	H := 10
-	v5h := abi.ChainEpoch(50)
-	ov5h := build.UpgradeHyperdriveHeight
-	build.UpgradeHyperdriveHeight = v5h
-	tu := prepSyncTestWithV5Height(t, H, v5h)
-
-	p0 := tu.addClientNode()
-	p1 := tu.addClientNode()
-
-	tu.loadChainToNode(p0)
-	tu.loadChainToNode(p1)
-
-	entropy := []byte{0, 2, 3, 4}
-	// arbitrarily chosen
-	pers := crypto.DomainSeparationTag_WinningPoStChallengeSeed
-
-	beforeNull := tu.g.CurTipset
-	afterNull := tu.mineOnBlock(beforeNull, p0, nil, false, false, nil, 2, true)
-	nullHeight := beforeNull.TipSet().Height() + 1
-	if afterNull.TipSet().Height() == nullHeight {
-		t.Fatal("didn't inject nulls as expected")
-	}
-
-	rand, err := tu.nds[p0].ChainGetRandomnessFromBeacon(tu.ctx, afterNull.TipSet().Key(), pers, nullHeight, entropy)
-	require.NoError(t, err)
-
-	// calculate the expected randomness based on the beacon BEFORE the null
-	expectedBE := beforeNull.Blocks[0].Header.BeaconEntries
-	expectedRand, err := store.DrawRandomness(expectedBE[len(expectedBE)-1].Data, pers, nullHeight, entropy)
-	require.NoError(t, err)
-
-	require.Equal(t, []byte(rand), expectedRand)
-
-	// zoom zoom to past the v5 upgrade by injecting many many nulls
-	postUpgrade := tu.mineOnBlock(afterNull, p0, nil, false, false, nil, v5h, true)
-	nv, err := tu.nds[p0].StateNetworkVersion(tu.ctx, postUpgrade.TipSet().Key())
-	require.NoError(t, err)
-	if nv != network.Version13 {
-		t.Fatal("expect to be v13 by now")
-	}
-
-	afterNull = tu.mineOnBlock(postUpgrade, p0, nil, false, false, nil, 2, true)
-	nullHeight = postUpgrade.TipSet().Height() + 1
-	if afterNull.TipSet().Height() == nullHeight {
-		t.Fatal("didn't inject nulls as expected")
-	}
-
-	rand0, err := tu.nds[p0].ChainGetRandomnessFromBeacon(tu.ctx, afterNull.TipSet().Key(), pers, nullHeight, entropy)
-	require.NoError(t, err)
-
-	// calculate the expected randomness based on the beacon AFTER the null
-	expectedBE = afterNull.Blocks[0].Header.BeaconEntries
-	expectedRand, err = store.DrawRandomness(expectedBE[len(expectedBE)-1].Data, pers, nullHeight, entropy)
-	require.NoError(t, err)
-
-	require.Equal(t, []byte(rand0), expectedRand)
-
-	// Introduce p1 to friendly p0 who has all the blocks
-	require.NoError(t, tu.mn.LinkAll())
-	tu.connect(p0, p1)
-	tu.waitUntilNodeHasTs(p1, afterNull.TipSet().Key())
-	p1Head := tu.getHead(p1)
-
-	// Yes, p1 syncs well to p0's chain
-	require.Equal(tu.t, p1Head.Key(), afterNull.TipSet().Key())
-
-	// Yes, p1 sources the same randomness as p0
-	rand1, err := tu.nds[p1].ChainGetRandomnessFromBeacon(tu.ctx, afterNull.TipSet().Key(), pers, nullHeight, entropy)
-	require.NoError(t, err)
-	require.Equal(t, rand0, rand1)
-
-	build.UpgradeHyperdriveHeight = ov5h
 }
 
 func TestInvalidHeight(t *testing.T) {

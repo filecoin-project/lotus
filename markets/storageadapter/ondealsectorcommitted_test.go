@@ -477,13 +477,13 @@ type fakeEvents struct {
 	DealStartEpochTimeout bool
 }
 
-func (fe *fakeEvents) Called(check events.CheckFunc, msgHnd events.MsgHandler, rev events.RevertHandler, confidence int, timeout abi.ChainEpoch, mf events.MsgMatchFunc) error {
+func (fe *fakeEvents) Called(ctx context.Context, check events.CheckFunc, msgHnd events.MsgHandler, rev events.RevertHandler, confidence int, timeout abi.ChainEpoch, mf events.MsgMatchFunc) error {
 	if fe.DealStartEpochTimeout {
 		msgHnd(nil, nil, nil, 100) // nolint:errcheck
 		return nil
 	}
 
-	_, more, err := check(fe.CheckTs)
+	_, more, err := check(ctx, fe.CheckTs)
 	if err != nil {
 		return err
 	}
@@ -506,7 +506,7 @@ func (fe *fakeEvents) Called(check events.CheckFunc, msgHnd events.MsgHandler, r
 				return nil
 			}
 			if matchMessage.doesRevert {
-				err := rev(fe.Ctx, matchMessage.ts)
+				err := rev(ctx, matchMessage.ts)
 				if err != nil {
 					return err
 				}

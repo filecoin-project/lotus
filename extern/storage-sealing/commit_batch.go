@@ -297,6 +297,10 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		infos = append(infos, p.Info)
 	}
 
+	if len(infos) == 0 {
+		return nil, nil
+	}
+
 	sort.Slice(infos, func(i, j int) bool {
 		return infos[i].Number < infos[j].Number
 	})
@@ -343,11 +347,12 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting network version: %s", err)
 	}
 
-	aggFeeRaw, err := policy.AggregateNetworkFee(nv, len(infos), bf)
+	aggFeeRaw, err := policy.AggregateProveCommitNetworkFee(nv, len(infos), bf)
 	if err != nil {
-		log.Errorf("getting aggregate network fee: %s", err)
-		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting aggregate network fee: %s", err)
+		log.Errorf("getting aggregate commit network fee: %s", err)
+		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting aggregate commit network fee: %s", err)
 	}
+
 	aggFee := big.Div(big.Mul(aggFeeRaw, aggFeeNum), aggFeeDen)
 
 	needFunds := big.Add(collateral, aggFee)

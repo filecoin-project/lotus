@@ -72,8 +72,8 @@ type SealingAPI interface {
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
 	ChainBaseFee(context.Context, TipSetToken) (abi.TokenAmount, error)
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
-	ChainGetRandomnessFromBeacon(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
-	ChainGetRandomnessFromTickets(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tok TipSetToken) (abi.Randomness, error)
+	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tok TipSetToken) (abi.Randomness, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 }
 
@@ -166,7 +166,8 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 		getConfig: gc,
 
 		stats: SectorStats{
-			bySector: map[abi.SectorID]statSectorState{},
+			bySector: map[abi.SectorID]SectorState{},
+			byState:  map[SectorState]int64{},
 		},
 	}
 	s.startupWait.Add(1)

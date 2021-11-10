@@ -4,8 +4,10 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/stmgr"
+
 	"github.com/filecoin-project/lotus/chain/wallet"
 )
 
@@ -37,6 +39,9 @@ var DefaultEnsembleOpts = ensembleOpts{
 func MockProofs() EnsembleOpt {
 	return func(opts *ensembleOpts) error {
 		opts.mockProofs = true
+		// since we're using mock proofs, we don't need to download
+		// proof parameters
+		build.DisableBuiltinAssets = true
 		return nil
 	}
 }

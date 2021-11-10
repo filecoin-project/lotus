@@ -33,7 +33,8 @@ func TestHappyPath(t *testing.T) {
 		s: &Sealing{
 			maddr: ma,
 			stats: SectorStats{
-				bySector: map[abi.SectorID]statSectorState{},
+				bySector: map[abi.SectorID]SectorState{},
+				byState:  map[SectorState]int64{},
 			},
 			notifee: func(before, after SectorInfo) {
 				notif = append(notif, struct{ before, after SectorInfo }{before, after})
@@ -94,7 +95,8 @@ func TestHappyPathFinalizeEarly(t *testing.T) {
 		s: &Sealing{
 			maddr: ma,
 			stats: SectorStats{
-				bySector: map[abi.SectorID]statSectorState{},
+				bySector: map[abi.SectorID]SectorState{},
+				byState:  map[SectorState]int64{},
 			},
 			notifee: func(before, after SectorInfo) {
 				notif = append(notif, struct{ before, after SectorInfo }{before, after})
@@ -135,7 +137,7 @@ func TestHappyPathFinalizeEarly(t *testing.T) {
 	require.Equal(m.t, m.state.State, SubmitCommitAggregate)
 
 	m.planSingle(SectorCommitAggregateSent{})
-	require.Equal(m.t, m.state.State, CommitWait)
+	require.Equal(m.t, m.state.State, CommitAggregateWait)
 
 	m.planSingle(SectorProving{})
 	require.Equal(m.t, m.state.State, FinalizeSector)
@@ -143,7 +145,7 @@ func TestHappyPathFinalizeEarly(t *testing.T) {
 	m.planSingle(SectorFinalized{})
 	require.Equal(m.t, m.state.State, Proving)
 
-	expected := []SectorState{Packing, GetTicket, PreCommit1, PreCommit2, PreCommitting, PreCommitWait, WaitSeed, Committing, CommitFinalize, SubmitCommit, SubmitCommitAggregate, CommitWait, FinalizeSector, Proving}
+	expected := []SectorState{Packing, GetTicket, PreCommit1, PreCommit2, PreCommitting, PreCommitWait, WaitSeed, Committing, CommitFinalize, SubmitCommit, SubmitCommitAggregate, CommitAggregateWait, FinalizeSector, Proving}
 	for i, n := range notif {
 		if n.before.State != expected[i] {
 			t.Fatalf("expected before state: %s, got: %s", expected[i], n.before.State)
@@ -161,7 +163,8 @@ func TestCommitFinalizeFailed(t *testing.T) {
 		s: &Sealing{
 			maddr: ma,
 			stats: SectorStats{
-				bySector: map[abi.SectorID]statSectorState{},
+				bySector: map[abi.SectorID]SectorState{},
+				byState:  map[SectorState]int64{},
 			},
 			notifee: func(before, after SectorInfo) {
 				notif = append(notif, struct{ before, after SectorInfo }{before, after})
@@ -199,7 +202,8 @@ func TestSeedRevert(t *testing.T) {
 		s: &Sealing{
 			maddr: ma,
 			stats: SectorStats{
-				bySector: map[abi.SectorID]statSectorState{},
+				bySector: map[abi.SectorID]SectorState{},
+				byState:  map[SectorState]int64{},
 			},
 		},
 		t:     t,
@@ -252,7 +256,8 @@ func TestPlanCommittingHandlesSectorCommitFailed(t *testing.T) {
 		s: &Sealing{
 			maddr: ma,
 			stats: SectorStats{
-				bySector: map[abi.SectorID]statSectorState{},
+				bySector: map[abi.SectorID]SectorState{},
+				byState:  map[SectorState]int64{},
 			},
 		},
 		t:     t,
@@ -289,7 +294,8 @@ func TestBrokenState(t *testing.T) {
 		s: &Sealing{
 			maddr: ma,
 			stats: SectorStats{
-				bySector: map[abi.SectorID]statSectorState{},
+				bySector: map[abi.SectorID]SectorState{},
+				byState:  map[SectorState]int64{},
 			},
 			notifee: func(before, after SectorInfo) {
 				notif = append(notif, struct{ before, after SectorInfo }{before, after})
@@ -324,7 +330,8 @@ func TestTicketExpired(t *testing.T) {
 		s: &Sealing{
 			maddr: ma,
 			stats: SectorStats{
-				bySector: map[abi.SectorID]statSectorState{},
+				bySector: map[abi.SectorID]SectorState{},
+				byState:  map[SectorState]int64{},
 			},
 			notifee: func(before, after SectorInfo) {
 				notif = append(notif, struct{ before, after SectorInfo }{before, after})

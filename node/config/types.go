@@ -126,9 +126,15 @@ type DealmakingConfig struct {
 	// The maximum collateral that the provider will put up against a deal,
 	// as a multiplier of the minimum collateral bound
 	MaxProviderCollateralMultiplier uint64
-
-	// The maximum number of parallel online data transfers (storage+retrieval)
-	SimultaneousTransfers uint64
+	// The maximum allowed disk usage size in bytes of staging deals not yet
+	// passed to the sealing node by the markets service. 0 is unlimited.
+	MaxStagingDealsBytes int64
+	// The maximum number of parallel online data transfers for storage deals
+	SimultaneousTransfersForStorage uint64
+	// The maximum number of parallel online data transfers for retrieval deals
+	SimultaneousTransfersForRetrieval uint64
+	// Minimum start epoch buffer to give time for sealing of sector with deal.
+	StartEpochSealingBuffer uint64
 
 	// A command used for fine-grained evaluation of storage deals
 	// see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-fine-grained-storage-and-retrieval-deal-acceptance for more details
@@ -217,6 +223,10 @@ type SealingConfig struct {
 	// time buffer for forceful batch submission before sectors/deals in batch would start expiring
 	CommitBatchSlack Duration
 
+	// network BaseFee below which to stop doing precommit batching, instead
+	// sending precommit messages to the chain individually
+	BatchPreCommitAboveBaseFee types.FIL
+
 	// network BaseFee below which to stop doing commit aggregation, instead
 	// submitting proofs to the chain individually
 	AggregateAboveBaseFee types.FIL
@@ -292,8 +302,21 @@ type Libp2p struct {
 	BootstrapPeers      []string
 	ProtectedPeers      []string
 
-	ConnMgrLow   uint
-	ConnMgrHigh  uint
+	// When not disabled (default), lotus asks NAT devices (e.g., routers), to
+	// open up an external port and forward it to the port lotus is running on.
+	// When this works (i.e., when your router supports NAT port forwarding),
+	// it makes the local lotus node accessible from the public internet
+	DisableNatPortMap bool
+
+	// ConnMgrLow is the number of connections that the basic connection manager
+	// will trim down to.
+	ConnMgrLow uint
+	// ConnMgrHigh is the number of connections that, when exceeded, will trigger
+	// a connection GC operation. Note: protected/recently formed connections don't
+	// count towards this limit.
+	ConnMgrHigh uint
+	// ConnMgrGrace is a time duration that new connections are immune from being
+	// closed by the connection manager.
 	ConnMgrGrace Duration
 }
 
@@ -356,8 +379,11 @@ type Client struct {
 	IpfsMAddr           string
 	IpfsUseForRetrieval bool
 	// The maximum number of simultaneous data transfers between the client
-	// and storage providers
-	SimultaneousTransfers uint64
+	// and storage providers for storage deals
+	SimultaneousTransfersForStorage uint64
+	// The maximum number of simultaneous data transfers between the client
+	// and storage providers for retrieval deals
+	SimultaneousTransfersForRetrieval uint64
 }
 
 type Wallet struct {

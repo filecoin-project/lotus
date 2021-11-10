@@ -113,7 +113,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorCommitFailed{}, CommitFailed),
 	),
 	SubmitCommitAggregate: planOne(
-		on(SectorCommitAggregateSent{}, CommitWait),
+		on(SectorCommitAggregateSent{}, CommitAggregateWait),
 		on(SectorCommitFailed{}, CommitFailed),
 		on(SectorRetrySubmitCommit{}, SubmitCommit),
 	),
@@ -135,7 +135,11 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 
 	// Sealing errors
 
-	AddPieceFailed: planOne(),
+	AddPieceFailed: planOne(
+		on(SectorRetryWaitDeals{}, WaitDeals),
+		apply(SectorStartPacking{}),
+		apply(SectorAddPiece{}),
+	),
 	SealPreCommit1Failed: planOne(
 		on(SectorRetrySealPreCommit1{}, PreCommit1),
 	),
@@ -331,9 +335,9 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 				*<- Committing    |
 				|   |        ^--> CommitFailed
 				|   v             ^
-		        |   SubmitCommit  |
-		        |   |             |
-		        |   v             |
+			        |   SubmitCommit  |
+		        	|   |             |
+		        	|   v             |
 				*<- CommitWait ---/
 				|   |
 				|   v
@@ -400,6 +404,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleFinalizeSector, processed, nil
 
 	// Handled failure modes
+	case AddPieceFailed:
+		return m.handleAddPieceFailed, processed, nil
 	case SealPreCommit1Failed:
 		return m.handleSealPrecommit1Failed, processed, nil
 	case SealPreCommit2Failed:
@@ -469,7 +475,7 @@ func (m *Sealing) onUpdateSector(ctx context.Context, state *SectorInfo) error {
 		return xerrors.Errorf("getting config: %w", err)
 	}
 
-	shouldUpdateInput := m.stats.updateSector(cfg, m.minerSectorID(state.SectorNumber), state.State)
+	shouldUpdateInput := m.stats.updateSector(ctx, cfg, m.minerSectorID(state.SectorNumber), state.State)
 
 	// trigger more input processing when we've dipped below max sealing limits
 	if shouldUpdateInput {

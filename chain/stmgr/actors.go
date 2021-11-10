@@ -5,6 +5,8 @@ import (
 	"context"
 	"os"
 
+	"github.com/filecoin-project/lotus/chain/rand"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -21,7 +23,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -351,7 +352,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		return nil, xerrors.Errorf("failed to marshal miner address: %w", err)
 	}
 
-	prand, err := store.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
+	prand, err := rand.DrawRandomness(rbase.Data, crypto.DomainSeparationTag_WinningPoStChallengeSeed, round, buf.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("failed to get randomness for winning post: %w", err)
 	}

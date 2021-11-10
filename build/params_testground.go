@@ -1,3 +1,4 @@
+//go:build testground
 // +build testground
 
 // This file makes hardcoded parameters (const) configurable as vars.
@@ -97,12 +98,15 @@ var (
 	UpgradeNorwegianHeight  abi.ChainEpoch = -13
 	UpgradeTurboHeight      abi.ChainEpoch = -14
 	UpgradeHyperdriveHeight abi.ChainEpoch = -15
+	UpgradeChocolateHeight  abi.ChainEpoch = -16
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandMainnet,
 	}
 
-	NewestNetworkVersion       = network.Version11
+	GenesisNetworkVersion = network.Version0
+
+	NewestNetworkVersion       = network.Version14
 	ActorUpgradeNetworkVersion = network.Version4
 
 	Devnet      = true

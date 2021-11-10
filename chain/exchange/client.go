@@ -151,11 +151,19 @@ func (c *client) doRequest(
 // errors. Peer penalization should happen here then, before returning, so
 // we can apply the correct penalties depending on the cause of the error.
 // FIXME: Add the `peer` as argument once we implement penalties.
-func (c *client) processResponse(req *Request, res *Response, tipsets []*types.TipSet) (*validatedResponse, error) {
-	err := res.statusToError()
+func (c *client) processResponse(req *Request, res *Response, tipsets []*types.TipSet) (r *validatedResponse, err error) {
+	err = res.statusToError()
 	if err != nil {
 		return nil, xerrors.Errorf("status error: %s", err)
 	}
+
+	defer func() {
+		if rerr := recover(); rerr != nil {
+			log.Errorf("process response error: %s", rerr)
+			err = xerrors.Errorf("process response error: %s", rerr)
+			return
+		}
+	}()
 
 	options := parseOptions(req.Options)
 	if options.noOptionsSet() {

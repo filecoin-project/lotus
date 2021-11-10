@@ -45,6 +45,8 @@ var (
 	// miner
 	TaskType, _       = tag.NewKey("task_type")
 	WorkerHostname, _ = tag.NewKey("worker_hostname")
+	StorageID, _      = tag.NewKey("storage_id")
+	SectorState, _    = tag.NewKey("sector_state")
 )
 
 // Measures
@@ -53,6 +55,22 @@ var (
 	LotusInfo          = stats.Int64("info", "Arbitrary counter to tag lotus info to", stats.UnitDimensionless)
 	PeerCount          = stats.Int64("peer/count", "Current number of FIL peers", stats.UnitDimensionless)
 	APIRequestDuration = stats.Float64("api/request_duration_ms", "Duration of API requests", stats.UnitMilliseconds)
+
+	// graphsync
+
+	GraphsyncReceivingPeersCount              = stats.Int64("graphsync/receiving_peers", "number of peers we are receiving graphsync data from", stats.UnitDimensionless)
+	GraphsyncReceivingActiveCount             = stats.Int64("graphsync/receiving_active", "number of active receiving graphsync transfers", stats.UnitDimensionless)
+	GraphsyncReceivingCountCount              = stats.Int64("graphsync/receiving_pending", "number of pending receiving graphsync transfers", stats.UnitDimensionless)
+	GraphsyncReceivingTotalMemoryAllocated    = stats.Int64("graphsync/receiving_total_allocated", "amount of block memory allocated for receiving graphsync data", stats.UnitBytes)
+	GraphsyncReceivingTotalPendingAllocations = stats.Int64("graphsync/receiving_pending_allocations", "amount of block memory on hold being received pending allocation", stats.UnitBytes)
+	GraphsyncReceivingPeersPending            = stats.Int64("graphsync/receiving_peers_pending", "number of peers we can't receive more data from cause of pending allocations", stats.UnitDimensionless)
+
+	GraphsyncSendingPeersCount              = stats.Int64("graphsync/sending_peers", "number of peers we are sending graphsync data to", stats.UnitDimensionless)
+	GraphsyncSendingActiveCount             = stats.Int64("graphsync/sending_active", "number of active sending graphsync transfers", stats.UnitDimensionless)
+	GraphsyncSendingCountCount              = stats.Int64("graphsync/sending_pending", "number of pending sending graphsync transfers", stats.UnitDimensionless)
+	GraphsyncSendingTotalMemoryAllocated    = stats.Int64("graphsync/sending_total_allocated", "amount of block memory allocated for sending graphsync data", stats.UnitBytes)
+	GraphsyncSendingTotalPendingAllocations = stats.Int64("graphsync/sending_pending_allocations", "amount of block memory on hold from sending pending allocation", stats.UnitBytes)
+	GraphsyncSendingPeersPending            = stats.Int64("graphsync/sending_peers_pending", "number of peers we can't send more data to cause of pending allocations", stats.UnitDimensionless)
 
 	// chain
 	ChainNodeHeight                     = stats.Int64("chain/node_height", "Current Height of the node", stats.UnitDimensionless)
@@ -97,6 +115,19 @@ var (
 	WorkerCallsReturnedDuration  = stats.Float64("sealing/worker_calls_returned_ms", "Counter of returned worker tasks", stats.UnitMilliseconds)
 	WorkerUntrackedCallsReturned = stats.Int64("sealing/worker_untracked_calls_returned", "Counter of returned untracked worker tasks", stats.UnitDimensionless)
 
+	SectorStates = stats.Int64("sealing/states", "Number of sectors in each state", stats.UnitDimensionless)
+
+	StorageFSAvailable      = stats.Float64("storage/path_fs_available_frac", "Fraction of filesystem available storage", stats.UnitDimensionless)
+	StorageAvailable        = stats.Float64("storage/path_available_frac", "Fraction of available storage", stats.UnitDimensionless)
+	StorageReserved         = stats.Float64("storage/path_reserved_frac", "Fraction of reserved storage", stats.UnitDimensionless)
+	StorageLimitUsed        = stats.Float64("storage/path_limit_used_frac", "Fraction of used optional storage limit", stats.UnitDimensionless)
+	StorageCapacityBytes    = stats.Int64("storage/path_capacity_bytes", "storage path capacity", stats.UnitBytes)
+	StorageFSAvailableBytes = stats.Int64("storage/path_fs_available_bytes", "filesystem available storage bytes", stats.UnitBytes)
+	StorageAvailableBytes   = stats.Int64("storage/path_available_bytes", "available storage bytes", stats.UnitBytes)
+	StorageReservedBytes    = stats.Int64("storage/path_reserved_bytes", "reserved storage bytes", stats.UnitBytes)
+	StorageLimitUsedBytes   = stats.Int64("storage/path_limit_used_bytes", "used optional storage limit bytes", stats.UnitBytes)
+	StorageLimitMaxBytes    = stats.Int64("storage/path_limit_max_bytes", "optional storage limit", stats.UnitBytes)
+
 	// splitstore
 	SplitstoreMiss                  = stats.Int64("splitstore/miss", "Number of misses in hotstre access", stats.UnitDimensionless)
 	SplitstoreCompactionTimeSeconds = stats.Float64("splitstore/compaction_time", "Compaction time in seconds", stats.UnitSeconds)
@@ -111,7 +142,7 @@ var (
 		Description: "Lotus node information",
 		Measure:     LotusInfo,
 		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{Version, Commit},
+		TagKeys:     []tag.Key{Version, Commit, NodeType},
 	}
 	ChainNodeHeightView = &view.View{
 		Measure:     ChainNodeHeight,
@@ -296,6 +327,61 @@ var (
 		Aggregation: workMillisecondsDistribution,
 		TagKeys:     []tag.Key{TaskType, WorkerHostname},
 	}
+	SectorStatesView = &view.View{
+		Measure:     SectorStates,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{SectorState},
+	}
+	StorageFSAvailableView = &view.View{
+		Measure:     StorageFSAvailable,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
+	StorageAvailableView = &view.View{
+		Measure:     StorageAvailable,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
+	StorageReservedView = &view.View{
+		Measure:     StorageReserved,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
+	StorageLimitUsedView = &view.View{
+		Measure:     StorageLimitUsed,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
+	StorageCapacityBytesView = &view.View{
+		Measure:     StorageCapacityBytes,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
+	StorageFSAvailableBytesView = &view.View{
+		Measure:     StorageFSAvailableBytes,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
+	StorageAvailableBytesView = &view.View{
+		Measure:     StorageAvailableBytes,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
+	StorageReservedBytesView = &view.View{
+		Measure:     StorageReservedBytes,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
+	StorageLimitUsedBytesView = &view.View{
+		Measure:     StorageLimitUsedBytes,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
+	StorageLimitMaxBytesView = &view.View{
+		Measure:     StorageLimitMaxBytes,
+		Aggregation: view.LastValue(),
+		TagKeys:     []tag.Key{StorageID},
+	}
 
 	// splitstore
 	SplitstoreMissView = &view.View{
@@ -318,6 +404,56 @@ var (
 		Measure:     SplitstoreCompactionDead,
 		Aggregation: view.Sum(),
 	}
+
+	// graphsync
+	GraphsyncReceivingPeersCountView = &view.View{
+		Measure:     GraphsyncReceivingPeersCount,
+		Aggregation: view.LastValue(),
+	}
+	GraphsyncReceivingActiveCountView = &view.View{
+		Measure:     GraphsyncReceivingActiveCount,
+		Aggregation: view.LastValue(),
+	}
+	GraphsyncReceivingCountCountView = &view.View{
+		Measure:     GraphsyncReceivingCountCount,
+		Aggregation: view.LastValue(),
+	}
+	GraphsyncReceivingTotalMemoryAllocatedView = &view.View{
+		Measure:     GraphsyncReceivingTotalMemoryAllocated,
+		Aggregation: view.LastValue(),
+	}
+	GraphsyncReceivingTotalPendingAllocationsView = &view.View{
+		Measure:     GraphsyncReceivingTotalPendingAllocations,
+		Aggregation: view.LastValue(),
+	}
+	GraphsyncReceivingPeersPendingView = &view.View{
+		Measure:     GraphsyncReceivingPeersPending,
+		Aggregation: view.LastValue(),
+	}
+	GraphsyncSendingPeersCountView = &view.View{
+		Measure:     GraphsyncSendingPeersCount,
+		Aggregation: view.LastValue(),
+	}
+	GraphsyncSendingActiveCountView = &view.View{
+		Measure:     GraphsyncSendingActiveCount,
+		Aggregation: view.LastValue(),
+	}
+	GraphsyncSendingCountCountView = &view.View{
+		Measure:     GraphsyncSendingCountCount,
+		Aggregation: view.LastValue(),
+	}
+	GraphsyncSendingTotalMemoryAllocatedView = &view.View{
+		Measure:     GraphsyncSendingTotalMemoryAllocated,
+		Aggregation: view.LastValue(),
+	}
+	GraphsyncSendingTotalPendingAllocationsView = &view.View{
+		Measure:     GraphsyncSendingTotalPendingAllocations,
+		Aggregation: view.LastValue(),
+	}
+	GraphsyncSendingPeersPendingView = &view.View{
+		Measure:     GraphsyncSendingPeersPending,
+		Aggregation: view.LastValue(),
+	}
 )
 
 // DefaultViews is an array of OpenCensus views for metric gathering purposes
@@ -326,6 +462,19 @@ var DefaultViews = func() []*view.View {
 		InfoView,
 		PeerCountView,
 		APIRequestDurationView,
+
+		GraphsyncReceivingPeersCountView,
+		GraphsyncReceivingActiveCountView,
+		GraphsyncReceivingCountCountView,
+		GraphsyncReceivingTotalMemoryAllocatedView,
+		GraphsyncReceivingTotalPendingAllocationsView,
+		GraphsyncReceivingPeersPendingView,
+		GraphsyncSendingPeersCountView,
+		GraphsyncSendingActiveCountView,
+		GraphsyncSendingCountCountView,
+		GraphsyncSendingTotalMemoryAllocatedView,
+		GraphsyncSendingTotalPendingAllocationsView,
+		GraphsyncSendingPeersPendingView,
 	}
 	views = append(views, blockstore.DefaultViews...)
 	views = append(views, rpcmetrics.DefaultViews...)
@@ -379,6 +528,17 @@ var MinerNodeViews = append([]*view.View{
 	WorkerCallsReturnedCountView,
 	WorkerUntrackedCallsReturnedView,
 	WorkerCallsReturnedDurationView,
+	SectorStatesView,
+	StorageFSAvailableView,
+	StorageAvailableView,
+	StorageReservedView,
+	StorageLimitUsedView,
+	StorageCapacityBytesView,
+	StorageFSAvailableBytesView,
+	StorageAvailableBytesView,
+	StorageReservedBytesView,
+	StorageLimitUsedBytesView,
+	StorageLimitMaxBytesView,
 }, DefaultViews...)
 
 // SinceInMilliseconds returns the duration of time since the provide time as a float64.

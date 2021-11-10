@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-address"
@@ -71,12 +72,6 @@ type FullNode interface {
 
 	// ChainHead returns the current head of the chain.
 	ChainHead(context.Context) (*types.TipSet, error) //perm:read
-
-	// ChainGetRandomnessFromTickets is used to sample the chain for randomness.
-	ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) //perm:read
-
-	// ChainGetRandomnessFromBeacon is used to sample the beacon for randomness.
-	ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) //perm:read
 
 	// ChainGetBlock returns the block specified by the given CID.
 	ChainGetBlock(context.Context, cid.Cid) (*types.BlockHeader, error) //perm:read
@@ -296,7 +291,7 @@ type FullNode interface {
 
 	// // UX ?
 
-	// MethodGroup: Wallet
+	// MethodGroup: WalletF
 
 	// WalletNew creates a new address in the wallet with the given sigType.
 	// Available key types: bls, secp256k1, secp256k1-ledger
@@ -590,6 +585,11 @@ type FullNode interface {
 	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (CirculatingSupply, error) //perm:read
 	// StateNetworkVersion returns the network version at the given tipset
 	StateNetworkVersion(context.Context, types.TipSetKey) (apitypes.NetworkVersion, error) //perm:read
+
+	// StateGetRandomnessFromTickets is used to sample the chain for randomness.
+	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
+	// StateGetRandomnessFromBeacon is used to sample the beacon for randomness.
+	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
 
 	// MethodGroup: Msig
 	// The Msig methods are used to interact with multisig wallets on the
@@ -931,9 +931,10 @@ type MarketDeal struct {
 
 type RetrievalOrder struct {
 	// TODO: make this less unixfs specific
-	Root  cid.Cid
-	Piece *cid.Cid
-	Size  uint64
+	Root                  cid.Cid
+	Piece                 *cid.Cid
+	DatamodelPathSelector *textselector.Expression
+	Size                  uint64
 
 	FromLocalCAR string // if specified, get data from a local CARv2 file.
 	// TODO: support offset

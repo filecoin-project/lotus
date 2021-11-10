@@ -19,18 +19,22 @@ func NewFixedRand() vm.Rand {
 	return &fixedRand{}
 }
 
-func (r *fixedRand) GetChainRandomnessLookingForward(_ context.Context, _ crypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) ([]byte, error) {
+func (r *fixedRand) GetChainRandomnessV1(_ context.Context, _ crypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) ([]byte, error) {
 	return []byte("i_am_random_____i_am_random_____"), nil // 32 bytes.
 }
 
-func (r *fixedRand) GetChainRandomnessLookingBack(_ context.Context, _ crypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) ([]byte, error) {
+func (r *fixedRand) GetChainRandomnessV2(_ context.Context, _ crypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) ([]byte, error) {
 	return []byte("i_am_random_____i_am_random_____"), nil // 32 bytes.
 }
 
-func (r *fixedRand) GetBeaconRandomnessLookingForward(_ context.Context, _ crypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) ([]byte, error) {
+func (r *fixedRand) GetBeaconRandomnessV3(_ context.Context, _ crypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) ([]byte, error) {
 	return []byte("i_am_random_____i_am_random_____"), nil // 32 bytes.
 }
 
-func (r *fixedRand) GetBeaconRandomnessLookingBack(_ context.Context, _ crypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) ([]byte, error) {
+func (r *fixedRand) GetBeaconRandomnessV1(_ context.Context, _ crypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) ([]byte, error) {
+	return []byte("i_am_random_____i_am_random_____"), nil // 32 bytes.
+}
+
+func (r *fixedRand) GetBeaconRandomnessV2(_ context.Context, _ crypto.DomainSeparationTag, _ abi.ChainEpoch, _ []byte) ([]byte, error) {
 	return []byte("i_am_random_____i_am_random_____"), nil // 32 bytes.
 }

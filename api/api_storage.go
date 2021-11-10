@@ -166,6 +166,7 @@ type StorageMiner interface {
 	MarketCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error //perm:write
 	MarketPendingDeals(ctx context.Context) (PendingDealInfo, error)                                                             //perm:write
 	MarketPublishPendingDeals(ctx context.Context) error                                                                         //perm:admin
+	MarketRetryPublishDeal(ctx context.Context, propcid cid.Cid) error                                                           //perm:admin
 
 	// DagstoreListShards returns information about all shards known to the
 	// DAG store. Only available on nodes running the markets subsystem.
@@ -267,6 +268,11 @@ type SectorLog struct {
 	Message string
 }
 
+type SectorPiece struct {
+	Piece    abi.PieceInfo
+	DealInfo *PieceDealInfo // nil for pieces which do not appear in deals (e.g. filler pieces)
+}
+
 type SectorInfo struct {
 	SectorID     abi.SectorNumber
 	State        SectorState
@@ -274,6 +280,7 @@ type SectorInfo struct {
 	CommR        *cid.Cid
 	Proof        []byte
 	Deals        []abi.DealID
+	Pieces       []SectorPiece
 	Ticket       SealTicket
 	Seed         SealSeed
 	PreCommitMsg *cid.Cid

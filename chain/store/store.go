@@ -31,7 +31,6 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
 	dstore "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -88,6 +87,8 @@ type HeadChangeEvt struct {
 	ApplyCount  int
 }
 
+type WeightFunc func(ctx context.Context, stateBs bstore.Blockstore, ts *types.TipSet) (types.BigInt, error)
+
 // ChainStore is the main point of access to chain data.
 //
 // Raw chain data is stored in the Blockstore, with relevant markers (genesis,
@@ -101,6 +102,8 @@ type ChainStore struct {
 	chainBlockstore bstore.Blockstore
 	stateBlockstore bstore.Blockstore
 	metadataDs      dstore.Batching
+
+	weight WeightFunc
 
 	chainLocalBlockstore bstore.Blockstore
 
@@ -129,7 +132,7 @@ type ChainStore struct {
 	wg       sync.WaitGroup
 }
 
-func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, j journal.Journal) *ChainStore {
+func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, weight WeightFunc, j journal.Journal) *ChainStore {
 	c, _ := lru.NewARC(DefaultMsgMetaCacheSize)
 	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
 	if j == nil {
@@ -144,6 +147,7 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 		chainBlockstore:      chainBs,
 		stateBlockstore:      stateBs,
 		chainLocalBlockstore: localbs,
+		weight:               weight,
 		metadataDs:           ds,
 		bestTips:             pubsub.New(64),
 		tipsets:              make(map[abi.ChainEpoch][]cid.Cid),
@@ -294,27 +298,36 @@ func (cs *ChainStore) SubHeadChanges(ctx context.Context) chan []*api.HeadChange
 	}}
 
 	go func() {
-		defer close(out)
-		var unsubOnce sync.Once
+		defer func() {
+			// Tell the caller we're done first, the following may block for a bit.
+			close(out)
+
+			// Unsubscribe.
+			cs.bestTips.Unsub(subch)
+
+			// Drain the channel.
+			for range subch {
+			}
+		}()
 
 		for {
 			select {
 			case val, ok := <-subch:
 				if !ok {
-					log.Warn("chain head sub exit loop")
+					// Shutting down.
+					return
+				}
+				select {
+				case out <- val.([]*api.HeadChange):
+				default:
+					log.Errorf("closing head change subscription due to slow reader")
 					return
 				}
 				if len(out) > 5 {
 					log.Warnf("head change sub is slow, has %d buffered entries", len(out))
 				}
-				select {
-				case out <- val.([]*api.HeadChange):
-				case <-ctx.Done():
-				}
 			case <-ctx.Done():
-				unsubOnce.Do(func() {
-					go cs.bestTips.Unsub(subch)
-				})
+				return
 			}
 		}
 	}()
@@ -402,16 +415,22 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipS
 	}
 
 	defer cs.heaviestLk.Unlock()
-	w, err := cs.Weight(ctx, ts)
+	w, err := cs.weight(ctx, cs.StateBlockstore(), ts)
 	if err != nil {
 		return err
 	}
-	heaviestW, err := cs.Weight(ctx, cs.heaviest)
+	heaviestW, err := cs.weight(ctx, cs.StateBlockstore(), cs.heaviest)
 	if err != nil {
 		return err
 	}
 
-	if w.GreaterThan(heaviestW) {
+	heavier := w.GreaterThan(heaviestW)
+	if w.Equals(heaviestW) && !ts.Equals(cs.heaviest) {
+		log.Errorw("weight draw", "currTs", cs.heaviest, "ts", ts)
+		heavier = breakWeightTie(ts, cs.heaviest)
+	}
+
+	if heavier {
 		// TODO: don't do this for initial sync. Now that we don't have a
 		// difference between 'bootstrap sync' and 'caught up' sync, we need
 		// some other heuristic.
@@ -425,9 +444,8 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipS
 		}
 
 		return cs.takeHeaviestTipSet(ctx, ts)
-	} else if w.Equals(heaviestW) && !ts.Equals(cs.heaviest) {
-		log.Errorw("weight draw", "currTs", cs.heaviest, "ts", ts)
 	}
+
 	return nil
 }
 
@@ -642,7 +660,7 @@ func (cs *ChainStore) FlushValidationCache() error {
 	return FlushValidationCache(cs.metadataDs)
 }
 
-func FlushValidationCache(ds datastore.Batching) error {
+func FlushValidationCache(ds dstore.Batching) error {
 	log.Infof("clearing block validation cache...")
 
 	dsWalk, err := ds.Query(query.Query{
@@ -674,7 +692,7 @@ func FlushValidationCache(ds datastore.Batching) error {
 	for _, k := range allKeys {
 		if strings.HasPrefix(k.Key, blockValidationCacheKeyPrefix.String()) {
 			delCnt++
-			batch.Delete(datastore.RawKey(k.Key)) // nolint:errcheck
+			batch.Delete(dstore.RawKey(k.Key)) // nolint:errcheck
 		}
 	}
 
@@ -1147,4 +1165,62 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 	}
 
 	return cs.LoadTipSet(lbts.Parents())
+}
+
+func (cs *ChainStore) Weight(ctx context.Context, hts *types.TipSet) (types.BigInt, error) { // todo remove
+	return cs.weight(ctx, cs.StateBlockstore(), hts)
+}
+
+// true if ts1 wins according to the filecoin tie-break rule
+func breakWeightTie(ts1, ts2 *types.TipSet) bool {
+	s := len(ts1.Blocks())
+	if s > len(ts2.Blocks()) {
+		s = len(ts2.Blocks())
+	}
+
+	// blocks are already sorted by ticket
+	for i := 0; i < s; i++ {
+		if ts1.Blocks()[i].Ticket.Less(ts2.Blocks()[i].Ticket) {
+			log.Infof("weight tie broken in favour of %s", ts1.Key())
+			return true
+		}
+	}
+
+	log.Infof("weight tie left unbroken, default to %s", ts2.Key())
+	return false
+}
+
+func (cs *ChainStore) GetTipSetFromKey(tsk types.TipSetKey) (*types.TipSet, error) {
+	if tsk.IsEmpty() {
+		return cs.GetHeaviestTipSet(), nil
+	}
+	return cs.LoadTipSet(tsk)
+}
+
+func (cs *ChainStore) GetLatestBeaconEntry(ts *types.TipSet) (*types.BeaconEntry, error) {
+	cur := ts
+	for i := 0; i < 20; i++ {
+		cbe := cur.Blocks()[0].BeaconEntries
+		if len(cbe) > 0 {
+			return &cbe[len(cbe)-1], nil
+		}
+
+		if cur.Height() == 0 {
+			return nil, xerrors.Errorf("made it back to genesis block without finding beacon entry")
+		}
+
+		next, err := cs.LoadTipSet(cur.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
+		}
+		cur = next
+	}
+
+	if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
+		return &types.BeaconEntry{
+			Data: []byte{9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9},
+		}, nil
+	}
+
+	return nil, xerrors.Errorf("found NO beacon entries in the 20 latest tipsets")
 }

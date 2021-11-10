@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -19,7 +22,6 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/lotus/node/impl/full"
-	"github.com/ipfs/go-cid"
 )
 
 const (
@@ -40,6 +42,7 @@ type TargetAPI interface {
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
+	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*api.HeadChange, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
 	MpoolPushUntrusted(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
@@ -214,6 +217,18 @@ func (gw *Node) ChainGetNode(ctx context.Context, p string) (*api.IpldObject, er
 
 func (gw *Node) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
 	return gw.target.ChainNotify(ctx)
+}
+
+func (gw *Node) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*api.HeadChange, error) {
+	if err := gw.checkTipsetKey(ctx, from); err != nil {
+		return nil, xerrors.Errorf("gateway: checking 'from' tipset: %w", err)
+	}
+
+	if err := gw.checkTipsetKey(ctx, to); err != nil {
+		return nil, xerrors.Errorf("gateway: checking 'to' tipset: %w", err)
+	}
+
+	return gw.target.ChainGetPath(ctx, from, to)
 }
 
 func (gw *Node) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {

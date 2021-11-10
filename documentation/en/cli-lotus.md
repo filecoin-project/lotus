@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.11.2-dev
+   1.13.2-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -388,6 +388,7 @@ USAGE:
 OPTIONS:
    --wallet value, -w value   Specify address to withdraw funds to, otherwise it will use the default wallet address
    --address value, -a value  Market address to withdraw from (account or miner actor address, defaults to --wallet address)
+   --confidence value         number of block confirmations to wait for (default: 5)
    --help, -h                 show help (default: false)
    
 ```
@@ -544,13 +545,14 @@ CATEGORY:
    RETRIEVAL
 
 OPTIONS:
-   --from value      address to send transactions from
-   --car             export to a car file instead of a regular file (default: false)
-   --miner value     miner address for retrieval, if not present it'll use local discovery
-   --maxPrice value  maximum price the client is willing to consider (default: 0.01 FIL)
-   --pieceCid value  require data to be retrieved from a specific Piece CID
-   --allow-local     (default: false)
-   --help, -h        show help (default: false)
+   --from value                     address to send transactions from
+   --car                            export to a car file instead of a regular file (default: false)
+   --miner value                    miner address for retrieval, if not present it'll use local discovery
+   --datamodel-path-selector value  a rudimentary (DM-level-only) text-path selector, allowing for sub-selection within a deal
+   --maxPrice value                 maximum price the client is willing to consider (default: 0.01 FIL)
+   --pieceCid value                 require data to be retrieved from a specific Piece CID
+   --allow-local                    (default: false)
+   --help, -h                       show help (default: false)
    
 ```
 
@@ -1115,12 +1117,12 @@ USAGE:
    lotus filplus command [command options] [arguments...]
 
 COMMANDS:
-   grant-datacap           give allowance to the specified verified client address
-   list-notaries           list all notaries
-   list-clients            list all verified clients
-   check-client-datacap    check verified client remaining bytes
-   check-notaries-datacap  check notaries remaining bytes
-   help, h                 Shows a list of commands or help for one command
+   grant-datacap         give allowance to the specified verified client address
+   list-notaries         list all notaries
+   list-clients          list all verified clients
+   check-client-datacap  check verified client remaining bytes
+   check-notary-datacap  check a notary's remaining bytes
+   help, h               Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h     show help (default: false)
@@ -1181,13 +1183,13 @@ OPTIONS:
    
 ```
 
-### lotus filplus check-notaries-datacap
+### lotus filplus check-notary-datacap
 ```
 NAME:
-   lotus filplus check-notaries-datacap - check notaries remaining bytes
+   lotus filplus check-notary-datacap - check a notary's remaining bytes
 
 USAGE:
-   lotus filplus check-notaries-datacap [command options] [arguments...]
+   lotus filplus check-notary-datacap [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -2366,6 +2368,7 @@ USAGE:
 COMMANDS:
    list       List log systems
    set-level  Set log level
+   alerts     Get alert states
    help, h    Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2421,6 +2424,20 @@ OPTIONS:
    
 ```
 
+### lotus log alerts
+```
+NAME:
+   lotus log alerts - Get alert states
+
+USAGE:
+   lotus log alerts [command options] [arguments...]
+
+OPTIONS:
+   --all       get all (active and inactive) alerts (default: false)
+   --help, -h  show help (default: false)
+   
+```
+
 ## lotus wait-api
 ```
 NAME:
@@ -2433,7 +2450,8 @@ CATEGORY:
    DEVELOPER
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --timeout value  duration to wait till fail (default: 30s)
+   --help, -h       show help (default: false)
    
 ```
 

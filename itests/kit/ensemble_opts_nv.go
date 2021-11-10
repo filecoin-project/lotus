@@ -3,6 +3,8 @@ package kit
 import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 )
 
@@ -28,7 +30,7 @@ func SDRUpgradeAt(calico, persian abi.ChainEpoch) EnsembleOpt {
 	}, stmgr.Upgrade{
 		Network:   network.Version7,
 		Height:    calico,
-		Migration: stmgr.UpgradeCalico,
+		Migration: filcns.UpgradeCalico,
 	}, stmgr.Upgrade{
 		Network: network.Version8,
 		Height:  persian,
@@ -36,14 +38,25 @@ func SDRUpgradeAt(calico, persian abi.ChainEpoch) EnsembleOpt {
 }
 
 func LatestActorsAt(upgradeHeight abi.ChainEpoch) EnsembleOpt {
+	/* inline-gen template
+		return UpgradeSchedule(stmgr.Upgrade{
+			Network: network.Version{{add .latestNetworkVersion -1}},
+			Height:  -1,
+		}, stmgr.Upgrade{
+			Network:   network.Version{{.latestNetworkVersion}},
+			Height:    upgradeHeight,
+			Migration: filcns.UpgradeActorsV{{.latestActorsVersion}},
+		})
+	/* inline-gen start */
 	return UpgradeSchedule(stmgr.Upgrade{
-		Network: network.Version12,
+		Network: network.Version13,
 		Height:  -1,
 	}, stmgr.Upgrade{
-		Network:   network.Version13,
+		Network:   network.Version14,
 		Height:    upgradeHeight,
-		Migration: stmgr.UpgradeActorsV5,
+		Migration: filcns.UpgradeActorsV6,
 	})
+	/* inline-gen end */
 }
 
 func TurboUpgradeAt(upgradeHeight abi.ChainEpoch) EnsembleOpt {
@@ -53,6 +66,6 @@ func TurboUpgradeAt(upgradeHeight abi.ChainEpoch) EnsembleOpt {
 	}, stmgr.Upgrade{
 		Network:   network.Version12,
 		Height:    upgradeHeight,
-		Migration: stmgr.UpgradeActorsV4,
+		Migration: filcns.UpgradeActorsV4,
 	})
 }

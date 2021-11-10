@@ -13,12 +13,11 @@ import (
 	"github.com/fatih/color"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
-
-	"github.com/filecoin-project/lotus/chain/stmgr"
 )
 
 var extractManyFlags struct {
@@ -158,7 +157,7 @@ func runExtractMany(c *cli.Context) error {
 		}
 
 		// Lookup the method in actor method table.
-		if m, ok := stmgr.MethodsMap[codeCid]; !ok {
+		if m, ok := filcns.NewActorRegistry().Methods[codeCid]; !ok {
 			return fmt.Errorf("unrecognized actor: %s", actorcode)
 		} else if methodnum >= len(m) {
 			return fmt.Errorf("unrecognized method number for actor %s: %d", actorcode, methodnum)

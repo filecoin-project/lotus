@@ -31,6 +31,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -38,6 +39,7 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/journal/fsjournal"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
@@ -477,12 +479,12 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return err
 	}
 
-	j, err := journal.OpenFSJournal(lr, journal.EnvDisabledEvents())
+	j, err := fsjournal.OpenFSJournal(lr, journal.EnvDisabledEvents())
 	if err != nil {
 		return xerrors.Errorf("failed to open journal: %w", err)
 	}
 
-	cst := store.NewChainStore(bs, bs, mds, j)
+	cst := store.NewChainStore(bs, bs, mds, filcns.Weight, j)
 	defer cst.Close() //nolint:errcheck
 
 	log.Infof("importing chain from %s...", fname)
@@ -518,7 +520,11 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return err
 	}
 
-	stm := stmgr.NewStateManager(cst, vm.Syscalls(ffiwrapper.ProofVerifier))
+	// TODO: We need to supply the actual beacon after v14
+	stm, err := stmgr.NewStateManager(cst, filcns.NewTipSetExecutor(), vm.Syscalls(ffiwrapper.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil)
+	if err != nil {
+		return err
+	}
 
 	if !snapshot {
 		log.Infof("validating imported chain...")

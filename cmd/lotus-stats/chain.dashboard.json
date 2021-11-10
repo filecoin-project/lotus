@@ -30,6 +30,12 @@
       "id": "table-old",
       "name": "Table (old)",
       "version": ""
+    },
+    {
+      "type": "panel",
+      "id": "text",
+      "name": "Text",
+      "version": ""
     }
   ],
   "annotations": {
@@ -47,11 +53,217 @@
   },
   "editable": true,
   "gnetId": null,
-  "graphTooltip": 0,
+  "graphTooltip": 1,
   "id": null,
-  "iteration": 1604018016916,
+  "iteration": 1630020824868,
   "links": [],
   "panels": [
+    {
+      "datasource": "$network",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 5,
+        "x": 0,
+        "y": 0
+      },
+      "id": 56,
+      "options": {
+        "content": "<div style=\"width: 200px; height: 50px;\" >\n    <img style=\"margin-top:-20px;\" src=\"https://ipfs.io/ipfs/QmaW8ezM7AQfUb5CoSwcfETQk6jHAk259hFwm8Krji6AR7/Logo_Version01_BlueWhite.png\"/>\n</div>\n",
+        "mode": "html"
+      },
+      "pluginVersion": "7.3.0",
+      "targets": [
+        {
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": []
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "datasource": "$network",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {}
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 16,
+        "x": 5,
+        "y": 0
+      },
+      "id": 58,
+      "options": {
+        "content": "<div style=\"font-weight: 800; font-size: 1.5em;color:#a3cae1;margin-top:10px; display: none;\">\n    The stats dashboard is undergoing some maintance. Please check back later.\n</div>",
+        "mode": "html"
+      },
+      "pluginVersion": "7.3.0",
+      "targets": [
+        {
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": []
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
+    {
+      "datasource": "$network",
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": null,
+            "filterable": false
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 3,
+        "w": 3,
+        "x": 21,
+        "y": 0
+      },
+      "id": 54,
+      "options": {
+        "content": "<div>\n    <div>\n        <ul style=\"list-style-type:none;margin-right:20px;padding-top:12px;overflow:hidden;\">\n            <li style=\"display:inline\"><a href=\"https://lotu.sh\" target=\"_blank\" style=\"display:inline;\">Lotus Docs</a></li>\n            <li style=\"display:inline\"><a href=\"https://filecoin.io/build/#community\" target=\"_blank\">Community</a></li>\n        </ul>\n    </div>\n</div>",
+        "mode": "html"
+      },
+      "pluginVersion": "7.3.0",
+      "targets": [
+        {
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "orderByTime": "ASC",
+          "policy": "default",
+          "refId": "A",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": []
+        }
+      ],
+      "timeFrom": null,
+      "timeShift": null,
+      "title": "",
+      "transparent": true,
+      "type": "text"
+    },
     {
       "aliasColors": {},
       "bars": true,
@@ -72,7 +284,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 0
+        "y": 3
       },
       "hiddenSeries": false,
       "hideTimeOverride": false,
@@ -186,7 +398,7 @@
           ],
           "hide": false,
           "orderByTime": "ASC",
-          "policy": "defult",
+          "policy": "default",
           "query": "SELECT TRIPLE_EXPONENTIAL_MOVING_AVERAGE(sum(\"value\"), 40) FROM \"chain.election\" WHERE  $timeFilter -$blockInterval*40 AND time < now() - $blockInterval*3 GROUP BY time($blockInterval) fill(0)",
           "rawQuery": true,
           "refId": "B",
@@ -271,7 +483,7 @@
         "h": 4,
         "w": 8,
         "x": 0,
-        "y": 9
+        "y": 12
       },
       "hiddenSeries": false,
       "id": 22,
@@ -396,7 +608,7 @@
         "h": 4,
         "w": 4,
         "x": 8,
-        "y": 9
+        "y": 12
       },
       "id": 12,
       "interval": null,
@@ -493,7 +705,7 @@
         },
         "overrides": []
       },
-      "format": "bytes",
+      "format": "gbytes",
       "gauge": {
         "maxValue": 100,
         "minValue": 0,
@@ -505,7 +717,7 @@
         "h": 4,
         "w": 4,
         "x": 12,
-        "y": 9
+        "y": 12
       },
       "id": 42,
       "interval": "",
@@ -626,7 +838,7 @@
         "h": 4,
         "w": 8,
         "x": 16,
-        "y": 9
+        "y": 12
       },
       "id": 6,
       "interval": null,
@@ -741,7 +953,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 13
+        "y": 16
       },
       "id": 4,
       "interval": null,
@@ -844,7 +1056,7 @@
         "h": 3,
         "w": 4,
         "x": 4,
-        "y": 13
+        "y": 16
       },
       "id": 14,
       "interval": null,
@@ -951,7 +1163,7 @@
         "h": 3,
         "w": 4,
         "x": 8,
-        "y": 13
+        "y": 16
       },
       "id": 32,
       "interval": null,
@@ -1071,7 +1283,7 @@
         "h": 3,
         "w": 4,
         "x": 12,
-        "y": 13
+        "y": 16
       },
       "id": 20,
       "interval": null,
@@ -1191,7 +1403,7 @@
         "h": 3,
         "w": 4,
         "x": 16,
-        "y": 13
+        "y": 16
       },
       "id": 8,
       "interval": null,
@@ -1311,7 +1523,7 @@
         "h": 3,
         "w": 4,
         "x": 20,
-        "y": 13
+        "y": 16
       },
       "id": 10,
       "interval": null,
@@ -1435,7 +1647,7 @@
         "h": 3,
         "w": 4,
         "x": 0,
-        "y": 16
+        "y": 19
       },
       "id": 16,
       "interval": "",
@@ -1536,7 +1748,7 @@
         "h": 3,
         "w": 16,
         "x": 4,
-        "y": 16
+        "y": 19
       },
       "hiddenSeries": false,
       "id": 2,
@@ -1706,7 +1918,7 @@
         "h": 3,
         "w": 4,
         "x": 20,
-        "y": 16
+        "y": 19
       },
       "id": 30,
       "interval": null,
@@ -1795,7 +2007,7 @@
         "h": 21,
         "w": 4,
         "x": 0,
-        "y": 19
+        "y": 22
       },
       "id": 28,
       "pageSize": null,
@@ -1827,7 +2039,7 @@
           "pattern": "power",
           "thresholds": [],
           "type": "number",
-          "unit": "bytes"
+          "unit": "gbytes"
         },
         {
           "alias": "",
@@ -1894,7 +2106,7 @@
         "h": 8,
         "w": 12,
         "x": 4,
-        "y": 19
+        "y": 22
       },
       "hiddenSeries": false,
       "id": 40,
@@ -1979,6 +2191,44 @@
           ],
           "slimit": "",
           "tags": []
+        },
+        {
+          "groupBy": [
+            {
+              "params": [
+                "$__interval"
+              ],
+              "type": "time"
+            },
+            {
+              "params": [
+                "null"
+              ],
+              "type": "fill"
+            }
+          ],
+          "hide": true,
+          "orderByTime": "ASC",
+          "policy": "default",
+          "query": "SELECT mean(\"value\") FROM \"chain.miner_power\" WHERE $timeFilter AND value >  1125899906842624 GROUP BY time($__interval), \"miner\" fill(null)",
+          "rawQuery": true,
+          "refId": "B",
+          "resultFormat": "time_series",
+          "select": [
+            [
+              {
+                "params": [
+                  "value"
+                ],
+                "type": "field"
+              },
+              {
+                "params": [],
+                "type": "mean"
+              }
+            ]
+          ],
+          "tags": []
         }
       ],
       "thresholds": [],
@@ -2002,7 +2252,7 @@
       "yaxes": [
         {
           "decimals": 2,
-          "format": "bytes",
+          "format": "gbytes",
           "label": "Power",
           "logBase": 1,
           "max": "100",
@@ -2037,7 +2287,7 @@
         "h": 21,
         "w": 8,
         "x": 16,
-        "y": 19
+        "y": 22
       },
       "id": 18,
       "pageSize": null,
@@ -2142,7 +2392,7 @@
         "h": 7,
         "w": 12,
         "x": 4,
-        "y": 27
+        "y": 30
       },
       "hiddenSeries": false,
       "id": 50,
@@ -2182,7 +2432,7 @@
             },
             {
               "params": [
-                "null"
+                "previous"
               ],
               "type": "fill"
             }
@@ -2221,7 +2471,7 @@
             },
             {
               "params": [
-                "null"
+                "previous"
               ],
               "type": "fill"
             }
@@ -2260,7 +2510,7 @@
             },
             {
               "params": [
-                "null"
+                "previous"
               ],
               "type": "fill"
             }
@@ -2361,7 +2611,7 @@
         "h": 6,
         "w": 12,
         "x": 4,
-        "y": 34
+        "y": 37
       },
       "hiddenSeries": false,
       "id": 44,
@@ -2491,7 +2741,7 @@
         "h": 9,
         "w": 12,
         "x": 0,
-        "y": 40
+        "y": 43
       },
       "hiddenSeries": false,
       "id": 34,
@@ -2632,7 +2882,7 @@
         "h": 9,
         "w": 12,
         "x": 12,
-        "y": 40
+        "y": 43
       },
       "hiddenSeries": false,
       "id": 36,
@@ -2785,7 +3035,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 49
+        "y": 52
       },
       "hiddenSeries": false,
       "id": 48,
@@ -2915,7 +3165,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 49
+        "y": 52
       },
       "hiddenSeries": false,
       "id": 46,
@@ -3046,7 +3296,7 @@
         "h": 8,
         "w": 12,
         "x": 0,
-        "y": 57
+        "y": 60
       },
       "hiddenSeries": false,
       "id": 51,
@@ -3218,7 +3468,7 @@
         "h": 8,
         "w": 12,
         "x": 12,
-        "y": 57
+        "y": 60
       },
       "hiddenSeries": false,
       "id": 52,
@@ -3417,8 +3667,8 @@
       {
         "current": {
           "selected": false,
-          "text": "filecoin-ntwk-testnet",
-          "value": "filecoin-ntwk-testnet"
+          "text": "ntwk-localstats",
+          "value": "ntwk-localstats"
         },
         "error": null,
         "hide": 0,
@@ -3430,7 +3680,7 @@
         "query": "influxdb",
         "queryValue": "",
         "refresh": 1,
-        "regex": "/^filecoin-ntwk-/",
+        "regex": "/^ntwk-/",
         "skipUrlSync": false,
         "type": "datasource"
       },
@@ -3466,23 +3716,13 @@
     "to": "now"
   },
   "timepicker": {
+    "hidden": true,
     "refresh_intervals": [
-      "5s",
-      "10s",
-      "25s",
-      "30s",
-      "45s",
-      "1m",
-      "5m",
-      "15m",
-      "30m",
-      "1h",
-      "2h",
-      "1d"
+      "30s"
     ]
   },
   "timezone": "",
   "title": "Filecoin Chain Stats",
   "uid": "z6FtI92Zz",
-  "version": 4
+  "version": 2
 }

@@ -8,31 +8,30 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/drand/drand v1.2.1
 	github.com/filecoin-project/go-address v0.0.5
-	github.com/filecoin-project/go-data-transfer v1.7.0
-	github.com/filecoin-project/go-fil-markets v1.6.0-rc1.0.20210715124641-2412ccd89114
+	github.com/filecoin-project/go-data-transfer v1.10.1
+	github.com/filecoin-project/go-fil-markets v1.12.0
 	github.com/filecoin-project/go-jsonrpc v0.1.4-0.20210217175800-45ea43ac2bec
-	github.com/filecoin-project/go-state-types v0.1.1-0.20210506134452-99b279731c48
+	github.com/filecoin-project/go-state-types v0.1.1-0.20210915140513-d354ccf10379
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/lotus v1.10.1-0.20210715125135-ed058ae1936d
+	github.com/filecoin-project/lotus v0.0.0-00010101000000-000000000000
 	github.com/filecoin-project/specs-actors v0.9.14
-	github.com/google/uuid v1.1.2
-	github.com/gorilla/mux v1.7.4
-	github.com/hashicorp/go-multierror v1.1.0
-	github.com/influxdata/influxdb v1.8.3 // indirect
-	github.com/ipfs/go-cid v0.0.8-0.20210702173502-41f2377d9672
-	github.com/ipfs/go-datastore v0.4.5
+	github.com/google/uuid v1.3.0
+	github.com/gorilla/mux v1.8.0
+	github.com/hashicorp/go-multierror v1.1.1
+	github.com/influxdata/influxdb v1.9.4 // indirect
+	github.com/ipfs/go-cid v0.1.0
+	github.com/ipfs/go-datastore v0.4.6
 	github.com/ipfs/go-ipfs-files v0.0.8
 	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log/v2 v2.3.0
 	github.com/ipfs/go-merkledag v0.3.2
 	github.com/ipfs/go-unixfs v0.2.6
-	github.com/ipld/go-car v0.1.1-0.20201119040415-11b6074b6d4d
+	github.com/ipld/go-car v0.3.1-null-padded-files
 	github.com/kpacha/opencensus-influxdb v0.0.0-20181102202715-663e2683a27c
-	github.com/libp2p/go-libp2p v0.14.2
-	github.com/libp2p/go-libp2p-core v0.8.5
+	github.com/libp2p/go-libp2p v0.15.0
+	github.com/libp2p/go-libp2p-core v0.9.0
 	github.com/libp2p/go-libp2p-pubsub-tracer v0.0.0-20200626141350-e730b32bf1e6
-	github.com/multiformats/go-multiaddr v0.3.1
-	github.com/multiformats/go-multiaddr-net v0.2.0
+	github.com/multiformats/go-multiaddr v0.4.0
 	github.com/testground/sdk-go v0.2.6
 	go.opencensus.io v0.23.0
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -42,3 +41,5 @@ require (
 // On docker:go and exec:go, it maps to /extra/filecoin-ffi, as it's picked up
 // as an "extra source" in the manifest.
 replace github.com/filecoin-project/filecoin-ffi => ../../extern/filecoin-ffi
+
+replace github.com/filecoin-project/lotus => ../../

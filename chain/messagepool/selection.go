@@ -20,8 +20,6 @@ import (
 
 var bigBlockGasLimit = big.NewInt(build.BlockGasLimit)
 
-var MaxBlockMessages = 16000
-
 const MaxBlocks = 15
 
 type msgChain struct {
@@ -58,8 +56,8 @@ func (mp *MessagePool) SelectMessages(ctx context.Context, ts *types.TipSet, tq 
 		return nil, err
 	}
 
-	if len(msgs) > MaxBlockMessages {
-		msgs = msgs[:MaxBlockMessages]
+	if len(msgs) > build.BlockMessageLimit {
+		msgs = msgs[:build.BlockMessageLimit]
 	}
 
 	return msgs, nil

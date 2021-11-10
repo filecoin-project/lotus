@@ -44,6 +44,7 @@
 * [I](#I)
   * [ID](#ID)
 * [Log](#Log)
+  * [LogAlerts](#LogAlerts)
   * [LogList](#LogList)
   * [LogSetLevel](#LogSetLevel)
 * [Market](#Market)
@@ -60,6 +61,7 @@
   * [MarketPendingDeals](#MarketPendingDeals)
   * [MarketPublishPendingDeals](#MarketPublishPendingDeals)
   * [MarketRestartDataTransfer](#MarketRestartDataTransfer)
+  * [MarketRetryPublishDeal](#MarketRetryPublishDeal)
   * [MarketSetAsk](#MarketSetAsk)
   * [MarketSetRetrievalAsk](#MarketSetRetrievalAsk)
 * [Mining](#Mining)
@@ -664,6 +666,15 @@ Response: `"12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"`
 ## Log
 
 
+### LogAlerts
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `null`
+
 ### LogList
 
 
@@ -934,6 +945,22 @@ Inputs:
   3,
   "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   true
+]
+```
+
+Response: `{}`
+
+### MarketRetryPublishDeal
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 ]
 ```
 
@@ -2009,6 +2036,7 @@ Response:
   "CommR": null,
   "Proof": "Ynl0ZSBhcnJheQ==",
   "Deals": null,
+  "Pieces": null,
   "Ticket": {
     "Value": null,
     "Epoch": 10101
