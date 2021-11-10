@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -17,10 +18,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -65,11 +68,11 @@ func newTestStorage(t *testing.T) *testStorage {
 }
 
 func (t testStorage) cleanup() {
-	for _, path := range t.StoragePaths {
-		if err := os.RemoveAll(path.Path); err != nil {
-			fmt.Println("Cleanup error:", err)
-		}
-	}
+	// 	for _, path := range t.StoragePaths {
+	// 		if err := os.RemoveAll(path.Path); err != nil {
+	// 			fmt.Println("Cleanup error:", err)
+	// 		}
+	// 	}
 }
 
 func (t testStorage) GetStorage() (stores.StorageConfig, error) {
@@ -160,6 +163,132 @@ func TestSimple(t *testing.T) {
 
 	_, err = m.SealPreCommit1(ctx, sid, ticket, pieces)
 	require.NoError(t, err)
+}
+
+type Reader struct{}
+
+func (Reader) Read(out []byte) (int, error) {
+	for i := range out {
+		out[i] = 0
+	}
+	return len(out), nil
+}
+
+type NullReader struct {
+	*io.LimitedReader
+}
+
+func NewNullReader(size abi.UnpaddedPieceSize) io.Reader {
+	return &NullReader{(io.LimitReader(&Reader{}, int64(size))).(*io.LimitedReader)}
+}
+
+func (m NullReader) NullBytes() int64 {
+	return m.N
+}
+
+func TestSnapDeals(t *testing.T) {
+	logging.SetAllLoggers(logging.LevelWarn)
+	ctx := context.Background()
+	m, lstor, stor, idx, cleanup := newTestMgr(ctx, t, datastore.NewMapDatastore())
+	defer cleanup()
+
+	localTasks := []sealtasks.TaskType{
+		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit1, sealtasks.TTCommit2, sealtasks.TTFinalize,
+		sealtasks.TTFetch, sealtasks.TTReplicaUpdate, sealtasks.TTProveReplicaUpdate1, sealtasks.TTProveReplicaUpdate2,
+	}
+	wds := datastore.NewMapDatastore()
+
+	w := NewLocalWorker(WorkerConfig{TaskTypes: localTasks}, stor, lstor, idx, m, statestore.New(wds))
+	err := m.AddWorker(ctx, w)
+	require.NoError(t, err)
+
+	proofType := abi.RegisteredSealProof_StackedDrg2KiBV1
+	ptStr := os.Getenv("LOTUS_TEST_SNAP_DEALS_PROOF_TYPE")
+	switch ptStr {
+	case "2k":
+	case "8M":
+		proofType = abi.RegisteredSealProof_StackedDrg8MiBV1
+	case "512M":
+		proofType = abi.RegisteredSealProof_StackedDrg512MiBV1
+	case "32G":
+		proofType = abi.RegisteredSealProof_StackedDrg32GiBV1
+	case "64G":
+		proofType = abi.RegisteredSealProof_StackedDrg64GiBV1
+	default:
+		log.Warn("Unspecified proof type, make sure to set LOTUS_TEST_SNAP_DEALS_PROOF_TYPE to '2k', '8M', '512M', '32G' or '64G'")
+		log.Warn("Continuing test with 2k sectors")
+	}
+
+	sid := storage.SectorRef{
+		ID:        abi.SectorID{Miner: 1000, Number: 1},
+		ProofType: proofType,
+	}
+	ss, err := proofType.SectorSize()
+	require.NoError(t, err)
+
+	unpaddedSectorSize := abi.PaddedPieceSize(ss).Unpadded()
+
+	// Pack sector with no pieces
+	p0, err := m.AddPiece(ctx, sid, nil, unpaddedSectorSize, NewNullReader(unpaddedSectorSize))
+	require.NoError(t, err)
+	ccPieces := []abi.PieceInfo{p0}
+
+	// Precommit and Seal a CC sector
+	fmt.Printf("PC1\n")
+	ticket := abi.SealRandomness{9, 9, 9, 9, 9, 9, 9, 9}
+	pc1Out, err := m.SealPreCommit1(ctx, sid, ticket, ccPieces)
+	require.NoError(t, err)
+	fmt.Printf("PC2\n")
+	pc2Out, err := m.SealPreCommit2(ctx, sid, pc1Out)
+
+	require.NoError(t, err)
+	seed := abi.InteractiveSealRandomness{1, 1, 1, 1, 1, 1, 1}
+	fmt.Printf("C1\n")
+	c1Out, err := m.SealCommit1(ctx, sid, ticket, seed, nil, pc2Out)
+	require.NoError(t, err)
+	fmt.Printf("C2\n")
+	_, err = m.SealCommit2(ctx, sid, c1Out)
+	require.NoError(t, err)
+
+	// Now do a snap deals replica update
+	sectorKey := pc2Out.Sealed
+
+	// Two pieces each half the size of the sector
+	unpaddedPieceSize := unpaddedSectorSize / 2
+	p1, err := m.AddPiece(ctx, sid, nil, unpaddedPieceSize, strings.NewReader(strings.Repeat("k", int(unpaddedPieceSize))))
+	require.NoError(t, err)
+	require.Equal(t, unpaddedPieceSize.Padded(), p1.Size)
+
+	p2, err := m.AddPiece(ctx, sid, []abi.UnpaddedPieceSize{p1.Size.Unpadded()}, unpaddedPieceSize, strings.NewReader(strings.Repeat("j", int(unpaddedPieceSize))))
+	require.NoError(t, err)
+	require.Equal(t, unpaddedPieceSize.Padded(), p1.Size)
+
+	pieces := []abi.PieceInfo{p1, p2}
+	fmt.Printf("RU\n")
+	out, err := m.ReplicaUpdate(ctx, sid, pieces)
+	require.NoError(t, err)
+	updateProofType, err := sid.ProofType.RegisteredUpdateProof()
+	require.NoError(t, err)
+	require.NotNil(t, out)
+	fmt.Printf("PR1\n")
+	vanillaProofs, err := m.ProveReplicaUpdate1(ctx, sid, sectorKey, out.NewSealed, out.NewUnsealed)
+	require.NoError(t, err)
+	require.NotNil(t, vanillaProofs)
+	fmt.Printf("PR2\n")
+	proof, err := m.ProveReplicaUpdate2(ctx, sid, sectorKey, out.NewSealed, out.NewUnsealed, vanillaProofs)
+	require.NoError(t, err)
+	require.NotNil(t, proof)
+
+	vInfo := proof7.ReplicaUpdateInfo{
+		Proof:                proof,
+		UpdateProofType:      updateProofType,
+		OldSealedSectorCID:   sectorKey,
+		NewSealedSectorCID:   out.NewSealed,
+		NewUnsealedSectorCID: out.NewUnsealed,
+	}
+	pass, err := ffiwrapper.ProofVerifier.VerifyReplicaUpdate(vInfo)
+	require.NoError(t, err)
+	assert.True(t, pass)
 }
 
 func TestRedoPC1(t *testing.T) {
