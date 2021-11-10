@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	"github.com/filecoin-project/go-state-types/abi"
+	provider "github.com/filecoin-project/indexer-reference-provider"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
@@ -152,6 +153,7 @@ func ConfigStorageMiner(c interface{}) Option {
 
 			// DAG Store
 			Override(new(dagstore.MinerAPI), modules.NewMinerAPI),
+			Override(new(provider.Interface), modules.IndexerProvider()),
 			Override(DAGStoreKey, modules.DAGStore),
 
 			// Markets (retrieval)

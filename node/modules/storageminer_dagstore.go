@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	provider "github.com/filecoin-project/indexer-reference-provider"
 
 	mdagstore "github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/node/config"
@@ -60,10 +61,15 @@ func NewMinerAPI(lc fx.Lifecycle, r repo.LockedRepo, pieceStore dtypes.ProviderP
 	return mountApi, nil
 }
 
+func IndexerProvider() provider.Interface {
+	// TODO: How to instantiate a provider.Interface
+	return nil
+}
+
 // DAGStore constructs a DAG store using the supplied minerAPI, and the
 // user configuration. It returns both the DAGStore and the Wrapper suitable for
 // passing to markets.
-func DAGStore(lc fx.Lifecycle, r repo.LockedRepo, minerAPI mdagstore.MinerAPI) (*dagstore.DAGStore, *mdagstore.Wrapper, error) {
+func DAGStore(lc fx.Lifecycle, r repo.LockedRepo, minerAPI mdagstore.MinerAPI, idxprov provider.Interface) (*dagstore.DAGStore, *mdagstore.Wrapper, error) {
 	cfg, err := extractDAGStoreConfig(r)
 	if err != nil {
 		return nil, nil, err
@@ -82,7 +88,7 @@ func DAGStore(lc fx.Lifecycle, r repo.LockedRepo, minerAPI mdagstore.MinerAPI) (
 		}
 	}
 
-	dagst, w, err := mdagstore.NewDAGStore(cfg, minerAPI)
+	dagst, w, err := mdagstore.NewDAGStore(cfg, minerAPI, idxprov)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("failed to create DAG store: %w", err)
 	}

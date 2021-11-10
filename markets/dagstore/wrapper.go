@@ -3,6 +3,7 @@ package dagstore
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
@@ -14,21 +15,22 @@ import (
 	levelds "github.com/ipfs/go-ds-leveldb"
 	measure "github.com/ipfs/go-ds-measure"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/multiformats/go-multicodec"
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/lotus/node/config"
-
-	"github.com/filecoin-project/go-statemachine/fsm"
 
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/dagstore/index"
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/dagstore/shard"
-
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/providerstates"
 	"github.com/filecoin-project/go-fil-markets/stores"
+	"github.com/filecoin-project/go-statemachine/fsm"
+	provider "github.com/filecoin-project/indexer-reference-provider"
+	stiapi "github.com/filecoin-project/storetheindex/api/v0"
+
+	"github.com/filecoin-project/lotus/node/config"
 )
 
 const (
@@ -46,6 +48,7 @@ type Wrapper struct {
 	cfg        config.DAGStoreConfig
 	dagst      dagstore.Interface
 	minerAPI   MinerAPI
+	idxprov    provider.Interface
 	failureCh  chan dagstore.ShardResult
 	traceCh    chan dagstore.Trace
 	gcInterval time.Duration
@@ -53,7 +56,7 @@ type Wrapper struct {
 
 var _ stores.DAGStoreWrapper = (*Wrapper)(nil)
 
-func NewDAGStore(cfg config.DAGStoreConfig, minerApi MinerAPI) (*dagstore.DAGStore, *Wrapper, error) {
+func NewDAGStore(cfg config.DAGStoreConfig, minerApi MinerAPI, idxprov provider.Interface) (*dagstore.DAGStore, *Wrapper, error) {
 	// construct the DAG Store.
 	registry := mount.NewRegistry()
 	if err := registry.Register(lotusScheme, mountTemplate(minerApi)); err != nil {
@@ -105,6 +108,7 @@ func NewDAGStore(cfg config.DAGStoreConfig, minerApi MinerAPI) (*dagstore.DAGSto
 		cfg:        cfg,
 		dagst:      dagst,
 		minerAPI:   minerApi,
+		idxprov:    idxprov,
 		failureCh:  failureCh,
 		traceCh:    traceCh,
 		gcInterval: time.Duration(cfg.GCInterval),
@@ -153,7 +157,13 @@ func (w *Wrapper) Start(ctx context.Context) error {
 		go dagstore.RecoverImmediately(w.ctx, dss, w.failureCh, maxRecoverAttempts, w.backgroundWg.Done)
 	}
 
-	return w.dagst.Start(ctx)
+	err := w.dagst.Start(ctx)
+	if err != nil {
+		return xerrors.Errorf("starting DAG store: %w", err)
+	}
+
+	w.idxprov.RegisterCallback(w.idxProvCallback)
+	return nil
 }
 
 func (w *Wrapper) traceLoop() {
@@ -265,6 +275,17 @@ func (w *Wrapper) RegisterShard(ctx context.Context, pieceCid cid.Cid, carPath s
 		return xerrors.Errorf("failed to schedule register shard for piece CID %s: %w", pieceCid, err)
 	}
 	log.Debugf("successfully submitted Register Shard request for piece CID %s with eagerInit=%t", pieceCid, eagerInit)
+
+	// Notify the indexer provider that a new shard has been registered, so
+	// that it can announce the shard to interested indexers
+	metadata := stiapi.Metadata{
+		ProtocolID: multicodec.Code(1),
+		Data:       []byte("TODO"), // root CID?
+	}
+	_, err = w.idxprov.NotifyPut(ctx, pieceCid.Bytes(), metadata)
+	if err != nil {
+		return xerrors.Errorf("notifying indexer provider of new shard %s: %w", carPath, err)
+	}
 
 	return nil
 }
@@ -415,4 +436,35 @@ func (w *Wrapper) Close() error {
 	log.Info("exited dagstore background wrapper goroutines")
 
 	return nil
+}
+
+// idxProvCallback is called by the indexer provider when an indexer requests
+// the index for a particular deal's CAR file
+func (w *Wrapper) idxProvCallback(ctx context.Context, contextID []byte) (provider.MultihashIterator, error) {
+	pieceCid, err := cid.Cast(contextID)
+	if err != nil {
+		return nil, xerrors.Errorf("parsing '%s' to piece CID: %w", contextID, err)
+	}
+
+	key := shard.KeyFromCID(pieceCid)
+	resch := make(chan dagstore.ShardResult, 1)
+	err = w.dagst.AcquireShard(ctx, key, resch, dagstore.AcquireOpts{})
+	if err != nil {
+		return nil, xerrors.Errorf("acquiring shard for piece CID %s: %w", pieceCid, err)
+	}
+
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case res := <-resch:
+		bs, err := res.Accessor.Blockstore()
+		if err != nil {
+			return nil, xerrors.Errorf("getting blockstore from shard result for pieceCID %s: %w", pieceCid, err)
+		}
+
+		// TODO: get multihash iterator from blockstore
+		var it provider.MultihashIterator
+		fmt.Println("not yet implemented", bs)
+		return it, nil
+	}
 }

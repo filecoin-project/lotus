@@ -4,21 +4,22 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/dagstore"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-state-types/abi"
-
+	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/testnodes"
 	tut "github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-state-types/abi"
+	mock_provider "github.com/filecoin-project/indexer-reference-provider/mock"
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/node/config"
-
-	"github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 )
 
 func TestShardRegistration(t *testing.T) {
+	controller := gomock.NewController(t)
 	ps := tut.NewTestPieceStore()
 	sa := testnodes.NewTestSectorAccessor()
 
@@ -94,7 +95,8 @@ func TestShardRegistration(t *testing.T) {
 	cfg.RootDir = t.TempDir()
 
 	mapi := NewMinerAPI(ps, sa, 10)
-	dagst, w, err := NewDAGStore(cfg, mapi)
+	idxprov := mock_provider.NewMockInterface(controller)
+	dagst, w, err := NewDAGStore(cfg, mapi, idxprov)
 	require.NoError(t, err)
 	require.NotNil(t, dagst)
 	require.NotNil(t, w)

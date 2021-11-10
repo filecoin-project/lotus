@@ -10,28 +10,32 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/golang/mock/gomock"
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/lotus/node/config"
 
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/dagstore/shard"
-
-	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/require"
+	mock_provider "github.com/filecoin-project/indexer-reference-provider/mock"
 )
 
 // TestWrapperAcquireRecovery verifies that if acquire shard returns a "not found"
 // error, the wrapper will attempt to register the shard then reacquire
 func TestWrapperAcquireRecovery(t *testing.T) {
 	ctx := context.Background()
+	controller := gomock.NewController(t)
 	pieceCid, err := cid.Parse("bafkqaaa")
 	require.NoError(t, err)
 
 	// Create a DAG store wrapper
+	idxprov := mock_provider.NewMockInterface(controller)
 	dagst, w, err := NewDAGStore(config.DAGStoreConfig{
 		RootDir:    t.TempDir(),
 		GCInterval: config.Duration(1 * time.Millisecond),
-	}, mockLotusMount{})
+	}, mockLotusMount{}, idxprov)
 	require.NoError(t, err)
 
 	defer dagst.Close() //nolint:errcheck
@@ -77,12 +81,14 @@ func TestWrapperAcquireRecovery(t *testing.T) {
 // TestWrapperBackground verifies the behaviour of the background go routine
 func TestWrapperBackground(t *testing.T) {
 	ctx := context.Background()
+	controller := gomock.NewController(t)
 
 	// Create a DAG store wrapper
+	idxprov := mock_provider.NewMockInterface(controller)
 	dagst, w, err := NewDAGStore(config.DAGStoreConfig{
 		RootDir:    t.TempDir(),
 		GCInterval: config.Duration(1 * time.Millisecond),
-	}, mockLotusMount{})
+	}, mockLotusMount{}, idxprov)
 	require.NoError(t, err)
 
 	defer dagst.Close() //nolint:errcheck
