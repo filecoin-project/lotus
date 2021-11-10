@@ -484,6 +484,15 @@ func (trw *tracerWrapper) Trace(evt *pubsub_pb.TraceEvent) {
 		}
 	case pubsub_pb.TraceEvent_REJECT_MESSAGE:
 		stats.Record(context.TODO(), metrics.PubsubRejectMessage.M(1))
+		if trw.traceMessage(evt.GetRejectMessage().GetTopic()) {
+			if trw.lp2pTracer != nil {
+				trw.lp2pTracer.Trace(evt)
+			}
+
+			if trw.lotusTracer != nil {
+				trw.lotusTracer.Trace(evt)
+			}
+		}
 	case pubsub_pb.TraceEvent_DUPLICATE_MESSAGE:
 		stats.Record(context.TODO(), metrics.PubsubDuplicateMessage.M(1))
 	case pubsub_pb.TraceEvent_JOIN:
