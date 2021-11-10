@@ -7,6 +7,7 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/lotus/chain/types"
+	textselector "github.com/ipld/go-ipld-selector-text-lite"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -194,4 +195,19 @@ type RetrievalInfo struct {
 
 	TransferChannelID *datatransfer.ChannelID
 	DataTransfer      *DataTransferChannel
+
+	// optional event if part of ClientGetRetrievalUpdates
+	Event *retrievalmarket.ClientEvent
+}
+
+type RestrievalRes struct {
+	DealID retrievalmarket.DealID
+}
+
+type ExportRef struct {
+	Root                  cid.Cid
+	DatamodelPathSelector *textselector.Expression
+
+	FromLocalCAR string // if specified, get data from a local CARv2 file.
+	DealID       retrievalmarket.DealID
 }

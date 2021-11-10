@@ -60,7 +60,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
 
-	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 
@@ -762,79 +761,6 @@ func (a *API) ClientCancelRetrievalDeal(ctx context.Context, dealID rm.DealID) e
 	}
 }
 
-func (a *API) ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error {
-	events := make(chan marketevents.RetrievalEvent)
-	go a.clientRetrieve(ctx, order, ref, events)
-
-	for {
-		select {
-		case evt, ok := <-events:
-			if !ok { // done successfully
-				return nil
-			}
-
-			if evt.Err != "" {
-				return xerrors.Errorf("retrieval failed: %s", evt.Err)
-			}
-		case <-ctx.Done():
-			return xerrors.Errorf("retrieval timed out")
-		}
-	}
-}
-
-func (a *API) ClientRetrieveWithEvents(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) (<-chan marketevents.RetrievalEvent, error) {
-	events := make(chan marketevents.RetrievalEvent)
-	go a.clientRetrieve(ctx, order, ref, events)
-	return events, nil
-}
-
-type retrievalSubscribeEvent struct {
-	event rm.ClientEvent
-	state rm.ClientDealState
-}
-
-func consumeAllEvents(ctx context.Context, dealID rm.DealID, subscribeEvents chan retrievalSubscribeEvent, events chan marketevents.RetrievalEvent) error {
-	for {
-		var subscribeEvent retrievalSubscribeEvent
-		select {
-		case <-ctx.Done():
-			return xerrors.New("Retrieval Timed Out")
-		case subscribeEvent = <-subscribeEvents:
-			if subscribeEvent.state.ID != dealID {
-				// we can't check the deal ID ahead of time because:
-				// 1. We need to subscribe before retrieving.
-				// 2. We won't know the deal ID until after retrieving.
-				continue
-			}
-		}
-
-		select {
-		case <-ctx.Done():
-			return xerrors.New("Retrieval Timed Out")
-		case events <- marketevents.RetrievalEvent{
-			Event:         subscribeEvent.event,
-			Status:        subscribeEvent.state.Status,
-			BytesReceived: subscribeEvent.state.TotalReceived,
-			FundsSpent:    subscribeEvent.state.FundsSpent,
-		}:
-		}
-
-		state := subscribeEvent.state
-		switch state.Status {
-		case rm.DealStatusCompleted:
-			return nil
-		case rm.DealStatusRejected:
-			return xerrors.Errorf("Retrieval Proposal Rejected: %s", state.Message)
-		case rm.DealStatusCancelled:
-			return xerrors.Errorf("Retrieval was cancelled externally: %s", state.Message)
-		case
-			rm.DealStatusDealNotFound,
-			rm.DealStatusErrored:
-			return xerrors.Errorf("Retrieval Error: %s", state.Message)
-		}
-	}
-}
-
 func getRetrievalSelector(dps *textselector.Expression) (datamodel.Node, error) {
 	sel := selectorparse.CommonSelector_ExploreAllRecursively
 	if dps != nil {
@@ -870,7 +796,23 @@ func getRetrievalSelector(dps *textselector.Expression) (datamodel.Node, error) 
 	return sel, nil
 }
 
-func (a *API) doRetrieval(ctx context.Context, order api.RetrievalOrder, sel datamodel.Node, events chan marketevents.RetrievalEvent) (rm.DealID, error) {
+func (a *API) ClientRetrieve(ctx context.Context, params api.RetrievalOrder) (*api.RestrievalRes, error) {
+	sel, err := getRetrievalSelector(params.DatamodelPathSelector)
+	if err != nil {
+		return nil, err
+	}
+
+	di, err := a.doRetrieval(ctx, params, sel)
+	if err != nil {
+		return nil, err
+	}
+
+	return &api.RestrievalRes{
+		DealID: di,
+	}, nil
+}
+
+func (a *API) doRetrieval(ctx context.Context, order api.RetrievalOrder, sel datamodel.Node) (rm.DealID, error) {
 	if order.MinerPeer == nil || order.MinerPeer.ID == "" {
 		mi, err := a.StateMinerInfo(ctx, order.Miner, types.EmptyTSK)
 		if err != nil {
@@ -898,20 +840,6 @@ func (a *API) doRetrieval(ctx context.Context, order api.RetrievalOrder, sel dat
 		return 0, xerrors.Errorf("Error in retrieval params: %s", err)
 	}
 
-	// Subscribe to events before retrieving to avoid losing events.
-	subscribeEvents := make(chan retrievalSubscribeEvent, 1)
-	subscribeCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	unsubscribe := a.Retrieval.SubscribeToEvents(func(event rm.ClientEvent, state rm.ClientDealState) {
-		// We'll check the deal IDs inside consumeAllEvents.
-		if state.PayloadCID.Equals(order.Root) {
-			select {
-			case <-subscribeCtx.Done():
-			case subscribeEvents <- retrievalSubscribeEvent{event, state}:
-			}
-		}
-	})
-
 	id := a.Retrieval.NextID()
 	id, err = a.Retrieval.Retrieve(
 		ctx,
@@ -925,21 +853,58 @@ func (a *API) doRetrieval(ctx context.Context, order api.RetrievalOrder, sel dat
 	)
 
 	if err != nil {
-		unsubscribe()
 		return 0, xerrors.Errorf("Retrieve failed: %w", err)
-	}
-
-	err = consumeAllEvents(ctx, id, subscribeEvents, events)
-
-	unsubscribe()
-	if err != nil {
-		return 0, xerrors.Errorf("Retrieve: %w", err)
 	}
 
 	return id, nil
 }
 
-func (a *API) outputCAR(ctx context.Context, order api.RetrievalOrder, sel datamodel.Node, bs bstore.Blockstore, ref *api.FileRef) error {
+func (a *API) ClientExport(ctx context.Context, exportRef api.ExportRef, ref api.FileRef) error {
+	proxyBss, retrieveIntoIPFS := a.RtvlBlockstoreAccessor.(*retrievaladapter.ProxyBlockstoreAccessor)
+	carBss, retrieveIntoCAR := a.RtvlBlockstoreAccessor.(*retrievaladapter.CARBlockstoreAccessor)
+	carPath := exportRef.FromLocalCAR
+
+	sel, err := getRetrievalSelector(exportRef.DatamodelPathSelector)
+	if err != nil {
+		return err
+	}
+
+	if carPath == "" {
+		if !retrieveIntoIPFS && !retrieveIntoCAR {
+			return xerrors.Errorf("unsupported retrieval blockstore accessor")
+		}
+
+		if retrieveIntoCAR {
+			carPath = carBss.PathFor(exportRef.DealID)
+		}
+	}
+
+	var retrievalBs bstore.Blockstore
+	if retrieveIntoIPFS {
+		retrievalBs = proxyBss.Blockstore
+	} else {
+		cbs, err := stores.ReadOnlyFilestore(carPath)
+		if err != nil {
+			return err
+		}
+		defer cbs.Close() //nolint:errcheck
+		retrievalBs = cbs
+	}
+
+	// Are we outputting a CAR?
+	if ref.IsCAR {
+		// not IPFS and we do full selection - just extract the CARv1 from the CARv2 we stored the retrieval in
+		if !retrieveIntoIPFS && exportRef.DatamodelPathSelector == nil {
+			return carv2.ExtractV1File(carPath, ref.Path)
+		}
+
+		return a.outputCAR(ctx, exportRef.Root, sel, retrievalBs, ref)
+	}
+
+	return a.outputUnixFS(ctx, exportRef.Root, exportRef.DatamodelPathSelector != nil, sel, retrievalBs, ref)
+}
+
+func (a *API) outputCAR(ctx context.Context, root cid.Cid, sel datamodel.Node, bs bstore.Blockstore, ref api.FileRef) error {
 	// generating a CARv1 from the configured blockstore
 	f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -950,7 +915,7 @@ func (a *API) outputCAR(ctx context.Context, order api.RetrievalOrder, sel datam
 		ctx,
 		bs,
 		[]car.Dag{{
-			Root:     order.Root,
+			Root:     root,
 			Selector: sel,
 		}},
 		car.MaxTraversalLinks(config.MaxTraversalLinks),
@@ -962,12 +927,11 @@ func (a *API) outputCAR(ctx context.Context, order api.RetrievalOrder, sel datam
 	return f.Close()
 }
 
-func (a *API) outputUnixFS(ctx context.Context, order api.RetrievalOrder, sel datamodel.Node, bs bstore.Blockstore, ref *api.FileRef) error {
+func (a *API) outputUnixFS(ctx context.Context, root cid.Cid, findSubroot bool, sel datamodel.Node, bs bstore.Blockstore, ref api.FileRef) error {
 	ds := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
-	root := order.Root
 
 	// if we used a selector - need to find the sub-root the user actually wanted to retrieve
-	if order.DatamodelPathSelector != nil {
+	if findSubroot {
 		var subRootFound bool
 
 		if err := utils.TraverseDag(
@@ -1001,7 +965,7 @@ func (a *API) outputUnixFS(ctx context.Context, order api.RetrievalOrder, sel da
 		}
 
 		if !subRootFound {
-			return xerrors.Errorf("path selection '%s' does not match a node within %s", *order.DatamodelPathSelector, root)
+			return xerrors.Errorf("path selection does not match a node within %s", root)
 		}
 	}
 
@@ -1015,90 +979,6 @@ func (a *API) outputUnixFS(ctx context.Context, order api.RetrievalOrder, sel da
 	}
 
 	return files.WriteTo(file, ref.Path)
-}
-
-func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef, events chan marketevents.RetrievalEvent) {
-	defer close(events)
-
-	finish := func(e error) {
-		if e != nil {
-			events <- marketevents.RetrievalEvent{Err: e.Error(), FundsSpent: big.Zero()}
-		}
-	}
-
-	sel, err := getRetrievalSelector(order.DatamodelPathSelector)
-	if err != nil {
-		finish(err)
-		return
-	}
-
-	// summary:
-	// 1. if we're retrieving from an import, FromLocalCAR will be set.
-	//    Skip the retrieval itself, and use the provided car as a blockstore further down
-	//    to extract a CAR or UnixFS export from.
-	// 2. if we're using an IPFS blockstore for retrieval, retrieve into it,
-	//    then use the virtual blockstore to extract a CAR or UnixFS export from it.
-	// 3. if we have to retrieve, perform a CARv2 retrieval, then either
-	//    extract the CARv1 (with ExtractV1File) or use it as a blockstore further down.
-
-	// this indicates we're proxying to IPFS.
-	proxyBss, retrieveIntoIPFS := a.RtvlBlockstoreAccessor.(*retrievaladapter.ProxyBlockstoreAccessor)
-	carBss, retrieveIntoCAR := a.RtvlBlockstoreAccessor.(*retrievaladapter.CARBlockstoreAccessor)
-	carPath := order.FromLocalCAR
-
-	// we actually need to retrieve from the network
-	if carPath == "" {
-		if !retrieveIntoIPFS && !retrieveIntoCAR {
-			// we don't recognize the blockstore accessor.
-			finish(xerrors.Errorf("unsupported retrieval blockstore accessor"))
-			return
-		}
-
-		id, err := a.doRetrieval(ctx, order, sel, events)
-		if err != nil {
-			finish(err)
-			return
-		}
-
-		if retrieveIntoCAR {
-			carPath = carBss.PathFor(id)
-		}
-	}
-
-	if ref == nil {
-		// If ref is nil, it only fetches the data into the configured blockstore
-		// (if fetching from network).
-		finish(nil)
-		return
-	}
-
-	// determine where did the retrieval go
-	var retrievalBs bstore.Blockstore
-	if retrieveIntoIPFS {
-		retrievalBs = proxyBss.Blockstore
-	} else {
-		cbs, err := stores.ReadOnlyFilestore(carPath)
-		if err != nil {
-			finish(err)
-			return
-		}
-		defer cbs.Close() //nolint:errcheck
-		retrievalBs = cbs
-	}
-
-	// Are we outputting a CAR?
-	if ref.IsCAR {
-		// not IPFS and we do full selection - just extract the CARv1 from the CARv2 we stored the retrieval in
-		if !retrieveIntoIPFS && order.DatamodelPathSelector == nil {
-			finish(carv2.ExtractV1File(carPath, ref.Path))
-			return
-		}
-
-		finish(a.outputCAR(ctx, order, sel, retrievalBs, ref))
-		return
-	}
-
-	finish(a.outputUnixFS(ctx, order, sel, retrievalBs, ref))
 }
 
 func (a *API) ClientListRetrievals(ctx context.Context) ([]api.RetrievalInfo, error) {

@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
+	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/lotus/api"
@@ -325,10 +326,10 @@ type FullNode interface {
 	// ClientMinerQueryOffer returns a QueryOffer for the specific miner and file.
 	ClientMinerQueryOffer(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (api.QueryOffer, error) //perm:read
 	// ClientRetrieve initiates the retrieval of a file, as specified in the order.
-	ClientRetrieve(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) error //perm:admin
+	ClientRetrieve(ctx context.Context, order RetrievalOrder, ref *api.FileRef) error //perm:admin
 	// ClientRetrieveWithEvents initiates the retrieval of a file, as specified in the order, and provides a channel
 	// of status updates.
-	ClientRetrieveWithEvents(ctx context.Context, order api.RetrievalOrder, ref *api.FileRef) (<-chan marketevents.RetrievalEvent, error) //perm:admin
+	ClientRetrieveWithEvents(ctx context.Context, order RetrievalOrder, ref *api.FileRef) (<-chan marketevents.RetrievalEvent, error) //perm:admin
 	// ClientQueryAsk returns a signed StorageAsk from the specified miner.
 	// ClientListRetrievals returns information about retrievals made by the local client
 	ClientListRetrievals(ctx context.Context) ([]api.RetrievalInfo, error) //perm:write
@@ -713,4 +714,22 @@ type FullNode interface {
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
 	// the path specified when calling CreateBackup is within the base path
 	CreateBackup(ctx context.Context, fpath string) error //perm:admin
+}
+
+type RetrievalOrder struct {
+	// TODO: make this less unixfs specific
+	Root                  cid.Cid
+	Piece                 *cid.Cid
+	DatamodelPathSelector *textselector.Expression
+	Size                  uint64
+
+	FromLocalCAR string // if specified, get data from a local CARv2 file.
+	// TODO: support offset
+	Total                   types.BigInt
+	UnsealPrice             types.BigInt
+	PaymentInterval         uint64
+	PaymentIntervalIncrease uint64
+	Client                  address.Address
+	Miner                   address.Address
+	MinerPeer               *retrievalmarket.RetrievalPeer
 }

@@ -28,7 +28,6 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	"github.com/filecoin-project/lotus/journal/alerting"
-	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -162,6 +161,8 @@ type FullNodeStruct struct {
 
 		ClientDealSize func(p0 context.Context, p1 cid.Cid) (DataSize, error) `perm:"read"`
 
+		ClientExport func(p0 context.Context, p1 ExportRef, p2 FileRef) error `perm:"admin"`
+
 		ClientFindData func(p0 context.Context, p1 cid.Cid, p2 *cid.Cid) ([]QueryOffer, error) `perm:"read"`
 
 		ClientGenCar func(p0 context.Context, p1 FileRef, p2 string) error `perm:"write"`
@@ -194,11 +195,9 @@ type FullNodeStruct struct {
 
 		ClientRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
-		ClientRetrieve func(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) error `perm:"admin"`
+		ClientRetrieve func(p0 context.Context, p1 RetrievalOrder) (*RestrievalRes, error) `perm:"admin"`
 
 		ClientRetrieveTryRestartInsufficientFunds func(p0 context.Context, p1 address.Address) error `perm:"write"`
-
-		ClientRetrieveWithEvents func(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) (<-chan marketevents.RetrievalEvent, error) `perm:"admin"`
 
 		ClientStartDeal func(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) `perm:"admin"`
 
@@ -1357,6 +1356,17 @@ func (s *FullNodeStub) ClientDealSize(p0 context.Context, p1 cid.Cid) (DataSize,
 	return *new(DataSize), ErrNotSupported
 }
 
+func (s *FullNodeStruct) ClientExport(p0 context.Context, p1 ExportRef, p2 FileRef) error {
+	if s.Internal.ClientExport == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.ClientExport(p0, p1, p2)
+}
+
+func (s *FullNodeStub) ClientExport(p0 context.Context, p1 ExportRef, p2 FileRef) error {
+	return ErrNotSupported
+}
+
 func (s *FullNodeStruct) ClientFindData(p0 context.Context, p1 cid.Cid, p2 *cid.Cid) ([]QueryOffer, error) {
 	if s.Internal.ClientFindData == nil {
 		return *new([]QueryOffer), ErrNotSupported
@@ -1533,15 +1543,15 @@ func (s *FullNodeStub) ClientRestartDataTransfer(p0 context.Context, p1 datatran
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientRetrieve(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) error {
+func (s *FullNodeStruct) ClientRetrieve(p0 context.Context, p1 RetrievalOrder) (*RestrievalRes, error) {
 	if s.Internal.ClientRetrieve == nil {
-		return ErrNotSupported
+		return nil, ErrNotSupported
 	}
-	return s.Internal.ClientRetrieve(p0, p1, p2)
+	return s.Internal.ClientRetrieve(p0, p1)
 }
 
-func (s *FullNodeStub) ClientRetrieve(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) error {
-	return ErrNotSupported
+func (s *FullNodeStub) ClientRetrieve(p0 context.Context, p1 RetrievalOrder) (*RestrievalRes, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) error {
@@ -1553,17 +1563,6 @@ func (s *FullNodeStruct) ClientRetrieveTryRestartInsufficientFunds(p0 context.Co
 
 func (s *FullNodeStub) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) error {
 	return ErrNotSupported
-}
-
-func (s *FullNodeStruct) ClientRetrieveWithEvents(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) (<-chan marketevents.RetrievalEvent, error) {
-	if s.Internal.ClientRetrieveWithEvents == nil {
-		return nil, ErrNotSupported
-	}
-	return s.Internal.ClientRetrieveWithEvents(p0, p1, p2)
-}
-
-func (s *FullNodeStub) ClientRetrieveWithEvents(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) (<-chan marketevents.RetrievalEvent, error) {
-	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientStartDeal(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) {

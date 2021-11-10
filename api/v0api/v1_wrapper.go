@@ -3,7 +3,10 @@ package v0api
 import (
 	"context"
 
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -192,6 +195,137 @@ func (w *WrapperV1Full) ChainGetRandomnessFromTickets(ctx context.Context, tsk t
 
 func (w *WrapperV1Full) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
 	return w.StateGetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, tsk)
+}
+
+func (w *WrapperV1Full) ClientRetrieve(ctx context.Context, order RetrievalOrder, ref *api.FileRef) error {
+	events := make(chan marketevents.RetrievalEvent)
+	go w.clientRetrieve(ctx, order, ref, events)
+
+	for {
+		select {
+		case evt, ok := <-events:
+			if !ok { // done successfully
+				return nil
+			}
+
+			if evt.Err != "" {
+				return xerrors.Errorf("retrieval failed: %s", evt.Err)
+			}
+		case <-ctx.Done():
+			return xerrors.Errorf("retrieval timed out")
+		}
+	}
+}
+
+func (w *WrapperV1Full) ClientRetrieveWithEvents(ctx context.Context, order RetrievalOrder, ref *api.FileRef) (<-chan marketevents.RetrievalEvent, error) {
+	events := make(chan marketevents.RetrievalEvent)
+	go w.clientRetrieve(ctx, order, ref, events)
+	return events, nil
+}
+
+func readSubscribeEvents(ctx context.Context, dealID retrievalmarket.DealID, subscribeEvents <-chan api.RetrievalInfo, events chan marketevents.RetrievalEvent) error {
+	for {
+		var subscribeEvent api.RetrievalInfo
+		var evt retrievalmarket.ClientEvent
+		select {
+		case <-ctx.Done():
+			return xerrors.New("Retrieval Timed Out")
+		case subscribeEvent = <-subscribeEvents:
+			if subscribeEvent.ID != dealID {
+				// we can't check the deal ID ahead of time because:
+				// 1. We need to subscribe before retrieving.
+				// 2. We won't know the deal ID until after retrieving.
+				continue
+			}
+			if subscribeEvent.Event != nil {
+				evt = *subscribeEvent.Event
+			}
+		}
+
+		select {
+		case <-ctx.Done():
+			return xerrors.New("Retrieval Timed Out")
+		case events <- marketevents.RetrievalEvent{
+			Event:         evt,
+			Status:        subscribeEvent.Status,
+			BytesReceived: subscribeEvent.BytesReceived,
+			FundsSpent:    subscribeEvent.TotalPaid,
+		}:
+		}
+
+		switch subscribeEvent.Status {
+		case retrievalmarket.DealStatusCompleted:
+			return nil
+		case retrievalmarket.DealStatusRejected:
+			return xerrors.Errorf("Retrieval Proposal Rejected: %s", subscribeEvent.Message)
+		case
+			retrievalmarket.DealStatusDealNotFound,
+			retrievalmarket.DealStatusErrored:
+			return xerrors.Errorf("Retrieval Error: %s", subscribeEvent.Message)
+		}
+	}
+}
+
+func (w *WrapperV1Full) clientRetrieve(ctx context.Context, order RetrievalOrder, ref *api.FileRef, events chan marketevents.RetrievalEvent) {
+	defer close(events)
+
+	finish := func(e error) {
+		if e != nil {
+			events <- marketevents.RetrievalEvent{Err: e.Error(), FundsSpent: big.Zero()}
+		}
+	}
+
+	var dealID retrievalmarket.DealID
+	if order.FromLocalCAR == "" {
+		// Subscribe to events before retrieving to avoid losing events.
+		subscribeCtx, cancel := context.WithCancel(ctx)
+		defer cancel()
+		retrievalEvents, err := w.ClientGetRetrievalUpdates(subscribeCtx)
+
+		if err != nil {
+			finish(xerrors.Errorf("GetRetrievalUpdates failed: %w", err))
+			return
+		}
+
+		retrievalRes, err := w.FullNode.ClientRetrieve(ctx, api.RetrievalOrder{
+			Root:                    order.Root,
+			Piece:                   order.Piece,
+			Size:                    order.Size,
+			Total:                   order.Total,
+			UnsealPrice:             order.UnsealPrice,
+			PaymentInterval:         order.PaymentInterval,
+			PaymentIntervalIncrease: order.PaymentIntervalIncrease,
+			Client:                  order.Client,
+			Miner:                   order.Miner,
+			MinerPeer:               order.MinerPeer,
+		})
+
+		if err != nil {
+			finish(xerrors.Errorf("Retrieve failed: %w", err))
+			return
+		}
+
+		dealID = retrievalRes.DealID
+
+		err = readSubscribeEvents(ctx, retrievalRes.DealID, retrievalEvents, events)
+		if err != nil {
+			finish(xerrors.Errorf("Retrieve: %w", err))
+			return
+		}
+	}
+
+	// If ref is nil, it only fetches the data into the configured blockstore.
+	if ref == nil {
+		finish(nil)
+		return
+	}
+
+	finish(w.ClientExport(ctx, api.ExportRef{
+		Root:                  order.Root,
+		DatamodelPathSelector: order.DatamodelPathSelector,
+		FromLocalCAR:          order.FromLocalCAR,
+		DealID:                dealID,
+	}, *ref))
 }
 
 var _ FullNode = &WrapperV1Full{}

@@ -28,7 +28,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
-	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 )
@@ -352,10 +351,9 @@ type FullNode interface {
 	// ClientMinerQueryOffer returns a QueryOffer for the specific miner and file.
 	ClientMinerQueryOffer(ctx context.Context, miner address.Address, root cid.Cid, piece *cid.Cid) (QueryOffer, error) //perm:read
 	// ClientRetrieve initiates the retrieval of a file, as specified in the order.
-	ClientRetrieve(ctx context.Context, order RetrievalOrder, ref *FileRef) error //perm:admin
-	// ClientRetrieveWithEvents initiates the retrieval of a file, as specified in the order, and provides a channel
-	// of status updates.
-	ClientRetrieveWithEvents(ctx context.Context, order RetrievalOrder, ref *FileRef) (<-chan marketevents.RetrievalEvent, error) //perm:admin
+	ClientRetrieve(ctx context.Context, params RetrievalOrder) (*RestrievalRes, error) //perm:admin
+	// ClientExport exports a file stored in the local filestore to a system file
+	ClientExport(ctx context.Context, exportRef ExportRef, fileRef FileRef) error //perm:admin
 	// ClientListRetrievals returns information about retrievals made by the local client
 	ClientListRetrievals(ctx context.Context) ([]RetrievalInfo, error) //perm:write
 	// ClientGetRetrievalUpdates returns status of updated retrieval deals
@@ -940,8 +938,6 @@ type RetrievalOrder struct {
 	DatamodelPathSelector *textselector.Expression
 	Size                  uint64
 
-	FromLocalCAR string // if specified, get data from a local CARv2 file.
-	// TODO: support offset
 	Total                   types.BigInt
 	UnsealPrice             types.BigInt
 	PaymentInterval         uint64
