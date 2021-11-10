@@ -951,7 +951,7 @@ func (a *API) ClientExport(ctx context.Context, exportRef api.ExportRef, ref api
 		return a.outputCAR(ctx, exportRef.Root, sel, retrievalBs, ref)
 	}
 
-	return a.outputUnixFS(ctx, exportRef.Root, exportRef.DatamodelPathSelector != nil, sel, retrievalBs, ref)
+	return a.outputUnixFS(ctx, exportRef.Root, exportRef.DatamodelPathSelector, retrievalBs, ref)
 }
 
 func (a *API) outputCAR(ctx context.Context, root cid.Cid, sel datamodel.Node, bs bstore.Blockstore, ref api.FileRef) error {
@@ -977,12 +977,24 @@ func (a *API) outputCAR(ctx context.Context, root cid.Cid, sel datamodel.Node, b
 	return f.Close()
 }
 
-func (a *API) outputUnixFS(ctx context.Context, root cid.Cid, findSubroot bool, sel datamodel.Node, bs bstore.Blockstore, ref api.FileRef) error {
+func (a *API) outputUnixFS(ctx context.Context, root cid.Cid, sels *textselector.Expression, bs bstore.Blockstore, ref api.FileRef) error {
 	ds := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
 
 	// if we used a selector - need to find the sub-root the user actually wanted to retrieve
-	if findSubroot {
+	if sels != nil {
 		var subRootFound bool
+		sel := selectorparse.CommonSelector_ExploreAllRecursively
+
+		if strings.HasPrefix(string(*sels), "{") {
+			var err error
+			sel, err = selectorparse.ParseJSONSelector(string(*sels))
+			if err != nil {
+				return xerrors.Errorf("failed to parse json-selector '%s': %w", *sels, err)
+			}
+		} else {
+			selspec, _ := textselector.SelectorSpecFromPath(*sels, nil) //nolint:errcheck
+			sel = selspec.Node()
+		}
 
 		if err := utils.TraverseDag(
 			ctx,
