@@ -15,6 +15,7 @@ import (
 	levelds "github.com/ipfs/go-ds-leveldb"
 	measure "github.com/ipfs/go-ds-measure"
 	logging "github.com/ipfs/go-log/v2"
+	carindex "github.com/ipld/go-car/v2/index"
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 	"golang.org/x/xerrors"
 
@@ -402,7 +403,7 @@ func (w *Wrapper) markRegistrationComplete() error {
 // Get all the pieces that contain a block
 func (w *Wrapper) GetPiecesContainingBlock(blockCID cid.Cid) ([]cid.Cid, error) {
 	// Pieces are stored as "shards" in the DAG store
-	shardKeys, err := w.dagst.GetShardKeysForCid(blockCID)
+	shardKeys, err := w.dagst.ShardsContainingMultihash(blockCID.Hash())
 	if err != nil {
 		return nil, xerrors.Errorf("getting pieces containing block %s: %w", blockCID, err)
 	}
@@ -420,6 +421,10 @@ func (w *Wrapper) GetPiecesContainingBlock(blockCID cid.Cid) ([]cid.Cid, error) 
 	}
 
 	return pieceCids, nil
+}
+
+func (w *Wrapper) GetIterableIndexForPiece(pieceCid cid.Cid) (carindex.IterableIndex, error) {
+	return w.dagst.GetIterableIndex(shard.KeyFromCID(pieceCid))
 }
 
 func (w *Wrapper) Close() error {

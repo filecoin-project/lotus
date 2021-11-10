@@ -176,6 +176,15 @@ func DefaultStorageMiner() *StorageMiner {
 			},
 		},
 
+		IndexerProvider: IndexerProviderConfig{
+			ListenAddresses: []string{
+				"/ip4/0.0.0.0/tcp/0",
+				"/ip6/::/tcp/0",
+			},
+
+			MaxSimultaneousTransfers: DefaultSimultaneousTransfers,
+		},
+
 		Subsystems: MinerSubsystemConfig{
 			EnableMining:        true,
 			EnableSealing:       true,
