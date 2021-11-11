@@ -934,7 +934,7 @@ type MarketDeal struct {
 
 type RetrievalOrder struct {
 	// TODO: make this less unixfs specific
-	Root                  cid.Cid
+	Root         cid.Cid
 	Piece        *cid.Cid
 	DataSelector *Selector
 	Size         uint64

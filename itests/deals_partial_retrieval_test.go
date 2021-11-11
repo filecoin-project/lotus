@@ -31,7 +31,7 @@ var (
 	carCommp, _             = cid.Parse("baga6ea4seaqmrivgzei3fmx5qxtppwankmtou6zvigyjaveu3z2zzwhysgzuina")
 	carPieceSize            = abi.PaddedPieceSize(2097152)
 	textSelector            = api.Selector("8/1/8/1/0/1/0")
-	storPowCid, _              = cid.Parse("bafkqaetgnfwc6mjpon2g64tbm5sxa33xmvza")
+	storPowCid, _           = cid.Parse("bafkqaetgnfwc6mjpon2g64tbm5sxa33xmvza")
 	textSelectorNonLink     = api.Selector("8/1/8/1/0/1")
 	textSelectorNonexistent = api.Selector("42")
 	expectedResult          = "fil/1/storagepower"
@@ -140,9 +140,9 @@ func TestPartialRetrieval(t *testing.T) {
 				DataSelector: &textSelectorNonexistent,
 			},
 			api.ExportRef{
-				Root:                  carRoot,
-				FromLocalCAR:          sourceCar,
-				DAGs: []api.DagSpec{{DataSelector: &textSelectorNonexistent}},
+				Root:         carRoot,
+				FromLocalCAR: sourceCar,
+				DAGs:         []api.DagSpec{{DataSelector: &textSelectorNonexistent}},
 			},
 			&api.FileRef{},
 			storPowCid,
@@ -162,9 +162,9 @@ func TestPartialRetrieval(t *testing.T) {
 				DataSelector: &textSelectorNonLink,
 			},
 			api.ExportRef{
-				Root:                  carRoot,
-				FromLocalCAR:          sourceCar,
-				DAGs: []api.DagSpec{{DataSelector: &textSelectorNonLink}},
+				Root:         carRoot,
+				FromLocalCAR: sourceCar,
+				DAGs:         []api.DagSpec{{DataSelector: &textSelectorNonLink}},
 			},
 			&api.FileRef{},
 			storPowCid,

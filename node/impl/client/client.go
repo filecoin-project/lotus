@@ -989,7 +989,7 @@ func (a *API) outputCAR(ctx context.Context, dags []dagSpec, bs bstore.Blockstor
 }
 
 type dagSpec struct {
-	root cid.Cid
+	root     cid.Cid
 	selector ipld.Node
 }
 

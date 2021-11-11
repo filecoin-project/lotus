@@ -321,9 +321,9 @@ func (w *WrapperV1Full) clientRetrieve(ctx context.Context, order RetrievalOrder
 	}
 
 	eref := api.ExportRef{
-		Root:                  order.Root,
-		FromLocalCAR:          order.FromLocalCAR,
-		DealID:                dealID,
+		Root:         order.Root,
+		FromLocalCAR: order.FromLocalCAR,
+		DealID:       dealID,
 	}
 
 	if order.DatamodelPathSelector != nil {

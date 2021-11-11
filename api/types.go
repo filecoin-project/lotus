@@ -222,7 +222,7 @@ type DagSpec struct {
 }
 
 type ExportRef struct {
-	Root                  cid.Cid
+	Root cid.Cid
 
 	// DAGs array specifies a list of DAGs to export
 	// - If exporting into a car file, defines car roots
