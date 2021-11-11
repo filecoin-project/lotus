@@ -110,8 +110,6 @@ MAINTAINER Lotus Development Team
 
 COPY --from=builder /opt/filecoin/lotus-gateway /usr/local/bin/
 
-ENV FULLNODE_API_INFO /ip4/127.0.0.1/tcp/1234/http
-
 USER fc
 
 EXPOSE 1234
@@ -129,9 +127,7 @@ COPY --from=builder /opt/filecoin/lotus-miner /usr/local/bin/
 COPY scripts/docker-lotus-miner-entrypoint.sh /
 
 ENV FILECOIN_PARAMETER_CACHE /var/tmp/filecoin-proof-parameters
-ENV FULLNODE_API_INFO /ip4/127.0.0.1/tcp/1234/http
 ENV LOTUS_MINER_PATH /var/lib/lotus-miner
-ENV DOCKER_LOTUS_MINER_INIT true
 
 RUN mkdir /var/lib/lotus-miner /var/tmp/filecoin-proof-parameters
 RUN chown fc: /var/lib/lotus-miner /var/tmp/filecoin-proof-parameters
@@ -155,7 +151,6 @@ MAINTAINER Lotus Development Team
 COPY --from=builder /opt/filecoin/lotus-worker /usr/local/bin/
 
 ENV FILECOIN_PARAMETER_CACHE /var/tmp/filecoin-proof-parameters
-ENV MINER_API_INFO /ip4/127.0.0.1/tcp/2345/http
 ENV LOTUS_WORKER_PATH /var/lib/lotus-worker
 
 RUN mkdir /var/lib/lotus-worker
@@ -176,14 +171,11 @@ CMD ["-help"]
 from base as lotus-all-in-one
 
 ENV FILECOIN_PARAMETER_CACHE /var/tmp/filecoin-proof-parameters
-ENV FULLNODE_API_INFO /ip4/127.0.0.1/tcp/1234/http
 ENV LOTUS_MINER_PATH /var/lib/lotus-miner
 ENV LOTUS_PATH /var/lib/lotus
 ENV LOTUS_WORKER_PATH /var/lib/lotus-worker
-ENV MINER_API_INFO /ip4/127.0.0.1/tcp/2345/http
 ENV WALLET_PATH /var/lib/lotus-wallet
 ENV DOCKER_LOTUS_IMPORT_SNAPSHOT https://fil-chain-snapshots-fallback.s3.amazonaws.com/mainnet/minimal_finality_stateroots_latest.car
-ENV DOCKER_LOTUS_MINER_INIT true
 
 COPY --from=builder /opt/filecoin/lotus      /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-shed /usr/local/bin/

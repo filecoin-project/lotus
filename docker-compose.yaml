@@ -103,6 +103,7 @@ services:
   #     - FULLNODE_API_INFO=/dns/lotus/tcp/1234/http
   #     - LOTUS_JAEGER_AGENT_HOST=jaeger
   #     - LOTUS_JAEGER_AGENT_PORT=6831
+  #     - DOCKER_LOTUS_MINER_INIT=true
   #   deploy:
   #     restart_policy:
   #       condition: on-failure
