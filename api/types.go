@@ -5,12 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/lotus/chain/types"
-	textselector "github.com/ipld/go-ipld-selector-text-lite"
-
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
 
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -204,9 +202,35 @@ type RestrievalRes struct {
 	DealID retrievalmarket.DealID
 }
 
+// Selector specifies ipld selector string
+// - if the string starts with '{', it's interpreted as json selector string
+//   see https://ipld.io/specs/selectors/ and https://ipld.io/specs/selectors/fixtures/selector-fixtures-1/
+// - otherwise the string is interpreted as ipld-selector-text-lite (simple ipld path)
+//   see https://github.com/ipld/go-ipld-selector-text-lite
+type Selector string
+
+type DagSpec struct {
+	// RootSelector specifies root node
+	// - when using textselector, the path specifies the root node
+	// - if nil then RootSelector is inferred from DataSelector
+	// - must match a single node
+	RootSelector *Selector
+
+	// DataSelector matches data to be retrieved
+	// - when using textselector, the path specifies subtree
+	DataSelector *Selector
+}
+
 type ExportRef struct {
 	Root                  cid.Cid
-	DatamodelPathSelector *textselector.Expression
+
+	// DAGs array specifies a list of DAGs to export
+	// - If exporting into a car file, defines car roots
+	// - If exporting into unixfs files, only one DAG is supported, DataSelector is ignored
+	// - When not specified defaults to a single DAG:
+	//   - Root - the root node: `{".": {}}`
+	//   - Data - the entire DAG: `{"R":{"l":{"none":{}},":>":{"a":{">":{"@":{}}}}}}`
+	DAGs []DagSpec
 
 	FromLocalCAR string // if specified, get data from a local CARv2 file.
 	DealID       retrievalmarket.DealID

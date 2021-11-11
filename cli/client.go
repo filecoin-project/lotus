@@ -26,7 +26,6 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
-	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multibase"
 	"github.com/urfave/cli/v2"
@@ -1202,10 +1201,16 @@ var clientRetrieveCmd = &cli.Command{
 						continue
 					}
 				}
+
+				event := "New"
+				if evt.Event != nil {
+					event = retrievalmarket.ClientEvents[*evt.Event]
+				}
+
 				afmt.Printf("> Recv: %s, Paid %s, %s (%s)\n",
 					types.SizeStr(types.NewInt(evt.BytesReceived)),
 					types.FIL(evt.TotalPaid),
-					retrievalmarket.ClientEvents[*evt.Event],
+					event,
 					retrievalmarket.DealStatuses[evt.Status],
 				)
 				switch evt.Status {
@@ -1226,8 +1231,8 @@ var clientRetrieveCmd = &cli.Command{
 			}
 		}
 
-		if sel := textselector.Expression(cctx.String("datamodel-path-selector")); sel != "" {
-			eref.DatamodelPathSelector = &sel
+		if sel := api.Selector(cctx.String("datamodel-path-selector")); sel != "" {
+			eref.DAGs = append(eref.DAGs, api.DagSpec{DataSelector: &sel})
 		}
 
 		err = fapi.ClientExport(ctx, *eref, lapi.FileRef{

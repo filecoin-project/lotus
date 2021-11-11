@@ -320,12 +320,20 @@ func (w *WrapperV1Full) clientRetrieve(ctx context.Context, order RetrievalOrder
 		return
 	}
 
-	finish(w.ClientExport(ctx, api.ExportRef{
+	eref := api.ExportRef{
 		Root:                  order.Root,
-		DatamodelPathSelector: order.DatamodelPathSelector,
 		FromLocalCAR:          order.FromLocalCAR,
 		DealID:                dealID,
-	}, *ref))
+	}
+
+	if order.DatamodelPathSelector != nil {
+		s := api.Selector(*order.DatamodelPathSelector)
+		eref.DAGs = append(eref.DAGs, api.DagSpec{
+			DataSelector: &s,
+		})
+	}
+
+	finish(w.ClientExport(ctx, eref, *ref))
 }
 
 var _ FullNode = &WrapperV1Full{}

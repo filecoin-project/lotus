@@ -12,6 +12,7 @@ import (
 	"time"
 
 	bstore "github.com/ipfs/go-ipfs-blockstore"
+	format "github.com/ipfs/go-ipld-format"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"github.com/ipld/go-car"
 	carv2 "github.com/ipld/go-car/v2"
@@ -761,7 +762,7 @@ func (a *API) ClientCancelRetrievalDeal(ctx context.Context, dealID rm.DealID) e
 	}
 }
 
-func getRetrievalSelector(dps *textselector.Expression) (datamodel.Node, error) {
+func getDataSelector(dps *api.Selector) (datamodel.Node, error) {
 	sel := selectorparse.CommonSelector_ExploreAllRecursively
 	if dps != nil {
 
@@ -775,7 +776,7 @@ func getRetrievalSelector(dps *textselector.Expression) (datamodel.Node, error) 
 			ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 
 			selspec, err := textselector.SelectorSpecFromPath(
-				*dps,
+				textselector.Expression(*dps),
 
 				// URGH - this is a direct copy from https://github.com/filecoin-project/go-fil-markets/blob/v1.12.0/shared/selectors.go#L10-L16
 				// Unable to use it because we need the SelectorSpec, and markets exposes just a reified node
@@ -797,7 +798,7 @@ func getRetrievalSelector(dps *textselector.Expression) (datamodel.Node, error) 
 }
 
 func (a *API) ClientRetrieve(ctx context.Context, params api.RetrievalOrder) (*api.RestrievalRes, error) {
-	sel, err := getRetrievalSelector(params.DatamodelPathSelector)
+	sel, err := getDataSelector(params.DataSelector)
 	if err != nil {
 		return nil, err
 	}
@@ -914,11 +915,6 @@ func (a *API) ClientExport(ctx context.Context, exportRef api.ExportRef, ref api
 	carBss, retrieveIntoCAR := a.RtvlBlockstoreAccessor.(*retrievaladapter.CARBlockstoreAccessor)
 	carPath := exportRef.FromLocalCAR
 
-	sel, err := getRetrievalSelector(exportRef.DatamodelPathSelector)
-	if err != nil {
-		return err
-	}
-
 	if carPath == "" {
 		if !retrieveIntoIPFS && !retrieveIntoCAR {
 			return xerrors.Errorf("unsupported retrieval blockstore accessor")
@@ -941,33 +937,48 @@ func (a *API) ClientExport(ctx context.Context, exportRef api.ExportRef, ref api
 		retrievalBs = cbs
 	}
 
+	dserv := merkledag.NewDAGService(blockservice.New(retrievalBs, offline.Exchange(retrievalBs)))
+	roots, err := parseDagSpec(ctx, exportRef.Root, exportRef.DAGs, dserv)
+	if err != nil {
+		return xerrors.Errorf("parsing dag spec: %w", err)
+	}
+
 	// Are we outputting a CAR?
 	if ref.IsCAR {
 		// not IPFS and we do full selection - just extract the CARv1 from the CARv2 we stored the retrieval in
-		if !retrieveIntoIPFS && exportRef.DatamodelPathSelector == nil {
+		if !retrieveIntoIPFS && len(exportRef.DAGs) == 0 {
 			return carv2.ExtractV1File(carPath, ref.Path)
 		}
 
-		return a.outputCAR(ctx, exportRef.Root, sel, retrievalBs, ref)
+		return a.outputCAR(ctx, roots, retrievalBs, ref)
 	}
 
-	return a.outputUnixFS(ctx, exportRef.Root, exportRef.DatamodelPathSelector, retrievalBs, ref)
+	if len(roots) != 1 {
+		return xerrors.Errorf("unixfs retrieval requires one root node, got %d", len(roots))
+	}
+
+	return a.outputUnixFS(ctx, roots[0].root, dserv, ref)
 }
 
-func (a *API) outputCAR(ctx context.Context, root cid.Cid, sel datamodel.Node, bs bstore.Blockstore, ref api.FileRef) error {
+func (a *API) outputCAR(ctx context.Context, dags []dagSpec, bs bstore.Blockstore, ref api.FileRef) error {
 	// generating a CARv1 from the configured blockstore
 	f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
 
+	carDags := make([]car.Dag, len(dags))
+	for i, dag := range dags {
+		carDags[i] = car.Dag{
+			Root:     dag.root,
+			Selector: dag.selector,
+		}
+	}
+
 	err = car.NewSelectiveCar(
 		ctx,
 		bs,
-		[]car.Dag{{
-			Root:     root,
-			Selector: sel,
-		}},
+		carDags,
 		car.MaxTraversalLinks(config.MaxTraversalLinks),
 	).Write(f)
 	if err != nil {
@@ -977,60 +988,88 @@ func (a *API) outputCAR(ctx context.Context, root cid.Cid, sel datamodel.Node, b
 	return f.Close()
 }
 
-func (a *API) outputUnixFS(ctx context.Context, root cid.Cid, sels *textselector.Expression, bs bstore.Blockstore, ref api.FileRef) error {
-	ds := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
+type dagSpec struct {
+	root cid.Cid
+	selector ipld.Node
+}
 
-	// if we used a selector - need to find the sub-root the user actually wanted to retrieve
-	if sels != nil {
-		var subRootFound bool
-		sel := selectorparse.CommonSelector_ExploreAllRecursively
-
-		if strings.HasPrefix(string(*sels), "{") {
-			var err error
-			sel, err = selectorparse.ParseJSONSelector(string(*sels))
-			if err != nil {
-				return xerrors.Errorf("failed to parse json-selector '%s': %w", *sels, err)
-			}
-		} else {
-			selspec, _ := textselector.SelectorSpecFromPath(*sels, nil) //nolint:errcheck
-			sel = selspec.Node()
-		}
-
-		if err := utils.TraverseDag(
-			ctx,
-			ds,
-			root,
-			sel,
-			func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
-				if r == traversal.VisitReason_SelectionMatch {
-
-					if p.LastBlock.Path.String() != p.Path.String() {
-						return xerrors.Errorf("unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", p.Path.String())
-					}
-
-					if p.LastBlock.Link == nil {
-						return nil
-					}
-
-					cidLnk, castOK := p.LastBlock.Link.(cidlink.Link)
-					if !castOK {
-						return xerrors.Errorf("cidlink cast unexpectedly failed on '%s'", p.LastBlock.Link)
-					}
-
-					root = cidLnk.Cid
-					subRootFound = true
-				}
-				return nil
+func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds format.DAGService) ([]dagSpec, error) {
+	if len(dsp) == 0 {
+		return []dagSpec{
+			{
+				root:     root,
+				selector: nil,
 			},
-		); err != nil {
-			return xerrors.Errorf("error while locating partial retrieval sub-root: %w", err)
+		}, nil
+	}
+
+	out := make([]dagSpec, len(dsp))
+	for i, spec := range dsp {
+		if spec.RootSelector == nil {
+			spec.RootSelector = spec.DataSelector
 		}
 
-		if !subRootFound {
-			return xerrors.Errorf("path selection does not match a node within %s", root)
+		if spec.RootSelector != nil {
+			var rsn ipld.Node
+
+			if strings.HasPrefix(string(*spec.RootSelector), "{") {
+				var err error
+				rsn, err = selectorparse.ParseJSONSelector(string(*spec.RootSelector))
+				if err != nil {
+					return nil, xerrors.Errorf("failed to parse json-selector '%s': %w", *spec.RootSelector, err)
+				}
+			} else {
+				selspec, _ := textselector.SelectorSpecFromPath(textselector.Expression(*spec.RootSelector), nil) //nolint:errcheck
+				rsn = selspec.Node()
+			}
+
+			if err := utils.TraverseDag(
+				ctx,
+				ds,
+				root,
+				rsn,
+				func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
+					if r == traversal.VisitReason_SelectionMatch {
+
+						if p.LastBlock.Path.String() != p.Path.String() {
+							return xerrors.Errorf("unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", p.Path.String())
+						}
+
+						if p.LastBlock.Link == nil {
+							return nil
+						}
+
+						cidLnk, castOK := p.LastBlock.Link.(cidlink.Link)
+						if !castOK {
+							return xerrors.Errorf("cidlink cast unexpectedly failed on '%s'", p.LastBlock.Link)
+						}
+
+						out[i].root = cidLnk.Cid
+					}
+					return nil
+				},
+			); err != nil {
+				return nil, xerrors.Errorf("error while locating partial retrieval sub-root: %w", err)
+			}
+
+			if out[i].root == cid.Undef {
+				return nil, xerrors.Errorf("path selection does not match a node within %s", root)
+			}
+		}
+
+		if spec.DataSelector != nil {
+			var err error
+			out[i].selector, err = getDataSelector(spec.DataSelector)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
+	return out, nil
+}
+
+func (a *API) outputUnixFS(ctx context.Context, root cid.Cid, ds format.DAGService, ref api.FileRef) error {
 	nd, err := ds.Get(ctx, root)
 	if err != nil {
 		return xerrors.Errorf("ClientRetrieve: %w", err)
@@ -1072,8 +1111,10 @@ func (a *API) ClientListRetrievals(ctx context.Context) ([]api.RetrievalInfo, er
 func (a *API) ClientGetRetrievalUpdates(ctx context.Context) (<-chan api.RetrievalInfo, error) {
 	updates := make(chan api.RetrievalInfo)
 
-	unsub := a.Retrieval.SubscribeToEvents(func(_ rm.ClientEvent, deal rm.ClientDealState) {
-		updates <- a.newRetrievalInfo(ctx, deal)
+	unsub := a.Retrieval.SubscribeToEvents(func(evt rm.ClientEvent, deal rm.ClientDealState) {
+		update := a.newRetrievalInfo(ctx, deal)
+		update.Event = &evt
+		updates <- update
 	})
 
 	go func() {
