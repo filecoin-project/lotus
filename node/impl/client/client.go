@@ -910,7 +910,34 @@ func (a *API) ClientRetrieveWait(ctx context.Context, deal rm.DealID) error {
 	}
 }
 
+type ExportDest struct {
+	Writer io.Writer
+	Path   string
+}
+
+func (ed *ExportDest) doWrite(cb func(io.Writer) error) error {
+	if ed.Writer != nil {
+		return cb(ed.Writer)
+	}
+
+	f, err := os.OpenFile(ed.Path, os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+
+	if err := cb(f); err != nil {
+		_ = f.Close()
+		return err
+	}
+
+	return f.Close()
+}
+
 func (a *API) ClientExport(ctx context.Context, exportRef api.ExportRef, ref api.FileRef) error {
+	return a.ClientExportInto(ctx, exportRef, ref.IsCAR, ExportDest{Path: ref.Path})
+}
+
+func (a *API) ClientExportInto(ctx context.Context, exportRef api.ExportRef, car bool, dest ExportDest) error {
 	proxyBss, retrieveIntoIPFS := a.RtvlBlockstoreAccessor.(*retrievaladapter.ProxyBlockstoreAccessor)
 	carBss, retrieveIntoCAR := a.RtvlBlockstoreAccessor.(*retrievaladapter.CARBlockstoreAccessor)
 	carPath := exportRef.FromLocalCAR
@@ -944,29 +971,24 @@ func (a *API) ClientExport(ctx context.Context, exportRef api.ExportRef, ref api
 	}
 
 	// Are we outputting a CAR?
-	if ref.IsCAR {
+	if car {
 		// not IPFS and we do full selection - just extract the CARv1 from the CARv2 we stored the retrieval in
-		if !retrieveIntoIPFS && len(exportRef.DAGs) == 0 {
-			return carv2.ExtractV1File(carPath, ref.Path)
+		if !retrieveIntoIPFS && len(exportRef.DAGs) == 0 && dest.Writer == nil {
+			return carv2.ExtractV1File(carPath, dest.Path)
 		}
 
-		return a.outputCAR(ctx, roots, retrievalBs, ref)
+		return a.outputCAR(ctx, roots, retrievalBs, dest)
 	}
 
 	if len(roots) != 1 {
 		return xerrors.Errorf("unixfs retrieval requires one root node, got %d", len(roots))
 	}
 
-	return a.outputUnixFS(ctx, roots[0].root, dserv, ref)
+	return a.outputUnixFS(ctx, roots[0].root, dserv, dest)
 }
 
-func (a *API) outputCAR(ctx context.Context, dags []dagSpec, bs bstore.Blockstore, ref api.FileRef) error {
+func (a *API) outputCAR(ctx context.Context, dags []dagSpec, bs bstore.Blockstore, dest ExportDest) error {
 	// generating a CARv1 from the configured blockstore
-	f, err := os.OpenFile(ref.Path, os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-
 	carDags := make([]car.Dag, len(dags))
 	for i, dag := range dags {
 		carDags[i] = car.Dag{
@@ -975,17 +997,14 @@ func (a *API) outputCAR(ctx context.Context, dags []dagSpec, bs bstore.Blockstor
 		}
 	}
 
-	err = car.NewSelectiveCar(
-		ctx,
-		bs,
-		carDags,
-		car.MaxTraversalLinks(config.MaxTraversalLinks),
-	).Write(f)
-	if err != nil {
-		return err
-	}
-
-	return f.Close()
+	return dest.doWrite(func(w io.Writer) error {
+		return car.NewSelectiveCar(
+			ctx,
+			bs,
+			carDags,
+			car.MaxTraversalLinks(config.MaxTraversalLinks),
+		).Write(w)
+	})
 }
 
 type dagSpec struct {
@@ -1069,7 +1088,7 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds forma
 	return out, nil
 }
 
-func (a *API) outputUnixFS(ctx context.Context, root cid.Cid, ds format.DAGService, ref api.FileRef) error {
+func (a *API) outputUnixFS(ctx context.Context, root cid.Cid, ds format.DAGService, dest ExportDest) error {
 	nd, err := ds.Get(ctx, root)
 	if err != nil {
 		return xerrors.Errorf("ClientRetrieve: %w", err)
@@ -1079,7 +1098,20 @@ func (a *API) outputUnixFS(ctx context.Context, root cid.Cid, ds format.DAGServi
 		return xerrors.Errorf("ClientRetrieve: %w", err)
 	}
 
-	return files.WriteTo(file, ref.Path)
+	if dest.Writer == nil {
+		return files.WriteTo(file, dest.Path)
+	}
+
+	switch f := file.(type) {
+	case files.File:
+		_, err = io.Copy(dest.Writer, f)
+		if err != nil {
+			return err
+		}
+		return nil
+	default:
+		return fmt.Errorf("file type %T is not supported", nd)
+	}
 }
 
 func (a *API) ClientListRetrievals(ctx context.Context) ([]api.RetrievalInfo, error) {
