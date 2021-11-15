@@ -1069,7 +1069,7 @@ Inputs:
     "Root": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
-    "DatamodelPathSelector": "Links/21/Hash/Links/42/Hash",
+    "DAGs": null,
     "FromLocalCAR": "string value",
     "DealID": 5
   },
@@ -1510,7 +1510,7 @@ Inputs:
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
     },
     "Piece": null,
-    "DatamodelPathSelector": "Links/21/Hash/Links/42/Hash",
+    "DataSelector": "Links/21/Hash/Links/42/Hash",
     "Size": 42,
     "Total": "0",
     "UnsealPrice": "0",

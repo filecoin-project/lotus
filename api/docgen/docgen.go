@@ -91,6 +91,7 @@ func init() {
 
 	storeIDExample := imports.ID(50)
 	textSelExample := textselector.Expression("Links/21/Hash/Links/42/Hash")
+	apiSelExample := api.Selector("Links/21/Hash/Links/42/Hash")
 	clientEvent := retrievalmarket.ClientEventDealAccepted
 
 	addExample(bitfield.NewFromSet([]uint64{5}))
@@ -128,6 +129,7 @@ func init() {
 	addExample(retrievalmarket.ClientEventDealAccepted)
 	addExample(retrievalmarket.DealStatusNew)
 	addExample(&textSelExample)
+	addExample(&apiSelExample)
 	addExample(network.ReachabilityPublic)
 	addExample(build.NewestNetworkVersion)
 	addExample(map[string]int{"name": 42})
