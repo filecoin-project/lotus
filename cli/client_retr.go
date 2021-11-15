@@ -13,6 +13,8 @@ import (
 	"os"
 	"path"
 	"sort"
+	"strings"
+	"time"
 
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/ipfs/go-blockservice"
@@ -147,6 +149,7 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi lapi.FullNode, sel *l
 			return nil, xerrors.Errorf("error setting up retrieval: %w", err)
 		}
 
+		start := time.Now()
 	readEvents:
 		for {
 			var evt lapi.RetrievalInfo
@@ -167,12 +170,14 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi lapi.FullNode, sel *l
 				event = retrievalmarket.ClientEvents[*evt.Event]
 			}
 
-			printf("> Recv: %s, Paid %s, %s (%s)\n",
+			printf("Recv %s, Paid %s, %s (%s), %s\n",
 				types.SizeStr(types.NewInt(evt.BytesReceived)),
 				types.FIL(evt.TotalPaid),
-				event,
-				retrievalmarket.DealStatuses[evt.Status],
+				strings.TrimPrefix(event, "ClientEvent"),
+				strings.TrimPrefix(retrievalmarket.DealStatuses[evt.Status], "DealStatus"),
+				time.Now().Sub(start).Truncate(time.Millisecond),
 			)
+
 			switch evt.Status {
 			case retrievalmarket.DealStatusCompleted:
 				break readEvents
