@@ -1055,6 +1055,11 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds forma
 						}
 
 						if p.LastBlock.Link == nil {
+							// this is likely the root node that we've matched here
+							// todo: is this a correct assumption
+							// todo: is the n ipld.Node above the node we want as the (sub)root?
+							// todo: how to go from ipld.Node to a cid?
+							out[i].root = root
 							return nil
 						}
 

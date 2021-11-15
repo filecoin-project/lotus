@@ -5,6 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
 	"io"
 	"net/http"
 	"net/url"
@@ -274,6 +276,17 @@ func ClientExportStream(apiAddr string, apiAuth http.Header, eref lapi.ExportRef
 		return nil, xerrors.Errorf("marshaling export ref: %w", err)
 	}
 
+	ma, err := multiaddr.NewMultiaddr(apiAddr)
+	if err == nil {
+		_, addr, err := manet.DialArgs(ma)
+		if err != nil {
+			return nil, err
+		}
+
+		// todo: make cliutil helpers for this
+		apiAddr = "http://" + addr
+	}
+
 	aa, err := url.Parse(apiAddr)
 	if err != nil {
 		return nil, xerrors.Errorf("parsing api address: %w", err)
@@ -296,6 +309,11 @@ func ClientExportStream(apiAddr string, apiAuth http.Header, eref lapi.ExportRef
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close() // nolint
+		return nil, xerrors.Errorf("getting root car: http %d", resp.StatusCode)
 	}
 
 	return resp.Body, nil
@@ -376,7 +394,7 @@ var clientRetrieveLsCmd = &cli.Command{
 
 		eref.DAGs = append(eref.DAGs, lapi.DagSpec{
 			RootSelector: &rootSelector,
-			DataSelector: &dataSelector,
+			DataSelector: &rootSelector,
 		})
 
 		rc, err := ClientExportStream(ainfo.Addr, ainfo.AuthHeader(), *eref, true)
@@ -391,7 +409,7 @@ var clientRetrieveLsCmd = &cli.Command{
 			return err
 		}
 
-		cbs, err := blockstore.NewReadOnly(bytes.NewReader(memcar.Bytes()), nil,
+		cbs, err := blockstore.NewReadOnly(&bytesReaderAt{bytes.NewReader(memcar.Bytes())}, nil,
 			carv2.ZeroLengthSectionAsEOF(true),
 			blockstore.UseWholeCIDs(true))
 		if err != nil {
@@ -421,3 +439,13 @@ var clientRetrieveLsCmd = &cli.Command{
 		return err
 	},
 }
+
+type bytesReaderAt struct {
+	btr *bytes.Reader
+}
+
+func (b bytesReaderAt) ReadAt(p []byte, off int64) (n int, err error) {
+	return b.btr.ReadAt(p, off)
+}
+
+var _ io.ReaderAt = &bytesReaderAt{}
