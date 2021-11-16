@@ -1078,7 +1078,7 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds forma
 				return nil, xerrors.Errorf("error while locating partial retrieval sub-root: %w", err)
 			}
 
-			if out[i].root == cid.Undef {
+			if newRoot == cid.Undef {
 				return nil, xerrors.Errorf("path selection does not match a node within %s", root)
 			}
 
