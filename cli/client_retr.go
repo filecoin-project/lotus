@@ -34,7 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-const DefaultMaxRetrievePrice = "0.01"
+const DefaultMaxRetrievePrice = "0"
 
 func retrieve(ctx context.Context, cctx *cli.Context, fapi lapi.FullNode, sel *lapi.Selector, printf func(string, ...interface{})) (*lapi.ExportRef, error) {
 	var payer address.Address
