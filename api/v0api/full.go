@@ -716,6 +716,22 @@ type FullNode interface {
 	CreateBackup(ctx context.Context, fpath string) error //perm:admin
 }
 
+func OfferOrder(o api.QueryOffer, client address.Address) RetrievalOrder {
+	return RetrievalOrder{
+		Root:                    o.Root,
+		Piece:                   o.Piece,
+		Size:                    o.Size,
+		Total:                   o.MinPrice,
+		UnsealPrice:             o.UnsealPrice,
+		PaymentInterval:         o.PaymentInterval,
+		PaymentIntervalIncrease: o.PaymentIntervalIncrease,
+		Client:                  client,
+
+		Miner:     o.Miner,
+		MinerPeer: &o.MinerPeer,
+	}
+}
+
 type RetrievalOrder struct {
 	// TODO: make this less unixfs specific
 	Root                  cid.Cid
