@@ -93,6 +93,8 @@ var clientCmd = &cli.Command{
 		WithCategory("data", clientStat),
 		WithCategory("retrieval", clientFindCmd),
 		WithCategory("retrieval", clientRetrieveCmd),
+		WithCategory("retrieval", clientRetrieveCatCmd),
+		WithCategory("retrieval", clientRetrieveLsCmd),
 		WithCategory("retrieval", clientCancelRetrievalDealCmd),
 		WithCategory("retrieval", clientListRetrievalsCmd),
 		WithCategory("util", clientCommPCmd),

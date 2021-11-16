@@ -426,6 +426,8 @@ COMMANDS:
    RETRIEVAL:
      find              Find data in the network
      retrieve          Retrieve data from network
+     cat               Show data from network
+     ls                Show object links
      cancel-retrieval  Cancel a retrieval deal by deal ID; this also cancels the associated transfer
      list-retrievals   List retrieval market deals
    STORAGE:
@@ -539,49 +541,62 @@ NAME:
    lotus client retrieve - Retrieve data from network
 
 USAGE:
-   lotus client retrieve command [command options] [dataCid outputPath]
+   lotus client retrieve [command options] [dataCid outputPath]
 
-COMMANDS:
-   cat      Show data from network
-   ls       Show object links
-   help, h  Shows a list of commands or help for one command
+CATEGORY:
+   RETRIEVAL
 
 OPTIONS:
-   --from value                     address to send transactions from
    --car                            export to a car file instead of a regular file (default: false)
-   --miner value                    miner address for retrieval, if not present it'll use local discovery
    --datamodel-path-selector value  a rudimentary (DM-level-only) text-path selector, allowing for sub-selection within a deal
+   --from value                     address to send transactions from
+   --miner value                    miner address for retrieval, if not present it'll use local discovery
    --maxPrice value                 maximum price the client is willing to consider (default: 0.01 FIL)
    --pieceCid value                 require data to be retrieved from a specific Piece CID
    --allow-local                    (default: false)
    --help, -h                       show help (default: false)
-   --version, -v                    print the version (default: false)
    
 ```
 
-#### lotus client retrieve cat
+### lotus client cat
 ```
 NAME:
-   lotus client retrieve cat - Show data from network
+   lotus client cat - Show data from network
 
 USAGE:
-   lotus client retrieve cat [command options] [dataCid]
+   lotus client cat [command options] [dataCid]
+
+CATEGORY:
+   RETRIEVAL
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --from value      address to send transactions from
+   --miner value     miner address for retrieval, if not present it'll use local discovery
+   --maxPrice value  maximum price the client is willing to consider (default: 0.01 FIL)
+   --pieceCid value  require data to be retrieved from a specific Piece CID
+   --allow-local     (default: false)
+   --help, -h        show help (default: false)
    
 ```
 
-#### lotus client retrieve ls
+### lotus client ls
 ```
 NAME:
-   lotus client retrieve ls - Show object links
+   lotus client ls - Show object links
 
 USAGE:
-   lotus client retrieve ls [command options] [dataCid]
+   lotus client ls [command options] [dataCid]
+
+CATEGORY:
+   RETRIEVAL
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --from value      address to send transactions from
+   --miner value     miner address for retrieval, if not present it'll use local discovery
+   --maxPrice value  maximum price the client is willing to consider (default: 0.01 FIL)
+   --pieceCid value  require data to be retrieved from a specific Piece CID
+   --allow-local     (default: false)
+   --help, -h        show help (default: false)
    
 ```
 

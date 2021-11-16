@@ -200,43 +200,43 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi lapi.FullNode, sel *l
 	return eref, nil
 }
 
-var clientRetrieveCmd = &cli.Command{
-	Name: "retrieve",
-	Subcommands: []*cli.Command{
-		clientRetrieveCatCmd,
-		clientRetrieveLsCmd,
+var retrFlagsCommon = []cli.Flag{
+	&cli.StringFlag{
+		Name:  "from",
+		Usage: "address to send transactions from",
 	},
+	&cli.StringFlag{
+		Name:  "miner",
+		Usage: "miner address for retrieval, if not present it'll use local discovery",
+	},
+	&cli.StringFlag{
+		Name:  "maxPrice",
+		Usage: fmt.Sprintf("maximum price the client is willing to consider (default: %s FIL)", DefaultMaxRetrievePrice),
+	},
+	&cli.StringFlag{
+		Name:  "pieceCid",
+		Usage: "require data to be retrieved from a specific Piece CID",
+	},
+	&cli.BoolFlag{
+		Name: "allow-local",
+		// todo: default to true?
+	},
+}
+
+var clientRetrieveCmd = &cli.Command{
+	Name:      "retrieve",
 	Usage:     "Retrieve data from network",
 	ArgsUsage: "[dataCid outputPath]",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "from",
-			Usage: "address to send transactions from",
-		},
+	Flags: append([]cli.Flag{
 		&cli.BoolFlag{
 			Name:  "car",
 			Usage: "export to a car file instead of a regular file",
 		},
 		&cli.StringFlag{
-			Name:  "miner",
-			Usage: "miner address for retrieval, if not present it'll use local discovery",
-		},
-		&cli.StringFlag{
 			Name:  "datamodel-path-selector",
 			Usage: "a rudimentary (DM-level-only) text-path selector, allowing for sub-selection within a deal",
 		},
-		&cli.StringFlag{
-			Name:  "maxPrice",
-			Usage: fmt.Sprintf("maximum price the client is willing to consider (default: %s FIL)", DefaultMaxRetrievePrice),
-		},
-		&cli.StringFlag{
-			Name:  "pieceCid",
-			Usage: "require data to be retrieved from a specific Piece CID",
-		},
-		&cli.BoolFlag{
-			Name: "allow-local",
-		},
-	},
+	}, retrFlagsCommon...),
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 2 {
 			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
@@ -329,6 +329,7 @@ var clientRetrieveCatCmd = &cli.Command{
 	Name:      "cat",
 	Usage:     "Show data from network",
 	ArgsUsage: "[dataCid]",
+	Flags:     retrFlagsCommon,
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
 			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
@@ -372,6 +373,7 @@ var clientRetrieveLsCmd = &cli.Command{
 	Name:      "ls",
 	Usage:     "Show object links",
 	ArgsUsage: "[dataCid]",
+	Flags:     retrFlagsCommon,
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
 			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
