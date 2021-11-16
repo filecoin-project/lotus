@@ -323,6 +323,7 @@ func (dh *DealHarness) PerformRetrieval(ctx context.Context, deal *cid.Cid, root
 
 	updatesCtx, cancel := context.WithCancel(ctx)
 	updates, err := dh.client.ClientGetRetrievalUpdates(updatesCtx)
+	require.NoError(dh.t, err)
 
 	retrievalRes, err := dh.client.ClientRetrieve(ctx, offers[0].Order(caddr))
 	require.NoError(dh.t, err)

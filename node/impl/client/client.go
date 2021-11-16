@@ -1042,6 +1042,8 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds forma
 				rsn = selspec.Node()
 			}
 
+			var newRoot cid.Cid
+
 			if err := utils.TraverseDag(
 				ctx,
 				ds,
@@ -1059,7 +1061,7 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds forma
 							// todo: is this a correct assumption
 							// todo: is the n ipld.Node above the node we want as the (sub)root?
 							// todo: how to go from ipld.Node to a cid?
-							out[i].root = root
+							newRoot = root
 							return nil
 						}
 
@@ -1068,7 +1070,7 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds forma
 							return xerrors.Errorf("cidlink cast unexpectedly failed on '%s'", p.LastBlock.Link)
 						}
 
-						out[i].root = cidLnk.Cid
+						newRoot = cidLnk.Cid
 					}
 					return nil
 				},
@@ -1079,6 +1081,8 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds forma
 			if out[i].root == cid.Undef {
 				return nil, xerrors.Errorf("path selection does not match a node within %s", root)
 			}
+
+			out[i].root = newRoot
 		}
 
 		if spec.DataSelector != nil {

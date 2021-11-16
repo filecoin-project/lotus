@@ -539,10 +539,12 @@ NAME:
    lotus client retrieve - Retrieve data from network
 
 USAGE:
-   lotus client retrieve [command options] [dataCid outputPath]
+   lotus client retrieve command [command options] [dataCid outputPath]
 
-CATEGORY:
-   RETRIEVAL
+COMMANDS:
+   cat      Show data from network
+   ls       Show object links
+   help, h  Shows a list of commands or help for one command
 
 OPTIONS:
    --from value                     address to send transactions from
@@ -553,6 +555,33 @@ OPTIONS:
    --pieceCid value                 require data to be retrieved from a specific Piece CID
    --allow-local                    (default: false)
    --help, -h                       show help (default: false)
+   --version, -v                    print the version (default: false)
+   
+```
+
+#### lotus client retrieve cat
+```
+NAME:
+   lotus client retrieve cat - Show data from network
+
+USAGE:
+   lotus client retrieve cat [command options] [dataCid]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+#### lotus client retrieve ls
+```
+NAME:
+   lotus client retrieve ls - Show object links
+
+USAGE:
+   lotus client retrieve ls [command options] [dataCid]
+
+OPTIONS:
+   --help, -h  show help (default: false)
    
 ```
 

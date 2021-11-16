@@ -5,8 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr/net"
 	"io"
 	"net/http"
 	"net/url"
@@ -16,21 +14,24 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	"github.com/ipfs/go-merkledag"
 	carv2 "github.com/ipld/go-car/v2"
 	"github.com/ipld/go-car/v2/blockstore"
+	"github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/big"
+
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 const DefaultMaxRetrievePrice = "0.01"
@@ -427,7 +428,7 @@ var clientRetrieveLsCmd = &cli.Command{
 		}
 
 		if len(roots) != 1 {
-			return xerrors.Errorf("expected 1 car root, got %d")
+			return xerrors.Errorf("expected 1 car root, got %d", len(roots))
 		}
 
 		dserv := merkledag.NewDAGService(blockservice.New(cbs, offline.Exchange(cbs)))
