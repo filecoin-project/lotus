@@ -5,6 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/markets/utils"
+	"github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime/traversal"
+	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
 	"io"
 	"net/http"
 	"net/url"
@@ -373,7 +377,12 @@ var clientRetrieveLsCmd = &cli.Command{
 	Name:      "ls",
 	Usage:     "Show object links",
 	ArgsUsage: "[dataCid]",
-	Flags:     retrFlagsCommon,
+	Flags: append([]cli.Flag{
+		&cli.BoolFlag{
+			Name:  "ipld",
+			Usage: "list IPLD-level links",
+		},
+	}, retrFlagsCommon...),
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
 			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
@@ -432,16 +441,35 @@ var clientRetrieveLsCmd = &cli.Command{
 		if len(roots) != 1 {
 			return xerrors.Errorf("expected 1 car root, got %d", len(roots))
 		}
-
 		dserv := merkledag.NewDAGService(blockservice.New(cbs, offline.Exchange(cbs)))
 
-		links, err := dserv.GetLinks(ctx, roots[0])
-		if err != nil {
-			return xerrors.Errorf("getting links: %w", err)
-		}
+		if !cctx.Bool("ipld") {
 
-		for _, link := range links {
-			fmt.Printf("%s %s\t%d\n", link.Cid, link.Name, link.Size)
+			links, err := dserv.GetLinks(ctx, roots[0])
+			if err != nil {
+				return xerrors.Errorf("getting links: %w", err)
+			}
+
+			for _, link := range links {
+				fmt.Printf("%s %s\t%d\n", link.Cid, link.Name, link.Size)
+			}
+		} else {
+			sel, _ := selectorparse.ParseJSONSelector(`{"a":{">":{".":{}}}}`)
+
+			if err := utils.TraverseDag(
+				ctx,
+				dserv,
+				roots[0],
+				sel,
+				func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
+					if r == traversal.VisitReason_SelectionMatch {
+						fmt.Println(p.Path)
+					}
+					return nil
+				},
+			); err != nil {
+				return err
+			}
 		}
 
 		return err
