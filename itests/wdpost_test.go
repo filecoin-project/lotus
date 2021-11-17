@@ -23,7 +23,7 @@ import (
 )
 
 func TestWindowedPost(t *testing.T) {
-	kit.Expensive(t)
+	//kit.Expensive(t)
 
 	kit.QuietMiningLogs()
 
