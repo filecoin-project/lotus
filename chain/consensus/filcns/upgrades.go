@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/specs-actors/v6/actors/migration/nv14"
+	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
 
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -1220,7 +1221,7 @@ func UpgradeActorsV7(ctx context.Context, sm *stmgr.StateManager, cache stmgr.Mi
 		workerCount = 1
 	}
 
-	config := nv14.Config{
+	config := nv15.Config{
 		MaxWorkers:        uint(workerCount),
 		JobQueueSize:      1000,
 		ResultQueueSize:   100,
@@ -1244,8 +1245,7 @@ func PreUpgradeActorsV7(ctx context.Context, sm *stmgr.StateManager, cache stmgr
 		workerCount /= 2
 	}
 
-	//TODO: nv15
-	config := nv14.Config{MaxWorkers: uint(workerCount)}
+	config := nv15.Config{MaxWorkers: uint(workerCount)}
 	_, err := upgradeActorsV7Common(ctx, sm, cache, root, epoch, ts, config)
 	return err
 }
@@ -1253,8 +1253,7 @@ func PreUpgradeActorsV7(ctx context.Context, sm *stmgr.StateManager, cache stmgr
 func upgradeActorsV7Common(
 	ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache,
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
-	//TODO: nv15
-	config nv14.Config,
+	config nv15.Config,
 ) (cid.Cid, error) {
 	buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), blockstore.NewMemorySync())
 	store := store.ActorStore(ctx, buf)
@@ -1273,8 +1272,7 @@ func upgradeActorsV7Common(
 	}
 
 	// Perform the migration
-	//TODO: nv15
-	newHamtRoot, err := nv14.MigrateStateTree(ctx, store, stateRoot.Actors, epoch, config, migrationLogger{}, cache)
+	newHamtRoot, err := nv15.MigrateStateTree(ctx, store, stateRoot.Actors, epoch, config, migrationLogger{}, cache)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("upgrading to actors v7: %w", err)
 	}

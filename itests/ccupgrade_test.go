@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TODO: This needs to be repurposed into a SnapDeals test suite
 func TestCCUpgrade(t *testing.T) {
 	kit.QuietMiningLogs()
 
