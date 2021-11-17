@@ -885,7 +885,6 @@ func (vm *VM) transfer(from, to address.Address, amt types.BigInt, networkVersio
 			return aerrors.Fatalf("transfer failed when retrieving sender actor: %s", err)
 		}
 
-
 		if f.Balance.LessThan(amt) {
 			return aerrors.Newf(exitcode.SysErrInsufficientFunds, "transfer failed, insufficient balance in sender actor: %v", f.Balance)
 		}

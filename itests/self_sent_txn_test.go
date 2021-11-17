@@ -2,7 +2,6 @@ package itests
 
 import (
 	"context"
-	"fmt"
 	"github.com/filecoin-project/go-state-types/network"
 	"testing"
 	"time"
@@ -42,12 +41,17 @@ func TestSelfSentTxn(t *testing.T) {
 		From:  client.DefaultKey.Address,
 		To:    client.DefaultKey.Address,
 		Value: big.Mul(big.NewInt(2), bal),
+		GasLimit: 10000000000,
+		GasPremium: big.NewInt(10000000000),
+		GasFeeCap: big.NewInt(100000000000),
+		Nonce: 1,
 	}
-	_, err = client.MpoolPushMessage(ctx, msgOverBal, nil)
-	require.Error(t, err)
-	// this is horrifying and a crime... I don't know how else to check it.
-	require.Contains(t, fmt.Sprintf("%v", err), "SysErrInsufficientFunds")
-	//mLookup, err = client.StateWaitMsg(ctx, smOverBal.Cid(), 3, api.LookbackNoLimit, true)
-	//require.NoError(t, err)
-	//require.Equal(t, exitcode.SysErrInsufficientFunds, mLookup.Receipt.ExitCode)
+	smOverBal, err := client.WalletSignMessage(ctx, client.DefaultKey.Address, msgOverBal)
+	require.NoError(t, err)
+	smcid, err := client.MpoolPush(ctx, smOverBal)
+	require.NoError(t, err)
+
+	mLookup, err = client.StateWaitMsg(ctx, smcid, 3, api.LookbackNoLimit, true)
+	require.NoError(t, err)
+	require.Equal(t, exitcode.SysErrInsufficientFunds, mLookup.Receipt.ExitCode)
 }
