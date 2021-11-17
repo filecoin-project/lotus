@@ -849,14 +849,9 @@ func (sm *StorageMinerAPI) DagstoreInvertedIndexSize(ctx context.Context) (int64
 	return res, nil
 }
 
-func (sm *StorageMinerAPI) DagstoreLookupPieces(ctx context.Context, cidStr string) ([]api.DagstoreShardInfo, error) {
+func (sm *StorageMinerAPI) DagstoreLookupPieces(ctx context.Context, cid cid.Cid) ([]api.DagstoreShardInfo, error) {
 	if sm.DAGStore == nil {
 		return nil, fmt.Errorf("dagstore not available on this node")
-	}
-
-	cid, err := cid.Parse(cidStr)
-	if err != nil {
-		return nil, err
 	}
 
 	keys, err := sm.DAGStore.TopLevelIndex.GetShardsForMultihash(cid.Hash())

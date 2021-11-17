@@ -218,7 +218,7 @@ type StorageMiner interface {
 	DagstoreInvertedIndexSize(ctx context.Context) (int64, error) //perm:admin
 
 	// DagstoreLookupPieces returns information about shards that contain the given CID.
-	DagstoreLookupPieces(ctx context.Context, cid string) ([]DagstoreShardInfo, error) //perm:admin
+	DagstoreLookupPieces(ctx context.Context, cid cid.Cid) ([]DagstoreShardInfo, error) //perm:admin
 
 	// RuntimeSubsystems returns the subsystems that are enabled
 	// in this instance.

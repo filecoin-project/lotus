@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
+	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/api"
@@ -299,30 +301,36 @@ var dagstoreInvertedIndexSizeCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println(size)
+		fmt.Println(humanize.Bytes(uint64(size)))
 
 		return nil
 	},
 }
 
 var dagstoreLookupPiecesCmd = &cli.Command{
-	Name:  "lookup-pieces",
-	Usage: "Lookup pieces that a given CID belongs to",
+	Name:      "lookup-pieces",
+	Usage:     "Lookup pieces that a given CID belongs to",
+	ArgsUsage: "<cid>",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:        "color",
 			Usage:       "use color in display output",
 			DefaultText: "depends on output being a TTY",
 		},
-		&cli.BoolFlag{
-			Name:        "cid",
-			Usage:       "cid to lookup",
-			DefaultText: "",
-		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.IsSet("color") {
 			color.NoColor = !cctx.Bool("color")
+		}
+
+		if cctx.NArg() != 1 {
+			return fmt.Errorf("must provide a CID")
+		}
+
+		cidStr := cctx.Args().First()
+		cid, err := cid.Parse(cidStr)
+		if err != nil {
+			return fmt.Errorf("invalid CID: %w", err)
 		}
 
 		marketsApi, closer, err := lcli.GetMarketsAPI(cctx)
@@ -333,7 +341,7 @@ var dagstoreLookupPiecesCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		shards, err := marketsApi.DagstoreLookupPieces(ctx, cctx.String("cid"))
+		shards, err := marketsApi.DagstoreLookupPieces(ctx, cid)
 		if err != nil {
 			return err
 		}

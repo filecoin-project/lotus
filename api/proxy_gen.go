@@ -625,7 +625,7 @@ type StorageMinerStruct struct {
 
 		DagstoreListShards func(p0 context.Context) ([]DagstoreShardInfo, error) `perm:"read"`
 
-		DagstoreLookupPieces func(p0 context.Context, p1 string) ([]DagstoreShardInfo, error) `perm:"admin"`
+		DagstoreLookupPieces func(p0 context.Context, p1 cid.Cid) ([]DagstoreShardInfo, error) `perm:"admin"`
 
 		DagstoreRecoverShard func(p0 context.Context, p1 string) error `perm:"write"`
 
@@ -3709,14 +3709,14 @@ func (s *StorageMinerStub) DagstoreListShards(p0 context.Context) ([]DagstoreSha
 	return *new([]DagstoreShardInfo), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DagstoreLookupPieces(p0 context.Context, p1 string) ([]DagstoreShardInfo, error) {
+func (s *StorageMinerStruct) DagstoreLookupPieces(p0 context.Context, p1 cid.Cid) ([]DagstoreShardInfo, error) {
 	if s.Internal.DagstoreLookupPieces == nil {
 		return *new([]DagstoreShardInfo), ErrNotSupported
 	}
 	return s.Internal.DagstoreLookupPieces(p0, p1)
 }
 
-func (s *StorageMinerStub) DagstoreLookupPieces(p0 context.Context, p1 string) ([]DagstoreShardInfo, error) {
+func (s *StorageMinerStub) DagstoreLookupPieces(p0 context.Context, p1 cid.Cid) ([]DagstoreShardInfo, error) {
 	return *new([]DagstoreShardInfo), ErrNotSupported
 }
 

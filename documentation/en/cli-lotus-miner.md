@@ -1137,11 +1137,10 @@ NAME:
    lotus-miner dagstore lookup-pieces - Lookup pieces that a given CID belongs to
 
 USAGE:
-   lotus-miner dagstore lookup-pieces [command options] [arguments...]
+   lotus-miner dagstore lookup-pieces [command options] <cid>
 
 OPTIONS:
    --color     use color in display output (default: depends on output being a TTY)
-   --cid       cid to lookup (default: false)
    --help, -h  show help (default: false)
    
 ```
