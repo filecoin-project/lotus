@@ -246,6 +246,34 @@
       #Path = ""
 
 
+[IndexerProvider]
+  # env var: LOTUS_INDEXERPROVIDER_LINKCACHESIZE
+  #LinkCacheSize = 0
+
+  # env var: LOTUS_INDEXERPROVIDER_LINKEDCHUNKSIZE
+  #LinkedChunkSize = 0
+
+  # env var: LOTUS_INDEXERPROVIDER_PUBSUBTOPIC
+  #PubSubTopic = ""
+
+  # env var: LOTUS_INDEXERPROVIDER_PURGELINKCACHE
+  #PurgeLinkCache = false
+
+  # Binding address for the libp2p host - 0 means random port.
+  # Format: multiaddress; see https://multiformats.io/multiaddr/
+  #
+  # type: []string
+  # env var: LOTUS_INDEXERPROVIDER_LISTENADDRESSES
+  #ListenAddresses = ["/ip4/0.0.0.0/tcp/0", "/ip6/::/tcp/0"]
+
+  # The maximum number of simultaneous data transfers between the indexers
+  # and the indexer provider
+  #
+  # type: uint64
+  # env var: LOTUS_INDEXERPROVIDER_MAXSIMULTANEOUSTRANSFERS
+  #MaxSimultaneousTransfers = 20
+
+
 [Sealing]
   # Upper bound on how many sectors can be waiting for more deals to be packed in it before it begins sealing at any given time.
   # If the miner is accepting multiple deals in parallel, up to MaxWaitDealsSectors of new sectors will be created.

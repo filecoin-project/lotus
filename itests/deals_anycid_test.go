@@ -7,13 +7,14 @@ import (
 	"testing"
 	"time"
 
+	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-car"
 	"github.com/ipld/go-car/v2/blockstore"
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	"github.com/filecoin-project/lotus/api"
@@ -82,7 +83,7 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 	require.NoError(t, err)
 
 	// Get all CIDs from the file
-	sc := car.NewSelectiveCar(ctx, bs, []car.Dag{{Root: res.Root, Selector: shared.AllSelector()}})
+	sc := car.NewSelectiveCar(ctx, bs, []car.Dag{{Root: res.Root, Selector: selectorparse.CommonSelector_ExploreAllRecursively}})
 	prepared, err := sc.Prepare()
 	require.NoError(t, err)
 	cids := prepared.Cids()
@@ -147,7 +148,7 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 			rd,
 			[]car.Dag{{
 				Root:     targetCid,
-				Selector: shared.AllSelector(),
+				Selector: selectorparse.CommonSelector_ExploreAllRecursively,
 			}},
 		).Write(tmp)
 		require.NoError(t, err)
