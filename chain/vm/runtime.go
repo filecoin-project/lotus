@@ -332,7 +332,7 @@ func (rt *Runtime) DeleteActor(beneficiary address.Address) {
 		}
 
 		// Transfer the executing actor's balance to the beneficiary
-		if err := rt.vm.transfer(rt.Receiver(), beneficiary, act.Balance); err != nil {
+		if err := rt.vm.transfer(rt.Receiver(), beneficiary, act.Balance, rt.vm.ntwkVersion(rt.ctx, rt.vm.blockHeight)); err != nil {
 			panic(aerrors.Fatalf("failed to transfer balance to beneficiary actor: %s", err))
 		}
 	}
