@@ -549,9 +549,8 @@ func (m mockVerifProver) VerifyAggregateSeals(aggregate proof5.AggregateSealVeri
 	return ok, nil
 }
 
-// TODO: do the thing
 func (m mockVerifProver) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (bool, error) {
-	return false, nil
+	return true, nil
 }
 
 func (m mockVerifProver) AggregateSealProofs(aggregateInfo proof5.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error) {

@@ -123,8 +123,7 @@ func (proofVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyPr
 }
 
 func (proofVerifier) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (bool, error) {
-	v := ffi.FunctionsSectorUpdate{}
-	return v.VerifyUpdateProof(update.UpdateProof, update.Proof, update.OldSealedSectorCID, update.NewSealedSectorCID, update.NewUnsealedSectorCID)
+	return ffi.SectorUpdate.VerifyUpdateProof(update)
 }
 
 func (proofVerifier) VerifyWinningPoSt(ctx context.Context, info proof5.WinningPoStVerifyInfo) (bool, error) {
