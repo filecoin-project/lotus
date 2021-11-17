@@ -133,7 +133,7 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 		require.NoError(t, err)
 		f, err := os.Open(outputCar)
 		require.NoError(t, err)
-		ch, _, _ := car.ReadHeader(bufio.NewReader(f))
+		ch, _ := car.ReadHeader(bufio.NewReader(f))
 		require.EqualValues(t, ch.Roots[0], targetCid)
 		require.NoError(t, f.Close())
 
