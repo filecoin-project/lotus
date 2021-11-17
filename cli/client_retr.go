@@ -344,7 +344,16 @@ var clientRetrieveCatCmd = &cli.Command{
 	Name:      "cat",
 	Usage:     "Show data from network",
 	ArgsUsage: "[dataCid]",
-	Flags:     retrFlagsCommon,
+	Flags: append([]cli.Flag{
+		&cli.BoolFlag{
+			Name:  "ipld",
+			Usage: "list IPLD datamodel links",
+		},
+		&cli.StringFlag{
+			Name:  "datamodel-path",
+			Usage: "a rudimentary (DM-level-only) text-path selector",
+		},
+	}, retrFlagsCommon...),
 	Action: func(cctx *cli.Context) error {
 		if cctx.NArg() != 1 {
 			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
@@ -363,13 +372,20 @@ var clientRetrieveCatCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 		afmt := NewAppFmt(cctx.App)
 
-		// todo selector
-		eref, err := retrieve(ctx, cctx, fapi, nil, afmt.Printf)
+		sel := lapi.Selector(cctx.String("datamodel-path"))
+		selp := &sel
+		if sel == "" {
+			selp = nil
+		}
+
+		eref, err := retrieve(ctx, cctx, fapi, selp, afmt.Printf)
 		if err != nil {
 			return err
 		}
 
-		if sel := lapi.Selector(cctx.String("datamodel-path-selector")); sel != "" {
+		fmt.Println() // separate retrieval events from results
+
+		if sel != "" {
 			eref.DAGs = append(eref.DAGs, lapi.DagSpec{DataSelector: &sel})
 		}
 
