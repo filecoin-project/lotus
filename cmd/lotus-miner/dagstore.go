@@ -21,6 +21,8 @@ var dagstoreCmd = &cli.Command{
 		dagstoreRecoverShardCmd,
 		dagstoreInitializeAllCmd,
 		dagstoreGcCmd,
+		dagstoreInvertedIndexSizeCmd,
+		dagstoreLookupPiecesCmd,
 	},
 }
 
@@ -52,38 +54,7 @@ var dagstoreListShardsCmd = &cli.Command{
 			return err
 		}
 
-		if len(shards) == 0 {
-			return nil
-		}
-
-		tw := tablewriter.New(
-			tablewriter.Col("Key"),
-			tablewriter.Col("State"),
-			tablewriter.Col("Error"),
-		)
-
-		colors := map[string]color.Attribute{
-			"ShardStateAvailable": color.FgGreen,
-			"ShardStateServing":   color.FgBlue,
-			"ShardStateErrored":   color.FgRed,
-			"ShardStateNew":       color.FgYellow,
-		}
-
-		for _, s := range shards {
-			m := map[string]interface{}{
-				"Key": s.Key,
-				"State": func() string {
-					if c, ok := colors[s.State]; ok {
-						return color.New(c).Sprint(s.State)
-					}
-					return s.State
-				}(),
-				"Error": s.Error,
-			}
-			tw.Write(m)
-		}
-
-		return tw.Flush(os.Stdout)
+		return printTableShards(shards)
 	},
 }
 
@@ -263,5 +234,110 @@ var dagstoreGcCmd = &cli.Command{
 		}
 
 		return nil
+	},
+}
+
+func printTableShards(shards []api.DagstoreShardInfo) error {
+	if len(shards) == 0 {
+		return nil
+	}
+
+	tw := tablewriter.New(
+		tablewriter.Col("Key"),
+		tablewriter.Col("State"),
+		tablewriter.Col("Error"),
+	)
+
+	colors := map[string]color.Attribute{
+		"ShardStateAvailable": color.FgGreen,
+		"ShardStateServing":   color.FgBlue,
+		"ShardStateErrored":   color.FgRed,
+		"ShardStateNew":       color.FgYellow,
+	}
+
+	for _, s := range shards {
+		m := map[string]interface{}{
+			"Key": s.Key,
+			"State": func() string {
+				if c, ok := colors[s.State]; ok {
+					return color.New(c).Sprint(s.State)
+				}
+				return s.State
+			}(),
+			"Error": s.Error,
+		}
+		tw.Write(m)
+	}
+	return tw.Flush(os.Stdout)
+}
+
+var dagstoreInvertedIndexSizeCmd = &cli.Command{
+	Name:  "inverted-index-size",
+	Usage: "Inspect the dagstore inverted index size",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
+
+		marketsApi, closer, err := lcli.GetMarketsAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		size, err := marketsApi.DagstoreInvertedIndexSize(ctx)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(size)
+
+		return nil
+	},
+}
+
+var dagstoreLookupPiecesCmd = &cli.Command{
+	Name:  "lookup-pieces",
+	Usage: "Lookup pieces that a given CID belongs to",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
+		},
+		&cli.BoolFlag{
+			Name:        "cid",
+			Usage:       "cid to lookup",
+			DefaultText: "",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
+
+		marketsApi, closer, err := lcli.GetMarketsAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		shards, err := marketsApi.DagstoreLookupPieces(ctx, cctx.String("cid"))
+		if err != nil {
+			return err
+		}
+
+		return printTableShards(shards)
 	},
 }

@@ -621,7 +621,11 @@ type StorageMinerStruct struct {
 
 		DagstoreInitializeShard func(p0 context.Context, p1 string) error `perm:"write"`
 
+		DagstoreInvertedIndexSize func(p0 context.Context) (int64, error) `perm:"admin"`
+
 		DagstoreListShards func(p0 context.Context) ([]DagstoreShardInfo, error) `perm:"read"`
+
+		DagstoreLookupPieces func(p0 context.Context, p1 string) ([]DagstoreShardInfo, error) `perm:"admin"`
 
 		DagstoreRecoverShard func(p0 context.Context, p1 string) error `perm:"write"`
 
@@ -657,7 +661,7 @@ type StorageMinerStruct struct {
 
 		DealsSetPieceCidBlocklist func(p0 context.Context, p1 []cid.Cid) error `perm:"admin"`
 
-		IndexerAnnounceDeal func(p0 context.Context, p1 cid.Cid) error ``
+		IndexerAnnounceDeal func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
 
 		MarketCancelDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
@@ -3683,6 +3687,17 @@ func (s *StorageMinerStub) DagstoreInitializeShard(p0 context.Context, p1 string
 	return ErrNotSupported
 }
 
+func (s *StorageMinerStruct) DagstoreInvertedIndexSize(p0 context.Context) (int64, error) {
+	if s.Internal.DagstoreInvertedIndexSize == nil {
+		return 0, ErrNotSupported
+	}
+	return s.Internal.DagstoreInvertedIndexSize(p0)
+}
+
+func (s *StorageMinerStub) DagstoreInvertedIndexSize(p0 context.Context) (int64, error) {
+	return 0, ErrNotSupported
+}
+
 func (s *StorageMinerStruct) DagstoreListShards(p0 context.Context) ([]DagstoreShardInfo, error) {
 	if s.Internal.DagstoreListShards == nil {
 		return *new([]DagstoreShardInfo), ErrNotSupported
@@ -3691,6 +3706,17 @@ func (s *StorageMinerStruct) DagstoreListShards(p0 context.Context) ([]DagstoreS
 }
 
 func (s *StorageMinerStub) DagstoreListShards(p0 context.Context) ([]DagstoreShardInfo, error) {
+	return *new([]DagstoreShardInfo), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) DagstoreLookupPieces(p0 context.Context, p1 string) ([]DagstoreShardInfo, error) {
+	if s.Internal.DagstoreLookupPieces == nil {
+		return *new([]DagstoreShardInfo), ErrNotSupported
+	}
+	return s.Internal.DagstoreLookupPieces(p0, p1)
+}
+
+func (s *StorageMinerStub) DagstoreLookupPieces(p0 context.Context, p1 string) ([]DagstoreShardInfo, error) {
 	return *new([]DagstoreShardInfo), ErrNotSupported
 }
 

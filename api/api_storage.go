@@ -212,7 +212,13 @@ type StorageMiner interface {
 
 	// IndexerAnnounceDeal informs indexer nodes that a new deal was received,
 	// so they can download its index
-	IndexerAnnounceDeal(ctx context.Context, proposalCid cid.Cid) error
+	IndexerAnnounceDeal(ctx context.Context, proposalCid cid.Cid) error //perm:admin
+
+	// DagstoreInvertedIndexSize returns the size of the inverted index.
+	DagstoreInvertedIndexSize(ctx context.Context) (int64, error) //perm:admin
+
+	// DagstoreLookupPieces returns information about shards that contain the given CID.
+	DagstoreLookupPieces(ctx context.Context, cid string) ([]DagstoreShardInfo, error) //perm:admin
 
 	// RuntimeSubsystems returns the subsystems that are enabled
 	// in this instance.
