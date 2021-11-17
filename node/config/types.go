@@ -3,6 +3,8 @@ package config
 import (
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/index-provider/config"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 )
@@ -43,13 +45,14 @@ type Backup struct {
 type StorageMiner struct {
 	Common
 
-	Subsystems MinerSubsystemConfig
-	Dealmaking DealmakingConfig
-	Sealing    SealingConfig
-	Storage    sectorstorage.SealerConfig
-	Fees       MinerFeeConfig
-	Addresses  MinerAddressConfig
-	DAGStore   DAGStoreConfig
+	Subsystems      MinerSubsystemConfig
+	Dealmaking      DealmakingConfig
+	IndexerProvider IndexerProviderConfig
+	Sealing         SealingConfig
+	Storage         sectorstorage.SealerConfig
+	Fees            MinerFeeConfig
+	Addresses       MinerAddressConfig
+	DAGStore        DAGStoreConfig
 }
 
 type DAGStoreConfig struct {
@@ -144,6 +147,18 @@ type DealmakingConfig struct {
 	RetrievalFilter string
 
 	RetrievalPricing *RetrievalPricing
+}
+
+type IndexerProviderConfig struct {
+	config.Ingest
+
+	// Binding address for the libp2p host - 0 means random port.
+	// Format: multiaddress; see https://multiformats.io/multiaddr/
+	ListenAddresses []string
+
+	// The maximum number of simultaneous data transfers between the indexers
+	// and the indexer provider
+	MaxSimultaneousTransfers uint64
 }
 
 type RetrievalPricing struct {

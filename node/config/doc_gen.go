@@ -339,6 +339,22 @@ see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-f
 			Comment: ``,
 		},
 	},
+	"IndexerProviderConfig": []DocField{
+		{
+			Name: "ListenAddresses",
+			Type: "[]string",
+
+			Comment: `Binding address for the libp2p host - 0 means random port.
+Format: multiaddress; see https://multiformats.io/multiaddr/`,
+		},
+		{
+			Name: "MaxSimultaneousTransfers",
+			Type: "uint64",
+
+			Comment: `The maximum number of simultaneous data transfers between the indexers
+and the indexer provider`,
+		},
+	},
 	"Libp2p": []DocField{
 		{
 			Name: "ListenAddresses",
@@ -811,6 +827,12 @@ Default is 20 (about once a week).`,
 		{
 			Name: "Dealmaking",
 			Type: "DealmakingConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "IndexerProvider",
+			Type: "IndexerProviderConfig",
 
 			Comment: ``,
 		},

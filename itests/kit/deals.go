@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
@@ -374,6 +375,7 @@ type RunConcurrentDealsOpts struct {
 	CarExport                bool
 	StartEpoch               abi.ChainEpoch
 	UseCARFileForStorageDeal bool
+	IndexerProvider          *shared_testutil.MockIndexProvider
 }
 
 func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
@@ -399,6 +401,13 @@ func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
 				StartEpoch:               opts.StartEpoch,
 				UseCARFileForStorageDeal: opts.UseCARFileForStorageDeal,
 			})
+
+			// Check that the storage provider announced the deal to indexers
+			if opts.IndexerProvider != nil {
+				notifs := opts.IndexerProvider.GetNotifs()
+				_, ok := notifs[string(deal.Bytes())]
+				require.True(dh.t, ok)
+			}
 
 			dh.t.Logf("retrieving deal %d/%d", i, opts.N)
 

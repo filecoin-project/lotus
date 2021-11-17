@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
+	provider "github.com/filecoin-project/index-provider"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -581,6 +582,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	h host.Host, ds dtypes.MetadataDS,
 	r repo.LockedRepo,
 	pieceStore dtypes.ProviderPieceStore,
+	indexer provider.Interface,
 	dataTransfer dtypes.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
 	df dtypes.StorageDealFilter,
@@ -609,6 +611,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 		namespace.Wrap(ds, datastore.NewKey("/deals/provider")),
 		store,
 		dsw,
+		indexer,
 		pieceStore,
 		dataTransfer,
 		spn,

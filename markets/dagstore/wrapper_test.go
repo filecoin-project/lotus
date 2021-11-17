@@ -8,6 +8,10 @@ import (
 	"testing"
 	"time"
 
+	mh "github.com/multiformats/go-multihash"
+
+	carindex "github.com/ipld/go-car/v2/index"
+
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/node/config"
@@ -130,6 +134,14 @@ type mockDagStore struct {
 	gc      chan struct{}
 	recover chan shard.Key
 	close   chan struct{}
+}
+
+func (m *mockDagStore) GetIterableIndex(key shard.Key) (carindex.IterableIndex, error) {
+	return nil, nil
+}
+
+func (m *mockDagStore) ShardsContainingMultihash(h mh.Multihash) ([]shard.Key, error) {
+	return nil, nil
 }
 
 func (m *mockDagStore) GetShardKeysForCid(c cid.Cid) ([]shard.Key, error) {
