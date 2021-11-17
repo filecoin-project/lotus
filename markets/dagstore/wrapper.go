@@ -10,6 +10,10 @@ import (
 	"sync"
 	"time"
 
+	carindex "github.com/ipld/go-car/v2/index"
+
+	"github.com/filecoin-project/go-indexer-core/store/storethehash"
+
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	levelds "github.com/ipfs/go-ds-leveldb"
@@ -81,8 +85,14 @@ func NewDAGStore(cfg config.DAGStoreConfig, minerApi MinerAPI) (*dagstore.DAGSto
 
 	irepo, err := index.NewFSRepo(indexDir)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("failed to initialise dagstore index repo")
+		return nil, nil, xerrors.Errorf("failed to initialise dagstore index repo: %w", err)
 	}
+
+	store, err := storethehash.New(indexDir)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("failed to initialise store the index: %w", err)
+	}
+	topIndex := index.NewInverted(store)
 
 	dcfg := dagstore.Config{
 		TransientsDir: transientsDir,
@@ -91,6 +101,7 @@ func NewDAGStore(cfg config.DAGStoreConfig, minerApi MinerAPI) (*dagstore.DAGSto
 		MountRegistry: registry,
 		FailureCh:     failureCh,
 		TraceCh:       traceCh,
+		TopLevelIndex: topIndex,
 		// not limiting fetches globally, as the Lotus mount does
 		// conditional throttling.
 		MaxConcurrentIndex:        cfg.MaxConcurrentIndex,
@@ -269,6 +280,11 @@ func (w *Wrapper) RegisterShard(ctx context.Context, pieceCid cid.Cid, carPath s
 	log.Debugf("successfully submitted Register Shard request for piece CID %s with eagerInit=%t", pieceCid, eagerInit)
 
 	return nil
+}
+
+func (w *Wrapper) GetIterableIndexForPiece(pieceCid cid.Cid) (carindex.IterableIndex, error) {
+	key := shard.KeyFromCID(pieceCid)
+	return w.dagst.GetIterableIndex(key)
 }
 
 func (w *Wrapper) MigrateDeals(ctx context.Context, deals []storagemarket.MinerDeal) (bool, error) {
