@@ -1052,10 +1052,6 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds forma
 				func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
 					if r == traversal.VisitReason_SelectionMatch {
 
-						if p.LastBlock.Path.String() != p.Path.String() {
-							return xerrors.Errorf("unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", p.Path.String())
-						}
-
 						if p.LastBlock.Link == nil {
 							// this is likely the root node that we've matched here
 							// todo: is this a correct assumption

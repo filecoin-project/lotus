@@ -5,11 +5,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/lotus/markets/utils"
-	"github.com/ipld/go-ipld-prime"
-	"github.com/ipld/go-ipld-prime/traversal"
-	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -24,6 +21,14 @@ import (
 	"github.com/ipfs/go-merkledag"
 	carv2 "github.com/ipld/go-car/v2"
 	"github.com/ipld/go-car/v2/blockstore"
+	"github.com/ipld/go-ipld-prime"
+	"github.com/ipld/go-ipld-prime/codec/dagjson"
+	basicnode "github.com/ipld/go-ipld-prime/node/basic"
+	"github.com/ipld/go-ipld-prime/traversal"
+	"github.com/ipld/go-ipld-prime/traversal/selector"
+	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
+	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
+	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
@@ -35,6 +40,7 @@ import (
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -322,8 +328,13 @@ func ClientExportStream(apiAddr string, apiAuth http.Header, eref lapi.ExportRef
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		em, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return nil, xerrors.Errorf("reading error body: %w", err)
+		}
+
 		resp.Body.Close() // nolint
-		return nil, xerrors.Errorf("getting root car: http %d", resp.StatusCode)
+		return nil, xerrors.Errorf("getting root car: http %d: %s", resp.StatusCode, string(em))
 	}
 
 	return resp.Body, nil
@@ -373,6 +384,20 @@ var clientRetrieveCatCmd = &cli.Command{
 	},
 }
 
+func pathToSel(psel string, sub builder.SelectorSpec) (lapi.Selector, error) {
+	rs, err := textselector.SelectorSpecFromPath(textselector.Expression(psel), sub)
+	if err != nil {
+		return "", xerrors.Errorf("failed to parse path-selector '%s': %w", err)
+	}
+
+	var b bytes.Buffer
+	if err := dagjson.Encode(rs.Node(), &b); err != nil {
+		return "", err
+	}
+
+	return lapi.Selector(b.String()), nil
+}
+
 var clientRetrieveLsCmd = &cli.Command{
 	Name:      "ls",
 	Usage:     "Show object links",
@@ -388,7 +413,7 @@ var clientRetrieveLsCmd = &cli.Command{
 			Value: 1,
 		},
 		&cli.StringFlag{
-			Name:  "path-selector",
+			Name:  "datamodel-path",
 			Usage: "a rudimentary (DM-level-only) text-path selector",
 		},
 	}, retrFlagsCommon...),
@@ -411,12 +436,29 @@ var clientRetrieveLsCmd = &cli.Command{
 		afmt := NewAppFmt(cctx.App)
 
 		rootSelector := lapi.Selector(`{".": {}}`)
-		dataSelector := lapi.Selector(fmt.Sprintf(`{"a":{">":{"R":{"l":{"depth":%d},":>":{"a":{">":{"|": [{"@":{}}, {".": {}}]}}}}}}}`, cctx.Int("depth")))
+		dataSelector := lapi.Selector(fmt.Sprintf(`{"a":{">":{"R":{"l":{"depth":%d},":>":{"a":{">":{"|":[{"@":{}},{".":{}}]}}}}}}}`, cctx.Int("depth")))
+
+		if cctx.IsSet("datamodel-path") {
+			rootSelector, err = pathToSel(cctx.String("datamodel-path"), nil)
+			if err != nil {
+				return err
+			}
+
+			ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
+			dataSelector, err = pathToSel(cctx.String("datamodel-path"), ssb.ExploreAll(
+				ssb.ExploreRecursive(selector.RecursionLimitDepth(int64(cctx.Int("depth"))), ssb.ExploreAll(ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreRecursiveEdge()))),
+			))
+			if err != nil {
+				return err
+			}
+		}
 
 		eref, err := retrieve(ctx, cctx, fapi, &dataSelector, afmt.Printf)
 		if err != nil {
 			return err
 		}
+
+		fmt.Println() // separate retrieval events from results
 
 		eref.DAGs = append(eref.DAGs, lapi.DagSpec{
 			RootSelector: &rootSelector,
@@ -453,7 +495,6 @@ var clientRetrieveLsCmd = &cli.Command{
 		dserv := merkledag.NewDAGService(blockservice.New(cbs, offline.Exchange(cbs)))
 
 		if !cctx.Bool("ipld") {
-
 			links, err := dserv.GetLinks(ctx, roots[0])
 			if err != nil {
 				return xerrors.Errorf("getting links: %w", err)
@@ -463,7 +504,16 @@ var clientRetrieveLsCmd = &cli.Command{
 				fmt.Printf("%s %s\t%d\n", link.Cid, link.Name, link.Size)
 			}
 		} else {
-			sel, _ := selectorparse.ParseJSONSelector(fmt.Sprintf(`{"R":{"l":{"depth":%d},":>":{"a":{">":{"|":[{"@":{}},{".":{}}]}}}}}`, cctx.Int("depth")))
+			jsel := lapi.Selector(fmt.Sprintf(`{"R":{"l":{"depth":%d},":>":{"a":{">":{"|":[{"@":{}},{".":{}}]}}}}}`, cctx.Int("depth")))
+
+			if cctx.IsSet("datamodel-path") {
+				ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
+				jsel, err = pathToSel(cctx.String("datamodel-path"),
+					ssb.ExploreRecursive(selector.RecursionLimitDepth(int64(cctx.Int("depth"))), ssb.ExploreAll(ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreRecursiveEdge()))),
+				)
+			}
+
+			sel, _ := selectorparse.ParseJSONSelector(string(jsel))
 
 			if err := utils.TraverseDag(
 				ctx,
