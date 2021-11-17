@@ -1036,6 +1036,8 @@ COMMANDS:
    recover-shard     Attempt to recover a shard in errored state
    initialize-all    Initialize all uninitialized shards, streaming results as they're produced; only shards for unsealed pieces are initialized by default
    gc                Garbage collect the dagstore
+   piece-index-size  Inspect the dagstore piece index size
+   lookup-pieces     Lookup pieces that a given CID belongs to
    help, h           Shows a list of commands or help for one command
 
 OPTIONS:
@@ -1108,6 +1110,34 @@ NAME:
 
 USAGE:
    lotus-miner dagstore gc [command options] [arguments...]
+
+OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner dagstore piece-index-size
+```
+NAME:
+   lotus-miner dagstore piece-index-size - Inspect the dagstore piece index size
+
+USAGE:
+   lotus-miner dagstore piece-index-size [command options] [arguments...]
+
+OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner dagstore lookup-pieces
+```
+NAME:
+   lotus-miner dagstore lookup-pieces - Lookup pieces that a given CID belongs to
+
+USAGE:
+   lotus-miner dagstore lookup-pieces [command options] <cid>
 
 OPTIONS:
    --color     use color in display output (default: depends on output being a TTY)

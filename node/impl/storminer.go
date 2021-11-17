@@ -836,6 +836,57 @@ func (sm *StorageMinerAPI) IndexerAnnounceDeal(ctx context.Context, proposalCid 
 	return sm.StorageProvider.AnnounceDealToIndexer(ctx, proposalCid)
 }
 
+func (sm *StorageMinerAPI) DagstorePieceIndexSize(ctx context.Context) (int64, error) {
+	if sm.DAGStore == nil {
+		return 0, fmt.Errorf("dagstore not available on this node")
+	}
+
+	res, err := sm.DAGStore.TopLevelIndex.Size()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get dagstore piece index size: %w", err)
+	}
+
+	return res, nil
+}
+
+func (sm *StorageMinerAPI) DagstoreLookupPieces(ctx context.Context, cid cid.Cid) ([]api.DagstoreShardInfo, error) {
+	if sm.DAGStore == nil {
+		return nil, fmt.Errorf("dagstore not available on this node")
+	}
+
+	keys, err := sm.DAGStore.TopLevelIndex.GetShardsForMultihash(cid.Hash())
+	if err != nil {
+		return nil, err
+	}
+
+	var ret []api.DagstoreShardInfo
+
+	for _, k := range keys {
+		shard, err := sm.DAGStore.GetShardInfo(k)
+		if err != nil {
+			return nil, err
+		}
+
+		ret = append(ret, api.DagstoreShardInfo{
+			Key:   k.String(),
+			State: shard.ShardState.String(),
+			Error: func() string {
+				if shard.Error == nil {
+					return ""
+				}
+				return shard.Error.Error()
+			}(),
+		})
+	}
+
+	// order by key.
+	sort.SliceStable(ret, func(i, j int) bool {
+		return ret[i].Key < ret[j].Key
+	})
+
+	return ret, nil
+}
+
 func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]api.MarketDeal, error) {
 	return sm.listDeals(ctx)
 }

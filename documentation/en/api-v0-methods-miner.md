@@ -23,6 +23,8 @@
   * [DagstoreInitializeAll](#DagstoreInitializeAll)
   * [DagstoreInitializeShard](#DagstoreInitializeShard)
   * [DagstoreListShards](#DagstoreListShards)
+  * [DagstoreLookupPieces](#DagstoreLookupPieces)
+  * [DagstorePieceIndexSize](#DagstorePieceIndexSize)
   * [DagstoreRecoverShard](#DagstoreRecoverShard)
 * [Deals](#Deals)
   * [DealsConsiderOfflineRetrievalDeals](#DealsConsiderOfflineRetrievalDeals)
@@ -444,6 +446,33 @@ Inputs: `null`
 
 Response: `null`
 
+### DagstoreLookupPieces
+DagstoreLookupPieces returns information about shards that contain the given CID.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response: `null`
+
+### DagstorePieceIndexSize
+DagstorePieceIndexSize returns the size of the piece index.
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `9`
+
 ### DagstoreRecoverShard
 DagstoreRecoverShard attempts to recover a failed shard.
 
@@ -673,7 +702,7 @@ IndexerAnnounceDeal informs indexer nodes that a new deal was received,
 so they can download its index
 
 
-Perms: 
+Perms: admin
 
 Inputs:
 ```json
