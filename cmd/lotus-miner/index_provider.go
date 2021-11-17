@@ -42,7 +42,7 @@ var indexProvAnnounceCmd = &cli.Command{
 		proposalCidStr := cctx.Args().First()
 		proposalCid, err := cid.Parse(proposalCidStr)
 		if err != nil {
-			return fmt.Errorf("invalid deal proposal CID: %w", proposalCid)
+			return fmt.Errorf("invalid deal proposal CID: %w", err)
 		}
 
 		marketsApi, closer, err := lcli.GetMarketsAPI(cctx)
