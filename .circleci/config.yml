@@ -891,6 +891,11 @@ workflows:
           target: "./itests/sector_terminate_test.go"
       
       - test:
+          name: test-itest-self_sent_txn
+          suite: itest-self_sent_txn
+          target: "./itests/self_sent_txn_test.go"
+      
+      - test:
           name: test-itest-tape
           suite: itest-tape
           target: "./itests/tape_test.go"

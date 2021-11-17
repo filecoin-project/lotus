@@ -38,13 +38,13 @@ func TestSelfSentTxn(t *testing.T) {
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
 	msgOverBal := &types.Message{
-		From:  client.DefaultKey.Address,
-		To:    client.DefaultKey.Address,
-		Value: big.Mul(big.NewInt(2), bal),
-		GasLimit: 10000000000,
+		From:       client.DefaultKey.Address,
+		To:         client.DefaultKey.Address,
+		Value:      big.Mul(big.NewInt(2), bal),
+		GasLimit:   10000000000,
 		GasPremium: big.NewInt(10000000000),
-		GasFeeCap: big.NewInt(100000000000),
-		Nonce: 1,
+		GasFeeCap:  big.NewInt(100000000000),
+		Nonce:      1,
 	}
 	smOverBal, err := client.WalletSignMessage(ctx, client.DefaultKey.Address, msgOverBal)
 	require.NoError(t, err)
