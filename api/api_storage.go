@@ -210,6 +210,10 @@ type StorageMiner interface {
 	// DagstoreGC runs garbage collection on the DAG store.
 	DagstoreGC(ctx context.Context) ([]DagstoreShardResult, error) //perm:admin
 
+	// IndexerAnnounceDeal informs indexer nodes that a new deal was received,
+	// so they can download its index
+	IndexerAnnounceDeal(ctx context.Context, proposalCid cid.Cid) error
+
 	// RuntimeSubsystems returns the subsystems that are enabled
 	// in this instance.
 	RuntimeSubsystems(ctx context.Context) (MinerSubsystems, error) //perm:read

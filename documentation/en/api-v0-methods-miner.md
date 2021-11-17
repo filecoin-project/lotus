@@ -43,6 +43,8 @@
   * [DealsSetPieceCidBlocklist](#DealsSetPieceCidBlocklist)
 * [I](#I)
   * [ID](#ID)
+* [Indexer](#Indexer)
+  * [IndexerAnnounceDeal](#IndexerAnnounceDeal)
 * [Log](#Log)
   * [LogAlerts](#LogAlerts)
   * [LogList](#LogList)
@@ -662,6 +664,27 @@ Perms: read
 Inputs: `null`
 
 Response: `"12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"`
+
+## Indexer
+
+
+### IndexerAnnounceDeal
+IndexerAnnounceDeal informs indexer nodes that a new deal was received,
+so they can download its index
+
+
+Perms: 
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response: `{}`
 
 ## Log
 

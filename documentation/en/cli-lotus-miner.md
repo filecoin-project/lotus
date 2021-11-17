@@ -30,6 +30,7 @@ COMMANDS:
      retrieval-deals  Manage retrieval deals and related configuration
      data-transfers   Manage data transfers
      dagstore         Manage the dagstore on the markets subsystem
+     index            Manage the index provider on the markets subsystem
    NETWORK:
      net  Manage P2P Network
    RETRIEVAL:
@@ -1107,6 +1108,37 @@ NAME:
 
 USAGE:
    lotus-miner dagstore gc [command options] [arguments...]
+
+OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
+   
+```
+
+## lotus-miner index
+```
+NAME:
+   lotus-miner index - Manage the index provider on the markets subsystem
+
+USAGE:
+   lotus-miner index command [command options] [arguments...]
+
+COMMANDS:
+   announce  Announce a deal to indexers so they can download its index
+   help, h   Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner index announce
+```
+NAME:
+   lotus-miner index announce - Announce a deal to indexers so they can download its index
+
+USAGE:
+   lotus-miner index announce [command options] <deal proposal cid>
 
 OPTIONS:
    --color     use color in display output (default: depends on output being a TTY)
