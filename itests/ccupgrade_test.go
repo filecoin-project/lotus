@@ -32,7 +32,7 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) {
 	ctx := context.Background()
 	blockTime := 5 * time.Millisecond
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.LatestActorsAt(upgradeHeight))
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.TurboUpgradeAt(upgradeHeight))
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	maddr, err := miner.ActorAddress(ctx)
