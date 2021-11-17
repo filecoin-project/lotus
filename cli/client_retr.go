@@ -380,7 +380,16 @@ var clientRetrieveLsCmd = &cli.Command{
 	Flags: append([]cli.Flag{
 		&cli.BoolFlag{
 			Name:  "ipld",
-			Usage: "list IPLD-level links",
+			Usage: "list IPLD datamodel links",
+		},
+		&cli.IntFlag{
+			Name:  "depth",
+			Usage: "list links recursively up to the specified depth",
+			Value: 1,
+		},
+		&cli.StringFlag{
+			Name:  "path-selector",
+			Usage: "a rudimentary (DM-level-only) text-path selector",
 		},
 	}, retrFlagsCommon...),
 	Action: func(cctx *cli.Context) error {
@@ -402,7 +411,7 @@ var clientRetrieveLsCmd = &cli.Command{
 		afmt := NewAppFmt(cctx.App)
 
 		rootSelector := lapi.Selector(`{".": {}}`)
-		dataSelector := lapi.Selector(`{"R":{"l":{"depth":1},":>":{"a":{">":{"@":{}}}}}}`)
+		dataSelector := lapi.Selector(fmt.Sprintf(`{"a":{">":{"R":{"l":{"depth":%d},":>":{"a":{">":{"|": [{"@":{}}, {".": {}}]}}}}}}}`, cctx.Int("depth")))
 
 		eref, err := retrieve(ctx, cctx, fapi, &dataSelector, afmt.Printf)
 		if err != nil {
@@ -411,7 +420,7 @@ var clientRetrieveLsCmd = &cli.Command{
 
 		eref.DAGs = append(eref.DAGs, lapi.DagSpec{
 			RootSelector: &rootSelector,
-			DataSelector: &rootSelector,
+			DataSelector: &dataSelector,
 		})
 
 		rc, err := ClientExportStream(ainfo.Addr, ainfo.AuthHeader(), *eref, true)
@@ -454,7 +463,7 @@ var clientRetrieveLsCmd = &cli.Command{
 				fmt.Printf("%s %s\t%d\n", link.Cid, link.Name, link.Size)
 			}
 		} else {
-			sel, _ := selectorparse.ParseJSONSelector(`{"a":{">":{".":{}}}}`)
+			sel, _ := selectorparse.ParseJSONSelector(fmt.Sprintf(`{"R":{"l":{"depth":%d},":>":{"a":{">":{"|":[{"@":{}},{".":{}}]}}}}}`, cctx.Int("depth")))
 
 			if err := utils.TraverseDag(
 				ctx,
