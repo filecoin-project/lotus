@@ -836,14 +836,14 @@ func (sm *StorageMinerAPI) IndexerAnnounceDeal(ctx context.Context, proposalCid 
 	return sm.StorageProvider.AnnounceDealToIndexer(ctx, proposalCid)
 }
 
-func (sm *StorageMinerAPI) DagstoreInvertedIndexSize(ctx context.Context) (int64, error) {
+func (sm *StorageMinerAPI) DagstorePieceIndexSize(ctx context.Context) (int64, error) {
 	if sm.DAGStore == nil {
 		return 0, fmt.Errorf("dagstore not available on this node")
 	}
 
 	res, err := sm.DAGStore.TopLevelIndex.Size()
 	if err != nil {
-		return 0, fmt.Errorf("failed to get dagstore inverted index size: %w", err)
+		return 0, fmt.Errorf("failed to get dagstore piece index size: %w", err)
 	}
 
 	return res, nil

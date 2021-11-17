@@ -22,9 +22,9 @@
   * [DagstoreGC](#DagstoreGC)
   * [DagstoreInitializeAll](#DagstoreInitializeAll)
   * [DagstoreInitializeShard](#DagstoreInitializeShard)
-  * [DagstoreInvertedIndexSize](#DagstoreInvertedIndexSize)
   * [DagstoreListShards](#DagstoreListShards)
   * [DagstoreLookupPieces](#DagstoreLookupPieces)
+  * [DagstorePieceIndexSize](#DagstorePieceIndexSize)
   * [DagstoreRecoverShard](#DagstoreRecoverShard)
 * [Deals](#Deals)
   * [DealsConsiderOfflineRetrievalDeals](#DealsConsiderOfflineRetrievalDeals)
@@ -435,16 +435,6 @@ Inputs:
 
 Response: `{}`
 
-### DagstoreInvertedIndexSize
-DagstoreInvertedIndexSize returns the size of the inverted index.
-
-
-Perms: admin
-
-Inputs: `null`
-
-Response: `9`
-
 ### DagstoreListShards
 DagstoreListShards returns information about all shards known to the
 DAG store. Only available on nodes running the markets subsystem.
@@ -472,6 +462,16 @@ Inputs:
 ```
 
 Response: `null`
+
+### DagstorePieceIndexSize
+DagstorePieceIndexSize returns the size of the piece index.
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `9`
 
 ### DagstoreRecoverShard
 DagstoreRecoverShard attempts to recover a failed shard.

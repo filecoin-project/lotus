@@ -621,11 +621,11 @@ type StorageMinerStruct struct {
 
 		DagstoreInitializeShard func(p0 context.Context, p1 string) error `perm:"write"`
 
-		DagstoreInvertedIndexSize func(p0 context.Context) (int64, error) `perm:"admin"`
-
 		DagstoreListShards func(p0 context.Context) ([]DagstoreShardInfo, error) `perm:"read"`
 
 		DagstoreLookupPieces func(p0 context.Context, p1 cid.Cid) ([]DagstoreShardInfo, error) `perm:"admin"`
+
+		DagstorePieceIndexSize func(p0 context.Context) (int64, error) `perm:"admin"`
 
 		DagstoreRecoverShard func(p0 context.Context, p1 string) error `perm:"write"`
 
@@ -3687,17 +3687,6 @@ func (s *StorageMinerStub) DagstoreInitializeShard(p0 context.Context, p1 string
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DagstoreInvertedIndexSize(p0 context.Context) (int64, error) {
-	if s.Internal.DagstoreInvertedIndexSize == nil {
-		return 0, ErrNotSupported
-	}
-	return s.Internal.DagstoreInvertedIndexSize(p0)
-}
-
-func (s *StorageMinerStub) DagstoreInvertedIndexSize(p0 context.Context) (int64, error) {
-	return 0, ErrNotSupported
-}
-
 func (s *StorageMinerStruct) DagstoreListShards(p0 context.Context) ([]DagstoreShardInfo, error) {
 	if s.Internal.DagstoreListShards == nil {
 		return *new([]DagstoreShardInfo), ErrNotSupported
@@ -3718,6 +3707,17 @@ func (s *StorageMinerStruct) DagstoreLookupPieces(p0 context.Context, p1 cid.Cid
 
 func (s *StorageMinerStub) DagstoreLookupPieces(p0 context.Context, p1 cid.Cid) ([]DagstoreShardInfo, error) {
 	return *new([]DagstoreShardInfo), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) DagstorePieceIndexSize(p0 context.Context) (int64, error) {
+	if s.Internal.DagstorePieceIndexSize == nil {
+		return 0, ErrNotSupported
+	}
+	return s.Internal.DagstorePieceIndexSize(p0)
+}
+
+func (s *StorageMinerStub) DagstorePieceIndexSize(p0 context.Context) (int64, error) {
+	return 0, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DagstoreRecoverShard(p0 context.Context, p1 string) error {

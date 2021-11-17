@@ -1031,14 +1031,14 @@ USAGE:
    lotus-miner dagstore command [command options] [arguments...]
 
 COMMANDS:
-   list-shards          List all shards known to the dagstore, with their current status
-   initialize-shard     Initialize the specified shard
-   recover-shard        Attempt to recover a shard in errored state
-   initialize-all       Initialize all uninitialized shards, streaming results as they're produced; only shards for unsealed pieces are initialized by default
-   gc                   Garbage collect the dagstore
-   inverted-index-size  Inspect the dagstore inverted index size
-   lookup-pieces        Lookup pieces that a given CID belongs to
-   help, h              Shows a list of commands or help for one command
+   list-shards       List all shards known to the dagstore, with their current status
+   initialize-shard  Initialize the specified shard
+   recover-shard     Attempt to recover a shard in errored state
+   initialize-all    Initialize all uninitialized shards, streaming results as they're produced; only shards for unsealed pieces are initialized by default
+   gc                Garbage collect the dagstore
+   piece-index-size  Inspect the dagstore piece index size
+   lookup-pieces     Lookup pieces that a given CID belongs to
+   help, h           Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -1117,13 +1117,13 @@ OPTIONS:
    
 ```
 
-### lotus-miner dagstore inverted-index-size
+### lotus-miner dagstore piece-index-size
 ```
 NAME:
-   lotus-miner dagstore inverted-index-size - Inspect the dagstore inverted index size
+   lotus-miner dagstore piece-index-size - Inspect the dagstore piece index size
 
 USAGE:
-   lotus-miner dagstore inverted-index-size [command options] [arguments...]
+   lotus-miner dagstore piece-index-size [command options] [arguments...]
 
 OPTIONS:
    --color     use color in display output (default: depends on output being a TTY)

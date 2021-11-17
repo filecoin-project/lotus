@@ -214,8 +214,8 @@ type StorageMiner interface {
 	// so they can download its index
 	IndexerAnnounceDeal(ctx context.Context, proposalCid cid.Cid) error //perm:admin
 
-	// DagstoreInvertedIndexSize returns the size of the inverted index.
-	DagstoreInvertedIndexSize(ctx context.Context) (int64, error) //perm:admin
+	// DagstorePieceIndexSize returns the size of the piece index.
+	DagstorePieceIndexSize(ctx context.Context) (int64, error) //perm:admin
 
 	// DagstoreLookupPieces returns information about shards that contain the given CID.
 	DagstoreLookupPieces(ctx context.Context, cid cid.Cid) ([]DagstoreShardInfo, error) //perm:admin

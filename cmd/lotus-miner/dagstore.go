@@ -23,7 +23,7 @@ var dagstoreCmd = &cli.Command{
 		dagstoreRecoverShardCmd,
 		dagstoreInitializeAllCmd,
 		dagstoreGcCmd,
-		dagstoreInvertedIndexSizeCmd,
+		dagstorePieceIndexSizeCmd,
 		dagstoreLookupPiecesCmd,
 	},
 }
@@ -273,9 +273,9 @@ func printTableShards(shards []api.DagstoreShardInfo) error {
 	return tw.Flush(os.Stdout)
 }
 
-var dagstoreInvertedIndexSizeCmd = &cli.Command{
-	Name:  "inverted-index-size",
-	Usage: "Inspect the dagstore inverted index size",
+var dagstorePieceIndexSizeCmd = &cli.Command{
+	Name:  "piece-index-size",
+	Usage: "Inspect the dagstore piece index size",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:        "color",
@@ -296,7 +296,7 @@ var dagstoreInvertedIndexSizeCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		size, err := marketsApi.DagstoreInvertedIndexSize(ctx)
+		size, err := marketsApi.DagstorePieceIndexSize(ctx)
 		if err != nil {
 			return err
 		}
