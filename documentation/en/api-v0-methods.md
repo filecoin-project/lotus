@@ -5016,7 +5016,8 @@ Response:
   "VerifiedDealWeight": "0",
   "InitialPledge": "0",
   "ExpectedDayReward": "0",
-  "ExpectedStoragePledge": "0"
+  "ExpectedStoragePledge": "0",
+  "SectorKeyCID": null
 }
 ```
 
