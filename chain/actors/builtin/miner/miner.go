@@ -266,6 +266,7 @@ type SectorOnChainInfo struct {
 	InitialPledge         abi.TokenAmount
 	ExpectedDayReward     abi.TokenAmount
 	ExpectedStoragePledge abi.TokenAmount
+	SectorKeyCID          *cid.Cid
 }
 
 type SectorPreCommitInfo = miner0.SectorPreCommitInfo
