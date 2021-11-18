@@ -480,7 +480,13 @@ type GatewayStruct struct {
 	Internal struct {
 		ChainGetBlockMessages func(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) ``
 
+		ChainGetGenesis func(p0 context.Context) (*types.TipSet, error) ``
+
 		ChainGetMessage func(p0 context.Context, p1 cid.Cid) (*types.Message, error) ``
+
+		ChainGetParentMessages func(p0 context.Context, p1 cid.Cid) ([]Message, error) ``
+
+		ChainGetParentReceipts func(p0 context.Context, p1 cid.Cid) ([]*types.MessageReceipt, error) ``
 
 		ChainGetPath func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*HeadChange, error) ``
 
@@ -3045,6 +3051,17 @@ func (s *GatewayStub) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*Bl
 	return nil, ErrNotSupported
 }
 
+func (s *GatewayStruct) ChainGetGenesis(p0 context.Context) (*types.TipSet, error) {
+	if s.Internal.ChainGetGenesis == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ChainGetGenesis(p0)
+}
+
+func (s *GatewayStub) ChainGetGenesis(p0 context.Context) (*types.TipSet, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *GatewayStruct) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.Message, error) {
 	if s.Internal.ChainGetMessage == nil {
 		return nil, ErrNotSupported
@@ -3054,6 +3071,28 @@ func (s *GatewayStruct) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.
 
 func (s *GatewayStub) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.Message, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) ChainGetParentMessages(p0 context.Context, p1 cid.Cid) ([]Message, error) {
+	if s.Internal.ChainGetParentMessages == nil {
+		return *new([]Message), ErrNotSupported
+	}
+	return s.Internal.ChainGetParentMessages(p0, p1)
+}
+
+func (s *GatewayStub) ChainGetParentMessages(p0 context.Context, p1 cid.Cid) ([]Message, error) {
+	return *new([]Message), ErrNotSupported
+}
+
+func (s *GatewayStruct) ChainGetParentReceipts(p0 context.Context, p1 cid.Cid) ([]*types.MessageReceipt, error) {
+	if s.Internal.ChainGetParentReceipts == nil {
+		return *new([]*types.MessageReceipt), ErrNotSupported
+	}
+	return s.Internal.ChainGetParentReceipts(p0, p1)
+}
+
+func (s *GatewayStub) ChainGetParentReceipts(p0 context.Context, p1 cid.Cid) ([]*types.MessageReceipt, error) {
+	return *new([]*types.MessageReceipt), ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*HeadChange, error) {
