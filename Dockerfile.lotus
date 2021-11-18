@@ -36,7 +36,7 @@ WORKDIR /opt/filecoin
 ARG RUSTFLAGS=""
 ARG GOFLAGS=""
 
-RUN make lotus lotus-miner lotus-worker lotus-shed lotus-wallet lotus-gateway
+RUN make lotus lotus-miner lotus-worker lotus-shed lotus-seed lotus-wallet lotus-gateway
 
 
 FROM ubuntu:20.04 AS base
@@ -187,6 +187,7 @@ ENV DOCKER_LOTUS_MINER_INIT true
 
 COPY --from=builder /opt/filecoin/lotus      /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-shed /usr/local/bin/
+COPY --from=builder /opt/filecoin/lotus-seed /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-wallet /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-gateway /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-miner /usr/local/bin/
