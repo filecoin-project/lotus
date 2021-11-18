@@ -51,6 +51,7 @@ var multisigCmd = &cli.Command{
 		msigProposeCmd,
 		msigRemoveProposeCmd,
 		msigApproveCmd,
+		msigCancelCmd,
 		msigAddProposeCmd,
 		msigAddApproveCmd,
 		msigAddCancelCmd,
@@ -158,6 +159,8 @@ var msigCreateCmd = &cli.Command{
 		}
 
 		msgCid := sm.Cid()
+
+		fmt.Println("sent create in message: ", msgCid)
 
 		// wait for it to get mined into a block
 		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
@@ -448,7 +451,7 @@ var msigProposeCmd = &cli.Command{
 
 		msgCid := sm.Cid()
 
-		fmt.Println("send proposal in message: ", msgCid)
+		fmt.Println("sent proposal in message: ", msgCid)
 
 		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
 		if err != nil {
@@ -606,6 +609,131 @@ var msigApproveCmd = &cli.Command{
 
 		if wait.Receipt.ExitCode != 0 {
 			return fmt.Errorf("approve returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
+var msigCancelCmd = &cli.Command{
+	Name:      "cancel",
+	Usage:     "Cancel a multisig message",
+	ArgsUsage: "<multisigAddress messageId> [destination value [methodId methodParams]]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the cancel message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() < 2 {
+			return ShowHelp(cctx, fmt.Errorf("must pass at least multisig address and message ID"))
+		}
+
+		if cctx.Args().Len() > 2 && cctx.Args().Len() < 4 {
+			return ShowHelp(cctx, fmt.Errorf("usage: msig cancel <msig addr> <message ID> <desination> <value>"))
+		}
+
+		if cctx.Args().Len() > 4 && cctx.Args().Len() != 6 {
+			return ShowHelp(cctx, fmt.Errorf("usage: msig cancel <msig addr> <message ID> <desination> <value> [ <method> <params> ]"))
+		}
+
+		srv, err := GetFullNodeServices(cctx)
+		if err != nil {
+			return err
+		}
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
+		ctx := ReqContext(cctx)
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		txid, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		var msgCid cid.Cid
+		if cctx.Args().Len() == 2 {
+			proto, err := api.MsigCancel(ctx, msig, txid, from)
+			if err != nil {
+				return err
+			}
+
+			sm, err := InteractiveSend(ctx, cctx, srv, proto)
+			if err != nil {
+				return err
+			}
+
+			msgCid = sm.Cid()
+		} else {
+			dest, err := address.NewFromString(cctx.Args().Get(2))
+			if err != nil {
+				return err
+			}
+
+			value, err := types.ParseFIL(cctx.Args().Get(3))
+			if err != nil {
+				return err
+			}
+
+			var method uint64
+			var params []byte
+			if cctx.Args().Len() == 6 {
+				m, err := strconv.ParseUint(cctx.Args().Get(4), 10, 64)
+				if err != nil {
+					return err
+				}
+				method = m
+
+				p, err := hex.DecodeString(cctx.Args().Get(5))
+				if err != nil {
+					return err
+				}
+				params = p
+			}
+
+			proto, err := api.MsigCancelTxnHash(ctx, msig, txid, dest, types.BigInt(value), from, method, params)
+			if err != nil {
+				return err
+			}
+
+			sm, err := InteractiveSend(ctx, cctx, srv, proto)
+			if err != nil {
+				return err
+			}
+
+			msgCid = sm.Cid()
+		}
+
+		fmt.Println("sent cancel in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("cancel returned exit %d", wait.Receipt.ExitCode)
 		}
 
 		return nil
@@ -1490,7 +1618,7 @@ var msigLockCancelCmd = &cli.Command{
 			return actErr
 		}
 
-		proto, err := api.MsigCancel(ctx, msig, txid, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
+		proto, err := api.MsigCancelTxnHash(ctx, msig, txid, msig, big.Zero(), from, uint64(multisig.Methods.LockBalance), params)
 		if err != nil {
 			return err
 		}

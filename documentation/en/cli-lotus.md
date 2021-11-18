@@ -857,6 +857,7 @@ COMMANDS:
    propose            Propose a multisig transaction
    propose-remove     Propose to remove a signer
    approve            Approve a multisig message
+   cancel             Cancel a multisig message
    add-propose        Propose to add a signer
    add-approve        Approve a message to add a signer
    add-cancel         Cancel a message to add a signer
@@ -948,6 +949,20 @@ USAGE:
 
 OPTIONS:
    --from value  account to send the approve message from
+   --help, -h    show help (default: false)
+   
+```
+
+### lotus msig cancel
+```
+NAME:
+   lotus msig cancel - Cancel a multisig message
+
+USAGE:
+   lotus msig cancel [command options] <multisigAddress messageId> [destination value [methodId methodParams]]
+
+OPTIONS:
+   --from value  account to send the cancel message from
    --help, -h    show help (default: false)
    
 ```

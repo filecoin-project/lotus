@@ -108,7 +108,7 @@ func (w *WrapperV1Full) MsigApproveTxnHash(ctx context.Context, msig address.Add
 }
 
 func (w *WrapperV1Full) MsigCancel(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (cid.Cid, error) {
-	p, err := w.FullNode.MsigCancel(ctx, msig, txID, to, amt, src, method, params)
+	p, err := w.FullNode.MsigCancelTxnHash(ctx, msig, txID, to, amt, src, method, params)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("creating prototype: %w", err)
 	}

@@ -1428,18 +1428,33 @@ func (mr *MockFullNodeMockRecorder) MsigApproveTxnHash(arg0, arg1, arg2, arg3, a
 }
 
 // MsigCancel mocks base method.
-func (m *MockFullNode) MsigCancel(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 address.Address, arg4 big.Int, arg5 address.Address, arg6 uint64, arg7 []byte) (*api.MessagePrototype, error) {
+func (m *MockFullNode) MsigCancel(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 address.Address) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MsigCancel", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+	ret := m.ctrl.Call(m, "MsigCancel", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // MsigCancel indicates an expected call of MsigCancel.
-func (mr *MockFullNodeMockRecorder) MsigCancel(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) MsigCancel(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MsigCancel", reflect.TypeOf((*MockFullNode)(nil).MsigCancel), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MsigCancel", reflect.TypeOf((*MockFullNode)(nil).MsigCancel), arg0, arg1, arg2, arg3)
+}
+
+// MsigCancelTxnHash mocks base method.
+func (m *MockFullNode) MsigCancelTxnHash(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 address.Address, arg4 big.Int, arg5 address.Address, arg6 uint64, arg7 []byte) (*api.MessagePrototype, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MsigCancelTxnHash", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+	ret0, _ := ret[0].(*api.MessagePrototype)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MsigCancelTxnHash indicates an expected call of MsigCancelTxnHash.
+func (mr *MockFullNodeMockRecorder) MsigCancelTxnHash(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MsigCancelTxnHash", reflect.TypeOf((*MockFullNode)(nil).MsigCancelTxnHash), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 }
 
 // MsigCreate mocks base method.
