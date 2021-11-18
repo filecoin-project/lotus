@@ -26,7 +26,7 @@ require (
 	github.com/elastic/gosigar v0.14.1
 	github.com/etclabscore/go-openrpc-reflect v0.0.36
 	github.com/fatih/color v1.13.0
-	github.com/filecoin-project/dagstore v0.5.0
+	github.com/filecoin-project/dagstore v0.5.1-0.20211118071820-a75afb62d8ce
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
 	github.com/filecoin-project/go-address v0.0.6
 	github.com/filecoin-project/go-bitfield v0.2.4
@@ -37,6 +37,7 @@ require (
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
 	github.com/filecoin-project/go-fil-markets v1.13.3-0.20211117072527-8713155662ff
+	github.com/filecoin-project/go-indexer-core v0.2.4
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.2

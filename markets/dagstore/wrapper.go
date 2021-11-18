@@ -10,6 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-indexer-core/store/storethehash"
+	"github.com/libp2p/go-libp2p-core/host"
+
 	carindex "github.com/ipld/go-car/v2/index"
 
 	"github.com/ipfs/go-cid"
@@ -56,7 +59,7 @@ type Wrapper struct {
 
 var _ stores.DAGStoreWrapper = (*Wrapper)(nil)
 
-func NewDAGStore(cfg config.DAGStoreConfig, minerApi MinerAPI) (*dagstore.DAGStore, *Wrapper, error) {
+func NewDAGStore(cfg config.DAGStoreConfig, minerApi MinerAPI, h host.Host) (*dagstore.DAGStore, *Wrapper, error) {
 	// construct the DAG Store.
 	registry := mount.NewRegistry()
 	if err := registry.Register(lotusScheme, mountTemplate(minerApi)); err != nil {
@@ -85,11 +88,11 @@ func NewDAGStore(cfg config.DAGStoreConfig, minerApi MinerAPI) (*dagstore.DAGSto
 		return nil, nil, xerrors.Errorf("failed to initialise dagstore index repo: %w", err)
 	}
 
-	//store, err := storethehash.New(indexDir)
-	//if err != nil {
-	//return nil, nil, xerrors.Errorf("failed to initialise store the index: %w", err)
-	//}
-	//topIndex := index.NewInverted(store)
+	store, err := storethehash.New(indexDir)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("failed to initialise store the index: %w", err)
+	}
+	topIndex := index.NewInverted(store, h.ID())
 
 	dcfg := dagstore.Config{
 		TransientsDir: transientsDir,
@@ -98,7 +101,7 @@ func NewDAGStore(cfg config.DAGStoreConfig, minerApi MinerAPI) (*dagstore.DAGSto
 		MountRegistry: registry,
 		FailureCh:     failureCh,
 		TraceCh:       traceCh,
-		//TopLevelIndex: topIndex,
+		TopLevelIndex: topIndex,
 		// not limiting fetches globally, as the Lotus mount does
 		// conditional throttling.
 		MaxConcurrentIndex:        cfg.MaxConcurrentIndex,
