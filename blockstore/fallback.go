@@ -71,14 +71,14 @@ func (fbs *FallbackStore) getFallback(c cid.Cid) (blocks.Block, error) {
 	// chain bitswap puts blocks in temp blockstore which is cleaned up
 	// every few min (to drop any messages we fetched but don't want)
 	// in this case we want to keep this block around
-	if err := fbs.Put(b); err != nil {
+	if err := fbs.Put(ctx, b); err != nil {
 		return nil, xerrors.Errorf("persisting fallback-fetched block: %w", err)
 	}
 	return b, nil
 }
 
-func (fbs *FallbackStore) Get(c cid.Cid) (blocks.Block, error) {
-	b, err := fbs.Blockstore.Get(c)
+func (fbs *FallbackStore) Get(ctx context.Context, c cid.Cid) (blocks.Block, error) {
+	b, err := fbs.Blockstore.Get(ctx, c)
 	switch err {
 	case nil:
 		return b, nil
@@ -89,8 +89,8 @@ func (fbs *FallbackStore) Get(c cid.Cid) (blocks.Block, error) {
 	}
 }
 
-func (fbs *FallbackStore) GetSize(c cid.Cid) (int, error) {
-	sz, err := fbs.Blockstore.GetSize(c)
+func (fbs *FallbackStore) GetSize(ctx context.Context, c cid.Cid) (int, error) {
+	sz, err := fbs.Blockstore.GetSize(ctx, c)
 	switch err {
 	case nil:
 		return sz, nil

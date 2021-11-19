@@ -525,7 +525,7 @@ func (b *Blockstore) Size() (int64, error) {
 
 // View implements blockstore.Viewer, which leverages zero-copy read-only
 // access to values.
-func (b *Blockstore) View(cid cid.Cid, fn func([]byte) error) error {
+func (b *Blockstore) View(ctx context.Context, cid cid.Cid, fn func([]byte) error) error {
 	if err := b.access(); err != nil {
 		return err
 	}
@@ -552,7 +552,7 @@ func (b *Blockstore) View(cid cid.Cid, fn func([]byte) error) error {
 }
 
 // Has implements Blockstore.Has.
-func (b *Blockstore) Has(cid cid.Cid) (bool, error) {
+func (b *Blockstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 	if err := b.access(); err != nil {
 		return false, err
 	}
@@ -582,7 +582,7 @@ func (b *Blockstore) Has(cid cid.Cid) (bool, error) {
 }
 
 // Get implements Blockstore.Get.
-func (b *Blockstore) Get(cid cid.Cid) (blocks.Block, error) {
+func (b *Blockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
 	if !cid.Defined() {
 		return nil, blockstore.ErrNotFound
 	}
@@ -619,7 +619,7 @@ func (b *Blockstore) Get(cid cid.Cid) (blocks.Block, error) {
 }
 
 // GetSize implements Blockstore.GetSize.
-func (b *Blockstore) GetSize(cid cid.Cid) (int, error) {
+func (b *Blockstore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 	if err := b.access(); err != nil {
 		return 0, err
 	}
@@ -652,7 +652,7 @@ func (b *Blockstore) GetSize(cid cid.Cid) (int, error) {
 }
 
 // Put implements Blockstore.Put.
-func (b *Blockstore) Put(block blocks.Block) error {
+func (b *Blockstore) Put(ctx context.Context, block blocks.Block) error {
 	if err := b.access(); err != nil {
 		return err
 	}
@@ -691,7 +691,7 @@ func (b *Blockstore) Put(block blocks.Block) error {
 }
 
 // PutMany implements Blockstore.PutMany.
-func (b *Blockstore) PutMany(blocks []blocks.Block) error {
+func (b *Blockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
 	if err := b.access(); err != nil {
 		return err
 	}
@@ -755,7 +755,7 @@ func (b *Blockstore) PutMany(blocks []blocks.Block) error {
 }
 
 // DeleteBlock implements Blockstore.DeleteBlock.
-func (b *Blockstore) DeleteBlock(cid cid.Cid) error {
+func (b *Blockstore) DeleteBlock(ctx context.Context, cid cid.Cid) error {
 	if err := b.access(); err != nil {
 		return err
 	}
@@ -774,7 +774,7 @@ func (b *Blockstore) DeleteBlock(cid cid.Cid) error {
 	})
 }
 
-func (b *Blockstore) DeleteMany(cids []cid.Cid) error {
+func (b *Blockstore) DeleteMany(ctx context.Context, cids []cid.Cid) error {
 	if err := b.access(); err != nil {
 		return err
 	}
@@ -927,7 +927,7 @@ func (b *Blockstore) ForEachKey(f func(cid.Cid) error) error {
 
 // HashOnRead implements Blockstore.HashOnRead. It is not supported by this
 // blockstore.
-func (b *Blockstore) HashOnRead(_ bool) {
+func (b *Blockstore) HashOnRead(ctx context.Context, _ bool) {
 	log.Warnf("called HashOnRead on badger blockstore; function not supported; ignoring")
 }
 

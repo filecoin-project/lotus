@@ -79,12 +79,12 @@ func NewRemoteIPFSBlockstore(ctx context.Context, maddr multiaddr.Multiaddr, onl
 	return Adapt(bs), nil
 }
 
-func (i *IPFSBlockstore) DeleteBlock(cid cid.Cid) error {
+func (i *IPFSBlockstore) DeleteBlock(ctx context.Context, cid cid.Cid) error {
 	return xerrors.Errorf("not supported")
 }
 
-func (i *IPFSBlockstore) Has(cid cid.Cid) (bool, error) {
-	_, err := i.offlineAPI.Block().Stat(i.ctx, path.IpldPath(cid))
+func (i *IPFSBlockstore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
+	_, err := i.offlineAPI.Block().Stat(ctx, path.IpldPath(cid))
 	if err != nil {
 		// The underlying client is running in Offline mode.
 		// Stat() will fail with an err if the block isn't in the
@@ -99,8 +99,8 @@ func (i *IPFSBlockstore) Has(cid cid.Cid) (bool, error) {
 	return true, nil
 }
 
-func (i *IPFSBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
-	rd, err := i.api.Block().Get(i.ctx, path.IpldPath(cid))
+func (i *IPFSBlockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
+	rd, err := i.api.Block().Get(ctx, path.IpldPath(cid))
 	if err != nil {
 		return nil, xerrors.Errorf("getting ipfs block: %w", err)
 	}
@@ -113,8 +113,8 @@ func (i *IPFSBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	return blocks.NewBlockWithCid(data, cid)
 }
 
-func (i *IPFSBlockstore) GetSize(cid cid.Cid) (int, error) {
-	st, err := i.api.Block().Stat(i.ctx, path.IpldPath(cid))
+func (i *IPFSBlockstore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
+	st, err := i.api.Block().Stat(ctx, path.IpldPath(cid))
 	if err != nil {
 		return 0, xerrors.Errorf("getting ipfs block: %w", err)
 	}
@@ -122,23 +122,23 @@ func (i *IPFSBlockstore) GetSize(cid cid.Cid) (int, error) {
 	return st.Size(), nil
 }
 
-func (i *IPFSBlockstore) Put(block blocks.Block) error {
+func (i *IPFSBlockstore) Put(ctx context.Context, block blocks.Block) error {
 	mhd, err := multihash.Decode(block.Cid().Hash())
 	if err != nil {
 		return err
 	}
 
-	_, err = i.api.Block().Put(i.ctx, bytes.NewReader(block.RawData()),
+	_, err = i.api.Block().Put(ctx, bytes.NewReader(block.RawData()),
 		options.Block.Hash(mhd.Code, mhd.Length),
 		options.Block.Format(cid.CodecToStr[block.Cid().Type()]))
 	return err
 }
 
-func (i *IPFSBlockstore) PutMany(blocks []blocks.Block) error {
+func (i *IPFSBlockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
 	// TODO: could be done in parallel
 
 	for _, block := range blocks {
-		if err := i.Put(block); err != nil {
+		if err := i.Put(ctx, block); err != nil {
 			return err
 		}
 	}
@@ -150,6 +150,6 @@ func (i *IPFSBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error
 	return nil, xerrors.Errorf("not supported")
 }
 
-func (i *IPFSBlockstore) HashOnRead(enabled bool) {
+func (i *IPFSBlockstore) HashOnRead(ctx context.Context, enabled bool) {
 	return // TODO: We could technically support this, but..
 }
