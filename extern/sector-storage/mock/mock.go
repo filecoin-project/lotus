@@ -10,6 +10,8 @@ import (
 	"math/rand"
 	"sync"
 
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	ffiwrapper2 "github.com/filecoin-project/go-commp-utils/ffiwrapper"
@@ -545,6 +547,10 @@ func (m mockVerifProver) VerifyAggregateSeals(aggregate proof5.AggregateSealVeri
 	}
 
 	return ok, nil
+}
+
+func (m mockVerifProver) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (bool, error) {
+	return true, nil
 }
 
 func (m mockVerifProver) AggregateSealProofs(aggregateInfo proof5.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error) {

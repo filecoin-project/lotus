@@ -16,8 +16,12 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	rtt "github.com/filecoin-project/go-state-types/rt"
 	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
+	rt2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
+	rt3 "github.com/filecoin-project/specs-actors/v3/actors/runtime"
+	rt4 "github.com/filecoin-project/specs-actors/v4/actors/runtime"
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	rt6 "github.com/filecoin-project/specs-actors/v6/actors/runtime"
+	rt7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
 	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	"go.opencensus.io/trace"
@@ -55,8 +59,8 @@ func (m *Message) ValueReceived() abi.TokenAmount {
 var EnableGasTracing = false
 
 type Runtime struct {
-	rt5.Message
-	rt5.Syscalls
+	rt7.Message
+	rt7.Syscalls
 
 	ctx context.Context
 
@@ -142,7 +146,12 @@ func (rt *Runtime) StorePut(x cbor.Marshaler) cid.Cid {
 
 var _ rt0.Runtime = (*Runtime)(nil)
 var _ rt5.Runtime = (*Runtime)(nil)
+var _ rt2.Runtime = (*Runtime)(nil)
+var _ rt3.Runtime = (*Runtime)(nil)
+var _ rt4.Runtime = (*Runtime)(nil)
+var _ rt5.Runtime = (*Runtime)(nil)
 var _ rt6.Runtime = (*Runtime)(nil)
+var _ rt7.Runtime = (*Runtime)(nil)
 
 func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.ActorError) {
 	defer func() {

@@ -4698,7 +4698,7 @@ Inputs:
 ]
 ```
 
-Response: `14`
+Response: `15`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -5016,7 +5016,8 @@ Response:
   "VerifiedDealWeight": "0",
   "InitialPledge": "0",
   "ExpectedDayReward": "0",
-  "ExpectedStoragePledge": "0"
+  "ExpectedStoragePledge": "0",
+  "SectorKeyCID": null
 }
 ```
 
