@@ -965,7 +965,7 @@ func (a *API) ClientExportInto(ctx context.Context, exportRef api.ExportRef, car
 	}
 
 	dserv := merkledag.NewDAGService(blockservice.New(retrievalBs, offline.Exchange(retrievalBs)))
-	roots, err := parseDagSpec(ctx, exportRef.Root, exportRef.DAGs, dserv)
+	roots, err := parseDagSpec(ctx, exportRef.Root, exportRef.DAGs, dserv, !car)
 	if err != nil {
 		return xerrors.Errorf("parsing dag spec: %w", err)
 	}
@@ -1012,7 +1012,7 @@ type dagSpec struct {
 	selector ipld.Node
 }
 
-func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds format.DAGService) ([]dagSpec, error) {
+func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds format.DAGService, rootOnNodeBoundary bool) ([]dagSpec, error) {
 	if len(dsp) == 0 {
 		return []dagSpec{
 			{
@@ -1051,6 +1051,9 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds forma
 				rsn,
 				func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
 					if r == traversal.VisitReason_SelectionMatch {
+						if rootOnNodeBoundary && p.LastBlock.Path.String() != p.Path.String() {
+							return xerrors.Errorf("unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", p.Path.String())
+						}
 
 						if p.LastBlock.Link == nil {
 							// this is likely the root node that we've matched here
