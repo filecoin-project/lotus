@@ -933,13 +933,14 @@ type MarketDeal struct {
 }
 
 type RetrievalOrder struct {
-	// TODO: make this less unixfs specific
 	Root         cid.Cid
 	Piece        *cid.Cid
 	DataSelector *Selector
-	Size         uint64
 
-	Total                   types.BigInt
+	// todo: Size/Total are only used for calculating price per byte; we should let users just pass that
+	Size  uint64
+	Total types.BigInt
+
 	UnsealPrice             types.BigInt
 	PaymentInterval         uint64
 	PaymentIntervalIncrease uint64
