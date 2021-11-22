@@ -108,6 +108,7 @@
   * [MsigApprove](#MsigApprove)
   * [MsigApproveTxnHash](#MsigApproveTxnHash)
   * [MsigCancel](#MsigCancel)
+  * [MsigCancelTxnHash](#MsigCancelTxnHash)
   * [MsigCreate](#MsigCreate)
   * [MsigGetAvailableBalance](#MsigGetAvailableBalance)
   * [MsigGetPending](#MsigGetPending)
@@ -2701,6 +2702,44 @@ Response:
 ```
 
 ### MsigCancel
+MsigCancel cancels a previously-proposed multisig message
+It takes the following params: <multisig address>, <proposed transaction ID> <signer address>
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234",
+  42,
+  "f01234"
+]
+```
+
+Response:
+```json
+{
+  "Message": {
+    "Version": 42,
+    "To": "f01234",
+    "From": "f01234",
+    "Nonce": 42,
+    "Value": "0",
+    "GasLimit": 9,
+    "GasFeeCap": "0",
+    "GasPremium": "0",
+    "Method": 1,
+    "Params": "Ynl0ZSBhcnJheQ==",
+    "CID": {
+      "/": "bafy2bzacebbpdegvr3i4cosewthysg5xkxpqfn2wfcz6mv2hmoktwbdxkax4s"
+    }
+  },
+  "ValidNonce": true
+}
+```
+
+### MsigCancelTxnHash
 MsigCancel cancels a previously-proposed multisig message
 It takes the following params: <multisig address>, <proposed transaction ID>, <recipient address>, <value to transfer>,
 <sender address of the cancel msg>, <method to call in the proposed message>, <params to include in the proposed message>
