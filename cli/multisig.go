@@ -88,6 +88,11 @@ var msigCreateCmd = &cli.Command{
 			Name:  "from",
 			Usage: "account to send the create message from",
 		},
+		&cli.BoolFlag{
+			Name:  "import",
+			Usage: "Import new multisig wallet to local address",
+			Value: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() < 1 {
@@ -179,6 +184,12 @@ var msigCreateCmd = &cli.Command{
 		}
 		fmt.Fprintln(cctx.App.Writer, "Created new multisig: ", execreturn.IDAddress, execreturn.RobustAddress)
 
+		if cctx.Bool("import") {
+			err = api.WalletMsigImport(ctx, execreturn.IDAddress)
+			if err != nil {
+				return err
+			}
+		}
 		// TODO: maybe register this somewhere
 		return nil
 	},

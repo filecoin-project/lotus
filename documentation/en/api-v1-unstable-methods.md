@@ -5806,7 +5806,7 @@ Inputs: `null`
 Response: `null`
 
 ### WalletMsigImport
-Walletmsigimport receives the idaddress and robustaddress of the multisig wallet and imports them into the wallet.
+WalletMsigImport receives either an ID or robust address of a multisig wallet and imports it into the wallet.
 
 
 Perms: admin
@@ -5814,7 +5814,6 @@ Perms: admin
 Inputs:
 ```json
 [
-  "f01234",
   "f01234"
 ]
 ```

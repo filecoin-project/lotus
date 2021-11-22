@@ -161,8 +161,8 @@ func (w *LocalWallet) WalletImport(ctx context.Context, ki *types.KeyInfo) (addr
 	return k.Address, nil
 }
 
-func (w *LocalWallet) WalletMsigImport(ctx context.Context, idAddress address.Address, robustAddress address.Address) error {
-	log.Infof("WalletMsigImport idAddress:%s, robustAddress:%s", idAddress.String(), robustAddress.String())
+func (w *LocalWallet) WalletMsigImport(ctx context.Context, idAddress address.Address) error {
+	log.Infof("WalletMsigImport idAddress:%s", idAddress.String())
 
 	w.lk.Lock()
 	defer w.lk.Unlock()
@@ -172,7 +172,7 @@ func (w *LocalWallet) WalletMsigImport(ctx context.Context, idAddress address.Ad
 		PrivateKey: idAddress.Bytes(),
 	}
 
-	if err := w.keystore.Put(KMsigNamePrefix+robustAddress.String(), keyinfo); err != nil {
+	if err := w.keystore.Put(KMsigNamePrefix+idAddress.String(), keyinfo); err != nil {
 		return xerrors.Errorf("saving to keystore: %w", err)
 	}
 

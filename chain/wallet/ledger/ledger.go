@@ -121,7 +121,7 @@ func (lw LedgerWallet) WalletImport(ctx context.Context, kinfo *types.KeyInfo) (
 	return lw.importKey(ki)
 }
 
-func (lw LedgerWallet) WalletMsigImport(ctx context.Context, idAddress address.Address, robustAddress address.Address) error {
+func (lw LedgerWallet) WalletMsigImport(ctx context.Context, idAddress address.Address) error {
 	return xerrors.Errorf("ledger wallet can't import msig address: %s", idAddress)
 }
 

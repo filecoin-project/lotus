@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"strconv"
 	"strings"
 	"text/tabwriter"
 
@@ -26,7 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
-	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
@@ -34,7 +32,6 @@ var walletCmd = &cli.Command{
 	Name:  "wallet",
 	Usage: "Manage wallet",
 	Subcommands: []*cli.Command{
-		walletApprove,
 		walletNew,
 		walletList,
 		walletBalance,
@@ -49,107 +46,10 @@ var walletCmd = &cli.Command{
 	},
 }
 
-var walletApprove = &cli.Command{
-	Name:      "approve",
-	Usage:     "Approve a multisig transfer message",
-	ArgsUsage: "[multisigAddress messageId]",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "from",
-			Usage: "account to send the approve message from (Use local Default address when not set，But it must belong to the signers)",
-		},
-	},
-
-	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() < 2 {
-			return ShowHelp(cctx, fmt.Errorf("must pass at least multisig address and message ID"))
-		}
-
-		srv, err := GetFullNodeServices(cctx)
-		if err != nil {
-			return err
-		}
-		defer srv.Close() //nolint:errcheck
-
-		api := srv.FullNodeAPI()
-		ctx := ReqContext(cctx)
-
-		var from address.Address
-		if cctx.IsSet("from") {
-			f, err := address.NewFromString(cctx.String("from"))
-			if err != nil {
-				return err
-			}
-			from = f
-		} else {
-			defaddr, err := api.WalletDefaultAddress(ctx)
-			if err != nil {
-				return err
-			}
-			from = defaddr
-		}
-
-		msig, err := address.NewFromString(cctx.Args().Get(0))
-		if err != nil {
-			return err
-		}
-
-		txid, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
-		if err != nil {
-			return err
-		}
-
-		proto, err := api.MsigApprove(ctx, msig, txid, from)
-		if err != nil {
-			return err
-		}
-
-		sm, err := InteractiveSend(ctx, cctx, srv, proto)
-		if err != nil {
-			return err
-		}
-
-		msgCid := sm.Cid()
-
-		fmt.Println("sent approval in message: ", msgCid)
-
-		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
-		if err != nil {
-			return err
-		}
-
-		if wait.Receipt.ExitCode != 0 {
-			return fmt.Errorf("approve returned exit %d", wait.Receipt.ExitCode)
-		}
-
-		return nil
-	},
-}
-
 var walletNew = &cli.Command{
 	Name:      "new",
 	Usage:     "Generate a new key of the given type",
 	ArgsUsage: "[bls|secp256k1 (default secp256k1)]",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "from",
-			Usage: "account to send the create message from (Use local Default address when not set)",
-		},
-		&cli.StringFlag{
-			Name:  "value",
-			Usage: "initial funds to give to multisig",
-			Value: "0",
-		},
-		&cli.Int64Flag{
-			Name:  "required",
-			Usage: "number of required approvals (uses number of signers provided if omitted)",
-		},
-		&cli.StringFlag{
-			Name:  "duration",
-			Usage: "length of the period over which funds unlock",
-			Value: "0",
-		},
-	},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
@@ -163,110 +63,13 @@ var walletNew = &cli.Command{
 			t = "secp256k1"
 		}
 
-		keyType := types.KeyType(t)
-		if !keyType.CheckMultiSig() {
-			nk, err := api.WalletNew(ctx, keyType)
-			if err != nil {
-				return err
-			}
-
-			fmt.Println(nk.String())
-		} else {
-			var addrs []address.Address
-			if cctx.Args().Len() == 1 {
-				localAddrs, err := api.WalletList(ctx)
-				if err != nil {
-					return err
-				}
-
-				for _, a := range localAddrs {
-					if a.Protocol() == address.BLS || a.Protocol() == address.SECP256K1 {
-						addrs = append(addrs, a)
-					}
-				}
-			} else {
-				for i, a := range cctx.Args().Slice() {
-					if i == 0 {
-						continue
-					}
-					addr, err := address.NewFromString(a)
-					if err != nil {
-						return err
-					}
-
-					if addr.Protocol() == address.ID || addr.Protocol() == address.Actor {
-						return fmt.Errorf("signer address(%s) protocol is %d", addr, addr.Protocol())
-					}
-
-					addrs = append(addrs, addr)
-				}
-			}
-
-			if len(addrs) < 2 {
-				return fmt.Errorf("There must be more than one signer for multiple signer addresses")
-			}
-
-			var sendAddr address.Address
-			if send := cctx.String("from"); send == "" {
-				defaddr, err := api.WalletDefaultAddress(ctx)
-				if err != nil {
-					return err
-				}
-
-				sendAddr = defaddr
-			} else {
-				addr, err := address.NewFromString(send)
-				if err != nil {
-					return err
-				}
-
-				sendAddr = addr
-			}
-
-			val := cctx.String("value")
-
-			filval, err := types.ParseFIL(val)
-			if err != nil {
-				return err
-			}
-
-			intVal := types.BigInt(filval)
-
-			required := cctx.Uint64("required")
-			if required == 0 {
-				required = uint64(len(addrs))
-			}
-			d := abi.ChainEpoch(cctx.Uint64("duration"))
-
-			gp := types.NewInt(1)
-
-			proto, err := api.MsigCreate(ctx, required, addrs, d, intVal, sendAddr, gp)
-			if err != nil {
-				return err
-			}
-
-			wait, err := api.StateWaitMsg(ctx, proto, uint64(cctx.Int("confidence")))
-			if err != nil {
-				return err
-			}
-
-			// check it executed successfully
-			if wait.Receipt.ExitCode != 0 {
-				fmt.Fprintln(cctx.App.Writer, "actor creation failed!")
-				return err
-			}
-
-			var execreturn init2.ExecReturn
-			if err := execreturn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
-				return err
-			}
-			fmt.Fprintln(cctx.App.Writer, "Created new multisig: ", execreturn.IDAddress, execreturn.RobustAddress)
-
-			err = api.WalletMsigImport(ctx, execreturn.IDAddress, execreturn.RobustAddress)
-			if err != nil {
-				return err
-			}
+		nk, err := api.WalletNew(ctx, types.KeyType(t))
+		if err != nil {
+			return err
 		}
+
+		fmt.Println(nk.String())
+
 		return nil
 	},
 }

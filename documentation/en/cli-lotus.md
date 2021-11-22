@@ -205,7 +205,6 @@ USAGE:
    lotus wallet command [command options] [arguments...]
 
 COMMANDS:
-   approve      Approve a multisig transfer message
    new          Generate a new key of the given type
    list         List wallet address
    balance      Get account balance
@@ -225,20 +224,6 @@ OPTIONS:
    
 ```
 
-### lotus wallet approve
-```
-NAME:
-   lotus wallet approve - Approve a multisig transfer message
-
-USAGE:
-   lotus wallet approve [command options] [multisigAddress messageId]
-
-OPTIONS:
-   --from value  account to send the approve message from (Use local Default address when not set，But it must belong to the signers)
-   --help, -h    show help (default: false)
-   
-```
-
 ### lotus wallet new
 ```
 NAME:
@@ -248,11 +233,7 @@ USAGE:
    lotus wallet new [command options] [bls|secp256k1 (default secp256k1)]
 
 OPTIONS:
-   --from value      account to send the create message from (Use local Default address when not set)
-   --value value     initial funds to give to multisig (default: "0")
-   --required value  number of required approvals (uses number of signers provided if omitted) (default: 0)
-   --duration value  length of the period over which funds unlock (default: "0")
-   --help, -h        show help (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -911,6 +892,7 @@ OPTIONS:
    --value value     initial funds to give to multisig (default: "0")
    --duration value  length of the period over which funds unlock (default: "0")
    --from value      account to send the create message from
+   --import          Import new multisig wallet to local address (default: false)
    --help, -h        show help (default: false)
    
 ```

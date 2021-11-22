@@ -41,8 +41,8 @@ type Wallet interface {
 
 	WalletSign(ctx context.Context, signer address.Address, toSign []byte, meta MsgMeta) (*crypto.Signature, error) //perm:admin
 
-	WalletExport(context.Context, address.Address) (*types.KeyInfo, error)    //perm:admin
-	WalletImport(context.Context, *types.KeyInfo) (address.Address, error)    //perm:admin
-	WalletMsigImport(context.Context, address.Address, address.Address) error //perm:admin
-	WalletDelete(context.Context, address.Address) error                      //perm:admin
+	WalletExport(context.Context, address.Address) (*types.KeyInfo, error) //perm:admin
+	WalletImport(context.Context, *types.KeyInfo) (address.Address, error) //perm:admin
+	WalletMsigImport(context.Context, address.Address) error               //perm:admin
+	WalletDelete(context.Context, address.Address) error                   //perm:admin
 }

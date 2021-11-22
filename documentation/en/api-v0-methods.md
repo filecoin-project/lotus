@@ -5660,7 +5660,6 @@ Perms: admin
 Inputs:
 ```json
 [
-  "f01234",
   "f01234"
 ]
 ```

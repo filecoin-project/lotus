@@ -82,10 +82,10 @@ func (c *LoggedWallet) WalletImport(ctx context.Context, ki *types.KeyInfo) (add
 	return c.under.WalletImport(ctx, ki)
 }
 
-func (c *LoggedWallet) WalletMsigImport(ctx context.Context, idAddress address.Address, robustAddress address.Address) error {
+func (c *LoggedWallet) WalletMsigImport(ctx context.Context, idAddress address.Address) error {
 	log.Infow("WalletMsigImport", "type", "msig")
 
-	return c.under.WalletMsigImport(ctx, idAddress, robustAddress)
+	return c.under.WalletMsigImport(ctx, idAddress)
 }
 
 func (c *LoggedWallet) WalletDelete(ctx context.Context, addr address.Address) error {
