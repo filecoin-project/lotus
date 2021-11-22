@@ -36,7 +36,7 @@ WORKDIR /opt/filecoin
 ARG RUSTFLAGS=""
 ARG GOFLAGS=""
 
-RUN make lotus lotus-miner lotus-worker lotus-shed lotus-wallet lotus-gateway
+RUN make lotus lotus-miner lotus-worker lotus-shed lotus-wallet lotus-gateway lotus-stats
 
 
 FROM ubuntu:20.04 AS base
@@ -183,6 +183,7 @@ COPY --from=builder /opt/filecoin/lotus-wallet /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-gateway /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-miner /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-worker /usr/local/bin/
+COPY --from=builder /opt/filecoin/lotus-stats /usr/local/bin/
 
 RUN mkdir /var/tmp/filecoin-proof-parameters
 RUN mkdir /var/lib/lotus

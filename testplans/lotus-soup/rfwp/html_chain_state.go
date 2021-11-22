@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/cli"
-	tstats "github.com/filecoin-project/lotus/tools/stats"
+	tsync "github.com/filecoin-project/lotus/tools/stats/sync"
 	"github.com/ipfs/go-cid"
 )
 
@@ -22,8 +22,9 @@ func FetchChainState(t *testkit.TestEnvironment, m *testkit.LotusMiner) error {
 	ctx := context.Background()
 	api := m.FullApi
 
-	tipsetsCh, err := tstats.GetTips(ctx, &v0api.WrapperV1Full{FullNode: m.FullApi}, abi.ChainEpoch(height), headlag)
+	tipsetsCh, err := tsync.BufferedTipsetChannel(ctx, &v0api.WrapperV1Full{FullNode: m.FullApi}, abi.ChainEpoch(height), headlag)
 	if err != nil {
+
 		return err
 	}
 
