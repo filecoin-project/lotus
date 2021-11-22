@@ -1595,8 +1595,18 @@ OPTIONS:
    --help, -h  show help (default: false)
    
 ```
-# nage
+
+### lotus mpool manage
 ```
+NAME:
+   lotus mpool manage - 
+
+USAGE:
+   lotus mpool manage [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
 ```
 
 ## lotus state
