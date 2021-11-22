@@ -83,7 +83,7 @@ func (c *LoggedWallet) WalletImport(ctx context.Context, ki *types.KeyInfo) (add
 }
 
 func (c *LoggedWallet) WalletMsigImport(ctx context.Context, idAddress address.Address, robustAddress address.Address) error {
-	log.Infow("WalletMsigImport", "type msig")
+	log.Infow("WalletMsigImport", "type", "msig")
 
 	return c.under.WalletMsigImport(ctx, idAddress, robustAddress)
 }
