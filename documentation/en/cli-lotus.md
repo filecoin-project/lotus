@@ -551,7 +551,7 @@ OPTIONS:
    --datamodel-path-selector value  a rudimentary (DM-level-only) text-path selector, allowing for sub-selection within a deal
    --from value                     address to send transactions from
    --miner value                    miner address for retrieval, if not present it'll use local discovery
-   --maxPrice value                 maximum price the client is willing to consider (default: 0.01 FIL)
+   --maxPrice value                 maximum price the client is willing to consider (default: 0 FIL)
    --pieceCid value                 require data to be retrieved from a specific Piece CID
    --allow-local                    (default: false)
    --help, -h                       show help (default: false)
@@ -570,12 +570,14 @@ CATEGORY:
    RETRIEVAL
 
 OPTIONS:
-   --from value      address to send transactions from
-   --miner value     miner address for retrieval, if not present it'll use local discovery
-   --maxPrice value  maximum price the client is willing to consider (default: 0.01 FIL)
-   --pieceCid value  require data to be retrieved from a specific Piece CID
-   --allow-local     (default: false)
-   --help, -h        show help (default: false)
+   --ipld                  list IPLD datamodel links (default: false)
+   --datamodel-path value  a rudimentary (DM-level-only) text-path selector
+   --from value            address to send transactions from
+   --miner value           miner address for retrieval, if not present it'll use local discovery
+   --maxPrice value        maximum price the client is willing to consider (default: 0 FIL)
+   --pieceCid value        require data to be retrieved from a specific Piece CID
+   --allow-local           (default: false)
+   --help, -h              show help (default: false)
    
 ```
 
@@ -591,12 +593,15 @@ CATEGORY:
    RETRIEVAL
 
 OPTIONS:
-   --from value      address to send transactions from
-   --miner value     miner address for retrieval, if not present it'll use local discovery
-   --maxPrice value  maximum price the client is willing to consider (default: 0.01 FIL)
-   --pieceCid value  require data to be retrieved from a specific Piece CID
-   --allow-local     (default: false)
-   --help, -h        show help (default: false)
+   --ipld                  list IPLD datamodel links (default: false)
+   --depth value           list links recursively up to the specified depth (default: 1)
+   --datamodel-path value  a rudimentary (DM-level-only) text-path selector
+   --from value            address to send transactions from
+   --miner value           miner address for retrieval, if not present it'll use local discovery
+   --maxPrice value        maximum price the client is willing to consider (default: 0 FIL)
+   --pieceCid value        require data to be retrieved from a specific Piece CID
+   --allow-local           (default: false)
+   --help, -h              show help (default: false)
    
 ```
 
