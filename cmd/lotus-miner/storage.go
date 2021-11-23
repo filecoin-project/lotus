@@ -95,6 +95,14 @@ over time
 			Name:  "max-storage",
 			Usage: "(for init) limit storage space for sectors (expensive for very large paths!)",
 		},
+		&cli.StringSliceFlag{
+			Name:  "groups",
+			Usage: "path group names",
+		},
+		&cli.StringSliceFlag{
+			Name:  "allow-to",
+			Usage: "path groups allowed to pull data from this path (allow all if not specified)",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
@@ -142,6 +150,8 @@ over time
 				CanSeal:    cctx.Bool("seal"),
 				CanStore:   cctx.Bool("store"),
 				MaxStorage: uint64(maxStor),
+				Groups:     cctx.StringSlice("groups"),
+				AllowTo:    cctx.StringSlice("allow-to"),
 			}
 
 			if !(cfg.CanStore || cfg.CanSeal) {
@@ -322,9 +332,16 @@ var storageListCmd = &cli.Command{
 				if si.CanStore {
 					fmt.Print(color.CyanString("Store"))
 				}
-				fmt.Println("")
 			} else {
 				fmt.Print(color.HiYellowString("Use: ReadOnly"))
+			}
+			fmt.Println()
+
+			if len(si.Groups) > 0 {
+				fmt.Printf("\tGroups: %s\n", strings.Join(si.Groups, ", "))
+			}
+			if len(si.AllowTo) > 0 {
+				fmt.Printf("\tAllowTo: %s\n", strings.Join(si.AllowTo, ", "))
 			}
 
 			if localPath, ok := local[s.ID]; ok {
