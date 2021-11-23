@@ -93,7 +93,7 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi lapi.FullNode, sel *l
 	// no local found, so make a retrieval
 	if eref == nil {
 		var offer lapi.QueryOffer
-		minerStrAddr := cctx.String("miner")
+		minerStrAddr := cctx.String("provider")
 		if minerStrAddr == "" { // Local discovery
 			offers, err := fapi.ClientFindData(ctx, file, pieceCid)
 
@@ -216,8 +216,9 @@ var retrFlagsCommon = []cli.Flag{
 		Usage: "address to send transactions from",
 	},
 	&cli.StringFlag{
-		Name:  "miner",
-		Usage: "miner address for retrieval, if not present it'll use local discovery",
+		Name:    "provider",
+		Usage:   "provider to use for retrieval, if not present it'll use local discovery",
+		Aliases: []string{"miner"},
 	},
 	&cli.StringFlag{
 		Name:  "maxPrice",
@@ -237,14 +238,47 @@ var clientRetrieveCmd = &cli.Command{
 	Name:      "retrieve",
 	Usage:     "Retrieve data from network",
 	ArgsUsage: "[dataCid outputPath]",
+	Description: `Retrieve data from the Filecoin network.
+
+The retrieve command will attempt to find a provider make a retrieval deal with
+them. In case a provider can't be found, it can be specified with the --provider
+flag.
+
+By default the data will be interpreted as DAG-PB UnixFSv1 File. Alternatively
+a CAR file containing the raw IPLD graph can be exported by setting the --car
+flag.
+
+Partial Retrieval:
+
+The --data-selector flag can be used to specify a sub-graph to fetch. The
+selector can be specified as either IPLD datamodel text-path selector, or IPLD
+json selector.
+
+In case of unixfs retrieval, the selector must point at a single root node, and
+match the entire graph under that node.
+
+In case of CAR retrieval, the selector must have one common "sub-root" node.
+
+Examples:
+
+- Retrieve a file by CID
+	$ lotus client retrieve Qm... my-file.txt
+
+- Retrieve a file by CID from f0123
+	$ lotus client retrieve --provider f0123 Qm... my-file.txt
+
+- Retrieve a first file from a specified directory
+	$ lotus client retrieve --data-selector /Links/0/Hash Qm... my-file.txt
+`,
 	Flags: append([]cli.Flag{
 		&cli.BoolFlag{
 			Name:  "car",
 			Usage: "export to a car file instead of a regular file",
 		},
 		&cli.StringFlag{
-			Name:  "datamodel-path-selector",
-			Usage: "a rudimentary (DM-level-only) text-path selector, allowing for sub-selection within a deal",
+			Name:    "data-selector",
+			Aliases: []string{"data-selector-selector"},
+			Usage:   "IPLD datamodel text-path selector, or IPLD json selector",
 		},
 	}, retrFlagsCommon...),
 	Action: func(cctx *cli.Context) error {
@@ -261,7 +295,7 @@ var clientRetrieveCmd = &cli.Command{
 		afmt := NewAppFmt(cctx.App)
 
 		var s *lapi.Selector
-		if sel := lapi.Selector(cctx.String("datamodel-path-selector")); sel != "" {
+		if sel := lapi.Selector(cctx.String("data-selector")); sel != "" {
 			s = &sel
 		}
 
@@ -350,8 +384,8 @@ var clientRetrieveCatCmd = &cli.Command{
 			Usage: "list IPLD datamodel links",
 		},
 		&cli.StringFlag{
-			Name:  "datamodel-path",
-			Usage: "a rudimentary (DM-level-only) text-path selector",
+			Name:  "data-selector",
+			Usage: "IPLD datamodel text-path selector, or IPLD json selector",
 		},
 	}, retrFlagsCommon...),
 	Action: func(cctx *cli.Context) error {
@@ -372,7 +406,7 @@ var clientRetrieveCatCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 		afmt := NewAppFmt(cctx.App)
 
-		sel := lapi.Selector(cctx.String("datamodel-path"))
+		sel := lapi.Selector(cctx.String("data-selector"))
 		selp := &sel
 		if sel == "" {
 			selp = nil
@@ -416,7 +450,7 @@ func pathToSel(psel string, sub builder.SelectorSpec) (lapi.Selector, error) {
 
 var clientRetrieveLsCmd = &cli.Command{
 	Name:      "ls",
-	Usage:     "Show object links",
+	Usage:     "List object links",
 	ArgsUsage: "[dataCid]",
 	Flags: append([]cli.Flag{
 		&cli.BoolFlag{
@@ -429,8 +463,8 @@ var clientRetrieveLsCmd = &cli.Command{
 			Value: 1,
 		},
 		&cli.StringFlag{
-			Name:  "datamodel-path",
-			Usage: "a rudimentary (DM-level-only) text-path selector",
+			Name:  "data-selector",
+			Usage: "IPLD datamodel text-path selector, or IPLD json selector",
 		},
 	}, retrFlagsCommon...),
 	Action: func(cctx *cli.Context) error {
@@ -453,9 +487,9 @@ var clientRetrieveLsCmd = &cli.Command{
 
 		dataSelector := lapi.Selector(fmt.Sprintf(`{"R":{"l":{"depth":%d},":>":{"a":{">":{"|":[{"@":{}},{".":{}}]}}}}}`, cctx.Int("depth")))
 
-		if cctx.IsSet("datamodel-path") {
+		if cctx.IsSet("data-selector") {
 			ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
-			dataSelector, err = pathToSel(cctx.String("datamodel-path"),
+			dataSelector, err = pathToSel(cctx.String("data-selector"),
 				ssb.ExploreUnion(
 					ssb.Matcher(),
 					ssb.ExploreAll(
@@ -518,9 +552,9 @@ var clientRetrieveLsCmd = &cli.Command{
 		} else {
 			jsel := lapi.Selector(fmt.Sprintf(`{"R":{"l":{"depth":%d},":>":{"a":{">":{"|":[{"@":{}},{".":{}}]}}}}}`, cctx.Int("depth")))
 
-			if cctx.IsSet("datamodel-path") {
+			if cctx.IsSet("data-selector") {
 				ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
-				jsel, err = pathToSel(cctx.String("datamodel-path"),
+				jsel, err = pathToSel(cctx.String("data-selector"),
 					ssb.ExploreRecursive(selector.RecursionLimitDepth(int64(cctx.Int("depth"))), ssb.ExploreAll(ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreRecursiveEdge()))),
 				)
 			}

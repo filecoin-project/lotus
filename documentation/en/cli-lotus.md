@@ -427,7 +427,7 @@ COMMANDS:
      find              Find data in the network
      retrieve          Retrieve data from network
      cat               Show data from network
-     ls                Show object links
+     ls                List object links
      cancel-retrieval  Cancel a retrieval deal by deal ID; this also cancels the associated transfer
      list-retrievals   List retrieval market deals
    STORAGE:
@@ -546,15 +546,49 @@ USAGE:
 CATEGORY:
    RETRIEVAL
 
+DESCRIPTION:
+   Retrieve data from the Filecoin network.
+
+The retrieve command will attempt to find a provider make a retrieval deal with
+them. In case a provider can't be found, it can be specified with the --provider
+flag.
+
+By default the data will be interpreted as DAG-PB UnixFSv1 File. Alternatively
+a CAR file containing the raw IPLD graph can be exported by setting the --car
+flag.
+
+Partial Retrieval:
+
+The --data-selector flag can be used to specify a sub-graph to fetch. The
+selector can be specified as either IPLD datamodel text-path selector, or IPLD
+json selector.
+
+In case of unixfs retrieval, the selector must point at a single root node, and
+match the entire graph under that node.
+
+In case of CAR retrieval, the selector must have one common "sub-root" node.
+
+Examples:
+
+- Retrieve a file by CID
+  $ lotus client retrieve Qm... my-file.txt
+
+- Retrieve a file by CID from f0123
+  $ lotus client retrieve --provider f0123 Qm... my-file.txt
+
+- Retrieve a first file from a specified directory
+  $ lotus client retrieve --data-selector /Links/0/Hash Qm... my-file.txt
+
+
 OPTIONS:
-   --car                            export to a car file instead of a regular file (default: false)
-   --datamodel-path-selector value  a rudimentary (DM-level-only) text-path selector, allowing for sub-selection within a deal
-   --from value                     address to send transactions from
-   --miner value                    miner address for retrieval, if not present it'll use local discovery
-   --maxPrice value                 maximum price the client is willing to consider (default: 0 FIL)
-   --pieceCid value                 require data to be retrieved from a specific Piece CID
-   --allow-local                    (default: false)
-   --help, -h                       show help (default: false)
+   --car                                                  export to a car file instead of a regular file (default: false)
+   --data-selector value, --data-selector-selector value  IPLD datamodel text-path selector, or IPLD json selector
+   --from value                                           address to send transactions from
+   --provider value, --miner value                        provider to use for retrieval, if not present it'll use local discovery
+   --maxPrice value                                       maximum price the client is willing to consider (default: 0 FIL)
+   --pieceCid value                                       require data to be retrieved from a specific Piece CID
+   --allow-local                                          (default: false)
+   --help, -h                                             show help (default: false)
    
 ```
 
@@ -570,21 +604,21 @@ CATEGORY:
    RETRIEVAL
 
 OPTIONS:
-   --ipld                  list IPLD datamodel links (default: false)
-   --datamodel-path value  a rudimentary (DM-level-only) text-path selector
-   --from value            address to send transactions from
-   --miner value           miner address for retrieval, if not present it'll use local discovery
-   --maxPrice value        maximum price the client is willing to consider (default: 0 FIL)
-   --pieceCid value        require data to be retrieved from a specific Piece CID
-   --allow-local           (default: false)
-   --help, -h              show help (default: false)
+   --ipld                           list IPLD datamodel links (default: false)
+   --data-selector value            IPLD datamodel text-path selector, or IPLD json selector
+   --from value                     address to send transactions from
+   --provider value, --miner value  provider to use for retrieval, if not present it'll use local discovery
+   --maxPrice value                 maximum price the client is willing to consider (default: 0 FIL)
+   --pieceCid value                 require data to be retrieved from a specific Piece CID
+   --allow-local                    (default: false)
+   --help, -h                       show help (default: false)
    
 ```
 
 ### lotus client ls
 ```
 NAME:
-   lotus client ls - Show object links
+   lotus client ls - List object links
 
 USAGE:
    lotus client ls [command options] [dataCid]
@@ -593,15 +627,15 @@ CATEGORY:
    RETRIEVAL
 
 OPTIONS:
-   --ipld                  list IPLD datamodel links (default: false)
-   --depth value           list links recursively up to the specified depth (default: 1)
-   --datamodel-path value  a rudimentary (DM-level-only) text-path selector
-   --from value            address to send transactions from
-   --miner value           miner address for retrieval, if not present it'll use local discovery
-   --maxPrice value        maximum price the client is willing to consider (default: 0 FIL)
-   --pieceCid value        require data to be retrieved from a specific Piece CID
-   --allow-local           (default: false)
-   --help, -h              show help (default: false)
+   --ipld                           list IPLD datamodel links (default: false)
+   --depth value                    list links recursively up to the specified depth (default: 1)
+   --data-selector value            IPLD datamodel text-path selector, or IPLD json selector
+   --from value                     address to send transactions from
+   --provider value, --miner value  provider to use for retrieval, if not present it'll use local discovery
+   --maxPrice value                 maximum price the client is willing to consider (default: 0 FIL)
+   --pieceCid value                 require data to be retrieved from a specific Piece CID
+   --allow-local                    (default: false)
+   --help, -h                       show help (default: false)
    
 ```
 
