@@ -1984,7 +1984,7 @@ OPTIONS:
    --store              (for init) use path for long-term storage (default: false)
    --max-storage value  (for init) limit storage space for sectors (expensive for very large paths!)
    --groups value       path group names
-   --allow-to value     group names to which data from this path can be sent (allow all if not specified)
+   --allow-to value     path groups allowed to pull data from this path (allow all if not specified)
    --help, -h           show help (default: false)
    
 ```

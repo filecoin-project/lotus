@@ -101,7 +101,7 @@ over time
 		},
 		&cli.StringSliceFlag{
 			Name:  "allow-to",
-			Usage: "group names to which data from this path can be sent (allow all if not specified)",
+			Usage: "path groups allowed to pull data from this path (allow all if not specified)",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
