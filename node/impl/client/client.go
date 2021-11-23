@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -1024,25 +1025,25 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds forma
 
 	out := make([]dagSpec, len(dsp))
 	for i, spec := range dsp {
-		if spec.RootSelector == nil {
-			spec.RootSelector = spec.DataSelector
-		}
 
-		if spec.RootSelector != nil {
+		// if a selector is specified, find it's root node
+		if spec.DataSelector != nil {
 			var rsn ipld.Node
 
-			if strings.HasPrefix(string(*spec.RootSelector), "{") {
+			if strings.HasPrefix(string(*spec.DataSelector), "{") {
 				var err error
-				rsn, err = selectorparse.ParseJSONSelector(string(*spec.RootSelector))
+				rsn, err = selectorparse.ParseJSONSelector(string(*spec.DataSelector))
 				if err != nil {
-					return nil, xerrors.Errorf("failed to parse json-selector '%s': %w", *spec.RootSelector, err)
+					return nil, xerrors.Errorf("failed to parse json-selector '%s': %w", *spec.DataSelector, err)
 				}
 			} else {
-				selspec, _ := textselector.SelectorSpecFromPath(textselector.Expression(*spec.RootSelector), nil) //nolint:errcheck
+				selspec, _ := textselector.SelectorSpecFromPath(textselector.Expression(*spec.DataSelector), nil) //nolint:errcheck
 				rsn = selspec.Node()
 			}
 
 			var newRoot cid.Cid
+
+			var errHalt = errors.New("halt walk")
 
 			if err := utils.TraverseDag(
 				ctx,
@@ -1061,7 +1062,7 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds forma
 							// todo: is the n ipld.Node above the node we want as the (sub)root?
 							// todo: how to go from ipld.Node to a cid?
 							newRoot = root
-							return nil
+							return errHalt
 						}
 
 						cidLnk, castOK := p.LastBlock.Link.(cidlink.Link)
@@ -1070,10 +1071,12 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds forma
 						}
 
 						newRoot = cidLnk.Cid
+
+						return errHalt
 					}
 					return nil
 				},
-			); err != nil {
+			); err != nil && err != errHalt {
 				return nil, xerrors.Errorf("error while locating partial retrieval sub-root: %w", err)
 			}
 

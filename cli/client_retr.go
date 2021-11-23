@@ -451,39 +451,35 @@ var clientRetrieveLsCmd = &cli.Command{
 		ctx := ReqContext(cctx)
 		afmt := NewAppFmt(cctx.App)
 
-		rootSelector := lapi.Selector(`{".": {}}`)
-		dataSelector := lapi.Selector(fmt.Sprintf(`{"a":{">":{"R":{"l":{"depth":%d},":>":{"a":{">":{"|":[{"@":{}},{".":{}}]}}}}}}}`, cctx.Int("depth")))
+		dataSelector := lapi.Selector(fmt.Sprintf(`{"R":{"l":{"depth":%d},":>":{"a":{">":{"|":[{"@":{}},{".":{}}]}}}}}`, cctx.Int("depth")))
 
 		if cctx.IsSet("datamodel-path") {
-			rootSelector, err = pathToSel(cctx.String("datamodel-path"), nil)
-			if err != nil {
-				return err
-			}
-
 			ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
-			dataSelector, err = pathToSel(cctx.String("datamodel-path"), ssb.ExploreAll(
-				ssb.ExploreRecursive(selector.RecursionLimitDepth(int64(cctx.Int("depth"))), ssb.ExploreAll(ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreRecursiveEdge()))),
-			))
+			dataSelector, err = pathToSel(cctx.String("datamodel-path"),
+				ssb.ExploreUnion(
+					ssb.Matcher(),
+					ssb.ExploreAll(
+						ssb.ExploreRecursive(selector.RecursionLimitDepth(int64(cctx.Int("depth"))), ssb.ExploreAll(ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreRecursiveEdge()))),
+					)))
 			if err != nil {
-				return err
+				return xerrors.Errorf("parsing datamodel path: %w", err)
 			}
 		}
 
 		eref, err := retrieve(ctx, cctx, fapi, &dataSelector, afmt.Printf)
 		if err != nil {
-			return err
+			return xerrors.Errorf("retrieve: %w", err)
 		}
 
 		fmt.Println() // separate retrieval events from results
 
 		eref.DAGs = append(eref.DAGs, lapi.DagSpec{
-			RootSelector: &rootSelector,
 			DataSelector: &dataSelector,
 		})
 
 		rc, err := ClientExportStream(ainfo.Addr, ainfo.AuthHeader(), *eref, true)
 		if err != nil {
-			return err
+			return xerrors.Errorf("export: %w", err)
 		}
 		defer rc.Close() // nolint
 

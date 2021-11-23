@@ -210,14 +210,9 @@ type RestrievalRes struct {
 type Selector string
 
 type DagSpec struct {
-	// RootSelector specifies root node
-	// - when using textselector, the path specifies the root node
-	// - if nil then RootSelector is inferred from DataSelector
-	// - must match a single node
-	RootSelector *Selector
-
 	// DataSelector matches data to be retrieved
 	// - when using textselector, the path specifies subtree
+	// - the matched graph must have a single root
 	DataSelector *Selector
 }
 
@@ -226,9 +221,8 @@ type ExportRef struct {
 
 	// DAGs array specifies a list of DAGs to export
 	// - If exporting into a car file, defines car roots
-	// - If exporting into unixfs files, only one DAG is supported, DataSelector is ignored
+	// - If exporting into unixfs files, only one DAG is supported, DataSelector is only used to find the root node
 	// - When not specified defaults to a single DAG:
-	//   - Root - the root node: `{".": {}}`
 	//   - Data - the entire DAG: `{"R":{"l":{"none":{}},":>":{"a":{">":{"@":{}}}}}}`
 	DAGs []DagSpec
 
