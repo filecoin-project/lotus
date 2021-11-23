@@ -1157,7 +1157,10 @@ func (a *API) ClientGetRetrievalUpdates(ctx context.Context) (<-chan api.Retriev
 	unsub := a.Retrieval.SubscribeToEvents(func(evt rm.ClientEvent, deal rm.ClientDealState) {
 		update := a.newRetrievalInfo(ctx, deal)
 		update.Event = &evt
-		updates <- update
+		select {
+		case updates <- update:
+		case <-ctx.Done():
+		}
 	})
 
 	go func() {
