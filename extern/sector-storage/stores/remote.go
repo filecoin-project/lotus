@@ -305,7 +305,6 @@ func (r *Remote) checkAllocated(ctx context.Context, url string, spt abi.Registe
 		return false, xerrors.Errorf("request: %w", err)
 	}
 	req.Header = r.auth.Clone()
-	fmt.Printf("req using header: %#v \n", r.auth)
 	req = req.WithContext(ctx)
 
 	resp, err := http.DefaultClient.Do(req)
