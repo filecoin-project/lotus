@@ -966,10 +966,6 @@ func (a *API) ClientExportInto(ctx context.Context, exportRef api.ExportRef, car
 	}
 
 	dserv := merkledag.NewDAGService(blockservice.New(retrievalBs, offline.Exchange(retrievalBs)))
-	roots, err := parseDagSpec(ctx, exportRef.Root, exportRef.DAGs, dserv, !car)
-	if err != nil {
-		return xerrors.Errorf("parsing dag spec: %w", err)
-	}
 
 	// Are we outputting a CAR?
 	if car {
@@ -978,6 +974,22 @@ func (a *API) ClientExportInto(ctx context.Context, exportRef api.ExportRef, car
 			return carv2.ExtractV1File(carPath, dest.Path)
 		}
 
+		// if this is a path-selector, the user expects the car to start from the
+		// root they asked for ( full merkle proof, no heuristic )
+		if len(exportRef.DAGs) == 1 && exportRef.DAGs[0].DataSelector != nil && !strings.HasPrefix(string(*exportRef.DAGs[0].DataSelector), "{") {
+			sel, err := getDataSelector(exportRef.DAGs[0].DataSelector)
+			if err != nil {
+				return xerrors.Errorf("parsing dag spec: %w", err)
+			}
+			return a.outputCAR(ctx, []dagSpec{{root: exportRef.Root, selector: sel}}, retrievalBs, dest)
+		}
+	}
+
+	roots, err := parseDagSpec(ctx, exportRef.Root, exportRef.DAGs, dserv, !car)
+	if err != nil {
+		return xerrors.Errorf("parsing dag spec: %w", err)
+	}
+	if car {
 		return a.outputCAR(ctx, roots, retrievalBs, dest)
 	}
 
