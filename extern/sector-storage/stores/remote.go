@@ -281,7 +281,7 @@ func (r *Remote) fetch(ctx context.Context, url, outname string) error {
 
 	switch mediatype {
 	case "application/x-tar":
-		return tarutil.ExtractTar(resp.Body, outname)
+		return tarutil.ExtractTar(resp.Body, outname, make([]byte, CopyBuf))
 	case "application/octet-stream":
 		f, err := os.Create(outname)
 		if err != nil {
