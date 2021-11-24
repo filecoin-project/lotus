@@ -20,12 +20,19 @@ import (
 )
 
 var sendCsvCmd = &cli.Command{
-	Name:      "send-csv",
-	Usage:     "Utility for sending a batch of balance transfers",
-	ArgsUsage: "[sender] [csvfile]",
+	Name:  "send-csv",
+	Usage: "Utility for sending a batch of balance transfers",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:     "from",
+			Usage:    "specify the account to send funds from",
+			Required: true,
+		},
+	},
+	ArgsUsage: "[csvfile]",
 	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() != 2 {
-			return xerrors.New("must supply sender and path to csv file")
+		if cctx.NArg() != 1 {
+			return xerrors.New("must supply path to csv file")
 		}
 
 		api, closer, err := lcli.GetFullNodeAPIV1(cctx)
@@ -36,12 +43,12 @@ var sendCsvCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		sender, err := address.NewFromString(cctx.Args().Get(0))
+		sender, err := address.NewFromString(cctx.String("from"))
 		if err != nil {
 			return err
 		}
 
-		fileReader, err := os.Open(cctx.Args().Get(1))
+		fileReader, err := os.Open(cctx.Args().First())
 		if err != nil {
 			return xerrors.Errorf("read csv: %w", err)
 		}
@@ -53,7 +60,11 @@ var sendCsvCmd = &cli.Command{
 			return xerrors.Errorf("read csv: %w", err)
 		}
 
-		var msgCids []cid.Cid
+		if strings.TrimSpace(records[0][0]) != "Recipient" || strings.TrimSpace(records[0][1]) != "FIL" {
+			return xerrors.Errorf("expected header row to be \"Recipient, FIL\"")
+		}
+
+		var msgs []*types.Message
 		for i, e := range records[1:] {
 			addr, err := address.NewFromString(e[0])
 			if err != nil {
@@ -65,16 +76,21 @@ var sendCsvCmd = &cli.Command{
 				return xerrors.Errorf("failed to parse value balance: %w", err)
 			}
 
-			smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+			msgs = append(msgs, &types.Message{
 				To:    addr,
 				From:  sender,
 				Value: abi.TokenAmount(value),
-			}, nil)
+			})
+		}
+
+		var msgCids []cid.Cid
+		for i, msg := range msgs {
+			smsg, err := api.MpoolPushMessage(ctx, msg, nil)
 			if err != nil {
 				return err
 			}
 
-			fmt.Printf("sending %s to %s in msg %s\n", value.String(), addr, smsg.Cid())
+			fmt.Printf("sending %s to %s in msg %s\n", msg.Value.String(), msg.To, smsg.Cid())
 
 			if i > 0 && i%100 == 0 {
 				fmt.Printf("catching up until latest message lands")
