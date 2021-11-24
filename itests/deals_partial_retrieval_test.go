@@ -31,7 +31,6 @@ var (
 	carCommp, _             = cid.Parse("baga6ea4seaqmrivgzei3fmx5qxtppwankmtou6zvigyjaveu3z2zzwhysgzuina")
 	carPieceSize            = abi.PaddedPieceSize(2097152)
 	textSelector            = api.Selector("8/1/8/1/0/1/0")
-	storPowCid, _           = cid.Parse("bafkqaetgnfwc6mjpon2g64tbm5sxa33xmvza")
 	textSelectorNonLink     = api.Selector("8/1/8/1/0/1")
 	textSelectorNonexistent = api.Selector("42")
 	expectedResult          = "fil/1/storagepower"
@@ -115,7 +114,6 @@ func TestPartialRetrieval(t *testing.T) {
 					Path:  outFile.Name(),
 					IsCAR: retrieveAsCar,
 				},
-				storPowCid,
 				outFile,
 			))
 
@@ -145,7 +143,6 @@ func TestPartialRetrieval(t *testing.T) {
 				DAGs:         []api.DagSpec{{DataSelector: &textSelectorNonexistent}},
 			},
 			&api.FileRef{},
-			storPowCid,
 			nil,
 		),
 		fmt.Sprintf("parsing dag spec: path selection does not match a node within %s", carRoot),
@@ -167,14 +164,13 @@ func TestPartialRetrieval(t *testing.T) {
 				DAGs:         []api.DagSpec{{DataSelector: &textSelectorNonLink}},
 			},
 			&api.FileRef{},
-			storPowCid,
 			nil,
 		),
 		fmt.Sprintf("parsing dag spec: error while locating partial retrieval sub-root: unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", textSelectorNonLink),
 	)
 }
 
-func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrder api.RetrievalOrder, eref api.ExportRef, retRef *api.FileRef, expRootCid cid.Cid, outFile *os.File) error {
+func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrder api.RetrievalOrder, eref api.ExportRef, retRef *api.FileRef, outFile *os.File) error {
 
 	if retOrder.Total.Nil() {
 		retOrder.Total = big.Zero()
@@ -217,7 +213,7 @@ func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrde
 
 		if len(cr.Header.Roots) != 1 {
 			return fmt.Errorf("expected a single root in result car, got %d", len(cr.Header.Roots))
-		} else if cr.Header.Roots[0].String() != expRootCid.String() {
+		} else if cr.Header.Roots[0].String() != carRoot.String() {
 			return fmt.Errorf("expected root cid '%s', got '%s'", carRoot.String(), cr.Header.Roots[0].String())
 		}
 
@@ -233,11 +229,11 @@ func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrde
 			blks = append(blks, b)
 		}
 
-		if len(blks) != 1 {
-			return fmt.Errorf("expected a car file with 1 blocks, got one with %d instead", len(blks))
+		if len(blks) != 3 {
+			return fmt.Errorf("expected a car file with 3 blocks, got one with %d instead", len(blks))
 		}
 
-		data = blks[0].RawData()
+		data = blks[2].RawData()
 	}
 
 	if string(data) != expectedResult {
