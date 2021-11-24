@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -18,7 +20,6 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-car"
-	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/stretchr/testify/require"
 )
 
@@ -29,9 +30,10 @@ var (
 	carRoot, _              = cid.Parse("bafy2bzacecnamqgqmifpluoeldx7zzglxcljo6oja4vrmtj7432rphldpdmm2")
 	carCommp, _             = cid.Parse("baga6ea4seaqmrivgzei3fmx5qxtppwankmtou6zvigyjaveu3z2zzwhysgzuina")
 	carPieceSize            = abi.PaddedPieceSize(2097152)
-	textSelector            = textselector.Expression("8/1/8/1/0/1/0")
-	textSelectorNonLink     = textselector.Expression("8/1/8/1/0/1")
-	textSelectorNonexistent = textselector.Expression("42")
+	textSelector            = api.Selector("8/1/8/1/0/1/0")
+	storPowCid, _           = cid.Parse("bafkqaetgnfwc6mjpon2g64tbm5sxa33xmvza")
+	textSelectorNonLink     = api.Selector("8/1/8/1/0/1")
+	textSelectorNonexistent = api.Selector("42")
 	expectedResult          = "fil/1/storagepower"
 )
 
@@ -56,14 +58,11 @@ func TestPartialRetrieval(t *testing.T) {
 	for _, fullCycle := range []bool{false, true} {
 
 		var retOrder api.RetrievalOrder
+		var eref api.ExportRef
 
 		if !fullCycle {
-
-			retOrder.FromLocalCAR = sourceCar
-			retOrder.Root = carRoot
-
+			eref.FromLocalCAR = sourceCar
 		} else {
-
 			dp := dh.DefaultStartDealParams()
 			dp.Data = &storagemarket.DataRef{
 				// FIXME: figure out how to do this with an online partial transfer
@@ -95,7 +94,11 @@ func TestPartialRetrieval(t *testing.T) {
 			retOrder = offers[0].Order(caddr)
 		}
 
-		retOrder.DatamodelPathSelector = &textSelector
+		retOrder.DataSelector = &textSelector
+		eref.DAGs = append(eref.DAGs, api.DagSpec{
+			DataSelector: &textSelector,
+		})
+		eref.Root = carRoot
 
 		// test retrieval of either data or constructing a partial selective-car
 		for _, retrieveAsCar := range []bool{false, true} {
@@ -107,10 +110,12 @@ func TestPartialRetrieval(t *testing.T) {
 				ctx,
 				client,
 				retOrder,
+				eref,
 				&api.FileRef{
 					Path:  outFile.Name(),
 					IsCAR: retrieveAsCar,
 				},
+				storPowCid,
 				outFile,
 			))
 
@@ -131,14 +136,19 @@ func TestPartialRetrieval(t *testing.T) {
 			ctx,
 			client,
 			api.RetrievalOrder{
-				FromLocalCAR:          sourceCar,
-				Root:                  carRoot,
-				DatamodelPathSelector: &textSelectorNonexistent,
+				Root:         carRoot,
+				DataSelector: &textSelectorNonexistent,
+			},
+			api.ExportRef{
+				Root:         carRoot,
+				FromLocalCAR: sourceCar,
+				DAGs:         []api.DagSpec{{DataSelector: &textSelectorNonexistent}},
 			},
 			&api.FileRef{},
+			storPowCid,
 			nil,
 		),
-		fmt.Sprintf("retrieval failed: path selection '%s' does not match a node within %s", textSelectorNonexistent, carRoot),
+		fmt.Sprintf("parsing dag spec: path selection does not match a node within %s", carRoot),
 	)
 
 	// ensure non-boundary retrievals fail
@@ -148,18 +158,23 @@ func TestPartialRetrieval(t *testing.T) {
 			ctx,
 			client,
 			api.RetrievalOrder{
-				FromLocalCAR:          sourceCar,
-				Root:                  carRoot,
-				DatamodelPathSelector: &textSelectorNonLink,
+				Root:         carRoot,
+				DataSelector: &textSelectorNonLink,
+			},
+			api.ExportRef{
+				Root:         carRoot,
+				FromLocalCAR: sourceCar,
+				DAGs:         []api.DagSpec{{DataSelector: &textSelectorNonLink}},
 			},
 			&api.FileRef{},
+			storPowCid,
 			nil,
 		),
-		fmt.Sprintf("retrieval failed: error while locating partial retrieval sub-root: unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", textSelectorNonLink),
+		fmt.Sprintf("parsing dag spec: error while locating partial retrieval sub-root: unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", textSelectorNonLink),
 	)
 }
 
-func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrder api.RetrievalOrder, retRef *api.FileRef, outFile *os.File) error {
+func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrder api.RetrievalOrder, eref api.ExportRef, retRef *api.FileRef, expRootCid cid.Cid, outFile *os.File) error {
 
 	if retOrder.Total.Nil() {
 		retOrder.Total = big.Zero()
@@ -168,7 +183,19 @@ func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrde
 		retOrder.UnsealPrice = big.Zero()
 	}
 
-	err := client.ClientRetrieve(ctx, retOrder, retRef)
+	if eref.FromLocalCAR == "" {
+		rr, err := client.ClientRetrieve(ctx, retOrder)
+		if err != nil {
+			return err
+		}
+		eref.DealID = rr.DealID
+
+		if err := client.ClientRetrieveWait(ctx, rr.DealID); err != nil {
+			return xerrors.Errorf("retrieval wait: %w", err)
+		}
+	}
+
+	err := client.ClientExport(ctx, eref, *retRef)
 	if err != nil {
 		return err
 	}
@@ -190,7 +217,7 @@ func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrde
 
 		if len(cr.Header.Roots) != 1 {
 			return fmt.Errorf("expected a single root in result car, got %d", len(cr.Header.Roots))
-		} else if cr.Header.Roots[0].String() != carRoot.String() {
+		} else if cr.Header.Roots[0].String() != expRootCid.String() {
 			return fmt.Errorf("expected root cid '%s', got '%s'", carRoot.String(), cr.Header.Roots[0].String())
 		}
 
@@ -206,11 +233,11 @@ func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrde
 			blks = append(blks, b)
 		}
 
-		if len(blks) != 3 {
-			return fmt.Errorf("expected a car file with 3 blocks, got one with %d instead", len(blks))
+		if len(blks) != 1 {
+			return fmt.Errorf("expected a car file with 1 blocks, got one with %d instead", len(blks))
 		}
 
-		data = blks[2].RawData()
+		data = blks[0].RawData()
 	}
 
 	if string(data) != expectedResult {

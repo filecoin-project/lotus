@@ -25,7 +25,6 @@ import (
 	miner "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	types "github.com/filecoin-project/lotus/chain/types"
 	alerting "github.com/filecoin-project/lotus/journal/alerting"
-	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	dtypes "github.com/filecoin-project/lotus/node/modules/dtypes"
 	imports "github.com/filecoin-project/lotus/node/repo/imports"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -537,6 +536,20 @@ func (mr *MockFullNodeMockRecorder) ClientDealSize(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientDealSize", reflect.TypeOf((*MockFullNode)(nil).ClientDealSize), arg0, arg1)
 }
 
+// ClientExport mocks base method.
+func (m *MockFullNode) ClientExport(arg0 context.Context, arg1 api.ExportRef, arg2 api.FileRef) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientExport", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ClientExport indicates an expected call of ClientExport.
+func (mr *MockFullNodeMockRecorder) ClientExport(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientExport", reflect.TypeOf((*MockFullNode)(nil).ClientExport), arg0, arg1, arg2)
+}
+
 // ClientFindData mocks base method.
 func (m *MockFullNode) ClientFindData(arg0 context.Context, arg1 cid.Cid, arg2 *cid.Cid) ([]api.QueryOffer, error) {
 	m.ctrl.T.Helper()
@@ -775,17 +788,18 @@ func (mr *MockFullNodeMockRecorder) ClientRestartDataTransfer(arg0, arg1, arg2, 
 }
 
 // ClientRetrieve mocks base method.
-func (m *MockFullNode) ClientRetrieve(arg0 context.Context, arg1 api.RetrievalOrder, arg2 *api.FileRef) error {
+func (m *MockFullNode) ClientRetrieve(arg0 context.Context, arg1 api.RetrievalOrder) (*api.RestrievalRes, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ClientRetrieve", arg0, arg1, arg2)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "ClientRetrieve", arg0, arg1)
+	ret0, _ := ret[0].(*api.RestrievalRes)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // ClientRetrieve indicates an expected call of ClientRetrieve.
-func (mr *MockFullNodeMockRecorder) ClientRetrieve(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) ClientRetrieve(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientRetrieve", reflect.TypeOf((*MockFullNode)(nil).ClientRetrieve), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientRetrieve", reflect.TypeOf((*MockFullNode)(nil).ClientRetrieve), arg0, arg1)
 }
 
 // ClientRetrieveTryRestartInsufficientFunds mocks base method.
@@ -802,19 +816,18 @@ func (mr *MockFullNodeMockRecorder) ClientRetrieveTryRestartInsufficientFunds(ar
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientRetrieveTryRestartInsufficientFunds", reflect.TypeOf((*MockFullNode)(nil).ClientRetrieveTryRestartInsufficientFunds), arg0, arg1)
 }
 
-// ClientRetrieveWithEvents mocks base method.
-func (m *MockFullNode) ClientRetrieveWithEvents(arg0 context.Context, arg1 api.RetrievalOrder, arg2 *api.FileRef) (<-chan marketevents.RetrievalEvent, error) {
+// ClientRetrieveWait mocks base method.
+func (m *MockFullNode) ClientRetrieveWait(arg0 context.Context, arg1 retrievalmarket.DealID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ClientRetrieveWithEvents", arg0, arg1, arg2)
-	ret0, _ := ret[0].(<-chan marketevents.RetrievalEvent)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "ClientRetrieveWait", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
-// ClientRetrieveWithEvents indicates an expected call of ClientRetrieveWithEvents.
-func (mr *MockFullNodeMockRecorder) ClientRetrieveWithEvents(arg0, arg1, arg2 interface{}) *gomock.Call {
+// ClientRetrieveWait indicates an expected call of ClientRetrieveWait.
+func (mr *MockFullNodeMockRecorder) ClientRetrieveWait(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientRetrieveWithEvents", reflect.TypeOf((*MockFullNode)(nil).ClientRetrieveWithEvents), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientRetrieveWait", reflect.TypeOf((*MockFullNode)(nil).ClientRetrieveWait), arg0, arg1)
 }
 
 // ClientStartDeal mocks base method.

@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
-	"unicode"
 
 	"golang.org/x/xerrors"
 )
@@ -71,9 +70,6 @@ func typeName(e ast.Expr, pkg string) (string, error) {
 		return t.X.(*ast.Ident).Name + "." + t.Sel.Name, nil
 	case *ast.Ident:
 		pstr := t.Name
-		if !unicode.IsLower(rune(pstr[0])) && pkg != "api" {
-			pstr = "api." + pstr // todo src pkg name
-		}
 		return pstr, nil
 	case *ast.ArrayType:
 		subt, err := typeName(t.Elt, pkg)
