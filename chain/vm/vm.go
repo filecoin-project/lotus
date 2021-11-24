@@ -874,7 +874,14 @@ func (vm *VM) transfer(from, to address.Address, amt types.BigInt, networkVersio
 	var fromID, toID address.Address
 	var err error
 	// switching the order around so that transactions for more than the balance sent to self fail
+	fmt.Printf("network version! %s\n", networkVersion)
 	if networkVersion >= network.Version15 {
+		fmt.Println("network version high")
+
+		if amt.LessThan(types.NewInt(0)) {
+			return aerrors.Newf(exitcode.SysErrForbidden, "attempted to transfer negative value: %s", amt)
+		}
+
 		fromID, err = vm.cstate.LookupID(from)
 		if err != nil {
 			return aerrors.Fatalf("transfer failed when resolving sender address: %s", err)
@@ -890,6 +897,7 @@ func (vm *VM) transfer(from, to address.Address, amt types.BigInt, networkVersio
 		}
 
 		if from == to {
+			log.Infow("sending to same address: noop", "from/to addr", from)
 			return nil
 		}
 
@@ -899,13 +907,11 @@ func (vm *VM) transfer(from, to address.Address, amt types.BigInt, networkVersio
 		}
 
 		if fromID == toID {
+			log.Infow("sending to same actor ID: noop", "from/to actor", fromID)
 			return nil
 		}
-
-		if amt.LessThan(types.NewInt(0)) {
-			return aerrors.Newf(exitcode.SysErrForbidden, "attempted to transfer negative value: %s", amt)
-		}
 	} else {
+		fmt.Println("network version low")
 		if from == to {
 			return nil
 		}
@@ -945,11 +951,11 @@ func (vm *VM) transfer(from, to address.Address, amt types.BigInt, networkVersio
 	depositFunds(t, amt)
 
 	if err = vm.cstate.SetActor(fromID, f); err != nil {
-		return aerrors.Fatalf("transfer failed when setting receiver actor: %s", err)
+		return aerrors.Fatalf("transfer failed when setting sender actor: %s", err)
 	}
 
 	if err = vm.cstate.SetActor(toID, t); err != nil {
-		return aerrors.Fatalf("transfer failed when setting sender actor: %s", err)
+		return aerrors.Fatalf("transfer failed when setting receiver actor: %s", err)
 	}
 
 	return nil

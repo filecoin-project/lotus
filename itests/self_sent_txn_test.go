@@ -15,44 +15,84 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSelfSentTxn(t *testing.T) {
+func TestSelfSentTxnV15(t *testing.T) {
 	ctx := context.Background()
 
 	kit.QuietMiningLogs()
 
-	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.GenesisNetworkVersion(network.Version15))
+	client15, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.GenesisNetworkVersion(network.Version15))
 	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
 
-	bal, err := client.WalletBalance(ctx, client.DefaultKey.Address)
+	bal, err := client15.WalletBalance(ctx, client15.DefaultKey.Address)
 	require.NoError(t, err)
 
 	// send self half of account balance
-	msgExactlyBal := &types.Message{
-		From:  client.DefaultKey.Address,
-		To:    client.DefaultKey.Address,
+	msgHalfBal := &types.Message{
+		From:  client15.DefaultKey.Address,
+		To:    client15.DefaultKey.Address,
 		Value: big.Div(bal, big.NewInt(2)),
 	}
-	smExactlyBal, err := client.MpoolPushMessage(ctx, msgExactlyBal, nil)
+	smHalfBal, err := client15.MpoolPushMessage(ctx, msgHalfBal, nil)
 	require.NoError(t, err)
-	mLookup, err := client.StateWaitMsg(ctx, smExactlyBal.Cid(), 3, api.LookbackNoLimit, true)
+	mLookup, err := client15.StateWaitMsg(ctx, smHalfBal.Cid(), 3, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 
 	msgOverBal := &types.Message{
-		From:       client.DefaultKey.Address,
-		To:         client.DefaultKey.Address,
+		From:       client15.DefaultKey.Address,
+		To:         client15.DefaultKey.Address,
 		Value:      big.Mul(big.NewInt(2), bal),
 		GasLimit:   10000000000,
 		GasPremium: big.NewInt(10000000000),
 		GasFeeCap:  big.NewInt(100000000000),
 		Nonce:      1,
 	}
-	smOverBal, err := client.WalletSignMessage(ctx, client.DefaultKey.Address, msgOverBal)
+	smOverBal, err := client15.WalletSignMessage(ctx, client15.DefaultKey.Address, msgOverBal)
 	require.NoError(t, err)
-	smcid, err := client.MpoolPush(ctx, smOverBal)
+	smcid, err := client15.MpoolPush(ctx, smOverBal)
 	require.NoError(t, err)
-
-	mLookup, err = client.StateWaitMsg(ctx, smcid, 3, api.LookbackNoLimit, true)
+	mLookup, err = client15.StateWaitMsg(ctx, smcid, 3, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.Equal(t, exitcode.SysErrInsufficientFunds, mLookup.Receipt.ExitCode)
+}
+
+func TestSelfSentTxnV14(t *testing.T) {
+	ctx := context.Background()
+
+	kit.QuietMiningLogs()
+
+	client14, _, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.GenesisNetworkVersion(network.Version14))
+	ens.InterconnectAll().BeginMining(10 * time.Millisecond)
+
+	bal, err := client14.WalletBalance(ctx, client14.DefaultKey.Address)
+	require.NoError(t, err)
+
+	// send self half of account balance
+	msgHalfBal := &types.Message{
+		From:  client14.DefaultKey.Address,
+		To:    client14.DefaultKey.Address,
+		Value: big.Div(bal, big.NewInt(2)),
+	}
+	smHalfBal, err := client14.MpoolPushMessage(ctx, msgHalfBal, nil)
+	require.NoError(t, err)
+	mLookup, err := client14.StateWaitMsg(ctx, smHalfBal.Cid(), 3, api.LookbackNoLimit, true)
+	require.NoError(t, err)
+	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
+
+	msgOverBal := &types.Message{
+		From:       client14.DefaultKey.Address,
+		To:         client14.DefaultKey.Address,
+		Value:      big.Mul(big.NewInt(2), bal),
+		GasLimit:   10000000000,
+		GasPremium: big.NewInt(10000000000),
+		GasFeeCap:  big.NewInt(100000000000),
+		Nonce:      1,
+	}
+	smOverBal, err := client14.WalletSignMessage(ctx, client14.DefaultKey.Address, msgOverBal)
+	require.NoError(t, err)
+	smcid, err := client14.MpoolPush(ctx, smOverBal)
+	require.NoError(t, err)
+	mLookup, err = client14.StateWaitMsg(ctx, smcid, 3, api.LookbackNoLimit, true)
+	require.NoError(t, err)
+	require.Equal(t, exitcode.Ok, mLookup.Receipt.ExitCode)
 }
