@@ -13,7 +13,7 @@ exclusions=(
 )
 
 gh_api_next() {
-	links=$(grep '^Link:' | sed -e 's/Link: //' -e 's/, /\n/g')
+	links=$(grep '^link:' | sed -e 's/link: //' -e 's/, /\n/g')
 	echo "$links" | grep '; rel="next"' >/dev/null || return
 	link=$(echo "$links" | grep '; rel="next"' | sed -e 's/^<//' -e 's/>.*//')
 
