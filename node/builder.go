@@ -177,7 +177,7 @@ var LibP2P = Options(
 	// Host settings
 	Override(DefaultTransportsKey, lp2p.DefaultTransports),
 	Override(AddrsFactoryKey, lp2p.AddrsFactory(nil, nil)),
-	Override(SmuxTransportKey, lp2p.SmuxTransport(true)),
+	Override(SmuxTransportKey, lp2p.SmuxTransport(false)),
 	Override(RelayKey, lp2p.NoRelay()),
 	Override(SecurityKey, lp2p.Security(true, false)),
 
