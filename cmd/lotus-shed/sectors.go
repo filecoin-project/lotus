@@ -2,11 +2,14 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"fmt"
 	"image"
 	"image/color"
 	"image/png"
+	"io"
 	"os"
 	"sort"
 	"strconv"
@@ -23,6 +26,7 @@ import (
 
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -38,6 +42,7 @@ var sectorsCmd = &cli.Command{
 		terminateSectorCmd,
 		terminateSectorPenaltyEstimationCmd,
 		visAllocatedSectorsCmd,
+		dumpRLESectorCmd,
 	},
 }
 
@@ -275,6 +280,113 @@ var terminateSectorPenaltyEstimationCmd = &cli.Command{
 	},
 }
 
+func activeMiners(ctx context.Context, api v0api.FullNode) ([]address.Address, error) {
+	miners, err := api.StateListMiners(ctx, types.EmptyTSK)
+	if err != nil {
+		return nil, err
+	}
+	powCache := make(map[address.Address]types.BigInt)
+	var lk sync.Mutex
+	parmap.Par(32, miners, func(a address.Address) {
+		pow, err := api.StateMinerPower(ctx, a, types.EmptyTSK)
+
+		lk.Lock()
+		if err == nil {
+			powCache[a] = pow.MinerPower.QualityAdjPower
+		} else {
+			powCache[a] = types.NewInt(0)
+		}
+		lk.Unlock()
+	})
+	sort.Slice(miners, func(i, j int) bool {
+		return powCache[miners[i]].GreaterThan(powCache[miners[j]])
+	})
+	n := sort.Search(len(miners), func(i int) bool {
+		pow := powCache[miners[i]]
+		return pow.IsZero()
+	})
+	return append(miners[0:0:0], miners[:n]...), nil
+}
+
+var dumpRLESectorCmd = &cli.Command{
+	Name:  "dump-rles",
+	Usage: "",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+		var miners []address.Address
+		if cctx.NArg() == 0 {
+			miners, err = activeMiners(ctx, api)
+			if err != nil {
+				return xerrors.Errorf("getting active miners: %w", err)
+			}
+		} else {
+			for _, mS := range cctx.Args().Slice() {
+				mA, err := address.NewFromString(mS)
+				if err != nil {
+					return xerrors.Errorf("parsing address '%s': %w", mS, err)
+				}
+				miners = append(miners, mA)
+			}
+		}
+		wbuf := make([]byte, 8)
+		buf := &bytes.Buffer{}
+
+		for i := 0; i < len(miners); i++ {
+			buf.Reset()
+			err := func() error {
+				state, err := api.StateReadState(ctx, miners[i], types.EmptyTSK)
+				if err != nil {
+					return xerrors.Errorf("getting state: %+v", err)
+				}
+				allocSString := state.State.(map[string]interface{})["AllocatedSectors"].(map[string]interface{})["/"].(string)
+
+				allocCid, err := cid.Decode(allocSString)
+				if err != nil {
+					return xerrors.Errorf("decoding cid: %+v", err)
+				}
+				rle, err := api.ChainReadObj(ctx, allocCid)
+				if err != nil {
+					return xerrors.Errorf("reading AllocatedSectors: %+v", err)
+				}
+
+				var bf bitfield.BitField
+				err = bf.UnmarshalCBOR(bytes.NewReader(rle))
+				if err != nil {
+					return xerrors.Errorf("decoding bitfield: %w", err)
+				}
+				ri, err := bf.RunIterator()
+				if err != nil {
+					return xerrors.Errorf("creating interator: %w", err)
+				}
+
+				for ri.HasNext() {
+					run, err := ri.NextRun()
+					if err != nil {
+						return xerrors.Errorf("getting run: %w", err)
+					}
+					binary.LittleEndian.PutUint64(wbuf, run.Len)
+					buf.Write(wbuf)
+				}
+				_, err = io.Copy(os.Stdout, buf)
+				if err != nil {
+					return xerrors.Errorf("copy: %w", err)
+				}
+
+				return nil
+			}()
+			if err != nil {
+				log.Errorf("miner %d: %s: %+v", i, miners[i], err)
+			}
+		}
+		return nil
+	},
+}
+
 var visAllocatedSectorsCmd = &cli.Command{
 	Name:  "vis-allocated",
 	Usage: "Produces a html with visualisation of allocated sectors",
@@ -287,32 +399,10 @@ var visAllocatedSectorsCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 		var miners []address.Address
 		if cctx.NArg() == 0 {
-			miners, err = api.StateListMiners(ctx, types.EmptyTSK)
+			miners, err = activeMiners(ctx, api)
 			if err != nil {
-				return err
+				return xerrors.Errorf("getting active miners: %w", err)
 			}
-			powCache := make(map[address.Address]types.BigInt)
-			var lk sync.Mutex
-			parmap.Par(32, miners, func(a address.Address) {
-				pow, err := api.StateMinerPower(ctx, a, types.EmptyTSK)
-
-				lk.Lock()
-				if err == nil {
-					powCache[a] = pow.MinerPower.QualityAdjPower
-				} else {
-					powCache[a] = types.NewInt(0)
-				}
-				lk.Unlock()
-			})
-			sort.Slice(miners, func(i, j int) bool {
-				return powCache[miners[i]].GreaterThan(powCache[miners[j]])
-			})
-			n := sort.Search(len(miners), func(i int) bool {
-				pow := powCache[miners[i]]
-				log.Infof("pow @%d = %s", i, pow)
-				return pow.IsZero()
-			})
-			miners = miners[:n]
 		} else {
 			for _, mS := range cctx.Args().Slice() {
 				mA, err := address.NewFromString(mS)
