@@ -268,7 +268,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
 			MaxMemory: 190 << 30, // TODO: Confirm
 			MinMemory: 60 << 30,
 
-			MaxParallelism: -1,
+			MaxParallelism: 2,
 			GPUUtilization: 1.0,
 
 			BaseMinMemory: 64 << 30, // params
@@ -277,7 +277,7 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
 			MaxMemory: 150 << 30, // TODO: ~30G of this should really be BaseMaxMemory
 			MinMemory: 30 << 30,
 
-			MaxParallelism: -1,
+			MaxParallelism: 2,
 			GPUUtilization: 1.0,
 
 			BaseMinMemory: 32 << 30, // params
