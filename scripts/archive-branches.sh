@@ -10,6 +10,7 @@ api_repo="repos/$org/$repo"
 exclusions=(
 	'master'
 	'main'
+	'releases'
 )
 
 gh_api_next() {
