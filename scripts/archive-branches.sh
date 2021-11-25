@@ -9,6 +9,7 @@ api_repo="repos/$org/$repo"
 
 exclusions=(
 	'master'
+	'main'
 )
 
 gh_api_next() {
@@ -43,7 +44,7 @@ active_branches() {
 
 git remote add archived "git@github.com:$arch_repo.git" || true
 
-branches_to_move="$(cat <(active_branches) <(pr_branches) <((IFS=$'\n'; echo "${exclusions[*]}")) | sort -u | comm - <(origin_refs | sort) -13)"
+branches_to_move="$(cat <(active_branches) <(pr_branches) <((IFS=$'\n'; echo "${exclusions[*]}")) | sort -u | comm - <(origin_refs | sort) -13 | grep -v -e '^release/' -e '^ntwk-')"
 
 echo "================"
 printf "%s\n" "$branches_to_move"
