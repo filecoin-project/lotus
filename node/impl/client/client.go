@@ -1038,71 +1038,70 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds forma
 	out := make([]dagSpec, len(dsp))
 	for i, spec := range dsp {
 
-		// if a selector is specified, find it's root node
-		if spec.DataSelector != nil {
-			var rsn ipld.Node
+		if spec.DataSelector == nil {
+			return nil, xerrors.Errorf("invalid DagSpec at position %d: `DataSelector` can not be nil", i)
+		}
 
-			if strings.HasPrefix(string(*spec.DataSelector), "{") {
-				var err error
-				rsn, err = selectorparse.ParseJSONSelector(string(*spec.DataSelector))
-				if err != nil {
-					return nil, xerrors.Errorf("failed to parse json-selector '%s': %w", *spec.DataSelector, err)
-				}
-			} else {
-				selspec, _ := textselector.SelectorSpecFromPath(textselector.Expression(*spec.DataSelector), nil) //nolint:errcheck
-				rsn = selspec.Node()
+		// reify selector
+		var err error
+		out[i].selector, err = getDataSelector(spec.DataSelector)
+		if err != nil {
+			return nil, err
+		}
+
+		// find the pointed-at root node within the containing ds
+		var rsn ipld.Node
+
+		if strings.HasPrefix(string(*spec.DataSelector), "{") {
+			var err error
+			rsn, err = selectorparse.ParseJSONSelector(string(*spec.DataSelector))
+			if err != nil {
+				return nil, xerrors.Errorf("failed to parse json-selector '%s': %w", *spec.DataSelector, err)
 			}
+		} else {
+			selspec, _ := textselector.SelectorSpecFromPath(textselector.Expression(*spec.DataSelector), nil) //nolint:errcheck
+			rsn = selspec.Node()
+		}
 
-			var newRoot cid.Cid
+		var newRoot cid.Cid
+		var errHalt = errors.New("halt walk")
+		if err := utils.TraverseDag(
+			ctx,
+			ds,
+			root,
+			rsn,
+			func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
+				if r == traversal.VisitReason_SelectionMatch {
+					if rootOnNodeBoundary && p.LastBlock.Path.String() != p.Path.String() {
+						return xerrors.Errorf("unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", p.Path.String())
+					}
 
-			var errHalt = errors.New("halt walk")
-
-			if err := utils.TraverseDag(
-				ctx,
-				ds,
-				root,
-				rsn,
-				func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
-					if r == traversal.VisitReason_SelectionMatch {
-						if rootOnNodeBoundary && p.LastBlock.Path.String() != p.Path.String() {
-							return xerrors.Errorf("unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", p.Path.String())
-						}
-
-						if p.LastBlock.Link == nil {
-							// this is likely the root node that we've matched here
-							newRoot = root
-							return errHalt
-						}
-
-						cidLnk, castOK := p.LastBlock.Link.(cidlink.Link)
-						if !castOK {
-							return xerrors.Errorf("cidlink cast unexpectedly failed on '%s'", p.LastBlock.Link)
-						}
-
-						newRoot = cidLnk.Cid
-
+					if p.LastBlock.Link == nil {
+						// this is likely the root node that we've matched here
+						newRoot = root
 						return errHalt
 					}
-					return nil
-				},
-			); err != nil && err != errHalt {
-				return nil, xerrors.Errorf("error while locating partial retrieval sub-root: %w", err)
-			}
 
-			if newRoot == cid.Undef {
-				return nil, xerrors.Errorf("path selection does not match a node within %s", root)
-			}
+					cidLnk, castOK := p.LastBlock.Link.(cidlink.Link)
+					if !castOK {
+						return xerrors.Errorf("cidlink cast unexpectedly failed on '%s'", p.LastBlock.Link)
+					}
 
-			out[i].root = newRoot
+					newRoot = cidLnk.Cid
+
+					return errHalt
+				}
+				return nil
+			},
+		); err != nil && err != errHalt {
+			return nil, xerrors.Errorf("error while locating partial retrieval sub-root: %w", err)
 		}
 
-		if spec.DataSelector != nil {
-			var err error
-			out[i].selector, err = getDataSelector(spec.DataSelector)
-			if err != nil {
-				return nil, err
-			}
+		if newRoot == cid.Undef {
+			return nil, xerrors.Errorf("path selection does not match a node within %s", root)
 		}
+
+		out[i].root = newRoot
 	}
 
 	return out, nil

@@ -220,8 +220,10 @@ type ExportRef struct {
 	Root cid.Cid
 
 	// DAGs array specifies a list of DAGs to export
-	// - If exporting into a car file, defines car roots
-	// - If exporting into unixfs files, only one DAG is supported, DataSelector is only used to find the root node
+	// - If exporting into unixfs files, only one DAG is supported, DataSelector is only used to find the targeted root node
+	// - If exporting into a car file
+	//   - When exactly one text-path DataSelector is specified exports the subgraph and its full merkle-path from the original root
+	//   - Otherwise ( multiple paths and/or JSON selector specs) determines each individual subroot and exports the subtrees as a multi-root car
 	// - When not specified defaults to a single DAG:
 	//   - Data - the entire DAG: `{"R":{"l":{"none":{}},":>":{"a":{">":{"@":{}}}}}}`
 	DAGs []DagSpec
