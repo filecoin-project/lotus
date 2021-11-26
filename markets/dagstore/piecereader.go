@@ -11,9 +11,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
-// for small read skips, it's faster to "burn" some bytes than to setup new
-//  sector reader
-var MaxPieceReaderBurnBytes int64 = 512 << 10 // 512k
+// For small read skips, it's faster to "burn" some bytes than to setup new sector reader.
+// Assuming 1ms stream seek latency, and 1G/s stream rate, we're willing to discard up to 1 MiB.
+var MaxPieceReaderBurnBytes int64 = 1 << 20 // 1M
 
 type pieceReader struct {
 	ctx      context.Context
