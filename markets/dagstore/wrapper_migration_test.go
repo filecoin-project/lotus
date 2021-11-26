@@ -2,6 +2,9 @@ package dagstore
 
 import (
 	"context"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"golang.org/x/xerrors"
+	"io"
 	"testing"
 
 	"github.com/filecoin-project/dagstore"
@@ -93,7 +96,7 @@ func TestShardRegistration(t *testing.T) {
 	cfg := config.DefaultStorageMiner().DAGStore
 	cfg.RootDir = t.TempDir()
 
-	mapi := NewMinerAPI(ps, sa, 10)
+	mapi := NewMinerAPI(ps, &wrappedSA{sa}, 10)
 	dagst, w, err := NewDAGStore(cfg, mapi)
 	require.NoError(t, err)
 	require.NotNil(t, dagst)
@@ -119,3 +122,22 @@ func TestShardRegistration(t *testing.T) {
 
 	// ps.VerifyExpectations(t)
 }
+
+type wrappedSA struct {
+	retrievalmarket.SectorAccessor
+}
+
+func (w *wrappedSA) UnsealSectorAt(ctx context.Context, sectorID abi.SectorNumber, pieceOffset abi.UnpaddedPieceSize, startOffset uint64, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
+	r, err := w.UnsealSector(ctx, sectorID, pieceOffset, length)
+	if err != nil {
+		return nil, err
+	}
+	if startOffset > 0 {
+		if _, err := io.CopyN(io.Discard, r, int64(startOffset)); err != nil {
+			return nil, xerrors.Errorf("discard start off: %w", err)
+		}
+	}
+	return r, err
+}
+
+var _ SectorAccessor = &wrappedSA{}

@@ -3,6 +3,7 @@ package dagstore
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/go-state-types/abi"
 	"io"
 	"os"
 	"testing"
@@ -191,7 +192,7 @@ func (m mockLotusMount) Start(ctx context.Context) error {
 	return nil
 }
 
-func (m mockLotusMount) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
+func (m mockLotusMount) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid, offset uint64) (io.ReadCloser, abi.UnpaddedPieceSize, error) {
 	panic("implement me")
 }
 

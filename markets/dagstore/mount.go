@@ -2,7 +2,6 @@ package dagstore
 
 import (
 	"context"
-	"io"
 	"net/url"
 
 	"github.com/ipfs/go-cid"
@@ -57,19 +56,19 @@ func (l *LotusMount) Deserialize(u *url.URL) error {
 }
 
 func (l *LotusMount) Fetch(ctx context.Context) (mount.Reader, error) {
-	r, err := l.API.FetchUnsealedPiece(ctx, l.PieceCid)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to fetch unsealed piece %s: %w", l.PieceCid, err)
-	}
-	return &readCloser{r}, nil
+	return (&pieceReader{
+		ctx:      ctx,
+		api:      l.API,
+		pieceCid: l.PieceCid,
+	}).init()
 }
 
 func (l *LotusMount) Info() mount.Info {
 	return mount.Info{
 		Kind:             mount.KindRemote,
 		AccessSequential: true,
-		AccessSeek:       false,
-		AccessRandom:     false,
+		AccessSeek:       true,
+		AccessRandom:     true,
 	}
 }
 
@@ -93,18 +92,4 @@ func (l *LotusMount) Stat(ctx context.Context) (mount.Stat, error) {
 		Size:   int64(size),
 		Ready:  isUnsealed,
 	}, nil
-}
-
-type readCloser struct {
-	io.ReadCloser
-}
-
-var _ mount.Reader = (*readCloser)(nil)
-
-func (r *readCloser) ReadAt(p []byte, off int64) (n int, err error) {
-	return 0, xerrors.Errorf("ReadAt called but not implemented")
-}
-
-func (r *readCloser) Seek(offset int64, whence int) (int64, error) {
-	return 0, xerrors.Errorf("Seek called but not implemented")
 }
