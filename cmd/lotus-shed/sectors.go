@@ -361,7 +361,7 @@ var dumpRLESectorCmd = &cli.Command{
 				}
 				ri, err := bf.RunIterator()
 				if err != nil {
-					return xerrors.Errorf("creating interator: %w", err)
+					return xerrors.Errorf("creating iterator: %w", err)
 				}
 
 				for ri.HasNext() {
