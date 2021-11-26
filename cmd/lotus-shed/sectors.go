@@ -310,7 +310,7 @@ func activeMiners(ctx context.Context, api v0api.FullNode) ([]address.Address, e
 
 var dumpRLESectorCmd = &cli.Command{
 	Name:  "dump-rles",
-	Usage: "",
+	Usage: "Dump AllocatedSectors RLEs from miners passed as arguments as run lengths in uint64 LE format.\nIf no arguments are passed, dumps all active miners in the state tree.",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
