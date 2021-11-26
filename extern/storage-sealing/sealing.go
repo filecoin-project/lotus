@@ -166,7 +166,8 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 		getConfig: gc,
 
 		stats: SectorStats{
-			bySector: map[abi.SectorID]statSectorState{},
+			bySector: map[abi.SectorID]SectorState{},
+			byState:  map[SectorState]int64{},
 		},
 	}
 	s.startupWait.Add(1)

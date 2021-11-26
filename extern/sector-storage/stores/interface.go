@@ -13,8 +13,10 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
+//go:generate go run github.com/golang/mock/mockgen -destination=mocks/pf.go -package=mocks . PartialFileHandler
+
 // PartialFileHandler helps mock out the partial file functionality during testing.
-type partialFileHandler interface {
+type PartialFileHandler interface {
 	// OpenPartialFile opens and returns a partial file at the given path and also verifies it has the given
 	// size
 	OpenPartialFile(maxPieceSize abi.PaddedPieceSize, path string) (*partialfile.PartialFile, error)
@@ -30,9 +32,11 @@ type partialFileHandler interface {
 	Close(pf *partialfile.PartialFile) error
 }
 
+//go:generate go run github.com/golang/mock/mockgen -destination=mocks/store.go -package=mocks . Store
+
 type Store interface {
 	AcquireSector(ctx context.Context, s storage.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, sealing storiface.PathType, op storiface.AcquireMode) (paths storiface.SectorPaths, stores storiface.SectorPaths, err error)
-	Remove(ctx context.Context, s abi.SectorID, types storiface.SectorFileType, force bool) error
+	Remove(ctx context.Context, s abi.SectorID, types storiface.SectorFileType, force bool, keepIn []ID) error
 
 	// like remove, but doesn't remove the primary sector copy, nor the last
 	// non-primary copy if there no primary copies

@@ -298,7 +298,7 @@ func (p *pieceProviderTestHarness) addRemoteWorker(t *testing.T, tasks []sealtas
 func (p *pieceProviderTestHarness) removeAllUnsealedSectorFiles(t *testing.T) {
 	for i := range p.localStores {
 		ls := p.localStores[i]
-		require.NoError(t, ls.Remove(p.ctx, p.sector.ID, storiface.FTUnsealed, false))
+		require.NoError(t, ls.Remove(p.ctx, p.sector.ID, storiface.FTUnsealed, false, nil))
 	}
 }
 

@@ -408,6 +408,8 @@ func StagingGraphsync(parallelTransfersForStorage uint64, parallelTransfersForRe
 			graphsyncimpl.MaxLinksPerIncomingRequests(config.MaxTraversalLinks),
 			graphsyncimpl.MaxLinksPerOutgoingRequests(config.MaxTraversalLinks))
 
+		graphsyncStats(mctx, lc, gs)
+
 		return gs
 	}
 }

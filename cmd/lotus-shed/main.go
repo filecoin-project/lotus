@@ -59,9 +59,11 @@ func main() {
 		signaturesCmd,
 		actorCmd,
 		minerTypesCmd,
+		minerPeeridCmd,
 		minerMultisigsCmd,
 		splitstoreCmd,
 		fr32Cmd,
+		chainCmd,
 	}
 
 	app := &cli.App{

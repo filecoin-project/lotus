@@ -32,6 +32,7 @@ import (
 	"github.com/ipld/go-ipld-prime/traversal"
 	"github.com/ipld/go-ipld-prime/traversal/selector"
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
+	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -47,7 +48,6 @@ import (
 
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	rm "github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
@@ -842,7 +842,7 @@ func (a *API) clientRetrieve(ctx context.Context, order api.RetrievalOrder, ref 
 		}
 	}
 
-	sel := shared.AllSelector()
+	sel := selectorparse.CommonSelector_ExploreAllRecursively
 	if order.DatamodelPathSelector != nil {
 
 		ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
@@ -1299,21 +1299,23 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 	}
 	defer fs.Close() //nolint:errcheck
 
-	// build a dense deterministic CAR (dense = containing filled leaves)
-	ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
-	allSelector := ssb.ExploreRecursive(
-		selector.RecursionLimitNone(),
-		ssb.ExploreAll(ssb.ExploreRecursiveEdge())).Node()
-	sc := car.NewSelectiveCar(ctx,
-		fs,
-		[]car.Dag{{Root: root, Selector: allSelector}},
-		car.MaxTraversalLinks(config.MaxTraversalLinks),
-	)
 	f, err := os.Create(outputPath)
 	if err != nil {
 		return err
 	}
-	if err = sc.Write(f); err != nil {
+
+	// build a dense deterministic CAR (dense = containing filled leaves)
+	if err := car.NewSelectiveCar(
+		ctx,
+		fs,
+		[]car.Dag{{
+			Root:     root,
+			Selector: selectorparse.CommonSelector_ExploreAllRecursively,
+		}},
+		car.MaxTraversalLinks(config.MaxTraversalLinks),
+	).Write(
+		f,
+	); err != nil {
 		return xerrors.Errorf("failed to write CAR to output file: %w", err)
 	}
 

@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.13.0
+   1.13.1
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -1117,12 +1117,12 @@ USAGE:
    lotus filplus command [command options] [arguments...]
 
 COMMANDS:
-   grant-datacap           give allowance to the specified verified client address
-   list-notaries           list all notaries
-   list-clients            list all verified clients
-   check-client-datacap    check verified client remaining bytes
-   check-notaries-datacap  check notaries remaining bytes
-   help, h                 Shows a list of commands or help for one command
+   grant-datacap         give allowance to the specified verified client address
+   list-notaries         list all notaries
+   list-clients          list all verified clients
+   check-client-datacap  check verified client remaining bytes
+   check-notary-datacap  check a notary's remaining bytes
+   help, h               Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h     show help (default: false)
@@ -1183,13 +1183,13 @@ OPTIONS:
    
 ```
 
-### lotus filplus check-notaries-datacap
+### lotus filplus check-notary-datacap
 ```
 NAME:
-   lotus filplus check-notaries-datacap - check notaries remaining bytes
+   lotus filplus check-notary-datacap - check a notary's remaining bytes
 
 USAGE:
-   lotus filplus check-notaries-datacap [command options] [arguments...]
+   lotus filplus check-notary-datacap [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help (default: false)

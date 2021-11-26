@@ -475,7 +475,7 @@ func (m *Sealing) onUpdateSector(ctx context.Context, state *SectorInfo) error {
 		return xerrors.Errorf("getting config: %w", err)
 	}
 
-	shouldUpdateInput := m.stats.updateSector(cfg, m.minerSectorID(state.SectorNumber), state.State)
+	shouldUpdateInput := m.stats.updateSector(ctx, cfg, m.minerSectorID(state.SectorNumber), state.State)
 
 	// trigger more input processing when we've dipped below max sealing limits
 	if shouldUpdateInput {
