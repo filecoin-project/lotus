@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -626,4 +625,3 @@ var MockProver = MockVerifier
 var _ storage.Sealer = &SectorMgr{}
 var _ ffiwrapper.Verifier = MockVerifier
 var _ ffiwrapper.Prover = MockProver
-var _ sectorstorage.PieceProvider = &SectorMgr{}
