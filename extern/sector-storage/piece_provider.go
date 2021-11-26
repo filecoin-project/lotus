@@ -82,7 +82,7 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, sector storage
 	// Reader returns a reader for an unsealed piece at the given offset in the given sector.
 	// The returned reader will be nil if none of the workers has an unsealed sector file containing
 	// the unsealed piece.
-	r, err := p.storage.Reader(ctx, sector, abi.PaddedPieceSize(pieceOffset.Padded()+startOffset.Padded()), size.Padded())
+	r, err := p.storage.Reader(ctx, sector, abi.PaddedPieceSize(pieceOffset.Padded()+startOffset.Padded()), size.Padded()-abi.PaddedPieceSize(startOffset.Padded()))
 	if err != nil {
 		log.Debugf("did not get storage reader;sector=%+v, err:%s", sector.ID, err)
 		cancel()

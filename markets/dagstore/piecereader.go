@@ -110,7 +110,7 @@ func (p *pieceReader) ReadAt(b []byte, off int64) (n int, err error) {
 			p.r = nil
 		}
 
-		log.Debugw("pieceReader new stream", "at", p.rAt, "off", off-p.rAt)
+		log.Debugw("pieceReader new stream", "piece", p.pieceCid, "at", p.rAt, "off", off-p.rAt)
 
 		p.rAt = off
 		p.r, _, err = p.api.FetchUnsealedPiece(p.ctx, p.pieceCid, uint64(p.rAt))
