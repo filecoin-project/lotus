@@ -2,7 +2,6 @@ package dagstore
 
 import (
 	"context"
-	"github.com/filecoin-project/go-state-types/abi"
 	"io/ioutil"
 	"net/url"
 	"strings"
@@ -13,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/dagstore/mount"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	mock_dagstore "github.com/filecoin-project/lotus/markets/dagstore/mocks"
 )

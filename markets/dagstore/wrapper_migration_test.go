@@ -2,16 +2,16 @@ package dagstore
 
 import (
 	"context"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"golang.org/x/xerrors"
 	"io"
 	"testing"
 
-	"github.com/filecoin-project/dagstore"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/testnodes"
 	tut "github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
