@@ -119,9 +119,16 @@ func (p *pieceReader) ReadAt(b []byte, off int64) (n int, err error) {
 
 	// check if we need to burn some bytes
 	if off > p.rAt {
-		if _, err := io.CopyN(io.Discard, p.r, p.rAt-off); err != nil {
+		n, err := io.CopyN(io.Discard, p.r, off-p.rAt)
+		p.rAt += n
+		if err != nil {
 			return 0, xerrors.Errorf("discarding read gap: %w", err)
 		}
+	}
+
+	// sanity check
+	if off != p.rAt {
+		return 0, xerrors.Errorf("bad reader offset; requested %d; at %d", off, p.rAt)
 	}
 
 	// Read!
