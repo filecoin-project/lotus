@@ -874,10 +874,7 @@ func (vm *VM) transfer(from, to address.Address, amt types.BigInt, networkVersio
 	var fromID, toID address.Address
 	var err error
 	// switching the order around so that transactions for more than the balance sent to self fail
-	fmt.Printf("network version! %s\n", networkVersion)
 	if networkVersion >= network.Version15 {
-		fmt.Println("network version high")
-
 		if amt.LessThan(types.NewInt(0)) {
 			return aerrors.Newf(exitcode.SysErrForbidden, "attempted to transfer negative value: %s", amt)
 		}
@@ -911,7 +908,6 @@ func (vm *VM) transfer(from, to address.Address, amt types.BigInt, networkVersio
 			return nil
 		}
 	} else {
-		fmt.Println("network version low")
 		if from == to {
 			return nil
 		}
