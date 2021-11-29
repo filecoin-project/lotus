@@ -290,6 +290,12 @@ Examples:
 			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
 		}
 
+		if cctx.Bool("car-export-merkle-proof") {
+			if !cctx.Bool("car") && !cctx.IsSet("data-selector") {
+				return ShowHelp(cctx, fmt.Errorf("--car-export-merkle-proof requires --car and --data-selector"))
+			}
+		}
+
 		fapi, closer, err := GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
