@@ -96,6 +96,7 @@ func TestPartialRetrieval(t *testing.T) {
 		retOrder.DataSelector = &textSelector
 		eref.DAGs = append(eref.DAGs, api.DagSpec{
 			DataSelector: &textSelector,
+			MatchPath:    true,
 		})
 		eref.Root = carRoot
 

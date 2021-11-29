@@ -214,6 +214,10 @@ type DagSpec struct {
 	// - when using textselector, the path specifies subtree
 	// - the matched graph must have a single root
 	DataSelector *Selector
+
+	// MatchPath matches the path traversal when DataSelector is a textselector.
+	// Ignored when DataSelector is a json selector and in non-car retrieval
+	MatchPath bool
 }
 
 type ExportRef struct {

@@ -435,7 +435,7 @@ var clientRetrieveCatCmd = &cli.Command{
 }
 
 func pathToSel(psel string, sub builder.SelectorSpec) (lapi.Selector, error) {
-	rs, err := textselector.SelectorSpecFromPath(textselector.Expression(psel), sub)
+	rs, err := textselector.SelectorSpecFromPath(textselector.Expression(psel), true, sub)
 	if err != nil {
 		return "", xerrors.Errorf("failed to parse path-selector: %w", err)
 	}

@@ -101,7 +101,7 @@ require (
 	github.com/ipld/go-car/v2 v2.0.3-0.20210811121346-c514a30114d7
 	github.com/ipld/go-codec-dagpb v1.3.0
 	github.com/ipld/go-ipld-prime v0.12.3
-	github.com/ipld/go-ipld-selector-text-lite v0.0.0
+	github.com/ipld/go-ipld-selector-text-lite v0.0.1-0.20211129193845-ce1872a97d94
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/libp2p/go-eventbus v0.2.1

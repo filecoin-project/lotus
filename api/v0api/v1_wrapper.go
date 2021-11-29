@@ -330,6 +330,7 @@ func (w *WrapperV1Full) clientRetrieve(ctx context.Context, order RetrievalOrder
 		s := api.Selector(*order.DatamodelPathSelector)
 		eref.DAGs = append(eref.DAGs, api.DagSpec{
 			DataSelector: &s,
+			MatchPath:    true,
 		})
 	}
 
