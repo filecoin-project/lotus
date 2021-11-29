@@ -291,7 +291,7 @@ Examples:
 		}
 
 		if cctx.Bool("car-export-merkle-proof") {
-			if !cctx.Bool("car") && !cctx.IsSet("data-selector") {
+			if !cctx.Bool("car") || !cctx.IsSet("data-selector") {
 				return ShowHelp(cctx, fmt.Errorf("--car-export-merkle-proof requires --car and --data-selector"))
 			}
 		}
