@@ -44,7 +44,7 @@ var decentWorkerResources = storiface.WorkerResources{
 	MemUsed:     1 << 30,
 	MemSwapUsed: 1 << 30,
 	CPUs:        32,
-	GPUs:        []string{"a GPU"},
+	GPUs:        []string{},
 }
 
 var constrainedWorkerResources = storiface.WorkerResources{
@@ -190,6 +190,9 @@ func TestSchedStartStop(t *testing.T) {
 }
 
 func TestSched(t *testing.T) {
+	storiface.ParallelNum = 1
+	storiface.ParallelDenom = 1
+
 	ctx, done := context.WithTimeout(context.Background(), 30*time.Second)
 	defer done()
 
@@ -256,7 +259,9 @@ func TestSched(t *testing.T) {
 
 					return nil
 				}, noopAction)
-				require.NoError(t, err, fmt.Sprint(l, l2))
+				if err != context.Canceled {
+					require.NoError(t, err, fmt.Sprint(l, l2))
+				}
 			}()
 
 			<-sched.testSync
@@ -301,9 +306,6 @@ func TestSched(t *testing.T) {
 	}
 
 	testFunc := func(workers []workerSpec, tasks []task) func(t *testing.T) {
-		storiface.ParallelNum = 1
-		storiface.ParallelDenom = 1
-
 		return func(t *testing.T) {
 			index := stores.NewIndex()
 
