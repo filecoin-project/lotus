@@ -6,7 +6,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
-func (a *activeResources) withResources(id WorkerID, wr storiface.WorkerInfo, r Resources, locker sync.Locker, cb func() error) error {
+func (a *activeResources) withResources(id storiface.WorkerID, wr storiface.WorkerInfo, r storiface.Resources, locker sync.Locker, cb func() error) error {
 	for !a.canHandleRequest(r, id, "withResources", wr) {
 		if a.cond == nil {
 			a.cond = sync.NewCond(locker)
@@ -30,7 +30,7 @@ func (a *activeResources) hasWorkWaiting() bool {
 	return a.waiting > 0
 }
 
-func (a *activeResources) add(wr storiface.WorkerResources, r Resources) {
+func (a *activeResources) add(wr storiface.WorkerResources, r storiface.Resources) {
 	if r.GPUUtilization > 0 {
 		a.gpuUsed += r.GPUUtilization
 	}
@@ -39,7 +39,7 @@ func (a *activeResources) add(wr storiface.WorkerResources, r Resources) {
 	a.memUsedMax += r.MaxMemory
 }
 
-func (a *activeResources) free(wr storiface.WorkerResources, r Resources) {
+func (a *activeResources) free(wr storiface.WorkerResources, r storiface.Resources) {
 	if r.GPUUtilization > 0 {
 		a.gpuUsed -= r.GPUUtilization
 	}
@@ -54,7 +54,7 @@ func (a *activeResources) free(wr storiface.WorkerResources, r Resources) {
 
 // canHandleRequest evaluates if the worker has enough available resources to
 // handle the request.
-func (a *activeResources) canHandleRequest(needRes Resources, wid WorkerID, caller string, info storiface.WorkerInfo) bool {
+func (a *activeResources) canHandleRequest(needRes storiface.Resources, wid storiface.WorkerID, caller string, info storiface.WorkerInfo) bool {
 	if info.IgnoreResources {
 		// shortcircuit; if this worker is ignoring resources, it can always handle the request.
 		return true

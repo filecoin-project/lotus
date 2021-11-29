@@ -1,28 +1,31 @@
-package sectorstorage
+package storiface
 
 import (
+	"fmt"
+	"reflect"
 	"strconv"
+	"strings"
+
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 type Resources struct {
-	MinMemory uint64 // What Must be in RAM for decent perf
-	MaxMemory uint64 // Memory required (swap + ram)
+	MinMemory uint64 `envname:"MIN_MEMORY"` // What Must be in RAM for decent perf
+	MaxMemory uint64 `envname:"MAX_MEMORY"` // Memory required (swap + ram)
 
 	// GPUUtilization specifes the number of GPUs a task can use
-	GPUUtilization float64
+	GPUUtilization float64 `envname:"GPU_UTILIZATION"`
 
 	// MaxParallelism specifies the number of CPU cores when GPU is NOT in use
-	MaxParallelism int // -1 = multithread
+	MaxParallelism int `envname:"MAX_PARALLELISM"` // -1 = multithread
 
 	// MaxParallelismGPU specifies the number of CPU cores when GPU is in use
-	MaxParallelismGPU int // when 0, inherits MaxParallelism
+	MaxParallelismGPU int `envname:"MAX_PARALLELISM_GPU"` // when 0, inherits MaxParallelism
 
-	BaseMinMemory uint64 // What Must be in RAM for decent perf (shared between threads)
+	BaseMinMemory uint64 `envname:"BASE_MIN_MEMORY"` // What Must be in RAM for decent perf (shared between threads)
 }
 
 /*
@@ -57,59 +60,6 @@ func (r Resources) Threads(wcpus uint64, gpus int) uint64 {
 	}
 
 	return uint64(mp)
-}
-
-func (r *Resources) customizeForWorker(taskShortName string, wid WorkerID, info storiface.WorkerInfo) {
-	// update needed resources with worker options
-	if o, ok := info.Resources.ResourceOpts[taskShortName+"_MAX_MEMORY"]; ok {
-		i, err := strconv.ParseUint(o, 10, 64)
-		if err != nil {
-			log.Errorf("unable to parse %s_MAX_MEMORY value %s: %e", taskShortName, o, err)
-		} else {
-			r.MaxMemory = i
-		}
-	}
-	if o, ok := info.Resources.ResourceOpts[taskShortName+"_MIN_MEMORY"]; ok {
-		i, err := strconv.ParseUint(o, 10, 64)
-		if err != nil {
-			log.Errorf("unable to parse %s_MIN_MEMORY value %s: %e", taskShortName, o, err)
-		} else {
-			r.MinMemory = i
-		}
-	}
-	if o, ok := info.Resources.ResourceOpts[taskShortName+"_BASE_MIN_MEMORY"]; ok {
-		i, err := strconv.ParseUint(o, 10, 64)
-		if err != nil {
-			log.Errorf("unable to parse %s_BASE_MIN_MEMORY value %s: %e", taskShortName, o, err)
-		} else {
-			r.BaseMinMemory = i
-		}
-	}
-	if o, ok := info.Resources.ResourceOpts[taskShortName+"_MAX_PARALLELISM"]; ok {
-		i, err := strconv.Atoi(o)
-		if err != nil {
-			log.Errorf("unable to parse %s_MAX_PARALLELISM value %s: %e", taskShortName, o, err)
-		} else {
-			r.MaxParallelism = i
-		}
-	}
-	if o, ok := info.Resources.ResourceOpts[taskShortName+"_MAX_PARALLELISM_GPU"]; ok {
-		i, err := strconv.Atoi(o)
-		if err != nil {
-			log.Errorf("unable to parse %s_GPU_PARALLELISM value %s: %e", taskShortName, o, err)
-		} else {
-			r.MaxParallelismGPU = i
-		}
-	}
-	if o, ok := info.Resources.ResourceOpts[taskShortName+"_GPU_UTILIZATION"]; ok {
-		i, err := strconv.ParseFloat(o, 64)
-		if err != nil {
-			log.Errorf("unable to parse %s_GPU_UTILIZATION value %s: %e", taskShortName, o, err)
-		} else {
-			r.GPUUtilization = i
-		}
-	}
-	log.Debugf("resources required for %s on %s(%s): %+v", taskShortName, wid, info.Hostname, r)
 }
 
 var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources{
@@ -394,4 +344,84 @@ func init() {
 		m[abi.RegisteredSealProof_StackedDrg32GiBV1_1] = m[abi.RegisteredSealProof_StackedDrg32GiBV1]
 		m[abi.RegisteredSealProof_StackedDrg64GiBV1_1] = m[abi.RegisteredSealProof_StackedDrg64GiBV1]
 	}
+}
+
+func ParseResources(lookup func(key, def string) (string, bool)) (map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources, error) {
+	out := map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources{}
+
+	for taskType, defTT := range ResourceTable {
+		out[taskType] = map[abi.RegisteredSealProof]Resources{}
+
+		for spt, defRes := range defTT {
+			r := defRes // copy
+
+			spsz, err := spt.SectorSize()
+			if err != nil {
+				return nil, xerrors.Errorf("getting sector size: %w", err)
+			}
+			shortSize := strings.TrimSuffix(spsz.ShortString(), "iB")
+
+			rr := reflect.ValueOf(&r)
+			for i := 0; i < rr.Elem().Type().NumField(); i++ {
+				f := rr.Elem().Type().Field(i)
+
+				envname := f.Tag.Get("envname")
+				if envname == "" {
+					return nil, xerrors.Errorf("no envname for field '%s'", f.Name)
+				}
+
+				envval, found := lookup(taskType.Short() + "_" + shortSize + "_" + envname, fmt.Sprint(rr.Elem().Field(i).Interface()))
+				if !found {
+					// special multicore SDR handling
+					if (taskType == sealtasks.TTPreCommit1 || taskType == sealtasks.TTUnseal) && envname == "MAX_PARALLELISM" {
+						v, ok := rr.Elem().Field(i).Addr().Interface().(*int)
+						if !ok {
+							// can't happen, but let's not panic
+							return nil, xerrors.Errorf("res.MAX_PARALLELISM is not int (!?): %w", err)
+						}
+						*v, err = getSDRThreads(lookup)
+						if err != nil {
+							return nil, err
+						}
+					}
+
+					continue
+				}
+
+				v := rr.Elem().Field(i).Addr().Interface()
+				switch fv := v.(type) {
+				case *uint64:
+					*fv, err = strconv.ParseUint(envval, 10, 64)
+				case *int:
+					*fv, err = strconv.Atoi(envval)
+				case *float64:
+					*fv, err = strconv.ParseFloat(envval, 64)
+				default:
+					return nil, xerrors.Errorf("unknown resource field type")
+				}
+			}
+
+			out[taskType][spt] = r
+		}
+	}
+
+	return out, nil
+}
+
+func getSDRThreads(lookup func(key, def string) (string, bool)) (_ int, err error) {
+	producers := 0
+
+	if v, _ := lookup("FIL_PROOFS_USE_MULTICORE_SDR", ""); v == "1" {
+		producers = 3
+
+		if penv, found := lookup("FIL_PROOFS_MULTICORE_SDR_PRODUCERS", ""); found {
+			producers, err = strconv.Atoi(penv)
+			if err != nil {
+				return 0, xerrors.Errorf("parsing (atoi) FIL_PROOFS_MULTICORE_SDR_PRODUCERS: %w", err)
+			}
+		}
+	}
+
+	// producers + the one core actually doing the work
+	return producers+1, nil
 }

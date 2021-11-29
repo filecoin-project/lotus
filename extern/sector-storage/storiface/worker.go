@@ -15,6 +15,12 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 )
 
+type WorkerID uuid.UUID // worker session UUID
+
+func (w WorkerID) String() string {
+	return uuid.UUID(w).String()
+}
+
 type WorkerInfo struct {
 	Hostname string
 
@@ -34,7 +40,29 @@ type WorkerResources struct {
 
 	CPUs         uint64 // Logical cores
 	GPUs         []string
-	ResourceOpts map[string]string
+
+	// if nil use the default resource table
+	Resources map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
+}
+
+func (wr WorkerResources) ResourceSpec(spt abi.RegisteredSealProof, tt sealtasks.TaskType) Resources {
+	res := ResourceTable[tt][spt]
+
+	// if the worker specifies custom resource table, prefer that
+	if wr.Resources != nil {
+		tr, ok := wr.Resources[tt]
+		if !ok {
+			return res
+		}
+
+		r, ok := tr[spt]
+		if ok {
+			return r
+		}
+	}
+
+	// otherwise, use the default resource table
+	return res
 }
 
 type WorkerStats struct {

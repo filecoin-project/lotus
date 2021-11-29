@@ -560,7 +560,7 @@ func BenchmarkTrySched(b *testing.B) {
 				b.StopTimer()
 
 				sched := newScheduler()
-				sched.workers[WorkerID{}] = &workerHandle{
+				sched.workers[storiface.WorkerID{}] = &workerHandle{
 					workerRpc: nil,
 					info: storiface.WorkerInfo{
 						Hostname:  "t",
@@ -572,7 +572,7 @@ func BenchmarkTrySched(b *testing.B) {
 
 				for i := 0; i < windows; i++ {
 					sched.openWindows = append(sched.openWindows, &schedWindowRequest{
-						worker: WorkerID{},
+						worker: storiface.WorkerID{},
 						done:   make(chan *schedWindow, 1000),
 					})
 				}
