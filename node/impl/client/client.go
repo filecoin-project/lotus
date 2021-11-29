@@ -780,8 +780,6 @@ func getDataSelector(dps *api.Selector, matchPath bool) (datamodel.Node, error) 
 			selspec, err := textselector.SelectorSpecFromPath(
 				textselector.Expression(*dps), matchPath,
 
-				// URGH - this is a direct copy from https://github.com/filecoin-project/go-fil-markets/blob/v1.12.0/shared/selectors.go#L10-L16
-				// Unable to use it because we need the SelectorSpec, and markets exposes just a reified node
 				ssb.ExploreRecursive(
 					selector.RecursionLimitNone(),
 					ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreAll(ssb.ExploreRecursiveEdge())),

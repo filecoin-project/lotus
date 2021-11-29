@@ -215,8 +215,10 @@ type DagSpec struct {
 	// - the matched graph must have a single root
 	DataSelector *Selector
 
-	// ExportMerkleProof matches the path traversal when DataSelector is a textselector.
-	// Ignored when DataSelector is a json selector and in non-car retrieval
+	// ExportMerkleProof is applicable only when exporting to a CAR file via a path textselector
+	// When true, in addition to the selection target, the resulting CAR will contain every block along the
+	// path back to, and including the original root
+	// When false the resulting CAR contains only the blocks of the target subdag 
 	ExportMerkleProof bool
 }
 
