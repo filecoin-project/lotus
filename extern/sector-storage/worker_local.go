@@ -42,6 +42,7 @@ type WorkerConfig struct {
 
 // used do provide custom proofs impl (mostly used in testing)
 type ExecutorFunc func() (ffiwrapper.Storage, error)
+type EnvFunc func(string) (string, bool)
 
 type LocalWorker struct {
 	storage    stores.Store
@@ -50,6 +51,7 @@ type LocalWorker struct {
 	ret        storiface.WorkerReturn
 	executor   ExecutorFunc
 	noSwap     bool
+	envLookup  EnvFunc
 
 	// see equivalent field on WorkerConfig.
 	ignoreResources bool
@@ -64,7 +66,7 @@ type LocalWorker struct {
 	closing     chan struct{}
 }
 
-func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, store stores.Store, local *stores.Local, sindex stores.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore) *LocalWorker {
+func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, envLookup EnvFunc, store stores.Store, local *stores.Local, sindex stores.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore) *LocalWorker {
 	acceptTasks := map[sealtasks.TaskType]struct{}{}
 	for _, taskType := range wcfg.TaskTypes {
 		acceptTasks[taskType] = struct{}{}
@@ -82,6 +84,7 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, store stores.Store
 		acceptTasks:     acceptTasks,
 		executor:        executor,
 		noSwap:          wcfg.NoSwap,
+		envLookup:       envLookup,
 		ignoreResources: wcfg.IgnoreResourceFiltering,
 		session:         uuid.New(),
 		closing:         make(chan struct{}),
@@ -115,7 +118,7 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, store stores.Store
 }
 
 func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, sindex stores.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore) *LocalWorker {
-	return newLocalWorker(nil, wcfg, store, local, sindex, ret, cst)
+	return newLocalWorker(nil, wcfg, os.LookupEnv, store, local, sindex, ret, cst)
 }
 
 type localWorkerPathProvider struct {
@@ -544,8 +547,8 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 		return storiface.WorkerInfo{}, xerrors.Errorf("getting memory info: %w", err)
 	}
 
-	resEnv, err := storiface.ParseResources(func(key, def string) (string, bool) {
-		return os.LookupEnv(key)
+	resEnv, err := storiface.ParseResourceEnv(func(key, def string) (string, bool) {
+		return l.envLookup(key)
 	})
 	if err != nil {
 		return storiface.WorkerInfo{}, xerrors.Errorf("interpreting resource env vars: %w", err)

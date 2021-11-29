@@ -10,7 +10,7 @@ import (
 )
 
 func TestListResourceVars(t *testing.T) {
-	_, err := ParseResources(func(key, def string) (string, bool) {
+	_, err := ParseResourceEnv(func(key, def string) (string, bool) {
 		if def != "" {
 			fmt.Printf("%s=%s\n", key, def)
 		}
@@ -22,7 +22,7 @@ func TestListResourceVars(t *testing.T) {
 }
 
 func TestListResourceOverride(t *testing.T) {
-	rt, err := ParseResources(func(key, def string) (string, bool) {
+	rt, err := ParseResourceEnv(func(key, def string) (string, bool) {
 		if key == "UNS_2K_MAX_PARALLELISM" {
 			return "2", true
 		}
@@ -46,7 +46,7 @@ func TestListResourceOverride(t *testing.T) {
 }
 
 func TestListResourceSDRMulticoreOverride(t *testing.T) {
-	rt, err := ParseResources(func(key, def string) (string, bool) {
+	rt, err := ParseResourceEnv(func(key, def string) (string, bool) {
 		if key == "FIL_PROOFS_USE_MULTICORE_SDR" {
 			return "1", true
 		}
@@ -58,7 +58,7 @@ func TestListResourceSDRMulticoreOverride(t *testing.T) {
 	require.Equal(t, 4, rt[sealtasks.TTPreCommit1][stabi.RegisteredSealProof_StackedDrg2KiBV1_1].MaxParallelism)
 	require.Equal(t, 4, rt[sealtasks.TTUnseal][stabi.RegisteredSealProof_StackedDrg2KiBV1_1].MaxParallelism)
 
-	rt, err = ParseResources(func(key, def string) (string, bool) {
+	rt, err = ParseResourceEnv(func(key, def string) (string, bool) {
 		if key == "FIL_PROOFS_USE_MULTICORE_SDR" {
 			return "1", true
 		}

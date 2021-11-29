@@ -346,7 +346,7 @@ func init() {
 	}
 }
 
-func ParseResources(lookup func(key, def string) (string, bool)) (map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources, error) {
+func ParseResourceEnv(lookup func(key, def string) (string, bool)) (map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources, error) {
 	out := map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources{}
 
 	for taskType, defTT := range ResourceTable {
