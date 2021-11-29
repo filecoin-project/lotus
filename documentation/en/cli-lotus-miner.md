@@ -1460,7 +1460,8 @@ USAGE:
    lotus-miner pieces list-cids [command options] [arguments...]
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --verbose, -v  (default: false)
+   --help, -h     show help (default: false)
    
 ```
 
