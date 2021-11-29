@@ -281,7 +281,7 @@ Examples:
 			Usage:   "IPLD datamodel text-path selector, or IPLD json selector",
 		},
 		&cli.BoolFlag{
-			Name: "car-export-merkle-proof",
+			Name:  "car-export-merkle-proof",
 			Usage: "(requires --data-selector and --car) Export data-selector merkle proof",
 		},
 	}, retrFlagsCommon...),
