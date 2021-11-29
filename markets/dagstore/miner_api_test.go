@@ -87,7 +87,7 @@ func TestLotusAccessorFetchUnsealedPiece(t *testing.T) {
 			}
 
 			// Fetch the piece
-			r, err := api.FetchUnsealedPiece(ctx, cid1)
+			r, _, err := api.FetchUnsealedPiece(ctx, cid1, 0)
 			if tc.expectErr {
 				require.Error(t, err)
 				return
@@ -159,7 +159,7 @@ func TestThrottle(t *testing.T) {
 	errgrp, ctx := errgroup.WithContext(context.Background())
 	for i := 0; i < 10; i++ {
 		errgrp.Go(func() error {
-			r, err := api.FetchUnsealedPiece(ctx, cid1)
+			r, _, err := api.FetchUnsealedPiece(ctx, cid1, 0)
 			if err == nil {
 				_ = r.Close()
 			}
@@ -203,6 +203,10 @@ type mockRPN struct {
 }
 
 func (m *mockRPN) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
+	return m.UnsealSectorAt(ctx, sectorID, offset, 0, length)
+}
+
+func (m *mockRPN) UnsealSectorAt(ctx context.Context, sectorID abi.SectorNumber, pieceOffset abi.UnpaddedPieceSize, startOffset uint64, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
 	atomic.AddInt32(&m.calls, 1)
 	m.lk.RLock()
 	defer m.lk.RUnlock()
@@ -211,7 +215,7 @@ func (m *mockRPN) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, o
 	if !ok {
 		panic("sector not found")
 	}
-	return io.NopCloser(bytes.NewBuffer([]byte(data))), nil
+	return io.NopCloser(bytes.NewBuffer([]byte(data[startOffset:]))), nil
 }
 
 func (m *mockRPN) IsUnsealed(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (bool, error) {
