@@ -138,7 +138,7 @@ USAGE:
 
 OPTIONS:
    --all       print all resource envvars (default: false)
-   --default   print all resource envvars (default: false)
+   --default   print default resource envvars (default: false)
    --help, -h  show help (default: false)
    
 ```

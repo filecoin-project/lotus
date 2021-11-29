@@ -20,7 +20,7 @@ var resourcesCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:  "default",
-			Usage: "print all resource envvars",
+			Usage: "print default resource envvars",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
