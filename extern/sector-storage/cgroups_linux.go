@@ -19,7 +19,7 @@ func cgroupV2MountPoint() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer f.Close() //nolint
 
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
