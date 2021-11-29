@@ -214,6 +214,12 @@ type DagSpec struct {
 	// - when using textselector, the path specifies subtree
 	// - the matched graph must have a single root
 	DataSelector *Selector
+
+	// ExportMerkleProof is applicable only when exporting to a CAR file via a path textselector
+	// When true, in addition to the selection target, the resulting CAR will contain every block along the
+	// path back to, and including the original root
+	// When false the resulting CAR contains only the blocks of the target subdag
+	ExportMerkleProof bool
 }
 
 type ExportRef struct {

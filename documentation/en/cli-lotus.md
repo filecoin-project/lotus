@@ -581,14 +581,15 @@ Examples:
 
 
 OPTIONS:
-   --car                                                  export to a car file instead of a regular file (default: false)
-   --data-selector value, --data-selector-selector value  IPLD datamodel text-path selector, or IPLD json selector
-   --from value                                           address to send transactions from
-   --provider value, --miner value                        provider to use for retrieval, if not present it'll use local discovery
-   --maxPrice value                                       maximum price the client is willing to consider (default: 0 FIL)
-   --pieceCid value                                       require data to be retrieved from a specific Piece CID
-   --allow-local                                          (default: false)
-   --help, -h                                             show help (default: false)
+   --car                                                   Export to a car file instead of a regular file (default: false)
+   --data-selector value, --datamodel-path-selector value  IPLD datamodel text-path selector, or IPLD json selector
+   --car-export-merkle-proof                               (requires --data-selector and --car) Export data-selector merkle proof (default: false)
+   --from value                                            address to send transactions from
+   --provider value, --miner value                         provider to use for retrieval, if not present it'll use local discovery
+   --maxPrice value                                        maximum price the client is willing to consider (default: 0 FIL)
+   --pieceCid value                                        require data to be retrieved from a specific Piece CID
+   --allow-local                                           (default: false)
+   --help, -h                                              show help (default: false)
    
 ```
 

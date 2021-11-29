@@ -29,6 +29,7 @@ var (
 	sourceCar               = "../build/genesis/mainnet.car"
 	carRoot, _              = cid.Parse("bafy2bzacecnamqgqmifpluoeldx7zzglxcljo6oja4vrmtj7432rphldpdmm2")
 	carCommp, _             = cid.Parse("baga6ea4seaqmrivgzei3fmx5qxtppwankmtou6zvigyjaveu3z2zzwhysgzuina")
+	selectedCid, _          = cid.Parse("bafkqaetgnfwc6mjpon2g64tbm5sxa33xmvza")
 	carPieceSize            = abi.PaddedPieceSize(2097152)
 	textSelector            = api.Selector("8/1/8/1/0/1/0")
 	textSelectorNonLink     = api.Selector("8/1/8/1/0/1")
@@ -54,76 +55,79 @@ func TestPartialRetrieval(t *testing.T) {
 	require.NoError(t, err)
 
 	// first test retrieval from local car, then do an actual deal
-	for _, fullCycle := range []bool{false, true} {
+	for _, exportMerkleProof := range []bool{false, true} {
+		for _, fullCycle := range []bool{false, true} {
 
-		var retOrder api.RetrievalOrder
-		var eref api.ExportRef
+			var retOrder api.RetrievalOrder
+			var eref api.ExportRef
 
-		if !fullCycle {
-			eref.FromLocalCAR = sourceCar
-		} else {
-			dp := dh.DefaultStartDealParams()
-			dp.Data = &storagemarket.DataRef{
-				// FIXME: figure out how to do this with an online partial transfer
-				TransferType: storagemarket.TTManual,
-				Root:         carRoot,
-				PieceCid:     &carCommp,
-				PieceSize:    carPieceSize.Unpadded(),
+			if !fullCycle {
+				eref.FromLocalCAR = sourceCar
+			} else {
+				dp := dh.DefaultStartDealParams()
+				dp.Data = &storagemarket.DataRef{
+					// FIXME: figure out how to do this with an online partial transfer
+					TransferType: storagemarket.TTManual,
+					Root:         carRoot,
+					PieceCid:     &carCommp,
+					PieceSize:    carPieceSize.Unpadded(),
+				}
+				proposalCid := dh.StartDeal(ctx, dp)
+
+				// Wait for the deal to reach StorageDealCheckForAcceptance on the client
+				cd, err := client.ClientGetDealInfo(ctx, *proposalCid)
+				require.NoError(t, err)
+				require.Eventually(t, func() bool {
+					cd, _ := client.ClientGetDealInfo(ctx, *proposalCid)
+					return cd.State == storagemarket.StorageDealCheckForAcceptance
+				}, 30*time.Second, 1*time.Second, "actual deal status is %s", storagemarket.DealStates[cd.State])
+
+				err = miner.DealsImportData(ctx, *proposalCid, sourceCar)
+				require.NoError(t, err)
+
+				// Wait for the deal to be published, we should be able to start retrieval right away
+				dh.WaitDealPublished(ctx, proposalCid)
+
+				offers, err := client.ClientFindData(ctx, carRoot, nil)
+				require.NoError(t, err)
+				require.NotEmpty(t, offers, "no offers")
+
+				retOrder = offers[0].Order(caddr)
 			}
-			proposalCid := dh.StartDeal(ctx, dp)
 
-			// Wait for the deal to reach StorageDealCheckForAcceptance on the client
-			cd, err := client.ClientGetDealInfo(ctx, *proposalCid)
-			require.NoError(t, err)
-			require.Eventually(t, func() bool {
-				cd, _ := client.ClientGetDealInfo(ctx, *proposalCid)
-				return cd.State == storagemarket.StorageDealCheckForAcceptance
-			}, 30*time.Second, 1*time.Second, "actual deal status is %s", storagemarket.DealStates[cd.State])
+			retOrder.DataSelector = &textSelector
+			eref.DAGs = append(eref.DAGs, api.DagSpec{
+				DataSelector:      &textSelector,
+				ExportMerkleProof: exportMerkleProof,
+			})
+			eref.Root = carRoot
 
-			err = miner.DealsImportData(ctx, *proposalCid, sourceCar)
-			require.NoError(t, err)
+			// test retrieval of either data or constructing a partial selective-car
+			for _, retrieveAsCar := range []bool{false, true} {
+				outFile, err := ioutil.TempFile(t.TempDir(), "ret-file")
+				require.NoError(t, err)
+				defer outFile.Close() //nolint:errcheck
 
-			// Wait for the deal to be published, we should be able to start retrieval right away
-			dh.WaitDealPublished(ctx, proposalCid)
+				require.NoError(t, testGenesisRetrieval(
+					ctx,
+					client,
+					retOrder,
+					eref,
+					&api.FileRef{
+						Path:  outFile.Name(),
+						IsCAR: retrieveAsCar,
+					},
+					outFile,
+				))
 
-			offers, err := client.ClientFindData(ctx, carRoot, nil)
-			require.NoError(t, err)
-			require.NotEmpty(t, offers, "no offers")
-
-			retOrder = offers[0].Order(caddr)
-		}
-
-		retOrder.DataSelector = &textSelector
-		eref.DAGs = append(eref.DAGs, api.DagSpec{
-			DataSelector: &textSelector,
-		})
-		eref.Root = carRoot
-
-		// test retrieval of either data or constructing a partial selective-car
-		for _, retrieveAsCar := range []bool{false, true} {
-			outFile, err := ioutil.TempFile(t.TempDir(), "ret-file")
-			require.NoError(t, err)
-			defer outFile.Close() //nolint:errcheck
-
-			require.NoError(t, testGenesisRetrieval(
-				ctx,
-				client,
-				retOrder,
-				eref,
-				&api.FileRef{
-					Path:  outFile.Name(),
-					IsCAR: retrieveAsCar,
-				},
-				outFile,
-			))
-
-			// UGH if I do not sleep here, I get things like:
-			/*
-				retrieval failed: Retrieve failed: there is an active retrieval deal with peer 12D3KooWK9fB9a3HZ4PQLVmEQ6pweMMn5CAyKtumB71CPTnuBDi6 for payload CID bafy2bzacecnamqgqmifpluoeldx7zzglxcljo6oja4vrmtj7432rphldpdmm2 (retrieval deal ID 1631259332180384709, state DealStatusFinalizingBlockstore) - existing deal must be cancelled before starting a new retrieval deal:
-					github.com/filecoin-project/lotus/node/impl/client.(*API).ClientRetrieve
-						/home/circleci/project/node/impl/client/client.go:774
-			*/
-			time.Sleep(time.Second)
+				// UGH if I do not sleep here, I get things like:
+				/*
+					retrieval failed: Retrieve failed: there is an active retrieval deal with peer 12D3KooWK9fB9a3HZ4PQLVmEQ6pweMMn5CAyKtumB71CPTnuBDi6 for payload CID bafy2bzacecnamqgqmifpluoeldx7zzglxcljo6oja4vrmtj7432rphldpdmm2 (retrieval deal ID 1631259332180384709, state DealStatusFinalizingBlockstore) - existing deal must be cancelled before starting a new retrieval deal:
+						github.com/filecoin-project/lotus/node/impl/client.(*API).ClientRetrieve
+							/home/circleci/project/node/impl/client/client.go:774
+				*/
+				time.Sleep(time.Second)
+			}
 		}
 	}
 
@@ -213,8 +217,10 @@ func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrde
 
 		if len(cr.Header.Roots) != 1 {
 			return fmt.Errorf("expected a single root in result car, got %d", len(cr.Header.Roots))
-		} else if cr.Header.Roots[0].String() != carRoot.String() {
+		} else if eref.DAGs[0].ExportMerkleProof && cr.Header.Roots[0].String() != carRoot.String() {
 			return fmt.Errorf("expected root cid '%s', got '%s'", carRoot.String(), cr.Header.Roots[0].String())
+		} else if !eref.DAGs[0].ExportMerkleProof && cr.Header.Roots[0].String() != selectedCid.String() {
+			return fmt.Errorf("expected root cid '%s', got '%s'", selectedCid.String(), cr.Header.Roots[0].String())
 		}
 
 		blks := make([]blocks.Block, 0)
@@ -229,11 +235,11 @@ func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrde
 			blks = append(blks, b)
 		}
 
-		if len(blks) != 3 {
-			return fmt.Errorf("expected a car file with 3 blocks, got one with %d instead", len(blks))
+		if (eref.DAGs[0].ExportMerkleProof && len(blks) != 3) || (!eref.DAGs[0].ExportMerkleProof && len(blks) != 1) {
+			return fmt.Errorf("expected a car file with 3/1 blocks, got one with %d instead", len(blks))
 		}
 
-		data = blks[2].RawData()
+		data = blks[len(blks)-1].RawData()
 	}
 
 	if string(data) != expectedResult {
