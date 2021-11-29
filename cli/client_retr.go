@@ -273,12 +273,16 @@ Examples:
 	Flags: append([]cli.Flag{
 		&cli.BoolFlag{
 			Name:  "car",
-			Usage: "export to a car file instead of a regular file",
+			Usage: "Export to a car file instead of a regular file",
 		},
 		&cli.StringFlag{
 			Name:    "data-selector",
-			Aliases: []string{"data-selector-selector"},
+			Aliases: []string{"datamodel-path-selector"},
 			Usage:   "IPLD datamodel text-path selector, or IPLD json selector",
+		},
+		&cli.BoolFlag{
+			Name: "car-export-merkle-proof",
+			Usage: "(requires --data-selector and --car) Export data-selector merkle proof",
 		},
 	}, retrFlagsCommon...),
 	Action: func(cctx *cli.Context) error {
@@ -305,7 +309,7 @@ Examples:
 		}
 
 		if s != nil {
-			eref.DAGs = append(eref.DAGs, lapi.DagSpec{DataSelector: s})
+			eref.DAGs = append(eref.DAGs, lapi.DagSpec{DataSelector: s, ExportMerkleProof: cctx.Bool("car-export-merkle-proof")})
 		}
 
 		err = fapi.ClientExport(ctx, *eref, lapi.FileRef{
