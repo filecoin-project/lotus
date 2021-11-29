@@ -339,7 +339,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		defer rt.chargeGasSafe(newGasCharge("OnMethodInvocationDone", 0, 0))
 
 		if types.BigCmp(msg.Value, types.NewInt(0)) != 0 {
-			if err := vm.transfer(msg.From, msg.To, msg.Value); err != nil {
+			if err := vm.transfer(msg.From, msg.To, msg.Value, vm.ntwkVersion(ctx, vm.blockHeight)); err != nil {
 				return nil, aerrors.Wrap(err, "failed to transfer funds")
 			}
 		}
@@ -869,32 +869,71 @@ func (vm *VM) incrementNonce(addr address.Address) error {
 	})
 }
 
-func (vm *VM) transfer(from, to address.Address, amt types.BigInt) aerrors.ActorError {
-	if from == to {
-		return nil
-	}
+func (vm *VM) transfer(from, to address.Address, amt types.BigInt, networkVersion network.Version) aerrors.ActorError {
+	var f *types.Actor
+	var fromID, toID address.Address
+	var err error
+	// switching the order around so that transactions for more than the balance sent to self fail
+	if networkVersion >= network.Version15 {
+		if amt.LessThan(types.NewInt(0)) {
+			return aerrors.Newf(exitcode.SysErrForbidden, "attempted to transfer negative value: %s", amt)
+		}
 
-	fromID, err := vm.cstate.LookupID(from)
-	if err != nil {
-		return aerrors.Fatalf("transfer failed when resolving sender address: %s", err)
-	}
+		fromID, err = vm.cstate.LookupID(from)
+		if err != nil {
+			return aerrors.Fatalf("transfer failed when resolving sender address: %s", err)
+		}
 
-	toID, err := vm.cstate.LookupID(to)
-	if err != nil {
-		return aerrors.Fatalf("transfer failed when resolving receiver address: %s", err)
-	}
+		f, err = vm.cstate.GetActor(fromID)
+		if err != nil {
+			return aerrors.Fatalf("transfer failed when retrieving sender actor: %s", err)
+		}
 
-	if fromID == toID {
-		return nil
-	}
+		if f.Balance.LessThan(amt) {
+			return aerrors.Newf(exitcode.SysErrInsufficientFunds, "transfer failed, insufficient balance in sender actor: %v", f.Balance)
+		}
 
-	if amt.LessThan(types.NewInt(0)) {
-		return aerrors.Newf(exitcode.SysErrForbidden, "attempted to transfer negative value: %s", amt)
-	}
+		if from == to {
+			log.Infow("sending to same address: noop", "from/to addr", from)
+			return nil
+		}
 
-	f, err := vm.cstate.GetActor(fromID)
-	if err != nil {
-		return aerrors.Fatalf("transfer failed when retrieving sender actor: %s", err)
+		toID, err = vm.cstate.LookupID(to)
+		if err != nil {
+			return aerrors.Fatalf("transfer failed when resolving receiver address: %s", err)
+		}
+
+		if fromID == toID {
+			log.Infow("sending to same actor ID: noop", "from/to actor", fromID)
+			return nil
+		}
+	} else {
+		if from == to {
+			return nil
+		}
+
+		fromID, err = vm.cstate.LookupID(from)
+		if err != nil {
+			return aerrors.Fatalf("transfer failed when resolving sender address: %s", err)
+		}
+
+		toID, err = vm.cstate.LookupID(to)
+		if err != nil {
+			return aerrors.Fatalf("transfer failed when resolving receiver address: %s", err)
+		}
+
+		if fromID == toID {
+			return nil
+		}
+
+		if amt.LessThan(types.NewInt(0)) {
+			return aerrors.Newf(exitcode.SysErrForbidden, "attempted to transfer negative value: %s", amt)
+		}
+
+		f, err = vm.cstate.GetActor(fromID)
+		if err != nil {
+			return aerrors.Fatalf("transfer failed when retrieving sender actor: %s", err)
+		}
 	}
 
 	t, err := vm.cstate.GetActor(toID)
@@ -902,17 +941,17 @@ func (vm *VM) transfer(from, to address.Address, amt types.BigInt) aerrors.Actor
 		return aerrors.Fatalf("transfer failed when retrieving receiver actor: %s", err)
 	}
 
-	if err := deductFunds(f, amt); err != nil {
+	if err = deductFunds(f, amt); err != nil {
 		return aerrors.Newf(exitcode.SysErrInsufficientFunds, "transfer failed when deducting funds (%s): %s", types.FIL(amt), err)
 	}
 	depositFunds(t, amt)
 
-	if err := vm.cstate.SetActor(fromID, f); err != nil {
-		return aerrors.Fatalf("transfer failed when setting receiver actor: %s", err)
+	if err = vm.cstate.SetActor(fromID, f); err != nil {
+		return aerrors.Fatalf("transfer failed when setting sender actor: %s", err)
 	}
 
-	if err := vm.cstate.SetActor(toID, t); err != nil {
-		return aerrors.Fatalf("transfer failed when setting sender actor: %s", err)
+	if err = vm.cstate.SetActor(toID, t); err != nil {
+		return aerrors.Fatalf("transfer failed when setting receiver actor: %s", err)
 	}
 
 	return nil
