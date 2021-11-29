@@ -34,7 +34,7 @@ func (a *activeResources) add(wr storiface.WorkerResources, r Resources) {
 	if r.GPUUtilization > 0 {
 		a.gpuUsed += r.GPUUtilization
 	}
-	a.cpuUse += r.Threads(wr.CPUs)
+	a.cpuUse += r.Threads(wr.CPUs, len(wr.GPUs))
 	a.memUsedMin += r.MinMemory
 	a.memUsedMax += r.MaxMemory
 }
@@ -43,7 +43,7 @@ func (a *activeResources) free(wr storiface.WorkerResources, r Resources) {
 	if r.GPUUtilization > 0 {
 		a.gpuUsed -= r.GPUUtilization
 	}
-	a.cpuUse -= r.Threads(wr.CPUs)
+	a.cpuUse -= r.Threads(wr.CPUs, len(wr.GPUs))
 	a.memUsedMin -= r.MinMemory
 	a.memUsedMax -= r.MaxMemory
 
@@ -84,8 +84,8 @@ func (a *activeResources) canHandleRequest(needRes Resources, wid WorkerID, call
 		return false
 	}
 
-	if a.cpuUse+needRes.Threads(res.CPUs) > res.CPUs {
-		log.Debugf("sched: not scheduling on worker %s for %s; not enough threads, need %d, %d in use, target %d", wid, caller, needRes.Threads(res.CPUs), a.cpuUse, res.CPUs)
+	if a.cpuUse+needRes.Threads(res.CPUs, len(res.GPUs)) > res.CPUs {
+		log.Debugf("sched: not scheduling on worker %s for %s; not enough threads, need %d, %d in use, target %d", wid, caller, needRes.Threads(res.CPUs, len(res.GPUs)), a.cpuUse, res.CPUs)
 		return false
 	}
 

@@ -549,7 +549,7 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 	resourceOpts := make(map[string]string)
 	for tt := range l.acceptTasks {
 		ttShort := tt.Short()
-		for _, res_opt := range []string{"_MAX_MEMORY", "_MIN_MEMORY", "_MAX_PARALLELISM", "_BASE_MIN_MEMORY", "_GPU_UTILIZATION"} {
+		for _, res_opt := range []string{"_MAX_MEMORY", "_MIN_MEMORY", "_MAX_PARALLELISM", "_MAX_PARALLELISM_GPU", "_BASE_MIN_MEMORY", "_GPU_UTILIZATION"} {
 			n := ttShort + res_opt
 			if val, ok := os.LookupEnv(n); ok {
 				resourceOpts[n] = val
