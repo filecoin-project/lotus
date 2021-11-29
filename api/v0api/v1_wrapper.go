@@ -329,8 +329,8 @@ func (w *WrapperV1Full) clientRetrieve(ctx context.Context, order RetrievalOrder
 	if order.DatamodelPathSelector != nil {
 		s := api.Selector(*order.DatamodelPathSelector)
 		eref.DAGs = append(eref.DAGs, api.DagSpec{
-			DataSelector: &s,
-			MatchPath:    true,
+			DataSelector:      &s,
+			ExportMerkleProof: true,
 		})
 	}
 

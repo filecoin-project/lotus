@@ -55,7 +55,7 @@ func TestPartialRetrieval(t *testing.T) {
 	require.NoError(t, err)
 
 	// first test retrieval from local car, then do an actual deal
-	for _, matchPath := range []bool{false, true} {
+	for _, exportMerkleProof := range []bool{false, true} {
 		for _, fullCycle := range []bool{false, true} {
 
 			var retOrder api.RetrievalOrder
@@ -97,8 +97,8 @@ func TestPartialRetrieval(t *testing.T) {
 
 			retOrder.DataSelector = &textSelector
 			eref.DAGs = append(eref.DAGs, api.DagSpec{
-				DataSelector: &textSelector,
-				MatchPath:    matchPath,
+				DataSelector:      &textSelector,
+				ExportMerkleProof: exportMerkleProof,
 			})
 			eref.Root = carRoot
 
@@ -217,9 +217,9 @@ func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrde
 
 		if len(cr.Header.Roots) != 1 {
 			return fmt.Errorf("expected a single root in result car, got %d", len(cr.Header.Roots))
-		} else if eref.DAGs[0].MatchPath && cr.Header.Roots[0].String() != carRoot.String() {
+		} else if eref.DAGs[0].ExportMerkleProof && cr.Header.Roots[0].String() != carRoot.String() {
 			return fmt.Errorf("expected root cid '%s', got '%s'", carRoot.String(), cr.Header.Roots[0].String())
-		} else if !eref.DAGs[0].MatchPath && cr.Header.Roots[0].String() != selectedCid.String() {
+		} else if !eref.DAGs[0].ExportMerkleProof && cr.Header.Roots[0].String() != selectedCid.String() {
 			return fmt.Errorf("expected root cid '%s', got '%s'", selectedCid.String(), cr.Header.Roots[0].String())
 		}
 
@@ -235,7 +235,7 @@ func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrde
 			blks = append(blks, b)
 		}
 
-		if (eref.DAGs[0].MatchPath && len(blks) != 3) || (!eref.DAGs[0].MatchPath && len(blks) != 1) {
+		if (eref.DAGs[0].ExportMerkleProof && len(blks) != 3) || (!eref.DAGs[0].ExportMerkleProof && len(blks) != 1) {
 			return fmt.Errorf("expected a car file with 3/1 blocks, got one with %d instead", len(blks))
 		}
 

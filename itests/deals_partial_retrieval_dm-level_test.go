@@ -32,7 +32,7 @@ var (
 	dmTextSelector          = textselector.Expression(dmSelector)
 	dmExpectedResult        = "NO ADL"
 	dmExpectedCarBlockCount = 4
-	dmDagSpec               = []api.DagSpec{{DataSelector: &dmSelector, MatchPath: true}}
+	dmDagSpec               = []api.DagSpec{{DataSelector: &dmSelector, ExportMerkleProof: true}}
 )
 
 func TestDMLevelPartialRetrieval(t *testing.T) {

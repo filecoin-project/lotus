@@ -1104,7 +1104,7 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds forma
 
 		// reify selector
 		var err error
-		out[i].selector, err = getDataSelector(spec.DataSelector, car && spec.MatchPath)
+		out[i].selector, err = getDataSelector(spec.DataSelector, car && spec.ExportMerkleProof)
 		if err != nil {
 			return nil, err
 		}
@@ -1119,7 +1119,7 @@ func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds forma
 				return nil, xerrors.Errorf("failed to parse json-selector '%s': %w", *spec.DataSelector, err)
 			}
 		} else {
-			selspec, _ := textselector.SelectorSpecFromPath(textselector.Expression(*spec.DataSelector), car && spec.MatchPath, nil) //nolint:errcheck
+			selspec, _ := textselector.SelectorSpecFromPath(textselector.Expression(*spec.DataSelector), car && spec.ExportMerkleProof, nil) //nolint:errcheck
 			rsn = selspec.Node()
 		}
 
