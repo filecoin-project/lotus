@@ -38,8 +38,8 @@ type WorkerResources struct {
 	MemSwap     uint64
 	MemSwapUsed uint64
 
-	CPUs         uint64 // Logical cores
-	GPUs         []string
+	CPUs uint64 // Logical cores
+	GPUs []string
 
 	// if nil use the default resource table
 	Resources map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources

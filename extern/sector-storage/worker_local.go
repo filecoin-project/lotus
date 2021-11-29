@@ -555,13 +555,13 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 		Hostname:        hostname,
 		IgnoreResources: l.ignoreResources,
 		Resources: storiface.WorkerResources{
-			MemPhysical:  memPhysical,
-			MemUsed:      memUsed,
-			MemSwap:      memSwap,
-			MemSwapUsed:  memSwapUsed,
-			CPUs:         uint64(runtime.NumCPU()),
-			GPUs:         gpus,
-			Resources:    resEnv,
+			MemPhysical: memPhysical,
+			MemUsed:     memUsed,
+			MemSwap:     memSwap,
+			MemSwapUsed: memSwapUsed,
+			CPUs:        uint64(runtime.NumCPU()),
+			GPUs:        gpus,
+			Resources:   resEnv,
 		},
 	}, nil
 }

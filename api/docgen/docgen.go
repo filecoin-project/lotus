@@ -236,6 +236,7 @@ func init() {
 					MemSwapUsed: 2 << 30,
 					CPUs:        64,
 					GPUs:        []string{"aGPU 1337"},
+					Resources:   storiface.ResourceTable,
 				},
 			},
 			Enabled:    true,
@@ -287,6 +288,7 @@ func init() {
 		State: "ShardStateAvailable",
 		Error: "<error>",
 	})
+	addExample(storiface.ResourceTable)
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

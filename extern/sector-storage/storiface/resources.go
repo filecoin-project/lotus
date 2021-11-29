@@ -370,7 +370,7 @@ func ParseResources(lookup func(key, def string) (string, bool)) (map[sealtasks.
 					return nil, xerrors.Errorf("no envname for field '%s'", f.Name)
 				}
 
-				envval, found := lookup(taskType.Short() + "_" + shortSize + "_" + envname, fmt.Sprint(rr.Elem().Field(i).Interface()))
+				envval, found := lookup(taskType.Short()+"_"+shortSize+"_"+envname, fmt.Sprint(rr.Elem().Field(i).Interface()))
 				if !found {
 					// special multicore SDR handling
 					if (taskType == sealtasks.TTPreCommit1 || taskType == sealtasks.TTUnseal) && envname == "MAX_PARALLELISM" {
@@ -423,5 +423,5 @@ func getSDRThreads(lookup func(key, def string) (string, bool)) (_ int, err erro
 	}
 
 	// producers + the one core actually doing the work
-	return producers+1, nil
+	return producers + 1, nil
 }
