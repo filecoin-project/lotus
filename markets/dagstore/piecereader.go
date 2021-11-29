@@ -95,14 +95,11 @@ func (p *pieceReader) ReadAt(b []byte, off int64) (n int, err error) {
 		return 0, err
 	}
 
-	// get the backing reader into the correct position
-	if p.r == nil {
-		p.rAt = MaxPieceReaderBurnBytes * -2
-	}
+	// 1. Get the backing reader into the correct position
 
 	// if the backing reader is ahead of the offset we want, or more than
 	//  MaxPieceReaderBurnBytes behind, reset the reader
-	if p.rAt > off || p.rAt+MaxPieceReaderBurnBytes < off {
+	if p.r == nil || p.rAt > off || p.rAt+MaxPieceReaderBurnBytes < off {
 		if p.r != nil {
 			if err := p.r.Close(); err != nil {
 				return 0, xerrors.Errorf("closing backing reader: %w", err)
@@ -119,7 +116,7 @@ func (p *pieceReader) ReadAt(b []byte, off int64) (n int, err error) {
 		}
 	}
 
-	// check if we need to burn some bytes
+	// 2. Check if we need to burn some bytes
 	if off > p.rAt {
 		n, err := io.CopyN(io.Discard, p.r, off-p.rAt)
 		p.rAt += n
@@ -128,12 +125,12 @@ func (p *pieceReader) ReadAt(b []byte, off int64) (n int, err error) {
 		}
 	}
 
-	// sanity check
+	// 3. Sanity check
 	if off != p.rAt {
 		return 0, xerrors.Errorf("bad reader offset; requested %d; at %d", off, p.rAt)
 	}
 
-	// Read!
+	// 4. Read!
 	n, err = p.r.Read(b)
 	p.rAt += int64(n)
 	return n, err
