@@ -434,8 +434,8 @@ var clientRetrieveCatCmd = &cli.Command{
 	},
 }
 
-func pathToSel(psel string, sub builder.SelectorSpec) (lapi.Selector, error) {
-	rs, err := textselector.SelectorSpecFromPath(textselector.Expression(psel), true, sub)
+func pathToSel(psel string, matchTraversal bool, sub builder.SelectorSpec) (lapi.Selector, error) {
+	rs, err := textselector.SelectorSpecFromPath(textselector.Expression(psel), matchTraversal, sub)
 	if err != nil {
 		return "", xerrors.Errorf("failed to parse path-selector: %w", err)
 	}
@@ -489,7 +489,7 @@ var clientRetrieveLsCmd = &cli.Command{
 
 		if cctx.IsSet("data-selector") {
 			ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
-			dataSelector, err = pathToSel(cctx.String("data-selector"),
+			dataSelector, err = pathToSel(cctx.String("data-selector"), cctx.Bool("ipld"),
 				ssb.ExploreUnion(
 					ssb.Matcher(),
 					ssb.ExploreAll(
@@ -554,7 +554,7 @@ var clientRetrieveLsCmd = &cli.Command{
 
 			if cctx.IsSet("data-selector") {
 				ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
-				jsel, err = pathToSel(cctx.String("data-selector"),
+				jsel, err = pathToSel(cctx.String("data-selector"), false,
 					ssb.ExploreRecursive(selector.RecursionLimitDepth(int64(cctx.Int("depth"))), ssb.ExploreAll(ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreRecursiveEdge()))),
 				)
 			}
