@@ -109,6 +109,7 @@ func (t *testWorker) Info(ctx context.Context) (storiface.WorkerInfo, error) {
 		Resources: storiface.WorkerResources{
 			MemPhysical: res.MinMemory * 3,
 			MemUsed:     res.MinMemory,
+			MemSwapUsed: 0,
 			MemSwap:     0,
 			CPUs:        32,
 			GPUs:        nil,
