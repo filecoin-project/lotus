@@ -322,7 +322,7 @@ func TestRestartWorker(t *testing.T) {
 	defer cleanup()
 
 	localTasks := []sealtasks.TaskType{
-		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
+		sealtasks.TTAddPiece, sealtasks.TTFetch,
 	}
 
 	wds := datastore.NewMapDatastore()
@@ -466,7 +466,7 @@ func TestResUse(t *testing.T) {
 	defer cleanup()
 
 	localTasks := []sealtasks.TaskType{
-		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
+		sealtasks.TTAddPiece, sealtasks.TTFetch,
 	}
 
 	wds := datastore.NewMapDatastore()
@@ -524,7 +524,7 @@ func TestResOverride(t *testing.T) {
 	defer cleanup()
 
 	localTasks := []sealtasks.TaskType{
-		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
+		sealtasks.TTAddPiece, sealtasks.TTFetch,
 	}
 
 	wds := datastore.NewMapDatastore()

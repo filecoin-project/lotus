@@ -74,10 +74,12 @@ func (a *activeResources) canHandleRequest(needRes storiface.Resources, wid stor
 
 	vmemNeeded := needRes.MaxMemory + needRes.BaseMinMemory
 	vmemUsed := a.memUsedMax
-	if vmemUsed < res.MemUsed+res.MemSwapUsed {
-		vmemUsed = res.MemUsed + res.MemSwapUsed
+	workerMemoryReserved := res.MemUsed + res.MemSwapUsed // memory used outside lotus-worker (used by the OS, etc.)
+
+	if vmemUsed < workerMemoryReserved {
+		vmemUsed = workerMemoryReserved
 	}
-	vmemAvail := res.MemPhysical + res.MemSwap - vmemUsed
+	vmemAvail := (res.MemPhysical + res.MemSwap) - vmemUsed
 
 	if vmemNeeded > vmemAvail {
 		log.Debugf("sched: not scheduling on worker %s for %s; not enough virtual memory - need: %dM, have %dM available", wid, caller, vmemNeeded/mib, vmemAvail/mib)
