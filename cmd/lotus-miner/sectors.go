@@ -1099,16 +1099,21 @@ var sectorsExtendCmd = &cli.Command{
 			Usage:    "renews all v1 sectors up to the maximum possible lifetime",
 			Required: false,
 		},
+		&cli.BoolFlag{
+			Name:     "all-sectors",
+			Usage:    "renews all(except v1) sectors expiration to <new-expiration> if possible",
+			Required: false,
+		},
 		&cli.Int64Flag{
 			Name:     "tolerance",
 			Value:    20160,
-			Usage:    "when extending v1 sectors, don't try to extend sectors by fewer than this number of epochs",
+			Usage:    "when extending v1 or all sectors, don't try to extend sectors by fewer than this number of epochs",
 			Required: false,
 		},
 		&cli.Int64Flag{
 			Name:     "expiration-ignore",
 			Value:    120,
-			Usage:    "when extending v1 sectors, skip sectors whose current expiration is less than <ignore> epochs from now",
+			Usage:    "when extending v1 or all sectors, skip sectors whose current expiration is less than <ignore> epochs from now",
 			Required: false,
 		},
 		&cli.Int64Flag{
@@ -1119,7 +1124,6 @@ var sectorsExtendCmd = &cli.Command{
 		&cli.StringFlag{},
 	},
 	Action: func(cctx *cli.Context) error {
-
 		api, nCloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -1135,7 +1139,10 @@ var sectorsExtendCmd = &cli.Command{
 
 		var params []miner5.ExtendSectorExpirationParams
 
-		if cctx.Bool("v1-sectors") {
+		if cctx.Bool("v1-sectors") || cctx.Bool("all-sectors") {
+			if cctx.Bool("all-sectors") && !cctx.IsSet("new-expiration") {
+				return xerrors.Errorf("must pass new expiration when extend all sectors")
+			}
 
 			head, err := api.ChainHead(ctx)
 			if err != nil {
@@ -1165,18 +1172,8 @@ var sectorsExtendCmd = &cli.Command{
 			}
 
 			for _, si := range sis {
-				if si.SealProof >= abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
-					continue
-				}
-
 				if si.Expiration < (head.Height() + abi.ChainEpoch(cctx.Int64("expiration-ignore"))) {
 					continue
-				}
-
-				if cctx.IsSet("expiration-cutoff") {
-					if si.Expiration > (head.Height() + abi.ChainEpoch(cctx.Int64("expiration-cutoff"))) {
-						continue
-					}
 				}
 
 				ml := policy.GetSectorMaxLifetime(si.SealProof, nv)
@@ -1185,8 +1182,31 @@ var sectorsExtendCmd = &cli.Command{
 					continue
 				}
 
-				// Set the new expiration to 48 hours less than the theoretical maximum lifetime
-				newExp := ml - (miner5.WPoStProvingPeriod * 2) + si.Activation
+				var newExp abi.ChainEpoch
+				if cctx.Bool("v1-sectors") { // for v1-sectors
+					if si.SealProof >= abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
+						continue
+					}
+
+					if cctx.IsSet("expiration-cutoff") {
+						if si.Expiration > (head.Height() + abi.ChainEpoch(cctx.Int64("expiration-cutoff"))) {
+							continue
+						}
+					}
+
+					// Set the new expiration to 48 hours less than the theoretical maximum lifetime
+					newExp = ml - (miner5.WPoStProvingPeriod * 2) + si.Activation
+				} else { // for all-sectors
+					if si.SealProof < abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
+						continue
+					}
+
+					newExp = abi.ChainEpoch(cctx.Int64("new-expiration"))
+					if newExp > (ml - (miner5.WPoStProvingPeriod * 2) + si.Activation) {
+						newExp = ml - (miner5.WPoStProvingPeriod * 2) + si.Activation
+					}
+				}
+
 				if withinTolerance(si.Expiration, newExp) || si.Expiration >= newExp {
 					continue
 				}
