@@ -68,11 +68,16 @@ func newTestStorage(t *testing.T) *testStorage {
 }
 
 func (t testStorage) cleanup() {
-	// 	for _, path := range t.StoragePaths {
-	// 		if err := os.RemoveAll(path.Path); err != nil {
-	// 			fmt.Println("Cleanup error:", err)
-	// 		}
-	// 	}
+	noCleanup := os.Getenv("LOTUS_TEST_NO_CLEANUP") != ""
+	for _, path := range t.StoragePaths {
+		if noCleanup {
+			fmt.Printf("Not cleaning up test storage at %s\n", path)
+			continue
+		}
+		if err := os.RemoveAll(path.Path); err != nil {
+			fmt.Println("Cleanup error:", err)
+		}
+	}
 }
 
 func (t testStorage) GetStorage() (stores.StorageConfig, error) {
