@@ -231,16 +231,18 @@ func init() {
 				Hostname: "host",
 				Resources: storiface.WorkerResources{
 					MemPhysical: 256 << 30,
+					MemUsed:     2 << 30,
 					MemSwap:     120 << 30,
-					MemReserved: 2 << 30,
+					MemSwapUsed: 2 << 30,
 					CPUs:        64,
 					GPUs:        []string{"aGPU 1337"},
+					Resources:   storiface.ResourceTable,
 				},
 			},
 			Enabled:    true,
 			MemUsedMin: 0,
 			MemUsedMax: 0,
-			GpuUsed:    false,
+			GpuUsed:    0,
 			CpuUse:     0,
 		},
 	})
@@ -286,6 +288,7 @@ func init() {
 		State: "ShardStateAvailable",
 		Error: "<error>",
 	})
+	addExample(storiface.ResourceTable)
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

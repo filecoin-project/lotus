@@ -53,7 +53,7 @@ type WorkerSelector interface {
 
 type scheduler struct {
 	workersLk sync.RWMutex
-	workers   map[WorkerID]*workerHandle
+	workers   map[storiface.WorkerID]*workerHandle
 
 	schedule       chan *workerRequest
 	windowRequests chan *schedWindowRequest
@@ -95,7 +95,7 @@ type workerHandle struct {
 }
 
 type schedWindowRequest struct {
-	worker WorkerID
+	worker storiface.WorkerID
 
 	done chan *schedWindow
 }
@@ -107,14 +107,14 @@ type schedWindow struct {
 
 type workerDisableReq struct {
 	activeWindows []*schedWindow
-	wid           WorkerID
+	wid           storiface.WorkerID
 	done          func()
 }
 
 type activeResources struct {
 	memUsedMin uint64
 	memUsedMax uint64
-	gpuUsed    bool
+	gpuUsed    float64
 	cpuUse     uint64
 
 	cond    *sync.Cond
@@ -145,7 +145,7 @@ type workerResponse struct {
 
 func newScheduler() *scheduler {
 	return &scheduler{
-		workers: map[WorkerID]*workerHandle{},
+		workers: map[storiface.WorkerID]*workerHandle{},
 
 		schedule:       make(chan *workerRequest),
 		windowRequests: make(chan *schedWindowRequest, 20),
@@ -378,7 +378,6 @@ func (sh *scheduler) trySched() {
 			}()
 
 			task := (*sh.schedQueue)[sqi]
-			needRes := ResourceTable[task.taskType][task.sector.ProofType]
 
 			task.indexHeap = sqi
 			for wnd, windowRequest := range sh.openWindows {
@@ -393,6 +392,8 @@ func (sh *scheduler) trySched() {
 					log.Debugw("skipping disabled worker", "worker", windowRequest.worker)
 					continue
 				}
+
+				needRes := worker.info.Resources.ResourceSpec(task.sector.ProofType, task.taskType)
 
 				// TODO: allow bigger windows
 				if !windows[wnd].allocated.canHandleRequest(needRes, windowRequest.worker, "schedAcceptable", worker.info) {
@@ -457,7 +458,6 @@ func (sh *scheduler) trySched() {
 
 	for sqi := 0; sqi < queueLen; sqi++ {
 		task := (*sh.schedQueue)[sqi]
-		needRes := ResourceTable[task.taskType][task.sector.ProofType]
 
 		selectedWindow := -1
 		for _, wnd := range acceptableWindows[task.indexHeap] {
@@ -465,6 +465,8 @@ func (sh *scheduler) trySched() {
 			info := sh.workers[wid].info
 
 			log.Debugf("SCHED try assign sqi:%d sector %d to window %d", sqi, task.sector.ID.Number, wnd)
+
+			needRes := info.Resources.ResourceSpec(task.sector.ProofType, task.taskType)
 
 			// TODO: allow bigger windows
 			if !windows[wnd].allocated.canHandleRequest(needRes, wid, "schedAssign", info) {
