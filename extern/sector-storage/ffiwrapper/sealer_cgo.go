@@ -628,9 +628,9 @@ func (sb *Sealer) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, p
 	}
 
 	// XXX: we want to keep the stuff at the end
-	if err := os.Truncate(paths.Unsealed, sealedSize); err != nil {
-		return empty, xerrors.Errorf("failed to truncate unsealed data file: %w", err)
-	}
+	// if err := os.Truncate(paths.Unsealed, sealedSize); err != nil {
+	// 	return empty, xerrors.Errorf("failed to truncate unsealed data file: %w", err)
+	// }
 
 	sealed, unsealed, err := ffi.SectorUpdate.EncodeInto(updateProofType, paths.Update, paths.UpdateCache, paths.Sealed, paths.Cache, paths.Unsealed, pieces)
 	if err != nil {
