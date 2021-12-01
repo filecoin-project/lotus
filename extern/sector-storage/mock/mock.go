@@ -278,6 +278,10 @@ func (mgr *SectorMgr) ProveReplicaUpdate2(ctx context.Context, sector storage.Se
 	return make([]byte, 0), nil
 }
 
+func (mgr *SectorMgr) GenerateSectorKeyFromData(ctx context.Context, sector storage.SectorRef, commD cid.Cid) error {
+	return nil
+}
+
 func (mgr *SectorMgr) ReleaseSealed(ctx context.Context, sid storage.SectorRef) error {
 	return nil
 }
@@ -542,6 +546,10 @@ func (mgr *SectorMgr) ReturnProveReplicaUpdate1(ctx context.Context, callID stor
 }
 
 func (mgr *SectorMgr) ReturnProveReplicaUpdate2(ctx context.Context, callID storiface.CallID, out storage.ReplicaUpdateProof, err *storiface.CallError) error {
+	panic("not supported")
+}
+
+func (mgr *SectorMgr) ReturnGenerateSectorKeyFromData(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
 	panic("not supported")
 }
 
