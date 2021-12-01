@@ -1,5 +1,60 @@
 # Lotus changelog
 
+# v1.13.2-rc1 /  2021-11-30
+
+This is the first RC for lotus v1.13.2. This is a highly recommended release with sealing pipeline fixes, worker management and scheduler enhancement, retrieval improvements and so on. More detailed changelog will be updated later.
+
+- github.com/filecoin-project/lotus:
+    - Address Scheduler enhancements (#7703) review ([filecoin-project/lotus#7714](https://github.com/filecoin-project/lotus/pull/7714))
+    - Scheduler enhancements ([filecoin-project/lotus#7703](https://github.com/filecoin-project/lotus/pull/7703))
+    - ffiwrapper: Validate PC2 by calling C1 with random seeds ([filecoin-project/lotus#7710](https://github.com/filecoin-project/lotus/pull/7710))
+    - fix logic error ([filecoin-project/lotus#7709](https://github.com/filecoin-project/lotus/pull/7709))
+    - Update go-graphsync v0.10.6 ([filecoin-project/lotus#7708](https://github.com/filecoin-project/lotus/pull/7708))
+    - Add verbose mode to lotus-miner pieces list-cids ([filecoin-project/lotus#7699](https://github.com/filecoin-project/lotus/pull/7699))
+    - retrieval: Only output matching nodes, MatchPath dagspec ([filecoin-project/lotus#7706](https://github.com/filecoin-project/lotus/pull/7706))
+    - disable mplex stream muxer ([filecoin-project/lotus#7689](https://github.com/filecoin-project/lotus/pull/7689))
+    - Cleanup partial retrieval codepaths ( zero functional changes ) ([filecoin-project/lotus#7688](https://github.com/filecoin-project/lotus/pull/7688))
+    - Make small retrieval 200x faster ([filecoin-project/lotus#7693](https://github.com/filecoin-project/lotus/pull/7693))
+    - Releases back to master ([filecoin-project/lotus#7698](https://github.com/filecoin-project/lotus/pull/7698))
+    - Add RLE dump code ([filecoin-project/lotus#7691](https://github.com/filecoin-project/lotus/pull/7691))
+    - Update archive script ([filecoin-project/lotus#7690](https://github.com/filecoin-project/lotus/pull/7690))
+    - storage: Use 1M buffers for Tar transfers ([filecoin-project/lotus#7681](https://github.com/filecoin-project/lotus/pull/7681))
+    - Chore/dm level tests plus merkle proof cars ([filecoin-project/lotus#7673](https://github.com/filecoin-project/lotus/pull/7673))
+    - Partial retrieval ux improvements ([filecoin-project/lotus#7610](https://github.com/filecoin-project/lotus/pull/7610))
+    - Sector storage groups ([filecoin-project/lotus#7453](https://github.com/filecoin-project/lotus/pull/7453))
+    - docsgen-cli: Handle commands with no description correctly ([filecoin-project/lotus#7659](https://github.com/filecoin-project/lotus/pull/7659))
+    - shed: simple wallet balancer util ([filecoin-project/lotus#7414](https://github.com/filecoin-project/lotus/pull/7414))
+    - remote store: Remove debug printf ([filecoin-project/lotus#7664](https://github.com/filecoin-project/lotus/pull/7664))
+    - Bump ws from 5.2.2 to 5.2.3 in /lotuspond/front ([filecoin-project/lotus#7660](https://github.com/filecoin-project/lotus/pull/7660))
+    - Bump color-string from 1.5.3 to 1.6.0 in /lotuspond/front ([filecoin-project/lotus#7658](https://github.com/filecoin-project/lotus/pull/7658))
+    - Bump postcss from 7.0.17 to 7.0.39 in /lotuspond/front ([filecoin-project/lotus#7657](https://github.com/filecoin-project/lotus/pull/7657))
+    - Bump path-parse from 1.0.6 to 1.0.7 in /lotuspond/front ([filecoin-project/lotus#7656](https://github.com/filecoin-project/lotus/pull/7656))
+    - Bump tmpl from 1.0.4 to 1.0.5 in /lotuspond/front ([filecoin-project/lotus#7655](https://github.com/filecoin-project/lotus/pull/7655))
+    - Bump url-parse from 1.4.7 to 1.5.3 in /lotuspond/front ([filecoin-project/lotus#7654](https://github.com/filecoin-project/lotus/pull/7654))
+    - Add caches to lotus-stats and splitcode ([filecoin-project/lotus#7329](https://github.com/filecoin-project/lotus/pull/7329))
+    - add additional methods to lotus gateway ([filecoin-project/lotus#7644](https://github.com/filecoin-project/lotus/pull/7644))
+    - checkCommit should return SectorCommitFailed ([filecoin-project/lotus#7555](https://github.com/filecoin-project/lotus/pull/7555))
+    - Wdpost worker: Reduce challenge confidence to 1 epoch ([filecoin-project/lotus#7572](https://github.com/filecoin-project/lotus/pull/7572))
+    - remove api and jaeger env from docker file ([filecoin-project/lotus#7624](https://github.com/filecoin-project/lotus/pull/7624))
+    - CLI: Add a lotus multisig cancel command ([filecoin-project/lotus#7645](https://github.com/filecoin-project/lotus/pull/7645))
+    - remove jaeger envvars ([filecoin-project/lotus#7631](https://github.com/filecoin-project/lotus/pull/7631))
+    - lotus-shed msg: Decode submessages/msig proposals ([filecoin-project/lotus#7639](https://github.com/filecoin-project/lotus/pull/7639))
+    - add log for restart windows post scheduler ([filecoin-project/lotus#7613](https://github.com/filecoin-project/lotus/pull/7613))
+    - Shed: Add a util to list miner faults ([filecoin-project/lotus#7605](https://github.com/filecoin-project/lotus/pull/7605))
+    - add timeout flag to wait-api command ([filecoin-project/lotus#7592](https://github.com/filecoin-project/lotus/pull/7592))
+    - Shed: Add a util to create miners more easily ([filecoin-project/lotus#7595](https://github.com/filecoin-project/lotus/pull/7595))
+    - Update go-state-types ([filecoin-project/lotus#7591](https://github.com/filecoin-project/lotus/pull/7591))
+    - add missing NodeType tag ([filecoin-project/lotus#7559](https://github.com/filecoin-project/lotus/pull/7559))
+    - update go-libp2p-pubsub to v0.5.6 ([filecoin-project/lotus#7581](https://github.com/filecoin-project/lotus/pull/7581))
+    - bump the master version to v1.13.2-dev ([filecoin-project/lotus#7568](https://github.com/filecoin-project/lotus/pull/7568))
+- github.com/filecoin-project/go-state-types (v0.1.1-0.20210915140513-d354ccf10379 -> v0.1.1):
+    - Add v14
+    - Add PoRep -> UpdateProof mapping
+    - Intoduce update proofs enums
+    - Update golangci-lint for comatibility with Go 1.17
+    - Update execution image to maybe update debian version
+    
+
 # v1.13.1 / 2021-11-26
 
 This is an optional Lotus v1.13.1 release.
