@@ -199,7 +199,8 @@ func TestSnapDeals(t *testing.T) {
 
 	localTasks := []sealtasks.TaskType{
 		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit1, sealtasks.TTCommit2, sealtasks.TTFinalize,
-		sealtasks.TTFetch, sealtasks.TTReplicaUpdate, sealtasks.TTProveReplicaUpdate1, sealtasks.TTProveReplicaUpdate2,
+		sealtasks.TTFetch, sealtasks.TTReplicaUpdate, sealtasks.TTProveReplicaUpdate1, sealtasks.TTProveReplicaUpdate2, sealtasks.TTUnseal,
+		sealtasks.TTRegenSectorKey,
 	}
 	wds := datastore.NewMapDatastore()
 
@@ -245,14 +246,6 @@ func TestSnapDeals(t *testing.T) {
 	require.NoError(t, err)
 	fmt.Printf("PC2\n")
 	pc2Out, err := m.SealPreCommit2(ctx, sid, pc1Out)
-
-	require.NoError(t, err)
-	seed := abi.InteractiveSealRandomness{1, 1, 1, 1, 1, 1, 1}
-	fmt.Printf("C1\n")
-	c1Out, err := m.SealCommit1(ctx, sid, ticket, seed, nil, pc2Out)
-	require.NoError(t, err)
-	fmt.Printf("C2\n")
-	_, err = m.SealCommit2(ctx, sid, c1Out)
 	require.NoError(t, err)
 
 	// Now do a snap deals replica update
@@ -270,19 +263,26 @@ func TestSnapDeals(t *testing.T) {
 
 	pieces := []abi.PieceInfo{p1, p2}
 	fmt.Printf("RU\n")
+	startRU := time.Now()
 	out, err := m.ReplicaUpdate(ctx, sid, pieces)
 	require.NoError(t, err)
+	fmt.Printf("RU duration (%s): %s\n", ss.ShortString(), time.Since(startRU))
+
 	updateProofType, err := sid.ProofType.RegisteredUpdateProof()
 	require.NoError(t, err)
 	require.NotNil(t, out)
 	fmt.Printf("PR1\n")
+	startPR1 := time.Now()
 	vanillaProofs, err := m.ProveReplicaUpdate1(ctx, sid, sectorKey, out.NewSealed, out.NewUnsealed)
 	require.NoError(t, err)
 	require.NotNil(t, vanillaProofs)
+	fmt.Printf("PR1 duration (%s): %s\n", ss.ShortString(), time.Since(startPR1))
 	fmt.Printf("PR2\n")
+	startPR2 := time.Now()
 	proof, err := m.ProveReplicaUpdate2(ctx, sid, sectorKey, out.NewSealed, out.NewUnsealed, vanillaProofs)
 	require.NoError(t, err)
 	require.NotNil(t, proof)
+	fmt.Printf("PR2 duration (%s): %s\n", ss.ShortString(), time.Since(startPR2))
 
 	vInfo := proof7.ReplicaUpdateInfo{
 		Proof:                proof,
@@ -294,6 +294,24 @@ func TestSnapDeals(t *testing.T) {
 	pass, err := ffiwrapper.ProofVerifier.VerifyReplicaUpdate(vInfo)
 	require.NoError(t, err)
 	assert.True(t, pass)
+
+	fmt.Printf("Decode\n")
+	// Remove unsealed data and decode for retrieval
+	require.NoError(t, m.FinalizeSector(ctx, sid, nil))
+	startDecode := time.Now()
+	require.NoError(t, m.SectorsUnsealPiece(ctx, sid, 0, p1.Size.Unpadded(), ticket, &out.NewUnsealed))
+	fmt.Printf("Decode duration (%s): %s\n", ss.ShortString(), time.Since(startDecode))
+
+	// Remove just the first piece and decode for retrieval
+	require.NoError(t, m.FinalizeSector(ctx, sid, []storage.Range{{Offset: p1.Size.Unpadded(), Size: p2.Size.Unpadded()}}))
+	require.NoError(t, m.SectorsUnsealPiece(ctx, sid, 0, p1.Size.Unpadded(), ticket, &out.NewUnsealed))
+
+	fmt.Printf("GSK\n")
+	require.NoError(t, m.ReleaseSectorKey(ctx, sid))
+	startGSK := time.Now()
+	require.NoError(t, m.GenerateSectorKeyFromData(ctx, sid, out.NewUnsealed))
+	fmt.Printf("GSK duration (%s): %s\n", ss.ShortString(), time.Since(startGSK))
+
 }
 
 func TestRedoPC1(t *testing.T) {

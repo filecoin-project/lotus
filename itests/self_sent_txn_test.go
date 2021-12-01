@@ -15,8 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
-// these tests check that the versioned code in vm.transfer is functioning correctly across versions! 
+// these tests check that the versioned code in vm.transfer is functioning correctly across versions!
 // we reordered the checks to make sure that a transaction with too much money in it sent to yourself will fail instead of succeeding as a noop
 // more info in this PR! https://github.com/filecoin-project/lotus/pull/7637
 func TestSelfSentTxnV15(t *testing.T) {

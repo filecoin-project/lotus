@@ -75,6 +75,10 @@ func (t *testExec) ProveReplicaUpdate2(ctx context.Context, sector storage.Secto
 	panic("implement me")
 }
 
+func (t *testExec) GenerateSectorKeyFromData(ctx context.Context, sector storage.SectorRef, commD cid.Cid) error {
+	panic("implement me")
+}
+
 func (t *testExec) NewSector(ctx context.Context, sector storage.SectorRef) error {
 	panic("implement me")
 }

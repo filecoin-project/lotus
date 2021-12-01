@@ -168,6 +168,7 @@ const (
 	ReplicaUpdate       ReturnType = "ReplicaUpdate"
 	ProveReplicaUpdate1 ReturnType = "ProveReplicaUpdate1"
 	ProveReplicaUpdate2 ReturnType = "ProveReplicaUpdate2"
+	GenerateSectorKey   ReturnType = "GenerateSectorKey"
 	ReleaseUnsealed     ReturnType = "ReleaseUnsealed"
 	MoveStorage         ReturnType = "MoveStorage"
 	UnsealPiece         ReturnType = "UnsealPiece"
@@ -219,6 +220,7 @@ var returnFunc = map[ReturnType]func(context.Context, storiface.CallID, storifac
 	ReplicaUpdate:       rfunc(storiface.WorkerReturn.ReturnReplicaUpdate),
 	ProveReplicaUpdate1: rfunc(storiface.WorkerReturn.ReturnProveReplicaUpdate1),
 	ProveReplicaUpdate2: rfunc(storiface.WorkerReturn.ReturnProveReplicaUpdate2),
+	GenerateSectorKey:   rfunc(storiface.WorkerReturn.ReturnGenerateSectorKeyFromData),
 	MoveStorage:         rfunc(storiface.WorkerReturn.ReturnMoveStorage),
 	UnsealPiece:         rfunc(storiface.WorkerReturn.ReturnUnsealPiece),
 	Fetch:               rfunc(storiface.WorkerReturn.ReturnFetch),
@@ -416,6 +418,17 @@ func (l *LocalWorker) ProveReplicaUpdate2(ctx context.Context, sector storage.Se
 
 	return l.asyncCall(ctx, sector, ProveReplicaUpdate2, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
 		return sb.ProveReplicaUpdate2(ctx, sector, sectorKey, newSealed, newUnsealed, vanillaProofs)
+	})
+}
+
+func (l *LocalWorker) GenerateSectorKeyFromData(ctx context.Context, sector storage.SectorRef, commD cid.Cid) (storiface.CallID, error) {
+	sb, err := l.executor()
+	if err != nil {
+		return storiface.UndefCall, err
+	}
+
+	return l.asyncCall(ctx, sector, GenerateSectorKey, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+		return nil, sb.GenerateSectorKeyFromData(ctx, sector, commD)
 	})
 }
 
