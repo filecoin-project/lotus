@@ -1,0 +1,19 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>{{.id}} - Deal - Data Explorer</title>
+</head>
+<body>
+<div>
+    <h3>{{.id}}</h3>
+
+    <p>Piece: <i>{{.deal.Proposal.PieceCID}}</i></p>
+    <p>Label: <pre>{{.deal.Proposal.Label}}</pre></p>
+
+    <p>
+        <a href="/view/{{.deal.Proposal.Provider}}/{{.deal.Proposal.PieceCID}}/{{.deal.Proposal.Label}}/">VIEW</a>
+        <span>{{.type}}, {{if eq .type "DIR"}}{{.links}} entries{{else}}{{.size}}{{end}}</span>
+    </p>
+</div>
+</body>
+</html>
