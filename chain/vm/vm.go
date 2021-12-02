@@ -414,6 +414,10 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 	defer span.End()
 	defer atomic.AddUint64(&StatApplied, 1)
 	msg := cmsg.VMMessage()
+	if msg.Method == types.MultiMsgMethod {
+		//it's multiMsg.
+		return HandleMultiMsg(vm, ctx, msg, span, start)
+	}
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
 			trace.StringAttribute("to", msg.To.String()),

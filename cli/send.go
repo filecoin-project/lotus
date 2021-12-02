@@ -3,7 +3,6 @@ package cli
 import (
 	"encoding/hex"
 	"fmt"
-
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
@@ -144,6 +143,115 @@ var sendCmd = &cli.Command{
 			n := cctx.Uint64("nonce")
 			params.Nonce = &n
 		}
+
+		proto, err := srv.MessageForSend(ctx, params)
+		if err != nil {
+			return xerrors.Errorf("creating message prototype: %w", err)
+		}
+
+		sm, err := InteractiveSend(ctx, cctx, srv, proto)
+		if err != nil {
+			return err
+		}
+
+		fmt.Fprintf(cctx.App.Writer, "%s\n", sm.Cid())
+		return nil
+	},
+}
+
+var multisendCmd = &cli.Command{
+	Name:      "multisend",
+	Usage:     "Send funds between accounts,Multi-message aggregation create by jin",
+	ArgsUsage: "[targetAddress] [amount]",
+	Flags: []cli.Flag{
+
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "optionally specify the account to send funds from",
+		},
+		&cli.StringFlag{
+			Name:  "gas-premium",
+			Usage: "specify gas price to use in AttoFIL",
+			Value: "0",
+		},
+		&cli.StringFlag{
+			Name:  "gas-feecap",
+			Usage: "specify gas fee cap to use in AttoFIL",
+			Value: "0",
+		},
+		&cli.Int64Flag{
+			Name:  "gas-limit",
+			Usage: "specify gas limit",
+			Value: 0,
+		},
+		&cli.Uint64Flag{
+			Name:  "nonce",
+			Usage: "specify the nonce to use",
+			Value: 0,
+		},
+
+		&cli.StringFlag{
+			Name:  "params-json",
+			Usage: "specify invocation parameters in json",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+
+		srv, err := GetFullNodeServices(cctx)
+		if err != nil {
+			return err
+		}
+		defer srv.Close() //nolint:errcheck
+
+		ctx := ReqContext(cctx)
+		var params SendParams
+
+		if from := cctx.String("from"); from != "" {
+			addr, err := address.NewFromString(from)
+			if err != nil {
+				return err
+			}
+
+			params.From = addr
+		}
+
+		if cctx.IsSet("gas-premium") {
+			gp, err := types.BigFromString(cctx.String("gas-premium"))
+			if err != nil {
+				return err
+			}
+			params.GasPremium = &gp
+		}
+
+		if cctx.IsSet("gas-feecap") {
+			gfc, err := types.BigFromString(cctx.String("gas-feecap"))
+			if err != nil {
+				return err
+			}
+			params.GasFeeCap = &gfc
+		}
+
+		if cctx.IsSet("gas-limit") {
+			limit := cctx.Int64("gas-limit")
+			params.GasLimit = &limit
+		}
+
+		params.Method = abi.MethodNum(types.MultiMsgMethod)
+
+		if cctx.IsSet("params-json") {
+			decparams, err := srv.DecodeTypedParamsFromJSON(ctx, params.To, params.Method, cctx.String("params-json"))
+			if err != nil {
+				return fmt.Errorf("failed to decode json params: %w", err)
+			}
+			params.Params = decparams
+		}
+
+		if cctx.IsSet("nonce") {
+			n := cctx.Uint64("nonce")
+			params.Nonce = &n
+		}
+		params.To, _ = address.NewFromString("t00")
+		params.Val = abi.NewTokenAmount(0)
 
 		proto, err := srv.MessageForSend(ctx, params)
 		if err != nil {
