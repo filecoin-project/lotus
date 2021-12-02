@@ -66,7 +66,9 @@ func main() {
 		cmd := cmd
 		originBefore := cmd.Before
 		cmd.Before = func(cctx *cli.Context) error {
-			_ = jaeger.Shutdown(cctx.Context)
+			if jaeger != nil {
+				_ = jaeger.Shutdown(cctx.Context)
+			}
 			jaeger = tracing.SetupJaegerTracing("lotus/" + cmd.Name)
 
 			if cctx.IsSet("color") {
