@@ -37,15 +37,16 @@ require (
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
 	github.com/filecoin-project/go-fil-markets v1.13.3-0.20211117072527-8713155662ff
-	github.com/filecoin-project/go-indexer-core v0.2.4
+	github.com/filecoin-project/go-indexer-core v0.2.6
 	github.com/filecoin-project/go-jsonrpc v0.1.5
+	github.com/filecoin-project/go-legs v0.0.0-20211202193658-45deff4405e1 // indirect
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.2
 	github.com/filecoin-project/go-state-types v0.1.1
 	github.com/filecoin-project/go-statemachine v1.0.1
 	github.com/filecoin-project/go-statestore v0.1.1
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
-	github.com/filecoin-project/index-provider v0.0.0-20211117103856-70cd9b7ab68b
+	github.com/filecoin-project/index-provider v0.0.0-20211117105122-6ee67478aad8
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/filecoin-project/specs-actors/v2 v2.3.5
 	github.com/filecoin-project/specs-actors/v3 v3.1.1
@@ -53,6 +54,7 @@ require (
 	github.com/filecoin-project/specs-actors/v5 v5.0.4
 	github.com/filecoin-project/specs-actors/v6 v6.0.1
 	github.com/filecoin-project/specs-storage v0.1.1-0.20201105051918-5188d9774506
+	github.com/filecoin-project/storetheindex v0.0.0-20211126125638-1f013514c397 // indirect
 	github.com/filecoin-project/test-vectors/schema v0.0.5
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/gdamore/tcell/v2 v2.2.0
@@ -153,7 +155,7 @@ require (
 	go.uber.org/fx v1.9.0
 	go.uber.org/multierr v1.7.0
 	go.uber.org/zap v1.19.1
-	golang.org/x/net v0.0.0-20210917221730-978cfadd31cf
+	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	golang.org/x/sys v0.0.0-20210917161153-d61c044b1678
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac
