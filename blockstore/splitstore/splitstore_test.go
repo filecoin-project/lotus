@@ -221,7 +221,7 @@ func TestSplitStoreCompactionWithBadger(t *testing.T) {
 	testSplitStore(t, &Config{MarkSetType: "badger"})
 }
 
-func TestSplitStoreSupressCompactionNearUpgrade(t *testing.T) {
+func TestSplitStoreSuppressCompactionNearUpgrade(t *testing.T) {
 	chain := &mockChain{t: t}
 
 	// the myriads of stores
@@ -264,7 +264,7 @@ func TestSplitStoreSupressCompactionNearUpgrade(t *testing.T) {
 	}
 	defer ss.Close() //nolint
 
-	// create an upgrade schedule that will supress compaction during the test
+	// create an upgrade schedule that will suppress compaction during the test
 	upgradeBoundary = 0
 	upgrade := stmgr.Upgrade{
 		Height:        10,
