@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/gorilla/mux"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -29,7 +30,6 @@ import (
 	"github.com/ipld/go-ipld-prime/traversal/selector/builder"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/urfave/cli/v2"
-	"github.com/gabriel-vasile/mimetype"
 	"golang.org/x/xerrors"
 	"html/template"
 	"io"
@@ -88,7 +88,7 @@ var dataexplCmd = &cli.Command{
 			w.Header().Set("Content-Type", "text/html")
 			w.WriteHeader(http.StatusOK)
 			data := map[string]interface{}{
-				"maddr": ma,
+				"maddr":   ma,
 				"sectors": ms,
 			}
 			if err := tpl.Execute(w, data); err != nil {
@@ -220,7 +220,7 @@ var dataexplCmd = &cli.Command{
 					case unixfs.TFile:
 						typ = "FILE"
 					default:
-						http.Error(w, "unknown ufs type " + fmt.Sprint(fsNode.Type()), http.StatusInternalServerError)
+						http.Error(w, "unknown ufs type "+fmt.Sprint(fsNode.Type()), http.StatusInternalServerError)
 						return
 					}
 				case cid.Raw:
@@ -228,7 +228,7 @@ var dataexplCmd = &cli.Command{
 					s = uint64(len(node.RawData()))
 
 				default:
-					http.Error(w, "unknown codec " + fmt.Sprint(root.Type()), http.StatusInternalServerError)
+					http.Error(w, "unknown codec "+fmt.Sprint(root.Type()), http.StatusInternalServerError)
 					return
 				}
 
@@ -245,10 +245,10 @@ var dataexplCmd = &cli.Command{
 			w.WriteHeader(http.StatusOK)
 			data := map[string]interface{}{
 				"deal": d,
-				"id": did,
+				"id":   did,
 
-				"type": typ,
-				"size": sz,
+				"type":  typ,
+				"size":  sz,
 				"links": linkc,
 			}
 			if err := tpl.Execute(w, data); err != nil {
@@ -345,7 +345,7 @@ var dataexplCmd = &cli.Command{
 				return
 			}
 
-			var rd interface{
+			var rd interface {
 				io.ReadSeeker
 			}
 
@@ -377,10 +377,10 @@ var dataexplCmd = &cli.Command{
 						return
 					}
 
-					type le struct{
+					type le struct {
 						Name string
 						Size string
-						Cid cid.Cid
+						Cid  cid.Cid
 					}
 
 					links := make([]le, len(ls))
@@ -402,7 +402,7 @@ var dataexplCmd = &cli.Command{
 					w.WriteHeader(http.StatusOK)
 					data := map[string]interface{}{
 						"entries": links,
-						"url": r.URL.Path,
+						"url":     r.URL.Path,
 					}
 					if err := tpl.Execute(w, data); err != nil {
 						fmt.Println(err)
@@ -412,12 +412,11 @@ var dataexplCmd = &cli.Command{
 					return
 				case unixfs.TFile:
 					ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
-					err = get(ssb.ExploreRecursive(selector.RecursionLimitNone(), ssb.ExploreAll(ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreRecursiveEdge()))),)
+					err = get(ssb.ExploreRecursive(selector.RecursionLimitNone(), ssb.ExploreAll(ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreRecursiveEdge()))))
 					if err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
 					}
-
 
 					rd, err = io2.NewDagReader(ctx, node, dserv)
 					if err != nil {
@@ -426,13 +425,13 @@ var dataexplCmd = &cli.Command{
 					}
 
 				default:
-					http.Error(w, "unknown ufs type " + fmt.Sprint(fsNode.Type()), http.StatusInternalServerError)
+					http.Error(w, "unknown ufs type "+fmt.Sprint(fsNode.Type()), http.StatusInternalServerError)
 					return
 				}
 			case cid.Raw:
 				rd = bytes.NewReader(node.RawData())
 			default:
-				http.Error(w, "unknown codec " + fmt.Sprint(root.Type()), http.StatusInternalServerError)
+				http.Error(w, "unknown codec "+fmt.Sprint(root.Type()), http.StatusInternalServerError)
 				return
 			}
 
@@ -482,13 +481,12 @@ var dataexplCmd = &cli.Command{
 	},
 }
 
-
 func retrieve(ctx context.Context, fapi lapi.FullNode, minerAddr address.Address, pieceCid, file cid.Cid, sel *lapi.Selector) (*lapi.ExportRef, error) {
 	payer, err := fapi.WalletDefaultAddress(ctx)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var eref *lapi.ExportRef
 
 	// no local found, so make a retrieval
@@ -595,4 +593,3 @@ func (b bytesReaderAt) ReadAt(p []byte, off int64) (n int, err error) {
 }
 
 var _ io.ReaderAt = &bytesReaderAt{}
-
