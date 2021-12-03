@@ -18,6 +18,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	bstore "github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
 
@@ -47,6 +49,9 @@ var (
 	enableDebugLog = false
 	// set this to true if you want to track origin stack traces in the write log
 	enableDebugLogWriteTraces = false
+
+	// upgradeBoundary is the boundary before and after an upgrade where we supress compaction
+	upgradeBoundary = build.Finality
 )
 
 func init() {
@@ -98,6 +103,12 @@ type ChainAccessor interface {
 	SubscribeHeadChanges(change func(revert []*types.TipSet, apply []*types.TipSet) error)
 }
 
+// upgradeRange is a precomputed epoch range during which we shouldn't compact so as to not
+// interfere with an upgrade
+type upgradeRange struct {
+	start, end abi.ChainEpoch
+}
+
 // hotstore is the interface that must be satisfied by the hot blockstore; it is an extension
 // of the Blockstore interface with the traits we need for compaction.
 type hotstore interface {
@@ -124,6 +135,8 @@ type SplitStore struct {
 	ds    dstore.Datastore
 	cold  bstore.Blockstore
 	hot   hotstore
+
+	upgrades []upgradeRange
 
 	markSetEnv  MarkSetEnv
 	markSetSize int64
@@ -463,9 +476,26 @@ func (s *SplitStore) isWarm() bool {
 }
 
 // State tracking
-func (s *SplitStore) Start(chain ChainAccessor) error {
+func (s *SplitStore) Start(chain ChainAccessor, us stmgr.UpgradeSchedule) error {
 	s.chain = chain
 	curTs := chain.GetHeaviestTipSet()
+
+	// precompute the upgrade boundaries
+	s.upgrades = make([]upgradeRange, 0, len(us))
+	for _, upgrade := range us {
+		boundary := upgrade.Height
+		for _, pre := range upgrade.PreMigrations {
+			preMigrationBoundary := upgrade.Height - pre.StartWithin
+			if preMigrationBoundary < boundary {
+				boundary = preMigrationBoundary
+			}
+		}
+
+		upgradeStart := boundary - upgradeBoundary
+		upgradeEnd := upgrade.Height + upgradeBoundary
+
+		s.upgrades = append(s.upgrades, upgradeRange{start: upgradeStart, end: upgradeEnd})
+	}
 
 	// should we warmup
 	warmup := false
