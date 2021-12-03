@@ -1941,6 +1941,7 @@ COMMANDS:
    list     list local storage paths
    find     find sector in the storage system
    cleanup  trigger cleanup actions
+   locks    show active sector locks
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2046,6 +2047,19 @@ USAGE:
 
 OPTIONS:
    --removed   cleanup remaining files from removed sectors (default: true)
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner storage locks
+```
+NAME:
+   lotus-miner storage locks - show active sector locks
+
+USAGE:
+   lotus-miner storage locks [command options] [arguments...]
+
+OPTIONS:
    --help, -h  show help (default: false)
    
 ```

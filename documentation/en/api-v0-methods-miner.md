@@ -138,6 +138,7 @@
   * [StorageDeclareSector](#StorageDeclareSector)
   * [StorageDropSector](#StorageDropSector)
   * [StorageFindSector](#StorageFindSector)
+  * [StorageGetLocks](#StorageGetLocks)
   * [StorageInfo](#StorageInfo)
   * [StorageList](#StorageList)
   * [StorageLocal](#StorageLocal)
@@ -2239,6 +2240,37 @@ Inputs:
 ```
 
 Response: `null`
+
+### StorageGetLocks
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "Locks": [
+    {
+      "Sector": {
+        "Miner": 1000,
+        "Number": 123
+      },
+      "Write": [
+        0,
+        0,
+        1
+      ],
+      "Read": [
+        2,
+        3,
+        0
+      ]
+    }
+  ]
+}
+```
 
 ### StorageInfo
 
