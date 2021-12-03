@@ -155,6 +155,9 @@ func (p *pieceReader) ReadAt(b []byte, off int64) (n int, err error) {
 	if n < len(b) {
 		log.Debugw("pieceReader short read", "piece", p.pieceCid, "at", p.rAt, "toEnd", int64(p.len)-p.rAt, "n", len(b), "read", n, "err", err)
 	}
+	if err == io.ErrUnexpectedEOF {
+		err = io.EOF
+	}
 
 	p.rAt += int64(n)
 	return n, err
