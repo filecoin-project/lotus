@@ -50,7 +50,7 @@ var (
 	// set this to true if you want to track origin stack traces in the write log
 	enableDebugLogWriteTraces = false
 
-	// upgradeBoundary is the boundary before and after an upgrade where we supress compaction
+	// upgradeBoundary is the boundary before and after an upgrade where we suppress compaction
 	upgradeBoundary = build.Finality
 )
 
