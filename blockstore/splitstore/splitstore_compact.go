@@ -100,7 +100,7 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	}
 
 	if s.isNearUpgrade(epoch) {
-		// we are near an upgrade epoch, supress compaction
+		// we are near an upgrade epoch, suppress compaction
 		atomic.StoreInt32(&s.compacting, 0)
 		return nil
 	}
