@@ -2,6 +2,8 @@ package dagstore
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/metrics"
+	"go.opencensus.io/stats"
 	"io"
 
 	"github.com/ipfs/go-cid"
@@ -29,6 +31,8 @@ type pieceReader struct {
 }
 
 func (p *pieceReader) init() (_ *pieceReader, err error) {
+	stats.Record(p.ctx, metrics.DagStorePRInitCount.M(1))
+
 	p.rAt = 0
 	p.r, p.len, err = p.api.FetchUnsealedPiece(p.ctx, p.pieceCid, uint64(p.rAt))
 	if err != nil {
@@ -95,6 +99,8 @@ func (p *pieceReader) ReadAt(b []byte, off int64) (n int, err error) {
 		return 0, err
 	}
 
+	stats.Record(p.ctx, metrics.DagStorePRBytesRequested.M(int64(len(b))))
+
 	// 1. Get the backing reader into the correct position
 
 	// if the backing reader is ahead of the offset we want, or more than
@@ -109,6 +115,12 @@ func (p *pieceReader) ReadAt(b []byte, off int64) (n int, err error) {
 
 		log.Debugw("pieceReader new stream", "piece", p.pieceCid, "at", p.rAt, "off", off-p.rAt)
 
+		if off > p.rAt {
+			stats.Record(p.ctx, metrics.DagStorePRSeekForwardBytes.M(off-p.rAt), metrics.DagStorePRSeekForwardCount.M(1))
+		} else {
+			stats.Record(p.ctx, metrics.DagStorePRSeekBackBytes.M(p.rAt-off), metrics.DagStorePRSeekBackCount.M(1))
+		}
+
 		p.rAt = off
 		p.r, _, err = p.api.FetchUnsealedPiece(p.ctx, p.pieceCid, uint64(p.rAt))
 		if err != nil {
@@ -118,6 +130,8 @@ func (p *pieceReader) ReadAt(b []byte, off int64) (n int, err error) {
 
 	// 2. Check if we need to burn some bytes
 	if off > p.rAt {
+		stats.Record(p.ctx, metrics.DagStorePRBytesDiscarded.M(off-p.rAt), metrics.DagStorePRDiscardCount.M(1))
+
 		n, err := io.CopyN(io.Discard, p.r, off-p.rAt)
 		p.rAt += n
 		if err != nil {
