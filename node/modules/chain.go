@@ -78,6 +78,7 @@ func ChainStore(lc fx.Lifecycle,
 	ds dtypes.MetadataDS,
 	basebs dtypes.BaseBlockstore,
 	weight store.WeightFunc,
+	us stmgr.UpgradeSchedule,
 	j journal.Journal) *store.ChainStore {
 
 	chain := store.NewChainStore(cbs, sbs, ds, weight, j)
@@ -89,7 +90,7 @@ func ChainStore(lc fx.Lifecycle,
 	var startHook func(context.Context) error
 	if ss, ok := basebs.(*splitstore.SplitStore); ok {
 		startHook = func(_ context.Context) error {
-			err := ss.Start(chain)
+			err := ss.Start(chain, us)
 			if err != nil {
 				err = xerrors.Errorf("error starting splitstore: %w", err)
 			}
