@@ -580,6 +580,11 @@ var sectorsCheckExpireCmd = &cli.Command{
 			Usage: "skip sectors whose current expiration is more than <cutoff> epochs from now, defaults to 60 days",
 			Value: 172800,
 		},
+		&cli.BoolFlag{
+			Name:     "skip-v1-sectors",
+			Usage:    "skip v1 sectors when inspect expiring sectors",
+			Required: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 
@@ -614,6 +619,10 @@ var sectorsCheckExpireCmd = &cli.Command{
 
 		n := 0
 		for _, s := range sectors {
+			if cctx.Bool("skip-v1-sectors") && s.SealProof < abi.RegisteredSealProof_StackedDrg2KiBV1_1 {
+				continue
+			}
+
 			if s.Expiration-currEpoch <= abi.ChainEpoch(cctx.Int64("cutoff")) {
 				sectors[n] = s
 				n++
