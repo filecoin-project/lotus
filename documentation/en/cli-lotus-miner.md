@@ -1610,8 +1610,9 @@ USAGE:
    lotus-miner sectors check-expire [command options] [arguments...]
 
 OPTIONS:
-   --cutoff value  skip sectors whose current expiration is more than <cutoff> epochs from now, defaults to 60 days (default: 172800)
-   --help, -h      show help (default: false)
+   --cutoff value     skip sectors whose current expiration is more than <cutoff> epochs from now, defaults to 60 days (default: 172800)
+   --skip-v1-sectors  skip v1 sectors when inspect expiring sectors (default: false)
+   --help, -h         show help (default: false)
    
 ```
 
