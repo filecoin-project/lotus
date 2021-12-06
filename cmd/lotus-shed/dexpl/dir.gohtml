@@ -2,16 +2,26 @@
 <head>
     <meta charset="UTF-8"/>
     <title>Directory - Data Explorer</title>
+    <style>
+        html, body {
+            font-family: monospace;
+        }
+        td {
+            padding: 0 1em;
+        }
+    </style>
 </head>
 <body>
 <div>
     <table>
     {{$url := .url}}
     {{range $i, $e := .entries}}
-        <tr>
+        <tr {{- if (mod2 $i) }} style="background: #e0e0e0" {{end}}>
             <td><a href="{{$url}}Links/{{$i}}/Hash/?filename={{$e.Name}}">{{$e.Name}}</a></td>
-            <td>{{$e.Cid}}</td>
-            <td>{{$e.Size}}</td></tr>
+            <td>{{$e.Size}}</td>
+            <td>{{$e.Desc}}</td>
+            <td><span><i>({{$e.Cid}})</i></span></td>
+        </tr>
     {{end}}
     </table>
 </div>

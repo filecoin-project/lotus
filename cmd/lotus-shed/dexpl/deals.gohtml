@@ -2,17 +2,23 @@
 <head>
     <meta charset="UTF-8"/>
     <title>{{ .maddr }} - Deals - Data Explorer</title>
+    <style>
+        html, body {
+            font-family: monospace;
+        }
+    </style>
 </head>
 <body>
 <div>
     {{ $ma := .maddr }}
     {{range .sectors}}
-        {{if (ge (len .DealIDs) 0)}}
+        {{if (gt (len .DealIDs) 0)}}
             <div>
-                <h3>Sector {{.SectorNumber}}</h3>
-                {{range .DealIDs}}
-                    <a href="/deal/{{.}}">Deal {{.}}</a>
-                {{end}}
+                <h3>Sector {{.SectorNumber}}
+                    {{range .DealIDs}}
+                        <a href="/deal/{{.}}">Deal {{.}}</a>
+                    {{end}}
+                </h3>
             </div>
         {{end}}
     {{end}}
