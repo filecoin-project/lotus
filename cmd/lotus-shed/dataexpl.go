@@ -493,6 +493,9 @@ var dataexplCmd = &cli.Command{
 								case unixfs.TDirectory:
 									links[i].Desc = fmt.Sprintf("DIR (%d entries)", len(fnode.Links()))
 									continue
+								case unixfs.TSymlink:
+									links[i].Desc = fmt.Sprintf("LINK")
+									continue
 								case unixfs.TFile:
 								default:
 									http.Error(w, "unknown ufs type "+fmt.Sprint(fsNode.Type()), http.StatusInternalServerError)
