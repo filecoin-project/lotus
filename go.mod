@@ -34,7 +34,7 @@ require (
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils v0.1.1-0.20210427191551-70bf140d31c7
 	github.com/filecoin-project/go-crypto v0.0.1
-	github.com/filecoin-project/go-data-transfer v1.11.7-0.20211119001436-c0dbfa5fae4d
+	github.com/filecoin-project/go-data-transfer v1.11.7-0.20211207053937-e06a599f202a
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
 	github.com/filecoin-project/go-fil-markets v1.13.4
@@ -43,7 +43,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.3-0.20220111000201-e42866db1a53
 	github.com/filecoin-project/go-state-types v0.1.1
 	github.com/filecoin-project/go-statemachine v1.0.1
-	github.com/filecoin-project/go-statestore v0.1.2-0.20211118230537-43557b6c5ce5
+	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/filecoin-project/specs-actors/v2 v2.3.5
@@ -73,13 +73,13 @@ require (
 	github.com/ipfs/go-blockservice v0.2.1
 	github.com/ipfs/go-cid v0.1.0
 	github.com/ipfs/go-cidutil v0.0.2
-	github.com/ipfs/go-datastore v0.5.0
+	github.com/ipfs/go-datastore v0.5.1
 	github.com/ipfs/go-ds-badger2 v0.1.2-0.20211119002906-7318f1b76158
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/ipfs/go-ds-measure v0.1.0
 	github.com/ipfs/go-ds-pebble v0.0.2-0.20200921225637-ce220f8ac459
 	github.com/ipfs/go-fs-lock v0.0.6
-	github.com/ipfs/go-graphsync v0.10.6
+	github.com/ipfs/go-graphsync v0.11.0
 	github.com/ipfs/go-ipfs-blockstore v1.1.0
 	github.com/ipfs/go-ipfs-blocksutil v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.5
@@ -108,20 +108,20 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/libp2p/go-eventbus v0.2.1
-	github.com/libp2p/go-libp2p v0.15.0
+	github.com/libp2p/go-libp2p v0.16.0
 	github.com/libp2p/go-libp2p-connmgr v0.2.4
-	github.com/libp2p/go-libp2p-core v0.9.0
-	github.com/libp2p/go-libp2p-discovery v0.5.1
+	github.com/libp2p/go-libp2p-core v0.11.0
+	github.com/libp2p/go-libp2p-discovery v0.6.0
 	github.com/libp2p/go-libp2p-kad-dht v0.13.0
-	github.com/libp2p/go-libp2p-noise v0.2.2
+	github.com/libp2p/go-libp2p-noise v0.3.0
 	github.com/libp2p/go-libp2p-peerstore v0.4.0
 	github.com/libp2p/go-libp2p-pubsub v0.5.6
-	github.com/libp2p/go-libp2p-quic-transport v0.11.2
+	github.com/libp2p/go-libp2p-quic-transport v0.15.0
 	github.com/libp2p/go-libp2p-record v0.1.3
 	github.com/libp2p/go-libp2p-routing-helpers v0.2.3
-	github.com/libp2p/go-libp2p-swarm v0.5.3
-	github.com/libp2p/go-libp2p-tls v0.2.0
-	github.com/libp2p/go-libp2p-yamux v0.5.4
+	github.com/libp2p/go-libp2p-swarm v0.8.0
+	github.com/libp2p/go-libp2p-tls v0.3.1
+	github.com/libp2p/go-libp2p-yamux v0.6.0
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/mattn/go-isatty v0.0.14
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
