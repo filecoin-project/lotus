@@ -794,6 +794,8 @@ type StorageMinerStruct struct {
 
 		StorageFindSector func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]stores.SectorStorageInfo, error) `perm:"admin"`
 
+		StorageGetLocks func(p0 context.Context) (storiface.SectorLocks, error) `perm:"admin"`
+
 		StorageInfo func(p0 context.Context, p1 stores.ID) (stores.StorageInfo, error) `perm:"admin"`
 
 		StorageList func(p0 context.Context) (map[stores.ID][]stores.Decl, error) `perm:"admin"`
@@ -4645,6 +4647,17 @@ func (s *StorageMinerStruct) StorageFindSector(p0 context.Context, p1 abi.Sector
 
 func (s *StorageMinerStub) StorageFindSector(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]stores.SectorStorageInfo, error) {
 	return *new([]stores.SectorStorageInfo), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) StorageGetLocks(p0 context.Context) (storiface.SectorLocks, error) {
+	if s.Internal.StorageGetLocks == nil {
+		return *new(storiface.SectorLocks), ErrNotSupported
+	}
+	return s.Internal.StorageGetLocks(p0)
+}
+
+func (s *StorageMinerStub) StorageGetLocks(p0 context.Context) (storiface.SectorLocks, error) {
+	return *new(storiface.SectorLocks), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageInfo(p0 context.Context, p1 stores.ID) (stores.StorageInfo, error) {

@@ -254,6 +254,13 @@ func init() {
 		api.SectorState(sealing.Proving): 120,
 	})
 	addExample([]abi.SectorNumber{123, 124})
+	addExample([]storiface.SectorLock{
+		{
+			Sector: abi.SectorID{Number: 123, Miner: 1000},
+			Write:  [storiface.FileTypes]uint{0, 0, 1},
+			Read:   [storiface.FileTypes]uint{2, 3, 0},
+		},
+	})
 
 	// worker specific
 	addExample(storiface.AcquireMove)
