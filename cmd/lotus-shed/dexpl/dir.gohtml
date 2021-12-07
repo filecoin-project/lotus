@@ -9,17 +9,39 @@
         td {
             padding: 0 1em;
         }
+        tr:nth-child(odd) {background: #e0e0e0}
     </style>
 </head>
 <body>
 <div>
+    <script>
+        async function checkDesc(h, u) {
+            let e = h.parentElement
+            e.innerHTML = "<i>Checking</i>"
+
+            let fr = await fetch(u, {method: 'HEAD'})
+
+            e.innerHTML = ""
+
+            if(!fr.ok) {
+                e.innerText = "ERR: " + fr.statusText
+                return
+            }
+
+            if(fr.headers.has("X-Desc")) {
+                e.innerText = fr.headers.get("X-Desc")
+            } else {
+                e.innerText = "FILE (" + fr.headers.get("Content-Type") + ")"
+            }
+        }
+    </script>
     <table>
     {{$url := .url}}
     {{range $i, $e := .entries}}
-        <tr {{- if (mod2 $i) }} style="background: #e0e0e0" {{end}}>
+        <tr>
             <td><a href="{{$url}}Links/{{$i}}/Hash/?filename={{$e.Name}}">{{$e.Name}}</a></td>
             <td>{{$e.Size}}</td>
-            <td>{{$e.Desc}}</td>
+            <td>{{if eq "" $e.Desc}}??? (<a href="#" onclick="checkDesc(this, '{{$url}}Links/{{$i}}/Hash/?filename={{$e.Name}}')">check</a>){{else}}{{$e.Desc}}{{end}}</td>
             <td><span><i>({{$e.Cid}})</i></span></td>
         </tr>
     {{end}}

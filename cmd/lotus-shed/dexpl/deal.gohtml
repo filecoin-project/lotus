@@ -6,19 +6,36 @@
         html, body {
             font-family: monospace;
         }
+        td {
+            padding: 0 1em;
+        }
+        tr:nth-child(even) {background: #e0e0e0}
     </style>
 </head>
 <body>
 <div>
-    <h3>{{.id}}</h3>
+    <h1>Deal {{.id}}</h1>
 
-    <p>Piece: <i>{{.deal.Proposal.PieceCID}}</i></p>
-    <p>Label: <pre>{{.deal.Proposal.Label}}</pre></p>
+    <table>
+        <tr><td><b>Piece</b></td><td><i>{{.deal.Proposal.PieceCID}}</i></td></tr>
+        <tr><td><b>Label</b></td><td><i>{{.deal.Proposal.Label}}</i></td></tr>
 
-    <p>
-        <a href="/view/{{.deal.Proposal.Provider}}/{{.deal.Proposal.PieceCID}}/{{.deal.Proposal.Label}}/">VIEW</a>
-        <span>{{.type}}, {{if eq .type "DIR"}}{{.links}} entries{{else}}{{.size}}{{end}}</span>
-    </p>
+        <tr><td><b>Client</b></td><td>{{.deal.Proposal.Client}} (<i><a href="https://filfox.info/en/address/{{.deal.Proposal.Client}}">filfox</a></i>)</td></tr>
+        <tr><td><b>Provider</b></td><td><a href="/minersectors/{{.deal.Proposal.Provider}}">{{.deal.Proposal.Provider}}</a> (<i><a href="https://filfox.info/en/address/{{.deal.Proposal.Provider}}">filfox</a></i>)</td></tr>
+
+        <tr><td><b>Start Epoch</b></td><td>{{EpochTime .deal.Proposal.StartEpoch}}</td></tr>
+        <tr><td><b>End Epoch</b></td><td>{{EpochTime .deal.Proposal.EndEpoch}}</td></tr>
+        <tr><td><b>Piece Size</b></td><td>{{SizeStr .deal.Proposal.PieceSize}}</td></tr>
+
+        <tr><td><b>Fil+</b></td><td><i>{{.deal.Proposal.VerifiedDeal}}</i></td></tr>
+
+        <tr><td><b>Content</b></td><td>{{.type}}, {{if eq .type "DIR"}}{{.links}} entries{{else}}{{.size}}{{end}}</td></tr>
+    </table>
+
+
+    <h2>
+        <a href="/view/{{.deal.Proposal.Provider}}/{{.deal.Proposal.PieceCID}}/{{.deal.Proposal.Label}}/">EXPLORE DATA</a>
+    </h2>
 </div>
 </body>
 </html>

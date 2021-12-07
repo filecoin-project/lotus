@@ -290,7 +290,20 @@ var dataexplCmd = &cli.Command{
 				sz = types.SizeStr(types.NewInt(s))
 			}
 
-			tpl, err := template.ParseFS(dres, "dexpl/deal.gohtml")
+			now, err := api.ChainHead(r.Context())
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			tpl, err := template.New("deal.gohtml").Funcs(map[string]interface{}{
+				"EpochTime": func(e abi.ChainEpoch) string {
+					return lcli.EpochTime(now.Height(), e)
+				},
+				"SizeStr": func(s abi.PaddedPieceSize) string {
+					return types.SizeStr(types.NewInt(uint64(s)))
+				},
+			}).ParseFS(dres, "dexpl/deal.gohtml")
 			if err != nil {
 				fmt.Println(err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -337,22 +350,29 @@ var dataexplCmd = &cli.Command{
 			g := get(r, ma, pcid, dcid)
 
 			ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
-			root, dserv, err := g(ssb.ExploreUnion(
-				ssb.Matcher(),
-				ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
-					eb.Insert("Links", ssb.ExploreRange(0, maxDirTypeChecks,
-						ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
-							eb.Insert("Hash", ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth),
-								ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
-									eb.Insert("Links", ssb.ExploreIndex(0, ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
-										eb.Insert("Hash", ssb.ExploreRecursiveEdge())
-									})))
-								})),
-							))
-						}),
-					))
-				}),
-			))
+			sel := ssb.Matcher()
+
+			if r.Method != "HEAD" {
+				ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
+				sel = ssb.ExploreUnion(
+					ssb.Matcher(),
+					ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
+						eb.Insert("Links", ssb.ExploreRange(0, maxDirTypeChecks,
+							ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
+								eb.Insert("Hash", ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth),
+									ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
+										eb.Insert("Links", ssb.ExploreIndex(0, ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
+											eb.Insert("Hash", ssb.ExploreRecursiveEdge())
+										})))
+									})),
+								))
+							}),
+						))
+					}),
+				)
+			}
+
+			root, dserv, err := g(sel)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -393,6 +413,14 @@ var dataexplCmd = &cli.Command{
 					ls, err := d.Links(ctx)
 					if err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+
+					w.Header().Set("X-Desc", fmt.Sprintf("DIR (%d entries)", len(ls)))
+
+					if r.Method == "HEAD" {
+						w.Header().Set("Content-Type", "text/html")
+						w.WriteHeader(http.StatusOK)
 						return
 					}
 
@@ -472,9 +500,7 @@ var dataexplCmd = &cli.Command{
 						}
 					}
 
-					tpl, err := template.New("dir.gohtml").Funcs(map[string]interface{}{
-						"mod2": func(i int) bool { return i % 2 == 0 },
-					}).ParseFS(dres, "dexpl/dir.gohtml")
+					tpl, err := template.New("dir.gohtml").ParseFS(dres, "dexpl/dir.gohtml")
 					if err != nil {
 						fmt.Println(err)
 						http.Error(w, err.Error(), http.StatusInternalServerError)
