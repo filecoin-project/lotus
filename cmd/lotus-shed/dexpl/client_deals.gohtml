@@ -1,0 +1,27 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8"/>
+    <title>Client Deals - Data Explorer</title>
+    <style>
+        html, body {
+            font-family: monospace;
+        }
+        td {
+            padding: 0 1em;
+        }
+        tr:nth-child(even) {background: #e0e0e0}
+    </style>
+</head>
+<body>
+<div>
+    {{ $sda := .StorageDealActive }}
+    {{range .deals}}
+        {{if eq $sda .State}}
+            <div>
+                <a href="/deal/{{.DealID}}">Deal {{.DealID}}</a>
+            </div>
+        {{end}}
+    {{end}}
+</div>
+</body>
+</html>

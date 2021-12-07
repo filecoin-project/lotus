@@ -41,7 +41,7 @@
         <tr>
             <td><a href="{{$url}}Links/{{$i}}/Hash/?filename={{$e.Name}}">{{$e.Name}}</a></td>
             <td>{{$e.Size}}</td>
-            <td>{{if eq "" $e.Desc}}??? (<a href="#" onclick="checkDesc(this, '{{$url}}Links/{{$i}}/Hash/?filename={{$e.Name}}')">check</a>){{else}}{{$e.Desc}}{{end}}</td>
+            <td>{{if eq "" $e.Desc}}??? (<a href="javascript:void(0)" onclick="checkDesc(this, '{{$url}}Links/{{$i}}/Hash/?filename={{$e.Name}}')">check</a>){{else}}{{$e.Desc}}{{end}}</td>
             <td><span><i>({{$e.Cid}})</i></span></td>
         </tr>
     {{end}}

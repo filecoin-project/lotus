@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	lapi "github.com/filecoin-project/lotus/api"
@@ -67,6 +68,32 @@ var dataexplCmd = &cli.Command{
 
 		m := mux.NewRouter()
 
+		m.HandleFunc("/deals", func(w http.ResponseWriter, r *http.Request) {
+			deals, err := api.ClientListDeals(r.Context())
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			tpl, err := template.ParseFS(dres, "dexpl/client_deals.gohtml")
+			if err != nil {
+				fmt.Println(err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html")
+			w.WriteHeader(http.StatusOK)
+			data := map[string]interface{}{
+				"deals": deals,
+				"StorageDealActive": storagemarket.StorageDealActive,
+			}
+			if err := tpl.Execute(w, data); err != nil {
+				fmt.Println(err)
+				return
+			}
+
+		}).Methods("GET")
+
 		m.HandleFunc("/minersectors/{id}", func(w http.ResponseWriter, r *http.Request) {
 			vars := mux.Vars(r)
 			ma, err := address.NewFromString(vars["id"])
@@ -81,7 +108,7 @@ var dataexplCmd = &cli.Command{
 				return
 			}
 
-			tpl, err := template.ParseFS(dres, "dexpl/deals.gohtml")
+			tpl, err := template.ParseFS(dres, "dexpl/sectors.gohtml")
 			if err != nil {
 				fmt.Println(err)
 				http.Error(w, err.Error(), http.StatusInternalServerError)
