@@ -1525,6 +1525,7 @@ COMMANDS:
    extend             Extend sector expiration
    terminate          Terminate sector on-chain then remove (WARNING: This means losing power and collateral for the removed sector)
    remove             Forcefully remove a sector (WARNING: This means losing power and collateral for the removed sector (use 'terminate' for lower penalty))
+   snap-up            Mark a committed capacity sector to be filled with deals
    mark-for-upgrade   Mark a committed capacity sector for replacement by a sector with deals
    seal               Manually start sealing a sector (filling any unused space with junk)
    set-seal-delay     Set the time, in minutes, that a new sector waits for deals before sealing starts
@@ -1743,6 +1744,19 @@ USAGE:
 OPTIONS:
    --really-do-it  pass this flag if you know what you are doing (default: false)
    --help, -h      show help (default: false)
+   
+```
+
+### lotus-miner sectors snap-up
+```
+NAME:
+   lotus-miner sectors snap-up - Mark a committed capacity sector to be filled with deals
+
+USAGE:
+   lotus-miner sectors snap-up [command options] <sectorNum>
+
+OPTIONS:
+   --help, -h  show help (default: false)
    
 ```
 

@@ -280,8 +280,8 @@ func (m *Sealing) handlePreCommit2(ctx statemachine.Context, sector SectorInfo) 
 }
 
 // TODO: We should probably invoke this method in most (if not all) state transition failures after handlePreCommitting
-func (m *Sealing) remarkForUpgrade(sid abi.SectorNumber) {
-	err := m.MarkForUpgrade(sid)
+func (m *Sealing) remarkForUpgrade(ctx context.Context, sid abi.SectorNumber) {
+	err := m.MarkForUpgrade(ctx, sid)
 	if err != nil {
 		log.Errorf("error re-marking sector %d as for upgrade: %+v", sid, err)
 	}
@@ -424,7 +424,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	mcid, err := m.Api.SendMsg(ctx.Context(), from, m.maddr, miner.Methods.PreCommitSector, deposit, big.Int(m.feeCfg.MaxPreCommitGasFee), enc.Bytes())
 	if err != nil {
 		if params.ReplaceCapacity {
-			m.remarkForUpgrade(params.ReplaceSectorNumber)
+			m.remarkForUpgrade(ctx.Context(), params.ReplaceSectorNumber)
 		}
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
