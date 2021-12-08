@@ -109,10 +109,11 @@ func DefaultStorageMiner() *StorageMiner {
 			AvailableBalanceBuffer:     types.FIL(big.Zero()),
 			DisableCollateralFallback:  false,
 
-			BatchPreCommits:     true,
-			MaxPreCommitBatch:   miner5.PreCommitSectorBatchMaxSize, // up to 256 sectors
-			PreCommitBatchWait:  Duration(24 * time.Hour),           // this should be less than 31.5 hours, which is the expiration of a precommit ticket
-			PreCommitBatchSlack: Duration(3 * time.Hour),            // time buffer for forceful batch submission before sectors/deals in batch would start expiring, higher value will lower the chances for message fail due to expiration
+			BatchPreCommits:    true,
+			MaxPreCommitBatch:  miner5.PreCommitSectorBatchMaxSize, // up to 256 sectors
+			PreCommitBatchWait: Duration(24 * time.Hour),           // this should be less than 31.5 hours, which is the expiration of a precommit ticket
+			// XXX snap deals wait deals slack if first
+			PreCommitBatchSlack: Duration(3 * time.Hour), // time buffer for forceful batch submission before sectors/deals in batch would start expiring, higher value will lower the chances for message fail due to expiration
 
 			CommittedCapacitySectorLifetime: Duration(builtin.EpochDurationSeconds * uint64(policy.GetMaxSectorExpirationExtension()) * uint64(time.Second)),
 
@@ -131,11 +132,13 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		Storage: sectorstorage.SealerConfig{
-			AllowAddPiece:   true,
-			AllowPreCommit1: true,
-			AllowPreCommit2: true,
-			AllowCommit:     true,
-			AllowUnseal:     true,
+			AllowAddPiece:            true,
+			AllowPreCommit1:          true,
+			AllowPreCommit2:          true,
+			AllowCommit:              true,
+			AllowUnseal:              true,
+			AllowReplicaUpdate:       true,
+			AllowProveReplicaUpdate2: true,
 
 			// Default to 10 - tcp should still be able to figure this out, and
 			// it's the ratio between 10gbit / 1gbit

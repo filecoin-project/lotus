@@ -118,6 +118,7 @@
   * [SectorGetExpectedSealDuration](#SectorGetExpectedSealDuration)
   * [SectorGetSealDelay](#SectorGetSealDelay)
   * [SectorMarkForUpgrade](#SectorMarkForUpgrade)
+  * [SectorMatchPendingPiecesToOpenSectors](#SectorMatchPendingPiecesToOpenSectors)
   * [SectorPreCommitFlush](#SectorPreCommitFlush)
   * [SectorPreCommitPending](#SectorPreCommitPending)
   * [SectorRemove](#SectorRemove)
@@ -330,7 +331,9 @@ Inputs:
 ```json
 [
   null,
-  null
+  null,
+  10101,
+  15
 ]
 ```
 
@@ -1936,9 +1939,19 @@ Perms: admin
 Inputs:
 ```json
 [
-  9
+  9,
+  true
 ]
 ```
+
+Response: `{}`
+
+### SectorMatchPendingPiecesToOpenSectors
+
+
+Perms: admin
+
+Inputs: `null`
 
 Response: `{}`
 

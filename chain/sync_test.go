@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -542,7 +543,7 @@ func (wpp badWpp) GenerateCandidates(context.Context, abi.PoStRandomness, uint64
 	return []uint64{1}, nil
 }
 
-func (wpp badWpp) ComputeProof(context.Context, []proof2.SectorInfo, abi.PoStRandomness) ([]proof2.PoStProof, error) {
+func (wpp badWpp) ComputeProof(context.Context, []proof7.ExtendedSectorInfo, abi.PoStRandomness, abi.ChainEpoch, network.Version) ([]proof2.PoStProof, error) {
 	return []proof2.PoStProof{
 		{
 			PoStProof:  abi.RegisteredPoStProof_StackedDrgWinning2KiBV1,

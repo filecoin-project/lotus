@@ -8,6 +8,7 @@ import (
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	"github.com/ipfs/go-datastore"
@@ -86,8 +87,8 @@ func (cv *cachingVerifier) VerifySeal(svi proof2.SealVerifyInfo) (bool, error) {
 	}, &svi)
 }
 
-func (cv *cachingVerifier) VerifyWinningPoSt(ctx context.Context, info proof2.WinningPoStVerifyInfo) (bool, error) {
-	return cv.backend.VerifyWinningPoSt(ctx, info)
+func (cv *cachingVerifier) VerifyWinningPoSt(ctx context.Context, info proof7.WinningPoStVerifyInfo, poStEpoch abi.ChainEpoch, nv network.Version) (bool, error) {
+	return cv.backend.VerifyWinningPoSt(ctx, info, poStEpoch, nv)
 }
 func (cv *cachingVerifier) VerifyWindowPoSt(ctx context.Context, info proof2.WindowPoStVerifyInfo) (bool, error) {
 	return cv.withCache(func() (bool, error) {

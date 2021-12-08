@@ -535,8 +535,12 @@ func (m *Miner) mineOne(ctx context.Context, base *MiningBase) (minedBlock *type
 	prand := abi.PoStRandomness(rand)
 
 	tSeed := build.Clock.Now()
+	nv, err := m.api.StateNetworkVersion(ctx, base.TipSet.Key())
+	if err != nil {
+		return nil, err
+	}
 
-	postProof, err := m.epp.ComputeProof(ctx, mbi.Sectors, prand)
+	postProof, err := m.epp.ComputeProof(ctx, mbi.Sectors, prand, round, nv)
 	if err != nil {
 		err = xerrors.Errorf("failed to compute winning post proof: %w", err)
 		return nil, err
