@@ -1,4 +1,4 @@
-package dagstore
+package sectorstorage
 
 import (
 	"bufio"
@@ -19,11 +19,14 @@ import (
 var MaxPieceReaderBurnBytes int64 = 1 << 20 // 1M
 var ReadBuf = 128 * (127 * 8)               // unpadded(128k)
 
+type pieceGetter func(ctx context.Context, offset uint64) (io.ReadCloser, error)
+
 type pieceReader struct {
-	ctx      context.Context
-	api      MinerAPI
-	pieceCid cid.Cid
-	len      abi.UnpaddedPieceSize
+	ctx       context.Context
+	getReader pieceGetter
+	pieceCid  cid.Cid
+	len       abi.UnpaddedPieceSize
+	onClose   context.CancelFunc
 
 	closed bool
 	seqAt  int64 // next byte to be read by io.Reader
@@ -37,10 +40,14 @@ func (p *pieceReader) init() (_ *pieceReader, err error) {
 	stats.Record(p.ctx, metrics.DagStorePRInitCount.M(1))
 
 	p.rAt = 0
-	p.r, p.len, err = p.api.FetchUnsealedPiece(p.ctx, p.pieceCid, uint64(p.rAt))
+	p.r, err = p.getReader(p.ctx, uint64(p.rAt))
 	if err != nil {
 		return nil, err
 	}
+	if p.r == nil {
+		return nil, nil
+	}
+
 	p.br = bufio.NewReaderSize(p.r, ReadBuf)
 
 	return p, nil
@@ -65,6 +72,10 @@ func (p *pieceReader) Close() error {
 		}
 		p.r = nil
 	}
+
+	p.onClose()
+
+	p.closed = true
 
 	return nil
 }
@@ -127,7 +138,7 @@ func (p *pieceReader) ReadAt(b []byte, off int64) (n int, err error) {
 		}
 
 		p.rAt = off
-		p.r, _, err = p.api.FetchUnsealedPiece(p.ctx, p.pieceCid, uint64(p.rAt))
+		p.r, err = p.getReader(p.ctx, uint64(p.rAt))
 		p.br = bufio.NewReaderSize(p.r, ReadBuf)
 		if err != nil {
 			return 0, xerrors.Errorf("getting backing reader: %w", err)

@@ -3,7 +3,6 @@ package dagstore
 import (
 	"bytes"
 	"context"
-	"io"
 	"os"
 	"testing"
 	"time"
@@ -11,8 +10,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/dagstore/mount"
@@ -192,7 +189,7 @@ func (m mockLotusMount) Start(ctx context.Context) error {
 	return nil
 }
 
-func (m mockLotusMount) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid, offset uint64) (io.ReadCloser, abi.UnpaddedPieceSize, error) {
+func (m mockLotusMount) FetchUnsealedPiece(context.Context, cid.Cid) (mount.Reader, error) {
 	panic("implement me")
 }
 
