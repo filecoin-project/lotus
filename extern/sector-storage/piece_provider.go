@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
@@ -27,7 +28,7 @@ type PieceProvider interface {
 	//  default in most cases, but this might matter with future PoRep)
 	// startOffset is added to the pieceOffset to get the starting reader offset.
 	// The number of bytes that can be read is pieceSize-startOffset
-	ReadPiece(ctx context.Context, sector storage.SectorRef, pieceOffset storiface.UnpaddedByteIndex, startOffset uint64, pieceSize abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (io.ReadCloser, bool, error)
+	ReadPiece(ctx context.Context, sector storage.SectorRef, pieceOffset storiface.UnpaddedByteIndex, pieceSize abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (mount.Reader, bool, error)
 	IsUnsealed(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error)
 }
 
@@ -71,28 +72,62 @@ func (p *pieceProvider) IsUnsealed(ctx context.Context, sector storage.SectorRef
 // It will NOT try to schedule an Unseal of a sealed sector file for the read.
 //
 // Returns a nil reader if the piece does NOT exist in any unsealed file or there is no unsealed file for the given sector on any of the workers.
-func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, sector storage.SectorRef, pieceOffset, startOffset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (io.ReadCloser, context.CancelFunc, error) {
+func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, pc cid.Cid, sector storage.SectorRef, pieceOffset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (mount.Reader, error) {
 	// acquire a lock purely for reading unsealed sectors
 	ctx, cancel := context.WithCancel(ctx)
 	if err := p.index.StorageLock(ctx, sector.ID, storiface.FTUnsealed, storiface.FTNone); err != nil {
 		cancel()
-		return nil, nil, xerrors.Errorf("acquiring read sector lock: %w", err)
+		return nil, xerrors.Errorf("acquiring read sector lock: %w", err)
 	}
 
-	// Reader returns a reader for an unsealed piece at the given offset in the given sector.
-	// The returned reader will be nil if none of the workers has an unsealed sector file containing
-	// the unsealed piece.
-	r, err := p.storage.Reader(ctx, sector, abi.PaddedPieceSize(pieceOffset.Padded()+startOffset.Padded()), size.Padded()-abi.PaddedPieceSize(startOffset.Padded()))
-	if err != nil {
-		log.Debugf("did not get storage reader;sector=%+v, err:%s", sector.ID, err)
+	pr, err := (&pieceReader{
+		ctx: ctx,
+		getReader: func(ctx context.Context, startOffset uint64) (io.ReadCloser, error) {
+			startOffsetAligned := storiface.UnpaddedByteIndex(startOffset / 127 * 127) // floor to multiple of 127
+
+			// Reader returns a reader for an unsealed piece at the given offset in the given sector.
+			// The returned reader will be nil if none of the workers has an unsealed sector file containing
+			// the unsealed piece.
+			r, err := p.storage.Reader(ctx, sector, abi.PaddedPieceSize(pieceOffset.Padded()+startOffsetAligned.Padded()), size.Padded()-abi.PaddedPieceSize(startOffsetAligned.Padded()))
+			if err != nil {
+				log.Debugf("did not get storage reader;sector=%+v, err:%s", sector.ID, err)
+				return nil, err
+			}
+			if r == nil {
+				return nil, nil
+			}
+
+			upr, err := fr32.NewUnpadReader(r, size.Padded())
+			if err != nil {
+				r.Close() // nolint
+				return nil, xerrors.Errorf("creating unpadded reader: %w", err)
+			}
+
+			bir := bufio.NewReaderSize(upr, 127)
+			if startOffset > uint64(startOffsetAligned) {
+				if _, err := bir.Discard(int(startOffset - uint64(startOffsetAligned))); err != nil {
+					return nil, xerrors.Errorf("discarding bytes for startOffset: %w", err)
+				}
+			}
+
+			return struct {
+				io.Reader
+				io.Closer
+			}{
+				Reader: bir,
+				Closer: r,
+			}, nil
+		},
+		len:      size,
+		onClose:  cancel,
+		pieceCid: pc,
+	}).init()
+	if err != nil || pr == nil { // pr == nil to make sure we don't return typed nil
 		cancel()
-		return nil, nil, err
-	}
-	if r == nil {
-		cancel()
+		return nil, err
 	}
 
-	return r, cancel, nil
+	return pr, err
 }
 
 // ReadPiece is used to read an Unsealed piece at the given offset and of the given size from a Sector
@@ -101,7 +136,7 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, sector storage
 // If we do NOT have an existing unsealed file  containing the given piece thus causing us to schedule an Unseal,
 // the returned boolean parameter will be set to true.
 // If we have an existing unsealed file containing the given piece, the returned boolean will be set to false.
-func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef, pieceOffset storiface.UnpaddedByteIndex, startOffset uint64, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (io.ReadCloser, bool, error) {
+func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef, pieceOffset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (mount.Reader, bool, error) {
 	if err := pieceOffset.Valid(); err != nil {
 		return nil, false, xerrors.Errorf("pieceOffset is not valid: %w", err)
 	}
@@ -109,9 +144,7 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 		return nil, false, xerrors.Errorf("size is not a valid piece size: %w", err)
 	}
 
-	startOffsetAligned := storiface.UnpaddedByteIndex(startOffset / 127 * 127) // floor to multiple of 127
-
-	r, unlock, err := p.tryReadUnsealedPiece(ctx, sector, pieceOffset, startOffsetAligned, size)
+	r, err := p.tryReadUnsealedPiece(ctx, unsealed, sector, pieceOffset, size)
 
 	log.Debugf("result of first tryReadUnsealedPiece: r=%+v, err=%s", r, err)
 
@@ -142,7 +175,7 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 
 		log.Debugf("unsealed a sector file to read the piece, sector=%+v, pieceOffset=%d, size=%d", sector, pieceOffset, size)
 
-		r, unlock, err = p.tryReadUnsealedPiece(ctx, sector, pieceOffset, startOffsetAligned, size)
+		r, err = p.tryReadUnsealedPiece(ctx, unsealed, sector, pieceOffset, size)
 		if err != nil {
 			log.Errorf("failed to tryReadUnsealedPiece after SectorsUnsealPiece: %s", err)
 			return nil, true, xerrors.Errorf("read after unsealing: %w", err)
@@ -156,34 +189,7 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 		log.Debugf("unsealed piece already exists, no need to unseal, sector=%+v, pieceOffset=%d, size=%d", sector, pieceOffset, size)
 	}
 
-	upr, err := fr32.NewUnpadReader(r, size.Padded())
-	if err != nil {
-		unlock()
-		return nil, uns, xerrors.Errorf("creating unpadded reader: %w", err)
-	}
+	log.Debugf("returning reader to read unsealed piece, sector=%+v, pieceOffset=%d, size=%d", sector, pieceOffset, size)
 
-	log.Debugf("returning reader to read unsealed piece, sector=%+v, pieceOffset=%d, startOffset=%d, size=%d", sector, pieceOffset, startOffset, size)
-
-	bir := bufio.NewReaderSize(upr, 127)
-	if startOffset > uint64(startOffsetAligned) {
-		if _, err := bir.Discard(int(startOffset - uint64(startOffsetAligned))); err != nil {
-			return nil, false, xerrors.Errorf("discarding bytes for startOffset: %w", err)
-		}
-	}
-
-	return &funcCloser{
-		Reader: bir,
-		close: func() error {
-			err = r.Close()
-			unlock()
-			return err
-		},
-	}, uns, nil
+	return r, uns, nil
 }
-
-type funcCloser struct {
-	io.Reader
-	close func() error
-}
-
-func (fc *funcCloser) Close() error { return fc.close() }
