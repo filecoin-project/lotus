@@ -17,10 +17,12 @@ const (
 	TTReplicaUpdate       TaskType = "seal/v0/replicaupdate"
 	TTProveReplicaUpdate1 TaskType = "seal/v0/provereplicaupdate/1"
 	TTProveReplicaUpdate2 TaskType = "seal/v0/provereplicaupdate/2"
+	TTRegenSectorKey      TaskType = "seal/v0/regensectorkey"
 )
 
 var order = map[TaskType]int{
-	TTAddPiece:            9, // least priority
+	TTRegenSectorKey:      10, // least priority
+	TTAddPiece:            9,
 	TTReplicaUpdate:       8,
 	TTProveReplicaUpdate2: 7,
 	TTProveReplicaUpdate1: 6,
@@ -49,6 +51,7 @@ var shortNames = map[TaskType]string{
 	TTReplicaUpdate:       "RU",
 	TTProveReplicaUpdate1: "PR1",
 	TTProveReplicaUpdate2: "PR2",
+	TTRegenSectorKey:      "GSK",
 }
 
 func (a TaskType) MuchLess(b TaskType) (bool, bool) {

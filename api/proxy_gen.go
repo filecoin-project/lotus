@@ -707,6 +707,8 @@ type StorageMinerStruct struct {
 
 		ReturnFinalizeSector func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
 
+		ReturnGenerateSectorKeyFromData func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
+
 		ReturnMoveStorage func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
 
 		ReturnProveReplicaUpdate1 func(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaVanillaProofs, p3 *storiface.CallError) error `perm:"admin"`
@@ -849,6 +851,8 @@ type WorkerStruct struct {
 		Fetch func(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType, p3 storiface.PathType, p4 storiface.AcquireMode) (storiface.CallID, error) `perm:"admin"`
 
 		FinalizeSector func(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) `perm:"admin"`
+
+		GenerateSectorKeyFromData func(p0 context.Context, p1 storage.SectorRef, p2 cid.Cid) (storiface.CallID, error) `perm:"admin"`
 
 		Info func(p0 context.Context) (storiface.WorkerInfo, error) `perm:"admin"`
 
@@ -4166,6 +4170,17 @@ func (s *StorageMinerStub) ReturnFinalizeSector(p0 context.Context, p1 storiface
 	return ErrNotSupported
 }
 
+func (s *StorageMinerStruct) ReturnGenerateSectorKeyFromData(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	if s.Internal.ReturnGenerateSectorKeyFromData == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.ReturnGenerateSectorKeyFromData(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) ReturnGenerateSectorKeyFromData(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	return ErrNotSupported
+}
+
 func (s *StorageMinerStruct) ReturnMoveStorage(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
 	if s.Internal.ReturnMoveStorage == nil {
 		return ErrNotSupported
@@ -4856,6 +4871,17 @@ func (s *WorkerStruct) FinalizeSector(p0 context.Context, p1 storage.SectorRef, 
 }
 
 func (s *WorkerStub) FinalizeSector(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) {
+	return *new(storiface.CallID), ErrNotSupported
+}
+
+func (s *WorkerStruct) GenerateSectorKeyFromData(p0 context.Context, p1 storage.SectorRef, p2 cid.Cid) (storiface.CallID, error) {
+	if s.Internal.GenerateSectorKeyFromData == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
+	return s.Internal.GenerateSectorKeyFromData(p0, p1, p2)
+}
+
+func (s *WorkerStub) GenerateSectorKeyFromData(p0 context.Context, p1 storage.SectorRef, p2 cid.Cid) (storiface.CallID, error) {
 	return *new(storiface.CallID), ErrNotSupported
 }
 

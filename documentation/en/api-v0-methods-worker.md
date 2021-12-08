@@ -11,6 +11,8 @@
   * [AddPiece](#AddPiece)
 * [Finalize](#Finalize)
   * [FinalizeSector](#FinalizeSector)
+* [Generate](#Generate)
+  * [GenerateSectorKeyFromData](#GenerateSectorKeyFromData)
 * [Move](#Move)
   * [MoveStorage](#MoveStorage)
 * [Process](#Process)
@@ -206,6 +208,41 @@ Inputs:
     "ProofType": 8
   },
   null
+]
+```
+
+Response:
+```json
+{
+  "Sector": {
+    "Miner": 1000,
+    "Number": 9
+  },
+  "ID": "07070707-0707-0707-0707-070707070707"
+}
+```
+
+## Generate
+
+
+### GenerateSectorKeyFromData
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
+  },
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 ]
 ```
 

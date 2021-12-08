@@ -94,6 +94,7 @@
   * [ReturnAddPiece](#ReturnAddPiece)
   * [ReturnFetch](#ReturnFetch)
   * [ReturnFinalizeSector](#ReturnFinalizeSector)
+  * [ReturnGenerateSectorKeyFromData](#ReturnGenerateSectorKeyFromData)
   * [ReturnMoveStorage](#ReturnMoveStorage)
   * [ReturnProveReplicaUpdate1](#ReturnProveReplicaUpdate1)
   * [ReturnProveReplicaUpdate2](#ReturnProveReplicaUpdate2)
@@ -1441,6 +1442,30 @@ Inputs:
 Response: `{}`
 
 ### ReturnFinalizeSector
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Sector": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ID": "07070707-0707-0707-0707-070707070707"
+  },
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
+]
+```
+
+Response: `{}`
+
+### ReturnGenerateSectorKeyFromData
 
 
 Perms: admin
