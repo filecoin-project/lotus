@@ -45,6 +45,7 @@ const (
 // These are all just type aliases across actor versions. In the future, that might change
 // and we might need to do something fancier.
 type SectorInfo = proof{{.latestVersion}}.SectorInfo
+type ExtendedSectorInfo = proof{{.latestVersion}}.ExtendedSectorInfo
 type PoStProof = proof{{.latestVersion}}.PoStProof
 type FilterEstimate = smoothing0.FilterEstimate
 

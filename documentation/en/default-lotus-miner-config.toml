@@ -413,6 +413,12 @@
   # env var: LOTUS_STORAGE_ALLOWUNSEAL
   #AllowUnseal = true
 
+  # env var: LOTUS_STORAGE_ALLOWREPLICAUPDATE
+  #AllowReplicaUpdate = true
+
+  # env var: LOTUS_STORAGE_ALLOWPROVEREPLICAUPDATE2
+  #AllowProveReplicaUpdate2 = true
+
   # env var: LOTUS_STORAGE_RESOURCEFILTERING
   #ResourceFiltering = "hardware"
 
