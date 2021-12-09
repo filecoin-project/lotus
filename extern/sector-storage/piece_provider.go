@@ -80,21 +80,28 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, pc cid.Cid, se
 		return nil, xerrors.Errorf("acquiring read sector lock: %w", err)
 	}
 
+	// Reader returns a reader getter for an unsealed piece at the given offset in the given sector.
+	// The returned reader will be nil if none of the workers has an unsealed sector file containing
+	// the unsealed piece.
+	rg, err := p.storage.Reader(ctx, sector, abi.PaddedPieceSize(pieceOffset.Padded()), size.Padded())
+	if err != nil {
+		cancel()
+		log.Debugf("did not get storage reader;sector=%+v, err:%s", sector.ID, err)
+		return nil, err
+	}
+	if rg == nil {
+		cancel()
+		return nil, nil
+	}
+
 	pr, err := (&pieceReader{
 		ctx: ctx,
 		getReader: func(ctx context.Context, startOffset uint64) (io.ReadCloser, error) {
 			startOffsetAligned := storiface.UnpaddedByteIndex(startOffset / 127 * 127) // floor to multiple of 127
 
-			// Reader returns a reader for an unsealed piece at the given offset in the given sector.
-			// The returned reader will be nil if none of the workers has an unsealed sector file containing
-			// the unsealed piece.
-			r, err := p.storage.Reader(ctx, sector, abi.PaddedPieceSize(pieceOffset.Padded()+startOffsetAligned.Padded()), size.Padded()-abi.PaddedPieceSize(startOffsetAligned.Padded()))
+			r, err := rg(startOffsetAligned.Padded())
 			if err != nil {
-				log.Debugf("did not get storage reader;sector=%+v, err:%s", sector.ID, err)
-				return nil, err
-			}
-			if r == nil {
-				return nil, nil
+				return nil, xerrors.Errorf("getting reader at +%d: %w", startOffsetAligned, err)
 			}
 
 			upr, err := fr32.NewUnpadReader(r, size.Padded())
