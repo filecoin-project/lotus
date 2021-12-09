@@ -390,14 +390,16 @@ func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storage.SectorRef, o
 		panic("implme")
 	}
 
+	br := bytes.NewReader(mgr.pieces[mgr.sectors[sector.ID].pieces[0]][:size])
+
 	return struct {
 		io.ReadCloser
 		io.Seeker
 		io.ReaderAt
 	}{
-		ReadCloser: ioutil.NopCloser(bytes.NewReader(mgr.pieces[mgr.sectors[sector.ID].pieces[0]][:size])),
-		Seeker:     nil,
-		ReaderAt:   nil,
+		ReadCloser: ioutil.NopCloser(br),
+		Seeker:     br,
+		ReaderAt:   br,
 	}, false, nil
 }
 
