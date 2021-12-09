@@ -39,7 +39,7 @@ require (
 	github.com/filecoin-project/go-fil-markets v1.13.3-0.20211117072527-8713155662ff
 	github.com/filecoin-project/go-indexer-core v0.2.6
 	github.com/filecoin-project/go-jsonrpc v0.1.5
-	github.com/filecoin-project/go-legs v0.0.0-20211202193658-45deff4405e1 // indirect
+	github.com/filecoin-project/go-legs v0.0.0-20211209161055-918cd188bf1d // indirect
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.2
 	github.com/filecoin-project/go-state-types v0.1.1
