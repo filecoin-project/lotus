@@ -94,6 +94,8 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, pc cid.Cid, se
 		return nil, nil
 	}
 
+	buf := make([]byte, fr32.BufSize(size.Padded()))
+
 	pr, err := (&pieceReader{
 		ctx: ctx,
 		getReader: func(ctx context.Context, startOffset uint64) (io.ReadCloser, error) {
@@ -104,7 +106,7 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, pc cid.Cid, se
 				return nil, xerrors.Errorf("getting reader at +%d: %w", startOffsetAligned, err)
 			}
 
-			upr, err := fr32.NewUnpadReader(r, size.Padded())
+			upr, err := fr32.NewUnpadReaderBuf(r, size.Padded(), buf)
 			if err != nil {
 				r.Close() // nolint
 				return nil, xerrors.Errorf("creating unpadded reader: %w", err)
@@ -113,6 +115,7 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, pc cid.Cid, se
 			bir := bufio.NewReaderSize(upr, 127)
 			if startOffset > uint64(startOffsetAligned) {
 				if _, err := bir.Discard(int(startOffset - uint64(startOffsetAligned))); err != nil {
+					r.Close() // nolint
 					return nil, xerrors.Errorf("discarding bytes for startOffset: %w", err)
 				}
 			}
@@ -122,7 +125,9 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, pc cid.Cid, se
 				io.Closer
 			}{
 				Reader: bir,
-				Closer: r,
+				Closer: funcCloser(func() error {
+					return r.Close()
+				}),
 			}, nil
 		},
 		len:      size,
@@ -136,6 +141,14 @@ func (p *pieceProvider) tryReadUnsealedPiece(ctx context.Context, pc cid.Cid, se
 
 	return pr, err
 }
+
+type funcCloser func() error
+
+func (f funcCloser) Close() error {
+	return f()
+}
+
+var _ io.Closer = funcCloser(nil)
 
 // ReadPiece is used to read an Unsealed piece at the given offset and of the given size from a Sector
 // If an Unsealed sector file exists with the Piece Unsealed in it, we'll use that for the read.
