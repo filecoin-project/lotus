@@ -70,6 +70,9 @@ func (p *pieceReader) Close() error {
 		if err := p.r.Close(); err != nil {
 			return err
 		}
+		if err := p.r.Close(); err != nil {
+			return err
+		}
 		p.r = nil
 	}
 
