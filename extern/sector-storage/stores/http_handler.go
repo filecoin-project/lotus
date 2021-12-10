@@ -84,7 +84,6 @@ func (handler *FetchHandler) remoteStatFs(w http.ResponseWriter, r *http.Request
 // remoteGetSector returns the sector file/tared directory byte stream for the sectorID and sector file type sent in the request.
 // returns an error if it does NOT have the required sector file/dir.
 func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Request) {
-	log.Infof("SERVE GET %s", r.URL)
 	vars := mux.Vars(r)
 
 	id, err := storiface.ParseSectorID(vars["id"])
