@@ -113,6 +113,7 @@ func TestDeadlineToggling(t *testing.T) {
 	{
 		minerC.PledgeSectors(ctx, sectorsC, 0, nil)
 
+		//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 		di, err := client.StateMinerProvingDeadline(ctx, maddrC, types.EmptyTSK)
 		require.NoError(t, err)
 
@@ -132,6 +133,7 @@ func TestDeadlineToggling(t *testing.T) {
 
 		expectedPower := types.NewInt(uint64(ssz) * sectorsC)
 
+		//stm: @CHAIN_STATE_MINER_POWER_001
 		p, err := client.StateMinerPower(ctx, maddrC, types.EmptyTSK)
 		require.NoError(t, err)
 
@@ -152,12 +154,14 @@ func TestDeadlineToggling(t *testing.T) {
 	}
 
 	checkMiner := func(ma address.Address, power abi.StoragePower, active, activeIfCron bool, tsk types.TipSetKey) {
+		//stm: @CHAIN_STATE_MINER_POWER_001
 		p, err := client.StateMinerPower(ctx, ma, tsk)
 		require.NoError(t, err)
 
 		// make sure it has the expected power.
 		require.Equal(t, p.MinerPower.RawBytePower, power)
 
+		//stm: @CHAIN_STATE_GET_ACTOR_001
 		mact, err := client.StateGetActor(ctx, ma, tsk)
 		require.NoError(t, err)
 
@@ -192,6 +196,7 @@ func TestDeadlineToggling(t *testing.T) {
 		checkMiner(maddrB, types.NewInt(0), true, true, uts.Key())
 	}
 
+	//stm: @CHAIN_STATE_NETWORK_VERSION_001
 	nv, err := client.StateNetworkVersion(ctx, types.EmptyTSK)
 	require.NoError(t, err)
 	require.GreaterOrEqual(t, nv, network.Version12)
@@ -251,6 +256,7 @@ func TestDeadlineToggling(t *testing.T) {
 		}, nil)
 		require.NoError(t, err)
 
+		//stm: @CHAIN_STATE_WAIT_MSG_001
 		r, err := client.StateWaitMsg(ctx, m.Cid(), 2, api.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.Equal(t, exitcode.Ok, r.Receipt.ExitCode)
@@ -303,6 +309,7 @@ func TestDeadlineToggling(t *testing.T) {
 			sectorbit := bitfield.New()
 			sectorbit.Set(uint64(sectorNum))
 
+			//stm: @CHAIN_STATE_SECTOR_PARTITION_001
 			loca, err := client.StateSectorPartition(ctx, maddrD, sectorNum, types.EmptyTSK)
 			require.NoError(t, err)
 
@@ -334,6 +341,7 @@ func TestDeadlineToggling(t *testing.T) {
 
 		t.Log("sent termination message:", smsg.Cid())
 
+		//stm: @CHAIN_STATE_WAIT_MSG_001
 		r, err := client.StateWaitMsg(ctx, smsg.Cid(), 2, api.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.Equal(t, exitcode.Ok, r.Receipt.ExitCode)

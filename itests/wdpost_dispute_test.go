@@ -66,6 +66,7 @@ func TestWindowPostDispute(t *testing.T) {
 	evilMinerAddr, err := evilMiner.ActorAddress(ctx)
 	require.NoError(t, err)
 
+	//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 	di, err := client.StateMinerProvingDeadline(ctx, evilMinerAddr, types.EmptyTSK)
 	require.NoError(t, err)
 
@@ -77,6 +78,7 @@ func TestWindowPostDispute(t *testing.T) {
 	ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
 	t.Logf("Now head.Height = %d", ts.Height())
 
+	//stm: @CHAIN_STATE_MINER_POWER_001
 	p, err := client.StateMinerPower(ctx, evilMinerAddr, types.EmptyTSK)
 	require.NoError(t, err)
 
@@ -89,6 +91,7 @@ func TestWindowPostDispute(t *testing.T) {
 	evilSectors, err := evilMiner.SectorsList(ctx)
 	require.NoError(t, err)
 	evilSectorNo := evilSectors[0] // only one.
+	//stm: @CHAIN_STATE_SECTOR_PARTITION_001
 	evilSectorLoc, err := client.StateSectorPartition(ctx, evilMinerAddr, evilSectorNo, types.EmptyTSK)
 	require.NoError(t, err)
 
@@ -101,6 +104,7 @@ func TestWindowPostDispute(t *testing.T) {
 
 	// Wait until we need to prove our sector.
 	for {
+		//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 		di, err = client.StateMinerProvingDeadline(ctx, evilMinerAddr, types.EmptyTSK)
 		require.NoError(t, err)
 		if di.Index == evilSectorLoc.Deadline && di.CurrentEpoch-di.PeriodStart > 1 {
@@ -114,6 +118,7 @@ func TestWindowPostDispute(t *testing.T) {
 
 	// Wait until after the proving period.
 	for {
+		//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 		di, err = client.StateMinerProvingDeadline(ctx, evilMinerAddr, types.EmptyTSK)
 		require.NoError(t, err)
 		if di.Index != evilSectorLoc.Deadline {
@@ -124,6 +129,7 @@ func TestWindowPostDispute(t *testing.T) {
 
 	t.Log("accepted evil proof")
 
+	//stm: @CHAIN_STATE_MINER_POWER_001
 	// Make sure the evil node didn't lose any power.
 	p, err = client.StateMinerPower(ctx, evilMinerAddr, types.EmptyTSK)
 	require.NoError(t, err)
@@ -150,11 +156,13 @@ func TestWindowPostDispute(t *testing.T) {
 		require.NoError(t, err)
 
 		t.Log("waiting dispute")
+		//stm: @CHAIN_STATE_WAIT_MSG_001
 		rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.Zero(t, rec.Receipt.ExitCode, "dispute not accepted: %s", rec.Receipt.ExitCode.Error())
 	}
 
+	//stm: @CHAIN_STATE_MINER_POWER_001
 	// Objection SUSTAINED!
 	// Make sure the evil node lost power.
 	p, err = client.StateMinerPower(ctx, evilMinerAddr, types.EmptyTSK)
@@ -167,6 +175,7 @@ func TestWindowPostDispute(t *testing.T) {
 	// First, recover the sector.
 
 	{
+		//stm: @CHAIN_STATE_MINER_INFO_001
 		minerInfo, err := client.StateMinerInfo(ctx, evilMinerAddr, types.EmptyTSK)
 		require.NoError(t, err)
 
@@ -191,6 +200,7 @@ func TestWindowPostDispute(t *testing.T) {
 		sm, err := client.MpoolPushMessage(ctx, msg, nil)
 		require.NoError(t, err)
 
+		//stm: @CHAIN_STATE_WAIT_MSG_001
 		rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
 		require.NoError(t, err)
 		require.Zero(t, rec.Receipt.ExitCode, "recovery not accepted: %s", rec.Receipt.ExitCode.Error())
@@ -198,6 +208,7 @@ func TestWindowPostDispute(t *testing.T) {
 
 	// Then wait for the deadline.
 	for {
+		//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 		di, err = client.StateMinerProvingDeadline(ctx, evilMinerAddr, types.EmptyTSK)
 		require.NoError(t, err)
 		if di.Index == evilSectorLoc.Deadline {
@@ -219,6 +230,7 @@ func TestWindowPostDisputeFails(t *testing.T) {
 	//stm: @BLOCKCHAIN_SYNCER_START_001, @BLOCKCHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_01
 	//stm: @BLOCKCHAIN_SYNCER_COLLECT_CHAIN_001, @BLOCKCHAIN_SYNCER_COLLECT_HEADERS_001, @BLOCKCHAIN_SYNCER_VALIDATE_TIPSET_001
 	//stm: @BLOCKCHAIN_SYNCER_NEW_PEER_HEAD_001, @BLOCKCHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @BLOCKCHAIN_SYNCER_STOP_001
+	//stm: @CHAIN_STATE_MINER_GET_DEADLINES_001
 	kit.Expensive(t)
 
 	kit.QuietMiningLogs()
@@ -241,6 +253,7 @@ func TestWindowPostDisputeFails(t *testing.T) {
 
 	miner.PledgeSectors(ctx, 10, 0, nil)
 
+	//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
@@ -255,6 +268,7 @@ func TestWindowPostDisputeFails(t *testing.T) {
 	require.NoError(t, err)
 	expectedPower := types.NewInt(uint64(ssz) * (kit.DefaultPresealsPerBootstrapMiner + 10))
 
+	//stm: @CHAIN_STATE_MINER_POWER_001
 	p, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
@@ -280,6 +294,7 @@ waitForProof:
 	}
 
 	for {
+		//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 		di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 		require.NoError(t, err)
 		// wait until the deadline finishes.
@@ -323,11 +338,13 @@ func submitBadProof(
 		return err
 	}
 
+	//stm: @CHAIN_STATE_MINER_INFO_001
 	minerInfo, err := client.StateMinerInfo(ctx, maddr, head.Key())
 	if err != nil {
 		return err
 	}
 
+	//stm: @CHAIN_STATE_GET_RANDOMNESS_FROM_TICKETS_001
 	commEpoch := di.Open
 	commRand, err := client.StateGetRandomnessFromTickets(
 		ctx, crypto.DomainSeparationTag_PoStChainCommit,
@@ -364,6 +381,7 @@ func submitBadProof(
 		return err
 	}
 
+	//stm: @CHAIN_STATE_WAIT_MSG_001
 	rec, err := client.StateWaitMsg(ctx, sm.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		return err

@@ -89,6 +89,7 @@ func TestChainGetMessagesInTs(t *testing.T) {
 	}
 
 	for _, sm := range sms {
+		//stm: @CHAIN_STATE_WAIT_MSG_001
 		msgLookup, err := client.StateWaitMsg(ctx, sm.Cid(), 3, api.LookbackNoLimit, true)
 		require.NoError(t, err)
 

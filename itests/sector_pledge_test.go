@@ -182,6 +182,7 @@ func TestPledgeMaxBatching(t *testing.T) {
 		}
 
 		// Ensure that max aggregate message has propagated to the other node by checking current state
+		//stm: @CHAIN_STATE_MINER_SECTORS_001
 		sectorInfosAfter, err := full.StateMinerSectors(ctx, miner.ActorAddr, nil, types.EmptyTSK)
 		require.NoError(t, err)
 		assert.Equal(t, miner5.MaxAggregatedSectors+kit.DefaultPresealsPerBootstrapMiner, len(sectorInfosAfter))

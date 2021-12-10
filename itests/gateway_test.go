@@ -121,6 +121,7 @@ func TestGatewayWalletMsig(t *testing.T) {
 	addProposal, err := doSend(proto)
 	require.NoError(t, err)
 
+	//stm: @CHAIN_STATE_WAIT_MSG_001
 	res, err := lite.StateWaitMsg(ctx, addProposal, 1, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
@@ -132,6 +133,7 @@ func TestGatewayWalletMsig(t *testing.T) {
 	// Get available balance of msig: should be greater than zero and less
 	// than initial amount
 	msig := execReturn.IDAddress
+	//stm: @CHAIN_STATE_MINER_AVAILABLE_BALANCE_001
 	msigBalance, err := lite.MsigGetAvailableBalance(ctx, msig, types.EmptyTSK)
 	require.NoError(t, err)
 	require.Greater(t, msigBalance.Int64(), int64(0))
@@ -144,6 +146,7 @@ func TestGatewayWalletMsig(t *testing.T) {
 	addProposal, err = doSend(proto)
 	require.NoError(t, err)
 
+	//stm: @CHAIN_STATE_WAIT_MSG_001
 	res, err = lite.StateWaitMsg(ctx, addProposal, 1, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)
@@ -161,6 +164,7 @@ func TestGatewayWalletMsig(t *testing.T) {
 	approval1, err := doSend(proto)
 	require.NoError(t, err)
 
+	//stm: @CHAIN_STATE_WAIT_MSG_001
 	res, err = lite.StateWaitMsg(ctx, approval1, 1, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode)

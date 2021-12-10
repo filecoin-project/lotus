@@ -717,6 +717,7 @@ func TestDuplicateNonce(t *testing.T) {
 
 	var includedMsg cid.Cid
 	var skippedMsg cid.Cid
+	//stm: @CHAIN_STATE_SEARCH_MSG_001
 	r0, err0 := tu.nds[0].StateSearchMsg(context.TODO(), ts2.TipSet().Key(), msgs[0][0].Cid(), api.LookbackNoLimit, true)
 	r1, err1 := tu.nds[0].StateSearchMsg(context.TODO(), ts2.TipSet().Key(), msgs[1][0].Cid(), api.LookbackNoLimit, true)
 
@@ -823,6 +824,7 @@ func TestMismatchedNoncesRobustID(t *testing.T) {
 	require.NoError(t, err)
 
 	// Produce a message from the banker
+	//stm: @CHAIN_STATE_LOOKUP_ID_001
 	makeMsg := func(id bool) *types.SignedMessage {
 		sender := tu.g.Banker()
 		if id {
@@ -880,6 +882,7 @@ func TestMatchedNoncesRobustID(t *testing.T) {
 	require.NoError(t, err)
 
 	// Produce a message from the banker with specified nonce
+	//stm: @CHAIN_STATE_LOOKUP_ID_001
 	makeMsg := func(n uint64, id bool) *types.SignedMessage {
 		sender := tu.g.Banker()
 		if id {

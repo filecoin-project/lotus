@@ -108,6 +108,7 @@ func TestPublishDealsBatching(t *testing.T) {
 	}
 
 	// Expect a single PublishStorageDeals message that includes the first two deals
+	//stm: @CHAIN_STATE_LIST_MESSAGES_001
 	msgCids, err := client.StateListMessages(ctx, &api.MessageMatch{To: market.Address}, types.EmptyTSK, 1)
 	require.NoError(t, err)
 	count := 0

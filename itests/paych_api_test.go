@@ -112,6 +112,7 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	require.NoError(t, err)
 	preds := state.NewStatePredicates(paymentCreator)
 	finished := make(chan struct{})
+	//stm: @CHAIN_STATE_GET_ACTOR_001
 	err = ev.StateChanged(func(ctx context.Context, ts *types.TipSet) (done bool, more bool, err error) {
 		act, err := paymentCreator.StateGetActor(ctx, channel, ts.Key())
 		if err != nil {
@@ -187,6 +188,7 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	collectMsg, err := paymentReceiver.PaychCollect(ctx, channel)
 	require.NoError(t, err)
 
+	//stm: @CHAIN_STATE_WAIT_MSG_001
 	res, err = paymentReceiver.StateWaitMsg(ctx, collectMsg, 3, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.EqualValues(t, 0, res.Receipt.ExitCode, "unable to collect on payment channel")

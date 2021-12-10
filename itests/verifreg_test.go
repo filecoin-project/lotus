@@ -56,6 +56,7 @@ func TestVerifiedClientTopUp(t *testing.T) {
 			defer cancel()
 
 			// get VRH
+			//stm: @CHAIN_STATE_VERIFIED_REGISTRY_ROOT_KEY_001
 			vrh, err := api.StateVerifiedRegistryRootKey(ctx, types.TipSetKey{})
 			fmt.Println(vrh.String())
 			require.NoError(t, err)
@@ -86,6 +87,7 @@ func TestVerifiedClientTopUp(t *testing.T) {
 			sm, err := api.MpoolPushMessage(ctx, msg, nil)
 			require.NoError(t, err, "AddVerifier failed")
 
+			//stm: @CHAIN_STATE_WAIT_MSG_001
 			res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
 			require.NoError(t, err)
 			require.EqualValues(t, 0, res.Receipt.ExitCode)
@@ -107,11 +109,13 @@ func TestVerifiedClientTopUp(t *testing.T) {
 			sm, err = api.MpoolPushMessage(ctx, msg, nil)
 			require.NoError(t, err)
 
+			//stm: @CHAIN_STATE_WAIT_MSG_001
 			res, err = api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
 			require.NoError(t, err)
 			require.EqualValues(t, 0, res.Receipt.ExitCode)
 
 			// check datacap balance
+			//stm: @CHAIN_STATE_VERIFIED_CLIENT_STATUS_001
 			dcap, err := api.StateVerifiedClientStatus(ctx, verifiedClientAddr, types.EmptyTSK)
 			require.NoError(t, err)
 
