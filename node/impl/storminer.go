@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -560,11 +561,18 @@ func (sm *StorageMinerAPI) MarketDataTransferUpdates(ctx context.Context) (<-cha
 }
 
 func (sm *StorageMinerAPI) MarketDataTransferDiagnostics(ctx context.Context, mpid peer.ID) (*api.TransferDiagnostics, error) {
-
+	gsTransport, ok := sm.Transport.(*gst.Transport)
+	if !ok {
+		return nil, errors.New("api only works for graphsync as transport")
+	}
+	graphsyncConcrete, ok := sm.StagingGraphsync.(*gsimpl.GraphSync)
+	if !ok {
+		return nil, errors.New("api only works for non-mock graphsync implementation")
+	}
 	// gather information about active transport channels
-	transportChannels := sm.Transport.(*gst.Transport).ChannelsForPeer(mpid)
+	transportChannels := gsTransport.ChannelsForPeer(mpid)
 	// gather information about graphsync state for peer
-	gsPeerState := sm.StagingGraphsync.(*gsimpl.GraphSync).PeerState(mpid)
+	gsPeerState := graphsyncConcrete.PeerState(mpid)
 
 	sendingTransfers := sm.generateTransfers(ctx, transportChannels.SendingChannels, gsPeerState.IncomingState)
 	receivingTransfers := sm.generateTransfers(ctx, transportChannels.ReceivingChannels, gsPeerState.OutgoingState)
@@ -598,10 +606,10 @@ func (sm *StorageMinerAPI) generateTransfers(ctx context.Context,
 			channelState = &cs
 		}
 		// add the current request for this channel
-		tc.convertTransfer(&channelID, channelState, baseDiagnostics, channelRequests.Current, true)
+		tc.convertTransfer(channelID, true, channelState, baseDiagnostics, channelRequests.Current, true)
 		for _, requestID := range channelRequests.Previous {
 			// add any previous requests that were cancelled for a restart
-			tc.convertTransfer(&channelID, channelState, baseDiagnostics, requestID, false)
+			tc.convertTransfer(channelID, true, channelState, baseDiagnostics, requestID, false)
 		}
 	}
 
@@ -619,7 +627,7 @@ type transferConverter struct {
 }
 
 // convert transfer assembles transfer and diagnostic data for a given graphsync/data-transfer request
-func (tc *transferConverter) convertTransfer(channelID *datatransfer.ChannelID, channelState *api.DataTransferChannel, baseDiagnostics []string,
+func (tc *transferConverter) convertTransfer(channelID datatransfer.ChannelID, hasChannelID bool, channelState *api.DataTransferChannel, baseDiagnostics []string,
 	requestID graphsync.RequestID, isCurrentChannelRequest bool) {
 	diagnostics := baseDiagnostics
 	state, hasState := tc.requestStates[requestID]
@@ -627,19 +635,23 @@ func (tc *transferConverter) convertTransfer(channelID *datatransfer.ChannelID, 
 	if !hasState {
 		stateString = "no graphsync state found"
 	}
-	if channelID == nil {
+	var channelIDPtr *datatransfer.ChannelID
+	if hasChannelID {
 		diagnostics = append(diagnostics, fmt.Sprintf("No data transfer channel id for GraphSync request ID %d", requestID))
-	} else if isCurrentChannelRequest && !hasState {
-		diagnostics = append(diagnostics, fmt.Sprintf("No current request state for data transfer channel id %s", channelID))
-	} else if !isCurrentChannelRequest && hasState {
-		diagnostics = append(diagnostics, fmt.Sprintf("Graphsync request %d is a previous request on data transfer channel id %s that was restarted, but it is still running", requestID, channelID))
+	} else {
+		channelIDPtr = &channelID
+		if isCurrentChannelRequest && !hasState {
+			diagnostics = append(diagnostics, fmt.Sprintf("No current request state for data transfer channel id %s", channelID))
+		} else if !isCurrentChannelRequest && hasState {
+			diagnostics = append(diagnostics, fmt.Sprintf("Graphsync request %d is a previous request on data transfer channel id %s that was restarted, but it is still running", requestID, channelID))
+		}
 	}
 	diagnostics = append(diagnostics, tc.gsDiagnostics[requestID]...)
 	transfer := &api.GraphSyncDataTransfer{
 		RequestID:               requestID,
 		RequestState:            stateString,
 		IsCurrentChannelRequest: isCurrentChannelRequest,
-		ChannelID:               channelID,
+		ChannelID:               channelIDPtr,
 		ChannelState:            channelState,
 		Diagnostics:             diagnostics,
 	}
@@ -650,12 +662,12 @@ func (tc *transferConverter) convertTransfer(channelID *datatransfer.ChannelID, 
 func (tc *transferConverter) collectRemainingTransfers() {
 	for requestID := range tc.requestStates {
 		if _, ok := tc.matchedRequests[requestID]; !ok {
-			tc.convertTransfer(nil, nil, nil, requestID, false)
+			tc.convertTransfer(datatransfer.ChannelID{}, false, nil, nil, requestID, false)
 		}
 	}
 	for requestID := range tc.gsDiagnostics {
 		if _, ok := tc.matchedRequests[requestID]; !ok {
-			tc.convertTransfer(nil, nil, nil, requestID, false)
+			tc.convertTransfer(datatransfer.ChannelID{}, false, nil, nil, requestID, false)
 		}
 	}
 }
