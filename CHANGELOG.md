@@ -1,9 +1,9 @@
 # Lotus changelog
 
-# v1.13.2-rc2 /  2021-12-08
+# v1.13.2-rc3 /  2021-12-09
 
-This is the second RC for lotus v1.13.2, with further optimization on retrieval. This is a highly recommended release 
-with sealing pipeline fixes, worker management and scheduler enhancement, retrieval improvements and so on. More detailed changelog will be updated later.
+This is the second RC for lotus v1.13.2, with a dependency upgrade of ipld-legacy which will fix ChainGetNode. This 
+is a highly recommended release with sealing pipeline fixes, worker management and scheduler enhancement, retrieval improvements and so on. More detailed changelog will be updated later.
 
 - github.com/filecoin-project/lotus:
   - CARv2 v2.1.0
