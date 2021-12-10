@@ -31,7 +31,7 @@ require (
 	github.com/filecoin-project/go-address v0.0.6
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-cbor-util v0.0.1
-	github.com/filecoin-project/go-commp-utils v0.1.1-0.20210427191551-70bf140d31c7
+	github.com/filecoin-project/go-commp-utils v0.1.3
 	github.com/filecoin-project/go-crypto v0.0.1
 	github.com/filecoin-project/go-data-transfer v1.11.7-0.20211207053937-e06a599f202a
 	github.com/filecoin-project/go-fil-commcid v0.1.0
@@ -43,7 +43,7 @@ require (
 	github.com/filecoin-project/go-state-types v0.1.1
 	github.com/filecoin-project/go-statemachine v1.0.1
 	github.com/filecoin-project/go-statestore v0.2.0
-	github.com/filecoin-project/go-storedcounter v0.0.0-20200421200003-1c99c62e8a5b
+	github.com/filecoin-project/go-storedcounter v0.0.0-20211210031312-d066d7aa2f77
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/filecoin-project/specs-actors/v2 v2.3.5
 	github.com/filecoin-project/specs-actors/v3 v3.1.1
