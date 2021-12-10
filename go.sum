@@ -766,8 +766,8 @@ github.com/ipfs/go-ipfs-blockstore v1.0.1/go.mod h1:MGNZlHNEnR4KGgPHM3/k8lBySIOK
 github.com/ipfs/go-ipfs-blockstore v1.0.3/go.mod h1:MGNZlHNEnR4KGgPHM3/k8lBySIOK2Ve+0KjZubKlaOE=
 github.com/ipfs/go-ipfs-blockstore v1.0.4/go.mod h1:uL7/gTJ8QIZ3MtA3dWf+s1a0U3fJy2fcEZAsovpRp+w=
 github.com/ipfs/go-ipfs-blockstore v1.1.0/go.mod h1:5QDUApRqpgPcfGstCxYeMnjt/DYQtXXdJVCvxHHuWVk=
-github.com/ipfs/go-ipfs-blockstore v1.1.1 h1:a4koS3l+Fzl43LAAn51/N+Yn4AjCX4AGvoZLqqkrD/g=
-github.com/ipfs/go-ipfs-blockstore v1.1.1/go.mod h1:w51tNR9y5+QXB0wkNcHt4O2aSZjTdqaEWaQdSxEyUOY=
+github.com/ipfs/go-ipfs-blockstore v1.1.2 h1:WCXoZcMYnvOTmlpX+RSSnhVN0uCmbWTeepTGX5lgiXw=
+github.com/ipfs/go-ipfs-blockstore v1.1.2/go.mod h1:w51tNR9y5+QXB0wkNcHt4O2aSZjTdqaEWaQdSxEyUOY=
 github.com/ipfs/go-ipfs-blocksutil v0.0.1 h1:Eh/H4pc1hsvhzsQoMEP3Bke/aW5P5rVM1IWFJMcGIPQ=
 github.com/ipfs/go-ipfs-blocksutil v0.0.1/go.mod h1:Yq4M86uIOmxmGPUHv/uI7uKqZNtLb449gwKqXjIsnRk=
 github.com/ipfs/go-ipfs-chunker v0.0.1/go.mod h1:tWewYK0we3+rMbOh7pPFGDyypCtvGcBFymgY4rSDLAw=
@@ -879,8 +879,9 @@ github.com/ipfs/iptb-plugins v0.3.0/go.mod h1:5QtOvckeIw4bY86gSH4fgh3p3gCSMn3FmI
 github.com/ipld/go-car v0.1.0/go.mod h1:RCWzaUh2i4mOEkB3W45Vc+9jnS/M6Qay5ooytiBHl3g=
 github.com/ipld/go-car v0.1.1-0.20200923150018-8cdef32e2da4/go.mod h1:xrMEcuSq+D1vEwl+YAXsg/JfA98XGpXDwnkIL4Aimqw=
 github.com/ipld/go-car v0.1.1-0.20201119040415-11b6074b6d4d/go.mod h1:2Gys8L8MJ6zkh1gktTSXreY63t4UbyvNp5JaudTyxHQ=
-github.com/ipld/go-car v0.3.2-0.20211001225732-32d0d9933823 h1:8JMSJ0k71fU9lIUrpVwEdoX4KoxiTEX8cZG97v/hTDw=
 github.com/ipld/go-car v0.3.2-0.20211001225732-32d0d9933823/go.mod h1:jSlTph+i/q1jLFoiKKeN69KGG0fXpwrcD0izu5C1Tpo=
+github.com/ipld/go-car v0.3.3-0.20211210032800-e6f244225a16 h1:y6CW3GCY5Nm86/9vwphaghTTmOvEtfJjBOAzAIy3/Mk=
+github.com/ipld/go-car v0.3.3-0.20211210032800-e6f244225a16/go.mod h1:/wkKF4908ULT4dFIFIUZYcfjAnj+KFnJvlh8Hsz1FbQ=
 github.com/ipld/go-car/v2 v2.0.0-beta1.0.20210721090610-5a9d1b217d25/go.mod h1:I2ACeeg6XNBe5pdh5TaR7Ambhfa7If9KXxmXgZsYENU=
 github.com/ipld/go-car/v2 v2.1.0 h1:t8R/WXUSkfu1K1gpPk76mytCxsEdMjGcMIgpOq3/Cnw=
 github.com/ipld/go-car/v2 v2.1.0/go.mod h1:Xr6GwkDhv8dtOtgHzOynAkIOg0t0YiPc5DxBPppWqZA=
@@ -897,8 +898,8 @@ github.com/ipld/go-ipld-prime v0.10.0/go.mod h1:KvBLMr4PX1gWptgkzRjVZCrLmSGcZCb/
 github.com/ipld/go-ipld-prime v0.11.0/go.mod h1:+WIAkokurHmZ/KwzDOMUuoeJgaRQktHtEaLglS3ZeV8=
 github.com/ipld/go-ipld-prime v0.12.3-0.20210930132912-0b3aef3ca569/go.mod h1:PaeLYq8k6dJLmDUSLrzkEpoGV4PEfe/1OtFN/eALOc8=
 github.com/ipld/go-ipld-prime v0.12.3/go.mod h1:PaeLYq8k6dJLmDUSLrzkEpoGV4PEfe/1OtFN/eALOc8=
-github.com/ipld/go-ipld-prime v0.14.2 h1:P5fO2usnisXwrN/1sR5exCgEvINg/w/27EuYPKB/zx8=
-github.com/ipld/go-ipld-prime v0.14.2/go.mod h1:QcE4Y9n/ZZr8Ijg5bGPT0GqYWgZ1704nH0RDcQtgTP0=
+github.com/ipld/go-ipld-prime v0.14.3-0.20211207234443-319145880958 h1:olscE5Sv+ts+N9YLQsIL9k6eS6y6CXMGRl5RCr2Cn/E=
+github.com/ipld/go-ipld-prime v0.14.3-0.20211207234443-319145880958/go.mod h1:QcE4Y9n/ZZr8Ijg5bGPT0GqYWgZ1704nH0RDcQtgTP0=
 github.com/ipld/go-ipld-prime-proto v0.0.0-20191113031812-e32bd156a1e5/go.mod h1:gcvzoEDBjwycpXt3LBE061wT9f46szXGHAmj9uoP6fU=
 github.com/ipld/go-ipld-prime-proto v0.0.0-20200428191222-c1ffdadc01e1/go.mod h1:OAV6xBmuTLsPZ+epzKkPB1e25FHk/vCtyatkdHcArLs=
 github.com/ipld/go-ipld-prime-proto v0.0.0-20200922192210-9a2bfd4440a6/go.mod h1:3pHYooM9Ea65jewRwrb2u5uHZCNkNTe9ABsVB+SrkH0=
