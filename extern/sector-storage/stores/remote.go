@@ -719,7 +719,6 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 					log.Warnw("reading from remote", "url", url, "error", err)
 					return nil, err
 				}
-				log.Infof("Read remote %s (+%d,%d)", url, offset, size)
 
 				return rd, err
 			}, nil
