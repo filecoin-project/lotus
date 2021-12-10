@@ -668,6 +668,8 @@ type StorageMinerStruct struct {
 
 		MarketCancelDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
+		MarketDataTransferDiagnostics func(p0 context.Context, p1 peer.ID) (*TransferDiagnostics, error) `perm:"write"`
+
 		MarketDataTransferUpdates func(p0 context.Context) (<-chan DataTransferChannel, error) `perm:"write"`
 
 		MarketGetAsk func(p0 context.Context) (*storagemarket.SignedStorageAsk, error) `perm:"read"`
@@ -3970,6 +3972,17 @@ func (s *StorageMinerStruct) MarketCancelDataTransfer(p0 context.Context, p1 dat
 
 func (s *StorageMinerStub) MarketCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
 	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) MarketDataTransferDiagnostics(p0 context.Context, p1 peer.ID) (*TransferDiagnostics, error) {
+	if s.Internal.MarketDataTransferDiagnostics == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.MarketDataTransferDiagnostics(p0, p1)
+}
+
+func (s *StorageMinerStub) MarketDataTransferDiagnostics(p0 context.Context, p1 peer.ID) (*TransferDiagnostics, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketDataTransferUpdates(p0 context.Context) (<-chan DataTransferChannel, error) {

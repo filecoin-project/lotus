@@ -49,6 +49,7 @@
   * [LogSetLevel](#LogSetLevel)
 * [Market](#Market)
   * [MarketCancelDataTransfer](#MarketCancelDataTransfer)
+  * [MarketDataTransferDiagnostics](#MarketDataTransferDiagnostics)
   * [MarketDataTransferUpdates](#MarketDataTransferUpdates)
   * [MarketGetAsk](#MarketGetAsk)
   * [MarketGetDealUpdates](#MarketGetDealUpdates)
@@ -723,6 +724,27 @@ Inputs:
 ```
 
 Response: `{}`
+
+### MarketDataTransferDiagnostics
+MarketDataTransferDiagnostics generates debugging information about current data transfers over graphsync
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+Response:
+```json
+{
+  "ReceivingTransfers": null,
+  "SendingTransfers": null
+}
+```
 
 ### MarketDataTransferUpdates
 

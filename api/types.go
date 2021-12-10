@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-graphsync"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -51,6 +52,30 @@ type PubsubScore struct {
 
 type MessageSendSpec struct {
 	MaxFee abi.TokenAmount
+}
+
+// GraphSyncDataTransfer provides diagnostics on a data transfer happening over graphsync
+type GraphSyncDataTransfer struct {
+	// GraphSync request id for this transfer
+	RequestID graphsync.RequestID
+	// Graphsync state for this transfer
+	RequestState string
+	// If a channel ID is present, indicates whether this is the current graphsync request for this channel
+	// (could have changed in a restart)
+	IsCurrentChannelRequest bool
+	// Data transfer channel ID for this transfer
+	ChannelID *datatransfer.ChannelID
+	// Data transfer state for this transfer
+	ChannelState *DataTransferChannel
+	// Diagnostic information about this request -- and unexpected inconsistencies in
+	// request state
+	Diagnostics []string
+}
+
+// TransferDiagnostics give current information about transfers going over graphsync that may be helpful for debugging
+type TransferDiagnostics struct {
+	ReceivingTransfers []*GraphSyncDataTransfer
+	SendingTransfers   []*GraphSyncDataTransfer
 }
 
 type DataTransferChannel struct {
