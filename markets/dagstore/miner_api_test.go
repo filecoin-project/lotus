@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
@@ -87,7 +88,7 @@ func TestLotusAccessorFetchUnsealedPiece(t *testing.T) {
 			}
 
 			// Fetch the piece
-			r, _, err := api.FetchUnsealedPiece(ctx, cid1, 0)
+			r, err := api.FetchUnsealedPiece(ctx, cid1)
 			if tc.expectErr {
 				require.Error(t, err)
 				return
@@ -159,7 +160,7 @@ func TestThrottle(t *testing.T) {
 	errgrp, ctx := errgroup.WithContext(context.Background())
 	for i := 0; i < 10; i++ {
 		errgrp.Go(func() error {
-			r, _, err := api.FetchUnsealedPiece(ctx, cid1, 0)
+			r, err := api.FetchUnsealedPiece(ctx, cid1)
 			if err == nil {
 				_ = r.Close()
 			}
@@ -203,10 +204,10 @@ type mockRPN struct {
 }
 
 func (m *mockRPN) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
-	return m.UnsealSectorAt(ctx, sectorID, offset, 0, length)
+	return m.UnsealSectorAt(ctx, sectorID, offset, length)
 }
 
-func (m *mockRPN) UnsealSectorAt(ctx context.Context, sectorID abi.SectorNumber, pieceOffset abi.UnpaddedPieceSize, startOffset uint64, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
+func (m *mockRPN) UnsealSectorAt(ctx context.Context, sectorID abi.SectorNumber, pieceOffset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (mount.Reader, error) {
 	atomic.AddInt32(&m.calls, 1)
 	m.lk.RLock()
 	defer m.lk.RUnlock()
@@ -215,7 +216,13 @@ func (m *mockRPN) UnsealSectorAt(ctx context.Context, sectorID abi.SectorNumber,
 	if !ok {
 		panic("sector not found")
 	}
-	return io.NopCloser(bytes.NewBuffer([]byte(data[startOffset:]))), nil
+	return struct {
+		io.ReadCloser
+		io.ReaderAt
+		io.Seeker
+	}{
+		ReadCloser: io.NopCloser(bytes.NewBuffer([]byte(data[:]))),
+	}, nil
 }
 
 func (m *mockRPN) IsUnsealed(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (bool, error) {
