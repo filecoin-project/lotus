@@ -88,7 +88,7 @@ require (
 	github.com/ipfs/go-ipfs-http-client v0.0.6
 	github.com/ipfs/go-ipfs-routing v0.2.1
 	github.com/ipfs/go-ipfs-util v0.0.2
-	github.com/ipfs/go-ipld-cbor v0.0.6-0.20211211202953-0412412d04c4
+	github.com/ipfs/go-ipld-cbor v0.0.6-0.20211211231443-5d9b9e1f6fa8
 	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log/v2 v2.3.0
 	github.com/ipfs/go-merkledag v0.5.1
