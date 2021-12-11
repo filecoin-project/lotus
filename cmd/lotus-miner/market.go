@@ -873,7 +873,10 @@ var transfersDiagnosticsCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		targetPeer := peer.ID(cctx.Args().First())
+		targetPeer, err := peer.Decode(cctx.Args().First())
+		if err != nil {
+			return err
+		}
 		diagnostics, err := api.MarketDataTransferDiagnostics(ctx, targetPeer)
 		if err != nil {
 			return err
