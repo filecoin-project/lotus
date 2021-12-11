@@ -6,10 +6,9 @@ package mock_dagstore
 
 import (
 	context "context"
-	io "io"
 	reflect "reflect"
 
-	abi "github.com/filecoin-project/go-state-types/abi"
+	mount "github.com/filecoin-project/dagstore/mount"
 	gomock "github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"
 )
@@ -38,19 +37,18 @@ func (m *MockMinerAPI) EXPECT() *MockMinerAPIMockRecorder {
 }
 
 // FetchUnsealedPiece mocks base method.
-func (m *MockMinerAPI) FetchUnsealedPiece(arg0 context.Context, arg1 cid.Cid, arg2 uint64) (io.ReadCloser, abi.UnpaddedPieceSize, error) {
+func (m *MockMinerAPI) FetchUnsealedPiece(arg0 context.Context, arg1 cid.Cid) (mount.Reader, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FetchUnsealedPiece", arg0, arg1, arg2)
-	ret0, _ := ret[0].(io.ReadCloser)
-	ret1, _ := ret[1].(abi.UnpaddedPieceSize)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret := m.ctrl.Call(m, "FetchUnsealedPiece", arg0, arg1)
+	ret0, _ := ret[0].(mount.Reader)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // FetchUnsealedPiece indicates an expected call of FetchUnsealedPiece.
-func (mr *MockMinerAPIMockRecorder) FetchUnsealedPiece(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockMinerAPIMockRecorder) FetchUnsealedPiece(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchUnsealedPiece", reflect.TypeOf((*MockMinerAPI)(nil).FetchUnsealedPiece), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchUnsealedPiece", reflect.TypeOf((*MockMinerAPI)(nil).FetchUnsealedPiece), arg0, arg1)
 }
 
 // GetUnpaddedCARSize mocks base method.

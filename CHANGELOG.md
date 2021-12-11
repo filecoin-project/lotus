@@ -1,16 +1,19 @@
 # Lotus changelog
 
-# v1.13.2-rc3 /  2021-12-09
+# v1.13.2-rc4 /  2021-12-10
 
-This is the second RC for lotus v1.13.2, with a dependency upgrade of ipld-legacy which will fix ChainGetNode. This 
-is a highly recommended release with sealing pipeline fixes, worker management and scheduler enhancement, retrieval improvements and so on. More detailed changelog will be updated later.
+This is the 4th RC for lotus v1.13.2, with another retrieval enhancement that fills the gap that's brought by the release. This is a highly recommended release with sealing pipeline fixes, worker management and scheduler enhancement, retrieval improvements and so on. More detailed changelog will be updated later.
 
 - github.com/filecoin-project/lotus:
-  - CARv2 v2.1.0
-  - dagstore pieceReader: Fix wrong ErrUnexpectedEOF return in ReadAt
-  - dagstore pieceReader: Always read full in ReadAt
-  - Add metrics to dagstore piecereader
-  - disable building of appimage on release
+  - stores: Reduce log spam during retrievals
+  - fix lint
+  - Fix mock ReadPiece
+  - fr32: Reduce MTTresh from 32M to 512k per core
+  - piecereader: Avoid allocating 1024MB slices per read
+  - piecereader: Avoid redundant roundtrips when seeking
+  - piecereader: Move closer to storage
+  - build: release: v1.13.2-rc3 ([filecoin-project/lotus#7752](https://github.com/filecoin-project/lotus/pull/7752))
+  - build: release: v1.13.2-rc2 ([filecoin-project/lotus#7745](https://github.com/filecoin-project/lotus/pull/7745))
   - v1.13.2-rc1 ([filecoin-project/lotus#7718](https://github.com/filecoin-project/lotus/pull/7718))
   - Address Scheduler enhancements (#7703) review ([filecoin-project/lotus#7714](https://github.com/filecoin-project/lotus/pull/7714))
   - Scheduler enhancements ([filecoin-project/lotus#7703](https://github.com/filecoin-project/lotus/pull/7703))
@@ -62,7 +65,6 @@ is a highly recommended release with sealing pipeline fixes, worker management a
   - Intoduce update proofs enums
   - Update golangci-lint for comatibility with Go 1.17
   - Update execution image to maybe update debian version
-
     
 
 # v1.13.1 / 2021-11-26

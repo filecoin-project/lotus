@@ -56,11 +56,7 @@ func (l *LotusMount) Deserialize(u *url.URL) error {
 }
 
 func (l *LotusMount) Fetch(ctx context.Context) (mount.Reader, error) {
-	return (&pieceReader{
-		ctx:      ctx,
-		api:      l.API,
-		pieceCid: l.PieceCid,
-	}).init()
+	return l.API.FetchUnsealedPiece(ctx, l.PieceCid)
 }
 
 func (l *LotusMount) Info() mount.Info {
