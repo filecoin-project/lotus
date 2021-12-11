@@ -51,13 +51,13 @@ func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
 }
 
 func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
-	parent, err := a.Syncer.ChainStore().GetBlock(blk.Header.Parents[0])
+	parent, err := a.Syncer.ChainStore().GetBlock(ctx, blk.Header.Parents[0])
 	if err != nil {
 		return xerrors.Errorf("loading parent block: %w", err)
 	}
 
 	if a.SlashFilter != nil {
-		if err := a.SlashFilter.MinedBlock(blk.Header, parent.Height); err != nil {
+		if err := a.SlashFilter.MinedBlock(ctx, blk.Header, parent.Height); err != nil {
 			log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
 			return xerrors.Errorf("<!!> SLASH FILTER ERROR: %w", err)
 		}
@@ -137,7 +137,7 @@ func (a *SyncAPI) SyncCheckBad(ctx context.Context, bcid cid.Cid) (string, error
 }
 
 func (a *SyncAPI) SyncValidateTipset(ctx context.Context, tsk types.TipSetKey) (bool, error) {
-	ts, err := a.Syncer.ChainStore().LoadTipSet(tsk)
+	ts, err := a.Syncer.ChainStore().LoadTipSet(ctx, tsk)
 	if err != nil {
 		return false, err
 	}

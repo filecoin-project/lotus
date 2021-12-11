@@ -40,7 +40,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		ts = sm.cs.GetHeaviestTipSet()
 		// Search back till we find a height with no fork, or we reach the beginning.
 		for ts.Height() > 0 {
-			pts, err := sm.cs.GetTipSetFromKey(ts.Parents())
+			pts, err := sm.cs.GetTipSetFromKey(ctx, ts.Parents())
 			if err != nil {
 				return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
 			}
@@ -51,7 +51,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 			ts = pts
 		}
 	} else if ts.Height() > 0 {
-		pts, err := sm.cs.LoadTipSet(ts.Parents())
+		pts, err := sm.cs.LoadTipSet(ctx, ts.Parents())
 		if err != nil {
 			return nil, xerrors.Errorf("failed to load parent tipset: %w", err)
 		}
@@ -155,7 +155,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		// height to have no fork, because we'll run it inside this
 		// function before executing the given message.
 		for ts.Height() > 0 {
-			pts, err := sm.cs.GetTipSetFromKey(ts.Parents())
+			pts, err := sm.cs.GetTipSetFromKey(ctx, ts.Parents())
 			if err != nil {
 				return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
 			}
@@ -166,7 +166,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 			ts = pts
 		}
 	} else if ts.Height() > 0 {
-		pts, err := sm.cs.GetTipSetFromKey(ts.Parents())
+		pts, err := sm.cs.GetTipSetFromKey(ctx, ts.Parents())
 		if err != nil {
 			return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
 		}

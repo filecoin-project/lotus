@@ -29,7 +29,7 @@ type Provider interface {
 	StateAccountKeyAtFinality(context.Context, address.Address, *types.TipSet) (address.Address, error)
 	MessagesForBlock(*types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error)
 	MessagesForTipset(*types.TipSet) ([]types.ChainMsg, error)
-	LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error)
+	LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (types.BigInt, error)
 	IsLite() bool
 }
@@ -111,8 +111,8 @@ func (mpp *mpoolProvider) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg,
 	return mpp.sm.ChainStore().MessagesForTipset(ts)
 }
 
-func (mpp *mpoolProvider) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
-	return mpp.sm.ChainStore().LoadTipSet(tsk)
+func (mpp *mpoolProvider) LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
+	return mpp.sm.ChainStore().LoadTipSet(ctx, tsk)
 }
 
 func (mpp *mpoolProvider) ChainComputeBaseFee(ctx context.Context, ts *types.TipSet) (types.BigInt, error) {

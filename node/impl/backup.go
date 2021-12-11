@@ -1,6 +1,7 @@
 package impl
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,7 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
-func backup(mds dtypes.MetadataDS, fpath string) error {
+func backup(ctx context.Context, mds dtypes.MetadataDS, fpath string) error {
 	bb, ok := os.LookupEnv("LOTUS_BACKUP_BASE_PATH")
 	if !ok {
 		return xerrors.Errorf("LOTUS_BACKUP_BASE_PATH env var not set")
@@ -52,7 +53,7 @@ func backup(mds dtypes.MetadataDS, fpath string) error {
 		return xerrors.Errorf("open %s: %w", fpath, err)
 	}
 
-	if err := bds.Backup(out); err != nil {
+	if err := bds.Backup(ctx, out); err != nil {
 		if cerr := out.Close(); cerr != nil {
 			log.Errorw("error closing backup file while handling backup error", "closeErr", cerr, "backupErr", err)
 		}

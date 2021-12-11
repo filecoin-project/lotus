@@ -162,8 +162,8 @@ func (b *idstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
 	return b.bs.AllKeysChan(ctx)
 }
 
-func (b *idstore) HashOnRead(ctx context.Context, enabled bool) {
-	b.bs.HashOnRead(ctx, enabled)
+func (b *idstore) HashOnRead(enabled bool) {
+	b.bs.HashOnRead(enabled)
 }
 
 func (b *idstore) Close() error {

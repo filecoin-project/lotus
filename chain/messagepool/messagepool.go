@@ -358,11 +358,11 @@ func (ms *msgSet) toSlice() []*types.SignedMessage {
 	return set
 }
 
-func New(api Provider, ds dtypes.MetadataDS, us stmgr.UpgradeSchedule, netName dtypes.NetworkName, j journal.Journal) (*MessagePool, error) {
+func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.UpgradeSchedule, netName dtypes.NetworkName, j journal.Journal) (*MessagePool, error) {
 	cache, _ := lru.New2Q(build.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q(build.VerifSigCacheSize)
 
-	cfg, err := loadConfig(ds)
+	cfg, err := loadConfig(ctx, ds)
 	if err != nil {
 		return nil, xerrors.Errorf("error loading mpool config: %w", err)
 	}
@@ -601,7 +601,7 @@ func (mp *MessagePool) addLocal(ctx context.Context, m *types.SignedMessage) err
 		return xerrors.Errorf("error serializing message: %w", err)
 	}
 
-	if err := mp.localMsgs.Put(datastore.NewKey(string(m.Cid().Bytes())), msgb); err != nil {
+	if err := mp.localMsgs.Put(ctx, datastore.NewKey(string(m.Cid().Bytes())), msgb); err != nil {
 		return xerrors.Errorf("persisting local message: %w", err)
 	}
 
@@ -1207,7 +1207,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 	var merr error
 
 	for _, ts := range revert {
-		pts, err := mp.api.LoadTipSet(ts.Parents())
+		pts, err := mp.api.LoadTipSet(ctx, ts.Parents())
 		if err != nil {
 			log.Errorf("error loading reverted tipset parent: %s", err)
 			merr = multierror.Append(merr, err)
@@ -1338,7 +1338,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 	return merr
 }
 
-func (mp *MessagePool) runHeadChange(from *types.TipSet, to *types.TipSet, rmsgs map[address.Address]map[uint64]*types.SignedMessage) error {
+func (mp *MessagePool) runHeadChange(ctx context.Context, from *types.TipSet, to *types.TipSet, rmsgs map[address.Address]map[uint64]*types.SignedMessage) error {
 	add := func(m *types.SignedMessage) {
 		s, ok := rmsgs[m.Message.From]
 		if !ok {
@@ -1360,7 +1360,7 @@ func (mp *MessagePool) runHeadChange(from *types.TipSet, to *types.TipSet, rmsgs
 
 	}
 
-	revert, apply, err := store.ReorgOps(mp.api.LoadTipSet, from, to)
+	revert, apply, err := store.ReorgOps(ctx, mp.api.LoadTipSet, from, to)
 	if err != nil {
 		return xerrors.Errorf("failed to compute reorg ops for mpool pending messages: %w", err)
 	}
@@ -1477,7 +1477,7 @@ func (mp *MessagePool) Updates(ctx context.Context) (<-chan api.MpoolUpdate, err
 }
 
 func (mp *MessagePool) loadLocal(ctx context.Context) error {
-	res, err := mp.localMsgs.Query(query.Query{})
+	res, err := mp.localMsgs.Query(ctx, query.Query{})
 	if err != nil {
 		return xerrors.Errorf("query local messages: %w", err)
 	}
@@ -1525,7 +1525,7 @@ func (mp *MessagePool) Clear(ctx context.Context, local bool) {
 
 			if ok {
 				for _, m := range mset.msgs {
-					err := mp.localMsgs.Delete(datastore.NewKey(string(m.Cid().Bytes())))
+					err := mp.localMsgs.Delete(ctx, datastore.NewKey(string(m.Cid().Bytes())))
 					if err != nil {
 						log.Warnf("error deleting local message: %s", err)
 					}

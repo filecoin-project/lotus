@@ -112,8 +112,8 @@ func (m unionBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error
 	return outCh, nil
 }
 
-func (m unionBlockstore) HashOnRead(ctx context.Context, enabled bool) {
+func (m unionBlockstore) HashOnRead(enabled bool) {
 	for _, bs := range m {
-		bs.HashOnRead(ctx, enabled)
+		bs.HashOnRead(enabled)
 	}
 }

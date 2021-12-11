@@ -13,7 +13,7 @@ func (syncer *Syncer) SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) e
 		return xerrors.Errorf("called with empty tsk")
 	}
 
-	ts, err := syncer.ChainStore().LoadTipSet(tsk)
+	ts, err := syncer.ChainStore().LoadTipSet(ctx, tsk)
 	if err != nil {
 		tss, err := syncer.Exchange.GetBlocks(ctx, tsk, 1)
 		if err != nil {
@@ -28,7 +28,7 @@ func (syncer *Syncer) SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) e
 		return xerrors.Errorf("failed to switch chain when syncing checkpoint: %w", err)
 	}
 
-	if err := syncer.ChainStore().SetCheckpoint(ts); err != nil {
+	if err := syncer.ChainStore().SetCheckpoint(ctx, ts); err != nil {
 		return xerrors.Errorf("failed to set the chain checkpoint: %w", err)
 	}
 
@@ -41,7 +41,7 @@ func (syncer *Syncer) switchChain(ctx context.Context, ts *types.TipSet) error {
 		return nil
 	}
 
-	if anc, err := syncer.store.IsAncestorOf(ts, hts); err == nil && anc {
+	if anc, err := syncer.store.IsAncestorOf(ctx, ts, hts); err == nil && anc {
 		return nil
 	}
 
@@ -50,7 +50,7 @@ func (syncer *Syncer) switchChain(ctx context.Context, ts *types.TipSet) error {
 		return xerrors.Errorf("failed to collect chain for checkpoint: %w", err)
 	}
 
-	if err := syncer.ChainStore().SetHead(ts); err != nil {
+	if err := syncer.ChainStore().SetHead(ctx, ts); err != nil {
 		return xerrors.Errorf("failed to set the chain head: %w", err)
 	}
 	return nil

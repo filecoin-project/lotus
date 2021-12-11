@@ -36,7 +36,7 @@ require (
 	github.com/filecoin-project/go-data-transfer v1.12.0
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
-	github.com/filecoin-project/go-fil-markets v1.13.3-0.20211211193119-ab98aecd0969
+	github.com/filecoin-project/go-fil-markets v1.13.3-0.20211211202606-e111ec29d24d
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.2
@@ -74,7 +74,7 @@ require (
 	github.com/ipfs/go-datastore v0.5.1
 	github.com/ipfs/go-ds-badger2 v0.1.2-0.20211119002906-7318f1b76158
 	github.com/ipfs/go-ds-leveldb v0.5.0
-	github.com/ipfs/go-ds-measure v0.1.0
+	github.com/ipfs/go-ds-measure v0.2.0
 	github.com/ipfs/go-ds-pebble v0.0.2-0.20200921225637-ce220f8ac459
 	github.com/ipfs/go-fs-lock v0.0.6
 	github.com/ipfs/go-graphsync v0.11.0
@@ -88,7 +88,7 @@ require (
 	github.com/ipfs/go-ipfs-http-client v0.0.6
 	github.com/ipfs/go-ipfs-routing v0.2.1
 	github.com/ipfs/go-ipfs-util v0.0.2
-	github.com/ipfs/go-ipld-cbor v0.0.5
+	github.com/ipfs/go-ipld-cbor v0.0.6-0.20211211202953-0412412d04c4
 	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log/v2 v2.3.0
 	github.com/ipfs/go-merkledag v0.5.1
@@ -109,7 +109,7 @@ require (
 	github.com/libp2p/go-libp2p-connmgr v0.2.4
 	github.com/libp2p/go-libp2p-core v0.11.0
 	github.com/libp2p/go-libp2p-discovery v0.6.0
-	github.com/libp2p/go-libp2p-kad-dht v0.13.0
+	github.com/libp2p/go-libp2p-kad-dht v0.15.0
 	github.com/libp2p/go-libp2p-noise v0.3.0
 	github.com/libp2p/go-libp2p-peerstore v0.4.0
 	github.com/libp2p/go-libp2p-pubsub v0.5.6
