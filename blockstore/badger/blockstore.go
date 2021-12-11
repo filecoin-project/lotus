@@ -927,7 +927,7 @@ func (b *Blockstore) ForEachKey(f func(cid.Cid) error) error {
 
 // HashOnRead implements Blockstore.HashOnRead. It is not supported by this
 // blockstore.
-func (b *Blockstore) HashOnRead(ctx context.Context, _ bool) {
+func (b *Blockstore) HashOnRead(_ bool) {
 	log.Warnf("called HashOnRead on badger blockstore; function not supported; ignoring")
 }
 

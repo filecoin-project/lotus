@@ -82,10 +82,10 @@ type gasChargingBlocks struct {
 	under     cbor.IpldBlockstore
 }
 
-func (bs *gasChargingBlocks) View(c cid.Cid, cb func([]byte) error) error {
+func (bs *gasChargingBlocks) View(ctx context.Context, c cid.Cid, cb func([]byte) error) error {
 	if v, ok := bs.under.(blockstore.Viewer); ok {
 		bs.chargeGas(bs.pricelist.OnIpldGet())
-		return v.View(c, func(b []byte) error {
+		return v.View(ctx, c, func(b []byte) error {
 			// we have successfully retrieved the value; charge for it, even if the user-provided function fails.
 			bs.chargeGas(newGasCharge("OnIpldViewEnd", 0, 0).WithExtra(len(b)))
 			bs.chargeGas(gasOnActorExec)
@@ -93,16 +93,16 @@ func (bs *gasChargingBlocks) View(c cid.Cid, cb func([]byte) error) error {
 		})
 	}
 	// the underlying blockstore doesn't implement the viewer interface, fall back to normal Get behaviour.
-	blk, err := bs.Get(c)
+	blk, err := bs.Get(ctx, c)
 	if err == nil && blk != nil {
 		return cb(blk.RawData())
 	}
 	return err
 }
 
-func (bs *gasChargingBlocks) Get(c cid.Cid) (block.Block, error) {
+func (bs *gasChargingBlocks) Get(ctx context.Context, c cid.Cid) (block.Block, error) {
 	bs.chargeGas(bs.pricelist.OnIpldGet())
-	blk, err := bs.under.Get(c)
+	blk, err := bs.under.Get(ctx, c)
 	if err != nil {
 		return nil, aerrors.Escalate(err, "failed to get block from blockstore")
 	}
@@ -112,10 +112,10 @@ func (bs *gasChargingBlocks) Get(c cid.Cid) (block.Block, error) {
 	return blk, nil
 }
 
-func (bs *gasChargingBlocks) Put(blk block.Block) error {
+func (bs *gasChargingBlocks) Put(ctx context.Context, blk block.Block) error {
 	bs.chargeGas(bs.pricelist.OnIpldPut(len(blk.RawData())))
 
-	if err := bs.under.Put(blk); err != nil {
+	if err := bs.under.Put(ctx, blk); err != nil {
 		return aerrors.Escalate(err, "failed to write data to disk")
 	}
 	bs.chargeGas(gasOnActorExec)
@@ -710,7 +710,7 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 
 	go func() {
 		for b := range toFlush {
-			if err := to.PutMany(b); err != nil {
+			if err := to.PutMany(ctx, b); err != nil {
 				close(freeBufs)
 				errFlushChan <- xerrors.Errorf("batch put in copy: %w", err)
 				return
@@ -739,7 +739,7 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 		return nil
 	}
 
-	if err := copyRec(from, to, root, batchCp); err != nil {
+	if err := copyRec(ctx, from, to, root, batchCp); err != nil {
 		return xerrors.Errorf("copyRec: %w", err)
 	}
 
@@ -764,13 +764,13 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 	return nil
 }
 
-func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) error) error {
+func copyRec(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) error) error {
 	if root.Prefix().MhType == 0 {
 		// identity cid, skip
 		return nil
 	}
 
-	blk, err := from.Get(root)
+	blk, err := from.Get(ctx, root)
 	if err != nil {
 		return xerrors.Errorf("get %s failed: %w", root, err)
 	}
@@ -795,7 +795,7 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) 
 			}
 		} else {
 			// If we have an object, we already have its children, skip the object.
-			has, err := to.Has(link)
+			has, err := to.Has(ctx, link)
 			if err != nil {
 				lerr = xerrors.Errorf("has: %w", err)
 				return
@@ -805,7 +805,7 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) 
 			}
 		}
 
-		if err := copyRec(from, to, link, cp); err != nil {
+		if err := copyRec(ctx, from, to, link, cp); err != nil {
 			lerr = err
 			return
 		}

@@ -320,7 +320,7 @@ func (sm *StateManager) LookupID(ctx context.Context, addr address.Address, ts *
 func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) error {
 	tschain := []*types.TipSet{ts}
 	for ts.Height() != 0 {
-		next, err := sm.cs.LoadTipSet(ts.Parents())
+		next, err := sm.cs.LoadTipSet(ctx, ts.Parents())
 		if err != nil {
 			return err
 		}
@@ -372,7 +372,7 @@ func (sm *StateManager) VMSys() vm.SyscallBuilder {
 }
 
 func (sm *StateManager) GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
-	pts, err := sm.ChainStore().GetTipSetFromKey(tsk)
+	pts, err := sm.ChainStore().GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -391,7 +391,7 @@ func (sm *StateManager) GetRandomnessFromBeacon(ctx context.Context, personaliza
 }
 
 func (sm *StateManager) GetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
-	pts, err := sm.ChainStore().LoadTipSet(tsk)
+	pts, err := sm.ChainStore().LoadTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
 	}

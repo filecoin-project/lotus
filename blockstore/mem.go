@@ -97,6 +97,6 @@ func (m MemBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) 
 
 // HashOnRead specifies if every read block should be
 // rehashed to make sure it matches its CID.
-func (m MemBlockstore) HashOnRead(ctx context.Context, enabled bool) {
+func (m MemBlockstore) HashOnRead(enabled bool) {
 	// no-op
 }

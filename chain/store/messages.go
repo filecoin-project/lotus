@@ -29,7 +29,7 @@ func PutMessage(bs bstore.Blockstore, m storable) (cid.Cid, error) {
 		return cid.Undef, err
 	}
 
-	if err := bs.Put(b); err != nil {
+	if err := bs.Put(context.TODO(), b); err != nil {
 		return cid.Undef, err
 	}
 
@@ -54,7 +54,7 @@ func (cs *ChainStore) GetCMessage(c cid.Cid) (types.ChainMsg, error) {
 
 func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
 	var msg *types.Message
-	err := cs.chainLocalBlockstore.View(c, func(b []byte) (err error) {
+	err := cs.chainLocalBlockstore.View(context.TODO(), c, func(b []byte) (err error) {
 		msg, err = types.DecodeMessage(b)
 		return err
 	})
@@ -63,7 +63,7 @@ func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
 
 func (cs *ChainStore) GetSignedMessage(c cid.Cid) (*types.SignedMessage, error) {
 	var msg *types.SignedMessage
-	err := cs.chainLocalBlockstore.View(c, func(b []byte) (err error) {
+	err := cs.chainLocalBlockstore.View(context.TODO(), c, func(b []byte) (err error) {
 		msg, err = types.DecodeSignedMessage(b)
 		return err
 	})

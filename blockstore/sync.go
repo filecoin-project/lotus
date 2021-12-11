@@ -76,6 +76,6 @@ func (m *SyncBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error
 	return m.bs.AllKeysChan(ctx)
 }
 
-func (m *SyncBlockstore) HashOnRead(ctx context.Context, enabled bool) {
+func (m *SyncBlockstore) HashOnRead(enabled bool) {
 	// noop
 }

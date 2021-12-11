@@ -90,7 +90,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 
 	h := b.Header
 
-	baseTs, err := filec.store.LoadTipSet(types.NewTipSetKey(h.Parents...))
+	baseTs, err := filec.store.LoadTipSet(ctx, types.NewTipSetKey(h.Parents...))
 	if err != nil {
 		return xerrors.Errorf("load parent tipset failed (%s): %w", h.Parents, err)
 	}
@@ -102,7 +102,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 		return xerrors.Errorf("failed to get lookback tipset for block: %w", err)
 	}
 
-	prevBeacon, err := filec.store.GetLatestBeaconEntry(baseTs)
+	prevBeacon, err := filec.store.GetLatestBeaconEntry(ctx, baseTs)
 	if err != nil {
 		return xerrors.Errorf("failed to get latest beacon entry: %w", err)
 	}

@@ -294,7 +294,7 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context, sm *stmgr.StateManag
 	var parentEpoch abi.ChainEpoch
 	pstate := blks[0].ParentStateRoot
 	if blks[0].Height > 0 {
-		parent, err := sm.ChainStore().GetBlock(blks[0].Parents[0])
+		parent, err := sm.ChainStore().GetBlock(ctx, blks[0].Parents[0])
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("getting parent block: %w", err)
 		}

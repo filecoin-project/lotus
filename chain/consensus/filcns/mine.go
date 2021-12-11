@@ -15,7 +15,7 @@ import (
 )
 
 func (filec *FilecoinEC) CreateBlock(ctx context.Context, w api.Wallet, bt *api.BlockTemplate) (*types.FullBlock, error) {
-	pts, err := filec.sm.ChainStore().LoadTipSet(bt.Parents)
+	pts, err := filec.sm.ChainStore().LoadTipSet(ctx, bt.Parents)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load parent tipset: %w", err)
 	}

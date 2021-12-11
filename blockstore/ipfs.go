@@ -150,6 +150,6 @@ func (i *IPFSBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error
 	return nil, xerrors.Errorf("not supported")
 }
 
-func (i *IPFSBlockstore) HashOnRead(ctx context.Context, enabled bool) {
+func (i *IPFSBlockstore) HashOnRead(enabled bool) {
 	return // TODO: We could technically support this, but..
 }

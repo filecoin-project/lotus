@@ -136,7 +136,7 @@ func (s *server) serviceRequest(ctx context.Context, req *validatedRequest) (*Re
 	_, span := trace.StartSpan(ctx, "chainxchg.ServiceRequest")
 	defer span.End()
 
-	chain, err := collectChainSegment(s.cs, req)
+	chain, err := collectChainSegment(ctx, s.cs, req)
 	if err != nil {
 		log.Warn("block sync request: collectChainSegment failed: ", err)
 		return &Response{
@@ -156,13 +156,13 @@ func (s *server) serviceRequest(ctx context.Context, req *validatedRequest) (*Re
 	}, nil
 }
 
-func collectChainSegment(cs *store.ChainStore, req *validatedRequest) ([]*BSTipSet, error) {
+func collectChainSegment(ctx context.Context, cs *store.ChainStore, req *validatedRequest) ([]*BSTipSet, error) {
 	var bstips []*BSTipSet
 
 	cur := req.head
 	for {
 		var bst BSTipSet
-		ts, err := cs.LoadTipSet(cur)
+		ts, err := cs.LoadTipSet(ctx, cur)
 		if err != nil {
 			return nil, xerrors.Errorf("failed loading tipset %s: %w", cur, err)
 		}
