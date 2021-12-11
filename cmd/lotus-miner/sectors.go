@@ -1648,6 +1648,11 @@ var sectorsUpdateCmd = &cli.Command{
 			return xerrors.Errorf("could not parse sector number: %w", err)
 		}
 
+		_, err = nodeApi.SectorsStatus(ctx, abi.SectorNumber(id), false)
+		if err != nil {
+			return xerrors.Errorf("sector %d not found, could not change state", id)
+		}
+
 		newState := cctx.Args().Get(1)
 		if _, ok := sealing.ExistSectorStateList[sealing.SectorState(newState)]; !ok {
 			fmt.Printf(" \"%s\" is not a valid state. Possible states for sectors are: \n", newState)
