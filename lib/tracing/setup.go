@@ -11,6 +11,7 @@ import (
 	"go.opentelemetry.io/otel/sdk/resource"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
+	"go.uber.org/zap"
 
 	logging "github.com/ipfs/go-log/v2"
 )
@@ -50,7 +51,7 @@ func jaegerOptsFromEnv() jaeger.EndpointOption {
 	}
 
 	if e, ok = os.LookupEnv(envAgentHost); ok {
-		options := []jaeger.AgentEndpointOption{jaeger.WithAgentHost(e)}
+		options := []jaeger.AgentEndpointOption{jaeger.WithAgentHost(e), jaeger.WithLogger(zap.NewStdLog(log.Desugar()))}
 		var ep string
 		if p, ok := os.LookupEnv(envAgentPort); ok {
 			options = append(options, jaeger.WithAgentPort(p))
@@ -82,6 +83,7 @@ func SetupJaegerTracing(serviceName string) *tracesdk.TracerProvider {
 			semconv.SchemaURL,
 			semconv.ServiceNameKey.String(serviceName),
 		)),
+		tracesdk.WithSampler(tracesdk.AlwaysSample()),
 	)
 	otel.SetTracerProvider(tp)
 	tracer := tp.Tracer(serviceName)
