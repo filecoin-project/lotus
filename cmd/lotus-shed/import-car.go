@@ -82,7 +82,7 @@ var importCarCmd = &cli.Command{
 				return err
 			case nil:
 				fmt.Printf("\r%s", blk.Cid())
-				if err := bs.Put(blk); err != nil {
+				if err := bs.Put(context.Background(), blk); err != nil {
 					if err := f.Close(); err != nil {
 						return err
 					}
@@ -146,7 +146,7 @@ var importObjectCmd = &cli.Command{
 			return err
 		}
 
-		if err := bs.Put(blk); err != nil {
+		if err := bs.Put(context.Background(), blk); err != nil {
 			return err
 		}
 
