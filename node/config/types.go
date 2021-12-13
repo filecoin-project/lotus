@@ -156,6 +156,11 @@ type IndexerProviderConfig struct {
 	// Format: multiaddress; see https://multiformats.io/multiaddr/
 	ListenAddresses []string
 
+	// Addresses to explicitly announce to other peers. If not specified,
+	// all interface addresses are announced
+	// Format: multiaddress
+	AnnounceAddresses []string
+
 	// The maximum number of simultaneous data transfers between the indexers
 	// and the indexer provider
 	MaxSimultaneousTransfers uint64

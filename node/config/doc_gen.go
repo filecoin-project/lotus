@@ -348,6 +348,14 @@ see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-f
 Format: multiaddress; see https://multiformats.io/multiaddr/`,
 		},
 		{
+			Name: "AnnounceAddresses",
+			Type: "[]string",
+
+			Comment: `Addresses to explicitly announce to other peers. If not specified,
+all interface addresses are announced
+Format: multiaddress`,
+		},
+		{
 			Name: "MaxSimultaneousTransfers",
 			Type: "uint64",
 

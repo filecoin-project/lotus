@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/node/modules/lp2p"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -57,7 +58,7 @@ func IndexerProvider(cfg config.IndexerProviderConfig) func(params IdxProv) (pro
 			return nil, fmt.Errorf("missing private key for node ID: %s", args.PeerID.Pretty())
 		}
 
-		h, err := createIndexerProviderHost(args.MetricsCtx, args.Lifecycle, pkey, args.Peerstore, cfg.ListenAddresses)
+		h, err := createIndexerProviderHost(args.MetricsCtx, args.Lifecycle, pkey, args.Peerstore, cfg.ListenAddresses, cfg.AnnounceAddresses)
 		if err != nil {
 			return nil, xerrors.Errorf("creating indexer provider host: %w", err)
 		}
@@ -94,13 +95,18 @@ func IndexerProvider(cfg config.IndexerProviderConfig) func(params IdxProv) (pro
 	}
 }
 
-func createIndexerProviderHost(mctx helpers.MetricsCtx, lc fx.Lifecycle, pkey ci.PrivKey, pstore peerstore.Peerstore, listenAddrs []string) (host.Host, error) {
+func createIndexerProviderHost(mctx helpers.MetricsCtx, lc fx.Lifecycle, pkey ci.PrivKey, pstore peerstore.Peerstore, listenAddrs []string, announceAddrs []string) (host.Host, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
+	addrsFactory, err := lp2p.MakeAddrsFactory(announceAddrs, nil)
+	if err != nil {
+		return nil, err
+	}
 
 	opts := []libp2p.Option{
 		libp2p.Identity(pkey),
 		libp2p.Peerstore(pstore),
 		libp2p.ListenAddrStrings(listenAddrs...),
+		libp2p.AddrsFactory(addrsFactory),
 		libp2p.Ping(true),
 		libp2p.UserAgent("lotus-indexer-provider-" + build.UserVersion()),
 	}

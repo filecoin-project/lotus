@@ -182,6 +182,7 @@ func DefaultStorageMiner() *StorageMiner {
 				"/ip4/0.0.0.0/tcp/0",
 				"/ip6/::/tcp/0",
 			},
+			AnnounceAddresses: []string{},
 
 			MaxSimultaneousTransfers: DefaultSimultaneousTransfers,
 		},

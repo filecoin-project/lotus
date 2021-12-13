@@ -248,13 +248,13 @@
 
 [IndexerProvider]
   # env var: LOTUS_INDEXERPROVIDER_LINKCACHESIZE
-  #LinkCacheSize = 0
+  #LinkCacheSize = 1024
 
   # env var: LOTUS_INDEXERPROVIDER_LINKEDCHUNKSIZE
-  #LinkedChunkSize = 0
+  #LinkedChunkSize = 100
 
   # env var: LOTUS_INDEXERPROVIDER_PUBSUBTOPIC
-  #PubSubTopic = ""
+  #PubSubTopic = "indexer/ingest"
 
   # env var: LOTUS_INDEXERPROVIDER_PURGELINKCACHE
   #PurgeLinkCache = false
@@ -265,6 +265,14 @@
   # type: []string
   # env var: LOTUS_INDEXERPROVIDER_LISTENADDRESSES
   #ListenAddresses = ["/ip4/0.0.0.0/tcp/0", "/ip6/::/tcp/0"]
+
+  # Addresses to explicitly announce to other peers. If not specified,
+  # all interface addresses are announced
+  # Format: multiaddress
+  #
+  # type: []string
+  # env var: LOTUS_INDEXERPROVIDER_ANNOUNCEADDRESSES
+  #AnnounceAddresses = []
 
   # The maximum number of simultaneous data transfers between the indexers
   # and the indexer provider
