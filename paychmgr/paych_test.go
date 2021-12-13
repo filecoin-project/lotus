@@ -197,7 +197,6 @@ func TestCheckVoucherValid(t *testing.T) {
 
 	for _, tcase := range tcases {
 		tcase := tcase
-		//stm: @PAYMENT_CHANNEL_VOUCHER_001, PAYMENT_CHANNEL_VOUCHER_002, PAYMENT_CHANNEL_VOUCHER_003, PAYMENT_CHANNEL_VOUCHER_004
 		t.Run(tcase.name, func(t *testing.T) {
 			// Create an actor for the channel with the test case balance
 			act := &types.Actor{
