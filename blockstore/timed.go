@@ -154,7 +154,7 @@ func (t *TimedCacheBlockstore) Has(ctx context.Context, k cid.Cid) (bool, error)
 	return t.inactive.Has(ctx, k)
 }
 
-func (t *TimedCacheBlockstore) HashOnRead(ctx context.Context, _ bool) {
+func (t *TimedCacheBlockstore) HashOnRead(_ bool) {
 	// no-op
 }
 

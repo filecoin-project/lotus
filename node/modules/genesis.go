@@ -2,6 +2,7 @@ package modules
 
 import (
 	"bytes"
+	"context"
 	"os"
 
 	"github.com/ipfs/go-datastore"
@@ -22,14 +23,14 @@ func ErrorGenesis() Genesis {
 func LoadGenesis(genBytes []byte) func(dtypes.ChainBlockstore) Genesis {
 	return func(bs dtypes.ChainBlockstore) Genesis {
 		return func() (header *types.BlockHeader, e error) {
-			c, err := car.LoadCar(bs, bytes.NewReader(genBytes))
+			c, err := car.LoadCar(context.Background(), bs, bytes.NewReader(genBytes))
 			if err != nil {
 				return nil, xerrors.Errorf("loading genesis car file failed: %w", err)
 			}
 			if len(c.Roots) != 1 {
 				return nil, xerrors.New("expected genesis file to have one root")
 			}
-			root, err := bs.Get(c.Roots[0])
+			root, err := bs.Get(context.Background(), c.Roots[0])
 			if err != nil {
 				return nil, err
 			}
@@ -46,7 +47,7 @@ func LoadGenesis(genBytes []byte) func(dtypes.ChainBlockstore) Genesis {
 func DoSetGenesis(_ dtypes.AfterGenesisSet) {}
 
 func SetGenesis(cs *store.ChainStore, g Genesis) (dtypes.AfterGenesisSet, error) {
-	genFromRepo, err := cs.GetGenesis()
+	genFromRepo, err := cs.GetGenesis(context.Background())
 	if err == nil {
 		if os.Getenv("LOTUS_SKIP_GENESIS_CHECK") != "_yes_" {
 			expectedGenesis, err := g()
@@ -69,5 +70,5 @@ func SetGenesis(cs *store.ChainStore, g Genesis) (dtypes.AfterGenesisSet, error)
 		return dtypes.AfterGenesisSet{}, xerrors.Errorf("genesis func failed: %w", err)
 	}
 
-	return dtypes.AfterGenesisSet{}, cs.SetGenesis(genesis)
+	return dtypes.AfterGenesisSet{}, cs.SetGenesis(context.Background(), genesis)
 }

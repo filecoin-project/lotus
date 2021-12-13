@@ -59,7 +59,7 @@ func ChainBlockService(bs dtypes.ExposedBlockstore, rem dtypes.ChainBitswap) dty
 }
 
 func MessagePool(lc fx.Lifecycle, us stmgr.UpgradeSchedule, mpp messagepool.Provider, ds dtypes.MetadataDS, nn dtypes.NetworkName, j journal.Journal, protector dtypes.GCReferenceProtector) (*messagepool.MessagePool, error) {
-	mp, err := messagepool.New(mpp, ds, us, nn, j)
+	mp, err := messagepool.New(context.Background(), mpp, ds, us, nn, j)
 	if err != nil {
 		return nil, xerrors.Errorf("constructing mpool: %w", err)
 	}
@@ -83,7 +83,7 @@ func ChainStore(lc fx.Lifecycle,
 
 	chain := store.NewChainStore(cbs, sbs, ds, weight, j)
 
-	if err := chain.Load(); err != nil {
+	if err := chain.Load(context.Background()); err != nil {
 		log.Warnf("loading chain state from disk: %s", err)
 	}
 
