@@ -13,7 +13,6 @@ require (
 	github.com/alecthomas/jsonschema v0.0.0-20200530073317-71f438968921
 	github.com/buger/goterm v1.0.3
 	github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e
-	github.com/cockroachdb/pebble v0.0.0-20201001221639-879f3bfeef07
 	github.com/containerd/cgroups v0.0.0-20201119153540-4cbc285b3327
 	github.com/coreos/go-systemd/v22 v22.3.2
 	github.com/detailyang/go-fallocate v0.0.0-20180908115635-432fa640bd2e
@@ -77,7 +76,6 @@ require (
 	github.com/ipfs/go-ds-badger2 v0.1.2-0.20211203191834-bc6df5c2417c
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/ipfs/go-ds-measure v0.2.0
-	github.com/ipfs/go-ds-pebble v0.0.2-0.20200921225637-ce220f8ac459
 	github.com/ipfs/go-fs-lock v0.0.6
 	github.com/ipfs/go-graphsync v0.11.0
 	github.com/ipfs/go-ipfs-blockstore v1.1.2
