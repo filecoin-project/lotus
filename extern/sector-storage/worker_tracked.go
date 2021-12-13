@@ -20,7 +20,7 @@ import (
 
 type trackedWork struct {
 	job            storiface.WorkerJob
-	worker         WorkerID
+	worker         storiface.WorkerID
 	workerHostname string
 }
 
@@ -58,7 +58,7 @@ func (wt *workTracker) onDone(ctx context.Context, callID storiface.CallID) {
 	delete(wt.running, callID)
 }
 
-func (wt *workTracker) track(ctx context.Context, ready chan struct{}, wid WorkerID, wi storiface.WorkerInfo, sid storage.SectorRef, task sealtasks.TaskType, cb func() (storiface.CallID, error)) (storiface.CallID, error) {
+func (wt *workTracker) track(ctx context.Context, ready chan struct{}, wid storiface.WorkerID, wi storiface.WorkerInfo, sid storage.SectorRef, task sealtasks.TaskType, cb func() (storiface.CallID, error)) (storiface.CallID, error) {
 	tracked := func(rw int, callID storiface.CallID) trackedWork {
 		return trackedWork{
 			job: storiface.WorkerJob{
@@ -121,7 +121,7 @@ func (wt *workTracker) track(ctx context.Context, ready chan struct{}, wid Worke
 	return callID, err
 }
 
-func (wt *workTracker) worker(wid WorkerID, wi storiface.WorkerInfo, w Worker) *trackedWorker {
+func (wt *workTracker) worker(wid storiface.WorkerID, wi storiface.WorkerInfo, w Worker) *trackedWorker {
 	return &trackedWorker{
 		Worker:     w,
 		wid:        wid,
@@ -151,7 +151,7 @@ func (wt *workTracker) Running() ([]trackedWork, []trackedWork) {
 
 type trackedWorker struct {
 	Worker
-	wid        WorkerID
+	wid        storiface.WorkerID
 	workerInfo storiface.WorkerInfo
 
 	execute chan struct{} // channel blocking execution in case we're waiting for resources but the task is ready to execute

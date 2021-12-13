@@ -99,6 +99,12 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 		return nil
 	}
 
+	if s.isNearUpgrade(epoch) {
+		// we are near an upgrade epoch, suppress compaction
+		atomic.StoreInt32(&s.compacting, 0)
+		return nil
+	}
+
 	if epoch-s.baseEpoch > CompactionThreshold {
 		// it's time to compact -- prepare the transaction and go!
 		s.beginTxnProtect()
@@ -119,6 +125,16 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	}
 
 	return nil
+}
+
+func (s *SplitStore) isNearUpgrade(epoch abi.ChainEpoch) bool {
+	for _, upgrade := range s.upgrades {
+		if epoch >= upgrade.start && epoch <= upgrade.end {
+			return true
+		}
+	}
+
+	return false
 }
 
 // transactionally protect incoming tipsets

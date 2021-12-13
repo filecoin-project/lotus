@@ -474,7 +474,7 @@ func TestRestartWorker(t *testing.T) {
 	defer cleanup()
 
 	localTasks := []sealtasks.TaskType{
-		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
+		sealtasks.TTAddPiece, sealtasks.TTFetch,
 	}
 
 	wds := datastore.NewMapDatastore()
@@ -484,7 +484,7 @@ func TestRestartWorker(t *testing.T) {
 		return &testExec{apch: arch}, nil
 	}, WorkerConfig{
 		TaskTypes: localTasks,
-	}, stor, lstor, idx, m, statestore.New(wds))
+	}, os.LookupEnv, stor, lstor, idx, m, statestore.New(wds))
 
 	err := m.AddWorker(ctx, w)
 	require.NoError(t, err)
@@ -520,7 +520,7 @@ func TestRestartWorker(t *testing.T) {
 		return &testExec{apch: arch}, nil
 	}, WorkerConfig{
 		TaskTypes: localTasks,
-	}, stor, lstor, idx, m, statestore.New(wds))
+	}, os.LookupEnv, stor, lstor, idx, m, statestore.New(wds))
 
 	err = m.AddWorker(ctx, w)
 	require.NoError(t, err)
@@ -556,7 +556,7 @@ func TestReenableWorker(t *testing.T) {
 		return &testExec{apch: arch}, nil
 	}, WorkerConfig{
 		TaskTypes: localTasks,
-	}, stor, lstor, idx, m, statestore.New(wds))
+	}, os.LookupEnv, stor, lstor, idx, m, statestore.New(wds))
 
 	err := m.AddWorker(ctx, w)
 	require.NoError(t, err)
@@ -604,4 +604,124 @@ func TestReenableWorker(t *testing.T) {
 
 	i, _ = m.sched.Info(ctx)
 	require.Len(t, i.(SchedDiagInfo).OpenWindows, 2)
+}
+
+func TestResUse(t *testing.T) {
+	logging.SetAllLoggers(logging.LevelDebug)
+
+	ctx, done := context.WithCancel(context.Background())
+	defer done()
+
+	ds := datastore.NewMapDatastore()
+
+	m, lstor, stor, idx, cleanup := newTestMgr(ctx, t, ds)
+	defer cleanup()
+
+	localTasks := []sealtasks.TaskType{
+		sealtasks.TTAddPiece, sealtasks.TTFetch,
+	}
+
+	wds := datastore.NewMapDatastore()
+
+	arch := make(chan chan apres)
+	w := newLocalWorker(func() (ffiwrapper.Storage, error) {
+		return &testExec{apch: arch}, nil
+	}, WorkerConfig{
+		TaskTypes: localTasks,
+	}, func(s string) (string, bool) {
+		return "", false
+	}, stor, lstor, idx, m, statestore.New(wds))
+
+	err := m.AddWorker(ctx, w)
+	require.NoError(t, err)
+
+	sid := storage.SectorRef{
+		ID:        abi.SectorID{Miner: 1000, Number: 1},
+		ProofType: abi.RegisteredSealProof_StackedDrg2KiBV1,
+	}
+
+	go func() {
+		_, err := m.AddPiece(ctx, sid, nil, 1016, strings.NewReader(strings.Repeat("testthis", 127)))
+		require.Error(t, err)
+	}()
+
+l:
+	for {
+		st := m.WorkerStats()
+		require.Len(t, st, 1)
+		for _, w := range st {
+			if w.MemUsedMax > 0 {
+				break l
+			}
+			time.Sleep(time.Millisecond)
+		}
+	}
+
+	st := m.WorkerStats()
+	require.Len(t, st, 1)
+	for _, w := range st {
+		require.Equal(t, storiface.ResourceTable[sealtasks.TTAddPiece][abi.RegisteredSealProof_StackedDrg2KiBV1].MaxMemory, w.MemUsedMax)
+	}
+}
+
+func TestResOverride(t *testing.T) {
+	logging.SetAllLoggers(logging.LevelDebug)
+
+	ctx, done := context.WithCancel(context.Background())
+	defer done()
+
+	ds := datastore.NewMapDatastore()
+
+	m, lstor, stor, idx, cleanup := newTestMgr(ctx, t, ds)
+	defer cleanup()
+
+	localTasks := []sealtasks.TaskType{
+		sealtasks.TTAddPiece, sealtasks.TTFetch,
+	}
+
+	wds := datastore.NewMapDatastore()
+
+	arch := make(chan chan apres)
+	w := newLocalWorker(func() (ffiwrapper.Storage, error) {
+		return &testExec{apch: arch}, nil
+	}, WorkerConfig{
+		TaskTypes: localTasks,
+	}, func(s string) (string, bool) {
+		if s == "AP_2K_MAX_MEMORY" {
+			return "99999", true
+		}
+
+		return "", false
+	}, stor, lstor, idx, m, statestore.New(wds))
+
+	err := m.AddWorker(ctx, w)
+	require.NoError(t, err)
+
+	sid := storage.SectorRef{
+		ID:        abi.SectorID{Miner: 1000, Number: 1},
+		ProofType: abi.RegisteredSealProof_StackedDrg2KiBV1,
+	}
+
+	go func() {
+		_, err := m.AddPiece(ctx, sid, nil, 1016, strings.NewReader(strings.Repeat("testthis", 127)))
+		require.Error(t, err)
+	}()
+
+l:
+	for {
+		st := m.WorkerStats()
+		require.Len(t, st, 1)
+		for _, w := range st {
+			if w.MemUsedMax > 0 {
+				break l
+			}
+			time.Sleep(time.Millisecond)
+		}
+	}
+
+	st := m.WorkerStats()
+	require.Len(t, st, 1)
+	for _, w := range st {
+		require.Equal(t, uint64(99999), w.MemUsedMax)
+	}
 }

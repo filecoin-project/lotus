@@ -64,6 +64,7 @@ func main() {
 		splitstoreCmd,
 		fr32Cmd,
 		chainCmd,
+		balancerCmd,
 	}
 
 	app := &cli.App{

@@ -7,7 +7,7 @@ USAGE:
    lotus-worker [global options] command [command options] [arguments...]
 
 VERSION:
-   1.13.2-dev
+   1.13.3-dev
 
 COMMANDS:
    run         Start lotus worker
@@ -15,6 +15,7 @@ COMMANDS:
    storage     manage sector storage
    set         Manage worker settings
    wait-quiet  Block until all running tasks exit
+   resources   Manage resource table overrides
    tasks       Manage task processing
    help, h     Shows a list of commands or help for one command
 
@@ -94,6 +95,8 @@ OPTIONS:
    --seal               (for init) use path for sealing (default: false)
    --store              (for init) use path for long-term storage (default: false)
    --max-storage value  (for init) limit storage space for sectors (expensive for very large paths!)
+   --groups value       path group names
+   --allow-to value     path groups allowed to pull data from this path (allow all if not specified)
    --help, -h           show help (default: false)
    
 ```
@@ -121,6 +124,21 @@ USAGE:
    lotus-worker wait-quiet [command options] [arguments...]
 
 OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+## lotus-worker resources
+```
+NAME:
+   lotus-worker resources - Manage resource table overrides
+
+USAGE:
+   lotus-worker resources [command options] [arguments...]
+
+OPTIONS:
+   --all       print all resource envvars (default: false)
+   --default   print default resource envvars (default: false)
    --help, -h  show help (default: false)
    
 ```

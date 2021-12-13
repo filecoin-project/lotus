@@ -46,6 +46,13 @@ type LocalStorageMeta struct {
 	// MaxStorage specifies the maximum number of bytes to use for sector storage
 	// (0 = unlimited)
 	MaxStorage uint64
+
+	// List of storage groups this path belongs to
+	Groups []string
+
+	// List of storage groups to which data from this path can be moved. If none
+	// are specified, allow to all
+	AllowTo []string
 }
 
 // StorageConfig .lotusstorage/storage.json
@@ -212,6 +219,8 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		MaxStorage: meta.MaxStorage,
 		CanSeal:    meta.CanSeal,
 		CanStore:   meta.CanStore,
+		Groups:     meta.Groups,
+		AllowTo:    meta.AllowTo,
 	}, fst)
 	if err != nil {
 		return xerrors.Errorf("declaring storage in index: %w", err)
@@ -276,6 +285,8 @@ func (st *Local) Redeclare(ctx context.Context) error {
 			MaxStorage: meta.MaxStorage,
 			CanSeal:    meta.CanSeal,
 			CanStore:   meta.CanStore,
+			Groups:     meta.Groups,
+			AllowTo:    meta.AllowTo,
 		}, fst)
 		if err != nil {
 			return xerrors.Errorf("redeclaring storage in index: %w", err)

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"os"
 	gruntime "runtime"
 	"time"
 
@@ -56,7 +57,7 @@ func (m *Message) ValueReceived() abi.TokenAmount {
 }
 
 // EnableGasTracing, if true, outputs gas tracing in execution traces.
-var EnableGasTracing = false
+var EnableGasTracing = os.Getenv("LOTUS_VM_ENABLE_GAS_TRACING_VERY_SLOW") == "1"
 
 type Runtime struct {
 	rt7.Message

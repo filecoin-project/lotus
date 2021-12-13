@@ -2,17 +2,35 @@ package main
 
 import (
 	"context"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
+	"time"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/tools/stats"
+	"github.com/filecoin-project/lotus/tools/stats/influx"
+	"github.com/filecoin-project/lotus/tools/stats/ipldstore"
+	"github.com/filecoin-project/lotus/tools/stats/metrics"
+	"github.com/filecoin-project/lotus/tools/stats/points"
+	"github.com/filecoin-project/lotus/tools/stats/sync"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
+
+	"contrib.go.opencensus.io/exporter/prometheus"
+	stats "go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
 )
 
 var log = logging.Logger("stats")
+
+func init() {
+	if err := view.Register(metrics.DefaultViews...); err != nil {
+		log.Fatal(err)
+	}
+}
 
 func main() {
 	local := []*cli.Command{
@@ -37,7 +55,7 @@ func main() {
 			},
 		},
 		Before: func(cctx *cli.Context) error {
-			return logging.SetLogLevel("stats", cctx.String("log-level"))
+			return logging.SetLogLevelRegex("stats/*", cctx.String("log-level"))
 		},
 		Commands: local,
 	}
@@ -104,6 +122,12 @@ var runCmd = &cli.Command{
 			Usage:   "do not wait for chain sync to complete",
 			Value:   false,
 		},
+		&cli.IntFlag{
+			Name:    "ipld-store-cache-size",
+			Usage:   "size of lru cache for ChainReadObj",
+			EnvVars: []string{"LOTUS_STATS_IPLD_STORE_CACHE_SIZE"},
+			Value:   2 << 15,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		ctx := context.Background()
@@ -118,28 +142,33 @@ var runCmd = &cli.Command{
 		influxPasswordFlag := cctx.String("influx-password")
 		influxDatabaseFlag := cctx.String("influx-database")
 
+		ipldStoreCacheSizeFlag := cctx.Int("ipld-store-cache-size")
+
 		log.Infow("opening influx client", "hostname", influxHostnameFlag, "username", influxUsernameFlag, "database", influxDatabaseFlag)
 
-		influx, err := stats.InfluxClient(influxHostnameFlag, influxUsernameFlag, influxPasswordFlag)
+		influxClient, err := influx.NewClient(influxHostnameFlag, influxUsernameFlag, influxPasswordFlag)
 		if err != nil {
-			log.Fatal(err)
+			return err
 		}
+
+		exporter, err := prometheus.NewExporter(prometheus.Options{
+			Namespace: "lotus_stats",
+		})
+		if err != nil {
+			return err
+		}
+
+		go func() {
+			http.Handle("/metrics", exporter)
+			if err := http.ListenAndServe(":6688", nil); err != nil {
+				log.Errorw("failed to start http server", "err", err)
+			}
+		}()
 
 		if resetFlag {
-			if err := stats.ResetDatabase(influx, influxDatabaseFlag); err != nil {
-				log.Fatal(err)
+			if err := influx.ResetDatabase(influxClient, influxDatabaseFlag); err != nil {
+				return err
 			}
-		}
-
-		height := int64(heightFlag)
-
-		if !resetFlag && height == 0 {
-			h, err := stats.GetLastRecordedHeight(influx, influxDatabaseFlag)
-			if err != nil {
-				log.Info(err)
-			}
-
-			height = h
 		}
 
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
@@ -149,12 +178,89 @@ var runCmd = &cli.Command{
 		defer closer()
 
 		if !noSyncFlag {
-			if err := stats.WaitForSyncComplete(ctx, api); err != nil {
-				log.Fatal(err)
+			if err := sync.SyncWait(ctx, api); err != nil {
+				return err
 			}
 		}
 
-		stats.Collect(ctx, api, influx, influxDatabaseFlag, height, headLagFlag)
+		gtp, err := api.ChainGetGenesis(ctx)
+		if err != nil {
+			return err
+		}
+
+		genesisTime := time.Unix(int64(gtp.MinTimestamp()), 0)
+
+		// When height is set to `0` we will resume from the best height we can.
+		// The goal is to ensure we have data in the last 60 tipsets
+		height := int64(heightFlag)
+		if !resetFlag && height == 0 {
+			lastHeight, err := influx.GetLastRecordedHeight(influxClient, influxDatabaseFlag)
+			if err != nil {
+				return err
+			}
+
+			sinceGenesis := build.Clock.Now().Sub(genesisTime)
+			expectedHeight := int64(sinceGenesis.Seconds()) / int64(build.BlockDelaySecs)
+
+			startOfWindowHeight := expectedHeight - 60
+
+			if lastHeight > startOfWindowHeight {
+				height = lastHeight
+			} else {
+				height = startOfWindowHeight
+			}
+
+			ts, err := api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+
+			headHeight := int64(ts.Height())
+			if headHeight < height {
+				height = headHeight
+			}
+		}
+
+		go func() {
+			t := time.NewTicker(time.Second)
+
+			for {
+				select {
+				case <-t.C:
+					sinceGenesis := build.Clock.Now().Sub(genesisTime)
+					expectedHeight := int64(sinceGenesis.Seconds()) / int64(build.BlockDelaySecs)
+
+					stats.Record(ctx, metrics.TipsetCollectionHeightExpected.M(expectedHeight))
+				}
+			}
+		}()
+
+		store, err := ipldstore.NewApiIpldStore(ctx, api, ipldStoreCacheSizeFlag)
+		if err != nil {
+			return err
+		}
+
+		collector, err := points.NewChainPointCollector(ctx, store, api)
+		if err != nil {
+			return err
+		}
+
+		tipsets, err := sync.BufferedTipsetChannel(ctx, api, abi.ChainEpoch(height), headLagFlag)
+		if err != nil {
+			return err
+		}
+
+		wq := influx.NewWriteQueue(ctx, influxClient)
+		defer wq.Close()
+
+		for tipset := range tipsets {
+			if nb, err := collector.Collect(ctx, tipset); err != nil {
+				log.Warnw("failed to collect points", "err", err)
+			} else {
+				nb.SetDatabase(influxDatabaseFlag)
+				wq.AddBatch(nb)
+			}
+		}
 
 		return nil
 	},

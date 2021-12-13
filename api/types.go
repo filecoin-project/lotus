@@ -5,11 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/lotus/chain/types"
-
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
 
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -194,4 +193,47 @@ type RetrievalInfo struct {
 
 	TransferChannelID *datatransfer.ChannelID
 	DataTransfer      *DataTransferChannel
+
+	// optional event if part of ClientGetRetrievalUpdates
+	Event *retrievalmarket.ClientEvent
+}
+
+type RestrievalRes struct {
+	DealID retrievalmarket.DealID
+}
+
+// Selector specifies ipld selector string
+// - if the string starts with '{', it's interpreted as json selector string
+//   see https://ipld.io/specs/selectors/ and https://ipld.io/specs/selectors/fixtures/selector-fixtures-1/
+// - otherwise the string is interpreted as ipld-selector-text-lite (simple ipld path)
+//   see https://github.com/ipld/go-ipld-selector-text-lite
+type Selector string
+
+type DagSpec struct {
+	// DataSelector matches data to be retrieved
+	// - when using textselector, the path specifies subtree
+	// - the matched graph must have a single root
+	DataSelector *Selector
+
+	// ExportMerkleProof is applicable only when exporting to a CAR file via a path textselector
+	// When true, in addition to the selection target, the resulting CAR will contain every block along the
+	// path back to, and including the original root
+	// When false the resulting CAR contains only the blocks of the target subdag
+	ExportMerkleProof bool
+}
+
+type ExportRef struct {
+	Root cid.Cid
+
+	// DAGs array specifies a list of DAGs to export
+	// - If exporting into unixfs files, only one DAG is supported, DataSelector is only used to find the targeted root node
+	// - If exporting into a car file
+	//   - When exactly one text-path DataSelector is specified exports the subgraph and its full merkle-path from the original root
+	//   - Otherwise ( multiple paths and/or JSON selector specs) determines each individual subroot and exports the subtrees as a multi-root car
+	// - When not specified defaults to a single DAG:
+	//   - Data - the entire DAG: `{"R":{"l":{"none":{}},":>":{"a":{">":{"@":{}}}}}}`
+	DAGs []DagSpec
+
+	FromLocalCAR string // if specified, get data from a local CARv2 file.
+	DealID       retrievalmarket.DealID
 }

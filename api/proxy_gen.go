@@ -28,7 +28,6 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	"github.com/filecoin-project/lotus/journal/alerting"
-	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -162,6 +161,8 @@ type FullNodeStruct struct {
 
 		ClientDealSize func(p0 context.Context, p1 cid.Cid) (DataSize, error) `perm:"read"`
 
+		ClientExport func(p0 context.Context, p1 ExportRef, p2 FileRef) error `perm:"admin"`
+
 		ClientFindData func(p0 context.Context, p1 cid.Cid, p2 *cid.Cid) ([]QueryOffer, error) `perm:"read"`
 
 		ClientGenCar func(p0 context.Context, p1 FileRef, p2 string) error `perm:"write"`
@@ -194,11 +195,11 @@ type FullNodeStruct struct {
 
 		ClientRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
-		ClientRetrieve func(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) error `perm:"admin"`
+		ClientRetrieve func(p0 context.Context, p1 RetrievalOrder) (*RestrievalRes, error) `perm:"admin"`
 
 		ClientRetrieveTryRestartInsufficientFunds func(p0 context.Context, p1 address.Address) error `perm:"write"`
 
-		ClientRetrieveWithEvents func(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) (<-chan marketevents.RetrievalEvent, error) `perm:"admin"`
+		ClientRetrieveWait func(p0 context.Context, p1 retrievalmarket.DealID) error `perm:"admin"`
 
 		ClientStartDeal func(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) `perm:"admin"`
 
@@ -270,7 +271,9 @@ type FullNodeStruct struct {
 
 		MsigApproveTxnHash func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 address.Address, p5 types.BigInt, p6 address.Address, p7 uint64, p8 []byte) (*MessagePrototype, error) `perm:"sign"`
 
-		MsigCancel func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*MessagePrototype, error) `perm:"sign"`
+		MsigCancel func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*MessagePrototype, error) `perm:"sign"`
+
+		MsigCancelTxnHash func(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*MessagePrototype, error) `perm:"sign"`
 
 		MsigCreate func(p0 context.Context, p1 uint64, p2 []address.Address, p3 abi.ChainEpoch, p4 types.BigInt, p5 address.Address, p6 types.BigInt) (*MessagePrototype, error) `perm:"sign"`
 
@@ -478,7 +481,13 @@ type GatewayStruct struct {
 	Internal struct {
 		ChainGetBlockMessages func(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) ``
 
+		ChainGetGenesis func(p0 context.Context) (*types.TipSet, error) ``
+
 		ChainGetMessage func(p0 context.Context, p1 cid.Cid) (*types.Message, error) ``
+
+		ChainGetParentMessages func(p0 context.Context, p1 cid.Cid) ([]Message, error) ``
+
+		ChainGetParentReceipts func(p0 context.Context, p1 cid.Cid) ([]*types.MessageReceipt, error) ``
 
 		ChainGetPath func(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*HeadChange, error) ``
 
@@ -792,6 +801,8 @@ type StorageMinerStruct struct {
 		StorageDropSector func(p0 context.Context, p1 stores.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error `perm:"admin"`
 
 		StorageFindSector func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]stores.SectorStorageInfo, error) `perm:"admin"`
+
+		StorageGetLocks func(p0 context.Context) (storiface.SectorLocks, error) `perm:"admin"`
 
 		StorageInfo func(p0 context.Context, p1 stores.ID) (stores.StorageInfo, error) `perm:"admin"`
 
@@ -1365,6 +1376,17 @@ func (s *FullNodeStub) ClientDealSize(p0 context.Context, p1 cid.Cid) (DataSize,
 	return *new(DataSize), ErrNotSupported
 }
 
+func (s *FullNodeStruct) ClientExport(p0 context.Context, p1 ExportRef, p2 FileRef) error {
+	if s.Internal.ClientExport == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.ClientExport(p0, p1, p2)
+}
+
+func (s *FullNodeStub) ClientExport(p0 context.Context, p1 ExportRef, p2 FileRef) error {
+	return ErrNotSupported
+}
+
 func (s *FullNodeStruct) ClientFindData(p0 context.Context, p1 cid.Cid, p2 *cid.Cid) ([]QueryOffer, error) {
 	if s.Internal.ClientFindData == nil {
 		return *new([]QueryOffer), ErrNotSupported
@@ -1541,15 +1563,15 @@ func (s *FullNodeStub) ClientRestartDataTransfer(p0 context.Context, p1 datatran
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientRetrieve(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) error {
+func (s *FullNodeStruct) ClientRetrieve(p0 context.Context, p1 RetrievalOrder) (*RestrievalRes, error) {
 	if s.Internal.ClientRetrieve == nil {
-		return ErrNotSupported
+		return nil, ErrNotSupported
 	}
-	return s.Internal.ClientRetrieve(p0, p1, p2)
+	return s.Internal.ClientRetrieve(p0, p1)
 }
 
-func (s *FullNodeStub) ClientRetrieve(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) error {
-	return ErrNotSupported
+func (s *FullNodeStub) ClientRetrieve(p0 context.Context, p1 RetrievalOrder) (*RestrievalRes, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) error {
@@ -1563,15 +1585,15 @@ func (s *FullNodeStub) ClientRetrieveTryRestartInsufficientFunds(p0 context.Cont
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientRetrieveWithEvents(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) (<-chan marketevents.RetrievalEvent, error) {
-	if s.Internal.ClientRetrieveWithEvents == nil {
-		return nil, ErrNotSupported
+func (s *FullNodeStruct) ClientRetrieveWait(p0 context.Context, p1 retrievalmarket.DealID) error {
+	if s.Internal.ClientRetrieveWait == nil {
+		return ErrNotSupported
 	}
-	return s.Internal.ClientRetrieveWithEvents(p0, p1, p2)
+	return s.Internal.ClientRetrieveWait(p0, p1)
 }
 
-func (s *FullNodeStub) ClientRetrieveWithEvents(p0 context.Context, p1 RetrievalOrder, p2 *FileRef) (<-chan marketevents.RetrievalEvent, error) {
-	return nil, ErrNotSupported
+func (s *FullNodeStub) ClientRetrieveWait(p0 context.Context, p1 retrievalmarket.DealID) error {
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) ClientStartDeal(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) {
@@ -1959,14 +1981,25 @@ func (s *FullNodeStub) MsigApproveTxnHash(p0 context.Context, p1 address.Address
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*MessagePrototype, error) {
+func (s *FullNodeStruct) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*MessagePrototype, error) {
 	if s.Internal.MsigCancel == nil {
 		return nil, ErrNotSupported
 	}
-	return s.Internal.MsigCancel(p0, p1, p2, p3, p4, p5, p6, p7)
+	return s.Internal.MsigCancel(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*MessagePrototype, error) {
+func (s *FullNodeStub) MsigCancel(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address) (*MessagePrototype, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) MsigCancelTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*MessagePrototype, error) {
+	if s.Internal.MsigCancelTxnHash == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.MsigCancelTxnHash(p0, p1, p2, p3, p4, p5, p6, p7)
+}
+
+func (s *FullNodeStub) MsigCancelTxnHash(p0 context.Context, p1 address.Address, p2 uint64, p3 address.Address, p4 types.BigInt, p5 address.Address, p6 uint64, p7 []byte) (*MessagePrototype, error) {
 	return nil, ErrNotSupported
 }
 
@@ -3048,6 +3081,17 @@ func (s *GatewayStub) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*Bl
 	return nil, ErrNotSupported
 }
 
+func (s *GatewayStruct) ChainGetGenesis(p0 context.Context) (*types.TipSet, error) {
+	if s.Internal.ChainGetGenesis == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.ChainGetGenesis(p0)
+}
+
+func (s *GatewayStub) ChainGetGenesis(p0 context.Context) (*types.TipSet, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *GatewayStruct) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.Message, error) {
 	if s.Internal.ChainGetMessage == nil {
 		return nil, ErrNotSupported
@@ -3057,6 +3101,28 @@ func (s *GatewayStruct) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.
 
 func (s *GatewayStub) ChainGetMessage(p0 context.Context, p1 cid.Cid) (*types.Message, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *GatewayStruct) ChainGetParentMessages(p0 context.Context, p1 cid.Cid) ([]Message, error) {
+	if s.Internal.ChainGetParentMessages == nil {
+		return *new([]Message), ErrNotSupported
+	}
+	return s.Internal.ChainGetParentMessages(p0, p1)
+}
+
+func (s *GatewayStub) ChainGetParentMessages(p0 context.Context, p1 cid.Cid) ([]Message, error) {
+	return *new([]Message), ErrNotSupported
+}
+
+func (s *GatewayStruct) ChainGetParentReceipts(p0 context.Context, p1 cid.Cid) ([]*types.MessageReceipt, error) {
+	if s.Internal.ChainGetParentReceipts == nil {
+		return *new([]*types.MessageReceipt), ErrNotSupported
+	}
+	return s.Internal.ChainGetParentReceipts(p0, p1)
+}
+
+func (s *GatewayStub) ChainGetParentReceipts(p0 context.Context, p1 cid.Cid) ([]*types.MessageReceipt, error) {
+	return *new([]*types.MessageReceipt), ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainGetPath(p0 context.Context, p1 types.TipSetKey, p2 types.TipSetKey) ([]*HeadChange, error) {
@@ -4641,6 +4707,17 @@ func (s *StorageMinerStruct) StorageFindSector(p0 context.Context, p1 abi.Sector
 
 func (s *StorageMinerStub) StorageFindSector(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]stores.SectorStorageInfo, error) {
 	return *new([]stores.SectorStorageInfo), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) StorageGetLocks(p0 context.Context) (storiface.SectorLocks, error) {
+	if s.Internal.StorageGetLocks == nil {
+		return *new(storiface.SectorLocks), ErrNotSupported
+	}
+	return s.Internal.StorageGetLocks(p0)
+}
+
+func (s *StorageMinerStub) StorageGetLocks(p0 context.Context) (storiface.SectorLocks, error) {
+	return *new(storiface.SectorLocks), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageInfo(p0 context.Context, p1 stores.ID) (stores.StorageInfo, error) {

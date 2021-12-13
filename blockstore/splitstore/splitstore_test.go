@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
 
@@ -90,7 +91,7 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		return protect(protected.Cid())
 	})
 
-	err = ss.Start(chain)
+	err = ss.Start(chain, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -218,6 +219,140 @@ func TestSplitStoreCompactionWithBadger(t *testing.T) {
 		badgerMarkSetBatchSize = bs
 	})
 	testSplitStore(t, &Config{MarkSetType: "badger"})
+}
+
+func TestSplitStoreSuppressCompactionNearUpgrade(t *testing.T) {
+	chain := &mockChain{t: t}
+
+	// the myriads of stores
+	ds := dssync.MutexWrap(datastore.NewMapDatastore())
+	hot := newMockStore()
+	cold := newMockStore()
+
+	// this is necessary to avoid the garbage mock puts in the blocks
+	garbage := blocks.NewBlock([]byte{1, 2, 3})
+	err := cold.Put(garbage)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// genesis
+	genBlock := mock.MkBlock(nil, 0, 0)
+	genBlock.Messages = garbage.Cid()
+	genBlock.ParentMessageReceipts = garbage.Cid()
+	genBlock.ParentStateRoot = garbage.Cid()
+	genBlock.Timestamp = uint64(time.Now().Unix())
+
+	genTs := mock.TipSet(genBlock)
+	chain.push(genTs)
+
+	// put the genesis block to cold store
+	blk, err := genBlock.ToStorageBlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	err = cold.Put(blk)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// open the splitstore
+	ss, err := Open("", ds, hot, cold, &Config{MarkSetType: "map"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ss.Close() //nolint
+
+	// create an upgrade schedule that will suppress compaction during the test
+	upgradeBoundary = 0
+	upgrade := stmgr.Upgrade{
+		Height:        10,
+		PreMigrations: []stmgr.PreMigration{{StartWithin: 10}},
+	}
+
+	err = ss.Start(chain, []stmgr.Upgrade{upgrade})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mkBlock := func(curTs *types.TipSet, i int, stateRoot blocks.Block) *types.TipSet {
+		blk := mock.MkBlock(curTs, uint64(i), uint64(i))
+
+		blk.Messages = garbage.Cid()
+		blk.ParentMessageReceipts = garbage.Cid()
+		blk.ParentStateRoot = stateRoot.Cid()
+		blk.Timestamp = uint64(time.Now().Unix())
+
+		sblk, err := blk.ToStorageBlock()
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = ss.Put(stateRoot)
+		if err != nil {
+			t.Fatal(err)
+		}
+		err = ss.Put(sblk)
+		if err != nil {
+			t.Fatal(err)
+		}
+		ts := mock.TipSet(blk)
+		chain.push(ts)
+
+		return ts
+	}
+
+	waitForCompaction := func() {
+		for atomic.LoadInt32(&ss.compacting) == 1 {
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+
+	curTs := genTs
+	for i := 1; i < 10; i++ {
+		stateRoot := blocks.NewBlock([]byte{byte(i), 3, 3, 7})
+		curTs = mkBlock(curTs, i, stateRoot)
+		waitForCompaction()
+	}
+
+	countBlocks := func(bs blockstore.Blockstore) int {
+		count := 0
+		_ = bs.(blockstore.BlockstoreIterator).ForEachKey(func(_ cid.Cid) error {
+			count++
+			return nil
+		})
+		return count
+	}
+
+	// we should not have compacted due to suppression and everything should still be hot
+	hotCnt := countBlocks(hot)
+	coldCnt := countBlocks(cold)
+
+	if hotCnt != 20 {
+		t.Errorf("expected %d blocks, but got %d", 20, hotCnt)
+	}
+
+	if coldCnt != 2 {
+		t.Errorf("expected %d blocks, but got %d", 2, coldCnt)
+	}
+
+	// put some more blocks, now we should compact
+	for i := 10; i < 20; i++ {
+		stateRoot := blocks.NewBlock([]byte{byte(i), 3, 3, 7})
+		curTs = mkBlock(curTs, i, stateRoot)
+		waitForCompaction()
+	}
+
+	hotCnt = countBlocks(hot)
+	coldCnt = countBlocks(cold)
+
+	if hotCnt != 24 {
+		t.Errorf("expected %d blocks, but got %d", 24, hotCnt)
+	}
+
+	if coldCnt != 18 {
+		t.Errorf("expected %d blocks, but got %d", 18, coldCnt)
+	}
 }
 
 type mockChain struct {

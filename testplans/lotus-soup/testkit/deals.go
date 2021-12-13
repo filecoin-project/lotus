@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
 
-	tstats "github.com/filecoin-project/lotus/tools/stats"
+	tsync "github.com/filecoin-project/lotus/tools/stats/sync"
 )
 
 func StartDeal(ctx context.Context, minerActorAddr address.Address, client api.FullNode, fcid cid.Cid, fastRetrieval bool) *cid.Cid {
@@ -46,7 +46,7 @@ func WaitDealSealed(t *TestEnvironment, ctx context.Context, client api.FullNode
 	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	tipsetsCh, err := tstats.GetTips(cctx, &v0api.WrapperV1Full{FullNode: client}, abi.ChainEpoch(height), headlag)
+	tipsetsCh, err := tsync.BufferedTipsetChannel(cctx, &v0api.WrapperV1Full{FullNode: client}, abi.ChainEpoch(height), headlag)
 	if err != nil {
 		panic(err)
 	}
