@@ -60,7 +60,7 @@ var infoStateGrowthSimCommand = &cli.Command{
 
 				var links []cid.Cid
 				var totalSize uint64
-				if err := store.View(c, func(data []byte) error {
+				if err := store.View(cctx.Context, c, func(data []byte) error {
 					totalSize += uint64(len(data))
 					return cbg.ScanForLinks(bytes.NewReader(data), func(c cid.Cid) {
 						if c.Prefix().Codec != cid.DagCBOR {
@@ -131,7 +131,7 @@ var infoStateGrowthSimCommand = &cli.Command{
 				fmt.Fprintf(cctx.App.Writer, "%d: %s\n", ts.Height(), types.SizeStr(types.NewInt(parentStateSize)))
 			}
 
-			ts, err = sim.Node.Chainstore.LoadTipSet(ts.Parents())
+			ts, err = sim.Node.Chainstore.LoadTipSet(cctx.Context, ts.Parents())
 			if err != nil {
 				return err
 			}
