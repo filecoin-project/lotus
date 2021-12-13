@@ -725,6 +725,7 @@ github.com/ipfs/go-ds-measure v0.2.0 h1:sG4goQe0KDTccHMyT45CY1XyUbxe5VwTKpg2LjAp
 github.com/ipfs/go-ds-measure v0.2.0/go.mod h1:SEUD/rE2PwRa4IQEC5FuNAmjJCyYObZr9UvVh8V3JxE=
 github.com/ipfs/go-ds-pebble v0.0.2-0.20200921225637-ce220f8ac459 h1:W3YMLEvOXqdW+sYMiguhWP6txJwQvIQqhvpU8yAMGQs=
 github.com/ipfs/go-ds-pebble v0.0.2-0.20200921225637-ce220f8ac459/go.mod h1:oh4liWHulKcDKVhCska5NLelE3MatWl+1FwSz3tY91g=
+github.com/ipfs/go-filestore v1.0.0/go.mod h1:/XOCuNtIe2f1YPbiXdYvD0BKLA0JR1MgPiFOdcuu9SM=
 github.com/ipfs/go-filestore v1.1.0 h1:Pu4tLBi1bucu6/HU9llaOmb9yLFk/sgP+pW764zNDoE=
 github.com/ipfs/go-filestore v1.1.0/go.mod h1:6e1/5Y6NvLuCRdmda/KA4GUhXJQ3Uat6vcWm2DJfxc8=
 github.com/ipfs/go-fs-lock v0.0.6 h1:sn3TWwNVQqSeNjlWy6zQ1uUGAZrV3hPOyEA6y1/N2a0=
