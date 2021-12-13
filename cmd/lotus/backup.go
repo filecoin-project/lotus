@@ -111,10 +111,10 @@ func restore(cctx *cli.Context, r repo.Repo) error {
 	log.Info("Resetting chainstore metadata")
 
 	chainHead := dstore.NewKey("head")
-	if err := mds.Delete(chainHead); err != nil {
+	if err := mds.Delete(context.Background(), chainHead); err != nil {
 		return xerrors.Errorf("clearing chain head: %w", err)
 	}
-	if err := store.FlushValidationCache(mds); err != nil {
+	if err := store.FlushValidationCache(context.Background(), mds); err != nil {
 		return xerrors.Errorf("clearing chain validation cache: %w", err)
 	}
 

@@ -52,7 +52,7 @@ func HandleMigrateClientFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, wallet full
 			if err != nil {
 				return nil
 			}
-			b, err := ds.Get(datastore.NewKey("/marketfunds/client"))
+			b, err := ds.Get(context.Background(), datastore.NewKey("/marketfunds/client"))
 			if err != nil {
 				if xerrors.Is(err, datastore.ErrNotFound) {
 					return nil
@@ -73,7 +73,7 @@ func HandleMigrateClientFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, wallet full
 				return nil
 			}
 
-			return ds.Delete(datastore.NewKey("/marketfunds/client"))
+			return ds.Delete(context.Background(), datastore.NewKey("/marketfunds/client"))
 		},
 	})
 }

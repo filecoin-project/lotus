@@ -229,7 +229,7 @@ func BuiltinDrandConfig() dtypes.DrandSchedule {
 }
 
 func RandomSchedule(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Schedule, error) {
-	gen, err := p.Cs.GetGenesis()
+	gen, err := p.Cs.GetGenesis(context.Background())
 	if err != nil {
 		return nil, err
 	}
