@@ -69,6 +69,7 @@ func (mp *MessagePool) SelectMessages(ctx context.Context, ts *types.TipSet, tq 
 
 	// one last sanity check
 	if len(sm.msgs) > build.BlockMessageLimit {
+		log.Errorf("message selection chose too many messages %d > %d", len(sm.msgs), build.BlockMessageLimit)
 		sm.msgs = sm.msgs[:build.BlockMessageLimit]
 	}
 
