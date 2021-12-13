@@ -361,8 +361,6 @@ github.com/filecoin-project/go-jsonrpc v0.1.5/go.mod h1:XBBpuKIMaXIIzeqzO1iucq4G
 github.com/filecoin-project/go-legs v0.0.0-20211013165050-9ab325b6d2eb/go.mod h1:lKwBnslfNGG7JnsP9uQZl3yK7f74fit1MyHcwuuOP3k=
 github.com/filecoin-project/go-legs v0.0.0-20211112111427-68d536862db9/go.mod h1:g32LVimhcYPte22LK8XslKqLBem54QxuMQmkrzbAyEI=
 github.com/filecoin-project/go-legs v0.0.0-20211125094504-5fdf15090c48/go.mod h1:g32LVimhcYPte22LK8XslKqLBem54QxuMQmkrzbAyEI=
-github.com/filecoin-project/go-legs v0.0.0-20211202193658-45deff4405e1 h1:dq7K8iCh8gnttxr35BHJcI6o/8I5z1sArlqL9LJjti0=
-github.com/filecoin-project/go-legs v0.0.0-20211202193658-45deff4405e1/go.mod h1:8rq/QxX6wlL0AehqVi5CqxXT3xYz1LIpp1HCZ6qI2EY=
 github.com/filecoin-project/go-legs v0.0.0-20211209161055-918cd188bf1d h1:DXm6XG2YibCTcm1vmNz9FWZ2nwz8tgoycrhclZRgKzA=
 github.com/filecoin-project/go-legs v0.0.0-20211209161055-918cd188bf1d/go.mod h1:HFp0jUZopkX9DW6FOmhHltVfEatfAcm3ZD6Z/kY4iNg=
 github.com/filecoin-project/go-multistore v0.0.3/go.mod h1:kaNqCC4IhU4B1uyr7YWFHd23TL4KM32aChS0jNkyUvQ=
