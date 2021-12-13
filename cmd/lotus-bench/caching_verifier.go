@@ -36,7 +36,7 @@ func (cv cachingVerifier) withCache(execute func() (bool, error), param cbg.CBOR
 	}
 	hash := hasher.Sum(nil)
 	key := datastore.NewKey(string(hash))
-	fromDs, err := cv.ds.Get(key)
+	fromDs, err := cv.ds.Get(context.Background(), key)
 	if err == nil {
 		switch fromDs[0] {
 		case 's':
@@ -66,7 +66,7 @@ func (cv cachingVerifier) withCache(execute func() (bool, error), param cbg.CBOR
 		}
 
 		if len(save) != 0 {
-			errSave := cv.ds.Put(key, save)
+			errSave := cv.ds.Put(context.Background(), key, save)
 			if errSave != nil {
 				log.Errorf("error saving result: %+v", errSave)
 			}
