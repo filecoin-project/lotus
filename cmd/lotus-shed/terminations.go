@@ -5,12 +5,15 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strconv"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
@@ -26,6 +29,7 @@ import (
 var terminationsCmd = &cli.Command{
 	Name:        "terminations",
 	Description: "Lists terminated deals from the past 2 days",
+	ArgsUsage:   "[block to look back from] [lookback period (epochs)]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "repo",
@@ -35,8 +39,8 @@ var terminationsCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := context.TODO()
 
-		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass block cid")
+		if cctx.NArg() != 2 {
+			return fmt.Errorf("must pass block cid && lookback period")
 		}
 
 		blkCid, err := cid.Decode(cctx.Args().First())
@@ -85,12 +89,14 @@ var terminationsCmd = &cli.Command{
 			return err
 		}
 
-		minerCode, err := miner.GetActorCodeID(actors.Version6)
+		lbp, err := strconv.Atoi(cctx.Args().Get(1))
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to parse input: %w", err)
 		}
 
-		for i := 0; i < 2880*2; i++ {
+		cutoff := blk.Height - abi.ChainEpoch(lbp)
+
+		for blk.Height > cutoff {
 			pts, err := cs.LoadTipSet(types.NewTipSetKey(blk.Parents...))
 			if err != nil {
 				return err
@@ -119,7 +125,7 @@ var terminationsCmd = &cli.Command{
 					return err
 				}
 
-				if minerAct.Code != minerCode {
+				if !builtin.IsStorageMinerActor(minerAct.Code) {
 					continue
 				}
 
@@ -158,10 +164,12 @@ var terminationsCmd = &cli.Command{
 					for _, sector := range sectors {
 						for _, deal := range sector.DealIDs {
 							prop, find, err := proposals.Get(deal)
-							if err != nil || !find {
+							if err != nil {
 								return err
 							}
-							fmt.Printf("%s, %d, %d, %s, %s, %s\n", msg.To, sector.SectorNumber, deal, prop.Client, prop.PieceCID, prop.Label)
+							if find {
+								fmt.Printf("%s, %d, %d, %s, %s, %s\n", msg.To, sector.SectorNumber, deal, prop.Client, prop.PieceCID, prop.Label)
+							}
 						}
 					}
 				}
