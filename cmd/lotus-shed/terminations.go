@@ -161,7 +161,7 @@ var terminationsCmd = &cli.Command{
 							if err != nil || !find {
 								return err
 							}
-							fmt.Printf("%s, %d, %d, %s, %s\n", msg.To, sector.SectorNumber, deal, prop.PieceCID, prop.Label)
+							fmt.Printf("%s, %d, %d, %s, %s, %s\n", msg.To, sector.SectorNumber, deal, prop.Client, prop.PieceCID, prop.Label)
 						}
 					}
 				}
