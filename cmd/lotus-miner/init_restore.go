@@ -255,7 +255,7 @@ func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfi
 
 	log.Info("Checking actor metadata")
 
-	abytes, err := mds.Get(datastore.NewKey("miner-address"))
+	abytes, err := mds.Get(context.Background(), datastore.NewKey("miner-address"))
 	if err != nil {
 		return xerrors.Errorf("getting actor address from metadata datastore: %w", err)
 	}
