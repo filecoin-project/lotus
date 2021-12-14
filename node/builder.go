@@ -161,6 +161,12 @@ func defaults() []Option {
 		}),
 
 		Override(new(dtypes.ShutdownChan), make(chan struct{})),
+
+		// the great context in the sky, otherwise we can't DI build genesis; there has to be a better
+		// solution than this hack.
+		Override(new(context.Context), func(lc fx.Lifecycle, mctx helpers.MetricsCtx) context.Context {
+			return helpers.LifecycleCtx(mctx, lc)
+		}),
 	}
 }
 
