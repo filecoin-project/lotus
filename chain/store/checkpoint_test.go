@@ -45,7 +45,7 @@ func TestChainCheckpoint(t *testing.T) {
 	require.Error(t, err)
 
 	// Then move the head back.
-	err = cs.SetHead(checkpoint)
+	err = cs.SetHead(ctx, checkpoint)
 	require.NoError(t, err)
 
 	// Verify it worked.
@@ -53,7 +53,7 @@ func TestChainCheckpoint(t *testing.T) {
 	require.True(t, head.Equals(checkpoint))
 
 	// And checkpoint it.
-	err = cs.SetCheckpoint(checkpoint)
+	err = cs.SetCheckpoint(ctx, checkpoint)
 	require.NoError(t, err)
 
 	// Let the second miner miner mine a fork
@@ -82,10 +82,10 @@ func TestChainCheckpoint(t *testing.T) {
 	require.True(t, head.Equals(last))
 
 	// Setting a checkpoint on the other fork should fail.
-	err = cs.SetCheckpoint(checkpoint)
+	err = cs.SetCheckpoint(ctx, checkpoint)
 	require.Error(t, err)
 
 	// Setting a checkpoint on this fork should succeed.
-	err = cs.SetCheckpoint(checkpointParents)
+	err = cs.SetCheckpoint(ctx, checkpointParents)
 	require.NoError(t, err)
 }
