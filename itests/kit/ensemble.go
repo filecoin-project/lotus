@@ -487,7 +487,7 @@ func (n *Ensemble) Start() *Ensemble {
 		ds, err := lr.Datastore(context.TODO(), "/metadata")
 		require.NoError(n.t, err)
 
-		err = ds.Put(datastore.NewKey("miner-address"), m.ActorAddr.Bytes())
+		err = ds.Put(ctx, datastore.NewKey("miner-address"), m.ActorAddr.Bytes())
 		require.NoError(n.t, err)
 
 		nic := storedcounter.New(ds, datastore.NewKey(modules.StorageCounterDSPrefix))
