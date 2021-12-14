@@ -748,7 +748,7 @@ func testSetupMgrWithChannel(t *testing.T) *testScaffold {
 		Target:    toAcct,
 		Direction: DirOutbound,
 	}
-	err = mgr.store.putChannelInfo(ci)
+	err = mgr.store.putChannelInfo(context.Background(), ci)
 	require.NoError(t, err)
 
 	// Add the from signing key to the wallet
