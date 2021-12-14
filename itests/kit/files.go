@@ -83,7 +83,7 @@ func CreateRandomCARv1(t *testing.T, rseed, size int) (carV1FilePath string, ori
 	require.NoError(t, car.WriteCar(ctx, dagSvc, []cid.Cid{root}, tmp))
 	_, err = tmp.Seek(0, io.SeekStart)
 	require.NoError(t, err)
-	hd, _, err := car.ReadHeader(bufio.NewReader(tmp))
+	hd, err := car.ReadHeader(bufio.NewReader(tmp))
 	require.NoError(t, err)
 	require.EqualValues(t, 1, hd.Version)
 	require.Len(t, hd.Roots, 1)
