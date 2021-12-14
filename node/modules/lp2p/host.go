@@ -10,6 +10,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	record "github.com/libp2p/go-libp2p-record"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
@@ -32,6 +33,10 @@ type P2PHostIn struct {
 // ////////////////////////
 
 type RawHost host.Host
+
+func Peerstore() (peerstore.Peerstore, error) {
+	return pstoremem.NewPeerstore()
+}
 
 func Host(mctx helpers.MetricsCtx, lc fx.Lifecycle, params P2PHostIn) (RawHost, error) {
 	pkey := params.Peerstore.PrivKey(params.ID)
