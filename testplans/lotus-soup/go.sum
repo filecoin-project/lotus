@@ -385,6 +385,7 @@ github.com/fatih/color v1.12.0/go.mod h1:ELkj/draVOlAH/xkhN6mQ50Qd0MPOk5AAr3maGE
 github.com/fatih/color v1.13.0 h1:8LOYc1KYPPmyKMuN8QV2DNRWNbLo6LZ0iLs8+mlH53w=
 github.com/fatih/color v1.13.0/go.mod h1:kLAiJbzzSOZDVNGyDpeOxJ47H46qBXwg5ILebYFFOfk=
 <<<<<<< HEAD
+<<<<<<< HEAD
 github.com/filecoin-project/dagstore v0.4.3-0.20211211192320-72b849e131d2/go.mod h1:tlV8C11UljvFq3WWlMh2oMViEaVaPb6uT8eL/YQgDfk=
 github.com/filecoin-project/dagstore v0.4.4 h1:luolWahhzp3ulRsapGKE7raoLE3n2cFkQUJjPyqUmF4=
 github.com/filecoin-project/dagstore v0.4.4/go.mod h1:7BlOvaTJrFJ1Qemt5jHlLJ4VhDIuSIzGS0IwO/0AXPA=
@@ -392,6 +393,11 @@ github.com/filecoin-project/dagstore v0.4.4/go.mod h1:7BlOvaTJrFJ1Qemt5jHlLJ4VhD
 github.com/filecoin-project/dagstore v0.4.3-0.20211211192320-72b849e131d2 h1:dWh+o7gzavw1JUlsTqBj2/87r1Z6fbPZuZS43UiIW60=
 github.com/filecoin-project/dagstore v0.4.3-0.20211211192320-72b849e131d2/go.mod h1:tlV8C11UljvFq3WWlMh2oMViEaVaPb6uT8eL/YQgDfk=
 >>>>>>> e8df32579 (update lotus-soup deps)
+=======
+github.com/filecoin-project/dagstore v0.4.3-0.20211211192320-72b849e131d2/go.mod h1:tlV8C11UljvFq3WWlMh2oMViEaVaPb6uT8eL/YQgDfk=
+github.com/filecoin-project/dagstore v0.4.4 h1:luolWahhzp3ulRsapGKE7raoLE3n2cFkQUJjPyqUmF4=
+github.com/filecoin-project/dagstore v0.4.4/go.mod h1:7BlOvaTJrFJ1Qemt5jHlLJ4VhDIuSIzGS0IwO/0AXPA=
+>>>>>>> 7fb590208 (Deps: Update lotus-soup to point to tagged releases)
 github.com/filecoin-project/go-address v0.0.3/go.mod h1:jr8JxKsYx+lQlQZmF5i2U0Z+cGQ59wMIps/8YW/lDj8=
 github.com/filecoin-project/go-address v0.0.5/go.mod h1:jr8JxKsYx+lQlQZmF5i2U0Z+cGQ59wMIps/8YW/lDj8=
 github.com/filecoin-project/go-address v0.0.6 h1:DWQtj38ax+ogHwyH3VULRIoT8E6loyXqsk/p81xoY7M=
@@ -430,12 +436,17 @@ github.com/filecoin-project/go-fil-commcid v0.1.0/go.mod h1:Eaox7Hvus1JgPrL5+M3+
 github.com/filecoin-project/go-fil-commp-hashhash v0.1.0 h1:imrrpZWEHRnNqqv0tN7LXep5bFEVOVmQWHJvl2mgsGo=
 github.com/filecoin-project/go-fil-commp-hashhash v0.1.0/go.mod h1:73S8WSEWh9vr0fDJVnKADhfIv/d6dCbAGaAGWbdJEI8=
 <<<<<<< HEAD
+<<<<<<< HEAD
 github.com/filecoin-project/go-fil-markets v1.14.1 h1:Bx+TSbkAN8K97Hpjgu+MpeRFbXIKH/fNpNp1ZGAEH3I=
 github.com/filecoin-project/go-fil-markets v1.14.1/go.mod h1:vXOHH3q2+zLk929W+lIq3etuDFTyJJ8nG2DwGHG2R1E=
 =======
 github.com/filecoin-project/go-fil-markets v1.13.3-0.20211211202606-e111ec29d24d h1:TkBhjnKRNKrOxnESYqMQRjMbzK/NayYg1oxejxF1cGg=
 github.com/filecoin-project/go-fil-markets v1.13.3-0.20211211202606-e111ec29d24d/go.mod h1:vXOHH3q2+zLk929W+lIq3etuDFTyJJ8nG2DwGHG2R1E=
 >>>>>>> e8df32579 (update lotus-soup deps)
+=======
+github.com/filecoin-project/go-fil-markets v1.13.5 h1:NLeF8rI5ZPOJNYEgA6NHrvnuh5QE/2dwuU/7wPW7zP0=
+github.com/filecoin-project/go-fil-markets v1.13.5/go.mod h1:vXOHH3q2+zLk929W+lIq3etuDFTyJJ8nG2DwGHG2R1E=
+>>>>>>> 7fb590208 (Deps: Update lotus-soup to point to tagged releases)
 github.com/filecoin-project/go-hamt-ipld v0.1.5 h1:uoXrKbCQZ49OHpsTCkrThPNelC4W3LPEk0OrS/ytIBM=
 github.com/filecoin-project/go-hamt-ipld v0.1.5/go.mod h1:6Is+ONR5Cd5R6XZoCse1CWaXZc0Hdb/JeX+EQCQzX24=
 github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0 h1:b3UDemBYN2HNfk3KOXNuxgTTxlWi3xVvbQP0IT38fvM=
@@ -466,11 +477,16 @@ github.com/filecoin-project/go-statestore v0.1.0/go.mod h1:LFc9hD+fRxPqiHiaqUEZO
 github.com/filecoin-project/go-statestore v0.2.0 h1:cRRO0aPLrxKQCZ2UOQbzFGn4WDNdofHZoGPjfNaAo5Q=
 github.com/filecoin-project/go-statestore v0.2.0/go.mod h1:8sjBYbS35HwPzct7iT4lIXjLlYyPor80aU7t7a/Kspo=
 <<<<<<< HEAD
+<<<<<<< HEAD
 github.com/filecoin-project/go-storedcounter v0.1.0 h1:Mui6wSUBC+cQGHbDUBcO7rfh5zQkWJM/CpAZa/uOuus=
 github.com/filecoin-project/go-storedcounter v0.1.0/go.mod h1:4ceukaXi4vFURIoxYMfKzaRF5Xv/Pinh2oTnoxpv+z8=
 =======
 github.com/filecoin-project/go-storedcounter v0.0.0-20211210031312-d066d7aa2f77 h1:3n7WS0WkJStS1rMbt/o+OvriHIlAuU8JKVG6wB2LqJQ=
 github.com/filecoin-project/go-storedcounter v0.0.0-20211210031312-d066d7aa2f77/go.mod h1:4ceukaXi4vFURIoxYMfKzaRF5Xv/Pinh2oTnoxpv+z8=
+=======
+github.com/filecoin-project/go-storedcounter v0.1.0 h1:Mui6wSUBC+cQGHbDUBcO7rfh5zQkWJM/CpAZa/uOuus=
+github.com/filecoin-project/go-storedcounter v0.1.0/go.mod h1:4ceukaXi4vFURIoxYMfKzaRF5Xv/Pinh2oTnoxpv+z8=
+>>>>>>> 7fb590208 (Deps: Update lotus-soup to point to tagged releases)
 github.com/filecoin-project/specs-actors v0.9.4/go.mod h1:BStZQzx5x7TmCkLv0Bpa07U6cPKol6fd3w9KjMPZ6Z4=
 >>>>>>> e8df32579 (update lotus-soup deps)
 github.com/filecoin-project/specs-actors v0.9.13/go.mod h1:TS1AW/7LbG+615j4NsjMK1qlpAwaFsG9w0V2tg2gSao=
@@ -959,12 +975,18 @@ github.com/ipfs/go-ds-badger v0.2.7/go.mod h1:02rnztVKA4aZwDuaRPTf8mpqcKmXP7mLl6
 github.com/ipfs/go-ds-badger v0.3.0 h1:xREL3V0EH9S219kFFueOYJJTcjgNSZ2HY1iSvN7U1Ro=
 github.com/ipfs/go-ds-badger v0.3.0/go.mod h1:1ke6mXNqeV8K3y5Ak2bAA0osoTfmxUdupVCGm4QUIek=
 <<<<<<< HEAD
+<<<<<<< HEAD
 github.com/ipfs/go-ds-badger2 v0.1.2 h1:sQc2q1gaXrv8YFNeUtxil0neuyDf9hnVHfLsi7lpXfE=
 github.com/ipfs/go-ds-badger2 v0.1.2/go.mod h1:3FtQmDv6fMubygEfU43bsFelYpIiXX/XEYA54l9eCwg=
 =======
 github.com/ipfs/go-ds-badger2 v0.1.2-0.20211203191834-bc6df5c2417c h1:hQ/+EqbntANC9WOnloM/JCAjnMn4iEOYiJ6/H+iq84o=
 github.com/ipfs/go-ds-badger2 v0.1.2-0.20211203191834-bc6df5c2417c/go.mod h1:wD65qQCjB35uNOHaaha+tudGVWegJ7dFuFKY+3iJKjk=
 >>>>>>> e8df32579 (update lotus-soup deps)
+=======
+github.com/ipfs/go-ds-badger2 v0.1.2-0.20211203191834-bc6df5c2417c/go.mod h1:wD65qQCjB35uNOHaaha+tudGVWegJ7dFuFKY+3iJKjk=
+github.com/ipfs/go-ds-badger2 v0.1.2 h1:sQc2q1gaXrv8YFNeUtxil0neuyDf9hnVHfLsi7lpXfE=
+github.com/ipfs/go-ds-badger2 v0.1.2/go.mod h1:3FtQmDv6fMubygEfU43bsFelYpIiXX/XEYA54l9eCwg=
+>>>>>>> 7fb590208 (Deps: Update lotus-soup to point to tagged releases)
 github.com/ipfs/go-ds-leveldb v0.0.1/go.mod h1:feO8V3kubwsEF22n0YRQCffeb79OOYIykR4L04tMOYc=
 github.com/ipfs/go-ds-leveldb v0.1.0/go.mod h1:hqAW8y4bwX5LWcCtku2rFNX3vjDZCy5LZCg+cSZvYb8=
 github.com/ipfs/go-ds-leveldb v0.4.1/go.mod h1:jpbku/YqBSsBc1qgME8BkWS4AxzF2cEu1Ii2r79Hh9s=
@@ -1040,6 +1062,7 @@ github.com/ipfs/go-ipld-cbor v0.0.3/go.mod h1:wTBtrQZA3SoFKMVkp6cn6HMRteIB1VsmHA
 github.com/ipfs/go-ipld-cbor v0.0.4/go.mod h1:BkCduEx3XBCO6t2Sfo5BaHzuok7hbhdMm9Oh8B2Ftq4=
 github.com/ipfs/go-ipld-cbor v0.0.5/go.mod h1:BkCduEx3XBCO6t2Sfo5BaHzuok7hbhdMm9Oh8B2Ftq4=
 <<<<<<< HEAD
+<<<<<<< HEAD
 github.com/ipfs/go-ipld-cbor v0.0.6-0.20211211231443-5d9b9e1f6fa8/go.mod h1:ssdxxaLJPXH7OjF5V4NSjBbcfh+evoR4ukuru0oPXMA=
 github.com/ipfs/go-ipld-cbor v0.0.6 h1:pYuWHyvSpIsOOLw4Jy7NbBkCyzLDcl64Bf/LZW7eBQ0=
 github.com/ipfs/go-ipld-cbor v0.0.6/go.mod h1:ssdxxaLJPXH7OjF5V4NSjBbcfh+evoR4ukuru0oPXMA=
@@ -1047,6 +1070,11 @@ github.com/ipfs/go-ipld-cbor v0.0.6/go.mod h1:ssdxxaLJPXH7OjF5V4NSjBbcfh+evoR4uk
 github.com/ipfs/go-ipld-cbor v0.0.6-0.20211211231443-5d9b9e1f6fa8 h1:Fq+aGXgpnWNULTbgGi+c08MJYnceRXlwP75+3m8mWXU=
 github.com/ipfs/go-ipld-cbor v0.0.6-0.20211211231443-5d9b9e1f6fa8/go.mod h1:ssdxxaLJPXH7OjF5V4NSjBbcfh+evoR4ukuru0oPXMA=
 >>>>>>> e8df32579 (update lotus-soup deps)
+=======
+github.com/ipfs/go-ipld-cbor v0.0.6-0.20211211231443-5d9b9e1f6fa8/go.mod h1:ssdxxaLJPXH7OjF5V4NSjBbcfh+evoR4ukuru0oPXMA=
+github.com/ipfs/go-ipld-cbor v0.0.6 h1:pYuWHyvSpIsOOLw4Jy7NbBkCyzLDcl64Bf/LZW7eBQ0=
+github.com/ipfs/go-ipld-cbor v0.0.6/go.mod h1:ssdxxaLJPXH7OjF5V4NSjBbcfh+evoR4ukuru0oPXMA=
+>>>>>>> 7fb590208 (Deps: Update lotus-soup to point to tagged releases)
 github.com/ipfs/go-ipld-format v0.0.1/go.mod h1:kyJtbkDALmFHv3QR6et67i35QzO3S0dCDnkOJhcZkms=
 github.com/ipfs/go-ipld-format v0.0.2/go.mod h1:4B6+FM2u9OJ9zCV+kSbgFAZlOrv1Hqbf0INGQgiKf9k=
 github.com/ipfs/go-ipld-format v0.2.0 h1:xGlJKkArkmBvowr+GMCX0FEZtkro71K1AwiKnL37mwA=
@@ -1112,6 +1140,7 @@ github.com/ipfs/iptb-plugins v0.3.0 h1:C1rpq1o5lUZtaAOkLIox5akh6ba4uk/3RwWc6ttVx
 github.com/ipfs/iptb-plugins v0.3.0/go.mod h1:5QtOvckeIw4bY86gSH4fgh3p3gCSMn3FmIKr4gaBncA=
 github.com/ipld/go-car v0.1.0/go.mod h1:RCWzaUh2i4mOEkB3W45Vc+9jnS/M6Qay5ooytiBHl3g=
 <<<<<<< HEAD
+<<<<<<< HEAD
 github.com/ipld/go-car v0.3.3-0.20211210032800-e6f244225a16/go.mod h1:/wkKF4908ULT4dFIFIUZYcfjAnj+KFnJvlh8Hsz1FbQ=
 github.com/ipld/go-car v0.3.3 h1:D6y+jvg9h2ZSv7GLUMWUwg5VTLy1E7Ak+uQw5orOg3I=
 github.com/ipld/go-car v0.3.3/go.mod h1:/wkKF4908ULT4dFIFIUZYcfjAnj+KFnJvlh8Hsz1FbQ=
@@ -1120,10 +1149,18 @@ github.com/ipld/go-car/v2 v2.1.1 h1:saaKz4nC0AdfCGHLYKeXLGn8ivoPC54fyS55uyOLKwA=
 github.com/ipld/go-car/v2 v2.1.1/go.mod h1:+2Yvf0Z3wzkv7NeI69i8tuZ+ft7jyjPYIWZzeVNeFcI=
 =======
 github.com/ipld/go-car v0.3.3-0.20211210032800-e6f244225a16 h1:y6CW3GCY5Nm86/9vwphaghTTmOvEtfJjBOAzAIy3/Mk=
+=======
+>>>>>>> 7fb590208 (Deps: Update lotus-soup to point to tagged releases)
 github.com/ipld/go-car v0.3.3-0.20211210032800-e6f244225a16/go.mod h1:/wkKF4908ULT4dFIFIUZYcfjAnj+KFnJvlh8Hsz1FbQ=
-github.com/ipld/go-car/v2 v2.1.1-0.20211211000942-be2525f6bf2d h1:yrjb9jdAj3Lkxgp8af5G3g4Yv4PwWac3+sikmJVF0fA=
+github.com/ipld/go-car v0.3.3 h1:D6y+jvg9h2ZSv7GLUMWUwg5VTLy1E7Ak+uQw5orOg3I=
+github.com/ipld/go-car v0.3.3/go.mod h1:/wkKF4908ULT4dFIFIUZYcfjAnj+KFnJvlh8Hsz1FbQ=
 github.com/ipld/go-car/v2 v2.1.1-0.20211211000942-be2525f6bf2d/go.mod h1:+2Yvf0Z3wzkv7NeI69i8tuZ+ft7jyjPYIWZzeVNeFcI=
+<<<<<<< HEAD
 >>>>>>> e8df32579 (update lotus-soup deps)
+=======
+github.com/ipld/go-car/v2 v2.1.1 h1:saaKz4nC0AdfCGHLYKeXLGn8ivoPC54fyS55uyOLKwA=
+github.com/ipld/go-car/v2 v2.1.1/go.mod h1:+2Yvf0Z3wzkv7NeI69i8tuZ+ft7jyjPYIWZzeVNeFcI=
+>>>>>>> 7fb590208 (Deps: Update lotus-soup to point to tagged releases)
 github.com/ipld/go-codec-dagpb v1.2.0/go.mod h1:6nBN7X7h8EOsEejZGqC7tej5drsdBAXbMHyBT+Fne5s=
 github.com/ipld/go-codec-dagpb v1.3.0 h1:czTcaoAuNNyIYWs6Qe01DJ+sEX7B+1Z0LcXjSatMGe8=
 github.com/ipld/go-codec-dagpb v1.3.0/go.mod h1:ga4JTU3abYApDC3pZ00BC2RSvC3qfBb9MSJkMLSwnhA=
@@ -1135,6 +1172,7 @@ github.com/ipld/go-ipld-prime v0.11.0/go.mod h1:+WIAkokurHmZ/KwzDOMUuoeJgaRQktHt
 github.com/ipld/go-ipld-prime v0.12.3/go.mod h1:PaeLYq8k6dJLmDUSLrzkEpoGV4PEfe/1OtFN/eALOc8=
 github.com/ipld/go-ipld-prime v0.14.0/go.mod h1:9ASQLwUFLptCov6lIYc70GRB4V7UTyLD0IJtrDJe6ZM=
 <<<<<<< HEAD
+<<<<<<< HEAD
 github.com/ipld/go-ipld-prime v0.14.3-0.20211207234443-319145880958/go.mod h1:QcE4Y9n/ZZr8Ijg5bGPT0GqYWgZ1704nH0RDcQtgTP0=
 github.com/ipld/go-ipld-prime v0.14.3 h1:cGUmxSws2IHurn00/iLMDapeXsnf9+FyAtYVy8G/JsQ=
 github.com/ipld/go-ipld-prime v0.14.3/go.mod h1:QcE4Y9n/ZZr8Ijg5bGPT0GqYWgZ1704nH0RDcQtgTP0=
@@ -1142,6 +1180,11 @@ github.com/ipld/go-ipld-prime v0.14.3/go.mod h1:QcE4Y9n/ZZr8Ijg5bGPT0GqYWgZ1704n
 github.com/ipld/go-ipld-prime v0.14.3-0.20211207234443-319145880958 h1:olscE5Sv+ts+N9YLQsIL9k6eS6y6CXMGRl5RCr2Cn/E=
 github.com/ipld/go-ipld-prime v0.14.3-0.20211207234443-319145880958/go.mod h1:QcE4Y9n/ZZr8Ijg5bGPT0GqYWgZ1704nH0RDcQtgTP0=
 >>>>>>> e8df32579 (update lotus-soup deps)
+=======
+github.com/ipld/go-ipld-prime v0.14.3-0.20211207234443-319145880958/go.mod h1:QcE4Y9n/ZZr8Ijg5bGPT0GqYWgZ1704nH0RDcQtgTP0=
+github.com/ipld/go-ipld-prime v0.14.3 h1:cGUmxSws2IHurn00/iLMDapeXsnf9+FyAtYVy8G/JsQ=
+github.com/ipld/go-ipld-prime v0.14.3/go.mod h1:QcE4Y9n/ZZr8Ijg5bGPT0GqYWgZ1704nH0RDcQtgTP0=
+>>>>>>> 7fb590208 (Deps: Update lotus-soup to point to tagged releases)
 github.com/ipld/go-ipld-prime-proto v0.0.0-20191113031812-e32bd156a1e5/go.mod h1:gcvzoEDBjwycpXt3LBE061wT9f46szXGHAmj9uoP6fU=
 github.com/ipld/go-ipld-prime/storage/bsadapter v0.0.0-20211210234204-ce2a1c70cd73 h1:TsyATB2ZRRQGTwafJdgEUQkmjOExRV0DNokcihZxbnQ=
 github.com/ipld/go-ipld-prime/storage/bsadapter v0.0.0-20211210234204-ce2a1c70cd73/go.mod h1:2PJ0JgxyB08t0b2WKrcuqI3di0V+5n6RS/LTUJhkoxY=
