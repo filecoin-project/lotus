@@ -10,6 +10,8 @@ import (
 )
 
 func TestChainCheckpoint(t *testing.T) {
+	ctx := context.Background()
+
 	cg, err := gen.NewGenerator()
 	if err != nil {
 		t.Fatal(err)
@@ -27,11 +29,11 @@ func TestChainCheckpoint(t *testing.T) {
 	cs := cg.ChainStore()
 
 	checkpoint := last
-	checkpointParents, err := cs.GetTipSetFromKey(checkpoint.Parents())
+	checkpointParents, err := cs.GetTipSetFromKey(ctx, checkpoint.Parents())
 	require.NoError(t, err)
 
 	// Set the head to the block before the checkpoint.
-	err = cs.SetHead(checkpointParents)
+	err = cs.SetHead(ctx, checkpointParents)
 	require.NoError(t, err)
 
 	// Verify it worked.
@@ -39,7 +41,7 @@ func TestChainCheckpoint(t *testing.T) {
 	require.True(t, head.Equals(checkpointParents))
 
 	// Try to set the checkpoint in the future, it should fail.
-	err = cs.SetCheckpoint(checkpoint)
+	err = cs.SetCheckpoint(ctx, checkpoint)
 	require.Error(t, err)
 
 	// Then move the head back.
@@ -70,7 +72,7 @@ func TestChainCheckpoint(t *testing.T) {
 	require.True(t, head.Equals(checkpoint))
 
 	// Remove the checkpoint.
-	err = cs.RemoveCheckpoint()
+	err = cs.RemoveCheckpoint(ctx)
 	require.NoError(t, err)
 
 	// Now switch to the other fork.

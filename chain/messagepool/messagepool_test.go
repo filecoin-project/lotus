@@ -233,7 +233,7 @@ func TestMessagePool(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,7 +277,7 @@ func TestCheckMessageBig(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	assert.NoError(t, err)
 
 	to := mock.Address(1001)
@@ -340,7 +340,7 @@ func TestMessagePoolMessagesInEachBlock(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -389,7 +389,7 @@ func TestRevertMessages(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -452,7 +452,7 @@ func TestPruningSimple(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -496,7 +496,7 @@ func TestLoadLocal(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -539,7 +539,7 @@ func TestLoadLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mp, err = New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err = New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -568,7 +568,7 @@ func TestClearAll(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -622,7 +622,7 @@ func TestClearNonLocal(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -683,7 +683,7 @@ func TestUpdates(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
