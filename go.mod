@@ -103,7 +103,7 @@ require (
 	github.com/ipld/go-car v0.3.3-0.20211210032800-e6f244225a16
 	github.com/ipld/go-car/v2 v2.1.1-0.20211211000942-be2525f6bf2d
 	github.com/ipld/go-codec-dagpb v1.3.0
-	github.com/ipld/go-ipld-prime v0.14.3-0.20211207234443-319145880958
+	github.com/ipld/go-ipld-prime v0.14.3
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
 	github.com/jonboulle/clockwork v0.2.2 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0
