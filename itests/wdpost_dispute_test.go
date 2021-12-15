@@ -90,6 +90,7 @@ func TestWindowPostDispute(t *testing.T) {
 	// make sure it has gained power.
 	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)))
 
+	//stm: @MINER_SECTOR_LIST_001
 	evilSectors, err := evilMiner.SectorsList(ctx)
 	require.NoError(t, err)
 	evilSectorNo := evilSectors[0] // only one.

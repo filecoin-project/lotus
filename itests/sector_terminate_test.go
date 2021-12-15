@@ -77,6 +77,7 @@ func TestTerminate(t *testing.T) {
 
 	toTerminate := abi.SectorNumber(3)
 
+	//stm: @SECTOR_TERMINATE_001
 	err = miner.SectorTerminate(ctx, toTerminate)
 	require.NoError(t, err)
 
@@ -89,6 +90,7 @@ loop:
 		t.Log("state: ", si.State, msgTriggerred)
 
 		switch sealing.SectorState(si.State) {
+		//stm: @SECTOR_TERMINATE_PENDING_001
 		case sealing.Terminating:
 			if !msgTriggerred {
 				{

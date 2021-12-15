@@ -61,6 +61,7 @@ func TestPledgeSectors(t *testing.T) {
 }
 
 func TestPledgeBatching(t *testing.T) {
+	//stm: @SECTOR_PRE_COMMIT_FLUSH_001, @SECTOR_COMMIT_FLUSH_001
 	blockTime := 50 * time.Millisecond
 
 	runTest := func(t *testing.T, nSectors int) {

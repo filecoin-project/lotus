@@ -25,6 +25,8 @@ func TestSDRUpgrade(t *testing.T) {
 
 	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
 	//stm: @CHAIN_STATE_NETWORK_VERSION_001
+
+	//stm: @MINER_SECTOR_LIST_001
 	kit.QuietMiningLogs()
 
 	// oldDelay := policy.GetPreCommitChallengeDelay()

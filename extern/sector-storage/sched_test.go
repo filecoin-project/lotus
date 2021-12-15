@@ -1,3 +1,4 @@
+//stm: #unit
 package sectorstorage
 
 import (
@@ -188,6 +189,7 @@ func TestSchedStartStop(t *testing.T) {
 }
 
 func TestSched(t *testing.T) {
+	//stm: @WORKER_JOBS_001
 	ctx, done := context.WithTimeout(context.Background(), 30*time.Second)
 	defer done()
 

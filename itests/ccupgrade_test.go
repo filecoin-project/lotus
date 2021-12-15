@@ -22,6 +22,8 @@ func TestCCUpgrade(t *testing.T) {
 
 	//stm: @CHAIN_STATE_MINER_GET_INFO_001
 	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
+
+	//stm: @MINER_SECTOR_LIST_001
 	kit.QuietMiningLogs()
 
 	for _, height := range []abi.ChainEpoch{
@@ -64,6 +66,7 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) {
 		require.Less(t, 50000, int(si.Expiration))
 	}
 
+	//stm: @SECTOR_CC_UPGRADE_001
 	err = miner.SectorMarkForUpgrade(ctx, sl[0])
 	require.NoError(t, err)
 

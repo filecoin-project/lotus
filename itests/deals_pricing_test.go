@@ -63,11 +63,13 @@ func TestQuotePriceForUnsealedRetrieval(t *testing.T) {
 	require.Equal(t, dealInfo.Size*uint64(ppb), offers[0].MinPrice.Uint64())
 
 	// remove ONLY one unsealed file
+	//stm: @STORAGE_LIST_001, @MINER_SECTOR_LIST_001
 	ss, err := miner.StorageList(context.Background())
 	require.NoError(t, err)
 	_, err = miner.SectorsList(ctx)
 	require.NoError(t, err)
 
+	//stm: @STORAGE_DROP_SECTOR_001, @STORAGE_LIST_001
 iLoop:
 	for storeID, sd := range ss {
 		for _, sector := range sd {
