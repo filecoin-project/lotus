@@ -1043,8 +1043,8 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish-snapcraft:
-          name: temporary-snapcraft-publish-edge
-          channel: edge
+          name: temporary-snapcraft-publish-stable
+          channel: stable
 
   nightly:
     triggers:
