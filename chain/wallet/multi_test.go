@@ -1,3 +1,4 @@
+//stm: #unit
 package wallet
 
 import (
