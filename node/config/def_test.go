@@ -24,7 +24,6 @@ func TestDefaultFullNodeRoundtrip(t *testing.T) {
 		s = buf.String()
 	}
 
-	//stm: @NODE_CONFIG_003
 	c2, err := FromReader(strings.NewReader(s), DefaultFullNode())
 	require.NoError(t, err)
 
@@ -46,7 +45,6 @@ func TestDefaultMinerRoundtrip(t *testing.T) {
 		s = buf.String()
 	}
 
-	//stm: @NODE_CONFIG_004
 	c2, err := FromReader(strings.NewReader(s), DefaultStorageMiner())
 	require.NoError(t, err)
 

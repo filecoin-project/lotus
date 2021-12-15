@@ -15,20 +15,20 @@ import (
 )
 
 func basicTest(t *testing.T, repo Repo) {
-	//stm: @REPO_NET_001
+	NET_001
 	apima, err := repo.APIEndpoint()
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrNoAPIEndpoint, err)
 	}
 	assert.Nil(t, apima, "with no api endpoint, return should be nil")
 
-	//stm: @REPO_MUT_001
+	MUT_001
 	lrepo, err := repo.Lock(FullNode)
 	assert.NoError(t, err, "should be able to lock once")
 	assert.NotNil(t, lrepo, "locked repo shouldn't be nil")
 
 	{
-		//stm: @REPO_MUT_002
+		MUT_002
 		lrepo2, err := repo.Lock(FullNode)
 		if assert.Error(t, err) {
 			assert.Equal(t, ErrRepoAlreadyLocked, err)
@@ -36,7 +36,7 @@ func basicTest(t *testing.T, repo Repo) {
 		assert.Nil(t, lrepo2, "with locked repo errors, nil should be returned")
 	}
 
-	//stm: @REPO_MUT_003
+	MUT_003
 	err = lrepo.Close()
 	assert.NoError(t, err, "should be able to unlock")
 
@@ -47,7 +47,7 @@ func basicTest(t *testing.T, repo Repo) {
 	ma, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/43244")
 	assert.NoError(t, err, "creating multiaddr shouldn't error")
 
-	//stm: @REPO_NET_002
+	NET_002
 	err = lrepo.SetAPIEndpoint(ma)
 	assert.NoError(t, err, "setting multiaddr shouldn't error")
 
@@ -75,7 +75,7 @@ func basicTest(t *testing.T, repo Repo) {
 	err = lrepo.Close()
 	assert.NoError(t, err, "should be able to close")
 
-	//stm: @REPO_NET_003
+	NET_003
 	apima, err = repo.APIEndpoint()
 
 	if assert.Error(t, err) {
@@ -90,27 +90,27 @@ func basicTest(t *testing.T, repo Repo) {
 	assert.NoError(t, err, "should be able to relock")
 	assert.NotNil(t, lrepo, "locked repo shouldn't be nil")
 
-	//stm: @REPO_KEYSTR_001
+	KEYSTR_001
 	kstr, err := lrepo.KeyStore()
 	assert.NoError(t, err, "should be able to get keystore")
 	assert.NotNil(t, lrepo, "keystore shouldn't be nil")
 
-	//stm: @REPO_KEYSTR_002
+	KEYSTR_002
 	list, err := kstr.List()
 	assert.NoError(t, err, "should be able to list key")
 	assert.Empty(t, list, "there should be no keys")
 
-	//stm: @REPO_KEYSTR_003
+	KEYSTR_003
 	err = kstr.Put("k1", k1)
 	assert.NoError(t, err, "should be able to put k1")
 
-	//stm: @REPO_KEYSTR_004
+	KEYSTR_004
 	err = kstr.Put("k1", k1)
 	if assert.Error(t, err, "putting key under the same name should error") {
 		assert.True(t, xerrors.Is(err, types.ErrKeyExists), "returned error is ErrKeyExists")
 	}
 
-	//stm: @REPO_KEYSTR_005
+	KEYSTR_005
 	k1prim, err := kstr.Get("k1")
 	assert.NoError(t, err, "should be able to get k1")
 	assert.Equal(t, k1, k1prim, "returned key should be the same")
@@ -128,7 +128,7 @@ func basicTest(t *testing.T, repo Repo) {
 	assert.NoError(t, err, "should be able to list keys")
 	assert.ElementsMatch(t, []string{"k1", "k2"}, list, "returned elements match")
 
-	//stm: @REPO_KEYSTR_006
+	KEYSTR_006
 	err = kstr.Delete("k2")
 	assert.NoError(t, err, "should be able to delete key")
 

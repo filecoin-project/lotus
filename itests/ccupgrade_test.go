@@ -1,3 +1,4 @@
+//stm: #integration
 package itests
 
 import (
@@ -14,6 +15,13 @@ import (
 )
 
 func TestCCUpgrade(t *testing.T) {
+	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
+	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
+	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
+
+	//stm: @CHAIN_STATE_MINER_GET_INFO_001
+	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
 	kit.QuietMiningLogs()
 
 	for _, height := range []abi.ChainEpoch{
@@ -85,6 +93,7 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) {
 		require.Less(t, 50000, int(exp.OnTime))
 	}
 
+	//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 	dlInfo, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 

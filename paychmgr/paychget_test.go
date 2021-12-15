@@ -68,6 +68,7 @@ func TestPaychGetCreateChannelMsg(t *testing.T) {
 // TestPaychGetCreateChannelThenAddFunds tests creating a channel and then
 // adding funds to it
 func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
+	//stm: @TOKEN_PAYCH_LIST_CHANNELS_001, @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -158,6 +159,7 @@ func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
 // operation is queued up behind a create channel operation, and the create
 // channel fails, then the waiting operation can succeed.
 func TestPaychGetCreateChannelWithErrorThenCreateAgain(t *testing.T) {
+	//stm: @TOKEN_PAYCH_LIST_CHANNELS_001, @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -222,6 +224,7 @@ func TestPaychGetCreateChannelWithErrorThenCreateAgain(t *testing.T) {
 // TestPaychGetRecoverAfterError tests that after a create channel fails, the
 // next attempt to create channel can succeed.
 func TestPaychGetRecoverAfterError(t *testing.T) {
+	//stm: @TOKEN_PAYCH_LIST_CHANNELS_001, @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -274,6 +277,7 @@ func TestPaychGetRecoverAfterError(t *testing.T) {
 // TestPaychGetRecoverAfterAddFundsError tests that after an add funds fails, the
 // next attempt to add funds can succeed.
 func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
+	//stm: @TOKEN_PAYCH_LIST_CHANNELS_001, @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -356,6 +360,7 @@ func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
 // right after the create channel message is sent, the channel will be
 // created when the system restarts.
 func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
+	//stm: @TOKEN_PAYCH_LIST_CHANNELS_001, @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -435,6 +440,7 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 // right after the add funds message is sent, the add funds will be
 // processed when the system restarts.
 func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
+	//stm: @TOKEN_PAYCH_LIST_CHANNELS_001, @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -498,6 +504,7 @@ func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
 // TestPaychGetWait tests that GetPaychWaitReady correctly waits for the
 // channel to be created or funds to be added
 func TestPaychGetWait(t *testing.T) {
+	//stm: @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -555,6 +562,7 @@ func TestPaychGetWait(t *testing.T) {
 
 // TestPaychGetWaitErr tests that GetPaychWaitReady correctly handles errors
 func TestPaychGetWaitErr(t *testing.T) {
+	//stm: @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -602,6 +610,7 @@ func TestPaychGetWaitErr(t *testing.T) {
 // TestPaychGetWaitCtx tests that GetPaychWaitReady returns early if the context
 // is cancelled
 func TestPaychGetWaitCtx(t *testing.T) {
+	//stm: @TOKEN_PAYCH_WAIT_READY_001
 	ctx, cancel := context.WithCancel(context.Background())
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -631,6 +640,7 @@ func TestPaychGetWaitCtx(t *testing.T) {
 // progress and two add funds are queued up behind it, the two add funds
 // will be merged
 func TestPaychGetMergeAddFunds(t *testing.T) {
+	//stm: @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -729,6 +739,7 @@ func TestPaychGetMergeAddFunds(t *testing.T) {
 // TestPaychGetMergeAddFundsCtxCancelOne tests that when a queued add funds
 // request is cancelled, its amount is removed from the total merged add funds
 func TestPaychGetMergeAddFundsCtxCancelOne(t *testing.T) {
+	//stm: @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -826,6 +837,7 @@ func TestPaychGetMergeAddFundsCtxCancelOne(t *testing.T) {
 // TestPaychGetMergeAddFundsCtxCancelAll tests that when all queued add funds
 // requests are cancelled, no add funds message is sent
 func TestPaychGetMergeAddFundsCtxCancelAll(t *testing.T) {
+	//stm: @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -900,6 +912,7 @@ func TestPaychGetMergeAddFundsCtxCancelAll(t *testing.T) {
 // TestPaychAvailableFunds tests that PaychAvailableFunds returns the correct
 // channel state
 func TestPaychAvailableFunds(t *testing.T) {
+	//stm: @TOKEN_PAYCH_WAIT_READY_001, @TOKEN_PAYCH_AVAILABLE_FUNDS_001, @TOKEN_PAYCH_AVAILABLE_FUNDS_002, @TOKEN_PAYCH_AVAILABLE_FUNDS_003
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 

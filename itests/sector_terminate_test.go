@@ -1,3 +1,4 @@
+//stm: #integration
 package itests
 
 import (
@@ -14,6 +15,12 @@ import (
 )
 
 func TestTerminate(t *testing.T) {
+	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
+	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
+	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
+
+	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
 	kit.Expensive(t)
 
 	kit.QuietMiningLogs()
@@ -33,6 +40,7 @@ func TestTerminate(t *testing.T) {
 	ssz, err := miner.ActorSectorSize(ctx, maddr)
 	require.NoError(t, err)
 
+	//stm: @CHAIN_STATE_MINER_POWER_001
 	p, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 	require.Equal(t, p.MinerPower, p.TotalPower)
@@ -45,6 +53,7 @@ func TestTerminate(t *testing.T) {
 	t.Log("wait for power")
 
 	{
+		//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 		// Wait until proven.
 		di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 		require.NoError(t, err)
@@ -58,6 +67,7 @@ func TestTerminate(t *testing.T) {
 
 	nSectors++
 
+	//stm: @CHAIN_STATE_MINER_POWER_001
 	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 	require.Equal(t, p.MinerPower, p.TotalPower)
@@ -111,6 +121,7 @@ loop:
 	// need to wait for message to be mined and applied.
 	time.Sleep(5 * time.Second)
 
+	//stm: @CHAIN_STATE_MINER_POWER_001
 	// check power decreased
 	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
@@ -119,6 +130,7 @@ loop:
 
 	// check in terminated set
 	{
+		//stm: @CHAIN_STATE_MINER_GET_PARTITIONS_001
 		parts, err := client.StateMinerPartitions(ctx, maddr, 1, types.EmptyTSK)
 		require.NoError(t, err)
 		require.Greater(t, len(parts), 0)
@@ -133,6 +145,7 @@ loop:
 		require.Equal(t, uint64(0), bflen(parts[0].LiveSectors))
 	}
 
+	//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
@@ -141,6 +154,7 @@ loop:
 	ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
 	t.Logf("Now head.Height = %d", ts.Height())
 
+	//stm: @CHAIN_STATE_MINER_POWER_001
 	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
