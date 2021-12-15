@@ -20,7 +20,7 @@ require (
 	github.com/dgraph-io/badger/v2 v2.2007.3
 	github.com/dgraph-io/ristretto v0.1.0 // indirect
 	github.com/docker/go-units v0.4.0
-	github.com/drand/drand v1.2.8-0.20211214135232-3ce1e81cdbcc
+	github.com/drand/drand v1.3.0
 	github.com/drand/kyber v1.1.7
 	github.com/dustin/go-humanize v1.0.0
 	github.com/elastic/go-sysinfo v1.7.0
