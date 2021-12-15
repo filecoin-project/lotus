@@ -670,6 +670,14 @@ func (mp *MessagePool) Push(ctx context.Context, m *types.SignedMessage) (cid.Ci
 		return cid.Undef, err
 	}
 
+	// Ensure ID addresses are older than finality
+	if m.Message.To.Protocol() == address.ID {
+		_, err := mp.api.StateAccountKeyAtFinality(ctx, m.Message.To, mp.curTs)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("transaction invalid. Cannot use ID address newer than finality")
+		}
+	}
+
 	// serialize push access to reduce lock contention
 	mp.addSema <- struct{}{}
 	defer func() {
@@ -1045,6 +1053,14 @@ func (mp *MessagePool) PushUntrusted(ctx context.Context, m *types.SignedMessage
 	err := mp.checkMessage(m)
 	if err != nil {
 		return cid.Undef, err
+	}
+
+	// Ensure ID addresses are older than finality
+	if m.Message.To.Protocol() == address.ID {
+		_, err := mp.api.StateAccountKeyAtFinality(ctx, m.Message.To, mp.curTs)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("transaction invalid. Cannot use ID address newer than finality")
+		}
 	}
 
 	// serialize push access to reduce lock contention
