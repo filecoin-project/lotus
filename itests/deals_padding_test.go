@@ -21,6 +21,7 @@ func TestDealPadding(t *testing.T) {
 	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 
 	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
+	//stm: @CLIENT_DATA_GET_DEAL_PIECE_CID_001
 	kit.QuietMiningLogs()
 
 	var blockTime = 250 * time.Millisecond
@@ -64,6 +65,7 @@ func TestDealPadding(t *testing.T) {
 		// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 		time.Sleep(time.Second)
 
+		//stm: @CLIENT_STORAGE_DEALS_GET_001
 		di, err := client.ClientGetDealInfo(ctx, *proposalCid)
 		require.NoError(t, err)
 		require.True(t, di.PieceCID.Equals(pcid))

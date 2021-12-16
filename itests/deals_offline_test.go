@@ -23,6 +23,7 @@ func TestOfflineDealFlow(t *testing.T) {
 	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 
 	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
+	//stm: @CLIENT_DATA_CALCULATE_COMMP_001, @CLIENT_DATA_GENERATE_CAR_001, @CLIENT_DATA_GET_DEAL_PIECE_CID_001, @CLIENT_DATA_GET_DEAL_PIECE_CID_001
 	runTest := func(t *testing.T, fastRet bool, upscale abi.PaddedPieceSize) {
 		ctx := context.Background()
 		client, miner, ens := kit.EnsembleMinimal(t, kit.WithAllSubsystems()) // no mock proofs
@@ -66,6 +67,7 @@ func TestOfflineDealFlow(t *testing.T) {
 
 		proposalCid := dh.StartDeal(ctx, dp)
 
+		//stm: @CLIENT_STORAGE_DEALS_GET_001
 		// Wait for the deal to reach StorageDealCheckForAcceptance on the client
 		cd, err := client.ClientGetDealInfo(ctx, *proposalCid)
 		require.NoError(t, err)

@@ -50,10 +50,12 @@ func TestQuotePriceForUnsealedRetrieval(t *testing.T) {
 	_, res2, _ := dh.MakeOnlineDeal(ctx, kit.MakeFullDealParams{Rseed: 6})
 	require.Equal(t, res1.Root, res2.Root)
 
+	//stm: @CLIENT_STORAGE_DEALS_GET_001
 	// Retrieval
 	dealInfo, err := client.ClientGetDealInfo(ctx, *deal1)
 	require.NoError(t, err)
 
+	//stm: @CLIENT_RETRIEVAL_FIND_001
 	// fetch quote -> zero for unsealed price since unsealed file already exists.
 	offers, err := client.ClientFindData(ctx, res1.Root, &dealInfo.PieceCID)
 	require.NoError(t, err)
@@ -79,6 +81,7 @@ iLoop:
 		}
 	}
 
+	//stm: @CLIENT_RETRIEVAL_FIND_001
 	// get retrieval quote -> zero for unsealed price as unsealed file exists.
 	offers, err = client.ClientFindData(ctx, res1.Root, &dealInfo.PieceCID)
 	require.NoError(t, err)
@@ -98,6 +101,7 @@ iLoop:
 		}
 	}
 
+	//stm: @CLIENT_RETRIEVAL_FIND_001
 	// fetch quote -> non-zero for unseal price as we no more unsealed files.
 	offers, err = client.ClientFindData(ctx, res1.Root, &dealInfo.PieceCID)
 	require.NoError(t, err)

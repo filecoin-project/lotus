@@ -1,3 +1,4 @@
+//stm: #integration
 package itests
 
 import (
@@ -42,6 +43,7 @@ func TestPartialRetrieval(t *testing.T) {
 	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 
 	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
+	//stm: @CLIENT_RETRIEVAL_RETRIEVE_001
 	ctx := context.Background()
 
 	policy.SetPreCommitChallengeDelay(2)
@@ -79,6 +81,7 @@ func TestPartialRetrieval(t *testing.T) {
 			}
 			proposalCid := dh.StartDeal(ctx, dp)
 
+			//stm: @CLIENT_STORAGE_DEALS_GET_001
 			// Wait for the deal to reach StorageDealCheckForAcceptance on the client
 			cd, err := client.ClientGetDealInfo(ctx, *proposalCid)
 			require.NoError(t, err)
@@ -87,12 +90,14 @@ func TestPartialRetrieval(t *testing.T) {
 				return cd.State == storagemarket.StorageDealCheckForAcceptance
 			}, 30*time.Second, 1*time.Second, "actual deal status is %s", storagemarket.DealStates[cd.State])
 
+			//stm: @MINER_IMPORT_DEAL_DATA_001
 			err = miner.DealsImportData(ctx, *proposalCid, sourceCar)
 			require.NoError(t, err)
 
 			// Wait for the deal to be published, we should be able to start retrieval right away
 			dh.WaitDealPublished(ctx, proposalCid)
 
+			//stm: @CLIENT_RETRIEVAL_FIND_001
 			offers, err := client.ClientFindData(ctx, carRoot, nil)
 			require.NoError(t, err)
 			require.NotEmpty(t, offers, "no offers")
