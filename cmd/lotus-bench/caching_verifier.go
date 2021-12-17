@@ -5,10 +5,11 @@ import (
 	"context"
 	"errors"
 
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	"github.com/ipfs/go-datastore"
 	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -97,8 +98,12 @@ func (cv *cachingVerifier) GenerateWinningPoStSectorChallenge(ctx context.Contex
 	return cv.backend.GenerateWinningPoStSectorChallenge(ctx, proofType, a, rnd, u)
 }
 
-func (cv cachingVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
+func (cv cachingVerifier) VerifyAggregateSeals(aggregate proof7.AggregateSealVerifyProofAndInfos) (bool, error) {
 	return cv.backend.VerifyAggregateSeals(aggregate)
+}
+
+func (cv cachingVerifier) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (bool, error) {
+	return cv.backend.VerifyReplicaUpdate(update)
 }
 
 var _ ffiwrapper.Verifier = (*cachingVerifier)(nil)

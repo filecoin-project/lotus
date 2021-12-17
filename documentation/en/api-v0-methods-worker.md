@@ -11,12 +11,19 @@
   * [AddPiece](#AddPiece)
 * [Finalize](#Finalize)
   * [FinalizeSector](#FinalizeSector)
+* [Generate](#Generate)
+  * [GenerateSectorKeyFromData](#GenerateSectorKeyFromData)
 * [Move](#Move)
   * [MoveStorage](#MoveStorage)
 * [Process](#Process)
   * [ProcessSession](#ProcessSession)
+* [Prove](#Prove)
+  * [ProveReplicaUpdate1](#ProveReplicaUpdate1)
+  * [ProveReplicaUpdate2](#ProveReplicaUpdate2)
 * [Release](#Release)
   * [ReleaseUnsealed](#ReleaseUnsealed)
+* [Replica](#Replica)
+  * [ReplicaUpdate](#ReplicaUpdate)
 * [Seal](#Seal)
   * [SealCommit1](#SealCommit1)
   * [SealCommit2](#SealCommit2)
@@ -792,6 +799,41 @@ Response:
 }
 ```
 
+## Generate
+
+
+### GenerateSectorKeyFromData
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
+  },
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+{
+  "Sector": {
+    "Miner": 1000,
+    "Number": 9
+  },
+  "ID": "07070707-0707-0707-0707-070707070707"
+}
+```
+
 ## Move
 
 
@@ -839,10 +881,123 @@ Inputs: `null`
 
 Response: `"07070707-0707-0707-0707-070707070707"`
 
+## Prove
+
+
+### ProveReplicaUpdate1
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
+  },
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+{
+  "Sector": {
+    "Miner": 1000,
+    "Number": 9
+  },
+  "ID": "07070707-0707-0707-0707-070707070707"
+}
+```
+
+### ProveReplicaUpdate2
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
+  },
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  null
+]
+```
+
+Response:
+```json
+{
+  "Sector": {
+    "Miner": 1000,
+    "Number": 9
+  },
+  "ID": "07070707-0707-0707-0707-070707070707"
+}
+```
+
 ## Release
 
 
 ### ReleaseUnsealed
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
+  },
+  null
+]
+```
+
+Response:
+```json
+{
+  "Sector": {
+    "Miner": 1000,
+    "Number": 9
+  },
+  "ID": "07070707-0707-0707-0707-070707070707"
+}
+```
+
+## Replica
+
+
+### ReplicaUpdate
 
 
 Perms: admin
