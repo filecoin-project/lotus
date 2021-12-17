@@ -2,6 +2,7 @@ package filcns
 
 import (
 	"context"
+	"os"
 	"sync/atomic"
 
 	"github.com/filecoin-project/lotus/chain/rand"
@@ -92,7 +93,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 		partDone()
 	}()
 
-	makeVmWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (*vm.VM, error) {
+	makeVmWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (vm.VMI, error) {
 		vmopt := &vm.VMOpts{
 			StateBase:      base,
 			Epoch:          e,
@@ -106,10 +107,14 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 			LookbackState:  stmgr.LookbackStateGetterForTipset(sm, ts),
 		}
 
+		if os.Getenv("LOTUS_USE_FVM_DOESNT_WORK_YET") == "1" {
+			return vm.NewFVM(ctx, vmopt)
+		}
+
 		return sm.VMConstructor()(ctx, vmopt)
 	}
 
-	runCron := func(vmCron *vm.VM, epoch abi.ChainEpoch) error {
+	runCron := func(vmCron vm.VMI, epoch abi.ChainEpoch) error {
 		cronMsg := &types.Message{
 			To:         cron.Address,
 			From:       builtin.SystemActorAddr,

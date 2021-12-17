@@ -201,6 +201,8 @@ type (
 	LookbackStateGetter  func(context.Context, abi.ChainEpoch) (*state.StateTree, error)
 )
 
+var _ VMI = (*VM)(nil)
+
 type VM struct {
 	cstate         *state.StateTree
 	cst            *cbor.BasicIpldStore
