@@ -78,7 +78,7 @@ var (
 )
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
-	maddrb, err := ds.Get(datastore.NewKey("miner-address"))
+	maddrb, err := ds.Get(context.TODO(), datastore.NewKey("miner-address"))
 	if err != nil {
 		return address.Undef, err
 	}
@@ -300,7 +300,7 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 func HandleMigrateProviderFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, node api.FullNode, minerAddress dtypes.MinerAddress) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			b, err := ds.Get(datastore.NewKey("/marketfunds/provider"))
+			b, err := ds.Get(ctx, datastore.NewKey("/marketfunds/provider"))
 			if err != nil {
 				if xerrors.Is(err, datastore.ErrNotFound) {
 					return nil
@@ -331,7 +331,7 @@ func HandleMigrateProviderFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, node api.
 				return nil
 			}
 
-			return ds.Delete(datastore.NewKey("/marketfunds/provider"))
+			return ds.Delete(ctx, datastore.NewKey("/marketfunds/provider"))
 		},
 	})
 }

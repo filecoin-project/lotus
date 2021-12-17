@@ -75,7 +75,7 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 
 			count++
 
-			has, err := s.hot.Has(c)
+			has, err := s.hot.Has(s.ctx, c)
 			if err != nil {
 				return err
 			}
@@ -84,7 +84,7 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 				return nil
 			}
 
-			blk, err := s.cold.Get(c)
+			blk, err := s.cold.Get(s.ctx, c)
 			if err != nil {
 				if err == bstore.ErrNotFound {
 					missing++
@@ -97,7 +97,7 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 
 			batchHot = append(batchHot, blk)
 			if len(batchHot) == batchSize {
-				err = s.hot.PutMany(batchHot)
+				err = s.hot.PutMany(s.ctx, batchHot)
 				if err != nil {
 					return err
 				}
@@ -112,7 +112,7 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 	}
 
 	if len(batchHot) > 0 {
-		err = s.hot.PutMany(batchHot)
+		err = s.hot.PutMany(s.ctx, batchHot)
 		if err != nil {
 			return err
 		}
@@ -121,13 +121,13 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 	log.Infow("warmup stats", "visited", count, "warm", xcount, "missing", missing)
 
 	s.markSetSize = count + count>>2 // overestimate a bit
-	err = s.ds.Put(markSetSizeKey, int64ToBytes(s.markSetSize))
+	err = s.ds.Put(s.ctx, markSetSizeKey, int64ToBytes(s.markSetSize))
 	if err != nil {
 		log.Warnf("error saving mark set size: %s", err)
 	}
 
 	// save the warmup epoch
-	err = s.ds.Put(warmupEpochKey, epochToBytes(epoch))
+	err = s.ds.Put(s.ctx, warmupEpochKey, epochToBytes(epoch))
 	if err != nil {
 		return xerrors.Errorf("error saving warm up epoch: %w", err)
 	}
@@ -136,7 +136,7 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 	s.mx.Unlock()
 
 	// also save the compactionIndex, as this is used as an indicator of warmup for upgraded nodes
-	err = s.ds.Put(compactionIndexKey, int64ToBytes(s.compactionIndex))
+	err = s.ds.Put(s.ctx, compactionIndexKey, int64ToBytes(s.compactionIndex))
 	if err != nil {
 		return xerrors.Errorf("error saving compaction index: %w", err)
 	}

@@ -48,7 +48,7 @@ func (sr *stateRand) GetBeaconRandomnessTipset(ctx context.Context, round abi.Ch
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("round", int64(round)))
 
-	ts, err := sr.cs.LoadTipSet(types.NewTipSetKey(sr.blks...))
+	ts, err := sr.cs.LoadTipSet(ctx, types.NewTipSetKey(sr.blks...))
 	if err != nil {
 		return nil, err
 	}
@@ -75,7 +75,7 @@ func (sr *stateRand) GetChainRandomness(ctx context.Context, pers crypto.DomainS
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("round", int64(round)))
 
-	ts, err := sr.cs.LoadTipSet(types.NewTipSetKey(sr.blks...))
+	ts, err := sr.cs.LoadTipSet(ctx, types.NewTipSetKey(sr.blks...))
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +132,7 @@ func (sr *stateRand) GetBeaconRandomnessV1(ctx context.Context, pers crypto.Doma
 		return nil, err
 	}
 
-	be, err := sr.cs.GetLatestBeaconEntry(randTs)
+	be, err := sr.cs.GetLatestBeaconEntry(ctx, randTs)
 	if err != nil {
 		return nil, err
 	}
@@ -149,7 +149,7 @@ func (sr *stateRand) GetBeaconRandomnessV2(ctx context.Context, pers crypto.Doma
 		return nil, err
 	}
 
-	be, err := sr.cs.GetLatestBeaconEntry(randTs)
+	be, err := sr.cs.GetLatestBeaconEntry(ctx, randTs)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +190,7 @@ func (sr *stateRand) extractBeaconEntryForEpoch(ctx context.Context, filecoinEpo
 			}
 		}
 
-		next, err := sr.cs.LoadTipSet(randTs.Parents())
+		next, err := sr.cs.LoadTipSet(ctx, randTs.Parents())
 		if err != nil {
 			return nil, xerrors.Errorf("failed to load parents when searching back for beacon entry: %w", err)
 		}

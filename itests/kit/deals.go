@@ -373,7 +373,7 @@ consumeEvents:
 
 func (dh *DealHarness) ExtractFileFromCAR(ctx context.Context, file *os.File) (out *os.File) {
 	bserv := dstest.Bserv()
-	ch, err := car.LoadCar(bserv.Blockstore(), file)
+	ch, err := car.LoadCar(ctx, bserv.Blockstore(), file)
 	require.NoError(dh.t, err)
 
 	b, err := bserv.GetBlock(ctx, ch.Roots[0])

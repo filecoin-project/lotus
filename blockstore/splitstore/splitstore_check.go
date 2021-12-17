@@ -96,7 +96,7 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 				return errStopWalk
 			}
 
-			has, err := s.hot.Has(c)
+			has, err := s.hot.Has(s.ctx, c)
 			if err != nil {
 				return xerrors.Errorf("error checking hotstore: %w", err)
 			}
@@ -105,7 +105,7 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 				return nil
 			}
 
-			has, err = s.cold.Has(c)
+			has, err = s.cold.Has(s.ctx, c)
 			if err != nil {
 				return xerrors.Errorf("error checking coldstore: %w", err)
 			}

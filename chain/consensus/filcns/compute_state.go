@@ -291,7 +291,7 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context, sm *stmgr.StateManag
 	var parentEpoch abi.ChainEpoch
 	pstate := blks[0].ParentStateRoot
 	if blks[0].Height > 0 {
-		parent, err := sm.ChainStore().GetBlock(blks[0].Parents[0])
+		parent, err := sm.ChainStore().GetBlock(ctx, blks[0].Parents[0])
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("getting parent block: %w", err)
 		}
@@ -301,7 +301,7 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context, sm *stmgr.StateManag
 
 	r := rand.NewStateRand(sm.ChainStore(), ts.Cids(), sm.Beacon())
 
-	blkmsgs, err := sm.ChainStore().BlockMsgsForTipset(ts)
+	blkmsgs, err := sm.ChainStore().BlockMsgsForTipset(ctx, ts)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("getting block messages for tipset: %w", err)
 	}

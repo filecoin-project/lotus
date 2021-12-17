@@ -1,6 +1,7 @@
 package backupds
 
 import (
+	"context"
 	"crypto/sha256"
 	"io"
 	"sync"
@@ -52,7 +53,7 @@ func Wrap(child datastore.Batching, logdir string) (*Datastore, error) {
 
 // Writes a datastore dump into the provided writer as
 // [array(*) of [key, value] tuples, checksum]
-func (d *Datastore) Backup(out io.Writer) error {
+func (d *Datastore) Backup(ctx context.Context, out io.Writer) error {
 	scratch := make([]byte, 9)
 
 	if err := cbg.WriteMajorTypeHeaderBuf(scratch, out, cbg.MajArray, 2); err != nil {
@@ -75,7 +76,7 @@ func (d *Datastore) Backup(out io.Writer) error {
 		log.Info("Starting datastore backup")
 		defer log.Info("Datastore backup done")
 
-		qr, err := d.child.Query(query.Query{})
+		qr, err := d.child.Query(ctx, query.Query{})
 		if err != nil {
 			return xerrors.Errorf("query: %w", err)
 		}
@@ -132,23 +133,23 @@ func (d *Datastore) Backup(out io.Writer) error {
 
 // proxy
 
-func (d *Datastore) Get(key datastore.Key) (value []byte, err error) {
-	return d.child.Get(key)
+func (d *Datastore) Get(ctx context.Context, key datastore.Key) (value []byte, err error) {
+	return d.child.Get(ctx, key)
 }
 
-func (d *Datastore) Has(key datastore.Key) (exists bool, err error) {
-	return d.child.Has(key)
+func (d *Datastore) Has(ctx context.Context, key datastore.Key) (exists bool, err error) {
+	return d.child.Has(ctx, key)
 }
 
-func (d *Datastore) GetSize(key datastore.Key) (size int, err error) {
-	return d.child.GetSize(key)
+func (d *Datastore) GetSize(ctx context.Context, key datastore.Key) (size int, err error) {
+	return d.child.GetSize(ctx, key)
 }
 
-func (d *Datastore) Query(q query.Query) (query.Results, error) {
-	return d.child.Query(q)
+func (d *Datastore) Query(ctx context.Context, q query.Query) (query.Results, error) {
+	return d.child.Query(ctx, q)
 }
 
-func (d *Datastore) Put(key datastore.Key, value []byte) error {
+func (d *Datastore) Put(ctx context.Context, key datastore.Key, value []byte) error {
 	d.backupLk.RLock()
 	defer d.backupLk.RUnlock()
 
@@ -160,21 +161,21 @@ func (d *Datastore) Put(key datastore.Key, value []byte) error {
 		}
 	}
 
-	return d.child.Put(key, value)
+	return d.child.Put(ctx, key, value)
 }
 
-func (d *Datastore) Delete(key datastore.Key) error {
+func (d *Datastore) Delete(ctx context.Context, key datastore.Key) error {
 	d.backupLk.RLock()
 	defer d.backupLk.RUnlock()
 
-	return d.child.Delete(key)
+	return d.child.Delete(ctx, key)
 }
 
-func (d *Datastore) Sync(prefix datastore.Key) error {
+func (d *Datastore) Sync(ctx context.Context, prefix datastore.Key) error {
 	d.backupLk.RLock()
 	defer d.backupLk.RUnlock()
 
-	return d.child.Sync(prefix)
+	return d.child.Sync(ctx, prefix)
 }
 
 func (d *Datastore) CloseLog() error {
@@ -196,8 +197,8 @@ func (d *Datastore) Close() error {
 	)
 }
 
-func (d *Datastore) Batch() (datastore.Batch, error) {
-	b, err := d.child.Batch()
+func (d *Datastore) Batch(ctx context.Context) (datastore.Batch, error) {
+	b, err := d.child.Batch(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +216,7 @@ type bbatch struct {
 	rlk sync.Locker
 }
 
-func (b *bbatch) Put(key datastore.Key, value []byte) error {
+func (b *bbatch) Put(ctx context.Context, key datastore.Key, value []byte) error {
 	if b.d.log != nil {
 		b.d.log <- Entry{
 			Key:       []byte(key.String()),
@@ -224,18 +225,18 @@ func (b *bbatch) Put(key datastore.Key, value []byte) error {
 		}
 	}
 
-	return b.b.Put(key, value)
+	return b.b.Put(ctx, key, value)
 }
 
-func (b *bbatch) Delete(key datastore.Key) error {
-	return b.b.Delete(key)
+func (b *bbatch) Delete(ctx context.Context, key datastore.Key) error {
+	return b.b.Delete(ctx, key)
 }
 
-func (b *bbatch) Commit() error {
+func (b *bbatch) Commit(ctx context.Context) error {
 	b.rlk.Lock()
 	defer b.rlk.Unlock()
 
-	return b.b.Commit()
+	return b.b.Commit(ctx)
 }
 
 var _ datastore.Batch = &bbatch{}

@@ -155,7 +155,7 @@ func GetLookbackTipSetForRound(ctx context.Context, sm *StateManager, ts *types.
 
 	}
 
-	lbts, err := sm.ChainStore().GetTipSetFromKey(nextTs.Parents())
+	lbts, err := sm.ChainStore().GetTipSetFromKey(ctx, nextTs.Parents())
 	if err != nil {
 		return nil, cid.Undef, xerrors.Errorf("failed to resolve lookback tipset: %w", err)
 	}

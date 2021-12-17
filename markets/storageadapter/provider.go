@@ -228,7 +228,7 @@ func (n *ProviderNodeAdapter) GetBalance(ctx context.Context, addr address.Addre
 
 // TODO: why doesnt this method take in a sector ID?
 func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context, dealID abi.DealID, encodedTs shared.TipSetToken) (sectorID abi.SectorNumber, offset abi.PaddedPieceSize, length abi.PaddedPieceSize, err error) {
-	refs, err := n.secb.GetRefs(dealID)
+	refs, err := n.secb.GetRefs(ctx, dealID)
 	if err != nil {
 		return 0, 0, 0, err
 	}
