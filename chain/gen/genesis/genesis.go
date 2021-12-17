@@ -479,6 +479,10 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 	verifNeeds := make(map[address.Address]abi.PaddedPieceSize)
 	var sum abi.PaddedPieceSize
 
+	csc := func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error) {
+		return big.Zero(), nil
+	}
+
 	vmopt := vm.VMOpts{
 		StateBase:      stateroot,
 		Epoch:          0,
@@ -486,7 +490,7 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 		Bstore:         cs.StateBlockstore(),
 		Actors:         filcns.NewActorRegistry(),
 		Syscalls:       mkFakedSigSyscalls(sys),
-		CircSupplyCalc: nil,
+		CircSupplyCalc: csc,
 		NtwkVersion: func(_ context.Context, _ abi.ChainEpoch) network.Version {
 			return nv
 		},

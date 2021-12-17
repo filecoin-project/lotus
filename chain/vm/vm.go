@@ -202,9 +202,7 @@ type (
 )
 
 type VM struct {
-	cstate *state.StateTree
-	// TODO: Is base actually used? Can we delete it?
-	base           cid.Cid
+	cstate         *state.StateTree
 	cst            *cbor.BasicIpldStore
 	buf            *blockstore.BufferedBlockstore
 	blockHeight    abi.ChainEpoch
@@ -214,6 +212,7 @@ type VM struct {
 	ntwkVersion    NtwkVersionGetter
 	baseFee        abi.TokenAmount
 	lbStateGet     LookbackStateGetter
+	baseCircSupply abi.TokenAmount
 
 	Syscalls SyscallBuilder
 }
@@ -239,9 +238,13 @@ func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
 		return nil, err
 	}
 
+	baseCirc, err := opts.CircSupplyCalc(ctx, opts.Epoch, state)
+	if err != nil {
+		return nil, err
+	}
+
 	return &VM{
 		cstate:         state,
-		base:           opts.StateBase,
 		cst:            cst,
 		buf:            buf,
 		blockHeight:    opts.Epoch,
@@ -251,6 +254,7 @@ func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
 		ntwkVersion:    opts.NtwkVersion,
 		Syscalls:       opts.Syscalls,
 		baseFee:        opts.BaseFee,
+		baseCircSupply: baseCirc,
 		lbStateGet:     opts.LookbackState,
 	}, nil
 }
@@ -859,7 +863,12 @@ func (vm *VM) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Ver
 }
 
 func (vm *VM) GetCircSupply(ctx context.Context) (abi.TokenAmount, error) {
-	return vm.circSupplyCalc(ctx, vm.blockHeight, vm.cstate)
+	// Before v15, this was recalculated on each invocation as the state tree was mutated
+	if vm.GetNtwkVersion(ctx, vm.blockHeight) <= network.Version14 {
+		return vm.circSupplyCalc(ctx, vm.blockHeight, vm.cstate)
+	}
+
+	return vm.baseCircSupply, nil
 }
 
 func (vm *VM) incrementNonce(addr address.Address) error {
