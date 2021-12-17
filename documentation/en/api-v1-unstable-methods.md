@@ -1425,6 +1425,7 @@ Response:
   "Size": 42,
   "MinPrice": "0",
   "UnsealPrice": "0",
+  "PricePerByte": "0",
   "PaymentInterval": 42,
   "PaymentIntervalIncrease": 42,
   "Miner": "f01234",

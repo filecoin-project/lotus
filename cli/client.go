@@ -92,6 +92,7 @@ var clientCmd = &cli.Command{
 		WithCategory("data", clientLocalCmd),
 		WithCategory("data", clientStat),
 		WithCategory("retrieval", clientFindCmd),
+		WithCategory("retrieval", clientQueryRetrievalAskCmd),
 		WithCategory("retrieval", clientRetrieveCmd),
 		WithCategory("retrieval", clientRetrieveCatCmd),
 		WithCategory("retrieval", clientRetrieveLsCmd),
@@ -1025,6 +1026,63 @@ var clientFindCmd = &cli.Command{
 			}
 			fmt.Printf("RETRIEVAL %s@%s-%s-%s\n", offer.Miner, offer.MinerPeer.ID, types.FIL(offer.MinPrice), types.SizeStr(types.NewInt(offer.Size)))
 		}
+
+		return nil
+	},
+}
+
+var clientQueryRetrievalAskCmd = &cli.Command{
+	Name:      "query-retrieval-ask",
+	Usage:     "Get a miner's retrieval ask",
+	ArgsUsage: "[minerAddress] [data CID]",
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:  "size",
+			Usage: "data size in bytes",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+		if cctx.NArg() != 2 {
+			afmt.Println("Usage: query-retrieval-ask [minerAddress] [data CID]")
+			return nil
+		}
+
+		maddr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		dataCid, err := cid.Parse(cctx.Args().Get(1))
+		if err != nil {
+			return fmt.Errorf("parsing data cid: %w", err)
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		ask, err := api.ClientMinerQueryOffer(ctx, maddr, dataCid, nil)
+		if err != nil {
+			return err
+		}
+
+		afmt.Printf("Ask: %s\n", maddr)
+		afmt.Printf("Unseal price: %s\n", types.FIL(ask.UnsealPrice))
+		afmt.Printf("Price per byte: %s\n", types.FIL(ask.PricePerByte))
+		afmt.Printf("Payment interval: %s\n", types.SizeStr(types.NewInt(ask.PaymentInterval)))
+		afmt.Printf("Payment interval increase: %s\n", types.SizeStr(types.NewInt(ask.PaymentIntervalIncrease)))
+
+		size := cctx.Int64("size")
+		if size == 0 {
+			return nil
+		}
+		transferPrice := types.BigMul(ask.PricePerByte, types.NewInt(uint64(size)))
+		totalPrice := types.BigAdd(ask.UnsealPrice, transferPrice)
+		afmt.Printf("Total price for %d bytes: %s\n", size, types.FIL(totalPrice))
 
 		return nil
 	},
