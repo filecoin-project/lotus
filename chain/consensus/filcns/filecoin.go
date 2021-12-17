@@ -171,7 +171,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 		}
 
 		if stateroot != h.ParentStateRoot {
-			msgs, err := filec.store.MessagesForTipset(baseTs)
+			msgs, err := filec.store.MessagesForTipset(ctx, baseTs)
 			if err != nil {
 				log.Error("failed to load messages for tipset during tipset state mismatch error: ", err)
 			} else {
@@ -519,7 +519,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 			return xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
 		}
 
-		c, err := store.PutMessage(tmpbs, m)
+		c, err := store.PutMessage(ctx, tmpbs, m)
 		if err != nil {
 			return xerrors.Errorf("failed to store message %s: %w", m.Cid(), err)
 		}
@@ -553,7 +553,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 			return xerrors.Errorf("secpk message %s has invalid signature: %w", m.Cid(), err)
 		}
 
-		c, err := store.PutMessage(tmpbs, m)
+		c, err := store.PutMessage(ctx, tmpbs, m)
 		if err != nil {
 			return xerrors.Errorf("failed to store message %s: %w", m.Cid(), err)
 		}

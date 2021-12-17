@@ -87,7 +87,7 @@ func (a *MpoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*ty
 
 			// different blocks in tipsets of the same height
 			// we exclude messages that have been included in blocks in the mpool tipset
-			have, err := a.Mpool.MessagesForBlocks(mpts.Blocks())
+			have, err := a.Mpool.MessagesForBlocks(ctx, mpts.Blocks())
 			if err != nil {
 				return nil, xerrors.Errorf("getting messages for base ts: %w", err)
 			}
@@ -97,7 +97,7 @@ func (a *MpoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*ty
 			}
 		}
 
-		msgs, err := a.Mpool.MessagesForBlocks(ts.Blocks())
+		msgs, err := a.Mpool.MessagesForBlocks(ctx, ts.Blocks())
 		if err != nil {
 			return nil, xerrors.Errorf(": %w", err)
 		}

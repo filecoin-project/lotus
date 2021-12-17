@@ -299,7 +299,7 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context, sm *stmgr.StateManag
 
 	r := rand.NewStateRand(sm.ChainStore(), ts.Cids(), sm.Beacon())
 
-	blkmsgs, err := sm.ChainStore().BlockMsgsForTipset(ts)
+	blkmsgs, err := sm.ChainStore().BlockMsgsForTipset(ctx, ts)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("getting block messages for tipset: %w", err)
 	}

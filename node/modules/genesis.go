@@ -2,8 +2,9 @@ package modules
 
 import (
 	"bytes"
-	"context"
 	"os"
+
+	"go.uber.org/fx"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipld/go-car"
@@ -12,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
 
 func ErrorGenesis() Genesis {
@@ -20,17 +22,18 @@ func ErrorGenesis() Genesis {
 	}
 }
 
-func LoadGenesis(genBytes []byte) func(dtypes.ChainBlockstore) Genesis {
-	return func(bs dtypes.ChainBlockstore) Genesis {
+func LoadGenesis(genBytes []byte) func(fx.Lifecycle, helpers.MetricsCtx, dtypes.ChainBlockstore) Genesis {
+	return func(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.ChainBlockstore) Genesis {
 		return func() (header *types.BlockHeader, e error) {
-			c, err := car.LoadCar(context.Background(), bs, bytes.NewReader(genBytes))
+			ctx := helpers.LifecycleCtx(mctx, lc)
+			c, err := car.LoadCar(ctx, bs, bytes.NewReader(genBytes))
 			if err != nil {
 				return nil, xerrors.Errorf("loading genesis car file failed: %w", err)
 			}
 			if len(c.Roots) != 1 {
 				return nil, xerrors.New("expected genesis file to have one root")
 			}
-			root, err := bs.Get(context.Background(), c.Roots[0])
+			root, err := bs.Get(ctx, c.Roots[0])
 			if err != nil {
 				return nil, err
 			}
@@ -46,8 +49,9 @@ func LoadGenesis(genBytes []byte) func(dtypes.ChainBlockstore) Genesis {
 
 func DoSetGenesis(_ dtypes.AfterGenesisSet) {}
 
-func SetGenesis(cs *store.ChainStore, g Genesis) (dtypes.AfterGenesisSet, error) {
-	genFromRepo, err := cs.GetGenesis(context.Background())
+func SetGenesis(lc fx.Lifecycle, mctx helpers.MetricsCtx, cs *store.ChainStore, g Genesis) (dtypes.AfterGenesisSet, error) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+	genFromRepo, err := cs.GetGenesis(ctx)
 	if err == nil {
 		if os.Getenv("LOTUS_SKIP_GENESIS_CHECK") != "_yes_" {
 			expectedGenesis, err := g()
@@ -70,5 +74,5 @@ func SetGenesis(cs *store.ChainStore, g Genesis) (dtypes.AfterGenesisSet, error)
 		return dtypes.AfterGenesisSet{}, xerrors.Errorf("genesis func failed: %w", err)
 	}
 
-	return dtypes.AfterGenesisSet{}, cs.SetGenesis(context.Background(), genesis)
+	return dtypes.AfterGenesisSet{}, cs.SetGenesis(ctx, genesis)
 }

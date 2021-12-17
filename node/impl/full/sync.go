@@ -64,12 +64,12 @@ func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) erro
 	}
 
 	// TODO: should we have some sort of fast path to adding a local block?
-	bmsgs, err := a.Syncer.ChainStore().LoadMessagesFromCids(blk.BlsMessages)
+	bmsgs, err := a.Syncer.ChainStore().LoadMessagesFromCids(ctx, blk.BlsMessages)
 	if err != nil {
 		return xerrors.Errorf("failed to load bls messages: %w", err)
 	}
 
-	smsgs, err := a.Syncer.ChainStore().LoadSignedMessagesFromCids(blk.SecpkMessages)
+	smsgs, err := a.Syncer.ChainStore().LoadSignedMessagesFromCids(ctx, blk.SecpkMessages)
 	if err != nil {
 		return xerrors.Errorf("failed to load secpk message: %w", err)
 	}
@@ -142,7 +142,7 @@ func (a *SyncAPI) SyncValidateTipset(ctx context.Context, tsk types.TipSetKey) (
 		return false, err
 	}
 
-	fts, err := a.Syncer.ChainStore().TryFillTipSet(ts)
+	fts, err := a.Syncer.ChainStore().TryFillTipSet(ctx, ts)
 	if err != nil {
 		return false, err
 	}

@@ -82,14 +82,14 @@ type GasMeta struct {
 	Limit int64
 }
 
-func (g *GasPriceCache) GetTSGasStats(cstore *store.ChainStore, ts *types.TipSet) ([]GasMeta, error) {
+func (g *GasPriceCache) GetTSGasStats(ctx context.Context, cstore *store.ChainStore, ts *types.TipSet) ([]GasMeta, error) {
 	i, has := g.c.Get(ts.Key())
 	if has {
 		return i.([]GasMeta), nil
 	}
 
 	var prices []GasMeta
-	msgs, err := cstore.MessagesForTipset(ts)
+	msgs, err := cstore.MessagesForTipset(ctx, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("loading messages: %w", err)
 	}
@@ -204,7 +204,7 @@ func gasEstimateGasPremium(ctx context.Context, cstore *store.ChainStore, cache 
 		}
 
 		blocks += len(pts.Blocks())
-		meta, err := cache.GetTSGasStats(cstore, pts)
+		meta, err := cache.GetTSGasStats(ctx, cstore, pts)
 		if err != nil {
 			return types.BigInt{}, err
 		}

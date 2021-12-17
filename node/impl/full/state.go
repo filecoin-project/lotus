@@ -556,7 +556,7 @@ func (m *StateModule) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence 
 
 	var returndec interface{}
 	if recpt.ExitCode == 0 && len(recpt.Return) > 0 {
-		cmsg, err := m.Chain.GetCMessage(msg)
+		cmsg, err := m.Chain.GetCMessage(ctx, msg)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to load message after successful receipt search: %w", err)
 		}
@@ -874,7 +874,7 @@ func (a *StateAPI) StateListMessages(ctx context.Context, match *api.MessageMatc
 
 	var out []cid.Cid
 	for ts.Height() >= toheight {
-		msgs, err := a.Chain.MessagesForTipset(ts)
+		msgs, err := a.Chain.MessagesForTipset(ctx, ts)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get messages for tipset (%s): %w", ts.Key(), err)
 		}

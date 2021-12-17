@@ -474,7 +474,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return xerrors.Errorf("failed to open blockstore: %w", err)
 	}
 
-	mds, err := lr.Datastore(context.TODO(), "/metadata")
+	mds, err := lr.Datastore(ctx, "/metadata")
 	if err != nil {
 		return err
 	}
@@ -499,14 +499,14 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	bar.Units = pb.U_BYTES
 
 	bar.Start()
-	ts, err := cst.Import(br)
+	ts, err := cst.Import(ctx, br)
 	bar.Finish()
 
 	if err != nil {
 		return xerrors.Errorf("importing chain failed: %w", err)
 	}
 
-	if err := cst.FlushValidationCache(context.Background()); err != nil {
+	if err := cst.FlushValidationCache(ctx); err != nil {
 		return xerrors.Errorf("flushing validation cache failed: %w", err)
 	}
 
@@ -515,7 +515,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return err
 	}
 
-	err = cst.SetGenesis(context.Background(), gb.Blocks()[0])
+	err = cst.SetGenesis(ctx, gb.Blocks()[0])
 	if err != nil {
 		return err
 	}

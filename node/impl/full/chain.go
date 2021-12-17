@@ -116,7 +116,7 @@ func (m *ChainModule) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*
 		return nil, err
 	}
 
-	bmsgs, smsgs, err := m.Chain.MessagesForBlock(b)
+	bmsgs, smsgs, err := m.Chain.MessagesForBlock(ctx, b)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +159,7 @@ func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]
 		return nil, err
 	}
 
-	cm, err := a.Chain.MessagesForTipset(pts)
+	cm, err := a.Chain.MessagesForTipset(ctx, pts)
 	if err != nil {
 		return nil, err
 	}
@@ -191,14 +191,14 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 		return nil, err
 	}
 
-	cm, err := a.Chain.MessagesForTipset(pts)
+	cm, err := a.Chain.MessagesForTipset(ctx, pts)
 	if err != nil {
 		return nil, err
 	}
 
 	var out []*types.MessageReceipt
 	for i := 0; i < len(cm); i++ {
-		r, err := a.Chain.GetParentReceipt(b, i)
+		r, err := a.Chain.GetParentReceipt(ctx, b, i)
 		if err != nil {
 			return nil, err
 		}
@@ -220,7 +220,7 @@ func (a *ChainAPI) ChainGetMessagesInTipset(ctx context.Context, tsk types.TipSe
 		return nil, nil
 	}
 
-	cm, err := a.Chain.MessagesForTipset(ts)
+	cm, err := a.Chain.MessagesForTipset(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -577,7 +577,7 @@ func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (*api.IpldObject,
 }
 
 func (m *ChainModule) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error) {
-	cm, err := m.Chain.GetCMessage(mc)
+	cm, err := m.Chain.GetCMessage(ctx, mc)
 	if err != nil {
 		return nil, err
 	}

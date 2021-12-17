@@ -20,7 +20,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	msg, err := sm.cs.GetCMessage(mcid)
+	msg, err := sm.cs.GetCMessage(ctx, mcid)
 	if err != nil {
 		return nil, nil, cid.Undef, fmt.Errorf("failed to load message: %w", err)
 	}
@@ -130,7 +130,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 }
 
 func (sm *StateManager) SearchForMessage(ctx context.Context, head *types.TipSet, mcid cid.Cid, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
-	msg, err := sm.cs.GetCMessage(mcid)
+	msg, err := sm.cs.GetCMessage(ctx, mcid)
 	if err != nil {
 		return nil, nil, cid.Undef, fmt.Errorf("failed to load message: %w", err)
 	}
@@ -240,7 +240,7 @@ func (sm *StateManager) tipsetExecutedMessage(ctx context.Context, ts *types.Tip
 		return nil, cid.Undef, err
 	}
 
-	cm, err := sm.cs.MessagesForTipset(pts)
+	cm, err := sm.cs.MessagesForTipset(ctx, pts)
 	if err != nil {
 		return nil, cid.Undef, err
 	}
@@ -267,7 +267,7 @@ func (sm *StateManager) tipsetExecutedMessage(ctx context.Context, ts *types.Tip
 					}
 				}
 
-				pr, err := sm.cs.GetParentReceipt(ts.Blocks()[0], i)
+				pr, err := sm.cs.GetParentReceipt(ctx, ts.Blocks()[0], i)
 				if err != nil {
 					return nil, cid.Undef, err
 				}
