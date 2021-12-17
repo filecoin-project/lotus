@@ -172,7 +172,7 @@ func collectChainSegment(ctx context.Context, cs *store.ChainStore, req *validat
 		}
 
 		if req.options.IncludeMessages {
-			bmsgs, bmincl, smsgs, smincl, err := gatherMessages(cs, ts)
+			bmsgs, bmincl, smsgs, smincl, err := gatherMessages(ctx, cs, ts)
 			if err != nil {
 				return nil, xerrors.Errorf("gather messages failed: %w", err)
 			}
@@ -197,14 +197,14 @@ func collectChainSegment(ctx context.Context, cs *store.ChainStore, req *validat
 	}
 }
 
-func gatherMessages(cs *store.ChainStore, ts *types.TipSet) ([]*types.Message, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
+func gatherMessages(ctx context.Context, cs *store.ChainStore, ts *types.TipSet) ([]*types.Message, [][]uint64, []*types.SignedMessage, [][]uint64, error) {
 	blsmsgmap := make(map[cid.Cid]uint64)
 	secpkmsgmap := make(map[cid.Cid]uint64)
 	var secpkincl, blsincl [][]uint64
 
 	var blscids, secpkcids []cid.Cid
 	for _, block := range ts.Blocks() {
-		bc, sc, err := cs.ReadMsgMetaCids(block.Messages)
+		bc, sc, err := cs.ReadMsgMetaCids(ctx, block.Messages)
 		if err != nil {
 			return nil, nil, nil, nil, err
 		}
@@ -237,12 +237,12 @@ func gatherMessages(cs *store.ChainStore, ts *types.TipSet) ([]*types.Message, [
 		secpkincl = append(secpkincl, smi)
 	}
 
-	blsmsgs, err := cs.LoadMessagesFromCids(blscids)
+	blsmsgs, err := cs.LoadMessagesFromCids(ctx, blscids)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}
 
-	secpkmsgs, err := cs.LoadSignedMessagesFromCids(secpkcids)
+	secpkmsgs, err := cs.LoadSignedMessagesFromCids(ctx, secpkcids)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}

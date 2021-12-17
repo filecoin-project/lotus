@@ -298,11 +298,11 @@ func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 	// into the blockstore.
 	blockstore := bstore.NewMemory()
 	cst := cbor.NewCborStore(blockstore)
-
+	ctx := context.Background()
 	var bcids, scids []cid.Cid
 
 	for _, m := range fblk.BlsMessages {
-		c, err := store.PutMessage(blockstore, m)
+		c, err := store.PutMessage(ctx, blockstore, m)
 		if err != nil {
 			return xerrors.Errorf("putting bls message to blockstore after msgmeta computation: %w", err)
 		}
@@ -310,7 +310,7 @@ func (syncer *Syncer) ValidateMsgMeta(fblk *types.FullBlock) error {
 	}
 
 	for _, m := range fblk.SecpkMessages {
-		c, err := store.PutMessage(blockstore, m)
+		c, err := store.PutMessage(ctx, blockstore, m)
 		if err != nil {
 			return xerrors.Errorf("putting bls message to blockstore after msgmeta computation: %w", err)
 		}
@@ -482,7 +482,7 @@ func (syncer *Syncer) tryLoadFullTipSet(ctx context.Context, tsk types.TipSetKey
 
 	fts := &store.FullTipSet{}
 	for _, b := range ts.Blocks() {
-		bmsgs, smsgs, err := syncer.store.MessagesForBlock(b)
+		bmsgs, smsgs, err := syncer.store.MessagesForBlock(ctx, b)
 		if err != nil {
 			return nil, err
 		}
@@ -965,7 +965,7 @@ func (syncer *Syncer) iterFullTipsets(ctx context.Context, headers []*types.TipS
 	span.AddAttributes(trace.Int64Attribute("num_headers", int64(len(headers))))
 
 	for i := len(headers) - 1; i >= 0; {
-		fts, err := syncer.store.TryFillTipSet(headers[i])
+		fts, err := syncer.store.TryFillTipSet(ctx, headers[i])
 		if err != nil {
 			return err
 		}
@@ -1138,7 +1138,7 @@ func persistMessages(ctx context.Context, bs bstore.Blockstore, bst *exchange.Co
 
 	for _, m := range bst.Bls {
 		//log.Infof("putting BLS message: %s", m.Cid())
-		if _, err := store.PutMessage(bs, m); err != nil {
+		if _, err := store.PutMessage(ctx, bs, m); err != nil {
 			log.Errorf("failed to persist messages: %+v", err)
 			return xerrors.Errorf("BLS message processing failed: %w", err)
 		}
@@ -1148,7 +1148,7 @@ func persistMessages(ctx context.Context, bs bstore.Blockstore, bst *exchange.Co
 			return xerrors.Errorf("unknown signature type on message %s: %q", m.Cid(), m.Signature.Type)
 		}
 		//log.Infof("putting secp256k1 message: %s", m.Cid())
-		if _, err := store.PutMessage(bs, m); err != nil {
+		if _, err := store.PutMessage(ctx, bs, m); err != nil {
 			log.Errorf("failed to persist messages: %+v", err)
 			return xerrors.Errorf("secp256k1 message processing failed: %w", err)
 		}

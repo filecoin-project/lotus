@@ -44,7 +44,7 @@ func (s *Suite) RunTests(t *testing.T, prefix string) {
 }
 
 func (s *Suite) TestGetWhenKeyNotPresent(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()

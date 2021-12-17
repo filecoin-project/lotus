@@ -99,7 +99,7 @@ func openBlockstore(optsSupplier func(path string) Options) func(tb testing.TB, 
 }
 
 func testMove(t *testing.T, optsF func(string) Options) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	basePath, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatal(err)

@@ -347,7 +347,7 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 			return err
 		}
 
-		if err := mds.Put(context.Background(), sectorKey, b); err != nil {
+		if err := mds.Put(ctx, sectorKey, b); err != nil {
 			return err
 		}
 
@@ -387,7 +387,7 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 
 	buf := make([]byte, binary.MaxVarintLen64)
 	size := binary.PutUvarint(buf, uint64(maxSectorID))
-	return mds.Put(context.Background(), datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
+	return mds.Put(ctx, datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
 }
 
 func findMarketDealID(ctx context.Context, api v1api.FullNode, deal market2.DealProposal) (abi.DealID, error) {
@@ -428,7 +428,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 		return xerrors.Errorf("peer ID from private key: %w", err)
 	}
 
-	mds, err := lr.Datastore(context.TODO(), "/metadata")
+	mds, err := lr.Datastore(ctx, "/metadata")
 	if err != nil {
 		return err
 	}
@@ -441,7 +441,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 		}
 
 		if cctx.Bool("genesis-miner") {
-			if err := mds.Put(context.Background(), datastore.NewKey("miner-address"), a.Bytes()); err != nil {
+			if err := mds.Put(ctx, datastore.NewKey("miner-address"), a.Bytes()); err != nil {
 				return err
 			}
 
@@ -548,7 +548,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 	}
 
 	log.Infof("Created new miner: %s", addr)
-	if err := mds.Put(context.Background(), datastore.NewKey("miner-address"), addr.Bytes()); err != nil {
+	if err := mds.Put(ctx, datastore.NewKey("miner-address"), addr.Bytes()); err != nil {
 		return err
 	}
 

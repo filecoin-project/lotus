@@ -1108,11 +1108,11 @@ func (cs *ChainStore) ActorStore(ctx context.Context) adt.Store {
 	return ActorStore(ctx, cs.stateBlockstore)
 }
 
-func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
+func (cs *ChainStore) TryFillTipSet(ctx context.Context, ts *types.TipSet) (*FullTipSet, error) {
 	var out []*types.FullBlock
 
 	for _, b := range ts.Blocks() {
-		bmsgs, smsgs, err := cs.MessagesForBlock(b)
+		bmsgs, smsgs, err := cs.MessagesForBlock(ctx, b)
 		if err != nil {
 			// TODO: check for 'not found' errors, and only return nil if this
 			// is actually a 'not found' error

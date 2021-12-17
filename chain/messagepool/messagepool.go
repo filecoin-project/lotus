@@ -909,12 +909,12 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 		mp.blsSigCache.Add(m.Cid(), m.Signature)
 	}
 
-	if _, err := mp.api.PutMessage(m); err != nil {
+	if _, err := mp.api.PutMessage(ctx, m); err != nil {
 		log.Warnf("mpooladd cs.PutMessage failed: %s", err)
 		return err
 	}
 
-	if _, err := mp.api.PutMessage(&m.Message); err != nil {
+	if _, err := mp.api.PutMessage(ctx, &m.Message); err != nil {
 		log.Warnf("mpooladd cs.PutMessage failed: %s", err)
 		return err
 	}
@@ -1216,7 +1216,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 
 		mp.curTs = pts
 
-		msgs, err := mp.MessagesForBlocks(ts.Blocks())
+		msgs, err := mp.MessagesForBlocks(ctx, ts.Blocks())
 		if err != nil {
 			log.Errorf("error retrieving messages for reverted block: %s", err)
 			merr = multierror.Append(merr, err)
@@ -1232,7 +1232,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 		mp.curTs = ts
 
 		for _, b := range ts.Blocks() {
-			bmsgs, smsgs, err := mp.api.MessagesForBlock(b)
+			bmsgs, smsgs, err := mp.api.MessagesForBlock(ctx, b)
 			if err != nil {
 				xerr := xerrors.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %w", b.Cid(), b.Height, b.Messages, err)
 				log.Errorf("error retrieving messages for block: %s", xerr)
@@ -1368,7 +1368,7 @@ func (mp *MessagePool) runHeadChange(ctx context.Context, from *types.TipSet, to
 	var merr error
 
 	for _, ts := range revert {
-		msgs, err := mp.MessagesForBlocks(ts.Blocks())
+		msgs, err := mp.MessagesForBlocks(ctx, ts.Blocks())
 		if err != nil {
 			log.Errorf("error retrieving messages for reverted block: %s", err)
 			merr = multierror.Append(merr, err)
@@ -1382,7 +1382,7 @@ func (mp *MessagePool) runHeadChange(ctx context.Context, from *types.TipSet, to
 
 	for _, ts := range apply {
 		for _, b := range ts.Blocks() {
-			bmsgs, smsgs, err := mp.api.MessagesForBlock(b)
+			bmsgs, smsgs, err := mp.api.MessagesForBlock(ctx, b)
 			if err != nil {
 				xerr := xerrors.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %w", b.Cid(), b.Height, b.Messages, err)
 				log.Errorf("error retrieving messages for block: %s", xerr)
@@ -1407,11 +1407,11 @@ type statBucket struct {
 	msgs map[uint64]*types.SignedMessage
 }
 
-func (mp *MessagePool) MessagesForBlocks(blks []*types.BlockHeader) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) MessagesForBlocks(ctx context.Context, blks []*types.BlockHeader) ([]*types.SignedMessage, error) {
 	out := make([]*types.SignedMessage, 0)
 
 	for _, b := range blks {
-		bmsgs, smsgs, err := mp.api.MessagesForBlock(b)
+		bmsgs, smsgs, err := mp.api.MessagesForBlock(ctx, b)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %w", b.Cid(), b.Height, b.Messages, err)
 		}

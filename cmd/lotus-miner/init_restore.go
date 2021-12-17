@@ -233,7 +233,7 @@ func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfi
 
 	log.Info("Restoring metadata backup")
 
-	mds, err := lr.Datastore(context.TODO(), "/metadata")
+	mds, err := lr.Datastore(ctx, "/metadata")
 	if err != nil {
 		return err
 	}
@@ -255,7 +255,7 @@ func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfi
 
 	log.Info("Checking actor metadata")
 
-	abytes, err := mds.Get(context.Background(), datastore.NewKey("miner-address"))
+	abytes, err := mds.Get(ctx, datastore.NewKey("miner-address"))
 	if err != nil {
 		return xerrors.Errorf("getting actor address from metadata datastore: %w", err)
 	}

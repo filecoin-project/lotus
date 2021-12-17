@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"os"
 
 	dstore "github.com/ipfs/go-datastore"
@@ -88,7 +87,7 @@ func restore(cctx *cli.Context, r repo.Repo) error {
 
 	log.Info("Restoring metadata backup")
 
-	mds, err := lr.Datastore(context.TODO(), "/metadata")
+	mds, err := lr.Datastore(cctx.Context, "/metadata")
 	if err != nil {
 		return err
 	}
@@ -111,10 +110,10 @@ func restore(cctx *cli.Context, r repo.Repo) error {
 	log.Info("Resetting chainstore metadata")
 
 	chainHead := dstore.NewKey("head")
-	if err := mds.Delete(context.Background(), chainHead); err != nil {
+	if err := mds.Delete(cctx.Context, chainHead); err != nil {
 		return xerrors.Errorf("clearing chain head: %w", err)
 	}
-	if err := store.FlushValidationCache(context.Background(), mds); err != nil {
+	if err := store.FlushValidationCache(cctx.Context, mds); err != nil {
 		return xerrors.Errorf("clearing chain validation cache: %w", err)
 	}
 
