@@ -11,6 +11,7 @@
 ## Checklist
 
 Before you mark the PR ready for review, please make sure that:
+- [ ] All commits have a clear commit message.
 - [ ] The PR title is in the form of of `<PR type>: <#issue number> <area>: <change being made>`
     - example: ` fix: #1234 mempool: Introduce a cache for valid signatures`
     - `PR type`: _fix_, _feat_, _BREAKING CHANGE_, _build_, _chore_, _ci_, _docs_, _perf_, _refactor_, _revert_, _style_, _test_
