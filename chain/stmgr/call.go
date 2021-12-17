@@ -80,7 +80,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		Actors:         sm.tsExec.NewActorRegistry(),
 		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
-		NtwkVersion:    sm.GetNtwkVersion,
+		NtwkVersion:    sm.GetNetworkVersion,
 		BaseFee:        types.NewInt(0),
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 	}
@@ -204,7 +204,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		Actors:         sm.tsExec.NewActorRegistry(),
 		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
-		NtwkVersion:    sm.GetNtwkVersion,
+		NtwkVersion:    sm.GetNetworkVersion,
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 	}

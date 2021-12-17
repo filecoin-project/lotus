@@ -227,7 +227,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		},
 		Rand:        params.Rand,
 		BaseFee:     params.BaseFee,
-		NtwkVersion: sm.GetNtwkVersion,
+		NtwkVersion: sm.GetNetworkVersion,
 	}
 
 	lvm, err := vm.NewVM(context.TODO(), vmOpts)

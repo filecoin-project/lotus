@@ -95,7 +95,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 		return xerrors.Errorf("load parent tipset failed (%s): %w", h.Parents, err)
 	}
 
-	winPoStNv := filec.sm.GetNtwkVersion(ctx, baseTs.Height())
+	winPoStNv := filec.sm.GetNetworkVersion(ctx, baseTs.Height())
 
 	lbts, lbst, err := stmgr.GetLookbackTipSetForRound(ctx, filec.sm, baseTs, h.Height)
 	if err != nil {
@@ -457,7 +457,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 		return xerrors.Errorf("failed to load base state tree: %w", err)
 	}
 
-	nv := filec.sm.GetNtwkVersion(ctx, b.Header.Height)
+	nv := filec.sm.GetNetworkVersion(ctx, b.Header.Height)
 	pl := vm.PricelistByEpoch(baseTs.Height())
 	var sumGasLimit int64
 	checkMsg := func(msg types.ChainMsg) error {
@@ -479,7 +479,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 		// Phase 2: (Partial) semantic validation:
 		// the sender exists and is an account actor, and the nonces make sense
 		var sender address.Address
-		if filec.sm.GetNtwkVersion(ctx, b.Header.Height) >= network.Version13 {
+		if filec.sm.GetNetworkVersion(ctx, b.Header.Height) >= network.Version13 {
 			sender, err = st.LookupID(m.From)
 			if err != nil {
 				return err
@@ -532,7 +532,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 
 	smArr := blockadt.MakeEmptyArray(tmpstore)
 	for i, m := range b.SecpkMessages {
-		if filec.sm.GetNtwkVersion(ctx, b.Header.Height) >= network.Version14 {
+		if filec.sm.GetNetworkVersion(ctx, b.Header.Height) >= network.Version14 {
 			if m.Signature.Type != crypto.SigTypeSecp256k1 {
 				return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
 			}

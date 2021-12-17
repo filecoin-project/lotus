@@ -101,7 +101,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 			Actors:         NewActorRegistry(),
 			Syscalls:       sm.Syscalls,
 			CircSupplyCalc: sm.GetVMCirculatingSupply,
-			NtwkVersion:    sm.GetNtwkVersion,
+			NtwkVersion:    sm.GetNetworkVersion,
 			BaseFee:        baseFee,
 			LookbackState:  stmgr.LookbackStateGetterForTipset(sm, ts),
 		}

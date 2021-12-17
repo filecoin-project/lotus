@@ -159,7 +159,7 @@ func (sim *Simulation) GetStart() *types.TipSet {
 
 // GetNetworkVersion returns the current network version for the simulation.
 func (sim *Simulation) GetNetworkVersion() network.Version {
-	return sim.StateManager.GetNtwkVersion(context.TODO(), sim.head.Height())
+	return sim.StateManager.GetNetworkVersion(context.TODO(), sim.head.Height())
 }
 
 // SetHead updates the current head of the simulation and stores it in the metadata store. This is
