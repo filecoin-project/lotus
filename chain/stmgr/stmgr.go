@@ -380,13 +380,7 @@ func (sm *StateManager) GetRandomnessFromBeacon(ctx context.Context, personaliza
 	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon)
 	rnv := sm.GetNtwkVersion(ctx, randEpoch)
 
-	if rnv >= network.Version14 {
-		return r.GetBeaconRandomnessV3(ctx, personalization, randEpoch, entropy)
-	} else if rnv == network.Version13 {
-		return r.GetBeaconRandomnessV2(ctx, personalization, randEpoch, entropy)
-	}
-
-	return r.GetBeaconRandomnessV1(ctx, personalization, randEpoch, entropy)
+	return r.GetBeaconRandomness(ctx, rnv, personalization, randEpoch, entropy)
 
 }
 
@@ -399,9 +393,5 @@ func (sm *StateManager) GetRandomnessFromTickets(ctx context.Context, personaliz
 	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon)
 	rnv := sm.GetNtwkVersion(ctx, randEpoch)
 
-	if rnv >= network.Version13 {
-		return r.GetChainRandomnessV2(ctx, personalization, randEpoch, entropy)
-	}
-
-	return r.GetChainRandomnessV1(ctx, personalization, randEpoch, entropy)
+	return r.GetChainRandomness(ctx, rnv, personalization, randEpoch, entropy)
 }
