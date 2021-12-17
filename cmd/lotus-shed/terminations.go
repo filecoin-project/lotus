@@ -84,7 +84,7 @@ var terminationsCmd = &cli.Command{
 		cst := cbor.NewCborStore(bs)
 		store := adt.WrapStore(ctx, cst)
 
-		blk, err := cs.GetBlock(blkCid)
+		blk, err := cs.GetBlock(ctx, blkCid)
 		if err != nil {
 			return err
 		}
@@ -97,14 +97,14 @@ var terminationsCmd = &cli.Command{
 		cutoff := blk.Height - abi.ChainEpoch(lbp)
 
 		for blk.Height > cutoff {
-			pts, err := cs.LoadTipSet(types.NewTipSetKey(blk.Parents...))
+			pts, err := cs.LoadTipSet(ctx, types.NewTipSetKey(blk.Parents...))
 			if err != nil {
 				return err
 			}
 
 			blk = pts.Blocks()[0]
 
-			msgs, err := cs.MessagesForTipset(pts)
+			msgs, err := cs.MessagesForTipset(ctx, pts)
 			if err != nil {
 				return err
 			}
