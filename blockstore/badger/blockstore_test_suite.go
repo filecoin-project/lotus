@@ -57,7 +57,7 @@ func (s *Suite) TestGetWhenKeyNotPresent(t *testing.T) {
 }
 
 func (s *Suite) TestGetWhenKeyIsNil(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
@@ -68,7 +68,7 @@ func (s *Suite) TestGetWhenKeyIsNil(t *testing.T) {
 }
 
 func (s *Suite) TestPutThenGetBlock(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
@@ -85,7 +85,7 @@ func (s *Suite) TestPutThenGetBlock(t *testing.T) {
 }
 
 func (s *Suite) TestHas(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
@@ -106,7 +106,7 @@ func (s *Suite) TestHas(t *testing.T) {
 }
 
 func (s *Suite) TestCidv0v1(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
@@ -123,7 +123,7 @@ func (s *Suite) TestCidv0v1(t *testing.T) {
 }
 
 func (s *Suite) TestPutThenGetSizeBlock(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
@@ -210,7 +210,7 @@ func (s *Suite) TestDoubleClose(t *testing.T) {
 }
 
 func (s *Suite) TestReopenPutGet(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	bs, path := s.NewBlockstore(t)
 	c, ok := bs.(io.Closer)
 	if !ok {
@@ -236,7 +236,7 @@ func (s *Suite) TestReopenPutGet(t *testing.T) {
 }
 
 func (s *Suite) TestPutMany(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
@@ -268,7 +268,7 @@ func (s *Suite) TestPutMany(t *testing.T) {
 }
 
 func (s *Suite) TestDelete(t *testing.T) {
-	ctx := context.TODO()
+	ctx := context.Background()
 	bs, _ := s.NewBlockstore(t)
 	if c, ok := bs.(io.Closer); ok {
 		defer func() { require.NoError(t, c.Close()) }()
@@ -301,7 +301,7 @@ func (s *Suite) TestDelete(t *testing.T) {
 }
 
 func insertBlocks(t *testing.T, bs blockstore.BasicBlockstore, count int) []cid.Cid {
-	ctx := context.TODO()
+	ctx := context.Background()
 	keys := make([]cid.Cid, count)
 	for i := 0; i < count; i++ {
 		block := blocks.NewBlock([]byte(fmt.Sprintf("some data %d", i)))
