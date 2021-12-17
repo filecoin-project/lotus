@@ -109,7 +109,7 @@ func TestChainExportImport(t *testing.T) {
 	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
-	root, err := cs.Import(buf)
+	root, err := cs.Import(context.TODO(), buf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +144,7 @@ func TestChainExportImportFull(t *testing.T) {
 	cs := store.NewChainStore(nbs, nbs, datastore.NewMapDatastore(), filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
-	root, err := cs.Import(buf)
+	root, err := cs.Import(context.TODO(), buf)
 	if err != nil {
 		t.Fatal(err)
 	}

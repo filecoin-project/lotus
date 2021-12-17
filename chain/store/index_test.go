@@ -35,7 +35,7 @@ func TestIndexSeeks(t *testing.T) {
 	cs := store.NewChainStore(nbs, nbs, syncds.MutexWrap(datastore.NewMapDatastore()), filcns.Weight, nil)
 	defer cs.Close() //nolint:errcheck
 
-	_, err = cs.Import(bytes.NewReader(gencar))
+	_, err = cs.Import(ctx, bytes.NewReader(gencar))
 	if err != nil {
 		t.Fatal(err)
 	}

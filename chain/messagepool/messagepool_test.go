@@ -103,7 +103,7 @@ func (tma *testMpoolAPI) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) 
 	return tma.tipsets[0]
 }
 
-func (tma *testMpoolAPI) PutMessage(m types.ChainMsg) (cid.Cid, error) {
+func (tma *testMpoolAPI) PutMessage(ctx context.Context, m types.ChainMsg) (cid.Cid, error) {
 	return cid.Undef, nil
 }
 
@@ -164,16 +164,16 @@ func (tma *testMpoolAPI) StateAccountKeyAtFinality(ctx context.Context, addr add
 	return addr, nil
 }
 
-func (tma *testMpoolAPI) MessagesForBlock(h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
+func (tma *testMpoolAPI) MessagesForBlock(ctx context.Context, h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
 	return nil, tma.bmsgs[h.Cid()], nil
 }
 
-func (tma *testMpoolAPI) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
+func (tma *testMpoolAPI) MessagesForTipset(ctx context.Context, ts *types.TipSet) ([]types.ChainMsg, error) {
 	if len(ts.Blocks()) != 1 {
 		panic("cant deal with multiblock tipsets in this test")
 	}
 
-	bm, sm, err := tma.MessagesForBlock(ts.Blocks()[0])
+	bm, sm, err := tma.MessagesForBlock(ctx, ts.Blocks()[0])
 	if err != nil {
 		return nil, err
 	}

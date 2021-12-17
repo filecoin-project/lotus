@@ -206,20 +206,21 @@ func (tu *syncTestUtil) pushFtsAndWait(to int, fts *store.FullTipSet, wait bool)
 }
 
 func (tu *syncTestUtil) pushTsExpectErr(to int, fts *store.FullTipSet, experr bool) {
+	ctx := context.TODO()
 	for _, fb := range fts.Blocks {
 		var b types.BlockMsg
 
 		// -1 to match block.Height
 		b.Header = fb.Header
 		for _, msg := range fb.SecpkMessages {
-			c, err := tu.nds[to].(*impl.FullNodeAPI).ChainAPI.Chain.PutMessage(msg)
+			c, err := tu.nds[to].(*impl.FullNodeAPI).ChainAPI.Chain.PutMessage(ctx, msg)
 			require.NoError(tu.t, err)
 
 			b.SecpkMessages = append(b.SecpkMessages, c)
 		}
 
 		for _, msg := range fb.BlsMessages {
-			c, err := tu.nds[to].(*impl.FullNodeAPI).ChainAPI.Chain.PutMessage(msg)
+			c, err := tu.nds[to].(*impl.FullNodeAPI).ChainAPI.Chain.PutMessage(ctx, msg)
 			require.NoError(tu.t, err)
 
 			b.BlsMessages = append(b.BlsMessages, c)
@@ -735,7 +736,7 @@ func TestDuplicateNonce(t *testing.T) {
 		t.Fatal("included message should be in exec trace")
 	}
 
-	mft, err := tu.g.ChainStore().MessagesForTipset(ts1.TipSet())
+	mft, err := tu.g.ChainStore().MessagesForTipset(context.TODO(), ts1.TipSet())
 	require.NoError(t, err)
 	require.True(t, len(mft) == 1, "only expecting one message for this tipset")
 	require.Equal(t, includedMsg, mft[0].VMMessage().Cid(), "messages for tipset didn't contain expected message")
