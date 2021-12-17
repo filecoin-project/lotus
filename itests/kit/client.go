@@ -101,8 +101,8 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode *TestFullNode)
 		time.Sleep(time.Second)
 	}
 
-	// client query-retrieval-ask --size=1 <miner addr> <data CID>
-	out = clientCLI.RunCmd("client", "query-retrieval-ask", "--size=1", minerAddr.String(), dataCid.String())
+	// client retrieval-ask --size=1 <miner addr> <data CID>
+	out = clientCLI.RunCmd("client", "retrieval-ask", "--size=1", minerAddr.String(), dataCid.String())
 	require.Regexp(t, regexp.MustCompile("Ask:"), out)
 	fmt.Println("retrieval ask:\n", out)
 

@@ -1044,7 +1044,7 @@ var clientQueryRetrievalAskCmd = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		afmt := NewAppFmt(cctx.App)
 		if cctx.NArg() != 2 {
-			afmt.Println("Usage: query-retrieval-ask [minerAddress] [data CID]")
+			afmt.Println("Usage: retrieval-ask [minerAddress] [data CID]")
 			return nil
 		}
 

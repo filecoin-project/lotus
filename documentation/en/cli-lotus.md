@@ -424,13 +424,13 @@ COMMANDS:
      local   List locally imported data
      stat    Print information about a locally stored file (piece size, etc)
    RETRIEVAL:
-     find                 Find data in the network
-     query-retrieval-ask  Get a miner's retrieval ask
-     retrieve             Retrieve data from network
-     cat                  Show data from network
-     ls                   List object links
-     cancel-retrieval     Cancel a retrieval deal by deal ID; this also cancels the associated transfer
-     list-retrievals      List retrieval market deals
+     find              Find data in the network
+     retrieval-ask     Get a miner's retrieval ask
+     retrieve          Retrieve data from network
+     cat               Show data from network
+     ls                List object links
+     cancel-retrieval  Cancel a retrieval deal by deal ID; this also cancels the associated transfer
+     list-retrievals   List retrieval market deals
    STORAGE:
      deal          Initialize storage deal with a miner
      query-ask     Find a miners ask
@@ -536,13 +536,13 @@ OPTIONS:
    
 ```
 
-### lotus client query-retrieval-ask
+### lotus client retrieval-ask
 ```
 NAME:
-   lotus client query-retrieval-ask - Get a miner's retrieval ask
+   lotus client retrieval-ask - Get a miner's retrieval ask
 
 USAGE:
-   lotus client query-retrieval-ask [command options] [minerAddress] [data CID]
+   lotus client retrieval-ask [command options] [minerAddress] [data CID]
 
 CATEGORY:
    RETRIEVAL
