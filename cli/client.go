@@ -1032,7 +1032,7 @@ var clientFindCmd = &cli.Command{
 }
 
 var clientQueryRetrievalAskCmd = &cli.Command{
-	Name:      "query-retrieval-ask",
+	Name:      "retrieval-ask",
 	Usage:     "Get a miner's retrieval ask",
 	ArgsUsage: "[minerAddress] [data CID]",
 	Flags: []cli.Flag{
