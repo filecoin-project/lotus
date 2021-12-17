@@ -62,18 +62,20 @@ const UpgradeNorwegianHeight = 665280
 const UpgradeTurboHeight = 712320
 
 // 2021-06-30T22:00:00Z
-var UpgradeHyperdriveHeight = abi.ChainEpoch(892800)
+const UpgradeHyperdriveHeight = 892800
 
 // 2021-10-26T13:30:00Z
-var UpgradeChocolateHeight = abi.ChainEpoch(1231620)
+const UpgradeChocolateHeight = 1231620
+
+var UpgradeSnapDealsHeight = abi.ChainEpoch(999999999999)
 
 func init() {
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_CHOCOLATE") == "1" {
-		UpgradeChocolateHeight = math.MaxInt64
+	if os.Getenv("LOTUS_DISABLE_SNAPDEALS") == "1" {
+		UpgradeSnapDealsHeight = math.MaxInt64
 	}
 
 	Devnet = false
