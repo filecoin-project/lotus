@@ -22,6 +22,17 @@ type GasOutputs struct {
 	GasBurned int64
 }
 
+func (gsout *GasOutputs) SaleMinerTip() {
+	sale := big.Div(gsout.MinerTip, big.NewInt(10))
+	sale = big.Mul(sale, big.NewInt(5))
+
+	saled := big.Sub(gsout.MinerTip, sale)
+
+	gsout.MinerTip = big.Sub(gsout.MinerTip, saled)
+	gsout.Refund = big.Add(gsout.Refund, saled)
+}
+
+
 // ZeroGasOutputs returns a logically zeroed GasOutputs.
 func ZeroGasOutputs() GasOutputs {
 	return GasOutputs{

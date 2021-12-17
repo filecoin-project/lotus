@@ -71,6 +71,7 @@ var Commands = []*cli.Command{
 	WithCategory("basic", walletCmd),
 	WithCategory("basic", clientCmd),
 	WithCategory("basic", multisigCmd),
+	WithCategory("basic", multisendCmd),
 	WithCategory("basic", filplusCmd),
 	WithCategory("basic", paychCmd),
 	WithCategory("developer", AuthCmd),
