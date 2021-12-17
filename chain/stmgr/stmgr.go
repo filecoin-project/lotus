@@ -377,10 +377,9 @@ func (sm *StateManager) GetRandomnessFromBeacon(ctx context.Context, personaliza
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon)
-	rnv := sm.GetNetworkVersion(ctx, randEpoch)
+	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon, sm.GetNetworkVersion)
 
-	return r.GetBeaconRandomness(ctx, rnv, personalization, randEpoch, entropy)
+	return r.GetBeaconRandomness(ctx, personalization, randEpoch, entropy)
 
 }
 
@@ -390,8 +389,7 @@ func (sm *StateManager) GetRandomnessFromTickets(ctx context.Context, personaliz
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
 	}
 
-	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon)
-	rnv := sm.GetNetworkVersion(ctx, randEpoch)
+	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon, sm.GetNetworkVersion)
 
-	return r.GetChainRandomness(ctx, rnv, personalization, randEpoch, entropy)
+	return r.GetChainRandomness(ctx, personalization, randEpoch, entropy)
 }

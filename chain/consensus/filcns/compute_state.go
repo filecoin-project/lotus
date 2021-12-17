@@ -299,7 +299,7 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context, sm *stmgr.StateManag
 		parentEpoch = parent.Height
 	}
 
-	r := rand.NewStateRand(sm.ChainStore(), ts.Cids(), sm.Beacon())
+	r := rand.NewStateRand(sm.ChainStore(), ts.Cids(), sm.Beacon(), sm.GetNetworkVersion)
 
 	blkmsgs, err := sm.ChainStore().BlockMsgsForTipset(ctx, ts)
 	if err != nil {

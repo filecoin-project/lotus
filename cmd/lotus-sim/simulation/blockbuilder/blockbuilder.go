@@ -79,7 +79,7 @@ func NewBlockBuilder(ctx context.Context, logger *zap.SugaredLogger, sm *stmgr.S
 	// 1. We don't charge a fee.
 	// 2. The runtime has "fake" proof logic.
 	// 3. We don't actually save any of the results.
-	r := lrand.NewStateRand(sm.ChainStore(), parentTs.Cids(), sm.Beacon())
+	r := lrand.NewStateRand(sm.ChainStore(), parentTs.Cids(), sm.Beacon(), sm.GetNetworkVersion)
 	vmopt := &vm.VMOpts{
 		StateBase:      parentState,
 		Epoch:          parentTs.Height() + 1,

@@ -75,7 +75,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 	vmopt := &vm.VMOpts{
 		StateBase:      bstate,
 		Epoch:          pheight + 1,
-		Rand:           rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon),
+		Rand:           rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, sm.GetNetworkVersion),
 		Bstore:         sm.cs.StateBlockstore(),
 		Actors:         sm.tsExec.NewActorRegistry(),
 		Syscalls:       sm.Syscalls,
@@ -186,7 +186,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
 
-	r := rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon)
+	r := rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, sm.GetNetworkVersion)
 
 	if span.IsRecordingEvents() {
 		span.AddAttributes(

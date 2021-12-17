@@ -260,8 +260,8 @@ func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
 }
 
 type Rand interface {
-	GetChainRandomness(ctx context.Context, nv network.Version, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
-	GetBeaconRandomness(ctx context.Context, nv network.Version, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
 }
 
 type ApplyRet struct {

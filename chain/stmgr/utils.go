@@ -79,7 +79,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		// future. It's not guaranteed to be accurate... but that's fine.
 	}
 
-	r := rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon)
+	r := rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, sm.GetNetworkVersion)
 	vmopt := &vm.VMOpts{
 		StateBase:      base,
 		Epoch:          height,
