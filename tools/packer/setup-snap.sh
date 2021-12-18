@@ -10,7 +10,6 @@ set -x
 
 # Become root, if we aren't already.
 # Docker images will already be root. AMIs will have an SSH user account.
-UID=$(id -u)
 if [ x$UID != x0 ]
 then
 	printf -v cmd_str '%q ' "$0" "$@"
@@ -22,6 +21,10 @@ set -e
 MANAGED_FILES=(
 	/etc/motd
 )
+
+# this is required on digitalocean, which does not have snap seeded correctly at this phase.
+apt update
+apt reinstall snapd
 
 snap install lotus-filecoin
 
