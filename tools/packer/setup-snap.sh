@@ -32,7 +32,7 @@ snap alias lotus-filecoin.lotus lotus
 snap alias lotus-filecoin.lotus-miner lotus-miner
 snap alias lotus-filecoin.lotus-miner lotus-worker
 
-snap stop lotus-filecoin.lotus-daemon
+#snap stop lotus-filecoin.lotus-daemon
 
 # Setup firewall
 yes | ufw enable
