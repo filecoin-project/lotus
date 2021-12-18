@@ -40,4 +40,6 @@ ufw default deny incoming
 ufw default allow outgoing
 ufw allow ssh
 
+set +e
+
 curl -L https://raw.githubusercontent.com/digitalocean/marketplace-partners/master/scripts/90-cleanup.sh | bash
