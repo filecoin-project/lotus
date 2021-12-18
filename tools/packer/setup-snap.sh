@@ -32,8 +32,12 @@ snap alias lotus-filecoin.lotus lotus
 snap alias lotus-filecoin.lotus-miner lotus-miner
 snap alias lotus-filecoin.lotus-miner lotus-worker
 
+snap stop lotus-filecoin.lotus-daemon
+
 # Setup firewall
 yes | ufw enable
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow ssh
+
+curl -L https://raw.githubusercontent.com/digitalocean/marketplace-partners/master/scripts/90-cleanup.sh | bash
