@@ -7,7 +7,6 @@
 # provider will have a different initial user account.
 
 set -x
-set -e
 
 # Become root, if we aren't already.
 # Docker images will already be root. AMIs will have an SSH user account.
@@ -17,6 +16,8 @@ then
 	printf -v cmd_str '%q ' "$0" "$@"
 	exec sudo su -c "$cmd_str"
 fi
+
+set -e
 
 MANAGED_FILES=(
 	/etc/motd
