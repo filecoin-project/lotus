@@ -7,6 +7,7 @@
 # provider will have a different initial user account.
 
 set -x
+set -e
 
 # Become root, if we aren't already.
 # Docker images will already be root. AMIs will have an SSH user account.
@@ -21,7 +22,7 @@ MANAGED_FILES=(
 	/etc/motd
 )
 
-snap install filecoin-lotus
+snap install lotus-filecoin
 
 snap alias lotus-filecoin.lotus lotus
 snap alias lotus-filecoin.lotus-miner lotus-miner
