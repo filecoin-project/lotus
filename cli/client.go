@@ -1076,11 +1076,15 @@ var clientQueryRetrievalAskCmd = &cli.Command{
 		afmt.Printf("Payment interval: %s\n", types.SizeStr(types.NewInt(ask.PaymentInterval)))
 		afmt.Printf("Payment interval increase: %s\n", types.SizeStr(types.NewInt(ask.PaymentIntervalIncrease)))
 
-		size := cctx.Int64("size")
+		size := cctx.Uint64("size")
 		if size == 0 {
-			return nil
+			if ask.Size == 0 {
+				return nil
+			}
+			size = ask.Size
+			afmt.Printf("Size: %s\n", types.SizeStr(types.NewInt(ask.Size)))
 		}
-		transferPrice := types.BigMul(ask.PricePerByte, types.NewInt(uint64(size)))
+		transferPrice := types.BigMul(ask.PricePerByte, types.NewInt(size))
 		totalPrice := types.BigAdd(ask.UnsealPrice, transferPrice)
 		afmt.Printf("Total price for %d bytes: %s\n", size, types.FIL(totalPrice))
 
