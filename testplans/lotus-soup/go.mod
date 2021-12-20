@@ -11,7 +11,7 @@ require (
 	github.com/filecoin-project/go-data-transfer v1.12.0
 	github.com/filecoin-project/go-fil-markets v1.13.5
 	github.com/filecoin-project/go-jsonrpc v0.1.5
-	github.com/filecoin-project/go-state-types v0.1.1
+	github.com/filecoin-project/go-state-types v0.1.3
 	github.com/filecoin-project/go-storedcounter v0.1.0
 	github.com/filecoin-project/lotus v0.0.0-00010101000000-000000000000
 	github.com/filecoin-project/specs-actors v0.9.14
