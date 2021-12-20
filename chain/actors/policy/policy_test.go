@@ -1,3 +1,4 @@
+//stm: #unit
 package policy
 
 import (
@@ -22,6 +23,7 @@ func TestSupportedProofTypes(t *testing.T) {
 	for t := range miner0.SupportedProofTypes {
 		oldTypes = append(oldTypes, t)
 	}
+	//stm: @BLOCKCHAIN_POLICY_SET_MAX_SUPPORTED_PROOF_TYPES_001
 	t.Cleanup(func() {
 		SetSupportedProofTypes(oldTypes...)
 	})
@@ -33,6 +35,7 @@ func TestSupportedProofTypes(t *testing.T) {
 			abi.RegisteredSealProof_StackedDrg2KiBV1: {},
 		},
 	)
+	//stm: @BLOCKCHAIN_POLICY_ADD_MAX_SUPPORTED_PROOF_TYPES_001
 	AddSupportedProofTypes(abi.RegisteredSealProof_StackedDrg8MiBV1)
 	require.EqualValues(t,
 		miner0.SupportedProofTypes,
@@ -71,6 +74,7 @@ func TestPartitionSizes(t *testing.T) {
 }
 
 func TestPoStSize(t *testing.T) {
+	//stm: @BLOCKCHAIN_POLICY_GET_MAX_POST_PARTITIONS_001
 	v12PoStSize, err := GetMaxPoStPartitions(network.Version12, abi.RegisteredPoStProof_StackedDrgWindow64GiBV1)
 	require.Equal(t, 4, v12PoStSize)
 	require.NoError(t, err)

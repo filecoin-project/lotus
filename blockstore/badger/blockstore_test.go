@@ -1,3 +1,4 @@
+//stm: #unit
 package badgerbs
 
 import (
@@ -20,6 +21,8 @@ import (
 )
 
 func TestBadgerBlockstore(t *testing.T) {
+	//stm: @BLOCKSTORE_BADGER_PUT_001, @BLOCKSTORE_BADGER_POOLED_STORAGE_KEY_001
+	//stm: @BLOCKSTORE_BADGER_OPEN_001, @BLOCKSTORE_BADGER_CLOSE_001
 	(&Suite{
 		NewBlockstore:  newBlockstore(DefaultOptions),
 		OpenBlockstore: openBlockstore(DefaultOptions),
@@ -38,6 +41,8 @@ func TestBadgerBlockstore(t *testing.T) {
 }
 
 func TestStorageKey(t *testing.T) {
+	//stm: @BLOCKSTORE_BADGER_OPEN_001, @BLOCKSTORE_BADGER_CLOSE_001
+	//stm: @BLOCKSTORE_BADGER_STORAGE_KEY
 	bs, _ := newBlockstore(DefaultOptions)(t)
 	bbs := bs.(*Blockstore)
 	defer bbs.Close() //nolint:errcheck
@@ -265,10 +270,16 @@ func testMove(t *testing.T, optsF func(string) Options) {
 }
 
 func TestMoveNoPrefix(t *testing.T) {
+	//stm: @BLOCKSTORE_BADGER_OPEN_001, @BLOCKSTORE_BADGER_CLOSE_001
+	//stm: @BLOCKSTORE_BADGER_PUT_001, @BLOCKSTORE_BADGER_POOLED_STORAGE_KEY_001
+	//stm: @BLOCKSTORE_BADGER_DELETE_001, @BLOCKSTORE_BADGER_COLLECT_GARBAGE_001
 	testMove(t, DefaultOptions)
 }
 
 func TestMoveWithPrefix(t *testing.T) {
+	//stm: @BLOCKSTORE_BADGER_OPEN_001, @BLOCKSTORE_BADGER_CLOSE_001
+	//stm: @BLOCKSTORE_BADGER_PUT_001, @BLOCKSTORE_BADGER_POOLED_STORAGE_KEY_001
+	//stm: @BLOCKSTORE_BADGER_DELETE_001, @BLOCKSTORE_BADGER_COLLECT_GARBAGE_001
 	testMove(t, func(path string) Options {
 		opts := DefaultOptions(path)
 		opts.Prefix = "/prefixed/"
