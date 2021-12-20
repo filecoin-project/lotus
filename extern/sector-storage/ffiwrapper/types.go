@@ -4,6 +4,8 @@ import (
 	"context"
 	"io"
 
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	"github.com/ipfs/go-cid"
@@ -36,6 +38,7 @@ type Storage interface {
 type Verifier interface {
 	VerifySeal(proof5.SealVerifyInfo) (bool, error)
 	VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error)
+	VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (bool, error)
 	VerifyWinningPoSt(ctx context.Context, info proof5.WinningPoStVerifyInfo) (bool, error)
 	VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoStVerifyInfo) (bool, error)
 

@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
@@ -472,12 +473,20 @@ func TestReader(t *testing.T) {
 
 			remoteStore := stores.NewRemote(lstore, index, nil, 6000, pfhandler)
 
-			rd, err := remoteStore.Reader(ctx, sectorRef, offset, size)
+			rdg, err := remoteStore.Reader(ctx, sectorRef, offset, size)
+			var rd io.ReadCloser
 
 			if tc.errStr != "" {
-				require.Error(t, err)
-				require.Nil(t, rd)
-				require.Contains(t, err.Error(), tc.errStr)
+				if rdg == nil {
+					require.Error(t, err)
+					require.Nil(t, rdg)
+					require.Contains(t, err.Error(), tc.errStr)
+				} else {
+					rd, err = rdg(0)
+					require.Error(t, err)
+					require.Nil(t, rd)
+					require.Contains(t, err.Error(), tc.errStr)
+				}
 			} else {
 				require.NoError(t, err)
 			}
@@ -485,7 +494,10 @@ func TestReader(t *testing.T) {
 			if !tc.expectedNonNilReader {
 				require.Nil(t, rd)
 			} else {
-				require.NotNil(t, rd)
+				require.NotNil(t, rdg)
+				rd, err := rdg(0)
+				require.NoError(t, err)
+
 				defer func() {
 					require.NoError(t, rd.Close())
 				}()

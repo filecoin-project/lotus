@@ -7,6 +7,8 @@ import (
 	goruntime "runtime"
 	"sync"
 
+	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
@@ -26,8 +28,8 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/lib/sigs"
 
-	runtime5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+	runtime7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 )
 
 func init() {
@@ -36,10 +38,10 @@ func init() {
 
 // Actual type is defined in chain/types/vmcontext.go because the VMContext interface is there
 
-type SyscallBuilder func(ctx context.Context, rt *Runtime) runtime5.Syscalls
+type SyscallBuilder func(ctx context.Context, rt *Runtime) runtime7.Syscalls
 
 func Syscalls(verifier ffiwrapper.Verifier) SyscallBuilder {
-	return func(ctx context.Context, rt *Runtime) runtime5.Syscalls {
+	return func(ctx context.Context, rt *Runtime) runtime7.Syscalls {
 
 		return &syscallShim{
 			ctx:            ctx,
@@ -90,7 +92,7 @@ func (ss *syscallShim) HashBlake2b(data []byte) [32]byte {
 // Checks validity of the submitted consensus fault with the two block headers needed to prove the fault
 // and an optional extra one to check common ancestry (as needed).
 // Note that the blocks are ordered: the method requires a.Epoch() <= b.Epoch().
-func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime5.ConsensusFault, error) {
+func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime7.ConsensusFault, error) {
 	// Note that block syntax is not validated. Any validly signed block will be accepted pursuant to the below conditions.
 	// Whether or not it could ever have been accepted in a chain is not checked/does not matter here.
 	// for that reason when checking block parent relationships, rather than instantiating a Tipset to do so
@@ -133,14 +135,14 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime5.Conse
 	}
 
 	// (2) check for the consensus faults themselves
-	var consensusFault *runtime5.ConsensusFault
+	var consensusFault *runtime7.ConsensusFault
 
 	// (a) double-fork mining fault
 	if blockA.Height == blockB.Height {
-		consensusFault = &runtime5.ConsensusFault{
+		consensusFault = &runtime7.ConsensusFault{
 			Target: blockA.Miner,
 			Epoch:  blockB.Height,
-			Type:   runtime5.ConsensusFaultDoubleForkMining,
+			Type:   runtime7.ConsensusFaultDoubleForkMining,
 		}
 	}
 
@@ -148,10 +150,10 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime5.Conse
 	// strictly speaking no need to compare heights based on double fork mining check above,
 	// but at same height this would be a different fault.
 	if types.CidArrsEqual(blockA.Parents, blockB.Parents) && blockA.Height != blockB.Height {
-		consensusFault = &runtime5.ConsensusFault{
+		consensusFault = &runtime7.ConsensusFault{
 			Target: blockA.Miner,
 			Epoch:  blockB.Height,
-			Type:   runtime5.ConsensusFaultTimeOffsetMining,
+			Type:   runtime7.ConsensusFaultTimeOffsetMining,
 		}
 	}
 
@@ -171,10 +173,10 @@ func (ss *syscallShim) VerifyConsensusFault(a, b, extra []byte) (*runtime5.Conse
 
 		if types.CidArrsEqual(blockA.Parents, blockC.Parents) && blockA.Height == blockC.Height &&
 			types.CidArrsContains(blockB.Parents, blockC.Cid()) && !types.CidArrsContains(blockB.Parents, blockA.Cid()) {
-			consensusFault = &runtime5.ConsensusFault{
+			consensusFault = &runtime7.ConsensusFault{
 				Target: blockA.Miner,
 				Epoch:  blockB.Height,
-				Type:   runtime5.ConsensusFaultParentGrinding,
+				Type:   runtime7.ConsensusFaultParentGrinding,
 			}
 		}
 	}
@@ -286,8 +288,22 @@ func (ss *syscallShim) VerifyAggregateSeals(aggregate proof5.AggregateSealVerify
 	if err != nil {
 		return xerrors.Errorf("failed to verify aggregated PoRep: %w", err)
 	}
+
 	if !ok {
 		return fmt.Errorf("invalid aggregate proof")
+	}
+
+	return nil
+}
+
+func (ss *syscallShim) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) error {
+	ok, err := ss.verifier.VerifyReplicaUpdate(update)
+	if err != nil {
+		return xerrors.Errorf("failed to verify replica update: %w", err)
+	}
+
+	if !ok {
+		return fmt.Errorf("invalid replica update")
 	}
 
 	return nil

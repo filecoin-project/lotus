@@ -82,10 +82,10 @@ type gasChargingBlocks struct {
 	under     cbor.IpldBlockstore
 }
 
-func (bs *gasChargingBlocks) View(c cid.Cid, cb func([]byte) error) error {
+func (bs *gasChargingBlocks) View(ctx context.Context, c cid.Cid, cb func([]byte) error) error {
 	if v, ok := bs.under.(blockstore.Viewer); ok {
 		bs.chargeGas(bs.pricelist.OnIpldGet())
-		return v.View(c, func(b []byte) error {
+		return v.View(ctx, c, func(b []byte) error {
 			// we have successfully retrieved the value; charge for it, even if the user-provided function fails.
 			bs.chargeGas(newGasCharge("OnIpldViewEnd", 0, 0).WithExtra(len(b)))
 			bs.chargeGas(gasOnActorExec)
@@ -93,16 +93,16 @@ func (bs *gasChargingBlocks) View(c cid.Cid, cb func([]byte) error) error {
 		})
 	}
 	// the underlying blockstore doesn't implement the viewer interface, fall back to normal Get behaviour.
-	blk, err := bs.Get(c)
+	blk, err := bs.Get(ctx, c)
 	if err == nil && blk != nil {
 		return cb(blk.RawData())
 	}
 	return err
 }
 
-func (bs *gasChargingBlocks) Get(c cid.Cid) (block.Block, error) {
+func (bs *gasChargingBlocks) Get(ctx context.Context, c cid.Cid) (block.Block, error) {
 	bs.chargeGas(bs.pricelist.OnIpldGet())
-	blk, err := bs.under.Get(c)
+	blk, err := bs.under.Get(ctx, c)
 	if err != nil {
 		return nil, aerrors.Escalate(err, "failed to get block from blockstore")
 	}
@@ -112,10 +112,10 @@ func (bs *gasChargingBlocks) Get(c cid.Cid) (block.Block, error) {
 	return blk, nil
 }
 
-func (bs *gasChargingBlocks) Put(blk block.Block) error {
+func (bs *gasChargingBlocks) Put(ctx context.Context, blk block.Block) error {
 	bs.chargeGas(bs.pricelist.OnIpldPut(len(blk.RawData())))
 
-	if err := bs.under.Put(blk); err != nil {
+	if err := bs.under.Put(ctx, blk); err != nil {
 		return aerrors.Escalate(err, "failed to write data to disk")
 	}
 	bs.chargeGas(gasOnActorExec)
@@ -202,9 +202,7 @@ type (
 )
 
 type VM struct {
-	cstate *state.StateTree
-	// TODO: Is base actually used? Can we delete it?
-	base           cid.Cid
+	cstate         *state.StateTree
 	cst            *cbor.BasicIpldStore
 	buf            *blockstore.BufferedBlockstore
 	blockHeight    abi.ChainEpoch
@@ -214,6 +212,7 @@ type VM struct {
 	ntwkVersion    NtwkVersionGetter
 	baseFee        abi.TokenAmount
 	lbStateGet     LookbackStateGetter
+	baseCircSupply abi.TokenAmount
 
 	Syscalls SyscallBuilder
 }
@@ -239,9 +238,13 @@ func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
 		return nil, err
 	}
 
+	baseCirc, err := opts.CircSupplyCalc(ctx, opts.Epoch, state)
+	if err != nil {
+		return nil, err
+	}
+
 	return &VM{
 		cstate:         state,
-		base:           opts.StateBase,
 		cst:            cst,
 		buf:            buf,
 		blockHeight:    opts.Epoch,
@@ -251,16 +254,14 @@ func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
 		ntwkVersion:    opts.NtwkVersion,
 		Syscalls:       opts.Syscalls,
 		baseFee:        opts.BaseFee,
+		baseCircSupply: baseCirc,
 		lbStateGet:     opts.LookbackState,
 	}, nil
 }
 
 type Rand interface {
-	GetChainRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
-	GetChainRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
-	GetBeaconRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
-	GetBeaconRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
-	GetBeaconRandomnessV3(ctx context.Context, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetChainRandomness(ctx context.Context, nv network.Version, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetBeaconRandomness(ctx context.Context, nv network.Version, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
 }
 
 type ApplyRet struct {
@@ -339,7 +340,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		defer rt.chargeGasSafe(newGasCharge("OnMethodInvocationDone", 0, 0))
 
 		if types.BigCmp(msg.Value, types.NewInt(0)) != 0 {
-			if err := vm.transfer(msg.From, msg.To, msg.Value); err != nil {
+			if err := vm.transfer(msg.From, msg.To, msg.Value, vm.ntwkVersion(ctx, vm.blockHeight)); err != nil {
 				return nil, aerrors.Wrap(err, "failed to transfer funds")
 			}
 		}
@@ -706,7 +707,7 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 
 	go func() {
 		for b := range toFlush {
-			if err := to.PutMany(b); err != nil {
+			if err := to.PutMany(ctx, b); err != nil {
 				close(freeBufs)
 				errFlushChan <- xerrors.Errorf("batch put in copy: %w", err)
 				return
@@ -735,7 +736,7 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 		return nil
 	}
 
-	if err := copyRec(from, to, root, batchCp); err != nil {
+	if err := copyRec(ctx, from, to, root, batchCp); err != nil {
 		return xerrors.Errorf("copyRec: %w", err)
 	}
 
@@ -760,13 +761,13 @@ func Copy(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid) err
 	return nil
 }
 
-func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) error) error {
+func copyRec(ctx context.Context, from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) error) error {
 	if root.Prefix().MhType == 0 {
 		// identity cid, skip
 		return nil
 	}
 
-	blk, err := from.Get(root)
+	blk, err := from.Get(ctx, root)
 	if err != nil {
 		return xerrors.Errorf("get %s failed: %w", root, err)
 	}
@@ -791,7 +792,7 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) 
 			}
 		} else {
 			// If we have an object, we already have its children, skip the object.
-			has, err := to.Has(link)
+			has, err := to.Has(ctx, link)
 			if err != nil {
 				lerr = xerrors.Errorf("has: %w", err)
 				return
@@ -801,7 +802,7 @@ func copyRec(from, to blockstore.Blockstore, root cid.Cid, cp func(block.Block) 
 			}
 		}
 
-		if err := copyRec(from, to, link, cp); err != nil {
+		if err := copyRec(ctx, from, to, link, cp); err != nil {
 			lerr = err
 			return
 		}
@@ -859,7 +860,12 @@ func (vm *VM) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Ver
 }
 
 func (vm *VM) GetCircSupply(ctx context.Context) (abi.TokenAmount, error) {
-	return vm.circSupplyCalc(ctx, vm.blockHeight, vm.cstate)
+	// Before v15, this was recalculated on each invocation as the state tree was mutated
+	if vm.GetNtwkVersion(ctx, vm.blockHeight) <= network.Version14 {
+		return vm.circSupplyCalc(ctx, vm.blockHeight, vm.cstate)
+	}
+
+	return vm.baseCircSupply, nil
 }
 
 func (vm *VM) incrementNonce(addr address.Address) error {
@@ -869,32 +875,71 @@ func (vm *VM) incrementNonce(addr address.Address) error {
 	})
 }
 
-func (vm *VM) transfer(from, to address.Address, amt types.BigInt) aerrors.ActorError {
-	if from == to {
-		return nil
-	}
+func (vm *VM) transfer(from, to address.Address, amt types.BigInt, networkVersion network.Version) aerrors.ActorError {
+	var f *types.Actor
+	var fromID, toID address.Address
+	var err error
+	// switching the order around so that transactions for more than the balance sent to self fail
+	if networkVersion >= network.Version15 {
+		if amt.LessThan(types.NewInt(0)) {
+			return aerrors.Newf(exitcode.SysErrForbidden, "attempted to transfer negative value: %s", amt)
+		}
 
-	fromID, err := vm.cstate.LookupID(from)
-	if err != nil {
-		return aerrors.Fatalf("transfer failed when resolving sender address: %s", err)
-	}
+		fromID, err = vm.cstate.LookupID(from)
+		if err != nil {
+			return aerrors.Fatalf("transfer failed when resolving sender address: %s", err)
+		}
 
-	toID, err := vm.cstate.LookupID(to)
-	if err != nil {
-		return aerrors.Fatalf("transfer failed when resolving receiver address: %s", err)
-	}
+		f, err = vm.cstate.GetActor(fromID)
+		if err != nil {
+			return aerrors.Fatalf("transfer failed when retrieving sender actor: %s", err)
+		}
 
-	if fromID == toID {
-		return nil
-	}
+		if f.Balance.LessThan(amt) {
+			return aerrors.Newf(exitcode.SysErrInsufficientFunds, "transfer failed, insufficient balance in sender actor: %v", f.Balance)
+		}
 
-	if amt.LessThan(types.NewInt(0)) {
-		return aerrors.Newf(exitcode.SysErrForbidden, "attempted to transfer negative value: %s", amt)
-	}
+		if from == to {
+			log.Infow("sending to same address: noop", "from/to addr", from)
+			return nil
+		}
 
-	f, err := vm.cstate.GetActor(fromID)
-	if err != nil {
-		return aerrors.Fatalf("transfer failed when retrieving sender actor: %s", err)
+		toID, err = vm.cstate.LookupID(to)
+		if err != nil {
+			return aerrors.Fatalf("transfer failed when resolving receiver address: %s", err)
+		}
+
+		if fromID == toID {
+			log.Infow("sending to same actor ID: noop", "from/to actor", fromID)
+			return nil
+		}
+	} else {
+		if from == to {
+			return nil
+		}
+
+		fromID, err = vm.cstate.LookupID(from)
+		if err != nil {
+			return aerrors.Fatalf("transfer failed when resolving sender address: %s", err)
+		}
+
+		toID, err = vm.cstate.LookupID(to)
+		if err != nil {
+			return aerrors.Fatalf("transfer failed when resolving receiver address: %s", err)
+		}
+
+		if fromID == toID {
+			return nil
+		}
+
+		if amt.LessThan(types.NewInt(0)) {
+			return aerrors.Newf(exitcode.SysErrForbidden, "attempted to transfer negative value: %s", amt)
+		}
+
+		f, err = vm.cstate.GetActor(fromID)
+		if err != nil {
+			return aerrors.Fatalf("transfer failed when retrieving sender actor: %s", err)
+		}
 	}
 
 	t, err := vm.cstate.GetActor(toID)
@@ -902,17 +947,17 @@ func (vm *VM) transfer(from, to address.Address, amt types.BigInt) aerrors.Actor
 		return aerrors.Fatalf("transfer failed when retrieving receiver actor: %s", err)
 	}
 
-	if err := deductFunds(f, amt); err != nil {
+	if err = deductFunds(f, amt); err != nil {
 		return aerrors.Newf(exitcode.SysErrInsufficientFunds, "transfer failed when deducting funds (%s): %s", types.FIL(amt), err)
 	}
 	depositFunds(t, amt)
 
-	if err := vm.cstate.SetActor(fromID, f); err != nil {
-		return aerrors.Fatalf("transfer failed when setting receiver actor: %s", err)
+	if err = vm.cstate.SetActor(fromID, f); err != nil {
+		return aerrors.Fatalf("transfer failed when setting sender actor: %s", err)
 	}
 
-	if err := vm.cstate.SetActor(toID, t); err != nil {
-		return aerrors.Fatalf("transfer failed when setting sender actor: %s", err)
+	if err = vm.cstate.SetActor(toID, t); err != nil {
+		return aerrors.Fatalf("transfer failed when setting receiver actor: %s", err)
 	}
 
 	return nil

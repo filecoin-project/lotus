@@ -83,7 +83,7 @@ var datastoreListCmd = &cli.Command{
 
 		genc := cctx.String("get-enc")
 
-		q, err := ds.Query(dsq.Query{
+		q, err := ds.Query(context.Background(), dsq.Query{
 			Prefix:   datastore.NewKey(cctx.Args().Get(1)).String(),
 			KeysOnly: genc == "",
 		})
@@ -147,7 +147,7 @@ var datastoreGetCmd = &cli.Command{
 			return err
 		}
 
-		val, err := ds.Get(datastore.NewKey(cctx.Args().Get(1)))
+		val, err := ds.Get(context.Background(), datastore.NewKey(cctx.Args().Get(1)))
 		if err != nil {
 			return xerrors.Errorf("get: %w", err)
 		}

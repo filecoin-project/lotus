@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+// TODO: This needs to be repurposed into a SnapDeals test suite
 func TestCCUpgrade(t *testing.T) {
 	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
 	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
@@ -42,7 +43,7 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) {
 	ctx := context.Background()
 	blockTime := 5 * time.Millisecond
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.LatestActorsAt(upgradeHeight))
+	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.TurboUpgradeAt(upgradeHeight))
 	ens.InterconnectAll().BeginMining(blockTime)
 
 	maddr, err := miner.ActorAddress(ctx)

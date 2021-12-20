@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
@@ -320,17 +321,45 @@ func (dh *DealHarness) PerformRetrieval(ctx context.Context, deal *cid.Cid, root
 	caddr, err := dh.client.WalletDefaultAddress(ctx)
 	require.NoError(dh.t, err)
 
-	ref := &api.FileRef{
-		Path:  carFile.Name(),
-		IsCAR: carExport,
-	}
-
-	updates, err := dh.client.ClientRetrieveWithEvents(ctx, offers[0].Order(caddr), ref)
+	updatesCtx, cancel := context.WithCancel(ctx)
+	updates, err := dh.client.ClientGetRetrievalUpdates(updatesCtx)
 	require.NoError(dh.t, err)
 
-	for update := range updates {
-		require.Emptyf(dh.t, update.Err, "retrieval failed: %s", update.Err)
+	retrievalRes, err := dh.client.ClientRetrieve(ctx, offers[0].Order(caddr))
+	require.NoError(dh.t, err)
+consumeEvents:
+	for {
+		var evt api.RetrievalInfo
+		select {
+		case <-updatesCtx.Done():
+			dh.t.Fatal("Retrieval Timed Out")
+		case evt = <-updates:
+			if evt.ID != retrievalRes.DealID {
+				continue
+			}
+		}
+		switch evt.Status {
+		case retrievalmarket.DealStatusCompleted:
+			break consumeEvents
+		case retrievalmarket.DealStatusRejected:
+			dh.t.Fatalf("Retrieval Proposal Rejected: %s", evt.Message)
+		case
+			retrievalmarket.DealStatusDealNotFound,
+			retrievalmarket.DealStatusErrored:
+			dh.t.Fatalf("Retrieval Error: %s", evt.Message)
+		}
 	}
+	cancel()
+
+	require.NoError(dh.t, dh.client.ClientExport(ctx,
+		api.ExportRef{
+			Root:   root,
+			DealID: retrievalRes.DealID,
+		},
+		api.FileRef{
+			Path:  carFile.Name(),
+			IsCAR: carExport,
+		}))
 
 	ret := carFile.Name()
 	if carExport {
@@ -344,7 +373,7 @@ func (dh *DealHarness) PerformRetrieval(ctx context.Context, deal *cid.Cid, root
 
 func (dh *DealHarness) ExtractFileFromCAR(ctx context.Context, file *os.File) (out *os.File) {
 	bserv := dstest.Bserv()
-	ch, err := car.LoadCar(bserv.Blockstore(), file)
+	ch, err := car.LoadCar(ctx, bserv.Blockstore(), file)
 	require.NoError(dh.t, err)
 
 	b, err := bserv.GetBlock(ctx, ch.Roots[0])

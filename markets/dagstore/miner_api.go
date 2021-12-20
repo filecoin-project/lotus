@@ -3,34 +3,43 @@ package dagstore
 import (
 	"context"
 	"fmt"
-	"io"
 
-	"github.com/filecoin-project/dagstore/throttle"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/dagstore/mount"
+	"github.com/filecoin-project/dagstore/throttle"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
+//go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_lotus_accessor.go -package=mock_dagstore . MinerAPI
+
 type MinerAPI interface {
-	FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error)
+	FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (mount.Reader, error)
 	GetUnpaddedCARSize(ctx context.Context, pieceCid cid.Cid) (uint64, error)
 	IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, error)
 	Start(ctx context.Context) error
 }
 
+type SectorAccessor interface {
+	retrievalmarket.SectorAccessor
+
+	UnsealSectorAt(ctx context.Context, sectorID abi.SectorNumber, pieceOffset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (mount.Reader, error)
+}
+
 type minerAPI struct {
 	pieceStore piecestore.PieceStore
-	sa         retrievalmarket.SectorAccessor
+	sa         SectorAccessor
 	throttle   throttle.Throttler
 	readyMgr   *shared.ReadyManager
 }
 
 var _ MinerAPI = (*minerAPI)(nil)
 
-func NewMinerAPI(store piecestore.PieceStore, sa retrievalmarket.SectorAccessor, concurrency int) MinerAPI {
+func NewMinerAPI(store piecestore.PieceStore, sa SectorAccessor, concurrency int) MinerAPI {
 	return &minerAPI{
 		pieceStore: store,
 		sa:         sa,
@@ -91,7 +100,7 @@ func (m *minerAPI) IsUnsealed(ctx context.Context, pieceCid cid.Cid) (bool, erro
 	return false, nil
 }
 
-func (m *minerAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io.ReadCloser, error) {
+func (m *minerAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (mount.Reader, error) {
 	err := m.readyMgr.AwaitReady()
 	if err != nil {
 		return nil, err
@@ -117,7 +126,7 @@ func (m *minerAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io
 		deal := deal
 
 		// Throttle this path to avoid flooding the storage subsystem.
-		var reader io.ReadCloser
+		var reader mount.Reader
 		err := m.throttle.Do(ctx, func(ctx context.Context) (err error) {
 			isUnsealed, err := m.sa.IsUnsealed(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
 			if err != nil {
@@ -127,7 +136,7 @@ func (m *minerAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io
 				return nil
 			}
 			// Because we know we have an unsealed copy, this UnsealSector call will actually not perform any unsealing.
-			reader, err = m.sa.UnsealSector(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
+			reader, err = m.sa.UnsealSectorAt(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
 			return err
 		})
 
@@ -149,7 +158,7 @@ func (m *minerAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (io
 		// block for a long time with the current PoRep
 		//
 		// This path is unthrottled.
-		reader, err := m.sa.UnsealSector(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
+		reader, err := m.sa.UnsealSectorAt(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
 		if err != nil {
 			lastErr = xerrors.Errorf("failed to unseal deal %d: %w", deal.DealID, err)
 			log.Warn(lastErr.Error())

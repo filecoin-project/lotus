@@ -32,13 +32,13 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	graphsync "github.com/ipfs/go-graphsync/impl"
-	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	"github.com/ipfs/go-graphsync/storeutil"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -77,7 +77,7 @@ var (
 )
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
-	maddrb, err := ds.Get(datastore.NewKey("miner-address"))
+	maddrb, err := ds.Get(context.TODO(), datastore.NewKey("miner-address"))
 	if err != nil {
 		return address.Undef, err
 	}
@@ -299,7 +299,7 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 func HandleMigrateProviderFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, node api.FullNode, minerAddress dtypes.MinerAddress) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			b, err := ds.Get(datastore.NewKey("/marketfunds/provider"))
+			b, err := ds.Get(ctx, datastore.NewKey("/marketfunds/provider"))
 			if err != nil {
 				if xerrors.Is(err, datastore.ErrNotFound) {
 					return nil
@@ -330,7 +330,7 @@ func HandleMigrateProviderFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, node api.
 				return nil
 			}
 
-			return ds.Delete(datastore.NewKey("/marketfunds/provider"))
+			return ds.Delete(ctx, datastore.NewKey("/marketfunds/provider"))
 		},
 	})
 }
@@ -395,7 +395,7 @@ func StagingBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 
 // StagingGraphsync creates a graphsync instance which reads and writes blocks
 // to the StagingBlockstore
-func StagingGraphsync(parallelTransfersForStorage uint64, parallelTransfersForRetrieval uint64) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
+func StagingGraphsync(parallelTransfersForStorage uint64, parallelTransfersForStoragePerPeer uint64, parallelTransfersForRetrieval uint64) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
 		graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
 		lsys := storeutil.LinkSystemForBlockstore(ibs)
@@ -404,9 +404,10 @@ func StagingGraphsync(parallelTransfersForStorage uint64, parallelTransfersForRe
 			lsys,
 			graphsync.RejectAllRequestsByDefault(),
 			graphsync.MaxInProgressIncomingRequests(parallelTransfersForRetrieval),
+			graphsync.MaxInProgressIncomingRequestsPerPeer(parallelTransfersForStoragePerPeer),
 			graphsync.MaxInProgressOutgoingRequests(parallelTransfersForStorage),
-			graphsyncimpl.MaxLinksPerIncomingRequests(config.MaxTraversalLinks),
-			graphsyncimpl.MaxLinksPerOutgoingRequests(config.MaxTraversalLinks))
+			graphsync.MaxLinksPerIncomingRequests(config.MaxTraversalLinks),
+			graphsync.MaxLinksPerOutgoingRequests(config.MaxTraversalLinks))
 
 		graphsyncStats(mctx, lc, gs)
 
@@ -683,6 +684,9 @@ func RetrievalProvider(
 	dagStore *dagstore.Wrapper,
 ) (retrievalmarket.RetrievalProvider, error) {
 	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
+
+	retrievalmarket.DefaultPricePerByte = big.Zero() // todo: for whatever reason this is a global var in markets
+
 	return retrievalimpl.NewProvider(
 		address.Address(maddr),
 		adapter,

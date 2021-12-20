@@ -806,6 +806,11 @@ workflows:
           target: "./itests/deals_padding_test.go"
       
       - test:
+          name: test-itest-deals_partial_retrieval_dm-level
+          suite: itest-deals_partial_retrieval_dm-level
+          target: "./itests/deals_partial_retrieval_dm-level_test.go"
+      
+      - test:
           name: test-itest-deals_partial_retrieval
           suite: itest-deals_partial_retrieval
           target: "./itests/deals_partial_retrieval_test.go"
@@ -891,6 +896,11 @@ workflows:
           target: "./itests/sector_terminate_test.go"
       
       - test:
+          name: test-itest-self_sent_txn
+          suite: itest-self_sent_txn
+          target: "./itests/self_sent_txn_test.go"
+      
+      - test:
           name: test-itest-tape
           suite: itest-tape
           target: "./itests/tape_test.go"
@@ -971,19 +981,10 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - build-appimage:
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish:
           requires:
             - build-all
             - build-macos
-            - build-appimage
           filters:
             branches:
               ignore:

@@ -300,11 +300,11 @@ func (sm *StorageMinerAPI) StorageLocal(ctx context.Context) (map[stores.ID]stri
 	return out, nil
 }
 
-func (sm *StorageMinerAPI) SectorsRefs(context.Context) (map[string][]api.SealedRef, error) {
+func (sm *StorageMinerAPI) SectorsRefs(ctx context.Context) (map[string][]api.SealedRef, error) {
 	// json can't handle cids as map keys
 	out := map[string][]api.SealedRef{}
 
-	refs, err := sm.SectorBlocks.List()
+	refs, err := sm.SectorBlocks.List(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -948,7 +948,7 @@ func (sm *StorageMinerAPI) PiecesGetCIDInfo(ctx context.Context, payloadCid cid.
 }
 
 func (sm *StorageMinerAPI) CreateBackup(ctx context.Context, fpath string) error {
-	return backup(sm.DS, fpath)
+	return backup(ctx, sm.DS, fpath)
 }
 
 func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []sto.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) {

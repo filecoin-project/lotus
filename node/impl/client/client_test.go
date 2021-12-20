@@ -64,7 +64,7 @@ func TestImportLocal(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, local)
 
-	order := api.RetrievalOrder{
+	order := api.ExportRef{
 		Root:         root,
 		FromLocalCAR: it.CARPath,
 	}
@@ -72,8 +72,7 @@ func TestImportLocal(t *testing.T) {
 	// retrieve as UnixFS.
 	out1 := filepath.Join(dir, "retrieval1.data") // as unixfs
 	out2 := filepath.Join(dir, "retrieval2.data") // as car
-	//stm: @CLIENT_RETRIEVAL_RETRIEVE_001
-	err = a.ClientRetrieve(ctx, order, &api.FileRef{
+	err = a.ClientExport(ctx, order, api.FileRef{
 		Path: out1,
 	})
 	require.NoError(t, err)
@@ -82,7 +81,7 @@ func TestImportLocal(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, b, outBytes)
 
-	err = a.ClientRetrieve(ctx, order, &api.FileRef{
+	err = a.ClientExport(ctx, order, api.FileRef{
 		Path:  out2,
 		IsCAR: true,
 	})
@@ -112,7 +111,7 @@ func TestImportLocal(t *testing.T) {
 	// recreate the unixfs dag, and see if it matches the original file byte by byte
 	// import the car into a memory blockstore, then export the unixfs file.
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
-	_, err = car.LoadCar(bs, exported.DataReader())
+	_, err = car.LoadCar(ctx, bs, exported.DataReader())
 	require.NoError(t, err)
 
 	dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))
