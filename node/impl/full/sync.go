@@ -50,14 +50,14 @@ func (a *SyncAPI) SyncState(ctx context.Context) (*api.SyncState, error) {
 	return out, nil
 }
 
-func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg) error {
+func (a *SyncAPI) SyncSubmitBlock(ctx context.Context, blk *types.BlockMsg, checkParentGrinding bool) error {
 	parent, err := a.Syncer.ChainStore().GetBlock(blk.Header.Parents[0])
 	if err != nil {
 		return xerrors.Errorf("loading parent block: %w", err)
 	}
 
 	if a.SlashFilter != nil {
-		if err := a.SlashFilter.MinedBlock(blk.Header, parent.Height); err != nil {
+		if err := a.SlashFilter.MinedBlock(blk.Header, parent.Height, checkParentGrinding); err != nil {
 			log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
 			return xerrors.Errorf("<!!> SLASH FILTER ERROR: %w", err)
 		}

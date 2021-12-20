@@ -325,7 +325,23 @@ minerLoop:
 					"block-time", btime, "time", build.Clock.Now(), "difference", build.Clock.Since(btime))
 			}
 
-			if err := m.sf.MinedBlock(b.Header, base.TipSet.Height()+base.NullRounds); err != nil {
+			// parent-grinding fault (didn't mine on top of our own block)
+			//  if own block is invalid (less parent block is included), doesn't check parent-grinding fault
+			checkParentGrinding := func() bool {
+				parentCid, err := m.sf.GetMinedBlockCid(b.Header.Miner, base.TipSet.Height()+base.NullRounds)
+				if err != nil {
+					return false
+				}
+
+				// If the parentCid is valid, check the "parent-grinding fault" consensus fault.
+				_, err = m.api.ChainGetBlock(ctx, parentCid)
+				if err != nil {
+					return false
+				}
+				return true // must mine on top of our own block
+			}()
+
+			if err := m.sf.MinedBlock(b.Header, base.TipSet.Height()+base.NullRounds, checkParentGrinding); err != nil {
 				log.Errorf("<!!> SLASH FILTER ERROR: %s", err)
 				if os.Getenv("LOTUS_MINER_NO_SLASHFILTER") != "_yes_i_know_i_can_and_probably_will_lose_all_my_fil_and_power_" {
 					continue
@@ -340,7 +356,7 @@ minerLoop:
 
 			m.minedBlockHeights.Add(blkKey, true)
 
-			if err := m.api.SyncSubmitBlock(ctx, b); err != nil {
+			if err := m.api.SyncSubmitBlock(ctx, b, checkParentGrinding); err != nil {
 				log.Errorf("failed to submit newly mined block: %+v", err)
 			}
 		} else {

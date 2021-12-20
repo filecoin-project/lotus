@@ -2,6 +2,7 @@ package slashfilter
 
 import (
 	"fmt"
+	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/build"
 
@@ -27,7 +28,30 @@ func New(dstore ds.Batching) *SlashFilter {
 	}
 }
 
-func (f *SlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
+func (f *SlashFilter) GetMinedBlockCid(miner address.Address, parentEpoch abi.ChainEpoch) (cid.Cid, error) {
+	parentEpochKey := ds.NewKey(fmt.Sprintf("/%s/%d", miner, parentEpoch))
+	have, err := f.byEpoch.Has(parentEpochKey)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	if have {
+		cidb, err := f.byEpoch.Get(parentEpochKey)
+		if err != nil {
+			return cid.Undef, xerrors.Errorf("getting other block cid: %w", err)
+		}
+
+		_, parent, err := cid.CidFromBytes(cidb)
+		if err != nil {
+			return cid.Undef, err
+		}
+		return parent, nil
+	}
+
+	return cid.Undef, xerrors.New("block is not mined")
+}
+
+func (f *SlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch, checkParentGrinding bool) error {
 	if build.IsNearUpgrade(bh.Height, build.UpgradeOrangeHeight) {
 		return nil
 	}
@@ -48,7 +72,7 @@ func (f *SlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpo
 		}
 	}
 
-	{
+	if checkParentGrinding {
 		// parent-grinding fault (didn't mine on top of our own block)
 
 		// First check if we have mined a block on the parent epoch

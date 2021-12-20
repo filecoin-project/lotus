@@ -5489,7 +5489,8 @@ Inputs:
     },
     "BlsMessages": null,
     "SecpkMessages": null
-  }
+  },
+  true
 ]
 ```
 

@@ -359,7 +359,7 @@ type FullNodeStruct struct {
 
 		SyncState func(p0 context.Context) (*api.SyncState, error) `perm:"read"`
 
-		SyncSubmitBlock func(p0 context.Context, p1 *types.BlockMsg) error `perm:"write"`
+		SyncSubmitBlock func(p0 context.Context, p1 *types.BlockMsg, p2 bool) error `perm:"write"`
 
 		SyncUnmarkAllBad func(p0 context.Context) error `perm:"admin"`
 
@@ -2252,14 +2252,14 @@ func (s *FullNodeStub) SyncState(p0 context.Context) (*api.SyncState, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg) error {
+func (s *FullNodeStruct) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg, p2 bool) error {
 	if s.Internal.SyncSubmitBlock == nil {
 		return ErrNotSupported
 	}
-	return s.Internal.SyncSubmitBlock(p0, p1)
+	return s.Internal.SyncSubmitBlock(p0, p1, p2)
 }
 
-func (s *FullNodeStub) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg) error {
+func (s *FullNodeStub) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg, p2 bool) error {
 	return ErrNotSupported
 }
 
