@@ -5,6 +5,8 @@ import (
 	"runtime"
 	"time"
 
+	autobatch "github.com/application-research/go-bs-autobatch"
+
 	"github.com/filecoin-project/specs-actors/v6/actors/migration/nv14"
 	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
 
@@ -1245,8 +1247,15 @@ func PreUpgradeActorsV7(ctx context.Context, sm *stmgr.StateManager, cache stmgr
 		workerCount /= 2
 	}
 
-	config := nv15.Config{MaxWorkers: uint(workerCount)}
-	_, err := upgradeActorsV7Common(ctx, sm, cache, root, epoch, ts, config)
+	lbts, lbRoot, err := stmgr.GetLookbackTipSetForRound(ctx, sm, ts, epoch)
+	if err != nil {
+		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
+	}
+
+	config := nv15.Config{MaxWorkers: uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5}
+
+	_, err = upgradeActorsV7Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
 	return err
 }
 
@@ -1255,7 +1264,12 @@ func upgradeActorsV7Common(
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
 	config nv15.Config,
 ) (cid.Cid, error) {
-	buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), blockstore.NewMemorySync())
+	writeStore, err := autobatch.NewBlockstore(sm.ChainStore().StateBlockstore(), blockstore.NewMemorySync(), 100_000, 100, true)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("failed to create writeStore: %w", err)
+	}
+
+	buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), writeStore)
 	store := store.ActorStore(ctx, buf)
 
 	// Load the state root.
