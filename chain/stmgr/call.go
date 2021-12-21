@@ -75,12 +75,12 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 	vmopt := &vm.VMOpts{
 		StateBase:      bstate,
 		Epoch:          pheight + 1,
-		Rand:           rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon),
+		Rand:           rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, sm.GetNetworkVersion),
 		Bstore:         sm.cs.StateBlockstore(),
 		Actors:         sm.tsExec.NewActorRegistry(),
 		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
-		NtwkVersion:    sm.GetNtwkVersion,
+		NetworkVersion: sm.GetNetworkVersion(ctx, pheight+1),
 		BaseFee:        types.NewInt(0),
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 	}
@@ -186,7 +186,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
 
-	r := rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon)
+	r := rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, sm.GetNetworkVersion)
 
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
@@ -204,7 +204,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		Actors:         sm.tsExec.NewActorRegistry(),
 		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
-		NtwkVersion:    sm.GetNtwkVersion,
+		NetworkVersion: sm.GetNetworkVersion(ctx, ts.Height()+1),
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 	}

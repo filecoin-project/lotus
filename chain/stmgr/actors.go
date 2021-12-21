@@ -358,7 +358,7 @@ func MinerGetBaseInfo(ctx context.Context, sm *StateManager, bcs beacon.Schedule
 		return nil, xerrors.Errorf("failed to get randomness for winning post: %w", err)
 	}
 
-	nv := sm.GetNtwkVersion(ctx, ts.Height())
+	nv := sm.GetNetworkVersion(ctx, ts.Height())
 
 	sectors, err := GetSectorsForWinningPoSt(ctx, nv, pv, sm, lbst, maddr, prand)
 	if err != nil {
@@ -420,7 +420,7 @@ func MinerEligibleToMine(ctx context.Context, sm *StateManager, addr address.Add
 	hmp, err := minerHasMinPower(ctx, sm, addr, lookbackTs)
 
 	// TODO: We're blurring the lines between a "runtime network version" and a "Lotus upgrade epoch", is that unavoidable?
-	if sm.GetNtwkVersion(ctx, baseTs.Height()) <= network.Version3 {
+	if sm.GetNetworkVersion(ctx, baseTs.Height()) <= network.Version3 {
 		return hmp, err
 	}
 

@@ -356,7 +356,7 @@ func (sm *StateManager) VMConstructor() func(context.Context, *vm.VMOpts) (*vm.V
 	}
 }
 
-func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
+func (sm *StateManager) GetNetworkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
 	// The epochs here are the _last_ epoch for every version, or -1 if the
 	// version is disabled.
 	for _, spec := range sm.networkVersions {
@@ -377,10 +377,9 @@ func (sm *StateManager) GetRandomnessFromBeacon(ctx context.Context, personaliza
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon)
-	rnv := sm.GetNtwkVersion(ctx, randEpoch)
+	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon, sm.GetNetworkVersion)
 
-	return r.GetBeaconRandomness(ctx, rnv, personalization, randEpoch, entropy)
+	return r.GetBeaconRandomness(ctx, personalization, randEpoch, entropy)
 
 }
 
@@ -390,8 +389,7 @@ func (sm *StateManager) GetRandomnessFromTickets(ctx context.Context, personaliz
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
 	}
 
-	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon)
-	rnv := sm.GetNtwkVersion(ctx, randEpoch)
+	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon, sm.GetNetworkVersion)
 
-	return r.GetChainRandomness(ctx, rnv, personalization, randEpoch, entropy)
+	return r.GetChainRandomness(ctx, personalization, randEpoch, entropy)
 }

@@ -225,9 +225,9 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		CircSupplyCalc: func(_ context.Context, _ abi.ChainEpoch, _ *state.StateTree) (abi.TokenAmount, error) {
 			return params.CircSupply, nil
 		},
-		Rand:        params.Rand,
-		BaseFee:     params.BaseFee,
-		NtwkVersion: sm.GetNtwkVersion,
+		Rand:           params.Rand,
+		BaseFee:        params.BaseFee,
+		NetworkVersion: sm.GetNetworkVersion(context.Background(), params.Epoch),
 	}
 
 	lvm, err := vm.NewVM(context.TODO(), vmOpts)

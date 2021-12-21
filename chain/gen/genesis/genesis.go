@@ -491,10 +491,8 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 		Actors:         filcns.NewActorRegistry(),
 		Syscalls:       mkFakedSigSyscalls(sys),
 		CircSupplyCalc: csc,
-		NtwkVersion: func(_ context.Context, _ abi.ChainEpoch) network.Version {
-			return nv
-		},
-		BaseFee: types.NewInt(0),
+		NetworkVersion: nv,
+		BaseFee:        types.NewInt(0),
 	}
 	vm, err := vm.NewVM(ctx, &vmopt)
 	if err != nil {

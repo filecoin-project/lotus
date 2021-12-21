@@ -169,7 +169,7 @@ func (vm *VM) makeRuntime(ctx context.Context, msg *types.Message, parent *Runti
 	}
 	vmm.From = resF
 
-	if vm.ntwkVersion(ctx, vm.blockHeight) <= network.Version3 {
+	if vm.networkVersion <= network.Version3 {
 		rt.Message = &vmm
 	} else {
 		resT, _ := rt.ResolveAddress(msg.To)
@@ -209,7 +209,7 @@ type VM struct {
 	areg           *ActorRegistry
 	rand           Rand
 	circSupplyCalc CircSupplyCalculator
-	ntwkVersion    NtwkVersionGetter
+	networkVersion network.Version
 	baseFee        abi.TokenAmount
 	lbStateGet     LookbackStateGetter
 	baseCircSupply abi.TokenAmount
@@ -225,7 +225,7 @@ type VMOpts struct {
 	Actors         *ActorRegistry
 	Syscalls       SyscallBuilder
 	CircSupplyCalc CircSupplyCalculator
-	NtwkVersion    NtwkVersionGetter // TODO: stebalien: In what cases do we actually need this? It seems like even when creating new networks we want to use the 'global'/build-default version getter
+	NetworkVersion network.Version
 	BaseFee        abi.TokenAmount
 	LookbackState  LookbackStateGetter
 }
@@ -251,7 +251,7 @@ func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
 		areg:           opts.Actors,
 		rand:           opts.Rand, // TODO: Probably should be a syscall
 		circSupplyCalc: opts.CircSupplyCalc,
-		ntwkVersion:    opts.NtwkVersion,
+		networkVersion: opts.NetworkVersion,
 		Syscalls:       opts.Syscalls,
 		baseFee:        opts.BaseFee,
 		baseCircSupply: baseCirc,
@@ -260,8 +260,8 @@ func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
 }
 
 type Rand interface {
-	GetChainRandomness(ctx context.Context, nv network.Version, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
-	GetBeaconRandomness(ctx context.Context, nv network.Version, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
+	GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error)
 }
 
 type ApplyRet struct {
@@ -313,7 +313,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 					return nil, aerrors.Wrapf(err, "could not create account")
 				}
 				toActor = a
-				if vm.ntwkVersion(ctx, vm.blockHeight) <= network.Version3 {
+				if vm.networkVersion <= network.Version3 {
 					// Leave the rt.Message as is
 				} else {
 					nmsg := Message{
@@ -340,7 +340,7 @@ func (vm *VM) send(ctx context.Context, msg *types.Message, parent *Runtime,
 		defer rt.chargeGasSafe(newGasCharge("OnMethodInvocationDone", 0, 0))
 
 		if types.BigCmp(msg.Value, types.NewInt(0)) != 0 {
-			if err := vm.transfer(msg.From, msg.To, msg.Value, vm.ntwkVersion(ctx, vm.blockHeight)); err != nil {
+			if err := vm.transfer(msg.From, msg.To, msg.Value, vm.networkVersion); err != nil {
 				return nil, aerrors.Wrap(err, "failed to transfer funds")
 			}
 		}
@@ -617,7 +617,7 @@ func (vm *VM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet,
 }
 
 func (vm *VM) ShouldBurn(ctx context.Context, st *state.StateTree, msg *types.Message, errcode exitcode.ExitCode) (bool, error) {
-	if vm.ntwkVersion(ctx, vm.blockHeight) <= network.Version12 {
+	if vm.networkVersion <= network.Version12 {
 		// Check to see if we should burn funds. We avoid burning on successful
 		// window post. This won't catch _indirect_ window post calls, but this
 		// is the best we can get for now.
@@ -855,13 +855,9 @@ func (vm *VM) SetInvoker(i *ActorRegistry) {
 	vm.areg = i
 }
 
-func (vm *VM) GetNtwkVersion(ctx context.Context, ce abi.ChainEpoch) network.Version {
-	return vm.ntwkVersion(ctx, ce)
-}
-
 func (vm *VM) GetCircSupply(ctx context.Context) (abi.TokenAmount, error) {
 	// Before v15, this was recalculated on each invocation as the state tree was mutated
-	if vm.GetNtwkVersion(ctx, vm.blockHeight) <= network.Version14 {
+	if vm.networkVersion <= network.Version14 {
 		return vm.circSupplyCalc(ctx, vm.blockHeight, vm.cstate)
 	}
 
