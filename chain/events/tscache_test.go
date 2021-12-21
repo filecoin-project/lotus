@@ -1,3 +1,4 @@
+//stm: #unit
 package events
 
 import (
@@ -104,6 +105,7 @@ func TestTsCache(t *testing.T) {
 }
 
 func TestTsCacheNulls(t *testing.T) {
+	//stm: @EVENTS_CACHE_GET_CHAIN_HEAD_001, @EVENTS_CACHE_GET_CHAIN_TIPSET_BEFORE_001, @EVENTS_CACHE_GET_CHAIN_TIPSET_AFTER_001
 	ctx := context.Background()
 	h := newCacheharness(t)
 
