@@ -1,3 +1,4 @@
+//stm: #unit
 package gen
 
 import (
@@ -17,6 +18,7 @@ func init() {
 }
 
 func testGeneration(t testing.TB, n int, msgs int, sectors int) {
+	//stm: @CHAIN_GEN_NEW_GEN_WITH_SECTORS_001, @CHAIN_GEN_NEXT_TIPSET_001
 	g, err := NewGeneratorWithSectors(sectors)
 	if err != nil {
 		t.Fatalf("%+v", err)
