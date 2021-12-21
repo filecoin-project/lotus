@@ -1,3 +1,4 @@
+//stm: #unit
 package aerrors_test
 
 import (
