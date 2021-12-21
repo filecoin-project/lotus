@@ -1,3 +1,4 @@
+//stm: #unit
 package splitstore
 
 import (
@@ -42,6 +43,7 @@ func testMarkSet(t *testing.T, lsType string) {
 	}
 	defer env.Close() //nolint:errcheck
 
+	// stm: @SPLITSTORE_MARKSET_CREATE_001
 	hotSet, err := env.Create("hot", 0)
 	if err != nil {
 		t.Fatal(err)
@@ -61,6 +63,7 @@ func testMarkSet(t *testing.T, lsType string) {
 		return cid.NewCidV1(cid.Raw, h)
 	}
 
+	// stm: @SPLITSTORE_MARKSET_HAS_001
 	mustHave := func(s MarkSet, cid cid.Cid) {
 		has, err := s.Has(cid)
 		if err != nil {
@@ -88,6 +91,7 @@ func testMarkSet(t *testing.T, lsType string) {
 	k3 := makeCid("c")
 	k4 := makeCid("d")
 
+	// stm: @SPLITSTORE_MARKSET_MARK_001, @SPLITSTORE_MARKSET_MARK_002
 	hotSet.Mark(k1)  //nolint
 	hotSet.Mark(k2)  //nolint
 	coldSet.Mark(k3) //nolint
@@ -138,6 +142,7 @@ func testMarkSet(t *testing.T, lsType string) {
 	mustNotHave(coldSet, k3)
 	mustNotHave(coldSet, k4)
 
+	//stm: @SPLITSTORE_MARKSET_CLOSE_001
 	err = hotSet.Close()
 	if err != nil {
 		t.Fatal(err)
@@ -167,6 +172,7 @@ func testMarkSetVisitor(t *testing.T, lsType string) {
 	}
 	defer env.Close() //nolint:errcheck
 
+	//stm: @SPLITSTORE_MARKSET_CREATE_VISITOR_001
 	visitor, err := env.CreateVisitor("test", 0)
 	if err != nil {
 		t.Fatal(err)
