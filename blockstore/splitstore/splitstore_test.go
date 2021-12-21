@@ -1,3 +1,4 @@
+//stm: #unit
 package splitstore
 
 import (
@@ -210,10 +211,16 @@ func testSplitStore(t *testing.T, cfg *Config) {
 }
 
 func TestSplitStoreCompaction(t *testing.T) {
+	//stm: @SPLITSTORE_SPLITSTORE_OPEN_001, @SPLITSTORE_SPLITSTORE_CLOSE_001, @SPLITSTORE_SPLITSTORE_START_001
+	//stm: @SPLITSTORE_SPLITSTORE_PUT_001, @SPLITSTORE_SPLITSTORE_ADD_PROTECTOR_001
+	//stm: @SPLITSTORE_SPLITSTORE_CLOSE_001
 	testSplitStore(t, &Config{MarkSetType: "map"})
 }
 
 func TestSplitStoreCompactionWithBadger(t *testing.T) {
+	//stm: @SPLITSTORE_SPLITSTORE_OPEN_001, @SPLITSTORE_SPLITSTORE_CLOSE_001, @SPLITSTORE_SPLITSTORE_START_001
+	//stm: @SPLITSTORE_SPLITSTORE_PUT_001, @SPLITSTORE_SPLITSTORE_ADD_PROTECTOR_001
+	//stm: @SPLITSTORE_SPLITSTORE_CLOSE_001
 	bs := badgerMarkSetBatchSize
 	badgerMarkSetBatchSize = 1
 	t.Cleanup(func() {
@@ -223,6 +230,9 @@ func TestSplitStoreCompactionWithBadger(t *testing.T) {
 }
 
 func TestSplitStoreSuppressCompactionNearUpgrade(t *testing.T) {
+	//stm: @SPLITSTORE_SPLITSTORE_OPEN_001, @SPLITSTORE_SPLITSTORE_CLOSE_001, @SPLITSTORE_SPLITSTORE_START_001
+	//stm: @SPLITSTORE_SPLITSTORE_PUT_001, @SPLITSTORE_SPLITSTORE_ADD_PROTECTOR_001
+	//stm: @SPLITSTORE_SPLITSTORE_CLOSE_001
 	ctx := context.Background()
 	chain := &mockChain{t: t}
 
