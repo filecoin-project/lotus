@@ -42,7 +42,7 @@ func TestBadgerBlockstore(t *testing.T) {
 
 func TestStorageKey(t *testing.T) {
 	//stm: @SPLITSTORE_BADGER_OPEN_001, @SPLITSTORE_BADGER_CLOSE_001
-	//stm: @SPLITSTORE_BADGER_STORAGE_KEY
+	//stm: @SPLITSTORE_BADGER_STORAGE_KEY_001
 	bs, _ := newBlockstore(DefaultOptions)(t)
 	bbs := bs.(*Blockstore)
 	defer bbs.Close() //nolint:errcheck
