@@ -91,7 +91,7 @@ func testMarkSet(t *testing.T, lsType string) {
 	k3 := makeCid("c")
 	k4 := makeCid("d")
 
-	// stm: @SPLITSTORE_MARKSET_MARK_001, @SPLITSTORE_MARKSET_MARK_002
+	// stm: @SPLITSTORE_MARKSET_MARK_001
 	hotSet.Mark(k1)  //nolint
 	hotSet.Mark(k2)  //nolint
 	coldSet.Mark(k3) //nolint
