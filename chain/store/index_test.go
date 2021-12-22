@@ -1,3 +1,4 @@
+//stm: #unit
 package store_test
 
 import (
@@ -17,6 +18,9 @@ import (
 )
 
 func TestIndexSeeks(t *testing.T) {
+	//stm: @CHAIN_STORE_IMPORT_001
+	//stm: @CHAIN_STORE_GET_TIPSET_BY_HEIGHT_001, @CHAIN_STORE_PUT_TIPSET_001, @CHAIN_STORE_SET_GENESIS_BLOCK_001
+	//stm: @CHAIN_STORE_CLOSE_001
 	cg, err := gen.NewGenerator()
 	if err != nil {
 		t.Fatal(err)
