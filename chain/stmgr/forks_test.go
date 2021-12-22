@@ -109,7 +109,7 @@ func (ta *testActor) TestMethod(rt rt2.Runtime, params *abi.EmptyValue) *abi.Emp
 func TestForkHeightTriggers(t *testing.T) {
 	//stm: @CHAIN_STATETREE_GET_ACTOR_001, @CHAIN_STATETREE_FLUSH_001, @TOKEN_WALLET_SIGN_001
 	//stm: @CHAIN_GEN_NEXT_TIPSET_001
-	//stm: @@CHAIN_STATE_RESOLVE_TO_KEY_ADDR_001, @CHAIN_STATE_SET_VM_CONSTRUCTOR_001
+	//stm: @CHAIN_STATE_RESOLVE_TO_KEY_ADDR_001, @CHAIN_STATE_SET_VM_CONSTRUCTOR_001
 	logging.SetAllLoggers(logging.LevelInfo)
 
 	ctx := context.TODO()
@@ -246,7 +246,7 @@ func TestForkHeightTriggers(t *testing.T) {
 
 func TestForkRefuseCall(t *testing.T) {
 	//stm: @CHAIN_GEN_NEXT_TIPSET_001, @CHAIN_GEN_NEXT_TIPSET_FROM_MINERS_001
-	//stm: @@CHAIN_STATE_RESOLVE_TO_KEY_ADDR_001, @CHAIN_STATE_SET_VM_CONSTRUCTOR_001, @CHAIN_STATE_CALL_001
+	//stm: @CHAIN_STATE_RESOLVE_TO_KEY_ADDR_001, @CHAIN_STATE_SET_VM_CONSTRUCTOR_001, @CHAIN_STATE_CALL_001
 	logging.SetAllLoggers(logging.LevelInfo)
 
 	for after := 0; after < 3; after++ {
@@ -367,7 +367,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 
 func TestForkPreMigration(t *testing.T) {
 	//stm: @CHAIN_GEN_NEXT_TIPSET_001,
-	//stm: @@CHAIN_STATE_RESOLVE_TO_KEY_ADDR_001, @CHAIN_STATE_SET_VM_CONSTRUCTOR_001
+	//stm: @CHAIN_STATE_RESOLVE_TO_KEY_ADDR_001, @CHAIN_STATE_SET_VM_CONSTRUCTOR_001
 	logging.SetAllLoggers(logging.LevelInfo)
 
 	cg, err := gen.NewGenerator()
