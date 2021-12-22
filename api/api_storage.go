@@ -165,6 +165,8 @@ type StorageMiner interface {
 	MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error)                                                                                                             //perm:read
 	MarketListDataTransfers(ctx context.Context) ([]DataTransferChannel, error)                                                                                                          //perm:write
 	MarketDataTransferUpdates(ctx context.Context) (<-chan DataTransferChannel, error)                                                                                                   //perm:write
+	// MarketDataTransferDiagnostics generates debugging information about current data transfers over graphsync
+	MarketDataTransferDiagnostics(ctx context.Context, p peer.ID) (*TransferDiagnostics, error) //perm:write
 	// MarketRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
 	MarketRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error //perm:write
 	// MarketCancelDataTransfer cancels a data transfer with the given transfer ID and other peer

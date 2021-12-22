@@ -335,13 +335,19 @@ func HandleMigrateProviderFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, node api.
 	})
 }
 
-// NewProviderDAGServiceDataTransfer returns a data transfer manager that just
-// uses the provider's Staging DAG service for transfers
-func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.StagingGraphsync, ds dtypes.MetadataDS, r repo.LockedRepo) (dtypes.ProviderDataTransfer, error) {
-	net := dtnet.NewFromLibp2pHost(h)
+// NewProviderTransferNetwork sets up the libp2p2 protocol networking for data transfer
+func NewProviderTransferNetwork(h host.Host) dtypes.ProviderTransferNetwork {
+	return dtnet.NewFromLibp2pHost(h)
+}
 
+// NewProviderTransport sets up a data transfer transport over graphsync
+func NewProviderTransport(h host.Host, gs dtypes.StagingGraphsync, net dtypes.ProviderTransferNetwork) dtypes.ProviderTransport {
+	return dtgstransport.NewTransport(h.ID(), gs, net)
+}
+
+// NewProviderDataTransfer returns a data transfer manager
+func NewProviderDataTransfer(lc fx.Lifecycle, net dtypes.ProviderTransferNetwork, transport dtypes.ProviderTransport, ds dtypes.MetadataDS, r repo.LockedRepo) (dtypes.ProviderDataTransfer, error) {
 	dtDs := namespace.Wrap(ds, datastore.NewKey("/datatransfer/provider/transfers"))
-	transport := dtgstransport.NewTransport(h.ID(), gs, net)
 	err := os.MkdirAll(filepath.Join(r.Path(), "data-transfer"), 0755) //nolint: gosec
 	if err != nil && !os.IsExist(err) {
 		return nil, err

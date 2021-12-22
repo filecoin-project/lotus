@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-graphsync"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -120,6 +121,7 @@ func init() {
 	addExample(api.FullAPIVersion1)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
+	addExample(graphsync.RequestID(4))
 	addExample(datatransfer.TransferID(3))
 	addExample(datatransfer.Ongoing)
 	addExample(storeIDExample)
