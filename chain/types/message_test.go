@@ -1,3 +1,4 @@
+//stm: #unit
 package types
 
 import (
@@ -71,6 +72,7 @@ func TestEqualCall(t *testing.T) {
 		Params: []byte("hai"),
 	}
 
+	//stm: @TYPES_MESSAGE_EQUAL_CALL_001
 	require.True(t, m1.EqualCall(m2))
 	require.True(t, m1.EqualCall(m3))
 	require.False(t, m1.EqualCall(m4))

@@ -1,3 +1,4 @@
+//stm: #unit
 package types
 
 import (
@@ -128,6 +129,7 @@ func BenchmarkWinCounts(b *testing.B) {
 }
 
 func TestWinCounts(t *testing.T) {
+	//stm: @TYPES_ELECTION_PROOF_COMPUTE_WIN_COUNT_001
 	totalPower := NewInt(100)
 	power := NewInt(20)
 
