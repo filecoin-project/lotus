@@ -1,3 +1,4 @@
+//stm: #integration
 package conformance
 
 import (
