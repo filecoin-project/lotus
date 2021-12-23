@@ -1,3 +1,4 @@
+//stm: #unit
 package journal
 
 import (
@@ -7,6 +8,7 @@ import (
 )
 
 func TestDisabledEvents(t *testing.T) {
+	//stm: @JOURNAL_REGISTRY_NEW_EVENT_TYPE_001, @JOURNAL_REGISTRY_PARSE_DISABLED_001
 	req := require.New(t)
 
 	test := func(dis DisabledEvents) func(*testing.T) {
