@@ -1,3 +1,4 @@
+//stm: #unit
 package bls_test
 
 import (

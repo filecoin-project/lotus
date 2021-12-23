@@ -1,3 +1,4 @@
+//stm: #unit
 package storageadapter
 
 import (
@@ -28,6 +29,7 @@ import (
 )
 
 func TestDealPublisher(t *testing.T) {
+	//stm: @MARKET_DEAL_PUBLISHER_PUBLISH_001, @MARKET_DEAL_PUBLISHER_GET_PENDING_DEALS_001
 	oldClock := build.Clock
 	t.Cleanup(func() { build.Clock = oldClock })
 	mc := clock.NewMock()
@@ -188,6 +190,8 @@ func TestDealPublisher(t *testing.T) {
 }
 
 func TestForcePublish(t *testing.T) {
+	//stm: @MARKET_DEAL_PUBLISHER_PUBLISH_001, @MARKET_DEAL_PUBLISHER_GET_PENDING_DEALS_001
+	//stm: @MARKET_DEAL_PUBLISHER_FORCE_PUBLISH_ALL_001
 	dpapi := newDPAPI(t)
 
 	// Create a deal publisher
