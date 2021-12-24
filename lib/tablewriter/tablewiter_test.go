@@ -1,3 +1,4 @@
+//stm: #unit
 package tablewriter
 
 import (
