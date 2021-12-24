@@ -1,3 +1,4 @@
+//stm: #unit
 package dagstore
 
 import (
@@ -88,6 +89,7 @@ func TestLotusAccessorFetchUnsealedPiece(t *testing.T) {
 			}
 
 			// Fetch the piece
+			//stm: @MARKET_DAGSTORE_FETCH_UNSEALED_PIECE_001
 			r, err := api.FetchUnsealedPiece(ctx, cid1)
 			if tc.expectErr {
 				require.Error(t, err)
@@ -101,6 +103,7 @@ func TestLotusAccessorFetchUnsealedPiece(t *testing.T) {
 
 			require.Equal(t, tc.fetchedData, string(bz))
 
+			//stm: @MARKET_DAGSTORE_IS_PIECE_UNSEALED_001
 			uns, err := api.IsUnsealed(ctx, cid1)
 			require.NoError(t, err)
 			require.Equal(t, tc.isUnsealed, uns)
@@ -126,6 +129,7 @@ func TestLotusAccessorGetUnpaddedCARSize(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check that the data length is correct
+	//stm: @MARKET_DAGSTORE_GET_UNPADDED_CAR_SIZE_001
 	len, err := api.GetUnpaddedCARSize(ctx, cid1)
 	require.NoError(t, err)
 	require.EqualValues(t, 10, len)
@@ -160,6 +164,7 @@ func TestThrottle(t *testing.T) {
 	errgrp, ctx := errgroup.WithContext(context.Background())
 	for i := 0; i < 10; i++ {
 		errgrp.Go(func() error {
+			//stm: @MARKET_DAGSTORE_FETCH_UNSEALED_PIECE_001
 			r, err := api.FetchUnsealedPiece(ctx, cid1)
 			if err == nil {
 				_ = r.Close()
