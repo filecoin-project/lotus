@@ -1,3 +1,4 @@
+//stm: #unit
 //go:build !windows
 // +build !windows
 
