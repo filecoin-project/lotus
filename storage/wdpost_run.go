@@ -181,9 +181,10 @@ func (s *WindowPoStScheduler) runSubmitPoST(
 		post.ChainCommitRand = commRand
 
 		// Submit PoST
-		sm, submitErr := s.submitPoStMessage(ctx, post)
-		if submitErr != nil {
-			log.Errorf("submit window post failed: %+v", submitErr)
+		sm, err := s.submitPoStMessage(ctx, post)
+		if err != nil {
+			log.Errorf("submit window post failed: %+v", err)
+			submitErr = err
 		} else {
 			s.recordProofsEvent(post.Partitions, sm.Cid())
 		}
