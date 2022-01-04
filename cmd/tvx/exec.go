@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"os"
 	"path/filepath"
@@ -136,25 +137,31 @@ func processTipsetOpts() error {
 }
 
 func execVectorDir(path string, outdir string) error {
-	files, err := filepath.Glob(filepath.Join(path, "*"))
-	if err != nil {
-		return fmt.Errorf("failed to glob input directory %s: %w", path, err)
-	}
-	for _, f := range files {
-		outfile := strings.TrimSuffix(filepath.Base(f), filepath.Ext(f)) + ".out"
+	return filepath.WalkDir(path, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return fmt.Errorf("failed while visiting path %s: %w", path, err)
+		}
+		if d.IsDir() || !strings.HasSuffix(path, "json") {
+			return nil
+		}
+		// Create an output file to capture the output from the run of the vector.
+		outfile := strings.TrimSuffix(filepath.Base(path), filepath.Ext(path)) + ".out"
 		outpath := filepath.Join(outdir, outfile)
 		outw, err := os.Create(outpath)
 		if err != nil {
 			return fmt.Errorf("failed to create file %s: %w", outpath, err)
 		}
 
-		log.Printf("processing vector %s; sending output to %s", f, outpath)
+		log.Printf("processing vector %s; sending output to %s", path, outpath)
+
+		// Actually run the vector.
 		log.SetOutput(io.MultiWriter(os.Stderr, outw)) // tee the output.
-		_, _ = execVectorFile(new(conformance.LogReporter), f)
+		_, _ = execVectorFile(new(conformance.LogReporter), path)
 		log.SetOutput(os.Stderr)
 		_ = outw.Close()
-	}
-	return nil
+
+		return nil
+	})
 }
 
 func execVectorsStdin() error {
