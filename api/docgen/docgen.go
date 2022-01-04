@@ -1,6 +1,7 @@
 package docgen
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -252,6 +253,7 @@ func init() {
 	addExample(map[abi.SectorNumber]string{
 		123: "can't acquire read lock",
 	})
+	addExample(json.RawMessage(`"json raw message"`))
 	addExample(map[api.SectorState]int{
 		api.SectorState(sealing.Proving): 120,
 	})
@@ -348,7 +350,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 	switch t.Kind() {
 	case reflect.Slice:
 		out := reflect.New(t).Elem()
-		reflect.Append(out, reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
+		out = reflect.Append(out, reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
 		return out.Interface()
 	case reflect.Chan:
 		return ExampleValue(method, t.Elem(), nil)
