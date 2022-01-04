@@ -169,7 +169,7 @@ func paychStatus(writer io.Writer, avail *api.ChannelAvailableFunds) {
 			fmt.Fprint(writer, "Creating channel\n")
 			fmt.Fprintf(writer, "  From:          %s\n", avail.From)
 			fmt.Fprintf(writer, "  To:            %s\n", avail.To)
-			fmt.Fprintf(writer, "  Pending Amt:   %d\n", avail.PendingAmt)
+			fmt.Fprintf(writer, "  Pending Amt:   %s\n", types.FIL(avail.PendingAmt))
 			fmt.Fprintf(writer, "  Wait Sentinel: %s\n", avail.PendingWaitSentinel)
 			return
 		}
@@ -189,10 +189,10 @@ func paychStatus(writer io.Writer, avail *api.ChannelAvailableFunds) {
 		{"Channel", avail.Channel.String()},
 		{"From", avail.From.String()},
 		{"To", avail.To.String()},
-		{"Confirmed Amt", fmt.Sprintf("%d", avail.ConfirmedAmt)},
-		{"Pending Amt", fmt.Sprintf("%d", avail.PendingAmt)},
-		{"Queued Amt", fmt.Sprintf("%d", avail.QueuedAmt)},
-		{"Voucher Redeemed Amt", fmt.Sprintf("%d", avail.VoucherReedeemedAmt)},
+		{"Confirmed Amt", fmt.Sprintf("%s", types.FIL(avail.ConfirmedAmt))},
+		{"Pending Amt", fmt.Sprintf("%s", types.FIL(avail.PendingAmt))},
+		{"Queued Amt", fmt.Sprintf("%s", types.FIL(avail.QueuedAmt))},
+		{"Voucher Redeemed Amt", fmt.Sprintf("%s", types.FIL(avail.VoucherReedeemedAmt))},
 	}
 	if avail.PendingWaitSentinel != nil {
 		nameValues = append(nameValues, []string{
@@ -576,7 +576,7 @@ func outputVoucher(w io.Writer, v *paych.SignedVoucher, export bool) error {
 		}
 	}
 
-	fmt.Fprintf(w, "Lane %d, Nonce %d: %s", v.Lane, v.Nonce, v.Amount.String())
+	fmt.Fprintf(w, "Lane %d, Nonce %d: %s", v.Lane, v.Nonce, types.FIL(v.Amount))
 	if export {
 		fmt.Fprintf(w, "; %s", enc)
 	}
