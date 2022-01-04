@@ -110,6 +110,21 @@ func (mr *MockSectorIndexMockRecorder) StorageFindSector(arg0, arg1, arg2, arg3,
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorageFindSector", reflect.TypeOf((*MockSectorIndex)(nil).StorageFindSector), arg0, arg1, arg2, arg3, arg4)
 }
 
+// StorageGetLocks mocks base method.
+func (m *MockSectorIndex) StorageGetLocks(arg0 context.Context) (storiface.SectorLocks, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StorageGetLocks", arg0)
+	ret0, _ := ret[0].(storiface.SectorLocks)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StorageGetLocks indicates an expected call of StorageGetLocks.
+func (mr *MockSectorIndexMockRecorder) StorageGetLocks(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorageGetLocks", reflect.TypeOf((*MockSectorIndex)(nil).StorageGetLocks), arg0)
+}
+
 // StorageInfo mocks base method.
 func (m *MockSectorIndex) StorageInfo(arg0 context.Context, arg1 stores.ID) (stores.StorageInfo, error) {
 	m.ctrl.T.Helper()

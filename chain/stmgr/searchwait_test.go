@@ -75,7 +75,7 @@ func TestSearchForMessageReplacements(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = cg.Blockstore().Put(rmb)
+	err = cg.Blockstore().Put(ctx, rmb)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +117,7 @@ func TestSearchForMessageReplacements(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = cg.Blockstore().Put(nrmb)
+	err = cg.Blockstore().Put(ctx, nrmb)
 	if err != nil {
 		t.Fatal(err)
 	}

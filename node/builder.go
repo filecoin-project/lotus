@@ -19,7 +19,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/routing"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/libp2p/go-libp2p-peerstore/pstoremem"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	record "github.com/libp2p/go-libp2p-record"
 	"github.com/libp2p/go-libp2p/p2p/net/conngater"
@@ -162,6 +161,12 @@ func defaults() []Option {
 		}),
 
 		Override(new(dtypes.ShutdownChan), make(chan struct{})),
+
+		// the great context in the sky, otherwise we can't DI build genesis; there has to be a better
+		// solution than this hack.
+		Override(new(context.Context), func(lc fx.Lifecycle, mctx helpers.MetricsCtx) context.Context {
+			return helpers.LifecycleCtx(mctx, lc)
+		}),
 	}
 }
 
@@ -170,7 +175,7 @@ var LibP2P = Options(
 	Override(new(dtypes.Bootstrapper), dtypes.Bootstrapper(false)),
 
 	// Host dependencies
-	Override(new(peerstore.Peerstore), pstoremem.NewPeerstore),
+	Override(new(peerstore.Peerstore), lp2p.Peerstore),
 	Override(PstoreAddSelfKeysKey, lp2p.PstoreAddSelfKeys),
 	Override(StartListeningKey, lp2p.StartListening(config.DefaultFullNode().Libp2p.ListenAddresses)),
 

@@ -10,8 +10,11 @@ import (
 	"math/rand"
 	"sync"
 
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
+	"github.com/filecoin-project/dagstore/mount"
 	ffiwrapper2 "github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -261,6 +264,28 @@ func (mgr *SectorMgr) SealCommit2(ctx context.Context, sid storage.SectorRef, ph
 	return out[:], nil
 }
 
+func (mgr *SectorMgr) ReplicaUpdate(ctx context.Context, sid storage.SectorRef, pieces []abi.PieceInfo) (storage.ReplicaUpdateOut, error) {
+	out := storage.ReplicaUpdateOut{}
+	return out, nil
+}
+
+func (mgr *SectorMgr) ProveReplicaUpdate1(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid) (storage.ReplicaVanillaProofs, error) {
+	out := make([][]byte, 0)
+	return out, nil
+}
+
+func (mgr *SectorMgr) ProveReplicaUpdate2(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid, vanillaProofs storage.ReplicaVanillaProofs) (storage.ReplicaUpdateProof, error) {
+	return make([]byte, 0), nil
+}
+
+func (mgr *SectorMgr) GenerateSectorKeyFromData(ctx context.Context, sector storage.SectorRef, commD cid.Cid) error {
+	return nil
+}
+
+func (mgr *SectorMgr) ReleaseSealed(ctx context.Context, sid storage.SectorRef) error {
+	return nil
+}
+
 // Test Instrumentation Methods
 
 func (mgr *SectorMgr) MarkFailed(sid storage.SectorRef, failed bool) error {
@@ -384,12 +409,22 @@ func generateFakePoSt(sectorInfo []proof5.SectorInfo, rpt func(abi.RegisteredSea
 	}
 }
 
-func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, startOffset uint64, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (io.ReadCloser, bool, error) {
+func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (mount.Reader, bool, error) {
 	if uint64(offset) != 0 {
 		panic("implme")
 	}
 
-	return ioutil.NopCloser(bytes.NewReader(mgr.pieces[mgr.sectors[sector.ID].pieces[0]][startOffset:size])), false, nil
+	br := bytes.NewReader(mgr.pieces[mgr.sectors[sector.ID].pieces[0]][:size])
+
+	return struct {
+		io.ReadCloser
+		io.Seeker
+		io.ReaderAt
+	}{
+		ReadCloser: ioutil.NopCloser(br),
+		Seeker:     br,
+		ReaderAt:   br,
+	}, false, nil
 }
 
 func (mgr *SectorMgr) StageFakeData(mid abi.ActorID, spt abi.RegisteredSealProof) (storage.SectorRef, []abi.PieceInfo, error) {
@@ -456,6 +491,8 @@ func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStPr
 	return bad, nil
 }
 
+var _ storiface.WorkerReturn = &SectorMgr{}
+
 func (mgr *SectorMgr) ReturnAddPiece(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err *storiface.CallError) error {
 	panic("not supported")
 }
@@ -497,6 +534,22 @@ func (mgr *SectorMgr) ReturnReadPiece(ctx context.Context, callID storiface.Call
 }
 
 func (mgr *SectorMgr) ReturnFetch(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
+	panic("not supported")
+}
+
+func (mgr *SectorMgr) ReturnReplicaUpdate(ctx context.Context, callID storiface.CallID, out storage.ReplicaUpdateOut, err *storiface.CallError) error {
+	panic("not supported")
+}
+
+func (mgr *SectorMgr) ReturnProveReplicaUpdate1(ctx context.Context, callID storiface.CallID, out storage.ReplicaVanillaProofs, err *storiface.CallError) error {
+	panic("not supported")
+}
+
+func (mgr *SectorMgr) ReturnProveReplicaUpdate2(ctx context.Context, callID storiface.CallID, out storage.ReplicaUpdateProof, err *storiface.CallError) error {
+	panic("not supported")
+}
+
+func (mgr *SectorMgr) ReturnGenerateSectorKeyFromData(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
 	panic("not supported")
 }
 
@@ -545,6 +598,10 @@ func (m mockVerifProver) VerifyAggregateSeals(aggregate proof5.AggregateSealVeri
 	}
 
 	return ok, nil
+}
+
+func (m mockVerifProver) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (bool, error) {
+	return true, nil
 }
 
 func (m mockVerifProver) AggregateSealProofs(aggregateInfo proof5.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error) {

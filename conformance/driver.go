@@ -153,6 +153,14 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 		results:  []*vm.ApplyRet{},
 	}
 
+	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (*vm.VM, error) {
+		vmopt.CircSupplyCalc = func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error) {
+			return big.Zero(), nil
+		}
+
+		return vm.NewVM(ctx, vmopt)
+	})
+
 	postcid, receiptsroot, err := tse.ApplyBlocks(context.Background(),
 		sm,
 		params.ParentEpoch,
@@ -217,9 +225,9 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		CircSupplyCalc: func(_ context.Context, _ abi.ChainEpoch, _ *state.StateTree) (abi.TokenAmount, error) {
 			return params.CircSupply, nil
 		},
-		Rand:        params.Rand,
-		BaseFee:     params.BaseFee,
-		NtwkVersion: sm.GetNtwkVersion,
+		Rand:           params.Rand,
+		BaseFee:        params.BaseFee,
+		NetworkVersion: sm.GetNetworkVersion(context.Background(), params.Epoch),
 	}
 
 	lvm, err := vm.NewVM(context.TODO(), vmOpts)

@@ -138,8 +138,9 @@ func (s *state6) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, e
 	// 1. If the sector is non-faulty, it will either expire on-time (can be
 	// learned from the sector info), or in the next quantized expiration
 	// epoch (i.e., the first element in the partition's expiration queue.
-	// 2. If it's faulty, it will expire early within the first 14 entries
+	// 2. If it's faulty, it will expire early within the first 42 entries
 	// of the expiration queue.
+
 	stopErr := errors.New("stop")
 	out := SectorExpiration{}
 	err = dls.ForEach(s.store, func(dlIdx uint64, dl *miner6.Deadline) error {
@@ -536,8 +537,7 @@ func (p *partition6) UnprovenSectors() (bitfield.BitField, error) {
 }
 
 func fromV6SectorOnChainInfo(v6 miner6.SectorOnChainInfo) SectorOnChainInfo {
-
-	return SectorOnChainInfo{
+	info := SectorOnChainInfo{
 		SectorNumber:          v6.SectorNumber,
 		SealProof:             v6.SealProof,
 		SealedCID:             v6.SealedCID,
@@ -550,7 +550,7 @@ func fromV6SectorOnChainInfo(v6 miner6.SectorOnChainInfo) SectorOnChainInfo {
 		ExpectedDayReward:     v6.ExpectedDayReward,
 		ExpectedStoragePledge: v6.ExpectedStoragePledge,
 	}
-
+	return info
 }
 
 func fromV6SectorPreCommitOnChainInfo(v6 miner6.SectorPreCommitOnChainInfo) SectorPreCommitOnChainInfo {

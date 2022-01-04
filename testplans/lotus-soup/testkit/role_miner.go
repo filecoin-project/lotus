@@ -182,7 +182,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 			return nil, err
 		}
 
-		err = ds.Put(datastore.NewKey("miner-address"), minerAddr.Bytes())
+		err = ds.Put(context.Background(), datastore.NewKey("miner-address"), minerAddr.Bytes())
 		if err != nil {
 			return nil, err
 		}

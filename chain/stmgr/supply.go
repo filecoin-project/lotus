@@ -31,7 +31,7 @@ import (
 // sets up information about the vesting schedule
 func (sm *StateManager) setupGenesisVestingSchedule(ctx context.Context) error {
 
-	gb, err := sm.cs.GetGenesis()
+	gb, err := sm.cs.GetGenesis(ctx)
 	if err != nil {
 		return xerrors.Errorf("getting genesis block: %w", err)
 	}

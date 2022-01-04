@@ -39,7 +39,6 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	graphsync "github.com/ipfs/go-graphsync/impl"
-	graphsyncimpl "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
 	"github.com/ipfs/go-graphsync/storeutil"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -78,7 +77,7 @@ var (
 )
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
-	maddrb, err := ds.Get(datastore.NewKey("miner-address"))
+	maddrb, err := ds.Get(context.TODO(), datastore.NewKey("miner-address"))
 	if err != nil {
 		return address.Undef, err
 	}
@@ -300,7 +299,7 @@ func HandleDeals(mctx helpers.MetricsCtx, lc fx.Lifecycle, host host.Host, h sto
 func HandleMigrateProviderFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, node api.FullNode, minerAddress dtypes.MinerAddress) {
 	lc.Append(fx.Hook{
 		OnStart: func(ctx context.Context) error {
-			b, err := ds.Get(datastore.NewKey("/marketfunds/provider"))
+			b, err := ds.Get(ctx, datastore.NewKey("/marketfunds/provider"))
 			if err != nil {
 				if xerrors.Is(err, datastore.ErrNotFound) {
 					return nil
@@ -331,18 +330,24 @@ func HandleMigrateProviderFunds(lc fx.Lifecycle, ds dtypes.MetadataDS, node api.
 				return nil
 			}
 
-			return ds.Delete(datastore.NewKey("/marketfunds/provider"))
+			return ds.Delete(ctx, datastore.NewKey("/marketfunds/provider"))
 		},
 	})
 }
 
-// NewProviderDAGServiceDataTransfer returns a data transfer manager that just
-// uses the provider's Staging DAG service for transfers
-func NewProviderDAGServiceDataTransfer(lc fx.Lifecycle, h host.Host, gs dtypes.StagingGraphsync, ds dtypes.MetadataDS, r repo.LockedRepo) (dtypes.ProviderDataTransfer, error) {
-	net := dtnet.NewFromLibp2pHost(h)
+// NewProviderTransferNetwork sets up the libp2p2 protocol networking for data transfer
+func NewProviderTransferNetwork(h host.Host) dtypes.ProviderTransferNetwork {
+	return dtnet.NewFromLibp2pHost(h)
+}
 
+// NewProviderTransport sets up a data transfer transport over graphsync
+func NewProviderTransport(h host.Host, gs dtypes.StagingGraphsync, net dtypes.ProviderTransferNetwork) dtypes.ProviderTransport {
+	return dtgstransport.NewTransport(h.ID(), gs, net)
+}
+
+// NewProviderDataTransfer returns a data transfer manager
+func NewProviderDataTransfer(lc fx.Lifecycle, net dtypes.ProviderTransferNetwork, transport dtypes.ProviderTransport, ds dtypes.MetadataDS, r repo.LockedRepo) (dtypes.ProviderDataTransfer, error) {
 	dtDs := namespace.Wrap(ds, datastore.NewKey("/datatransfer/provider/transfers"))
-	transport := dtgstransport.NewTransport(h.ID(), gs, net)
 	err := os.MkdirAll(filepath.Join(r.Path(), "data-transfer"), 0755) //nolint: gosec
 	if err != nil && !os.IsExist(err) {
 		return nil, err
@@ -396,7 +401,7 @@ func StagingBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 
 // StagingGraphsync creates a graphsync instance which reads and writes blocks
 // to the StagingBlockstore
-func StagingGraphsync(parallelTransfersForStorage uint64, parallelTransfersForRetrieval uint64) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
+func StagingGraphsync(parallelTransfersForStorage uint64, parallelTransfersForStoragePerPeer uint64, parallelTransfersForRetrieval uint64) func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
 	return func(mctx helpers.MetricsCtx, lc fx.Lifecycle, ibs dtypes.StagingBlockstore, h host.Host) dtypes.StagingGraphsync {
 		graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
 		lsys := storeutil.LinkSystemForBlockstore(ibs)
@@ -405,9 +410,10 @@ func StagingGraphsync(parallelTransfersForStorage uint64, parallelTransfersForRe
 			lsys,
 			graphsync.RejectAllRequestsByDefault(),
 			graphsync.MaxInProgressIncomingRequests(parallelTransfersForRetrieval),
+			graphsync.MaxInProgressIncomingRequestsPerPeer(parallelTransfersForStoragePerPeer),
 			graphsync.MaxInProgressOutgoingRequests(parallelTransfersForStorage),
-			graphsyncimpl.MaxLinksPerIncomingRequests(config.MaxTraversalLinks),
-			graphsyncimpl.MaxLinksPerOutgoingRequests(config.MaxTraversalLinks))
+			graphsync.MaxLinksPerIncomingRequests(config.MaxTraversalLinks),
+			graphsync.MaxLinksPerOutgoingRequests(config.MaxTraversalLinks))
 
 		graphsyncStats(mctx, lc, gs)
 
