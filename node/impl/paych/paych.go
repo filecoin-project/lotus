@@ -22,8 +22,8 @@ type PaychAPI struct {
 	PaychMgr *paychmgr.Manager
 }
 
-func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error) {
-	ch, mcid, err := a.PaychMgr.GetPaych(ctx, from, to, amt)
+func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt, reserve bool) (*api.ChannelInfo, error) {
+	ch, mcid, err := a.PaychMgr.GetPaych(ctx, from, to, amt, reserve)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (a *PaychAPI) PaychNewPayment(ctx context.Context, from, to address.Address
 
 	// TODO: Fix free fund tracking in PaychGet
 	// TODO: validate voucher spec before locking funds
-	ch, err := a.PaychGet(ctx, from, to, amount)
+	ch, err := a.PaychGet(ctx, from, to, amount, true)
 	if err != nil {
 		return nil, err
 	}

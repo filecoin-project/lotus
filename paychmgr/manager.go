@@ -101,13 +101,13 @@ func (pm *Manager) Stop() error {
 	return nil
 }
 
-func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, cid.Cid, error) {
+func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt types.BigInt, reserve bool) (address.Address, cid.Cid, error) {
 	chanAccessor, err := pm.accessorByFromTo(from, to)
 	if err != nil {
 		return address.Undef, cid.Undef, err
 	}
 
-	return chanAccessor.getPaych(ctx, amt)
+	return chanAccessor.getPaych(ctx, amt, reserve)
 }
 
 func (pm *Manager) AvailableFunds(ctx context.Context, ch address.Address) (*api.ChannelAvailableFunds, error) {

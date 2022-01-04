@@ -74,6 +74,10 @@ type ChannelInfo struct {
 	// has locally been added to the channel. It should reflect the channel's
 	// Balance on chain as long as all operations occur on the same datastore.
 	Amount types.BigInt
+	// AvailableAmount indicates how much afil is non-reverved
+	AvailableAmount types.BigInt
+	// PendingAvailableAmount is available amount that we're awaiting confirmation of
+	PendingAvailableAmount types.BigInt
 	// PendingAmount is the amount that we're awaiting confirmation of
 	PendingAmount types.BigInt
 	// CreateMsg is the CID of a pending create message (while waiting for confirmation)
@@ -416,14 +420,15 @@ func (ps *Store) ByChannelID(ctx context.Context, channelID string) (*ChannelInf
 }
 
 // CreateChannel creates an outbound channel for the given from / to
-func (ps *Store) CreateChannel(ctx context.Context, from address.Address, to address.Address, createMsgCid cid.Cid, amt types.BigInt) (*ChannelInfo, error) {
+func (ps *Store) CreateChannel(ctx context.Context, from address.Address, to address.Address, createMsgCid cid.Cid, amt, avail types.BigInt) (*ChannelInfo, error) {
 	ci := &ChannelInfo{
-		Direction:     DirOutbound,
-		NextLane:      0,
-		Control:       from,
-		Target:        to,
-		CreateMsg:     &createMsgCid,
-		PendingAmount: amt,
+		Direction:              DirOutbound,
+		NextLane:               0,
+		Control:                from,
+		Target:                 to,
+		CreateMsg:              &createMsgCid,
+		PendingAmount:          amt,
+		PendingAvailableAmount: avail,
 	}
 
 	// Save the new channel
