@@ -84,7 +84,7 @@ var dataexplCmd = &cli.Command{
 			w.Header().Set("Content-Type", "text/html")
 			w.WriteHeader(http.StatusOK)
 			data := map[string]interface{}{
-				"deals": deals,
+				"deals":             deals,
 				"StorageDealActive": storagemarket.StorageDealActive,
 			}
 			if err := tpl.Execute(w, data); err != nil {
@@ -648,9 +648,10 @@ func retrieve(ctx context.Context, fapi lapi.FullNode, minerAddr address.Address
 		}
 
 		maxPrice := big.Zero()
+		//maxPrice := big.NewInt(6818260582400)
 
 		if offer.MinPrice.GreaterThan(maxPrice) {
-			return nil, xerrors.Errorf("failed to find offer satisfying maxPrice: %s", maxPrice)
+			return nil, xerrors.Errorf("failed to find offer satisfying maxPrice: %s (min %s, %s)", maxPrice, offer.MinPrice, types.FIL(offer.MinPrice))
 		}
 
 		o := offer.Order(payer)
