@@ -239,8 +239,10 @@ func ExecuteTipsetVector(r Reporter, vector *schema.TestVector, variant *schema.
 func AssertMsgResult(r Reporter, expected *schema.Receipt, actual *vm.ApplyRet, label string) {
 	r.Helper()
 
+	applyret := actual
 	if expected, actual := exitcode.ExitCode(expected.ExitCode), actual.ExitCode; expected != actual {
 		r.Errorf("exit code of msg %s did not match; expected: %s, got: %s", label, expected, actual)
+		r.Errorf("\t\\==> actor error: %s", applyret.ActorErr)
 	}
 	if expected, actual := expected.GasUsed, actual.GasUsed; expected != actual {
 		r.Errorf("gas used of msg %s did not match; expected: %d, got: %d", label, expected, actual)
