@@ -4509,7 +4509,11 @@ Response:
 ```
 
 ### PaychGet
-There are not yet any comments for this method.
+PaychGet gets or creates a payment channel between address pair
+ - If reserve is false, the specified amount will be added to the channel through on-chain send for future use
+ - If reserve is true, the specified amount will be reserved for use. If there aren't enough non-reserved funds
+   available, funds will be added through an on-chain message.
+
 
 Perms: sign
 
@@ -4518,7 +4522,8 @@ Inputs:
 [
   "f01234",
   "f01234",
-  "0"
+  "0",
+  true
 ]
 ```
 

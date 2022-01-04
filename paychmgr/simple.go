@@ -109,7 +109,7 @@ func newMergedFundsReq(reqs []*fundsReq) *mergedFundsReq {
 
 	sort.Slice(m.reqs, func(i, j int) bool {
 		if m.reqs[i].reserve != m.reqs[j].reserve { // non-reserve first
-			return m.reqs[j].reserve
+			return m.reqs[i].reserve
 		}
 
 		// sort by amount asc (reducing latency for smaller requests)
@@ -220,50 +220,7 @@ func (ca *channelAccessor) processQueue(ctx context.Context, channelID string) (
 		return ca.currentAvailableFunds(ctx, channelID, amt)
 	}
 
-	{
-		toReserve := types.BigSub(amt, avail)
-		avail := types.NewInt(0)
-
-		// reserve at most what we need
-		ca.mutateChannelInfo(ctx, channelID, func(ci *ChannelInfo) {
-			avail = ci.AvailableAmount
-			if avail.GreaterThan(toReserve) {
-				avail = toReserve
-			}
-			ci.AvailableAmount = big.Sub(ci.AvailableAmount, avail)
-		})
-
-		used := types.NewInt(0)
-
-		next := 0
-		for i, r := range merged.reqs {
-			if !r.reserve {
-				// non-reserving request are put after reserving requests, so we are done here
-				break
-			}
-
-			if r.amt.GreaterThan(types.BigSub(avail, used)) {
-				// requests are sorted by amount ascending, so if we hit this, there aren't any more requests we can fill
-			}
-
-			// don't try to fill inactive requests
-			if !r.isActive() {
-				continue
-			}
-
-			used = types.BigAdd(used, r.amt)
-			r.onComplete(&paychFundsRes{})
-			next = i + 1
-		}
-		merged.reqs = merged.reqs[next:]
-
-		// return any unused reserved funds (e.g. from cancelled requests)
-		ca.mutateChannelInfo(ctx, channelID, func(ci *ChannelInfo) {
-			ci.AvailableAmount = types.BigAdd(ci.AvailableAmount, types.BigSub(avail, used))
-		})
-	}
-
-	res := ca.processTask(merged.ctx, amt, avail)
+	res := ca.processTask(merged, amt, avail)
 
 	// If the task is waiting on an external event (eg something to appear on
 	// chain) it will return nil
@@ -394,7 +351,9 @@ func (ca *channelAccessor) currentAvailableFunds(ctx context.Context, channelID 
 // Note that processTask may be called repeatedly in the same state, and should
 // return nil if there is no state change to be made (eg when waiting for a
 // message to be confirmed on chain)
-func (ca *channelAccessor) processTask(ctx context.Context, amt, avail types.BigInt) *paychFundsRes {
+func (ca *channelAccessor) processTask(merged *mergedFundsReq, amt, avail types.BigInt) *paychFundsRes {
+	ctx := merged.ctx
+
 	// Get the payment channel for the from/to addresses.
 	// Note: It's ok if we get ErrChannelNotTracked. It just means we need to
 	// create a channel.
@@ -424,6 +383,56 @@ func (ca *channelAccessor) processTask(ctx context.Context, amt, avail types.Big
 	// on chain yet
 	if channelInfo.AddFundsMsg != nil {
 		// Wait for the add funds message to be confirmed before trying again
+		return nil
+	}
+
+	{
+		toReserve := types.BigSub(amt, avail)
+		avail := types.NewInt(0)
+
+		// reserve at most what we need
+		ca.mutateChannelInfo(ctx, channelInfo.ChannelID, func(ci *ChannelInfo) {
+			avail = ci.AvailableAmount
+			if avail.GreaterThan(toReserve) {
+				avail = toReserve
+			}
+			ci.AvailableAmount = big.Sub(ci.AvailableAmount, avail)
+		})
+
+		used := types.NewInt(0)
+
+		next := 0
+		for i, r := range merged.reqs {
+			if !r.reserve {
+				// non-reserving request are put after reserving requests, so we are done here
+				break
+			}
+
+			if r.amt.GreaterThan(types.BigSub(avail, used)) {
+				// requests are sorted by amount ascending, so if we hit this, there aren't any more requests we can fill
+				break
+			}
+
+			// don't try to fill inactive requests
+			if !r.isActive() {
+				continue
+			}
+
+			used = types.BigAdd(used, r.amt)
+			r.onComplete(&paychFundsRes{channel: *channelInfo.Channel})
+			next = i + 1
+		}
+		merged.reqs = merged.reqs[next:]
+
+		// return any unused reserved funds (e.g. from cancelled requests)
+		ca.mutateChannelInfo(ctx, channelInfo.ChannelID, func(ci *ChannelInfo) {
+			ci.AvailableAmount = types.BigAdd(ci.AvailableAmount, types.BigSub(avail, used))
+		})
+
+		amt = types.BigSub(amt, used)
+	}
+
+	if amt.LessThanEqual(types.NewInt(0)) {
 		return nil
 	}
 
