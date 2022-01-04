@@ -4,6 +4,27 @@
 
 This is the 4th RC for lotus v1.13.2, with another retrieval enhancement that fills the gap that's brought by the release. This is a highly recommended release with sealing pipeline fixes, worker management and scheduler enhancement, retrieval improvements and so on. More detailed changelog will be updated later.
 
+## Highlights
+- Reduce retrieval Time-To-First-Byte over 100x ([filecoin-project/lotus#7693](https://github.com/filecoin-project/lotus/pull/7693))
+  - This change makes most free, small retrievals sub-second
+- Partial retrieval ux improvements ([filecoin-project/lotus#7610](https://github.com/filecoin-project/lotus/pull/7610))
+  - Note: this change only affects v1 API. v0 API remains unchanged.
+  - New `lotus client ls` and `lotus client cat` commands
+  - v1 API - The monolith `ClientRetrieve` method was broken into:
+    - `ClientRetrieve` which retrieves data into the local repo (or into an IPFS node if ipfs integration is enabled)
+    - `ClientRetrieveWait` which will wait for the retrieval to complete
+    - `ClientExport` which will export data from the local node
+  - Support for full ipld selectors was added (for example making it possible to only retrieve list of directories in a deal, without fetching any file data)
+    - To learn more, see https://github.com/filecoin-project/lotus/blob/0523c946f984b22b3f5de8cc3003cc791389527e/api/types.go#L230-L264
+- Sealing scheduler enhancements ([filecoin-project/lotus#7703](https://github.com/filecoin-project/lotus/pull/7703), [filecoin-project/lotus#7269](https://github.com/filecoin-project/lotus/pull/7269))
+  - Workers are now aware of cgroup memory limits
+  - Multiple tasks which use a GPU can be scheduled on a single worker
+  - Workers can override default resource table through env vars
+    - Default value list: https://gist.github.com/magik6k/c0e1c7cd73c1241a9acabc30bf469a43
+- Sector storage groups ([filecoin-project/lotus#7453](https://github.com/filecoin-project/lotus/pull/7453))
+  - Storage groups allow for better control of data flow between workers, for example, it makes it possible to define that data from PC1 on a given worker has to have it's PC2 step executed on the same worker
+  - For basic instructions see the Pull Request description
+
 - github.com/filecoin-project/lotus:
   - stores: Reduce log spam during retrievals
   - fix lint
