@@ -31,7 +31,7 @@ func (m *Sealing) handleProveReplicaUpdate(ctx statemachine.Context, sector Sect
 		return xerrors.Errorf("invalid sector %d with nil CommR", sector.SectorNumber)
 	}
 
-	if err := checkDealExpiration(ctx.Context(), sector, m.Api); err != nil { // Sanity check state
+	if err := checkPieces(ctx.Context(), m.maddr, sector, m.Api); err != nil { // Sanity check state
 		return handleErrors(ctx, err, sector)
 	}
 
@@ -58,7 +58,7 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		return nil
 	}
 
-	if err := checkDealExpiration(ctx.Context(), sector, m.Api); err != nil { // Sanity check state
+	if err := checkPieces(ctx.Context(), m.maddr, sector, m.Api); err != nil { // Sanity check state
 		return handleErrors(ctx, err, sector)
 	}
 

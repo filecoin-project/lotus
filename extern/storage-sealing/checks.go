@@ -79,24 +79,6 @@ func checkPieces(ctx context.Context, maddr address.Address, si SectorInfo, api 
 	return nil
 }
 
-func checkDealExpiration(ctx context.Context, sector SectorInfo, api SealingAPI) error {
-	tok, height, err := api.ChainHead(ctx)
-	if err != nil {
-		return &ErrApi{xerrors.Errorf("getting chain head: %w", err)}
-	}
-
-	for i, p := range sector.Pieces {
-		proposal, err := api.StateMarketStorageDealProposal(ctx, p.DealInfo.DealID, tok)
-		if err != nil {
-			return &ErrInvalidDeals{xerrors.Errorf("getting deal %d for piece %d: %w", p.DealInfo.DealID, i, err)}
-		}
-		if height >= proposal.StartEpoch {
-			return &ErrExpiredDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, proposal.StartEpoch, height)}
-		}
-	}
-	return nil
-}
-
 // checkPrecommit checks that data commitment generated in the sealing process
 //  matches pieces, and that the seal ticket isn't expired
 func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, tok TipSetToken, height abi.ChainEpoch, api SealingAPI) (err error) {
