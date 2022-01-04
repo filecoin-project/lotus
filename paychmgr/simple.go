@@ -41,7 +41,7 @@ type fundsReq struct {
 }
 
 func newFundsReq(ctx context.Context, amt types.BigInt, reserve bool) *fundsReq {
-	promise := make(chan *paychFundsRes)
+	promise := make(chan *paychFundsRes, 1)
 	return &fundsReq{
 		ctx:     ctx,
 		promise: promise,

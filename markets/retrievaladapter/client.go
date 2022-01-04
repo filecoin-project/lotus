@@ -9,12 +9,35 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multiaddr"
+	mh "github.com/multiformats/go-multihash"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	payapi "github.com/filecoin-project/lotus/node/impl/paych"
 )
+
+func mkPaychReusedCid(addr address.Address) cid.Cid {
+	c, err := cid.V1Builder{Codec: cid.Raw, MhType: mh.IDENTITY}.Sum(addr.Bytes())
+	if err != nil {
+		panic(err)
+	}
+	return c
+}
+
+func extractPaychReusedCid(c cid.Cid) (address.Address, error) {
+	if c.Prefix().Codec != cid.Raw {
+		return address.Undef, nil
+	}
+
+	h, err := mh.Decode(c.Hash())
+	if err != nil {
+		return address.Address{}, err
+	}
+
+	return address.NewFromBytes(h.Digest)
+}
 
 type retrievalClientNode struct {
 	chainAPI full.ChainAPI
@@ -38,6 +61,10 @@ func (rcn *retrievalClientNode) GetOrCreatePaymentChannel(ctx context.Context, c
 	if err != nil {
 		return address.Undef, cid.Undef, err
 	}
+	if ci.WaitSentinel == cid.Undef {
+		return ci.Channel, mkPaychReusedCid(ci.Channel), nil
+	}
+
 	return ci.Channel, ci.WaitSentinel, nil
 }
 
@@ -74,6 +101,13 @@ func (rcn *retrievalClientNode) GetChainHead(ctx context.Context) (shared.TipSet
 }
 
 func (rcn *retrievalClientNode) WaitForPaymentChannelReady(ctx context.Context, messageCID cid.Cid) (address.Address, error) {
+	maybeAddr, err := extractPaychReusedCid(messageCID)
+	if err != nil {
+		return address.Address{}, xerrors.Errorf("extract paych reused CID: %w", err)
+	}
+	if maybeAddr != address.Undef {
+		return maybeAddr, nil
+	}
 	return rcn.payAPI.PaychGetWaitReady(ctx, messageCID)
 }
 
