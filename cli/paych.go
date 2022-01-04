@@ -39,11 +39,14 @@ var paychAddFundsCmd = &cli.Command{
 	Usage:     "Add funds to the payment channel between fromAddress and toAddress. Creates the payment channel if it doesn't already exist.",
 	ArgsUsage: "[fromAddress toAddress amount]",
 	Flags: []cli.Flag{
-
 		&cli.BoolFlag{
 			Name:  "restart-retrievals",
 			Usage: "restart stalled retrieval deals on this payment channel",
 			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "reserve",
+			Usage: "mark funds as reserved",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -66,7 +69,7 @@ var paychAddFundsCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("parsing amount failed: %s", err))
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
@@ -76,7 +79,7 @@ var paychAddFundsCmd = &cli.Command{
 
 		// Send a message to chain to create channel / add funds to existing
 		// channel
-		info, err := api.PaychGet(ctx, from, to, types.BigInt(amt))
+		info, err := api.PaychGet(ctx, from, to, types.BigInt(amt), cctx.Bool("reserve"))
 		if err != nil {
 			return err
 		}

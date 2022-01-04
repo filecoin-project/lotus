@@ -502,5 +502,11 @@ func unmarshallChannelInfo(stored *ChannelInfo, value []byte) (*ChannelInfo, err
 		stored.Channel = nil
 	}
 
+	// backwards compat
+	if stored.AvailableAmount.Int == nil {
+		stored.AvailableAmount = types.NewInt(0)
+		stored.PendingAvailableAmount = types.NewInt(0)
+	}
+
 	return stored, nil
 }
