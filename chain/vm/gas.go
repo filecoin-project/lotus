@@ -10,8 +10,9 @@ import (
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/build"
 )
 
 type GasCharge struct {
@@ -81,7 +82,9 @@ type Pricelist interface {
 	OnVerifyConsensusFault() GasCharge
 }
 
-var prices = map[abi.ChainEpoch]Pricelist{
+// Prices are the price lists per starting epoch. Public for testing purposes
+// (concretely to allow the test vector runner to rebase prices).
+var Prices = map[abi.ChainEpoch]Pricelist{
 	abi.ChainEpoch(0): &pricelistV0{
 		computeGasMulti: 1,
 		storageGasMulti: 1000,
@@ -214,8 +217,8 @@ func PricelistByEpoch(epoch abi.ChainEpoch) Pricelist {
 	// since we are storing the prices as map or epoch to price
 	// we need to get the price with the highest epoch that is lower or equal to the `epoch` arg
 	bestEpoch := abi.ChainEpoch(0)
-	bestPrice := prices[bestEpoch]
-	for e, pl := range prices {
+	bestPrice := Prices[bestEpoch]
+	for e, pl := range Prices {
 		// if `e` happened after `bestEpoch` and `e` is earlier or equal to the target `epoch`
 		if e > bestEpoch && e <= epoch {
 			bestEpoch = e

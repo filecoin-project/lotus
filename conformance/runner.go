@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"os/exec"
 	"strconv"
@@ -28,6 +29,7 @@ import (
 	"github.com/filecoin-project/test-vectors/schema"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 )
@@ -51,6 +53,52 @@ var TipsetVectorOpts struct {
 	OnTipsetApplied []func(bs blockstore.Blockstore, params *ExecuteTipsetParams, res *ExecuteTipsetResult)
 }
 
+type GasPricingRestoreFn func()
+
+// adjustGasPricing adjusts the global gas price mapping to make sure that the
+// gas pricelist for vector's network version is used at the vector's epoch.
+// Because it manipulates a global, it returns a function that reverts the
+// change. The caller MUST invoke this function or the test vector runner will
+// become invalid.
+func adjustGasPricing(vectorEpoch abi.ChainEpoch, vectorNv network.Version) GasPricingRestoreFn {
+	// Stash the current pricing mapping.
+	// Ok to take a reference instead of a copy, because we override the map
+	// with a new one below.
+	var old = vm.Prices
+
+	// Resolve the epoch at which the vector network version kicks in.
+	var epoch abi.ChainEpoch = math.MaxInt64
+	if vectorNv == network.Version0 {
+		// genesis is not an upgrade.
+		epoch = 0
+	} else {
+		for _, u := range filcns.DefaultUpgradeSchedule() {
+			if u.Network == vectorNv {
+				epoch = u.Height
+				break
+			}
+		}
+	}
+
+	if epoch == math.MaxInt64 {
+		panic(fmt.Sprintf("could not resolve network version %d to height", vectorNv))
+	}
+
+	// Find the right pricelist for this network version.
+	pricelist := vm.PricelistByEpoch(epoch)
+
+	// Override the pricing mapping by setting the relevant pricelist for the
+	// network version at the epoch where the vector runs.
+	vm.Prices = map[abi.ChainEpoch]vm.Pricelist{
+		vectorEpoch: pricelist,
+	}
+
+	// Return a function to restore the original mapping.
+	return func() {
+		vm.Prices = old
+	}
+}
+
 // ExecuteMessageVector executes a message-class test vector.
 func ExecuteMessageVector(r Reporter, vector *schema.TestVector, variant *schema.Variant) (diffs []string, err error) {
 	var (
@@ -68,6 +116,10 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector, variant *schema
 
 	// Create a new Driver.
 	driver := NewDriver(ctx, vector.Selector, DriverOpts{DisableVMFlush: true})
+
+	// Monkey patch the gas pricing.
+	revertFn := adjustGasPricing(baseEpoch, nv)
+	defer revertFn()
 
 	// Apply every message.
 	for i, m := range vector.ApplyMessages {
