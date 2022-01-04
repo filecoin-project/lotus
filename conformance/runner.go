@@ -14,6 +14,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/hashicorp/go-multierror"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
@@ -54,7 +55,8 @@ var TipsetVectorOpts struct {
 func ExecuteMessageVector(r Reporter, vector *schema.TestVector, variant *schema.Variant) (diffs []string, err error) {
 	var (
 		ctx       = context.Background()
-		baseEpoch = variant.Epoch
+		baseEpoch = abi.ChainEpoch(variant.Epoch)
+		nv        = network.Version(variant.NetworkVersion)
 		root      = vector.Pre.StateTree.RootCID
 	)
 
@@ -76,18 +78,19 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector, variant *schema
 
 		// add the epoch offset if one is set.
 		if m.EpochOffset != nil {
-			baseEpoch += *m.EpochOffset
+			baseEpoch += abi.ChainEpoch(*m.EpochOffset)
 		}
 
 		// Execute the message.
 		var ret *vm.ApplyRet
 		ret, root, err = driver.ExecuteMessage(bs, ExecuteMessageParams{
-			Preroot:    root,
-			Epoch:      abi.ChainEpoch(baseEpoch),
-			Message:    msg,
-			BaseFee:    BaseFeeOrDefault(vector.Pre.BaseFee),
-			CircSupply: CircSupplyOrDefault(vector.Pre.CircSupply),
-			Rand:       NewReplayingRand(r, vector.Randomness),
+			Preroot:        root,
+			Epoch:          baseEpoch,
+			Message:        msg,
+			BaseFee:        BaseFeeOrDefault(vector.Pre.BaseFee),
+			CircSupply:     CircSupplyOrDefault(vector.Pre.CircSupply),
+			Rand:           NewReplayingRand(r, vector.Randomness),
+			NetworkVersion: nv,
 		})
 		if err != nil {
 			r.Fatalf("fatal failure when executing message: %s", err)
