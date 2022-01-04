@@ -5,6 +5,8 @@ import (
 	gobig "math/big"
 	"os"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -187,11 +189,12 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 }
 
 type ExecuteMessageParams struct {
-	Preroot    cid.Cid
-	Epoch      abi.ChainEpoch
-	Message    *types.Message
-	CircSupply abi.TokenAmount
-	BaseFee    abi.TokenAmount
+	Preroot        cid.Cid
+	Epoch          abi.ChainEpoch
+	Message        *types.Message
+	CircSupply     abi.TokenAmount
+	BaseFee        abi.TokenAmount
+	NetworkVersion network.Version
 
 	// Rand is an optional vm.Rand implementation to use. If nil, the driver
 	// will use a vm.Rand that returns a fixed value for all calls.
@@ -210,13 +213,6 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		params.Rand = NewFixedRand()
 	}
 
-	// dummy state manager; only to reference the GetNetworkVersion method,
-	// which does not depend on state.
-	sm, err := stmgr.NewStateManager(nil, filcns.NewTipSetExecutor(), nil, filcns.DefaultUpgradeSchedule(), nil)
-	if err != nil {
-		return nil, cid.Cid{}, err
-	}
-
 	vmOpts := &vm.VMOpts{
 		StateBase: params.Preroot,
 		Epoch:     params.Epoch,
@@ -227,7 +223,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		},
 		Rand:           params.Rand,
 		BaseFee:        params.BaseFee,
-		NetworkVersion: sm.GetNetworkVersion(context.Background(), params.Epoch),
+		NetworkVersion: params.NetworkVersion,
 	}
 
 	lvm, err := vm.NewVM(context.TODO(), vmOpts)
