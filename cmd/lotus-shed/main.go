@@ -69,7 +69,6 @@ func main() {
 		balancerCmd,
 		sendCsvCmd,
 		terminationsCmd,
-		dataexplCmd,
 		migrationsCmd,
 		diffCmd,
 		itestdCmd,

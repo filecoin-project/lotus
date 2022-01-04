@@ -220,12 +220,17 @@ testground:
 .PHONY: testground
 BINS+=testground
 
-
 tvx:
 	rm -f tvx
 	$(GOCC) build -o tvx ./cmd/tvx
 .PHONY: tvx
 BINS+=tvx
+
+dataexpl:
+	rm -f dataexpl
+	$(GOCC) build -o dataexpl ./cmd/dataexpl
+.PHONY: dataexpl
+BINS+=dataexpl
 
 lotus-sim: $(BUILD_DEPS)
 	rm -f lotus-sim

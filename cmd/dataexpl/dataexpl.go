@@ -49,7 +49,7 @@ var dres embed.FS
 var maxDirTypeChecks, typeCheckDepth int64 = 16, 15
 
 var dataexplCmd = &cli.Command{
-	Name:  "dataexpl",
+	Name:  "run",
 	Usage: "Explore data stored on filecoin",
 	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
