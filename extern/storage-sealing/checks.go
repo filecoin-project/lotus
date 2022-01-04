@@ -3,6 +3,7 @@ package sealing
 import (
 	"bytes"
 	"context"
+
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
