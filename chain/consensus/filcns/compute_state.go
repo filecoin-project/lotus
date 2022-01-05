@@ -169,7 +169,10 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 			}
 		}
 
-		vmi.SetBlockHeight(i + 1)
+		if err = vmi.SetBlockHeight(ctx, i+1); err != nil {
+			return cid.Undef, cid.Undef, xerrors.Errorf("error advancing vm an epoch: %w", err)
+		}
+
 		pstate = newState
 	}
 
