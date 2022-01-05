@@ -193,11 +193,11 @@ func paychStatus(writer io.Writer, avail *api.ChannelAvailableFunds) {
 		{"From", avail.From.String()},
 		{"To", avail.To.String()},
 		{"Confirmed Amt", fmt.Sprintf("%s", types.FIL(avail.ConfirmedAmt))},
-		{"Pending Amt", fmt.Sprintf("%s", types.FIL(avail.PendingAmt))},
 		{"Available Amt", fmt.Sprintf("%s", types.FIL(avail.AvailableAmt))},
+		{"Voucher Redeemed Amt", fmt.Sprintf("%s", types.FIL(avail.VoucherReedeemedAmt))},
+		{"Pending Amt", fmt.Sprintf("%s", types.FIL(avail.PendingAmt))},
 		{"Pending Available Amt", fmt.Sprintf("%s", types.FIL(avail.PendingAvailableAmt))},
 		{"Queued Amt", fmt.Sprintf("%s", types.FIL(avail.QueuedAmt))},
-		{"Voucher Redeemed Amt", fmt.Sprintf("%s", types.FIL(avail.VoucherReedeemedAmt))},
 	}
 	if avail.PendingWaitSentinel != nil {
 		nameValues = append(nameValues, []string{
