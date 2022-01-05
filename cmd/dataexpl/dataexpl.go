@@ -681,6 +681,13 @@ func retrieve(ctx context.Context, fapi lapi.FullNode, minerAddr address.Address
 			var evt lapi.RetrievalInfo
 			select {
 			case <-ctx.Done():
+				go func() {
+					err := fapi.ClientCancelRetrievalDeal(context.Background(), retrievalRes.DealID)
+					if err != nil {
+						log.Errorw("cancelling deal failed", "error", err)
+					}
+				}()
+
 				return nil, xerrors.New("Retrieval Timed Out")
 			case evt = <-subscribeEvents:
 				if evt.ID != retrievalRes.DealID {
