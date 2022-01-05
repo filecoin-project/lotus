@@ -164,7 +164,7 @@ func (m *mergedFundsReq) sum() (types.BigInt, types.BigInt) {
 }
 
 // completeAmount completes first non-reserving requests up to the available amount
-func (m *mergedFundsReq) completeAmount(avail types.BigInt, channelInfo *ChannelInfo) types.BigInt {
+func (m *mergedFundsReq) completeAmount(avail types.BigInt, channelInfo *ChannelInfo) (*paychFundsRes, types.BigInt) {
 	used := types.NewInt(0)
 	next := 0
 	for i, r := range m.reqs {
@@ -189,7 +189,10 @@ func (m *mergedFundsReq) completeAmount(avail types.BigInt, channelInfo *Channel
 	}
 
 	m.reqs = m.reqs[next:]
-	return used
+	if len(m.reqs) == 0 {
+		return &paychFundsRes{channel: *channelInfo.Channel}, used
+	}
+	return nil, used
 }
 
 // getPaych ensures that a channel exists between the from and to addresses,
@@ -418,10 +421,10 @@ func (ca *channelAccessor) processTask(merged *mergedFundsReq, amt, avail types.
 	}
 
 	// Try to fill requests using available funds, without going to the chain
-	amt = ca.completeAvailable(ctx, merged, channelInfo, amt, avail)
+	res, amt := ca.completeAvailable(ctx, merged, channelInfo, amt, avail)
 
-	if amt.LessThanEqual(types.NewInt(0)) {
-		return nil
+	if res != nil || amt.LessThanEqual(types.NewInt(0)) {
+		return res
 	}
 
 	// We need to add more funds, so send an add funds message to
@@ -520,7 +523,7 @@ func (ca *channelAccessor) waitPaychCreateMsg(ctx context.Context, channelID str
 }
 
 // completeAvailable fills reserving fund requests using already available funds, without interacting with the chain
-func (ca *channelAccessor) completeAvailable(ctx context.Context, merged *mergedFundsReq, channelInfo *ChannelInfo, amt, av types.BigInt) types.BigInt {
+func (ca *channelAccessor) completeAvailable(ctx context.Context, merged *mergedFundsReq, channelInfo *ChannelInfo, amt, av types.BigInt) (*paychFundsRes, types.BigInt) {
 	toReserve := types.BigSub(amt, av)
 	avail := types.NewInt(0)
 
@@ -533,14 +536,14 @@ func (ca *channelAccessor) completeAvailable(ctx context.Context, merged *merged
 		ci.AvailableAmount = big.Sub(ci.AvailableAmount, avail)
 	})
 
-	used := merged.completeAmount(avail, channelInfo)
+	res, used := merged.completeAmount(avail, channelInfo)
 
 	// return any unused reserved funds (e.g. from cancelled requests)
 	ca.mutateChannelInfo(ctx, channelInfo.ChannelID, func(ci *ChannelInfo) {
 		ci.AvailableAmount = types.BigAdd(ci.AvailableAmount, types.BigSub(avail, used))
 	})
 
-	return types.BigSub(amt, used)
+	return res, types.BigSub(amt, used)
 }
 
 // addFunds sends a message to add funds to the channel and returns the message cid
