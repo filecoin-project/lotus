@@ -101,9 +101,11 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxWaitDealsSectors:       2, // 64G with 32G sectors
 			MaxSealingSectors:         0,
 			MaxSealingSectorsForDeals: 0,
+			MaxUnsealingSectors:       0,
 			WaitDealsDelay:            Duration(time.Hour * 6),
 			AlwaysKeepUnsealedCopy:    true,
-			FinalizeEarly:             false,
+
+			FinalizeEarly: false,
 
 			CollateralFromMinerBalance: false,
 			AvailableBalanceBuffer:     types.FIL(big.Zero()),

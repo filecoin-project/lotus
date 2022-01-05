@@ -24,6 +24,7 @@ func (m *Sealing) PledgeSector(ctx context.Context) (storage.SectorRef, error) {
 			return storage.SectorRef{}, xerrors.Errorf("too many sectors sealing (curSealing: %d, max: %d)", m.stats.curSealing(), cfg.MaxSealingSectors)
 		}
 	}
+	// TODO: crichoux whats going on here? should check cur unsealing????
 
 	spt, err := m.currentSealProof(ctx)
 	if err != nil {

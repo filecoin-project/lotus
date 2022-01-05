@@ -188,6 +188,9 @@ type SealingConfig struct {
 	// Upper bound on how many sectors can be sealing at the same time when creating new sectors with deals (0 = unlimited)
 	MaxSealingSectorsForDeals uint64
 
+	// Upper bound on how many sectors can be unsealing at the same time when creating new sectors (0 = unlimited)
+	MaxUnsealingSectors uint64
+
 	// CommittedCapacitySectorLifetime is the duration a Committed Capacity (CC) sector will
 	// live before it must be extended or converted into sector containing deals before it is
 	// terminated. Value must be between 180-540 days inclusive
