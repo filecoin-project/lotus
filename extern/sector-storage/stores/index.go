@@ -552,7 +552,7 @@ func (i *Index) StorageGetUrl(ctx context.Context, s abi.SectorID, ft storiface.
 	}
 
 	storages := make([]StorageInfo, 0, len(storageIDs))
-	for id, _ := range storageIDs {
+	for id := range storageIDs {
 		st, ok := i.stores[id]
 		if !ok {
 			log.Warnf("storage %s is not present in sector index (referenced by sector %v)", id, s)

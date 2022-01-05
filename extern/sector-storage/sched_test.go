@@ -136,11 +136,11 @@ func (s *schedTestWorker) ReadPiece(ctx context.Context, writer io.Writer, id st
 	panic("implement me")
 }
 
-func (s *schedTestWorker) GenerateWindowPoSt(ctx context.Context, mid abi.ActorID, privsectors ffiwrapper.SortedPrivateSectorInfo, partitionVanillaParams string, offset int, randomness abi.PoStRandomness) (ffiwrapper.WindowPoStResult, error) {
+func (s *schedTestWorker) GenerateWindowPoSt(ctx context.Context, mid abi.ActorID, privsectors ffiwrapper.SortedPrivateSectorInfo, partitionIdx int, offset int, randomness abi.PoStRandomness, sectorChallenges *ffiwrapper.FallbackChallenges) (ffiwrapper.WindowPoStResult, error) {
 	panic("implement me")
 }
 
-func (s *schedTestWorker) GenerateWinningPoSt(ctx context.Context, mid abi.ActorID, privsectors ffiwrapper.SortedPrivateSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, error) {
+func (s *schedTestWorker) GenerateWinningPoSt(ctx context.Context, mid abi.ActorID, privsectors ffiwrapper.SortedPrivateSectorInfo, randomness abi.PoStRandomness, sectorChallenges *ffiwrapper.FallbackChallenges) ([]proof.PoStProof, error) {
 	panic("implement me")
 }
 

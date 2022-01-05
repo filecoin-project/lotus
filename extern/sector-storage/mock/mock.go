@@ -10,7 +10,6 @@ import (
 	"math/rand"
 	"sync"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
@@ -562,11 +561,15 @@ func (mgr *SectorMgr) GetPartitionVanillaParams(ctx context.Context, proofType a
 	panic("not supported")
 }
 
-func (mgr *SectorMgr) PubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []proof5.SectorInfo, faults []abi.SectorNumber, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error)) (ffi.SortedPrivateSectorInfo, []abi.SectorID, func(), error) {
+func (mgr *SectorMgr) PubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []proof5.SectorInfo, faults []abi.SectorNumber, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error)) (ffiwrapper.SortedPrivateSectorInfo, []abi.SectorID, func(), error) {
 	panic("not supported")
 }
 
-func (mgr *SectorMgr) SplitSortedPrivateSectorInfo(ctx context.Context, privsector ffi.SortedPrivateSectorInfo, offset int, end int) (ffi.SortedPrivateSectorInfo, error) {
+func (mgr *SectorMgr) SplitSortedPrivateSectorInfo(ctx context.Context, privsector ffiwrapper.SortedPrivateSectorInfo, offset int, end int) (ffiwrapper.SortedPrivateSectorInfo, error) {
+	panic("not supported")
+}
+
+func (mgr *SectorMgr) GeneratePoStFallbackSectorChallenges(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, sectorIds []abi.SectorNumber) (*ffiwrapper.FallbackChallenges, error) {
 	panic("not supported")
 }
 

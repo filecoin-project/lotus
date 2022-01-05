@@ -17,7 +17,7 @@ import (
 	"strings"
 	"sync"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/sector-storage/tarutil"
@@ -814,10 +814,10 @@ func (r *Remote) AcquireSectorPaths(ctx context.Context, s storage.SectorRef, ex
 	return paths, stores, nil
 }
 
-func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.ActorID, privsector *ffi.PrivateSectorInfo, challange []uint64) ([]byte, error) {
+func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.ActorID, privsector *ffiwrapper.PrivateSectorInfo, challenge []uint64) ([]byte, error) {
 	sector := abi.SectorID{
 		Miner:  minerID,
-		Number: privsector.SectorNumber,
+		Number: privsector.Psi.SectorNumber,
 	}
 
 	storageUrl, err := r.index.StorageGetUrl(ctx, sector, storiface.FTCache|storiface.FTSealed)
@@ -833,8 +833,8 @@ func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 	surl.Path = gopath.Join(surl.Path, "vanilla", "single")
 
 	requestParams := SingleVanillaParams{
-		PrivSector: *privsector,
-		Challange:  challange,
+		PrivSector: privsector.Psi,
+		Challenge:  challenge,
 	}
 	bytes, err := json.Marshal(requestParams)
 	if err != nil {
@@ -851,7 +851,12 @@ func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 	if err != nil {
 		return nil, xerrors.Errorf("do request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.Error("response close: ", err)
+		}
+	}()
 
 	if resp.StatusCode != 200 {
 		body, err := ioutil.ReadAll(resp.Body)

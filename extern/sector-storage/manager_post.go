@@ -37,11 +37,11 @@ func (m *Manager) generateWinningPoSt(ctx context.Context, minerID abi.ActorID, 
 	}
 
 	var sectorNums []abi.SectorNumber
-	for _, s := range ps.Values() {
+	for _, s := range ps.Spsi.Values() {
 		sectorNums = append(sectorNums, s.SectorNumber)
 	}
 
-	postChallenges, err := m.GeneratePoStFallbackSectorChallenges(ctx, ps.Values()[0].PoStProofType, minerID, randomness, sectorNums)
+	postChallenges, err := m.GeneratePoStFallbackSectorChallenges(ctx, ps.Spsi.Values()[0].PoStProofType, minerID, randomness, sectorNums)
 	if err != nil {
 		return nil, xerrors.Errorf("generating fallback challenges: %v", err)
 	}
@@ -104,7 +104,7 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 	}
 
 	// The partitions number of this batch
-	partitionCount := (len(ps.Values()) + int(partitionSectorsCount) - 1) / int(partitionSectorsCount)
+	partitionCount := (len(ps.Spsi.Values()) + int(partitionSectorsCount) - 1) / int(partitionSectorsCount)
 
 	log.Infof("generateWindowPoSt len(partitionSectorsCount):%d len(partitionCount):%d \n", partitionSectorsCount, partitionCount)
 
@@ -114,16 +114,16 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 	defer cancel()
 
 	var sectorNums []abi.SectorNumber
-	for _, s := range ps.Values() {
+	for _, s := range ps.Spsi.Values() {
 		sectorNums = append(sectorNums, s.SectorNumber)
 	}
 
-	postChallenges, err := m.GeneratePoStFallbackSectorChallenges(ctx, ps.Values()[0].PoStProofType, minerID, randomness, sectorNums)
+	postChallenges, err := m.GeneratePoStFallbackSectorChallenges(ctx, ps.Spsi.Values()[0].PoStProofType, minerID, randomness, sectorNums)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("generating fallback challenges: %v", err)
 	}
 
-	proofList := make([]ffi.PartitionProof, partitionCount)
+	proofList := make([]proof.PoStProof, partitionCount)
 	var wg sync.WaitGroup
 	for i := 0; i < partitionCount; i++ {
 		wg.Add(1)
@@ -148,7 +148,15 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 
 	wg.Wait()
 
-	postProofs, err := ffi.MergeWindowPoStPartitionProofs(proofType, proofList)
+	pl := make([]ffi.PartitionProof, 0)
+	for i, pp := range proofList {
+		pl[i] = ffi.PartitionProof(pp)
+	}
+
+	postProofs, err := ffi.MergeWindowPoStPartitionProofs(proofType, pl)
+	if err != nil {
+		return nil, nil, xerrors.Errorf("merge windowPoSt partition proofs: %v", err)
+	}
 
 	if len(faults) > 0 {
 		log.Warnf("GenerateWindowPoSt get faults: %d", len(faults))
@@ -159,20 +167,20 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 	return out, skipped, retErr
 }
 
-func (m *Manager) generatePartitionWindowPost(ctx context.Context, minerID abi.ActorID, index int, psc int, groupCount int, ps ffi.SortedPrivateSectorInfo, randomness abi.PoStRandomness, postChallenges *ffi.FallbackChallenges) (ffi.PartitionProof, []abi.SectorID, error) {
+func (m *Manager) generatePartitionWindowPost(ctx context.Context, minerID abi.ActorID, index int, psc int, groupCount int, ps ffiwrapper.SortedPrivateSectorInfo, randomness abi.PoStRandomness, postChallenges *ffiwrapper.FallbackChallenges) (proof.PoStProof, []abi.SectorID, error) {
 	var faults []abi.SectorID
 
 	start := index * psc
 	end := (index + 1) * psc
 	if index == groupCount-1 {
-		end = len(ps.Values())
+		end = len(ps.Spsi.Values())
 	}
 
 	log.Infow("generateWindowPost", "start", start, "end", end, "index", index)
 
 	privsectors, err := m.SplitSortedPrivateSectorInfo(ctx, ps, start, end)
 	if err != nil {
-		return ffi.PartitionProof{}, faults, xerrors.Errorf("generateWindowPost GetScopeSortedPrivateSectorInfo failed: %w", err)
+		return proof.PoStProof{}, faults, xerrors.Errorf("generateWindowPost GetScopeSortedPrivateSectorInfo failed: %w", err)
 	}
 
 	var result *ffiwrapper.WindowPoStResult
@@ -187,12 +195,12 @@ func (m *Manager) generatePartitionWindowPost(ctx context.Context, minerID abi.A
 	})
 
 	if err != nil {
-		return ffi.PartitionProof{}, faults, err
+		return proof.PoStProof{}, faults, err
 	}
 
 	if len(result.Skipped) > 0 {
 		log.Warnf("generateWindowPost partition:%d, get faults:%d", index, len(result.Skipped))
-		return ffi.PartitionProof{}, result.Skipped, xerrors.Errorf("generatePartitionWindowPoStProofs partition:%d get faults:%d", index, len(result.Skipped))
+		return proof.PoStProof{}, result.Skipped, xerrors.Errorf("generatePartitionWindowPoStProofs partition:%d get faults:%d", index, len(result.Skipped))
 	}
 
 	return result.PoStProofs, faults, err

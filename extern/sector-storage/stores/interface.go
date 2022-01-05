@@ -4,8 +4,8 @@ import (
 	"context"
 	"os"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/partialfile"
 
 	"github.com/filecoin-project/specs-storage/storage"
@@ -52,5 +52,5 @@ type Store interface {
 
 	Reserve(ctx context.Context, sid storage.SectorRef, ft storiface.SectorFileType, storageIDs storiface.SectorPaths, overheadTab map[storiface.SectorFileType]int) (func(), error)
 
-	GenerateSingleVanillaProof(ctx context.Context, minerID abi.ActorID, privsector *ffi.PrivateSectorInfo, challange []uint64) ([]byte, error)
+	GenerateSingleVanillaProof(ctx context.Context, minerID abi.ActorID, privsector *ffiwrapper.PrivateSectorInfo, challenge []uint64) ([]byte, error)
 }

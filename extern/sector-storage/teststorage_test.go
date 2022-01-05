@@ -31,11 +31,11 @@ func (t *testExec) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, 
 	panic("implement me")
 }
 
-func (t *testExec) GenerateWindowPoStWithVanilla(ctx context.Context, mid abi.ActorID, privsectors ffiwrapper.SortedPrivateSectorInfo, randomness abi.PoStRandomness, vanillas []string) ([]proof.PoStProof, error) {
+func (t *testExec) GenerateWindowPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte, partitionIdx int) (*proof.PoStProof, error) {
 	panic("implement me")
 }
 
-func (t *testExec) GenerateWinningPoStWithVanilla(ctx context.Context, mid abi.ActorID, privsectors ffiwrapper.SortedPrivateSectorInfo, randomness abi.PoStRandomness, vanillas []string) ([]proof.PoStProof, error) {
+func (t *testExec) GenerateWinningPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, vanillas [][]byte) ([]proof.PoStProof, error) {
 	panic("implement me")
 }
 

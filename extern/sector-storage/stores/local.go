@@ -13,10 +13,10 @@ import (
 
 	"golang.org/x/xerrors"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
@@ -720,7 +720,7 @@ func (st *Local) FsStat(ctx context.Context, id ID) (fsutil.FsStat, error) {
 	return p.stat(st.localStorage)
 }
 
-func (st *Local) GenerateSingleVanillaProof(ctx context.Context, minerID abi.ActorID, privsector *ffi.PrivateSectorInfo, challange []uint64) ([]byte, error) {
+func (st *Local) GenerateSingleVanillaProof(ctx context.Context, minerID abi.ActorID, privsector *ffiwrapper.PrivateSectorInfo, challenge []uint64) ([]byte, error) {
 	return nil, nil
 }
 func (st *Local) AcquireSectorPaths(ctx context.Context, sid storage.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, pathType storiface.PathType) (storiface.SectorPaths, storiface.SectorPaths, error) {

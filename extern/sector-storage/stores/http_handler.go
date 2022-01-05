@@ -306,7 +306,7 @@ func ftFromString(t string) (storiface.SectorFileType, error) {
 
 type SingleVanillaParams struct {
 	PrivSector ffi.PrivateSectorInfo
-	Challange  []uint64
+	Challenge  []uint64
 }
 
 func (handler *FetchHandler) generateSingleVanillaProof(w http.ResponseWriter, r *http.Request) {
@@ -323,12 +323,15 @@ func (handler *FetchHandler) generateSingleVanillaProof(w http.ResponseWriter, r
 		return
 	}
 
-	vanilla, err := ffi.GenerateSingleVanillaProof(params.PrivSector, params.Challange)
+	vanilla, err := ffi.GenerateSingleVanillaProof(params.PrivSector, params.Challenge)
 	if err != nil {
 		http.Error(w, err.Error(), 500)
 		return
 	}
 
 	w.WriteHeader(200)
-	w.Write(vanilla)
+	_, err = w.Write(vanilla)
+	if err != nil {
+		log.Error("response writer: ", err)
+	}
 }

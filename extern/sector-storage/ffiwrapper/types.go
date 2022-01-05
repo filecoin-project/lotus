@@ -65,22 +65,35 @@ type SectorProvider interface {
 var _ SectorProvider = &basicfs.Provider{}
 
 type MinerProver interface {
-	PubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []proof5.SectorInfo, faults []abi.SectorNumber, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error)) (ffi.SortedPrivateSectorInfo, []abi.SectorID, func(), error)
-	SplitSortedPrivateSectorInfo(ctx context.Context, privsector ffi.SortedPrivateSectorInfo, offset int, end int) (ffi.SortedPrivateSectorInfo, error)
-	GeneratePoStFallbackSectorChallenges(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, sectorIds []abi.SectorNumber) (*ffi.FallbackChallenges, error)
+	PubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []proof5.SectorInfo, faults []abi.SectorNumber, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error)) (SortedPrivateSectorInfo, []abi.SectorID, func(), error)
+	SplitSortedPrivateSectorInfo(ctx context.Context, privsector SortedPrivateSectorInfo, offset int, end int) (SortedPrivateSectorInfo, error)
+	GeneratePoStFallbackSectorChallenges(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, sectorIds []abi.SectorNumber) (*FallbackChallenges, error)
 }
 
 type WindowPoStResult struct {
-	PoStProofs ffi.PartitionProof
+	PoStProofs proof.PoStProof
 	Skipped    []abi.SectorID
 }
 
+// type SortedPrivateSectorInfo ffi.SortedPrivateSectorInfo
+type FallbackChallenges struct {
+	Fc ffi.FallbackChallenges
+}
+
+type SortedPrivateSectorInfo struct {
+	Spsi ffi.SortedPrivateSectorInfo
+}
+
+type PrivateSectorInfo struct {
+	Psi ffi.PrivateSectorInfo
+}
+
 type WorkerProver interface {
-	GenerateWindowPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte, partitionIdx int) (*ffi.PartitionProof, error)
+	GenerateWindowPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte, partitionIdx int) (*proof.PoStProof, error)
 	GenerateWinningPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, vanillas [][]byte) ([]proof.PoStProof, error)
 }
 
 type WorkerCalls interface {
-	GenerateWindowPoSt(ctx context.Context, mid abi.ActorID, privsectors ffi.SortedPrivateSectorInfo, partitionIdx int, offset int, randomness abi.PoStRandomness, sectorChallenges *ffi.FallbackChallenges) (WindowPoStResult, error)
-	GenerateWinningPoSt(ctx context.Context, mid abi.ActorID, privsectors ffi.SortedPrivateSectorInfo, randomness abi.PoStRandomness, sectorChallenges *ffi.FallbackChallenges) ([]proof.PoStProof, error)
+	GenerateWindowPoSt(ctx context.Context, mid abi.ActorID, privsectors SortedPrivateSectorInfo, partitionIdx int, offset int, randomness abi.PoStRandomness, sectorChallenges *FallbackChallenges) (WindowPoStResult, error)
+	GenerateWinningPoSt(ctx context.Context, mid abi.ActorID, privsectors SortedPrivateSectorInfo, randomness abi.PoStRandomness, sectorChallenges *FallbackChallenges) ([]proof.PoStProof, error)
 }

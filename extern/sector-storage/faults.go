@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"path/filepath"
 
 	"golang.org/x/xerrors"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
@@ -81,16 +81,20 @@ func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof,
 					return nil
 				}
 
-				_, err = m.storage.GenerateSingleVanillaProof(ctx, sector.ID.Miner, &ffi.PrivateSectorInfo{
-					SectorInfo: proof.SectorInfo{
-						SealProof:    sector.ProofType,
-						SectorNumber: sector.ID.Number,
-						SealedCID:    commr,
+				psi := ffiwrapper.PrivateSectorInfo{
+					Psi: ffi.PrivateSectorInfo{
+						SectorInfo: proof.SectorInfo{
+							SealProof:    sector.ProofType,
+							SectorNumber: sector.ID.Number,
+							SealedCID:    commr,
+						},
+						CacheDirPath:     lp.Cache,
+						PoStProofType:    wpp,
+						SealedSectorPath: lp.Sealed,
 					},
-					CacheDirPath:     lp.Cache,
-					PoStProofType:    wpp,
-					SealedSectorPath: lp.Sealed,
-				}, ch.Challenges[sector.ID.Number])
+				}
+
+				_, err = m.storage.GenerateSingleVanillaProof(ctx, sector.ID.Miner, &psi, ch.Challenges[sector.ID.Number])
 				if err != nil {
 					log.Warnw("CheckProvable Sector FAULT: generating vanilla proof", "sector", sector, "sealed", lp.Sealed, "cache", lp.Cache, "err", err)
 					bad[sector.ID] = fmt.Sprintf("generating vanilla proof: %s", err)
@@ -106,27 +110,6 @@ func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof,
 	}
 
 	return bad, nil
-}
-
-func addCachePathsForSectorSize(chk map[string]int64, cacheDir string, ssize abi.SectorSize) {
-	switch ssize {
-	case 2 << 10:
-		fallthrough
-	case 8 << 20:
-		fallthrough
-	case 512 << 20:
-		chk[filepath.Join(cacheDir, "sc-02-data-tree-r-last.dat")] = 0
-	case 32 << 30:
-		for i := 0; i < 8; i++ {
-			chk[filepath.Join(cacheDir, fmt.Sprintf("sc-02-data-tree-r-last-%d.dat", i))] = 0
-		}
-	case 64 << 30:
-		for i := 0; i < 16; i++ {
-			chk[filepath.Join(cacheDir, fmt.Sprintf("sc-02-data-tree-r-last-%d.dat", i))] = 0
-		}
-	default:
-		log.Warnf("not checking cache files of %s sectors for faults", ssize)
-	}
 }
 
 var _ FaultTracker = &Manager{}

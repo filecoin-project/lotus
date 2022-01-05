@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"time"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -870,9 +869,9 @@ type WorkerStruct struct {
 
 		GenerateSectorKeyFromData func(p0 context.Context, p1 storage.SectorRef, p2 cid.Cid) (storiface.CallID, error) `perm:"admin"`
 
-		GenerateWindowPoSt func(p0 context.Context, p1 abi.ActorID, p2 ffi.SortedPrivateSectorInfo, p3 int, p4 int, p5 abi.PoStRandomness, p6 *ffi.FallbackChallenges) (ffiwrapper.WindowPoStResult, error) `perm:"admin"`
+		GenerateWindowPoSt func(p0 context.Context, p1 abi.ActorID, p2 ffiwrapper.SortedPrivateSectorInfo, p3 int, p4 int, p5 abi.PoStRandomness, p6 *ffiwrapper.FallbackChallenges) (ffiwrapper.WindowPoStResult, error) `perm:"admin"`
 
-		GenerateWinningPoSt func(p0 context.Context, p1 abi.ActorID, p2 ffi.SortedPrivateSectorInfo, p3 abi.PoStRandomness, p4 *ffi.FallbackChallenges) ([]proof.PoStProof, error) `perm:"admin"`
+		GenerateWinningPoSt func(p0 context.Context, p1 abi.ActorID, p2 ffiwrapper.SortedPrivateSectorInfo, p3 abi.PoStRandomness, p4 *ffiwrapper.FallbackChallenges) ([]proof.PoStProof, error) `perm:"admin"`
 
 		Info func(p0 context.Context) (storiface.WorkerInfo, error) `perm:"admin"`
 
@@ -4982,25 +4981,25 @@ func (s *WorkerStub) GenerateSectorKeyFromData(p0 context.Context, p1 storage.Se
 	return *new(storiface.CallID), ErrNotSupported
 }
 
-func (s *WorkerStruct) GenerateWindowPoSt(p0 context.Context, p1 abi.ActorID, p2 ffi.SortedPrivateSectorInfo, p3 int, p4 int, p5 abi.PoStRandomness, p6 *ffi.FallbackChallenges) (ffiwrapper.WindowPoStResult, error) {
+func (s *WorkerStruct) GenerateWindowPoSt(p0 context.Context, p1 abi.ActorID, p2 ffiwrapper.SortedPrivateSectorInfo, p3 int, p4 int, p5 abi.PoStRandomness, p6 *ffiwrapper.FallbackChallenges) (ffiwrapper.WindowPoStResult, error) {
 	if s.Internal.GenerateWindowPoSt == nil {
 		return *new(ffiwrapper.WindowPoStResult), ErrNotSupported
 	}
 	return s.Internal.GenerateWindowPoSt(p0, p1, p2, p3, p4, p5, p6)
 }
 
-func (s *WorkerStub) GenerateWindowPoSt(p0 context.Context, p1 abi.ActorID, p2 ffi.SortedPrivateSectorInfo, p3 int, p4 int, p5 abi.PoStRandomness, p6 *ffi.FallbackChallenges) (ffiwrapper.WindowPoStResult, error) {
+func (s *WorkerStub) GenerateWindowPoSt(p0 context.Context, p1 abi.ActorID, p2 ffiwrapper.SortedPrivateSectorInfo, p3 int, p4 int, p5 abi.PoStRandomness, p6 *ffiwrapper.FallbackChallenges) (ffiwrapper.WindowPoStResult, error) {
 	return *new(ffiwrapper.WindowPoStResult), ErrNotSupported
 }
 
-func (s *WorkerStruct) GenerateWinningPoSt(p0 context.Context, p1 abi.ActorID, p2 ffi.SortedPrivateSectorInfo, p3 abi.PoStRandomness, p4 *ffi.FallbackChallenges) ([]proof.PoStProof, error) {
+func (s *WorkerStruct) GenerateWinningPoSt(p0 context.Context, p1 abi.ActorID, p2 ffiwrapper.SortedPrivateSectorInfo, p3 abi.PoStRandomness, p4 *ffiwrapper.FallbackChallenges) ([]proof.PoStProof, error) {
 	if s.Internal.GenerateWinningPoSt == nil {
 		return *new([]proof.PoStProof), ErrNotSupported
 	}
 	return s.Internal.GenerateWinningPoSt(p0, p1, p2, p3, p4)
 }
 
-func (s *WorkerStub) GenerateWinningPoSt(p0 context.Context, p1 abi.ActorID, p2 ffi.SortedPrivateSectorInfo, p3 abi.PoStRandomness, p4 *ffi.FallbackChallenges) ([]proof.PoStProof, error) {
+func (s *WorkerStub) GenerateWinningPoSt(p0 context.Context, p1 abi.ActorID, p2 ffiwrapper.SortedPrivateSectorInfo, p3 abi.PoStRandomness, p4 *ffiwrapper.FallbackChallenges) ([]proof.PoStProof, error) {
 	return *new([]proof.PoStProof), ErrNotSupported
 }
 
