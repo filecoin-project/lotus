@@ -6,9 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"golang.org/x/xerrors"
-
 	"github.com/google/uuid"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
 
@@ -380,7 +379,7 @@ func (ps *Store) GetMessage(ctx context.Context, mcid cid.Cid) (*MsgInfo, error)
 
 // OutboundActiveByFromTo looks for outbound channels that have not been
 // settled, with the given from / to addresses
-func (ps *Store) OutboundActiveByFromTo(ctx context.Context, from address.Address, to address.Address) (*ChannelInfo, error) {
+func (ps *Store) OutboundActiveByFromTo(ctx context.Context, sma stateManagerAPI, from address.Address, to address.Address) (*ChannelInfo, error) {
 	return ps.findChan(ctx, func(ci *ChannelInfo) bool {
 		if ci.Direction != DirOutbound {
 			return false
@@ -388,6 +387,21 @@ func (ps *Store) OutboundActiveByFromTo(ctx context.Context, from address.Addres
 		if ci.Settling {
 			return false
 		}
+
+		if ci.Channel != nil {
+			_, st, err := sma.GetPaychState(ctx, *ci.Channel, nil)
+			if err != nil {
+				return false
+			}
+			sat, err := st.SettlingAt()
+			if err != nil {
+				return false
+			}
+			if sat != 0 {
+				return false
+			}
+		}
+
 		return ci.Control == from && ci.Target == to
 	})
 }

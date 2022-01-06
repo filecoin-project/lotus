@@ -132,6 +132,14 @@ func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
 	mock := newMockManagerAPI()
 	defer mock.close()
 
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: types.NewInt(20),
+	}
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
+
 	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
@@ -218,6 +226,14 @@ func TestPaychGetCreatePrefundedChannelThenAddFunds(t *testing.T) {
 
 	mock := newMockManagerAPI()
 	defer mock.close()
+
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: types.NewInt(20),
+	}
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
 	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
@@ -406,6 +422,14 @@ func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
 	mock := newMockManagerAPI()
 	defer mock.close()
 
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: types.NewInt(20),
+	}
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
+
 	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
@@ -502,6 +526,14 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 	mock2 := newMockManagerAPI()
 	defer mock2.close()
 
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: types.NewInt(20),
+	}
+	mock2.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
+
 	mgr2, err := newManager(store, mock2)
 	require.NoError(t, err)
 
@@ -566,6 +598,14 @@ func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
 
 	mock := newMockManagerAPI()
 
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: types.NewInt(20),
+	}
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
+
 	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
@@ -589,6 +629,8 @@ func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
 	// Create a new manager with the same datastore
 	mock2 := newMockManagerAPI()
 	defer mock2.close()
+
+	mock2.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
 	mgr2, err := newManager(store, mock2)
 	require.NoError(t, err)
@@ -625,9 +667,18 @@ func TestPaychGetWait(t *testing.T) {
 
 	from := tutils.NewIDAddr(t, 101)
 	to := tutils.NewIDAddr(t, 102)
+	expch := tutils.NewIDAddr(t, 100)
 
 	mock := newMockManagerAPI()
 	defer mock.close()
+
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: types.NewInt(20),
+	}
+	mock.setPaychState(expch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
 	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
@@ -637,7 +688,6 @@ func TestPaychGetWait(t *testing.T) {
 	_, createMsgCid, err := mgr.GetPaych(ctx, from, to, amt, onChainReserve)
 	require.NoError(t, err)
 
-	expch := tutils.NewIDAddr(t, 100)
 	go func() {
 		// 3. Send response
 		response := testChannelResponse(t, expch)
@@ -763,6 +813,14 @@ func TestPaychGetMergeAddFunds(t *testing.T) {
 	mock := newMockManagerAPI()
 	defer mock.close()
 
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: types.NewInt(20),
+	}
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
+
 	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
@@ -859,6 +917,14 @@ func TestPaychGetMergePrefundAndReserve(t *testing.T) {
 	mock := newMockManagerAPI()
 	defer mock.close()
 
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: types.NewInt(20),
+	}
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
+
 	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
@@ -954,6 +1020,14 @@ func TestPaychGetMergePrefundAndReservePrefunded(t *testing.T) {
 
 	mock := newMockManagerAPI()
 	defer mock.close()
+
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: types.NewInt(20),
+	}
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
 	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
@@ -1052,6 +1126,14 @@ func TestPaychGetMergePrefundAndReservePrefundedOneOffchain(t *testing.T) {
 	mock := newMockManagerAPI()
 	defer mock.close()
 
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: types.NewInt(20),
+	}
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
+
 	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
@@ -1130,6 +1212,14 @@ func TestPaychGetMergePrefundAndReservePrefundedBothOffchainOneFail(t *testing.T
 	mock := newMockManagerAPI()
 	defer mock.close()
 
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: types.NewInt(20),
+	}
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
+
 	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
 
@@ -1207,6 +1297,14 @@ func TestPaychGetMergePrefundAndReserveOneOffchainOneFail(t *testing.T) {
 
 	mock := newMockManagerAPI()
 	defer mock.close()
+
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: types.NewInt(20),
+	}
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
 	mgr, err := newManager(store, mock)
 	require.NoError(t, err)
@@ -1294,6 +1392,14 @@ func TestPaychGetMergeAddFundsCtxCancelOne(t *testing.T) {
 
 	mock := newMockManagerAPI()
 	defer mock.close()
+
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: types.NewInt(20),
+	}
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
 	mgr, err := newManager(store, mock)
 	require.NoError(t, err)

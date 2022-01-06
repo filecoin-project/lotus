@@ -465,18 +465,18 @@ func TestAddVoucherInboundWalletKey(t *testing.T) {
 	toAcct := tutils.NewActorAddr(t, "toAct")
 
 	// Create an actor for the channel in state
-	act := &types.Actor{
-		Code:    builtin.AccountActorCodeID,
-		Head:    cid.Cid{},
-		Nonce:   0,
-		Balance: types.NewInt(20),
-	}
 
 	mock := newMockManagerAPI()
 
 	mock.setAccountAddress(fromAcct, from)
 	mock.setAccountAddress(toAcct, to)
 
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: types.NewInt(20),
+	}
 	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
 	// Create a manager

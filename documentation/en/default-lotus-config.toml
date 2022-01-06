@@ -121,6 +121,14 @@
   # env var: LOTUS_CLIENT_SIMULTANEOUSTRANSFERSFORRETRIEVAL
   #SimultaneousTransfersForRetrieval = 20
 
+  # Require that retrievals perform no on-chain retrievals. Paid retrievals
+  # without existing payment channels with available funds will fail instead
+  # of automatically performing on-chain operations.
+  #
+  # type: bool
+  # env var: LOTUS_CLIENT_OFFCHAINRETRIEVAL
+  #OffChainRetrieval = false
+
 
 [Wallet]
   # type: string

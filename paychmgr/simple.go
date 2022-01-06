@@ -436,7 +436,7 @@ func (ca *channelAccessor) processTask(merged *mergedFundsReq, amt, avail types.
 	// Get the payment channel for the from/to addresses.
 	// Note: It's ok if we get ErrChannelNotTracked. It just means we need to
 	// create a channel.
-	channelInfo, err := ca.store.OutboundActiveByFromTo(ctx, ca.from, ca.to)
+	channelInfo, err := ca.store.OutboundActiveByFromTo(ctx, ca.api, ca.from, ca.to)
 	if err != nil && err != ErrChannelNotTracked {
 		return &paychFundsRes{err: err}
 	}
