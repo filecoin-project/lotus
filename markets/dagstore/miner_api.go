@@ -166,6 +166,7 @@ func (m *minerAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (mo
 		// Note that if the deal data is not already unsealed, unsealing may
 		// block for a long time with the current PoRep
 		var reader mount.Reader
+		deal := deal
 		err := m.throttle.Do(ctx, func(ctx context.Context) (err error) {
 			// Because we know we have an unsealed copy, this UnsealSector call will actually not perform any unsealing.
 			reader, err = m.sa.UnsealSectorAt(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
