@@ -209,6 +209,8 @@ var Prices = map[abi.ChainEpoch]Pricelist{
 		},
 		verifyPostDiscount:   false,
 		verifyConsensusFault: 495422,
+
+		verifyReplicaUpdate: 36316136,
 	},
 }
 
