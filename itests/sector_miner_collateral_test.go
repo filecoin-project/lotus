@@ -36,7 +36,6 @@ func TestMinerBalanceCollateral(t *testing.T) {
 						MaxWaitDealsSectors:       4,
 						MaxSealingSectors:         4,
 						MaxSealingSectorsForDeals: 4,
-						MaxUnsealingSectors:       4,
 						AlwaysKeepUnsealedCopy:    true,
 						WaitDealsDelay:            time.Hour,
 

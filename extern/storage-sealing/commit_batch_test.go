@@ -45,7 +45,6 @@ func TestCommitBatcher(t *testing.T) {
 			MaxWaitDealsSectors:       2,
 			MaxSealingSectors:         0,
 			MaxSealingSectorsForDeals: 0,
-			MaxUnsealingSectors:       0,
 			WaitDealsDelay:            time.Hour * 6,
 			AlwaysKeepUnsealedCopy:    true,
 

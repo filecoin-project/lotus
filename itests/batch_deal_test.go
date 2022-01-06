@@ -51,7 +51,6 @@ func TestBatchDealInput(t *testing.T) {
 							MaxWaitDealsSectors:       2,
 							MaxSealingSectors:         1,
 							MaxSealingSectorsForDeals: 3,
-							MaxUnsealingSectors:       1,
 							AlwaysKeepUnsealedCopy:    true,
 							WaitDealsDelay:            time.Hour,
 						}, nil

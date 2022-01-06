@@ -165,6 +165,14 @@ from the storage subsystem. 0 means unlimited.
 Default value: 0 (unlimited).`,
 		},
 		{
+			Name: "MaxConcurrentUnseals",
+			Type: "int",
+
+			Comment: `The maximum amount of unseals that can be processed simultaneously
+from the storage subsystem. 0 means unlimited.
+Default value: 0 (unlimited).`,
+		},
+		{
 			Name: "MaxConcurrencyStorageCalls",
 			Type: "int",
 
