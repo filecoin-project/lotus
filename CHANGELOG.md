@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# v1.13.2-rc6 /  2022-01-04
+# v1.13.2-rc7 /  2022-01-05
 
-This is the 6th RC for lotus v1.13.2. This will be a highly recommended release with sealing pipeline fixes, worker 
+This is the 7th RC for lotus v1.13.2. This will be a highly recommended release with sealing pipeline fixes, worker 
 management and scheduler enhancement, retrieval improvements and so on. More detailed changelog will be updated later.
 
 - github.com/filecoin-project/lotus:
