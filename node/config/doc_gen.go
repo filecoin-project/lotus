@@ -650,12 +650,6 @@ Note that setting this number too high in relation to deal ingestion rate may re
 			Comment: `Upper bound on how many sectors can be sealing at the same time when creating new sectors with deals (0 = unlimited)`,
 		},
 		{
-			Name: "MaxUnsealingSectors",
-			Type: "uint64",
-
-			Comment: `Upper bound on how many sectors can be unsealing at the same time when creating new sectors (0 = unlimited)`,
-		},
-		{
 			Name: "CommittedCapacitySectorLifetime",
 			Type: "Duration",
 
