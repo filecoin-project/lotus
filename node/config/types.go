@@ -383,6 +383,11 @@ type Client struct {
 	// The maximum number of simultaneous data transfers between the client
 	// and storage providers for retrieval deals
 	SimultaneousTransfersForRetrieval uint64
+
+	// Require that retrievals perform no on-chain retrievals. Paid retrievals
+	// without existing payment channels with available funds will fail instead
+	// of automatically performing on-chain operations.
+	OffChainRetrieval bool
 }
 
 type Wallet struct {

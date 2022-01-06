@@ -41,6 +41,8 @@ func extractPaychReusedCid(c cid.Cid) (address.Address, error) {
 }
 
 type retrievalClientNode struct {
+	forceOffChain bool
+
 	chainAPI full.ChainAPI
 	payAPI   payapi.PaychAPI
 	stateAPI full.StateAPI
@@ -48,8 +50,13 @@ type retrievalClientNode struct {
 
 // NewRetrievalClientNode returns a new node adapter for a retrieval client that talks to the
 // Lotus Node
-func NewRetrievalClientNode(payAPI payapi.PaychAPI, chainAPI full.ChainAPI, stateAPI full.StateAPI) retrievalmarket.RetrievalClientNode {
-	return &retrievalClientNode{payAPI: payAPI, chainAPI: chainAPI, stateAPI: stateAPI}
+func NewRetrievalClientNode(forceOffChain bool, payAPI payapi.PaychAPI, chainAPI full.ChainAPI, stateAPI full.StateAPI) retrievalmarket.RetrievalClientNode {
+	return &retrievalClientNode{
+		forceOffChain: forceOffChain,
+		chainAPI:      chainAPI,
+		payAPI:        payAPI,
+		stateAPI:      stateAPI,
+	}
 }
 
 // GetOrCreatePaymentChannel sets up a new payment channel if one does not exist
@@ -60,7 +67,7 @@ func (rcn *retrievalClientNode) GetOrCreatePaymentChannel(ctx context.Context, c
 	// querying the chain
 	ci, err := rcn.payAPI.PaychGet(ctx, clientAddress, minerAddress, clientFundsAvailable, api.PaychGetOpts{
 		Reserve:  true,
-		OffChain: false,
+		OffChain: rcn.forceOffChain,
 	})
 	if err != nil {
 		return address.Undef, cid.Undef, err
