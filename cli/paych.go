@@ -8,7 +8,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/filecoin-project/lotus/api"
+	lapi "github.com/filecoin-project/lotus/api"
 
 	"github.com/filecoin-project/lotus/paychmgr"
 
@@ -79,7 +79,10 @@ var paychAddFundsCmd = &cli.Command{
 
 		// Send a message to chain to create channel / add funds to existing
 		// channel
-		info, err := api.PaychGet(ctx, from, to, types.BigInt(amt), cctx.Bool("reserve"))
+		info, err := api.PaychGet(ctx, from, to, types.BigInt(amt), lapi.PaychGetOpts{
+			Reserve:  cctx.Bool("reserve"),
+			OffChain: false,
+		})
 		if err != nil {
 			return err
 		}
@@ -166,7 +169,7 @@ var paychStatusCmd = &cli.Command{
 	},
 }
 
-func paychStatus(writer io.Writer, avail *api.ChannelAvailableFunds) {
+func paychStatus(writer io.Writer, avail *lapi.ChannelAvailableFunds) {
 	if avail.Channel == nil {
 		if avail.PendingWaitSentinel != nil {
 			fmt.Fprint(writer, "Creating channel\n")

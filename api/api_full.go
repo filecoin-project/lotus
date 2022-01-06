@@ -690,10 +690,14 @@ type FullNode interface {
 	// The Paych methods are for interacting with and managing payment channels
 
 	// PaychGet gets or creates a payment channel between address pair
-	//  - If reserve is false, the specified amount will be added to the channel through on-chain send for future use
-	//  - If reserve is true, the specified amount will be reserved for use. If there aren't enough non-reserved funds
+	//  - If opts.Reserve is false, the specified amount will be added to the channel through on-chain send for future use
+	//  - If opts.Reserve is true, the specified amount will be reserved for use. If there aren't enough non-reserved funds
 	//    available, funds will be added through an on-chain message.
-	PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt, reserve bool) (*ChannelInfo, error)       //perm:sign
+	//  - When opts.OffChain is true, this call will not cause any messages to be sent to the chain (no automatic
+	//    channel creation/funds adding). If the operation can't be performed without sending a message an error will be
+	//    returned. Note that even when this option is specified, this call can be blocked by previous operations on the
+	//    channel waiting for on-chain operations.
+	PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt, opts PaychGetOpts) (*ChannelInfo, error)  //perm:sign
 	PaychGetWaitReady(context.Context, cid.Cid) (address.Address, error)                                                //perm:sign
 	PaychAvailableFunds(ctx context.Context, ch address.Address) (*ChannelAvailableFunds, error)                        //perm:sign
 	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*ChannelAvailableFunds, error)          //perm:sign
@@ -831,6 +835,11 @@ const (
 	PCHInbound
 	PCHOutbound
 )
+
+type PaychGetOpts struct {
+	Reserve  bool
+	OffChain bool
+}
 
 type PaychStatus struct {
 	ControlAddr address.Address

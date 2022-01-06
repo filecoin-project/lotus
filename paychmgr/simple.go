@@ -33,20 +33,20 @@ type fundsReq struct {
 	ctx     context.Context
 	promise chan *paychFundsRes
 	amt     types.BigInt
-	reserve bool
+	opts    api.PaychGetOpts
 
 	lk sync.Mutex
 	// merge parent, if this req is part of a merge
 	merge *mergedFundsReq
 }
 
-func newFundsReq(ctx context.Context, amt types.BigInt, reserve bool) *fundsReq {
+func newFundsReq(ctx context.Context, amt types.BigInt, opts api.PaychGetOpts) *fundsReq {
 	promise := make(chan *paychFundsRes, 1)
 	return &fundsReq{
 		ctx:     ctx,
 		promise: promise,
 		amt:     amt,
-		reserve: reserve,
+		opts:    opts,
 	}
 }
 
@@ -108,8 +108,12 @@ func newMergedFundsReq(reqs []*fundsReq) *mergedFundsReq {
 	}
 
 	sort.Slice(m.reqs, func(i, j int) bool {
-		if m.reqs[i].reserve != m.reqs[j].reserve { // non-reserve first
-			return m.reqs[i].reserve
+		if m.reqs[i].opts.OffChain != m.reqs[j].opts.OffChain { // off-chain first
+			return m.reqs[i].opts.OffChain
+		}
+
+		if m.reqs[i].opts.Reserve != m.reqs[j].opts.Reserve { // non-reserve after off-chain
+			return m.reqs[i].opts.Reserve
 		}
 
 		// sort by amount asc (reducing latency for smaller requests)
@@ -154,7 +158,7 @@ func (m *mergedFundsReq) sum() (types.BigInt, types.BigInt) {
 	for _, r := range m.reqs {
 		if r.isActive() {
 			sum = types.BigAdd(sum, r.amt)
-			if !r.reserve {
+			if !r.opts.Reserve {
 				avail = types.BigAdd(avail, r.amt)
 			}
 		}
@@ -164,17 +168,30 @@ func (m *mergedFundsReq) sum() (types.BigInt, types.BigInt) {
 }
 
 // completeAmount completes first non-reserving requests up to the available amount
-func (m *mergedFundsReq) completeAmount(avail types.BigInt, channelInfo *ChannelInfo) (*paychFundsRes, types.BigInt) {
-	used := types.NewInt(0)
+func (m *mergedFundsReq) completeAmount(avail types.BigInt, channelInfo *ChannelInfo) (*paychFundsRes, types.BigInt, types.BigInt) {
+	used, failed := types.NewInt(0), types.NewInt(0)
 	next := 0
+
+	// order: [offchain+reserve, !offchain+reserve, !offchain+!reserve]
 	for i, r := range m.reqs {
-		if !r.reserve {
+		if !r.opts.Reserve {
 			// non-reserving request are put after reserving requests, so we are done here
 			break
 		}
 
 		if r.amt.GreaterThan(types.BigSub(avail, used)) {
 			// requests are sorted by amount ascending, so if we hit this, there aren't any more requests we can fill
+
+			if r.opts.OffChain {
+				// can't fill, so OffChain want an error
+				if r.isActive() {
+					failed = types.BigAdd(failed, r.amt)
+					r.onComplete(&paychFundsRes{channel: *channelInfo.Channel, err: xerrors.Errorf("not enough available funds in the payment channel")})
+				}
+				next = i + 1
+				continue
+			}
+
 			break
 		}
 
@@ -190,9 +207,34 @@ func (m *mergedFundsReq) completeAmount(avail types.BigInt, channelInfo *Channel
 
 	m.reqs = m.reqs[next:]
 	if len(m.reqs) == 0 {
-		return &paychFundsRes{channel: *channelInfo.Channel}, used
+		return &paychFundsRes{channel: *channelInfo.Channel}, used, failed
 	}
-	return nil, used
+	return nil, used, failed
+}
+
+func (m *mergedFundsReq) failOffChain(msg string) (*paychFundsRes, types.BigInt) {
+	next := 0
+	freed := types.NewInt(0)
+
+	for i, r := range m.reqs {
+		if !r.opts.OffChain {
+			break
+		}
+
+		freed = types.BigAdd(freed, r.amt)
+		if !r.isActive() {
+			continue
+		}
+		r.onComplete(&paychFundsRes{err: xerrors.New(msg)})
+		next = i + 1
+	}
+
+	m.reqs = m.reqs[next:]
+	if len(m.reqs) == 0 {
+		return &paychFundsRes{err: xerrors.New(msg)}, freed
+	}
+
+	return nil, freed
 }
 
 // getPaych ensures that a channel exists between the from and to addresses,
@@ -206,9 +248,9 @@ func (m *mergedFundsReq) completeAmount(avail types.BigInt, channelInfo *Channel
 // address and the CID of the new add funds message.
 // If an operation returns an error, subsequent waiting operations will still
 // be attempted.
-func (ca *channelAccessor) getPaych(ctx context.Context, amt types.BigInt, reserve bool) (address.Address, cid.Cid, error) {
+func (ca *channelAccessor) getPaych(ctx context.Context, amt types.BigInt, opts api.PaychGetOpts) (address.Address, cid.Cid, error) {
 	// Add the request to add funds to a queue and wait for the result
-	freq := newFundsReq(ctx, amt, reserve)
+	freq := newFundsReq(ctx, amt, opts)
 	ca.enqueue(ctx, freq)
 	select {
 	case res := <-freq.promise:
@@ -398,6 +440,12 @@ func (ca *channelAccessor) processTask(merged *mergedFundsReq, amt, avail types.
 
 	// If a channel has not yet been created, create one.
 	if channelInfo == nil {
+		res, freed := merged.failOffChain("payment channel doesn't exist")
+		if res != nil {
+			return res
+		}
+		amt = types.BigSub(amt, freed)
+
 		mcid, err := ca.createPaych(ctx, amt, avail)
 		if err != nil {
 			return &paychFundsRes{err: err}
@@ -536,14 +584,14 @@ func (ca *channelAccessor) completeAvailable(ctx context.Context, merged *merged
 		ci.AvailableAmount = big.Sub(ci.AvailableAmount, avail)
 	})
 
-	res, used := merged.completeAmount(avail, channelInfo)
+	res, used, failed := merged.completeAmount(avail, channelInfo)
 
 	// return any unused reserved funds (e.g. from cancelled requests)
 	ca.mutateChannelInfo(ctx, channelInfo.ChannelID, func(ci *ChannelInfo) {
 		ci.AvailableAmount = types.BigAdd(ci.AvailableAmount, types.BigSub(avail, used))
 	})
 
-	return res, types.BigSub(amt, used)
+	return res, types.BigSub(amt, types.BigAdd(used, failed))
 }
 
 // addFunds sends a message to add funds to the channel and returns the message cid

@@ -1976,7 +1976,7 @@ func (mr *MockFullNodeMockRecorder) PaychCollect(arg0, arg1 interface{}) *gomock
 }
 
 // PaychGet mocks base method.
-func (m *MockFullNode) PaychGet(arg0 context.Context, arg1, arg2 address.Address, arg3 big.Int, arg4 bool) (*api.ChannelInfo, error) {
+func (m *MockFullNode) PaychGet(arg0 context.Context, arg1, arg2 address.Address, arg3 big.Int, arg4 api.PaychGetOpts) (*api.ChannelInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "PaychGet", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(*api.ChannelInfo)

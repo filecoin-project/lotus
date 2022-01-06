@@ -46,7 +46,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 
 	// Send create message for a channel with value 10
 	createAmt := big.NewInt(10)
-	_, createMsgCid, err := mgr.GetPaych(ctx, from, to, createAmt, true)
+	_, createMsgCid, err := mgr.GetPaych(ctx, from, to, createAmt, onChainReserve)
 	require.NoError(t, err)
 
 	// Send create channel response
@@ -82,7 +82,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 	require.Equal(t, res.Shortfall, excessAmt)
 
 	// Add funds so as to cover the voucher shortfall
-	_, addFundsMsgCid, err := mgr.GetPaych(ctx, from, to, excessAmt, true)
+	_, addFundsMsgCid, err := mgr.GetPaych(ctx, from, to, excessAmt, onChainReserve)
 	require.NoError(t, err)
 
 	// Trigger add funds confirmation

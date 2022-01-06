@@ -306,7 +306,7 @@ type FullNodeStruct struct {
 
 		PaychCollect func(p0 context.Context, p1 address.Address) (cid.Cid, error) `perm:"sign"`
 
-		PaychGet func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 bool) (*ChannelInfo, error) `perm:"sign"`
+		PaychGet func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 PaychGetOpts) (*ChannelInfo, error) `perm:"sign"`
 
 		PaychGetWaitReady func(p0 context.Context, p1 cid.Cid) (address.Address, error) `perm:"sign"`
 
@@ -2179,14 +2179,14 @@ func (s *FullNodeStub) PaychCollect(p0 context.Context, p1 address.Address) (cid
 	return *new(cid.Cid), ErrNotSupported
 }
 
-func (s *FullNodeStruct) PaychGet(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 bool) (*ChannelInfo, error) {
+func (s *FullNodeStruct) PaychGet(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 PaychGetOpts) (*ChannelInfo, error) {
 	if s.Internal.PaychGet == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.PaychGet(p0, p1, p2, p3, p4)
 }
 
-func (s *FullNodeStub) PaychGet(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 bool) (*ChannelInfo, error) {
+func (s *FullNodeStub) PaychGet(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt, p4 PaychGetOpts) (*ChannelInfo, error) {
 	return nil, ErrNotSupported
 }
 

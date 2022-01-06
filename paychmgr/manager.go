@@ -101,13 +101,17 @@ func (pm *Manager) Stop() error {
 	return nil
 }
 
-func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt types.BigInt, reserve bool) (address.Address, cid.Cid, error) {
+func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt types.BigInt, opts api.PaychGetOpts) (address.Address, cid.Cid, error) {
+	if !opts.Reserve && opts.OffChain {
+		return address.Undef, cid.Undef, xerrors.Errorf("can't fund payment channels without on-chain operations")
+	}
+
 	chanAccessor, err := pm.accessorByFromTo(from, to)
 	if err != nil {
 		return address.Undef, cid.Undef, err
 	}
 
-	return chanAccessor.getPaych(ctx, amt, reserve)
+	return chanAccessor.getPaych(ctx, amt, opts)
 }
 
 func (pm *Manager) AvailableFunds(ctx context.Context, ch address.Address) (*api.ChannelAvailableFunds, error) {
