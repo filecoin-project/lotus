@@ -186,7 +186,10 @@ func (m *mergedFundsReq) completeAmount(avail types.BigInt, channelInfo *Channel
 				// can't fill, so OffChain want an error
 				if r.isActive() {
 					failed = types.BigAdd(failed, r.amt)
-					r.onComplete(&paychFundsRes{channel: *channelInfo.Channel, err: xerrors.Errorf("not enough available funds in the payment channel")})
+					r.onComplete(&paychFundsRes{
+						channel: *channelInfo.Channel,
+						err:     xerrors.Errorf("not enough funds available in the payment channel %s; add funds with 'lotus paych add-funds %s %s %s'", channelInfo.Channel, channelInfo.from(), channelInfo.to(), types.FIL(r.amt).Unitless()),
+					})
 				}
 				next = i + 1
 				continue
@@ -212,7 +215,7 @@ func (m *mergedFundsReq) completeAmount(avail types.BigInt, channelInfo *Channel
 	return nil, used, failed
 }
 
-func (m *mergedFundsReq) failOffChain(msg string) (*paychFundsRes, types.BigInt) {
+func (m *mergedFundsReq) failOffChainNoChannel(from, to address.Address) (*paychFundsRes, types.BigInt) {
 	next := 0
 	freed := types.NewInt(0)
 
@@ -225,13 +228,13 @@ func (m *mergedFundsReq) failOffChain(msg string) (*paychFundsRes, types.BigInt)
 		if !r.isActive() {
 			continue
 		}
-		r.onComplete(&paychFundsRes{err: xerrors.New(msg)})
+		r.onComplete(&paychFundsRes{err: xerrors.Errorf("payment channel doesn't exist, create with 'lotus paych add-funds %s %s %s'", from, to, types.FIL(r.amt).Unitless())})
 		next = i + 1
 	}
 
 	m.reqs = m.reqs[next:]
 	if len(m.reqs) == 0 {
-		return &paychFundsRes{err: xerrors.New(msg)}, freed
+		return &paychFundsRes{err: xerrors.Errorf("payment channel doesn't exist, create with 'lotus paych add-funds %s %s 0'", from, to)}, freed
 	}
 
 	return nil, freed
@@ -440,7 +443,7 @@ func (ca *channelAccessor) processTask(merged *mergedFundsReq, amt, avail types.
 
 	// If a channel has not yet been created, create one.
 	if channelInfo == nil {
-		res, freed := merged.failOffChain("payment channel doesn't exist")
+		res, freed := merged.failOffChainNoChannel(ca.from, ca.to)
 		if res != nil {
 			return res
 		}

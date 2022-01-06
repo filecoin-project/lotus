@@ -70,6 +70,7 @@ func (rcn *retrievalClientNode) GetOrCreatePaymentChannel(ctx context.Context, c
 		OffChain: rcn.forceOffChain,
 	})
 	if err != nil {
+		log.Errorw("paych get failed", "error", err)
 		return address.Undef, cid.Undef, err
 	}
 	if ci.WaitSentinel == cid.Undef {
