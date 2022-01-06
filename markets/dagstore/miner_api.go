@@ -31,20 +31,28 @@ type SectorAccessor interface {
 }
 
 type minerAPI struct {
-	pieceStore piecestore.PieceStore
-	sa         SectorAccessor
-	throttle   throttle.Throttler
-	readyMgr   *shared.ReadyManager
+	pieceStore     piecestore.PieceStore
+	sa             SectorAccessor
+	throttle       throttle.Throttler
+	unsealThrottle throttle.Throttler
+	readyMgr       *shared.ReadyManager
 }
 
 var _ MinerAPI = (*minerAPI)(nil)
 
-func NewMinerAPI(store piecestore.PieceStore, sa SectorAccessor, concurrency int) MinerAPI {
+func NewMinerAPI(store piecestore.PieceStore, sa SectorAccessor, concurrency int, unsealConcurrency int) MinerAPI {
+	var unsealThrottle throttle.Throttler
+	if unsealConcurrency == 0 {
+		unsealThrottle = throttle.Noop()
+	} else {
+		unsealThrottle = throttle.Fixed(unsealConcurrency)
+	}
 	return &minerAPI{
-		pieceStore: store,
-		sa:         sa,
-		throttle:   throttle.Fixed(concurrency),
-		readyMgr:   shared.NewReadyManager(),
+		pieceStore:     store,
+		sa:             sa,
+		throttle:       throttle.Fixed(concurrency),
+		unsealThrottle: unsealThrottle,
+		readyMgr:       shared.NewReadyManager(),
 	}
 }
 
@@ -152,13 +160,18 @@ func (m *minerAPI) FetchUnsealedPiece(ctx context.Context, pieceCid cid.Cid) (mo
 	}
 
 	lastErr := xerrors.New("no sectors found to unseal from")
+
 	// if there is no unsealed sector containing the piece, just read the piece from the first sector we are able to unseal.
 	for _, deal := range pieceInfo.Deals {
 		// Note that if the deal data is not already unsealed, unsealing may
 		// block for a long time with the current PoRep
-		//
-		// This path is unthrottled.
-		reader, err := m.sa.UnsealSectorAt(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
+		var reader mount.Reader
+		err := m.throttle.Do(ctx, func(ctx context.Context) (err error) {
+			// Because we know we have an unsealed copy, this UnsealSector call will actually not perform any unsealing.
+			reader, err = m.sa.UnsealSectorAt(ctx, deal.SectorID, deal.Offset.Unpadded(), deal.Length.Unpadded())
+			return err
+		})
+
 		if err != nil {
 			lastErr = xerrors.Errorf("failed to unseal deal %d: %w", deal.DealID, err)
 			log.Warn(lastErr.Error())
