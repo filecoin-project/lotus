@@ -5,6 +5,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"html/template"
 	"io"
 	"mime"
@@ -132,79 +133,6 @@ var dataexplCmd = &cli.Command{
 
 		}).Methods("GET")
 
-		getHeadReader := func(get func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, error), pss func(spec builder.SelectorSpec, ssb builder.SelectorSpecBuilder) builder.SelectorSpec) (io.ReadSeeker, error) {
-
-			// (.) / Links / 0 / Hash @
-			ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
-			root, dserv, err := get(pss(ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth),
-				ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
-					eb.Insert("Links", ssb.ExploreIndex(0, ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
-						eb.Insert("Hash", ssb.ExploreRecursiveEdge())
-					})))
-				})),
-			), ssb))
-			if err != nil {
-				return nil, err
-			}
-
-			node, err := dserv.Get(ctx, root)
-			if err != nil {
-				return nil, err
-			}
-
-			return io2.NewDagReader(ctx, node, dserv)
-		}
-
-		get := func(r *http.Request, ma address.Address, pcid, dcid cid.Cid) func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, error) {
-			return func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, error) {
-				vars := mux.Vars(r)
-
-				sel, err := pathToSel(vars["path"], false, ss)
-				if err != nil {
-					return cid.Undef, nil, err
-				}
-
-				eref, err := retrieve(r.Context(), api, ma, pcid, dcid, &sel)
-				if err != nil {
-					return cid.Undef, nil, err
-				}
-
-				eref.DAGs = append(eref.DAGs, lapi.DagSpec{
-					DataSelector: &sel,
-				})
-
-				rc, err := lcli.ClientExportStream(ainfo.Addr, ainfo.AuthHeader(), *eref, true)
-				if err != nil {
-					return cid.Undef, nil, err
-				}
-				defer rc.Close() // nolint
-
-				var memcar bytes.Buffer
-				_, err = io.Copy(&memcar, rc)
-				if err != nil {
-					return cid.Undef, nil, err
-				}
-
-				cbs, err := blockstore.NewReadOnly(&bytesReaderAt{bytes.NewReader(memcar.Bytes())}, nil,
-					carv2.ZeroLengthSectionAsEOF(true),
-					blockstore.UseWholeCIDs(true))
-				if err != nil {
-					return cid.Undef, nil, err
-				}
-
-				roots, err := cbs.Roots()
-				if err != nil {
-					return cid.Undef, nil, err
-				}
-
-				if len(roots) != 1 {
-					return cid.Undef, nil, xerrors.Errorf("wanted one root")
-				}
-
-				return roots[0], merkledag.NewDAGService(blockservice.New(cbs, offline.Exchange(cbs))), nil
-			}
-		}
-
 		m.HandleFunc("/deal/{id}", func(w http.ResponseWriter, r *http.Request) {
 			vars := mux.Vars(r)
 			did, err := strconv.ParseInt(vars["id"], 10, 64)
@@ -229,10 +157,11 @@ var dataexplCmd = &cli.Command{
 			var typ string
 			var sz string
 			var linkc int
+			var dents []dirEntry
 
 			{
 				ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
-				g := get(r, d.Proposal.Provider, d.Proposal.PieceCID, dcid)
+				g := get(ainfo, api, r, d.Proposal.Provider, d.Proposal.PieceCID, dcid)
 				root, dserv, err := g(ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth),
 					ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
 						eb.Insert("Links", ssb.ExploreIndex(0, ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
@@ -282,6 +211,15 @@ var dataexplCmd = &cli.Command{
 							http.Error(w, err.Error(), http.StatusInternalServerError)
 							return
 						}
+
+						if r.FormValue("expand") == "1" {
+							dents, err = parseLinks(ctx, ls, node, dserv, 0)
+							if err != nil {
+								http.Error(w, err.Error(), http.StatusInternalServerError)
+								return
+							}
+						}
+
 						linkc = len(ls)
 						typ = "DIR"
 					case unixfs.TFile:
@@ -350,6 +288,8 @@ var dataexplCmd = &cli.Command{
 				"type":  typ,
 				"size":  sz,
 				"links": linkc,
+
+				"dirents": dents,
 			}
 			if err := tpl.Execute(w, data); err != nil {
 				fmt.Println(err)
@@ -379,7 +319,7 @@ var dataexplCmd = &cli.Command{
 			}
 
 			// retr root
-			g := get(r, ma, pcid, dcid)
+			g := get(ainfo, api, r, ma, pcid, dcid)
 
 			ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 			sel := ssb.Matcher()
@@ -456,83 +396,10 @@ var dataexplCmd = &cli.Command{
 						return
 					}
 
-					type le struct {
-						Name string
-						Size string
-						Cid  cid.Cid
-						Desc string
-					}
-
-					links := make([]le, len(ls))
-					for i, l := range ls {
-						links[i] = le{
-							Name: l.Name,
-							Size: types.SizeStr(types.NewInt(l.Size)),
-							Cid:  l.Cid,
-						}
-
-						if int64(i) < maxDirTypeChecks {
-							var rrd interface {
-								io.ReadSeeker
-							}
-
-							switch l.Cid.Type() {
-							case cid.DagProtobuf:
-								fnode, err := dserv.Get(ctx, l.Cid)
-								if err != nil {
-									http.Error(w, err.Error(), http.StatusInternalServerError)
-									return
-								}
-								protoBufNode, ok := fnode.(*merkledag.ProtoNode)
-								if !ok {
-									links[i].Desc = "?? (e1)"
-									continue
-								}
-								fsNode, err := unixfs.FSNodeFromBytes(protoBufNode.Data())
-								if err != nil {
-									http.Error(w, err.Error(), http.StatusInternalServerError)
-									return
-								}
-
-								switch fsNode.Type() {
-								case unixfs.TDirectory:
-									links[i].Desc = fmt.Sprintf("DIR (%d entries)", len(fnode.Links()))
-									continue
-								case unixfs.TSymlink:
-									links[i].Desc = fmt.Sprintf("LINK")
-									continue
-								case unixfs.TFile:
-								default:
-									http.Error(w, "unknown ufs type "+fmt.Sprint(fsNode.Type()), http.StatusInternalServerError)
-									return
-								}
-
-								rrd, err = io2.NewDagReader(ctx, fnode, dserv)
-								if err != nil {
-									http.Error(w, err.Error(), http.StatusInternalServerError)
-									return
-								}
-
-								fallthrough
-							case cid.Raw:
-								if rrd == nil {
-									rrd = bytes.NewReader(node.RawData())
-								}
-
-								ctype := mime.TypeByExtension(gopath.Ext(l.Name))
-								if ctype == "" {
-									mimeType, err := mimetype.DetectReader(rrd)
-									if err != nil {
-										http.Error(w, fmt.Sprintf("cannot detect content-type: %s", err.Error()), http.StatusInternalServerError)
-										return
-									}
-
-									ctype = mimeType.String()
-								}
-
-								links[i].Desc = fmt.Sprintf("FILE (%s)", ctype)
-							}
-						}
+					links, err := parseLinks(ctx, ls, node, dserv, maxDirTypeChecks)
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
 					}
 
 					tpl, err := template.New("dir.gohtml").ParseFS(dres, "dexpl/dir.gohtml")
@@ -556,7 +423,7 @@ var dataexplCmd = &cli.Command{
 				case unixfs.TFile:
 					ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 					if r.Method == "HEAD" {
-						rd, err = getHeadReader(g, func(spec builder.SelectorSpec, ssb builder.SelectorSpecBuilder) builder.SelectorSpec {
+						rd, err = getHeadReader(ctx, g, func(spec builder.SelectorSpec, ssb builder.SelectorSpecBuilder) builder.SelectorSpec {
 							return spec
 						})
 						if err != nil {
@@ -730,6 +597,158 @@ func retrieve(ctx context.Context, fapi lapi.FullNode, minerAddr address.Address
 	}
 
 	return eref, nil
+}
+
+type dirEntry struct {
+	Name string
+	Size string
+	Cid  cid.Cid
+	Desc string
+}
+
+func parseLinks(ctx context.Context, ls []*format.Link, node format.Node, dserv format.DAGService, maxChecks int64) ([]dirEntry, error) {
+	links := make([]dirEntry, len(ls))
+
+	for i, l := range ls {
+		links[i] = dirEntry{
+			Name: l.Name,
+			Size: types.SizeStr(types.NewInt(l.Size)),
+			Cid:  l.Cid,
+		}
+
+		if int64(i) < maxChecks {
+			var rrd interface {
+				io.ReadSeeker
+			}
+
+			switch l.Cid.Type() {
+			case cid.DagProtobuf:
+				fnode, err := dserv.Get(ctx, l.Cid)
+				if err != nil {
+					return nil, err
+				}
+				protoBufNode, ok := fnode.(*merkledag.ProtoNode)
+				if !ok {
+					links[i].Desc = "?? (e1)"
+					continue
+				}
+				fsNode, err := unixfs.FSNodeFromBytes(protoBufNode.Data())
+				if err != nil {
+					return nil, err
+				}
+
+				switch fsNode.Type() {
+				case unixfs.TDirectory:
+					links[i].Desc = fmt.Sprintf("DIR (%d entries)", len(fnode.Links()))
+					continue
+				case unixfs.TSymlink:
+					links[i].Desc = fmt.Sprintf("LINK")
+					continue
+				case unixfs.TFile:
+				default:
+					return nil, xerrors.Errorf("unknown ufs type " + fmt.Sprint(fsNode.Type()))
+				}
+
+				rrd, err = io2.NewDagReader(ctx, fnode, dserv)
+				if err != nil {
+					return nil, err
+				}
+
+				fallthrough
+			case cid.Raw:
+				if rrd == nil {
+					rrd = bytes.NewReader(node.RawData())
+				}
+
+				ctype := mime.TypeByExtension(gopath.Ext(l.Name))
+				if ctype == "" {
+					mimeType, err := mimetype.DetectReader(rrd)
+					if err != nil {
+						return nil, err
+					}
+
+					ctype = mimeType.String()
+				}
+
+				links[i].Desc = fmt.Sprintf("FILE (%s)", ctype)
+			}
+		}
+	}
+
+	return links, nil
+}
+
+func getHeadReader(ctx context.Context, get func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, error), pss func(spec builder.SelectorSpec, ssb builder.SelectorSpecBuilder) builder.SelectorSpec) (io.ReadSeeker, error) {
+
+	// (.) / Links / 0 / Hash @
+	ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
+	root, dserv, err := get(pss(ssb.ExploreRecursive(selector.RecursionLimitDepth(typeCheckDepth),
+		ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
+			eb.Insert("Links", ssb.ExploreIndex(0, ssb.ExploreFields(func(eb builder.ExploreFieldsSpecBuilder) {
+				eb.Insert("Hash", ssb.ExploreRecursiveEdge())
+			})))
+		})),
+	), ssb))
+	if err != nil {
+		return nil, err
+	}
+
+	node, err := dserv.Get(ctx, root)
+	if err != nil {
+		return nil, err
+	}
+
+	return io2.NewDagReader(ctx, node, dserv)
+}
+
+func get(ainfo cliutil.APIInfo, api lapi.FullNode, r *http.Request, ma address.Address, pcid, dcid cid.Cid) func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, error) {
+	return func(ss builder.SelectorSpec) (cid.Cid, format.DAGService, error) {
+		vars := mux.Vars(r)
+
+		sel, err := pathToSel(vars["path"], false, ss)
+		if err != nil {
+			return cid.Undef, nil, err
+		}
+
+		eref, err := retrieve(r.Context(), api, ma, pcid, dcid, &sel)
+		if err != nil {
+			return cid.Undef, nil, err
+		}
+
+		eref.DAGs = append(eref.DAGs, lapi.DagSpec{
+			DataSelector: &sel,
+		})
+
+		rc, err := lcli.ClientExportStream(ainfo.Addr, ainfo.AuthHeader(), *eref, true)
+		if err != nil {
+			return cid.Undef, nil, err
+		}
+		defer rc.Close() // nolint
+
+		var memcar bytes.Buffer
+		_, err = io.Copy(&memcar, rc)
+		if err != nil {
+			return cid.Undef, nil, err
+		}
+
+		cbs, err := blockstore.NewReadOnly(&bytesReaderAt{bytes.NewReader(memcar.Bytes())}, nil,
+			carv2.ZeroLengthSectionAsEOF(true),
+			blockstore.UseWholeCIDs(true))
+		if err != nil {
+			return cid.Undef, nil, err
+		}
+
+		roots, err := cbs.Roots()
+		if err != nil {
+			return cid.Undef, nil, err
+		}
+
+		if len(roots) != 1 {
+			return cid.Undef, nil, xerrors.Errorf("wanted one root")
+		}
+
+		return roots[0], merkledag.NewDAGService(blockservice.New(cbs, offline.Exchange(cbs))), nil
+	}
 }
 
 func pathToSel(psel string, matchTraversal bool, sub builder.SelectorSpec) (lapi.Selector, error) {
