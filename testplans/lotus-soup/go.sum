@@ -454,6 +454,9 @@ github.com/filecoin-project/go-fil-markets v1.13.5/go.mod h1:vXOHH3q2+zLk929W+lI
 github.com/filecoin-project/go-fil-markets v1.0.5-0.20201113164554-c5eba40d5335/go.mod h1:AJySOJC00JRWEZzRG2KsfUnqEf5ITXxeX09BE9N4f9c=
 github.com/filecoin-project/go-fil-markets v1.13.4 h1:NAu+ACelR2mYsj+yJ4iLu8FGqWK50OnU5VF8axkLsSc=
 github.com/filecoin-project/go-fil-markets v1.13.4/go.mod h1:aANjXD2XMHWnT2zWpyGWLsWLC24C4mHm0gRm85OpPWE=
+<<<<<<< HEAD
+>>>>>>> a98ca86a4 (Update butterflynet params)
+=======
 >>>>>>> a98ca86a4 (Update butterflynet params)
 github.com/filecoin-project/go-hamt-ipld v0.1.5 h1:uoXrKbCQZ49OHpsTCkrThPNelC4W3LPEk0OrS/ytIBM=
 github.com/filecoin-project/go-hamt-ipld v0.1.5/go.mod h1:6Is+ONR5Cd5R6XZoCse1CWaXZc0Hdb/JeX+EQCQzX24=
@@ -477,9 +480,14 @@ github.com/filecoin-project/go-state-types v0.1.0/go.mod h1:ezYnPf0bNkTsDibL/psS
 github.com/filecoin-project/go-state-types v0.1.1-0.20210506134452-99b279731c48/go.mod h1:ezYnPf0bNkTsDibL/psSz5dy4B5awOJ/E7P2Saeep8g=
 github.com/filecoin-project/go-state-types v0.1.1-0.20210810190654-139e0e79e69e/go.mod h1:ezYnPf0bNkTsDibL/psSz5dy4B5awOJ/E7P2Saeep8g=
 <<<<<<< HEAD
+<<<<<<< HEAD
 github.com/filecoin-project/go-state-types v0.1.1/go.mod h1:ezYnPf0bNkTsDibL/psSz5dy4B5awOJ/E7P2Saeep8g=
 github.com/filecoin-project/go-state-types v0.1.3 h1:rzIJyQo5HO2ptc8Jcu8P0qTutnI7NWwTle54eAHoNO0=
 github.com/filecoin-project/go-state-types v0.1.3/go.mod h1:ezYnPf0bNkTsDibL/psSz5dy4B5awOJ/E7P2Saeep8g=
+=======
+github.com/filecoin-project/go-state-types v0.1.1 h1:LR260vya4p++atgf256W6yV3Lxl5mKrBFcEZePWQrdg=
+github.com/filecoin-project/go-state-types v0.1.1/go.mod h1:ezYnPf0bNkTsDibL/psSz5dy4B5awOJ/E7P2Saeep8g=
+>>>>>>> a98ca86a4 (Update butterflynet params)
 =======
 github.com/filecoin-project/go-state-types v0.1.1 h1:LR260vya4p++atgf256W6yV3Lxl5mKrBFcEZePWQrdg=
 github.com/filecoin-project/go-state-types v0.1.1/go.mod h1:ezYnPf0bNkTsDibL/psSz5dy4B5awOJ/E7P2Saeep8g=
@@ -519,6 +527,7 @@ github.com/filecoin-project/specs-actors/v5 v5.0.4 h1:OY7BdxJWlUfUFXWV/kpNBYGXNP
 github.com/filecoin-project/specs-actors/v5 v5.0.4/go.mod h1:5BAKRAMsOOlD8+qCw4UvT/lTLInCJ3JwOWZbX8Ipwq4=
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 github.com/filecoin-project/specs-actors/v6 v6.0.0/go.mod h1:V1AYfi5GkHXipx1mnVivoICZh3wtwPxDVuds+fbfQtk=
 github.com/filecoin-project/specs-actors/v6 v6.0.1 h1:laxvHNsvrq83Y9n+W7znVCePi3oLyRf0Rkl4jFO8Wew=
 github.com/filecoin-project/specs-actors/v6 v6.0.1/go.mod h1:V1AYfi5GkHXipx1mnVivoICZh3wtwPxDVuds+fbfQtk=
@@ -529,6 +538,8 @@ github.com/filecoin-project/specs-actors/v7 v7.0.0-rc1/go.mod h1:TA5FwCna+Yi36PO
 github.com/filecoin-project/specs-storage v0.1.1-0.20211228030229-6d460d25a0c9 h1:oUYOvF7EvdXS0Zmk9mNkaB6Bu0l+WXBYPzVodKMiLug=
 github.com/filecoin-project/specs-storage v0.1.1-0.20211228030229-6d460d25a0c9/go.mod h1:Tb88Zq+IBJbvAn3mS89GYj3jdRThBTE/771HCVZdRJU=
 =======
+=======
+>>>>>>> a98ca86a4 (Update butterflynet params)
 =======
 >>>>>>> a98ca86a4 (Update butterflynet params)
 github.com/filecoin-project/specs-actors/v6 v6.0.1 h1:laxvHNsvrq83Y9n+W7znVCePi3oLyRf0Rkl4jFO8Wew=
@@ -1037,6 +1048,9 @@ github.com/ipfs/go-graphsync v0.4.3/go.mod h1:mPOwDYv128gf8gxPFgXnz4fNrSYPsWyqis
 github.com/ipfs/go-graphsync v0.10.0/go.mod h1:cKIshzTaa5rCZjryH5xmSKZVGX9uk1wvwGvz2WEha5Y=
 github.com/ipfs/go-graphsync v0.10.6 h1:GkYan4EoDslceHaqYo/hxktWtuZ7VmsyRXLdSmoCcBQ=
 github.com/ipfs/go-graphsync v0.10.6/go.mod h1:tQMjWNDD/vSz80YLT/VvzrUmy58aF9lR1uCwSLzjWzI=
+<<<<<<< HEAD
+>>>>>>> a98ca86a4 (Update butterflynet params)
+=======
 >>>>>>> a98ca86a4 (Update butterflynet params)
 github.com/ipfs/go-hamt-ipld v0.1.1/go.mod h1:1EZCr2v0jlCnhpa+aZ0JZYp8Tt2w16+JJOAVz17YcDk=
 >>>>>>> e8df32579 (update lotus-soup deps)
@@ -1204,6 +1218,9 @@ github.com/ipld/go-car/v2 v2.0.0-beta1.0.20210721090610-5a9d1b217d25/go.mod h1:I
 github.com/ipld/go-car/v2 v2.0.2/go.mod h1:I2ACeeg6XNBe5pdh5TaR7Ambhfa7If9KXxmXgZsYENU=
 github.com/ipld/go-car/v2 v2.1.0 h1:t8R/WXUSkfu1K1gpPk76mytCxsEdMjGcMIgpOq3/Cnw=
 github.com/ipld/go-car/v2 v2.1.0/go.mod h1:Xr6GwkDhv8dtOtgHzOynAkIOg0t0YiPc5DxBPppWqZA=
+<<<<<<< HEAD
+>>>>>>> a98ca86a4 (Update butterflynet params)
+=======
 >>>>>>> a98ca86a4 (Update butterflynet params)
 github.com/ipld/go-codec-dagpb v1.2.0/go.mod h1:6nBN7X7h8EOsEejZGqC7tej5drsdBAXbMHyBT+Fne5s=
 github.com/ipld/go-codec-dagpb v1.3.0 h1:czTcaoAuNNyIYWs6Qe01DJ+sEX7B+1Z0LcXjSatMGe8=
@@ -1242,6 +1259,9 @@ github.com/ipld/go-ipld-prime-proto v0.0.0-20191113031812-e32bd156a1e5/go.mod h1
 github.com/ipld/go-ipld-prime-proto v0.0.0-20200428191222-c1ffdadc01e1/go.mod h1:OAV6xBmuTLsPZ+epzKkPB1e25FHk/vCtyatkdHcArLs=
 github.com/ipld/go-ipld-prime-proto v0.0.0-20200922192210-9a2bfd4440a6/go.mod h1:3pHYooM9Ea65jewRwrb2u5uHZCNkNTe9ABsVB+SrkH0=
 github.com/ipld/go-ipld-prime-proto v0.1.0/go.mod h1:11zp8f3sHVgIqtb/c9Kr5ZGqpnCLF1IVTNOez9TopzE=
+<<<<<<< HEAD
+>>>>>>> a98ca86a4 (Update butterflynet params)
+=======
 >>>>>>> a98ca86a4 (Update butterflynet params)
 github.com/ipld/go-ipld-selector-text-lite v0.0.1 h1:lNqFsQpBHc3p5xHob2KvEg/iM5dIFn6iw4L/Hh+kS1Y=
 github.com/ipld/go-ipld-selector-text-lite v0.0.1/go.mod h1:U2CQmFb+uWzfIEF3I1arrDa5rwtj00PrpiwwCO+k1RM=
@@ -1545,8 +1565,13 @@ github.com/libp2p/go-libp2p-protocol v0.1.0/go.mod h1:KQPHpAabB57XQxGrXCNvbL6UEX
 github.com/libp2p/go-libp2p-pubsub v0.1.1/go.mod h1:ZwlKzRSe1eGvSIdU5bD7+8RZN/Uzw0t1Bp9R1znpR/Q=
 github.com/libp2p/go-libp2p-pubsub v0.3.2/go.mod h1:Uss7/Cfz872KggNb+doCVPHeCDmXB7z500m/R8DaAUk=
 <<<<<<< HEAD
+<<<<<<< HEAD
 github.com/libp2p/go-libp2p-pubsub v0.6.0 h1:98+RXuEWW17U6cAijK1yaTf6mw/B+n5yPA421z+dlo0=
 github.com/libp2p/go-libp2p-pubsub v0.6.0/go.mod h1:nJv87QM2cU0w45KPR1rZicq+FmFIOD16zmT+ep1nOmg=
+=======
+github.com/libp2p/go-libp2p-pubsub v0.5.6 h1:YkO3gG9J1mQBEMRrM5obiG3JD0L8RcrzIpoeLeiYqH8=
+github.com/libp2p/go-libp2p-pubsub v0.5.6/go.mod h1:gVOzwebXVdSMDQBTfH8ACO5EJ4SQrvsHqCmYsCZpD0E=
+>>>>>>> a98ca86a4 (Update butterflynet params)
 =======
 github.com/libp2p/go-libp2p-pubsub v0.5.6 h1:YkO3gG9J1mQBEMRrM5obiG3JD0L8RcrzIpoeLeiYqH8=
 github.com/libp2p/go-libp2p-pubsub v0.5.6/go.mod h1:gVOzwebXVdSMDQBTfH8ACO5EJ4SQrvsHqCmYsCZpD0E=
@@ -1904,6 +1929,9 @@ github.com/multiformats/go-multicodec v0.2.0/go.mod h1:/y4YVwkfMyry5kFbMTbLJKErh
 =======
 github.com/multiformats/go-multicodec v0.2.1-0.20210713081508-b421db6850ae/go.mod h1:qGGaQmioCDh+TeFOnxrbU0DaIPw8yFgAZgFG0V7p1qQ=
 github.com/multiformats/go-multicodec v0.2.1-0.20210714093213-b2b5bd6fe68b/go.mod h1:qGGaQmioCDh+TeFOnxrbU0DaIPw8yFgAZgFG0V7p1qQ=
+<<<<<<< HEAD
+>>>>>>> a98ca86a4 (Update butterflynet params)
+=======
 >>>>>>> a98ca86a4 (Update butterflynet params)
 github.com/multiformats/go-multicodec v0.3.0/go.mod h1:qGGaQmioCDh+TeFOnxrbU0DaIPw8yFgAZgFG0V7p1qQ=
 github.com/multiformats/go-multicodec v0.3.1-0.20210902112759-1539a079fd61 h1:ZrUuMKNgJ52qHPoQ+bx0h0uBfcWmN7Px+4uKSZeesiI=
@@ -2793,6 +2821,7 @@ golang.org/x/sys v0.0.0-20210917161153-d61c044b1678/go.mod h1:oPkhp1MJrh7nUepCBc
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 golang.org/x/sys v0.0.0-20211209171907-798191bca915 h1:P+8mCzuEpyszAT6T42q0sxU+eveBAF/cJ2Kp0x6/8+0=
 =======
 >>>>>>> 8aabe1b48 (Fast migration for v15)
@@ -2804,6 +2833,10 @@ golang.org/x/sys v0.0.0-20211209171907-798191bca915/go.mod h1:oPkhp1MJrh7nUepCBc
 golang.org/x/sys v0.0.0-20211007075335-d3039528d8ac h1:oN6lz7iLW/YC7un8pq+9bOLyXrprv2+DKfkJY+2LJJw=
 golang.org/x/sys v0.0.0-20211007075335-d3039528d8ac/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 >>>>>>> e8df32579 (update lotus-soup deps)
+=======
+golang.org/x/sys v0.0.0-20211209171907-798191bca915 h1:P+8mCzuEpyszAT6T42q0sxU+eveBAF/cJ2Kp0x6/8+0=
+golang.org/x/sys v0.0.0-20211209171907-798191bca915/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+>>>>>>> a98ca86a4 (Update butterflynet params)
 =======
 golang.org/x/sys v0.0.0-20211209171907-798191bca915 h1:P+8mCzuEpyszAT6T42q0sxU+eveBAF/cJ2Kp0x6/8+0=
 golang.org/x/sys v0.0.0-20211209171907-798191bca915/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
@@ -3102,6 +3135,7 @@ k8s.io/utils v0.0.0-20191114184206-e782cd3c129f/go.mod h1:sZAwmy6armz5eXlNoLmJcl
 k8s.io/utils v0.0.0-20200414100711-2df71ebbae66/go.mod h1:jPW/WVKK9YHAvNhRxK0md/EJ228hCsBRufyofKtW8HA=
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 lukechampine.com/blake3 v1.1.6/go.mod h1:tkKEOtDkNtklkXtLNEOGNq5tcV90tJiA1vAA12R78LA=
 lukechampine.com/blake3 v1.1.7 h1:GgRMhmdsuK8+ii6UZFDL8Nb+VyMwadAgcJyfYHxG6n0=
 lukechampine.com/blake3 v1.1.7/go.mod h1:tkKEOtDkNtklkXtLNEOGNq5tcV90tJiA1vAA12R78LA=
@@ -3120,6 +3154,11 @@ modernc.org/cc v1.0.0 h1:nPibNuDEx6tvYrUAtvDTTw98rx5juGsa5zuDnKwEEQQ=
 =======
 >>>>>>> 8aabe1b48 (Fast migration for v15)
 =======
+=======
+lukechampine.com/blake3 v1.1.6/go.mod h1:tkKEOtDkNtklkXtLNEOGNq5tcV90tJiA1vAA12R78LA=
+lukechampine.com/blake3 v1.1.7 h1:GgRMhmdsuK8+ii6UZFDL8Nb+VyMwadAgcJyfYHxG6n0=
+lukechampine.com/blake3 v1.1.7/go.mod h1:tkKEOtDkNtklkXtLNEOGNq5tcV90tJiA1vAA12R78LA=
+>>>>>>> a98ca86a4 (Update butterflynet params)
 modernc.org/cc v1.0.0 h1:nPibNuDEx6tvYrUAtvDTTw98rx5juGsa5zuDnKwEEQQ=
 >>>>>>> 544cfa63a (cache added cids)
 modernc.org/cc v1.0.0/go.mod h1:1Sk4//wdnYJiUIxnW8ddKpaOJCF37yAdqYnkxUpaYxw=
