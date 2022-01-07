@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"os"
 	"sort"
 	"strconv"
@@ -1545,6 +1547,17 @@ var sectorsMarkForUpgradeCmd = &cli.Command{
 		}
 		if nv >= network.Version15 {
 			return xerrors.Errorf("classic cc upgrades disabled v15 and beyond, use `snap-up`")
+		}
+
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("failed to get chain head: %w", err)
+		}
+
+		twoDays := abi.ChainEpoch(2 * builtin.EpochsInDay)
+		if head.Height() > (build.UpgradeSnapDealsHeight - twoDays) {
+			return xerrors.Errorf("OhSnap is coming soon, " +
+				"please use `snap-up` to upgrade your cc sectors after the network v15 upgrade!")
 		}
 
 		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
