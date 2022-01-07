@@ -99,17 +99,11 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 		ts, err := bm.miner.FullNode.ChainHead(ctx)
 		require.NoError(bm.t, err)
 		wait := make(chan bool)
-		reportSuccessFn := func(success bool, epoch abi.ChainEpoch, err error) {
-			bm.t.Logf("done with mine one at epoch %d, success %t", epoch, success)
-			require.NoError(bm.t, err)
-			wait <- success
-		}
 		chg, err := bm.miner.FullNode.ChainNotify(ctx)
 		require.NoError(bm.t, err)
 		// read current out
 		curr := <-chg
 		require.Equal(bm.t, ts.Height(), curr[0].Val.Height())
-		numMined := curr[0].Val.Height()
 		for {
 			select {
 			case <-time.After(blocktime):
@@ -123,7 +117,7 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 			ts, err := bm.miner.FullNode.ChainHead(ctx)
 			require.NoError(bm.t, err)
 			tsk := ts.Key()
-			bm.t.Logf("Miner sees head ts: %s at height %d, num mined = %d", tsk, ts.Height(), numMined)
+
 			dlinfo, err := bm.miner.FullNode.StateMinerProvingDeadline(ctx, bm.miner.ActorAddr, tsk)
 			require.NoError(bm.t, err)
 			if ts.Height()+1 == dlinfo.Last() { // Last epoch in dline, we need to check that miner has posted
@@ -165,36 +159,11 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 				}
 			}
 
-			baseHeight := ts.Height()
-
-			syncedToHeight := func(target abi.ChainEpoch) {
-				headChangeCh, err := bm.miner.FullNode.ChainNotify(ctx)
+			var target abi.ChainEpoch
+			reportSuccessFn := func(success bool, epoch abi.ChainEpoch, err error) {
 				require.NoError(bm.t, err)
-				hccurrent, ok1 := <-headChangeCh
-				for !ok1 {
-					hccurrent, ok1 = <-headChangeCh
-				}
-				if hccurrent[0].Val.Height() >= target {
-					return
-				}
-				var ok2 bool
-				for {
-					var headChanges []*api.HeadChange
-					select {
-					case headChanges, ok2 = <-headChangeCh:
-						if !ok2 { // if channel is closed on us fail
-							bm.t.Log("channel closed")
-							bm.t.Fatal("chain notify channel closed while waiting to sync")
-						}
-						for _, hc := range headChanges {
-							if hc.Val.Height() >= target {
-								return
-							}
-						}
-					case <-ctx.Done():
-						return
-					}
-				}
+				target = epoch
+				wait <- success
 			}
 
 			var success bool
@@ -205,8 +174,25 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 				})
 				success = <-wait
 			}
-			syncedToHeight(baseHeight + 1)
-			numMined += 1
+
+			// Wait until it shows up on the given full nodes ChainHead
+			// TODO this replicates a flaky condition from MineUntil,
+			// it would be better to use api to wait for sync,
+			// but currently this is a bit difficult
+			// and flaky failure is easy to debug and retry
+			nloops := 200
+			for i := 0; i < nloops; i++ {
+				ts, err := bm.miner.FullNode.ChainHead(ctx)
+				require.NoError(bm.t, err)
+
+				if ts.Height() == target {
+					break
+				}
+
+				require.NotEqual(bm.t, i, nloops-1, "block never managed to sync to node")
+				time.Sleep(time.Millisecond * 10)
+			}
+
 			switch {
 			case err == nil: // wrap around
 			case ctx.Err() != nil: // context fired.
