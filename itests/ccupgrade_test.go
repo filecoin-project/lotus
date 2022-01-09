@@ -9,6 +9,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 
@@ -33,7 +34,7 @@ func TestCCUpgrade(t *testing.T) {
 
 func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) *kit.TestFullNode {
 	ctx := context.Background()
-	blockTime := 5 * time.Millisecond
+	blockTime := 1 * time.Millisecond
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.GenesisNetworkVersion(network.Version15))
 	ens.InterconnectAll().BeginMiningMustPost(blockTime)
@@ -50,7 +51,6 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) *kit.TestFullN
 	// this gives max time for post to complete minimizing chances of timeout
 	// waitForDeadline(ctx, t, 1, client, maddr)
 	miner.PledgeSectors(ctx, 1, 0, nil)
-
 	sl, err := miner.SectorsList(ctx)
 	require.NoError(t, err)
 	require.Len(t, sl, 1, "expected 1 sector")
@@ -60,7 +60,6 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) *kit.TestFullN
 		require.NoError(t, err)
 		require.Less(t, 50000, int(si.Expiration))
 	}
-
 	waitForSectorActive(ctx, t, CCUpgrade, client, maddr)
 
 	err = miner.SectorMarkForUpgrade(ctx, sl[0], true)
@@ -111,6 +110,18 @@ func waitForSectorActive(ctx context.Context, t *testing.T, sn abi.SectorNumber,
 	}
 }
 
+func waitForSectorStartUpgrade(ctx context.Context, t *testing.T, sn abi.SectorNumber, miner *kit.TestMiner) {
+	for {
+		si, err := miner.StorageMiner.SectorsStatus(ctx, sn, false)
+		require.NoError(t, err)
+		if si.State != api.SectorState("Proving") {
+			t.Logf("Done proving sector in state: %s", si.State)
+			return
+		}
+
+	}
+}
+
 func TestCCUpgradeAndPoSt(t *testing.T) {
 	kit.QuietMiningLogs()
 	t.Run("upgrade and then post", func(t *testing.T) {
@@ -120,6 +131,8 @@ func TestCCUpgradeAndPoSt(t *testing.T) {
 		require.NoError(t, err)
 		start := ts.Height()
 		// wait for a full proving period
+		t.Log("waiting for chain")
+
 		n.WaitTillChain(ctx, func(ts *types.TipSet) bool {
 			if ts.Height() > start+abi.ChainEpoch(2880) {
 				return true
@@ -133,10 +146,10 @@ func TestTooManyMarkedForUpgrade(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	ctx := context.Background()
-	blockTime := 5 * time.Millisecond
+	blockTime := 1 * time.Millisecond
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.GenesisNetworkVersion(network.Version15))
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	maddr, err := miner.ActorAddress(ctx)
 	if err != nil {
@@ -166,8 +179,10 @@ func TestTooManyMarkedForUpgrade(t *testing.T) {
 	err = miner.SectorMarkForUpgrade(ctx, CCUpgrade+1, true)
 	require.NoError(t, err)
 
+	waitForSectorStartUpgrade(ctx, t, CCUpgrade, miner)
+	waitForSectorStartUpgrade(ctx, t, CCUpgrade+1, miner)
+
 	err = miner.SectorMarkForUpgrade(ctx, CCUpgrade+2, true)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no free resources to wait for deals")
-
 }
