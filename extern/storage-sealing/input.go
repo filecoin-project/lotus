@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
@@ -117,9 +118,29 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 			return false, xerrors.Errorf("getting storage config: %w", err)
 		}
 
-		// todo check deal age, start sealing if any deal has less than X (configurable) to start deadline
 		sealTime := time.Unix(sector.CreationTime, 0).Add(cfg.WaitDealsDelay)
 
+		// check deal age, start sealing when the deal closest to starting is within slack time
+		safeSealTime := sealTime
+		_, current, err := m.Api.ChainHead(ctx.Context())
+		blockTime := time.Second * time.Duration(build.BlockDelaySecs)
+		if err != nil {
+			return false, xerrors.Errorf("API error getting head: %w", err)
+		}
+		for _, piece := range sector.Pieces {
+			if piece.DealInfo == nil { // skip padding
+				continue
+			}
+			dealSafeSealEpoch := piece.DealInfo.DealProposal.StartEpoch - cfg.StartEpochSealingBuffer
+			dealSafeSealTime := time.Now().Add(time.Duration(dealSafeSealEpoch-current) * blockTime)
+			if dealSafeSealTime.Before(safeSealTime) {
+				safeSealTime = dealSafeSealTime
+			}
+		}
+
+		if safeSealTime.Before(sealTime) {
+			sealTime = safeSealTime
+		}
 		if now.After(sealTime) {
 			log.Infow("starting to seal deal sector", "sector", sector.SectorNumber, "trigger", "wait-timeout")
 			return true, ctx.Send(SectorStartPacking{})
