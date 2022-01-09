@@ -945,7 +945,7 @@ workflows:
           codecov-upload: false
           suite: conformance-bleeding-edge
           target: "./conformance"
-          vectors-branch: master
+          vectors-branch: specs-actors-v7
       - trigger-testplans:
           filters:
             branches:
