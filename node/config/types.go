@@ -120,6 +120,8 @@ type DealmakingConfig struct {
 	// This includes the time the deal will need to get transferred and published
 	// before being assigned to a sector
 	ExpectedSealDuration Duration
+	// Whether new sectors are sealed to pack incoming deals
+	MakeNewSectorForDeals bool
 	// Maximum amount of time proposed deal StartEpoch can be in future
 	MaxDealStartDelay Duration
 	// When a deal is ready to publish, the amount of time to wait for more

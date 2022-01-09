@@ -496,6 +496,10 @@ func (m *Sealing) tryCreateDealSector(ctx context.Context, sp abi.RegisteredSeal
 		return xerrors.Errorf("getting storage config: %w", err)
 	}
 
+	if !cfg.MakeNewSectorForDeals {
+		return nil
+	}
+
 	if cfg.MaxSealingSectorsForDeals > 0 && m.stats.curSealing() >= cfg.MaxSealingSectorsForDeals {
 		return nil
 	}
