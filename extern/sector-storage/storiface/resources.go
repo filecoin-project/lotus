@@ -42,6 +42,7 @@ type Resources struct {
 */
 var ParallelNum uint64 = 92
 var ParallelDenom uint64 = 100
+var GPUUtilizationProof float64 = 1.0
 
 // TODO: Take NUMA into account
 func (r Resources) Threads(wcpus uint64, gpus int) uint64 {

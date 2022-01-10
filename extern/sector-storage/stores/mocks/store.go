@@ -8,7 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	abi "github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	fsutil "github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	stores "github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	storiface "github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -125,4 +127,65 @@ func (m *MockStore) Reserve(arg0 context.Context, arg1 storage.SectorRef, arg2 s
 func (mr *MockStoreMockRecorder) Reserve(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Reserve", reflect.TypeOf((*MockStore)(nil).Reserve), arg0, arg1, arg2, arg3, arg4)
+}
+
+// GenerateWindowPoStVanilla mocks base method.
+func (m *MockStore) GenerateWindowPoStVanilla(ctx context.Context, minerID abi.ActorID, privsector *ffi.PrivateSectorInfo, vanillaParams string, randomness abi.PoStRandomness) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GenerateWindowPoStVanilla", ctx, minerID, privsector, vanillaParams, randomness)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GenerateWindowPoStVanilla indicates an expected call of GenerateWindowPoStVanilla.
+func (mr *MockStoreMockRecorder) GenerateWindowPoStVanilla(ctx, minerID, privsector, vanillaParams, randomness interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateWindowPoStVanilla", reflect.TypeOf((*MockStore)(nil).GenerateWindowPoStVanilla), ctx, minerID, privsector, vanillaParams, randomness)
+}
+
+// GenerateWinningPoStVanilla mocks base method.
+func (m *MockStore) GenerateWinningPoStVanilla(ctx context.Context, minerID abi.ActorID, privsector *ffi.PrivateSectorInfo, randomness abi.PoStRandomness) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GenerateWinningPoStVanilla", ctx, minerID, privsector, randomness)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GenerateWinningPoStVanilla indicates an expected call of GenerateWinningPoStVanilla.
+func (mr *MockStoreMockRecorder) GenerateWinningPoStVanilla(ctx, minerID, privsector, randomness interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateWinningPoStVanilla", reflect.TypeOf((*MockStore)(nil).GenerateWinningPoStVanilla), ctx, minerID, privsector, randomness)
+}
+
+// AcquireSectorPaths mocks base method.
+func (m *MockStore) AcquireSectorPaths(ctx context.Context, s storage.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, sealing storiface.PathType) (storiface.SectorPaths, storiface.SectorPaths, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AcquireSectorPaths", ctx, s, existing, allocate, sealing)
+	ret0, _ := ret[0].(storiface.SectorPaths)
+	ret1, _ := ret[1].(storiface.SectorPaths)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// AcquireSectorPaths indicates an expected call of AcquireSectorPaths.
+func (mr *MockStoreMockRecorder) AcquireSectorPaths(ctx, s, existing, allocate, sealing interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireSectorPaths", reflect.TypeOf((*MockStore)(nil).AcquireSectorPaths), ctx, s, existing, allocate, sealing)
+}
+
+// GenerateSingleVanillaProof mocks base method.
+func (m *MockStore) GenerateSingleVanillaProof(ctx context.Context, minerID abi.ActorID, privsector *ffiwrapper.PrivateSectorInfo, challange []uint64) ([]byte, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GenerateSingleVanillaProof", ctx, minerID, privsector, challange)
+	ret0, _ := ret[0].([]byte)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GenerateSingleVanillaProof indicates an expected call of GenerateSingleVanillaProof.
+func (mr *MockStoreMockRecorder) GenerateSingleVanillaProof(ctx, minerID, privsector, challange interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateSingleVanillaProof", reflect.TypeOf((*MockStore)(nil).GenerateSingleVanillaProof), ctx, minerID, privsector, challange)
 }

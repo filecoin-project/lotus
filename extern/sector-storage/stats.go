@@ -10,11 +10,10 @@ import (
 
 func (m *Manager) WorkerStats() map[uuid.UUID]storiface.WorkerStats {
 	m.sched.workersLk.RLock()
-	defer m.sched.workersLk.RUnlock()
 
 	out := map[uuid.UUID]storiface.WorkerStats{}
 
-	for id, handle := range m.sched.workers {
+	cb := func(id storiface.WorkerID, handle *workerHandle) {
 		handle.lk.Lock()
 		out[uuid.UUID(id)] = storiface.WorkerStats{
 			Info:    handle.info,
@@ -28,6 +27,15 @@ func (m *Manager) WorkerStats() map[uuid.UUID]storiface.WorkerStats {
 		handle.lk.Unlock()
 	}
 
+	for id, handle := range m.sched.workers {
+		cb(id, handle)
+	}
+
+	m.sched.workersLk.RUnlock()
+
+	//list post workers
+	m.sched.winningPoStSched.WorkerStats(cb)
+	m.sched.windowPoStSched.WorkerStats(cb)
 	return out
 }
 

@@ -553,6 +553,26 @@ func (mgr *SectorMgr) ReturnGenerateSectorKeyFromData(ctx context.Context, callI
 	panic("not supported")
 }
 
+func (mgr *SectorMgr) GetPartitionSectorsCount(ctx context.Context, prooftype abi.RegisteredPoStProof) (int, error) {
+	panic("not supported")
+}
+
+func (mgr *SectorMgr) GetPartitionVanillaParams(ctx context.Context, proofType abi.RegisteredPoStProof) (string, error) {
+	panic("not supported")
+}
+
+func (mgr *SectorMgr) PubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []proof5.SectorInfo, faults []abi.SectorNumber, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error)) (ffiwrapper.SortedPrivateSectorInfo, []abi.SectorID, func(), error) {
+	panic("not supported")
+}
+
+func (mgr *SectorMgr) SplitSortedPrivateSectorInfo(ctx context.Context, privsector ffiwrapper.SortedPrivateSectorInfo, offset int, end int) (ffiwrapper.SortedPrivateSectorInfo, error) {
+	panic("not supported")
+}
+
+func (mgr *SectorMgr) GeneratePoStFallbackSectorChallenges(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, sectorIds []abi.SectorNumber) (*ffiwrapper.FallbackChallenges, error) {
+	panic("not supported")
+}
+
 func (m mockVerifProver) VerifySeal(svi proof5.SealVerifyInfo) (bool, error) {
 	plen, err := svi.SealProof.ProofSize()
 	if err != nil {
