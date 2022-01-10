@@ -68,9 +68,6 @@ artifacts=(
   "lotus_${CIRCLE_TAG}_darwin-amd64.tar.gz"
   "lotus_${CIRCLE_TAG}_darwin-amd64.tar.gz.cid"
   "lotus_${CIRCLE_TAG}_darwin-amd64.tar.gz.sha512"
-  "Lotus-${CIRCLE_TAG}-x86_64.AppImage"
-  "Lotus-${CIRCLE_TAG}-x86_64.AppImage.cid"
-  "Lotus-${CIRCLE_TAG}-x86_64.AppImage.sha512"
 )
 
 for RELEASE_FILE in "${artifacts[@]}"
