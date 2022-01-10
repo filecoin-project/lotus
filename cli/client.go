@@ -26,7 +26,6 @@ import (
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil/cidenc"
-	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multibase"
 	"github.com/urfave/cli/v2"
@@ -94,6 +93,8 @@ var clientCmd = &cli.Command{
 		WithCategory("data", clientStat),
 		WithCategory("retrieval", clientFindCmd),
 		WithCategory("retrieval", clientRetrieveCmd),
+		WithCategory("retrieval", clientRetrieveCatCmd),
+		WithCategory("retrieval", clientRetrieveLsCmd),
 		WithCategory("retrieval", clientCancelRetrievalDealCmd),
 		WithCategory("retrieval", clientListRetrievalsCmd),
 		WithCategory("util", clientCommPCmd),
@@ -1026,209 +1027,6 @@ var clientFindCmd = &cli.Command{
 		}
 
 		return nil
-	},
-}
-
-const DefaultMaxRetrievePrice = "0.01"
-
-var clientRetrieveCmd = &cli.Command{
-	Name:      "retrieve",
-	Usage:     "Retrieve data from network",
-	ArgsUsage: "[dataCid outputPath]",
-	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:  "from",
-			Usage: "address to send transactions from",
-		},
-		&cli.BoolFlag{
-			Name:  "car",
-			Usage: "export to a car file instead of a regular file",
-		},
-		&cli.StringFlag{
-			Name:  "miner",
-			Usage: "miner address for retrieval, if not present it'll use local discovery",
-		},
-		&cli.StringFlag{
-			Name:  "datamodel-path-selector",
-			Usage: "a rudimentary (DM-level-only) text-path selector, allowing for sub-selection within a deal",
-		},
-		&cli.StringFlag{
-			Name:  "maxPrice",
-			Usage: fmt.Sprintf("maximum price the client is willing to consider (default: %s FIL)", DefaultMaxRetrievePrice),
-		},
-		&cli.StringFlag{
-			Name:  "pieceCid",
-			Usage: "require data to be retrieved from a specific Piece CID",
-		},
-		&cli.BoolFlag{
-			Name: "allow-local",
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		if cctx.NArg() != 2 {
-			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
-		}
-
-		fapi, closer, err := GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-		ctx := ReqContext(cctx)
-		afmt := NewAppFmt(cctx.App)
-
-		var payer address.Address
-		if cctx.String("from") != "" {
-			payer, err = address.NewFromString(cctx.String("from"))
-		} else {
-			payer, err = fapi.WalletDefaultAddress(ctx)
-		}
-		if err != nil {
-			return err
-		}
-
-		file, err := cid.Parse(cctx.Args().Get(0))
-		if err != nil {
-			return err
-		}
-
-		var pieceCid *cid.Cid
-		if cctx.String("pieceCid") != "" {
-			parsed, err := cid.Parse(cctx.String("pieceCid"))
-			if err != nil {
-				return err
-			}
-			pieceCid = &parsed
-		}
-
-		var order *lapi.RetrievalOrder
-		if cctx.Bool("allow-local") {
-			imports, err := fapi.ClientListImports(ctx)
-			if err != nil {
-				return err
-			}
-
-			for _, i := range imports {
-				if i.Root != nil && i.Root.Equals(file) {
-					order = &lapi.RetrievalOrder{
-						Root:         file,
-						FromLocalCAR: i.CARPath,
-
-						Total:       big.Zero(),
-						UnsealPrice: big.Zero(),
-					}
-					break
-				}
-			}
-		}
-
-		if order == nil {
-			var offer api.QueryOffer
-			minerStrAddr := cctx.String("miner")
-			if minerStrAddr == "" { // Local discovery
-				offers, err := fapi.ClientFindData(ctx, file, pieceCid)
-
-				var cleaned []api.QueryOffer
-				// filter out offers that errored
-				for _, o := range offers {
-					if o.Err == "" {
-						cleaned = append(cleaned, o)
-					}
-				}
-
-				offers = cleaned
-
-				// sort by price low to high
-				sort.Slice(offers, func(i, j int) bool {
-					return offers[i].MinPrice.LessThan(offers[j].MinPrice)
-				})
-				if err != nil {
-					return err
-				}
-
-				// TODO: parse offer strings from `client find`, make this smarter
-				if len(offers) < 1 {
-					fmt.Println("Failed to find file")
-					return nil
-				}
-				offer = offers[0]
-			} else { // Directed retrieval
-				minerAddr, err := address.NewFromString(minerStrAddr)
-				if err != nil {
-					return err
-				}
-				offer, err = fapi.ClientMinerQueryOffer(ctx, minerAddr, file, pieceCid)
-				if err != nil {
-					return err
-				}
-			}
-			if offer.Err != "" {
-				return fmt.Errorf("The received offer errored: %s", offer.Err)
-			}
-
-			maxPrice := types.MustParseFIL(DefaultMaxRetrievePrice)
-
-			if cctx.String("maxPrice") != "" {
-				maxPrice, err = types.ParseFIL(cctx.String("maxPrice"))
-				if err != nil {
-					return xerrors.Errorf("parsing maxPrice: %w", err)
-				}
-			}
-
-			if offer.MinPrice.GreaterThan(big.Int(maxPrice)) {
-				return xerrors.Errorf("failed to find offer satisfying maxPrice: %s", maxPrice)
-			}
-
-			o := offer.Order(payer)
-			order = &o
-		}
-		ref := &lapi.FileRef{
-			Path:  cctx.Args().Get(1),
-			IsCAR: cctx.Bool("car"),
-		}
-
-		if sel := textselector.Expression(cctx.String("datamodel-path-selector")); sel != "" {
-			order.DatamodelPathSelector = &sel
-		}
-
-		updates, err := fapi.ClientRetrieveWithEvents(ctx, *order, ref)
-		if err != nil {
-			return xerrors.Errorf("error setting up retrieval: %w", err)
-		}
-
-		var prevStatus retrievalmarket.DealStatus
-
-		for {
-			select {
-			case evt, ok := <-updates:
-				if ok {
-					afmt.Printf("> Recv: %s, Paid %s, %s (%s)\n",
-						types.SizeStr(types.NewInt(evt.BytesReceived)),
-						types.FIL(evt.FundsSpent),
-						retrievalmarket.ClientEvents[evt.Event],
-						retrievalmarket.DealStatuses[evt.Status],
-					)
-					prevStatus = evt.Status
-				}
-
-				if evt.Err != "" {
-					return xerrors.Errorf("retrieval failed: %s", evt.Err)
-				}
-
-				if !ok {
-					if prevStatus == retrievalmarket.DealStatusCompleted {
-						afmt.Println("Success")
-					} else {
-						afmt.Printf("saw final deal state %s instead of expected success state DealStatusCompleted\n",
-							retrievalmarket.DealStatuses[prevStatus])
-					}
-					return nil
-				}
-
-			case <-ctx.Done():
-				return xerrors.Errorf("retrieval timed out")
-			}
-		}
 	},
 }
 

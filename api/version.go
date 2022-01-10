@@ -58,7 +58,7 @@ var (
 	FullAPIVersion1 = newVer(2, 1, 0)
 
 	MinerAPIVersion0  = newVer(1, 2, 0)
-	WorkerAPIVersion0 = newVer(1, 1, 0)
+	WorkerAPIVersion0 = newVer(1, 5, 0)
 )
 
 //nolint:varcheck,deadcode

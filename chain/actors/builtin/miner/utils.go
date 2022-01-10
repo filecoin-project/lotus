@@ -67,3 +67,22 @@ func SealProofTypeFromSectorSize(ssize abi.SectorSize, nv network.Version) (abi.
 
 	return 0, xerrors.Errorf("unsupported network version")
 }
+
+// WindowPoStProofTypeFromSectorSize returns preferred post proof type for creating
+// new miner actors and new sectors
+func WindowPoStProofTypeFromSectorSize(ssize abi.SectorSize) (abi.RegisteredPoStProof, error) {
+	switch ssize {
+	case 2 << 10:
+		return abi.RegisteredPoStProof_StackedDrgWindow2KiBV1, nil
+	case 8 << 20:
+		return abi.RegisteredPoStProof_StackedDrgWindow8MiBV1, nil
+	case 512 << 20:
+		return abi.RegisteredPoStProof_StackedDrgWindow512MiBV1, nil
+	case 32 << 30:
+		return abi.RegisteredPoStProof_StackedDrgWindow32GiBV1, nil
+	case 64 << 30:
+		return abi.RegisteredPoStProof_StackedDrgWindow64GiBV1, nil
+	default:
+		return 0, xerrors.Errorf("unsupported sector size for miner: %v", ssize)
+	}
+}

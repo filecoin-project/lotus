@@ -58,8 +58,11 @@ var infoCmd = &cli.Command{
 
 		fmt.Printf("Hostname: %s\n", info.Hostname)
 		fmt.Printf("CPUs: %d; GPUs: %v\n", info.Resources.CPUs, info.Resources.GPUs)
-		fmt.Printf("RAM: %s; Swap: %s\n", types.SizeStr(types.NewInt(info.Resources.MemPhysical)), types.SizeStr(types.NewInt(info.Resources.MemSwap)))
-		fmt.Printf("Reserved memory: %s\n", types.SizeStr(types.NewInt(info.Resources.MemReserved)))
+		fmt.Printf("RAM: %s/%s; Swap: %s/%s\n",
+			types.SizeStr(types.NewInt(info.Resources.MemUsed)),
+			types.SizeStr(types.NewInt(info.Resources.MemPhysical)),
+			types.SizeStr(types.NewInt(info.Resources.MemSwapUsed)),
+			types.SizeStr(types.NewInt(info.Resources.MemSwap)))
 
 		fmt.Printf("Task types: ")
 		for _, t := range ttList(tt) {

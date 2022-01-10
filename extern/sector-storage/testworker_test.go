@@ -102,14 +102,15 @@ func (t *testWorker) Paths(ctx context.Context) ([]stores.StoragePath, error) {
 }
 
 func (t *testWorker) Info(ctx context.Context) (storiface.WorkerInfo, error) {
-	res := ResourceTable[sealtasks.TTPreCommit2][abi.RegisteredSealProof_StackedDrg2KiBV1]
+	res := storiface.ResourceTable[sealtasks.TTPreCommit2][abi.RegisteredSealProof_StackedDrg2KiBV1]
 
 	return storiface.WorkerInfo{
 		Hostname: "testworkerer",
 		Resources: storiface.WorkerResources{
 			MemPhysical: res.MinMemory * 3,
+			MemUsed:     res.MinMemory,
+			MemSwapUsed: 0,
 			MemSwap:     0,
-			MemReserved: res.MinMemory,
 			CPUs:        32,
 			GPUs:        nil,
 		},

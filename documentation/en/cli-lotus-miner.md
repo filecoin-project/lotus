@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.13.1
+   1.13.2
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -590,7 +590,8 @@ CATEGORY:
    DEVELOPER
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --timeout value  duration to wait till fail (default: 30s)
+   --help, -h       show help (default: false)
    
 ```
 
@@ -1459,7 +1460,8 @@ USAGE:
    lotus-miner pieces list-cids [command options] [arguments...]
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --verbose, -v  (default: false)
+   --help, -h     show help (default: false)
    
 ```
 
@@ -1982,6 +1984,8 @@ OPTIONS:
    --seal               (for init) use path for sealing (default: false)
    --store              (for init) use path for long-term storage (default: false)
    --max-storage value  (for init) limit storage space for sectors (expensive for very large paths!)
+   --groups value       path group names
+   --allow-to value     path groups allowed to pull data from this path (allow all if not specified)
    --help, -h           show help (default: false)
    
 ```

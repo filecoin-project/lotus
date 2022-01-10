@@ -91,6 +91,8 @@ func init() {
 
 	storeIDExample := imports.ID(50)
 	textSelExample := textselector.Expression("Links/21/Hash/Links/42/Hash")
+	apiSelExample := api.Selector("Links/21/Hash/Links/42/Hash")
+	clientEvent := retrievalmarket.ClientEventDealAccepted
 
 	addExample(bitfield.NewFromSet([]uint64{5}))
 	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1_1)
@@ -122,9 +124,12 @@ func init() {
 	addExample(datatransfer.Ongoing)
 	addExample(storeIDExample)
 	addExample(&storeIDExample)
+	addExample(clientEvent)
+	addExample(&clientEvent)
 	addExample(retrievalmarket.ClientEventDealAccepted)
 	addExample(retrievalmarket.DealStatusNew)
 	addExample(&textSelExample)
+	addExample(&apiSelExample)
 	addExample(network.ReachabilityPublic)
 	addExample(build.NewestNetworkVersion)
 	addExample(map[string]int{"name": 42})
@@ -226,16 +231,18 @@ func init() {
 				Hostname: "host",
 				Resources: storiface.WorkerResources{
 					MemPhysical: 256 << 30,
+					MemUsed:     2 << 30,
 					MemSwap:     120 << 30,
-					MemReserved: 2 << 30,
+					MemSwapUsed: 2 << 30,
 					CPUs:        64,
 					GPUs:        []string{"aGPU 1337"},
+					Resources:   storiface.ResourceTable,
 				},
 			},
 			Enabled:    true,
 			MemUsedMin: 0,
 			MemUsedMax: 0,
-			GpuUsed:    false,
+			GpuUsed:    0,
 			CpuUse:     0,
 		},
 	})
@@ -281,6 +288,7 @@ func init() {
 		State: "ShardStateAvailable",
 		Error: "<error>",
 	})
+	addExample(storiface.ResourceTable)
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

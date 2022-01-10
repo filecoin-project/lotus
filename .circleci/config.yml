@@ -806,6 +806,11 @@ workflows:
           target: "./itests/deals_padding_test.go"
       
       - test:
+          name: test-itest-deals_partial_retrieval_dm-level
+          suite: itest-deals_partial_retrieval_dm-level
+          target: "./itests/deals_partial_retrieval_dm-level_test.go"
+      
+      - test:
           name: test-itest-deals_partial_retrieval
           suite: itest-deals_partial_retrieval
           target: "./itests/deals_partial_retrieval_test.go"
@@ -940,7 +945,7 @@ workflows:
           codecov-upload: false
           suite: conformance-bleeding-edge
           target: "./conformance"
-          vectors-branch: master
+          vectors-branch: specs-actors-v7
       - trigger-testplans:
           filters:
             branches:
@@ -971,19 +976,10 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - build-appimage:
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish:
           requires:
             - build-all
             - build-macos
-            - build-appimage
           filters:
             branches:
               ignore:

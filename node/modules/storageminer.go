@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
 	"github.com/ipfs/go-cid"
@@ -683,6 +684,9 @@ func RetrievalProvider(
 	dagStore *dagstore.Wrapper,
 ) (retrievalmarket.RetrievalProvider, error) {
 	opt := retrievalimpl.DealDeciderOpt(retrievalimpl.DealDecider(userFilter))
+
+	retrievalmarket.DefaultPricePerByte = big.Zero() // todo: for whatever reason this is a global var in markets
+
 	return retrievalimpl.NewProvider(
 		address.Address(maddr),
 		adapter,
