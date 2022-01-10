@@ -423,7 +423,7 @@ func (m *Sealing) handleRecoverDealIDsOrFailWith(ctx statemachine.Context, secto
 			// TODO: check if we are in an early enough state try to remove this piece
 			log.Errorf("can't fix sector deals: piece %d (of %d) of sector %d has nil DealInfo.PublishCid (refers to deal %d)", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID)
 			// Not much to do here (and this can only happen for old spacerace sectors)
-			return ctx.Send(SectorRemove{})
+			return ctx.Send(failWith)
 		}
 
 		var dp *market.DealProposal
@@ -458,7 +458,7 @@ func (m *Sealing) handleRecoverDealIDsOrFailWith(ctx statemachine.Context, secto
 
 		if len(failed)+paddingPieces == len(sector.Pieces) {
 			log.Errorf("removing sector %d: all deals expired or unrecoverable: %+v", sector.SectorNumber, merr)
-			return ctx.Send(SectorRemove{})
+			return ctx.Send(failWith)
 		}
 
 		// todo: try to remove bad pieces (hard; see the todo above)
@@ -466,7 +466,7 @@ func (m *Sealing) handleRecoverDealIDsOrFailWith(ctx statemachine.Context, secto
 		// for now removing sectors is probably better than having them stuck in RecoverDealIDs
 		// and expire anyways
 		log.Errorf("removing sector %d: deals expired or unrecoverable: %+v", sector.SectorNumber, merr)
-		return ctx.Send(SectorRemove{})
+		return ctx.Send(failWith)
 	}
 
 	// Not much to do here, we can't go back in time to commit this sector
