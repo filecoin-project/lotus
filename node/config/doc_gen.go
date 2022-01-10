@@ -241,6 +241,12 @@ This includes the time the deal will need to get transferred and published
 before being assigned to a sector`,
 		},
 		{
+			Name: "MakeNewSectorForDeals",
+			Type: "bool",
+
+			Comment: `Whether new sectors are sealed to pack incoming deals`,
+		},
+		{
 			Name: "MaxDealStartDelay",
 			Type: "Duration",
 
