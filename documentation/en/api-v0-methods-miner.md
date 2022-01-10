@@ -144,6 +144,7 @@
   * [StorageDropSector](#StorageDropSector)
   * [StorageFindSector](#StorageFindSector)
   * [StorageGetLocks](#StorageGetLocks)
+  * [StorageGetUrl](#StorageGetUrl)
   * [StorageInfo](#StorageInfo)
   * [StorageList](#StorageList)
   * [StorageLocal](#StorageLocal)
@@ -2876,7 +2877,8 @@ Inputs:
     ],
     "AllowTo": [
       "string value"
-    ]
+    ],
+    "Path": "string value"
   },
   {
     "Capacity": 9,
@@ -2922,7 +2924,8 @@ Response:
     ],
     "AllowTo": [
       "string value"
-    ]
+    ],
+    "Path": "string value"
   }
 ]
 ```
@@ -2995,7 +2998,8 @@ Response:
     "Weight": 42,
     "CanSeal": true,
     "CanStore": true,
-    "Primary": true
+    "Primary": true,
+    "Path": "string value"
   }
 ]
 ```
@@ -3035,6 +3039,24 @@ Response:
 }
 ```
 
+### StorageGetUrl
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Miner": 1000,
+    "Number": 9
+  },
+  1
+]
+```
+
+Response: `"string value"`
+
 ### StorageInfo
 
 
@@ -3063,7 +3085,8 @@ Response:
   ],
   "AllowTo": [
     "string value"
-  ]
+  ],
+  "Path": "string value"
 }
 ```
 

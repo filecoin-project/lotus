@@ -300,6 +300,8 @@ func init() {
 		Error: "<error>",
 	})
 	addExample(storiface.ResourceTable)
+
+	addExample(map[abi.SectorNumber][]uint64{})
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

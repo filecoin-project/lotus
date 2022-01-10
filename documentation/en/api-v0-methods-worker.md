@@ -13,6 +13,8 @@
   * [FinalizeSector](#FinalizeSector)
 * [Generate](#Generate)
   * [GenerateSectorKeyFromData](#GenerateSectorKeyFromData)
+  * [GenerateWindowPoSt](#GenerateWindowPoSt)
+  * [GenerateWinningPoSt](#GenerateWinningPoSt)
 * [Move](#Move)
   * [MoveStorage](#MoveStorage)
 * [Process](#Process)
@@ -852,6 +854,84 @@ Response:
   },
   "ID": "07070707-0707-0707-0707-070707070707"
 }
+```
+
+### GenerateWindowPoSt
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  1000,
+  {
+    "Spsi": null
+  },
+  123,
+  123,
+  "Bw==",
+  {
+    "Fc": {
+      "Sectors": [
+        123,
+        124
+      ],
+      "Challenges": {}
+    }
+  }
+]
+```
+
+Response:
+```json
+{
+  "PoStProofs": {
+    "PoStProof": 8,
+    "ProofBytes": "Ynl0ZSBhcnJheQ=="
+  },
+  "Skipped": [
+    {
+      "Miner": 1000,
+      "Number": 9
+    }
+  ]
+}
+```
+
+### GenerateWinningPoSt
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  1000,
+  {
+    "Spsi": null
+  },
+  "Bw==",
+  {
+    "Fc": {
+      "Sectors": [
+        123,
+        124
+      ],
+      "Challenges": {}
+    }
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "PoStProof": 8,
+    "ProofBytes": "Ynl0ZSBhcnJheQ=="
+  }
+]
 ```
 
 ## Move

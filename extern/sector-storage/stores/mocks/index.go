@@ -125,6 +125,21 @@ func (mr *MockSectorIndexMockRecorder) StorageGetLocks(arg0 interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorageGetLocks", reflect.TypeOf((*MockSectorIndex)(nil).StorageGetLocks), arg0)
 }
 
+// StorageGetUrl mocks base method.
+func (m *MockSectorIndex) StorageGetUrl(arg0 context.Context, arg1 abi.SectorID, arg2 storiface.SectorFileType) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StorageGetUrl", arg0, arg1, arg2)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StorageGetUrl indicates an expected call of StorageGetUrl.
+func (mr *MockSectorIndexMockRecorder) StorageGetUrl(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorageGetUrl", reflect.TypeOf((*MockSectorIndex)(nil).StorageGetUrl), arg0, arg1, arg2)
+}
+
 // StorageInfo mocks base method.
 func (m *MockSectorIndex) StorageInfo(arg0 context.Context, arg1 stores.ID) (stores.StorageInfo, error) {
 	m.ctrl.T.Helper()
@@ -196,19 +211,4 @@ func (m *MockSectorIndex) StorageTryLock(arg0 context.Context, arg1 abi.SectorID
 func (mr *MockSectorIndexMockRecorder) StorageTryLock(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorageTryLock", reflect.TypeOf((*MockSectorIndex)(nil).StorageTryLock), arg0, arg1, arg2, arg3)
-}
-
-// StorageGetUrl mocks base method.
-func (m *MockSectorIndex) StorageGetUrl(ctx context.Context, s abi.SectorID, ft storiface.SectorFileType) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StorageGetUrl", ctx, s, ft)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StorageGetUrl indicates an expected call of StorageGetUrl.
-func (mr *MockSectorIndexMockRecorder) StorageGetUrl(ctx, s, ft interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorageGetUrl", reflect.TypeOf((*MockSectorIndex)(nil).StorageGetUrl), ctx, s, ft)
 }
