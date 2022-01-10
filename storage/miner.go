@@ -21,6 +21,7 @@ import (
 
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -247,6 +248,14 @@ type StorageWpp struct {
 	verifier ffiwrapper.Verifier
 	miner    abi.ActorID
 	winnRpt  abi.RegisteredPoStProof
+
+	w interface {
+		GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.SectorInfo, randomness abi.PoStRandomness) (proof []proof.PoStProof, skipped []abi.SectorID, err error)
+	}
+}
+
+func (wpp *StorageWpp) GenerateWindowPoSt(ctx context.Context, sectorInfo []proof.SectorInfo, randomness abi.PoStRandomness) (proof []proof.PoStProof, skipped []abi.SectorID, err error) {
+	return wpp.w.GenerateWindowPoSt(ctx, wpp.miner, sectorInfo, randomness)
 }
 
 func NewWinningPoStProver(api v1api.FullNode, prover storage.Prover, verifier ffiwrapper.Verifier, miner dtypes.MinerID) (*StorageWpp, error) {
@@ -266,7 +275,7 @@ func NewWinningPoStProver(api v1api.FullNode, prover storage.Prover, verifier ff
 		log.Warn("*****************************************************************************")
 	}
 
-	return &StorageWpp{prover, verifier, abi.ActorID(miner), mi.WindowPoStProofType}, nil
+	return &StorageWpp{prover, verifier, abi.ActorID(miner), mi.WindowPoStProofType, prover}, nil
 }
 
 var _ gen.WinningPoStProver = (*StorageWpp)(nil)

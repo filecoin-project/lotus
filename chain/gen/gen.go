@@ -9,8 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
-
 	"github.com/filecoin-project/lotus/chain/rand"
 
 	"github.com/filecoin-project/go-state-types/network"
@@ -29,7 +27,9 @@ import (
 	"github.com/ipld/go-car"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -621,9 +621,16 @@ func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*cr
 type WinningPoStProver interface {
 	GenerateCandidates(context.Context, abi.PoStRandomness, uint64) ([]uint64, error)
 	ComputeProof(context.Context, []proof5.SectorInfo, abi.PoStRandomness) ([]proof5.PoStProof, error)
+
+	GenerateWindowPoSt(ctx context.Context, sectorInfo []proof.SectorInfo, randomness abi.PoStRandomness) (proof []proof.PoStProof, skipped []abi.SectorID, err error)
 }
 
 type wppProvider struct{}
+
+func (wpp *wppProvider) GenerateWindowPoSt(ctx context.Context, sectorInfo []proof.SectorInfo, randomness abi.PoStRandomness) (proof []proof.PoStProof, skipped []abi.SectorID, err error) {
+	//TODO implement me
+	panic("implement me")
+}
 
 func (wpp *wppProvider) GenerateCandidates(ctx context.Context, _ abi.PoStRandomness, _ uint64) ([]uint64, error) {
 	return []uint64{0}, nil
