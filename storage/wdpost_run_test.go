@@ -132,7 +132,7 @@ func (m *mockProver) GenerateWindowPoSt(ctx context.Context, aid abi.ActorID, si
 type mockVerif struct {
 }
 
-func (m mockVerif) VerifyWinningPoSt(ctx context.Context, info proof7.WinningPoStVerifyInfo, currEpoch abi.ChainEpoch, nv network.Version) (bool, error) {
+func (m mockVerif) VerifyWinningPoSt(ctx context.Context, info proof7.WinningPoStVerifyInfo) (bool, error) {
 	panic("implement me")
 }
 
