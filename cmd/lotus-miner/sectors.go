@@ -11,6 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -1545,6 +1548,18 @@ var sectorsMarkForUpgradeCmd = &cli.Command{
 		}
 		if nv >= network.Version15 {
 			return xerrors.Errorf("classic cc upgrades disabled v15 and beyond, use `snap-up`")
+		}
+
+		// disable mark for upgrade two days before the ntwk v15 upgrade
+		// TODO: remove the following block in v1.15.1
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("failed to get chain head: %w", err)
+		}
+		twoDays := abi.ChainEpoch(2 * builtin.EpochsInDay)
+		if head.Height() > (build.UpgradeSnapDealsHeight - twoDays) {
+			return xerrors.Errorf("OhSnap is coming soon, " +
+				"please use `snap-up` to upgrade your cc sectors after the network v15 upgrade!")
 		}
 
 		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
