@@ -1264,11 +1264,7 @@ func upgradeActorsV7Common(
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
 	config nv15.Config,
 ) (cid.Cid, error) {
-
-	ctxWithCancel, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	writeStore := blockstore.NewAutobatch(ctxWithCancel, sm.ChainStore().StateBlockstore(), units.GiB)
+	writeStore := blockstore.NewAutobatch(ctx, sm.ChainStore().StateBlockstore(), units.GiB)
 	// TODO: pretty sure we'd achieve nothing by doing this, confirm in review
 	//buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), writeStore)
 	store := store.ActorStore(ctx, writeStore)
@@ -1301,8 +1297,7 @@ func upgradeActorsV7Common(
 		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
 	}
 
-	// Persist the new tree.
-
+	// Persist the new tree. Blocks until the entire writeStore is in the state blockstore.
 	writeStore.Flush(ctx)
 
 	return newRoot, nil
