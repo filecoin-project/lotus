@@ -692,7 +692,7 @@ func (m genFakeVerifier) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (b
 	panic("not supported")
 }
 
-func (m genFakeVerifier) VerifyWinningPoSt(ctx context.Context, info proof7.WinningPoStVerifyInfo, poStEpoch abi.ChainEpoch, nv network.Version) (bool, error) {
+func (m genFakeVerifier) VerifyWinningPoSt(ctx context.Context, info proof7.WinningPoStVerifyInfo) (bool, error) {
 	panic("not supported")
 }
 

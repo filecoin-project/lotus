@@ -10,7 +10,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/network"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 
@@ -79,7 +78,7 @@ func (mockVerifier) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (bool, 
 	return false, nil
 }
 
-func (mockVerifier) VerifyWinningPoSt(ctx context.Context, info proof7.WinningPoStVerifyInfo, poStEpoch abi.ChainEpoch, nv network.Version) (bool, error) {
+func (mockVerifier) VerifyWinningPoSt(ctx context.Context, info proof7.WinningPoStVerifyInfo) (bool, error) {
 	panic("should not be called")
 }
 func (mockVerifier) VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoStVerifyInfo) (bool, error) {
