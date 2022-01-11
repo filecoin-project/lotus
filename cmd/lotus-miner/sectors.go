@@ -1550,6 +1550,8 @@ var sectorsMarkForUpgradeCmd = &cli.Command{
 			return xerrors.Errorf("classic cc upgrades disabled v15 and beyond, use `snap-up`")
 		}
 
+		// disable mark for upgrade two days before the ntwk v15 upgrade
+		// TODO: remove the following block in v1.15.1
 		head, err := api.ChainHead(ctx)
 		if err != nil {
 			return xerrors.Errorf("failed to get chain head: %w", err)
