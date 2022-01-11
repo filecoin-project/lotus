@@ -78,7 +78,7 @@ func (mockVerifier) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (bool, 
 	return false, nil
 }
 
-func (mockVerifier) VerifyWinningPoSt(ctx context.Context, info proof5.WinningPoStVerifyInfo) (bool, error) {
+func (mockVerifier) VerifyWinningPoSt(ctx context.Context, info proof7.WinningPoStVerifyInfo) (bool, error) {
 	panic("should not be called")
 }
 func (mockVerifier) VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoStVerifyInfo) (bool, error) {
