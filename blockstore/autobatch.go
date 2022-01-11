@@ -14,6 +14,7 @@ var autolog = log.Named("auto")
 
 type AutobatchBlockstore struct {
 	bufferedBlks   []block.Block
+	addedCids      map[cid.Cid]struct{}
 	bufferedBlksLk sync.Mutex
 	flushLk        sync.Mutex
 	backingBs      Blockstore
@@ -57,6 +58,7 @@ func NewAutobatch(ctx context.Context, backingBs Blockstore, bufferCapacity int)
 	bs := &AutobatchBlockstore{
 		backingBs:      backingBs,
 		bufferCapacity: bufferCapacity,
+		addedCids:      make(map[cid.Cid]struct{}),
 	}
 
 	return bs
@@ -69,13 +71,16 @@ func (bs *AutobatchBlockstore) Get(ctx context.Context, c cid.Cid) (block.Block,
 }
 
 func (bs *AutobatchBlockstore) Put(ctx context.Context, blk block.Block) error {
-	// TODO: Would it be faster to check if bs.backing Has the blk (and skip if so)?
 	bs.bufferedBlksLk.Lock()
-	bs.bufferedBlks = append(bs.bufferedBlks, blk)
-	bs.bufferSize += len(blk.RawData())
-	if bs.bufferSize >= bs.bufferCapacity {
-		// time to flush
-		go bs.Flush(ctx)
+	_, ok := bs.addedCids[blk.Cid()]
+	if !ok {
+		bs.bufferedBlks = append(bs.bufferedBlks, blk)
+		bs.addedCids[blk.Cid()] = struct{}{}
+		bs.bufferSize += len(blk.RawData())
+		if bs.bufferSize >= bs.bufferCapacity {
+			// time to flush
+			go bs.Flush(ctx)
+		}
 	}
 	bs.bufferedBlksLk.Unlock()
 	return nil
