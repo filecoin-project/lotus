@@ -419,7 +419,7 @@ func (filec *FilecoinEC) VerifyWinningPoStProof(ctx context.Context, nv network.
 		Proofs:            h.WinPoStProof,
 		ChallengedSectors: sectors,
 		Prover:            abi.ActorID(mid),
-	}, h.Height, nv)
+	})
 	if err != nil {
 		return xerrors.Errorf("failed to verify election post: %w", err)
 	}

@@ -11,7 +11,6 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/network"
 	ffiproof "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -149,7 +148,7 @@ func (proofVerifier) VerifyReplicaUpdate(update proof.ReplicaUpdateInfo) (bool, 
 	return ffi.SectorUpdate.VerifyUpdateProof(update)
 }
 
-func (proofVerifier) VerifyWinningPoSt(ctx context.Context, info proof.WinningPoStVerifyInfo, poStEpoch abi.ChainEpoch, version network.Version) (bool, error) {
+func (proofVerifier) VerifyWinningPoSt(ctx context.Context, info proof.WinningPoStVerifyInfo) (bool, error) {
 	info.Randomness[31] &= 0x3f
 	_, span := trace.StartSpan(ctx, "VerifyWinningPoSt")
 	defer span.End()

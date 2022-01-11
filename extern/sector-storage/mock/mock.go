@@ -16,7 +16,6 @@ import (
 	ffiwrapper2 "github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -671,7 +670,7 @@ func (m mockVerifProver) aggLen(nproofs int) int {
 	}
 }
 
-func (m mockVerifProver) VerifyWinningPoSt(ctx context.Context, info proof.WinningPoStVerifyInfo, poStEpoch abi.ChainEpoch, nv network.Version) (bool, error) {
+func (m mockVerifProver) VerifyWinningPoSt(ctx context.Context, info proof.WinningPoStVerifyInfo) (bool, error) {
 	info.Randomness[31] &= 0x3f
 	return true, nil
 }

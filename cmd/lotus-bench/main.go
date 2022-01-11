@@ -377,7 +377,7 @@ var sealBenchCmd = &cli.Command{
 				ChallengedSectors: candidates,
 				Prover:            mid,
 			}
-			ok, err := ffiwrapper.ProofVerifier.VerifyWinningPoSt(context.TODO(), pvi1, 0, build.NewestNetworkVersion)
+			ok, err := ffiwrapper.ProofVerifier.VerifyWinningPoSt(context.TODO(), pvi1)
 			if err != nil {
 				return err
 			}
@@ -394,7 +394,7 @@ var sealBenchCmd = &cli.Command{
 				Prover:            mid,
 			}
 
-			ok, err = ffiwrapper.ProofVerifier.VerifyWinningPoSt(context.TODO(), pvi2, 0, build.NewestNetworkVersion)
+			ok, err = ffiwrapper.ProofVerifier.VerifyWinningPoSt(context.TODO(), pvi2)
 			if err != nil {
 				return err
 			}
