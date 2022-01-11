@@ -107,7 +107,7 @@ func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) e
 			"Upgrade expiration before marking for upgrade", id, onChainInfo.Expiration)
 	}
 
-	log.Errorf("updating sector number %d", id)
+	log.Info("updating sector number %d", id)
 	return m.sectors.Send(uint64(id), SectorStartCCUpdate{})
 }
 
