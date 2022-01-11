@@ -21,6 +21,7 @@ ListenAddresses = ["/ip4/0.0.0.0/tcp/5678", "/ip6/::/tcp/5678"]
 #  IpfsMAddr = ""
 #  IpfsUseForRetrieval = false
 #  SimultaneousTransfersForStorage = 20
+#  SimultaneousTransfersForStoragePerClient = 0
 #  SimultaneousTransfersForRetrieval = 20
 #
 [Metrics]

@@ -1,71 +1,105 @@
 # Lotus changelog
 
-# v1.13.2-rc7 /  2022-01-05
+# v1.13.2 /  2022-01-09
 
-This is the 7th RC for lotus v1.13.2. This will be a highly recommended release with sealing pipeline fixes, worker 
-management and scheduler enhancement, retrieval improvements and so on. More detailed changelog will be updated later.
+Lotus v1.13.2 is a *highly recommended* feature release with remarkable retrieval improvements, new features like 
+worker management, schedule enhancements and so on. 
 
-- github.com/filecoin-project/lotus:
-  - stores: Reduce log spam during retrievals
-  - fix lint
-  - Fix mock ReadPiece
-  - fr32: Reduce MTTresh from 32M to 512k per core
-  - piecereader: Avoid allocating 1024MB slices per read
-  - piecereader: Avoid redundant roundtrips when seeking
-  - piecereader: Move closer to storage
-  - build: release: v1.13.2-rc3 ([filecoin-project/lotus#7752](https://github.com/filecoin-project/lotus/pull/7752))
-  - build: release: v1.13.2-rc2 ([filecoin-project/lotus#7745](https://github.com/filecoin-project/lotus/pull/7745))
-  - v1.13.2-rc1 ([filecoin-project/lotus#7718](https://github.com/filecoin-project/lotus/pull/7718))
-  - Address Scheduler enhancements (#7703) review ([filecoin-project/lotus#7714](https://github.com/filecoin-project/lotus/pull/7714))
-  - Scheduler enhancements ([filecoin-project/lotus#7703](https://github.com/filecoin-project/lotus/pull/7703))
-  - ffiwrapper: Validate PC2 by calling C1 with random seeds ([filecoin-project/lotus#7710](https://github.com/filecoin-project/lotus/pull/7710))
-  - fix logic error ([filecoin-project/lotus#7709](https://github.com/filecoin-project/lotus/pull/7709))
-  - Update go-graphsync v0.10.6 ([filecoin-project/lotus#7708](https://github.com/filecoin-project/lotus/pull/7708))
-  - Add verbose mode to lotus-miner pieces list-cids ([filecoin-project/lotus#7699](https://github.com/filecoin-project/lotus/pull/7699))
-  - retrieval: Only output matching nodes, MatchPath dagspec ([filecoin-project/lotus#7706](https://github.com/filecoin-project/lotus/pull/7706))
-  - disable mplex stream muxer ([filecoin-project/lotus#7689](https://github.com/filecoin-project/lotus/pull/7689))
-  - Cleanup partial retrieval codepaths ( zero functional changes ) ([filecoin-project/lotus#7688](https://github.com/filecoin-project/lotus/pull/7688))
-  - Make small retrieval 200x faster ([filecoin-project/lotus#7693](https://github.com/filecoin-project/lotus/pull/7693))
-  - Releases back to master ([filecoin-project/lotus#7698](https://github.com/filecoin-project/lotus/pull/7698))
-  - Add RLE dump code ([filecoin-project/lotus#7691](https://github.com/filecoin-project/lotus/pull/7691))
-  - Update archive script ([filecoin-project/lotus#7690](https://github.com/filecoin-project/lotus/pull/7690))
-  - storage: Use 1M buffers for Tar transfers ([filecoin-project/lotus#7681](https://github.com/filecoin-project/lotus/pull/7681))
-  - Chore/dm level tests plus merkle proof cars ([filecoin-project/lotus#7673](https://github.com/filecoin-project/lotus/pull/7673))
-  - Partial retrieval ux improvements ([filecoin-project/lotus#7610](https://github.com/filecoin-project/lotus/pull/7610))
-  - Sector storage groups ([filecoin-project/lotus#7453](https://github.com/filecoin-project/lotus/pull/7453))
-  - docsgen-cli: Handle commands with no description correctly ([filecoin-project/lotus#7659](https://github.com/filecoin-project/lotus/pull/7659))
-  - shed: simple wallet balancer util ([filecoin-project/lotus#7414](https://github.com/filecoin-project/lotus/pull/7414))
-  - remote store: Remove debug printf ([filecoin-project/lotus#7664](https://github.com/filecoin-project/lotus/pull/7664))
-  - Bump ws from 5.2.2 to 5.2.3 in /lotuspond/front ([filecoin-project/lotus#7660](https://github.com/filecoin-project/lotus/pull/7660))
-  - Bump color-string from 1.5.3 to 1.6.0 in /lotuspond/front ([filecoin-project/lotus#7658](https://github.com/filecoin-project/lotus/pull/7658))
-  - Bump postcss from 7.0.17 to 7.0.39 in /lotuspond/front ([filecoin-project/lotus#7657](https://github.com/filecoin-project/lotus/pull/7657))
-  - Bump path-parse from 1.0.6 to 1.0.7 in /lotuspond/front ([filecoin-project/lotus#7656](https://github.com/filecoin-project/lotus/pull/7656))
-  - Bump tmpl from 1.0.4 to 1.0.5 in /lotuspond/front ([filecoin-project/lotus#7655](https://github.com/filecoin-project/lotus/pull/7655))
-  - Bump url-parse from 1.4.7 to 1.5.3 in /lotuspond/front ([filecoin-project/lotus#7654](https://github.com/filecoin-project/lotus/pull/7654))
-  - Add caches to lotus-stats and splitcode ([filecoin-project/lotus#7329](https://github.com/filecoin-project/lotus/pull/7329))
-  - add additional methods to lotus gateway ([filecoin-project/lotus#7644](https://github.com/filecoin-project/lotus/pull/7644))
-  - checkCommit should return SectorCommitFailed ([filecoin-project/lotus#7555](https://github.com/filecoin-project/lotus/pull/7555))
-  - Wdpost worker: Reduce challenge confidence to 1 epoch ([filecoin-project/lotus#7572](https://github.com/filecoin-project/lotus/pull/7572))
-  - remove api and jaeger env from docker file ([filecoin-project/lotus#7624](https://github.com/filecoin-project/lotus/pull/7624))
-  - CLI: Add a lotus multisig cancel command ([filecoin-project/lotus#7645](https://github.com/filecoin-project/lotus/pull/7645))
-  - remove jaeger envvars ([filecoin-project/lotus#7631](https://github.com/filecoin-project/lotus/pull/7631))
-  - lotus-shed msg: Decode submessages/msig proposals ([filecoin-project/lotus#7639](https://github.com/filecoin-project/lotus/pull/7639))
-  - add log for restart windows post scheduler ([filecoin-project/lotus#7613](https://github.com/filecoin-project/lotus/pull/7613))
-  - Shed: Add a util to list miner faults ([filecoin-project/lotus#7605](https://github.com/filecoin-project/lotus/pull/7605))
-  - add timeout flag to wait-api command ([filecoin-project/lotus#7592](https://github.com/filecoin-project/lotus/pull/7592))
-  - Shed: Add a util to create miners more easily ([filecoin-project/lotus#7595](https://github.com/filecoin-project/lotus/pull/7595))
-  - Update go-state-types ([filecoin-project/lotus#7591](https://github.com/filecoin-project/lotus/pull/7591))
-  - add missing NodeType tag ([filecoin-project/lotus#7559](https://github.com/filecoin-project/lotus/pull/7559))
-  - update go-libp2p-pubsub to v0.5.6 ([filecoin-project/lotus#7581](https://github.com/filecoin-project/lotus/pull/7581))
-  - bump the master version to v1.13.2-dev ([filecoin-project/lotus#7568](https://github.com/filecoin-project/lotus/pull/7568))
-- github.com/filecoin-project/go-fil-markets (v1.13.3 -> v1.13.4):
-  failed to fetch repo
+## Highlights
+- 🚀🚀🚀Improve retrieval deal experience
+  - Testing result with MinerX.3 shows the retrieval deal success rate has increased dramatically with faster transfer 
+    speed, you can join or follow along furthur performance testings [here](https://github.com/filecoin-project/lotus/discussions/7874). We recommend application developers to integrate with the new 
+    retrieval APIs to provide a better client experience.
+  - 🌟🌟🌟 Reduce retrieval Time-To-First-Byte over 100x ([#7693](https://github.com/filecoin-project/lotus/pull/7693))
+    - This change makes most free, small retrievals sub-second
+  - 🌟🌟🌟 Partial retrieval ux improvements ([#7610](https://github.com/filecoin-project/lotus/pull/7610))
+    - New retrieval commands for clients:
+      - `lotus client ls`: retrieve and list desired object links
+      - `lotus client cat`: retrieve and print the data from the network
+    - 🌟🌟 The monolith `ClientRetrieve` method was broken into:
+      - `ClientRetrieve` which retrieves data into the local repo (or into an IPFS node if ipfs integration is enabled)
+      - `ClientRetrieveWait` which will wait for the retrieval to complete
+      - `ClientExport` which will export data from the local node
+      - Note: this change only applies to v1 API. v0 API remains unchanged.
+    - 🌟 Support for full ipld selectors was added (for example making it possible to only retrieve list of directories in a deal, without fetching any file data)
+      - To learn more, see [here](https://github.com/filecoin-project/lotus/blob/0523c946f984b22b3f5de8cc3003cc791389527e/api/types.go#L230-L264)
+- 🚀🚀 Sealing scheduler enhancements ([#7703](https://github.com/filecoin-project/lotus/pull/7703),
+  [#7269](https://github.com/filecoin-project/lotus/pull/7269)), [#7714](https://github.com/filecoin-project/lotus/pull/7714)
+  - Workers are now aware of cgroup memory limits
+  - Multiple tasks which use a GPU can be scheduled on a single worker
+  - Workers can override default resource table through env vars
+    - Default value list: https://gist.github.com/magik6k/c0e1c7cd73c1241a9acabc30bf469a43
+- 🚀🚀 Sector storage groups ([#7453](https://github.com/filecoin-project/lotus/pull/7453))
+  - Storage groups allow for better control of data flow between workers, for example, it makes it possible to define that data from PC1 on a given worker has to have it's PC2 step executed on the same worker
+  - To set it up, follow the instructions under the `Sector Storage Group` section [here](https://lotus.filecoin.io/docs/storage-providers/seal-workers/#lotus-worker-co-location)
+
+## New Features
+- Add RLE dump code ([#7691](https://github.com/filecoin-project/lotus/pull/7691))
+- Shed: Add a util to list miner faults ([#7605](https://github.com/filecoin-project/lotus/pull/7605))
+- lotus-shed msg: Decode submessages/msig proposals ([#7639](https://github.com/filecoin-project/lotus/pull/7639))
+- CLI: Add a lotus multisig cancel command ([#7645](https://github.com/filecoin-project/lotus/pull/7645))
+- shed: simple wallet balancer util ([#7414](https://github.com/filecoin-project/lotus/pull/7414))
+  - balancing token balance between multiple accounts
+
+## Improvements
+- Add verbose mode to `lotus-miner pieces list-cids` ([#7699](https://github.com/filecoin-project/lotus/pull/7699))
+- retrieval: Only output matching nodes, MatchPath dagspec ([#7706](https://github.com/filecoin-project/lotus/pull/7706))
+- Cleanup partial retrieval codepaths ( zero functional changes ) ([#7688](https://github.com/filecoin-project/lotus/pull/7688))
+- storage: Use 1M buffers for Tar transfers ([#7681](https://github.com/filecoin-project/lotus/pull/7681))
+- Chore/dm level tests plus merkle proof cars ([#7673](https://github.com/filecoin-project/lotus/pull/7673))
+- Shed: Add a util to create miners more easily ([#7595](https://github.com/filecoin-project/lotus/pull/7595))
+- add timeout flag to wait-api command ([#7592](https://github.com/filecoin-project/lotus/pull/7592))
+- add log for restart windows post scheduler ([#7613](https://github.com/filecoin-project/lotus/pull/7613))
+- remove jaeger envvars ([#7631](https://github.com/filecoin-project/lotus/pull/7631))
+- remove api and jaeger env from docker file ([#7624](https://github.com/filecoin-project/lotus/pull/7624))
+- Wdpost worker: Reduce challenge confidence to 1 epoch ([#7572](https://github.com/filecoin-project/lotus/pull/7572))
+- add additional methods to lotus gateway ([#7644](https://github.com/filecoin-project/lotus/pull/7644))
+- Add caches to lotus-stats and splitcode ([#7329](https://github.com/filecoin-project/lotus/pull/7329))
+- remote store: Remove debug printf ([#7664](https://github.com/filecoin-project/lotus/pull/7664))
+- docsgen-cli: Handle commands with no description correctly ([#7659](https://github.com/filecoin-project/lotus/pull/7659))
+
+## Bug Fixes
+- fix docker logic error ([#7709](https://github.com/filecoin-project/lotus/pull/7709))
+- add missing NodeType tag ([#7559](https://github.com/filecoin-project/lotus/pull/7559))
+- checkCommit should return SectorCommitFailed ([#7555](https://github.com/filecoin-project/lotus/pull/7555))
+- ffiwrapper: Validate PC2 by calling C1 with random seeds ([#7710](https://github.com/filecoin-project/lotus/pull/7710))
+
+## Dependency Updates
+- Update go-graphsync v0.10.6 ([#7708](https://github.com/filecoin-project/lotus/pull/7708))
+- update go-libp2p-pubsub to v0.5.6 ([#7581](https://github.com/filecoin-project/lotus/pull/7581))
+- Update go-state-types ([#7591](https://github.com/filecoin-project/lotus/pull/7591))
+- disable mplex stream muxer ([#7689](https://github.com/filecoin-project/lotus/pull/7689))
+- Bump ws from 5.2.2 to 5.2.3 in /lotuspond/front ([#7660](https://github.com/filecoin-project/lotus/pull/7660))
+- Bump color-string from 1.5.3 to 1.6.0 in /lotuspond/front ([#7658](https://github.com/filecoin-project/lotus/pull/7658))
+- Bump postcss from 7.0.17 to 7.0.39 in /lotuspond/front ([#7657](https://github.com/filecoin-project/lotus/pull/7657))
+- Bump path-parse from 1.0.6 to 1.0.7 in /lotuspond/front ([#7656](https://github.com/filecoin-project/lotus/pull/7656))
+- Bump tmpl from 1.0.4 to 1.0.5 in /lotuspond/front ([#7655](https://github.com/filecoin-project/lotus/pull/7655))
+- Bump url-parse from 1.4.7 to 1.5.3 in /lotuspond/front ([#7654](https://github.com/filecoin-project/lotus/pull/7654))
 - github.com/filecoin-project/go-state-types (v0.1.1-0.20210915140513-d354ccf10379 -> v0.1.1):
-  - Add v14
-  - Add PoRep -> UpdateProof mapping
-  - Intoduce update proofs enums
-  - Update golangci-lint for comatibility with Go 1.17
-  - Update execution image to maybe update debian version
+
+## Others
+- Update archive script ([#7690](https://github.com/filecoin-project/lotus/pull/7690))
+
+## Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| @magik6k | 89 | +5200/-1818 | 232 |
+| Travis Person | 5 | +1473/-953 | 38 |
+| @arajasek | 6 | +550/-38 | 19 |
+| @clinta | 4 | +393/-123 | 26 |
+| @ribasushi | 3 | +334/-68 | 7 |
+| @jennijuju| 13 | +197/-120 | 67 |
+| @Kubuxu | 10 | +153/-30 | 10 |
+| @coryschwartz | 6 | +18/-26 | 6 |
+| Marten Seemann | 2 | +6/-34 | 5 |
+| @vyzo | 1 | +3/-3 | 2 |
+| @hannahhoward | 1 | +3/-3 | 2 |
+| @zenground0 | 2 | +2/-2 | 2 |
+| @yaohcn | 2 | +2/-2 | 2 |
+| @jennijuju | 1 | +1/-1 | 1 |
+| @hunjixin | 1 | +1/-0 | 1 |
+
     
 
 # v1.13.1 / 2021-11-26

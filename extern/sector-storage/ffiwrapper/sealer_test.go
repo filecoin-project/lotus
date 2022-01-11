@@ -19,6 +19,7 @@ import (
 
 	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/ipfs/go-cid"
 
@@ -180,16 +181,16 @@ func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si storage
 func post(t *testing.T, sealer *Sealer, skipped []abi.SectorID, seals ...seal) {
 	randomness := abi.PoStRandomness{0, 9, 2, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 7}
 
-	sis := make([]proof2.SectorInfo, len(seals))
+	xsis := make([]proof7.ExtendedSectorInfo, len(seals))
 	for i, s := range seals {
-		sis[i] = proof2.SectorInfo{
+		xsis[i] = proof7.ExtendedSectorInfo{
 			SealProof:    s.ref.ProofType,
 			SectorNumber: s.ref.ID.Number,
 			SealedCID:    s.cids.Sealed,
 		}
 	}
 
-	proofs, skp, err := sealer.GenerateWindowPoSt(context.TODO(), seals[0].ref.ID.Miner, sis, randomness)
+	proofs, skp, err := sealer.GenerateWindowPoSt(context.TODO(), seals[0].ref.ID.Miner, xsis, randomness)
 	if len(skipped) > 0 {
 		require.Error(t, err)
 		require.EqualValues(t, skipped, skp)
@@ -200,7 +201,16 @@ func post(t *testing.T, sealer *Sealer, skipped []abi.SectorID, seals ...seal) {
 		t.Fatalf("%+v", err)
 	}
 
-	ok, err := ProofVerifier.VerifyWindowPoSt(context.TODO(), proof2.WindowPoStVerifyInfo{
+	sis := make([]proof7.SectorInfo, len(seals))
+	for i, xsi := range xsis {
+		sis[i] = proof7.SectorInfo{
+			SealProof:    xsi.SealProof,
+			SectorNumber: xsi.SectorNumber,
+			SealedCID:    xsi.SealedCID,
+		}
+	}
+
+	ok, err := ProofVerifier.VerifyWindowPoSt(context.TODO(), proof7.WindowPoStVerifyInfo{
 		Randomness:        randomness,
 		Proofs:            proofs,
 		ChallengedSectors: sis,

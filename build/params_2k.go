@@ -17,7 +17,7 @@ import (
 const BootstrappersFile = ""
 const GenesisFile = ""
 
-const GenesisNetworkVersion = network.Version14
+const GenesisNetworkVersion = network.Version15
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
@@ -46,6 +46,8 @@ var UpgradeTurboHeight = abi.ChainEpoch(-15)
 var UpgradeHyperdriveHeight = abi.ChainEpoch(-16)
 
 var UpgradeChocolateHeight = abi.ChainEpoch(-17)
+
+var UpgradeSnapDealsHeight = abi.ChainEpoch(-18)
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,

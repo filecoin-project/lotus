@@ -1,6 +1,7 @@
 package docgen
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -15,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-graphsync"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -120,6 +122,7 @@ func init() {
 	addExample(api.FullAPIVersion1)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
+	addExample(graphsync.RequestID(4))
 	addExample(datatransfer.TransferID(3))
 	addExample(datatransfer.Ongoing)
 	addExample(storeIDExample)
@@ -250,10 +253,18 @@ func init() {
 	addExample(map[abi.SectorNumber]string{
 		123: "can't acquire read lock",
 	})
+	addExample(json.RawMessage(`"json raw message"`))
 	addExample(map[api.SectorState]int{
 		api.SectorState(sealing.Proving): 120,
 	})
 	addExample([]abi.SectorNumber{123, 124})
+	addExample([]storiface.SectorLock{
+		{
+			Sector: abi.SectorID{Number: 123, Miner: 1000},
+			Write:  [storiface.FileTypes]uint{0, 0, 1},
+			Read:   [storiface.FileTypes]uint{2, 3, 0},
+		},
+	})
 
 	// worker specific
 	addExample(storiface.AcquireMove)
@@ -339,7 +350,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 	switch t.Kind() {
 	case reflect.Slice:
 		out := reflect.New(t).Elem()
-		reflect.Append(out, reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
+		out = reflect.Append(out, reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
 		return out.Interface()
 	case reflect.Chan:
 		return ExampleValue(method, t.Elem(), nil)

@@ -59,6 +59,8 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 
 				return ctx.Send(SectorAddPiece{})
 			},
+			number:   sector.SectorNumber,
+			ccUpdate: sector.CCUpdate,
 		}
 	} else {
 		// make sure we're only accounting for pieces which were correctly added
@@ -329,6 +331,17 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 	return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
 }
 
+func (m *Sealing) MatchPendingPiecesToOpenSectors(ctx context.Context) error {
+	sp, err := m.currentSealProof(ctx)
+	if err != nil {
+		return xerrors.Errorf("failed to get current seal proof: %w", err)
+	}
+	log.Debug("pieces to sector matching waiting for lock")
+	m.inputLk.Lock()
+	defer m.inputLk.Unlock()
+	return m.updateInput(ctx, sp)
+}
+
 // called with m.inputLk
 func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) error {
 	ssize, err := sp.SectorSize()
@@ -356,8 +369,33 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 
 		toAssign[proposalCid] = struct{}{}
 
+		memo := make(map[abi.SectorNumber]abi.ChainEpoch)
+		expF := func(sn abi.SectorNumber) (abi.ChainEpoch, error) {
+			if exp, ok := memo[sn]; ok {
+				return exp, nil
+			}
+			onChainInfo, err := m.Api.StateSectorGetInfo(ctx, m.maddr, sn, TipSetToken{})
+			if err != nil {
+				return 0, err
+			}
+			memo[sn] = onChainInfo.Expiration
+			return onChainInfo.Expiration, nil
+		}
+
 		for id, sector := range m.openSectors {
 			avail := abi.PaddedPieceSize(ssize).Unpadded() - sector.used
+			// check that sector lifetime is long enough to fit deal using latest expiration from on chain
+
+			ok, err := sector.dealFitsInLifetime(piece.deal.DealProposal.EndEpoch, expF)
+			if err != nil {
+				log.Errorf("failed to check expiration for cc Update sector %d", sector.number)
+				continue
+			}
+			if !ok {
+				exp, _ := expF(sector.number)
+				log.Infof("CC update sector %d cannot fit deal, expiration %d before deal end epoch %d", id, exp, piece.deal.DealProposal.EndEpoch)
+				continue
+			}
 
 			if piece.size <= avail { // (note: if we have enough space for the piece, we also have enough space for inter-piece padding)
 				matches = append(matches, match{
@@ -416,6 +454,7 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 	}
 
 	if len(toAssign) > 0 {
+		log.Errorf("we are trying to create a new sector with open sectors %v", m.openSectors)
 		if err := m.tryCreateDealSector(ctx, sp); err != nil {
 			log.Errorw("Failed to create a new sector for deals", "error", err)
 		}

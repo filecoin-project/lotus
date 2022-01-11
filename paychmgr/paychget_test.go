@@ -87,7 +87,7 @@ func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should have no channels yet (message sent but channel not created)
-	cis, err := mgr.ListChannels()
+	cis, err := mgr.ListChannels(ctx)
 	require.NoError(t, err)
 	require.Len(t, cis, 0)
 
@@ -112,7 +112,7 @@ func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
 		require.NotEqual(t, createMsgCid, addFundsMsgCid)
 
 		// Should have one channel, whose address is the channel that was created
-		cis, err := mgr.ListChannels()
+		cis, err := mgr.ListChannels(ctx)
 		require.NoError(t, err)
 		require.Len(t, cis, 1)
 		require.Equal(t, ch, cis[0])
@@ -121,7 +121,7 @@ func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
 		// channel).
 		// PendingAmount should be amount sent in second GetPaych
 		// (second GetPaych triggered add funds, which has not yet been confirmed)
-		ci, err := mgr.GetChannelInfo(ch)
+		ci, err := mgr.GetChannelInfo(ctx, ch)
 		require.NoError(t, err)
 		require.EqualValues(t, 10, ci.Amount.Int64())
 		require.EqualValues(t, 5, ci.PendingAmount.Int64())
@@ -135,13 +135,13 @@ func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
 		require.NoError(t, err)
 
 		// Should still have one channel
-		cis, err = mgr.ListChannels()
+		cis, err = mgr.ListChannels(ctx)
 		require.NoError(t, err)
 		require.Len(t, cis, 1)
 		require.Equal(t, ch, cis[0])
 
 		// Channel amount should include last amount sent to GetPaych
-		ci, err = mgr.GetChannelInfo(ch)
+		ci, err = mgr.GetChannelInfo(ctx, ch)
 		require.NoError(t, err)
 		require.EqualValues(t, 15, ci.Amount.Int64())
 		require.EqualValues(t, 0, ci.PendingAmount.Int64())
@@ -203,12 +203,12 @@ func TestPaychGetCreateChannelWithErrorThenCreateAgain(t *testing.T) {
 		require.NoError(t, err)
 
 		// Should have one channel, whose address is the channel that was created
-		cis, err := mgr.ListChannels()
+		cis, err := mgr.ListChannels(ctx)
 		require.NoError(t, err)
 		require.Len(t, cis, 1)
 		require.Equal(t, ch, cis[0])
 
-		ci, err := mgr.GetChannelInfo(ch)
+		ci, err := mgr.GetChannelInfo(ctx, ch)
 		require.NoError(t, err)
 		require.Equal(t, amt2, ci.Amount)
 	}()
@@ -259,12 +259,12 @@ func TestPaychGetRecoverAfterError(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should have one channel, whose address is the channel that was created
-	cis, err := mgr.ListChannels()
+	cis, err := mgr.ListChannels(ctx)
 	require.NoError(t, err)
 	require.Len(t, cis, 1)
 	require.Equal(t, ch, cis[0])
 
-	ci, err := mgr.GetChannelInfo(ch)
+	ci, err := mgr.GetChannelInfo(ctx, ch)
 	require.NoError(t, err)
 	require.Equal(t, amt2, ci.Amount)
 	require.EqualValues(t, 0, ci.PendingAmount.Int64())
@@ -311,12 +311,12 @@ func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
 	require.Error(t, err)
 
 	// Should have one channel, whose address is the channel that was created
-	cis, err := mgr.ListChannels()
+	cis, err := mgr.ListChannels(ctx)
 	require.NoError(t, err)
 	require.Len(t, cis, 1)
 	require.Equal(t, ch, cis[0])
 
-	ci, err := mgr.GetChannelInfo(ch)
+	ci, err := mgr.GetChannelInfo(ctx, ch)
 	require.NoError(t, err)
 	require.Equal(t, amt, ci.Amount)
 	require.EqualValues(t, 0, ci.PendingAmount.Int64())
@@ -338,13 +338,13 @@ func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should have one channel, whose address is the channel that was created
-	cis, err = mgr.ListChannels()
+	cis, err = mgr.ListChannels(ctx)
 	require.NoError(t, err)
 	require.Len(t, cis, 1)
 	require.Equal(t, ch, cis[0])
 
 	// Amount should include amount for successful add funds msg
-	ci, err = mgr.GetChannelInfo(ch)
+	ci, err = mgr.GetChannelInfo(ctx, ch)
 	require.NoError(t, err)
 	require.Equal(t, amt.Int64()+amt3.Int64(), ci.Amount.Int64())
 	require.EqualValues(t, 0, ci.PendingAmount.Int64())
@@ -384,7 +384,7 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should have no channels yet (message sent but channel not created)
-	cis, err := mgr2.ListChannels()
+	cis, err := mgr2.ListChannels(ctx)
 	require.NoError(t, err)
 	require.Len(t, cis, 0)
 
@@ -409,7 +409,7 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 		require.NotEqual(t, createMsgCid, addFundsMsgCid)
 
 		// Should have one channel, whose address is the channel that was created
-		cis, err := mgr2.ListChannels()
+		cis, err := mgr2.ListChannels(ctx)
 		require.NoError(t, err)
 		require.Len(t, cis, 1)
 		require.Equal(t, ch, cis[0])
@@ -418,7 +418,7 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 		// channel).
 		// PendingAmount should be amount sent in second GetPaych
 		// (second GetPaych triggered add funds, which has not yet been confirmed)
-		ci, err := mgr2.GetChannelInfo(ch)
+		ci, err := mgr2.GetChannelInfo(ctx, ch)
 		require.NoError(t, err)
 		require.EqualValues(t, 10, ci.Amount.Int64())
 		require.EqualValues(t, 5, ci.PendingAmount.Int64())
@@ -481,13 +481,13 @@ func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should have one channel, whose address is the channel that was created
-	cis, err := mgr2.ListChannels()
+	cis, err := mgr2.ListChannels(ctx)
 	require.NoError(t, err)
 	require.Len(t, cis, 1)
 	require.Equal(t, ch, cis[0])
 
 	// Amount should include amount for successful add funds msg
-	ci, err := mgr2.GetChannelInfo(ch)
+	ci, err := mgr2.GetChannelInfo(ctx, ch)
 	require.NoError(t, err)
 	require.Equal(t, amt.Int64()+amt2.Int64(), ci.Amount.Int64())
 	require.EqualValues(t, 0, ci.PendingAmount.Int64())
@@ -917,7 +917,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// No channel created yet so available funds should be all zeroes
-	av, err := mgr.AvailableFundsByFromTo(from, to)
+	av, err := mgr.AvailableFundsByFromTo(ctx, from, to)
 	require.NoError(t, err)
 	require.Nil(t, av.Channel)
 	require.Nil(t, av.PendingWaitSentinel)
@@ -932,7 +932,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Available funds should reflect create channel message sent
-	av, err = mgr.AvailableFundsByFromTo(from, to)
+	av, err = mgr.AvailableFundsByFromTo(ctx, from, to)
 	require.NoError(t, err)
 	require.Nil(t, av.Channel)
 	require.EqualValues(t, 0, av.ConfirmedAmt.Int64())
@@ -961,7 +961,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	waitForQueueSize(t, mgr, from, to, 1)
 
 	// Available funds should now include queued funds
-	av, err = mgr.AvailableFundsByFromTo(from, to)
+	av, err = mgr.AvailableFundsByFromTo(ctx, from, to)
 	require.NoError(t, err)
 	require.Nil(t, av.Channel)
 	require.NotNil(t, av.PendingWaitSentinel)
@@ -996,7 +996,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 
 	// Available funds should now include the channel and also a wait sentinel
 	// for the add funds message
-	av, err = mgr.AvailableFunds(ch)
+	av, err = mgr.AvailableFunds(ctx, ch)
 	require.NoError(t, err)
 	require.NotNil(t, av.Channel)
 	require.NotNil(t, av.PendingWaitSentinel)
@@ -1018,7 +1018,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Available funds should no longer have a wait sentinel
-	av, err = mgr.AvailableFunds(ch)
+	av, err = mgr.AvailableFunds(ctx, ch)
 	require.NoError(t, err)
 	require.NotNil(t, av.Channel)
 	require.Nil(t, av.PendingWaitSentinel)
@@ -1039,7 +1039,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	_, err = mgr.AddVoucherOutbound(ctx, ch, voucher, nil, types.NewInt(0))
 	require.NoError(t, err)
 
-	av, err = mgr.AvailableFunds(ch)
+	av, err = mgr.AvailableFunds(ctx, ch)
 	require.NoError(t, err)
 	require.NotNil(t, av.Channel)
 	require.Nil(t, av.PendingWaitSentinel)

@@ -900,6 +900,7 @@ type QueryOffer struct {
 	Size                    uint64
 	MinPrice                types.BigInt
 	UnsealPrice             types.BigInt
+	PricePerByte            abi.TokenAmount
 	PaymentInterval         uint64
 	PaymentIntervalIncrease uint64
 	Miner                   address.Address
@@ -1083,7 +1084,7 @@ type CirculatingSupply struct {
 type MiningBaseInfo struct {
 	MinerPower        types.BigInt
 	NetworkPower      types.BigInt
-	Sectors           []builtin.SectorInfo
+	Sectors           []builtin.ExtendedSectorInfo
 	WorkerKey         address.Address
 	SectorSize        abi.SectorSize
 	PrevBeaconEntry   types.BeaconEntry

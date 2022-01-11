@@ -92,7 +92,7 @@ func newManager(pchstore *Store, pchapi managerAPI) (*Manager, error) {
 
 // Start restarts tracking of any messages that were sent to chain.
 func (pm *Manager) Start() error {
-	return pm.restartPending()
+	return pm.restartPending(pm.ctx)
 }
 
 // Stop shuts down any processes used by the manager
@@ -110,27 +110,27 @@ func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt t
 	return chanAccessor.getPaych(ctx, amt)
 }
 
-func (pm *Manager) AvailableFunds(ch address.Address) (*api.ChannelAvailableFunds, error) {
-	ca, err := pm.accessorByAddress(ch)
+func (pm *Manager) AvailableFunds(ctx context.Context, ch address.Address) (*api.ChannelAvailableFunds, error) {
+	ca, err := pm.accessorByAddress(ctx, ch)
 	if err != nil {
 		return nil, err
 	}
 
-	ci, err := ca.getChannelInfo(ch)
+	ci, err := ca.getChannelInfo(ctx, ch)
 	if err != nil {
 		return nil, err
 	}
 
-	return ca.availableFunds(ci.ChannelID)
+	return ca.availableFunds(ctx, ci.ChannelID)
 }
 
-func (pm *Manager) AvailableFundsByFromTo(from address.Address, to address.Address) (*api.ChannelAvailableFunds, error) {
+func (pm *Manager) AvailableFundsByFromTo(ctx context.Context, from address.Address, to address.Address) (*api.ChannelAvailableFunds, error) {
 	ca, err := pm.accessorByFromTo(from, to)
 	if err != nil {
 		return nil, err
 	}
 
-	ci, err := ca.outboundActiveByFromTo(from, to)
+	ci, err := ca.outboundActiveByFromTo(ctx, from, to)
 	if err == ErrChannelNotTracked {
 		// If there is no active channel between from / to we still want to
 		// return an empty ChannelAvailableFunds, so that clients can check
@@ -151,7 +151,7 @@ func (pm *Manager) AvailableFundsByFromTo(from address.Address, to address.Addre
 		return nil, err
 	}
 
-	return ca.availableFunds(ci.ChannelID)
+	return ca.availableFunds(ctx, ci.ChannelID)
 }
 
 // GetPaychWaitReady waits until the create channel / add funds message with the
@@ -160,7 +160,7 @@ func (pm *Manager) AvailableFundsByFromTo(from address.Address, to address.Addre
 func (pm *Manager) GetPaychWaitReady(ctx context.Context, mcid cid.Cid) (address.Address, error) {
 	// Find the channel associated with the message CID
 	pm.lk.Lock()
-	ci, err := pm.store.ByMessageCid(mcid)
+	ci, err := pm.store.ByMessageCid(ctx, mcid)
 	pm.lk.Unlock()
 
 	if err != nil {
@@ -178,25 +178,25 @@ func (pm *Manager) GetPaychWaitReady(ctx context.Context, mcid cid.Cid) (address
 	return chanAccessor.getPaychWaitReady(ctx, mcid)
 }
 
-func (pm *Manager) ListChannels() ([]address.Address, error) {
+func (pm *Manager) ListChannels(ctx context.Context) ([]address.Address, error) {
 	// Need to take an exclusive lock here so that channel operations can't run
 	// in parallel (see channelLock)
 	pm.lk.Lock()
 	defer pm.lk.Unlock()
 
-	return pm.store.ListChannels()
+	return pm.store.ListChannels(ctx)
 }
 
-func (pm *Manager) GetChannelInfo(addr address.Address) (*ChannelInfo, error) {
-	ca, err := pm.accessorByAddress(addr)
+func (pm *Manager) GetChannelInfo(ctx context.Context, addr address.Address) (*ChannelInfo, error) {
+	ca, err := pm.accessorByAddress(ctx, addr)
 	if err != nil {
 		return nil, err
 	}
-	return ca.getChannelInfo(addr)
+	return ca.getChannelInfo(ctx, addr)
 }
 
 func (pm *Manager) CreateVoucher(ctx context.Context, ch address.Address, voucher paych.SignedVoucher) (*api.VoucherCreateResult, error) {
-	ca, err := pm.accessorByAddress(ch)
+	ca, err := pm.accessorByAddress(ctx, ch)
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func (pm *Manager) CheckVoucherSpendable(ctx context.Context, ch address.Address
 	if len(proof) > 0 {
 		return false, errProofNotSupported
 	}
-	ca, err := pm.accessorByAddress(ch)
+	ca, err := pm.accessorByAddress(ctx, ch)
 	if err != nil {
 		return false, err
 	}
@@ -237,7 +237,7 @@ func (pm *Manager) AddVoucherOutbound(ctx context.Context, ch address.Address, s
 	if len(proof) > 0 {
 		return types.NewInt(0), errProofNotSupported
 	}
-	ca, err := pm.accessorByAddress(ch)
+	ca, err := pm.accessorByAddress(ctx, ch)
 	if err != nil {
 		return types.NewInt(0), err
 	}
@@ -283,7 +283,7 @@ func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) 
 	defer pm.lk.Unlock()
 
 	// Check if channel is in store
-	ci, err := pm.store.ByAddress(ch)
+	ci, err := pm.store.ByAddress(ctx, ch)
 	if err == nil {
 		// Channel is in store, so it's already being tracked
 		return ci, nil
@@ -316,7 +316,7 @@ func (pm *Manager) trackInboundChannel(ctx context.Context, ch address.Address) 
 	}
 
 	// Save channel to store
-	return pm.store.TrackChannel(stateCi)
+	return pm.store.TrackChannel(ctx, stateCi)
 }
 
 // TODO: secret vs proof doesn't make sense, there is only one, not two
@@ -324,23 +324,23 @@ func (pm *Manager) SubmitVoucher(ctx context.Context, ch address.Address, sv *pa
 	if len(proof) > 0 {
 		return cid.Undef, errProofNotSupported
 	}
-	ca, err := pm.accessorByAddress(ch)
+	ca, err := pm.accessorByAddress(ctx, ch)
 	if err != nil {
 		return cid.Undef, err
 	}
 	return ca.submitVoucher(ctx, ch, sv, secret)
 }
 
-func (pm *Manager) AllocateLane(ch address.Address) (uint64, error) {
-	ca, err := pm.accessorByAddress(ch)
+func (pm *Manager) AllocateLane(ctx context.Context, ch address.Address) (uint64, error) {
+	ca, err := pm.accessorByAddress(ctx, ch)
 	if err != nil {
 		return 0, err
 	}
-	return ca.allocateLane(ch)
+	return ca.allocateLane(ctx, ch)
 }
 
 func (pm *Manager) ListVouchers(ctx context.Context, ch address.Address) ([]*VoucherInfo, error) {
-	ca, err := pm.accessorByAddress(ch)
+	ca, err := pm.accessorByAddress(ctx, ch)
 	if err != nil {
 		return nil, err
 	}
@@ -348,7 +348,7 @@ func (pm *Manager) ListVouchers(ctx context.Context, ch address.Address) ([]*Vou
 }
 
 func (pm *Manager) Settle(ctx context.Context, addr address.Address) (cid.Cid, error) {
-	ca, err := pm.accessorByAddress(addr)
+	ca, err := pm.accessorByAddress(ctx, addr)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -356,7 +356,7 @@ func (pm *Manager) Settle(ctx context.Context, addr address.Address) (cid.Cid, e
 }
 
 func (pm *Manager) Collect(ctx context.Context, addr address.Address) (cid.Cid, error) {
-	ca, err := pm.accessorByAddress(addr)
+	ca, err := pm.accessorByAddress(ctx, addr)
 	if err != nil {
 		return cid.Undef, err
 	}
