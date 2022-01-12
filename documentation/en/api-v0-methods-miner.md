@@ -528,7 +528,16 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Key": "baga6ea4seaqecmtz7iak33dsfshi627abz4i4665dfuzr3qfs4bmad6dx3iigdq",
+    "State": "ShardStateAvailable",
+    "Error": "\u003cerror\u003e"
+  }
+]
+```
 
 ### DagstorePieceIndexSize
 DagstorePieceIndexSize returns the size of the piece index.

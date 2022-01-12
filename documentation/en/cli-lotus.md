@@ -561,37 +561,36 @@ CATEGORY:
 
 DESCRIPTION:
    Retrieve data from the Filecoin network.
-
-The retrieve command will attempt to find a provider make a retrieval deal with
-them. In case a provider can't be found, it can be specified with the --provider
-flag.
-
-By default the data will be interpreted as DAG-PB UnixFSv1 File. Alternatively
-a CAR file containing the raw IPLD graph can be exported by setting the --car
-flag.
-
-Partial Retrieval:
-
-The --data-selector flag can be used to specify a sub-graph to fetch. The
-selector can be specified as either IPLD datamodel text-path selector, or IPLD
-json selector.
-
-In case of unixfs retrieval, the selector must point at a single root node, and
-match the entire graph under that node.
-
-In case of CAR retrieval, the selector must have one common "sub-root" node.
-
-Examples:
-
-- Retrieve a file by CID
-  $ lotus client retrieve Qm... my-file.txt
-
-- Retrieve a file by CID from f0123
-  $ lotus client retrieve --provider f0123 Qm... my-file.txt
-
-- Retrieve a first file from a specified directory
-  $ lotus client retrieve --data-selector /Links/0/Hash Qm... my-file.txt
-
+   
+   The retrieve command will attempt to find a provider make a retrieval deal with
+   them. In case a provider can't be found, it can be specified with the --provider
+   flag.
+   
+   By default the data will be interpreted as DAG-PB UnixFSv1 File. Alternatively
+   a CAR file containing the raw IPLD graph can be exported by setting the --car
+   flag.
+   
+   Partial Retrieval:
+   
+   The --data-selector flag can be used to specify a sub-graph to fetch. The
+   selector can be specified as either IPLD datamodel text-path selector, or IPLD
+   json selector.
+   
+   In case of unixfs retrieval, the selector must point at a single root node, and
+   match the entire graph under that node.
+   
+   In case of CAR retrieval, the selector must have one common "sub-root" node.
+   
+   Examples:
+   
+   - Retrieve a file by CID
+     $ lotus client retrieve Qm... my-file.txt
+   
+   - Retrieve a file by CID from f0123
+     $ lotus client retrieve --provider f0123 Qm... my-file.txt
+   
+   - Retrieve a first file from a specified directory
+     $ lotus client retrieve --data-selector /Links/0/Hash Qm... my-file.txt
 
 OPTIONS:
    --car                                                   Export to a car file instead of a regular file (default: false)
