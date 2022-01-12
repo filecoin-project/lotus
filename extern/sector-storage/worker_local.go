@@ -582,9 +582,13 @@ func (l *LocalWorker) memInfo() (memPhysical, memUsed, memSwap, memSwapUsed uint
 }
 
 func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
-	hostname, err := os.Hostname() // TODO: allow overriding from config
-	if err != nil {
-		panic(err)
+	hostname, ok := os.LookupEnv("LOTUS_WORKER_HOSTNAME")
+	if !ok {
+		var err error
+		hostname, err = os.Hostname()
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	gpus, err := ffi.GetGPUDevices()
