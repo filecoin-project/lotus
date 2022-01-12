@@ -128,6 +128,15 @@ var (
 	StorageLimitUsedBytes   = stats.Int64("storage/path_limit_used_bytes", "used optional storage limit bytes", stats.UnitBytes)
 	StorageLimitMaxBytes    = stats.Int64("storage/path_limit_max_bytes", "optional storage limit", stats.UnitBytes)
 
+	DagStorePRInitCount        = stats.Int64("dagstore/pr_init_count", "PieceReader init count", stats.UnitDimensionless)
+	DagStorePRBytesRequested   = stats.Int64("dagstore/pr_requested_bytes", "PieceReader requested bytes", stats.UnitBytes)
+	DagStorePRBytesDiscarded   = stats.Int64("dagstore/pr_discarded_bytes", "PieceReader discarded bytes", stats.UnitBytes)
+	DagStorePRDiscardCount     = stats.Int64("dagstore/pr_discard_count", "PieceReader discard count", stats.UnitDimensionless)
+	DagStorePRSeekBackCount    = stats.Int64("dagstore/pr_seek_back_count", "PieceReader seek back count", stats.UnitDimensionless)
+	DagStorePRSeekForwardCount = stats.Int64("dagstore/pr_seek_forward_count", "PieceReader seek forward count", stats.UnitDimensionless)
+	DagStorePRSeekBackBytes    = stats.Int64("dagstore/pr_seek_back_bytes", "PieceReader seek back bytes", stats.UnitBytes)
+	DagStorePRSeekForwardBytes = stats.Int64("dagstore/pr_seek_forward_bytes", "PieceReader seek forward bytes", stats.UnitBytes)
+
 	// splitstore
 	SplitstoreMiss                  = stats.Int64("splitstore/miss", "Number of misses in hotstre access", stats.UnitDimensionless)
 	SplitstoreCompactionTimeSeconds = stats.Float64("splitstore/compaction_time", "Compaction time in seconds", stats.UnitSeconds)
@@ -383,6 +392,39 @@ var (
 		TagKeys:     []tag.Key{StorageID},
 	}
 
+	DagStorePRInitCountView = &view.View{
+		Measure:     DagStorePRInitCount,
+		Aggregation: view.Count(),
+	}
+	DagStorePRBytesRequestedView = &view.View{
+		Measure:     DagStorePRBytesRequested,
+		Aggregation: view.Sum(),
+	}
+	DagStorePRBytesDiscardedView = &view.View{
+		Measure:     DagStorePRBytesDiscarded,
+		Aggregation: view.Sum(),
+	}
+	DagStorePRDiscardCountView = &view.View{
+		Measure:     DagStorePRDiscardCount,
+		Aggregation: view.Count(),
+	}
+	DagStorePRSeekBackCountView = &view.View{
+		Measure:     DagStorePRSeekBackCount,
+		Aggregation: view.Count(),
+	}
+	DagStorePRSeekForwardCountView = &view.View{
+		Measure:     DagStorePRSeekForwardCount,
+		Aggregation: view.Count(),
+	}
+	DagStorePRSeekBackBytesView = &view.View{
+		Measure:     DagStorePRSeekBackBytes,
+		Aggregation: view.Sum(),
+	}
+	DagStorePRSeekForwardBytesView = &view.View{
+		Measure:     DagStorePRSeekForwardBytes,
+		Aggregation: view.Sum(),
+	}
+
 	// splitstore
 	SplitstoreMissView = &view.View{
 		Measure:     SplitstoreMiss,
@@ -539,6 +581,14 @@ var MinerNodeViews = append([]*view.View{
 	StorageReservedBytesView,
 	StorageLimitUsedBytesView,
 	StorageLimitMaxBytesView,
+	DagStorePRInitCountView,
+	DagStorePRBytesRequestedView,
+	DagStorePRBytesDiscardedView,
+	DagStorePRDiscardCountView,
+	DagStorePRSeekBackCountView,
+	DagStorePRSeekForwardCountView,
+	DagStorePRSeekBackBytesView,
+	DagStorePRSeekForwardBytesView,
 }, DefaultViews...)
 
 // SinceInMilliseconds returns the duration of time since the provide time as a float64.

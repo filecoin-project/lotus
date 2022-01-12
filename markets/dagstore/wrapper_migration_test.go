@@ -2,6 +2,7 @@ package dagstore
 
 import (
 	"context"
+	"io"
 	"testing"
 
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
@@ -9,8 +10,11 @@ import (
 	"github.com/filecoin-project/dagstore"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/dagstore"
+	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/testnodes"
 	tut "github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -95,6 +99,8 @@ func TestShardRegistration(t *testing.T) {
 	cfg := config.DefaultStorageMiner().DAGStore
 	cfg.RootDir = t.TempDir()
 
+	mapi := NewMinerAPI(ps, &wrappedSA{sa}, 10)
+	dagst, w, err := NewDAGStore(cfg, mapi)
 	h, err := mocknet.New(ctx).GenPeer()
 	require.NoError(t, err)
 
@@ -124,3 +130,25 @@ func TestShardRegistration(t *testing.T) {
 
 	// ps.VerifyExpectations(t)
 }
+
+type wrappedSA struct {
+	retrievalmarket.SectorAccessor
+}
+
+func (w *wrappedSA) UnsealSectorAt(ctx context.Context, sectorID abi.SectorNumber, pieceOffset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (mount.Reader, error) {
+	r, err := w.UnsealSector(ctx, sectorID, pieceOffset, length)
+	if err != nil {
+		return nil, err
+	}
+	return struct {
+		io.ReadCloser
+		io.Seeker
+		io.ReaderAt
+	}{
+		ReadCloser: r,
+		Seeker:     nil,
+		ReaderAt:   nil,
+	}, err
+}
+
+var _ SectorAccessor = &wrappedSA{}

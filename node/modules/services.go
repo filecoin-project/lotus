@@ -228,8 +228,8 @@ func BuiltinDrandConfig() dtypes.DrandSchedule {
 	return build.DrandConfigSchedule()
 }
 
-func RandomSchedule(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Schedule, error) {
-	gen, err := p.Cs.GetGenesis()
+func RandomSchedule(lc fx.Lifecycle, mctx helpers.MetricsCtx, p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Schedule, error) {
+	gen, err := p.Cs.GetGenesis(helpers.LifecycleCtx(mctx, lc))
 	if err != nil {
 		return nil, err
 	}

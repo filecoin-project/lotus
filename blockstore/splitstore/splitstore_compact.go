@@ -99,6 +99,12 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 		return nil
 	}
 
+	if s.isNearUpgrade(epoch) {
+		// we are near an upgrade epoch, suppress compaction
+		atomic.StoreInt32(&s.compacting, 0)
+		return nil
+	}
+
 	if epoch-s.baseEpoch > CompactionThreshold {
 		// it's time to compact -- prepare the transaction and go!
 		s.beginTxnProtect()
@@ -119,6 +125,16 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	}
 
 	return nil
+}
+
+func (s *SplitStore) isNearUpgrade(epoch abi.ChainEpoch) bool {
+	for _, upgrade := range s.upgrades {
+		if epoch >= upgrade.start && epoch <= upgrade.end {
+			return true
+		}
+	}
+
+	return false
 }
 
 // transactionally protect incoming tipsets
@@ -561,13 +577,13 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		return xerrors.Errorf("error saving base epoch: %w", err)
 	}
 
-	err = s.ds.Put(markSetSizeKey, int64ToBytes(s.markSetSize))
+	err = s.ds.Put(s.ctx, markSetSizeKey, int64ToBytes(s.markSetSize))
 	if err != nil {
 		return xerrors.Errorf("error saving mark set size: %w", err)
 	}
 
 	s.compactionIndex++
-	err = s.ds.Put(compactionIndexKey, int64ToBytes(s.compactionIndex))
+	err = s.ds.Put(s.ctx, compactionIndexKey, int64ToBytes(s.compactionIndex))
 	if err != nil {
 		return xerrors.Errorf("error saving compaction index: %w", err)
 	}
@@ -819,10 +835,10 @@ func (s *SplitStore) view(c cid.Cid, cb func([]byte) error) error {
 		return cb(data)
 	}
 
-	err := s.hot.View(c, cb)
+	err := s.hot.View(s.ctx, c, cb)
 	switch err {
 	case bstore.ErrNotFound:
-		return s.cold.View(c, cb)
+		return s.cold.View(s.ctx, c, cb)
 
 	default:
 		return err
@@ -834,13 +850,13 @@ func (s *SplitStore) has(c cid.Cid) (bool, error) {
 		return true, nil
 	}
 
-	has, err := s.hot.Has(c)
+	has, err := s.hot.Has(s.ctx, c)
 
 	if has || err != nil {
 		return has, err
 	}
 
-	return s.cold.Has(c)
+	return s.cold.Has(s.ctx, c)
 }
 
 func (s *SplitStore) moveColdBlocks(cold []cid.Cid) error {
@@ -851,7 +867,7 @@ func (s *SplitStore) moveColdBlocks(cold []cid.Cid) error {
 			return err
 		}
 
-		blk, err := s.hot.Get(c)
+		blk, err := s.hot.Get(s.ctx, c)
 		if err != nil {
 			if err == bstore.ErrNotFound {
 				log.Warnf("hotstore missing block %s", c)
@@ -863,7 +879,7 @@ func (s *SplitStore) moveColdBlocks(cold []cid.Cid) error {
 
 		batch = append(batch, blk)
 		if len(batch) == batchSize {
-			err = s.cold.PutMany(batch)
+			err = s.cold.PutMany(s.ctx, batch)
 			if err != nil {
 				return xerrors.Errorf("error putting batch to coldstore: %w", err)
 			}
@@ -872,7 +888,7 @@ func (s *SplitStore) moveColdBlocks(cold []cid.Cid) error {
 	}
 
 	if len(batch) > 0 {
-		err := s.cold.PutMany(batch)
+		err := s.cold.PutMany(s.ctx, batch)
 		if err != nil {
 			return xerrors.Errorf("error putting batch to coldstore: %w", err)
 		}
@@ -1042,7 +1058,7 @@ func (s *SplitStore) purge(cids []cid.Cid, markSet MarkSetVisitor) error {
 				deadCids = append(deadCids, c)
 			}
 
-			err := s.hot.DeleteMany(deadCids)
+			err := s.hot.DeleteMany(s.ctx, deadCids)
 			if err != nil {
 				return xerrors.Errorf("error purging cold objects: %w", err)
 			}

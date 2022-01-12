@@ -101,9 +101,14 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode *TestFullNode)
 		time.Sleep(time.Second)
 	}
 
+	// client retrieval-ask --size=1 <miner addr> <data CID>
+	out = clientCLI.RunCmd("client", "retrieval-ask", "--size=1", minerAddr.String(), dataCid.String())
+	require.Regexp(t, regexp.MustCompile("Ask:"), out)
+	fmt.Println("retrieval ask:\n", out)
+
 	// Retrieve the first file from the Miner
 	// client retrieve <cid> <file path>
-	tmpdir, err := ioutil.TempDir(os.TempDir(), "test-cli-Client")
+	tmpdir, err := ioutil.TempDir(os.TempDir(), "test-cli-client")
 	require.NoError(t, err)
 	path := filepath.Join(tmpdir, "outfile.dat")
 

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -104,8 +105,9 @@ func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealPa
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
+	fmt.Printf("WAIT DEAL SEALEDS START\n")
 	dh.WaitDealSealed(ctx, deal, false, false, nil)
-
+	fmt.Printf("WAIT DEAL SEALEDS END\n")
 	return deal, res, path
 }
 
@@ -176,6 +178,7 @@ loop:
 			cb()
 		}
 	}
+	fmt.Printf("WAIT DEAL SEALED LOOP BROKEN\n")
 }
 
 // WaitDealSealedQuiet waits until the deal is sealed, without logging anything.
@@ -290,12 +293,11 @@ func (dh *DealHarness) WaitDealPublished(ctx context.Context, deal *cid.Cid) {
 func (dh *DealHarness) StartSealingWaiting(ctx context.Context) {
 	snums, err := dh.main.SectorsList(ctx)
 	require.NoError(dh.t, err)
-
 	for _, snum := range snums {
 		si, err := dh.main.SectorsStatus(ctx, snum, false)
 		require.NoError(dh.t, err)
 
-		dh.t.Logf("Sector state: %s", si.State)
+		dh.t.Logf("Sector state <%d>-[%d]:, %s", snum, si.SealProof, si.State)
 		if si.State == api.SectorState(sealing.WaitDeals) {
 			require.NoError(dh.t, dh.main.SectorStartSealing(ctx, snum))
 		}
@@ -325,6 +327,45 @@ func (dh *DealHarness) PerformRetrievalForOffer(ctx context.Context, carExport b
 	caddr, err := dh.client.WalletDefaultAddress(ctx)
 	require.NoError(dh.t, err)
 
+	updatesCtx, cancel := context.WithCancel(ctx)
+	updates, err := dh.client.ClientGetRetrievalUpdates(updatesCtx)
+	require.NoError(dh.t, err)
+
+	retrievalRes, err := dh.client.ClientRetrieve(ctx, offers[0].Order(caddr))
+	require.NoError(dh.t, err)
+consumeEvents:
+	for {
+		var evt api.RetrievalInfo
+		select {
+		case <-updatesCtx.Done():
+			dh.t.Fatal("Retrieval Timed Out")
+		case evt = <-updates:
+			if evt.ID != retrievalRes.DealID {
+				continue
+			}
+		}
+		switch evt.Status {
+		case retrievalmarket.DealStatusCompleted:
+			break consumeEvents
+		case retrievalmarket.DealStatusRejected:
+			dh.t.Fatalf("Retrieval Proposal Rejected: %s", evt.Message)
+		case
+			retrievalmarket.DealStatusDealNotFound,
+			retrievalmarket.DealStatusErrored:
+			dh.t.Fatalf("Retrieval Error: %s", evt.Message)
+		}
+	}
+	cancel()
+
+	require.NoError(dh.t, dh.client.ClientExport(ctx,
+		api.ExportRef{
+			Root:   root,
+			DealID: retrievalRes.DealID,
+		},
+		api.FileRef{
+			Path:  carFile.Name(),
+			IsCAR: carExport,
+		}))
 	ref := &api.FileRef{
 		Path:  outputF.Name(),
 		IsCAR: carExport,
@@ -345,7 +386,7 @@ func (dh *DealHarness) PerformRetrievalForOffer(ctx context.Context, carExport b
 
 func (dh *DealHarness) ExtractFileFromCAR(ctx context.Context, file *os.File) (out *os.File) {
 	bserv := dstest.Bserv()
-	ch, err := car.LoadCar(bserv.Blockstore(), file)
+	ch, err := car.LoadCar(ctx, bserv.Blockstore(), file)
 	require.NoError(dh.t, err)
 
 	b, err := bserv.GetBlock(ctx, ch.Roots[0])

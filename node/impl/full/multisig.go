@@ -100,7 +100,7 @@ func (a *MsigAPI) MsigAddCancel(ctx context.Context, msig address.Address, src a
 		return nil, actErr
 	}
 
-	return a.MsigCancel(ctx, msig, txID, msig, big.Zero(), src, uint64(multisig.Methods.AddSigner), enc)
+	return a.MsigCancelTxnHash(ctx, msig, txID, msig, big.Zero(), src, uint64(multisig.Methods.AddSigner), enc)
 }
 
 func (a *MsigAPI) MsigSwapPropose(ctx context.Context, msig address.Address, src address.Address, oldAdd address.Address, newAdd address.Address) (*api.MessagePrototype, error) {
@@ -127,7 +127,7 @@ func (a *MsigAPI) MsigSwapCancel(ctx context.Context, msig address.Address, src 
 		return nil, actErr
 	}
 
-	return a.MsigCancel(ctx, msig, txID, msig, big.Zero(), src, uint64(multisig.Methods.SwapSigner), enc)
+	return a.MsigCancelTxnHash(ctx, msig, txID, msig, big.Zero(), src, uint64(multisig.Methods.SwapSigner), enc)
 }
 
 func (a *MsigAPI) MsigApprove(ctx context.Context, msig address.Address, txID uint64, src address.Address) (*api.MessagePrototype, error) {
@@ -138,7 +138,11 @@ func (a *MsigAPI) MsigApproveTxnHash(ctx context.Context, msig address.Address, 
 	return a.msigApproveOrCancelTxnHash(ctx, api.MsigApprove, msig, txID, proposer, to, amt, src, method, params)
 }
 
-func (a *MsigAPI) MsigCancel(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*api.MessagePrototype, error) {
+func (a *MsigAPI) MsigCancel(ctx context.Context, msig address.Address, txID uint64, src address.Address) (*api.MessagePrototype, error) {
+	return a.msigApproveOrCancelSimple(ctx, api.MsigCancel, msig, txID, src)
+}
+
+func (a *MsigAPI) MsigCancelTxnHash(ctx context.Context, msig address.Address, txID uint64, to address.Address, amt types.BigInt, src address.Address, method uint64, params []byte) (*api.MessagePrototype, error) {
 	return a.msigApproveOrCancelTxnHash(ctx, api.MsigCancel, msig, txID, src, to, amt, src, method, params)
 }
 

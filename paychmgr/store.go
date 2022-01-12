@@ -2,6 +2,7 @@ package paychmgr
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 
@@ -157,26 +158,26 @@ func (ci *ChannelInfo) wasVoucherSubmitted(sv *paych.SignedVoucher) (bool, error
 
 // TrackChannel stores a channel, returning an error if the channel was already
 // being tracked
-func (ps *Store) TrackChannel(ci *ChannelInfo) (*ChannelInfo, error) {
-	_, err := ps.ByAddress(*ci.Channel)
+func (ps *Store) TrackChannel(ctx context.Context, ci *ChannelInfo) (*ChannelInfo, error) {
+	_, err := ps.ByAddress(ctx, *ci.Channel)
 	switch err {
 	default:
 		return nil, err
 	case nil:
 		return nil, fmt.Errorf("already tracking channel: %s", ci.Channel)
 	case ErrChannelNotTracked:
-		err = ps.putChannelInfo(ci)
+		err = ps.putChannelInfo(ctx, ci)
 		if err != nil {
 			return nil, err
 		}
 
-		return ps.ByAddress(*ci.Channel)
+		return ps.ByAddress(ctx, *ci.Channel)
 	}
 }
 
 // ListChannels returns the addresses of all channels that have been created
-func (ps *Store) ListChannels() ([]address.Address, error) {
-	cis, err := ps.findChans(func(ci *ChannelInfo) bool {
+func (ps *Store) ListChannels(ctx context.Context) ([]address.Address, error) {
+	cis, err := ps.findChans(ctx, func(ci *ChannelInfo) bool {
 		return ci.Channel != nil
 	}, 0)
 	if err != nil {
@@ -193,8 +194,8 @@ func (ps *Store) ListChannels() ([]address.Address, error) {
 
 // findChan finds a single channel using the given filter.
 // If there isn't a channel that matches the filter, returns ErrChannelNotTracked
-func (ps *Store) findChan(filter func(ci *ChannelInfo) bool) (*ChannelInfo, error) {
-	cis, err := ps.findChans(filter, 1)
+func (ps *Store) findChan(ctx context.Context, filter func(ci *ChannelInfo) bool) (*ChannelInfo, error) {
+	cis, err := ps.findChans(ctx, filter, 1)
 	if err != nil {
 		return nil, err
 	}
@@ -208,8 +209,8 @@ func (ps *Store) findChan(filter func(ci *ChannelInfo) bool) (*ChannelInfo, erro
 
 // findChans loops over all channels, only including those that pass the filter.
 // max is the maximum number of channels to return. Set to zero to return unlimited channels.
-func (ps *Store) findChans(filter func(*ChannelInfo) bool, max int) ([]ChannelInfo, error) {
-	res, err := ps.ds.Query(dsq.Query{Prefix: dsKeyChannelInfo})
+func (ps *Store) findChans(ctx context.Context, filter func(*ChannelInfo) bool, max int) ([]ChannelInfo, error) {
+	res, err := ps.ds.Query(ctx, dsq.Query{Prefix: dsKeyChannelInfo})
 	if err != nil {
 		return nil, err
 	}
@@ -251,8 +252,8 @@ func (ps *Store) findChans(filter func(*ChannelInfo) bool, max int) ([]ChannelIn
 }
 
 // AllocateLane allocates a new lane for the given channel
-func (ps *Store) AllocateLane(ch address.Address) (uint64, error) {
-	ci, err := ps.ByAddress(ch)
+func (ps *Store) AllocateLane(ctx context.Context, ch address.Address) (uint64, error) {
+	ci, err := ps.ByAddress(ctx, ch)
 	if err != nil {
 		return 0, err
 	}
@@ -260,12 +261,12 @@ func (ps *Store) AllocateLane(ch address.Address) (uint64, error) {
 	out := ci.NextLane
 	ci.NextLane++
 
-	return out, ps.putChannelInfo(ci)
+	return out, ps.putChannelInfo(ctx, ci)
 }
 
 // VouchersForPaych gets the vouchers for the given channel
-func (ps *Store) VouchersForPaych(ch address.Address) ([]*VoucherInfo, error) {
-	ci, err := ps.ByAddress(ch)
+func (ps *Store) VouchersForPaych(ctx context.Context, ch address.Address) ([]*VoucherInfo, error) {
+	ci, err := ps.ByAddress(ctx, ch)
 	if err != nil {
 		return nil, err
 	}
@@ -273,17 +274,17 @@ func (ps *Store) VouchersForPaych(ch address.Address) ([]*VoucherInfo, error) {
 	return ci.Vouchers, nil
 }
 
-func (ps *Store) MarkVoucherSubmitted(ci *ChannelInfo, sv *paych.SignedVoucher) error {
+func (ps *Store) MarkVoucherSubmitted(ctx context.Context, ci *ChannelInfo, sv *paych.SignedVoucher) error {
 	err := ci.markVoucherSubmitted(sv)
 	if err != nil {
 		return err
 	}
-	return ps.putChannelInfo(ci)
+	return ps.putChannelInfo(ctx, ci)
 }
 
 // ByAddress gets the channel that matches the given address
-func (ps *Store) ByAddress(addr address.Address) (*ChannelInfo, error) {
-	return ps.findChan(func(ci *ChannelInfo) bool {
+func (ps *Store) ByAddress(ctx context.Context, addr address.Address) (*ChannelInfo, error) {
+	return ps.findChan(ctx, func(ci *ChannelInfo) bool {
 		return ci.Channel != nil && *ci.Channel == addr
 	})
 }
@@ -307,7 +308,7 @@ func dskeyForMsg(mcid cid.Cid) datastore.Key {
 }
 
 // SaveNewMessage is called when a message is sent
-func (ps *Store) SaveNewMessage(channelID string, mcid cid.Cid) error {
+func (ps *Store) SaveNewMessage(ctx context.Context, channelID string, mcid cid.Cid) error {
 	k := dskeyForMsg(mcid)
 
 	b, err := cborrpc.Dump(&MsgInfo{ChannelID: channelID, MsgCid: mcid})
@@ -315,12 +316,12 @@ func (ps *Store) SaveNewMessage(channelID string, mcid cid.Cid) error {
 		return err
 	}
 
-	return ps.ds.Put(k, b)
+	return ps.ds.Put(ctx, k, b)
 }
 
 // SaveMessageResult is called when the result of a message is received
-func (ps *Store) SaveMessageResult(mcid cid.Cid, msgErr error) error {
-	minfo, err := ps.GetMessage(mcid)
+func (ps *Store) SaveMessageResult(ctx context.Context, mcid cid.Cid, msgErr error) error {
+	minfo, err := ps.GetMessage(ctx, mcid)
 	if err != nil {
 		return err
 	}
@@ -336,17 +337,17 @@ func (ps *Store) SaveMessageResult(mcid cid.Cid, msgErr error) error {
 		return err
 	}
 
-	return ps.ds.Put(k, b)
+	return ps.ds.Put(ctx, k, b)
 }
 
 // ByMessageCid gets the channel associated with a message
-func (ps *Store) ByMessageCid(mcid cid.Cid) (*ChannelInfo, error) {
-	minfo, err := ps.GetMessage(mcid)
+func (ps *Store) ByMessageCid(ctx context.Context, mcid cid.Cid) (*ChannelInfo, error) {
+	minfo, err := ps.GetMessage(ctx, mcid)
 	if err != nil {
 		return nil, err
 	}
 
-	ci, err := ps.findChan(func(ci *ChannelInfo) bool {
+	ci, err := ps.findChan(ctx, func(ci *ChannelInfo) bool {
 		return ci.ChannelID == minfo.ChannelID
 	})
 	if err != nil {
@@ -357,10 +358,10 @@ func (ps *Store) ByMessageCid(mcid cid.Cid) (*ChannelInfo, error) {
 }
 
 // GetMessage gets the message info for a given message CID
-func (ps *Store) GetMessage(mcid cid.Cid) (*MsgInfo, error) {
+func (ps *Store) GetMessage(ctx context.Context, mcid cid.Cid) (*MsgInfo, error) {
 	k := dskeyForMsg(mcid)
 
-	val, err := ps.ds.Get(k)
+	val, err := ps.ds.Get(ctx, k)
 	if err != nil {
 		return nil, err
 	}
@@ -375,8 +376,8 @@ func (ps *Store) GetMessage(mcid cid.Cid) (*MsgInfo, error) {
 
 // OutboundActiveByFromTo looks for outbound channels that have not been
 // settled, with the given from / to addresses
-func (ps *Store) OutboundActiveByFromTo(from address.Address, to address.Address) (*ChannelInfo, error) {
-	return ps.findChan(func(ci *ChannelInfo) bool {
+func (ps *Store) OutboundActiveByFromTo(ctx context.Context, from address.Address, to address.Address) (*ChannelInfo, error) {
+	return ps.findChan(ctx, func(ci *ChannelInfo) bool {
 		if ci.Direction != DirOutbound {
 			return false
 		}
@@ -390,8 +391,8 @@ func (ps *Store) OutboundActiveByFromTo(from address.Address, to address.Address
 // WithPendingAddFunds is used on startup to find channels for which a
 // create channel or add funds message has been sent, but lotus shut down
 // before the response was received.
-func (ps *Store) WithPendingAddFunds() ([]ChannelInfo, error) {
-	return ps.findChans(func(ci *ChannelInfo) bool {
+func (ps *Store) WithPendingAddFunds(ctx context.Context) ([]ChannelInfo, error) {
+	return ps.findChans(ctx, func(ci *ChannelInfo) bool {
 		if ci.Direction != DirOutbound {
 			return false
 		}
@@ -400,10 +401,10 @@ func (ps *Store) WithPendingAddFunds() ([]ChannelInfo, error) {
 }
 
 // ByChannelID gets channel info by channel ID
-func (ps *Store) ByChannelID(channelID string) (*ChannelInfo, error) {
+func (ps *Store) ByChannelID(ctx context.Context, channelID string) (*ChannelInfo, error) {
 	var stored ChannelInfo
 
-	res, err := ps.ds.Get(dskeyForChannel(channelID))
+	res, err := ps.ds.Get(ctx, dskeyForChannel(channelID))
 	if err != nil {
 		if err == datastore.ErrNotFound {
 			return nil, ErrChannelNotTracked
@@ -415,7 +416,7 @@ func (ps *Store) ByChannelID(channelID string) (*ChannelInfo, error) {
 }
 
 // CreateChannel creates an outbound channel for the given from / to
-func (ps *Store) CreateChannel(from address.Address, to address.Address, createMsgCid cid.Cid, amt types.BigInt) (*ChannelInfo, error) {
+func (ps *Store) CreateChannel(ctx context.Context, from address.Address, to address.Address, createMsgCid cid.Cid, amt types.BigInt) (*ChannelInfo, error) {
 	ci := &ChannelInfo{
 		Direction:     DirOutbound,
 		NextLane:      0,
@@ -426,13 +427,13 @@ func (ps *Store) CreateChannel(from address.Address, to address.Address, createM
 	}
 
 	// Save the new channel
-	err := ps.putChannelInfo(ci)
+	err := ps.putChannelInfo(ctx, ci)
 	if err != nil {
 		return nil, err
 	}
 
 	// Save a reference to the create message
-	err = ps.SaveNewMessage(ci.ChannelID, createMsgCid)
+	err = ps.SaveNewMessage(ctx, ci.ChannelID, createMsgCid)
 	if err != nil {
 		return nil, err
 	}
@@ -441,8 +442,8 @@ func (ps *Store) CreateChannel(from address.Address, to address.Address, createM
 }
 
 // RemoveChannel removes the channel with the given channel ID
-func (ps *Store) RemoveChannel(channelID string) error {
-	return ps.ds.Delete(dskeyForChannel(channelID))
+func (ps *Store) RemoveChannel(ctx context.Context, channelID string) error {
+	return ps.ds.Delete(ctx, dskeyForChannel(channelID))
 }
 
 // The datastore key used to identify the channel info
@@ -451,7 +452,7 @@ func dskeyForChannel(channelID string) datastore.Key {
 }
 
 // putChannelInfo stores the channel info in the datastore
-func (ps *Store) putChannelInfo(ci *ChannelInfo) error {
+func (ps *Store) putChannelInfo(ctx context.Context, ci *ChannelInfo) error {
 	if len(ci.ChannelID) == 0 {
 		ci.ChannelID = uuid.New().String()
 	}
@@ -462,7 +463,7 @@ func (ps *Store) putChannelInfo(ci *ChannelInfo) error {
 		return err
 	}
 
-	return ps.ds.Put(k, b)
+	return ps.ds.Put(ctx, k, b)
 }
 
 // TODO: This is a hack to get around not being able to CBOR marshall a nil

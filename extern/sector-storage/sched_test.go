@@ -41,14 +41,16 @@ func TestWithPriority(t *testing.T) {
 var decentWorkerResources = storiface.WorkerResources{
 	MemPhysical: 128 << 30,
 	MemSwap:     200 << 30,
-	MemReserved: 2 << 30,
+	MemUsed:     1 << 30,
+	MemSwapUsed: 1 << 30,
 	CPUs:        32,
-	GPUs:        []string{"a GPU"},
+	GPUs:        []string{},
 }
 
 var constrainedWorkerResources = storiface.WorkerResources{
 	MemPhysical: 1 << 30,
-	MemReserved: 2 << 30,
+	MemUsed:     1 << 30,
+	MemSwapUsed: 1 << 30,
 	CPUs:        1,
 }
 
@@ -97,6 +99,22 @@ func (s *schedTestWorker) NewSector(ctx context.Context, sector storage.SectorRe
 }
 
 func (s *schedTestWorker) AddPiece(ctx context.Context, sector storage.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error) {
+	panic("implement me")
+}
+
+func (s *schedTestWorker) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, peices []abi.PieceInfo) (storiface.CallID, error) {
+	panic("implement me")
+}
+
+func (s *schedTestWorker) ProveReplicaUpdate1(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid) (storiface.CallID, error) {
+	panic("implement me")
+}
+
+func (s *schedTestWorker) ProveReplicaUpdate2(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid, vanillaProofs storage.ReplicaVanillaProofs) (storiface.CallID, error) {
+	panic("implement me")
+}
+
+func (s *schedTestWorker) GenerateSectorKeyFromData(ctx context.Context, sector storage.SectorRef, commD cid.Cid) (storiface.CallID, error) {
 	panic("implement me")
 }
 
@@ -188,6 +206,9 @@ func TestSchedStartStop(t *testing.T) {
 }
 
 func TestSched(t *testing.T) {
+	storiface.ParallelNum = 1
+	storiface.ParallelDenom = 1
+
 	ctx, done := context.WithTimeout(context.Background(), 30*time.Second)
 	defer done()
 
@@ -254,7 +275,9 @@ func TestSched(t *testing.T) {
 
 					return nil
 				}, noopAction)
-				require.NoError(t, err, fmt.Sprint(l, l2))
+				if err != context.Canceled {
+					require.NoError(t, err, fmt.Sprint(l, l2))
+				}
 			}()
 
 			<-sched.testSync
@@ -299,9 +322,6 @@ func TestSched(t *testing.T) {
 	}
 
 	testFunc := func(workers []workerSpec, tasks []task) func(t *testing.T) {
-		ParallelNum = 1
-		ParallelDenom = 1
-
 		return func(t *testing.T) {
 			index := stores.NewIndex()
 
@@ -558,7 +578,7 @@ func BenchmarkTrySched(b *testing.B) {
 				b.StopTimer()
 
 				sched := newScheduler()
-				sched.workers[WorkerID{}] = &workerHandle{
+				sched.workers[storiface.WorkerID{}] = &workerHandle{
 					workerRpc: nil,
 					info: storiface.WorkerInfo{
 						Hostname:  "t",
@@ -570,7 +590,7 @@ func BenchmarkTrySched(b *testing.B) {
 
 				for i := 0; i < windows; i++ {
 					sched.openWindows = append(sched.openWindows, &schedWindowRequest{
-						worker: WorkerID{},
+						worker: storiface.WorkerID{},
 						done:   make(chan *schedWindow, 1000),
 					})
 				}
@@ -616,7 +636,7 @@ func TestWindowCompact(t *testing.T) {
 						taskType: task,
 						sector:   storage.SectorRef{ProofType: spt},
 					})
-					window.allocated.add(wh.info.Resources, ResourceTable[task][spt])
+					window.allocated.add(wh.info.Resources, storiface.ResourceTable[task][spt])
 				}
 
 				wh.activeWindows = append(wh.activeWindows, window)
@@ -635,7 +655,7 @@ func TestWindowCompact(t *testing.T) {
 
 				for ti, task := range tasks {
 					require.Equal(t, task, wh.activeWindows[wi].todo[ti].taskType, "%d, %d", wi, ti)
-					expectRes.add(wh.info.Resources, ResourceTable[task][spt])
+					expectRes.add(wh.info.Resources, storiface.ResourceTable[task][spt])
 				}
 
 				require.Equal(t, expectRes.cpuUse, wh.activeWindows[wi].allocated.cpuUse, "%d", wi)

@@ -68,11 +68,11 @@ func NewSectorBlocks(sb SectorBuilder, ds dtypes.MetadataDS) *SectorBlocks {
 	return sbc
 }
 
-func (st *SectorBlocks) writeRef(dealID abi.DealID, sectorID abi.SectorNumber, offset abi.PaddedPieceSize, size abi.UnpaddedPieceSize) error {
+func (st *SectorBlocks) writeRef(ctx context.Context, dealID abi.DealID, sectorID abi.SectorNumber, offset abi.PaddedPieceSize, size abi.UnpaddedPieceSize) error {
 	st.keyLk.Lock() // TODO: make this multithreaded
 	defer st.keyLk.Unlock()
 
-	v, err := st.keys.Get(DealIDToDsKey(dealID))
+	v, err := st.keys.Get(ctx, DealIDToDsKey(dealID))
 	if err == datastore.ErrNotFound {
 		err = nil
 	}
@@ -97,7 +97,7 @@ func (st *SectorBlocks) writeRef(dealID abi.DealID, sectorID abi.SectorNumber, o
 	if err != nil {
 		return xerrors.Errorf("serializing refs: %w", err)
 	}
-	return st.keys.Put(DealIDToDsKey(dealID), newRef) // TODO: batch somehow
+	return st.keys.Put(ctx, DealIDToDsKey(dealID), newRef) // TODO: batch somehow
 }
 
 func (st *SectorBlocks) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader, d api.PieceDealInfo) (abi.SectorNumber, abi.PaddedPieceSize, error) {
@@ -107,7 +107,7 @@ func (st *SectorBlocks) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize
 	}
 
 	// TODO: DealID has very low finality here
-	err = st.writeRef(d.DealID, so.Sector, so.Offset, size)
+	err = st.writeRef(ctx, d.DealID, so.Sector, so.Offset, size)
 	if err != nil {
 		return 0, 0, xerrors.Errorf("writeRef: %w", err)
 	}
@@ -115,8 +115,8 @@ func (st *SectorBlocks) AddPiece(ctx context.Context, size abi.UnpaddedPieceSize
 	return so.Sector, so.Offset, nil
 }
 
-func (st *SectorBlocks) List() (map[uint64][]api.SealedRef, error) {
-	res, err := st.keys.Query(query.Query{})
+func (st *SectorBlocks) List(ctx context.Context) (map[uint64][]api.SealedRef, error) {
+	res, err := st.keys.Query(ctx, query.Query{})
 	if err != nil {
 		return nil, err
 	}
@@ -144,8 +144,8 @@ func (st *SectorBlocks) List() (map[uint64][]api.SealedRef, error) {
 	return out, nil
 }
 
-func (st *SectorBlocks) GetRefs(dealID abi.DealID) ([]api.SealedRef, error) { // TODO: track local sectors
-	ent, err := st.keys.Get(DealIDToDsKey(dealID))
+func (st *SectorBlocks) GetRefs(ctx context.Context, dealID abi.DealID) ([]api.SealedRef, error) { // TODO: track local sectors
+	ent, err := st.keys.Get(ctx, DealIDToDsKey(dealID))
 	if err == datastore.ErrNotFound {
 		err = ErrNotFound
 	}
@@ -161,8 +161,8 @@ func (st *SectorBlocks) GetRefs(dealID abi.DealID) ([]api.SealedRef, error) { //
 	return refs.Refs, nil
 }
 
-func (st *SectorBlocks) GetSize(dealID abi.DealID) (uint64, error) {
-	refs, err := st.GetRefs(dealID)
+func (st *SectorBlocks) GetSize(ctx context.Context, dealID abi.DealID) (uint64, error) {
+	refs, err := st.GetRefs(ctx, dealID)
 	if err != nil {
 		return 0, err
 	}
@@ -170,7 +170,7 @@ func (st *SectorBlocks) GetSize(dealID abi.DealID) (uint64, error) {
 	return uint64(refs[0].Size), nil
 }
 
-func (st *SectorBlocks) Has(dealID abi.DealID) (bool, error) {
+func (st *SectorBlocks) Has(ctx context.Context, dealID abi.DealID) (bool, error) {
 	// TODO: ensure sector is still there
-	return st.keys.Has(DealIDToDsKey(dealID))
+	return st.keys.Has(ctx, DealIDToDsKey(dealID))
 }

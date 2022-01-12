@@ -99,11 +99,11 @@ func (m *ChainModule) ChainHead(context.Context) (*types.TipSet, error) {
 }
 
 func (a *ChainAPI) ChainGetBlock(ctx context.Context, msg cid.Cid) (*types.BlockHeader, error) {
-	return a.Chain.GetBlock(msg)
+	return a.Chain.GetBlock(ctx, msg)
 }
 
 func (m *ChainModule) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
-	return m.Chain.LoadTipSet(key)
+	return m.Chain.LoadTipSet(ctx, key)
 }
 
 func (m *ChainModule) ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*api.HeadChange, error) {
@@ -111,12 +111,12 @@ func (m *ChainModule) ChainGetPath(ctx context.Context, from, to types.TipSetKey
 }
 
 func (m *ChainModule) ChainGetBlockMessages(ctx context.Context, msg cid.Cid) (*api.BlockMessages, error) {
-	b, err := m.Chain.GetBlock(msg)
+	b, err := m.Chain.GetBlock(ctx, msg)
 	if err != nil {
 		return nil, err
 	}
 
-	bmsgs, smsgs, err := m.Chain.MessagesForBlock(b)
+	bmsgs, smsgs, err := m.Chain.MessagesForBlock(ctx, b)
 	if err != nil {
 		return nil, err
 	}
@@ -143,7 +143,7 @@ func (a *ChainAPI) ChainGetPath(ctx context.Context, from types.TipSetKey, to ty
 }
 
 func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]api.Message, error) {
-	b, err := a.Chain.GetBlock(bcid)
+	b, err := a.Chain.GetBlock(ctx, bcid)
 	if err != nil {
 		return nil, err
 	}
@@ -154,12 +154,12 @@ func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]
 	}
 
 	// TODO: need to get the number of messages better than this
-	pts, err := a.Chain.LoadTipSet(types.NewTipSetKey(b.Parents...))
+	pts, err := a.Chain.LoadTipSet(ctx, types.NewTipSetKey(b.Parents...))
 	if err != nil {
 		return nil, err
 	}
 
-	cm, err := a.Chain.MessagesForTipset(pts)
+	cm, err := a.Chain.MessagesForTipset(ctx, pts)
 	if err != nil {
 		return nil, err
 	}
@@ -176,7 +176,7 @@ func (a *ChainAPI) ChainGetParentMessages(ctx context.Context, bcid cid.Cid) ([]
 }
 
 func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]*types.MessageReceipt, error) {
-	b, err := a.Chain.GetBlock(bcid)
+	b, err := a.Chain.GetBlock(ctx, bcid)
 	if err != nil {
 		return nil, err
 	}
@@ -186,19 +186,19 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 	}
 
 	// TODO: need to get the number of messages better than this
-	pts, err := a.Chain.LoadTipSet(types.NewTipSetKey(b.Parents...))
+	pts, err := a.Chain.LoadTipSet(ctx, types.NewTipSetKey(b.Parents...))
 	if err != nil {
 		return nil, err
 	}
 
-	cm, err := a.Chain.MessagesForTipset(pts)
+	cm, err := a.Chain.MessagesForTipset(ctx, pts)
 	if err != nil {
 		return nil, err
 	}
 
 	var out []*types.MessageReceipt
 	for i := 0; i < len(cm); i++ {
-		r, err := a.Chain.GetParentReceipt(b, i)
+		r, err := a.Chain.GetParentReceipt(ctx, b, i)
 		if err != nil {
 			return nil, err
 		}
@@ -210,7 +210,7 @@ func (a *ChainAPI) ChainGetParentReceipts(ctx context.Context, bcid cid.Cid) ([]
 }
 
 func (a *ChainAPI) ChainGetMessagesInTipset(ctx context.Context, tsk types.TipSetKey) ([]api.Message, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +220,7 @@ func (a *ChainAPI) ChainGetMessagesInTipset(ctx context.Context, tsk types.TipSe
 		return nil, nil
 	}
 
-	cm, err := a.Chain.MessagesForTipset(ts)
+	cm, err := a.Chain.MessagesForTipset(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -237,7 +237,7 @@ func (a *ChainAPI) ChainGetMessagesInTipset(ctx context.Context, tsk types.TipSe
 }
 
 func (m *ChainModule) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
-	ts, err := m.Chain.GetTipSetFromKey(tsk)
+	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -245,7 +245,7 @@ func (m *ChainModule) ChainGetTipSetByHeight(ctx context.Context, h abi.ChainEpo
 }
 
 func (m *ChainModule) ChainGetTipSetAfterHeight(ctx context.Context, h abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error) {
-	ts, err := m.Chain.GetTipSetFromKey(tsk)
+	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -253,7 +253,7 @@ func (m *ChainModule) ChainGetTipSetAfterHeight(ctx context.Context, h abi.Chain
 }
 
 func (m *ChainModule) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, error) {
-	blk, err := m.ExposedBlockstore.Get(obj)
+	blk, err := m.ExposedBlockstore.Get(ctx, obj)
 	if err != nil {
 		return nil, xerrors.Errorf("blockstore get: %w", err)
 	}
@@ -262,11 +262,11 @@ func (m *ChainModule) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, er
 }
 
 func (a *ChainAPI) ChainDeleteObj(ctx context.Context, obj cid.Cid) error {
-	return a.ExposedBlockstore.DeleteBlock(obj)
+	return a.ExposedBlockstore.DeleteBlock(ctx, obj)
 }
 
 func (m *ChainModule) ChainHasObj(ctx context.Context, obj cid.Cid) (bool, error) {
-	return m.ExposedBlockstore.Has(obj)
+	return m.ExposedBlockstore.Has(ctx, obj)
 }
 
 func (a *ChainAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) (api.ObjStat, error) {
@@ -318,7 +318,7 @@ func (a *ChainAPI) ChainStatObj(ctx context.Context, obj cid.Cid, base cid.Cid) 
 }
 
 func (a *ChainAPI) ChainSetHead(ctx context.Context, tsk types.TipSetKey) error {
-	newHeadTs, err := a.Chain.GetTipSetFromKey(tsk)
+	newHeadTs, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -342,11 +342,11 @@ func (a *ChainAPI) ChainSetHead(ctx context.Context, tsk types.TipSetKey) error 
 		}
 	}
 
-	return a.Chain.SetHead(newHeadTs)
+	return a.Chain.SetHead(ctx, newHeadTs)
 }
 
 func (a *ChainAPI) ChainGetGenesis(ctx context.Context) (*types.TipSet, error) {
-	genb, err := a.Chain.GetGenesis()
+	genb, err := a.Chain.GetGenesis(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -355,7 +355,7 @@ func (a *ChainAPI) ChainGetGenesis(ctx context.Context) (*types.TipSet, error) {
 }
 
 func (a *ChainAPI) ChainTipSetWeight(ctx context.Context, tsk types.TipSetKey) (types.BigInt, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -434,7 +434,7 @@ func resolveOnce(bs blockstore.Blockstore, tse stmgr.Executor) func(ctx context.
 				return nil, nil, err
 			}
 
-			if err := bs.Put(n); err != nil {
+			if err := bs.Put(ctx, n); err != nil {
 				return nil, nil, xerrors.Errorf("put hamt val: %w", err)
 			}
 
@@ -482,7 +482,7 @@ func resolveOnce(bs blockstore.Blockstore, tse stmgr.Executor) func(ctx context.
 				return nil, nil, err
 			}
 
-			if err := bs.Put(n); err != nil {
+			if err := bs.Put(ctx, n); err != nil {
 				return nil, nil, xerrors.Errorf("put amt val: %w", err)
 			}
 
@@ -530,7 +530,7 @@ func resolveOnce(bs blockstore.Blockstore, tse stmgr.Executor) func(ctx context.
 				return nil, nil, err
 			}
 
-			if err := bs.Put(n); err != nil {
+			if err := bs.Put(ctx, n); err != nil {
 				return nil, nil, xerrors.Errorf("put amt val: %w", err)
 			}
 
@@ -577,7 +577,7 @@ func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (*api.IpldObject,
 }
 
 func (m *ChainModule) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error) {
-	cm, err := m.Chain.GetCMessage(mc)
+	cm, err := m.Chain.GetCMessage(ctx, mc)
 	if err != nil {
 		return nil, err
 	}
@@ -586,7 +586,7 @@ func (m *ChainModule) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.M
 }
 
 func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipoldmsgs bool, tsk types.TipSetKey) (<-chan []byte, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}

@@ -137,7 +137,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		If(cfg.Subsystems.EnableMarkets,
 			// Markets
 			Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
-			Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(cfg.Dealmaking.SimultaneousTransfersForStorage, cfg.Dealmaking.SimultaneousTransfersForRetrieval)),
+			Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(cfg.Dealmaking.SimultaneousTransfersForStorage, cfg.Dealmaking.SimultaneousTransfersForStoragePerClient, cfg.Dealmaking.SimultaneousTransfersForRetrieval)),
 			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 
@@ -156,7 +156,8 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(DAGStoreKey, modules.DAGStore),
 
 			// Markets (retrieval)
-			Override(new(retrievalmarket.SectorAccessor), sectoraccessor.NewSectorAccessor),
+			Override(new(dagstore.SectorAccessor), sectoraccessor.NewSectorAccessor),
+			Override(new(retrievalmarket.SectorAccessor), From(new(dagstore.SectorAccessor))),
 			Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter.NewRetrievalProviderNode),
 			Override(new(rmnet.RetrievalMarketNetwork), modules.RetrievalNetwork),
 			Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
@@ -164,6 +165,9 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 
 			// Markets (storage)
+			Override(new(dtypes.ProviderTransferNetwork), modules.NewProviderTransferNetwork),
+			Override(new(dtypes.ProviderTransport), modules.NewProviderTransport),
+			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDataTransfer),
 			Override(new(provider.Interface), modules.IndexerProvider(cfg.IndexerProvider)),
 			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
 			Override(new(*storedask.StoredAsk), modules.NewStorageAsk),

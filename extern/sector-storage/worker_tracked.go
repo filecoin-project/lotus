@@ -20,7 +20,7 @@ import (
 
 type trackedWork struct {
 	job            storiface.WorkerJob
-	worker         WorkerID
+	worker         storiface.WorkerID
 	workerHostname string
 }
 
@@ -58,7 +58,7 @@ func (wt *workTracker) onDone(ctx context.Context, callID storiface.CallID) {
 	delete(wt.running, callID)
 }
 
-func (wt *workTracker) track(ctx context.Context, ready chan struct{}, wid WorkerID, wi storiface.WorkerInfo, sid storage.SectorRef, task sealtasks.TaskType, cb func() (storiface.CallID, error)) (storiface.CallID, error) {
+func (wt *workTracker) track(ctx context.Context, ready chan struct{}, wid storiface.WorkerID, wi storiface.WorkerInfo, sid storage.SectorRef, task sealtasks.TaskType, cb func() (storiface.CallID, error)) (storiface.CallID, error) {
 	tracked := func(rw int, callID storiface.CallID) trackedWork {
 		return trackedWork{
 			job: storiface.WorkerJob{
@@ -98,7 +98,6 @@ func (wt *workTracker) track(ctx context.Context, ready chan struct{}, wid Worke
 		wt.lk.Lock()
 		delete(wt.prepared, prepID)
 	}
-
 	callID, err := cb()
 	if err != nil {
 		return callID, err
@@ -122,7 +121,7 @@ func (wt *workTracker) track(ctx context.Context, ready chan struct{}, wid Worke
 	return callID, err
 }
 
-func (wt *workTracker) worker(wid WorkerID, wi storiface.WorkerInfo, w Worker) *trackedWorker {
+func (wt *workTracker) worker(wid storiface.WorkerID, wi storiface.WorkerInfo, w Worker) *trackedWorker {
 	return &trackedWorker{
 		Worker:     w,
 		wid:        wid,
@@ -152,7 +151,7 @@ func (wt *workTracker) Running() ([]trackedWork, []trackedWork) {
 
 type trackedWorker struct {
 	Worker
-	wid        WorkerID
+	wid        storiface.WorkerID
 	workerInfo storiface.WorkerInfo
 
 	execute chan struct{} // channel blocking execution in case we're waiting for resources but the task is ready to execute
@@ -196,6 +195,24 @@ func (t *trackedWorker) Fetch(ctx context.Context, s storage.SectorRef, ft stori
 
 func (t *trackedWorker) UnsealPiece(ctx context.Context, id storage.SectorRef, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, cid cid.Cid) (storiface.CallID, error) {
 	return t.tracker.track(ctx, t.execute, t.wid, t.workerInfo, id, sealtasks.TTUnseal, func() (storiface.CallID, error) { return t.Worker.UnsealPiece(ctx, id, index, size, randomness, cid) })
+}
+
+func (t *trackedWorker) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, pieces []abi.PieceInfo) (storiface.CallID, error) {
+	return t.tracker.track(ctx, t.execute, t.wid, t.workerInfo, sector, sealtasks.TTReplicaUpdate, func() (storiface.CallID, error) {
+		return t.Worker.ReplicaUpdate(ctx, sector, pieces)
+	})
+}
+
+func (t *trackedWorker) ProveReplicaUpdate1(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid) (storiface.CallID, error) {
+	return t.tracker.track(ctx, t.execute, t.wid, t.workerInfo, sector, sealtasks.TTProveReplicaUpdate1, func() (storiface.CallID, error) {
+		return t.Worker.ProveReplicaUpdate1(ctx, sector, sectorKey, newSealed, newUnsealed)
+	})
+}
+
+func (t *trackedWorker) ProveReplicaUpdate2(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid, vanillaProofs storage.ReplicaVanillaProofs) (storiface.CallID, error) {
+	return t.tracker.track(ctx, t.execute, t.wid, t.workerInfo, sector, sealtasks.TTProveReplicaUpdate2, func() (storiface.CallID, error) {
+		return t.Worker.ProveReplicaUpdate2(ctx, sector, sectorKey, newSealed, newUnsealed, vanillaProofs)
+	})
 }
 
 var _ Worker = &trackedWorker{}

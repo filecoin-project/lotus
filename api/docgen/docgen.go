@@ -1,6 +1,7 @@
 package docgen
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -15,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-graphsync"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -91,6 +93,8 @@ func init() {
 
 	storeIDExample := imports.ID(50)
 	textSelExample := textselector.Expression("Links/21/Hash/Links/42/Hash")
+	apiSelExample := api.Selector("Links/21/Hash/Links/42/Hash")
+	clientEvent := retrievalmarket.ClientEventDealAccepted
 
 	addExample(bitfield.NewFromSet([]uint64{5}))
 	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1_1)
@@ -118,13 +122,17 @@ func init() {
 	addExample(api.FullAPIVersion1)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
+	addExample(graphsync.RequestID(4))
 	addExample(datatransfer.TransferID(3))
 	addExample(datatransfer.Ongoing)
 	addExample(storeIDExample)
 	addExample(&storeIDExample)
+	addExample(clientEvent)
+	addExample(&clientEvent)
 	addExample(retrievalmarket.ClientEventDealAccepted)
 	addExample(retrievalmarket.DealStatusNew)
 	addExample(&textSelExample)
+	addExample(&apiSelExample)
 	addExample(network.ReachabilityPublic)
 	addExample(build.NewestNetworkVersion)
 	addExample(map[string]int{"name": 42})
@@ -226,16 +234,18 @@ func init() {
 				Hostname: "host",
 				Resources: storiface.WorkerResources{
 					MemPhysical: 256 << 30,
+					MemUsed:     2 << 30,
 					MemSwap:     120 << 30,
-					MemReserved: 2 << 30,
+					MemSwapUsed: 2 << 30,
 					CPUs:        64,
 					GPUs:        []string{"aGPU 1337"},
+					Resources:   storiface.ResourceTable,
 				},
 			},
 			Enabled:    true,
 			MemUsedMin: 0,
 			MemUsedMax: 0,
-			GpuUsed:    false,
+			GpuUsed:    0,
 			CpuUse:     0,
 		},
 	})
@@ -243,10 +253,18 @@ func init() {
 	addExample(map[abi.SectorNumber]string{
 		123: "can't acquire read lock",
 	})
+	addExample(json.RawMessage(`"json raw message"`))
 	addExample(map[api.SectorState]int{
 		api.SectorState(sealing.Proving): 120,
 	})
 	addExample([]abi.SectorNumber{123, 124})
+	addExample([]storiface.SectorLock{
+		{
+			Sector: abi.SectorID{Number: 123, Miner: 1000},
+			Write:  [storiface.FileTypes]uint{0, 0, 1},
+			Read:   [storiface.FileTypes]uint{2, 3, 0},
+		},
+	})
 
 	// worker specific
 	addExample(storiface.AcquireMove)
@@ -281,6 +299,7 @@ func init() {
 		State: "ShardStateAvailable",
 		Error: "<error>",
 	})
+	addExample(storiface.ResourceTable)
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
@@ -331,7 +350,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 	switch t.Kind() {
 	case reflect.Slice:
 		out := reflect.New(t).Elem()
-		reflect.Append(out, reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
+		out = reflect.Append(out, reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
 		return out.Interface()
 	case reflect.Chan:
 		return ExampleValue(method, t.Elem(), nil)

@@ -31,12 +31,11 @@ def generate_lotus_cli(prog):
                 if cmd_flag is True and line == '':
                     cmd_flag = False
                 if cmd_flag is True and line[-1] != ':' and 'help, h' not in line:
-                    gap_pos = 0
+                    gap_pos = None
                     sub_cmd = line
                     if ' ' in line:
                         gap_pos = sub_cmd.index('  ')
-                    if gap_pos:
-                        sub_cmd = cur_cmd + ' ' + sub_cmd[:gap_pos]
+                    sub_cmd = cur_cmd + ' ' + sub_cmd[:gap_pos]
                     get_cmd_recursively(sub_cmd)
             except Exception as e:
                 print('Fail to deal with "%s" with error:\n%s' % (line, e))
