@@ -129,12 +129,13 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 		require.Empty(t, offer.Err)
 
 		// retrieve in a CAR file and ensure roots match
-		outputCar := dh.PerformRetrieval(ctx, dealCid, targetCid, true)
+		outputCar := dh.PerformRetrieval(ctx, dealCid, targetCid, true, offer)
 		_, err = os.Stat(outputCar)
 		require.NoError(t, err)
 		f, err := os.Open(outputCar)
 		require.NoError(t, err)
-		ch, _ := car.ReadHeader(bufio.NewReader(f))
+		ch, err := car.ReadHeader(bufio.NewReader(f))
+		require.NoError(t, err)
 		require.EqualValues(t, ch.Roots[0], targetCid)
 		require.NoError(t, f.Close())
 
