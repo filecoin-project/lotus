@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"bytes"
+
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	statemachine "github.com/filecoin-project/go-statemachine"
