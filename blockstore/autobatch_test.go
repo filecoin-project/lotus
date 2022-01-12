@@ -17,8 +17,6 @@ func TestAutobatchBlockstore(t *testing.T) {
 	require.NoError(t, ab.Put(ctx, b1))
 	require.NoError(t, ab.Put(ctx, b2))
 
-	ab.Flush(ctx)
-
 	v0, err := ab.Get(ctx, b0.Cid())
 	require.NoError(t, err)
 	require.Equal(t, b0.RawData(), v0.RawData())
@@ -30,4 +28,7 @@ func TestAutobatchBlockstore(t *testing.T) {
 	v2, err := ab.Get(ctx, b2.Cid())
 	require.NoError(t, err)
 	require.Equal(t, b2.RawData(), v2.RawData())
+
+	require.NoError(t, ab.Flush(ctx))
+	require.NoError(t, ab.Shutdown(ctx))
 }
