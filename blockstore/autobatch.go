@@ -152,8 +152,6 @@ func (bs *AutobatchBlockstore) Shutdown(ctx context.Context) error {
 }
 
 func (bs *AutobatchBlockstore) Get(ctx context.Context, c cid.Cid) (block.Block, error) {
-	bs.stateLock.Lock()
-	defer bs.stateLock.Unlock()
 	// may seem backward to check the backingBs first, but that is the likeliest case
 	blk, err := bs.backingBs.Get(ctx, c)
 	if err == nil {
@@ -174,7 +172,7 @@ func (bs *AutobatchBlockstore) Get(ctx context.Context, c cid.Cid) (block.Block,
 		return v, nil
 	}
 
-	return nil, ErrNotFound
+	return bs.Get(ctx, c)
 }
 
 func (bs *AutobatchBlockstore) DeleteBlock(context.Context, cid.Cid) error {
