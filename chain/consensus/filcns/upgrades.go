@@ -1298,7 +1298,13 @@ func upgradeActorsV7Common(
 	}
 
 	// Persist the new tree. Blocks until the entire writeStore is in the state blockstore.
-	writeStore.Flush(ctx)
+	if err := writeStore.Flush(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to flush writestore: %w", err)
+	}
+
+	if err := writeStore.Shutdown(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore failed: %w", err)
+	}
 
 	return newRoot, nil
 }
