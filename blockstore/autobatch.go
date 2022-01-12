@@ -180,6 +180,8 @@ func (bs *AutobatchBlockstore) Get(ctx context.Context, c cid.Cid) (block.Block,
 		return blk, err
 	}
 
+	bs.stateLock.Lock()
+	defer bs.stateLock.Unlock()
 	v, ok := bs.flushingBatch.blockMap[c]
 	if ok {
 		return v, nil
