@@ -25,7 +25,6 @@ import (
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
 	provider "github.com/filecoin-project/index-provider"
 	"github.com/filecoin-project/index-provider/engine"
-	p2pserver "github.com/filecoin-project/index-provider/server/provider/libp2p"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/libp2p/go-libp2p-core/host"
 
@@ -81,13 +80,10 @@ func IndexerProvider(cfg config.IndexerProviderConfig) func(params IdxProv) (pro
 					return xerrors.Errorf("starting indexer provider engine: %s", err)
 				}
 
-				// Add a handler to libp2p that listens for incoming index requests
-				p2pserver.New(ctx, h, e)
-
 				return nil
 			},
 			OnStop: func(ctx context.Context) error {
-				return e.Shutdown(ctx)
+				return e.Shutdown()
 			},
 		})
 
@@ -96,7 +92,6 @@ func IndexerProvider(cfg config.IndexerProviderConfig) func(params IdxProv) (pro
 }
 
 func createIndexerProviderHost(mctx helpers.MetricsCtx, lc fx.Lifecycle, pkey ci.PrivKey, pstore peerstore.Peerstore, listenAddrs []string, announceAddrs []string) (host.Host, error) {
-	ctx := helpers.LifecycleCtx(mctx, lc)
 	addrsFactory, err := lp2p.MakeAddrsFactory(announceAddrs, nil)
 	if err != nil {
 		return nil, err
@@ -111,7 +106,7 @@ func createIndexerProviderHost(mctx helpers.MetricsCtx, lc fx.Lifecycle, pkey ci
 		libp2p.UserAgent("lotus-indexer-provider-" + build.UserVersion()),
 	}
 
-	h, err := libp2p.New(ctx, opts...)
+	h, err := libp2p.New(opts...)
 	if err != nil {
 		return nil, err
 	}

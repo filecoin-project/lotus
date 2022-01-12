@@ -26,7 +26,7 @@ require (
 	github.com/elastic/gosigar v0.14.1
 	github.com/etclabscore/go-openrpc-reflect v0.0.36
 	github.com/fatih/color v1.13.0
-	github.com/filecoin-project/dagstore v0.5.1-0.20220112075533-ee91088affb1
+	github.com/filecoin-project/dagstore v0.5.1
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
 	github.com/filecoin-project/go-address v0.0.6
 	github.com/filecoin-project/go-bitfield v0.2.4
@@ -36,7 +36,8 @@ require (
 	github.com/filecoin-project/go-data-transfer v1.12.1
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
-	github.com/filecoin-project/go-fil-markets v1.14.2-0.20220112081049-7165da072c0c
+	github.com/filecoin-project/go-fil-markets v1.14.2-0.20220112094113-068e7f35a0e0
+	github.com/filecoin-project/go-indexer-core v0.2.7
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.3-0.20220111000201-e42866db1a53
@@ -44,7 +45,7 @@ require (
 	github.com/filecoin-project/go-statemachine v1.0.1
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/go-storedcounter v0.1.0
-	github.com/filecoin-project/index-provider v0.1.0 // indirect
+	github.com/filecoin-project/index-provider v0.1.1-0.20220107223914-37c38e2b284d
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v3 v3.1.1
@@ -145,7 +146,7 @@ require (
 	github.com/uber/jaeger-client-go v2.25.0+incompatible // indirect
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20210713220151-be142a5ae1a8
+	github.com/whyrusleeping/cbor-gen v0.0.0-20211110122933-f57984553008
 	github.com/whyrusleeping/ledger-filecoin-go v0.9.1-0.20201010031517-c3dcc1bddce4
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20190708150250-92bcb0691325
@@ -177,3 +178,4 @@ replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
 //replace github.com/filecoin-project/specs-actors/v7 => /Users/zenground0/pl/repos/specs-actors
 
 // replace github.com/filecon-project/specs-storage => /Users/zenground0/pl/repos/specs-storage
+replace github.com/ipfs/go-path => github.com/ipfs/go-path v0.0.7
