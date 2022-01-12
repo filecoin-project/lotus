@@ -306,23 +306,19 @@ func (dh *DealHarness) StartSealingWaiting(ctx context.Context) {
 	}
 }
 
-func (dh *DealHarness) PerformRetrieval(ctx context.Context, dealCid *cid.Cid, root cid.Cid, carExport bool) (path string) {
+func (dh *DealHarness) PerformRetrieval(ctx context.Context, deal *cid.Cid, root cid.Cid, carExport bool) (path string) {
 	// perform retrieval.
-	info, err := dh.client.ClientGetDealInfo(ctx, *dealCid)
+	info, err := dh.client.ClientGetDealInfo(ctx, *deal)
 	require.NoError(dh.t, err)
 
 	offers, err := dh.client.ClientFindData(ctx, root, &info.PieceCID)
 	require.NoError(dh.t, err)
 	require.NotEmpty(dh.t, offers, "no offers")
 
-	return dh.PerformRetrievalForOffer(ctx, carExport, offers[0])
-}
-
-func (dh *DealHarness) PerformRetrievalForOffer(ctx context.Context, carExport bool, offer api.QueryOffer) string {
-	outputF, err := ioutil.TempFile(dh.t.TempDir(), "ret-car")
+	carFile, err := ioutil.TempFile(dh.t.TempDir(), "ret-car")
 	require.NoError(dh.t, err)
 
-	defer outputF.Close() //nolint:errcheck
+	defer carFile.Close() //nolint:errcheck
 
 	caddr, err := dh.client.WalletDefaultAddress(ctx)
 	require.NoError(dh.t, err)
@@ -366,20 +362,13 @@ consumeEvents:
 			Path:  carFile.Name(),
 			IsCAR: carExport,
 		}))
-	ref := &api.FileRef{
-		Path:  outputF.Name(),
-		IsCAR: carExport,
+
+	ret := carFile.Name()
+	if carExport {
+		actualFile := dh.ExtractFileFromCAR(ctx, carFile)
+		ret = actualFile.Name()
+		_ = actualFile.Close() //nolint:errcheck
 	}
-
-	order := offer.Order(caddr)
-	updates, err := dh.client.ClientRetrieveWithEvents(ctx, order, ref)
-	require.NoError(dh.t, err)
-
-	for update := range updates {
-		require.Emptyf(dh.t, update.Err, "retrieval failed: %s", update.Err)
-	}
-
-	ret := outputF.Name()
 
 	return ret
 }

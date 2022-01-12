@@ -88,7 +88,7 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 	require.NoError(t, err)
 	cids := prepared.Cids()
 	for i, c := range cids {
-		blk, err := bs.Get(c)
+		blk, err := bs.Get(ctx, c)
 		require.NoError(t, err)
 
 		nd, err := ipld.Decode(blk)
@@ -129,7 +129,7 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 		require.Empty(t, offer.Err)
 
 		// retrieve in a CAR file and ensure roots match
-		outputCar := dh.PerformRetrievalForOffer(ctx, true, offer)
+		outputCar := dh.PerformRetrieval(ctx, dealCid, targetCid, true)
 		_, err = os.Stat(outputCar)
 		require.NoError(t, err)
 		f, err := os.Open(outputCar)
