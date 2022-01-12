@@ -1168,8 +1168,9 @@ USAGE:
    lotus-miner index command [command options] [arguments...]
 
 COMMANDS:
-   announce  Announce a deal to indexers so they can download its index
-   help, h   Shows a list of commands or help for one command
+   announce      Announce a deal to indexers so they can download its index
+   announce-all  Announce all active deals to indexers so they can download its indices
+   help, h       Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -1183,6 +1184,20 @@ NAME:
 
 USAGE:
    lotus-miner index announce [command options] <deal proposal cid>
+
+OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner index announce-all
+```
+NAME:
+   lotus-miner index announce-all - Announce all active deals to indexers so they can download its indices
+
+USAGE:
+   lotus-miner index announce-all [command options] [arguments...]
 
 OPTIONS:
    --color     use color in display output (default: depends on output being a TTY)

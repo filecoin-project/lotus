@@ -46,6 +46,7 @@
 * [I](#I)
   * [ID](#ID)
 * [Indexer](#Indexer)
+  * [IndexerAnnounceAllDeals](#IndexerAnnounceAllDeals)
   * [IndexerAnnounceDeal](#IndexerAnnounceDeal)
 * [Log](#Log)
   * [LogAlerts](#LogAlerts)
@@ -809,6 +810,16 @@ Response: `"12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"`
 
 ## Indexer
 
+
+### IndexerAnnounceAllDeals
+IndexerAnnounceAllDeals informs the indexer nodes aboutall active deals.
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `{}`
 
 ### IndexerAnnounceDeal
 IndexerAnnounceDeal informs indexer nodes that a new deal was received,

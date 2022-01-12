@@ -671,6 +671,8 @@ type StorageMinerStruct struct {
 
 		DealsSetPieceCidBlocklist func(p0 context.Context, p1 []cid.Cid) error `perm:"admin"`
 
+		IndexerAnnounceAllDeals func(p0 context.Context) error `perm:"admin"`
+
 		IndexerAnnounceDeal func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
 
 		MarketCancelDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
@@ -3991,6 +3993,17 @@ func (s *StorageMinerStruct) DealsSetPieceCidBlocklist(p0 context.Context, p1 []
 }
 
 func (s *StorageMinerStub) DealsSetPieceCidBlocklist(p0 context.Context, p1 []cid.Cid) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) IndexerAnnounceAllDeals(p0 context.Context) error {
+	if s.Internal.IndexerAnnounceAllDeals == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.IndexerAnnounceAllDeals(p0)
+}
+
+func (s *StorageMinerStub) IndexerAnnounceAllDeals(p0 context.Context) error {
 	return ErrNotSupported
 }
 

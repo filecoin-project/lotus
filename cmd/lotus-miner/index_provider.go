@@ -16,6 +16,7 @@ var indexProvCmd = &cli.Command{
 	Usage: "Manage the index provider on the markets subsystem",
 	Subcommands: []*cli.Command{
 		indexProvAnnounceCmd,
+		indexProvAnnounceAllCmd,
 	},
 }
 
@@ -54,5 +55,32 @@ var indexProvAnnounceCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		return marketsApi.IndexerAnnounceDeal(ctx, proposalCid)
+	},
+}
+
+var indexProvAnnounceAllCmd = &cli.Command{
+	Name:  "announce-all",
+	Usage: "Announce all active deals to indexers so they can download its indices",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:        "color",
+			Usage:       "use color in display output",
+			DefaultText: "depends on output being a TTY",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.IsSet("color") {
+			color.NoColor = !cctx.Bool("color")
+		}
+
+		marketsApi, closer, err := lcli.GetMarketsAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		return marketsApi.IndexerAnnounceAllDeals(ctx)
 	},
 }

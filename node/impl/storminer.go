@@ -1008,6 +1008,10 @@ func (sm *StorageMinerAPI) IndexerAnnounceDeal(ctx context.Context, proposalCid 
 	return sm.StorageProvider.AnnounceDealToIndexer(ctx, proposalCid)
 }
 
+func (sm *StorageMinerAPI) IndexerAnnounceAllDeals(ctx context.Context) error {
+	return sm.StorageProvider.AnnounceAllDealsToIndexer(ctx)
+}
+
 func (sm *StorageMinerAPI) DagstorePieceIndexSize(ctx context.Context) (int64, error) {
 	if sm.DAGStore == nil {
 		return 0, fmt.Errorf("dagstore not available on this node")

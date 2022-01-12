@@ -223,6 +223,9 @@ type StorageMiner interface {
 	// so they can download its index
 	IndexerAnnounceDeal(ctx context.Context, proposalCid cid.Cid) error //perm:admin
 
+	// IndexerAnnounceAllDeals informs the indexer nodes aboutall active deals.
+	IndexerAnnounceAllDeals(ctx context.Context) error //perm:admin
+
 	// DagstorePieceIndexSize returns the size of the piece index.
 	DagstorePieceIndexSize(ctx context.Context) (int64, error) //perm:admin
 
