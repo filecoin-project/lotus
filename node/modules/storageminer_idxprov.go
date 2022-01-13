@@ -48,8 +48,8 @@ type IdxProv struct {
 	peerstore.Peerstore
 }
 
-func IndexerProvider(cfg config.IndexerProviderConfig) func(params IdxProv) (provider.Interface, error) {
-	return func(args IdxProv) (provider.Interface, error) {
+func IndexerProvider(cfg config.IndexerProviderConfig) func(params IdxProv, marketHost host.Host) (provider.Interface, error) {
+	return func(args IdxProv, marketHost host.Host) (provider.Interface, error) {
 		ipds := namespace.Wrap(args.Datastore, datastore.NewKey("/indexer-provider"))
 
 		pkey := args.Peerstore.PrivKey(args.PeerID)
@@ -67,7 +67,12 @@ func IndexerProvider(cfg config.IndexerProviderConfig) func(params IdxProv) (pro
 			return nil, err
 		}
 
-		e, err := engine.New(cfg.Ingest, pkey, dt, h, ipds, nil)
+		var maddrs []string
+		for _, a := range marketHost.Addrs() {
+			maddrs = append(maddrs, a.String())
+		}
+
+		e, err := engine.New(cfg.Ingest, pkey, dt, h, ipds, maddrs)
 		if err != nil {
 			return nil, xerrors.Errorf("creating indexer provider engine: %w", err)
 		}
