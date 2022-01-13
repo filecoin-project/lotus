@@ -23,7 +23,7 @@ The ButterFly-SnapNet will be upgraded to Network v15 OhSnap at epoch 30262, aro
 To join the network, simply building lotus by running `make butterflynet`. 
 
 The network supports three sector sizes, 512MiB, 32GiB and 64GiB. Temporary proof params for Snap Deals should be downloaded upon your node restarts. 
- - The parameters are pinged on IPFS gateway https://proofs.filecoin.io/ipfs/ and the CIDs can be found [here](https://github.com/filecoin-project/lotus/blob/edd3486d2cf53b960382e9cda6671e647844aa41/build/proof-params/parameters.json), please let the lotus team know if the params are not fetched automatically. You can also download the params manually from s3://proof-params-ap/filecoin-snapdeal-parameters/.
+ - The parameters are pinged on IPFS gateway https://proofs.filecoin.io/ipfs/ and the CIDs can be found [here](https://github.com/filecoin-project/lotus/blob/edd3486d2cf53b960382e9cda6671e647844aa41/build/proof-params/parameters.json), please let the lotus team know in #lotus-ohsnap if the params are not fetched automatically. You can also download the params manually from s3://proof-params-ap/filecoin-snapdeal-parameters/.
 
 *SnapNet Resources*:
 - [Faucet](https://faucet.butterfly.fildev.network/)
@@ -39,21 +39,21 @@ The network supports three sector sizes, 512MiB, 32GiB and 64GiB. Temporary proo
   - correctness fixes for the autobatch blockstore ([#7940](https://github.com/filecoin-project/lotus/pull/7940))
 - Implement and support [FIP-0019 Snap Deals](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0019.md)
   - chore: deps: Integrate proof v11.0.0 ([#7923](https://github.com/filecoin-project/lotus/pull/7923))
-    - Snap Deals Lotus Integration: FSM Posting and integration test ([#7810](https://github.com/filecoin-project/lotus/pull/7810))
-    - Feat/sector storage unseal ([#7730](https://github.com/filecoin-project/lotus/pull/7730))
-    - Feat/snap deals storage ([#7615](https://github.com/filecoin-project/lotus/pull/7615))
-    - fix: sealing: Add more deal expiration checks during PRU pipeline ([#7871](https://github.com/filecoin-project/lotus/pull/7871))
-    - chore: deps: Update go-paramfetch ([#7917](https://github.com/filecoin-project/lotus/pull/7917))
-    - feat: #7880 gas: add gas charge for VerifyReplicaUpdate ([#7897](https://github.com/filecoin-project/lotus/pull/7897))
-    - enhancement: sectors: disable existing cc upgrade path 2 days before the upgrade epoch ([#7900](https://github.com/filecoin-project/lotus/pull/7900))
+  - Snap Deals Lotus Integration: FSM Posting and integration test ([#7810](https://github.com/filecoin-project/lotus/pull/7810))
+  - Feat/sector storage unseal ([#7730](https://github.com/filecoin-project/lotus/pull/7730))
+  - Feat/snap deals storage ([#7615](https://github.com/filecoin-project/lotus/pull/7615))
+  - fix: sealing: Add more deal expiration checks during PRU pipeline ([#7871](https://github.com/filecoin-project/lotus/pull/7871))
+  - chore: deps: Update go-paramfetch ([#7917](https://github.com/filecoin-project/lotus/pull/7917))
+  - feat: #7880 gas: add gas charge for VerifyReplicaUpdate ([#7897](https://github.com/filecoin-project/lotus/pull/7897))
+  - enhancement: sectors: disable existing cc upgrade path 2 days before the upgrade epoch ([#7900](https://github.com/filecoin-project/lotus/pull/7900))
 
 ## Improvements
 - updating to new datastore/blockstore code with contexts ([#7646](https://github.com/filecoin-project/lotus/pull/7646))
 - reorder transfer checks so as to ensure sending 2B FIL to yourself fails if you don't have that amount ([#7637](https://github.com/filecoin-project/lotus/pull/7637))
+- VM: Circ supply should be constant per epoch ([#7811](https://github.com/filecoin-project/lotus/pull/7811))
 
 ## Bug Fixes
 - Fix: state: circsuypply calc around null blocks ([#7890](https://github.com/filecoin-project/lotus/pull/7890))
-- VM: Circ supply should be constant per epoch ([#7811](https://github.com/filecoin-project/lotus/pull/7811))
 - Mempool msg selection should respect block message limits ([#7321](https://github.com/filecoin-project/lotus/pull/7321))
   SplitStore: supress compaction near upgrades ([#7734](https://github.com/filecoin-project/lotus/pull/7734))
   
