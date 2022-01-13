@@ -27,7 +27,7 @@ The network supports three sector sizes, 512MiB, 32GiB and 64GiB. Temporary proo
 
 *SnapNet Resources*:
 - [Faucet](https://faucet.butterfly.fildev.network/)
-- [Stats Dashboard](https://faucet.butterfly.fildev.network/)
+- [Stats Dashboard](https://stats.butterfly.fildev.network/d/z6FtI92Zz/chain?orgId=1&refresh=25s&from=now-30m&to=now&kiosk)
 - For questions and feedbacks:
   - Primary: [Discussion](https://github.com/filecoin-project/lotus/discussions/7935)
   - Secondary: #lotus-ohsnap in Filecoin Slack
