@@ -36,6 +36,7 @@ The network supports three sector sizes, 512MiB, 32GiB and 64GiB. Temporary proo
 - Integrate actor v7-rc1:
   - Integrate v7 actors ([#7617](https://github.com/filecoin-project/lotus/pull/7617))
   - feat: state: Fast migration for v15 ([#7933](https://github.com/filecoin-project/lotus/pull/7933))
+  - fix: blockstore: Add missing locks to autobatch::Get() [#7939](https://github.com/filecoin-project/lotus/pull/7939))
   - correctness fixes for the autobatch blockstore ([#7940](https://github.com/filecoin-project/lotus/pull/7940))
 - Implement and support [FIP-0019 Snap Deals](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0019.md)
   - chore: deps: Integrate proof v11.0.0 ([#7923](https://github.com/filecoin-project/lotus/pull/7923))
