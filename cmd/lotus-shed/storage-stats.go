@@ -30,8 +30,6 @@ type providerMeta struct {
 type Totals struct {
 	TotalDeals           int     `json:"total_num_deals"`
 	TotalBytes           int64   `json:"total_stored_data_size"`
-	SlashedTotalDeals    int     `json:"slashed_total_num_deals"`
-	SlashedTotalBytes    int64   `json:"slashed_total_stored_data_size"`
 	PrivateTotalDeals    int     `json:"private_total_num_deals"`
 	PrivateTotalBytes    int64   `json:"private_total_stored_data_size"`
 	CapacityCarryingData float64 `json:"capacity_fraction_carrying_data"`
@@ -111,8 +109,13 @@ var storageStatsCmd = &cli.Command{
 			// Only count deals that have properly started, not past/future ones
 			// https://github.com/filecoin-project/specs-actors/blob/v0.9.9/actors/builtin/market/deal.go#L81-L85
 			// Bail on 0 as well in case SectorStartEpoch is uninitialized due to some bug
+			//
+			// Additionally if the SlashEpoch is set this means the underlying sector is
+			// terminated for whatever reason ( not just slashed ), and the deal record
+			// will soon be removed from the state entirely
 			if dealInfo.State.SectorStartEpoch <= 0 ||
-				dealInfo.State.SectorStartEpoch > ts.Height() {
+				dealInfo.State.SectorStartEpoch > ts.Height() ||
+				dealInfo.State.SlashEpoch > -1 {
 				continue
 			}
 
@@ -144,10 +147,6 @@ var storageStatsCmd = &cli.Command{
 
 			netTotals.TotalBytes += int64(dealInfo.Proposal.PieceSize)
 			netTotals.TotalDeals++
-			if dealInfo.State.SlashEpoch > -1 && dealInfo.State.LastUpdatedEpoch < dealInfo.State.SlashEpoch {
-				netTotals.SlashedTotalBytes += int64(dealInfo.Proposal.PieceSize)
-				netTotals.SlashedTotalDeals++
-			}
 			if netTotals.providers[dealInfo.Proposal.Provider].nonidentifiable {
 				netTotals.PrivateTotalBytes += int64(dealInfo.Proposal.PieceSize)
 				netTotals.PrivateTotalDeals++
@@ -156,10 +155,6 @@ var storageStatsCmd = &cli.Command{
 			if dealInfo.Proposal.VerifiedDeal {
 				netTotals.FilPlus.TotalBytes += int64(dealInfo.Proposal.PieceSize)
 				netTotals.FilPlus.TotalDeals++
-				if dealInfo.State.SlashEpoch > -1 && dealInfo.State.LastUpdatedEpoch < dealInfo.State.SlashEpoch {
-					netTotals.FilPlus.SlashedTotalBytes += int64(dealInfo.Proposal.PieceSize)
-					netTotals.FilPlus.SlashedTotalDeals++
-				}
 				if netTotals.providers[dealInfo.Proposal.Provider].nonidentifiable {
 					netTotals.FilPlus.PrivateTotalBytes += int64(dealInfo.Proposal.PieceSize)
 					netTotals.FilPlus.PrivateTotalDeals++
