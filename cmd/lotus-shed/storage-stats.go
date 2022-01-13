@@ -8,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	filbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
@@ -22,29 +23,43 @@ type networkTotalsOutput struct {
 	Payload  networkTotals `json:"payload"`
 }
 
-type networkTotals struct {
-	QaNetworkPower       filbig.Int `json:"total_qa_power"`
-	RawNetworkPower      filbig.Int `json:"total_raw_capacity"`
-	CapacityCarryingData float64    `json:"capacity_fraction_carrying_data"`
-	UniqueCids           int        `json:"total_unique_cids"`
-	UniqueProviders      int        `json:"total_unique_providers"`
-	UniqueClients        int        `json:"total_unique_clients"`
-	TotalDeals           int        `json:"total_num_deals"`
-	TotalBytes           int64      `json:"total_stored_data_size"`
-	FilplusTotalDeals    int        `json:"filplus_total_num_deals"`
-	FilplusTotalBytes    int64      `json:"filplus_total_stored_data_size"`
+type providerMeta struct {
+	nonidentifiable bool
+}
 
-	seenClient   map[address.Address]bool
-	seenProvider map[address.Address]bool
-	seenPieceCid map[cid.Cid]bool
+type Totals struct {
+	TotalDeals           int     `json:"total_num_deals"`
+	TotalBytes           int64   `json:"total_stored_data_size"`
+	SlashedTotalDeals    int     `json:"slashed_total_num_deals"`
+	SlashedTotalBytes    int64   `json:"slashed_total_stored_data_size"`
+	PrivateTotalDeals    int     `json:"private_total_num_deals"`
+	PrivateTotalBytes    int64   `json:"private_total_stored_data_size"`
+	CapacityCarryingData float64 `json:"capacity_fraction_carrying_data"`
+}
+
+type networkTotals struct {
+	QaNetworkPower         filbig.Int `json:"total_qa_power"`
+	RawNetworkPower        filbig.Int `json:"total_raw_capacity"`
+	UniqueCids             int        `json:"total_unique_cids"`
+	UniqueBytes            int64      `json:"total_unique_data_size"`
+	UniqueClients          int        `json:"total_unique_clients"`
+	UniqueProviders        int        `json:"total_unique_providers"`
+	UniquePrivateProviders int        `json:"total_unique_private_providers"`
+	Totals
+	FilPlus Totals `json:"filecoin_plus_subset"`
+
+	pieces    map[cid.Cid]struct{}
+	clients   map[address.Address]struct{}
+	providers map[address.Address]providerMeta
 }
 
 var storageStatsCmd = &cli.Command{
 	Name:  "storage-stats",
 	Usage: "Translates current lotus state into a json summary suitable for driving https://storage.filecoin.io/",
 	Flags: []cli.Flag{
-		&cli.Int64Flag{
-			Name: "height",
+		&cli.StringFlag{
+			Name:  "tipset",
+			Usage: "Comma separated array of cids, or @height",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -56,22 +71,24 @@ var storageStatsCmd = &cli.Command{
 		}
 		defer apiCloser()
 
-		head, err := api.ChainHead(ctx)
-		if err != nil {
-			return err
-		}
-
-		requestedHeight := cctx.Int64("height")
-		if requestedHeight > 0 {
-			head, err = api.ChainGetTipSetByHeight(ctx, abi.ChainEpoch(requestedHeight), head.Key())
+		var ts *types.TipSet
+		if cctx.String("tipset") == "" {
+			ts, err = api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+			ts, err = api.ChainGetTipSetByHeight(ctx, ts.Height()-defaultEpochLookback, ts.Key())
+			if err != nil {
+				return err
+			}
 		} else {
-			head, err = api.ChainGetTipSetByHeight(ctx, head.Height()-defaultEpochLookback, head.Key())
-		}
-		if err != nil {
-			return err
+			ts, err = lcli.ParseTipSetRef(ctx, api, cctx.String("tipset"))
+			if err != nil {
+				return err
+			}
 		}
 
-		power, err := api.StateMinerPower(ctx, address.Address{}, head.Key())
+		power, err := api.StateMinerPower(ctx, address.Address{}, ts.Key())
 		if err != nil {
 			return err
 		}
@@ -79,12 +96,12 @@ var storageStatsCmd = &cli.Command{
 		netTotals := networkTotals{
 			QaNetworkPower:  power.TotalPower.QualityAdjPower,
 			RawNetworkPower: power.TotalPower.RawBytePower,
-			seenClient:      make(map[address.Address]bool),
-			seenProvider:    make(map[address.Address]bool),
-			seenPieceCid:    make(map[cid.Cid]bool),
+			pieces:          make(map[cid.Cid]struct{}),
+			clients:         make(map[address.Address]struct{}),
+			providers:       make(map[address.Address]providerMeta),
 		}
 
-		deals, err := api.StateMarketDeals(ctx, head.Key())
+		deals, err := api.StateMarketDeals(ctx, ts.Key())
 		if err != nil {
 			return err
 		}
@@ -95,34 +112,74 @@ var storageStatsCmd = &cli.Command{
 			// https://github.com/filecoin-project/specs-actors/blob/v0.9.9/actors/builtin/market/deal.go#L81-L85
 			// Bail on 0 as well in case SectorStartEpoch is uninitialized due to some bug
 			if dealInfo.State.SectorStartEpoch <= 0 ||
-				dealInfo.State.SectorStartEpoch > head.Height() {
+				dealInfo.State.SectorStartEpoch > ts.Height() {
 				continue
 			}
 
-			netTotals.seenClient[dealInfo.Proposal.Client] = true
+			netTotals.clients[dealInfo.Proposal.Client] = struct{}{}
+
+			if _, seen := netTotals.providers[dealInfo.Proposal.Provider]; !seen {
+				pm := providerMeta{}
+
+				mi, err := api.StateMinerInfo(ctx, dealInfo.Proposal.Provider, ts.Key())
+				if err != nil {
+					return err
+				}
+
+				if mi.PeerId == nil || *mi.PeerId == "" {
+					log.Infof("private provider %s", dealInfo.Proposal.Provider)
+					pm.nonidentifiable = true
+					netTotals.UniquePrivateProviders++
+				}
+
+				netTotals.providers[dealInfo.Proposal.Provider] = pm
+				netTotals.UniqueProviders++
+			}
+
+			if _, seen := netTotals.pieces[dealInfo.Proposal.PieceCID]; !seen {
+				netTotals.pieces[dealInfo.Proposal.PieceCID] = struct{}{}
+				netTotals.UniqueBytes += int64(dealInfo.Proposal.PieceSize)
+				netTotals.UniqueCids++
+			}
+
 			netTotals.TotalBytes += int64(dealInfo.Proposal.PieceSize)
-			netTotals.seenProvider[dealInfo.Proposal.Provider] = true
-			netTotals.seenPieceCid[dealInfo.Proposal.PieceCID] = true
 			netTotals.TotalDeals++
+			if dealInfo.State.SlashEpoch > -1 && dealInfo.State.LastUpdatedEpoch < dealInfo.State.SlashEpoch {
+				netTotals.SlashedTotalBytes += int64(dealInfo.Proposal.PieceSize)
+				netTotals.SlashedTotalDeals++
+			}
+			if netTotals.providers[dealInfo.Proposal.Provider].nonidentifiable {
+				netTotals.PrivateTotalBytes += int64(dealInfo.Proposal.PieceSize)
+				netTotals.PrivateTotalDeals++
+			}
 
 			if dealInfo.Proposal.VerifiedDeal {
-				netTotals.FilplusTotalDeals++
-				netTotals.FilplusTotalBytes += int64(dealInfo.Proposal.PieceSize)
+				netTotals.FilPlus.TotalBytes += int64(dealInfo.Proposal.PieceSize)
+				netTotals.FilPlus.TotalDeals++
+				if dealInfo.State.SlashEpoch > -1 && dealInfo.State.LastUpdatedEpoch < dealInfo.State.SlashEpoch {
+					netTotals.FilPlus.SlashedTotalBytes += int64(dealInfo.Proposal.PieceSize)
+					netTotals.FilPlus.SlashedTotalDeals++
+				}
+				if netTotals.providers[dealInfo.Proposal.Provider].nonidentifiable {
+					netTotals.FilPlus.PrivateTotalBytes += int64(dealInfo.Proposal.PieceSize)
+					netTotals.FilPlus.PrivateTotalDeals++
+				}
 			}
 		}
 
-		netTotals.UniqueCids = len(netTotals.seenPieceCid)
-		netTotals.UniqueClients = len(netTotals.seenClient)
-		netTotals.UniqueProviders = len(netTotals.seenProvider)
-
+		netTotals.UniqueClients = len(netTotals.clients)
 		netTotals.CapacityCarryingData, _ = new(corebig.Rat).SetFrac(
 			corebig.NewInt(netTotals.TotalBytes),
+			netTotals.RawNetworkPower.Int,
+		).Float64()
+		netTotals.FilPlus.CapacityCarryingData, _ = new(corebig.Rat).SetFrac(
+			corebig.NewInt(netTotals.FilPlus.TotalBytes),
 			netTotals.RawNetworkPower.Int,
 		).Float64()
 
 		return json.NewEncoder(os.Stdout).Encode(
 			networkTotalsOutput{
-				Epoch:    int64(head.Height()),
+				Epoch:    int64(ts.Height()),
 				Endpoint: "NETWORK_WIDE_TOTALS",
 				Payload:  netTotals,
 			},
