@@ -5,12 +5,12 @@
 This is the first release candidate for the mandatory release v1.14.0 of Lotus that introduces [Filecoin network v15, 
 codenamed the OhSnap upgrade](https://github.com/filecoin-project/community/discussions/74?sort=new#discussioncomment-1922550).
 
-The OhSnap upgrade introduces the following FIPs, delivered in actor v7-rc1:
+The OhSnap upgrade introduces the following FIPs, delivered in [actors v7-rc1](https://github.com/filecoin-project/specs-actors/releases/tag/v7.0.0-rc1):
 - [FIP-0019 Snap Deals](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0019.md)
 - [FIP-0028 Remove Datacap from Verified clients](https://github.com/filecoin-project/FIPs/pull/226)
 
 Note: 
-- This release is built on top of lotus v1.13.2. Enterprise users like storage providers, data brokers and others 
+- This release is built on top of lotus v1.13.2. Enterprising users like storage providers, data brokers and others 
   are recommended to test out v1.15.0-rc1(coming on Jan 18th, 2022) for latest new features, improvements and bug 
   fixes and be ready for the upgrade!
 - This release candidate uses temporary proof params for Snap Deals.
@@ -20,9 +20,9 @@ Note:
 
 The ButterFly-SnapNet will be upgraded to Network v15 OhSnap at epoch 30262, around 2022-01-17T19:00:00Z. 
 
-To join the network, simply building lotus by running `make butterflynet`. 
+To join the network, simply build lotus by running `make butterflynet`. 
 
-The network supports three sector sizes, 512MiB, 32GiB and 64GiB. Temporary proof params for Snap Deals should be downloaded upon your node restarts. 
+The network supports three sector sizes, 512MiB, 32GiB and 64GiB. Temporary proof params for Snap Deals should be downloaded upon your node restart. 
  - The parameters are pinged on IPFS gateway https://proofs.filecoin.io/ipfs/ and the CIDs can be found [here](https://github.com/filecoin-project/lotus/blob/edd3486d2cf53b960382e9cda6671e647844aa41/build/proof-params/parameters.json), please let the lotus team know if the params are not fetched automatically. You can also download the params manually from s3://proof-params-ap/filecoin-snapdeal-parameters/.
 
 *SnapNet Resources*:
