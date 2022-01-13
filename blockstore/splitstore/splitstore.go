@@ -18,6 +18,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	bstore "github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
 
@@ -47,6 +49,9 @@ var (
 	enableDebugLog = false
 	// set this to true if you want to track origin stack traces in the write log
 	enableDebugLogWriteTraces = false
+
+	// upgradeBoundary is the boundary before and after an upgrade where we suppress compaction
+	upgradeBoundary = build.Finality
 )
 
 func init() {
@@ -98,6 +103,12 @@ type ChainAccessor interface {
 	SubscribeHeadChanges(change func(revert []*types.TipSet, apply []*types.TipSet) error)
 }
 
+// upgradeRange is a precomputed epoch range during which we shouldn't compact so as to not
+// interfere with an upgrade
+type upgradeRange struct {
+	start, end abi.ChainEpoch
+}
+
 // hotstore is the interface that must be satisfied by the hot blockstore; it is an extension
 // of the Blockstore interface with the traits we need for compaction.
 type hotstore interface {
@@ -124,6 +135,8 @@ type SplitStore struct {
 	ds    dstore.Datastore
 	cold  bstore.Blockstore
 	hot   hotstore
+
+	upgrades []upgradeRange
 
 	markSetEnv  MarkSetEnv
 	markSetSize int64
@@ -203,17 +216,17 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 }
 
 // Blockstore interface
-func (s *SplitStore) DeleteBlock(_ cid.Cid) error {
+func (s *SplitStore) DeleteBlock(_ context.Context, _ cid.Cid) error {
 	// afaict we don't seem to be using this method, so it's not implemented
 	return errors.New("DeleteBlock not implemented on SplitStore; don't do this Luke!") //nolint
 }
 
-func (s *SplitStore) DeleteMany(_ []cid.Cid) error {
+func (s *SplitStore) DeleteMany(_ context.Context, _ []cid.Cid) error {
 	// afaict we don't seem to be using this method, so it's not implemented
 	return errors.New("DeleteMany not implemented on SplitStore; don't do this Luke!") //nolint
 }
 
-func (s *SplitStore) Has(cid cid.Cid) (bool, error) {
+func (s *SplitStore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 	if isIdentiyCid(cid) {
 		return true, nil
 	}
@@ -221,7 +234,7 @@ func (s *SplitStore) Has(cid cid.Cid) (bool, error) {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	has, err := s.hot.Has(cid)
+	has, err := s.hot.Has(ctx, cid)
 
 	if err != nil {
 		return has, err
@@ -232,10 +245,10 @@ func (s *SplitStore) Has(cid cid.Cid) (bool, error) {
 		return true, nil
 	}
 
-	return s.cold.Has(cid)
+	return s.cold.Has(ctx, cid)
 }
 
-func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
+func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
 	if isIdentiyCid(cid) {
 		data, err := decodeIdentityCid(cid)
 		if err != nil {
@@ -248,7 +261,7 @@ func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	blk, err := s.hot.Get(cid)
+	blk, err := s.hot.Get(ctx, cid)
 
 	switch err {
 	case nil:
@@ -260,7 +273,7 @@ func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
 			s.debug.LogReadMiss(cid)
 		}
 
-		blk, err = s.cold.Get(cid)
+		blk, err = s.cold.Get(ctx, cid)
 		if err == nil {
 			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
 
@@ -272,7 +285,7 @@ func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
 	}
 }
 
-func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
+func (s *SplitStore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 	if isIdentiyCid(cid) {
 		data, err := decodeIdentityCid(cid)
 		if err != nil {
@@ -285,7 +298,7 @@ func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	size, err := s.hot.GetSize(cid)
+	size, err := s.hot.GetSize(ctx, cid)
 
 	switch err {
 	case nil:
@@ -297,7 +310,7 @@ func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 			s.debug.LogReadMiss(cid)
 		}
 
-		size, err = s.cold.GetSize(cid)
+		size, err = s.cold.GetSize(ctx, cid)
 		if err == nil {
 			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
 		}
@@ -308,7 +321,7 @@ func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 	}
 }
 
-func (s *SplitStore) Put(blk blocks.Block) error {
+func (s *SplitStore) Put(ctx context.Context, blk blocks.Block) error {
 	if isIdentiyCid(blk.Cid()) {
 		return nil
 	}
@@ -316,7 +329,7 @@ func (s *SplitStore) Put(blk blocks.Block) error {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	err := s.hot.Put(blk)
+	err := s.hot.Put(ctx, blk)
 	if err != nil {
 		return err
 	}
@@ -327,7 +340,7 @@ func (s *SplitStore) Put(blk blocks.Block) error {
 	return nil
 }
 
-func (s *SplitStore) PutMany(blks []blocks.Block) error {
+func (s *SplitStore) PutMany(ctx context.Context, blks []blocks.Block) error {
 	// filter identites
 	idcids := 0
 	for _, blk := range blks {
@@ -361,7 +374,7 @@ func (s *SplitStore) PutMany(blks []blocks.Block) error {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	err := s.hot.PutMany(blks)
+	err := s.hot.PutMany(ctx, blks)
 	if err != nil {
 		return err
 	}
@@ -417,7 +430,7 @@ func (s *SplitStore) HashOnRead(enabled bool) {
 	s.cold.HashOnRead(enabled)
 }
 
-func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
+func (s *SplitStore) View(ctx context.Context, cid cid.Cid, cb func([]byte) error) error {
 	if isIdentiyCid(cid) {
 		data, err := decodeIdentityCid(cid)
 		if err != nil {
@@ -438,14 +451,14 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 	s.protectView(cid)
 	defer s.viewDone()
 
-	err := s.hot.View(cid, cb)
+	err := s.hot.View(ctx, cid, cb)
 	switch err {
 	case bstore.ErrNotFound:
 		if s.isWarm() {
 			s.debug.LogReadMiss(cid)
 		}
 
-		err = s.cold.View(cid, cb)
+		err = s.cold.View(ctx, cid, cb)
 		if err == nil {
 			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
 		}
@@ -463,16 +476,33 @@ func (s *SplitStore) isWarm() bool {
 }
 
 // State tracking
-func (s *SplitStore) Start(chain ChainAccessor) error {
+func (s *SplitStore) Start(chain ChainAccessor, us stmgr.UpgradeSchedule) error {
 	s.chain = chain
 	curTs := chain.GetHeaviestTipSet()
+
+	// precompute the upgrade boundaries
+	s.upgrades = make([]upgradeRange, 0, len(us))
+	for _, upgrade := range us {
+		boundary := upgrade.Height
+		for _, pre := range upgrade.PreMigrations {
+			preMigrationBoundary := upgrade.Height - pre.StartWithin
+			if preMigrationBoundary < boundary {
+				boundary = preMigrationBoundary
+			}
+		}
+
+		upgradeStart := boundary - upgradeBoundary
+		upgradeEnd := upgrade.Height + upgradeBoundary
+
+		s.upgrades = append(s.upgrades, upgradeRange{start: upgradeStart, end: upgradeEnd})
+	}
 
 	// should we warmup
 	warmup := false
 
 	// load base epoch from metadata ds
 	// if none, then use current epoch because it's a fresh start
-	bs, err := s.ds.Get(baseEpochKey)
+	bs, err := s.ds.Get(s.ctx, baseEpochKey)
 	switch err {
 	case nil:
 		s.baseEpoch = bytesToEpoch(bs)
@@ -493,7 +523,7 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 	}
 
 	// load warmup epoch from metadata ds
-	bs, err = s.ds.Get(warmupEpochKey)
+	bs, err = s.ds.Get(s.ctx, warmupEpochKey)
 	switch err {
 	case nil:
 		s.warmupEpoch = bytesToEpoch(bs)
@@ -506,7 +536,7 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 	}
 
 	// load markSetSize from metadata ds to provide a size hint for marksets
-	bs, err = s.ds.Get(markSetSizeKey)
+	bs, err = s.ds.Get(s.ctx, markSetSizeKey)
 	switch err {
 	case nil:
 		s.markSetSize = bytesToInt64(bs)
@@ -517,7 +547,7 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 	}
 
 	// load compactionIndex from metadata ds to provide a hint as to when to perform moving gc
-	bs, err = s.ds.Get(compactionIndexKey)
+	bs, err = s.ds.Get(s.ctx, compactionIndexKey)
 	switch err {
 	case nil:
 		s.compactionIndex = bytesToInt64(bs)
@@ -579,5 +609,5 @@ func (s *SplitStore) checkClosing() error {
 
 func (s *SplitStore) setBaseEpoch(epoch abi.ChainEpoch) error {
 	s.baseEpoch = epoch
-	return s.ds.Put(baseEpochKey, epochToBytes(epoch))
+	return s.ds.Put(s.ctx, baseEpochKey, epochToBytes(epoch))
 }

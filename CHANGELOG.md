@@ -1,5 +1,89 @@
 # Lotus changelog
 
+# 1.14.0-rc1 / 2022-01-12
+
+This is the first release candidate for the mandatory release v1.14.0 of Lotus that introduces [Filecoin network v15, 
+codenamed the OhSnap upgrade](https://github.com/filecoin-project/community/discussions/74?sort=new#discussioncomment-1922550).
+
+The OhSnap upgrade introduces the following FIPs, delivered in [actors v7-rc1](https://github.com/filecoin-project/specs-actors/releases/tag/v7.0.0-rc1):
+- [FIP-0019 Snap Deals](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0019.md)
+- [FIP-0028 Remove Datacap from Verified clients](https://github.com/filecoin-project/FIPs/pull/226)
+
+Note: 
+- This release is built on top of lotus v1.13.2. Enterprising users like storage providers, data brokers and others 
+  are recommended to test out v1.15.0-rc1(coming on Jan 18th, 2022) for latest new features, improvements and bug 
+  fixes and be ready for the upgrade!
+- This release candidate uses temporary proof params for Snap Deals.
+- It only sets upgrade epoch for Butterfly-SnapNet, and it does not set the upgrade epochs for calibration and mainnet.
+
+## Butterfly - SnapNet
+
+The ButterFly-SnapNet will be upgraded to Network v15 OhSnap at epoch 30262, around 2022-01-17T19:00:00Z. 
+
+To join the network, simply build lotus by running `make butterflynet`. 
+
+The network supports three sector sizes, 512MiB, 32GiB and 64GiB. Temporary proof params for Snap Deals should be downloaded upon your node restarts. 
+ - The parameters are pinged on IPFS gateway https://proofs.filecoin.io/ipfs/ and the CIDs can be found [here](https://github.com/filecoin-project/lotus/blob/edd3486d2cf53b960382e9cda6671e647844aa41/build/proof-params/parameters.json), please let the lotus team know in #lotus-ohsnap if the params are not fetched automatically. You can also download the params manually from s3://proof-params-ap/filecoin-snapdeal-parameters/.
+
+*SnapNet Resources*:
+- [Faucet](https://faucet.butterfly.fildev.network/)
+- [Stats Dashboard](https://stats.butterfly.fildev.network/d/z6FtI92Zz/chain?orgId=1&refresh=25s&from=now-30m&to=now&kiosk)
+- For questions and feedbacks:
+  - Primary: [Discussion](https://github.com/filecoin-project/lotus/discussions/7935)
+  - Secondary: #lotus-ohsnap in Filecoin Slack
+  
+## New Features and Changes
+- Integrate actor v7-rc1:
+  - Integrate v7 actors ([#7617](https://github.com/filecoin-project/lotus/pull/7617))
+  - feat: state: Fast migration for v15 ([#7933](https://github.com/filecoin-project/lotus/pull/7933))
+  - fix: blockstore: Add missing locks to autobatch::Get() [#7939](https://github.com/filecoin-project/lotus/pull/7939))
+  - correctness fixes for the autobatch blockstore ([#7940](https://github.com/filecoin-project/lotus/pull/7940))
+- Implement and support [FIP-0019 Snap Deals](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0019.md)
+  - chore: deps: Integrate proof v11.0.0 ([#7923](https://github.com/filecoin-project/lotus/pull/7923))
+  - Snap Deals Lotus Integration: FSM Posting and integration test ([#7810](https://github.com/filecoin-project/lotus/pull/7810))
+  - Feat/sector storage unseal ([#7730](https://github.com/filecoin-project/lotus/pull/7730))
+  - Feat/snap deals storage ([#7615](https://github.com/filecoin-project/lotus/pull/7615))
+  - fix: sealing: Add more deal expiration checks during PRU pipeline ([#7871](https://github.com/filecoin-project/lotus/pull/7871))
+  - chore: deps: Update go-paramfetch ([#7917](https://github.com/filecoin-project/lotus/pull/7917))
+  - feat: #7880 gas: add gas charge for VerifyReplicaUpdate ([#7897](https://github.com/filecoin-project/lotus/pull/7897))
+  - enhancement: sectors: disable existing cc upgrade path 2 days before the upgrade epoch ([#7900](https://github.com/filecoin-project/lotus/pull/7900))
+
+## Improvements
+- updating to new datastore/blockstore code with contexts ([#7646](https://github.com/filecoin-project/lotus/pull/7646))
+- reorder transfer checks so as to ensure sending 2B FIL to yourself fails if you don't have that amount ([#7637](https://github.com/filecoin-project/lotus/pull/7637))
+- VM: Circ supply should be constant per epoch ([#7811](https://github.com/filecoin-project/lotus/pull/7811))
+
+## Bug Fixes
+- Fix: state: circsuypply calc around null blocks ([#7890](https://github.com/filecoin-project/lotus/pull/7890))
+- Mempool msg selection should respect block message limits ([#7321](https://github.com/filecoin-project/lotus/pull/7321))
+  SplitStore: supress compaction near upgrades ([#7734](https://github.com/filecoin-project/lotus/pull/7734))
+  
+## Others
+- chore: create pull_request_template.md ([#7726](https://github.com/filecoin-project/lotus/pull/7726))
+
+## Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Aayush Rajasekaran | 56 | +5866/-2523 | 316 |
+| zenground0 | 11 | +3316/-524 | 124 |
+| vyzo | 38 | +722/-485 | 117 |
+| Rod Vagg | 2 | +6/-941 | 4 |
+| whyrusleeping | 2 | +376/-339 | 27 |
+| ZenGround0 | 3 | +263/-25 | 11 |
+| c r | 2 | +198/-30 | 6 |
+| Łukasz Magiera | 2 | +184/-3 | 3 |
+| Jennifer Wang | 14 | +97/-69 | 41 |
+| Whyrusleeping | 1 | +76/-70 | 8 |
+| web3-bot | 10 | +99/-17 | 10 |
+| Steven Allen | 1 | +55/-37 | 1 |
+| Jiaying Wang | 5 | +30/-8 | 5 |
+| Hannah Howard | 1 | +4/-29 | 3 |
+| dirkmc | 1 | +11/-0 | 1 |
+| Jakub Sztandera | 2 | +8/-3 | 3 |
+| Colin Kennedy | 1 | +4/-2 | 1 |
+
+
 # v1.13.2 /  2022-01-09
 
 Lotus v1.13.2 is a *highly recommended* feature release with remarkable retrieval improvements, new features like 

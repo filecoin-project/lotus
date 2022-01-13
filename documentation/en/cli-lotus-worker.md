@@ -7,7 +7,7 @@ USAGE:
    lotus-worker [global options] command [command options] [arguments...]
 
 VERSION:
-   1.13.2
+   1.14.0-rc1
 
 COMMANDS:
    run         Start lotus worker
@@ -44,6 +44,8 @@ OPTIONS:
    --unseal                      enable unsealing (32G sectors: 1 core, 128GiB Memory) (default: true)
    --precommit2                  enable precommit2 (32G sectors: all cores, 96GiB Memory) (default: true)
    --commit                      enable commit (32G sectors: all cores or GPUs, 128GiB Memory + 64GiB swap) (default: true)
+   --replica-update              enable replica update (default: true)
+   --prove-replica-update2       enable prove replica update 2 (default: true)
    --parallel-fetch-limit value  maximum fetch operations to run in parallel (default: 5)
    --timeout value               used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function (default: "30m")
    --help, -h                    show help (default: false)

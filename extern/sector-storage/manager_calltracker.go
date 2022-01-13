@@ -385,7 +385,6 @@ func (m *Manager) returnResult(ctx context.Context, callID storiface.CallID, r i
 	if ok {
 		return xerrors.Errorf("result for call %v already reported", wid)
 	}
-
 	m.results[wid] = res
 
 	err := m.work.Get(wid).Mutate(func(ws *WorkState) error {

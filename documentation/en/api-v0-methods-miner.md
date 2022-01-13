@@ -94,9 +94,13 @@
   * [ReturnAddPiece](#ReturnAddPiece)
   * [ReturnFetch](#ReturnFetch)
   * [ReturnFinalizeSector](#ReturnFinalizeSector)
+  * [ReturnGenerateSectorKeyFromData](#ReturnGenerateSectorKeyFromData)
   * [ReturnMoveStorage](#ReturnMoveStorage)
+  * [ReturnProveReplicaUpdate1](#ReturnProveReplicaUpdate1)
+  * [ReturnProveReplicaUpdate2](#ReturnProveReplicaUpdate2)
   * [ReturnReadPiece](#ReturnReadPiece)
   * [ReturnReleaseUnsealed](#ReturnReleaseUnsealed)
+  * [ReturnReplicaUpdate](#ReturnReplicaUpdate)
   * [ReturnSealCommit1](#ReturnSealCommit1)
   * [ReturnSealCommit2](#ReturnSealCommit2)
   * [ReturnSealPreCommit1](#ReturnSealPreCommit1)
@@ -114,6 +118,7 @@
   * [SectorGetExpectedSealDuration](#SectorGetExpectedSealDuration)
   * [SectorGetSealDelay](#SectorGetSealDelay)
   * [SectorMarkForUpgrade](#SectorMarkForUpgrade)
+  * [SectorMatchPendingPiecesToOpenSectors](#SectorMatchPendingPiecesToOpenSectors)
   * [SectorPreCommitFlush](#SectorPreCommitFlush)
   * [SectorPreCommitPending](#SectorPreCommitPending)
   * [SectorRemove](#SectorRemove)
@@ -209,7 +214,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131328,
+  "APIVersion": 131584,
   "BlockDelay": 42
 }
 ```
@@ -326,7 +331,9 @@ Inputs:
 ```json
 [
   null,
-  null
+  null,
+  10101,
+  15
 ]
 ```
 
@@ -1461,6 +1468,30 @@ Inputs:
 
 Response: `{}`
 
+### ReturnGenerateSectorKeyFromData
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Sector": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ID": "07070707-0707-0707-0707-070707070707"
+  },
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
+]
+```
+
+Response: `{}`
+
 ### ReturnMoveStorage
 
 
@@ -1476,6 +1507,56 @@ Inputs:
     },
     "ID": "07070707-0707-0707-0707-070707070707"
   },
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
+]
+```
+
+Response: `{}`
+
+### ReturnProveReplicaUpdate1
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Sector": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ID": "07070707-0707-0707-0707-070707070707"
+  },
+  null,
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
+]
+```
+
+Response: `{}`
+
+### ReturnProveReplicaUpdate2
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Sector": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ID": "07070707-0707-0707-0707-070707070707"
+  },
+  null,
   {
     "Code": 0,
     "Message": "string value"
@@ -1524,6 +1605,38 @@ Inputs:
       "Number": 9
     },
     "ID": "07070707-0707-0707-0707-070707070707"
+  },
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
+]
+```
+
+Response: `{}`
+
+### ReturnReplicaUpdate
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Sector": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ID": "07070707-0707-0707-0707-070707070707"
+  },
+  {
+    "NewSealed": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "NewUnsealed": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
   },
   {
     "Code": 0,
@@ -1826,9 +1939,19 @@ Perms: admin
 Inputs:
 ```json
 [
-  9
+  9,
+  true
 ]
 ```
+
+Response: `{}`
+
+### SectorMatchPendingPiecesToOpenSectors
+
+
+Perms: admin
+
+Inputs: `null`
 
 Response: `{}`
 

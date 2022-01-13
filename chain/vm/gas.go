@@ -3,13 +3,14 @@ package vm
 import (
 	"fmt"
 
+	vmr "github.com/filecoin-project/specs-actors/v7/actors/runtime"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	"github.com/filecoin-project/go-address"
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/build"
-	vmr5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	"github.com/ipfs/go-cid"
 )
 
@@ -73,9 +74,10 @@ type Pricelist interface {
 	OnVerifySignature(sigType crypto.SigType, planTextSize int) (GasCharge, error)
 	OnHashing(dataSize int) GasCharge
 	OnComputeUnsealedSectorCid(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) GasCharge
-	OnVerifySeal(info proof5.SealVerifyInfo) GasCharge
-	OnVerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) GasCharge
-	OnVerifyPost(info proof5.WindowPoStVerifyInfo) GasCharge
+	OnVerifySeal(info proof7.SealVerifyInfo) GasCharge
+	OnVerifyAggregateSeals(aggregate proof7.AggregateSealVerifyProofAndInfos) GasCharge
+	OnVerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) GasCharge
+	OnVerifyPost(info proof7.WindowPoStVerifyInfo) GasCharge
 	OnVerifyConsensusFault() GasCharge
 }
 
@@ -204,6 +206,8 @@ var prices = map[abi.ChainEpoch]Pricelist{
 		},
 		verifyPostDiscount:   false,
 		verifyConsensusFault: 495422,
+
+		verifyReplicaUpdate: 36316136,
 	},
 }
 
@@ -227,7 +231,7 @@ func PricelistByEpoch(epoch abi.ChainEpoch) Pricelist {
 }
 
 type pricedSyscalls struct {
-	under     vmr5.Syscalls
+	under     vmr.Syscalls
 	pl        Pricelist
 	chargeGas func(GasCharge)
 }
@@ -261,7 +265,7 @@ func (ps pricedSyscalls) ComputeUnsealedSectorCID(reg abi.RegisteredSealProof, p
 }
 
 // Verifies a sector seal proof.
-func (ps pricedSyscalls) VerifySeal(vi proof5.SealVerifyInfo) error {
+func (ps pricedSyscalls) VerifySeal(vi proof7.SealVerifyInfo) error {
 	ps.chargeGas(ps.pl.OnVerifySeal(vi))
 	defer ps.chargeGas(gasOnActorExec)
 
@@ -269,7 +273,7 @@ func (ps pricedSyscalls) VerifySeal(vi proof5.SealVerifyInfo) error {
 }
 
 // Verifies a proof of spacetime.
-func (ps pricedSyscalls) VerifyPoSt(vi proof5.WindowPoStVerifyInfo) error {
+func (ps pricedSyscalls) VerifyPoSt(vi proof7.WindowPoStVerifyInfo) error {
 	ps.chargeGas(ps.pl.OnVerifyPost(vi))
 	defer ps.chargeGas(gasOnActorExec)
 
@@ -286,14 +290,14 @@ func (ps pricedSyscalls) VerifyPoSt(vi proof5.WindowPoStVerifyInfo) error {
 // the "parent grinding fault", in which case it must be the sibling of h1 (same parent tipset) and one of the
 // blocks in the parent of h2 (i.e. h2's grandparent).
 // Returns nil and an error if the headers don't prove a fault.
-func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte) (*vmr5.ConsensusFault, error) {
+func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte) (*vmr.ConsensusFault, error) {
 	ps.chargeGas(ps.pl.OnVerifyConsensusFault())
 	defer ps.chargeGas(gasOnActorExec)
 
 	return ps.under.VerifyConsensusFault(h1, h2, extra)
 }
 
-func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]proof5.SealVerifyInfo) (map[address.Address][]bool, error) {
+func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]proof7.SealVerifyInfo) (map[address.Address][]bool, error) {
 	count := int64(0)
 	for _, svis := range inp {
 		count += int64(len(svis))
@@ -307,9 +311,16 @@ func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]proof5.SealV
 	return ps.under.BatchVerifySeals(inp)
 }
 
-func (ps pricedSyscalls) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) error {
+func (ps pricedSyscalls) VerifyAggregateSeals(aggregate proof7.AggregateSealVerifyProofAndInfos) error {
 	ps.chargeGas(ps.pl.OnVerifyAggregateSeals(aggregate))
 	defer ps.chargeGas(gasOnActorExec)
 
 	return ps.under.VerifyAggregateSeals(aggregate)
+}
+
+func (ps pricedSyscalls) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) error {
+	ps.chargeGas(ps.pl.OnVerifyReplicaUpdate(update))
+	defer ps.chargeGas(gasOnActorExec)
+
+	return ps.under.VerifyReplicaUpdate(update)
 }

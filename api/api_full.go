@@ -1083,7 +1083,7 @@ type CirculatingSupply struct {
 type MiningBaseInfo struct {
 	MinerPower        types.BigInt
 	NetworkPower      types.BigInt
-	Sectors           []builtin.SectorInfo
+	Sectors           []builtin.ExtendedSectorInfo
 	WorkerKey         address.Address
 	SectorSize        abi.SectorSize
 	PrevBeaconEntry   types.BeaconEntry

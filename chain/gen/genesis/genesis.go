@@ -479,6 +479,10 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 	verifNeeds := make(map[address.Address]abi.PaddedPieceSize)
 	var sum abi.PaddedPieceSize
 
+	csc := func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error) {
+		return big.Zero(), nil
+	}
+
 	vmopt := vm.VMOpts{
 		StateBase:      stateroot,
 		Epoch:          0,
@@ -486,7 +490,7 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 		Bstore:         cs.StateBlockstore(),
 		Actors:         filcns.NewActorRegistry(),
 		Syscalls:       mkFakedSigSyscalls(sys),
-		CircSupplyCalc: nil,
+		CircSupplyCalc: csc,
 		NtwkVersion: func(_ context.Context, _ abi.ChainEpoch) network.Version {
 			return nv
 		},
@@ -591,7 +595,7 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	if err != nil {
 		return nil, xerrors.Errorf("serializing msgmeta failed: %w", err)
 	}
-	if err := bs.Put(mmb); err != nil {
+	if err := bs.Put(ctx, mmb); err != nil {
 		return nil, xerrors.Errorf("putting msgmeta block to blockstore: %w", err)
 	}
 
@@ -621,7 +625,7 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 		return nil, xerrors.Errorf("filecoinGenesisCid != gblk.Cid")
 	}
 
-	if err := bs.Put(gblk); err != nil {
+	if err := bs.Put(ctx, gblk); err != nil {
 		return nil, xerrors.Errorf("failed writing filecoin genesis block to blockstore: %w", err)
 	}
 
@@ -652,7 +656,7 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 		return nil, xerrors.Errorf("serializing block header failed: %w", err)
 	}
 
-	if err := bs.Put(sb); err != nil {
+	if err := bs.Put(ctx, sb); err != nil {
 		return nil, xerrors.Errorf("putting header to blockstore: %w", err)
 	}
 

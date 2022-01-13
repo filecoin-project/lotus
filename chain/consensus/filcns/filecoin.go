@@ -26,7 +26,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
@@ -90,7 +90,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 
 	h := b.Header
 
-	baseTs, err := filec.store.LoadTipSet(types.NewTipSetKey(h.Parents...))
+	baseTs, err := filec.store.LoadTipSet(ctx, types.NewTipSetKey(h.Parents...))
 	if err != nil {
 		return xerrors.Errorf("load parent tipset failed (%s): %w", h.Parents, err)
 	}
@@ -102,7 +102,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 		return xerrors.Errorf("failed to get lookback tipset for block: %w", err)
 	}
 
-	prevBeacon, err := filec.store.GetLatestBeaconEntry(baseTs)
+	prevBeacon, err := filec.store.GetLatestBeaconEntry(ctx, baseTs)
 	if err != nil {
 		return xerrors.Errorf("failed to get latest beacon entry: %w", err)
 	}
@@ -171,7 +171,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 		}
 
 		if stateroot != h.ParentStateRoot {
-			msgs, err := filec.store.MessagesForTipset(baseTs)
+			msgs, err := filec.store.MessagesForTipset(ctx, baseTs)
 			if err != nil {
 				log.Error("failed to load messages for tipset during tipset state mismatch error: ", err)
 			} else {
@@ -400,12 +400,21 @@ func (filec *FilecoinEC) VerifyWinningPoStProof(ctx context.Context, nv network.
 		return xerrors.Errorf("failed to get ID from miner address %s: %w", h.Miner, err)
 	}
 
-	sectors, err := stmgr.GetSectorsForWinningPoSt(ctx, nv, filec.verifier, filec.sm, lbst, h.Miner, rand)
+	xsectors, err := stmgr.GetSectorsForWinningPoSt(ctx, nv, filec.verifier, filec.sm, lbst, h.Miner, rand)
 	if err != nil {
 		return xerrors.Errorf("getting winning post sector set: %w", err)
 	}
 
-	ok, err := ffiwrapper.ProofVerifier.VerifyWinningPoSt(ctx, proof2.WinningPoStVerifyInfo{
+	sectors := make([]proof.SectorInfo, len(xsectors))
+	for i, xsi := range xsectors {
+		sectors[i] = proof.SectorInfo{
+			SealProof:    xsi.SealProof,
+			SectorNumber: xsi.SectorNumber,
+			SealedCID:    xsi.SealedCID,
+		}
+	}
+
+	ok, err := ffiwrapper.ProofVerifier.VerifyWinningPoSt(ctx, proof.WinningPoStVerifyInfo{
 		Randomness:        rand,
 		Proofs:            h.WinPoStProof,
 		ChallengedSectors: sectors,
@@ -519,7 +528,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 			return xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
 		}
 
-		c, err := store.PutMessage(tmpbs, m)
+		c, err := store.PutMessage(ctx, tmpbs, m)
 		if err != nil {
 			return xerrors.Errorf("failed to store message %s: %w", m.Cid(), err)
 		}
@@ -553,7 +562,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 			return xerrors.Errorf("secpk message %s has invalid signature: %w", m.Cid(), err)
 		}
 
-		c, err := store.PutMessage(tmpbs, m)
+		c, err := store.PutMessage(ctx, tmpbs, m)
 		if err != nil {
 			return xerrors.Errorf("failed to store message %s: %w", m.Cid(), err)
 		}
