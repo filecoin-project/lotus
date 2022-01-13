@@ -1557,7 +1557,7 @@ var sectorsMarkForUpgradeCmd = &cli.Command{
 			return xerrors.Errorf("failed to get chain head: %w", err)
 		}
 		twoDays := abi.ChainEpoch(2 * builtin.EpochsInDay)
-		if head.Height() > (build.UpgradeSnapDealsHeight - twoDays) {
+		if head.Height() > (build.UpgradeOhSnapHeight - twoDays) {
 			return xerrors.Errorf("OhSnap is coming soon, " +
 				"please use `snap-up` to upgrade your cc sectors after the network v15 upgrade!")
 		}

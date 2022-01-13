@@ -160,7 +160,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeSnapDealsHeight,
+		Height:    build.UpgradeOhSnapHeight,
 		Network:   network.Version15,
 		Migration: UpgradeActorsV7,
 		PreMigrations: []stmgr.PreMigration{{
