@@ -32,8 +32,8 @@ func newPoStScheduler(t sealtasks.TaskType) *poStScheduler {
 	return ps
 }
 
-func (ps *poStScheduler) AddWorker(wid storiface.WorkerID, w *workerHandle) bool {
-	if _, ok := w.acceptTasks[ps.postType]; !ok {
+func (ps *poStScheduler) MaybeAddWorker(wid storiface.WorkerID, tasks map[sealtasks.TaskType]struct{}, w *workerHandle) bool {
+	if _, ok := tasks[ps.postType]; !ok {
 		return false
 	}
 
@@ -230,7 +230,7 @@ func (ps *poStScheduler) workerCleanup(wid storiface.WorkerID, w *workerHandle) 
 	select {
 	case <-w.closedMgr:
 	case <-time.After(time.Second):
-		log.Errorf("timeout closing worker manager goroutine %d", wid)
+		log.Errorf("timeout closing worker manager goroutine %s", wid)
 	}
 	ps.lk.Lock()
 }

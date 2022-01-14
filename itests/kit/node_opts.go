@@ -3,6 +3,7 @@ package kit
 import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -33,6 +34,9 @@ type nodeOpts struct {
 	optBuilders          []OptBuilder
 	sectorSize           abi.SectorSize
 	maxStagingDealsBytes int64
+	minerNoLocalSealing  bool // use worker
+
+	workerTasks []sealtasks.TaskType
 }
 
 // DefaultNodeOpts are the default options that will be applied to test nodes.
@@ -40,6 +44,8 @@ var DefaultNodeOpts = nodeOpts{
 	balance:    big.Mul(big.NewInt(100000000), types.NewInt(build.FilecoinPrecision)),
 	sectors:    DefaultPresealsPerBootstrapMiner,
 	sectorSize: abi.SectorSize(2 << 10), // 2KiB.
+
+	workerTasks: []sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize},
 }
 
 // OptBuilder is used to create an option after some other node is already
@@ -72,6 +78,13 @@ func WithSubsystems(systems ...MinerSubsystem) NodeOpt {
 func WithMaxStagingDealsBytes(size int64) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.maxStagingDealsBytes = size
+		return nil
+	}
+}
+
+func WithNoLocalSealing(nope bool) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.minerNoLocalSealing = nope
 		return nil
 	}
 }
@@ -151,6 +164,13 @@ func ConstructorOpts(extra ...node.Option) NodeOpt {
 func SectorSize(sectorSize abi.SectorSize) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.sectorSize = sectorSize
+		return nil
+	}
+}
+
+func WithTaskTypes(tt []sealtasks.TaskType) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.workerTasks = tt
 		return nil
 	}
 }

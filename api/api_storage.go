@@ -154,8 +154,6 @@ type StorageMiner interface {
 	StorageLocal(ctx context.Context) (map[stores.ID]string, error)       //perm:admin
 	StorageStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) //perm:admin
 
-	StorageGetUrl(ctx context.Context, s abi.SectorID, ft storiface.SectorFileType) (string, error) //perm:admin
-
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                        //perm:write
 	MarketListDeals(ctx context.Context) ([]MarketDeal, error)                                                                                                                           //perm:read
 	MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error)                                                                                           //perm:read

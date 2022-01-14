@@ -34,11 +34,12 @@ var order = map[TaskType]int{
 	TTCommit2:             3,
 	TTCommit1:             2,
 	TTUnseal:              1,
-	TTFetch:               -1,
-	TTFinalize:            -2, // most priority
+
+	TTFetch:    -1,
+	TTFinalize: -2,
 
 	TTGenerateWindowPoSt:  -3,
-	TTGenerateWinningPoSt: -4,
+	TTGenerateWinningPoSt: -4, // most priority
 }
 
 var shortNames = map[TaskType]string{

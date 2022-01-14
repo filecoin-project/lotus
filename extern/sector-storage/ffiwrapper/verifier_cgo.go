@@ -12,7 +12,6 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
 	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
-	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 
@@ -142,83 +141,7 @@ func (proofVerifier) VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoS
 	return ffi.VerifyWindowPoSt(info)
 }
 
-func (proofVerifier) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredPoStProof, mid abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
+func (proofVerifier) GenerateWinningPoStSectorChallenge(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, eligibleSectorCount uint64) ([]uint64, error) {
 	randomness[31] &= 0x3f
-	return ffi.GenerateWinningPoStSectorChallenge(proofType, mid, randomness, eligibleSectorCount)
-}
-
-func (sb *Sealer) PubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []proof5.SectorInfo, faults []abi.SectorNumber, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error)) (SortedPrivateSectorInfo, []abi.SectorID, func(), error) {
-	fmap := map[abi.SectorNumber]struct{}{}
-	for _, fault := range faults {
-		fmap[fault] = struct{}{}
-	}
-
-	var doneFuncs []func()
-	done := func() {
-		for _, df := range doneFuncs {
-			df()
-		}
-	}
-
-	var skipped []abi.SectorID
-	var out []ffi.PrivateSectorInfo
-	for _, s := range sectorInfo {
-		if _, faulty := fmap[s.SectorNumber]; faulty {
-			continue
-		}
-
-		sid := storage.SectorRef{
-			ID:        abi.SectorID{Miner: mid, Number: s.SectorNumber},
-			ProofType: s.SealProof,
-		}
-
-		paths, d, err := sb.sectors.AcquireSectorPaths(ctx, sid, storiface.FTCache|storiface.FTSealed, storiface.PathStorage)
-		if err != nil {
-			log.Warnw("failed to acquire sector, skipping", "sector", sid.ID, "error", err)
-			skipped = append(skipped, sid.ID)
-			continue
-		}
-		doneFuncs = append(doneFuncs, d)
-
-		postProofType, err := rpt(s.SealProof)
-		if err != nil {
-			done()
-			return SortedPrivateSectorInfo{}, nil, nil, xerrors.Errorf("acquiring registered PoSt proof from sector info %+v: %w", s, err)
-		}
-
-		out = append(out, ffi.PrivateSectorInfo{
-			CacheDirPath:     paths.Cache,
-			PoStProofType:    postProofType,
-			SealedSectorPath: paths.Sealed,
-			SectorInfo:       s,
-		})
-	}
-
-	privsectors := ffi.NewSortedPrivateSectorInfo(out...)
-
-	return SortedPrivateSectorInfo{Spsi: privsectors}, skipped, done, nil
-}
-
-func (sb *Sealer) GeneratePoStFallbackSectorChallenges(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, sectorIds []abi.SectorNumber) (*FallbackChallenges, error) {
-	fc, err := ffi.GeneratePoStFallbackSectorChallenges(proofType, minerID, randomness, sectorIds)
-	return &FallbackChallenges{
-		Fc: *fc,
-	}, err
-}
-
-func (sb *Sealer) SplitSortedPrivateSectorInfo(ctx context.Context, privsector SortedPrivateSectorInfo, offset int, end int) (SortedPrivateSectorInfo, error) {
-	Spsi, err := ffi.SplitSortedPrivateSectorInfo(ctx, privsector.Spsi, offset, end)
-	return SortedPrivateSectorInfo{Spsi: Spsi}, err
-}
-
-func (sb *Sealer) GenerateWinningPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, vanillas [][]byte) ([]proof5.PoStProof, error) {
-	return ffi.GenerateWinningPoStWithVanilla(proofType, minerID, randomness, vanillas)
-}
-
-func (sb *Sealer) GenerateWindowPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte, partitionIdx int) (*proof.PoStProof, error) {
-	pp, err := ffi.GenerateSinglePartitionWindowPoStWithVanilla(proofType, minerID, randomness, proofs, uint(partitionIdx))
-	return &proof.PoStProof{
-		PoStProof:  pp.PoStProof,
-		ProofBytes: pp.ProofBytes,
-	}, err
+	return ffi.GenerateWinningPoStSectorChallenge(proofType, minerID, randomness, eligibleSectorCount)
 }

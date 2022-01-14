@@ -17,7 +17,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/sector-storage/tarutil"
@@ -740,138 +739,78 @@ func (r *Remote) Reserve(ctx context.Context, sid storage.SectorRef, ft storifac
 	}, nil
 }
 
-func (r *Remote) AcquireSectorPaths(ctx context.Context, s storage.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, pathType storiface.PathType) (storiface.SectorPaths, storiface.SectorPaths, error) {
-	if existing|allocate != existing^allocate {
-		return storiface.SectorPaths{}, storiface.SectorPaths{}, xerrors.New("can't both find and allocate a sector")
+func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.ActorID, sinfo storiface.PostSectorChallenge, ppt abi.RegisteredPoStProof) ([]byte, error) {
+	p, err := r.local.GenerateSingleVanillaProof(ctx, minerID, sinfo, ppt)
+	if err != errPathNotFound {
+		return p, err
 	}
 
-	for {
-		r.fetchLk.Lock()
-
-		c, locked := r.fetching[s.ID]
-		if !locked {
-			r.fetching[s.ID] = make(chan struct{})
-			r.fetchLk.Unlock()
-			break
-		}
-
-		r.fetchLk.Unlock()
-
-		select {
-		case <-c:
-			continue
-		case <-ctx.Done():
-			return storiface.SectorPaths{}, storiface.SectorPaths{}, ctx.Err()
-		}
-	}
-
-	defer func() {
-		r.fetchLk.Lock()
-		close(r.fetching[s.ID])
-		delete(r.fetching, s.ID)
-		r.fetchLk.Unlock()
-	}()
-
-	var paths storiface.SectorPaths
-	var stores storiface.SectorPaths
-
-	ssize, err := s.ProofType.SectorSize()
-	if err != nil {
-		return storiface.SectorPaths{}, storiface.SectorPaths{}, err
-	}
-
-	for _, fileType := range storiface.PathTypes {
-		if fileType&existing == 0 {
-			continue
-		}
-
-		sis, err := r.index.StorageFindSector(ctx, s.ID, fileType, ssize, false)
-		if err != nil {
-			log.Warnf("finding existing sector %d failed: %+v", s.ID, err)
-			continue
-		}
-
-		for _, si := range sis {
-			if (pathType == storiface.PathSealing) && !si.CanSeal {
-				continue
-			}
-
-			if (pathType == storiface.PathStorage) && !si.CanStore {
-				continue
-			}
-
-			spath := filepath.Join(si.Path, fileType.String(), storiface.SectorName(s.ID))
-			storiface.SetPathByType(&paths, fileType, spath)
-			storiface.SetPathByType(&stores, fileType, string(si.ID))
-
-			if si.CanStore {
-				existing ^= fileType
-				break
-			}
-		}
-	}
-
-	return paths, stores, nil
-}
-
-func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.ActorID, privsector *ffiwrapper.PrivateSectorInfo, challenge []uint64) ([]byte, error) {
-	sector := abi.SectorID{
+	sid := abi.SectorID{
 		Miner:  minerID,
-		Number: privsector.Psi.SectorNumber,
+		Number: sinfo.SectorNumber,
 	}
 
-	storageUrl, err := r.index.StorageGetUrl(ctx, sector, storiface.FTCache|storiface.FTSealed)
+	si, err := r.index.StorageFindSector(ctx, sid, storiface.FTSealed|storiface.FTCache, 0, false)
 	if err != nil {
-		return nil, xerrors.Errorf("finding path for sector storage: %w", err)
+		return nil, xerrors.Errorf("finding sector %d failed: %w", sid, err)
 	}
-
-	surl, err := url.Parse(storageUrl)
-	if err != nil {
-		return nil, xerrors.Errorf("parse sector storage url failed : %w", err)
-	}
-
-	surl.Path = gopath.Join(surl.Path, "vanilla", "single")
 
 	requestParams := SingleVanillaParams{
-		PrivSector: privsector.Psi,
-		Challenge:  challenge,
+		Miner:     minerID,
+		Sector:    sinfo,
+		ProofType: ppt,
 	}
-	bytes, err := json.Marshal(requestParams)
+	jreq, err := json.Marshal(requestParams)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", surl.String(), strings.NewReader(string(bytes)))
-	if err != nil {
-		return nil, xerrors.Errorf("request: %w", err)
-	}
-	req.Header = r.auth
-	req = req.WithContext(ctx)
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, xerrors.Errorf("do request: %w", err)
-	}
-	defer func() {
-		err := resp.Body.Close()
-		if err != nil {
-			log.Error("response close: ", err)
+	for _, info := range si {
+		for _, u := range info.BaseURLs {
+			url := fmt.Sprintf("%s/vanilla/single", u)
+
+			req, err := http.NewRequest("POST", url, strings.NewReader(string(jreq)))
+			if err != nil {
+				return nil, xerrors.Errorf("request: %w", err)
+			}
+
+			if r.auth != nil {
+				req.Header = r.auth.Clone()
+			}
+			req = req.WithContext(ctx)
+
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return nil, xerrors.Errorf("do request: %w", err)
+			}
+
+			if resp.StatusCode != 200 {
+				body, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					return nil, xerrors.Errorf("resp.Body ReadAll: %w", err)
+				}
+
+				if err := resp.Body.Close(); err != nil {
+					log.Error("response close: ", err)
+				}
+
+				return nil, xerrors.Errorf("non-200 code from %s: '%s'", url, string(body))
+			}
+
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				if err := resp.Body.Close(); err != nil {
+					log.Error("response close: ", err)
+				}
+
+				return nil, xerrors.Errorf("resp.Body ReadAll: %w", err)
+			}
+
+			return body, nil
 		}
-	}()
-
-	if resp.StatusCode != 200 {
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return nil, xerrors.Errorf("resp.Body ReadAll: %w", err)
-		}
-
-		return nil, xerrors.Errorf("non-200 code: %w", string(body))
-	}
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, xerrors.Errorf("resp.Body ReadAll: %w", err)
 	}
 
-	return body, nil
+	return nil, xerrors.Errorf("sector not found")
 }
 
 var _ Store = &Remote{}

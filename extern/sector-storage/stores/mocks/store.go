@@ -9,7 +9,6 @@ import (
 	reflect "reflect"
 
 	abi "github.com/filecoin-project/go-state-types/abi"
-	ffiwrapper "github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	fsutil "github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	stores "github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	storiface "github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -56,22 +55,6 @@ func (mr *MockStoreMockRecorder) AcquireSector(arg0, arg1, arg2, arg3, arg4, arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireSector", reflect.TypeOf((*MockStore)(nil).AcquireSector), arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
-// AcquireSectorPaths mocks base method.
-func (m *MockStore) AcquireSectorPaths(arg0 context.Context, arg1 storage.SectorRef, arg2, arg3 storiface.SectorFileType, arg4 storiface.PathType) (storiface.SectorPaths, storiface.SectorPaths, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AcquireSectorPaths", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(storiface.SectorPaths)
-	ret1, _ := ret[1].(storiface.SectorPaths)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// AcquireSectorPaths indicates an expected call of AcquireSectorPaths.
-func (mr *MockStoreMockRecorder) AcquireSectorPaths(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AcquireSectorPaths", reflect.TypeOf((*MockStore)(nil).AcquireSectorPaths), arg0, arg1, arg2, arg3, arg4)
-}
-
 // FsStat mocks base method.
 func (m *MockStore) FsStat(arg0 context.Context, arg1 stores.ID) (fsutil.FsStat, error) {
 	m.ctrl.T.Helper()
@@ -88,7 +71,7 @@ func (mr *MockStoreMockRecorder) FsStat(arg0, arg1 interface{}) *gomock.Call {
 }
 
 // GenerateSingleVanillaProof mocks base method.
-func (m *MockStore) GenerateSingleVanillaProof(arg0 context.Context, arg1 abi.ActorID, arg2 *ffiwrapper.PrivateSectorInfo, arg3 []uint64) ([]byte, error) {
+func (m *MockStore) GenerateSingleVanillaProof(arg0 context.Context, arg1 abi.ActorID, arg2 storiface.PostSectorChallenge, arg3 abi.RegisteredPoStProof) ([]byte, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GenerateSingleVanillaProof", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].([]byte)

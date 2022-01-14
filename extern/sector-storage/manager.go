@@ -42,8 +42,6 @@ type Worker interface {
 	Session(context.Context) (uuid.UUID, error)
 
 	Close() error // TODO: do we need this?
-
-	ffiwrapper.WorkerCalls
 }
 
 type SectorManager interface {
@@ -51,8 +49,6 @@ type SectorManager interface {
 	storage.Prover
 	storiface.WorkerReturn
 	FaultTracker
-
-	ffiwrapper.MinerProver
 }
 
 var ClosedWorkerID = uuid.UUID{}
@@ -64,9 +60,11 @@ type Manager struct {
 	remoteHnd  *stores.FetchHandler
 	index      stores.SectorIndex
 
-	sched *scheduler
+	sched            *scheduler
+	windowPoStSched  *poStScheduler
+	winningPoStSched *poStScheduler
 
-	storage.Prover
+	localProver storage.Prover
 
 	workLk sync.Mutex
 	work   *statestore.StateStore
@@ -77,9 +75,9 @@ type Manager struct {
 
 	results map[WorkID]result
 	waitRes map[WorkID]chan struct{}
-
-	ffiwrapper.MinerProver
 }
+
+var _ storage.Prover = &Manager{}
 
 type result struct {
 	r   interface{}
@@ -122,7 +120,7 @@ type WorkerStateStore *statestore.StateStore
 type ManagerStateStore *statestore.StateStore
 
 func New(ctx context.Context, lstor *stores.Local, stor *stores.Remote, ls stores.LocalStorage, si stores.SectorIndex, sc SealerConfig, wss WorkerStateStore, mss ManagerStateStore) (*Manager, error) {
-	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor, index: si, remote: stor})
+	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor, index: si})
 	if err != nil {
 		return nil, xerrors.Errorf("creating prover instance: %w", err)
 	}
@@ -134,17 +132,17 @@ func New(ctx context.Context, lstor *stores.Local, stor *stores.Remote, ls store
 		remoteHnd:  &stores.FetchHandler{Local: lstor, PfHandler: &stores.DefaultPartialFileHandler{}},
 		index:      si,
 
-		sched: newScheduler(),
+		sched:            newScheduler(),
+		windowPoStSched:  newPoStScheduler(sealtasks.TTGenerateWindowPoSt),
+		winningPoStSched: newPoStScheduler(sealtasks.TTGenerateWinningPoSt),
 
-		Prover: prover,
+		localProver: prover,
 
 		work:       mss,
 		callToWork: map[storiface.CallID]WorkID{},
 		callRes:    map[storiface.CallID]chan result{},
 		results:    map[WorkID]result{},
 		waitRes:    map[WorkID]chan struct{}{},
-
-		MinerProver: prover,
 	}
 
 	m.setupWorkTracker()
@@ -202,7 +200,32 @@ func (m *Manager) AddLocalStorage(ctx context.Context, path string) error {
 }
 
 func (m *Manager) AddWorker(ctx context.Context, w Worker) error {
-	return m.sched.runWorker(ctx, w)
+	sessID, err := w.Session(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting worker session: %w", err)
+	}
+	if sessID == ClosedWorkerID {
+		return xerrors.Errorf("worker already closed")
+	}
+
+	wid := storiface.WorkerID(sessID)
+
+	whnd, err := newWorkerHandle(ctx, w)
+	if err != nil {
+		return err
+	}
+
+	tasks, err := w.TaskTypes(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting worker tasks: %w", err)
+	}
+
+	if m.windowPoStSched.MaybeAddWorker(wid, tasks, whnd) ||
+		m.winningPoStSched.MaybeAddWorker(wid, tasks, whnd) {
+		return nil
+	}
+
+	return m.sched.runWorker(ctx, wid, whnd)
 }
 
 func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -948,6 +971,8 @@ func (m *Manager) SchedDiag(ctx context.Context, doSched bool) (interface{}, err
 }
 
 func (m *Manager) Close(ctx context.Context) error {
+	m.windowPoStSched.schedClose()
+	m.winningPoStSched.schedClose()
 	return m.sched.Close(ctx)
 }
 

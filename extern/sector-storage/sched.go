@@ -68,11 +68,6 @@ type scheduler struct {
 
 	info chan func(interface{})
 
-	// window scheduler
-	windowPoStSched *poStScheduler
-	// winning scheduler
-	winningPoStSched *poStScheduler
-
 	closing  chan struct{}
 	closed   chan struct{}
 	testSync chan struct{} // used for testing
@@ -87,8 +82,6 @@ type workerHandle struct {
 	active    *activeResources // use with workerHandle.lk
 
 	lk sync.Mutex // can be taken inside sched.workersLk.RLock
-
-	acceptTasks map[sealtasks.TaskType]struct{}
 
 	wndLk         sync.Mutex // can be taken inside sched.workersLk.RLock
 	activeWindows []*schedWindow
@@ -168,9 +161,6 @@ func newScheduler() *scheduler {
 		},
 
 		info: make(chan func(interface{})),
-
-		windowPoStSched:  newPoStScheduler(sealtasks.TTGenerateWindowPoSt),
-		winningPoStSched: newPoStScheduler(sealtasks.TTGenerateWinningPoSt),
 
 		closing: make(chan struct{}),
 		closed:  make(chan struct{}),
@@ -557,9 +547,6 @@ func (sh *scheduler) schedClose() {
 	for i, w := range sh.workers {
 		sh.workerCleanup(i, w)
 	}
-
-	sh.windowPoStSched.schedClose()
-	sh.winningPoStSched.schedClose()
 }
 
 func (sh *scheduler) Info(ctx context.Context) (interface{}, error) {

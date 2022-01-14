@@ -5,8 +5,13 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"github.com/filecoin-project/go-statestore"
+	"github.com/filecoin-project/lotus/cmd/lotus-seal-worker/sealworker"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/ipfs/go-datastore/namespace"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"sync"
 	"testing"
 	"time"
@@ -109,10 +114,12 @@ type Ensemble struct {
 	inactive struct {
 		fullnodes []*TestFullNode
 		miners    []*TestMiner
+		workers   []*TestWorker
 	}
 	active struct {
 		fullnodes []*TestFullNode
 		miners    []*TestMiner
+		workers   []*TestWorker
 		bms       map[*TestMiner]*BlockMiner
 	}
 	genesis struct {
@@ -264,6 +271,32 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 	minerNode.Libp2p.PrivKey = privkey
 
 	n.inactive.miners = append(n.inactive.miners, minerNode)
+
+	return n
+}
+
+// Worker enrolls a new worker, using the provided full node for chain
+// interactions.
+func (n *Ensemble) Worker(minerNode *TestMiner, worker *TestWorker, opts ...NodeOpt) *Ensemble {
+	require.NotNil(n.t, minerNode, "miner node required when instantiating worker")
+
+	options := DefaultNodeOpts
+	for _, o := range opts {
+		err := o(&options)
+		require.NoError(n.t, err)
+	}
+
+	rl, err := net.Listen("tcp", "127.0.0.1:")
+	require.NoError(n.t, err)
+
+	*worker = TestWorker{
+		t:              n.t,
+		MinerNode:      minerNode,
+		RemoteListener: rl,
+		options:        options,
+	}
+
+	n.inactive.workers = append(n.inactive.workers, worker)
 
 	return n
 }
@@ -437,6 +470,7 @@ func (n *Ensemble) Start() *Ensemble {
 		// require.NoError(n.t, err)
 
 		r := repo.NewMemory(nil)
+		n.t.Cleanup(r.Cleanup)
 
 		lr, err := r.Lock(repo.StorageMiner)
 		require.NoError(n.t, err)
@@ -498,6 +532,15 @@ func (n *Ensemble) Start() *Ensemble {
 		_, err = nic.Next()
 		require.NoError(n.t, err)
 
+		// using real proofs, therefore need real sectors.
+		if !n.bootstrapped && !n.options.mockProofs {
+			err := lr.SetStorage(func(sc *stores.StorageConfig) {
+				sc.StoragePaths = append(sc.StoragePaths, stores.LocalPath{Path: m.PresealDir})
+			})
+
+			require.NoError(n.t, err)
+		}
+
 		err = lr.Close()
 		require.NoError(n.t, err)
 
@@ -533,6 +576,14 @@ func (n *Ensemble) Start() *Ensemble {
 			// regardless of system pressure.
 			node.Override(new(sectorstorage.SealerConfig), func() sectorstorage.SealerConfig {
 				scfg := config.DefaultStorageMiner()
+
+				if m.options.minerNoLocalSealing {
+					scfg.Storage.AllowAddPiece = false
+					scfg.Storage.AllowPreCommit1 = false
+					scfg.Storage.AllowPreCommit2 = false
+					scfg.Storage.AllowCommit = false
+				}
+
 				scfg.Storage.ResourceFiltering = sectorstorage.ResourceFilteringDisabled
 				return scfg.Storage
 			}),
@@ -578,12 +629,6 @@ func (n *Ensemble) Start() *Ensemble {
 		stop, err := node.New(ctx, opts...)
 		require.NoError(n.t, err)
 
-		// using real proofs, therefore need real sectors.
-		if !n.bootstrapped && !n.options.mockProofs {
-			err := m.StorageAddLocal(ctx, m.PresealDir)
-			require.NoError(n.t, err)
-		}
-
 		n.t.Cleanup(func() { _ = stop(context.Background()) })
 
 		// Are we hitting this node through its RPC?
@@ -610,6 +655,63 @@ func (n *Ensemble) Start() *Ensemble {
 	// If we are here, we have processed all inactive miners and moved them
 	// to active, so clear the slice.
 	n.inactive.miners = n.inactive.miners[:0]
+
+	// ---------------------
+	//  WORKERS
+	// ---------------------
+
+	// Create all inactive workers.
+	for i, m := range n.inactive.workers {
+		r := repo.NewMemory(nil)
+
+		lr, err := r.Lock(repo.Worker)
+		require.NoError(n.t, err)
+
+		ds, err := lr.Datastore(context.Background(), "/metadata")
+		require.NoError(n.t, err)
+
+		addr := m.RemoteListener.Addr().String()
+
+		localStore, err := stores.NewLocal(ctx, lr, m.MinerNode, []string{"http://" + addr + "/remote"})
+		require.NoError(n.t, err)
+
+		auth := http.Header(nil)
+
+		remote := stores.NewRemote(localStore, m.MinerNode, auth, 20, &stores.DefaultPartialFileHandler{})
+		fh := &stores.FetchHandler{Local: localStore, PfHandler: &stores.DefaultPartialFileHandler{}}
+		m.FetchHandler = fh.ServeHTTP
+
+		wsts := statestore.New(namespace.Wrap(ds, modules.WorkerCallsPrefix))
+
+		workerApi := &sealworker.Worker{
+			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
+				TaskTypes: m.options.workerTasks,
+				NoSwap:    false,
+			}, remote, localStore, m.MinerNode, m.MinerNode, wsts),
+			LocalStore: localStore,
+			Storage:    lr,
+		}
+
+		m.Worker = workerApi
+
+		require.True(n.t, m.options.rpc)
+
+		withRPC := workerRpc(n.t, m)
+		n.inactive.workers[i] = withRPC
+
+		err = m.MinerNode.WorkerConnect(ctx, "http://"+addr+"/rpc/v0")
+		require.NoError(n.t, err)
+
+		n.active.workers = append(n.active.workers, m)
+	}
+
+	// If we are here, we have processed all inactive workers and moved them
+	// to active, so clear the slice.
+	n.inactive.workers = n.inactive.workers[:0]
+
+	// ---------------------
+	//  MISC
+	// ---------------------
 
 	// Link all the nodes.
 	err = n.mn.LinkAll()

@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"github.com/filecoin-project/specs-actors/v6/actors/runtime/proof"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -409,6 +410,14 @@ func generateFakePoSt(sectorInfo []proof5.SectorInfo, rpt func(abi.RegisteredSea
 	}
 }
 
+func (mgr *SectorMgr) GenerateWinningPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte) ([]proof.PoStProof, error) {
+	panic("implement me")
+}
+
+func (mgr *SectorMgr) GenerateWindowPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte, partitionIdx int) (proof.PoStProof, error) {
+	panic("implement me")
+}
+
 func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (mount.Reader, bool, error) {
 	if uint64(offset) != 0 {
 		panic("implme")
@@ -550,26 +559,6 @@ func (mgr *SectorMgr) ReturnProveReplicaUpdate2(ctx context.Context, callID stor
 }
 
 func (mgr *SectorMgr) ReturnGenerateSectorKeyFromData(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
-	panic("not supported")
-}
-
-func (mgr *SectorMgr) GetPartitionSectorsCount(ctx context.Context, prooftype abi.RegisteredPoStProof) (int, error) {
-	panic("not supported")
-}
-
-func (mgr *SectorMgr) GetPartitionVanillaParams(ctx context.Context, proofType abi.RegisteredPoStProof) (string, error) {
-	panic("not supported")
-}
-
-func (mgr *SectorMgr) PubSectorToPriv(ctx context.Context, mid abi.ActorID, sectorInfo []proof5.SectorInfo, faults []abi.SectorNumber, rpt func(abi.RegisteredSealProof) (abi.RegisteredPoStProof, error)) (ffiwrapper.SortedPrivateSectorInfo, []abi.SectorID, func(), error) {
-	panic("not supported")
-}
-
-func (mgr *SectorMgr) SplitSortedPrivateSectorInfo(ctx context.Context, privsector ffiwrapper.SortedPrivateSectorInfo, offset int, end int) (ffiwrapper.SortedPrivateSectorInfo, error) {
-	panic("not supported")
-}
-
-func (mgr *SectorMgr) GeneratePoStFallbackSectorChallenges(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, sectorIds []abi.SectorNumber) (*ffiwrapper.FallbackChallenges, error) {
 	panic("not supported")
 }
 

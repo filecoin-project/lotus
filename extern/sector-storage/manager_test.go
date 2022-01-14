@@ -115,9 +115,11 @@ func newTestMgr(ctx context.Context, t *testing.T, ds datastore.Datastore) (*Man
 		remoteHnd:  &stores.FetchHandler{Local: lstor},
 		index:      si,
 
-		sched: newScheduler(),
+		sched:            newScheduler(),
+		windowPoStSched:  newPoStScheduler(sealtasks.TTGenerateWindowPoSt),
+		winningPoStSched: newPoStScheduler(sealtasks.TTGenerateWinningPoSt),
 
-		Prover: prover,
+		localProver: prover,
 
 		work:       statestore.New(ds),
 		callToWork: map[storiface.CallID]WorkID{},

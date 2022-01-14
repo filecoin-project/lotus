@@ -864,22 +864,22 @@ Perms: admin
 Inputs:
 ```json
 [
+  8,
   1000,
-  {
-    "Spsi": null
-  },
-  123,
-  123,
-  "Bw==",
-  {
-    "Fc": {
-      "Sectors": [
-        123,
-        124
-      ],
-      "Challenges": {}
+  [
+    {
+      "SealProof": 8,
+      "SectorNumber": 9,
+      "SealedCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Challenge": [
+        42
+      ]
     }
-  }
+  ],
+  123,
+  "Bw=="
 ]
 ```
 
@@ -907,20 +907,21 @@ Perms: admin
 Inputs:
 ```json
 [
+  8,
   1000,
-  {
-    "Spsi": null
-  },
-  "Bw==",
-  {
-    "Fc": {
-      "Sectors": [
-        123,
-        124
-      ],
-      "Challenges": {}
+  [
+    {
+      "SealProof": 8,
+      "SectorNumber": 9,
+      "SealedCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Challenge": [
+        42
+      ]
     }
-  }
+  ],
+  "Bw=="
 ]
 ```
 

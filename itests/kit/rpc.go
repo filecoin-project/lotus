@@ -3,6 +3,7 @@ package kit
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/cmd/lotus-seal-worker/sealworker"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -61,5 +62,20 @@ func minerRpc(t *testing.T, m *TestMiner) *TestMiner {
 	t.Cleanup(stop)
 
 	m.ListenAddr, m.StorageMiner = maddr, cl
+	return m
+}
+
+func workerRpc(t *testing.T, m *TestWorker) *TestWorker {
+	handler := sealworker.WorkerHandler(m.MinerNode.AuthVerify, m.FetchHandler, m.Worker, false)
+
+	srv, maddr := CreateRPCServer(t, handler, m.RemoteListener)
+
+	fmt.Println("creating RPC server for a worker at: ", srv.Listener.Addr().String())
+	url := "ws://" + srv.Listener.Addr().String() + "/rpc/v0"
+	cl, stop, err := client.NewWorkerRPCV0(context.Background(), url, nil)
+	require.NoError(t, err)
+	t.Cleanup(stop)
+
+	m.ListenAddr, m.Worker = maddr, cl
 	return m
 }

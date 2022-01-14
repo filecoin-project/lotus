@@ -44,10 +44,10 @@ OPTIONS:
    --unseal                      enable unsealing (32G sectors: 1 core, 128GiB Memory) (default: true)
    --precommit2                  enable precommit2 (32G sectors: all cores, 96GiB Memory) (default: true)
    --commit                      enable commit (32G sectors: all cores or GPUs, 128GiB Memory + 64GiB swap) (default: true)
-   --parallel-fetch-limit value  maximum fetch operations to run in parallel (default: 5)
-   --timeout value               used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function (default: "30m")
    --windowpost                  enable window post (default: false)
    --winningpost                 enable winning post (default: false)
+   --parallel-fetch-limit value  maximum fetch operations to run in parallel (default: 5)
+   --timeout value               used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function (default: "30m")
    --help, -h                    show help (default: false)
    
 ```

@@ -125,21 +125,6 @@ func (mr *MockSectorIndexMockRecorder) StorageGetLocks(arg0 interface{}) *gomock
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorageGetLocks", reflect.TypeOf((*MockSectorIndex)(nil).StorageGetLocks), arg0)
 }
 
-// StorageGetUrl mocks base method.
-func (m *MockSectorIndex) StorageGetUrl(arg0 context.Context, arg1 abi.SectorID, arg2 storiface.SectorFileType) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StorageGetUrl", arg0, arg1, arg2)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StorageGetUrl indicates an expected call of StorageGetUrl.
-func (mr *MockSectorIndexMockRecorder) StorageGetUrl(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorageGetUrl", reflect.TypeOf((*MockSectorIndex)(nil).StorageGetUrl), arg0, arg1, arg2)
-}
-
 // StorageInfo mocks base method.
 func (m *MockSectorIndex) StorageInfo(arg0 context.Context, arg1 stores.ID) (stores.StorageInfo, error) {
 	m.ctrl.T.Helper()

@@ -24,23 +24,10 @@ type schedWorker struct {
 	windowsRequested int
 }
 
-// context only used for startup
-func (sh *scheduler) runWorker(ctx context.Context, w Worker) error {
+func newWorkerHandle(ctx context.Context, w Worker) (*workerHandle, error) {
 	info, err := w.Info(ctx)
 	if err != nil {
-		return xerrors.Errorf("getting worker info: %w", err)
-	}
-
-	sessID, err := w.Session(ctx)
-	if err != nil {
-		return xerrors.Errorf("getting worker session: %w", err)
-	}
-	if sessID == ClosedWorkerID {
-		return xerrors.Errorf("worker already closed")
-	}
-	tasks, err := w.TaskTypes(ctx)
-	if err != nil {
-		return xerrors.Errorf("getting worker tasks: %w", err)
+		return nil, xerrors.Errorf("getting worker info: %w", err)
 	}
 
 	worker := &workerHandle{
@@ -51,20 +38,15 @@ func (sh *scheduler) runWorker(ctx context.Context, w Worker) error {
 		active:    &activeResources{},
 		enabled:   true,
 
-		acceptTasks: tasks,
-
 		closingMgr: make(chan struct{}),
 		closedMgr:  make(chan struct{}),
 	}
 
-	wid := storiface.WorkerID(sessID)
+	return worker, nil
+}
 
-	//add worker to post scheduler
-	if sh.windowPoStSched.AddWorker(wid, worker) ||
-		sh.winningPoStSched.AddWorker(wid, worker) {
-		return nil
-	}
-
+// context only used for startup
+func (sh *scheduler) runWorker(ctx context.Context, wid storiface.WorkerID, worker *workerHandle) error {
 	sh.workersLk.Lock()
 	_, exist := sh.workers[wid]
 	if exist {

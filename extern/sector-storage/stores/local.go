@@ -3,6 +3,7 @@ package stores
 import (
 	"context"
 	"encoding/json"
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"io/ioutil"
 	"math/bits"
 	"math/rand"
@@ -14,9 +15,9 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
@@ -222,7 +223,6 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		CanStore:   meta.CanStore,
 		Groups:     meta.Groups,
 		AllowTo:    meta.AllowTo,
-		Path:       p,
 	}, fst)
 	if err != nil {
 		return xerrors.Errorf("declaring storage in index: %w", err)
@@ -720,11 +720,36 @@ func (st *Local) FsStat(ctx context.Context, id ID) (fsutil.FsStat, error) {
 	return p.stat(st.localStorage)
 }
 
-func (st *Local) GenerateSingleVanillaProof(ctx context.Context, minerID abi.ActorID, privsector *ffiwrapper.PrivateSectorInfo, challenge []uint64) ([]byte, error) {
-	return nil, nil
-}
-func (st *Local) AcquireSectorPaths(ctx context.Context, sid storage.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, pathType storiface.PathType) (storiface.SectorPaths, storiface.SectorPaths, error) {
-	return st.AcquireSector(ctx, sid, existing, allocate, pathType, storiface.AcquireCopy)
+func (st *Local) GenerateSingleVanillaProof(ctx context.Context, minerID abi.ActorID, si storiface.PostSectorChallenge, ppt abi.RegisteredPoStProof) ([]byte, error) {
+	sr := storage.SectorRef{
+		ID: abi.SectorID{
+			Miner:  minerID,
+			Number: si.SectorNumber,
+		},
+		ProofType: si.SealProof,
+	}
+
+	src, _, err := st.AcquireSector(ctx, sr, storiface.FTSealed|storiface.FTCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
+	if err != nil {
+		return nil, xerrors.Errorf("acquire sector: %w", err)
+	}
+
+	if src.Sealed == "" || src.Cache == "" {
+		return nil, errPathNotFound
+	}
+
+	psi := ffi.PrivateSectorInfo{
+		SectorInfo: proof.SectorInfo{
+			SealProof:    si.SealProof,
+			SectorNumber: si.SectorNumber,
+			SealedCID:    si.SealedCID,
+		},
+		CacheDirPath:     src.Cache,
+		PoStProofType:    ppt,
+		SealedSectorPath: src.Sealed,
+	}
+
+	return ffi.GenerateSingleVanillaProof(psi, si.Challenge)
 }
 
 var _ Store = &Local{}
