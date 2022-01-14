@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	corebig "math/big"
 	"os"
+	"strconv"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -27,12 +28,21 @@ type providerMeta struct {
 	nonidentifiable bool
 }
 
+// force formatting as decimal to aid human readers
+type humanFloat float64
+
+func (f humanFloat) MarshalJSON() ([]byte, error) {
+	// 'f' uses decimal digits without exponents.
+	// The bit size of 32 ensures we don't use too many decimal places.
+	return []byte(strconv.FormatFloat(float64(f), 'f', -1, 32)), nil
+}
+
 type Totals struct {
-	TotalDeals           int     `json:"total_num_deals"`
-	TotalBytes           int64   `json:"total_stored_data_size"`
-	PrivateTotalDeals    int     `json:"private_total_num_deals"`
-	PrivateTotalBytes    int64   `json:"private_total_stored_data_size"`
-	CapacityCarryingData float64 `json:"capacity_fraction_carrying_data"`
+	TotalDeals           int        `json:"total_num_deals"`
+	TotalBytes           int64      `json:"total_stored_data_size"`
+	PrivateTotalDeals    int        `json:"private_total_num_deals"`
+	PrivateTotalBytes    int64      `json:"private_total_stored_data_size"`
+	CapacityCarryingData humanFloat `json:"capacity_fraction_carrying_data"`
 }
 
 type networkTotals struct {
@@ -163,14 +173,18 @@ var storageStatsCmd = &cli.Command{
 		}
 
 		netTotals.UniqueClients = len(netTotals.clients)
-		netTotals.CapacityCarryingData, _ = new(corebig.Rat).SetFrac(
+
+		ccd, _ := new(corebig.Rat).SetFrac(
 			corebig.NewInt(netTotals.TotalBytes),
 			netTotals.RawNetworkPower.Int,
 		).Float64()
-		netTotals.FilPlus.CapacityCarryingData, _ = new(corebig.Rat).SetFrac(
+		netTotals.CapacityCarryingData = humanFloat(ccd)
+
+		ccdfp, _ := new(corebig.Rat).SetFrac(
 			corebig.NewInt(netTotals.FilPlus.TotalBytes),
 			netTotals.RawNetworkPower.Int,
 		).Float64()
+		netTotals.FilPlus.CapacityCarryingData = humanFloat(ccdfp)
 
 		return json.NewEncoder(os.Stdout).Encode(
 			networkTotalsOutput{
