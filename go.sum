@@ -1025,8 +1025,9 @@ github.com/libp2p/go-libp2p-circuit v0.4.0 h1:eqQ3sEYkGTtybWgr6JLqJY6QLtPWRErvFj
 github.com/libp2p/go-libp2p-circuit v0.4.0/go.mod h1:t/ktoFIUzM6uLQ+o1G6NuBl2ANhBKN9Bc8jRIk31MoA=
 github.com/libp2p/go-libp2p-connmgr v0.1.1/go.mod h1:wZxh8veAmU5qdrfJ0ZBLcU8oJe9L82ciVP/fl1VHjXk=
 github.com/libp2p/go-libp2p-connmgr v0.2.4/go.mod h1:YV0b/RIm8NGPnnNWM7hG9Q38OeQiQfKhHCCs1++ufn0=
-github.com/libp2p/go-libp2p-connmgr v0.3.0 h1:yerFXrYa0oxpuVsLlndwm/bLulouHYDcvFrY/4H4fx8=
 github.com/libp2p/go-libp2p-connmgr v0.3.0/go.mod h1:RVoyPjJm0J9Vd1m6qUN2Tn7kJm4rL1Ml20pFsFgPGik=
+github.com/libp2p/go-libp2p-connmgr v0.3.1 h1:alEy2fpGKFu+7ZhQF4GF0dvKLyVHeLtIfS/KziwoiZw=
+github.com/libp2p/go-libp2p-connmgr v0.3.1/go.mod h1:RVoyPjJm0J9Vd1m6qUN2Tn7kJm4rL1Ml20pFsFgPGik=
 github.com/libp2p/go-libp2p-core v0.0.1/go.mod h1:g/VxnTZ/1ygHxH3dKok7Vno1VfpvGcGip57wjTU4fco=
 github.com/libp2p/go-libp2p-core v0.0.2/go.mod h1:9dAcntw/n46XycV4RnlBq3BpgrmyUi9LuoTNdPrbUco=
 github.com/libp2p/go-libp2p-core v0.0.3/go.mod h1:j+YQMNz9WNSkNezXOsahp9kwZBKBvxLpKD316QWSJXE=
