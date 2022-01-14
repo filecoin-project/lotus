@@ -82,12 +82,12 @@ var migrationsCmd = &cli.Command{
 
 		cache := nv15.NewMemMigrationCache()
 
-		blk, err := cs.GetBlock(ctx, blkCid)
+		blk, err := cs.GetBlock(blkCid)
 		if err != nil {
 			return err
 		}
 
-		migrationTs, err := cs.LoadTipSet(ctx, types.NewTipSetKey(blk.Parents...))
+		migrationTs, err := cs.LoadTipSet(types.NewTipSetKey(blk.Parents...))
 		if err != nil {
 			return err
 		}

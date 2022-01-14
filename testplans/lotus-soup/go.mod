@@ -9,7 +9,7 @@ require (
 	github.com/drand/drand v1.2.1
 	github.com/filecoin-project/go-address v0.0.6
 	github.com/filecoin-project/go-data-transfer v1.11.4
-	github.com/filecoin-project/go-fil-markets v1.13.3
+	github.com/filecoin-project/go-fil-markets v1.13.4
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-state-types v0.1.3
 	github.com/filecoin-project/go-storedcounter v0.1.0
@@ -20,7 +20,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/influxdata/influxdb v1.9.4 // indirect
 	github.com/ipfs/go-cid v0.1.0
-	github.com/ipfs/go-datastore v0.4.6
+	github.com/ipfs/go-datastore v0.5.1
 	github.com/ipfs/go-ipfs-files v0.0.9
 	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log/v2 v2.3.0
