@@ -390,7 +390,7 @@ jobs:
 
   build-appimage:
     machine:
-      image: ubuntu-2004:202104-01
+      image: ubuntu-2004:202111-02
     steps:
       - checkout
       - attach_workspace:
@@ -398,6 +398,16 @@ jobs:
       - run:
           name: install appimage-builder
           command: |
+            # appimage-builder requires /dev/snd to exist. It creates containers during the testing phase
+            # that pass sound devices from the host to the testing container. (hard coded!)
+            # https://github.com/AppImageCrafters/appimage-builder/blob/master/appimagebuilder/modules/test/execution_test.py#L54
+            # Circleci doesn't provide a working sound device; this is enough to fake it.
+            if [ ! -e /dev/snd ]
+            then
+              sudo mkdir /dev/snd
+              sudo mknod /dev/snd/ControlC0 c 1 2
+            fi
+
             # docs: https://appimage-builder.readthedocs.io/en/latest/intro/install.html
             sudo apt update
             sudo apt install -y python3-pip python3-setuptools patchelf desktop-file-utils libgdk-pixbuf2.0-dev fakeroot strace
