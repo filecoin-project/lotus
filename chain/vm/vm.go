@@ -824,17 +824,6 @@ func (vm *VM) StateTree() types.StateTree {
 	return vm.cstate
 }
 
-func (vm *VM) SetBlockHeight(ctx context.Context, h abi.ChainEpoch) error {
-	vm.blockHeight = h
-	ncirc, err := vm.circSupplyCalc(ctx, vm.blockHeight, vm.cstate)
-	if err != nil {
-		return err
-	}
-
-	vm.baseCircSupply = ncirc
-	return nil
-}
-
 func (vm *VM) Invoke(act *types.Actor, rt *Runtime, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
 	ctx, span := trace.StartSpan(rt.ctx, "vm.Invoke")
 	defer span.End()
