@@ -3,8 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/gbrlsnchs/jwt/v3"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"net"
 	"os"
+	"time"
 
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats/view"
@@ -31,12 +36,15 @@ import (
 
 var log = logging.Logger("gateway")
 
+const FlagGatewayRepo = "gateway-repo"
+
 func main() {
 	lotuslog.SetupLogLevels()
 
 	local := []*cli.Command{
 		runCmd,
 		checkCmd,
+		authCreateToken,
 	}
 
 	app := &cli.App{
@@ -48,6 +56,12 @@ func main() {
 				Name:    "repo",
 				EnvVars: []string{"LOTUS_PATH"},
 				Value:   "~/.lotus", // TODO: Consider XDG_DATA_HOME
+			},
+			&cli.StringFlag{
+				Name:    FlagGatewayRepo,
+				EnvVars: []string{"LOTUS_GATEWAY_PATH"},
+				Value:   "~/.lotusgateway",
+				Usage:   fmt.Sprintf("Specify gateway repo path. flag(%s) and env(LOTUS_GATEWAY_PATH) are DEPRECATION, will REMOVE SOON", FlagGatewayRepo),
 			},
 		},
 
@@ -173,7 +187,54 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("failed to convert endpoint address to multiaddr: %w", err)
 		}
 
-		gwapi := gateway.NewNode(api, lookbackCap, waitLookback)
+		// Open repo
+
+		repoPath := cctx.String(FlagGatewayRepo)
+		r, err := repo.NewFS(repoPath)
+		if err != nil {
+			return err
+		}
+
+		ok, err := r.Exists()
+		if err != nil {
+			return err
+		}
+
+		var privateKey crypto.PrivKey
+		if !ok {
+			if err := r.Init(repo.Gateway); err != nil {
+				return err
+			}
+
+			lr, err := r.Lock(repo.Gateway)
+			if err != nil {
+				return err
+			}
+			privateKey, err = gateway.MakeGatewayKey(lr)
+		}
+
+		lr, err := r.LockRO(repo.Gateway)
+		if err != nil {
+			return err
+		}
+		keyInfo, err := gateway.GetGatewayKey(lr)
+		if err != nil {
+			return err
+		}
+		if err := lr.Close(); err != nil {
+			log.Error("closing repo", err)
+		}
+
+		privateKey, err = crypto.UnmarshalPrivateKey(keyInfo.PrivateKey)
+		if err != nil {
+			return err
+		}
+
+		gwapi, err := gateway.NewNode(api, lookbackCap, waitLookback, privateKey)
+		if err != nil {
+			return xerrors.Errorf("failed to new node: %w", err)
+		}
+
 		h, err := gateway.Handler(gwapi, serverOptions...)
 		if err != nil {
 			return xerrors.Errorf("failed to set up gateway HTTP handler")
@@ -188,6 +249,69 @@ var runCmd = &cli.Command{
 			Component: "rpc",
 			StopFunc:  stopFunc,
 		})
+		return nil
+	},
+}
+
+var authCreateToken = &cli.Command{
+	Name:  "create-token",
+	Usage: "Create token",
+	Flags: []cli.Flag{
+		&cli.DurationFlag{
+			Name:     "api-max-lookback",
+			Usage:    "maximum duration allowable for tipset lookbacks",
+			Value:    gateway.DefaultLookbackCap,
+			Required: true,
+		},
+		&cli.Int64Flag{
+			Name:     "api-wait-lookback-limit",
+			Usage:    "maximum number of blocks to search back through for message inclusion",
+			Value:    int64(gateway.DefaultStateWaitLookbackLimit),
+			Required: true,
+		},
+		&cli.DurationFlag{
+			Name:  "effective-time",
+			Usage: "Determine the effective time of jwt (minute).",
+			Value: time.Minute * 30,
+		},
+	},
+
+	Action: func(cctx *cli.Context) error {
+
+		minerRepoPath := cctx.String(FlagGatewayRepo)
+		r, err := repo.NewFS(minerRepoPath)
+		if err != nil {
+			return err
+		}
+
+		ok, err := r.Exists()
+		if err != nil {
+			return err
+		}
+		if !ok {
+			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-miner init' to set it up", minerRepoPath)
+		}
+
+		lr, err := r.LockRO(repo.Gateway)
+		if err != nil {
+			return err
+		}
+		keyInfo, err := gateway.GetGatewayKey(lr)
+		if err != nil {
+			return err
+		}
+
+		p := &api.GatewayPayload{}
+		p.ExpirationTime = jwt.NumericDate(time.Now().Add(cctx.Duration("effective-time")))
+		p.LookbackCap = cctx.Duration("api-max-lookback")
+		p.StateWaitLookbackLimit = abi.ChainEpoch(cctx.Int64("api-wait-lookback-limit"))
+
+		token, err := jwt.Sign(&p, jwt.NewHS256(keyInfo.PrivateKey))
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(string(token))
 		return nil
 	},
 }

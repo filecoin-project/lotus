@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"sync"
 	"testing"
 	"time"
@@ -89,7 +90,8 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			mock := &mockGatewayDepsAPI{}
-			a := NewNode(mock, DefaultLookbackCap, DefaultStateWaitLookbackLimit)
+			pk, _ := crypto.UnmarshalEd25519PrivateKey([]byte(""))
+			a, _ := NewNode(mock, DefaultLookbackCap, DefaultStateWaitLookbackLimit, pk)
 
 			// Create tipsets from genesis up to tskh and return the highest
 			ts := mock.createTipSets(tt.args.tskh, tt.args.genesisTS)
@@ -243,7 +245,8 @@ func (m *mockGatewayDepsAPI) Version(context.Context) (api.APIVersion, error) {
 func TestGatewayVersion(t *testing.T) {
 	ctx := context.Background()
 	mock := &mockGatewayDepsAPI{}
-	a := NewNode(mock, DefaultLookbackCap, DefaultStateWaitLookbackLimit)
+	pk, _ := crypto.UnmarshalEd25519PrivateKey([]byte(""))
+	a, _ := NewNode(mock, DefaultLookbackCap, DefaultStateWaitLookbackLimit, pk)
 
 	v, err := a.Version(ctx)
 	require.NoError(t, err)

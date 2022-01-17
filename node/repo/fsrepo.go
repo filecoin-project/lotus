@@ -50,6 +50,7 @@ const (
 	Worker
 	Wallet
 	Markets
+	Gateway
 )
 
 func (t RepoType) String() string {
@@ -60,6 +61,7 @@ func (t RepoType) String() string {
 		"Worker",
 		"Wallet",
 		"Markets",
+		"Gateway",
 	}
 	if t < 0 || int(t) > len(s) {
 		return "__invalid__"
@@ -78,6 +80,8 @@ func defConfForType(t RepoType) interface{} {
 	case Worker:
 		return &struct{}{}
 	case Wallet:
+		return &struct{}{}
+	case Gateway:
 		return &struct{}{}
 	default:
 		panic(fmt.Sprintf("unknown RepoType(%d)", int(t)))

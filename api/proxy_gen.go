@@ -480,6 +480,8 @@ type FullNodeStub struct {
 
 type GatewayStruct struct {
 	Internal struct {
+		AuthVerify func(p0 context.Context, p1 string) (*GatewayPayload, error)
+
 		ChainGetBlockMessages func(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) ``
 
 		ChainGetGenesis func(p0 context.Context) (*types.TipSet, error) ``
@@ -3073,6 +3075,17 @@ func (s *FullNodeStruct) WalletVerify(p0 context.Context, p1 address.Address, p2
 
 func (s *FullNodeStub) WalletVerify(p0 context.Context, p1 address.Address, p2 []byte, p3 *crypto.Signature) (bool, error) {
 	return false, ErrNotSupported
+}
+
+func (s *GatewayStruct) AuthVerify(p0 context.Context, p1 string) (*GatewayPayload, error) {
+	if s.Internal.AuthVerify == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.AuthVerify(p0, p1)
+}
+
+func (s *GatewayStub) AuthVerify(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) {

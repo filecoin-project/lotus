@@ -3,6 +3,9 @@ package gateway
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/gbrlsnchs/jwt/v3"
+	crypto2 "github.com/libp2p/go-libp2p-core/crypto"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -11,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/api"
@@ -28,6 +30,12 @@ const (
 	DefaultLookbackCap            = time.Hour * 24
 	DefaultStateWaitLookbackLimit = abi.ChainEpoch(20)
 )
+
+type GatewayAPI interface {
+	TargetAPI
+
+	AuthVerify(ctx context.Context, token string) (*api.GatewayPayload, error)
+}
 
 // TargetAPI defines the API methods that the Node depends on
 // (to make it easy to mock for tests)
@@ -83,7 +91,7 @@ type Node struct {
 	target                 TargetAPI
 	lookbackCap            time.Duration
 	stateWaitLookbackLimit abi.ChainEpoch
-	errLookback            error
+	privateKey             []byte
 }
 
 var (
@@ -95,13 +103,19 @@ var (
 )
 
 // NewNode creates a new gateway node.
-func NewNode(api TargetAPI, lookbackCap time.Duration, stateWaitLookbackLimit abi.ChainEpoch) *Node {
+func NewNode(api TargetAPI, lookbackCap time.Duration, stateWaitLookbackLimit abi.ChainEpoch, pk crypto2.PrivKey) (*Node, error) {
+
+	privateKey, err := crypto2.MarshalPrivateKey(pk)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Node{
 		target:                 api,
 		lookbackCap:            lookbackCap,
 		stateWaitLookbackLimit: stateWaitLookbackLimit,
-		errLookback:            fmt.Errorf("lookbacks of more than %s are disallowed", lookbackCap),
-	}
+		privateKey:             privateKey,
+	}, nil
 }
 
 func (gw *Node) checkTipsetKey(ctx context.Context, tsk types.TipSetKey) error {
@@ -114,33 +128,76 @@ func (gw *Node) checkTipsetKey(ctx context.Context, tsk types.TipSetKey) error {
 		return err
 	}
 
-	return gw.checkTipset(ts)
+	return gw.checkTipset(ctx, ts)
 }
 
-func (gw *Node) checkTipset(ts *types.TipSet) error {
+func (gw *Node) checkTipset(ctx context.Context, ts *types.TipSet) error {
+	//todo
 	at := time.Unix(int64(ts.Blocks()[0].Timestamp), 0)
-	if err := gw.checkTimestamp(at); err != nil {
+	if err := gw.checkTimestamp(ctx, at); err != nil {
 		return fmt.Errorf("bad tipset: %w", err)
 	}
 	return nil
 }
 
-func (gw *Node) checkTipsetHeight(ts *types.TipSet, h abi.ChainEpoch) error {
+func (gw *Node) checkTipsetHeight(ctx context.Context, ts *types.TipSet, h abi.ChainEpoch) error {
+	//todo
 	tsBlock := ts.Blocks()[0]
 	heightDelta := time.Duration(uint64(tsBlock.Height-h)*build.BlockDelaySecs) * time.Second
 	timeAtHeight := time.Unix(int64(tsBlock.Timestamp), 0).Add(-heightDelta)
 
-	if err := gw.checkTimestamp(timeAtHeight); err != nil {
+	if err := gw.checkTimestamp(ctx, timeAtHeight); err != nil {
 		return fmt.Errorf("bad tipset height: %w", err)
 	}
 	return nil
 }
 
-func (gw *Node) checkTimestamp(at time.Time) error {
+func (gw *Node) checkTimestamp(ctx context.Context, at time.Time) error {
+	gatewayPayload, ok := ctx.Value("payload").(api.GatewayPayload)
+	if ok {
+		if gatewayPayload.LookbackCap != 0 && time.Since(at) > gatewayPayload.LookbackCap {
+			return fmt.Errorf("lookbacks of more than %s are disallowed", gatewayPayload.LookbackCap)
+		} else {
+			return nil
+		}
+	}
+
 	if time.Since(at) > gw.lookbackCap {
-		return gw.errLookback
+		return fmt.Errorf("lookbacks of more than %s are disallowed", gw.lookbackCap)
 	}
 	return nil
+}
+
+func (gw *Node) checkLookbackLimit(ctx context.Context, limit abi.ChainEpoch) abi.ChainEpoch {
+	var currentStateWaitLookbackLimit = gw.stateWaitLookbackLimit
+	gatewayPayload, ok := ctx.Value("payload").(api.GatewayPayload)
+	if ok {
+		if gatewayPayload.StateWaitLookbackLimit > 0 {
+			currentStateWaitLookbackLimit = gatewayPayload.StateWaitLookbackLimit
+		}
+	}
+
+	if limit == api.LookbackNoLimit {
+		limit = currentStateWaitLookbackLimit
+	}
+	if currentStateWaitLookbackLimit != api.LookbackNoLimit && limit > currentStateWaitLookbackLimit {
+		limit = currentStateWaitLookbackLimit
+	}
+	return limit
+}
+
+func (gw *Node) AuthVerify(ctx context.Context, token string) (*api.GatewayPayload, error) {
+	var payload api.GatewayPayload
+	if _, err := jwt.Verify([]byte(token), jwt.NewHS256(gw.privateKey), &payload); err != nil {
+		return nil, xerrors.Errorf("JWT Verification failed: %w", err)
+	}
+
+	//err := jwt.ExpirationTimeValidator(time.Now())(&payload.Payload)
+	//if err != nil {
+	//	return nil, xerrors.Errorf("JWT Verification failed: %w", err)
+	//}
+
+	return &payload, nil
 }
 
 func (gw *Node) Version(ctx context.Context) (api.APIVersion, error) {
@@ -210,12 +267,12 @@ func (gw *Node) checkTipSetHeight(ctx context.Context, h abi.ChainEpoch, tsk typ
 	}
 
 	// Check if the tipset key refers to gw tipset that's too far in the past
-	if err := gw.checkTipset(ts); err != nil {
+	if err := gw.checkTipset(ctx, ts); err != nil {
 		return err
 	}
 
 	// Check if the height is too far in the past
-	if err := gw.checkTipsetHeight(ts, h); err != nil {
+	if err := gw.checkTipsetHeight(ctx, ts, h); err != nil {
 		return err
 	}
 
@@ -355,27 +412,16 @@ func (gw *Node) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (n
 }
 
 func (gw *Node) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
-	if limit == api.LookbackNoLimit {
-		limit = gw.stateWaitLookbackLimit
-	}
-	if gw.stateWaitLookbackLimit != api.LookbackNoLimit && limit > gw.stateWaitLookbackLimit {
-		limit = gw.stateWaitLookbackLimit
-	}
 	if err := gw.checkTipsetKey(ctx, from); err != nil {
 		return nil, err
 	}
 
+	limit = gw.checkLookbackLimit(ctx, limit)
 	return gw.target.StateSearchMsg(ctx, from, msg, limit, allowReplaced)
 }
 
 func (gw *Node) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
-	if limit == api.LookbackNoLimit {
-		limit = gw.stateWaitLookbackLimit
-	}
-	if gw.stateWaitLookbackLimit != api.LookbackNoLimit && limit > gw.stateWaitLookbackLimit {
-		limit = gw.stateWaitLookbackLimit
-	}
-
+	limit = gw.checkLookbackLimit(ctx, limit)
 	return gw.target.StateWaitMsg(ctx, msg, confidence, limit, allowReplaced)
 }
 

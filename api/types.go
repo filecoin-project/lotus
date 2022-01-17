@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/gbrlsnchs/jwt/v3"
 	"time"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -261,4 +262,10 @@ type ExportRef struct {
 
 	FromLocalCAR string // if specified, get data from a local CARv2 file.
 	DealID       retrievalmarket.DealID
+}
+
+type GatewayPayload struct {
+	jwt.Payload
+	LookbackCap            time.Duration `json:"lookbackCap,omitempty"`
+	StateWaitLookbackLimit abi.ChainEpoch `json:"stateWaitLookbackLimit,omitempty"`
 }

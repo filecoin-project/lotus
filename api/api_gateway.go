@@ -29,6 +29,7 @@ import (
 //  * Generate openrpc blobs
 
 type Gateway interface {
+	AuthVerify(ctx context.Context, token string) (*GatewayPayload, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 	ChainGetParentMessages(context.Context, cid.Cid) ([]Message, error)
