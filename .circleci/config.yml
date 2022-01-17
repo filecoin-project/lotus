@@ -1037,8 +1037,8 @@ workflows:
           dockerfile: Dockerfile.lotus
           path: .
           repo: lotus-dev
-          target: lotus-all-in-one
           tag: '${CIRCLE_SHA1:0:8}'
+          target: lotus-all-in-one
       - build-and-push-image:
           dockerfile: Dockerfile.lotus
           path: .
