@@ -43,6 +43,7 @@ func testChannelResponse(t *testing.T, ch address.Address) types.MessageReceipt 
 // TestPaychGetCreateChannelMsg tests that GetPaych sends a message to create
 // a new channel with the correct funds
 func TestPaychGetCreateChannelMsg(t *testing.T) {
+	//stm: @TOKEN_PAYCH_CREATE_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
