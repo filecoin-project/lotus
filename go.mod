@@ -124,6 +124,7 @@ require (
 	github.com/libp2p/go-libp2p-tls v0.3.1
 	github.com/libp2p/go-libp2p-yamux v0.8.0
 	github.com/libp2p/go-maddr-filter v0.1.0
+	github.com/libp2p/go-yamux/v3 v3.0.2 // indirect
 	github.com/mattn/go-isatty v0.0.14
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
 	github.com/mitchellh/go-homedir v1.1.0
