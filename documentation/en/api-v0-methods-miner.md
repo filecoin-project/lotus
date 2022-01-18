@@ -2869,7 +2869,7 @@ Inputs:
 Response: `{}`
 
 ### StorageAttach
-stores.SectorIndex
+SectorIndex
 
 
 Perms: admin
