@@ -458,7 +458,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 
 	stateroot, _, err := filec.sm.TipSetState(ctx, baseTs)
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to compute tipsettate for %s: %w", baseTs.Key(), err)
 	}
 
 	st, err := state.LoadStateTree(filec.store.ActorStore(ctx), stateroot)
@@ -475,7 +475,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 		// Phase 1: syntactic validation, as defined in the spec
 		minGas := pl.OnChainMessage(msg.ChainLength())
 		if err := m.ValidForBlockInclusion(minGas.Total(), nv); err != nil {
-			return err
+			return xerrors.Errorf("msg %s invalid for block inclusion: %w", m.Cid(), err)
 		}
 
 		// ValidForBlockInclusion checks if any single message does not exceed BlockGasLimit
@@ -491,7 +491,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 		if filec.sm.GetNetworkVersion(ctx, b.Header.Height) >= network.Version13 {
 			sender, err = st.LookupID(m.From)
 			if err != nil {
-				return err
+				return xerrors.Errorf("failed to lookup sender %s: %w", m.From, err)
 			}
 		} else {
 			sender = m.From
@@ -574,12 +574,13 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 
 	bmroot, err := bmArr.Root()
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to root bls msgs: %w", err)
+
 	}
 
 	smroot, err := smArr.Root()
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to root secp msgs: %w", err)
 	}
 
 	mrcid, err := tmpstore.Put(ctx, &types.MsgMeta{
@@ -587,7 +588,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 		SecpkMessages: smroot,
 	})
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to put msg meta: %w", err)
 	}
 
 	if b.Header.Messages != mrcid {
@@ -595,7 +596,12 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 	}
 
 	// Finally, flush.
-	return vm.Copy(ctx, tmpbs, filec.store.ChainBlockstore(), mrcid)
+	err = vm.Copy(ctx, tmpbs, filec.store.ChainBlockstore(), mrcid)
+	if err != nil {
+		return xerrors.Errorf("failed to flush:%w", err)
+	}
+
+	return nil
 }
 
 func (filec *FilecoinEC) IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool {
