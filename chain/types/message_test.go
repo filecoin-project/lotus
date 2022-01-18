@@ -135,10 +135,12 @@ func TestSignedMessageJson(t *testing.T) {
 	exp := []byte("{\"Message\":{\"Version\":0,\"To\":\"f04\",\"From\":\"f00\",\"Nonce\":34,\"Value\":\"0\",\"GasLimit\":123,\"GasFeeCap\":\"234\",\"GasPremium\":\"234\",\"Method\":6,\"Params\":\"aGFp\",\"CID\":{\"/\":\"bafy2bzaced5rdpz57e64sc7mdwjn3blicglhpialnrph2dlbufhf6iha63dmc\"}},\"Signature\":{\"Type\":0,\"Data\":null},\"CID\":{\"/\":\"bafy2bzacea5ainifngxj3rygaw2hppnyz2cw72x5pysqty2x6dxmjs5qg2uus\"}}")
 	fmt.Println(string(b))
 
+	//stm: @TYPES_MESSAGE_JSON_EQUAL_CALL_001
 	require.Equal(t, exp, b)
 
 	var um SignedMessage
 	require.NoError(t, json.Unmarshal(b, &um))
 
+	//stm: @TYPES_MESSAGE_JSON_EQUAL_CALL_002
 	require.EqualValues(t, *sm, um)
 }
