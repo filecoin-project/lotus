@@ -91,6 +91,7 @@ func TestLotusMount(t *testing.T) {
 }
 
 func TestLotusMountDeserialize(t *testing.T) {
+	//stm: @MARKET_DAGSTORE_DESERIALIZE_CID_001
 	api := &minerAPI{}
 
 	bgen := blocksutil.NewBlockGenerator()
