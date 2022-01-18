@@ -35,7 +35,7 @@ type Worker interface {
 	TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error)
 
 	// Returns paths accessible to the worker
-	Paths(context.Context) ([]stores.StoragePath, error)
+	Paths(context.Context) ([]storiface.StoragePath, error)
 
 	Info(context.Context) (storiface.WorkerInfo, error)
 
@@ -924,13 +924,13 @@ func (m *Manager) ReturnFetch(ctx context.Context, callID storiface.CallID, err 
 	return m.returnResult(ctx, callID, nil, err)
 }
 
-func (m *Manager) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {
+func (m *Manager) StorageLocal(ctx context.Context) (map[storiface.ID]string, error) {
 	l, err := m.localStore.Local(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := map[stores.ID]string{}
+	out := map[storiface.ID]string{}
 	for _, st := range l {
 		out[st.ID] = st.LocalPath
 	}
@@ -938,7 +938,7 @@ func (m *Manager) StorageLocal(ctx context.Context) (map[stores.ID]string, error
 	return out, nil
 }
 
-func (m *Manager) FsStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) {
+func (m *Manager) FsStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, error) {
 	return m.storage.FsStat(ctx, id)
 }
 

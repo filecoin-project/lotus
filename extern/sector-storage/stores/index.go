@@ -25,75 +25,34 @@ import (
 var HeartbeatInterval = 10 * time.Second
 var SkippedHeartbeatThresh = HeartbeatInterval * 5
 
-// ID identifies sector storage by UUID. One sector storage should map to one
-//  filesystem, local or networked / shared by multiple machines
-type ID string
-
-type Group = string
-
-type StorageInfo struct {
-	ID         ID
-	URLs       []string // TODO: Support non-http transports
-	Weight     uint64
-	MaxStorage uint64
-
-	CanSeal  bool
-	CanStore bool
-
-	Groups  []Group
-	AllowTo []Group
-}
-
-type HealthReport struct {
-	Stat fsutil.FsStat
-	Err  string
-}
-
-type SectorStorageInfo struct {
-	ID       ID
-	URLs     []string // TODO: Support non-http transports
-	BaseURLs []string
-	Weight   uint64
-
-	CanSeal  bool
-	CanStore bool
-
-	Primary bool
-}
-
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/index.go -package=mocks . SectorIndex
 
 type SectorIndex interface { // part of storage-miner api
-	StorageAttach(context.Context, StorageInfo, fsutil.FsStat) error
-	StorageInfo(context.Context, ID) (StorageInfo, error)
-	StorageReportHealth(context.Context, ID, HealthReport) error
+	StorageAttach(context.Context, storiface.StorageInfo, fsutil.FsStat) error
+	StorageInfo(context.Context, storiface.ID) (storiface.StorageInfo, error)
+	StorageReportHealth(context.Context, storiface.ID, storiface.HealthReport) error
 
-	StorageDeclareSector(ctx context.Context, storageID ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error
-	StorageDropSector(ctx context.Context, storageID ID, s abi.SectorID, ft storiface.SectorFileType) error
-	StorageFindSector(ctx context.Context, sector abi.SectorID, ft storiface.SectorFileType, ssize abi.SectorSize, allowFetch bool) ([]SectorStorageInfo, error)
+	StorageDeclareSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error
+	StorageDropSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType) error
+	StorageFindSector(ctx context.Context, sector abi.SectorID, ft storiface.SectorFileType, ssize abi.SectorSize, allowFetch bool) ([]storiface.SectorStorageInfo, error)
 
-	StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]StorageInfo, error)
+	StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]storiface.StorageInfo, error)
 
 	// atomically acquire locks on all sector file types. close ctx to unlock
 	StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error
 	StorageTryLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error)
 	StorageGetLocks(ctx context.Context) (storiface.SectorLocks, error)
 
-	StorageList(ctx context.Context) (map[ID][]Decl, error)
-}
-
-type Decl struct {
-	abi.SectorID
-	storiface.SectorFileType
+	StorageList(ctx context.Context) (map[storiface.ID][]storiface.Decl, error)
 }
 
 type declMeta struct {
-	storage ID
+	storage storiface.ID
 	primary bool
 }
 
 type storageEntry struct {
-	info *StorageInfo
+	info *storiface.StorageInfo
 	fsi  fsutil.FsStat
 
 	lastHeartbeat time.Time
@@ -104,8 +63,8 @@ type Index struct {
 	*indexLocks
 	lk sync.RWMutex
 
-	sectors map[Decl][]*declMeta
-	stores  map[ID]*storageEntry
+	sectors map[storiface.Decl][]*declMeta
+	stores  map[storiface.ID]*storageEntry
 }
 
 func NewIndex() *Index {
@@ -113,16 +72,16 @@ func NewIndex() *Index {
 		indexLocks: &indexLocks{
 			locks: map[abi.SectorID]*sectorLock{},
 		},
-		sectors: map[Decl][]*declMeta{},
-		stores:  map[ID]*storageEntry{},
+		sectors: map[storiface.Decl][]*declMeta{},
+		stores:  map[storiface.ID]*storageEntry{},
 	}
 }
 
-func (i *Index) StorageList(ctx context.Context) (map[ID][]Decl, error) {
+func (i *Index) StorageList(ctx context.Context) (map[storiface.ID][]storiface.Decl, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
-	byID := map[ID]map[abi.SectorID]storiface.SectorFileType{}
+	byID := map[storiface.ID]map[abi.SectorID]storiface.SectorFileType{}
 
 	for id := range i.stores {
 		byID[id] = map[abi.SectorID]storiface.SectorFileType{}
@@ -133,11 +92,11 @@ func (i *Index) StorageList(ctx context.Context) (map[ID][]Decl, error) {
 		}
 	}
 
-	out := map[ID][]Decl{}
+	out := map[storiface.ID][]storiface.Decl{}
 	for id, m := range byID {
-		out[id] = []Decl{}
+		out[id] = []storiface.Decl{}
 		for sectorID, fileType := range m {
-			out[id] = append(out[id], Decl{
+			out[id] = append(out[id], storiface.Decl{
 				SectorID:       sectorID,
 				SectorFileType: fileType,
 			})
@@ -147,7 +106,7 @@ func (i *Index) StorageList(ctx context.Context) (map[ID][]Decl, error) {
 	return out, nil
 }
 
-func (i *Index) StorageAttach(ctx context.Context, si StorageInfo, st fsutil.FsStat) error {
+func (i *Index) StorageAttach(ctx context.Context, si storiface.StorageInfo, st fsutil.FsStat) error {
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
@@ -189,7 +148,7 @@ func (i *Index) StorageAttach(ctx context.Context, si StorageInfo, st fsutil.FsS
 	return nil
 }
 
-func (i *Index) StorageReportHealth(ctx context.Context, id ID, report HealthReport) error {
+func (i *Index) StorageReportHealth(ctx context.Context, id storiface.ID, report storiface.HealthReport) error {
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
@@ -228,7 +187,7 @@ func (i *Index) StorageReportHealth(ctx context.Context, id ID, report HealthRep
 	return nil
 }
 
-func (i *Index) StorageDeclareSector(ctx context.Context, storageID ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error {
+func (i *Index) StorageDeclareSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error {
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
@@ -238,7 +197,7 @@ loop:
 			continue
 		}
 
-		d := Decl{s, fileType}
+		d := storiface.Decl{s, fileType}
 
 		for _, sid := range i.sectors[d] {
 			if sid.storage == storageID {
@@ -260,7 +219,7 @@ loop:
 	return nil
 }
 
-func (i *Index) StorageDropSector(ctx context.Context, storageID ID, s abi.SectorID, ft storiface.SectorFileType) error {
+func (i *Index) StorageDropSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType) error {
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
@@ -269,7 +228,7 @@ func (i *Index) StorageDropSector(ctx context.Context, storageID ID, s abi.Secto
 			continue
 		}
 
-		d := Decl{s, fileType}
+		d := storiface.Decl{s, fileType}
 
 		if len(i.sectors[d]) == 0 {
 			continue
@@ -294,27 +253,27 @@ func (i *Index) StorageDropSector(ctx context.Context, storageID ID, s abi.Secto
 	return nil
 }
 
-func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft storiface.SectorFileType, ssize abi.SectorSize, allowFetch bool) ([]SectorStorageInfo, error) {
+func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft storiface.SectorFileType, ssize abi.SectorSize, allowFetch bool) ([]storiface.SectorStorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
-	storageIDs := map[ID]uint64{}
-	isprimary := map[ID]bool{}
+	storageIDs := map[storiface.ID]uint64{}
+	isprimary := map[storiface.ID]bool{}
 
-	allowTo := map[Group]struct{}{}
+	allowTo := map[storiface.Group]struct{}{}
 
 	for _, pathType := range storiface.PathTypes {
 		if ft&pathType == 0 {
 			continue
 		}
 
-		for _, id := range i.sectors[Decl{s, pathType}] {
+		for _, id := range i.sectors[storiface.Decl{s, pathType}] {
 			storageIDs[id.storage]++
 			isprimary[id.storage] = isprimary[id.storage] || id.primary
 		}
 	}
 
-	out := make([]SectorStorageInfo, 0, len(storageIDs))
+	out := make([]storiface.SectorStorageInfo, 0, len(storageIDs))
 
 	for id, n := range storageIDs {
 		st, ok := i.stores[id]
@@ -343,7 +302,7 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft storif
 			allowTo = nil // allow to any
 		}
 
-		out = append(out, SectorStorageInfo{
+		out = append(out, storiface.SectorStorageInfo{
 			ID:       id,
 			URLs:     urls,
 			BaseURLs: burls,
@@ -414,7 +373,7 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft storif
 				burls[k] = u
 			}
 
-			out = append(out, SectorStorageInfo{
+			out = append(out, storiface.SectorStorageInfo{
 				ID:       id,
 				URLs:     urls,
 				BaseURLs: burls,
@@ -431,19 +390,19 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft storif
 	return out, nil
 }
 
-func (i *Index) StorageInfo(ctx context.Context, id ID) (StorageInfo, error) {
+func (i *Index) StorageInfo(ctx context.Context, id storiface.ID) (storiface.StorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
 	si, found := i.stores[id]
 	if !found {
-		return StorageInfo{}, xerrors.Errorf("sector store not found")
+		return storiface.StorageInfo{}, xerrors.Errorf("sector store not found")
 	}
 
 	return *si.info, nil
 }
 
-func (i *Index) StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]StorageInfo, error) {
+func (i *Index) StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]storiface.StorageInfo, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
@@ -500,7 +459,7 @@ func (i *Index) StorageBestAlloc(ctx context.Context, allocate storiface.SectorF
 		return iw.GreaterThan(jw)
 	})
 
-	out := make([]StorageInfo, len(candidates))
+	out := make([]storiface.StorageInfo, len(candidates))
 	for i, candidate := range candidates {
 		out[i] = *candidate.info
 	}
@@ -508,18 +467,18 @@ func (i *Index) StorageBestAlloc(ctx context.Context, allocate storiface.SectorF
 	return out, nil
 }
 
-func (i *Index) FindSector(id abi.SectorID, typ storiface.SectorFileType) ([]ID, error) {
+func (i *Index) FindSector(id abi.SectorID, typ storiface.SectorFileType) ([]storiface.ID, error) {
 	i.lk.RLock()
 	defer i.lk.RUnlock()
 
-	f, ok := i.sectors[Decl{
+	f, ok := i.sectors[storiface.Decl{
 		SectorID:       id,
 		SectorFileType: typ,
 	}]
 	if !ok {
 		return nil, nil
 	}
-	out := make([]ID, 0, len(f))
+	out := make([]storiface.ID, 0, len(f))
 	for _, meta := range f {
 		out = append(out, meta.storage)
 	}

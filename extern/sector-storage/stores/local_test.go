@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
@@ -51,7 +52,7 @@ func (t *TestingLocalStorage) init(subpath string) error {
 	metaFile := filepath.Join(path, MetaFile)
 
 	meta := &LocalStorageMeta{
-		ID:       ID(uuid.New().String()),
+		ID:       storiface.ID(uuid.New().String()),
 		Weight:   1,
 		CanSeal:  true,
 		CanStore: true,

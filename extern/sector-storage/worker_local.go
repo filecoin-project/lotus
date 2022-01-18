@@ -149,7 +149,7 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector stor
 			}
 
 			sid := storiface.PathByType(storageIDs, fileType)
-			if err := l.w.sindex.StorageDeclareSector(ctx, stores.ID(sid), sector.ID, fileType, l.op == storiface.AcquireMove); err != nil {
+			if err := l.w.sindex.StorageDeclareSector(ctx, storiface.ID(sid), sector.ID, fileType, l.op == storiface.AcquireMove); err != nil {
 				log.Errorf("declare sector error: %+v", err)
 			}
 		}
@@ -618,7 +618,7 @@ func (l *LocalWorker) TaskEnable(ctx context.Context, tt sealtasks.TaskType) err
 	return nil
 }
 
-func (l *LocalWorker) Paths(ctx context.Context) ([]stores.StoragePath, error) {
+func (l *LocalWorker) Paths(ctx context.Context) ([]storiface.StoragePath, error) {
 	return l.localStore.Local(ctx)
 }
 

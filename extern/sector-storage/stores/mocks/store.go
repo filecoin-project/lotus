@@ -10,7 +10,6 @@ import (
 
 	abi "github.com/filecoin-project/go-state-types/abi"
 	fsutil "github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-	stores "github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	storiface "github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	storage "github.com/filecoin-project/specs-storage/storage"
 	gomock "github.com/golang/mock/gomock"
@@ -56,7 +55,7 @@ func (mr *MockStoreMockRecorder) AcquireSector(arg0, arg1, arg2, arg3, arg4, arg
 }
 
 // FsStat mocks base method.
-func (m *MockStore) FsStat(arg0 context.Context, arg1 stores.ID) (fsutil.FsStat, error) {
+func (m *MockStore) FsStat(arg0 context.Context, arg1 storiface.ID) (fsutil.FsStat, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FsStat", arg0, arg1)
 	ret0, _ := ret[0].(fsutil.FsStat)
@@ -100,7 +99,7 @@ func (mr *MockStoreMockRecorder) MoveStorage(arg0, arg1, arg2 interface{}) *gomo
 }
 
 // Remove mocks base method.
-func (m *MockStore) Remove(arg0 context.Context, arg1 abi.SectorID, arg2 storiface.SectorFileType, arg3 bool, arg4 []stores.ID) error {
+func (m *MockStore) Remove(arg0 context.Context, arg1 abi.SectorID, arg2 storiface.SectorFileType, arg3 bool, arg4 []storiface.ID) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Remove", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(error)

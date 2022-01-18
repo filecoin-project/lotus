@@ -125,7 +125,7 @@ func (t *testWorker) TaskTypes(ctx context.Context) (map[sealtasks.TaskType]stru
 	return t.acceptTasks, nil
 }
 
-func (t *testWorker) Paths(ctx context.Context) ([]stores.StoragePath, error) {
+func (t *testWorker) Paths(ctx context.Context) ([]storiface.StoragePath, error) {
 	return t.lstor.Local(ctx)
 }
 

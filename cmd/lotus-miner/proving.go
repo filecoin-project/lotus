@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/specs-storage/storage"
 )
 
@@ -420,7 +420,7 @@ var provingCheckProvableCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			decls := sl[stores.ID(cctx.String("storage-id"))]
+			decls := sl[storiface.ID(cctx.String("storage-id"))]
 
 			filter = map[abi.SectorID]struct{}{}
 			for _, decl := range decls {

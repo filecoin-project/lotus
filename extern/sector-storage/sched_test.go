@@ -58,7 +58,7 @@ var constrainedWorkerResources = storiface.WorkerResources{
 type schedTestWorker struct {
 	name      string
 	taskTypes map[sealtasks.TaskType]struct{}
-	paths     []stores.StoragePath
+	paths     []storiface.StoragePath
 
 	closed  bool
 	session uuid.UUID
@@ -147,7 +147,7 @@ func (s *schedTestWorker) TaskTypes(ctx context.Context) (map[sealtasks.TaskType
 	return s.taskTypes, nil
 }
 
-func (s *schedTestWorker) Paths(ctx context.Context) ([]stores.StoragePath, error) {
+func (s *schedTestWorker) Paths(ctx context.Context) ([]storiface.StoragePath, error) {
 	return s.paths, nil
 }
 
@@ -178,7 +178,7 @@ func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name str
 	w := &schedTestWorker{
 		name:      name,
 		taskTypes: taskTypes,
-		paths:     []stores.StoragePath{{ID: "bb-8", Weight: 2, LocalPath: "<octopus>food</octopus>", CanSeal: true, CanStore: true}},
+		paths:     []storiface.StoragePath{{ID: "bb-8", Weight: 2, LocalPath: "<octopus>food</octopus>", CanSeal: true, CanStore: true}},
 
 		session: uuid.New(),
 
@@ -187,7 +187,7 @@ func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name str
 	}
 
 	for _, path := range w.paths {
-		err := index.StorageAttach(context.TODO(), stores.StorageInfo{
+		err := index.StorageAttach(context.TODO(), storiface.StorageInfo{
 			ID:       path.ID,
 			URLs:     nil,
 			Weight:   path.Weight,

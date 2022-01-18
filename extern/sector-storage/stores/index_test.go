@@ -18,9 +18,9 @@ func init() {
 	logging.SetLogLevel("stores", "DEBUG")
 }
 
-func newTestStorage() StorageInfo {
-	return StorageInfo{
-		ID:       ID(uuid.New().String()),
+func newTestStorage() storiface.StorageInfo {
+	return storiface.StorageInfo{
+		ID:       storiface.ID(uuid.New().String()),
 		CanSeal:  true,
 		CanStore: true,
 		Groups:   nil,
@@ -81,7 +81,7 @@ func TestFindNoAllow(t *testing.T) {
 
 	i := NewIndex()
 	stor1 := newTestStorage()
-	stor1.AllowTo = []Group{"grp1"}
+	stor1.AllowTo = []storiface.Group{"grp1"}
 	stor2 := newTestStorage()
 
 	require.NoError(t, i.StorageAttach(ctx, stor1, bigFsStat))
@@ -114,13 +114,13 @@ func TestFindAllow(t *testing.T) {
 	i := NewIndex()
 
 	stor1 := newTestStorage()
-	stor1.AllowTo = []Group{"grp1"}
+	stor1.AllowTo = []storiface.Group{"grp1"}
 
 	stor2 := newTestStorage()
-	stor2.Groups = []Group{"grp1"}
+	stor2.Groups = []storiface.Group{"grp1"}
 
 	stor3 := newTestStorage()
-	stor3.Groups = []Group{"grp2"}
+	stor3.Groups = []storiface.Group{"grp2"}
 
 	require.NoError(t, i.StorageAttach(ctx, stor1, bigFsStat))
 	require.NoError(t, i.StorageAttach(ctx, stor2, bigFsStat))

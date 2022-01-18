@@ -62,7 +62,7 @@ func (handler *FetchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (handler *FetchHandler) remoteStatFs(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id := ID(vars["id"])
+	id := storiface.ID(vars["id"])
 
 	st, err := handler.Local.FsStat(r.Context(), id)
 	switch err {
@@ -173,7 +173,7 @@ func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if err := handler.Local.Remove(r.Context(), id, ft, false, []ID{ID(r.FormValue("keep"))}); err != nil {
+	if err := handler.Local.Remove(r.Context(), id, ft, false, []storiface.ID{storiface.ID(r.FormValue("keep"))}); err != nil {
 		log.Errorf("%+v", err)
 		w.WriteHeader(500)
 		return

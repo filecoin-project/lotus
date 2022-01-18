@@ -150,13 +150,13 @@ func (r *Remote) AcquireSector(ctx context.Context, s storage.SectorRef, existin
 		storiface.SetPathByType(&paths, fileType, dest)
 		storiface.SetPathByType(&stores, fileType, storageID)
 
-		if err := r.index.StorageDeclareSector(ctx, ID(storageID), s.ID, fileType, op == storiface.AcquireMove); err != nil {
+		if err := r.index.StorageDeclareSector(ctx, storiface.ID(storageID), s.ID, fileType, op == storiface.AcquireMove); err != nil {
 			log.Warnf("declaring sector %v in %s failed: %+v", s, storageID, err)
 			continue
 		}
 
 		if op == storiface.AcquireMove {
-			id := ID(storageID)
+			id := storiface.ID(storageID)
 			if err := r.deleteFromRemote(ctx, url, &id); err != nil {
 				log.Warnf("deleting sector %v from %s (delete %s): %+v", s, storageID, url, err)
 			}
@@ -334,7 +334,7 @@ func (r *Remote) MoveStorage(ctx context.Context, s storage.SectorRef, types sto
 	return r.local.MoveStorage(ctx, s, types)
 }
 
-func (r *Remote) Remove(ctx context.Context, sid abi.SectorID, typ storiface.SectorFileType, force bool, keepIn []ID) error {
+func (r *Remote) Remove(ctx context.Context, sid abi.SectorID, typ storiface.SectorFileType, force bool, keepIn []storiface.ID) error {
 	if bits.OnesCount(uint(typ)) != 1 {
 		return xerrors.New("delete expects one file type")
 	}
@@ -367,7 +367,7 @@ storeLoop:
 	return nil
 }
 
-func (r *Remote) deleteFromRemote(ctx context.Context, url string, keepIn *ID) error {
+func (r *Remote) deleteFromRemote(ctx context.Context, url string, keepIn *storiface.ID) error {
 	if keepIn != nil {
 		url = url + "?keep=" + string(*keepIn)
 	}
@@ -394,7 +394,7 @@ func (r *Remote) deleteFromRemote(ctx context.Context, url string, keepIn *ID) e
 	return nil
 }
 
-func (r *Remote) FsStat(ctx context.Context, id ID) (fsutil.FsStat, error) {
+func (r *Remote) FsStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, error) {
 	st, err := r.local.FsStat(ctx, id)
 	switch err {
 	case nil:

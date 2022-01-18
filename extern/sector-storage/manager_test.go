@@ -49,7 +49,7 @@ func newTestStorage(t *testing.T) *testStorage {
 
 	{
 		b, err := json.MarshalIndent(&stores.LocalStorageMeta{
-			ID:       stores.ID(uuid.New().String()),
+			ID:       storiface.ID(uuid.New().String()),
 			Weight:   1,
 			CanSeal:  true,
 			CanStore: true,

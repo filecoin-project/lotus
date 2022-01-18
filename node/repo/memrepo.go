@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/node/config"
 )
 
@@ -132,7 +133,7 @@ func (lmem *lockedMemRepo) initSectorStore(t string) {
 	}
 
 	b, err := json.MarshalIndent(&stores.LocalStorageMeta{
-		ID:       stores.ID(uuid.New().String()),
+		ID:       storiface.ID(uuid.New().String()),
 		Weight:   10,
 		CanSeal:  true,
 		CanStore: true,
