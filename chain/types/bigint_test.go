@@ -15,6 +15,7 @@ import (
 )
 
 func TestBigIntSerializationRoundTrip(t *testing.T) {
+	//stm: @CHAIN_TYPES_PARSE_BIGINT_001
 	testValues := []string{
 		"0", "1", "10", "-10", "9999", "12345678901234567891234567890123456789012345678901234567890",
 	}
@@ -43,6 +44,7 @@ func TestBigIntSerializationRoundTrip(t *testing.T) {
 }
 
 func TestFilRoundTrip(t *testing.T) {
+	//stm: @TYPES_FIL_PARSE_001
 	testValues := []string{
 		"0 FIL", "1 FIL", "1.001 FIL", "100.10001 FIL", "101100 FIL", "5000.01 FIL", "5000 FIL",
 	}
@@ -60,6 +62,7 @@ func TestFilRoundTrip(t *testing.T) {
 }
 
 func TestSizeStr(t *testing.T) {
+	//stm: @CHAIN_TYPES_SIZE_BIGINT_001
 	cases := []struct {
 		in  uint64
 		out string
@@ -80,6 +83,7 @@ func TestSizeStr(t *testing.T) {
 }
 
 func TestSizeStrUnitsSymmetry(t *testing.T) {
+	//stm: @CHAIN_TYPES_SIZE_BIGINT_001
 	s := rand.NewSource(time.Now().UnixNano())
 	r := rand.New(s)
 
@@ -96,6 +100,7 @@ func TestSizeStrUnitsSymmetry(t *testing.T) {
 }
 
 func TestSizeStrBig(t *testing.T) {
+	//stm: @CHAIN_TYPES_SIZE_BIGINT_001
 	ZiB := big.NewInt(50000)
 	ZiB = ZiB.Lsh(ZiB, 70)
 
