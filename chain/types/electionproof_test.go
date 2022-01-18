@@ -12,6 +12,7 @@ import (
 )
 
 func TestPoissonFunction(t *testing.T) {
+	//stm: @CHAIN_TYPES_POISSON_001
 	tests := []struct {
 		lambdaBase  uint64
 		lambdaShift uint
@@ -48,6 +49,7 @@ func TestPoissonFunction(t *testing.T) {
 }
 
 func TestLambdaFunction(t *testing.T) {
+	//stm: @CHAIN_TYPES_LAMBDA_001
 	tests := []struct {
 		power      string
 		totalPower string
@@ -73,6 +75,7 @@ func TestLambdaFunction(t *testing.T) {
 }
 
 func TestExpFunction(t *testing.T) {
+	//stm: @CHAIN_TYPES_NEGATIVE_EXP_001
 	const N = 256
 
 	step := big.NewInt(5)
@@ -101,6 +104,7 @@ func q256ToF(x *big.Int) float64 {
 }
 
 func TestElectionLam(t *testing.T) {
+	//stm: @CHAIN_TYPES_LAMBDA_001
 	p := big.NewInt(64)
 	tot := big.NewInt(128)
 	lam := lambda(p, tot)

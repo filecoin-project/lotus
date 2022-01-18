@@ -52,6 +52,7 @@ func testBlockHeader(t testing.TB) *BlockHeader {
 }
 
 func TestBlockHeaderSerialization(t *testing.T) {
+	//stm: @CHAIN_TYPES_BLOCK_HEADER_FROM_CBOR_001, @CHAIN_TYPES_BLOCK_HEADER_TO_CBOR_001
 	bh := testBlockHeader(t)
 
 	buf := new(bytes.Buffer)
