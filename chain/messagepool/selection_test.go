@@ -716,6 +716,7 @@ func TestMessageSelectionTrimmingMsgsTwoSendersBasic(t *testing.T) {
 }
 
 func TestMessageSelectionTrimmingMsgsTwoSendersAdvanced(t *testing.T) {
+	//stm: @TOKEN_WALLET_NEW_001, @CHAIN_MEMPOOL_SELECT_001
 	mp, tma := makeTestMpool()
 
 	// the actors
@@ -1484,6 +1485,7 @@ func TestCompetitiveMessageSelectionZipf(t *testing.T) {
 }
 
 func TestGasReward(t *testing.T) {
+	//stm: @CHAIN_MEMPOOL_GET_GAS_REWARD_001
 	tests := []struct {
 		Premium   uint64
 		FeeCap    uint64

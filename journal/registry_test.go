@@ -46,6 +46,7 @@ func TestDisabledEvents(t *testing.T) {
 }
 
 func TestParseDisableEvents(t *testing.T) {
+	//stm: @JOURNAL_REGISTRY_PARSE_DISABLED_002
 	_, err := ParseDisabledEvents("system1:disabled1:failed,system1:disabled2")
 	require.Error(t, err)
 }
