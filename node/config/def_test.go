@@ -13,6 +13,7 @@ import (
 )
 
 func TestDefaultFullNodeRoundtrip(t *testing.T) {
+	//stm: @OTHER_IMPLEMENTATION_001
 	c := DefaultFullNode()
 
 	var s string
@@ -34,6 +35,7 @@ func TestDefaultFullNodeRoundtrip(t *testing.T) {
 }
 
 func TestDefaultMinerRoundtrip(t *testing.T) {
+	//stm: @OTHER_IMPLEMENTATION_001
 	c := DefaultStorageMiner()
 
 	var s string
