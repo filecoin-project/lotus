@@ -6,11 +6,11 @@ import (
 	"sync"
 	"time"
 
+	xerrors "golang.org/x/xerrors"
+
 	sealtasks "github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-
-	xerrors "golang.org/x/xerrors"
 )
 
 type poStScheduler struct {

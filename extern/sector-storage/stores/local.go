@@ -3,7 +3,6 @@ package stores
 import (
 	"context"
 	"encoding/json"
-	ffi "github.com/filecoin-project/filecoin-ffi"
 	"io/ioutil"
 	"math/bits"
 	"math/rand"
@@ -14,6 +13,7 @@ import (
 
 	"golang.org/x/xerrors"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"

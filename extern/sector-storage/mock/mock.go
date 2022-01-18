@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
-	"github.com/filecoin-project/specs-actors/v6/actors/runtime/proof"
 	"io"
 	"io/ioutil"
 	"math/rand"

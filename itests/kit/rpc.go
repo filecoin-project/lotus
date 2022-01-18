@@ -3,17 +3,19 @@ package kit
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/lotus/cmd/lotus-seal-worker/sealworker"
 	"net"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"github.com/filecoin-project/lotus/api/client"
-	"github.com/filecoin-project/lotus/node"
+	"github.com/stretchr/testify/require"
+
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
-	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/lotus/api/client"
+	"github.com/filecoin-project/lotus/cmd/lotus-seal-worker/sealworker"
+	"github.com/filecoin-project/lotus/node"
 )
 
 func CreateRPCServer(t *testing.T, handler http.Handler, listener net.Listener) (*httptest.Server, multiaddr.Multiaddr) {

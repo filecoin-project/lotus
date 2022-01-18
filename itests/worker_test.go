@@ -2,17 +2,17 @@ package itests
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage"
-	logging "github.com/ipfs/go-log/v2"
 	"testing"
 	"time"
 
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/storage"
 )
 
 func TestWorkerPledge(t *testing.T) {
