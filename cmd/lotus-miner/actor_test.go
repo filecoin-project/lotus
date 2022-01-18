@@ -24,6 +24,7 @@ import (
 )
 
 func TestWorkerKeyChange(t *testing.T) {
+	//stm: @OTHER_WORKER_KEY_CHANGE_001
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
