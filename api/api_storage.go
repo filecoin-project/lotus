@@ -283,19 +283,20 @@ type SectorPiece struct {
 }
 
 type SectorInfo struct {
-	SectorID     abi.SectorNumber
-	State        SectorState
-	CommD        *cid.Cid
-	CommR        *cid.Cid
-	Proof        []byte
-	Deals        []abi.DealID
-	Pieces       []SectorPiece
-	Ticket       SealTicket
-	Seed         SealSeed
-	PreCommitMsg *cid.Cid
-	CommitMsg    *cid.Cid
-	Retries      uint64
-	ToUpgrade    bool
+	SectorID             abi.SectorNumber
+	State                SectorState
+	CommD                *cid.Cid
+	CommR                *cid.Cid
+	Proof                []byte
+	Deals                []abi.DealID
+	Pieces               []SectorPiece
+	Ticket               SealTicket
+	Seed                 SealSeed
+	PreCommitMsg         *cid.Cid
+	CommitMsg            *cid.Cid
+	Retries              uint64
+	ToUpgrade            bool
+	ReplicaUpdateMessage *cid.Cid
 
 	LastErr string
 

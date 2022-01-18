@@ -60,7 +60,7 @@ func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof,
 				return nil
 			}
 
-			commr, err := rg(ctx, sector.ID)
+			commr, update, err := rg(ctx, sector.ID)
 			if err != nil {
 				log.Warnw("CheckProvable Sector FAULT: getting commR", "sector", sector, "sealed", "err", err)
 				bad[sector.ID] = fmt.Sprintf("getting commR: %s", err)
@@ -72,6 +72,7 @@ func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof,
 				SectorNumber: sector.ID.Number,
 				SealedCID:    commr,
 				Challenge:    ch.Challenges[sector.ID.Number],
+				Update:       update,
 			}, wpp)
 			if err != nil {
 				log.Warnw("CheckProvable Sector FAULT: generating vanilla proof", "sector", sector, "err", err)

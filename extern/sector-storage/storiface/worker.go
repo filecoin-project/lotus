@@ -146,6 +146,7 @@ type PostSectorChallenge struct {
 	SectorNumber abi.SectorNumber
 	SealedCID    cid.Cid
 	Challenge    []uint64
+	Update       bool
 }
 
 type FallbackChallenges struct {

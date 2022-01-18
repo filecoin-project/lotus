@@ -729,12 +729,23 @@ func (st *Local) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 		ProofType: si.SealProof,
 	}
 
-	src, _, err := st.AcquireSector(ctx, sr, storiface.FTSealed|storiface.FTCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
-	if err != nil {
-		return nil, xerrors.Errorf("acquire sector: %w", err)
+	var cache string
+	var sealed string
+	if si.Update {
+		src, _, err := st.AcquireSector(ctx, sr, storiface.FTSealed|storiface.FTCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
+		if err != nil {
+			return nil, xerrors.Errorf("acquire sector: %w", err)
+		}
+		cache, sealed = src.Update, src.UpdateCache
+	} else {
+		src, _, err := st.AcquireSector(ctx, sr, storiface.FTSealed|storiface.FTCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
+		if err != nil {
+			return nil, xerrors.Errorf("acquire sector: %w", err)
+		}
+		cache, sealed = src.Cache, src.Sealed
 	}
 
-	if src.Sealed == "" || src.Cache == "" {
+	if sealed == "" || cache == "" {
 		return nil, errPathNotFound
 	}
 
@@ -744,9 +755,9 @@ func (st *Local) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 			SectorNumber: si.SectorNumber,
 			SealedCID:    si.SealedCID,
 		},
-		CacheDirPath:     src.Cache,
+		CacheDirPath:     cache,
 		PoStProofType:    ppt,
-		SealedSectorPath: src.Sealed,
+		SealedSectorPath: sealed,
 	}
 
 	return ffi.GenerateSingleVanillaProof(psi, si.Challenge)

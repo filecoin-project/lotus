@@ -204,10 +204,18 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check bitfield.B
 		return bitfield.BitField{}, err
 	}
 
-	sectors := make(map[abi.SectorNumber]cid.Cid)
+	type checkSector struct {
+		sealed cid.Cid
+		update bool
+	}
+
+	sectors := make(map[abi.SectorNumber]checkSector)
 	var tocheck []storage.SectorRef
 	for _, info := range sectorInfos {
-		sectors[info.SectorNumber] = info.SealedCID
+		sectors[info.SectorNumber] = checkSector{
+			sealed: info.SealedCID,
+			update: info.SectorKeyCID != nil,
+		}
 		tocheck = append(tocheck, storage.SectorRef{
 			ProofType: info.SealProof,
 			ID: abi.SectorID{
@@ -217,12 +225,12 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check bitfield.B
 		})
 	}
 
-	bad, err := s.faultTracker.CheckProvable(ctx, s.proofType, tocheck, func(ctx context.Context, id abi.SectorID) (cid.Cid, error) {
-		scid, ok := sectors[id.Number]
+	bad, err := s.faultTracker.CheckProvable(ctx, s.proofType, tocheck, func(ctx context.Context, id abi.SectorID) (cid.Cid, bool, error) {
+		s, ok := sectors[id.Number]
 		if !ok {
-			return cid.Undef, xerrors.Errorf("sealed CID not found")
+			return cid.Undef, false, xerrors.Errorf("sealed CID not found")
 		}
-		return scid, nil
+		return s.sealed, s.update, nil
 	})
 	if err != nil {
 		return bitfield.BitField{}, xerrors.Errorf("checking provable sectors: %w", err)

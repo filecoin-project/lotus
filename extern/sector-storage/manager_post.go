@@ -54,6 +54,7 @@ func (m *Manager) generateWinningPoSt(ctx context.Context, minerID abi.ActorID, 
 			SectorNumber: s.SectorNumber,
 			SealedCID:    s.SealedCID,
 			Challenge:    postChallenges.Challenges[s.SectorNumber],
+			Update:       s.SectorKey != nil,
 		}
 	}
 
@@ -82,7 +83,7 @@ func (m *Manager) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 	return m.generateWindowPoSt(ctx, minerID, sectorInfo, randomness)
 }
 
-func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.SectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, []abi.SectorID, error) {
+func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, []abi.SectorID, error) {
 	var retErr error = nil
 	randomness[31] &= 0x3f
 
@@ -118,7 +119,7 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 	})
 
 	sectorNums := make([]abi.SectorNumber, len(sectorInfo))
-	sectorMap := make(map[abi.SectorNumber]proof.SectorInfo)
+	sectorMap := make(map[abi.SectorNumber]proof.ExtendedSectorInfo)
 	for i, s := range sectorInfo {
 		sectorNums[i] = s.SectorNumber
 		sectorMap[s.SectorNumber] = s
@@ -152,6 +153,7 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 					SectorNumber: snum,
 					SealedCID:    sinfo.SealedCID,
 					Challenge:    postChallenges.Challenges[snum],
+					Update:       sinfo.SectorKey != nil,
 				})
 			}
 
