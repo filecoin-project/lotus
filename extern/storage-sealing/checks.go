@@ -213,7 +213,7 @@ func checkReplicaUpdate(ctx context.Context, maddr address.Address, si SectorInf
 		return &ErrBadRU{xerrors.Errorf("nil sealed cid")}
 	}
 	if si.ReplicaUpdateProof == nil {
-		return ErrBadPR{xerrors.Errorf("nil PR2 proof")}
+		return &ErrBadPR{xerrors.Errorf("nil PR2 proof")}
 	}
 
 	return nil
