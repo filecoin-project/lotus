@@ -52,7 +52,9 @@ type Net interface {
 	NetBlockList(ctx context.Context) (NetBlockList, error)     //perm:read
 
 	// ResourceManager API
-	NetStat(ctx context.Context, scope string) (NetStat, error) //perm:read
+	NetStat(ctx context.Context, scope string) (NetStat, error)          //perm:read
+	NetLimit(ctx context.Context, scope string) (NetLimit, error)        //perm:read
+	NetSetLimit(ctx context.Context, scope string, limit NetLimit) error //perm:admin
 
 	// ID returns peerID of libp2p node backing this API
 	ID(context.Context) (peer.ID, error) //perm:read
