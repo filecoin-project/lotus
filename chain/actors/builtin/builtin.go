@@ -61,6 +61,7 @@ const (
 // These are all just type aliases across actor versions. In the future, that might change
 // and we might need to do something fancier.
 type SectorInfo = proof7.SectorInfo
+type ExtendedSectorInfo = proof7.ExtendedSectorInfo
 type PoStProof = proof7.PoStProof
 type FilterEstimate = smoothing0.FilterEstimate
 

@@ -715,7 +715,6 @@ func (sb *Sealer) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, p
 	if err != nil {
 		return empty, xerrors.Errorf("failed to update replica %d with new deal data: %w", sector.ID.Number, err)
 	}
-
 	return storage.ReplicaUpdateOut{NewSealed: sealed, NewUnsealed: unsealed}, nil
 }
 
@@ -852,6 +851,14 @@ func (sb *Sealer) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef,
 
 	// This function should not be called at this layer, everything should be
 	// handled in localworker
+	return xerrors.Errorf("not supported at this layer")
+}
+
+func (sb *Sealer) ReleaseReplicaUpgrade(ctx context.Context, sector storage.SectorRef) error {
+	return xerrors.Errorf("not supported at this layer")
+}
+
+func (sb *Sealer) ReleaseSectorKey(ctx context.Context, sector storage.SectorRef) error {
 	return xerrors.Errorf("not supported at this layer")
 }
 

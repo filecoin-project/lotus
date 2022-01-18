@@ -161,6 +161,16 @@ var runCmd = &cli.Command{
 			Value: true,
 		},
 		&cli.BoolFlag{
+			Name:  "replica-update",
+			Usage: "enable replica update",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "prove-replica-update2",
+			Usage: "enable prove replica update 2",
+			Value: true,
+		},
+		&cli.BoolFlag{
 			Name:  "windowpost",
 			Usage: "enable window post",
 			Value: false,
@@ -270,7 +280,7 @@ var runCmd = &cli.Command{
 		}
 
 		if !exclusiveSet {
-			taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize)
+			taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize)
 		}
 
 		if cctx.Bool("addpiece") {
@@ -287,6 +297,12 @@ var runCmd = &cli.Command{
 		}
 		if cctx.Bool("commit") {
 			taskTypes = append(taskTypes, sealtasks.TTCommit2)
+		}
+		if cctx.Bool("replicaupdate") {
+			taskTypes = append(taskTypes, sealtasks.TTReplicaUpdate)
+		}
+		if cctx.Bool("prove-replica-update2") {
+			taskTypes = append(taskTypes, sealtasks.TTProveReplicaUpdate2)
 		}
 
 		if len(taskTypes) == 0 {

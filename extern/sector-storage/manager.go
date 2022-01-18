@@ -102,11 +102,13 @@ type SealerConfig struct {
 	ParallelFetchLimit int
 
 	// Local worker config
-	AllowAddPiece   bool
-	AllowPreCommit1 bool
-	AllowPreCommit2 bool
-	AllowCommit     bool
-	AllowUnseal     bool
+	AllowAddPiece            bool
+	AllowPreCommit1          bool
+	AllowPreCommit2          bool
+	AllowCommit              bool
+	AllowUnseal              bool
+	AllowReplicaUpdate       bool
+	AllowProveReplicaUpdate2 bool
 
 	// ResourceFiltering instructs the system which resource filtering strategy
 	// to use when evaluating tasks against this worker. An empty value defaults
@@ -150,7 +152,7 @@ func New(ctx context.Context, lstor *stores.Local, stor *stores.Remote, ls store
 	go m.sched.runSched()
 
 	localTasks := []sealtasks.TaskType{
-		sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTFetch,
+		sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFetch,
 	}
 	if sc.AllowAddPiece {
 		localTasks = append(localTasks, sealtasks.TTAddPiece)
@@ -166,6 +168,12 @@ func New(ctx context.Context, lstor *stores.Local, stor *stores.Remote, ls store
 	}
 	if sc.AllowUnseal {
 		localTasks = append(localTasks, sealtasks.TTUnseal)
+	}
+	if sc.AllowReplicaUpdate {
+		localTasks = append(localTasks, sealtasks.TTReplicaUpdate)
+	}
+	if sc.AllowProveReplicaUpdate2 {
+		localTasks = append(localTasks, sealtasks.TTProveReplicaUpdate2)
 	}
 
 	wcfg := WorkerConfig{
@@ -615,6 +623,23 @@ func (m *Manager) ReleaseSectorKey(ctx context.Context, sector storage.SectorRef
 	return m.storage.Remove(ctx, sector.ID, storiface.FTSealed, true, nil)
 }
 
+func (m *Manager) ReleaseReplicaUpgrade(ctx context.Context, sector storage.SectorRef) error {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if err := m.index.StorageLock(ctx, sector.ID, storiface.FTNone, storiface.FTUpdateCache|storiface.FTUpdate); err != nil {
+		return xerrors.Errorf("acquiring sector lock: %w", err)
+	}
+
+	if err := m.storage.Remove(ctx, sector.ID, storiface.FTUpdateCache, true, nil); err != nil {
+		return xerrors.Errorf("removing update cache: %w", err)
+	}
+	if err := m.storage.Remove(ctx, sector.ID, storiface.FTUpdate, true, nil); err != nil {
+		return xerrors.Errorf("removing update: %w", err)
+	}
+	return nil
+}
+
 func (m *Manager) GenerateSectorKeyFromData(ctx context.Context, sector storage.SectorRef, commD cid.Cid) error {
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -697,7 +722,7 @@ func (m *Manager) Remove(ctx context.Context, sector storage.SectorRef) error {
 func (m *Manager) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, pieces []abi.PieceInfo) (out storage.ReplicaUpdateOut, err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-
+	log.Errorf("manager is doing replica update")
 	wk, wait, cancel, err := m.getWork(ctx, sealtasks.TTReplicaUpdate, sector, pieces)
 	if err != nil {
 		return storage.ReplicaUpdateOut{}, xerrors.Errorf("getWork: %w", err)
@@ -708,7 +733,7 @@ func (m *Manager) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, p
 	waitRes := func() {
 		p, werr := m.waitWork(ctx, wk)
 		if werr != nil {
-			waitErr = werr
+			waitErr = xerrors.Errorf("waitWork: %w", werr)
 			return
 		}
 		if p != nil {
@@ -728,17 +753,17 @@ func (m *Manager) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, p
 	selector := newAllocSelector(m.index, storiface.FTUpdate|storiface.FTUpdateCache, storiface.PathSealing)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTReplicaUpdate, selector, m.schedFetch(sector, storiface.FTSealed, storiface.PathSealing, storiface.AcquireCopy), func(ctx context.Context, w Worker) error {
-
+		log.Errorf("scheduled work for replica update")
 		err := m.startWork(ctx, w, wk)(w.ReplicaUpdate(ctx, sector, pieces))
 		if err != nil {
-			return err
+			return xerrors.Errorf("startWork: %w", err)
 		}
 
 		waitRes()
 		return nil
 	})
 	if err != nil {
-		return storage.ReplicaUpdateOut{}, err
+		return storage.ReplicaUpdateOut{}, xerrors.Errorf("Schedule: %w", err)
 	}
 	return out, waitErr
 }

@@ -12,12 +12,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/specs-actors/v6/actors/builtin"
-	"github.com/filecoin-project/specs-actors/v6/actors/runtime/proof"
+	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
-func (m *Manager) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.SectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, error) {
+func (m *Manager) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, error) {
 	if !m.winningPoStSched.CanSched(ctx) {
 		log.Info("GenerateWinningPoSt run at lotus-miner")
 		return m.localProver.GenerateWinningPoSt(ctx, minerID, sectorInfo, randomness)
@@ -25,7 +25,7 @@ func (m *Manager) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, 
 	return m.generateWinningPoSt(ctx, minerID, sectorInfo, randomness)
 }
 
-func (m *Manager) generateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.SectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, error) {
+func (m *Manager) generateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, error) {
 	randomness[31] &= 0x3f
 
 	sectorNums := make([]abi.SectorNumber, len(sectorInfo))
@@ -73,7 +73,7 @@ func (m *Manager) generateWinningPoSt(ctx context.Context, minerID abi.ActorID, 
 	return proofs, nil
 }
 
-func (m *Manager) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.SectorInfo, randomness abi.PoStRandomness) (proof []proof.PoStProof, skipped []abi.SectorID, err error) {
+func (m *Manager) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) (proof []proof.PoStProof, skipped []abi.SectorID, err error) {
 	if !m.windowPoStSched.CanSched(ctx) {
 		log.Info("GenerateWindowPoSt run at lotus-miner")
 		return m.localProver.GenerateWindowPoSt(ctx, minerID, sectorInfo, randomness)
