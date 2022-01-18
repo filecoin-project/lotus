@@ -226,6 +226,8 @@ func mustAdd(t *testing.T, mp *MessagePool, msg *types.SignedMessage) {
 }
 
 func TestMessagePool(t *testing.T) {
+	//stm: @CHAIN_MEMPOOL_GET_NONCE_001
+
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -327,6 +329,7 @@ func TestCheckMessageBig(t *testing.T) {
 			Message:   *msg,
 			Signature: *sig,
 		}
+		//stm: @CHAIN_MEMPOOL_PUSH_001
 		err = mp.Add(context.TODO(), sm)
 		assert.ErrorIs(t, err, ErrMessageTooBig)
 	}
