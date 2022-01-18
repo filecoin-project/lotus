@@ -48,6 +48,7 @@ func TestSupportedProofTypes(t *testing.T) {
 
 // Tests assumptions about policies being the same between actor versions.
 func TestAssumptions(t *testing.T) {
+	//stm: @BLOCKCHAIN_POLICY_ASSUMPTIONS_001
 	require.EqualValues(t, miner0.SupportedProofTypes, miner2.PreCommitSealProofTypesV0)
 	require.Equal(t, miner0.PreCommitChallengeDelay, miner2.PreCommitChallengeDelay)
 	require.Equal(t, miner0.MaxSectorExpirationExtension, miner2.MaxSectorExpirationExtension)
@@ -61,6 +62,7 @@ func TestAssumptions(t *testing.T) {
 }
 
 func TestPartitionSizes(t *testing.T) {
+	//stm: @CHAIN_ACTOR_PARTITION_SIZES_001
 	for _, p := range abi.SealProofInfos {
 		sizeNew, err := builtin2.PoStProofWindowPoStPartitionSectors(p.WindowPoStProof)
 		require.NoError(t, err)
