@@ -197,7 +197,7 @@ loop:
 			continue
 		}
 
-		d := storiface.Decl{s, fileType}
+		d := storiface.Decl{SectorID: s, SectorFileType: fileType}
 
 		for _, sid := range i.sectors[d] {
 			if sid.storage == storageID {
@@ -228,7 +228,7 @@ func (i *Index) StorageDropSector(ctx context.Context, storageID storiface.ID, s
 			continue
 		}
 
-		d := storiface.Decl{s, fileType}
+		d := storiface.Decl{SectorID: s, SectorFileType: fileType}
 
 		if len(i.sectors[d]) == 0 {
 			continue
@@ -267,7 +267,7 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft storif
 			continue
 		}
 
-		for _, id := range i.sectors[storiface.Decl{s, pathType}] {
+		for _, id := range i.sectors[storiface.Decl{SectorID: s, SectorFileType: pathType}] {
 			storageIDs[id.storage]++
 			isprimary[id.storage] = isprimary[id.storage] || id.primary
 		}

@@ -785,6 +785,9 @@ func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 			}
 
 			if resp.StatusCode != 200 {
+				if resp.StatusCode == 404 {
+					continue
+				}
 				body, err := ioutil.ReadAll(resp.Body)
 				if err != nil {
 					return nil, xerrors.Errorf("resp.Body ReadAll: %w", err)

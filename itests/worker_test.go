@@ -75,7 +75,7 @@ func TestWindowPostWorker(t *testing.T) {
 
 	t.Log("Running one proving period")
 	waitUntil := di.Open + di.WPoStChallengeWindow*2 + storage.SubmitConfidence
-	ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
+	client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
 
 	t.Log("Waiting for post message")
 	bm.Stop()
@@ -101,7 +101,7 @@ func TestWindowPostWorker(t *testing.T) {
 	waitUntil = di.Open + di.WPoStChallengeWindow*3
 	t.Logf("End for head.Height > %d", waitUntil)
 
-	ts = client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
+	ts := client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
 	t.Logf("Now head.Height = %d", ts.Height())
 
 	p, err := client.StateMinerPower(ctx, maddr, types.EmptyTSK)

@@ -535,8 +535,9 @@ func (n *Ensemble) Start() *Ensemble {
 
 		// using real proofs, therefore need real sectors.
 		if !n.bootstrapped && !n.options.mockProofs {
+			psd := m.PresealDir
 			err := lr.SetStorage(func(sc *stores.StorageConfig) {
-				sc.StoragePaths = append(sc.StoragePaths, stores.LocalPath{Path: m.PresealDir})
+				sc.StoragePaths = append(sc.StoragePaths, stores.LocalPath{Path: psd})
 			})
 
 			require.NoError(n.t, err)
@@ -561,6 +562,8 @@ func (n *Ensemble) Start() *Ensemble {
 			require.NoError(n.t, err2)
 		}
 
+		noLocal := m.options.minerNoLocalSealing
+
 		var mineBlock = make(chan lotusminer.MineReq)
 		opts := []node.Option{
 			node.StorageMiner(&m.StorageMiner, cfg.Subsystems),
@@ -578,7 +581,7 @@ func (n *Ensemble) Start() *Ensemble {
 			node.Override(new(sectorstorage.SealerConfig), func() sectorstorage.SealerConfig {
 				scfg := config.DefaultStorageMiner()
 
-				if m.options.minerNoLocalSealing {
+				if noLocal {
 					scfg.Storage.AllowAddPiece = false
 					scfg.Storage.AllowPreCommit1 = false
 					scfg.Storage.AllowPreCommit2 = false
