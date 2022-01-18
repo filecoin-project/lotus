@@ -16,6 +16,7 @@ import (
 )
 
 func TestSingleton(t *testing.T) {
+	//stm: @CHAIN_ACTOR_CHAOS_BUILDER_001
 	receiver := atesting2.NewIDAddr(t, 100)
 	builder := mock2.NewBuilder(context.Background(), receiver)
 

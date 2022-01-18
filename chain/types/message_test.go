@@ -99,11 +99,13 @@ func TestMessageJson(t *testing.T) {
 	exp := []byte("{\"Version\":0,\"To\":\"f04\",\"From\":\"f00\",\"Nonce\":34,\"Value\":\"0\",\"GasLimit\":123,\"GasFeeCap\":\"234\",\"GasPremium\":\"234\",\"Method\":6,\"Params\":\"aGFp\",\"CID\":{\"/\":\"bafy2bzaced5rdpz57e64sc7mdwjn3blicglhpialnrph2dlbufhf6iha63dmc\"}}")
 	fmt.Println(string(b))
 
+	//stm: @TYPES_MESSAGE_JSON_EQUAL_CALL_001
 	require.Equal(t, exp, b)
 
 	var um Message
 	require.NoError(t, json.Unmarshal(b, &um))
 
+	//stm: @TYPES_MESSAGE_JSON_EQUAL_CALL_002
 	require.EqualValues(t, *m, um)
 }
 

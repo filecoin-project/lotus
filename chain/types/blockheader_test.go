@@ -73,6 +73,7 @@ func TestBlockHeaderSerialization(t *testing.T) {
 }
 
 func TestInteropBH(t *testing.T) {
+	//stm: @OTHER_IMPLEMENTATION_BLOCK_INTEROP_001
 	newAddr, err := address.NewSecp256k1Address([]byte("address0"))
 
 	if err != nil {
