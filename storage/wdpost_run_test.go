@@ -177,6 +177,10 @@ func (m mockFaultTracker) CheckProvable(ctx context.Context, pp abi.RegisteredPo
 // TestWDPostDoPost verifies that doPost will send the correct number of window
 // PoST messages for a given number of partitions
 func TestWDPostDoPost(t *testing.T) {
+	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
+	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
+	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 	ctx := context.Background()
 	expectedMsgCount := 5
 
@@ -191,6 +195,7 @@ func TestWDPostDoPost(t *testing.T) {
 	// Work out the number of partitions that can be included in a message
 	// without exceeding the message sector limit
 
+	//stm: @BLOCKCHAIN_POLICY_GET_MAX_POST_PARTITIONS_001
 	partitionsPerMsg, err := policy.GetMaxPoStPartitions(network.Version13, proofType)
 	require.NoError(t, err)
 	if partitionsPerMsg > miner5.AddressedPartitionsMax {

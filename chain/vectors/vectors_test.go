@@ -27,6 +27,7 @@ func LoadVector(t *testing.T, f string, out interface{}) {
 }
 
 func TestBlockHeaderVectors(t *testing.T) {
+	//stm: @CHAIN_TYPES_SERIALIZATION_BLOCK_001
 	var headers []HeaderVector
 	LoadVector(t, "block_headers.json", &headers)
 
@@ -47,6 +48,7 @@ func TestBlockHeaderVectors(t *testing.T) {
 }
 
 func TestMessageSigningVectors(t *testing.T) {
+	//stm: @CHAIN_TYPES_SERIALIZATION_SIGNED_MESSAGE_001
 	var msvs []MessageSigningVector
 	LoadVector(t, "message_signing.json", &msvs)
 
@@ -65,6 +67,7 @@ func TestMessageSigningVectors(t *testing.T) {
 }
 
 func TestUnsignedMessageVectors(t *testing.T) {
+	//stm: @CHAIN_TYPES_SERIALIZATION_MESSAGE_001
 	var msvs []UnsignedMessageVector
 	LoadVector(t, "unsigned_messages.json", &msvs)
 
