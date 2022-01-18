@@ -12,6 +12,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ma "github.com/multiformats/go-multiaddr"
@@ -127,6 +128,14 @@ type NetBlockList struct {
 	Peers     []peer.ID
 	IPAddrs   []string
 	IPSubnets []string
+}
+
+type NetStat struct {
+	System    *network.ScopeStat           `json:",omitempty"`
+	Transient *network.ScopeStat           `json:",omitempty"`
+	Services  map[string]network.ScopeStat `json:",omitempty"`
+	Protocols map[string]network.ScopeStat `json:",omitempty"`
+	Peers     map[string]network.ScopeStat
 }
 
 type ExtendedPeerInfo struct {
