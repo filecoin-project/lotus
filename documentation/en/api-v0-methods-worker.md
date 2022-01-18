@@ -875,7 +875,8 @@ Inputs:
       },
       "Challenge": [
         42
-      ]
+      ],
+      "Update": true
     }
   ],
   123,
@@ -918,7 +919,8 @@ Inputs:
       },
       "Challenge": [
         42
-      ]
+      ],
+      "Update": true
     }
   ],
   "Bw=="

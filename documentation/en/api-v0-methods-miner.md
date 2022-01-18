@@ -2776,6 +2776,7 @@ Response:
   "CommitMsg": null,
   "Retries": 42,
   "ToUpgrade": true,
+  "ReplicaUpdateMessage": null,
   "LastErr": "string value",
   "Log": [
     {
