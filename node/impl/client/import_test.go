@@ -27,6 +27,7 @@ import (
 
 // This test uses a full "dense" CARv2, and not a filestore (positional mapping).
 func TestRoundtripUnixFS_Dense(t *testing.T) {
+	//stm: @CLIENT_DATA_IMPORT_002
 	ctx := context.Background()
 
 	inputPath, inputContents := genInputFile(t)
@@ -75,6 +76,7 @@ func TestRoundtripUnixFS_Dense(t *testing.T) {
 }
 
 func TestRoundtripUnixFS_Filestore(t *testing.T) {
+	//stm: @CLIENT_DATA_IMPORT_001
 	ctx := context.Background()
 	a := &API{
 		Imports: &imports.Manager{},

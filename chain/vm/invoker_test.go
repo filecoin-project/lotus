@@ -107,6 +107,7 @@ func (*basicRtMessage) ValueReceived() abi.TokenAmount {
 }
 
 func TestInvokerBasic(t *testing.T) {
+	//stm: @INVOKER_TRANSFORM_001
 	inv := ActorRegistry{}
 	code, err := inv.transform(basicContract{})
 	assert.NoError(t, err)
