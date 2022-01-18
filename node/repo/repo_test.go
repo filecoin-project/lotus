@@ -15,20 +15,17 @@ import (
 )
 
 func basicTest(t *testing.T, repo Repo) {
-	NET_001
 	apima, err := repo.APIEndpoint()
 	if assert.Error(t, err) {
 		assert.Equal(t, ErrNoAPIEndpoint, err)
 	}
 	assert.Nil(t, apima, "with no api endpoint, return should be nil")
 
-	MUT_001
 	lrepo, err := repo.Lock(FullNode)
 	assert.NoError(t, err, "should be able to lock once")
 	assert.NotNil(t, lrepo, "locked repo shouldn't be nil")
 
 	{
-		MUT_002
 		lrepo2, err := repo.Lock(FullNode)
 		if assert.Error(t, err) {
 			assert.Equal(t, ErrRepoAlreadyLocked, err)
@@ -36,7 +33,6 @@ func basicTest(t *testing.T, repo Repo) {
 		assert.Nil(t, lrepo2, "with locked repo errors, nil should be returned")
 	}
 
-	MUT_003
 	err = lrepo.Close()
 	assert.NoError(t, err, "should be able to unlock")
 
@@ -47,7 +43,6 @@ func basicTest(t *testing.T, repo Repo) {
 	ma, err := multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/43244")
 	assert.NoError(t, err, "creating multiaddr shouldn't error")
 
-	NET_002
 	err = lrepo.SetAPIEndpoint(ma)
 	assert.NoError(t, err, "setting multiaddr shouldn't error")
 
@@ -75,7 +70,6 @@ func basicTest(t *testing.T, repo Repo) {
 	err = lrepo.Close()
 	assert.NoError(t, err, "should be able to close")
 
-	NET_003
 	apima, err = repo.APIEndpoint()
 
 	if assert.Error(t, err) {
@@ -90,27 +84,22 @@ func basicTest(t *testing.T, repo Repo) {
 	assert.NoError(t, err, "should be able to relock")
 	assert.NotNil(t, lrepo, "locked repo shouldn't be nil")
 
-	KEYSTR_001
 	kstr, err := lrepo.KeyStore()
 	assert.NoError(t, err, "should be able to get keystore")
 	assert.NotNil(t, lrepo, "keystore shouldn't be nil")
 
-	KEYSTR_002
 	list, err := kstr.List()
 	assert.NoError(t, err, "should be able to list key")
 	assert.Empty(t, list, "there should be no keys")
 
-	KEYSTR_003
 	err = kstr.Put("k1", k1)
 	assert.NoError(t, err, "should be able to put k1")
 
-	KEYSTR_004
 	err = kstr.Put("k1", k1)
 	if assert.Error(t, err, "putting key under the same name should error") {
 		assert.True(t, xerrors.Is(err, types.ErrKeyExists), "returned error is ErrKeyExists")
 	}
 
-	KEYSTR_005
 	k1prim, err := kstr.Get("k1")
 	assert.NoError(t, err, "should be able to get k1")
 	assert.Equal(t, k1, k1prim, "returned key should be the same")
@@ -128,7 +117,6 @@ func basicTest(t *testing.T, repo Repo) {
 	assert.NoError(t, err, "should be able to list keys")
 	assert.ElementsMatch(t, []string{"k1", "k2"}, list, "returned elements match")
 
-	KEYSTR_006
 	err = kstr.Delete("k2")
 	assert.NoError(t, err, "should be able to delete key")
 

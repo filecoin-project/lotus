@@ -13,13 +13,11 @@ func genFsRepo(t *testing.T) (*FsRepo, func()) {
 		t.Fatal(err)
 	}
 
-	FS_001
 	repo, err := NewFS(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	FS_002
 	err = repo.Init(FullNode)
 	if err != ErrRepoExists && err != nil {
 		t.Fatal(err)
@@ -32,6 +30,5 @@ func genFsRepo(t *testing.T) (*FsRepo, func()) {
 func TestFsBasic(t *testing.T) {
 	repo, closer := genFsRepo(t)
 	defer closer()
-	FS_003
 	basicTest(t, repo)
 }
