@@ -10,6 +10,7 @@ import (
 )
 
 func TestHeadChangeCoalescer(t *testing.T) {
+	//stm: @CHAIN_STORE_COALESCE_HEAD_CHANGE_001
 	notif := make(chan headChange, 1)
 	c := NewHeadChangeCoalescer(func(revert, apply []*types.TipSet) error {
 		notif <- headChange{apply: apply, revert: revert}
