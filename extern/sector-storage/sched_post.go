@@ -2,11 +2,13 @@ package sectorstorage
 
 import (
 	"context"
-	"sort"
+	"math/rand"
 	"sync"
 	"time"
 
 	xerrors "golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/abi"
 
 	sealtasks "github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -14,19 +16,17 @@ import (
 )
 
 type poStScheduler struct {
-	lk       sync.RWMutex
-	workers  map[storiface.WorkerID]*workerHandle
-	cond     *sync.Cond
-	postType sealtasks.TaskType
+	lk      sync.RWMutex
+	workers map[storiface.WorkerID]*workerHandle
+	cond    *sync.Cond
 
-	GPUUtilization float64
+	postType sealtasks.TaskType
 }
 
 func newPoStScheduler(t sealtasks.TaskType) *poStScheduler {
 	ps := &poStScheduler{
-		workers:        map[storiface.WorkerID]*workerHandle{},
-		postType:       t,
-		GPUUtilization: storiface.GPUUtilizationProof,
+		workers:  map[storiface.WorkerID]*workerHandle{},
+		postType: t,
 	}
 	ps.cond = sync.NewCond(&ps.lk)
 	return ps
@@ -76,7 +76,7 @@ func (ps *poStScheduler) CanSched(ctx context.Context) bool {
 	return false
 }
 
-func (ps *poStScheduler) Schedule(ctx context.Context, primary bool, work WorkerAction) error {
+func (ps *poStScheduler) Schedule(ctx context.Context, primary bool, spt abi.RegisteredSealProof, work WorkerAction) error {
 	ps.lk.Lock()
 	defer ps.lk.Unlock()
 
@@ -85,83 +85,61 @@ func (ps *poStScheduler) Schedule(ctx context.Context, primary bool, work Worker
 	}
 
 	// Get workers by resource
-	canDo, accepts := ps.canHandleWorkers()
-
+	canDo, candidates := ps.readyWorkers(spt)
 	for !canDo {
 		//if primary is true, it must be dispatched to a worker
 		if primary {
 			ps.cond.Wait()
-			canDo, accepts = ps.canHandleWorkers()
+			canDo, candidates = ps.readyWorkers(spt)
 		} else {
-			return xerrors.Errorf("cant find %s post worker", ps.postType)
+			return xerrors.Errorf("can't find %s post worker", ps.postType)
 		}
 	}
 
-	return ps.withResources(accepts[0], func(worker Worker) error {
+	defer func() {
+		if ps.cond != nil {
+			ps.cond.Broadcast()
+		}
+	}()
+
+	selected := candidates[0]
+	worker := ps.workers[selected.id]
+
+	return worker.active.withResources(selected.id, worker.info, selected.res, &ps.lk, func() error {
 		ps.lk.Unlock()
 		defer ps.lk.Lock()
 
-		return work(ctx, worker)
+		return work(ctx, worker.workerRpc)
 	})
 }
 
-func (ps *poStScheduler) canHandleWorkers() (bool, []storiface.WorkerID) {
+type candidateWorker struct {
+	id  storiface.WorkerID
+	res storiface.Resources
+}
 
-	var accepts []storiface.WorkerID
+func (ps *poStScheduler) readyWorkers(spt abi.RegisteredSealProof) (bool, []candidateWorker) {
+	var accepts []candidateWorker
 	//if the gpus of the worker are insufficient or its disable, it cannot be scheduled
 	for wid, wr := range ps.workers {
-		if wr.active.gpuUsed >= float64(len(wr.info.Resources.GPUs)) || !wr.enabled {
+		needRes := wr.info.Resources.ResourceSpec(spt, ps.postType)
+
+		if !wr.active.canHandleRequest(needRes, wid, "post-readyWorkers", wr.info) {
 			continue
 		}
-		accepts = append(accepts, wid)
+
+		accepts = append(accepts, candidateWorker{
+			id:  wid,
+			res: needRes,
+		})
 	}
 
-	freeGPU := func(i int) float64 {
-		w := ps.workers[accepts[i]]
-		return float64(len(w.info.Resources.GPUs)) - w.active.gpuUsed
-	}
-
-	sort.Slice(accepts[:], func(i, j int) bool {
-		return freeGPU(i) > freeGPU(j)
+	// todo: round robin or something
+	rand.Shuffle(len(accepts), func(i, j int) {
+		accepts[i], accepts[j] = accepts[j], accepts[i]
 	})
 
-	if len(accepts) == 0 {
-		return false, accepts
-	}
-
-	return true, accepts
-}
-
-func (ps *poStScheduler) withResources(wid storiface.WorkerID, cb func(wid Worker) error) error {
-	ps.addResource(wid)
-
-	worker := ps.workers[wid].workerRpc
-
-	err := cb(worker)
-
-	ps.freeResource(wid)
-
-	if ps.cond != nil {
-		ps.cond.Broadcast()
-	}
-
-	return err
-}
-
-func (ps *poStScheduler) freeResource(wid storiface.WorkerID) {
-	if _, ok := ps.workers[wid]; !ok {
-		log.Warnf("release PoSt Worker not found worker")
-		return
-	}
-	if ps.workers[wid].active.gpuUsed > 0 {
-		ps.workers[wid].active.gpuUsed -= ps.GPUUtilization
-	}
-
-	return
-}
-
-func (ps *poStScheduler) addResource(wid storiface.WorkerID) {
-	ps.workers[wid].active.gpuUsed += ps.GPUUtilization
+	return len(accepts) != 0, accepts
 }
 
 func (ps *poStScheduler) disable(wid storiface.WorkerID) {

@@ -80,19 +80,18 @@ func TestWindowPostWorker(t *testing.T) {
 	t.Log("Waiting for post message")
 	bm.Stop()
 
+	var lastPending []*types.SignedMessage
 	for i := 0; i < 500; i++ {
-		n, err := client.MpoolPending(ctx, types.EmptyTSK)
+		lastPending, err = client.MpoolPending(ctx, types.EmptyTSK)
 		require.NoError(t, err)
 
-		if len(n) > 0 {
+		if len(lastPending) > 0 {
 			break
 		}
 		time.Sleep(40 * time.Millisecond)
 	}
 
-	n, err := client.MpoolPending(ctx, types.EmptyTSK)
-	require.NoError(t, err)
-	require.Greater(t, len(n), 0)
+	require.Greater(t, len(lastPending), 0)
 
 	t.Log("post message landed")
 

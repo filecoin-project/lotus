@@ -37,7 +37,9 @@ func (m *Manager) generateWinningPoSt(ctx context.Context, minerID abi.ActorID, 
 		return nil, xerrors.New("generate window post len(sectorInfo)=0")
 	}
 
-	ppt, err := sectorInfo[0].SealProof.RegisteredWinningPoStProof()
+	spt := sectorInfo[0].SealProof
+
+	ppt, err := spt.RegisteredWinningPoStProof()
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +61,7 @@ func (m *Manager) generateWinningPoSt(ctx context.Context, minerID abi.ActorID, 
 	}
 
 	var proofs []proof.PoStProof
-	err = m.winningPoStSched.Schedule(ctx, false, func(ctx context.Context, w Worker) error {
+	err = m.winningPoStSched.Schedule(ctx, false, spt, func(ctx context.Context, w Worker) error {
 		out, err := w.GenerateWinningPoSt(ctx, ppt, minerID, sectorChallenges, randomness)
 		if err != nil {
 			return err
@@ -93,7 +95,9 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 		return nil, nil, xerrors.New("generate window post len(sectorInfo)=0")
 	}
 
-	ppt, err := sectorInfo[0].SealProof.RegisteredWindowPoStProof()
+	spt := sectorInfo[0].SealProof
+
+	ppt, err := spt.RegisteredWindowPoStProof()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -157,7 +161,7 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 				})
 			}
 
-			p, sk, err := m.generatePartitionWindowPost(cctx, ppt, minerID, int(partIdx), sectors, randomness)
+			p, sk, err := m.generatePartitionWindowPost(cctx, spt, ppt, minerID, int(partIdx), sectors, randomness)
 			if err != nil {
 				retErr = multierror.Append(retErr, xerrors.Errorf("partitionCount:%d err:%+v", partIdx, err))
 				if len(sk) > 0 {
@@ -189,11 +193,11 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 	return out, skipped, retErr
 }
 
-func (m *Manager) generatePartitionWindowPost(ctx context.Context, ppt abi.RegisteredPoStProof, minerID abi.ActorID, partIndex int, sc []storiface.PostSectorChallenge, randomness abi.PoStRandomness) (proof.PoStProof, []abi.SectorID, error) {
+func (m *Manager) generatePartitionWindowPost(ctx context.Context, spt abi.RegisteredSealProof, ppt abi.RegisteredPoStProof, minerID abi.ActorID, partIndex int, sc []storiface.PostSectorChallenge, randomness abi.PoStRandomness) (proof.PoStProof, []abi.SectorID, error) {
 	log.Infow("generateWindowPost", "index", partIndex)
 
 	var result storiface.WindowPoStResult
-	err := m.windowPoStSched.Schedule(ctx, true, func(ctx context.Context, w Worker) error {
+	err := m.windowPoStSched.Schedule(ctx, true, spt, func(ctx context.Context, w Worker) error {
 		out, err := w.GenerateWindowPoSt(ctx, ppt, minerID, sc, partIndex, randomness)
 		if err != nil {
 			return err
