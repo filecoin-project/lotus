@@ -233,7 +233,7 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 			return ctx.Send(SectorDealsExpired{xerrors.Errorf("expired dealIDs in sector: %w", err)})
 		default:
 			log.Errorf("sanity check error, not proceeding: +%v", err)
-			return xerrors.Errorf("checkPieces sanity check error: %w", err)
+			return xerrors.Errorf("checkReplica sanity check error: %w", err)
 		}
 	}
 
