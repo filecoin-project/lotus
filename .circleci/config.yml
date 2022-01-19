@@ -1058,7 +1058,7 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - publish-snapcaft:
+      - publish-snapcraft:
           name: publish-snapcraft-temporary
           channel: edge
       - publish-packer-snap:
