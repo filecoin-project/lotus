@@ -11,12 +11,19 @@
   * [AddPiece](#AddPiece)
 * [Finalize](#Finalize)
   * [FinalizeSector](#FinalizeSector)
+* [Generate](#Generate)
+  * [GenerateSectorKeyFromData](#GenerateSectorKeyFromData)
 * [Move](#Move)
   * [MoveStorage](#MoveStorage)
 * [Process](#Process)
   * [ProcessSession](#ProcessSession)
+* [Prove](#Prove)
+  * [ProveReplicaUpdate1](#ProveReplicaUpdate1)
+  * [ProveReplicaUpdate2](#ProveReplicaUpdate2)
 * [Release](#Release)
   * [ReleaseUnsealed](#ReleaseUnsealed)
+* [Replica](#Replica)
+  * [ReplicaUpdate](#ReplicaUpdate)
 * [Seal](#Seal)
   * [SealCommit1](#SealCommit1)
   * [SealCommit2](#SealCommit2)
@@ -96,7 +103,9 @@ Response:
     "MemSwap": 42,
     "MemSwapUsed": 42,
     "CPUs": 42,
-    "GPUs": null,
+    "GPUs": [
+      "string value"
+    ],
     "Resources": {
       "seal/v0/addpiece": {
         "0": {
@@ -684,7 +693,18 @@ Perms: admin
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
+    "Weight": 42,
+    "LocalPath": "string value",
+    "CanSeal": true,
+    "CanStore": true
+  }
+]
+```
 
 ### Remove
 Storage / Other
@@ -721,7 +741,7 @@ Perms: admin
 
 Inputs: `null`
 
-Response: `131328`
+Response: `131584`
 
 ## Add
 
@@ -742,7 +762,9 @@ Inputs:
     },
     "ProofType": 8
   },
-  null,
+  [
+    1024
+  ],
   1024,
   {}
 ]
@@ -777,7 +799,47 @@ Inputs:
     },
     "ProofType": 8
   },
-  null
+  [
+    {
+      "Offset": 1024,
+      "Size": 1024
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Sector": {
+    "Miner": 1000,
+    "Number": 9
+  },
+  "ID": "07070707-0707-0707-0707-070707070707"
+}
+```
+
+## Generate
+
+
+### GenerateSectorKeyFromData
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
+  },
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
 ]
 ```
 
@@ -839,6 +901,88 @@ Inputs: `null`
 
 Response: `"07070707-0707-0707-0707-070707070707"`
 
+## Prove
+
+
+### ProveReplicaUpdate1
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
+  },
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+{
+  "Sector": {
+    "Miner": 1000,
+    "Number": 9
+  },
+  "ID": "07070707-0707-0707-0707-070707070707"
+}
+```
+
+### ProveReplicaUpdate2
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
+  },
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  },
+  [
+    "Ynl0ZSBhcnJheQ=="
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Sector": {
+    "Miner": 1000,
+    "Number": 9
+  },
+  "ID": "07070707-0707-0707-0707-070707070707"
+}
+```
+
 ## Release
 
 
@@ -857,7 +1001,52 @@ Inputs:
     },
     "ProofType": 8
   },
-  null
+  [
+    {
+      "Offset": 1024,
+      "Size": 1024
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "Sector": {
+    "Miner": 1000,
+    "Number": 9
+  },
+  "ID": "07070707-0707-0707-0707-070707070707"
+}
+```
+
+## Replica
+
+
+### ReplicaUpdate
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
+  },
+  [
+    {
+      "Size": 1032,
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    }
+  ]
 ]
 ```
 
@@ -890,9 +1079,16 @@ Inputs:
     },
     "ProofType": 8
   },
-  null,
-  null,
-  null,
+  "Bw==",
+  "Bw==",
+  [
+    {
+      "Size": 1032,
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    }
+  ],
   {
     "Unsealed": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -930,7 +1126,7 @@ Inputs:
     },
     "ProofType": 8
   },
-  null
+  "Bw=="
 ]
 ```
 
@@ -960,8 +1156,15 @@ Inputs:
     },
     "ProofType": 8
   },
-  null,
-  null
+  "Bw==",
+  [
+    {
+      "Size": 1032,
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    }
+  ]
 ]
 ```
 
@@ -991,7 +1194,7 @@ Inputs:
     },
     "ProofType": 8
   },
-  null
+  "Bw=="
 ]
 ```
 
@@ -1108,7 +1311,7 @@ Inputs:
   },
   1040384,
   1024,
-  null,
+  "Bw==",
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   }

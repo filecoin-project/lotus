@@ -907,6 +907,11 @@ workflows:
           target: "./itests/sector_terminate_test.go"
       
       - test:
+          name: test-itest-self_sent_txn
+          suite: itest-self_sent_txn
+          target: "./itests/self_sent_txn_test.go"
+      
+      - test:
           name: test-itest-tape
           suite: itest-tape
           target: "./itests/tape_test.go"
@@ -956,7 +961,7 @@ workflows:
           codecov-upload: false
           suite: conformance-bleeding-edge
           target: "./conformance"
-          vectors-branch: master
+          vectors-branch: specs-actors-v7
       - trigger-testplans:
           filters:
             branches:

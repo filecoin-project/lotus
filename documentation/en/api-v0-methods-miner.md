@@ -49,6 +49,7 @@
   * [LogSetLevel](#LogSetLevel)
 * [Market](#Market)
   * [MarketCancelDataTransfer](#MarketCancelDataTransfer)
+  * [MarketDataTransferDiagnostics](#MarketDataTransferDiagnostics)
   * [MarketDataTransferUpdates](#MarketDataTransferUpdates)
   * [MarketGetAsk](#MarketGetAsk)
   * [MarketGetDealUpdates](#MarketGetDealUpdates)
@@ -94,9 +95,13 @@
   * [ReturnAddPiece](#ReturnAddPiece)
   * [ReturnFetch](#ReturnFetch)
   * [ReturnFinalizeSector](#ReturnFinalizeSector)
+  * [ReturnGenerateSectorKeyFromData](#ReturnGenerateSectorKeyFromData)
   * [ReturnMoveStorage](#ReturnMoveStorage)
+  * [ReturnProveReplicaUpdate1](#ReturnProveReplicaUpdate1)
+  * [ReturnProveReplicaUpdate2](#ReturnProveReplicaUpdate2)
   * [ReturnReadPiece](#ReturnReadPiece)
   * [ReturnReleaseUnsealed](#ReturnReleaseUnsealed)
+  * [ReturnReplicaUpdate](#ReturnReplicaUpdate)
   * [ReturnSealCommit1](#ReturnSealCommit1)
   * [ReturnSealCommit2](#ReturnSealCommit2)
   * [ReturnSealPreCommit1](#ReturnSealPreCommit1)
@@ -114,6 +119,7 @@
   * [SectorGetExpectedSealDuration](#SectorGetExpectedSealDuration)
   * [SectorGetSealDelay](#SectorGetSealDelay)
   * [SectorMarkForUpgrade](#SectorMarkForUpgrade)
+  * [SectorMatchPendingPiecesToOpenSectors](#SectorMatchPendingPiecesToOpenSectors)
   * [SectorPreCommitFlush](#SectorPreCommitFlush)
   * [SectorPreCommitPending](#SectorPreCommitPending)
   * [SectorRemove](#SectorRemove)
@@ -210,7 +216,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131328,
+  "APIVersion": 131584,
   "BlockDelay": 42
 }
 ```
@@ -237,10 +243,18 @@ Inputs: `null`
 Response:
 ```json
 {
-  "PreCommitControl": null,
-  "CommitControl": null,
-  "TerminateControl": null,
-  "DealPublishControl": null,
+  "PreCommitControl": [
+    "f01234"
+  ],
+  "CommitControl": [
+    "f01234"
+  ],
+  "TerminateControl": [
+    "f01234"
+  ],
+  "DealPublishControl": [
+    "f01234"
+  ],
   "DisableOwnerFallback": true,
   "DisableWorkerFallback": true
 }
@@ -271,7 +285,9 @@ Perms: admin
 Inputs:
 ```json
 [
-  null
+  [
+    "write"
+  ]
 ]
 ```
 
@@ -289,7 +305,12 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  "write"
+]
+```
 
 ## Check
 
@@ -303,7 +324,15 @@ Inputs:
 ```json
 [
   8,
-  null,
+  [
+    {
+      "ID": {
+        "Miner": 1000,
+        "Number": 9
+      },
+      "ProofType": 8
+    }
+  ],
   true
 ]
 ```
@@ -326,12 +355,31 @@ Perms: read
 Inputs:
 ```json
 [
-  null,
-  null
+  [
+    {
+      "SealProof": 8,
+      "SectorNumber": 9,
+      "SectorKey": null,
+      "SealedCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    }
+  ],
+  "Bw==",
+  10101,
+  15
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "PoStProof": 8,
+    "ProofBytes": "Ynl0ZSBhcnJheQ=="
+  }
+]
+```
 
 ## Create
 
@@ -365,7 +413,16 @@ Perms: admin
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Key": "baga6ea4seaqecmtz7iak33dsfshi627abz4i4665dfuzr3qfs4bmad6dx3iigdq",
+    "Success": false,
+    "Error": "\u003cerror\u003e"
+  }
+]
+```
 
 ### DagstoreInitializeAll
 DagstoreInitializeAll initializes all uninitialized shards in bulk,
@@ -441,7 +498,16 @@ Perms: read
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Key": "baga6ea4seaqecmtz7iak33dsfshi627abz4i4665dfuzr3qfs4bmad6dx3iigdq",
+    "State": "ShardStateAvailable",
+    "Error": "\u003cerror\u003e"
+  }
+]
+```
 
 ### DagstoreRecoverShard
 DagstoreRecoverShard attempts to recover a failed shard.
@@ -543,7 +609,33 @@ Perms: admin
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Proposal": {
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "PieceSize": 1032,
+      "VerifiedDeal": true,
+      "Client": "f01234",
+      "Provider": "f01234",
+      "Label": "string value",
+      "StartEpoch": 10101,
+      "EndEpoch": 10101,
+      "StoragePricePerEpoch": "0",
+      "ProviderCollateral": "0",
+      "ClientCollateral": "0"
+    },
+    "State": {
+      "SectorStartEpoch": 10101,
+      "LastUpdatedEpoch": 10101,
+      "SlashEpoch": 10101
+    }
+  }
+]
+```
 
 ### DealsPieceCidBlocklist
 
@@ -552,7 +644,14 @@ Perms: admin
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
 
 ### DealsSetConsiderOfflineRetrievalDeals
 
@@ -646,7 +745,11 @@ Perms: admin
 Inputs:
 ```json
 [
-  null
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  ]
 ]
 ```
 
@@ -674,7 +777,28 @@ Perms: admin
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Type": {
+      "System": "string value",
+      "Subsystem": "string value"
+    },
+    "Active": true,
+    "LastActive": {
+      "Type": "string value",
+      "Message": "json raw message",
+      "Time": "0001-01-01T00:00:00Z"
+    },
+    "LastResolved": {
+      "Type": "string value",
+      "Message": "json raw message",
+      "Time": "0001-01-01T00:00:00Z"
+    }
+  }
+]
+```
 
 ### LogList
 
@@ -683,7 +807,12 @@ Perms: write
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  "string value"
+]
+```
 
 ### LogSetLevel
 
@@ -720,6 +849,113 @@ Inputs:
 
 Response: `{}`
 
+### MarketDataTransferDiagnostics
+MarketDataTransferDiagnostics generates debugging information about current data transfers over graphsync
+
+
+Perms: write
+
+Inputs:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+Response:
+```json
+{
+  "ReceivingTransfers": [
+    {
+      "RequestID": 4,
+      "RequestState": "string value",
+      "IsCurrentChannelRequest": true,
+      "ChannelID": {
+        "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+        "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+        "ID": 3
+      },
+      "ChannelState": {
+        "TransferID": 3,
+        "Status": 1,
+        "BaseCID": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "IsInitiator": true,
+        "IsSender": true,
+        "Voucher": "string value",
+        "Message": "string value",
+        "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+        "Transferred": 42,
+        "Stages": {
+          "Stages": [
+            {
+              "Name": "string value",
+              "Description": "string value",
+              "CreatedTime": "0001-01-01T00:00:00Z",
+              "UpdatedTime": "0001-01-01T00:00:00Z",
+              "Logs": [
+                {
+                  "Log": "string value",
+                  "UpdatedTime": "0001-01-01T00:00:00Z"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "Diagnostics": [
+        "string value"
+      ]
+    }
+  ],
+  "SendingTransfers": [
+    {
+      "RequestID": 4,
+      "RequestState": "string value",
+      "IsCurrentChannelRequest": true,
+      "ChannelID": {
+        "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+        "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+        "ID": 3
+      },
+      "ChannelState": {
+        "TransferID": 3,
+        "Status": 1,
+        "BaseCID": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "IsInitiator": true,
+        "IsSender": true,
+        "Voucher": "string value",
+        "Message": "string value",
+        "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+        "Transferred": 42,
+        "Stages": {
+          "Stages": [
+            {
+              "Name": "string value",
+              "Description": "string value",
+              "CreatedTime": "0001-01-01T00:00:00Z",
+              "UpdatedTime": "0001-01-01T00:00:00Z",
+              "Logs": [
+                {
+                  "Log": "string value",
+                  "UpdatedTime": "0001-01-01T00:00:00Z"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "Diagnostics": [
+        "string value"
+      ]
+    }
+  ]
+}
+```
+
 ### MarketDataTransferUpdates
 
 
@@ -742,7 +978,20 @@ Response:
   "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   "Transferred": 42,
   "Stages": {
-    "Stages": null
+    "Stages": [
+      {
+        "Name": "string value",
+        "Description": "string value",
+        "CreatedTime": "0001-01-01T00:00:00Z",
+        "UpdatedTime": "0001-01-01T00:00:00Z",
+        "Logs": [
+          {
+            "Log": "string value",
+            "UpdatedTime": "0001-01-01T00:00:00Z"
+          }
+        ]
+      }
+    ]
   }
 }
 ```
@@ -880,7 +1129,40 @@ Perms: write
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "TransferID": 3,
+    "Status": 1,
+    "BaseCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "IsInitiator": true,
+    "IsSender": true,
+    "Voucher": "string value",
+    "Message": "string value",
+    "OtherPeer": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Transferred": 42,
+    "Stages": {
+      "Stages": [
+        {
+          "Name": "string value",
+          "Description": "string value",
+          "CreatedTime": "0001-01-01T00:00:00Z",
+          "UpdatedTime": "0001-01-01T00:00:00Z",
+          "Logs": [
+            {
+              "Log": "string value",
+              "UpdatedTime": "0001-01-01T00:00:00Z"
+            }
+          ]
+        }
+      ]
+    }
+  }
+]
+```
 
 ### MarketListDeals
 
@@ -889,7 +1171,33 @@ Perms: read
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Proposal": {
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "PieceSize": 1032,
+      "VerifiedDeal": true,
+      "Client": "f01234",
+      "Provider": "f01234",
+      "Label": "string value",
+      "StartEpoch": 10101,
+      "EndEpoch": 10101,
+      "StoragePricePerEpoch": "0",
+      "ProviderCollateral": "0",
+      "ClientCollateral": "0"
+    },
+    "State": {
+      "SectorStartEpoch": 10101,
+      "LastUpdatedEpoch": 10101,
+      "SlashEpoch": 10101
+    }
+  }
+]
+```
 
 ### MarketListIncompleteDeals
 
@@ -898,7 +1206,65 @@ Perms: read
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Proposal": {
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "PieceSize": 1032,
+      "VerifiedDeal": true,
+      "Client": "f01234",
+      "Provider": "f01234",
+      "Label": "string value",
+      "StartEpoch": 10101,
+      "EndEpoch": 10101,
+      "StoragePricePerEpoch": "0",
+      "ProviderCollateral": "0",
+      "ClientCollateral": "0"
+    },
+    "ClientSignature": {
+      "Type": 2,
+      "Data": "Ynl0ZSBhcnJheQ=="
+    },
+    "ProposalCid": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "AddFundsCid": null,
+    "PublishCid": null,
+    "Miner": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Client": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "State": 42,
+    "PiecePath": ".lotusminer/fstmp123",
+    "MetadataPath": ".lotusminer/fstmp123",
+    "SlashEpoch": 10101,
+    "FastRetrieval": true,
+    "Message": "string value",
+    "FundsReserved": "0",
+    "Ref": {
+      "TransferType": "string value",
+      "Root": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "PieceCid": null,
+      "PieceSize": 1024,
+      "RawBlockSize": 42
+    },
+    "AvailableForRetrieval": true,
+    "DealID": 5432,
+    "CreationTime": "0001-01-01T00:00:00Z",
+    "TransferChannelId": {
+      "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+      "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+      "ID": 3
+    },
+    "SectorNumber": 9,
+    "InboundCAR": "string value"
+  }
+]
+```
 
 ### MarketListRetrievalDeals
 
@@ -907,7 +1273,51 @@ Perms: read
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "PayloadCID": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "ID": 5,
+    "Selector": {
+      "Raw": "Ynl0ZSBhcnJheQ=="
+    },
+    "PieceCID": null,
+    "PricePerByte": "0",
+    "PaymentInterval": 42,
+    "PaymentIntervalIncrease": 42,
+    "UnsealPrice": "0",
+    "StoreID": 42,
+    "ChannelID": {
+      "Initiator": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+      "Responder": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+      "ID": 3
+    },
+    "PieceInfo": {
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Deals": [
+        {
+          "DealID": 5432,
+          "SectorID": 9,
+          "Offset": 1032,
+          "Length": 1032
+        }
+      ]
+    },
+    "Status": 0,
+    "Receiver": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "TotalSent": 42,
+    "FundsReceived": "0",
+    "Message": "string value",
+    "CurrentInterval": 42,
+    "LegacyProtocol": true
+  }
+]
+```
 
 ### MarketPendingDeals
 
@@ -919,7 +1329,29 @@ Inputs: `null`
 Response:
 ```json
 {
-  "Deals": null,
+  "Deals": [
+    {
+      "Proposal": {
+        "PieceCID": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        },
+        "PieceSize": 1032,
+        "VerifiedDeal": true,
+        "Client": "f01234",
+        "Provider": "f01234",
+        "Label": "string value",
+        "StartEpoch": 10101,
+        "EndEpoch": 10101,
+        "StoragePricePerEpoch": "0",
+        "ProviderCollateral": "0",
+        "ClientCollateral": "0"
+      },
+      "ClientSignature": {
+        "Type": 2,
+        "Data": "Ynl0ZSBhcnJheQ=="
+      }
+    }
+  ],
   "PublishPeriodStart": "0001-01-01T00:00:00Z",
   "PublishPeriod": 60000000000
 }
@@ -1037,7 +1469,9 @@ Response:
 ```json
 {
   "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "Addrs": []
+  "Addrs": [
+    "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
+  ]
 }
 ```
 
@@ -1134,9 +1568,15 @@ Inputs:
 ```json
 [
   {
-    "Peers": null,
-    "IPAddrs": null,
-    "IPSubnets": null
+    "Peers": [
+      "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+    ],
+    "IPAddrs": [
+      "string value"
+    ],
+    "IPSubnets": [
+      "string value"
+    ]
   }
 ]
 ```
@@ -1153,9 +1593,15 @@ Inputs: `null`
 Response:
 ```json
 {
-  "Peers": null,
-  "IPAddrs": null,
-  "IPSubnets": null
+  "Peers": [
+    "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  ],
+  "IPAddrs": [
+    "string value"
+  ],
+  "IPSubnets": [
+    "string value"
+  ]
 }
 ```
 
@@ -1168,9 +1614,15 @@ Inputs:
 ```json
 [
   {
-    "Peers": null,
-    "IPAddrs": null,
-    "IPSubnets": null
+    "Peers": [
+      "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+    ],
+    "IPAddrs": [
+      "string value"
+    ],
+    "IPSubnets": [
+      "string value"
+    ]
   }
 ]
 ```
@@ -1187,7 +1639,9 @@ Inputs:
 [
   {
     "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-    "Addrs": []
+    "Addrs": [
+      "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
+    ]
   }
 ]
 ```
@@ -1238,7 +1692,9 @@ Response:
 ```json
 {
   "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
-  "Addrs": []
+  "Addrs": [
+    "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
+  ]
 }
 ```
 
@@ -1259,8 +1715,12 @@ Response:
 {
   "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
   "Agent": "string value",
-  "Addrs": null,
-  "Protocols": null,
+  "Addrs": [
+    "string value"
+  ],
+  "Protocols": [
+    "string value"
+  ],
   "ConnMgrMeta": {
     "FirstSeen": "0001-01-01T00:00:00Z",
     "Value": 123,
@@ -1281,7 +1741,17 @@ Perms: read
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Addrs": [
+      "/ip4/52.36.61.156/tcp/1347/p2p/12D3KooWFETiESTf1v4PGUvtnxMAcEFMzLZbJGg4tjWfGEimYior"
+    ]
+  }
+]
+```
 
 ### NetPubsubScores
 
@@ -1290,7 +1760,28 @@ Perms: read
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "ID": "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf",
+    "Score": {
+      "Score": 12.3,
+      "Topics": {
+        "/blocks": {
+          "TimeInMesh": 60000000000,
+          "FirstMessageDeliveries": 122,
+          "MeshMessageDeliveries": 1234,
+          "InvalidMessageDeliveries": 3
+        }
+      },
+      "AppSpecificScore": 12.3,
+      "IPColocationFactor": 12.3,
+      "BehaviourPenalty": 12.3
+    }
+  }
+]
+```
 
 ## Pieces
 
@@ -1315,7 +1806,15 @@ Response:
   "CID": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "PieceBlockLocations": null
+  "PieceBlockLocations": [
+    {
+      "RelOffset": 42,
+      "BlockSize": 42,
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    }
+  ]
 }
 ```
 
@@ -1339,7 +1838,14 @@ Response:
   "PieceCID": {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  "Deals": null
+  "Deals": [
+    {
+      "DealID": 5432,
+      "SectorID": 9,
+      "Offset": 1032,
+      "Length": 1032
+    }
+  ]
 }
 ```
 
@@ -1350,7 +1856,14 @@ Perms: read
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
 
 ### PiecesListPieces
 
@@ -1359,7 +1872,14 @@ Perms: read
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
 
 ## Pledge
 
@@ -1462,6 +1982,30 @@ Inputs:
 
 Response: `{}`
 
+### ReturnGenerateSectorKeyFromData
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Sector": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ID": "07070707-0707-0707-0707-070707070707"
+  },
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
+]
+```
+
+Response: `{}`
+
 ### ReturnMoveStorage
 
 
@@ -1477,6 +2021,58 @@ Inputs:
     },
     "ID": "07070707-0707-0707-0707-070707070707"
   },
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
+]
+```
+
+Response: `{}`
+
+### ReturnProveReplicaUpdate1
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Sector": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ID": "07070707-0707-0707-0707-070707070707"
+  },
+  [
+    "Ynl0ZSBhcnJheQ=="
+  ],
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
+]
+```
+
+Response: `{}`
+
+### ReturnProveReplicaUpdate2
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Sector": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ID": "07070707-0707-0707-0707-070707070707"
+  },
+  "Bw==",
   {
     "Code": 0,
     "Message": "string value"
@@ -1535,6 +2131,38 @@ Inputs:
 
 Response: `{}`
 
+### ReturnReplicaUpdate
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Sector": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ID": "07070707-0707-0707-0707-070707070707"
+  },
+  {
+    "NewSealed": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "NewUnsealed": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    }
+  },
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
+]
+```
+
+Response: `{}`
+
 ### ReturnSealCommit1
 
 
@@ -1550,7 +2178,7 @@ Inputs:
     },
     "ID": "07070707-0707-0707-0707-070707070707"
   },
-  null,
+  "Bw==",
   {
     "Code": 0,
     "Message": "string value"
@@ -1575,7 +2203,7 @@ Inputs:
     },
     "ID": "07070707-0707-0707-0707-070707070707"
   },
-  null,
+  "Bw==",
   {
     "Code": 0,
     "Message": "string value"
@@ -1600,7 +2228,7 @@ Inputs:
     },
     "ID": "07070707-0707-0707-0707-070707070707"
   },
-  null,
+  "Bw==",
   {
     "Code": 0,
     "Message": "string value"
@@ -1786,7 +2414,22 @@ Perms: admin
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Sectors": [
+      123,
+      124
+    ],
+    "FailedSectors": {
+      "123": "can't acquire read lock"
+    },
+    "Msg": null,
+    "Error": "string value"
+  }
+]
+```
 
 ### SectorCommitPending
 SectorCommitPending returns a list of pending Commit sectors to be sent in the next aggregate message
@@ -1796,7 +2439,15 @@ Perms: admin
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Miner": 1000,
+    "Number": 9
+  }
+]
+```
 
 ### SectorGetExpectedSealDuration
 SectorGetExpectedSealDuration gets the expected time for a sector to seal
@@ -1827,9 +2478,19 @@ Perms: admin
 Inputs:
 ```json
 [
-  9
+  9,
+  true
 ]
 ```
+
+Response: `{}`
+
+### SectorMatchPendingPiecesToOpenSectors
+
+
+Perms: admin
+
+Inputs: `null`
 
 Response: `{}`
 
@@ -1842,7 +2503,19 @@ Perms: admin
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Sectors": [
+      123,
+      124
+    ],
+    "Msg": null,
+    "Error": "string value"
+  }
+]
+```
 
 ### SectorPreCommitPending
 SectorPreCommitPending returns a list of pending PreCommit sectors to be sent in the next batch message
@@ -1852,7 +2525,15 @@ Perms: admin
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Miner": 1000,
+    "Number": 9
+  }
+]
+```
 
 ### SectorRemove
 SectorRemove removes the sector from storage. It doesn't terminate it on-chain, which can
@@ -1952,7 +2633,15 @@ Perms: admin
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "Miner": 1000,
+    "Number": 9
+  }
+]
+```
 
 ## Sectors
 
@@ -1982,7 +2671,9 @@ Perms: read
 Inputs:
 ```json
 [
-  null
+  [
+    "Proving"
+  ]
 ]
 ```
 
@@ -2036,14 +2727,49 @@ Response:
   "CommD": null,
   "CommR": null,
   "Proof": "Ynl0ZSBhcnJheQ==",
-  "Deals": null,
-  "Pieces": null,
+  "Deals": [
+    5432
+  ],
+  "Pieces": [
+    {
+      "Piece": {
+        "Size": 1032,
+        "PieceCID": {
+          "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+        }
+      },
+      "DealInfo": {
+        "PublishCid": null,
+        "DealID": 5432,
+        "DealProposal": {
+          "PieceCID": {
+            "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+          },
+          "PieceSize": 1032,
+          "VerifiedDeal": true,
+          "Client": "f01234",
+          "Provider": "f01234",
+          "Label": "string value",
+          "StartEpoch": 10101,
+          "EndEpoch": 10101,
+          "StoragePricePerEpoch": "0",
+          "ProviderCollateral": "0",
+          "ClientCollateral": "0"
+        },
+        "DealSchedule": {
+          "StartEpoch": 10101,
+          "EndEpoch": 10101
+        },
+        "KeepUnsealed": true
+      }
+    }
+  ],
   "Ticket": {
-    "Value": null,
+    "Value": "Bw==",
     "Epoch": 10101
   },
   "Seed": {
-    "Value": null,
+    "Value": "Bw==",
     "Epoch": 10101
   },
   "PreCommitMsg": null,
@@ -2051,7 +2777,14 @@ Response:
   "Retries": 42,
   "ToUpgrade": true,
   "LastErr": "string value",
-  "Log": null,
+  "Log": [
+    {
+      "Kind": "string value",
+      "Timestamp": 42,
+      "Trace": "string value",
+      "Message": "string value"
+    }
+  ],
   "SealProof": 8,
   "Activation": 10101,
   "Expiration": 10101,
@@ -2095,7 +2828,7 @@ Inputs:
   },
   1040384,
   1024,
-  null,
+  "Bw==",
   null
 ]
 ```
@@ -2145,13 +2878,19 @@ Inputs:
 [
   {
     "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
-    "URLs": null,
+    "URLs": [
+      "string value"
+    ],
     "Weight": 42,
     "MaxStorage": 42,
     "CanSeal": true,
     "CanStore": true,
-    "Groups": null,
-    "AllowTo": null
+    "Groups": [
+      "string value"
+    ],
+    "AllowTo": [
+      "string value"
+    ]
   },
   {
     "Capacity": 9,
@@ -2180,7 +2919,27 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
+    "URLs": [
+      "string value"
+    ],
+    "Weight": 42,
+    "MaxStorage": 42,
+    "CanSeal": true,
+    "CanStore": true,
+    "Groups": [
+      "string value"
+    ],
+    "AllowTo": [
+      "string value"
+    ]
+  }
+]
+```
 
 ### StorageDeclareSector
 
@@ -2239,7 +2998,21 @@ Inputs:
 ]
 ```
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
+    "URLs": [
+      "string value"
+    ],
+    "Weight": 42,
+    "CanSeal": true,
+    "CanStore": true,
+    "Primary": true
+  }
+]
+```
 
 ### StorageGetLocks
 
@@ -2260,11 +3033,15 @@ Response:
       "Write": [
         0,
         0,
-        1
+        1,
+        0,
+        0
       ],
       "Read": [
         2,
         3,
+        0,
+        0,
         0
       ]
     }
@@ -2288,13 +3065,19 @@ Response:
 ```json
 {
   "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
-  "URLs": null,
+  "URLs": [
+    "string value"
+  ],
   "Weight": 42,
   "MaxStorage": 42,
   "CanSeal": true,
   "CanStore": true,
-  "Groups": null,
-  "AllowTo": null
+  "Groups": [
+    "string value"
+  ],
+  "AllowTo": [
+    "string value"
+  ]
 }
 ```
 

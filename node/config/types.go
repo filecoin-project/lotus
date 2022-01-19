@@ -75,6 +75,11 @@ type DAGStoreConfig struct {
 	// Default value: 0 (unlimited).
 	MaxConcurrentReadyFetches int
 
+	// The maximum amount of unseals that can be processed simultaneously
+	// from the storage subsystem. 0 means unlimited.
+	// Default value: 0 (unlimited).
+	MaxConcurrentUnseals int
+
 	// The maximum number of simultaneous inflight API calls to the storage
 	// subsystem.
 	// Default value: 100.
@@ -131,6 +136,13 @@ type DealmakingConfig struct {
 	MaxStagingDealsBytes int64
 	// The maximum number of parallel online data transfers for storage deals
 	SimultaneousTransfersForStorage uint64
+	// The maximum number of simultaneous data transfers from any single client
+	// for storage deals.
+	// Unset by default (0), and values higher than SimultaneousTransfersForStorage
+	// will have no effect; i.e. the total number of simultaneous data transfers
+	// across all storage clients is bound by SimultaneousTransfersForStorage
+	// regardless of this number.
+	SimultaneousTransfersForStoragePerClient uint64
 	// The maximum number of parallel online data transfers for retrieval deals
 	SimultaneousTransfersForRetrieval uint64
 	// Minimum start epoch buffer to give time for sealing of sector with deal.

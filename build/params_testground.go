@@ -99,6 +99,7 @@ var (
 	UpgradeTurboHeight      abi.ChainEpoch = -14
 	UpgradeHyperdriveHeight abi.ChainEpoch = -15
 	UpgradeChocolateHeight  abi.ChainEpoch = -16
+	UpgradeOhSnapHeight     abi.ChainEpoch = -17
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandMainnet,
@@ -106,8 +107,8 @@ var (
 
 	GenesisNetworkVersion = network.Version0
 
-	NewestNetworkVersion       = network.Version14
-	ActorUpgradeNetworkVersion = network.Version4
+	NewestNetworkVersion       = network.Version15
+	ActorUpgradeNetworkVersion = network.Version15
 
 	Devnet      = true
 	ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")

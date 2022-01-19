@@ -96,7 +96,7 @@ func TestShardRegistration(t *testing.T) {
 	cfg := config.DefaultStorageMiner().DAGStore
 	cfg.RootDir = t.TempDir()
 
-	mapi := NewMinerAPI(ps, &wrappedSA{sa}, 10)
+	mapi := NewMinerAPI(ps, &wrappedSA{sa}, 10, 5)
 	dagst, w, err := NewDAGStore(cfg, mapi)
 	require.NoError(t, err)
 	require.NotNil(t, dagst)

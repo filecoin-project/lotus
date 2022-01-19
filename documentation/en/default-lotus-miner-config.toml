@@ -207,6 +207,17 @@
   # env var: LOTUS_DEALMAKING_SIMULTANEOUSTRANSFERSFORSTORAGE
   #SimultaneousTransfersForStorage = 20
 
+  # The maximum number of simultaneous data transfers from any single client
+  # for storage deals.
+  # Unset by default (0), and values higher than SimultaneousTransfersForStorage
+  # will have no effect; i.e. the total number of simultaneous data transfers
+  # across all storage clients is bound by SimultaneousTransfersForStorage
+  # regardless of this number.
+  #
+  # type: uint64
+  # env var: LOTUS_DEALMAKING_SIMULTANEOUSTRANSFERSFORSTORAGEPERCLIENT
+  #SimultaneousTransfersForStoragePerClient = 0
+
   # The maximum number of parallel online data transfers for retrieval deals
   #
   # type: uint64
@@ -413,6 +424,12 @@
   # env var: LOTUS_STORAGE_ALLOWUNSEAL
   #AllowUnseal = true
 
+  # env var: LOTUS_STORAGE_ALLOWREPLICAUPDATE
+  #AllowReplicaUpdate = true
+
+  # env var: LOTUS_STORAGE_ALLOWPROVEREPLICAUPDATE2
+  #AllowProveReplicaUpdate2 = true
+
   # env var: LOTUS_STORAGE_RESOURCEFILTERING
   #ResourceFiltering = "hardware"
 
@@ -532,6 +549,14 @@
   # type: int
   # env var: LOTUS_DAGSTORE_MAXCONCURRENTREADYFETCHES
   #MaxConcurrentReadyFetches = 0
+
+  # The maximum amount of unseals that can be processed simultaneously
+  # from the storage subsystem. 0 means unlimited.
+  # Default value: 0 (unlimited).
+  #
+  # type: int
+  # env var: LOTUS_DAGSTORE_MAXCONCURRENTUNSEALS
+  #MaxConcurrentUnseals = 5
 
   # The maximum number of simultaneous inflight API calls to the storage
   # subsystem.

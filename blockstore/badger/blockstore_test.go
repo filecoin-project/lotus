@@ -2,6 +2,7 @@ package badgerbs
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -98,6 +99,7 @@ func openBlockstore(optsSupplier func(path string) Options) func(tb testing.TB, 
 }
 
 func testMove(t *testing.T, optsF func(string) Options) {
+	ctx := context.Background()
 	basePath, err := ioutil.TempDir("", "")
 	if err != nil {
 		t.Fatal(err)
@@ -122,7 +124,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 	// add some blocks
 	for i := 0; i < 10; i++ {
 		blk := blocks.NewBlock([]byte(fmt.Sprintf("some data %d", i)))
-		err := db.Put(blk)
+		err := db.Put(ctx, blk)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -132,7 +134,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 	// delete some of them
 	for i := 5; i < 10; i++ {
 		c := have[i].Cid()
-		err := db.DeleteBlock(c)
+		err := db.DeleteBlock(ctx, c)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -145,7 +147,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 	g.Go(func() error {
 		for i := 10; i < 1000; i++ {
 			blk := blocks.NewBlock([]byte(fmt.Sprintf("some data %d", i)))
-			err := db.Put(blk)
+			err := db.Put(ctx, blk)
 			if err != nil {
 				return err
 			}
@@ -165,7 +167,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 	// now check that we have all the blocks in have and none in the deleted lists
 	checkBlocks := func() {
 		for _, blk := range have {
-			has, err := db.Has(blk.Cid())
+			has, err := db.Has(ctx, blk.Cid())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -174,7 +176,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 				t.Fatal("missing block")
 			}
 
-			blk2, err := db.Get(blk.Cid())
+			blk2, err := db.Get(ctx, blk.Cid())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -185,7 +187,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 		}
 
 		for _, c := range deleted {
-			has, err := db.Has(c)
+			has, err := db.Has(ctx, c)
 			if err != nil {
 				t.Fatal(err)
 			}

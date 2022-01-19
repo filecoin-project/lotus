@@ -165,6 +165,14 @@ from the storage subsystem. 0 means unlimited.
 Default value: 0 (unlimited).`,
 		},
 		{
+			Name: "MaxConcurrentUnseals",
+			Type: "int",
+
+			Comment: `The maximum amount of unseals that can be processed simultaneously
+from the storage subsystem. 0 means unlimited.
+Default value: 0 (unlimited).`,
+		},
+		{
 			Name: "MaxConcurrencyStorageCalls",
 			Type: "int",
 
@@ -271,6 +279,17 @@ passed to the sealing node by the markets service. 0 is unlimited.`,
 			Type: "uint64",
 
 			Comment: `The maximum number of parallel online data transfers for storage deals`,
+		},
+		{
+			Name: "SimultaneousTransfersForStoragePerClient",
+			Type: "uint64",
+
+			Comment: `The maximum number of simultaneous data transfers from any single client
+for storage deals.
+Unset by default (0), and values higher than SimultaneousTransfersForStorage
+will have no effect; i.e. the total number of simultaneous data transfers
+across all storage clients is bound by SimultaneousTransfersForStorage
+regardless of this number.`,
 		},
 		{
 			Name: "SimultaneousTransfersForRetrieval",

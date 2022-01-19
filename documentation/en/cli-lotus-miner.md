@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.13.3-dev
+   1.15.0-dev
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -974,10 +974,11 @@ USAGE:
    lotus-miner data-transfers command [command options] [arguments...]
 
 COMMANDS:
-   list     List ongoing data transfers for this miner
-   restart  Force restart a stalled data transfer
-   cancel   Force cancel a data transfer
-   help, h  Shows a list of commands or help for one command
+   list         List ongoing data transfers for this miner
+   restart      Force restart a stalled data transfer
+   cancel       Force cancel a data transfer
+   diagnostics  Get detailed diagnostics on active transfers with a specific peer
+   help, h      Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h     show help (default: false)
@@ -1031,6 +1032,19 @@ OPTIONS:
    --initiator             specify only transfers where peer is/is not initiator (default: false)
    --cancel-timeout value  time to wait for cancel to be sent to client (default: 5s)
    --help, -h              show help (default: false)
+   
+```
+
+### lotus-miner data-transfers diagnostics
+```
+NAME:
+   lotus-miner data-transfers diagnostics - Get detailed diagnostics on active transfers with a specific peer
+
+USAGE:
+   lotus-miner data-transfers diagnostics [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1500,23 +1514,25 @@ USAGE:
    lotus-miner sectors command [command options] [arguments...]
 
 COMMANDS:
-   status             Get the seal status of a sector by its number
-   list               List sectors
-   refs               List References to sectors
-   update-state       ADVANCED: manually update the state of a sector, this may aid in error recovery
-   pledge             store random data in a sector
-   check-expire       Inspect expiring sectors
-   expired            Get or cleanup expired sectors
-   renew              Renew expiring sectors while not exceeding each sector's max life
-   extend             Extend sector expiration
-   terminate          Terminate sector on-chain then remove (WARNING: This means losing power and collateral for the removed sector)
-   remove             Forcefully remove a sector (WARNING: This means losing power and collateral for the removed sector (use 'terminate' for lower penalty))
-   mark-for-upgrade   Mark a committed capacity sector for replacement by a sector with deals
-   seal               Manually start sealing a sector (filling any unused space with junk)
-   set-seal-delay     Set the time, in minutes, that a new sector waits for deals before sealing starts
-   get-cc-collateral  Get the collateral required to pledge a committed capacity sector
-   batching           manage batch sector operations
-   help, h            Shows a list of commands or help for one command
+   status                Get the seal status of a sector by its number
+   list                  List sectors
+   refs                  List References to sectors
+   update-state          ADVANCED: manually update the state of a sector, this may aid in error recovery
+   pledge                store random data in a sector
+   check-expire          Inspect expiring sectors
+   expired               Get or cleanup expired sectors
+   renew                 Renew expiring sectors while not exceeding each sector's max life
+   extend                Extend sector expiration
+   terminate             Terminate sector on-chain then remove (WARNING: This means losing power and collateral for the removed sector)
+   remove                Forcefully remove a sector (WARNING: This means losing power and collateral for the removed sector (use 'terminate' for lower penalty))
+   snap-up               Mark a committed capacity sector to be filled with deals
+   mark-for-upgrade      Mark a committed capacity sector for replacement by a sector with deals
+   seal                  Manually start sealing a sector (filling any unused space with junk)
+   set-seal-delay        Set the time, in minutes, that a new sector waits for deals before sealing starts
+   get-cc-collateral     Get the collateral required to pledge a committed capacity sector
+   batching              manage batch sector operations
+   match-pending-pieces  force a refreshed match of pending pieces to open sectors without manually waiting for more deals
+   help, h               Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h     show help (default: false)
@@ -1732,6 +1748,19 @@ OPTIONS:
    
 ```
 
+### lotus-miner sectors snap-up
+```
+NAME:
+   lotus-miner sectors snap-up - Mark a committed capacity sector to be filled with deals
+
+USAGE:
+   lotus-miner sectors snap-up [command options] <sectorNum>
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
 ### lotus-miner sectors mark-for-upgrade
 ```
 NAME:
@@ -1829,6 +1858,19 @@ USAGE:
 OPTIONS:
    --publish-now  send a batch now (default: false)
    --help, -h     show help (default: false)
+   
+```
+
+### lotus-miner sectors match-pending-pieces
+```
+NAME:
+   lotus-miner sectors match-pending-pieces - force a refreshed match of pending pieces to open sectors without manually waiting for more deals
+
+USAGE:
+   lotus-miner sectors match-pending-pieces [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
    
 ```
 

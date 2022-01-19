@@ -107,7 +107,7 @@ func TestImportLocal(t *testing.T) {
 	// recreate the unixfs dag, and see if it matches the original file byte by byte
 	// import the car into a memory blockstore, then export the unixfs file.
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
-	_, err = car.LoadCar(bs, exported.DataReader())
+	_, err = car.LoadCar(ctx, bs, exported.DataReader())
 	require.NoError(t, err)
 
 	dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))

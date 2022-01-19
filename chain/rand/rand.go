@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/binary"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -48,7 +50,7 @@ func (sr *stateRand) GetBeaconRandomnessTipset(ctx context.Context, round abi.Ch
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("round", int64(round)))
 
-	ts, err := sr.cs.LoadTipSet(types.NewTipSetKey(sr.blks...))
+	ts, err := sr.cs.LoadTipSet(ctx, types.NewTipSetKey(sr.blks...))
 	if err != nil {
 		return nil, err
 	}
@@ -70,12 +72,12 @@ func (sr *stateRand) GetBeaconRandomnessTipset(ctx context.Context, round abi.Ch
 	return randTs, nil
 }
 
-func (sr *stateRand) GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte, lookback bool) ([]byte, error) {
+func (sr *stateRand) getChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte, lookback bool) ([]byte, error) {
 	_, span := trace.StartSpan(ctx, "store.GetChainRandomness")
 	defer span.End()
 	span.AddAttributes(trace.Int64Attribute("round", int64(round)))
 
-	ts, err := sr.cs.LoadTipSet(types.NewTipSetKey(sr.blks...))
+	ts, err := sr.cs.LoadTipSet(ctx, types.NewTipSetKey(sr.blks...))
 	if err != nil {
 		return nil, err
 	}
@@ -101,38 +103,32 @@ func (sr *stateRand) GetChainRandomness(ctx context.Context, pers crypto.DomainS
 	return DrawRandomness(mtb.Ticket.VRFProof, pers, round, entropy)
 }
 
+type NetworkVersionGetter func(context.Context, abi.ChainEpoch) network.Version
+
 type stateRand struct {
-	cs     *store.ChainStore
-	blks   []cid.Cid
-	beacon beacon.Schedule
+	cs                   *store.ChainStore
+	blks                 []cid.Cid
+	beacon               beacon.Schedule
+	networkVersionGetter NetworkVersionGetter
 }
 
-func NewStateRand(cs *store.ChainStore, blks []cid.Cid, b beacon.Schedule) vm.Rand {
+func NewStateRand(cs *store.ChainStore, blks []cid.Cid, b beacon.Schedule, networkVersionGetter NetworkVersionGetter) vm.Rand {
 	return &stateRand{
-		cs:     cs,
-		blks:   blks,
-		beacon: b,
+		cs:                   cs,
+		blks:                 blks,
+		beacon:               b,
+		networkVersionGetter: networkVersionGetter,
 	}
 }
 
 // network v0-12
-func (sr *stateRand) GetChainRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return sr.GetChainRandomness(ctx, pers, round, entropy, true)
-}
-
-// network v13 and on
-func (sr *stateRand) GetChainRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	return sr.GetChainRandomness(ctx, pers, round, entropy, false)
-}
-
-// network v0-12
-func (sr *stateRand) GetBeaconRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (sr *stateRand) getBeaconRandomnessV1(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	randTs, err := sr.GetBeaconRandomnessTipset(ctx, round, true)
 	if err != nil {
 		return nil, err
 	}
 
-	be, err := sr.cs.GetLatestBeaconEntry(randTs)
+	be, err := sr.cs.GetLatestBeaconEntry(ctx, randTs)
 	if err != nil {
 		return nil, err
 	}
@@ -143,13 +139,13 @@ func (sr *stateRand) GetBeaconRandomnessV1(ctx context.Context, pers crypto.Doma
 }
 
 // network v13
-func (sr *stateRand) GetBeaconRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (sr *stateRand) getBeaconRandomnessV2(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	randTs, err := sr.GetBeaconRandomnessTipset(ctx, round, false)
 	if err != nil {
 		return nil, err
 	}
 
-	be, err := sr.cs.GetLatestBeaconEntry(randTs)
+	be, err := sr.cs.GetLatestBeaconEntry(ctx, randTs)
 	if err != nil {
 		return nil, err
 	}
@@ -160,9 +156,9 @@ func (sr *stateRand) GetBeaconRandomnessV2(ctx context.Context, pers crypto.Doma
 }
 
 // network v14 and on
-func (sr *stateRand) GetBeaconRandomnessV3(ctx context.Context, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (sr *stateRand) getBeaconRandomnessV3(ctx context.Context, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	if filecoinEpoch < 0 {
-		return sr.GetBeaconRandomnessV2(ctx, pers, filecoinEpoch, entropy)
+		return sr.getBeaconRandomnessV2(ctx, pers, filecoinEpoch, entropy)
 	}
 
 	be, err := sr.extractBeaconEntryForEpoch(ctx, filecoinEpoch)
@@ -172,6 +168,28 @@ func (sr *stateRand) GetBeaconRandomnessV3(ctx context.Context, pers crypto.Doma
 	}
 
 	return DrawRandomness(be.Data, pers, filecoinEpoch, entropy)
+}
+
+func (sr *stateRand) GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	nv := sr.networkVersionGetter(ctx, filecoinEpoch)
+
+	if nv >= network.Version13 {
+		return sr.getChainRandomness(ctx, pers, filecoinEpoch, entropy, false)
+	}
+
+	return sr.getChainRandomness(ctx, pers, filecoinEpoch, entropy, true)
+}
+
+func (sr *stateRand) GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	nv := sr.networkVersionGetter(ctx, filecoinEpoch)
+
+	if nv >= network.Version14 {
+		return sr.getBeaconRandomnessV3(ctx, pers, filecoinEpoch, entropy)
+	} else if nv == network.Version13 {
+		return sr.getBeaconRandomnessV2(ctx, pers, filecoinEpoch, entropy)
+	} else {
+		return sr.getBeaconRandomnessV1(ctx, pers, filecoinEpoch, entropy)
+	}
 }
 
 func (sr *stateRand) extractBeaconEntryForEpoch(ctx context.Context, filecoinEpoch abi.ChainEpoch) (*types.BeaconEntry, error) {
@@ -190,7 +208,7 @@ func (sr *stateRand) extractBeaconEntryForEpoch(ctx context.Context, filecoinEpo
 			}
 		}
 
-		next, err := sr.cs.LoadTipSet(randTs.Parents())
+		next, err := sr.cs.LoadTipSet(ctx, randTs.Parents())
 		if err != nil {
 			return nil, xerrors.Errorf("failed to load parents when searching back for beacon entry: %w", err)
 		}

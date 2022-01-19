@@ -353,16 +353,16 @@ func TestAddVoucherNextLane(t *testing.T) {
 	_, err := s.mgr.AddVoucherOutbound(ctx, s.ch, sv, nil, minDelta)
 	require.NoError(t, err)
 
-	ci, err := s.mgr.GetChannelInfo(s.ch)
+	ci, err := s.mgr.GetChannelInfo(ctx, s.ch)
 	require.NoError(t, err)
 	require.EqualValues(t, ci.NextLane, 3)
 
 	// Allocate a lane (should be lane 3)
-	lane, err := s.mgr.AllocateLane(s.ch)
+	lane, err := s.mgr.AllocateLane(ctx, s.ch)
 	require.NoError(t, err)
 	require.EqualValues(t, lane, 3)
 
-	ci, err = s.mgr.GetChannelInfo(s.ch)
+	ci, err = s.mgr.GetChannelInfo(ctx, s.ch)
 	require.NoError(t, err)
 	require.EqualValues(t, ci.NextLane, 4)
 
@@ -372,7 +372,7 @@ func TestAddVoucherNextLane(t *testing.T) {
 	_, err = s.mgr.AddVoucherOutbound(ctx, s.ch, sv, nil, minDelta)
 	require.NoError(t, err)
 
-	ci, err = s.mgr.GetChannelInfo(s.ch)
+	ci, err = s.mgr.GetChannelInfo(ctx, s.ch)
 	require.NoError(t, err)
 	require.EqualValues(t, ci.NextLane, 4)
 
@@ -382,22 +382,24 @@ func TestAddVoucherNextLane(t *testing.T) {
 	_, err = s.mgr.AddVoucherOutbound(ctx, s.ch, sv, nil, minDelta)
 	require.NoError(t, err)
 
-	ci, err = s.mgr.GetChannelInfo(s.ch)
+	ci, err = s.mgr.GetChannelInfo(ctx, s.ch)
 	require.NoError(t, err)
 	require.EqualValues(t, ci.NextLane, 8)
 }
 
 func TestAllocateLane(t *testing.T) {
+	ctx := context.Background()
+
 	// Set up a manager with a single payment channel
 	s := testSetupMgrWithChannel(t)
 
 	// First lane should be 0
-	lane, err := s.mgr.AllocateLane(s.ch)
+	lane, err := s.mgr.AllocateLane(ctx, s.ch)
 	require.NoError(t, err)
 	require.EqualValues(t, lane, 0)
 
 	// Next lane should be 1
-	lane, err = s.mgr.AllocateLane(s.ch)
+	lane, err = s.mgr.AllocateLane(ctx, s.ch)
 	require.NoError(t, err)
 	require.EqualValues(t, lane, 1)
 }
@@ -446,7 +448,7 @@ func TestAllocateLaneWithExistingLaneState(t *testing.T) {
 	require.NoError(t, err)
 
 	// Allocate lane should return the next lane (lane 3)
-	lane, err := mgr.AllocateLane(ch)
+	lane, err := mgr.AllocateLane(ctx, ch)
 	require.NoError(t, err)
 	require.EqualValues(t, 3, lane)
 }
@@ -746,7 +748,7 @@ func testSetupMgrWithChannel(t *testing.T) *testScaffold {
 		Target:    toAcct,
 		Direction: DirOutbound,
 	}
-	err = mgr.store.putChannelInfo(ci)
+	err = mgr.store.putChannelInfo(context.Background(), ci)
 	require.NoError(t, err)
 
 	// Add the from signing key to the wallet

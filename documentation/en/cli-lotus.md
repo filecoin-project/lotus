@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.13.3-dev
+   1.15.0-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -425,6 +425,7 @@ COMMANDS:
      stat    Print information about a locally stored file (piece size, etc)
    RETRIEVAL:
      find              Find data in the network
+     retrieval-ask     Get a miner's retrieval ask
      retrieve          Retrieve data from network
      cat               Show data from network
      ls                List object links
@@ -532,6 +533,23 @@ CATEGORY:
 OPTIONS:
    --pieceCid value  require data to be retrieved from a specific Piece CID
    --help, -h        show help (default: false)
+   
+```
+
+### lotus client retrieval-ask
+```
+NAME:
+   lotus client retrieval-ask - Get a miner's retrieval ask
+
+USAGE:
+   lotus client retrieval-ask [command options] [minerAddress] [data CID]
+
+CATEGORY:
+   RETRIEVAL
+
+OPTIONS:
+   --size value  data size in bytes (default: 0)
+   --help, -h    show help (default: false)
    
 ```
 
