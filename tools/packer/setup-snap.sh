@@ -26,7 +26,7 @@ MANAGED_FILES=(
 apt update
 apt reinstall snapd
 
-snap install lotus-filecoin --channel=edge
+snap install lotus-filecoin
 
 snap alias lotus-filecoin.lotus lotus
 snap alias lotus-file.con.lotus-daemon lotus-daemon

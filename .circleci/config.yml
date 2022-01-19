@@ -1058,13 +1058,6 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - publish-snapcraft:
-          name: publish-snapcraft-temporary
-          channel: edge
-      - publish-packer-snap:
-          name: publish-packer-snap-temporary
-          requires:
-            - publish-snapcraft-temporary
 
   nightly:
     triggers:
