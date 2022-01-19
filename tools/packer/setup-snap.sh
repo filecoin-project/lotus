@@ -26,13 +26,14 @@ MANAGED_FILES=(
 apt update
 apt reinstall snapd
 
-snap install lotus-filecoin
+snap install lotus-filecoin --channel=edge
 
 snap alias lotus-filecoin.lotus lotus
+snap alias lotus-file.con.lotus-daemon lotus-daemon
 snap alias lotus-filecoin.lotus-miner lotus-miner
-snap alias lotus-filecoin.lotus-miner lotus-worker
+snap alias lotus-filecoin.lotus-worker lotus-worker
 
-#snap stop lotus-filecoin.lotus-daemon
+snap stop lotus-filecoin.lotus-daemon
 
 # Setup firewall
 yes | ufw enable

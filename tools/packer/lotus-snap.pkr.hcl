@@ -10,7 +10,7 @@ variable "lotus_network" {
 
 locals {
   timestamp = regex_replace(timestamp(), "[- TZ:]", "")
-} 
+}
 
 source "amazon-ebs" "lotus" {
   ami_name      = "lotus-${var.lotus_network}-snap-${local.timestamp}"
