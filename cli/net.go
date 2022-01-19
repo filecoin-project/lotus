@@ -611,8 +611,18 @@ var NetBlockListCmd = &cli.Command{
 
 var NetStatCmd = &cli.Command{
 	Name:      "stat",
-	Usage:     "report resource stat for a scope",
+	Usage:     "Report resource usage for a scope",
 	ArgsUsage: "scope",
+	Description: `Report resource usage for a scope.
+
+  The scope can be one of the following:
+  - system        -- reports the system aggregate resource usage.
+  - transient     -- reports the transient resource usage.
+  - svc:<service> -- reports the resource usage of a specific service.
+  - proto:<proto> -- reports the resource usage of a specific protocol.
+  - peer:<peer>   -- reports the resource usage of a specific peer.
+  - all           -- reports the resource usage for all currently active scopes.
+`,
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetAPI(cctx)
 		if err != nil {
@@ -641,8 +651,19 @@ var NetStatCmd = &cli.Command{
 
 var NetLimitCmd = &cli.Command{
 	Name:      "limit",
-	Usage:     "get or set resource limit for a scope",
+	Usage:     "Get or set resource limits for a scope",
 	ArgsUsage: "scope [limit]",
+	Description: `Get or set resource limits for a scope.
+
+  The scope can be one of the following:
+  - system        -- reports the system aggregate resource usage.
+  - transient     -- reports the transient resource usage.
+  - svc:<service> -- reports the resource usage of a specific service.
+  - proto:<proto> -- reports the resource usage of a specific protocol.
+  - peer:<peer>   -- reports the resource usage of a specific peer.
+
+ The limit is json-formatted, with the same structure as the limits file.
+`,
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:  "set",
