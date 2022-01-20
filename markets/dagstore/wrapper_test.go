@@ -31,7 +31,7 @@ func TestWrapperAcquireRecovery(t *testing.T) {
 	pieceCid, err := cid.Parse("bafkqaaa")
 	require.NoError(t, err)
 
-	h, err := mocknet.New(ctx).GenPeer()
+	h, err := mocknet.New().GenPeer()
 	require.NoError(t, err)
 	// Create a DAG store wrapper
 	dagst, w, err := NewDAGStore(config.DAGStoreConfig{
@@ -83,7 +83,7 @@ func TestWrapperAcquireRecovery(t *testing.T) {
 // TestWrapperBackground verifies the behaviour of the background go routine
 func TestWrapperBackground(t *testing.T) {
 	ctx := context.Background()
-	h, err := mocknet.New(ctx).GenPeer()
+	h, err := mocknet.New().GenPeer()
 	require.NoError(t, err)
 
 	// Create a DAG store wrapper
