@@ -26,7 +26,7 @@ require (
 	github.com/elastic/gosigar v0.14.1
 	github.com/etclabscore/go-openrpc-reflect v0.0.36
 	github.com/fatih/color v1.13.0
-	github.com/filecoin-project/dagstore v0.4.4
+	github.com/filecoin-project/dagstore v0.5.2-0.20220120115845-e07b050f48d3
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
 	github.com/filecoin-project/go-address v0.0.6
 	github.com/filecoin-project/go-bitfield v0.2.4
@@ -36,7 +36,8 @@ require (
 	github.com/filecoin-project/go-data-transfer v1.14.0
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
-	github.com/filecoin-project/go-fil-markets v1.19.0
+	github.com/filecoin-project/go-fil-markets v1.19.1-0.20220120121729-eb2fe1f4df58
+	github.com/filecoin-project/go-indexer-core v0.2.7
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-padreader v0.0.1
 	github.com/filecoin-project/go-paramfetch v0.0.3-0.20220111000201-e42866db1a53
@@ -44,6 +45,7 @@ require (
 	github.com/filecoin-project/go-statemachine v1.0.1
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/go-storedcounter v0.1.0
+	github.com/filecoin-project/index-provider v0.2.1
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v3 v3.1.1
@@ -77,7 +79,7 @@ require (
 	github.com/ipfs/go-ds-badger2 v0.1.2
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/ipfs/go-ds-measure v0.2.0
-	github.com/ipfs/go-fs-lock v0.0.6
+	github.com/ipfs/go-fs-lock v0.0.7
 	github.com/ipfs/go-graphsync v0.12.0
 	github.com/ipfs/go-ipfs-blockstore v1.1.2
 	github.com/ipfs/go-ipfs-blocksutil v0.0.1
@@ -96,9 +98,9 @@ require (
 	github.com/ipfs/go-merkledag v0.5.1
 	github.com/ipfs/go-metrics-interface v0.0.1
 	github.com/ipfs/go-metrics-prometheus v0.0.2
-	github.com/ipfs/go-path v0.0.7
+	github.com/ipfs/go-path v0.2.1
 	github.com/ipfs/go-unixfs v0.3.1
-	github.com/ipfs/interface-go-ipfs-core v0.4.0
+	github.com/ipfs/interface-go-ipfs-core v0.5.2
 	github.com/ipld/go-car v0.3.3
 	github.com/ipld/go-car/v2 v2.1.1
 	github.com/ipld/go-codec-dagpb v1.3.0
@@ -143,9 +145,9 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/uber/jaeger-client-go v2.25.0+incompatible // indirect
-	github.com/urfave/cli/v2 v2.2.0
+	github.com/urfave/cli/v2 v2.3.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
-	github.com/whyrusleeping/cbor-gen v0.0.0-20210713220151-be142a5ae1a8
+	github.com/whyrusleeping/cbor-gen v0.0.0-20211110122933-f57984553008
 	github.com/whyrusleeping/ledger-filecoin-go v0.9.1-0.20201010031517-c3dcc1bddce4
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
 	github.com/whyrusleeping/pubsub v0.0.0-20190708150250-92bcb0691325
@@ -155,8 +157,7 @@ require (
 	go.opentelemetry.io/otel/bridge/opencensus v0.25.0
 	go.opentelemetry.io/otel/exporters/jaeger v1.2.0
 	go.opentelemetry.io/otel/sdk v1.2.0
-	go.uber.org/dig v1.10.0 // indirect
-	go.uber.org/fx v1.9.0
+	go.uber.org/fx v1.15.0
 	go.uber.org/multierr v1.7.0
 	go.uber.org/zap v1.19.1
 	golang.org/x/crypto v0.0.0-20211209193657-4570a0811e8b // indirect
@@ -174,3 +175,5 @@ require (
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
+
+replace github.com/ipfs/go-path => github.com/ipfs/go-path v0.0.7

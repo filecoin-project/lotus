@@ -133,14 +133,14 @@ func newIndexerProviderDataTransfer(cfg config.IndexerProviderConfig, mctx helpe
 
 	// Set up data transfer
 	dtDs := namespace.Wrap(ds, datastore.NewKey("/datatransfer/transfers"))
-	transport := dtgstransport.NewTransport(h.ID(), gs, net)
+	transport := dtgstransport.NewTransport(h.ID(), gs)
 	dtPath := filepath.Join(r.Path(), "indexer-provider", "data-transfer")
 	err := os.MkdirAll(dtPath, 0755) //nolint: gosec
 	if err != nil && !os.IsExist(err) {
 		return nil, xerrors.Errorf("creating indexer provider data transfer dir %s: %w", dtPath, err)
 	}
 
-	dt, err := dtimpl.NewDataTransfer(dtDs, dtPath, net, transport)
+	dt, err := dtimpl.NewDataTransfer(dtDs, net, transport)
 	if err != nil {
 		return nil, xerrors.Errorf("creating indexer provider data transfer module: %w", err)
 	}

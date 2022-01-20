@@ -262,7 +262,7 @@
   #LinkCacheSize = 1024
 
   # env var: LOTUS_INDEXERPROVIDER_LINKEDCHUNKSIZE
-  #LinkedChunkSize = 100
+  #LinkedChunkSize = 16384
 
   # env var: LOTUS_INDEXERPROVIDER_PUBSUBTOPIC
   #PubSubTopic = "indexer/ingest"
