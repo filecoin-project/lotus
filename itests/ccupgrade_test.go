@@ -6,15 +6,16 @@ import (
 	"testing"
 	"time"
 
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestCCUpgrade(t *testing.T) {
@@ -124,6 +125,7 @@ func waitForSectorStartUpgrade(ctx context.Context, t *testing.T, sn abi.SectorN
 
 func TestCCUpgradeAndPoSt(t *testing.T) {
 	kit.QuietMiningLogs()
+	_ = logging.SetLogLevel("storageminer", "INFO")
 	t.Run("upgrade and then post", func(t *testing.T) {
 		ctx := context.Background()
 		n := runTestCCUpgrade(t, 100)
