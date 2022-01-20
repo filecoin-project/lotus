@@ -1,10 +1,12 @@
 package stores
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
@@ -306,11 +308,8 @@ func (handler *FetchHandler) generateSingleVanillaProof(w http.ResponseWriter, r
 		return
 	}
 
-	w.WriteHeader(200)
-	_, err = w.Write(vanilla)
-	if err != nil {
-		log.Error("response writer: ", err)
-	}
+	w.Header().Set("Content-Type", "application/octet-stream")
+	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(vanilla))
 }
 
 func ftFromString(t string) (storiface.SectorFileType, error) {

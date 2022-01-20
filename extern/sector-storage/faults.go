@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
+	"time"
 
 	"golang.org/x/xerrors"
 
@@ -13,6 +14,8 @@ import (
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
+
+var PostCheckTimeout = 160 * time.Second
 
 // FaultTracker TODO: Track things more actively
 type FaultTracker interface {
@@ -68,7 +71,10 @@ func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof,
 				return nil
 			}
 
-			_, err = m.storage.GenerateSingleVanillaProof(ctx, sector.ID.Miner, storiface.PostSectorChallenge{
+			vctx, cancel2 := context.WithTimeout(ctx, PostCheckTimeout)
+			defer cancel2()
+
+			_, err = m.storage.GenerateSingleVanillaProof(vctx, sector.ID.Miner, storiface.PostSectorChallenge{
 				SealProof:    sector.ProofType,
 				SectorNumber: sector.ID.Number,
 				SealedCID:    commr,

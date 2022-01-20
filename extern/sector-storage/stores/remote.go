@@ -750,7 +750,12 @@ func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 		Number: sinfo.SectorNumber,
 	}
 
-	si, err := r.index.StorageFindSector(ctx, sid, storiface.FTSealed|storiface.FTCache, 0, false)
+	ft := storiface.FTSealed | storiface.FTCache
+	if sinfo.Update {
+		ft = storiface.FTUpdate | storiface.FTUpdateCache
+	}
+
+	si, err := r.index.StorageFindSector(ctx, sid, ft, 0, false)
 	if err != nil {
 		return nil, xerrors.Errorf("finding sector %d failed: %w", sid, err)
 	}

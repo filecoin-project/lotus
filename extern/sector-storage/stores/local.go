@@ -722,11 +722,11 @@ func (st *Local) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 	var cache string
 	var sealed string
 	if si.Update {
-		src, _, err := st.AcquireSector(ctx, sr, storiface.FTSealed|storiface.FTCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
+		src, _, err := st.AcquireSector(ctx, sr, storiface.FTUpdate|storiface.FTUpdateCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 		if err != nil {
 			return nil, xerrors.Errorf("acquire sector: %w", err)
 		}
-		cache, sealed = src.Update, src.UpdateCache
+		cache, sealed = src.UpdateCache, src.Update
 	} else {
 		src, _, err := st.AcquireSector(ctx, sr, storiface.FTSealed|storiface.FTCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
 		if err != nil {

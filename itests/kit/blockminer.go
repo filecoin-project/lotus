@@ -63,11 +63,10 @@ func (p *partitionTracker) done(t *testing.T) bool {
 	return uint64(len(p.partitions)) == p.count(t)
 }
 
-func (p *partitionTracker) recordIfPost(t *testing.T, bm *BlockMiner, smsg *types.SignedMessage) (ret bool) {
+func (p *partitionTracker) recordIfPost(t *testing.T, bm *BlockMiner, msg *types.Message) (ret bool) {
 	defer func() {
 		ret = p.done(t)
 	}()
-	msg := smsg.Message
 	if !(msg.To == bm.miner.ActorAddr) {
 		return
 	}
@@ -124,7 +123,7 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 
 				tracker := newPartitionTracker(ctx, dlinfo.Index, bm)
 				if !tracker.done(bm.t) { // need to wait for post
-					bm.t.Logf("expect %d partitions proved but only see %d", len(tracker.partitions), tracker.count(bm.t))
+					bm.t.Logf("expect %d partitions proved but only see %d (dl:%d, epoch:%d)", len(tracker.partitions), tracker.count(bm.t), dlinfo.Index, ts.Height())
 					poolEvts, err := bm.miner.FullNode.MpoolSub(ctx)
 					require.NoError(bm.t, err)
 
@@ -132,7 +131,19 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 					msgs, err := bm.miner.FullNode.MpoolPending(ctx, types.EmptyTSK)
 					require.NoError(bm.t, err)
 					for _, msg := range msgs {
-						tracker.recordIfPost(bm.t, bm, msg)
+						tracker.recordIfPost(bm.t, bm, &msg.Message)
+					}
+
+					// Account for included but not yet executed messages
+					for _, bc := range ts.Cids() {
+						msgs, err := bm.miner.FullNode.ChainGetBlockMessages(ctx, bc)
+						require.NoError(bm.t, err)
+						for _, msg := range msgs.BlsMessages {
+							tracker.recordIfPost(bm.t, bm, msg)
+						}
+						for _, msg := range msgs.SecpkMessages {
+							tracker.recordIfPost(bm.t, bm, &msg.Message)
+						}
 					}
 
 					// post not yet in mpool, wait for it
@@ -148,7 +159,7 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 								bm.t.Logf("pool event: %d", evt.Type)
 								if evt.Type == api.MpoolAdd {
 									bm.t.Logf("incoming message %v", evt.Message)
-									if tracker.recordIfPost(bm.t, bm, evt.Message) {
+									if tracker.recordIfPost(bm.t, bm, &evt.Message.Message) {
 										break POOL
 									}
 								}
