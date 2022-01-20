@@ -311,7 +311,7 @@ func (n *Ensemble) Start() *Ensemble {
 		// We haven't been bootstrapped yet, we need to generate genesis and
 		// create the networking backbone.
 		gtempl = n.generateGenesis()
-		n.mn = mocknet.New(ctx)
+		n.mn = mocknet.New()
 	}
 
 	// ---------------------

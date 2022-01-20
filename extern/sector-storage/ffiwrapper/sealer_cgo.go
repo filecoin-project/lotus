@@ -698,10 +698,10 @@ func (sb *Sealer) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, p
 
 	if err := os.Mkdir(paths.UpdateCache, 0755); err != nil { // nolint
 		if os.IsExist(err) {
-			log.Warnf("existing cache in %s; removing", paths.Cache)
+			log.Warnf("existing cache in %s; removing", paths.UpdateCache)
 
 			if err := os.RemoveAll(paths.UpdateCache); err != nil {
-				return empty, xerrors.Errorf("remove existing sector cache from %s (sector %d): %w", paths.Cache, sector, err)
+				return empty, xerrors.Errorf("remove existing sector cache from %s (sector %d): %w", paths.UpdateCache, sector, err)
 			}
 
 			if err := os.Mkdir(paths.UpdateCache, 0755); err != nil { // nolint:gosec
