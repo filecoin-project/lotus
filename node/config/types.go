@@ -78,6 +78,11 @@ type DAGStoreConfig struct {
 	// Default value: 0 (unlimited).
 	MaxConcurrentReadyFetches int
 
+	// The maximum amount of unseals that can be processed simultaneously
+	// from the storage subsystem. 0 means unlimited.
+	// Default value: 0 (unlimited).
+	MaxConcurrentUnseals int
+
 	// The maximum number of simultaneous inflight API calls to the storage
 	// subsystem.
 	// Default value: 100.

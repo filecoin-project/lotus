@@ -13,18 +13,7 @@ import (
 
 func (m *Sealing) handleReplicaUpdate(ctx statemachine.Context, sector SectorInfo) error {
 	if err := checkPieces(ctx.Context(), m.maddr, sector, m.Api); err != nil { // Sanity check state
-		switch err.(type) {
-		case *ErrApi:
-			log.Errorf("handleReplicaUpdate: api error, not proceeding: %+v", err)
-			return nil
-		case *ErrInvalidDeals:
-			log.Warnf("invalid deals in sector %d: %v", sector.SectorNumber, err)
-			return ctx.Send(SectorInvalidDealIDs{})
-		case *ErrExpiredDeals: // Probably not much we can do here, maybe re-pack the sector?
-			return ctx.Send(SectorDealsExpired{xerrors.Errorf("expired dealIDs in sector: %w", err)})
-		default:
-			return xerrors.Errorf("checkPieces sanity check error: %w", err)
-		}
+		return handleErrors(ctx, err, sector)
 	}
 	out, err := m.sealer.ReplicaUpdate(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.pieceInfos())
 	if err != nil {
@@ -42,9 +31,14 @@ func (m *Sealing) handleProveReplicaUpdate(ctx statemachine.Context, sector Sect
 	if sector.CommR == nil {
 		return xerrors.Errorf("invalid sector %d with nil CommR", sector.SectorNumber)
 	}
+
 	vanillaProofs, err := m.sealer.ProveReplicaUpdate1(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), *sector.CommR, *sector.UpdateSealed, *sector.UpdateUnsealed)
 	if err != nil {
 		return ctx.Send(SectorProveReplicaUpdateFailed{xerrors.Errorf("prove replica update (1) failed: %w", err)})
+	}
+
+	if err := checkPieces(ctx.Context(), m.maddr, sector, m.Api); err != nil { // Sanity check state
+		return handleErrors(ctx, err, sector)
 	}
 
 	proof, err := m.sealer.ProveReplicaUpdate2(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), *sector.CommR, *sector.UpdateSealed, *sector.UpdateUnsealed, vanillaProofs)
@@ -63,6 +57,10 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 	if err != nil {
 		log.Errorf("handleSubmitReplicaUpdate: api error, not proceeding: %+v", err)
 		return nil
+	}
+
+	if err := checkPieces(ctx.Context(), m.maddr, sector, m.Api); err != nil { // Sanity check state
+		return handleErrors(ctx, err, sector)
 	}
 
 	if err := checkReplicaUpdate(ctx.Context(), m.maddr, sector, tok, m.Api); err != nil {
@@ -206,4 +204,19 @@ func (m *Sealing) handleReplicaUpdateWait(ctx statemachine.Context, sector Secto
 
 func (m *Sealing) handleFinalizeReplicaUpdate(ctx statemachine.Context, sector SectorInfo) error {
 	return ctx.Send(SectorFinalized{})
+}
+
+func handleErrors(ctx statemachine.Context, err error, sector SectorInfo) error {
+	switch err.(type) {
+	case *ErrApi:
+		log.Errorf("handleReplicaUpdate: api error, not proceeding: %+v", err)
+		return nil
+	case *ErrInvalidDeals:
+		log.Warnf("invalid deals in sector %d: %v", sector.SectorNumber, err)
+		return ctx.Send(SectorInvalidDealIDs{})
+	case *ErrExpiredDeals: // Probably not much we can do here, maybe re-pack the sector?
+		return ctx.Send(SectorDealsExpired{xerrors.Errorf("expired dealIDs in sector: %w", err)})
+	default:
+		return xerrors.Errorf("checkPieces sanity check error: %w", err)
+	}
 }

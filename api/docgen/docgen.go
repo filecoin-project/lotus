@@ -300,6 +300,34 @@ func init() {
 		Error: "<error>",
 	})
 	addExample(storiface.ResourceTable)
+	addExample(network.ScopeStat{
+		Memory:             123,
+		NumStreamsInbound:  1,
+		NumStreamsOutbound: 2,
+		NumConnsInbound:    3,
+		NumConnsOutbound:   4,
+		NumFD:              5,
+	})
+	addExample(map[string]network.ScopeStat{
+		"abc": {
+			Memory:             123,
+			NumStreamsInbound:  1,
+			NumStreamsOutbound: 2,
+			NumConnsInbound:    3,
+			NumConnsOutbound:   4,
+			NumFD:              5,
+		}})
+	addExample(api.NetLimit{
+		Memory:          123,
+		StreamsInbound:  1,
+		StreamsOutbound: 2,
+		Streams:         3,
+		ConnsInbound:    3,
+		ConnsOutbound:   4,
+		Conns:           4,
+		FD:              5,
+	})
+
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {

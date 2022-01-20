@@ -587,11 +587,17 @@ type NetStruct struct {
 
 		NetFindPeer func(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error) `perm:"read"`
 
+		NetLimit func(p0 context.Context, p1 string) (NetLimit, error) `perm:"read"`
+
 		NetPeerInfo func(p0 context.Context, p1 peer.ID) (*ExtendedPeerInfo, error) `perm:"read"`
 
 		NetPeers func(p0 context.Context) ([]peer.AddrInfo, error) `perm:"read"`
 
 		NetPubsubScores func(p0 context.Context) ([]PubsubScore, error) `perm:"read"`
+
+		NetSetLimit func(p0 context.Context, p1 string, p2 NetLimit) error `perm:"admin"`
+
+		NetStat func(p0 context.Context, p1 string) (NetStat, error) `perm:"read"`
 	}
 }
 
@@ -3633,6 +3639,17 @@ func (s *NetStub) NetFindPeer(p0 context.Context, p1 peer.ID) (peer.AddrInfo, er
 	return *new(peer.AddrInfo), ErrNotSupported
 }
 
+func (s *NetStruct) NetLimit(p0 context.Context, p1 string) (NetLimit, error) {
+	if s.Internal.NetLimit == nil {
+		return *new(NetLimit), ErrNotSupported
+	}
+	return s.Internal.NetLimit(p0, p1)
+}
+
+func (s *NetStub) NetLimit(p0 context.Context, p1 string) (NetLimit, error) {
+	return *new(NetLimit), ErrNotSupported
+}
+
 func (s *NetStruct) NetPeerInfo(p0 context.Context, p1 peer.ID) (*ExtendedPeerInfo, error) {
 	if s.Internal.NetPeerInfo == nil {
 		return nil, ErrNotSupported
@@ -3664,6 +3681,28 @@ func (s *NetStruct) NetPubsubScores(p0 context.Context) ([]PubsubScore, error) {
 
 func (s *NetStub) NetPubsubScores(p0 context.Context) ([]PubsubScore, error) {
 	return *new([]PubsubScore), ErrNotSupported
+}
+
+func (s *NetStruct) NetSetLimit(p0 context.Context, p1 string, p2 NetLimit) error {
+	if s.Internal.NetSetLimit == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.NetSetLimit(p0, p1, p2)
+}
+
+func (s *NetStub) NetSetLimit(p0 context.Context, p1 string, p2 NetLimit) error {
+	return ErrNotSupported
+}
+
+func (s *NetStruct) NetStat(p0 context.Context, p1 string) (NetStat, error) {
+	if s.Internal.NetStat == nil {
+		return *new(NetStat), ErrNotSupported
+	}
+	return s.Internal.NetStat(p0, p1)
+}
+
+func (s *NetStub) NetStat(p0 context.Context, p1 string) (NetStat, error) {
+	return *new(NetStat), ErrNotSupported
 }
 
 func (s *SignableStruct) Sign(p0 context.Context, p1 SignFunc) error {

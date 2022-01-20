@@ -5,11 +5,9 @@ import (
 	"io"
 	"testing"
 
-	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
-
-	"github.com/filecoin-project/dagstore"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/go-state-types/abi"
 
@@ -98,11 +96,8 @@ func TestShardRegistration(t *testing.T) {
 	cfg := config.DefaultStorageMiner().DAGStore
 	cfg.RootDir = t.TempDir()
 
-	mapi := NewMinerAPI(ps, &wrappedSA{sa}, 10)
-	h, err := mocknet.New(ctx).GenPeer()
-	require.NoError(t, err)
-
-	dagst, w, err := NewDAGStore(cfg, mapi, h)
+	mapi := NewMinerAPI(ps, &wrappedSA{sa}, 10, 5)
+	dagst, w, err := NewDAGStore(cfg, mapi)
 	require.NoError(t, err)
 	require.NotNil(t, dagst)
 	require.NotNil(t, w)

@@ -712,7 +712,7 @@
     "CreateMiner",
     "UpdateClaimedPower",
     "EnrollCronEvent",
-    "OnEpochTickEnd",
+    "CronTick",
     "UpdatePledgeTotal",
     "SubmitPoRepForBulkVerify",
     "CurrentTotalPower"
@@ -728,6 +728,7 @@
     "RemoveVerifier",
     "AddVerifiedClient",
     "UseBytes",
-    "RestoreBytes"
+    "RestoreBytes",
+    "RemoveVerifiedClientDataCap"
   ]
 }

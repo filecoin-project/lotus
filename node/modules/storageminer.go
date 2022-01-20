@@ -342,19 +342,15 @@ func NewProviderTransferNetwork(h host.Host) dtypes.ProviderTransferNetwork {
 }
 
 // NewProviderTransport sets up a data transfer transport over graphsync
-func NewProviderTransport(h host.Host, gs dtypes.StagingGraphsync, net dtypes.ProviderTransferNetwork) dtypes.ProviderTransport {
-	return dtgstransport.NewTransport(h.ID(), gs, net)
+func NewProviderTransport(h host.Host, gs dtypes.StagingGraphsync) dtypes.ProviderTransport {
+	return dtgstransport.NewTransport(h.ID(), gs)
 }
 
 // NewProviderDataTransfer returns a data transfer manager
 func NewProviderDataTransfer(lc fx.Lifecycle, net dtypes.ProviderTransferNetwork, transport dtypes.ProviderTransport, ds dtypes.MetadataDS, r repo.LockedRepo) (dtypes.ProviderDataTransfer, error) {
 	dtDs := namespace.Wrap(ds, datastore.NewKey("/datatransfer/provider/transfers"))
-	err := os.MkdirAll(filepath.Join(r.Path(), "data-transfer"), 0755) //nolint: gosec
-	if err != nil && !os.IsExist(err) {
-		return nil, err
-	}
 
-	dt, err := dtimpl.NewDataTransfer(dtDs, filepath.Join(r.Path(), "data-transfer"), net, transport)
+	dt, err := dtimpl.NewDataTransfer(dtDs, net, transport)
 	if err != nil {
 		return nil, err
 	}
