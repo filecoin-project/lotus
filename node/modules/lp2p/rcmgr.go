@@ -26,7 +26,7 @@ func ResourceManager(lc fx.Lifecycle, repo repo.LockedRepo) (network.ResourceMan
 	limitsIn, err := os.Open(limitsFile)
 	switch {
 	case err == nil:
-		defer limitsIn.Close()
+		defer limitsIn.Close() //nolint:errcheck
 		limiter, err = rcmgr.NewDefaultLimiterFromJSON(limitsIn)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing limit file: %w", err)

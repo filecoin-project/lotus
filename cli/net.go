@@ -643,9 +643,7 @@ var NetStatCmd = &cli.Command{
 		}
 
 		enc := json.NewEncoder(os.Stdout)
-		enc.Encode(result)
-
-		return nil
+		return enc.Encode(result)
 	},
 }
 
@@ -694,21 +692,19 @@ var NetLimitCmd = &cli.Command{
 
 			return api.NetSetLimit(ctx, scope, limit)
 
-		} else {
-			if len(args) != 1 {
-				return xerrors.Errorf("must specify exactly one scope")
-			}
-			scope := args[0]
-
-			result, err := api.NetLimit(ctx, scope)
-			if err != nil {
-				return err
-			}
-
-			enc := json.NewEncoder(os.Stdout)
-			enc.Encode(result)
 		}
 
-		return nil
+		if len(args) != 1 {
+			return xerrors.Errorf("must specify exactly one scope")
+		}
+		scope := args[0]
+
+		result, err := api.NetLimit(ctx, scope)
+		if err != nil {
+			return err
+		}
+
+		enc := json.NewEncoder(os.Stdout)
+		return enc.Encode(result)
 	},
 }
