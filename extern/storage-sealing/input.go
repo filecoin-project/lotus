@@ -528,7 +528,7 @@ func (m *Sealing) AbortUpgrade(sid abi.SectorNumber) error {
 	m.startupWait.Wait()
 
 	log.Infow("aborting upgrade of sector", "sector", sid, "trigger", "user")
-	return m.sectors.Send(uint64(sid), SectorAbortUpgrade{})
+	return m.sectors.Send(uint64(sid), SectorAbortUpgrade{xerrors.New("triggered by user")})
 }
 
 func proposalCID(deal api.PieceDealInfo) cid.Cid {
