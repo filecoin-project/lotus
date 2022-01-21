@@ -8,11 +8,15 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/storage"
+	storage2 "github.com/filecoin-project/specs-storage/storage"
 )
 
 func TestWorkerPledge(t *testing.T) {
@@ -111,4 +115,45 @@ func TestWindowPostWorker(t *testing.T) {
 
 	require.Equal(t, p.MinerPower, p.TotalPower)
 	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*uint64(sectors)))
+
+	mid, err := address.IDFromAddress(maddr)
+	require.NoError(t, err)
+
+	di, err = client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	// Remove one sector in the next deadline (so it's skipped)
+	{
+		parts, err := client.StateMinerPartitions(ctx, maddr, di.Index+1, types.EmptyTSK)
+		require.NoError(t, err)
+		require.Greater(t, len(parts), 0)
+
+		secs := parts[0].AllSectors
+		n, err := secs.Count()
+		require.NoError(t, err)
+		require.Equal(t, uint64(2), n)
+
+		// Drop the sector
+		sid, err := secs.First()
+
+		t.Logf("Drop sector %d; dl %d part %d", sid, di.Index+1, 0)
+
+		err = miner.BaseAPI.(*impl.StorageMinerAPI).IStorageMgr.Remove(ctx, storage2.SectorRef{
+			ID: abi.SectorID{
+				Miner:  abi.ActorID(mid),
+				Number: abi.SectorNumber(sid),
+			},
+		})
+		require.NoError(t, err)
+	}
+
+	waitUntil = di.Close + di.WPoStChallengeWindow
+	ts = client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
+	t.Logf("Now head.Height = %d", ts.Height())
+
+	p, err = client.StateMinerPower(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	require.Equal(t, p.MinerPower, p.TotalPower)
+	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*uint64(sectors-1)))
 }

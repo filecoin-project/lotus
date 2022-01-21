@@ -635,6 +635,8 @@ func (n *Ensemble) Start() *Ensemble {
 
 		n.t.Cleanup(func() { _ = stop(context.Background()) })
 
+		m.BaseAPI = m.StorageMiner
+
 		// Are we hitting this node through its RPC?
 		if m.options.rpc {
 			withRPC := minerRpc(n.t, m)

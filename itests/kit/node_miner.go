@@ -62,6 +62,8 @@ func (ms MinerSubsystem) All() [MinerSubsystems]bool {
 type TestMiner struct {
 	api.StorageMiner
 
+	BaseAPI api.StorageMiner
+
 	t *testing.T
 
 	// ListenAddr is the address on which an API server is listening, if an
