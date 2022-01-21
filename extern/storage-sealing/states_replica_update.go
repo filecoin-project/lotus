@@ -192,8 +192,7 @@ func (m *Sealing) handleReplicaUpdateWait(ctx statemachine.Context, sector Secto
 	}
 
 	if !si.SealedCID.Equals(*sector.UpdateSealed) {
-		log.Errorf("mismatch of expected onchain sealed cid after replica update, expected %s got %s", sector.UpdateSealed, si.SealedCID)
-		return ctx.Send(SectorAbortUpgrade{})
+		return ctx.Send(SectorAbortUpgrade{xerrors.Errorf("mismatch of expected onchain sealed cid after replica update, expected %s got %s", sector.UpdateSealed, si.SealedCID)})
 	}
 	return ctx.Send(SectorReplicaUpdateLanded{})
 }
