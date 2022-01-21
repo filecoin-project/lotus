@@ -112,6 +112,7 @@
   * [SealingAbort](#SealingAbort)
   * [SealingSchedDiag](#SealingSchedDiag)
 * [Sector](#Sector)
+  * [SectorAbortUpgrade](#SectorAbortUpgrade)
   * [SectorAddPieceToAny](#SectorAddPieceToAny)
   * [SectorCommitFlush](#SectorCommitFlush)
   * [SectorCommitPending](#SectorCommitPending)
@@ -1840,6 +1841,21 @@ Response: `{}`
 
 ## Sector
 
+
+### SectorAbortUpgrade
+SectorAbortUpgrade can be called on sectors that are in the process of being upgraded to abort it
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  9
+]
+```
+
+Response: `{}`
 
 ### SectorAddPieceToAny
 Add piece to an open sector. If no sectors with enough space are open,

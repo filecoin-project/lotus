@@ -524,6 +524,13 @@ func (m *Sealing) StartPacking(sid abi.SectorNumber) error {
 	return m.sectors.Send(uint64(sid), SectorStartPacking{})
 }
 
+func (m *Sealing) AbortUpgrade(sid abi.SectorNumber) error {
+	m.startupWait.Wait()
+
+	log.Infow("aborting upgrade of sector", "sector", sid, "trigger", "user")
+	return m.sectors.Send(uint64(sid), SectorAbortUpgrade{})
+}
+
 func proposalCID(deal api.PieceDealInfo) cid.Cid {
 	pc, err := deal.DealProposal.Cid()
 	if err != nil {
