@@ -560,7 +560,7 @@ func (l *LocalWorker) GenerateWindowPoSt(ctx context.Context, ppt abi.Registered
 	var wg sync.WaitGroup
 	wg.Add(len(sectors))
 
-	vproofs := make([][]byte, len(sectors))
+	vproofs := make([][]byte, 0, len(sectors))
 
 	for i, s := range sectors {
 		go func(i int, s storiface.PostSectorChallenge) {
@@ -575,17 +575,13 @@ func (l *LocalWorker) GenerateWindowPoSt(ctx context.Context, ppt abi.Registered
 					Number: s.SectorNumber,
 				})
 				slk.Unlock()
-				log.Errorf("get sector: %d, vanilla: %s, offset: %d", s.SectorNumber, vanilla)
+				log.Errorf("get sector: %d, vanilla: %s, err: %s", s.SectorNumber, vanilla, err)
 				return
 			}
-			vproofs[i] = vanilla
+			vproofs = append(vproofs, vanilla)
 		}(i, s)
 	}
 	wg.Wait()
-
-	if len(skipped) > 0 {
-		panic("todo") // big TODO
-	}
 
 	res, err := sb.GenerateWindowPoStWithVanilla(ctx, ppt, mid, randomness, vproofs, partitionIdx)
 

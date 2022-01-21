@@ -162,14 +162,14 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 			}
 
 			p, sk, err := m.generatePartitionWindowPost(cctx, spt, ppt, minerID, int(partIdx), sectors, randomness)
+			if len(sk) > 0 {
+				log.Errorf("generateWindowPost part:%d, skipped:%d, err: %+v", partIdx, len(sk), err)
+				flk.Lock()
+				skipped = append(skipped, sk...)
+				flk.Unlock()
+			}
 			if err != nil {
 				retErr = multierror.Append(retErr, xerrors.Errorf("partitionCount:%d err:%+v", partIdx, err))
-				if len(sk) > 0 {
-					log.Errorf("generateWindowPost groupCount:%d, skipped:%d, err: %+v", partIdx, len(sk), err)
-					flk.Lock()
-					skipped = append(skipped, sk...)
-					flk.Unlock()
-				}
 				return
 			}
 
@@ -186,7 +186,6 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 
 	if len(skipped) > 0 {
 		log.Warnf("GenerateWindowPoSt get skipped: %d", len(skipped))
-		return out, skipped, retErr
 	}
 
 	out = append(out, *postProofs)
