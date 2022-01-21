@@ -935,9 +935,14 @@ func (sb *Sealer) GenerateWinningPoStWithVanilla(ctx context.Context, proofType 
 
 func (sb *Sealer) GenerateWindowPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte, partitionIdx int) (proof5.PoStProof, error) {
 	pp, err := ffi.GenerateSinglePartitionWindowPoStWithVanilla(proofType, minerID, randomness, proofs, uint(partitionIdx))
-	if err != nil || pp == nil {
+	if err != nil {
 		return proof5.PoStProof{}, err
 	}
+	if pp == nil {
+		// should be impossible, but just in case do not panic
+		return proof5.PoStProof{}, xerrors.New("postproof was nil")
+	}
+
 	return proof5.PoStProof{
 		PoStProof:  pp.PoStProof,
 		ProofBytes: pp.ProofBytes,

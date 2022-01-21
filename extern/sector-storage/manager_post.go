@@ -111,7 +111,7 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 	// ceil(sectorInfos / maxPartitionSize)
 	partitionCount := uint64((len(sectorInfo) + int(maxPartitionSize) - 1) / int(maxPartitionSize))
 
-	log.Infof("generateWindowPoSt maxPartitionSize:%d partitionCount:%d \n", maxPartitionSize, partitionCount)
+	log.Infof("generateWindowPoSt maxPartitionSize:%d partitionCount:%d", maxPartitionSize, partitionCount)
 
 	var skipped []abi.SectorID
 	var flk sync.Mutex
