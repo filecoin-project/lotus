@@ -177,7 +177,3 @@ replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
 
 replace github.com/ipfs/go-path => github.com/ipfs/go-path v0.0.7
-
-replace github.com/filecoin-project/dagstore => /Users/aarshshah/go/src/github.com/filecoin-project/dagstore
-
-replace github.com/filecoin-project/go-fil-markets => /Users/aarshshah/go/src/github.com/filecoin-project/go-fil-markets
