@@ -42,7 +42,7 @@ func newTestWorker(wcfg WorkerConfig, lstor *stores.Local, ret storiface.WorkerR
 		lstor:       lstor,
 		ret:         ret,
 
-		mockSeal: mock.NewMockSectorMgr(nil),
+		mockSeal: mock.NewMockSectorMgr(nil, false),
 
 		session: uuid.New(),
 	}

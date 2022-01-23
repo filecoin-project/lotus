@@ -10,6 +10,8 @@ import (
 	"sync"
 	"time"
 
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+
 	"github.com/filecoin-project/go-indexer-core/store/storethehash"
 	"github.com/libp2p/go-libp2p-core/host"
 
@@ -40,6 +42,8 @@ import (
 const (
 	maxRecoverAttempts = 1
 	shardRegMarker     = ".shard-registration-complete"
+	maxBSCacheSize     = 20
+	maxBlkCacheSize    = 100
 )
 
 var log = logging.Logger("dagstore")
@@ -167,6 +171,10 @@ func (w *Wrapper) Start(ctx context.Context) error {
 	}
 
 	return w.dagst.Start(ctx)
+}
+
+func (w *Wrapper) AllShardsReadBlockstore(shardSelectorF dagstore.ShardSelectorF) (blockstore.Blockstore, error) {
+	return w.dagst.AllShardsReadBlockstore(shardSelectorF, maxBSCacheSize, maxBlkCacheSize)
 }
 
 func (w *Wrapper) traceLoop() {

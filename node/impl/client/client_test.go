@@ -48,7 +48,8 @@ func TestImportLocal(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEqual(t, cid.Undef, root)
 
-	list, err := a.ClientListImports(ctx)
+	list, err := a.
+		ClientListImports(ctx)
 	require.NoError(t, err)
 	require.Len(t, list, 1)
 

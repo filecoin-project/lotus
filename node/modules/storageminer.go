@@ -677,6 +677,7 @@ func RetrievalPricingFunc(cfg config.DealmakingConfig) func(_ dtypes.ConsiderOnl
 
 // RetrievalProvider creates a new retrieval provider attached to the provider blockstore
 func RetrievalProvider(
+	h host.Host,
 	maddr dtypes.MinerAddress,
 	adapter retrievalmarket.RetrievalProviderNode,
 	sa retrievalmarket.SectorAccessor,
@@ -693,6 +694,7 @@ func RetrievalProvider(
 	retrievalmarket.DefaultPricePerByte = big.Zero() // todo: for whatever reason this is a global var in markets
 
 	return retrievalimpl.NewProvider(
+		h,
 		address.Address(maddr),
 		adapter,
 		sa,
