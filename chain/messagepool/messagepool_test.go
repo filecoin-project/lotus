@@ -9,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
@@ -761,5 +762,299 @@ func TestUpdates(t *testing.T) {
 	_, ok := <-ch
 	if ok {
 		t.Fatal("expected closed channel, but got an update instead")
+	}
+}
+
+func TestMessageBelowMinGasFee(t *testing.T) {
+	tma := newTestMpoolAPI()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	assert.NoError(t, err)
+
+	from, err := w.WalletNew(context.Background(), types.KTBLS)
+	assert.NoError(t, err)
+
+	tma.setBalance(from, 1000e9)
+
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	assert.NoError(t, err)
+
+	to := mock.Address(1001)
+
+	// fee is just below minimum gas fee
+	fee := minimumBaseFee.Uint64() - 1
+	{
+		msg := &types.Message{
+			To:         to,
+			From:       from,
+			Value:      types.NewInt(1),
+			Nonce:      0,
+			GasLimit:   50000000,
+			GasFeeCap:  types.NewInt(fee),
+			GasPremium: types.NewInt(1),
+			Params:     make([]byte, 32<<10),
+		}
+
+		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), api.MsgMeta{})
+		if err != nil {
+			panic(err)
+		}
+		sm := &types.SignedMessage{
+			Message:   *msg,
+			Signature: *sig,
+		}
+		err = mp.Add(context.TODO(), sm)
+		assert.ErrorIs(t, err, ErrGasFeeCapTooLow)
+	}
+}
+
+func TestMessageValueTooHigh(t *testing.T) {
+	tma := newTestMpoolAPI()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	assert.NoError(t, err)
+
+	from, err := w.WalletNew(context.Background(), types.KTBLS)
+	assert.NoError(t, err)
+
+	tma.setBalance(from, 1000e9)
+
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	assert.NoError(t, err)
+
+	to := mock.Address(1001)
+
+	totalFil := types.TotalFilecoinInt
+	extra := types.NewInt(1)
+
+	value := types.BigAdd(totalFil, extra)
+	{
+		msg := &types.Message{
+			To:         to,
+			From:       from,
+			Value:      value,
+			Nonce:      0,
+			GasLimit:   50000000,
+			GasFeeCap:  types.NewInt(minimumBaseFee.Uint64()),
+			GasPremium: types.NewInt(1),
+			Params:     make([]byte, 32<<10),
+		}
+
+		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), api.MsgMeta{})
+		if err != nil {
+			panic(err)
+		}
+		sm := &types.SignedMessage{
+			Message:   *msg,
+			Signature: *sig,
+		}
+		err = mp.Add(context.TODO(), sm)
+		assert.Error(t, err)
+	}
+}
+
+func TestMessageSignatureInvalid(t *testing.T) {
+	tma := newTestMpoolAPI()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	assert.NoError(t, err)
+
+	from, err := w.WalletNew(context.Background(), types.KTBLS)
+	assert.NoError(t, err)
+
+	tma.setBalance(from, 1000e9)
+
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	assert.NoError(t, err)
+
+	to := mock.Address(1001)
+
+	{
+		msg := &types.Message{
+			To:         to,
+			From:       from,
+			Value:      types.NewInt(1),
+			Nonce:      0,
+			GasLimit:   50000000,
+			GasFeeCap:  types.NewInt(minimumBaseFee.Uint64()),
+			GasPremium: types.NewInt(1),
+			Params:     make([]byte, 32<<10),
+		}
+
+		badSig := &crypto.Signature{
+			Type: crypto.SigTypeSecp256k1,
+			Data: make([]byte, 0),
+		}
+		sm := &types.SignedMessage{
+			Message:   *msg,
+			Signature: *badSig,
+		}
+		err = mp.Add(context.TODO(), sm)
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "with nonce 0 already in mpool")
+	}
+}
+
+func TestAddMessageTwice(t *testing.T) {
+	tma := newTestMpoolAPI()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	assert.NoError(t, err)
+
+	from, err := w.WalletNew(context.Background(), types.KTBLS)
+	assert.NoError(t, err)
+
+	tma.setBalance(from, 1000e9)
+
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	assert.NoError(t, err)
+
+	to := mock.Address(1001)
+
+	{
+		msg := &types.Message{
+			To:         to,
+			From:       from,
+			Value:      types.NewInt(1),
+			Nonce:      0,
+			GasLimit:   50000000,
+			GasFeeCap:  types.NewInt(minimumBaseFee.Uint64()),
+			GasPremium: types.NewInt(1),
+			Params:     make([]byte, 32<<10),
+		}
+
+		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), api.MsgMeta{})
+		if err != nil {
+			panic(err)
+		}
+		sm := &types.SignedMessage{
+			Message:   *msg,
+			Signature: *sig,
+		}
+		mustAdd(t, mp, sm)
+
+		err = mp.Add(context.TODO(), sm)
+		assert.Contains(t, err.Error(), "with nonce 0 already in mpool")
+	}
+}
+
+func TestAddMessageTwiceNonceGap(t *testing.T) {
+	tma := newTestMpoolAPI()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	assert.NoError(t, err)
+
+	from, err := w.WalletNew(context.Background(), types.KTBLS)
+	assert.NoError(t, err)
+
+	tma.setBalance(from, 1000e9)
+
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	assert.NoError(t, err)
+
+	to := mock.Address(1001)
+
+	{
+		msg := &types.Message{
+			To:         to,
+			From:       from,
+			Value:      types.NewInt(1),
+			Nonce:      1,
+			GasLimit:   50000000,
+			GasFeeCap:  types.NewInt(minimumBaseFee.Uint64()),
+			GasPremium: types.NewInt(1),
+			Params:     make([]byte, 32<<10),
+		}
+
+		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), api.MsgMeta{})
+		if err != nil {
+			panic(err)
+		}
+		sm := &types.SignedMessage{
+			Message:   *msg,
+			Signature: *sig,
+		}
+		mustAdd(t, mp, sm)
+
+		// then try to add message again
+		err = mp.Add(context.TODO(), sm)
+		assert.Contains(t, err.Error(), "unfulfilled nonce gap")
+	}
+}
+
+func TestAddMessageTwiceCidDiff(t *testing.T) {
+	tma := newTestMpoolAPI()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	assert.NoError(t, err)
+
+	from, err := w.WalletNew(context.Background(), types.KTBLS)
+	assert.NoError(t, err)
+
+	tma.setBalance(from, 1000e9)
+
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	assert.NoError(t, err)
+
+	to := mock.Address(1001)
+
+	{
+		msg := &types.Message{
+			To:         to,
+			From:       from,
+			Value:      types.NewInt(1),
+			Nonce:      0,
+			GasLimit:   50000000,
+			GasFeeCap:  types.NewInt(minimumBaseFee.Uint64()),
+			GasPremium: types.NewInt(1),
+			Params:     make([]byte, 32<<10),
+		}
+
+		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), api.MsgMeta{})
+		if err != nil {
+			panic(err)
+		}
+		sm := &types.SignedMessage{
+			Message:   *msg,
+			Signature: *sig,
+		}
+		mustAdd(t, mp, sm)
+
+		// Create message with different data, so CID is different
+		msg2 := &types.Message{
+			To:         to,
+			From:       from,
+			Value:      types.NewInt(2),
+			Nonce:      0,
+			GasLimit:   50000000,
+			GasFeeCap:  types.NewInt(minimumBaseFee.Uint64()),
+			GasPremium: types.NewInt(1),
+			Params:     make([]byte, 32<<10),
+		}
+
+		sig, err = w.WalletSign(context.TODO(), from, msg2.Cid().Bytes(), api.MsgMeta{})
+		if err != nil {
+			panic(err)
+		}
+		sm = &types.SignedMessage{
+			Message:   *msg2,
+			Signature: *sig,
+		}
+
+		// then try to add message again
+		err = mp.Add(context.TODO(), sm)
+		assert.Contains(t, err.Error(), "replace by fee has too low GasPremium")
 	}
 }
