@@ -897,7 +897,7 @@ func TestMessageSignatureInvalid(t *testing.T) {
 		}
 		err = mp.Add(context.TODO(), sm)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "with nonce 0 already in mpool")
+		assert.Contains(t, err.Error(), "invalid signature length")
 	}
 }
 
@@ -1056,5 +1056,71 @@ func TestAddMessageTwiceCidDiff(t *testing.T) {
 		// then try to add message again
 		err = mp.Add(context.TODO(), sm)
 		assert.Contains(t, err.Error(), "replace by fee has too low GasPremium")
+	}
+}
+
+func TestAddMessageTwiceCidDiffReplaced(t *testing.T) {
+	tma := newTestMpoolAPI()
+
+	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+	assert.NoError(t, err)
+
+	from, err := w.WalletNew(context.Background(), types.KTBLS)
+	assert.NoError(t, err)
+
+	tma.setBalance(from, 1000e9)
+
+	ds := datastore.NewMapDatastore()
+
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	assert.NoError(t, err)
+
+	to := mock.Address(1001)
+
+	{
+		msg := &types.Message{
+			To:         to,
+			From:       from,
+			Value:      types.NewInt(1),
+			Nonce:      0,
+			GasLimit:   50000000,
+			GasFeeCap:  types.NewInt(minimumBaseFee.Uint64()),
+			GasPremium: types.NewInt(1),
+			Params:     make([]byte, 32<<10),
+		}
+
+		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), api.MsgMeta{})
+		if err != nil {
+			panic(err)
+		}
+		sm := &types.SignedMessage{
+			Message:   *msg,
+			Signature: *sig,
+		}
+		mustAdd(t, mp, sm)
+
+		// Create message with different data, so CID is different
+		msg2 := &types.Message{
+			To:        to,
+			From:      from,
+			Value:     types.NewInt(2),
+			Nonce:     0,
+			GasLimit:  50000000,
+			GasFeeCap: types.NewInt(minimumBaseFee.Uint64()),
+			// increase gas premium so the older message is overwritten
+			GasPremium: types.NewInt(msg.GasPremium.Uint64() * 2),
+			Params:     make([]byte, 32<<10),
+		}
+
+		sig, err = w.WalletSign(context.TODO(), from, msg2.Cid().Bytes(), api.MsgMeta{})
+		if err != nil {
+			panic(err)
+		}
+		sm = &types.SignedMessage{
+			Message:   *msg2,
+			Signature: *sig,
+		}
+
+		mustAdd(t, mp, sm)
 	}
 }
