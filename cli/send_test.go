@@ -1,3 +1,4 @@
+//stm: ignore
 //stm: #unit
 package cli
 

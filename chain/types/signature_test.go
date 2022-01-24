@@ -9,6 +9,7 @@ import (
 )
 
 func TestSignatureSerializeRoundTrip(t *testing.T) {
+	//stm: @CHAIN_TYPES_SIGNATURE_SERIALIZATION_001
 	s := &crypto.Signature{
 		Data: []byte("foo bar cat dog"),
 		Type: crypto.SigTypeBLS,
