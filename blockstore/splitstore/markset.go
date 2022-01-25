@@ -10,20 +10,12 @@ import (
 
 var errMarkSetClosed = errors.New("markset closed")
 
-// MarkSet is a utility to keep track of seen CID, and later query for them.
-//
-// * If the expected dataset is large, it can be backed by a datastore (e.g. bbolt).
-// * If a probabilistic result is acceptable, it can be backed by a bloom filter
+// MarkSet is an interface for tracking CIDs during chain and object walks
 type MarkSet interface {
+	ObjectVisitor
 	Mark(cid.Cid) error
 	Has(cid.Cid) (bool, error)
 	Close() error
-	SetConcurrent()
-}
-
-type MarkSetVisitor interface {
-	MarkSet
-	ObjectVisitor
 }
 
 type MarkSetEnv interface {
@@ -31,11 +23,7 @@ type MarkSetEnv interface {
 	// name is a unique name for this markset, mapped to the filesystem in disk-backed environments
 	// sizeHint is a hint about the expected size of the markset
 	Create(name string, sizeHint int64) (MarkSet, error)
-	// CreateVisitor is like Create, but returns a wider interface that supports atomic visits.
-	// It may not be supported by some markset types (e.g. bloom).
-	CreateVisitor(name string, sizeHint int64) (MarkSetVisitor, error)
-	// SupportsVisitor returns true if the marksets created by this environment support the visitor interface.
-	SupportsVisitor() bool
+	// Close closes the markset
 	Close() error
 }
 

@@ -227,7 +227,7 @@ func (s *SplitStore) trackTxnRefMany(cids []cid.Cid) {
 }
 
 // protect all pending transactional references
-func (s *SplitStore) protectTxnRefs(markSet MarkSetVisitor) error {
+func (s *SplitStore) protectTxnRefs(markSet MarkSet) error {
 	for {
 		var txnRefs map[cid.Cid]struct{}
 
@@ -299,7 +299,7 @@ func (s *SplitStore) protectTxnRefs(markSet MarkSetVisitor) error {
 
 // transactionally protect a reference by walking the object and marking.
 // concurrent markings are short circuited by checking the markset.
-func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSetVisitor) error {
+func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSet) error {
 	if err := s.checkClosing(); err != nil {
 		return err
 	}
@@ -397,7 +397,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "boundaryEpoch", boundaryEpoch, "inclMsgsEpoch", inclMsgsEpoch, "compactionIndex", s.compactionIndex)
 
-	markSet, err := s.markSetEnv.CreateVisitor("live", s.markSetSize)
+	markSet, err := s.markSetEnv.Create("live", s.markSetSize)
 	if err != nil {
 		return xerrors.Errorf("error creating mark set: %w", err)
 	}
@@ -602,8 +602,8 @@ func (s *SplitStore) beginTxnProtect() {
 	s.txnMissing = make(map[cid.Cid]struct{})
 }
 
-func (s *SplitStore) beginTxnMarking(markSet MarkSetVisitor) {
-	markSet.SetConcurrent()
+func (s *SplitStore) beginTxnMarking(markSet MarkSet) {
+	log.Info("beginning transactional marking")
 }
 
 func (s *SplitStore) endTxnProtect() {
@@ -1011,7 +1011,7 @@ func (s *SplitStore) purgeBatch(cids []cid.Cid, deleteBatch func([]cid.Cid) erro
 	return nil
 }
 
-func (s *SplitStore) purge(cids []cid.Cid, markSet MarkSetVisitor) error {
+func (s *SplitStore) purge(cids []cid.Cid, markSet MarkSet) error {
 	deadCids := make([]cid.Cid, 0, batchSize)
 	var purgeCnt, liveCnt int
 	defer func() {
@@ -1077,7 +1077,7 @@ func (s *SplitStore) purge(cids []cid.Cid, markSet MarkSetVisitor) error {
 // have this gem[TM].
 // My best guess is that they are parent message receipts or yet to be computed state roots; magik
 // thinks the cause may be block validation.
-func (s *SplitStore) waitForMissingRefs(markSet MarkSetVisitor) {
+func (s *SplitStore) waitForMissingRefs(markSet MarkSet) {
 	s.txnLk.Lock()
 	missing := s.txnMissing
 	s.txnMissing = nil
