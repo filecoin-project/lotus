@@ -14,6 +14,7 @@ import (
 	carindex "github.com/ipld/go-car/v2/index"
 
 	"github.com/ipfs/go-cid"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
@@ -161,6 +162,10 @@ func (m *mockDagStore) GetShardInfo(k shard.Key) (dagstore.ShardInfo, error) {
 }
 
 func (m *mockDagStore) AllShardsInfo() dagstore.AllShardsInfo {
+	panic("implement me")
+}
+
+func (m *mockDagStore) AllShardsReadBlockstore(shardSelector dagstore.ShardSelectorF, maxCacheSize int, _ int) (blockstore.Blockstore, error) {
 	panic("implement me")
 }
 

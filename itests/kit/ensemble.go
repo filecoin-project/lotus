@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/host"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -100,10 +102,11 @@ func init() {
 //   kit.EnsembleTwoOne()
 //
 type Ensemble struct {
+	ClientHost   host.Host
 	t            *testing.T
 	bootstrapped bool
 	genesisBlock bytes.Buffer
-	mn           mocknet.Mocknet
+	MockNet      mocknet.Mocknet
 	options      *ensembleOpts
 
 	inactive struct {
@@ -277,7 +280,7 @@ func (n *Ensemble) Start() *Ensemble {
 		// We haven't been bootstrapped yet, we need to generate genesis and
 		// create the networking backbone.
 		gtempl = n.generateGenesis()
-		n.mn = mocknet.New()
+		n.MockNet = mocknet.New()
 	}
 
 	// ---------------------
@@ -291,7 +294,7 @@ func (n *Ensemble) Start() *Ensemble {
 			node.FullAPI(&full.FullNode, node.Lite(full.options.lite)),
 			node.Base(),
 			node.Repo(r),
-			node.MockHost(n.mn),
+			node.MockHost(n.MockNet),
 			node.Test(),
 
 			// so that we subscribe to pubsub topics immediately
@@ -351,7 +354,7 @@ func (n *Ensemble) Start() *Ensemble {
 	n.inactive.fullnodes = n.inactive.fullnodes[:0]
 
 	// Link all the nodes.
-	err := n.mn.LinkAll()
+	err := n.MockNet.LinkAll()
 	require.NoError(n.t, err)
 
 	// ---------------------
@@ -524,7 +527,7 @@ func (n *Ensemble) Start() *Ensemble {
 			node.Repo(r),
 			node.Test(),
 
-			node.If(!m.options.disableLibp2p, node.MockHost(n.mn)),
+			node.If(!m.options.disableLibp2p, node.MockHost(n.MockNet)),
 
 			node.Override(new(v1api.FullNode), m.FullNode.FullNode),
 			node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, m.ActorAddr)),
@@ -562,7 +565,7 @@ func (n *Ensemble) Start() *Ensemble {
 		if n.options.mockProofs {
 			opts = append(opts,
 				node.Override(new(*mock.SectorMgr), func() (*mock.SectorMgr, error) {
-					return mock.NewMockSectorMgr(presealSectors), nil
+					return mock.NewMockSectorMgr(presealSectors, n.options.alwaysUnsealed), nil
 				}),
 				node.Override(new(sectorstorage.SectorManager), node.From(new(*mock.SectorMgr))),
 				node.Override(new(sectorstorage.Unsealer), node.From(new(*mock.SectorMgr))),
@@ -612,7 +615,7 @@ func (n *Ensemble) Start() *Ensemble {
 	n.inactive.miners = n.inactive.miners[:0]
 
 	// Link all the nodes.
-	err = n.mn.LinkAll()
+	err = n.MockNet.LinkAll()
 	require.NoError(n.t, err)
 
 	if !n.bootstrapped && len(n.active.miners) > 0 {

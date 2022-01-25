@@ -28,10 +28,11 @@ import (
 var log = logging.Logger("sbmock")
 
 type SectorMgr struct {
-	sectors      map[abi.SectorID]*sectorState
-	failPoSt     bool
-	pieces       map[cid.Cid][]byte
-	nextSectorID abi.SectorNumber
+	sectors        map[abi.SectorID]*sectorState
+	failPoSt       bool
+	pieces         map[cid.Cid][]byte
+	nextSectorID   abi.SectorNumber
+	alwaysUnsealed bool
 
 	lk sync.Mutex
 }
@@ -40,7 +41,7 @@ type mockVerifProver struct {
 	aggregates map[string]proof.AggregateSealVerifyProofAndInfos // used for logging bad verifies
 }
 
-func NewMockSectorMgr(genesisSectors []abi.SectorID) *SectorMgr {
+func NewMockSectorMgr(genesisSectors []abi.SectorID, alwaysUnsealed bool) *SectorMgr {
 	sectors := make(map[abi.SectorID]*sectorState)
 	for _, sid := range genesisSectors {
 		sectors[sid] = &sectorState{
@@ -50,9 +51,10 @@ func NewMockSectorMgr(genesisSectors []abi.SectorID) *SectorMgr {
 	}
 
 	return &SectorMgr{
-		sectors:      sectors,
-		pieces:       map[cid.Cid][]byte{},
-		nextSectorID: 5,
+		sectors:        sectors,
+		pieces:         map[cid.Cid][]byte{},
+		nextSectorID:   5,
+		alwaysUnsealed: alwaysUnsealed,
 	}
 }
 
@@ -125,7 +127,7 @@ func (mgr *SectorMgr) AcquireSectorNumber() (abi.SectorNumber, error) {
 }
 
 func (mgr *SectorMgr) IsUnsealed(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
-	return false, nil
+	return mgr.alwaysUnsealed, nil
 }
 
 func (mgr *SectorMgr) ForceState(sid storage.SectorRef, st int) error {

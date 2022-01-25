@@ -7,6 +7,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-bitswap"
+	"github.com/ipfs/go-bitswap/network"
+	"github.com/ipfs/go-datastore"
+	bstore "github.com/ipfs/go-ipfs-blockstore"
+	rhelp "github.com/libp2p/go-libp2p-routing-helpers"
+
 	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -60,8 +66,15 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 	eightMBSectorsOpt := kit.SectorSize(8 << 20)
 
 	// Create a client, and a miner with its own full node
-	_, client, miner, ens := kit.EnsembleTwoOne(t, kit.MockProofs(), bsaOpt, eightMBSectorsOpt)
+	_, client, miner, ens := kit.EnsembleTwoOne(t, kit.MockProofs(), bsaOpt, eightMBSectorsOpt, kit.AlwaysUnsealed())
 	ens.InterconnectAll().BeginMining(250 * time.Millisecond)
+
+	hs, err := ens.MockNet.GenPeer()
+	require.NoError(t, err)
+
+	bitswapbs := bstore.NewBlockstore(datastore.NewMapDatastore())
+
+	bsclient := bitswap.New(ctx, network.NewFromIpfsHost(hs, rhelp.Null{}), bitswapbs, bitswap.MaxOutstandingBytesPerPeer(1<<30))
 
 	dh := kit.NewDealHarness(t, client, miner, miner)
 
@@ -102,6 +115,7 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 	dp.Data.Root = res.Root
 	dp.DealStartEpoch = startEpoch
 	dp.EpochPrice = abi.NewTokenAmount(62500000) // minimum asking price
+	dp.FastRetrieval = true
 	dealCid := dh.StartDeal(ctx, dp)
 
 	// Wait for the deal to be sealed
@@ -122,8 +136,19 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 	cidIndices := []int{1, 11, 27, 32, 47}
 	for _, val := range cidIndices {
 		t.Logf("performing retrieval for cid at index %d", val)
-
+		require.NoError(t, ens.MockNet.LinkAll())
+		require.NoError(t, ens.MockNet.ConnectAllButSelf())
 		targetCid := cids[val]
+		blk, err := bsclient.GetBlock(ctx, targetCid)
+		require.NoError(t, err)
+		require.NotEmpty(t, blk)
+		b, err := bitswapbs.Has(ctx, targetCid)
+		require.NoError(t, err)
+		require.True(t, b)
+		blk, err = bitswapbs.Get(ctx, targetCid)
+		require.NoError(t, err)
+		t.Logf("bitswap retrieval successfully completed for block %s with block content %s", targetCid, blk)
+
 		offer, err := client.ClientMinerQueryOffer(ctx, miner.ActorAddr, targetCid, &info.PieceCID)
 		require.NoError(t, err)
 		require.Empty(t, offer.Err)
@@ -158,5 +183,6 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 
 		kit.AssertFilesEqual(t, tmp.Name(), outputCar)
 		t.Log("car files match")
+
 	}
 }

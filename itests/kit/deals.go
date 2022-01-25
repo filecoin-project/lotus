@@ -410,6 +410,7 @@ type RunConcurrentDealsOpts struct {
 }
 
 func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
+
 	ctx := context.Background()
 	errgrp, _ := errgroup.WithContext(context.Background())
 	for i := 0; i < opts.N; i++ {

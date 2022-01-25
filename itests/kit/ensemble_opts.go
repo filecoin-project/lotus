@@ -19,10 +19,11 @@ type genesisAccount struct {
 }
 
 type ensembleOpts struct {
-	pastOffset   time.Duration
-	verifiedRoot genesisAccount
-	accounts     []genesisAccount
-	mockProofs   bool
+	pastOffset     time.Duration
+	verifiedRoot   genesisAccount
+	accounts       []genesisAccount
+	mockProofs     bool
+	alwaysUnsealed bool
 
 	upgradeSchedule stmgr.UpgradeSchedule
 }
@@ -33,6 +34,13 @@ var DefaultEnsembleOpts = ensembleOpts{
 		Height:  -1,
 		Network: build.NewestNetworkVersion,
 	}},
+}
+
+func AlwaysUnsealed() EnsembleOpt {
+	return func(opts *ensembleOpts) error {
+		opts.alwaysUnsealed = true
+		return nil
+	}
 }
 
 // MockProofs activates mock proofs for the entire ensemble.
