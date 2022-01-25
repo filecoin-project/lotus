@@ -711,6 +711,9 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 		if workers > runtime.NumCPU()/2 {
 			workers = runtime.NumCPU() / 2
 		}
+		if workers < 2 {
+			workers = 2
+		}
 
 		workch := make(chan cid.Cid, len(walking))
 		for _, c := range walking {
