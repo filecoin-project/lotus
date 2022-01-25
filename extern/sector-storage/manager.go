@@ -722,7 +722,6 @@ func (m *Manager) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, p
 	selector := newAllocSelector(m.index, storiface.FTUpdate|storiface.FTUpdateCache, storiface.PathSealing)
 
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTReplicaUpdate, selector, m.schedFetch(sector, storiface.FTUnsealed|storiface.FTSealed|storiface.FTCache, storiface.PathSealing, storiface.AcquireCopy), func(ctx context.Context, w Worker) error {
-		log.Errorf("scheduled work for replica update")
 		err := m.startWork(ctx, w, wk)(w.ReplicaUpdate(ctx, sector, pieces))
 		if err != nil {
 			return xerrors.Errorf("startWork: %w", err)
