@@ -129,6 +129,7 @@ func runSimulateCmd(_ *cli.Context) error {
 		CircSupply: circSupply.FilCirculating,
 		BaseFee:    baseFee,
 		Rand:       rand,
+		// TODO NetworkVersion
 	})
 	if err != nil {
 		return fmt.Errorf("failed to apply message: %w", err)

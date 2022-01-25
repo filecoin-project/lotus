@@ -5,6 +5,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/go-bitfield"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -110,7 +111,7 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 
 	// Watch for a pre-commit message to the provider.
 	matchEvent := func(msg *types.Message) (bool, error) {
-		matched := msg.To == provider && (msg.Method == miner.Methods.PreCommitSector || msg.Method == miner.Methods.PreCommitSectorBatch)
+		matched := msg.To == provider && (msg.Method == miner.Methods.PreCommitSector || msg.Method == miner.Methods.PreCommitSectorBatch || msg.Method == miner.Methods.ProveReplicaUpdates)
 		return matched, nil
 	}
 
@@ -143,6 +144,20 @@ func (mgr *SectorCommittedManager) OnDealSectorPreCommitted(ctx context.Context,
 		res, err := mgr.dealInfo.GetCurrentDealInfo(ctx, ts.Key().Bytes(), &proposal, publishCid)
 		if err != nil {
 			return false, err
+		}
+
+		// If this is a replica update method that succeeded the deal is active
+		if msg.Method == miner.Methods.ProveReplicaUpdates {
+			sn, err := dealSectorInReplicaUpdateSuccess(msg, rec, res)
+			if err != nil {
+				return false, err
+			}
+			if sn != nil {
+				cb(*sn, true, nil)
+				return false, nil
+			}
+			// Didn't find the deal ID in this message, so keep looking
+			return true, nil
 		}
 
 		// Extract the message parameters
@@ -262,6 +277,42 @@ func (mgr *SectorCommittedManager) OnDealSectorCommitted(ctx context.Context, pr
 	}
 
 	return nil
+}
+
+func dealSectorInReplicaUpdateSuccess(msg *types.Message, rec *types.MessageReceipt, res sealing.CurrentDealInfo) (*abi.SectorNumber, error) {
+	var params miner.ProveReplicaUpdatesParams
+	if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
+		return nil, xerrors.Errorf("unmarshal prove replica update: %w", err)
+	}
+
+	var seekUpdate miner.ReplicaUpdate
+	var found bool
+	for _, update := range params.Updates {
+		for _, did := range update.Deals {
+			if did == res.DealID {
+				seekUpdate = update
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		return nil, nil
+	}
+
+	// check that this update passed validation steps
+	var successBf bitfield.BitField
+	if err := successBf.UnmarshalCBOR(bytes.NewReader(rec.Return)); err != nil {
+		return nil, xerrors.Errorf("unmarshal return value: %w", err)
+	}
+	success, err := successBf.IsSet(uint64(seekUpdate.SectorID))
+	if err != nil {
+		return nil, xerrors.Errorf("failed to check success of replica update: %w", err)
+	}
+	if !success {
+		return nil, xerrors.Errorf("replica update %d failed", seekUpdate.SectorID)
+	}
+	return &seekUpdate.SectorID, nil
 }
 
 // dealSectorInPreCommitMsg tries to find a sector containing the specified deal

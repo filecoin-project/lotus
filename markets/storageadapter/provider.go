@@ -4,7 +4,6 @@ package storageadapter
 
 import (
 	"context"
-	"io"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -88,7 +87,7 @@ func (n *ProviderNodeAdapter) PublishDeals(ctx context.Context, deal storagemark
 	return n.dealPublisher.Publish(ctx, deal.ClientDealProposal)
 }
 
-func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize abi.UnpaddedPieceSize, pieceData io.Reader) (*storagemarket.PackingResult, error) {
+func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagemarket.MinerDeal, pieceSize abi.UnpaddedPieceSize, pieceData shared.ReadSeekStarter) (*storagemarket.PackingResult, error) {
 	if deal.PublishCid == nil {
 		return nil, xerrors.Errorf("deal.PublishCid can't be nil")
 	}
@@ -104,17 +103,32 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 		KeepUnsealed: deal.FastRetrieval,
 	}
 
+	// Attempt to add the piece to the sector
 	p, offset, err := n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
 	curTime := build.Clock.Now()
 	for build.Clock.Since(curTime) < addPieceRetryTimeout {
+		// Check if there was an error because of too many sectors being sealed
 		if !xerrors.Is(err, sealing.ErrTooManySectorsSealing) {
 			if err != nil {
 				log.Errorf("failed to addPiece for deal %d, err: %v", deal.DealID, err)
 			}
+
+			// There was either a fatal error or no error. In either case
+			// don't retry AddPiece
 			break
 		}
+
+		// The piece could not be added to the sector because there are too
+		// many sectors being sealed, back-off for a while before trying again
 		select {
 		case <-build.Clock.After(addPieceRetryWait):
+			// Reset the reader to the start
+			err = pieceData.SeekStart()
+			if err != nil {
+				return nil, xerrors.Errorf("failed to reset piece reader to start before retrying AddPiece for deal %d: %w", deal.DealID, err)
+			}
+
+			// Attempt to add the piece again
 			p, offset, err = n.secb.AddPiece(ctx, pieceSize, pieceData, sdInfo)
 		case <-ctx.Done():
 			return nil, xerrors.New("context expired while waiting to retry AddPiece")

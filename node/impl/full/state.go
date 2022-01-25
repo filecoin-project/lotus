@@ -1365,7 +1365,7 @@ func (m *StateModule) StateDealProviderCollateralBounds(ctx context.Context, siz
 		powClaim.QualityAdjPower,
 		rewPow,
 		circ.FilCirculating,
-		m.StateManager.GetNtwkVersion(ctx, ts.Height()))
+		m.StateManager.GetNetworkVersion(ctx, ts.Height()))
 	if err != nil {
 		return api.DealCollateralBounds{}, xerrors.Errorf("getting deal provider coll bounds: %w", err)
 	}
@@ -1418,7 +1418,7 @@ func (m *StateModule) StateNetworkVersion(ctx context.Context, tsk types.TipSetK
 
 	// TODO: Height-1 to be consistent with the rest of the APIs?
 	// But that's likely going to break a bunch of stuff.
-	return m.StateManager.GetNtwkVersion(ctx, ts.Height()), nil
+	return m.StateManager.GetNetworkVersion(ctx, ts.Height()), nil
 }
 
 func (a *StateAPI) StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {

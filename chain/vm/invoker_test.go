@@ -2,7 +2,6 @@
 package vm
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"testing"
@@ -138,9 +137,7 @@ func TestInvokerBasic(t *testing.T) {
 
 	{
 		_, aerr := code[1](&Runtime{
-			vm: &VM{ntwkVersion: func(ctx context.Context, epoch abi.ChainEpoch) network.Version {
-				return network.Version0
-			}},
+			vm:      &VM{networkVersion: network.Version0},
 			Message: &basicRtMessage{},
 		}, []byte{99})
 		if aerrors.IsFatal(aerr) {
@@ -151,9 +148,7 @@ func TestInvokerBasic(t *testing.T) {
 
 	{
 		_, aerr := code[1](&Runtime{
-			vm: &VM{ntwkVersion: func(ctx context.Context, epoch abi.ChainEpoch) network.Version {
-				return network.Version7
-			}},
+			vm:      &VM{networkVersion: network.Version7},
 			Message: &basicRtMessage{},
 		}, []byte{99})
 		if aerrors.IsFatal(aerr) {

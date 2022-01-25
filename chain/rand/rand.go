@@ -103,17 +103,21 @@ func (sr *stateRand) getChainRandomness(ctx context.Context, pers crypto.DomainS
 	return DrawRandomness(mtb.Ticket.VRFProof, pers, round, entropy)
 }
 
+type NetworkVersionGetter func(context.Context, abi.ChainEpoch) network.Version
+
 type stateRand struct {
-	cs     *store.ChainStore
-	blks   []cid.Cid
-	beacon beacon.Schedule
+	cs                   *store.ChainStore
+	blks                 []cid.Cid
+	beacon               beacon.Schedule
+	networkVersionGetter NetworkVersionGetter
 }
 
-func NewStateRand(cs *store.ChainStore, blks []cid.Cid, b beacon.Schedule) vm.Rand {
+func NewStateRand(cs *store.ChainStore, blks []cid.Cid, b beacon.Schedule, networkVersionGetter NetworkVersionGetter) vm.Rand {
 	return &stateRand{
-		cs:     cs,
-		blks:   blks,
-		beacon: b,
+		cs:                   cs,
+		blks:                 blks,
+		beacon:               b,
+		networkVersionGetter: networkVersionGetter,
 	}
 }
 
@@ -166,7 +170,9 @@ func (sr *stateRand) getBeaconRandomnessV3(ctx context.Context, pers crypto.Doma
 	return DrawRandomness(be.Data, pers, filecoinEpoch, entropy)
 }
 
-func (sr *stateRand) GetChainRandomness(ctx context.Context, nv network.Version, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (sr *stateRand) GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	nv := sr.networkVersionGetter(ctx, filecoinEpoch)
+
 	if nv >= network.Version13 {
 		return sr.getChainRandomness(ctx, pers, filecoinEpoch, entropy, false)
 	}
@@ -174,7 +180,9 @@ func (sr *stateRand) GetChainRandomness(ctx context.Context, nv network.Version,
 	return sr.getChainRandomness(ctx, pers, filecoinEpoch, entropy, true)
 }
 
-func (sr *stateRand) GetBeaconRandomness(ctx context.Context, nv network.Version, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (sr *stateRand) GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, filecoinEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+	nv := sr.networkVersionGetter(ctx, filecoinEpoch)
+
 	if nv >= network.Version14 {
 		return sr.getBeaconRandomnessV3(ctx, pers, filecoinEpoch, entropy)
 	} else if nv == network.Version13 {

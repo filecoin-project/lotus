@@ -23,6 +23,7 @@ import (
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
+	miner7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -282,6 +283,7 @@ type SectorPreCommitOnChainInfo struct {
 type PoStPartition = miner0.PoStPartition
 type RecoveryDeclaration = miner0.RecoveryDeclaration
 type FaultDeclaration = miner0.FaultDeclaration
+type ReplicaUpdate = miner7.ReplicaUpdate
 
 // Params
 type DeclareFaultsParams = miner0.DeclareFaultsParams
@@ -290,6 +292,7 @@ type SubmitWindowedPoStParams = miner0.SubmitWindowedPoStParams
 type ProveCommitSectorParams = miner0.ProveCommitSectorParams
 type DisputeWindowedPoStParams = miner3.DisputeWindowedPoStParams
 type ProveCommitAggregateParams = miner5.ProveCommitAggregateParams
+type ProveReplicaUpdatesParams = miner7.ProveReplicaUpdatesParams
 
 func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.RegisteredPoStProof) (abi.RegisteredSealProof, error) {
 	// We added support for the new proofs in network version 7, and removed support for the old

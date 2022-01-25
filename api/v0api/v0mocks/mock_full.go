@@ -1724,6 +1724,21 @@ func (mr *MockFullNodeMockRecorder) NetFindPeer(arg0, arg1 interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetFindPeer", reflect.TypeOf((*MockFullNode)(nil).NetFindPeer), arg0, arg1)
 }
 
+// NetLimit mocks base method.
+func (m *MockFullNode) NetLimit(arg0 context.Context, arg1 string) (api.NetLimit, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetLimit", arg0, arg1)
+	ret0, _ := ret[0].(api.NetLimit)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetLimit indicates an expected call of NetLimit.
+func (mr *MockFullNodeMockRecorder) NetLimit(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetLimit", reflect.TypeOf((*MockFullNode)(nil).NetLimit), arg0, arg1)
+}
+
 // NetPeerInfo mocks base method.
 func (m *MockFullNode) NetPeerInfo(arg0 context.Context, arg1 peer.ID) (*api.ExtendedPeerInfo, error) {
 	m.ctrl.T.Helper()
@@ -1767,6 +1782,35 @@ func (m *MockFullNode) NetPubsubScores(arg0 context.Context) ([]api.PubsubScore,
 func (mr *MockFullNodeMockRecorder) NetPubsubScores(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetPubsubScores", reflect.TypeOf((*MockFullNode)(nil).NetPubsubScores), arg0)
+}
+
+// NetSetLimit mocks base method.
+func (m *MockFullNode) NetSetLimit(arg0 context.Context, arg1 string, arg2 api.NetLimit) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetSetLimit", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// NetSetLimit indicates an expected call of NetSetLimit.
+func (mr *MockFullNodeMockRecorder) NetSetLimit(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetSetLimit", reflect.TypeOf((*MockFullNode)(nil).NetSetLimit), arg0, arg1, arg2)
+}
+
+// NetStat mocks base method.
+func (m *MockFullNode) NetStat(arg0 context.Context, arg1 string) (api.NetStat, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetStat", arg0, arg1)
+	ret0, _ := ret[0].(api.NetStat)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetStat indicates an expected call of NetStat.
+func (mr *MockFullNodeMockRecorder) NetStat(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetStat", reflect.TypeOf((*MockFullNode)(nil).NetStat), arg0, arg1)
 }
 
 // PaychAllocateLane mocks base method.
