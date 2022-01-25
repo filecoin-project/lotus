@@ -5,6 +5,7 @@ import (
 	"errors"
 	"runtime"
 	"sort"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -306,7 +307,7 @@ func (s *SplitStore) doTxnProtect(root cid.Cid, markSet MarkSet) error {
 
 	// Note: cold objects are deleted heaviest first, so the consituents of an object
 	// cannot be deleted before the object itself.
-	return s.walkObjectIncomplete(root, tmpVisitor(),
+	return s.walkObjectIncomplete(root, newTmpVisitor(),
 		func(c cid.Cid) error {
 			if isUnitaryObject(c) {
 				return errStopWalk
@@ -621,26 +622,31 @@ func (s *SplitStore) endTxnProtect() {
 
 func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEpoch,
 	visitor ObjectVisitor, f func(cid.Cid) error) error {
-	var walked *cid.Set
+	var walked ObjectVisitor
+	var mx sync.Mutex
 	toWalk := ts.Cids()
-	walkCnt := 0
-	scanCnt := 0
+	walkCnt := new(int64)
+	scanCnt := new(int64)
 
 	stopWalk := func(_ cid.Cid) error { return errStopWalk }
 
 	walkBlock := func(c cid.Cid) error {
-		if !walked.Visit(c) {
+		visit, err := walked.Visit(c)
+		if err != nil {
+			return err
+		}
+		if !visit {
 			return nil
 		}
 
-		walkCnt++
+		atomic.AddInt64(walkCnt, 1)
 
 		if err := f(c); err != nil {
 			return err
 		}
 
 		var hdr types.BlockHeader
-		err := s.view(c, func(data []byte) error {
+		err = s.view(c, func(data []byte) error {
 			return hdr.UnmarshalCBOR(bytes.NewBuffer(data))
 		})
 
@@ -676,14 +682,21 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 			if err := s.walkObject(hdr.ParentStateRoot, visitor, f); err != nil {
 				return xerrors.Errorf("error walking state root (cid: %s): %w", hdr.ParentStateRoot, err)
 			}
-			scanCnt++
+			atomic.AddInt64(scanCnt, 1)
 		}
 
 		if hdr.Height > 0 {
+			mx.Lock()
 			toWalk = append(toWalk, hdr.Parents...)
+			mx.Unlock()
 		}
 
 		return nil
+	}
+
+	workers := runtime.NumCPU() / 2
+	if workers < 2 {
+		workers = 2
 	}
 
 	for len(toWalk) > 0 {
@@ -695,17 +708,34 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 		// the walk is BFS, so we can reset the walked set in every iteration and avoid building up
 		// a set that contains all blocks (1M epochs -> 5M blocks -> 200MB worth of memory and growing
 		// over time)
-		walked = cid.NewSet()
+		walked = newConcurrentVisitor()
 		walking := toWalk
 		toWalk = nil
+
+		workch := make(chan cid.Cid, len(walking))
 		for _, c := range walking {
-			if err := walkBlock(c); err != nil {
-				return xerrors.Errorf("error walking block (cid: %s): %w", c, err)
-			}
+			workch <- c
+		}
+		close(workch)
+
+		g := new(errgroup.Group)
+		for i := 0; i < workers; i++ {
+			g.Go(func() error {
+				for c := range workch {
+					if err := walkBlock(c); err != nil {
+						return xerrors.Errorf("error walking block (cid: %s): %w", c, err)
+					}
+				}
+				return nil
+			})
+		}
+
+		if err := g.Wait(); err != nil {
+			return err
 		}
 	}
 
-	log.Infow("chain walk done", "walked", walkCnt, "scanned", scanCnt)
+	log.Infow("chain walk done", "walked", *walkCnt, "scanned", *scanCnt)
 
 	return nil
 }
@@ -1106,7 +1136,7 @@ func (s *SplitStore) waitForMissingRefs(markSet MarkSet) {
 		}
 
 		towalk := missing
-		visitor := tmpVisitor()
+		visitor := newTmpVisitor()
 		missing = make(map[cid.Cid]struct{})
 
 		for c := range towalk {
