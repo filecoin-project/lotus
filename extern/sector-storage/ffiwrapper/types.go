@@ -4,9 +4,7 @@ import (
 	"context"
 	"io"
 
-	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
-
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/ipfs/go-cid"
 
@@ -36,11 +34,11 @@ type Storage interface {
 }
 
 type Verifier interface {
-	VerifySeal(proof5.SealVerifyInfo) (bool, error)
-	VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error)
-	VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (bool, error)
-	VerifyWinningPoSt(ctx context.Context, info proof5.WinningPoStVerifyInfo) (bool, error)
-	VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoStVerifyInfo) (bool, error)
+	VerifySeal(proof.SealVerifyInfo) (bool, error)
+	VerifyAggregateSeals(aggregate proof.AggregateSealVerifyProofAndInfos) (bool, error)
+	VerifyReplicaUpdate(update proof.ReplicaUpdateInfo) (bool, error)
+	VerifyWinningPoSt(ctx context.Context, info proof.WinningPoStVerifyInfo) (bool, error)
+	VerifyWindowPoSt(ctx context.Context, info proof.WindowPoStVerifyInfo) (bool, error)
 
 	GenerateWinningPoStSectorChallenge(context.Context, abi.RegisteredPoStProof, abi.ActorID, abi.PoStRandomness, uint64) ([]uint64, error)
 }
@@ -49,7 +47,7 @@ type Verifier interface {
 type Prover interface {
 	// TODO: move GenerateWinningPoStSectorChallenge from the Verifier interface to here
 
-	AggregateSealProofs(aggregateInfo proof5.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error)
+	AggregateSealProofs(aggregateInfo proof.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error)
 }
 
 type SectorProvider interface {

@@ -245,8 +245,8 @@ func (ss *syscallShim) workerKeyAtLookback(height abi.ChainEpoch) (address.Addre
 	return ResolveToKeyAddr(ss.cstate, ss.cst, info.Worker)
 }
 
-func (ss *syscallShim) VerifyPoSt(proof proof5.WindowPoStVerifyInfo) error {
-	ok, err := ss.verifier.VerifyWindowPoSt(context.TODO(), proof)
+func (ss *syscallShim) VerifyPoSt(info proof5.WindowPoStVerifyInfo) error {
+	ok, err := ss.verifier.VerifyWindowPoSt(context.TODO(), info)
 	if err != nil {
 		return err
 	}

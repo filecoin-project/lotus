@@ -11,6 +11,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -20,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
@@ -50,11 +54,13 @@ var sectorsCmd = &cli.Command{
 		sectorsExtendCmd,
 		sectorsTerminateCmd,
 		sectorsRemoveCmd,
+		sectorsSnapUpCmd,
 		sectorsMarkForUpgradeCmd,
 		sectorsStartSealCmd,
 		sectorsSealDelayCmd,
 		sectorsCapacityCollateralCmd,
 		sectorsBatching,
+		sectorsRefreshPieceMatchingCmd,
 	},
 }
 
@@ -1476,6 +1482,44 @@ var sectorsRemoveCmd = &cli.Command{
 	},
 }
 
+var sectorsSnapUpCmd = &cli.Command{
+	Name:      "snap-up",
+	Usage:     "Mark a committed capacity sector to be filled with deals",
+	ArgsUsage: "<sectorNum>",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return lcli.ShowHelp(cctx, xerrors.Errorf("must pass sector number"))
+		}
+
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		api, nCloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer nCloser()
+		ctx := lcli.ReqContext(cctx)
+
+		nv, err := api.StateNetworkVersion(ctx, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("failed to get network version: %w", err)
+		}
+		if nv < network.Version15 {
+			return xerrors.Errorf("snap deals upgrades enabled in network v15")
+		}
+
+		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse sector number: %w", err)
+		}
+
+		return nodeApi.SectorMarkForUpgrade(ctx, abi.SectorNumber(id), true)
+	},
+}
+
 var sectorsMarkForUpgradeCmd = &cli.Command{
 	Name:      "mark-for-upgrade",
 	Usage:     "Mark a committed capacity sector for replacement by a sector with deals",
@@ -1490,14 +1534,40 @@ var sectorsMarkForUpgradeCmd = &cli.Command{
 			return err
 		}
 		defer closer()
+
+		api, nCloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer nCloser()
 		ctx := lcli.ReqContext(cctx)
+
+		nv, err := api.StateNetworkVersion(ctx, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("failed to get network version: %w", err)
+		}
+		if nv >= network.Version15 {
+			return xerrors.Errorf("classic cc upgrades disabled v15 and beyond, use `snap-up`")
+		}
+
+		// disable mark for upgrade two days before the ntwk v15 upgrade
+		// TODO: remove the following block in v1.15.1
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("failed to get chain head: %w", err)
+		}
+		twoDays := abi.ChainEpoch(2 * builtin.EpochsInDay)
+		if head.Height() > (build.UpgradeOhSnapHeight - twoDays) {
+			return xerrors.Errorf("OhSnap is coming soon, " +
+				"please use `snap-up` to upgrade your cc sectors after the network v15 upgrade!")
+		}
 
 		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
 		if err != nil {
 			return xerrors.Errorf("could not parse sector number: %w", err)
 		}
 
-		return nodeApi.SectorMarkForUpgrade(ctx, abi.SectorNumber(id))
+		return nodeApi.SectorMarkForUpgrade(ctx, abi.SectorNumber(id), false)
 	},
 }
 
@@ -1996,6 +2066,25 @@ var sectorsBatchingPendingPreCommit = &cli.Command{
 		}
 
 		fmt.Println("No sectors queued to be committed")
+		return nil
+	},
+}
+
+var sectorsRefreshPieceMatchingCmd = &cli.Command{
+	Name:  "match-pending-pieces",
+	Usage: "force a refreshed match of pending pieces to open sectors without manually waiting for more deals",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		if err := nodeApi.SectorMatchPendingPiecesToOpenSectors(ctx); err != nil {
+			return err
+		}
+
 		return nil
 	},
 }

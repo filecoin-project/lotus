@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/filecoin-project/go-state-types/network"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
@@ -45,7 +43,7 @@ func (r *ReplayingRand) match(requested schema.RandomnessRule) ([]byte, bool) {
 	return nil, false
 }
 
-func (r *ReplayingRand) GetChainRandomness(ctx context.Context, nv network.Version, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (r *ReplayingRand) GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	rule := schema.RandomnessRule{
 		Kind:                schema.RandomnessChain,
 		DomainSeparationTag: int64(pers),
@@ -60,10 +58,10 @@ func (r *ReplayingRand) GetChainRandomness(ctx context.Context, nv network.Versi
 
 	r.reporter.Logf("returning fallback chain randomness: dst=%d, epoch=%d, entropy=%x", pers, round, entropy)
 
-	return r.fallback.GetChainRandomness(ctx, nv, pers, round, entropy)
+	return r.fallback.GetChainRandomness(ctx, pers, round, entropy)
 }
 
-func (r *ReplayingRand) GetBeaconRandomness(ctx context.Context, nv network.Version, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (r *ReplayingRand) GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	rule := schema.RandomnessRule{
 		Kind:                schema.RandomnessBeacon,
 		DomainSeparationTag: int64(pers),
@@ -78,5 +76,5 @@ func (r *ReplayingRand) GetBeaconRandomness(ctx context.Context, nv network.Vers
 
 	r.reporter.Logf("returning fallback beacon randomness: dst=%d, epoch=%d, entropy=%x", pers, round, entropy)
 
-	return r.fallback.GetBeaconRandomness(ctx, nv, pers, round, entropy)
+	return r.fallback.GetBeaconRandomness(ctx, pers, round, entropy)
 }

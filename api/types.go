@@ -10,7 +10,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-graphsync"
 
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ma "github.com/multiformats/go-multiaddr"
@@ -51,6 +53,30 @@ type PubsubScore struct {
 
 type MessageSendSpec struct {
 	MaxFee abi.TokenAmount
+}
+
+// GraphSyncDataTransfer provides diagnostics on a data transfer happening over graphsync
+type GraphSyncDataTransfer struct {
+	// GraphSync request id for this transfer
+	RequestID graphsync.RequestID
+	// Graphsync state for this transfer
+	RequestState string
+	// If a channel ID is present, indicates whether this is the current graphsync request for this channel
+	// (could have changed in a restart)
+	IsCurrentChannelRequest bool
+	// Data transfer channel ID for this transfer
+	ChannelID *datatransfer.ChannelID
+	// Data transfer state for this transfer
+	ChannelState *DataTransferChannel
+	// Diagnostic information about this request -- and unexpected inconsistencies in
+	// request state
+	Diagnostics []string
+}
+
+// TransferDiagnostics give current information about transfers going over graphsync that may be helpful for debugging
+type TransferDiagnostics struct {
+	ReceivingTransfers []*GraphSyncDataTransfer
+	SendingTransfers   []*GraphSyncDataTransfer
 }
 
 type DataTransferChannel struct {
@@ -102,6 +128,28 @@ type NetBlockList struct {
 	Peers     []peer.ID
 	IPAddrs   []string
 	IPSubnets []string
+}
+
+type NetStat struct {
+	System    *network.ScopeStat           `json:",omitempty"`
+	Transient *network.ScopeStat           `json:",omitempty"`
+	Services  map[string]network.ScopeStat `json:",omitempty"`
+	Protocols map[string]network.ScopeStat `json:",omitempty"`
+	Peers     map[string]network.ScopeStat `json:",omitempty"`
+}
+
+type NetLimit struct {
+	Dynamic bool `json:",omitempty"`
+	// set if Dynamic is false
+	Memory int64 `json:",omitempty"`
+	// set if Dynamic is true
+	MemoryFraction float64 `json:",omitempty"`
+	MinMemory      int64   `json:",omitempty"`
+	MaxMemory      int64   `json:",omitempty"`
+
+	Streams, StreamsInbound, StreamsOutbound int
+	Conns, ConnsInbound, ConnsOutbound       int
+	FD                                       int
 }
 
 type ExtendedPeerInfo struct {

@@ -79,7 +79,7 @@ func NewBlockBuilder(ctx context.Context, logger *zap.SugaredLogger, sm *stmgr.S
 	// 1. We don't charge a fee.
 	// 2. The runtime has "fake" proof logic.
 	// 3. We don't actually save any of the results.
-	r := lrand.NewStateRand(sm.ChainStore(), parentTs.Cids(), sm.Beacon())
+	r := lrand.NewStateRand(sm.ChainStore(), parentTs.Cids(), sm.Beacon(), sm.GetNetworkVersion)
 	vmopt := &vm.VMOpts{
 		StateBase:      parentState,
 		Epoch:          parentTs.Height() + 1,
@@ -88,7 +88,7 @@ func NewBlockBuilder(ctx context.Context, logger *zap.SugaredLogger, sm *stmgr.S
 		Actors:         filcns.NewActorRegistry(),
 		Syscalls:       sm.VMSys(),
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
-		NtwkVersion:    sm.GetNtwkVersion,
+		NetworkVersion: sm.GetNetworkVersion(ctx, parentTs.Height()+1),
 		BaseFee:        abi.NewTokenAmount(0),
 		LookbackState:  stmgr.LookbackStateGetterForTipset(sm, parentTs),
 	}
@@ -265,7 +265,7 @@ func (bb *BlockBuilder) Height() abi.ChainEpoch {
 
 // NetworkVersion returns the network version for the target block.
 func (bb *BlockBuilder) NetworkVersion() network.Version {
-	return bb.sm.GetNtwkVersion(bb.ctx, bb.Height())
+	return bb.sm.GetNetworkVersion(bb.ctx, bb.Height())
 }
 
 // StateManager returns the stmgr.StateManager.

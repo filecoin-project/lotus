@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -19,6 +20,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-graphsync"
+	gsimpl "github.com/ipfs/go-graphsync/impl"
+	"github.com/ipfs/go-graphsync/peerstate"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"go.uber.org/fx"
@@ -28,10 +32,12 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	gst "github.com/filecoin-project/go-data-transfer/transport/graphsync"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
@@ -70,6 +76,8 @@ type StorageMinerAPI struct {
 	RetrievalProvider retrievalmarket.RetrievalProvider `optional:"true"`
 	SectorAccessor    retrievalmarket.SectorAccessor    `optional:"true"`
 	DataTransfer      dtypes.ProviderDataTransfer       `optional:"true"`
+	StagingGraphsync  dtypes.StagingGraphsync           `optional:"true"`
+	Transport         dtypes.ProviderTransport          `optional:"true"`
 	DealPublisher     *storageadapter.DealPublisher     `optional:"true"`
 	SectorBlocks      *sectorblocks.SectorBlocks        `optional:"true"`
 	Host              host.Host                         `optional:"true"`
@@ -379,8 +387,8 @@ func (sm *StorageMinerAPI) SectorPreCommitPending(ctx context.Context) ([]abi.Se
 	return sm.Miner.SectorPreCommitPending(ctx)
 }
 
-func (sm *StorageMinerAPI) SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber) error {
-	return sm.Miner.MarkForUpgrade(id)
+func (sm *StorageMinerAPI) SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber, snap bool) error {
+	return sm.Miner.MarkForUpgrade(ctx, id, snap)
 }
 
 func (sm *StorageMinerAPI) SectorCommitFlush(ctx context.Context) ([]sealiface.CommitBatchRes, error) {
@@ -389,6 +397,10 @@ func (sm *StorageMinerAPI) SectorCommitFlush(ctx context.Context) ([]sealiface.C
 
 func (sm *StorageMinerAPI) SectorCommitPending(ctx context.Context) ([]abi.SectorID, error) {
 	return sm.Miner.CommitPending(ctx)
+}
+
+func (sm *StorageMinerAPI) SectorMatchPendingPiecesToOpenSectors(ctx context.Context) error {
+	return sm.Miner.SectorMatchPendingPiecesToOpenSectors(ctx)
 }
 
 func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {
@@ -551,6 +563,166 @@ func (sm *StorageMinerAPI) MarketDataTransferUpdates(ctx context.Context) (<-cha
 	}()
 
 	return channels, nil
+}
+
+func (sm *StorageMinerAPI) MarketDataTransferDiagnostics(ctx context.Context, mpid peer.ID) (*api.TransferDiagnostics, error) {
+	gsTransport, ok := sm.Transport.(*gst.Transport)
+	if !ok {
+		return nil, errors.New("api only works for graphsync as transport")
+	}
+	graphsyncConcrete, ok := sm.StagingGraphsync.(*gsimpl.GraphSync)
+	if !ok {
+		return nil, errors.New("api only works for non-mock graphsync implementation")
+	}
+
+	inProgressChannels, err := sm.DataTransfer.InProgressChannels(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	allReceivingChannels := make(map[datatransfer.ChannelID]datatransfer.ChannelState)
+	allSendingChannels := make(map[datatransfer.ChannelID]datatransfer.ChannelState)
+	for channelID, channel := range inProgressChannels {
+		if channel.OtherPeer() != mpid {
+			continue
+		}
+		if channel.Status() == datatransfer.Completed {
+			continue
+		}
+		if channel.Status() == datatransfer.Failed || channel.Status() == datatransfer.Cancelled {
+			continue
+		}
+		if channel.SelfPeer() == channel.Sender() {
+			allSendingChannels[channelID] = channel
+		} else {
+			allReceivingChannels[channelID] = channel
+		}
+	}
+
+	// gather information about active transport channels
+	transportChannels := gsTransport.ChannelsForPeer(mpid)
+	// gather information about graphsync state for peer
+	gsPeerState := graphsyncConcrete.PeerState(mpid)
+
+	sendingTransfers := sm.generateTransfers(ctx, transportChannels.SendingChannels, gsPeerState.IncomingState, allSendingChannels)
+	receivingTransfers := sm.generateTransfers(ctx, transportChannels.ReceivingChannels, gsPeerState.OutgoingState, allReceivingChannels)
+
+	return &api.TransferDiagnostics{
+		SendingTransfers:   sendingTransfers,
+		ReceivingTransfers: receivingTransfers,
+	}, nil
+}
+
+// generate transfers matches graphsync state and data transfer state for a given peer
+// to produce detailed output on what's happening with a transfer
+func (sm *StorageMinerAPI) generateTransfers(ctx context.Context,
+	transportChannels map[datatransfer.ChannelID]gst.ChannelGraphsyncRequests,
+	gsPeerState peerstate.PeerState,
+	allChannels map[datatransfer.ChannelID]datatransfer.ChannelState) []*api.GraphSyncDataTransfer {
+	tc := &transferConverter{
+		matchedChannelIds: make(map[datatransfer.ChannelID]struct{}),
+		matchedRequests:   make(map[graphsync.RequestID]*api.GraphSyncDataTransfer),
+		gsDiagnostics:     gsPeerState.Diagnostics(),
+		requestStates:     gsPeerState.RequestStates,
+		allChannels:       allChannels,
+	}
+
+	// iterate through all operating data transfer transport channels
+	for channelID, channelRequests := range transportChannels {
+		originalState, err := sm.DataTransfer.ChannelState(ctx, channelID)
+		var baseDiagnostics []string
+		var channelState *api.DataTransferChannel
+		if err != nil {
+			baseDiagnostics = append(baseDiagnostics, fmt.Sprintf("Unable to lookup channel state: %s", err))
+		} else {
+			cs := api.NewDataTransferChannel(sm.Host.ID(), originalState)
+			channelState = &cs
+		}
+		// add the current request for this channel
+		tc.convertTransfer(channelID, true, channelState, baseDiagnostics, channelRequests.Current, true)
+		for _, requestID := range channelRequests.Previous {
+			// add any previous requests that were cancelled for a restart
+			tc.convertTransfer(channelID, true, channelState, baseDiagnostics, requestID, false)
+		}
+	}
+
+	// collect any graphsync data for channels we don't have any data transfer data for
+	tc.collectRemainingTransfers()
+
+	return tc.transfers
+}
+
+type transferConverter struct {
+	matchedChannelIds map[datatransfer.ChannelID]struct{}
+	matchedRequests   map[graphsync.RequestID]*api.GraphSyncDataTransfer
+	transfers         []*api.GraphSyncDataTransfer
+	gsDiagnostics     map[graphsync.RequestID][]string
+	requestStates     graphsync.RequestStates
+	allChannels       map[datatransfer.ChannelID]datatransfer.ChannelState
+}
+
+// convert transfer assembles transfer and diagnostic data for a given graphsync/data-transfer request
+func (tc *transferConverter) convertTransfer(channelID datatransfer.ChannelID, hasChannelID bool, channelState *api.DataTransferChannel, baseDiagnostics []string,
+	requestID graphsync.RequestID, isCurrentChannelRequest bool) {
+	diagnostics := baseDiagnostics
+	state, hasState := tc.requestStates[requestID]
+	stateString := state.String()
+	if !hasState {
+		stateString = "no graphsync state found"
+	}
+	var channelIDPtr *datatransfer.ChannelID
+	if !hasChannelID {
+		diagnostics = append(diagnostics, fmt.Sprintf("No data transfer channel id for GraphSync request ID %d", requestID))
+	} else {
+		channelIDPtr = &channelID
+		if isCurrentChannelRequest && !hasState {
+			diagnostics = append(diagnostics, fmt.Sprintf("No current request state for data transfer channel id %s", channelID))
+		} else if !isCurrentChannelRequest && hasState {
+			diagnostics = append(diagnostics, fmt.Sprintf("Graphsync request %d is a previous request on data transfer channel id %s that was restarted, but it is still running", requestID, channelID))
+		}
+	}
+	diagnostics = append(diagnostics, tc.gsDiagnostics[requestID]...)
+	transfer := &api.GraphSyncDataTransfer{
+		RequestID:               requestID,
+		RequestState:            stateString,
+		IsCurrentChannelRequest: isCurrentChannelRequest,
+		ChannelID:               channelIDPtr,
+		ChannelState:            channelState,
+		Diagnostics:             diagnostics,
+	}
+	tc.transfers = append(tc.transfers, transfer)
+	tc.matchedRequests[requestID] = transfer
+	if hasChannelID {
+		tc.matchedChannelIds[channelID] = struct{}{}
+	}
+}
+
+func (tc *transferConverter) collectRemainingTransfers() {
+	for requestID := range tc.requestStates {
+		if _, ok := tc.matchedRequests[requestID]; !ok {
+			tc.convertTransfer(datatransfer.ChannelID{}, false, nil, nil, requestID, false)
+		}
+	}
+	for requestID := range tc.gsDiagnostics {
+		if _, ok := tc.matchedRequests[requestID]; !ok {
+			tc.convertTransfer(datatransfer.ChannelID{}, false, nil, nil, requestID, false)
+		}
+	}
+	for channelID, channelState := range tc.allChannels {
+		if _, ok := tc.matchedChannelIds[channelID]; !ok {
+			channelID := channelID
+			cs := api.NewDataTransferChannel(channelState.SelfPeer(), channelState)
+			transfer := &api.GraphSyncDataTransfer{
+				RequestID:               graphsync.RequestID(-1),
+				RequestState:            "graphsync state unknown",
+				IsCurrentChannelRequest: false,
+				ChannelID:               &channelID,
+				ChannelState:            &cs,
+				Diagnostics:             []string{"data transfer with no open transport channel, cannot determine linked graphsync request"},
+			}
+			tc.transfers = append(tc.transfers, transfer)
+		}
+	}
 }
 
 func (sm *StorageMinerAPI) MarketPendingDeals(ctx context.Context) (api.PendingDealInfo, error) {
@@ -988,8 +1160,8 @@ func (sm *StorageMinerAPI) Discover(ctx context.Context) (apitypes.OpenRPCDocume
 	return build.OpenRPCDiscoverJSON_Miner(), nil
 }
 
-func (sm *StorageMinerAPI) ComputeProof(ctx context.Context, ssi []builtin.SectorInfo, rand abi.PoStRandomness) ([]builtin.PoStProof, error) {
-	return sm.Epp.ComputeProof(ctx, ssi, rand)
+func (sm *StorageMinerAPI) ComputeProof(ctx context.Context, ssi []builtin.ExtendedSectorInfo, rand abi.PoStRandomness, poStEpoch abi.ChainEpoch, nv network.Version) ([]builtin.PoStProof, error) {
+	return sm.Epp.ComputeProof(ctx, ssi, rand, poStEpoch, nv)
 }
 
 func (sm *StorageMinerAPI) RuntimeSubsystems(context.Context) (res api.MinerSubsystems, err error) {

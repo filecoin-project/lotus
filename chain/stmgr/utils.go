@@ -79,7 +79,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		// future. It's not guaranteed to be accurate... but that's fine.
 	}
 
-	r := rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon)
+	r := rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, sm.GetNetworkVersion)
 	vmopt := &vm.VMOpts{
 		StateBase:      base,
 		Epoch:          height,
@@ -88,7 +88,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		Actors:         sm.tsExec.NewActorRegistry(),
 		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
-		NtwkVersion:    sm.GetNtwkVersion,
+		NetworkVersion: sm.GetNetworkVersion(ctx, height),
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 	}
@@ -128,7 +128,7 @@ func LookbackStateGetterForTipset(sm *StateManager, ts *types.TipSet) vm.Lookbac
 
 func GetLookbackTipSetForRound(ctx context.Context, sm *StateManager, ts *types.TipSet, round abi.ChainEpoch) (*types.TipSet, cid.Cid, error) {
 	var lbr abi.ChainEpoch
-	lb := policy.GetWinningPoStSectorSetLookback(sm.GetNtwkVersion(ctx, round))
+	lb := policy.GetWinningPoStSectorSetLookback(sm.GetNetworkVersion(ctx, round))
 	if round > lb {
 		lbr = round - lb
 	}

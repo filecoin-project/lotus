@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/go-state-types/network"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 
@@ -47,7 +45,7 @@ func (r *RecordingRand) loadHead() {
 	r.head = head.Key()
 }
 
-func (r *RecordingRand) GetChainRandomness(ctx context.Context, nv network.Version, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (r *RecordingRand) GetChainRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	r.once.Do(r.loadHead)
 	// FullNode's v0 ChainGetRandomnessFromTickets handles whether we should be looking forward or back
 	ret, err := r.api.ChainGetRandomnessFromTickets(ctx, r.head, pers, round, entropy)
@@ -73,7 +71,7 @@ func (r *RecordingRand) GetChainRandomness(ctx context.Context, nv network.Versi
 	return ret, err
 }
 
-func (r *RecordingRand) GetBeaconRandomness(ctx context.Context, nv network.Version, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (r *RecordingRand) GetBeaconRandomness(ctx context.Context, pers crypto.DomainSeparationTag, round abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	r.once.Do(r.loadHead)
 	ret, err := r.api.StateGetRandomnessFromBeacon(ctx, pers, round, entropy, r.head)
 	if err != nil {

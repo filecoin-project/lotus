@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
+
 	"github.com/filecoin-project/lotus/chain/rand"
 
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -18,10 +20,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
-	// Used for genesis.
-	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	"github.com/filecoin-project/specs-actors/v3/actors/migration/nv10"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
@@ -30,6 +28,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+
+	// Used for genesis.
+	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 )
 
 const LookbackNoLimit = api.LookbackNoLimit
@@ -53,7 +54,7 @@ type versionSpec struct {
 type migration struct {
 	upgrade       MigrationFunc
 	preMigrations []PreMigration
-	cache         *nv10.MemMigrationCache
+	cache         *nv15.MemMigrationCache
 }
 
 type Executor interface {
@@ -121,7 +122,7 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 				migration := &migration{
 					upgrade:       upgrade.Migration,
 					preMigrations: upgrade.PreMigrations,
-					cache:         nv10.NewMemMigrationCache(),
+					cache:         nv15.NewMemMigrationCache(),
 				}
 				stateMigrations[upgrade.Height] = migration
 			}
@@ -356,7 +357,7 @@ func (sm *StateManager) VMConstructor() func(context.Context, *vm.VMOpts) (*vm.V
 	}
 }
 
-func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
+func (sm *StateManager) GetNetworkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
 	// The epochs here are the _last_ epoch for every version, or -1 if the
 	// version is disabled.
 	for _, spec := range sm.networkVersions {
@@ -377,10 +378,9 @@ func (sm *StateManager) GetRandomnessFromBeacon(ctx context.Context, personaliza
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon)
-	rnv := sm.GetNtwkVersion(ctx, randEpoch)
+	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon, sm.GetNetworkVersion)
 
-	return r.GetBeaconRandomness(ctx, rnv, personalization, randEpoch, entropy)
+	return r.GetBeaconRandomness(ctx, personalization, randEpoch, entropy)
 
 }
 
@@ -390,8 +390,7 @@ func (sm *StateManager) GetRandomnessFromTickets(ctx context.Context, personaliz
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
 	}
 
-	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon)
-	rnv := sm.GetNtwkVersion(ctx, randEpoch)
+	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon, sm.GetNetworkVersion)
 
-	return r.GetChainRandomness(ctx, rnv, personalization, randEpoch, entropy)
+	return r.GetChainRandomness(ctx, personalization, randEpoch, entropy)
 }
