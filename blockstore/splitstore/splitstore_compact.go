@@ -694,11 +694,6 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 		return nil
 	}
 
-	workers := runtime.NumCPU() / 2
-	if workers < 2 {
-		workers = 2
-	}
-
 	for len(toWalk) > 0 {
 		// walking can take a while, so check this with every opportunity
 		if err := s.checkClosing(); err != nil {
@@ -711,6 +706,11 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 		walked = newConcurrentVisitor()
 		walking := toWalk
 		toWalk = nil
+
+		workers := len(walking)
+		if workers > runtime.NumCPU()/2 {
+			workers = runtime.NumCPU() / 2
+		}
 
 		workch := make(chan cid.Cid, len(walking))
 		for _, c := range walking {
