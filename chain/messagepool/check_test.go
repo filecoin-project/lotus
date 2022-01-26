@@ -23,6 +23,7 @@ func init() {
 	_ = logging.SetLogLevel("*", "INFO")
 }
 
+<<<<<<< HEAD
 func getCheckMessageStatus(statusCode api.CheckStatusCode, msgStatuses []api.MessageCheckStatus) (*api.MessageCheckStatus, error) {
 	for i := 0; i < len(msgStatuses); i++ {
 		iMsgStatuses := msgStatuses[i]
@@ -35,6 +36,19 @@ func getCheckMessageStatus(statusCode api.CheckStatusCode, msgStatuses []api.Mes
 
 func TestCheckMessages(t *testing.T) {
 	//stm: @CHAIN_MEMPOOL_CHECK_MESSAGES_001
+=======
+func getCheckMessageStatus(statusCode api.CheckStatusCode, msgStatuses []api.MessageCheckStatus) (api.MessageCheckStatus, error) {
+	for i := 0; i < len(msgStatuses); i++ {
+		iMsgStatuses := msgStatuses[i]
+		if iMsgStatuses.CheckStatus.Code == statusCode {
+			return iMsgStatuses, nil
+		}
+	}
+	return api.MessageCheckStatus{}, fmt.Errorf("Could not find CheckStatusCode %s", statusCode)
+}
+
+func TestCheckMessages(t *testing.T) {
+>>>>>>> 819e2903a (Add check function tests)
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -57,6 +71,10 @@ func TestCheckMessages(t *testing.T) {
 	tma.setBalance(sender, 1000e15)
 	target := mock.Address(1001)
 
+<<<<<<< HEAD
+=======
+	var msgs []*types.Message
+>>>>>>> 819e2903a (Add check function tests)
 	var protos []*api.MessagePrototype
 	for i := 0; i < 5; i++ {
 		msg := &types.Message{
@@ -69,6 +87,10 @@ func TestCheckMessages(t *testing.T) {
 			GasPremium: types.NewInt(1),
 			Params:     make([]byte, 2<<10),
 		}
+<<<<<<< HEAD
+=======
+		msgs = append(msgs, msg)
+>>>>>>> 819e2903a (Add check function tests)
 		proto := &api.MessagePrototype{
 			Message:    *msg,
 			ValidNonce: true,
@@ -77,7 +99,10 @@ func TestCheckMessages(t *testing.T) {
 	}
 
 	messageStatuses, err := mp.CheckMessages(context.TODO(), protos)
+<<<<<<< HEAD
 	assert.NoError(t, err)
+=======
+>>>>>>> 819e2903a (Add check function tests)
 	for i := 0; i < len(messageStatuses); i++ {
 		iMsgStatuses := messageStatuses[i]
 		for j := 0; j < len(iMsgStatuses); j++ {
@@ -88,7 +113,10 @@ func TestCheckMessages(t *testing.T) {
 }
 
 func TestCheckPendingMessages(t *testing.T) {
+<<<<<<< HEAD
 	//stm: @CHAIN_MEMPOOL_CHECK_PENDING_MESSAGES_001
+=======
+>>>>>>> 819e2903a (Add check function tests)
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -134,7 +162,10 @@ func TestCheckPendingMessages(t *testing.T) {
 	mustAdd(t, mp, sm)
 
 	messageStatuses, err := mp.CheckPendingMessages(context.TODO(), sender)
+<<<<<<< HEAD
 	assert.NoError(t, err)
+=======
+>>>>>>> 819e2903a (Add check function tests)
 	for i := 0; i < len(messageStatuses); i++ {
 		iMsgStatuses := messageStatuses[i]
 		for j := 0; j < len(iMsgStatuses); j++ {
@@ -145,7 +176,10 @@ func TestCheckPendingMessages(t *testing.T) {
 }
 
 func TestCheckReplaceMessages(t *testing.T) {
+<<<<<<< HEAD
 	//stm: @CHAIN_MEMPOOL_CHECK_REPLACE_MESSAGES_001
+=======
+>>>>>>> 819e2903a (Add check function tests)
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
