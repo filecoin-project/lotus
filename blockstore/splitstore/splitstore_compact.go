@@ -700,14 +700,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 			return err
 		}
 
-		// the walk is BFS, so we can reset the walked set in every iteration and avoid building up
-		// a set that contains all blocks (1M epochs -> 5M blocks -> 200MB worth of memory and growing
-		// over time)
-		walked = newConcurrentVisitor()
-		walking := toWalk
-		toWalk = nil
-
-		workers := len(walking)
+		workers := len(toWalk)
 		if workers > runtime.NumCPU()/2 {
 			workers = runtime.NumCPU() / 2
 		}
@@ -715,11 +708,16 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 			workers = 2
 		}
 
-		workch := make(chan cid.Cid, len(walking))
-		for _, c := range walking {
+		// the walk is BFS, so we can reset the walked set in every iteration and avoid building up
+		// a set that contains all blocks (1M epochs -> 5M blocks -> 200MB worth of memory and growing
+		// over time)
+		walked = newConcurrentVisitor()
+		workch := make(chan cid.Cid, len(toWalk))
+		for _, c := range toWalk {
 			workch <- c
 		}
 		close(workch)
+		toWalk = nil
 
 		g := new(errgroup.Group)
 		for i := 0; i < workers; i++ {
