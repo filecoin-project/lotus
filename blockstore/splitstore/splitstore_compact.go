@@ -624,7 +624,9 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 	visitor ObjectVisitor, f func(cid.Cid) error) error {
 	var walked ObjectVisitor
 	var mx sync.Mutex
-	toWalk := ts.Cids()
+	// we copy the tipset first into a new slice, which allows us to reuse it in every epoch.
+	toWalk := make([]cid.Cid, len(ts.Cids()))
+	copy(toWalk, ts.Cids())
 	walkCnt := new(int64)
 	scanCnt := new(int64)
 
@@ -717,7 +719,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 			workch <- c
 		}
 		close(workch)
-		toWalk = nil
+		toWalk = toWalk[:0]
 
 		g := new(errgroup.Group)
 		for i := 0; i < workers; i++ {
