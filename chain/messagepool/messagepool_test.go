@@ -1077,6 +1077,7 @@ func TestRemoveMessage(t *testing.T) {
 }
 
 func TestAddMessageTwiceCidDiffReplaced(t *testing.T) {
+	//stm: @CHAIN_MEMPOOL_PUSH_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
