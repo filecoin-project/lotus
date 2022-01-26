@@ -766,6 +766,7 @@ func TestUpdates(t *testing.T) {
 }
 
 func TestMessageBelowMinGasFee(t *testing.T) {
+	//stm: @CHAIN_MEMPOOL_PUSH_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -811,6 +812,7 @@ func TestMessageBelowMinGasFee(t *testing.T) {
 }
 
 func TestMessageValueTooHigh(t *testing.T) {
+	//stm: @CHAIN_MEMPOOL_PUSH_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -858,6 +860,7 @@ func TestMessageValueTooHigh(t *testing.T) {
 }
 
 func TestMessageSignatureInvalid(t *testing.T) {
+	//stm: @CHAIN_MEMPOOL_PUSH_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -902,6 +905,7 @@ func TestMessageSignatureInvalid(t *testing.T) {
 }
 
 func TestAddMessageTwice(t *testing.T) {
+	//stm: @CHAIN_MEMPOOL_PUSH_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -947,6 +951,7 @@ func TestAddMessageTwice(t *testing.T) {
 }
 
 func TestAddMessageTwiceNonceGap(t *testing.T) {
+	//stm: @CHAIN_MEMPOOL_PUSH_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -1053,6 +1058,7 @@ func TestAddMessageTwiceCidDiff(t *testing.T) {
 			Signature: *sig,
 		}
 
+		//stm: @CHAIN_MEMPOOL_PUSH_001
 		// then try to add message again
 		err = mp.Add(context.TODO(), sm)
 		assert.Contains(t, err.Error(), "replace by fee has too low GasPremium")
@@ -1060,6 +1066,7 @@ func TestAddMessageTwiceCidDiff(t *testing.T) {
 }
 
 func TestAddMessageTwiceCidDiffReplaced(t *testing.T) {
+	//stm: @CHAIN_MEMPOOL_PUSH_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())

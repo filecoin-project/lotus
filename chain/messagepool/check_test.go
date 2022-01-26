@@ -23,17 +23,18 @@ func init() {
 	_ = logging.SetLogLevel("*", "INFO")
 }
 
-func getCheckMessageStatus(statusCode api.CheckStatusCode, msgStatuses []api.MessageCheckStatus) (api.MessageCheckStatus, error) {
+func getCheckMessageStatus(statusCode api.CheckStatusCode, msgStatuses []api.MessageCheckStatus) (*api.MessageCheckStatus, error) {
 	for i := 0; i < len(msgStatuses); i++ {
 		iMsgStatuses := msgStatuses[i]
 		if iMsgStatuses.CheckStatus.Code == statusCode {
-			return iMsgStatuses, nil
+			return &iMsgStatuses, nil
 		}
 	}
-	return api.MessageCheckStatus{}, fmt.Errorf("Could not find CheckStatusCode %s", statusCode)
+	return nil, fmt.Errorf("Could not find CheckStatusCode %s", statusCode)
 }
 
 func TestCheckMessages(t *testing.T) {
+	//stm: @CHAIN_MEMPOOL_CHECK_MESSAGES_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -88,6 +89,7 @@ func TestCheckMessages(t *testing.T) {
 }
 
 func TestCheckPendingMessages(t *testing.T) {
+	//stm: @CHAIN_MEMPOOL_CHECK_PENDING_MESSAGES_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
@@ -143,6 +145,7 @@ func TestCheckPendingMessages(t *testing.T) {
 }
 
 func TestCheckReplaceMessages(t *testing.T) {
+	//stm: @CHAIN_MEMPOOL_CHECK_REPLACE_MESSAGES_001
 	tma := newTestMpoolAPI()
 
 	w, err := wallet.NewWallet(wallet.NewMemKeyStore())
