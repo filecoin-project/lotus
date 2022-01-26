@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -67,7 +68,10 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 	}
 	defer output.Close() //nolint:errcheck
 
+	var mx sync.Mutex
 	write := func(format string, args ...interface{}) {
+		mx.Lock()
+		defer mx.Unlock()
 		_, err := fmt.Fprintf(output, format+"\n", args...)
 		if err != nil {
 			log.Warnf("error writing check output: %s", err)
@@ -82,7 +86,8 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 	write("compaction index: %d", s.compactionIndex)
 	write("--")
 
-	var coldCnt, missingCnt int64
+	coldCnt := new(int64)
+	missingCnt := new(int64)
 
 	visitor, err := s.markSetEnv.Create("check", 0)
 	if err != nil {
@@ -111,10 +116,10 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 			}
 
 			if has {
-				coldCnt++
+				atomic.AddInt64(coldCnt, 1)
 				write("cold object reference: %s", c)
 			} else {
-				missingCnt++
+				atomic.AddInt64(missingCnt, 1)
 				write("missing object reference: %s", c)
 				return errStopWalk
 			}
@@ -128,9 +133,9 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 		return err
 	}
 
-	log.Infow("check done", "cold", coldCnt, "missing", missingCnt)
+	log.Infow("check done", "cold", *coldCnt, "missing", *missingCnt)
 	write("--")
-	write("cold: %d missing: %d", coldCnt, missingCnt)
+	write("cold: %d missing: %d", *coldCnt, *missingCnt)
 	write("DONE")
 
 	return nil

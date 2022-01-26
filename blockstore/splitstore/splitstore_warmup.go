@@ -1,6 +1,7 @@
 package splitstore
 
 import (
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -55,10 +56,11 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 	if WarmupBoundary < epoch {
 		boundaryEpoch = epoch - WarmupBoundary
 	}
+	var mx sync.Mutex
 	batchHot := make([]blocks.Block, 0, batchSize)
-	count := int64(0)
-	xcount := int64(0)
-	missing := int64(0)
+	count := new(int64)
+	xcount := new(int64)
+	missing := new(int64)
 
 	visitor, err := s.markSetEnv.Create("warmup", 0)
 	if err != nil {
@@ -73,7 +75,7 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 				return errStopWalk
 			}
 
-			count++
+			atomic.AddInt64(count, 1)
 
 			has, err := s.hot.Has(s.ctx, c)
 			if err != nil {
@@ -87,22 +89,25 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 			blk, err := s.cold.Get(s.ctx, c)
 			if err != nil {
 				if err == bstore.ErrNotFound {
-					missing++
+					atomic.AddInt64(missing, 1)
 					return errStopWalk
 				}
 				return err
 			}
 
-			xcount++
+			atomic.AddInt64(xcount, 1)
 
+			mx.Lock()
 			batchHot = append(batchHot, blk)
 			if len(batchHot) == batchSize {
 				err = s.hot.PutMany(s.ctx, batchHot)
 				if err != nil {
+					mx.Unlock()
 					return err
 				}
 				batchHot = batchHot[:0]
 			}
+			mx.Unlock()
 
 			return nil
 		})
@@ -118,9 +123,9 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 		}
 	}
 
-	log.Infow("warmup stats", "visited", count, "warm", xcount, "missing", missing)
+	log.Infow("warmup stats", "visited", *count, "warm", *xcount, "missing", *missing)
 
-	s.markSetSize = count + count>>2 // overestimate a bit
+	s.markSetSize = *count + *count>>2 // overestimate a bit
 	err = s.ds.Put(s.ctx, markSetSizeKey, int64ToBytes(s.markSetSize))
 	if err != nil {
 		log.Warnf("error saving mark set size: %s", err)
