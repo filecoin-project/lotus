@@ -173,8 +173,15 @@ type MessagePool struct {
 
 	sigValCache *lru.TwoQueueCache
 
+	nonceCache *lru.Cache
+
 	evtTypes [3]journal.EventType
 	journal  journal.Journal
+}
+
+type nonceCacheKey struct {
+	tsk  types.TipSetKey
+	addr address.Address
 }
 
 type msgSet struct {
@@ -361,6 +368,7 @@ func (ms *msgSet) toSlice() []*types.SignedMessage {
 func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.UpgradeSchedule, netName dtypes.NetworkName, j journal.Journal) (*MessagePool, error) {
 	cache, _ := lru.New2Q(build.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q(build.VerifSigCacheSize)
+	noncecache, _ := lru.New(256)
 
 	cfg, err := loadConfig(ctx, ds)
 	if err != nil {
@@ -386,6 +394,7 @@ func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.Upgra
 		pruneCooldown:  make(chan struct{}, 1),
 		blsSigCache:    cache,
 		sigValCache:    verifcache,
+		nonceCache:     noncecache,
 		changes:        lps.New(50),
 		localMsgs:      namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
 		api:            api,
@@ -1016,10 +1025,22 @@ func (mp *MessagePool) getStateNonce(ctx context.Context, addr address.Address, 
 	done := metrics.Timer(ctx, metrics.MpoolGetNonceDuration)
 	defer done()
 
+	nk := nonceCacheKey{
+		tsk:  ts.Key(),
+		addr: addr,
+	}
+
+	n, ok := mp.nonceCache.Get(nk)
+	if ok {
+		return n.(uint64), nil
+	}
+
 	act, err := mp.api.GetActorAfter(addr, ts)
 	if err != nil {
 		return 0, err
 	}
+
+	mp.nonceCache.Add(nk, act.Nonce)
 
 	return act.Nonce, nil
 }
