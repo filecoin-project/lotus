@@ -104,8 +104,9 @@ func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealPa
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
+	fmt.Printf("WAIT DEAL SEALEDS START\n")
 	dh.WaitDealSealed(ctx, deal, false, false, nil)
-
+	fmt.Printf("WAIT DEAL SEALEDS END\n")
 	return deal, res, path
 }
 
@@ -176,6 +177,7 @@ loop:
 			cb()
 		}
 	}
+	fmt.Printf("WAIT DEAL SEALED LOOP BROKEN\n")
 }
 
 // WaitDealSealedQuiet waits until the deal is sealed, without logging anything.
@@ -290,12 +292,11 @@ func (dh *DealHarness) WaitDealPublished(ctx context.Context, deal *cid.Cid) {
 func (dh *DealHarness) StartSealingWaiting(ctx context.Context) {
 	snums, err := dh.main.SectorsList(ctx)
 	require.NoError(dh.t, err)
-
 	for _, snum := range snums {
 		si, err := dh.main.SectorsStatus(ctx, snum, false)
 		require.NoError(dh.t, err)
 
-		dh.t.Logf("Sector state: %s", si.State)
+		dh.t.Logf("Sector state <%d>-[%d]:, %s", snum, si.SealProof, si.State)
 		if si.State == api.SectorState(sealing.WaitDeals) {
 			require.NoError(dh.t, dh.main.SectorStartSealing(ctx, snum))
 		}

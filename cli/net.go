@@ -36,6 +36,8 @@ var NetCmd = &cli.Command{
 		NetReachability,
 		NetBandwidthCmd,
 		NetBlockCmd,
+		NetStatCmd,
+		NetLimitCmd,
 	},
 }
 
@@ -604,5 +606,105 @@ var NetBlockListCmd = &cli.Command{
 		}
 
 		return nil
+	},
+}
+
+var NetStatCmd = &cli.Command{
+	Name:      "stat",
+	Usage:     "Report resource usage for a scope",
+	ArgsUsage: "scope",
+	Description: `Report resource usage for a scope.
+
+  The scope can be one of the following:
+  - system        -- reports the system aggregate resource usage.
+  - transient     -- reports the transient resource usage.
+  - svc:<service> -- reports the resource usage of a specific service.
+  - proto:<proto> -- reports the resource usage of a specific protocol.
+  - peer:<peer>   -- reports the resource usage of a specific peer.
+  - all           -- reports the resource usage for all currently active scopes.
+`,
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		args := cctx.Args().Slice()
+		if len(args) != 1 {
+			return xerrors.Errorf("must specify exactly one scope")
+		}
+		scope := args[0]
+
+		result, err := api.NetStat(ctx, scope)
+		if err != nil {
+			return err
+		}
+
+		enc := json.NewEncoder(os.Stdout)
+		return enc.Encode(result)
+	},
+}
+
+var NetLimitCmd = &cli.Command{
+	Name:      "limit",
+	Usage:     "Get or set resource limits for a scope",
+	ArgsUsage: "scope [limit]",
+	Description: `Get or set resource limits for a scope.
+
+  The scope can be one of the following:
+  - system        -- reports the system aggregate resource usage.
+  - transient     -- reports the transient resource usage.
+  - svc:<service> -- reports the resource usage of a specific service.
+  - proto:<proto> -- reports the resource usage of a specific protocol.
+  - peer:<peer>   -- reports the resource usage of a specific peer.
+
+ The limit is json-formatted, with the same structure as the limits file.
+`,
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "set",
+			Usage: "set the limit for a scope",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+		args := cctx.Args().Slice()
+
+		if cctx.Bool("set") {
+			if len(args) != 2 {
+				return xerrors.Errorf("must specify exactly a scope and a limit")
+			}
+			scope := args[0]
+			limitStr := args[1]
+
+			var limit atypes.NetLimit
+			err := json.Unmarshal([]byte(limitStr), &limit)
+			if err != nil {
+				return xerrors.Errorf("error decoding limit: %w", err)
+			}
+
+			return api.NetSetLimit(ctx, scope, limit)
+
+		}
+
+		if len(args) != 1 {
+			return xerrors.Errorf("must specify exactly one scope")
+		}
+		scope := args[0]
+
+		result, err := api.NetLimit(ctx, scope)
+		if err != nil {
+			return err
+		}
+
+		enc := json.NewEncoder(os.Stdout)
+		return enc.Encode(result)
 	},
 }

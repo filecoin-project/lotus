@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.13.3-dev
+   1.15.0-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -425,6 +425,7 @@ COMMANDS:
      stat    Print information about a locally stored file (piece size, etc)
    RETRIEVAL:
      find              Find data in the network
+     retrieval-ask     Get a miner's retrieval ask
      retrieve          Retrieve data from network
      cat               Show data from network
      ls                List object links
@@ -532,6 +533,23 @@ CATEGORY:
 OPTIONS:
    --pieceCid value  require data to be retrieved from a specific Piece CID
    --help, -h        show help (default: false)
+   
+```
+
+### lotus client retrieval-ask
+```
+NAME:
+   lotus client retrieval-ask - Get a miner's retrieval ask
+
+USAGE:
+   lotus client retrieval-ask [command options] [minerAddress] [data CID]
+
+CATEGORY:
+   RETRIEVAL
+
+OPTIONS:
+   --size value  data size in bytes (default: 0)
+   --help, -h    show help (default: false)
    
 ```
 
@@ -2598,6 +2616,8 @@ COMMANDS:
    reachability  Print information about reachability from the internet
    bandwidth     Print bandwidth usage information
    block         Manage network connection gating rules
+   stat          Report resource usage for a scope
+   limit         Get or set resource limits for a scope
    help, h       Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2862,6 +2882,58 @@ USAGE:
    lotus net block list [command options] [arguments...]
 
 OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus net stat
+```
+NAME:
+   lotus net stat - Report resource usage for a scope
+
+USAGE:
+   lotus net stat [command options] scope
+
+DESCRIPTION:
+   Report resource usage for a scope.
+
+  The scope can be one of the following:
+  - system        -- reports the system aggregate resource usage.
+  - transient     -- reports the transient resource usage.
+  - svc:<service> -- reports the resource usage of a specific service.
+  - proto:<proto> -- reports the resource usage of a specific protocol.
+  - peer:<peer>   -- reports the resource usage of a specific peer.
+  - all           -- reports the resource usage for all currently active scopes.
+
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus net limit
+```
+NAME:
+   lotus net limit - Get or set resource limits for a scope
+
+USAGE:
+   lotus net limit [command options] scope [limit]
+
+DESCRIPTION:
+   Get or set resource limits for a scope.
+
+  The scope can be one of the following:
+  - system        -- reports the system aggregate resource usage.
+  - transient     -- reports the transient resource usage.
+  - svc:<service> -- reports the resource usage of a specific service.
+  - proto:<proto> -- reports the resource usage of a specific protocol.
+  - peer:<peer>   -- reports the resource usage of a specific peer.
+
+ The limit is json-formatted, with the same structure as the limits file.
+
+
+OPTIONS:
+   --set       set the limit for a scope (default: false)
    --help, -h  show help (default: false)
    
 ```

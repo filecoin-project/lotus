@@ -5,6 +5,8 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/docker/go-units"
+
 	"github.com/filecoin-project/specs-actors/v6/actors/migration/nv14"
 	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
 
@@ -158,7 +160,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeSnapDealsHeight,
+		Height:    build.UpgradeOhSnapHeight,
 		Network:   network.Version15,
 		Migration: UpgradeActorsV7,
 		PreMigrations: []stmgr.PreMigration{{
@@ -1245,8 +1247,15 @@ func PreUpgradeActorsV7(ctx context.Context, sm *stmgr.StateManager, cache stmgr
 		workerCount /= 2
 	}
 
-	config := nv15.Config{MaxWorkers: uint(workerCount)}
-	_, err := upgradeActorsV7Common(ctx, sm, cache, root, epoch, ts, config)
+	lbts, lbRoot, err := stmgr.GetLookbackTipSetForRound(ctx, sm, ts, epoch)
+	if err != nil {
+		return xerrors.Errorf("error getting lookback ts for premigration: %w", err)
+	}
+
+	config := nv15.Config{MaxWorkers: uint(workerCount),
+		ProgressLogPeriod: time.Minute * 5}
+
+	_, err = upgradeActorsV7Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
 	return err
 }
 
@@ -1255,9 +1264,10 @@ func upgradeActorsV7Common(
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
 	config nv15.Config,
 ) (cid.Cid, error) {
-	buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), blockstore.NewMemorySync())
-	store := store.ActorStore(ctx, buf)
-
+	writeStore := blockstore.NewAutobatch(ctx, sm.ChainStore().StateBlockstore(), units.GiB)
+	// TODO: pretty sure we'd achieve nothing by doing this, confirm in review
+	//buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), writeStore)
+	store := store.ActorStore(ctx, writeStore)
 	// Load the state root.
 	var stateRoot types.StateRoot
 	if err := store.Get(ctx, root, &stateRoot); err != nil {
@@ -1287,15 +1297,13 @@ func upgradeActorsV7Common(
 		return cid.Undef, xerrors.Errorf("failed to persist new state root: %w", err)
 	}
 
-	// Persist the new tree.
+	// Persists the new tree and shuts down the flush worker
+	if err := writeStore.Flush(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore flush failed: %w", err)
+	}
 
-	{
-		from := buf
-		to := buf.Read()
-
-		if err := vm.Copy(ctx, from, to, newRoot); err != nil {
-			return cid.Undef, xerrors.Errorf("copying migrated tree: %w", err)
-		}
+	if err := writeStore.Shutdown(ctx); err != nil {
+		return cid.Undef, xerrors.Errorf("writeStore shutdown failed: %w", err)
 	}
 
 	return newRoot, nil

@@ -86,9 +86,10 @@ func (cv *cachingVerifier) VerifySeal(svi proof2.SealVerifyInfo) (bool, error) {
 	}, &svi)
 }
 
-func (cv *cachingVerifier) VerifyWinningPoSt(ctx context.Context, info proof2.WinningPoStVerifyInfo) (bool, error) {
+func (cv *cachingVerifier) VerifyWinningPoSt(ctx context.Context, info proof7.WinningPoStVerifyInfo) (bool, error) {
 	return cv.backend.VerifyWinningPoSt(ctx, info)
 }
+
 func (cv *cachingVerifier) VerifyWindowPoSt(ctx context.Context, info proof2.WindowPoStVerifyInfo) (bool, error) {
 	return cv.withCache(func() (bool, error) {
 		return cv.backend.VerifyWindowPoSt(ctx, info)
