@@ -265,7 +265,7 @@
   #LinkedChunkSize = 16384
 
   # env var: LOTUS_INDEXERPROVIDER_PUBSUBTOPIC
-  #PubSubTopic = "indexer/ingest"
+  #PubSubTopic = "/indexer/ingest/mainnet"
 
   # env var: LOTUS_INDEXERPROVIDER_PURGELINKCACHE
   #PurgeLinkCache = false
