@@ -46,7 +46,7 @@ func TestImportLocal(t *testing.T) {
 	b, err := testdata.ReadFile("testdata/payload.txt")
 	require.NoError(t, err)
 
-	//stm @CLIENT_STORAGE_DEALS_LIST_IMPORTS_001
+	//stm: @CLIENT_STORAGE_DEALS_LIST_IMPORTS_001
 	root, err := a.ClientImportLocal(ctx, bytes.NewReader(b))
 	require.NoError(t, err)
 	require.NotEqual(t, cid.Undef, root)
@@ -59,7 +59,7 @@ func TestImportLocal(t *testing.T) {
 	require.Equal(t, root, *it.Root)
 	require.True(t, strings.HasPrefix(it.CARPath, dir))
 
-	//stm @CLIENT_DATA_HAS_LOCAL_001
+	//stm: @CLIENT_DATA_HAS_LOCAL_001
 	local, err := a.ClientHasLocal(ctx, root)
 	require.NoError(t, err)
 	require.True(t, local)
