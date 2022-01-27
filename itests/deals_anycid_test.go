@@ -3,9 +3,12 @@ package itests
 import (
 	"bufio"
 	"context"
+	"errors"
 	"os"
 	"testing"
 	"time"
+
+	"golang.org/x/sync/errgroup"
 
 	"github.com/ipfs/go-bitswap"
 	"github.com/ipfs/go-bitswap/network"
@@ -131,24 +134,38 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 	// Fetch the deal data
 	info, err := client.ClientGetDealInfo(ctx, *dealCid)
 	require.NoError(t, err)
+	require.NoError(t, ens.MockNet.LinkAll())
+	require.NoError(t, ens.MockNet.ConnectAllButSelf())
 
 	// Make retrievals against CIDs at different levels in the DAG
-	cidIndices := []int{1, 11, 27, 32, 47}
+	cidIndices := []int{1, 11, 27, 30, 35, 59, 32, 47}
+	// test bitswap concurrent fetches
+	var errg errgroup.Group
+	for _, val := range cidIndices {
+		v := val
+		errg.Go(func() error {
+			t.Logf("performing bitswap retrieval for cid at index %d", v)
+			targetCid := cids[v]
+			blk, err := bsclient.GetBlock(ctx, targetCid)
+			if err != nil {
+				return err
+			}
+			if blk == nil {
+				return errors.New("not found")
+			}
+			blk, err = bitswapbs.Get(ctx, targetCid)
+			if err != nil {
+				return err
+			}
+			t.Logf("bitswap retrieval successfully completed for block %s with block content %s", targetCid, blk)
+			return nil
+		})
+	}
+	require.NoError(t, errg.Wait())
+
 	for _, val := range cidIndices {
 		t.Logf("performing retrieval for cid at index %d", val)
-		require.NoError(t, ens.MockNet.LinkAll())
-		require.NoError(t, ens.MockNet.ConnectAllButSelf())
 		targetCid := cids[val]
-		blk, err := bsclient.GetBlock(ctx, targetCid)
-		require.NoError(t, err)
-		require.NotEmpty(t, blk)
-		b, err := bitswapbs.Has(ctx, targetCid)
-		require.NoError(t, err)
-		require.True(t, b)
-		blk, err = bitswapbs.Get(ctx, targetCid)
-		require.NoError(t, err)
-		t.Logf("bitswap retrieval successfully completed for block %s with block content %s", targetCid, blk)
-
 		offer, err := client.ClientMinerQueryOffer(ctx, miner.ActorAddr, targetCid, &info.PieceCID)
 		require.NoError(t, err)
 		require.Empty(t, offer.Err)
