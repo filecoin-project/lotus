@@ -72,12 +72,8 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) *kit.TestFullN
 	}
 	waitForSectorActive(ctx, t, CCUpgrade, client, maddr)
 
-<<<<<<< HEAD
 	//stm: @SECTOR_CC_UPGRADE_001
-	err = miner.SectorMarkForUpgrade(ctx, sl[0])
-=======
 	err = miner.SectorMarkForUpgrade(ctx, sl[0], true)
->>>>>>> upstream/master
 	require.NoError(t, err)
 
 	sl, err = miner.SectorsList(ctx)
