@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# 1.14.0-rc3 / 2022-01-25
+# 1.14.0-rc5 / 2022-01-27
 
-This is the fourth release candidate for the mandatory release v1.14.0 of Lotus that introduces [Filecoin network v15, 
+This is the fifth release candidate for the mandatory release v1.14.0 of Lotus that introduces [Filecoin network v15, 
 codenamed the OhSnap upgrade](https://github.com/filecoin-project/community/discussions/74?sort=new#discussioncomment-1922550).
 
 The OhSnap upgrade introduces the following FIPs, delivered in [actors v7-rc1](https://github.com/filecoin-project/specs-actors/releases/tag/v7.0.0-rc1):
