@@ -93,9 +93,29 @@ func (e *BadgerMarkSetEnv) Close() error {
 
 func (s *BadgerMarkSet) BeginCriticalSection() error {
 	s.mx.Lock()
-	defer s.mx.Unlock()
+
+	if s.persist {
+		s.mx.Unlock()
+		return nil
+	}
+
+	var write bool
+	var seqno int
+	if len(s.pend) > 0 {
+		write = true
+		seqno := s.seqno
+		s.seqno++
+		s.writing[seqno] = s.pend
+		s.pend = make(map[string]struct{})
+	}
 
 	s.persist = true
+	s.mx.Unlock()
+
+	if write {
+		return s.write(seqno)
+	}
+
 	return nil
 }
 
