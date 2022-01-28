@@ -12,6 +12,7 @@ import (
 func TestMapMarkSet(t *testing.T) {
 	testMarkSet(t, "map")
 	testMarkSetVisitor(t, "map")
+	testMarkSetVisitorPersistence(t, "map")
 }
 
 func TestBadgerMarkSet(t *testing.T) {
@@ -22,6 +23,7 @@ func TestBadgerMarkSet(t *testing.T) {
 	})
 	testMarkSet(t, "badger")
 	testMarkSetVisitor(t, "badger")
+	testMarkSetVisitorPersistence(t, "badger")
 }
 
 func testMarkSet(t *testing.T, lsType string) {
@@ -218,4 +220,95 @@ func testMarkSetVisitor(t *testing.T, lsType string) {
 	mustNotVisit(visitor, k2)
 	mustNotVisit(visitor, k3)
 	mustNotVisit(visitor, k4)
+}
+
+func testMarkSetVisitorPersistence(t *testing.T, lsType string) {
+	t.Helper()
+
+	path, err := ioutil.TempDir("", "markset.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() {
+		_ = os.RemoveAll(path)
+	})
+
+	env, err := OpenMarkSetEnv(path, lsType)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer env.Close() //nolint:errcheck
+
+	visitor, err := env.New("test", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer visitor.Close() //nolint:errcheck
+
+	makeCid := func(key string) cid.Cid {
+		h, err := multihash.Sum([]byte(key), multihash.SHA2_256, -1)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return cid.NewCidV1(cid.Raw, h)
+	}
+
+	mustVisit := func(v ObjectVisitor, cid cid.Cid) {
+		visit, err := v.Visit(cid)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !visit {
+			t.Fatal("object should be visited")
+		}
+	}
+
+	mustNotVisit := func(v ObjectVisitor, cid cid.Cid) {
+		visit, err := v.Visit(cid)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if visit {
+			t.Fatal("unexpected visit")
+		}
+	}
+
+	k1 := makeCid("a")
+	k2 := makeCid("b")
+	k3 := makeCid("c")
+	k4 := makeCid("d")
+
+	if err := visitor.BeginCriticalSection(); err != nil {
+		t.Fatal(err)
+	}
+
+	mustVisit(visitor, k1)
+	mustVisit(visitor, k2)
+	mustVisit(visitor, k3)
+	mustVisit(visitor, k4)
+
+	mustNotVisit(visitor, k1)
+	mustNotVisit(visitor, k2)
+	mustNotVisit(visitor, k3)
+	mustNotVisit(visitor, k4)
+
+	if err := visitor.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	visitor, err = env.Recover("test")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mustNotVisit(visitor, k1)
+	mustNotVisit(visitor, k2)
+	mustNotVisit(visitor, k3)
+	mustNotVisit(visitor, k4)
+
+	visitor.EndCriticalSection()
 }
