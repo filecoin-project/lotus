@@ -42,12 +42,12 @@ func testMarkSet(t *testing.T, lsType string) {
 	}
 	defer env.Close() //nolint:errcheck
 
-	hotSet, err := env.Create("hot", 0)
+	hotSet, err := env.New("hot", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	coldSet, err := env.Create("cold", 0)
+	coldSet, err := env.New("cold", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,12 +114,12 @@ func testMarkSet(t *testing.T, lsType string) {
 		t.Fatal(err)
 	}
 
-	hotSet, err = env.Create("hot", 0)
+	hotSet, err = env.New("hot", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	coldSet, err = env.Create("cold", 0)
+	coldSet, err = env.New("cold", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,7 +167,7 @@ func testMarkSetVisitor(t *testing.T, lsType string) {
 	}
 	defer env.Close() //nolint:errcheck
 
-	visitor, err := env.Create("test", 0)
+	visitor, err := env.New("test", 0)
 	if err != nil {
 		t.Fatal(err)
 	}

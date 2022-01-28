@@ -398,7 +398,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	log.Infow("running compaction", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch, "boundaryEpoch", boundaryEpoch, "inclMsgsEpoch", inclMsgsEpoch, "compactionIndex", s.compactionIndex)
 
-	markSet, err := s.markSetEnv.Create("live", s.markSetSize)
+	markSet, err := s.markSetEnv.New("live", s.markSetSize)
 	if err != nil {
 		return xerrors.Errorf("error creating mark set: %w", err)
 	}

@@ -28,6 +28,7 @@ type BadgerMarkSet struct {
 	writers int
 	seqno   int
 	version int
+	persist bool
 
 	db   *badger.DB
 	path string
@@ -47,11 +48,10 @@ func NewBadgerMarkSetEnv(path string) (MarkSetEnv, error) {
 	return &BadgerMarkSetEnv{path: msPath}, nil
 }
 
-func (e *BadgerMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) {
-	name += ".tmp"
+func (e *BadgerMarkSetEnv) New(name string, sizeHint int64) (MarkSet, error) {
 	path := filepath.Join(e.path, name)
 
-	db, err := openTransientBadgerDB(path)
+	db, err := openBadgerDB(path, false)
 	if err != nil {
 		return nil, xerrors.Errorf("error creating badger db: %w", err)
 	}
@@ -67,8 +67,43 @@ func (e *BadgerMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) 
 	return ms, nil
 }
 
+func (e *BadgerMarkSetEnv) Recover(name string) (MarkSet, error) {
+	path := filepath.Join(e.path, name)
+
+	db, err := openBadgerDB(path, true)
+	if err != nil {
+		return nil, xerrors.Errorf("error creating badger db: %w", err)
+	}
+
+	ms := &BadgerMarkSet{
+		pend:    make(map[string]struct{}),
+		writing: make(map[int]map[string]struct{}),
+		db:      db,
+		path:    path,
+		persist: true,
+	}
+	ms.cond.L = &ms.mx
+
+	return ms, nil
+}
+
 func (e *BadgerMarkSetEnv) Close() error {
-	return os.RemoveAll(e.path)
+	return nil
+}
+
+func (s *BadgerMarkSet) BeginCriticalSection() error {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	s.persist = true
+	return nil
+}
+
+func (s *BadgerMarkSet) EndCriticalSection() {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	s.persist = false
 }
 
 func (s *BadgerMarkSet) Mark(c cid.Cid) error {
@@ -193,7 +228,7 @@ func (s *BadgerMarkSet) tryDB(key []byte) (has bool, err error) {
 // writer holds the exclusive lock
 func (s *BadgerMarkSet) put(key string) (write bool, seqno int) {
 	s.pend[key] = struct{}{}
-	if len(s.pend) < badgerMarkSetBatchSize {
+	if !s.persist && len(s.pend) < badgerMarkSetBatchSize {
 		return false, 0
 	}
 
@@ -266,21 +301,23 @@ func (s *BadgerMarkSet) Close() error {
 	db := s.db
 	s.db = nil
 
-	return closeTransientBadgerDB(db, s.path)
+	return closeBadgerDB(db, s.path, s.persist)
 }
 
 func (s *BadgerMarkSet) SetConcurrent() {}
 
-func openTransientBadgerDB(path string) (*badger.DB, error) {
-	// clean up first
-	err := os.RemoveAll(path)
-	if err != nil {
-		return nil, xerrors.Errorf("error clearing markset directory: %w", err)
-	}
+func openBadgerDB(path string, recover bool) (*badger.DB, error) {
+	// if it is not a recovery, clean up first
+	if !recover {
+		err := os.RemoveAll(path)
+		if err != nil {
+			return nil, xerrors.Errorf("error clearing markset directory: %w", err)
+		}
 
-	err = os.MkdirAll(path, 0755) //nolint:gosec
-	if err != nil {
-		return nil, xerrors.Errorf("error creating markset directory: %w", err)
+		err = os.MkdirAll(path, 0755) //nolint:gosec
+		if err != nil {
+			return nil, xerrors.Errorf("error creating markset directory: %w", err)
+		}
 	}
 
 	opts := badger.DefaultOptions(path)
@@ -302,10 +339,14 @@ func openTransientBadgerDB(path string) (*badger.DB, error) {
 	return badger.Open(opts)
 }
 
-func closeTransientBadgerDB(db *badger.DB, path string) error {
+func closeBadgerDB(db *badger.DB, path string, persist bool) error {
 	err := db.Close()
 	if err != nil {
 		return xerrors.Errorf("error closing badger markset: %w", err)
+	}
+
+	if persist {
+		return nil
 	}
 
 	err = os.RemoveAll(path)
