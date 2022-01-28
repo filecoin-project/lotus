@@ -282,12 +282,13 @@ func testMarkSetVisitorPersistence(t *testing.T, lsType string) {
 	k3 := makeCid("c")
 	k4 := makeCid("d")
 
+	mustVisit(visitor, k1)
+	mustVisit(visitor, k2)
+
 	if err := visitor.BeginCriticalSection(); err != nil {
 		t.Fatal(err)
 	}
 
-	mustVisit(visitor, k1)
-	mustVisit(visitor, k2)
 	mustVisit(visitor, k3)
 	mustVisit(visitor, k4)
 
