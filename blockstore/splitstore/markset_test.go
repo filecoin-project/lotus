@@ -167,7 +167,7 @@ func testMarkSetVisitor(t *testing.T, lsType string) {
 	}
 	defer env.Close() //nolint:errcheck
 
-	visitor, err := env.CreateVisitor("test", 0)
+	visitor, err := env.Create("test", 0)
 	if err != nil {
 		t.Fatal(err)
 	}
