@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -80,8 +82,17 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		t.Fatal(err)
 	}
 
+	path, err := ioutil.TempDir("", "splitstore.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() {
+		_ = os.RemoveAll(path)
+	})
+
 	// open the splitstore
-	ss, err := Open("", ds, hot, cold, cfg)
+	ss, err := Open(path, ds, hot, cold, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -259,8 +270,17 @@ func TestSplitStoreSuppressCompactionNearUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	path, err := ioutil.TempDir("", "splitstore.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() {
+		_ = os.RemoveAll(path)
+	})
+
 	// open the splitstore
-	ss, err := Open("", ds, hot, cold, &Config{MarkSetType: "map"})
+	ss, err := Open(path, ds, hot, cold, &Config{MarkSetType: "map"})
 	if err != nil {
 		t.Fatal(err)
 	}
