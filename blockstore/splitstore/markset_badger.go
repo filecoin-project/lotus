@@ -117,10 +117,18 @@ func (s *BadgerMarkSet) BeginCriticalSection() error {
 	s.mx.Unlock()
 
 	if write {
+		// all writes sync once perist is true
 		return s.write(seqno)
 	}
 
-	return nil
+	// wait for any pending writes and sync
+	s.mx.Lock()
+	for s.writers > 0 {
+		s.cond.Wait()
+	}
+	s.mx.Unlock()
+
+	return s.db.Sync()
 }
 
 func (s *BadgerMarkSet) EndCriticalSection() {
@@ -339,6 +347,14 @@ func (s *BadgerMarkSet) write(seqno int) (err error) {
 	err = batch.Flush()
 	if err != nil {
 		return xerrors.Errorf("error flushing batch to badger markset: %w", err)
+	}
+
+	s.mx.RLock()
+	persist := s.persist
+	s.mx.RUnlock()
+
+	if persist {
+		return s.db.Sync()
 	}
 
 	return nil

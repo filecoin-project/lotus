@@ -163,7 +163,13 @@ func (s *MapMarkSet) Mark(c cid.Cid) error {
 	s.set[string(hash)] = struct{}{}
 
 	if s.persist {
-		return s.writeKey(hash, true)
+		if err := s.writeKey(hash, true); err != nil {
+			return err
+		}
+
+		if err := s.file.Sync(); err != nil {
+			return xerrors.Errorf("error syncing markset: %w", err)
+		}
 	}
 
 	return nil
@@ -189,7 +195,13 @@ func (s *MapMarkSet) MarkMany(batch []cid.Cid) error {
 	}
 
 	if s.persist {
-		return s.buf.Flush()
+		if err := s.buf.Flush(); err != nil {
+			return xerrors.Errorf("error flushing markset buffer to disk: %w", err)
+		}
+
+		if err := s.file.Sync(); err != nil {
+			return xerrors.Errorf("error syncing markset: %w", err)
+		}
 	}
 
 	return nil
@@ -226,6 +238,9 @@ func (s *MapMarkSet) Visit(c cid.Cid) (bool, error) {
 	if s.persist {
 		if err := s.writeKey(hash, true); err != nil {
 			return false, err
+		}
+		if err := s.file.Sync(); err != nil {
+			return false, xerrors.Errorf("error syncing markset: %w", err)
 		}
 	}
 
