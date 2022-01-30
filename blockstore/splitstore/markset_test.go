@@ -317,7 +317,7 @@ func testMarkSetVisitorRecovery(t *testing.T, lsType string) {
 		t.Fatal(err)
 	}
 
-	visitor, err = env.Recover("test")
+	_, err = env.Recover("test")
 	if err == nil {
 		t.Fatal("expected recovery to fail")
 	}
@@ -430,7 +430,7 @@ func testMarkSetRecovery(t *testing.T, lsType string) {
 		t.Fatal(err)
 	}
 
-	markSet, err = env.Recover("test")
+	_, err = env.Recover("test")
 	if err == nil {
 		t.Fatal("expected recovery to fail")
 	}
@@ -537,7 +537,7 @@ func testMarkSetMarkMany(t *testing.T, lsType string) {
 		t.Fatal(err)
 	}
 
-	markSet, err = env.Recover("test")
+	_, err = env.Recover("test")
 	if err == nil {
 		t.Fatal("expected recovery to fail")
 	}

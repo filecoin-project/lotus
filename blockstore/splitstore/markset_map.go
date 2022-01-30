@@ -60,7 +60,7 @@ func (e *MapMarkSetEnv) Recover(name string) (MarkSet, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("error opening markset file for read: %w", err)
 	}
-	defer in.Close()
+	defer in.Close() //nolint:errcheck
 
 	// wrap a buffered reader to make this faster
 	buf := bufio.NewReader(in)

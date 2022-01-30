@@ -208,7 +208,7 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 	if ss.checkpointExists() {
 		log.Info("found compaction checkpoint; resuming compaction")
 		if err := ss.completeCompaction(); err != nil {
-			markSetEnv.Close()
+			markSetEnv.Close() //nolint:errcheck
 			return nil, xerrors.Errorf("error resuming compaction: %w", err)
 		}
 	}

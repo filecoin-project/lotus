@@ -58,8 +58,6 @@ var (
 
 const (
 	batchSize = 16384
-
-	defaultColdPurgeSize = 7_000_000
 )
 
 func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
@@ -497,7 +495,9 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		}
 
 		// it's cold, mark it as candidate for move
-		coldw.Write(c)
+		if err := coldw.Write(c); err != nil {
+			return xerrors.Errorf("error writing cid to coldstore: %w", err)
+		}
 		coldCnt++
 
 		return nil
@@ -942,7 +942,7 @@ func (s *SplitStore) has(c cid.Cid) (bool, error) {
 func (s *SplitStore) moveColdBlocks(coldr *ColdSetReader) error {
 	batch := make([]blocks.Block, 0, batchSize)
 
-	coldr.ForEach(func(c cid.Cid) error {
+	err := coldr.ForEach(func(c cid.Cid) error {
 		if err := s.checkClosing(); err != nil {
 			return err
 		}
@@ -968,6 +968,10 @@ func (s *SplitStore) moveColdBlocks(coldr *ColdSetReader) error {
 
 		return nil
 	})
+
+	if err != nil {
+		return xerrors.Errorf("error iterating coldset: %w", err)
+	}
 
 	if len(batch) > 0 {
 		err := s.cold.PutMany(s.ctx, batch)
