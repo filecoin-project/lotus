@@ -66,12 +66,15 @@ func (cp *Checkpoint) Set(c cid.Cid) error {
 	return nil
 }
 
-func (cp *Checkpoint) Close() (err error) {
-	if cp.file != nil {
-		err = cp.file.Close()
-		cp.file = nil
-		cp.buf = nil
+func (cp *Checkpoint) Close() error {
+	if cp.file == nil {
+		return nil
 	}
+
+	err := cp.file.Close()
+	cp.file = nil
+	cp.buf = nil
+
 	return err
 }
 
