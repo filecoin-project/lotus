@@ -90,7 +90,7 @@ func readRawCid(buf *bufio.Reader, hbuf []byte) (cid.Cid, error) {
 		hbuf = hbuf[:int(sz)]
 	}
 
-	if _, err := buf.Read(hbuf); err != nil {
+	if _, err := io.ReadFull(buf, hbuf); err != nil {
 		return cid.Undef, xerrors.Errorf("error reading hash: %w", err) // wrap EOF, it's corrupt
 	}
 

@@ -71,7 +71,7 @@ func (e *MapMarkSetEnv) Recover(name string) (MarkSet, error) {
 		}
 
 		key := make([]byte, int(sz))
-		if _, err = buf.Read(key); err != nil {
+		if _, err = io.ReadFull(buf, key); err != nil {
 			break
 		}
 
