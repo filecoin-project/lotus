@@ -22,6 +22,7 @@ import (
 	datastore "github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
 	logging "github.com/ipfs/go-log/v2"
+	mh "github.com/multiformats/go-multihash"
 )
 
 func init() {
@@ -446,17 +447,25 @@ func (c *mockChain) SubscribeHeadChanges(change func(revert []*types.TipSet, app
 
 type mockStore struct {
 	mx  sync.Mutex
-	set map[cid.Cid]blocks.Block
+	set map[string]blocks.Block
 }
 
 func newMockStore() *mockStore {
-	return &mockStore{set: make(map[cid.Cid]blocks.Block)}
+	return &mockStore{set: make(map[string]blocks.Block)}
+}
+
+func (b *mockStore) keyOf(c cid.Cid) string {
+	return string(c.Hash())
+}
+
+func (b *mockStore) cidOf(k string) cid.Cid {
+	return cid.NewCidV1(cid.Raw, mh.Multihash([]byte(k)))
 }
 
 func (b *mockStore) Has(_ context.Context, cid cid.Cid) (bool, error) {
 	b.mx.Lock()
 	defer b.mx.Unlock()
-	_, ok := b.set[cid]
+	_, ok := b.set[b.keyOf(cid)]
 	return ok, nil
 }
 
@@ -466,7 +475,7 @@ func (b *mockStore) Get(_ context.Context, cid cid.Cid) (blocks.Block, error) {
 	b.mx.Lock()
 	defer b.mx.Unlock()
 
-	blk, ok := b.set[cid]
+	blk, ok := b.set[b.keyOf(cid)]
 	if !ok {
 		return nil, blockstore.ErrNotFound
 	}
@@ -494,7 +503,7 @@ func (b *mockStore) Put(_ context.Context, blk blocks.Block) error {
 	b.mx.Lock()
 	defer b.mx.Unlock()
 
-	b.set[blk.Cid()] = blk
+	b.set[b.keyOf(blk.Cid())] = blk
 	return nil
 }
 
@@ -503,7 +512,7 @@ func (b *mockStore) PutMany(_ context.Context, blks []blocks.Block) error {
 	defer b.mx.Unlock()
 
 	for _, blk := range blks {
-		b.set[blk.Cid()] = blk
+		b.set[b.keyOf(blk.Cid())] = blk
 	}
 	return nil
 }
@@ -512,7 +521,7 @@ func (b *mockStore) DeleteBlock(_ context.Context, cid cid.Cid) error {
 	b.mx.Lock()
 	defer b.mx.Unlock()
 
-	delete(b.set, cid)
+	delete(b.set, b.keyOf(cid))
 	return nil
 }
 
@@ -521,7 +530,7 @@ func (b *mockStore) DeleteMany(_ context.Context, cids []cid.Cid) error {
 	defer b.mx.Unlock()
 
 	for _, c := range cids {
-		delete(b.set, c)
+		delete(b.set, b.keyOf(c))
 	}
 	return nil
 }
@@ -535,7 +544,7 @@ func (b *mockStore) ForEachKey(f func(cid.Cid) error) error {
 	defer b.mx.Unlock()
 
 	for c := range b.set {
-		err := f(c)
+		err := f(b.cidOf(c))
 		if err != nil {
 			return err
 		}
