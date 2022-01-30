@@ -169,6 +169,32 @@ func (s *MapMarkSet) Mark(c cid.Cid) error {
 	return nil
 }
 
+func (s *MapMarkSet) MarkMany(batch []cid.Cid) error {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	if s.set == nil {
+		return errMarkSetClosed
+	}
+
+	for _, c := range batch {
+		hash := c.Hash()
+		s.set[string(hash)] = struct{}{}
+
+		if s.persist {
+			if err := s.writeKey(hash, false); err != nil {
+				return err
+			}
+		}
+	}
+
+	if s.persist {
+		return s.buf.Flush()
+	}
+
+	return nil
+}
+
 func (s *MapMarkSet) Has(cid cid.Cid) (bool, error) {
 	s.mx.RLock()
 	defer s.mx.RUnlock()

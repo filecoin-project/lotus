@@ -143,6 +143,23 @@ func (s *BadgerMarkSet) Mark(c cid.Cid) error {
 	return nil
 }
 
+func (s *BadgerMarkSet) MarkMany(batch []cid.Cid) error {
+	s.mx.Lock()
+	if s.pend == nil {
+		s.mx.Unlock()
+		return errMarkSetClosed
+	}
+
+	write, seqno := s.putMany(batch)
+	s.mx.Unlock()
+
+	if write {
+		return s.write(seqno)
+	}
+
+	return nil
+}
+
 func (s *BadgerMarkSet) Has(c cid.Cid) (bool, error) {
 	s.mx.RLock()
 	defer s.mx.RUnlock()
@@ -248,6 +265,24 @@ func (s *BadgerMarkSet) tryDB(key []byte) (has bool, err error) {
 // writer holds the exclusive lock
 func (s *BadgerMarkSet) put(key string) (write bool, seqno int) {
 	s.pend[key] = struct{}{}
+	if !s.persist && len(s.pend) < badgerMarkSetBatchSize {
+		return false, 0
+	}
+
+	seqno = s.seqno
+	s.seqno++
+	s.writing[seqno] = s.pend
+	s.pend = make(map[string]struct{})
+
+	return true, seqno
+}
+
+func (s *BadgerMarkSet) putMany(batch []cid.Cid) (write bool, seqno int) {
+	for _, c := range batch {
+		key := string(c.Hash())
+		s.pend[key] = struct{}{}
+	}
+
 	if !s.persist && len(s.pend) < badgerMarkSetBatchSize {
 		return false, 0
 	}

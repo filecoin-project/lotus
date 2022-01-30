@@ -14,6 +14,7 @@ var errMarkSetClosed = errors.New("markset closed")
 type MarkSet interface {
 	ObjectVisitor
 	Mark(cid.Cid) error
+	MarkMany([]cid.Cid) error
 	Has(cid.Cid) (bool, error)
 	Close() error
 
