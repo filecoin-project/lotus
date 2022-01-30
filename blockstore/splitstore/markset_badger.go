@@ -70,6 +70,10 @@ func (e *BadgerMarkSetEnv) New(name string, sizeHint int64) (MarkSet, error) {
 func (e *BadgerMarkSetEnv) Recover(name string) (MarkSet, error) {
 	path := filepath.Join(e.path, name)
 
+	if _, err := os.Stat(path); err != nil {
+		return nil, xerrors.Errorf("error stating badger db path: %w", err)
+	}
+
 	db, err := openBadgerDB(path, true)
 	if err != nil {
 		return nil, xerrors.Errorf("error creating badger db: %w", err)
@@ -358,8 +362,6 @@ func (s *BadgerMarkSet) Close() error {
 
 	return closeBadgerDB(db, s.path, s.persist)
 }
-
-func (s *BadgerMarkSet) SetConcurrent() {}
 
 func openBadgerDB(path string, recover bool) (*badger.DB, error) {
 	// if it is not a recovery, clean up first
