@@ -280,7 +280,7 @@ func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error)
 		}
 
 		if has {
-			return s.hot.Get(ctx, cid)
+			return s.get(cid)
 		}
 
 		return s.cold.Get(ctx, cid)
@@ -331,7 +331,7 @@ func (s *SplitStore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 		}
 
 		if has {
-			return s.hot.GetSize(ctx, cid)
+			return s.getSize(cid)
 		}
 
 		return s.cold.GetSize(ctx, cid)
@@ -500,7 +500,7 @@ func (s *SplitStore) View(ctx context.Context, cid cid.Cid, cb func([]byte) erro
 		}
 
 		if has {
-			return s.hot.View(ctx, cid, cb)
+			return s.view(cid, cb)
 		}
 
 		return s.cold.View(ctx, cid, cb)

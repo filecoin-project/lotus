@@ -948,6 +948,30 @@ func (s *SplitStore) has(c cid.Cid) (bool, error) {
 	return s.cold.Has(s.ctx, c)
 }
 
+func (s *SplitStore) get(c cid.Cid) (blocks.Block, error) {
+	blk, err := s.hot.Get(s.ctx, c)
+	switch err {
+	case nil:
+		return blk, nil
+	case bstore.ErrNotFound:
+		return s.cold.Get(s.ctx, c)
+	default:
+		return nil, err
+	}
+}
+
+func (s *SplitStore) getSize(c cid.Cid) (int, error) {
+	sz, err := s.hot.GetSize(s.ctx, c)
+	switch err {
+	case nil:
+		return sz, nil
+	case bstore.ErrNotFound:
+		return s.cold.GetSize(s.ctx, c)
+	default:
+		return 0, err
+	}
+}
+
 func (s *SplitStore) moveColdBlocks(coldr *ColdSetReader) error {
 	batch := make([]blocks.Block, 0, batchSize)
 
