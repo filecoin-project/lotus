@@ -711,6 +711,11 @@ func (s *SplitStore) beginTxnProtect() {
 func (s *SplitStore) beginCriticalSection(markSet MarkSet) error {
 	log.Info("beginning critical section")
 
+	// do that once first to get the bulk before the markset is in critical section
+	if err := s.protectTxnRefs(markSet); err != nil {
+		return xerrors.Errorf("error protecting transactional references: %w", err)
+	}
+
 	if err := markSet.BeginCriticalSection(); err != nil {
 		return xerrors.Errorf("error beginning critical section for markset: %w", err)
 	}
@@ -719,6 +724,7 @@ func (s *SplitStore) beginCriticalSection(markSet MarkSet) error {
 	s.txnMarkSet = markSet
 	s.txnLk.Unlock()
 
+	// and do it again to mark references that might have been created in the meantime
 	if err := s.protectTxnRefs(markSet); err != nil {
 		return xerrors.Errorf("error protecting transactional references: %w", err)
 	}
