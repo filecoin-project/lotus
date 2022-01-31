@@ -1,3 +1,4 @@
+//stm: #unit
 package sealing_test
 
 import (
@@ -28,6 +29,7 @@ import (
 )
 
 func TestCommitBatcher(t *testing.T) {
+	//stm: @CHAIN_STATE_MINER_PRE_COM_INFO_001, @CHAIN_STATE_MINER_INFO_001, @CHAIN_STATE_NETWORK_VERSION_001
 	t0123, err := address.NewFromString("t0123")
 	require.NoError(t, err)
 
@@ -147,6 +149,7 @@ func TestCommitBatcher(t *testing.T) {
 		}
 	}
 
+	//stm: @CHAIN_STATE_MINER_INFO_001, @CHAIN_STATE_NETWORK_VERSION_001, @CHAIN_STATE_MINER_GET_COLLATERAL_001
 	expectSend := func(expect []abi.SectorNumber, aboveBalancer, failOnePCI bool) action {
 		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing.CommitBatcher) promise {
 			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(miner.MinerInfo{Owner: t0123, Worker: t0123}, nil)
