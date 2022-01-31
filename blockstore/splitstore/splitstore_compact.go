@@ -987,7 +987,7 @@ func (s *SplitStore) walkObjectIncomplete(c cid.Cid, visitor ObjectVisitor, f, m
 	return nil
 }
 
-// internal version used by walk
+// internal version used during compaction and related operations
 func (s *SplitStore) view(c cid.Cid, cb func([]byte) error) error {
 	if isIdentiyCid(c) {
 		data, err := decodeIdentityCid(c)
