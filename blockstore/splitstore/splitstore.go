@@ -238,8 +238,12 @@ func (s *SplitStore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 	// critical section
 	if s.txnMarkSet != nil {
 		has, err := s.txnMarkSet.Has(cid)
-		if has || err != nil {
-			return has, err
+		if err != nil {
+			return false, err
+		}
+
+		if has {
+			return s.has(cid)
 		}
 
 		return s.cold.Has(ctx, cid)
