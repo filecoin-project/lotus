@@ -170,7 +170,7 @@ func (s *SplitStore) protectTipSets(apply []*types.TipSet) {
 }
 
 func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
-	log.Infof("marking %d live refs", len(cids))
+	log.Debugf("marking %d live refs", len(cids))
 	startMark := time.Now()
 
 	workch := make(chan cid.Cid, len(cids))
@@ -201,7 +201,7 @@ func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
 					return nil
 				},
 				func(missing cid.Cid) error {
-					log.Warnf("missing reference %s rooted at %s", missing, c)
+					log.Warnf("missing object reference %s in %s", missing, c)
 					return errStopWalk
 				})
 			if err != nil {
@@ -229,7 +229,7 @@ func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
 		log.Errorf("error marking tipset refs: %s", err)
 	}
 
-	log.Infow("marking live refs done", "took", time.Since(startMark), "marked", *count)
+	log.Debugw("marking live refs done", "took", time.Since(startMark), "marked", *count)
 }
 
 // transactionally protect a view
