@@ -156,7 +156,7 @@ func (s *SplitStore) protectTipSets(apply []*types.TipSet) {
 
 // transactionally protect a view
 func (s *SplitStore) protectView(c cid.Cid) {
-	s.txnLk.RLock()
+	//  the txnLk is held for read
 	defer s.txnLk.RUnlock()
 
 	if s.txnActive {

@@ -494,7 +494,7 @@ func (s *SplitStore) View(ctx context.Context, cid cid.Cid, cb func([]byte) erro
 	}
 
 	// critical section
-	s.txnLk.RLock()
+	s.txnLk.RLock() // the lock is released in protectView if we are not in critical section
 	if s.txnMarkSet != nil {
 		has, err := s.txnMarkSet.Has(cid)
 		s.txnLk.RUnlock()
@@ -509,7 +509,6 @@ func (s *SplitStore) View(ctx context.Context, cid cid.Cid, cb func([]byte) erro
 
 		return s.cold.View(ctx, cid, cb)
 	}
-	s.txnLk.RUnlock()
 
 	// views are (optimistically) protected two-fold:
 	// - if there is an active transaction, then the reference is protected.
