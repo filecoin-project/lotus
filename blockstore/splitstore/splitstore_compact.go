@@ -170,7 +170,7 @@ func (s *SplitStore) protectTipSets(apply []*types.TipSet) {
 }
 
 func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
-	log.Info("marking %d live refs", len(cids))
+	log.Infof("marking %d live refs", len(cids))
 	startMark := time.Now()
 
 	workch := make(chan cid.Cid, len(cids))
@@ -182,7 +182,7 @@ func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
 	count := new(int32)
 	worker := func() error {
 		for c := range workch {
-			err := s.walkObject(c, newTmpVisitor(),
+			err := s.walkObjectIncomplete(c, newTmpVisitor(),
 				func(c cid.Cid) error {
 					if isUnitaryObject(c) {
 						return errStopWalk
@@ -199,6 +199,10 @@ func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
 
 					atomic.AddInt32(count, 1)
 					return nil
+				},
+				func(missing cid.Cid) error {
+					log.Warnf("missing reference %s rooted at %s", missing, c)
+					return errStopWalk
 				})
 			if err != nil {
 				return err
