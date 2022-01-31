@@ -3,11 +3,6 @@ package vm
 import (
 	"context"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/specs-actors/v7/actors/runtime"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
@@ -18,6 +13,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
+	ffi_cgo "github.com/filecoin-project/filecoin-ffi/cgo"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
@@ -25,36 +21,18 @@ import (
 
 var _ VMI = (*FVM)(nil)
 
-type Extern interface {
-	GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness
-	GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness
-	VerifyConsensusFault(a, b, extra []byte) (address.Address, abi.ChainEpoch, runtime.ConsensusFaultType)
-}
 type FvmExtern struct {
-	rand Rand
+	Rand
+	blockstore.Blockstore
 }
 
-func (e *FvmExtern) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	res, err := e.rand.GetChainRandomness(context.Background(), personalization, randEpoch, entropy)
-
-	if err != nil {
-		panic(aerrors.Fatalf("could not get ticket randomness: %s", err))
-	}
-	return res
-}
-
-func (e *FvmExtern) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	res, err := e.rand.GetBeaconRandomness(context.Background(), personalization, randEpoch, entropy)
-
-	if err != nil {
-		panic(aerrors.Fatalf("could not get ticket randomness: %s", err))
-	}
-	return res
+func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, h1, h2, extra []byte) (*ffi_cgo.ConsensusFault, error) {
+	// TODO
+	panic("unimplemented")
 }
 
 type FVM struct {
-	machineId uint64
-	extern    FvmExtern
+	fvm *ffi.FVM
 }
 
 func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
@@ -70,14 +48,16 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		return nil, err
 	}
 
-	id, err := ffi.CreateFVM(0, opts.Epoch, opts.BaseFee, baseCirc, opts.NetworkVersion, opts.StateBase)
+	fvm, err := ffi.CreateFVM(0,
+		&FvmExtern{Rand: opts.Rand, Blockstore: opts.Bstore},
+		opts.Epoch, opts.BaseFee, baseCirc, opts.NetworkVersion, opts.StateBase,
+	)
 	if err != nil {
 		return nil, err
 	}
 
 	return &FVM{
-		extern:    FvmExtern{rand: opts.Rand},
-		machineId: id,
+		fvm: fvm,
 	}, nil
 }
 
@@ -87,7 +67,7 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 		return nil, xerrors.Errorf("serializing msg: %w", err)
 	}
 
-	ret, err := ffi.ApplyMessage(vm.machineId, msgBytes)
+	ret, err := vm.fvm.ApplyMessage(msgBytes)
 	if err != nil {
 		return nil, xerrors.Errorf("applying msg: %w", err)
 	}
@@ -121,7 +101,7 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 		return nil, xerrors.Errorf("serializing msg: %w", err)
 	}
 
-	ret, err := ffi.ApplyMessage(vm.machineId, msgBytes)
+	ret, err := vm.fvm.ApplyMessage(msgBytes)
 	if err != nil {
 		return nil, xerrors.Errorf("applying msg: %w", err)
 	}
@@ -150,5 +130,5 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 }
 
 func (vm *FVM) Flush(ctx context.Context) (cid.Cid, error) {
-	return cid.Undef, nil
+	return vm.fvm.Flush()
 }
