@@ -186,10 +186,6 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 		return nil, err
 	}
 
-	if !markSetEnv.SupportsVisitor() {
-		return nil, xerrors.Errorf("markset type does not support atomic visitors")
-	}
-
 	// and now we can make a SplitStore
 	ss := &SplitStore{
 		cfg:        cfg,

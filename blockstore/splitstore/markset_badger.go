@@ -34,7 +34,6 @@ type BadgerMarkSet struct {
 }
 
 var _ MarkSet = (*BadgerMarkSet)(nil)
-var _ MarkSetVisitor = (*BadgerMarkSet)(nil)
 
 var badgerMarkSetBatchSize = 16384
 
@@ -48,7 +47,7 @@ func NewBadgerMarkSetEnv(path string) (MarkSetEnv, error) {
 	return &BadgerMarkSetEnv{path: msPath}, nil
 }
 
-func (e *BadgerMarkSetEnv) create(name string, sizeHint int64) (*BadgerMarkSet, error) {
+func (e *BadgerMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) {
 	name += ".tmp"
 	path := filepath.Join(e.path, name)
 
@@ -67,16 +66,6 @@ func (e *BadgerMarkSetEnv) create(name string, sizeHint int64) (*BadgerMarkSet, 
 
 	return ms, nil
 }
-
-func (e *BadgerMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) {
-	return e.create(name, sizeHint)
-}
-
-func (e *BadgerMarkSetEnv) CreateVisitor(name string, sizeHint int64) (MarkSetVisitor, error) {
-	return e.create(name, sizeHint)
-}
-
-func (e *BadgerMarkSetEnv) SupportsVisitor() bool { return true }
 
 func (e *BadgerMarkSetEnv) Close() error {
 	return os.RemoveAll(e.path)
