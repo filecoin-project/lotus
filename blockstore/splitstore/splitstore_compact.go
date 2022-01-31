@@ -160,7 +160,7 @@ func (s *SplitStore) protectTipSets(apply []*types.TipSet) {
 	if s.txnMarkSet != nil {
 		go func() {
 			defer s.txnLk.RUnlock()
-			s.markTipSetRefs(cids)
+			s.markLiveRefs(cids)
 		}()
 		return
 	}
@@ -169,8 +169,8 @@ func (s *SplitStore) protectTipSets(apply []*types.TipSet) {
 	s.txnLk.RUnlock()
 }
 
-func (s *SplitStore) markTipSetRefs(cids []cid.Cid) {
-	log.Info("marking %d tipset refs", len(cids))
+func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
+	log.Info("marking %d live refs", len(cids))
 	startMark := time.Now()
 
 	workch := make(chan cid.Cid, len(cids))
@@ -225,7 +225,7 @@ func (s *SplitStore) markTipSetRefs(cids []cid.Cid) {
 		log.Errorf("error marking tipset refs: %s", err)
 	}
 
-	log.Infow("marking tipset refs done", "took", time.Since(startMark), "marked", *count)
+	log.Infow("marking live refs done", "took", time.Since(startMark), "marked", *count)
 }
 
 // transactionally protect a view

@@ -370,10 +370,10 @@ func (s *SplitStore) Put(ctx context.Context, blk blocks.Block) error {
 	}
 
 	s.txnLk.RLock()
-	defer s.txnLk.RUnlock()
 
 	err := s.hot.Put(ctx, blk)
 	if err != nil {
+		s.txnLk.RUnlock()
 		return err
 	}
 
@@ -381,8 +381,13 @@ func (s *SplitStore) Put(ctx context.Context, blk blocks.Block) error {
 
 	// critical section
 	if s.txnMarkSet != nil {
-		return s.txnMarkSet.Mark(blk.Cid())
+		go func() {
+			defer s.txnLk.RUnlock()
+			s.markLiveRefs([]cid.Cid{blk.Cid()})
+		}()
+		return nil
 	}
+	defer s.txnLk.RUnlock()
 
 	s.trackTxnRef(blk.Cid())
 	return nil
@@ -420,10 +425,10 @@ func (s *SplitStore) PutMany(ctx context.Context, blks []blocks.Block) error {
 	}
 
 	s.txnLk.RLock()
-	defer s.txnLk.RUnlock()
 
 	err := s.hot.PutMany(ctx, blks)
 	if err != nil {
+		s.txnLk.RUnlock()
 		return err
 	}
 
@@ -431,8 +436,13 @@ func (s *SplitStore) PutMany(ctx context.Context, blks []blocks.Block) error {
 
 	// critical section
 	if s.txnMarkSet != nil {
-		return s.txnMarkSet.MarkMany(batch)
+		go func() {
+			defer s.txnLk.RUnlock()
+			s.txnMarkSet.MarkMany(batch)
+		}()
+		return nil
 	}
+	defer s.txnLk.RUnlock()
 
 	s.trackTxnRefMany(batch)
 	return nil
