@@ -134,6 +134,10 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 		return nil, nil, xerrors.Errorf("generating fallback challenges: %v", err)
 	}
 
+	sort.Slice(postChallenges.Sectors, func(i, j int) bool {
+		return postChallenges.Sectors[i] < postChallenges.Sectors[j]
+	})
+
 	proofList := make([]ffi.PartitionProof, partitionCount)
 	var wg sync.WaitGroup
 	wg.Add(int(partitionCount))
@@ -162,15 +166,16 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 			}
 
 			p, sk, err := m.generatePartitionWindowPost(cctx, spt, ppt, minerID, int(partIdx), sectors, randomness)
-			if len(sk) > 0 {
-				log.Errorf("generateWindowPost part:%d, skipped:%d, err: %+v", partIdx, len(sk), err)
+			if err != nil || len(sk) > 0 {
+				log.Errorf("generateWindowPost part:%d, skipped:%d, sectors: %d, err: %+v", partIdx, len(sk), len(sectors), err)
 				flk.Lock()
 				skipped = append(skipped, sk...)
+
+				if err != nil {
+					retErr = multierror.Append(retErr, xerrors.Errorf("partitionCount:%d err:%+v", partIdx, err))
+					return
+				}
 				flk.Unlock()
-			}
-			if err != nil {
-				retErr = multierror.Append(retErr, xerrors.Errorf("partitionCount:%d err:%+v", partIdx, err))
-				return
 			}
 
 			proofList[partIdx] = ffi.PartitionProof(p)

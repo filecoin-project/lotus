@@ -568,20 +568,31 @@ func (l *LocalWorker) GenerateWindowPoSt(ctx context.Context, ppt abi.Registered
 
 			// todo context with tighter deadline (+config)
 			vanilla, err := l.storage.GenerateSingleVanillaProof(ctx, mid, s, ppt)
+			slk.Lock()
+			defer slk.Unlock()
+
 			if err != nil || vanilla == nil {
-				slk.Lock()
 				skipped = append(skipped, abi.SectorID{
 					Miner:  mid,
 					Number: s.SectorNumber,
 				})
-				slk.Unlock()
 				log.Errorf("get sector: %d, vanilla: %s, err: %s", s.SectorNumber, vanilla, err)
 				return
 			}
+
 			vproofs[i] = vanilla
 		}(i, s)
 	}
 	wg.Wait()
+
+	var at = 0
+	for i := range vproofs {
+		if vproofs[i] != nil {
+			vproofs[at] = vproofs[i]
+			at++
+		}
+	}
+	vproofs = vproofs[:at]
 
 	res, err := sb.GenerateWindowPoStWithVanilla(ctx, ppt, mid, randomness, vproofs, partitionIdx)
 

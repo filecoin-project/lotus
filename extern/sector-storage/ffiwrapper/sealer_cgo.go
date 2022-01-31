@@ -10,13 +10,12 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 	"io"
 	"math/bits"
 	"os"
 	"runtime"
-
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
