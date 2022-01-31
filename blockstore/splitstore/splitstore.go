@@ -438,7 +438,7 @@ func (s *SplitStore) PutMany(ctx context.Context, blks []blocks.Block) error {
 	if s.txnMarkSet != nil {
 		go func() {
 			defer s.txnLk.RUnlock()
-			s.txnMarkSet.MarkMany(batch)
+			s.markLiveRefs(batch)
 		}()
 		return nil
 	}
