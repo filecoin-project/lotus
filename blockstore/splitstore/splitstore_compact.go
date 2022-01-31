@@ -721,10 +721,13 @@ func (s *SplitStore) beginCriticalSection(markSet MarkSet) error {
 	}
 
 	s.txnLk.Lock()
-	s.txnMarkSet = markSet
-	s.txnLk.Unlock()
+	defer s.txnLk.Unlock()
 
-	// and do it again to mark references that might have been created in the meantime
+	s.txnMarkSet = markSet
+
+	// and do it again while holding the lock to mark references that might have been created
+	// in the meantime and avoid races of the type Has->txnRef->enterCS->Get fails because
+	// it's not in the markset
 	if err := s.protectTxnRefs(markSet); err != nil {
 		return xerrors.Errorf("error protecting transactional references: %w", err)
 	}
