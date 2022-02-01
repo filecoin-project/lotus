@@ -50,8 +50,9 @@ var (
 	// there is a sync gap
 	SyncGapTime = time.Minute
 
-	// SyncWaitTime is the time delay before compaction starts purging
-	SyncWaitTime = SyncGapTime
+	// SyncWaitTime is the time delay from a tipset's min timestamp before we decide
+	// we have synced.
+	SyncWaitTime = 30 * time.Second
 )
 
 var (
@@ -161,13 +162,18 @@ func (s *SplitStore) protectTipSets(apply []*types.TipSet) {
 
 	// critical section
 	if s.txnMarkSet != nil {
+		curTs := apply[len(apply)-1]
+		timestamp := time.Unix(int64(curTs.MinTimestamp()), 0)
+		doSync := time.Since(timestamp) < SyncWaitTime
 		go func() {
-			defer func() {
-				s.txnSyncMx.Lock()
-				defer s.txnSyncMx.Unlock()
-				s.txnSync = true
-				s.txnSyncCond.Broadcast()
-			}()
+			if doSync {
+				defer func() {
+					s.txnSyncMx.Lock()
+					defer s.txnSyncMx.Unlock()
+					s.txnSync = true
+					s.txnSyncCond.Broadcast()
+				}()
+			}
 			defer s.txnLk.RUnlock()
 			s.markLiveRefs(cids)
 
@@ -770,6 +776,12 @@ func (s *SplitStore) beginCriticalSection(markSet MarkSet) error {
 }
 
 func (s *SplitStore) waitForSync() {
+	log.Info("waiting for sync")
+	startWait := time.Now()
+	defer func() {
+		log.Infow("waiting for sync done", "took", time.Since(startWait))
+	}()
+
 	s.txnSyncMx.Lock()
 	defer s.txnSyncMx.Unlock()
 
