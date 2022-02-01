@@ -138,6 +138,10 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	}
 
 	waitForCompaction := func() {
+		ss.txnSyncMx.Lock()
+		ss.txnSync = true
+		ss.txnSyncCond.Broadcast()
+		ss.txnSyncMx.Unlock()
 		for atomic.LoadInt32(&ss.compacting) == 1 {
 			time.Sleep(100 * time.Millisecond)
 		}
@@ -327,6 +331,10 @@ func TestSplitStoreSuppressCompactionNearUpgrade(t *testing.T) {
 	}
 
 	waitForCompaction := func() {
+		ss.txnSyncMx.Lock()
+		ss.txnSync = true
+		ss.txnSyncCond.Broadcast()
+		ss.txnSyncMx.Unlock()
 		for atomic.LoadInt32(&ss.compacting) == 1 {
 			time.Sleep(100 * time.Millisecond)
 		}
