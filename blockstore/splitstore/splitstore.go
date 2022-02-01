@@ -665,6 +665,11 @@ func (s *SplitStore) Close() error {
 	}
 
 	if atomic.LoadInt32(&s.compacting) == 1 {
+		s.txnSyncMx.Lock()
+		s.txnSync = true
+		s.txnSyncCond.Broadcast()
+		s.txnSyncMx.Unlock()
+
 		log.Warn("close with ongoing compaction in progress; waiting for it to finish...")
 		for atomic.LoadInt32(&s.compacting) == 1 {
 			time.Sleep(time.Second)
