@@ -676,7 +676,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		return err
 	}
 
-	// wait for the head to catch up so that all messages are protected
+	// wait for the head to catch up so that the current tipset is marked
 	s.waitForSync()
 
 	if err := s.checkClosing(); err != nil {
