@@ -660,6 +660,10 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		return err
 	}
 
+	// wait for the head to catch up so that all messages are protected
+	log.Infof("waiting %s for sync", SyncGapTime)
+	time.Sleep(SyncGapTime)
+
 	checkpoint, err := NewCheckpoint(s.checkpointPath())
 	if err != nil {
 		return xerrors.Errorf("error creating checkpoint: %w", err)
