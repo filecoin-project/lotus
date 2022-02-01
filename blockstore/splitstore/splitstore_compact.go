@@ -190,8 +190,9 @@ func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
 	startMark := time.Now()
 
 	count := new(int32)
+	visitor := newConcurrentVisitor()
 	walkObject := func(c cid.Cid) error {
-		return s.walkObjectIncomplete(c, newTmpVisitor(),
+		return s.walkObjectIncomplete(c, visitor,
 			func(c cid.Cid) error {
 				if isUnitaryObject(c) {
 					return errStopWalk
