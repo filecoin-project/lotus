@@ -49,6 +49,9 @@ var (
 	// SyncGapTime is the time delay from a tipset's min timestamp before we decide
 	// there is a sync gap
 	SyncGapTime = time.Minute
+
+	// SyncWaitTime is the time delay before compaction starts purging
+	SyncWaitTime = SyncGapTime
 )
 
 var (
@@ -661,8 +664,8 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	}
 
 	// wait for the head to catch up so that all messages are protected
-	log.Infof("waiting %s for sync", SyncGapTime)
-	time.Sleep(SyncGapTime)
+	log.Infof("waiting %s for sync", SyncWaitTime)
+	time.Sleep(SyncWaitTime)
 
 	checkpoint, err := NewCheckpoint(s.checkpointPath())
 	if err != nil {

@@ -29,6 +29,7 @@ func init() {
 	CompactionThreshold = 5
 	CompactionBoundary = 2
 	WarmupBoundary = 0
+	SyncWaitTime = time.Millisecond
 	logging.SetLogLevel("splitstore", "DEBUG")
 }
 
