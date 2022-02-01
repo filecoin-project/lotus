@@ -663,9 +663,13 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		return err
 	}
 
-	// wait for the head to catch up so that all messages are protected
+	// wait for the head to catch up so that all messages in the current head are protected
 	log.Infof("waiting %s for sync", SyncWaitTime)
 	time.Sleep(SyncWaitTime)
+
+	if err := s.checkClosing(); err != nil {
+		return err
+	}
 
 	checkpoint, err := NewCheckpoint(s.checkpointPath())
 	if err != nil {
