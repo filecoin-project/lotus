@@ -162,8 +162,15 @@ func (s *SplitStore) protectTipSets(apply []*types.TipSet) {
 	// critical section
 	if s.txnMarkSet != nil {
 		go func() {
+			defer func() {
+				s.txnSyncMx.Lock()
+				defer s.txnSyncMx.Unlock()
+				s.txnSync = true
+				s.txnSyncCond.Broadcast()
+			}()
 			defer s.txnLk.RUnlock()
 			s.markLiveRefs(cids)
+
 		}()
 		return
 	}
@@ -663,9 +670,8 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		return err
 	}
 
-	// wait for the head to catch up so that all messages in the current head are protected
-	log.Infof("waiting %s for sync", SyncWaitTime)
-	time.Sleep(SyncWaitTime)
+	// wait for the head to catch up so that all messages are protected
+	s.waitForSync()
 
 	if err := s.checkClosing(); err != nil {
 		return err
@@ -731,6 +737,7 @@ func (s *SplitStore) beginTxnProtect() {
 	defer s.txnLk.Unlock()
 
 	s.txnActive = true
+	s.txnSync = false
 	s.txnRefs = make(map[cid.Cid]struct{})
 	s.txnMissing = make(map[cid.Cid]struct{})
 }
@@ -762,6 +769,15 @@ func (s *SplitStore) beginCriticalSection(markSet MarkSet) error {
 	return nil
 }
 
+func (s *SplitStore) waitForSync() {
+	s.txnSyncMx.Lock()
+	defer s.txnSyncMx.Unlock()
+
+	for !s.txnSync {
+		s.txnSyncCond.Wait()
+	}
+}
+
 func (s *SplitStore) endTxnProtect() {
 	s.txnLk.Lock()
 	defer s.txnLk.Unlock()
@@ -771,6 +787,7 @@ func (s *SplitStore) endTxnProtect() {
 	}
 
 	s.txnActive = false
+	s.txnSync = false
 	s.txnRefs = nil
 	s.txnMissing = nil
 	s.txnMarkSet = nil

@@ -157,6 +157,9 @@ type SplitStore struct {
 	txnRefs         map[cid.Cid]struct{}
 	txnMissing      map[cid.Cid]struct{}
 	txnMarkSet      MarkSet
+	txnSyncMx       sync.Mutex
+	txnSyncCond     sync.Cond
+	txnSync         bool
 
 	// registered protectors
 	protectors []func(func(cid.Cid) error) error
@@ -196,6 +199,7 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 	}
 
 	ss.txnViewsCond.L = &ss.txnViewsMx
+	ss.txnSyncCond.L = &ss.txnSyncMx
 	ss.ctx, ss.cancel = context.WithCancel(context.Background())
 
 	if enableDebugLog {
