@@ -173,38 +173,50 @@ func (s *SplitStore) markLiveRefs(cids []cid.Cid) {
 	log.Debugf("marking %d live refs", len(cids))
 	startMark := time.Now()
 
+	count := new(int32)
+	walkObject := func(c cid.Cid) error {
+		return s.walkObjectIncomplete(c, newTmpVisitor(),
+			func(c cid.Cid) error {
+				if isUnitaryObject(c) {
+					return errStopWalk
+				}
+
+				visit, err := s.txnMarkSet.Visit(c)
+				if err != nil {
+					return xerrors.Errorf("error visiting object: %w", err)
+				}
+
+				if !visit {
+					return errStopWalk
+				}
+
+				atomic.AddInt32(count, 1)
+				return nil
+			},
+			func(missing cid.Cid) error {
+				log.Warnf("missing object reference %s in %s", missing, c)
+				return errStopWalk
+			})
+	}
+
+	// optimize the common case of single put
+	if len(cids) == 1 {
+		if err := walkObject(cids[0]); err != nil {
+			log.Errorf("error marking tipset refs: %s", err)
+		}
+		log.Debugw("marking live refs done", "took", time.Since(startMark), "marked", *count)
+		return
+	}
+
 	workch := make(chan cid.Cid, len(cids))
 	for _, c := range cids {
 		workch <- c
 	}
 	close(workch)
 
-	count := new(int32)
 	worker := func() error {
 		for c := range workch {
-			err := s.walkObjectIncomplete(c, newTmpVisitor(),
-				func(c cid.Cid) error {
-					if isUnitaryObject(c) {
-						return errStopWalk
-					}
-
-					visit, err := s.txnMarkSet.Visit(c)
-					if err != nil {
-						return xerrors.Errorf("error visiting object: %w", err)
-					}
-
-					if !visit {
-						return errStopWalk
-					}
-
-					atomic.AddInt32(count, 1)
-					return nil
-				},
-				func(missing cid.Cid) error {
-					log.Warnf("missing object reference %s in %s", missing, c)
-					return errStopWalk
-				})
-			if err != nil {
+			if err := walkObject(c); err != nil {
 				return err
 			}
 		}
