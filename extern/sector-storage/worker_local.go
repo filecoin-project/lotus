@@ -162,20 +162,21 @@ func (l *LocalWorker) ffiExec() (ffiwrapper.Storage, error) {
 type ReturnType string
 
 const (
-	AddPiece            ReturnType = "AddPiece"
-	SealPreCommit1      ReturnType = "SealPreCommit1"
-	SealPreCommit2      ReturnType = "SealPreCommit2"
-	SealCommit1         ReturnType = "SealCommit1"
-	SealCommit2         ReturnType = "SealCommit2"
-	FinalizeSector      ReturnType = "FinalizeSector"
-	ReplicaUpdate       ReturnType = "ReplicaUpdate"
-	ProveReplicaUpdate1 ReturnType = "ProveReplicaUpdate1"
-	ProveReplicaUpdate2 ReturnType = "ProveReplicaUpdate2"
-	GenerateSectorKey   ReturnType = "GenerateSectorKey"
-	ReleaseUnsealed     ReturnType = "ReleaseUnsealed"
-	MoveStorage         ReturnType = "MoveStorage"
-	UnsealPiece         ReturnType = "UnsealPiece"
-	Fetch               ReturnType = "Fetch"
+	AddPiece              ReturnType = "AddPiece"
+	SealPreCommit1        ReturnType = "SealPreCommit1"
+	SealPreCommit2        ReturnType = "SealPreCommit2"
+	SealCommit1           ReturnType = "SealCommit1"
+	SealCommit2           ReturnType = "SealCommit2"
+	FinalizeSector        ReturnType = "FinalizeSector"
+	FinalizeReplicaUpdate ReturnType = "FinalizeReplicaUpdate"
+	ReplicaUpdate         ReturnType = "ReplicaUpdate"
+	ProveReplicaUpdate1   ReturnType = "ProveReplicaUpdate1"
+	ProveReplicaUpdate2   ReturnType = "ProveReplicaUpdate2"
+	GenerateSectorKey     ReturnType = "GenerateSectorKey"
+	ReleaseUnsealed       ReturnType = "ReleaseUnsealed"
+	MoveStorage           ReturnType = "MoveStorage"
+	UnsealPiece           ReturnType = "UnsealPiece"
+	Fetch                 ReturnType = "Fetch"
 )
 
 // in: func(WorkerReturn, context.Context, CallID, err string)
@@ -443,6 +444,27 @@ func (l *LocalWorker) FinalizeSector(ctx context.Context, sector storage.SectorR
 
 	return l.asyncCall(ctx, sector, FinalizeSector, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
 		if err := sb.FinalizeSector(ctx, sector, keepUnsealed); err != nil {
+			return nil, xerrors.Errorf("finalizing sector: %w", err)
+		}
+
+		if len(keepUnsealed) == 0 {
+			if err := l.storage.Remove(ctx, sector.ID, storiface.FTUnsealed, true, nil); err != nil {
+				return nil, xerrors.Errorf("removing unsealed data: %w", err)
+			}
+		}
+
+		return nil, err
+	})
+}
+
+func (l *LocalWorker) FinalizeReplicaUpdate(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) (storiface.CallID, error) {
+	sb, err := l.executor()
+	if err != nil {
+		return storiface.UndefCall, err
+	}
+
+	return l.asyncCall(ctx, sector, FinalizeReplicaUpdate, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+		if err := sb.FinalizeReplicaUpdate(ctx, sector, keepUnsealed); err != nil {
 			return nil, xerrors.Errorf("finalizing sector: %w", err)
 		}
 

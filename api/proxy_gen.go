@@ -872,6 +872,8 @@ type WorkerStruct struct {
 
 		Fetch func(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType, p3 storiface.PathType, p4 storiface.AcquireMode) (storiface.CallID, error) `perm:"admin"`
 
+		FinalizeReplicaUpdate func(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) `perm:"admin"`
+
 		FinalizeSector func(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) `perm:"admin"`
 
 		GenerateSectorKeyFromData func(p0 context.Context, p1 storage.SectorRef, p2 cid.Cid) (storiface.CallID, error) `perm:"admin"`
@@ -5003,6 +5005,17 @@ func (s *WorkerStruct) Fetch(p0 context.Context, p1 storage.SectorRef, p2 storif
 }
 
 func (s *WorkerStub) Fetch(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType, p3 storiface.PathType, p4 storiface.AcquireMode) (storiface.CallID, error) {
+	return *new(storiface.CallID), ErrNotSupported
+}
+
+func (s *WorkerStruct) FinalizeReplicaUpdate(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) {
+	if s.Internal.FinalizeReplicaUpdate == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
+	return s.Internal.FinalizeReplicaUpdate(p0, p1, p2)
+}
+
+func (s *WorkerStub) FinalizeReplicaUpdate(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) {
 	return *new(storiface.CallID), ErrNotSupported
 }
 
