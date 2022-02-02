@@ -3,6 +3,7 @@ package splitstore
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 
 	"golang.org/x/xerrors"
@@ -394,8 +395,11 @@ func openBadgerDB(path string, recover bool) (*badger.DB, error) {
 	}
 
 	opts := badger.DefaultOptions(path)
+	// we manually sync when we are in critical section
 	opts.SyncWrites = false
+	// no need to do that
 	opts.CompactL0OnClose = false
+	// we store hashes, not much to gain by compression
 	opts.Compression = options.None
 	// Note: We use FileIO for loading modes to avoid memory thrashing and interference
 	//       between the system blockstore and the markset.
@@ -404,6 +408,15 @@ func openBadgerDB(path string, recover bool) (*badger.DB, error) {
 	//       exceeded 1GB in size.
 	opts.TableLoadingMode = options.FileIO
 	opts.ValueLogLoadingMode = options.FileIO
+	// We increase the number of L0 tables before compaction to make it unlikely to
+	// be necessary.
+	opts.NumLevelZeroTables = 20      // default is 5
+	opts.NumLevelZeroTablesStall = 30 // default is 10
+	// increase the number of compactors from default 2 so that if we ever have to
+	// compact, it is fast
+	if runtime.NumCPU()/2 > opts.NumCompactors {
+		opts.NumCompactors = runtime.NumCPU() / 2
+	}
 	opts.Logger = &badgerLogger{
 		SugaredLogger: log.Desugar().WithOptions(zap.AddCallerSkip(1)).Sugar(),
 		skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
