@@ -590,6 +590,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	spn storagemarket.StorageProviderNode,
 	df dtypes.StorageDealFilter,
 	dsw *dagstore.Wrapper,
+	fullnodeApi v1api.FullNode,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 
@@ -620,6 +621,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 		spn,
 		address.Address(minerAddress),
 		storedAsk,
+		fullnodeApi,
 		opt,
 	)
 }
