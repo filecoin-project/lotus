@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strconv"
 	"time"
@@ -15,7 +16,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
@@ -58,7 +58,7 @@ func RunHello(mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host, svc *hello.
 
 	sub, err := h.EventBus().Subscribe(new(event.EvtPeerIdentificationCompleted), eventbus.BufSize(1024))
 	if err != nil {
-		return xerrors.Errorf("failed to subscribe to event bus: %w", err)
+		return fmt.Errorf("failed to subscribe to event bus: %w", err)
 	}
 
 	ctx := helpers.LifecycleCtx(mctx, lc)
@@ -198,6 +198,29 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 	waitForSync(stmgr, pubsubMsgsSyncEpochs, subscribe)
 }
 
+func RelayIndexerMessages(lc fx.Lifecycle, ps *pubsub.PubSub, nn dtypes.NetworkName) error {
+	topicName := build.IngestTopic(nn)
+	topicHandle, err := ps.Join(topicName)
+	if err != nil {
+		return fmt.Errorf("failed to join pubsub topic %s: %w", topicName, err)
+	}
+	cancelFunc, err := topicHandle.Relay()
+	if err != nil {
+		return fmt.Errorf("failed to relay to pubsub messages for topic %s: %w", topicName, err)
+	}
+
+	// Cancel message relay on shutdown.
+	lc.Append(fx.Hook{
+		OnStop: func(_ context.Context) error {
+			cancelFunc()
+			return nil
+		},
+	})
+
+	log.Infof("relaying messages for pubsub topic %s", topicName)
+	return nil
+}
+
 func NewLocalDiscovery(lc fx.Lifecycle, ds dtypes.MetadataDS) (*discoveryimpl.Local, error) {
 	local, err := discoveryimpl.NewLocal(namespace.Wrap(ds, datastore.NewKey("/deals/local")))
 	if err != nil {
@@ -238,7 +261,7 @@ func RandomSchedule(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Sche
 	for _, dc := range p.DrandConfig {
 		bc, err := drand.NewDrandBeacon(gen.Timestamp, build.BlockDelaySecs, p.PubSub, dc.Config)
 		if err != nil {
-			return nil, xerrors.Errorf("creating drand beacon: %w", err)
+			return nil, fmt.Errorf("creating drand beacon: %w", err)
 		}
 		shd = append(shd, beacon.BeaconPoint{Start: dc.Start, Beacon: bc})
 	}
