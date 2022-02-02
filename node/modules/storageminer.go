@@ -611,11 +611,6 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 
 	opt := storageimpl.CustomDealDecisionLogic(storageimpl.DealDeciderFunc(df))
 
-	ai, err := fullnodeApi.NetAddrsListen(context.Background())
-	if err != nil {
-		return nil, err
-	}
-
 	return storageimpl.NewProvider(
 		net,
 		namespace.Wrap(ds, datastore.NewKey("/deals/provider")),
@@ -627,7 +622,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 		spn,
 		address.Address(minerAddress),
 		storedAsk,
-		ai,
+		fullnodeApi,
 		idxProvHost.Host,
 		opt,
 	)
