@@ -134,10 +134,6 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 		return nil, nil, xerrors.Errorf("generating fallback challenges: %v", err)
 	}
 
-	sort.Slice(postChallenges.Sectors, func(i, j int) bool {
-		return postChallenges.Sectors[i] < postChallenges.Sectors[j]
-	})
-
 	proofList := make([]ffi.PartitionProof, partitionCount)
 	var wg sync.WaitGroup
 	wg.Add(int(partitionCount))
