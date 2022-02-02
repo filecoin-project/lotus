@@ -270,6 +270,9 @@
   # env var: LOTUS_INDEXERPROVIDER_PURGELINKCACHE
   #PurgeLinkCache = false
 
+  # env var: LOTUS_INDEXERPROVIDER_PUBLISHERKIND
+  #PublisherKind = "dtsync"
+
   # Binding address for the libp2p host - 0 means random port.
   # Format: multiaddress; see https://multiformats.io/multiaddr/
   #
@@ -291,6 +294,10 @@
   # type: uint64
   # env var: LOTUS_INDEXERPROVIDER_MAXSIMULTANEOUSTRANSFERS
   #MaxSimultaneousTransfers = 20
+
+  [IndexerProvider.HttpPublisher]
+    # env var: LOTUS_INDEXERPROVIDER_HTTPPUBLISHER_LISTENMULTIADDR
+    #ListenMultiaddr = "/ip4/0.0.0.0/tcp/3104/http"
 
 
 [Sealing]
