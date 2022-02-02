@@ -105,6 +105,12 @@ Compaction works transactionally with the following algorithm:
   - We delete in small batches taking a lock; each batch is checked again for marks, from the concurrent transactional mark, so as to never delete anything live
 - We then end the transaction and compact/gc the hotstore.
 
+As of [#8008](https://github.com/filecoin-project/lotus/pull/8008) the compaction algorithm has been
+modified to eliminate sorting and maintain the cold object set on disk. This drastically reduces
+memory usage; in fact, when using badger as the markset compaction uses very little memory, and
+it should be now possible to run splitstore with 32GB of RAM or less without danger of running out of
+memory during compaction.
+
 ## Garbage Collection
 
 TBD -- see [#6577](https://github.com/filecoin-project/lotus/issues/6577)
