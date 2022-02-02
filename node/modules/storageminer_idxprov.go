@@ -48,10 +48,12 @@ type IdxProv struct {
 	peerstore.Peerstore
 }
 
-func IndexerProvider(cfg config.IndexerProviderConfig) func(params IdxProv, marketHost host.Host) (provider.Interface, error) {
-	return func(args IdxProv, marketHost host.Host) (provider.Interface, error) {
-		ipds := namespace.Wrap(args.Datastore, datastore.NewKey("/indexer-provider"))
+type IdxProvHost struct {
+	host.Host
+}
 
+func IndexerProviderHost(cfg config.IndexerProviderConfig) func(IdxProv) (*IdxProvHost, error) {
+	return func(args IdxProv) (*IdxProvHost, error) {
 		pkey := args.Peerstore.PrivKey(args.PeerID)
 		if pkey == nil {
 			return nil, fmt.Errorf("missing private key for node ID: %s", args.PeerID.Pretty())
@@ -60,6 +62,19 @@ func IndexerProvider(cfg config.IndexerProviderConfig) func(params IdxProv, mark
 		h, err := createIndexerProviderHost(args.MetricsCtx, args.Lifecycle, pkey, args.Peerstore, cfg.ListenAddresses, cfg.AnnounceAddresses)
 		if err != nil {
 			return nil, xerrors.Errorf("creating indexer provider host: %w", err)
+		}
+
+		return &IdxProvHost{h}, nil
+	}
+}
+
+func IndexerProvider(cfg config.IndexerProviderConfig) func(params IdxProv, marketHost host.Host, h *IdxProvHost) (provider.Interface, error) {
+	return func(args IdxProv, marketHost host.Host, h *IdxProvHost) (provider.Interface, error) {
+		ipds := namespace.Wrap(args.Datastore, datastore.NewKey("/indexer-provider"))
+
+		pkey := args.Peerstore.PrivKey(args.PeerID)
+		if pkey == nil {
+			return nil, fmt.Errorf("missing private key for node ID: %s", args.PeerID.Pretty())
 		}
 
 		dt, err := newIndexerProviderDataTransfer(cfg, args.MetricsCtx, args.Lifecycle, args.Repo, h, ipds)

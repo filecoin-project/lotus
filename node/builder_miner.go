@@ -168,6 +168,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(dtypes.ProviderTransferNetwork), modules.NewProviderTransferNetwork),
 			Override(new(dtypes.ProviderTransport), modules.NewProviderTransport),
 			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDataTransfer),
+			Override(new(*modules.IdxProvHost), modules.IndexerProviderHost(cfg.IndexerProvider)),
 			Override(new(provider.Interface), modules.IndexerProvider(cfg.IndexerProvider)),
 			Override(new(*storedask.StoredAsk), modules.NewStorageAsk),
 			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(cfg.Dealmaking, nil)),
