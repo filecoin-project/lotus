@@ -76,6 +76,8 @@ var (
 	ChainNodeHeight                     = stats.Int64("chain/node_height", "Current Height of the node", stats.UnitDimensionless)
 	ChainNodeHeightExpected             = stats.Int64("chain/node_height_expected", "Expected Height of the node", stats.UnitDimensionless)
 	ChainNodeWorkerHeight               = stats.Int64("chain/node_worker_height", "Current Height of workers on the node", stats.UnitDimensionless)
+	IndexerMessageValidationFailure     = stats.Int64("indexer/failure", "Counter for indexer message validation failures", stats.UnitDimensionless)
+	IndexerMessageValidationSuccess     = stats.Int64("indexer/success", "Counter for indexer message validation successes", stats.UnitDimensionless)
 	MessagePublished                    = stats.Int64("message/published", "Counter for total locally published messages", stats.UnitDimensionless)
 	MessageReceived                     = stats.Int64("message/received", "Counter for total received messages", stats.UnitDimensionless)
 	MessageValidationFailure            = stats.Int64("message/failure", "Counter for message validation failures", stats.UnitDimensionless)
@@ -199,6 +201,15 @@ var (
 			bounds = append(bounds, 600*1000) // final cutoff at 10m
 			return view.Distribution(bounds...)
 		}(),
+	}
+	IndexerMessageValidationFailureView = &view.View{
+		Measure:     IndexerMessageValidationFailure,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{FailureType, Local},
+	}
+	IndexerMessageValidationSuccessView = &view.View{
+		Measure:     IndexerMessageValidationSuccess,
+		Aggregation: view.Count(),
 	}
 	MessagePublishedView = &view.View{
 		Measure:     MessagePublished,
@@ -532,6 +543,8 @@ var ChainNodeViews = append([]*view.View{
 	BlockValidationSuccessView,
 	BlockValidationDurationView,
 	BlockDelayView,
+	IndexerMessageValidationFailureView,
+	IndexerMessageValidationSuccessView,
 	MessagePublishedView,
 	MessageReceivedView,
 	MessageValidationFailureView,
