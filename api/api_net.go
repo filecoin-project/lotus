@@ -51,6 +51,10 @@ type Net interface {
 	NetBlockRemove(ctx context.Context, acl NetBlockList) error //perm:admin
 	NetBlockList(ctx context.Context) (NetBlockList, error)     //perm:read
 
+	NetProtectAdd(ctx context.Context, acl []peer.ID) error    //perm:admin
+	NetProtectRemove(ctx context.Context, acl []peer.ID) error //perm:admin
+	NetProtectList(ctx context.Context) ([]peer.ID, error)     //perm:read
+
 	// ResourceManager API
 	NetStat(ctx context.Context, scope string) (NetStat, error)          //perm:read
 	NetLimit(ctx context.Context, scope string) (NetLimit, error)        //perm:read
