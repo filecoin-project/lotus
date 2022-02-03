@@ -406,7 +406,7 @@ type RunConcurrentDealsOpts struct {
 	CarExport                bool
 	StartEpoch               abi.ChainEpoch
 	UseCARFileForStorageDeal bool
-	IndexerProvider          *shared_testutil.MockIndexProvider
+	IndexProvider            *shared_testutil.MockIndexProvider
 }
 
 func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
@@ -434,8 +434,8 @@ func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
 			})
 
 			// Check that the storage provider announced the deal to indexers
-			if opts.IndexerProvider != nil {
-				notifs := opts.IndexerProvider.GetNotifs()
+			if opts.IndexProvider != nil {
+				notifs := opts.IndexProvider.GetNotifs()
 				_, ok := notifs[string(deal.Bytes())]
 				require.True(dh.t, ok)
 			}

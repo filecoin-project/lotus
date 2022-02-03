@@ -45,14 +45,14 @@ type Backup struct {
 type StorageMiner struct {
 	Common
 
-	Subsystems      MinerSubsystemConfig
-	Dealmaking      DealmakingConfig
-	IndexerProvider IndexerProviderConfig
-	Sealing         SealingConfig
-	Storage         sectorstorage.SealerConfig
-	Fees            MinerFeeConfig
-	Addresses       MinerAddressConfig
-	DAGStore        DAGStoreConfig
+	Subsystems    MinerSubsystemConfig
+	Dealmaking    DealmakingConfig
+	IndexProvider IndexProviderConfig
+	Sealing       SealingConfig
+	Storage       sectorstorage.SealerConfig
+	Fees          MinerFeeConfig
+	Addresses     MinerAddressConfig
+	DAGStore      DAGStoreConfig
 }
 
 type DAGStoreConfig struct {
@@ -161,20 +161,22 @@ type DealmakingConfig struct {
 	RetrievalPricing *RetrievalPricing
 }
 
-type IndexerProviderConfig struct {
+type IndexProviderConfig struct {
 	config.Ingest
 
-	// Binding address for the libp2p host - 0 means random port.
-	// Format: multiaddress; see https://multiformats.io/multiaddr/
+	// Binding address for the libp2p host contacted by indexer nodes to sync the list of advertised
+	// multihashes. Note that when port is set to 0 a random port is generated at runtime and may be
+	// different on every restart. The format of the strings specified must conform to multiaddress;
+	// see https://multiformats.io/multiaddr/
 	ListenAddresses []string
 
-	// Addresses to explicitly announce to other peers. If not specified,
-	// all interface addresses are announced
-	// Format: multiaddress
+	// The address the endpoints at which the data associated to the advertised
+	// multihashes can be retrieved. If not specified, the ListenAddresses are used instead. The format
+	// of the strings specified must conform to multiaddress; see https://multiformats.io/multiaddr/
 	AnnounceAddresses []string
 
-	// The maximum number of simultaneous requests syncing the list of advertised multihashes
-	// between the indexers and the index provider.
+	// The maximum number of simultaneous requests syncing the list of advertised multihashes between
+	// the indexers and the index provider.
 	MaxSimultaneousTransfers uint64
 }
 

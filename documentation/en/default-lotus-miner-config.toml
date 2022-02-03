@@ -257,39 +257,58 @@
       #Path = ""
 
 
-[IndexerProvider]
-  # env var: LOTUS_INDEXERPROVIDER_LINKCACHESIZE
+[IndexProvider]
+  # The maximum number of multihash chunk links that index provider cash can store before
+  # LRU eviction. If chunks belonging to a single advertisement are larger than the cache can
+  # hold, the cache is resized to be able to hold all links. The actual disk usaed depends on
+  # LinkedChunkSize and the length of multihashes. For example, for 128-bit long multihashes
+  # with the default LinkedChunkSize, and LinkCacheSize the cache size can grow to 256MiB. 
+  #
+  # type int
+  # env var: LOTUS_INDEXPROVIDER_LINKCACHESIZE
   #LinkCacheSize = 1024
 
-  # env var: LOTUS_INDEXERPROVIDER_LINKEDCHUNKSIZE
+  # The number of multihashes in each chunk of the
+  # advertised multihash entries linked list.  If multihashes are 128-bit, then
+  # setting LinkedChunkSize = 16384 will result in blocks of 0.25MiB when
+  # full.
+  #
+  # type int
+  # env var: LOTUS_INDEXPROVIDER_LINKEDCHUNKSIZE
   #LinkedChunkSize = 16384
 
-  # env var: LOTUS_INDEXERPROVIDER_PUBSUBTOPIC
+  # The gossipsub topic name used to publish change to the advertised content.
+  #
+  # env var: LOTUS_INDEXPROVIDER_PUBSUBTOPIC
   #PubSubTopic = "/indexer/ingest/mainnet"
 
-  # env var: LOTUS_INDEXERPROVIDER_PURGELINKCACHE
+  # Whether to purge all cached entries on start-up.
+  #
+  # env var: LOTUS_INDEXPROVIDER_PURGELINKCACHE
   #PurgeLinkCache = false
 
-  # Binding address for the libp2p host - 0 means random port.
-  # Format: multiaddress; see https://multiformats.io/multiaddr/
+  # Binding address for the libp2p host contacted by indexer nodes to sync the list of advertised 
+  # multihashes. Note that when port is set to 0 a random port is generated at runtime and may be 
+  # different on every restart. The format of the strings specified must conform to multiaddress; 
+  # see https://multiformats.io/multiaddr/
   #
   # type: []string
-  # env var: LOTUS_INDEXERPROVIDER_LISTENADDRESSES
+  # env var: LOTUS_INDEXPROVIDER_LISTENADDRESSES
   #ListenAddresses = ["/ip4/0.0.0.0/tcp/0", "/ip6/::/tcp/0"]
 
-  # Addresses to explicitly announce to other peers. If not specified,
-  # all interface addresses are announced
-  # Format: multiaddress
+  # The address the endpoints at which the data associated to the advertised
+  # multihashes can be retrieved. If not specified, the ListenAddresses are used instead. The format
+  # of the strings specified must conform to multiaddress; see https://multiformats.io/multiaddr/
   #
   # type: []string
-  # env var: LOTUS_INDEXERPROVIDER_ANNOUNCEADDRESSES
+  # env var: LOTUS_INDEXPROVIDER_ANNOUNCEADDRESSES
   #AnnounceAddresses = []
 
   # The maximum number of simultaneous requests syncing the list of advertised multihashes between 
   # the indexers and the index provider.
   #
   # type: uint64
-  # env var: LOTUS_INDEXERPROVIDER_MAXSIMULTANEOUSTRANSFERS
+  # env var: LOTUS_INDEXPROVIDER_MAXSIMULTANEOUSTRANSFERS
   #MaxSimultaneousTransfers = 20
 
 
