@@ -37,12 +37,12 @@ func TestCCUpgrade(t *testing.T) {
 	} {
 		height := height // make linters happy by copying
 		t.Run(fmt.Sprintf("upgrade-%d", height), func(t *testing.T) {
-			runTestCCUpgrade(t, height)
+			runTestCCUpgrade(t)
 		})
 	}
 }
 
-func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) *kit.TestFullNode {
+func runTestCCUpgrade(t *testing.T) *kit.TestFullNode {
 	ctx := context.Background()
 	blockTime := 1 * time.Millisecond
 
@@ -137,7 +137,7 @@ func TestCCUpgradeAndPoSt(t *testing.T) {
 	kit.QuietMiningLogs()
 	t.Run("upgrade and then post", func(t *testing.T) {
 		ctx := context.Background()
-		n := runTestCCUpgrade(t, 100)
+		n := runTestCCUpgrade(t)
 		ts, err := n.ChainHead(ctx)
 		require.NoError(t, err)
 		start := ts.Height()
