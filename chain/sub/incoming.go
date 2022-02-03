@@ -444,3 +444,24 @@ func recordFailure(ctx context.Context, metric *stats.Int64Measure, failureType 
 	)
 	stats.Record(ctx, metric.M(1))
 }
+
+type IndexerMessageValidator struct {
+	self peer.ID
+}
+
+func NewIndexerMessageValidator(self peer.ID) *IndexerMessageValidator {
+	return &IndexerMessageValidator{self: self}
+}
+
+func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
+	// This chain-node should not be publishing its own messages.  These are
+	// relayed from miner-nodes or index publishers.  If a node appears to be
+	// local, reject it.
+	if pid == v.self {
+		log.Warnf("refusing to relay indexer message from self")
+		stats.Record(ctx, metrics.IndexerMessageValidationFailure.M(1))
+		return pubsub.ValidationReject
+	}
+	stats.Record(ctx, metrics.IndexerMessageValidationSuccess.M(1))
+	return pubsub.ValidationAccept
+}

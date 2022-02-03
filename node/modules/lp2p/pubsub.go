@@ -333,6 +333,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 	allowTopics := []string{
 		build.BlocksTopic(in.Nn),
 		build.MessagesTopic(in.Nn),
+		build.IngestTopic(in.Nn),
 	}
 	allowTopics = append(allowTopics, drandTopics...)
 	options = append(options,

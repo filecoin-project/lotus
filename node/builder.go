@@ -104,6 +104,8 @@ const (
 	HandleMigrateClientFundsKey
 	HandlePaymentChannelManagerKey
 
+	RelayIndexerMessagesKey
+
 	// miner
 	GetParamsKey
 	HandleMigrateProviderFundsKey

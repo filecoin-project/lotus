@@ -134,6 +134,8 @@ var ChainNode = Options(
 
 	Override(new(*full.GasPriceCache), full.NewGasPriceCache),
 
+	Override(RelayIndexerMessagesKey, modules.RelayIndexerMessages),
+
 	// Lite node API
 	ApplyIf(isLiteNode,
 		Override(new(messagepool.Provider), messagepool.NewProviderLite),
