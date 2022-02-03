@@ -541,6 +541,12 @@ func (n *Ensemble) Start() *Ensemble {
 			node.Override(new(stmgr.UpgradeSchedule), n.options.upgradeSchedule),
 		}
 
+		if m.options.subsystems.Has(SMarkets) {
+			opts = append(opts,
+				node.Override(new(*modules.IdxProvHost), node.MockHost(n.mn)),
+			)
+		}
+
 		// append any node builder options.
 		opts = append(opts, m.options.extraNodeOpts...)
 
