@@ -258,9 +258,9 @@
 
 
 [IndexProvider]
-  # The maximum number of multihash chunk links that index provider cash can store before
+  # The maximum number of multihash chunk links that index provider cache can store before
   # LRU eviction. If chunks belonging to a single advertisement are larger than the cache can
-  # hold, the cache is resized to be able to hold all links. The actual disk usaed depends on
+  # hold, the cache is resized to be able to hold all links. The actual disk usage depends on
   # LinkedChunkSize and the length of multihashes. For example, for 128-bit long multihashes
   # with the default LinkedChunkSize, and LinkCacheSize the cache size can grow to 256MiB. 
   #
