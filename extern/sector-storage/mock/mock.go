@@ -477,6 +477,10 @@ func (mgr *SectorMgr) FinalizeSector(context.Context, storage.SectorRef, []stora
 	return nil
 }
 
+func (mgr *SectorMgr) FinalizeReplicaUpdate(context.Context, storage.SectorRef, []storage.Range) error {
+	return nil
+}
+
 func (mgr *SectorMgr) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) error {
 	return nil
 }
