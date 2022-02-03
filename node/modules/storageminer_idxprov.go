@@ -67,7 +67,7 @@ func IndexProviderHost(cfg config.IndexProviderConfig) func(IdxProv) (idxprov.Ho
 
 func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHost host.Host, h idxprov.Host) (provider.Interface, error) {
 	return func(args IdxProv, marketHost host.Host, h idxprov.Host) (provider.Interface, error) {
-		ipds := namespace.Wrap(args.Datastore, datastore.NewKey("/indexer-provider"))
+		ipds := namespace.Wrap(args.Datastore, datastore.NewKey("/index-provider"))
 
 		pkey := args.Peerstore.PrivKey(args.PeerID)
 		if pkey == nil {

@@ -623,8 +623,6 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 		address.Address(minerAddress),
 		storedAsk,
 		meshCreator,
-		//fullnodeApi,
-		//idxProvHost,
 		opt,
 	)
 }
