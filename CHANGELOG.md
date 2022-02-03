@@ -1,7 +1,7 @@
 # Lotus changelog
 
 # v1.13.2 /  2022-01-09
-
+final change 
 Lotus v1.13.2 is a *highly recommended* feature release with remarkable retrieval improvements, new features like 
 worker management, schedule enhancements and so on. 
 
