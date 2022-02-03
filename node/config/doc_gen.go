@@ -378,8 +378,7 @@ Format: multiaddress`,
 			Name: "MaxSimultaneousTransfers",
 			Type: "uint64",
 
-			Comment: `The maximum number of simultaneous data transfers between the indexers
-and the indexer provider`,
+			Comment: `The maximum number of simultaneous requests syncing the list of advertised multihashes between the indexers and the index provider.`,
 		},
 	},
 	"Libp2p": []DocField{

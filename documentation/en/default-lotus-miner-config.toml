@@ -285,8 +285,8 @@
   # env var: LOTUS_INDEXERPROVIDER_ANNOUNCEADDRESSES
   #AnnounceAddresses = []
 
-  # The maximum number of simultaneous data transfers between the indexers
-  # and the indexer provider
+  # The maximum number of simultaneous requests syncing the list of advertised multihashes between 
+  # the indexers and the index provider.
   #
   # type: uint64
   # env var: LOTUS_INDEXERPROVIDER_MAXSIMULTANEOUSTRANSFERS

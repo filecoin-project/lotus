@@ -173,8 +173,8 @@ type IndexerProviderConfig struct {
 	// Format: multiaddress
 	AnnounceAddresses []string
 
-	// The maximum number of simultaneous data transfers between the indexers
-	// and the indexer provider
+	// The maximum number of simultaneous requests syncing the list of advertised multihashes
+	// between the indexers and the index provider.
 	MaxSimultaneousTransfers uint64
 }
 
