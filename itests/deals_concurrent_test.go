@@ -55,11 +55,11 @@ func TestDealWithMarketAndMinerNode(t *testing.T) {
 		dh := kit.NewDealHarness(t, client, main, market)
 
 		dh.RunConcurrentDeals(kit.RunConcurrentDealsOpts{
-			N:               n,
-			FastRetrieval:   fastRetrieval,
-			CarExport:       carExport,
-			StartEpoch:      startEpoch,
-			IndexerProvider: idxProv,
+			N:             n,
+			FastRetrieval: fastRetrieval,
+			CarExport:     carExport,
+			StartEpoch:    startEpoch,
+			IndexProvider: idxProv,
 		})
 	}
 

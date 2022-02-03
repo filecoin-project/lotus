@@ -358,7 +358,7 @@ see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-f
 			Comment: ``,
 		},
 	},
-	"IndexerProviderConfig": []DocField{
+	"IndexProviderConfig": []DocField{
 		{
 			Name: "ListenAddresses",
 			Type: "[]string",
@@ -858,8 +858,8 @@ Default is 20 (about once a week).`,
 			Comment: ``,
 		},
 		{
-			Name: "IndexerProvider",
-			Type: "IndexerProviderConfig",
+			Name: "IndexProvider",
+			Type: "IndexProviderConfig",
 
 			Comment: ``,
 		},

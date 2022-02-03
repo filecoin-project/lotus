@@ -45,14 +45,14 @@ type Backup struct {
 type StorageMiner struct {
 	Common
 
-	Subsystems      MinerSubsystemConfig
-	Dealmaking      DealmakingConfig
-	IndexerProvider IndexerProviderConfig
-	Sealing         SealingConfig
-	Storage         sectorstorage.SealerConfig
-	Fees            MinerFeeConfig
-	Addresses       MinerAddressConfig
-	DAGStore        DAGStoreConfig
+	Subsystems    MinerSubsystemConfig
+	Dealmaking    DealmakingConfig
+	IndexProvider IndexProviderConfig
+	Sealing       SealingConfig
+	Storage       sectorstorage.SealerConfig
+	Fees          MinerFeeConfig
+	Addresses     MinerAddressConfig
+	DAGStore      DAGStoreConfig
 }
 
 type DAGStoreConfig struct {
@@ -161,7 +161,7 @@ type DealmakingConfig struct {
 	RetrievalPricing *RetrievalPricing
 }
 
-type IndexerProviderConfig struct {
+type IndexProviderConfig struct {
 	config.Ingest
 
 	// Binding address for the libp2p host - 0 means random port.

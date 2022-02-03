@@ -62,6 +62,7 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/markets"
 	"github.com/filecoin-project/lotus/markets/dagstore"
+	"github.com/filecoin-project/lotus/markets/idxprov"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/markets/pricing"
 	lotusminer "github.com/filecoin-project/lotus/miner"
@@ -590,8 +591,7 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	spn storagemarket.StorageProviderNode,
 	df dtypes.StorageDealFilter,
 	dsw *dagstore.Wrapper,
-	fullnodeApi v1api.FullNode,
-	idxProvHost *IdxProvHost,
+	meshCreator idxprov.MeshCreator,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 
@@ -622,8 +622,9 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 		spn,
 		address.Address(minerAddress),
 		storedAsk,
-		fullnodeApi,
-		idxProvHost.Host,
+		meshCreator,
+		//fullnodeApi,
+		//idxProvHost,
 		opt,
 	)
 }

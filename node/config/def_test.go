@@ -55,5 +55,5 @@ func TestDefaultMinerRoundtrip(t *testing.T) {
 
 func TestDefaultStorageMiner_SetsIndexIngestTopic(t *testing.T) {
 	subject := DefaultStorageMiner()
-	require.Equal(t, "/indexer/ingest/mainnet", subject.IndexerProvider.PubSubTopic)
+	require.Equal(t, "/indexer/ingest/mainnet", subject.IndexProvider.PubSubTopic)
 }

@@ -29,6 +29,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/markets/idxprov"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -48,28 +49,24 @@ type IdxProv struct {
 	peerstore.Peerstore
 }
 
-type IdxProvHost struct {
-	host.Host
-}
-
-func IndexerProviderHost(cfg config.IndexerProviderConfig) func(IdxProv) (*IdxProvHost, error) {
-	return func(args IdxProv) (*IdxProvHost, error) {
+func IndexProviderHost(cfg config.IndexProviderConfig) func(IdxProv) (idxprov.Host, error) {
+	return func(args IdxProv) (idxprov.Host, error) {
 		pkey := args.Peerstore.PrivKey(args.PeerID)
 		if pkey == nil {
 			return nil, fmt.Errorf("missing private key for node ID: %s", args.PeerID.Pretty())
 		}
 
-		h, err := createIndexerProviderHost(args.MetricsCtx, args.Lifecycle, pkey, args.Peerstore, cfg.ListenAddresses, cfg.AnnounceAddresses)
+		h, err := createIndexProviderHost(args.MetricsCtx, args.Lifecycle, pkey, args.Peerstore, cfg.ListenAddresses, cfg.AnnounceAddresses)
 		if err != nil {
 			return nil, xerrors.Errorf("creating indexer provider host: %w", err)
 		}
 
-		return &IdxProvHost{h}, nil
+		return h, nil
 	}
 }
 
-func IndexerProvider(cfg config.IndexerProviderConfig) func(params IdxProv, marketHost host.Host, h *IdxProvHost) (provider.Interface, error) {
-	return func(args IdxProv, marketHost host.Host, h *IdxProvHost) (provider.Interface, error) {
+func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHost host.Host, h idxprov.Host) (provider.Interface, error) {
+	return func(args IdxProv, marketHost host.Host, h idxprov.Host) (provider.Interface, error) {
 		ipds := namespace.Wrap(args.Datastore, datastore.NewKey("/indexer-provider"))
 
 		pkey := args.Peerstore.PrivKey(args.PeerID)
@@ -77,7 +74,7 @@ func IndexerProvider(cfg config.IndexerProviderConfig) func(params IdxProv, mark
 			return nil, fmt.Errorf("missing private key for node ID: %s", args.PeerID.Pretty())
 		}
 
-		dt, err := newIndexerProviderDataTransfer(cfg, args.MetricsCtx, args.Lifecycle, args.Repo, h, ipds)
+		dt, err := newIndexProviderDataTransfer(cfg, args.MetricsCtx, args.Lifecycle, args.Repo, h, ipds)
 		if err != nil {
 			return nil, err
 		}
@@ -111,7 +108,7 @@ func IndexerProvider(cfg config.IndexerProviderConfig) func(params IdxProv, mark
 	}
 }
 
-func createIndexerProviderHost(mctx helpers.MetricsCtx, lc fx.Lifecycle, pkey ci.PrivKey, pstore peerstore.Peerstore, listenAddrs []string, announceAddrs []string) (host.Host, error) {
+func createIndexProviderHost(mctx helpers.MetricsCtx, lc fx.Lifecycle, pkey ci.PrivKey, pstore peerstore.Peerstore, listenAddrs []string, announceAddrs []string) (host.Host, error) {
 	addrsFactory, err := lp2p.MakeAddrsFactory(announceAddrs, nil)
 	if err != nil {
 		return nil, err
@@ -140,11 +137,11 @@ func createIndexerProviderHost(mctx helpers.MetricsCtx, lc fx.Lifecycle, pkey ci
 	return h, nil
 }
 
-func newIndexerProviderDataTransfer(cfg config.IndexerProviderConfig, mctx helpers.MetricsCtx, lc fx.Lifecycle, r repo.LockedRepo, h host.Host, ds datastore.Batching) (datatransfer.Manager, error) {
+func newIndexProviderDataTransfer(cfg config.IndexProviderConfig, mctx helpers.MetricsCtx, lc fx.Lifecycle, r repo.LockedRepo, h host.Host, ds datastore.Batching) (datatransfer.Manager, error) {
 	net := dtnet.NewFromLibp2pHost(h)
 
 	// Set up graphsync
-	gs := newIndexerProviderGraphsync(cfg, mctx, lc, h)
+	gs := newIndexProviderGraphsync(cfg, mctx, lc, h)
 
 	// Set up data transfer
 	dtDs := namespace.Wrap(ds, datastore.NewKey("/datatransfer/transfers"))
@@ -168,7 +165,7 @@ func newIndexerProviderDataTransfer(cfg config.IndexerProviderConfig, mctx helpe
 	return dt, nil
 }
 
-func newIndexerProviderGraphsync(cfg config.IndexerProviderConfig, mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host) graphsync.GraphExchange {
+func newIndexProviderGraphsync(cfg config.IndexProviderConfig, mctx helpers.MetricsCtx, lc fx.Lifecycle, h host.Host) graphsync.GraphExchange {
 	graphsyncNetwork := gsnet.NewFromLibp2pHost(h)
 	return graphsyncimpl.New(helpers.LifecycleCtx(mctx, lc),
 		graphsyncNetwork,
