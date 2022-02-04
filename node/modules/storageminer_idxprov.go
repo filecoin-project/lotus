@@ -29,6 +29,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/markets/idxprov"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -48,10 +49,8 @@ type IdxProv struct {
 	peerstore.Peerstore
 }
 
-func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHost host.Host) (provider.Interface, error) {
-	return func(args IdxProv, marketHost host.Host) (provider.Interface, error) {
-		ipds := namespace.Wrap(args.Datastore, datastore.NewKey("/indexer-provider"))
-
+func IndexProviderHost(cfg config.IndexProviderConfig) func(IdxProv) (idxprov.Host, error) {
+	return func(args IdxProv) (idxprov.Host, error) {
 		pkey := args.Peerstore.PrivKey(args.PeerID)
 		if pkey == nil {
 			return nil, fmt.Errorf("missing private key for node ID: %s", args.PeerID.Pretty())
@@ -60,6 +59,19 @@ func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHo
 		h, err := createIndexProviderHost(args.MetricsCtx, args.Lifecycle, pkey, args.Peerstore, cfg.ListenAddresses, cfg.AnnounceAddresses)
 		if err != nil {
 			return nil, xerrors.Errorf("creating indexer provider host: %w", err)
+		}
+
+		return h, nil
+	}
+}
+
+func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHost host.Host, h idxprov.Host) (provider.Interface, error) {
+	return func(args IdxProv, marketHost host.Host, h idxprov.Host) (provider.Interface, error) {
+		ipds := namespace.Wrap(args.Datastore, datastore.NewKey("/index-provider"))
+
+		pkey := args.Peerstore.PrivKey(args.PeerID)
+		if pkey == nil {
+			return nil, fmt.Errorf("missing private key for node ID: %s", args.PeerID.Pretty())
 		}
 
 		dt, err := newIndexProviderDataTransfer(cfg, args.MetricsCtx, args.Lifecycle, args.Repo, h, ipds)
