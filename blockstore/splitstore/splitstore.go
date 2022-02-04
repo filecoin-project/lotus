@@ -161,6 +161,12 @@ type SplitStore struct {
 	txnSyncCond     sync.Cond
 	txnSync         bool
 
+	// background cold object reification
+	reifyMx         sync.Mutex
+	reifyCond       sync.Cond
+	reifyPend       map[cid.Cid]struct{}
+	reifyInProgress map[cid.Cid]struct{}
+
 	// registered protectors
 	protectors []func(func(cid.Cid) error) error
 }
@@ -201,6 +207,10 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 	ss.txnViewsCond.L = &ss.txnViewsMx
 	ss.txnSyncCond.L = &ss.txnSyncMx
 	ss.ctx, ss.cancel = context.WithCancel(context.Background())
+
+	ss.reifyCond.L = &ss.reifyMx
+	ss.reifyPend = make(map[cid.Cid]struct{})
+	ss.reifyInProgress = make(map[cid.Cid]struct{})
 
 	if enableDebugLog {
 		ss.debug, err = openDebugLog(path)
@@ -645,6 +655,9 @@ func (s *SplitStore) Start(chain ChainAccessor, us stmgr.UpgradeSchedule) error 
 		}
 	}
 
+	// spawn the reifier
+	go s.reifyOrchestrator()
+
 	// watch the chain
 	chain.SubscribeHeadChanges(s.HeadChange)
 
@@ -676,6 +689,7 @@ func (s *SplitStore) Close() error {
 		}
 	}
 
+	s.reifyCond.Broadcast()
 	s.cancel()
 	return multierr.Combine(s.markSetEnv.Close(), s.debug.Close())
 }
