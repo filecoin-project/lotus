@@ -93,6 +93,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 		partDone()
 	}()
 
+	ctx = blockstore.WithHotView(ctx)
 	makeVmWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (*vm.VM, error) {
 		vmopt := &vm.VMOpts{
 			StateBase:      base,
@@ -107,7 +108,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 			LookbackState:  stmgr.LookbackStateGetterForTipset(sm, ts),
 		}
 
-		return sm.VMConstructor()(blockstore.WithHotView(ctx), vmopt)
+		return sm.VMConstructor()(ctx, vmopt)
 	}
 
 	runCron := func(vmCron *vm.VM, epoch abi.ChainEpoch) error {
