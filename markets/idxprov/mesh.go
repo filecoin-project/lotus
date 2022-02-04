@@ -40,7 +40,9 @@ func (mc Libp2pMeshCreator) Connect(ctx context.Context) error {
 		return fmt.Errorf("failed to connect index provider host with the full node: %w", err)
 	}
 	mc.idxProvHost.ConnManager().Protect(faddrs.ID, "markets")
-	mc.fullnodeApi.NetProtectAdd(ctx, []peer.ID{mc.idxProvHost.ID()})
+	if err := mc.fullnodeApi.NetProtectAdd(ctx, []peer.ID{mc.idxProvHost.ID()}); err != nil {
+		return fmt.Errorf("failed to call NetProtectAdd on the full node, err: %w", err)
+	}
 
 	log.Debugw("successfully connected to full node and asked it protect indexer provider peer conn", "fullNodeInfo", faddrs.String(),
 		"idxProviderPeerId", mc.idxProvHost.ID())
