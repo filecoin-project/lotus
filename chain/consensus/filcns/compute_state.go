@@ -32,6 +32,7 @@ import (
 
 	/* inline-gen end */
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -106,7 +107,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 			LookbackState:  stmgr.LookbackStateGetterForTipset(sm, ts),
 		}
 
-		return sm.VMConstructor()(ctx, vmopt)
+		return sm.VMConstructor()(blockstore.WithHotView(ctx), vmopt)
 	}
 
 	runCron := func(vmCron *vm.VM, epoch abi.ChainEpoch) error {
