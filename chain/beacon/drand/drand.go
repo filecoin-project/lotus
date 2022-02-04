@@ -29,7 +29,6 @@ import (
 
 var log = logging.Logger("drand")
 
-
 type drandPeer struct {
 	addr string
 	tls  bool
