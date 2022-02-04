@@ -274,7 +274,13 @@ func (s *SplitStore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 		return true, nil
 	}
 
-	return s.cold.Has(ctx, cid)
+	has, err = s.cold.Has(ctx, cid)
+	if has && bstore.GetHotView(ctx) {
+		s.reifyColdObject(cid)
+	}
+
+	return has, err
+
 }
 
 func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
@@ -318,8 +324,11 @@ func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error)
 
 		blk, err = s.cold.Get(ctx, cid)
 		if err == nil {
-			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
+			if bstore.GetHotView(ctx) {
+				s.reifyColdObject(cid)
+			}
 
+			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
 		}
 		return blk, err
 
@@ -369,6 +378,10 @@ func (s *SplitStore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 
 		size, err = s.cold.GetSize(ctx, cid)
 		if err == nil {
+			if bstore.GetHotView(ctx) {
+				s.reifyColdObject(cid)
+			}
+
 			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
 		}
 		return size, err
@@ -546,6 +559,10 @@ func (s *SplitStore) View(ctx context.Context, cid cid.Cid, cb func([]byte) erro
 
 		err = s.cold.View(ctx, cid, cb)
 		if err == nil {
+			if bstore.GetHotView(ctx) {
+				s.reifyColdObject(cid)
+			}
+
 			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
 		}
 		return err
