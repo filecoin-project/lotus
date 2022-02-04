@@ -198,6 +198,36 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 	waitForSync(stmgr, pubsubMsgsSyncEpochs, subscribe)
 }
 
+func RelayIndexerMessages(lc fx.Lifecycle, ps *pubsub.PubSub, nn dtypes.NetworkName, h host.Host) error {
+	topicName := build.IngestTopic(nn)
+
+	v := sub.NewIndexerMessageValidator(h.ID())
+
+	if err := ps.RegisterTopicValidator(topicName, v.Validate); err != nil {
+		panic(err)
+	}
+
+	topicHandle, err := ps.Join(topicName)
+	if err != nil {
+		return xerrors.Errorf("failed to join pubsub topic %s: %w", topicName, err)
+	}
+	cancelFunc, err := topicHandle.Relay()
+	if err != nil {
+		return xerrors.Errorf("failed to relay to pubsub messages for topic %s: %w", topicName, err)
+	}
+
+	// Cancel message relay on shutdown.
+	lc.Append(fx.Hook{
+		OnStop: func(_ context.Context) error {
+			cancelFunc()
+			return nil
+		},
+	})
+
+	log.Infof("relaying messages for pubsub topic %s", topicName)
+	return nil
+}
+
 func NewLocalDiscovery(lc fx.Lifecycle, ds dtypes.MetadataDS) (*discoveryimpl.Local, error) {
 	local, err := discoveryimpl.NewLocal(namespace.Wrap(ds, datastore.NewKey("/deals/local")))
 	if err != nil {
