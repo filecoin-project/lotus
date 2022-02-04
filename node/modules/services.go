@@ -199,12 +199,12 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 }
 
 func RelayIndexerMessages(lc fx.Lifecycle, ps *pubsub.PubSub, nn dtypes.NetworkName, h host.Host) error {
-	topicName := build.IngestTopic(nn)
+	topicName := build.IndexerIngestTopic(nn)
 
 	v := sub.NewIndexerMessageValidator(h.ID())
 
 	if err := ps.RegisterTopicValidator(topicName, v.Validate); err != nil {
-		panic(err)
+		return xerrors.Errorf("failed to register validator for topic %s, err: %w", topicName, err)
 	}
 
 	topicHandle, err := ps.Join(topicName)
