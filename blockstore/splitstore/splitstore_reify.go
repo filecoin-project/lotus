@@ -165,10 +165,14 @@ func (s *SplitStore) doReify(c cid.Cid) {
 
 	if s.txnMarkSet != nil {
 		if len(toreify) > 0 {
-			s.txnMarkSet.MarkMany(toreify)
+			if err := s.txnMarkSet.MarkMany(toreify); err != nil {
+				log.Warnf("error marking reified objects: %s", err)
+			}
 		}
 		if len(totrack) > 0 {
-			s.txnMarkSet.MarkMany(totrack)
+			if err := s.txnMarkSet.MarkMany(totrack); err != nil {
+				log.Warnf("error marking tracked objects: %s", err)
+			}
 		}
 	} else {
 		if len(toreify) > 0 {
