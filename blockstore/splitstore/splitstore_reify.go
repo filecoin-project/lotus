@@ -165,10 +165,10 @@ func (s *SplitStore) doReify(c cid.Cid) {
 
 	if s.txnMarkSet != nil {
 		if len(toreify) > 0 {
-			s.markLiveRefs(toreify)
+			s.txnMarkSet.MarkMany(toreify)
 		}
 		if len(totrack) > 0 {
-			s.markLiveRefs(totrack)
+			s.txnMarkSet.MarkMany(totrack)
 		}
 	} else {
 		if len(toreify) > 0 {
