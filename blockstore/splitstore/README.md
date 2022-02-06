@@ -49,10 +49,9 @@ These are options in the `[Chainstore.Splitstore]` section of the configuration:
   blockstore and discards writes; this is necessary to support syncing from a snapshot.
 - `MarkSetType` -- specifies the type of markset to use during compaction.
   The markset is the data structure used by compaction/gc to track live objects.
-  The default value is `"map"`, which will use an in-memory map; if you are limited
-  in memory (or indeed see compaction run out of memory), you can also specify
-  `"badger"` which will use an disk backed markset, using badger. This will use
-  much less memory, but will also make compaction slower.
+  The default value is "badger", which will use a disk backed markset using badger.
+  If you have a lot of memory (40G or more) you can also use "map", which will use
+  an in memory markset, speeding up compaction at the cost of higher memory usage.
 - `HotStoreMessageRetention` -- specifies how many finalities, beyond the 4
   finalities maintained by default, to maintain messages and message receipts in the
   hotstore. This is useful for assistive nodes that want to support syncing for other
