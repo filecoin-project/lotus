@@ -359,7 +359,7 @@ type Splitstore struct {
 	// Only currently supported value is "badger".
 	HotStoreType string
 	// MarkSetType specifies the type of the markset.
-	// It can be "map" (default) for in memory marking or "badger" for on-disk marking.
+	// It can be "map" for in memory marking or "badger" (default) for on-disk marking.
 	MarkSetType string
 
 	// HotStoreMessageRetention specifies the retention policy for messages, in finalities beyond
