@@ -67,7 +67,7 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 		return nil, xerrors.Errorf("serializing msg: %w", err)
 	}
 
-	ret, err := vm.fvm.ApplyMessage(msgBytes)
+	ret, err := vm.fvm.ApplyMessage(msgBytes, uint(cmsg.ChainLength()))
 	if err != nil {
 		return nil, xerrors.Errorf("applying msg: %w", err)
 	}
@@ -101,7 +101,7 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 		return nil, xerrors.Errorf("serializing msg: %w", err)
 	}
 
-	ret, err := vm.fvm.ApplyMessage(msgBytes)
+	ret, err := vm.fvm.ApplyImplicitMessage(msgBytes)
 	if err != nil {
 		return nil, xerrors.Errorf("applying msg: %w", err)
 	}
