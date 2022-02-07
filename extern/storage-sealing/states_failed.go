@@ -211,7 +211,7 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 
 	tok, _, err := m.Api.ChainHead(ctx.Context())
 	if err != nil {
-		log.Errorf("handleCommitting: api error, not proceeding: %+v", err)
+		log.Errorf("handleSubmitReplicaUpdateFailed: api error, not proceeding: %+v", err)
 		return nil
 	}
 
