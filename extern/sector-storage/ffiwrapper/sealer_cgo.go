@@ -13,6 +13,7 @@ import (
 	"io"
 	"math/bits"
 	"os"
+	"path/filepath"
 	"runtime"
 
 	"github.com/ipfs/go-cid"
@@ -885,8 +886,8 @@ func (sb *Sealer) FinalizeReplicaUpdate(ctx context.Context, sector storage.Sect
 		}
 		defer done()
 
-		if err := ffi.ClearCache(uint64(ssize), paths.UpdateCache); err != nil {
-			return xerrors.Errorf("clear cache: %w", err)
+		if err := os.Remove(filepath.Join(paths.UpdateCache, "sc-02-data-tree-d.dat")); err != nil {
+			return xerrors.Errorf("clear update cache: %w", err)
 		}
 	}
 
