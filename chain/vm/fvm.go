@@ -36,7 +36,7 @@ type FVM struct {
 func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	fvm, err := ffi.CreateFVM(0,
 		&FvmExtern{Rand: opts.Rand, Blockstore: opts.Bstore},
-		opts.Epoch, opts.BaseFee, opts.BaseCircSupply, opts.NetworkVersion, opts.StateBase,
+		opts.Epoch, opts.BaseFee, opts.FilVested, opts.NetworkVersion, opts.StateBase,
 	)
 	if err != nil {
 		return nil, err

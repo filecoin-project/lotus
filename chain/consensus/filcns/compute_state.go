@@ -102,7 +102,6 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 		if err != nil {
 			return nil, err
 		}
-		circulating := big.Add(supply.FilMined, supply.FilVested)
 
 		vmopt := &vm.VMOpts{
 			StateBase:      base,
@@ -112,7 +111,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 			Actors:         NewActorRegistry(),
 			Syscalls:       sm.Syscalls,
 			CircSupplyCalc: sm.GetVMCirculatingSupply,
-			BaseCircSupply: circulating,
+			FilVested:      supply.FilVested,
 			NetworkVersion: sm.GetNetworkVersion(ctx, e),
 			BaseFee:        baseFee,
 			LookbackState:  stmgr.LookbackStateGetterForTipset(sm, ts),

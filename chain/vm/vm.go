@@ -227,8 +227,8 @@ type VMOpts struct {
 	Actors         *ActorRegistry
 	Syscalls       SyscallBuilder
 	CircSupplyCalc CircSupplyCalculator
-	// Amount of FIL vested & mined.
-	BaseCircSupply abi.TokenAmount
+	// Amount of FIL vested from genesis actors.
+	FilVested      abi.TokenAmount
 	NetworkVersion network.Version
 	BaseFee        abi.TokenAmount
 	LookbackState  LookbackStateGetter
