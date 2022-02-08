@@ -108,7 +108,7 @@ func sectorActive(ctx context.Context, api SealingAPI, maddr address.Address, to
 	if err != nil {
 		return false, xerrors.Errorf("failed to check active sectors: %w", err)
 	}
-	// Ensure the upgraded sector is active
+	// Check if sector is among active sectors
 	var found bool
 	for _, si := range active {
 		if si.SectorNumber == sector {
