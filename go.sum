@@ -350,8 +350,9 @@ github.com/filecoin-project/go-indexer-core v0.2.8 h1:h1SRdZKTVcaXlzex3UevHh4OWD
 github.com/filecoin-project/go-indexer-core v0.2.8/go.mod h1:IagNfTdFuX4057kla43PjRCn3yBuUiZgIxuA0hTUamY=
 github.com/filecoin-project/go-jsonrpc v0.1.5 h1:ckxqZ09ivBAVf5CSmxxrqqNHC7PJm3GYGtYKiNQ+vGk=
 github.com/filecoin-project/go-jsonrpc v0.1.5/go.mod h1:XBBpuKIMaXIIzeqzO1iucq4GvbF8CxmXRFoezRh+Cx4=
-github.com/filecoin-project/go-legs v0.2.7 h1:+b1BQv4QKkRNsDUE8Z4sEhLXhfVQ+iGpHhANpYqxJlA=
 github.com/filecoin-project/go-legs v0.2.7/go.mod h1:NrdELuDbtAH8/xqRMgyOYms67aliQajExInLS6g8zFM=
+github.com/filecoin-project/go-legs v0.2.8 h1:l76g9Yi7YzxNHwe60jPmQiezUUF0TMjqB/NP4+f23vU=
+github.com/filecoin-project/go-legs v0.2.8/go.mod h1:NrdELuDbtAH8/xqRMgyOYms67aliQajExInLS6g8zFM=
 github.com/filecoin-project/go-padreader v0.0.0-20200903213702-ed5fae088b20/go.mod h1:mPn+LRRd5gEKNAtc+r3ScpW2JRU/pj4NBKdADYWHiak=
 github.com/filecoin-project/go-padreader v0.0.1 h1:8h2tVy5HpoNbr2gBRr+WD6zV6VD6XHig+ynSGJg8ZOs=
 github.com/filecoin-project/go-padreader v0.0.1/go.mod h1:VYVPJqwpsfmtoHnAmPx6MUwmrK6HIcDqZJiuZhtmfLQ=
@@ -373,8 +374,9 @@ github.com/filecoin-project/go-statestore v0.2.0 h1:cRRO0aPLrxKQCZ2UOQbzFGn4WDNd
 github.com/filecoin-project/go-statestore v0.2.0/go.mod h1:8sjBYbS35HwPzct7iT4lIXjLlYyPor80aU7t7a/Kspo=
 github.com/filecoin-project/go-storedcounter v0.1.0 h1:Mui6wSUBC+cQGHbDUBcO7rfh5zQkWJM/CpAZa/uOuus=
 github.com/filecoin-project/go-storedcounter v0.1.0/go.mod h1:4ceukaXi4vFURIoxYMfKzaRF5Xv/Pinh2oTnoxpv+z8=
-github.com/filecoin-project/index-provider v0.2.6 h1:JodDoTiLjDPifRxKSgoyDwD8qzbSZDcyn5IPF0osVAg=
 github.com/filecoin-project/index-provider v0.2.6/go.mod h1:y87dsIQdcmQS5PWIcifQdRb454ViVxjjFEccMDswIjQ=
+github.com/filecoin-project/index-provider v0.2.7 h1:9L2OxdMHT9HttBFCRg/zUVzBiBedPHPpAsSxBYvY9Cg=
+github.com/filecoin-project/index-provider v0.2.7/go.mod h1:yLY8V22PYiEvwWaJSXpxwjI4jq6TFaVuBvQHOH/6+wE=
 github.com/filecoin-project/specs-actors v0.9.13/go.mod h1:TS1AW/7LbG+615j4NsjMK1qlpAwaFsG9w0V2tg2gSao=
 github.com/filecoin-project/specs-actors v0.9.14 h1:68PVstg2UB3ZsMLF+DKFTAs/YKsqhKWynkr0IqmVRQY=
 github.com/filecoin-project/specs-actors v0.9.14/go.mod h1:TS1AW/7LbG+615j4NsjMK1qlpAwaFsG9w0V2tg2gSao=
