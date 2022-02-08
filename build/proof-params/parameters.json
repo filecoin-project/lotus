@@ -49,26 +49,6 @@
     "digest": "80e366df2f1011953c2d01c7b7c9ee8e",
     "sector_size": 68719476736
   },
-  "v28-empty-sector-update-poseidon-merkletree-poseidon_hasher-8-8-0-3b7f44a9362e3985369454947bc94022e118211e49fd672d52bec1cbfd599d18.params": {
-    "cid": "QmfK4tonETepL6F4kDFdJ3fr72fzRWoRPf3XGMhV3RLX1S",
-    "digest": "b69983b5d7a97a20f43b3d5ff2a4ed04",
-    "sector_size": 34359738368
-  },
-  "v28-empty-sector-update-poseidon-merkletree-poseidon_hasher-8-8-0-3b7f44a9362e3985369454947bc94022e118211e49fd672d52bec1cbfd599d18.vk": {
-    "cid": "QmYCTYJQPu8wgtB2rMZ7HJC9nDx8c1fzYRPdCUiErK4q5a",
-    "digest": "1ac05784f304129f74c5184190c1ec78",
-    "sector_size": 34359738368
-  },
-  "v28-empty-sector-update-poseidon-merkletree-poseidon_hasher-8-8-2-102e1444a7e9a97ebf1e3d6855dcc77e66c011ea66f936d9b2c508f87f2f83a7.params": {
-    "cid": "QmNaaQXfm2NveN2Hf7bJ3udnQB2Qa4moMcUoJYJS6oWL6w",
-    "digest": "a6d4f96e2b641a6d7a1a8e6dc1155c8a",
-    "sector_size": 68719476736
-  },
-  "v28-empty-sector-update-poseidon-merkletree-poseidon_hasher-8-8-2-102e1444a7e9a97ebf1e3d6855dcc77e66c011ea66f936d9b2c508f87f2f83a7.vk": {
-    "cid": "QmXyeg9hbM7x9dGuUuAS68ozhiFEez4UkPTgwSDCVYKHBw",
-    "digest": "8e8fb9e2c56eb5d740d0de135305a7b8",
-    "sector_size": 68719476736
-  },
   "v28-proof-of-spacetime-fallback-merkletree-poseidon_hasher-8-0-0-0170db1f394b35d995252228ee359194b13199d259380541dc529fb0099096b0.params": {
     "cid": "QmVxjFRyhmyQaZEtCh7nk2abc7LhFkzhnRX4rcHqCCpikR",
     "digest": "7610b9f82bfc88405b7a832b651ce2f6",
