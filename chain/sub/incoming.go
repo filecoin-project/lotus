@@ -6,7 +6,7 @@ import (
 	"time"
 
 	address "github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/api"
+	//"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/consensus"
@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/impl/client"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	lru "github.com/hashicorp/golang-lru"
 	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
@@ -459,16 +460,18 @@ type IndexerMessageValidator struct {
 	self peer.ID
 
 	peerCache *lru.TwoQueueCache
-	fullNode  api.FullNode
+	chainApi  full.ChainModuleAPI
+	stateApi  full.StateModuleAPI
 }
 
-func NewIndexerMessageValidator(self peer.ID, fullNode api.FullNode) *IndexerMessageValidator {
+func NewIndexerMessageValidator(self peer.ID, chainApi full.ChainModuleAPI, stateApi full.StateModuleAPI) *IndexerMessageValidator {
 	peerCache, _ := lru.New2Q(1024)
 
 	return &IndexerMessageValidator{
 		self:      self,
 		peerCache: peerCache,
-		fullNode:  fullNode,
+		chainApi:  chainApi,
+		stateApi:  stateApi,
 	}
 }
 
@@ -512,7 +515,7 @@ func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg
 	defer msgInfo.mutex.Unlock()
 
 	if !ok || originPeer != msgInfo.peerID {
-		// Check that the message was signed by an authenticated peer.
+		// Check that the miner ID maps to the peer that sent the message.
 		err = v.authenticateMessage(ctx, minerID, originPeer)
 		if err != nil {
 			log.Warnw("cannot authenticate messsage", "err", err, "peer", originPeer, "minerID", minerID)
@@ -626,12 +629,12 @@ func (v *IndexerMessageValidator) authenticateMessage(ctx context.Context, miner
 		return xerrors.Errorf("invalid miner id: %w", err)
 	}
 
-	ts, err := v.fullNode.ChainHead(ctx)
+	ts, err := v.chainApi.ChainHead(ctx)
 	if err != nil {
 		return err
 	}
 
-	minerInfo, err := v.fullNode.StateMinerInfo(ctx, minerAddress, ts.Key())
+	minerInfo, err := v.stateApi.StateMinerInfo(ctx, minerAddress, ts.Key())
 	if err != nil {
 		return err
 	}
@@ -640,7 +643,8 @@ func (v *IndexerMessageValidator) authenticateMessage(ctx context.Context, miner
 		return xerrors.New("no peer id for miner")
 	}
 	if *minerInfo.PeerId != peerID {
-		return xerrors.New("message not signed by peer in miner info")
+		return xerrors.New("miner id does not map to peer that sent message")
 	}
+
 	return nil
 }
