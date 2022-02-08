@@ -56,7 +56,7 @@ func minerRpc(t *testing.T, m *TestMiner) *TestMiner {
 	srv, maddr := CreateRPCServer(t, handler, m.RemoteListener)
 
 	fmt.Printf("creating RPC server for %s at %s\n", m.ActorAddr, srv.Listener.Addr().String())
-	fmt.Printf("SP RPC ENV FOR CLI DEBUGGING `export STORAGE_API_INFO=%s`\n", "ws://"+srv.Listener.Addr().String())
+	fmt.Printf("SP RPC ENV FOR CLI DEBUGGING `export MINER_API_INFO=%s`\n", "ws://"+srv.Listener.Addr().String())
 
 	url := "ws://" + srv.Listener.Addr().String() + "/rpc/v0"
 	cl, stop, err := client.NewStorageMinerRPCV0(context.Background(), url, nil)

@@ -214,20 +214,21 @@ func rfunc(in interface{}) func(context.Context, storiface.CallID, storiface.Wor
 }
 
 var returnFunc = map[ReturnType]func(context.Context, storiface.CallID, storiface.WorkerReturn, interface{}, *storiface.CallError) error{
-	AddPiece:            rfunc(storiface.WorkerReturn.ReturnAddPiece),
-	SealPreCommit1:      rfunc(storiface.WorkerReturn.ReturnSealPreCommit1),
-	SealPreCommit2:      rfunc(storiface.WorkerReturn.ReturnSealPreCommit2),
-	SealCommit1:         rfunc(storiface.WorkerReturn.ReturnSealCommit1),
-	SealCommit2:         rfunc(storiface.WorkerReturn.ReturnSealCommit2),
-	FinalizeSector:      rfunc(storiface.WorkerReturn.ReturnFinalizeSector),
-	ReleaseUnsealed:     rfunc(storiface.WorkerReturn.ReturnReleaseUnsealed),
-	ReplicaUpdate:       rfunc(storiface.WorkerReturn.ReturnReplicaUpdate),
-	ProveReplicaUpdate1: rfunc(storiface.WorkerReturn.ReturnProveReplicaUpdate1),
-	ProveReplicaUpdate2: rfunc(storiface.WorkerReturn.ReturnProveReplicaUpdate2),
-	GenerateSectorKey:   rfunc(storiface.WorkerReturn.ReturnGenerateSectorKeyFromData),
-	MoveStorage:         rfunc(storiface.WorkerReturn.ReturnMoveStorage),
-	UnsealPiece:         rfunc(storiface.WorkerReturn.ReturnUnsealPiece),
-	Fetch:               rfunc(storiface.WorkerReturn.ReturnFetch),
+	AddPiece:              rfunc(storiface.WorkerReturn.ReturnAddPiece),
+	SealPreCommit1:        rfunc(storiface.WorkerReturn.ReturnSealPreCommit1),
+	SealPreCommit2:        rfunc(storiface.WorkerReturn.ReturnSealPreCommit2),
+	SealCommit1:           rfunc(storiface.WorkerReturn.ReturnSealCommit1),
+	SealCommit2:           rfunc(storiface.WorkerReturn.ReturnSealCommit2),
+	FinalizeSector:        rfunc(storiface.WorkerReturn.ReturnFinalizeSector),
+	ReleaseUnsealed:       rfunc(storiface.WorkerReturn.ReturnReleaseUnsealed),
+	ReplicaUpdate:         rfunc(storiface.WorkerReturn.ReturnReplicaUpdate),
+	ProveReplicaUpdate1:   rfunc(storiface.WorkerReturn.ReturnProveReplicaUpdate1),
+	ProveReplicaUpdate2:   rfunc(storiface.WorkerReturn.ReturnProveReplicaUpdate2),
+	GenerateSectorKey:     rfunc(storiface.WorkerReturn.ReturnGenerateSectorKeyFromData),
+	FinalizeReplicaUpdate: rfunc(storiface.WorkerReturn.ReturnFinalizeReplicaUpdate),
+	MoveStorage:           rfunc(storiface.WorkerReturn.ReturnMoveStorage),
+	UnsealPiece:           rfunc(storiface.WorkerReturn.ReturnUnsealPiece),
+	Fetch:                 rfunc(storiface.WorkerReturn.ReturnFetch),
 }
 
 func (l *LocalWorker) asyncCall(ctx context.Context, sector storage.SectorRef, rt ReturnType, work func(ctx context.Context, ci storiface.CallID) (interface{}, error)) (storiface.CallID, error) {
