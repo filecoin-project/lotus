@@ -1,36 +1,26 @@
 # Lotus changelog
 
-# 1.14.0-rc5 / 2022-01-27
+# 1.14.0-rc6 / 2022-02-08
 
-This is the fifth release candidate for the mandatory release v1.14.0 of Lotus that introduces [Filecoin network v15, 
-codenamed the OhSnap upgrade](https://github.com/filecoin-project/community/discussions/74?sort=new#discussioncomment-1922550).
+This is the sixth release candidate for the mandatory release v1.14.0 of Lotus that introduces [Filecoin network v15, codenamed the OhSnap upgrade](https://github.com/filecoin-project/community/discussions/74?sort=new#discussioncomment-1922550).
 
 The OhSnap upgrade introduces the following FIPs, delivered in [actors v7-rc1](https://github.com/filecoin-project/specs-actors/releases/tag/v7.0.0-rc1):
 - [FIP-0019 Snap Deals](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0019.md)
 - [FIP-0028 Remove Datacap from Verified clients](https://github.com/filecoin-project/FIPs/pull/226)
 
-Note: 
-- This release is built on top of lotus v1.13.2. Enterprising users like storage providers, data brokers and others 
-  are recommended to test out v1.15.0-rc1(coming on Jan 18th, 2022) for latest new features, improvements and bug 
-  fixes and be ready for the upgrade!
-- This release candidate uses temporary proof params for Snap Deals.
-- It only sets upgrade epoch for Butterfly-SnapNet, and it does not set the upgrade epochs for calibration and mainnet.
+Note:
+- This release candidate includes the [final proof params](https://proofs.filecoin.io) for Snap Deals.
+- It only sets upgrade epoch for Butterfly-SnapNet and calibnet, and it does not set the upgrade epochs for mainnet.
 
-## Butterfly - SnapNet
+## Calibration Upgrade
 
-The ButterFly-SnapNet will be upgraded to Network v15 OhSnap at epoch 30262, around 2022-01-17T19:00:00Z. 
+The calibnet will be upgraded to Network v15 OhSnap at epoch 682006, around 2022-02-10T19:23:00Z. 
 
-To join the network, simply build lotus by running `make butterflynet`. 
+To join the network, simply build lotus by running `make calibnet`. 
 
-The network supports three sector sizes, 512MiB, 32GiB and 64GiB. Temporary proof params for Snap Deals should be downloaded upon your node restarts. 
- - The parameters are pinged on IPFS gateway https://proofs.filecoin.io/ipfs/ and the CIDs can be found [here](https://github.com/filecoin-project/lotus/blob/edd3486d2cf53b960382e9cda6671e647844aa41/build/proof-params/parameters.json), please let the lotus team know in #lotus-ohsnap if the params are not fetched automatically. You can also download the params manually from s3://proof-params-ap/filecoin-snapdeal-parameters/.
+New proof params for Snap Deals should be downloaded upon your nodes restart. 
+ - The parameters are pinged on IPFS gateway https://proofs.filecoin.io and the CIDs can be found [here](https://github.com/filecoin-project/lotus/blob/release/v1.14.0/build/proof-params/parameters.json), please let the lotus team know in #lotus-ohsnap if the params are not fetched automatically. You can also download the params manually from s3://proof-params-ap/filecoin-snapdeal-parameters/.
 
-*SnapNet Resources*:
-- [Faucet](https://faucet.butterfly.fildev.network/)
-- [Stats Dashboard](https://stats.butterfly.fildev.network/d/z6FtI92Zz/chain?orgId=1&refresh=25s&from=now-30m&to=now&kiosk)
-- For questions and feedbacks:
-  - Primary: [Discussion](https://github.com/filecoin-project/lotus/discussions/7935)
-  - Secondary: #lotus-ohsnap in Filecoin Slack
   
 ## New Features and Changes
 - Integrate actor v7-rc1:
@@ -65,23 +55,21 @@ The network supports three sector sizes, 512MiB, 32GiB and 64GiB. Temporary proo
 
 | Contributor | Commits | Lines ± | Files Changed |
 |-------------|---------|---------|---------------|
-| Aayush Rajasekaran | 56 | +5866/-2523 | 316 |
+| Aayush Rajasekaran | 41 | +5538/-1205 | 189 |
 | zenground0 | 11 | +3316/-524 | 124 |
-| vyzo | 38 | +722/-485 | 117 |
-| Rod Vagg | 2 | +6/-941 | 4 |
-| whyrusleeping | 2 | +376/-339 | 27 |
+| Jennifer Wang | 29 | +714/-599 | 68 |
 | ZenGround0 | 3 | +263/-25 | 11 |
 | c r | 2 | +198/-30 | 6 |
-| Łukasz Magiera | 2 | +184/-3 | 3 |
-| Jennifer Wang | 14 | +97/-69 | 41 |
-| Whyrusleeping | 1 | +76/-70 | 8 |
+| vyzo | 4 | +189/-7 | 7 |
+| Aayush | 11 | +146/-48 | 49 |
 | web3-bot | 10 | +99/-17 | 10 |
 | Steven Allen | 1 | +55/-37 | 1 |
 | Jiaying Wang | 5 | +30/-8 | 5 |
-| Hannah Howard | 1 | +4/-29 | 3 |
-| dirkmc | 1 | +11/-0 | 1 |
 | Jakub Sztandera | 2 | +8/-3 | 3 |
-| Colin Kennedy | 1 | +4/-2 | 1 |
+| Łukasz Magiera | 1 | +3/-3 | 2 |
+| Travis Person | 1 | +2/-2 | 2 |
+| Rod Vagg | 1 | +2/-2 | 2 |
+
 
 
 # v1.13.2 /  2022-01-09
