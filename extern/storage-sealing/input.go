@@ -121,26 +121,22 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 		sealTime := time.Unix(sector.CreationTime, 0).Add(cfg.WaitDealsDelay)
 
 		// check deal age, start sealing when the deal closest to starting is within slack time
-		safeSealTime := sealTime
 		_, current, err := m.Api.ChainHead(ctx.Context())
 		blockTime := time.Second * time.Duration(build.BlockDelaySecs)
 		if err != nil {
 			return false, xerrors.Errorf("API error getting head: %w", err)
 		}
 		for _, piece := range sector.Pieces {
-			if piece.DealInfo == nil { // skip padding
+			if piece.DealInfo == nil {
 				continue
 			}
 			dealSafeSealEpoch := piece.DealInfo.DealProposal.StartEpoch - cfg.StartEpochSealingBuffer
 			dealSafeSealTime := time.Now().Add(time.Duration(dealSafeSealEpoch-current) * blockTime)
-			if dealSafeSealTime.Before(safeSealTime) {
-				safeSealTime = dealSafeSealTime
+			if dealSafeSealTime.Before(sealTime) {
+				sealTime = dealSafeSealTime
 			}
 		}
 
-		if safeSealTime.Before(sealTime) {
-			sealTime = safeSealTime
-		}
 		if now.After(sealTime) {
 			log.Infow("starting to seal deal sector", "sector", sector.SectorNumber, "trigger", "wait-timeout")
 			return true, ctx.Send(SectorStartPacking{})

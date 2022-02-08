@@ -120,7 +120,9 @@ type DealmakingConfig struct {
 	// This includes the time the deal will need to get transferred and published
 	// before being assigned to a sector
 	ExpectedSealDuration Duration
-	// Whether new sectors are sealed to pack incoming deals
+	// Whether new sectors are created to pack incoming deals
+	// When this is set to false no new sectors will be created for sealing incoming deals
+	// This is useful for forcing all deals to be assigned as snap deals to sectors marked for upgrade
 	MakeNewSectorForDeals bool
 	// Maximum amount of time proposed deal StartEpoch can be in future
 	MaxDealStartDelay Duration
