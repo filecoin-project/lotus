@@ -244,7 +244,9 @@ before being assigned to a sector`,
 			Name: "MakeNewSectorForDeals",
 			Type: "bool",
 
-			Comment: `Whether new sectors are sealed to pack incoming deals`,
+			Comment: `Whether new sectors are created to pack incoming deals
+When this is set to false no new sectors will be created for sealing incoming deals
+This is useful for forcing all deals to be assigned as snap deals to sectors marked for upgrade`,
 		},
 		{
 			Name: "MaxDealStartDelay",
