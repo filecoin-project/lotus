@@ -31,6 +31,21 @@ func (m *Sealing) handleProveReplicaUpdate(ctx statemachine.Context, sector Sect
 	if sector.CommR == nil {
 		return xerrors.Errorf("invalid sector %d with nil CommR", sector.SectorNumber)
 	}
+	// Abort upgrade for sectors that went faulty since being marked for upgrade
+	tok, _, err := m.Api.ChainHead(ctx.Context())
+	if err != nil {
+		log.Errorf("handleProveReplicaUpdate: api error, not proceeding: %+v", err)
+		return nil
+	}
+	active, err := sectorActive(ctx.Context(), m.Api, m.maddr, tok, sector.SectorNumber)
+	if err != nil {
+		log.Errorf("sector active check: api error, not proceeding: %+v", err)
+		return nil
+	}
+	if !active {
+		log.Errorf("sector marked for upgrade %d no longer active, aborting upgrade", sector.SectorNumber)
+		return ctx.Send(SectorAbortUpgrade{})
+	}
 
 	vanillaProofs, err := m.sealer.ProveReplicaUpdate1(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), *sector.CommR, *sector.UpdateSealed, *sector.UpdateUnsealed)
 	if err != nil {
