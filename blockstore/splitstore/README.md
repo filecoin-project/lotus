@@ -50,8 +50,10 @@ These are options in the `[Chainstore.Splitstore]` section of the configuration:
 - `MarkSetType` -- specifies the type of markset to use during compaction.
   The markset is the data structure used by compaction/gc to track live objects.
   The default value is "badger", which will use a disk backed markset using badger.
-  If you have a lot of memory (40G or more) you can also use "map", which will use
+  If you have a lot of memory (48G or more) you can also use "map", which will use
   an in memory markset, speeding up compaction at the cost of higher memory usage.
+  Note: If you are using a VPS with a network volume, you need to provision at least
+  3000 IOPs with the badger markset.
 - `HotStoreMessageRetention` -- specifies how many finalities, beyond the 4
   finalities maintained by default, to maintain messages and message receipts in the
   hotstore. This is useful for assistive nodes that want to support syncing for other
