@@ -67,6 +67,8 @@ var ChainHeadCmd = &cli.Command{
 	Name:  "head",
 	Usage: "Print chain head",
 	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -80,7 +82,7 @@ var ChainHeadCmd = &cli.Command{
 		}
 
 		for _, c := range head.Cids() {
-			fmt.Println(c)
+			afmt.Println(c)
 		}
 		return nil
 	},
