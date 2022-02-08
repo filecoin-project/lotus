@@ -54,7 +54,8 @@ const UpgradeHyperdriveHeight = 420
 
 const UpgradeChocolateHeight = 312746
 
-const UpgradeOhSnapHeight = 99999999
+// 2022-02-08T19:23:00Z
+const UpgradeOhSnapHeight = 676246
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(32 << 30))
