@@ -183,6 +183,7 @@ type WorkerReturn interface {
 	ReturnProveReplicaUpdate1(ctx context.Context, callID CallID, proofs storage.ReplicaVanillaProofs, err *CallError) error
 	ReturnProveReplicaUpdate2(ctx context.Context, callID CallID, proof storage.ReplicaUpdateProof, err *CallError) error
 	ReturnGenerateSectorKeyFromData(ctx context.Context, callID CallID, err *CallError) error
+	ReturnFinalizeReplicaUpdate(ctx context.Context, callID CallID, err *CallError) error
 	ReturnMoveStorage(ctx context.Context, callID CallID, err *CallError) error
 	ReturnUnsealPiece(ctx context.Context, callID CallID, err *CallError) error
 	ReturnReadPiece(ctx context.Context, callID CallID, ok bool, err *CallError) error

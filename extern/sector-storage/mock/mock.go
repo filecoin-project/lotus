@@ -581,6 +581,10 @@ func (mgr *SectorMgr) ReturnGenerateSectorKeyFromData(ctx context.Context, callI
 	panic("not supported")
 }
 
+func (mgr *SectorMgr) ReturnFinalizeReplicaUpdate(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
+	panic("not supported")
+}
+
 func (m mockVerifProver) VerifySeal(svi proof.SealVerifyInfo) (bool, error) {
 	plen, err := svi.SealProof.ProofSize()
 	if err != nil {

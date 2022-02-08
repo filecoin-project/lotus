@@ -715,6 +715,8 @@ type StorageMinerStruct struct {
 
 		ReturnFetch func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
 
+		ReturnFinalizeReplicaUpdate func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
+
 		ReturnFinalizeSector func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
 
 		ReturnGenerateSectorKeyFromData func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
@@ -4227,6 +4229,17 @@ func (s *StorageMinerStruct) ReturnFetch(p0 context.Context, p1 storiface.CallID
 }
 
 func (s *StorageMinerStub) ReturnFetch(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) ReturnFinalizeReplicaUpdate(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	if s.Internal.ReturnFinalizeReplicaUpdate == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.ReturnFinalizeReplicaUpdate(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) ReturnFinalizeReplicaUpdate(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
 	return ErrNotSupported
 }
 
