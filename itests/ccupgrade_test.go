@@ -71,6 +71,11 @@ func runTestCCUpgrade(t *testing.T) *kit.TestFullNode {
 	status, err := miner.SectorsStatus(ctx, CCUpgrade, true)
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(status.Deals))
+
+	miner.WaitSectorsProving(ctx, map[abi.SectorNumber]struct{}{
+		CCUpgrade: {},
+	})
+
 	return client
 }
 
