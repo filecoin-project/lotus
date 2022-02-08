@@ -99,6 +99,8 @@ var ChainGetBlock = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -126,7 +128,7 @@ var ChainGetBlock = &cli.Command{
 				return err
 			}
 
-			fmt.Println(string(out))
+			afmt.Println(string(out))
 			return nil
 		}
 
@@ -165,9 +167,8 @@ var ChainGetBlock = &cli.Command{
 			return err
 		}
 
-		fmt.Println(string(out))
+		afmt.Println(string(out))
 		return nil
-
 	},
 }
 
