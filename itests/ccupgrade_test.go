@@ -20,23 +20,14 @@ import (
 func TestCCUpgrade(t *testing.T) {
 	kit.QuietMiningLogs()
 
-	for _, height := range []abi.ChainEpoch{
-		-1,  // before
-		162, // while sealing
-		560, // after upgrade deal
-	} {
-		height := height // make linters happy by copying
-		t.Run(fmt.Sprintf("upgrade-%d", height), func(t *testing.T) {
-			runTestCCUpgrade(t)
-		})
-	}
+	runTestCCUpgrade(t)
 }
 
 func runTestCCUpgrade(t *testing.T) *kit.TestFullNode {
 	ctx := context.Background()
 	blockTime := 1 * time.Millisecond
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.GenesisNetworkVersion(network.Version15))
+	client, miner, ens := kit.EnsembleMinimal(t, kit.GenesisNetworkVersion(network.Version15), kit.ThroughRPC())
 	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	maddr, err := miner.ActorAddress(ctx)
