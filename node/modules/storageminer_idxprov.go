@@ -19,6 +19,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"go.uber.org/fx"
 
+	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
@@ -65,8 +66,8 @@ func IndexProviderHost(cfg config.IndexProviderConfig) func(IdxProv) (idxprov.Ho
 	}
 }
 
-func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHost host.Host, h idxprov.Host) (provider.Interface, error) {
-	return func(args IdxProv, marketHost host.Host, h idxprov.Host) (provider.Interface, error) {
+func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHost host.Host, h idxprov.Host, maddr dtypes.MinerAddress) (provider.Interface, error) {
+	return func(args IdxProv, marketHost host.Host, h idxprov.Host, maddr dtypes.MinerAddress) (provider.Interface, error) {
 		ipds := namespace.Wrap(args.Datastore, datastore.NewKey("/index-provider"))
 
 		pkey := args.Peerstore.PrivKey(args.PeerID)
@@ -84,7 +85,12 @@ func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHo
 			maddrs = append(maddrs, a.String())
 		}
 
-		e, err := engine.New(cfg.Ingest, pkey, dt, h, ipds, maddrs)
+		// Get the miner ID and set as extra gossip data.
+		// The extra data is required by the lotus-specific index-provider gossip message validators.
+		ma := address.Address(maddr)
+		log.Info("Using extra gossip data in index provider engine: %s", ma.String())
+
+		e, err := engine.New(cfg.Ingest, pkey, dt, h, ipds, maddrs, engine.WithExtraGossipData(ma.Bytes()))
 		if err != nil {
 			return nil, xerrors.Errorf("creating indexer provider engine: %w", err)
 		}
