@@ -94,6 +94,16 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 	}()
 
 	makeVmWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (vm.VMI, error) {
+		st, err := sm.StateTree(base)
+		if err != nil {
+			return nil, err
+		}
+		supply, err := sm.GetVMCirculatingSupplyDetailed(ctx, e, st)
+		if err != nil {
+			return nil, err
+		}
+		circulating := big.Add(supply.FilMined, supply.FilVested)
+
 		vmopt := &vm.VMOpts{
 			StateBase:      base,
 			Epoch:          e,
@@ -102,6 +112,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 			Actors:         NewActorRegistry(),
 			Syscalls:       sm.Syscalls,
 			CircSupplyCalc: sm.GetVMCirculatingSupply,
+			BaseCircSupply: circulating,
 			NetworkVersion: sm.GetNetworkVersion(ctx, e),
 			BaseFee:        baseFee,
 			LookbackState:  stmgr.LookbackStateGetterForTipset(sm, ts),

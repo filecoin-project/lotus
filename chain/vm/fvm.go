@@ -9,8 +9,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/state"
-	cbor "github.com/ipfs/go-ipld-cbor"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	ffi_cgo "github.com/filecoin-project/filecoin-ffi/cgo"
@@ -36,21 +34,9 @@ type FVM struct {
 }
 
 func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
-	buf := blockstore.NewBuffered(opts.Bstore)
-	cst := cbor.NewCborStore(buf)
-	state, err := state.LoadStateTree(cst, opts.StateBase)
-	if err != nil {
-		return nil, err
-	}
-
-	baseCirc, err := opts.CircSupplyCalc(ctx, opts.Epoch, state)
-	if err != nil {
-		return nil, err
-	}
-
 	fvm, err := ffi.CreateFVM(0,
 		&FvmExtern{Rand: opts.Rand, Blockstore: opts.Bstore},
-		opts.Epoch, opts.BaseFee, baseCirc, opts.NetworkVersion, opts.StateBase,
+		opts.Epoch, opts.BaseFee, opts.BaseCircSupply, opts.NetworkVersion, opts.StateBase,
 	)
 	if err != nil {
 		return nil, err
