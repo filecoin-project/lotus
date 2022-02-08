@@ -20,6 +20,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/discovery"
 	discoveryimpl "github.com/filecoin-project/go-fil-markets/discovery/impl"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -201,7 +202,9 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 func RelayIndexerMessages(lc fx.Lifecycle, ps *pubsub.PubSub, nn dtypes.NetworkName, h host.Host) error {
 	topicName := build.IndexerIngestTopic(nn)
 
-	v := sub.NewIndexerMessageValidator(h.ID())
+	// TODO: How do this get set?
+	var fullNode api.FullNode
+	v := sub.NewIndexerMessageValidator(h.ID(), fullNode)
 
 	if err := ps.RegisterTopicValidator(topicName, v.Validate); err != nil {
 		return xerrors.Errorf("failed to register validator for topic %s, err: %w", topicName, err)

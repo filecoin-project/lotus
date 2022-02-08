@@ -2,15 +2,17 @@ package sub
 
 import (
 	"context"
-	"fmt"
+	"sync"
 	"time"
 
 	address "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/sub/ratelimit"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/impl/client"
@@ -22,6 +24,7 @@ import (
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/multiformats/go-varint"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
@@ -168,12 +171,12 @@ func fetchCids(
 	cidIndex := make(map[cid.Cid]int)
 	for i, c := range cids {
 		if c.Prefix() != msgCidPrefix {
-			return fmt.Errorf("invalid msg CID: %s", c)
+			return xerrors.Errorf("invalid msg CID: %s", c)
 		}
 		cidIndex[c] = i
 	}
 	if len(cids) != len(cidIndex) {
-		return fmt.Errorf("duplicate CIDs in fetchCids input")
+		return xerrors.Errorf("duplicate CIDs in fetchCids input")
 	}
 
 	for block := range bserv.GetBlocks(ctx, cids) {
@@ -196,7 +199,7 @@ func fetchCids(
 	if len(cidIndex) > 0 {
 		err := ctx.Err()
 		if err == nil {
-			err = fmt.Errorf("failed to fetch %d messages for unknown reasons", len(cidIndex))
+			err = xerrors.Errorf("failed to fetch %d messages for unknown reasons", len(cidIndex))
 		}
 		return err
 	}
@@ -445,23 +448,199 @@ func recordFailure(ctx context.Context, metric *stats.Int64Measure, failureType 
 	stats.Record(ctx, metric.M(1))
 }
 
-type IndexerMessageValidator struct {
-	self peer.ID
+type peerMsgInfo struct {
+	peerID    peer.ID
+	lastCid   cid.Cid
+	rateLimit *ratelimit.Window
+	mutex     sync.Mutex
 }
 
-func NewIndexerMessageValidator(self peer.ID) *IndexerMessageValidator {
-	return &IndexerMessageValidator{self: self}
+type IndexerMessageValidator struct {
+	self peer.ID
+
+	peerCache *lru.TwoQueueCache
+	fullNode  api.FullNode
+}
+
+func NewIndexerMessageValidator(self peer.ID, fullNode api.FullNode) *IndexerMessageValidator {
+	peerCache, _ := lru.New2Q(1024)
+
+	return &IndexerMessageValidator{
+		self:      self,
+		peerCache: peerCache,
+		fullNode:  fullNode,
+	}
 }
 
 func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
 	// This chain-node should not be publishing its own messages.  These are
-	// relayed from miner-nodes or index publishers.  If a node appears to be
-	// local, reject it.
+	// relayed from market-nodes.  If a node appears to be local, reject it.
 	if pid == v.self {
 		log.Warnf("refusing to relay indexer message from self")
 		stats.Record(ctx, metrics.IndexerMessageValidationFailure.M(1))
 		return pubsub.ValidationReject
 	}
+	originPeer := msg.GetFrom()
+	if originPeer == v.self {
+		log.Warnf("refusing to relay indexer message originating from self")
+		stats.Record(ctx, metrics.IndexerMessageValidationFailure.M(1))
+		return pubsub.ValidationReject
+	}
+
+	// Decode CID and originator addresses from message.
+	minerID, msgCid, err := decodeIndexerMessage(msg.Data)
+	if err != nil {
+		log.Errorw("Could not decode pubsub message", "err", err)
+		return pubsub.ValidationReject
+	}
+
+	if minerID == "" {
+		log.Warnw("ignoring messsage missing miner id", "peer", originPeer)
+		return pubsub.ValidationIgnore
+	}
+
+	var msgInfo *peerMsgInfo
+	val, ok := v.peerCache.Get(minerID)
+	if !ok {
+		msgInfo = &peerMsgInfo{}
+	} else {
+		msgInfo = val.(*peerMsgInfo)
+	}
+
+	// Lock this peer's message info.
+	msgInfo.mutex.Lock()
+	defer msgInfo.mutex.Unlock()
+
+	if !ok || originPeer != msgInfo.peerID {
+		// Check that the message was signed by an authenticated peer.
+		err = v.authenticateMessage(ctx, minerID, originPeer)
+		if err != nil {
+			log.Warnw("cannot authenticate messsage", "err", err, "peer", originPeer, "minerID", minerID)
+			stats.Record(ctx, metrics.IndexerMessageValidationFailure.M(1))
+			return pubsub.ValidationReject
+		}
+		msgInfo.peerID = originPeer
+		if !ok {
+			// Add msgInfo to cache only after being authenticated.  If two
+			// messages from the same peer are handled concurrently, there is a
+			// small chance that one msgInfo could replace the other here when
+			// the info is first cached.  This is OK, so no need to prevent it.
+			v.peerCache.Add(minerID, msgInfo)
+		}
+	}
+
+	// See if message needs to be ignored due to rate limiting.
+	if v.rateLimitPeer(msgInfo, msgCid) {
+		return pubsub.ValidationIgnore
+	}
+
 	stats.Record(ctx, metrics.IndexerMessageValidationSuccess.M(1))
 	return pubsub.ValidationAccept
+}
+
+func (v *IndexerMessageValidator) rateLimitPeer(msgInfo *peerMsgInfo, msgCid cid.Cid) bool {
+	const (
+		msgLimit        = 5
+		msgTimeLimit    = 10 * time.Second
+		repeatTimeLimit = 2 * time.Hour
+	)
+
+	timeWindow := msgInfo.rateLimit
+
+	// Check overall message rate.
+	if timeWindow == nil {
+		timeWindow = ratelimit.NewWindow(msgLimit, msgTimeLimit)
+		msgInfo.rateLimit = timeWindow
+	} else if msgInfo.lastCid == msgCid {
+		// Check if this is a repeat of the previous message data.
+		if time.Since(timeWindow.Newest()) < repeatTimeLimit {
+			log.Warnw("ignoring repeated indexer message", "sender", msgInfo.peerID)
+			return true
+		}
+	}
+
+	err := timeWindow.Add()
+	if err != nil {
+		log.Warnw("ignoring indexer message", "sender", msgInfo.peerID, "err", err)
+		return true
+	}
+
+	msgInfo.lastCid = msgCid
+
+	return false
+}
+
+func decodeIndexerMessage(data []byte) (string, cid.Cid, error) {
+	n, msgCid, err := cid.CidFromBytes(data)
+	if err != nil {
+		return "", cid.Undef, err
+	}
+	if n > len(data) {
+		return "", cid.Undef, xerrors.New("bad cid length encoding")
+	}
+	data = data[n:]
+
+	var minerID string
+
+	if len(data) != 0 {
+		addrCount, n, err := varint.FromUvarint(data)
+		if err != nil {
+			return "", cid.Undef, xerrors.Errorf("cannot read number of multiaddrs: %w", err)
+		}
+		if n > len(data) {
+			return "", cid.Undef, xerrors.New("bad multiaddr count encoding")
+		}
+		data = data[n:]
+
+		if addrCount != 0 {
+			// Read multiaddrs if there is any more data in message data.  This allows
+			// backward-compatability with publishers that do not supply address data.
+			for i := 0; i < int(addrCount); i++ {
+				val, n, err := varint.FromUvarint(data)
+				if err != nil {
+					return "", cid.Undef, xerrors.Errorf("cannot read multiaddrs length: %w", err)
+				}
+				if n > len(data) {
+					return "", cid.Undef, xerrors.New("bad multiaddr length encoding")
+				}
+				data = data[n:]
+
+				if len(data) < int(val) {
+					return "", cid.Undef, xerrors.New("bad multiaddr encoding")
+				}
+				data = data[val:]
+			}
+		}
+		if len(data) != 0 {
+			minerID = string(data)
+		}
+	}
+
+	return minerID, msgCid, nil
+}
+
+func (v *IndexerMessageValidator) authenticateMessage(ctx context.Context, minerID string, peerID peer.ID) error {
+	// Get miner info from lotus
+	minerAddress, err := address.NewFromString(minerID)
+	if err != nil {
+		return xerrors.Errorf("invalid miner id: %w", err)
+	}
+
+	ts, err := v.fullNode.ChainHead(ctx)
+	if err != nil {
+		return err
+	}
+
+	minerInfo, err := v.fullNode.StateMinerInfo(ctx, minerAddress, ts.Key())
+	if err != nil {
+		return err
+	}
+
+	if minerInfo.PeerId == nil {
+		return xerrors.New("no peer id for miner")
+	}
+	if *minerInfo.PeerId != peerID {
+		return xerrors.New("message not signed by peer in miner info")
+	}
+	return nil
 }
