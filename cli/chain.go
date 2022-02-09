@@ -220,6 +220,8 @@ var ChainDeleteObjCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -241,7 +243,7 @@ var ChainDeleteObjCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("Obj %s deleted\n", c.String())
+		afmt.Printf("Obj %s deleted\n", c.String())
 		return nil
 	},
 }

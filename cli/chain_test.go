@@ -115,3 +115,36 @@ func TestReadOjb(t *testing.T) {
 
 	assert.Equal(t, buf.String(), fmt.Sprintf("%x\n", obj.Bytes()))
 }
+
+// TestChainDeleteObj checks if "chain delete-obj" deletes an object from the chain blockstore, respecting the --really-do-it flag
+func TestChainDeleteObj(t *testing.T) {
+	cmd := WithCategory("chain", ChainDeleteObjCmd)
+	block := mock.MkBlock(nil, 0, 0)
+
+	// given no force flag, it should return an error and no API calls should be made
+	t.Run("no-really-do-it", func(t *testing.T) {
+		app, _, _, done := newMockAppWithFullAPI(t, cmd)
+		defer done()
+
+		err := app.Run([]string{"chain", "delete-obj", block.Cid().String()})
+		assert.Error(t, err)
+	})
+
+	// given a force flag, API delete should be called
+	t.Run("really-do-it", func(t *testing.T) {
+		app, mockApi, buf, done := newMockAppWithFullAPI(t, cmd)
+		defer done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		gomock.InOrder(
+			mockApi.EXPECT().ChainDeleteObj(ctx, block.Cid()).Return(nil),
+		)
+
+		err := app.Run([]string{"chain", "delete-obj", "--really-do-it=true", block.Cid().String()})
+		assert.NoError(t, err)
+
+		assert.Contains(t, buf.String(), block.Cid().String())
+	})
+}
