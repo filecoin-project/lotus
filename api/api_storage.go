@@ -113,6 +113,8 @@ type StorageMiner interface {
 	// SectorCommitPending returns a list of pending Commit sectors to be sent in the next aggregate message
 	SectorCommitPending(ctx context.Context) ([]abi.SectorID, error) //perm:admin
 	SectorMatchPendingPiecesToOpenSectors(ctx context.Context) error //perm:admin
+	// SectorAbortUpgrade can be called on sectors that are in the process of being upgraded to abort it
+	SectorAbortUpgrade(context.Context, abi.SectorNumber) error //perm:admin
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error                              //perm:admin retry:true
