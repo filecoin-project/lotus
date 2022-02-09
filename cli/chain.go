@@ -185,6 +185,8 @@ var ChainReadObjCmd = &cli.Command{
 	Usage:     "Read the raw bytes of an object",
 	ArgsUsage: "[objectCid]",
 	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -202,7 +204,7 @@ var ChainReadObjCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("%x\n", obj)
+		afmt.Printf("%x\n", obj)
 		return nil
 	},
 }

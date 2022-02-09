@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"regexp"
 	"testing"
 
@@ -56,7 +57,7 @@ func TestChainHead(t *testing.T) {
 	assert.Regexp(t, regexp.MustCompile(ts.Cids()[0].String()), buf.String())
 }
 
-// TestGetBlock checks if "lotus chain getblock" returns the block information in the expected format
+// TestGetBlock checks if "chain getblock" returns the block information in the expected format
 func TestGetBlock(t *testing.T) {
 	app, mockApi, buf, done := newMockAppWithFullAPI(t, WithCategory("chain", ChainGetBlock))
 	defer done()
@@ -77,6 +78,7 @@ func TestGetBlock(t *testing.T) {
 	err := app.Run([]string{"chain", "getblock", block.Cid().String()})
 	assert.NoError(t, err)
 
+	// expected output format
 	out := struct {
 		types.BlockHeader
 		BlsMessages    []*types.Message
@@ -89,4 +91,27 @@ func TestGetBlock(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.True(t, block.Cid().Equals(out.Cid()))
+}
+
+// TestChainReadObj checks if "chain read-obj" prints the referenced IPLD node as hex, if exists
+func TestReadOjb(t *testing.T) {
+	app, mockApi, buf, done := newMockAppWithFullAPI(t, WithCategory("chain", ChainReadObjCmd))
+	defer done()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	block := mock.MkBlock(nil, 0, 0)
+	obj := new(bytes.Buffer)
+	err := block.MarshalCBOR(obj)
+	assert.NoError(t, err)
+
+	gomock.InOrder(
+		mockApi.EXPECT().ChainReadObj(ctx, block.Cid()).Return(obj.Bytes(), nil),
+	)
+
+	err = app.Run([]string{"chain", "read-obj", block.Cid().String()})
+	assert.NoError(t, err)
+
+	assert.Equal(t, buf.String(), fmt.Sprintf("%x\n", obj.Bytes()))
 }
