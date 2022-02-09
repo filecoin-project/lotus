@@ -2,7 +2,7 @@ package ratelimit
 
 import "errors"
 
-var ErrRate = errors.New("rate exceeded")
+var ErrRateLimitExceeded = errors.New("rate limit exceeded")
 
 type queue struct {
 	buf   []int64
@@ -24,7 +24,7 @@ func (q *queue) len() int {
 // push adds an element to the end of the queue.
 func (q *queue) push(elem int64) error {
 	if q.count == len(q.buf) {
-		return ErrRate
+		return ErrRateLimitExceeded
 	}
 
 	q.buf[q.tail] = elem

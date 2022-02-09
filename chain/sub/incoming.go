@@ -6,7 +6,6 @@ import (
 	"time"
 
 	address "github.com/filecoin-project/go-address"
-	//"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/consensus"
@@ -465,7 +464,7 @@ type IndexerMessageValidator struct {
 }
 
 func NewIndexerMessageValidator(self peer.ID, chainApi full.ChainModuleAPI, stateApi full.StateModuleAPI) *IndexerMessageValidator {
-	peerCache, _ := lru.New2Q(1024)
+	peerCache, _ := lru.New2Q(8192)
 
 	return &IndexerMessageValidator{
 		self:      self,
@@ -498,7 +497,7 @@ func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg
 	}
 
 	if minerID == "" {
-		log.Warnw("ignoring messsage missing miner id", "peer", originPeer)
+		log.Debugw("ignoring messsage missing miner id", "peer", originPeer)
 		return pubsub.ValidationIgnore
 	}
 

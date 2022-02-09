@@ -37,8 +37,8 @@ func TestWindow(t *testing.T) {
 	if w.Len() != maxEvents {
 		t.Fatalf("q.Len() is %d, expected %d", w.Len(), maxEvents)
 	}
-	if err = w.Add(); err == nil {
-		t.Fatalf("add event %d within time limit should have failed", maxEvents+1)
+	if err = w.Add(); err != ErrRateLimitExceeded {
+		t.Fatalf("add event %d within time limit should have failed with err: %s", maxEvents+1, ErrRateLimitExceeded)
 	}
 
 	time.Sleep(timeLimit)
