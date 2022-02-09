@@ -301,6 +301,8 @@ var ChainGetMsgCmd = &cli.Command{
 	Usage:     "Get and print a message by its cid",
 	ArgsUsage: "[messageCid]",
 	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must pass a cid of a message to get")
 		}
@@ -339,7 +341,7 @@ var ChainGetMsgCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println(string(enc))
+		afmt.Println(string(enc))
 		return nil
 	},
 }

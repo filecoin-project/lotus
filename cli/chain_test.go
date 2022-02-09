@@ -150,6 +150,7 @@ func TestChainDeleteObj(t *testing.T) {
 	})
 }
 
+// TestChainStatObj checks if "chain delete-obj" prints size and IPLD link counts for object, respecting the --base flag
 func TestChainStatObj(t *testing.T) {
 	cmd := WithCategory("chain", ChainStatObjCmd)
 	block := mock.MkBlock(nil, 0, 0)
@@ -198,4 +199,38 @@ func TestChainStatObj(t *testing.T) {
 
 		checkOutput(buf)
 	})
+}
+
+// TestChainGetMsg checks if "chain getmessage" properly decodes and serializes as JSON a Message fetched from the IPLD store
+func TestChainGetMsg(t *testing.T) {
+	app, mockApi, buf, done := newMockAppWithFullAPI(t, WithCategory("chain", ChainGetMsgCmd))
+	defer done()
+
+	from, err := mock.RandomActorAddress()
+	assert.NoError(t, err)
+
+	to, err := mock.RandomActorAddress()
+	assert.NoError(t, err)
+
+	msg := mock.UnsignedMessage(*from, *to, 0)
+
+	obj := new(bytes.Buffer)
+	err = msg.MarshalCBOR(obj)
+	assert.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	gomock.InOrder(
+		mockApi.EXPECT().ChainReadObj(ctx, msg.Cid()).Return(obj.Bytes(), nil),
+	)
+
+	err = app.Run([]string{"chain", "getmessage", msg.Cid().String()})
+	assert.NoError(t, err)
+
+	var out types.Message
+	err = json.Unmarshal(buf.Bytes(), &out)
+	assert.NoError(t, err)
+
+	assert.Equal(t, *msg, out)
 }
