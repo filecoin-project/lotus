@@ -308,14 +308,57 @@ func TestInspectUsage(t *testing.T) {
 
 		out := buf.String()
 
-		fmt.Println("🔥: ", out)
-
 		// output is plaintext, had to do string matching
-		assert.Contains(t, out, "By Sender")
 		assert.Contains(t, out, from.String())
-		assert.Contains(t, out, "By Receiver")
 		assert.Contains(t, out, to.String())
-		assert.Contains(t, out, "By Method")
 		assert.Contains(t, out, "Send")
+	})
+}
+
+func TestChainList(t *testing.T) {
+	cmd := WithCategory("chain", ChainListCmd)
+	genesis := mock.TipSet(mock.MkBlock(nil, 0, 0))
+	blk := mock.MkBlock(genesis, 0, 0)
+	blk.Height = 1
+	head := mock.TipSet(blk)
+
+	head.Height()
+
+	from, err := mock.RandomActorAddress()
+	assert.NoError(t, err)
+
+	to, err := mock.RandomActorAddress()
+	assert.NoError(t, err)
+
+	msg := mock.UnsignedMessage(*from, *to, 0)
+	msgs := []api.Message{{Cid: msg.Cid(), Message: msg}}
+	blockMsgs := &api.BlockMessages{}
+	receipts := []*types.MessageReceipt{}
+
+	t.Run("default", func(t *testing.T) {
+		app, mockApi, buf, done := NewMockAppWithFullAPI(t, cmd)
+		defer done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		// same method gets called mocked multiple times bcs it's called in a for loop for all tipsets (2 in this case)
+		gomock.InOrder(
+			mockApi.EXPECT().ChainHead(ctx).Return(head, nil),
+			mockApi.EXPECT().ChainGetTipSet(ctx, head.Parents()).Return(genesis, nil),
+			mockApi.EXPECT().ChainGetBlockMessages(ctx, genesis.Blocks()[0].Cid()).Return(blockMsgs, nil),
+			mockApi.EXPECT().ChainGetParentMessages(ctx, head.Blocks()[0].Cid()).Return(msgs, nil),
+			mockApi.EXPECT().ChainGetParentReceipts(ctx, head.Blocks()[0].Cid()).Return(receipts, nil),
+			mockApi.EXPECT().ChainGetBlockMessages(ctx, head.Blocks()[0].Cid()).Return(blockMsgs, nil),
+		)
+
+		err := app.Run([]string{"chain", "love", "--gas-stats=true"}) // chain is love ❤️
+		assert.NoError(t, err)
+
+		out := buf.String()
+
+		// should print out 2 blocks, indexed with 0: and 1:
+		assert.Contains(t, out, "0:")
+		assert.Contains(t, out, "1:")
 	})
 }

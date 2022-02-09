@@ -559,6 +559,7 @@ var ChainListCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -606,7 +607,7 @@ var ChainListCmd = &cli.Command{
 			tss = otss
 			for i, ts := range tss {
 				pbf := ts.Blocks()[0].ParentBaseFee
-				fmt.Printf("%d: %d blocks (baseFee: %s -> maxFee: %s)\n", ts.Height(), len(ts.Blocks()), ts.Blocks()[0].ParentBaseFee, types.FIL(types.BigMul(pbf, types.NewInt(uint64(build.BlockGasLimit)))))
+				afmt.Printf("%d: %d blocks (baseFee: %s -> maxFee: %s)\n", ts.Height(), len(ts.Blocks()), ts.Blocks()[0].ParentBaseFee, types.FIL(types.BigMul(pbf, types.NewInt(uint64(build.BlockGasLimit)))))
 
 				for _, b := range ts.Blocks() {
 					msgs, err := api.ChainGetBlockMessages(ctx, b.Cid())
@@ -632,7 +633,7 @@ var ChainListCmd = &cli.Command{
 						avgpremium = big.Div(psum, big.NewInt(int64(lenmsgs)))
 					}
 
-					fmt.Printf("\t%s: \t%d msgs, gasLimit: %d / %d (%0.2f%%), avgPremium: %s\n", b.Miner, len(msgs.BlsMessages)+len(msgs.SecpkMessages), limitSum, build.BlockGasLimit, 100*float64(limitSum)/float64(build.BlockGasLimit), avgpremium)
+					afmt.Printf("\t%s: \t%d msgs, gasLimit: %d / %d (%0.2f%%), avgPremium: %s\n", b.Miner, len(msgs.BlsMessages)+len(msgs.SecpkMessages), limitSum, build.BlockGasLimit, 100*float64(limitSum)/float64(build.BlockGasLimit), avgpremium)
 				}
 				if i < len(tss)-1 {
 					msgs, err := api.ChainGetParentMessages(ctx, tss[i+1].Blocks()[0].Cid())
@@ -657,13 +658,13 @@ var ChainListCmd = &cli.Command{
 					gasEfficiency := 100 * float64(gasUsed) / float64(limitSum)
 					gasCapacity := 100 * float64(limitSum) / float64(build.BlockGasLimit)
 
-					fmt.Printf("\ttipset: \t%d msgs, %d (%0.2f%%) / %d (%0.2f%%)\n", len(msgs), gasUsed, gasEfficiency, limitSum, gasCapacity)
+					afmt.Printf("\ttipset: \t%d msgs, %d (%0.2f%%) / %d (%0.2f%%)\n", len(msgs), gasUsed, gasEfficiency, limitSum, gasCapacity)
 				}
-				fmt.Println()
+				afmt.Println()
 			}
 		} else {
 			for i := len(tss) - 1; i >= 0; i-- {
-				printTipSet(cctx.String("format"), tss[i])
+				printTipSet(cctx.String("format"), tss[i], afmt)
 			}
 		}
 		return nil
@@ -889,7 +890,7 @@ func handleHamtAddress(ctx context.Context, api v0api.FullNode, r cid.Cid) error
 	})
 }
 
-func printTipSet(format string, ts *types.TipSet) {
+func printTipSet(format string, ts *types.TipSet, afmt *AppFmt) {
 	format = strings.ReplaceAll(format, "<height>", fmt.Sprint(ts.Height()))
 	format = strings.ReplaceAll(format, "<time>", time.Unix(int64(ts.MinTimestamp()), 0).Format(time.Stamp))
 	blks := "[ "
@@ -908,7 +909,7 @@ func printTipSet(format string, ts *types.TipSet) {
 	format = strings.ReplaceAll(format, "<blocks>", blks)
 	format = strings.ReplaceAll(format, "<weight>", fmt.Sprint(ts.Blocks()[0].ParentWeight))
 
-	fmt.Println(format)
+	afmt.Println(format)
 }
 
 var ChainBisectCmd = &cli.Command{
