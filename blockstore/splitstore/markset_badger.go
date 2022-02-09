@@ -108,10 +108,7 @@ func (s *BadgerMarkSet) BeginCriticalSection() error {
 	var seqno int
 	if len(s.pend) > 0 {
 		write = true
-		seqno := s.seqno
-		s.seqno++
-		s.writing[seqno] = s.pend
-		s.pend = make(map[string]struct{})
+		seqno = s.nextBatch()
 	}
 
 	s.persist = true
@@ -282,11 +279,7 @@ func (s *BadgerMarkSet) put(key string) (write bool, seqno int) {
 		return false, 0
 	}
 
-	seqno = s.seqno
-	s.seqno++
-	s.writing[seqno] = s.pend
-	s.pend = make(map[string]struct{})
-
+	seqno = s.nextBatch()
 	return true, seqno
 }
 
@@ -300,12 +293,16 @@ func (s *BadgerMarkSet) putMany(batch []cid.Cid) (write bool, seqno int) {
 		return false, 0
 	}
 
-	seqno = s.seqno
+	seqno = s.nextBatch()
+	return true, seqno
+}
+
+func (s *BadgerMarkSet) nextBatch() int {
+	seqno := s.seqno
 	s.seqno++
 	s.writing[seqno] = s.pend
 	s.pend = make(map[string]struct{})
-
-	return true, seqno
+	return seqno
 }
 
 func (s *BadgerMarkSet) write(seqno int) (err error) {
