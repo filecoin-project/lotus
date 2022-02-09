@@ -5,6 +5,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	statemachine "github.com/filecoin-project/go-statemachine"
@@ -225,7 +226,7 @@ func (m *Sealing) handleUpdateActivating(ctx statemachine.Context, sector Sector
 			return err
 		}
 
-		tok, height, err := m.Api.ChainHead(ctx.Context())
+		tok, _, err := m.Api.ChainHead(ctx.Context())
 		if err != nil {
 			return err
 		}
@@ -238,30 +239,13 @@ func (m *Sealing) handleUpdateActivating(ctx statemachine.Context, sector Sector
 		lb := policy.GetWinningPoStSectorSetLookback(nv)
 
 		targetHeight := mw.Height + lb + InteractivePoRepConfidence
-		delay := 50 * time.Millisecond
 
-		for {
-			if height >= targetHeight {
-				break
-			}
-
-			wctx, cancel := context.WithTimeout(ctx.Context(), delay)
-			<-wctx.Done()
-			cancel()
-
-			// increasing backoff; can't just calculate the correct time because integration tests do funny things with time
-			delay = delay * 10 / 3
-			if delay > 5*time.Minute {
-				delay = 5 * time.Minute
-			}
-
-			_, height, err = m.Api.ChainHead(ctx.Context())
-			if err != nil {
-				return err
-			}
-		}
-
-		return nil
+		return m.events.ChainAt(func(context.Context, TipSetToken, abi.ChainEpoch) error {
+			return ctx.Send(SectorUpdateActive{})
+		}, func(ctx context.Context, ts TipSetToken) error {
+			log.Warn("revert in handleUpdateActivating")
+			return nil
+		}, InteractivePoRepConfidence, targetHeight)
 	}
 
 	for {
@@ -276,7 +260,7 @@ func (m *Sealing) handleUpdateActivating(ctx statemachine.Context, sector Sector
 		time.Sleep(time.Minute)
 	}
 
-	return ctx.Send(SectorUpdateActive{})
+	return nil
 }
 
 func (m *Sealing) handleReleaseSectorKey(ctx statemachine.Context, sector SectorInfo) error {
