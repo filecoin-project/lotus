@@ -10,9 +10,11 @@ import (
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/api"
 	types "github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
+	"github.com/filecoin-project/specs-actors/v7/actors/builtin"
 	"github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
@@ -36,7 +38,6 @@ func TestChainHead(t *testing.T) {
 	assert.Regexp(t, regexp.MustCompile(ts.Cids()[0].String()), buf.String())
 }
 
-// TestGetBlock checks if "chain getblock" returns the block information in the expected format
 func TestGetBlock(t *testing.T) {
 	app, mockApi, buf, done := NewMockAppWithFullAPI(t, WithCategory("chain", ChainGetBlock))
 	defer done()
@@ -72,7 +73,6 @@ func TestGetBlock(t *testing.T) {
 	assert.True(t, block.Cid().Equals(out.Cid()))
 }
 
-// TestChainReadObj checks if "chain read-obj" prints the referenced IPLD node as hex, if exists
 func TestReadOjb(t *testing.T) {
 	app, mockApi, buf, done := NewMockAppWithFullAPI(t, WithCategory("chain", ChainReadObjCmd))
 	defer done()
@@ -95,7 +95,6 @@ func TestReadOjb(t *testing.T) {
 	assert.Equal(t, buf.String(), fmt.Sprintf("%x\n", obj.Bytes()))
 }
 
-// TestChainDeleteObj checks if "chain delete-obj" deletes an object from the chain blockstore, respecting the --really-do-it flag
 func TestChainDeleteObj(t *testing.T) {
 	cmd := WithCategory("chain", ChainDeleteObjCmd)
 	block := mock.MkBlock(nil, 0, 0)
@@ -128,7 +127,6 @@ func TestChainDeleteObj(t *testing.T) {
 	})
 }
 
-// TestChainStatObj checks if "chain delete-obj" prints size and IPLD link counts for object, respecting the --base flag
 func TestChainStatObj(t *testing.T) {
 	cmd := WithCategory("chain", ChainStatObjCmd)
 	block := mock.MkBlock(nil, 0, 0)
@@ -179,7 +177,6 @@ func TestChainStatObj(t *testing.T) {
 	})
 }
 
-// TestChainGetMsg checks if "chain getmessage" properly decodes and serializes as JSON a Message fetched from the IPLD store
 func TestChainGetMsg(t *testing.T) {
 	app, mockApi, buf, done := NewMockAppWithFullAPI(t, WithCategory("chain", ChainGetMsgCmd))
 	defer done()
@@ -270,5 +267,55 @@ func TestSetHead(t *testing.T) {
 		// since we have only one CID in the key, this is ok
 		err := app.Run([]string{"chain", "sethead", ts.Key().Cids()[0].String()})
 		assert.NoError(t, err)
+	})
+}
+
+func TestInspectUsage(t *testing.T) {
+	cmd := WithCategory("chain", ChainInspectUsage)
+	ts := mock.TipSet(mock.MkBlock(nil, 0, 0))
+
+	from, err := mock.RandomActorAddress()
+	assert.NoError(t, err)
+
+	to, err := mock.RandomActorAddress()
+	assert.NoError(t, err)
+
+	msg := mock.UnsignedMessage(*from, *to, 0)
+	msgs := []api.Message{{Cid: msg.Cid(), Message: msg}}
+
+	actor := &types.Actor{
+		Code:    builtin.StorageMarketActorCodeID,
+		Nonce:   0,
+		Balance: big.NewInt(1000000000),
+	}
+
+	t.Run("default", func(t *testing.T) {
+		app, mockApi, buf, done := NewMockAppWithFullAPI(t, cmd)
+		defer done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		gomock.InOrder(
+			mockApi.EXPECT().ChainHead(ctx).Return(ts, nil),
+			mockApi.EXPECT().ChainGetParentMessages(ctx, ts.Blocks()[0].Cid()).Return(msgs, nil),
+			mockApi.EXPECT().ChainGetTipSet(ctx, ts.Parents()).Return(nil, nil),
+			mockApi.EXPECT().StateGetActor(ctx, *to, ts.Key()).Return(actor, nil),
+		)
+
+		err := app.Run([]string{"chain", "inspect-usage"})
+		assert.NoError(t, err)
+
+		out := buf.String()
+
+		fmt.Println("🔥: ", out)
+
+		// output is plaintext, had to do string matching
+		assert.Contains(t, out, "By Sender")
+		assert.Contains(t, out, from.String())
+		assert.Contains(t, out, "By Receiver")
+		assert.Contains(t, out, to.String())
+		assert.Contains(t, out, "By Method")
+		assert.Contains(t, out, "Send")
 	})
 }

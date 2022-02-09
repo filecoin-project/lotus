@@ -416,6 +416,7 @@ var ChainInspectUsage = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -517,23 +518,23 @@ var ChainInspectUsage = &cli.Command{
 
 		numRes := cctx.Int("num-results")
 
-		fmt.Printf("Total Gas Limit: %d\n", sum)
-		fmt.Printf("By Sender:\n")
+		afmt.Printf("Total Gas Limit: %d\n", sum)
+		afmt.Printf("By Sender:\n")
 		for i := 0; i < numRes && i < len(senderVals); i++ {
 			sv := senderVals[i]
-			fmt.Printf("%s\t%0.2f%%\t(total: %d, count: %d)\n", sv.Key, (100*float64(sv.Gas))/float64(sum), sv.Gas, bySenderC[sv.Key])
+			afmt.Printf("%s\t%0.2f%%\t(total: %d, count: %d)\n", sv.Key, (100*float64(sv.Gas))/float64(sum), sv.Gas, bySenderC[sv.Key])
 		}
-		fmt.Println()
-		fmt.Printf("By Receiver:\n")
+		afmt.Println()
+		afmt.Printf("By Receiver:\n")
 		for i := 0; i < numRes && i < len(destVals); i++ {
 			sv := destVals[i]
-			fmt.Printf("%s\t%0.2f%%\t(total: %d, count: %d)\n", sv.Key, (100*float64(sv.Gas))/float64(sum), sv.Gas, byDestC[sv.Key])
+			afmt.Printf("%s\t%0.2f%%\t(total: %d, count: %d)\n", sv.Key, (100*float64(sv.Gas))/float64(sum), sv.Gas, byDestC[sv.Key])
 		}
-		fmt.Println()
-		fmt.Printf("By Method:\n")
+		afmt.Println()
+		afmt.Printf("By Method:\n")
 		for i := 0; i < numRes && i < len(methodVals); i++ {
 			sv := methodVals[i]
-			fmt.Printf("%s\t%0.2f%%\t(total: %d, count: %d)\n", sv.Key, (100*float64(sv.Gas))/float64(sum), sv.Gas, byMethodC[sv.Key])
+			afmt.Printf("%s\t%0.2f%%\t(total: %d, count: %d)\n", sv.Key, (100*float64(sv.Gas))/float64(sum), sv.Gas, byMethodC[sv.Key])
 		}
 
 		return nil
