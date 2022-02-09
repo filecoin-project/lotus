@@ -52,11 +52,14 @@ var ExistSectorStateList = map[SectorState]struct{}{
 	ProveReplicaUpdate:      {},
 	SubmitReplicaUpdate:     {},
 	ReplicaUpdateWait:       {},
+	UpdateActivating:        {},
+	ReleaseSectorKey:        {},
 	FinalizeReplicaUpdate:   {},
 	SnapDealsAddPieceFailed: {},
 	SnapDealsDealsExpired:   {},
 	SnapDealsRecoverDealIDs: {},
 	ReplicaUpdateFailed:     {},
+	ReleaseSectorKeyFailed:  {},
 	AbortUpgrade:            {},
 }
 
@@ -104,6 +107,8 @@ const (
 	SubmitReplicaUpdate   SectorState = "SubmitReplicaUpdate"
 	ReplicaUpdateWait     SectorState = "ReplicaUpdateWait"
 	FinalizeReplicaUpdate SectorState = "FinalizeReplicaUpdate"
+	UpdateActivating      SectorState = "UpdateActivating"
+	ReleaseSectorKey      SectorState = "ReleaseSectorKey"
 
 	// error modes
 	FailedUnrecoverable  SectorState = "FailedUnrecoverable"
@@ -124,6 +129,7 @@ const (
 	SnapDealsRecoverDealIDs SectorState = "SnapDealsRecoverDealIDs"
 	AbortUpgrade            SectorState = "AbortUpgrade"
 	ReplicaUpdateFailed     SectorState = "ReplicaUpdateFailed"
+	ReleaseSectorKeyFailed  SectorState = "ReleaseSectorKeyFailed"
 
 	Faulty        SectorState = "Faulty"        // sector is corrupted or gone for some reason
 	FaultReported SectorState = "FaultReported" // sector has been declared as a fault on chain
@@ -153,7 +159,7 @@ func toStatState(st SectorState, finEarly bool) statSectorState {
 			return sstProving
 		}
 		return sstSealing
-	case Proving, Removed, Removing, Terminating, TerminateWait, TerminateFinality, TerminateFailed:
+	case Proving, UpdateActivating, ReleaseSectorKey, Removed, Removing, Terminating, TerminateWait, TerminateFinality, TerminateFailed:
 		return sstProving
 	}
 

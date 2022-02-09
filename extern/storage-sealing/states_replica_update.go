@@ -2,12 +2,16 @@ package sealing
 
 import (
 	"bytes"
+	"context"
+	"time"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	statemachine "github.com/filecoin-project/go-statemachine"
 	api "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"golang.org/x/xerrors"
 )
 
@@ -218,7 +222,68 @@ func (m *Sealing) handleReplicaUpdateWait(ctx statemachine.Context, sector Secto
 }
 
 func (m *Sealing) handleFinalizeReplicaUpdate(ctx statemachine.Context, sector SectorInfo) error {
+	cfg, err := m.getConfig()
+	if err != nil {
+		return xerrors.Errorf("getting sealing config: %w", err)
+	}
+
+	if err := m.sealer.FinalizeReplicaUpdate(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.keepUnsealedRanges(false, cfg.AlwaysKeepUnsealedCopy)); err != nil {
+		return ctx.Send(SectorFinalizeFailed{xerrors.Errorf("finalize sector: %w", err)})
+	}
+
 	return ctx.Send(SectorFinalized{})
+}
+
+func (m *Sealing) handleUpdateActivating(ctx statemachine.Context, sector SectorInfo) error {
+	try := func() error {
+		mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.ReplicaUpdateMessage)
+		if err != nil {
+			return err
+		}
+
+		tok, _, err := m.Api.ChainHead(ctx.Context())
+		if err != nil {
+			return err
+		}
+
+		nv, err := m.Api.StateNetworkVersion(ctx.Context(), tok)
+		if err != nil {
+			return err
+		}
+
+		lb := policy.GetWinningPoStSectorSetLookback(nv)
+
+		targetHeight := mw.Height + lb + InteractivePoRepConfidence
+
+		return m.events.ChainAt(func(context.Context, TipSetToken, abi.ChainEpoch) error {
+			return ctx.Send(SectorUpdateActive{})
+		}, func(ctx context.Context, ts TipSetToken) error {
+			log.Warn("revert in handleUpdateActivating")
+			return nil
+		}, InteractivePoRepConfidence, targetHeight)
+	}
+
+	for {
+		err := try()
+		if err == nil {
+			break
+		}
+
+		log.Errorw("error in handleUpdateActivating", "error", err)
+
+		// likely an API issue, sleep for a bit and retry
+		time.Sleep(time.Minute)
+	}
+
+	return nil
+}
+
+func (m *Sealing) handleReleaseSectorKey(ctx statemachine.Context, sector SectorInfo) error {
+	if err := m.sealer.ReleaseSectorKey(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber)); err != nil {
+		return ctx.Send(SectorReleaseKeyFailed{err})
+	}
+
+	return ctx.Send(SectorKeyReleased{})
 }
 
 func handleErrors(ctx statemachine.Context, err error, sector SectorInfo) error {
