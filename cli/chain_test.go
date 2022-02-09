@@ -9,39 +9,17 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/mocks"
 	types "github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
 	"github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/assert"
-	ucli "github.com/urfave/cli/v2"
 )
 
-// newMockAppWithFullAPI returns a gomock-ed CLI app used for unit tests
-// see cli/util/api.go:GetFullNodeAPI for mock API injection
-func newMockAppWithFullAPI(t *testing.T, cmd *ucli.Command) (*ucli.App, *mocks.MockFullNode, *bytes.Buffer, func()) {
-	app := ucli.NewApp()
-	app.Commands = ucli.Commands{cmd}
-	app.Setup()
-
-	// create and inject the mock API into app Metadata
-	ctrl := gomock.NewController(t)
-	mockFullNode := mocks.NewMockFullNode(ctrl)
-	var fullNode api.FullNode = mockFullNode
-	app.Metadata["test-full-api"] = fullNode
-
-	// this will only work if the implementation uses the app.Writer,
-	// if it uses fmt.*, it has to be refactored
-	buf := &bytes.Buffer{}
-	app.Writer = buf
-
-	return app, mockFullNode, buf, ctrl.Finish
-}
-
 func TestChainHead(t *testing.T) {
-	app, mockApi, buf, done := newMockAppWithFullAPI(t, WithCategory("chain", ChainHeadCmd))
+	app, mockApi, buf, done := NewMockAppWithFullAPI(t, WithCategory("chain", ChainHeadCmd))
 	defer done()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -60,7 +38,7 @@ func TestChainHead(t *testing.T) {
 
 // TestGetBlock checks if "chain getblock" returns the block information in the expected format
 func TestGetBlock(t *testing.T) {
-	app, mockApi, buf, done := newMockAppWithFullAPI(t, WithCategory("chain", ChainGetBlock))
+	app, mockApi, buf, done := NewMockAppWithFullAPI(t, WithCategory("chain", ChainGetBlock))
 	defer done()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -96,7 +74,7 @@ func TestGetBlock(t *testing.T) {
 
 // TestChainReadObj checks if "chain read-obj" prints the referenced IPLD node as hex, if exists
 func TestReadOjb(t *testing.T) {
-	app, mockApi, buf, done := newMockAppWithFullAPI(t, WithCategory("chain", ChainReadObjCmd))
+	app, mockApi, buf, done := NewMockAppWithFullAPI(t, WithCategory("chain", ChainReadObjCmd))
 	defer done()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -124,7 +102,7 @@ func TestChainDeleteObj(t *testing.T) {
 
 	// given no force flag, it should return an error and no API calls should be made
 	t.Run("no-really-do-it", func(t *testing.T) {
-		app, _, _, done := newMockAppWithFullAPI(t, cmd)
+		app, _, _, done := NewMockAppWithFullAPI(t, cmd)
 		defer done()
 
 		err := app.Run([]string{"chain", "delete-obj", block.Cid().String()})
@@ -133,7 +111,7 @@ func TestChainDeleteObj(t *testing.T) {
 
 	// given a force flag, it calls API delete
 	t.Run("really-do-it", func(t *testing.T) {
-		app, mockApi, buf, done := newMockAppWithFullAPI(t, cmd)
+		app, mockApi, buf, done := NewMockAppWithFullAPI(t, cmd)
 		defer done()
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -166,7 +144,7 @@ func TestChainStatObj(t *testing.T) {
 
 	// given no --base flag, it calls ChainStatObj with base=cid.Undef
 	t.Run("no-base", func(t *testing.T) {
-		app, mockApi, buf, done := newMockAppWithFullAPI(t, cmd)
+		app, mockApi, buf, done := NewMockAppWithFullAPI(t, cmd)
 		defer done()
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -184,7 +162,7 @@ func TestChainStatObj(t *testing.T) {
 
 	// given a --base flag, it calls ChainStatObj with that base
 	t.Run("base", func(t *testing.T) {
-		app, mockApi, buf, done := newMockAppWithFullAPI(t, cmd)
+		app, mockApi, buf, done := NewMockAppWithFullAPI(t, cmd)
 		defer done()
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -203,7 +181,7 @@ func TestChainStatObj(t *testing.T) {
 
 // TestChainGetMsg checks if "chain getmessage" properly decodes and serializes as JSON a Message fetched from the IPLD store
 func TestChainGetMsg(t *testing.T) {
-	app, mockApi, buf, done := newMockAppWithFullAPI(t, WithCategory("chain", ChainGetMsgCmd))
+	app, mockApi, buf, done := NewMockAppWithFullAPI(t, WithCategory("chain", ChainGetMsgCmd))
 	defer done()
 
 	from, err := mock.RandomActorAddress()
@@ -233,4 +211,64 @@ func TestChainGetMsg(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.Equal(t, *msg, out)
+}
+
+func TestSetHead(t *testing.T) {
+	cmd := WithCategory("chain", ChainSetHeadCmd)
+	genesis := mock.TipSet(mock.MkBlock(nil, 0, 0))
+	ts := mock.TipSet(mock.MkBlock(genesis, 1, 0))
+	epoch := abi.ChainEpoch(uint64(0))
+
+	// given the -genesis flag, resets head to genesis ignoring the provided ts positional argument
+	t.Run("genesis", func(t *testing.T) {
+		app, mockApi, _, done := NewMockAppWithFullAPI(t, cmd)
+		defer done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		gomock.InOrder(
+			mockApi.EXPECT().ChainGetGenesis(ctx).Return(genesis, nil),
+			mockApi.EXPECT().ChainSetHead(ctx, genesis.Key()).Return(nil),
+		)
+
+		err := app.Run([]string{"chain", "sethead", "-genesis=true", ts.Key().String()})
+		assert.NoError(t, err)
+	})
+
+	// given the -epoch flag, resets head to given epoch, ignoring the provided ts positional argument
+	t.Run("epoch", func(t *testing.T) {
+		app, mockApi, _, done := NewMockAppWithFullAPI(t, cmd)
+		defer done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		gomock.InOrder(
+			mockApi.EXPECT().ChainGetTipSetByHeight(ctx, epoch, types.EmptyTSK).Return(genesis, nil),
+			mockApi.EXPECT().ChainSetHead(ctx, genesis.Key()).Return(nil),
+		)
+
+		err := app.Run([]string{"chain", "sethead", fmt.Sprintf("-epoch=%s", epoch), ts.Key().String()})
+		assert.NoError(t, err)
+	})
+
+	// given no flag, resets the head to given tipset key
+	t.Run("default", func(t *testing.T) {
+		app, mockApi, _, done := NewMockAppWithFullAPI(t, cmd)
+		defer done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		gomock.InOrder(
+			mockApi.EXPECT().ChainGetBlock(ctx, ts.Key().Cids()[0]).Return(ts.Blocks()[0], nil),
+			mockApi.EXPECT().ChainSetHead(ctx, ts.Key()).Return(nil),
+		)
+
+		// ts.Key should be passed as an array of arguments (CIDs)
+		// since we have only one CID in the key, this is ok
+		err := app.Run([]string{"chain", "sethead", ts.Key().Cids()[0].String()})
+		assert.NoError(t, err)
+	})
 }

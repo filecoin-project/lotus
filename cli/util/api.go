@@ -223,7 +223,7 @@ func GetCommonAPI(ctx *cli.Context) (api.CommonNet, jsonrpc.ClientCloser, error)
 }
 
 func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, error) {
-	// use the mocked API in CLI unit tests, see cli/chain_test.go for mock definition
+	// use the mocked API in CLI unit tests, see cli/mocks_test.go for mock definition
 	if mock, ok := ctx.App.Metadata["test-full-api"]; ok {
 		return &v0api.WrapperV1Full{FullNode: mock.(v1api.FullNode)}, func() {}, nil
 	}
