@@ -244,6 +244,16 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 	return ctx.Send(SectorRetrySubmitReplicaUpdate{})
 }
 
+func (m *Sealing) handleReleaseSectorKeyFailed(ctx statemachine.Context, sector SectorInfo) error {
+	// not much we can do, wait for a bit and try again
+
+	if err := failedCooldown(ctx, sector); err != nil {
+		return err
+	}
+
+	return ctx.Send(SectorUpdateActive{})
+}
+
 func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo) error {
 	tok, _, err := m.Api.ChainHead(ctx.Context())
 	if err != nil {
