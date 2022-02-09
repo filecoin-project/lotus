@@ -264,6 +264,7 @@ var ChainStatObjCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -289,8 +290,8 @@ var ChainStatObjCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("Links: %d\n", stats.Links)
-		fmt.Printf("Size: %s (%d)\n", types.SizeStr(types.NewInt(stats.Size)), stats.Size)
+		afmt.Printf("Links: %d\n", stats.Links)
+		afmt.Printf("Size: %s (%d)\n", types.SizeStr(types.NewInt(stats.Size)), stats.Size)
 		return nil
 	},
 }

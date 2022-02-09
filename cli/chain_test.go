@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
+	"strings"
 	"testing"
 
 	"github.com/filecoin-project/lotus/api"
@@ -130,7 +131,7 @@ func TestChainDeleteObj(t *testing.T) {
 		assert.Error(t, err)
 	})
 
-	// given a force flag, API delete should be called
+	// given a force flag, it calls API delete
 	t.Run("really-do-it", func(t *testing.T) {
 		app, mockApi, buf, done := newMockAppWithFullAPI(t, cmd)
 		defer done()
@@ -146,5 +147,55 @@ func TestChainDeleteObj(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Contains(t, buf.String(), block.Cid().String())
+	})
+}
+
+func TestChainStatObj(t *testing.T) {
+	cmd := WithCategory("chain", ChainStatObjCmd)
+	block := mock.MkBlock(nil, 0, 0)
+	stat := api.ObjStat{Size: 123, Links: 321}
+
+	checkOutput := func(buf *bytes.Buffer) {
+		out := buf.String()
+		outSplit := strings.Split(out, "\n")
+
+		assert.Contains(t, outSplit[0], fmt.Sprintf("%d", stat.Links))
+		assert.Contains(t, outSplit[1], fmt.Sprintf("%d", stat.Size))
+	}
+
+	// given no --base flag, it calls ChainStatObj with base=cid.Undef
+	t.Run("no-base", func(t *testing.T) {
+		app, mockApi, buf, done := newMockAppWithFullAPI(t, cmd)
+		defer done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		gomock.InOrder(
+			mockApi.EXPECT().ChainStatObj(ctx, block.Cid(), cid.Undef).Return(stat, nil),
+		)
+
+		err := app.Run([]string{"chain", "stat-obj", block.Cid().String()})
+		assert.NoError(t, err)
+
+		checkOutput(buf)
+	})
+
+	// given a --base flag, it calls ChainStatObj with that base
+	t.Run("base", func(t *testing.T) {
+		app, mockApi, buf, done := newMockAppWithFullAPI(t, cmd)
+		defer done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		gomock.InOrder(
+			mockApi.EXPECT().ChainStatObj(ctx, block.Cid(), block.Cid()).Return(stat, nil),
+		)
+
+		err := app.Run([]string{"chain", "stat-obj", fmt.Sprintf("-base=%s", block.Cid().String()), block.Cid().String()})
+		assert.NoError(t, err)
+
+		checkOutput(buf)
 	})
 }
