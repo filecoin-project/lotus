@@ -1,6 +1,7 @@
 package sub
 
 import (
+	"bytes"
 	"context"
 	"sync"
 	"time"
@@ -451,6 +452,7 @@ func recordFailure(ctx context.Context, metric *stats.Int64Measure, failureType 
 type peerMsgInfo struct {
 	peerID    peer.ID
 	lastCid   cid.Cid
+	lastSeqno []byte
 	rateLimit *ratelimit.Window
 	mutex     sync.Mutex
 }
@@ -512,6 +514,17 @@ func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg
 	// Lock this peer's message info.
 	msgInfo.mutex.Lock()
 	defer msgInfo.mutex.Unlock()
+
+	if ok {
+		// Reject replayed messages.
+		seqno := msg.Message.GetSeqno()
+		if bytes.Equal(msgInfo.lastSeqno, seqno) {
+			log.Warnf("rejecting replayed indexer message")
+			stats.Record(ctx, metrics.IndexerMessageValidationFailure.M(1))
+			return pubsub.ValidationReject
+		}
+		msgInfo.lastSeqno = seqno
+	}
 
 	if !ok || originPeer != msgInfo.peerID {
 		// Check that the miner ID maps to the peer that sent the message.
