@@ -14,15 +14,24 @@ var errMarkSetClosed = errors.New("markset closed")
 type MarkSet interface {
 	ObjectVisitor
 	Mark(cid.Cid) error
+	MarkMany([]cid.Cid) error
 	Has(cid.Cid) (bool, error)
 	Close() error
+
+	// BeginCriticalSection ensures that the markset is persisted to disk for recovery in case
+	// of abnormal termination during the critical section span.
+	BeginCriticalSection() error
+	// EndCriticalSection ends the critical section span.
+	EndCriticalSection()
 }
 
 type MarkSetEnv interface {
-	// Create creates a new markset within the environment.
-	// name is a unique name for this markset, mapped to the filesystem in disk-backed environments
+	// New creates a new markset within the environment.
+	// name is a unique name for this markset, mapped to the filesystem for on-disk persistence.
 	// sizeHint is a hint about the expected size of the markset
-	Create(name string, sizeHint int64) (MarkSet, error)
+	New(name string, sizeHint int64) (MarkSet, error)
+	// Recover recovers an existing markset persisted on-disk.
+	Recover(name string) (MarkSet, error)
 	// Close closes the markset
 	Close() error
 }
@@ -30,7 +39,7 @@ type MarkSetEnv interface {
 func OpenMarkSetEnv(path string, mtype string) (MarkSetEnv, error) {
 	switch mtype {
 	case "map":
-		return NewMapMarkSetEnv()
+		return NewMapMarkSetEnv(path)
 	case "badger":
 		return NewBadgerMarkSetEnv(path)
 	default:

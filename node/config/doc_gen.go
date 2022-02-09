@@ -810,7 +810,7 @@ Only currently supported value is "badger".`,
 			Type: "string",
 
 			Comment: `MarkSetType specifies the type of the markset.
-It can be "map" (default) for in memory marking or "badger" for on-disk marking.`,
+It can be "map" for in memory marking or "badger" (default) for on-disk marking.`,
 		},
 		{
 			Name: "HotStoreMessageRetention",
