@@ -246,7 +246,7 @@ func Lite(enable bool) FullOption {
 func FullAPI(out *api.FullNode, fopts ...FullOption) Option {
 	return Options(
 		func(s *Settings) error {
-			s.nodeType = repo.FullNode
+			s.nodeType = repo.FullNodeRepoType{}
 			s.enableLibp2pNode = true
 			return nil
 		},

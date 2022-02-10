@@ -151,8 +151,8 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
 
 			// DAG Store
-			Override(new(dagstore.MinerAPI), modules.NewMinerAPI),
-			Override(DAGStoreKey, modules.DAGStore),
+			Override(new(dagstore.MinerAPI), modules.NewMinerAPI(cfg.DAGStore)),
+			Override(DAGStoreKey, modules.DAGStore(cfg.DAGStore)),
 
 			// Markets (retrieval)
 			Override(new(dagstore.SectorAccessor), sectoraccessor.NewSectorAccessor),
@@ -221,7 +221,7 @@ func StorageMiner(out *api.StorageMiner, subsystemsCfg config.MinerSubsystemConf
 		),
 
 		func(s *Settings) error {
-			s.nodeType = repo.StorageMiner
+			s.nodeType = repo.StorageMinerRepoType{}
 			s.enableLibp2pNode = subsystemsCfg.EnableMarkets
 			return nil
 		},

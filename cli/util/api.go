@@ -32,14 +32,14 @@ const (
 // of the API server (only used by the tests), in the order of precedence they
 // should be applied for the requested kind of node.
 func flagsForAPI(t repo.RepoType) []string {
-	switch t {
-	case repo.FullNode:
+	switch t.Type() {
+	case "FullNode":
 		return []string{"api-url"}
-	case repo.StorageMiner:
+	case "StorageMiner":
 		return []string{"miner-api-url"}
-	case repo.Worker:
+	case "Worker":
 		return []string{"worker-api-url"}
-	case repo.Markets:
+	case "Markets":
 		// support split markets-miner and monolith deployments.
 		return []string{"markets-api-url", "miner-api-url"}
 	default:
@@ -48,14 +48,14 @@ func flagsForAPI(t repo.RepoType) []string {
 }
 
 func flagsForRepo(t repo.RepoType) []string {
-	switch t {
-	case repo.FullNode:
+	switch t.Type() {
+	case "FullNode":
 		return []string{"repo"}
-	case repo.StorageMiner:
+	case "StorageMiner":
 		return []string{"miner-repo"}
-	case repo.Worker:
+	case "Worker":
 		return []string{"worker-repo"}
-	case repo.Markets:
+	case "Markets":
 		// support split markets-miner and monolith deployments.
 		return []string{"markets-repo", "miner-repo"}
 	default:
@@ -69,15 +69,15 @@ func flagsForRepo(t repo.RepoType) []string {
 // It returns the current variables and deprecated ones separately, so that
 // the user can log a warning when deprecated ones are found to be in use.
 func EnvsForAPIInfos(t repo.RepoType) (primary string, fallbacks []string, deprecated []string) {
-	switch t {
-	case repo.FullNode:
+	switch t.Type() {
+	case "FullNode":
 		return "FULLNODE_API_INFO", nil, nil
-	case repo.StorageMiner:
+	case "StorageMiner":
 		// TODO remove deprecated deprecation period
 		return "MINER_API_INFO", nil, []string{"STORAGE_API_INFO"}
-	case repo.Worker:
+	case "Worker":
 		return "WORKER_API_INFO", nil, nil
-	case repo.Markets:
+	case "Markets":
 		// support split markets-miner and monolith deployments.
 		return "MARKETS_API_INFO", []string{"MINER_API_INFO"}, nil
 	default:
@@ -200,7 +200,7 @@ func GetCommonAPI(ctx *cli.Context) (api.CommonNet, jsonrpc.ClientCloser, error)
 	ti, ok := ctx.App.Metadata["repoType"]
 	if !ok {
 		log.Errorf("unknown repo type, are you sure you want to use GetCommonAPI?")
-		ti = repo.FullNode
+		ti = repo.FullNodeRepoType{}
 	}
 	t, ok := ti.(repo.RepoType)
 	if !ok {
@@ -227,7 +227,7 @@ func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, err
 		return &v0api.WrapperV1Full{FullNode: tn.(v1api.FullNode)}, func() {}, nil
 	}
 
-	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v0")
+	addr, headers, err := GetRawAPI(ctx, repo.FullNodeRepoType{}, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -244,7 +244,7 @@ func GetFullNodeAPIV1(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, e
 		return tn.(v1api.FullNode), func() {}, nil
 	}
 
-	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v1")
+	addr, headers, err := GetRawAPI(ctx, repo.FullNodeRepoType{}, "v1")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -288,7 +288,7 @@ func GetStorageMinerAPI(ctx *cli.Context, opts ...GetStorageMinerOption) (api.St
 		return tn.(api.StorageMiner), func() {}, nil
 	}
 
-	addr, headers, err := GetRawAPI(ctx, repo.StorageMiner, "v0")
+	addr, headers, err := GetRawAPI(ctx, repo.StorageMinerRepoType{}, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -317,7 +317,7 @@ func GetStorageMinerAPI(ctx *cli.Context, opts ...GetStorageMinerOption) (api.St
 }
 
 func GetWorkerAPI(ctx *cli.Context) (api.Worker, jsonrpc.ClientCloser, error) {
-	addr, headers, err := GetRawAPI(ctx, repo.Worker, "v0")
+	addr, headers, err := GetRawAPI(ctx, repo.WorkerRepoType{}, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -335,7 +335,7 @@ func GetMarketsAPI(ctx *cli.Context) (api.StorageMiner, jsonrpc.ClientCloser, er
 		return tn.(api.StorageMiner), func() {}, nil
 	}
 
-	addr, headers, err := GetRawAPI(ctx, repo.Markets, "v0")
+	addr, headers, err := GetRawAPI(ctx, repo.MarketsRepoType{}, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -351,7 +351,7 @@ func GetMarketsAPI(ctx *cli.Context) (api.StorageMiner, jsonrpc.ClientCloser, er
 }
 
 func GetGatewayAPI(ctx *cli.Context) (api.Gateway, jsonrpc.ClientCloser, error) {
-	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v1")
+	addr, headers, err := GetRawAPI(ctx, repo.FullNodeRepoType{}, "v1")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -364,7 +364,7 @@ func GetGatewayAPI(ctx *cli.Context) (api.Gateway, jsonrpc.ClientCloser, error) 
 }
 
 func GetGatewayAPIV0(ctx *cli.Context) (v0api.Gateway, jsonrpc.ClientCloser, error) {
-	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v0")
+	addr, headers, err := GetRawAPI(ctx, repo.FullNodeRepoType{}, "v0")
 	if err != nil {
 		return nil, nil, err
 	}

@@ -41,47 +41,83 @@ const (
 	fsKeystore      = "keystore"
 )
 
-type RepoType int
-
-const (
-	_                 = iota // Default is invalid
-	FullNode RepoType = iota
-	StorageMiner
-	Worker
-	Wallet
-	Markets
-)
-
-func (t RepoType) String() string {
-	s := [...]string{
-		"__invalid__",
-		"FullNode",
-		"StorageMiner",
-		"Worker",
-		"Wallet",
-		"Markets",
+func NewRepoTypeFromString(t string) RepoType {
+	switch t {
+	case "FullNode":
+		return FullNodeRepoType{}
+	case "StorageMiner":
+		return StorageMinerRepoType{}
+	case "Worker":
+		return WorkerRepoType{}
+	case "Wallet":
+		return WalletRepoType{}
+	default:
+		panic("unknown RepoType")
 	}
-	if t < 0 || int(t) > len(s) {
-		return "__invalid__"
-	}
-	return s[t]
+}
+
+type RepoType interface {
+	Type() string
+	Config() interface{}
+}
+
+type FullNodeRepoType struct {
+}
+
+func (f FullNodeRepoType) Type() string {
+	return "FullNode"
+}
+
+func (f FullNodeRepoType) Config() interface{} {
+	return config.DefaultFullNode()
+}
+
+type StorageMinerRepoType struct {
+}
+
+func (f StorageMinerRepoType) Type() string {
+	return "StorageMiner"
+}
+
+func (f StorageMinerRepoType) Config() interface{} {
+	return config.DefaultStorageMiner()
+}
+
+type MarketsRepoType struct {
+}
+
+func (f MarketsRepoType) Type() string {
+	return "Markets"
+}
+
+func (f MarketsRepoType) Config() interface{} {
+	return config.DefaultStorageMiner()
+}
+
+type WorkerRepoType struct {
+}
+
+func (f WorkerRepoType) Type() string {
+	return "Worker"
+}
+
+func (f WorkerRepoType) Config() interface{} {
+	return &struct{}{}
+}
+
+type WalletRepoType struct {
+}
+
+func (f WalletRepoType) Type() string {
+	return "Wallet"
+}
+
+func (f WalletRepoType) Config() interface{} {
+	return &struct{}{}
 }
 
 func defConfForType(t RepoType) interface{} {
-	switch t {
-	case FullNode:
-		return config.DefaultFullNode()
-	case StorageMiner, Markets:
-		// markets is a specialised miner service
-		// this taxonomy needs to be cleaned up
-		return config.DefaultStorageMiner()
-	case Worker:
-		return &struct{}{}
-	case Wallet:
-		return &struct{}{}
-	default:
-		panic(fmt.Sprintf("unknown RepoType(%d)", int(t)))
-	}
+	return t.Config()
 }
 
 var log = logging.Logger("repo")

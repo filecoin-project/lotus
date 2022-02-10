@@ -138,7 +138,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 		return nil, err
 	}
 
-	err = minerRepo.Init(repo.StorageMiner)
+	err = minerRepo.Init(repo.StorageMinerRepoType{})
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 	var subsystems config.MinerSubsystemConfig
 
 	{
-		lr, err := minerRepo.Lock(repo.StorageMiner)
+		lr, err := minerRepo.Lock(repo.StorageMinerRepoType{})
 		if err != nil {
 			return nil, err
 		}
@@ -244,7 +244,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 		return nil, err
 	}
 
-	err = nodeRepo.Init(repo.FullNode)
+	err = nodeRepo.Init(repo.FullNodeRepoType{})
 	if err != nil {
 		return nil, err
 	}

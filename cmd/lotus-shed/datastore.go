@@ -39,10 +39,10 @@ var datastoreListCmd = &cli.Command{
 	Name:        "list",
 	Description: "list datastore keys",
 	Flags: []cli.Flag{
-		&cli.IntFlag{
+		&cli.StringFlag{
 			Name:  "repo-type",
-			Usage: "node type (1 - full, 2 - storage, 3 - worker)",
-			Value: 1,
+			Usage: "node type (FullNode, StorageMiner, Worker, Wallet)",
+			Value: "FullNode",
 		},
 		&cli.BoolFlag{
 			Name:  "top-level",
@@ -70,7 +70,7 @@ var datastoreListCmd = &cli.Command{
 			return xerrors.Errorf("lotus repo doesn't exist")
 		}
 
-		lr, err := r.Lock(repo.RepoType(cctx.Int("repo-type")))
+		lr, err := r.Lock(repo.NewRepoTypeFromString(cctx.String("repo-type")))
 		if err != nil {
 			return err
 		}
@@ -108,10 +108,10 @@ var datastoreGetCmd = &cli.Command{
 	Name:        "get",
 	Description: "list datastore keys",
 	Flags: []cli.Flag{
-		&cli.IntFlag{
+		&cli.StringFlag{
 			Name:  "repo-type",
-			Usage: "node type (1 - full, 2 - storage, 3 - worker)",
-			Value: 1,
+			Usage: "node type (FullNode, StorageMiner, Worker, Wallet)",
+			Value: "FullNode",
 		},
 		&cli.StringFlag{
 			Name:  "enc",
@@ -136,7 +136,7 @@ var datastoreGetCmd = &cli.Command{
 			return xerrors.Errorf("lotus repo doesn't exist")
 		}
 
-		lr, err := r.Lock(repo.RepoType(cctx.Int("repo-type")))
+		lr, err := r.Lock(repo.NewRepoTypeFromString(cctx.String("repo-type")))
 		if err != nil {
 			return err
 		}

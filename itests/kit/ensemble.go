@@ -438,7 +438,7 @@ func (n *Ensemble) Start() *Ensemble {
 
 		r := repo.NewMemory(nil)
 
-		lr, err := r.Lock(repo.StorageMiner)
+		lr, err := r.Lock(repo.StorageMinerRepoType{})
 		require.NoError(n.t, err)
 
 		c, err := lr.Config()

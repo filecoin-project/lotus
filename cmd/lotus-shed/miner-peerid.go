@@ -54,7 +54,7 @@ var minerPeeridCmd = &cli.Command{
 			return err
 		}
 
-		lkrepo, err := fsrepo.Lock(repo.FullNode)
+		lkrepo, err := fsrepo.Lock(repo.FullNodeRepoType{})
 		if err != nil {
 			return err
 		}

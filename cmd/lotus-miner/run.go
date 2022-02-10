@@ -119,7 +119,7 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("repo at '%s' is not initialized, run 'lotus-miner init' to set it up", minerRepoPath)
 		}
 
-		lr, err := r.Lock(repo.StorageMiner)
+		lr, err := r.Lock(repo.StorageMinerRepoType{})
 		if err != nil {
 			return err
 		}

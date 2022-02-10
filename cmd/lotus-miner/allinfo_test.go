@@ -36,7 +36,7 @@ func TestMinerAllInfo(t *testing.T) {
 	run := func(t *testing.T) {
 		app := cli.NewApp()
 		app.Metadata = map[string]interface{}{
-			"repoType":         repo.StorageMiner,
+			"repoType":         repo.StorageMinerRepoType{},
 			"testnode-full":    client,
 			"testnode-storage": miner,
 		}
