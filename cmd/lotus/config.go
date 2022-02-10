@@ -66,7 +66,7 @@ var configUpdateCmd = &cli.Command{
 			return xerrors.Errorf("repo not initialized")
 		}
 
-		lr, err := r.LockRO(repo.FullNode)
+		lr, err := r.LockRO(repo.FullNodeRepoType{})
 		if err != nil {
 			return xerrors.Errorf("locking repo: %w", err)
 		}

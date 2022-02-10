@@ -227,7 +227,7 @@ var DaemonCmd = &cli.Command{
 			r.SetConfigPath(cctx.String("config"))
 		}
 
-		err = r.Init(repo.FullNode)
+		err = r.Init(repo.FullNodeRepoType{})
 		if err != nil && err != repo.ErrRepoExists {
 			return xerrors.Errorf("repo init error: %w", err)
 		}
@@ -462,7 +462,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		l = st.Size()
 	}
 
-	lr, err := r.Lock(repo.FullNode)
+	lr, err := r.Lock(repo.FullNodeRepoType{})
 	if err != nil {
 		return err
 	}

@@ -18,7 +18,7 @@ func genFsRepo(t *testing.T) (*FsRepo, func()) {
 		t.Fatal(err)
 	}
 
-	err = repo.Init(FullNode)
+	err = repo.Init(FullNodeRepoType{})
 	if err != ErrRepoExists && err != nil {
 		t.Fatal(err)
 	}

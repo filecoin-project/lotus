@@ -18,7 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
-var backupCmd = lcli.BackupCmd("repo", repo.FullNode, func(cctx *cli.Context) (lcli.BackupAPI, jsonrpc.ClientCloser, error) {
+var backupCmd = lcli.BackupCmd("repo", repo.FullNodeRepoType{}, func(cctx *cli.Context) (lcli.BackupAPI, jsonrpc.ClientCloser, error) {
 	return lcli.GetFullNodeAPI(cctx)
 })
 
@@ -39,7 +39,7 @@ func restore(cctx *cli.Context, r repo.Repo) error {
 	}
 	defer f.Close() // nolint:errcheck
 
-	lr, err := r.Lock(repo.FullNode)
+	lr, err := r.Lock(repo.FullNodeRepoType{})
 	if err != nil {
 		return err
 	}

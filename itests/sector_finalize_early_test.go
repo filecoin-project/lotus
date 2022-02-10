@@ -35,7 +35,7 @@ func TestDealsWithFinalizeEarly(t *testing.T) {
 	var blockTime = 50 * time.Millisecond
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.ConstructorOpts(
-		node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.GetSealingConfigFunc), func() (dtypes.GetSealingConfigFunc, error) {
+		node.ApplyIf(node.IsType(repo.StorageMinerRepoType{}), node.Override(new(dtypes.GetSealingConfigFunc), func() (dtypes.GetSealingConfigFunc, error) {
 			return func() (sealiface.Config, error) {
 				cf := config.DefaultStorageMiner()
 				cf.Sealing.FinalizeEarly = true

@@ -73,8 +73,8 @@ func TestMoveShared(t *testing.T) {
 	openRepo := func(dir string) repo.LockedRepo {
 		r, err := repo.NewFS(dir)
 		require.NoError(t, err)
-		require.NoError(t, r.Init(repo.Worker))
-		lr, err := r.Lock(repo.Worker)
+		require.NoError(t, r.Init(repo.WorkerRepoType{}))
+		lr, err := r.Lock(repo.WorkerRepoType{})
 		require.NoError(t, err)
 
 		t.Cleanup(func() {

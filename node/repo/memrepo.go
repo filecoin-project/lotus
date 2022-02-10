@@ -106,7 +106,7 @@ func (lmem *lockedMemRepo) Path() string {
 		panic(err) // only used in tests, probably fine
 	}
 
-	if lmem.t == StorageMiner {
+	if lmem.t.Type() == "StorageMiner" || lmem.t.Type() == "Boost" {
 		// this is required due to the method makeDealStaging from cmd/lotus-storage-miner/init.go
 		// deal-staging is the directory deal files are staged in before being sealed into sectors
 		// for offline deal flow.

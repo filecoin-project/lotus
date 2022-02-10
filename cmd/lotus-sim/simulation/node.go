@@ -41,7 +41,7 @@ func OpenNode(ctx context.Context, path string) (*Node, error) {
 
 // NewNode constructs a new node from the given repo.
 func NewNode(ctx context.Context, r repo.Repo) (nd *Node, _err error) {
-	lr, err := r.Lock(repo.FullNode)
+	lr, err := r.Lock(repo.FullNodeRepoType{})
 	if err != nil {
 		return nil, err
 	}

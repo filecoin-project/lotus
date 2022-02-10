@@ -93,7 +93,7 @@ func main() {
 				return err
 			}
 		}
-		c.App.Metadata["repoType"] = repo.Markets
+		c.App.Metadata["repoType"] = repo.MarketsRepoType{}
 		return nil
 	}
 
@@ -150,7 +150,7 @@ func main() {
 			// this command is explicitly called on markets, inform
 			// common commands by overriding the repoType.
 			if c.Bool("call-on-markets") {
-				c.App.Metadata["repoType"] = repo.Markets
+				c.App.Metadata["repoType"] = repo.MarketsRepoType{}
 			}
 			return nil
 		},
@@ -164,7 +164,7 @@ func main() {
 		},
 	}
 	app.Setup()
-	app.Metadata["repoType"] = repo.StorageMiner
+	app.Metadata["repoType"] = repo.StorageMinerRepoType{}
 	lcli.RunApp(app)
 }
 

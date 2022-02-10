@@ -301,7 +301,7 @@ func openLockedRepo(path string) (repo.LockedRepo, error) {
 	}
 
 	// Lock the repo
-	lr, err := rpo.Lock(repo.StorageMiner)
+	lr, err := rpo.Lock(repo.StorageMinerRepoType{})
 	if err != nil {
 		return nil, xerrors.Errorf("locking repo %s: %w", path, err)
 	}

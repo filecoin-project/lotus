@@ -35,7 +35,7 @@ var importCarCmd = &cli.Command{
 			return xerrors.Errorf("lotus repo doesn't exist")
 		}
 
-		lr, err := r.Lock(repo.FullNode)
+		lr, err := r.Lock(repo.FullNodeRepoType{})
 		if err != nil {
 			return err
 		}
@@ -112,7 +112,7 @@ var importObjectCmd = &cli.Command{
 			return xerrors.Errorf("lotus repo doesn't exist")
 		}
 
-		lr, err := r.Lock(repo.FullNode)
+		lr, err := r.Lock(repo.FullNodeRepoType{})
 		if err != nil {
 			return err
 		}
