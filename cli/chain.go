@@ -719,6 +719,8 @@ var ChainGetCmd = &cli.Command{
    - account-state
 `,
 	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -737,7 +739,7 @@ var ChainGetCmd = &cli.Command{
 
 			p = "/ipfs/" + ts.ParentState().String() + p
 			if cctx.Bool("verbose") {
-				fmt.Println(p)
+				afmt.Println(p)
 			}
 		}
 
@@ -752,7 +754,7 @@ var ChainGetCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			fmt.Println(string(b))
+			afmt.Println(string(b))
 			return nil
 		}
 
@@ -794,7 +796,7 @@ var ChainGetCmd = &cli.Command{
 		}
 
 		if cbu == nil {
-			fmt.Printf("%x", raw)
+			afmt.Printf("%x", raw)
 			return nil
 		}
 
@@ -806,7 +808,7 @@ var ChainGetCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		fmt.Println(string(b))
+		afmt.Println(string(b))
 		return nil
 	},
 }

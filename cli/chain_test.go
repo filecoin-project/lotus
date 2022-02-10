@@ -362,3 +362,89 @@ func TestChainList(t *testing.T) {
 		assert.Contains(t, out, "1:")
 	})
 }
+
+func TestChainGet(t *testing.T) {
+	blk := mock.MkBlock(nil, 0, 0)
+	ts := mock.TipSet(blk)
+	cmd := WithCategory("chain", ChainGetCmd)
+
+	// lotus chain get /ipfs/[cid]/some/path
+
+	// given no -as-type flag & ipfs prefix, should print object as JSON if it's marshalable
+	t.Run("ipfs", func(t *testing.T) {
+		path := fmt.Sprintf("/ipfs/%s", blk.Cid().String())
+
+		app, mockApi, buf, done := NewMockAppWithFullAPI(t, cmd)
+		defer done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		gomock.InOrder(
+			mockApi.EXPECT().ChainGetNode(ctx, path).Return(&api.IpldObject{Cid: blk.Cid(), Obj: blk}, nil),
+		)
+
+		err := app.Run([]string{"chain", "get", path})
+		assert.NoError(t, err)
+
+		var out types.BlockHeader
+		err = json.Unmarshal(buf.Bytes(), &out)
+		assert.NoError(t, err)
+		assert.Equal(t, *blk, out)
+	})
+
+	// given no -as-type flag & ipfs prefix, should traverse from head.ParentStateRoot and print JSON if it's marshalable
+	t.Run("pstate", func(t *testing.T) {
+		p1 := "/pstate"
+		p2 := fmt.Sprintf("/ipfs/%s", ts.ParentState().String())
+
+		app, mockApi, buf, done := NewMockAppWithFullAPI(t, cmd)
+		defer done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		gomock.InOrder(
+			mockApi.EXPECT().ChainHead(ctx).Return(ts, nil),
+			mockApi.EXPECT().ChainGetNode(ctx, p2).Return(&api.IpldObject{Cid: blk.Cid(), Obj: blk}, nil),
+		)
+
+		err := app.Run([]string{"chain", "get", p1})
+		assert.NoError(t, err)
+
+		var out types.BlockHeader
+		err = json.Unmarshal(buf.Bytes(), &out)
+		assert.NoError(t, err)
+		assert.Equal(t, *blk, out)
+	})
+
+	// given an unknown -as-type value, return an error
+	t.Run("unknown-type", func(t *testing.T) {
+		app, mockApi, _, done := NewMockAppWithFullAPI(t, cmd)
+		defer done()
+
+		path := fmt.Sprintf("/ipfs/%s", blk.Cid().String())
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		gomock.InOrder(
+			mockApi.EXPECT().ChainGetNode(ctx, path).Return(&api.IpldObject{Cid: blk.Cid(), Obj: blk}, nil),
+		)
+
+		err := app.Run([]string{"chain", "get", "-as-type=foo", path})
+		assert.Error(t, err)
+	})
+}
+
+func TestChainBisect(t *testing.T) {}
+
+func TestChainExport(t *testing.T) {}
+
+func TestSlashConsensusFault(t *testing.T) {}
+
+func TestChainGasPrice(t *testing.T) {}
+
+func TestChainDecode(t *testing.T) {}
+
+func TestChainEncode(t *testing.T) {}
