@@ -174,7 +174,3 @@ require (
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
-
-//replace github.com/filecoin-project/specs-actors/v7 => /Users/zenground0/pl/repos/specs-actors
-
-// replace github.com/filecon-project/specs-storage => /Users/zenground0/pl/repos/specs-storage
