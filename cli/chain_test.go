@@ -516,9 +516,10 @@ func TestChainGasPrice(t *testing.T) {
 	mockApi.
 		EXPECT().
 		GasEstimateGasPremium(ctx, gomock.Any(), builtin.SystemActorAddr, int64(10000), types.EmptyTSK).
-		Return(big.NewInt(0), nil).AnyTimes().
+		Return(big.NewInt(0), nil).
+		AnyTimes().
 		Do(func(a, b, c, d, e interface{}) { // looks funny, but we don't care about args here, just counting
-			calls += 1
+			calls++
 		})
 
 	err := app.Run([]string{"chain", "gas-price"})
@@ -527,10 +528,6 @@ func TestChainGasPrice(t *testing.T) {
 	lines := strings.Split(strings.Trim(buf.String(), "\n"), "\n")
 	assert.Equal(t, calls, len(lines))
 }
-
-func TestChainDecode(t *testing.T) {}
-
-func TestChainEncode(t *testing.T) {}
 
 type mockExportFile struct {
 	*bytes.Buffer
