@@ -1,6 +1,6 @@
 # Lotus changelog
 
-# 1.14.0-rc6 / 2022-02-08
+# 1.14.0-rc7 / 2022-02-010
 
 This is the sixth release candidate for the mandatory release v1.14.0 of Lotus that introduces [Filecoin network v15, codenamed the OhSnap upgrade](https://github.com/filecoin-project/community/discussions/74?sort=new#discussioncomment-1922550).
 
@@ -19,7 +19,7 @@ The calibnet will be upgraded to Network v15 OhSnap at epoch 682006, around 2022
 To join the network, simply build lotus by running `make calibnet`. 
 
 New proof params for Snap Deals should be downloaded upon your nodes restart. 
- - The parameters are pinged on IPFS gateway https://proofs.filecoin.io and the CIDs can be found [here](https://github.com/filecoin-project/lotus/blob/release/v1.14.0/build/proof-params/parameters.json), please let the lotus team know in #lotus-ohsnap if the params are not fetched automatically. You can also download the params manually from s3://proof-params-ap/filecoin-snapdeal-parameters/.
+ - The parameters are pinged on IPFS gateway https://proofs.filecoin.io and the CIDs can be found [here](https://github.com/filecoin-project/lotus/blob/release/v1.14.0/build/proof-params/parameters.json), please let the lotus team know in #fil-lotus-dev if the params are not fetched automatically. For users in China, you can also get the proofs by setting `export IPFS_GATEWAY=https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/`
 
   
 ## New Features and Changes
