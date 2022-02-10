@@ -1,8 +1,8 @@
 package sub
 
 import (
-	"bytes"
 	"context"
+	"encoding/binary"
 	"sync"
 	"time"
 
@@ -452,7 +452,7 @@ func recordFailure(ctx context.Context, metric *stats.Int64Measure, failureType 
 type peerMsgInfo struct {
 	peerID    peer.ID
 	lastCid   cid.Cid
-	lastSeqno []byte
+	lastSeqno uint64
 	rateLimit *ratelimit.Window
 	mutex     sync.Mutex
 }
@@ -517,11 +517,10 @@ func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg
 
 	if ok {
 		// Reject replayed messages.
-		seqno := msg.Message.GetSeqno()
-		if bytes.Equal(msgInfo.lastSeqno, seqno) {
-			log.Warnf("rejecting replayed indexer message")
-			stats.Record(ctx, metrics.IndexerMessageValidationFailure.M(1))
-			return pubsub.ValidationReject
+		seqno := binary.BigEndian.Uint64(msg.Message.GetSeqno())
+		if seqno <= msgInfo.lastSeqno {
+			log.Debugf("ignoring replayed indexer message")
+			return pubsub.ValidationIgnore
 		}
 		msgInfo.lastSeqno = seqno
 	}
