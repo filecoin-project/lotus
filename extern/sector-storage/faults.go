@@ -55,6 +55,25 @@ func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof,
 				return nil
 			}
 
+			// temporary hack to make the check work with snapdeals
+			// will go away in https://github.com/filecoin-project/lotus/pull/7971
+			if lp.Sealed == "" || lp.Cache == "" {
+				// maybe it's update
+				lockedUpdate, err := m.index.StorageTryLock(ctx, sector.ID, storiface.FTUpdate|storiface.FTUpdateCache, storiface.FTNone)
+				if err != nil {
+					return xerrors.Errorf("acquiring sector lock: %w", err)
+				}
+				if lockedUpdate {
+					lp, _, err = m.localStore.AcquireSector(ctx, sector, storiface.FTUpdate|storiface.FTUpdateCache, storiface.FTNone, storiface.PathStorage, storiface.AcquireMove)
+					if err != nil {
+						log.Warnw("CheckProvable Sector FAULT: acquire sector in checkProvable", "sector", sector, "error", err)
+						bad[sector.ID] = fmt.Sprintf("acquire sector failed: %s", err)
+						return nil
+					}
+					lp.Sealed, lp.Cache = lp.Update, lp.UpdateCache
+				}
+			}
+
 			if lp.Sealed == "" || lp.Cache == "" {
 				log.Warnw("CheckProvable Sector FAULT: cache and/or sealed paths not found", "sector", sector, "sealed", lp.Sealed, "cache", lp.Cache)
 				bad[sector.ID] = fmt.Sprintf("cache and/or sealed paths not found, cache %q, sealed %q", lp.Cache, lp.Sealed)
