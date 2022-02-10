@@ -932,6 +932,8 @@ var ChainBisectCmd = &cli.Command{
    For special path elements see 'chain get' help
 `,
 	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -975,7 +977,7 @@ var ChainBisectCmd = &cli.Command{
 			}
 
 			path := "/ipld/" + midTs.ParentState().String() + "/" + subPath
-			fmt.Printf("* Testing %d (%d - %d) (%s): ", mid, start, end, path)
+			afmt.Printf("* Testing %d (%d - %d) (%s): ", mid, start, end, path)
 
 			nd, err := api.ChainGetNode(ctx, path)
 			if err != nil {
@@ -1002,32 +1004,32 @@ var ChainBisectCmd = &cli.Command{
 				if strings.TrimSpace(out.String()) != "false" {
 					end = mid
 					highest = midTs
-					fmt.Println("true")
+					afmt.Println("true")
 				} else {
 					start = mid
-					fmt.Printf("false (cli)\n")
+					afmt.Printf("false (cli)\n")
 				}
 			case *exec.ExitError:
 				if len(serr.String()) > 0 {
-					fmt.Println("error")
+					afmt.Println("error")
 
-					fmt.Printf("> Command: %s\n---->\n", strings.Join(cctx.Args().Slice()[3:], " "))
-					fmt.Println(string(b))
-					fmt.Println("<----")
+					afmt.Printf("> Command: %s\n---->\n", strings.Join(cctx.Args().Slice()[3:], " "))
+					afmt.Println(string(b))
+					afmt.Println("<----")
 					return xerrors.Errorf("error running bisect check: %s", serr.String())
 				}
 
 				start = mid
-				fmt.Println("false")
+				afmt.Println("false")
 			default:
 				return err
 			}
 
 			if start == end {
 				if strings.TrimSpace(out.String()) == "true" {
-					fmt.Println(midTs.Height())
+					afmt.Println(midTs.Height())
 				} else {
-					fmt.Println(prev)
+					afmt.Println(prev)
 				}
 				return nil
 			}

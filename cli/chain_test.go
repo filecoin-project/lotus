@@ -368,8 +368,6 @@ func TestChainGet(t *testing.T) {
 	ts := mock.TipSet(blk)
 	cmd := WithCategory("chain", ChainGetCmd)
 
-	// lotus chain get /ipfs/[cid]/some/path
-
 	// given no -as-type flag & ipfs prefix, should print object as JSON if it's marshalable
 	t.Run("ipfs", func(t *testing.T) {
 		path := fmt.Sprintf("/ipfs/%s", blk.Cid().String())
@@ -437,7 +435,42 @@ func TestChainGet(t *testing.T) {
 	})
 }
 
-func TestChainBisect(t *testing.T) {}
+func TestChainBisect(t *testing.T) {
+	blk1 := mock.MkBlock(nil, 0, 0)
+	blk1.Height = 0
+	ts1 := mock.TipSet(blk1)
+
+	blk2 := mock.MkBlock(ts1, 0, 0)
+	blk2.Height = 1
+	ts2 := mock.TipSet(blk2)
+
+	subpath := "whatever/its/mocked"
+	minHeight := uint64(0)
+	maxHeight := uint64(1)
+	shell := "echo"
+
+	path := fmt.Sprintf("/ipld/%s/%s", ts2.ParentState(), subpath)
+
+	cmd := WithCategory("chain", ChainBisectCmd)
+
+	app, mockApi, buf, done := NewMockAppWithFullAPI(t, cmd)
+	defer done()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	gomock.InOrder(
+		mockApi.EXPECT().ChainGetTipSetByHeight(ctx, abi.ChainEpoch(maxHeight), types.EmptyTSK).Return(ts2, nil),
+		mockApi.EXPECT().ChainGetTipSetByHeight(ctx, abi.ChainEpoch(maxHeight), ts2.Key()).Return(ts2, nil),
+		mockApi.EXPECT().ChainGetNode(ctx, path).Return(&api.IpldObject{Cid: blk2.Cid(), Obj: blk2}, nil),
+	)
+
+	err := app.Run([]string{"chain", "bisect", fmt.Sprintf("%d", minHeight), fmt.Sprintf("%d", maxHeight), subpath, shell})
+	assert.NoError(t, err)
+
+	out := buf.String()
+	assert.Contains(t, out, path)
+}
 
 func TestChainExport(t *testing.T) {}
 
