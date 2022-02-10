@@ -1,8 +1,11 @@
 package sub
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
+	"sync"
 	"time"
 
 	address "github.com/filecoin-project/go-address"
@@ -11,9 +14,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/sub/ratelimit"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/impl/client"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	lru "github.com/hashicorp/golang-lru"
 	blocks "github.com/ipfs/go-block-format"
 	bserv "github.com/ipfs/go-blockservice"
@@ -25,6 +30,11 @@ import (
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
+
+	// When lotus in compatible with go-legs v0.3.0, change the below to use
+	// go-legs and remove the idxmsg package.  idxmsg
+	// "github.com/filecoin-project/go-legs/dtsync"
+	idxmsg "github.com/filecoin-project/lotus/chain/sub/idxmsg"
 )
 
 var log = logging.Logger("sub")
@@ -443,4 +453,169 @@ func recordFailure(ctx context.Context, metric *stats.Int64Measure, failureType 
 		tag.Upsert(metrics.FailureType, failureType),
 	)
 	stats.Record(ctx, metric.M(1))
+}
+
+type peerMsgInfo struct {
+	peerID    peer.ID
+	lastCid   cid.Cid
+	lastSeqno uint64
+	rateLimit *ratelimit.Window
+	mutex     sync.Mutex
+}
+
+type IndexerMessageValidator struct {
+	self peer.ID
+
+	peerCache *lru.TwoQueueCache
+	chainApi  full.ChainModuleAPI
+	stateApi  full.StateModuleAPI
+}
+
+func NewIndexerMessageValidator(self peer.ID, chainApi full.ChainModuleAPI, stateApi full.StateModuleAPI) *IndexerMessageValidator {
+	peerCache, _ := lru.New2Q(8192)
+
+	return &IndexerMessageValidator{
+		self:      self,
+		peerCache: peerCache,
+		chainApi:  chainApi,
+		stateApi:  stateApi,
+	}
+}
+
+func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg *pubsub.Message) pubsub.ValidationResult {
+	// This chain-node should not be publishing its own messages.  These are
+	// relayed from market-nodes.  If a node appears to be local, reject it.
+	if pid == v.self {
+		log.Debug("ignoring indexer message from self")
+		stats.Record(ctx, metrics.IndexerMessageValidationFailure.M(1))
+		return pubsub.ValidationIgnore
+	}
+	originPeer := msg.GetFrom()
+	if originPeer == v.self {
+		log.Debug("ignoring indexer message originating from self")
+		stats.Record(ctx, metrics.IndexerMessageValidationFailure.M(1))
+		return pubsub.ValidationIgnore
+	}
+
+	idxrMsg := idxmsg.Message{}
+	err := idxrMsg.UnmarshalCBOR(bytes.NewBuffer(msg.Data))
+	if err != nil {
+		log.Errorw("Could not decode indexer pubsub message", "err", err)
+		return pubsub.ValidationReject
+	}
+	if len(idxrMsg.ExtraData) == 0 {
+		log.Debugw("ignoring messsage missing miner id", "peer", originPeer)
+		return pubsub.ValidationIgnore
+	}
+
+	// Get miner info from lotus
+	minerAddr, err := address.NewFromBytes(idxrMsg.ExtraData)
+	if err != nil {
+		log.Warnw("cannot parse extra data as miner address", "err", err, "extraData", idxrMsg.ExtraData)
+		return pubsub.ValidationReject
+	}
+
+	minerID := minerAddr.String()
+	msgCid := idxrMsg.Cid
+
+	var msgInfo *peerMsgInfo
+	val, ok := v.peerCache.Get(minerID)
+	if !ok {
+		msgInfo = &peerMsgInfo{}
+	} else {
+		msgInfo = val.(*peerMsgInfo)
+	}
+
+	// Lock this peer's message info.
+	msgInfo.mutex.Lock()
+	defer msgInfo.mutex.Unlock()
+
+	if ok {
+		// Reject replayed messages.
+		seqno := binary.BigEndian.Uint64(msg.Message.GetSeqno())
+		if seqno <= msgInfo.lastSeqno {
+			log.Debug("ignoring replayed indexer message")
+			return pubsub.ValidationIgnore
+		}
+		msgInfo.lastSeqno = seqno
+	}
+
+	if !ok || originPeer != msgInfo.peerID {
+		// Check that the miner ID maps to the peer that sent the message.
+		err = v.authenticateMessage(ctx, minerAddr, originPeer)
+		if err != nil {
+			log.Warnw("cannot authenticate messsage", "err", err, "peer", originPeer, "minerID", minerID)
+			stats.Record(ctx, metrics.IndexerMessageValidationFailure.M(1))
+			return pubsub.ValidationReject
+		}
+		msgInfo.peerID = originPeer
+		if !ok {
+			// Add msgInfo to cache only after being authenticated.  If two
+			// messages from the same peer are handled concurrently, there is a
+			// small chance that one msgInfo could replace the other here when
+			// the info is first cached.  This is OK, so no need to prevent it.
+			v.peerCache.Add(minerID, msgInfo)
+		}
+	}
+
+	// See if message needs to be ignored due to rate limiting.
+	if v.rateLimitPeer(msgInfo, msgCid) {
+		return pubsub.ValidationIgnore
+	}
+
+	stats.Record(ctx, metrics.IndexerMessageValidationSuccess.M(1))
+	return pubsub.ValidationAccept
+}
+
+func (v *IndexerMessageValidator) rateLimitPeer(msgInfo *peerMsgInfo, msgCid cid.Cid) bool {
+	const (
+		msgLimit        = 5
+		msgTimeLimit    = 10 * time.Second
+		repeatTimeLimit = 2 * time.Hour
+	)
+
+	timeWindow := msgInfo.rateLimit
+
+	// Check overall message rate.
+	if timeWindow == nil {
+		timeWindow = ratelimit.NewWindow(msgLimit, msgTimeLimit)
+		msgInfo.rateLimit = timeWindow
+	} else if msgInfo.lastCid == msgCid {
+		// Check if this is a repeat of the previous message data.
+		if time.Since(timeWindow.Newest()) < repeatTimeLimit {
+			log.Warnw("ignoring repeated indexer message", "sender", msgInfo.peerID)
+			return true
+		}
+	}
+
+	err := timeWindow.Add()
+	if err != nil {
+		log.Warnw("ignoring indexer message", "sender", msgInfo.peerID, "err", err)
+		return true
+	}
+
+	msgInfo.lastCid = msgCid
+
+	return false
+}
+
+func (v *IndexerMessageValidator) authenticateMessage(ctx context.Context, minerAddress address.Address, peerID peer.ID) error {
+	ts, err := v.chainApi.ChainHead(ctx)
+	if err != nil {
+		return err
+	}
+
+	minerInfo, err := v.stateApi.StateMinerInfo(ctx, minerAddress, ts.Key())
+	if err != nil {
+		return err
+	}
+
+	if minerInfo.PeerId == nil {
+		return xerrors.New("no peer id for miner")
+	}
+	if *minerInfo.PeerId != peerID {
+		return xerrors.New("miner id does not map to peer that sent message")
+	}
+
+	return nil
 }
