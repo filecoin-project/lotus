@@ -137,27 +137,32 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	SnapDealsWaitDeals: planOne(
 		on(SectorAddPiece{}, SnapDealsAddPiece),
 		on(SectorStartPacking{}, SnapDealsPacking),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
 	),
 	SnapDealsAddPiece: planOne(
 		on(SectorPieceAdded{}, SnapDealsWaitDeals),
 		apply(SectorStartPacking{}),
 		apply(SectorAddPiece{}),
 		on(SectorAddPieceFailed{}, SnapDealsAddPieceFailed),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
 	),
 	SnapDealsPacking: planOne(
 		on(SectorPacked{}, UpdateReplica),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
 	),
 	UpdateReplica: planOne(
 		on(SectorReplicaUpdate{}, ProveReplicaUpdate),
 		on(SectorUpdateReplicaFailed{}, ReplicaUpdateFailed),
 		on(SectorDealsExpired{}, SnapDealsDealsExpired),
 		on(SectorInvalidDealIDs{}, SnapDealsRecoverDealIDs),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
 	),
 	ProveReplicaUpdate: planOne(
 		on(SectorProveReplicaUpdate{}, SubmitReplicaUpdate),
 		on(SectorProveReplicaUpdateFailed{}, ReplicaUpdateFailed),
 		on(SectorDealsExpired{}, SnapDealsDealsExpired),
 		on(SectorInvalidDealIDs{}, SnapDealsRecoverDealIDs),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
 	),
 	SubmitReplicaUpdate: planOne(
 		on(SectorReplicaUpdateSubmitted{}, ReplicaUpdateWait),
@@ -238,6 +243,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryWaitDeals{}, SnapDealsWaitDeals),
 		apply(SectorStartPacking{}),
 		apply(SectorAddPiece{}),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
 	),
 	SnapDealsDealsExpired: planOne(
 		on(SectorAbortUpgrade{}, AbortUpgrade),
@@ -256,6 +262,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryProveReplicaUpdate{}, ProveReplicaUpdate),
 		on(SectorInvalidDealIDs{}, SnapDealsRecoverDealIDs),
 		on(SectorDealsExpired{}, SnapDealsDealsExpired),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
 	),
 	ReleaseSectorKeyFailed: planOne(
 		on(SectorUpdateActive{}, ReleaseSectorKey),
