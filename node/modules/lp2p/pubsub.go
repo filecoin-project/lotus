@@ -116,13 +116,13 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 
 	ingestTopicParams := &pubsub.TopicScoreParams{
 		// expected ~0.5 confirmed deals / min. sampled
-		TopicWeight: 1,
+		TopicWeight: 0.1,
 
 		TimeInMeshWeight:  0.00027, // ~1/3600
 		TimeInMeshQuantum: time.Second,
 		TimeInMeshCap:     1,
 
-		FirstMessageDeliveriesWeight: 5,
+		FirstMessageDeliveriesWeight: 0.5,
 		FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
 		FirstMessageDeliveriesCap:    100, // allowing for burstiness
 
