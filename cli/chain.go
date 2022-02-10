@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path"
@@ -1074,7 +1075,7 @@ var ChainExportCmd = &cli.Command{
 			return fmt.Errorf("\"recent-stateroots\" has to be greater than %d", build.Finality)
 		}
 
-		fi, err := os.Create(cctx.Args().First())
+		fi, err := createExportFile(cctx.App, cctx.Args().First())
 		if err != nil {
 			return err
 		}
@@ -1435,4 +1436,17 @@ var chainEncodeParamsCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+// createExportFile returns the export file from the app metadata, or creates a new file if it doesn't exist
+func createExportFile(app *cli.App, path string) (io.WriteCloser, error) {
+	if wc, ok := app.Metadata["export-file"]; ok {
+		return wc.(io.WriteCloser), nil
+	}
+
+	fi, err := os.Create(path)
+	if err != nil {
+		return nil, err
+	}
+	return fi, nil
 }

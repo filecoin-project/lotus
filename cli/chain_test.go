@@ -472,7 +472,35 @@ func TestChainBisect(t *testing.T) {
 	assert.Contains(t, out, path)
 }
 
-func TestChainExport(t *testing.T) {}
+func TestChainExport(t *testing.T) {
+	app, mockApi, _, done := NewMockAppWithFullAPI(t, WithCategory("chain", ChainExportCmd))
+	defer done()
+
+	mockFile := mockExportFile{new(bytes.Buffer)}
+	app.Metadata["export-file"] = mockFile
+
+	blk := mock.MkBlock(nil, 0, 0)
+	ts := mock.TipSet(blk)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	export := make(chan []byte, 2)
+	expBytes := []byte("whatever")
+	export <- expBytes
+	export <- []byte{} // empty slice means export is complete
+	close(export)
+
+	gomock.InOrder(
+		mockApi.EXPECT().ChainHead(ctx).Return(ts, nil),
+		mockApi.EXPECT().ChainExport(ctx, abi.ChainEpoch(0), false, ts.Key()).Return(export, nil),
+	)
+
+	err := app.Run([]string{"chain", "export", "whatever.car"})
+	assert.NoError(t, err)
+
+	assert.Equal(t, expBytes, mockFile.Bytes())
+}
 
 func TestSlashConsensusFault(t *testing.T) {}
 
@@ -481,3 +509,11 @@ func TestChainGasPrice(t *testing.T) {}
 func TestChainDecode(t *testing.T) {}
 
 func TestChainEncode(t *testing.T) {}
+
+type mockExportFile struct {
+	*bytes.Buffer
+}
+
+func (mef mockExportFile) Close() error {
+	return nil
+}
