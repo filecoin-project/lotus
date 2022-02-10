@@ -11,7 +11,7 @@ type Window struct {
 }
 
 // NewWindow creates a new Window that limits the number of events to maximum
-// count of events withing a duration of time.  The capacity sets the maximum
+// count of events within a duration of time.  The capacity sets the maximum
 // number of events, and size sets the span of time over which the events are
 // counted.
 func NewWindow(capacity int, size time.Duration) *Window {
