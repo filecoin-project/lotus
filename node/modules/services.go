@@ -35,6 +35,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/hello"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -198,10 +199,10 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 	waitForSync(stmgr, pubsubMsgsSyncEpochs, subscribe)
 }
 
-func RelayIndexerMessages(lc fx.Lifecycle, ps *pubsub.PubSub, nn dtypes.NetworkName, h host.Host) error {
+func RelayIndexerMessages(lc fx.Lifecycle, ps *pubsub.PubSub, nn dtypes.NetworkName, h host.Host, chainModule full.ChainModuleAPI, stateModule full.StateModuleAPI) error {
 	topicName := build.IndexerIngestTopic(nn)
 
-	v := sub.NewIndexerMessageValidator(h.ID())
+	v := sub.NewIndexerMessageValidator(h.ID(), chainModule, stateModule)
 
 	if err := ps.RegisterTopicValidator(topicName, v.Validate); err != nil {
 		return xerrors.Errorf("failed to register validator for topic %s, err: %w", topicName, err)
