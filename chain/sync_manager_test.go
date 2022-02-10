@@ -8,6 +8,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
+	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -239,4 +240,36 @@ func TestSyncManager(t *testing.T) {
 		fmt.Println("op3: ", op3.ts.Cids())
 		op3.done()
 	})
+}
+
+func TestSyncManagerBucketSet(t *testing.T) {
+	ts1 := mock.TipSet(mock.MkBlock(nil, 0, 0))
+	ts2 := mock.TipSet(mock.MkBlock(ts1, 1, 0))
+	bucket1 := newSyncTargetBucket(ts1, ts2)
+	bucketSet := syncBucketSet{buckets: []*syncTargetBucket{bucket1}}
+	fmt.Println("bucketSet: ", bucketSet.String())
+
+	// inserting a tipset from an existing chain, should add to an existing bucket
+	ts3 := mock.TipSet(mock.MkBlock(ts2, 2, 0))
+	bucketSet.Insert(ts3)
+	require.Equal(t, 1, len(bucketSet.buckets))
+	require.Equal(t, 3, len(bucketSet.buckets[0].tips))
+	fmt.Println("bucketSet: ", bucketSet.String())
+
+	// inserting a tipset from  new chain, should create a new bucket
+	ts4fork := mock.TipSet(mock.MkBlock(nil, 1, 1))
+	bucketSet.Insert(ts4fork)
+	require.Equal(t, 2, len(bucketSet.buckets))
+	require.Equal(t, 3, len(bucketSet.buckets[0].tips))
+	require.Equal(t, 1, len(bucketSet.buckets[1].tips))
+	fmt.Println("bucketSet: ", bucketSet.String())
+
+	// Pop removes the best bucket, e.g. bucket1
+	popped := bucketSet.Pop()
+	require.Equal(t, popped, bucket1)
+	require.Equal(t, 1, len(bucketSet.buckets))
+
+	// PopRelated removes the bucket containing the given tipset, leaving the set empty
+	bucketSet.PopRelated(ts4fork)
+	require.Equal(t, 0, len(bucketSet.buckets))
 }
