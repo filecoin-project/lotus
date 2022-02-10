@@ -1135,6 +1135,8 @@ var SlashConsensusFault = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
 		srv, err := GetFullNodeServices(cctx)
 		if err != nil {
 			return err
@@ -1239,7 +1241,7 @@ var SlashConsensusFault = &cli.Command{
 			return err
 		}
 
-		fmt.Println(smsg.Cid())
+		afmt.Println(smsg.Cid())
 
 		return nil
 	},
@@ -1249,6 +1251,8 @@ var ChainGasPriceCmd = &cli.Command{
 	Name:  "gas-price",
 	Usage: "Estimate gas prices",
 	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -1265,7 +1269,7 @@ var ChainGasPriceCmd = &cli.Command{
 				return err
 			}
 
-			fmt.Printf("%d blocks: %s (%s)\n", nblocks, est, types.FIL(est))
+			afmt.Printf("%d blocks: %s (%s)\n", nblocks, est, types.FIL(est))
 		}
 
 		return nil
@@ -1295,6 +1299,8 @@ var chainDecodeParamsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
 		api, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -1346,7 +1352,7 @@ var chainDecodeParamsCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println(pstr)
+		afmt.Println(pstr)
 
 		return nil
 	},
@@ -1379,6 +1385,8 @@ var chainEncodeParamsCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
 		if cctx.Args().Len() != 3 {
 			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
 		}
@@ -1427,9 +1435,9 @@ var chainEncodeParamsCmd = &cli.Command{
 
 		switch cctx.String("encoding") {
 		case "base64", "b64":
-			fmt.Println(base64.StdEncoding.EncodeToString(p))
+			afmt.Println(base64.StdEncoding.EncodeToString(p))
 		case "hex":
-			fmt.Println(hex.EncodeToString(p))
+			afmt.Println(hex.EncodeToString(p))
 		default:
 			return xerrors.Errorf("unknown encoding")
 		}
@@ -1438,7 +1446,7 @@ var chainEncodeParamsCmd = &cli.Command{
 	},
 }
 
-// createExportFile returns the export file from the app metadata, or creates a new file if it doesn't exist
+// createExportFile returns the export file handle from the app metadata, or creates a new file if it doesn't exist
 func createExportFile(app *cli.App, path string) (io.WriteCloser, error) {
 	if wc, ok := app.Metadata["export-file"]; ok {
 		return wc.(io.WriteCloser), nil

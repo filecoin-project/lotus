@@ -476,6 +476,7 @@ func TestChainExport(t *testing.T) {
 	app, mockApi, _, done := NewMockAppWithFullAPI(t, WithCategory("chain", ChainExportCmd))
 	defer done()
 
+	// export writes to a file, I mocked it so there are no side-effects
 	mockFile := mockExportFile{new(bytes.Buffer)}
 	app.Metadata["export-file"] = mockFile
 
@@ -502,9 +503,30 @@ func TestChainExport(t *testing.T) {
 	assert.Equal(t, expBytes, mockFile.Bytes())
 }
 
-func TestSlashConsensusFault(t *testing.T) {}
+func TestChainGasPrice(t *testing.T) {
+	app, mockApi, buf, done := NewMockAppWithFullAPI(t, WithCategory("chain", ChainGasPriceCmd))
+	defer done()
 
-func TestChainGasPrice(t *testing.T) {}
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// estimate gas is called with various num blocks in implementation,
+	// so we mock and count how many times it's called, and we expect that many results printed
+	calls := 0
+	mockApi.
+		EXPECT().
+		GasEstimateGasPremium(ctx, gomock.Any(), builtin.SystemActorAddr, int64(10000), types.EmptyTSK).
+		Return(big.NewInt(0), nil).AnyTimes().
+		Do(func(a, b, c, d, e interface{}) { // looks funny, but we don't care about args here, just counting
+			calls += 1
+		})
+
+	err := app.Run([]string{"chain", "gas-price"})
+	assert.NoError(t, err)
+
+	lines := strings.Split(strings.Trim(buf.String(), "\n"), "\n")
+	assert.Equal(t, calls, len(lines))
+}
 
 func TestChainDecode(t *testing.T) {}
 
