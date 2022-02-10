@@ -1,12 +1,14 @@
 package sub
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"sync"
 	"time"
 
 	address "github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-legs/dtsync"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/consensus"
@@ -25,7 +27,6 @@ import (
 	connmgr "github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/multiformats/go-varint"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
@@ -491,17 +492,19 @@ func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg
 		return pubsub.ValidationReject
 	}
 
-	// Decode CID and originator addresses from message.
-	minerID, msgCid, err := decodeIndexerMessage(msg.Data)
+	idxrMsg := dtsync.Message{}
+	err := idxrMsg.UnmarshalCBOR(bytes.NewBuffer(msg.Data))
 	if err != nil {
-		log.Errorw("Could not decode pubsub message", "err", err)
+		log.Errorw("Could not decode indexer pubsub message", "err", err)
 		return pubsub.ValidationReject
 	}
-
-	if minerID == "" {
+	if len(idxrMsg.ExtraData) == 0 {
 		log.Debugw("ignoring messsage missing miner id", "peer", originPeer)
 		return pubsub.ValidationIgnore
 	}
+
+	minerID := string(idxrMsg.ExtraData)
+	msgCid := idxrMsg.Cid
 
 	var msgInfo *peerMsgInfo
 	val, ok := v.peerCache.Get(minerID)
@@ -582,55 +585,6 @@ func (v *IndexerMessageValidator) rateLimitPeer(msgInfo *peerMsgInfo, msgCid cid
 	msgInfo.lastCid = msgCid
 
 	return false
-}
-
-func decodeIndexerMessage(data []byte) (string, cid.Cid, error) {
-	n, msgCid, err := cid.CidFromBytes(data)
-	if err != nil {
-		return "", cid.Undef, err
-	}
-	if n > len(data) {
-		return "", cid.Undef, xerrors.New("bad cid length encoding")
-	}
-	data = data[n:]
-
-	var minerID string
-
-	if len(data) != 0 {
-		addrCount, n, err := varint.FromUvarint(data)
-		if err != nil {
-			return "", cid.Undef, xerrors.Errorf("cannot read number of multiaddrs: %w", err)
-		}
-		if n > len(data) {
-			return "", cid.Undef, xerrors.New("bad multiaddr count encoding")
-		}
-		data = data[n:]
-
-		if addrCount != 0 {
-			// Read multiaddrs if there is any more data in message data.  This allows
-			// backward-compatability with publishers that do not supply address data.
-			for i := 0; i < int(addrCount); i++ {
-				val, n, err := varint.FromUvarint(data)
-				if err != nil {
-					return "", cid.Undef, xerrors.Errorf("cannot read multiaddrs length: %w", err)
-				}
-				if n > len(data) {
-					return "", cid.Undef, xerrors.New("bad multiaddr length encoding")
-				}
-				data = data[n:]
-
-				if len(data) < int(val) {
-					return "", cid.Undef, xerrors.New("bad multiaddr encoding")
-				}
-				data = data[val:]
-			}
-		}
-		if len(data) != 0 {
-			minerID = string(data)
-		}
-	}
-
-	return minerID, msgCid, nil
 }
 
 func (v *IndexerMessageValidator) authenticateMessage(ctx context.Context, minerID string, peerID peer.ID) error {
