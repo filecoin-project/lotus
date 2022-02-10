@@ -481,15 +481,15 @@ func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg
 	// This chain-node should not be publishing its own messages.  These are
 	// relayed from market-nodes.  If a node appears to be local, reject it.
 	if pid == v.self {
-		log.Warnf("refusing to relay indexer message from self")
+		log.Debug("ignoring indexer message from self")
 		stats.Record(ctx, metrics.IndexerMessageValidationFailure.M(1))
-		return pubsub.ValidationReject
+		return pubsub.ValidationIgnore
 	}
 	originPeer := msg.GetFrom()
 	if originPeer == v.self {
-		log.Warnf("refusing to relay indexer message originating from self")
+		log.Debug("ignoring indexer message originating from self")
 		stats.Record(ctx, metrics.IndexerMessageValidationFailure.M(1))
-		return pubsub.ValidationReject
+		return pubsub.ValidationIgnore
 	}
 
 	idxrMsg := dtsync.Message{}
