@@ -1108,6 +1108,7 @@ func TestIncomingBlocks(t *testing.T) {
 	require.NoError(t, tu.mn.LinkAll())
 
 	clientNode := tu.nds[client]
+	//stm: @CHAIN_SYNCER_INCOMING_BLOCKS_001
 	incoming, err := clientNode.SyncIncomingBlocks(tu.ctx)
 	require.NoError(tu.t, err)
 
@@ -1151,6 +1152,7 @@ func TestSyncManualBadTS(t *testing.T) {
 
 	require.True(tu.t, !sourceHead.Equals(clientHead), "source and client should be out of sync in test setup")
 
+	//stm: @CHAIN_SYNCER_MARK_BAD_001
 	err = tu.nds[client].SyncMarkBad(tu.ctx, sourceHead.Cids()[0])
 	require.NoError(tu.t, err)
 
@@ -1158,6 +1160,7 @@ func TestSyncManualBadTS(t *testing.T) {
 	err = tu.nds[client].SyncMarkBad(tu.ctx, sourceHeadParent)
 	require.NoError(tu.t, err)
 
+	//stm: @CHAIN_SYNCER_CHECK_BAD_001
 	reason, err := tu.nds[client].SyncCheckBad(tu.ctx, sourceHead.Cids()[0])
 	require.NoError(tu.t, err)
 	require.NotEqual(tu.t, "", reason, "block is not bad after manually marking")
@@ -1179,6 +1182,7 @@ func TestSyncManualBadTS(t *testing.T) {
 
 	// Assertion 2:
 	// - after unmarking blocks as bad and reconnecting, source & client should be in sync
+	//stm: @CHAIN_SYNCER_UNMARK_BAD_001
 	err = tu.nds[client].SyncUnmarkBad(tu.ctx, sourceHead.Cids()[0])
 	require.NoError(tu.t, err)
 
@@ -1223,6 +1227,7 @@ func TestSyncState(t *testing.T) {
 	activeSyncs := []api.ActiveSync{}
 
 	for len(activeSyncs) == 0 {
+		//stm: @CHAIN_SYNCER_STATE_001
 		state, err = clientNode.SyncState(tu.ctx)
 		require.NoError(tu.t, err)
 		activeSyncs = state.ActiveSyncs
