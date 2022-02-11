@@ -255,6 +255,16 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 	return ctx.Send(SectorRetrySubmitReplicaUpdate{})
 }
 
+func (m *Sealing) handleReleaseSectorKeyFailed(ctx statemachine.Context, sector SectorInfo) error {
+	// not much we can do, wait for a bit and try again
+
+	if err := failedCooldown(ctx, sector); err != nil {
+		return err
+	}
+
+	return ctx.Send(SectorUpdateActive{})
+}
+
 func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo) error {
 	tok, _, err := m.Api.ChainHead(ctx.Context())
 	if err != nil {
@@ -489,7 +499,7 @@ func (m *Sealing) HandleRecoverDealIDs(ctx statemachine.Context, sector SectorIn
 }
 
 func (m *Sealing) handleSnapDealsRecoverDealIDs(ctx statemachine.Context, sector SectorInfo) error {
-	return m.handleRecoverDealIDsOrFailWith(ctx, sector, SectorAbortUpgrade{})
+	return m.handleRecoverDealIDsOrFailWith(ctx, sector, SectorAbortUpgrade{xerrors.New("failed recovering deal ids")})
 }
 
 func recoveryPiecesToFix(ctx context.Context, api SealingAPI, sector SectorInfo, maddr address.Address) ([]int, int, error) {

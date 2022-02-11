@@ -89,7 +89,7 @@ func (s *SplitStore) doCheck(curTs *types.TipSet) error {
 	coldCnt := new(int64)
 	missingCnt := new(int64)
 
-	visitor, err := s.markSetEnv.Create("check", 0)
+	visitor, err := s.markSetEnv.New("check", 0)
 	if err != nil {
 		return xerrors.Errorf("error creating visitor: %w", err)
 	}
