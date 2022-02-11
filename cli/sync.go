@@ -170,6 +170,8 @@ var SyncCheckBadCmd = &cli.Command{
 	Usage:     "check if the given block was marked bad, and for what reason",
 	ArgsUsage: "[blockCid]",
 	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
 		napi, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -192,11 +194,11 @@ var SyncCheckBadCmd = &cli.Command{
 		}
 
 		if reason == "" {
-			fmt.Println("block was not marked as bad")
+			afmt.Println("block was not marked as bad")
 			return nil
 		}
 
-		fmt.Println(reason)
+		afmt.Println(reason)
 		return nil
 	},
 }

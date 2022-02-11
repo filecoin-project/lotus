@@ -99,3 +99,40 @@ func TestSyncUnmarkBad(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+func TestSyncCheckBad(t *testing.T) {
+	t.Run("not-bad", func(t *testing.T) {
+		app, mockApi, buf, done := NewMockAppWithFullAPI(t, WithCategory("sync", SyncCheckBadCmd))
+		defer done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		blk := mock.MkBlock(nil, 0, 0)
+
+		mockApi.EXPECT().SyncCheckBad(ctx, blk.Cid()).Return("", nil)
+
+		err := app.Run([]string{"sync", "check-bad", blk.Cid().String()})
+		assert.NoError(t, err)
+
+		assert.Contains(t, buf.String(), "block was not marked as bad")
+	})
+
+	t.Run("bad", func(t *testing.T) {
+		app, mockApi, buf, done := NewMockAppWithFullAPI(t, WithCategory("sync", SyncCheckBadCmd))
+		defer done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		blk := mock.MkBlock(nil, 0, 0)
+		reason := "whatever"
+
+		mockApi.EXPECT().SyncCheckBad(ctx, blk.Cid()).Return(reason, nil)
+
+		err := app.Run([]string{"sync", "check-bad", blk.Cid().String()})
+		assert.NoError(t, err)
+
+		assert.Contains(t, buf.String(), reason)
+	})
+}
