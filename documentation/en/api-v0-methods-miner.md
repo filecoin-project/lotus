@@ -97,6 +97,7 @@
 * [Return](#Return)
   * [ReturnAddPiece](#ReturnAddPiece)
   * [ReturnFetch](#ReturnFetch)
+  * [ReturnFinalizeReplicaUpdate](#ReturnFinalizeReplicaUpdate)
   * [ReturnFinalizeSector](#ReturnFinalizeSector)
   * [ReturnGenerateSectorKeyFromData](#ReturnGenerateSectorKeyFromData)
   * [ReturnMoveStorage](#ReturnMoveStorage)
@@ -116,6 +117,7 @@
   * [SealingAbort](#SealingAbort)
   * [SealingSchedDiag](#SealingSchedDiag)
 * [Sector](#Sector)
+  * [SectorAbortUpgrade](#SectorAbortUpgrade)
   * [SectorAddPieceToAny](#SectorAddPieceToAny)
   * [SectorCommitFlush](#SectorCommitFlush)
   * [SectorCommitPending](#SectorCommitPending)
@@ -2075,6 +2077,30 @@ Inputs:
 
 Response: `{}`
 
+### ReturnFinalizeReplicaUpdate
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "Sector": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ID": "07070707-0707-0707-0707-070707070707"
+  },
+  {
+    "Code": 0,
+    "Message": "string value"
+  }
+]
+```
+
+Response: `{}`
+
 ### ReturnFinalizeSector
 
 
@@ -2473,6 +2499,21 @@ Response: `{}`
 
 ## Sector
 
+
+### SectorAbortUpgrade
+SectorAbortUpgrade can be called on sectors that are in the process of being upgraded to abort it
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  9
+]
+```
+
+Response: `{}`
 
 ### SectorAddPieceToAny
 Add piece to an open sector. If no sectors with enough space are open,
