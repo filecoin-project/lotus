@@ -67,7 +67,8 @@ const UpgradeHyperdriveHeight = 892800
 // 2021-10-26T13:30:00Z
 const UpgradeChocolateHeight = 1231620
 
-var UpgradeOhSnapHeight = abi.ChainEpoch(999999999999)
+// 2021-03-01T14:00:00Z
+var UpgradeOhSnapHeight = abi.ChainEpoch(1594560)
 
 func init() {
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
