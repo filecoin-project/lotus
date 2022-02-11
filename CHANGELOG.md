@@ -1,4 +1,178 @@
 # Lotus changelog
+# 1.15.0-rc1 / 2022-02-10
+
+This is the first release candidates of v1.15.0, detailed changelog will be updated later.
+
+- github.com/filecoin-project/lotus:
+  - bump the version to v1.15.0-rc1
+  - chore: build: v1.14.0 -> master ([filecoin-project/lotus#8053](https://github.com/filecoin-project/lotus/pull/8053))
+  - FinalizeReplicaUpdate ([filecoin-project/lotus#8018](https://github.com/filecoin-project/lotus/pull/8018))
+  - splitstore sortless compaction ([filecoin-project/lotus#8008](https://github.com/filecoin-project/lotus/pull/8008))
+  - perf: chain: Make drand logs in daemon less noisy (#7955) ([filecoin-project/lotus#7955](https://github.com/filecoin-project/lotus/pull/7955))
+  - chore: shed: storage stats 2.0 ([filecoin-project/lotus#7941](https://github.com/filecoin-project/lotus/pull/7941))
+  - StartEpochSealingBuffer triggers packing on timer ([filecoin-project/lotus#7905](https://github.com/filecoin-project/lotus/pull/7905))
+  - deps: update go-paramfetch to v0.0.4 ([filecoin-project/lotus#8050](https://github.com/filecoin-project/lotus/pull/8050))
+  - fix: sealing: Stop recovery attempts after fault ([filecoin-project/lotus#8014](https://github.com/filecoin-project/lotus/pull/8014))
+  - chore: update build and deps ([filecoin-project/lotus#8047](https://github.com/filecoin-project/lotus/pull/8047))
+  - update libp2p to v0.18.0-rc4 ([filecoin-project/lotus#8044](https://github.com/filecoin-project/lotus/pull/8044))
+  - update go-libp2p to v0.18.0-rc3 ([filecoin-project/lotus#8022](https://github.com/filecoin-project/lotus/pull/8022))
+  - misc: api: Annotate lotus tests according to listed behaviors ([filecoin-project/lotus#7835](https://github.com/filecoin-project/lotus/pull/7835))
+  - some basic splitstore refactors ([filecoin-project/lotus#7999](https://github.com/filecoin-project/lotus/pull/7999))
+  - feat: mpool: Cache state nonces ([filecoin-project/lotus#8005](https://github.com/filecoin-project/lotus/pull/8005))
+  - chore: sealer: quieten a log ([filecoin-project/lotus#7998](https://github.com/filecoin-project/lotus/pull/7998))
+  - chore: build: make the OhSnap epoch configurable by an envvar for devnets ([filecoin-project/lotus#7995](https://github.com/filecoin-project/lotus/pull/7995))
+  - chore: chain: fix log ([filecoin-project/lotus#7993](https://github.com/filecoin-project/lotus/pull/7993))
+  - tvx: supply network version when extracting messages. ([filecoin-project/lotus#7996](https://github.com/filecoin-project/lotus/pull/7996))
+  - fix: sealer: manager should lock Unsealed for ReplicaUpdate ([filecoin-project/lotus#7986](https://github.com/filecoin-project/lotus/pull/7986))
+  - chore: remove inaccurate comment in sealtasks ([filecoin-project/lotus#7977](https://github.com/filecoin-project/lotus/pull/7977))
+  - update go-libp2p to v0.18.0-rc2 ([filecoin-project/lotus#7984](https://github.com/filecoin-project/lotus/pull/7984))
+  - Fix: sealer: ReplicaUpdate should fetch the correct files ([filecoin-project/lotus#7983](https://github.com/filecoin-project/lotus/pull/7983))
+  - libp2p v0.18.0-rc1 and initial resource manager integration ([filecoin-project/lotus#7969](https://github.com/filecoin-project/lotus/pull/7969))
+  - chore: merge release/v1.14.0 PRs into master ([filecoin-project/lotus#7979](https://github.com/filecoin-project/lotus/pull/7979))
+  - chore: update PR template ([filecoin-project/lotus#7918](https://github.com/filecoin-project/lotus/pull/7918))
+  - Fix: chain: create a new VM for each epoch ([filecoin-project/lotus#7966](https://github.com/filecoin-project/lotus/pull/7966))
+  - feat(deps): update markets stack ([filecoin-project/lotus#7959](https://github.com/filecoin-project/lotus/pull/7959))
+  - Use go-libp2p-connmgr v0.3.1 ([filecoin-project/lotus#7957](https://github.com/filecoin-project/lotus/pull/7957))
+  - feat: #7747 sealing: Adding conf variable for capping number of concurrent unsealing jobs (#7884) ([filecoin-project/lotus#7884](https://github.com/filecoin-project/lotus/pull/7884))
+  - build: release: bump master version to v1.15.0-dev ([filecoin-project/lotus#7922](https://github.com/filecoin-project/lotus/pull/7922))
+  - feat: build: butterfly SNAPNET ([filecoin-project/lotus#7932](https://github.com/filecoin-project/lotus/pull/7932))
+  - correctness fixes for the autobatch blockstore ([filecoin-project/lotus#7940](https://github.com/filecoin-project/lotus/pull/7940))
+  - fix: #7869 sealing: Add more deal expiration checks during PRU pipeline ([filecoin-project/lotus#7871](https://github.com/filecoin-project/lotus/pull/7871))
+  - fix: blockstore: Add missing locks to autobatch::Get() ([filecoin-project/lotus#7939](https://github.com/filecoin-project/lotus/pull/7939))
+  - feat: state: Fast migration for v15 ([filecoin-project/lotus#7933](https://github.com/filecoin-project/lotus/pull/7933))
+  - enhancement: #7891 sectors: disable existing existing cc upgrade path 2 days before the upgrade epoch ([filecoin-project/lotus#7900](https://github.com/filecoin-project/lotus/pull/7900))
+  - chore: deps: Integrate proof v11.0.0 ([filecoin-project/lotus#7923](https://github.com/filecoin-project/lotus/pull/7923))
+  - Snap Deals Lotus Integration: FSM Posting and integration test ([filecoin-project/lotus#7810](https://github.com/filecoin-project/lotus/pull/7810))
+  - chore: deps: Update go-paramfetch ([filecoin-project/lotus#7917](https://github.com/filecoin-project/lotus/pull/7917))
+  - feat: #7880 gas: add gas charge for VerifyReplicaUpdate ([filecoin-project/lotus#7897](https://github.com/filecoin-project/lotus/pull/7897))
+  - misc: build: v1.13.2 back to master ([filecoin-project/lotus#7910](https://github.com/filecoin-project/lotus/pull/7910))
+  - FIX: #7904 CI: generated vectors from v7 for bleeding edge ([filecoin-project/lotus#7903](https://github.com/filecoin-project/lotus/pull/7903))
+  - misc: docs: remove issue number from the pr title ([filecoin-project/lotus#7902](https://github.com/filecoin-project/lotus/pull/7902))
+  - Fix: state: circsuypply calc around null blocks ([filecoin-project/lotus#7890](https://github.com/filecoin-project/lotus/pull/7890))
+  - test vector runner fixes for v6 vectors ([filecoin-project/lotus#7881](https://github.com/filecoin-project/lotus/pull/7881))
+  - Shed: Add a util to send a batch of messages ([filecoin-project/lotus#7667](https://github.com/filecoin-project/lotus/pull/7667))
+  - Snapcraft grade no develgrade ([filecoin-project/lotus#7802](https://github.com/filecoin-project/lotus/pull/7802))
+  - fix: doc generation struct slice example value ([filecoin-project/lotus#7851](https://github.com/filecoin-project/lotus/pull/7851))
+  - fix: returned error not be accept correctly ([filecoin-project/lotus#7852](https://github.com/filecoin-project/lotus/pull/7852))
+  - Add api for transfer diagnostics ([filecoin-project/lotus#7759](https://github.com/filecoin-project/lotus/pull/7759))
+  - Refactor: VM: Remove the NetworkVersionGetter ([filecoin-project/lotus#7818](https://github.com/filecoin-project/lotus/pull/7818))
+  - fix: #7577 markets: When retrying Add Piece, first seek to start of reader ([filecoin-project/lotus#7812](https://github.com/filecoin-project/lotus/pull/7812))
+  - feat: #6017 market: retrieval ask CLI command ([filecoin-project/lotus#7814](https://github.com/filecoin-project/lotus/pull/7814))
+  - misc: n/a sealing: Fix grammatical error in a log warning message ([filecoin-project/lotus#7831](https://github.com/filecoin-project/lotus/pull/7831))
+  - sectors update-state checks if sector exists before changing its state ([filecoin-project/lotus#7762](https://github.com/filecoin-project/lotus/pull/7762))
+  - refactor: state: Move randomness versioning out of the VM ([filecoin-project/lotus#7816](https://github.com/filecoin-project/lotus/pull/7816))
+  - feat(graphsync): allow setting of per-peer incoming requests for miners ([filecoin-project/lotus#7578](https://github.com/filecoin-project/lotus/pull/7578))
+  - updating to new datastore/blockstore code with contexts ([filecoin-project/lotus#7646](https://github.com/filecoin-project/lotus/pull/7646))
+  - Shed: Add a util to list terminated deals ([filecoin-project/lotus#7774](https://github.com/filecoin-project/lotus/pull/7774))
+  - VM: Circ supply should be constant per epoch ([filecoin-project/lotus#7811](https://github.com/filecoin-project/lotus/pull/7811))
+  - chore: create pull_request_template.md ([filecoin-project/lotus#7726](https://github.com/filecoin-project/lotus/pull/7726))
+  - Mempool msg selection should respect block message limits ([filecoin-project/lotus#7321](https://github.com/filecoin-project/lotus/pull/7321))
+  - Merge v15 work into master ([filecoin-project/lotus#7784](https://github.com/filecoin-project/lotus/pull/7784))
+  - Expose EnableGasTracing as an env_var ([filecoin-project/lotus#7750](https://github.com/filecoin-project/lotus/pull/7750))
+  - Minor improvement for OpenTelemetry ([filecoin-project/lotus#7760](https://github.com/filecoin-project/lotus/pull/7760))
+  - Sort lotus-miner retrieval-deals by dealId ([filecoin-project/lotus#7749](https://github.com/filecoin-project/lotus/pull/7749))
+  - Make retrieval even faster ([filecoin-project/lotus#7746](https://github.com/filecoin-project/lotus/pull/7746))
+  - dep/fix 7701 Dependency: update to ipld-legacy to v0.1.1 ([filecoin-project/lotus#7751](https://github.com/filecoin-project/lotus/pull/7751))
+  - Command to list active sector locks ([filecoin-project/lotus#7735](https://github.com/filecoin-project/lotus/pull/7735))
+  - dagstore pieceReader: Always read full in ReadAt ([filecoin-project/lotus#7737](https://github.com/filecoin-project/lotus/pull/7737))
+  - SplitStore: supress compaction near upgrades ([filecoin-project/lotus#7734](https://github.com/filecoin-project/lotus/pull/7734))
+  - Disable appimage ([filecoin-project/lotus#7707](https://github.com/filecoin-project/lotus/pull/7707))
+  - Initial switch to OpenTelemetry ([filecoin-project/lotus#7725](https://github.com/filecoin-project/lotus/pull/7725))
+  - Bump the master version to v1.13.3-dev ([filecoin-project/lotus#7717](https://github.com/filecoin-project/lotus/pull/7717))
+- github.com/filecoin-project/dagstore (v0.4.3 -> v0.4.4):
+  failed to fetch repo
+- github.com/filecoin-project/go-amt-ipld/v4 (null -> v4.0.0):
+  - v4 (#60) ([filecoin-project/go-amt-ipld#60](https://github.com/filecoin-project/go-amt-ipld/pull/60))
+  - Merge pull request from GHSA-3wpc-wmc7-8p5g
+  - add .github/workflows/tagpush.yml
+  - add .github/workflows/release-check.yml
+  - add .github/workflows/releaser.yml
+  - update .github/workflows/go-check.yml
+  - update .github/workflows/go-test.yml
+  - add version.json file
+  - fix: fix bitWidth error message (#58) ([filecoin-project/go-amt-ipld#58](https://github.com/filecoin-project/go-amt-ipld/pull/58))
+  - update .github/workflows/go-check.yml
+  - update .github/workflows/go-test.yml
+  - update .github/workflows/automerge.yml
+- github.com/filecoin-project/go-commp-utils (v0.1.2 -> v0.1.3):
+  - chore(deps): clean up dependencies (#7) ([filecoin-project/go-commp-utils#7](https://github.com/filecoin-project/go-commp-utils/pull/7))
+- github.com/filecoin-project/go-ds-versioning (v0.1.0 -> v0.1.1):
+  - update to context datastores (#3) ([filecoin-project/go-ds-versioning#3](https://github.com/filecoin-project/go-ds-versioning/pull/3))
+  - ci(circle): fix versions (#4) ([filecoin-project/go-ds-versioning#4](https://github.com/filecoin-project/go-ds-versioning/pull/4))
+- github.com/filecoin-project/go-fil-markets (v1.13.4 -> v1.19.0):
+  - release: v1.19.0
+  - Update to go-data-transfer v1.14.0 / go-libp2p v0.18.0-rc1 (#669) ([filecoin-project/go-fil-markets#669](https://github.com/filecoin-project/go-fil-markets/pull/669))
+  - release: v1.18.0 (#671) ([filecoin-project/go-fil-markets#671](https://github.com/filecoin-project/go-fil-markets/pull/671))
+  - revert index provider PR #629 and associated PRs (#670) ([filecoin-project/go-fil-markets#670](https://github.com/filecoin-project/go-fil-markets/pull/670))
+  - log advertisement cid for announcement and update deps (#667) ([filecoin-project/go-fil-markets#667](https://github.com/filecoin-project/go-fil-markets/pull/667))
+  - release: v1.15.0 ([filecoin-project/go-fil-markets#661](https://github.com/filecoin-project/go-fil-markets/pull/661))
+  - retrieve by any CID (not just root CID) and reference provider integration (#629) ([filecoin-project/go-fil-markets#629](https://github.com/filecoin-project/go-fil-markets/pull/629))
+  - release: v1.14.1 ([filecoin-project/go-fil-markets#660](https://github.com/filecoin-project/go-fil-markets/pull/660))
+  - refactor: isolate commp in its own package to avoid exposing pulling filecoin-ffi (#659) ([filecoin-project/go-fil-markets#659](https://github.com/filecoin-project/go-fil-markets/pull/659))
+  - release: v1.14.0 ([filecoin-project/go-fil-markets#658](https://github.com/filecoin-project/go-fil-markets/pull/658))
+  - add SeekStart method to inflator reader (#656) ([filecoin-project/go-fil-markets#656](https://github.com/filecoin-project/go-fil-markets/pull/656))
+  - Merge tag 'v1.13.6'
+  - Timeout provider after waiting a period of time for transfer to restart (#655) ([filecoin-project/go-fil-markets#655](https://github.com/filecoin-project/go-fil-markets/pull/655))
+  - Update to context datastores (#653) ([filecoin-project/go-fil-markets#653](https://github.com/filecoin-project/go-fil-markets/pull/653))
+  - Fix and de-dupe link to spec (#652) ([filecoin-project/go-fil-markets#652](https://github.com/filecoin-project/go-fil-markets/pull/652))
+  - release: v1.13.4 (#651) ([filecoin-project/go-fil-markets#651](https://github.com/filecoin-project/go-fil-markets/pull/651))
+- github.com/filecoin-project/go-paramfetch (v0.0.2 -> v0.0.4):
+  - retry fetching once before erroring ([filecoin-project/go-paramfetch#22](https://github.com/filecoin-project/go-paramfetch/pull/22))
+  - Always verify SnapDeals params ([filecoin-project/go-paramfetch#20](https://github.com/filecoin-project/go-paramfetch/pull/20))
+- github.com/filecoin-project/go-state-types (v0.1.1 -> v0.1.3):
+  - CBOR encode Addr Pairs for keys (#35) ([filecoin-project/go-state-types#35](https://github.com/filecoin-project/go-state-types/pull/35))
+  - Add AddrPairKey (#34) ([filecoin-project/go-state-types#34](https://github.com/filecoin-project/go-state-types/pull/34))
+- github.com/filecoin-project/go-statestore (v0.1.1 -> v0.2.0):
+  - update to context datastores ([filecoin-project/go-statestore#10](https://github.com/filecoin-project/go-statestore/pull/10))
+- github.com/filecoin-project/go-storedcounter (v0.0.0-20200421200003-1c99c62e8a5b -> v0.1.0):
+  - Update go-datastore ([filecoin-project/go-storedcounter#1](https://github.com/filecoin-project/go-storedcounter/pull/1))
+- github.com/filecoin-project/specs-actors/v2 (v2.3.5 -> v2.3.6):
+  - Update to context datastores (#1541) ([filecoin-project/specs-actors#1541](https://github.com/filecoin-project/specs-actors/pull/1541))
+- github.com/filecoin-project/specs-storage (v0.1.1-0.20201105051918-5188d9774506 -> v0.2.0):
+  - FinalizeReplicaUpdate (#22) ([filecoin-project/specs-storage#22](https://github.com/filecoin-project/specs-storage/pull/22))
+  - Add release of sectorkey and replica update ([filecoin-project/specs-storage#20](https://github.com/filecoin-project/specs-storage/pull/20))
+  - Feat/update post gen (#19) ([filecoin-project/specs-storage#19](https://github.com/filecoin-project/specs-storage/pull/19))
+  - Add sector key to ReplicaUpdate iface method (#18) ([filecoin-project/specs-storage#18](https://github.com/filecoin-project/specs-storage/pull/18))
+  - Update for snap deals (#17) ([filecoin-project/specs-storage#17](https://github.com/filecoin-project/specs-storage/pull/17))
+  - Merge remote-tracking branch 'origin/feat/sector-ref'
+
+Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Aayush Rajasekaran | 116 | +12792/-3989 | 579 |
+| zenground0 | 38 | +8894/-1521 | 343 |
+| vyzo | 121 | +4537/-1470 | 258 |
+| zl | 1 | +3725/-309 | 8 |
+| dirkmc | 7 | +1392/-1110 | 61 |
+| Jennifer Wang | 55 | +890/-806 | 121 |
+| Łukasz Magiera | 35 | +1143/-339 | 104 |
+| whyrusleeping | 2 | +483/-585 | 28 |
+| Darko Brdareski | 14 | +725/-276 | 154 |
+| Rod Vagg | 3 | +45/-949 | 12 |
+| hannahhoward | 10 | +481/-133 | 35 |
+| Hannah Howard | 3 | +371/-234 | 22 |
+| c r | 4 | +425/-75 | 18 |
+| TheMenko | 8 | +237/-179 | 17 |
+| Aayush | 15 | +197/-106 | 57 |
+| ZenGround0 | 3 | +263/-25 | 11 |
+| Dirk McCormick | 12 | +188/-40 | 27 |
+| Peter Rabbitson | 3 | +128/-62 | 3 |
+| Steven Allen | 2 | +110/-74 | 2 |
+| Raúl Kripalani | 6 | +128/-49 | 9 |
+| Whyrusleeping | 1 | +76/-70 | 8 |
+| web3-bot | 10 | +99/-17 | 10 |
+| Jiaying Wang | 15 | +58/-23 | 15 |
+| Aarsh Shah | 1 | +23/-19 | 5 |
+| Travis Person | 2 | +2/-20 | 4 |
+| Jakub Sztandera | 3 | +13/-5 | 5 |
+| gstuart | 3 | +12/-1 | 3 |
+| Cory Schwartz | 4 | +5/-6 | 4 |
+| pefish | 1 | +4/-3 | 1 |
+| Colin Kennedy | 1 | +4/-2 | 1 |
+| Rob Quist | 1 | +2/-2 | 1 |
+| shotcollin | 1 | +1/-1 | 1 |
+
 
 # v1.13.2 /  2022-01-09
 
