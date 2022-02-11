@@ -2584,18 +2584,21 @@ USAGE:
    lotus net command [command options] [arguments...]
 
 COMMANDS:
-   peers         Print peers
-   connect       Connect to a peer
-   listen        List listen addresses
-   id            Get node identity
-   findpeer      Find the addresses of a given peerID
-   scores        Print peers' pubsub scores
-   reachability  Print information about reachability from the internet
-   bandwidth     Print bandwidth usage information
-   block         Manage network connection gating rules
-   stat          Report resource usage for a scope
-   limit         Get or set resource limits for a scope
-   help, h       Shows a list of commands or help for one command
+   peers           Print peers
+   connect         Connect to a peer
+   listen          List listen addresses
+   id              Get node identity
+   findpeer        Find the addresses of a given peerID
+   scores          Print peers' pubsub scores
+   reachability    Print information about reachability from the internet
+   bandwidth       Print bandwidth usage information
+   block           Manage network connection gating rules
+   stat            Report resource usage for a scope
+   limit           Get or set resource limits for a scope
+   protect         Add one or more peer IDs to the list of protected peer connections
+   unprotect       Remove one or more peer IDs from the list of protected peer connections.
+   list-protected  List the peer IDs with protected connection.
+   help, h         Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -2905,6 +2908,45 @@ DESCRIPTION:
 
 OPTIONS:
    --set       set the limit for a scope (default: false)
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus net protect
+```
+NAME:
+   lotus net protect - Add one or more peer IDs to the list of protected peer connections
+
+USAGE:
+   lotus net protect [command options] <peer-id> [<peer-id>...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus net unprotect
+```
+NAME:
+   lotus net unprotect - Remove one or more peer IDs from the list of protected peer connections.
+
+USAGE:
+   lotus net unprotect [command options] <peer-id> [<peer-id>...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus net list-protected
+```
+NAME:
+   lotus net list-protected - List the peer IDs with protected connection.
+
+USAGE:
+   lotus net list-protected [command options] [arguments...]
+
+OPTIONS:
    --help, -h  show help (default: false)
    
 ```
