@@ -134,6 +134,29 @@ func (dh *DealHarness) StartDeal(ctx context.Context, dealParams api.StartDealPa
 	return dealProposalCid
 }
 
+func (dh *DealHarness) WaitUntilDataTransfer(ctx context.Context, deal *cid.Cid) {
+loop:
+	for {
+		di, err := dh.client.ClientGetDealInfo(ctx, *deal)
+		if err != nil {
+			dh.t.Fatal("can't fetch deal info")
+		}
+
+		switch di.State {
+		case storagemarket.StorageDealProposalRejected:
+			dh.t.Fatal("deal rejected")
+		case storagemarket.StorageDealFailing:
+			dh.t.Fatal("deal failed")
+		case storagemarket.StorageDealError:
+			dh.t.Fatal("deal errored")
+		case storagemarket.StorageDealStartDataTransfer:
+			break loop
+		}
+
+		time.Sleep(time.Millisecond * 100)
+	}
+}
+
 // WaitDealSealed waits until the deal is sealed.
 func (dh *DealHarness) WaitDealSealed(ctx context.Context, deal *cid.Cid, noseal, noSealStart bool, cb func()) {
 loop:
