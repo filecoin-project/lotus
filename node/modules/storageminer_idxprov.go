@@ -88,7 +88,7 @@ func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHo
 		// Get the miner ID and set as extra gossip data.
 		// The extra data is required by the lotus-specific index-provider gossip message validators.
 		ma := address.Address(maddr)
-		log.Info("Using extra gossip data in index provider engine: %s", ma.String())
+		log.Infof("Using extra gossip data in index provider engine: %s", ma.String())
 
 		e, err := engine.New(cfg.Ingest, pkey, dt, h, ipds, maddrs, engine.WithExtraGossipData(ma.Bytes()))
 		if err != nil {
