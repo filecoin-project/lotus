@@ -54,3 +54,18 @@ func TestSyncStatus(t *testing.T) {
 	assert.Contains(t, out, "Height: 0")
 	assert.Contains(t, out, "Elapsed: 1m0s")
 }
+
+func TestSyncMarkBad(t *testing.T) {
+	app, mockApi, _, done := NewMockAppWithFullAPI(t, WithCategory("sync", SyncMarkBadCmd))
+	defer done()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	blk := mock.MkBlock(nil, 0, 0)
+
+	mockApi.EXPECT().SyncMarkBad(ctx, blk.Cid()).Return(nil)
+
+	err := app.Run([]string{"sync", "mark-bad", blk.Cid().String()})
+	assert.NoError(t, err)
+}
