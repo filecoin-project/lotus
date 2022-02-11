@@ -8,7 +8,9 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -134,5 +136,46 @@ func TestSyncCheckBad(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Contains(t, buf.String(), reason)
+	})
+}
+
+func TestSyncCheckpoint(t *testing.T) {
+	t.Run("tipset", func(t *testing.T) {
+		app, mockApi, _, done := NewMockAppWithFullAPI(t, WithCategory("sync", SyncCheckpointCmd))
+		defer done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		blk := mock.MkBlock(nil, 0, 0)
+		ts := mock.TipSet(blk)
+
+		gomock.InOrder(
+			mockApi.EXPECT().ChainGetBlock(ctx, blk.Cid()).Return(blk, nil),
+			mockApi.EXPECT().SyncCheckpoint(ctx, ts.Key()).Return(nil),
+		)
+
+		err := app.Run([]string{"sync", "checkpoint", blk.Cid().String()})
+		assert.NoError(t, err)
+	})
+
+	t.Run("epoch", func(t *testing.T) {
+		app, mockApi, _, done := NewMockAppWithFullAPI(t, WithCategory("sync", SyncCheckpointCmd))
+		defer done()
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		epoch := abi.ChainEpoch(0)
+		blk := mock.MkBlock(nil, 0, 0)
+		ts := mock.TipSet(blk)
+
+		gomock.InOrder(
+			mockApi.EXPECT().ChainGetTipSetByHeight(ctx, epoch, types.EmptyTSK).Return(ts, nil),
+			mockApi.EXPECT().SyncCheckpoint(ctx, ts.Key()).Return(nil),
+		)
+
+		err := app.Run([]string{"sync", "checkpoint", fmt.Sprintf("-epoch=%d", epoch)})
+		assert.NoError(t, err)
 	})
 }
