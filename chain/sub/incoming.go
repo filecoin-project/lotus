@@ -503,7 +503,14 @@ func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg
 		return pubsub.ValidationIgnore
 	}
 
-	minerID := string(idxrMsg.ExtraData)
+	// Get miner info from lotus
+	minerAddr, err := address.NewFromBytes(idxrMsg.ExtraData)
+	if err != nil {
+		log.Warnw("cannot parse extra data as miner address", "err", err, "extraData", idxrMsg.ExtraData)
+		return pubsub.ValidationReject
+	}
+
+	minerID := minerAddr.String()
 	msgCid := idxrMsg.Cid
 
 	var msgInfo *peerMsgInfo
@@ -530,7 +537,7 @@ func (v *IndexerMessageValidator) Validate(ctx context.Context, pid peer.ID, msg
 
 	if !ok || originPeer != msgInfo.peerID {
 		// Check that the miner ID maps to the peer that sent the message.
-		err = v.authenticateMessage(ctx, minerID, originPeer)
+		err = v.authenticateMessage(ctx, minerAddr, originPeer)
 		if err != nil {
 			log.Warnw("cannot authenticate messsage", "err", err, "peer", originPeer, "minerID", minerID)
 			stats.Record(ctx, metrics.IndexerMessageValidationFailure.M(1))
@@ -587,13 +594,7 @@ func (v *IndexerMessageValidator) rateLimitPeer(msgInfo *peerMsgInfo, msgCid cid
 	return false
 }
 
-func (v *IndexerMessageValidator) authenticateMessage(ctx context.Context, minerID string, peerID peer.ID) error {
-	// Get miner info from lotus
-	minerAddress, err := address.NewFromString(minerID)
-	if err != nil {
-		return xerrors.Errorf("invalid miner id: %w", err)
-	}
-
+func (v *IndexerMessageValidator) authenticateMessage(ctx context.Context, minerAddress address.Address, peerID peer.ID) error {
 	ts, err := v.chainApi.ChainHead(ctx)
 	if err != nil {
 		return err
