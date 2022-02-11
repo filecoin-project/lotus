@@ -10,6 +10,7 @@
 * [Add](#Add)
   * [AddPiece](#AddPiece)
 * [Finalize](#Finalize)
+  * [FinalizeReplicaUpdate](#FinalizeReplicaUpdate)
   * [FinalizeSector](#FinalizeSector)
 * [Generate](#Generate)
   * [GenerateSectorKeyFromData](#GenerateSectorKeyFromData)
@@ -1096,6 +1097,36 @@ Response:
 
 ## Finalize
 
+
+### FinalizeReplicaUpdate
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "ID": {
+      "Miner": 1000,
+      "Number": 9
+    },
+    "ProofType": 8
+  },
+  null
+]
+```
+
+Response:
+```json
+{
+  "Sector": {
+    "Miner": 1000,
+    "Number": 9
+  },
+  "ID": "07070707-0707-0707-0707-070707070707"
+}
+```
 
 ### FinalizeSector
 
