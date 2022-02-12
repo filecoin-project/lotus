@@ -3,6 +3,7 @@ package itests
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -380,7 +381,7 @@ func TestMemPoolBatchPushUntrusted(t *testing.T) {
 	ctx := context.Background()
 	const blockTime = 100 * time.Millisecond
 	firstNode, _, _, ens := kit.EnsembleTwoOne(t, kit.MockProofs())
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll()
 	kit.QuietMiningLogs()
 
 	sender := firstNode.DefaultKey.Address
@@ -416,18 +417,33 @@ func TestMemPoolBatchPushUntrusted(t *testing.T) {
 	_, err = firstNode.MpoolBatchPushUntrusted(ctx, sms)
 	require.NoError(t, err)
 
-	// check pending messages for address
-	msgStatuses, err := firstNode.MpoolCheckPendingMessages(ctx, sender)
-	require.NoError(t, err)
-	require.Equal(t, totalMessages, len(msgStatuses))
-	for _, msgStatusList := range msgStatuses {
-		for _, status := range msgStatusList {
-			require.True(t, status.OK)
+	// check pending messages for address, wait until they are all pushed
+	timeout := time.After(time.Second * 10)
+	for {
+		msgStatuses, err := firstNode.MpoolCheckPendingMessages(ctx, sender)
+		require.NoError(t, err)
+
+		if len(msgStatuses) == totalMessages {
+			for _, msgStatusList := range msgStatuses {
+				for _, status := range msgStatusList {
+					require.True(t, status.OK)
+				}
+			}
+			break
+		}
+
+		select {
+		case <-timeout:
+			t.Fatal("waiting for batch push timed out")
+		default:
+			fmt.Printf("waiting for %d more messages to be pushed\n", len(msgStatuses)-totalMessages)
+			time.Sleep(time.Millisecond * 100)
 		}
 	}
 
 	// verify messages should be the ones included in the next block
 	selected, _ := firstNode.MpoolSelect(ctx, types.EmptyTSK, 0)
+
 	for _, msg := range sms {
 		found := false
 		for _, selectedMsg := range selected {
@@ -439,17 +455,31 @@ func TestMemPoolBatchPushUntrusted(t *testing.T) {
 		require.True(t, found)
 	}
 
-	time.Sleep(10 * blockTime)
+	ens.BeginMining(blockTime)
 
-	// pool pending list should be empty
-	pending, err := firstNode.MpoolPending(context.TODO(), types.EmptyTSK)
-	require.NoError(t, err)
-	require.Equal(t, 0, len(pending))
-
-	// all messages should be added to the chain
-	for _, lookMsg := range sms {
-		msgLookup, err := firstNode.StateWaitMsg(ctx, lookMsg.Cid(), 3, api.LookbackNoLimit, true)
+	// wait until pending messages are mined
+	timeout = time.After(time.Second * 10)
+	for {
+		// pool pending list should be empty
+		pending, err := firstNode.MpoolPending(context.TODO(), types.EmptyTSK)
 		require.NoError(t, err)
-		require.NotNil(t, msgLookup)
+
+		if len(pending) == 0 {
+			// all messages should be added to the chain
+			for _, lookMsg := range sms {
+				msgLookup, err := firstNode.StateWaitMsg(ctx, lookMsg.Cid(), 3, api.LookbackNoLimit, true)
+				require.NoError(t, err)
+				require.NotNil(t, msgLookup)
+			}
+			break
+		}
+
+		select {
+		case <-timeout:
+			t.Fatal("waiting for pending messages to be mined timed out")
+		default:
+			fmt.Printf("waiting for %d more messages to be mined\n", len(pending))
+			time.Sleep(time.Millisecond * 100)
+		}
 	}
 }
