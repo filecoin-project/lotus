@@ -95,11 +95,12 @@ func TestDealsRetryLackOfFunds(t *testing.T) {
 	dp.FastRetrieval = true
 	dp.EpochPrice = abi.NewTokenAmount(62500000) // minimum asking price.
 	deal := dh.StartDeal(ctx, dp)
-	dh.WaitUntilDataTransfer(ctx, deal)
 
 	propcid := *deal
 
 	go func() {
+		time.Sleep(3 * time.Second)
+
 		kit.SendFunds(ctx, t, minerFullNode, publishStorageDealKey.Address, types.FromFil(1))
 
 		err := miner.MarketRetryPublishDeal(ctx, propcid)
