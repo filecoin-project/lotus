@@ -137,27 +137,32 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	SnapDealsWaitDeals: planOne(
 		on(SectorAddPiece{}, SnapDealsAddPiece),
 		on(SectorStartPacking{}, SnapDealsPacking),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
 	),
 	SnapDealsAddPiece: planOne(
 		on(SectorPieceAdded{}, SnapDealsWaitDeals),
 		apply(SectorStartPacking{}),
 		apply(SectorAddPiece{}),
 		on(SectorAddPieceFailed{}, SnapDealsAddPieceFailed),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
 	),
 	SnapDealsPacking: planOne(
 		on(SectorPacked{}, UpdateReplica),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
 	),
 	UpdateReplica: planOne(
 		on(SectorReplicaUpdate{}, ProveReplicaUpdate),
 		on(SectorUpdateReplicaFailed{}, ReplicaUpdateFailed),
 		on(SectorDealsExpired{}, SnapDealsDealsExpired),
 		on(SectorInvalidDealIDs{}, SnapDealsRecoverDealIDs),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
 	),
 	ProveReplicaUpdate: planOne(
 		on(SectorProveReplicaUpdate{}, SubmitReplicaUpdate),
 		on(SectorProveReplicaUpdateFailed{}, ReplicaUpdateFailed),
 		on(SectorDealsExpired{}, SnapDealsDealsExpired),
 		on(SectorInvalidDealIDs{}, SnapDealsRecoverDealIDs),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
 	),
 	SubmitReplicaUpdate: planOne(
 		on(SectorReplicaUpdateSubmitted{}, ReplicaUpdateWait),
@@ -169,7 +174,14 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorAbortUpgrade{}, AbortUpgrade),
 	),
 	FinalizeReplicaUpdate: planOne(
-		on(SectorFinalized{}, Proving),
+		on(SectorFinalized{}, UpdateActivating),
+	),
+	UpdateActivating: planOne(
+		on(SectorUpdateActive{}, ReleaseSectorKey),
+	),
+	ReleaseSectorKey: planOne(
+		on(SectorKeyReleased{}, Proving),
+		on(SectorReleaseKeyFailed{}, ReleaseSectorKeyFailed),
 	),
 	// Sealing errors
 
@@ -231,6 +243,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryWaitDeals{}, SnapDealsWaitDeals),
 		apply(SectorStartPacking{}),
 		apply(SectorAddPiece{}),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
 	),
 	SnapDealsDealsExpired: planOne(
 		on(SectorAbortUpgrade{}, AbortUpgrade),
@@ -249,6 +262,10 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		on(SectorRetryProveReplicaUpdate{}, ProveReplicaUpdate),
 		on(SectorInvalidDealIDs{}, SnapDealsRecoverDealIDs),
 		on(SectorDealsExpired{}, SnapDealsDealsExpired),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
+	),
+	ReleaseSectorKeyFailed: planOne(
+		on(SectorUpdateActive{}, ReleaseSectorKey),
 	),
 
 	// Post-seal
@@ -477,6 +494,10 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleReplicaUpdateWait, processed, nil
 	case FinalizeReplicaUpdate:
 		return m.handleFinalizeReplicaUpdate, processed, nil
+	case UpdateActivating:
+		return m.handleUpdateActivating, processed, nil
+	case ReleaseSectorKey:
+		return m.handleReleaseSectorKey, processed, nil
 
 	// Handled failure modes
 	case AddPieceFailed:
@@ -513,6 +534,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleSnapDealsRecoverDealIDs, processed, nil
 	case ReplicaUpdateFailed:
 		return m.handleSubmitReplicaUpdateFailed, processed, nil
+	case ReleaseSectorKeyFailed:
+		return m.handleReleaseSectorKeyFailed, 0, err
 	case AbortUpgrade:
 		return m.handleAbortUpgrade, processed, nil
 

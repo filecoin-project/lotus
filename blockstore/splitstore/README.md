@@ -49,10 +49,11 @@ These are options in the `[Chainstore.Splitstore]` section of the configuration:
   blockstore and discards writes; this is necessary to support syncing from a snapshot.
 - `MarkSetType` -- specifies the type of markset to use during compaction.
   The markset is the data structure used by compaction/gc to track live objects.
-  The default value is `"map"`, which will use an in-memory map; if you are limited
-  in memory (or indeed see compaction run out of memory), you can also specify
-  `"badger"` which will use an disk backed markset, using badger. This will use
-  much less memory, but will also make compaction slower.
+  The default value is "badger", which will use a disk backed markset using badger.
+  If you have a lot of memory (48G or more) you can also use "map", which will use
+  an in memory markset, speeding up compaction at the cost of higher memory usage.
+  Note: If you are using a VPS with a network volume, you need to provision at least
+  3000 IOPs with the badger markset.
 - `HotStoreMessageRetention` -- specifies how many finalities, beyond the 4
   finalities maintained by default, to maintain messages and message receipts in the
   hotstore. This is useful for assistive nodes that want to support syncing for other
@@ -104,6 +105,12 @@ Compaction works transactionally with the following algorithm:
   - We sort cold objects heaviest first, so as to never delete the consituents of a DAG before the DAG itself (which would leave dangling references)
   - We delete in small batches taking a lock; each batch is checked again for marks, from the concurrent transactional mark, so as to never delete anything live
 - We then end the transaction and compact/gc the hotstore.
+
+As of [#8008](https://github.com/filecoin-project/lotus/pull/8008) the compaction algorithm has been
+modified to eliminate sorting and maintain the cold object set on disk. This drastically reduces
+memory usage; in fact, when using badger as the markset compaction uses very little memory, and
+it should be now possible to run splitstore with 32GB of RAM or less without danger of running out of
+memory during compaction.
 
 ## Garbage Collection
 

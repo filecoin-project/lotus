@@ -62,7 +62,7 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 	xcount := new(int64)
 	missing := new(int64)
 
-	visitor, err := s.markSetEnv.Create("warmup", 0)
+	visitor, err := s.markSetEnv.New("warmup", 0)
 	if err != nil {
 		return xerrors.Errorf("error creating visitor: %w", err)
 	}
