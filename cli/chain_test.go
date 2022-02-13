@@ -32,6 +32,7 @@ func TestChainHead(t *testing.T) {
 		mockApi.EXPECT().ChainHead(ctx).Return(ts, nil),
 	)
 
+	//stm: @CLI_CHAIN_HEAD_001
 	err := app.Run([]string{"chain", "head"})
 	assert.NoError(t, err)
 
@@ -55,6 +56,7 @@ func TestGetBlock(t *testing.T) {
 		mockApi.EXPECT().ChainGetParentReceipts(ctx, block.Cid()).Return([]*types.MessageReceipt{}, nil),
 	)
 
+	//stm: @CLI_CHAIN_GET_BLOCK_001
 	err := app.Run([]string{"chain", "getblock", block.Cid().String()})
 	assert.NoError(t, err)
 
@@ -89,6 +91,7 @@ func TestReadOjb(t *testing.T) {
 		mockApi.EXPECT().ChainReadObj(ctx, block.Cid()).Return(obj.Bytes(), nil),
 	)
 
+	//stm: @CLI_CHAIN_READ_OBJECT_001
 	err = app.Run([]string{"chain", "read-obj", block.Cid().String()})
 	assert.NoError(t, err)
 
@@ -104,6 +107,7 @@ func TestChainDeleteObj(t *testing.T) {
 		app, _, _, done := NewMockAppWithFullAPI(t, cmd)
 		defer done()
 
+		//stm: @CLI_CHAIN_DELETE_OBJECT_002
 		err := app.Run([]string{"chain", "delete-obj", block.Cid().String()})
 		assert.Error(t, err)
 	})
@@ -120,6 +124,7 @@ func TestChainDeleteObj(t *testing.T) {
 			mockApi.EXPECT().ChainDeleteObj(ctx, block.Cid()).Return(nil),
 		)
 
+		//stm: @CLI_CHAIN_DELETE_OBJECT_001
 		err := app.Run([]string{"chain", "delete-obj", "--really-do-it=true", block.Cid().String()})
 		assert.NoError(t, err)
 
@@ -152,6 +157,7 @@ func TestChainStatObj(t *testing.T) {
 			mockApi.EXPECT().ChainStatObj(ctx, block.Cid(), cid.Undef).Return(stat, nil),
 		)
 
+		//stm: @CLI_CHAIN_STAT_OBJECT_001
 		err := app.Run([]string{"chain", "stat-obj", block.Cid().String()})
 		assert.NoError(t, err)
 
@@ -170,6 +176,7 @@ func TestChainStatObj(t *testing.T) {
 			mockApi.EXPECT().ChainStatObj(ctx, block.Cid(), block.Cid()).Return(stat, nil),
 		)
 
+		//stm: @CLI_CHAIN_STAT_OBJECT_002
 		err := app.Run([]string{"chain", "stat-obj", fmt.Sprintf("-base=%s", block.Cid().String()), block.Cid().String()})
 		assert.NoError(t, err)
 
@@ -200,6 +207,7 @@ func TestChainGetMsg(t *testing.T) {
 		mockApi.EXPECT().ChainReadObj(ctx, msg.Cid()).Return(obj.Bytes(), nil),
 	)
 
+	//stm: @CLI_CHAIN_GET_MESSAGE_001
 	err = app.Run([]string{"chain", "getmessage", msg.Cid().String()})
 	assert.NoError(t, err)
 
@@ -229,6 +237,7 @@ func TestSetHead(t *testing.T) {
 			mockApi.EXPECT().ChainSetHead(ctx, genesis.Key()).Return(nil),
 		)
 
+		//stm: @CLI_CHAIN_SET_HEAD_003
 		err := app.Run([]string{"chain", "sethead", "-genesis=true", ts.Key().String()})
 		assert.NoError(t, err)
 	})
@@ -246,6 +255,7 @@ func TestSetHead(t *testing.T) {
 			mockApi.EXPECT().ChainSetHead(ctx, genesis.Key()).Return(nil),
 		)
 
+		//stm: @CLI_CHAIN_SET_HEAD_002
 		err := app.Run([]string{"chain", "sethead", fmt.Sprintf("-epoch=%s", epoch), ts.Key().String()})
 		assert.NoError(t, err)
 	})
@@ -263,8 +273,7 @@ func TestSetHead(t *testing.T) {
 			mockApi.EXPECT().ChainSetHead(ctx, ts.Key()).Return(nil),
 		)
 
-		// ts.Key should be passed as an array of arguments (CIDs)
-		// since we have only one CID in the key, this is ok
+		//stm: @CLI_CHAIN_SET_HEAD_001
 		err := app.Run([]string{"chain", "sethead", ts.Key().Cids()[0].String()})
 		assert.NoError(t, err)
 	})
@@ -303,6 +312,7 @@ func TestInspectUsage(t *testing.T) {
 			mockApi.EXPECT().StateGetActor(ctx, *to, ts.Key()).Return(actor, nil),
 		)
 
+		//stm: @CLI_CHAIN_INSPECT_USAGE_001
 		err := app.Run([]string{"chain", "inspect-usage"})
 		assert.NoError(t, err)
 
@@ -352,6 +362,7 @@ func TestChainList(t *testing.T) {
 			mockApi.EXPECT().ChainGetBlockMessages(ctx, head.Blocks()[0].Cid()).Return(blockMsgs, nil),
 		)
 
+		//stm: CLI_CHAIN_LIST_001
 		err := app.Run([]string{"chain", "love", "--gas-stats=true"}) // chain is love ❤️
 		assert.NoError(t, err)
 
@@ -382,6 +393,7 @@ func TestChainGet(t *testing.T) {
 			mockApi.EXPECT().ChainGetNode(ctx, path).Return(&api.IpldObject{Cid: blk.Cid(), Obj: blk}, nil),
 		)
 
+		//stm: @CLI_CHAIN_GET_001
 		err := app.Run([]string{"chain", "get", path})
 		assert.NoError(t, err)
 
@@ -407,6 +419,7 @@ func TestChainGet(t *testing.T) {
 			mockApi.EXPECT().ChainGetNode(ctx, p2).Return(&api.IpldObject{Cid: blk.Cid(), Obj: blk}, nil),
 		)
 
+		//stm: @CLI_CHAIN_GET_002
 		err := app.Run([]string{"chain", "get", p1})
 		assert.NoError(t, err)
 
@@ -430,6 +443,7 @@ func TestChainGet(t *testing.T) {
 			mockApi.EXPECT().ChainGetNode(ctx, path).Return(&api.IpldObject{Cid: blk.Cid(), Obj: blk}, nil),
 		)
 
+		//stm: @CLI_CHAIN_GET_004
 		err := app.Run([]string{"chain", "get", "-as-type=foo", path})
 		assert.Error(t, err)
 	})
@@ -465,6 +479,7 @@ func TestChainBisect(t *testing.T) {
 		mockApi.EXPECT().ChainGetNode(ctx, path).Return(&api.IpldObject{Cid: blk2.Cid(), Obj: blk2}, nil),
 	)
 
+	//stm: @CLI_CHAIN_BISECT_001
 	err := app.Run([]string{"chain", "bisect", fmt.Sprintf("%d", minHeight), fmt.Sprintf("%d", maxHeight), subpath, shell})
 	assert.NoError(t, err)
 
@@ -497,6 +512,7 @@ func TestChainExport(t *testing.T) {
 		mockApi.EXPECT().ChainExport(ctx, abi.ChainEpoch(0), false, ts.Key()).Return(export, nil),
 	)
 
+	//stm: @CLI_CHAIN_EXPORT_001
 	err := app.Run([]string{"chain", "export", "whatever.car"})
 	assert.NoError(t, err)
 
@@ -522,6 +538,7 @@ func TestChainGasPrice(t *testing.T) {
 			calls++
 		})
 
+	//stm: @CLI_CHAIN_GAS_PRICE_001
 	err := app.Run([]string{"chain", "gas-price"})
 	assert.NoError(t, err)
 
