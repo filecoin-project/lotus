@@ -146,6 +146,7 @@ func (s *SplitStore) doReify(c cid.Cid) {
 
 	log.Debugf("reifying %d objects rooted at %s", len(toreify), c)
 
+	// this should not get too big, maybe some 100s of objects.
 	batch := make([]blocks.Block, 0, len(toreify))
 	for _, c := range toreify {
 		blk, err := s.cold.Get(s.ctx, c)
