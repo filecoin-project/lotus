@@ -162,6 +162,7 @@ type SplitStore struct {
 	txnSync         bool
 
 	// background cold object reification
+	reifyWorkers    sync.WaitGroup
 	reifyMx         sync.Mutex
 	reifyCond       sync.Cond
 	reifyPend       map[cid.Cid]struct{}
@@ -707,6 +708,7 @@ func (s *SplitStore) Close() error {
 	}
 
 	s.reifyCond.Broadcast()
+	s.reifyWorkers.Wait()
 	s.cancel()
 	return multierr.Combine(s.markSetEnv.Close(), s.debug.Close())
 }

@@ -41,6 +41,7 @@ func (s *SplitStore) reifyOrchestrator() {
 	defer close(workch)
 
 	for i := 0; i < workers; i++ {
+		s.reifyWorkers.Add(1)
 		go s.reifyWorker(workch)
 	}
 
@@ -70,6 +71,7 @@ func (s *SplitStore) reifyOrchestrator() {
 }
 
 func (s *SplitStore) reifyWorker(workch chan cid.Cid) {
+	defer s.reifyWorkers.Done()
 	for c := range workch {
 		s.doReify(c)
 	}
