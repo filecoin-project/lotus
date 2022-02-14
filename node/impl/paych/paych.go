@@ -23,7 +23,10 @@ type PaychAPI struct {
 }
 
 func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt, opts api.PaychGetOpts) (*api.ChannelInfo, error) {
-	ch, mcid, err := a.PaychMgr.GetPaych(ctx, from, to, amt, true, opts)
+	ch, mcid, err := a.PaychMgr.GetPaych(ctx, from, to, amt, paychmgr.GetOpts{
+		Reserve:  true,
+		OffChain: opts.OffChain,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -35,7 +38,10 @@ func (a *PaychAPI) PaychGet(ctx context.Context, from, to address.Address, amt t
 }
 
 func (a *PaychAPI) PaychFund(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error) {
-	ch, mcid, err := a.PaychMgr.GetPaych(ctx, from, to, amt, false, api.PaychGetOpts{OffChain: false})
+	ch, mcid, err := a.PaychMgr.GetPaych(ctx, from, to, amt, paychmgr.GetOpts{
+		Reserve:  false,
+		OffChain: false,
+	})
 	if err != nil {
 		return nil, err
 	}

@@ -101,17 +101,12 @@ func (pm *Manager) Stop() error {
 	return nil
 }
 
-type getOpts struct {
+type GetOpts struct {
 	Reserve  bool
 	OffChain bool
 }
 
-func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt types.BigInt, reserve bool, o api.PaychGetOpts) (address.Address, cid.Cid, error) {
-	opts := getOpts{
-		Reserve:  reserve,
-		OffChain: o.OffChain,
-	}
-
+func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt types.BigInt, opts GetOpts) (address.Address, cid.Cid, error) {
 	if !opts.Reserve && opts.OffChain {
 		return address.Undef, cid.Undef, xerrors.Errorf("can't fund payment channels without on-chain operations")
 	}

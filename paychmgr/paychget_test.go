@@ -19,26 +19,25 @@ import (
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
-	"github.com/filecoin-project/lotus/api"
 	lotusinit "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	paychmock "github.com/filecoin-project/lotus/chain/actors/builtin/paych/mock"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var onChainReserve = api.PaychGetOpts{
+var onChainReserve = GetOpts{
 	Reserve:  true,
 	OffChain: false,
 }
-var onChainNoReserve = api.PaychGetOpts{
+var onChainNoReserve = GetOpts{
 	Reserve:  false,
 	OffChain: false,
 }
-var offChainReserve = api.PaychGetOpts{
+var offChainReserve = GetOpts{
 	Reserve:  true,
 	OffChain: true,
 }
-var offChainNoReserve = api.PaychGetOpts{
+var offChainNoReserve = GetOpts{
 	Reserve:  false,
 	OffChain: true,
 }

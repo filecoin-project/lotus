@@ -66,7 +66,6 @@ func TestPaymentChannelsAPI(t *testing.T) {
 
 	channelAmt := int64(7000)
 	channelInfo, err := paymentCreator.PaychGet(ctx, createrAddr, receiverAddr, abi.NewTokenAmount(channelAmt), api.PaychGetOpts{
-		Reserve:  true,
 		OffChain: false,
 	})
 	require.NoError(t, err)
