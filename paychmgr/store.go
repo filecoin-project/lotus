@@ -73,7 +73,7 @@ type ChannelInfo struct {
 	// has locally been added to the channel. It should reflect the channel's
 	// Balance on chain as long as all operations occur on the same datastore.
 	Amount types.BigInt
-	// AvailableAmount indicates how much afil is non-reverved
+	// AvailableAmount indicates how much afil is non-reserved
 	AvailableAmount types.BigInt
 	// PendingAvailableAmount is available amount that we're awaiting confirmation of
 	PendingAvailableAmount types.BigInt
