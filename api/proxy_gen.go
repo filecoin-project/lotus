@@ -723,6 +723,8 @@ type StorageMinerStruct struct {
 
 		ReturnFetch func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
 
+		ReturnFinalizeReplicaUpdate func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
+
 		ReturnFinalizeSector func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
 
 		ReturnGenerateSectorKeyFromData func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
@@ -754,6 +756,8 @@ type StorageMinerStruct struct {
 		SealingAbort func(p0 context.Context, p1 storiface.CallID) error `perm:"admin"`
 
 		SealingSchedDiag func(p0 context.Context, p1 bool) (interface{}, error) `perm:"admin"`
+
+		SectorAbortUpgrade func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
 
 		SectorAddPieceToAny func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storage.Data, p3 PieceDealInfo) (SectorOffset, error) `perm:"admin"`
 
@@ -871,6 +875,8 @@ type WorkerStruct struct {
 		Enabled func(p0 context.Context) (bool, error) `perm:"admin"`
 
 		Fetch func(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType, p3 storiface.PathType, p4 storiface.AcquireMode) (storiface.CallID, error) `perm:"admin"`
+
+		FinalizeReplicaUpdate func(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) `perm:"admin"`
 
 		FinalizeSector func(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) `perm:"admin"`
 
@@ -4280,6 +4286,17 @@ func (s *StorageMinerStub) ReturnFetch(p0 context.Context, p1 storiface.CallID, 
 	return ErrNotSupported
 }
 
+func (s *StorageMinerStruct) ReturnFinalizeReplicaUpdate(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	if s.Internal.ReturnFinalizeReplicaUpdate == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.ReturnFinalizeReplicaUpdate(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) ReturnFinalizeReplicaUpdate(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	return ErrNotSupported
+}
+
 func (s *StorageMinerStruct) ReturnFinalizeSector(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
 	if s.Internal.ReturnFinalizeSector == nil {
 		return ErrNotSupported
@@ -4454,6 +4471,17 @@ func (s *StorageMinerStruct) SealingSchedDiag(p0 context.Context, p1 bool) (inte
 
 func (s *StorageMinerStub) SealingSchedDiag(p0 context.Context, p1 bool) (interface{}, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorAbortUpgrade(p0 context.Context, p1 abi.SectorNumber) error {
+	if s.Internal.SectorAbortUpgrade == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SectorAbortUpgrade(p0, p1)
+}
+
+func (s *StorageMinerStub) SectorAbortUpgrade(p0 context.Context, p1 abi.SectorNumber) error {
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorAddPieceToAny(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storage.Data, p3 PieceDealInfo) (SectorOffset, error) {
@@ -5003,6 +5031,17 @@ func (s *WorkerStruct) Fetch(p0 context.Context, p1 storage.SectorRef, p2 storif
 }
 
 func (s *WorkerStub) Fetch(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType, p3 storiface.PathType, p4 storiface.AcquireMode) (storiface.CallID, error) {
+	return *new(storiface.CallID), ErrNotSupported
+}
+
+func (s *WorkerStruct) FinalizeReplicaUpdate(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) {
+	if s.Internal.FinalizeReplicaUpdate == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
+	return s.Internal.FinalizeReplicaUpdate(p0, p1, p2)
+}
+
+func (s *WorkerStub) FinalizeReplicaUpdate(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) {
 	return *new(storiface.CallID), ErrNotSupported
 }
 

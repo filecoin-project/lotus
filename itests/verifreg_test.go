@@ -1,3 +1,4 @@
+//stm: #integration
 package itests
 
 import (
@@ -23,6 +24,12 @@ import (
 )
 
 func TestVerifiedClientTopUp(t *testing.T) {
+	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
+	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
+	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
+
+	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
 	blockTime := 100 * time.Millisecond
 
 	test := func(nv network.Version, shouldWork bool) func(*testing.T) {
@@ -51,6 +58,7 @@ func TestVerifiedClientTopUp(t *testing.T) {
 			defer cancel()
 
 			// get VRH
+			//stm: @CHAIN_STATE_VERIFIED_REGISTRY_ROOT_KEY_001
 			vrh, err := api.StateVerifiedRegistryRootKey(ctx, types.TipSetKey{})
 			fmt.Println(vrh.String())
 			require.NoError(t, err)
@@ -81,6 +89,7 @@ func TestVerifiedClientTopUp(t *testing.T) {
 			sm, err := api.MpoolPushMessage(ctx, msg, nil)
 			require.NoError(t, err, "AddVerifier failed")
 
+			//stm: @CHAIN_STATE_WAIT_MSG_001
 			res, err := api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
 			require.NoError(t, err)
 			require.EqualValues(t, 0, res.Receipt.ExitCode)
@@ -102,11 +111,13 @@ func TestVerifiedClientTopUp(t *testing.T) {
 			sm, err = api.MpoolPushMessage(ctx, msg, nil)
 			require.NoError(t, err)
 
+			//stm: @CHAIN_STATE_WAIT_MSG_001
 			res, err = api.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
 			require.NoError(t, err)
 			require.EqualValues(t, 0, res.Receipt.ExitCode)
 
 			// check datacap balance
+			//stm: @CHAIN_STATE_VERIFIED_CLIENT_STATUS_001
 			dcap, err := api.StateVerifiedClientStatus(ctx, verifiedClientAddr, types.EmptyTSK)
 			require.NoError(t, err)
 

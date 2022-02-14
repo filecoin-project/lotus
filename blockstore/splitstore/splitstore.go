@@ -129,8 +129,6 @@ type SplitStore struct {
 
 	headChangeMx sync.Mutex
 
-	coldPurgeSize int
-
 	chain ChainAccessor
 	ds    dstore.Datastore
 	cold  bstore.Blockstore
@@ -158,6 +156,10 @@ type SplitStore struct {
 	txnRefsMx       sync.Mutex
 	txnRefs         map[cid.Cid]struct{}
 	txnMissing      map[cid.Cid]struct{}
+	txnMarkSet      MarkSet
+	txnSyncMx       sync.Mutex
+	txnSyncCond     sync.Cond
+	txnSync         bool
 
 	// registered protectors
 	protectors []func(func(cid.Cid) error) error
@@ -186,10 +188,6 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 		return nil, err
 	}
 
-	if !markSetEnv.SupportsVisitor() {
-		return nil, xerrors.Errorf("markset type does not support atomic visitors")
-	}
-
 	// and now we can make a SplitStore
 	ss := &SplitStore{
 		cfg:        cfg,
@@ -198,17 +196,24 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 		cold:       cold,
 		hot:        hots,
 		markSetEnv: markSetEnv,
-
-		coldPurgeSize: defaultColdPurgeSize,
 	}
 
 	ss.txnViewsCond.L = &ss.txnViewsMx
+	ss.txnSyncCond.L = &ss.txnSyncMx
 	ss.ctx, ss.cancel = context.WithCancel(context.Background())
 
 	if enableDebugLog {
 		ss.debug, err = openDebugLog(path)
 		if err != nil {
 			return nil, err
+		}
+	}
+
+	if ss.checkpointExists() {
+		log.Info("found compaction checkpoint; resuming compaction")
+		if err := ss.completeCompaction(); err != nil {
+			markSetEnv.Close() //nolint:errcheck
+			return nil, xerrors.Errorf("error resuming compaction: %w", err)
 		}
 	}
 
@@ -233,6 +238,20 @@ func (s *SplitStore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
+
+	// critical section
+	if s.txnMarkSet != nil {
+		has, err := s.txnMarkSet.Has(cid)
+		if err != nil {
+			return false, err
+		}
+
+		if has {
+			return s.has(cid)
+		}
+
+		return s.cold.Has(ctx, cid)
+	}
 
 	has, err := s.hot.Has(ctx, cid)
 
@@ -260,6 +279,20 @@ func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error)
 
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
+
+	// critical section
+	if s.txnMarkSet != nil {
+		has, err := s.txnMarkSet.Has(cid)
+		if err != nil {
+			return nil, err
+		}
+
+		if has {
+			return s.get(cid)
+		}
+
+		return s.cold.Get(ctx, cid)
+	}
 
 	blk, err := s.hot.Get(ctx, cid)
 
@@ -298,6 +331,20 @@ func (s *SplitStore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
+	// critical section
+	if s.txnMarkSet != nil {
+		has, err := s.txnMarkSet.Has(cid)
+		if err != nil {
+			return 0, err
+		}
+
+		if has {
+			return s.getSize(cid)
+		}
+
+		return s.cold.GetSize(ctx, cid)
+	}
+
 	size, err := s.hot.GetSize(ctx, cid)
 
 	switch err {
@@ -335,6 +382,12 @@ func (s *SplitStore) Put(ctx context.Context, blk blocks.Block) error {
 	}
 
 	s.debug.LogWrite(blk)
+
+	// critical section
+	if s.txnMarkSet != nil {
+		s.markLiveRefs([]cid.Cid{blk.Cid()})
+		return nil
+	}
 
 	s.trackTxnRef(blk.Cid())
 	return nil
@@ -380,6 +433,12 @@ func (s *SplitStore) PutMany(ctx context.Context, blks []blocks.Block) error {
 	}
 
 	s.debug.LogWriteMany(blks)
+
+	// critical section
+	if s.txnMarkSet != nil {
+		s.markLiveRefs(batch)
+		return nil
+	}
 
 	s.trackTxnRefMany(batch)
 	return nil
@@ -438,6 +497,23 @@ func (s *SplitStore) View(ctx context.Context, cid cid.Cid, cb func([]byte) erro
 		}
 
 		return cb(data)
+	}
+
+	// critical section
+	s.txnLk.RLock() // the lock is released in protectView if we are not in critical section
+	if s.txnMarkSet != nil {
+		has, err := s.txnMarkSet.Has(cid)
+		s.txnLk.RUnlock()
+
+		if err != nil {
+			return err
+		}
+
+		if has {
+			return s.view(cid, cb)
+		}
+
+		return s.cold.View(ctx, cid, cb)
 	}
 
 	// views are (optimistically) protected two-fold:
@@ -589,6 +665,11 @@ func (s *SplitStore) Close() error {
 	}
 
 	if atomic.LoadInt32(&s.compacting) == 1 {
+		s.txnSyncMx.Lock()
+		s.txnSync = true
+		s.txnSyncCond.Broadcast()
+		s.txnSyncMx.Unlock()
+
 		log.Warn("close with ongoing compaction in progress; waiting for it to finish...")
 		for atomic.LoadInt32(&s.compacting) == 1 {
 			time.Sleep(time.Second)

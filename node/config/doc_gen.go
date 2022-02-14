@@ -249,6 +249,14 @@ This includes the time the deal will need to get transferred and published
 before being assigned to a sector`,
 		},
 		{
+			Name: "MakeNewSectorForDeals",
+			Type: "bool",
+
+			Comment: `Whether new sectors are created to pack incoming deals
+When this is set to false no new sectors will be created for sealing incoming deals
+This is useful for forcing all deals to be assigned as snap deals to sectors marked for upgrade`,
+		},
+		{
 			Name: "MaxDealStartDelay",
 			Type: "Duration",
 
@@ -810,7 +818,7 @@ Only currently supported value is "badger".`,
 			Type: "string",
 
 			Comment: `MarkSetType specifies the type of the markset.
-It can be "map" (default) for in memory marking or "badger" for on-disk marking.`,
+It can be "map" for in memory marking or "badger" (default) for on-disk marking.`,
 		},
 		{
 			Name: "HotStoreMessageRetention",

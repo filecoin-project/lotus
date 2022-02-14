@@ -87,6 +87,10 @@ func (t *testExec) GenerateSectorKeyFromData(ctx context.Context, sector storage
 	panic("implement me")
 }
 
+func (t *testExec) FinalizeReplicaUpdate(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error {
+	panic("implement me")
+}
+
 func (t *testExec) NewSector(ctx context.Context, sector storage.SectorRef) error {
 	panic("implement me")
 }
