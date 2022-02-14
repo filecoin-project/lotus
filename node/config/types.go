@@ -388,7 +388,7 @@ type Client struct {
 	// and storage providers for retrieval deals
 	SimultaneousTransfersForRetrieval uint64
 
-	// Require that retrievals perform no on-chain retrievals. Paid retrievals
+	// Require that retrievals perform no on-chain operations. Paid retrievals
 	// without existing payment channels with available funds will fail instead
 	// of automatically performing on-chain operations.
 	OffChainRetrieval bool
