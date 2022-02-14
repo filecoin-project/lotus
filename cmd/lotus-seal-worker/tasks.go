@@ -22,11 +22,14 @@ var tasksCmd = &cli.Command{
 }
 
 var allowSetting = map[sealtasks.TaskType]struct{}{
-	sealtasks.TTAddPiece:   {},
-	sealtasks.TTPreCommit1: {},
-	sealtasks.TTPreCommit2: {},
-	sealtasks.TTCommit2:    {},
-	sealtasks.TTUnseal:     {},
+	sealtasks.TTAddPiece:            {},
+	sealtasks.TTPreCommit1:          {},
+	sealtasks.TTPreCommit2:          {},
+	sealtasks.TTCommit2:             {},
+	sealtasks.TTUnseal:              {},
+	sealtasks.TTReplicaUpdate:       {},
+	sealtasks.TTProveReplicaUpdate2: {},
+	sealtasks.TTRegenSectorKey:      {},
 }
 
 var settableStr = func() string {
