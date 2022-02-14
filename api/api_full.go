@@ -866,7 +866,7 @@ type ChannelAvailableFunds struct {
 	PendingAmt types.BigInt
 	// AvailableAmt is part of ConfirmedAmt that is available for use (pre-allocated)
 	AvailableAmt types.BigInt
-// PendingAvailableAmt is the amount of funds that are pending confirmation on-chain that will become available once confirmed
+	// PendingAvailableAmt is the amount of funds that are pending confirmation on-chain that will become available once confirmed
 	PendingAvailableAmt types.BigInt
 	// PendingWaitSentinel can be used with PaychGetWaitReady to wait for
 	// confirmation of pending funds

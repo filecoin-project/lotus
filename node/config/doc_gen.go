@@ -109,7 +109,7 @@ and storage providers for retrieval deals`,
 			Name: "OffChainRetrieval",
 			Type: "bool",
 
-			Comment: `Require that retrievals perform no on-chain retrievals. Paid retrievals
+			Comment: `Require that retrievals perform no on-chain operations. Paid retrievals
 without existing payment channels with available funds will fail instead
 of automatically performing on-chain operations.`,
 		},
