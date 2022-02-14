@@ -179,6 +179,7 @@ func (s *SplitStore) doReify(c cid.Cid) {
 			}
 		}
 	} else {
+		// if txnActive is false these are noops
 		if len(toreify) > 0 {
 			s.trackTxnRefMany(toreify)
 		}
