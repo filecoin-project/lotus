@@ -3,6 +3,7 @@ package kit
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -64,11 +65,10 @@ func (p *partitionTracker) done(t *testing.T) bool {
 	return uint64(len(p.partitions)) == p.count(t)
 }
 
-func (p *partitionTracker) recordIfPost(t *testing.T, bm *BlockMiner, smsg *types.SignedMessage) (ret bool) {
+func (p *partitionTracker) recordIfPost(t *testing.T, bm *BlockMiner, msg *types.Message) (ret bool) {
 	defer func() {
 		ret = p.done(t)
 	}()
-	msg := smsg.Message
 	if !(msg.To == bm.miner.ActorAddr) {
 		return
 	}
@@ -95,7 +95,26 @@ func (bm *BlockMiner) forcePoSt(ctx context.Context, ts *types.TipSet, dlinfo *d
 		msgs, err := bm.miner.FullNode.MpoolPending(ctx, types.EmptyTSK)
 		require.NoError(bm.t, err)
 		for _, msg := range msgs {
-			tracker.recordIfPost(bm.t, bm, msg)
+			if tracker.recordIfPost(bm.t, bm, &msg.Message) {
+				fmt.Printf("found post in mempool pending\n")
+			}
+		}
+
+		// Account for included but not yet executed messages
+		for _, bc := range ts.Cids() {
+			msgs, err := bm.miner.FullNode.ChainGetBlockMessages(ctx, bc)
+			require.NoError(bm.t, err)
+			for _, msg := range msgs.BlsMessages {
+				if tracker.recordIfPost(bm.t, bm, msg) {
+					fmt.Printf("found post in message of prev tipset\n")
+				}
+
+			}
+			for _, msg := range msgs.SecpkMessages {
+				if tracker.recordIfPost(bm.t, bm, &msg.Message) {
+					fmt.Printf("found post in message of prev tipset\n")
+				}
+			}
 		}
 
 		// post not yet in mpool, wait for it
@@ -111,7 +130,8 @@ func (bm *BlockMiner) forcePoSt(ctx context.Context, ts *types.TipSet, dlinfo *d
 					bm.t.Logf("pool event: %d", evt.Type)
 					if evt.Type == api.MpoolAdd {
 						bm.t.Logf("incoming message %v", evt.Message)
-						if tracker.recordIfPost(bm.t, bm, evt.Message) {
+						if tracker.recordIfPost(bm.t, bm, &evt.Message.Message) {
+							fmt.Printf("found post in mempool evt\n")
 							break POOL
 						}
 					}
