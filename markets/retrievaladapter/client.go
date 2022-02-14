@@ -66,7 +66,6 @@ func (rcn *retrievalClientNode) GetOrCreatePaymentChannel(ctx context.Context, c
 	// TODO: respect the provided TipSetToken (a serialized TipSetKey) when
 	// querying the chain
 	ci, err := rcn.payAPI.PaychGet(ctx, clientAddress, minerAddress, clientFundsAvailable, api.PaychGetOpts{
-		Reserve:  true,
 		OffChain: rcn.forceOffChain,
 	})
 	if err != nil {

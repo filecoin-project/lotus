@@ -147,6 +147,7 @@
   * [PaychAvailableFunds](#PaychAvailableFunds)
   * [PaychAvailableFundsByFromTo](#PaychAvailableFundsByFromTo)
   * [PaychCollect](#PaychCollect)
+  * [PaychFund](#PaychFund)
   * [PaychGet](#PaychGet)
   * [PaychGetWaitReady](#PaychGetWaitReady)
   * [PaychList](#PaychList)
@@ -4512,10 +4513,35 @@ Response:
 }
 ```
 
+### PaychFund
+PaychFund gets or creates a payment channel between address pair.
+The specified amount will be added to the channel through on-chain send for future use
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234",
+  "f01234",
+  "0"
+]
+```
+
+Response:
+```json
+{
+  "Channel": "f01234",
+  "WaitSentinel": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+}
+```
+
 ### PaychGet
 PaychGet gets or creates a payment channel between address pair
- - If opts.Reserve is false, the specified amount will be added to the channel through on-chain send for future use
- - If opts.Reserve is true, the specified amount will be reserved for use. If there aren't enough non-reserved funds
+ The specified amount will be reserved for use. If there aren't enough non-reserved funds
    available, funds will be added through an on-chain message.
  - When opts.OffChain is true, this call will not cause any messages to be sent to the chain (no automatic
    channel creation/funds adding). If the operation can't be performed without sending a message an error will be
@@ -4532,7 +4558,6 @@ Inputs:
   "f01234",
   "0",
   {
-    "Reserve": true,
     "OffChain": true
   }
 ]

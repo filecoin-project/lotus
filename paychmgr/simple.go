@@ -33,14 +33,14 @@ type fundsReq struct {
 	ctx     context.Context
 	promise chan *paychFundsRes
 	amt     types.BigInt
-	opts    api.PaychGetOpts
+	opts    getOpts
 
 	lk sync.Mutex
 	// merge parent, if this req is part of a merge
 	merge *mergedFundsReq
 }
 
-func newFundsReq(ctx context.Context, amt types.BigInt, opts api.PaychGetOpts) *fundsReq {
+func newFundsReq(ctx context.Context, amt types.BigInt, opts getOpts) *fundsReq {
 	promise := make(chan *paychFundsRes, 1)
 	return &fundsReq{
 		ctx:     ctx,
@@ -251,7 +251,7 @@ func (m *mergedFundsReq) failOffChainNoChannel(from, to address.Address) (*paych
 // address and the CID of the new add funds message.
 // If an operation returns an error, subsequent waiting operations will still
 // be attempted.
-func (ca *channelAccessor) getPaych(ctx context.Context, amt types.BigInt, opts api.PaychGetOpts) (address.Address, cid.Cid, error) {
+func (ca *channelAccessor) getPaych(ctx context.Context, amt types.BigInt, opts getOpts) (address.Address, cid.Cid, error) {
 	// Add the request to add funds to a queue and wait for the result
 	freq := newFundsReq(ctx, amt, opts)
 	ca.enqueue(ctx, freq)

@@ -338,10 +338,7 @@ func (w *WrapperV1Full) clientRetrieve(ctx context.Context, order RetrievalOrder
 }
 
 func (w *WrapperV1Full) PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error) {
-	return w.FullNode.PaychGet(ctx, from, to, amt, api.PaychGetOpts{
-		Reserve:  true, // v0 always reserves
-		OffChain: false,
-	})
+	return w.FullNode.PaychFund(ctx, from, to, amt)
 }
 
 var _ FullNode = &WrapperV1Full{}

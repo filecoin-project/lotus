@@ -79,10 +79,14 @@ var paychAddFundsCmd = &cli.Command{
 
 		// Send a message to chain to create channel / add funds to existing
 		// channel
-		info, err := api.PaychGet(ctx, from, to, types.BigInt(amt), lapi.PaychGetOpts{
-			Reserve:  cctx.Bool("reserve"),
-			OffChain: false,
-		})
+		var info *lapi.ChannelInfo
+		if cctx.Bool("reserve") {
+			info, err = api.PaychGet(ctx, from, to, types.BigInt(amt), lapi.PaychGetOpts{
+				OffChain: false,
+			})
+		} else {
+			info, err = api.PaychFund(ctx, from, to, types.BigInt(amt))
+		}
 		if err != nil {
 			return err
 		}
