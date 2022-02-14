@@ -11,6 +11,10 @@ import (
 )
 
 func (s *SplitStore) reifyColdObject(c cid.Cid) {
+	if !s.isWarm() {
+		return
+	}
+
 	if isUnitaryObject(c) {
 		return
 	}
