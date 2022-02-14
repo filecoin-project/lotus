@@ -179,6 +179,11 @@ func (m *mergedFundsReq) completeAmount(avail types.BigInt, channelInfo *Channel
 			break
 		}
 
+		// don't try to fill inactive requests
+		if !r.isActive() {
+			continue
+		}
+
 		if r.amt.GreaterThan(types.BigSub(avail, used)) {
 			// requests are sorted by amount ascending, so if we hit this, there aren't any more requests we can fill
 
@@ -196,11 +201,6 @@ func (m *mergedFundsReq) completeAmount(avail types.BigInt, channelInfo *Channel
 			}
 
 			break
-		}
-
-		// don't try to fill inactive requests
-		if !r.isActive() {
-			continue
 		}
 
 		used = types.BigAdd(used, r.amt)
