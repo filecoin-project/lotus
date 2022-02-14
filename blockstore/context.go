@@ -14,8 +14,8 @@ func WithHotView(ctx context.Context) context.Context {
 	return context.WithValue(ctx, hotView, struct{}{})
 }
 
-// GetHotView returns true if the hot view option is set in the context
-func GetHotView(ctx context.Context) bool {
+// IsHotView returns true if the hot view option is set in the context
+func IsHotView(ctx context.Context) bool {
 	v := ctx.Value(hotView)
 	return v != nil
 }
