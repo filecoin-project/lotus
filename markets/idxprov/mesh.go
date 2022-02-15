@@ -23,22 +23,28 @@ type Libp2pMeshCreator struct {
 }
 
 func (mc Libp2pMeshCreator) Connect(ctx context.Context) error {
+
+	// Add the index provider's host ID to list of protected peers first, before any attempt to
+	// connect to full node.
+	idxProvID := mc.idxProvHost.ID()
+	if err := mc.fullnodeApi.NetProtectAdd(ctx, []peer.ID{idxProvID}); err != nil {
+		return fmt.Errorf("failed to call NetProtectAdd on the full node, err: %w", err)
+	}
+
 	faddrs, err := mc.fullnodeApi.NetAddrsListen(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to fetch full node listen addrs, err: %w", err)
 	}
 
-	// otherwise, connect to the full node, ask it to protect the connection and protect the connection on our end too
+	// Connect to the full node, ask it to protect the connection and protect the connection on
+	// markets end too.
 	if err := mc.idxProvHost.Connect(ctx, faddrs); err != nil {
 		return fmt.Errorf("failed to connect index provider host with the full node: %w", err)
 	}
 	mc.idxProvHost.ConnManager().Protect(faddrs.ID, "index-provider-gossipsub")
-	if err := mc.fullnodeApi.NetProtectAdd(ctx, []peer.ID{mc.idxProvHost.ID()}); err != nil {
-		return fmt.Errorf("failed to call NetProtectAdd on the full node, err: %w", err)
-	}
 
 	log.Debugw("successfully connected to full node and asked it protect indexer provider peer conn", "fullNodeInfo", faddrs.String(),
-		"idxProviderPeerId", mc.idxProvHost.ID())
+		"idxProviderPeerId", idxProvID)
 
 	return nil
 }
