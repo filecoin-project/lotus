@@ -118,7 +118,6 @@ func (r rcmgrMetrics) AllowStream(p peer.ID, dir network.Direction) {
 	} else {
 		ctx, _ = tag.New(ctx, tag.Upsert(metrics.Direction, "outbound"))
 	}
-	ctx, _ = tag.New(ctx, tag.Upsert(metrics.PeerID, p.Pretty()))
 	stats.Record(ctx, metrics.RcmgrAllowStream.M(1))
 }
 
@@ -129,19 +128,16 @@ func (r rcmgrMetrics) BlockStream(p peer.ID, dir network.Direction) {
 	} else {
 		ctx, _ = tag.New(ctx, tag.Upsert(metrics.Direction, "outbound"))
 	}
-	ctx, _ = tag.New(ctx, tag.Upsert(metrics.PeerID, p.Pretty()))
 	stats.Record(ctx, metrics.RcmgrBlockStream.M(1))
 }
 
 func (r rcmgrMetrics) AllowPeer(p peer.ID) {
 	ctx := context.Background()
-	ctx, _ = tag.New(ctx, tag.Upsert(metrics.PeerID, p.Pretty()))
 	stats.Record(ctx, metrics.RcmgrAllowPeer.M(1))
 }
 
 func (r rcmgrMetrics) BlockPeer(p peer.ID) {
 	ctx := context.Background()
-	ctx, _ = tag.New(ctx, tag.Upsert(metrics.PeerID, p.Pretty()))
 	stats.Record(ctx, metrics.RcmgrBlockPeer.M(1))
 }
 
@@ -160,7 +156,6 @@ func (r rcmgrMetrics) BlockProtocol(proto protocol.ID) {
 func (r rcmgrMetrics) BlockProtocolPeer(proto protocol.ID, p peer.ID) {
 	ctx := context.Background()
 	ctx, _ = tag.New(ctx, tag.Upsert(metrics.ProtocolID, string(proto)))
-	ctx, _ = tag.New(ctx, tag.Upsert(metrics.PeerID, p.Pretty()))
 	stats.Record(ctx, metrics.RcmgrBlockProtoPeer.M(1))
 }
 
@@ -179,7 +174,6 @@ func (r rcmgrMetrics) BlockService(svc string) {
 func (r rcmgrMetrics) BlockServicePeer(svc string, p peer.ID) {
 	ctx := context.Background()
 	ctx, _ = tag.New(ctx, tag.Upsert(metrics.ServiceID, svc))
-	ctx, _ = tag.New(ctx, tag.Upsert(metrics.PeerID, p.Pretty()))
 	stats.Record(ctx, metrics.RcmgrBlockSvcPeer.M(1))
 }
 
