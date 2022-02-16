@@ -769,6 +769,11 @@ workflows:
           target: "./itests/api_test.go"
       
       - test:
+          name: test-itest-net
+          suite: itest-net
+          target: "./itests/net_test.go"
+
+      - test:
           name: test-itest-batch_deal
           suite: itest-batch_deal
           target: "./itests/batch_deal_test.go"
