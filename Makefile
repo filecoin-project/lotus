@@ -36,6 +36,7 @@ FFI_DEPS:=$(addprefix $(FFI_PATH),$(FFI_DEPS))
 $(FFI_DEPS): build/.filecoin-install ;
 
 build/.filecoin-install: $(FFI_PATH)
+	cd $(FFI_PATH)/rust && rustup target add wasm32-unknown-unknown
 	$(MAKE) -C $(FFI_PATH) $(FFI_DEPS:$(FFI_PATH)%=%)
 	@touch $@
 
