@@ -163,21 +163,6 @@ type DealmakingConfig struct {
 
 type IndexProviderConfig struct {
 	config.Ingest
-
-	// Binding address for the libp2p host contacted by indexer nodes to sync the list of advertised
-	// multihashes. Note that when port is set to 0 a random port is generated at runtime and may be
-	// different on every restart. The format of the strings specified must conform to multiaddress;
-	// see https://multiformats.io/multiaddr/
-	ListenAddresses []string
-
-	// The address the endpoints at which the data associated to the advertised
-	// multihashes can be retrieved. If not specified, the ListenAddresses are used instead. The format
-	// of the strings specified must conform to multiaddress; see https://multiformats.io/multiaddr/
-	AnnounceAddresses []string
-
-	// The maximum number of simultaneous requests syncing the list of advertised multihashes between
-	// the indexers and the index provider.
-	MaxSimultaneousTransfers uint64
 }
 
 type RetrievalPricing struct {

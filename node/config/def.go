@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding"
+
 	"os"
 	"strconv"
 	"time"
@@ -182,13 +183,7 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		IndexProvider: IndexProviderConfig{
-			ListenAddresses: []string{
-				"/ip4/0.0.0.0/tcp/0",
-				"/ip6/::/tcp/0",
-			},
-			AnnounceAddresses: []string{},
-
-			MaxSimultaneousTransfers: DefaultSimultaneousTransfers,
+			Ingest: ipconfig.NewIngest(),
 		},
 
 		Subsystems: MinerSubsystemConfig{
@@ -231,10 +226,6 @@ func DefaultStorageMiner() *StorageMiner {
 			GCInterval:                 Duration(1 * time.Minute),
 		},
 	}
-
-	// TODO: Remove hardcoded defaults once provider library exposes them.
-	// See: https://github.com/filecoin-project/index-provider/issues/108
-	cfg.IndexProvider.Ingest = ipconfig.NewIngest()
 
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
 	cfg.Common.API.RemoteListenAddress = "127.0.0.1:2345"
