@@ -417,7 +417,7 @@ func (ca *channelAccessor) currentAvailableFunds(ctx context.Context, channelID 
 		To:                  channelInfo.to(),
 		ConfirmedAmt:        channelInfo.Amount,
 		PendingAmt:          channelInfo.PendingAmount,
-		AvailableAmt:        channelInfo.AvailableAmount,
+		NonReservedAmt:      channelInfo.AvailableAmount,
 		PendingAvailableAmt: channelInfo.PendingAvailableAmount,
 		PendingWaitSentinel: waitSentinel,
 		QueuedAmt:           queuedAmt,

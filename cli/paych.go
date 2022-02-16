@@ -200,7 +200,7 @@ func paychStatus(writer io.Writer, avail *lapi.ChannelAvailableFunds) {
 		{"From", avail.From.String()},
 		{"To", avail.To.String()},
 		{"Confirmed Amt", fmt.Sprintf("%s", types.FIL(avail.ConfirmedAmt))},
-		{"Available Amt", fmt.Sprintf("%s", types.FIL(avail.AvailableAmt))},
+		{"Available Amt", fmt.Sprintf("%s", types.FIL(avail.NonReservedAmt))},
 		{"Voucher Redeemed Amt", fmt.Sprintf("%s", types.FIL(avail.VoucherReedeemedAmt))},
 		{"Pending Amt", fmt.Sprintf("%s", types.FIL(avail.PendingAmt))},
 		{"Pending Available Amt", fmt.Sprintf("%s", types.FIL(avail.PendingAvailableAmt))},

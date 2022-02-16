@@ -151,7 +151,7 @@ func (pm *Manager) AvailableFundsByFromTo(ctx context.Context, from address.Addr
 			To:                  to,
 			ConfirmedAmt:        types.NewInt(0),
 			PendingAmt:          types.NewInt(0),
-			AvailableAmt:        types.NewInt(0),
+			NonReservedAmt:      types.NewInt(0),
 			PendingAvailableAmt: types.NewInt(0),
 			PendingWaitSentinel: nil,
 			QueuedAmt:           types.NewInt(0),
