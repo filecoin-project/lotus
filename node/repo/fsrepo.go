@@ -61,42 +61,47 @@ type RepoType interface {
 	Config() interface{}
 }
 
+// SupportsStagingDeals is a trait for services that support staging deals
+type SupportsStagingDeals interface {
+	SupportsStagingDeals()
+}
+
 var FullNode fullNode
 
 type fullNode struct {
 }
 
-func (f fullNode) Type() string {
+func (fullNode) Type() string {
 	return "FullNode"
 }
 
-func (f fullNode) Config() interface{} {
+func (fullNode) Config() interface{} {
 	return config.DefaultFullNode()
 }
 
 var StorageMiner storageMiner
 
-type storageMiner struct {
-}
+type storageMiner struct{}
 
-func (f storageMiner) Type() string {
+func (storageMiner) SupportsStagingDeals() {}
+
+func (storageMiner) Type() string {
 	return "StorageMiner"
 }
 
-func (f storageMiner) Config() interface{} {
+func (storageMiner) Config() interface{} {
 	return config.DefaultStorageMiner()
 }
 
 var Markets markets
 
-type markets struct {
-}
+type markets struct{}
 
-func (f markets) Type() string {
+func (markets) Type() string {
 	return "Markets"
 }
 
-func (f markets) Config() interface{} {
+func (markets) Config() interface{} {
 	return config.DefaultStorageMiner()
 }
 
@@ -105,11 +110,11 @@ type worker struct {
 
 var Worker worker
 
-func (f worker) Type() string {
+func (worker) Type() string {
 	return "Worker"
 }
 
-func (f worker) Config() interface{} {
+func (worker) Config() interface{} {
 	return &struct{}{}
 }
 
@@ -118,11 +123,11 @@ var Wallet wallet
 type wallet struct {
 }
 
-func (f wallet) Type() string {
+func (wallet) Type() string {
 	return "Wallet"
 }
 
-func (f wallet) Config() interface{} {
+func (wallet) Config() interface{} {
 	return &struct{}{}
 }
 
