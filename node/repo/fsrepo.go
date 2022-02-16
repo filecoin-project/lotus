@@ -50,7 +50,7 @@ func NewRepoTypeFromString(t string) RepoType {
 	case "Worker":
 		return Worker
 	case "Wallet":
-		return WalletRepoType{}
+		return Wallet
 	default:
 		panic("unknown RepoType")
 	}
@@ -113,19 +113,17 @@ func (f worker) Config() interface{} {
 	return &struct{}{}
 }
 
-type WalletRepoType struct {
+var Wallet wallet
+
+type wallet struct {
 }
 
-func (f WalletRepoType) Type() string {
+func (f wallet) Type() string {
 	return "Wallet"
 }
 
-func (f WalletRepoType) Config() interface{} {
+func (f wallet) Config() interface{} {
 	return &struct{}{}
-}
-
-func defConfForType(t RepoType) interface{} {
-	return t.Config()
 }
 
 var log = logging.Logger("repo")
@@ -209,7 +207,7 @@ func (fsr *FsRepo) initConfig(t RepoType) error {
 		return err
 	}
 
-	comm, err := config.ConfigComment(defConfForType(t))
+	comm, err := config.ConfigComment(t.Config())
 	if err != nil {
 		return xerrors.Errorf("comment: %w", err)
 	}
@@ -450,7 +448,7 @@ func (fsr *fsLockedRepo) Config() (interface{}, error) {
 }
 
 func (fsr *fsLockedRepo) loadConfigFromDisk() (interface{}, error) {
-	return config.FromFile(fsr.configPath, defConfForType(fsr.repoType))
+	return config.FromFile(fsr.configPath, fsr.repoType.Config())
 }
 
 func (fsr *fsLockedRepo) SetConfig(c func(interface{})) error {
