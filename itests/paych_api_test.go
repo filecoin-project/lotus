@@ -51,7 +51,7 @@ func TestPaymentChannelsAPI(t *testing.T) {
 		Miner(&miner, &paymentCreator, kit.WithAllSubsystems()).
 		Start().
 		InterconnectAll()
-	bms := ens.BeginMining(blockTime)
+	bms := ens.BeginMiningMustPost(blockTime)
 	bm := bms[0]
 
 	// send some funds to register the receiver
