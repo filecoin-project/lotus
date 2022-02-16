@@ -108,7 +108,7 @@ func main() {
 		Commands: local,
 	}
 	app.Setup()
-	app.Metadata["repoType"] = repo.WorkerRepoType{}
+	app.Metadata["repoType"] = repo.Worker
 
 	if err := app.Run(os.Args); err != nil {
 		log.Warnf("%+v", err)
@@ -302,11 +302,11 @@ var runCmd = &cli.Command{
 			return err
 		}
 		if !ok {
-			if err := r.Init(repo.WorkerRepoType{}); err != nil {
+			if err := r.Init(repo.Worker); err != nil {
 				return err
 			}
 
-			lr, err := r.Lock(repo.WorkerRepoType{})
+			lr, err := r.Lock(repo.Worker)
 			if err != nil {
 				return err
 			}
@@ -351,7 +351,7 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		lr, err := r.Lock(repo.WorkerRepoType{})
+		lr, err := r.Lock(repo.Worker)
 		if err != nil {
 			return err
 		}
@@ -389,7 +389,7 @@ var runCmd = &cli.Command{
 		}
 
 		// Setup remote sector store
-		sminfo, err := lcli.GetAPIInfo(cctx, repo.StorageMinerRepoType{})
+		sminfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
 		if err != nil {
 			return xerrors.Errorf("could not get api info: %w", err)
 		}
@@ -476,7 +476,7 @@ var runCmd = &cli.Command{
 				return xerrors.Errorf("setting api endpoint: %w", err)
 			}
 
-			ainfo, err := lcli.GetAPIInfo(cctx, repo.StorageMinerRepoType{})
+			ainfo, err := lcli.GetAPIInfo(cctx, repo.StorageMiner)
 			if err != nil {
 				return xerrors.Errorf("could not get miner API info: %w", err)
 			}

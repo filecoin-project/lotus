@@ -227,12 +227,12 @@ func IsType(t repo.RepoType) func(s *Settings) bool {
 	return func(s *Settings) bool { return s.nodeType.Type() == t.Type() }
 }
 
-func isFullOrLiteNode(s *Settings) bool { return s.nodeType.Type() == repo.FullNodeRepoType{}.Type() }
+func isFullOrLiteNode(s *Settings) bool { return s.nodeType.Type() == repo.FullNode.Type() }
 func isFullNode(s *Settings) bool {
-	return s.nodeType.Type() == repo.FullNodeRepoType{}.Type() && !s.Lite
+	return s.nodeType.Type() == repo.FullNode.Type() && !s.Lite
 }
 func isLiteNode(s *Settings) bool {
-	return s.nodeType.Type() == repo.FullNodeRepoType{}.Type() && s.Lite
+	return s.nodeType.Type() == repo.FullNode.Type() && s.Lite
 }
 
 func Base() Option {
@@ -245,7 +245,7 @@ func Base() Option {
 			LibP2P,
 		),
 		ApplyIf(isFullOrLiteNode, ChainNode),
-		ApplyIf(IsType(repo.StorageMinerRepoType{}), MinerNode),
+		ApplyIf(IsType(repo.StorageMiner), MinerNode),
 	)
 }
 
@@ -318,8 +318,8 @@ func Repo(r repo.Repo) Option {
 
 			Override(new(*dtypes.APIAlg), modules.APISecret),
 
-			ApplyIf(IsType(repo.FullNodeRepoType{}), ConfigFullNode(c)),
-			ApplyIf(IsType(repo.StorageMinerRepoType{}), ConfigStorageMiner(c)),
+			ApplyIf(IsType(repo.FullNode), ConfigFullNode(c)),
+			ApplyIf(IsType(repo.StorageMiner), ConfigStorageMiner(c)),
 		)(settings)
 	}
 }

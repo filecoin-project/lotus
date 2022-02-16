@@ -44,11 +44,11 @@ const (
 func NewRepoTypeFromString(t string) RepoType {
 	switch t {
 	case "FullNode":
-		return FullNodeRepoType{}
+		return FullNode
 	case "StorageMiner":
-		return StorageMinerRepoType{}
+		return StorageMiner
 	case "Worker":
-		return WorkerRepoType{}
+		return Worker
 	case "Wallet":
 		return WalletRepoType{}
 	default:
@@ -61,47 +61,55 @@ type RepoType interface {
 	Config() interface{}
 }
 
-type FullNodeRepoType struct {
+var FullNode fullNode
+
+type fullNode struct {
 }
 
-func (f FullNodeRepoType) Type() string {
+func (f fullNode) Type() string {
 	return "FullNode"
 }
 
-func (f FullNodeRepoType) Config() interface{} {
+func (f fullNode) Config() interface{} {
 	return config.DefaultFullNode()
 }
 
-type StorageMinerRepoType struct {
+var StorageMiner storageMiner
+
+type storageMiner struct {
 }
 
-func (f StorageMinerRepoType) Type() string {
+func (f storageMiner) Type() string {
 	return "StorageMiner"
 }
 
-func (f StorageMinerRepoType) Config() interface{} {
+func (f storageMiner) Config() interface{} {
 	return config.DefaultStorageMiner()
 }
 
-type MarketsRepoType struct {
+var Markets markets
+
+type markets struct {
 }
 
-func (f MarketsRepoType) Type() string {
+func (f markets) Type() string {
 	return "Markets"
 }
 
-func (f MarketsRepoType) Config() interface{} {
+func (f markets) Config() interface{} {
 	return config.DefaultStorageMiner()
 }
 
-type WorkerRepoType struct {
+type worker struct {
 }
 
-func (f WorkerRepoType) Type() string {
+var Worker worker
+
+func (f worker) Type() string {
 	return "Worker"
 }
 
-func (f WorkerRepoType) Config() interface{} {
+func (f worker) Config() interface{} {
 	return &struct{}{}
 }
 

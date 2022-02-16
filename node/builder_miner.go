@@ -221,7 +221,7 @@ func StorageMiner(out *api.StorageMiner, subsystemsCfg config.MinerSubsystemConf
 		),
 
 		func(s *Settings) error {
-			s.nodeType = repo.StorageMinerRepoType{}
+			s.nodeType = repo.StorageMiner
 			s.enableLibp2pNode = subsystemsCfg.EnableMarkets
 			return nil
 		},

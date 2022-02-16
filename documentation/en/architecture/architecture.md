@@ -341,8 +341,8 @@ FIXME: This section needs to be clarified / corrected...I don't fully understand
 
 At the end of the `Repo()` function we see two mutually exclusive configuration calls based on the `RepoType` (`node/repo/fsrepo.go`).
 ```Go
-			ApplyIf(isType(repo.FullNodeRepoType{}), ConfigFullNode(c)),
-			ApplyIf(isType(repo.StorageMinerRepoType{}), ConfigStorageMiner(c)),
+			ApplyIf(isType(repo.FullNode), ConfigFullNode(c)),
+			ApplyIf(isType(repo.StorageMiner), ConfigStorageMiner(c)),
 ```
 As we said, the repo fully identifies the node so a repo type is also a *node* type, in this case a full node or a miner. (FIXME: What is the difference between the two, does *full* imply miner?) In this case the `daemon` command will create a `FullNode`, this is specified in the command logic itself in `main.DaemonCmd()`, the `FsRepo` created (and passed to `node.Repo()`) will be initiated with that type (see `(*FsRepo).Init(t RepoType)`).
 
@@ -352,7 +352,7 @@ FIXME: Much of this might need to be subsumed into the p2p section
 
 The `node.Online()` configuration function (`node/builder.go`) initializes components that involve connecting to,
 or interacting with, the Filecoin network. These connections are managed through the libp2p stack (FIXME link to this section when it exists).
-We discuss some of the components found in the full node type (that is, included in the `ApplyIf(isType(repo.FullNodeRepoType{}),` call).
+We discuss some of the components found in the full node type (that is, included in the `ApplyIf(isType(repo.FullNode),` call).
 
 #### Chainstore
 

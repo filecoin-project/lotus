@@ -183,7 +183,7 @@ var keyinfoImportCmd = &cli.Command{
 			return err
 		}
 
-		lkrepo, err := fsrepo.Lock(repo.FullNodeRepoType{})
+		lkrepo, err := fsrepo.Lock(repo.FullNode)
 		if err != nil {
 			return err
 		}

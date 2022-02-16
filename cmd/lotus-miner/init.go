@@ -203,12 +203,12 @@ var initCmd = &cli.Command{
 
 		log.Info("Initializing repo")
 
-		if err := r.Init(repo.StorageMinerRepoType{}); err != nil {
+		if err := r.Init(repo.StorageMiner); err != nil {
 			return err
 		}
 
 		{
-			lr, err := r.Lock(repo.StorageMinerRepoType{})
+			lr, err := r.Lock(repo.StorageMiner)
 			if err != nil {
 				return err
 			}
@@ -410,7 +410,7 @@ func findMarketDealID(ctx context.Context, api v1api.FullNode, deal market2.Deal
 }
 
 func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode, r repo.Repo, ssize abi.SectorSize, gasPrice types.BigInt) error {
-	lr, err := r.Lock(repo.StorageMinerRepoType{})
+	lr, err := r.Lock(repo.StorageMiner)
 	if err != nil {
 		return err
 	}

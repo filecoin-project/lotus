@@ -159,11 +159,11 @@ func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfi
 
 	log.Info("Initializing repo")
 
-	if err := r.Init(repo.StorageMinerRepoType{}); err != nil {
+	if err := r.Init(repo.StorageMiner); err != nil {
 		return err
 	}
 
-	lr, err := r.Lock(repo.StorageMinerRepoType{})
+	lr, err := r.Lock(repo.StorageMiner)
 	if err != nil {
 		return err
 	}
