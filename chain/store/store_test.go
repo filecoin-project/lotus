@@ -48,7 +48,7 @@ func BenchmarkGetRandomness(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	lr, err := r.Lock(repo.FullNodeRepoType{})
+	lr, err := r.Lock(repo.FullNode)
 	if err != nil {
 		b.Fatal(err)
 	}

@@ -40,7 +40,7 @@ func TestWorkerKeyChange(t *testing.T) {
 	run := func(cmd *cli.Command, args ...string) error {
 		app := cli.NewApp()
 		app.Metadata = map[string]interface{}{
-			"repoType":         repo.StorageMinerRepoType{},
+			"repoType":         repo.StorageMiner,
 			"testnode-full":    client1,
 			"testnode-storage": miner,
 		}

@@ -106,7 +106,7 @@ func main() {
 
 	app.Setup()
 	app.Metadata["traceContext"] = ctx
-	app.Metadata["repoType"] = repo.FullNodeRepoType{}
+	app.Metadata["repoType"] = repo.FullNode
 
 	lcli.RunApp(app)
 }

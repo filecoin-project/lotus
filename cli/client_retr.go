@@ -403,7 +403,7 @@ var clientRetrieveCatCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
 		}
 
-		ainfo, err := GetAPIInfo(cctx, repo.FullNodeRepoType{})
+		ainfo, err := GetAPIInfo(cctx, repo.FullNode)
 		if err != nil {
 			return xerrors.Errorf("could not get API info: %w", err)
 		}
@@ -482,7 +482,7 @@ var clientRetrieveLsCmd = &cli.Command{
 			return ShowHelp(cctx, fmt.Errorf("incorrect number of arguments"))
 		}
 
-		ainfo, err := GetAPIInfo(cctx, repo.FullNodeRepoType{})
+		ainfo, err := GetAPIInfo(cctx, repo.FullNode)
 		if err != nil {
 			return xerrors.Errorf("could not get API info: %w", err)
 		}

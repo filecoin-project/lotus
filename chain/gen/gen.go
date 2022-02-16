@@ -121,7 +121,7 @@ func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeS
 	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
 
 	mr := repo.NewMemory(nil)
-	lr, err := mr.Lock(repo.StorageMinerRepoType{})
+	lr, err := mr.Lock(repo.StorageMiner)
 	if err != nil {
 		return nil, xerrors.Errorf("taking mem-repo lock failed: %w", err)
 	}

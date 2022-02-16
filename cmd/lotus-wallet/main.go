@@ -278,7 +278,7 @@ func openRepo(cctx *cli.Context) (repo.LockedRepo, types.KeyStore, error) {
 		return nil, nil, err
 	}
 	if !ok {
-		if err := r.Init(repo.WorkerRepoType{}); err != nil {
+		if err := r.Init(repo.Worker); err != nil {
 			return nil, nil, err
 		}
 	}

@@ -38,7 +38,7 @@ func TestMinerBalanceCollateral(t *testing.T) {
 		defer cancel()
 
 		opts := kit.ConstructorOpts(
-			node.ApplyIf(node.IsType(repo.StorageMinerRepoType{}), node.Override(new(dtypes.GetSealingConfigFunc), func() (dtypes.GetSealingConfigFunc, error) {
+			node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.GetSealingConfigFunc), func() (dtypes.GetSealingConfigFunc, error) {
 				return func() (sealiface.Config, error) {
 					return sealiface.Config{
 						MaxWaitDealsSectors:       4,

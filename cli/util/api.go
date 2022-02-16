@@ -200,7 +200,7 @@ func GetCommonAPI(ctx *cli.Context) (api.CommonNet, jsonrpc.ClientCloser, error)
 	ti, ok := ctx.App.Metadata["repoType"]
 	if !ok {
 		log.Errorf("unknown repo type, are you sure you want to use GetCommonAPI?")
-		ti = repo.FullNodeRepoType{}
+		ti = repo.FullNode
 	}
 	t, ok := ti.(repo.RepoType)
 	if !ok {
@@ -232,7 +232,7 @@ func GetFullNodeAPI(ctx *cli.Context) (v0api.FullNode, jsonrpc.ClientCloser, err
 		return &v0api.WrapperV1Full{FullNode: tn.(v1api.FullNode)}, func() {}, nil
 	}
 
-	addr, headers, err := GetRawAPI(ctx, repo.FullNodeRepoType{}, "v0")
+	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -249,7 +249,7 @@ func GetFullNodeAPIV1(ctx *cli.Context) (v1api.FullNode, jsonrpc.ClientCloser, e
 		return tn.(v1api.FullNode), func() {}, nil
 	}
 
-	addr, headers, err := GetRawAPI(ctx, repo.FullNodeRepoType{}, "v1")
+	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v1")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -293,7 +293,7 @@ func GetStorageMinerAPI(ctx *cli.Context, opts ...GetStorageMinerOption) (api.St
 		return tn.(api.StorageMiner), func() {}, nil
 	}
 
-	addr, headers, err := GetRawAPI(ctx, repo.StorageMinerRepoType{}, "v0")
+	addr, headers, err := GetRawAPI(ctx, repo.StorageMiner, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -322,7 +322,7 @@ func GetStorageMinerAPI(ctx *cli.Context, opts ...GetStorageMinerOption) (api.St
 }
 
 func GetWorkerAPI(ctx *cli.Context) (api.Worker, jsonrpc.ClientCloser, error) {
-	addr, headers, err := GetRawAPI(ctx, repo.WorkerRepoType{}, "v0")
+	addr, headers, err := GetRawAPI(ctx, repo.Worker, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -340,7 +340,7 @@ func GetMarketsAPI(ctx *cli.Context) (api.StorageMiner, jsonrpc.ClientCloser, er
 		return tn.(api.StorageMiner), func() {}, nil
 	}
 
-	addr, headers, err := GetRawAPI(ctx, repo.MarketsRepoType{}, "v0")
+	addr, headers, err := GetRawAPI(ctx, repo.Markets, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -356,7 +356,7 @@ func GetMarketsAPI(ctx *cli.Context) (api.StorageMiner, jsonrpc.ClientCloser, er
 }
 
 func GetGatewayAPI(ctx *cli.Context) (api.Gateway, jsonrpc.ClientCloser, error) {
-	addr, headers, err := GetRawAPI(ctx, repo.FullNodeRepoType{}, "v1")
+	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v1")
 	if err != nil {
 		return nil, nil, err
 	}
@@ -369,7 +369,7 @@ func GetGatewayAPI(ctx *cli.Context) (api.Gateway, jsonrpc.ClientCloser, error) 
 }
 
 func GetGatewayAPIV0(ctx *cli.Context) (v0api.Gateway, jsonrpc.ClientCloser, error) {
-	addr, headers, err := GetRawAPI(ctx, repo.FullNodeRepoType{}, "v0")
+	addr, headers, err := GetRawAPI(ctx, repo.FullNode, "v0")
 	if err != nil {
 		return nil, nil, err
 	}
