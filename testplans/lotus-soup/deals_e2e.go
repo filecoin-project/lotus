@@ -208,7 +208,6 @@ func initPaymentChannel(t *testkit.TestEnvironment, ctx context.Context, cl *tes
 	t.RecordMessage("creating payment channel; from=%s, to=%s, funds=%d", cl.Wallet.Address, recv.WalletAddr, balance)
 
 	channel, err := cl.FullApi.PaychGet(ctx, cl.Wallet.Address, recv.WalletAddr, balance, api.PaychGetOpts{
-		Reserve:  true,
 		OffChain: false,
 	})
 	if err != nil {
@@ -234,7 +233,6 @@ func initPaymentChannel(t *testkit.TestEnvironment, ctx context.Context, cl *tes
 
 	t.RecordMessage("reloading paych; now it should have an address")
 	channel, err = cl.FullApi.PaychGet(ctx, cl.Wallet.Address, recv.WalletAddr, big.Zero(), api.PaychGetOpts{
-		Reserve:  true,
 		OffChain: false,
 	})
 	if err != nil {
