@@ -496,6 +496,7 @@ func testSplitStoreReification(t *testing.T, f func(context.Context, blockstore.
 }
 
 func TestSplitStoreReification(t *testing.T) {
+	EnableReification = true
 	t.Log("test reification with Has")
 	testSplitStoreReification(t, func(ctx context.Context, s blockstore.Blockstore, c cid.Cid) error {
 		_, err := s.Has(ctx, c)
