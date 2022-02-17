@@ -593,6 +593,8 @@ type NetStruct struct {
 
 		NetPeers func(p0 context.Context) ([]peer.AddrInfo, error) `perm:"read"`
 
+		NetPing func(p0 context.Context, p1 peer.ID) (time.Duration, error) `perm:"read"`
+
 		NetPubsubScores func(p0 context.Context) ([]PubsubScore, error) `perm:"read"`
 
 		NetSetLimit func(p0 context.Context, p1 string, p2 NetLimit) error `perm:"admin"`
@@ -3668,6 +3670,17 @@ func (s *NetStruct) NetPeers(p0 context.Context) ([]peer.AddrInfo, error) {
 
 func (s *NetStub) NetPeers(p0 context.Context) ([]peer.AddrInfo, error) {
 	return *new([]peer.AddrInfo), ErrNotSupported
+}
+
+func (s *NetStruct) NetPing(p0 context.Context, p1 peer.ID) (time.Duration, error) {
+	if s.Internal.NetPing == nil {
+		return *new(time.Duration), ErrNotSupported
+	}
+	return s.Internal.NetPing(p0, p1)
+}
+
+func (s *NetStub) NetPing(p0 context.Context, p1 peer.ID) (time.Duration, error) {
+	return *new(time.Duration), ErrNotSupported
 }
 
 func (s *NetStruct) NetPubsubScores(p0 context.Context) ([]PubsubScore, error) {
