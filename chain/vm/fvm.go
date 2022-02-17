@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/lotus/chain/state"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -36,13 +38,12 @@ type FvmExtern struct {
 	base    cid.Cid
 }
 
-// Similar to the one in syscalls.go used by the Lotus VM, except it never errors
+// VerifyConsensusFault is similar to the one in syscalls.go used by the Lotus VM, except it never errors
 // Errors are logged and "no fault" is returned, which is functionally what go-actors does anyway
-func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte) *ffi_cgo.ConsensusFaultWithGas {
-	ret := &ffi_cgo.ConsensusFaultWithGas{
-		// TODO: is this gonna be a problem on the receiving end? should we return address.NewIDAddress(0) instead?
-		Target: address.Undef,
-		Type:   ffi_cgo.ConsensusFaultNone,
+func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte) (*ffi_cgo.ConsensusFault, int64) {
+	totalGas := int64(0)
+	ret := &ffi_cgo.ConsensusFault{
+		Type: ffi_cgo.ConsensusFaultNone,
 	}
 
 	// Note that block syntax is not validated. Any validly signed block will be accepted pursuant to the below conditions.
@@ -56,42 +57,31 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 	var blockA, blockB types.BlockHeader
 	if decodeErr := blockA.UnmarshalCBOR(bytes.NewReader(a)); decodeErr != nil {
 		log.Info("invalid consensus fault: cannot decode first block header: %w", decodeErr)
-		return ret
+		return ret, totalGas
 	}
 
 	if decodeErr := blockB.UnmarshalCBOR(bytes.NewReader(b)); decodeErr != nil {
 		log.Info("invalid consensus fault: cannot decode second block header: %w", decodeErr)
-		return ret
+		return ret, totalGas
 	}
-
-	// Commented out from the Lotus VM code: FvmExtern only supports v14 and onwards
-	// workaround chain halt
-	//if build.IsNearUpgrade(blockA.Height, build.UpgradeOrangeHeight) {
-	//	return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
-	//}
-	//if build.IsNearUpgrade(blockB.Height, build.UpgradeOrangeHeight) {
-	//	return nil, xerrors.Errorf("consensus reporting disabled around Upgrade Orange")
-	//}
 
 	// are blocks the same?
 	if blockA.Cid().Equals(blockB.Cid()) {
 		log.Info("invalid consensus fault: submitted blocks are the same")
-		return ret
+		return ret, totalGas
 	}
 	// (1) check conditions necessary to any consensus fault
 
 	// were blocks mined by same miner?
 	if blockA.Miner != blockB.Miner {
 		log.Info("invalid consensus fault: blocks not mined by the same miner")
-		return ret
+		return ret, totalGas
 	}
-
-	ret.Target = blockA.Miner
 
 	// block a must be earlier or equal to block b, epoch wise (ie at least as early in the chain).
 	if blockB.Height < blockA.Height {
 		log.Info("invalid consensus fault: first block must not be of higher height than second")
-		return ret
+		return ret, totalGas
 	}
 
 	ret.Epoch = blockB.Height
@@ -123,9 +113,7 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 	if len(extra) > 0 {
 		if decodeErr := blockC.UnmarshalCBOR(bytes.NewReader(extra)); decodeErr != nil {
 			log.Info("invalid consensus fault: cannot decode extra: %w", decodeErr)
-			// just to match Lotus VM consensus, zero out any already-set faults
-			faultType = ffi_cgo.ConsensusFaultNone
-			return ret
+			return ret, totalGas
 		}
 
 		if types.CidArrsEqual(blockA.Parents, blockC.Parents) && blockA.Height == blockC.Height &&
@@ -137,7 +125,7 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 	// (3) return if no consensus fault by now
 	if faultType == ffi_cgo.ConsensusFaultNone {
 		log.Info("invalid consensus fault: no fault detected")
-		return ret
+		return ret, totalGas
 	}
 
 	// else
@@ -146,23 +134,24 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 	// check blocks are properly signed by their respective miner
 	// note we do not need to check extra's: it is a parent to block b
 	// which itself is signed, so it was willingly included by the miner
-	gasUsed, sigErr := x.VerifyBlockSig(ctx, &blockA)
-	ret.GasUsed += gasUsed
+	gasA, sigErr := x.VerifyBlockSig(ctx, &blockA)
+	totalGas += gasA
 	if sigErr != nil {
 		log.Info("invalid consensus fault: cannot verify first block sig: %w", sigErr)
-		return ret
+		return ret, totalGas
 	}
 
-	gasUsed, sigErr = x.VerifyBlockSig(ctx, &blockB)
-	ret.GasUsed += gasUsed
+	gas2, sigErr := x.VerifyBlockSig(ctx, &blockB)
+	totalGas += gas2
 	if sigErr != nil {
 		log.Info("invalid consensus fault: cannot verify second block sig: %w", sigErr)
-		return ret
+		return ret, totalGas
 	}
 
 	ret.Type = faultType
-
-	return ret
+	ret.Target = blockA.Miner
+	
+	return ret, totalGas
 }
 
 func (x *FvmExtern) VerifyBlockSig(ctx context.Context, blk *types.BlockHeader) (int64, error) {
@@ -175,11 +164,6 @@ func (x *FvmExtern) VerifyBlockSig(ctx context.Context, blk *types.BlockHeader) 
 }
 
 func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerId address.Address, height abi.ChainEpoch) (address.Address, int64, error) {
-	// Commented out from the Lotus VM code: FvmExtern only supports v14 and onwards
-	//if x.networkVersion >= network.Version7 && height < x.epoch-policy.ChainFinality {
-	//	return address.Undef, xerrors.Errorf("cannot get worker key (currEpoch %d, height %d)", ss.epoch, height)
-	//}
-
 	gasUsed := int64(0)
 	gasAdder := func(gc GasCharge) {
 		// technically not overflow safe, but that's fine
@@ -261,11 +245,11 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 		},
 		GasCosts: &GasOutputs{
 			// TODO: do the other optional fields eventually
-			BaseFeeBurn:        abi.TokenAmount{},
-			OverEstimationBurn: abi.TokenAmount{},
+			BaseFeeBurn:        big.Zero(),
+			OverEstimationBurn: big.Zero(),
 			MinerPenalty:       ret.MinerPenalty,
 			MinerTip:           ret.MinerTip,
-			Refund:             abi.TokenAmount{},
+			Refund:             big.Zero(),
 			GasRefund:          0,
 			GasBurned:          0,
 		},
