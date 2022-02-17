@@ -367,6 +367,7 @@ type storedSector struct {
 	store stores.SectorStorageInfo
 
 	unsealed, sealed, cache bool
+	update, updatecache     bool
 }
 
 var storageFindCmd = &cli.Command{
@@ -420,6 +421,16 @@ var storageFindCmd = &cli.Command{
 			return xerrors.Errorf("finding cache: %w", err)
 		}
 
+		us, err := nodeApi.StorageFindSector(ctx, sid, storiface.FTUpdate, 0, false)
+		if err != nil {
+			return xerrors.Errorf("finding sealed: %w", err)
+		}
+
+		uc, err := nodeApi.StorageFindSector(ctx, sid, storiface.FTUpdateCache, 0, false)
+		if err != nil {
+			return xerrors.Errorf("finding cache: %w", err)
+		}
+
 		byId := map[stores.ID]*storedSector{}
 		for _, info := range u {
 			sts, ok := byId[info.ID]
@@ -454,6 +465,28 @@ var storageFindCmd = &cli.Command{
 			}
 			sts.cache = true
 		}
+		for _, info := range us {
+			sts, ok := byId[info.ID]
+			if !ok {
+				sts = &storedSector{
+					id:    info.ID,
+					store: info,
+				}
+				byId[info.ID] = sts
+			}
+			sts.update = true
+		}
+		for _, info := range uc {
+			sts, ok := byId[info.ID]
+			if !ok {
+				sts = &storedSector{
+					id:    info.ID,
+					store: info,
+				}
+				byId[info.ID] = sts
+			}
+			sts.updatecache = true
+		}
 
 		local, err := nodeApi.StorageLocal(ctx)
 		if err != nil {
@@ -478,6 +511,12 @@ var storageFindCmd = &cli.Command{
 			}
 			if info.cache {
 				types += "Cache, "
+			}
+			if info.update {
+				types += "Update, "
+			}
+			if info.updatecache {
+				types += "UpdateCache, "
 			}
 
 			fmt.Printf("In %s (%s)\n", info.id, types[:len(types)-2])
