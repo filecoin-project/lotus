@@ -795,14 +795,17 @@ uiLoop:
 		case "find-count":
 			afmt.Print("Deals to make (1): ")
 			dealcStr, _, err := rl.ReadLine()
+			
 			if err != nil {
 				printErr(xerrors.Errorf("reading deal count: %w", err))
 				continue
 			}
 
 			dealCount, err = strconv.ParseInt(string(dealcStr), 10, 64)
+			
 			if err != nil {
-				return err
+				printErr(xerrors.Errorf("reading deal count: invalid number"))
+				continue
 			}
 
 			color.Blue(".. Picking miners")
