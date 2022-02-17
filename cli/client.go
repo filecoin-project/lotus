@@ -801,10 +801,10 @@ uiLoop:
 				continue
 			}
 
-			dealCount, err = strconv.ParseInt(string(dealcStr), 10, 64)
+			dealCount, err = strconv.ParseInt(string(dealcStr), 10, 64) 
 			
 			if err != nil {
-				printErr(xerrors.Errorf("reading deal count: invalid number"))
+				printErr(xerrors.Errorf("reading deal count: invalid number")) // TO DO : Use 1 as default value for number of deals ?
 				continue
 			}
 
