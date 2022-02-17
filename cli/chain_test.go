@@ -188,11 +188,11 @@ func TestChainGetMsg(t *testing.T) {
 	app, mockApi, buf, done := NewMockAppWithFullAPI(t, WithCategory("chain", ChainGetMsgCmd))
 	defer done()
 
-	from, err := mock.RandomActorAddress()
+	addrs, err := mock.RandomActorAddresses(12345, 2)
 	assert.NoError(t, err)
 
-	to, err := mock.RandomActorAddress()
-	assert.NoError(t, err)
+	from := addrs[0]
+	to := addrs[1]
 
 	msg := mock.UnsignedMessage(*from, *to, 0)
 
@@ -283,11 +283,11 @@ func TestInspectUsage(t *testing.T) {
 	cmd := WithCategory("chain", ChainInspectUsage)
 	ts := mock.TipSet(mock.MkBlock(nil, 0, 0))
 
-	from, err := mock.RandomActorAddress()
+	addrs, err := mock.RandomActorAddresses(12345, 2)
 	assert.NoError(t, err)
 
-	to, err := mock.RandomActorAddress()
-	assert.NoError(t, err)
+	from := addrs[0]
+	to := addrs[1]
 
 	msg := mock.UnsignedMessage(*from, *to, 0)
 	msgs := []api.Message{{Cid: msg.Cid(), Message: msg}}
@@ -321,6 +321,9 @@ func TestInspectUsage(t *testing.T) {
 		// output is plaintext, had to do string matching
 		assert.Contains(t, out, from.String())
 		assert.Contains(t, out, to.String())
+		// check for gas by sender
+		assert.Contains(t, out, "By Sender")
+		// check for gas by method
 		assert.Contains(t, out, "Send")
 	})
 }
@@ -332,13 +335,11 @@ func TestChainList(t *testing.T) {
 	blk.Height = 1
 	head := mock.TipSet(blk)
 
-	head.Height()
-
-	from, err := mock.RandomActorAddress()
+	addrs, err := mock.RandomActorAddresses(12345, 2)
 	assert.NoError(t, err)
 
-	to, err := mock.RandomActorAddress()
-	assert.NoError(t, err)
+	from := addrs[0]
+	to := addrs[1]
 
 	msg := mock.UnsignedMessage(*from, *to, 0)
 	msgs := []api.Message{{Cid: msg.Cid(), Message: msg}}
