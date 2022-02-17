@@ -278,7 +278,7 @@ var runCmd = &cli.Command{
 		if cctx.Bool("commit") {
 			taskTypes = append(taskTypes, sealtasks.TTCommit2)
 		}
-		if cctx.Bool("replicaupdate") {
+		if cctx.Bool("replica-update") {
 			taskTypes = append(taskTypes, sealtasks.TTReplicaUpdate)
 		}
 		if cctx.Bool("prove-replica-update2") {
