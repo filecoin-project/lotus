@@ -98,7 +98,7 @@ func (s *SplitStore) doReify(c cid.Cid) {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	err := s.walkObject(c, newTmpVisitor(),
+	err := s.walkObjectIncomplete(c, newTmpVisitor(),
 		func(c cid.Cid) error {
 			if isUnitaryObject(c) {
 				return errStopWalk
@@ -137,6 +137,10 @@ func (s *SplitStore) doReify(c cid.Cid) {
 
 			toreify = append(toreify, c)
 			return nil
+		},
+		func(missing cid.Cid) error {
+			log.Warnf("missing reference while reifying %s: %s", c, missing)
+			return errStopWalk
 		})
 
 	if err != nil {
