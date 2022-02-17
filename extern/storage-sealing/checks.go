@@ -214,8 +214,13 @@ func checkReplicaUpdate(ctx context.Context, maddr address.Address, si SectorInf
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("calling StateComputeDataCommitment: %w", err)}
 	}
-	if si.UpdateUnsealed == nil || !commD.Equals(*si.UpdateUnsealed) {
-		return &ErrBadRU{xerrors.Errorf("on chain CommD differs from sector: %s != %s", commD, si.CommD)}
+
+	if si.UpdateUnsealed == nil {
+		return &ErrBadRU{xerrors.New("nil UpdateUnsealed cid after replica update")}
+	}
+
+	if !commD.Equals(*si.UpdateUnsealed) {
+		return &ErrBadRU{xerrors.Errorf("calculated CommD differs from updated replica: %s != %s", commD, *si.UpdateUnsealed)}
 	}
 
 	if si.UpdateSealed == nil {
