@@ -10,7 +10,13 @@ import (
 	cid "github.com/ipfs/go-cid"
 )
 
+var EnableReification = false
+
 func (s *SplitStore) reifyColdObject(c cid.Cid) {
+	if !EnableReification {
+		return
+	}
+
 	if !s.isWarm() {
 		return
 	}
