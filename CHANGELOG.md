@@ -1,27 +1,22 @@
 # Lotus changelog
 
-# 1.14.0-rc7 / 2022-02-10
+# 1.14.0 / 2022-02-17
 
-This is the 7th release candidate for the mandatory release v1.14.0 of Lotus that introduces [Filecoin network v15, 
+This is a MANDATORY release of Lotus that introduces [Filecoin network v15, 
 codenamed the OhSnap upgrade](https://github.com/filecoin-project/community/discussions/74?sort=new#discussioncomment-1922550).
 
-The OhSnap upgrade introduces the following FIPs, delivered in [actors v7-rc1](https://github.com/filecoin-project/specs-actors/releases/tag/v7.0.0-rc1):
+The network is scheduled to upgrade to v15 on March 1st at 2022-03-01T15:00:00Z. All node operators, including storage providers, must upgrade to this release (or a later release) before that time. Storage providers must update their daemons, miners, and worker(s).
+
+The OhSnap upgrade introduces the following FIPs, delivered in [actors v7](https://github.com/filecoin-project/specs-actors/releases/tag/v7.0.0):
 - [FIP-0019 Snap Deals](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0019.md)
 - [FIP-0028 Remove Datacap from Verified clients](https://github.com/filecoin-project/FIPs/pull/226)
 
-Note:
-- This release candidate includes the [final proof params](https://proofs.filecoin.io) for Snap Deals.
-- It only sets upgrade epoch for Butterfly-SnapNet and calibnet, and it does not set the upgrade epochs for mainnet.
+It is recommended that storage providers download the new params before updating their node, miner, and workers. To do so:
 
-## Calibration Upgrade
-
-The calibnet will be upgraded to Network v15 OhSnap at epoch 682006, around 2022-02-10T19:23:00Z. 
-
-To join the network, simply build lotus by running `make calibnet`. 
-
-New proof params for Snap Deals should be downloaded upon your nodes restart. 
- - The parameters are pinged on IPFS gateway https://proofs.filecoin.io and the CIDs can be found [here](https://github.com/filecoin-project/lotus/blob/release/v1.14.0/build/proof-params/parameters.json), please let the lotus team know in #fil-lotus-dev if the params are not fetched automatically. For users in China, you can also get the proofs by setting `export IPFS_GATEWAY=https://proof-parameters.s3.cn-south-1.jdcloud-oss.com/ipfs/`
-
+- Download Lotus v1.14.0 or later
+- run `make lotus-shed`
+- run `./lotus-shed fetch-params` with the appropriate `proving-params` flag
+- Upgrade the Lotus daemon and miner **when the previous step is complete**
   
 ## New Features and Changes
 - Integrate actor v7-rc1:
