@@ -211,7 +211,7 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 
 	tok, _, err := m.Api.ChainHead(ctx.Context())
 	if err != nil {
-		log.Errorf("handleCommitting: api error, not proceeding: %+v", err)
+		log.Errorf("handleSubmitReplicaUpdateFailed: api error, not proceeding: %+v", err)
 		return nil
 	}
 
@@ -233,8 +233,19 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 			return ctx.Send(SectorDealsExpired{xerrors.Errorf("expired dealIDs in sector: %w", err)})
 		default:
 			log.Errorf("sanity check error, not proceeding: +%v", err)
-			return xerrors.Errorf("checkPieces sanity check error: %w", err)
+			return xerrors.Errorf("checkReplica sanity check error: %w", err)
 		}
+	}
+
+	// Abort upgrade for sectors that went faulty since being marked for upgrade
+	active, err := sectorActive(ctx.Context(), m.Api, m.maddr, tok, sector.SectorNumber)
+	if err != nil {
+		log.Errorf("sector active check: api error, not proceeding: %+v", err)
+		return nil
+	}
+	if !active {
+		log.Errorf("sector marked for upgrade %d no longer active, aborting upgrade", sector.SectorNumber)
+		return ctx.Send(SectorAbortUpgrade{})
 	}
 
 	if err := failedCooldown(ctx, sector); err != nil {
@@ -242,6 +253,16 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 	}
 
 	return ctx.Send(SectorRetrySubmitReplicaUpdate{})
+}
+
+func (m *Sealing) handleReleaseSectorKeyFailed(ctx statemachine.Context, sector SectorInfo) error {
+	// not much we can do, wait for a bit and try again
+
+	if err := failedCooldown(ctx, sector); err != nil {
+		return err
+	}
+
+	return ctx.Send(SectorUpdateActive{})
 }
 
 func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo) error {
@@ -478,7 +499,7 @@ func (m *Sealing) HandleRecoverDealIDs(ctx statemachine.Context, sector SectorIn
 }
 
 func (m *Sealing) handleSnapDealsRecoverDealIDs(ctx statemachine.Context, sector SectorInfo) error {
-	return m.handleRecoverDealIDsOrFailWith(ctx, sector, SectorAbortUpgrade{})
+	return m.handleRecoverDealIDsOrFailWith(ctx, sector, SectorAbortUpgrade{xerrors.New("failed recovering deal ids")})
 }
 
 func recoveryPiecesToFix(ctx context.Context, api SealingAPI, sector SectorInfo, maddr address.Address) ([]int, int, error) {

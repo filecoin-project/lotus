@@ -1,3 +1,4 @@
+//stm: #integration
 package itests
 
 import (
@@ -18,25 +19,25 @@ import (
 )
 
 func TestCCUpgrade(t *testing.T) {
+	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
+	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
+	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
+
+	//stm: @CHAIN_STATE_MINER_GET_INFO_001
+	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
+
+	//stm: @MINER_SECTOR_LIST_001
 	kit.QuietMiningLogs()
 
-	for _, height := range []abi.ChainEpoch{
-		-1,  // before
-		162, // while sealing
-		560, // after upgrade deal
-	} {
-		height := height // make linters happy by copying
-		t.Run(fmt.Sprintf("upgrade-%d", height), func(t *testing.T) {
-			runTestCCUpgrade(t, height)
-		})
-	}
+	runTestCCUpgrade(t)
 }
 
-func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) *kit.TestFullNode {
+func runTestCCUpgrade(t *testing.T) *kit.TestFullNode {
 	ctx := context.Background()
 	blockTime := 1 * time.Millisecond
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.GenesisNetworkVersion(network.Version15))
+	client, miner, ens := kit.EnsembleMinimal(t, kit.GenesisNetworkVersion(network.Version15), kit.ThroughRPC())
 	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	maddr, err := miner.ActorAddress(ctx)
@@ -80,6 +81,11 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) *kit.TestFullN
 	status, err := miner.SectorsStatus(ctx, CCUpgrade, true)
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(status.Deals))
+
+	miner.WaitSectorsProving(ctx, map[abi.SectorNumber]struct{}{
+		CCUpgrade: {},
+	})
+
 	return client
 }
 
@@ -126,7 +132,7 @@ func TestCCUpgradeAndPoSt(t *testing.T) {
 	kit.QuietMiningLogs()
 	t.Run("upgrade and then post", func(t *testing.T) {
 		ctx := context.Background()
-		n := runTestCCUpgrade(t, 100)
+		n := runTestCCUpgrade(t)
 		ts, err := n.ChainHead(ctx)
 		require.NoError(t, err)
 		start := ts.Height()

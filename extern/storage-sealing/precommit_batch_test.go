@@ -1,3 +1,4 @@
+//stm: #unit
 package sealing_test
 
 import (
@@ -38,6 +39,7 @@ var fc = config.MinerFeeConfig{
 }
 
 func TestPrecommitBatcher(t *testing.T) {
+	//stm: @CHAIN_STATE_MINER_CALCULATE_DEADLINE_001
 	t0123, err := address.NewFromString("t0123")
 	require.NoError(t, err)
 
@@ -151,6 +153,7 @@ func TestPrecommitBatcher(t *testing.T) {
 		}
 	}
 
+	//stm: @CHAIN_STATE_MINER_INFO_001, @CHAIN_STATE_NETWORK_VERSION_001
 	expectSend := func(expect []abi.SectorNumber) action {
 		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *sealing.PreCommitBatcher) promise {
 			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
@@ -171,6 +174,7 @@ func TestPrecommitBatcher(t *testing.T) {
 		}
 	}
 
+	//stm: @CHAIN_STATE_MINER_INFO_001, @CHAIN_STATE_NETWORK_VERSION_001
 	expectSendsSingle := func(expect []abi.SectorNumber) action {
 		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *sealing.PreCommitBatcher) promise {
 			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)

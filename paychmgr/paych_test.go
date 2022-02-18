@@ -1,3 +1,4 @@
+//stm: #unit
 package paychmgr
 
 import (
@@ -43,6 +44,9 @@ func TestCheckVoucherValid(t *testing.T) {
 	mock.setAccountAddress(fromAcct, from)
 	mock.setAccountAddress(toAcct, to)
 
+	//stm: @TOKEN_PAYCH_VOUCHER_VALID_001, @TOKEN_PAYCH_VOUCHER_VALID_002, @TOKEN_PAYCH_VOUCHER_VALID_003
+	//stm: @TOKEN_PAYCH_VOUCHER_VALID_004, @TOKEN_PAYCH_VOUCHER_VALID_005, @TOKEN_PAYCH_VOUCHER_VALID_006, @TOKEN_PAYCH_VOUCHER_VALID_007
+	//stm: @TOKEN_PAYCH_VOUCHER_VALID_009, @TOKEN_PAYCH_VOUCHER_VALID_010
 	tcases := []struct {
 		name          string
 		expectError   bool
@@ -242,6 +246,7 @@ func TestCreateVoucher(t *testing.T) {
 		Lane:   1,
 		Amount: voucherLane1Amt,
 	}
+	//stm: @TOKEN_PAYCH_VOUCHER_CREATE_001
 	res, err := s.mgr.CreateVoucher(ctx, s.ch, voucher)
 	require.NoError(t, err)
 	require.NotNil(t, res.Voucher)
@@ -286,6 +291,7 @@ func TestCreateVoucher(t *testing.T) {
 		Lane:   2,
 		Amount: voucherLane2Amt,
 	}
+	//stm: @TOKEN_PAYCH_VOUCHER_CREATE_004
 	res, err = s.mgr.CreateVoucher(ctx, s.ch, voucher)
 	require.NoError(t, err)
 
@@ -296,6 +302,7 @@ func TestCreateVoucher(t *testing.T) {
 }
 
 func TestAddVoucherDelta(t *testing.T) {
+	//stm: @TOKEN_PAYCH_LIST_VOUCHERS_001
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
@@ -357,6 +364,7 @@ func TestAddVoucherNextLane(t *testing.T) {
 	require.NoError(t, err)
 	require.EqualValues(t, ci.NextLane, 3)
 
+	//stm: @TOKEN_PAYCH_ALLOCATE_LANE_001
 	// Allocate a lane (should be lane 3)
 	lane, err := s.mgr.AllocateLane(ctx, s.ch)
 	require.NoError(t, err)
@@ -393,6 +401,7 @@ func TestAllocateLane(t *testing.T) {
 	// Set up a manager with a single payment channel
 	s := testSetupMgrWithChannel(t)
 
+	//stm: @TOKEN_PAYCH_ALLOCATE_LANE_001
 	// First lane should be 0
 	lane, err := s.mgr.AllocateLane(ctx, s.ch)
 	require.NoError(t, err)
@@ -447,6 +456,7 @@ func TestAllocateLaneWithExistingLaneState(t *testing.T) {
 	_, err = mgr.AddVoucherInbound(ctx, ch, sv, nil, minDelta)
 	require.NoError(t, err)
 
+	//stm: @TOKEN_PAYCH_ALLOCATE_LANE_001
 	// Allocate lane should return the next lane (lane 3)
 	lane, err := mgr.AllocateLane(ctx, ch)
 	require.NoError(t, err)
@@ -509,6 +519,7 @@ func TestAddVoucherInboundWalletKey(t *testing.T) {
 }
 
 func TestBestSpendable(t *testing.T) {
+	//stm: @TOKEN_PAYCH_LIST_VOUCHERS_001
 	ctx := context.Background()
 
 	// Set up a manager with a single payment channel
@@ -551,6 +562,7 @@ func TestBestSpendable(t *testing.T) {
 		},
 	})
 
+	//stm: @TOKEN_PAYCH_BEST_SPENDABLE_001
 	// Verify best spendable vouchers on each lane
 	vouchers, err := BestSpendableByLane(ctx, bsapi, s.ch)
 	require.NoError(t, err)
@@ -691,6 +703,7 @@ func TestSubmitVoucher(t *testing.T) {
 	err = p3.UnmarshalCBOR(bytes.NewReader(msg.Message.Params))
 	require.NoError(t, err)
 
+	//stm: @TOKEN_PAYCH_LIST_VOUCHERS_001
 	// Verify that vouchers are marked as submitted
 	vis, err := s.mgr.ListVouchers(ctx, s.ch)
 	require.NoError(t, err)

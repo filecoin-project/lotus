@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.15.0-dev
+   1.15.1-dev
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -1160,6 +1160,8 @@ COMMANDS:
    reachability  Print information about reachability from the internet
    bandwidth     Print bandwidth usage information
    block         Manage network connection gating rules
+   stat          Report resource usage for a scope
+   limit         Get or set resource limits for a scope
    help, h       Shows a list of commands or help for one command
 
 OPTIONS:
@@ -1428,6 +1430,58 @@ OPTIONS:
    
 ```
 
+### lotus-miner net stat
+```
+NAME:
+   lotus-miner net stat - Report resource usage for a scope
+
+USAGE:
+   lotus-miner net stat [command options] scope
+
+DESCRIPTION:
+   Report resource usage for a scope.
+
+  The scope can be one of the following:
+  - system        -- reports the system aggregate resource usage.
+  - transient     -- reports the transient resource usage.
+  - svc:<service> -- reports the resource usage of a specific service.
+  - proto:<proto> -- reports the resource usage of a specific protocol.
+  - peer:<peer>   -- reports the resource usage of a specific peer.
+  - all           -- reports the resource usage for all currently active scopes.
+
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner net limit
+```
+NAME:
+   lotus-miner net limit - Get or set resource limits for a scope
+
+USAGE:
+   lotus-miner net limit [command options] scope [limit]
+
+DESCRIPTION:
+   Get or set resource limits for a scope.
+
+  The scope can be one of the following:
+  - system        -- reports the system aggregate resource usage.
+  - transient     -- reports the transient resource usage.
+  - svc:<service> -- reports the resource usage of a specific service.
+  - proto:<proto> -- reports the resource usage of a specific protocol.
+  - peer:<peer>   -- reports the resource usage of a specific peer.
+
+ The limit is json-formatted, with the same structure as the limits file.
+
+
+OPTIONS:
+   --set       set the limit for a scope (default: false)
+   --help, -h  show help (default: false)
+   
+```
+
 ## lotus-miner pieces
 ```
 NAME:
@@ -1526,6 +1580,7 @@ COMMANDS:
    terminate             Terminate sector on-chain then remove (WARNING: This means losing power and collateral for the removed sector)
    remove                Forcefully remove a sector (WARNING: This means losing power and collateral for the removed sector (use 'terminate' for lower penalty))
    snap-up               Mark a committed capacity sector to be filled with deals
+   abort-upgrade         Abort the attempted (SnapDeals) upgrade of a CC sector, reverting it to as before
    mark-for-upgrade      Mark a committed capacity sector for replacement by a sector with deals
    seal                  Manually start sealing a sector (filling any unused space with junk)
    set-seal-delay        Set the time, in minutes, that a new sector waits for deals before sealing starts
@@ -1566,14 +1621,15 @@ USAGE:
    lotus-miner sectors list [command options] [arguments...]
 
 OPTIONS:
-   --show-removed, -r  show removed sectors (default: false)
-   --color, -c         use color in display output (default: depends on output being a TTY)
-   --fast, -f          don't show on-chain info for better performance (default: false)
-   --events, -e        display number of events the sector has received (default: false)
-   --seal-time         display how long it took for the sector to be sealed (default: false)
-   --states value      filter sectors by a comma-separated list of states
-   --unproven, -u      only show sectors which aren't in the 'Proving' state (default: false)
-   --help, -h          show help (default: false)
+   --show-removed, -r    show removed sectors (default: false)
+   --color, -c           use color in display output (default: depends on output being a TTY)
+   --fast, -f            don't show on-chain info for better performance (default: false)
+   --events, -e          display number of events the sector has received (default: false)
+   --initial-pledge, -p  display initial pledge (default: false)
+   --seal-time, -t       display how long it took for the sector to be sealed (default: false)
+   --states value        filter sectors by a comma-separated list of states
+   --unproven, -u        only show sectors which aren't in the 'Proving' state (default: false)
+   --help, -h            show help (default: false)
    
 ```
 
@@ -1755,6 +1811,19 @@ NAME:
 
 USAGE:
    lotus-miner sectors snap-up [command options] <sectorNum>
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner sectors abort-upgrade
+```
+NAME:
+   lotus-miner sectors abort-upgrade - Abort the attempted (SnapDeals) upgrade of a CC sector, reverting it to as before
+
+USAGE:
+   lotus-miner sectors abort-upgrade [command options] <sectorNum>
 
 OPTIONS:
    --help, -h  show help (default: false)
