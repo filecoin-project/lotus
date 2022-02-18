@@ -868,7 +868,6 @@ uiLoop:
 				}
 
 				ask = append(ask, *a)
-
 			}
 
 			// TODO: run more validation
