@@ -2,7 +2,6 @@ package stores
 
 import (
 	"encoding/json"
-	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -21,9 +20,9 @@ import (
 
 var log = logging.Logger("stores")
 
-var _ partialFileHandler = &DefaultPartialFileHandler{}
+var _ PartialFileHandler = &DefaultPartialFileHandler{}
 
-// DefaultPartialFileHandler is the default implementation of the partialFileHandler interface.
+// DefaultPartialFileHandler is the default implementation of the PartialFileHandler interface.
 // This is probably the only implementation we'll ever use because the purpose of the
 // interface to is to mock out partial file related functionality during testing.
 type DefaultPartialFileHandler struct{}
@@ -46,7 +45,7 @@ func (d *DefaultPartialFileHandler) Close(pf *partialfile.PartialFile) error {
 
 type FetchHandler struct {
 	Local     Store
-	PfHandler partialFileHandler
+	PfHandler PartialFileHandler
 }
 
 func (handler *FetchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) { // /remote/
@@ -85,7 +84,6 @@ func (handler *FetchHandler) remoteStatFs(w http.ResponseWriter, r *http.Request
 // remoteGetSector returns the sector file/tared directory byte stream for the sectorID and sector file type sent in the request.
 // returns an error if it does NOT have the required sector file/dir.
 func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Request) {
-	log.Infof("SERVE GET %s", r.URL)
 	vars := mux.Vars(r)
 
 	id, err := storiface.ParseSectorID(vars["id"])
@@ -139,17 +137,12 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 			return
 		}
 
-		rd, err := tarutil.TarDirectory(path)
-		if err != nil {
-			log.Errorf("%+v", err)
-			w.WriteHeader(500)
-			return
-		}
-
 		w.Header().Set("Content-Type", "application/x-tar")
 		w.WriteHeader(200)
-		if _, err := io.CopyBuffer(w, rd, make([]byte, CopyBuf)); err != nil {
-			log.Errorf("%+v", err)
+
+		err := tarutil.TarDirectory(path, w, make([]byte, CopyBuf))
+		if err != nil {
+			log.Errorf("send tar: %+v", err)
 			return
 		}
 	} else {
@@ -179,7 +172,7 @@ func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if err := handler.Local.Remove(r.Context(), id, ft, false); err != nil {
+	if err := handler.Local.Remove(r.Context(), id, ft, false, []ID{ID(r.FormValue("keep"))}); err != nil {
 		log.Errorf("%+v", err)
 		w.WriteHeader(500)
 		return

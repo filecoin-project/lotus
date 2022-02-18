@@ -126,7 +126,7 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	alerts, err := minerApi.LogAlerts(ctx)
 	if err != nil {
-		return xerrors.Errorf("getting alerts: %w", err)
+		fmt.Printf("ERROR: getting alerts: %s\n", err)
 	}
 
 	activeAlerts := make([]alerting.Alert, 0)
@@ -377,14 +377,18 @@ func handleMarketsInfo(ctx context.Context, nodeApi api.StorageMiner) error {
 	}
 
 	showDealStates := map[storagemarket.StorageDealStatus]struct{}{
-		storagemarket.StorageDealActive:             {},
-		storagemarket.StorageDealTransferring:       {},
-		storagemarket.StorageDealStaged:             {},
-		storagemarket.StorageDealAwaitingPreCommit:  {},
-		storagemarket.StorageDealSealing:            {},
-		storagemarket.StorageDealPublish:            {},
-		storagemarket.StorageDealCheckForAcceptance: {},
-		storagemarket.StorageDealPublishing:         {},
+		storagemarket.StorageDealActive:               {},
+		storagemarket.StorageDealAcceptWait:           {},
+		storagemarket.StorageDealReserveProviderFunds: {},
+		storagemarket.StorageDealProviderFunding:      {},
+		storagemarket.StorageDealTransferring:         {},
+		storagemarket.StorageDealValidating:           {},
+		storagemarket.StorageDealStaged:               {},
+		storagemarket.StorageDealAwaitingPreCommit:    {},
+		storagemarket.StorageDealSealing:              {},
+		storagemarket.StorageDealPublish:              {},
+		storagemarket.StorageDealCheckForAcceptance:   {},
+		storagemarket.StorageDealPublishing:           {},
 	}
 
 	var total dealStat
@@ -462,10 +466,13 @@ var stateOrder = map[sealing.SectorState]stateMeta{}
 var stateList = []stateMeta{
 	{col: 39, state: "Total"},
 	{col: color.FgGreen, state: sealing.Proving},
+	{col: color.FgGreen, state: sealing.UpdateActivating},
 
 	{col: color.FgBlue, state: sealing.Empty},
 	{col: color.FgBlue, state: sealing.WaitDeals},
 	{col: color.FgBlue, state: sealing.AddPiece},
+	{col: color.FgBlue, state: sealing.SnapDealsWaitDeals},
+	{col: color.FgBlue, state: sealing.SnapDealsAddPiece},
 
 	{col: color.FgRed, state: sealing.UndefinedSectorState},
 	{col: color.FgYellow, state: sealing.Packing},
@@ -484,6 +491,13 @@ var stateList = []stateMeta{
 	{col: color.FgYellow, state: sealing.SubmitCommitAggregate},
 	{col: color.FgYellow, state: sealing.CommitAggregateWait},
 	{col: color.FgYellow, state: sealing.FinalizeSector},
+	{col: color.FgYellow, state: sealing.SnapDealsPacking},
+	{col: color.FgYellow, state: sealing.UpdateReplica},
+	{col: color.FgYellow, state: sealing.ProveReplicaUpdate},
+	{col: color.FgYellow, state: sealing.SubmitReplicaUpdate},
+	{col: color.FgYellow, state: sealing.ReplicaUpdateWait},
+	{col: color.FgYellow, state: sealing.FinalizeReplicaUpdate},
+	{col: color.FgYellow, state: sealing.ReleaseSectorKey},
 
 	{col: color.FgCyan, state: sealing.Terminating},
 	{col: color.FgCyan, state: sealing.TerminateWait},
@@ -491,6 +505,7 @@ var stateList = []stateMeta{
 	{col: color.FgCyan, state: sealing.TerminateFailed},
 	{col: color.FgCyan, state: sealing.Removing},
 	{col: color.FgCyan, state: sealing.Removed},
+	{col: color.FgCyan, state: sealing.AbortUpgrade},
 
 	{col: color.FgRed, state: sealing.FailedUnrecoverable},
 	{col: color.FgRed, state: sealing.AddPieceFailed},
@@ -508,6 +523,10 @@ var stateList = []stateMeta{
 	{col: color.FgRed, state: sealing.RemoveFailed},
 	{col: color.FgRed, state: sealing.DealsExpired},
 	{col: color.FgRed, state: sealing.RecoverDealIDs},
+	{col: color.FgRed, state: sealing.SnapDealsAddPieceFailed},
+	{col: color.FgRed, state: sealing.SnapDealsDealsExpired},
+	{col: color.FgRed, state: sealing.ReplicaUpdateFailed},
+	{col: color.FgRed, state: sealing.ReleaseSectorKeyFailed},
 }
 
 func init() {

@@ -12,7 +12,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	types "github.com/filecoin-project/lotus/chain/types"
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -86,7 +86,7 @@ func (s *ServicesImpl) DecodeTypedParamsFromJSON(ctx context.Context, to address
 		return nil, err
 	}
 
-	methodMeta, found := stmgr.MethodsMap[act.Code][method]
+	methodMeta, found := filcns.NewActorRegistry().Methods[act.Code][method] // TODO: use remote map
 	if !found {
 		return nil, fmt.Errorf("method %d not found on actor %s", method, act.Code)
 	}

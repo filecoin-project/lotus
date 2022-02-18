@@ -14,11 +14,21 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
+	/* inline-gen template
+	   {{range .actorVersions}}
+	   	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"{{end}}
+
+	/* inline-gen start */
+
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+
+	/* inline-gen end */
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -59,7 +69,7 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, add
 		return nil, address.Undef, aerrors.Escalate(err, "unsupported network version")
 	}
 
-	act, aerr := makeActor(av, addr)
+	act, aerr := makeAccountActor(av, addr)
 	if aerr != nil {
 		return nil, address.Undef, aerr
 	}
@@ -86,7 +96,7 @@ func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, add
 	return act, addrID, nil
 }
 
-func makeActor(ver actors.Version, addr address.Address) (*types.Actor, aerrors.ActorError) {
+func makeAccountActor(ver actors.Version, addr address.Address) (*types.Actor, aerrors.ActorError) {
 	switch addr.Protocol() {
 	case address.BLS, address.SECP256K1:
 		return newAccountActor(ver), nil
@@ -103,6 +113,12 @@ func newAccountActor(ver actors.Version) *types.Actor {
 	// TODO: ActorsUpgrade use a global actor registry?
 	var code cid.Cid
 	switch ver {
+	/* inline-gen template
+	   {{range .actorVersions}}
+		case actors.Version{{.}}:
+			code = builtin{{.}}.AccountActorCodeID{{end}}
+	/* inline-gen start */
+
 	case actors.Version0:
 		code = builtin0.AccountActorCodeID
 	case actors.Version2:
@@ -113,6 +129,11 @@ func newAccountActor(ver actors.Version) *types.Actor {
 		code = builtin4.AccountActorCodeID
 	case actors.Version5:
 		code = builtin5.AccountActorCodeID
+	case actors.Version6:
+		code = builtin6.AccountActorCodeID
+	case actors.Version7:
+		code = builtin7.AccountActorCodeID
+		/* inline-gen end */
 	default:
 		panic("unsupported actors version")
 	}

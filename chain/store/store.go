@@ -87,6 +87,8 @@ type HeadChangeEvt struct {
 	ApplyCount  int
 }
 
+type WeightFunc func(ctx context.Context, stateBs bstore.Blockstore, ts *types.TipSet) (types.BigInt, error)
+
 // ChainStore is the main point of access to chain data.
 //
 // Raw chain data is stored in the Blockstore, with relevant markers (genesis,
@@ -100,6 +102,8 @@ type ChainStore struct {
 	chainBlockstore bstore.Blockstore
 	stateBlockstore bstore.Blockstore
 	metadataDs      dstore.Batching
+
+	weight WeightFunc
 
 	chainLocalBlockstore bstore.Blockstore
 
@@ -128,7 +132,7 @@ type ChainStore struct {
 	wg       sync.WaitGroup
 }
 
-func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, j journal.Journal) *ChainStore {
+func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dstore.Batching, weight WeightFunc, j journal.Journal) *ChainStore {
 	c, _ := lru.NewARC(DefaultMsgMetaCacheSize)
 	tsc, _ := lru.NewARC(DefaultTipSetCacheSize)
 	if j == nil {
@@ -143,6 +147,7 @@ func NewChainStore(chainBs bstore.Blockstore, stateBs bstore.Blockstore, ds dsto
 		chainBlockstore:      chainBs,
 		stateBlockstore:      stateBs,
 		chainLocalBlockstore: localbs,
+		weight:               weight,
 		metadataDs:           ds,
 		bestTips:             pubsub.New(64),
 		tipsets:              make(map[abi.ChainEpoch][]cid.Cid),
@@ -202,17 +207,17 @@ func (cs *ChainStore) Close() error {
 	return nil
 }
 
-func (cs *ChainStore) Load() error {
-	if err := cs.loadHead(); err != nil {
+func (cs *ChainStore) Load(ctx context.Context) error {
+	if err := cs.loadHead(ctx); err != nil {
 		return err
 	}
-	if err := cs.loadCheckpoint(); err != nil {
+	if err := cs.loadCheckpoint(ctx); err != nil {
 		return err
 	}
 	return nil
 }
-func (cs *ChainStore) loadHead() error {
-	head, err := cs.metadataDs.Get(chainHeadKey)
+func (cs *ChainStore) loadHead(ctx context.Context) error {
+	head, err := cs.metadataDs.Get(ctx, chainHeadKey)
 	if err == dstore.ErrNotFound {
 		log.Warn("no previous chain state found")
 		return nil
@@ -226,7 +231,7 @@ func (cs *ChainStore) loadHead() error {
 		return xerrors.Errorf("failed to unmarshal stored chain head: %w", err)
 	}
 
-	ts, err := cs.LoadTipSet(types.NewTipSetKey(tscids...))
+	ts, err := cs.LoadTipSet(ctx, types.NewTipSetKey(tscids...))
 	if err != nil {
 		return xerrors.Errorf("loading tipset: %w", err)
 	}
@@ -236,8 +241,8 @@ func (cs *ChainStore) loadHead() error {
 	return nil
 }
 
-func (cs *ChainStore) loadCheckpoint() error {
-	tskBytes, err := cs.metadataDs.Get(checkpointKey)
+func (cs *ChainStore) loadCheckpoint(ctx context.Context) error {
+	tskBytes, err := cs.metadataDs.Get(ctx, checkpointKey)
 	if err == dstore.ErrNotFound {
 		return nil
 	}
@@ -251,7 +256,7 @@ func (cs *ChainStore) loadCheckpoint() error {
 		return err
 	}
 
-	ts, err := cs.LoadTipSet(tsk)
+	ts, err := cs.LoadTipSet(ctx, tsk)
 	if err != nil {
 		return xerrors.Errorf("loading tipset: %w", err)
 	}
@@ -261,13 +266,13 @@ func (cs *ChainStore) loadCheckpoint() error {
 	return nil
 }
 
-func (cs *ChainStore) writeHead(ts *types.TipSet) error {
+func (cs *ChainStore) writeHead(ctx context.Context, ts *types.TipSet) error {
 	data, err := json.Marshal(ts.Cids())
 	if err != nil {
 		return xerrors.Errorf("failed to marshal tipset: %w", err)
 	}
 
-	if err := cs.metadataDs.Put(chainHeadKey, data); err != nil {
+	if err := cs.metadataDs.Put(ctx, chainHeadKey, data); err != nil {
 		return xerrors.Errorf("failed to write chain head to datastore: %w", err)
 	}
 
@@ -336,13 +341,13 @@ func (cs *ChainStore) SubscribeHeadChanges(f ReorgNotifee) {
 func (cs *ChainStore) IsBlockValidated(ctx context.Context, blkid cid.Cid) (bool, error) {
 	key := blockValidationCacheKeyPrefix.Instance(blkid.String())
 
-	return cs.metadataDs.Has(key)
+	return cs.metadataDs.Has(ctx, key)
 }
 
 func (cs *ChainStore) MarkBlockAsValidated(ctx context.Context, blkid cid.Cid) error {
 	key := blockValidationCacheKeyPrefix.Instance(blkid.String())
 
-	if err := cs.metadataDs.Put(key, []byte{0}); err != nil {
+	if err := cs.metadataDs.Put(ctx, key, []byte{0}); err != nil {
 		return xerrors.Errorf("cache block validation: %w", err)
 	}
 
@@ -352,34 +357,34 @@ func (cs *ChainStore) MarkBlockAsValidated(ctx context.Context, blkid cid.Cid) e
 func (cs *ChainStore) UnmarkBlockAsValidated(ctx context.Context, blkid cid.Cid) error {
 	key := blockValidationCacheKeyPrefix.Instance(blkid.String())
 
-	if err := cs.metadataDs.Delete(key); err != nil {
+	if err := cs.metadataDs.Delete(ctx, key); err != nil {
 		return xerrors.Errorf("removing from valid block cache: %w", err)
 	}
 
 	return nil
 }
 
-func (cs *ChainStore) SetGenesis(b *types.BlockHeader) error {
+func (cs *ChainStore) SetGenesis(ctx context.Context, b *types.BlockHeader) error {
 	ts, err := types.NewTipSet([]*types.BlockHeader{b})
 	if err != nil {
 		return err
 	}
 
-	if err := cs.PutTipSet(context.TODO(), ts); err != nil {
+	if err := cs.PutTipSet(ctx, ts); err != nil {
 		return err
 	}
 
-	return cs.metadataDs.Put(dstore.NewKey("0"), b.Cid().Bytes())
+	return cs.metadataDs.Put(ctx, dstore.NewKey("0"), b.Cid().Bytes())
 }
 
 func (cs *ChainStore) PutTipSet(ctx context.Context, ts *types.TipSet) error {
 	for _, b := range ts.Blocks() {
-		if err := cs.PersistBlockHeaders(b); err != nil {
+		if err := cs.PersistBlockHeaders(ctx, b); err != nil {
 			return err
 		}
 	}
 
-	expanded, err := cs.expandTipset(ts.Blocks()[0])
+	expanded, err := cs.expandTipset(ctx, ts.Blocks()[0])
 	if err != nil {
 		return xerrors.Errorf("errored while expanding tipset: %w", err)
 	}
@@ -410,21 +415,27 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipS
 	}
 
 	defer cs.heaviestLk.Unlock()
-	w, err := cs.Weight(ctx, ts)
+	w, err := cs.weight(ctx, cs.StateBlockstore(), ts)
 	if err != nil {
 		return err
 	}
-	heaviestW, err := cs.Weight(ctx, cs.heaviest)
+	heaviestW, err := cs.weight(ctx, cs.StateBlockstore(), cs.heaviest)
 	if err != nil {
 		return err
 	}
 
-	if w.GreaterThan(heaviestW) {
+	heavier := w.GreaterThan(heaviestW)
+	if w.Equals(heaviestW) && !ts.Equals(cs.heaviest) {
+		log.Errorw("weight draw", "currTs", cs.heaviest, "ts", ts)
+		heavier = breakWeightTie(ts, cs.heaviest)
+	}
+
+	if heavier {
 		// TODO: don't do this for initial sync. Now that we don't have a
 		// difference between 'bootstrap sync' and 'caught up' sync, we need
 		// some other heuristic.
 
-		exceeds, err := cs.exceedsForkLength(cs.heaviest, ts)
+		exceeds, err := cs.exceedsForkLength(ctx, cs.heaviest, ts)
 		if err != nil {
 			return err
 		}
@@ -433,9 +444,8 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipS
 		}
 
 		return cs.takeHeaviestTipSet(ctx, ts)
-	} else if w.Equals(heaviestW) && !ts.Equals(cs.heaviest) {
-		log.Errorw("weight draw", "currTs", cs.heaviest, "ts", ts)
 	}
+
 	return nil
 }
 
@@ -448,7 +458,7 @@ func (cs *ChainStore) MaybeTakeHeavierTipSet(ctx context.Context, ts *types.TipS
 // FIXME: We may want to replace some of the logic in `syncFork()` with this.
 //  `syncFork()` counts the length on both sides of the fork at the moment (we
 //  need to settle on that) but here we just enforce it on the `synced` side.
-func (cs *ChainStore) exceedsForkLength(synced, external *types.TipSet) (bool, error) {
+func (cs *ChainStore) exceedsForkLength(ctx context.Context, synced, external *types.TipSet) (bool, error) {
 	if synced == nil || external == nil {
 		// FIXME: If `cs.heaviest` is nil we should just bypass the entire
 		//  `MaybeTakeHeavierTipSet` logic (instead of each of the called
@@ -472,7 +482,7 @@ func (cs *ChainStore) exceedsForkLength(synced, external *types.TipSet) (bool, e
 				// length).
 				return true, nil
 			}
-			external, err = cs.LoadTipSet(external.Parents())
+			external, err = cs.LoadTipSet(ctx, external.Parents())
 			if err != nil {
 				return false, xerrors.Errorf("failed to load parent tipset in external chain: %w", err)
 			}
@@ -495,7 +505,7 @@ func (cs *ChainStore) exceedsForkLength(synced, external *types.TipSet) (bool, e
 			// there is no common ancestor.
 			return true, nil
 		}
-		synced, err = cs.LoadTipSet(synced.Parents())
+		synced, err = cs.LoadTipSet(ctx, synced.Parents())
 		if err != nil {
 			return false, xerrors.Errorf("failed to load parent tipset in synced chain: %w", err)
 		}
@@ -511,17 +521,17 @@ func (cs *ChainStore) exceedsForkLength(synced, external *types.TipSet) (bool, e
 // CAUTION: Use it only for testing, such as to teleport the chain to a
 // particular tipset to carry out a benchmark, verification, etc. on a chain
 // segment.
-func (cs *ChainStore) ForceHeadSilent(_ context.Context, ts *types.TipSet) error {
+func (cs *ChainStore) ForceHeadSilent(ctx context.Context, ts *types.TipSet) error {
 	log.Warnf("(!!!) forcing a new head silently; new head: %s", ts)
 
 	cs.heaviestLk.Lock()
 	defer cs.heaviestLk.Unlock()
-	if err := cs.removeCheckpoint(); err != nil {
+	if err := cs.removeCheckpoint(ctx); err != nil {
 		return err
 	}
 	cs.heaviest = ts
 
-	err := cs.writeHead(ts)
+	err := cs.writeHead(ctx, ts)
 	if err != nil {
 		err = xerrors.Errorf("failed to write chain head: %s", err)
 	}
@@ -551,7 +561,7 @@ func (cs *ChainStore) reorgWorker(ctx context.Context, initialNotifees []ReorgNo
 				notifees = append(notifees, n)
 
 			case r := <-out:
-				revert, apply, err := cs.ReorgOps(r.old, r.new)
+				revert, apply, err := cs.ReorgOps(ctx, r.old, r.new)
 				if err != nil {
 					log.Error("computing reorg ops failed: ", err)
 					continue
@@ -636,7 +646,7 @@ func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) 
 	log.Infof("New heaviest tipset! %s (height=%d)", ts.Cids(), ts.Height())
 	cs.heaviest = ts
 
-	if err := cs.writeHead(ts); err != nil {
+	if err := cs.writeHead(ctx, ts); err != nil {
 		log.Errorf("failed to write chain head: %s", err)
 		return nil
 	}
@@ -646,14 +656,14 @@ func (cs *ChainStore) takeHeaviestTipSet(ctx context.Context, ts *types.TipSet) 
 
 // FlushValidationCache removes all results of block validation from the
 // chain metadata store. Usually the first step after a new chain import.
-func (cs *ChainStore) FlushValidationCache() error {
-	return FlushValidationCache(cs.metadataDs)
+func (cs *ChainStore) FlushValidationCache(ctx context.Context) error {
+	return FlushValidationCache(ctx, cs.metadataDs)
 }
 
-func FlushValidationCache(ds dstore.Batching) error {
+func FlushValidationCache(ctx context.Context, ds dstore.Batching) error {
 	log.Infof("clearing block validation cache...")
 
-	dsWalk, err := ds.Query(query.Query{
+	dsWalk, err := ds.Query(ctx, query.Query{
 		// Potential TODO: the validation cache is not a namespace on its own
 		// but is rather constructed as prefixed-key `foo:bar` via .Instance(), which
 		// in turn does not work with the filter, which can match only on `foo/bar`
@@ -673,7 +683,7 @@ func FlushValidationCache(ds dstore.Batching) error {
 		return xerrors.Errorf("failed to run key listing query: %w", err)
 	}
 
-	batch, err := ds.Batch()
+	batch, err := ds.Batch(ctx)
 	if err != nil {
 		return xerrors.Errorf("failed to open a DS batch: %w", err)
 	}
@@ -682,11 +692,11 @@ func FlushValidationCache(ds dstore.Batching) error {
 	for _, k := range allKeys {
 		if strings.HasPrefix(k.Key, blockValidationCacheKeyPrefix.String()) {
 			delCnt++
-			batch.Delete(dstore.RawKey(k.Key)) // nolint:errcheck
+			batch.Delete(ctx, dstore.RawKey(k.Key)) // nolint:errcheck
 		}
 	}
 
-	if err := batch.Commit(); err != nil {
+	if err := batch.Commit(ctx); err != nil {
 		return xerrors.Errorf("failed to commit the DS batch: %w", err)
 	}
 
@@ -699,24 +709,24 @@ func FlushValidationCache(ds dstore.Batching) error {
 // This should only be called if something is broken and needs fixing.
 //
 // This function will bypass and remove any checkpoints.
-func (cs *ChainStore) SetHead(ts *types.TipSet) error {
+func (cs *ChainStore) SetHead(ctx context.Context, ts *types.TipSet) error {
 	cs.heaviestLk.Lock()
 	defer cs.heaviestLk.Unlock()
-	if err := cs.removeCheckpoint(); err != nil {
+	if err := cs.removeCheckpoint(ctx); err != nil {
 		return err
 	}
 	return cs.takeHeaviestTipSet(context.TODO(), ts)
 }
 
 // RemoveCheckpoint removes the current checkpoint.
-func (cs *ChainStore) RemoveCheckpoint() error {
+func (cs *ChainStore) RemoveCheckpoint(ctx context.Context) error {
 	cs.heaviestLk.Lock()
 	defer cs.heaviestLk.Unlock()
-	return cs.removeCheckpoint()
+	return cs.removeCheckpoint(ctx)
 }
 
-func (cs *ChainStore) removeCheckpoint() error {
-	if err := cs.metadataDs.Delete(checkpointKey); err != nil {
+func (cs *ChainStore) removeCheckpoint(ctx context.Context) error {
+	if err := cs.metadataDs.Delete(ctx, checkpointKey); err != nil {
 		return err
 	}
 	cs.checkpoint = nil
@@ -726,7 +736,7 @@ func (cs *ChainStore) removeCheckpoint() error {
 // SetCheckpoint will set a checkpoint past which the chainstore will not allow forks.
 //
 // NOTE: Checkpoints cannot be set beyond ForkLengthThreshold epochs in the past.
-func (cs *ChainStore) SetCheckpoint(ts *types.TipSet) error {
+func (cs *ChainStore) SetCheckpoint(ctx context.Context, ts *types.TipSet) error {
 	tskBytes, err := json.Marshal(ts.Key())
 	if err != nil {
 		return err
@@ -745,7 +755,7 @@ func (cs *ChainStore) SetCheckpoint(ts *types.TipSet) error {
 	}
 
 	if !ts.Equals(cs.heaviest) {
-		anc, err := cs.IsAncestorOf(ts, cs.heaviest)
+		anc, err := cs.IsAncestorOf(ctx, ts, cs.heaviest)
 		if err != nil {
 			return xerrors.Errorf("cannot determine whether checkpoint tipset is in main-chain: %w", err)
 		}
@@ -754,7 +764,7 @@ func (cs *ChainStore) SetCheckpoint(ts *types.TipSet) error {
 			return xerrors.Errorf("cannot mark tipset as checkpoint, since it isn't in the main-chain: %w", err)
 		}
 	}
-	err = cs.metadataDs.Put(checkpointKey, tskBytes)
+	err = cs.metadataDs.Put(ctx, checkpointKey, tskBytes)
 	if err != nil {
 		return err
 	}
@@ -771,9 +781,9 @@ func (cs *ChainStore) GetCheckpoint() *types.TipSet {
 }
 
 // Contains returns whether our BlockStore has all blocks in the supplied TipSet.
-func (cs *ChainStore) Contains(ts *types.TipSet) (bool, error) {
+func (cs *ChainStore) Contains(ctx context.Context, ts *types.TipSet) (bool, error) {
 	for _, c := range ts.Cids() {
-		has, err := cs.chainBlockstore.Has(c)
+		has, err := cs.chainBlockstore.Has(ctx, c)
 		if err != nil {
 			return false, err
 		}
@@ -787,16 +797,16 @@ func (cs *ChainStore) Contains(ts *types.TipSet) (bool, error) {
 
 // GetBlock fetches a BlockHeader with the supplied CID. It returns
 // blockstore.ErrNotFound if the block was not found in the BlockStore.
-func (cs *ChainStore) GetBlock(c cid.Cid) (*types.BlockHeader, error) {
+func (cs *ChainStore) GetBlock(ctx context.Context, c cid.Cid) (*types.BlockHeader, error) {
 	var blk *types.BlockHeader
-	err := cs.chainLocalBlockstore.View(c, func(b []byte) (err error) {
+	err := cs.chainLocalBlockstore.View(ctx, c, func(b []byte) (err error) {
 		blk, err = types.DecodeBlock(b)
 		return err
 	})
 	return blk, err
 }
 
-func (cs *ChainStore) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
+func (cs *ChainStore) LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
 	v, ok := cs.tsCache.Get(tsk)
 	if ok {
 		return v.(*types.TipSet), nil
@@ -809,7 +819,7 @@ func (cs *ChainStore) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
 	for i, c := range cids {
 		i, c := i, c
 		eg.Go(func() error {
-			b, err := cs.GetBlock(c)
+			b, err := cs.GetBlock(ctx, c)
 			if err != nil {
 				return xerrors.Errorf("get block %s: %w", c, err)
 			}
@@ -834,14 +844,14 @@ func (cs *ChainStore) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
 }
 
 // IsAncestorOf returns true if 'a' is an ancestor of 'b'
-func (cs *ChainStore) IsAncestorOf(a, b *types.TipSet) (bool, error) {
+func (cs *ChainStore) IsAncestorOf(ctx context.Context, a, b *types.TipSet) (bool, error) {
 	if b.Height() <= a.Height() {
 		return false, nil
 	}
 
 	cur := b
 	for !a.Equals(cur) && cur.Height() > a.Height() {
-		next, err := cs.LoadTipSet(cur.Parents())
+		next, err := cs.LoadTipSet(ctx, cur.Parents())
 		if err != nil {
 			return false, err
 		}
@@ -852,13 +862,13 @@ func (cs *ChainStore) IsAncestorOf(a, b *types.TipSet) (bool, error) {
 	return cur.Equals(a), nil
 }
 
-func (cs *ChainStore) NearestCommonAncestor(a, b *types.TipSet) (*types.TipSet, error) {
-	l, _, err := cs.ReorgOps(a, b)
+func (cs *ChainStore) NearestCommonAncestor(ctx context.Context, a, b *types.TipSet) (*types.TipSet, error) {
+	l, _, err := cs.ReorgOps(ctx, a, b)
 	if err != nil {
 		return nil, err
 	}
 
-	return cs.LoadTipSet(l[len(l)-1].Parents())
+	return cs.LoadTipSet(ctx, l[len(l)-1].Parents())
 }
 
 // ReorgOps takes two tipsets (which can be at different heights), and walks
@@ -869,11 +879,11 @@ func (cs *ChainStore) NearestCommonAncestor(a, b *types.TipSet) (*types.TipSet, 
 // ancestor.
 //
 // If an error happens along the way, we return the error with nil slices.
-func (cs *ChainStore) ReorgOps(a, b *types.TipSet) ([]*types.TipSet, []*types.TipSet, error) {
-	return ReorgOps(cs.LoadTipSet, a, b)
+func (cs *ChainStore) ReorgOps(ctx context.Context, a, b *types.TipSet) ([]*types.TipSet, []*types.TipSet, error) {
+	return ReorgOps(ctx, cs.LoadTipSet, a, b)
 }
 
-func ReorgOps(lts func(types.TipSetKey) (*types.TipSet, error), a, b *types.TipSet) ([]*types.TipSet, []*types.TipSet, error) {
+func ReorgOps(ctx context.Context, lts func(ctx context.Context, _ types.TipSetKey) (*types.TipSet, error), a, b *types.TipSet) ([]*types.TipSet, []*types.TipSet, error) {
 	left := a
 	right := b
 
@@ -881,7 +891,7 @@ func ReorgOps(lts func(types.TipSetKey) (*types.TipSet, error), a, b *types.TipS
 	for !left.Equals(right) {
 		if left.Height() > right.Height() {
 			leftChain = append(leftChain, left)
-			par, err := lts(left.Parents())
+			par, err := lts(ctx, left.Parents())
 			if err != nil {
 				return nil, nil, err
 			}
@@ -889,7 +899,7 @@ func ReorgOps(lts func(types.TipSetKey) (*types.TipSet, error), a, b *types.TipS
 			left = par
 		} else {
 			rightChain = append(rightChain, right)
-			par, err := lts(right.Parents())
+			par, err := lts(ctx, right.Parents())
 			if err != nil {
 				log.Infof("failed to fetch right.Parents: %s", err)
 				return nil, nil, err
@@ -911,7 +921,7 @@ func (cs *ChainStore) GetHeaviestTipSet() (ts *types.TipSet) {
 	return
 }
 
-func (cs *ChainStore) AddToTipSetTracker(b *types.BlockHeader) error {
+func (cs *ChainStore) AddToTipSetTracker(ctx context.Context, b *types.BlockHeader) error {
 	cs.tstLk.Lock()
 	defer cs.tstLk.Unlock()
 
@@ -921,7 +931,7 @@ func (cs *ChainStore) AddToTipSetTracker(b *types.BlockHeader) error {
 			log.Debug("tried to add block to tipset tracker that was already there")
 			return nil
 		}
-		h, err := cs.GetBlock(oc)
+		h, err := cs.GetBlock(ctx, oc)
 		if err == nil && h != nil {
 			if h.Miner == b.Miner {
 				log.Warnf("Have multiple blocks from miner %s at height %d in our tipset cache %s-%s", b.Miner, b.Height, b.Cid(), h.Cid())
@@ -950,7 +960,7 @@ func (cs *ChainStore) AddToTipSetTracker(b *types.BlockHeader) error {
 	return nil
 }
 
-func (cs *ChainStore) PersistBlockHeaders(b ...*types.BlockHeader) error {
+func (cs *ChainStore) PersistBlockHeaders(ctx context.Context, b ...*types.BlockHeader) error {
 	sbs := make([]block.Block, len(b))
 
 	for i, header := range b {
@@ -972,13 +982,13 @@ func (cs *ChainStore) PersistBlockHeaders(b ...*types.BlockHeader) error {
 			end = len(b)
 		}
 
-		err = multierr.Append(err, cs.chainLocalBlockstore.PutMany(sbs[start:end]))
+		err = multierr.Append(err, cs.chainLocalBlockstore.PutMany(ctx, sbs[start:end]))
 	}
 
 	return err
 }
 
-func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) {
+func (cs *ChainStore) expandTipset(ctx context.Context, b *types.BlockHeader) (*types.TipSet, error) {
 	// Hold lock for the whole function for now, if it becomes a problem we can
 	// fix pretty easily
 	cs.tstLk.Lock()
@@ -997,7 +1007,7 @@ func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) 
 			continue
 		}
 
-		h, err := cs.GetBlock(bhc)
+		h, err := cs.GetBlock(ctx, bhc)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to load block (%s) for tipset expansion: %w", bhc, err)
 		}
@@ -1019,11 +1029,11 @@ func (cs *ChainStore) expandTipset(b *types.BlockHeader) (*types.TipSet, error) 
 }
 
 func (cs *ChainStore) AddBlock(ctx context.Context, b *types.BlockHeader) error {
-	if err := cs.PersistBlockHeaders(b); err != nil {
+	if err := cs.PersistBlockHeaders(ctx, b); err != nil {
 		return err
 	}
 
-	ts, err := cs.expandTipset(b)
+	ts, err := cs.expandTipset(ctx, b)
 	if err != nil {
 		return err
 	}
@@ -1035,8 +1045,8 @@ func (cs *ChainStore) AddBlock(ctx context.Context, b *types.BlockHeader) error 
 	return nil
 }
 
-func (cs *ChainStore) GetGenesis() (*types.BlockHeader, error) {
-	data, err := cs.metadataDs.Get(dstore.NewKey("0"))
+func (cs *ChainStore) GetGenesis(ctx context.Context) (*types.BlockHeader, error) {
+	data, err := cs.metadataDs.Get(ctx, dstore.NewKey("0"))
 	if err != nil {
 		return nil, err
 	}
@@ -1046,22 +1056,22 @@ func (cs *ChainStore) GetGenesis() (*types.BlockHeader, error) {
 		return nil, err
 	}
 
-	return cs.GetBlock(c)
+	return cs.GetBlock(ctx, c)
 }
 
 // GetPath returns the sequence of atomic head change operations that
 // need to be applied in order to switch the head of the chain from the `from`
 // tipset to the `to` tipset.
 func (cs *ChainStore) GetPath(ctx context.Context, from types.TipSetKey, to types.TipSetKey) ([]*api.HeadChange, error) {
-	fts, err := cs.LoadTipSet(from)
+	fts, err := cs.LoadTipSet(ctx, from)
 	if err != nil {
 		return nil, xerrors.Errorf("loading from tipset %s: %w", from, err)
 	}
-	tts, err := cs.LoadTipSet(to)
+	tts, err := cs.LoadTipSet(ctx, to)
 	if err != nil {
 		return nil, xerrors.Errorf("loading to tipset %s: %w", to, err)
 	}
-	revert, apply, err := cs.ReorgOps(fts, tts)
+	revert, apply, err := cs.ReorgOps(ctx, fts, tts)
 	if err != nil {
 		return nil, xerrors.Errorf("error getting tipset branches: %w", err)
 	}
@@ -1098,11 +1108,11 @@ func (cs *ChainStore) ActorStore(ctx context.Context) adt.Store {
 	return ActorStore(ctx, cs.stateBlockstore)
 }
 
-func (cs *ChainStore) TryFillTipSet(ts *types.TipSet) (*FullTipSet, error) {
+func (cs *ChainStore) TryFillTipSet(ctx context.Context, ts *types.TipSet) (*FullTipSet, error) {
 	var out []*types.FullBlock
 
 	for _, b := range ts.Blocks() {
-		bmsgs, smsgs, err := cs.MessagesForBlock(b)
+		bmsgs, smsgs, err := cs.MessagesForBlock(ctx, b)
 		if err != nil {
 			// TODO: check for 'not found' errors, and only return nil if this
 			// is actually a 'not found' error
@@ -1144,7 +1154,7 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 
 	if lbts.Height() < h {
 		log.Warnf("chain index returned the wrong tipset at height %d, using slow retrieval", h)
-		lbts, err = cs.cindex.GetTipsetByHeightWithoutCache(ts, h)
+		lbts, err = cs.cindex.GetTipsetByHeightWithoutCache(ctx, ts, h)
 		if err != nil {
 			return nil, err
 		}
@@ -1154,5 +1164,63 @@ func (cs *ChainStore) GetTipsetByHeight(ctx context.Context, h abi.ChainEpoch, t
 		return lbts, nil
 	}
 
-	return cs.LoadTipSet(lbts.Parents())
+	return cs.LoadTipSet(ctx, lbts.Parents())
+}
+
+func (cs *ChainStore) Weight(ctx context.Context, hts *types.TipSet) (types.BigInt, error) { // todo remove
+	return cs.weight(ctx, cs.StateBlockstore(), hts)
+}
+
+// true if ts1 wins according to the filecoin tie-break rule
+func breakWeightTie(ts1, ts2 *types.TipSet) bool {
+	s := len(ts1.Blocks())
+	if s > len(ts2.Blocks()) {
+		s = len(ts2.Blocks())
+	}
+
+	// blocks are already sorted by ticket
+	for i := 0; i < s; i++ {
+		if ts1.Blocks()[i].Ticket.Less(ts2.Blocks()[i].Ticket) {
+			log.Infof("weight tie broken in favour of %s", ts1.Key())
+			return true
+		}
+	}
+
+	log.Infof("weight tie left unbroken, default to %s", ts2.Key())
+	return false
+}
+
+func (cs *ChainStore) GetTipSetFromKey(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
+	if tsk.IsEmpty() {
+		return cs.GetHeaviestTipSet(), nil
+	}
+	return cs.LoadTipSet(ctx, tsk)
+}
+
+func (cs *ChainStore) GetLatestBeaconEntry(ctx context.Context, ts *types.TipSet) (*types.BeaconEntry, error) {
+	cur := ts
+	for i := 0; i < 20; i++ {
+		cbe := cur.Blocks()[0].BeaconEntries
+		if len(cbe) > 0 {
+			return &cbe[len(cbe)-1], nil
+		}
+
+		if cur.Height() == 0 {
+			return nil, xerrors.Errorf("made it back to genesis block without finding beacon entry")
+		}
+
+		next, err := cs.LoadTipSet(ctx, cur.Parents())
+		if err != nil {
+			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
+		}
+		cur = next
+	}
+
+	if os.Getenv("LOTUS_IGNORE_DRAND") == "_yes_" {
+		return &types.BeaconEntry{
+			Data: []byte{9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9},
+		}, nil
+	}
+
+	return nil, xerrors.Errorf("found NO beacon entries in the 20 latest tipsets")
 }

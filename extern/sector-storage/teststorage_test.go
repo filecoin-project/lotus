@@ -7,7 +7,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -23,11 +23,11 @@ type testExec struct {
 	apch chan chan apres
 }
 
-func (t *testExec) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.SectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, error) {
+func (t *testExec) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, error) {
 	panic("implement me")
 }
 
-func (t *testExec) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.SectorInfo, randomness abi.PoStRandomness) (proof []proof.PoStProof, skipped []abi.SectorID, err error) {
+func (t *testExec) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) (proof []proof.PoStProof, skipped []abi.SectorID, err error) {
 	panic("implement me")
 }
 
@@ -55,7 +55,39 @@ func (t *testExec) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef
 	panic("implement me")
 }
 
+func (t *testExec) ReleaseSealed(ctx context.Context, sector storage.SectorRef) error {
+	panic("implement me")
+}
+
+func (t *testExec) ReleaseSectorKey(ctx context.Context, sector storage.SectorRef) error {
+	panic("implement me")
+}
+
+func (t *testExec) ReleaseReplicaUpgrade(ctx context.Context, sector storage.SectorRef) error {
+	panic("implement me")
+}
+
 func (t *testExec) Remove(ctx context.Context, sector storage.SectorRef) error {
+	panic("implement me")
+}
+
+func (t *testExec) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, pieces []abi.PieceInfo) (storage.ReplicaUpdateOut, error) {
+	panic("implement me")
+}
+
+func (t *testExec) ProveReplicaUpdate1(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid) (storage.ReplicaVanillaProofs, error) {
+	panic("implement me")
+}
+
+func (t *testExec) ProveReplicaUpdate2(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid, vanillaProofs storage.ReplicaVanillaProofs) (storage.ReplicaUpdateProof, error) {
+	panic("implement me")
+}
+
+func (t *testExec) GenerateSectorKeyFromData(ctx context.Context, sector storage.SectorRef, commD cid.Cid) error {
+	panic("implement me")
+}
+
+func (t *testExec) FinalizeReplicaUpdate(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error {
 	panic("implement me")
 }
 

@@ -5,6 +5,8 @@ import (
 	"context"
 	"testing"
 
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
@@ -22,12 +24,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
-	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -35,6 +31,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/journal"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 )
 
 type mockStorageMinerAPI struct {
@@ -60,11 +60,11 @@ func (m *mockStorageMinerAPI) StateNetworkVersion(ctx context.Context, key types
 	return build.NewestNetworkVersion, nil
 }
 
-func (m *mockStorageMinerAPI) ChainGetRandomnessFromTickets(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (m *mockStorageMinerAPI) StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
 	return abi.Randomness("ticket rand"), nil
 }
 
-func (m *mockStorageMinerAPI) ChainGetRandomnessFromBeacon(ctx context.Context, tsk types.TipSetKey, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (m *mockStorageMinerAPI) StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
 	return abi.Randomness("beacon rand"), nil
 }
 
@@ -116,11 +116,11 @@ func (m *mockStorageMinerAPI) GasEstimateFeeCap(context.Context, *types.Message,
 type mockProver struct {
 }
 
-func (m *mockProver) GenerateWinningPoSt(context.Context, abi.ActorID, []proof2.SectorInfo, abi.PoStRandomness) ([]proof2.PoStProof, error) {
+func (m *mockProver) GenerateWinningPoSt(context.Context, abi.ActorID, []proof7.ExtendedSectorInfo, abi.PoStRandomness) ([]proof2.PoStProof, error) {
 	panic("implement me")
 }
 
-func (m *mockProver) GenerateWindowPoSt(ctx context.Context, aid abi.ActorID, sis []proof2.SectorInfo, pr abi.PoStRandomness) ([]proof2.PoStProof, []abi.SectorID, error) {
+func (m *mockProver) GenerateWindowPoSt(ctx context.Context, aid abi.ActorID, sis []proof7.ExtendedSectorInfo, pr abi.PoStRandomness) ([]proof2.PoStProof, []abi.SectorID, error) {
 	return []proof2.PoStProof{
 		{
 			PoStProof:  abi.RegisteredPoStProof_StackedDrgWindow2KiBV1,
@@ -132,7 +132,7 @@ func (m *mockProver) GenerateWindowPoSt(ctx context.Context, aid abi.ActorID, si
 type mockVerif struct {
 }
 
-func (m mockVerif) VerifyWinningPoSt(ctx context.Context, info proof2.WinningPoStVerifyInfo) (bool, error) {
+func (m mockVerif) VerifyWinningPoSt(ctx context.Context, info proof7.WinningPoStVerifyInfo) (bool, error) {
 	panic("implement me")
 }
 
@@ -149,7 +149,11 @@ func (m mockVerif) VerifyWindowPoSt(ctx context.Context, info proof2.WindowPoStV
 	return true, nil
 }
 
-func (m mockVerif) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
+func (m mockVerif) VerifyAggregateSeals(aggregate proof7.AggregateSealVerifyProofAndInfos) (bool, error) {
+	panic("implement me")
+}
+
+func (m mockVerif) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (bool, error) {
 	panic("implement me")
 }
 

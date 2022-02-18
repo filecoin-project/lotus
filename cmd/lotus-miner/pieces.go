@@ -6,6 +6,7 @@ import (
 	"text/tabwriter"
 
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/tablewriter"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 )
@@ -48,6 +49,12 @@ var piecesListPiecesCmd = &cli.Command{
 var piecesListCidInfosCmd = &cli.Command{
 	Name:  "list-cids",
 	Usage: "list registered payload CIDs",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "verbose",
+			Aliases: []string{"v"},
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		nodeApi, closer, err := lcli.GetMarketsAPI(cctx)
 		if err != nil {
@@ -61,9 +68,54 @@ var piecesListCidInfosCmd = &cli.Command{
 			return err
 		}
 
+		w := tablewriter.New(tablewriter.Col("CID"),
+			tablewriter.Col("Piece"),
+			tablewriter.Col("BlockOffset"),
+			tablewriter.Col("BlockLen"),
+			tablewriter.Col("Deal"),
+			tablewriter.Col("Sector"),
+			tablewriter.Col("DealOffset"),
+			tablewriter.Col("DealLen"),
+		)
+
 		for _, c := range cids {
-			fmt.Println(c)
+			if !cctx.Bool("verbose") {
+				fmt.Println(c)
+				continue
+			}
+
+			ci, err := nodeApi.PiecesGetCIDInfo(ctx, c)
+			if err != nil {
+				fmt.Printf("Error getting CID info: %s\n", err)
+				continue
+			}
+
+			for _, location := range ci.PieceBlockLocations {
+				pi, err := nodeApi.PiecesGetPieceInfo(ctx, location.PieceCID)
+				if err != nil {
+					fmt.Printf("Error getting piece info: %s\n", err)
+					continue
+				}
+
+				for _, deal := range pi.Deals {
+					w.Write(map[string]interface{}{
+						"CID":         c,
+						"Piece":       location.PieceCID,
+						"BlockOffset": location.RelOffset,
+						"BlockLen":    location.BlockSize,
+						"Deal":        deal.DealID,
+						"Sector":      deal.SectorID,
+						"DealOffset":  deal.Offset,
+						"DealLen":     deal.Length,
+					})
+				}
+			}
 		}
+
+		if cctx.Bool("verbose") {
+			return w.Flush(os.Stdout)
+		}
+
 		return nil
 	},
 }

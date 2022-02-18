@@ -37,6 +37,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/rpcenc"
 	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/metrics/proxy"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -59,6 +60,7 @@ func main() {
 		storageCmd,
 		setCmd,
 		waitQuietCmd,
+		resourcesCmd,
 		tasksCmd,
 	}
 
@@ -76,6 +78,12 @@ func main() {
 				Usage:   fmt.Sprintf("Specify worker repo path. flag %s and env WORKER_PATH are DEPRECATION, will REMOVE SOON", FlagWorkerRepoDeprecation),
 			},
 			&cli.StringFlag{
+				Name:    "panic-reports",
+				EnvVars: []string{"LOTUS_PANIC_REPORT_PATH"},
+				Hidden:  true,
+				Value:   "~/.lotusworker", // should follow --repo default
+			},
+			&cli.StringFlag{
 				Name:    "miner-repo",
 				Aliases: []string{"storagerepo"},
 				EnvVars: []string{"LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH"},
@@ -89,6 +97,14 @@ func main() {
 			},
 		},
 
+		After: func(c *cli.Context) error {
+			if r := recover(); r != nil {
+				// Generate report in LOTUS_PATH and re-raise panic
+				build.GeneratePanicReport(c.String("panic-reports"), c.String(FlagWorkerRepo), c.App.Name)
+				panic(r)
+			}
+			return nil
+		},
 		Commands: local,
 	}
 	app.Setup()
@@ -145,6 +161,21 @@ var runCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:  "commit",
 			Usage: "enable commit (32G sectors: all cores or GPUs, 128GiB Memory + 64GiB swap)",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "replica-update",
+			Usage: "enable replica update",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "prove-replica-update2",
+			Usage: "enable prove replica update 2",
+			Value: true,
+		},
+		&cli.BoolFlag{
+			Name:  "regen-sector-key",
+			Usage: "enable regen sector key",
 			Value: true,
 		},
 		&cli.IntFlag{
@@ -235,7 +266,7 @@ var runCmd = &cli.Command{
 
 		var taskTypes []sealtasks.TaskType
 
-		taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize)
+		taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFinalizeReplicaUpdate)
 
 		if cctx.Bool("addpiece") {
 			taskTypes = append(taskTypes, sealtasks.TTAddPiece)
@@ -251,6 +282,15 @@ var runCmd = &cli.Command{
 		}
 		if cctx.Bool("commit") {
 			taskTypes = append(taskTypes, sealtasks.TTCommit2)
+		}
+		if cctx.Bool("replica-update") {
+			taskTypes = append(taskTypes, sealtasks.TTReplicaUpdate)
+		}
+		if cctx.Bool("prove-replica-update2") {
+			taskTypes = append(taskTypes, sealtasks.TTProveReplicaUpdate2)
+		}
+		if cctx.Bool("regen-sector-key") {
+			taskTypes = append(taskTypes, sealtasks.TTRegenSectorKey)
 		}
 
 		if len(taskTypes) == 0 {
@@ -395,7 +435,7 @@ var runCmd = &cli.Command{
 
 		readerHandler, readerServerOpt := rpcenc.ReaderParamDecoder()
 		rpcServer := jsonrpc.NewServer(readerServerOpt)
-		rpcServer.Register("Filecoin", api.PermissionedWorkerAPI(metrics.MetricedWorkerAPI(workerApi)))
+		rpcServer.Register("Filecoin", api.PermissionedWorkerAPI(proxy.MetricedWorkerAPI(workerApi)))
 
 		mux.Handle("/rpc/v0", rpcServer)
 		mux.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)

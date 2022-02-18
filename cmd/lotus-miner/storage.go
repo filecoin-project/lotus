@@ -48,6 +48,7 @@ stored while moving through the sealing pipeline (references as 'seal').`,
 		storageListCmd,
 		storageFindCmd,
 		storageCleanupCmd,
+		storageLocks,
 	},
 }
 
@@ -94,6 +95,14 @@ over time
 		&cli.StringFlag{
 			Name:  "max-storage",
 			Usage: "(for init) limit storage space for sectors (expensive for very large paths!)",
+		},
+		&cli.StringSliceFlag{
+			Name:  "groups",
+			Usage: "path group names",
+		},
+		&cli.StringSliceFlag{
+			Name:  "allow-to",
+			Usage: "path groups allowed to pull data from this path (allow all if not specified)",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -142,6 +151,8 @@ over time
 				CanSeal:    cctx.Bool("seal"),
 				CanStore:   cctx.Bool("store"),
 				MaxStorage: uint64(maxStor),
+				Groups:     cctx.StringSlice("groups"),
+				AllowTo:    cctx.StringSlice("allow-to"),
 			}
 
 			if !(cfg.CanStore || cfg.CanSeal) {
@@ -322,9 +333,16 @@ var storageListCmd = &cli.Command{
 				if si.CanStore {
 					fmt.Print(color.CyanString("Store"))
 				}
-				fmt.Println("")
 			} else {
 				fmt.Print(color.HiYellowString("Use: ReadOnly"))
+			}
+			fmt.Println()
+
+			if len(si.Groups) > 0 {
+				fmt.Printf("\tGroups: %s\n", strings.Join(si.Groups, ", "))
+			}
+			if len(si.AllowTo) > 0 {
+				fmt.Printf("\tAllowTo: %s\n", strings.Join(si.AllowTo, ", "))
 			}
 
 			if localPath, ok := local[s.ID]; ok {
@@ -350,6 +368,7 @@ type storedSector struct {
 	store stores.SectorStorageInfo
 
 	unsealed, sealed, cache bool
+	update, updatecache     bool
 }
 
 var storageFindCmd = &cli.Command{
@@ -403,6 +422,16 @@ var storageFindCmd = &cli.Command{
 			return xerrors.Errorf("finding cache: %w", err)
 		}
 
+		us, err := nodeApi.StorageFindSector(ctx, sid, storiface.FTUpdate, 0, false)
+		if err != nil {
+			return xerrors.Errorf("finding sealed: %w", err)
+		}
+
+		uc, err := nodeApi.StorageFindSector(ctx, sid, storiface.FTUpdateCache, 0, false)
+		if err != nil {
+			return xerrors.Errorf("finding cache: %w", err)
+		}
+
 		byId := map[stores.ID]*storedSector{}
 		for _, info := range u {
 			sts, ok := byId[info.ID]
@@ -437,6 +466,28 @@ var storageFindCmd = &cli.Command{
 			}
 			sts.cache = true
 		}
+		for _, info := range us {
+			sts, ok := byId[info.ID]
+			if !ok {
+				sts = &storedSector{
+					id:    info.ID,
+					store: info,
+				}
+				byId[info.ID] = sts
+			}
+			sts.update = true
+		}
+		for _, info := range uc {
+			sts, ok := byId[info.ID]
+			if !ok {
+				sts = &storedSector{
+					id:    info.ID,
+					store: info,
+				}
+				byId[info.ID] = sts
+			}
+			sts.updatecache = true
+		}
 
 		local, err := nodeApi.StorageLocal(ctx)
 		if err != nil {
@@ -461,6 +512,12 @@ var storageFindCmd = &cli.Command{
 			}
 			if info.cache {
 				types += "Cache, "
+			}
+			if info.update {
+				types += "Update, "
+			}
+			if info.updatecache {
+				types += "UpdateCache, "
 			}
 
 			fmt.Printf("In %s (%s)\n", info.id, types[:len(types)-2])
@@ -740,4 +797,44 @@ func cleanupRemovedSectorData(ctx context.Context, api api.StorageMiner, napi v0
 	}
 
 	return nil
+}
+
+var storageLocks = &cli.Command{
+	Name:  "locks",
+	Usage: "show active sector locks",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		locks, err := api.StorageGetLocks(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, lock := range locks.Locks {
+			st, err := api.SectorsStatus(ctx, lock.Sector.Number, false)
+			if err != nil {
+				return xerrors.Errorf("getting sector status(%d): %w", lock.Sector.Number, err)
+			}
+
+			lockstr := fmt.Sprintf("%d\t%s\t", lock.Sector.Number, color.New(stateOrder[sealing.SectorState(st.State)].col).Sprint(st.State))
+
+			for i := 0; i < storiface.FileTypes; i++ {
+				if lock.Write[i] > 0 {
+					lockstr += fmt.Sprintf("%s(%s) ", storiface.SectorFileType(1<<i).String(), color.RedString("W"))
+				}
+				if lock.Read[i] > 0 {
+					lockstr += fmt.Sprintf("%s(%s:%d) ", storiface.SectorFileType(1<<i).String(), color.GreenString("R"), lock.Read[i])
+				}
+			}
+
+			fmt.Println(lockstr)
+		}
+
+		return nil
+	},
 }

@@ -68,6 +68,7 @@ func TestPaychGetCreateChannelMsg(t *testing.T) {
 // TestPaychGetCreateChannelThenAddFunds tests creating a channel and then
 // adding funds to it
 func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
+	//stm: @TOKEN_PAYCH_LIST_CHANNELS_001, @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -87,7 +88,7 @@ func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should have no channels yet (message sent but channel not created)
-	cis, err := mgr.ListChannels()
+	cis, err := mgr.ListChannels(ctx)
 	require.NoError(t, err)
 	require.Len(t, cis, 0)
 
@@ -112,7 +113,7 @@ func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
 		require.NotEqual(t, createMsgCid, addFundsMsgCid)
 
 		// Should have one channel, whose address is the channel that was created
-		cis, err := mgr.ListChannels()
+		cis, err := mgr.ListChannels(ctx)
 		require.NoError(t, err)
 		require.Len(t, cis, 1)
 		require.Equal(t, ch, cis[0])
@@ -121,7 +122,7 @@ func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
 		// channel).
 		// PendingAmount should be amount sent in second GetPaych
 		// (second GetPaych triggered add funds, which has not yet been confirmed)
-		ci, err := mgr.GetChannelInfo(ch)
+		ci, err := mgr.GetChannelInfo(ctx, ch)
 		require.NoError(t, err)
 		require.EqualValues(t, 10, ci.Amount.Int64())
 		require.EqualValues(t, 5, ci.PendingAmount.Int64())
@@ -135,13 +136,13 @@ func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
 		require.NoError(t, err)
 
 		// Should still have one channel
-		cis, err = mgr.ListChannels()
+		cis, err = mgr.ListChannels(ctx)
 		require.NoError(t, err)
 		require.Len(t, cis, 1)
 		require.Equal(t, ch, cis[0])
 
 		// Channel amount should include last amount sent to GetPaych
-		ci, err = mgr.GetChannelInfo(ch)
+		ci, err = mgr.GetChannelInfo(ctx, ch)
 		require.NoError(t, err)
 		require.EqualValues(t, 15, ci.Amount.Int64())
 		require.EqualValues(t, 0, ci.PendingAmount.Int64())
@@ -158,6 +159,7 @@ func TestPaychGetCreateChannelThenAddFunds(t *testing.T) {
 // operation is queued up behind a create channel operation, and the create
 // channel fails, then the waiting operation can succeed.
 func TestPaychGetCreateChannelWithErrorThenCreateAgain(t *testing.T) {
+	//stm: @TOKEN_PAYCH_LIST_CHANNELS_001, @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -203,12 +205,12 @@ func TestPaychGetCreateChannelWithErrorThenCreateAgain(t *testing.T) {
 		require.NoError(t, err)
 
 		// Should have one channel, whose address is the channel that was created
-		cis, err := mgr.ListChannels()
+		cis, err := mgr.ListChannels(ctx)
 		require.NoError(t, err)
 		require.Len(t, cis, 1)
 		require.Equal(t, ch, cis[0])
 
-		ci, err := mgr.GetChannelInfo(ch)
+		ci, err := mgr.GetChannelInfo(ctx, ch)
 		require.NoError(t, err)
 		require.Equal(t, amt2, ci.Amount)
 	}()
@@ -222,6 +224,7 @@ func TestPaychGetCreateChannelWithErrorThenCreateAgain(t *testing.T) {
 // TestPaychGetRecoverAfterError tests that after a create channel fails, the
 // next attempt to create channel can succeed.
 func TestPaychGetRecoverAfterError(t *testing.T) {
+	//stm: @TOKEN_PAYCH_LIST_CHANNELS_001, @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -259,12 +262,12 @@ func TestPaychGetRecoverAfterError(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should have one channel, whose address is the channel that was created
-	cis, err := mgr.ListChannels()
+	cis, err := mgr.ListChannels(ctx)
 	require.NoError(t, err)
 	require.Len(t, cis, 1)
 	require.Equal(t, ch, cis[0])
 
-	ci, err := mgr.GetChannelInfo(ch)
+	ci, err := mgr.GetChannelInfo(ctx, ch)
 	require.NoError(t, err)
 	require.Equal(t, amt2, ci.Amount)
 	require.EqualValues(t, 0, ci.PendingAmount.Int64())
@@ -274,6 +277,7 @@ func TestPaychGetRecoverAfterError(t *testing.T) {
 // TestPaychGetRecoverAfterAddFundsError tests that after an add funds fails, the
 // next attempt to add funds can succeed.
 func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
+	//stm: @TOKEN_PAYCH_LIST_CHANNELS_001, @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -311,12 +315,12 @@ func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
 	require.Error(t, err)
 
 	// Should have one channel, whose address is the channel that was created
-	cis, err := mgr.ListChannels()
+	cis, err := mgr.ListChannels(ctx)
 	require.NoError(t, err)
 	require.Len(t, cis, 1)
 	require.Equal(t, ch, cis[0])
 
-	ci, err := mgr.GetChannelInfo(ch)
+	ci, err := mgr.GetChannelInfo(ctx, ch)
 	require.NoError(t, err)
 	require.Equal(t, amt, ci.Amount)
 	require.EqualValues(t, 0, ci.PendingAmount.Int64())
@@ -338,13 +342,13 @@ func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should have one channel, whose address is the channel that was created
-	cis, err = mgr.ListChannels()
+	cis, err = mgr.ListChannels(ctx)
 	require.NoError(t, err)
 	require.Len(t, cis, 1)
 	require.Equal(t, ch, cis[0])
 
 	// Amount should include amount for successful add funds msg
-	ci, err = mgr.GetChannelInfo(ch)
+	ci, err = mgr.GetChannelInfo(ctx, ch)
 	require.NoError(t, err)
 	require.Equal(t, amt.Int64()+amt3.Int64(), ci.Amount.Int64())
 	require.EqualValues(t, 0, ci.PendingAmount.Int64())
@@ -356,6 +360,7 @@ func TestPaychGetRecoverAfterAddFundsError(t *testing.T) {
 // right after the create channel message is sent, the channel will be
 // created when the system restarts.
 func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
+	//stm: @TOKEN_PAYCH_LIST_CHANNELS_001, @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -384,7 +389,7 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should have no channels yet (message sent but channel not created)
-	cis, err := mgr2.ListChannels()
+	cis, err := mgr2.ListChannels(ctx)
 	require.NoError(t, err)
 	require.Len(t, cis, 0)
 
@@ -409,7 +414,7 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 		require.NotEqual(t, createMsgCid, addFundsMsgCid)
 
 		// Should have one channel, whose address is the channel that was created
-		cis, err := mgr2.ListChannels()
+		cis, err := mgr2.ListChannels(ctx)
 		require.NoError(t, err)
 		require.Len(t, cis, 1)
 		require.Equal(t, ch, cis[0])
@@ -418,7 +423,7 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 		// channel).
 		// PendingAmount should be amount sent in second GetPaych
 		// (second GetPaych triggered add funds, which has not yet been confirmed)
-		ci, err := mgr2.GetChannelInfo(ch)
+		ci, err := mgr2.GetChannelInfo(ctx, ch)
 		require.NoError(t, err)
 		require.EqualValues(t, 10, ci.Amount.Int64())
 		require.EqualValues(t, 5, ci.PendingAmount.Int64())
@@ -435,6 +440,7 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 // right after the add funds message is sent, the add funds will be
 // processed when the system restarts.
 func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
+	//stm: @TOKEN_PAYCH_LIST_CHANNELS_001, @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -481,13 +487,13 @@ func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
 	require.NoError(t, err)
 
 	// Should have one channel, whose address is the channel that was created
-	cis, err := mgr2.ListChannels()
+	cis, err := mgr2.ListChannels(ctx)
 	require.NoError(t, err)
 	require.Len(t, cis, 1)
 	require.Equal(t, ch, cis[0])
 
 	// Amount should include amount for successful add funds msg
-	ci, err := mgr2.GetChannelInfo(ch)
+	ci, err := mgr2.GetChannelInfo(ctx, ch)
 	require.NoError(t, err)
 	require.Equal(t, amt.Int64()+amt2.Int64(), ci.Amount.Int64())
 	require.EqualValues(t, 0, ci.PendingAmount.Int64())
@@ -498,6 +504,7 @@ func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
 // TestPaychGetWait tests that GetPaychWaitReady correctly waits for the
 // channel to be created or funds to be added
 func TestPaychGetWait(t *testing.T) {
+	//stm: @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -555,6 +562,7 @@ func TestPaychGetWait(t *testing.T) {
 
 // TestPaychGetWaitErr tests that GetPaychWaitReady correctly handles errors
 func TestPaychGetWaitErr(t *testing.T) {
+	//stm: @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -602,6 +610,7 @@ func TestPaychGetWaitErr(t *testing.T) {
 // TestPaychGetWaitCtx tests that GetPaychWaitReady returns early if the context
 // is cancelled
 func TestPaychGetWaitCtx(t *testing.T) {
+	//stm: @TOKEN_PAYCH_WAIT_READY_001
 	ctx, cancel := context.WithCancel(context.Background())
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -631,6 +640,7 @@ func TestPaychGetWaitCtx(t *testing.T) {
 // progress and two add funds are queued up behind it, the two add funds
 // will be merged
 func TestPaychGetMergeAddFunds(t *testing.T) {
+	//stm: @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -729,6 +739,7 @@ func TestPaychGetMergeAddFunds(t *testing.T) {
 // TestPaychGetMergeAddFundsCtxCancelOne tests that when a queued add funds
 // request is cancelled, its amount is removed from the total merged add funds
 func TestPaychGetMergeAddFundsCtxCancelOne(t *testing.T) {
+	//stm: @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -826,6 +837,7 @@ func TestPaychGetMergeAddFundsCtxCancelOne(t *testing.T) {
 // TestPaychGetMergeAddFundsCtxCancelAll tests that when all queued add funds
 // requests are cancelled, no add funds message is sent
 func TestPaychGetMergeAddFundsCtxCancelAll(t *testing.T) {
+	//stm: @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -900,6 +912,7 @@ func TestPaychGetMergeAddFundsCtxCancelAll(t *testing.T) {
 // TestPaychAvailableFunds tests that PaychAvailableFunds returns the correct
 // channel state
 func TestPaychAvailableFunds(t *testing.T) {
+	//stm: @TOKEN_PAYCH_WAIT_READY_001, @TOKEN_PAYCH_AVAILABLE_FUNDS_001, @TOKEN_PAYCH_AVAILABLE_FUNDS_002, @TOKEN_PAYCH_AVAILABLE_FUNDS_003
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -917,7 +930,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// No channel created yet so available funds should be all zeroes
-	av, err := mgr.AvailableFundsByFromTo(from, to)
+	av, err := mgr.AvailableFundsByFromTo(ctx, from, to)
 	require.NoError(t, err)
 	require.Nil(t, av.Channel)
 	require.Nil(t, av.PendingWaitSentinel)
@@ -932,7 +945,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Available funds should reflect create channel message sent
-	av, err = mgr.AvailableFundsByFromTo(from, to)
+	av, err = mgr.AvailableFundsByFromTo(ctx, from, to)
 	require.NoError(t, err)
 	require.Nil(t, av.Channel)
 	require.EqualValues(t, 0, av.ConfirmedAmt.Int64())
@@ -961,7 +974,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	waitForQueueSize(t, mgr, from, to, 1)
 
 	// Available funds should now include queued funds
-	av, err = mgr.AvailableFundsByFromTo(from, to)
+	av, err = mgr.AvailableFundsByFromTo(ctx, from, to)
 	require.NoError(t, err)
 	require.Nil(t, av.Channel)
 	require.NotNil(t, av.PendingWaitSentinel)
@@ -996,7 +1009,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 
 	// Available funds should now include the channel and also a wait sentinel
 	// for the add funds message
-	av, err = mgr.AvailableFunds(ch)
+	av, err = mgr.AvailableFunds(ctx, ch)
 	require.NoError(t, err)
 	require.NotNil(t, av.Channel)
 	require.NotNil(t, av.PendingWaitSentinel)
@@ -1018,7 +1031,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Available funds should no longer have a wait sentinel
-	av, err = mgr.AvailableFunds(ch)
+	av, err = mgr.AvailableFunds(ctx, ch)
 	require.NoError(t, err)
 	require.NotNil(t, av.Channel)
 	require.Nil(t, av.PendingWaitSentinel)
@@ -1039,7 +1052,7 @@ func TestPaychAvailableFunds(t *testing.T) {
 	_, err = mgr.AddVoucherOutbound(ctx, ch, voucher, nil, types.NewInt(0))
 	require.NoError(t, err)
 
-	av, err = mgr.AvailableFunds(ch)
+	av, err = mgr.AvailableFunds(ctx, ch)
 	require.NoError(t, err)
 	require.NotNil(t, av.Channel)
 	require.Nil(t, av.PendingWaitSentinel)

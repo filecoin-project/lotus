@@ -59,8 +59,16 @@ func main() {
 		signaturesCmd,
 		actorCmd,
 		minerTypesCmd,
+		minerPeeridCmd,
 		minerMultisigsCmd,
 		splitstoreCmd,
+		fr32Cmd,
+		chainCmd,
+		balancerCmd,
+		sendCsvCmd,
+		terminationsCmd,
+		migrationsCmd,
+		diffCmd,
 	}
 
 	app := &cli.App{

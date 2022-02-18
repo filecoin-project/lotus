@@ -5,7 +5,10 @@ import (
 	gobig "math/big"
 	"os"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
@@ -101,9 +104,13 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 		tipset   = params.Tipset
 		syscalls = vm.Syscalls(ffiwrapper.ProofVerifier)
 
-		cs = store.NewChainStore(bs, bs, ds, nil)
-		sm = stmgr.NewStateManager(cs, syscalls)
+		cs      = store.NewChainStore(bs, bs, ds, filcns.Weight, nil)
+		tse     = filcns.NewTipSetExecutor()
+		sm, err = stmgr.NewStateManager(cs, tse, syscalls, filcns.DefaultUpgradeSchedule(), nil)
 	)
+	if err != nil {
+		return nil, err
+	}
 
 	if params.Rand == nil {
 		params.Rand = NewFixedRand()
@@ -115,11 +122,10 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 
 	defer cs.Close() //nolint:errcheck
 
-	blocks := make([]store.BlockMessages, 0, len(tipset.Blocks))
+	blocks := make([]filcns.FilecoinBlockMessages, 0, len(tipset.Blocks))
 	for _, b := range tipset.Blocks {
 		sb := store.BlockMessages{
-			Miner:    b.MinerAddr,
-			WinCount: b.WinCount,
+			Miner: b.MinerAddr,
 		}
 		for _, m := range b.Messages {
 			msg, err := types.DecodeMessage(m)
@@ -138,7 +144,10 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 				sb.BlsMessages = append(sb.BlsMessages, msg)
 			}
 		}
-		blocks = append(blocks, sb)
+		blocks = append(blocks, filcns.FilecoinBlockMessages{
+			BlockMessages: sb,
+			WinCount:      b.WinCount,
+		})
 	}
 
 	recordOutputs := &outputRecorder{
@@ -146,7 +155,16 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 		results:  []*vm.ApplyRet{},
 	}
 
-	postcid, receiptsroot, err := sm.ApplyBlocks(context.Background(),
+	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (*vm.VM, error) {
+		vmopt.CircSupplyCalc = func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error) {
+			return big.Zero(), nil
+		}
+
+		return vm.NewVM(ctx, vmopt)
+	})
+
+	postcid, receiptsroot, err := tse.ApplyBlocks(context.Background(),
+		sm,
 		params.ParentEpoch,
 		params.Preroot,
 		blocks,
@@ -171,11 +189,12 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 }
 
 type ExecuteMessageParams struct {
-	Preroot    cid.Cid
-	Epoch      abi.ChainEpoch
-	Message    *types.Message
-	CircSupply abi.TokenAmount
-	BaseFee    abi.TokenAmount
+	Preroot        cid.Cid
+	Epoch          abi.ChainEpoch
+	Message        *types.Message
+	CircSupply     abi.TokenAmount
+	BaseFee        abi.TokenAmount
+	NetworkVersion network.Version
 
 	// Rand is an optional vm.Rand implementation to use. If nil, the driver
 	// will use a vm.Rand that returns a fixed value for all calls.
@@ -194,10 +213,6 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		params.Rand = NewFixedRand()
 	}
 
-	// dummy state manager; only to reference the GetNetworkVersion method,
-	// which does not depend on state.
-	sm := stmgr.NewStateManager(nil, nil)
-
 	vmOpts := &vm.VMOpts{
 		StateBase: params.Preroot,
 		Epoch:     params.Epoch,
@@ -206,9 +221,9 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		CircSupplyCalc: func(_ context.Context, _ abi.ChainEpoch, _ *state.StateTree) (abi.TokenAmount, error) {
 			return params.CircSupply, nil
 		},
-		Rand:        params.Rand,
-		BaseFee:     params.BaseFee,
-		NtwkVersion: sm.GetNtwkVersion,
+		Rand:           params.Rand,
+		BaseFee:        params.BaseFee,
+		NetworkVersion: params.NetworkVersion,
 	}
 
 	lvm, err := vm.NewVM(context.TODO(), vmOpts)
@@ -216,7 +231,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		return nil, cid.Undef, err
 	}
 
-	invoker := vm.NewActorRegistry()
+	invoker := filcns.NewActorRegistry()
 
 	// register the chaos actor if required by the vector.
 	if chaosOn, ok := d.selector["chaos_actor"]; ok && chaosOn == "true" {

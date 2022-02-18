@@ -15,6 +15,7 @@ func (m *Manager) WorkerStats() map[uuid.UUID]storiface.WorkerStats {
 	out := map[uuid.UUID]storiface.WorkerStats{}
 
 	for id, handle := range m.sched.workers {
+		handle.lk.Lock()
 		out[uuid.UUID(id)] = storiface.WorkerStats{
 			Info:    handle.info,
 			Enabled: handle.enabled,
@@ -24,6 +25,7 @@ func (m *Manager) WorkerStats() map[uuid.UUID]storiface.WorkerStats {
 			GpuUsed:    handle.active.gpuUsed,
 			CpuUse:     handle.active.cpuUse,
 		}
+		handle.lk.Unlock()
 	}
 
 	return out
@@ -33,7 +35,13 @@ func (m *Manager) WorkerJobs() map[uuid.UUID][]storiface.WorkerJob {
 	out := map[uuid.UUID][]storiface.WorkerJob{}
 	calls := map[storiface.CallID]struct{}{}
 
-	for _, t := range m.sched.workTracker.Running() {
+	running, preparing := m.sched.workTracker.Running()
+
+	for _, t := range running {
+		out[uuid.UUID(t.worker)] = append(out[uuid.UUID(t.worker)], t.job)
+		calls[t.job.ID] = struct{}{}
+	}
+	for _, t := range preparing {
 		out[uuid.UUID(t.worker)] = append(out[uuid.UUID(t.worker)], t.job)
 		calls[t.job.ID] = struct{}{}
 	}
@@ -48,7 +56,7 @@ func (m *Manager) WorkerJobs() map[uuid.UUID][]storiface.WorkerJob {
 					ID:      storiface.UndefCall,
 					Sector:  request.sector.ID,
 					Task:    request.taskType,
-					RunWait: wi + 1,
+					RunWait: wi + 2,
 					Start:   request.start,
 				})
 			}

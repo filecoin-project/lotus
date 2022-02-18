@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"os"
 	gruntime "runtime"
 	"time"
 
@@ -16,7 +17,12 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	rtt "github.com/filecoin-project/go-state-types/rt"
 	rt0 "github.com/filecoin-project/specs-actors/actors/runtime"
+	rt2 "github.com/filecoin-project/specs-actors/v2/actors/runtime"
+	rt3 "github.com/filecoin-project/specs-actors/v3/actors/runtime"
+	rt4 "github.com/filecoin-project/specs-actors/v4/actors/runtime"
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
+	rt6 "github.com/filecoin-project/specs-actors/v6/actors/runtime"
+	rt7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
 	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 	"go.opencensus.io/trace"
@@ -51,11 +57,11 @@ func (m *Message) ValueReceived() abi.TokenAmount {
 }
 
 // EnableGasTracing, if true, outputs gas tracing in execution traces.
-var EnableGasTracing = false
+var EnableGasTracing = os.Getenv("LOTUS_VM_ENABLE_GAS_TRACING_VERY_SLOW") == "1"
 
 type Runtime struct {
-	rt5.Message
-	rt5.Syscalls
+	rt7.Message
+	rt7.Syscalls
 
 	ctx context.Context
 
@@ -86,7 +92,7 @@ func (rt *Runtime) BaseFee() abi.TokenAmount {
 }
 
 func (rt *Runtime) NetworkVersion() network.Version {
-	return rt.vm.GetNtwkVersion(rt.ctx, rt.CurrEpoch())
+	return rt.vm.networkVersion
 }
 
 func (rt *Runtime) TotalFilCircSupply() abi.TokenAmount {
@@ -141,6 +147,12 @@ func (rt *Runtime) StorePut(x cbor.Marshaler) cid.Cid {
 
 var _ rt0.Runtime = (*Runtime)(nil)
 var _ rt5.Runtime = (*Runtime)(nil)
+var _ rt2.Runtime = (*Runtime)(nil)
+var _ rt3.Runtime = (*Runtime)(nil)
+var _ rt4.Runtime = (*Runtime)(nil)
+var _ rt5.Runtime = (*Runtime)(nil)
+var _ rt6.Runtime = (*Runtime)(nil)
+var _ rt7.Runtime = (*Runtime)(nil)
 
 func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.ActorError) {
 	defer func() {
@@ -212,13 +224,7 @@ func (rt *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) 
 }
 
 func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	var err error
-	var res []byte
-	if randEpoch > build.UpgradeHyperdriveHeight {
-		res, err = rt.vm.rand.GetChainRandomnessLookingForward(rt.ctx, personalization, randEpoch, entropy)
-	} else {
-		res, err = rt.vm.rand.GetChainRandomnessLookingBack(rt.ctx, personalization, randEpoch, entropy)
-	}
+	res, err := rt.vm.rand.GetChainRandomness(rt.ctx, personalization, randEpoch, entropy)
 
 	if err != nil {
 		panic(aerrors.Fatalf("could not get ticket randomness: %s", err))
@@ -227,13 +233,7 @@ func (rt *Runtime) GetRandomnessFromTickets(personalization crypto.DomainSeparat
 }
 
 func (rt *Runtime) GetRandomnessFromBeacon(personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) abi.Randomness {
-	var err error
-	var res []byte
-	if randEpoch > build.UpgradeHyperdriveHeight {
-		res, err = rt.vm.rand.GetBeaconRandomnessLookingForward(rt.ctx, personalization, randEpoch, entropy)
-	} else {
-		res, err = rt.vm.rand.GetBeaconRandomnessLookingBack(rt.ctx, personalization, randEpoch, entropy)
-	}
+	res, err := rt.vm.rand.GetBeaconRandomness(rt.ctx, personalization, randEpoch, entropy)
 
 	if err != nil {
 		panic(aerrors.Fatalf("could not get beacon randomness: %s", err))
@@ -314,7 +314,7 @@ func (rt *Runtime) DeleteActor(beneficiary address.Address) {
 		}
 
 		// Transfer the executing actor's balance to the beneficiary
-		if err := rt.vm.transfer(rt.Receiver(), beneficiary, act.Balance); err != nil {
+		if err := rt.vm.transfer(rt.Receiver(), beneficiary, act.Balance, rt.NetworkVersion()); err != nil {
 			panic(aerrors.Fatalf("failed to transfer balance to beneficiary actor: %s", err))
 		}
 	}

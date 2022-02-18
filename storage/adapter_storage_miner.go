@@ -112,6 +112,15 @@ func (s SealingAPIAdapter) StateMinerSectorAllocated(ctx context.Context, maddr 
 	return s.delegate.StateMinerSectorAllocated(ctx, maddr, sid, tsk)
 }
 
+func (s SealingAPIAdapter) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tok sealing.TipSetToken) ([]*miner.SectorOnChainInfo, error) {
+	tsk, err := types.TipSetKeyFromBytes(tok)
+	if err != nil {
+		return nil, xerrors.Errorf("faile dto unmarshal TipSetToken to TipSetKey: %w", err)
+	}
+
+	return s.delegate.StateMinerActiveSectors(ctx, maddr, tsk)
+}
+
 func (s SealingAPIAdapter) StateWaitMsg(ctx context.Context, mcid cid.Cid) (sealing.MsgLookup, error) {
 	wmsg, err := s.delegate.StateWaitMsg(ctx, mcid, build.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
@@ -387,22 +396,22 @@ func (s SealingAPIAdapter) ChainGetMessage(ctx context.Context, mc cid.Cid) (*ty
 	return s.delegate.ChainGetMessage(ctx, mc)
 }
 
-func (s SealingAPIAdapter) ChainGetRandomnessFromBeacon(ctx context.Context, tok sealing.TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (s SealingAPIAdapter) StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tok sealing.TipSetToken) (abi.Randomness, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.delegate.ChainGetRandomnessFromBeacon(ctx, tsk, personalization, randEpoch, entropy)
+	return s.delegate.StateGetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, tsk)
 }
 
-func (s SealingAPIAdapter) ChainGetRandomnessFromTickets(ctx context.Context, tok sealing.TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error) {
+func (s SealingAPIAdapter) StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tok sealing.TipSetToken) (abi.Randomness, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.delegate.ChainGetRandomnessFromTickets(ctx, tsk, personalization, randEpoch, entropy)
+	return s.delegate.StateGetRandomnessFromTickets(ctx, personalization, randEpoch, entropy, tsk)
 }
 
 func (s SealingAPIAdapter) ChainReadObj(ctx context.Context, ocid cid.Cid) ([]byte, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 
@@ -16,10 +17,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
+	lrand "github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
+
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
@@ -77,15 +79,16 @@ func NewBlockBuilder(ctx context.Context, logger *zap.SugaredLogger, sm *stmgr.S
 	// 1. We don't charge a fee.
 	// 2. The runtime has "fake" proof logic.
 	// 3. We don't actually save any of the results.
-	r := store.NewChainRand(sm.ChainStore(), parentTs.Cids())
+	r := lrand.NewStateRand(sm.ChainStore(), parentTs.Cids(), sm.Beacon(), sm.GetNetworkVersion)
 	vmopt := &vm.VMOpts{
 		StateBase:      parentState,
 		Epoch:          parentTs.Height() + 1,
 		Rand:           r,
 		Bstore:         sm.ChainStore().StateBlockstore(),
+		Actors:         filcns.NewActorRegistry(),
 		Syscalls:       sm.VMSys(),
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
-		NtwkVersion:    sm.GetNtwkVersion,
+		NetworkVersion: sm.GetNetworkVersion(ctx, parentTs.Height()+1),
 		BaseFee:        abi.NewTokenAmount(0),
 		LookbackState:  stmgr.LookbackStateGetterForTipset(sm, parentTs),
 	}
@@ -262,7 +265,7 @@ func (bb *BlockBuilder) Height() abi.ChainEpoch {
 
 // NetworkVersion returns the network version for the target block.
 func (bb *BlockBuilder) NetworkVersion() network.Version {
-	return bb.sm.GetNtwkVersion(bb.ctx, bb.Height())
+	return bb.sm.GetNetworkVersion(bb.ctx, bb.Height())
 }
 
 // StateManager returns the stmgr.StateManager.

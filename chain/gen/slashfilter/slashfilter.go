@@ -1,6 +1,7 @@
 package slashfilter
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/filecoin-project/lotus/build"
@@ -27,7 +28,7 @@ func New(dstore ds.Batching) *SlashFilter {
 	}
 }
 
-func (f *SlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
+func (f *SlashFilter) MinedBlock(ctx context.Context, bh *types.BlockHeader, parentEpoch abi.ChainEpoch) error {
 	if build.IsNearUpgrade(bh.Height, build.UpgradeOrangeHeight) {
 		return nil
 	}
@@ -35,7 +36,7 @@ func (f *SlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpo
 	epochKey := ds.NewKey(fmt.Sprintf("/%s/%d", bh.Miner, bh.Height))
 	{
 		// double-fork mining (2 blocks at one epoch)
-		if err := checkFault(f.byEpoch, epochKey, bh, "double-fork mining faults"); err != nil {
+		if err := checkFault(ctx, f.byEpoch, epochKey, bh, "double-fork mining faults"); err != nil {
 			return err
 		}
 	}
@@ -43,7 +44,7 @@ func (f *SlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpo
 	parentsKey := ds.NewKey(fmt.Sprintf("/%s/%x", bh.Miner, types.NewTipSetKey(bh.Parents...).Bytes()))
 	{
 		// time-offset mining faults (2 blocks with the same parents)
-		if err := checkFault(f.byParents, parentsKey, bh, "time-offset mining faults"); err != nil {
+		if err := checkFault(ctx, f.byParents, parentsKey, bh, "time-offset mining faults"); err != nil {
 			return err
 		}
 	}
@@ -53,14 +54,14 @@ func (f *SlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpo
 
 		// First check if we have mined a block on the parent epoch
 		parentEpochKey := ds.NewKey(fmt.Sprintf("/%s/%d", bh.Miner, parentEpoch))
-		have, err := f.byEpoch.Has(parentEpochKey)
+		have, err := f.byEpoch.Has(ctx, parentEpochKey)
 		if err != nil {
 			return err
 		}
 
 		if have {
 			// If we had, make sure it's in our parent tipset
-			cidb, err := f.byEpoch.Get(parentEpochKey)
+			cidb, err := f.byEpoch.Get(ctx, parentEpochKey)
 			if err != nil {
 				return xerrors.Errorf("getting other block cid: %w", err)
 			}
@@ -83,25 +84,25 @@ func (f *SlashFilter) MinedBlock(bh *types.BlockHeader, parentEpoch abi.ChainEpo
 		}
 	}
 
-	if err := f.byParents.Put(parentsKey, bh.Cid().Bytes()); err != nil {
+	if err := f.byParents.Put(ctx, parentsKey, bh.Cid().Bytes()); err != nil {
 		return xerrors.Errorf("putting byEpoch entry: %w", err)
 	}
 
-	if err := f.byEpoch.Put(epochKey, bh.Cid().Bytes()); err != nil {
+	if err := f.byEpoch.Put(ctx, epochKey, bh.Cid().Bytes()); err != nil {
 		return xerrors.Errorf("putting byEpoch entry: %w", err)
 	}
 
 	return nil
 }
 
-func checkFault(t ds.Datastore, key ds.Key, bh *types.BlockHeader, faultType string) error {
-	fault, err := t.Has(key)
+func checkFault(ctx context.Context, t ds.Datastore, key ds.Key, bh *types.BlockHeader, faultType string) error {
+	fault, err := t.Has(ctx, key)
 	if err != nil {
 		return err
 	}
 
 	if fault {
-		cidb, err := t.Get(key)
+		cidb, err := t.Get(ctx, key)
 		if err != nil {
 			return xerrors.Errorf("getting other block cid: %w", err)
 		}

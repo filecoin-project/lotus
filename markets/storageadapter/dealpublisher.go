@@ -14,6 +14,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
@@ -35,6 +37,7 @@ type dealPublisherAPI interface {
 	WalletHas(context.Context, address.Address) (bool, error)
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
+	StateCall(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)
 }
 
 // DealPublisher batches deal publishing so that many deals can be included in
@@ -56,10 +59,11 @@ type DealPublisher struct {
 	publishPeriod         time.Duration
 	publishSpec           *api.MessageSendSpec
 
-	lk                     sync.Mutex
-	pending                []*pendingDeal
-	cancelWaitForMoreDeals context.CancelFunc
-	publishPeriodStart     time.Time
+	lk                      sync.Mutex
+	pending                 []*pendingDeal
+	cancelWaitForMoreDeals  context.CancelFunc
+	publishPeriodStart      time.Time
+	startEpochSealingBuffer abi.ChainEpoch
 }
 
 // A deal that is queued to be published
@@ -90,6 +94,8 @@ type PublishMsgConfig struct {
 	// The maximum number of deals to include in a single PublishStorageDeals
 	// message
 	MaxDealsPerMsg uint64
+	// Minimum start epoch buffer to give time for sealing of sector with deal
+	StartEpochSealingBuffer uint64
 }
 
 func NewDealPublisher(
@@ -121,13 +127,14 @@ func newDealPublisher(
 ) *DealPublisher {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &DealPublisher{
-		api:                   dpapi,
-		as:                    as,
-		ctx:                   ctx,
-		Shutdown:              cancel,
-		maxDealsPerPublishMsg: publishMsgCfg.MaxDealsPerMsg,
-		publishPeriod:         publishMsgCfg.Period,
-		publishSpec:           publishSpec,
+		api:                     dpapi,
+		as:                      as,
+		ctx:                     ctx,
+		Shutdown:                cancel,
+		maxDealsPerPublishMsg:   publishMsgCfg.MaxDealsPerMsg,
+		publishPeriod:           publishMsgCfg.Period,
+		startEpochSealingBuffer: abi.ChainEpoch(publishMsgCfg.StartEpochSealingBuffer),
+		publishSpec:             publishSpec,
 	}
 }
 
@@ -295,7 +302,7 @@ func (p *DealPublisher) publishReady(ready []*pendingDeal) {
 		// Validate the deal
 		if err := p.validateDeal(pd.deal); err != nil {
 			// Validation failed, complete immediately with an error
-			go onComplete(pd, cid.Undef, err)
+			go onComplete(pd, cid.Undef, xerrors.Errorf("publish validation failed: %w", err))
 			continue
 		}
 
@@ -315,15 +322,57 @@ func (p *DealPublisher) publishReady(ready []*pendingDeal) {
 // validateDeal checks that the deal proposal start epoch hasn't already
 // elapsed
 func (p *DealPublisher) validateDeal(deal market2.ClientDealProposal) error {
+	start := time.Now()
+
+	pcid, err := deal.Proposal.Cid()
+	if err != nil {
+		return xerrors.Errorf("computing proposal cid: %w", err)
+	}
+
 	head, err := p.api.ChainHead(p.ctx)
 	if err != nil {
 		return err
 	}
-	if head.Height() > deal.Proposal.StartEpoch {
+	if head.Height()+p.startEpochSealingBuffer > deal.Proposal.StartEpoch {
 		return xerrors.Errorf(
 			"cannot publish deal with piece CID %s: current epoch %d has passed deal proposal start epoch %d",
 			deal.Proposal.PieceCID, head.Height(), deal.Proposal.StartEpoch)
 	}
+
+	mi, err := p.api.StateMinerInfo(p.ctx, deal.Proposal.Provider, types.EmptyTSK)
+	if err != nil {
+		return xerrors.Errorf("getting provider info: %w", err)
+	}
+
+	params, err := actors.SerializeParams(&market2.PublishStorageDealsParams{
+		Deals: []market0.ClientDealProposal{deal},
+	})
+	if err != nil {
+		return xerrors.Errorf("serializing PublishStorageDeals params failed: %w", err)
+	}
+
+	addr, _, err := p.as.AddressFor(p.ctx, p.api, mi, api.DealPublishAddr, big.Zero(), big.Zero())
+	if err != nil {
+		return xerrors.Errorf("selecting address for publishing deals: %w", err)
+	}
+
+	res, err := p.api.StateCall(p.ctx, &types.Message{
+		To:     market.Address,
+		From:   addr,
+		Value:  types.NewInt(0),
+		Method: market.Methods.PublishStorageDeals,
+		Params: params,
+	}, head.Key())
+	if err != nil {
+		return xerrors.Errorf("simulating deal publish message: %w", err)
+	}
+	if res.MsgRct.ExitCode != exitcode.Ok {
+		return xerrors.Errorf("simulating deal publish message: non-zero exitcode %s; message: %s", res.MsgRct.ExitCode, res.Error)
+	}
+
+	took := time.Now().Sub(start)
+	log.Infow("validating deal", "took", took, "proposal", pcid)
+
 	return nil
 }
 

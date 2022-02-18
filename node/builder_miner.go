@@ -136,7 +136,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		If(cfg.Subsystems.EnableMarkets,
 			// Markets
 			Override(new(dtypes.StagingBlockstore), modules.StagingBlockstore),
-			Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(cfg.Dealmaking.SimultaneousTransfers)),
+			Override(new(dtypes.StagingGraphsync), modules.StagingGraphsync(cfg.Dealmaking.SimultaneousTransfersForStorage, cfg.Dealmaking.SimultaneousTransfersForStoragePerClient, cfg.Dealmaking.SimultaneousTransfersForRetrieval)),
 			Override(new(dtypes.ProviderPieceStore), modules.NewProviderPieceStore),
 			Override(new(*sectorblocks.SectorBlocks), sectorblocks.NewSectorBlocks),
 
@@ -155,7 +155,8 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(DAGStoreKey, modules.DAGStore),
 
 			// Markets (retrieval)
-			Override(new(retrievalmarket.SectorAccessor), sectoraccessor.NewSectorAccessor),
+			Override(new(dagstore.SectorAccessor), sectoraccessor.NewSectorAccessor),
+			Override(new(retrievalmarket.SectorAccessor), From(new(dagstore.SectorAccessor))),
 			Override(new(retrievalmarket.RetrievalProviderNode), retrievaladapter.NewRetrievalProviderNode),
 			Override(new(rmnet.RetrievalMarketNetwork), modules.RetrievalNetwork),
 			Override(new(retrievalmarket.RetrievalProvider), modules.RetrievalProvider),
@@ -163,9 +164,11 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(HandleRetrievalKey, modules.HandleRetrieval),
 
 			// Markets (storage)
-			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDAGServiceDataTransfer),
+			Override(new(dtypes.ProviderTransferNetwork), modules.NewProviderTransferNetwork),
+			Override(new(dtypes.ProviderTransport), modules.NewProviderTransport),
+			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDataTransfer),
 			Override(new(*storedask.StoredAsk), modules.NewStorageAsk),
-			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(nil)),
+			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(cfg.Dealmaking, nil)),
 			Override(new(storagemarket.StorageProvider), modules.StorageProvider),
 			Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{})),
 			Override(HandleMigrateProviderFundsKey, modules.HandleMigrateProviderFunds),
@@ -192,15 +195,16 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(dtypes.GetMaxDealStartDelayFunc), modules.NewGetMaxDealStartDelayFunc),
 
 			If(cfg.Dealmaking.Filter != "",
-				Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(dealfilter.CliStorageDealFilter(cfg.Dealmaking.Filter))),
+				Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(cfg.Dealmaking, dealfilter.CliStorageDealFilter(cfg.Dealmaking.Filter))),
 			),
 
 			If(cfg.Dealmaking.RetrievalFilter != "",
 				Override(new(dtypes.RetrievalDealFilter), modules.RetrievalDealFilter(dealfilter.CliRetrievalDealFilter(cfg.Dealmaking.RetrievalFilter))),
 			),
 			Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(&cfg.Fees, storageadapter.PublishMsgConfig{
-				Period:         time.Duration(cfg.Dealmaking.PublishMsgPeriod),
-				MaxDealsPerMsg: cfg.Dealmaking.MaxDealsPerPublishMsg,
+				Period:                  time.Duration(cfg.Dealmaking.PublishMsgPeriod),
+				MaxDealsPerMsg:          cfg.Dealmaking.MaxDealsPerPublishMsg,
+				StartEpochSealingBuffer: cfg.Dealmaking.StartEpochSealingBuffer,
 			})),
 			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees, &cfg.Dealmaking)),
 		),

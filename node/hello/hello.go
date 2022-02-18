@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"golang.org/x/xerrors"
 
+	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -15,9 +16,9 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 
-	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/peermgr"
@@ -48,10 +49,11 @@ type Service struct {
 
 	cs     *store.ChainStore
 	syncer *chain.Syncer
+	cons   consensus.Consensus
 	pmgr   *peermgr.PeerMgr
 }
 
-func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, pmgr peermgr.MaybePeerMgr) *Service {
+func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, cons consensus.Consensus, pmgr peermgr.MaybePeerMgr) *Service {
 	if pmgr.Mgr == nil {
 		log.Warn("running without peer manager")
 	}
@@ -61,6 +63,7 @@ func NewHelloService(h host.Host, cs *store.ChainStore, syncer *chain.Syncer, pm
 
 		cs:     cs,
 		syncer: syncer,
+		cons:   cons,
 		pmgr:   pmgr.Mgr,
 	}
 }
@@ -138,7 +141,7 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 		return err
 	}
 
-	gen, err := hs.cs.GetGenesis()
+	gen, err := hs.cs.GetGenesis(ctx)
 	if err != nil {
 		return err
 	}

@@ -142,7 +142,7 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Re
 
 	go func() {
 		start := build.Clock.Now()
-		log.Infow("start fetching randomness", "round", round)
+		log.Debugw("start fetching randomness", "round", round)
 		resp, err := db.client.Get(ctx, round)
 
 		var br beacon.Response
@@ -152,7 +152,7 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Re
 			br.Entry.Round = resp.Round()
 			br.Entry.Data = resp.Signature()
 		}
-		log.Infow("done fetching randomness", "round", round, "took", build.Clock.Since(start))
+		log.Debugw("done fetching randomness", "round", round, "took", build.Clock.Since(start))
 		out <- br
 		close(out)
 	}()
@@ -177,6 +177,11 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 		// TODO handle genesis better
 		return nil
 	}
+
+	if curr.Round != prev.Round+1 {
+		return xerrors.Errorf("invalid beacon entry: cur (%d) != prev (%d) + 1", curr.Round, prev.Round)
+	}
+
 	if be := db.getCachedValue(curr.Round); be != nil {
 		if !bytes.Equal(curr.Data, be.Data) {
 			return xerrors.New("invalid beacon value, does not match cached good value")

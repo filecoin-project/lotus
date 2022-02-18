@@ -1,6 +1,7 @@
 package docgen
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -13,10 +14,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/go-multistore"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-filestore"
+	"github.com/ipfs/go-graphsync"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -25,9 +25,10 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
-	filestore2 "github.com/filecoin-project/go-fil-markets/filestore"
+	filestore "github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
+	textselector "github.com/ipld/go-ipld-selector-text-lite"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -90,8 +91,10 @@ func init() {
 	addExample(pid)
 	addExample(&pid)
 
-	multistoreIDExample := multistore.StoreID(50)
 	storeIDExample := imports.ID(50)
+	textSelExample := textselector.Expression("Links/21/Hash/Links/42/Hash")
+	apiSelExample := api.Selector("Links/21/Hash/Links/42/Hash")
+	clientEvent := retrievalmarket.ClientEventDealAccepted
 
 	addExample(bitfield.NewFromSet([]uint64{5}))
 	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1_1)
@@ -110,7 +113,6 @@ func init() {
 	addExample(abi.UnpaddedPieceSize(1024))
 	addExample(abi.UnpaddedPieceSize(1024).Padded())
 	addExample(abi.DealID(5432))
-	addExample(filestore.StatusFileChanged)
 	addExample(abi.SectorNumber(9))
 	addExample(abi.SectorSize(32 * 1024 * 1024 * 1024))
 	addExample(api.MpoolChange(0))
@@ -120,14 +122,17 @@ func init() {
 	addExample(api.FullAPIVersion1)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
+	addExample(graphsync.RequestID(4))
 	addExample(datatransfer.TransferID(3))
 	addExample(datatransfer.Ongoing)
 	addExample(storeIDExample)
 	addExample(&storeIDExample)
-	addExample(multistoreIDExample)
-	addExample(&multistoreIDExample)
+	addExample(clientEvent)
+	addExample(&clientEvent)
 	addExample(retrievalmarket.ClientEventDealAccepted)
 	addExample(retrievalmarket.DealStatusNew)
+	addExample(&textSelExample)
+	addExample(&apiSelExample)
 	addExample(network.ReachabilityPublic)
 	addExample(build.NewestNetworkVersion)
 	addExample(map[string]int{"name": 42})
@@ -179,7 +184,7 @@ func init() {
 	ExampleValues[reflect.TypeOf(struct{ A multiaddr.Multiaddr }{}).Field(0).Type] = maddr
 
 	// miner specific
-	addExample(filestore2.Path(".lotusminer/fstmp123"))
+	addExample(filestore.Path(".lotusminer/fstmp123"))
 	si := uint64(12)
 	addExample(&si)
 	addExample(retrievalmarket.DealID(5))
@@ -229,16 +234,18 @@ func init() {
 				Hostname: "host",
 				Resources: storiface.WorkerResources{
 					MemPhysical: 256 << 30,
+					MemUsed:     2 << 30,
 					MemSwap:     120 << 30,
-					MemReserved: 2 << 30,
+					MemSwapUsed: 2 << 30,
 					CPUs:        64,
 					GPUs:        []string{"aGPU 1337"},
+					Resources:   storiface.ResourceTable,
 				},
 			},
 			Enabled:    true,
 			MemUsedMin: 0,
 			MemUsedMax: 0,
-			GpuUsed:    false,
+			GpuUsed:    0,
 			CpuUse:     0,
 		},
 	})
@@ -246,10 +253,18 @@ func init() {
 	addExample(map[abi.SectorNumber]string{
 		123: "can't acquire read lock",
 	})
+	addExample(json.RawMessage(`"json raw message"`))
 	addExample(map[api.SectorState]int{
 		api.SectorState(sealing.Proving): 120,
 	})
 	addExample([]abi.SectorNumber{123, 124})
+	addExample([]storiface.SectorLock{
+		{
+			Sector: abi.SectorID{Number: 123, Miner: 1000},
+			Write:  [storiface.FileTypes]uint{0, 0, 1},
+			Read:   [storiface.FileTypes]uint{2, 3, 0},
+		},
+	})
 
 	// worker specific
 	addExample(storiface.AcquireMove)
@@ -284,6 +299,35 @@ func init() {
 		State: "ShardStateAvailable",
 		Error: "<error>",
 	})
+	addExample(storiface.ResourceTable)
+	addExample(network.ScopeStat{
+		Memory:             123,
+		NumStreamsInbound:  1,
+		NumStreamsOutbound: 2,
+		NumConnsInbound:    3,
+		NumConnsOutbound:   4,
+		NumFD:              5,
+	})
+	addExample(map[string]network.ScopeStat{
+		"abc": {
+			Memory:             123,
+			NumStreamsInbound:  1,
+			NumStreamsOutbound: 2,
+			NumConnsInbound:    3,
+			NumConnsOutbound:   4,
+			NumFD:              5,
+		}})
+	addExample(api.NetLimit{
+		Memory:          123,
+		StreamsInbound:  1,
+		StreamsOutbound: 2,
+		Streams:         3,
+		ConnsInbound:    3,
+		ConnsOutbound:   4,
+		Conns:           4,
+		FD:              5,
+	})
+
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
@@ -334,7 +378,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 	switch t.Kind() {
 	case reflect.Slice:
 		out := reflect.New(t).Elem()
-		reflect.Append(out, reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
+		out = reflect.Append(out, reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
 		return out.Interface()
 	case reflect.Chan:
 		return ExampleValue(method, t.Elem(), nil)

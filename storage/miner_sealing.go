@@ -71,12 +71,23 @@ func (m *Miner) CommitPending(ctx context.Context) ([]abi.SectorID, error) {
 	return m.sealing.CommitPending(ctx)
 }
 
-func (m *Miner) MarkForUpgrade(id abi.SectorNumber) error {
-	return m.sealing.MarkForUpgrade(id)
+func (m *Miner) SectorMatchPendingPiecesToOpenSectors(ctx context.Context) error {
+	return m.sealing.MatchPendingPiecesToOpenSectors(ctx)
+}
+
+func (m *Miner) MarkForUpgrade(ctx context.Context, id abi.SectorNumber, snap bool) error {
+	if snap {
+		return m.sealing.MarkForSnapUpgrade(ctx, id)
+	}
+	return m.sealing.MarkForUpgrade(ctx, id)
 }
 
 func (m *Miner) IsMarkedForUpgrade(id abi.SectorNumber) bool {
 	return m.sealing.IsMarkedForUpgrade(id)
+}
+
+func (m *Miner) SectorAbortUpgrade(sectorNum abi.SectorNumber) error {
+	return m.sealing.AbortUpgrade(sectorNum)
 }
 
 func (m *Miner) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storage.Data, d api.PieceDealInfo) (api.SectorOffset, error) {
@@ -94,10 +105,16 @@ func (m *Miner) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnC
 	}
 
 	deals := make([]abi.DealID, len(info.Pieces))
+	pieces := make([]api.SectorPiece, len(info.Pieces))
 	for i, piece := range info.Pieces {
+		pieces[i].Piece = piece.Piece
 		if piece.DealInfo == nil {
 			continue
 		}
+
+		pdi := *piece.DealInfo // copy
+		pieces[i].DealInfo = &pdi
+
 		deals[i] = piece.DealInfo.DealID
 	}
 
@@ -118,6 +135,7 @@ func (m *Miner) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnC
 		CommR:    info.CommR,
 		Proof:    info.Proof,
 		Deals:    deals,
+		Pieces:   pieces,
 		Ticket: api.SealTicket{
 			Value: info.TicketValue,
 			Epoch: info.TicketEpoch,

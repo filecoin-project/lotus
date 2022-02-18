@@ -66,7 +66,7 @@ func BackupCmd(repoFlag string, rt repo.RepoType, getApi BackupApiFn) *cli.Comma
 			return xerrors.Errorf("opening backup file %s: %w", fpath, err)
 		}
 
-		if err := bds.Backup(out); err != nil {
+		if err := bds.Backup(cctx.Context, out); err != nil {
 			if cerr := out.Close(); cerr != nil {
 				log.Errorw("error closing backup file while handling backup error", "closeErr", cerr, "backupErr", err)
 			}

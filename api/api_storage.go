@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/abi"
+	abinetwork "github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/filecoin-project/specs-storage/storage"
 
@@ -99,8 +100,8 @@ type StorageMiner interface {
 	// Returns null if message wasn't sent
 	SectorTerminateFlush(ctx context.Context) (*cid.Cid, error) //perm:admin
 	// SectorTerminatePending returns a list of pending sector terminations to be sent in the next batch message
-	SectorTerminatePending(ctx context.Context) ([]abi.SectorID, error)  //perm:admin
-	SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber) error //perm:admin
+	SectorTerminatePending(ctx context.Context) ([]abi.SectorID, error)             //perm:admin
+	SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber, snap bool) error //perm:admin
 	// SectorPreCommitFlush immediately sends a PreCommit message with sectors batched for PreCommit.
 	// Returns null if message wasn't sent
 	SectorPreCommitFlush(ctx context.Context) ([]sealiface.PreCommitBatchRes, error) //perm:admin
@@ -111,6 +112,9 @@ type StorageMiner interface {
 	SectorCommitFlush(ctx context.Context) ([]sealiface.CommitBatchRes, error) //perm:admin
 	// SectorCommitPending returns a list of pending Commit sectors to be sent in the next aggregate message
 	SectorCommitPending(ctx context.Context) ([]abi.SectorID, error) //perm:admin
+	SectorMatchPendingPiecesToOpenSectors(ctx context.Context) error //perm:admin
+	// SectorAbortUpgrade can be called on sectors that are in the process of being upgraded to abort it
+	SectorAbortUpgrade(context.Context, abi.SectorNumber) error //perm:admin
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error                              //perm:admin retry:true
@@ -118,17 +122,22 @@ type StorageMiner interface {
 	WorkerJobs(context.Context) (map[uuid.UUID][]storiface.WorkerJob, error)  //perm:admin
 
 	//storiface.WorkerReturn
-	ReturnAddPiece(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err *storiface.CallError) error                //perm:admin retry:true
-	ReturnSealPreCommit1(ctx context.Context, callID storiface.CallID, p1o storage.PreCommit1Out, err *storiface.CallError) error //perm:admin retry:true
-	ReturnSealPreCommit2(ctx context.Context, callID storiface.CallID, sealed storage.SectorCids, err *storiface.CallError) error //perm:admin retry:true
-	ReturnSealCommit1(ctx context.Context, callID storiface.CallID, out storage.Commit1Out, err *storiface.CallError) error       //perm:admin retry:true
-	ReturnSealCommit2(ctx context.Context, callID storiface.CallID, proof storage.Proof, err *storiface.CallError) error          //perm:admin retry:true
-	ReturnFinalizeSector(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                            //perm:admin retry:true
-	ReturnReleaseUnsealed(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                           //perm:admin retry:true
-	ReturnMoveStorage(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                               //perm:admin retry:true
-	ReturnUnsealPiece(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                               //perm:admin retry:true
-	ReturnReadPiece(ctx context.Context, callID storiface.CallID, ok bool, err *storiface.CallError) error                        //perm:admin retry:true
-	ReturnFetch(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                                     //perm:admin retry:true
+	ReturnAddPiece(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err *storiface.CallError) error                                      //perm:admin retry:true
+	ReturnSealPreCommit1(ctx context.Context, callID storiface.CallID, p1o storage.PreCommit1Out, err *storiface.CallError) error                       //perm:admin retry:true
+	ReturnSealPreCommit2(ctx context.Context, callID storiface.CallID, sealed storage.SectorCids, err *storiface.CallError) error                       //perm:admin retry:true
+	ReturnSealCommit1(ctx context.Context, callID storiface.CallID, out storage.Commit1Out, err *storiface.CallError) error                             //perm:admin retry:true
+	ReturnSealCommit2(ctx context.Context, callID storiface.CallID, proof storage.Proof, err *storiface.CallError) error                                //perm:admin retry:true
+	ReturnFinalizeSector(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                                                  //perm:admin retry:true
+	ReturnReplicaUpdate(ctx context.Context, callID storiface.CallID, out storage.ReplicaUpdateOut, err *storiface.CallError) error                     //perm:admin retry:true
+	ReturnProveReplicaUpdate1(ctx context.Context, callID storiface.CallID, vanillaProofs storage.ReplicaVanillaProofs, err *storiface.CallError) error //perm:admin retry:true
+	ReturnProveReplicaUpdate2(ctx context.Context, callID storiface.CallID, proof storage.ReplicaUpdateProof, err *storiface.CallError) error           //perm:admin retry:true
+	ReturnGenerateSectorKeyFromData(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                                       //perm:admin retry:true
+	ReturnFinalizeReplicaUpdate(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                                           //perm:admin retry:true
+	ReturnReleaseUnsealed(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                                                 //perm:admin retry:true
+	ReturnMoveStorage(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                                                     //perm:admin retry:true
+	ReturnUnsealPiece(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                                                     //perm:admin retry:true
+	ReturnReadPiece(ctx context.Context, callID storiface.CallID, ok bool, err *storiface.CallError) error                                              //perm:admin retry:true
+	ReturnFetch(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error                                                           //perm:admin retry:true
 
 	// SealingSchedDiag dumps internal sealing scheduler state
 	SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error) //perm:admin
@@ -145,6 +154,7 @@ type StorageMiner interface {
 	StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error                                          //perm:admin
 	StorageTryLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error)                               //perm:admin
 	StorageList(ctx context.Context) (map[stores.ID][]stores.Decl, error)                                                                                               //perm:admin
+	StorageGetLocks(ctx context.Context) (storiface.SectorLocks, error)                                                                                                 //perm:admin
 
 	StorageLocal(ctx context.Context) (map[stores.ID]string, error)       //perm:admin
 	StorageStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) //perm:admin
@@ -160,12 +170,15 @@ type StorageMiner interface {
 	MarketGetRetrievalAsk(ctx context.Context) (*retrievalmarket.Ask, error)                                                                                                             //perm:read
 	MarketListDataTransfers(ctx context.Context) ([]DataTransferChannel, error)                                                                                                          //perm:write
 	MarketDataTransferUpdates(ctx context.Context) (<-chan DataTransferChannel, error)                                                                                                   //perm:write
+	// MarketDataTransferDiagnostics generates debugging information about current data transfers over graphsync
+	MarketDataTransferDiagnostics(ctx context.Context, p peer.ID) (*TransferDiagnostics, error) //perm:write
 	// MarketRestartDataTransfer attempts to restart a data transfer with the given transfer ID and other peer
 	MarketRestartDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error //perm:write
 	// MarketCancelDataTransfer cancels a data transfer with the given transfer ID and other peer
 	MarketCancelDataTransfer(ctx context.Context, transferID datatransfer.TransferID, otherPeer peer.ID, isInitiator bool) error //perm:write
 	MarketPendingDeals(ctx context.Context) (PendingDealInfo, error)                                                             //perm:write
 	MarketPublishPendingDeals(ctx context.Context) error                                                                         //perm:admin
+	MarketRetryPublishDeal(ctx context.Context, propcid cid.Cid) error                                                           //perm:admin
 
 	// DagstoreListShards returns information about all shards known to the
 	// DAG store. Only available on nodes running the markets subsystem.
@@ -245,7 +258,7 @@ type StorageMiner interface {
 
 	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) //perm:admin
 
-	ComputeProof(ctx context.Context, ssi []builtin.SectorInfo, rand abi.PoStRandomness) ([]builtin.PoStProof, error) //perm:read
+	ComputeProof(ctx context.Context, ssi []builtin.ExtendedSectorInfo, rand abi.PoStRandomness, poStEpoch abi.ChainEpoch, nv abinetwork.Version) ([]builtin.PoStProof, error) //perm:read
 }
 
 var _ storiface.WorkerReturn = *new(StorageMiner)
@@ -267,6 +280,11 @@ type SectorLog struct {
 	Message string
 }
 
+type SectorPiece struct {
+	Piece    abi.PieceInfo
+	DealInfo *PieceDealInfo // nil for pieces which do not appear in deals (e.g. filler pieces)
+}
+
 type SectorInfo struct {
 	SectorID     abi.SectorNumber
 	State        SectorState
@@ -274,6 +292,7 @@ type SectorInfo struct {
 	CommR        *cid.Cid
 	Proof        []byte
 	Deals        []abi.DealID
+	Pieces       []SectorPiece
 	Ticket       SealTicket
 	Seed         SealSeed
 	PreCommitMsg *cid.Cid

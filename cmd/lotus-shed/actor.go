@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
+
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
@@ -43,6 +46,11 @@ var actorWithdrawCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "actor",
 			Usage: "specify the address of miner actor",
+		},
+		&cli.IntFlag{
+			Name:  "confidence",
+			Usage: "number of block confirmations to wait for",
+			Value: int(build.MessageConfidence),
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -96,7 +104,7 @@ var actorWithdrawCmd = &cli.Command{
 			amount = abi.TokenAmount(f)
 
 			if amount.GreaterThan(available) {
-				return xerrors.Errorf("can't withdraw more funds than available; requested: %s; available: %s", amount, available)
+				return xerrors.Errorf("can't withdraw more funds than available; requested: %s; available: %s", types.FIL(amount), types.FIL(available))
 			}
 		}
 
@@ -119,6 +127,35 @@ var actorWithdrawCmd = &cli.Command{
 		}
 
 		fmt.Printf("Requested rewards withdrawal in message %s\n", smsg.Cid())
+
+		// wait for it to get mined into a block
+		wait, err := nodeAPI.StateWaitMsg(ctx, smsg.Cid(), uint64(cctx.Int("confidence")))
+		if err != nil {
+			return err
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			fmt.Println(cctx.App.Writer, "withdrawal failed!")
+			return err
+		}
+
+		nv, err := nodeAPI.StateNetworkVersion(ctx, wait.TipSet)
+		if err != nil {
+			return err
+		}
+
+		if nv >= network.Version14 {
+			var withdrawn abi.TokenAmount
+			if err := withdrawn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
+				return err
+			}
+
+			fmt.Printf("Successfully withdrew %s \n", types.FIL(withdrawn))
+			if withdrawn.LessThan(amount) {
+				fmt.Printf("Note that this is less than the requested amount of %s \n", types.FIL(amount))
+			}
+		}
 
 		return nil
 	},

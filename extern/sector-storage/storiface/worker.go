@@ -15,6 +15,12 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 )
 
+type WorkerID uuid.UUID // worker session UUID
+
+func (w WorkerID) String() string {
+	return uuid.UUID(w).String()
+}
+
 type WorkerInfo struct {
 	Hostname string
 
@@ -28,12 +34,35 @@ type WorkerInfo struct {
 
 type WorkerResources struct {
 	MemPhysical uint64
+	MemUsed     uint64
 	MemSwap     uint64
-
-	MemReserved uint64 // Used by system / other processes
+	MemSwapUsed uint64
 
 	CPUs uint64 // Logical cores
 	GPUs []string
+
+	// if nil use the default resource table
+	Resources map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
+}
+
+func (wr WorkerResources) ResourceSpec(spt abi.RegisteredSealProof, tt sealtasks.TaskType) Resources {
+	res := ResourceTable[tt][spt]
+
+	// if the worker specifies custom resource table, prefer that
+	if wr.Resources != nil {
+		tr, ok := wr.Resources[tt]
+		if !ok {
+			return res
+		}
+
+		r, ok := tr[spt]
+		if ok {
+			return r
+		}
+	}
+
+	// otherwise, use the default resource table
+	return res
 }
 
 type WorkerStats struct {
@@ -42,11 +71,13 @@ type WorkerStats struct {
 
 	MemUsedMin uint64
 	MemUsedMax uint64
-	GpuUsed    bool   // nolint
-	CpuUse     uint64 // nolint
+	GpuUsed    float64 // nolint
+	CpuUse     uint64  // nolint
 }
 
 const (
+	RWPrepared = 1
+	RWRunning  = 0
 	RWRetWait  = -1
 	RWReturned = -2
 	RWRetDone  = -3
@@ -57,7 +88,8 @@ type WorkerJob struct {
 	Sector abi.SectorID
 	Task   sealtasks.TaskType
 
-	// 1+ - assigned
+	// 2+ - assigned
+	// 1  - prepared
 	// 0  - running
 	// -1 - ret-wait
 	// -2 - returned
@@ -88,7 +120,12 @@ type WorkerCalls interface {
 	SealCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (CallID, error)
 	SealCommit2(ctx context.Context, sector storage.SectorRef, c1o storage.Commit1Out) (CallID, error)
 	FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) (CallID, error)
+	FinalizeReplicaUpdate(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) (CallID, error)
 	ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) (CallID, error)
+	ReplicaUpdate(ctx context.Context, sector storage.SectorRef, pieces []abi.PieceInfo) (CallID, error)
+	ProveReplicaUpdate1(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid) (CallID, error)
+	ProveReplicaUpdate2(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid, vanillaProofs storage.ReplicaVanillaProofs) (CallID, error)
+	GenerateSectorKeyFromData(ctx context.Context, sector storage.SectorRef, commD cid.Cid) (CallID, error)
 	MoveStorage(ctx context.Context, sector storage.SectorRef, types SectorFileType) (CallID, error)
 	UnsealPiece(context.Context, storage.SectorRef, UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (CallID, error)
 	Fetch(context.Context, storage.SectorRef, SectorFileType, PathType, AcquireMode) (CallID, error)
@@ -142,6 +179,11 @@ type WorkerReturn interface {
 	ReturnSealCommit2(ctx context.Context, callID CallID, proof storage.Proof, err *CallError) error
 	ReturnFinalizeSector(ctx context.Context, callID CallID, err *CallError) error
 	ReturnReleaseUnsealed(ctx context.Context, callID CallID, err *CallError) error
+	ReturnReplicaUpdate(ctx context.Context, callID CallID, out storage.ReplicaUpdateOut, err *CallError) error
+	ReturnProveReplicaUpdate1(ctx context.Context, callID CallID, proofs storage.ReplicaVanillaProofs, err *CallError) error
+	ReturnProveReplicaUpdate2(ctx context.Context, callID CallID, proof storage.ReplicaUpdateProof, err *CallError) error
+	ReturnGenerateSectorKeyFromData(ctx context.Context, callID CallID, err *CallError) error
+	ReturnFinalizeReplicaUpdate(ctx context.Context, callID CallID, err *CallError) error
 	ReturnMoveStorage(ctx context.Context, callID CallID, err *CallError) error
 	ReturnUnsealPiece(ctx context.Context, callID CallID, err *CallError) error
 	ReturnReadPiece(ctx context.Context, callID CallID, ok bool, err *CallError) error

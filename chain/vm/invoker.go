@@ -5,6 +5,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"reflect"
+	"runtime"
+	"strings"
 
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -14,12 +16,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
-	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
-	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
-	exported4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/exported"
-	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
-	vmr "github.com/filecoin-project/specs-actors/v5/actors/runtime"
+	vmr "github.com/filecoin-project/specs-actors/v7/actors/runtime"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -30,8 +27,17 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+type MethodMeta struct {
+	Name string
+
+	Params reflect.Type
+	Ret    reflect.Type
+}
+
 type ActorRegistry struct {
 	actors map[cid.Cid]*actorInfo
+
+	Methods map[cid.Cid]map[abi.MethodNum]MethodMeta
 }
 
 // An ActorPredicate returns an error if the given actor is not valid for the given runtime environment (e.g., chain height, version, etc.).
@@ -61,18 +67,10 @@ type actorInfo struct {
 }
 
 func NewActorRegistry() *ActorRegistry {
-	inv := &ActorRegistry{actors: make(map[cid.Cid]*actorInfo)}
-
-	// TODO: define all these properties on the actors themselves, in specs-actors.
-
-	// add builtInCode using: register(cid, singleton)
-	inv.Register(ActorsVersionPredicate(actors.Version0), exported0.BuiltinActors()...)
-	inv.Register(ActorsVersionPredicate(actors.Version2), exported2.BuiltinActors()...)
-	inv.Register(ActorsVersionPredicate(actors.Version3), exported3.BuiltinActors()...)
-	inv.Register(ActorsVersionPredicate(actors.Version4), exported4.BuiltinActors()...)
-	inv.Register(ActorsVersionPredicate(actors.Version5), exported5.BuiltinActors()...)
-
-	return inv
+	return &ActorRegistry{
+		actors:  make(map[cid.Cid]*actorInfo),
+		Methods: map[cid.Cid]map[abi.MethodNum]MethodMeta{},
+	}
 }
 
 func (ar *ActorRegistry) Invoke(codeCid cid.Cid, rt vmr.Runtime, method abi.MethodNum, params []byte) ([]byte, aerrors.ActorError) {
@@ -96,6 +94,7 @@ func (ar *ActorRegistry) Register(pred ActorPredicate, actors ...rtt.VMActor) {
 		pred = func(vmr.Runtime, rtt.VMActor) error { return nil }
 	}
 	for _, a := range actors {
+		// register in the `actors` map (for the invoker)
 		code, err := ar.transform(a)
 		if err != nil {
 			panic(xerrors.Errorf("%s: %w", string(a.Code().Hash()), err))
@@ -105,6 +104,51 @@ func (ar *ActorRegistry) Register(pred ActorPredicate, actors ...rtt.VMActor) {
 			vmActor:   a,
 			predicate: pred,
 		}
+
+		// register in the `Methods` map (used by statemanager utils)
+		exports := a.Exports()
+		methods := make(map[abi.MethodNum]MethodMeta, len(exports))
+
+		// Explicitly add send, it's special.
+		methods[builtin.MethodSend] = MethodMeta{
+			Name:   "Send",
+			Params: reflect.TypeOf(new(abi.EmptyValue)),
+			Ret:    reflect.TypeOf(new(abi.EmptyValue)),
+		}
+
+		// Iterate over exported methods. Some of these _may_ be nil and
+		// must be skipped.
+		for number, export := range exports {
+			if export == nil {
+				continue
+			}
+
+			ev := reflect.ValueOf(export)
+			et := ev.Type()
+
+			// Extract the method names using reflection. These
+			// method names always match the field names in the
+			// `builtin.Method*` structs (tested in the specs-actors
+			// tests).
+			fnName := runtime.FuncForPC(ev.Pointer()).Name()
+			fnName = strings.TrimSuffix(fnName[strings.LastIndexByte(fnName, '.')+1:], "-fm")
+
+			switch abi.MethodNum(number) {
+			case builtin.MethodSend:
+				panic("method 0 is reserved for Send")
+			case builtin.MethodConstructor:
+				if fnName != "Constructor" {
+					panic("method 1 is reserved for Constructor")
+				}
+			}
+
+			methods[abi.MethodNum(number)] = MethodMeta{
+				Name:   fnName,
+				Params: et.In(1),
+				Ret:    et.Out(0),
+			}
+		}
+		ar.Methods[a.Code()] = methods
 	}
 }
 
@@ -226,12 +270,10 @@ func DecodeParams(b []byte, out interface{}) error {
 	return um.UnmarshalCBOR(bytes.NewReader(b))
 }
 
-func DumpActorState(act *types.Actor, b []byte) (interface{}, error) {
+func DumpActorState(i *ActorRegistry, act *types.Actor, b []byte) (interface{}, error) {
 	if builtin.IsAccountActor(act.Code) { // Account code special case
 		return nil, nil
 	}
-
-	i := NewActorRegistry()
 
 	actInfo, ok := i.actors[act.Code]
 	if !ok {

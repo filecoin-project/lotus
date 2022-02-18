@@ -31,12 +31,11 @@ def generate_lotus_cli(prog):
                 if cmd_flag is True and line == '':
                     cmd_flag = False
                 if cmd_flag is True and line[-1] != ':' and 'help, h' not in line:
-                    gap_pos = 0
+                    gap_pos = None
                     sub_cmd = line
                     if ' ' in line:
                         gap_pos = sub_cmd.index('  ')
-                    if gap_pos:
-                        sub_cmd = cur_cmd + ' ' + sub_cmd[:gap_pos]
+                    sub_cmd = cur_cmd + ' ' + sub_cmd[:gap_pos]
                     get_cmd_recursively(sub_cmd)
             except Exception as e:
                 print('Fail to deal with "%s" with error:\n%s' % (line, e))
@@ -46,6 +45,12 @@ def generate_lotus_cli(prog):
 
 
 if __name__ == "__main__":
+    # When --help is generated one needs to make sure none of the
+    # urfave-cli `EnvVars:` defaults get triggered
+    # Unset everything we can find via: grep -ho 'EnvVars:.*' -r * | sort -u
+    for e in [ "LOTUS_PATH", "LOTUS_MARKETS_PATH", "LOTUS_MINER_PATH", "LOTUS_STORAGE_PATH", "LOTUS_WORKER_PATH", "WORKER_PATH", "LOTUS_PANIC_REPORT_PATH", "WALLET_PATH" ]:
+        os.environ.pop(e, None)
+
     os.putenv("LOTUS_VERSION_IGNORE_COMMIT", "1")
     generate_lotus_cli('lotus')
     generate_lotus_cli('lotus-miner')

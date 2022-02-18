@@ -95,7 +95,7 @@ func (m *Sealing) padSector(ctx context.Context, sectorID storage.SectorRef, exi
 		if err != nil {
 			return nil, xerrors.Errorf("add piece: %w", err)
 		}
-		if !expectCid.Equals(expectCid) {
+		if !expectCid.Equals(ppi.PieceCID) {
 			return nil, xerrors.Errorf("got unexpected padding piece CID: expected:%s, got:%s", expectCid, ppi.PieceCID)
 		}
 
@@ -167,7 +167,7 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 		return nil, 0, allocated, xerrors.Errorf("sector %s precommitted but expired", sector.SectorNumber)
 	}
 
-	rand, err := m.Api.ChainGetRandomnessFromTickets(ctx.Context(), tok, crypto.DomainSeparationTag_SealRandomness, ticketEpoch, buf.Bytes())
+	rand, err := m.Api.StateGetRandomnessFromTickets(ctx.Context(), crypto.DomainSeparationTag_SealRandomness, ticketEpoch, buf.Bytes(), tok)
 	if err != nil {
 		return nil, 0, allocated, err
 	}
@@ -198,7 +198,7 @@ func (m *Sealing) handleGetTicket(ctx statemachine.Context, sector SectorInfo) e
 }
 
 func (m *Sealing) handlePreCommit1(ctx statemachine.Context, sector SectorInfo) error {
-	if err := checkPieces(ctx.Context(), m.maddr, sector, m.Api); err != nil { // Sanity check state
+	if err := checkPieces(ctx.Context(), m.maddr, sector, m.Api, false); err != nil { // Sanity check state
 		switch err.(type) {
 		case *ErrApi:
 			log.Errorf("handlePreCommit1: api error, not proceeding: %+v", err)
@@ -280,8 +280,8 @@ func (m *Sealing) handlePreCommit2(ctx statemachine.Context, sector SectorInfo) 
 }
 
 // TODO: We should probably invoke this method in most (if not all) state transition failures after handlePreCommitting
-func (m *Sealing) remarkForUpgrade(sid abi.SectorNumber) {
-	err := m.MarkForUpgrade(sid)
+func (m *Sealing) remarkForUpgrade(ctx context.Context, sid abi.SectorNumber) {
+	err := m.MarkForUpgrade(ctx, sid)
 	if err != nil {
 		log.Errorf("error re-marking sector %d as for upgrade: %+v", sid, err)
 	}
@@ -424,7 +424,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	mcid, err := m.Api.SendMsg(ctx.Context(), from, m.maddr, miner.Methods.PreCommitSector, deposit, big.Int(m.feeCfg.MaxPreCommitGasFee), enc.Bytes())
 	if err != nil {
 		if params.ReplaceCapacity {
-			m.remarkForUpgrade(params.ReplaceSectorNumber)
+			m.remarkForUpgrade(ctx.Context(), params.ReplaceSectorNumber)
 		}
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("pushing message to mpool: %w", err)})
 	}
@@ -522,7 +522,7 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 		if err := m.maddr.MarshalCBOR(buf); err != nil {
 			return err
 		}
-		rand, err := m.Api.ChainGetRandomnessFromBeacon(ectx, tok, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, randHeight, buf.Bytes())
+		rand, err := m.Api.StateGetRandomnessFromBeacon(ectx, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, randHeight, buf.Bytes(), tok)
 		if err != nil {
 			err = xerrors.Errorf("failed to get randomness for computing seal proof (ch %d; rh %d; tsk %x): %w", curH, randHeight, tok, err)
 
@@ -595,7 +595,7 @@ func (m *Sealing) handleCommitting(ctx statemachine.Context, sector SectorInfo) 
 		}
 
 		if err := m.checkCommit(ctx.Context(), sector, proof, tok); err != nil {
-			return ctx.Send(SectorComputeProofFailed{xerrors.Errorf("commit check error: %w", err)})
+			return ctx.Send(SectorCommitFailed{xerrors.Errorf("commit check error: %w", err)})
 		}
 	}
 

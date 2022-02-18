@@ -19,7 +19,7 @@ coverage:
     project:
       tools-and-tests:
         target: auto
-        threshold: 0.5%
+        threshold: 1%
         informational: true
         paths:
           - "testplans"
@@ -33,27 +33,27 @@ coverage:
           - "build"
       markets: 
         target: auto
-        threshold: 0.5%
+        threshold: 1%
         informational: false        
         paths: 
           - "markets"
           - "paychmgr"
       miner: 
         target: auto
-        threshold: 0.5%
+        threshold: 1.5%
         informational: false       
         paths: 
           - "miner"
           - "storage"
       chain:
         target: auto
-        threshold: 0.5%
+        threshold: 1%
         informational: false
         paths:
           - "chain"
       node:
         target: auto
-        threshold: 0.5%
+        threshold: 1%
         informational: false
         paths: 
           - "node"
@@ -66,7 +66,7 @@ coverage:
           - "journal"
       cli: 
         target: auto
-        threshold: 0.5%
+        threshold: 1%
         informational: true
         paths: 
           - "cli"

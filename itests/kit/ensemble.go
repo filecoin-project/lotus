@@ -277,7 +277,7 @@ func (n *Ensemble) Start() *Ensemble {
 		// We haven't been bootstrapped yet, we need to generate genesis and
 		// create the networking backbone.
 		gtempl = n.generateGenesis()
-		n.mn = mocknet.New(ctx)
+		n.mn = mocknet.New()
 	}
 
 	// ---------------------
@@ -453,6 +453,7 @@ func (n *Ensemble) Start() *Ensemble {
 		cfg.Subsystems.EnableMining = m.options.subsystems.Has(SMining)
 		cfg.Subsystems.EnableSealing = m.options.subsystems.Has(SSealing)
 		cfg.Subsystems.EnableSectorStorage = m.options.subsystems.Has(SSectorStorage)
+		cfg.Dealmaking.MaxStagingDealsBytes = m.options.maxStagingDealsBytes
 
 		if m.options.mainMiner != nil {
 			token, err := m.options.mainMiner.FullNode.AuthNew(ctx, api.AllPermissions)
@@ -474,7 +475,7 @@ func (n *Ensemble) Start() *Ensemble {
 		ks, err := lr.KeyStore()
 		require.NoError(n.t, err)
 
-		pk, err := m.Libp2p.PrivKey.Bytes()
+		pk, err := libp2pcrypto.MarshalPrivateKey(m.Libp2p.PrivKey)
 		require.NoError(n.t, err)
 
 		err = ks.Put("libp2p-host", types.KeyInfo{
@@ -486,7 +487,7 @@ func (n *Ensemble) Start() *Ensemble {
 		ds, err := lr.Datastore(context.TODO(), "/metadata")
 		require.NoError(n.t, err)
 
-		err = ds.Put(datastore.NewKey("miner-address"), m.ActorAddr.Bytes())
+		err = ds.Put(ctx, datastore.NewKey("miner-address"), m.ActorAddr.Bytes())
 		require.NoError(n.t, err)
 
 		nic := storedcounter.New(ds, datastore.NewKey(modules.StorageCounterDSPrefix))
@@ -672,6 +673,43 @@ func (n *Ensemble) Connect(from api.Net, to ...api.Net) *Ensemble {
 		require.NoError(n.t, err)
 	}
 	return n
+}
+
+func (n *Ensemble) BeginMiningMustPost(blocktime time.Duration, miners ...*TestMiner) []*BlockMiner {
+	ctx := context.Background()
+
+	// wait one second to make sure that nodes are connected and have handshaken.
+	// TODO make this deterministic by listening to identify events on the
+	//  libp2p eventbus instead (or something else).
+	time.Sleep(1 * time.Second)
+
+	var bms []*BlockMiner
+	if len(miners) == 0 {
+		// no miners have been provided explicitly, instantiate block miners
+		// for all active miners that aren't still mining.
+		for _, m := range n.active.miners {
+			if _, ok := n.active.bms[m]; ok {
+				continue // skip, already have a block miner
+			}
+			miners = append(miners, m)
+		}
+	}
+
+	if len(miners) > 1 {
+		n.t.Fatalf("Only one active miner for MustPost, but have %d", len(miners))
+	}
+
+	for _, m := range miners {
+		bm := NewBlockMiner(n.t, m)
+		bm.MineBlocksMustPost(ctx, blocktime)
+		n.t.Cleanup(bm.Stop)
+
+		bms = append(bms, bm)
+
+		n.active.bms[m] = bm
+	}
+
+	return bms
 }
 
 // BeginMining kicks off mining for the specified miners. If nil or 0-length,

@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"math/rand"
 
+	runtime7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
+
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -27,7 +31,6 @@ import (
 	market4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/market"
 	power4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/power"
 	reward4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/reward"
-	runtime5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -37,6 +40,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -54,7 +58,7 @@ func MinerAddress(genesisIndex uint64) address.Address {
 }
 
 type fakedSigSyscalls struct {
-	runtime5.Syscalls
+	runtime7.Syscalls
 }
 
 func (fss *fakedSigSyscalls) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) error {
@@ -62,7 +66,7 @@ func (fss *fakedSigSyscalls) VerifySignature(signature crypto.Signature, signer 
 }
 
 func mkFakedSigSyscalls(base vm.SyscallBuilder) vm.SyscallBuilder {
-	return func(ctx context.Context, rt *vm.Runtime) runtime5.Syscalls {
+	return func(ctx context.Context, rt *vm.Runtime) runtime7.Syscalls {
 		return &fakedSigSyscalls{
 			base(ctx, rt),
 		}
@@ -87,12 +91,11 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 		Epoch:          0,
 		Rand:           &fakeRand{},
 		Bstore:         cs.StateBlockstore(),
+		Actors:         filcns.NewActorRegistry(),
 		Syscalls:       mkFakedSigSyscalls(sys),
 		CircSupplyCalc: csc,
-		NtwkVersion: func(_ context.Context, _ abi.ChainEpoch) network.Version {
-			return nv
-		},
-		BaseFee: types.NewInt(0),
+		NetworkVersion: nv,
+		BaseFee:        types.NewInt(0),
 	}
 
 	vm, err := vm.NewVM(ctx, vmopt)
@@ -191,12 +194,21 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 				if err != nil {
 					return xerrors.Errorf("failed to create genesis miner (publish deals): %w", err)
 				}
-				var ids market.PublishStorageDealsReturn
-				if err := ids.UnmarshalCBOR(bytes.NewReader(ret)); err != nil {
-					return xerrors.Errorf("unmarsahling publishStorageDeals result: %w", err)
+				retval, err := market.DecodePublishStorageDealsReturn(ret, nv)
+				if err != nil {
+					return xerrors.Errorf("failed to create genesis miner (decoding published deals): %w", err)
 				}
 
-				minerInfos[i].dealIDs = append(minerInfos[i].dealIDs, ids.IDs...)
+				ids, err := retval.DealIDs()
+				if err != nil {
+					return xerrors.Errorf("failed to create genesis miner (getting published dealIDs): %w", err)
+				}
+
+				if len(ids) != len(params.Deals) {
+					return xerrors.Errorf("failed to create genesis miner (at least one deal was invalid on publication")
+				}
+
+				minerInfos[i].dealIDs = append(minerInfos[i].dealIDs, ids...)
 				return nil
 			}
 
@@ -387,11 +399,24 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 				}
 
 				// Commit one-by-one, otherwise pledge math tends to explode
-				confirmParams := &builtin0.ConfirmSectorProofsParams{
-					Sectors: []abi.SectorNumber{preseal.SectorID},
+				var paramBytes []byte
+
+				if av >= actors.Version6 {
+					// TODO: fixup
+					confirmParams := &builtin6.ConfirmSectorProofsParams{
+						Sectors: []abi.SectorNumber{preseal.SectorID},
+					}
+
+					paramBytes = mustEnc(confirmParams)
+				} else {
+					confirmParams := &builtin0.ConfirmSectorProofsParams{
+						Sectors: []abi.SectorNumber{preseal.SectorID},
+					}
+
+					paramBytes = mustEnc(confirmParams)
 				}
 
-				_, err = doExecValue(ctx, vm, minerInfos[i].maddr, power.Address, big.Zero(), miner.Methods.ConfirmSectorProofsValid, mustEnc(confirmParams))
+				_, err = doExecValue(ctx, vm, minerInfos[i].maddr, power.Address, big.Zero(), miner.Methods.ConfirmSectorProofsValid, paramBytes)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
 				}
@@ -483,25 +508,13 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 // TODO: copied from actors test harness, deduplicate or remove from here
 type fakeRand struct{}
 
-func (fr *fakeRand) GetChainRandomnessLookingForward(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) GetChainRandomness(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
 	return out, nil
 }
 
-func (fr *fakeRand) GetChainRandomnessLookingBack(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
-	return out, nil
-}
-
-func (fr *fakeRand) GetBeaconRandomnessLookingForward(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
-	return out, nil
-}
-
-func (fr *fakeRand) GetBeaconRandomnessLookingBack(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) GetBeaconRandomness(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return out, nil

@@ -11,6 +11,7 @@ import (
 	"github.com/ipfs/go-datastore/query"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -61,7 +62,7 @@ func NewNode(ctx context.Context, r repo.Repo) (nd *Node, _err error) {
 	}
 	return &Node{
 		repo:       lr,
-		Chainstore: store.NewChainStore(bs, bs, ds, nil),
+		Chainstore: store.NewChainStore(bs, bs, ds, filcns.Weight, nil),
 		MetadataDS: ds,
 		Blockstore: bs,
 	}, err
@@ -105,7 +106,7 @@ func (nd *Node) LoadSim(ctx context.Context, name string) (*Simulation, error) {
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create upgrade schedule for simulation %s: %w", name, err)
 	}
-	sim.StateManager, err = stmgr.NewStateManagerWithUpgradeSchedule(nd.Chainstore, vm.Syscalls(mock.Verifier), us)
+	sim.StateManager, err = stmgr.NewStateManager(nd.Chainstore, filcns.NewTipSetExecutor(), vm.Syscalls(mock.Verifier), us, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to create state manager for simulation %s: %w", name, err)
 	}
@@ -124,13 +125,17 @@ func (nd *Node) CreateSim(ctx context.Context, name string, head *types.TipSet) 
 	if err != nil {
 		return nil, err
 	}
+	sm, err := stmgr.NewStateManager(nd.Chainstore, filcns.NewTipSetExecutor(), vm.Syscalls(mock.Verifier), filcns.DefaultUpgradeSchedule(), nil)
+	if err != nil {
+		return nil, xerrors.Errorf("creating state manager: %w", err)
+	}
 	sim := &Simulation{
 		name:         name,
 		Node:         nd,
-		StateManager: stmgr.NewStateManager(nd.Chainstore, vm.Syscalls(mock.Verifier)),
+		StateManager: sm,
 		stages:       stages,
 	}
-	if has, err := nd.MetadataDS.Has(sim.key("head")); err != nil {
+	if has, err := nd.MetadataDS.Has(ctx, sim.key("head")); err != nil {
 		return nil, err
 	} else if has {
 		return nil, xerrors.Errorf("simulation named %s already exists", name)
@@ -150,7 +155,7 @@ func (nd *Node) CreateSim(ctx context.Context, name string, head *types.TipSet) 
 // ListSims lists all simulations.
 func (nd *Node) ListSims(ctx context.Context) ([]string, error) {
 	prefix := simulationPrefix.ChildString("head").String()
-	items, err := nd.MetadataDS.Query(query.Query{
+	items, err := nd.MetadataDS.Query(ctx, query.Query{
 		Prefix:   prefix,
 		KeysOnly: true,
 		Orders:   []query.Order{query.OrderByKey{}},
@@ -187,7 +192,7 @@ func (nd *Node) DeleteSim(ctx context.Context, name string) error {
 	var err error
 	for _, field := range simFields {
 		key := simulationPrefix.ChildString(field).ChildString(name)
-		err = multierr.Append(err, nd.MetadataDS.Delete(key))
+		err = multierr.Append(err, nd.MetadataDS.Delete(ctx, key))
 	}
 	return err
 }
@@ -204,7 +209,7 @@ func (nd *Node) CopySim(ctx context.Context, oldName, newName string) error {
 	values := make(map[string][]byte)
 	for _, field := range simFields {
 		key := simulationPrefix.ChildString(field).ChildString(oldName)
-		value, err := nd.MetadataDS.Get(key)
+		value, err := nd.MetadataDS.Get(ctx, key)
 		if err == datastore.ErrNotFound {
 			continue
 		} else if err != nil {
@@ -221,9 +226,9 @@ func (nd *Node) CopySim(ctx context.Context, oldName, newName string) error {
 		key := simulationPrefix.ChildString(field).ChildString(newName)
 		var err error
 		if value, ok := values[field]; ok {
-			err = nd.MetadataDS.Put(key, value)
+			err = nd.MetadataDS.Put(ctx, key, value)
 		} else {
-			err = nd.MetadataDS.Delete(key)
+			err = nd.MetadataDS.Delete(ctx, key)
 		}
 		if err != nil {
 			return err

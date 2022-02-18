@@ -23,25 +23,25 @@ type storable interface {
 	ToStorageBlock() (block.Block, error)
 }
 
-func PutMessage(bs bstore.Blockstore, m storable) (cid.Cid, error) {
+func PutMessage(ctx context.Context, bs bstore.Blockstore, m storable) (cid.Cid, error) {
 	b, err := m.ToStorageBlock()
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	if err := bs.Put(b); err != nil {
+	if err := bs.Put(ctx, b); err != nil {
 		return cid.Undef, err
 	}
 
 	return b.Cid(), nil
 }
 
-func (cs *ChainStore) PutMessage(m storable) (cid.Cid, error) {
-	return PutMessage(cs.chainBlockstore, m)
+func (cs *ChainStore) PutMessage(ctx context.Context, m storable) (cid.Cid, error) {
+	return PutMessage(ctx, cs.chainBlockstore, m)
 }
 
-func (cs *ChainStore) GetCMessage(c cid.Cid) (types.ChainMsg, error) {
-	m, err := cs.GetMessage(c)
+func (cs *ChainStore) GetCMessage(ctx context.Context, c cid.Cid) (types.ChainMsg, error) {
+	m, err := cs.GetMessage(ctx, c)
 	if err == nil {
 		return m, nil
 	}
@@ -49,21 +49,21 @@ func (cs *ChainStore) GetCMessage(c cid.Cid) (types.ChainMsg, error) {
 		log.Warnf("GetCMessage: unexpected error getting unsigned message: %s", err)
 	}
 
-	return cs.GetSignedMessage(c)
+	return cs.GetSignedMessage(ctx, c)
 }
 
-func (cs *ChainStore) GetMessage(c cid.Cid) (*types.Message, error) {
+func (cs *ChainStore) GetMessage(ctx context.Context, c cid.Cid) (*types.Message, error) {
 	var msg *types.Message
-	err := cs.chainLocalBlockstore.View(c, func(b []byte) (err error) {
+	err := cs.chainLocalBlockstore.View(ctx, c, func(b []byte) (err error) {
 		msg, err = types.DecodeMessage(b)
 		return err
 	})
 	return msg, err
 }
 
-func (cs *ChainStore) GetSignedMessage(c cid.Cid) (*types.SignedMessage, error) {
+func (cs *ChainStore) GetSignedMessage(ctx context.Context, c cid.Cid) (*types.SignedMessage, error) {
 	var msg *types.SignedMessage
-	err := cs.chainLocalBlockstore.View(c, func(b []byte) (err error) {
+	err := cs.chainLocalBlockstore.View(ctx, c, func(b []byte) (err error) {
 		msg, err = types.DecodeSignedMessage(b)
 		return err
 	})
@@ -101,10 +101,11 @@ type BlockMessages struct {
 	Miner         address.Address
 	BlsMessages   []types.ChainMsg
 	SecpkMessages []types.ChainMsg
-	WinCount      int64
 }
 
-func (cs *ChainStore) BlockMsgsForTipset(ts *types.TipSet) ([]BlockMessages, error) {
+func (cs *ChainStore) BlockMsgsForTipset(ctx context.Context, ts *types.TipSet) ([]BlockMessages, error) {
+	// returned BlockMessages match block order in tipset
+
 	applied := make(map[address.Address]uint64)
 
 	cst := cbor.NewCborStore(cs.stateBlockstore)
@@ -141,7 +142,7 @@ func (cs *ChainStore) BlockMsgsForTipset(ts *types.TipSet) ([]BlockMessages, err
 	var out []BlockMessages
 	for _, b := range ts.Blocks() {
 
-		bms, sms, err := cs.MessagesForBlock(b)
+		bms, sms, err := cs.MessagesForBlock(ctx, b)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get messages for block: %w", err)
 		}
@@ -150,7 +151,6 @@ func (cs *ChainStore) BlockMsgsForTipset(ts *types.TipSet) ([]BlockMessages, err
 			Miner:         b.Miner,
 			BlsMessages:   make([]types.ChainMsg, 0, len(bms)),
 			SecpkMessages: make([]types.ChainMsg, 0, len(sms)),
-			WinCount:      b.ElectionProof.WinCount,
 		}
 
 		for _, bmsg := range bms {
@@ -181,8 +181,8 @@ func (cs *ChainStore) BlockMsgsForTipset(ts *types.TipSet) ([]BlockMessages, err
 	return out, nil
 }
 
-func (cs *ChainStore) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
-	bmsgs, err := cs.BlockMsgsForTipset(ts)
+func (cs *ChainStore) MessagesForTipset(ctx context.Context, ts *types.TipSet) ([]types.ChainMsg, error) {
+	bmsgs, err := cs.BlockMsgsForTipset(ctx, ts)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +206,7 @@ type mmCids struct {
 	secpk []cid.Cid
 }
 
-func (cs *ChainStore) ReadMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error) {
+func (cs *ChainStore) ReadMsgMetaCids(ctx context.Context, mmc cid.Cid) ([]cid.Cid, []cid.Cid, error) {
 	o, ok := cs.mmCache.Get(mmc)
 	if ok {
 		mmcids := o.(*mmCids)
@@ -215,7 +215,7 @@ func (cs *ChainStore) ReadMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
 
 	cst := cbor.NewCborStore(cs.chainLocalBlockstore)
 	var msgmeta types.MsgMeta
-	if err := cst.Get(context.TODO(), mmc, &msgmeta); err != nil {
+	if err := cst.Get(ctx, mmc, &msgmeta); err != nil {
 		return nil, nil, xerrors.Errorf("failed to load msgmeta (%s): %w", mmc, err)
 	}
 
@@ -237,18 +237,18 @@ func (cs *ChainStore) ReadMsgMetaCids(mmc cid.Cid) ([]cid.Cid, []cid.Cid, error)
 	return blscids, secpkcids, nil
 }
 
-func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
-	blscids, secpkcids, err := cs.ReadMsgMetaCids(b.Messages)
+func (cs *ChainStore) MessagesForBlock(ctx context.Context, b *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
+	blscids, secpkcids, err := cs.ReadMsgMetaCids(ctx, b.Messages)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	blsmsgs, err := cs.LoadMessagesFromCids(blscids)
+	blsmsgs, err := cs.LoadMessagesFromCids(ctx, blscids)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("loading bls messages for block: %w", err)
 	}
 
-	secpkmsgs, err := cs.LoadSignedMessagesFromCids(secpkcids)
+	secpkmsgs, err := cs.LoadSignedMessagesFromCids(ctx, secpkcids)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("loading secpk messages for block: %w", err)
 	}
@@ -256,8 +256,7 @@ func (cs *ChainStore) MessagesForBlock(b *types.BlockHeader) ([]*types.Message, 
 	return blsmsgs, secpkmsgs, nil
 }
 
-func (cs *ChainStore) GetParentReceipt(b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
-	ctx := context.TODO()
+func (cs *ChainStore) GetParentReceipt(ctx context.Context, b *types.BlockHeader, i int) (*types.MessageReceipt, error) {
 	// block headers use adt0, for now.
 	a, err := blockadt.AsArray(cs.ActorStore(ctx), b.ParentMessageReceipts)
 	if err != nil {
@@ -274,10 +273,10 @@ func (cs *ChainStore) GetParentReceipt(b *types.BlockHeader, i int) (*types.Mess
 	return &r, nil
 }
 
-func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*types.Message, error) {
+func (cs *ChainStore) LoadMessagesFromCids(ctx context.Context, cids []cid.Cid) ([]*types.Message, error) {
 	msgs := make([]*types.Message, 0, len(cids))
 	for i, c := range cids {
-		m, err := cs.GetMessage(c)
+		m, err := cs.GetMessage(ctx, c)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", c, i, err)
 		}
@@ -288,10 +287,10 @@ func (cs *ChainStore) LoadMessagesFromCids(cids []cid.Cid) ([]*types.Message, er
 	return msgs, nil
 }
 
-func (cs *ChainStore) LoadSignedMessagesFromCids(cids []cid.Cid) ([]*types.SignedMessage, error) {
+func (cs *ChainStore) LoadSignedMessagesFromCids(ctx context.Context, cids []cid.Cid) ([]*types.SignedMessage, error) {
 	msgs := make([]*types.SignedMessage, 0, len(cids))
 	for i, c := range cids {
-		m, err := cs.GetSignedMessage(c)
+		m, err := cs.GetSignedMessage(ctx, c)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get message: (%s):%d: %w", c, i, err)
 		}

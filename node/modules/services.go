@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	eventbus "github.com/libp2p/go-eventbus"
@@ -136,11 +137,19 @@ func waitForSync(stmgr *stmgr.StateManager, epochs int, subscribe func()) {
 	})
 }
 
-func HandleIncomingBlocks(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub.PubSub, s *chain.Syncer, bserv dtypes.ChainBlockService, chain *store.ChainStore, stmgr *stmgr.StateManager, h host.Host, nn dtypes.NetworkName) {
+func HandleIncomingBlocks(mctx helpers.MetricsCtx,
+	lc fx.Lifecycle,
+	ps *pubsub.PubSub,
+	s *chain.Syncer,
+	bserv dtypes.ChainBlockService,
+	chain *store.ChainStore,
+	cns consensus.Consensus,
+	h host.Host,
+	nn dtypes.NetworkName) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	v := sub.NewBlockValidator(
-		h.ID(), chain, stmgr,
+		h.ID(), chain, cns,
 		func(p peer.ID) {
 			ps.BlacklistPeer(p)
 			h.ConnManager().TagPeer(p, "badblock", -1000)
@@ -219,8 +228,8 @@ func BuiltinDrandConfig() dtypes.DrandSchedule {
 	return build.DrandConfigSchedule()
 }
 
-func RandomSchedule(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Schedule, error) {
-	gen, err := p.Cs.GetGenesis()
+func RandomSchedule(lc fx.Lifecycle, mctx helpers.MetricsCtx, p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Schedule, error) {
+	gen, err := p.Cs.GetGenesis(helpers.LifecycleCtx(mctx, lc))
 	if err != nil {
 		return nil, err
 	}

@@ -1,3 +1,4 @@
+//stm: #unit
 package messagepool
 
 import (
@@ -9,12 +10,14 @@ import (
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 )
 
 func TestRepubMessages(t *testing.T) {
+	//stm: @TOKEN_WALLET_NEW_001
 	oldRepublishBatchDelay := RepublishBatchDelay
 	RepublishBatchDelay = time.Microsecond
 	defer func() {
@@ -24,7 +27,7 @@ func TestRepubMessages(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,6 +59,7 @@ func TestRepubMessages(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
+		//stm: @CHAIN_MEMPOOL_PUSH_001
 		_, err := mp.Push(context.TODO(), m)
 		if err != nil {
 			t.Fatal(err)

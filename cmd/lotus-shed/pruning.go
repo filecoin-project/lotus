@@ -6,6 +6,7 @@ import (
 	"io"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/ipfs/bbloom"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
@@ -167,10 +168,10 @@ var stateTreePruneCmd = &cli.Command{
 			return nil
 		}
 
-		cs := store.NewChainStore(bs, bs, mds, nil)
+		cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
 		defer cs.Close() //nolint:errcheck
 
-		if err := cs.Load(); err != nil {
+		if err := cs.Load(context.Background()); err != nil {
 			return fmt.Errorf("loading chainstore: %w", err)
 		}
 

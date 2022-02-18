@@ -11,6 +11,10 @@ import (
 	"sync"
 	"time"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
+
+	"github.com/minio/blake2b-simd"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -169,8 +173,15 @@ type MessagePool struct {
 
 	sigValCache *lru.TwoQueueCache
 
+	nonceCache *lru.Cache
+
 	evtTypes [3]journal.EventType
 	journal  journal.Journal
+}
+
+type nonceCacheKey struct {
+	tsk  types.TipSetKey
+	addr address.Address
 }
 
 type msgSet struct {
@@ -192,10 +203,10 @@ func ComputeMinRBF(curPrem abi.TokenAmount) abi.TokenAmount {
 	return types.BigAdd(minPrice, types.NewInt(1))
 }
 
-func CapGasFee(mff dtypes.DefaultMaxFeeFunc, msg *types.Message, sendSepc *api.MessageSendSpec) {
+func CapGasFee(mff dtypes.DefaultMaxFeeFunc, msg *types.Message, sendSpec *api.MessageSendSpec) {
 	var maxFee abi.TokenAmount
-	if sendSepc != nil {
-		maxFee = sendSepc.MaxFee
+	if sendSpec != nil {
+		maxFee = sendSpec.MaxFee
 	}
 	if maxFee.Int == nil || maxFee.Equals(big.Zero()) {
 		mf, err := mff()
@@ -354,11 +365,12 @@ func (ms *msgSet) toSlice() []*types.SignedMessage {
 	return set
 }
 
-func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journal.Journal) (*MessagePool, error) {
+func New(ctx context.Context, api Provider, ds dtypes.MetadataDS, us stmgr.UpgradeSchedule, netName dtypes.NetworkName, j journal.Journal) (*MessagePool, error) {
 	cache, _ := lru.New2Q(build.BlsSignatureCacheSize)
 	verifcache, _ := lru.New2Q(build.VerifSigCacheSize)
+	noncecache, _ := lru.New(256)
 
-	cfg, err := loadConfig(ds)
+	cfg, err := loadConfig(ctx, ds)
 	if err != nil {
 		return nil, xerrors.Errorf("error loading mpool config: %w", err)
 	}
@@ -366,7 +378,6 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journ
 	if j == nil {
 		j = journal.NilJournal()
 	}
-	us := stmgr.DefaultUpgradeSchedule()
 
 	mp := &MessagePool{
 		ds:             ds,
@@ -383,6 +394,7 @@ func New(api Provider, ds dtypes.MetadataDS, netName dtypes.NetworkName, j journ
 		pruneCooldown:  make(chan struct{}, 1),
 		blsSigCache:    cache,
 		sigValCache:    verifcache,
+		nonceCache:     noncecache,
 		changes:        lps.New(50),
 		localMsgs:      namespace.Wrap(ds, datastore.NewKey(localMsgsDs)),
 		api:            api,
@@ -598,7 +610,7 @@ func (mp *MessagePool) addLocal(ctx context.Context, m *types.SignedMessage) err
 		return xerrors.Errorf("error serializing message: %w", err)
 	}
 
-	if err := mp.localMsgs.Put(datastore.NewKey(string(m.Cid().Bytes())), msgb); err != nil {
+	if err := mp.localMsgs.Put(ctx, datastore.NewKey(string(m.Cid().Bytes())), msgb); err != nil {
 		return xerrors.Errorf("persisting local message: %w", err)
 	}
 
@@ -752,11 +764,13 @@ func (mp *MessagePool) Add(ctx context.Context, m *types.SignedMessage) error {
 func sigCacheKey(m *types.SignedMessage) (string, error) {
 	switch m.Signature.Type {
 	case crypto.SigTypeBLS:
-		if len(m.Signature.Data) < 90 {
-			return "", fmt.Errorf("bls signature too short")
+		if len(m.Signature.Data) != ffi.SignatureBytes {
+			return "", fmt.Errorf("bls signature incorrectly sized")
 		}
 
-		return string(m.Cid().Bytes()) + string(m.Signature.Data[64:]), nil
+		hashCache := blake2b.Sum256(append(m.Cid().Bytes(), m.Signature.Data...))
+
+		return string(hashCache[:]), nil
 	case crypto.SigTypeSecp256k1:
 		return string(m.Cid().Bytes()), nil
 	default:
@@ -904,12 +918,12 @@ func (mp *MessagePool) addLocked(ctx context.Context, m *types.SignedMessage, st
 		mp.blsSigCache.Add(m.Cid(), m.Signature)
 	}
 
-	if _, err := mp.api.PutMessage(m); err != nil {
+	if _, err := mp.api.PutMessage(ctx, m); err != nil {
 		log.Warnf("mpooladd cs.PutMessage failed: %s", err)
 		return err
 	}
 
-	if _, err := mp.api.PutMessage(&m.Message); err != nil {
+	if _, err := mp.api.PutMessage(ctx, &m.Message); err != nil {
 		log.Warnf("mpooladd cs.PutMessage failed: %s", err)
 		return err
 	}
@@ -1011,10 +1025,22 @@ func (mp *MessagePool) getStateNonce(ctx context.Context, addr address.Address, 
 	done := metrics.Timer(ctx, metrics.MpoolGetNonceDuration)
 	defer done()
 
+	nk := nonceCacheKey{
+		tsk:  ts.Key(),
+		addr: addr,
+	}
+
+	n, ok := mp.nonceCache.Get(nk)
+	if ok {
+		return n.(uint64), nil
+	}
+
 	act, err := mp.api.GetActorAfter(addr, ts)
 	if err != nil {
 		return 0, err
 	}
+
+	mp.nonceCache.Add(nk, act.Nonce)
 
 	return act.Nonce, nil
 }
@@ -1202,7 +1228,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 	var merr error
 
 	for _, ts := range revert {
-		pts, err := mp.api.LoadTipSet(ts.Parents())
+		pts, err := mp.api.LoadTipSet(ctx, ts.Parents())
 		if err != nil {
 			log.Errorf("error loading reverted tipset parent: %s", err)
 			merr = multierror.Append(merr, err)
@@ -1211,7 +1237,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 
 		mp.curTs = pts
 
-		msgs, err := mp.MessagesForBlocks(ts.Blocks())
+		msgs, err := mp.MessagesForBlocks(ctx, ts.Blocks())
 		if err != nil {
 			log.Errorf("error retrieving messages for reverted block: %s", err)
 			merr = multierror.Append(merr, err)
@@ -1227,7 +1253,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 		mp.curTs = ts
 
 		for _, b := range ts.Blocks() {
-			bmsgs, smsgs, err := mp.api.MessagesForBlock(b)
+			bmsgs, smsgs, err := mp.api.MessagesForBlock(ctx, b)
 			if err != nil {
 				xerr := xerrors.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %w", b.Cid(), b.Height, b.Messages, err)
 				log.Errorf("error retrieving messages for block: %s", xerr)
@@ -1333,7 +1359,7 @@ func (mp *MessagePool) HeadChange(ctx context.Context, revert []*types.TipSet, a
 	return merr
 }
 
-func (mp *MessagePool) runHeadChange(from *types.TipSet, to *types.TipSet, rmsgs map[address.Address]map[uint64]*types.SignedMessage) error {
+func (mp *MessagePool) runHeadChange(ctx context.Context, from *types.TipSet, to *types.TipSet, rmsgs map[address.Address]map[uint64]*types.SignedMessage) error {
 	add := func(m *types.SignedMessage) {
 		s, ok := rmsgs[m.Message.From]
 		if !ok {
@@ -1355,7 +1381,7 @@ func (mp *MessagePool) runHeadChange(from *types.TipSet, to *types.TipSet, rmsgs
 
 	}
 
-	revert, apply, err := store.ReorgOps(mp.api.LoadTipSet, from, to)
+	revert, apply, err := store.ReorgOps(ctx, mp.api.LoadTipSet, from, to)
 	if err != nil {
 		return xerrors.Errorf("failed to compute reorg ops for mpool pending messages: %w", err)
 	}
@@ -1363,7 +1389,7 @@ func (mp *MessagePool) runHeadChange(from *types.TipSet, to *types.TipSet, rmsgs
 	var merr error
 
 	for _, ts := range revert {
-		msgs, err := mp.MessagesForBlocks(ts.Blocks())
+		msgs, err := mp.MessagesForBlocks(ctx, ts.Blocks())
 		if err != nil {
 			log.Errorf("error retrieving messages for reverted block: %s", err)
 			merr = multierror.Append(merr, err)
@@ -1377,7 +1403,7 @@ func (mp *MessagePool) runHeadChange(from *types.TipSet, to *types.TipSet, rmsgs
 
 	for _, ts := range apply {
 		for _, b := range ts.Blocks() {
-			bmsgs, smsgs, err := mp.api.MessagesForBlock(b)
+			bmsgs, smsgs, err := mp.api.MessagesForBlock(ctx, b)
 			if err != nil {
 				xerr := xerrors.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %w", b.Cid(), b.Height, b.Messages, err)
 				log.Errorf("error retrieving messages for block: %s", xerr)
@@ -1402,11 +1428,11 @@ type statBucket struct {
 	msgs map[uint64]*types.SignedMessage
 }
 
-func (mp *MessagePool) MessagesForBlocks(blks []*types.BlockHeader) ([]*types.SignedMessage, error) {
+func (mp *MessagePool) MessagesForBlocks(ctx context.Context, blks []*types.BlockHeader) ([]*types.SignedMessage, error) {
 	out := make([]*types.SignedMessage, 0)
 
 	for _, b := range blks {
-		bmsgs, smsgs, err := mp.api.MessagesForBlock(b)
+		bmsgs, smsgs, err := mp.api.MessagesForBlock(ctx, b)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to get messages for apply block %s(height %d) (msgroot = %s): %w", b.Cid(), b.Height, b.Messages, err)
 		}
@@ -1472,7 +1498,7 @@ func (mp *MessagePool) Updates(ctx context.Context) (<-chan api.MpoolUpdate, err
 }
 
 func (mp *MessagePool) loadLocal(ctx context.Context) error {
-	res, err := mp.localMsgs.Query(query.Query{})
+	res, err := mp.localMsgs.Query(ctx, query.Query{})
 	if err != nil {
 		return xerrors.Errorf("query local messages: %w", err)
 	}
@@ -1520,7 +1546,7 @@ func (mp *MessagePool) Clear(ctx context.Context, local bool) {
 
 			if ok {
 				for _, m := range mset.msgs {
-					err := mp.localMsgs.Delete(datastore.NewKey(string(m.Cid().Bytes())))
+					err := mp.localMsgs.Delete(ctx, datastore.NewKey(string(m.Cid().Bytes())))
 					if err != nil {
 						log.Warnf("error deleting local message: %s", err)
 					}

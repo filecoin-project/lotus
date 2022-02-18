@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -222,7 +223,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, nil, xerrors.Errorf("set verified registry actor: %w", err)
 	}
 
-	bact, err := makeAccountActor(ctx, cst, av, builtin.BurntFundsActorAddr, big.Zero())
+	bact, err := MakeAccountActor(ctx, cst, av, builtin.BurntFundsActorAddr, big.Zero())
 	if err != nil {
 		return nil, nil, xerrors.Errorf("setup burnt funds actor state: %w", err)
 	}
@@ -235,7 +236,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 
 		switch info.Type {
 		case genesis.TAccount:
-			if err := createAccountActor(ctx, cst, state, info, keyIDs, av); err != nil {
+			if err := CreateAccountActor(ctx, cst, state, info, keyIDs, av); err != nil {
 				return nil, nil, xerrors.Errorf("failed to create account actor: %w", err)
 			}
 
@@ -247,7 +248,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 			}
 			idStart++
 
-			if err := createMultisigAccount(ctx, cst, state, ida, info, keyIDs, av); err != nil {
+			if err := CreateMultisigAccount(ctx, cst, state, ida, info, keyIDs, av); err != nil {
 				return nil, nil, err
 			}
 		default:
@@ -268,7 +269,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 			return nil, nil, fmt.Errorf("rootkey account has already been declared, cannot be assigned 80: %s", ainfo.Owner)
 		}
 
-		vact, err := makeAccountActor(ctx, cst, av, ainfo.Owner, template.VerifregRootKey.Balance)
+		vact, err := MakeAccountActor(ctx, cst, av, ainfo.Owner, template.VerifregRootKey.Balance)
 		if err != nil {
 			return nil, nil, xerrors.Errorf("setup verifreg rootkey account state: %w", err)
 		}
@@ -276,7 +277,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 			return nil, nil, xerrors.Errorf("set verifreg rootkey account actor: %w", err)
 		}
 	case genesis.TMultisig:
-		if err = createMultisigAccount(ctx, cst, state, builtin.RootVerifierAddress, template.VerifregRootKey, keyIDs, av); err != nil {
+		if err = CreateMultisigAccount(ctx, cst, state, builtin.RootVerifierAddress, template.VerifregRootKey, keyIDs, av); err != nil {
 			return nil, nil, xerrors.Errorf("failed to set up verified registry signer: %w", err)
 		}
 	default:
@@ -305,7 +306,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		return nil, nil, err
 	}
 
-	verifierAct, err := makeAccountActor(ctx, cst, av, verifierAd, big.Zero())
+	verifierAct, err := MakeAccountActor(ctx, cst, av, verifierAd, big.Zero())
 	if err != nil {
 		return nil, nil, xerrors.Errorf("setup first verifier state: %w", err)
 	}
@@ -348,13 +349,13 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 		}
 
 		keyIDs[ainfo.Owner] = builtin.ReserveAddress
-		err = createAccountActor(ctx, cst, state, template.RemainderAccount, keyIDs, av)
+		err = CreateAccountActor(ctx, cst, state, template.RemainderAccount, keyIDs, av)
 		if err != nil {
 			return nil, nil, xerrors.Errorf("creating remainder acct: %w", err)
 		}
 
 	case genesis.TMultisig:
-		if err = createMultisigAccount(ctx, cst, state, builtin.ReserveAddress, template.RemainderAccount, keyIDs, av); err != nil {
+		if err = CreateMultisigAccount(ctx, cst, state, builtin.ReserveAddress, template.RemainderAccount, keyIDs, av); err != nil {
 			return nil, nil, xerrors.Errorf("failed to set up remainder: %w", err)
 		}
 	default:
@@ -364,7 +365,7 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	return state, keyIDs, nil
 }
 
-func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av actors.Version, addr address.Address, bal types.BigInt) (*types.Actor, error) {
+func MakeAccountActor(ctx context.Context, cst cbor.IpldStore, av actors.Version, addr address.Address, bal types.BigInt) (*types.Actor, error) {
 	ast, err := account.MakeState(adt.WrapStore(ctx, cst), av, addr)
 	if err != nil {
 		return nil, err
@@ -389,13 +390,13 @@ func makeAccountActor(ctx context.Context, cst cbor.IpldStore, av actors.Version
 	return act, nil
 }
 
-func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *state.StateTree, info genesis.Actor, keyIDs map[address.Address]address.Address, av actors.Version) error {
+func CreateAccountActor(ctx context.Context, cst cbor.IpldStore, state *state.StateTree, info genesis.Actor, keyIDs map[address.Address]address.Address, av actors.Version) error {
 	var ainfo genesis.AccountMeta
 	if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
 		return xerrors.Errorf("unmarshaling account meta: %w", err)
 	}
 
-	aa, err := makeAccountActor(ctx, cst, av, ainfo.Owner, info.Balance)
+	aa, err := MakeAccountActor(ctx, cst, av, ainfo.Owner, info.Balance)
 	if err != nil {
 		return err
 	}
@@ -412,9 +413,9 @@ func createAccountActor(ctx context.Context, cst cbor.IpldStore, state *state.St
 	return nil
 }
 
-func createMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *state.StateTree, ida address.Address, info genesis.Actor, keyIDs map[address.Address]address.Address, av actors.Version) error {
+func CreateMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *state.StateTree, ida address.Address, info genesis.Actor, keyIDs map[address.Address]address.Address, av actors.Version) error {
 	if info.Type != genesis.TMultisig {
-		return fmt.Errorf("can only call createMultisigAccount with multisig Actor info")
+		return fmt.Errorf("can only call CreateMultisigAccount with multisig Actor info")
 	}
 	var ainfo genesis.MultisigMeta
 	if err := json.Unmarshal(info.Meta, &ainfo); err != nil {
@@ -436,7 +437,7 @@ func createMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *state
 			continue
 		}
 
-		aa, err := makeAccountActor(ctx, cst, av, e, big.Zero())
+		aa, err := MakeAccountActor(ctx, cst, av, e, big.Zero())
 		if err != nil {
 			return err
 		}
@@ -478,17 +479,20 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 	verifNeeds := make(map[address.Address]abi.PaddedPieceSize)
 	var sum abi.PaddedPieceSize
 
+	csc := func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error) {
+		return big.Zero(), nil
+	}
+
 	vmopt := vm.VMOpts{
 		StateBase:      stateroot,
 		Epoch:          0,
 		Rand:           &fakeRand{},
 		Bstore:         cs.StateBlockstore(),
+		Actors:         filcns.NewActorRegistry(),
 		Syscalls:       mkFakedSigSyscalls(sys),
-		CircSupplyCalc: nil,
-		NtwkVersion: func(_ context.Context, _ abi.ChainEpoch) network.Version {
-			return nv
-		},
-		BaseFee: types.NewInt(0),
+		CircSupplyCalc: csc,
+		NetworkVersion: nv,
+		BaseFee:        types.NewInt(0),
 	}
 	vm, err := vm.NewVM(ctx, &vmopt)
 	if err != nil {
@@ -562,7 +566,7 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	}
 
 	// temp chainstore
-	cs := store.NewChainStore(bs, bs, datastore.NewMapDatastore(), j)
+	cs := store.NewChainStore(bs, bs, datastore.NewMapDatastore(), nil, j)
 
 	// Verify PreSealed Data
 	stateroot, err = VerifyPreSealedData(ctx, cs, sys, stateroot, template, keyIDs, template.NetworkVersion)
@@ -589,7 +593,7 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	if err != nil {
 		return nil, xerrors.Errorf("serializing msgmeta failed: %w", err)
 	}
-	if err := bs.Put(mmb); err != nil {
+	if err := bs.Put(ctx, mmb); err != nil {
 		return nil, xerrors.Errorf("putting msgmeta block to blockstore: %w", err)
 	}
 
@@ -619,7 +623,7 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 		return nil, xerrors.Errorf("filecoinGenesisCid != gblk.Cid")
 	}
 
-	if err := bs.Put(gblk); err != nil {
+	if err := bs.Put(ctx, gblk); err != nil {
 		return nil, xerrors.Errorf("failed writing filecoin genesis block to blockstore: %w", err)
 	}
 
@@ -650,7 +654,7 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 		return nil, xerrors.Errorf("serializing block header failed: %w", err)
 	}
 
-	if err := bs.Put(sb); err != nil {
+	if err := bs.Put(ctx, sb); err != nil {
 		return nil, xerrors.Errorf("putting header to blockstore: %w", err)
 	}
 

@@ -47,7 +47,8 @@ func NewBeaconEntry(round uint64, data []byte) BeaconEntry {
 }
 
 type BlockHeader struct {
-	Miner                 address.Address    // 0 unique per block/miner
+	Miner address.Address // 0 unique per block/miner
+
 	Ticket                *Ticket            // 1 unique per block/miner: should be a valid VRF
 	ElectionProof         *ElectionProof     // 2 unique per block/miner: should be a valid VRF
 	BeaconEntries         []BeaconEntry      // 3 identical for all blocks in same tipset

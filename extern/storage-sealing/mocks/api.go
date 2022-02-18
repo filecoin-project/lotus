@@ -77,36 +77,6 @@ func (mr *MockSealingAPIMockRecorder) ChainGetMessage(arg0, arg1 interface{}) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetMessage", reflect.TypeOf((*MockSealingAPI)(nil).ChainGetMessage), arg0, arg1)
 }
 
-// ChainGetRandomnessFromBeacon mocks base method.
-func (m *MockSealingAPI) ChainGetRandomnessFromBeacon(arg0 context.Context, arg1 sealing.TipSetToken, arg2 crypto.DomainSeparationTag, arg3 abi.ChainEpoch, arg4 []byte) (abi.Randomness, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChainGetRandomnessFromBeacon", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(abi.Randomness)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ChainGetRandomnessFromBeacon indicates an expected call of ChainGetRandomnessFromBeacon.
-func (mr *MockSealingAPIMockRecorder) ChainGetRandomnessFromBeacon(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetRandomnessFromBeacon", reflect.TypeOf((*MockSealingAPI)(nil).ChainGetRandomnessFromBeacon), arg0, arg1, arg2, arg3, arg4)
-}
-
-// ChainGetRandomnessFromTickets mocks base method.
-func (m *MockSealingAPI) ChainGetRandomnessFromTickets(arg0 context.Context, arg1 sealing.TipSetToken, arg2 crypto.DomainSeparationTag, arg3 abi.ChainEpoch, arg4 []byte) (abi.Randomness, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChainGetRandomnessFromTickets", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(abi.Randomness)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ChainGetRandomnessFromTickets indicates an expected call of ChainGetRandomnessFromTickets.
-func (mr *MockSealingAPIMockRecorder) ChainGetRandomnessFromTickets(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetRandomnessFromTickets", reflect.TypeOf((*MockSealingAPI)(nil).ChainGetRandomnessFromTickets), arg0, arg1, arg2, arg3, arg4)
-}
-
 // ChainHead mocks base method.
 func (m *MockSealingAPI) ChainHead(arg0 context.Context) (sealing.TipSetToken, abi.ChainEpoch, error) {
 	m.ctrl.T.Helper()
@@ -168,6 +138,36 @@ func (mr *MockSealingAPIMockRecorder) StateComputeDataCommitment(arg0, arg1, arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateComputeDataCommitment", reflect.TypeOf((*MockSealingAPI)(nil).StateComputeDataCommitment), arg0, arg1, arg2, arg3, arg4)
 }
 
+// StateGetRandomnessFromBeacon mocks base method.
+func (m *MockSealingAPI) StateGetRandomnessFromBeacon(arg0 context.Context, arg1 crypto.DomainSeparationTag, arg2 abi.ChainEpoch, arg3 []byte, arg4 sealing.TipSetToken) (abi.Randomness, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetRandomnessFromBeacon", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(abi.Randomness)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetRandomnessFromBeacon indicates an expected call of StateGetRandomnessFromBeacon.
+func (mr *MockSealingAPIMockRecorder) StateGetRandomnessFromBeacon(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetRandomnessFromBeacon", reflect.TypeOf((*MockSealingAPI)(nil).StateGetRandomnessFromBeacon), arg0, arg1, arg2, arg3, arg4)
+}
+
+// StateGetRandomnessFromTickets mocks base method.
+func (m *MockSealingAPI) StateGetRandomnessFromTickets(arg0 context.Context, arg1 crypto.DomainSeparationTag, arg2 abi.ChainEpoch, arg3 []byte, arg4 sealing.TipSetToken) (abi.Randomness, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetRandomnessFromTickets", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(abi.Randomness)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetRandomnessFromTickets indicates an expected call of StateGetRandomnessFromTickets.
+func (mr *MockSealingAPIMockRecorder) StateGetRandomnessFromTickets(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetRandomnessFromTickets", reflect.TypeOf((*MockSealingAPI)(nil).StateGetRandomnessFromTickets), arg0, arg1, arg2, arg3, arg4)
+}
+
 // StateLookupID mocks base method.
 func (m *MockSealingAPI) StateLookupID(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (address.Address, error) {
 	m.ctrl.T.Helper()
@@ -211,6 +211,21 @@ func (m *MockSealingAPI) StateMarketStorageDealProposal(arg0 context.Context, ar
 func (mr *MockSealingAPIMockRecorder) StateMarketStorageDealProposal(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMarketStorageDealProposal", reflect.TypeOf((*MockSealingAPI)(nil).StateMarketStorageDealProposal), arg0, arg1, arg2)
+}
+
+// StateMinerActiveSectors mocks base method.
+func (m *MockSealingAPI) StateMinerActiveSectors(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) ([]*miner.SectorOnChainInfo, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateMinerActiveSectors", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]*miner.SectorOnChainInfo)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateMinerActiveSectors indicates an expected call of StateMinerActiveSectors.
+func (mr *MockSealingAPIMockRecorder) StateMinerActiveSectors(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerActiveSectors", reflect.TypeOf((*MockSealingAPI)(nil).StateMinerActiveSectors), arg0, arg1, arg2)
 }
 
 // StateMinerAvailableBalance mocks base method.

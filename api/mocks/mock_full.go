@@ -25,7 +25,6 @@ import (
 	miner "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	types "github.com/filecoin-project/lotus/chain/types"
 	alerting "github.com/filecoin-project/lotus/journal/alerting"
-	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	dtypes "github.com/filecoin-project/lotus/node/modules/dtypes"
 	imports "github.com/filecoin-project/lotus/node/repo/imports"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
@@ -300,36 +299,6 @@ func (mr *MockFullNodeMockRecorder) ChainGetPath(arg0, arg1, arg2 interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetPath", reflect.TypeOf((*MockFullNode)(nil).ChainGetPath), arg0, arg1, arg2)
 }
 
-// ChainGetRandomnessFromBeacon mocks base method.
-func (m *MockFullNode) ChainGetRandomnessFromBeacon(arg0 context.Context, arg1 types.TipSetKey, arg2 crypto.DomainSeparationTag, arg3 abi.ChainEpoch, arg4 []byte) (abi.Randomness, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChainGetRandomnessFromBeacon", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(abi.Randomness)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ChainGetRandomnessFromBeacon indicates an expected call of ChainGetRandomnessFromBeacon.
-func (mr *MockFullNodeMockRecorder) ChainGetRandomnessFromBeacon(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetRandomnessFromBeacon", reflect.TypeOf((*MockFullNode)(nil).ChainGetRandomnessFromBeacon), arg0, arg1, arg2, arg3, arg4)
-}
-
-// ChainGetRandomnessFromTickets mocks base method.
-func (m *MockFullNode) ChainGetRandomnessFromTickets(arg0 context.Context, arg1 types.TipSetKey, arg2 crypto.DomainSeparationTag, arg3 abi.ChainEpoch, arg4 []byte) (abi.Randomness, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChainGetRandomnessFromTickets", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(abi.Randomness)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ChainGetRandomnessFromTickets indicates an expected call of ChainGetRandomnessFromTickets.
-func (mr *MockFullNodeMockRecorder) ChainGetRandomnessFromTickets(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainGetRandomnessFromTickets", reflect.TypeOf((*MockFullNode)(nil).ChainGetRandomnessFromTickets), arg0, arg1, arg2, arg3, arg4)
-}
-
 // ChainGetTipSet mocks base method.
 func (m *MockFullNode) ChainGetTipSet(arg0 context.Context, arg1 types.TipSetKey) (*types.TipSet, error) {
 	m.ctrl.T.Helper()
@@ -565,6 +534,20 @@ func (m *MockFullNode) ClientDealSize(arg0 context.Context, arg1 cid.Cid) (api.D
 func (mr *MockFullNodeMockRecorder) ClientDealSize(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientDealSize", reflect.TypeOf((*MockFullNode)(nil).ClientDealSize), arg0, arg1)
+}
+
+// ClientExport mocks base method.
+func (m *MockFullNode) ClientExport(arg0 context.Context, arg1 api.ExportRef, arg2 api.FileRef) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientExport", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ClientExport indicates an expected call of ClientExport.
+func (mr *MockFullNodeMockRecorder) ClientExport(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientExport", reflect.TypeOf((*MockFullNode)(nil).ClientExport), arg0, arg1, arg2)
 }
 
 // ClientFindData mocks base method.
@@ -805,17 +788,18 @@ func (mr *MockFullNodeMockRecorder) ClientRestartDataTransfer(arg0, arg1, arg2, 
 }
 
 // ClientRetrieve mocks base method.
-func (m *MockFullNode) ClientRetrieve(arg0 context.Context, arg1 api.RetrievalOrder, arg2 *api.FileRef) error {
+func (m *MockFullNode) ClientRetrieve(arg0 context.Context, arg1 api.RetrievalOrder) (*api.RestrievalRes, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ClientRetrieve", arg0, arg1, arg2)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "ClientRetrieve", arg0, arg1)
+	ret0, _ := ret[0].(*api.RestrievalRes)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // ClientRetrieve indicates an expected call of ClientRetrieve.
-func (mr *MockFullNodeMockRecorder) ClientRetrieve(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) ClientRetrieve(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientRetrieve", reflect.TypeOf((*MockFullNode)(nil).ClientRetrieve), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientRetrieve", reflect.TypeOf((*MockFullNode)(nil).ClientRetrieve), arg0, arg1)
 }
 
 // ClientRetrieveTryRestartInsufficientFunds mocks base method.
@@ -832,19 +816,18 @@ func (mr *MockFullNodeMockRecorder) ClientRetrieveTryRestartInsufficientFunds(ar
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientRetrieveTryRestartInsufficientFunds", reflect.TypeOf((*MockFullNode)(nil).ClientRetrieveTryRestartInsufficientFunds), arg0, arg1)
 }
 
-// ClientRetrieveWithEvents mocks base method.
-func (m *MockFullNode) ClientRetrieveWithEvents(arg0 context.Context, arg1 api.RetrievalOrder, arg2 *api.FileRef) (<-chan marketevents.RetrievalEvent, error) {
+// ClientRetrieveWait mocks base method.
+func (m *MockFullNode) ClientRetrieveWait(arg0 context.Context, arg1 retrievalmarket.DealID) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ClientRetrieveWithEvents", arg0, arg1, arg2)
-	ret0, _ := ret[0].(<-chan marketevents.RetrievalEvent)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret := m.ctrl.Call(m, "ClientRetrieveWait", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
 }
 
-// ClientRetrieveWithEvents indicates an expected call of ClientRetrieveWithEvents.
-func (mr *MockFullNodeMockRecorder) ClientRetrieveWithEvents(arg0, arg1, arg2 interface{}) *gomock.Call {
+// ClientRetrieveWait indicates an expected call of ClientRetrieveWait.
+func (mr *MockFullNodeMockRecorder) ClientRetrieveWait(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientRetrieveWithEvents", reflect.TypeOf((*MockFullNode)(nil).ClientRetrieveWithEvents), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientRetrieveWait", reflect.TypeOf((*MockFullNode)(nil).ClientRetrieveWait), arg0, arg1)
 }
 
 // ClientStartDeal mocks base method.
@@ -1458,18 +1441,33 @@ func (mr *MockFullNodeMockRecorder) MsigApproveTxnHash(arg0, arg1, arg2, arg3, a
 }
 
 // MsigCancel mocks base method.
-func (m *MockFullNode) MsigCancel(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 address.Address, arg4 big.Int, arg5 address.Address, arg6 uint64, arg7 []byte) (*api.MessagePrototype, error) {
+func (m *MockFullNode) MsigCancel(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 address.Address) (*api.MessagePrototype, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "MsigCancel", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+	ret := m.ctrl.Call(m, "MsigCancel", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(*api.MessagePrototype)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // MsigCancel indicates an expected call of MsigCancel.
-func (mr *MockFullNodeMockRecorder) MsigCancel(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7 interface{}) *gomock.Call {
+func (mr *MockFullNodeMockRecorder) MsigCancel(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MsigCancel", reflect.TypeOf((*MockFullNode)(nil).MsigCancel), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MsigCancel", reflect.TypeOf((*MockFullNode)(nil).MsigCancel), arg0, arg1, arg2, arg3)
+}
+
+// MsigCancelTxnHash mocks base method.
+func (m *MockFullNode) MsigCancelTxnHash(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 address.Address, arg4 big.Int, arg5 address.Address, arg6 uint64, arg7 []byte) (*api.MessagePrototype, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MsigCancelTxnHash", arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
+	ret0, _ := ret[0].(*api.MessagePrototype)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MsigCancelTxnHash indicates an expected call of MsigCancelTxnHash.
+func (mr *MockFullNodeMockRecorder) MsigCancelTxnHash(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MsigCancelTxnHash", reflect.TypeOf((*MockFullNode)(nil).MsigCancelTxnHash), arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7)
 }
 
 // MsigCreate mocks base method.
@@ -1813,6 +1811,21 @@ func (mr *MockFullNodeMockRecorder) NetFindPeer(arg0, arg1 interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetFindPeer", reflect.TypeOf((*MockFullNode)(nil).NetFindPeer), arg0, arg1)
 }
 
+// NetLimit mocks base method.
+func (m *MockFullNode) NetLimit(arg0 context.Context, arg1 string) (api.NetLimit, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetLimit", arg0, arg1)
+	ret0, _ := ret[0].(api.NetLimit)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetLimit indicates an expected call of NetLimit.
+func (mr *MockFullNodeMockRecorder) NetLimit(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetLimit", reflect.TypeOf((*MockFullNode)(nil).NetLimit), arg0, arg1)
+}
+
 // NetPeerInfo mocks base method.
 func (m *MockFullNode) NetPeerInfo(arg0 context.Context, arg1 peer.ID) (*api.ExtendedPeerInfo, error) {
 	m.ctrl.T.Helper()
@@ -1856,6 +1869,35 @@ func (m *MockFullNode) NetPubsubScores(arg0 context.Context) ([]api.PubsubScore,
 func (mr *MockFullNodeMockRecorder) NetPubsubScores(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetPubsubScores", reflect.TypeOf((*MockFullNode)(nil).NetPubsubScores), arg0)
+}
+
+// NetSetLimit mocks base method.
+func (m *MockFullNode) NetSetLimit(arg0 context.Context, arg1 string, arg2 api.NetLimit) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetSetLimit", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// NetSetLimit indicates an expected call of NetSetLimit.
+func (mr *MockFullNodeMockRecorder) NetSetLimit(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetSetLimit", reflect.TypeOf((*MockFullNode)(nil).NetSetLimit), arg0, arg1, arg2)
+}
+
+// NetStat mocks base method.
+func (m *MockFullNode) NetStat(arg0 context.Context, arg1 string) (api.NetStat, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetStat", arg0, arg1)
+	ret0, _ := ret[0].(api.NetStat)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetStat indicates an expected call of NetStat.
+func (mr *MockFullNodeMockRecorder) NetStat(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetStat", reflect.TypeOf((*MockFullNode)(nil).NetStat), arg0, arg1)
 }
 
 // NodeStatus mocks base method.
@@ -2289,6 +2331,36 @@ func (m *MockFullNode) StateGetActor(arg0 context.Context, arg1 address.Address,
 func (mr *MockFullNodeMockRecorder) StateGetActor(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetActor", reflect.TypeOf((*MockFullNode)(nil).StateGetActor), arg0, arg1, arg2)
+}
+
+// StateGetRandomnessFromBeacon mocks base method.
+func (m *MockFullNode) StateGetRandomnessFromBeacon(arg0 context.Context, arg1 crypto.DomainSeparationTag, arg2 abi.ChainEpoch, arg3 []byte, arg4 types.TipSetKey) (abi.Randomness, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetRandomnessFromBeacon", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(abi.Randomness)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetRandomnessFromBeacon indicates an expected call of StateGetRandomnessFromBeacon.
+func (mr *MockFullNodeMockRecorder) StateGetRandomnessFromBeacon(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetRandomnessFromBeacon", reflect.TypeOf((*MockFullNode)(nil).StateGetRandomnessFromBeacon), arg0, arg1, arg2, arg3, arg4)
+}
+
+// StateGetRandomnessFromTickets mocks base method.
+func (m *MockFullNode) StateGetRandomnessFromTickets(arg0 context.Context, arg1 crypto.DomainSeparationTag, arg2 abi.ChainEpoch, arg3 []byte, arg4 types.TipSetKey) (abi.Randomness, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateGetRandomnessFromTickets", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(abi.Randomness)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateGetRandomnessFromTickets indicates an expected call of StateGetRandomnessFromTickets.
+func (mr *MockFullNodeMockRecorder) StateGetRandomnessFromTickets(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateGetRandomnessFromTickets", reflect.TypeOf((*MockFullNode)(nil).StateGetRandomnessFromTickets), arg0, arg1, arg2, arg3, arg4)
 }
 
 // StateListActors mocks base method.

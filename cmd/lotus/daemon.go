@@ -31,6 +31,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -473,7 +474,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return xerrors.Errorf("failed to open blockstore: %w", err)
 	}
 
-	mds, err := lr.Datastore(context.TODO(), "/metadata")
+	mds, err := lr.Datastore(ctx, "/metadata")
 	if err != nil {
 		return err
 	}
@@ -483,7 +484,7 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return xerrors.Errorf("failed to open journal: %w", err)
 	}
 
-	cst := store.NewChainStore(bs, bs, mds, j)
+	cst := store.NewChainStore(bs, bs, mds, filcns.Weight, j)
 	defer cst.Close() //nolint:errcheck
 
 	log.Infof("importing chain from %s...", fname)
@@ -498,14 +499,14 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 	bar.Units = pb.U_BYTES
 
 	bar.Start()
-	ts, err := cst.Import(br)
+	ts, err := cst.Import(ctx, br)
 	bar.Finish()
 
 	if err != nil {
 		return xerrors.Errorf("importing chain failed: %w", err)
 	}
 
-	if err := cst.FlushValidationCache(); err != nil {
+	if err := cst.FlushValidationCache(ctx); err != nil {
 		return xerrors.Errorf("flushing validation cache failed: %w", err)
 	}
 
@@ -514,12 +515,16 @@ func ImportChain(ctx context.Context, r repo.Repo, fname string, snapshot bool) 
 		return err
 	}
 
-	err = cst.SetGenesis(gb.Blocks()[0])
+	err = cst.SetGenesis(ctx, gb.Blocks()[0])
 	if err != nil {
 		return err
 	}
 
-	stm := stmgr.NewStateManager(cst, vm.Syscalls(ffiwrapper.ProofVerifier))
+	// TODO: We need to supply the actual beacon after v14
+	stm, err := stmgr.NewStateManager(cst, filcns.NewTipSetExecutor(), vm.Syscalls(ffiwrapper.ProofVerifier), filcns.DefaultUpgradeSchedule(), nil)
+	if err != nil {
+		return err
+	}
 
 	if !snapshot {
 		log.Infof("validating imported chain...")

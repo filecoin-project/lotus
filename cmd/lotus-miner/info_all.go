@@ -76,8 +76,28 @@ var infoAllCmd = &cli.Command{
 			fmt.Println("ERROR: ", err)
 		}
 
+		fmt.Println("\n#: Proving Info")
+		if err := provingInfoCmd.Action(cctx); err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
+		fmt.Println("\n#: Proving Deadlines")
+		if err := provingDeadlinesCmd.Action(cctx); err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
+		fmt.Println("\n#: Proving Faults")
+		if err := provingFaultsCmd.Action(cctx); err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
 		fmt.Println("\n#: Sealing Jobs")
 		if err := sealingJobsCmd.Action(cctx); err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
+		fmt.Println("\n#: Storage Locks")
+		if err := storageLocks.Action(cctx); err != nil {
 			fmt.Println("ERROR: ", err)
 		}
 
@@ -92,8 +112,37 @@ var infoAllCmd = &cli.Command{
 		}
 
 		fmt.Println("\n#: Storage Deals")
-		if err := dealsListCmd.Action(cctx); err != nil {
-			fmt.Println("ERROR: ", err)
+		{
+			fs := &flag.FlagSet{}
+			for _, f := range dealsListCmd.Flags {
+				if err := f.Apply(fs); err != nil {
+					fmt.Println("ERROR: ", err)
+				}
+			}
+			if err := fs.Parse([]string{"--verbose"}); err != nil {
+				fmt.Println("ERROR: ", err)
+			}
+
+			if err := dealsListCmd.Action(cli.NewContext(cctx.App, fs, cctx)); err != nil {
+				fmt.Println("ERROR: ", err)
+			}
+		}
+
+		fmt.Println("\n#: Storage Deals JSON")
+		{
+			fs := &flag.FlagSet{}
+			for _, f := range dealsListCmd.Flags {
+				if err := f.Apply(fs); err != nil {
+					fmt.Println("ERROR: ", err)
+				}
+			}
+			if err := fs.Parse([]string{"--verbose", "--format=json"}); err != nil {
+				fmt.Println("ERROR: ", err)
+			}
+
+			if err := dealsListCmd.Action(cli.NewContext(cctx.App, fs, cctx)); err != nil {
+				fmt.Println("ERROR: ", err)
+			}
 		}
 
 		fmt.Println("\n#: Retrieval Deals")
@@ -101,8 +150,60 @@ var infoAllCmd = &cli.Command{
 			fmt.Println("ERROR: ", err)
 		}
 
+		fmt.Println("\n#: Data Transfers")
+		{
+			fs := &flag.FlagSet{}
+			for _, f := range transfersListCmd.Flags {
+				if err := f.Apply(fs); err != nil {
+					fmt.Println("ERROR: ", err)
+				}
+			}
+			if err := fs.Parse([]string{"--verbose", "--completed", "--show-failed"}); err != nil {
+				fmt.Println("ERROR: ", err)
+			}
+
+			if err := transfersListCmd.Action(cli.NewContext(cctx.App, fs, cctx)); err != nil {
+				fmt.Println("ERROR: ", err)
+			}
+		}
+
+		fmt.Println("\n#: DAGStore shards")
+		if err := dagstoreListShardsCmd.Action(cctx); err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
+		fmt.Println("\n#: Pending Batch Deals")
+		if err := dealsPendingPublish.Action(cctx); err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
+		fmt.Println("\n#: Pending Batch Terminations")
+		if err := sectorsTerminatePendingCmd.Action(cctx); err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
+		fmt.Println("\n#: Pending Batch PreCommit")
+		if err := sectorsBatchingPendingPreCommit.Action(cctx); err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
+		fmt.Println("\n#: Pending Batch Commit")
+		if err := sectorsBatchingPendingCommit.Action(cctx); err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
 		fmt.Println("\n#: Sector List")
 		if err := sectorsListCmd.Action(cctx); err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
+		fmt.Println("\n#: Storage Sector List")
+		if err := storageListSectorsCmd.Action(cctx); err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
+		fmt.Println("\n#: Expired Sectors")
+		if err := sectorsExpiredCmd.Action(cctx); err != nil {
 			fmt.Println("ERROR: ", err)
 		}
 

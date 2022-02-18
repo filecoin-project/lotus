@@ -1,6 +1,7 @@
 package market
 
 import (
+	"github.com/filecoin-project/go-state-types/network"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -103,7 +104,28 @@ type DealProposals interface {
 }
 
 type PublishStorageDealsParams = market0.PublishStorageDealsParams
-type PublishStorageDealsReturn = market0.PublishStorageDealsReturn
+
+type PublishStorageDealsReturn interface {
+    DealIDs() ([]abi.DealID, error)
+	// Note that this index is based on the batch of deals that were published, NOT the DealID
+	IsDealValid(index uint64) (bool, error)
+}
+
+func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStorageDealsReturn, error) {
+	av, err := actors.VersionForNetwork(nv)
+	if err != nil {
+		return nil, err
+	}
+
+	switch av {
+{{range .versions}}
+	case actors.Version{{.}}:
+		return decodePublishStorageDealsReturn{{.}}(b)
+{{end}}
+}
+	return nil, xerrors.Errorf("unknown actor version %d", av)
+}
+
 type VerifyDealsForActivationParams = market0.VerifyDealsForActivationParams
 type WithdrawBalanceParams = market0.WithdrawBalanceParams
 

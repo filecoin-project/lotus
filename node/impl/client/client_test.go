@@ -1,3 +1,4 @@
+//stm: #unit
 package client
 
 import (
@@ -31,6 +32,7 @@ import (
 var testdata embed.FS
 
 func TestImportLocal(t *testing.T) {
+	//stm: @CLIENT_STORAGE_DEALS_IMPORT_LOCAL_001, @CLIENT_RETRIEVAL_FIND_001
 	ds := dssync.MutexWrap(datastore.NewMapDatastore())
 	dir := t.TempDir()
 	im := imports.NewManager(ds, dir)
@@ -44,6 +46,7 @@ func TestImportLocal(t *testing.T) {
 	b, err := testdata.ReadFile("testdata/payload.txt")
 	require.NoError(t, err)
 
+	//stm: @CLIENT_STORAGE_DEALS_LIST_IMPORTS_001
 	root, err := a.ClientImportLocal(ctx, bytes.NewReader(b))
 	require.NoError(t, err)
 	require.NotEqual(t, cid.Undef, root)
@@ -56,11 +59,12 @@ func TestImportLocal(t *testing.T) {
 	require.Equal(t, root, *it.Root)
 	require.True(t, strings.HasPrefix(it.CARPath, dir))
 
+	//stm: @CLIENT_DATA_HAS_LOCAL_001
 	local, err := a.ClientHasLocal(ctx, root)
 	require.NoError(t, err)
 	require.True(t, local)
 
-	order := api.RetrievalOrder{
+	order := api.ExportRef{
 		Root:         root,
 		FromLocalCAR: it.CARPath,
 	}
@@ -68,7 +72,7 @@ func TestImportLocal(t *testing.T) {
 	// retrieve as UnixFS.
 	out1 := filepath.Join(dir, "retrieval1.data") // as unixfs
 	out2 := filepath.Join(dir, "retrieval2.data") // as car
-	err = a.ClientRetrieve(ctx, order, &api.FileRef{
+	err = a.ClientExport(ctx, order, api.FileRef{
 		Path: out1,
 	})
 	require.NoError(t, err)
@@ -77,7 +81,7 @@ func TestImportLocal(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, b, outBytes)
 
-	err = a.ClientRetrieve(ctx, order, &api.FileRef{
+	err = a.ClientExport(ctx, order, api.FileRef{
 		Path:  out2,
 		IsCAR: true,
 	})
@@ -107,7 +111,7 @@ func TestImportLocal(t *testing.T) {
 	// recreate the unixfs dag, and see if it matches the original file byte by byte
 	// import the car into a memory blockstore, then export the unixfs file.
 	bs := blockstore.NewBlockstore(datastore.NewMapDatastore())
-	_, err = car.LoadCar(bs, exported.DataReader())
+	_, err = car.LoadCar(ctx, bs, exported.DataReader())
 	require.NoError(t, err)
 
 	dag := merkledag.NewDAGService(blockservice.New(bs, offline.Exchange(bs)))

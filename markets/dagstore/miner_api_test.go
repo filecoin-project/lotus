@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
@@ -74,7 +75,7 @@ func TestLotusAccessorFetchUnsealedPiece(t *testing.T) {
 			rpn := &mockRPN{
 				sectors: mockData,
 			}
-			api := NewMinerAPI(ps, rpn, 100)
+			api := NewMinerAPI(ps, rpn, 100, 5)
 			require.NoError(t, api.Start(ctx))
 
 			// Add deals to piece store
@@ -114,7 +115,7 @@ func TestLotusAccessorGetUnpaddedCARSize(t *testing.T) {
 
 	ps := getPieceStore(t)
 	rpn := &mockRPN{}
-	api := NewMinerAPI(ps, rpn, 100)
+	api := NewMinerAPI(ps, rpn, 100, 5)
 	require.NoError(t, api.Start(ctx))
 
 	// Add a deal with data Length 10
@@ -141,7 +142,7 @@ func TestThrottle(t *testing.T) {
 			unsealedSectorID: "foo",
 		},
 	}
-	api := NewMinerAPI(ps, rpn, 3)
+	api := NewMinerAPI(ps, rpn, 3, 5)
 	require.NoError(t, api.Start(ctx))
 
 	// Add a deal with data Length 10
@@ -203,6 +204,10 @@ type mockRPN struct {
 }
 
 func (m *mockRPN) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (io.ReadCloser, error) {
+	return m.UnsealSectorAt(ctx, sectorID, offset, length)
+}
+
+func (m *mockRPN) UnsealSectorAt(ctx context.Context, sectorID abi.SectorNumber, pieceOffset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (mount.Reader, error) {
 	atomic.AddInt32(&m.calls, 1)
 	m.lk.RLock()
 	defer m.lk.RUnlock()
@@ -211,7 +216,13 @@ func (m *mockRPN) UnsealSector(ctx context.Context, sectorID abi.SectorNumber, o
 	if !ok {
 		panic("sector not found")
 	}
-	return io.NopCloser(bytes.NewBuffer([]byte(data))), nil
+	return struct {
+		io.ReadCloser
+		io.ReaderAt
+		io.Seeker
+	}{
+		ReadCloser: io.NopCloser(bytes.NewBuffer([]byte(data[:]))),
+	}, nil
 }
 
 func (m *mockRPN) IsUnsealed(ctx context.Context, sectorID abi.SectorNumber, offset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (bool, error) {

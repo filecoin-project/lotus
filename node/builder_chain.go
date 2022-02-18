@@ -14,6 +14,8 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
+	"github.com/filecoin-project/lotus/chain/consensus"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/market"
@@ -48,7 +50,7 @@ var ChainNode = Options(
 
 	// Consensus settings
 	Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
-	Override(new(stmgr.UpgradeSchedule), stmgr.DefaultUpgradeSchedule()),
+	Override(new(stmgr.UpgradeSchedule), filcns.DefaultUpgradeSchedule()),
 	Override(new(dtypes.NetworkName), modules.NetworkName),
 	Override(new(modules.Genesis), modules.ErrorGenesis),
 	Override(new(dtypes.AfterGenesisSet), modules.SetGenesis),
@@ -67,6 +69,10 @@ var ChainNode = Options(
 	Override(new(vm.SyscallBuilder), vm.Syscalls),
 
 	// Consensus: Chain storage/access
+	Override(new(chain.Genesis), chain.LoadGenesis),
+	Override(new(store.WeightFunc), filcns.Weight),
+	Override(new(stmgr.Executor), filcns.NewTipSetExecutor()),
+	Override(new(consensus.Consensus), filcns.NewFilecoinExpectedConsensus),
 	Override(new(*store.ChainStore), modules.ChainStore),
 	Override(new(*stmgr.StateManager), modules.StateManager),
 	Override(new(dtypes.ChainBitswap), modules.ChainBitswap),
@@ -94,7 +100,7 @@ var ChainNode = Options(
 	Override(new(*dtypes.MpoolLocker), new(dtypes.MpoolLocker)),
 
 	// Shared graphsync (markets, serving chain)
-	Override(new(dtypes.Graphsync), modules.Graphsync(config.DefaultFullNode().Client.SimultaneousTransfers)),
+	Override(new(dtypes.Graphsync), modules.Graphsync(config.DefaultFullNode().Client.SimultaneousTransfersForStorage, config.DefaultFullNode().Client.SimultaneousTransfersForRetrieval)),
 
 	// Service: Wallet
 	Override(new(*messagesigner.MessageSigner), messagesigner.NewMessageSigner),
@@ -213,7 +219,7 @@ func ConfigFullNode(c interface{}) Option {
 				Override(new(retrievalmarket.BlockstoreAccessor), modules.IpfsRetrievalBlockstoreAccessor),
 			),
 		),
-		Override(new(dtypes.Graphsync), modules.Graphsync(cfg.Client.SimultaneousTransfers)),
+		Override(new(dtypes.Graphsync), modules.Graphsync(cfg.Client.SimultaneousTransfersForStorage, cfg.Client.SimultaneousTransfersForRetrieval)),
 
 		If(cfg.Wallet.RemoteBackend != "",
 			Override(new(*remotewallet.RemoteWallet), remotewallet.SetupRemoteWallet(cfg.Wallet.RemoteBackend)),

@@ -2,12 +2,15 @@ package kit
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
@@ -101,8 +104,9 @@ func (dh *DealHarness) MakeOnlineDeal(ctx context.Context, params MakeFullDealPa
 
 	// TODO: this sleep is only necessary because deals don't immediately get logged in the dealstore, we should fix this
 	time.Sleep(time.Second)
+	fmt.Printf("WAIT DEAL SEALEDS START\n")
 	dh.WaitDealSealed(ctx, deal, false, false, nil)
-
+	fmt.Printf("WAIT DEAL SEALEDS END\n")
 	return deal, res, path
 }
 
@@ -173,6 +177,85 @@ loop:
 			cb()
 		}
 	}
+	fmt.Printf("WAIT DEAL SEALED LOOP BROKEN\n")
+}
+
+// WaitDealSealedQuiet waits until the deal is sealed, without logging anything.
+func (dh *DealHarness) WaitDealSealedQuiet(ctx context.Context, deal *cid.Cid, noseal, noSealStart bool, cb func()) {
+loop:
+	for {
+		di, err := dh.client.ClientGetDealInfo(ctx, *deal)
+		require.NoError(dh.t, err)
+
+		switch di.State {
+		case storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing:
+			if noseal {
+				return
+			}
+			if !noSealStart {
+				dh.StartSealingWaiting(ctx)
+			}
+		case storagemarket.StorageDealProposalRejected:
+			dh.t.Fatal("deal rejected")
+		case storagemarket.StorageDealFailing:
+			dh.t.Fatal("deal failed")
+		case storagemarket.StorageDealError:
+			dh.t.Fatal("deal errored", di.Message)
+		case storagemarket.StorageDealActive:
+			break loop
+		}
+
+		_, err = dh.market.MarketListIncompleteDeals(ctx)
+		require.NoError(dh.t, err)
+
+		time.Sleep(time.Second / 2)
+		if cb != nil {
+			cb()
+		}
+	}
+}
+
+func (dh *DealHarness) ExpectDealFailure(ctx context.Context, deal *cid.Cid, errs string) error {
+	for {
+		di, err := dh.client.ClientGetDealInfo(ctx, *deal)
+		require.NoError(dh.t, err)
+
+		switch di.State {
+		case storagemarket.StorageDealAwaitingPreCommit, storagemarket.StorageDealSealing:
+			return fmt.Errorf("deal is sealing, and we expected an error: %s", errs)
+		case storagemarket.StorageDealProposalRejected:
+			if strings.Contains(di.Message, errs) {
+				return nil
+			}
+			return fmt.Errorf("unexpected error: %s ; expected: %s", di.Message, errs)
+		case storagemarket.StorageDealFailing:
+			if strings.Contains(di.Message, errs) {
+				return nil
+			}
+			return fmt.Errorf("unexpected error: %s ; expected: %s", di.Message, errs)
+		case storagemarket.StorageDealError:
+			if strings.Contains(di.Message, errs) {
+				return nil
+			}
+			return fmt.Errorf("unexpected error: %s ; expected: %s", di.Message, errs)
+		case storagemarket.StorageDealActive:
+			return errors.New("expected to get an error, but didn't get one")
+		}
+
+		mds, err := dh.market.MarketListIncompleteDeals(ctx)
+		require.NoError(dh.t, err)
+
+		var minerState storagemarket.StorageDealStatus
+		for _, md := range mds {
+			if md.DealID == di.DealID {
+				minerState = md.State
+				break
+			}
+		}
+
+		dh.t.Logf("Deal %d state: client:%s provider:%s\n", di.DealID, storagemarket.DealStates[di.State], storagemarket.DealStates[minerState])
+		time.Sleep(time.Second / 2)
+	}
 }
 
 // WaitDealPublished waits until the deal is published.
@@ -209,12 +292,11 @@ func (dh *DealHarness) WaitDealPublished(ctx context.Context, deal *cid.Cid) {
 func (dh *DealHarness) StartSealingWaiting(ctx context.Context) {
 	snums, err := dh.main.SectorsList(ctx)
 	require.NoError(dh.t, err)
-
 	for _, snum := range snums {
 		si, err := dh.main.SectorsStatus(ctx, snum, false)
 		require.NoError(dh.t, err)
 
-		dh.t.Logf("Sector state: %s", si.State)
+		dh.t.Logf("Sector state <%d>-[%d]:, %s", snum, si.SealProof, si.State)
 		if si.State == api.SectorState(sealing.WaitDeals) {
 			require.NoError(dh.t, dh.main.SectorStartSealing(ctx, snum))
 		}
@@ -240,17 +322,45 @@ func (dh *DealHarness) PerformRetrieval(ctx context.Context, deal *cid.Cid, root
 	caddr, err := dh.client.WalletDefaultAddress(ctx)
 	require.NoError(dh.t, err)
 
-	ref := &api.FileRef{
-		Path:  carFile.Name(),
-		IsCAR: carExport,
-	}
-
-	updates, err := dh.client.ClientRetrieveWithEvents(ctx, offers[0].Order(caddr), ref)
+	updatesCtx, cancel := context.WithCancel(ctx)
+	updates, err := dh.client.ClientGetRetrievalUpdates(updatesCtx)
 	require.NoError(dh.t, err)
 
-	for update := range updates {
-		require.Emptyf(dh.t, update.Err, "retrieval failed: %s", update.Err)
+	retrievalRes, err := dh.client.ClientRetrieve(ctx, offers[0].Order(caddr))
+	require.NoError(dh.t, err)
+consumeEvents:
+	for {
+		var evt api.RetrievalInfo
+		select {
+		case <-updatesCtx.Done():
+			dh.t.Fatal("Retrieval Timed Out")
+		case evt = <-updates:
+			if evt.ID != retrievalRes.DealID {
+				continue
+			}
+		}
+		switch evt.Status {
+		case retrievalmarket.DealStatusCompleted:
+			break consumeEvents
+		case retrievalmarket.DealStatusRejected:
+			dh.t.Fatalf("Retrieval Proposal Rejected: %s", evt.Message)
+		case
+			retrievalmarket.DealStatusDealNotFound,
+			retrievalmarket.DealStatusErrored:
+			dh.t.Fatalf("Retrieval Error: %s", evt.Message)
+		}
 	}
+	cancel()
+
+	require.NoError(dh.t, dh.client.ClientExport(ctx,
+		api.ExportRef{
+			Root:   root,
+			DealID: retrievalRes.DealID,
+		},
+		api.FileRef{
+			Path:  carFile.Name(),
+			IsCAR: carExport,
+		}))
 
 	ret := carFile.Name()
 	if carExport {
@@ -264,7 +374,7 @@ func (dh *DealHarness) PerformRetrieval(ctx context.Context, deal *cid.Cid, root
 
 func (dh *DealHarness) ExtractFileFromCAR(ctx context.Context, file *os.File) (out *os.File) {
 	bserv := dstest.Bserv()
-	ch, err := car.LoadCar(bserv.Blockstore(), file)
+	ch, err := car.LoadCar(ctx, bserv.Blockstore(), file)
 	require.NoError(dh.t, err)
 
 	b, err := bserv.GetBlock(ctx, ch.Roots[0])

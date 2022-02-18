@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/filecoin-project/lotus/chain/rand"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -14,7 +16,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 )
@@ -39,7 +40,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		ts = sm.cs.GetHeaviestTipSet()
 		// Search back till we find a height with no fork, or we reach the beginning.
 		for ts.Height() > 0 {
-			pts, err := sm.cs.GetTipSetFromKey(ts.Parents())
+			pts, err := sm.cs.GetTipSetFromKey(ctx, ts.Parents())
 			if err != nil {
 				return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
 			}
@@ -50,7 +51,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 			ts = pts
 		}
 	} else if ts.Height() > 0 {
-		pts, err := sm.cs.LoadTipSet(ts.Parents())
+		pts, err := sm.cs.LoadTipSet(ctx, ts.Parents())
 		if err != nil {
 			return nil, xerrors.Errorf("failed to load parent tipset: %w", err)
 		}
@@ -66,7 +67,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 	bstate := ts.ParentState()
 
 	// Run the (not expensive) migration.
-	bstate, err := sm.handleStateForks(ctx, bstate, pheight, nil, ts)
+	bstate, err := sm.HandleStateForks(ctx, bstate, pheight, nil, ts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
@@ -74,11 +75,12 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 	vmopt := &vm.VMOpts{
 		StateBase:      bstate,
 		Epoch:          pheight + 1,
-		Rand:           store.NewChainRand(sm.cs, ts.Cids()),
+		Rand:           rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, sm.GetNetworkVersion),
 		Bstore:         sm.cs.StateBlockstore(),
-		Syscalls:       sm.syscalls,
+		Actors:         sm.tsExec.NewActorRegistry(),
+		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
-		NtwkVersion:    sm.GetNtwkVersion,
+		NetworkVersion: sm.GetNetworkVersion(ctx, pheight+1),
 		BaseFee:        types.NewInt(0),
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 	}
@@ -153,7 +155,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		// height to have no fork, because we'll run it inside this
 		// function before executing the given message.
 		for ts.Height() > 0 {
-			pts, err := sm.cs.GetTipSetFromKey(ts.Parents())
+			pts, err := sm.cs.GetTipSetFromKey(ctx, ts.Parents())
 			if err != nil {
 				return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
 			}
@@ -164,7 +166,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 			ts = pts
 		}
 	} else if ts.Height() > 0 {
-		pts, err := sm.cs.GetTipSetFromKey(ts.Parents())
+		pts, err := sm.cs.GetTipSetFromKey(ctx, ts.Parents())
 		if err != nil {
 			return nil, xerrors.Errorf("failed to find a non-forking epoch: %w", err)
 		}
@@ -179,12 +181,12 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 	}
 
 	// Technically, the tipset we're passing in here should be ts+1, but that may not exist.
-	state, err = sm.handleStateForks(ctx, state, ts.Height(), nil, ts)
+	state, err = sm.HandleStateForks(ctx, state, ts.Height(), nil, ts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
 
-	r := store.NewChainRand(sm.cs, ts.Cids())
+	r := rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, sm.GetNetworkVersion)
 
 	if span.IsRecordingEvents() {
 		span.AddAttributes(
@@ -199,9 +201,10 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		Epoch:          ts.Height() + 1,
 		Rand:           r,
 		Bstore:         sm.cs.StateBlockstore(),
-		Syscalls:       sm.syscalls,
+		Actors:         sm.tsExec.NewActorRegistry(),
+		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
-		NtwkVersion:    sm.GetNtwkVersion,
+		NetworkVersion: sm.GetNetworkVersion(ctx, ts.Height()+1),
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 	}
@@ -272,7 +275,7 @@ func (sm *StateManager) Replay(ctx context.Context, ts *types.TipSet, mcid cid.C
 	// message to find
 	finder.mcid = mcid
 
-	_, _, err := sm.computeTipSetState(ctx, ts, &finder)
+	_, _, err := sm.tsExec.ExecuteTipSet(ctx, sm, ts, &finder)
 	if err != nil && !xerrors.Is(err, errHaltExecution) {
 		return nil, nil, xerrors.Errorf("unexpected error during execution: %w", err)
 	}

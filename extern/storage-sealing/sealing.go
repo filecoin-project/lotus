@@ -63,6 +63,7 @@ type SealingAPI interface {
 	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
 	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
 	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, TipSetToken) (bool, error)
+	StateMinerActiveSectors(context.Context, address.Address, TipSetToken) ([]*miner.SectorOnChainInfo, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, TipSetToken) (*api.MarketDeal, error)
 	StateMarketStorageDealProposal(context.Context, abi.DealID, TipSetToken) (market.DealProposal, error)
 	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
@@ -72,8 +73,8 @@ type SealingAPI interface {
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
 	ChainBaseFee(context.Context, TipSetToken) (abi.TokenAmount, error)
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
-	ChainGetRandomnessFromBeacon(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
-	ChainGetRandomnessFromTickets(ctx context.Context, tok TipSetToken, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) (abi.Randomness, error)
+	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tok TipSetToken) (abi.Randomness, error)
+	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tok TipSetToken) (abi.Randomness, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 }
 
@@ -121,9 +122,22 @@ type Sealing struct {
 }
 
 type openSector struct {
-	used abi.UnpaddedPieceSize // change to bitfield/rle when AddPiece gains offset support to better fill sectors
+	used     abi.UnpaddedPieceSize // change to bitfield/rle when AddPiece gains offset support to better fill sectors
+	number   abi.SectorNumber
+	ccUpdate bool
 
 	maybeAccept func(cid.Cid) error // called with inputLk
+}
+
+func (o *openSector) dealFitsInLifetime(dealEnd abi.ChainEpoch, expF func(sn abi.SectorNumber) (abi.ChainEpoch, error)) (bool, error) {
+	if !o.ccUpdate {
+		return true, nil
+	}
+	expiration, err := expF(o.number)
+	if err != nil {
+		return false, err
+	}
+	return expiration >= dealEnd, nil
 }
 
 type pendingPiece struct {
@@ -166,7 +180,8 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 		getConfig: gc,
 
 		stats: SectorStats{
-			bySector: map[abi.SectorID]statSectorState{},
+			bySector: map[abi.SectorID]SectorState{},
+			byState:  map[SectorState]int64{},
 		},
 	}
 	s.startupWait.Add(1)

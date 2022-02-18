@@ -14,7 +14,7 @@ import (
 
 var log = logging.Logger("tarutil") // nolint
 
-func ExtractTar(body io.Reader, dir string) error {
+func ExtractTar(body io.Reader, dir string, buf []byte) error {
 	if err := os.MkdirAll(dir, 0755); err != nil { // nolint
 		return xerrors.Errorf("mkdir: %w", err)
 	}
@@ -38,7 +38,7 @@ func ExtractTar(body io.Reader, dir string) error {
 
 		// This data is coming from a trusted source, no need to check the size.
 		//nolint:gosec
-		if _, err := io.Copy(f, tr); err != nil {
+		if _, err := io.CopyBuffer(f, tr, buf); err != nil {
 			return err
 		}
 
@@ -48,17 +48,7 @@ func ExtractTar(body io.Reader, dir string) error {
 	}
 }
 
-func TarDirectory(dir string) (io.ReadCloser, error) {
-	r, w := io.Pipe()
-
-	go func() {
-		_ = w.CloseWithError(writeTarDirectory(dir, w))
-	}()
-
-	return r, nil
-}
-
-func writeTarDirectory(dir string, w io.Writer) error {
+func TarDirectory(dir string, w io.Writer, buf []byte) error {
 	tw := tar.NewWriter(w)
 
 	files, err := ioutil.ReadDir(dir)
@@ -81,7 +71,7 @@ func writeTarDirectory(dir string, w io.Writer) error {
 			return xerrors.Errorf("opening %s for reading: %w", file.Name(), err)
 		}
 
-		if _, err := io.Copy(tw, f); err != nil {
+		if _, err := io.CopyBuffer(tw, f, buf); err != nil {
 			return xerrors.Errorf("copy data for file %s: %w", file.Name(), err)
 		}
 
