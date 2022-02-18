@@ -134,9 +134,13 @@ func TestNetStat(t *testing.T) {
 		}
 	}
 
+	//stm: @NETWORK_COMMON_STAT_001
 	t.Run("all", withScope(t, "all"))
+	//stm: @NETWORK_COMMON_STAT_002
 	t.Run("system", withScope(t, "system"))
+	//stm: @NETWORK_COMMON_STAT_003
 	t.Run("transient", withScope(t, "transient"))
+	//stm: @NETWORK_COMMON_STAT_004
 	t.Run("peer", withScope(t, fmt.Sprintf("peer:%s", sId)))
 }
 
@@ -155,8 +159,11 @@ func TestNetLimit(t *testing.T) {
 		}
 	}
 
+	//stm: @NETWORK_COMMON_LIMIT_001
 	t.Run("system", withScope(t, "system"))
+	//stm: @NETWORK_COMMON_LIMIT_002
 	t.Run("transient", withScope(t, "transient"))
+	//stm: @NETWORK_COMMON_LIMIT_003
 	t.Run("peer", withScope(t, fmt.Sprintf("peer:%s", sId)))
 }
 
