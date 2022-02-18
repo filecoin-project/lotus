@@ -1,9 +1,5 @@
 # Lotus changelog
 
-# 1.14.1 / 2022-02-18
-
-This is an **optional** release of lotus, that fixes the incorrect *comment* of network v15 OhSnap upgrade **date**. Note the actual upgrade epoch in [v1.14.0](https://github.com/filecoin-project/lotus/releases/tag/v1.14.0) was correct.
-
 # 1.14.0 / 2022-02-17
 
 This is a MANDATORY release of Lotus that introduces [Filecoin network v15, 
