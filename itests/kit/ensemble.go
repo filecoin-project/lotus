@@ -151,6 +151,11 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 	return n
 }
 
+// Mocknet returns the underlying mocknet.
+func (n *Ensemble) Mocknet() mocknet.Mocknet {
+	return n.mn
+}
+
 // FullNode enrolls a new full node.
 func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 	options := DefaultNodeOpts
