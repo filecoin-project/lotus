@@ -67,7 +67,7 @@ const UpgradeHyperdriveHeight = 892800
 // 2021-10-26T13:30:00Z
 const UpgradeChocolateHeight = 1231620
 
-// 2022-03-02T15:00:00Z
+// 2022-03-01T15:00:00Z
 var UpgradeOhSnapHeight = abi.ChainEpoch(1594680)
 
 func init() {
