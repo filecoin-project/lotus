@@ -24,7 +24,6 @@
   * [DagstoreInitializeShard](#DagstoreInitializeShard)
   * [DagstoreListShards](#DagstoreListShards)
   * [DagstoreLookupPieces](#DagstoreLookupPieces)
-  * [DagstorePieceIndexSize](#DagstorePieceIndexSize)
   * [DagstoreRecoverShard](#DagstoreRecoverShard)
 * [Deals](#Deals)
   * [DealsConsiderOfflineRetrievalDeals](#DealsConsiderOfflineRetrievalDeals)
@@ -545,16 +544,6 @@ Response:
   }
 ]
 ```
-
-### DagstorePieceIndexSize
-DagstorePieceIndexSize returns the size of the piece index.
-
-
-Perms: admin
-
-Inputs: `null`
-
-Response: `9`
 
 ### DagstoreRecoverShard
 DagstoreRecoverShard attempts to recover a failed shard.

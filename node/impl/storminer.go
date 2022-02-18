@@ -1012,25 +1012,12 @@ func (sm *StorageMinerAPI) IndexerAnnounceAllDeals(ctx context.Context) error {
 	return sm.StorageProvider.AnnounceAllDealsToIndexer(ctx)
 }
 
-func (sm *StorageMinerAPI) DagstorePieceIndexSize(ctx context.Context) (int64, error) {
-	if sm.DAGStore == nil {
-		return 0, fmt.Errorf("dagstore not available on this node")
-	}
-
-	res, err := sm.DAGStore.TopLevelIndex.Size()
-	if err != nil {
-		return 0, fmt.Errorf("failed to get dagstore piece index size: %w", err)
-	}
-
-	return res, nil
-}
-
 func (sm *StorageMinerAPI) DagstoreLookupPieces(ctx context.Context, cid cid.Cid) ([]api.DagstoreShardInfo, error) {
 	if sm.DAGStore == nil {
 		return nil, fmt.Errorf("dagstore not available on this node")
 	}
 
-	keys, err := sm.DAGStore.TopLevelIndex.GetShardsForMultihash(cid.Hash())
+	keys, err := sm.DAGStore.TopLevelIndex.GetShardsForMultihash(ctx, cid.Hash())
 	if err != nil {
 		return nil, err
 	}

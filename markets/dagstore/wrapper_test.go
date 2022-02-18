@@ -144,7 +144,7 @@ func (m *mockDagStore) GetIterableIndex(key shard.Key) (carindex.IterableIndex, 
 	return nil, nil
 }
 
-func (m *mockDagStore) ShardsContainingMultihash(h mh.Multihash) ([]shard.Key, error) {
+func (m *mockDagStore) ShardsContainingMultihash(ctx context.Context, h mh.Multihash) ([]shard.Key, error) {
 	return nil, nil
 }
 

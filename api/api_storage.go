@@ -226,9 +226,6 @@ type StorageMiner interface {
 	// IndexerAnnounceAllDeals informs the indexer nodes aboutall active deals.
 	IndexerAnnounceAllDeals(ctx context.Context) error //perm:admin
 
-	// DagstorePieceIndexSize returns the size of the piece index.
-	DagstorePieceIndexSize(ctx context.Context) (int64, error) //perm:admin
-
 	// DagstoreLookupPieces returns information about shards that contain the given CID.
 	DagstoreLookupPieces(ctx context.Context, cid cid.Cid) ([]DagstoreShardInfo, error) //perm:admin
 

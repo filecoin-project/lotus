@@ -10,7 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/go-indexer-core/store/storethehash"
 	"github.com/libp2p/go-libp2p-core/host"
 
 	carindex "github.com/ipld/go-car/v2/index"
@@ -88,12 +87,7 @@ func NewDAGStore(cfg config.DAGStoreConfig, minerApi MinerAPI, h host.Host) (*da
 		return nil, nil, xerrors.Errorf("failed to initialise dagstore index repo: %w", err)
 	}
 
-	store, err := storethehash.New(indexDir)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("failed to initialise store the index: %w", err)
-	}
-	topIndex := index.NewInverted(store, h.ID())
-
+	topIndex := index.NewInverted(dstore)
 	dcfg := dagstore.Config{
 		TransientsDir: transientsDir,
 		IndexRepo:     irepo,
@@ -414,7 +408,7 @@ func (w *Wrapper) markRegistrationComplete() error {
 // Get all the pieces that contain a block
 func (w *Wrapper) GetPiecesContainingBlock(blockCID cid.Cid) ([]cid.Cid, error) {
 	// Pieces are stored as "shards" in the DAG store
-	shardKeys, err := w.dagst.ShardsContainingMultihash(blockCID.Hash())
+	shardKeys, err := w.dagst.ShardsContainingMultihash(w.ctx, blockCID.Hash())
 	if err != nil {
 		return nil, xerrors.Errorf("getting pieces containing block %s: %w", blockCID, err)
 	}
