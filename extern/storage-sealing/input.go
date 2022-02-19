@@ -122,7 +122,7 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 
 		// check deal age, start sealing when the deal closest to starting is within slack time
 		_, current, err := m.Api.ChainHead(ctx.Context())
-		blockTime := time.Second * time.Duration(build.BlockDelaySecs)
+		blockTime := time.Second * time.Duration(build.BlockDelaySecs())
 		if err != nil {
 			return false, xerrors.Errorf("API error getting head: %w", err)
 		}

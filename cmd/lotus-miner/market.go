@@ -244,7 +244,7 @@ var setAskCmd = &cli.Command{
 			return xerrors.Errorf("cannot parse duration: %w", err)
 		}
 
-		qty := dur.Seconds() / float64(build.BlockDelaySecs)
+		qty := dur.Seconds() / float64(build.BlockDelaySecs())
 
 		min, err := units.RAMInBytes(cctx.String("min-piece-size"))
 		if err != nil {
@@ -329,7 +329,7 @@ var getAskCmd = &cli.Command{
 		dlt := ask.Expiry - head.Height()
 		rem := "<expired>"
 		if dlt > 0 {
-			rem = (time.Second * time.Duration(int64(dlt)*int64(build.BlockDelaySecs))).String()
+			rem = (time.Second * time.Duration(int64(dlt)*int64(build.BlockDelaySecs()))).String()
 		}
 
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%d\t%s\t%d\n", types.FIL(ask.Price), types.FIL(ask.VerifiedPrice), types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))), types.SizeStr(types.NewInt(uint64(ask.MaxPieceSize))), ask.Expiry, rem, ask.SeqNo)

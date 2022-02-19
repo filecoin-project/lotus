@@ -1,12 +1,16 @@
 package build
 
 import (
+	"fmt"
+	"os"
+	"strconv"
+	"strings"
+
 	"github.com/filecoin-project/go-address"
-	"github.com/ipfs/go-cid"
-
-	"github.com/libp2p/go-libp2p-core/protocol"
-
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/protocol"
 )
 
 // Core network constants
@@ -37,4 +41,21 @@ func MustParseCid(c string) cid.Cid {
 	}
 
 	return ret
+}
+
+func MustParseUpgrade(k string) abi.ChainEpoch {
+	envvar := fmt.Sprintf("LOTUS_%s_HEIGHT", strings.ToUpper(k))
+	ek, ok := os.LookupEnv(envvar)
+	if ok {
+		iv, err := strconv.Atoi(ek)
+		if err == nil {
+			return abi.ChainEpoch(iv)
+		}
+		log.Warn("expected int on env var %s, found %s. ignoring.", envvar, ek)
+	}
+	v, ok := activeNetworkParams.Upgrades[k]
+	if !ok {
+		panic("upgrade undefined in network params: " + k)
+	}
+	return v
 }

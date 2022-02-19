@@ -496,7 +496,7 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, di dline.Info, t
 			return j
 		})
 
-		if ts.Height() > build.UpgradeIgnitionHeight {
+		if ts.Height() > build.UpgradeIgnitionHeight() {
 			return // FORK: declaring faults after ignition upgrade makes no sense
 		}
 

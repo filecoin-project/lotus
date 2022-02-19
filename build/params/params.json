@@ -1,0 +1,144 @@
+{
+	"mainnet": {
+		"bootstrappers": [
+			"/dns4/bootstrap-0.mainnet.filops.net/tcp/1347/p2p/12D3KooWCVe8MmsEMes2FzgTpt9fXtmCY7wrq91GRiaC8PHSCCBj",
+			"/dns4/bootstrap-1.mainnet.filops.net/tcp/1347/p2p/12D3KooWCwevHg1yLCvktf2nvLu7L9894mcrJR4MsBCcm4syShVc",
+			"/dns4/bootstrap-2.mainnet.filops.net/tcp/1347/p2p/12D3KooWEWVwHGn2yR36gKLozmb4YjDJGerotAPGxmdWZx2nxMC4",
+			"/dns4/bootstrap-3.mainnet.filops.net/tcp/1347/p2p/12D3KooWKhgq8c7NQ9iGjbyK7v7phXvG6492HQfiDaGHLHLQjk7R",
+			"/dns4/bootstrap-4.mainnet.filops.net/tcp/1347/p2p/12D3KooWL6PsFNPhYftrJzGgF5U18hFoaVhfGk7xwzD8yVrHJ3Uc",
+			"/dns4/bootstrap-5.mainnet.filops.net/tcp/1347/p2p/12D3KooWLFynvDQiUpXoHroV1YxKHhPJgysQGH2k3ZGwtWzR4dFH",
+			"/dns4/bootstrap-6.mainnet.filops.net/tcp/1347/p2p/12D3KooWP5MwCiqdMETF9ub1P3MbCvQCcfconnYHbWg6sUJcDRQQ",
+			"/dns4/bootstrap-7.mainnet.filops.net/tcp/1347/p2p/12D3KooWRs3aY1p3juFjPy8gPN95PEQChm2QKGUCAdcDCC4EBMKf",
+			"/dns4/bootstrap-8.mainnet.filops.net/tcp/1347/p2p/12D3KooWScFR7385LTyR4zU1bYdzSiiAb5rnNABfVahPvVSzyTkR",
+			"/dns4/lotus-bootstrap.ipfsforce.com/tcp/41778/p2p/12D3KooWGhufNmZHF3sv48aQeS13ng5XVJZ9E6qy2Ms4VzqeUsHk",
+			"/dns4/bootstrap-0.starpool.in/tcp/12757/p2p/12D3KooWGHpBMeZbestVEWkfdnC9u7p6uFHXL1n7m1ZBqsEmiUzz",
+			"/dns4/bootstrap-1.starpool.in/tcp/12757/p2p/12D3KooWQZrGH1PxSNZPum99M1zNvjNFM33d1AAu5DcvdHptuU7u",
+			"/dns4/node.glif.io/tcp/1235/p2p/12D3KooWBF8cpp65hp2u9LK5mh19x67ftAam84z9LsfaquTDSBpt",
+			"/dns4/bootstrap-0.ipfsmain.cn/tcp/34721/p2p/12D3KooWQnwEGNqcM2nAcPtRR9rAX8Hrg4k9kJLCHoTR5chJfz6d",
+			"/dns4/bootstrap-1.ipfsmain.cn/tcp/34723/p2p/12D3KooWMKxMkD5DMpSWsW7dBddKxKT7L2GgbNuckz9otxvkvByP"
+		],
+		"config": {
+			"blockDelaySecs": 30,
+			"bootstrapPeerThreshold": 4,
+			"breezeGasTampingDuration": 120,
+			"genesisFile": "mainnet.car",
+			"genesisNetworkVersion": 0,
+			"propagationDelaySecs": 6,
+			"whitelistedBlock": "bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi",
+			"address": 0,
+			"devnet": false
+		},
+		"devnetConfig": {},
+		"drandSchedule": [
+			{
+				"start": 0,
+				"config": {
+					"servers": [],
+					"relays": [],
+					"chainInfoJSON": "{\"public_key\":\"8cad0c72c606ab27d36ee06de1d5b2db1faf92e447025ca37575ab3a8aac2eaae83192f846fc9e158bc738423753d000\",\"period\":30,\"genesis_time\":1595873820,\"hash\":\"80c8b872c714f4c00fdd3daa465d5514049f457f01f85a4caf68cdcd394ba039\",\"groupHash\":\"d9406aaed487f7af71851b4399448e311f2328923d454e971536c05398ce2d9b\"}"
+				}
+			},
+			{
+				"start": 51000,
+				"config": {
+					"servers":  [
+						"https://api.drand.sh",
+						"https://api2.drand.sh",
+						"https://api3.drand.sh",
+						"https://drand.cloudflare.com"
+					],
+					"relays": [
+						"/dnsaddr/api.drand.sh/",
+						"/dnsaddr/api2.drand.sh/",
+						"/dnsaddr/api3.drand.sh/"
+					],
+					"chainInfoJSON": "{\"public_key\": \"868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31\",\"period\":30,\"genesis_time\":1595431050,\"hash\":\"8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce\",\"groupHash\":\"176f93498eac9ca337150b46d21dd58673ea4e3581185f869672e59fa4cb390a\"}"
+				}
+			}
+		],
+		"upgrades": {
+			"breeze": 41280,
+			"smoke": 51000,
+			"ignition": 94000,
+			"refuel": 130800,
+			"assembly": 138720,
+			"tape": 140760,
+			"liftoff": 148888,
+			"kumquat": 170000,
+			"calico": 265200,
+			"persian": 272400,
+			"orange": 336458,
+			"claus": 343200,
+			"trust": 550321,
+			"norwegian": 665280,
+			"turbo": 712320,
+			"hyperdrive": 892800,
+			"chocolate": 1231620,
+			"ohsnap": 1594680
+		}
+	},
+	"butterflynet": {
+		"bootstrappers": [
+      "/dns4/bootstrap-0.butterfly.fildev.network/tcp/1347/p2p/12D3KooWFHDtFx7CVTy4xoCDutVo1cScvSnQjDeaM8UzwVS1qwkh",
+      "/dns4/bootstrap-1.butterfly.fildev.network/tcp/1347/p2p/12D3KooWKt8cwpkiumkT8x32c3YFxsPRwhV5J8hCYPn9mhUmcAXt"
+		],
+		"config": {
+			"blockDelaySecs": 30,
+			"bootstrapPeerThreshold": 2,
+			"breezeGasTampingDuration": 120,
+			"genesisFile": "butterflynet.car",
+			"genesisNetworkVersion": 14,
+			"propagationDelaySecs": 6,
+			"whitelistedBlock": "",
+			"address": 1,
+			"devnet": true
+		},
+		"devnetConfig": {
+			"supportedProofTypes": [
+				2,
+				3,
+				4
+			],
+			"consensusMinerMinPower": 2147483648
+		},
+		"drandSchedule": [
+			{
+				"start": 0,
+				"config": {
+					"servers":  [
+						"https://api.drand.sh",
+						"https://api2.drand.sh",
+						"https://api3.drand.sh",
+						"https://drand.cloudflare.com"
+					],
+					"relays": [
+						"/dnsaddr/api.drand.sh/",
+						"/dnsaddr/api2.drand.sh/",
+						"/dnsaddr/api3.drand.sh/"
+					],
+					"chainInfoJSON": "{\"public_key\": \"868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31\",\"period\":30,\"genesis_time\":1595431050,\"hash\":\"8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce\",\"groupHash\":\"176f93498eac9ca337150b46d21dd58673ea4e3581185f869672e59fa4cb390a\"}"
+				}
+			}
+		],
+		"upgrades": {
+			"breeze": -1,
+			"smoke": -2,
+			"ignition": -3,
+			"refuel": -4,
+			"assembly": -5,
+			"tape": -6,
+			"liftoff": -7,
+			"kumquat": -8,
+			"calico": -9,
+			"persian": -10,
+			"orange": -11,
+			"claus": -12,
+			"trust": -13,
+			"norwegian": -14,
+			"turbo": -15,
+			"hyperdrive": -16,
+			"chocolate": -17,
+			"ohsnap": 240
+		}
+	}
+}

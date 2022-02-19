@@ -116,7 +116,7 @@ func (cs *ChainStore) BlockMsgsForTipset(ctx context.Context, ts *types.TipSet) 
 
 	selectMsg := func(m *types.Message) (bool, error) {
 		var sender address.Address
-		if ts.Height() >= build.UpgradeHyperdriveHeight {
+		if ts.Height() >= build.UpgradeHyperdriveHeight() {
 			sender, err = st.LookupID(m.From)
 			if err != nil {
 				return false, err

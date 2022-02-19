@@ -47,52 +47,52 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	var us stmgr.UpgradeSchedule
 
 	updates := []stmgr.Upgrade{{
-		Height:    build.UpgradeBreezeHeight,
+		Height:    build.UpgradeBreezeHeight(),
 		Network:   network.Version1,
 		Migration: UpgradeFaucetBurnRecovery,
 	}, {
-		Height:    build.UpgradeSmokeHeight,
+		Height:    build.UpgradeSmokeHeight(),
 		Network:   network.Version2,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeIgnitionHeight,
+		Height:    build.UpgradeIgnitionHeight(),
 		Network:   network.Version3,
 		Migration: UpgradeIgnition,
 	}, {
-		Height:    build.UpgradeRefuelHeight,
+		Height:    build.UpgradeRefuelHeight(),
 		Network:   network.Version3,
 		Migration: UpgradeRefuel,
 	}, {
-		Height:    build.UpgradeAssemblyHeight,
+		Height:    build.UpgradeAssemblyHeight(),
 		Network:   network.Version4,
 		Expensive: true,
 		Migration: UpgradeActorsV2,
 	}, {
-		Height:    build.UpgradeTapeHeight,
+		Height:    build.UpgradeTapeHeight(),
 		Network:   network.Version5,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeLiftoffHeight,
+		Height:    build.UpgradeLiftoffHeight(),
 		Network:   network.Version5,
 		Migration: UpgradeLiftoff,
 	}, {
-		Height:    build.UpgradeKumquatHeight,
+		Height:    build.UpgradeKumquatHeight(),
 		Network:   network.Version6,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeCalicoHeight,
+		Height:    build.UpgradeCalicoHeight(),
 		Network:   network.Version7,
 		Migration: UpgradeCalico,
 	}, {
-		Height:    build.UpgradePersianHeight,
+		Height:    build.UpgradePersianHeight(),
 		Network:   network.Version8,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeOrangeHeight,
+		Height:    build.UpgradeOrangeHeight(),
 		Network:   network.Version9,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeTrustHeight,
+		Height:    build.UpgradeTrustHeight(),
 		Network:   network.Version10,
 		Migration: UpgradeActorsV3,
 		PreMigrations: []stmgr.PreMigration{{
@@ -108,11 +108,11 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeNorwegianHeight,
+		Height:    build.UpgradeNorwegianHeight(),
 		Network:   network.Version11,
 		Migration: nil,
 	}, {
-		Height:    build.UpgradeTurboHeight,
+		Height:    build.UpgradeTurboHeight(),
 		Network:   network.Version12,
 		Migration: UpgradeActorsV4,
 		PreMigrations: []stmgr.PreMigration{{
@@ -128,7 +128,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeHyperdriveHeight,
+		Height:    build.UpgradeHyperdriveHeight(),
 		Network:   network.Version13,
 		Migration: UpgradeActorsV5,
 		PreMigrations: []stmgr.PreMigration{{
@@ -144,7 +144,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeChocolateHeight,
+		Height:    build.UpgradeChocolateHeight(),
 		Network:   network.Version14,
 		Migration: UpgradeActorsV6,
 		PreMigrations: []stmgr.PreMigration{{
@@ -160,7 +160,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeOhSnapHeight,
+		Height:    build.UpgradeOhSnapHeight(),
 		Network:   network.Version15,
 		Migration: UpgradeActorsV7,
 		PreMigrations: []stmgr.PreMigration{{
@@ -462,7 +462,7 @@ func UpgradeFaucetBurnRecovery(ctx context.Context, sm *stmgr.StateManager, _ st
 func UpgradeIgnition(ctx context.Context, sm *stmgr.StateManager, _ stmgr.MigrationCache, cb stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	store := sm.ChainStore().ActorStore(ctx)
 
-	if build.UpgradeLiftoffHeight <= epoch {
+	if build.UpgradeLiftoffHeight() <= epoch {
 		return cid.Undef, xerrors.Errorf("liftoff height must be beyond ignition height")
 	}
 
@@ -491,7 +491,7 @@ func UpgradeIgnition(ctx context.Context, sm *stmgr.StateManager, _ stmgr.Migrat
 		return cid.Undef, xerrors.Errorf("second split address: %w", err)
 	}
 
-	err = resetGenesisMsigs0(ctx, sm, store, tree, build.UpgradeLiftoffHeight)
+	err = resetGenesisMsigs0(ctx, sm, store, tree, build.UpgradeLiftoffHeight())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("resetting genesis msig start epochs: %w", err)
 	}

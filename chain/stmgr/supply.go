@@ -137,7 +137,7 @@ func (sm *StateManager) setupPostIgnitionVesting(ctx context.Context) error {
 			UnlockDuration: k,
 			PendingTxns:    cid.Undef,
 			// In the pre-ignition logic, the start epoch was 0. This changes in the fork logic of the Ignition upgrade itself.
-			StartEpoch: build.UpgradeLiftoffHeight,
+			StartEpoch: build.UpgradeLiftoffHeight(),
 		}
 		sm.postIgnitionVesting = append(sm.postIgnitionVesting, ns)
 	}
@@ -185,7 +185,7 @@ func (sm *StateManager) setupPostCalicoVesting(ctx context.Context) error {
 			InitialBalance: big.Mul(v, big.NewInt(int64(build.FilecoinPrecision))),
 			UnlockDuration: k,
 			PendingTxns:    cid.Undef,
-			StartEpoch:     build.UpgradeLiftoffHeight,
+			StartEpoch:     build.UpgradeLiftoffHeight(),
 		}
 		sm.postCalicoVesting = append(sm.postCalicoVesting, ns)
 	}
@@ -198,12 +198,12 @@ func (sm *StateManager) setupPostCalicoVesting(ctx context.Context) error {
 // - For Accounts, it counts max(currentBalance - genesisBalance, 0).
 func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
 	vf := big.Zero()
-	if height <= build.UpgradeIgnitionHeight {
+	if height <= build.UpgradeIgnitionHeight() {
 		for _, v := range sm.preIgnitionVesting {
 			au := big.Sub(v.InitialBalance, v.AmountLocked(height))
 			vf = big.Add(vf, au)
 		}
-	} else if height <= build.UpgradeCalicoHeight {
+	} else if height <= build.UpgradeCalicoHeight() {
 		for _, v := range sm.postIgnitionVesting {
 			// In the pre-ignition logic, we simply called AmountLocked(height), assuming startEpoch was 0.
 			// The start epoch changed in the Ignition upgrade.
@@ -220,7 +220,7 @@ func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch,
 	}
 
 	// After UpgradeAssemblyHeight these funds are accounted for in GetFilReserveDisbursed
-	if height <= build.UpgradeAssemblyHeight {
+	if height <= build.UpgradeAssemblyHeight() {
 		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
 		vf = big.Add(vf, sm.genesisPledge)
 		// continue to use preIgnitionGenInfos, nothing changed at the Ignition epoch
@@ -343,7 +343,7 @@ func (sm *StateManager) GetVMCirculatingSupplyDetailed(ctx context.Context, heig
 	}
 
 	filReserveDisbursed := big.Zero()
-	if height > build.UpgradeAssemblyHeight {
+	if height > build.UpgradeAssemblyHeight() {
 		filReserveDisbursed, err = GetFilReserveDisbursed(ctx, st)
 		if err != nil {
 			return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filReserveDisbursed: %w", err)

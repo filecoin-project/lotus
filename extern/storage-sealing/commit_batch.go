@@ -601,7 +601,7 @@ func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
 		return time.Now(), nil
 	}
 
-	return time.Now().Add(time.Duration(cutoffEpoch-curEpoch) * time.Duration(build.BlockDelaySecs) * time.Second), nil
+	return time.Now().Add(time.Duration(cutoffEpoch-curEpoch) * time.Duration(build.BlockDelaySecs()) * time.Second), nil
 }
 
 func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tok TipSetToken) (abi.TokenAmount, error) {

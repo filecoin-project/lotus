@@ -39,7 +39,7 @@ var msgCidPrefix = cid.Prefix{
 func HandleIncomingBlocks(ctx context.Context, bsub *pubsub.Subscription, s *chain.Syncer, bs bserv.BlockService, cmgr connmgr.ConnManager) {
 	// Timeout after (block time + propagation delay). This is useless at
 	// this point.
-	timeout := time.Duration(build.BlockDelaySecs+build.PropagationDelaySecs) * time.Second
+	timeout := time.Duration(build.BlockDelaySecs()+build.PropagationDelaySecs()) * time.Second
 
 	for {
 		msg, err := bsub.Next(ctx)

@@ -484,5 +484,5 @@ func getPreCommitCutoff(curEpoch abi.ChainEpoch, si SectorInfo) time.Time {
 		return time.Now()
 	}
 
-	return time.Now().Add(time.Duration(cutoffEpoch-curEpoch) * time.Duration(build.BlockDelaySecs) * time.Second)
+	return time.Now().Add(time.Duration(cutoffEpoch-curEpoch) * time.Duration(build.BlockDelaySecs()) * time.Second)
 }

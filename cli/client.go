@@ -622,7 +622,7 @@ uiLoop:
 			}
 
 			dur = 24 * time.Hour * time.Duration(days)
-			epochs = abi.ChainEpoch(dur / (time.Duration(build.BlockDelaySecs) * time.Second))
+			epochs = abi.ChainEpoch(dur / (time.Duration(build.BlockDelaySecs()) * time.Second))
 
 			state = "verified"
 		case "verified":

@@ -536,7 +536,7 @@ func BasicDealFilter(cfg config.DealmakingConfig, user dtypes.StorageDealFilter)
 				return false, "miner error", err
 			}
 
-			sealEpochs := sealDuration / (time.Duration(build.BlockDelaySecs) * time.Second)
+			sealEpochs := sealDuration / (time.Duration(build.BlockDelaySecs()) * time.Second)
 			_, ht, err := spn.GetChainHead(ctx)
 			if err != nil {
 				return false, "failed to get chain head", err
@@ -565,7 +565,7 @@ func BasicDealFilter(cfg config.DealmakingConfig, user dtypes.StorageDealFilter)
 
 			// Reject if it's more than 7 days in the future
 			// TODO: read from cfg
-			maxStartEpoch := earliest + abi.ChainEpoch(uint64(sd.Seconds())/build.BlockDelaySecs)
+			maxStartEpoch := earliest + abi.ChainEpoch(uint64(sd.Seconds())/build.BlockDelaySecs())
 			if deal.Proposal.StartEpoch > maxStartEpoch {
 				return false, fmt.Sprintf("deal start epoch is too far in the future: %s > %s", deal.Proposal.StartEpoch, maxStartEpoch), nil
 			}

@@ -102,7 +102,7 @@ func RunChainExchange(h host.Host, svc exchange.Server) {
 }
 
 func waitForSync(stmgr *stmgr.StateManager, epochs int, subscribe func()) {
-	nearsync := time.Duration(epochs*int(build.BlockDelaySecs)) * time.Second
+	nearsync := time.Duration(epochs*int(build.BlockDelaySecs())) * time.Second
 
 	// early check, are we synced at start up?
 	ts := stmgr.ChainStore().GetHeaviestTipSet()
@@ -236,7 +236,7 @@ func RandomSchedule(lc fx.Lifecycle, mctx helpers.MetricsCtx, p RandomBeaconPara
 
 	shd := beacon.Schedule{}
 	for _, dc := range p.DrandConfig {
-		bc, err := drand.NewDrandBeacon(gen.Timestamp, build.BlockDelaySecs, p.PubSub, dc.Config)
+		bc, err := drand.NewDrandBeacon(gen.Timestamp, build.BlockDelaySecs(), p.PubSub, dc.Config)
 		if err != nil {
 			return nil, xerrors.Errorf("creating drand beacon: %w", err)
 		}

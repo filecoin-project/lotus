@@ -109,7 +109,7 @@ func (m *Sealing) handleTerminateFinality(ctx statemachine.Context, sector Secto
 			return ctx.Send(SectorRemove{})
 		}
 
-		toWait := time.Duration(epoch-sector.TerminatedAt+policy.GetWinningPoStSectorSetLookback(nv)) * time.Duration(build.BlockDelaySecs) * time.Second
+		toWait := time.Duration(epoch-sector.TerminatedAt+policy.GetWinningPoStSectorSetLookback(nv)) * time.Duration(build.BlockDelaySecs()) * time.Second
 		select {
 		case <-time.After(toWait):
 			continue

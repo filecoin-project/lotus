@@ -328,7 +328,7 @@ func SyncWait(ctx context.Context, napi v0api.FullNode, watch bool) error {
 
 		_ = target // todo: maybe print? (creates a bunch of line wrapping issues with most tipsets)
 
-		if !watch && time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs) {
+		if !watch && time.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs()) {
 			fmt.Println("\nDone!")
 			return nil
 		}

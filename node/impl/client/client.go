@@ -192,7 +192,7 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 			return nil, xerrors.Errorf("failed getting chain height: %w", err)
 		}
 
-		blocksPerHour := 60 * 60 / build.BlockDelaySecs
+		blocksPerHour := 60 * 60 / build.BlockDelaySecs()
 		dealStart = ts.Height() + abi.ChainEpoch(dealStartBufferHours*blocksPerHour) // TODO: Get this from storage ask
 	}
 
