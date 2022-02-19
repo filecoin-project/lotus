@@ -200,7 +200,7 @@ var runCmd = &cli.Command{
 			}
 
 			sinceGenesis := build.Clock.Now().Sub(genesisTime)
-			expectedHeight := int64(sinceGenesis.Seconds()) / int64(build.BlockDelaySecs)
+			expectedHeight := int64(sinceGenesis.Seconds()) / int64(build.BlockDelaySecs())
 
 			startOfWindowHeight := expectedHeight - 60
 
@@ -228,7 +228,7 @@ var runCmd = &cli.Command{
 				select {
 				case <-t.C:
 					sinceGenesis := build.Clock.Now().Sub(genesisTime)
-					expectedHeight := int64(sinceGenesis.Seconds()) / int64(build.BlockDelaySecs)
+					expectedHeight := int64(sinceGenesis.Seconds()) / int64(build.BlockDelaySecs())
 
 					stats.Record(ctx, metrics.TipsetCollectionHeightExpected.M(expectedHeight))
 				}

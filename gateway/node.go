@@ -127,7 +127,7 @@ func (gw *Node) checkTipset(ts *types.TipSet) error {
 
 func (gw *Node) checkTipsetHeight(ts *types.TipSet, h abi.ChainEpoch) error {
 	tsBlock := ts.Blocks()[0]
-	heightDelta := time.Duration(uint64(tsBlock.Height-h)*build.BlockDelaySecs) * time.Second
+	heightDelta := time.Duration(uint64(tsBlock.Height-h)*build.BlockDelaySecs()) * time.Second
 	timeAtHeight := time.Unix(int64(tsBlock.Timestamp), 0).Add(-heightDelta)
 
 	if err := gw.checkTimestamp(timeAtHeight); err != nil {

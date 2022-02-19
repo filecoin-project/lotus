@@ -246,7 +246,7 @@ var genesisAddMsigsCmd = &cli.Command{
 
 func monthsToBlocks(nmonths int) int {
 	days := uint64((365 * nmonths) / 12)
-	return int(days * 24 * 60 * 60 / build.BlockDelaySecs)
+	return int(days * 24 * 60 * 60 / build.BlockDelaySecs())
 }
 
 func parseMultisigCsv(csvf string) ([]GenAccountEntry, error) {
@@ -514,7 +514,7 @@ var genesisSetActorVersionCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:  "network-version",
 			Usage: "network version to start genesis with",
-			Value: int(build.GenesisNetworkVersion),
+			Value: int(build.GenesisNetworkVersion()),
 		},
 	},
 	ArgsUsage: "<genesisFile>",
