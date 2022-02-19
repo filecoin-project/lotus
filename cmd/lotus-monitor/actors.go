@@ -1,6 +1,8 @@
 package main
 
 import (
+	"errors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/urfave/cli/v2"
 
@@ -12,10 +14,20 @@ import (
 )
 
 var (
-	keyAddress         = tag.MustNewKey("actorAddress")
-	actorBalanceMetric = stats.Float64("actor/Balance", "actor blance", "FIL")
-	actorNonceMetric   = stats.Int64("actor/Nonce", "nonce", "n")
-	actorBalanceView   = &view.View{
+	keyAddress                       = tag.MustNewKey("actorAddress")
+	actorBalanceMetric               = stats.Float64("actor/Balance", "actor blance", "FIL")
+	actorNonceMetric                 = stats.Int64("actor/Nonce", "nonce", "n")
+	actorVerifiedClientDataCapMetric = stats.Int64(
+		"actor/VerifiedClientDataCap",
+		"verified client datacap",
+		stats.UnitBytes,
+	)
+	actorVerifierDataCapMetric = stats.Int64(
+		"actor/VerifierDataCap",
+		"verifier datacap",
+		stats.UnitBytes,
+	)
+	actorBalanceView = &view.View{
 		Name:        "actor/Balance",
 		Measure:     actorBalanceMetric,
 		Aggregation: view.LastValue(),
@@ -27,36 +39,15 @@ var (
 		Aggregation: view.LastValue(),
 		TagKeys:     []tag.Key{keyAddress},
 	}
-	actorQualityAdjPowerMetric = stats.Int64(
-		"actor/QualityAdjPower",
-		"quality-adjusted power",
-		stats.UnitBytes,
-	)
-	actorQualityAdjPowerView = &view.View{
-		Name:        "actor/QualityAdjPower",
-		Measure:     actorRawPowerMetric,
+	actorVerifiedClientDataCapView = &view.View{
+		Name:        "actor/VerifiedClientDataCap",
+		Measure:     actorVerifiedClientDataCapMetric,
 		Aggregation: view.LastValue(),
 		TagKeys:     []tag.Key{keyAddress},
 	}
-	actorRawPowerMetric = stats.Int64(
-		"actor/RawPower",
-		"raw power",
-		stats.UnitBytes,
-	)
-	actorRawPowerView = &view.View{
-		Name:        "actor/RawPower",
-		Measure:     actorRawPowerMetric,
-		Aggregation: view.LastValue(),
-		TagKeys:     []tag.Key{keyAddress},
-	}
-	actorDatacapMetric = stats.Int64(
-		"actor/Datacap",
-		"client datacap",
-		stats.UnitBytes,
-	)
-	actorDatacapView = &view.View{
-		Name:        "actor/Datacap",
-		Measure:     actorDatacapMetric,
+	actorVerifierDataCapView = &view.View{
+		Name:        "actor/VerifierDataCap",
+		Measure:     actorVerifierDataCapMetric,
 		Aggregation: view.LastValue(),
 		TagKeys:     []tag.Key{keyAddress},
 	}
@@ -66,9 +57,8 @@ func init() {
 	if err := view.Register(
 		actorBalanceView,
 		actorNonceView,
-		actorQualityAdjPowerView,
-		actorRawPowerView,
-		actorDatacapView,
+		actorVerifiedClientDataCapView,
+		actorVerifierDataCapView,
 	); err != nil {
 		log.Fatalf("cannot register actor views: %w", err)
 	}
@@ -83,29 +73,18 @@ func actorRecorder(cctx *cli.Context, addr address.Address, api v0api.FullNode, 
 	}
 	if actor == nil {
 		log.Warnw("actor not found", "actor", addr)
-		errs <- err
+		errs <- errors.New("actor not found")
 	} else {
 		stats.Record(ctx, actorBalanceMetric.M(filBalance(actor.Balance)))
 		stats.Record(ctx, actorNonceMetric.M(int64(actor.Nonce)))
 	}
 
-	_, power, err := verifiedPower(ctx, api, addr)
-	if err != nil {
-		log.Warnw("encountered an error looking up power", "addr", addr, "err", err)
-		errs <- err
-	} else {
-		stats.Record(ctx, actorQualityAdjPowerMetric.M(power.Int64()))
-		stats.Record(ctx, actorRawPowerMetric.M(power.Int64()))
-	}
-
-	dcap, err := api.StateVerifiedClientStatus(ctx, addr, types.EmptyTSK)
+	verified, verifier, err := getDatacap(ctx, api, addr)
 	if err != nil {
 		log.Warnw("encountered an error looking up datacap", "addr", addr, "err", err)
 		errs <- err
-	}
-	var dcap64 int64
-	if dcap != nil {
-		dcap64 = dcap.Int64()
-		stats.Record(ctx, actorDatacapMetric.M(dcap64))
+	} else {
+		stats.Record(ctx, actorVerifiedClientDataCapMetric.M(verified.Int64()))
+		stats.Record(ctx, actorVerifierDataCapMetric.M(verifier.Int64()))
 	}
 }

@@ -23,15 +23,15 @@ func filBalance(attofil types.BigInt) float64 {
 	return types.BigDivFloat(attofil, types.FromFil(1))
 }
 
-func verifiedPower(ctx context.Context, api v0api.FullNode, addr address.Address) (bool, abi.StoragePower, error) {
+func getDatacap(ctx context.Context, api v0api.FullNode, addr address.Address) (verified abi.StoragePower, verifier abi.StoragePower, err error) {
 	id, err := api.StateLookupID(ctx, addr, types.EmptyTSK)
 	if err != nil {
-		return false, big.Zero(), err
+		return big.Zero(), big.Zero(), err
 	}
 
 	actor, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
 	if err != nil {
-		return false, big.Zero(), err
+		return big.Zero(), big.Zero(), err
 	}
 
 	apibs := blockstore.NewAPIBlockstore(api)
@@ -39,10 +39,20 @@ func verifiedPower(ctx context.Context, api v0api.FullNode, addr address.Address
 
 	s, err := verifreg.Load(store, actor)
 	if err != nil {
-		return false, big.Zero(), err
+		return big.Zero(), big.Zero(), err
 	}
 
-	return s.VerifierDataCap(id)
+	_, verified, err = s.VerifiedClientDataCap(id)
+	if err != nil {
+		return big.Zero(), big.Zero(), err
+	}
+
+	_, verifier, err = s.VerifierDataCap(id)
+	if err != nil {
+		return big.Zero(), big.Zero(), err
+	}
+
+	return verified, verifier, nil
 }
 
 func longPoll(cctx *cli.Context, api v0api.FullNode, errs chan error, f recorderFunc, addrArgs []string) {
