@@ -1,4 +1,4 @@
-//stm: #integration
+//stm: #cli
 package cli
 
 import (
@@ -33,7 +33,7 @@ func TestStat(t *testing.T) {
 		head := mock.TipSet(mock.MkBlock(first, 15, 7))
 
 		// create a signed message to be returned as a pending message
-		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+		w, _ := wallet.NewWallet(wallet.NewMemKeyStore())
 		senderAddr, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
@@ -74,7 +74,7 @@ func TestStat(t *testing.T) {
 		head := mock.TipSet(mock.MkBlock(first, 15, 7))
 
 		// create a signed message to be returned as a pending message
-		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+		w, _ := wallet.NewWallet(wallet.NewMemKeyStore())
 		senderAddr, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
@@ -113,7 +113,7 @@ func TestPending(t *testing.T) {
 		defer cancel()
 
 		// create a signed message to be returned as a pending message
-		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+		w, _ := wallet.NewWallet(wallet.NewMemKeyStore())
 		senderAddr, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
