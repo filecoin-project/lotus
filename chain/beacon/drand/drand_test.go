@@ -12,7 +12,14 @@ import (
 )
 
 func TestPrintGroupInfo(t *testing.T) {
-	server := build.DrandConfigs[build.DrandDevnet].Servers[0]
+	// beware, the drand server being tested depends on the build configuration
+	// of the network. This is guided by the LOTUS_NETWORK environment variable
+	schedule := build.DrandConfigSchedule()
+	if len(schedule) == 0 {
+		t.Fail()
+	}
+	point := schedule[len(schedule)-1]
+	server := point.Config.Servers[0]
 	c, err := hclient.New(server, nil, nil)
 	assert.NoError(t, err)
 	cg := c.(interface {

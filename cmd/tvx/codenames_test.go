@@ -14,11 +14,11 @@ func TestProtocolCodenames(t *testing.T) {
 		t.Fatal("expected genesis codename")
 	}
 
-	if height := abi.ChainEpoch(build.UpgradeBreezeHeight + 1); GetProtocolCodename(height) != "breeze" {
+	if height := abi.ChainEpoch(build.UpgradeBreezeHeight() + 1); GetProtocolCodename(height) != "breeze" {
 		t.Fatal("expected breeze codename")
 	}
 
-	if height := build.UpgradeAssemblyHeight + 1; GetProtocolCodename(abi.ChainEpoch(height)) != "actorsv2" {
+	if height := build.UpgradeAssemblyHeight() + 1; GetProtocolCodename(abi.ChainEpoch(height)) != "actorsv2" {
 		t.Fatal("expected actorsv2 codename")
 	}
 

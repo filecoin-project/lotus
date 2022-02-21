@@ -22,7 +22,8 @@ var (
 
 	InitialSyncTimeThreshold = 15 * time.Minute
 
-	coalesceTipsets = false
+	coalesceTipsets        = false
+	BootstrapPeerThreshold = build.BootstrapPeerThreshold()
 )
 
 func init() {
@@ -191,7 +192,7 @@ func (sm *syncManager) handlePeerHead(head peerHead) {
 		sm.heads[head.p] = head.ts
 
 		// not yet; do we have enough peers?
-		if len(sm.heads) < build.BootstrapPeerThreshold() {
+		if len(sm.heads) < BootstrapPeerThreshold {
 			log.Debugw("not tracking enough peers to start sync worker", "have", len(sm.heads), "need", build.BootstrapPeerThreshold())
 			// not enough peers; track it and wait
 			return
