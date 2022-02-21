@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -147,7 +148,8 @@ type pieceAcceptResp struct {
 }
 
 type pendingPiece struct {
-	resCh chan *pieceAcceptResp
+	doneCh chan struct{}
+	resp   atomic.Value
 
 	size abi.UnpaddedPieceSize
 	deal api.PieceDealInfo

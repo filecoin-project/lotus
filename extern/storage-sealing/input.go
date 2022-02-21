@@ -314,25 +314,28 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 	if pp, exist := m.pendingPieces[proposalCID(deal)]; exist {
 		m.inputLk.Unlock()
 		select {
-		case res := <-pp.resCh:
+		case <-pp.doneCh:
+			res := pp.resp.Load().(*pieceAcceptResp)
 			return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
 		case <-ctx.Done():
 			return api.SectorOffset{}, ctx.Err()
 		}
 	}
 
-	resCh := make(chan *pieceAcceptResp, 1)
-	m.pendingPieces[proposalCID(deal)] = &pendingPiece{
-		resCh:    resCh,
+	doneCh := make(chan struct{}, 1)
+	pp := &pendingPiece{
+		doneCh:   doneCh,
 		size:     size,
 		deal:     deal,
 		data:     data,
 		assigned: false,
-		accepted: func(sn abi.SectorNumber, offset abi.UnpaddedPieceSize, err error) {
-			resCh <- &pieceAcceptResp{sn, offset, err}
-		},
+	}
+	pp.accepted = func(sn abi.SectorNumber, offset abi.UnpaddedPieceSize, err error) {
+		pp.resp.Store(&pieceAcceptResp{sn, offset, err})
+		close(pp.doneCh)
 	}
 
+	m.pendingPieces[proposalCID(deal)] = pp
 	go func() {
 		defer m.inputLk.Unlock()
 		if err := m.updateInput(ctx, sp); err != nil {
@@ -341,7 +344,8 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 	}()
 
 	select {
-	case res := <-resCh:
+	case <-doneCh:
+		res := pp.resp.Load().(*pieceAcceptResp)
 		return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
 	case <-ctx.Done():
 		return api.SectorOffset{}, ctx.Err()
