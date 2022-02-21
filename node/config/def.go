@@ -85,7 +85,7 @@ func DefaultFullNode() *FullNode {
 			Splitstore: Splitstore{
 				ColdStoreType: "universal",
 				HotStoreType:  "badger",
-				MarkSetType:   "map",
+				MarkSetType:   "badger",
 
 				HotStoreFullGCFrequency: 20,
 			},
@@ -139,6 +139,7 @@ func DefaultStorageMiner() *StorageMiner {
 			AllowUnseal:              true,
 			AllowReplicaUpdate:       true,
 			AllowProveReplicaUpdate2: true,
+			AllowRegenSectorKey:      true,
 
 			// Default to 10 - tcp should still be able to figure this out, and
 			// it's the ratio between 10gbit / 1gbit
@@ -156,6 +157,7 @@ func DefaultStorageMiner() *StorageMiner {
 			ConsiderVerifiedStorageDeals:   true,
 			ConsiderUnverifiedStorageDeals: true,
 			PieceCidBlocklist:              []cid.Cid{},
+			MakeNewSectorForDeals:          true,
 			// TODO: It'd be nice to set this based on sector size
 			MaxDealStartDelay:               Duration(time.Hour * 24 * 14),
 			ExpectedSealDuration:            Duration(time.Hour * 24),

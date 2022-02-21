@@ -87,7 +87,10 @@ type TestMiner struct {
 
 func (tm *TestMiner) PledgeSectors(ctx context.Context, n, existing int, blockNotif <-chan struct{}) {
 	toCheck := tm.StartPledge(ctx, n, existing, blockNotif)
+	tm.WaitSectorsProving(ctx, toCheck)
+}
 
+func (tm *TestMiner) WaitSectorsProving(ctx context.Context, toCheck map[abi.SectorNumber]struct{}) {
 	for len(toCheck) > 0 {
 		tm.FlushSealingBatches(ctx)
 
@@ -105,9 +108,8 @@ func (tm *TestMiner) PledgeSectors(ctx context.Context, n, existing int, blockNo
 		}
 
 		build.Clock.Sleep(100 * time.Millisecond)
-		fmt.Printf("WaitSeal: %d %+v\n", len(toCheck), states)
+		fmt.Printf("WaitSectorsProving: %d %+v\n", len(toCheck), states)
 	}
-
 }
 
 func (tm *TestMiner) StartPledge(ctx context.Context, n, existing int, blockNotif <-chan struct{}) map[abi.SectorNumber]struct{} {
