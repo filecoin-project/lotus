@@ -311,28 +311,25 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 	}
 
 	m.inputLk.Lock()
-	if _, exist := m.pendingPieces[proposalCID(deal)]; exist {
+	if pp, exist := m.pendingPieces[proposalCID(deal)]; exist {
 		m.inputLk.Unlock()
-		return api.SectorOffset{}, xerrors.Errorf("piece for deal %s already pending", proposalCID(deal))
+		select {
+		case res := <-pp.resCh:
+			return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
+		case <-ctx.Done():
+			return api.SectorOffset{}, ctx.Err()
+		}
 	}
 
-	resCh := make(chan struct {
-		sn     abi.SectorNumber
-		offset abi.UnpaddedPieceSize
-		err    error
-	}, 1)
-
+	resCh := make(chan *pieceAcceptResp, 1)
 	m.pendingPieces[proposalCID(deal)] = &pendingPiece{
+		resCh:    resCh,
 		size:     size,
 		deal:     deal,
 		data:     data,
 		assigned: false,
 		accepted: func(sn abi.SectorNumber, offset abi.UnpaddedPieceSize, err error) {
-			resCh <- struct {
-				sn     abi.SectorNumber
-				offset abi.UnpaddedPieceSize
-				err    error
-			}{sn: sn, offset: offset, err: err}
+			resCh <- &pieceAcceptResp{sn, offset, err}
 		},
 	}
 
@@ -344,7 +341,6 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 	}()
 
 	res := <-resCh
-
 	return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
 }
 

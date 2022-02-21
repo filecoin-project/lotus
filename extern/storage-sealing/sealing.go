@@ -140,7 +140,15 @@ func (o *openSector) dealFitsInLifetime(dealEnd abi.ChainEpoch, expF func(sn abi
 	return expiration >= dealEnd, nil
 }
 
+type pieceAcceptResp struct {
+	sn     abi.SectorNumber
+	offset abi.UnpaddedPieceSize
+	err    error
+}
+
 type pendingPiece struct {
+	resCh chan *pieceAcceptResp
+
 	size abi.UnpaddedPieceSize
 	deal api.PieceDealInfo
 
