@@ -144,7 +144,7 @@ func TestPending(t *testing.T) {
 		defer cancel()
 
 		// create a signed message to be returned as a pending message
-		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+		w, _ := wallet.NewWallet(wallet.NewMemKeyStore())
 		senderAddr, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
@@ -176,7 +176,7 @@ func TestPending(t *testing.T) {
 		defer cancel()
 
 		// create a signed message to be returned as a pending message
-		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+		w, _ := wallet.NewWallet(wallet.NewMemKeyStore())
 		senderAddr, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
@@ -207,7 +207,7 @@ func TestPending(t *testing.T) {
 		defer cancel()
 
 		// create a signed message to be returned as a pending message
-		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+		w, _ := wallet.NewWallet(wallet.NewMemKeyStore())
 		senderAddr, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
@@ -240,7 +240,7 @@ func TestReplace(t *testing.T) {
 		defer cancel()
 
 		// create a signed message to be returned as a pending message
-		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+		w, _ := wallet.NewWallet(wallet.NewMemKeyStore())
 		senderAddr, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
@@ -274,7 +274,7 @@ func TestReplace(t *testing.T) {
 		defer cancel()
 
 		// create a signed message to be returned as a pending message
-		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+		w, _ := wallet.NewWallet(wallet.NewMemKeyStore())
 		senderAddr, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
@@ -319,7 +319,7 @@ func TestReplace(t *testing.T) {
 		defer cancel()
 
 		// create a signed message to be returned as a pending message
-		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+		w, _ := wallet.NewWallet(wallet.NewMemKeyStore())
 		senderAddr, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
@@ -365,7 +365,7 @@ func TestFindMsg(t *testing.T) {
 		defer cancel()
 
 		// create a signed message to be returned as a pending message
-		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+		w, _ := wallet.NewWallet(wallet.NewMemKeyStore())
 		senderAddr, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
@@ -395,7 +395,7 @@ func TestFindMsg(t *testing.T) {
 		defer cancel()
 
 		// create a signed message to be returned as a pending message
-		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+		w, _ := wallet.NewWallet(wallet.NewMemKeyStore())
 		senderAddr, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
@@ -425,7 +425,7 @@ func TestFindMsg(t *testing.T) {
 		defer cancel()
 
 		// create a signed message to be returned as a pending message
-		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+		w, _ := wallet.NewWallet(wallet.NewMemKeyStore())
 		senderAddr, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
@@ -461,7 +461,7 @@ func TestGasPerf(t *testing.T) {
 		head := mock.TipSet(mock.MkBlock(first, 15, 7))
 
 		// create a signed message to be returned as a pending message
-		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+		w, _ := wallet.NewWallet(wallet.NewMemKeyStore())
 		senderAddr, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
@@ -497,7 +497,7 @@ func TestGasPerf(t *testing.T) {
 		head := mock.TipSet(mock.MkBlock(first, 15, 7))
 
 		// create a signed message to be returned as a pending message
-		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+		w, _ := wallet.NewWallet(wallet.NewMemKeyStore())
 		senderAddr, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
@@ -531,7 +531,7 @@ func TestConfig(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+		w, _ := wallet.NewWallet(wallet.NewMemKeyStore())
 		senderAddr, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
@@ -559,7 +559,7 @@ func TestConfig(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		w, err := wallet.NewWallet(wallet.NewMemKeyStore())
+		w, _ := wallet.NewWallet(wallet.NewMemKeyStore())
 		senderAddr, err := w.WalletNew(context.Background(), types.KTSecp256k1)
 		if err != nil {
 			t.Fatal(err)
