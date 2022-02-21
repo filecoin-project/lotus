@@ -315,7 +315,7 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 		m.inputLk.Unlock()
 		select {
 		case <-pp.doneCh:
-			res := pp.resp.Load().(*pieceAcceptResp)
+			res := pp.resp
 			return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
 		case <-ctx.Done():
 			return api.SectorOffset{}, ctx.Err()
@@ -331,7 +331,7 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 		assigned: false,
 	}
 	pp.accepted = func(sn abi.SectorNumber, offset abi.UnpaddedPieceSize, err error) {
-		pp.resp.Store(&pieceAcceptResp{sn, offset, err})
+		pp.resp = &pieceAcceptResp{sn, offset, err}
 		close(pp.doneCh)
 	}
 
@@ -345,7 +345,7 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 
 	select {
 	case <-doneCh:
-		res := pp.resp.Load().(*pieceAcceptResp)
+		res := pp.resp
 		return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
 	case <-ctx.Done():
 		return api.SectorOffset{}, ctx.Err()
