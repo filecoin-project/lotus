@@ -299,8 +299,8 @@ github.com/fatih/color v1.12.0/go.mod h1:ELkj/draVOlAH/xkhN6mQ50Qd0MPOk5AAr3maGE
 github.com/fatih/color v1.13.0 h1:8LOYc1KYPPmyKMuN8QV2DNRWNbLo6LZ0iLs8+mlH53w=
 github.com/fatih/color v1.13.0/go.mod h1:kLAiJbzzSOZDVNGyDpeOxJ47H46qBXwg5ILebYFFOfk=
 github.com/filecoin-project/dagstore v0.5.1/go.mod h1:OdlK3x5m3Mol874WC2bI79H4H2+leN+FabwWdW2D/wY=
-github.com/filecoin-project/dagstore v0.5.2-0.20220218091406-7e3dada33cf4 h1:zyE+eiIhkkTSi5zL5bDeHTfumikCER8uxKjyQJeEHV4=
-github.com/filecoin-project/dagstore v0.5.2-0.20220218091406-7e3dada33cf4/go.mod h1:cVH6pCuJaOZzn2sCWQ2BtqnivvG/69acZJ0UA3mGagg=
+github.com/filecoin-project/dagstore v0.5.2-0.20220221082516-6beb25bc4425 h1:OQxAqlQVzH9/WUAMue7LWQorL1KXgiEbJTuKRxPuxlo=
+github.com/filecoin-project/dagstore v0.5.2-0.20220221082516-6beb25bc4425/go.mod h1:mdqKzYrRBHf1pRMthYfMv3n37oOw0Tkx7+TxPt240M0=
 github.com/filecoin-project/go-address v0.0.3/go.mod h1:jr8JxKsYx+lQlQZmF5i2U0Z+cGQ59wMIps/8YW/lDj8=
 github.com/filecoin-project/go-address v0.0.5/go.mod h1:jr8JxKsYx+lQlQZmF5i2U0Z+cGQ59wMIps/8YW/lDj8=
 github.com/filecoin-project/go-address v0.0.6 h1:DWQtj38ax+ogHwyH3VULRIoT8E6loyXqsk/p81xoY7M=
