@@ -207,6 +207,10 @@ func GetCommonAPI(ctx *cli.Context) (api.CommonNet, jsonrpc.ClientCloser, error)
 		log.Errorf("repoType type does not match the type of repo.RepoType")
 	}
 
+	// use the mocked API in CLI unit tests, see cli/mocks_test.go for mock definition
+	if mock, ok := ctx.App.Metadata["test-full-api"]; ok {
+		return &v0api.WrapperV1Full{FullNode: mock.(v1api.FullNode)}, func() {}, nil
+	}
 	if tn, ok := ctx.App.Metadata["testnode-storage"]; ok {
 		return tn.(api.StorageMiner), func() {}, nil
 	}
