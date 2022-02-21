@@ -1,4 +1,4 @@
-//stm: #integration
+//stm: #cli
 package cli
 
 import (
