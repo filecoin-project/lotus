@@ -340,8 +340,12 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 		}
 	}()
 
-	res := <-resCh
-	return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
+	select {
+	case res := <-resCh:
+		return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
+	case <-ctx.Done():
+		return api.SectorOffset{}, ctx.Err()
+	}
 }
 
 func (m *Sealing) MatchPendingPiecesToOpenSectors(ctx context.Context) error {
