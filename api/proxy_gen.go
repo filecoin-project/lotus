@@ -516,6 +516,8 @@ type GatewayStruct struct {
 
 		MsigGetVested func(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) ``
 
+		MsigGetVestingSchedule func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MsigVesting, error) ``
+
 		StateAccountKey func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) ``
 
 		StateDealProviderCollateralBounds func(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (DealCollateralBounds, error) ``
@@ -3283,6 +3285,17 @@ func (s *GatewayStruct) MsigGetVested(p0 context.Context, p1 address.Address, p2
 
 func (s *GatewayStub) MsigGetVested(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) {
 	return *new(types.BigInt), ErrNotSupported
+}
+
+func (s *GatewayStruct) MsigGetVestingSchedule(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MsigVesting, error) {
+	if s.Internal.MsigGetVestingSchedule == nil {
+		return *new(MsigVesting), ErrNotSupported
+	}
+	return s.Internal.MsigGetVestingSchedule(p0, p1, p2)
+}
+
+func (s *GatewayStub) MsigGetVestingSchedule(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MsigVesting, error) {
+	return *new(MsigVesting), ErrNotSupported
 }
 
 func (s *GatewayStruct) StateAccountKey(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {

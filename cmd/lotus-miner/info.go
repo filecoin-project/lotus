@@ -126,7 +126,7 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	alerts, err := minerApi.LogAlerts(ctx)
 	if err != nil {
-		return xerrors.Errorf("getting alerts: %w", err)
+		fmt.Printf("ERROR: getting alerts: %s\n", err)
 	}
 
 	activeAlerts := make([]alerting.Alert, 0)
