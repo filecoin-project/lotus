@@ -1,3 +1,4 @@
+//stm: #cli
 package cli
 
 import (
@@ -33,6 +34,7 @@ func TestWalletNew(t *testing.T) {
 
 	mockApi.EXPECT().WalletNew(ctx, keyType).Return(address, nil)
 
+	//stm: @CLI_WALLET_NEW_001
 	err = app.Run([]string{"wallet", "new"})
 	assert.NoError(t, err)
 	assert.Contains(t, buffer.String(), address.String())
@@ -68,6 +70,7 @@ func TestWalletList(t *testing.T) {
 			mockApi.EXPECT().StateGetActor(ctx, addr, key).Return(&actor, nil),
 		)
 
+		//stm: @CLI_WALLET_LIST_001
 		err := app.Run([]string{"wallet", "list", "addr-only"})
 		assert.NoError(t, err)
 	})
@@ -86,6 +89,7 @@ func TestWalletList(t *testing.T) {
 			mockApi.EXPECT().StateLookupID(ctx, addr, key).Return(addr, nil),
 		)
 
+		//stm: @CLI_WALLET_LIST_002
 		err := app.Run([]string{"wallet", "list", "--id"})
 		assert.NoError(t, err)
 	})
@@ -109,6 +113,7 @@ func TestWalletList(t *testing.T) {
 			mockApi.EXPECT().StateMarketBalance(ctx, addr, key).Return(balance, nil),
 		)
 
+		//stm: @CLI_WALLET_LIST_003
 		err := app.Run([]string{"wallet", "list", "--market"})
 		assert.NoError(t, err)
 	})
@@ -128,6 +133,7 @@ func TestWalletBalance(t *testing.T) {
 
 	mockApi.EXPECT().WalletBalance(ctx, addr).Return(balance, nil)
 
+	//stm: @CLI_WALLET_BALANCE_001
 	err = app.Run([]string{"wallet", "balance", "f01234"})
 	assert.NoError(t, err)
 	assert.Contains(t, buffer.String(), balance.String())
@@ -145,6 +151,7 @@ func TestWalletGetDefault(t *testing.T) {
 
 	mockApi.EXPECT().WalletDefaultAddress(ctx).Return(addr, nil)
 
+	//stm: @CLI_WALLET_GET_DEFAULT_001
 	err = app.Run([]string{"wallet", "default"})
 	assert.NoError(t, err)
 	assert.Contains(t, buffer.String(), addr.String())
@@ -162,6 +169,7 @@ func TestWalletSetDefault(t *testing.T) {
 
 	mockApi.EXPECT().WalletSetDefault(ctx, addr).Return(nil)
 
+	//stm: @CLI_WALLET_SET_DEFAULT_001
 	err = app.Run([]string{"wallet", "set-default", "f01234"})
 	assert.NoError(t, err)
 }
@@ -186,6 +194,7 @@ func TestWalletExport(t *testing.T) {
 	ki, err := json.Marshal(keyInfo)
 	assert.NoError(t, err)
 
+	//stm: @CLI_WALLET_EXPORT_001
 	err = app.Run([]string{"wallet", "export", "f01234"})
 	assert.NoError(t, err)
 	assert.Contains(t, buffer.String(), hex.EncodeToString(ki))
@@ -208,6 +217,7 @@ func TestWalletSign(t *testing.T) {
 
 	mockApi.EXPECT().WalletSign(ctx, addr, msg).Return(&signature, nil)
 
+	//stm: @CLI_WALLET_SIGN_001
 	err = app.Run([]string{"wallet", "sign", "f01234", "01"})
 	assert.NoError(t, err)
 }
@@ -230,6 +240,7 @@ func TestWalletVerify(t *testing.T) {
 
 	mockApi.EXPECT().WalletVerify(ctx, addr, msg, &signature).Return(true, nil)
 
+	//stm: @CLI_WALLET_VERIFY_001
 	err = app.Run([]string{"wallet", "verify", "f01234", "01", "01"})
 	assert.NoError(t, err)
 	assert.Contains(t, buffer.String(), "valid")
@@ -247,6 +258,7 @@ func TestWalletDelete(t *testing.T) {
 
 	mockApi.EXPECT().WalletDelete(ctx, addr).Return(nil)
 
+	//stm: @CLI_WALLET_DELETE_001
 	err = app.Run([]string{"wallet", "delete", "f01234"})
 	assert.NoError(t, err)
 }
@@ -283,6 +295,7 @@ func TestWalletMarketWithdraw(t *testing.T) {
 		mockApi.EXPECT().StateNetworkVersion(ctx, types.TipSetKey{}).Return(networkVers, nil),
 	)
 
+	//stm: @CLI_WALLET_MARKET_WITHDRAW_001
 	err = app.Run([]string{"wallet", "market", "withdraw", "--wallet", addr.String()})
 	assert.NoError(t, err)
 	assert.Contains(t, buffer.String(), fmt.Sprintf("WithdrawBalance message cid: %s", cid))
@@ -307,6 +320,7 @@ func TestWalletMarketAdd(t *testing.T) {
 		mockApi.EXPECT().MarketAddBalance(ctx, defaultAddr, toAddr, big.NewInt(80)).Return(cid, nil),
 	)
 
+	//stm: @CLI_WALLET_MARKET_ADD_001
 	err = app.Run([]string{"wallet", "market", "add", "0.000000000000000080", "--address", toAddr.String()})
 	assert.NoError(t, err)
 	assert.Contains(t, buffer.String(), fmt.Sprintf("AddBalance message cid: %s", cid))
