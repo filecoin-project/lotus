@@ -39,7 +39,7 @@ func TestDealsWithFinalizeEarly(t *testing.T) {
 			return func() (sealiface.Config, error) {
 				cf := config.DefaultStorageMiner()
 				cf.Sealing.FinalizeEarly = true
-				return modules.ToSealingConfig(cf), nil
+				return modules.ToSealingConfig(cf.Dealmaking, cf.Sealing), nil
 			}, nil
 		})))) // no mock proofs.
 	ens.InterconnectAll().BeginMining(blockTime)

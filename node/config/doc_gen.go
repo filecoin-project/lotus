@@ -332,6 +332,14 @@ see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-f
 			Comment: ``,
 		},
 	},
+	"DealmakingConfiger interface": []DocField{
+		{
+			Name: "GetDealmakingConfig()",
+			Type: "DealmakingConfig",
+
+			Comment: ``,
+		},
+	},
 	"FeeConfig": []DocField{
 		{
 			Name: "DefaultMaxFee",
@@ -786,6 +794,14 @@ submitting proofs to the chain individually`,
 		{
 			Name: "TerminateBatchWait",
 			Type: "Duration",
+
+			Comment: ``,
+		},
+	},
+	"SealingConfiger interface": []DocField{
+		{
+			Name: "GetSealingConfig()",
+			Type: "SealingConfig",
 
 			Comment: ``,
 		},
