@@ -322,7 +322,7 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 		}
 	}
 
-	doneCh := make(chan struct{}, 1)
+	doneCh := make(chan struct{})
 	pp := &pendingPiece{
 		doneCh:   doneCh,
 		size:     size,
