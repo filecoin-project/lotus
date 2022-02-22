@@ -159,7 +159,13 @@
 			"address": 1,
 			"devnet": true
 		},
-		"devnetConfig": {},
+		"devnetConfig": {
+			"supportedProofTypes": [
+				3,
+				4
+			],
+			"consensusMinerMinPower": 34359738368
+		},
 		"drandSchedule": [
 			{
 				"start": 0,
@@ -198,6 +204,72 @@
 			"hyperdrive": 420,
 			"chocolate": 312746,
 			"ohsnap": 682006
+		}
+	},
+	"interopnet": {
+		"bootstrappers": [
+			"/dns4/bootstrap-0.interop.fildev.network/tcp/1347/p2p/12D3KooWLGPq9JL1xwL6gHok7HSNxtK1Q5kyfg4Hk69ifRPghn4i",
+			"/dns4/bootstrap-1.interop.fildev.network/tcp/1347/p2p/12D3KooWFYS1f31zafv8mqqYu8U3hEqYvaZ6avWzYU3BmZdpyH3h"
+		],
+		"config": {
+			"blockDelaySecs": 30,
+			"bootstrapPeerThreshold": 2,
+			"breezeGasTampingDuration": 0,
+			"genesisFile": "interopnet.car",
+			"genesisNetworkVersion": 13,
+			"propagationDelaySecs": 6,
+			"whitelistedBlock": "",
+			"address": 1,
+			"devnet": true
+		},
+		"devnetConfig": {
+			"supportedProofTypes": [
+				0,
+				1,
+				2
+			],
+			"consensusMinerMinPower": 2048,
+			"minVerifiedDealSize": 256,
+			"preCommitChallengeDelay": 10
+		},
+		"drandSchedule": [
+			{
+				"start": 0,
+				"config": {
+					"servers":  [
+						"https://api.drand.sh",
+						"https://api2.drand.sh",
+						"https://api3.drand.sh",
+						"https://drand.cloudflare.com"
+					],
+					"relays": [
+						"/dnsaddr/api.drand.sh/",
+						"/dnsaddr/api2.drand.sh/",
+						"/dnsaddr/api3.drand.sh/"
+					],
+					"chainInfoJSON": "{\"public_key\": \"868f005eb8e6e4ca0a47c8a77ceaa5309a47978a7c71bc5cce96366b5d7a569937c529eeda66c7293784a9402801af31\",\"period\":30,\"genesis_time\":1595431050,\"hash\":\"8990e7a9aaed2ffed73dbd7092123d6f289930540d7651336225dc172e51b2ce\",\"groupHash\":\"176f93498eac9ca337150b46d21dd58673ea4e3581185f869672e59fa4cb390a\"}"
+				}
+			}
+		],
+		"upgrades": {
+			"breeze": -1,
+			"smoke": -2,
+			"ignition": -3,
+			"refuel": -4,
+			"assembly": -5,
+			"tape": -6,
+			"liftoff": -7,
+			"kumquat": -8,
+			"calico": -9,
+			"persian": -10,
+			"claus": -11,
+			"orange": -12,
+			"trust": -13,
+			"norwegian": -14,
+			"turbo": -15,
+			"hyperdrive": -16,
+			"chocolate": -17,
+			"ohsnap": -18 
 		}
 	}
 }
