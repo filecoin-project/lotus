@@ -96,6 +96,11 @@ var infoAllCmd = &cli.Command{
 			fmt.Println("ERROR: ", err)
 		}
 
+		fmt.Println("\n#: Storage Locks")
+		if err := storageLocks.Action(cctx); err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
 		fmt.Println("\n#: Sched Diag")
 		if err := sealingSchedDiagCmd.Action(cctx); err != nil {
 			fmt.Println("ERROR: ", err)
@@ -189,6 +194,11 @@ var infoAllCmd = &cli.Command{
 
 		fmt.Println("\n#: Sector List")
 		if err := sectorsListCmd.Action(cctx); err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
+		fmt.Println("\n#: Storage Sector List")
+		if err := storageListSectorsCmd.Action(cctx); err != nil {
 			fmt.Println("ERROR: ", err)
 		}
 

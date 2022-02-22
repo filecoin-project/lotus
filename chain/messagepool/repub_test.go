@@ -1,3 +1,4 @@
+//stm: #unit
 package messagepool
 
 import (
@@ -16,6 +17,7 @@ import (
 )
 
 func TestRepubMessages(t *testing.T) {
+	//stm: @TOKEN_WALLET_NEW_001
 	oldRepublishBatchDelay := RepublishBatchDelay
 	RepublishBatchDelay = time.Microsecond
 	defer func() {
@@ -57,6 +59,7 @@ func TestRepubMessages(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
+		//stm: @CHAIN_MEMPOOL_PUSH_001
 		_, err := mp.Push(context.TODO(), m)
 		if err != nil {
 			t.Fatal(err)

@@ -161,6 +161,13 @@ type SplitStore struct {
 	txnSyncCond     sync.Cond
 	txnSync         bool
 
+	// background cold object reification
+	reifyWorkers    sync.WaitGroup
+	reifyMx         sync.Mutex
+	reifyCond       sync.Cond
+	reifyPend       map[cid.Cid]struct{}
+	reifyInProgress map[cid.Cid]struct{}
+
 	// registered protectors
 	protectors []func(func(cid.Cid) error) error
 }
@@ -201,6 +208,10 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 	ss.txnViewsCond.L = &ss.txnViewsMx
 	ss.txnSyncCond.L = &ss.txnSyncMx
 	ss.ctx, ss.cancel = context.WithCancel(context.Background())
+
+	ss.reifyCond.L = &ss.reifyMx
+	ss.reifyPend = make(map[cid.Cid]struct{})
+	ss.reifyInProgress = make(map[cid.Cid]struct{})
 
 	if enableDebugLog {
 		ss.debug, err = openDebugLog(path)
@@ -264,7 +275,13 @@ func (s *SplitStore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 		return true, nil
 	}
 
-	return s.cold.Has(ctx, cid)
+	has, err = s.cold.Has(ctx, cid)
+	if has && bstore.IsHotView(ctx) {
+		s.reifyColdObject(cid)
+	}
+
+	return has, err
+
 }
 
 func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
@@ -308,8 +325,11 @@ func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error)
 
 		blk, err = s.cold.Get(ctx, cid)
 		if err == nil {
-			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
+			if bstore.IsHotView(ctx) {
+				s.reifyColdObject(cid)
+			}
 
+			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
 		}
 		return blk, err
 
@@ -359,6 +379,10 @@ func (s *SplitStore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 
 		size, err = s.cold.GetSize(ctx, cid)
 		if err == nil {
+			if bstore.IsHotView(ctx) {
+				s.reifyColdObject(cid)
+			}
+
 			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
 		}
 		return size, err
@@ -536,6 +560,10 @@ func (s *SplitStore) View(ctx context.Context, cid cid.Cid, cb func([]byte) erro
 
 		err = s.cold.View(ctx, cid, cb)
 		if err == nil {
+			if bstore.IsHotView(ctx) {
+				s.reifyColdObject(cid)
+			}
+
 			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
 		}
 		return err
@@ -645,6 +673,9 @@ func (s *SplitStore) Start(chain ChainAccessor, us stmgr.UpgradeSchedule) error 
 		}
 	}
 
+	// spawn the reifier
+	go s.reifyOrchestrator()
+
 	// watch the chain
 	chain.SubscribeHeadChanges(s.HeadChange)
 
@@ -676,6 +707,8 @@ func (s *SplitStore) Close() error {
 		}
 	}
 
+	s.reifyCond.Broadcast()
+	s.reifyWorkers.Wait()
 	s.cancel()
 	return multierr.Combine(s.markSetEnv.Close(), s.debug.Close())
 }
