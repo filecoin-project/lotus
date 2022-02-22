@@ -247,7 +247,6 @@ func TestSyncManagerBucketSet(t *testing.T) {
 	ts2 := mock.TipSet(mock.MkBlock(ts1, 1, 0))
 	bucket1 := newSyncTargetBucket(ts1, ts2)
 	bucketSet := syncBucketSet{buckets: []*syncTargetBucket{bucket1}}
-	fmt.Println("bucketSet: ", bucketSet.String())
 
 	// inserting a tipset (potential sync target) from an existing chain, should add to an existing bucket
 	//stm: @CHAIN_SYNCER_ADD_SYNC_TARGET_001
@@ -255,7 +254,6 @@ func TestSyncManagerBucketSet(t *testing.T) {
 	bucketSet.Insert(ts3)
 	require.Equal(t, 1, len(bucketSet.buckets))
 	require.Equal(t, 3, len(bucketSet.buckets[0].tips))
-	fmt.Println("bucketSet: ", bucketSet.String())
 
 	// inserting a tipset from  new chain, should create a new bucket
 	ts4fork := mock.TipSet(mock.MkBlock(nil, 1, 1))
@@ -263,7 +261,6 @@ func TestSyncManagerBucketSet(t *testing.T) {
 	require.Equal(t, 2, len(bucketSet.buckets))
 	require.Equal(t, 3, len(bucketSet.buckets[0].tips))
 	require.Equal(t, 1, len(bucketSet.buckets[1].tips))
-	fmt.Println("bucketSet: ", bucketSet.String())
 
 	// Pop removes the best bucket (best sync target), e.g. bucket1
 	//stm: @CHAIN_SYNCER_SELECT_SYNC_TARGET_001
