@@ -2,6 +2,9 @@ package cli
 
 import (
 	"context"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
 	"testing"
 
 	"github.com/filecoin-project/go-address"
@@ -13,23 +16,26 @@ import (
 	types "github.com/filecoin-project/lotus/chain/types"
 	"github.com/golang/mock/gomock"
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestWalletNew(t *testing.T) {
-	app, mockApi, _, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletNew))
+	app, mockApi, buffer, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletNew))
 	defer done()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	keyType := types.KeyType("secp256k1")
-	address := address.Address{}
+	address, err := address.NewFromString("t0123")
+	assert.NoError(t, err)
 
 	mockApi.EXPECT().WalletNew(ctx, keyType).Return(address, nil)
 
-	err := app.Run([]string{"wallet", "new"})
+	err = app.Run([]string{"wallet", "new"})
 	assert.NoError(t, err)
+	assert.Contains(t, buffer.String(), address.String())
 }
 
 func TestWalletList(t *testing.T) {
@@ -109,7 +115,7 @@ func TestWalletList(t *testing.T) {
 }
 
 func TestWalletBalance(t *testing.T) {
-	app, mockApi, _, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletBalance))
+	app, mockApi, buffer, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletBalance))
 	defer done()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -124,21 +130,24 @@ func TestWalletBalance(t *testing.T) {
 
 	err = app.Run([]string{"wallet", "balance", "f01234"})
 	assert.NoError(t, err)
+	assert.Contains(t, buffer.String(), balance.String())
 }
 
 func TestWalletGetDefault(t *testing.T) {
-	app, mockApi, _, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletGetDefault))
+	app, mockApi, buffer, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletGetDefault))
 	defer done()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	addr := address.Address{}
+	addr, err := address.NewFromString("t0123")
+	assert.NoError(t, err)
 
 	mockApi.EXPECT().WalletDefaultAddress(ctx).Return(addr, nil)
 
-	err := app.Run([]string{"wallet", "default"})
+	err = app.Run([]string{"wallet", "default"})
 	assert.NoError(t, err)
+	assert.Contains(t, buffer.String(), addr.String())
 }
 
 func TestWalletSetDefault(t *testing.T) {
@@ -158,7 +167,7 @@ func TestWalletSetDefault(t *testing.T) {
 }
 
 func TestWalletExport(t *testing.T) {
-	app, mockApi, _, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletExport))
+	app, mockApi, buffer, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletExport))
 	defer done()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -167,12 +176,19 @@ func TestWalletExport(t *testing.T) {
 	addr, err := address.NewIDAddress(1234)
 	assert.NoError(t, err)
 
-	keyInfo := types.KeyInfo{}
+	keyInfo := types.KeyInfo{
+		Type:       types.KTSecp256k1,
+		PrivateKey: []byte("0x000000000000000000001"),
+	}
 
 	mockApi.EXPECT().WalletExport(ctx, addr).Return(&keyInfo, nil)
 
+	ki, err := json.Marshal(keyInfo)
+	assert.NoError(t, err)
+
 	err = app.Run([]string{"wallet", "export", "f01234"})
 	assert.NoError(t, err)
+	assert.Contains(t, buffer.String(), hex.EncodeToString(ki))
 }
 
 func TestWalletSign(t *testing.T) {
@@ -182,10 +198,12 @@ func TestWalletSign(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	addr, err := address.NewIDAddress(1234)
+	addr, err := address.NewFromString("f01234")
 	assert.NoError(t, err)
 
-	msg := []byte{1}
+	msg, err := hex.DecodeString("01")
+	assert.NoError(t, err)
+
 	signature := crypto.Signature{}
 
 	mockApi.EXPECT().WalletSign(ctx, addr, msg).Return(&signature, nil)
@@ -195,7 +213,7 @@ func TestWalletSign(t *testing.T) {
 }
 
 func TestWalletVerify(t *testing.T) {
-	app, mockApi, _, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletVerify))
+	app, mockApi, buffer, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletVerify))
 	defer done()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -214,6 +232,7 @@ func TestWalletVerify(t *testing.T) {
 
 	err = app.Run([]string{"wallet", "verify", "f01234", "01", "01"})
 	assert.NoError(t, err)
+	assert.Contains(t, buffer.String(), "valid")
 }
 
 func TestWalletDelete(t *testing.T) {
@@ -233,7 +252,7 @@ func TestWalletDelete(t *testing.T) {
 }
 
 func TestWalletMarketWithdraw(t *testing.T) {
-	app, mockApi, _, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletMarket))
+	app, mockApi, buffer, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletMarket))
 	defer done()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -247,7 +266,9 @@ func TestWalletMarketWithdraw(t *testing.T) {
 		Locked: big.NewInt(10),
 	}
 
-	cid := cid.Cid{}
+	h, err := hex.DecodeString("12209cbc07c3f991725836a3aa2a581ca2029198aa420b9d99bc0e131d9f3e2cbe47")
+	assert.NoError(t, err)
+	cid := cid.NewCidV0(multihash.Multihash(h))
 	msgLookup := api.MsgLookup{}
 
 	var networkVers apitypes.NetworkVersion
@@ -264,10 +285,11 @@ func TestWalletMarketWithdraw(t *testing.T) {
 
 	err = app.Run([]string{"wallet", "market", "withdraw", "--wallet", addr.String()})
 	assert.NoError(t, err)
+	assert.Contains(t, buffer.String(), fmt.Sprintf("WithdrawBalance message cid: %s", cid))
 }
 
 func TestWalletMarketAdd(t *testing.T) {
-	app, mockApi, _, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletMarket))
+	app, mockApi, buffer, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletMarket))
 	defer done()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -276,13 +298,16 @@ func TestWalletMarketAdd(t *testing.T) {
 	toAddr := address.Address{}
 	defaultAddr := address.Address{}
 
-	cid := cid.Cid{}
+	h, err := hex.DecodeString("12209cbc07c3f991725836a3aa2a581ca2029198aa420b9d99bc0e131d9f3e2cbe47")
+	assert.NoError(t, err)
+	cid := cid.NewCidV0(multihash.Multihash(h))
 
 	gomock.InOrder(
 		mockApi.EXPECT().WalletDefaultAddress(ctx).Return(defaultAddr, nil),
 		mockApi.EXPECT().MarketAddBalance(ctx, defaultAddr, toAddr, big.NewInt(80)).Return(cid, nil),
 	)
 
-	err := app.Run([]string{"wallet", "market", "add", "0.000000000000000080", "--address", toAddr.String()})
+	err = app.Run([]string{"wallet", "market", "add", "0.000000000000000080", "--address", toAddr.String()})
 	assert.NoError(t, err)
+	assert.Contains(t, buffer.String(), fmt.Sprintf("AddBalance message cid: %s", cid))
 }
