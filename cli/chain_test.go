@@ -1,3 +1,4 @@
+//stm: #cli
 package cli
 
 import (
@@ -324,7 +325,7 @@ func TestInspectUsage(t *testing.T) {
 		// check for gas by sender
 		assert.Contains(t, out, "By Sender")
 		// check for gas by method
-		assert.Contains(t, out, "Send")
+		assert.Contains(t, out, "By Method:\nSend")
 	})
 }
 
