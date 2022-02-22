@@ -238,10 +238,6 @@ func TestWindowPostBaseFeeNoBurn(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	och := build.UpgradeClausHeight
-	build.UpgradeClausHeight = 0
-	t.Cleanup(func() { build.UpgradeClausHeight = och })
-
 	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.GenesisNetworkVersion(network.Version9))
 	ens.InterconnectAll().BeginMining(blocktime)
 
