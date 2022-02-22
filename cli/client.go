@@ -667,6 +667,8 @@ uiLoop:
 
 			state = "miner"
 		case "miner":
+			maddrs = maddrs[:0]
+			ask = ask[:0]
 			afmt.Print("Miner Addresses (f0.. f0..), none to find: ")
 
 			_maddrsStr, _, err := rl.ReadLine()
@@ -802,7 +804,8 @@ uiLoop:
 
 			dealCount, err = strconv.ParseInt(string(dealcStr), 10, 64)
 			if err != nil {
-				return err
+				printErr(xerrors.Errorf("reading deal count: invalid number"))
+				continue
 			}
 
 			color.Blue(".. Picking miners")
@@ -859,12 +862,13 @@ uiLoop:
 
 				a, err := api.ClientQueryAsk(ctx, *mi.PeerId, maddr)
 				if err != nil {
-					printErr(xerrors.Errorf("failed to query ask: %w", err))
+					printErr(xerrors.Errorf("failed to query ask for miner %s: %w", maddr.String(), err))
 					state = "miner"
 					continue uiLoop
 				}
 
 				ask = append(ask, *a)
+
 			}
 
 			// TODO: run more validation

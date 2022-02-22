@@ -1,6 +1,7 @@
 package splitstore
 
 import (
+	"errors"
 	"runtime"
 	"sync/atomic"
 
@@ -8,6 +9,11 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	cid "github.com/ipfs/go-cid"
+)
+
+var (
+	errReifyLimit = errors.New("reification limit reached")
+	ReifyLimit    = 16384
 )
 
 func (s *SplitStore) reifyColdObject(c cid.Cid) {
@@ -98,10 +104,16 @@ func (s *SplitStore) doReify(c cid.Cid) {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	err := s.walkObject(c, newTmpVisitor(),
+	count := 0
+	err := s.walkObjectIncomplete(c, newTmpVisitor(),
 		func(c cid.Cid) error {
 			if isUnitaryObject(c) {
 				return errStopWalk
+			}
+
+			count++
+			if count > ReifyLimit {
+				return errReifyLimit
 			}
 
 			s.reifyMx.Lock()
@@ -137,9 +149,18 @@ func (s *SplitStore) doReify(c cid.Cid) {
 
 			toreify = append(toreify, c)
 			return nil
+		},
+		func(missing cid.Cid) error {
+			log.Warnf("missing reference while reifying %s: %s", c, missing)
+			return errStopWalk
 		})
 
 	if err != nil {
+		if xerrors.Is(err, errReifyLimit) {
+			log.Debug("reification aborted; reify limit reached")
+			return
+		}
+
 		log.Warnf("error walking cold object for reification (cid: %s): %s", c, err)
 		return
 	}
