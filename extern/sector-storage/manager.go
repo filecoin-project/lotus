@@ -105,6 +105,7 @@ type SealerConfig struct {
 	AllowUnseal              bool
 	AllowReplicaUpdate       bool
 	AllowProveReplicaUpdate2 bool
+	AllowRegenSectorKey      bool
 
 	// ResourceFiltering instructs the system which resource filtering strategy
 	// to use when evaluating tasks against this worker. An empty value defaults
@@ -168,6 +169,9 @@ func New(ctx context.Context, lstor *stores.Local, stor *stores.Remote, ls store
 	}
 	if sc.AllowProveReplicaUpdate2 {
 		localTasks = append(localTasks, sealtasks.TTProveReplicaUpdate2)
+	}
+	if sc.AllowRegenSectorKey {
+		localTasks = append(localTasks, sealtasks.TTRegenSectorKey)
 	}
 
 	wcfg := WorkerConfig{

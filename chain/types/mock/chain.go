@@ -2,8 +2,8 @@ package mock
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
+	"math/rand"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -90,19 +90,24 @@ func TipSet(blks ...*types.BlockHeader) *types.TipSet {
 	return ts
 }
 
-func RandomActorAddress() (*address.Address, error) {
-	bytes := make([]byte, 32)
-	_, err := rand.Read(bytes)
-	if err != nil {
-		return nil, err
-	}
+// Generates count new addresses using the provided seed, and returns them
+func RandomActorAddresses(seed int64, count int) ([]*address.Address, error) {
+	randAddrs := make([]*address.Address, count)
+	source := rand.New(rand.NewSource(seed))
+	for i := 0; i < count; i++ {
+		bytes := make([]byte, 32)
+		_, err := source.Read(bytes)
+		if err != nil {
+			return nil, err
+		}
 
-	addr, err := address.NewActorAddress(bytes)
-	if err != nil {
-		return nil, err
+		addr, err := address.NewActorAddress(bytes)
+		if err != nil {
+			return nil, err
+		}
+		randAddrs[i] = &addr
 	}
-
-	return &addr, nil
+	return randAddrs, nil
 }
 
 func UnsignedMessage(from, to address.Address, nonce uint64) *types.Message {
