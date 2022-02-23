@@ -491,8 +491,9 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 		Actors:         filcns.NewActorRegistry(),
 		Syscalls:       mkFakedSigSyscalls(sys),
 		CircSupplyCalc: csc,
+		FilVested:      big.Zero(),
 		NetworkVersion: nv,
-		BaseFee:        types.NewInt(0),
+		BaseFee:        big.Zero(),
 	}
 	vm, err := vm.NewLotusVM(ctx, &vmopt)
 	if err != nil {

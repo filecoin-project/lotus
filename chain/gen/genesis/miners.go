@@ -95,7 +95,8 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 		Syscalls:       mkFakedSigSyscalls(sys),
 		CircSupplyCalc: csc,
 		NetworkVersion: nv,
-		BaseFee:        types.NewInt(0),
+		BaseFee:        big.Zero(),
+		FilVested:      big.Zero(),
 	}
 
 	vm, err := vm.NewLotusVM(ctx, vmopt)
