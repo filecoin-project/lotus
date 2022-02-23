@@ -63,6 +63,9 @@ func getRemoveDataCapProposalID(store adt.Store, ver actors.Version, root rootFu
 	if err != nil {
 		return false, 0, xerrors.Errorf("loading verifreg: %w", err)
 	}
+	if vh == nil {
+		return false, 0, xerrors.Errorf("remove data cap proposal hamt not found. you are probably using an incompatible version of actors")
+	}
 
 	var id verifreg.RmDcProposalID
 	if found, err := vh.Get(abi.NewAddrPairKey(verifier, client), &id); err != nil {
