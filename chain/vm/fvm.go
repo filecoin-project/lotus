@@ -3,9 +3,11 @@ package vm
 import (
 	"bytes"
 	"context"
+	"time"
 
 	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -150,7 +152,7 @@ func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte
 
 	ret.Type = faultType
 	ret.Target = blockA.Miner
-	
+
 	return ret, totalGas
 }
 
@@ -227,6 +229,7 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 }
 
 func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
+	start := build.Clock.Now()
 	msgBytes, err := cmsg.VMMessage().Serialize()
 	if err != nil {
 		return nil, xerrors.Errorf("serializing msg: %w", err)
@@ -256,16 +259,16 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 		// TODO: do these eventually, not consensus critical
 		ActorErr:       nil,
 		ExecutionTrace: types.ExecutionTrace{},
-		Duration:       0,
+		Duration:       time.Since(start),
 	}, nil
 }
 
 func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*ApplyRet, error) {
+	start := build.Clock.Now()
 	msgBytes, err := cmsg.VMMessage().Serialize()
 	if err != nil {
 		return nil, xerrors.Errorf("serializing msg: %w", err)
 	}
-
 	ret, err := vm.fvm.ApplyImplicitMessage(msgBytes)
 	if err != nil {
 		return nil, xerrors.Errorf("applying msg: %w", err)
@@ -281,7 +284,7 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 		// TODO: do these eventually, not consensus critical
 		ActorErr:       nil,
 		ExecutionTrace: types.ExecutionTrace{},
-		Duration:       0,
+		Duration:       time.Since(start),
 	}, nil
 }
 
