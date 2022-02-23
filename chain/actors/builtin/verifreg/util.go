@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/specs-actors/v7/actors/builtin/verifreg"
 	"golang.org/x/xerrors"
 )
 
@@ -49,4 +50,26 @@ func forEachCap(store adt.Store, ver actors.Version, root rootFunc, cb func(addr
 		}
 		return cb(a, dcap)
 	})
+}
+
+func getRemoveDataCapProposalID(store adt.Store, ver actors.Version, root rootFunc, verifier address.Address, client address.Address) (bool, uint64, error) {
+	if verifier.Protocol() != address.ID {
+		return false, 0, xerrors.Errorf("can only look up ID addresses")
+	}
+	if client.Protocol() != address.ID {
+		return false, 0, xerrors.Errorf("can only look up ID addresses")
+	}
+	vh, err := root()
+	if err != nil {
+		return false, 0, xerrors.Errorf("loading verifreg: %w", err)
+	}
+
+	var id verifreg.RmDcProposalID
+	if found, err := vh.Get(abi.NewAddrPairKey(verifier, client), &id); err != nil {
+		return false, 0, xerrors.Errorf("looking up addr pair: %w", err)
+	} else if !found {
+		return false, 0, nil
+	}
+
+	return true, id.ProposalID, nil
 }

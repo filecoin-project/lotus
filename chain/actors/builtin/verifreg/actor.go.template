@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
+	verifreg7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/verifreg"
 )
 
 func init() {
@@ -62,6 +63,9 @@ func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
 
+type RemoveDataCapProposal = verifreg7.RemoveDataCapProposal
+type RmDcProposalID = verifreg7.RmDcProposalID
+const SignatureDomainSeparation_RemoveDataCap = verifreg7.SignatureDomainSeparation_RemoveDataCap
 
 type State interface {
 	cbor.Marshaler
@@ -69,6 +73,7 @@ type State interface {
 	RootKey() (address.Address, error)
 	VerifiedClientDataCap(address.Address) (bool, abi.StoragePower, error)
 	VerifierDataCap(address.Address) (bool, abi.StoragePower, error)
+	RemoveDataCapProposalID(verifier address.Address, client address.Address) (bool, uint64, error)
 	ForEachVerifier(func(addr address.Address, dcap abi.StoragePower) error) error
 	ForEachClient(func(addr address.Address, dcap abi.StoragePower) error) error
 	GetState() interface{}

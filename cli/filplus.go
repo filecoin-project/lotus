@@ -1,7 +1,9 @@
 package cli
 
 import (
+	"bytes"
 	"context"
+	"encoding/hex"
 	"fmt"
 
 	verifreg4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/verifreg"
@@ -34,6 +36,7 @@ var filplusCmd = &cli.Command{
 		filplusListClientsCmd,
 		filplusCheckClientCmd,
 		filplusCheckNotaryCmd,
+		filplusSignRemoveDataCapProposal,
 	},
 }
 
@@ -273,4 +276,95 @@ func checkNotary(ctx context.Context, api v0api.FullNode, vaddr address.Address)
 	}
 
 	return st.VerifierDataCap(vid)
+}
+
+var filplusSignRemoveDataCapProposal = &cli.Command{
+	Name:  "sign-remove-data-cap-proposal",
+	Usage: "TODO",
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:     "id",
+			Usage:    "specify the id of the Remove Data Cap Proposal",
+			Required: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 3 {
+			return fmt.Errorf("must specify three arguments: verifier address, client address, and allowance to remove")
+		}
+
+		verifier, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		client, err := address.NewFromString(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		allowanceToRemove, err := types.BigFromString(cctx.Args().Get(2))
+		if err != nil {
+			return err
+		}
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		found, _, err := checkNotary(ctx, api, verifier)
+		if err != nil {
+			return err
+		}
+
+		if !found {
+			return xerrors.New("verifier address must be a notary")
+		}
+
+		id := cctx.Uint64("id")
+		if id == 0 {
+			act, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			apibs := blockstore.NewAPIBlockstore(api)
+			store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
+
+			st, err := verifreg.Load(store, act)
+			if err != nil {
+				return err
+			}
+			_, id, err = st.RemoveDataCapProposalID(verifier, client)
+			if err != nil {
+				return err
+			}
+		}
+
+		// TODO: This should be abstracted over actor versions
+		params := verifreg.RemoveDataCapProposal{
+			RemovalProposalID: verifreg.RmDcProposalID{ProposalID: id},
+			DataCapAmount:     allowanceToRemove,
+			VerifiedClient:    client,
+		}
+
+		paramBuf := new(bytes.Buffer)
+		paramBuf.WriteString(verifreg.SignatureDomainSeparation_RemoveDataCap)
+		err = params.MarshalCBOR(paramBuf)
+		if err != nil {
+			return err
+		}
+
+		msg, err := api.WalletSign(ctx, verifier, paramBuf.Bytes())
+		if err != nil {
+			return err
+		}
+
+		fmt.Println(hex.EncodeToString(msg.Data))
+
+		return nil
+	},
 }
