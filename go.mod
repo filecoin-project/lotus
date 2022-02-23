@@ -100,6 +100,7 @@ require (
 	github.com/ipfs/go-metrics-prometheus v0.0.2
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.3.1
+	github.com/ipfs/go-unixfsnode v1.2.0
 	github.com/ipfs/interface-go-ipfs-core v0.4.0
 	github.com/ipld/go-car v0.3.3
 	github.com/ipld/go-car/v2 v2.1.1
