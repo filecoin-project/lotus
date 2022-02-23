@@ -1234,12 +1234,13 @@ USAGE:
    lotus filplus command [command options] [arguments...]
 
 COMMANDS:
-   grant-datacap         give allowance to the specified verified client address
-   list-notaries         list all notaries
-   list-clients          list all verified clients
-   check-client-datacap  check verified client remaining bytes
-   check-notary-datacap  check a notary's remaining bytes
-   help, h               Shows a list of commands or help for one command
+   grant-datacap                  give allowance to the specified verified client address
+   list-notaries                  list all notaries
+   list-clients                   list all verified clients
+   check-client-datacap           check verified client remaining bytes
+   check-notary-datacap           check a notary's remaining bytes
+   sign-remove-data-cap-proposal  TODO
+   help, h                        Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h     show help (default: false)
@@ -1309,6 +1310,20 @@ USAGE:
    lotus filplus check-notary-datacap [command options] [arguments...]
 
 OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus filplus sign-remove-data-cap-proposal
+```
+NAME:
+   lotus filplus sign-remove-data-cap-proposal - TODO
+
+USAGE:
+   lotus filplus sign-remove-data-cap-proposal [command options] [arguments...]
+
+OPTIONS:
+   --id value  specify the id of the Remove Data Cap Proposal (default: 0)
    --help, -h  show help (default: false)
    
 ```
