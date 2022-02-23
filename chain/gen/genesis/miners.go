@@ -98,9 +98,9 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 		BaseFee:        types.NewInt(0),
 	}
 
-	vm, err := vm.NewVM(ctx, vmopt)
+	vm, err := vm.NewLotusVM(ctx, vmopt)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
+		return cid.Undef, xerrors.Errorf("failed to create NewLotusVM: %w", err)
 	}
 
 	if len(miners) == 0 {

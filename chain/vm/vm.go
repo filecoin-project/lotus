@@ -234,7 +234,7 @@ type VMOpts struct {
 	LookbackState  LookbackStateGetter
 }
 
-func NewVM(ctx context.Context, opts *VMOpts) (*VM, error) {
+func NewLotusVM(ctx context.Context, opts *VMOpts) (*VM, error) {
 	buf := blockstore.NewBuffered(opts.Bstore)
 	cst := cbor.NewCborStore(buf)
 	state, err := state.LoadStateTree(cst, opts.StateBase)
