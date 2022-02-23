@@ -758,8 +758,9 @@ func StorageAuthWithURL(apiInfo string) func(ctx helpers.MetricsCtx, ca v0api.Co
 
 func NewConsiderOnlineStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.ConsiderOnlineStorageDealsConfigFunc, error) {
 	return func() (out bool, err error) {
-		err = readCfg(r, func(cfg *config.StorageMiner) {
-			out = cfg.Dealmaking.ConsiderOnlineStorageDeals
+		err = readDealmakingCfg(r, func(c config.DealmakingConfiger) {
+			cfg := c.GetDealmakingConfig()
+			out = cfg.ConsiderOnlineStorageDeals
 		})
 		return
 	}, nil
@@ -767,8 +768,10 @@ func NewConsiderOnlineStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.Consider
 
 func NewSetConsideringOnlineStorageDealsFunc(r repo.LockedRepo) (dtypes.SetConsiderOnlineStorageDealsConfigFunc, error) {
 	return func(b bool) (err error) {
-		err = mutateCfg(r, func(cfg *config.StorageMiner) {
-			cfg.Dealmaking.ConsiderOnlineStorageDeals = b
+		err = mutateDealmakingCfg(r, func(c config.DealmakingConfiger) {
+			cfg := c.GetDealmakingConfig()
+			cfg.ConsiderOnlineStorageDeals = b
+			c.SetDealmakingConfig(cfg)
 		})
 		return
 	}, nil
@@ -776,8 +779,9 @@ func NewSetConsideringOnlineStorageDealsFunc(r repo.LockedRepo) (dtypes.SetConsi
 
 func NewConsiderOnlineRetrievalDealsConfigFunc(r repo.LockedRepo) (dtypes.ConsiderOnlineRetrievalDealsConfigFunc, error) {
 	return func() (out bool, err error) {
-		err = readCfg(r, func(cfg *config.StorageMiner) {
-			out = cfg.Dealmaking.ConsiderOnlineRetrievalDeals
+		err = readDealmakingCfg(r, func(c config.DealmakingConfiger) {
+			cfg := c.GetDealmakingConfig()
+			out = cfg.ConsiderOnlineRetrievalDeals
 		})
 		return
 	}, nil
@@ -785,8 +789,10 @@ func NewConsiderOnlineRetrievalDealsConfigFunc(r repo.LockedRepo) (dtypes.Consid
 
 func NewSetConsiderOnlineRetrievalDealsConfigFunc(r repo.LockedRepo) (dtypes.SetConsiderOnlineRetrievalDealsConfigFunc, error) {
 	return func(b bool) (err error) {
-		err = mutateCfg(r, func(cfg *config.StorageMiner) {
-			cfg.Dealmaking.ConsiderOnlineRetrievalDeals = b
+		err = mutateDealmakingCfg(r, func(c config.DealmakingConfiger) {
+			cfg := c.GetDealmakingConfig()
+			cfg.ConsiderOnlineRetrievalDeals = b
+			c.SetDealmakingConfig(cfg)
 		})
 		return
 	}, nil
@@ -794,8 +800,9 @@ func NewSetConsiderOnlineRetrievalDealsConfigFunc(r repo.LockedRepo) (dtypes.Set
 
 func NewStorageDealPieceCidBlocklistConfigFunc(r repo.LockedRepo) (dtypes.StorageDealPieceCidBlocklistConfigFunc, error) {
 	return func() (out []cid.Cid, err error) {
-		err = readCfg(r, func(cfg *config.StorageMiner) {
-			out = cfg.Dealmaking.PieceCidBlocklist
+		err = readDealmakingCfg(r, func(c config.DealmakingConfiger) {
+			cfg := c.GetDealmakingConfig()
+			out = cfg.PieceCidBlocklist
 		})
 		return
 	}, nil
@@ -803,8 +810,10 @@ func NewStorageDealPieceCidBlocklistConfigFunc(r repo.LockedRepo) (dtypes.Storag
 
 func NewSetStorageDealPieceCidBlocklistConfigFunc(r repo.LockedRepo) (dtypes.SetStorageDealPieceCidBlocklistConfigFunc, error) {
 	return func(blocklist []cid.Cid) (err error) {
-		err = mutateCfg(r, func(cfg *config.StorageMiner) {
-			cfg.Dealmaking.PieceCidBlocklist = blocklist
+		err = mutateDealmakingCfg(r, func(c config.DealmakingConfiger) {
+			cfg := c.GetDealmakingConfig()
+			cfg.PieceCidBlocklist = blocklist
+			c.SetDealmakingConfig(cfg)
 		})
 		return
 	}, nil
@@ -812,8 +821,9 @@ func NewSetStorageDealPieceCidBlocklistConfigFunc(r repo.LockedRepo) (dtypes.Set
 
 func NewConsiderOfflineStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.ConsiderOfflineStorageDealsConfigFunc, error) {
 	return func() (out bool, err error) {
-		err = readCfg(r, func(cfg *config.StorageMiner) {
-			out = cfg.Dealmaking.ConsiderOfflineStorageDeals
+		err = readDealmakingCfg(r, func(c config.DealmakingConfiger) {
+			cfg := c.GetDealmakingConfig()
+			out = cfg.ConsiderOfflineStorageDeals
 		})
 		return
 	}, nil
@@ -821,8 +831,10 @@ func NewConsiderOfflineStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.Conside
 
 func NewSetConsideringOfflineStorageDealsFunc(r repo.LockedRepo) (dtypes.SetConsiderOfflineStorageDealsConfigFunc, error) {
 	return func(b bool) (err error) {
-		err = mutateCfg(r, func(cfg *config.StorageMiner) {
-			cfg.Dealmaking.ConsiderOfflineStorageDeals = b
+		err = mutateDealmakingCfg(r, func(c config.DealmakingConfiger) {
+			cfg := c.GetDealmakingConfig()
+			cfg.ConsiderOfflineStorageDeals = b
+			c.SetDealmakingConfig(cfg)
 		})
 		return
 	}, nil
@@ -830,8 +842,9 @@ func NewSetConsideringOfflineStorageDealsFunc(r repo.LockedRepo) (dtypes.SetCons
 
 func NewConsiderOfflineRetrievalDealsConfigFunc(r repo.LockedRepo) (dtypes.ConsiderOfflineRetrievalDealsConfigFunc, error) {
 	return func() (out bool, err error) {
-		err = readCfg(r, func(cfg *config.StorageMiner) {
-			out = cfg.Dealmaking.ConsiderOfflineRetrievalDeals
+		err = readDealmakingCfg(r, func(c config.DealmakingConfiger) {
+			cfg := c.GetDealmakingConfig()
+			out = cfg.ConsiderOfflineRetrievalDeals
 		})
 		return
 	}, nil
@@ -839,8 +852,10 @@ func NewConsiderOfflineRetrievalDealsConfigFunc(r repo.LockedRepo) (dtypes.Consi
 
 func NewSetConsiderOfflineRetrievalDealsConfigFunc(r repo.LockedRepo) (dtypes.SetConsiderOfflineRetrievalDealsConfigFunc, error) {
 	return func(b bool) (err error) {
-		err = mutateCfg(r, func(cfg *config.StorageMiner) {
-			cfg.Dealmaking.ConsiderOfflineRetrievalDeals = b
+		err = mutateDealmakingCfg(r, func(c config.DealmakingConfiger) {
+			cfg := c.GetDealmakingConfig()
+			cfg.ConsiderOfflineRetrievalDeals = b
+			c.SetDealmakingConfig(cfg)
 		})
 		return
 	}, nil
@@ -848,8 +863,9 @@ func NewSetConsiderOfflineRetrievalDealsConfigFunc(r repo.LockedRepo) (dtypes.Se
 
 func NewConsiderVerifiedStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.ConsiderVerifiedStorageDealsConfigFunc, error) {
 	return func() (out bool, err error) {
-		err = readCfg(r, func(cfg *config.StorageMiner) {
-			out = cfg.Dealmaking.ConsiderVerifiedStorageDeals
+		err = readDealmakingCfg(r, func(c config.DealmakingConfiger) {
+			cfg := c.GetDealmakingConfig()
+			out = cfg.ConsiderVerifiedStorageDeals
 		})
 		return
 	}, nil
@@ -857,8 +873,10 @@ func NewConsiderVerifiedStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.Consid
 
 func NewSetConsideringVerifiedStorageDealsFunc(r repo.LockedRepo) (dtypes.SetConsiderVerifiedStorageDealsConfigFunc, error) {
 	return func(b bool) (err error) {
-		err = mutateCfg(r, func(cfg *config.StorageMiner) {
-			cfg.Dealmaking.ConsiderVerifiedStorageDeals = b
+		err = mutateDealmakingCfg(r, func(c config.DealmakingConfiger) {
+			cfg := c.GetDealmakingConfig()
+			cfg.ConsiderVerifiedStorageDeals = b
+			c.SetDealmakingConfig(cfg)
 		})
 		return
 	}, nil
@@ -866,8 +884,9 @@ func NewSetConsideringVerifiedStorageDealsFunc(r repo.LockedRepo) (dtypes.SetCon
 
 func NewConsiderUnverifiedStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.ConsiderUnverifiedStorageDealsConfigFunc, error) {
 	return func() (out bool, err error) {
-		err = readCfg(r, func(cfg *config.StorageMiner) {
-			out = cfg.Dealmaking.ConsiderUnverifiedStorageDeals
+		err = readDealmakingCfg(r, func(c config.DealmakingConfiger) {
+			cfg := c.GetDealmakingConfig()
+			out = cfg.ConsiderUnverifiedStorageDeals
 		})
 		return
 	}, nil
@@ -875,8 +894,10 @@ func NewConsiderUnverifiedStorageDealsConfigFunc(r repo.LockedRepo) (dtypes.Cons
 
 func NewSetConsideringUnverifiedStorageDealsFunc(r repo.LockedRepo) (dtypes.SetConsiderUnverifiedStorageDealsConfigFunc, error) {
 	return func(b bool) (err error) {
-		err = mutateCfg(r, func(cfg *config.StorageMiner) {
-			cfg.Dealmaking.ConsiderUnverifiedStorageDeals = b
+		err = mutateDealmakingCfg(r, func(c config.DealmakingConfiger) {
+			cfg := c.GetDealmakingConfig()
+			cfg.ConsiderUnverifiedStorageDeals = b
+			c.SetDealmakingConfig(cfg)
 		})
 		return
 	}, nil
@@ -884,8 +905,8 @@ func NewSetConsideringUnverifiedStorageDealsFunc(r repo.LockedRepo) (dtypes.SetC
 
 func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error) {
 	return func(cfg sealiface.Config) (err error) {
-		err = mutateCfg(r, func(c *config.StorageMiner) {
-			c.Sealing = config.SealingConfig{
+		err = mutateSealingCfg(r, func(c config.SealingConfiger) {
+			newCfg := config.SealingConfig{
 				MaxWaitDealsSectors:             cfg.MaxWaitDealsSectors,
 				MaxSealingSectors:               cfg.MaxSealingSectors,
 				MaxSealingSectorsForDeals:       cfg.MaxSealingSectorsForDeals,
@@ -915,50 +936,53 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				TerminateBatchMin:  cfg.TerminateBatchMin,
 				TerminateBatchWait: config.Duration(cfg.TerminateBatchWait),
 			}
+			c.SetSealingConfig(newCfg)
 		})
 		return
 	}, nil
 }
 
-func ToSealingConfig(cfg *config.StorageMiner) sealiface.Config {
+func ToSealingConfig(dealmakingCfg config.DealmakingConfig, sealingCfg config.SealingConfig) sealiface.Config {
 	return sealiface.Config{
-		MaxWaitDealsSectors:             cfg.Sealing.MaxWaitDealsSectors,
-		MaxSealingSectors:               cfg.Sealing.MaxSealingSectors,
-		MaxSealingSectorsForDeals:       cfg.Sealing.MaxSealingSectorsForDeals,
-		StartEpochSealingBuffer:         abi.ChainEpoch(cfg.Dealmaking.StartEpochSealingBuffer),
-		MakeNewSectorForDeals:           cfg.Dealmaking.MakeNewSectorForDeals,
-		CommittedCapacitySectorLifetime: time.Duration(cfg.Sealing.CommittedCapacitySectorLifetime),
-		WaitDealsDelay:                  time.Duration(cfg.Sealing.WaitDealsDelay),
-		AlwaysKeepUnsealedCopy:          cfg.Sealing.AlwaysKeepUnsealedCopy,
-		FinalizeEarly:                   cfg.Sealing.FinalizeEarly,
+		MaxWaitDealsSectors:             sealingCfg.MaxWaitDealsSectors,
+		MaxSealingSectors:               sealingCfg.MaxSealingSectors,
+		MaxSealingSectorsForDeals:       sealingCfg.MaxSealingSectorsForDeals,
+		StartEpochSealingBuffer:         abi.ChainEpoch(dealmakingCfg.StartEpochSealingBuffer),
+		MakeNewSectorForDeals:           dealmakingCfg.MakeNewSectorForDeals,
+		CommittedCapacitySectorLifetime: time.Duration(sealingCfg.CommittedCapacitySectorLifetime),
+		WaitDealsDelay:                  time.Duration(sealingCfg.WaitDealsDelay),
+		AlwaysKeepUnsealedCopy:          sealingCfg.AlwaysKeepUnsealedCopy,
+		FinalizeEarly:                   sealingCfg.FinalizeEarly,
 
-		CollateralFromMinerBalance: cfg.Sealing.CollateralFromMinerBalance,
-		AvailableBalanceBuffer:     types.BigInt(cfg.Sealing.AvailableBalanceBuffer),
-		DisableCollateralFallback:  cfg.Sealing.DisableCollateralFallback,
+		CollateralFromMinerBalance: sealingCfg.CollateralFromMinerBalance,
+		AvailableBalanceBuffer:     types.BigInt(sealingCfg.AvailableBalanceBuffer),
+		DisableCollateralFallback:  sealingCfg.DisableCollateralFallback,
 
-		BatchPreCommits:     cfg.Sealing.BatchPreCommits,
-		MaxPreCommitBatch:   cfg.Sealing.MaxPreCommitBatch,
-		PreCommitBatchWait:  time.Duration(cfg.Sealing.PreCommitBatchWait),
-		PreCommitBatchSlack: time.Duration(cfg.Sealing.PreCommitBatchSlack),
+		BatchPreCommits:     sealingCfg.BatchPreCommits,
+		MaxPreCommitBatch:   sealingCfg.MaxPreCommitBatch,
+		PreCommitBatchWait:  time.Duration(sealingCfg.PreCommitBatchWait),
+		PreCommitBatchSlack: time.Duration(sealingCfg.PreCommitBatchSlack),
 
-		AggregateCommits:           cfg.Sealing.AggregateCommits,
-		MinCommitBatch:             cfg.Sealing.MinCommitBatch,
-		MaxCommitBatch:             cfg.Sealing.MaxCommitBatch,
-		CommitBatchWait:            time.Duration(cfg.Sealing.CommitBatchWait),
-		CommitBatchSlack:           time.Duration(cfg.Sealing.CommitBatchSlack),
-		AggregateAboveBaseFee:      types.BigInt(cfg.Sealing.AggregateAboveBaseFee),
-		BatchPreCommitAboveBaseFee: types.BigInt(cfg.Sealing.BatchPreCommitAboveBaseFee),
+		AggregateCommits:           sealingCfg.AggregateCommits,
+		MinCommitBatch:             sealingCfg.MinCommitBatch,
+		MaxCommitBatch:             sealingCfg.MaxCommitBatch,
+		CommitBatchWait:            time.Duration(sealingCfg.CommitBatchWait),
+		CommitBatchSlack:           time.Duration(sealingCfg.CommitBatchSlack),
+		AggregateAboveBaseFee:      types.BigInt(sealingCfg.AggregateAboveBaseFee),
+		BatchPreCommitAboveBaseFee: types.BigInt(sealingCfg.BatchPreCommitAboveBaseFee),
 
-		TerminateBatchMax:  cfg.Sealing.TerminateBatchMax,
-		TerminateBatchMin:  cfg.Sealing.TerminateBatchMin,
-		TerminateBatchWait: time.Duration(cfg.Sealing.TerminateBatchWait),
+		TerminateBatchMax:  sealingCfg.TerminateBatchMax,
+		TerminateBatchMin:  sealingCfg.TerminateBatchMin,
+		TerminateBatchWait: time.Duration(sealingCfg.TerminateBatchWait),
 	}
 }
 
 func NewGetSealConfigFunc(r repo.LockedRepo) (dtypes.GetSealingConfigFunc, error) {
 	return func() (out sealiface.Config, err error) {
-		err = readCfg(r, func(cfg *config.StorageMiner) {
-			out = ToSealingConfig(cfg)
+		err = readSealingCfg(r, func(dc config.DealmakingConfiger, sc config.SealingConfiger) {
+			scfg := sc.GetSealingConfig()
+			dcfg := dc.GetDealmakingConfig()
+			out = ToSealingConfig(dcfg, scfg)
 		})
 		return
 	}, nil
@@ -966,8 +990,10 @@ func NewGetSealConfigFunc(r repo.LockedRepo) (dtypes.GetSealingConfigFunc, error
 
 func NewSetExpectedSealDurationFunc(r repo.LockedRepo) (dtypes.SetExpectedSealDurationFunc, error) {
 	return func(delay time.Duration) (err error) {
-		err = mutateCfg(r, func(cfg *config.StorageMiner) {
-			cfg.Dealmaking.ExpectedSealDuration = config.Duration(delay)
+		err = mutateDealmakingCfg(r, func(c config.DealmakingConfiger) {
+			cfg := c.GetDealmakingConfig()
+			cfg.ExpectedSealDuration = config.Duration(delay)
+			c.SetDealmakingConfig(cfg)
 		})
 		return
 	}, nil
@@ -975,8 +1001,9 @@ func NewSetExpectedSealDurationFunc(r repo.LockedRepo) (dtypes.SetExpectedSealDu
 
 func NewGetExpectedSealDurationFunc(r repo.LockedRepo) (dtypes.GetExpectedSealDurationFunc, error) {
 	return func() (out time.Duration, err error) {
-		err = readCfg(r, func(cfg *config.StorageMiner) {
-			out = time.Duration(cfg.Dealmaking.ExpectedSealDuration)
+		err = readDealmakingCfg(r, func(c config.DealmakingConfiger) {
+			cfg := c.GetDealmakingConfig()
+			out = time.Duration(cfg.ExpectedSealDuration)
 		})
 		return
 	}, nil
@@ -984,8 +1011,10 @@ func NewGetExpectedSealDurationFunc(r repo.LockedRepo) (dtypes.GetExpectedSealDu
 
 func NewSetMaxDealStartDelayFunc(r repo.LockedRepo) (dtypes.SetMaxDealStartDelayFunc, error) {
 	return func(delay time.Duration) (err error) {
-		err = mutateCfg(r, func(cfg *config.StorageMiner) {
-			cfg.Dealmaking.MaxDealStartDelay = config.Duration(delay)
+		err = mutateDealmakingCfg(r, func(c config.DealmakingConfiger) {
+			cfg := c.GetDealmakingConfig()
+			cfg.MaxDealStartDelay = config.Duration(delay)
+			c.SetDealmakingConfig(cfg)
 		})
 		return
 	}, nil
@@ -993,22 +1022,60 @@ func NewSetMaxDealStartDelayFunc(r repo.LockedRepo) (dtypes.SetMaxDealStartDelay
 
 func NewGetMaxDealStartDelayFunc(r repo.LockedRepo) (dtypes.GetMaxDealStartDelayFunc, error) {
 	return func() (out time.Duration, err error) {
-		err = readCfg(r, func(cfg *config.StorageMiner) {
-			out = time.Duration(cfg.Dealmaking.MaxDealStartDelay)
+		err = readDealmakingCfg(r, func(c config.DealmakingConfiger) {
+			cfg := c.GetDealmakingConfig()
+			out = time.Duration(cfg.MaxDealStartDelay)
 		})
 		return
 	}, nil
 }
 
-func readCfg(r repo.LockedRepo, accessor func(*config.StorageMiner)) error {
+func readSealingCfg(r repo.LockedRepo, accessor func(config.DealmakingConfiger, config.SealingConfiger)) error {
 	raw, err := r.Config()
 	if err != nil {
 		return err
 	}
 
-	cfg, ok := raw.(*config.StorageMiner)
+	scfg, ok := raw.(config.SealingConfiger)
 	if !ok {
-		return xerrors.New("expected address of config.StorageMiner")
+		return xerrors.New("expected config with sealing config trait")
+	}
+
+	dcfg, ok := raw.(config.DealmakingConfiger)
+	if !ok {
+		return xerrors.New("expected config with dealmaking config trait")
+	}
+
+	accessor(dcfg, scfg)
+
+	return nil
+}
+
+func mutateSealingCfg(r repo.LockedRepo, mutator func(config.SealingConfiger)) error {
+	var typeErr error
+
+	setConfigErr := r.SetConfig(func(raw interface{}) {
+		cfg, ok := raw.(config.SealingConfiger)
+		if !ok {
+			typeErr = errors.New("expected config with sealing config trait")
+			return
+		}
+
+		mutator(cfg)
+	})
+
+	return multierr.Combine(typeErr, setConfigErr)
+}
+
+func readDealmakingCfg(r repo.LockedRepo, accessor func(config.DealmakingConfiger)) error {
+	raw, err := r.Config()
+	if err != nil {
+		return err
+	}
+
+	cfg, ok := raw.(config.DealmakingConfiger)
+	if !ok {
+		return xerrors.New("expected config with dealmaking config trait")
 	}
 
 	accessor(cfg)
@@ -1016,13 +1083,13 @@ func readCfg(r repo.LockedRepo, accessor func(*config.StorageMiner)) error {
 	return nil
 }
 
-func mutateCfg(r repo.LockedRepo, mutator func(*config.StorageMiner)) error {
+func mutateDealmakingCfg(r repo.LockedRepo, mutator func(config.DealmakingConfiger)) error {
 	var typeErr error
 
 	setConfigErr := r.SetConfig(func(raw interface{}) {
-		cfg, ok := raw.(*config.StorageMiner)
+		cfg, ok := raw.(config.DealmakingConfiger)
 		if !ok {
-			typeErr = errors.New("expected miner config")
+			typeErr = errors.New("expected config with dealmaking config trait")
 			return
 		}
 
