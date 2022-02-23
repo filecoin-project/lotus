@@ -293,12 +293,40 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 			return fmt.Errorf("must specify three arguments: verifier address, client address, and allowance to remove")
 		}
 
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return xerrors.Errorf("failed to get full node api: %w", err)
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		act, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("failed to get verifreg actor: %w", err)
+		}
+
+		apibs := blockstore.NewAPIBlockstore(api)
+		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
+
+		st, err := verifreg.Load(store, act)
+		if err != nil {
+			return xerrors.Errorf("failed to load verified registry state: %w", err)
+		}
+
 		verifier, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+		verifierIdAddr, err := api.StateLookupID(ctx, verifier, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
 
 		client, err := address.NewFromString(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+		clientIdAddr, err := api.StateLookupID(ctx, client, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
@@ -308,16 +336,9 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 			return err
 		}
 
-		api, closer, err := GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-		ctx := ReqContext(cctx)
-
 		found, _, err := checkNotary(ctx, api, verifier)
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to check notary status: %w", err)
 		}
 
 		if !found {
@@ -326,21 +347,9 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 
 		id := cctx.Uint64("id")
 		if id == 0 {
-			act, err := api.StateGetActor(ctx, verifreg.Address, types.EmptyTSK)
+			_, id, err = st.RemoveDataCapProposalID(verifierIdAddr, clientIdAddr)
 			if err != nil {
-				return err
-			}
-
-			apibs := blockstore.NewAPIBlockstore(api)
-			store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
-
-			st, err := verifreg.Load(store, act)
-			if err != nil {
-				return err
-			}
-			_, id, err = st.RemoveDataCapProposalID(verifier, client)
-			if err != nil {
-				return err
+				return xerrors.Errorf("failed find remove data cap proposal id: %w", err)
 			}
 		}
 
@@ -348,19 +357,19 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 		params := verifreg.RemoveDataCapProposal{
 			RemovalProposalID: verifreg.RmDcProposalID{ProposalID: id},
 			DataCapAmount:     allowanceToRemove,
-			VerifiedClient:    client,
+			VerifiedClient:    clientIdAddr,
 		}
 
 		paramBuf := new(bytes.Buffer)
 		paramBuf.WriteString(verifreg.SignatureDomainSeparation_RemoveDataCap)
 		err = params.MarshalCBOR(paramBuf)
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to marshall paramBuf: %w", err)
 		}
 
 		sig, err := api.WalletSign(ctx, verifier, paramBuf.Bytes())
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to sign message: %w", err)
 		}
 
 		sigBytes := append([]byte{byte(sig.Type)}, sig.Data...)
