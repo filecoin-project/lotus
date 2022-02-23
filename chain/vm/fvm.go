@@ -277,16 +277,7 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 			ExitCode: exitcode.ExitCode(ret.ExitCode),
 			GasUsed:  ret.GasUsed,
 		},
-		GasCosts: &GasOutputs{
-			// TODO: do the other optional fields eventually
-			BaseFeeBurn:        abi.TokenAmount{},
-			OverEstimationBurn: abi.TokenAmount{},
-			MinerPenalty:       ret.MinerPenalty,
-			MinerTip:           ret.MinerTip,
-			Refund:             abi.TokenAmount{},
-			GasRefund:          0,
-			GasBurned:          0,
-		},
+		GasCosts: nil,
 		// TODO: do these eventually, not consensus critical
 		ActorErr:       nil,
 		ExecutionTrace: types.ExecutionTrace{},
