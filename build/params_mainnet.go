@@ -67,7 +67,8 @@ const UpgradeHyperdriveHeight = 892800
 // 2021-10-26T13:30:00Z
 const UpgradeChocolateHeight = 1231620
 
-var UpgradeSnapDealsHeight = abi.ChainEpoch(999999999999)
+// 2022-03-01T15:00:00Z
+var UpgradeOhSnapHeight = abi.ChainEpoch(1594680)
 
 func init() {
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
@@ -75,7 +76,7 @@ func init() {
 	}
 
 	if os.Getenv("LOTUS_DISABLE_SNAPDEALS") == "1" {
-		UpgradeSnapDealsHeight = math.MaxInt64
+		UpgradeOhSnapHeight = math.MaxInt64
 	}
 
 	Devnet = false

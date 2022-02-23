@@ -44,13 +44,13 @@ commands:
       - restore_cache:
           name: Restore parameters cache
           keys:
-            - 'v25-2k-lotus-params'
+            - 'v26-2k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
       - run:  ./lotus fetch-params 2048
       - save_cache:
           name: Save parameters cache
-          key: 'v25-2k-lotus-params'
+          key: 'v26-2k-lotus-params'
           paths:
             - /var/tmp/filecoin-proof-parameters/
   install_ipfs:
@@ -849,6 +849,11 @@ workflows:
           name: test-itest-get_messages_in_ts
           suite: itest-get_messages_in_ts
           target: "./itests/get_messages_in_ts_test.go"
+      
+      - test:
+          name: test-itest-mempool
+          suite: itest-mempool
+          target: "./itests/mempool_test.go"
       
       - test:
           name: test-itest-multisig

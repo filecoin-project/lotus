@@ -151,6 +151,11 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 	return n
 }
 
+// Mocknet returns the underlying mocknet.
+func (n *Ensemble) Mocknet() mocknet.Mocknet {
+	return n.mn
+}
+
 // FullNode enrolls a new full node.
 func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 	options := DefaultNodeOpts
@@ -277,7 +282,7 @@ func (n *Ensemble) Start() *Ensemble {
 		// We haven't been bootstrapped yet, we need to generate genesis and
 		// create the networking backbone.
 		gtempl = n.generateGenesis()
-		n.mn = mocknet.New(ctx)
+		n.mn = mocknet.New()
 	}
 
 	// ---------------------
@@ -673,6 +678,43 @@ func (n *Ensemble) Connect(from api.Net, to ...api.Net) *Ensemble {
 		require.NoError(n.t, err)
 	}
 	return n
+}
+
+func (n *Ensemble) BeginMiningMustPost(blocktime time.Duration, miners ...*TestMiner) []*BlockMiner {
+	ctx := context.Background()
+
+	// wait one second to make sure that nodes are connected and have handshaken.
+	// TODO make this deterministic by listening to identify events on the
+	//  libp2p eventbus instead (or something else).
+	time.Sleep(1 * time.Second)
+
+	var bms []*BlockMiner
+	if len(miners) == 0 {
+		// no miners have been provided explicitly, instantiate block miners
+		// for all active miners that aren't still mining.
+		for _, m := range n.active.miners {
+			if _, ok := n.active.bms[m]; ok {
+				continue // skip, already have a block miner
+			}
+			miners = append(miners, m)
+		}
+	}
+
+	if len(miners) > 1 {
+		n.t.Fatalf("Only one active miner for MustPost, but have %d", len(miners))
+	}
+
+	for _, m := range miners {
+		bm := NewBlockMiner(n.t, m)
+		bm.MineBlocksMustPost(ctx, blocktime)
+		n.t.Cleanup(bm.Stop)
+
+		bms = append(bms, bm)
+
+		n.active.bms[m] = bm
+	}
+
+	return bms
 }
 
 // BeginMining kicks off mining for the specified miners. If nil or 0-length,

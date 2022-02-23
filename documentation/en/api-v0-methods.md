@@ -128,9 +128,12 @@
   * [NetConnectedness](#NetConnectedness)
   * [NetDisconnect](#NetDisconnect)
   * [NetFindPeer](#NetFindPeer)
+  * [NetLimit](#NetLimit)
   * [NetPeerInfo](#NetPeerInfo)
   * [NetPeers](#NetPeers)
   * [NetPubsubScores](#NetPubsubScores)
+  * [NetSetLimit](#NetSetLimit)
+  * [NetStat](#NetStat)
 * [Paych](#Paych)
   * [PaychAllocateLane](#PaychAllocateLane)
   * [PaychAvailableFunds](#PaychAvailableFunds)
@@ -283,7 +286,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131328,
+  "APIVersion": 131584,
   "BlockDelay": 42
 }
 ```
@@ -2579,6 +2582,7 @@ Response:
     {
       "SealProof": 8,
       "SectorNumber": 9,
+      "SectorKey": null,
       "SealedCID": {
         "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
       }
@@ -3820,6 +3824,32 @@ Response:
 }
 ```
 
+### NetLimit
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response:
+```json
+{
+  "Memory": 123,
+  "Streams": 3,
+  "StreamsInbound": 1,
+  "StreamsOutbound": 2,
+  "Conns": 4,
+  "ConnsInbound": 3,
+  "ConnsOutbound": 4,
+  "FD": 5
+}
+```
+
 ### NetPeerInfo
 
 
@@ -3903,6 +3933,94 @@ Response:
     }
   }
 ]
+```
+
+### NetSetLimit
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value",
+  {
+    "Memory": 123,
+    "Streams": 3,
+    "StreamsInbound": 1,
+    "StreamsOutbound": 2,
+    "Conns": 4,
+    "ConnsInbound": 3,
+    "ConnsOutbound": 4,
+    "FD": 5
+  }
+]
+```
+
+Response: `{}`
+
+### NetStat
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response:
+```json
+{
+  "System": {
+    "NumStreamsInbound": 123,
+    "NumStreamsOutbound": 123,
+    "NumConnsInbound": 123,
+    "NumConnsOutbound": 123,
+    "NumFD": 123,
+    "Memory": 9
+  },
+  "Transient": {
+    "NumStreamsInbound": 123,
+    "NumStreamsOutbound": 123,
+    "NumConnsInbound": 123,
+    "NumConnsOutbound": 123,
+    "NumFD": 123,
+    "Memory": 9
+  },
+  "Services": {
+    "abc": {
+      "NumStreamsInbound": 1,
+      "NumStreamsOutbound": 2,
+      "NumConnsInbound": 3,
+      "NumConnsOutbound": 4,
+      "NumFD": 5,
+      "Memory": 123
+    }
+  },
+  "Protocols": {
+    "abc": {
+      "NumStreamsInbound": 1,
+      "NumStreamsOutbound": 2,
+      "NumConnsInbound": 3,
+      "NumConnsOutbound": 4,
+      "NumFD": 5,
+      "Memory": 123
+    }
+  },
+  "Peers": {
+    "abc": {
+      "NumStreamsInbound": 1,
+      "NumStreamsOutbound": 2,
+      "NumConnsInbound": 3,
+      "NumConnsOutbound": 4,
+      "NumFD": 5,
+      "Memory": 123
+    }
+  }
+}
 ```
 
 ## Paych

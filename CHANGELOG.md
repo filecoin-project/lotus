@@ -1,5 +1,77 @@
 # Lotus changelog
 
+# 1.14.1 / 2022-02-18
+
+This is an **optional** release of lotus, that fixes the incorrect *comment* of network v15 OhSnap upgrade **date**. Note the actual upgrade epoch in [v1.14.0](https://github.com/filecoin-project/lotus/releases/tag/v1.14.0) was correct.
+
+# 1.14.0 / 2022-02-17
+
+This is a MANDATORY release of Lotus that introduces [Filecoin network v15, 
+codenamed the OhSnap upgrade](https://github.com/filecoin-project/community/discussions/74?sort=new#discussioncomment-1922550).
+
+The network is scheduled to upgrade to v15 on March 1st at 2022-03-01T15:00:00Z. All node operators, including storage providers, must upgrade to this release (or a later release) before that time. Storage providers must update their daemons, miners, and worker(s).
+
+The OhSnap upgrade introduces the following FIPs, delivered in [actors v7](https://github.com/filecoin-project/specs-actors/releases/tag/v7.0.0):
+- [FIP-0019 Snap Deals](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0019.md)
+- [FIP-0028 Remove Datacap from Verified clients](https://github.com/filecoin-project/FIPs/pull/226)
+
+It is recommended that storage providers download the new params before updating their node, miner, and workers. To do so:
+
+- Download Lotus v1.14.0 or later
+- run `make lotus-shed`
+- run `./lotus-shed fetch-params` with the appropriate `proving-params` flag
+- Upgrade the Lotus daemon and miner **when the previous step is complete**
+
+All node operators, including storage providers, should be aware that a pre-migration will begin at 2022-03-01T13:30:00Z (150 minutes before the real upgrade). The pre-migration will take between 20 and 50 minutes, depending on hardware specs. During this time, expect slower block validation times, increased CPU and memory usage, and longer delays for API queries.
+  
+## New Features and Changes
+- Integrate actor v7-rc1:
+  - Integrate v7 actors ([#7617](https://github.com/filecoin-project/lotus/pull/7617))
+  - feat: state: Fast migration for v15 ([#7933](https://github.com/filecoin-project/lotus/pull/7933))
+  - fix: blockstore: Add missing locks to autobatch::Get() [#7939](https://github.com/filecoin-project/lotus/pull/7939))
+  - correctness fixes for the autobatch blockstore ([#7940](https://github.com/filecoin-project/lotus/pull/7940))
+- Implement and support [FIP-0019 Snap Deals](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0019.md)
+  - chore: deps: Integrate proof v11.0.0 ([#7923](https://github.com/filecoin-project/lotus/pull/7923))
+  - Snap Deals Lotus Integration: FSM Posting and integration test ([#7810](https://github.com/filecoin-project/lotus/pull/7810))
+  - Feat/sector storage unseal ([#7730](https://github.com/filecoin-project/lotus/pull/7730))
+  - Feat/snap deals storage ([#7615](https://github.com/filecoin-project/lotus/pull/7615))
+  - fix: sealing: Add more deal expiration checks during PRU pipeline ([#7871](https://github.com/filecoin-project/lotus/pull/7871))
+  - chore: deps: Update go-paramfetch ([#7917](https://github.com/filecoin-project/lotus/pull/7917))
+  - feat: #7880 gas: add gas charge for VerifyReplicaUpdate ([#7897](https://github.com/filecoin-project/lotus/pull/7897))
+  - enhancement: sectors: disable existing cc upgrade path 2 days before the upgrade epoch ([#7900](https://github.com/filecoin-project/lotus/pull/7900))
+
+## Improvements
+- updating to new datastore/blockstore code with contexts ([#7646](https://github.com/filecoin-project/lotus/pull/7646))
+- reorder transfer checks so as to ensure sending 2B FIL to yourself fails if you don't have that amount ([#7637](https://github.com/filecoin-project/lotus/pull/7637))
+- VM: Circ supply should be constant per epoch ([#7811](https://github.com/filecoin-project/lotus/pull/7811))
+
+## Bug Fixes
+- Fix: state: circsuypply calc around null blocks ([#7890](https://github.com/filecoin-project/lotus/pull/7890))
+- Mempool msg selection should respect block message limits ([#7321](https://github.com/filecoin-project/lotus/pull/7321))
+  SplitStore: supress compaction near upgrades ([#7734](https://github.com/filecoin-project/lotus/pull/7734))
+  
+## Others
+- chore: create pull_request_template.md ([#7726](https://github.com/filecoin-project/lotus/pull/7726))
+
+## Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Aayush Rajasekaran | 41 | +5538/-1205 | 189 |
+| zenground0 | 11 | +3316/-524 | 124 |
+| Jennifer Wang | 29 | +714/-599 | 68 |
+| ZenGround0 | 3 | +263/-25 | 11 |
+| c r | 2 | +198/-30 | 6 |
+| vyzo | 4 | +189/-7 | 7 |
+| Aayush | 11 | +146/-48 | 49 |
+| web3-bot | 10 | +99/-17 | 10 |
+| Steven Allen | 1 | +55/-37 | 1 |
+| Jiaying Wang | 5 | +30/-8 | 5 |
+| Jakub Sztandera | 2 | +8/-3 | 3 |
+| Łukasz Magiera | 1 | +3/-3 | 2 |
+| Travis Person | 1 | +2/-2 | 2 |
+| Rod Vagg | 1 | +2/-2 | 2 |
+
 # v1.13.2 /  2022-01-09
 
 Lotus v1.13.2 is a *highly recommended* feature release with remarkable retrieval improvements, new features like 

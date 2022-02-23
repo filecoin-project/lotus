@@ -67,6 +67,8 @@ func main() {
 		balancerCmd,
 		sendCsvCmd,
 		terminationsCmd,
+		migrationsCmd,
+		diffCmd,
 	}
 
 	app := &cli.App{

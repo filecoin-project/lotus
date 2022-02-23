@@ -669,7 +669,7 @@ func (sb *Sealer) SealCommit2(ctx context.Context, sector storage.SectorRef, pha
 
 func (sb *Sealer) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, pieces []abi.PieceInfo) (storage.ReplicaUpdateOut, error) {
 	empty := storage.ReplicaUpdateOut{}
-	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTSealed|storiface.FTUnsealed|storiface.FTCache, storiface.FTUpdate|storiface.FTUpdateCache, storiface.PathSealing)
+	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUnsealed|storiface.FTSealed|storiface.FTCache, storiface.FTUpdate|storiface.FTUpdateCache, storiface.PathSealing)
 	if err != nil {
 		return empty, xerrors.Errorf("failed to acquire sector paths: %w", err)
 	}
@@ -697,10 +697,10 @@ func (sb *Sealer) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, p
 
 	if err := os.Mkdir(paths.UpdateCache, 0755); err != nil { // nolint
 		if os.IsExist(err) {
-			log.Warnf("existing cache in %s; removing", paths.Cache)
+			log.Warnf("existing cache in %s; removing", paths.UpdateCache)
 
 			if err := os.RemoveAll(paths.UpdateCache); err != nil {
-				return empty, xerrors.Errorf("remove existing sector cache from %s (sector %d): %w", paths.Cache, sector, err)
+				return empty, xerrors.Errorf("remove existing sector cache from %s (sector %d): %w", paths.UpdateCache, sector, err)
 			}
 
 			if err := os.Mkdir(paths.UpdateCache, 0755); err != nil { // nolint:gosec
@@ -714,12 +714,11 @@ func (sb *Sealer) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, p
 	if err != nil {
 		return empty, xerrors.Errorf("failed to update replica %d with new deal data: %w", sector.ID.Number, err)
 	}
-
 	return storage.ReplicaUpdateOut{NewSealed: sealed, NewUnsealed: unsealed}, nil
 }
 
 func (sb *Sealer) ProveReplicaUpdate1(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid) (storage.ReplicaVanillaProofs, error) {
-	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTSealed|storiface.FTCache|storiface.FTUpdateCache|storiface.FTUpdate, storiface.FTNone, storiface.PathSealing)
+	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTSealed|storiface.FTCache|storiface.FTUpdate|storiface.FTUpdateCache, storiface.FTNone, storiface.PathSealing)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to acquire sector paths: %w", err)
 	}
@@ -770,7 +769,7 @@ func (sb *Sealer) ReleaseSealed(ctx context.Context, sector storage.SectorRef) e
 	return xerrors.Errorf("not supported at this layer")
 }
 
-func (sb *Sealer) FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error {
+func (sb *Sealer) freeUnsealed(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error {
 	ssize, err := sector.ProofType.SectorSize()
 	if err != nil {
 		return err
@@ -835,6 +834,19 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector storage.SectorRef, 
 
 	}
 
+	return nil
+}
+
+func (sb *Sealer) FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error {
+	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		return err
+	}
+
+	if err := sb.freeUnsealed(ctx, sector, keepUnsealed); err != nil {
+		return err
+	}
+
 	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, 0, storiface.PathStorage)
 	if err != nil {
 		return xerrors.Errorf("acquiring sector cache path: %w", err)
@@ -844,6 +856,43 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector storage.SectorRef, 
 	return ffi.ClearCache(uint64(ssize), paths.Cache)
 }
 
+func (sb *Sealer) FinalizeReplicaUpdate(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error {
+	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		return err
+	}
+
+	if err := sb.freeUnsealed(ctx, sector, keepUnsealed); err != nil {
+		return err
+	}
+
+	{
+		paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, 0, storiface.PathStorage)
+		if err != nil {
+			return xerrors.Errorf("acquiring sector cache path: %w", err)
+		}
+		defer done()
+
+		if err := ffi.ClearCache(uint64(ssize), paths.Cache); err != nil {
+			return xerrors.Errorf("clear cache: %w", err)
+		}
+	}
+
+	{
+		paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUpdateCache, 0, storiface.PathStorage)
+		if err != nil {
+			return xerrors.Errorf("acquiring sector cache path: %w", err)
+		}
+		defer done()
+
+		if err := ffi.ClearCache(uint64(ssize), paths.UpdateCache); err != nil {
+			return xerrors.Errorf("clear cache: %w", err)
+		}
+	}
+
+	return nil
+}
+
 func (sb *Sealer) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) error {
 	// This call is meant to mark storage as 'freeable'. Given that unsealing is
 	// very expensive, we don't remove data as soon as we can - instead we only
@@ -851,6 +900,14 @@ func (sb *Sealer) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef,
 
 	// This function should not be called at this layer, everything should be
 	// handled in localworker
+	return xerrors.Errorf("not supported at this layer")
+}
+
+func (sb *Sealer) ReleaseReplicaUpgrade(ctx context.Context, sector storage.SectorRef) error {
+	return xerrors.Errorf("not supported at this layer")
+}
+
+func (sb *Sealer) ReleaseSectorKey(ctx context.Context, sector storage.SectorRef) error {
 	return xerrors.Errorf("not supported at this layer")
 }
 

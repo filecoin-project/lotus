@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
+	abinetwork "github.com/filecoin-project/go-state-types/network"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -515,6 +516,8 @@ type GatewayStruct struct {
 
 		MsigGetVested func(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) ``
 
+		MsigGetVestingSchedule func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MsigVesting, error) ``
+
 		StateAccountKey func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) ``
 
 		StateDealProviderCollateralBounds func(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (DealCollateralBounds, error) ``
@@ -586,11 +589,17 @@ type NetStruct struct {
 
 		NetFindPeer func(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error) `perm:"read"`
 
+		NetLimit func(p0 context.Context, p1 string) (NetLimit, error) `perm:"read"`
+
 		NetPeerInfo func(p0 context.Context, p1 peer.ID) (*ExtendedPeerInfo, error) `perm:"read"`
 
 		NetPeers func(p0 context.Context) ([]peer.AddrInfo, error) `perm:"read"`
 
 		NetPubsubScores func(p0 context.Context) ([]PubsubScore, error) `perm:"read"`
+
+		NetSetLimit func(p0 context.Context, p1 string, p2 NetLimit) error `perm:"admin"`
+
+		NetStat func(p0 context.Context, p1 string) (NetStat, error) `perm:"read"`
 	}
 }
 
@@ -620,7 +629,7 @@ type StorageMinerStruct struct {
 
 		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storage.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
 
-		ComputeProof func(p0 context.Context, p1 []builtin.SectorInfo, p2 abi.PoStRandomness) ([]builtin.PoStProof, error) `perm:"read"`
+		ComputeProof func(p0 context.Context, p1 []builtin.ExtendedSectorInfo, p2 abi.PoStRandomness, p3 abi.ChainEpoch, p4 abinetwork.Version) ([]builtin.PoStProof, error) `perm:"read"`
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
@@ -716,6 +725,8 @@ type StorageMinerStruct struct {
 
 		ReturnFetch func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
 
+		ReturnFinalizeReplicaUpdate func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
+
 		ReturnFinalizeSector func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
 
 		ReturnGenerateSectorKeyFromData func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
@@ -748,6 +759,8 @@ type StorageMinerStruct struct {
 
 		SealingSchedDiag func(p0 context.Context, p1 bool) (interface{}, error) `perm:"admin"`
 
+		SectorAbortUpgrade func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
+
 		SectorAddPieceToAny func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storage.Data, p3 PieceDealInfo) (SectorOffset, error) `perm:"admin"`
 
 		SectorCommitFlush func(p0 context.Context) ([]sealiface.CommitBatchRes, error) `perm:"admin"`
@@ -758,7 +771,9 @@ type StorageMinerStruct struct {
 
 		SectorGetSealDelay func(p0 context.Context) (time.Duration, error) `perm:"read"`
 
-		SectorMarkForUpgrade func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
+		SectorMarkForUpgrade func(p0 context.Context, p1 abi.SectorNumber, p2 bool) error `perm:"admin"`
+
+		SectorMatchPendingPiecesToOpenSectors func(p0 context.Context) error `perm:"admin"`
 
 		SectorPreCommitFlush func(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) `perm:"admin"`
 
@@ -862,6 +877,8 @@ type WorkerStruct struct {
 		Enabled func(p0 context.Context) (bool, error) `perm:"admin"`
 
 		Fetch func(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType, p3 storiface.PathType, p4 storiface.AcquireMode) (storiface.CallID, error) `perm:"admin"`
+
+		FinalizeReplicaUpdate func(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) `perm:"admin"`
 
 		FinalizeSector func(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) `perm:"admin"`
 
@@ -3270,6 +3287,17 @@ func (s *GatewayStub) MsigGetVested(p0 context.Context, p1 address.Address, p2 t
 	return *new(types.BigInt), ErrNotSupported
 }
 
+func (s *GatewayStruct) MsigGetVestingSchedule(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MsigVesting, error) {
+	if s.Internal.MsigGetVestingSchedule == nil {
+		return *new(MsigVesting), ErrNotSupported
+	}
+	return s.Internal.MsigGetVestingSchedule(p0, p1, p2)
+}
+
+func (s *GatewayStub) MsigGetVestingSchedule(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MsigVesting, error) {
+	return *new(MsigVesting), ErrNotSupported
+}
+
 func (s *GatewayStruct) StateAccountKey(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
 	if s.Internal.StateAccountKey == nil {
 		return *new(address.Address), ErrNotSupported
@@ -3622,6 +3650,17 @@ func (s *NetStub) NetFindPeer(p0 context.Context, p1 peer.ID) (peer.AddrInfo, er
 	return *new(peer.AddrInfo), ErrNotSupported
 }
 
+func (s *NetStruct) NetLimit(p0 context.Context, p1 string) (NetLimit, error) {
+	if s.Internal.NetLimit == nil {
+		return *new(NetLimit), ErrNotSupported
+	}
+	return s.Internal.NetLimit(p0, p1)
+}
+
+func (s *NetStub) NetLimit(p0 context.Context, p1 string) (NetLimit, error) {
+	return *new(NetLimit), ErrNotSupported
+}
+
 func (s *NetStruct) NetPeerInfo(p0 context.Context, p1 peer.ID) (*ExtendedPeerInfo, error) {
 	if s.Internal.NetPeerInfo == nil {
 		return nil, ErrNotSupported
@@ -3653,6 +3692,28 @@ func (s *NetStruct) NetPubsubScores(p0 context.Context) ([]PubsubScore, error) {
 
 func (s *NetStub) NetPubsubScores(p0 context.Context) ([]PubsubScore, error) {
 	return *new([]PubsubScore), ErrNotSupported
+}
+
+func (s *NetStruct) NetSetLimit(p0 context.Context, p1 string, p2 NetLimit) error {
+	if s.Internal.NetSetLimit == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.NetSetLimit(p0, p1, p2)
+}
+
+func (s *NetStub) NetSetLimit(p0 context.Context, p1 string, p2 NetLimit) error {
+	return ErrNotSupported
+}
+
+func (s *NetStruct) NetStat(p0 context.Context, p1 string) (NetStat, error) {
+	if s.Internal.NetStat == nil {
+		return *new(NetStat), ErrNotSupported
+	}
+	return s.Internal.NetStat(p0, p1)
+}
+
+func (s *NetStub) NetStat(p0 context.Context, p1 string) (NetStat, error) {
+	return *new(NetStat), ErrNotSupported
 }
 
 func (s *SignableStruct) Sign(p0 context.Context, p1 SignFunc) error {
@@ -3710,14 +3771,14 @@ func (s *StorageMinerStub) CheckProvable(p0 context.Context, p1 abi.RegisteredPo
 	return *new(map[abi.SectorNumber]string), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ComputeProof(p0 context.Context, p1 []builtin.SectorInfo, p2 abi.PoStRandomness) ([]builtin.PoStProof, error) {
+func (s *StorageMinerStruct) ComputeProof(p0 context.Context, p1 []builtin.ExtendedSectorInfo, p2 abi.PoStRandomness, p3 abi.ChainEpoch, p4 abinetwork.Version) ([]builtin.PoStProof, error) {
 	if s.Internal.ComputeProof == nil {
 		return *new([]builtin.PoStProof), ErrNotSupported
 	}
-	return s.Internal.ComputeProof(p0, p1, p2)
+	return s.Internal.ComputeProof(p0, p1, p2, p3, p4)
 }
 
-func (s *StorageMinerStub) ComputeProof(p0 context.Context, p1 []builtin.SectorInfo, p2 abi.PoStRandomness) ([]builtin.PoStProof, error) {
+func (s *StorageMinerStub) ComputeProof(p0 context.Context, p1 []builtin.ExtendedSectorInfo, p2 abi.PoStRandomness, p3 abi.ChainEpoch, p4 abinetwork.Version) ([]builtin.PoStProof, error) {
 	return *new([]builtin.PoStProof), ErrNotSupported
 }
 
@@ -4238,6 +4299,17 @@ func (s *StorageMinerStub) ReturnFetch(p0 context.Context, p1 storiface.CallID, 
 	return ErrNotSupported
 }
 
+func (s *StorageMinerStruct) ReturnFinalizeReplicaUpdate(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	if s.Internal.ReturnFinalizeReplicaUpdate == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.ReturnFinalizeReplicaUpdate(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) ReturnFinalizeReplicaUpdate(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+	return ErrNotSupported
+}
+
 func (s *StorageMinerStruct) ReturnFinalizeSector(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
 	if s.Internal.ReturnFinalizeSector == nil {
 		return ErrNotSupported
@@ -4414,6 +4486,17 @@ func (s *StorageMinerStub) SealingSchedDiag(p0 context.Context, p1 bool) (interf
 	return nil, ErrNotSupported
 }
 
+func (s *StorageMinerStruct) SectorAbortUpgrade(p0 context.Context, p1 abi.SectorNumber) error {
+	if s.Internal.SectorAbortUpgrade == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SectorAbortUpgrade(p0, p1)
+}
+
+func (s *StorageMinerStub) SectorAbortUpgrade(p0 context.Context, p1 abi.SectorNumber) error {
+	return ErrNotSupported
+}
+
 func (s *StorageMinerStruct) SectorAddPieceToAny(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storage.Data, p3 PieceDealInfo) (SectorOffset, error) {
 	if s.Internal.SectorAddPieceToAny == nil {
 		return *new(SectorOffset), ErrNotSupported
@@ -4469,14 +4552,25 @@ func (s *StorageMinerStub) SectorGetSealDelay(p0 context.Context) (time.Duration
 	return *new(time.Duration), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) SectorMarkForUpgrade(p0 context.Context, p1 abi.SectorNumber) error {
+func (s *StorageMinerStruct) SectorMarkForUpgrade(p0 context.Context, p1 abi.SectorNumber, p2 bool) error {
 	if s.Internal.SectorMarkForUpgrade == nil {
 		return ErrNotSupported
 	}
-	return s.Internal.SectorMarkForUpgrade(p0, p1)
+	return s.Internal.SectorMarkForUpgrade(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) SectorMarkForUpgrade(p0 context.Context, p1 abi.SectorNumber) error {
+func (s *StorageMinerStub) SectorMarkForUpgrade(p0 context.Context, p1 abi.SectorNumber, p2 bool) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorMatchPendingPiecesToOpenSectors(p0 context.Context) error {
+	if s.Internal.SectorMatchPendingPiecesToOpenSectors == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SectorMatchPendingPiecesToOpenSectors(p0)
+}
+
+func (s *StorageMinerStub) SectorMatchPendingPiecesToOpenSectors(p0 context.Context) error {
 	return ErrNotSupported
 }
 
@@ -4950,6 +5044,17 @@ func (s *WorkerStruct) Fetch(p0 context.Context, p1 storage.SectorRef, p2 storif
 }
 
 func (s *WorkerStub) Fetch(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType, p3 storiface.PathType, p4 storiface.AcquireMode) (storiface.CallID, error) {
+	return *new(storiface.CallID), ErrNotSupported
+}
+
+func (s *WorkerStruct) FinalizeReplicaUpdate(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) {
+	if s.Internal.FinalizeReplicaUpdate == nil {
+		return *new(storiface.CallID), ErrNotSupported
+	}
+	return s.Internal.FinalizeReplicaUpdate(p0, p1, p2)
+}
+
+func (s *WorkerStub) FinalizeReplicaUpdate(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) {
 	return *new(storiface.CallID), ErrNotSupported
 }
 

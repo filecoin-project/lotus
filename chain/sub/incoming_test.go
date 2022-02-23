@@ -1,3 +1,4 @@
+//stm: #unit
 package sub
 
 import (
@@ -49,6 +50,7 @@ func TestFetchCidsWithDedup(t *testing.T) {
 	}
 	g := &getter{msgs}
 
+	//stm: @CHAIN_INCOMING_FETCH_MESSAGES_BY_CID_001
 	// the cids have a duplicate
 	res, err := FetchMessagesByCids(context.TODO(), g, append(cids, cids[0]))
 

@@ -26,7 +26,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
@@ -182,7 +182,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 				}
 			}
 
-			return xerrors.Errorf("parent state root did not match computed state (%s != %s)", stateroot, h.ParentStateRoot)
+			return xerrors.Errorf("parent state root did not match computed state (%s != %s)", h.ParentStateRoot, stateroot)
 		}
 
 		if precp != h.ParentMessageReceipts {
@@ -400,12 +400,21 @@ func (filec *FilecoinEC) VerifyWinningPoStProof(ctx context.Context, nv network.
 		return xerrors.Errorf("failed to get ID from miner address %s: %w", h.Miner, err)
 	}
 
-	sectors, err := stmgr.GetSectorsForWinningPoSt(ctx, nv, filec.verifier, filec.sm, lbst, h.Miner, rand)
+	xsectors, err := stmgr.GetSectorsForWinningPoSt(ctx, nv, filec.verifier, filec.sm, lbst, h.Miner, rand)
 	if err != nil {
 		return xerrors.Errorf("getting winning post sector set: %w", err)
 	}
 
-	ok, err := ffiwrapper.ProofVerifier.VerifyWinningPoSt(ctx, proof2.WinningPoStVerifyInfo{
+	sectors := make([]proof.SectorInfo, len(xsectors))
+	for i, xsi := range xsectors {
+		sectors[i] = proof.SectorInfo{
+			SealProof:    xsi.SealProof,
+			SectorNumber: xsi.SectorNumber,
+			SealedCID:    xsi.SealedCID,
+		}
+	}
+
+	ok, err := ffiwrapper.ProofVerifier.VerifyWinningPoSt(ctx, proof.WinningPoStVerifyInfo{
 		Randomness:        rand,
 		Proofs:            h.WinPoStProof,
 		ChallengedSectors: sectors,
@@ -449,7 +458,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 
 	stateroot, _, err := filec.sm.TipSetState(ctx, baseTs)
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to compute tipsettate for %s: %w", baseTs.Key(), err)
 	}
 
 	st, err := state.LoadStateTree(filec.store.ActorStore(ctx), stateroot)
@@ -466,7 +475,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 		// Phase 1: syntactic validation, as defined in the spec
 		minGas := pl.OnChainMessage(msg.ChainLength())
 		if err := m.ValidForBlockInclusion(minGas.Total(), nv); err != nil {
-			return err
+			return xerrors.Errorf("msg %s invalid for block inclusion: %w", m.Cid(), err)
 		}
 
 		// ValidForBlockInclusion checks if any single message does not exceed BlockGasLimit
@@ -482,7 +491,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 		if filec.sm.GetNetworkVersion(ctx, b.Header.Height) >= network.Version13 {
 			sender, err = st.LookupID(m.From)
 			if err != nil {
-				return err
+				return xerrors.Errorf("failed to lookup sender %s: %w", m.From, err)
 			}
 		} else {
 			sender = m.From
@@ -565,12 +574,13 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 
 	bmroot, err := bmArr.Root()
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to root bls msgs: %w", err)
+
 	}
 
 	smroot, err := smArr.Root()
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to root secp msgs: %w", err)
 	}
 
 	mrcid, err := tmpstore.Put(ctx, &types.MsgMeta{
@@ -578,7 +588,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 		SecpkMessages: smroot,
 	})
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to put msg meta: %w", err)
 	}
 
 	if b.Header.Messages != mrcid {
@@ -586,7 +596,12 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 	}
 
 	// Finally, flush.
-	return vm.Copy(ctx, tmpbs, filec.store.ChainBlockstore(), mrcid)
+	err = vm.Copy(ctx, tmpbs, filec.store.ChainBlockstore(), mrcid)
+	if err != nil {
+		return xerrors.Errorf("failed to flush:%w", err)
+	}
+
+	return nil
 }
 
 func (filec *FilecoinEC) IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool {

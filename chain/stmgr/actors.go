@@ -117,7 +117,7 @@ func MinerSectorInfo(ctx context.Context, sm *StateManager, maddr address.Addres
 	return mas.GetSector(sid)
 }
 
-func GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]builtin.SectorInfo, error) {
+func GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwrapper.Verifier, sm *StateManager, st cid.Cid, maddr address.Address, rand abi.PoStRandomness) ([]builtin.ExtendedSectorInfo, error) {
 	act, err := sm.LoadActorRaw(ctx, maddr, st)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load miner actor: %w", err)
@@ -203,12 +203,13 @@ func GetSectorsForWinningPoSt(ctx context.Context, nv network.Version, pv ffiwra
 		return nil, xerrors.Errorf("loading proving sectors: %w", err)
 	}
 
-	out := make([]builtin.SectorInfo, len(sectors))
+	out := make([]builtin.ExtendedSectorInfo, len(sectors))
 	for i, sinfo := range sectors {
-		out[i] = builtin.SectorInfo{
+		out[i] = builtin.ExtendedSectorInfo{
 			SealProof:    sinfo.SealProof,
 			SectorNumber: sinfo.SectorNumber,
 			SealedCID:    sinfo.SealedCID,
+			SectorKey:    sinfo.SectorKeyCID,
 		}
 	}
 

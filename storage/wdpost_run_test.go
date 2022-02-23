@@ -116,11 +116,11 @@ func (m *mockStorageMinerAPI) GasEstimateFeeCap(context.Context, *types.Message,
 type mockProver struct {
 }
 
-func (m *mockProver) GenerateWinningPoSt(context.Context, abi.ActorID, []proof2.SectorInfo, abi.PoStRandomness) ([]proof2.PoStProof, error) {
+func (m *mockProver) GenerateWinningPoSt(context.Context, abi.ActorID, []proof7.ExtendedSectorInfo, abi.PoStRandomness) ([]proof2.PoStProof, error) {
 	panic("implement me")
 }
 
-func (m *mockProver) GenerateWindowPoSt(ctx context.Context, aid abi.ActorID, sis []proof2.SectorInfo, pr abi.PoStRandomness) ([]proof2.PoStProof, []abi.SectorID, error) {
+func (m *mockProver) GenerateWindowPoSt(ctx context.Context, aid abi.ActorID, sis []proof7.ExtendedSectorInfo, pr abi.PoStRandomness) ([]proof2.PoStProof, []abi.SectorID, error) {
 	return []proof2.PoStProof{
 		{
 			PoStProof:  abi.RegisteredPoStProof_StackedDrgWindow2KiBV1,
@@ -132,7 +132,7 @@ func (m *mockProver) GenerateWindowPoSt(ctx context.Context, aid abi.ActorID, si
 type mockVerif struct {
 }
 
-func (m mockVerif) VerifyWinningPoSt(ctx context.Context, info proof2.WinningPoStVerifyInfo) (bool, error) {
+func (m mockVerif) VerifyWinningPoSt(ctx context.Context, info proof7.WinningPoStVerifyInfo) (bool, error) {
 	panic("implement me")
 }
 
