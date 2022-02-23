@@ -358,12 +358,14 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 			return err
 		}
 
-		msg, err := api.WalletSign(ctx, verifier, paramBuf.Bytes())
+		sig, err := api.WalletSign(ctx, verifier, paramBuf.Bytes())
 		if err != nil {
 			return err
 		}
 
-		fmt.Println(hex.EncodeToString(msg.Data))
+		sigBytes := append([]byte{byte(sig.Type)}, sig.Data...)
+
+		fmt.Println(hex.EncodeToString(sigBytes))
 
 		return nil
 	},

@@ -153,6 +153,8 @@ func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 }
 
 type RemoveDataCapProposal = verifreg7.RemoveDataCapProposal
+type RemoveDataCapRequest = verifreg7.RemoveDataCapRequest
+type RemoveDataCapParams = verifreg7.RemoveDataCapParams
 type RmDcProposalID = verifreg7.RmDcProposalID
 
 const SignatureDomainSeparation_RemoveDataCap = verifreg7.SignatureDomainSeparation_RemoveDataCap

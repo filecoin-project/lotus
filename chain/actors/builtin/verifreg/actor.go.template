@@ -63,9 +63,11 @@ func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
 
-type RemoveDataCapProposal = verifreg7.RemoveDataCapProposal
-type RmDcProposalID = verifreg7.RmDcProposalID
-const SignatureDomainSeparation_RemoveDataCap = verifreg7.SignatureDomainSeparation_RemoveDataCap
+type RemoveDataCapProposal = verifreg{{.latestVersion}}.RemoveDataCapProposal
+type RemoveDataCapRequest = verifreg{{.latestVersion}}.RemoveDataCapRequest
+type RemoveDataCapParams = verifreg{{.latestVersion}}.RemoveDataCapParams
+type RmDcProposalID = verifreg{{.latestVersion}}.RmDcProposalID
+const SignatureDomainSeparation_RemoveDataCap = verifreg{{.latestVersion}}.SignatureDomainSeparation_RemoveDataCap
 
 type State interface {
 	cbor.Marshaler
