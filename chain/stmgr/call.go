@@ -112,7 +112,12 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		)
 	}
 
-	fromActor, err := vmi.StateTree().GetActor(msg.From)
+	stTree, err := sm.StateTree(bstate)
+	if err != nil {
+		return nil, err
+	}
+
+	fromActor, err := stTree.GetActor(msg.From)
 	if err != nil {
 		return nil, xerrors.Errorf("call raw get actor: %s", err)
 	}
@@ -219,7 +224,12 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		}
 	}
 
-	fromActor, err := vmi.StateTree().GetActor(msg.From)
+	stTree, err := sm.StateTree(state)
+	if err != nil {
+		return nil, err
+	}
+
+	fromActor, err := stTree.GetActor(msg.From)
 	if err != nil {
 		return nil, xerrors.Errorf("call raw get actor: %s", err)
 	}

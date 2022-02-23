@@ -84,7 +84,7 @@ type StateManager struct {
 	compWait            map[string]chan struct{}
 	stlk                sync.Mutex
 	genesisMsigLk       sync.Mutex
-	newVM               func(context.Context, *vm.VMOpts) (*vm.VM, error)
+	newVM               func(context.Context, *vm.VMOpts) (vm.VMI, error)
 	Syscalls            vm.SyscallBuilder
 	preIgnitionVesting  []msig0.State
 	postIgnitionVesting []msig0.State
@@ -142,7 +142,7 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 		latestVersion:     lastVersion,
 		stateMigrations:   stateMigrations,
 		expensiveUpgrades: expensiveUpgrades,
-		newVM:             vm.NewLotusVM,
+		newVM:             vm.NewVM,
 		Syscalls:          sys,
 		cs:                cs,
 		tsExec:            exec,
@@ -347,12 +347,12 @@ func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) err
 	return nil
 }
 
-func (sm *StateManager) SetVMConstructor(nvm func(context.Context, *vm.VMOpts) (*vm.VM, error)) {
+func (sm *StateManager) SetVMConstructor(nvm func(context.Context, *vm.VMOpts) (vm.VMI, error)) {
 	sm.newVM = nvm
 }
 
-func (sm *StateManager) VMConstructor() func(context.Context, *vm.VMOpts) (*vm.VM, error) {
-	return func(ctx context.Context, opts *vm.VMOpts) (*vm.VM, error) {
+func (sm *StateManager) VMConstructor() func(context.Context, *vm.VMOpts) (vm.VMI, error) {
+	return func(ctx context.Context, opts *vm.VMOpts) (vm.VMI, error) {
 		return sm.newVM(ctx, opts)
 	}
 }
