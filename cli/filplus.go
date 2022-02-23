@@ -284,7 +284,7 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:     "id",
-			Usage:    "specify the id of the Remove Data Cap Proposal",
+			Usage:    "specify the RemoveDataCapProposal ID (will look up on chain if unspecified)",
 			Required: false,
 		},
 	},
