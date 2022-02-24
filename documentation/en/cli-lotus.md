@@ -1239,7 +1239,7 @@ COMMANDS:
    list-clients                   list all verified clients
    check-client-datacap           check verified client remaining bytes
    check-notary-datacap           check a notary's remaining bytes
-   sign-remove-data-cap-proposal  TODO
+   sign-remove-data-cap-proposal  allows a notary to sign a Remove Data Cap Proposal
    help, h                        Shows a list of commands or help for one command
 
 OPTIONS:
@@ -1317,13 +1317,13 @@ OPTIONS:
 ### lotus filplus sign-remove-data-cap-proposal
 ```
 NAME:
-   lotus filplus sign-remove-data-cap-proposal - TODO
+   lotus filplus sign-remove-data-cap-proposal - allows a notary to sign a Remove Data Cap Proposal
 
 USAGE:
    lotus filplus sign-remove-data-cap-proposal [command options] [arguments...]
 
 OPTIONS:
-   --id value  specify the id of the Remove Data Cap Proposal (default: 0)
+   --id value  specify the RemoveDataCapProposal ID (will look up on chain if unspecified) (default: 0)
    --help, -h  show help (default: false)
    
 ```
