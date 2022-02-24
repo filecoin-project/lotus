@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
+
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -496,6 +498,45 @@ var verifRegRemoveVerifiedClientDataCapCmd = &cli.Command{
 		vrk, err := api.StateVerifiedRegistryRootKey(ctx, types.EmptyTSK)
 		if err != nil {
 			return err
+		}
+
+		vrkState, err := api.StateGetActor(ctx, vrk, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		apibs := blockstore.NewAPIBlockstore(api)
+		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
+
+		st, err := multisig.Load(store, vrkState)
+		if err != nil {
+			return err
+		}
+
+		signers, err := st.Signers()
+		if err != nil {
+			return err
+		}
+
+		senderIsSigner := false
+		senderIdAddr, err := address.IDFromAddress(sender)
+		if err != nil {
+			return err
+		}
+
+		for _, signer := range signers {
+			signerIdAddr, err := address.IDFromAddress(signer)
+			if err != nil {
+				return err
+			}
+
+			if signerIdAddr == senderIdAddr {
+				senderIsSigner = true
+			}
+		}
+
+		if !senderIsSigner {
+			return fmt.Errorf("sender must be a vrk signer")
 		}
 
 		proto, err := api.MsigPropose(ctx, vrk, verifreg.Address, big.Zero(), sender, uint64(verifreg.Methods.RemoveVerifiedClientDataCap), params)

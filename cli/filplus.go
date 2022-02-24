@@ -280,7 +280,7 @@ func checkNotary(ctx context.Context, api v0api.FullNode, vaddr address.Address)
 
 var filplusSignRemoveDataCapProposal = &cli.Command{
 	Name:  "sign-remove-data-cap-proposal",
-	Usage: "TODO",
+	Usage: "allows a notary to sign a Remove Data Cap Proposal",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{
 			Name:     "id",
@@ -290,7 +290,7 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 3 {
-			return fmt.Errorf("must specify three arguments: verifier address, client address, and allowance to remove")
+			return fmt.Errorf("must specify three arguments: notary address, client address, and allowance to remove")
 		}
 
 		api, closer, err := GetFullNodeAPI(cctx)
@@ -336,6 +336,14 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 			return err
 		}
 
+		_, dataCap, err := st.VerifiedClientDataCap(clientIdAddr)
+		if err != nil {
+			return xerrors.Errorf("failed to find verified client data cap: %w", err)
+		}
+		if dataCap.LessThanEqual(big.Zero()) {
+			return xerrors.Errorf("client data cap %s is less than amount requested to be removed %s", dataCap.String(), allowanceToRemove.String())
+		}
+
 		found, _, err := checkNotary(ctx, api, verifier)
 		if err != nil {
 			return xerrors.Errorf("failed to check notary status: %w", err)
@@ -353,7 +361,6 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 			}
 		}
 
-		// TODO: This should be abstracted over actor versions
 		params := verifreg.RemoveDataCapProposal{
 			RemovalProposalID: verifreg.RmDcProposalID{ProposalID: id},
 			DataCapAmount:     allowanceToRemove,
