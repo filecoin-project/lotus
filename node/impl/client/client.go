@@ -1272,7 +1272,7 @@ func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet
 	//
 	// IF/WHEN this changes in the future we will have to be able to calculate
 	// "old style" commP, and thus will need to introduce a version switch or similar
-	arbitraryProofType := abi.RegisteredSealProof_StackedDrg32GiBV1_1
+	arbitraryProofType := abi.RegisteredSealProof_StackedDrg64GiBV1_1
 
 	rdr, err := os.Open(inpath)
 	if err != nil {
