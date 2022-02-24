@@ -61,14 +61,13 @@ func TestMultiWallet(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if addr != a1 {
+		t.Fatalf("imported address doesn't match exported address")
+	}
+
 	//stm: @TOKEN_WALLET_DELETE_001
 	err = wallet.WalletDelete(ctx, a1)
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	if addr != a1 {
-		t.Fatalf("imported address doesn't match exported address")
-	}
-
 }
