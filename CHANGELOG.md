@@ -1,5 +1,32 @@
 # Lotus changelog
 
+# 1.14.2 / 2022-02-24
+
+This is an **optional** release of lotus, that's had a couple more improvements w.r.t Snap experience for storage providers in preparation of the[upcoming OhSnap upgrade](https://github.com/filecoin-project/community/discussions/74?sort=new#discussioncomment-1922550). 
+
+Wanna know how to Snap your deal? Check [this](https://github.com/filecoin-project/lotus/discussions/8141) out! 
+
+## Bug Fixes
+- fix lotus-bench for sealing jobs (#8173)
+- fix:sealing:really-do-it flag for abort upgrade (#8181)
+- fix:proving:post check sector handles snap deals replica faults (#8177)
+- fix: sealing: missing file type (#8180)
+
+## Others
+- Retract force-pushed v1.14.0 to work around stale gomod caches (#8159): We originally tagged v1.14.0 off the wrong 
+  commit and fixed that by a force push, in which is a really bad practise since it messes up the go mod. Therefore, 
+  we want to retract it and users may use v1.14.1&^.
+
+## Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| @zenground0 | 2 | +73/-58 | 12 |
+| @eben.xie | 1 | +7/-0 | 1 |
+| @jennijuju | 1 | +4/-0 | 1 |
+| @jennijuju | 1 | +2/-1 | 1 |
+| @ribasushi | 1 | +2/-0 | 1 |
+
 # 1.14.1 / 2022-02-18
 
 This is an **optional** release of lotus, that fixes the incorrect *comment* of network v15 OhSnap upgrade **date**. Note the actual upgrade epoch in [v1.14.0](https://github.com/filecoin-project/lotus/releases/tag/v1.14.0) was correct.
@@ -22,8 +49,7 @@ It is recommended that storage providers download the new params before updating
 - run `./lotus-shed fetch-params` with the appropriate `proving-params` flag
 - Upgrade the Lotus daemon and miner **when the previous step is complete**
 
-All node operators, including storage providers, should be aware that a pre-migration will begin at 2022-03-01T13:30:00Z (90 minutes before the real upgrade). The pre-migration will take between 20 and 50 minutes, 
-depending on hardware specs. During this time, expect slower block validation times, increased CPU and memory usage, and longer delays for API queries.
+All node operators, including storage providers, should be aware that a pre-migration will begin at 2022-03-01T13:30:00Z (90 minutes before the real upgrade). The pre-migration will take between 20 and 50 minutes, depending on hardware specs. During this time, expect slower block validation times, increased CPU and memory usage, and longer delays for API queries.
   
 ## New Features and Changes
 - Integrate actor v7-rc1:
