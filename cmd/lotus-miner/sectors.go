@@ -1530,6 +1530,12 @@ var sectorsSnapAbortCmd = &cli.Command{
 			return lcli.ShowHelp(cctx, xerrors.Errorf("must pass sector number"))
 		}
 
+		really := cctx.Bool("really-do-it")
+		if !really {
+			//nolint:golint
+			return fmt.Errorf("--really-do-it must be specified for this action to have an effect; you have been warned")
+		}
+
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
