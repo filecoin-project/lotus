@@ -22,7 +22,8 @@ It is recommended that storage providers download the new params before updating
 - run `./lotus-shed fetch-params` with the appropriate `proving-params` flag
 - Upgrade the Lotus daemon and miner **when the previous step is complete**
 
-All node operators, including storage providers, should be aware that a pre-migration will begin at 2022-03-01T13:30:00Z (150 minutes before the real upgrade). The pre-migration will take between 20 and 50 minutes, depending on hardware specs. During this time, expect slower block validation times, increased CPU and memory usage, and longer delays for API queries.
+All node operators, including storage providers, should be aware that a pre-migration will begin at 2022-03-01T13:30:00Z (90 minutes before the real upgrade). The pre-migration will take between 20 and 50 minutes, 
+depending on hardware specs. During this time, expect slower block validation times, increased CPU and memory usage, and longer delays for API queries.
   
 ## New Features and Changes
 - Integrate actor v7-rc1:
