@@ -5,6 +5,12 @@ import (
 	"errors"
 	"fmt"
 
+	cbor "github.com/ipfs/go-ipld-cbor"
+
+	"github.com/filecoin-project/lotus/chain/state"
+
+	"github.com/filecoin-project/lotus/blockstore"
+
 	"github.com/filecoin-project/lotus/chain/rand"
 
 	"github.com/filecoin-project/go-address"
@@ -64,6 +70,7 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		pheight = ts.Height() - 1
 	}
 
+	vmHeight := pheight + 1
 	bstate := ts.ParentState()
 
 	// Run the (not expensive) migration.
@@ -72,14 +79,14 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
 
-	filVested, err := sm.GetFilVested(ctx, pheight+1)
+	filVested, err := sm.GetFilVested(ctx, vmHeight)
 	if err != nil {
 		return nil, err
 	}
 
 	vmopt := &vm.VMOpts{
 		StateBase:      bstate,
-		Epoch:          pheight + 1,
+		Epoch:          vmHeight,
 		Rand:           rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, sm.GetNetworkVersion),
 		Bstore:         sm.cs.StateBlockstore(),
 		Actors:         sm.tsExec.NewActorRegistry(),
@@ -186,13 +193,15 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		}
 	}
 
-	state, _, err := sm.TipSetState(ctx, ts)
+	vmHeight := ts.Height() + 1
+
+	stateCid, _, err := sm.TipSetState(ctx, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("computing tipset state: %w", err)
 	}
 
 	// Technically, the tipset we're passing in here should be ts+1, but that may not exist.
-	state, err = sm.HandleStateForks(ctx, state, ts.Height(), nil, ts)
+	stateCid, err = sm.HandleStateForks(ctx, stateCid, ts.Height(), nil, ts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
@@ -207,16 +216,17 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		)
 	}
 
-	filVested, err := sm.GetFilVested(ctx, ts.Height()+1)
+	filVested, err := sm.GetFilVested(ctx, vmHeight)
 	if err != nil {
 		return nil, err
 	}
 
+	buffStore := blockstore.NewBuffered(sm.cs.StateBlockstore())
 	vmopt := &vm.VMOpts{
-		StateBase:      state,
-		Epoch:          ts.Height() + 1,
+		StateBase:      stateCid,
+		Epoch:          vmHeight,
 		Rand:           r,
-		Bstore:         sm.cs.StateBlockstore(),
+		Bstore:         buffStore,
 		Actors:         sm.tsExec.NewActorRegistry(),
 		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
@@ -236,9 +246,14 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		}
 	}
 
-	stTree, err := sm.StateTree(state)
+	stateCid, err = vmi.Flush(ctx)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("flushing vm: %w", err)
+	}
+
+	stTree, err := state.LoadStateTree(cbor.NewCborStore(buffStore), stateCid)
+	if err != nil {
+		return nil, xerrors.Errorf("loading state tree: %w", err)
 	}
 
 	fromActor, err := stTree.GetActor(msg.From)
