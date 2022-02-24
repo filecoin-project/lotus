@@ -2,6 +2,8 @@ module github.com/filecoin-project/lotus
 
 go 1.16
 
+retract v1.14.0 // Accidentally force-pushed tag, use v1.14.1+ instead.
+
 require (
 	contrib.go.opencensus.io/exporter/jaeger v0.2.1
 	contrib.go.opencensus.io/exporter/prometheus v0.4.0

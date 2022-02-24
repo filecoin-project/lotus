@@ -310,6 +310,7 @@ Inputs:
 [
   8,
   null,
+  null,
   true
 ]
 ```
