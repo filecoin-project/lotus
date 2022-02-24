@@ -422,7 +422,7 @@ var verifRegRemoveVerifiedClientDataCapCmd = &cli.Command{
 	ArgsUsage: "<message sender> <client address> <allowance to remove> <verifier 1 address> <verifier 1 signature> <verifier 2 address> <verifier 2 signature>",
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 7 {
-			return fmt.Errorf("must specify seven arguments: sender, client, allowance to remove, verifier 1 ID, verifier 1 signature, verifier 2 ID, verifier 2 signature")
+			return fmt.Errorf("must specify seven arguments: sender, client, allowance to remove, verifier 1 address, verifier 1 signature, verifier 2 address, verifier 2 signature")
 		}
 
 		srv, err := lcli.GetFullNodeServices(cctx)
