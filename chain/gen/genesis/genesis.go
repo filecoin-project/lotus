@@ -491,12 +491,13 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 		Actors:         filcns.NewActorRegistry(),
 		Syscalls:       mkFakedSigSyscalls(sys),
 		CircSupplyCalc: csc,
+		FilVested:      big.Zero(),
 		NetworkVersion: nv,
-		BaseFee:        types.NewInt(0),
+		BaseFee:        big.Zero(),
 	}
-	vm, err := vm.NewVM(ctx, &vmopt)
+	vm, err := vm.NewLotusVM(ctx, &vmopt)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
+		return cid.Undef, xerrors.Errorf("failed to create NewLotusVM: %w", err)
 	}
 
 	for mi, m := range template.Miners {

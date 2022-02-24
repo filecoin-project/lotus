@@ -160,7 +160,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 			return big.Zero(), nil
 		}
 
-		return vm.NewVM(ctx, vmopt)
+		return vm.NewLotusVM(ctx, vmopt)
 	})
 
 	postcid, receiptsroot, err := tse.ApplyBlocks(context.Background(),
@@ -226,7 +226,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		NetworkVersion: params.NetworkVersion,
 	}
 
-	lvm, err := vm.NewVM(context.TODO(), vmOpts)
+	lvm, err := vm.NewLotusVM(context.TODO(), vmOpts)
 	if err != nil {
 		return nil, cid.Undef, err
 	}

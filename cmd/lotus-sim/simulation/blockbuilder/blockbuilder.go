@@ -92,7 +92,7 @@ func NewBlockBuilder(ctx context.Context, logger *zap.SugaredLogger, sm *stmgr.S
 		BaseFee:        abi.NewTokenAmount(0),
 		LookbackState:  stmgr.LookbackStateGetterForTipset(sm, parentTs),
 	}
-	bb.vm, err = vm.NewVM(bb.ctx, vmopt)
+	bb.vm, err = vm.NewLotusVM(bb.ctx, vmopt)
 	if err != nil {
 		return nil, err
 	}
