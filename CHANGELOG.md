@@ -4,6 +4,8 @@
 
 This is an **optional** release of lotus, that's had a couple more improvements w.r.t Snap experience for storage providers in preparation of the[upcoming OhSnap upgrade](https://github.com/filecoin-project/community/discussions/74?sort=new#discussioncomment-1922550). 
 
+Note that the network is STILL scheduled to upgrade to v15 on March 1st at 2022-03-01T15:00:00Z. All node operators, including storage providers, must upgrade to at least Lotus v1.14.0 before that time. Storage providers must update their daemons, miners, and worker(s).
+
 Wanna know how to Snap your deal? Check [this](https://github.com/filecoin-project/lotus/discussions/8141) out! 
 
 ## Bug Fixes
