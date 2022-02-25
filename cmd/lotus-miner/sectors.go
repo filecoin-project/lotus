@@ -1535,6 +1535,12 @@ var sectorsSnapAbortCmd = &cli.Command{
 	Name:      "abort-upgrade",
 	Usage:     "Abort the attempted (SnapDeals) upgrade of a CC sector, reverting it to as before",
 	ArgsUsage: "<sectorNum>",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "pass this flag if you know what you are doing",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 1 {
 			return lcli.ShowHelp(cctx, xerrors.Errorf("must pass sector number"))
