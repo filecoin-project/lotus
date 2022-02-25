@@ -273,7 +273,7 @@ func (l *LocalWorker) asyncCall(ctx context.Context, sector storage.SectorRef, r
 				log.Errorf("get hostname err: %+v", err)
 			}
 
-			err = xerrors.Errorf("%s [Hostname: %s]", err.Error(), hostname)
+			err = xerrors.Errorf("%w [Hostname: %s]", err.Error(), hostname)
 		}
 
 		if doReturn(ctx, rt, ci, l.ret, res, toCallError(err)) {
