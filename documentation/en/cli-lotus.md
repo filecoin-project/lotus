@@ -1658,7 +1658,7 @@ NAME:
    lotus mpool replace - replace a message in the mempool
 
 USAGE:
-   lotus mpool replace [command options] <from nonce> | <message-cid>
+   lotus mpool replace [command options] <from> <nonce> | <message-cid>
 
 OPTIONS:
    --gas-feecap value   gas feecap for new message (burn and pay to miner, attoFIL/GasUnit)
