@@ -338,6 +338,9 @@ Inputs:
       "ProofType": 8
     }
   ],
+  [
+    true
+  ],
   true
 ]
 ```
