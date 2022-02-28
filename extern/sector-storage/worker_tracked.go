@@ -98,7 +98,10 @@ func (wt *workTracker) track(ctx context.Context, ready chan struct{}, wid stori
 		wt.lk.Lock()
 		delete(wt.prepared, prepID)
 	}
+
+	wt.lk.Unlock()
 	callID, err := cb()
+	wt.lk.Lock()
 	if err != nil {
 		return callID, err
 	}
