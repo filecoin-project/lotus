@@ -391,6 +391,10 @@ func (sm *StorageMinerAPI) SectorMarkForUpgrade(ctx context.Context, id abi.Sect
 	return sm.Miner.MarkForUpgrade(ctx, id, snap)
 }
 
+func (sm *StorageMinerAPI) SectorAbortUpgrade(ctx context.Context, number abi.SectorNumber) error {
+	return sm.Miner.SectorAbortUpgrade(number)
+}
+
 func (sm *StorageMinerAPI) SectorCommitFlush(ctx context.Context) ([]sealiface.CommitBatchRes, error) {
 	return sm.Miner.CommitFlush(ctx)
 }
@@ -1169,7 +1173,7 @@ func (sm *StorageMinerAPI) CreateBackup(ctx context.Context, fpath string) error
 	return backup(ctx, sm.DS, fpath)
 }
 
-func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []sto.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) {
+func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []sto.SectorRef, update []bool, expensive bool) (map[abi.SectorNumber]string, error) {
 	var rg storiface.RGetter
 	if expensive {
 		rg = func(ctx context.Context, id abi.SectorID) (cid.Cid, error) {
@@ -1185,7 +1189,7 @@ func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredP
 		}
 	}
 
-	bad, err := sm.StorageMgr.CheckProvable(ctx, pp, sectors, rg)
+	bad, err := sm.StorageMgr.CheckProvable(ctx, pp, sectors, update, rg)
 	if err != nil {
 		return nil, err
 	}

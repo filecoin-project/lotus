@@ -123,6 +123,10 @@ type DealmakingConfig struct {
 	// This includes the time the deal will need to get transferred and published
 	// before being assigned to a sector
 	ExpectedSealDuration Duration
+	// Whether new sectors are created to pack incoming deals
+	// When this is set to false no new sectors will be created for sealing incoming deals
+	// This is useful for forcing all deals to be assigned as snap deals to sectors marked for upgrade
+	MakeNewSectorForDeals bool
 	// Maximum amount of time proposed deal StartEpoch can be in future
 	MaxDealStartDelay Duration
 	// When a deal is ready to publish, the amount of time to wait for more
@@ -366,7 +370,7 @@ type Splitstore struct {
 	// Only currently supported value is "badger".
 	HotStoreType string
 	// MarkSetType specifies the type of the markset.
-	// It can be "map" (default) for in memory marking or "badger" for on-disk marking.
+	// It can be "map" for in memory marking or "badger" (default) for on-disk marking.
 	MarkSetType string
 
 	// HotStoreMessageRetention specifies the retention policy for messages, in finalities beyond

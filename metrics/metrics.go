@@ -47,6 +47,12 @@ var (
 	WorkerHostname, _ = tag.NewKey("worker_hostname")
 	StorageID, _      = tag.NewKey("storage_id")
 	SectorState, _    = tag.NewKey("sector_state")
+
+	// rcmgr
+	ServiceID, _  = tag.NewKey("svc")
+	ProtocolID, _ = tag.NewKey("proto")
+	Direction, _  = tag.NewKey("direction")
+	UseFD, _      = tag.NewKey("use_fd")
 )
 
 // Measures
@@ -145,6 +151,22 @@ var (
 	SplitstoreCompactionHot         = stats.Int64("splitstore/hot", "Number of hot blocks in last compaction", stats.UnitDimensionless)
 	SplitstoreCompactionCold        = stats.Int64("splitstore/cold", "Number of cold blocks in last compaction", stats.UnitDimensionless)
 	SplitstoreCompactionDead        = stats.Int64("splitstore/dead", "Number of dead blocks in last compaction", stats.UnitDimensionless)
+
+	// rcmgr
+	RcmgrAllowConn      = stats.Int64("rcmgr/allow_conn", "Number of allowed connections", stats.UnitDimensionless)
+	RcmgrBlockConn      = stats.Int64("rcmgr/block_conn", "Number of blocked connections", stats.UnitDimensionless)
+	RcmgrAllowStream    = stats.Int64("rcmgr/allow_stream", "Number of allowed streams", stats.UnitDimensionless)
+	RcmgrBlockStream    = stats.Int64("rcmgr/block_stream", "Number of blocked streams", stats.UnitDimensionless)
+	RcmgrAllowPeer      = stats.Int64("rcmgr/allow_peer", "Number of allowed peer connections", stats.UnitDimensionless)
+	RcmgrBlockPeer      = stats.Int64("rcmgr/block_peer", "Number of blocked peer connections", stats.UnitDimensionless)
+	RcmgrAllowProto     = stats.Int64("rcmgr/allow_proto", "Number of allowed streams attached to a protocol", stats.UnitDimensionless)
+	RcmgrBlockProto     = stats.Int64("rcmgr/block_proto", "Number of blocked blocked streams attached to a protocol", stats.UnitDimensionless)
+	RcmgrBlockProtoPeer = stats.Int64("rcmgr/block_proto", "Number of blocked blocked streams attached to a protocol for a specific peer", stats.UnitDimensionless)
+	RcmgrAllowSvc       = stats.Int64("rcmgr/allow_svc", "Number of allowed streams attached to a service", stats.UnitDimensionless)
+	RcmgrBlockSvc       = stats.Int64("rcmgr/block_svc", "Number of blocked blocked streams attached to a service", stats.UnitDimensionless)
+	RcmgrBlockSvcPeer   = stats.Int64("rcmgr/block_svc", "Number of blocked blocked streams attached to a service for a specific peer", stats.UnitDimensionless)
+	RcmgrAllowMem       = stats.Int64("rcmgr/allow_mem", "Number of allowed memory reservations", stats.UnitDimensionless)
+	RcmgrBlockMem       = stats.Int64("rcmgr/block_mem", "Number of blocked memory reservations", stats.UnitDimensionless)
 )
 
 var (
@@ -507,6 +529,76 @@ var (
 		Measure:     GraphsyncSendingPeersPending,
 		Aggregation: view.LastValue(),
 	}
+
+	// rcmgr
+	RcmgrAllowConnView = &view.View{
+		Measure:     RcmgrAllowConn,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{Direction, UseFD},
+	}
+	RcmgrBlockConnView = &view.View{
+		Measure:     RcmgrBlockConn,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{Direction, UseFD},
+	}
+	RcmgrAllowStreamView = &view.View{
+		Measure:     RcmgrAllowStream,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{PeerID, Direction},
+	}
+	RcmgrBlockStreamView = &view.View{
+		Measure:     RcmgrBlockStream,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{PeerID, Direction},
+	}
+	RcmgrAllowPeerView = &view.View{
+		Measure:     RcmgrAllowPeer,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{PeerID},
+	}
+	RcmgrBlockPeerView = &view.View{
+		Measure:     RcmgrBlockPeer,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{PeerID},
+	}
+	RcmgrAllowProtoView = &view.View{
+		Measure:     RcmgrAllowProto,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{ProtocolID},
+	}
+	RcmgrBlockProtoView = &view.View{
+		Measure:     RcmgrBlockProto,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{ProtocolID},
+	}
+	RcmgrBlockProtoPeerView = &view.View{
+		Measure:     RcmgrBlockProtoPeer,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{ProtocolID, PeerID},
+	}
+	RcmgrAllowSvcView = &view.View{
+		Measure:     RcmgrAllowSvc,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{ServiceID},
+	}
+	RcmgrBlockSvcView = &view.View{
+		Measure:     RcmgrBlockSvc,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{ServiceID},
+	}
+	RcmgrBlockSvcPeerView = &view.View{
+		Measure:     RcmgrBlockSvcPeer,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{ServiceID, PeerID},
+	}
+	RcmgrAllowMemView = &view.View{
+		Measure:     RcmgrAllowMem,
+		Aggregation: view.Count(),
+	}
+	RcmgrBlockMemView = &view.View{
+		Measure:     RcmgrBlockMem,
+		Aggregation: view.Count(),
+	}
 )
 
 // DefaultViews is an array of OpenCensus views for metric gathering purposes
@@ -528,6 +620,21 @@ var DefaultViews = func() []*view.View {
 		GraphsyncSendingTotalMemoryAllocatedView,
 		GraphsyncSendingTotalPendingAllocationsView,
 		GraphsyncSendingPeersPendingView,
+
+		RcmgrAllowConnView,
+		RcmgrBlockConnView,
+		RcmgrAllowStreamView,
+		RcmgrBlockStreamView,
+		RcmgrAllowPeerView,
+		RcmgrBlockPeerView,
+		RcmgrAllowProtoView,
+		RcmgrBlockProtoView,
+		RcmgrBlockProtoPeerView,
+		RcmgrAllowSvcView,
+		RcmgrBlockSvcView,
+		RcmgrBlockSvcPeerView,
+		RcmgrAllowMemView,
+		RcmgrBlockMemView,
 	}
 	views = append(views, blockstore.DefaultViews...)
 	views = append(views, rpcmetrics.DefaultViews...)

@@ -3,6 +3,7 @@ package sealing
 import (
 	"context"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 
@@ -86,19 +87,11 @@ func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) e
 		return xerrors.Errorf("failed to read sector on chain info: %w", err)
 	}
 
-	active, err := m.Api.StateMinerActiveSectors(ctx, m.maddr, tok)
+	active, err := sectorActive(ctx, m.Api, m.maddr, tok, id)
 	if err != nil {
-		return xerrors.Errorf("failed to check active sectors: %w", err)
+		return xerrors.Errorf("failed to check if sector is active")
 	}
-	// Ensure the upgraded sector is active
-	var found bool
-	for _, si := range active {
-		if si.SectorNumber == id {
-			found = true
-			break
-		}
-	}
-	if !found {
+	if !active {
 		return xerrors.Errorf("cannot mark inactive sector for upgrade")
 	}
 
@@ -108,6 +101,23 @@ func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) e
 	}
 
 	return m.sectors.Send(uint64(id), SectorStartCCUpdate{})
+}
+
+func sectorActive(ctx context.Context, api SealingAPI, maddr address.Address, tok TipSetToken, sector abi.SectorNumber) (bool, error) {
+	active, err := api.StateMinerActiveSectors(ctx, maddr, tok)
+	if err != nil {
+		return false, xerrors.Errorf("failed to check active sectors: %w", err)
+	}
+
+	// Ensure the upgraded sector is active
+	var found bool
+	for _, si := range active {
+		if si.SectorNumber == sector {
+			found = true
+			break
+		}
+	}
+	return found, nil
 }
 
 func (m *Sealing) tryUpgradeSector(ctx context.Context, params *miner.SectorPreCommitInfo) big.Int {

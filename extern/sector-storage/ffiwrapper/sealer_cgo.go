@@ -769,7 +769,7 @@ func (sb *Sealer) ReleaseSealed(ctx context.Context, sector storage.SectorRef) e
 	return xerrors.Errorf("not supported at this layer")
 }
 
-func (sb *Sealer) FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error {
+func (sb *Sealer) freeUnsealed(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error {
 	ssize, err := sector.ProofType.SectorSize()
 	if err != nil {
 		return err
@@ -834,6 +834,19 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector storage.SectorRef, 
 
 	}
 
+	return nil
+}
+
+func (sb *Sealer) FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error {
+	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		return err
+	}
+
+	if err := sb.freeUnsealed(ctx, sector, keepUnsealed); err != nil {
+		return err
+	}
+
 	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, 0, storiface.PathStorage)
 	if err != nil {
 		return xerrors.Errorf("acquiring sector cache path: %w", err)
@@ -841,6 +854,43 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector storage.SectorRef, 
 	defer done()
 
 	return ffi.ClearCache(uint64(ssize), paths.Cache)
+}
+
+func (sb *Sealer) FinalizeReplicaUpdate(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error {
+	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		return err
+	}
+
+	if err := sb.freeUnsealed(ctx, sector, keepUnsealed); err != nil {
+		return err
+	}
+
+	{
+		paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, 0, storiface.PathStorage)
+		if err != nil {
+			return xerrors.Errorf("acquiring sector cache path: %w", err)
+		}
+		defer done()
+
+		if err := ffi.ClearCache(uint64(ssize), paths.Cache); err != nil {
+			return xerrors.Errorf("clear cache: %w", err)
+		}
+	}
+
+	{
+		paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUpdateCache, 0, storiface.PathStorage)
+		if err != nil {
+			return xerrors.Errorf("acquiring sector cache path: %w", err)
+		}
+		defer done()
+
+		if err := ffi.ClearCache(uint64(ssize), paths.UpdateCache); err != nil {
+			return xerrors.Errorf("clear cache: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (sb *Sealer) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) error {

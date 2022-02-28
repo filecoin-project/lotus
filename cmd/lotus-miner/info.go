@@ -126,7 +126,7 @@ func infoCmdAct(cctx *cli.Context) error {
 
 	alerts, err := minerApi.LogAlerts(ctx)
 	if err != nil {
-		return xerrors.Errorf("getting alerts: %w", err)
+		fmt.Printf("ERROR: getting alerts: %s\n", err)
 	}
 
 	activeAlerts := make([]alerting.Alert, 0)
@@ -466,6 +466,7 @@ var stateOrder = map[sealing.SectorState]stateMeta{}
 var stateList = []stateMeta{
 	{col: 39, state: "Total"},
 	{col: color.FgGreen, state: sealing.Proving},
+	{col: color.FgGreen, state: sealing.UpdateActivating},
 
 	{col: color.FgBlue, state: sealing.Empty},
 	{col: color.FgBlue, state: sealing.WaitDeals},
@@ -496,6 +497,7 @@ var stateList = []stateMeta{
 	{col: color.FgYellow, state: sealing.SubmitReplicaUpdate},
 	{col: color.FgYellow, state: sealing.ReplicaUpdateWait},
 	{col: color.FgYellow, state: sealing.FinalizeReplicaUpdate},
+	{col: color.FgYellow, state: sealing.ReleaseSectorKey},
 
 	{col: color.FgCyan, state: sealing.Terminating},
 	{col: color.FgCyan, state: sealing.TerminateWait},
@@ -524,6 +526,7 @@ var stateList = []stateMeta{
 	{col: color.FgRed, state: sealing.SnapDealsAddPieceFailed},
 	{col: color.FgRed, state: sealing.SnapDealsDealsExpired},
 	{col: color.FgRed, state: sealing.ReplicaUpdateFailed},
+	{col: color.FgRed, state: sealing.ReleaseSectorKeyFailed},
 }
 
 func init() {

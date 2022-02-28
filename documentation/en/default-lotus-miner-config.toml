@@ -167,6 +167,14 @@
   # env var: LOTUS_DEALMAKING_EXPECTEDSEALDURATION
   #ExpectedSealDuration = "24h0m0s"
 
+  # Whether new sectors are created to pack incoming deals
+  # When this is set to false no new sectors will be created for sealing incoming deals
+  # This is useful for forcing all deals to be assigned as snap deals to sectors marked for upgrade
+  #
+  # type: bool
+  # env var: LOTUS_DEALMAKING_MAKENEWSECTORFORDEALS
+  #MakeNewSectorForDeals = true
+
   # Maximum amount of time proposed deal StartEpoch can be in future
   #
   # type: Duration
@@ -450,6 +458,9 @@
 
   # env var: LOTUS_STORAGE_ALLOWPROVEREPLICAUPDATE2
   #AllowProveReplicaUpdate2 = true
+
+  # env var: LOTUS_STORAGE_ALLOWREGENSECTORKEY
+  #AllowRegenSectorKey = true
 
   # env var: LOTUS_STORAGE_RESOURCEFILTERING
   #ResourceFiltering = "hardware"

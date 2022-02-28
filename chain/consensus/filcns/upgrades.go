@@ -165,13 +165,8 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		Migration: UpgradeActorsV7,
 		PreMigrations: []stmgr.PreMigration{{
 			PreMigration:    PreUpgradeActorsV7,
-			StartWithin:     120,
+			StartWithin:     180,
 			DontStartWithin: 60,
-			StopWithin:      35,
-		}, {
-			PreMigration:    PreUpgradeActorsV7,
-			StartWithin:     30,
-			DontStartWithin: 15,
 			StopWithin:      5,
 		}},
 		Expensive: true,
@@ -1264,7 +1259,7 @@ func upgradeActorsV7Common(
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
 	config nv15.Config,
 ) (cid.Cid, error) {
-	writeStore := blockstore.NewAutobatch(ctx, sm.ChainStore().StateBlockstore(), units.GiB)
+	writeStore := blockstore.NewAutobatch(ctx, sm.ChainStore().StateBlockstore(), units.GiB/4)
 	// TODO: pretty sure we'd achieve nothing by doing this, confirm in review
 	//buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), writeStore)
 	store := store.ActorStore(ctx, writeStore)

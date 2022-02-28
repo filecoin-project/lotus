@@ -2,6 +2,8 @@ module github.com/filecoin-project/lotus
 
 go 1.16
 
+retract v1.14.0 // Accidentally force-pushed tag, use v1.14.1+ instead.
+
 require (
 	contrib.go.opencensus.io/exporter/prometheus v0.4.0
 	github.com/BurntSushi/toml v0.4.1
@@ -40,7 +42,7 @@ require (
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-legs v0.3.4
 	github.com/filecoin-project/go-padreader v0.0.1
-	github.com/filecoin-project/go-paramfetch v0.0.3-0.20220111000201-e42866db1a53
+	github.com/filecoin-project/go-paramfetch v0.0.4
 	github.com/filecoin-project/go-state-types v0.1.3
 	github.com/filecoin-project/go-statemachine v1.0.1
 	github.com/filecoin-project/go-statestore v0.2.0
@@ -52,8 +54,8 @@ require (
 	github.com/filecoin-project/specs-actors/v4 v4.0.1
 	github.com/filecoin-project/specs-actors/v5 v5.0.4
 	github.com/filecoin-project/specs-actors/v6 v6.0.1
-	github.com/filecoin-project/specs-actors/v7 v7.0.0-rc1
-	github.com/filecoin-project/specs-storage v0.1.1-0.20211228030229-6d460d25a0c9
+	github.com/filecoin-project/specs-actors/v7 v7.0.0
+	github.com/filecoin-project/specs-storage v0.2.0
 	github.com/filecoin-project/test-vectors/schema v0.0.5
 	github.com/gbrlsnchs/jwt/v3 v3.0.1
 	github.com/gdamore/tcell/v2 v2.2.0
@@ -100,6 +102,7 @@ require (
 	github.com/ipfs/go-metrics-prometheus v0.0.2
 	github.com/ipfs/go-path v0.2.1
 	github.com/ipfs/go-unixfs v0.3.1
+	github.com/ipfs/go-unixfsnode v1.2.0
 	github.com/ipfs/interface-go-ipfs-core v0.5.2
 	github.com/ipld/go-car v0.3.3
 	github.com/ipld/go-car/v2 v2.1.1
@@ -110,7 +113,7 @@ require (
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/libp2p/go-eventbus v0.2.1
-	github.com/libp2p/go-libp2p v0.18.0-rc3
+	github.com/libp2p/go-libp2p v0.18.0-rc5
 	github.com/libp2p/go-libp2p-connmgr v0.3.1 // indirect
 	github.com/libp2p/go-libp2p-core v0.14.0
 	github.com/libp2p/go-libp2p-discovery v0.6.0
@@ -118,13 +121,13 @@ require (
 	github.com/libp2p/go-libp2p-noise v0.3.0
 	github.com/libp2p/go-libp2p-peerstore v0.6.0
 	github.com/libp2p/go-libp2p-pubsub v0.6.1
-	github.com/libp2p/go-libp2p-quic-transport v0.16.0
+	github.com/libp2p/go-libp2p-quic-transport v0.16.1
 	github.com/libp2p/go-libp2p-record v0.1.3
-	github.com/libp2p/go-libp2p-resource-manager v0.1.3
+	github.com/libp2p/go-libp2p-resource-manager v0.1.4
 	github.com/libp2p/go-libp2p-routing-helpers v0.2.3
-	github.com/libp2p/go-libp2p-swarm v0.10.1
+	github.com/libp2p/go-libp2p-swarm v0.10.2
 	github.com/libp2p/go-libp2p-tls v0.3.1
-	github.com/libp2p/go-libp2p-yamux v0.8.1
+	github.com/libp2p/go-libp2p-yamux v0.8.2
 	github.com/libp2p/go-maddr-filter v0.1.0
 	github.com/mattn/go-isatty v0.0.14
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1
