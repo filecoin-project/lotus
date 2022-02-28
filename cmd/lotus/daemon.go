@@ -121,7 +121,6 @@ var DaemonCmd = &cli.Command{
 		&cli.BoolFlag{
 			Name:   "lite",
 			Usage:  "start lotus in lite mode",
-			Hidden: true,
 		},
 		&cli.StringFlag{
 			Name:  "pprof",
