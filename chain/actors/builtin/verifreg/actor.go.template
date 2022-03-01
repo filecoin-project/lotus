@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	verifreg7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/verifreg"
+	verifreg{{.latestVersion}} "github.com/filecoin-project/specs-actors/v7/actors/builtin/verifreg"
 )
 
 func init() {

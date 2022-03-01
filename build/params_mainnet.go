@@ -70,6 +70,8 @@ const UpgradeChocolateHeight = 1231620
 // 2022-03-01T15:00:00Z
 var UpgradeOhSnapHeight = abi.ChainEpoch(1594680)
 
+var UpgradeFVM1Height = abi.ChainEpoch(99999999999999)
+
 func init() {
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
 		SetAddressNetwork(address.Mainnet)

@@ -143,6 +143,14 @@ func prepSyncTestWithV5Height(t testing.TB, h int, v5height abi.ChainEpoch) *syn
 		Network:   network.Version14,
 		Height:    v5height + 10,
 		Migration: filcns.UpgradeActorsV6,
+	}, {
+		Network:   network.Version15,
+		Height:    v5height + 15,
+		Migration: filcns.UpgradeActorsV7,
+	}, {
+		Network:   network.Version16,
+		Height:    v5height + 20,
+		Migration: filcns.UpgradeActorsV8,
 	}}
 
 	g, err := gen.NewGeneratorWithUpgradeSchedule(sched)
