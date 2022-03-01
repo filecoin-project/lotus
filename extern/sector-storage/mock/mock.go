@@ -505,7 +505,7 @@ func (mgr *SectorMgr) Remove(ctx context.Context, sector storage.SectorRef) erro
 	return nil
 }
 
-func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, ids []storage.SectorRef, rg storiface.RGetter) (map[abi.SectorID]string, error) {
+func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, ids []storage.SectorRef, update []bool, rg storiface.RGetter) (map[abi.SectorID]string, error) {
 	bad := map[abi.SectorID]string{}
 
 	for _, sid := range ids {

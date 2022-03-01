@@ -516,6 +516,8 @@ type GatewayStruct struct {
 
 		MsigGetVested func(p0 context.Context, p1 address.Address, p2 types.TipSetKey, p3 types.TipSetKey) (types.BigInt, error) ``
 
+		MsigGetVestingSchedule func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MsigVesting, error) ``
+
 		StateAccountKey func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) ``
 
 		StateDealProviderCollateralBounds func(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (DealCollateralBounds, error) ``
@@ -625,7 +627,7 @@ type StorageMinerStruct struct {
 
 		ActorSectorSize func(p0 context.Context, p1 address.Address) (abi.SectorSize, error) `perm:"read"`
 
-		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storage.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
+		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storage.SectorRef, p3 []bool, p4 bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
 
 		ComputeProof func(p0 context.Context, p1 []builtin.ExtendedSectorInfo, p2 abi.PoStRandomness, p3 abi.ChainEpoch, p4 abinetwork.Version) ([]builtin.PoStProof, error) `perm:"read"`
 
@@ -3285,6 +3287,17 @@ func (s *GatewayStub) MsigGetVested(p0 context.Context, p1 address.Address, p2 t
 	return *new(types.BigInt), ErrNotSupported
 }
 
+func (s *GatewayStruct) MsigGetVestingSchedule(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MsigVesting, error) {
+	if s.Internal.MsigGetVestingSchedule == nil {
+		return *new(MsigVesting), ErrNotSupported
+	}
+	return s.Internal.MsigGetVestingSchedule(p0, p1, p2)
+}
+
+func (s *GatewayStub) MsigGetVestingSchedule(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MsigVesting, error) {
+	return *new(MsigVesting), ErrNotSupported
+}
+
 func (s *GatewayStruct) StateAccountKey(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
 	if s.Internal.StateAccountKey == nil {
 		return *new(address.Address), ErrNotSupported
@@ -3747,14 +3760,14 @@ func (s *StorageMinerStub) ActorSectorSize(p0 context.Context, p1 address.Addres
 	return *new(abi.SectorSize), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storage.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) {
+func (s *StorageMinerStruct) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storage.SectorRef, p3 []bool, p4 bool) (map[abi.SectorNumber]string, error) {
 	if s.Internal.CheckProvable == nil {
 		return *new(map[abi.SectorNumber]string), ErrNotSupported
 	}
-	return s.Internal.CheckProvable(p0, p1, p2, p3)
+	return s.Internal.CheckProvable(p0, p1, p2, p3, p4)
 }
 
-func (s *StorageMinerStub) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storage.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) {
+func (s *StorageMinerStub) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storage.SectorRef, p3 []bool, p4 bool) (map[abi.SectorNumber]string, error) {
 	return *new(map[abi.SectorNumber]string), ErrNotSupported
 }
 

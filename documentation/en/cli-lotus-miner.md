@@ -1826,7 +1826,8 @@ USAGE:
    lotus-miner sectors abort-upgrade [command options] <sectorNum>
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --really-do-it  pass this flag if you know what you are doing (default: false)
+   --help, -h      show help (default: false)
    
 ```
 

@@ -1234,12 +1234,13 @@ USAGE:
    lotus filplus command [command options] [arguments...]
 
 COMMANDS:
-   grant-datacap         give allowance to the specified verified client address
-   list-notaries         list all notaries
-   list-clients          list all verified clients
-   check-client-datacap  check verified client remaining bytes
-   check-notary-datacap  check a notary's remaining bytes
-   help, h               Shows a list of commands or help for one command
+   grant-datacap                  give allowance to the specified verified client address
+   list-notaries                  list all notaries
+   list-clients                   list all verified clients
+   check-client-datacap           check verified client remaining bytes
+   check-notary-datacap           check a notary's remaining bytes
+   sign-remove-data-cap-proposal  allows a notary to sign a Remove Data Cap Proposal
+   help, h                        Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h     show help (default: false)
@@ -1309,6 +1310,20 @@ USAGE:
    lotus filplus check-notary-datacap [command options] [arguments...]
 
 OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus filplus sign-remove-data-cap-proposal
+```
+NAME:
+   lotus filplus sign-remove-data-cap-proposal - allows a notary to sign a Remove Data Cap Proposal
+
+USAGE:
+   lotus filplus sign-remove-data-cap-proposal [command options] [arguments...]
+
+OPTIONS:
+   --id value  specify the RemoveDataCapProposal ID (will look up on chain if unspecified) (default: 0)
    --help, -h  show help (default: false)
    
 ```
@@ -1643,7 +1658,7 @@ NAME:
    lotus mpool replace - replace a message in the mempool
 
 USAGE:
-   lotus mpool replace [command options] <from nonce> | <message-cid>
+   lotus mpool replace [command options] <from> <nonce> | <message-cid>
 
 OPTIONS:
    --gas-feecap value   gas feecap for new message (burn and pay to miner, attoFIL/GasUnit)
