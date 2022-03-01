@@ -1,7 +1,7 @@
 # Lotus changelog
-# 1.15.0-rc1 / 2022-02-10
+# 1.15.0-rc2 / 2022-03-01
 
-This is the first release candidates of v1.15.0, detailed changelog will be updated later.
+This is the second release candidates of v1.15.0, detailed changelog will be updated later.
 
 - github.com/filecoin-project/lotus:
   - bump the version to v1.15.0-rc1
