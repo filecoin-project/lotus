@@ -6,6 +6,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/mocks"
+	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/golang/mock/gomock"
 	ucli "github.com/urfave/cli/v2"
 )
@@ -21,7 +22,8 @@ func NewMockAppWithFullAPI(t *testing.T, cmd *ucli.Command) (*ucli.App, *mocks.M
 	ctrl := gomock.NewController(t)
 	mockFullNode := mocks.NewMockFullNode(ctrl)
 	var fullNode api.FullNode = mockFullNode
-	app.Metadata["test-full-api"] = fullNode
+	app.Metadata["testnode-full"] = fullNode
+	app.Metadata["repoType"] = repo.FullNode
 
 	// this will only work if the implementation uses the app.Writer,
 	// if it uses fmt.*, it has to be refactored
