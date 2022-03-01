@@ -861,30 +861,34 @@ func (sb *Sealer) FinalizeReplicaUpdate(ctx context.Context, sector storage.Sect
 	if err != nil {
 		return err
 	}
-
+	log.Infof("[FinalizeReplicaUpdate] free unsealed")
 	if err := sb.freeUnsealed(ctx, sector, keepUnsealed); err != nil {
 		return err
 	}
 
 	{
+		log.Infof("[FinalizeReplicaUpdate] acquire cache")
 		paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, 0, storiface.PathStorage)
 		if err != nil {
 			return xerrors.Errorf("acquiring sector cache path: %w", err)
 		}
 		defer done()
 
+		log.Infof("[FinalizeReplicaUpdate] clear cache")
 		if err := ffi.ClearCache(uint64(ssize), paths.Cache); err != nil {
 			return xerrors.Errorf("clear cache: %w", err)
 		}
 	}
 
 	{
+		log.Infof("[FinalizeReplicaUpdate] acquire update cache")
 		paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUpdateCache, 0, storiface.PathStorage)
 		if err != nil {
 			return xerrors.Errorf("acquiring sector cache path: %w", err)
 		}
 		defer done()
 
+		log.Infof("[FinalizeReplicaUpdate] clear update cache")
 		if err := ffi.ClearCache(uint64(ssize), paths.UpdateCache); err != nil {
 			return xerrors.Errorf("clear cache: %w", err)
 		}

@@ -584,13 +584,14 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storage.SectorRef, 
 func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-
+	log.Infof("Storage locking id %d", sector.ID)
 	if err := m.index.StorageLock(ctx, sector.ID, storiface.FTNone, storiface.FTSealed|storiface.FTUnsealed|storiface.FTCache|storiface.FTUpdate|storiface.FTUpdateCache); err != nil {
 		return xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
 	fts := storiface.FTUnsealed
 	{
+		log.Infof("Finding unsealed sector %d", sector.ID)
 		unsealedStores, err := m.index.StorageFindSector(ctx, sector.ID, storiface.FTUnsealed, 0, false)
 		if err != nil {
 			return xerrors.Errorf("finding unsealed sector: %w", err)
@@ -603,6 +604,7 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storage.Sect
 
 	pathType := storiface.PathStorage
 	{
+		log.Infof("Finding update replica %d", sector.ID)
 		sealedStores, err := m.index.StorageFindSector(ctx, sector.ID, storiface.FTUpdate, 0, false)
 		if err != nil {
 			return xerrors.Errorf("finding sealed sector: %w", err)
@@ -616,18 +618,21 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storage.Sect
 		}
 	}
 
+	log.Infof("Making a new existing selector %d", sector.ID)
 	selector := newExistingSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed|storiface.FTUpdate|storiface.FTUpdateCache, false)
 
+	log.Infof("Schedule fetch %d", sector.ID)
 	err := m.sched.Schedule(ctx, sector, sealtasks.TTFinalizeReplicaUpdate, selector,
 		m.schedFetch(sector, storiface.FTCache|storiface.FTSealed|storiface.FTUpdate|storiface.FTUpdateCache|fts, pathType, storiface.AcquireMove),
 		func(ctx context.Context, w Worker) error {
+			log.Infof("Finalize Replica Update %d", sector.ID)
 			_, err := m.waitSimpleCall(ctx)(w.FinalizeReplicaUpdate(ctx, sector, keepUnsealed))
 			return err
 		})
 	if err != nil {
 		return err
 	}
-
+	log.Infof("Making a new alloc selector %d", sector.ID)
 	fetchSel := newAllocSelector(m.index, storiface.FTCache|storiface.FTSealed|storiface.FTUpdate|storiface.FTUpdateCache, storiface.PathStorage)
 	moveUnsealed := fts
 	{
@@ -635,10 +640,11 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storage.Sect
 			moveUnsealed = storiface.FTNone
 		}
 	}
-
+	log.Infof("Schedule fetch %d", sector.ID)
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTFetch, fetchSel,
 		m.schedFetch(sector, storiface.FTCache|storiface.FTSealed|storiface.FTUpdate|storiface.FTUpdateCache|moveUnsealed, storiface.PathStorage, storiface.AcquireMove),
 		func(ctx context.Context, w Worker) error {
+			log.Infof("Move storage %d", sector.ID)
 			_, err := m.waitSimpleCall(ctx)(w.MoveStorage(ctx, sector, storiface.FTCache|storiface.FTSealed|storiface.FTUpdate|storiface.FTUpdateCache|moveUnsealed))
 			return err
 		})
