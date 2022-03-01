@@ -102,6 +102,8 @@ var walletList = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		afmt := NewAppFmt(cctx.App)
+
 		addrs, err := api.WalletList(ctx)
 		if err != nil {
 			return err
@@ -122,7 +124,7 @@ var walletList = &cli.Command{
 
 		for _, addr := range addrs {
 			if cctx.Bool("addr-only") {
-				fmt.Println(addr.String())
+				afmt.Println(addr.String())
 			} else {
 				a, err := api.StateGetActor(ctx, addr, types.EmptyTSK)
 				if err != nil {

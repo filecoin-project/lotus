@@ -58,7 +58,7 @@ func TestWalletList(t *testing.T) {
 
 	t.Run("wallet-list-addr-only", func(t *testing.T) {
 
-		app, mockApi, _, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletList))
+		app, mockApi, buf, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletList))
 		defer done()
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -67,12 +67,12 @@ func TestWalletList(t *testing.T) {
 		gomock.InOrder(
 			mockApi.EXPECT().WalletList(ctx).Return(addresses, nil),
 			mockApi.EXPECT().WalletDefaultAddress(ctx).Return(addr, nil),
-			mockApi.EXPECT().StateGetActor(ctx, addr, key).Return(&actor, nil),
 		)
 
 		//stm: @CLI_WALLET_LIST_001
-		err := app.Run([]string{"wallet", "list", "addr-only"})
+		err := app.Run([]string{"wallet", "list", "--addr-only"})
 		assert.NoError(t, err)
+		assert.Contains(t, buf.String(), addr.String())
 	})
 	t.Run("wallet-list-id", func(t *testing.T) {
 
