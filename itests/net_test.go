@@ -79,10 +79,10 @@ func TestNetConn(t *testing.T) {
 	}
 
 	//stm: @NETWORK_COMMON_PEERS_001
-	peers, err := firstNode.NetPeers(ctx)
+	addrs, err := firstNode.NetPeers(ctx)
 	require.NoError(t, err)
 
-	if len(peers) > 0 && peers[0].ID != addrInfo.ID {
+	if len(addrs) > 0 {
 		t.Errorf("connected peer does not exist in network")
 	}
 
@@ -99,10 +99,10 @@ func TestNetConn(t *testing.T) {
 	}
 
 	//stm: @NETWORK_COMMON_PEERS_001
-	peers, err = firstNode.NetPeers(ctx)
+	addrs, err = firstNode.NetPeers(ctx)
 	require.NoError(t, err)
 
-	if len(peers) > 0 {
+	if len(addrs) > 0 {
 		t.Errorf("there should be no peers in network after disconnecting node")
 	}
 
