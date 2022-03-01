@@ -44,6 +44,8 @@ const UpgradeChocolateHeight = -17
 
 const UpgradeOhSnapHeight = 240
 
+var UpgradeFVM1Height = abi.ChainEpoch(99999999999999)
+
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2 << 30))
 	policy.SetSupportedProofTypes(

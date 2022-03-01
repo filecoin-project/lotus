@@ -100,6 +100,7 @@ var (
 	UpgradeHyperdriveHeight abi.ChainEpoch = -15
 	UpgradeChocolateHeight  abi.ChainEpoch = -16
 	UpgradeOhSnapHeight     abi.ChainEpoch = -17
+	UpgradeFVM1Height       abi.ChainEpoch = -18
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandMainnet,
