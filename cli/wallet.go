@@ -413,6 +413,8 @@ var walletSign = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
+		afmt := NewAppFmt(cctx.App)
+
 		if !cctx.Args().Present() || cctx.NArg() != 2 {
 			return fmt.Errorf("must specify signing address and message to sign")
 		}
@@ -437,7 +439,7 @@ var walletSign = &cli.Command{
 
 		sigBytes := append([]byte{byte(sig.Type)}, sig.Data...)
 
-		fmt.Println(hex.EncodeToString(sigBytes))
+		afmt.Println(hex.EncodeToString(sigBytes))
 		return nil
 	},
 }

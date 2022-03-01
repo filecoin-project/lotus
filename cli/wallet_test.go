@@ -201,7 +201,7 @@ func TestWalletExport(t *testing.T) {
 }
 
 func TestWalletSign(t *testing.T) {
-	app, mockApi, _, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletSign))
+	app, mockApi, buffer, done := NewMockAppWithFullAPI(t, WithCategory("wallet", walletSign))
 	defer done()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -213,13 +213,19 @@ func TestWalletSign(t *testing.T) {
 	msg, err := hex.DecodeString("01")
 	assert.NoError(t, err)
 
-	signature := crypto.Signature{}
+	signature := crypto.Signature{
+		Type: crypto.SigTypeSecp256k1,
+		Data: []byte{0x01},
+	}
 
 	mockApi.EXPECT().WalletSign(ctx, addr, msg).Return(&signature, nil)
+
+	sigBytes := append([]byte{byte(signature.Type)}, signature.Data...)
 
 	//stm: @CLI_WALLET_SIGN_001
 	err = app.Run([]string{"wallet", "sign", "f01234", "01"})
 	assert.NoError(t, err)
+	assert.Contains(t, buffer.String(), hex.EncodeToString(sigBytes))
 }
 
 func TestWalletVerify(t *testing.T) {
