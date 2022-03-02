@@ -106,7 +106,7 @@ func (ca *channelAccessor) outboundActiveByFromTo(ctx context.Context, from, to 
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
-	return ca.store.OutboundActiveByFromTo(ctx, from, to)
+	return ca.store.OutboundActiveByFromTo(ctx, ca.api, from, to)
 }
 
 // createVoucher creates a voucher with the given specification, setting its

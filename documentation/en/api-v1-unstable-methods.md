@@ -147,6 +147,7 @@
   * [PaychAvailableFunds](#PaychAvailableFunds)
   * [PaychAvailableFundsByFromTo](#PaychAvailableFundsByFromTo)
   * [PaychCollect](#PaychCollect)
+  * [PaychFund](#PaychFund)
   * [PaychGet](#PaychGet)
   * [PaychGetWaitReady](#PaychGetWaitReady)
   * [PaychList](#PaychList)
@@ -4456,6 +4457,8 @@ Response:
   "To": "f01234",
   "ConfirmedAmt": "0",
   "PendingAmt": "0",
+  "NonReservedAmt": "0",
+  "PendingAvailableAmt": "0",
   "PendingWaitSentinel": null,
   "QueuedAmt": "0",
   "VoucherReedeemedAmt": "0"
@@ -4483,6 +4486,8 @@ Response:
   "To": "f01234",
   "ConfirmedAmt": "0",
   "PendingAmt": "0",
+  "NonReservedAmt": "0",
+  "PendingAvailableAmt": "0",
   "PendingWaitSentinel": null,
   "QueuedAmt": "0",
   "VoucherReedeemedAmt": "0"
@@ -4508,8 +4513,10 @@ Response:
 }
 ```
 
-### PaychGet
-There are not yet any comments for this method.
+### PaychFund
+PaychFund gets or creates a payment channel between address pair.
+The specified amount will be added to the channel through on-chain send for future use
+
 
 Perms: sign
 
@@ -4519,6 +4526,40 @@ Inputs:
   "f01234",
   "f01234",
   "0"
+]
+```
+
+Response:
+```json
+{
+  "Channel": "f01234",
+  "WaitSentinel": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+}
+```
+
+### PaychGet
+PaychGet gets or creates a payment channel between address pair
+ The specified amount will be reserved for use. If there aren't enough non-reserved funds
+   available, funds will be added through an on-chain message.
+ - When opts.OffChain is true, this call will not cause any messages to be sent to the chain (no automatic
+   channel creation/funds adding). If the operation can't be performed without sending a message an error will be
+   returned. Note that even when this option is specified, this call can be blocked by previous operations on the
+   channel waiting for on-chain operations.
+
+
+Perms: sign
+
+Inputs:
+```json
+[
+  "f01234",
+  "f01234",
+  "0",
+  {
+    "OffChain": true
+  }
 ]
 ```
 
