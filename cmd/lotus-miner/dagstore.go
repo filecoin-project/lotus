@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/fatih/color"
 	"github.com/ipfs/go-cid"
@@ -259,10 +260,11 @@ func printTableShards(shards []api.DagstoreShardInfo) error {
 		m := map[string]interface{}{
 			"Key": s.Key,
 			"State": func() string {
+				trimmedState := strings.TrimPrefix(s.State, "ShardState")
 				if c, ok := colors[s.State]; ok {
-					return color.New(c).Sprint(s.State)
+					return color.New(c).Sprint(trimmedState)
 				}
-				return s.State
+				return trimmedState
 			}(),
 			"Error": s.Error,
 		}

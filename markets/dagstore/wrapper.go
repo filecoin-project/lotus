@@ -419,7 +419,7 @@ func (w *Wrapper) GetPiecesContainingBlock(blockCID cid.Cid) ([]cid.Cid, error) 
 		c, err := cid.Parse(k.String())
 		if err != nil {
 			prefix := fmt.Sprintf("getting pieces containing block %s:", blockCID)
-			return nil, xerrors.Errorf(prefix+" converting shard key %s to piece cid: %w", k, err)
+			return nil, xerrors.Errorf("%s converting shard key %s to piece cid: %w", prefix, k, err)
 		}
 
 		pieceCids = append(pieceCids, c)

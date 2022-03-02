@@ -112,6 +112,7 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode *TestFullNode)
 	require.NoError(t, err)
 	path := filepath.Join(tmpdir, "outfile.dat")
 
+	// Wait for client retrieve to succeed.
 	for {
 		out = clientCLI.RunCmd("client", "retrieve", dataCid.String(), path)
 		fmt.Println("retrieve:\n", out)

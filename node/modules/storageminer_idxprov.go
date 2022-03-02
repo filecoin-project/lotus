@@ -54,6 +54,9 @@ func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHo
 
 		args.Lifecycle.Append(fx.Hook{
 			OnStart: func(ctx context.Context) error {
+				// Note that the OnStart context is cancelled after startup. Its use in e.Start is
+				// to start up gossipsub publishers and restore cache, all of  which are completed
+				// before e.Start returns. Therefore, it is fine to reuse the give context.
 				if err := e.Start(ctx); err != nil {
 					return xerrors.Errorf("starting indexer provider engine: %w", err)
 				}

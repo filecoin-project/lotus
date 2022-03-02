@@ -60,7 +60,7 @@ var indexProvAnnounceCmd = &cli.Command{
 
 var indexProvAnnounceAllCmd = &cli.Command{
 	Name:  "announce-all",
-	Usage: "Announce all active deals to indexers so they can download its indices",
+	Usage: "Announce all active deals to indexers so they can download the indices",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:        "color",
