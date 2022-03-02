@@ -25,13 +25,12 @@ import (
 type NetAPI struct {
 	fx.In
 
-	RawHost         lp2p.RawHost
-	Host            host.Host
-	Router          lp2p.BaseIpfsRouting
-	ConnGater       *conngater.BasicConnectionGater
-	ResourceManager network.ResourceManager
-	Reporter        metrics.Reporter
-	Sk              *dtypes.ScoreKeeper
+	RawHost   lp2p.RawHost
+	Host      host.Host
+	Router    lp2p.BaseIpfsRouting
+	ConnGater *conngater.BasicConnectionGater
+	Reporter  metrics.Reporter
+	Sk        *dtypes.ScoreKeeper
 }
 
 func (a *NetAPI) ID(context.Context) (peer.ID, error) {
