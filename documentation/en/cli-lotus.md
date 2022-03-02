@@ -1363,6 +1363,7 @@ USAGE:
 
 OPTIONS:
    --restart-retrievals  restart stalled retrieval deals on this payment channel (default: true)
+   --reserve             mark funds as reserved (default: false)
    --help, -h            show help (default: false)
    
 ```

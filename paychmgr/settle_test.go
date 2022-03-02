@@ -30,7 +30,7 @@ func TestPaychSettle(t *testing.T) {
 	require.NoError(t, err)
 
 	amt := big.NewInt(10)
-	_, mcid, err := mgr.GetPaych(ctx, from, to, amt)
+	_, mcid, err := mgr.GetPaych(ctx, from, to, amt, onChainReserve)
 	require.NoError(t, err)
 
 	// Send channel create response
@@ -50,7 +50,7 @@ func TestPaychSettle(t *testing.T) {
 	// (should create a new channel because the previous channel
 	// is settling)
 	amt2 := big.NewInt(5)
-	_, mcid2, err := mgr.GetPaych(ctx, from, to, amt2)
+	_, mcid2, err := mgr.GetPaych(ctx, from, to, amt2, onChainReserve)
 	require.NoError(t, err)
 	require.NotEqual(t, cid.Undef, mcid2)
 

@@ -121,7 +121,7 @@ var ChainNode = Options(
 	// Markets (retrieval)
 	Override(new(discovery.PeerResolver), modules.RetrievalResolver),
 	Override(new(retrievalmarket.BlockstoreAccessor), modules.RetrievalBlockstoreAccessor),
-	Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient),
+	Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient(false)),
 	Override(new(dtypes.ClientDataTransfer), modules.NewClientGraphsyncDataTransfer),
 
 	// Markets (storage)
@@ -220,6 +220,8 @@ func ConfigFullNode(c interface{}) Option {
 			),
 		),
 		Override(new(dtypes.Graphsync), modules.Graphsync(cfg.Client.SimultaneousTransfersForStorage, cfg.Client.SimultaneousTransfersForRetrieval)),
+
+		Override(new(retrievalmarket.RetrievalClient), modules.RetrievalClient(cfg.Client.OffChainRetrieval)),
 
 		If(cfg.Wallet.RemoteBackend != "",
 			Override(new(*remotewallet.RemoteWallet), remotewallet.SetupRemoteWallet(cfg.Wallet.RemoteBackend)),
