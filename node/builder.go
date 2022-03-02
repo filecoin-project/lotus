@@ -15,7 +15,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/routing"
@@ -69,7 +68,6 @@ var (
 	BandwidthReporterKey = special{11} // Libp2p option
 	ConnGaterKey         = special{12} // libp2p option
 	DAGStoreKey          = special{13} // constructor returns multiple values
-	ResourceManagerKey   = special{14} // Libp2p option
 )
 
 type invoke int
@@ -217,10 +215,6 @@ var LibP2P = Options(
 	Override(ConnectionManagerKey, lp2p.ConnectionManager(50, 200, 20*time.Second, nil)),
 	Override(new(*conngater.BasicConnectionGater), lp2p.ConnGater),
 	Override(ConnGaterKey, lp2p.ConnGaterOption),
-
-	// Services (resource management)
-	Override(new(network.ResourceManager), lp2p.ResourceManager),
-	Override(ResourceManagerKey, lp2p.ResourceManagerOption),
 )
 
 func IsType(t repo.RepoType) func(s *Settings) bool {
