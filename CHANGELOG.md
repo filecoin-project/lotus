@@ -1,7 +1,7 @@
 # Lotus changelog
-# 1.15.0-rc2 / 2022-03-01
+# 1.15.0-rc3 / 2022-03-02
 
-This is the second release candidates of v1.15.0, detailed changelog will be updated later.
+This is the third release candidates of v1.15.0, detailed changelog will be updated later. This RC drops the libp2p upgrade that was included in the earlier 2 RCs.
 
 - github.com/filecoin-project/lotus:
   - bump the version to v1.15.0-rc1
