@@ -715,6 +715,17 @@ jobs:
       - packer/build:
           template: tools/packer/lotus.pkr.hcl
           args: "-var ci_workspace_bins=./linux-butterflynet -var lotus_network=butterflynet -var git_tag=$CIRCLE_TAG"
+  publish-packer-snap:
+    description: build packer image with snap. mainnet only.
+    executor:
+      name: packer/default
+      packer-version: 1.6.6
+    steps:
+      - checkout
+      - attach_workspace:
+          at: "."
+      - packer/build:
+          template: tools/packer/lotus-snap.pkr.hcl
   publish-dockerhub:
     description: publish to dockerhub
     machine:
@@ -917,3 +928,13 @@ workflows:
       - publish-dockerhub:
           name: publish-dockerhub-nightly
           tag: nightly
+  monthly:
+    triggers:
+      - schedule:
+          cron: "0 0 1 * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - publish-packer-snap

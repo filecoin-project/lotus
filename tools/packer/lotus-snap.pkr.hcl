@@ -8,17 +8,12 @@ variable "lotus_network" {
   default = "mainnet"
 }
 
-variable "git_tag" {
-  type = string
-  default = ""
-}
-
 locals {
   timestamp = regex_replace(timestamp(), "[- TZ:]", "")
-} 
+}
 
 source "amazon-ebs" "lotus" {
-  ami_name      = "lotus-${var.lotus_network}-${var.git_tag}-${local.timestamp}"
+  ami_name      = "lotus-${var.lotus_network}-snap-${local.timestamp}"
   ami_regions = [
     "ap-east-1",
     "ap-northeast-1",
@@ -63,48 +58,27 @@ source "amazon-ebs" "lotus" {
   ssh_username = "ubuntu"
 }
 
+source "digitalocean" "lotus" {
+  droplet_name = "lotus-snap"
+  size = "s-1vcpu-1gb"
+  region = "nyc3"
+  image = "ubuntu-20-04-x64"
+  snapshot_name = "lotus-${var.lotus_network}-snap-${local.timestamp}"
+  ssh_username = "root"
+}
+
 build {
   sources = [
     "source.amazon-ebs.lotus",
+    "source.digitalocean.lotus",
   ]
 
-  # Lotus software (from CI workspace)
-  provisioner "file" {
-    source = "${var.ci_workspace_bins}/lotus"
-    destination = "lotus"
-  }
-  provisioner "file" {
-    source = "${var.ci_workspace_bins}/lotus-miner"
-    destination = "lotus-miner"
-  }
-  # First run script
-  provisioner "file" {
-    source = "./tools/packer/scripts/${var.lotus_network}/lotus-init.sh"
-    destination = "lotus-init.sh"
-  }
-  # Systemd service units.
-  provisioner "file" {
-    source = "./tools/packer/systemd/lotus-daemon.service"
-    destination = "lotus-daemon.service"
-  }
-  provisioner "file" {
-    source = "./tools/packer/systemd/lotus-miner.service"
-    destination = "lotus-miner.service"
-  }
-  provisioner "file" {
-    source = "./tools/packer/repo/config.toml"
-    destination = "config.toml"
-  }
   provisioner "file" {
     source = "./tools/packer/etc/motd"
     destination = "motd"
   }
-  provisioner "file" {
-    source = "./tools/packer/homedir/bashrc"
-    destination = ".bashrc"
-  }
   # build it.
   provisioner "shell" {
-    script = "./tools/packer/setup.sh"
+    script = "./tools/packer/setup-snap.sh"
   }
 }

@@ -38,6 +38,15 @@ parts:
     override-build: |
       LDFLAGS="" make lotus lotus-miner lotus-worker
       cp lotus lotus-miner lotus-worker $SNAPCRAFT_PART_INSTALL
+      cp scripts/snap-lotus-entrypoint.sh $SNAPCRAFT_PART_INSTALL
+
+layout:
+  /var/lib/lotus:
+    symlink: $SNAP_COMMON/lotus
+  /var/lib/lotus-miner:
+    symlink: $SNAP_COMMON/lotus-miner
+  /var/lib/lotus-worker:
+    symlink: $SNAP_COMMON/lotus-worker
 
 apps:
   lotus:
@@ -48,9 +57,9 @@ apps:
       - home
     environment:
       FIL_PROOFS_PARAMETER_CACHE: $SNAP_USER_COMMON/filecoin-proof-parameters
-      LOTUS_PATH: $SNAP_USER_COMMON/lotus
-      LOTUS_MINER_PATH: $SNAP_USER_COMMON/lotus-miner
-      LOTUS_WORKER_PATH: $SNAP_USER_COMMON/lotus-worker
+      LOTUS_PATH: $SNAP_COMMON/lotus
+      LOTUS_MINER_PATH: $SNAP_COMMON/lotus-miner
+      LOTUS_WORKER_PATH: $SNAP_COMMON/lotus-worker
   lotus-miner:
     command: lotus-miner
     plugs:
@@ -59,9 +68,9 @@ apps:
       - opengl
     environment:
       FIL_PROOFS_PARAMETER_CACHE: $SNAP_USER_COMMON/filecoin-proof-parameters
-      LOTUS_PATH: $SNAP_USER_COMMON/lotus
-      LOTUS_MINER_PATH: $SNAP_USER_COMMON/lotus-miner
-      LOTUS_WORKER_PATH: $SNAP_USER_COMMON/lotus-worker
+      LOTUS_PATH: $SNAP_COMMON/lotus
+      LOTUS_MINER_PATH: $SNAP_COMMON/lotus-miner
+      LOTUS_WORKER_PATH: $SNAP_COMMON/lotus-worker
   lotus-worker:
     command: lotus-worker
     plugs:
@@ -70,6 +79,18 @@ apps:
       - opengl
     environment:
       FIL_PROOFS_PARAMETER_CACHE: $SNAP_USER_COMMON/filecoin-proof-parameters
-      LOTUS_PATH: $SNAP_USER_COMMON/lotus
-      LOTUS_MINER_PATH: $SNAP_USER_COMMON/lotus-miner
-      LOTUS_WORKER_PATH: $SNAP_USER_COMMON/lotus-worker
+      LOTUS_PATH: $SNAP_COMMON/lotus
+      LOTUS_MINER_PATH: $SNAP_COMMON/lotus-miner
+      LOTUS_WORKER_PATH: $SNAP_COMMON/lotus-worker
+  lotus-daemon:
+    command: snap-lotus-entrypoint.sh
+    daemon: simple
+    install-mode: enable
+    plugs:
+      - network
+      - network-bind
+    environment:
+      FIL_PROOFS_PARAMETER_CACHE: $SNAP_COMMON/filecoin-proof-parameters
+      LOTUS_PATH: $SNAP_COMMON/lotus
+      LOTUS_MINER_PATH: $SNAP_COMMON/lotus-miner
+      LOTUS_WORKER_PATH: $SNAP_COMMON/lotus-worker
