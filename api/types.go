@@ -135,21 +135,7 @@ type NetStat struct {
 	Transient *network.ScopeStat           `json:",omitempty"`
 	Services  map[string]network.ScopeStat `json:",omitempty"`
 	Protocols map[string]network.ScopeStat `json:",omitempty"`
-	Peers     map[string]network.ScopeStat `json:",omitempty"`
-}
-
-type NetLimit struct {
-	Dynamic bool `json:",omitempty"`
-	// set if Dynamic is false
-	Memory int64 `json:",omitempty"`
-	// set if Dynamic is true
-	MemoryFraction float64 `json:",omitempty"`
-	MinMemory      int64   `json:",omitempty"`
-	MaxMemory      int64   `json:",omitempty"`
-
-	Streams, StreamsInbound, StreamsOutbound int
-	Conns, ConnsInbound, ConnsOutbound       int
-	FD                                       int
+	Peers     map[string]network.ScopeStat
 }
 
 type ExtendedPeerInfo struct {
