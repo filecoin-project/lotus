@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	ipconfig "github.com/filecoin-project/index-provider/config"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -185,7 +184,11 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		IndexProvider: IndexProviderConfig{
-			Ingest: ipconfig.NewIngest(),
+			Enable:               false,
+			EntriesCacheCapacity: 1024,
+			EntriesChunkSize:     16384,
+			TopicName:            "/indexer/ingest/mainnet",
+			PurgeCacheOnStart:    false,
 		},
 
 		Subsystems: MinerSubsystemConfig{

@@ -2,10 +2,7 @@ package modules
 
 import (
 	"context"
-
 	"github.com/ipfs/go-datastore"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/peerstore"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
@@ -24,33 +21,38 @@ type IdxProv struct {
 
 	fx.Lifecycle
 	Datastore dtypes.MetadataDS
-	PeerID    peer.ID
-	peerstore.Peerstore
 }
 
 func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHost host.Host, dt dtypes.ProviderDataTransfer, maddr dtypes.MinerAddress) (provider.Interface, error) {
 	return func(args IdxProv, marketHost host.Host, dt dtypes.ProviderDataTransfer, maddr dtypes.MinerAddress) (provider.Interface, error) {
 		ipds := namespace.Wrap(args.Datastore, datastore.NewKey("/index-provider"))
-
-		pkey := args.Peerstore.PrivKey(args.PeerID)
-		if pkey == nil {
-			return nil, xerrors.Errorf("missing private key for node ID: %s", args.PeerID)
+		var opts = []engine.Option{
+			engine.WithDatastore(ipds),
+			engine.WithHost(marketHost),
+			engine.WithRetrievalAddrs(marketHost.Addrs()...),
 		}
 
-		var retAdds []string
-		for _, a := range marketHost.Addrs() {
-			retAdds = append(retAdds, a.String())
+		llog := log.With("idxProvEnabled", cfg.Enable, "pid", marketHost.ID(), "retAddrs", marketHost.Addrs())
+		// If announcements to the network are enabled, then set options for datatransfer publisher.
+		if cfg.Enable {
+			// Get the miner ID and set as extra gossip data.
+			// The extra data is required by the lotus-specific index-provider gossip message validators.
+			ma := address.Address(maddr)
+			opts = append(opts,
+				engine.WithPublisherKind(engine.DataTransferPublisher),
+				engine.WithDataTransfer(dt),
+				engine.WithExtraGossipData(ma.Bytes()))
+			llog = llog.With("extraGossipData", ma)
+		} else {
+			opts = append(opts, engine.WithPublisherKind(engine.NoPublisher))
 		}
 
-		// Get the miner ID and set as extra gossip data.
-		// The extra data is required by the lotus-specific index-provider gossip message validators.
-		ma := address.Address(maddr)
-		log.Infof("Using extra gossip data in index provider engine: %s", ma)
-
-		e, err := engine.New(cfg.Ingest, pkey, dt, marketHost, ipds, retAdds, engine.WithExtraGossipData(ma.Bytes()))
+		// Instantiate the index provider engine.
+		e, err := engine.New(opts...)
 		if err != nil {
 			return nil, xerrors.Errorf("creating indexer provider engine: %w", err)
 		}
+		llog.Info("Instantiated index provider engine")
 
 		args.Lifecycle.Append(fx.Hook{
 			OnStart: func(ctx context.Context) error {
@@ -60,6 +62,7 @@ func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHo
 				if err := e.Start(ctx); err != nil {
 					return xerrors.Errorf("starting indexer provider engine: %w", err)
 				}
+				log.Infof("Started index provider engine")
 				return nil
 			},
 			OnStop: func(_ context.Context) error {
