@@ -276,6 +276,13 @@ var sealBenchCmd = &cli.Command{
 			if err != nil {
 				return xerrors.Errorf("failed to run seals: %w", err)
 			}
+			for _, s := range extendedSealedSectors {
+				sealedSectors = append(sealedSectors, proof.SectorInfo{
+					SealedCID:    s.SealedCID,
+					SectorNumber: s.SectorNumber,
+					SealProof:    s.SealProof,
+				})
+			}
 		} else {
 			// TODO: implement sbfs.List() and use that for all cases (preexisting sectorbuilder or not)
 

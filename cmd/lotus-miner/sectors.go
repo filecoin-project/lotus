@@ -1535,9 +1535,21 @@ var sectorsSnapAbortCmd = &cli.Command{
 	Name:      "abort-upgrade",
 	Usage:     "Abort the attempted (SnapDeals) upgrade of a CC sector, reverting it to as before",
 	ArgsUsage: "<sectorNum>",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "pass this flag if you know what you are doing",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 1 {
 			return lcli.ShowHelp(cctx, xerrors.Errorf("must pass sector number"))
+		}
+
+		really := cctx.Bool("really-do-it")
+		if !really {
+			//nolint:golint
+			return fmt.Errorf("--really-do-it must be specified for this action to have an effect; you have been warned")
 		}
 
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
