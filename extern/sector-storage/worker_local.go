@@ -102,7 +102,13 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, envLookup EnvFunc,
 
 	go func() {
 		for _, call := range unfinished {
-			err := storiface.Err(storiface.ErrTempWorkerRestart, xerrors.New("worker restarted"))
+			hostname, osErr := os.Hostname()
+			if osErr != nil {
+				log.Errorf("get hostname err: %+v", err)
+				hostname = ""
+			}
+
+			err := storiface.Err(storiface.ErrTempWorkerRestart, xerrors.Errorf("worker [Hostname: %s] restarted", hostname))
 
 			// TODO: Handle restarting PC1 once support is merged
 
@@ -261,6 +267,15 @@ func (l *LocalWorker) asyncCall(ctx context.Context, sector storage.SectorRef, r
 					log.Errorf("tracking call (done): %+v", err)
 				}
 			}
+		}
+
+		if err != nil {
+			hostname, osErr := os.Hostname()
+			if osErr != nil {
+				log.Errorf("get hostname err: %+v", err)
+			}
+
+			err = xerrors.Errorf("%w [Hostname: %s]", err.Error(), hostname)
 		}
 
 		if doReturn(ctx, rt, ci, l.ret, res, toCallError(err)) {
