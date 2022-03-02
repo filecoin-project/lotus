@@ -19,7 +19,13 @@ import (
 func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface{}, uint64, error) {
 	next, processed, err := m.plan(events, user.(*SectorInfo))
 	if err != nil || next == nil {
-		return nil, processed, err
+		l := Log{
+			Timestamp: uint64(time.Now().Unix()),
+			Message:   fmt.Sprintf("state machine error: %s", err),
+			Kind:      fmt.Sprintf("error;%T", err),
+		}
+		user.(*SectorInfo).logAppend(l)
+		return nil, processed, nil
 	}
 
 	return func(ctx statemachine.Context, si SectorInfo) error {
@@ -313,6 +319,21 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	FailedUnrecoverable: final,
 }
 
+func (state *SectorInfo) logAppend(l Log) {
+	if len(state.Log) > 8000 {
+		log.Warnw("truncating sector log", "sector", state.SectorNumber)
+		state.Log[2000] = Log{
+			Timestamp: uint64(time.Now().Unix()),
+			Message:   "truncating log (above 8000 entries)",
+			Kind:      fmt.Sprintf("truncate"),
+		}
+
+		state.Log = append(state.Log[:2000], state.Log[6000:]...)
+	}
+
+	state.Log = append(state.Log, l)
+}
+
 func (m *Sealing) logEvents(events []statemachine.Event, state *SectorInfo) {
 	for _, event := range events {
 		log.Debugw("sector event", "sector", state.SectorNumber, "type", fmt.Sprintf("%T", event.User), "event", event.User)
@@ -341,18 +362,7 @@ func (m *Sealing) logEvents(events []statemachine.Event, state *SectorInfo) {
 			l.Trace = fmt.Sprintf("%+v", err)
 		}
 
-		if len(state.Log) > 8000 {
-			log.Warnw("truncating sector log", "sector", state.SectorNumber)
-			state.Log[2000] = Log{
-				Timestamp: uint64(time.Now().Unix()),
-				Message:   "truncating log (above 8000 entries)",
-				Kind:      fmt.Sprintf("truncate"),
-			}
-
-			state.Log = append(state.Log[:2000], state.Log[6000:]...)
-		}
-
-		state.Log = append(state.Log, l)
+		state.logAppend(l)
 	}
 }
 
