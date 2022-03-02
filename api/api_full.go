@@ -689,7 +689,17 @@ type FullNode interface {
 	// MethodGroup: Paych
 	// The Paych methods are for interacting with and managing payment channels
 
-	PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*ChannelInfo, error)                     //perm:sign
+	// PaychGet gets or creates a payment channel between address pair
+	//  The specified amount will be reserved for use. If there aren't enough non-reserved funds
+	//    available, funds will be added through an on-chain message.
+	//  - When opts.OffChain is true, this call will not cause any messages to be sent to the chain (no automatic
+	//    channel creation/funds adding). If the operation can't be performed without sending a message an error will be
+	//    returned. Note that even when this option is specified, this call can be blocked by previous operations on the
+	//    channel waiting for on-chain operations.
+	PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt, opts PaychGetOpts) (*ChannelInfo, error) //perm:sign
+	// PaychFund gets or creates a payment channel between address pair.
+	// The specified amount will be added to the channel through on-chain send for future use
+	PaychFund(ctx context.Context, from, to address.Address, amt types.BigInt) (*ChannelInfo, error)                    //perm:sign
 	PaychGetWaitReady(context.Context, cid.Cid) (address.Address, error)                                                //perm:sign
 	PaychAvailableFunds(ctx context.Context, ch address.Address) (*ChannelAvailableFunds, error)                        //perm:sign
 	PaychAvailableFundsByFromTo(ctx context.Context, from, to address.Address) (*ChannelAvailableFunds, error)          //perm:sign
@@ -828,6 +838,10 @@ const (
 	PCHOutbound
 )
 
+type PaychGetOpts struct {
+	OffChain bool
+}
+
 type PaychStatus struct {
 	ControlAddr address.Address
 	Direction   PCHDir
@@ -845,16 +859,23 @@ type ChannelAvailableFunds struct {
 	From address.Address
 	// To is the to address of the channel
 	To address.Address
-	// ConfirmedAmt is the amount of funds that have been confirmed on-chain
-	// for the channel
+
+	// ConfirmedAmt is the total amount of funds that have been confirmed on-chain for the channel
 	ConfirmedAmt types.BigInt
 	// PendingAmt is the amount of funds that are pending confirmation on-chain
 	PendingAmt types.BigInt
+
+	// NonReservedAmt is part of ConfirmedAmt that is available for use (e.g. when the payment channel was pre-funded)
+	NonReservedAmt types.BigInt
+	// PendingAvailableAmt is the amount of funds that are pending confirmation on-chain that will become available once confirmed
+	PendingAvailableAmt types.BigInt
+
 	// PendingWaitSentinel can be used with PaychGetWaitReady to wait for
 	// confirmation of pending funds
 	PendingWaitSentinel *cid.Cid
 	// QueuedAmt is the amount that is queued up behind a pending request
 	QueuedAmt types.BigInt
+
 	// VoucherRedeemedAmt is the amount that is redeemed by vouchers on-chain
 	// and in the local datastore
 	VoucherReedeemedAmt types.BigInt

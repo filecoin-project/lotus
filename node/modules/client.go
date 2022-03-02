@@ -202,26 +202,28 @@ func StorageClient(lc fx.Lifecycle, h host.Host, dataTransfer dtypes.ClientDataT
 }
 
 // RetrievalClient creates a new retrieval client attached to the client blockstore
-func RetrievalClient(lc fx.Lifecycle, h host.Host, r repo.LockedRepo, dt dtypes.ClientDataTransfer, payAPI payapi.PaychAPI, resolver discovery.PeerResolver,
+func RetrievalClient(forceOffChain bool) func(lc fx.Lifecycle, h host.Host, r repo.LockedRepo, dt dtypes.ClientDataTransfer, payAPI payapi.PaychAPI, resolver discovery.PeerResolver,
 	ds dtypes.MetadataDS, chainAPI full.ChainAPI, stateAPI full.StateAPI, accessor retrievalmarket.BlockstoreAccessor, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
+	return func(lc fx.Lifecycle, h host.Host, r repo.LockedRepo, dt dtypes.ClientDataTransfer, payAPI payapi.PaychAPI, resolver discovery.PeerResolver,
+		ds dtypes.MetadataDS, chainAPI full.ChainAPI, stateAPI full.StateAPI, accessor retrievalmarket.BlockstoreAccessor, j journal.Journal) (retrievalmarket.RetrievalClient, error) {
+		adapter := retrievaladapter.NewRetrievalClientNode(forceOffChain, payAPI, chainAPI, stateAPI)
+		network := rmnet.NewFromLibp2pHost(h)
+		ds = namespace.Wrap(ds, datastore.NewKey("/retrievals/client"))
+		client, err := retrievalimpl.NewClient(network, dt, adapter, resolver, ds, accessor)
+		if err != nil {
+			return nil, err
+		}
+		client.OnReady(marketevents.ReadyLogger("retrieval client"))
+		lc.Append(fx.Hook{
+			OnStart: func(ctx context.Context) error {
+				client.SubscribeToEvents(marketevents.RetrievalClientLogger)
 
-	adapter := retrievaladapter.NewRetrievalClientNode(payAPI, chainAPI, stateAPI)
-	network := rmnet.NewFromLibp2pHost(h)
-	ds = namespace.Wrap(ds, datastore.NewKey("/retrievals/client"))
-	client, err := retrievalimpl.NewClient(network, dt, adapter, resolver, ds, accessor)
-	if err != nil {
-		return nil, err
+				evtType := j.RegisterEventType("markets/retrieval/client", "state_change")
+				client.SubscribeToEvents(markets.RetrievalClientJournaler(j, evtType))
+
+				return client.Start(ctx)
+			},
+		})
+		return client, nil
 	}
-	client.OnReady(marketevents.ReadyLogger("retrieval client"))
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			client.SubscribeToEvents(marketevents.RetrievalClientLogger)
-
-			evtType := j.RegisterEventType("markets/retrieval/client", "state_change")
-			client.SubscribeToEvents(markets.RetrievalClientJournaler(j, evtType))
-
-			return client.Start(ctx)
-		},
-	})
-	return client, nil
 }
