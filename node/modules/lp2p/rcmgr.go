@@ -1,7 +1,6 @@
 package lp2p
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"os"
@@ -56,11 +55,6 @@ func ResourceManager(lc fx.Lifecycle, repo repo.LockedRepo) (network.ResourceMan
 	if err != nil {
 		return nil, fmt.Errorf("error creating resource manager: %w", err)
 	}
-
-	lc.Append(fx.Hook{
-		OnStop: func(_ context.Context) error {
-			return mgr.Close()
-		}})
 
 	return mgr, nil
 }
