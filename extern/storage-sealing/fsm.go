@@ -175,6 +175,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	FinalizeReplicaUpdate: planOne(
 		on(SectorFinalized{}, UpdateActivating),
+		on(SectorFinalizeFailed{}, FinalizeReplicaUpdateFailed),
 	),
 	UpdateActivating: planOne(
 		on(SectorUpdateActive{}, ReleaseSectorKey),
@@ -266,6 +267,9 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	ReleaseSectorKeyFailed: planOne(
 		on(SectorUpdateActive{}, ReleaseSectorKey),
+	),
+	FinalizeReplicaUpdateFailed: planOne(
+		on(SectorRetryFinalize{}, FinalizeReplicaUpdate),
 	),
 
 	// Post-seal
@@ -536,6 +540,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		return m.handleSubmitReplicaUpdateFailed, processed, nil
 	case ReleaseSectorKeyFailed:
 		return m.handleReleaseSectorKeyFailed, 0, err
+	case FinalizeReplicaUpdateFailed:
+		return m.handleFinalizeFailed, processed, nil
 	case AbortUpgrade:
 		return m.handleAbortUpgrade, processed, nil
 
