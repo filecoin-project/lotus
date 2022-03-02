@@ -36,8 +36,6 @@ var NetCmd = &cli.Command{
 		NetReachability,
 		NetBandwidthCmd,
 		NetBlockCmd,
-		NetStatCmd,
-		NetLimitCmd,
 	},
 }
 
@@ -603,89 +601,6 @@ var NetBlockListCmd = &cli.Command{
 			for _, n := range acl.IPSubnets {
 				fmt.Printf("\t%s\n", n)
 			}
-		}
-
-		return nil
-	},
-}
-
-var NetStatCmd = &cli.Command{
-	Name:      "stat",
-	Usage:     "report resource stat for a scope",
-	ArgsUsage: "scope",
-	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-		ctx := ReqContext(cctx)
-
-		args := cctx.Args().Slice()
-		if len(args) != 1 {
-			return xerrors.Errorf("must specify exactly one scope")
-		}
-		scope := args[0]
-
-		result, err := api.NetStat(ctx, scope)
-		if err != nil {
-			return err
-		}
-
-		enc := json.NewEncoder(os.Stdout)
-		enc.Encode(result)
-
-		return nil
-	},
-}
-
-var NetLimitCmd = &cli.Command{
-	Name:      "limit",
-	Usage:     "get or set resource limit for a scope",
-	ArgsUsage: "scope [limit]",
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:  "set",
-			Usage: "set the limit for a scope",
-		},
-	},
-	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-		ctx := ReqContext(cctx)
-		args := cctx.Args().Slice()
-
-		if cctx.Bool("set") {
-			if len(args) != 2 {
-				return xerrors.Errorf("must specify exactly a scope and a limit")
-			}
-			scope := args[0]
-			limitStr := args[1]
-
-			var limit atypes.NetLimit
-			err := json.Unmarshal([]byte(limitStr), &limit)
-			if err != nil {
-				return xerrors.Errorf("error decoding limit: %w", err)
-			}
-
-			return api.NetSetLimit(ctx, scope, limit)
-
-		} else {
-			if len(args) != 1 {
-				return xerrors.Errorf("must specify exactly one scope")
-			}
-			scope := args[0]
-
-			result, err := api.NetLimit(ctx, scope)
-			if err != nil {
-				return err
-			}
-
-			enc := json.NewEncoder(os.Stdout)
-			enc.Encode(result)
 		}
 
 		return nil
