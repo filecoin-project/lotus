@@ -1154,7 +1154,7 @@ USAGE:
 
 COMMANDS:
    announce      Announce a deal to indexers so they can download its index
-   announce-all  Announce all active deals to indexers so they can download its indices
+   announce-all  Announce all active deals to indexers so they can download the indices
    help, h       Shows a list of commands or help for one command
 
 OPTIONS:
@@ -1179,7 +1179,7 @@ OPTIONS:
 ### lotus-miner index announce-all
 ```
 NAME:
-   lotus-miner index announce-all - Announce all active deals to indexers so they can download its indices
+   lotus-miner index announce-all - Announce all active deals to indexers so they can download the indices
 
 USAGE:
    lotus-miner index announce-all [command options] [arguments...]
