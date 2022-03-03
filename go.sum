@@ -746,7 +746,6 @@ github.com/ipfs/go-ds-leveldb v0.5.0/go.mod h1:d3XG9RUDzQ6V4SHi8+Xgj9j1XuEk1z82l
 github.com/ipfs/go-ds-measure v0.2.0 h1:sG4goQe0KDTccHMyT45CY1XyUbxe5VwTKpg2LjApYyQ=
 github.com/ipfs/go-ds-measure v0.2.0/go.mod h1:SEUD/rE2PwRa4IQEC5FuNAmjJCyYObZr9UvVh8V3JxE=
 github.com/ipfs/go-fetcher v1.5.0/go.mod h1:5pDZ0393oRF/fHiLmtFZtpMNBQfHOYNPtryWedVuSWE=
-github.com/ipfs/go-fetcher v1.6.1 h1:UFuRVYX5AIllTiRhi5uK/iZkfhSpBCGX7L70nSZEmK8=
 github.com/ipfs/go-fetcher v1.6.1/go.mod h1:27d/xMV8bodjVs9pugh/RCjjK2OZ68UgAMspMdingNo=
 github.com/ipfs/go-filestore v0.1.0/go.mod h1:0KTrzoJnJ3sJDEDM09Vq8nz8H475rRyeq4i0n/bpF00=
 github.com/ipfs/go-filestore v1.1.0 h1:Pu4tLBi1bucu6/HU9llaOmb9yLFk/sgP+pW764zNDoE=
