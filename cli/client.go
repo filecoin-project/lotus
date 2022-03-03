@@ -1913,8 +1913,9 @@ type deal struct {
 }
 
 var clientGetDealCmd = &cli.Command{
-	Name:  "get-deal",
-	Usage: "Print detailed deal information",
+	Name:      "get-deal",
+	Usage:     "Print detailed deal information",
+	ArgsUsage: "[proposalCID]",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
 			return cli.ShowCommandHelp(cctx, cctx.Command.Name)

@@ -776,7 +776,7 @@ NAME:
    lotus client get-deal - Print detailed deal information
 
 USAGE:
-   lotus client get-deal [command options] [arguments...]
+   lotus client get-deal [command options] [proposalCID]
 
 CATEGORY:
    STORAGE
