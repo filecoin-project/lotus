@@ -17,6 +17,7 @@ import (
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
+	bsfetcher "github.com/ipfs/go-fetcher/impl/blockservice"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -24,6 +25,7 @@ import (
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/go-path"
 	"github.com/ipfs/go-path/resolver"
+	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
 	mh "github.com/multiformats/go-multihash"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
@@ -557,21 +559,16 @@ func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (*api.IpldObject,
 
 	bs := a.ExposedBlockstore
 	bsvc := blockservice.New(bs, offline.Exchange(bs))
+	fc := bsfetcher.NewFetcherConfig(bsvc)
+	r := resolver.NewBasicResolver(fc)
 
-	dag := merkledag.NewDAGService(bsvc)
-
-	r := &resolver.Resolver{
-		DAG:         dag,
-		ResolveOnce: resolveOnce(bs, a.TsExec),
-	}
-
-	node, err := r.ResolvePath(ctx, ip)
+	node, lnk, err := r.ResolvePath(ctx, ip)
 	if err != nil {
 		return nil, err
 	}
 
 	return &api.IpldObject{
-		Cid: node.Cid(),
+		Cid: lnk.(cidlink.Link).Cid,
 		Obj: node,
 	}, nil
 }

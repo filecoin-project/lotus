@@ -81,6 +81,7 @@ require (
 	github.com/ipfs/go-ds-badger2 v0.1.2
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/ipfs/go-ds-measure v0.2.0
+	github.com/ipfs/go-fetcher v1.6.1
 	github.com/ipfs/go-fs-lock v0.0.7
 	github.com/ipfs/go-graphsync v0.12.0
 	github.com/ipfs/go-ipfs-blockstore v1.1.2
@@ -176,5 +177,3 @@ require (
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
-
-replace github.com/ipfs/go-path => github.com/ipfs/go-path v0.0.7
