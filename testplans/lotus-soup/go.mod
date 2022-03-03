@@ -9,7 +9,7 @@ require (
 	github.com/drand/drand v1.3.0
 	github.com/filecoin-project/go-address v0.0.6
 	github.com/filecoin-project/go-data-transfer v1.14.0
-	github.com/filecoin-project/go-fil-markets v1.20.0
+	github.com/filecoin-project/go-fil-markets v1.20.1
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-state-types v0.1.3
 	github.com/filecoin-project/go-storedcounter v0.1.0
@@ -43,5 +43,3 @@ require (
 replace github.com/filecoin-project/filecoin-ffi => ../../extern/filecoin-ffi
 
 replace github.com/filecoin-project/lotus => ../../
-
-replace github.com/ipfs/go-path => github.com/ipfs/go-path v0.0.7
