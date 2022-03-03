@@ -59,6 +59,20 @@ func NewRepoTypeFromString(t string) RepoType {
 type RepoType interface {
 	Type() string
 	Config() interface{}
+
+	// APIFlags returns flags passed on the command line with the listen address
+	// of the API server (only used by the tests), in the order of precedence they
+	// should be applied for the requested kind of node.
+	APIFlags() []string
+
+	RepoFlags() []string
+
+	// APIInfoEnvVars returns the environment variables to use in order of precedence
+	// to determine the API endpoint of the specified node type.
+	//
+	// It returns the current variables and deprecated ones separately, so that
+	// the user can log a warning when deprecated ones are found to be in use.
+	APIInfoEnvVars() (string, []string, []string)
 }
 
 // SupportsStagingDeals is a trait for services that support staging deals
@@ -79,6 +93,18 @@ func (fullNode) Config() interface{} {
 	return config.DefaultFullNode()
 }
 
+func (fullNode) APIFlags() []string {
+	return []string{"api-url"}
+}
+
+func (fullNode) RepoFlags() []string {
+	return []string{"repo"}
+}
+
+func (fullNode) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
+	return "FULLNODE_API_INFO", nil, nil
+}
+
 var StorageMiner storageMiner
 
 type storageMiner struct{}
@@ -93,9 +119,24 @@ func (storageMiner) Config() interface{} {
 	return config.DefaultStorageMiner()
 }
 
+func (storageMiner) APIFlags() []string {
+	return []string{"miner-api-url"}
+}
+
+func (storageMiner) RepoFlags() []string {
+	return []string{"miner-repo"}
+}
+
+func (storageMiner) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
+	// TODO remove deprecated deprecation period
+	return "MINER_API_INFO", nil, []string{"STORAGE_API_INFO"}
+}
+
 var Markets markets
 
 type markets struct{}
+
+func (markets) SupportsStagingDeals() {}
 
 func (markets) Type() string {
 	return "Markets"
@@ -103,6 +144,21 @@ func (markets) Type() string {
 
 func (markets) Config() interface{} {
 	return config.DefaultStorageMiner()
+}
+
+func (markets) APIFlags() []string {
+	// support split markets-miner and monolith deployments.
+	return []string{"markets-api-url", "miner-api-url"}
+}
+
+func (markets) RepoFlags() []string {
+	// support split markets-miner and monolith deployments.
+	return []string{"markets-repo", "miner-repo"}
+}
+
+func (markets) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
+	// support split markets-miner and monolith deployments.
+	return "MARKETS_API_INFO", []string{"MINER_API_INFO"}, nil
 }
 
 type worker struct {
@@ -118,6 +174,18 @@ func (worker) Config() interface{} {
 	return &struct{}{}
 }
 
+func (worker) APIFlags() []string {
+	return []string{"worker-api-url"}
+}
+
+func (worker) RepoFlags() []string {
+	return []string{"worker-repo"}
+}
+
+func (worker) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
+	return "WORKER_API_INFO", nil, nil
+}
+
 var Wallet wallet
 
 type wallet struct {
@@ -129,6 +197,18 @@ func (wallet) Type() string {
 
 func (wallet) Config() interface{} {
 	return &struct{}{}
+}
+
+func (wallet) APIFlags() []string {
+	panic("not supported")
+}
+
+func (wallet) RepoFlags() []string {
+	panic("not supported")
+}
+
+func (wallet) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
+	panic("not supported")
 }
 
 var log = logging.Logger("repo")

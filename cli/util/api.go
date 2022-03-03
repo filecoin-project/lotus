@@ -28,63 +28,6 @@ const (
 	metadataTraceContext = "traceContext"
 )
 
-// flagsForAPI returns flags passed on the command line with the listen address
-// of the API server (only used by the tests), in the order of precedence they
-// should be applied for the requested kind of node.
-func flagsForAPI(t repo.RepoType) []string {
-	switch t.Type() {
-	case "FullNode":
-		return []string{"api-url"}
-	case "StorageMiner":
-		return []string{"miner-api-url"}
-	case "Worker":
-		return []string{"worker-api-url"}
-	case "Markets":
-		// support split markets-miner and monolith deployments.
-		return []string{"markets-api-url", "miner-api-url"}
-	default:
-		panic(fmt.Sprintf("Unknown repo type: %v", t))
-	}
-}
-
-func flagsForRepo(t repo.RepoType) []string {
-	switch t.Type() {
-	case "FullNode":
-		return []string{"repo"}
-	case "StorageMiner":
-		return []string{"miner-repo"}
-	case "Worker":
-		return []string{"worker-repo"}
-	case "Markets":
-		// support split markets-miner and monolith deployments.
-		return []string{"markets-repo", "miner-repo"}
-	default:
-		panic(fmt.Sprintf("Unknown repo type: %v", t))
-	}
-}
-
-// EnvsForAPIInfos returns the environment variables to use in order of precedence
-// to determine the API endpoint of the specified node type.
-//
-// It returns the current variables and deprecated ones separately, so that
-// the user can log a warning when deprecated ones are found to be in use.
-func EnvsForAPIInfos(t repo.RepoType) (primary string, fallbacks []string, deprecated []string) {
-	switch t.Type() {
-	case "FullNode":
-		return "FULLNODE_API_INFO", nil, nil
-	case "StorageMiner":
-		// TODO remove deprecated deprecation period
-		return "MINER_API_INFO", nil, []string{"STORAGE_API_INFO"}
-	case "Worker":
-		return "WORKER_API_INFO", nil, nil
-	case "Markets":
-		// support split markets-miner and monolith deployments.
-		return "MARKETS_API_INFO", []string{"MINER_API_INFO"}, nil
-	default:
-		panic(fmt.Sprintf("Unknown repo type: %v", t))
-	}
-}
-
 // GetAPIInfo returns the API endpoint to use for the specified kind of repo.
 //
 // The order of precedence is as follows:
@@ -96,8 +39,7 @@ func EnvsForAPIInfos(t repo.RepoType) (primary string, fallbacks []string, depre
 func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 	// Check if there was a flag passed with the listen address of the API
 	// server (only used by the tests)
-	apiFlags := flagsForAPI(t)
-	for _, f := range apiFlags {
+	for _, f := range t.APIFlags() {
 		if !ctx.IsSet(f) {
 			continue
 		}
@@ -111,7 +53,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 	// Note: it is not correct/intuitive to prefer environment variables over
 	// CLI flags (repo flags below).
 	//
-	primaryEnv, fallbacksEnvs, deprecatedEnvs := EnvsForAPIInfos(t)
+	primaryEnv, fallbacksEnvs, deprecatedEnvs := t.APIInfoEnvVars()
 	env, ok := os.LookupEnv(primaryEnv)
 	if ok {
 		return ParseApiInfo(env), nil
@@ -125,8 +67,7 @@ func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
 		}
 	}
 
-	repoFlags := flagsForRepo(t)
-	for _, f := range repoFlags {
+	for _, f := range t.RepoFlags() {
 		// cannot use ctx.IsSet because it ignores default values
 		path := ctx.String(f)
 		if path == "" {
