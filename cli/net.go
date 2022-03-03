@@ -38,6 +38,9 @@ var NetCmd = &cli.Command{
 		NetBlockCmd,
 		NetStatCmd,
 		NetLimitCmd,
+		NetProtectAdd,
+		NetProtectRemove,
+		NetProtectList,
 	},
 }
 
@@ -706,5 +709,110 @@ var NetLimitCmd = &cli.Command{
 
 		enc := json.NewEncoder(os.Stdout)
 		return enc.Encode(result)
+	},
+}
+
+var NetProtectAdd = &cli.Command{
+	Name:      "protect",
+	Usage:     "Add one or more peer IDs to the list of protected peer connections",
+	ArgsUsage: "<peer-id> [<peer-id>...]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		pids, err := decodePeerIDsFromArgs(cctx)
+		if err != nil {
+			return err
+		}
+
+		err = api.NetProtectAdd(ctx, pids)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("added to protected peers:")
+		for _, pid := range pids {
+			fmt.Printf(" %s\n", pid)
+		}
+		return nil
+	},
+}
+
+var NetProtectRemove = &cli.Command{
+	Name:      "unprotect",
+	Usage:     "Remove one or more peer IDs from the list of protected peer connections.",
+	ArgsUsage: "<peer-id> [<peer-id>...]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		pids, err := decodePeerIDsFromArgs(cctx)
+		if err != nil {
+			return err
+		}
+
+		err = api.NetProtectRemove(ctx, pids)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("removed from protected peers:")
+		for _, pid := range pids {
+			fmt.Printf(" %s\n", pid)
+		}
+		return nil
+	},
+}
+
+// decodePeerIDsFromArgs decodes all the arguments present in cli.Context.Args as peer.ID.
+//
+// This function requires at least one argument to be present, and arguments must not be empty
+// string. Otherwise, an error is returned.
+func decodePeerIDsFromArgs(cctx *cli.Context) ([]peer.ID, error) {
+	pidArgs := cctx.Args().Slice()
+	if len(pidArgs) == 0 {
+		return nil, xerrors.Errorf("must specify at least one peer ID as an argument")
+	}
+	var pids []peer.ID
+	for _, pidStr := range pidArgs {
+		if pidStr == "" {
+			return nil, xerrors.Errorf("peer ID must not be empty")
+		}
+		pid, err := peer.Decode(pidStr)
+		if err != nil {
+			return nil, err
+		}
+		pids = append(pids, pid)
+	}
+	return pids, nil
+}
+
+var NetProtectList = &cli.Command{
+	Name:  "list-protected",
+	Usage: "List the peer IDs with protected connection.",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+		pids, err := api.NetProtectList(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, pid := range pids {
+			fmt.Printf("%s\n", pid)
+		}
+		return nil
 	},
 }

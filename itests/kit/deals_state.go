@@ -14,7 +14,7 @@ func CategorizeDealState(dealStatus string) TestDealState {
 	switch dealStatus {
 	case "StorageDealFailing", "StorageDealError":
 		return TestDealStateFailed
-	case "StorageDealStaged", "StorageDealAwaitingPreCommit", "StorageDealSealing", "StorageDealActive", "StorageDealExpired", "StorageDealSlashed":
+	case "StorageDealAwaitingPreCommit", "StorageDealSealing", "StorageDealActive", "StorageDealExpired", "StorageDealSlashed":
 		return TestDealStateComplete
 	}
 	return TestDealStateInProgress

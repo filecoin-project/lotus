@@ -48,6 +48,7 @@ func main() {
 		lcli.WithCategory("market", retrievalDealsCmd),
 		lcli.WithCategory("market", dataTransfersCmd),
 		lcli.WithCategory("market", dagstoreCmd),
+		lcli.WithCategory("market", indexProvCmd),
 		lcli.WithCategory("storage", sectorsCmd),
 		lcli.WithCategory("storage", provingCmd),
 		lcli.WithCategory("storage", storageCmd),
