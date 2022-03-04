@@ -1,5 +1,15 @@
 # Lotus changelog
 
+# 1.14.4 / 2022-03-03
+
+This is a *highly recommended* optional release for storage providers that are doing snap deals. This fix the bug 
+that causes some snap deal sectors are stuck in `FinalizeReplicaUpdate`. In addition, SPs should be able to force 
+update sectors status without getting blocked by `normal shutdown of state machine`. 
+
+# v1.14.3 / 2022-02-28
+
+This is an **optional** release, that includes a fix to properly register the `--really-do-it` flag for abort-upgrade.
+
 # 1.14.2 / 2022-02-24
 
 This is an **optional** release of lotus, that's had a couple more improvements w.r.t Snap experience for storage providers in preparation of the[upcoming OhSnap upgrade](https://github.com/filecoin-project/community/discussions/74?sort=new#discussioncomment-1922550). 
