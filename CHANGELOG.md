@@ -3,7 +3,7 @@
 
 This is the third release candidates of v1.15.0, detailed changelog will be updated later. This RC drops the libp2p upgrade that was included in the earlier 2 RCs.
 
-- github.com/filecoin-project/lotus:
+- github.com/filecoin-project/lotus: 
   - bump the version to v1.15.0-rc1
   - chore: build: v1.14.0 -> master ([filecoin-project/lotus#8053](https://github.com/filecoin-project/lotus/pull/8053))
   - FinalizeReplicaUpdate ([filecoin-project/lotus#8018](https://github.com/filecoin-project/lotus/pull/8018))
@@ -172,6 +172,16 @@ Contributors
 | Colin Kennedy | 1 | +4/-2 | 1 |
 | Rob Quist | 1 | +2/-2 | 1 |
 | shotcollin | 1 | +1/-1 | 1 |
+
+# 1.14.4 / 2022-03-03
+
+This is a *highly recommended* optional release for storage providers that are doing snap deals. This fix the bug 
+that causes some snap deal sectors are stuck in `FinalizeReplicaUpdate`. In addition, SPs should be able to force 
+update sectors status without getting blocked by `normal shutdown of state machine`. 
+
+# v1.14.3 / 2022-02-28
+
+This is an **optional** release, that includes a fix to properly register the `--really-do-it` flag for abort-upgrade.
 
 # 1.14.2 / 2022-02-24
 
