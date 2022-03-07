@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/libp2p/go-libp2p-core/host"
+
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -58,8 +60,8 @@ func NewMinerAPI(cfg config.DAGStoreConfig) func(fx.Lifecycle, repo.LockedRepo, 
 // DAGStore constructs a DAG store using the supplied minerAPI, and the
 // user configuration. It returns both the DAGStore and the Wrapper suitable for
 // passing to markets.
-func DAGStore(cfg config.DAGStoreConfig) func(fx.Lifecycle, repo.LockedRepo, mdagstore.MinerAPI) (*dagstore.DAGStore, *mdagstore.Wrapper, error) {
-	return func(lc fx.Lifecycle, r repo.LockedRepo, minerAPI mdagstore.MinerAPI) (*dagstore.DAGStore, *mdagstore.Wrapper, error) {
+func DAGStore(cfg config.DAGStoreConfig) func(lc fx.Lifecycle, r repo.LockedRepo, minerAPI mdagstore.MinerAPI, h host.Host) (*dagstore.DAGStore, *mdagstore.Wrapper, error) {
+	return func(lc fx.Lifecycle, r repo.LockedRepo, minerAPI mdagstore.MinerAPI, h host.Host) (*dagstore.DAGStore, *mdagstore.Wrapper, error) {
 		// fall back to default root directory if not explicitly set in the config.
 		if cfg.RootDir == "" {
 			cfg.RootDir = filepath.Join(r.Path(), DefaultDAGStoreDir)
@@ -73,7 +75,7 @@ func DAGStore(cfg config.DAGStoreConfig) func(fx.Lifecycle, repo.LockedRepo, mda
 			}
 		}
 
-		dagst, w, err := mdagstore.NewDAGStore(cfg, minerAPI)
+		dagst, w, err := mdagstore.NewDAGStore(cfg, minerAPI, h)
 		if err != nil {
 			return nil, nil, xerrors.Errorf("failed to create DAG store: %w", err)
 		}
