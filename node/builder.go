@@ -226,15 +226,15 @@ var LibP2P = Options(
 )
 
 func IsType(t repo.RepoType) func(s *Settings) bool {
-	return func(s *Settings) bool { return s.nodeType.Type() == t.Type() }
+	return func(s *Settings) bool { return s.nodeType == t }
 }
 
-func isFullOrLiteNode(s *Settings) bool { return s.nodeType.Type() == repo.FullNode.Type() }
+func isFullOrLiteNode(s *Settings) bool { return s.nodeType == repo.FullNode }
 func isFullNode(s *Settings) bool {
-	return s.nodeType.Type() == repo.FullNode.Type() && !s.Lite
+	return s.nodeType == repo.FullNode && !s.Lite
 }
 func isLiteNode(s *Settings) bool {
-	return s.nodeType.Type() == repo.FullNode.Type() && s.Lite
+	return s.nodeType == repo.FullNode && s.Lite
 }
 
 func Base() Option {
