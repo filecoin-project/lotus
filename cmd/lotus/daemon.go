@@ -119,9 +119,8 @@ var DaemonCmd = &cli.Command{
 			Usage: "halt the process after importing chain from file",
 		},
 		&cli.BoolFlag{
-			Name:   "lite",
-			Usage:  "start lotus in lite mode",
-			Hidden: true,
+			Name:  "lite",
+			Usage: "start lotus in lite mode",
 		},
 		&cli.StringFlag{
 			Name:  "pprof",

@@ -101,13 +101,22 @@ func (pm *Manager) Stop() error {
 	return nil
 }
 
-func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt types.BigInt) (address.Address, cid.Cid, error) {
+type GetOpts struct {
+	Reserve  bool
+	OffChain bool
+}
+
+func (pm *Manager) GetPaych(ctx context.Context, from, to address.Address, amt types.BigInt, opts GetOpts) (address.Address, cid.Cid, error) {
+	if !opts.Reserve && opts.OffChain {
+		return address.Undef, cid.Undef, xerrors.Errorf("can't fund payment channels without on-chain operations")
+	}
+
 	chanAccessor, err := pm.accessorByFromTo(from, to)
 	if err != nil {
 		return address.Undef, cid.Undef, err
 	}
 
-	return chanAccessor.getPaych(ctx, amt)
+	return chanAccessor.getPaych(ctx, amt, opts)
 }
 
 func (pm *Manager) AvailableFunds(ctx context.Context, ch address.Address) (*api.ChannelAvailableFunds, error) {
@@ -142,6 +151,8 @@ func (pm *Manager) AvailableFundsByFromTo(ctx context.Context, from address.Addr
 			To:                  to,
 			ConfirmedAmt:        types.NewInt(0),
 			PendingAmt:          types.NewInt(0),
+			NonReservedAmt:      types.NewInt(0),
+			PendingAvailableAmt: types.NewInt(0),
 			PendingWaitSentinel: nil,
 			QueuedAmt:           types.NewInt(0),
 			VoucherReedeemedAmt: types.NewInt(0),

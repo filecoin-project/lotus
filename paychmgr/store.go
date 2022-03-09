@@ -6,9 +6,8 @@ import (
 	"errors"
 	"fmt"
 
-	"golang.org/x/xerrors"
-
 	"github.com/google/uuid"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
 
@@ -74,6 +73,10 @@ type ChannelInfo struct {
 	// has locally been added to the channel. It should reflect the channel's
 	// Balance on chain as long as all operations occur on the same datastore.
 	Amount types.BigInt
+	// AvailableAmount indicates how much afil is non-reserved
+	AvailableAmount types.BigInt
+	// PendingAvailableAmount is available amount that we're awaiting confirmation of
+	PendingAvailableAmount types.BigInt
 	// PendingAmount is the amount that we're awaiting confirmation of
 	PendingAmount types.BigInt
 	// CreateMsg is the CID of a pending create message (while waiting for confirmation)
@@ -376,7 +379,7 @@ func (ps *Store) GetMessage(ctx context.Context, mcid cid.Cid) (*MsgInfo, error)
 
 // OutboundActiveByFromTo looks for outbound channels that have not been
 // settled, with the given from / to addresses
-func (ps *Store) OutboundActiveByFromTo(ctx context.Context, from address.Address, to address.Address) (*ChannelInfo, error) {
+func (ps *Store) OutboundActiveByFromTo(ctx context.Context, sma stateManagerAPI, from address.Address, to address.Address) (*ChannelInfo, error) {
 	return ps.findChan(ctx, func(ci *ChannelInfo) bool {
 		if ci.Direction != DirOutbound {
 			return false
@@ -384,6 +387,21 @@ func (ps *Store) OutboundActiveByFromTo(ctx context.Context, from address.Addres
 		if ci.Settling {
 			return false
 		}
+
+		if ci.Channel != nil {
+			_, st, err := sma.GetPaychState(ctx, *ci.Channel, nil)
+			if err != nil {
+				return false
+			}
+			sat, err := st.SettlingAt()
+			if err != nil {
+				return false
+			}
+			if sat != 0 {
+				return false
+			}
+		}
+
 		return ci.Control == from && ci.Target == to
 	})
 }
@@ -416,14 +434,15 @@ func (ps *Store) ByChannelID(ctx context.Context, channelID string) (*ChannelInf
 }
 
 // CreateChannel creates an outbound channel for the given from / to
-func (ps *Store) CreateChannel(ctx context.Context, from address.Address, to address.Address, createMsgCid cid.Cid, amt types.BigInt) (*ChannelInfo, error) {
+func (ps *Store) CreateChannel(ctx context.Context, from address.Address, to address.Address, createMsgCid cid.Cid, amt, avail types.BigInt) (*ChannelInfo, error) {
 	ci := &ChannelInfo{
-		Direction:     DirOutbound,
-		NextLane:      0,
-		Control:       from,
-		Target:        to,
-		CreateMsg:     &createMsgCid,
-		PendingAmount: amt,
+		Direction:              DirOutbound,
+		NextLane:               0,
+		Control:                from,
+		Target:                 to,
+		CreateMsg:              &createMsgCid,
+		PendingAmount:          amt,
+		PendingAvailableAmount: avail,
 	}
 
 	// Save the new channel
@@ -495,6 +514,12 @@ func unmarshallChannelInfo(stored *ChannelInfo, value []byte) (*ChannelInfo, err
 	// See note above about CBOR marshalling address.Address
 	if stored.Channel != nil && *stored.Channel == emptyAddr {
 		stored.Channel = nil
+	}
+
+	// backwards compat
+	if stored.AvailableAmount.Int == nil {
+		stored.AvailableAmount = types.NewInt(0)
+		stored.PendingAvailableAmount = types.NewInt(0)
 	}
 
 	return stored, nil

@@ -222,6 +222,16 @@ type StorageMiner interface {
 	// DagstoreGC runs garbage collection on the DAG store.
 	DagstoreGC(ctx context.Context) ([]DagstoreShardResult, error) //perm:admin
 
+	// IndexerAnnounceDeal informs indexer nodes that a new deal was received,
+	// so they can download its index
+	IndexerAnnounceDeal(ctx context.Context, proposalCid cid.Cid) error //perm:admin
+
+	// IndexerAnnounceAllDeals informs the indexer nodes aboutall active deals.
+	IndexerAnnounceAllDeals(ctx context.Context) error //perm:admin
+
+	// DagstoreLookupPieces returns information about shards that contain the given CID.
+	DagstoreLookupPieces(ctx context.Context, cid cid.Cid) ([]DagstoreShardInfo, error) //perm:admin
+
 	// RuntimeSubsystems returns the subsystems that are enabled
 	// in this instance.
 	RuntimeSubsystems(ctx context.Context) (MinerSubsystems, error) //perm:read
@@ -256,7 +266,7 @@ type StorageMiner interface {
 	// the path specified when calling CreateBackup is within the base path
 	CreateBackup(ctx context.Context, fpath string) error //perm:admin
 
-	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) //perm:admin
+	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, update []bool, expensive bool) (map[abi.SectorNumber]string, error) //perm:admin
 
 	ComputeProof(ctx context.Context, ssi []builtin.ExtendedSectorInfo, rand abi.PoStRandomness, poStEpoch abi.ChainEpoch, nv abinetwork.Version) ([]builtin.PoStProof, error) //perm:read
 }
