@@ -215,7 +215,7 @@ var exportRawCmd = &cli.Command{
 				err = carb.consume(c, b)
 				switch err {
 				case nil:
-				case fullCar:
+				case errFullCar:
 					root, err := carb.finalize()
 					if err != nil {
 						return xerrors.Errorf("carb finalize: %w", err)
@@ -263,7 +263,7 @@ var exportRawCmd = &cli.Command{
 				if err != nil {
 					return fmt.Errorf("failed to open badger blockstore: %w", err)
 				}
-				defer db.Close()
+				defer db.Close() // nolint:errcheck
 
 				log.Infow("new stream")
 
@@ -332,7 +332,7 @@ var exportRawCmd = &cli.Command{
 	},
 }
 
-var fullCar = errors.New("full")
+var errFullCar = errors.New("full")
 
 const maxlinks = 16
 
@@ -418,7 +418,7 @@ func (rc *rawCarb) consume(c cid.Cid, b block.Block) error {
 		return err
 	}
 	if rc.cur+uint64(len(b.RawData())) > rc.max {
-		return fullCar
+		return errFullCar
 	}
 
 	rc.cur += uint64(len(b.RawData()))

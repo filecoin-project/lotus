@@ -117,7 +117,7 @@ var datastoreVlog2CarCmd = &cli.Command{
 					err = carb.consume(c, b)
 					switch err {
 					case nil:
-					case fullCar:
+					case errFullCar:
 						root, err := carb.finalize()
 						if err != nil {
 							return xerrors.Errorf("carb finalize: %w", err)
@@ -217,12 +217,10 @@ type Entry struct {
 	UserMeta  byte
 	ExpiresAt uint64 // time.Unix
 	meta      byte
-	version   uint64
 
 	// Fields maintained internally.
-	offset   uint32
-	skipVlog bool
-	hlen     int // Length of the header.
+	offset uint32
+	hlen   int // Length of the header.
 }
 
 // Entry reads an entry from the provided reader. It also validates the checksum for every entry
@@ -283,12 +281,6 @@ type header struct {
 	meta      byte
 	userMeta  byte
 }
-
-const (
-	// Maximum possible size of the header. The maximum size of header struct will be 18 but the
-	// maximum size of varint encoded header will be 21.
-	maxHeaderSize = 21
-)
 
 // Encode encodes the header into []byte. The provided []byte should be atleast 5 bytes. The
 // function will panic if out []byte isn't large enough to hold all the values.
