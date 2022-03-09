@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	"github.com/filecoin-project/go-state-types/abi"
+	provider "github.com/filecoin-project/index-provider"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
@@ -25,6 +26,7 @@ import (
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/markets/dealfilter"
+	"github.com/filecoin-project/lotus/markets/idxprov"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/markets/sectoraccessor"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
@@ -167,6 +169,8 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(dtypes.ProviderTransferNetwork), modules.NewProviderTransferNetwork),
 			Override(new(dtypes.ProviderTransport), modules.NewProviderTransport),
 			Override(new(dtypes.ProviderDataTransfer), modules.NewProviderDataTransfer),
+			Override(new(idxprov.MeshCreator), idxprov.NewMeshCreator),
+			Override(new(provider.Interface), modules.IndexProvider(cfg.IndexProvider)),
 			Override(new(*storedask.StoredAsk), modules.NewStorageAsk),
 			Override(new(dtypes.StorageDealFilter), modules.BasicDealFilter(cfg.Dealmaking, nil)),
 			Override(new(storagemarket.StorageProvider), modules.StorageProvider),

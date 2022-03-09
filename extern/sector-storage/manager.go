@@ -763,7 +763,7 @@ func (m *Manager) Remove(ctx context.Context, sector storage.SectorRef) error {
 func (m *Manager) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, pieces []abi.PieceInfo) (out storage.ReplicaUpdateOut, err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
-	log.Errorf("manager is doing replica update")
+	log.Debugf("manager is doing replica update")
 	wk, wait, cancel, err := m.getWork(ctx, sealtasks.TTReplicaUpdate, sector, pieces)
 	if err != nil {
 		return storage.ReplicaUpdateOut{}, xerrors.Errorf("getWork: %w", err)

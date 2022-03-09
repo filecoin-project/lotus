@@ -35,7 +35,7 @@ var diffStateTrees = &cli.Command{
 			return xerrors.Errorf("expected two state-tree roots")
 		}
 
-		argA := cctx.Args().Get(1)
+		argA := cctx.Args().Get(0)
 		rootA, err := cid.Parse(argA)
 		if err != nil {
 			return xerrors.Errorf("first state-tree root (%q) is not a CID: %w", argA, err)

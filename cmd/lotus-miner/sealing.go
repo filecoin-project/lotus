@@ -39,9 +39,12 @@ func barString(total, y, g float64) string {
 	yBars := int(math.Round(y / total * barCols))
 	gBars := int(math.Round(g / total * barCols))
 	eBars := int(barCols) - yBars - gBars
-	return color.YellowString(strings.Repeat("|", yBars)) +
-		color.GreenString(strings.Repeat("|", gBars)) +
-		strings.Repeat(" ", eBars)
+	var barString = color.YellowString(strings.Repeat("|", yBars)) +
+		color.GreenString(strings.Repeat("|", gBars))
+	if eBars >= 0 {
+		barString += strings.Repeat(" ", eBars)
+	}
+	return barString
 }
 
 var sealingWorkersCmd = &cli.Command{
