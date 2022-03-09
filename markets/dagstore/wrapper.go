@@ -3,11 +3,16 @@ package dagstore
 import (
 	"context"
 	"errors"
+	"fmt"
 	"math"
 	"os"
 	"path/filepath"
 	"sync"
 	"time"
+
+	"github.com/libp2p/go-libp2p-core/host"
+
+	carindex "github.com/ipld/go-car/v2/index"
 
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
@@ -53,7 +58,7 @@ type Wrapper struct {
 
 var _ stores.DAGStoreWrapper = (*Wrapper)(nil)
 
-func NewDAGStore(cfg config.DAGStoreConfig, minerApi MinerAPI) (*dagstore.DAGStore, *Wrapper, error) {
+func NewDAGStore(cfg config.DAGStoreConfig, minerApi MinerAPI, h host.Host) (*dagstore.DAGStore, *Wrapper, error) {
 	// construct the DAG Store.
 	registry := mount.NewRegistry()
 	if err := registry.Register(lotusScheme, mountTemplate(minerApi)); err != nil {
@@ -79,9 +84,10 @@ func NewDAGStore(cfg config.DAGStoreConfig, minerApi MinerAPI) (*dagstore.DAGSto
 
 	irepo, err := index.NewFSRepo(indexDir)
 	if err != nil {
-		return nil, nil, xerrors.Errorf("failed to initialise dagstore index repo")
+		return nil, nil, xerrors.Errorf("failed to initialise dagstore index repo: %w", err)
 	}
 
+	topIndex := index.NewInverted(dstore)
 	dcfg := dagstore.Config{
 		TransientsDir: transientsDir,
 		IndexRepo:     irepo,
@@ -89,6 +95,7 @@ func NewDAGStore(cfg config.DAGStoreConfig, minerApi MinerAPI) (*dagstore.DAGSto
 		MountRegistry: registry,
 		FailureCh:     failureCh,
 		TraceCh:       traceCh,
+		TopLevelIndex: topIndex,
 		// not limiting fetches globally, as the Lotus mount does
 		// conditional throttling.
 		MaxConcurrentIndex:        cfg.MaxConcurrentIndex,
@@ -396,6 +403,33 @@ func (w *Wrapper) markRegistrationComplete() error {
 		return err
 	}
 	return file.Close()
+}
+
+// Get all the pieces that contain a block
+func (w *Wrapper) GetPiecesContainingBlock(blockCID cid.Cid) ([]cid.Cid, error) {
+	// Pieces are stored as "shards" in the DAG store
+	shardKeys, err := w.dagst.ShardsContainingMultihash(w.ctx, blockCID.Hash())
+	if err != nil {
+		return nil, xerrors.Errorf("getting pieces containing block %s: %w", blockCID, err)
+	}
+
+	// Convert from shard key to cid
+	pieceCids := make([]cid.Cid, 0, len(shardKeys))
+	for _, k := range shardKeys {
+		c, err := cid.Parse(k.String())
+		if err != nil {
+			prefix := fmt.Sprintf("getting pieces containing block %s:", blockCID)
+			return nil, xerrors.Errorf("%s converting shard key %s to piece cid: %w", prefix, k, err)
+		}
+
+		pieceCids = append(pieceCids, c)
+	}
+
+	return pieceCids, nil
+}
+
+func (w *Wrapper) GetIterableIndexForPiece(pieceCid cid.Cid) (carindex.IterableIndex, error) {
+	return w.dagst.GetIterableIndex(shard.KeyFromCID(pieceCid))
 }
 
 func (w *Wrapper) Close() error {

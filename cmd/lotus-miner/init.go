@@ -468,12 +468,15 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 			stor := stores.NewRemote(lstor, si, http.Header(sa), 10, &stores.DefaultPartialFileHandler{})
 
 			smgr, err := sectorstorage.New(ctx, lstor, stor, lr, si, sectorstorage.SealerConfig{
-				ParallelFetchLimit: 10,
-				AllowAddPiece:      true,
-				AllowPreCommit1:    true,
-				AllowPreCommit2:    true,
-				AllowCommit:        true,
-				AllowUnseal:        true,
+				ParallelFetchLimit:       10,
+				AllowAddPiece:            true,
+				AllowPreCommit1:          true,
+				AllowPreCommit2:          true,
+				AllowCommit:              true,
+				AllowUnseal:              true,
+				AllowReplicaUpdate:       true,
+				AllowProveReplicaUpdate2: true,
+				AllowRegenSectorKey:      true,
 			}, wsts, smsts)
 			if err != nil {
 				return err

@@ -120,6 +120,10 @@ func (s *schedTestWorker) GenerateSectorKeyFromData(ctx context.Context, sector 
 	panic("implement me")
 }
 
+func (s *schedTestWorker) FinalizeReplicaUpdate(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) (storiface.CallID, error) {
+	panic("implement me")
+}
+
 func (s *schedTestWorker) MoveStorage(ctx context.Context, sector storage.SectorRef, types storiface.SectorFileType) (storiface.CallID, error) {
 	panic("implement me")
 }

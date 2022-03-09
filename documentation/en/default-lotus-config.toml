@@ -121,6 +121,14 @@
   # env var: LOTUS_CLIENT_SIMULTANEOUSTRANSFERSFORRETRIEVAL
   #SimultaneousTransfersForRetrieval = 20
 
+  # Require that retrievals perform no on-chain operations. Paid retrievals
+  # without existing payment channels with available funds will fail instead
+  # of automatically performing on-chain operations.
+  #
+  # type: bool
+  # env var: LOTUS_CLIENT_OFFCHAINRETRIEVAL
+  #OffChainRetrieval = false
+
 
 [Wallet]
   # type: string
@@ -163,11 +171,11 @@
     #HotStoreType = "badger"
 
     # MarkSetType specifies the type of the markset.
-    # It can be "map" (default) for in memory marking or "badger" for on-disk marking.
+    # It can be "map" for in memory marking or "badger" (default) for on-disk marking.
     #
     # type: string
     # env var: LOTUS_CHAINSTORE_SPLITSTORE_MARKSETTYPE
-    #MarkSetType = "map"
+    #MarkSetType = "badger"
 
     # HotStoreMessageRetention specifies the retention policy for messages, in finalities beyond
     # the compaction boundary; default is 0.

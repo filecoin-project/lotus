@@ -86,6 +86,10 @@ func (m *Miner) IsMarkedForUpgrade(id abi.SectorNumber) bool {
 	return m.sealing.IsMarkedForUpgrade(id)
 }
 
+func (m *Miner) SectorAbortUpgrade(sectorNum abi.SectorNumber) error {
+	return m.sealing.AbortUpgrade(sectorNum)
+}
+
 func (m *Miner) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storage.Data, d api.PieceDealInfo) (api.SectorOffset, error) {
 	return m.sealing.SectorAddPieceToAny(ctx, size, r, d)
 }

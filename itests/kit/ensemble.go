@@ -49,6 +49,8 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/markets/idxprov"
+	idxprov_test "github.com/filecoin-project/lotus/markets/idxprov/idxprov_test"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
@@ -157,6 +159,11 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 	}
 
 	return n
+}
+
+// Mocknet returns the underlying mocknet.
+func (n *Ensemble) Mocknet() mocknet.Mocknet {
+	return n.mn
 }
 
 // FullNode enrolls a new full node.
@@ -594,6 +601,12 @@ func (n *Ensemble) Start() *Ensemble {
 
 			// upgrades
 			node.Override(new(stmgr.UpgradeSchedule), n.options.upgradeSchedule),
+		}
+
+		if m.options.subsystems.Has(SMarkets) {
+			opts = append(opts,
+				node.Override(new(idxprov.MeshCreator), idxprov_test.NewNoopMeshCreator),
+			)
 		}
 
 		// append any node builder options.

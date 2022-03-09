@@ -320,6 +320,10 @@ func ftFromString(t string) (storiface.SectorFileType, error) {
 		return storiface.FTSealed, nil
 	case storiface.FTCache.String():
 		return storiface.FTCache, nil
+	case storiface.FTUpdate.String():
+		return storiface.FTUpdate, nil
+	case storiface.FTUpdateCache.String():
+		return storiface.FTUpdateCache, nil
 	default:
 		return 0, xerrors.Errorf("unknown sector file type: '%s'", t)
 	}

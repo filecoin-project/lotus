@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
@@ -117,8 +118,24 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 			return false, xerrors.Errorf("getting storage config: %w", err)
 		}
 
-		// todo check deal age, start sealing if any deal has less than X (configurable) to start deadline
 		sealTime := time.Unix(sector.CreationTime, 0).Add(cfg.WaitDealsDelay)
+
+		// check deal age, start sealing when the deal closest to starting is within slack time
+		_, current, err := m.Api.ChainHead(ctx.Context())
+		blockTime := time.Second * time.Duration(build.BlockDelaySecs)
+		if err != nil {
+			return false, xerrors.Errorf("API error getting head: %w", err)
+		}
+		for _, piece := range sector.Pieces {
+			if piece.DealInfo == nil {
+				continue
+			}
+			dealSafeSealEpoch := piece.DealInfo.DealProposal.StartEpoch - cfg.StartEpochSealingBuffer
+			dealSafeSealTime := time.Now().Add(time.Duration(dealSafeSealEpoch-current) * blockTime)
+			if dealSafeSealTime.Before(sealTime) {
+				sealTime = dealSafeSealTime
+			}
+		}
 
 		if now.After(sealTime) {
 			log.Infow("starting to seal deal sector", "sector", sector.SectorNumber, "trigger", "wait-timeout")
@@ -294,41 +311,68 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 	}
 
 	m.inputLk.Lock()
-	if _, exist := m.pendingPieces[proposalCID(deal)]; exist {
+	if pp, exist := m.pendingPieces[proposalCID(deal)]; exist {
 		m.inputLk.Unlock()
-		return api.SectorOffset{}, xerrors.Errorf("piece for deal %s already pending", proposalCID(deal))
+
+		// we already have a pre-existing add piece call for this deal, let's wait for it to finish and see if it's successful
+		for {
+			res, err := waitAddPieceResp(ctx, pp)
+			if err != nil {
+				return api.SectorOffset{}, err
+			}
+			//  there was an error waiting for a pre-existing add piece call, let's retry
+			if res.err != nil {
+				m.inputLk.Lock()
+				pp = m.addPendingPiece(ctx, size, data, deal, sp)
+				m.inputLk.Unlock()
+				continue
+			}
+			// all good, return the response
+			return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
+		}
 	}
 
-	resCh := make(chan struct {
-		sn     abi.SectorNumber
-		offset abi.UnpaddedPieceSize
-		err    error
-	}, 1)
+	pp := m.addPendingPiece(ctx, size, data, deal, sp)
+	m.inputLk.Unlock()
+	res, err := waitAddPieceResp(ctx, pp)
+	if err != nil {
+		return api.SectorOffset{}, err
+	}
+	return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
+}
 
-	m.pendingPieces[proposalCID(deal)] = &pendingPiece{
+func (m *Sealing) addPendingPiece(ctx context.Context, size abi.UnpaddedPieceSize, data storage.Data, deal api.PieceDealInfo, sp abi.RegisteredSealProof) *pendingPiece {
+	doneCh := make(chan struct{})
+	pp := &pendingPiece{
+		doneCh:   doneCh,
 		size:     size,
 		deal:     deal,
 		data:     data,
 		assigned: false,
-		accepted: func(sn abi.SectorNumber, offset abi.UnpaddedPieceSize, err error) {
-			resCh <- struct {
-				sn     abi.SectorNumber
-				offset abi.UnpaddedPieceSize
-				err    error
-			}{sn: sn, offset: offset, err: err}
-		},
+	}
+	pp.accepted = func(sn abi.SectorNumber, offset abi.UnpaddedPieceSize, err error) {
+		pp.resp = &pieceAcceptResp{sn, offset, err}
+		close(pp.doneCh)
 	}
 
+	m.pendingPieces[proposalCID(deal)] = pp
 	go func() {
-		defer m.inputLk.Unlock()
 		if err := m.updateInput(ctx, sp); err != nil {
 			log.Errorf("%+v", err)
 		}
 	}()
 
-	res := <-resCh
+	return pp
+}
 
-	return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
+func waitAddPieceResp(ctx context.Context, pp *pendingPiece) (*pieceAcceptResp, error) {
+	select {
+	case <-pp.doneCh:
+		res := pp.resp
+		return res, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 func (m *Sealing) MatchPendingPiecesToOpenSectors(ctx context.Context) error {
@@ -475,6 +519,10 @@ func (m *Sealing) tryCreateDealSector(ctx context.Context, sp abi.RegisteredSeal
 		return xerrors.Errorf("getting storage config: %w", err)
 	}
 
+	if !cfg.MakeNewSectorForDeals {
+		return nil
+	}
+
 	if cfg.MaxSealingSectorsForDeals > 0 && m.stats.curSealing() >= cfg.MaxSealingSectorsForDeals {
 		return nil
 	}
@@ -522,6 +570,13 @@ func (m *Sealing) StartPacking(sid abi.SectorNumber) error {
 
 	log.Infow("starting to seal deal sector", "sector", sid, "trigger", "user")
 	return m.sectors.Send(uint64(sid), SectorStartPacking{})
+}
+
+func (m *Sealing) AbortUpgrade(sid abi.SectorNumber) error {
+	m.startupWait.Wait()
+
+	log.Infow("aborting upgrade of sector", "sector", sid, "trigger", "user")
+	return m.sectors.Send(uint64(sid), SectorAbortUpgrade{xerrors.New("triggered by user")})
 }
 
 func proposalCID(deal api.PieceDealInfo) cid.Cid {

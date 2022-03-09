@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
@@ -305,14 +306,20 @@ func (dh *DealHarness) StartSealingWaiting(ctx context.Context) {
 	}
 }
 
-func (dh *DealHarness) PerformRetrieval(ctx context.Context, deal *cid.Cid, root cid.Cid, carExport bool) (path string) {
-	// perform retrieval.
-	info, err := dh.client.ClientGetDealInfo(ctx, *deal)
-	require.NoError(dh.t, err)
+func (dh *DealHarness) PerformRetrieval(ctx context.Context, deal *cid.Cid, root cid.Cid, carExport bool, offers ...api.QueryOffer) (path string) {
+	var offer api.QueryOffer
+	if len(offers) == 0 {
+		// perform retrieval.
+		info, err := dh.client.ClientGetDealInfo(ctx, *deal)
+		require.NoError(dh.t, err)
 
-	offers, err := dh.client.ClientFindData(ctx, root, &info.PieceCID)
-	require.NoError(dh.t, err)
-	require.NotEmpty(dh.t, offers, "no offers")
+		offers, err := dh.client.ClientFindData(ctx, root, &info.PieceCID)
+		require.NoError(dh.t, err)
+		require.NotEmpty(dh.t, offers, "no offers")
+		offer = offers[0]
+	} else {
+		offer = offers[0]
+	}
 
 	carFile, err := ioutil.TempFile(dh.t.TempDir(), "ret-car")
 	require.NoError(dh.t, err)
@@ -326,7 +333,7 @@ func (dh *DealHarness) PerformRetrieval(ctx context.Context, deal *cid.Cid, root
 	updates, err := dh.client.ClientGetRetrievalUpdates(updatesCtx)
 	require.NoError(dh.t, err)
 
-	retrievalRes, err := dh.client.ClientRetrieve(ctx, offers[0].Order(caddr))
+	retrievalRes, err := dh.client.ClientRetrieve(ctx, offer.Order(caddr))
 	require.NoError(dh.t, err)
 consumeEvents:
 	for {
@@ -363,11 +370,6 @@ consumeEvents:
 		}))
 
 	ret := carFile.Name()
-	if carExport {
-		actualFile := dh.ExtractFileFromCAR(ctx, carFile)
-		ret = actualFile.Name()
-		_ = actualFile.Close() //nolint:errcheck
-	}
 
 	return ret
 }
@@ -404,9 +406,11 @@ type RunConcurrentDealsOpts struct {
 	CarExport                bool
 	StartEpoch               abi.ChainEpoch
 	UseCARFileForStorageDeal bool
+	IndexProvider            *shared_testutil.MockIndexProvider
 }
 
 func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
+	ctx := context.Background()
 	errgrp, _ := errgroup.WithContext(context.Background())
 	for i := 0; i < opts.N; i++ {
 		i := i
@@ -429,10 +433,28 @@ func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
 				UseCARFileForStorageDeal: opts.UseCARFileForStorageDeal,
 			})
 
+			// Check that the storage provider announced the deal to indexers
+			if opts.IndexProvider != nil {
+				notifs := opts.IndexProvider.GetNotifs()
+				_, ok := notifs[string(deal.Bytes())]
+				require.True(dh.t, ok)
+			}
+
 			dh.t.Logf("retrieving deal %d/%d", i, opts.N)
 
 			outPath := dh.PerformRetrieval(context.Background(), deal, res.Root, opts.CarExport)
-			AssertFilesEqual(dh.t, inPath, outPath)
+
+			if opts.CarExport {
+				f, err := os.Open(outPath)
+				require.NoError(dh.t, err)
+				actualFile := dh.ExtractFileFromCAR(ctx, f)
+				require.NoError(dh.t, f.Close())
+
+				AssertFilesEqual(dh.t, inPath, actualFile.Name())
+			} else {
+				AssertFilesEqual(dh.t, inPath, outPath)
+			}
+
 			return nil
 		})
 	}

@@ -485,6 +485,10 @@ func (mgr *SectorMgr) FinalizeSector(context.Context, storage.SectorRef, []stora
 	return nil
 }
 
+func (mgr *SectorMgr) FinalizeReplicaUpdate(context.Context, storage.SectorRef, []storage.Range) error {
+	return nil
+}
+
 func (mgr *SectorMgr) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) error {
 	return nil
 }
@@ -509,7 +513,7 @@ func (mgr *SectorMgr) Remove(ctx context.Context, sector storage.SectorRef) erro
 	return nil
 }
 
-func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, ids []storage.SectorRef, rg storiface.RGetter) (map[abi.SectorID]string, error) {
+func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, ids []storage.SectorRef, update []bool, rg storiface.RGetter) (map[abi.SectorID]string, error) {
 	bad := map[abi.SectorID]string{}
 
 	for _, sid := range ids {
@@ -582,6 +586,10 @@ func (mgr *SectorMgr) ReturnProveReplicaUpdate2(ctx context.Context, callID stor
 }
 
 func (mgr *SectorMgr) ReturnGenerateSectorKeyFromData(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
+	panic("not supported")
+}
+
+func (mgr *SectorMgr) ReturnFinalizeReplicaUpdate(ctx context.Context, callID storiface.CallID, err *storiface.CallError) error {
 	panic("not supported")
 }
 

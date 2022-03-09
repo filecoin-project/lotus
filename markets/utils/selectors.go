@@ -11,6 +11,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 	mdagipld "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/go-unixfsnode"
 	dagpb "github.com/ipld/go-codec-dagpb"
 	"github.com/ipld/go-ipld-prime"
 	cidlink "github.com/ipld/go-ipld-prime/linking/cid"
@@ -62,6 +63,7 @@ func TraverseDag(
 
 		return bytes.NewBuffer(node.RawData()), nil
 	}
+	unixfsnode.AddUnixFSReificationToLinkSystem(&linkSystem)
 
 	// this is how we pull the start node out of the DS
 	startLink := cidlink.Link{Cid: startFrom}

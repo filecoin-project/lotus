@@ -7,7 +7,7 @@ USAGE:
    lotus-worker [global options] command [command options] [arguments...]
 
 VERSION:
-   1.15.0-dev
+   1.15.1-dev
 
 COMMANDS:
    run         Start lotus worker
@@ -46,8 +46,7 @@ OPTIONS:
    --commit                      enable commit (32G sectors: all cores or GPUs, 128GiB Memory + 64GiB swap) (default: true)
    --replica-update              enable replica update (default: true)
    --prove-replica-update2       enable prove replica update 2 (default: true)
-   --windowpost                  enable window post (default: false)
-   --winningpost                 enable winning post (default: false)
+   --regen-sector-key            enable regen sector key (default: true)
    --parallel-fetch-limit value  maximum fetch operations to run in parallel (default: 5)
    --timeout value               used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function (default: "30m")
    --help, -h                    show help (default: false)
@@ -80,8 +79,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -161,8 +159,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -172,7 +169,7 @@ NAME:
    lotus-worker tasks enable - Enable a task type
 
 USAGE:
-   lotus-worker tasks enable [command options] [UNS|C2|PC2|PC1|AP]
+   lotus-worker tasks enable [command options] [UNS|C2|PC2|PC1|PR2|RU|AP|GSK]
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -185,7 +182,7 @@ NAME:
    lotus-worker tasks disable - Disable a task type
 
 USAGE:
-   lotus-worker tasks disable [command options] [UNS|C2|PC2|PC1|AP]
+   lotus-worker tasks disable [command options] [UNS|C2|PC2|PC1|PR2|RU|AP|GSK]
 
 OPTIONS:
    --help, -h  show help (default: false)

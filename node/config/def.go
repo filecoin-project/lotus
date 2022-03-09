@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding"
+
 	"os"
 	"strconv"
 	"time"
@@ -85,7 +86,7 @@ func DefaultFullNode() *FullNode {
 			Splitstore: Splitstore{
 				ColdStoreType: "universal",
 				HotStoreType:  "badger",
-				MarkSetType:   "map",
+				MarkSetType:   "badger",
 
 				HotStoreFullGCFrequency: 20,
 			},
@@ -139,6 +140,7 @@ func DefaultStorageMiner() *StorageMiner {
 			AllowUnseal:              true,
 			AllowReplicaUpdate:       true,
 			AllowProveReplicaUpdate2: true,
+			AllowRegenSectorKey:      true,
 
 			// Default to 10 - tcp should still be able to figure this out, and
 			// it's the ratio between 10gbit / 1gbit
@@ -156,6 +158,7 @@ func DefaultStorageMiner() *StorageMiner {
 			ConsiderVerifiedStorageDeals:   true,
 			ConsiderUnverifiedStorageDeals: true,
 			PieceCidBlocklist:              []cid.Cid{},
+			MakeNewSectorForDeals:          true,
 			// TODO: It'd be nice to set this based on sector size
 			MaxDealStartDelay:               Duration(time.Hour * 24 * 14),
 			ExpectedSealDuration:            Duration(time.Hour * 24),
@@ -178,6 +181,14 @@ func DefaultStorageMiner() *StorageMiner {
 					Path: "",
 				},
 			},
+		},
+
+		IndexProvider: IndexProviderConfig{
+			Enable:               false,
+			EntriesCacheCapacity: 1024,
+			EntriesChunkSize:     16384,
+			TopicName:            "/indexer/ingest/mainnet",
+			PurgeCacheOnStart:    false,
 		},
 
 		Subsystems: MinerSubsystemConfig{
@@ -220,6 +231,7 @@ func DefaultStorageMiner() *StorageMiner {
 			GCInterval:                 Duration(1 * time.Minute),
 		},
 	}
+
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
 	cfg.Common.API.RemoteListenAddress = "127.0.0.1:2345"
 	return cfg

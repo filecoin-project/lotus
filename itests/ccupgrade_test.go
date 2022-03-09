@@ -31,23 +31,14 @@ func TestCCUpgrade(t *testing.T) {
 	//stm: @MINER_SECTOR_LIST_001
 	kit.QuietMiningLogs()
 
-	for _, height := range []abi.ChainEpoch{
-		-1,  // before
-		162, // while sealing
-		560, // after upgrade deal
-	} {
-		height := height // make linters happy by copying
-		t.Run(fmt.Sprintf("upgrade-%d", height), func(t *testing.T) {
-			runTestCCUpgrade(t, height)
-		})
-	}
+	runTestCCUpgrade(t)
 }
 
-func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) *kit.TestFullNode {
+func runTestCCUpgrade(t *testing.T) *kit.TestFullNode {
 	ctx := context.Background()
 	blockTime := 1 * time.Millisecond
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.GenesisNetworkVersion(network.Version15))
+	client, miner, ens := kit.EnsembleMinimal(t, kit.GenesisNetworkVersion(network.Version15), kit.ThroughRPC())
 	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	maddr, err := miner.ActorAddress(ctx)
@@ -73,7 +64,6 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) *kit.TestFullN
 	}
 	waitForSectorActive(ctx, t, CCUpgrade, client, maddr)
 
-	//stm: @SECTOR_CC_UPGRADE_001
 	err = miner.SectorMarkForUpgrade(ctx, sl[0], true)
 	require.NoError(t, err)
 
@@ -92,6 +82,11 @@ func runTestCCUpgrade(t *testing.T, upgradeHeight abi.ChainEpoch) *kit.TestFullN
 	status, err := miner.SectorsStatus(ctx, CCUpgrade, true)
 	require.NoError(t, err)
 	assert.Equal(t, 1, len(status.Deals))
+
+	miner.WaitSectorsProving(ctx, map[abi.SectorNumber]struct{}{
+		CCUpgrade: {},
+	})
+
 	return client
 }
 
@@ -139,7 +134,7 @@ func TestCCUpgradeAndPoSt(t *testing.T) {
 	_ = logging.SetLogLevel("storageminer", "INFO")
 	t.Run("upgrade and then post", func(t *testing.T) {
 		ctx := context.Background()
-		n := runTestCCUpgrade(t, 100)
+		n := runTestCCUpgrade(t)
 		ts, err := n.ChainHead(ctx)
 		require.NoError(t, err)
 		start := ts.Height()
