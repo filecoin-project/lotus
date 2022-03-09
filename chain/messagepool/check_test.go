@@ -57,7 +57,6 @@ func TestCheckMessages(t *testing.T) {
 	tma.setBalance(sender, 1000e15)
 	target := mock.Address(1001)
 
-	var msgs []*types.Message
 	var protos []*api.MessagePrototype
 	for i := 0; i < 5; i++ {
 		msg := &types.Message{
@@ -70,7 +69,6 @@ func TestCheckMessages(t *testing.T) {
 			GasPremium: types.NewInt(1),
 			Params:     make([]byte, 2<<10),
 		}
-		msgs = append(msgs, msg)
 		proto := &api.MessagePrototype{
 			Message:    *msg,
 			ValidNonce: true,
