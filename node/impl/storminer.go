@@ -676,18 +676,18 @@ func (tc *transferConverter) convertTransfer(channelID datatransfer.ChannelID, h
 	}
 	var channelIDPtr *datatransfer.ChannelID
 	if !hasChannelID {
-		diagnostics = append(diagnostics, fmt.Sprintf("No data transfer channel id for GraphSync request ID %d", requestID))
+		diagnostics = append(diagnostics, fmt.Sprintf("No data transfer channel id for GraphSync request ID %s", requestID))
 	} else {
 		channelIDPtr = &channelID
 		if isCurrentChannelRequest && !hasState {
 			diagnostics = append(diagnostics, fmt.Sprintf("No current request state for data transfer channel id %s", channelID))
 		} else if !isCurrentChannelRequest && hasState {
-			diagnostics = append(diagnostics, fmt.Sprintf("Graphsync request %d is a previous request on data transfer channel id %s that was restarted, but it is still running", requestID, channelID))
+			diagnostics = append(diagnostics, fmt.Sprintf("Graphsync request %s is a previous request on data transfer channel id %s that was restarted, but it is still running", requestID, channelID))
 		}
 	}
 	diagnostics = append(diagnostics, tc.gsDiagnostics[requestID]...)
 	transfer := &api.GraphSyncDataTransfer{
-		RequestID:               requestID,
+		RequestID:               &requestID,
 		RequestState:            stateString,
 		IsCurrentChannelRequest: isCurrentChannelRequest,
 		ChannelID:               channelIDPtr,
@@ -717,7 +717,7 @@ func (tc *transferConverter) collectRemainingTransfers() {
 			channelID := channelID
 			cs := api.NewDataTransferChannel(channelState.SelfPeer(), channelState)
 			transfer := &api.GraphSyncDataTransfer{
-				RequestID:               graphsync.RequestID(-1),
+				RequestID:               nil,
 				RequestState:            "graphsync state unknown",
 				IsCurrentChannelRequest: false,
 				ChannelID:               &channelID,
