@@ -23,6 +23,7 @@
   * [DagstoreInitializeAll](#DagstoreInitializeAll)
   * [DagstoreInitializeShard](#DagstoreInitializeShard)
   * [DagstoreListShards](#DagstoreListShards)
+  * [DagstoreLookupPieces](#DagstoreLookupPieces)
   * [DagstoreRecoverShard](#DagstoreRecoverShard)
 * [Deals](#Deals)
   * [DealsConsiderOfflineRetrievalDeals](#DealsConsiderOfflineRetrievalDeals)
@@ -43,6 +44,9 @@
   * [DealsSetPieceCidBlocklist](#DealsSetPieceCidBlocklist)
 * [I](#I)
   * [ID](#ID)
+* [Indexer](#Indexer)
+  * [IndexerAnnounceAllDeals](#IndexerAnnounceAllDeals)
+  * [IndexerAnnounceDeal](#IndexerAnnounceDeal)
 * [Log](#Log)
   * [LogAlerts](#LogAlerts)
   * [LogList](#LogList)
@@ -84,6 +88,9 @@
   * [NetLimit](#NetLimit)
   * [NetPeerInfo](#NetPeerInfo)
   * [NetPeers](#NetPeers)
+  * [NetProtectAdd](#NetProtectAdd)
+  * [NetProtectList](#NetProtectList)
+  * [NetProtectRemove](#NetProtectRemove)
   * [NetPubsubScores](#NetPubsubScores)
   * [NetSetLimit](#NetSetLimit)
   * [NetStat](#NetStat)
@@ -338,6 +345,9 @@ Inputs:
       "ProofType": 8
     }
   ],
+  [
+    true
+  ],
   true
 ]
 ```
@@ -502,6 +512,32 @@ DAG store. Only available on nodes running the markets subsystem.
 Perms: read
 
 Inputs: `null`
+
+Response:
+```json
+[
+  {
+    "Key": "baga6ea4seaqecmtz7iak33dsfshi627abz4i4665dfuzr3qfs4bmad6dx3iigdq",
+    "State": "ShardStateAvailable",
+    "Error": "\u003cerror\u003e"
+  }
+]
+```
+
+### DagstoreLookupPieces
+DagstoreLookupPieces returns information about shards that contain the given CID.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
 
 Response:
 ```json
@@ -771,6 +807,37 @@ Perms: read
 Inputs: `null`
 
 Response: `"12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"`
+
+## Indexer
+
+
+### IndexerAnnounceAllDeals
+IndexerAnnounceAllDeals informs the indexer nodes aboutall active deals.
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `{}`
+
+### IndexerAnnounceDeal
+IndexerAnnounceDeal informs indexer nodes that a new deal was received,
+so they can download its index
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response: `{}`
 
 ## Log
 
@@ -1783,6 +1850,52 @@ Response:
   }
 ]
 ```
+
+### NetProtectAdd
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  ]
+]
+```
+
+Response: `{}`
+
+### NetProtectList
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+### NetProtectRemove
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  ]
+]
+```
+
+Response: `{}`
 
 ### NetPubsubScores
 

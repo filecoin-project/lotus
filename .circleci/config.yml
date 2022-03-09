@@ -390,7 +390,7 @@ jobs:
 
   build-appimage:
     machine:
-      image: ubuntu-2004:202104-01
+      image: ubuntu-2004:202111-02
     steps:
       - checkout
       - attach_workspace:
@@ -398,6 +398,16 @@ jobs:
       - run:
           name: install appimage-builder
           command: |
+            # appimage-builder requires /dev/snd to exist. It creates containers during the testing phase
+            # that pass sound devices from the host to the testing container. (hard coded!)
+            # https://github.com/AppImageCrafters/appimage-builder/blob/master/appimagebuilder/modules/test/execution_test.py#L54
+            # Circleci doesn't provide a working sound device; this is enough to fake it.
+            if [ ! -e /dev/snd ]
+            then
+              sudo mkdir /dev/snd
+              sudo mknod /dev/snd/ControlC0 c 1 2
+            fi
+
             # docs: https://appimage-builder.readthedocs.io/en/latest/intro/install.html
             sudo apt update
             sudo apt install -y python3-pip python3-setuptools patchelf desktop-file-utils libgdk-pixbuf2.0-dev fakeroot strace
@@ -705,6 +715,17 @@ jobs:
       - packer/build:
           template: tools/packer/lotus.pkr.hcl
           args: "-var ci_workspace_bins=./linux-butterflynet -var lotus_network=butterflynet -var git_tag=$CIRCLE_TAG"
+  publish-packer-snap:
+    description: build packer image with snap. mainnet only.
+    executor:
+      name: packer/default
+      packer-version: 1.6.6
+    steps:
+      - checkout
+      - attach_workspace:
+          at: "."
+      - packer/build:
+          template: tools/packer/lotus-snap.pkr.hcl
   publish-dockerhub:
     description: publish to dockerhub
     machine:
@@ -784,6 +805,11 @@ workflows:
           name: test-itest-deals_512mb
           suite: itest-deals_512mb
           target: "./itests/deals_512mb_test.go"
+      
+      - test:
+          name: test-itest-deals_anycid
+          suite: itest-deals_anycid
+          target: "./itests/deals_anycid_test.go"
       
       - test:
           name: test-itest-deals_concurrent
@@ -986,10 +1012,19 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-appimage:
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish:
           requires:
             - build-all
             - build-macos
+            - build-appimage
           filters:
             branches:
               ignore:
@@ -1068,3 +1103,13 @@ workflows:
       - publish-dockerhub:
           name: publish-dockerhub-nightly
           tag: nightly
+  monthly:
+    triggers:
+      - schedule:
+          cron: "0 0 1 * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - publish-packer-snap

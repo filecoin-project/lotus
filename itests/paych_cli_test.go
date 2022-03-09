@@ -144,10 +144,10 @@ func TestPaymentChannelStatus(t *testing.T) {
 	require.True(t, stateCreating || stateCreated)
 
 	channelAmtAtto := types.BigMul(types.NewInt(channelAmt), types.NewInt(build.FilecoinPrecision))
-	channelAmtStr := fmt.Sprintf("%d", channelAmtAtto)
+	channelAmtStr := fmt.Sprintf("%s", types.FIL(channelAmtAtto))
 	if stateCreating {
 		// If we're in the creating state (most likely) the amount should be pending
-		require.Regexp(t, regexp.MustCompile("Pending.*"+channelAmtStr), out)
+		require.Regexp(t, regexp.MustCompile("Pending Amt.*"+channelAmtStr), out)
 	}
 
 	// Wait for create channel to complete
@@ -170,7 +170,7 @@ func TestPaymentChannelStatus(t *testing.T) {
 	out = creatorCLI.RunCmd("paych", "status", chstr)
 	fmt.Println(out)
 	voucherAmtAtto := types.BigMul(types.NewInt(voucherAmt), types.NewInt(build.FilecoinPrecision))
-	voucherAmtStr := fmt.Sprintf("%d", voucherAmtAtto)
+	voucherAmtStr := fmt.Sprintf("%s", types.FIL(voucherAmtAtto))
 	// Output should include voucher amount
 	require.Regexp(t, regexp.MustCompile("Voucher.*"+voucherAmtStr), out)
 }
