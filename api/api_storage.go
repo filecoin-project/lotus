@@ -265,7 +265,7 @@ type StorageMiner interface {
 	// the path specified when calling CreateBackup is within the base path
 	CreateBackup(ctx context.Context, fpath string) error //perm:admin
 
-	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, update []bool, expensive bool) (map[abi.SectorNumber]string, error) //perm:admin
+	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) //perm:admin
 
 	ComputeProof(ctx context.Context, ssi []builtin.ExtendedSectorInfo, rand abi.PoStRandomness, poStEpoch abi.ChainEpoch, nv abinetwork.Version) ([]builtin.PoStProof, error) //perm:read
 }
