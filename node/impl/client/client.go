@@ -1281,7 +1281,7 @@ func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet
 	w := &writer.Writer{}
 	_, err = io.CopyBuffer(w, rdr, make([]byte, writer.CommPBuf))
 	if err != nil {
-		return nil, xerrors.Errorf("copy inte commp writer: %w", err)
+		return nil, xerrors.Errorf("copy into commp writer: %w", err)
 	}
 
 	commp, err := w.Sum()
