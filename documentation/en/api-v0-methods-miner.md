@@ -939,7 +939,7 @@ Response:
 {
   "ReceivingTransfers": [
     {
-      "RequestID": 4,
+      "RequestID": {},
       "RequestState": "string value",
       "IsCurrentChannelRequest": true,
       "ChannelID": {
@@ -983,7 +983,7 @@ Response:
   ],
   "SendingTransfers": [
     {
-      "RequestID": 4,
+      "RequestID": {},
       "RequestState": "string value",
       "IsCurrentChannelRequest": true,
       "ChannelID": {
