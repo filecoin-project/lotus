@@ -23,6 +23,12 @@
   #DisableMetadataLog = false
 
 
+[Logging]
+  [Logging.SubsystemLevels]
+    # env var: LOTUS_LOGGING_SUBSYSTEMLEVELS_EXAMPLE-SUBSYSTEM
+    #example-subsystem = "INFO"
+
+
 [Libp2p]
   # Binding address for the libp2p host - 0 means random port.
   # Format: multiaddress; see https://multiformats.io/multiaddr/

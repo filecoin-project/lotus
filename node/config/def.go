@@ -47,6 +47,11 @@ func defCommon() Common {
 			ListenAddress: "/ip4/127.0.0.1/tcp/1234/http",
 			Timeout:       Duration(30 * time.Second),
 		},
+		Logging: Logging{
+			SubsystemLevels: map[string]string{
+				"example-subsystem": "INFO",
+			},
+		},
 		Libp2p: Libp2p{
 			ListenAddresses: []string{
 				"/ip4/0.0.0.0/tcp/0",
