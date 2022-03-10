@@ -368,13 +368,13 @@ func resolveFromChain(ctx context.Context, api v0api.FullNode, mcid cid.Cid, blo
 	// types.EmptyTSK hints to use the HEAD.
 	execTs, err = api.ChainGetTipSetByHeight(ctx, blk.Height+1, types.EmptyTSK)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get message execution tipset: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to get message execution tipset (%d) : %w", blk.Height+1, err)
 	}
 
 	// walk back from the execTs instead of HEAD, to save time.
 	incTs, err = api.ChainGetTipSetByHeight(ctx, blk.Height, execTs.Key())
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("failed to get message inclusion tipset: %w", err)
+		return nil, nil, nil, fmt.Errorf("failed to get message inclusion tipset (%d): %w", blk.Height, err)
 	}
 
 	return msg, execTs, incTs, nil
