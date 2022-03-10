@@ -223,7 +223,7 @@ var LibP2P = Options(
 
 	// Services (resource management)
 	Override(new(network.ResourceManager), lp2p.ResourceManager),
-	If(os.Getenv("LOTUS_RCMGR") != "0", Override(ResourceManagerKey, lp2p.ResourceManagerOption)),
+	If(os.Getenv("LOTUS_RCMGR") != "" && os.Getenv("LOTUS_RCMGR") != "0", Override(ResourceManagerKey, lp2p.ResourceManagerOption)),
 )
 
 func IsType(t repo.RepoType) func(s *Settings) bool {
