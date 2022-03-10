@@ -71,7 +71,7 @@ func doExtractMessage(opts extractOpts) error {
 		return fmt.Errorf("failed to fetch messages in canonical order from inclusion tipset: %w", err)
 	}
 
-	related, found, err := findMsgAndPrecursors(opts.precursor, mcid, msg.From, msgs)
+	related, found, err := findMsgAndPrecursors(ctx, opts.precursor, mcid, msg.From, msg.To, msgs)
 	if err != nil {
 		return fmt.Errorf("failed while finding message and precursors: %w", err)
 	}
@@ -114,7 +114,7 @@ func doExtractMessage(opts extractOpts) error {
 		log.Printf("applying precursor %d, cid: %s", i, m.Cid())
 		_, root, err = driver.ExecuteMessage(pst.Blockstore, conformance.ExecuteMessageParams{
 			Preroot:    root,
-			Epoch:      execTs.Height(),
+			Epoch:      incTs.Height(),
 			Message:    m,
 			CircSupply: circSupplyDetail.FilCirculating,
 			BaseFee:    basefee,
@@ -139,6 +139,7 @@ func doExtractMessage(opts extractOpts) error {
 	)
 
 	log.Printf("using state retention strategy: %s", retention)
+	log.Printf("now applying requested message: %s", msg.Cid())
 	switch retention {
 	case "accessed-cids":
 		tbs, ok := pst.Blockstore.(TracingBlockstore)
@@ -151,7 +152,7 @@ func doExtractMessage(opts extractOpts) error {
 		preroot = root
 		applyret, postroot, err = driver.ExecuteMessage(pst.Blockstore, conformance.ExecuteMessageParams{
 			Preroot:        preroot,
-			Epoch:          execTs.Height(),
+			Epoch:          incTs.Height(),
 			Message:        msg,
 			CircSupply:     circSupplyDetail.FilCirculating,
 			BaseFee:        basefee,
@@ -184,7 +185,7 @@ func doExtractMessage(opts extractOpts) error {
 		}
 		applyret, postroot, err = driver.ExecuteMessage(pst.Blockstore, conformance.ExecuteMessageParams{
 			Preroot:    preroot,
-			Epoch:      execTs.Height(),
+			Epoch:      incTs.Height(),
 			Message:    msg,
 			CircSupply: circSupplyDetail.FilCirculating,
 			BaseFee:    basefee,
@@ -299,7 +300,7 @@ func doExtractMessage(opts extractOpts) error {
 		CAR:        out.Bytes(),
 		Pre: &schema.Preconditions{
 			Variants: []schema.Variant{
-				{ID: codename, Epoch: int64(execTs.Height()), NetworkVersion: uint(nv)},
+				{ID: codename, Epoch: int64(incTs.Height()), NetworkVersion: uint(nv)},
 			},
 			CircSupply: circSupply.Int,
 			BaseFee:    basefee.Int,
@@ -403,19 +404,40 @@ func fetchThisAndPrevTipset(ctx context.Context, api v0api.FullNode, target type
 // findMsgAndPrecursors ranges through the canonical messages slice, locating
 // the target message and returning precursors in accordance to the supplied
 // mode.
-func findMsgAndPrecursors(mode string, msgCid cid.Cid, sender address.Address, msgs []api.Message) (related []*types.Message, found bool, err error) {
-	// Range through canonicalised messages, selecting only the precursors based
-	// on selection mode.
-	for _, other := range msgs {
+func findMsgAndPrecursors(ctx context.Context, mode string, msgCid cid.Cid, sender address.Address, recipient address.Address, msgs []api.Message) (related []*types.Message, found bool, err error) {
+	// Resolve addresses to IDs for canonicality.
+	senderID, err := FullAPI.StateLookupID(ctx, sender, types.EmptyTSK)
+	if err != nil {
+		return nil, false, err
+	}
+	recipientID, err := FullAPI.StateLookupID(ctx, recipient, types.EmptyTSK)
+	if err != nil {
+		return nil, false, err
+	}
+
+	// Range through messages, selecting only the precursors based on selection mode.
+	for _, m := range msgs {
+		msgSenderID, err := FullAPI.StateLookupID(ctx, m.Message.From, types.EmptyTSK)
+		if err != nil {
+			return nil, false, err
+		}
+		msgRecipientID, err := FullAPI.StateLookupID(ctx, m.Message.To, types.EmptyTSK)
+		if err != nil {
+			return nil, false, err
+		}
 		switch {
 		case mode == PrecursorSelectAll:
 			fallthrough
-		case mode == PrecursorSelectSender && other.Message.From == sender:
-			related = append(related, other.Message)
+		case mode == PrecursorSelectParticipants &&
+				msgSenderID == senderID ||
+				msgRecipientID == recipientID ||
+				msgSenderID == recipientID ||
+				msgRecipientID == senderID:
+			related = append(related, m.Message)
 		}
 
 		// this message is the target; we're done.
-		if other.Cid == msgCid {
+		if m.Cid == msgCid {
 			return related, true, nil
 		}
 	}

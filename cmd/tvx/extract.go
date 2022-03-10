@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	PrecursorSelectAll    = "all"
-	PrecursorSelectSender = "sender"
+	PrecursorSelectAll          = "all"
+	PrecursorSelectParticipants = "participants"
 )
 
 type extractOpts struct {
@@ -86,12 +86,12 @@ var extractCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name: "precursor-select",
-			Usage: "precursors to apply; values: 'all', 'sender'; 'all' selects all preceding " +
-				"messages in the canonicalised tipset, 'sender' selects only preceding messages from the same " +
-				"sender. Usually, 'sender' is a good tradeoff and gives you sufficient accuracy. If the receipt sanity " +
+			Usage: "precursors to apply; values: 'all', 'participants'; 'all' selects all preceding " +
+				"messages in the canonicalised tipset, 'participants' selects only preceding messages from the same " +
+				"participants. Usually, 'participants' is a good tradeoff and gives you sufficient accuracy. If the receipt sanity " +
 				"check fails due to gas reasons, switch to 'all', as previous messages in the tipset may have " +
 				"affected state in a disruptive way",
-			Value:       "sender",
+			Value:       "participants",
 			Destination: &extractFlags.precursor,
 		},
 		&cli.BoolFlag{
