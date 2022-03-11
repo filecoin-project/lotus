@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
-	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -85,14 +83,7 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		t.Fatal(err)
 	}
 
-	path, err := ioutil.TempDir("", "splitstore.*")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() {
-		_ = os.RemoveAll(path)
-	})
+	path := t.TempDir()
 
 	// open the splitstore
 	ss, err := Open(path, ds, hot, cold, cfg)
@@ -277,14 +268,7 @@ func TestSplitStoreSuppressCompactionNearUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	path, err := ioutil.TempDir("", "splitstore.*")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() {
-		_ = os.RemoveAll(path)
-	})
+	path := t.TempDir()
 
 	// open the splitstore
 	ss, err := Open(path, ds, hot, cold, &Config{MarkSetType: "map"})
@@ -424,14 +408,7 @@ func testSplitStoreReification(t *testing.T, f func(context.Context, blockstore.
 		}
 	}
 
-	path, err := ioutil.TempDir("", "splitstore.*")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() {
-		_ = os.RemoveAll(path)
-	})
+	path := t.TempDir()
 
 	ss, err := Open(path, ds, hot, cold, &Config{MarkSetType: "map"})
 	if err != nil {
@@ -531,14 +508,7 @@ func testSplitStoreReificationLimit(t *testing.T, f func(context.Context, blocks
 		}
 	}
 
-	path, err := ioutil.TempDir("", "splitstore.*")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() {
-		_ = os.RemoveAll(path)
-	})
+	path := t.TempDir()
 
 	ss, err := Open(path, ds, hot, cold, &Config{MarkSetType: "map"})
 	if err != nil {

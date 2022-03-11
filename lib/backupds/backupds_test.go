@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -57,9 +56,7 @@ func TestNoLogRestore(t *testing.T) {
 }
 
 func TestLogRestore(t *testing.T) {
-	logdir, err := ioutil.TempDir("", "backupds-test-")
-	require.NoError(t, err)
-	defer os.RemoveAll(logdir) // nolint
+	logdir := t.TempDir()
 
 	ds1 := datastore.NewMapDatastore()
 

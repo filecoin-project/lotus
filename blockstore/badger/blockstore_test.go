@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -73,19 +72,12 @@ func newBlockstore(optsSupplier func(path string) Options) func(tb testing.TB) (
 	return func(tb testing.TB) (bs blockstore.BasicBlockstore, path string) {
 		tb.Helper()
 
-		path, err := ioutil.TempDir("", "")
-		if err != nil {
-			tb.Fatal(err)
-		}
+		path = tb.TempDir()
 
 		db, err := Open(optsSupplier(path))
 		if err != nil {
 			tb.Fatal(err)
 		}
-
-		tb.Cleanup(func() {
-			_ = os.RemoveAll(path)
-		})
 
 		return db, path
 	}
@@ -100,16 +92,9 @@ func openBlockstore(optsSupplier func(path string) Options) func(tb testing.TB, 
 
 func testMove(t *testing.T, optsF func(string) Options) {
 	ctx := context.Background()
-	basePath, err := ioutil.TempDir("", "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	basePath := t.TempDir()
 
 	dbPath := filepath.Join(basePath, "db")
-
-	t.Cleanup(func() {
-		_ = os.RemoveAll(basePath)
-	})
 
 	db, err := Open(optsF(dbPath))
 	if err != nil {
