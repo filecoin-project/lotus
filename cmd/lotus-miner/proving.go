@@ -437,7 +437,6 @@ var provingCheckProvableCmd = &cli.Command{
 			}
 
 			var tocheck []storage.SectorRef
-			var update []bool
 			for _, info := range sectorInfos {
 				si := abi.SectorID{
 					Miner:  abi.ActorID(mid),
@@ -455,10 +454,9 @@ var provingCheckProvableCmd = &cli.Command{
 					ProofType: info.SealProof,
 					ID:        si,
 				})
-				update = append(update, info.SectorKeyCID != nil)
 			}
 
-			bad, err := sapi.CheckProvable(ctx, info.WindowPoStProofType, tocheck, update, cctx.Bool("slow"))
+			bad, err := sapi.CheckProvable(ctx, info.WindowPoStProofType, tocheck, cctx.Bool("slow"))
 			if err != nil {
 				return err
 			}
