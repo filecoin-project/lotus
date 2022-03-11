@@ -1,3 +1,4 @@
+//stm: #unit
 package messagepool
 
 import (
@@ -103,7 +104,7 @@ func (tma *testMpoolAPI) SubscribeHeadChanges(cb func(rev, app []*types.TipSet) 
 	return tma.tipsets[0]
 }
 
-func (tma *testMpoolAPI) PutMessage(m types.ChainMsg) (cid.Cid, error) {
+func (tma *testMpoolAPI) PutMessage(ctx context.Context, m types.ChainMsg) (cid.Cid, error) {
 	return cid.Undef, nil
 }
 
@@ -164,16 +165,16 @@ func (tma *testMpoolAPI) StateAccountKeyAtFinality(ctx context.Context, addr add
 	return addr, nil
 }
 
-func (tma *testMpoolAPI) MessagesForBlock(h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
+func (tma *testMpoolAPI) MessagesForBlock(ctx context.Context, h *types.BlockHeader) ([]*types.Message, []*types.SignedMessage, error) {
 	return nil, tma.bmsgs[h.Cid()], nil
 }
 
-func (tma *testMpoolAPI) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, error) {
+func (tma *testMpoolAPI) MessagesForTipset(ctx context.Context, ts *types.TipSet) ([]types.ChainMsg, error) {
 	if len(ts.Blocks()) != 1 {
 		panic("cant deal with multiblock tipsets in this test")
 	}
 
-	bm, sm, err := tma.MessagesForBlock(ts.Blocks()[0])
+	bm, sm, err := tma.MessagesForBlock(ctx, ts.Blocks()[0])
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +191,7 @@ func (tma *testMpoolAPI) MessagesForTipset(ts *types.TipSet) ([]types.ChainMsg, 
 	return out, nil
 }
 
-func (tma *testMpoolAPI) LoadTipSet(tsk types.TipSetKey) (*types.TipSet, error) {
+func (tma *testMpoolAPI) LoadTipSet(ctx context.Context, tsk types.TipSetKey) (*types.TipSet, error) {
 	for _, ts := range tma.tipsets {
 		if types.CidArrsEqual(tsk.Cids(), ts.Cids()) {
 			return ts, nil
@@ -206,6 +207,7 @@ func (tma *testMpoolAPI) ChainComputeBaseFee(ctx context.Context, ts *types.TipS
 
 func assertNonce(t *testing.T, mp *MessagePool, addr address.Address, val uint64) {
 	t.Helper()
+	//stm: @CHAIN_MEMPOOL_GET_NONCE_001
 	n, err := mp.GetNonce(context.TODO(), addr, types.EmptyTSK)
 	if err != nil {
 		t.Fatal(err)
@@ -233,7 +235,7 @@ func TestMessagePool(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -277,7 +279,7 @@ func TestCheckMessageBig(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	assert.NoError(t, err)
 
 	to := mock.Address(1001)
@@ -340,7 +342,7 @@ func TestMessagePoolMessagesInEachBlock(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -366,8 +368,10 @@ func TestMessagePoolMessagesInEachBlock(t *testing.T) {
 	tma.applyBlock(t, a)
 	tsa := mock.TipSet(a)
 
+	//stm: @CHAIN_MEMPOOL_PENDING_001
 	_, _ = mp.Pending(context.TODO())
 
+	//stm: @CHAIN_MEMPOOL_SELECT_001
 	selm, _ := mp.SelectMessages(context.Background(), tsa, 1)
 	if len(selm) == 0 {
 		t.Fatal("should have returned the rest of the messages")
@@ -389,7 +393,7 @@ func TestRevertMessages(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -428,6 +432,7 @@ func TestRevertMessages(t *testing.T) {
 
 	assertNonce(t, mp, sender, 4)
 
+	//stm: @CHAIN_MEMPOOL_PENDING_001
 	p, _ := mp.Pending(context.TODO())
 	fmt.Printf("%+v\n", p)
 	if len(p) != 3 {
@@ -452,7 +457,7 @@ func TestPruningSimple(t *testing.T) {
 
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -486,6 +491,7 @@ func TestPruningSimple(t *testing.T) {
 
 	mp.Prune()
 
+	//stm: @CHAIN_MEMPOOL_PENDING_001
 	msgs, _ := mp.Pending(context.TODO())
 	if len(msgs) != 5 {
 		t.Fatal("expected only 5 messages in pool, got: ", len(msgs))
@@ -496,7 +502,7 @@ func TestLoadLocal(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -528,6 +534,7 @@ func TestLoadLocal(t *testing.T) {
 	msgs := make(map[cid.Cid]struct{})
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
+		//stm: @CHAIN_MEMPOOL_PUSH_001
 		cid, err := mp.Push(context.TODO(), m)
 		if err != nil {
 			t.Fatal(err)
@@ -539,11 +546,12 @@ func TestLoadLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	mp, err = New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err = New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	//stm: @CHAIN_MEMPOOL_PENDING_001
 	pmsgs, _ := mp.Pending(context.TODO())
 	if len(msgs) != len(pmsgs) {
 		t.Fatalf("expected %d messages, but got %d", len(msgs), len(pmsgs))
@@ -568,7 +576,7 @@ func TestClearAll(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -599,6 +607,7 @@ func TestClearAll(t *testing.T) {
 	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
+		//stm: @CHAIN_MEMPOOL_PUSH_001
 		_, err := mp.Push(context.TODO(), m)
 		if err != nil {
 			t.Fatal(err)
@@ -610,8 +619,10 @@ func TestClearAll(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
+	//stm: @CHAIN_MEMPOOL_CLEAR_001
 	mp.Clear(context.Background(), true)
 
+	//stm: @CHAIN_MEMPOOL_PENDING_001
 	pending, _ := mp.Pending(context.TODO())
 	if len(pending) > 0 {
 		t.Fatalf("cleared the mpool, but got %d pending messages", len(pending))
@@ -622,7 +633,7 @@ func TestClearNonLocal(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -654,6 +665,7 @@ func TestClearNonLocal(t *testing.T) {
 	gasLimit := gasguess.Costs[gasguess.CostKey{Code: builtin2.StorageMarketActorCodeID, M: 2}]
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
+		//stm: @CHAIN_MEMPOOL_PUSH_001
 		_, err := mp.Push(context.TODO(), m)
 		if err != nil {
 			t.Fatal(err)
@@ -665,8 +677,10 @@ func TestClearNonLocal(t *testing.T) {
 		mustAdd(t, mp, m)
 	}
 
+	//stm: @CHAIN_MEMPOOL_CLEAR_001
 	mp.Clear(context.Background(), false)
 
+	//stm: @CHAIN_MEMPOOL_PENDING_001
 	pending, _ := mp.Pending(context.TODO())
 	if len(pending) != 10 {
 		t.Fatalf("expected 10 pending messages, but got %d instead", len(pending))
@@ -683,7 +697,7 @@ func TestUpdates(t *testing.T) {
 	tma := newTestMpoolAPI()
 	ds := datastore.NewMapDatastore()
 
-	mp, err := New(tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
+	mp, err := New(context.Background(), tma, ds, filcns.DefaultUpgradeSchedule(), "mptest", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -724,6 +738,7 @@ func TestUpdates(t *testing.T) {
 
 	for i := 0; i < 10; i++ {
 		m := makeTestMessage(w1, a1, a2, uint64(i), gasLimit, uint64(i+1))
+		//stm: @CHAIN_MEMPOOL_PUSH_001
 		_, err := mp.Push(context.TODO(), m)
 		if err != nil {
 			t.Fatal(err)

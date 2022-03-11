@@ -64,7 +64,7 @@ func NewAutobatch(ctx context.Context, backingBs Blockstore, bufferCapacity int)
 	return bs
 }
 
-func (bs *AutobatchBlockstore) Put(blk block.Block) error {
+func (bs *AutobatchBlockstore) Put(ctx context.Context, blk block.Block) error {
 	bs.stateLock.Lock()
 	defer bs.stateLock.Unlock()
 
@@ -94,19 +94,19 @@ func (bs *AutobatchBlockstore) flushWorker(ctx context.Context) {
 		case <-bs.flushCh:
 			// TODO: check if we _should_ actually flush. We could get a spurious wakeup
 			// here.
-			putErr := bs.doFlush(false)
+			putErr := bs.doFlush(ctx, false)
 			for putErr != nil {
 				select {
 				case <-ctx.Done():
 					return
 				case <-time.After(bs.flushRetryDelay):
 					autolog.Errorf("FLUSH ERRORED: %w, retrying after %v", putErr, bs.flushRetryDelay)
-					putErr = bs.doFlush(true)
+					putErr = bs.doFlush(ctx, true)
 				}
 			}
 		case <-ctx.Done():
 			// Do one last flush.
-			_ = bs.doFlush(false)
+			_ = bs.doFlush(ctx, false)
 			return
 		}
 	}
@@ -114,13 +114,13 @@ func (bs *AutobatchBlockstore) flushWorker(ctx context.Context) {
 
 // caller must NOT hold stateLock
 // set retryOnly to true to only retry a failed flush and not flush anything new.
-func (bs *AutobatchBlockstore) doFlush(retryOnly bool) error {
+func (bs *AutobatchBlockstore) doFlush(ctx context.Context, retryOnly bool) error {
 	bs.doFlushLock.Lock()
 	defer bs.doFlushLock.Unlock()
 
 	// If we failed to flush last time, try flushing again.
 	if bs.flushErr != nil {
-		bs.flushErr = bs.backingBs.PutMany(bs.flushingBatch.blockList)
+		bs.flushErr = bs.backingBs.PutMany(ctx, bs.flushingBatch.blockList)
 	}
 
 	// If we failed, or we're _only_ retrying, bail.
@@ -137,7 +137,7 @@ func (bs *AutobatchBlockstore) doFlush(retryOnly bool) error {
 	bs.stateLock.Unlock()
 
 	// And try to flush it.
-	bs.flushErr = bs.backingBs.PutMany(bs.flushingBatch.blockList)
+	bs.flushErr = bs.backingBs.PutMany(ctx, bs.flushingBatch.blockList)
 
 	// If we succeeded, reset the batch. Otherwise, we'll try again next time.
 	if bs.flushErr == nil {
@@ -151,7 +151,7 @@ func (bs *AutobatchBlockstore) doFlush(retryOnly bool) error {
 
 // caller must NOT hold stateLock
 func (bs *AutobatchBlockstore) Flush(ctx context.Context) error {
-	return bs.doFlush(false)
+	return bs.doFlush(ctx, false)
 }
 
 func (bs *AutobatchBlockstore) Shutdown(ctx context.Context) error {
@@ -169,9 +169,9 @@ func (bs *AutobatchBlockstore) Shutdown(ctx context.Context) error {
 	return bs.flushErr
 }
 
-func (bs *AutobatchBlockstore) Get(c cid.Cid) (block.Block, error) {
+func (bs *AutobatchBlockstore) Get(ctx context.Context, c cid.Cid) (block.Block, error) {
 	// may seem backward to check the backingBs first, but that is the likeliest case
-	blk, err := bs.backingBs.Get(c)
+	blk, err := bs.backingBs.Get(ctx, c)
 	if err == nil {
 		return blk, nil
 	}
@@ -192,10 +192,10 @@ func (bs *AutobatchBlockstore) Get(c cid.Cid) (block.Block, error) {
 		return v, nil
 	}
 
-	return bs.Get(c)
+	return bs.Get(ctx, c)
 }
 
-func (bs *AutobatchBlockstore) DeleteBlock(cid.Cid) error {
+func (bs *AutobatchBlockstore) DeleteBlock(context.Context, cid.Cid) error {
 	// if we wanted to support this, we would have to:
 	// - flush
 	// - delete from the backingBs (if present)
@@ -204,13 +204,13 @@ func (bs *AutobatchBlockstore) DeleteBlock(cid.Cid) error {
 	return xerrors.New("deletion is unsupported")
 }
 
-func (bs *AutobatchBlockstore) DeleteMany(cids []cid.Cid) error {
+func (bs *AutobatchBlockstore) DeleteMany(ctx context.Context, cids []cid.Cid) error {
 	// see note in DeleteBlock()
 	return xerrors.New("deletion is unsupported")
 }
 
-func (bs *AutobatchBlockstore) Has(c cid.Cid) (bool, error) {
-	_, err := bs.Get(c)
+func (bs *AutobatchBlockstore) Has(ctx context.Context, c cid.Cid) (bool, error) {
+	_, err := bs.Get(ctx, c)
 	if err == nil {
 		return true, nil
 	}
@@ -221,8 +221,8 @@ func (bs *AutobatchBlockstore) Has(c cid.Cid) (bool, error) {
 	return false, err
 }
 
-func (bs *AutobatchBlockstore) GetSize(c cid.Cid) (int, error) {
-	blk, err := bs.Get(c)
+func (bs *AutobatchBlockstore) GetSize(ctx context.Context, c cid.Cid) (int, error) {
+	blk, err := bs.Get(ctx, c)
 	if err != nil {
 		return 0, err
 	}
@@ -230,9 +230,9 @@ func (bs *AutobatchBlockstore) GetSize(c cid.Cid) (int, error) {
 	return len(blk.RawData()), nil
 }
 
-func (bs *AutobatchBlockstore) PutMany(blks []block.Block) error {
+func (bs *AutobatchBlockstore) PutMany(ctx context.Context, blks []block.Block) error {
 	for _, blk := range blks {
-		if err := bs.Put(blk); err != nil {
+		if err := bs.Put(ctx, blk); err != nil {
 			return err
 		}
 	}
@@ -252,8 +252,8 @@ func (bs *AutobatchBlockstore) HashOnRead(enabled bool) {
 	bs.backingBs.HashOnRead(enabled)
 }
 
-func (bs *AutobatchBlockstore) View(cid cid.Cid, callback func([]byte) error) error {
-	blk, err := bs.Get(cid)
+func (bs *AutobatchBlockstore) View(ctx context.Context, cid cid.Cid, callback func([]byte) error) error {
+	blk, err := bs.Get(ctx, cid)
 	if err != nil {
 		return err
 	}

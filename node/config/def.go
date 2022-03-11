@@ -85,7 +85,7 @@ func DefaultFullNode() *FullNode {
 			Splitstore: Splitstore{
 				ColdStoreType: "universal",
 				HotStoreType:  "badger",
-				MarkSetType:   "map",
+				MarkSetType:   "badger",
 
 				HotStoreFullGCFrequency: 20,
 			},
@@ -157,6 +157,7 @@ func DefaultStorageMiner() *StorageMiner {
 			ConsiderVerifiedStorageDeals:   true,
 			ConsiderUnverifiedStorageDeals: true,
 			PieceCidBlocklist:              []cid.Cid{},
+			MakeNewSectorForDeals:          true,
 			// TODO: It'd be nice to set this based on sector size
 			MaxDealStartDelay:               Duration(time.Hour * 24 * 14),
 			ExpectedSealDuration:            Duration(time.Hour * 24),
@@ -164,8 +165,9 @@ func DefaultStorageMiner() *StorageMiner {
 			MaxDealsPerPublishMsg:           8,
 			MaxProviderCollateralMultiplier: 2,
 
-			SimultaneousTransfersForStorage:   DefaultSimultaneousTransfers,
-			SimultaneousTransfersForRetrieval: DefaultSimultaneousTransfers,
+			SimultaneousTransfersForStorage:          DefaultSimultaneousTransfers,
+			SimultaneousTransfersForStoragePerClient: 0,
+			SimultaneousTransfersForRetrieval:        DefaultSimultaneousTransfers,
 
 			StartEpochSealingBuffer: 480, // 480 epochs buffer == 4 hours from adding deal to sector to sector being sealed
 
@@ -216,6 +218,7 @@ func DefaultStorageMiner() *StorageMiner {
 		DAGStore: DAGStoreConfig{
 			MaxConcurrentIndex:         5,
 			MaxConcurrencyStorageCalls: 100,
+			MaxConcurrentUnseals:       5,
 			GCInterval:                 Duration(1 * time.Minute),
 		},
 	}

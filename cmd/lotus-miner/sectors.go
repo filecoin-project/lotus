@@ -1594,7 +1594,6 @@ var sectorsMarkForUpgradeCmd = &cli.Command{
 		if err != nil {
 			return xerrors.Errorf("failed to get chain head: %w", err)
 		}
-
 		twoDays := abi.ChainEpoch(2 * builtin.EpochsInDay)
 		if head.Height() > (build.UpgradeOhSnapHeight - twoDays) {
 			return xerrors.Errorf("OhSnap is coming soon, " +
@@ -1755,6 +1754,11 @@ var sectorsUpdateCmd = &cli.Command{
 		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
 		if err != nil {
 			return xerrors.Errorf("could not parse sector number: %w", err)
+		}
+
+		_, err = nodeApi.SectorsStatus(ctx, abi.SectorNumber(id), false)
+		if err != nil {
+			return xerrors.Errorf("sector %d not found, could not change state", id)
 		}
 
 		newState := cctx.Args().Get(1)

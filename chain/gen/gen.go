@@ -241,7 +241,7 @@ func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeS
 	genfb := &types.FullBlock{Header: genb.Genesis}
 	gents := store.NewFullTipSet([]*types.FullBlock{genfb})
 
-	if err := cs.SetGenesis(genb.Genesis); err != nil {
+	if err := cs.SetGenesis(context.TODO(), genb.Genesis); err != nil {
 		return nil, xerrors.Errorf("set genesis failed: %w", err)
 	}
 
@@ -471,7 +471,7 @@ func (cg *ChainGen) NextTipSetFromMinersWithMessagesAndNulls(base *types.TipSet,
 					return nil, xerrors.Errorf("making a block for next tipset failed: %w", err)
 				}
 
-				if err := cg.cs.PersistBlockHeaders(fblk.Header); err != nil {
+				if err := cg.cs.PersistBlockHeaders(context.TODO(), fblk.Header); err != nil {
 					return nil, xerrors.Errorf("chainstore AddBlock: %w", err)
 				}
 

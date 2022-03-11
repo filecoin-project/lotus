@@ -15,7 +15,7 @@ import (
 )
 
 func (filec *FilecoinEC) CreateBlock(ctx context.Context, w api.Wallet, bt *api.BlockTemplate) (*types.FullBlock, error) {
-	pts, err := filec.sm.ChainStore().LoadTipSet(bt.Parents)
+	pts, err := filec.sm.ChainStore().LoadTipSet(ctx, bt.Parents)
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load parent tipset: %w", err)
 	}
@@ -59,14 +59,14 @@ func (filec *FilecoinEC) CreateBlock(ctx context.Context, w api.Wallet, bt *api.
 			blsSigs = append(blsSigs, msg.Signature)
 			blsMessages = append(blsMessages, &msg.Message)
 
-			c, err := filec.sm.ChainStore().PutMessage(&msg.Message)
+			c, err := filec.sm.ChainStore().PutMessage(ctx, &msg.Message)
 			if err != nil {
 				return nil, err
 			}
 
 			blsMsgCids = append(blsMsgCids, c)
 		} else if msg.Signature.Type == crypto.SigTypeSecp256k1 {
-			c, err := filec.sm.ChainStore().PutMessage(msg)
+			c, err := filec.sm.ChainStore().PutMessage(ctx, msg)
 			if err != nil {
 				return nil, err
 			}

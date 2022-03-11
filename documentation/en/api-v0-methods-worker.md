@@ -104,7 +104,9 @@ Response:
     "MemSwap": 42,
     "MemSwapUsed": 42,
     "CPUs": 42,
-    "GPUs": null,
+    "GPUs": [
+      "string value"
+    ],
     "Resources": {
       "seal/v0/addpiece": {
         "0": {
@@ -1020,7 +1022,18 @@ Perms: admin
 
 Inputs: `null`
 
-Response: `null`
+Response:
+```json
+[
+  {
+    "ID": "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
+    "Weight": 42,
+    "LocalPath": "string value",
+    "CanSeal": true,
+    "CanStore": true
+  }
+]
+```
 
 ### Remove
 Storage / Other
@@ -1078,7 +1091,9 @@ Inputs:
     },
     "ProofType": 8
   },
-  null,
+  [
+    1024
+  ],
   1024,
   {}
 ]
@@ -1113,7 +1128,12 @@ Inputs:
     },
     "ProofType": 8
   },
-  null
+  [
+    {
+      "Offset": 1024,
+      "Size": 1024
+    }
+  ]
 ]
 ```
 
@@ -1143,7 +1163,12 @@ Inputs:
     },
     "ProofType": 8
   },
-  null
+  [
+    {
+      "Offset": 1024,
+      "Size": 1024
+    }
+  ]
 ]
 ```
 
@@ -1305,7 +1330,9 @@ Inputs:
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   },
-  null
+  [
+    "Ynl0ZSBhcnJheQ=="
+  ]
 ]
 ```
 
@@ -1338,7 +1365,12 @@ Inputs:
     },
     "ProofType": 8
   },
-  null
+  [
+    {
+      "Offset": 1024,
+      "Size": 1024
+    }
+  ]
 ]
 ```
 
@@ -1371,7 +1403,14 @@ Inputs:
     },
     "ProofType": 8
   },
-  null
+  [
+    {
+      "Size": 1032,
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    }
+  ]
 ]
 ```
 
@@ -1404,9 +1443,16 @@ Inputs:
     },
     "ProofType": 8
   },
-  null,
-  null,
-  null,
+  "Bw==",
+  "Bw==",
+  [
+    {
+      "Size": 1032,
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    }
+  ],
   {
     "Unsealed": {
       "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
@@ -1444,7 +1490,7 @@ Inputs:
     },
     "ProofType": 8
   },
-  null
+  "Bw=="
 ]
 ```
 
@@ -1474,8 +1520,15 @@ Inputs:
     },
     "ProofType": 8
   },
-  null,
-  null
+  "Bw==",
+  [
+    {
+      "Size": 1032,
+      "PieceCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      }
+    }
+  ]
 ]
 ```
 
@@ -1505,7 +1558,7 @@ Inputs:
     },
     "ProofType": 8
   },
-  null
+  "Bw=="
 ]
 ```
 
@@ -1622,7 +1675,7 @@ Inputs:
   },
   1040384,
   1024,
-  null,
+  "Bw==",
   {
     "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
   }

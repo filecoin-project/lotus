@@ -93,7 +93,7 @@ var exportChainCmd = &cli.Command{
 		cs := store.NewChainStore(bs, bs, mds, nil, nil)
 		defer cs.Close() //nolint:errcheck
 
-		if err := cs.Load(); err != nil {
+		if err := cs.Load(context.Background()); err != nil {
 			return err
 		}
 
@@ -110,7 +110,7 @@ var exportChainCmd = &cli.Command{
 
 			tsk := types.NewTipSetKey(cids...)
 
-			selts, err := cs.LoadTipSet(tsk)
+			selts, err := cs.LoadTipSet(context.Background(), tsk)
 			if err != nil {
 				return xerrors.Errorf("loading tipset: %w", err)
 			}

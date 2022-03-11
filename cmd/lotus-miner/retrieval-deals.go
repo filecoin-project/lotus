@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"sort"
 	"text/tabwriter"
 
 	"github.com/docker/go-units"
@@ -136,6 +137,10 @@ var retrievalDealsListCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+
+		sort.Slice(deals, func(i, j int) bool {
+			return deals[i].ID < deals[j].ID
+		})
 
 		w := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 

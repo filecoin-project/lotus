@@ -30,7 +30,7 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 
 	unionBs := bstore.Union(cs.stateBlockstore, cs.chainBlockstore)
 	return cs.WalkSnapshot(ctx, ts, inclRecentRoots, skipOldMsgs, true, func(c cid.Cid) error {
-		blk, err := unionBs.Get(c)
+		blk, err := unionBs.Get(ctx, c)
 		if err != nil {
 			return xerrors.Errorf("writing object to car, bs.Get: %w", err)
 		}
@@ -43,18 +43,18 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 	})
 }
 
-func (cs *ChainStore) Import(r io.Reader) (*types.TipSet, error) {
+func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (*types.TipSet, error) {
 	// TODO: writing only to the state blockstore is incorrect.
 	//  At this time, both the state and chain blockstores are backed by the
 	//  universal store. When we physically segregate the stores, we will need
 	//  to route state objects to the state blockstore, and chain objects to
 	//  the chain blockstore.
-	header, err := car.LoadCar(cs.StateBlockstore(), r)
+	header, err := car.LoadCar(ctx, cs.StateBlockstore(), r)
 	if err != nil {
 		return nil, xerrors.Errorf("loadcar failed: %w", err)
 	}
 
-	root, err := cs.LoadTipSet(types.NewTipSetKey(header.Roots...))
+	root, err := cs.LoadTipSet(ctx, types.NewTipSetKey(header.Roots...))
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load root tipset from chainfile: %w", err)
 	}
@@ -82,7 +82,7 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 			return err
 		}
 
-		data, err := cs.chainBlockstore.Get(blk)
+		data, err := cs.chainBlockstore.Get(ctx, blk)
 		if err != nil {
 			return xerrors.Errorf("getting block: %w", err)
 		}
@@ -102,7 +102,7 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 		var cids []cid.Cid
 		if !skipOldMsgs || b.Height > ts.Height()-inclRecentRoots {
 			if walked.Visit(b.Messages) {
-				mcids, err := recurseLinks(cs.chainBlockstore, walked, b.Messages, []cid.Cid{b.Messages})
+				mcids, err := recurseLinks(ctx, cs.chainBlockstore, walked, b.Messages, []cid.Cid{b.Messages})
 				if err != nil {
 					return xerrors.Errorf("recursing messages failed: %w", err)
 				}
@@ -123,7 +123,7 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 
 		if b.Height == 0 || b.Height > ts.Height()-inclRecentRoots {
 			if walked.Visit(b.ParentStateRoot) {
-				cids, err := recurseLinks(cs.stateBlockstore, walked, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
+				cids, err := recurseLinks(ctx, cs.stateBlockstore, walked, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
 				if err != nil {
 					return xerrors.Errorf("recursing genesis state failed: %w", err)
 				}
@@ -168,12 +168,12 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 	return nil
 }
 
-func recurseLinks(bs bstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
+func recurseLinks(ctx context.Context, bs bstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.Cid) ([]cid.Cid, error) {
 	if root.Prefix().Codec != cid.DagCBOR {
 		return in, nil
 	}
 
-	data, err := bs.Get(root)
+	data, err := bs.Get(ctx, root)
 	if err != nil {
 		return nil, xerrors.Errorf("recurse links get (%s) failed: %w", root, err)
 	}
@@ -192,7 +192,7 @@ func recurseLinks(bs bstore.Blockstore, walked *cid.Set, root cid.Cid, in []cid.
 
 		in = append(in, c)
 		var err error
-		in, err = recurseLinks(bs, walked, c, in)
+		in, err = recurseLinks(ctx, bs, walked, c, in)
 		if err != nil {
 			rerr = err
 		}

@@ -639,7 +639,7 @@ func splitGenesisMultisig0(ctx context.Context, em stmgr.ExecMonitor, addr addre
 
 // TODO: After the Liftoff epoch, refactor this to use resetMultisigVesting
 func resetGenesisMsigs0(ctx context.Context, sm *stmgr.StateManager, store adt0.Store, tree *state.StateTree, startEpoch abi.ChainEpoch) error {
-	gb, err := sm.ChainStore().GetGenesis()
+	gb, err := sm.ChainStore().GetGenesis(ctx)
 	if err != nil {
 		return xerrors.Errorf("getting genesis block: %w", err)
 	}

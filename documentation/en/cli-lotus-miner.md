@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.14.4
+   1.15.0
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -974,10 +974,11 @@ USAGE:
    lotus-miner data-transfers command [command options] [arguments...]
 
 COMMANDS:
-   list     List ongoing data transfers for this miner
-   restart  Force restart a stalled data transfer
-   cancel   Force cancel a data transfer
-   help, h  Shows a list of commands or help for one command
+   list         List ongoing data transfers for this miner
+   restart      Force restart a stalled data transfer
+   cancel       Force cancel a data transfer
+   diagnostics  Get detailed diagnostics on active transfers with a specific peer
+   help, h      Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h     show help (default: false)
@@ -1031,6 +1032,19 @@ OPTIONS:
    --initiator             specify only transfers where peer is/is not initiator (default: false)
    --cancel-timeout value  time to wait for cancel to be sent to client (default: 5s)
    --help, -h              show help (default: false)
+   
+```
+
+### lotus-miner data-transfers diagnostics
+```
+NAME:
+   lotus-miner data-transfers diagnostics - Get detailed diagnostics on active transfers with a specific peer
+
+USAGE:
+   lotus-miner data-transfers diagnostics [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1984,6 +1998,7 @@ COMMANDS:
    list     list local storage paths
    find     find sector in the storage system
    cleanup  trigger cleanup actions
+   locks    show active sector locks
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2089,6 +2104,19 @@ USAGE:
 
 OPTIONS:
    --removed   cleanup remaining files from removed sectors (default: true)
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner storage locks
+```
+NAME:
+   lotus-miner storage locks - show active sector locks
+
+USAGE:
+   lotus-miner storage locks [command options] [arguments...]
+
+OPTIONS:
    --help, -h  show help (default: false)
    
 ```

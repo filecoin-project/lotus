@@ -150,7 +150,7 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 		if err != nil {
 			return nil, xerrors.Errorf("failed to find blockstore for root CID: %w", err)
 		}
-		if has, err := bs.Has(params.Data.Root); err != nil {
+		if has, err := bs.Has(ctx, params.Data.Root); err != nil {
 			return nil, xerrors.Errorf("failed to query blockstore for root CID: %w", err)
 		} else if !has {
 			return nil, xerrors.Errorf("failed to find root CID in blockstore: %w", err)
@@ -490,6 +490,7 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, paylo
 		Size:                    queryResponse.Size,
 		MinPrice:                queryResponse.PieceRetrievalPrice(),
 		UnsealPrice:             queryResponse.UnsealPrice,
+		PricePerByte:            queryResponse.MinPricePerByte,
 		PaymentInterval:         queryResponse.MaxPaymentInterval,
 		PaymentIntervalIncrease: queryResponse.MaxPaymentIntervalIncrease,
 		Miner:                   queryResponse.PaymentAddress, // TODO: check
@@ -520,7 +521,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 		}
 		defer f.Close() //nolint:errcheck
 
-		hd, _, err := car.ReadHeader(bufio.NewReader(f))
+		hd, err := car.ReadHeader(bufio.NewReader(f))
 		if err != nil {
 			return nil, xerrors.Errorf("failed to read CAR header: %w", err)
 		}
@@ -1028,7 +1029,7 @@ func (a *API) outputCAR(ctx context.Context, ds format.DAGService, bs bstore.Blo
 						}
 
 						if cs.Visit(c) {
-							nb, err := bs.Get(c)
+							nb, err := bs.Get(ctx, c)
 							if err != nil {
 								return xerrors.Errorf("getting block data: %w", err)
 							}
@@ -1285,7 +1286,7 @@ func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet
 	}
 
 	// check that the data is a car file; if it's not, retrieval won't work
-	_, _, err = car.ReadHeader(bufio.NewReader(rdr))
+	_, err = car.ReadHeader(bufio.NewReader(rdr))
 	if err != nil {
 		return nil, xerrors.Errorf("not a car file: %w", err)
 	}

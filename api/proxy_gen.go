@@ -669,6 +669,8 @@ type StorageMinerStruct struct {
 
 		MarketCancelDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
+		MarketDataTransferDiagnostics func(p0 context.Context, p1 peer.ID) (*TransferDiagnostics, error) `perm:"write"`
+
 		MarketDataTransferUpdates func(p0 context.Context) (<-chan DataTransferChannel, error) `perm:"write"`
 
 		MarketGetAsk func(p0 context.Context) (*storagemarket.SignedStorageAsk, error) `perm:"read"`
@@ -808,6 +810,8 @@ type StorageMinerStruct struct {
 		StorageDropSector func(p0 context.Context, p1 stores.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error `perm:"admin"`
 
 		StorageFindSector func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]stores.SectorStorageInfo, error) `perm:"admin"`
+
+		StorageGetLocks func(p0 context.Context) (storiface.SectorLocks, error) `perm:"admin"`
 
 		StorageInfo func(p0 context.Context, p1 stores.ID) (stores.StorageInfo, error) `perm:"admin"`
 
@@ -3979,6 +3983,17 @@ func (s *StorageMinerStub) MarketCancelDataTransfer(p0 context.Context, p1 datat
 	return ErrNotSupported
 }
 
+func (s *StorageMinerStruct) MarketDataTransferDiagnostics(p0 context.Context, p1 peer.ID) (*TransferDiagnostics, error) {
+	if s.Internal.MarketDataTransferDiagnostics == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.MarketDataTransferDiagnostics(p0, p1)
+}
+
+func (s *StorageMinerStub) MarketDataTransferDiagnostics(p0 context.Context, p1 peer.ID) (*TransferDiagnostics, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *StorageMinerStruct) MarketDataTransferUpdates(p0 context.Context) (<-chan DataTransferChannel, error) {
 	if s.Internal.MarketDataTransferUpdates == nil {
 		return nil, ErrNotSupported
@@ -4747,6 +4762,17 @@ func (s *StorageMinerStruct) StorageFindSector(p0 context.Context, p1 abi.Sector
 
 func (s *StorageMinerStub) StorageFindSector(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]stores.SectorStorageInfo, error) {
 	return *new([]stores.SectorStorageInfo), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) StorageGetLocks(p0 context.Context) (storiface.SectorLocks, error) {
+	if s.Internal.StorageGetLocks == nil {
+		return *new(storiface.SectorLocks), ErrNotSupported
+	}
+	return s.Internal.StorageGetLocks(p0)
+}
+
+func (s *StorageMinerStub) StorageGetLocks(p0 context.Context) (storiface.SectorLocks, error) {
+	return *new(storiface.SectorLocks), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageInfo(p0 context.Context, p1 stores.ID) (stores.StorageInfo, error) {

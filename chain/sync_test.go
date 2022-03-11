@@ -1,3 +1,4 @@
+//stm: #unit
 package chain_test
 
 import (
@@ -206,20 +207,21 @@ func (tu *syncTestUtil) pushFtsAndWait(to int, fts *store.FullTipSet, wait bool)
 }
 
 func (tu *syncTestUtil) pushTsExpectErr(to int, fts *store.FullTipSet, experr bool) {
+	ctx := context.TODO()
 	for _, fb := range fts.Blocks {
 		var b types.BlockMsg
 
 		// -1 to match block.Height
 		b.Header = fb.Header
 		for _, msg := range fb.SecpkMessages {
-			c, err := tu.nds[to].(*impl.FullNodeAPI).ChainAPI.Chain.PutMessage(msg)
+			c, err := tu.nds[to].(*impl.FullNodeAPI).ChainAPI.Chain.PutMessage(ctx, msg)
 			require.NoError(tu.t, err)
 
 			b.SecpkMessages = append(b.SecpkMessages, c)
 		}
 
 		for _, msg := range fb.BlsMessages {
-			c, err := tu.nds[to].(*impl.FullNodeAPI).ChainAPI.Chain.PutMessage(msg)
+			c, err := tu.nds[to].(*impl.FullNodeAPI).ChainAPI.Chain.PutMessage(ctx, msg)
 			require.NoError(tu.t, err)
 
 			b.BlsMessages = append(b.BlsMessages, c)
@@ -299,7 +301,7 @@ func (tu *syncTestUtil) addSourceNode(gen int) {
 	lastTs := blocks[len(blocks)-1].Blocks
 	for _, lastB := range lastTs {
 		cs := out.(*impl.FullNodeAPI).ChainAPI.Chain
-		require.NoError(tu.t, cs.AddToTipSetTracker(lastB.Header))
+		require.NoError(tu.t, cs.AddToTipSetTracker(context.Background(), lastB.Header))
 		err = cs.AddBlock(tu.ctx, lastB.Header)
 		require.NoError(tu.t, err)
 	}
@@ -461,6 +463,8 @@ func (tu *syncTestUtil) waitUntilSyncTarget(to int, target *types.TipSet) {
 }
 
 func TestSyncSimple(t *testing.T) {
+	//stm: @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01, @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001, @CHAIN_SYNCER_START_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 	H := 50
 	tu := prepSyncTest(t, H)
 
@@ -477,6 +481,8 @@ func TestSyncSimple(t *testing.T) {
 }
 
 func TestSyncMining(t *testing.T) {
+	//stm: @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01, @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001, @CHAIN_SYNCER_START_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 	H := 50
 	tu := prepSyncTest(t, H)
 
@@ -499,6 +505,8 @@ func TestSyncMining(t *testing.T) {
 }
 
 func TestSyncBadTimestamp(t *testing.T) {
+	//stm: @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01, @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001, @CHAIN_SYNCER_START_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 	H := 50
 	tu := prepSyncTest(t, H)
 
@@ -553,6 +561,8 @@ func (wpp badWpp) ComputeProof(context.Context, []proof7.ExtendedSectorInfo, abi
 }
 
 func TestSyncBadWinningPoSt(t *testing.T) {
+	//stm: @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01, @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001, @CHAIN_SYNCER_START_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 	H := 15
 	tu := prepSyncTest(t, H)
 
@@ -582,6 +592,9 @@ func (tu *syncTestUtil) loadChainToNode(to int) {
 }
 
 func TestSyncFork(t *testing.T) {
+	//stm: @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01, @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001, @CHAIN_SYNCER_START_001
+	//stm: @CHAIN_SYNCER_SYNC_001, @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 	H := 10
 	tu := prepSyncTest(t, H)
 
@@ -649,6 +662,9 @@ func TestSyncFork(t *testing.T) {
 // A and B both include _different_ messages from sender X with nonce N (where N is the correct nonce for X).
 // We can confirm that the state can be correctly computed, and that `MessagesForTipset` behaves as expected.
 func TestDuplicateNonce(t *testing.T) {
+	//stm: @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01, @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001, @CHAIN_SYNCER_START_001
+	//stm: @CHAIN_SYNCER_SYNC_001, @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 	H := 10
 	tu := prepSyncTest(t, H)
 
@@ -703,6 +719,7 @@ func TestDuplicateNonce(t *testing.T) {
 
 	var includedMsg cid.Cid
 	var skippedMsg cid.Cid
+	//stm: @CHAIN_STATE_SEARCH_MSG_001
 	r0, err0 := tu.nds[0].StateSearchMsg(context.TODO(), ts2.TipSet().Key(), msgs[0][0].Cid(), api.LookbackNoLimit, true)
 	r1, err1 := tu.nds[0].StateSearchMsg(context.TODO(), ts2.TipSet().Key(), msgs[1][0].Cid(), api.LookbackNoLimit, true)
 
@@ -735,7 +752,7 @@ func TestDuplicateNonce(t *testing.T) {
 		t.Fatal("included message should be in exec trace")
 	}
 
-	mft, err := tu.g.ChainStore().MessagesForTipset(ts1.TipSet())
+	mft, err := tu.g.ChainStore().MessagesForTipset(context.TODO(), ts1.TipSet())
 	require.NoError(t, err)
 	require.True(t, len(mft) == 1, "only expecting one message for this tipset")
 	require.Equal(t, includedMsg, mft[0].VMMessage().Cid(), "messages for tipset didn't contain expected message")
@@ -744,6 +761,9 @@ func TestDuplicateNonce(t *testing.T) {
 // This test asserts that a block that includes a message with bad nonce can't be synced. A nonce is "bad" if it can't
 // be applied on the parent state.
 func TestBadNonce(t *testing.T) {
+	//stm: @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01, @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001, @CHAIN_SYNCER_START_001
+	//stm: @CHAIN_SYNCER_SYNC_001, @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001
+	//stm: @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001, @CHAIN_SYNCER_STOP_001
 	H := 10
 	tu := prepSyncTest(t, H)
 
@@ -791,6 +811,9 @@ func TestBadNonce(t *testing.T) {
 // One of the messages uses the sender's robust address, the other uses the ID address.
 // Such a block is invalid and should not sync.
 func TestMismatchedNoncesRobustID(t *testing.T) {
+	//stm: @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01, @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001, @CHAIN_SYNCER_START_001
+	//stm: @CHAIN_SYNCER_SYNC_001, @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001
+	//stm: @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001, @CHAIN_SYNCER_STOP_001
 	v5h := abi.ChainEpoch(4)
 	tu := prepSyncTestWithV5Height(t, int(v5h+5), v5h)
 
@@ -803,6 +826,7 @@ func TestMismatchedNoncesRobustID(t *testing.T) {
 	require.NoError(t, err)
 
 	// Produce a message from the banker
+	//stm: @CHAIN_STATE_LOOKUP_ID_001
 	makeMsg := func(id bool) *types.SignedMessage {
 		sender := tu.g.Banker()
 		if id {
@@ -845,6 +869,9 @@ func TestMismatchedNoncesRobustID(t *testing.T) {
 // One of the messages uses the sender's robust address, the other uses the ID address.
 // Such a block is valid and should sync.
 func TestMatchedNoncesRobustID(t *testing.T) {
+	//stm: @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01, @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001, @CHAIN_SYNCER_START_001
+	//stm: @CHAIN_SYNCER_SYNC_001, @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001
+	//stm: @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001, @CHAIN_SYNCER_STOP_001
 	v5h := abi.ChainEpoch(4)
 	tu := prepSyncTestWithV5Height(t, int(v5h+5), v5h)
 
@@ -857,6 +884,7 @@ func TestMatchedNoncesRobustID(t *testing.T) {
 	require.NoError(t, err)
 
 	// Produce a message from the banker with specified nonce
+	//stm: @CHAIN_STATE_LOOKUP_ID_001
 	makeMsg := func(n uint64, id bool) *types.SignedMessage {
 		sender := tu.g.Banker()
 		if id {
@@ -916,6 +944,8 @@ func runSyncBenchLength(b *testing.B, l int) {
 }
 
 func TestSyncInputs(t *testing.T) {
+	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001, @CHAIN_SYNCER_VALIDATE_BLOCK_001,
+	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_STOP_001
 	H := 10
 	tu := prepSyncTest(t, H)
 
@@ -943,6 +973,9 @@ func TestSyncInputs(t *testing.T) {
 }
 
 func TestSyncCheckpointHead(t *testing.T) {
+	//stm: @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01, @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001, @CHAIN_SYNCER_START_001
+	//stm: @CHAIN_SYNCER_SYNC_001, @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001
+	//stm: @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001, @CHAIN_SYNCER_STOP_001
 	H := 10
 	tu := prepSyncTest(t, H)
 
@@ -962,6 +995,7 @@ func TestSyncCheckpointHead(t *testing.T) {
 	a = tu.mineOnBlock(a, p1, []int{0}, true, false, nil, 0, true)
 
 	tu.waitUntilSyncTarget(p1, a.TipSet())
+	//stm: @CHAIN_SYNCER_CHECKPOINT_001
 	tu.checkpointTs(p1, a.TipSet().Key())
 
 	require.NoError(t, tu.g.ResyncBankerNonce(a1.TipSet()))
@@ -981,15 +1015,20 @@ func TestSyncCheckpointHead(t *testing.T) {
 	tu.waitUntilNodeHasTs(p1, b.TipSet().Key())
 	p1Head := tu.getHead(p1)
 	require.True(tu.t, p1Head.Equals(a.TipSet()))
+	//stm: @CHAIN_SYNCER_CHECK_BAD_001
 	tu.assertBad(p1, b.TipSet())
 
 	// Should be able to switch forks.
+	//stm: @CHAIN_SYNCER_CHECKPOINT_001
 	tu.checkpointTs(p1, b.TipSet().Key())
 	p1Head = tu.getHead(p1)
 	require.True(tu.t, p1Head.Equals(b.TipSet()))
 }
 
 func TestSyncCheckpointEarlierThanHead(t *testing.T) {
+	//stm: @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01, @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001, @CHAIN_SYNCER_START_001
+	//stm: @CHAIN_SYNCER_SYNC_001, @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001
+	//stm: @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001, @CHAIN_SYNCER_STOP_001
 	H := 10
 	tu := prepSyncTest(t, H)
 
@@ -1009,6 +1048,7 @@ func TestSyncCheckpointEarlierThanHead(t *testing.T) {
 	a = tu.mineOnBlock(a, p1, []int{0}, true, false, nil, 0, true)
 
 	tu.waitUntilSyncTarget(p1, a.TipSet())
+	//stm: @CHAIN_SYNCER_CHECKPOINT_001
 	tu.checkpointTs(p1, a1.TipSet().Key())
 
 	require.NoError(t, tu.g.ResyncBankerNonce(a1.TipSet()))
@@ -1028,15 +1068,19 @@ func TestSyncCheckpointEarlierThanHead(t *testing.T) {
 	tu.waitUntilNodeHasTs(p1, b.TipSet().Key())
 	p1Head := tu.getHead(p1)
 	require.True(tu.t, p1Head.Equals(a.TipSet()))
+	//stm: @CHAIN_SYNCER_CHECK_BAD_001
 	tu.assertBad(p1, b.TipSet())
 
 	// Should be able to switch forks.
+	//stm: @CHAIN_SYNCER_CHECKPOINT_001
 	tu.checkpointTs(p1, b.TipSet().Key())
 	p1Head = tu.getHead(p1)
 	require.True(tu.t, p1Head.Equals(b.TipSet()))
 }
 
 func TestInvalidHeight(t *testing.T) {
+	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001, @CHAIN_SYNCER_START_001
+	//stm: @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 	H := 50
 	tu := prepSyncTest(t, H)
 

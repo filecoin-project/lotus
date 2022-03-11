@@ -2,6 +2,7 @@ package backupds
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -17,14 +18,14 @@ const valSize = 512 << 10
 
 func putVals(t *testing.T, ds datastore.Datastore, start, end int) {
 	for i := start; i < end; i++ {
-		err := ds.Put(datastore.NewKey(fmt.Sprintf("%d", i)), []byte(fmt.Sprintf("%d-%s", i, strings.Repeat("~", valSize))))
+		err := ds.Put(context.TODO(), datastore.NewKey(fmt.Sprintf("%d", i)), []byte(fmt.Sprintf("%d-%s", i, strings.Repeat("~", valSize))))
 		require.NoError(t, err)
 	}
 }
 
 func checkVals(t *testing.T, ds datastore.Datastore, start, end int, exist bool) {
 	for i := start; i < end; i++ {
-		v, err := ds.Get(datastore.NewKey(fmt.Sprintf("%d", i)))
+		v, err := ds.Get(context.TODO(), datastore.NewKey(fmt.Sprintf("%d", i)))
 		if exist {
 			require.NoError(t, err)
 			expect := []byte(fmt.Sprintf("%d-%s", i, strings.Repeat("~", valSize)))
@@ -44,7 +45,7 @@ func TestNoLogRestore(t *testing.T) {
 	require.NoError(t, err)
 
 	var bup bytes.Buffer
-	require.NoError(t, bds.Backup(&bup))
+	require.NoError(t, bds.Backup(context.TODO(), &bup))
 
 	putVals(t, ds1, 10, 20)
 

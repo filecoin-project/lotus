@@ -1,5 +1,124 @@
 # Lotus changelog
 
+# 1.15.0 / 2022-03-09
+
+This is an optional release with retrieval improvements(client side), SP ux with unsealing, snap deals and regular deal making and many other new features, improvements and bug fixes.
+
+## Highlights
+- feat:sealing: StartEpochSealingBuffer triggers packing on time([filecoin-project/lotus#7905](https://github.com/filecoin-project/lotus/pull/7905))
+  - use the `StartEpochSealingBuffer` configuration variable as a way to enforce that sectors are packed for sealing / updating no matter how many deals they have if the nearest deal start date is close enough to the present.
+- feat: #6017 market: retrieval ask CLI command ([filecoin-project/lotus#7814](https://github.com/filecoin-project/lotus/pull/7814))
+- feat(graphsync): allow setting of per-peer incoming requests for miners ([filecoin-project/lotus#7578](https://github.com/filecoin-project/lotus/pull/7578))
+  - by setting `SimultaneousTransfersForStoragePerClient` in deal making configuration.
+- Make retrieval even faster ([filecoin-project/lotus#7746](https://github.com/filecoin-project/lotus/pull/7746))
+- feat: #7747 sealing: Adding conf variable for capping number of concurrent unsealing jobs (#7884) ([filecoin-project/lotus#7884](https://github.com/filecoin-project/lotus/pull/7884))
+  - by setting `MaxConcurrentUnseals` in `DAGStoreConfig`
+  
+## New Features
+- feat: mpool: Cache state nonces ([filecoin-project/lotus#8005](https://github.com/filecoin-project/lotus/pull/8005))
+- chore: build: make the OhSnap epoch configurable by an envvar for devnets ([filecoin-project/lotus#7995](https://github.com/filecoin-project/lotus/pull/7995))
+- Shed: Add a util to send a batch of messages ([filecoin-project/lotus#7667](https://github.com/filecoin-project/lotus/pull/7667))
+- Add api for transfer diagnostics ([filecoin-project/lotus#7759](https://github.com/filecoin-project/lotus/pull/7759))
+- Shed: Add a util to list terminated deals ([filecoin-project/lotus#7774](https://github.com/filecoin-project/lotus/pull/7774))
+- Expose EnableGasTracing as an env_var ([filecoin-project/lotus#7750](https://github.com/filecoin-project/lotus/pull/7750))
+- Command to list active sector locks ([filecoin-project/lotus#7735](https://github.com/filecoin-project/lotus/pull/7735))
+- Initial switch to OpenTelemetry ([filecoin-project/lotus#7725](https://github.com/filecoin-project/lotus/pull/7725))
+
+## Improvements
+- splitstore sortless compaction ([filecoin-project/lotus#8008](https://github.com/filecoin-project/lotus/pull/8008))
+- perf: chain: Make drand logs in daemon less noisy (#7955) ([filecoin-project/lotus#7955](https://github.com/filecoin-project/lotus/pull/7955))
+- chore: shed: storage stats 2.0 ([filecoin-project/lotus#7941](https://github.com/filecoin-project/lotus/pull/7941))
+- misc: api: Annotate lotus tests according to listed behaviors ([filecoin-project/lotus#7835](https://github.com/filecoin-project/lotus/pull/7835))
+- some basic splitstore refactors ([filecoin-project/lotus#7999](https://github.com/filecoin-project/lotus/pull/7999))
+- chore: sealer: quieten a log ([filecoin-project/lotus#7998](https://github.com/filecoin-project/lotus/pull/7998))
+- tvx: supply network version when extracting messages. ([filecoin-project/lotus#7996](https://github.com/filecoin-project/lotus/pull/7996))
+- chore: remove inaccurate comment in sealtasks ([filecoin-project/lotus#7977](https://github.com/filecoin-project/lotus/pull/7977))
+- Refactor: VM: Remove the NetworkVersionGetter ([filecoin-project/lotus#7818](https://github.com/filecoin-project/lotus/pull/7818))
+- refactor: state: Move randomness versioning out of the VM ([filecoin-project/lotus#7816](https://github.com/filecoin-project/lotus/pull/7816))
+- updating to new datastore/blockstore code with contexts ([filecoin-project/lotus#7646](https://github.com/filecoin-project/lotus/pull/7646))
+- Mempool msg selection should respect block message limits ([filecoin-project/lotus#7321](https://github.com/filecoin-project/lotus/pull/7321))
+- Minor improvement for OpenTelemetry ([filecoin-project/lotus#7760](https://github.com/filecoin-project/lotus/pull/7760))
+- Sort lotus-miner retrieval-deals by dealId ([filecoin-project/lotus#7749](https://github.com/filecoin-project/lotus/pull/7749))
+- dagstore pieceReader: Always read full in ReadAt ([filecoin-project/lotus#7737](https://github.com/filecoin-project/lotus/pull/7737))
+
+## Bug Fixes 
+- fix: sealing: Stop recovery attempts after fault ([filecoin-project/lotus#8014](https://github.com/filecoin-project/lotus/pull/8014))
+- fix:snap: pay for the collateral difference needed if the miner available balance is insufficient ([filecoin-project/lotus#8234](https://github.com/filecoin-project/lotus/pull/8234))
+- sealer: fix error message ([filecoin-project/lotus#8136](https://github.com/filecoin-project/lotus/pull/8136))
+- typo in  variable name ([filecoin-project/lotus#8134](https://github.com/filecoin-project/lotus/pull/8134))
+- fix: sealer: allow enable/disabling ReplicaUpdate tasks ([filecoin-project/lotus#8093](https://github.com/filecoin-project/lotus/pull/8093))
+- chore: chain: fix log ([filecoin-project/lotus#7993](https://github.com/filecoin-project/lotus/pull/7993))
+- Fix: chain: create a new VM for each epoch ([filecoin-project/lotus#7966](https://github.com/filecoin-project/lotus/pull/7966))
+- fix: doc generation struct slice example value ([filecoin-project/lotus#7851](https://github.com/filecoin-project/lotus/pull/7851))
+- fix: returned error not be accept correctly ([filecoin-project/lotus#7852](https://github.com/filecoin-project/lotus/pull/7852))
+- fix: #7577 markets: When retrying Add Piece, first seek to start of reader ([filecoin-project/lotus#7812](https://github.com/filecoin-project/lotus/pull/7812))
+- misc: n/a sealing: Fix grammatical error in a log warning message ([filecoin-project/lotus#7831](https://github.com/filecoin-project/lotus/pull/7831))
+- sectors update-state checks if sector exists before changing its state ([filecoin-project/lotus#7762](https://github.com/filecoin-project/lotus/pull/7762))
+- SplitStore: supress compaction near upgrades ([filecoin-project/lotus#7734](https://github.com/filecoin-project/lotus/pull/7734))
+
+## Dependency Updates
+- github.com/filecoin-project/go-commp-utils (v0.1.2 -> v0.1.3):
+- github.com/filecoin-project/dagstore (v0.4.3 -> v0.4.4):
+- github.com/filecoin-project/go-fil-markets (v1.13.4 -> v1.19.2):
+- github.com/filecoin-project/go-statestore (v0.1.1 -> v0.2.0):
+- github.com/filecoin-project/go-storedcounter (v0.0.0-20200421200003-1c99c62e8a5b -> v0.1.0):
+- github.com/filecoin-project/specs-actors/v2 (v2.3.5 -> v2.3.6):
+  - feat(deps): update markets stack ([filecoin-project/lotus#7959](https://github.com/filecoin-project/lotus/pull/7959))
+  - Use go-libp2p-connmgr v0.3.1 ([filecoin-project/lotus#7957](https://github.com/filecoin-project/lotus/pull/7957))
+  - dep/fix 7701 Dependency: update to ipld-legacy to v0.1.1 ([filecoin-project/lotus#7751](https://github.com/filecoin-project/lotus/pull/7751))
+
+## Others
+- chore: backport: release ([filecoin-project/lotus#8245](https://github.com/filecoin-project/lotus/pull/8245))
+- Lotus release v1.15.0-rc3 ([filecoin-project/lotus#8236](https://github.com/filecoin-project/lotus/pull/8236))
+- Lotus release v1.15.0-rc2 ([filecoin-project/lotus#8211](https://github.com/filecoin-project/lotus/pull/8211))
+- Merge branch 'releases' into release/v1.15.0
+- chore: build: backport releases ([filecoin-project/lotus#8193](https://github.com/filecoin-project/lotus/pull/8193))
+- Merge branch 'releases' into release/v1.15.0
+- bump the version to v1.15.0-rc1
+- chore: build: v1.14.0 -> master ([filecoin-project/lotus#8053](https://github.com/filecoin-project/lotus/pull/8053))
+- chore: merge release/v1.14.0 PRs into master ([filecoin-project/lotus#7979](https://github.com/filecoin-project/lotus/pull/7979))
+- chore: update PR template ([filecoin-project/lotus#7918](https://github.com/filecoin-project/lotus/pull/7918))
+- build: release: bump master version to v1.15.0-dev ([filecoin-project/lotus#7922](https://github.com/filecoin-project/lotus/pull/7922))
+- misc: docs: remove issue number from the pr title ([filecoin-project/lotus#7902](https://github.com/filecoin-project/lotus/pull/7902))
+- Snapcraft grade no develgrade ([filecoin-project/lotus#7802](https://github.com/filecoin-project/lotus/pull/7802))
+- chore: create pull_request_template.md ([filecoin-project/lotus#7726](https://github.com/filecoin-project/lotus/pull/7726))
+- Disable appimage ([filecoin-project/lotus#7707](https://github.com/filecoin-project/lotus/pull/7707))
+
+## Contributors
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| @arajasek | 73 | +7232/-2778 | 386 |
+| @zenground0 | 27 | +5604/-1049 | 219 |
+| @vyzo | 118 | +4356/-1470 | 253 |
+| @zl | 1 | +3725/-309 | 8 |
+| @dirkmc | 7 | +1392/-1110 | 61 |
+| arajasek | 37 | +221/-1329 | 90 |
+| @magik6k | 33 | +1138/-336 | 101 |
+| @whyrusleeping | 2 | +483/-585 | 28 |
+| Darko Brdareski | 14 | +725/-276 | 154 |
+| @rvagg | 2 | +43/-947 | 10 |
+| @hannahhoward | 5 | +436/-335 | 31 |
+| @hannahhoward | 12 | +507/-133 | 37 |
+| @jennijuju | 27 | +333/-178 | 54 |
+| @TheMenko | 8 | +237/-179 | 17 |
+| c r | 2 | +227/-45 | 12 |
+| @dirkmck | 12 | +188/-40 | 27 |
+| @ribasushi | 3 | +128/-62 | 3 |
+| @raulk | 6 | +128/-49 | 9 |
+| @Whyrusleeping | 1 | +76/-70 | 8 |
+| @Stebalien | 1 | +55/-37 | 1 |
+| @jennijuju | 11 | +29/-16 | 11 |
+| @aarshkshah1992 | 1 | +23/-19 | 5 |
+| @travisperson | 1 | +0/-18 | 2 |
+| @gstuart | 3 | +12/-1 | 3 |
+| @coryschwartz | 4 | +5/-6 | 4 |
+| @pefish | 1 | +4/-3 | 1 |
+| @Kubuxu | 1 | +5/-2 | 2 |
+| Colin Kennedy | 1 | +4/-2 | 1 |
+| Rob Quist | 1 | +2/-2 | 1 |
+| @shotcollin | 1 | +1/-1 | 1 |
+
+
 # 1.14.4 / 2022-03-03
 
 This is a *highly recommended* optional release for storage providers that are doing snap deals. This fix the bug 
@@ -110,8 +229,6 @@ All node operators, including storage providers, should be aware that a pre-migr
 | Łukasz Magiera | 1 | +3/-3 | 2 |
 | Travis Person | 1 | +2/-2 | 2 |
 | Rod Vagg | 1 | +2/-2 | 2 |
-
-
 
 # v1.13.2 /  2022-01-09
 
@@ -890,7 +1007,7 @@ This is a  **highly recommended** but optional Lotus v1.11.1 release that introd
 | dependabot[bot] | 1 | +3/-3 | 1 |
 | zhoutian527 | 1 | +2/-2 | 1 |
 | xloem | 1 | +4/-0 | 1 |
-| @travisperson| 2 | +2/-2 | 3 |
+| | 2 | +2/-2 | 3 |
 | Liviu Damian | 2 | +2/-2 | 2 |
 | @jimpick | 2 | +2/-2 | 2 |
 | Frank | 1 | +3/-0 | 1 |
@@ -902,6 +1019,7 @@ This is a  **highly recommended** but optional Lotus v1.11.1 release that introd
 This is a **highly recommended** release of Lotus that have many bug fixes, improvements and new features. 
 
 ## Highlights
+- Miner SimultaneousTransfers config ([filecoin-project/lotus#6612](https://github.com/filecoin-project/lotus/pull/6612))
 - Miner SimultaneousTransfers config ([filecoin-project/lotus#6612](https://github.com/filecoin-project/lotus/pull/6612))
   - Set `SimultaneousTransfers` in lotus miner config to configure the maximum number of parallel online data transfers, including both storage and retrieval deals.
 - Dynamic Retrieval pricing ([filecoin-project/lotus#6175](https://github.com/filecoin-project/lotus/pull/6175))
@@ -1056,7 +1174,7 @@ This is a **highly recommended** release of Lotus that have many bug fixes, impr
 | @Stebalien | 106 | +7653/-2718 | 273 |
 | dirkmc | 11 | +2580/-1371 | 77 |
 | @dirkmc | 39 | +1865/-1194 | 79 |
-| @Kubuxu | 19 | +1973/-485 | 81 |
+|  | 19 | +1973/-485 | 81 |
 | @vyzo | 4 | +1748/-330 | 50 |
 | @aarshkshah1992 | 5 | +1462/-213 | 27 |
 | @coryschwartz | 35 | +568/-206 | 59 |

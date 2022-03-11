@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"os/exec"
 	"strconv"
@@ -14,6 +15,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/hashicorp/go-multierror"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
@@ -27,6 +29,7 @@ import (
 	"github.com/filecoin-project/test-vectors/schema"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 )
@@ -50,11 +53,58 @@ var TipsetVectorOpts struct {
 	OnTipsetApplied []func(bs blockstore.Blockstore, params *ExecuteTipsetParams, res *ExecuteTipsetResult)
 }
 
+type GasPricingRestoreFn func()
+
+// adjustGasPricing adjusts the global gas price mapping to make sure that the
+// gas pricelist for vector's network version is used at the vector's epoch.
+// Because it manipulates a global, it returns a function that reverts the
+// change. The caller MUST invoke this function or the test vector runner will
+// become invalid.
+func adjustGasPricing(vectorEpoch abi.ChainEpoch, vectorNv network.Version) GasPricingRestoreFn {
+	// Stash the current pricing mapping.
+	// Ok to take a reference instead of a copy, because we override the map
+	// with a new one below.
+	var old = vm.Prices
+
+	// Resolve the epoch at which the vector network version kicks in.
+	var epoch abi.ChainEpoch = math.MaxInt64
+	if vectorNv == network.Version0 {
+		// genesis is not an upgrade.
+		epoch = 0
+	} else {
+		for _, u := range filcns.DefaultUpgradeSchedule() {
+			if u.Network == vectorNv {
+				epoch = u.Height
+				break
+			}
+		}
+	}
+
+	if epoch == math.MaxInt64 {
+		panic(fmt.Sprintf("could not resolve network version %d to height", vectorNv))
+	}
+
+	// Find the right pricelist for this network version.
+	pricelist := vm.PricelistByEpoch(epoch)
+
+	// Override the pricing mapping by setting the relevant pricelist for the
+	// network version at the epoch where the vector runs.
+	vm.Prices = map[abi.ChainEpoch]vm.Pricelist{
+		vectorEpoch: pricelist,
+	}
+
+	// Return a function to restore the original mapping.
+	return func() {
+		vm.Prices = old
+	}
+}
+
 // ExecuteMessageVector executes a message-class test vector.
 func ExecuteMessageVector(r Reporter, vector *schema.TestVector, variant *schema.Variant) (diffs []string, err error) {
 	var (
 		ctx       = context.Background()
-		baseEpoch = variant.Epoch
+		baseEpoch = abi.ChainEpoch(variant.Epoch)
+		nv        = network.Version(variant.NetworkVersion)
 		root      = vector.Pre.StateTree.RootCID
 	)
 
@@ -67,6 +117,10 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector, variant *schema
 	// Create a new Driver.
 	driver := NewDriver(ctx, vector.Selector, DriverOpts{DisableVMFlush: true})
 
+	// Monkey patch the gas pricing.
+	revertFn := adjustGasPricing(baseEpoch, nv)
+	defer revertFn()
+
 	// Apply every message.
 	for i, m := range vector.ApplyMessages {
 		msg, err := types.DecodeMessage(m.Bytes)
@@ -76,18 +130,19 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector, variant *schema
 
 		// add the epoch offset if one is set.
 		if m.EpochOffset != nil {
-			baseEpoch += *m.EpochOffset
+			baseEpoch += abi.ChainEpoch(*m.EpochOffset)
 		}
 
 		// Execute the message.
 		var ret *vm.ApplyRet
 		ret, root, err = driver.ExecuteMessage(bs, ExecuteMessageParams{
-			Preroot:    root,
-			Epoch:      abi.ChainEpoch(baseEpoch),
-			Message:    msg,
-			BaseFee:    BaseFeeOrDefault(vector.Pre.BaseFee),
-			CircSupply: CircSupplyOrDefault(vector.Pre.CircSupply),
-			Rand:       NewReplayingRand(r, vector.Randomness),
+			Preroot:        root,
+			Epoch:          baseEpoch,
+			Message:        msg,
+			BaseFee:        BaseFeeOrDefault(vector.Pre.BaseFee),
+			CircSupply:     CircSupplyOrDefault(vector.Pre.CircSupply),
+			Rand:           NewReplayingRand(r, vector.Randomness),
+			NetworkVersion: nv,
 		})
 		if err != nil {
 			r.Fatalf("fatal failure when executing message: %s", err)
@@ -184,8 +239,10 @@ func ExecuteTipsetVector(r Reporter, vector *schema.TestVector, variant *schema.
 func AssertMsgResult(r Reporter, expected *schema.Receipt, actual *vm.ApplyRet, label string) {
 	r.Helper()
 
+	applyret := actual
 	if expected, actual := exitcode.ExitCode(expected.ExitCode), actual.ExitCode; expected != actual {
 		r.Errorf("exit code of msg %s did not match; expected: %s, got: %s", label, expected, actual)
+		r.Errorf("\t\\==> actor error: %s", applyret.ActorErr)
 	}
 	if expected, actual := expected.GasUsed, actual.GasUsed; expected != actual {
 		r.Errorf("gas used of msg %s did not match; expected: %d, got: %d", label, expected, actual)
@@ -282,7 +339,7 @@ func writeStateToTempCAR(bs blockstore.Blockstore, roots ...cid.Cid) (string, er
 				continue
 			}
 			// ignore things we don't have, the state tree is incomplete.
-			if has, err := bs.Has(link.Cid); err != nil {
+			if has, err := bs.Has(context.TODO(), link.Cid); err != nil {
 				return nil, err
 			} else if has {
 				out = append(out, link)
@@ -317,7 +374,7 @@ func LoadBlockstore(vectorCAR schema.Base64EncodedBytes) (blockstore.Blockstore,
 	defer r.Close() // nolint
 
 	// Load the CAR embedded in the test vector into the Blockstore.
-	_, err = car.LoadCar(bs, r)
+	_, err = car.LoadCar(context.TODO(), bs, r)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load state tree car from test vector: %s", err)
 	}

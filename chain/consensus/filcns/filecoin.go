@@ -90,19 +90,19 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 
 	h := b.Header
 
-	baseTs, err := filec.store.LoadTipSet(types.NewTipSetKey(h.Parents...))
+	baseTs, err := filec.store.LoadTipSet(ctx, types.NewTipSetKey(h.Parents...))
 	if err != nil {
 		return xerrors.Errorf("load parent tipset failed (%s): %w", h.Parents, err)
 	}
 
-	winPoStNv := filec.sm.GetNtwkVersion(ctx, baseTs.Height())
+	winPoStNv := filec.sm.GetNetworkVersion(ctx, baseTs.Height())
 
 	lbts, lbst, err := stmgr.GetLookbackTipSetForRound(ctx, filec.sm, baseTs, h.Height)
 	if err != nil {
 		return xerrors.Errorf("failed to get lookback tipset for block: %w", err)
 	}
 
-	prevBeacon, err := filec.store.GetLatestBeaconEntry(baseTs)
+	prevBeacon, err := filec.store.GetLatestBeaconEntry(ctx, baseTs)
 	if err != nil {
 		return xerrors.Errorf("failed to get latest beacon entry: %w", err)
 	}
@@ -171,7 +171,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 		}
 
 		if stateroot != h.ParentStateRoot {
-			msgs, err := filec.store.MessagesForTipset(baseTs)
+			msgs, err := filec.store.MessagesForTipset(ctx, baseTs)
 			if err != nil {
 				log.Error("failed to load messages for tipset during tipset state mismatch error: ", err)
 			} else {
@@ -182,7 +182,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 				}
 			}
 
-			return xerrors.Errorf("parent state root did not match computed state (%s != %s)", stateroot, h.ParentStateRoot)
+			return xerrors.Errorf("parent state root did not match computed state (%s != %s)", h.ParentStateRoot, stateroot)
 		}
 
 		if precp != h.ParentMessageReceipts {
@@ -458,7 +458,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 
 	stateroot, _, err := filec.sm.TipSetState(ctx, baseTs)
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to compute tipsettate for %s: %w", baseTs.Key(), err)
 	}
 
 	st, err := state.LoadStateTree(filec.store.ActorStore(ctx), stateroot)
@@ -466,7 +466,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 		return xerrors.Errorf("failed to load base state tree: %w", err)
 	}
 
-	nv := filec.sm.GetNtwkVersion(ctx, b.Header.Height)
+	nv := filec.sm.GetNetworkVersion(ctx, b.Header.Height)
 	pl := vm.PricelistByEpoch(baseTs.Height())
 	var sumGasLimit int64
 	checkMsg := func(msg types.ChainMsg) error {
@@ -475,7 +475,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 		// Phase 1: syntactic validation, as defined in the spec
 		minGas := pl.OnChainMessage(msg.ChainLength())
 		if err := m.ValidForBlockInclusion(minGas.Total(), nv); err != nil {
-			return err
+			return xerrors.Errorf("msg %s invalid for block inclusion: %w", m.Cid(), err)
 		}
 
 		// ValidForBlockInclusion checks if any single message does not exceed BlockGasLimit
@@ -488,10 +488,10 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 		// Phase 2: (Partial) semantic validation:
 		// the sender exists and is an account actor, and the nonces make sense
 		var sender address.Address
-		if filec.sm.GetNtwkVersion(ctx, b.Header.Height) >= network.Version13 {
+		if filec.sm.GetNetworkVersion(ctx, b.Header.Height) >= network.Version13 {
 			sender, err = st.LookupID(m.From)
 			if err != nil {
-				return err
+				return xerrors.Errorf("failed to lookup sender %s: %w", m.From, err)
 			}
 		} else {
 			sender = m.From
@@ -528,7 +528,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 			return xerrors.Errorf("block had invalid bls message at index %d: %w", i, err)
 		}
 
-		c, err := store.PutMessage(tmpbs, m)
+		c, err := store.PutMessage(ctx, tmpbs, m)
 		if err != nil {
 			return xerrors.Errorf("failed to store message %s: %w", m.Cid(), err)
 		}
@@ -541,7 +541,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 
 	smArr := blockadt.MakeEmptyArray(tmpstore)
 	for i, m := range b.SecpkMessages {
-		if filec.sm.GetNtwkVersion(ctx, b.Header.Height) >= network.Version14 {
+		if filec.sm.GetNetworkVersion(ctx, b.Header.Height) >= network.Version14 {
 			if m.Signature.Type != crypto.SigTypeSecp256k1 {
 				return xerrors.Errorf("block had invalid secpk message at index %d: %w", i, err)
 			}
@@ -562,7 +562,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 			return xerrors.Errorf("secpk message %s has invalid signature: %w", m.Cid(), err)
 		}
 
-		c, err := store.PutMessage(tmpbs, m)
+		c, err := store.PutMessage(ctx, tmpbs, m)
 		if err != nil {
 			return xerrors.Errorf("failed to store message %s: %w", m.Cid(), err)
 		}
@@ -574,12 +574,13 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 
 	bmroot, err := bmArr.Root()
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to root bls msgs: %w", err)
+
 	}
 
 	smroot, err := smArr.Root()
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to root secp msgs: %w", err)
 	}
 
 	mrcid, err := tmpstore.Put(ctx, &types.MsgMeta{
@@ -587,7 +588,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 		SecpkMessages: smroot,
 	})
 	if err != nil {
-		return err
+		return xerrors.Errorf("failed to put msg meta: %w", err)
 	}
 
 	if b.Header.Messages != mrcid {
@@ -595,7 +596,12 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 	}
 
 	// Finally, flush.
-	return vm.Copy(ctx, tmpbs, filec.store.ChainBlockstore(), mrcid)
+	err = vm.Copy(ctx, tmpbs, filec.store.ChainBlockstore(), mrcid)
+	if err != nil {
+		return xerrors.Errorf("failed to flush:%w", err)
+	}
+
+	return nil
 }
 
 func (filec *FilecoinEC) IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool {

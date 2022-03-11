@@ -42,7 +42,7 @@ type FullNodeAPI struct {
 }
 
 func (n *FullNodeAPI) CreateBackup(ctx context.Context, fpath string) error {
-	return backup(n.DS, fpath)
+	return backup(ctx, n.DS, fpath)
 }
 
 func (n *FullNodeAPI) NodeStatus(ctx context.Context, inclChainStatus bool) (status api.NodeStatus, err error) {

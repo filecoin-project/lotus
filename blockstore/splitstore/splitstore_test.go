@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/ioutil"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -20,16 +22,19 @@ import (
 	datastore "github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
 	logging "github.com/ipfs/go-log/v2"
+	mh "github.com/multiformats/go-multihash"
 )
 
 func init() {
 	CompactionThreshold = 5
 	CompactionBoundary = 2
 	WarmupBoundary = 0
+	SyncWaitTime = time.Millisecond
 	logging.SetLogLevel("splitstore", "DEBUG")
 }
 
 func testSplitStore(t *testing.T, cfg *Config) {
+	ctx := context.Background()
 	chain := &mockChain{t: t}
 
 	// the myriads of stores
@@ -39,7 +44,7 @@ func testSplitStore(t *testing.T, cfg *Config) {
 
 	// this is necessary to avoid the garbage mock puts in the blocks
 	garbage := blocks.NewBlock([]byte{1, 2, 3})
-	err := cold.Put(garbage)
+	err := cold.Put(ctx, garbage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,27 +65,36 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		t.Fatal(err)
 	}
 
-	err = cold.Put(blk)
+	err = cold.Put(ctx, blk)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// create a garbage block that is protected with a rgistered protector
 	protected := blocks.NewBlock([]byte("protected!"))
-	err = hot.Put(protected)
+	err = hot.Put(ctx, protected)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// and another one that is not protected
 	unprotected := blocks.NewBlock([]byte("unprotected!"))
-	err = hot.Put(unprotected)
+	err = hot.Put(ctx, unprotected)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	path, err := ioutil.TempDir("", "splitstore.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() {
+		_ = os.RemoveAll(path)
+	})
+
 	// open the splitstore
-	ss, err := Open("", ds, hot, cold, cfg)
+	ss, err := Open(path, ds, hot, cold, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,11 +123,11 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = ss.Put(stateRoot)
+		err = ss.Put(ctx, stateRoot)
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = ss.Put(sblk)
+		err = ss.Put(ctx, sblk)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -124,6 +138,10 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	}
 
 	waitForCompaction := func() {
+		ss.txnSyncMx.Lock()
+		ss.txnSync = true
+		ss.txnSyncCond.Broadcast()
+		ss.txnSyncMx.Unlock()
 		for atomic.LoadInt32(&ss.compacting) == 1 {
 			time.Sleep(100 * time.Millisecond)
 		}
@@ -176,7 +194,7 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	}
 
 	// ensure our protected block is still there
-	has, err := hot.Has(protected.Cid())
+	has, err := hot.Has(ctx, protected.Cid())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +204,7 @@ func testSplitStore(t *testing.T, cfg *Config) {
 	}
 
 	// ensure our unprotected block is in the coldstore now
-	has, err = hot.Has(unprotected.Cid())
+	has, err = hot.Has(ctx, unprotected.Cid())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -195,7 +213,7 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		t.Fatal("unprotected block is still in hotstore")
 	}
 
-	has, err = cold.Has(unprotected.Cid())
+	has, err = cold.Has(ctx, unprotected.Cid())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,6 +240,7 @@ func TestSplitStoreCompactionWithBadger(t *testing.T) {
 }
 
 func TestSplitStoreSuppressCompactionNearUpgrade(t *testing.T) {
+	ctx := context.Background()
 	chain := &mockChain{t: t}
 
 	// the myriads of stores
@@ -231,7 +250,7 @@ func TestSplitStoreSuppressCompactionNearUpgrade(t *testing.T) {
 
 	// this is necessary to avoid the garbage mock puts in the blocks
 	garbage := blocks.NewBlock([]byte{1, 2, 3})
-	err := cold.Put(garbage)
+	err := cold.Put(ctx, garbage)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -252,13 +271,22 @@ func TestSplitStoreSuppressCompactionNearUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = cold.Put(blk)
+	err = cold.Put(ctx, blk)
 	if err != nil {
 		t.Fatal(err)
 	}
 
+	path, err := ioutil.TempDir("", "splitstore.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() {
+		_ = os.RemoveAll(path)
+	})
+
 	// open the splitstore
-	ss, err := Open("", ds, hot, cold, &Config{MarkSetType: "map"})
+	ss, err := Open(path, ds, hot, cold, &Config{MarkSetType: "map"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,11 +316,11 @@ func TestSplitStoreSuppressCompactionNearUpgrade(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = ss.Put(stateRoot)
+		err = ss.Put(ctx, stateRoot)
 		if err != nil {
 			t.Fatal(err)
 		}
-		err = ss.Put(sblk)
+		err = ss.Put(ctx, sblk)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -303,6 +331,10 @@ func TestSplitStoreSuppressCompactionNearUpgrade(t *testing.T) {
 	}
 
 	waitForCompaction := func() {
+		ss.txnSyncMx.Lock()
+		ss.txnSync = true
+		ss.txnSyncCond.Broadcast()
+		ss.txnSyncMx.Unlock()
 		for atomic.LoadInt32(&ss.compacting) == 1 {
 			time.Sleep(100 * time.Millisecond)
 		}
@@ -424,35 +456,43 @@ func (c *mockChain) SubscribeHeadChanges(change func(revert []*types.TipSet, app
 
 type mockStore struct {
 	mx  sync.Mutex
-	set map[cid.Cid]blocks.Block
+	set map[string]blocks.Block
 }
 
 func newMockStore() *mockStore {
-	return &mockStore{set: make(map[cid.Cid]blocks.Block)}
+	return &mockStore{set: make(map[string]blocks.Block)}
 }
 
-func (b *mockStore) Has(cid cid.Cid) (bool, error) {
+func (b *mockStore) keyOf(c cid.Cid) string {
+	return string(c.Hash())
+}
+
+func (b *mockStore) cidOf(k string) cid.Cid {
+	return cid.NewCidV1(cid.Raw, mh.Multihash([]byte(k)))
+}
+
+func (b *mockStore) Has(_ context.Context, cid cid.Cid) (bool, error) {
 	b.mx.Lock()
 	defer b.mx.Unlock()
-	_, ok := b.set[cid]
+	_, ok := b.set[b.keyOf(cid)]
 	return ok, nil
 }
 
 func (b *mockStore) HashOnRead(hor bool) {}
 
-func (b *mockStore) Get(cid cid.Cid) (blocks.Block, error) {
+func (b *mockStore) Get(_ context.Context, cid cid.Cid) (blocks.Block, error) {
 	b.mx.Lock()
 	defer b.mx.Unlock()
 
-	blk, ok := b.set[cid]
+	blk, ok := b.set[b.keyOf(cid)]
 	if !ok {
 		return nil, blockstore.ErrNotFound
 	}
 	return blk, nil
 }
 
-func (b *mockStore) GetSize(cid cid.Cid) (int, error) {
-	blk, err := b.Get(cid)
+func (b *mockStore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
+	blk, err := b.Get(ctx, cid)
 	if err != nil {
 		return 0, err
 	}
@@ -460,46 +500,46 @@ func (b *mockStore) GetSize(cid cid.Cid) (int, error) {
 	return len(blk.RawData()), nil
 }
 
-func (b *mockStore) View(cid cid.Cid, f func([]byte) error) error {
-	blk, err := b.Get(cid)
+func (b *mockStore) View(ctx context.Context, cid cid.Cid, f func([]byte) error) error {
+	blk, err := b.Get(ctx, cid)
 	if err != nil {
 		return err
 	}
 	return f(blk.RawData())
 }
 
-func (b *mockStore) Put(blk blocks.Block) error {
+func (b *mockStore) Put(_ context.Context, blk blocks.Block) error {
 	b.mx.Lock()
 	defer b.mx.Unlock()
 
-	b.set[blk.Cid()] = blk
+	b.set[b.keyOf(blk.Cid())] = blk
 	return nil
 }
 
-func (b *mockStore) PutMany(blks []blocks.Block) error {
+func (b *mockStore) PutMany(_ context.Context, blks []blocks.Block) error {
 	b.mx.Lock()
 	defer b.mx.Unlock()
 
 	for _, blk := range blks {
-		b.set[blk.Cid()] = blk
+		b.set[b.keyOf(blk.Cid())] = blk
 	}
 	return nil
 }
 
-func (b *mockStore) DeleteBlock(cid cid.Cid) error {
+func (b *mockStore) DeleteBlock(_ context.Context, cid cid.Cid) error {
 	b.mx.Lock()
 	defer b.mx.Unlock()
 
-	delete(b.set, cid)
+	delete(b.set, b.keyOf(cid))
 	return nil
 }
 
-func (b *mockStore) DeleteMany(cids []cid.Cid) error {
+func (b *mockStore) DeleteMany(_ context.Context, cids []cid.Cid) error {
 	b.mx.Lock()
 	defer b.mx.Unlock()
 
 	for _, c := range cids {
-		delete(b.set, c)
+		delete(b.set, b.keyOf(c))
 	}
 	return nil
 }
@@ -513,7 +553,7 @@ func (b *mockStore) ForEachKey(f func(cid.Cid) error) error {
 	defer b.mx.Unlock()
 
 	for c := range b.set {
-		err := f(c)
+		err := f(b.cidOf(c))
 		if err != nil {
 			return err
 		}
