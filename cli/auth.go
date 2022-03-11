@@ -123,7 +123,7 @@ var AuthApiInfoToken = &cli.Command{
 
 		ainfo, err := GetAPIInfo(cctx, t)
 		if err != nil {
-			return xerrors.Errorf("could not get API info for %s: %w", t, err)
+			return xerrors.Errorf("could not get API info for %s: %w is FULLNODE_API_INFO set?", t, err)
 		}
 
 		// TODO: Log in audit log when it is implemented
