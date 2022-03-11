@@ -33,6 +33,7 @@ var minerMultisigsCmd = &cli.Command{
 		mmApproveChangeOwner,
 		mmProposeChangeWorker,
 		mmConfirmChangeWorker,
+		mmProposeControlSet,
 	},
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -519,6 +520,121 @@ var mmConfirmChangeWorker = &cli.Command{
 		}
 
 		pcid, err := api.MsigPropose(ctx, multisigAddr, minerAddr, big.Zero(), sender, uint64(miner.Methods.ConfirmUpdateWorkerKey), nil)
+		if err != nil {
+			return xerrors.Errorf("proposing message: %w", err)
+		}
+
+		fmt.Fprintln(cctx.App.Writer, "Propose Message CID:", pcid)
+
+		// wait for it to get mined into a block
+		wait, err := api.StateWaitMsg(ctx, pcid, build.MessageConfidence)
+		if err != nil {
+			return err
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			fmt.Fprintln(cctx.App.Writer, "Propose worker change tx failed!")
+			return err
+		}
+
+		var retval msig5.ProposeReturn
+		if err := retval.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
+			return fmt.Errorf("failed to unmarshal propose return value: %w", err)
+		}
+
+		fmt.Printf("Transaction ID: %d\n", retval.TxnID)
+		if retval.Applied {
+			fmt.Printf("Transaction was executed during propose\n")
+			fmt.Printf("Exit Code: %d\n", retval.Code)
+			fmt.Printf("Return Value: %x\n", retval.Ret)
+		}
+		return nil
+	},
+}
+
+var mmProposeControlSet = &cli.Command{
+	Name:      "ProposeControlSet",
+	Usage:     "Set control address(-es)",
+	ArgsUsage: "[...address]",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass new owner address")
+		}
+
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		multisigAddr, sender, minerAddr, err := getInputs(cctx)
+		if err != nil {
+			return err
+		}
+
+		mi, err := api.StateMinerInfo(ctx, minerAddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		del := map[address.Address]struct{}{}
+		existing := map[address.Address]struct{}{}
+		for _, controlAddress := range mi.ControlAddresses {
+			ka, err := api.StateAccountKey(ctx, controlAddress, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			del[ka] = struct{}{}
+			existing[ka] = struct{}{}
+		}
+
+		var toSet []address.Address
+
+		for i, as := range cctx.Args().Slice() {
+			a, err := address.NewFromString(as)
+			if err != nil {
+				return xerrors.Errorf("parsing address %d: %w", i, err)
+			}
+
+			ka, err := api.StateAccountKey(ctx, a, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			// make sure the address exists on chain
+			_, err = api.StateLookupID(ctx, ka, types.EmptyTSK)
+			if err != nil {
+				return xerrors.Errorf("looking up %s: %w", ka, err)
+			}
+
+			delete(del, ka)
+			toSet = append(toSet, ka)
+		}
+
+		for a := range del {
+			fmt.Println("Remove", a)
+		}
+		for _, a := range toSet {
+			if _, exists := existing[a]; !exists {
+				fmt.Println("Add", a)
+			}
+		}
+
+		cwp := &miner2.ChangeWorkerAddressParams{
+			NewWorker:       mi.Worker,
+			NewControlAddrs: toSet,
+		}
+
+		sp, err := actors.SerializeParams(cwp)
+		if err != nil {
+			return xerrors.Errorf("serializing params: %w", err)
+		}
+
+		pcid, err := api.MsigPropose(ctx, multisigAddr, minerAddr, big.Zero(), sender, uint64(miner.Methods.ChangeWorkerAddress), sp)
 		if err != nil {
 			return xerrors.Errorf("proposing message: %w", err)
 		}
