@@ -33,6 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/alerting"
+	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
@@ -249,6 +250,9 @@ func Base() Option {
 
 // Config sets up constructors based on the provided Config
 func ConfigCommon(cfg *config.Common, enableLibp2pNode bool) Option {
+	// setup logging early
+	lotuslog.SetLevelsFromConfig(cfg.Logging.SubsystemLevels)
+
 	return Options(
 		func(s *Settings) error { s.Config = true; return nil },
 		Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
