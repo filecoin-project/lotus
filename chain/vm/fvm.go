@@ -5,6 +5,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/build"
@@ -215,9 +217,24 @@ type FVM struct {
 }
 
 func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
+	circToReport := opts.FilVested
+	// For v14 (and earlier), we perform the FilVested portion of the calculation, and let the FVM dynamically do the rest
+	// v15 and after, the circ supply is always constant per epoch, so we calculate the base and report it at creation
+	if opts.NetworkVersion >= network.Version15 {
+		state, err := state.LoadStateTree(cbor.NewCborStore(opts.Bstore), opts.StateBase)
+		if err != nil {
+			return nil, err
+		}
+
+		circToReport, err = opts.CircSupplyCalc(ctx, opts.Epoch, state)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	fvm, err := ffi.CreateFVM(0,
 		&FvmExtern{Rand: opts.Rand, Blockstore: opts.Bstore, lbState: opts.LookbackState, base: opts.StateBase, epoch: opts.Epoch},
-		opts.Epoch, opts.BaseFee, opts.FilVested, opts.NetworkVersion, opts.StateBase,
+		opts.Epoch, opts.BaseFee, circToReport, opts.NetworkVersion, opts.StateBase,
 	)
 	if err != nil {
 		return nil, err

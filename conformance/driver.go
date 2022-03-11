@@ -155,7 +155,7 @@ func (d *Driver) ExecuteTipset(bs blockstore.Blockstore, ds ds.Batching, params 
 		results:  []*vm.ApplyRet{},
 	}
 
-	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (*vm.VM, error) {
+	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.VMI, error) {
 		vmopt.CircSupplyCalc = func(context.Context, abi.ChainEpoch, *state.StateTree) (abi.TokenAmount, error) {
 			return big.Zero(), nil
 		}
