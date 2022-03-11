@@ -406,33 +406,22 @@ func fetchThisAndPrevTipset(ctx context.Context, api v0api.FullNode, target type
 // mode.
 func findMsgAndPrecursors(ctx context.Context, mode string, msgCid cid.Cid, sender address.Address, recipient address.Address, msgs []api.Message) (related []*types.Message, found bool, err error) {
 	// Resolve addresses to IDs for canonicality.
-	senderID, err := FullAPI.StateLookupID(ctx, sender, types.EmptyTSK)
-	if err != nil {
-		return nil, false, err
-	}
-	recipientID, err := FullAPI.StateLookupID(ctx, recipient, types.EmptyTSK)
-	if err != nil {
-		return nil, false, err
-	}
+	senderID := mustResolveAddr(ctx, sender)
+	recipientID := mustResolveAddr(ctx, recipient)
 
 	// Range through messages, selecting only the precursors based on selection mode.
 	for _, m := range msgs {
-		msgSenderID, err := FullAPI.StateLookupID(ctx, m.Message.From, types.EmptyTSK)
-		if err != nil {
-			return nil, false, err
-		}
-		msgRecipientID, err := FullAPI.StateLookupID(ctx, m.Message.To, types.EmptyTSK)
-		if err != nil {
-			return nil, false, err
-		}
+		msgSenderID := mustResolveAddr(ctx, m.Message.From)
+		msgRecipientID := mustResolveAddr(ctx, m.Message.To)
+
 		switch {
 		case mode == PrecursorSelectAll:
 			fallthrough
 		case mode == PrecursorSelectParticipants &&
-				msgSenderID == senderID ||
-				msgRecipientID == recipientID ||
-				msgSenderID == recipientID ||
-				msgRecipientID == senderID:
+			msgSenderID == senderID ||
+			msgRecipientID == recipientID ||
+			msgSenderID == recipientID ||
+			msgRecipientID == senderID:
 			related = append(related, m.Message)
 		}
 
@@ -446,4 +435,18 @@ func findMsgAndPrecursors(ctx context.Context, mode string, msgCid cid.Cid, send
 	// the target (that is, messages with a lower nonce, but ultimately not the
 	// target).
 	return related, false, nil
+}
+
+var addressCache = make(map[address.Address]address.Address)
+
+func mustResolveAddr(ctx context.Context, addr address.Address) address.Address {
+	if resolved, ok := addressCache[addr]; ok {
+		return resolved
+	}
+	id, err := FullAPI.StateLookupID(ctx, addr, types.EmptyTSK)
+	if err != nil {
+		panic(fmt.Errorf("failed to resolve addr: %w", err))
+	}
+	addressCache[addr] = id
+	return id
 }
