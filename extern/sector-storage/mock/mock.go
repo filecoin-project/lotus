@@ -434,11 +434,19 @@ func (mgr *SectorMgr) GenerateWindowPoStWithVanilla(ctx context.Context, proofTy
 }
 
 func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (mount.Reader, bool, error) {
-	if uint64(offset) != 0 {
-		panic("implme")
+	off := storiface.UnpaddedByteIndex(0)
+	var piece cid.Cid
+	for _, c := range mgr.sectors[sector.ID].pieces {
+		piece = c
+		if off >= offset {
+			break
+		}
+		off += storiface.UnpaddedByteIndex(len(mgr.pieces[piece]))
 	}
-
-	br := bytes.NewReader(mgr.pieces[mgr.sectors[sector.ID].pieces[0]][:size])
+	if off > offset {
+		panic("non-aligned offset todo")
+	}
+	br := bytes.NewReader(mgr.pieces[piece][:size])
 
 	return struct {
 		io.ReadCloser

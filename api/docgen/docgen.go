@@ -121,7 +121,7 @@ func init() {
 	addExample(api.FullAPIVersion1)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
-	addExample(graphsync.RequestID(4))
+	addExample(graphsync.NewRequestID())
 	addExample(datatransfer.TransferID(3))
 	addExample(datatransfer.Ongoing)
 	addExample(storeIDExample)

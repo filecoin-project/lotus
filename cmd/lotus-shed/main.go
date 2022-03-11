@@ -69,6 +69,7 @@ func main() {
 		terminationsCmd,
 		migrationsCmd,
 		diffCmd,
+		itestdCmd,
 	}
 
 	app := &cli.App{
