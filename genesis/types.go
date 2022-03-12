@@ -3,14 +3,14 @@ package genesis
 import (
 	"encoding/json"
 
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
+
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
-
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 )
 
 type ActorType string
@@ -24,7 +24,7 @@ type PreSeal struct {
 	CommR     cid.Cid
 	CommD     cid.Cid
 	SectorID  abi.SectorNumber
-	Deal      market2.DealProposal
+	Deal      market7.DealProposal
 	ProofType abi.RegisteredSealProof
 }
 

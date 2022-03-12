@@ -12,6 +12,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -192,7 +193,7 @@ type DealProposals interface {
 	decode(*cbg.Deferred) (*DealProposal, error)
 }
 
-type PublishStorageDealsParams = market0.PublishStorageDealsParams
+type PublishStorageDealsParams = market7.PublishStorageDealsParams
 
 type PublishStorageDealsReturn interface {
 	DealIDs() ([]abi.DealID, error)
@@ -236,7 +237,7 @@ func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStora
 type VerifyDealsForActivationParams = market0.VerifyDealsForActivationParams
 type WithdrawBalanceParams = market0.WithdrawBalanceParams
 
-type ClientDealProposal = market0.ClientDealProposal
+type ClientDealProposal = market7.ClientDealProposal
 
 type DealState struct {
 	SectorStartEpoch abi.ChainEpoch // -1 if not yet included in proven sector
@@ -250,7 +251,7 @@ type DealProposal struct {
 	VerifiedDeal         bool
 	Client               address.Address
 	Provider             address.Address
-	Label                string
+	Label                market7.DealLabel
 	StartEpoch           abi.ChainEpoch
 	EndEpoch             abi.ChainEpoch
 	StoragePricePerEpoch abi.TokenAmount

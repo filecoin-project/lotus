@@ -21,7 +21,7 @@ import (
 
 	"github.com/filecoin-project/lotus/node/config"
 
-	"github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	"github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 )
 
 func TestShardRegistration(t *testing.T) {

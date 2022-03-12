@@ -8,9 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/network"
-
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
+
+	"github.com/filecoin-project/go-state-types/network"
 
 	"golang.org/x/net/context"
 	"golang.org/x/xerrors"
@@ -23,7 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	evtmock "github.com/filecoin-project/lotus/chain/events/state/mock"
 	"github.com/filecoin-project/lotus/chain/types"
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
@@ -32,6 +33,12 @@ import (
 var errNotFound = errors.New("could not find")
 
 func TestGetCurrentDealInfo(t *testing.T) {
+	success, err := market7.NewDealLabelFromString("success")
+	require.NoError(t, err)
+
+	other, err := market7.NewDealLabelFromString("other")
+	require.NoError(t, err)
+
 	ctx := context.Background()
 	dummyCid, _ := cid.Parse("bafkqaaa")
 	dummyCid2, _ := cid.Parse("bafkqaab")
@@ -46,7 +53,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 		StoragePricePerEpoch: abi.NewTokenAmount(1),
 		ProviderCollateral:   abi.NewTokenAmount(1),
 		ClientCollateral:     abi.NewTokenAmount(1),
-		Label:                "success",
+		Label:                success,
 	}
 	otherProposal := market.DealProposal{
 		PieceCID:             dummyCid2,
@@ -56,7 +63,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 		StoragePricePerEpoch: abi.NewTokenAmount(1),
 		ProviderCollateral:   abi.NewTokenAmount(1),
 		ClientCollateral:     abi.NewTokenAmount(1),
-		Label:                "other",
+		Label:                other,
 	}
 	successDeal := &api.MarketDeal{
 		Proposal: proposal,
@@ -260,11 +267,11 @@ type CurrentDealInfoMockAPI struct {
 
 func (mapi *CurrentDealInfoMockAPI) ChainGetMessage(ctx context.Context, c cid.Cid) (*types.Message, error) {
 	var dealIDs []abi.DealID
-	var deals []market2.ClientDealProposal
+	var deals []market.ClientDealProposal
 	for k, dl := range mapi.MarketDeals {
 		dealIDs = append(dealIDs, k.DealID)
-		deals = append(deals, market2.ClientDealProposal{
-			Proposal: market2.DealProposal(dl.Proposal),
+		deals = append(deals, market.ClientDealProposal{
+			Proposal: market7.DealProposal(market.DealProposal(dl.Proposal)),
 			ClientSignature: crypto.Signature{
 				Data: []byte("foo bar cat dog"),
 				Type: crypto.SigTypeBLS,
@@ -275,7 +282,7 @@ func (mapi *CurrentDealInfoMockAPI) ChainGetMessage(ctx context.Context, c cid.C
 		return dealIDs[i] < dealIDs[j]
 	})
 	buf := new(bytes.Buffer)
-	params := market2.PublishStorageDealsParams{Deals: deals}
+	params := market.PublishStorageDealsParams{Deals: deals}
 	err := params.MarshalCBOR(buf)
 	if err != nil {
 		panic(err)

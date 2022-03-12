@@ -6,8 +6,8 @@ import (
 	"bytes"
 	"context"
 
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
@@ -269,12 +269,12 @@ func (c *ClientNodeAdapter) DealProviderCollateralBounds(ctx context.Context, si
 }
 
 // TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
-func (c *ClientNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal market0.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
+func (c *ClientNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal market7.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
 	return c.scMgr.OnDealSectorPreCommitted(ctx, provider, marketactor.DealProposal(proposal), *publishCid, cb)
 }
 
 // TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
-func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market0.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
+func (c *ClientNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market7.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
 	return c.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, marketactor.DealProposal(proposal), *publishCid, cb)
 }
 
@@ -368,7 +368,7 @@ func (c *ClientNodeAdapter) OnDealExpiredOrSlashed(ctx context.Context, dealID a
 	return nil
 }
 
-func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal market0.DealProposal) (*marketactor.ClientDealProposal, error) {
+func (c *ClientNodeAdapter) SignProposal(ctx context.Context, signer address.Address, proposal market7.DealProposal) (*marketactor.ClientDealProposal, error) {
 	// TODO: output spec signed proposal
 	buf, err := cborutil.Dump(&proposal)
 	if err != nil {

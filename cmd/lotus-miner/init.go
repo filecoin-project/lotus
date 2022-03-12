@@ -13,6 +13,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
+
 	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
 
 	"github.com/docker/go-units"
@@ -36,7 +38,6 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
 
@@ -391,7 +392,7 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 	return mds.Put(ctx, datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
 }
 
-func findMarketDealID(ctx context.Context, api v1api.FullNode, deal market2.DealProposal) (abi.DealID, error) {
+func findMarketDealID(ctx context.Context, api v1api.FullNode, deal market7.DealProposal) (abi.DealID, error) {
 	// TODO: find a better way
 	//  (this is only used by genesis miners)
 

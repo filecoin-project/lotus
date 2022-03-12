@@ -24,7 +24,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-storage/storage"
 
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -252,12 +252,17 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, 
 
 func createDeals(m *genesis.Miner, k *wallet.Key, maddr address.Address, ssize abi.SectorSize) error {
 	for i, sector := range m.Sectors {
-		proposal := &market2.DealProposal{
+		label, err := market7.NewDealLabelFromString(fmt.Sprintf("%d", i))
+		if err != nil {
+			return xerrors.Errorf("error creating deal label: %w", err)
+		}
+
+		proposal := &market7.DealProposal{
 			PieceCID:             sector.CommD,
 			PieceSize:            abi.PaddedPieceSize(ssize),
 			Client:               k.Address,
 			Provider:             maddr,
-			Label:                fmt.Sprintf("%d", i),
+			Label:                label,
 			StartEpoch:           0,
 			EndEpoch:             9001,
 			StoragePricePerEpoch: big.Zero(),

@@ -13,6 +13,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 
 	market3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
+
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
+
 	adt3 "github.com/filecoin-project/specs-actors/v3/actors/util/adt"
 )
 
@@ -194,14 +197,24 @@ func (s *dealProposals3) Get(dealID abi.DealID) (*DealProposal, bool, error) {
 	if !found {
 		return nil, false, nil
 	}
-	proposal := fromV3DealProposal(proposal3)
+
+	proposal, err := fromV3DealProposal(proposal3)
+	if err != nil {
+		return nil, true, xerrors.Errorf("decoding proposal: %w", err)
+	}
+
 	return &proposal, true, nil
 }
 
 func (s *dealProposals3) ForEach(cb func(dealID abi.DealID, dp DealProposal) error) error {
 	var dp3 market3.DealProposal
 	return s.Array.ForEach(&dp3, func(idx int64) error {
-		return cb(abi.DealID(idx), fromV3DealProposal(dp3))
+		dp, err := fromV3DealProposal(dp3)
+		if err != nil {
+			return xerrors.Errorf("decoding proposal: %w", err)
+		}
+
+		return cb(abi.DealID(idx), dp)
 	})
 }
 
@@ -210,7 +223,12 @@ func (s *dealProposals3) decode(val *cbg.Deferred) (*DealProposal, error) {
 	if err := dp3.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
-	dp := fromV3DealProposal(dp3)
+
+	dp, err := fromV3DealProposal(dp3)
+	if err != nil {
+		return nil, err
+	}
+
 	return &dp, nil
 }
 
@@ -218,8 +236,30 @@ func (s *dealProposals3) array() adt.Array {
 	return s.Array
 }
 
-func fromV3DealProposal(v3 market3.DealProposal) DealProposal {
-	return (DealProposal)(v3)
+func fromV3DealProposal(v3 market3.DealProposal) (DealProposal, error) {
+
+	// TODO: this won't work for non-UTF-8 string labels
+	label, err := market7.NewDealLabelFromString(v3.Label)
+	if err != nil {
+		return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
+	}
+
+	return DealProposal{
+		PieceCID:     v3.PieceCID,
+		PieceSize:    v3.PieceSize,
+		VerifiedDeal: v3.VerifiedDeal,
+		Client:       v3.Client,
+		Provider:     v3.Provider,
+
+		Label: label,
+
+		StartEpoch:           v3.StartEpoch,
+		EndEpoch:             v3.EndEpoch,
+		StoragePricePerEpoch: v3.StoragePricePerEpoch,
+
+		ProviderCollateral: v3.ProviderCollateral,
+		ClientCollateral:   v3.ClientCollateral,
+	}, nil
 }
 
 func (s *state3) GetState() interface{} {

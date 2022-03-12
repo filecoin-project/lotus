@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
+
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	format "github.com/ipfs/go-ipld-format"
 	unixfile "github.com/ipfs/go-unixfs/file"
@@ -60,7 +62,6 @@ import (
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo/imports"
@@ -233,12 +234,17 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 	// stateless flow from here to the end
 	//
 
-	dealProposal := &market.DealProposal{
+	label, err := market7.NewDealLabelFromString(params.Data.Root.Encode(multibase.MustNewEncoder('u')))
+	if err != nil {
+		return nil, xerrors.Errorf("failed to encode label: %w", err)
+	}
+
+	dealProposal := &market7.DealProposal{
 		PieceCID:             *params.Data.PieceCid,
 		PieceSize:            params.Data.PieceSize.Padded(),
 		Client:               walletKey,
 		Provider:             params.Miner,
-		Label:                params.Data.Root.Encode(multibase.MustNewEncoder('u')),
+		Label:                label,
 		StartEpoch:           dealStart,
 		EndEpoch:             calcDealExpiration(params.MinBlocksDuration, md, dealStart),
 		StoragePricePerEpoch: big.Zero(),
@@ -265,7 +271,7 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 		return nil, xerrors.Errorf("failed to sign proposal : %w", err)
 	}
 
-	dealProposalSigned := &market.ClientDealProposal{
+	dealProposalSigned := &market7.ClientDealProposal{
 		Proposal:        *dealProposal,
 		ClientSignature: *dealProposalSig,
 	}
