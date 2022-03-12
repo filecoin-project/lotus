@@ -1,6 +1,8 @@
 package market
 
 import (
+	"unicode/utf8"
+
 	"github.com/filecoin-project/go-state-types/network"
 	"golang.org/x/xerrors"
 
@@ -12,6 +14,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	market8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/market"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -295,7 +298,7 @@ type DealProposals interface {
 	decode(*cbg.Deferred) (*DealProposal, error)
 }
 
-type PublishStorageDealsParams = market0.PublishStorageDealsParams
+type PublishStorageDealsParams = market8.PublishStorageDealsParams
 
 type PublishStorageDealsReturn interface {
 	DealIDs() ([]abi.DealID, error)
@@ -342,7 +345,7 @@ func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStora
 type VerifyDealsForActivationParams = market0.VerifyDealsForActivationParams
 type WithdrawBalanceParams = market0.WithdrawBalanceParams
 
-type ClientDealProposal = market0.ClientDealProposal
+type ClientDealProposal = market8.ClientDealProposal
 
 type DealState struct {
 	SectorStartEpoch abi.ChainEpoch // -1 if not yet included in proven sector
@@ -356,7 +359,7 @@ type DealProposal struct {
 	VerifiedDeal         bool
 	Client               address.Address
 	Provider             address.Address
-	Label                string
+	Label                market8.DealLabel
 	StartEpoch           abi.ChainEpoch
 	EndEpoch             abi.ChainEpoch
 	StoragePricePerEpoch abi.TokenAmount
@@ -414,4 +417,12 @@ func (deal DealProposal) GetDealFees(height abi.ChainEpoch) (abi.TokenAmount, ab
 	}
 
 	return ef, big.Sub(tf, ef)
+}
+
+func labelFromGoString(s string) (market8.DealLabel, error) {
+	if utf8.ValidString(s) {
+		return market8.NewLabelFromString(s)
+	} else {
+		return market8.NewLabelFromBytes([]byte(s))
+	}
 }

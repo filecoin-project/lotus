@@ -9,8 +9,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
-
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -39,6 +39,11 @@ func PreSeal(spt abi.RegisteredSealProof, maddr address.Address, sectors int) (*
 	}
 
 	for i := range genm.Sectors {
+		label, err := market7.NewDealLabelFromString(fmt.Sprintf("%d", i))
+		if err != nil {
+			return nil, nil, xerrors.Errorf("failed to create label: %w", err)
+		}
+
 		preseal := &genesis.PreSeal{}
 
 		preseal.ProofType = spt
@@ -47,12 +52,12 @@ func PreSeal(spt abi.RegisteredSealProof, maddr address.Address, sectors int) (*
 		r := mock.CommDR(d)
 		preseal.CommR, _ = commcid.ReplicaCommitmentV1ToCID(r[:])
 		preseal.SectorID = abi.SectorNumber(i + 1)
-		preseal.Deal = market2.DealProposal{
+		preseal.Deal = market7.DealProposal{
 			PieceCID:             preseal.CommD,
 			PieceSize:            abi.PaddedPieceSize(ssize),
 			Client:               k.Address,
 			Provider:             maddr,
-			Label:                fmt.Sprintf("%d", i),
+			Label:                label,
 			StartEpoch:           1,
 			EndEpoch:             10000,
 			StoragePricePerEpoch: big.Zero(),
