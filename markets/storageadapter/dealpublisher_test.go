@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	market8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/market"
+
 	"github.com/ipfs/go-cid"
 	"github.com/raulk/clock"
 	"golang.org/x/xerrors"
@@ -24,7 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 )
 
 func TestDealPublisher(t *testing.T) {
@@ -246,7 +247,7 @@ func publishDeal(t *testing.T, dp *DealPublisher, invalid int, ctxCancelled bool
 		startEpoch = abi.ChainEpoch(5)
 	}
 	deal := market.ClientDealProposal{
-		Proposal: market0.DealProposal{
+		Proposal: market8.DealProposal{
 			PieceCID:   generateCids(1)[0],
 			Client:     getClientActor(t),
 			Provider:   getProviderActor(t),
@@ -293,7 +294,7 @@ func checkPublishedDeals(t *testing.T, dpapi *dpAPI, dealsToPublish []market.Cli
 		require.Equal(t, market.Methods.PublishStorageDeals, msg.Method)
 
 		// Check that the expected number of deals was included in the message
-		var params market2.PublishStorageDealsParams
+		var params market.PublishStorageDealsParams
 		err := params.UnmarshalCBOR(bytes.NewReader(msg.Params))
 		require.NoError(t, err)
 		require.Len(t, params.Deals, expectedDealsInMsg)
@@ -331,7 +332,7 @@ func matchPieceCids(sent []market.ClientDealProposal, exp []market.ClientDealPro
 	return true
 }
 
-func dealPieceCids(deals []market2.ClientDealProposal) []cid.Cid {
+func dealPieceCids(deals []market.ClientDealProposal) []cid.Cid {
 	cids := make([]cid.Cid, 0, len(deals))
 	for _, dl := range deals {
 		cids = append(cids, dl.Proposal.PieceCID)

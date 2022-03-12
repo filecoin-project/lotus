@@ -194,14 +194,24 @@ func (s *dealProposals6) Get(dealID abi.DealID) (*DealProposal, bool, error) {
 	if !found {
 		return nil, false, nil
 	}
-	proposal := fromV6DealProposal(proposal6)
+
+	proposal, err := fromV6DealProposal(proposal6)
+	if err != nil {
+		return nil, true, xerrors.Errorf("decoding proposal: %w", err)
+	}
+
 	return &proposal, true, nil
 }
 
 func (s *dealProposals6) ForEach(cb func(dealID abi.DealID, dp DealProposal) error) error {
 	var dp6 market6.DealProposal
 	return s.Array.ForEach(&dp6, func(idx int64) error {
-		return cb(abi.DealID(idx), fromV6DealProposal(dp6))
+		dp, err := fromV6DealProposal(dp6)
+		if err != nil {
+			return xerrors.Errorf("decoding proposal: %w", err)
+		}
+
+		return cb(abi.DealID(idx), dp)
 	})
 }
 
@@ -210,7 +220,12 @@ func (s *dealProposals6) decode(val *cbg.Deferred) (*DealProposal, error) {
 	if err := dp6.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
-	dp := fromV6DealProposal(dp6)
+
+	dp, err := fromV6DealProposal(dp6)
+	if err != nil {
+		return nil, err
+	}
+
 	return &dp, nil
 }
 

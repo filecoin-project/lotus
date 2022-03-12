@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
+
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 
 	"golang.org/x/xerrors"
@@ -30,6 +32,9 @@ import (
 )
 
 func TestOnDealSectorPreCommitted(t *testing.T) {
+	label, err := market7.NewDealLabelFromString("success")
+	require.NoError(t, err)
+
 	provider := address.TestAddress
 	ctx := context.Background()
 	publishCid := generateCids(1)[0]
@@ -45,7 +50,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 		StoragePricePerEpoch: abi.NewTokenAmount(1),
 		ProviderCollateral:   abi.NewTokenAmount(1),
 		ClientCollateral:     abi.NewTokenAmount(1),
-		Label:                "success",
+		Label:                label,
 	}
 	unfinishedDeal := &api.MarketDeal{
 		Proposal: proposal,
@@ -250,6 +255,9 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 }
 
 func TestOnDealSectorCommitted(t *testing.T) {
+	label, err := market7.NewDealLabelFromString("success")
+	require.NoError(t, err)
+
 	provider := address.TestAddress
 	publishCid := generateCids(1)[0]
 	pieceCid := generateCids(1)[0]
@@ -263,7 +271,7 @@ func TestOnDealSectorCommitted(t *testing.T) {
 		StoragePricePerEpoch: abi.NewTokenAmount(1),
 		ProviderCollateral:   abi.NewTokenAmount(1),
 		ClientCollateral:     abi.NewTokenAmount(1),
-		Label:                "success",
+		Label:                label,
 	}
 	unfinishedDeal := &api.MarketDeal{
 		Proposal: proposal,

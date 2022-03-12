@@ -206,14 +206,24 @@ func (s *dealProposals{{.v}}) Get(dealID abi.DealID) (*DealProposal, bool, error
 	if !found {
 		return nil, false, nil
 	}
-	proposal := fromV{{.v}}DealProposal(proposal{{.v}})
-	return &proposal, true, nil
+
+    proposal, err := fromV{{.v}}DealProposal(proposal{{.v}})
+    if err != nil {
+        return nil, true, xerrors.Errorf("decoding proposal: %w", err)
+    }
+
+    return &proposal, true, nil
 }
 
 func (s *dealProposals{{.v}}) ForEach(cb func(dealID abi.DealID, dp DealProposal) error) error {
 	var dp{{.v}} market{{.v}}.DealProposal
 	return s.Array.ForEach(&dp{{.v}}, func(idx int64) error {
-		return cb(abi.DealID(idx), fromV{{.v}}DealProposal(dp{{.v}}))
+        dp, err := fromV{{.v}}DealProposal(dp{{.v}})
+        if err != nil {
+            return xerrors.Errorf("decoding proposal: %w", err)
+        }
+
+        return cb(abi.DealID(idx), dp)
 	})
 }
 
@@ -222,8 +232,13 @@ func (s *dealProposals{{.v}}) decode(val *cbg.Deferred) (*DealProposal, error) {
 	if err := dp{{.v}}.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
-	dp := fromV{{.v}}DealProposal(dp{{.v}})
-	return &dp, nil
+
+    dp, err := fromV{{.v}}DealProposal(dp{{.v}})
+    if err != nil {
+        return nil, err
+    }
+
+    return &dp, nil
 }
 
 func (s *dealProposals{{.v}}) array() adt.Array {
