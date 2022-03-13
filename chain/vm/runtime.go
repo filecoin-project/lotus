@@ -56,8 +56,8 @@ func (m *Message) ValueReceived() abi.TokenAmount {
 	return m.msg.Value
 }
 
-// EnableGasTracing, if true, outputs gas tracing in execution traces.
-var EnableGasTracing = os.Getenv("LOTUS_VM_ENABLE_GAS_TRACING_VERY_SLOW") == "1"
+// EnableDetailedTracing, if true, outputs gas tracing in execution traces.
+var EnableDetailedTracing = os.Getenv("LOTUS_VM_ENABLE_GAS_TRACING_VERY_SLOW") == "1"
 
 type Runtime struct {
 	rt7.Message
@@ -516,7 +516,7 @@ func (rt *Runtime) stateCommit(oldh, newh cid.Cid) aerrors.ActorError {
 }
 
 func (rt *Runtime) finilizeGasTracing() {
-	if EnableGasTracing {
+	if EnableDetailedTracing {
 		if rt.lastGasCharge != nil {
 			rt.lastGasCharge.TimeTaken = time.Since(rt.lastGasChargeTime)
 		}
@@ -550,7 +550,7 @@ func (rt *Runtime) chargeGasFunc(skip int) func(GasCharge) {
 
 func (rt *Runtime) chargeGasInternal(gas GasCharge, skip int) aerrors.ActorError {
 	toUse := gas.Total()
-	if EnableGasTracing {
+	if EnableDetailedTracing {
 		var callers [10]uintptr
 
 		cout := gruntime.Callers(2+skip, callers[:])

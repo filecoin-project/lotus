@@ -56,14 +56,14 @@ func BenchmarkRuntime_CreateRuntimeChargeGas_TracingDisabled(b *testing.B) {
 
 	b.ResetTimer()
 
-	EnableGasTracing = false
-	noop := func() bool { return EnableGasTracing }
+	EnableDetailedTracing = false
+	noop := func() bool { return EnableDetailedTracing }
 	for n := 0; n < b.N; n++ {
 		// flip the value and access it to make sure
 		// the compiler doesn't optimize away
-		EnableGasTracing = true
+		EnableDetailedTracing = true
 		_ = noop()
-		EnableGasTracing = false
+		EnableDetailedTracing = false
 		_ = (&Runtime{cst: cst}).chargeGasInternal(gch, 0)
 	}
 }
