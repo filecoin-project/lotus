@@ -283,7 +283,7 @@ func (vm *LegacyVM) send(ctx context.Context, msg *types.Message, parent *Runtim
 	st := vm.cstate
 
 	rt := vm.makeRuntime(ctx, msg, parent)
-	if EnableGasTracing {
+	if EnableDetailedTracing {
 		rt.lastGasChargeTime = start
 		if parent != nil {
 			rt.lastGasChargeTime = parent.lastGasChargeTime

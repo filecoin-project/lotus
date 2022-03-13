@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/lotus/chain/vm"
+
 	gen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/lotus/api"
@@ -32,6 +34,14 @@ func main() {
 		types.BeaconEntry{},
 		types.StateRoot{},
 		types.StateInfo0{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = gen.WriteTupleEncodersToFile("./chain/vm/cbor_gen.go", "vm",
+		vm.FvmExecutionTrace{},
 	)
 	if err != nil {
 		fmt.Println(err)
