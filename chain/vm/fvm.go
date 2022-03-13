@@ -5,6 +5,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -43,7 +45,33 @@ type FvmExtern struct {
 	base    cid.Cid
 }
 
-// VerifyConsensusFault is similar to the one in syscalls.go used by the LegacyVM, except it never errors
+// This may eventually become identical to ExecutionTrace, but we can make incremental progress towards that
+type FvmExecutionTrace struct {
+	Msg    *types.Message
+	MsgRct *types.MessageReceipt
+	Error  string
+
+	Subcalls []FvmExecutionTrace
+}
+
+func (t *FvmExecutionTrace) ToExecutionTrace() types.ExecutionTrace {
+	ret := types.ExecutionTrace{
+		Msg:        t.Msg,
+		MsgRct:     t.MsgRct,
+		Error:      t.Error,
+		Duration:   0,
+		GasCharges: nil,
+		Subcalls:   make([]types.ExecutionTrace, len(t.Subcalls)),
+	}
+
+	for i, v := range t.Subcalls {
+		ret.Subcalls[i] = v.ToExecutionTrace()
+	}
+
+	return ret
+}
+
+// VerifyConsensusFault is similar to the one in syscalls.go used by the Lotus VM, except it never errors
 // Errors are logged and "no fault" is returned, which is functionally what go-actors does anyway
 func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte) (*ffi_cgo.ConsensusFault, int64) {
 	totalGas := int64(0)
@@ -259,6 +287,11 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 		return nil, xerrors.Errorf("applying msg: %w", err)
 	}
 
+	var et FvmExecutionTrace
+	if err = et.UnmarshalCBOR(bytes.NewReader(ret.ExecTraceBytes)); err != nil {
+		return nil, xerrors.Errorf("failed to unmarshal exectrace: %w", err)
+	}
+
 	return &ApplyRet{
 		MessageReceipt: types.MessageReceipt{
 			Return:   ret.Return,
@@ -275,10 +308,8 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 			GasRefund:          0,
 			GasBurned:          0,
 		},
-		// TODO: do these eventually, not consensus critical
-		// https://github.com/filecoin-project/ref-fvm/issues/318
-		ActorErr:       nil,
-		ExecutionTrace: types.ExecutionTrace{},
+		ActorErr:       aerrors.New(exitcode.ExitCode(ret.ExitCode), ret.ErrorString),
+		ExecutionTrace: et.ToExecutionTrace(),
 		Duration:       time.Since(start),
 	}, nil
 }
@@ -294,18 +325,20 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 		return nil, xerrors.Errorf("applying msg: %w", err)
 	}
 
+	var et FvmExecutionTrace
+	if err = et.UnmarshalCBOR(bytes.NewReader(ret.ExecTraceBytes)); err != nil {
+		return nil, xerrors.Errorf("failed to unmarshal exectrace: %w", err)
+	}
+
 	return &ApplyRet{
 		MessageReceipt: types.MessageReceipt{
 			Return:   ret.Return,
 			ExitCode: exitcode.ExitCode(ret.ExitCode),
 			GasUsed:  ret.GasUsed,
 		},
-		GasCosts: nil,
-		// TODO: do these eventually, not consensus critical
-		// https://github.com/filecoin-project/ref-fvm/issues/318
-		ActorErr:       nil,
-		ExecutionTrace: types.ExecutionTrace{},
-		Duration:       time.Since(start),
+		ActorErr: aerrors.New(exitcode.ExitCode(ret.ExitCode), ret.ErrorString),
+		//ExecutionTrace: et.ToExecutionTrace(),
+		Duration: time.Since(start),
 	}, nil
 }
 

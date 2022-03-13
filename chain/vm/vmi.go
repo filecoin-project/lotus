@@ -23,5 +23,5 @@ func NewVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 		return NewFVM(ctx, opts)
 	}
 
-	return NewLegacyVM(ctx, opts)
+	return NewFVM(ctx, opts)
 }
