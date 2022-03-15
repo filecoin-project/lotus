@@ -222,7 +222,7 @@ var LibP2P = Options(
 	Override(ConnGaterKey, lp2p.ConnGaterOption),
 
 	// Services (resource management)
-	Override(new(network.ResourceManager), lp2p.ResourceManager),
+	Override(new(network.ResourceManager), lp2p.ResourceManager(200)),
 	Override(ResourceManagerKey, lp2p.ResourceManagerOption),
 )
 
@@ -282,6 +282,7 @@ func ConfigCommon(cfg *config.Common, enableLibp2pNode bool) Option {
 				cfg.Libp2p.ConnMgrHigh,
 				time.Duration(cfg.Libp2p.ConnMgrGrace),
 				cfg.Libp2p.ProtectedPeers)),
+			Override(new(network.ResourceManager), lp2p.ResourceManager(cfg.Libp2p.ConnMgrHigh)),
 			Override(new(*pubsub.PubSub), lp2p.GossipSub),
 			Override(new(*config.Pubsub), &cfg.Pubsub),
 
