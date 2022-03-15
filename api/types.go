@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/network"
+
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -12,7 +14,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 
-	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ma "github.com/multiformats/go-multiaddr"
@@ -124,12 +125,6 @@ func NewDataTransferChannel(hostID peer.ID, channelState datatransfer.ChannelSta
 	return channel
 }
 
-type NetBlockList struct {
-	Peers     []peer.ID
-	IPAddrs   []string
-	IPSubnets []string
-}
-
 type NetStat struct {
 	System    *network.ScopeStat           `json:",omitempty"`
 	Transient *network.ScopeStat           `json:",omitempty"`
@@ -150,6 +145,12 @@ type NetLimit struct {
 	Streams, StreamsInbound, StreamsOutbound int
 	Conns, ConnsInbound, ConnsOutbound       int
 	FD                                       int
+}
+
+type NetBlockList struct {
+	Peers     []peer.ID
+	IPAddrs   []string
+	IPSubnets []string
 }
 
 type ExtendedPeerInfo struct {
