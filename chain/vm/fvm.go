@@ -31,7 +31,7 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
-var _ VMI = (*FVM)(nil)
+var _ Interface = (*FVM)(nil)
 var _ ffi_cgo.Externs = (*FvmExtern)(nil)
 
 type FvmExtern struct {

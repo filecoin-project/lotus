@@ -95,7 +95,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 	}()
 
 	ctx = blockstore.WithHotView(ctx)
-	makeVmWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (vm.VMI, error) {
+	makeVmWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (vm.Interface, error) {
 		vmopt := &vm.VMOpts{
 			StateBase:      base,
 			Epoch:          e,
@@ -122,7 +122,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 		return sm.VMConstructor()(ctx, vmopt)
 	}
 
-	runCron := func(vmCron vm.VMI, epoch abi.ChainEpoch) error {
+	runCron := func(vmCron vm.Interface, epoch abi.ChainEpoch) error {
 		cronMsg := &types.Message{
 			To:         cron.Address,
 			From:       builtin.SystemActorAddr,
