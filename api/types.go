@@ -58,7 +58,7 @@ type MessageSendSpec struct {
 // GraphSyncDataTransfer provides diagnostics on a data transfer happening over graphsync
 type GraphSyncDataTransfer struct {
 	// GraphSync request id for this transfer
-	RequestID graphsync.RequestID
+	RequestID *graphsync.RequestID
 	// Graphsync state for this transfer
 	RequestState string
 	// If a channel ID is present, indicates whether this is the current graphsync request for this channel

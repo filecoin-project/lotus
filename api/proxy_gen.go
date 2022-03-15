@@ -597,6 +597,12 @@ type NetStruct struct {
 
 		NetPeers func(p0 context.Context) ([]peer.AddrInfo, error) `perm:"read"`
 
+		NetProtectAdd func(p0 context.Context, p1 []peer.ID) error `perm:"admin"`
+
+		NetProtectList func(p0 context.Context) ([]peer.ID, error) `perm:"read"`
+
+		NetProtectRemove func(p0 context.Context, p1 []peer.ID) error `perm:"admin"`
+
 		NetPubsubScores func(p0 context.Context) ([]PubsubScore, error) `perm:"read"`
 
 		NetSetLimit func(p0 context.Context, p1 string, p2 NetLimit) error `perm:"admin"`
@@ -643,6 +649,8 @@ type StorageMinerStruct struct {
 
 		DagstoreListShards func(p0 context.Context) ([]DagstoreShardInfo, error) `perm:"read"`
 
+		DagstoreLookupPieces func(p0 context.Context, p1 cid.Cid) ([]DagstoreShardInfo, error) `perm:"admin"`
+
 		DagstoreRecoverShard func(p0 context.Context, p1 string) error `perm:"write"`
 
 		DealsConsiderOfflineRetrievalDeals func(p0 context.Context) (bool, error) `perm:"admin"`
@@ -676,6 +684,10 @@ type StorageMinerStruct struct {
 		DealsSetConsiderVerifiedStorageDeals func(p0 context.Context, p1 bool) error `perm:"admin"`
 
 		DealsSetPieceCidBlocklist func(p0 context.Context, p1 []cid.Cid) error `perm:"admin"`
+
+		IndexerAnnounceAllDeals func(p0 context.Context) error `perm:"admin"`
+
+		IndexerAnnounceDeal func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
 
 		MarketCancelDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
@@ -3696,6 +3708,39 @@ func (s *NetStub) NetPeers(p0 context.Context) ([]peer.AddrInfo, error) {
 	return *new([]peer.AddrInfo), ErrNotSupported
 }
 
+func (s *NetStruct) NetProtectAdd(p0 context.Context, p1 []peer.ID) error {
+	if s.Internal.NetProtectAdd == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.NetProtectAdd(p0, p1)
+}
+
+func (s *NetStub) NetProtectAdd(p0 context.Context, p1 []peer.ID) error {
+	return ErrNotSupported
+}
+
+func (s *NetStruct) NetProtectList(p0 context.Context) ([]peer.ID, error) {
+	if s.Internal.NetProtectList == nil {
+		return *new([]peer.ID), ErrNotSupported
+	}
+	return s.Internal.NetProtectList(p0)
+}
+
+func (s *NetStub) NetProtectList(p0 context.Context) ([]peer.ID, error) {
+	return *new([]peer.ID), ErrNotSupported
+}
+
+func (s *NetStruct) NetProtectRemove(p0 context.Context, p1 []peer.ID) error {
+	if s.Internal.NetProtectRemove == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.NetProtectRemove(p0, p1)
+}
+
+func (s *NetStub) NetProtectRemove(p0 context.Context, p1 []peer.ID) error {
+	return ErrNotSupported
+}
+
 func (s *NetStruct) NetPubsubScores(p0 context.Context) ([]PubsubScore, error) {
 	if s.Internal.NetPubsubScores == nil {
 		return *new([]PubsubScore), ErrNotSupported
@@ -3847,6 +3892,17 @@ func (s *StorageMinerStruct) DagstoreListShards(p0 context.Context) ([]DagstoreS
 }
 
 func (s *StorageMinerStub) DagstoreListShards(p0 context.Context) ([]DagstoreShardInfo, error) {
+	return *new([]DagstoreShardInfo), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) DagstoreLookupPieces(p0 context.Context, p1 cid.Cid) ([]DagstoreShardInfo, error) {
+	if s.Internal.DagstoreLookupPieces == nil {
+		return *new([]DagstoreShardInfo), ErrNotSupported
+	}
+	return s.Internal.DagstoreLookupPieces(p0, p1)
+}
+
+func (s *StorageMinerStub) DagstoreLookupPieces(p0 context.Context, p1 cid.Cid) ([]DagstoreShardInfo, error) {
 	return *new([]DagstoreShardInfo), ErrNotSupported
 }
 
@@ -4034,6 +4090,28 @@ func (s *StorageMinerStruct) DealsSetPieceCidBlocklist(p0 context.Context, p1 []
 }
 
 func (s *StorageMinerStub) DealsSetPieceCidBlocklist(p0 context.Context, p1 []cid.Cid) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) IndexerAnnounceAllDeals(p0 context.Context) error {
+	if s.Internal.IndexerAnnounceAllDeals == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.IndexerAnnounceAllDeals(p0)
+}
+
+func (s *StorageMinerStub) IndexerAnnounceAllDeals(p0 context.Context) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) IndexerAnnounceDeal(p0 context.Context, p1 cid.Cid) error {
+	if s.Internal.IndexerAnnounceDeal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.IndexerAnnounceDeal(p0, p1)
+}
+
+func (s *StorageMinerStub) IndexerAnnounceDeal(p0 context.Context, p1 cid.Cid) error {
 	return ErrNotSupported
 }
 

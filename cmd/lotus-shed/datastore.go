@@ -32,6 +32,7 @@ var datastoreCmd = &cli.Command{
 		datastoreListCmd,
 		datastoreGetCmd,
 		datastoreRewriteCmd,
+		datastoreVlog2CarCmd,
 	},
 }
 

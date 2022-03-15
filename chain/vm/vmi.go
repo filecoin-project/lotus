@@ -15,7 +15,7 @@ type VMI interface {
 }
 
 func NewVM(ctx context.Context, opts *VMOpts) (VMI, error) {
-	if os.Getenv("LOTUS_USE_FVM_DOESNT_WORK_YET") == "1" {
+	if os.Getenv("LOTUS_USE_FVM_EXPERIMENTAL") == "1" {
 		return NewFVM(ctx, opts)
 	}
 
