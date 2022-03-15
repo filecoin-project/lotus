@@ -274,6 +274,7 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 			GasBurned:          0,
 		},
 		// TODO: do these eventually, not consensus critical
+		// https://github.com/filecoin-project/ref-fvm/issues/318
 		ActorErr:       nil,
 		ExecutionTrace: types.ExecutionTrace{},
 		Duration:       time.Since(start),
@@ -299,6 +300,7 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 		},
 		GasCosts: nil,
 		// TODO: do these eventually, not consensus critical
+		// https://github.com/filecoin-project/ref-fvm/issues/318
 		ActorErr:       nil,
 		ExecutionTrace: types.ExecutionTrace{},
 		Duration:       time.Since(start),
