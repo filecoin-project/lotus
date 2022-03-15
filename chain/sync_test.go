@@ -104,7 +104,7 @@ func prepSyncTest(t testing.TB, h int) *syncTestUtil {
 		ctx:    ctx,
 		cancel: cancel,
 
-		mn: mocknet.New(),
+		mn: mocknet.New(ctx),
 		g:  g,
 		us: filcns.DefaultUpgradeSchedule(),
 	}
@@ -158,7 +158,7 @@ func prepSyncTestWithV5Height(t testing.TB, h int, v5height abi.ChainEpoch) *syn
 		ctx:    ctx,
 		cancel: cancel,
 
-		mn: mocknet.New(),
+		mn: mocknet.New(ctx),
 		g:  g,
 		us: sched,
 	}
