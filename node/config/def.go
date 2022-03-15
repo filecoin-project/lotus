@@ -189,7 +189,7 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		IndexProvider: IndexProviderConfig{
-			Enable:               false,
+			Enable:               true,
 			EntriesCacheCapacity: 1024,
 			EntriesChunkSize:     16384,
 			TopicName:            "/indexer/ingest/mainnet",
