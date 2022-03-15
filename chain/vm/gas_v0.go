@@ -50,7 +50,7 @@ type pricelistV0 struct {
 	// whether it succeeds or fails in application) is given by:
 	//   OnChainMessageBase + len(serialized message)*OnChainMessagePerByte
 	// Together, these account for the cost of message propagation and validation,
-	// up to but excluding any actual processing by the VM.
+	// up to but excluding any actual processing by the LegacyVM.
 	// This is the cost a block producer burns when including an invalid message.
 	onChainMessageComputeBase    int64
 	onChainMessageStorageBase    int64
@@ -83,11 +83,11 @@ type pricelistV0 struct {
 	sendInvokeMethod int64
 
 	// Gas cost for any Get operation to the IPLD store
-	// in the runtime VM context.
+	// in the runtime LegacyVM context.
 	ipldGetBase int64
 
 	// Gas cost (Base + len*PerByte) for any Put operation to the IPLD store
-	// in the runtime VM context.
+	// in the runtime LegacyVM context.
 	//
 	// Note: these costs should be significantly higher than the costs for Get
 	// operations, since they reflect not only serialization/deserialization

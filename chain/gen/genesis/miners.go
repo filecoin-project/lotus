@@ -99,9 +99,9 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 		FilVested:      big.Zero(),
 	}
 
-	vm, err := vm.NewLotusVM(ctx, vmopt)
+	vm, err := vm.NewLegacyVM(ctx, vmopt)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create NewLotusVM: %w", err)
+		return cid.Undef, xerrors.Errorf("failed to create NewLegacyVM: %w", err)
 	}
 
 	if len(miners) == 0 {
@@ -521,7 +521,7 @@ func (fr *fakeRand) GetBeaconRandomness(ctx context.Context, personalization cry
 	return out, nil
 }
 
-func currentTotalPower(ctx context.Context, vm *vm.VM, maddr address.Address) (*power0.CurrentTotalPowerReturn, error) {
+func currentTotalPower(ctx context.Context, vm *vm.LegacyVM, maddr address.Address) (*power0.CurrentTotalPowerReturn, error) {
 	pwret, err := doExecValue(ctx, vm, power.Address, maddr, big.Zero(), builtin0.MethodsPower.CurrentTotalPower, nil)
 	if err != nil {
 		return nil, err
@@ -534,7 +534,7 @@ func currentTotalPower(ctx context.Context, vm *vm.VM, maddr address.Address) (*
 	return &pwr, nil
 }
 
-func dealWeight(ctx context.Context, vm *vm.VM, maddr address.Address, dealIDs []abi.DealID, sectorStart, sectorExpiry abi.ChainEpoch, av actors.Version) (abi.DealWeight, abi.DealWeight, error) {
+func dealWeight(ctx context.Context, vm *vm.LegacyVM, maddr address.Address, dealIDs []abi.DealID, sectorStart, sectorExpiry abi.ChainEpoch, av actors.Version) (abi.DealWeight, abi.DealWeight, error) {
 	// TODO: This hack should move to market actor wrapper
 	if av <= actors.Version2 {
 		params := &market0.VerifyDealsForActivationParams{
@@ -594,7 +594,7 @@ func dealWeight(ctx context.Context, vm *vm.VM, maddr address.Address, dealIDs [
 	return dealWeights.Sectors[0].DealWeight, dealWeights.Sectors[0].VerifiedDealWeight, nil
 }
 
-func currentEpochBlockReward(ctx context.Context, vm *vm.VM, maddr address.Address, av actors.Version) (abi.StoragePower, builtin.FilterEstimate, error) {
+func currentEpochBlockReward(ctx context.Context, vm *vm.LegacyVM, maddr address.Address, av actors.Version) (abi.StoragePower, builtin.FilterEstimate, error) {
 	rwret, err := doExecValue(ctx, vm, reward.Address, maddr, big.Zero(), reward.Methods.ThisEpochReward, nil)
 	if err != nil {
 		return big.Zero(), builtin.FilterEstimate{}, err
@@ -629,7 +629,7 @@ func currentEpochBlockReward(ctx context.Context, vm *vm.VM, maddr address.Addre
 	return epochReward.ThisEpochBaselinePower, builtin.FilterEstimate(epochReward.ThisEpochRewardSmoothed), nil
 }
 
-func circSupply(ctx context.Context, vmi *vm.VM, maddr address.Address) abi.TokenAmount {
+func circSupply(ctx context.Context, vmi *vm.LegacyVM, maddr address.Address) abi.TokenAmount {
 	unsafeVM := &vm.UnsafeVM{VM: vmi}
 	rt := unsafeVM.MakeRuntime(ctx, &types.Message{
 		GasLimit: 1_000_000_000,

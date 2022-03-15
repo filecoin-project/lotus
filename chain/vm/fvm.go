@@ -42,7 +42,7 @@ type FvmExtern struct {
 	base    cid.Cid
 }
 
-// VerifyConsensusFault is similar to the one in syscalls.go used by the Lotus VM, except it never errors
+// VerifyConsensusFault is similar to the one in syscalls.go used by the LegacyVM, except it never errors
 // Errors are logged and "no fault" is returned, which is functionally what go-actors does anyway
 func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte) (*ffi_cgo.ConsensusFault, int64) {
 	totalGas := int64(0)

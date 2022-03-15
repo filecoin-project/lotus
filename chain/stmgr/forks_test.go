@@ -167,7 +167,7 @@ func TestForkHeightTriggers(t *testing.T) {
 	inv.Register(nil, testActor{})
 
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
-		nvm, err := vm.NewLotusVM(ctx, vmopt)
+		nvm, err := vm.NewLegacyVM(ctx, vmopt)
 		if err != nil {
 			return nil, err
 		}
@@ -282,7 +282,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 	inv.Register(nil, testActor{})
 
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
-		nvm, err := vm.NewLotusVM(ctx, vmopt)
+		nvm, err := vm.NewLegacyVM(ctx, vmopt)
 		if err != nil {
 			return nil, err
 		}
@@ -501,7 +501,7 @@ func TestForkPreMigration(t *testing.T) {
 	inv.Register(nil, testActor{})
 
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
-		nvm, err := vm.NewLotusVM(ctx, vmopt)
+		nvm, err := vm.NewLegacyVM(ctx, vmopt)
 		if err != nil {
 			return nil, err
 		}
