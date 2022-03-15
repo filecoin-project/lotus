@@ -43,17 +43,18 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 		// - if maxconns are too high, adjust Conn/FD/Stream limits
 		defaultLimits := rcmgr.DefaultLimits.WithSystemMemory(.125, 1<<30, 4<<30)
 		maxconns := int(connMgrHi)
-		if maxconns > defaultLimits.SystemBaseLimit.ConnsInbound {
-			defaultLimits.SystemBaseLimit.ConnsInbound = logScale(maxconns)
-			defaultLimits.SystemBaseLimit.ConnsOutbound = logScale(maxconns)
-			defaultLimits.SystemBaseLimit.Conns = logScale(2 * maxconns)
+		if 2*maxconns > defaultLimits.SystemBaseLimit.ConnsInbound {
+			// adjust conns to 2x to allow for two conns per peer (TCP+QUIC)
+			defaultLimits.SystemBaseLimit.ConnsInbound = logScale(2 * maxconns)
+			defaultLimits.SystemBaseLimit.ConnsOutbound = logScale(2 * maxconns)
+			defaultLimits.SystemBaseLimit.Conns = logScale(4 * maxconns)
 
 			defaultLimits.SystemBaseLimit.StreamsInbound = logScale(16 * maxconns)
 			defaultLimits.SystemBaseLimit.StreamsOutbound = logScale(64 * maxconns)
 			defaultLimits.SystemBaseLimit.Streams = logScale(64 * maxconns)
 
-			if maxconns > defaultLimits.SystemBaseLimit.FD {
-				defaultLimits.SystemBaseLimit.FD = logScale(maxconns)
+			if 2*maxconns > defaultLimits.SystemBaseLimit.FD {
+				defaultLimits.SystemBaseLimit.FD = logScale(2 * maxconns)
 			}
 
 			defaultLimits.ServiceBaseLimit.StreamsInbound = logScale(8 * maxconns)
