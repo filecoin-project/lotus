@@ -49,9 +49,6 @@ func runTestCCUpgrade(t *testing.T) *kit.TestFullNode {
 	CCUpgrade := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner + 1)
 	fmt.Printf("CCUpgrade: %d\n", CCUpgrade)
 
-	// wait for deadline 0 to pass so that committing starts after post on preseals
-	// this gives max time for post to complete minimizing chances of timeout
-	// waitForDeadline(ctx, t, 1, client, maddr)
 	miner.PledgeSectors(ctx, 1, 0, nil)
 	sl, err := miner.SectorsList(ctx)
 	require.NoError(t, err)
@@ -142,9 +139,6 @@ func TestAbortUpgradeAvailable(t *testing.T) {
 	CCUpgrade := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner + 1)
 	fmt.Printf("CCUpgrade: %d\n", CCUpgrade)
 
-	// wait for deadline 0 to pass so that committing starts after post on preseals
-	// this gives max time for post to complete minimizing chances of timeout
-	// waitForDeadline(ctx, t, 1, client, maddr)
 	miner.PledgeSectors(ctx, 1, 0, nil)
 	sl, err := miner.SectorsList(ctx)
 	require.NoError(t, err)
