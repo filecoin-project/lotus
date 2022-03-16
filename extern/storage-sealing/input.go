@@ -573,21 +573,24 @@ func (m *Sealing) tryGetUpgradeSector(ctx context.Context, sp abi.RegisteredSeal
 			continue
 		}
 
-		active, err := m.sectorActive(ctx, TipSetToken{}, s.Number)
-		if err != nil {
-			log.Errorw("checking sector active", "error", err)
-			continue
-		}
-		if !active {
-			log.Debugw("skipping available sector", "reason", "not active")
-			continue
+		slowChecks := func() bool {
+			active, err := m.sectorActive(ctx, TipSetToken{}, s.Number)
+			if err != nil {
+				log.Errorw("checking sector active", "error", err)
+				return false
+			}
+			if !active {
+				log.Debugw("skipping available sector", "reason", "not active")
+				return false
+			}
+			return true
 		}
 
 		// if best is below target, we want larger expirations
 		// if best is above target, we want lower pledge, but only if still above target
 
 		if bestExpiration < targetExpiration {
-			if expiration > bestExpiration {
+			if expiration > bestExpiration && slowChecks() {
 				bestExpiration = expiration
 				bestPledge = pledge
 				candidate = s
@@ -595,7 +598,7 @@ func (m *Sealing) tryGetUpgradeSector(ctx context.Context, sp abi.RegisteredSeal
 			continue
 		}
 
-		if expiration >= targetExpiration && pledge.LessThan(bestPledge) {
+		if expiration >= targetExpiration && pledge.LessThan(bestPledge) && slowChecks() {
 			bestExpiration = expiration
 			bestPledge = pledge
 			candidate = s
