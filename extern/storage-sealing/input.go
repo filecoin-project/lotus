@@ -528,7 +528,7 @@ func (m *Sealing) calcTargetExpiration(ctx context.Context, ssize abi.SectorSize
 
 	// earliest expiration first
 	sort.Slice(candidates, func(i, j int) bool {
-		return candidates[i].deal.DealProposal.EndEpoch < candidates[i].deal.DealProposal.EndEpoch
+		return candidates[i].deal.DealProposal.EndEpoch < candidates[j].deal.DealProposal.EndEpoch
 	})
 
 	var totalBytes uint64
