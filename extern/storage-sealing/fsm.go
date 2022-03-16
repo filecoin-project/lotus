@@ -287,6 +287,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	),
 	Available: planOne(
 		on(SectorStartCCUpdate{}, SnapDealsWaitDeals),
+		on(SectorAbortUpgrade{}, Proving),
 	),
 	Terminating: planOne(
 		on(SectorTerminating{}, TerminateWait),
