@@ -170,8 +170,8 @@ func TestForkHeightTriggers(t *testing.T) {
 	inv := filcns.NewActorRegistry()
 	inv.Register(nil, testActor{})
 
-	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (*vm.VM, error) {
-		nvm, err := vm.NewVM(ctx, vmopt)
+	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
+		nvm, err := vm.NewLegacyVM(ctx, vmopt)
 		if err != nil {
 			return nil, err
 		}
@@ -287,8 +287,8 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 	inv := filcns.NewActorRegistry()
 	inv.Register(nil, testActor{})
 
-	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (*vm.VM, error) {
-		nvm, err := vm.NewVM(ctx, vmopt)
+	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
+		nvm, err := vm.NewLegacyVM(ctx, vmopt)
 		if err != nil {
 			return nil, err
 		}
@@ -508,8 +508,8 @@ func TestForkPreMigration(t *testing.T) {
 	inv := filcns.NewActorRegistry()
 	inv.Register(nil, testActor{})
 
-	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (*vm.VM, error) {
-		nvm, err := vm.NewVM(ctx, vmopt)
+	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
+		nvm, err := vm.NewLegacyVM(ctx, vmopt)
 		if err != nil {
 			return nil, err
 		}
