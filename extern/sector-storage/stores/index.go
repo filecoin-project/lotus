@@ -7,6 +7,7 @@ import (
 	"net/url"
 	gopath "path"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,6 +29,27 @@ var SkippedHeartbeatThresh = HeartbeatInterval * 5
 // ID identifies sector storage by UUID. One sector storage should map to one
 //  filesystem, local or networked / shared by multiple machines
 type ID string
+
+const IDSep = "."
+
+type IDList []ID
+
+func (il IDList) String() string {
+	l := make([]string, len(il))
+	for i, id := range il {
+		l[i] = string(id)
+	}
+	return strings.Join(l, IDSep)
+}
+
+func ParseIDList(s string) IDList {
+	strs := strings.Split(s, IDSep)
+	out := make([]ID, len(strs))
+	for i, str := range strs {
+		out[i] = ID(str)
+	}
+	return out
+}
 
 type Group = string
 

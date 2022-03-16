@@ -156,7 +156,7 @@ func (r *Remote) AcquireSector(ctx context.Context, s storage.SectorRef, existin
 
 		if op == storiface.AcquireMove {
 			id := ID(storageID)
-			if err := r.deleteFromRemote(ctx, url, &id); err != nil {
+			if err := r.deleteFromRemote(ctx, url, []ID{id}); err != nil {
 				log.Warnf("deleting sector %v from %s (delete %s): %+v", s, storageID, url, err)
 			}
 		}
@@ -355,7 +355,7 @@ storeLoop:
 			}
 		}
 		for _, url := range info.URLs {
-			if err := r.deleteFromRemote(ctx, url, nil); err != nil {
+			if err := r.deleteFromRemote(ctx, url, keepIn); err != nil {
 				log.Warnf("remove %s: %+v", url, err)
 				continue
 			}
@@ -366,9 +366,9 @@ storeLoop:
 	return nil
 }
 
-func (r *Remote) deleteFromRemote(ctx context.Context, url string, keepIn *ID) error {
+func (r *Remote) deleteFromRemote(ctx context.Context, url string, keepIn IDList) error {
 	if keepIn != nil {
-		url = url + "?keep=" + string(*keepIn)
+		url = url + "?keep=" + keepIn.String()
 	}
 
 	log.Infof("Delete %s", url)
