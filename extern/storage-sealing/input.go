@@ -608,7 +608,7 @@ func (m *Sealing) tryGetUpgradeSector(ctx context.Context, sp abi.RegisteredSeal
 	}
 
 	if bestExpiration < minExpiration {
-		log.Infow("Not upgrading any sectors", "available", len(m.available), "bestExp", bestExpiration, "target", targetExpiration, "min", minExpiration, "candidate", candidate)
+		log.Infow("Not upgrading any sectors", "available", len(m.available), "pieces", len(m.pendingPieces), "bestExp", bestExpiration, "target", targetExpiration, "min", minExpiration, "candidate", candidate)
 		// didn't find a good sector / no sectors were available
 		return false, nil
 	}
