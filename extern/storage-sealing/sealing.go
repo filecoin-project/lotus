@@ -105,7 +105,7 @@ type Sealing struct {
 	sectorTimers   map[abi.SectorID]*time.Timer
 	pendingPieces  map[cid.Cid]*pendingPiece
 	assignedPieces map[abi.SectorID][]cid.Cid
-	creating       *abi.SectorNumber // used to prevent a race where we could create a new sector more than once
+	nextDealSector *abi.SectorNumber // used to prevent a race where we could create a new sector more than once
 
 	upgradeLk sync.Mutex
 	toUpgrade map[abi.SectorNumber]struct{}
