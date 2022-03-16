@@ -3,7 +3,6 @@ package sealing
 import (
 	"context"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 
@@ -72,7 +71,7 @@ func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) e
 		return xerrors.Errorf("failed to read sector on chain info: %w", err)
 	}
 
-	active, err := sectorActive(ctx, m.Api, m.maddr, tok, id)
+	active, err := m.sectorActive(ctx, tok, id)
 	if err != nil {
 		return xerrors.Errorf("failed to check if sector is active")
 	}
@@ -88,8 +87,8 @@ func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) e
 	return m.sectors.Send(uint64(id), SectorMarkForUpdate{})
 }
 
-func sectorActive(ctx context.Context, api SealingAPI, maddr address.Address, tok TipSetToken, sector abi.SectorNumber) (bool, error) {
-	active, err := api.StateMinerActiveSectors(ctx, maddr, tok)
+func (m *Sealing) sectorActive(ctx context.Context, tok TipSetToken, sector abi.SectorNumber) (bool, error) {
+	active, err := m.Api.StateMinerActiveSectors(ctx, m.maddr, tok)
 	if err != nil {
 		return false, xerrors.Errorf("failed to check active sectors: %w", err)
 	}
