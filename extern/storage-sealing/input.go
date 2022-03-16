@@ -556,7 +556,10 @@ func (m *Sealing) tryGetUpgradeSector(ctx context.Context, sp abi.RegisteredSeal
 		return false, nil
 	}
 
-	ssize, _ := sp.SectorSize() // error already checked in the caller
+	ssize, err := sp.SectorSize()
+	if err != nil {
+		return false, xerrors.Errorf("getting sector size: %w", err)
+	}
 	targetExpiration := m.calcTargetExpiration(ctx, ssize)
 
 	var candidate abi.SectorID
@@ -592,7 +595,7 @@ func (m *Sealing) tryGetUpgradeSector(ctx context.Context, sp abi.RegisteredSeal
 			continue
 		}
 
-		if expiration > targetExpiration && pledge.LessThan(bestPledge) {
+		if expiration >= targetExpiration && pledge.LessThan(bestPledge) {
 			bestExpiration = expiration
 			bestPledge = pledge
 			candidate = s
@@ -600,7 +603,7 @@ func (m *Sealing) tryGetUpgradeSector(ctx context.Context, sp abi.RegisteredSeal
 	}
 
 	if bestExpiration == 0 {
-		// didn't find a good sector
+		// didn't find a good sector / no sectors were available
 		return false, nil
 	}
 
@@ -685,6 +688,11 @@ func (m *Sealing) StartPacking(sid abi.SectorNumber) error {
 
 func (m *Sealing) AbortUpgrade(sid abi.SectorNumber) error {
 	m.startupWait.Wait()
+
+	m.inputLk.Lock()
+	// always do this early
+	delete(m.available, m.minerSectorID(sid))
+	m.inputLk.Unlock()
 
 	log.Infow("aborting upgrade of sector", "sector", sid, "trigger", "user")
 	return m.sectors.Send(uint64(sid), SectorAbortUpgrade{xerrors.New("triggered by user")})
