@@ -21,11 +21,7 @@ func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) e
 		return xerrors.Errorf("can't mark sectors not in the 'Proving' state for upgrade")
 	}
 
-	if len(si.Pieces) != 1 {
-		return xerrors.Errorf("not a committed-capacity sector, expected 1 piece")
-	}
-
-	if si.Pieces[0].DealInfo != nil {
+	if si.hasDeals() {
 		return xerrors.Errorf("not a committed-capacity sector, has deals")
 	}
 
@@ -60,13 +56,5 @@ func sectorActive(ctx context.Context, api SealingAPI, maddr address.Address, to
 		return false, xerrors.Errorf("failed to check active sectors: %w", err)
 	}
 
-	// Ensure the upgraded sector is active
-	var found bool
-	for _, si := range active {
-		if si.SectorNumber == sector {
-			found = true
-			break
-		}
-	}
-	return found, nil
+	return active.IsSet(uint64(sector))
 }
