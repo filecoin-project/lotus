@@ -63,6 +63,7 @@ func runTestCCUpgrade(t *testing.T) *kit.TestFullNode {
 	}
 	waitForSectorActive(ctx, t, CCUpgrade, client, maddr)
 
+	//stm: @SECTOR_CC_UPGRADE_001
 	err = miner.SectorMarkForUpgrade(ctx, sl[0], true)
 	require.NoError(t, err)
 
