@@ -108,6 +108,7 @@ type Sealing struct {
 
 	upgradeLk sync.Mutex
 	toUpgrade map[abi.SectorNumber]struct{}
+	available map[abi.SectorID]struct{}
 
 	notifee SectorStateNotifee
 	addrSel AddrSel
@@ -129,11 +130,11 @@ type openSector struct {
 	maybeAccept func(cid.Cid) error // called with inputLk
 }
 
-func (o *openSector) dealFitsInLifetime(dealEnd abi.ChainEpoch, expF func(sn abi.SectorNumber) (abi.ChainEpoch, error)) (bool, error) {
+func (o *openSector) dealFitsInLifetime(dealEnd abi.ChainEpoch, expF expFn) (bool, error) {
 	if !o.ccUpdate {
 		return true, nil
 	}
-	expiration, err := expF(o.number)
+	expiration, _, err := expF(o.number)
 	if err != nil {
 		return false, err
 	}
@@ -178,6 +179,8 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 		pendingPieces:  map[cid.Cid]*pendingPiece{},
 		assignedPieces: map[abi.SectorID][]cid.Cid{},
 		toUpgrade:      map[abi.SectorNumber]struct{}{},
+
+		available: map[abi.SectorID]struct{}{},
 
 		notifee: notifee,
 		addrSel: as,

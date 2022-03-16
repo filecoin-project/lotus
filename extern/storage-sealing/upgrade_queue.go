@@ -50,17 +50,6 @@ func (m *Sealing) MarkForUpgrade(ctx context.Context, id abi.SectorNumber) error
 }
 
 func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) error {
-	cfg, err := m.getConfig()
-	if err != nil {
-		return xerrors.Errorf("getting storage config: %w", err)
-	}
-
-	curStaging := m.stats.curStaging()
-	if cfg.MaxWaitDealsSectors > 0 && curStaging >= cfg.MaxWaitDealsSectors {
-		return xerrors.Errorf("already waiting for deals in %d >= %d (cfg.MaxWaitDealsSectors) sectors, no free resources to wait for deals in another",
-			curStaging, cfg.MaxWaitDealsSectors)
-	}
-
 	si, err := m.GetSectorInfo(id)
 	if err != nil {
 		return xerrors.Errorf("getting sector info: %w", err)
@@ -100,7 +89,7 @@ func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) e
 			"Upgrade expiration before marking for upgrade", id, onChainInfo.Expiration)
 	}
 
-	return m.sectors.Send(uint64(id), SectorStartCCUpdate{})
+	return m.sectors.Send(uint64(id), SectorMarkForUpdate{})
 }
 
 func sectorActive(ctx context.Context, api SealingAPI, maddr address.Address, tok TipSetToken, sector abi.SectorNumber) (bool, error) {

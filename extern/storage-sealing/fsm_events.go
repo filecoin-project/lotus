@@ -297,6 +297,10 @@ func (evt SectorFinalizeFailed) apply(*SectorInfo)                        {}
 
 // Snap deals // CC update path
 
+type SectorMarkForUpdate struct{}
+
+func (evt SectorMarkForUpdate) apply(state *SectorInfo) {}
+
 type SectorStartCCUpdate struct{}
 
 func (evt SectorStartCCUpdate) apply(state *SectorInfo) {

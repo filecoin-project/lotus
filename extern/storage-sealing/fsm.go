@@ -283,6 +283,9 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	Proving: planOne(
 		on(SectorFaultReported{}, FaultReported),
 		on(SectorFaulty{}, Faulty),
+		on(SectorMarkForUpdate{}, Available),
+	),
+	Available: planOne(
 		on(SectorStartCCUpdate{}, SnapDealsWaitDeals),
 	),
 	Terminating: planOne(
@@ -558,6 +561,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	// Post-seal
 	case Proving:
 		return m.handleProvingSector, processed, nil
+	case Available:
+		return m.handleAvailableSector, processed, nil
 	case Terminating:
 		return m.handleTerminating, processed, nil
 	case TerminateWait:
