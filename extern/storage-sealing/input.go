@@ -516,7 +516,7 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 	return nil
 }
 
-func (m *Sealing) calcTargetExpiration(ctx context.Context, ssize abi.SectorSize) (target abi.ChainEpoch) {
+func (m *Sealing) calcTargetExpiration(ctx context.Context, ssize abi.SectorSize) (minTarget, target abi.ChainEpoch, err error) {
 	var candidates []*pendingPiece
 
 	for _, piece := range m.pendingPieces {
@@ -536,19 +536,18 @@ func (m *Sealing) calcTargetExpiration(ctx context.Context, ssize abi.SectorSize
 		totalBytes += uint64(candidate.size)
 
 		if totalBytes >= uint64(abi.PaddedPieceSize(ssize).Unpadded()) {
-			return candidate.deal.DealProposal.EndEpoch
+			return candidates[0].deal.DealProposal.EndEpoch, candidate.deal.DealProposal.EndEpoch, nil
 		}
 	}
 
 	_, curEpoch, err := m.Api.ChainHead(ctx)
 	if err != nil {
-		log.Errorf("getting current epoch: %s", err)
-		return 0
+		return 0, 0, xerrors.Errorf("getting current epoch: %w", err)
 	}
 
-	_, maxDur := policy.DealDurationBounds(0)
+	minDur, maxDur := policy.DealDurationBounds(0)
 
-	return curEpoch + maxDur
+	return curEpoch + minDur, curEpoch + maxDur, nil
 }
 
 func (m *Sealing) tryGetUpgradeSector(ctx context.Context, sp abi.RegisteredSealProof, ef expFn) (bool, error) {
@@ -560,7 +559,10 @@ func (m *Sealing) tryGetUpgradeSector(ctx context.Context, sp abi.RegisteredSeal
 	if err != nil {
 		return false, xerrors.Errorf("getting sector size: %w", err)
 	}
-	targetExpiration := m.calcTargetExpiration(ctx, ssize)
+	minExpiration, targetExpiration, err := m.calcTargetExpiration(ctx, ssize)
+	if err != nil {
+		return false, xerrors.Errorf("calculating min target expiration: %w", err)
+	}
 
 	var candidate abi.SectorID
 	var bestExpiration abi.ChainEpoch
@@ -605,7 +607,8 @@ func (m *Sealing) tryGetUpgradeSector(ctx context.Context, sp abi.RegisteredSeal
 		}
 	}
 
-	if bestExpiration == 0 {
+	if bestExpiration < minExpiration {
+		log.Infow("Not upgrading any sectors", "available", len(m.available), "bestExp", bestExpiration, "target", targetExpiration, "min", minExpiration, "candidate", candidate)
 		// didn't find a good sector / no sectors were available
 		return false, nil
 	}
