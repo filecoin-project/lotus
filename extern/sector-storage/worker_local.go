@@ -520,7 +520,16 @@ func (l *LocalWorker) MoveStorage(ctx context.Context, sector storage.SectorRef,
 			return nil, xerrors.Errorf("move to storage: %w", err)
 		}
 
-		return nil, l.storage.RemoveCopies(ctx, sector.ID, types)
+		for _, fileType := range storiface.PathTypes {
+			if fileType&types == 0 {
+				continue
+			}
+
+			if err := l.storage.RemoveCopies(ctx, sector.ID, types); err != nil {
+				return nil, xerrors.Errorf("rm copies (t:%s, s:%v): %w", fileType, sector, err)
+			}
+		}
+		return nil, nil
 	})
 }
 
