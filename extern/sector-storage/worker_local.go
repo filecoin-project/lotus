@@ -525,7 +525,7 @@ func (l *LocalWorker) MoveStorage(ctx context.Context, sector storage.SectorRef,
 				continue
 			}
 
-			if err := l.storage.RemoveCopies(ctx, sector.ID, types); err != nil {
+			if err := l.storage.RemoveCopies(ctx, sector.ID, fileType); err != nil {
 				return nil, xerrors.Errorf("rm copies (t:%s, s:%v): %w", fileType, sector, err)
 			}
 		}
