@@ -339,10 +339,6 @@ func (sm *StateManager) GetVMCirculatingSupply(ctx context.Context, height abi.C
 	return cs.FilCirculating, err
 }
 
-func (sm *StateManager) loadGenesisMsigs(ctx context.Context) error {
-	return nil
-}
-
 func (sm *StateManager) GetVMCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (api.CirculatingSupply, error) {
 	filVested, err := sm.GetFilVested(ctx, height)
 	if err != nil {
