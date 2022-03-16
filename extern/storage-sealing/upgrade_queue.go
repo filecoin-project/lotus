@@ -2,11 +2,11 @@ package sealing
 
 import (
 	"context"
-	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 )
 
 func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) error {
