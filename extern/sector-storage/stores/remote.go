@@ -46,7 +46,7 @@ type Remote struct {
 
 func (r *Remote) RemoveCopies(ctx context.Context, s abi.SectorID, typ storiface.SectorFileType) error {
 	if bits.OnesCount(uint(typ)) != 1 {
-		return xerrors.New("delete expects one file type")
+		return xerrors.New("RemoveCopies expects one file type")
 	}
 
 	if err := r.local.RemoveCopies(ctx, s, typ); err != nil {
