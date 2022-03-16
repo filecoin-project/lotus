@@ -9,6 +9,7 @@ import (
 	reflect "reflect"
 
 	address "github.com/filecoin-project/go-address"
+	bitfield "github.com/filecoin-project/go-bitfield"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
@@ -214,10 +215,10 @@ func (mr *MockSealingAPIMockRecorder) StateMarketStorageDealProposal(arg0, arg1,
 }
 
 // StateMinerActiveSectors mocks base method.
-func (m *MockSealingAPI) StateMinerActiveSectors(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) ([]*miner.SectorOnChainInfo, error) {
+func (m *MockSealingAPI) StateMinerActiveSectors(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (bitfield.BitField, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerActiveSectors", arg0, arg1, arg2)
-	ret0, _ := ret[0].([]*miner.SectorOnChainInfo)
+	ret0, _ := ret[0].(bitfield.BitField)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

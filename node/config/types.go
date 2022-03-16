@@ -250,6 +250,9 @@ type SealingConfig struct {
 	// Run sector finalization before submitting sector proof to the chain
 	FinalizeEarly bool
 
+	// After sealing CC sectors, make them available for upgrading with deals
+	MakeCCSectorsAvailable bool
+
 	// Whether to use available miner balance for sector collateral instead of sending it with each message
 	CollateralFromMinerBalance bool
 	// Minimum available balance to keep in the miner actor before sending it with messages
