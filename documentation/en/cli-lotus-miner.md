@@ -1664,7 +1664,6 @@ COMMANDS:
    remove                Forcefully remove a sector (WARNING: This means losing power and collateral for the removed sector (use 'terminate' for lower penalty))
    snap-up               Mark a committed capacity sector to be filled with deals
    abort-upgrade         Abort the attempted (SnapDeals) upgrade of a CC sector, reverting it to as before
-   mark-for-upgrade      Mark a committed capacity sector for replacement by a sector with deals
    seal                  Manually start sealing a sector (filling any unused space with junk)
    set-seal-delay        Set the time, in minutes, that a new sector waits for deals before sealing starts
    get-cc-collateral     Get the collateral required to pledge a committed capacity sector
@@ -1909,19 +1908,6 @@ USAGE:
 OPTIONS:
    --really-do-it  pass this flag if you know what you are doing (default: false)
    --help, -h      show help (default: false)
-   
-```
-
-### lotus-miner sectors mark-for-upgrade
-```
-NAME:
-   lotus-miner sectors mark-for-upgrade - Mark a committed capacity sector for replacement by a sector with deals
-
-USAGE:
-   lotus-miner sectors mark-for-upgrade [command options] <sectorNum>
-
-OPTIONS:
-   --help, -h  show help (default: false)
    
 ```
 
