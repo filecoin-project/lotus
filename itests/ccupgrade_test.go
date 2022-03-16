@@ -4,6 +4,8 @@ package itests
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/api"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"testing"
 	"time"
 
@@ -121,4 +123,73 @@ func TestCCUpgradeAndPoSt(t *testing.T) {
 			return false
 		})
 	})
+}
+
+func TestAbortUpgradeAvailable(t *testing.T) {
+	kit.QuietMiningLogs()
+
+	ctx := context.Background()
+	blockTime := 1 * time.Millisecond
+
+	client, miner, ens := kit.EnsembleMinimal(t, kit.GenesisNetworkVersion(network.Version15), kit.ThroughRPC())
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
+
+	maddr, err := miner.ActorAddress(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	CCUpgrade := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner + 1)
+	fmt.Printf("CCUpgrade: %d\n", CCUpgrade)
+
+	// wait for deadline 0 to pass so that committing starts after post on preseals
+	// this gives max time for post to complete minimizing chances of timeout
+	// waitForDeadline(ctx, t, 1, client, maddr)
+	miner.PledgeSectors(ctx, 1, 0, nil)
+	sl, err := miner.SectorsList(ctx)
+	require.NoError(t, err)
+	require.Len(t, sl, 1, "expected 1 sector")
+	require.Equal(t, CCUpgrade, sl[0], "unexpected sector number")
+	{
+		si, err := client.StateSectorGetInfo(ctx, maddr, CCUpgrade, types.EmptyTSK)
+		require.NoError(t, err)
+		require.Less(t, 50000, int(si.Expiration))
+	}
+	waitForSectorActive(ctx, t, CCUpgrade, client, maddr)
+
+	err = miner.SectorMarkForUpgrade(ctx, sl[0], true)
+	require.NoError(t, err)
+
+	sl, err = miner.SectorsList(ctx)
+	require.NoError(t, err)
+	require.Len(t, sl, 1, "expected 1 sector")
+
+	ss, err := miner.SectorsStatus(ctx, sl[0], false)
+	require.NoError(t, err)
+
+	for i := 0; i < 100; i++ {
+		ss, err = miner.SectorsStatus(ctx, sl[0], false)
+		require.NoError(t, err)
+		if ss.State == api.SectorState(sealing.Proving) {
+			time.Sleep(50 * time.Millisecond)
+			continue
+		}
+
+		require.Equal(t, api.SectorState(sealing.Available), ss.State)
+		break
+	}
+
+	require.NoError(t, miner.SectorAbortUpgrade(ctx, sl[0]))
+
+	for i := 0; i < 100; i++ {
+		ss, err = miner.SectorsStatus(ctx, sl[0], false)
+		require.NoError(t, err)
+		if ss.State == api.SectorState(sealing.Available) {
+			time.Sleep(50 * time.Millisecond)
+			continue
+		}
+
+		require.Equal(t, api.SectorState(sealing.Proving), ss.State)
+		break
+	}
 }
