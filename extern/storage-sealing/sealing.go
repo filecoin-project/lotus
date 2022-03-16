@@ -106,6 +106,8 @@ type Sealing struct {
 	assignedPieces map[abi.SectorID][]cid.Cid
 	creating       *abi.SectorNumber // used to prevent a race where we could create a new sector more than once
 
+	available map[abi.SectorID]struct{}
+
 	notifee SectorStateNotifee
 	addrSel AddrSel
 
@@ -126,11 +128,11 @@ type openSector struct {
 	maybeAccept func(cid.Cid) error // called with inputLk
 }
 
-func (o *openSector) dealFitsInLifetime(dealEnd abi.ChainEpoch, expF func(sn abi.SectorNumber) (abi.ChainEpoch, error)) (bool, error) {
+func (o *openSector) dealFitsInLifetime(dealEnd abi.ChainEpoch, expF expFn) (bool, error) {
 	if !o.ccUpdate {
 		return true, nil
 	}
-	expiration, err := expF(o.number)
+	expiration, _, err := expF(o.number)
 	if err != nil {
 		return false, err
 	}
@@ -174,6 +176,8 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 		sectorTimers:   map[abi.SectorID]*time.Timer{},
 		pendingPieces:  map[cid.Cid]*pendingPiece{},
 		assignedPieces: map[abi.SectorID][]cid.Cid{},
+
+		available: map[abi.SectorID]struct{}{},
 
 		notifee: notifee,
 		addrSel: as,
