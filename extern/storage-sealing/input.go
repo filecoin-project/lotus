@@ -33,8 +33,8 @@ func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) e
 
 	m.inputLk.Lock()
 
-	if m.creating != nil && *m.creating == sector.SectorNumber {
-		m.creating = nil
+	if m.nextDealSector != nil && *m.nextDealSector == sector.SectorNumber {
+		m.nextDealSector = nil
 	}
 
 	sid := m.minerSectorID(sector.SectorNumber)
@@ -615,14 +615,14 @@ func (m *Sealing) tryGetUpgradeSector(ctx context.Context, sp abi.RegisteredSeal
 
 	log.Infow("Upgrading sector", "number", candidate.Number, "type", "deal", "proofType", sp, "expiration", bestExpiration, "pledge", types.FIL(bestPledge))
 	delete(m.available, candidate)
-	m.creating = &candidate.Number
+	m.nextDealSector = &candidate.Number
 	return true, m.sectors.Send(uint64(candidate.Number), SectorStartCCUpdate{})
 }
 
 func (m *Sealing) tryGetDealSector(ctx context.Context, sp abi.RegisteredSealProof, ef expFn) error {
 	m.startupWait.Wait()
 
-	if m.creating != nil {
+	if m.nextDealSector != nil {
 		return nil // new sector is being created right now
 	}
 
@@ -656,7 +656,7 @@ func (m *Sealing) tryGetDealSector(ctx context.Context, sp abi.RegisteredSealPro
 		return err
 	}
 
-	m.creating = &sid
+	m.nextDealSector = &sid
 
 	log.Infow("Creating sector", "number", sid, "type", "deal", "proofType", sp)
 	return m.sectors.Send(uint64(sid), SectorStart{
