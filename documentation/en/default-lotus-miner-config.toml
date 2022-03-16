@@ -365,6 +365,12 @@
   # env var: LOTUS_SEALING_FINALIZEEARLY
   #FinalizeEarly = false
 
+  # After sealing CC sectors, make them available for upgrading with deals
+  #
+  # type: bool
+  # env var: LOTUS_SEALING_MAKECCSECTORSAVAILABLE
+  #MakeCCSectorsAvailable = false
+
   # Whether to use available miner balance for sector collateral instead of sending it with each message
   #
   # type: bool

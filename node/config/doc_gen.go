@@ -751,6 +751,12 @@ avoid the relatively high cost of unsealing the data later, at the cost of more 
 			Comment: `Run sector finalization before submitting sector proof to the chain`,
 		},
 		{
+			Name: "MakeCCSectorsAvailable",
+			Type: "bool",
+
+			Comment: `After sealing CC sectors, make them available for upgrading with deals`,
+		},
+		{
 			Name: "CollateralFromMinerBalance",
 			Type: "bool",
 

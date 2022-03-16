@@ -286,6 +286,10 @@ type SectorFinalized struct{}
 
 func (evt SectorFinalized) apply(*SectorInfo) {}
 
+type SectorFinalizedAvailable struct{}
+
+func (evt SectorFinalizedAvailable) apply(*SectorInfo) {}
+
 type SectorRetryFinalize struct{}
 
 func (evt SectorRetryFinalize) apply(*SectorInfo) {}
