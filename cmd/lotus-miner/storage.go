@@ -598,7 +598,7 @@ var storageListSectorsCmd = &cli.Command{
 			ft      storiface.SectorFileType
 			urls    string
 
-			primary, seal, store bool
+			primary, copy, main, seal, store bool
 
 			state api.SectorState
 		}
@@ -626,8 +626,11 @@ var storageListSectorsCmd = &cli.Command{
 						urls:    strings.Join(info.URLs, ";"),
 
 						primary: info.Primary,
-						seal:    info.CanSeal,
-						store:   info.CanStore,
+						copy:    !info.Primary && len(si) > 1,
+						main:    !info.Primary && len(si) == 1, // only copy, but not primary
+
+						seal:  info.CanSeal,
+						store: info.CanStore,
 
 						state: st.State,
 					})
@@ -680,7 +683,7 @@ var storageListSectorsCmd = &cli.Command{
 				"Sector":   e.id,
 				"Type":     e.ft.String(),
 				"State":    color.New(stateOrder[sealing.SectorState(e.state)].col).Sprint(e.state),
-				"Primary":  maybeStr(e.seal, color.FgGreen, "primary"),
+				"Primary":  maybeStr(e.primary, color.FgGreen, "primary") + maybeStr(e.copy, color.FgBlue, "copy") + maybeStr(e.main, color.FgRed, "main"),
 				"Path use": maybeStr(e.seal, color.FgMagenta, "seal ") + maybeStr(e.store, color.FgCyan, "store"),
 				"URLs":     e.urls,
 			}

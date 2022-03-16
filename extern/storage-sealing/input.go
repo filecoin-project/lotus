@@ -315,25 +315,21 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 		m.inputLk.Unlock()
 
 		// we already have a pre-existing add piece call for this deal, let's wait for it to finish and see if it's successful
-		for {
-			res, err := waitAddPieceResp(ctx, pp)
-			if err != nil {
-				return api.SectorOffset{}, err
-			}
-			//  there was an error waiting for a pre-existing add piece call, let's retry
-			if res.err != nil {
-				m.inputLk.Lock()
-				pp = m.addPendingPiece(ctx, size, data, deal, sp)
-				m.inputLk.Unlock()
-				continue
-			}
+		res, err := waitAddPieceResp(ctx, pp)
+		if err != nil {
+			return api.SectorOffset{}, err
+		}
+		if res.err == nil {
 			// all good, return the response
 			return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
 		}
+		// if there was an error waiting for a pre-existing add piece call, let's retry
+		m.inputLk.Lock()
 	}
 
+	// addPendingPiece takes over m.inputLk
 	pp := m.addPendingPiece(ctx, size, data, deal, sp)
-	m.inputLk.Unlock()
+
 	res, err := waitAddPieceResp(ctx, pp)
 	if err != nil {
 		return api.SectorOffset{}, err
@@ -341,6 +337,7 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 	return api.SectorOffset{Sector: res.sn, Offset: res.offset.Padded()}, res.err
 }
 
+// called with m.inputLk; transfers the lock to another goroutine!
 func (m *Sealing) addPendingPiece(ctx context.Context, size abi.UnpaddedPieceSize, data storage.Data, deal api.PieceDealInfo, sp abi.RegisteredSealProof) *pendingPiece {
 	doneCh := make(chan struct{})
 	pp := &pendingPiece{
@@ -357,6 +354,7 @@ func (m *Sealing) addPendingPiece(ctx context.Context, size abi.UnpaddedPieceSiz
 
 	m.pendingPieces[proposalCID(deal)] = pp
 	go func() {
+		defer m.inputLk.Unlock()
 		if err := m.updateInput(ctx, sp); err != nil {
 			log.Errorf("%+v", err)
 		}

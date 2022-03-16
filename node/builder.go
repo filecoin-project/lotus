@@ -33,6 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/alerting"
+	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
@@ -221,7 +222,7 @@ var LibP2P = Options(
 	Override(ConnGaterKey, lp2p.ConnGaterOption),
 
 	// Services (resource management)
-	Override(new(network.ResourceManager), lp2p.ResourceManager),
+	Override(new(network.ResourceManager), lp2p.ResourceManager(200)),
 	Override(ResourceManagerKey, lp2p.ResourceManagerOption),
 )
 
@@ -249,6 +250,9 @@ func Base() Option {
 
 // Config sets up constructors based on the provided Config
 func ConfigCommon(cfg *config.Common, enableLibp2pNode bool) Option {
+	// setup logging early
+	lotuslog.SetLevelsFromConfig(cfg.Logging.SubsystemLevels)
+
 	return Options(
 		func(s *Settings) error { s.Config = true; return nil },
 		Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
@@ -278,6 +282,7 @@ func ConfigCommon(cfg *config.Common, enableLibp2pNode bool) Option {
 				cfg.Libp2p.ConnMgrHigh,
 				time.Duration(cfg.Libp2p.ConnMgrGrace),
 				cfg.Libp2p.ProtectedPeers)),
+			Override(new(network.ResourceManager), lp2p.ResourceManager(cfg.Libp2p.ConnMgrHigh)),
 			Override(new(*pubsub.PubSub), lp2p.GossipSub),
 			Override(new(*config.Pubsub), &cfg.Pubsub),
 

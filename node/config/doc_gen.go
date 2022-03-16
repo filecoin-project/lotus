@@ -128,6 +128,12 @@ of automatically performing on-chain operations.`,
 			Comment: ``,
 		},
 		{
+			Name: "Logging",
+			Type: "Logging",
+
+			Comment: ``,
+		},
+		{
 			Name: "Libp2p",
 			Type: "Libp2p",
 
@@ -482,6 +488,14 @@ count towards this limit.`,
 
 			Comment: `ConnMgrGrace is a time duration that new connections are immune from being
 closed by the connection manager.`,
+		},
+	},
+	"Logging": []DocField{
+		{
+			Name: "SubsystemLevels",
+			Type: "map[string]string",
+
+			Comment: `SubsystemLevels specify per-subsystem log levels`,
 		},
 	},
 	"MinerAddressConfig": []DocField{
