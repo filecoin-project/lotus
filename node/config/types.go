@@ -234,8 +234,7 @@ type SealingConfig struct {
 	// Upper bound on how many sectors can be sealing+upgrading at the same time when creating new sectors with deals (0 = unlimited)
 	MaxSealingSectorsForDeals uint64
 
-	// Prefer creating new sectors even if there are sectors Available for upgrading
-	//
+	// Prefer creating new sectors even if there are sectors Available for upgrading.
 	// This setting combined with MaxUpgradingSectors set to a value higher than MaxSealingSectorsForDeals makes it
 	// possible to use fast sector upgrades to handle high volumes of storage deals, while still using the simple sealing
 	// flow when the volume of storage deals is lower.

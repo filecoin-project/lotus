@@ -87,4 +87,3 @@ func TestPreferNoUpgrade(t *testing.T) {
 		})
 	}
 }
-

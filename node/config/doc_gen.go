@@ -726,7 +726,8 @@ Note that setting this number too high in relation to deal ingestion rate may re
 			Name: "PreferNewSectorsForDeals",
 			Type: "bool",
 
-			Comment: `This setting combined with MaxUpgradingSectors set to a value higher than MaxSealingSectorsForDeals makes it
+			Comment: `Prefer creating new sectors even if there are sectors Available for upgrading.
+This setting combined with MaxUpgradingSectors set to a value higher than MaxSealingSectorsForDeals makes it
 possible to use fast sector upgrades to handle high volumes of storage deals, while still using the simple sealing
 flow when the volume of storage deals is lower.`,
 		},
