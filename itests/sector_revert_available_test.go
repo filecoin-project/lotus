@@ -44,7 +44,7 @@ func TestAbortUpgradeAvailable(t *testing.T) {
 		require.NoError(t, err)
 		require.Less(t, 50000, int(si.Expiration))
 	}
-	waitForSectorActive(ctx, t, CCUpgrade, client, maddr)
+	client.WaitForSectorActive(ctx, t, CCUpgrade, maddr)
 
 	err = miner.SectorMarkForUpgrade(ctx, sl[0], true)
 	require.NoError(t, err)

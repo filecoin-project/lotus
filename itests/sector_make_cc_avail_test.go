@@ -46,7 +46,7 @@ func TestMakeAvailable(t *testing.T) {
 		require.NoError(t, err)
 		require.Less(t, 50000, int(si.Expiration))
 	}
-	waitForSectorActive(ctx, t, CCUpgrade, client, maddr)
+	client.WaitForSectorActive(ctx, t, CCUpgrade, maddr)
 
 	sl, err = miner.SectorsList(ctx)
 	require.NoError(t, err)

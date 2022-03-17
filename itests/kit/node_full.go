@@ -2,7 +2,9 @@ package kit
 
 import (
 	"context"
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -65,6 +67,21 @@ func (f *TestFullNode) WaitTillChain(ctx context.Context, pred ChainPredicate) *
 	}
 	require.Fail(f.t, "chain condition not met")
 	return nil
+}
+
+func (f *TestFullNode) WaitForSectorActive(ctx context.Context, t *testing.T, sn abi.SectorNumber, maddr address.Address) {
+	for {
+		active, err := f.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
+		require.NoError(t, err)
+		for _, si := range active {
+			if si.SectorNumber == sn {
+				fmt.Printf("ACTIVE\n")
+				return
+			}
+		}
+
+		time.Sleep(time.Second)
+	}
 }
 
 // ChainPredicate encapsulates a chain condition.

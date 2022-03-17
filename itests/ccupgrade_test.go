@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -58,7 +57,7 @@ func runTestCCUpgrade(t *testing.T) *kit.TestFullNode {
 		require.NoError(t, err)
 		require.Less(t, 50000, int(si.Expiration))
 	}
-	waitForSectorActive(ctx, t, CCUpgrade, client, maddr)
+	client.WaitForSectorActive(ctx, t, CCUpgrade, maddr)
 
 	//stm: @SECTOR_CC_UPGRADE_001
 	err = miner.SectorMarkForUpgrade(ctx, sl[0], true)
@@ -85,19 +84,4 @@ func runTestCCUpgrade(t *testing.T) *kit.TestFullNode {
 	})
 
 	return client
-}
-
-func waitForSectorActive(ctx context.Context, t *testing.T, sn abi.SectorNumber, node *kit.TestFullNode, maddr address.Address) {
-	for {
-		active, err := node.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
-		require.NoError(t, err)
-		for _, si := range active {
-			if si.SectorNumber == sn {
-				fmt.Printf("ACTIVE\n")
-				return
-			}
-		}
-
-		time.Sleep(time.Second)
-	}
 }
