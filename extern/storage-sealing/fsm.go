@@ -399,7 +399,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	processed, err := p(events, state)
 	if err != nil {
-		return nil, 0, xerrors.Errorf("running planner for state %s failed: %w", state.State, err)
+		return nil, processed, xerrors.Errorf("running planner for state %s failed: %w", state.State, err)
 	}
 
 	/////
