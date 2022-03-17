@@ -277,7 +277,7 @@
   #
   # type: bool
   # env var: LOTUS_INDEXPROVIDER_ENABLE
-  #Enable = false
+  #Enable = true
 
   # EntriesCacheCapacity sets the maximum capacity to use for caching the indexing advertisement
   # entries. Defaults to 1024 if not specified. The cache is evicted using LRU policy. The
@@ -364,6 +364,12 @@
   # type: bool
   # env var: LOTUS_SEALING_FINALIZEEARLY
   #FinalizeEarly = false
+
+  # After sealing CC sectors, make them available for upgrading with deals
+  #
+  # type: bool
+  # env var: LOTUS_SEALING_MAKECCSECTORSAVAILABLE
+  #MakeCCSectorsAvailable = false
 
   # Whether to use available miner balance for sector collateral instead of sending it with each message
   #
