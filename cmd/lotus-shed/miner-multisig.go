@@ -379,7 +379,7 @@ var mmProposeChangeWorker = &cli.Command{
 	ArgsUsage: "[newWorker]",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass new owner address")
+			return fmt.Errorf("must pass new worker address")
 		}
 
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
@@ -476,7 +476,7 @@ var mmConfirmChangeWorker = &cli.Command{
 	ArgsUsage: "[newWorker]",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Args().Present() {
-			return fmt.Errorf("must pass new owner address")
+			return fmt.Errorf("must pass new worker address")
 		}
 
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
