@@ -793,6 +793,11 @@ workflows:
           target: "./itests/batch_deal_test.go"
       
       - test:
+          name: test-itest-ccupgrade_post
+          suite: itest-ccupgrade_post
+          target: "./itests/ccupgrade_post_test.go"
+      
+      - test:
           name: test-itest-ccupgrade
           suite: itest-ccupgrade
           target: "./itests/ccupgrade_test.go"
@@ -918,6 +923,11 @@ workflows:
           target: "./itests/sector_finalize_early_test.go"
       
       - test:
+          name: test-itest-sector_make_cc_avail
+          suite: itest-sector_make_cc_avail
+          target: "./itests/sector_make_cc_avail_test.go"
+      
+      - test:
           name: test-itest-sector_miner_collateral
           suite: itest-sector_miner_collateral
           target: "./itests/sector_miner_collateral_test.go"
@@ -926,6 +936,16 @@ workflows:
           name: test-itest-sector_pledge
           suite: itest-sector_pledge
           target: "./itests/sector_pledge_test.go"
+      
+      - test:
+          name: test-itest-sector_prefer_no_upgrade
+          suite: itest-sector_prefer_no_upgrade
+          target: "./itests/sector_prefer_no_upgrade_test.go"
+      
+      - test:
+          name: test-itest-sector_revert_available
+          suite: itest-sector_revert_available
+          target: "./itests/sector_revert_available_test.go"
       
       - test:
           name: test-itest-sector_terminate
