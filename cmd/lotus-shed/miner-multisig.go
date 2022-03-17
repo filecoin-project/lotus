@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
-    miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
 	msig5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/multisig"
 
@@ -471,7 +471,7 @@ var mmProposeChangeWorker = &cli.Command{
 }
 
 var mmConfirmChangeWorker = &cli.Command{
-	Name:      "Confirm-change-worker",
+	Name:      "confirm-change-worker",
 	Usage:     "Confirm an worker address change",
 	ArgsUsage: "[newWorker]",
 	Action: func(cctx *cli.Context) error {
@@ -554,7 +554,7 @@ var mmConfirmChangeWorker = &cli.Command{
 }
 
 var mmProposeControlSet = &cli.Command{
-	Name:      "ProposeControlSet",
+	Name:      "propose-control-set",
 	Usage:     "Set control address(-es)",
 	ArgsUsage: "[...address]",
 	Action: func(cctx *cli.Context) error {
