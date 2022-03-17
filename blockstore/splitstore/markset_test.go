@@ -2,8 +2,6 @@
 package splitstore
 
 import (
-	"io/ioutil"
-	"os"
 	"testing"
 
 	cid "github.com/ipfs/go-cid"
@@ -36,14 +34,7 @@ func TestBadgerMarkSet(t *testing.T) {
 }
 
 func testMarkSet(t *testing.T, lsType string) {
-	path, err := ioutil.TempDir("", "markset.*")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() {
-		_ = os.RemoveAll(path)
-	})
+	path := t.TempDir()
 
 	env, err := OpenMarkSetEnv(path, lsType)
 	if err != nil {
@@ -165,14 +156,7 @@ func testMarkSet(t *testing.T, lsType string) {
 }
 
 func testMarkSetVisitor(t *testing.T, lsType string) {
-	path, err := ioutil.TempDir("", "markset.*")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() {
-		_ = os.RemoveAll(path)
-	})
+	path := t.TempDir()
 
 	env, err := OpenMarkSetEnv(path, lsType)
 	if err != nil {
@@ -235,14 +219,7 @@ func testMarkSetVisitor(t *testing.T, lsType string) {
 }
 
 func testMarkSetVisitorRecovery(t *testing.T, lsType string) {
-	path, err := ioutil.TempDir("", "markset.*")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() {
-		_ = os.RemoveAll(path)
-	})
+	path := t.TempDir()
 
 	env, err := OpenMarkSetEnv(path, lsType)
 	if err != nil {
@@ -334,14 +311,7 @@ func testMarkSetVisitorRecovery(t *testing.T, lsType string) {
 }
 
 func testMarkSetRecovery(t *testing.T, lsType string) {
-	path, err := ioutil.TempDir("", "markset.*")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() {
-		_ = os.RemoveAll(path)
-	})
+	path := t.TempDir()
 
 	env, err := OpenMarkSetEnv(path, lsType)
 	if err != nil {
@@ -447,14 +417,7 @@ func testMarkSetRecovery(t *testing.T, lsType string) {
 }
 
 func testMarkSetMarkMany(t *testing.T, lsType string) {
-	path, err := ioutil.TempDir("", "markset.*")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() {
-		_ = os.RemoveAll(path)
-	})
+	path := t.TempDir()
 
 	env, err := OpenMarkSetEnv(path, lsType)
 	if err != nil {
