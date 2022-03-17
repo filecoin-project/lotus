@@ -58,7 +58,7 @@ func TestNoLogRestore(t *testing.T) {
 }
 
 func TestLogRestore(t *testing.T) {
-  //stm: @OTHER_DATASTORE_RESTORE_001
+	//stm: @OTHER_DATASTORE_RESTORE_001
 	logdir := t.TempDir()
 
 	ds1 := datastore.NewMapDatastore()
