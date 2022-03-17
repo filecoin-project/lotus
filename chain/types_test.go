@@ -1,3 +1,4 @@
+//stm: #unit
 package chain
 
 import (
@@ -12,6 +13,7 @@ import (
 )
 
 func TestSignedMessageJsonRoundtrip(t *testing.T) {
+	//stm: @TYPES_MESSAGE_JSON_EQUAL_CALL_002
 	to, _ := address.NewIDAddress(5234623)
 	from, _ := address.NewIDAddress(603911192)
 	smsg := &types.SignedMessage{
@@ -40,6 +42,7 @@ func TestSignedMessageJsonRoundtrip(t *testing.T) {
 }
 
 func TestAddressType(t *testing.T) {
+	//stm: @CHAIN_TYPES_ADDRESS_PREFIX_001
 	build.SetAddressNetwork(address.Testnet)
 	addr, err := makeRandomAddress()
 	if err != nil {

@@ -25,6 +25,7 @@ var ExistSectorStateList = map[SectorState]struct{}{
 	CommitAggregateWait:         {},
 	FinalizeSector:              {},
 	Proving:                     {},
+	Available:                   {},
 	FailedUnrecoverable:         {},
 	SealPreCommit1Failed:        {},
 	SealPreCommit2Failed:        {},
@@ -98,6 +99,7 @@ const (
 
 	FinalizeSector SectorState = "FinalizeSector"
 	Proving        SectorState = "Proving"
+	Available      SectorState = "Available" // proving CC available for SnapDeals
 
 	// snap deals / cc update
 	SnapDealsWaitDeals    SectorState = "SnapDealsWaitDeals"
@@ -161,7 +163,7 @@ func toStatState(st SectorState, finEarly bool) statSectorState {
 			return sstProving
 		}
 		return sstSealing
-	case Proving, UpdateActivating, ReleaseSectorKey, Removed, Removing, Terminating, TerminateWait, TerminateFinality, TerminateFailed:
+	case Proving, Available, UpdateActivating, ReleaseSectorKey, Removed, Removing, Terminating, TerminateWait, TerminateFinality, TerminateFailed:
 		return sstProving
 	}
 

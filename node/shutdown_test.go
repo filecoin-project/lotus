@@ -1,3 +1,4 @@
+//stm: #unit
 package node
 
 import (
@@ -10,6 +11,7 @@ import (
 )
 
 func TestMonitorShutdown(t *testing.T) {
+	//stm: @NODE_COMMON_SHUTDOWN_001
 	signalCh := make(chan struct{})
 
 	// Three shutdown handlers.

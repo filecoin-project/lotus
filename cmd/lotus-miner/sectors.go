@@ -11,9 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -56,7 +53,6 @@ var sectorsCmd = &cli.Command{
 		sectorsRemoveCmd,
 		sectorsSnapUpCmd,
 		sectorsSnapAbortCmd,
-		sectorsMarkForUpgradeCmd,
 		sectorsStartSealCmd,
 		sectorsSealDelayCmd,
 		sectorsCapacityCollateralCmd,
@@ -351,7 +347,7 @@ var sectorsListCmd = &cli.Command{
 
 		if cctx.Bool("unproven") {
 			for state := range sealing.ExistSectorStateList {
-				if state == sealing.Proving {
+				if state == sealing.Proving || state == sealing.Available {
 					continue
 				}
 				states = append(states, api.SectorState(state))
@@ -1565,57 +1561,6 @@ var sectorsSnapAbortCmd = &cli.Command{
 		}
 
 		return nodeApi.SectorAbortUpgrade(ctx, abi.SectorNumber(id))
-	},
-}
-
-var sectorsMarkForUpgradeCmd = &cli.Command{
-	Name:      "mark-for-upgrade",
-	Usage:     "Mark a committed capacity sector for replacement by a sector with deals",
-	ArgsUsage: "<sectorNum>",
-	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 1 {
-			return lcli.ShowHelp(cctx, xerrors.Errorf("must pass sector number"))
-		}
-
-		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
-
-		api, nCloser, err := lcli.GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer nCloser()
-		ctx := lcli.ReqContext(cctx)
-
-		nv, err := api.StateNetworkVersion(ctx, types.EmptyTSK)
-		if err != nil {
-			return xerrors.Errorf("failed to get network version: %w", err)
-		}
-		if nv >= network.Version15 {
-			return xerrors.Errorf("classic cc upgrades disabled v15 and beyond, use `snap-up`")
-		}
-
-		// disable mark for upgrade two days before the ntwk v15 upgrade
-		// TODO: remove the following block in v1.15.1
-		head, err := api.ChainHead(ctx)
-		if err != nil {
-			return xerrors.Errorf("failed to get chain head: %w", err)
-		}
-		twoDays := abi.ChainEpoch(2 * builtin.EpochsInDay)
-		if head.Height() > (build.UpgradeOhSnapHeight - twoDays) {
-			return xerrors.Errorf("OhSnap is coming soon, " +
-				"please use `snap-up` to upgrade your cc sectors after the network v15 upgrade!")
-		}
-
-		id, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
-		if err != nil {
-			return xerrors.Errorf("could not parse sector number: %w", err)
-		}
-
-		return nodeApi.SectorMarkForUpgrade(ctx, abi.SectorNumber(id), false)
 	},
 }
 

@@ -196,8 +196,32 @@ func (sm *StateManager) setupPostCalicoVesting(ctx context.Context) error {
 // GetVestedFunds returns all funds that have "left" actors that are in the genesis state:
 // - For Multisigs, it counts the actual amounts that have vested at the given epoch
 // - For Accounts, it counts max(currentBalance - genesisBalance, 0).
-func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (abi.TokenAmount, error) {
+func (sm *StateManager) GetFilVested(ctx context.Context, height abi.ChainEpoch) (abi.TokenAmount, error) {
 	vf := big.Zero()
+
+	sm.genesisMsigLk.Lock()
+	defer sm.genesisMsigLk.Unlock()
+
+	// TODO: combine all this?
+	if sm.preIgnitionVesting == nil || sm.genesisPledge.IsZero() || sm.genesisMarketFunds.IsZero() {
+		err := sm.setupGenesisVestingSchedule(ctx)
+		if err != nil {
+			return vf, xerrors.Errorf("failed to setup pre-ignition vesting schedule: %w", err)
+		}
+	}
+	if sm.postIgnitionVesting == nil {
+		err := sm.setupPostIgnitionVesting(ctx)
+		if err != nil {
+			return vf, xerrors.Errorf("failed to setup post-ignition vesting schedule: %w", err)
+		}
+	}
+	if sm.postCalicoVesting == nil {
+		err := sm.setupPostCalicoVesting(ctx)
+		if err != nil {
+			return vf, xerrors.Errorf("failed to setup post-calico vesting schedule: %w", err)
+		}
+	}
+
 	if height <= build.UpgradeIgnitionHeight {
 		for _, v := range sm.preIgnitionVesting {
 			au := big.Sub(v.InitialBalance, v.AmountLocked(height))
@@ -282,7 +306,7 @@ func getFilPowerLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmoun
 	return pst.TotalLocked()
 }
 
-func (sm *StateManager) GetFilLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
+func GetFilLocked(ctx context.Context, st *state.StateTree) (abi.TokenAmount, error) {
 
 	filMarketLocked, err := getFilMarketLocked(ctx, st)
 	if err != nil {
@@ -316,28 +340,7 @@ func (sm *StateManager) GetVMCirculatingSupply(ctx context.Context, height abi.C
 }
 
 func (sm *StateManager) GetVMCirculatingSupplyDetailed(ctx context.Context, height abi.ChainEpoch, st *state.StateTree) (api.CirculatingSupply, error) {
-	sm.genesisMsigLk.Lock()
-	defer sm.genesisMsigLk.Unlock()
-	if sm.preIgnitionVesting == nil || sm.genesisPledge.IsZero() || sm.genesisMarketFunds.IsZero() {
-		err := sm.setupGenesisVestingSchedule(ctx)
-		if err != nil {
-			return api.CirculatingSupply{}, xerrors.Errorf("failed to setup pre-ignition vesting schedule: %w", err)
-		}
-	}
-	if sm.postIgnitionVesting == nil {
-		err := sm.setupPostIgnitionVesting(ctx)
-		if err != nil {
-			return api.CirculatingSupply{}, xerrors.Errorf("failed to setup post-ignition vesting schedule: %w", err)
-		}
-	}
-	if sm.postCalicoVesting == nil {
-		err := sm.setupPostCalicoVesting(ctx)
-		if err != nil {
-			return api.CirculatingSupply{}, xerrors.Errorf("failed to setup post-calico vesting schedule: %w", err)
-		}
-	}
-
-	filVested, err := sm.GetFilVested(ctx, height, st)
+	filVested, err := sm.GetFilVested(ctx, height)
 	if err != nil {
 		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filVested: %w", err)
 	}
@@ -360,7 +363,7 @@ func (sm *StateManager) GetVMCirculatingSupplyDetailed(ctx context.Context, heig
 		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filBurnt: %w", err)
 	}
 
-	filLocked, err := sm.GetFilLocked(ctx, st)
+	filLocked, err := GetFilLocked(ctx, st)
 	if err != nil {
 		return api.CirculatingSupply{}, xerrors.Errorf("failed to calculate filLocked: %w", err)
 	}

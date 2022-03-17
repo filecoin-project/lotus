@@ -1,3 +1,4 @@
+//stm: #integration
 package itests
 
 import (
@@ -9,16 +10,19 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/stretchr/testify/require"
 )
 
 func TestBatchDealInput(t *testing.T) {
-	t.Skip("this test is disabled as it's flaky: #4611")
+	//stm: @MINER_SECTOR_STATUS_001, @MINER_SECTOR_LIST_001
 	kit.QuietMiningLogs()
 
 	var (
@@ -47,17 +51,20 @@ func TestBatchDealInput(t *testing.T) {
 					})),
 				node.Override(new(dtypes.GetSealingConfigFunc), func() (dtypes.GetSealingConfigFunc, error) {
 					return func() (sealiface.Config, error) {
-						return sealiface.Config{
-							MaxWaitDealsSectors:       2,
-							MaxSealingSectors:         1,
-							MaxSealingSectorsForDeals: 3,
-							AlwaysKeepUnsealedCopy:    true,
-							WaitDealsDelay:            time.Hour,
-						}, nil
+						sc := modules.ToSealingConfig(config.DefaultStorageMiner())
+						sc.MaxWaitDealsSectors = 2
+						sc.MaxSealingSectors = 1
+						sc.MaxSealingSectorsForDeals = 3
+						sc.AlwaysKeepUnsealedCopy = true
+						sc.WaitDealsDelay = time.Hour
+						sc.BatchPreCommits = false
+						sc.AggregateCommits = false
+
+						return sc, nil
 					}, nil
 				}),
 			))
-			client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts)
+			client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), opts, kit.ThroughRPC())
 			ens.InterconnectAll().BeginMining(blockTime)
 			dh := kit.NewDealHarness(t, client, miner, miner)
 
@@ -126,9 +133,9 @@ func TestBatchDealInput(t *testing.T) {
 	t.Run("4-p513B", run(513, 4, 2))
 	if !testing.Short() {
 		t.Run("32-p257B", run(257, 32, 8))
-		t.Run("32-p10B", run(10, 32, 2))
 
 		// fixme: this appears to break data-transfer / markets in some really creative ways
+		//t.Run("32-p10B", run(10, 32, 2))
 		// t.Run("128-p10B", run(10, 128, 8))
 	}
 }

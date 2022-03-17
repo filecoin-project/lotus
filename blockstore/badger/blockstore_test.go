@@ -1,3 +1,4 @@
+//stm: #unit
 package badgerbs
 
 import (
@@ -19,6 +20,8 @@ import (
 )
 
 func TestBadgerBlockstore(t *testing.T) {
+	//stm: @SPLITSTORE_BADGER_PUT_001, @SPLITSTORE_BADGER_POOLED_STORAGE_KEY_001
+	//stm: @SPLITSTORE_BADGER_OPEN_001, @SPLITSTORE_BADGER_CLOSE_001
 	(&Suite{
 		NewBlockstore:  newBlockstore(DefaultOptions),
 		OpenBlockstore: openBlockstore(DefaultOptions),
@@ -37,6 +40,8 @@ func TestBadgerBlockstore(t *testing.T) {
 }
 
 func TestStorageKey(t *testing.T) {
+	//stm: @SPLITSTORE_BADGER_OPEN_001, @SPLITSTORE_BADGER_CLOSE_001
+	//stm: @SPLITSTORE_BADGER_STORAGE_KEY_001
 	bs, _ := newBlockstore(DefaultOptions)(t)
 	bbs := bs.(*Blockstore)
 	defer bbs.Close() //nolint:errcheck
@@ -250,10 +255,16 @@ func testMove(t *testing.T, optsF func(string) Options) {
 }
 
 func TestMoveNoPrefix(t *testing.T) {
+	//stm: @SPLITSTORE_BADGER_OPEN_001, @SPLITSTORE_BADGER_CLOSE_001
+	//stm: @SPLITSTORE_BADGER_PUT_001, @SPLITSTORE_BADGER_POOLED_STORAGE_KEY_001
+	//stm: @SPLITSTORE_BADGER_DELETE_001, @SPLITSTORE_BADGER_COLLECT_GARBAGE_001
 	testMove(t, DefaultOptions)
 }
 
 func TestMoveWithPrefix(t *testing.T) {
+	//stm: @SPLITSTORE_BADGER_OPEN_001, @SPLITSTORE_BADGER_CLOSE_001
+	//stm: @SPLITSTORE_BADGER_PUT_001, @SPLITSTORE_BADGER_POOLED_STORAGE_KEY_001
+	//stm: @SPLITSTORE_BADGER_DELETE_001, @SPLITSTORE_BADGER_COLLECT_GARBAGE_001
 	testMove(t, func(path string) Options {
 		opts := DefaultOptions(path)
 		opts.Prefix = "/prefixed/"
