@@ -3,7 +3,7 @@
 # 1.15.1-rc1 / 2022-03-16
 
 This is the first release candidate of the next *highly recommended* feature release v1.15.1. This feature release introduces Index Provider, GraphSync v2, and many other latest functionalities, improvements and bug fixes. 
-More importantly, node operator can now enable the FVM(experimental) to sync miannet!!
+More importantly, node operator can now enable the FVM(experimental) to sync mainnet!!
 
 ## Highlights
 
@@ -15,7 +15,7 @@ The lotus team is excited to announce the launch of experimental non-programmabl
 ### 🌟🌟🌟 Index Provider (Production Ready!) 🌟🌟🌟
 - feat: markets: Integrate index ingest protocol and retrieve by any CID ([filecoin-project/lotus#7313](https://github.com/filecoin-project/lotus/pull/7313))
 
-More and more useful data is being stored in Filecoin via deals made by clients to Storage Providers. It is the goal that these content is discoverable when people needs them. To archive that goal, one of the projects [the Bedrock team](https://www.notion.so/pl-strflt/Bedrock-2e956d5d8143432080a1d84435ccf0ff) is working on is building an Indexer Ecosystem, a project that's focus on content addressing on Filecoin, then potentially have interoperability with IPFS in the future and eventually serve the retrieval market. The Indexer Ecosystem high level architecture overview diagram can be found [here](https://github.com/filecoin-project/storetheindex/blob/main/doc/indexer_ecosys.png) and a detailed write up about can be found [here](https://www.notion.so/pl-strflt/Introducing-Indexer-to-SP-90bf296794174a8281c121d4ce6747a0).  
+More and more useful data is being stored on Filecoin via deals made by clients to Storage Providers. The goal is that this content is discoverable when people need them. To achieve that goal, one of the projects [the Bedrock team](https://www.notion.so/pl-strflt/Bedrock-2e956d5d8143432080a1d84435ccf0ff) is working on is building an Indexer Ecosystem, a project that's focus on content addressing on Filecoin, then potentially have interoperability with IPFS in the future and eventually serve the retrieval market. The Indexer Ecosystem high level architecture overview diagram can be found [here](https://github.com/filecoin-project/storetheindex/blob/main/doc/indexer_ecosys.png) and a detailed write up about can be found [here](https://www.notion.so/pl-strflt/Introducing-Indexer-to-SP-90bf296794174a8281c121d4ce6747a0).  
 
 That being said, with this release, lotus Storage Providers can easily become an Index Provider and serve the Indexer Content Addressing System. Index Providers generate advertisements from the deals made by a storage provider and announces the data to the indexer nodes for further processing:
 - To learn more about *what is an Index Provider and how to be an Index Provider*, read it [here](https://lotus.filecoin.io/storage-providers/operate/index-provider/) in lotus docuementation.
@@ -32,6 +32,7 @@ We recommend all Storage Providers that are serving deals in the Filecoin networ
 
 ### ❗️❗️❗️ Dag Migration For New CAR index format in DagStore ❗️❗️❗️
 The index provider leverages the latest CARv2 indexing format `MultihashIndexSorted`, which stores the multihash code as well as the digest of all CIDs in a CAR file. Thus, all Storage Providers SHOULD perform an one-off DAG mirgation to regenerate DagStore CARv2 indices. You have to do it to become an index provider, failing to do so may also impact your future deal making.
+Follow the instruction [here](https://lotus.filecoin.io/storage-providers/operate/index-provider/) to perform the migration. 
 
 ## New Features
 - feat: market utils: Support unixfsnode in TraverseDag ([filecoin-project/lotus#8168](https://github.com/filecoin-project/lotus/pull/8168))
