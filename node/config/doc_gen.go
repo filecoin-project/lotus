@@ -714,13 +714,27 @@ Note that setting this number too high in relation to deal ingestion rate may re
 			Name: "MaxSealingSectors",
 			Type: "uint64",
 
-			Comment: `Upper bound on how many sectors can be sealing at the same time when creating new CC sectors (0 = unlimited)`,
+			Comment: `Upper bound on how many sectors can be sealing+upgrading at the same time when creating new CC sectors (0 = unlimited)`,
 		},
 		{
 			Name: "MaxSealingSectorsForDeals",
 			Type: "uint64",
 
-			Comment: `Upper bound on how many sectors can be sealing at the same time when creating new sectors with deals (0 = unlimited)`,
+			Comment: `Upper bound on how many sectors can be sealing+upgrading at the same time when creating new sectors with deals (0 = unlimited)`,
+		},
+		{
+			Name: "PreferNewSectorsForDeals",
+			Type: "bool",
+
+			Comment: `This setting combined with MaxUpgradingSectors set to a value higher than MaxSealingSectorsForDeals makes it
+possible to use fast sector upgrades to handle high volumes of storage deals, while still using the simple sealing
+flow when the volume of storage deals is lower.`,
+		},
+		{
+			Name: "MaxUpgradingSectors",
+			Type: "uint64",
+
+			Comment: `Upper bound on how many sectors can be sealing+upgrading at the same time when upgrading CC sectors with deals (0 = MaxSealingSectorsForDeals)`,
 		},
 		{
 			Name: "CommittedCapacitySectorLifetime",

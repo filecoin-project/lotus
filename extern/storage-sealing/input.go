@@ -550,7 +550,7 @@ func (m *Sealing) calcTargetExpiration(ctx context.Context, ssize abi.SectorSize
 	return curEpoch + minDur, curEpoch + maxDur, nil
 }
 
-func (m *Sealing) tryGetUpgradeSector(ctx context.Context, sp abi.RegisteredSealProof, ef expFn) (bool, error) {
+func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealProof, ef expFn) (bool, error) {
 	if len(m.available) == 0 {
 		return false, nil
 	}
@@ -619,56 +619,8 @@ func (m *Sealing) tryGetUpgradeSector(ctx context.Context, sp abi.RegisteredSeal
 	return true, m.sectors.Send(uint64(candidate.Number), SectorStartCCUpdate{})
 }
 
-func (m *Sealing) tryGetDealSector(ctx context.Context, sp abi.RegisteredSealProof, ef expFn) error {
-	m.startupWait.Wait()
-
-	if m.nextDealSector != nil {
-		return nil // new sector is being created right now
-	}
-
-	cfg, err := m.getConfig()
-	if err != nil {
-		return xerrors.Errorf("getting storage config: %w", err)
-	}
-
-	if cfg.MaxSealingSectorsForDeals > 0 && m.stats.curSealing() >= cfg.MaxSealingSectorsForDeals {
-		return nil
-	}
-
-	if cfg.MaxWaitDealsSectors > 0 && m.stats.curStaging() >= cfg.MaxWaitDealsSectors {
-		return nil
-	}
-
-	got, err := m.tryGetUpgradeSector(ctx, sp, ef)
-	if err != nil {
-		return err
-	}
-	if got {
-		return nil
-	}
-
-	if !cfg.MakeNewSectorForDeals {
-		return nil
-	}
-
-	sid, err := m.createSector(ctx, cfg, sp)
-	if err != nil {
-		return err
-	}
-
-	m.nextDealSector = &sid
-
-	log.Infow("Creating sector", "number", sid, "type", "deal", "proofType", sp)
-	return m.sectors.Send(uint64(sid), SectorStart{
-		ID:         sid,
-		SectorType: sp,
-	})
-}
-
 // call with m.inputLk
 func (m *Sealing) createSector(ctx context.Context, cfg sealiface.Config, sp abi.RegisteredSealProof) (abi.SectorNumber, error) {
-	// Now actually create a new sector
-
 	sid, err := m.sc.Next()
 	if err != nil {
 		return 0, xerrors.Errorf("getting sector number: %w", err)
@@ -682,7 +634,74 @@ func (m *Sealing) createSector(ctx context.Context, cfg sealiface.Config, sp abi
 	// update stats early, fsm planner would do that async
 	m.stats.updateSector(ctx, cfg, m.minerSectorID(sid), UndefinedSectorState)
 
-	return sid, nil
+	return sid, err
+}
+
+func (m *Sealing) tryGetDealSector(ctx context.Context, sp abi.RegisteredSealProof, ef expFn) error {
+	m.startupWait.Wait()
+
+	if m.nextDealSector != nil {
+		return nil // new sector is being created right now
+	}
+
+	cfg, err := m.getConfig()
+	if err != nil {
+		return xerrors.Errorf("getting storage config: %w", err)
+	}
+
+	// if we're above WaitDeals limit, we don't want to add more staging sectors
+	if cfg.MaxWaitDealsSectors > 0 && m.stats.curStaging() >= cfg.MaxWaitDealsSectors {
+		return nil
+	}
+
+	maxUpgrading := cfg.MaxSealingSectorsForDeals
+	if cfg.MaxUpgradingSectors > 0 {
+		maxUpgrading = cfg.MaxUpgradingSectors
+	}
+
+	canCreate := cfg.MakeNewSectorForDeals && !(cfg.MaxSealingSectorsForDeals > 0 && m.stats.curSealing() >= cfg.MaxSealingSectorsForDeals)
+	canUpgrade := !(maxUpgrading > 0 && m.stats.curSealing() >= maxUpgrading)
+
+	// we want to try to upgrade when:
+	// - we can upgrade and prefer upgrades
+	// - we don't prefer upgrades, but can't create a new sector
+	shouldUpgrade := canUpgrade && (!cfg.PreferNewSectorsForDeals || !canCreate)
+
+	log.Infow("new deal sector decision",
+		"sealing", m.stats.curSealing(),
+		"maxSeal", cfg.MaxSealingSectorsForDeals,
+		"maxUpgrade", maxUpgrading,
+		"preferNew", cfg.PreferNewSectorsForDeals,
+		"canCreate", canCreate,
+		"canUpgrade", canUpgrade,
+		"shouldUpgrade", shouldUpgrade)
+
+	if shouldUpgrade {
+		got, err := m.maybeUpgradeSector(ctx, sp, ef)
+		if err != nil {
+			return err
+		}
+		if got {
+			return nil
+		}
+	}
+
+	if canCreate {
+		sid, err := m.createSector(ctx, cfg, sp)
+		if err != nil {
+			return err
+		}
+		m.nextDealSector = &sid
+
+		log.Infow("Creating sector", "number", sid, "type", "deal", "proofType", sp)
+		if err := m.sectors.Send(uint64(sid), SectorStart{
+			ID:         sid,
+			SectorType: sp,
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (m *Sealing) StartPacking(sid abi.SectorNumber) error {
