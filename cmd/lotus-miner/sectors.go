@@ -433,7 +433,7 @@ var sectorsListCmd = &cli.Command{
 			const verifiedPowerGainMul = 9
 
 			dw, vp := .0, .0
-			estimate := st.Expiration-st.Activation <= 0
+			estimate := (st.Expiration-st.Activation <= 0) || sealing.IsUpgradeState(sealing.SectorState(st.State))
 			if !estimate {
 				rdw := big.Add(st.DealWeight, st.VerifiedDealWeight)
 				dw = float64(big.Div(rdw, big.NewInt(int64(st.Expiration-st.Activation))).Uint64())
