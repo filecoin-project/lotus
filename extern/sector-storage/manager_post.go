@@ -122,9 +122,8 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 
 	// We're supplied the list of sectors that the miner actor expects - this
 	//  list contains substitutes for skipped sectors - but we don't care about
-	//  those for the purpose of the proof because post proof challenges are based
-	//  on sector numbers, not position in the proof - so for things to work, we
-	//  need to dedupe here.
+	//  those for the purpose of the proof, so for things to work, we need to
+	//  dedupe here.
 	sectorInfo = dedupeSectorInfo(sectorInfo)
 
 	// The partitions number of this batch
