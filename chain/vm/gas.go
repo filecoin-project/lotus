@@ -50,7 +50,7 @@ func newGasCharge(name string, computeGas int64, storageGas int64) GasCharge {
 	}
 }
 
-// Pricelist provides prices for operations in the VM.
+// Pricelist provides prices for operations in the LegacyVM.
 //
 // Note: this interface should be APPEND ONLY since last chain checkpoint
 type Pricelist interface {

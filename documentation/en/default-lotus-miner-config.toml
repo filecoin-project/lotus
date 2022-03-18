@@ -23,6 +23,12 @@
   #DisableMetadataLog = false
 
 
+[Logging]
+  [Logging.SubsystemLevels]
+    # env var: LOTUS_LOGGING_SUBSYSTEMLEVELS_EXAMPLE-SUBSYSTEM
+    #example-subsystem = "INFO"
+
+
 [Libp2p]
   # Binding address for the libp2p host - 0 means random port.
   # Format: multiaddress; see https://multiformats.io/multiaddr/
@@ -358,6 +364,12 @@
   # type: bool
   # env var: LOTUS_SEALING_FINALIZEEARLY
   #FinalizeEarly = false
+
+  # After sealing CC sectors, make them available for upgrading with deals
+  #
+  # type: bool
+  # env var: LOTUS_SEALING_MAKECCSECTORSAVAILABLE
+  #MakeCCSectorsAvailable = false
 
   # Whether to use available miner balance for sector collateral instead of sending it with each message
   #

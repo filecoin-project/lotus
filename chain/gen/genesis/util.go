@@ -21,7 +21,7 @@ func mustEnc(i cbg.CBORMarshaler) []byte {
 	return enc
 }
 
-func doExecValue(ctx context.Context, vm *vm.VM, to, from address.Address, value types.BigInt, method abi.MethodNum, params []byte) ([]byte, error) {
+func doExecValue(ctx context.Context, vm *vm.LegacyVM, to, from address.Address, value types.BigInt, method abi.MethodNum, params []byte) ([]byte, error) {
 	act, err := vm.StateTree().GetActor(from)
 	if err != nil {
 		return nil, xerrors.Errorf("doExec failed to get from actor (%s): %w", from, err)

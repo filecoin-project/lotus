@@ -918,6 +918,7 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				MaxSealingSectorsForDeals:       cfg.MaxSealingSectorsForDeals,
 				CommittedCapacitySectorLifetime: config.Duration(cfg.CommittedCapacitySectorLifetime),
 				WaitDealsDelay:                  config.Duration(cfg.WaitDealsDelay),
+				MakeCCSectorsAvailable:          cfg.MakeCCSectorsAvailable,
 				AlwaysKeepUnsealedCopy:          cfg.AlwaysKeepUnsealedCopy,
 				FinalizeEarly:                   cfg.FinalizeEarly,
 
@@ -957,6 +958,7 @@ func ToSealingConfig(dealmakingCfg config.DealmakingConfig, sealingCfg config.Se
 		MakeNewSectorForDeals:           dealmakingCfg.MakeNewSectorForDeals,
 		CommittedCapacitySectorLifetime: time.Duration(sealingCfg.CommittedCapacitySectorLifetime),
 		WaitDealsDelay:                  time.Duration(sealingCfg.WaitDealsDelay),
+		MakeCCSectorsAvailable:          sealingCfg.MakeCCSectorsAvailable,
 		AlwaysKeepUnsealedCopy:          sealingCfg.AlwaysKeepUnsealedCopy,
 		FinalizeEarly:                   sealingCfg.FinalizeEarly,
 

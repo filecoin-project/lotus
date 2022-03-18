@@ -238,7 +238,7 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 	}
 
 	// Abort upgrade for sectors that went faulty since being marked for upgrade
-	active, err := sectorActive(ctx.Context(), m.Api, m.maddr, tok, sector.SectorNumber)
+	active, err := m.sectorActive(ctx.Context(), tok, sector.SectorNumber)
 	if err != nil {
 		log.Errorf("sector active check: api error, not proceeding: %+v", err)
 		return nil

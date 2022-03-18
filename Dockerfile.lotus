@@ -53,8 +53,9 @@ COPY --from=builder /usr/lib/x86_64-linux-gnu/libnuma.so.1   /lib/
 COPY --from=builder /usr/lib/x86_64-linux-gnu/libhwloc.so.5  /lib/
 COPY --from=builder /usr/lib/x86_64-linux-gnu/libOpenCL.so.1 /lib/
 
-RUN useradd -r -u 532 -U fc
-
+RUN useradd -r -u 532 -U fc \
+ && mkdir -p /etc/OpenCL/vendors \
+ && echo "libnvidia-opencl.so.1" > /etc/OpenCL/vendors/nvidia.icd
 
 ###
 FROM base AS lotus

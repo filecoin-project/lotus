@@ -1,12 +1,11 @@
+//stm: #unit
 package splitstore
 
 import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
-	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -85,14 +84,7 @@ func testSplitStore(t *testing.T, cfg *Config) {
 		t.Fatal(err)
 	}
 
-	path, err := ioutil.TempDir("", "splitstore.*")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() {
-		_ = os.RemoveAll(path)
-	})
+	path := t.TempDir()
 
 	// open the splitstore
 	ss, err := Open(path, ds, hot, cold, cfg)
@@ -228,10 +220,16 @@ func testSplitStore(t *testing.T, cfg *Config) {
 }
 
 func TestSplitStoreCompaction(t *testing.T) {
+	//stm: @SPLITSTORE_SPLITSTORE_OPEN_001, @SPLITSTORE_SPLITSTORE_CLOSE_001
+	//stm: @SPLITSTORE_SPLITSTORE_PUT_001, @SPLITSTORE_SPLITSTORE_ADD_PROTECTOR_001
+	//stm: @SPLITSTORE_SPLITSTORE_CLOSE_001
 	testSplitStore(t, &Config{MarkSetType: "map"})
 }
 
 func TestSplitStoreCompactionWithBadger(t *testing.T) {
+	//stm: @SPLITSTORE_SPLITSTORE_OPEN_001, @SPLITSTORE_SPLITSTORE_CLOSE_001
+	//stm: @SPLITSTORE_SPLITSTORE_PUT_001, @SPLITSTORE_SPLITSTORE_ADD_PROTECTOR_001
+	//stm: @SPLITSTORE_SPLITSTORE_CLOSE_001
 	bs := badgerMarkSetBatchSize
 	badgerMarkSetBatchSize = 1
 	t.Cleanup(func() {
@@ -241,6 +239,9 @@ func TestSplitStoreCompactionWithBadger(t *testing.T) {
 }
 
 func TestSplitStoreSuppressCompactionNearUpgrade(t *testing.T) {
+	//stm: @SPLITSTORE_SPLITSTORE_OPEN_001, @SPLITSTORE_SPLITSTORE_CLOSE_001
+	//stm: @SPLITSTORE_SPLITSTORE_PUT_001, @SPLITSTORE_SPLITSTORE_ADD_PROTECTOR_001
+	//stm: @SPLITSTORE_SPLITSTORE_CLOSE_001
 	ctx := context.Background()
 	chain := &mockChain{t: t}
 
@@ -277,14 +278,7 @@ func TestSplitStoreSuppressCompactionNearUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	path, err := ioutil.TempDir("", "splitstore.*")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() {
-		_ = os.RemoveAll(path)
-	})
+	path := t.TempDir()
 
 	// open the splitstore
 	ss, err := Open(path, ds, hot, cold, &Config{MarkSetType: "map"})
@@ -424,14 +418,7 @@ func testSplitStoreReification(t *testing.T, f func(context.Context, blockstore.
 		}
 	}
 
-	path, err := ioutil.TempDir("", "splitstore.*")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() {
-		_ = os.RemoveAll(path)
-	})
+	path := t.TempDir()
 
 	ss, err := Open(path, ds, hot, cold, &Config{MarkSetType: "map"})
 	if err != nil {
@@ -531,14 +518,7 @@ func testSplitStoreReificationLimit(t *testing.T, f func(context.Context, blocks
 		}
 	}
 
-	path, err := ioutil.TempDir("", "splitstore.*")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	t.Cleanup(func() {
-		_ = os.RemoveAll(path)
-	})
+	path := t.TempDir()
 
 	ss, err := Open(path, ds, hot, cold, &Config{MarkSetType: "map"})
 	if err != nil {

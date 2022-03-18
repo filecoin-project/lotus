@@ -128,6 +128,12 @@ of automatically performing on-chain operations.`,
 			Comment: ``,
 		},
 		{
+			Name: "Logging",
+			Type: "Logging",
+
+			Comment: ``,
+		},
+		{
 			Name: "Libp2p",
 			Type: "Libp2p",
 
@@ -484,6 +490,14 @@ count towards this limit.`,
 closed by the connection manager.`,
 		},
 	},
+	"Logging": []DocField{
+		{
+			Name: "SubsystemLevels",
+			Type: "map[string]string",
+
+			Comment: `SubsystemLevels specify per-subsystem log levels`,
+		},
+	},
 	"MinerAddressConfig": []DocField{
 		{
 			Name: "PreCommitControl",
@@ -735,6 +749,12 @@ avoid the relatively high cost of unsealing the data later, at the cost of more 
 			Type: "bool",
 
 			Comment: `Run sector finalization before submitting sector proof to the chain`,
+		},
+		{
+			Name: "MakeCCSectorsAvailable",
+			Type: "bool",
+
+			Comment: `After sealing CC sectors, make them available for upgrading with deals`,
 		},
 		{
 			Name: "CollateralFromMinerBalance",

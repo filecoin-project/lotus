@@ -13,10 +13,11 @@ import (
 
 // Common is common config between full node and miner
 type Common struct {
-	API    API
-	Backup Backup
-	Libp2p Libp2p
-	Pubsub Pubsub
+	API     API
+	Backup  Backup
+	Logging Logging
+	Libp2p  Libp2p
+	Pubsub  Pubsub
 }
 
 // FullNode is a full node config
@@ -37,6 +38,12 @@ type Backup struct {
 	// Note that in case of metadata corruption it might be much harder to recover
 	// your node if metadata log is disabled
 	DisableMetadataLog bool
+}
+
+// Logging is the logging system config
+type Logging struct {
+	// SubsystemLevels specify per-subsystem log levels
+	SubsystemLevels map[string]string
 }
 
 // StorageMiner is a miner config
@@ -242,6 +249,9 @@ type SealingConfig struct {
 
 	// Run sector finalization before submitting sector proof to the chain
 	FinalizeEarly bool
+
+	// After sealing CC sectors, make them available for upgrading with deals
+	MakeCCSectorsAvailable bool
 
 	// Whether to use available miner balance for sector collateral instead of sending it with each message
 	CollateralFromMinerBalance bool

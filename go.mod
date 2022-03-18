@@ -35,7 +35,7 @@ require (
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils v0.1.3
 	github.com/filecoin-project/go-crypto v0.0.1
-	github.com/filecoin-project/go-data-transfer v1.14.0
+	github.com/filecoin-project/go-data-transfer v1.15.0
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
 	github.com/filecoin-project/go-fil-markets v1.20.1
@@ -82,7 +82,7 @@ require (
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/ipfs/go-ds-measure v0.2.0
 	github.com/ipfs/go-fs-lock v0.0.7
-	github.com/ipfs/go-graphsync v0.12.0
+	github.com/ipfs/go-graphsync v0.13.0
 	github.com/ipfs/go-ipfs-blockstore v1.1.2
 	github.com/ipfs/go-ipfs-blocksutil v0.0.1
 	github.com/ipfs/go-ipfs-chunker v0.0.5
@@ -101,19 +101,19 @@ require (
 	github.com/ipfs/go-metrics-interface v0.0.1
 	github.com/ipfs/go-metrics-prometheus v0.0.2
 	github.com/ipfs/go-unixfs v0.3.1
-	github.com/ipfs/go-unixfsnode v1.2.0
+	github.com/ipfs/go-unixfsnode v1.4.0
 	github.com/ipfs/interface-go-ipfs-core v0.5.2
 	github.com/ipld/go-car v0.3.3
 	github.com/ipld/go-car/v2 v2.1.1
 	github.com/ipld/go-codec-dagpb v1.3.0
-	github.com/ipld/go-ipld-prime v0.14.4
+	github.com/ipld/go-ipld-prime v0.16.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
 	github.com/jonboulle/clockwork v0.2.2 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/libp2p/go-eventbus v0.2.1
-	github.com/libp2p/go-libp2p v0.18.0-rc5
-	github.com/libp2p/go-libp2p-connmgr v0.3.1 // indirect
+	github.com/libp2p/go-libp2p v0.18.0-rc6
+	github.com/libp2p/go-libp2p-connmgr v0.3.1
 	github.com/libp2p/go-libp2p-core v0.14.0
 	github.com/libp2p/go-libp2p-discovery v0.6.0
 	github.com/libp2p/go-libp2p-kad-dht v0.15.0
@@ -122,7 +122,7 @@ require (
 	github.com/libp2p/go-libp2p-pubsub v0.6.1
 	github.com/libp2p/go-libp2p-quic-transport v0.16.1
 	github.com/libp2p/go-libp2p-record v0.1.3
-	github.com/libp2p/go-libp2p-resource-manager v0.1.4
+	github.com/libp2p/go-libp2p-resource-manager v0.1.5
 	github.com/libp2p/go-libp2p-routing-helpers v0.2.3
 	github.com/libp2p/go-libp2p-swarm v0.10.2
 	github.com/libp2p/go-libp2p-tls v0.3.1
