@@ -135,6 +135,7 @@ func TestWindowPostWorker(t *testing.T) {
 
 		// Drop the sector
 		sid, err := secs.First()
+		require.NoError(t, err)
 
 		t.Logf("Drop sector %d; dl %d part %d", sid, di.Index+1, 0)
 
