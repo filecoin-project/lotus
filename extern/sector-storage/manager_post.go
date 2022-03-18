@@ -5,7 +5,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/hashicorp/go-multierror"
+	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -187,8 +187,7 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 				skipped = append(skipped, sk...)
 
 				if err != nil {
-					retErr = multierror.Append(retErr, xerrors.Errorf("partitionCount:%d err:%+v", partIdx, err))
-					return
+					retErr = multierr.Append(retErr, xerrors.Errorf("partitionCount:%d err:%+v", partIdx, err))
 				}
 				flk.Unlock()
 			}
@@ -199,13 +198,13 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 
 	wg.Wait()
 
-	postProofs, err := ffi.MergeWindowPoStPartitionProofs(ppt, proofList)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("merge windowPoSt partition proofs: %v", err)
+	if len(skipped) > 0 {
+		return nil, skipped, multierr.Append(xerrors.Errorf("some sectors (%d) were skipped", len(skipped)), retErr)
 	}
 
-	if len(skipped) > 0 {
-		log.Warnf("GenerateWindowPoSt get skipped: %d", len(skipped))
+	postProofs, err := ffi.MergeWindowPoStPartitionProofs(ppt, proofList)
+	if err != nil {
+		return nil, skipped, xerrors.Errorf("merge windowPoSt partition proofs: %v", err)
 	}
 
 	out = append(out, *postProofs)

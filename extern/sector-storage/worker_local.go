@@ -627,7 +627,7 @@ func (l *LocalWorker) GenerateWindowPoSt(ctx context.Context, ppt abi.Registered
 					Miner:  mid,
 					Number: s.SectorNumber,
 				})
-				log.Errorf("get sector: %d, vanilla: %s, err: %s", s.SectorNumber, vanilla, err)
+				log.Errorf("reading PoSt challenge for sector %d, vlen:%d, err: %s", s.SectorNumber, len(vanilla), err)
 				return
 			}
 
@@ -639,7 +639,10 @@ func (l *LocalWorker) GenerateWindowPoSt(ctx context.Context, ppt abi.Registered
 	if len(skipped) > 0 {
 		// This should happen rarely because before entering GenerateWindowPoSt we check all sectors by reading challenges.
 		// When it does happen, window post runner logic will just re-check sectors, and retry with newly-discovered-bad sectors skipped
-		return storiface.WindowPoStResult{Skipped: skipped}, xerrors.Errorf("couldn't read some challenges (skipped %d)", len(skipped))
+		log.Errorf("couldn't read some challenges (skipped %d)", len(skipped))
+
+		// note: can't return an error as this in an jsonrpc call
+		return storiface.WindowPoStResult{Skipped: skipped}, nil
 	}
 
 	res, err := sb.GenerateWindowPoStWithVanilla(ctx, ppt, mid, randomness, vproofs, partitionIdx)

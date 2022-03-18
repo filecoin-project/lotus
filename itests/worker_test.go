@@ -191,7 +191,7 @@ func TestWindowPostWorkerSkipBadSector(t *testing.T) {
 
 	sectors := 2 * 48 * 2
 
-	badsector := new(uint64)
+	var badsector uint64 = 100000
 
 	client, miner, _, ens := kit.EnsembleWorker(t,
 		kit.PresealSectors(sectors), // 2 sectors per partition, 2 partitions in all 48 deadlines
@@ -201,14 +201,14 @@ func TestWindowPostWorkerSkipBadSector(t *testing.T) {
 		kit.WithWorkerStorage(func(store stores.Store) stores.Store {
 			return &badWorkerStorage{
 				Store:     store,
-				badsector: badsector,
+				badsector: &badsector,
 			}
 		}),
 		kit.ConstructorOpts(node.ApplyIf(node.IsType(repo.StorageMiner),
 			node.Override(new(stores.Store), func(store *stores.Remote) stores.Store {
 				return &badWorkerStorage{
 					Store:       store,
-					badsector:   badsector,
+					badsector:   &badsector,
 					notBadCount: 1,
 				}
 			}))))
@@ -219,7 +219,7 @@ func TestWindowPostWorkerSkipBadSector(t *testing.T) {
 	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 	require.NoError(t, err)
 
-	bm := ens.InterconnectAll().BeginMining(2 * time.Millisecond)[0]
+	bm := ens.InterconnectAll().BeginMiningMustPost(2 * time.Millisecond)[0]
 
 	di = di.NextNotElapsed()
 
@@ -245,7 +245,7 @@ func TestWindowPostWorkerSkipBadSector(t *testing.T) {
 
 	t.Log("post message landed")
 
-	bm.MineBlocks(ctx, 2*time.Millisecond)
+	bm.MineBlocksMustPost(ctx, 2*time.Millisecond)
 
 	waitUntil = di.Open + di.WPoStChallengeWindow*3
 	t.Logf("End for head.Height > %d", waitUntil)
@@ -282,7 +282,7 @@ func TestWindowPostWorkerSkipBadSector(t *testing.T) {
 
 		t.Logf("Drop sector %d; dl %d part %d", sid, di.Index+1, 0)
 
-		atomic.StoreUint64(badsector, sid)
+		atomic.StoreUint64(&badsector, sid)
 		require.NoError(t, err)
 	}
 
