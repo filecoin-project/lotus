@@ -1,3 +1,4 @@
+//stm: #unit
 package main
 
 import (
@@ -9,6 +10,7 @@ import (
 )
 
 func TestAppendCIDsToWindow(t *testing.T) {
+	//stm: @CMD_HEALTH_APPEND_CIDS_001
 	assert := assert.New(t)
 	var window CidWindow
 	threshold := 3
@@ -27,6 +29,7 @@ func TestAppendCIDsToWindow(t *testing.T) {
 }
 
 func TestCheckWindow(t *testing.T) {
+	//stm: @CMD_HEALTH_APPEND_CIDS_001, @CMD_HEALTH_CHECK_WINDOW_001
 	assert := assert.New(t)
 	threshold := 3
 

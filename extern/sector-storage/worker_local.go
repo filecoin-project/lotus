@@ -517,7 +517,20 @@ func (l *LocalWorker) Remove(ctx context.Context, sector abi.SectorID) error {
 
 func (l *LocalWorker) MoveStorage(ctx context.Context, sector storage.SectorRef, types storiface.SectorFileType) (storiface.CallID, error) {
 	return l.asyncCall(ctx, sector, MoveStorage, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
-		return nil, l.storage.MoveStorage(ctx, sector, types)
+		if err := l.storage.MoveStorage(ctx, sector, types); err != nil {
+			return nil, xerrors.Errorf("move to storage: %w", err)
+		}
+
+		for _, fileType := range storiface.PathTypes {
+			if fileType&types == 0 {
+				continue
+			}
+
+			if err := l.storage.RemoveCopies(ctx, sector.ID, fileType); err != nil {
+				return nil, xerrors.Errorf("rm copies (t:%s, s:%v): %w", fileType, sector, err)
+			}
+		}
+		return nil, nil
 	})
 }
 

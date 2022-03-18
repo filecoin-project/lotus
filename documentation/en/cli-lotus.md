@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.15.1-dev
+   1.15.2-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -770,7 +770,7 @@ NAME:
    lotus client get-deal - Print detailed deal information
 
 USAGE:
-   lotus client get-deal [command options] [arguments...]
+   lotus client get-deal [command options] [proposalCID]
 
 CATEGORY:
    STORAGE

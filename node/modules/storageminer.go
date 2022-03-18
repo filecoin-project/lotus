@@ -897,6 +897,7 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				MaxSealingSectorsForDeals:       cfg.MaxSealingSectorsForDeals,
 				CommittedCapacitySectorLifetime: config.Duration(cfg.CommittedCapacitySectorLifetime),
 				WaitDealsDelay:                  config.Duration(cfg.WaitDealsDelay),
+				MakeCCSectorsAvailable:          cfg.MakeCCSectorsAvailable,
 				AlwaysKeepUnsealedCopy:          cfg.AlwaysKeepUnsealedCopy,
 				FinalizeEarly:                   cfg.FinalizeEarly,
 
@@ -935,6 +936,7 @@ func ToSealingConfig(cfg *config.StorageMiner) sealiface.Config {
 		MakeNewSectorForDeals:           cfg.Dealmaking.MakeNewSectorForDeals,
 		CommittedCapacitySectorLifetime: time.Duration(cfg.Sealing.CommittedCapacitySectorLifetime),
 		WaitDealsDelay:                  time.Duration(cfg.Sealing.WaitDealsDelay),
+		MakeCCSectorsAvailable:          cfg.Sealing.MakeCCSectorsAvailable,
 		AlwaysKeepUnsealedCopy:          cfg.Sealing.AlwaysKeepUnsealedCopy,
 		FinalizeEarly:                   cfg.Sealing.FinalizeEarly,
 

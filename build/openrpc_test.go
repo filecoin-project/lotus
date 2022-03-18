@@ -1,3 +1,4 @@
+//stm: #unit
 package build
 
 import (
@@ -7,6 +8,7 @@ import (
 )
 
 func TestOpenRPCDiscoverJSON_Version(t *testing.T) {
+	//stm: @OTHER_IMPLEMENTATION_OPENRPC_VERSION_001
 	// openRPCDocVersion is the current OpenRPC version of the API docs.
 	openRPCDocVersion := "1.2.6"
 

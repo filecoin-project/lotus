@@ -75,8 +75,7 @@ var _ LocalStorage = &TestingLocalStorage{}
 func TestLocalStorage(t *testing.T) {
 	ctx := context.TODO()
 
-	root, err := ioutil.TempDir("", "sector-storage-teststorage-")
-	require.NoError(t, err)
+	root := t.TempDir()
 
 	tstor := &TestingLocalStorage{
 		root: root,

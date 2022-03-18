@@ -175,7 +175,7 @@ func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if err := handler.Local.Remove(r.Context(), id, ft, false, []storiface.ID{storiface.ID(r.FormValue("keep"))}); err != nil {
+	if err := handler.Local.Remove(r.Context(), id, ft, false, storiface.ParseIDList(r.FormValue("keep"))); err != nil {
 		log.Errorf("%+v", err)
 		w.WriteHeader(500)
 		return
