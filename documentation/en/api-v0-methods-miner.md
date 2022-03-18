@@ -4617,6 +4617,7 @@ Response:
         }
       }
     },
+    "Tasks": null,
     "Enabled": true,
     "MemUsedMin": 0,
     "MemUsedMax": 0,

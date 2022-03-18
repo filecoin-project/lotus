@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"math"
 	corebig "math/big"
 	"os"
@@ -36,6 +35,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/journal/alerting"
 )
 

@@ -513,7 +513,7 @@ func TestRestartWorker(t *testing.T) {
 
 	//stm: @WORKER_STATS_001
 	for {
-		if len(m.WorkerStats()) == 0 {
+		if len(m.WorkerStats(ctx)) == 0 {
 			break
 		}
 
@@ -576,13 +576,13 @@ func TestReenableWorker(t *testing.T) {
 
 	//stm: @WORKER_STATS_001
 	for i := 0; i < 100; i++ {
-		if !m.WorkerStats()[w.session].Enabled {
+		if !m.WorkerStats(ctx)[w.session].Enabled {
 			break
 		}
 
 		time.Sleep(time.Millisecond * 3)
 	}
-	require.False(t, m.WorkerStats()[w.session].Enabled)
+	require.False(t, m.WorkerStats(ctx)[w.session].Enabled)
 
 	i, _ = m.sched.Info(ctx)
 	require.Len(t, i.(SchedDiagInfo).OpenWindows, 0)
@@ -591,13 +591,13 @@ func TestReenableWorker(t *testing.T) {
 	atomic.StoreInt64(&w.testDisable, 0)
 
 	for i := 0; i < 100; i++ {
-		if m.WorkerStats()[w.session].Enabled {
+		if m.WorkerStats(ctx)[w.session].Enabled {
 			break
 		}
 
 		time.Sleep(time.Millisecond * 3)
 	}
-	require.True(t, m.WorkerStats()[w.session].Enabled)
+	require.True(t, m.WorkerStats(ctx)[w.session].Enabled)
 
 	for i := 0; i < 100; i++ {
 		info, _ := m.sched.Info(ctx)
@@ -653,7 +653,7 @@ func TestResUse(t *testing.T) {
 
 l:
 	for {
-		st := m.WorkerStats()
+		st := m.WorkerStats(ctx)
 		require.Len(t, st, 1)
 		for _, w := range st {
 			if w.MemUsedMax > 0 {
@@ -663,7 +663,7 @@ l:
 		}
 	}
 
-	st := m.WorkerStats()
+	st := m.WorkerStats(ctx)
 	require.Len(t, st, 1)
 	for _, w := range st {
 		require.Equal(t, storiface.ResourceTable[sealtasks.TTAddPiece][abi.RegisteredSealProof_StackedDrg2KiBV1].MaxMemory, w.MemUsedMax)
@@ -715,7 +715,7 @@ func TestResOverride(t *testing.T) {
 
 l:
 	for {
-		st := m.WorkerStats()
+		st := m.WorkerStats(ctx)
 		require.Len(t, st, 1)
 		for _, w := range st {
 			if w.MemUsedMax > 0 {
@@ -725,7 +725,7 @@ l:
 		}
 	}
 
-	st := m.WorkerStats()
+	st := m.WorkerStats(ctx)
 	require.Len(t, st, 1)
 	for _, w := range st {
 		require.Equal(t, uint64(99999), w.MemUsedMax)
