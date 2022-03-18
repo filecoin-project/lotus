@@ -131,8 +131,8 @@ func (sm *StorageMinerAPI) ServeRemote(perm bool) func(w http.ResponseWriter, r 
 	}
 }
 
-func (sm *StorageMinerAPI) WorkerStats(context.Context) (map[uuid.UUID]storiface.WorkerStats, error) {
-	return sm.StorageMgr.WorkerStats(), nil
+func (sm *StorageMinerAPI) WorkerStats(ctx context.Context) (map[uuid.UUID]storiface.WorkerStats, error) {
+	return sm.StorageMgr.WorkerStats(ctx), nil
 }
 
 func (sm *StorageMinerAPI) WorkerJobs(ctx context.Context) (map[uuid.UUID][]storiface.WorkerJob, error) {

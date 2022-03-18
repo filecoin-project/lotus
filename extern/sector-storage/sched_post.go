@@ -223,10 +223,10 @@ func (ps *poStScheduler) schedClose() {
 	}
 }
 
-func (ps *poStScheduler) WorkerStats(cb func(wid storiface.WorkerID, worker *workerHandle)) {
+func (ps *poStScheduler) WorkerStats(ctx context.Context, cb func(ctx context.Context, wid storiface.WorkerID, worker *workerHandle)) {
 	ps.lk.RLock()
 	defer ps.lk.RUnlock()
 	for id, w := range ps.workers {
-		cb(id, w)
+		cb(ctx, id, w)
 	}
 }

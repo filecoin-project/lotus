@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"math"
 	corebig "math/big"
 	"os"
@@ -343,6 +344,38 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.Full
 		}
 	}
 
+	{
+		fmt.Println()
+
+		ws, err := nodeApi.WorkerStats(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting worker stats: %w", err)
+		}
+
+		var nseal, nwdpost, nwinpost int
+
+	wloop:
+		for _, st := range ws {
+			if !st.Enabled {
+				continue
+			}
+
+			for _, task := range st.Tasks {
+				if task == sealtasks.TTGenerateWindowPoSt {
+					nwdpost++
+					continue wloop
+				}
+				if task == sealtasks.TTGenerateWinningPoSt {
+					nwinpost++
+					continue wloop
+				}
+			}
+			nseal++
+		}
+
+		fmt.Printf("Workers: Seal(%d) WdPoSt(%d) WinPoSt(%d)\n", nseal, nwdpost, nwinpost)
+	}
+
 	if cctx.IsSet("blocks") {
 		fmt.Println("Produced newest blocks:")
 		err = producedBlocks(ctx, cctx.Int("blocks"), maddr, fullapi)
@@ -350,9 +383,6 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.Full
 			return err
 		}
 	}
-	// TODO: grab actr state / info
-	//  * Sealed sectors (count / bytes)
-	//  * Power
 
 	return nil
 }

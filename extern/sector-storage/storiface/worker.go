@@ -68,6 +68,7 @@ func (wr WorkerResources) ResourceSpec(spt abi.RegisteredSealProof, tt sealtasks
 
 type WorkerStats struct {
 	Info    WorkerInfo
+	Tasks   []sealtasks.TaskType
 	Enabled bool
 
 	MemUsedMin uint64
