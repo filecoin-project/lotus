@@ -697,6 +697,8 @@ func (n *Ensemble) Start() *Ensemble {
 		auth := http.Header(nil)
 
 		remote := stores.NewRemote(localStore, m.MinerNode, auth, 20, &stores.DefaultPartialFileHandler{})
+		store := m.options.workerStorageOpt(remote)
+
 		fh := &stores.FetchHandler{Local: localStore, PfHandler: &stores.DefaultPartialFileHandler{}}
 		m.FetchHandler = fh.ServeHTTP
 
@@ -706,7 +708,7 @@ func (n *Ensemble) Start() *Ensemble {
 			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
 				TaskTypes: m.options.workerTasks,
 				NoSwap:    false,
-			}, remote, localStore, m.MinerNode, m.MinerNode, wsts),
+			}, store, localStore, m.MinerNode, m.MinerNode, wsts),
 			LocalStore: localStore,
 			Storage:    lr,
 		}

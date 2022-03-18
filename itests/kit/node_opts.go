@@ -4,6 +4,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -36,7 +37,8 @@ type nodeOpts struct {
 	maxStagingDealsBytes int64
 	minerNoLocalSealing  bool // use worker
 
-	workerTasks []sealtasks.TaskType
+	workerTasks      []sealtasks.TaskType
+	workerStorageOpt func(stores.Store) stores.Store
 }
 
 // DefaultNodeOpts are the default options that will be applied to test nodes.
@@ -45,7 +47,8 @@ var DefaultNodeOpts = nodeOpts{
 	sectors:    DefaultPresealsPerBootstrapMiner,
 	sectorSize: abi.SectorSize(2 << 10), // 2KiB.
 
-	workerTasks: []sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize},
+	workerTasks:      []sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize},
+	workerStorageOpt: func(store stores.Store) stores.Store { return store },
 }
 
 // OptBuilder is used to create an option after some other node is already
@@ -171,6 +174,13 @@ func SectorSize(sectorSize abi.SectorSize) NodeOpt {
 func WithTaskTypes(tt []sealtasks.TaskType) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.workerTasks = tt
+		return nil
+	}
+}
+
+func WithWorkerStorage(transform func(stores.Store) stores.Store) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.workerStorageOpt = transform
 		return nil
 	}
 }
