@@ -948,6 +948,7 @@ func TestMulticoreSDR(t *testing.T) {
 func TestPoStChallengeAssumptions(t *testing.T) {
 	var r [32]byte
 	rand.Read(r[:])
+	r[31] &= 0x3f
 
 	// behaves like a pure function
 	{
@@ -975,6 +976,18 @@ func TestPoStChallengeAssumptions(t *testing.T) {
 
 		require.NotEqual(t, c1.Challenges[1], c2.Challenges[1])
 		require.NotEqual(t, c1.Challenges[4], c2.Challenges[4])
+	}
+
+	// length doesn't matter
+	{
+		c1, err := ffi.GeneratePoStFallbackSectorChallenges(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1, 1000, r[:], []abi.SectorNumber{1})
+		require.NoError(t, err)
+
+		c2, err := ffi.GeneratePoStFallbackSectorChallenges(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1, 1000, r[:], []abi.SectorNumber{1, 2})
+		require.NoError(t, err)
+
+		require.NotEqual(t, c1, c2)
+		require.Equal(t, c1.Challenges[1], c2.Challenges[1])
 	}
 
 	// generate dedupes

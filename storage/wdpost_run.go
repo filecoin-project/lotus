@@ -45,13 +45,6 @@ func (s *WindowPoStScheduler) recordPoStFailure(err error, ts *types.TipSet, dea
 			State:     SchedulerStateFaulted,
 		}
 	})
-
-	log.Errorf("Got err %+v - TODO handle errors", err)
-	/*s.failLk.Lock()
-	if eps > s.failed {
-		s.failed = eps
-	}
-	s.failLk.Unlock()*/
 }
 
 // recordProofsEvent records a successful proofs_processed event in the

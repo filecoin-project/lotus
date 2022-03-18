@@ -636,14 +636,11 @@ func (l *LocalWorker) GenerateWindowPoSt(ctx context.Context, ppt abi.Registered
 	}
 	wg.Wait()
 
-	var at = 0
-	for i := range vproofs {
-		if vproofs[i] != nil {
-			vproofs[at] = vproofs[i]
-			at++
-		}
+	if len(skipped) > 0 {
+		// This should happen rarely because before entering GenerateWindowPoSt we check all sectors by reading challenges.
+		// When it does happen, window post runner logic will just re-check sectors, and retry with newly-discovered-bad sectors skipped
+		return storiface.WindowPoStResult{Skipped: skipped}, xerrors.Errorf("couldn't read some challenges (skipped %d)", len(skipped))
 	}
-	vproofs = vproofs[:at]
 
 	res, err := sb.GenerateWindowPoStWithVanilla(ctx, ppt, mid, randomness, vproofs, partitionIdx)
 

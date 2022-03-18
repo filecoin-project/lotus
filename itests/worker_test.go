@@ -2,12 +2,11 @@ package itests
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	"golang.org/x/xerrors"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"golang.org/x/xerrors"
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
@@ -17,8 +16,12 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
+	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
 	storage2 "github.com/filecoin-project/specs-storage/storage"
 )
@@ -166,12 +169,16 @@ func TestWindowPostWorker(t *testing.T) {
 type badWorkerStorage struct {
 	stores.Store
 
-	badsector uint64
+	badsector   *uint64
+	notBadCount int
 }
 
 func (bs *badWorkerStorage) GenerateSingleVanillaProof(ctx context.Context, minerID abi.ActorID, si storiface.PostSectorChallenge, ppt abi.RegisteredPoStProof) ([]byte, error) {
-	if atomic.LoadUint64(&bs.badsector) == uint64(si.SectorNumber) {
-		return nil, xerrors.New("no proof for you")
+	if atomic.LoadUint64(bs.badsector) == uint64(si.SectorNumber) {
+		bs.notBadCount--
+		if bs.notBadCount < 0 {
+			return nil, xerrors.New("no proof for you")
+		}
 	}
 	return bs.Store.GenerateSingleVanillaProof(ctx, minerID, si, ppt)
 }
@@ -184,7 +191,7 @@ func TestWindowPostWorkerSkipBadSector(t *testing.T) {
 
 	sectors := 2 * 48 * 2
 
-	var badStore *badWorkerStorage
+	badsector := new(uint64)
 
 	client, miner, _, ens := kit.EnsembleWorker(t,
 		kit.PresealSectors(sectors), // 2 sectors per partition, 2 partitions in all 48 deadlines
@@ -192,12 +199,19 @@ func TestWindowPostWorkerSkipBadSector(t *testing.T) {
 		kit.ThroughRPC(),
 		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTGenerateWindowPoSt}),
 		kit.WithWorkerStorage(func(store stores.Store) stores.Store {
-			badStore = &badWorkerStorage{
+			return &badWorkerStorage{
 				Store:     store,
-				badsector: 10000,
+				badsector: badsector,
 			}
-			return badStore
-		}))
+		}),
+		kit.ConstructorOpts(node.ApplyIf(node.IsType(repo.StorageMiner),
+			node.Override(new(stores.Store), func(store *stores.Remote) stores.Store {
+				return &badWorkerStorage{
+					Store:       store,
+					badsector:   badsector,
+					notBadCount: 1,
+				}
+			}))))
 
 	maddr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
@@ -268,7 +282,7 @@ func TestWindowPostWorkerSkipBadSector(t *testing.T) {
 
 		t.Logf("Drop sector %d; dl %d part %d", sid, di.Index+1, 0)
 
-		atomic.StoreUint64(&badStore.badsector, sid)
+		atomic.StoreUint64(badsector, sid)
 		require.NoError(t, err)
 	}
 
