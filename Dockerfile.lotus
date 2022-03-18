@@ -36,7 +36,7 @@ WORKDIR /opt/filecoin
 ARG RUSTFLAGS=""
 ARG GOFLAGS=""
 
-RUN make lotus lotus-miner lotus-worker lotus-shed lotus-wallet lotus-gateway lotus-stats
+RUN make lotus lotus-miner lotus-worker lotus-shed lotus-wallet lotus-gateway lotus-stats lotus-monitor
 
 
 FROM ubuntu:20.04 AS base
@@ -167,6 +167,25 @@ ENTRYPOINT ["/usr/local/bin/lotus-worker"]
 
 CMD ["-help"]
 
+###
+FROM base AS lotus-monitor
+MAINTAINER Lotus Development Team
+
+COPY --from=builder /opt/filecoin/lotus-monitor /usr/local/bin/
+
+ENV LOTUS_MONITOR_LISTEN 0.0.0.0:6687
+
+RUN mkdir /var/lib/lotus-monitor
+RUN chown fc: /var/lib/lotus-monitor
+
+USER fc
+
+EXPOSE 6687
+
+ENTRYPOINT ["/usr/local/bin/lotus-monitor"]
+
+CMD ["-help"]
+
 
 ###
 from base as lotus-all-in-one
@@ -177,6 +196,8 @@ ENV LOTUS_PATH /var/lib/lotus
 ENV LOTUS_WORKER_PATH /var/lib/lotus-worker
 ENV WALLET_PATH /var/lib/lotus-wallet
 ENV DOCKER_LOTUS_IMPORT_SNAPSHOT https://fil-chain-snapshots-fallback.s3.amazonaws.com/mainnet/minimal_finality_stateroots_latest.car
+ENV DOCKER_LOTUS_MINER_INIT false
+ENV LOTUS_MONITOR_LISTEN 0.0.0.0:6687
 
 COPY --from=builder /opt/filecoin/lotus      /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-shed /usr/local/bin/
@@ -184,6 +205,7 @@ COPY --from=builder /opt/filecoin/lotus-wallet /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-gateway /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-miner /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-worker /usr/local/bin/
+COPY --from=builder /opt/filecoin/lotus-monitor /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-stats /usr/local/bin/
 
 RUN mkdir /var/tmp/filecoin-proof-parameters
@@ -208,3 +230,4 @@ EXPOSE 1234
 EXPOSE 2345
 EXPOSE 3456
 EXPOSE 1777
+EXPOSE 6687

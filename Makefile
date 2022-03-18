@@ -208,6 +208,11 @@ testground:
 .PHONY: testground
 BINS+=testground
 
+lotus-monitor:
+	go build -o lotus-monitor ./cmd/lotus-monitor
+.PHONY: lotus-monitor
+BINS+=lotus-monitor
+
 
 tvx:
 	rm -f tvx
