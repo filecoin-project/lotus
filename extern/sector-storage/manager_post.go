@@ -85,6 +85,19 @@ func (m *Manager) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 	return m.generateWindowPoSt(ctx, minerID, sectorInfo, randomness)
 }
 
+func dedupeSectorInfo(sectorInfo []proof.ExtendedSectorInfo) []proof.ExtendedSectorInfo {
+	out := make([]proof.ExtendedSectorInfo, 0, len(sectorInfo))
+	seen := map[abi.SectorNumber]struct{}{}
+	for _, info := range sectorInfo {
+		if _, seen := seen[info.SectorNumber]; seen {
+			continue
+		}
+		seen[info.SectorNumber] = struct{}{}
+		out = append(out, info)
+	}
+	return out
+}
+
 func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, []abi.SectorID, error) {
 	var retErr error = nil
 	randomness[31] &= 0x3f
@@ -106,6 +119,13 @@ func (m *Manager) generateWindowPoSt(ctx context.Context, minerID abi.ActorID, s
 	if err != nil {
 		return nil, nil, xerrors.Errorf("get sectors count of partition failed:%+v", err)
 	}
+
+	// We're supplied the list of sectors that the miner actor expects - this
+	//  list contains substitutes for skipped sectors - but we don't care about
+	//  those for the purpose of the proof because post proof challenges are based
+	//  on sector numbers, not position in the proof - so for things to work, we
+	//  need to dedupe here.
+	sectorInfo = dedupeSectorInfo(sectorInfo)
 
 	// The partitions number of this batch
 	// ceil(sectorInfos / maxPartitionSize)
