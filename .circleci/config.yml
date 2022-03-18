@@ -793,11 +793,6 @@ workflows:
           target: "./itests/batch_deal_test.go"
       
       - test:
-          name: test-itest-ccupgrade_post
-          suite: itest-ccupgrade_post
-          target: "./itests/ccupgrade_post_test.go"
-      
-      - test:
           name: test-itest-ccupgrade
           suite: itest-ccupgrade
           target: "./itests/ccupgrade_test.go"

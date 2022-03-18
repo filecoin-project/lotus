@@ -29,7 +29,23 @@ func TestCCUpgrade(t *testing.T) {
 	//stm: @MINER_SECTOR_LIST_001
 	kit.QuietMiningLogs()
 
-	runTestCCUpgrade(t)
+	n := runTestCCUpgrade(t)
+
+	t.Run("post", func(t *testing.T) {
+		ctx := context.Background()
+		ts, err := n.ChainHead(ctx)
+		require.NoError(t, err)
+		start := ts.Height()
+		// wait for a full proving period
+		t.Log("waiting for chain")
+
+		n.WaitTillChain(ctx, func(ts *types.TipSet) bool {
+			if ts.Height() > start+abi.ChainEpoch(2880) {
+				return true
+			}
+			return false
+		})
+	})
 }
 
 func runTestCCUpgrade(t *testing.T) *kit.TestFullNode {
