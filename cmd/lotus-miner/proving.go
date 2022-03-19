@@ -365,6 +365,10 @@ var provingCheckProvableCmd = &cli.Command{
 			Name:  "storage-id",
 			Usage: "filter sectors by storage path (path id)",
 		},
+		&cli.BoolFlag{
+			Name:  "faulty",
+			Usage: "only check faulty sectors",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 1 {
@@ -376,7 +380,7 @@ var provingCheckProvableCmd = &cli.Command{
 			return xerrors.Errorf("could not parse deadline index: %w", err)
 		}
 
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := lcli.GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
@@ -425,6 +429,38 @@ var provingCheckProvableCmd = &cli.Command{
 			filter = map[abi.SectorID]struct{}{}
 			for _, decl := range decls {
 				filter[decl.SectorID] = struct{}{}
+			}
+		}
+
+		if cctx.Bool("faulty") {
+			parts, err := getAllPartitions(ctx, addr, api)
+			if err != nil {
+				return xerrors.Errorf("getting partitions: %w", err)
+			}
+
+			if filter != nil {
+				for k := range filter {
+					set, err := parts.FaultySectors.IsSet(uint64(k.Number))
+					if err != nil {
+						return err
+					}
+					if !set {
+						delete(filter, k)
+					}
+				}
+			} else {
+				filter = map[abi.SectorID]struct{}{}
+
+				err = parts.FaultySectors.ForEach(func(s uint64) error {
+					filter[abi.SectorID{
+						Miner:  abi.ActorID(mid),
+						Number: abi.SectorNumber(s),
+					}] = struct{}{}
+					return nil
+				})
+				if err != nil {
+					return err
+				}
 			}
 		}
 
