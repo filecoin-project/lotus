@@ -28,6 +28,14 @@ WORKDIR /opt/filecoin
 RUN make clean deps
 
 
+FROM builder-local AS builder-test
+MAINTAINER Lotus Development Team
+
+WORKDIR /opt/filecoin
+
+RUN make debug
+
+
 FROM builder-local AS builder
 MAINTAINER Lotus Development Team
 
@@ -185,6 +193,43 @@ COPY --from=builder /opt/filecoin/lotus-gateway /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-miner /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-worker /usr/local/bin/
 COPY --from=builder /opt/filecoin/lotus-stats /usr/local/bin/
+
+RUN mkdir /var/tmp/filecoin-proof-parameters
+RUN mkdir /var/lib/lotus
+RUN mkdir /var/lib/lotus-miner
+RUN mkdir /var/lib/lotus-worker
+RUN mkdir /var/lib/lotus-wallet
+RUN chown fc: /var/tmp/filecoin-proof-parameters
+RUN chown fc: /var/lib/lotus
+RUN chown fc: /var/lib/lotus-miner
+RUN chown fc: /var/lib/lotus-worker
+RUN chown fc: /var/lib/lotus-wallet
+
+
+VOLUME /var/tmp/filecoin-proof-parameters
+VOLUME /var/lib/lotus
+VOLUME /var/lib/lotus-miner
+VOLUME /var/lib/lotus-worker
+VOLUME /var/lib/lotus-wallet
+
+EXPOSE 1234
+EXPOSE 2345
+EXPOSE 3456
+EXPOSE 1777
+
+###
+from base as lotus-test
+
+ENV FILECOIN_PARAMETER_CACHE /var/tmp/filecoin-proof-parameters
+ENV LOTUS_MINER_PATH /var/lib/lotus-miner
+ENV LOTUS_PATH /var/lib/lotus
+ENV LOTUS_WORKER_PATH /var/lib/lotus-worker
+ENV WALLET_PATH /var/lib/lotus-wallet
+
+COPY --from=builder-test /opt/filecoin/lotus      /usr/local/bin/
+COPY --from=builder-test /opt/filecoin/lotus-miner /usr/local/bin/
+COPY --from=builder-test /opt/filecoin/lotus-worker /usr/local/bin/
+COPY --from=builder-test /opt/filecoin/lotus-seed /usr/local/bin/
 
 RUN mkdir /var/tmp/filecoin-proof-parameters
 RUN mkdir /var/lib/lotus

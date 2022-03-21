@@ -192,7 +192,11 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 					InjectNulls: abi.ChainEpoch(nulls + i),
 					Done:        reportSuccessFn,
 				})
-				success = <-wait
+				select {
+				case success = <-wait:
+				case <-ctx.Done():
+					return
+				}
 				if !success {
 					// if we are mining a new null block and it brings us past deadline boundary we need to wait for miner to post
 					if ts.Height()+1+abi.ChainEpoch(nulls+i) >= dlinfo.Last() {

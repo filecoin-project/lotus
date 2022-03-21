@@ -42,7 +42,8 @@ func TestMinerBalanceCollateral(t *testing.T) {
 		opts := kit.ConstructorOpts(
 			node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.GetSealingConfigFunc), func() (dtypes.GetSealingConfigFunc, error) {
 				return func() (sealiface.Config, error) {
-					sc := modules.ToSealingConfig(config.DefaultStorageMiner())
+					cfg := config.DefaultStorageMiner()
+					sc := modules.ToSealingConfig(cfg.Dealmaking, cfg.Sealing)
 
 					sc.MaxWaitDealsSectors = 4
 					sc.MaxSealingSectors = 4

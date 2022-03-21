@@ -42,7 +42,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multibase"
-	mh "github.com/multiformats/go-multihash"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
@@ -56,6 +55,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
 
+	"github.com/filecoin-project/lotus/lib/unixfs"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 
@@ -79,7 +79,7 @@ import (
 
 var log = logging.Logger("client")
 
-var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
+var DefaultHashFunction = unixfs.DefaultHashFunction
 
 // 8 days ~=  SealDuration + PreCommit + MaxProveCommitDuration + 8 hour buffer
 const dealStartBufferHours uint64 = 8 * 24
@@ -548,7 +548,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 		}()
 
 		// perform the unixfs chunking.
-		root, err = a.createUnixFSFilestore(ctx, ref.Path, carPath)
+		root, err = unixfs.CreateFilestore(ctx, ref.Path, carPath)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to import file using unixfs: %w", err)
 		}
@@ -618,7 +618,7 @@ func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, erro
 	// once the DAG is formed and the root is calculated, we overwrite the
 	// inner carv1 header with the final root.
 
-	b, err := unixFSCidBuilder()
+	b, err := unixfs.CidBuilder()
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -635,7 +635,7 @@ func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, erro
 		return cid.Undef, xerrors.Errorf("failed to create carv2 read/write blockstore: %w", err)
 	}
 
-	root, err := buildUnixFS(ctx, file, bs, false)
+	root, err := unixfs.Build(ctx, file, bs, false)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to build unixfs dag: %w", err)
 	}
@@ -1364,7 +1364,7 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 	defer os.Remove(tmp) //nolint:errcheck
 
 	// generate and import the UnixFS DAG into a filestore (positional reference) CAR.
-	root, err := a.createUnixFSFilestore(ctx, ref.Path, tmp)
+	root, err := unixfs.CreateFilestore(ctx, ref.Path, tmp)
 	if err != nil {
 		return xerrors.Errorf("failed to import file using unixfs: %w", err)
 	}

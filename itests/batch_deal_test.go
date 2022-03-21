@@ -51,7 +51,8 @@ func TestBatchDealInput(t *testing.T) {
 					})),
 				node.Override(new(dtypes.GetSealingConfigFunc), func() (dtypes.GetSealingConfigFunc, error) {
 					return func() (sealiface.Config, error) {
-						sc := modules.ToSealingConfig(config.DefaultStorageMiner())
+						cfg := config.DefaultStorageMiner()
+						sc := modules.ToSealingConfig(cfg.Dealmaking, cfg.Sealing)
 						sc.MaxWaitDealsSectors = 2
 						sc.MaxSealingSectors = 1
 						sc.MaxSealingSectorsForDeals = 3
