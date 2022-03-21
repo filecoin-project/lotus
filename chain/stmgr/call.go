@@ -9,8 +9,6 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/state"
 
-	"github.com/filecoin-project/lotus/blockstore"
-
 	"github.com/filecoin-project/lotus/chain/rand"
 
 	"github.com/filecoin-project/go-address"
@@ -223,12 +221,11 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		return nil, err
 	}
 
-	buffStore := blockstore.NewBuffered(sm.cs.StateBlockstore())
 	vmopt := &vm.VMOpts{
 		StateBase:      stateCid,
 		Epoch:          vmHeight,
 		Rand:           r,
-		Bstore:         buffStore,
+		Bstore:         sm.cs.StateBlockstore(),
 		Actors:         sm.tsExec.NewActorRegistry(),
 		Syscalls:       sm.Syscalls,
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
@@ -255,7 +252,7 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		return nil, xerrors.Errorf("flushing vm: %w", err)
 	}
 
-	stTree, err := state.LoadStateTree(cbor.NewCborStore(buffStore), stateCid)
+	stTree, err := state.LoadStateTree(cbor.NewCborStore(sm.cs.StateBlockstore()), stateCid)
 	if err != nil {
 		return nil, xerrors.Errorf("loading state tree: %w", err)
 	}
