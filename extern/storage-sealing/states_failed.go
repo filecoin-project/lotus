@@ -184,14 +184,14 @@ func (m *Sealing) handleComputeProofFailed(ctx statemachine.Context, sector Sect
 }
 
 func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sector SectorInfo) error {
+	if err := failedCooldown(ctx, sector); err != nil {
+		return err
+	}
+
 	if sector.ReplicaUpdateMessage != nil {
 		mw, err := m.Api.StateSearchMsg(ctx.Context(), *sector.ReplicaUpdateMessage)
 		if err != nil {
 			// API error
-			if err := failedCooldown(ctx, sector); err != nil {
-				return err
-			}
-
 			return ctx.Send(SectorRetrySubmitReplicaUpdateWait{})
 		}
 
@@ -246,10 +246,6 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 	if !active {
 		log.Errorf("sector marked for upgrade %d no longer active, aborting upgrade", sector.SectorNumber)
 		return ctx.Send(SectorAbortUpgrade{})
-	}
-
-	if err := failedCooldown(ctx, sector); err != nil {
-		return err
 	}
 
 	return ctx.Send(SectorRetrySubmitReplicaUpdate{})
