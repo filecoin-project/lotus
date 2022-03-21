@@ -289,28 +289,28 @@ var runCmd = &cli.Command{
 			taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFinalizeReplicaUpdate)
 		}
 
-		if cctx.Bool("addpiece") {
+		if (!exclusiveSet || cctx.IsSet("addpiece")) && cctx.Bool("addpiece") {
 			taskTypes = append(taskTypes, sealtasks.TTAddPiece)
 		}
-		if cctx.Bool("precommit1") {
+		if (!exclusiveSet || cctx.IsSet("precommit1")) && cctx.Bool("precommit1") {
 			taskTypes = append(taskTypes, sealtasks.TTPreCommit1)
 		}
-		if cctx.Bool("unseal") {
+		if (!exclusiveSet || cctx.IsSet("unseal")) && cctx.Bool("unseal") {
 			taskTypes = append(taskTypes, sealtasks.TTUnseal)
 		}
-		if cctx.Bool("precommit2") {
+		if (!exclusiveSet || cctx.IsSet("precommit2")) && cctx.Bool("precommit2") {
 			taskTypes = append(taskTypes, sealtasks.TTPreCommit2)
 		}
-		if cctx.Bool("commit") {
+		if (!exclusiveSet || cctx.IsSet("commit")) && cctx.Bool("commit") {
 			taskTypes = append(taskTypes, sealtasks.TTCommit2)
 		}
-		if cctx.Bool("replica-update") {
+		if (!exclusiveSet || cctx.IsSet("replica-update")) && cctx.Bool("replica-update") {
 			taskTypes = append(taskTypes, sealtasks.TTReplicaUpdate)
 		}
-		if cctx.Bool("prove-replica-update2") {
+		if (!exclusiveSet || cctx.IsSet("prove-replica-update2")) && cctx.Bool("prove-replica-update2") {
 			taskTypes = append(taskTypes, sealtasks.TTProveReplicaUpdate2)
 		}
-		if cctx.Bool("regen-sector-key") {
+		if (!exclusiveSet || cctx.IsSet("regen-sector-key")) && cctx.Bool("regen-sector-key") {
 			taskTypes = append(taskTypes, sealtasks.TTRegenSectorKey)
 		}
 
