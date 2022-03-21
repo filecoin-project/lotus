@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/metrics"
@@ -180,9 +181,10 @@ func (a *NetAPI) NetBandwidthStatsByPeer(ctx context.Context) (map[string]metric
 }
 
 func (a *NetAPI) NetPing(ctx context.Context, p peer.ID) (time.Duration, error) {
-	pingService := ping.NewPingService(a.Host)
-
-	result := <-pingService.Ping(ctx, p)
+	result, ok := <-ping.Ping(ctx, a.Host, p)
+	if !ok {
+		return 0, xerrors.Errorf("didn't get ping result: %w", ctx.Err())
+	}
 	return result.RTT, result.Error
 }
 

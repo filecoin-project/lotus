@@ -2647,8 +2647,9 @@ USAGE:
    lotus net ping [command options] [arguments...]
 
 OPTIONS:
-   --count value, -c value  specify the number of times it should ping (default: 10)
-   --help, -h               show help (default: false)
+   --count value, -c value     specify the number of times it should ping (default: 10)
+   --interval value, -i value  minimum time between pings (default: 1s)
+   --help, -h                  show help (default: false)
    
 ```
 
