@@ -36,9 +36,6 @@ type MemRepo struct {
 	keystore   map[string]types.KeyInfo
 	blockstore blockstore.Blockstore
 
-	// given a repo type, produce the default config
-	configF func(t RepoType) interface{}
-
 	// holds the current config value
 	config struct {
 		sync.Mutex
@@ -106,7 +103,7 @@ func (lmem *lockedMemRepo) Path() string {
 		panic(err) // only used in tests, probably fine
 	}
 
-	if lmem.t == StorageMiner {
+	if _, ok := lmem.t.(SupportsStagingDeals); ok {
 		// this is required due to the method makeDealStaging from cmd/lotus-storage-miner/init.go
 		// deal-staging is the directory deal files are staged in before being sealed into sectors
 		// for offline deal flow.
@@ -144,7 +141,6 @@ var _ Repo = &MemRepo{}
 // MemRepoOptions contains options for memory repo
 type MemRepoOptions struct {
 	Ds       datastore.Datastore
-	ConfigF  func(RepoType) interface{}
 	KeyStore map[string]types.KeyInfo
 }
 
@@ -154,9 +150,6 @@ type MemRepoOptions struct {
 func NewMemory(opts *MemRepoOptions) *MemRepo {
 	if opts == nil {
 		opts = &MemRepoOptions{}
-	}
-	if opts.ConfigF == nil {
-		opts.ConfigF = defConfForType
 	}
 	if opts.Ds == nil {
 		opts.Ds = dssync.MutexWrap(datastore.NewMapDatastore())
@@ -169,7 +162,6 @@ func NewMemory(opts *MemRepoOptions) *MemRepo {
 		repoLock:   make(chan struct{}, 1),
 		blockstore: blockstore.WrapIDStore(blockstore.NewMemorySync()),
 		datastore:  opts.Ds,
-		configF:    opts.ConfigF,
 		keystore:   opts.KeyStore,
 	}
 }
@@ -284,7 +276,7 @@ func (lmem *lockedMemRepo) Config() (interface{}, error) {
 	defer lmem.mem.config.Unlock()
 
 	if lmem.mem.config.val == nil {
-		lmem.mem.config.val = lmem.mem.configF(lmem.t)
+		lmem.mem.config.val = lmem.t.Config()
 	}
 
 	return lmem.mem.config.val, nil
@@ -299,7 +291,7 @@ func (lmem *lockedMemRepo) SetConfig(c func(interface{})) error {
 	defer lmem.mem.config.Unlock()
 
 	if lmem.mem.config.val == nil {
-		lmem.mem.config.val = lmem.mem.configF(lmem.t)
+		lmem.mem.config.val = lmem.t.Config()
 	}
 
 	c(lmem.mem.config.val)
