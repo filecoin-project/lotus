@@ -34,7 +34,7 @@ var PprofGoroutines = &cli.Command{
 		}
 		ainfo, err := GetAPIInfo(cctx, t)
 		if err != nil {
-			return xerrors.Errorf("could not get API info for %s: %w", t, err)
+			return xerrors.Errorf("could not get API info for %s: %w is FULLNODE_API_INFO set?", t, err)
 		}
 		addr, err := ainfo.Host()
 		if err != nil {

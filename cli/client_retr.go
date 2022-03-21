@@ -405,7 +405,7 @@ var clientRetrieveCatCmd = &cli.Command{
 
 		ainfo, err := GetAPIInfo(cctx, repo.FullNode)
 		if err != nil {
-			return xerrors.Errorf("could not get API info: %w", err)
+			return xerrors.Errorf("could not get API info: %w is FULLNODE_API_INFO set?", err)
 		}
 
 		fapi, closer, err := GetFullNodeAPIV1(cctx)
@@ -484,7 +484,7 @@ var clientRetrieveLsCmd = &cli.Command{
 
 		ainfo, err := GetAPIInfo(cctx, repo.FullNode)
 		if err != nil {
-			return xerrors.Errorf("could not get API info: %w", err)
+			return xerrors.Errorf("could not get API info: %w is FULLNODE_API_INFO set?", err)
 		}
 
 		fapi, closer, err := GetFullNodeAPIV1(cctx)
