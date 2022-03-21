@@ -628,6 +628,11 @@ jobs:
         default: "latest"
         description: A comma-separated string containing docker image tags to build and push (default = latest)
 
+      target:
+        type: string
+        default: "lotus-all-in-one"
+        description: Docker target to build
+
     steps:
       - run:
           name: Confirm that environment variables are set
@@ -667,6 +672,7 @@ jobs:
 
             docker build \
               <<#parameters.extra-build-args>><<parameters.extra-build-args>><</parameters.extra-build-args>> \
+              --target <<parameters.target>> \
               -f <<parameters.path>>/<<parameters.dockerfile>> \
               $docker_tag_args \
               <<parameters.path>>
@@ -1037,6 +1043,13 @@ workflows:
           path: .
           repo: lotus-dev
           tag: '${CIRCLE_SHA1:0:8}'
+          target: lotus-all-in-one
+      - build-and-push-image:
+          dockerfile: Dockerfile.lotus
+          path: .
+          repo: lotus-test
+          tag: '${CIRCLE_SHA1:0:8}'
+          target: lotus-test
       - publish-packer-mainnet:
           requires:
             - build-all
