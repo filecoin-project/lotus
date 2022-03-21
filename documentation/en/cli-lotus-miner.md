@@ -1200,6 +1200,7 @@ USAGE:
 
 COMMANDS:
    peers           Print peers
+   ping            Ping peers
    connect         Connect to a peer
    listen          List listen addresses
    id              Get node identity
@@ -1232,6 +1233,20 @@ OPTIONS:
    --agent, -a     Print agent name (default: false)
    --extended, -x  Print extended peer information in json (default: false)
    --help, -h      show help (default: false)
+   
+```
+
+### lotus-miner net ping
+```
+NAME:
+   lotus-miner net ping - Ping peers
+
+USAGE:
+   lotus-miner net ping [command options] [arguments...]
+
+OPTIONS:
+   --count value, -c value  specify the number of times it should ping (default: 10)
+   --help, -h               show help (default: false)
    
 ```
 

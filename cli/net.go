@@ -28,6 +28,7 @@ var NetCmd = &cli.Command{
 	Usage: "Manage P2P Network",
 	Subcommands: []*cli.Command{
 		NetPeers,
+		NetPing,
 		NetConnect,
 		NetListen,
 		NetId,
@@ -113,6 +114,48 @@ var NetPeers = &cli.Command{
 			}
 		}
 
+		return nil
+	},
+}
+
+var NetPing = &cli.Command{
+	Name:  "ping",
+	Usage: "Ping peers",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:    "count",
+			Value:   10,
+			Aliases: []string{"c"},
+			Usage:   "specify the number of times it should ping",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("please provide a peerID")
+		}
+
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		peerID, err := peer.Decode(cctx.Args().First())
+		if err != nil {
+			return xerrors.Errorf("failed to parse peerID: %v", err)
+		}
+
+		count := cctx.Int("count")
+		for i := 0; i < count; i++ {
+			RTT, err := api.NetPing(ctx, peerID)
+			if err != nil {
+				log.Errorf("ping failed: %v", err)
+				continue
+			}
+			fmt.Printf("ping %d, %v\n", i, RTT)
+		}
 		return nil
 	},
 }
