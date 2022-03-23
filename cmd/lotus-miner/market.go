@@ -212,6 +212,7 @@ var setAskCmd = &cli.Command{
 			Name:        "max-piece-size",
 			Usage:       "Set maximum piece size (w/bit-padding, in bytes) in ask to `SIZE`",
 			DefaultText: "miner sector size",
+			Value:       "0",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
