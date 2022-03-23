@@ -217,6 +217,7 @@ type FVM struct {
 }
 
 func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
+	log.Info("using the FVM, this is experimental!")
 	circToReport := opts.FilVested
 	// For v14 (and earlier), we perform the FilVested portion of the calculation, and let the FVM dynamically do the rest
 	// v15 and after, the circ supply is always constant per epoch, so we calculate the base and report it at creation
