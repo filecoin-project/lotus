@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# 1.15.1-rc1 / 2022-03-16
+# 1.15.1-rc2 / 2022-03-23
 
-This is the first release candidate of the next *highly recommended* feature release v1.15.1. This feature release introduces Index Provider, GraphSync v2, and many other latest functionalities, improvements and bug fixes. 
+This is the second release candidate of the next *highly recommended* feature release v1.15.1. This feature release introduces Index Provider, GraphSync v2, and many other latest functionalities, improvements and bug fixes. 
 More importantly, node operator can now enable the FVM(experimental) to sync mainnet!!
 
 ## Highlights
@@ -10,6 +10,7 @@ More importantly, node operator can now enable the FVM(experimental) to sync mai
 ### 🔥🔥🔥 FVM (Experimental) 🔥🔥🔥
 - feat: fvm: FVM integration  ([filecoin-project/lotus#8332](https://github.com/filecoin-project/lotus/pull/8332))
 The lotus team is excited to announce the launch of experimental non-programmable FVM on mainnet. By enabling `"LOTUS_USE_FVM_EXPERIMENTAL=1` envvar, the lotus daemon will be running the [WASM-compiled built-in actors](https://github.com/filecoin-project/builtin-actors) that is compatible with the existing chain(Network v15 OhSnap). If you are trying it out and having any questions or feedbacks, please leave a comment [here](https://github.com/filecoin-project/lotus/discussions/8334)!
+  -  chore: FVM: log when fvm is used([filecoin-project/lotus#8363](https://github.com/filecoin-project/lotus/pull/8363))
 
   
 ### 🌟🌟🌟 Index Provider (Production Ready!) 🌟🌟🌟
@@ -35,6 +36,7 @@ The index provider leverages the latest CARv2 indexing format `MultihashIndexSor
 Follow the instruction [here](https://lotus.filecoin.io/storage-providers/operate/index-provider/) to perform the migration. 
 
 ## New Features
+- feat: sealing: Sector upgrade queue ([filecoin-project/lotus#8333](https://github.com/filecoin-project/lotus/pull/8333))
 - feat: market utils: Support unixfsnode in TraverseDag ([filecoin-project/lotus#8168](https://github.com/filecoin-project/lotus/pull/8168))
 - feat: config: enable indexer providing by default ([filecoin-project/lotus#8314](https://github.com/filecoin-project/lotus/pull/8314))
 - feat: api: Make ClientCalcCommP multithreaded ([filecoin-project/lotus#8276](https://github.com/filecoin-project/lotus/pull/8276))
@@ -67,6 +69,10 @@ Follow the instruction [here](https://lotus.filecoin.io/storage-providers/operat
 - test: cli: chain category unit tests ([filecoin-project/lotus#8048](https://github.com/filecoin-project/lotus/pull/8048))
 
 ## Bug Fixes
+- fix: sealing: Remove sector copies from workers after snapdeals ([filecoin-project/lotus#8331](https://github.com/filecoin-project/lotus/pull/8331))
+- fix: storagefsm: Fix error loop on bad event ([filecoin-project/lotus#8339](https://github.com/filecoin-project/lotus/pull/8339))
+- fix: sealing: FinalizeSector doesn't need sealed replica access ([filecoin-project/lotus#8339](https://github.com/filecoin-project/lotus/pull/8339))
+- fix: sealing: always do cooldown in handleSubmitReplicaUpdateFailed ([filecoin-project/lotus#8353](https://github.com/filecoin-project/lotus/pull/8353))
 - fix: storage cli: Output primary sector status correctly ([filecoin-project/lotus#8320](https://github.com/filecoin-project/lotus/pull/8320))
 - fix: sealing fsm: Handle inputLk correctly ([filecoin-project/lotus#8291](https://github.com/filecoin-project/lotus/pull/8291))
 - fix: piece provider: Don't log CIDs as binary ([filecoin-project/lotus#8287](https://github.com/filecoin-project/lotus/pull/8287))
@@ -99,6 +105,7 @@ Follow the instruction [here](https://lotus.filecoin.io/storage-providers/operat
 - deps: update go-libp2p and go-libp2p-resource-manager ([filecoin-project/lotus#8289](https://github.com/filecoin-project/lotus/pull/8289))
 - feat(deps): update to graphsync v0.13.0 with 2.0 protocol ([filecoin-project/lotus#8273](https://github.com/filecoin-project/lotus/pull/8273))
 - dep: actor: get v7 ([filecoin-project/lotus#8194](https://github.com/filecoin-project/lotus/pull/8194))
+- deps: update go-libp2p to v0.18 release  ([filecoin-project/lotus#8355](https://github.com/filecoin-project/lotus/pull/8355))
 - github.com/filecoin-project/go-data-transfer (v1.14.1 -> v1.15.0):
 - github.com/filecoin-project/go-fil-markets (v1.19.2 -> v1.20.1):
 - deps: update go-libp2p to v0.18.0-rc5 ([filecoin-project/lotus#8169](https://github.com/filecoin-project/lotus/pull/8169))
