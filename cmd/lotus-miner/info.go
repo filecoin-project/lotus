@@ -352,7 +352,11 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.Full
 			return xerrors.Errorf("getting worker stats: %w", err)
 		}
 
-		var nseal, nwdpost, nwinpost int
+		workersByType := map[string]int{
+			sealtasks.WorkerSealing:     0,
+			sealtasks.WorkerWindowPoSt:  0,
+			sealtasks.WorkerWinningPoSt: 0,
+		}
 
 	wloop:
 		for _, st := range ws {
@@ -361,19 +365,18 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.Full
 			}
 
 			for _, task := range st.Tasks {
-				if task == sealtasks.TTGenerateWindowPoSt {
-					nwdpost++
-					continue wloop
-				}
-				if task == sealtasks.TTGenerateWinningPoSt {
-					nwinpost++
+				if task.WorkerType() != sealtasks.WorkerSealing {
+					workersByType[task.WorkerType()]++
 					continue wloop
 				}
 			}
-			nseal++
+			workersByType[sealtasks.WorkerSealing]++
 		}
 
-		fmt.Printf("Workers: Seal(%d) WdPoSt(%d) WinPoSt(%d)\n", nseal, nwdpost, nwinpost)
+		fmt.Printf("Workers: Seal(%d) WdPoSt(%d) WinPoSt(%d)\n",
+			workersByType[sealtasks.WorkerSealing],
+			workersByType[sealtasks.WorkerWindowPoSt],
+			workersByType[sealtasks.WorkerWinningPoSt])
 	}
 
 	if cctx.IsSet("blocks") {

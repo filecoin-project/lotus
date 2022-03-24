@@ -66,6 +66,23 @@ var shortNames = map[TaskType]string{
 	TTGenerateWinningPoSt: "WNP",
 }
 
+const (
+	WorkerSealing     = "Sealing"
+	WorkerWinningPoSt = "WinPost"
+	WorkerWindowPoSt  = "WdPoSt"
+)
+
+func (a TaskType) WorkerType() string {
+	switch a {
+	case TTGenerateWindowPoSt:
+		return WorkerWinningPoSt
+	case WorkerWinningPoSt:
+		return WorkerWindowPoSt
+	default:
+		return WorkerSealing
+	}
+}
+
 func (a TaskType) MuchLess(b TaskType) (bool, bool) {
 	oa, ob := order[a], order[b]
 	oneNegative := oa^ob < 0
