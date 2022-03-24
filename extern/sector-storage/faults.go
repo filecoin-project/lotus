@@ -35,9 +35,19 @@ func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof,
 			ctx, cancel := context.WithCancel(ctx)
 			defer cancel()
 
-			// TODO!! lock update if this is an update
+			commr, update, err := rg(ctx, sector.ID)
+			if err != nil {
+				log.Warnw("CheckProvable Sector FAULT: getting commR", "sector", sector, "sealed", "err", err)
+				bad[sector.ID] = fmt.Sprintf("getting commR: %s", err)
+				return nil
+			}
 
-			locked, err := m.index.StorageTryLock(ctx, sector.ID, storiface.FTSealed|storiface.FTCache, storiface.FTNone)
+			toLock := storiface.FTSealed | storiface.FTCache
+			if update {
+				toLock = storiface.FTUpdate | storiface.FTUpdateCache
+			}
+
+			locked, err := m.index.StorageTryLock(ctx, sector.ID, toLock, storiface.FTNone)
 			if err != nil {
 				return xerrors.Errorf("acquiring sector lock: %w", err)
 			}
@@ -63,13 +73,6 @@ func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof,
 			if err != nil {
 				log.Warnw("CheckProvable Sector FAULT: generating challenges", "sector", sector, "err", err)
 				bad[sector.ID] = fmt.Sprintf("generating fallback challenges: %s", err)
-				return nil
-			}
-
-			commr, update, err := rg(ctx, sector.ID)
-			if err != nil {
-				log.Warnw("CheckProvable Sector FAULT: getting commR", "sector", sector, "sealed", "err", err)
-				bad[sector.ID] = fmt.Sprintf("getting commR: %s", err)
 				return nil
 			}
 
