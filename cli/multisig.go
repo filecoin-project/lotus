@@ -161,6 +161,7 @@ var msigCreateCmd = &cli.Command{
 		msgCid := sm.Cid()
 
 		fmt.Println("sent create in message: ", msgCid)
+		fmt.Println("waiting for confirmation..")
 
 		// wait for it to get mined into a block
 		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
