@@ -475,18 +475,18 @@ func TestAddVoucherInboundWalletKey(t *testing.T) {
 	toAcct := tutils.NewActorAddr(t, "toAct")
 
 	// Create an actor for the channel in state
-	act := &types.Actor{
-		Code:    builtin.AccountActorCodeID,
-		Head:    cid.Cid{},
-		Nonce:   0,
-		Balance: types.NewInt(20),
-	}
 
 	mock := newMockManagerAPI()
 
 	mock.setAccountAddress(fromAcct, from)
 	mock.setAccountAddress(toAcct, to)
 
+	act := &types.Actor{
+		Code:    builtin.AccountActorCodeID,
+		Head:    cid.Cid{},
+		Nonce:   0,
+		Balance: types.NewInt(20),
+	}
 	mock.setPaychState(ch, act, paychmock.NewMockPayChState(fromAcct, toAcct, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
 	// Create a manager
@@ -502,6 +502,7 @@ func TestAddVoucherInboundWalletKey(t *testing.T) {
 	sv := createTestVoucher(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
 	_, err = mgr.AddVoucherInbound(ctx, ch, sv, nil, minDelta)
 
+	//stm: @TOKEN_PAYCH_VOUCHER_CREATE_006
 	// Should fail because there is no wallet key matching the channel To
 	// address (ie, the channel is not "owned" by this node)
 	require.Error(t, err)
@@ -513,6 +514,7 @@ func TestAddVoucherInboundWalletKey(t *testing.T) {
 	sv = createTestVoucher(t, ch, voucherLane, nonce, voucherAmount, fromKeyPrivate)
 	_, err = mgr.AddVoucherInbound(ctx, ch, sv, nil, minDelta)
 
+	//stm: @TOKEN_PAYCH_VOUCHER_CREATE_001
 	// Should now pass because there is a wallet key matching the channel To
 	// address
 	require.NoError(t, err)
@@ -626,6 +628,7 @@ func TestCheckSpendable(t *testing.T) {
 	}
 	s.mock.setCallResponse(successResponse)
 
+	//stm: @TOKEN_PAYCH_CHECK_SPENDABLE_001
 	// Check that spendable is true
 	secret := []byte("secret")
 	spendable, err := s.mgr.CheckVoucherSpendable(ctx, s.ch, voucher, secret, nil)
@@ -655,6 +658,7 @@ func TestCheckSpendable(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, spendable)
 
+	//stm: @TOKEN_PAYCH_CHECK_SPENDABLE_002
 	// Check that voucher is no longer spendable once it has been submitted
 	_, err = s.mgr.SubmitVoucher(ctx, s.ch, voucher, nil, nil)
 	require.NoError(t, err)

@@ -10,10 +10,10 @@ import (
 
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
+	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
-	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"go.uber.org/fx"
 )
 

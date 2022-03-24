@@ -172,7 +172,7 @@ func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if err := handler.Local.Remove(r.Context(), id, ft, false, []ID{ID(r.FormValue("keep"))}); err != nil {
+	if err := handler.Local.Remove(r.Context(), id, ft, false, ParseIDList(r.FormValue("keep"))); err != nil {
 		log.Errorf("%+v", err)
 		w.WriteHeader(500)
 		return
@@ -294,6 +294,10 @@ func ftFromString(t string) (storiface.SectorFileType, error) {
 		return storiface.FTSealed, nil
 	case storiface.FTCache.String():
 		return storiface.FTCache, nil
+	case storiface.FTUpdate.String():
+		return storiface.FTUpdate, nil
+	case storiface.FTUpdateCache.String():
+		return storiface.FTUpdateCache, nil
 	default:
 		return 0, xerrors.Errorf("unknown sector file type: '%s'", t)
 	}

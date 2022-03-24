@@ -676,18 +676,18 @@ func (tc *transferConverter) convertTransfer(channelID datatransfer.ChannelID, h
 	}
 	var channelIDPtr *datatransfer.ChannelID
 	if !hasChannelID {
-		diagnostics = append(diagnostics, fmt.Sprintf("No data transfer channel id for GraphSync request ID %d", requestID))
+		diagnostics = append(diagnostics, fmt.Sprintf("No data transfer channel id for GraphSync request ID %s", requestID))
 	} else {
 		channelIDPtr = &channelID
 		if isCurrentChannelRequest && !hasState {
 			diagnostics = append(diagnostics, fmt.Sprintf("No current request state for data transfer channel id %s", channelID))
 		} else if !isCurrentChannelRequest && hasState {
-			diagnostics = append(diagnostics, fmt.Sprintf("Graphsync request %d is a previous request on data transfer channel id %s that was restarted, but it is still running", requestID, channelID))
+			diagnostics = append(diagnostics, fmt.Sprintf("Graphsync request %s is a previous request on data transfer channel id %s that was restarted, but it is still running", requestID, channelID))
 		}
 	}
 	diagnostics = append(diagnostics, tc.gsDiagnostics[requestID]...)
 	transfer := &api.GraphSyncDataTransfer{
-		RequestID:               requestID,
+		RequestID:               &requestID,
 		RequestState:            stateString,
 		IsCurrentChannelRequest: isCurrentChannelRequest,
 		ChannelID:               channelIDPtr,
@@ -717,7 +717,7 @@ func (tc *transferConverter) collectRemainingTransfers() {
 			channelID := channelID
 			cs := api.NewDataTransferChannel(channelState.SelfPeer(), channelState)
 			transfer := &api.GraphSyncDataTransfer{
-				RequestID:               graphsync.RequestID(-1),
+				RequestID:               nil,
 				RequestState:            "graphsync state unknown",
 				IsCurrentChannelRequest: false,
 				ChannelID:               &channelID,
@@ -1008,6 +1008,52 @@ func (sm *StorageMinerAPI) DagstoreGC(ctx context.Context) ([]api.DagstoreShardR
 	return ret, nil
 }
 
+func (sm *StorageMinerAPI) IndexerAnnounceDeal(ctx context.Context, proposalCid cid.Cid) error {
+	return sm.StorageProvider.AnnounceDealToIndexer(ctx, proposalCid)
+}
+
+func (sm *StorageMinerAPI) IndexerAnnounceAllDeals(ctx context.Context) error {
+	return sm.StorageProvider.AnnounceAllDealsToIndexer(ctx)
+}
+
+func (sm *StorageMinerAPI) DagstoreLookupPieces(ctx context.Context, cid cid.Cid) ([]api.DagstoreShardInfo, error) {
+	if sm.DAGStore == nil {
+		return nil, fmt.Errorf("dagstore not available on this node")
+	}
+
+	keys, err := sm.DAGStore.TopLevelIndex.GetShardsForMultihash(ctx, cid.Hash())
+	if err != nil {
+		return nil, err
+	}
+
+	var ret []api.DagstoreShardInfo
+
+	for _, k := range keys {
+		shard, err := sm.DAGStore.GetShardInfo(k)
+		if err != nil {
+			return nil, err
+		}
+
+		ret = append(ret, api.DagstoreShardInfo{
+			Key:   k.String(),
+			State: shard.ShardState.String(),
+			Error: func() string {
+				if shard.Error == nil {
+					return ""
+				}
+				return shard.Error.Error()
+			}(),
+		})
+	}
+
+	// order by key.
+	sort.SliceStable(ret, func(i, j int) bool {
+		return ret[i].Key < ret[j].Key
+	})
+
+	return ret, nil
+}
+
 func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]api.MarketDeal, error) {
 	return sm.listDeals(ctx)
 }
@@ -1127,7 +1173,7 @@ func (sm *StorageMinerAPI) CreateBackup(ctx context.Context, fpath string) error
 	return backup(ctx, sm.DS, fpath)
 }
 
-func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []sto.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) {
+func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []sto.SectorRef, update []bool, expensive bool) (map[abi.SectorNumber]string, error) {
 	var rg storiface.RGetter
 	if expensive {
 		rg = func(ctx context.Context, id abi.SectorID) (cid.Cid, error) {
@@ -1143,7 +1189,7 @@ func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredP
 		}
 	}
 
-	bad, err := sm.StorageMgr.CheckProvable(ctx, pp, sectors, rg)
+	bad, err := sm.StorageMgr.CheckProvable(ctx, pp, sectors, update, rg)
 	if err != nil {
 		return nil, err
 	}

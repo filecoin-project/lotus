@@ -1,5 +1,5 @@
 //stm: #unit
-package client
+package unixfs
 
 import (
 	"bytes"
@@ -21,12 +21,11 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-fil-markets/stores"
-
-	"github.com/filecoin-project/lotus/node/repo/imports"
 )
 
 // This test uses a full "dense" CARv2, and not a filestore (positional mapping).
 func TestRoundtripUnixFS_Dense(t *testing.T) {
+	//stm: @CLIENT_DATA_IMPORT_002
 	ctx := context.Background()
 
 	inputPath, inputContents := genInputFile(t)
@@ -41,7 +40,7 @@ func TestRoundtripUnixFS_Dense(t *testing.T) {
 		blockstore.UseWholeCIDs(true))
 	require.NoError(t, err)
 
-	root, err := buildUnixFS(ctx, bytes.NewBuffer(inputContents), bs, false)
+	root, err := Build(ctx, bytes.NewBuffer(inputContents), bs, false)
 	require.NoError(t, err)
 	require.NotEqual(t, cid.Undef, root)
 	require.NoError(t, bs.Finalize())
@@ -75,10 +74,8 @@ func TestRoundtripUnixFS_Dense(t *testing.T) {
 }
 
 func TestRoundtripUnixFS_Filestore(t *testing.T) {
+	//stm: @CLIENT_DATA_IMPORT_001
 	ctx := context.Background()
-	a := &API{
-		Imports: &imports.Manager{},
-	}
 
 	inputPath, inputContents := genInputFile(t)
 	defer os.Remove(inputPath) //nolint:errcheck
@@ -86,7 +83,7 @@ func TestRoundtripUnixFS_Filestore(t *testing.T) {
 	dst := newTmpFile(t)
 	defer os.Remove(dst) //nolint:errcheck
 
-	root, err := a.createUnixFSFilestore(ctx, inputPath, dst)
+	root, err := CreateFilestore(ctx, inputPath, dst)
 	require.NoError(t, err)
 	require.NotEqual(t, cid.Undef, root)
 

@@ -33,6 +33,8 @@ var SyncStatusCmd = &cli.Command{
 	Name:  "status",
 	Usage: "check sync status",
 	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
 		apic, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -45,9 +47,9 @@ var SyncStatusCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Println("sync status:")
+		afmt.Println("sync status:")
 		for _, ss := range state.ActiveSyncs {
-			fmt.Printf("worker %d:\n", ss.WorkerID)
+			afmt.Printf("worker %d:\n", ss.WorkerID)
 			var base, target []cid.Cid
 			var heightDiff int64
 			var theight abi.ChainEpoch
@@ -62,20 +64,20 @@ var SyncStatusCmd = &cli.Command{
 			} else {
 				heightDiff = 0
 			}
-			fmt.Printf("\tBase:\t%s\n", base)
-			fmt.Printf("\tTarget:\t%s (%d)\n", target, theight)
-			fmt.Printf("\tHeight diff:\t%d\n", heightDiff)
-			fmt.Printf("\tStage: %s\n", ss.Stage)
-			fmt.Printf("\tHeight: %d\n", ss.Height)
+			afmt.Printf("\tBase:\t%s\n", base)
+			afmt.Printf("\tTarget:\t%s (%d)\n", target, theight)
+			afmt.Printf("\tHeight diff:\t%d\n", heightDiff)
+			afmt.Printf("\tStage: %s\n", ss.Stage)
+			afmt.Printf("\tHeight: %d\n", ss.Height)
 			if ss.End.IsZero() {
 				if !ss.Start.IsZero() {
-					fmt.Printf("\tElapsed: %s\n", time.Since(ss.Start))
+					afmt.Printf("\tElapsed: %s\n", time.Since(ss.Start))
 				}
 			} else {
-				fmt.Printf("\tElapsed: %s\n", ss.End.Sub(ss.Start))
+				afmt.Printf("\tElapsed: %s\n", ss.End.Sub(ss.Start))
 			}
 			if ss.Stage == api.StageSyncErrored {
-				fmt.Printf("\tError: %s\n", ss.Message)
+				afmt.Printf("\tError: %s\n", ss.Message)
 			}
 		}
 		return nil
@@ -168,6 +170,8 @@ var SyncCheckBadCmd = &cli.Command{
 	Usage:     "check if the given block was marked bad, and for what reason",
 	ArgsUsage: "[blockCid]",
 	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
 		napi, closer, err := GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -190,11 +194,11 @@ var SyncCheckBadCmd = &cli.Command{
 		}
 
 		if reason == "" {
-			fmt.Println("block was not marked as bad")
+			afmt.Println("block was not marked as bad")
 			return nil
 		}
 
-		fmt.Println(reason)
+		afmt.Println(reason)
 		return nil
 	},
 }

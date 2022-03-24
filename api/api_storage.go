@@ -92,7 +92,8 @@ type StorageMiner interface {
 	SectorsUpdate(context.Context, abi.SectorNumber, SectorState) error   //perm:admin
 	// SectorRemove removes the sector from storage. It doesn't terminate it on-chain, which can
 	// be done with SectorTerminate. Removing and not terminating live sectors will cause additional penalties.
-	SectorRemove(context.Context, abi.SectorNumber) error //perm:admin
+	SectorRemove(context.Context, abi.SectorNumber) error                           //perm:admin
+	SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber, snap bool) error //perm:admin
 	// SectorTerminate terminates the sector on-chain (adding it to a termination batch first), then
 	// automatically removes it from storage
 	SectorTerminate(context.Context, abi.SectorNumber) error //perm:admin
@@ -100,8 +101,7 @@ type StorageMiner interface {
 	// Returns null if message wasn't sent
 	SectorTerminateFlush(ctx context.Context) (*cid.Cid, error) //perm:admin
 	// SectorTerminatePending returns a list of pending sector terminations to be sent in the next batch message
-	SectorTerminatePending(ctx context.Context) ([]abi.SectorID, error)             //perm:admin
-	SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber, snap bool) error //perm:admin
+	SectorTerminatePending(ctx context.Context) ([]abi.SectorID, error) //perm:admin
 	// SectorPreCommitFlush immediately sends a PreCommit message with sectors batched for PreCommit.
 	// Returns null if message wasn't sent
 	SectorPreCommitFlush(ctx context.Context) ([]sealiface.PreCommitBatchRes, error) //perm:admin
@@ -222,6 +222,16 @@ type StorageMiner interface {
 	// DagstoreGC runs garbage collection on the DAG store.
 	DagstoreGC(ctx context.Context) ([]DagstoreShardResult, error) //perm:admin
 
+	// IndexerAnnounceDeal informs indexer nodes that a new deal was received,
+	// so they can download its index
+	IndexerAnnounceDeal(ctx context.Context, proposalCid cid.Cid) error //perm:admin
+
+	// IndexerAnnounceAllDeals informs the indexer nodes aboutall active deals.
+	IndexerAnnounceAllDeals(ctx context.Context) error //perm:admin
+
+	// DagstoreLookupPieces returns information about shards that contain the given CID.
+	DagstoreLookupPieces(ctx context.Context, cid cid.Cid) ([]DagstoreShardInfo, error) //perm:admin
+
 	// RuntimeSubsystems returns the subsystems that are enabled
 	// in this instance.
 	RuntimeSubsystems(ctx context.Context) (MinerSubsystems, error) //perm:read
@@ -256,7 +266,7 @@ type StorageMiner interface {
 	// the path specified when calling CreateBackup is within the base path
 	CreateBackup(ctx context.Context, fpath string) error //perm:admin
 
-	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) //perm:admin
+	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, update []bool, expensive bool) (map[abi.SectorNumber]string, error) //perm:admin
 
 	ComputeProof(ctx context.Context, ssi []builtin.ExtendedSectorInfo, rand abi.PoStRandomness, poStEpoch abi.ChainEpoch, nv abinetwork.Version) ([]builtin.PoStProof, error) //perm:read
 }

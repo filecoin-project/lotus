@@ -40,6 +40,7 @@ func fullRpc(t *testing.T, f *TestFullNode) *TestFullNode {
 
 	srv, maddr := CreateRPCServer(t, handler, l)
 	fmt.Printf("FULLNODE RPC ENV FOR CLI DEBUGGING `export FULLNODE_API_INFO=%s`\n", "ws://"+srv.Listener.Addr().String())
+	sendItestdNotif("FULLNODE_API_INFO", t.Name(), "ws://"+srv.Listener.Addr().String())
 
 	cl, stop, err := client.NewFullNodeRPCV1(context.Background(), "ws://"+srv.Listener.Addr().String()+"/rpc/v1", nil)
 	require.NoError(t, err)
@@ -57,6 +58,7 @@ func minerRpc(t *testing.T, m *TestMiner) *TestMiner {
 
 	fmt.Printf("creating RPC server for %s at %s\n", m.ActorAddr, srv.Listener.Addr().String())
 	fmt.Printf("SP RPC ENV FOR CLI DEBUGGING `export MINER_API_INFO=%s`\n", "ws://"+srv.Listener.Addr().String())
+	sendItestdNotif("MINER_API_INFO", t.Name(), "ws://"+srv.Listener.Addr().String())
 
 	url := "ws://" + srv.Listener.Addr().String() + "/rpc/v0"
 	cl, stop, err := client.NewStorageMinerRPCV0(context.Background(), url, nil)

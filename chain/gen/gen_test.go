@@ -1,3 +1,4 @@
+//stm: #unit
 package gen
 
 import (
@@ -34,6 +35,7 @@ func testGeneration(t testing.TB, n int, msgs int, sectors int) {
 }
 
 func TestChainGeneration(t *testing.T) {
+	//stm: @CHAIN_GEN_NEW_GEN_WITH_SECTORS_001, @CHAIN_GEN_NEXT_TIPSET_001
 	t.Run("10-20-1", func(t *testing.T) { testGeneration(t, 10, 20, 1) })
 	t.Run("10-20-25", func(t *testing.T) { testGeneration(t, 10, 20, 25) })
 }

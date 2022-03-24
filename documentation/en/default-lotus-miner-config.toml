@@ -23,6 +23,12 @@
   #DisableMetadataLog = false
 
 
+[Logging]
+  [Logging.SubsystemLevels]
+    # env var: LOTUS_LOGGING_SUBSYSTEMLEVELS_EXAMPLE-SUBSYSTEM
+    #example-subsystem = "INFO"
+
+
 [Libp2p]
   # Binding address for the libp2p host - 0 means random port.
   # Format: multiaddress; see https://multiformats.io/multiaddr/
@@ -265,6 +271,49 @@
       #Path = ""
 
 
+[IndexProvider]
+  # Enable set whether to enable indexing announcement to the network and expose endpoints that
+  # allow indexer nodes to process announcements. Disabled by default.
+  #
+  # type: bool
+  # env var: LOTUS_INDEXPROVIDER_ENABLE
+  #Enable = false
+
+  # EntriesCacheCapacity sets the maximum capacity to use for caching the indexing advertisement
+  # entries. Defaults to 1024 if not specified. The cache is evicted using LRU policy. The
+  # maximum storage used by the cache is a factor of EntriesCacheCapacity, EntriesChunkSize and
+  # the length of multihashes being advertised. For example, advertising 128-bit long multihashes
+  # with the default EntriesCacheCapacity, and EntriesChunkSize means the cache size can grow to
+  # 256MiB when full.
+  #
+  # type: int
+  # env var: LOTUS_INDEXPROVIDER_ENTRIESCACHECAPACITY
+  #EntriesCacheCapacity = 1024
+
+  # EntriesChunkSize sets the maximum number of multihashes to include in a single entries chunk.
+  # Defaults to 16384 if not specified. Note that chunks are chained together for indexing
+  # advertisements that include more multihashes than the configured EntriesChunkSize.
+  #
+  # type: int
+  # env var: LOTUS_INDEXPROVIDER_ENTRIESCHUNKSIZE
+  #EntriesChunkSize = 16384
+
+  # TopicName sets the topic name on which the changes to the advertised content are announced.
+  # Defaults to '/indexer/ingest/mainnet' if not specified.
+  #
+  # type: string
+  # env var: LOTUS_INDEXPROVIDER_TOPICNAME
+  #TopicName = "/indexer/ingest/mainnet"
+
+  # PurgeCacheOnStart sets whether to clear any cached entries chunks when the provider engine
+  # starts. By default, the cache is rehydrated from previously cached entries stored in
+  # datastore if any is present.
+  #
+  # type: bool
+  # env var: LOTUS_INDEXPROVIDER_PURGECACHEONSTART
+  #PurgeCacheOnStart = false
+
+
 [Sealing]
   # Upper bound on how many sectors can be waiting for more deals to be packed in it before it begins sealing at any given time.
   # If the miner is accepting multiple deals in parallel, up to MaxWaitDealsSectors of new sectors will be created.
@@ -315,6 +364,12 @@
   # type: bool
   # env var: LOTUS_SEALING_FINALIZEEARLY
   #FinalizeEarly = false
+
+  # After sealing CC sectors, make them available for upgrading with deals
+  #
+  # type: bool
+  # env var: LOTUS_SEALING_MAKECCSECTORSAVAILABLE
+  #MakeCCSectorsAvailable = false
 
   # Whether to use available miner balance for sector collateral instead of sending it with each message
   #

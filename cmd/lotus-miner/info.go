@@ -466,6 +466,7 @@ var stateOrder = map[sealing.SectorState]stateMeta{}
 var stateList = []stateMeta{
 	{col: 39, state: "Total"},
 	{col: color.FgGreen, state: sealing.Proving},
+	{col: color.FgGreen, state: sealing.Available},
 	{col: color.FgGreen, state: sealing.UpdateActivating},
 
 	{col: color.FgBlue, state: sealing.Empty},
@@ -527,6 +528,7 @@ var stateList = []stateMeta{
 	{col: color.FgRed, state: sealing.SnapDealsDealsExpired},
 	{col: color.FgRed, state: sealing.ReplicaUpdateFailed},
 	{col: color.FgRed, state: sealing.ReleaseSectorKeyFailed},
+	{col: color.FgRed, state: sealing.FinalizeReplicaUpdateFailed},
 }
 
 func init() {

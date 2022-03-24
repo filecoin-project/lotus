@@ -42,12 +42,10 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multibase"
-	mh "github.com/multiformats/go-multihash"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	"github.com/filecoin-project/go-commp-utils/writer"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 
@@ -57,6 +55,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
 
+	"github.com/filecoin-project/lotus/lib/unixfs"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 
@@ -80,7 +79,7 @@ import (
 
 var log = logging.Logger("client")
 
-var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
+var DefaultHashFunction = unixfs.DefaultHashFunction
 
 // 8 days ~=  SealDuration + PreCommit + MaxProveCommitDuration + 8 hour buffer
 const dealStartBufferHours uint64 = 8 * 24
@@ -549,7 +548,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 		}()
 
 		// perform the unixfs chunking.
-		root, err = a.createUnixFSFilestore(ctx, ref.Path, carPath)
+		root, err = unixfs.CreateFilestore(ctx, ref.Path, carPath)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to import file using unixfs: %w", err)
 		}
@@ -619,7 +618,7 @@ func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, erro
 	// once the DAG is formed and the root is calculated, we overwrite the
 	// inner carv1 header with the final root.
 
-	b, err := unixFSCidBuilder()
+	b, err := unixfs.CidBuilder()
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -636,7 +635,7 @@ func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, erro
 		return cid.Undef, xerrors.Errorf("failed to create carv2 read/write blockstore: %w", err)
 	}
 
-	root, err := buildUnixFS(ctx, file, bs, false)
+	root, err := unixfs.Build(ctx, file, bs, false)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to build unixfs dag: %w", err)
 	}
@@ -1263,27 +1262,11 @@ func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Addre
 }
 
 func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet, error) {
-
-	// Hard-code the sector type to 32GiBV1_1, because:
-	// - ffiwrapper.GeneratePieceCIDFromFile requires a RegisteredSealProof
-	// - commP itself is sector-size independent, with rather low probability of that changing
-	//   ( note how the final rust call is identical for every RegSP type )
-	//   https://github.com/filecoin-project/rust-filecoin-proofs-api/blob/v5.0.0/src/seal.rs#L1040-L1050
-	//
-	// IF/WHEN this changes in the future we will have to be able to calculate
-	// "old style" commP, and thus will need to introduce a version switch or similar
-	arbitraryProofType := abi.RegisteredSealProof_StackedDrg32GiBV1_1
-
 	rdr, err := os.Open(inpath)
 	if err != nil {
 		return nil, err
 	}
 	defer rdr.Close() //nolint:errcheck
-
-	stat, err := rdr.Stat()
-	if err != nil {
-		return nil, err
-	}
 
 	// check that the data is a car file; if it's not, retrieval won't work
 	_, err = car.ReadHeader(bufio.NewReader(rdr))
@@ -1295,16 +1278,20 @@ func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet
 		return nil, xerrors.Errorf("seek to start: %w", err)
 	}
 
-	pieceReader, pieceSize := padreader.New(rdr, uint64(stat.Size()))
-	commP, err := ffiwrapper.GeneratePieceCIDFromFile(arbitraryProofType, pieceReader, pieceSize)
+	w := &writer.Writer{}
+	_, err = io.CopyBuffer(w, rdr, make([]byte, writer.CommPBuf))
+	if err != nil {
+		return nil, xerrors.Errorf("copy into commp writer: %w", err)
+	}
 
+	commp, err := w.Sum()
 	if err != nil {
 		return nil, xerrors.Errorf("computing commP failed: %w", err)
 	}
 
 	return &api.CommPRet{
-		Root: commP,
-		Size: pieceSize,
+		Root: commp.PieceCID,
+		Size: commp.PieceSize.Unpadded(),
 	}, nil
 }
 
@@ -1377,7 +1364,7 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 	defer os.Remove(tmp) //nolint:errcheck
 
 	// generate and import the UnixFS DAG into a filestore (positional reference) CAR.
-	root, err := a.createUnixFSFilestore(ctx, ref.Path, tmp)
+	root, err := unixfs.CreateFilestore(ctx, ref.Path, tmp)
 	if err != nil {
 		return xerrors.Errorf("failed to import file using unixfs: %w", err)
 	}

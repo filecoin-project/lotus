@@ -41,7 +41,7 @@ func (m *Sealing) handleProveReplicaUpdate(ctx statemachine.Context, sector Sect
 		log.Errorf("handleProveReplicaUpdate: api error, not proceeding: %+v", err)
 		return nil
 	}
-	active, err := sectorActive(ctx.Context(), m.Api, m.maddr, tok, sector.SectorNumber)
+	active, err := m.sectorActive(ctx.Context(), tok, sector.SectorNumber)
 	if err != nil {
 		log.Errorf("sector active check: api error, not proceeding: %+v", err)
 		return nil
@@ -168,7 +168,7 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		log.Errorf("no good address to send replica update message from: %+v", err)
 		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
 	}
-	mcid, err := m.Api.SendMsg(ctx.Context(), from, m.maddr, miner.Methods.ProveReplicaUpdates, big.Zero(), big.Int(m.feeCfg.MaxCommitGasFee), enc.Bytes())
+	mcid, err := m.Api.SendMsg(ctx.Context(), from, m.maddr, miner.Methods.ProveReplicaUpdates, collateral, big.Int(m.feeCfg.MaxCommitGasFee), enc.Bytes())
 	if err != nil {
 		log.Errorf("handleSubmitReplicaUpdate: error sending message: %+v", err)
 		return ctx.Send(SectorSubmitReplicaUpdateFailed{})

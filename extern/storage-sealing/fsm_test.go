@@ -323,6 +323,33 @@ func TestBrokenState(t *testing.T) {
 	}
 }
 
+func TestBadEvent(t *testing.T) {
+	var notif []struct{ before, after SectorInfo }
+	ma, _ := address.NewIDAddress(55151)
+	m := test{
+		s: &Sealing{
+			maddr: ma,
+			stats: SectorStats{
+				bySector: map[abi.SectorID]SectorState{},
+				byState:  map[SectorState]int64{},
+			},
+			notifee: func(before, after SectorInfo) {
+				notif = append(notif, struct{ before, after SectorInfo }{before, after})
+			},
+		},
+		t:     t,
+		state: &SectorInfo{State: Proving},
+	}
+
+	_, processed, err := m.s.Plan([]statemachine.Event{{User: SectorPacked{}}}, m.state)
+	require.NoError(t, err)
+	require.Equal(t, uint64(1), processed)
+	require.Equal(m.t, m.state.State, Proving)
+
+	require.Len(t, m.state.Log, 2)
+	require.Contains(t, m.state.Log[1].Message, "received unexpected event")
+}
+
 func TestTicketExpired(t *testing.T) {
 	var notif []struct{ before, after SectorInfo }
 	ma, _ := address.NewIDAddress(55151)
