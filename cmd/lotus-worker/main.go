@@ -192,6 +192,16 @@ var runCmd = &cli.Command{
 			Usage: "maximum fetch operations to run in parallel",
 			Value: 5,
 		},
+		&cli.IntFlag{
+			Name:  "post-parallel-reads",
+			Usage: "maximum number of parallel challenge reads (0 = no limit)",
+			Value: 0,
+		},
+		&cli.DurationFlag{
+			Name:  "post-read-timeout",
+			Usage: "time limit for reading PoSt challenges (0 = no limit)",
+			Value: 0,
+		},
 		&cli.StringFlag{
 			Name:  "timeout",
 			Usage: "used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function",
@@ -449,8 +459,10 @@ var runCmd = &cli.Command{
 
 		workerApi := &sealworker.Worker{
 			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
-				TaskTypes: taskTypes,
-				NoSwap:    cctx.Bool("no-swap"),
+				TaskTypes:                 taskTypes,
+				NoSwap:                    cctx.Bool("no-swap"),
+				MaxParallelChallengeReads: cctx.Int("post-parallel-reads"),
+				ChallengeReadTimeout:      cctx.Duration("post-read-timeout"),
 			}, remote, localStore, nodeApi, nodeApi, wsts),
 			LocalStore: localStore,
 			Storage:    lr,

@@ -39,6 +39,9 @@ type WorkerConfig struct {
 	// worker regardless of its currently available resources. Used in testing
 	// with the local worker.
 	IgnoreResourceFiltering bool
+
+	MaxParallelChallengeReads int           // 0 = no limit
+	ChallengeReadTimeout      time.Duration // 0 = no timeout
 }
 
 // used do provide custom proofs impl (mostly used in testing)
@@ -62,6 +65,9 @@ type LocalWorker struct {
 	running     sync.WaitGroup
 	taskLk      sync.Mutex
 
+	challengeThrottle    chan struct{}
+	challengeReadTimeout time.Duration
+
 	session     uuid.UUID
 	testDisable int64
 	closing     chan struct{}
@@ -82,13 +88,18 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, envLookup EnvFunc,
 		ct: &workerCallTracker{
 			st: cst,
 		},
-		acceptTasks:     acceptTasks,
-		executor:        executor,
-		noSwap:          wcfg.NoSwap,
-		envLookup:       envLookup,
-		ignoreResources: wcfg.IgnoreResourceFiltering,
-		session:         uuid.New(),
-		closing:         make(chan struct{}),
+		acceptTasks:          acceptTasks,
+		executor:             executor,
+		noSwap:               wcfg.NoSwap,
+		envLookup:            envLookup,
+		ignoreResources:      wcfg.IgnoreResourceFiltering,
+		challengeReadTimeout: wcfg.ChallengeReadTimeout,
+		session:              uuid.New(),
+		closing:              make(chan struct{}),
+	}
+
+	if wcfg.MaxParallelChallengeReads > 0 {
+		w.challengeThrottle = make(chan struct{}, wcfg.MaxParallelChallengeReads)
 	}
 
 	if w.executor == nil {
@@ -566,7 +577,9 @@ func (l *LocalWorker) GenerateWinningPoSt(ctx context.Context, ppt abi.Registere
 		return nil, err
 	}
 
-	// todo throttle config
+	// don't throttle winningPoSt
+	// * Always want it done asap
+	// * It's usually just one sector
 	var wg sync.WaitGroup
 	wg.Add(len(sectors))
 
@@ -577,7 +590,12 @@ func (l *LocalWorker) GenerateWinningPoSt(ctx context.Context, ppt abi.Registere
 		go func(i int, s storiface.PostSectorChallenge) {
 			defer wg.Done()
 
-			// todo context with tighter deadline (+config)
+			if l.challengeReadTimeout > 0 {
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithTimeout(ctx, l.challengeReadTimeout)
+				defer cancel()
+			}
+
 			vanilla, err := l.storage.GenerateSingleVanillaProof(ctx, mid, s, ppt)
 			if err != nil {
 				rerr = multierror.Append(rerr, xerrors.Errorf("get winning sector:%d,vanila failed: %w", s.SectorNumber, err))
@@ -607,17 +625,34 @@ func (l *LocalWorker) GenerateWindowPoSt(ctx context.Context, ppt abi.Registered
 	var slk sync.Mutex
 	var skipped []abi.SectorID
 
-	// todo throttle config
 	var wg sync.WaitGroup
 	wg.Add(len(sectors))
 
 	vproofs := make([][]byte, len(sectors))
 
 	for i, s := range sectors {
+		if l.challengeThrottle != nil {
+			select {
+			case <-l.challengeThrottle:
+			case <-ctx.Done():
+				return storiface.WindowPoStResult{}, xerrors.Errorf("context error waiting on challengeThrottle %w", err)
+			}
+		}
+
 		go func(i int, s storiface.PostSectorChallenge) {
 			defer wg.Done()
+			defer func() {
+				if l.challengeThrottle != nil {
+					l.challengeThrottle <- struct{}{}
+				}
+			}()
 
-			// todo context with tighter deadline (+config)
+			if l.challengeReadTimeout > 0 {
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithTimeout(ctx, l.challengeReadTimeout)
+				defer cancel()
+			}
+
 			vanilla, err := l.storage.GenerateSingleVanillaProof(ctx, mid, s, ppt)
 			slk.Lock()
 			defer slk.Unlock()
