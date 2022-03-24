@@ -14,7 +14,7 @@ import (
 	manet "github.com/multiformats/go-multiaddr/net"
 
 	"github.com/filecoin-project/lotus/api/client"
-	"github.com/filecoin-project/lotus/cmd/lotus-seal-worker/sealworker"
+	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
 	"github.com/filecoin-project/lotus/node"
 )
 
