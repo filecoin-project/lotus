@@ -8,6 +8,7 @@ import (
 	context "context"
 	json "encoding/json"
 	reflect "reflect"
+	time "time"
 
 	address "github.com/filecoin-project/go-address"
 	bitfield "github.com/filecoin-project/go-bitfield"
@@ -1854,6 +1855,21 @@ func (m *MockFullNode) NetPeers(arg0 context.Context) ([]peer.AddrInfo, error) {
 func (mr *MockFullNodeMockRecorder) NetPeers(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetPeers", reflect.TypeOf((*MockFullNode)(nil).NetPeers), arg0)
+}
+
+// NetPing mocks base method.
+func (m *MockFullNode) NetPing(arg0 context.Context, arg1 peer.ID) (time.Duration, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "NetPing", arg0, arg1)
+	ret0, _ := ret[0].(time.Duration)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// NetPing indicates an expected call of NetPing.
+func (mr *MockFullNodeMockRecorder) NetPing(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "NetPing", reflect.TypeOf((*MockFullNode)(nil).NetPing), arg0, arg1)
 }
 
 // NetProtectAdd mocks base method.

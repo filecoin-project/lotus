@@ -1,12 +1,14 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/urfave/cli/v2"
@@ -28,6 +30,7 @@ var NetCmd = &cli.Command{
 	Usage: "Manage P2P Network",
 	Subcommands: []*cli.Command{
 		NetPeers,
+		NetPing,
 		NetConnect,
 		NetListen,
 		NetId,
@@ -117,6 +120,82 @@ var NetPeers = &cli.Command{
 	},
 }
 
+var NetPing = &cli.Command{
+	Name:  "ping",
+	Usage: "Ping peers",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:    "count",
+			Value:   10,
+			Aliases: []string{"c"},
+			Usage:   "specify the number of times it should ping",
+		},
+		&cli.DurationFlag{
+			Name:    "interval",
+			Value:   time.Second,
+			Aliases: []string{"i"},
+			Usage:   "minimum time between pings",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("please provide a peerID")
+		}
+
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		pis, err := addrInfoFromArg(ctx, cctx)
+		if err != nil {
+			return err
+		}
+
+		count := cctx.Int("count")
+		interval := cctx.Duration("interval")
+
+		for _, pi := range pis {
+			err := api.NetConnect(ctx, pi)
+			if err != nil {
+				return xerrors.Errorf("connect: %w", err)
+			}
+
+			fmt.Printf("PING %s\n", pi.ID)
+			var avg time.Duration
+			var successful int
+
+			for i := 0; i < count && ctx.Err() == nil; i++ {
+				start := time.Now()
+
+				rtt, err := api.NetPing(ctx, pi.ID)
+				if err != nil {
+					if ctx.Err() != nil {
+						break
+					}
+					log.Errorf("Ping failed: error=%v", err)
+					continue
+				}
+				fmt.Printf("Pong received: time=%v\n", rtt)
+				avg = avg + rtt
+				successful++
+
+				wctx, cancel := context.WithTimeout(ctx, time.Until(start.Add(interval)))
+				<-wctx.Done()
+				cancel()
+			}
+
+			if successful > 0 {
+				fmt.Printf("Average latency: %v\n", avg/time.Duration(successful))
+			}
+		}
+		return nil
+	},
+}
+
 var NetScores = &cli.Command{
 	Name:  "scores",
 	Usage: "Print peers' pubsub scores",
@@ -192,45 +271,9 @@ var NetConnect = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		pis, err := addrutil.ParseAddresses(ctx, cctx.Args().Slice())
+		pis, err := addrInfoFromArg(ctx, cctx)
 		if err != nil {
-			a, perr := address.NewFromString(cctx.Args().First())
-			if perr != nil {
-				return err
-			}
-
-			na, fc, err := GetFullNodeAPI(cctx)
-			if err != nil {
-				return err
-			}
-			defer fc()
-
-			mi, err := na.StateMinerInfo(ctx, a, types.EmptyTSK)
-			if err != nil {
-				return xerrors.Errorf("getting miner info: %w", err)
-			}
-
-			if mi.PeerId == nil {
-				return xerrors.Errorf("no PeerID for miner")
-			}
-			multiaddrs := make([]multiaddr.Multiaddr, 0, len(mi.Multiaddrs))
-			for i, a := range mi.Multiaddrs {
-				maddr, err := multiaddr.NewMultiaddrBytes(a)
-				if err != nil {
-					log.Warnf("parsing multiaddr %d (%x): %s", i, a, err)
-					continue
-				}
-				multiaddrs = append(multiaddrs, maddr)
-			}
-
-			pi := peer.AddrInfo{
-				ID:    *mi.PeerId,
-				Addrs: multiaddrs,
-			}
-
-			fmt.Printf("%s -> %s\n", a, pi)
-
-			pis = append(pis, pi)
+			return err
 		}
 
 		for _, pi := range pis {
@@ -245,6 +288,51 @@ var NetConnect = &cli.Command{
 
 		return nil
 	},
+}
+
+func addrInfoFromArg(ctx context.Context, cctx *cli.Context) ([]peer.AddrInfo, error) {
+	pis, err := addrutil.ParseAddresses(ctx, cctx.Args().Slice())
+	if err != nil {
+		a, perr := address.NewFromString(cctx.Args().First())
+		if perr != nil {
+			return nil, err
+		}
+
+		na, fc, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return nil, err
+		}
+		defer fc()
+
+		mi, err := na.StateMinerInfo(ctx, a, types.EmptyTSK)
+		if err != nil {
+			return nil, xerrors.Errorf("getting miner info: %w", err)
+		}
+
+		if mi.PeerId == nil {
+			return nil, xerrors.Errorf("no PeerID for miner")
+		}
+		multiaddrs := make([]multiaddr.Multiaddr, 0, len(mi.Multiaddrs))
+		for i, a := range mi.Multiaddrs {
+			maddr, err := multiaddr.NewMultiaddrBytes(a)
+			if err != nil {
+				log.Warnf("parsing multiaddr %d (%x): %s", i, a, err)
+				continue
+			}
+			multiaddrs = append(multiaddrs, maddr)
+		}
+
+		pi := peer.AddrInfo{
+			ID:    *mi.PeerId,
+			Addrs: multiaddrs,
+		}
+
+		fmt.Printf("%s -> %s\n", a, pi)
+
+		pis = append(pis, pi)
+	}
+
+	return pis, err
 }
 
 var NetId = &cli.Command{
