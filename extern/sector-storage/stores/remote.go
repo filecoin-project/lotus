@@ -813,8 +813,9 @@ func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 				return nil, xerrors.Errorf("do request: %w", err)
 			}
 
-			if resp.StatusCode != 200 {
-				if resp.StatusCode == 404 {
+			if resp.StatusCode != http.StatusOK {
+				if resp.StatusCode == http.StatusNotFound {
+					log.Debugw("reading vanilla proof from remote not-found response", "url", url, "store", info.ID)
 					continue
 				}
 				body, err := ioutil.ReadAll(resp.Body)
