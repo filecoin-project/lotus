@@ -3,6 +3,7 @@ package build
 import (
 	_ "embed"
 	"encoding/json"
+	"io/ioutil"
 	"os"
 
 	"github.com/filecoin-project/go-address"
@@ -47,7 +48,15 @@ type networkParams struct {
 
 func init() {
 	networks := make(map[string]networkParams)
-	err := json.Unmarshal(paramsBytes, &networks)
+	var paramb []byte
+	var err error
+	paramfile, ok := os.LookupEnv("LOTUS_NETWORK_DEFINITION_FILE")
+	if ok {
+		paramb, err = ioutil.ReadFile(paramfile)
+	} else {
+		paramb = paramsBytes
+	}
+	err = json.Unmarshal(paramb, &networks)
 	if err != nil {
 		panic("cannot parse network params json")
 	}
