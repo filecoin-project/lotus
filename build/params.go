@@ -53,6 +53,9 @@ func init() {
 	paramfile, ok := os.LookupEnv("LOTUS_NETWORK_DEFINITION_FILE")
 	if ok {
 		paramb, err = ioutil.ReadFile(paramfile)
+		if err != nil {
+			panic(err)
+		}
 	} else {
 		paramb = paramsBytes
 	}
