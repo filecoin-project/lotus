@@ -38,6 +38,7 @@ type FvmExtern struct {
 	Rand
 	blockstore.Blockstore
 	epoch   abi.ChainEpoch
+	nv      network.Version
 	lbState LookbackStateGetter
 	base    cid.Cid
 }
@@ -175,7 +176,7 @@ func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerId address.Add
 	}
 
 	cstWithoutGas := cbor.NewCborStore(x.Blockstore)
-	cbb := &gasChargingBlocks{gasAdder, PricelistByEpoch(x.epoch), x.Blockstore}
+	cbb := &gasChargingBlocks{gasAdder, PricelistByEpochAndNetworkVersion(x.epoch, x.nv), x.Blockstore}
 	cstWithGas := cbor.NewCborStore(cbb)
 
 	lbState, err := x.lbState(ctx, height)
@@ -234,7 +235,7 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	}
 
 	fvm, err := ffi.CreateFVM(0,
-		&FvmExtern{Rand: opts.Rand, Blockstore: opts.Bstore, lbState: opts.LookbackState, base: opts.StateBase, epoch: opts.Epoch},
+		&FvmExtern{Rand: opts.Rand, Blockstore: opts.Bstore, lbState: opts.LookbackState, base: opts.StateBase, epoch: opts.Epoch, nv: opts.NetworkVersion},
 		opts.Epoch, opts.BaseFee, circToReport, opts.NetworkVersion, opts.StateBase,
 	)
 	if err != nil {

@@ -629,7 +629,11 @@ func (mp *MessagePool) addLocal(ctx context.Context, m *types.SignedMessage) err
 // a (soft) validation error.
 func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.TipSet, local bool) (bool, error) {
 	epoch := curTs.Height() + 1
-	minGas := vm.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
+	nv, err := mp.getNtwkVersion(epoch)
+	if err != nil {
+		return false, xerrors.Errorf("getting network version: %w", err)
+	}
+	minGas := vm.PricelistByEpochAndNetworkVersion(epoch, nv).OnChainMessage(m.ChainLength())
 
 	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total(), build.NewestNetworkVersion); err != nil {
 		return false, xerrors.Errorf("message will not be included in a block: %w", err)
