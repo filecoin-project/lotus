@@ -228,11 +228,20 @@ type SealingConfig struct {
 	// 0 = no limit
 	MaxWaitDealsSectors uint64
 
-	// Upper bound on how many sectors can be sealing at the same time when creating new CC sectors (0 = unlimited)
+	// Upper bound on how many sectors can be sealing+upgrading at the same time when creating new CC sectors (0 = unlimited)
 	MaxSealingSectors uint64
 
-	// Upper bound on how many sectors can be sealing at the same time when creating new sectors with deals (0 = unlimited)
+	// Upper bound on how many sectors can be sealing+upgrading at the same time when creating new sectors with deals (0 = unlimited)
 	MaxSealingSectorsForDeals uint64
+
+	// Prefer creating new sectors even if there are sectors Available for upgrading.
+	// This setting combined with MaxUpgradingSectors set to a value higher than MaxSealingSectorsForDeals makes it
+	// possible to use fast sector upgrades to handle high volumes of storage deals, while still using the simple sealing
+	// flow when the volume of storage deals is lower.
+	PreferNewSectorsForDeals bool
+
+	// Upper bound on how many sectors can be sealing+upgrading at the same time when upgrading CC sectors with deals (0 = MaxSealingSectorsForDeals)
+	MaxUpgradingSectors uint64
 
 	// CommittedCapacitySectorLifetime is the duration a Committed Capacity (CC) sector will
 	// live before it must be extended or converted into sector containing deals before it is

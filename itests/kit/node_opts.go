@@ -3,6 +3,11 @@ package kit
 import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
+	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/modules"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/node/repo"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -142,6 +147,17 @@ func ConstructorOpts(extra ...node.Option) NodeOpt {
 		opts.extraNodeOpts = extra
 		return nil
 	}
+}
+
+func MutateSealingConfig(mut func(sc *config.SealingConfig)) NodeOpt {
+	return ConstructorOpts(
+		node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.GetSealingConfigFunc), func() (dtypes.GetSealingConfigFunc, error) {
+			return func() (sealiface.Config, error) {
+				cf := config.DefaultStorageMiner()
+				mut(&cf.Sealing)
+				return modules.ToSealingConfig(cf.Dealmaking, cf.Sealing), nil
+			}, nil
+		})))
 }
 
 // SectorSize sets the sector size for this miner. Start() will populate the
