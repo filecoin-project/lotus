@@ -2111,6 +2111,7 @@ OPTIONS:
    --only-bad          print only bad sectors (default: false)
    --slow              run slower checks (default: false)
    --storage-id value  filter sectors by storage path (path id)
+   --faulty            only check faulty sectors (default: false)
    --help, -h          show help (default: false)
    
 ```
