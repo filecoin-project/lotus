@@ -74,9 +74,9 @@ const (
 
 func (a TaskType) WorkerType() string {
 	switch a {
-	case TTGenerateWindowPoSt:
+	case TTGenerateWinningPoSt:
 		return WorkerWinningPoSt
-	case WorkerWinningPoSt:
+	case TTGenerateWindowPoSt:
 		return WorkerWindowPoSt
 	default:
 		return WorkerSealing
