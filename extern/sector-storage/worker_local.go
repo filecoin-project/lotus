@@ -633,7 +633,7 @@ func (l *LocalWorker) GenerateWindowPoSt(ctx context.Context, ppt abi.Registered
 	for i, s := range sectors {
 		if l.challengeThrottle != nil {
 			select {
-			case <-l.challengeThrottle:
+			case l.challengeThrottle <- struct{}{}:
 			case <-ctx.Done():
 				return storiface.WindowPoStResult{}, xerrors.Errorf("context error waiting on challengeThrottle %w", err)
 			}
@@ -643,7 +643,7 @@ func (l *LocalWorker) GenerateWindowPoSt(ctx context.Context, ppt abi.Registered
 			defer wg.Done()
 			defer func() {
 				if l.challengeThrottle != nil {
-					l.challengeThrottle <- struct{}{}
+					<-l.challengeThrottle
 				}
 			}()
 
