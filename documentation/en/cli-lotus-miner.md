@@ -2040,6 +2040,7 @@ COMMANDS:
    deadline   View the current proving period deadline information by its index 
    faults     View the currently known proving faulty sectors information
    check      Check sectors provable
+   workers    list workers
    help, h    Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2113,6 +2114,20 @@ OPTIONS:
    --storage-id value  filter sectors by storage path (path id)
    --faulty            only check faulty sectors (default: false)
    --help, -h          show help (default: false)
+   
+```
+
+### lotus-miner proving workers
+```
+NAME:
+   lotus-miner proving workers - list workers
+
+USAGE:
+   lotus-miner proving workers [command options] [arguments...]
+
+OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
    
 ```
 

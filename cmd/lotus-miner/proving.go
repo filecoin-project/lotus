@@ -30,6 +30,7 @@ var provingCmd = &cli.Command{
 		provingDeadlineInfoCmd,
 		provingFaultsCmd,
 		provingCheckProvableCmd,
+		workersCmd(false),
 	},
 }
 
