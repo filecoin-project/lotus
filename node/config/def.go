@@ -110,6 +110,7 @@ func DefaultStorageMiner() *StorageMiner {
 			WaitDealsDelay:            Duration(time.Hour * 6),
 			AlwaysKeepUnsealedCopy:    true,
 			FinalizeEarly:             false,
+			MakeNewSectorForDeals:     true,
 
 			CollateralFromMinerBalance: false,
 			AvailableBalanceBuffer:     types.FIL(big.Zero()),
@@ -163,7 +164,6 @@ func DefaultStorageMiner() *StorageMiner {
 			ConsiderVerifiedStorageDeals:   true,
 			ConsiderUnverifiedStorageDeals: true,
 			PieceCidBlocklist:              []cid.Cid{},
-			MakeNewSectorForDeals:          true,
 			// TODO: It'd be nice to set this based on sector size
 			MaxDealStartDelay:               Duration(time.Hour * 24 * 14),
 			ExpectedSealDuration:            Duration(time.Hour * 24),
