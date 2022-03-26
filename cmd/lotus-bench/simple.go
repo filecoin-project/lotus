@@ -280,7 +280,7 @@ var simpleWindowPost = &cli.Command{
 			Value: "t01000",
 		},
 	},
-	ArgsUsage: "[sealed] [cache] [comm R]",
+	ArgsUsage: "[sealed] [cache] [comm R] [sector num]",
 	Action: func(cctx *cli.Context) error {
 		maddr, err := address.NewFromString(cctx.String("miner-addr"))
 		if err != nil {
@@ -310,7 +310,13 @@ var simpleWindowPost = &cli.Command{
 			return err
 		}
 
-		ch, err := ffi.GeneratePoStFallbackSectorChallenges(wpt, mid, rand[:], []abi.SectorNumber{1})
+		snum, err := strconv.ParseUint(cctx.Args().Get(3), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("parsing sector num: %w", err)
+		}
+		sn := abi.SectorNumber(snum)
+
+		ch, err := ffi.GeneratePoStFallbackSectorChallenges(wpt, mid, rand[:], []abi.SectorNumber{sn})
 		if err != nil {
 			return xerrors.Errorf("generating challenges: %w", err)
 		}
@@ -320,13 +326,13 @@ var simpleWindowPost = &cli.Command{
 		vp, err := ffi.GenerateSingleVanillaProof(ffi.PrivateSectorInfo{
 			SectorInfo: prf.SectorInfo{
 				SealProof:    spt(sectorSize),
-				SectorNumber: 1,
+				SectorNumber: sn,
 				SealedCID:    commr,
 			},
 			CacheDirPath:     cctx.Args().Get(1),
 			PoStProofType:    wpt,
 			SealedSectorPath: cctx.Args().Get(0),
-		}, ch.Challenges[1])
+		}, ch.Challenges[sn])
 		if err != nil {
 			return err
 		}
@@ -361,7 +367,7 @@ var simpleWinningPost = &cli.Command{
 			Value: "t01000",
 		},
 	},
-	ArgsUsage: "[sealed] [cache] [comm R]",
+	ArgsUsage: "[sealed] [cache] [comm R] [sector num]",
 	Action: func(cctx *cli.Context) error {
 		maddr, err := address.NewFromString(cctx.String("miner-addr"))
 		if err != nil {
@@ -391,7 +397,13 @@ var simpleWinningPost = &cli.Command{
 			return err
 		}
 
-		ch, err := ffi.GeneratePoStFallbackSectorChallenges(wpt, mid, rand[:], []abi.SectorNumber{1})
+		snum, err := strconv.ParseUint(cctx.Args().Get(3), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("parsing sector num: %w", err)
+		}
+		sn := abi.SectorNumber(snum)
+
+		ch, err := ffi.GeneratePoStFallbackSectorChallenges(wpt, mid, rand[:], []abi.SectorNumber{sn})
 		if err != nil {
 			return xerrors.Errorf("generating challenges: %w", err)
 		}
@@ -401,13 +413,13 @@ var simpleWinningPost = &cli.Command{
 		vp, err := ffi.GenerateSingleVanillaProof(ffi.PrivateSectorInfo{
 			SectorInfo: prf.SectorInfo{
 				SealProof:    spt(sectorSize),
-				SectorNumber: 1,
+				SectorNumber: sn,
 				SealedCID:    commr,
 			},
 			CacheDirPath:     cctx.Args().Get(1),
 			PoStProofType:    wpt,
 			SealedSectorPath: cctx.Args().Get(0),
-		}, ch.Challenges[1])
+		}, ch.Challenges[sn])
 		if err != nil {
 			return err
 		}
