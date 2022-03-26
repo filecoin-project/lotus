@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/specs-storage/storage"
 )
 
@@ -424,7 +424,7 @@ var provingCheckProvableCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			decls := sl[stores.ID(cctx.String("storage-id"))]
+			decls := sl[storiface.ID(cctx.String("storage-id"))]
 
 			filter = map[abi.SectorID]struct{}{}
 			for _, decl := range decls {
@@ -473,7 +473,6 @@ var provingCheckProvableCmd = &cli.Command{
 			}
 
 			var tocheck []storage.SectorRef
-			var update []bool
 			for _, info := range sectorInfos {
 				si := abi.SectorID{
 					Miner:  abi.ActorID(mid),
@@ -491,10 +490,9 @@ var provingCheckProvableCmd = &cli.Command{
 					ProofType: info.SealProof,
 					ID:        si,
 				})
-				update = append(update, info.SectorKeyCID != nil)
 			}
 
-			bad, err := sapi.CheckProvable(ctx, info.WindowPoStProofType, tocheck, update, cctx.Bool("slow"))
+			bad, err := sapi.CheckProvable(ctx, info.WindowPoStProofType, tocheck, cctx.Bool("slow"))
 			if err != nil {
 				return err
 			}

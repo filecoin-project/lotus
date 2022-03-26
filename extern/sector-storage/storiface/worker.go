@@ -10,6 +10,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
@@ -67,6 +68,7 @@ func (wr WorkerResources) ResourceSpec(spt abi.RegisteredSealProof, tt sealtasks
 
 type WorkerStats struct {
 	Info    WorkerInfo
+	Tasks   []sealtasks.TaskType
 	Enabled bool
 
 	MemUsedMin uint64
@@ -114,6 +116,7 @@ var _ fmt.Stringer = &CallID{}
 var UndefCall CallID
 
 type WorkerCalls interface {
+	// async
 	AddPiece(ctx context.Context, sector storage.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (CallID, error)
 	SealPreCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (CallID, error)
 	SealPreCommit2(ctx context.Context, sector storage.SectorRef, pc1o storage.PreCommit1Out) (CallID, error)
@@ -129,6 +132,28 @@ type WorkerCalls interface {
 	MoveStorage(ctx context.Context, sector storage.SectorRef, types SectorFileType) (CallID, error)
 	UnsealPiece(context.Context, storage.SectorRef, UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (CallID, error)
 	Fetch(context.Context, storage.SectorRef, SectorFileType, PathType, AcquireMode) (CallID, error)
+
+	// sync
+	GenerateWinningPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, mid abi.ActorID, sectors []PostSectorChallenge, randomness abi.PoStRandomness) ([]proof.PoStProof, error)
+	GenerateWindowPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, mid abi.ActorID, sectors []PostSectorChallenge, partitionIdx int, randomness abi.PoStRandomness) (WindowPoStResult, error)
+}
+
+type WindowPoStResult struct {
+	PoStProofs proof.PoStProof
+	Skipped    []abi.SectorID
+}
+
+type PostSectorChallenge struct {
+	SealProof    abi.RegisteredSealProof
+	SectorNumber abi.SectorNumber
+	SealedCID    cid.Cid
+	Challenge    []uint64
+	Update       bool
+}
+
+type FallbackChallenges struct {
+	Sectors    []abi.SectorNumber
+	Challenges map[abi.SectorNumber][]uint64
 }
 
 type ErrorCode int

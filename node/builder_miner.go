@@ -83,6 +83,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
 		Override(new(*stores.Local), modules.LocalStorage),
 		Override(new(*stores.Remote), modules.RemoteStorage),
+		Override(new(stores.Store), From(new(*stores.Remote))),
 		Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
 
 		If(!cfg.Subsystems.EnableMining,

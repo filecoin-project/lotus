@@ -24,7 +24,6 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 )
@@ -143,21 +142,21 @@ type StorageMiner interface {
 	SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error) //perm:admin
 	SealingAbort(ctx context.Context, call storiface.CallID) error           //perm:admin
 
-	//stores.SectorIndex
-	StorageAttach(context.Context, stores.StorageInfo, fsutil.FsStat) error                                                                                             //perm:admin
-	StorageInfo(context.Context, stores.ID) (stores.StorageInfo, error)                                                                                                 //perm:admin
-	StorageReportHealth(context.Context, stores.ID, stores.HealthReport) error                                                                                          //perm:admin
-	StorageDeclareSector(ctx context.Context, storageID stores.ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error                                     //perm:admin
-	StorageDropSector(ctx context.Context, storageID stores.ID, s abi.SectorID, ft storiface.SectorFileType) error                                                      //perm:admin
-	StorageFindSector(ctx context.Context, sector abi.SectorID, ft storiface.SectorFileType, ssize abi.SectorSize, allowFetch bool) ([]stores.SectorStorageInfo, error) //perm:admin
-	StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]stores.StorageInfo, error)           //perm:admin
-	StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error                                          //perm:admin
-	StorageTryLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error)                               //perm:admin
-	StorageList(ctx context.Context) (map[stores.ID][]stores.Decl, error)                                                                                               //perm:admin
-	StorageGetLocks(ctx context.Context) (storiface.SectorLocks, error)                                                                                                 //perm:admin
+	// SectorIndex
+	StorageAttach(context.Context, storiface.StorageInfo, fsutil.FsStat) error                                                                                             //perm:admin
+	StorageInfo(context.Context, storiface.ID) (storiface.StorageInfo, error)                                                                                              //perm:admin
+	StorageReportHealth(context.Context, storiface.ID, storiface.HealthReport) error                                                                                       //perm:admin
+	StorageDeclareSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error                                     //perm:admin
+	StorageDropSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType) error                                                      //perm:admin
+	StorageFindSector(ctx context.Context, sector abi.SectorID, ft storiface.SectorFileType, ssize abi.SectorSize, allowFetch bool) ([]storiface.SectorStorageInfo, error) //perm:admin
+	StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]storiface.StorageInfo, error)           //perm:admin
+	StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error                                             //perm:admin
+	StorageTryLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error)                                  //perm:admin
+	StorageList(ctx context.Context) (map[storiface.ID][]storiface.Decl, error)                                                                                            //perm:admin
+	StorageGetLocks(ctx context.Context) (storiface.SectorLocks, error)                                                                                                    //perm:admin
 
-	StorageLocal(ctx context.Context) (map[stores.ID]string, error)       //perm:admin
-	StorageStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) //perm:admin
+	StorageLocal(ctx context.Context) (map[storiface.ID]string, error)       //perm:admin
+	StorageStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, error) //perm:admin
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                        //perm:write
 	MarketListDeals(ctx context.Context) ([]MarketDeal, error)                                                                                                                           //perm:read
@@ -266,13 +265,12 @@ type StorageMiner interface {
 	// the path specified when calling CreateBackup is within the base path
 	CreateBackup(ctx context.Context, fpath string) error //perm:admin
 
-	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, update []bool, expensive bool) (map[abi.SectorNumber]string, error) //perm:admin
+	CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) //perm:admin
 
 	ComputeProof(ctx context.Context, ssi []builtin.ExtendedSectorInfo, rand abi.PoStRandomness, poStEpoch abi.ChainEpoch, nv abinetwork.Version) ([]builtin.PoStProof, error) //perm:read
 }
 
 var _ storiface.WorkerReturn = *new(StorageMiner)
-var _ stores.SectorIndex = *new(StorageMiner)
 
 type SealRes struct {
 	Err   string
@@ -296,19 +294,20 @@ type SectorPiece struct {
 }
 
 type SectorInfo struct {
-	SectorID     abi.SectorNumber
-	State        SectorState
-	CommD        *cid.Cid
-	CommR        *cid.Cid
-	Proof        []byte
-	Deals        []abi.DealID
-	Pieces       []SectorPiece
-	Ticket       SealTicket
-	Seed         SealSeed
-	PreCommitMsg *cid.Cid
-	CommitMsg    *cid.Cid
-	Retries      uint64
-	ToUpgrade    bool
+	SectorID             abi.SectorNumber
+	State                SectorState
+	CommD                *cid.Cid
+	CommR                *cid.Cid
+	Proof                []byte
+	Deals                []abi.DealID
+	Pieces               []SectorPiece
+	Ticket               SealTicket
+	Seed                 SealSeed
+	PreCommitMsg         *cid.Cid
+	CommitMsg            *cid.Cid
+	Retries              uint64
+	ToUpgrade            bool
+	ReplicaUpdateMessage *cid.Cid
 
 	LastErr string
 

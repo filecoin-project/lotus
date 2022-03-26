@@ -45,13 +45,6 @@ func (s *WindowPoStScheduler) recordPoStFailure(err error, ts *types.TipSet, dea
 			State:     SchedulerStateFaulted,
 		}
 	})
-
-	log.Errorf("Got err %+v - TODO handle errors", err)
-	/*s.failLk.Lock()
-	if eps > s.failed {
-		s.failed = eps
-	}
-	s.failLk.Unlock()*/
 }
 
 // recordProofsEvent records a successful proofs_processed event in the
@@ -204,11 +197,18 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check bitfield.B
 		return bitfield.BitField{}, err
 	}
 
-	sectors := make(map[abi.SectorNumber]struct{})
+	type checkSector struct {
+		sealed cid.Cid
+		update bool
+	}
+
+	sectors := make(map[abi.SectorNumber]checkSector)
 	var tocheck []storage.SectorRef
-	var update []bool
 	for _, info := range sectorInfos {
-		sectors[info.SectorNumber] = struct{}{}
+		sectors[info.SectorNumber] = checkSector{
+			sealed: info.SealedCID,
+			update: info.SectorKeyCID != nil,
+		}
 		tocheck = append(tocheck, storage.SectorRef{
 			ProofType: info.SealProof,
 			ID: abi.SectorID{
@@ -216,10 +216,15 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check bitfield.B
 				Number: info.SectorNumber,
 			},
 		})
-		update = append(update, info.SectorKeyCID != nil)
 	}
 
-	bad, err := s.faultTracker.CheckProvable(ctx, s.proofType, tocheck, update, nil)
+	bad, err := s.faultTracker.CheckProvable(ctx, s.proofType, tocheck, func(ctx context.Context, id abi.SectorID) (cid.Cid, bool, error) {
+		s, ok := sectors[id.Number]
+		if !ok {
+			return cid.Undef, false, xerrors.Errorf("sealed CID not found")
+		}
+		return s.sealed, s.update, nil
+	})
 	if err != nil {
 		return bitfield.BitField{}, xerrors.Errorf("checking provable sectors: %w", err)
 	}
@@ -549,6 +554,12 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, di dline.Info, t
 		return nil, err
 	}
 
+	defer func() {
+		if r := recover(); r != nil {
+			log.Errorf("recover: %s", r)
+		}
+	}()
+
 	// Generate proofs in batches
 	posts := make([]miner.SubmitWindowedPoStParams, 0, len(partitionBatches))
 	for batchIdx, batch := range partitionBatches {
@@ -639,14 +650,9 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, di dline.Info, t
 				return nil, err
 			}
 
-			defer func() {
-				if r := recover(); r != nil {
-					log.Errorf("recover: %s", r)
-				}
-			}()
 			postOut, ps, err := s.prover.GenerateWindowPoSt(ctx, abi.ActorID(mid), xsinfos, append(abi.PoStRandomness{}, rand...))
 			elapsed := time.Since(tsStart)
-			log.Infow("computing window post", "batch", batchIdx, "elapsed", elapsed)
+			log.Infow("computing window post", "batch", batchIdx, "elapsed", elapsed, "skip", len(ps), "err", err)
 			if err != nil {
 				log.Errorf("error generating window post: %s", err)
 			}
@@ -855,7 +861,7 @@ func (s *WindowPoStScheduler) submitPoStMessage(ctx context.Context, proof *mine
 		return nil, xerrors.Errorf("pushing message to mpool: %w", err)
 	}
 
-	log.Infof("Submitted window post: %s", sm.Cid())
+	log.Infof("Submitted window post: %s (deadline %d)", sm.Cid(), proof.Deadline)
 
 	go func() {
 		rec, err := s.api.StateWaitMsg(context.TODO(), sm.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
@@ -865,6 +871,7 @@ func (s *WindowPoStScheduler) submitPoStMessage(ctx context.Context, proof *mine
 		}
 
 		if rec.Receipt.ExitCode == 0 {
+			log.Infow("Window post submission successful", "cid", sm.Cid(), "deadline", proof.Deadline, "epoch", rec.Height, "ts", rec.TipSet.Cids())
 			return
 		}
 

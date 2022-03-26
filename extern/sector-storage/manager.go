@@ -36,7 +36,7 @@ type Worker interface {
 	TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error)
 
 	// Returns paths accessible to the worker
-	Paths(context.Context) ([]stores.StoragePath, error)
+	Paths(context.Context) ([]storiface.StoragePath, error)
 
 	Info(context.Context) (storiface.WorkerInfo, error)
 
@@ -56,14 +56,16 @@ var ClosedWorkerID = uuid.UUID{}
 
 type Manager struct {
 	ls         stores.LocalStorage
-	storage    *stores.Remote
+	storage    stores.Store
 	localStore *stores.Local
 	remoteHnd  *stores.FetchHandler
 	index      stores.SectorIndex
 
-	sched *scheduler
+	sched            *scheduler
+	windowPoStSched  *poStScheduler
+	winningPoStSched *poStScheduler
 
-	storage.Prover
+	localProver storage.Prover
 
 	workLk sync.Mutex
 	work   *statestore.StateStore
@@ -75,6 +77,8 @@ type Manager struct {
 	results map[WorkID]result
 	waitRes map[WorkID]chan struct{}
 }
+
+var _ storage.Prover = &Manager{}
 
 type result struct {
 	r   interface{}
@@ -119,7 +123,7 @@ type StorageAuth http.Header
 type WorkerStateStore *statestore.StateStore
 type ManagerStateStore *statestore.StateStore
 
-func New(ctx context.Context, lstor *stores.Local, stor *stores.Remote, ls stores.LocalStorage, si stores.SectorIndex, sc SealerConfig, wss WorkerStateStore, mss ManagerStateStore) (*Manager, error) {
+func New(ctx context.Context, lstor *stores.Local, stor stores.Store, ls stores.LocalStorage, si stores.SectorIndex, sc SealerConfig, wss WorkerStateStore, mss ManagerStateStore) (*Manager, error) {
 	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor, index: si})
 	if err != nil {
 		return nil, xerrors.Errorf("creating prover instance: %w", err)
@@ -132,9 +136,11 @@ func New(ctx context.Context, lstor *stores.Local, stor *stores.Remote, ls store
 		remoteHnd:  &stores.FetchHandler{Local: lstor, PfHandler: &stores.DefaultPartialFileHandler{}},
 		index:      si,
 
-		sched: newScheduler(),
+		sched:            newScheduler(),
+		windowPoStSched:  newPoStScheduler(sealtasks.TTGenerateWindowPoSt),
+		winningPoStSched: newPoStScheduler(sealtasks.TTGenerateWinningPoSt),
 
-		Prover: prover,
+		localProver: prover,
 
 		work:       mss,
 		callToWork: map[storiface.CallID]WorkID{},
@@ -207,7 +213,32 @@ func (m *Manager) AddLocalStorage(ctx context.Context, path string) error {
 }
 
 func (m *Manager) AddWorker(ctx context.Context, w Worker) error {
-	return m.sched.runWorker(ctx, w)
+	sessID, err := w.Session(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting worker session: %w", err)
+	}
+	if sessID == ClosedWorkerID {
+		return xerrors.Errorf("worker already closed")
+	}
+
+	wid := storiface.WorkerID(sessID)
+
+	whnd, err := newWorkerHandle(ctx, w)
+	if err != nil {
+		return err
+	}
+
+	tasks, err := w.TaskTypes(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting worker tasks: %w", err)
+	}
+
+	if m.windowPoStSched.MaybeAddWorker(wid, tasks, whnd) ||
+		m.winningPoStSched.MaybeAddWorker(wid, tasks, whnd) {
+		return nil
+	}
+
+	return m.sched.runWorker(ctx, wid, whnd)
 }
 
 func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -980,13 +1011,13 @@ func (m *Manager) ReturnFetch(ctx context.Context, callID storiface.CallID, err 
 	return m.returnResult(ctx, callID, nil, err)
 }
 
-func (m *Manager) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {
+func (m *Manager) StorageLocal(ctx context.Context) (map[storiface.ID]string, error) {
 	l, err := m.localStore.Local(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := map[stores.ID]string{}
+	out := map[storiface.ID]string{}
 	for _, st := range l {
 		out[st.ID] = st.LocalPath
 	}
@@ -994,7 +1025,7 @@ func (m *Manager) StorageLocal(ctx context.Context) (map[stores.ID]string, error
 	return out, nil
 }
 
-func (m *Manager) FsStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) {
+func (m *Manager) FsStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, error) {
 	return m.storage.FsStat(ctx, id)
 }
 
@@ -1052,6 +1083,8 @@ func (m *Manager) SchedDiag(ctx context.Context, doSched bool) (interface{}, err
 }
 
 func (m *Manager) Close(ctx context.Context) error {
+	m.windowPoStSched.schedClose()
+	m.winningPoStSched.schedClose()
 	return m.sched.Close(ctx)
 }
 

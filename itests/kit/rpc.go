@@ -8,11 +8,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/filecoin-project/lotus/api/client"
-	"github.com/filecoin-project/lotus/node"
+	"github.com/stretchr/testify/require"
+
 	"github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
-	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/lotus/api/client"
+	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
+	"github.com/filecoin-project/lotus/node"
 )
 
 func CreateRPCServer(t *testing.T, handler http.Handler, listener net.Listener) (*httptest.Server, multiaddr.Multiaddr) {
@@ -66,5 +69,20 @@ func minerRpc(t *testing.T, m *TestMiner) *TestMiner {
 	t.Cleanup(stop)
 
 	m.ListenAddr, m.StorageMiner = maddr, cl
+	return m
+}
+
+func workerRpc(t *testing.T, m *TestWorker) *TestWorker {
+	handler := sealworker.WorkerHandler(m.MinerNode.AuthVerify, m.FetchHandler, m.Worker, false)
+
+	srv, maddr := CreateRPCServer(t, handler, m.RemoteListener)
+
+	fmt.Println("creating RPC server for a worker at: ", srv.Listener.Addr().String())
+	url := "ws://" + srv.Listener.Addr().String() + "/rpc/v0"
+	cl, stop, err := client.NewWorkerRPCV0(context.Background(), url, nil)
+	require.NoError(t, err)
+	t.Cleanup(stop)
+
+	m.ListenAddr, m.Worker = maddr, cl
 	return m
 }

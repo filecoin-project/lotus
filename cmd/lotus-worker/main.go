@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/gorilla/mux"
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log/v2"
 	manet "github.com/multiformats/go-multiaddr/net"
@@ -22,7 +21,6 @@ import (
 	"go.opencensus.io/tag"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-statestore"
@@ -31,13 +29,13 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
+	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
-	"github.com/filecoin-project/lotus/lib/rpcenc"
 	"github.com/filecoin-project/lotus/metrics"
-	"github.com/filecoin-project/lotus/metrics/proxy"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -178,10 +176,31 @@ var runCmd = &cli.Command{
 			Usage: "enable regen sector key",
 			Value: true,
 		},
+		&cli.BoolFlag{
+			Name:  "windowpost",
+			Usage: "enable window post",
+			Value: false,
+		},
+
+		&cli.BoolFlag{
+			Name:  "winningpost",
+			Usage: "enable winning post",
+			Value: false,
+		},
 		&cli.IntFlag{
 			Name:  "parallel-fetch-limit",
 			Usage: "maximum fetch operations to run in parallel",
 			Value: 5,
+		},
+		&cli.IntFlag{
+			Name:  "post-parallel-reads",
+			Usage: "maximum number of parallel challenge reads (0 = no limit)",
+			Value: 0,
+		},
+		&cli.DurationFlag{
+			Name:  "post-read-timeout",
+			Usage: "time limit for reading PoSt challenges (0 = no limit)",
+			Value: 0,
 		},
 		&cli.StringFlag{
 			Name:  "timeout",
@@ -265,36 +284,54 @@ var runCmd = &cli.Command{
 		}
 
 		var taskTypes []sealtasks.TaskType
+		var workerType string
 
-		taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFinalizeReplicaUpdate)
+		if cctx.Bool("windowpost") {
+			workerType = sealtasks.WorkerWindowPoSt
+			taskTypes = append(taskTypes, sealtasks.TTGenerateWindowPoSt)
+		}
+		if cctx.Bool("winningpost") {
+			workerType = sealtasks.WorkerWinningPoSt
+			taskTypes = append(taskTypes, sealtasks.TTGenerateWinningPoSt)
+		}
 
-		if cctx.Bool("addpiece") {
+		if workerType == "" {
+			workerType = sealtasks.WorkerSealing
+			taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFinalizeReplicaUpdate)
+		}
+
+		if (workerType != sealtasks.WorkerSealing || cctx.IsSet("addpiece")) && cctx.Bool("addpiece") {
 			taskTypes = append(taskTypes, sealtasks.TTAddPiece)
 		}
-		if cctx.Bool("precommit1") {
+		if (workerType != sealtasks.WorkerSealing || cctx.IsSet("precommit1")) && cctx.Bool("precommit1") {
 			taskTypes = append(taskTypes, sealtasks.TTPreCommit1)
 		}
-		if cctx.Bool("unseal") {
+		if (workerType != sealtasks.WorkerSealing || cctx.IsSet("unseal")) && cctx.Bool("unseal") {
 			taskTypes = append(taskTypes, sealtasks.TTUnseal)
 		}
-		if cctx.Bool("precommit2") {
+		if (workerType != sealtasks.WorkerSealing || cctx.IsSet("precommit2")) && cctx.Bool("precommit2") {
 			taskTypes = append(taskTypes, sealtasks.TTPreCommit2)
 		}
-		if cctx.Bool("commit") {
+		if (workerType != sealtasks.WorkerSealing || cctx.IsSet("commit")) && cctx.Bool("commit") {
 			taskTypes = append(taskTypes, sealtasks.TTCommit2)
 		}
-		if cctx.Bool("replica-update") {
+		if (workerType != sealtasks.WorkerSealing || cctx.IsSet("replica-update")) && cctx.Bool("replica-update") {
 			taskTypes = append(taskTypes, sealtasks.TTReplicaUpdate)
 		}
-		if cctx.Bool("prove-replica-update2") {
+		if (workerType != sealtasks.WorkerSealing || cctx.IsSet("prove-replica-update2")) && cctx.Bool("prove-replica-update2") {
 			taskTypes = append(taskTypes, sealtasks.TTProveReplicaUpdate2)
 		}
-		if cctx.Bool("regen-sector-key") {
+		if (workerType != sealtasks.WorkerSealing || cctx.IsSet("regen-sector-key")) && cctx.Bool("regen-sector-key") {
 			taskTypes = append(taskTypes, sealtasks.TTRegenSectorKey)
 		}
 
 		if len(taskTypes) == 0 {
 			return xerrors.Errorf("no task types specified")
+		}
+		for _, taskType := range taskTypes {
+			if taskType.WorkerType() != workerType {
+				return xerrors.Errorf("expected all task types to be for %s worker, but task %s is for %s worker", workerType, taskType, taskType.WorkerType())
+			}
 		}
 
 		// Open repo
@@ -323,7 +360,7 @@ var runCmd = &cli.Command{
 
 			if !cctx.Bool("no-local-storage") {
 				b, err := json.MarshalIndent(&stores.LocalStorageMeta{
-					ID:       stores.ID(uuid.New().String()),
+					ID:       storiface.ID(uuid.New().String()),
 					Weight:   10,
 					CanSeal:  true,
 					CanStore: false,
@@ -420,35 +457,21 @@ var runCmd = &cli.Command{
 
 		wsts := statestore.New(namespace.Wrap(ds, modules.WorkerCallsPrefix))
 
-		workerApi := &worker{
+		workerApi := &sealworker.Worker{
 			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
-				TaskTypes: taskTypes,
-				NoSwap:    cctx.Bool("no-swap"),
+				TaskTypes:                 taskTypes,
+				NoSwap:                    cctx.Bool("no-swap"),
+				MaxParallelChallengeReads: cctx.Int("post-parallel-reads"),
+				ChallengeReadTimeout:      cctx.Duration("post-read-timeout"),
 			}, remote, localStore, nodeApi, nodeApi, wsts),
-			localStore: localStore,
-			ls:         lr,
+			LocalStore: localStore,
+			Storage:    lr,
 		}
-
-		mux := mux.NewRouter()
 
 		log.Info("Setting up control endpoint at " + address)
 
-		readerHandler, readerServerOpt := rpcenc.ReaderParamDecoder()
-		rpcServer := jsonrpc.NewServer(readerServerOpt)
-		rpcServer.Register("Filecoin", api.PermissionedWorkerAPI(proxy.MetricedWorkerAPI(workerApi)))
-
-		mux.Handle("/rpc/v0", rpcServer)
-		mux.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)
-		mux.PathPrefix("/remote").HandlerFunc(remoteHandler)
-		mux.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
-
-		ah := &auth.Handler{
-			Verify: nodeApi.AuthVerify,
-			Next:   mux.ServeHTTP,
-		}
-
 		srv := &http.Server{
-			Handler: ah,
+			Handler: sealworker.WorkerHandler(nodeApi.AuthVerify, remoteHandler, workerApi, true),
 			BaseContext: func(listener net.Listener) context.Context {
 				ctx, _ := tag.New(context.Background(), tag.Upsert(metrics.APIInterface, "lotus-worker"))
 				return ctx

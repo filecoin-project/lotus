@@ -147,7 +147,7 @@ over time
 			}
 
 			cfg := &stores.LocalStorageMeta{
-				ID:         stores.ID(uuid.New().String()),
+				ID:         storiface.ID(uuid.New().String()),
 				Weight:     cctx.Uint64("weight"),
 				CanSeal:    cctx.Bool("seal"),
 				CanStore:   cctx.Bool("store"),
@@ -210,8 +210,8 @@ var storageListCmd = &cli.Command{
 		}
 
 		type fsInfo struct {
-			stores.ID
-			sectors []stores.Decl
+			storiface.ID
+			sectors []storiface.Decl
 			stat    fsutil.FsStat
 		}
 
@@ -365,8 +365,8 @@ var storageListCmd = &cli.Command{
 }
 
 type storedSector struct {
-	id    stores.ID
-	store stores.SectorStorageInfo
+	id    storiface.ID
+	store storiface.SectorStorageInfo
 
 	unsealed, sealed, cache bool
 	update, updatecache     bool
@@ -433,7 +433,7 @@ var storageFindCmd = &cli.Command{
 			return xerrors.Errorf("finding cache: %w", err)
 		}
 
-		byId := map[stores.ID]*storedSector{}
+		byId := map[storiface.ID]*storedSector{}
 		for _, info := range u {
 			sts, ok := byId[info.ID]
 			if !ok {
@@ -600,7 +600,7 @@ var storageListSectorsCmd = &cli.Command{
 
 		type entry struct {
 			id      abi.SectorNumber
-			storage stores.ID
+			storage storiface.ID
 			ft      storiface.SectorFileType
 			urls    string
 

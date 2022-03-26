@@ -40,7 +40,7 @@ func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi
 		return false, xerrors.Errorf("getting worker paths: %w", err)
 	}
 
-	have := map[stores.ID]struct{}{}
+	have := map[storiface.ID]struct{}{}
 	for _, path := range paths {
 		have[path.ID] = struct{}{}
 	}

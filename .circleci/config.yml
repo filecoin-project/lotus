@@ -973,6 +973,11 @@ workflows:
           target: "./itests/wdpost_test.go"
       
       - test:
+          name: test-itest-worker
+          suite: itest-worker
+          target: "./itests/worker_test.go"
+      
+      - test:
           name: test-unit-cli
           suite: utest-unit-cli
           target: "./cli/... ./cmd/... ./api/..."

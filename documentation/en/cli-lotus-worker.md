@@ -47,7 +47,11 @@ OPTIONS:
    --replica-update              enable replica update (default: true)
    --prove-replica-update2       enable prove replica update 2 (default: true)
    --regen-sector-key            enable regen sector key (default: true)
+   --windowpost                  enable window post (default: false)
+   --winningpost                 enable winning post (default: false)
    --parallel-fetch-limit value  maximum fetch operations to run in parallel (default: 5)
+   --post-parallel-reads value   maximum number of parallel challenge reads (0 = no limit) (default: 0)
+   --post-read-timeout value     time limit for reading PoSt challenges (0 = no limit) (default: 0s)
    --timeout value               used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function (default: "30m")
    --help, -h                    show help (default: false)
    

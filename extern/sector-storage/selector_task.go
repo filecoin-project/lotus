@@ -8,11 +8,11 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 type taskSelector struct {
-	best []stores.StorageInfo //nolint: unused, structcheck
+	best []storiface.StorageInfo //nolint: unused, structcheck
 }
 
 func newTaskSelector() *taskSelector {
