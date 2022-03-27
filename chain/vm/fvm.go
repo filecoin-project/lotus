@@ -233,10 +233,17 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		}
 	}
 
-	fvm, err := ffi.CreateFVM(0,
-		&FvmExtern{Rand: opts.Rand, Blockstore: opts.Bstore, lbState: opts.LookbackState, base: opts.StateBase, epoch: opts.Epoch},
-		opts.Epoch, opts.BaseFee, circToReport, opts.NetworkVersion, opts.StateBase,
-	)
+	fvmOpts := ffi.FVMOpts{
+		FVMVersion:     0,
+		Externs:        &FvmExtern{Rand: opts.Rand, Blockstore: opts.Bstore, lbState: opts.LookbackState, base: opts.StateBase, epoch: opts.Epoch},
+		Epoch:          opts.Epoch,
+		BaseFee:        opts.BaseFee,
+		BaseCircSupply: circToReport,
+		NetworkVersion: opts.NetworkVersion,
+		StateBase:      opts.StateBase,
+	}
+
+	fvm, err := ffi.CreateFVM(&fvmOpts)
 	if err != nil {
 		return nil, err
 	}
