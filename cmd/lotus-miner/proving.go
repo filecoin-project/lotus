@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
 	"text/tabwriter"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
@@ -31,6 +33,7 @@ var provingCmd = &cli.Command{
 		provingFaultsCmd,
 		provingCheckProvableCmd,
 		workersCmd(false),
+		provingComputeCmd,
 	},
 }
 
@@ -508,5 +511,52 @@ var provingCheckProvableCmd = &cli.Command{
 		}
 
 		return tw.Flush()
+	},
+}
+
+var provingComputeCmd = &cli.Command{
+	Name: "compute",
+	Subcommands: []*cli.Command{
+		provingComputeWindowPoStCmd,
+	},
+}
+
+var provingComputeWindowPoStCmd = &cli.Command{
+	Name:  "window-post",
+	Usage: "Compute WindowPoSt for a specific deadline",
+	Description: `Note: This command is intended to be used to verify PoSt compute performance.
+It will not send any messages to the chain.`,
+	ArgsUsage: "[deadline index]",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("must pass deadline index")
+		}
+
+		dlIdx, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse deadline index: %w", err)
+		}
+
+		sapi, scloser, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer scloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		start := time.Now()
+		res, err := sapi.ComputeWindowPoSt(ctx, dlIdx, types.EmptyTSK)
+		fmt.Printf("Took %s\n", time.Now().Sub(start))
+		if err != nil {
+			return err
+		}
+		jr, err := json.Marshal(res)
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(jr))
+
+		return nil
 	},
 }

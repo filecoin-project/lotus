@@ -93,7 +93,7 @@ func (s *WindowPoStScheduler) runGeneratePoST(
 	ctx, span := trace.StartSpan(ctx, "WindowPoStScheduler.generatePoST")
 	defer span.End()
 
-	posts, err := s.runPoStCycle(ctx, *deadline, ts)
+	posts, err := s.runPoStCycle(ctx, false, *deadline, ts)
 	if err != nil {
 		log.Errorf("runPoStCycle failed: %+v", err)
 		return nil, err
@@ -449,19 +449,8 @@ func (s *WindowPoStScheduler) declareFaults(ctx context.Context, dlIdx uint64, p
 	return faults, sm, nil
 }
 
-// runPoStCycle runs a full cycle of the PoSt process:
-//
-//  1. performs recovery declarations for the next deadline.
-//  2. performs fault declarations for the next deadline.
-//  3. computes and submits proofs, batching partitions and making sure they
-//     don't exceed message capacity.
-func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, di dline.Info, ts *types.TipSet) ([]miner.SubmitWindowedPoStParams, error) {
-	ctx, span := trace.StartSpan(ctx, "storage.runPoStCycle")
-	defer span.End()
-
+func (s *WindowPoStScheduler) asyncFaultRecover(di dline.Info, ts *types.TipSet) {
 	go func() {
-		// TODO: extract from runPoStCycle, run on fault cutoff boundaries
-
 		// check faults / recoveries for the *next* deadline. It's already too
 		// late to declare them for this deadline
 		declDeadline := (di.Index + 2) % di.WPoStPeriodDeadlines
@@ -520,6 +509,24 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, di dline.Info, t
 			}
 		})
 	}()
+}
+
+// runPoStCycle runs a full cycle of the PoSt process:
+//
+//  1. performs recovery declarations for the next deadline.
+//  2. performs fault declarations for the next deadline.
+//  3. computes and submits proofs, batching partitions and making sure they
+//     don't exceed message capacity.
+//
+// When `manual` is set, no messages (fault/recover) will be automatically sent
+func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di dline.Info, ts *types.TipSet) ([]miner.SubmitWindowedPoStParams, error) {
+	ctx, span := trace.StartSpan(ctx, "storage.runPoStCycle")
+	defer span.End()
+
+	if !manual {
+		// TODO: extract from runPoStCycle, run on fault cutoff boundaries
+		s.asyncFaultRecover(di, ts)
+	}
 
 	buf := new(bytes.Buffer)
 	if err := s.actor.MarshalCBOR(buf); err != nil {
@@ -940,4 +947,25 @@ func (s *WindowPoStScheduler) prepareMessage(ctx context.Context, msg *types.Mes
 		messagepool.CapGasFee(mff, msg, &api.MessageSendSpec{MaxFee: big.Min(big.Sub(avail, msg.Value), msg.RequiredFunds())})
 	}
 	return nil
+}
+
+func (s *WindowPoStScheduler) ComputePoSt(ctx context.Context, dlIdx uint64, ts *types.TipSet) ([]miner.SubmitWindowedPoStParams, error) {
+	dl, err := s.api.StateMinerProvingDeadline(ctx, s.actor, ts.Key())
+	if err != nil {
+		return nil, xerrors.Errorf("getting deadline: %w", err)
+	}
+	curIdx := dl.Index
+	dl.Index = dlIdx
+	dlDiff := dl.Index - curIdx
+	if dl.Index > curIdx {
+		dlDiff -= dl.WPoStPeriodDeadlines
+		dl.PeriodStart -= dl.WPoStProvingPeriod
+	}
+
+	epochDiff := (dl.WPoStProvingPeriod / abi.ChainEpoch(dl.WPoStPeriodDeadlines)) * abi.ChainEpoch(dlDiff)
+
+	// runPoStCycle only needs dl.Index and dl.Challenge
+	dl.Challenge += epochDiff
+
+	return s.runPoStCycle(ctx, true, *dl, ts)
 }

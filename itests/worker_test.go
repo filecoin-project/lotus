@@ -296,3 +296,49 @@ func TestWindowPostWorkerSkipBadSector(t *testing.T) {
 	require.Equal(t, p.MinerPower, p.TotalPower)
 	require.Equal(t, p.MinerPower.RawBytePower, types.NewInt(uint64(ssz)*uint64(sectors-1)))
 }
+
+func TestWindowPostWorkerManualPoSt(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_ = logging.SetLogLevel("storageminer", "INFO")
+
+	sectors := 2 * 48 * 2
+
+	client, miner, _, ens := kit.EnsembleWorker(t,
+		kit.PresealSectors(sectors), // 2 sectors per partition, 2 partitions in all 48 deadlines
+		kit.LatestActorsAt(-1),
+		kit.ThroughRPC(),
+		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTGenerateWindowPoSt}))
+
+	maddr, err := miner.ActorAddress(ctx)
+	require.NoError(t, err)
+
+	di, err := client.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
+	require.NoError(t, err)
+
+	bm := ens.InterconnectAll().BeginMiningMustPost(2 * time.Millisecond)[0]
+
+	di = di.NextNotElapsed()
+
+	t.Log("Running one proving period")
+	waitUntil := di.Open + di.WPoStChallengeWindow*2 - 2
+	client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
+
+	t.Log("Waiting for post message")
+	bm.Stop()
+
+	tryDl := func(dl uint64) {
+		p, err := miner.ComputeWindowPoSt(ctx, dl, types.EmptyTSK)
+		require.NoError(t, err)
+		require.Len(t, p, 1)
+		require.Equal(t, dl, p[0].Deadline)
+	}
+	tryDl(0)
+	tryDl(40)
+	tryDl(di.Index + 4)
+
+	lastPending, err := client.MpoolPending(ctx, types.EmptyTSK)
+	require.NoError(t, err)
+	require.Len(t, lastPending, 0)
+}

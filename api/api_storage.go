@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -50,6 +51,8 @@ type StorageMiner interface {
 	ActorAddressConfig(ctx context.Context) (AddressConfig, error)            //perm:read
 
 	MiningBase(context.Context) (*types.TipSet, error) //perm:read
+
+	ComputeWindowPoSt(ctx context.Context, dlIdx uint64, tsk types.TipSetKey) ([]miner.SubmitWindowedPoStParams, error) //perm:admin
 
 	// Temp api for testing
 	PledgeSector(context.Context) (abi.SectorID, error) //perm:write

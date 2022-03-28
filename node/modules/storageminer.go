@@ -215,6 +215,7 @@ type StorageMinerParams struct {
 	GetSealingConfigFn dtypes.GetSealingConfigFunc
 	Journal            journal.Journal
 	AddrSel            *storage.AddressSelector
+	Maddr              dtypes.MinerAddress
 }
 
 func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*storage.Miner, error) {
@@ -231,19 +232,10 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			gsd    = params.GetSealingConfigFn
 			j      = params.Journal
 			as     = params.AddrSel
+			maddr  = address.Address(params.Maddr)
 		)
 
-		maddr, err := minerAddrFromDS(ds)
-		if err != nil {
-			return nil, err
-		}
-
 		ctx := helpers.LifecycleCtx(mctx, lc)
-
-		fps, err := storage.NewWindowedPoStScheduler(api, fc, as, sealer, verif, sealer, j, maddr)
-		if err != nil {
-			return nil, err
-		}
 
 		sm, err := storage.NewMiner(api, maddr, ds, sealer, sc, verif, prover, gsd, fc, j, as)
 		if err != nil {
@@ -252,13 +244,43 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 
 		lc.Append(fx.Hook{
 			OnStart: func(context.Context) error {
-				go fps.Run(ctx)
 				return sm.Run(ctx)
 			},
 			OnStop: sm.Stop,
 		})
 
 		return sm, nil
+	}
+}
+
+func WindowPostScheduler(fc config.MinerFeeConfig) func(params StorageMinerParams) (*storage.WindowPoStScheduler, error) {
+	return func(params StorageMinerParams) (*storage.WindowPoStScheduler, error) {
+		var (
+			mctx   = params.MetricsCtx
+			lc     = params.Lifecycle
+			api    = params.API
+			sealer = params.Sealer
+			verif  = params.Verifier
+			j      = params.Journal
+			as     = params.AddrSel
+			maddr  = address.Address(params.Maddr)
+		)
+
+		ctx := helpers.LifecycleCtx(mctx, lc)
+
+		fps, err := storage.NewWindowedPoStScheduler(api, fc, as, sealer, verif, sealer, j, maddr)
+		if err != nil {
+			return nil, err
+		}
+
+		lc.Append(fx.Hook{
+			OnStart: func(context.Context) error {
+				go fps.Run(ctx)
+				return nil
+			},
+		})
+
+		return fps, nil
 	}
 }
 
