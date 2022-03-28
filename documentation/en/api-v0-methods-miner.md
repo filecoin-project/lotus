@@ -16,6 +16,7 @@
   * [CheckProvable](#CheckProvable)
 * [Compute](#Compute)
   * [ComputeProof](#ComputeProof)
+  * [ComputeWindowPoSt](#ComputeWindowPoSt)
 * [Create](#Create)
   * [CreateBackup](#CreateBackup)
 * [Dagstore](#Dagstore)
@@ -390,6 +391,52 @@ Response:
   {
     "PoStProof": 8,
     "ProofBytes": "Ynl0ZSBhcnJheQ=="
+  }
+]
+```
+
+### ComputeWindowPoSt
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  42,
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+[
+  {
+    "Deadline": 42,
+    "Partitions": [
+      {
+        "Index": 42,
+        "Skipped": [
+          5,
+          1
+        ]
+      }
+    ],
+    "Proofs": [
+      {
+        "PoStProof": 8,
+        "ProofBytes": "Ynl0ZSBhcnJheQ=="
+      }
+    ],
+    "ChainCommitEpoch": 10101,
+    "ChainCommitRand": "Bw=="
   }
 ]
 ```
