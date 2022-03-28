@@ -320,7 +320,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	FaultReported: final, // not really supported right now
 
 	FaultedFinal: final,
-	Removed:      final,
+	Removed:      finalRemoved,
 
 	FailedUnrecoverable: final,
 }
@@ -692,6 +692,12 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 func (m *Sealing) ForceSectorState(ctx context.Context, id abi.SectorNumber, state SectorState) error {
 	m.startupWait.Wait()
 	return m.sectors.Send(id, SectorForceState{state})
+}
+
+// as sector has been removed, it's no needs to care about later events,
+// just returns length of events as `processed` is ok.
+func finalRemoved(events []statemachine.Event, state *SectorInfo) (uint64, error) {
+	return uint64(len(events)), nil
 }
 
 func final(events []statemachine.Event, state *SectorInfo) (uint64, error) {
