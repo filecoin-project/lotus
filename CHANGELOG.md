@@ -1,6 +1,6 @@
 # Lotus changelog
 
-# 1.15.1-rc2 / 2022-03-23
+# 1.15.1-rc3 / 2022-03-27
 
 This is the second release candidate of the next *highly recommended* feature release v1.15.1. This feature release introduces Index Provider, GraphSync v2, and many other latest functionalities, improvements and bug fixes. 
 More importantly, node operator can now enable the FVM(experimental) to sync mainnet!!
@@ -10,8 +10,8 @@ More importantly, node operator can now enable the FVM(experimental) to sync mai
 ### 🔥🔥🔥 FVM (Experimental) 🔥🔥🔥
 - feat: fvm: FVM integration  ([filecoin-project/lotus#8332](https://github.com/filecoin-project/lotus/pull/8332))
 The lotus team is excited to announce the launch of experimental non-programmable FVM on mainnet. By enabling `"LOTUS_USE_FVM_EXPERIMENTAL=1` envvar, the lotus daemon will be running the [WASM-compiled built-in actors](https://github.com/filecoin-project/builtin-actors) that is compatible with the existing chain(Network v15 OhSnap). If you are trying it out and having any questions or feedbacks, please leave a comment [here](https://github.com/filecoin-project/lotus/discussions/8334)!
-  -  chore: FVM: log when fvm is used([filecoin-project/lotus#8363](https://github.com/filecoin-project/lotus/pull/8363))
-
+  - chore: FVM: log when fvm is used([filecoin-project/lotus#8363](https://github.com/filecoin-project/lotus/pull/8363))
+  - chore: ffi: the latest fvm release([filecoin-project/lotus#8382](https://github.com/filecoin-project/lotus/pull/8382))
   
 ### 🌟🌟🌟 Index Provider (Production Ready!) 🌟🌟🌟
 - feat: markets: Integrate index ingest protocol and retrieve by any CID ([filecoin-project/lotus#7313](https://github.com/filecoin-project/lotus/pull/7313))
@@ -67,6 +67,7 @@ Follow the instruction [here](https://lotus.filecoin.io/storage-providers/operat
 - test: mempool: Add unit and integration tests ([filecoin-project/lotus#8017](https://github.com/filecoin-project/lotus/pull/8017))
 - splistore cold object reification redux ([filecoin-project/lotus#8029](https://github.com/filecoin-project/lotus/pull/8029))
 - test: cli: chain category unit tests ([filecoin-project/lotus#8048](https://github.com/filecoin-project/lotus/pull/8048))
+- feat: config: Move MakeNewSectorForDeals config into the Sealing section([filecoin-project/lotus#8382](https://github.com/filecoin-project/lotus/pull/8382))
 
 ## Bug Fixes
 - fix: sealing: Remove sector copies from workers after snapdeals ([filecoin-project/lotus#8331](https://github.com/filecoin-project/lotus/pull/8331))
