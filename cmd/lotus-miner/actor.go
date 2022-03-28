@@ -916,7 +916,7 @@ var actorProposeChangeWorker = &cli.Command{
 			return fmt.Errorf("Proposed worker address change not reflected on chain: expected '%s', found '%s'", na, mi.NewWorker)
 		}
 
-		fmt.Fprintf(cctx.App.Writer, "Worker key change to %s successfully sent, change happens at height %d\n", na, mi.WorkerChangeEpoch)
+		fmt.Fprintf(cctx.App.Writer, "Worker key change to %s successfully sent, change happens at height %d.\n", na, mi.WorkerChangeEpoch)
 		fmt.Fprintf(cctx.App.Writer, "If you have no active deadlines, call 'confirm-change-worker' at or after height %d to complete.\n", mi.WorkerChangeEpoch)
 
 		return nil
