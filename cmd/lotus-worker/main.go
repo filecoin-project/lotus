@@ -35,6 +35,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
+	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -227,12 +228,23 @@ var runCmd = &cli.Command{
 			}
 		}
 
+		limit, _, err := ulimit.GetLimit()
+		switch {
+		case err == ulimit.ErrUnsupported:
+			log.Errorw("checking file descriptor limit failed", "error", err)
+		case err != nil:
+			return xerrors.Errorf("checking fd limit: %w", err)
+		default:
+			if limit < build.MinerFDLimit {
+				return xerrors.Errorf("soft file descriptor limit (ulimit -n) too low, want %d, current %d", build.MinerFDLimit, limit)
+			}
+		}
+
 		// Connect to storage-miner
 		ctx := lcli.ReqContext(cctx)
 
 		var nodeApi api.StorageMiner
 		var closer func()
-		var err error
 		for {
 			nodeApi, closer, err = lcli.GetStorageMinerAPI(cctx, cliutil.StorageMinerUseHttp)
 			if err == nil {
