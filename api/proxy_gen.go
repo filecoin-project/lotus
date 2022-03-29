@@ -641,6 +641,8 @@ type StorageMinerStruct struct {
 
 		ComputeProof func(p0 context.Context, p1 []builtin.ExtendedSectorInfo, p2 abi.PoStRandomness, p3 abi.ChainEpoch, p4 abinetwork.Version) ([]builtin.PoStProof, error) `perm:"read"`
 
+		ComputeWindowPoSt func(p0 context.Context, p1 uint64, p2 types.TipSetKey) ([]miner.SubmitWindowedPoStParams, error) `perm:"admin"`
+
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
 		DagstoreGC func(p0 context.Context) ([]DagstoreShardResult, error) `perm:"admin"`
@@ -3855,6 +3857,17 @@ func (s *StorageMinerStruct) ComputeProof(p0 context.Context, p1 []builtin.Exten
 
 func (s *StorageMinerStub) ComputeProof(p0 context.Context, p1 []builtin.ExtendedSectorInfo, p2 abi.PoStRandomness, p3 abi.ChainEpoch, p4 abinetwork.Version) ([]builtin.PoStProof, error) {
 	return *new([]builtin.PoStProof), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) ComputeWindowPoSt(p0 context.Context, p1 uint64, p2 types.TipSetKey) ([]miner.SubmitWindowedPoStParams, error) {
+	if s.Internal.ComputeWindowPoSt == nil {
+		return *new([]miner.SubmitWindowedPoStParams), ErrNotSupported
+	}
+	return s.Internal.ComputeWindowPoSt(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) ComputeWindowPoSt(p0 context.Context, p1 uint64, p2 types.TipSetKey) ([]miner.SubmitWindowedPoStParams, error) {
+	return *new([]miner.SubmitWindowedPoStParams), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) CreateBackup(p0 context.Context, p1 string) error {

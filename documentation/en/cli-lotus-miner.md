@@ -2041,6 +2041,7 @@ COMMANDS:
    faults     View the currently known proving faulty sectors information
    check      Check sectors provable
    workers    list workers
+   compute    
    help, h    Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2127,6 +2128,40 @@ USAGE:
 
 OPTIONS:
    --color     use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner proving compute
+```
+NAME:
+   lotus-miner proving compute - A new cli application
+
+USAGE:
+   lotus-miner proving compute command [command options] [arguments...]
+
+COMMANDS:
+   window-post  Compute WindowPoSt for a specific deadline
+   help, h      Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+#### lotus-miner proving compute window-post
+```
+NAME:
+   lotus-miner proving compute window-post - Compute WindowPoSt for a specific deadline
+
+USAGE:
+   lotus-miner proving compute window-post [command options] [deadline index]
+
+DESCRIPTION:
+   Note: This command is intended to be used to verify PoSt compute performance.
+   It will not send any messages to the chain.
+
+OPTIONS:
    --help, -h  show help (default: false)
    
 ```

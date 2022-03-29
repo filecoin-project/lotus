@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/gen"
 
 	"github.com/google/uuid"
@@ -91,6 +92,8 @@ type StorageMinerAPI struct {
 	stores.SectorIndex
 	storiface.WorkerReturn `optional:"true"`
 	AddrSel                *storage.AddressSelector
+
+	WdPoSt *storage.WindowPoStScheduler
 
 	Epp gen.WinningPoStProver `optional:"true"`
 	DS  dtypes.MetadataDS
@@ -405,6 +408,21 @@ func (sm *StorageMinerAPI) SectorCommitPending(ctx context.Context) ([]abi.Secto
 
 func (sm *StorageMinerAPI) SectorMatchPendingPiecesToOpenSectors(ctx context.Context) error {
 	return sm.Miner.SectorMatchPendingPiecesToOpenSectors(ctx)
+}
+
+func (sm *StorageMinerAPI) ComputeWindowPoSt(ctx context.Context, dlIdx uint64, tsk types.TipSetKey) ([]lminer.SubmitWindowedPoStParams, error) {
+	var ts *types.TipSet
+	var err error
+	if tsk == types.EmptyTSK {
+		ts, err = sm.Full.ChainHead(ctx)
+	} else {
+		ts, err = sm.Full.ChainGetTipSet(ctx, tsk)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return sm.WdPoSt.ComputePoSt(ctx, dlIdx, ts)
 }
 
 func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {
