@@ -620,6 +620,14 @@ over the worker address if this flag is set.`,
 			Comment: ``,
 		},
 	},
+	"ProvingConfig": []DocField{
+		{
+			Name: "ParallelCheckLimit",
+			Type: "int",
+
+			Comment: `Maximum number of sector checks to run in parallel. (0 = unlimited)`,
+		},
+	},
 	"Pubsub": []DocField{
 		{
 			Name: "Bootstrapper",
@@ -689,6 +697,70 @@ default value is true`,
 
 			Comment: `Path of the external script that will be run to price a retrieval deal.
 This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "external".`,
+		},
+	},
+	"SealerConfig": []DocField{
+		{
+			Name: "ParallelFetchLimit",
+			Type: "int",
+
+			Comment: ``,
+		},
+		{
+			Name: "AllowAddPiece",
+			Type: "bool",
+
+			Comment: `Local worker config`,
+		},
+		{
+			Name: "AllowPreCommit1",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "AllowPreCommit2",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "AllowCommit",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "AllowUnseal",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "AllowReplicaUpdate",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "AllowProveReplicaUpdate2",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "AllowRegenSectorKey",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "ResourceFiltering",
+			Type: "sectorstorage.ResourceFilteringStrategy",
+
+			Comment: `ResourceFiltering instructs the system which resource filtering strategy
+to use when evaluating tasks against this worker. An empty value defaults
+to "hardware".`,
 		},
 	},
 	"SealingConfig": []DocField{
@@ -934,6 +1006,12 @@ Default is 20 (about once a week).`,
 			Comment: ``,
 		},
 		{
+			Name: "Proving",
+			Type: "ProvingConfig",
+
+			Comment: ``,
+		},
+		{
 			Name: "Sealing",
 			Type: "SealingConfig",
 
@@ -941,7 +1019,7 @@ Default is 20 (about once a week).`,
 		},
 		{
 			Name: "Storage",
-			Type: "sectorstorage.SealerConfig",
+			Type: "SealerConfig",
 
 			Comment: ``,
 		},

@@ -306,6 +306,14 @@
   #PurgeCacheOnStart = false
 
 
+[Proving]
+  # Maximum number of sector checks to run in parallel. (0 = unlimited)
+  #
+  # type: int
+  # env var: LOTUS_PROVING_PARALLELCHECKLIMIT
+  #ParallelCheckLimit = 0
+
+
 [Sealing]
   # Upper bound on how many sectors can be waiting for more deals to be packed in it before it begins sealing at any given time.
   # If the miner is accepting multiple deals in parallel, up to MaxWaitDealsSectors of new sectors will be created.
@@ -484,33 +492,49 @@
 
 
 [Storage]
+  # type: int
   # env var: LOTUS_STORAGE_PARALLELFETCHLIMIT
   #ParallelFetchLimit = 10
 
+  # Local worker config
+  #
+  # type: bool
   # env var: LOTUS_STORAGE_ALLOWADDPIECE
   #AllowAddPiece = true
 
+  # type: bool
   # env var: LOTUS_STORAGE_ALLOWPRECOMMIT1
   #AllowPreCommit1 = true
 
+  # type: bool
   # env var: LOTUS_STORAGE_ALLOWPRECOMMIT2
   #AllowPreCommit2 = true
 
+  # type: bool
   # env var: LOTUS_STORAGE_ALLOWCOMMIT
   #AllowCommit = true
 
+  # type: bool
   # env var: LOTUS_STORAGE_ALLOWUNSEAL
   #AllowUnseal = true
 
+  # type: bool
   # env var: LOTUS_STORAGE_ALLOWREPLICAUPDATE
   #AllowReplicaUpdate = true
 
+  # type: bool
   # env var: LOTUS_STORAGE_ALLOWPROVEREPLICAUPDATE2
   #AllowProveReplicaUpdate2 = true
 
+  # type: bool
   # env var: LOTUS_STORAGE_ALLOWREGENSECTORKEY
   #AllowRegenSectorKey = true
 
+  # ResourceFiltering instructs the system which resource filtering strategy
+  # to use when evaluating tasks against this worker. An empty value defaults
+  # to "hardware".
+  #
+  # type: sectorstorage.ResourceFilteringStrategy
   # env var: LOTUS_STORAGE_RESOURCEFILTERING
   #ResourceFiltering = "hardware"
 

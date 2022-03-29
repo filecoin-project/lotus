@@ -585,7 +585,7 @@ func (n *Ensemble) Start() *Ensemble {
 
 			// disable resource filtering so that local worker gets assigned tasks
 			// regardless of system pressure.
-			node.Override(new(sectorstorage.SealerConfig), func() sectorstorage.SealerConfig {
+			node.Override(new(sectorstorage.Config), func() sectorstorage.Config {
 				scfg := config.DefaultStorageMiner()
 
 				if noLocal {
@@ -596,7 +596,7 @@ func (n *Ensemble) Start() *Ensemble {
 				}
 
 				scfg.Storage.ResourceFiltering = sectorstorage.ResourceFilteringDisabled
-				return scfg.Storage
+				return scfg.StorageManager()
 			}),
 
 			// upgrades
