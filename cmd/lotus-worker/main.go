@@ -196,7 +196,7 @@ var runCmd = &cli.Command{
 		&cli.IntFlag{
 			Name:  "post-parallel-reads",
 			Usage: "maximum number of parallel challenge reads (0 = no limit)",
-			Value: 0,
+			Value: 128,
 		},
 		&cli.DurationFlag{
 			Name:  "post-read-timeout",

@@ -311,7 +311,7 @@
   #
   # type: int
   # env var: LOTUS_PROVING_PARALLELCHECKLIMIT
-  #ParallelCheckLimit = 0
+  #ParallelCheckLimit = 128
 
 
 [Sealing]
