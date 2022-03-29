@@ -1,10 +1,9 @@
 package config
 
 import (
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/lotus/chain/types"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/ipfs/go-cid"
 )
 
 // // NOTE: ONLY PUT STRUCT DEFINITIONS IN THIS FILE
@@ -53,8 +52,9 @@ type StorageMiner struct {
 	Subsystems    MinerSubsystemConfig
 	Dealmaking    DealmakingConfig
 	IndexProvider IndexProviderConfig
+	Proving       ProvingConfig
 	Sealing       SealingConfig
-	Storage       sectorstorage.SealerConfig
+	Storage       SealerConfig
 	Fees          MinerFeeConfig
 	Addresses     MinerAddressConfig
 	DAGStore      DAGStoreConfig
@@ -216,6 +216,13 @@ type RetrievalPricingDefault struct {
 	VerifiedDealsFreeTransfer bool
 }
 
+type ProvingConfig struct {
+	// Maximum number of sector checks to run in parallel. (0 = unlimited)
+	ParallelCheckLimit int
+
+	// todo disable builtin post
+}
+
 type SealingConfig struct {
 	// Upper bound on how many sectors can be waiting for more deals to be packed in it before it begins sealing at any given time.
 	// If the miner is accepting multiple deals in parallel, up to MaxWaitDealsSectors of new sectors will be created.
@@ -305,6 +312,25 @@ type SealingConfig struct {
 	// todo TargetSealingSectors uint64
 
 	// todo TargetSectors - stop auto-pleding new sectors after this many sectors are sealed, default CC upgrade for deals sectors if above
+}
+
+type SealerConfig struct {
+	ParallelFetchLimit int
+
+	// Local worker config
+	AllowAddPiece            bool
+	AllowPreCommit1          bool
+	AllowPreCommit2          bool
+	AllowCommit              bool
+	AllowUnseal              bool
+	AllowReplicaUpdate       bool
+	AllowProveReplicaUpdate2 bool
+	AllowRegenSectorKey      bool
+
+	// ResourceFiltering instructs the system which resource filtering strategy
+	// to use when evaluating tasks against this worker. An empty value defaults
+	// to "hardware".
+	ResourceFiltering sectorstorage.ResourceFilteringStrategy
 }
 
 type BatchFeeConfig struct {
