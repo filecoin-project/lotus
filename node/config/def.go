@@ -138,7 +138,11 @@ func DefaultStorageMiner() *StorageMiner {
 			TerminateBatchWait: Duration(5 * time.Minute),
 		},
 
-		Storage: sectorstorage.SealerConfig{
+		Proving: ProvingConfig{
+			ParallelCheckLimit: 128,
+		},
+
+		Storage: SealerConfig{
 			AllowAddPiece:            true,
 			AllowPreCommit1:          true,
 			AllowPreCommit2:          true,

@@ -214,7 +214,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees, &cfg.Dealmaking)),
 		),
 
-		Override(new(sectorstorage.SealerConfig), cfg.Storage),
+		Override(new(sectorstorage.Config), cfg.StorageManager()),
 		Override(new(*storage.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
 	)
 }
