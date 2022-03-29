@@ -126,6 +126,8 @@ func (m *Manager) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof,
 		}(sector)
 	}
 
+	wg.Wait()
+
 	return bad, nil
 }
 
