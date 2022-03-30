@@ -65,12 +65,6 @@ func infoCmdAct(cctx *cli.Context) error {
 	}
 	defer closer()
 
-	marketsApi, closer, err := lcli.GetMarketsAPI(cctx)
-	if err != nil {
-		return err
-	}
-	defer closer()
-
 	fullapi, acloser, err := lcli.GetFullNodeAPI(cctx)
 	if err != nil {
 		return err
@@ -85,13 +79,6 @@ func infoCmdAct(cctx *cli.Context) error {
 	}
 
 	fmt.Println("Enabled subsystems (from miner API):", subsystems)
-
-	subsystems, err = marketsApi.RuntimeSubsystems(ctx)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println("Enabled subsystems (from markets API):", subsystems)
 
 	fmt.Print("Chain: ")
 
@@ -141,11 +128,6 @@ func infoCmdAct(cctx *cli.Context) error {
 	}
 
 	err = handleMiningInfo(ctx, cctx, fullapi, minerApi)
-	if err != nil {
-		return err
-	}
-
-	err = handleMarketsInfo(ctx, marketsApi)
 	if err != nil {
 		return err
 	}
