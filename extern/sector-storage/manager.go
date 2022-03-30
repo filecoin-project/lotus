@@ -693,6 +693,10 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storage.Sect
 		err = multierr.Append(err, move(moveUnsealed))
 	}
 
+	if err != nil {
+		return xerrors.Errorf("moving sector to storage: %w", err)
+	}
+
 	return nil
 }
 
