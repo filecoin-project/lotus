@@ -7,8 +7,6 @@ import (
 	corebig "math/big"
 	"os"
 	"sort"
-	"strings"
-	"text/tabwriter"
 	"time"
 
 	"github.com/fatih/color"
@@ -19,8 +17,6 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/api/v0api"
@@ -368,105 +364,6 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.Full
 			return err
 		}
 	}
-
-	return nil
-}
-
-func handleMarketsInfo(ctx context.Context, nodeApi api.StorageMiner) error {
-	deals, err := nodeApi.MarketListIncompleteDeals(ctx)
-	if err != nil {
-		return err
-	}
-
-	type dealStat struct {
-		count, verifCount int
-		bytes, verifBytes uint64
-	}
-	dsAdd := func(ds *dealStat, deal storagemarket.MinerDeal) {
-		ds.count++
-		ds.bytes += uint64(deal.Proposal.PieceSize)
-		if deal.Proposal.VerifiedDeal {
-			ds.verifCount++
-			ds.verifBytes += uint64(deal.Proposal.PieceSize)
-		}
-	}
-
-	showDealStates := map[storagemarket.StorageDealStatus]struct{}{
-		storagemarket.StorageDealActive:               {},
-		storagemarket.StorageDealAcceptWait:           {},
-		storagemarket.StorageDealReserveProviderFunds: {},
-		storagemarket.StorageDealProviderFunding:      {},
-		storagemarket.StorageDealTransferring:         {},
-		storagemarket.StorageDealValidating:           {},
-		storagemarket.StorageDealStaged:               {},
-		storagemarket.StorageDealAwaitingPreCommit:    {},
-		storagemarket.StorageDealSealing:              {},
-		storagemarket.StorageDealPublish:              {},
-		storagemarket.StorageDealCheckForAcceptance:   {},
-		storagemarket.StorageDealPublishing:           {},
-	}
-
-	var total dealStat
-	perState := map[storagemarket.StorageDealStatus]*dealStat{}
-	for _, deal := range deals {
-		if _, ok := showDealStates[deal.State]; !ok {
-			continue
-		}
-		if perState[deal.State] == nil {
-			perState[deal.State] = new(dealStat)
-		}
-
-		dsAdd(&total, deal)
-		dsAdd(perState[deal.State], deal)
-	}
-
-	type wstr struct {
-		str    string
-		status storagemarket.StorageDealStatus
-	}
-	sorted := make([]wstr, 0, len(perState))
-	for status, stat := range perState {
-		st := strings.TrimPrefix(storagemarket.DealStates[status], "StorageDeal")
-		sorted = append(sorted, wstr{
-			str:    fmt.Sprintf("      %s:\t%d\t\t%s\t(Verified: %d\t%s)\n", st, stat.count, types.SizeStr(types.NewInt(stat.bytes)), stat.verifCount, types.SizeStr(types.NewInt(stat.verifBytes))),
-			status: status,
-		},
-		)
-	}
-	sort.Slice(sorted, func(i, j int) bool {
-		if sorted[i].status == storagemarket.StorageDealActive || sorted[j].status == storagemarket.StorageDealActive {
-			return sorted[i].status == storagemarket.StorageDealActive
-		}
-		return sorted[i].status > sorted[j].status
-	})
-
-	fmt.Println()
-	fmt.Printf("Storage Deals: %d, %s\n", total.count, types.SizeStr(types.NewInt(total.bytes)))
-
-	tw := tabwriter.NewWriter(os.Stdout, 1, 1, 1, ' ', 0)
-	for _, e := range sorted {
-		_, _ = tw.Write([]byte(e.str))
-	}
-
-	_ = tw.Flush()
-	fmt.Println()
-
-	retrievals, err := nodeApi.MarketListRetrievalDeals(ctx)
-	if err != nil {
-		return xerrors.Errorf("getting retrieval deal list: %w", err)
-	}
-
-	var retrComplete dealStat
-	for _, retrieval := range retrievals {
-		if retrieval.Status == retrievalmarket.DealStatusCompleted {
-			retrComplete.count++
-			retrComplete.bytes += retrieval.TotalSent
-		}
-	}
-
-	fmt.Printf("Retrieval Deals (complete): %d, %s\n", retrComplete.count, types.SizeStr(types.NewInt(retrComplete.bytes)))
-
-	fmt.Println()
 
 	return nil
 }
