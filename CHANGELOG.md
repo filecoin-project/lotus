@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# 1.15.1-rc3 / 2022-03-27
+# 1.15.1-rc4 / 2022-03-29
 
-This is the second release candidate of the next *highly recommended* feature release v1.15.1. This feature release introduces Index Provider, GraphSync v2, and many other latest functionalities, improvements and bug fixes. 
+This is the forth release candidate of the next *highly recommended* feature release v1.15.1. This feature release introduces Index Provider, GraphSync v2, and many other latest functionalities, improvements and bug fixes. 
 More importantly, node operator can now enable the FVM(experimental) to sync mainnet!!
 
 ## Highlights
