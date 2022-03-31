@@ -1074,43 +1074,43 @@ workflows:
       - publish-packer-mainnet:
           requires:
             - build-all
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+          # filters:
+          #   branches:
+          #     ignore:
+          #       - /.*/
+          #   tags:
+          #     only:
+          #       - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish-packer-calibrationnet:
           requires:
             - build-ntwk-calibration
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+          # filters:
+          #   branches:
+          #     ignore:
+          #       - /.*/
+          #   tags:
+          #     only:
+          #       - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish-packer-butterflynet:
           requires:
             - build-ntwk-butterfly
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+          # filters:
+          #   branches:
+          #     ignore:
+          #       - /.*/
+          #   tags:
+          #     only:
+          #       - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish-snapcraft:
           name: publish-snapcraft-stable
           channel: stable
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+          # filters:
+          #   branches:
+          #     ignore:
+          #       - /.*/
+          #   tags:
+          #     only:
+          #       - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish-dockerhub:
           name: publish-dockerhub
           tag: stable
