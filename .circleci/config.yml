@@ -1098,13 +1098,13 @@ workflows:
       - publish-packer-mainnet:
           requires:
             - build-all
-          # filters:
-          #   branches:
-          #     ignore:
-          #       - /.*/
-          #   tags:
-          #     only:
-          #       - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish-packer-calibrationnet:
           requires:
             - build-ntwk-calibration
