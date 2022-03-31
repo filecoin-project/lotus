@@ -11,6 +11,16 @@ executors:
   ubuntu:
     docker:
       - image: ubuntu:20.04
+  packer:
+    description: |
+      The HashiCorp provided Packer container
+    parameters:
+      packer-version:
+        type: string
+        default: 1.8.1
+    docker:
+      - image: hashicorp/packer:<< parameters.packer-version >>
+
 
 commands:
   install-deps:
@@ -701,8 +711,7 @@ jobs:
   publish-packer-mainnet:
     description: build and push AWS IAM and DigitalOcean droplet.
     executor:
-      name: packer/default
-      packer-version: 1.6.6
+      name: packer
     steps:
       - checkout
       - attach_workspace:
@@ -713,8 +722,7 @@ jobs:
   publish-packer-calibrationnet:
     description: build and push AWS IAM and DigitalOcean droplet.
     executor:
-      name: packer/default
-      packer-version: 1.6.6
+      name: packer
     steps:
       - checkout
       - attach_workspace:
@@ -725,8 +733,7 @@ jobs:
   publish-packer-butterflynet:
     description: build and push AWS IAM and DigitalOcean droplet.
     executor:
-      name: packer/default
-      packer-version: 1.6.6
+      name: packer
     steps:
       - checkout
       - attach_workspace:
@@ -737,8 +744,7 @@ jobs:
   publish-packer-snap:
     description: build packer image with snap. mainnet only.
     executor:
-      name: packer/default
-      packer-version: 1.6.6
+      name: packer
     steps:
       - checkout
       - attach_workspace:
