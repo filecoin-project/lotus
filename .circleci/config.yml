@@ -2,7 +2,6 @@ version: 2.1
 orbs:
   go: gotest/tools@0.0.13
   aws-cli: circleci/aws-cli@1.3.2
-  packer: salaxander/packer@0.0.3
 
 executors:
   golang:
@@ -74,6 +73,26 @@ commands:
           name: fetch all tags
           command: |
             git fetch --all
+
+  packer_build:
+    description: "Run a packer build"
+    parameters:
+      template:
+        description: |
+          The name of the packer template file
+        type: string
+        default: packer.json
+      args:
+        description: |
+          Arguments to pass to the packer build command
+        type: string
+        default: ""
+
+    steps:
+      - run:
+          name: "Run a packer build"
+          command: packer build << parameters.args >> << parameters.template >>
+          no_output_timeout: 30m
 
 jobs:
   mod-tidy-check:
@@ -688,9 +707,9 @@ jobs:
       - checkout
       - attach_workspace:
           at: "."
-      - packer/build:
+      - packer_build:
           template: tools/packer/lotus.pkr.hcl
-          args: "-debug -var ci_workspace_bins=./linux -var lotus_network=mainnet -var git_tag=$CIRCLE_TAG"
+          args: "-var ci_workspace_bins=./linux -var lotus_network=mainnet -var git_tag=$CIRCLE_TAG"
   publish-packer-calibrationnet:
     description: build and push AWS IAM and DigitalOcean droplet.
     executor:
@@ -700,9 +719,9 @@ jobs:
       - checkout
       - attach_workspace:
           at: "."
-      - packer/build:
+      - packer_build:
           template: tools/packer/lotus.pkr.hcl
-          args: "-debug -var ci_workspace_bins=./linux-calibrationnet -var lotus_network=calibrationnet -var git_tag=$CIRCLE_TAG"
+          args: "-var ci_workspace_bins=./linux-calibrationnet -var lotus_network=calibrationnet -var git_tag=$CIRCLE_TAG"
   publish-packer-butterflynet:
     description: build and push AWS IAM and DigitalOcean droplet.
     executor:
@@ -712,9 +731,9 @@ jobs:
       - checkout
       - attach_workspace:
           at: "."
-      - packer/build:
+      - packer_build:
           template: tools/packer/lotus.pkr.hcl
-          args: "-debug -var ci_workspace_bins=./linux-butterflynet -var lotus_network=butterflynet -var git_tag=$CIRCLE_TAG"
+          args: "-var ci_workspace_bins=./linux-butterflynet -var lotus_network=butterflynet -var git_tag=$CIRCLE_TAG"
   publish-packer-snap:
     description: build packer image with snap. mainnet only.
     executor:
@@ -724,9 +743,8 @@ jobs:
       - checkout
       - attach_workspace:
           at: "."
-      - packer/build:
+      - packer_build:
           template: tools/packer/lotus-snap.pkr.hcl
-          args: "-debug"
   publish-dockerhub:
     description: publish to dockerhub
     machine:
