@@ -690,7 +690,7 @@ jobs:
           at: "."
       - packer/build:
           template: tools/packer/lotus.pkr.hcl
-          args: "-var ci_workspace_bins=./linux -var lotus_network=mainnet -var git_tag=$CIRCLE_TAG"
+          args: "-debug -var ci_workspace_bins=./linux -var lotus_network=mainnet -var git_tag=$CIRCLE_TAG"
   publish-packer-calibrationnet:
     description: build and push AWS IAM and DigitalOcean droplet.
     executor:
@@ -702,7 +702,7 @@ jobs:
           at: "."
       - packer/build:
           template: tools/packer/lotus.pkr.hcl
-          args: "-var ci_workspace_bins=./linux-calibrationnet -var lotus_network=calibrationnet -var git_tag=$CIRCLE_TAG"
+          args: "-debug -var ci_workspace_bins=./linux-calibrationnet -var lotus_network=calibrationnet -var git_tag=$CIRCLE_TAG"
   publish-packer-butterflynet:
     description: build and push AWS IAM and DigitalOcean droplet.
     executor:
@@ -714,7 +714,7 @@ jobs:
           at: "."
       - packer/build:
           template: tools/packer/lotus.pkr.hcl
-          args: "-var ci_workspace_bins=./linux-butterflynet -var lotus_network=butterflynet -var git_tag=$CIRCLE_TAG"
+          args: "-debug -var ci_workspace_bins=./linux-butterflynet -var lotus_network=butterflynet -var git_tag=$CIRCLE_TAG"
   publish-packer-snap:
     description: build packer image with snap. mainnet only.
     executor:
@@ -726,6 +726,7 @@ jobs:
           at: "."
       - packer/build:
           template: tools/packer/lotus-snap.pkr.hcl
+          args: "-debug"
   publish-dockerhub:
     description: publish to dockerhub
     machine:
