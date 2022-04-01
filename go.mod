@@ -110,6 +110,7 @@ require (
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
 	github.com/jonboulle/clockwork v0.2.2 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0
+	github.com/koalacxr/quantile v0.0.1
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/libp2p/go-eventbus v0.2.1
 	github.com/libp2p/go-libp2p v0.18.0
@@ -143,7 +144,6 @@ require (
 	github.com/prometheus/client_golang v1.11.0
 	github.com/raulk/clock v1.1.0
 	github.com/raulk/go-watchdog v1.2.0
-	github.com/streadway/quantile v0.0.0-20150917103942-b0c588724d25
 	github.com/stretchr/testify v1.7.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/uber/jaeger-client-go v2.25.0+incompatible // indirect

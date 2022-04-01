@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"syscall"
 
+	"github.com/ipfs/go-cid"
+	"github.com/koalacxr/quantile"
+	"github.com/urfave/cli/v2"
+
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation"
 	"github.com/filecoin-project/lotus/lib/stati"
-	"github.com/ipfs/go-cid"
-	"github.com/streadway/quantile"
-	"github.com/urfave/cli/v2"
 )
 
 var infoMessageSizeSimCommand = &cli.Command{
