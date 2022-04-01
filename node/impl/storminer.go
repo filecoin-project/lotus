@@ -93,7 +93,7 @@ type StorageMinerAPI struct {
 	storiface.WorkerReturn `optional:"true"`
 	AddrSel                *storage.AddressSelector
 
-	WdPoSt *storage.WindowPoStScheduler
+	WdPoSt *storage.WindowPoStScheduler `optional:"true"`
 
 	Epp gen.WinningPoStProver `optional:"true"`
 	DS  dtypes.MetadataDS
