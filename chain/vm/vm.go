@@ -42,7 +42,7 @@ const MaxCallDepth = 4096
 
 var (
 	log            = logging.Logger("vm")
-	actorLog       = logging.Logger("actors")
+	actorLog       = logging.WithSkip(logging.Logger("actors"), 1)
 	gasOnActorExec = newGasCharge("OnActorExec", 0, 0)
 )
 
