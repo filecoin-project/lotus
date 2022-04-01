@@ -3,7 +3,12 @@ package main
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/lotus/build"
+	lcli "github.com/filecoin-project/lotus/cli"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"time"
@@ -29,6 +34,8 @@ var simpleCmd = &cli.Command{
 		simpleAddPiece,
 		simplePreCommit1,
 		simplePreCommit2,
+		simpleCommit1,
+		simpleCommit2,
 		simpleWindowPost,
 		simpleWinningPost,
 	},
@@ -262,6 +269,185 @@ var simplePreCommit2 = &cli.Command{
 
 		fmt.Printf("PreCommit2 %s (%s)\n", took, bps(sectorSize, 1, took))
 		fmt.Printf("d:%s r:%s\n", p2o.Unsealed, p2o.Sealed)
+		return nil
+	},
+}
+
+var simpleCommit1 = &cli.Command{
+	Name: "commit1",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "sector-size",
+			Value: "512MiB",
+			Usage: "size of the sectors in bytes, i.e. 32GiB",
+		},
+		&cli.StringFlag{
+			Name:  "miner-addr",
+			Usage: "pass miner address (only necessary if using existing sectorbuilder)",
+			Value: "t01000",
+		},
+	},
+	ArgsUsage: "[sealed] [cache] [comm D] [comm R] [c1out.json]",
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		maddr, err := address.NewFromString(cctx.String("miner-addr"))
+		if err != nil {
+			return err
+		}
+		amid, err := address.IDFromAddress(maddr)
+		if err != nil {
+			return err
+		}
+		mid := abi.ActorID(amid)
+
+		sectorSizeInt, err := units.RAMInBytes(cctx.String("sector-size"))
+		if err != nil {
+			return err
+		}
+		sectorSize := abi.SectorSize(sectorSizeInt)
+
+		pp := benchSectorProvider{
+			storiface.FTSealed: cctx.Args().Get(0),
+			storiface.FTCache:  cctx.Args().Get(1),
+		}
+		sealer, err := ffiwrapper.New(pp)
+		if err != nil {
+			return err
+		}
+
+		sr := storage.SectorRef{
+			ID: abi.SectorID{
+				Miner:  mid,
+				Number: 1,
+			},
+			ProofType: spt(sectorSize),
+		}
+
+		start := time.Now()
+
+		var ticket, seed [32]byte // all zero
+
+		commd, err := cid.Parse(cctx.Args().Get(2))
+		if err != nil {
+			return xerrors.Errorf("parse commr: %w", err)
+		}
+
+		commr, err := cid.Parse(cctx.Args().Get(3))
+		if err != nil {
+			return xerrors.Errorf("parse commr: %w", err)
+		}
+
+		c1o, err := sealer.SealCommit1(ctx, sr, ticket[:], seed[:], []abi.PieceInfo{
+			{
+				Size:     abi.PaddedPieceSize(sectorSize),
+				PieceCID: commd,
+			},
+		}, storage.SectorCids{
+			Unsealed: commd,
+			Sealed:   commr,
+		})
+		if err != nil {
+			return xerrors.Errorf("commit1: %w", err)
+		}
+
+		took := time.Now().Sub(start)
+
+		fmt.Printf("Commit1 %s (%s)\n", took, bps(sectorSize, 1, took))
+
+		c2in := Commit2In{
+			SectorNum:  int64(1),
+			Phase1Out:  c1o,
+			SectorSize: uint64(sectorSize),
+		}
+
+		b, err := json.Marshal(&c2in)
+		if err != nil {
+			return err
+		}
+
+		if err := ioutil.WriteFile(cctx.Args().Get(4), b, 0664); err != nil {
+			log.Warnf("%+v", err)
+		}
+
+		return nil
+	},
+}
+
+var simpleCommit2 = &cli.Command{
+	Name:      "commit2",
+	ArgsUsage: "[c1out.json]",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "no-gpu",
+			Usage: "disable gpu usage for the benchmark run",
+		},
+		&cli.StringFlag{
+			Name:  "miner-addr",
+			Usage: "pass miner address (only necessary if using existing sectorbuilder)",
+			Value: "t01000",
+		},
+	},
+	Action: func(c *cli.Context) error {
+		if c.Bool("no-gpu") {
+			err := os.Setenv("BELLMAN_NO_GPU", "1")
+			if err != nil {
+				return xerrors.Errorf("setting no-gpu flag: %w", err)
+			}
+		}
+
+		if !c.Args().Present() {
+			return xerrors.Errorf("Usage: lotus-bench prove [input.json]")
+		}
+
+		inb, err := ioutil.ReadFile(c.Args().First())
+		if err != nil {
+			return xerrors.Errorf("reading input file: %w", err)
+		}
+
+		var c2in Commit2In
+		if err := json.Unmarshal(inb, &c2in); err != nil {
+			return xerrors.Errorf("unmarshalling input file: %w", err)
+		}
+
+		if err := paramfetch.GetParams(lcli.ReqContext(c), build.ParametersJSON(), build.SrsJSON(), c2in.SectorSize); err != nil {
+			return xerrors.Errorf("getting params: %w", err)
+		}
+
+		maddr, err := address.NewFromString(c.String("miner-addr"))
+		if err != nil {
+			return err
+		}
+		mid, err := address.IDFromAddress(maddr)
+		if err != nil {
+			return err
+		}
+
+		sb, err := ffiwrapper.New(nil)
+		if err != nil {
+			return err
+		}
+
+		ref := storage.SectorRef{
+			ID: abi.SectorID{
+				Miner:  abi.ActorID(mid),
+				Number: abi.SectorNumber(c2in.SectorNum),
+			},
+			ProofType: spt(abi.SectorSize(c2in.SectorSize)),
+		}
+
+		start := time.Now()
+
+		proof, err := sb.SealCommit2(context.TODO(), ref, c2in.Phase1Out)
+		if err != nil {
+			return err
+		}
+
+		sealCommit2 := time.Now()
+		dur := sealCommit2.Sub(start)
+
+		fmt.Printf("Commit2: %s (%s)\n", dur, bps(abi.SectorSize(c2in.SectorSize), 1, dur))
+		fmt.Printf("proof: %x\n", proof)
 		return nil
 	},
 }
