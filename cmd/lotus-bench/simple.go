@@ -5,9 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/lotus/build"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"io/ioutil"
 	"os"
 	"strconv"
@@ -20,7 +17,10 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/build"
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	prf "github.com/filecoin-project/specs-actors/actors/runtime/proof"
@@ -38,6 +38,9 @@ var simpleCmd = &cli.Command{
 		simpleCommit2,
 		simpleWindowPost,
 		simpleWinningPost,
+		simpleReplicaUpdate,
+		simpleProveReplicaUpdate1,
+		simpleProveReplicaUpdate2,
 	},
 }
 
@@ -182,7 +185,7 @@ var simplePreCommit1 = &cli.Command{
 
 		var ticket [32]byte // all zero
 
-		pieces, err := ParsePieceInfos(cctx)
+		pieces, err := ParsePieceInfos(cctx, 3)
 		if err != nil {
 			return err
 		}
@@ -626,15 +629,269 @@ var simpleWinningPost = &cli.Command{
 	},
 }
 
-func ParsePieceInfos(cctx *cli.Context) ([]abi.PieceInfo, error) {
+var simpleReplicaUpdate = &cli.Command{
+	Name: "replicaupdate",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "sector-size",
+			Value: "512MiB",
+			Usage: "size of the sectors in bytes, i.e. 32GiB",
+		},
+		&cli.StringFlag{
+			Name:  "miner-addr",
+			Usage: "pass miner address (only necessary if using existing sectorbuilder)",
+			Value: "t01000",
+		},
+	},
+	ArgsUsage: "[sealed] [cache] [unsealed] [update] [updatecache] [[piece cid] [piece size]]...",
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		maddr, err := address.NewFromString(cctx.String("miner-addr"))
+		if err != nil {
+			return err
+		}
+		amid, err := address.IDFromAddress(maddr)
+		if err != nil {
+			return err
+		}
+		mid := abi.ActorID(amid)
+
+		sectorSizeInt, err := units.RAMInBytes(cctx.String("sector-size"))
+		if err != nil {
+			return err
+		}
+		sectorSize := abi.SectorSize(sectorSizeInt)
+
+		pp := benchSectorProvider{
+			storiface.FTSealed:      cctx.Args().Get(0),
+			storiface.FTCache:       cctx.Args().Get(1),
+			storiface.FTUnsealed:    cctx.Args().Get(2),
+			storiface.FTUpdate:      cctx.Args().Get(3),
+			storiface.FTUpdateCache: cctx.Args().Get(4),
+		}
+		sealer, err := ffiwrapper.New(pp)
+		if err != nil {
+			return err
+		}
+
+		pieces, err := ParsePieceInfos(cctx, 5)
+		if err != nil {
+			return err
+		}
+		sr := storage.SectorRef{
+			ID: abi.SectorID{
+				Miner:  mid,
+				Number: 1,
+			},
+			ProofType: spt(sectorSize),
+		}
+
+		start := time.Now()
+
+		ruo, err := sealer.ReplicaUpdate(ctx, sr, pieces)
+		if err != nil {
+			return xerrors.Errorf("replica update: %w", err)
+		}
+
+		took := time.Now().Sub(start)
+
+		fmt.Printf("ReplicaUpdate %s (%s)\n", took, bps(sectorSize, 1, took))
+		fmt.Printf("d:%s r:%s\n", ruo.NewUnsealed, ruo.NewSealed)
+		return nil
+	},
+}
+
+var simpleProveReplicaUpdate1 = &cli.Command{
+	Name: "provereplicaupdate1",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "sector-size",
+			Value: "512MiB",
+			Usage: "size of the sectors in bytes, i.e. 32GiB",
+		},
+		&cli.StringFlag{
+			Name:  "miner-addr",
+			Usage: "pass miner address (only necessary if using existing sectorbuilder)",
+			Value: "t01000",
+		},
+	},
+	ArgsUsage: "[sealed] [cache] [update] [updatecache] [sectorKey] [newSealed] [newUnsealed] [vproofs.json]",
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		maddr, err := address.NewFromString(cctx.String("miner-addr"))
+		if err != nil {
+			return err
+		}
+		amid, err := address.IDFromAddress(maddr)
+		if err != nil {
+			return err
+		}
+		mid := abi.ActorID(amid)
+
+		sectorSizeInt, err := units.RAMInBytes(cctx.String("sector-size"))
+		if err != nil {
+			return err
+		}
+		sectorSize := abi.SectorSize(sectorSizeInt)
+
+		pp := benchSectorProvider{
+			storiface.FTSealed:      cctx.Args().Get(0),
+			storiface.FTCache:       cctx.Args().Get(1),
+			storiface.FTUpdate:      cctx.Args().Get(2),
+			storiface.FTUpdateCache: cctx.Args().Get(3),
+		}
+		sealer, err := ffiwrapper.New(pp)
+		if err != nil {
+			return err
+		}
+
+		sr := storage.SectorRef{
+			ID: abi.SectorID{
+				Miner:  mid,
+				Number: 1,
+			},
+			ProofType: spt(sectorSize),
+		}
+
+		start := time.Now()
+
+		oldcommr, err := cid.Parse(cctx.Args().Get(4))
+		if err != nil {
+			return xerrors.Errorf("parse commr: %w", err)
+		}
+
+		commr, err := cid.Parse(cctx.Args().Get(5))
+		if err != nil {
+			return xerrors.Errorf("parse commr: %w", err)
+		}
+
+		commd, err := cid.Parse(cctx.Args().Get(6))
+		if err != nil {
+			return xerrors.Errorf("parse commr: %w", err)
+		}
+
+		rvp, err := sealer.ProveReplicaUpdate1(ctx, sr, oldcommr, commr, commd)
+		if err != nil {
+			return xerrors.Errorf("replica update: %w", err)
+		}
+
+		took := time.Now().Sub(start)
+
+		fmt.Printf("ProveReplicaUpdate1 %s (%s)\n", took, bps(sectorSize, 1, took))
+
+		vpjb, err := json.Marshal(&rvp)
+		if err != nil {
+			return xerrors.Errorf("json marshal vanillla proofs: %w", err)
+		}
+
+		if err := ioutil.WriteFile(cctx.Args().Get(7), vpjb, 0666); err != nil {
+			return xerrors.Errorf("writing vanilla proofs file: %w", err)
+		}
+
+		return nil
+	},
+}
+
+var simpleProveReplicaUpdate2 = &cli.Command{
+	Name: "provereplicaupdate2",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "sector-size",
+			Value: "512MiB",
+			Usage: "size of the sectors in bytes, i.e. 32GiB",
+		},
+		&cli.StringFlag{
+			Name:  "miner-addr",
+			Usage: "pass miner address (only necessary if using existing sectorbuilder)",
+			Value: "t01000",
+		},
+	},
+	ArgsUsage: "[sectorKey] [newSealed] [newUnsealed] [vproofs.json]",
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		maddr, err := address.NewFromString(cctx.String("miner-addr"))
+		if err != nil {
+			return err
+		}
+		amid, err := address.IDFromAddress(maddr)
+		if err != nil {
+			return err
+		}
+		mid := abi.ActorID(amid)
+
+		sectorSizeInt, err := units.RAMInBytes(cctx.String("sector-size"))
+		if err != nil {
+			return err
+		}
+		sectorSize := abi.SectorSize(sectorSizeInt)
+
+		pp := benchSectorProvider{}
+		sealer, err := ffiwrapper.New(pp)
+		if err != nil {
+			return err
+		}
+
+		sr := storage.SectorRef{
+			ID: abi.SectorID{
+				Miner:  mid,
+				Number: 1,
+			},
+			ProofType: spt(sectorSize),
+		}
+
+		start := time.Now()
+
+		oldcommr, err := cid.Parse(cctx.Args().Get(0))
+		if err != nil {
+			return xerrors.Errorf("parse commr: %w", err)
+		}
+
+		commr, err := cid.Parse(cctx.Args().Get(1))
+		if err != nil {
+			return xerrors.Errorf("parse commr: %w", err)
+		}
+
+		commd, err := cid.Parse(cctx.Args().Get(2))
+		if err != nil {
+			return xerrors.Errorf("parse commr: %w", err)
+		}
+
+		vpb, err := ioutil.ReadFile(cctx.Args().Get(3))
+		if err != nil {
+			return xerrors.Errorf("reading valilla proof file: %w", err)
+		}
+
+		var vp storage.ReplicaVanillaProofs
+		if err := json.Unmarshal(vpb, &vp); err != nil {
+			return xerrors.Errorf("unmarshalling vanilla proofs: %w", err)
+		}
+
+		p, err := sealer.ProveReplicaUpdate2(ctx, sr, oldcommr, commr, commd, vp)
+		if err != nil {
+			return xerrors.Errorf("prove replica update2: %w", err)
+		}
+
+		took := time.Now().Sub(start)
+
+		fmt.Printf("ProveReplicaUpdate2 %s (%s)\n", took, bps(sectorSize, 1, took))
+		fmt.Println("p:", base64.StdEncoding.EncodeToString(p))
+
+		return nil
+	},
+}
+
+func ParsePieceInfos(cctx *cli.Context, firstArg int) ([]abi.PieceInfo, error) {
 	// supports only one for now
 
-	c, err := cid.Parse(cctx.Args().Get(3))
+	c, err := cid.Parse(cctx.Args().Get(firstArg))
 	if err != nil {
 		return nil, xerrors.Errorf("parse piece cid: %w", err)
 	}
 
-	psize, err := strconv.ParseUint(cctx.Args().Get(4), 10, 64)
+	psize, err := strconv.ParseUint(cctx.Args().Get(firstArg+1), 10, 64)
 	if err != nil {
 		return nil, xerrors.Errorf("parse piece size: %w", err)
 	}
