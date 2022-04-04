@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
+	"github.com/filecoin-project/specs-actors/v8/actors/migration/nv16"
 
 	"github.com/filecoin-project/lotus/chain/rand"
 
@@ -54,7 +54,8 @@ type versionSpec struct {
 type migration struct {
 	upgrade       MigrationFunc
 	preMigrations []PreMigration
-	cache         *nv15.MemMigrationCache
+	cache         *nv16.MemMigrationCache
+	manifest      cid.Cid
 }
 
 type Executor interface {
@@ -122,7 +123,8 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 				migration := &migration{
 					upgrade:       upgrade.Migration,
 					preMigrations: upgrade.PreMigrations,
-					cache:         nv15.NewMemMigrationCache(),
+					cache:         nv16.NewMemMigrationCache(),
+					manifest:      upgrade.Manifest,
 				}
 				stateMigrations[upgrade.Height] = migration
 			}
