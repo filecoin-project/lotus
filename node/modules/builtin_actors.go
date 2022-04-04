@@ -15,7 +15,7 @@ import (
 	car "github.com/ipld/go-car"
 )
 
-func LoadBultinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.UniversalBlockstore) error {
+func LoadBultinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.UniversalBlockstore) (result dtypes.BuiltinActorsLoaded, err error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	// TODO eventually we want this to start with bundle/manifest CIDs and fetch them from IPFS if
@@ -25,7 +25,7 @@ func LoadBultinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.Univer
 	blobr := bytes.NewReader(build.BuiltinActorsV8Bundle())
 	hdr, err := car.LoadCar(ctx, bs, blobr)
 	if err != nil {
-		return xerrors.Errorf("error loading builtin actors v8 bundle: %w", err)
+		return result, xerrors.Errorf("error loading builtin actors v8 bundle: %w", err)
 	}
 
 	manifestCid := hdr.Roots[0]
@@ -33,8 +33,8 @@ func LoadBultinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.Univer
 
 	cborStore := cbor.NewCborStore(bs)
 	if err := actors.LoadManifests(ctx, cborStore); err != nil {
-		return xerrors.Errorf("error loading actor manifests: %w", err)
+		return result, xerrors.Errorf("error loading actor manifests: %w", err)
 	}
 
-	return nil
+	return result, nil
 }
