@@ -113,6 +113,7 @@ func (ls *laneState8) Nonce() (uint64, error) {
 	return ls.LaneState.Nonce, nil
 }
 
+
 func toV8SignedVoucher(sv SignedVoucher) paych8.SignedVoucher {
 	return paych8.SignedVoucher{
 		ChannelAddr:     sv.ChannelAddr,

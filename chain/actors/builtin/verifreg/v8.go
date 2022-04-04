@@ -26,14 +26,14 @@ func load8(store adt.Store, root cid.Cid) (State, error) {
 
 func make8(store adt.Store, rootKeyAddress address.Address) (State, error) {
 	out := state8{store: store}
+	
+		s, err := verifreg8.ConstructState(store, rootKeyAddress)
+		if err != nil {
+			return nil, err
+		}
 
-	s, err := verifreg8.ConstructState(store, rootKeyAddress)
-	if err != nil {
-		return nil, err
-	}
-
-	out.State = *s
-
+		out.State = *s
+	
 	return &out, nil
 }
 
@@ -75,7 +75,7 @@ func (s *state8) verifiers() (adt.Map, error) {
 }
 
 func (s *state8) removeDataCapProposalIDs() (adt.Map, error) {
-	return adt8.AsMap(s.store, s.RemoveDataCapProposalIDs, builtin8.DefaultHamtBitwidth)
+    return adt8.AsMap(s.store, s.RemoveDataCapProposalIDs, builtin8.DefaultHamtBitwidth)
 }
 
 func (s *state8) GetState() interface{} {

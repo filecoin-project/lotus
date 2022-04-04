@@ -112,3 +112,4 @@ func (ls *laneState2) Redeemed() (big.Int, error) {
 func (ls *laneState2) Nonce() (uint64, error) {
 	return ls.LaneState.Nonce, nil
 }
+

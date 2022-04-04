@@ -22,7 +22,7 @@ func load7(store adt.Store, root cid.Cid) (State, error) {
 
 func make7(store adt.Store, addr address.Address) (State, error) {
 	out := state7{store: store}
-	out.State = account7.State{Address: addr}
+	out.State = account7.State{Address:addr}
 	return &out, nil
 }
 

@@ -10,7 +10,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
+
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+
 
 	init4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/init"
 	adt4 "github.com/filecoin-project/specs-actors/v4/actors/util/adt"
@@ -29,14 +31,14 @@ func load4(store adt.Store, root cid.Cid) (State, error) {
 
 func make4(store adt.Store, networkName string) (State, error) {
 	out := state4{store: store}
+	
+		s, err := init4.ConstructState(store, networkName)
+		if err != nil {
+			return nil, err
+		}
 
-	s, err := init4.ConstructState(store, networkName)
-	if err != nil {
-		return nil, err
-	}
-
-	out.State = *s
-
+		out.State = *s
+	
 	return &out, nil
 }
 

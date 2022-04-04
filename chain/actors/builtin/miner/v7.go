@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
+
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
 	miner7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
@@ -135,9 +136,9 @@ func (s *state7) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, e
 		return nil, err
 	}
 	// NOTE: this can be optimized significantly.
-	// 1. If the sector is non-faulty, it will expire on-time (can be
+// 1. If the sector is non-faulty, it will expire on-time (can be
 	// learned from the sector info).
-	// 2. If it's faulty, it will expire early within the first 42 entries
+// 2. If it's faulty, it will expire early within the first 42 entries
 	// of the expiration queue.
 
 	stopErr := errors.New("stop")
@@ -208,7 +209,7 @@ func (s *state7) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOn
 }
 
 func (s *state7) ForEachPrecommittedSector(cb func(SectorPreCommitOnChainInfo) error) error {
-	precommitted, err := adt7.AsMap(s.store, s.State.PreCommittedSectors, builtin7.DefaultHamtBitwidth)
+precommitted, err := adt7.AsMap(s.store, s.State.PreCommittedSectors, builtin7.DefaultHamtBitwidth)
 	if err != nil {
 		return err
 	}
@@ -287,7 +288,7 @@ func (s *state7) UnallocatedSectorNumbers(count int) ([]abi.SectorNumber, error)
 	}
 
 	unallocatedRuns, err := rle.Subtract(
-		&rle.RunSliceIterator{Runs: []rle.Run{{Val: true, Len: abi.MaxSectorNumber}}},
+		&rle.RunSliceIterator{Runs: []rle.Run{ {Val: true, Len: abi.MaxSectorNumber} }},
 		allocatedRuns,
 	)
 	if err != nil {
@@ -437,42 +438,42 @@ func (s *state7) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (SectorPreC
 }
 
 func (s *state7) EraseAllUnproven() error {
-
-	dls, err := s.State.LoadDeadlines(s.store)
-	if err != nil {
-		return err
-	}
-
-	err = dls.ForEach(s.store, func(dindx uint64, dl *miner7.Deadline) error {
-		ps, err := dl.PartitionsArray(s.store)
+	
+		dls, err := s.State.LoadDeadlines(s.store)
 		if err != nil {
 			return err
 		}
 
-		var part miner7.Partition
-		err = ps.ForEach(&part, func(pindx int64) error {
-			_ = part.ActivateUnproven()
-			err = ps.Set(uint64(pindx), &part)
-			return nil
+		err = dls.ForEach(s.store, func(dindx uint64, dl *miner7.Deadline) error {
+			ps, err := dl.PartitionsArray(s.store)
+			if err != nil {
+				return err
+			}
+
+			var part miner7.Partition
+			err = ps.ForEach(&part, func(pindx int64) error {
+				_ = part.ActivateUnproven()
+				err = ps.Set(uint64(pindx), &part)
+				return nil
+			})
+
+			if err != nil {
+				return err
+			}
+
+			dl.Partitions, err = ps.Root()
+			if err != nil {
+				return err
+			}
+
+			return dls.UpdateDeadline(s.store, dindx, dl)
 		})
-
 		if err != nil {
 			return err
 		}
 
-		dl.Partitions, err = ps.Root()
-		if err != nil {
-			return err
-		}
-
-		return dls.UpdateDeadline(s.store, dindx, dl)
-	})
-	if err != nil {
-		return err
-	}
-
-	return s.State.SaveDeadlines(s.store, dls)
-
+		return s.State.SaveDeadlines(s.store, dls)
+	
 }
 
 func (d *deadline7) LoadPartition(idx uint64) (Partition, error) {
@@ -548,8 +549,9 @@ func fromV7SectorOnChainInfo(v7 miner7.SectorOnChainInfo) SectorOnChainInfo {
 		InitialPledge:         v7.InitialPledge,
 		ExpectedDayReward:     v7.ExpectedDayReward,
 		ExpectedStoragePledge: v7.ExpectedStoragePledge,
-
+		
 		SectorKeyCID: v7.SectorKeyCID,
+        
 	}
 	return info
 }

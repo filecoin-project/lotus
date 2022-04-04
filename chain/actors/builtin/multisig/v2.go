@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
+
 	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 )
 
@@ -36,14 +37,14 @@ func make2(store adt.Store, signers []address.Address, threshold uint64, startEp
 	out.State.StartEpoch = startEpoch
 	out.State.UnlockDuration = unlockDuration
 	out.State.InitialBalance = initialBalance
+	
+		em, err := adt2.MakeEmptyMap(store).Root()
+		if err != nil {
+			return nil, err
+		}
 
-	em, err := adt2.MakeEmptyMap(store).Root()
-	if err != nil {
-		return nil, err
-	}
-
-	out.State.PendingTxns = em
-
+		out.State.PendingTxns = em
+	
 	return &out, nil
 }
 
