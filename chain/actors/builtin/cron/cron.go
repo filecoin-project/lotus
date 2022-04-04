@@ -3,8 +3,8 @@ package cron
 import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"golang.org/x/xerrors"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -21,7 +21,6 @@ import (
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
 	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
-
 )
 
 func MakeState(store adt.Store, av actors.Version) (State, error) {
@@ -51,14 +50,14 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 	case actors.Version8:
 		return make8(store)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
 func GetActorCodeID(av actors.Version) (cid.Cid, error) {
-    if c, ok := actors.GetActorCodeID(av, "cron"); ok {
-       return c, nil
-    }
+	if c, ok := actors.GetActorCodeID(av, "cron"); ok {
+		return c, nil
+	}
 
 	switch av {
 
@@ -95,7 +94,6 @@ var (
 	Address = builtin8.CronActorAddr
 	Methods = builtin8.MethodsCron
 )
-
 
 type State interface {
 	GetState() interface{}

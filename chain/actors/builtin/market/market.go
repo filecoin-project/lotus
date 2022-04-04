@@ -29,9 +29,8 @@ import (
 
 	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
 
-
-	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -43,7 +42,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version0, "storagemarket"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load0(store, root)
 		})
 	}
@@ -53,7 +52,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version2, "storagemarket"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load2(store, root)
 		})
 	}
@@ -63,7 +62,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version3, "storagemarket"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load3(store, root)
 		})
 	}
@@ -73,7 +72,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version4, "storagemarket"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load4(store, root)
 		})
 	}
@@ -83,7 +82,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version5, "storagemarket"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load5(store, root)
 		})
 	}
@@ -93,7 +92,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version6, "storagemarket"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load6(store, root)
 		})
 	}
@@ -103,7 +102,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version7, "storagemarket"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load7(store, root)
 		})
 	}
@@ -113,7 +112,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version8, "storagemarket"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load8(store, root)
 		})
 	}
@@ -126,39 +125,39 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != "storagemarket" {
-          return nil, xerrors.Errorf("actor code is not storagemarket: %s", name)
-       }
+		if name != "storagemarket" {
+			return nil, xerrors.Errorf("actor code is not storagemarket: %s", name)
+		}
 
-       switch av {
-            
-			case actors.Version0:
-                 return load0(store, act.Head)
-            
-			case actors.Version2:
-                 return load2(store, act.Head)
-            
-			case actors.Version3:
-                 return load3(store, act.Head)
-            
-			case actors.Version4:
-                 return load4(store, act.Head)
-            
-			case actors.Version5:
-                 return load5(store, act.Head)
-            
-			case actors.Version6:
-                 return load6(store, act.Head)
-            
-			case actors.Version7:
-                 return load7(store, act.Head)
-            
-			case actors.Version8:
-                 return load8(store, act.Head)
-            
-            default:
-                return nil, xerrors.Errorf("unknown actor version: %d", av)
-       }
+		switch av {
+
+		case actors.Version0:
+			return load0(store, act.Head)
+
+		case actors.Version2:
+			return load2(store, act.Head)
+
+		case actors.Version3:
+			return load3(store, act.Head)
+
+		case actors.Version4:
+			return load4(store, act.Head)
+
+		case actors.Version5:
+			return load5(store, act.Head)
+
+		case actors.Version6:
+			return load6(store, act.Head)
+
+		case actors.Version7:
+			return load7(store, act.Head)
+
+		case actors.Version8:
+			return load8(store, act.Head)
+
+		default:
+			return nil, xerrors.Errorf("unknown actor version: %d", av)
+		}
 	}
 
 	switch act.Code {
@@ -218,14 +217,14 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 	case actors.Version8:
 		return make8(store)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
 func GetActorCodeID(av actors.Version) (cid.Cid, error) {
-    if c, ok := actors.GetActorCodeID(av, "storagemarket"); ok {
-       return c, nil
-    }
+	if c, ok := actors.GetActorCodeID(av, "storagemarket"); ok {
+		return c, nil
+	}
 
 	switch av {
 
@@ -299,7 +298,7 @@ type DealProposals interface {
 type PublishStorageDealsParams = market0.PublishStorageDealsParams
 
 type PublishStorageDealsReturn interface {
-    DealIDs() ([]abi.DealID, error)
+	DealIDs() ([]abi.DealID, error)
 	// Note that this index is based on the batch of deals that were published, NOT the DealID
 	IsDealValid(index uint64) (bool, error)
 }
@@ -336,7 +335,7 @@ func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStora
 	case actors.Version8:
 		return decodePublishStorageDealsReturn8(b)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
@@ -352,67 +351,67 @@ type DealState struct {
 }
 
 type DealProposal struct {
-	PieceCID			 cid.Cid
-	PieceSize			 abi.PaddedPieceSize
-	VerifiedDeal		 bool
-	Client				 address.Address
-	Provider			 address.Address
-	Label				 string
-	StartEpoch			 abi.ChainEpoch
-	EndEpoch			 abi.ChainEpoch
+	PieceCID             cid.Cid
+	PieceSize            abi.PaddedPieceSize
+	VerifiedDeal         bool
+	Client               address.Address
+	Provider             address.Address
+	Label                string
+	StartEpoch           abi.ChainEpoch
+	EndEpoch             abi.ChainEpoch
 	StoragePricePerEpoch abi.TokenAmount
-	ProviderCollateral	 abi.TokenAmount
-	ClientCollateral	 abi.TokenAmount
+	ProviderCollateral   abi.TokenAmount
+	ClientCollateral     abi.TokenAmount
 }
 
 type DealStateChanges struct {
-	Added	 []DealIDState
+	Added    []DealIDState
 	Modified []DealStateChange
-	Removed	 []DealIDState
+	Removed  []DealIDState
 }
 
 type DealIDState struct {
-	ID	 abi.DealID
+	ID   abi.DealID
 	Deal DealState
 }
 
 // DealStateChange is a change in deal state from -> to
 type DealStateChange struct {
-	ID	 abi.DealID
+	ID   abi.DealID
 	From *DealState
-	To	 *DealState
+	To   *DealState
 }
 
 type DealProposalChanges struct {
-	Added	[]ProposalIDState
+	Added   []ProposalIDState
 	Removed []ProposalIDState
 }
 
 type ProposalIDState struct {
-	ID		 abi.DealID
+	ID       abi.DealID
 	Proposal DealProposal
 }
 
 func EmptyDealState() *DealState {
 	return &DealState{
 		SectorStartEpoch: -1,
-		SlashEpoch:		  -1,
+		SlashEpoch:       -1,
 		LastUpdatedEpoch: -1,
 	}
 }
 
 // returns the earned fees and pending fees for a given deal
 func (deal DealProposal) GetDealFees(height abi.ChainEpoch) (abi.TokenAmount, abi.TokenAmount) {
-	   tf := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(deal.EndEpoch-deal.StartEpoch)))
+	tf := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(deal.EndEpoch-deal.StartEpoch)))
 
-	   ef := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(height-deal.StartEpoch)))
-	   if ef.LessThan(big.Zero()) {
-			   ef = big.Zero()
-	   }
+	ef := big.Mul(deal.StoragePricePerEpoch, big.NewInt(int64(height-deal.StartEpoch)))
+	if ef.LessThan(big.Zero()) {
+		ef = big.Zero()
+	}
 
-	   if ef.GreaterThan(tf) {
-			   ef = tf
-	   }
+	if ef.GreaterThan(tf) {
+		ef = tf
+	}
 
-	   return ef, big.Sub(tf, ef)
+	return ef, big.Sub(tf, ef)
 }
