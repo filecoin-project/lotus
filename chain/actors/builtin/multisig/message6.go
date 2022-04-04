@@ -69,3 +69,5 @@ func (m message6) Create(
 		Value:  initialAmount,
 	}, nil
 }
+
+

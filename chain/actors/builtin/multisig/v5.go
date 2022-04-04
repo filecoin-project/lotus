@@ -14,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
+
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 
 	msig5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/multisig"
@@ -38,14 +39,14 @@ func make5(store adt.Store, signers []address.Address, threshold uint64, startEp
 	out.State.StartEpoch = startEpoch
 	out.State.UnlockDuration = unlockDuration
 	out.State.InitialBalance = initialBalance
+	
+		em, err := adt5.StoreEmptyMap(store, builtin5.DefaultHamtBitwidth)
+		if err != nil {
+			return nil, err
+		}
 
-	em, err := adt5.StoreEmptyMap(store, builtin5.DefaultHamtBitwidth)
-	if err != nil {
-		return nil, err
-	}
-
-	out.State.PendingTxns = em
-
+		out.State.PendingTxns = em
+	
 	return &out, nil
 }
 

@@ -29,14 +29,14 @@ func load8(store adt.Store, root cid.Cid) (State, error) {
 
 func make8(store adt.Store) (State, error) {
 	out := state8{store: store}
+	
+		s, err := market8.ConstructState(store)
+		if err != nil {
+			return nil, err
+		}
 
-	s, err := market8.ConstructState(store)
-	if err != nil {
-		return nil, err
-	}
-
-	out.State = *s
-
+		out.State = *s
+	
 	return &out, nil
 }
 
@@ -242,11 +242,11 @@ type publishStorageDealsReturn8 struct {
 }
 
 func (r *publishStorageDealsReturn8) IsDealValid(index uint64) (bool, error) {
-
-	return r.ValidDeals.IsSet(index)
-
+	
+	    return r.ValidDeals.IsSet(index)
+	
 }
 
 func (r *publishStorageDealsReturn8) DealIDs() ([]abi.DealID, error) {
-	return r.IDs, nil
+    return r.IDs, nil
 }
