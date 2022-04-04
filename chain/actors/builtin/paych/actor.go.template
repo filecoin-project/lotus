@@ -29,10 +29,31 @@ func init() {
 	builtin.RegisterActorState(builtin{{.}}.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load{{.}}(store, root)
 	})
+
+	if c, ok := actors.GetActorCodeID(actors.Version{{.}}, "paymentchannel"); ok {
+    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+			return load{{.}}(store, root)
+		})
+	}
 {{end}}}
 
 // Load returns an abstract copy of payment channel state, irregardless of actor version
 func Load(store adt.Store, act *types.Actor) (State, error) {
+	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
+       if name != "paymentchannel" {
+          return nil, xerrors.Errorf("actor code is not paymentchannel: %s", name)
+       }
+
+       switch av {
+            {{range .versions}}
+			case actors.Version{{.}}:
+                 return load{{.}}(store, act.Head)
+            {{end}}
+            default:
+                return nil, xerrors.Errorf("unknown actor version: %d", av)
+       }
+	}
+
 	switch act.Code {
 {{range .versions}}
 	case builtin{{.}}.PaymentChannelActorCodeID:
@@ -53,6 +74,10 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 }
 
 func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+    if c, ok := actors.GetActorCodeID(av, "paymentchannel"); ok {
+       return c, nil
+    }
+
 	switch av {
 {{range .versions}}
 	case actors.Version{{.}}:

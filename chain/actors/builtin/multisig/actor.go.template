@@ -29,9 +29,30 @@ func init() {
 	builtin.RegisterActorState(builtin{{.}}.MultisigActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load{{.}}(store, root)
 	})
+
+	if c, ok := actors.GetActorCodeID(actors.Version{{.}}, "multisig"); ok {
+    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+			return load{{.}}(store, root)
+		})
+	}
 {{end}}}
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
+	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
+       if name != "multisig" {
+          return nil, xerrors.Errorf("actor code is not multisig: %s", name)
+       }
+
+       switch av {
+            {{range .versions}}
+			case actors.Version{{.}}:
+                 return load{{.}}(store, act.Head)
+            {{end}}
+            default:
+                return nil, xerrors.Errorf("unknown actor version: %d", av)
+       }
+	}
+
 	switch act.Code {
 {{range .versions}}
 	case builtin{{.}}.MultisigActorCodeID:
@@ -52,6 +73,10 @@ func MakeState(store adt.Store, av actors.Version, signers []address.Address, th
 }
 
 func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+    if c, ok := actors.GetActorCodeID(av, "multisig"); ok {
+       return c, nil
+    }
+
 	switch av {
 {{range .versions}}
 	case actors.Version{{.}}:
