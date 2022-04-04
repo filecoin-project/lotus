@@ -21,11 +21,32 @@ func init() {
 	builtin.RegisterActorState(builtin{{.}}.AccountActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load{{.}}(store, root)
 	})
+
+	if c, ok := actors.GetActorCodeID(actors.Version{{.}}, "account"); ok {
+    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+			return load{{.}}(store, root)
+		})
+	}
 {{end}}}
 
 var Methods = builtin4.MethodsAccount
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
+	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
+       if name != "account" {
+          return nil, xerrors.Errorf("actor code is not account: %s", name)
+       }
+
+       switch av {
+            {{range .versions}}
+			case actors.Version{{.}}:
+                 return load{{.}}(store, act.Head)
+            {{end}}
+            default:
+                return nil, xerrors.Errorf("unknown actor version: %d", av)
+       }
+	}
+
 	switch act.Code {
 {{range .versions}}
 	case builtin{{.}}.AccountActorCodeID:
@@ -46,6 +67,10 @@ func MakeState(store adt.Store, av actors.Version, addr address.Address) (State,
 }
 
 func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+    if c, ok := actors.GetActorCodeID(av, "account"); ok {
+       return c, nil
+    }
+
 	switch av {
 {{range .versions}}
 	case actors.Version{{.}}:
