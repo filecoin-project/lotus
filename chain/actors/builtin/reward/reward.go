@@ -2,9 +2,9 @@ package reward
 
 import (
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/chain/actors"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	"github.com/ipfs/go-cid"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -25,7 +25,6 @@ import (
 
 	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
 
-
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -38,7 +37,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version0, "reward"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load0(store, root)
 		})
 	}
@@ -48,7 +47,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version2, "reward"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load2(store, root)
 		})
 	}
@@ -58,7 +57,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version3, "reward"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load3(store, root)
 		})
 	}
@@ -68,7 +67,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version4, "reward"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load4(store, root)
 		})
 	}
@@ -78,7 +77,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version5, "reward"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load5(store, root)
 		})
 	}
@@ -88,7 +87,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version6, "reward"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load6(store, root)
 		})
 	}
@@ -98,7 +97,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version7, "reward"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load7(store, root)
 		})
 	}
@@ -108,7 +107,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version8, "reward"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load8(store, root)
 		})
 	}
@@ -121,39 +120,39 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != "reward" {
-          return nil, xerrors.Errorf("actor code is not reward: %s", name)
-       }
+		if name != "reward" {
+			return nil, xerrors.Errorf("actor code is not reward: %s", name)
+		}
 
-       switch av {
-            
-			case actors.Version0:
-                 return load0(store, act.Head)
-            
-			case actors.Version2:
-                 return load2(store, act.Head)
-            
-			case actors.Version3:
-                 return load3(store, act.Head)
-            
-			case actors.Version4:
-                 return load4(store, act.Head)
-            
-			case actors.Version5:
-                 return load5(store, act.Head)
-            
-			case actors.Version6:
-                 return load6(store, act.Head)
-            
-			case actors.Version7:
-                 return load7(store, act.Head)
-            
-			case actors.Version8:
-                 return load8(store, act.Head)
-            
-            default:
-                return nil, xerrors.Errorf("unknown actor version: %d", av)
-       }
+		switch av {
+
+		case actors.Version0:
+			return load0(store, act.Head)
+
+		case actors.Version2:
+			return load2(store, act.Head)
+
+		case actors.Version3:
+			return load3(store, act.Head)
+
+		case actors.Version4:
+			return load4(store, act.Head)
+
+		case actors.Version5:
+			return load5(store, act.Head)
+
+		case actors.Version6:
+			return load6(store, act.Head)
+
+		case actors.Version7:
+			return load7(store, act.Head)
+
+		case actors.Version8:
+			return load8(store, act.Head)
+
+		default:
+			return nil, xerrors.Errorf("unknown actor version: %d", av)
+		}
 	}
 
 	switch act.Code {
@@ -213,14 +212,14 @@ func MakeState(store adt.Store, av actors.Version, currRealizedPower abi.Storage
 	case actors.Version8:
 		return make8(store, currRealizedPower)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
 func GetActorCodeID(av actors.Version) (cid.Cid, error) {
-    if c, ok := actors.GetActorCodeID(av, "reward"); ok {
-       return c, nil
-    }
+	if c, ok := actors.GetActorCodeID(av, "reward"); ok {
+		return c, nil
+	}
 
 	switch av {
 

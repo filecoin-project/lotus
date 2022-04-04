@@ -25,10 +25,9 @@ import (
 
 	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
 
-
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	verifreg8 "github.com/filecoin-project/specs-actors/v7/actors/builtin/verifreg"
 )
@@ -40,7 +39,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version0, "verifiedregistry"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load0(store, root)
 		})
 	}
@@ -50,7 +49,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version2, "verifiedregistry"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load2(store, root)
 		})
 	}
@@ -60,7 +59,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version3, "verifiedregistry"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load3(store, root)
 		})
 	}
@@ -70,7 +69,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version4, "verifiedregistry"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load4(store, root)
 		})
 	}
@@ -80,7 +79,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version5, "verifiedregistry"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load5(store, root)
 		})
 	}
@@ -90,7 +89,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version6, "verifiedregistry"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load6(store, root)
 		})
 	}
@@ -100,7 +99,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version7, "verifiedregistry"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load7(store, root)
 		})
 	}
@@ -110,7 +109,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version8, "verifiedregistry"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load8(store, root)
 		})
 	}
@@ -124,39 +123,39 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != "verifiedregistry" {
-          return nil, xerrors.Errorf("actor code is not verifiedregistry: %s", name)
-       }
+		if name != "verifiedregistry" {
+			return nil, xerrors.Errorf("actor code is not verifiedregistry: %s", name)
+		}
 
-       switch av {
-            
-			case actors.Version0:
-                 return load0(store, act.Head)
-            
-			case actors.Version2:
-                 return load2(store, act.Head)
-            
-			case actors.Version3:
-                 return load3(store, act.Head)
-            
-			case actors.Version4:
-                 return load4(store, act.Head)
-            
-			case actors.Version5:
-                 return load5(store, act.Head)
-            
-			case actors.Version6:
-                 return load6(store, act.Head)
-            
-			case actors.Version7:
-                 return load7(store, act.Head)
-            
-			case actors.Version8:
-                 return load8(store, act.Head)
-            
-            default:
-                return nil, xerrors.Errorf("unknown actor version: %d", av)
-       }
+		switch av {
+
+		case actors.Version0:
+			return load0(store, act.Head)
+
+		case actors.Version2:
+			return load2(store, act.Head)
+
+		case actors.Version3:
+			return load3(store, act.Head)
+
+		case actors.Version4:
+			return load4(store, act.Head)
+
+		case actors.Version5:
+			return load5(store, act.Head)
+
+		case actors.Version6:
+			return load6(store, act.Head)
+
+		case actors.Version7:
+			return load7(store, act.Head)
+
+		case actors.Version8:
+			return load8(store, act.Head)
+
+		default:
+			return nil, xerrors.Errorf("unknown actor version: %d", av)
+		}
 	}
 
 	switch act.Code {
@@ -216,14 +215,14 @@ func MakeState(store adt.Store, av actors.Version, rootKeyAddress address.Addres
 	case actors.Version8:
 		return make8(store, rootKeyAddress)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
 func GetActorCodeID(av actors.Version) (cid.Cid, error) {
-    if c, ok := actors.GetActorCodeID(av, "verifiedregistry"); ok {
-       return c, nil
-    }
+	if c, ok := actors.GetActorCodeID(av, "verifiedregistry"); ok {
+		return c, nil
+	}
 
 	switch av {
 
@@ -260,6 +259,7 @@ type RemoveDataCapProposal = verifreg8.RemoveDataCapProposal
 type RemoveDataCapRequest = verifreg8.RemoveDataCapRequest
 type RemoveDataCapParams = verifreg8.RemoveDataCapParams
 type RmDcProposalID = verifreg8.RmDcProposalID
+
 const SignatureDomainSeparation_RemoveDataCap = verifreg8.SignatureDomainSeparation_RemoveDataCap
 
 type State interface {

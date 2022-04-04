@@ -29,7 +29,6 @@ import (
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
 	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
-
 )
 
 func init() {
@@ -39,7 +38,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version0, "init"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load0(store, root)
 		})
 	}
@@ -49,7 +48,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version2, "init"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load2(store, root)
 		})
 	}
@@ -59,7 +58,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version3, "init"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load3(store, root)
 		})
 	}
@@ -69,7 +68,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version4, "init"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load4(store, root)
 		})
 	}
@@ -79,7 +78,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version5, "init"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load5(store, root)
 		})
 	}
@@ -89,7 +88,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version6, "init"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load6(store, root)
 		})
 	}
@@ -99,7 +98,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version7, "init"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load7(store, root)
 		})
 	}
@@ -109,7 +108,7 @@ func init() {
 	})
 
 	if c, ok := actors.GetActorCodeID(actors.Version8, "init"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 			return load8(store, root)
 		})
 	}
@@ -122,39 +121,39 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != "init" {
-          return nil, xerrors.Errorf("actor code is not init: %s", name)
-       }
+		if name != "init" {
+			return nil, xerrors.Errorf("actor code is not init: %s", name)
+		}
 
-       switch av {
-            
-			case actors.Version0:
-                 return load0(store, act.Head)
-            
-			case actors.Version2:
-                 return load2(store, act.Head)
-            
-			case actors.Version3:
-                 return load3(store, act.Head)
-            
-			case actors.Version4:
-                 return load4(store, act.Head)
-            
-			case actors.Version5:
-                 return load5(store, act.Head)
-            
-			case actors.Version6:
-                 return load6(store, act.Head)
-            
-			case actors.Version7:
-                 return load7(store, act.Head)
-            
-			case actors.Version8:
-                 return load8(store, act.Head)
-            
-            default:
-                return nil, xerrors.Errorf("unknown actor version: %d", av)
-       }
+		switch av {
+
+		case actors.Version0:
+			return load0(store, act.Head)
+
+		case actors.Version2:
+			return load2(store, act.Head)
+
+		case actors.Version3:
+			return load3(store, act.Head)
+
+		case actors.Version4:
+			return load4(store, act.Head)
+
+		case actors.Version5:
+			return load5(store, act.Head)
+
+		case actors.Version6:
+			return load6(store, act.Head)
+
+		case actors.Version7:
+			return load7(store, act.Head)
+
+		case actors.Version8:
+			return load8(store, act.Head)
+
+		default:
+			return nil, xerrors.Errorf("unknown actor version: %d", av)
+		}
 	}
 
 	switch act.Code {
@@ -214,14 +213,14 @@ func MakeState(store adt.Store, av actors.Version, networkName string) (State, e
 	case actors.Version8:
 		return make8(store, networkName)
 
-}
+	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
 func GetActorCodeID(av actors.Version) (cid.Cid, error) {
-    if c, ok := actors.GetActorCodeID(av, "init"); ok {
-       return c, nil
-    }
+	if c, ok := actors.GetActorCodeID(av, "init"); ok {
+		return c, nil
+	}
 
 	switch av {
 
