@@ -36,6 +36,7 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -87,6 +88,11 @@ func legacyPreMigration(f LegacyPreMigrationFunc) stmgr.PreMigrationFunc {
 
 func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	var us stmgr.UpgradeSchedule
+
+	v8ManifestCid, ok := actors.ManifestCids[actors.Version8]
+	if !ok {
+		v8ManifestCid = cid.Undef
+	}
 
 	updates := []stmgr.Upgrade{{
 		Height:    build.UpgradeBreezeHeight,
@@ -239,7 +245,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 			DontStartWithin: 60,
 			StopWithin:      5,
 		}},
-		Manifest:  cid.Undef, // TODO this should be the real manifest CID
+		Manifest:  v8ManifestCid,
 		Expensive: true,
 	},
 	}
