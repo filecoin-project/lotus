@@ -2,6 +2,7 @@ package actors
 
 import (
 	"context"
+	"sync"
 
 	"golang.org/x/xerrors"
 
@@ -19,12 +20,23 @@ var ManifestCids map[Version]cid.Cid = map[Version]cid.Cid{
 var manifests map[Version]*manifest.Manifest
 var actorMeta map[cid.Cid]actorEntry
 
+var (
+	loadOnce  sync.Once
+	loadError error
+)
+
 type actorEntry struct {
 	name    string
 	version Version
 }
 
 func LoadManifests(ctx context.Context, store cbor.IpldStore) error {
+	// tests may invoke this concurrently, so we wrap it in a sync.Once
+	loadOnce.Do(func() { loadError = loadManifests(ctx, store) })
+	return loadError
+}
+
+func loadManifests(ctx context.Context, store cbor.IpldStore) error {
 	adtStore := adt.WrapStore(ctx, store)
 
 	manifests = make(map[Version]*manifest.Manifest)
