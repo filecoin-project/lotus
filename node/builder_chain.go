@@ -48,6 +48,13 @@ var ChainNode = Options(
 	// Full node or lite node
 	// TODO: Fix offline mode
 
+	// FVM: builtin actor bundle loading
+	//      Note: this has to load before the upgrade schedule, so that we can patch in the
+	//      right manifest cid.
+	//      This restriction will be lifted once we have the final actors v8 bundle and we know
+	//      the manifest cid.
+	Override(BuiltinActorsKey, modules.LoadBultinActors),
+
 	// Consensus settings
 	Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
 	Override(new(stmgr.UpgradeSchedule), filcns.DefaultUpgradeSchedule()),

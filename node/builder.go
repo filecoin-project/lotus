@@ -71,6 +71,7 @@ var (
 	ConnGaterKey         = special{12} // libp2p option
 	DAGStoreKey          = special{13} // constructor returns multiple values
 	ResourceManagerKey   = special{14} // Libp2p option
+	BuiltinActorsKey     = special{15} // builtin actors bundle loading
 )
 
 type invoke int
