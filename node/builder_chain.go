@@ -57,7 +57,7 @@ var ChainNode = Options(
 
 	// Consensus settings
 	Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
-	Override(new(stmgr.UpgradeSchedule), filcns.DefaultUpgradeSchedule()),
+	Override(new(stmgr.UpgradeSchedule), modules.UpgradeSchedule),
 	Override(new(dtypes.NetworkName), modules.NetworkName),
 	Override(new(modules.Genesis), modules.ErrorGenesis),
 	Override(new(dtypes.AfterGenesisSet), modules.SetGenesis),

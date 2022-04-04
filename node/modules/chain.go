@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/consensus"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -175,4 +176,8 @@ func NewSyncer(params SyncerParams) (*chain.Syncer, error) {
 
 func NewSlashFilter(ds dtypes.MetadataDS) *slashfilter.SlashFilter {
 	return slashfilter.New(ds)
+}
+
+func UpgradeSchedule(_ dtypes.BuiltinActorsLoaded) stmgr.UpgradeSchedule {
+	return filcns.DefaultUpgradeSchedule()
 }
