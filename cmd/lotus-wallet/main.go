@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/filecoin-project/lotus/api/v0api"
 
@@ -39,6 +40,13 @@ const FlagWalletRepo = "wallet-repo"
 
 type jwtPayload struct {
 	Allow []auth.Permission
+
+	// Token creation time. Can be used to revoke older tokens
+	Created time.Time
+
+	// Rules limit actions which can be performed with a tokes. By default, when
+	//  rules are nil, the token can perform all actions
+	Rules *Rule
 }
 
 func main() {
@@ -99,7 +107,8 @@ var getApiKeyCmd = &cli.Command{
 		defer lr.Close() // nolint
 
 		p := jwtPayload{
-			Allow: []auth.Permission{api.PermAdmin},
+			Allow:   []auth.Permission{api.PermAdmin},
+			Created: time.Now(),
 		}
 
 		authKey, err := modules.APISecret(ks, lr)
