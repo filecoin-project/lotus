@@ -701,7 +701,23 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storage.Sect
 }
 
 func (m *Manager) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) error {
-	return nil
+	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		return err
+	}
+	if len(safeToFree) != 0 || safeToFree[0].Offset != 0 || safeToFree[0].Size.Padded() != abi.PaddedPieceSize(ssize) {
+		// todo support partial free
+		return nil
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if err := m.index.StorageLock(ctx, sector.ID, storiface.FTNone, storiface.FTUnsealed); err != nil {
+		return xerrors.Errorf("acquiring sector lock: %w", err)
+	}
+
+	return m.storage.Remove(ctx, sector.ID, storiface.FTUnsealed, true, nil)
 }
 
 func (m *Manager) ReleaseSectorKey(ctx context.Context, sector storage.SectorRef) error {
