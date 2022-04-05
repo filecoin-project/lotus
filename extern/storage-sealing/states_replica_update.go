@@ -222,7 +222,7 @@ func (m *Sealing) handleFinalizeReplicaUpdate(ctx statemachine.Context, sector S
 		return xerrors.Errorf("getting sealing config: %w", err)
 	}
 
-	if err := m.sealer.FinalizeReplicaUpdate(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.keepUnsealedRanges(false, cfg.AlwaysKeepUnsealedCopy)); err != nil {
+	if err := m.sealer.FinalizeReplicaUpdate(sector.sealingCtx(ctx.Context()), m.minerSector(sector.SectorType, sector.SectorNumber), sector.keepUnsealedRanges(sector.Pieces, false, cfg.AlwaysKeepUnsealedCopy)); err != nil {
 		return ctx.Send(SectorFinalizeFailed{xerrors.Errorf("finalize sector: %w", err)})
 	}
 
