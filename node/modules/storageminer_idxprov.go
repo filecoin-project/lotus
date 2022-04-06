@@ -30,6 +30,10 @@ func IndexProvider(cfg config.IndexProviderConfig) func(params IdxProv, marketHo
 			engine.WithDatastore(ipds),
 			engine.WithHost(marketHost),
 			engine.WithRetrievalAddrs(marketHost.Addrs()...),
+			engine.WithEntriesCacheCapacity(cfg.EntriesCacheCapacity),
+			engine.WithEntriesChunkSize(cfg.EntriesChunkSize),
+			engine.WithTopicName(cfg.TopicName),
+			engine.WithPurgeCacheOnStart(cfg.PurgeCacheOnStart),
 		}
 
 		llog := log.With("idxProvEnabled", cfg.Enable, "pid", marketHost.ID(), "retAddrs", marketHost.Addrs())
