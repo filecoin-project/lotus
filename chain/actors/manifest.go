@@ -21,6 +21,8 @@ var manifests map[Version]*manifest.Manifest
 var actorMeta map[cid.Cid]actorEntry
 
 var (
+	manifestMx sync.Mutex
+
 	loadOnce  sync.Once
 	loadError error
 )
@@ -30,6 +32,13 @@ type actorEntry struct {
 	version Version
 }
 
+func AddManifest(av Version, manifestCid cid.Cid) {
+	manifestMx.Lock()
+	defer manifestMx.Unlock()
+
+	ManifestCids[av] = manifestCid
+}
+
 func LoadManifests(ctx context.Context, store cbor.IpldStore) error {
 	// tests may invoke this concurrently, so we wrap it in a sync.Once
 	loadOnce.Do(func() { loadError = loadManifests(ctx, store) })
@@ -37,6 +46,9 @@ func LoadManifests(ctx context.Context, store cbor.IpldStore) error {
 }
 
 func loadManifests(ctx context.Context, store cbor.IpldStore) error {
+	manifestMx.Lock()
+	defer manifestMx.Unlock()
+
 	adtStore := adt.WrapStore(ctx, store)
 
 	manifests = make(map[Version]*manifest.Manifest)
