@@ -89,7 +89,7 @@ func legacyPreMigration(f LegacyPreMigrationFunc) stmgr.PreMigrationFunc {
 func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	var us stmgr.UpgradeSchedule
 
-	v8ManifestCid, ok := actors.ManifestCids[actors.Version8]
+	v8ManifestCid, ok := actors.GetManifest(actors.Version8)
 	if !ok {
 		v8ManifestCid = cid.Undef
 	}
