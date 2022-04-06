@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/specs-actors/v8/actors/builtin/manifest"
 )
 
-var ManifestCids map[Version]cid.Cid = map[Version]cid.Cid{
+var manifestCids map[Version]cid.Cid = map[Version]cid.Cid{
 	// TODO fill in manifest CIDs for v8 and upwards once these are fixed
 }
 
@@ -36,7 +36,15 @@ func AddManifest(av Version, manifestCid cid.Cid) {
 	manifestMx.Lock()
 	defer manifestMx.Unlock()
 
-	ManifestCids[av] = manifestCid
+	manifestCids[av] = manifestCid
+}
+
+func GetManifest(av Version) (cid.Cid, bool) {
+	manifestMx.Lock()
+	defer manifestMx.Unlock()
+
+	c, ok := manifestCids[av]
+	return c, ok
 }
 
 func LoadManifests(ctx context.Context, store cbor.IpldStore) error {
@@ -54,7 +62,7 @@ func loadManifests(ctx context.Context, store cbor.IpldStore) error {
 	manifests = make(map[Version]*manifest.Manifest)
 	actorMeta = make(map[cid.Cid]actorEntry)
 
-	for av, mfCid := range ManifestCids {
+	for av, mfCid := range manifestCids {
 		mf := &manifest.Manifest{}
 		if err := adtStore.Get(ctx, mfCid, mf); err != nil {
 			return xerrors.Errorf("error reading manifest for network version %d (cid: %s): %w", av, mfCid, err)

@@ -256,7 +256,7 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 			return nil, xerrors.Errorf("mapping network version to actors version: %w", err)
 		}
 
-		c, ok := actors.ManifestCids[av]
+		c, ok := actors.GetManifest(av)
 		if !ok {
 			return nil, xerrors.Errorf("no manifest for custom bundle (actors version %d)", av)
 		}
