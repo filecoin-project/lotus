@@ -76,6 +76,10 @@ type scheduler struct {
 type workerHandle struct {
 	workerRpc Worker
 
+	tasksCache  map[sealtasks.TaskType]struct{}
+	tasksUpdate time.Time
+	tasksLk     sync.Mutex
+
 	info storiface.WorkerInfo
 
 	preparing *activeResources // use with workerHandle.lk

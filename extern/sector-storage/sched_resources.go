@@ -1,8 +1,11 @@
 package sectorstorage
 
 import (
+	"context"
 	"sync"
+	"time"
 
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
@@ -141,4 +144,21 @@ func (wh *workerHandle) utilization() float64 {
 	wh.wndLk.Unlock()
 
 	return u
+}
+
+var tasksCacheTimeout = 30 * time.Second
+
+func (wh *workerHandle) TaskTypes(ctx context.Context) (t map[sealtasks.TaskType]struct{}, err error) {
+	wh.lk.Lock()
+	defer wh.lk.Unlock()
+
+	if wh.tasksCache == nil || time.Now().Sub(wh.tasksUpdate) > tasksCacheTimeout {
+		wh.tasksCache, err = wh.workerRpc.TaskTypes(ctx)
+		if err != nil {
+			return nil, err
+		}
+		wh.tasksUpdate = time.Now()
+	}
+
+	return wh.tasksCache, nil
 }
