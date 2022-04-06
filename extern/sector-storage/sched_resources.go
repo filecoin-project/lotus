@@ -33,13 +33,18 @@ func (a *activeResources) hasWorkWaiting() bool {
 	return a.waiting > 0
 }
 
-func (a *activeResources) add(wr storiface.WorkerResources, r storiface.Resources) {
+// add task resources to activeResources and return utilization difference
+func (a *activeResources) add(wr storiface.WorkerResources, r storiface.Resources) float64 {
+	startUtil := a.utilization(wr)
+
 	if r.GPUUtilization > 0 {
 		a.gpuUsed += r.GPUUtilization
 	}
 	a.cpuUse += r.Threads(wr.CPUs, len(wr.GPUs))
 	a.memUsedMin += r.MinMemory
 	a.memUsedMax += r.MaxMemory
+
+	return a.utilization(wr) - startUtil
 }
 
 func (a *activeResources) free(wr storiface.WorkerResources, r storiface.Resources) {
@@ -104,6 +109,7 @@ func (a *activeResources) canHandleRequest(needRes storiface.Resources, wid stor
 	return true
 }
 
+// utilization returns a number in 0..1 range indicating fraction of used resources
 func (a *activeResources) utilization(wr storiface.WorkerResources) float64 {
 	var max float64
 
@@ -129,6 +135,13 @@ func (a *activeResources) utilization(wr storiface.WorkerResources) float64 {
 		max = memMax
 	}
 
+	if len(wr.GPUs) > 0 {
+		gpuMax := a.gpuUsed / float64(len(wr.GPUs))
+		if gpuMax > max {
+			max = gpuMax
+		}
+	}
+
 	return max
 }
 
@@ -149,8 +162,8 @@ func (wh *workerHandle) utilization() float64 {
 var tasksCacheTimeout = 30 * time.Second
 
 func (wh *workerHandle) TaskTypes(ctx context.Context) (t map[sealtasks.TaskType]struct{}, err error) {
-	wh.lk.Lock()
-	defer wh.lk.Unlock()
+	wh.tasksLk.Lock()
+	defer wh.tasksLk.Unlock()
 
 	if wh.tasksCache == nil || time.Now().Sub(wh.tasksUpdate) > tasksCacheTimeout {
 		wh.tasksCache, err = wh.workerRpc.TaskTypes(ctx)
