@@ -3,6 +3,7 @@ package vm
 import (
 	"bytes"
 	"context"
+	"os"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -29,6 +30,7 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	ffi_cgo "github.com/filecoin-project/filecoin-ffi/cgo"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -241,9 +243,15 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		}
 	}
 
-	fvmOpts := ffi.FVMOpts{
-		FVMVersion:     0,
-		Externs:        &FvmExtern{Rand: opts.Rand, Blockstore: opts.Bstore, lbState: opts.LookbackState, base: opts.StateBase, epoch: opts.Epoch, nv: opts.NetworkVersion},
+	fvmopts := &ffi.FVMOpts{
+		FVMVersion: 0,
+		Externs: &FvmExtern{
+			Rand:       opts.Rand,
+			Blockstore: opts.Bstore,
+			lbState:    opts.LookbackState,
+			base:       opts.StateBase,
+			epoch:      opts.Epoch,
+		},
 		Epoch:          opts.Epoch,
 		BaseFee:        opts.BaseFee,
 		BaseCircSupply: circToReport,
@@ -251,7 +259,21 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		StateBase:      opts.StateBase,
 	}
 
-	fvm, err := ffi.CreateFVM(&fvmOpts)
+	if os.Getenv("LOTUS_USE_FVM_CUSTOM_BUNDLE") == "1" {
+		av, err := actors.VersionForNetwork(opts.NetworkVersion)
+		if err != nil {
+			return nil, xerrors.Errorf("mapping network version to actors version: %w", err)
+		}
+
+		c, ok := actors.ManifestCids[av]
+		if !ok {
+			return nil, xerrors.Errorf("no manifest for custom bundle (actors version %d)", av)
+		}
+
+		fvmopts.Manifest = c
+	}
+
+	fvm, err := ffi.CreateFVM(fvmopts)
 	if err != nil {
 		return nil, err
 	}
