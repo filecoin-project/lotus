@@ -75,6 +75,11 @@ func ConfigStorageMiner(c interface{}) Option {
 	enableLibp2pNode := cfg.Subsystems.EnableMarkets // we enable libp2p nodes if the storage market subsystem is enabled, otherwise we don't
 
 	return Options(
+
+		// Needed to instantiate pubsub used by index provider via ConfigCommon
+		Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
+		Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
+		Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
 		ConfigCommon(&cfg.Common, enableLibp2pNode),
 
 		Override(CheckFDLimit, modules.CheckFdLimit(build.MinerFDLimit)), // recommend at least 100k FD limit to miners
