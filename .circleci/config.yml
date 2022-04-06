@@ -714,39 +714,6 @@ jobs:
               docker push $<<parameters.account-url>>/<<parameters.repo>>:${tag}
             done
 
-  publish-packer-mainnet:
-    description: build and push AWS IAM and DigitalOcean droplet.
-    executor:
-      name: packer
-    steps:
-      - checkout
-      - attach_workspace:
-          at: "."
-      - packer_build:
-          template: tools/packer/lotus.pkr.hcl
-          args: "-var ci_workspace_bins=./linux -var lotus_network=mainnet -var git_tag=$CIRCLE_TAG"
-  publish-packer-calibrationnet:
-    description: build and push AWS IAM and DigitalOcean droplet.
-    executor:
-      name: packer
-    steps:
-      - checkout
-      - attach_workspace:
-          at: "."
-      - packer_build:
-          template: tools/packer/lotus.pkr.hcl
-          args: "-var ci_workspace_bins=./linux-calibrationnet -var lotus_network=calibrationnet -var git_tag=$CIRCLE_TAG"
-  publish-packer-butterflynet:
-    description: build and push AWS IAM and DigitalOcean droplet.
-    executor:
-      name: packer
-    steps:
-      - checkout
-      - attach_workspace:
-          at: "."
-      - packer_build:
-          template: tools/packer/lotus.pkr.hcl
-          args: "-var ci_workspace_bins=./linux-butterflynet -var lotus_network=butterflynet -var git_tag=$CIRCLE_TAG"
   publish-packer-snap:
     description: build packer image with snap. mainnet only.
     executor:
@@ -1075,36 +1042,6 @@ workflows:
           repo: lotus-test
           tag: '${CIRCLE_SHA1:0:8}'
           target: lotus-test
-      - publish-packer-mainnet:
-          requires:
-            - build-all
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - publish-packer-calibrationnet:
-          requires:
-            - build-ntwk-calibration
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - publish-packer-butterflynet:
-          requires:
-            - build-ntwk-butterfly
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish-snapcraft:
           name: publish-snapcraft-stable
           channel: stable
