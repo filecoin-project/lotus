@@ -499,8 +499,8 @@ var walletVerify = &cli.Command{
 }
 
 var walletDelete = &cli.Command{
-	Name:      "delete",
-	Usage:     "Delete an account from the wallet",
+	Name:      "soft-delete",
+	Usage:     "Soft delete an address from the wallet - hard deletion needed for permanent removal",
 	ArgsUsage: "<address> ",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetFullNodeAPI(cctx)
