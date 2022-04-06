@@ -253,3 +253,27 @@ func (o *observer) Observe(obs TipSetObserver) *types.TipSet {
 	o.observers = append(o.observers, obs)
 	return o.head
 }
+
+// Unregister unregisters an observer. Returns true if we successfully removed the observer.
+//
+// NOTE: The observer _may_ be called after being removed. Observers MUST handle this case
+// internally.
+func (o *observer) Unregister(obs TipSetObserver) (found bool) {
+	o.lk.Lock()
+	defer o.lk.Unlock()
+	// We _copy_ the observers list because we may be concurrently reading it from a headChange
+	// handler.
+	//
+	// This should happen infrequently, so it's fine if we spend a bit of time here.
+	newObservers := make([]TipSetObserver, 0, len(o.observers))
+	for _, existingObs := range o.observers {
+		if existingObs == obs {
+			found = true
+			continue
+		}
+		newObservers = append(newObservers, existingObs)
+	}
+
+	o.observers = newObservers
+	return found
+}
