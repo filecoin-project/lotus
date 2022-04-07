@@ -23,6 +23,12 @@
   #DisableMetadataLog = false
 
 
+[Logging]
+  [Logging.SubsystemLevels]
+    # env var: LOTUS_LOGGING_SUBSYSTEMLEVELS_EXAMPLE-SUBSYSTEM
+    #example-subsystem = "INFO"
+
+
 [Libp2p]
   # Binding address for the libp2p host - 0 means random port.
   # Format: multiaddress; see https://multiformats.io/multiaddr/
@@ -120,6 +126,14 @@
   # type: uint64
   # env var: LOTUS_CLIENT_SIMULTANEOUSTRANSFERSFORRETRIEVAL
   #SimultaneousTransfersForRetrieval = 20
+
+  # Require that retrievals perform no on-chain operations. Paid retrievals
+  # without existing payment channels with available funds will fail instead
+  # of automatically performing on-chain operations.
+  #
+  # type: bool
+  # env var: LOTUS_CLIENT_OFFCHAINRETRIEVAL
+  #OffChainRetrieval = false
 
 
 [Wallet]

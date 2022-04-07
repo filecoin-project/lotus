@@ -2,6 +2,7 @@ package filcns
 
 import (
 	"context"
+	"os"
 	"sync/atomic"
 
 	"github.com/filecoin-project/lotus/chain/rand"
@@ -32,6 +33,7 @@ import (
 
 	/* inline-gen end */
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -92,7 +94,8 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 		partDone()
 	}()
 
-	makeVmWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (*vm.VM, error) {
+	ctx = blockstore.WithHotView(ctx)
+	makeVmWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (vm.Interface, error) {
 		vmopt := &vm.VMOpts{
 			StateBase:      base,
 			Epoch:          e,
@@ -106,10 +109,23 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 			LookbackState:  stmgr.LookbackStateGetterForTipset(sm, ts),
 		}
 
+		if os.Getenv("LOTUS_USE_FVM_EXPERIMENTAL") == "1" {
+			// This is needed so that the FVM does not have to duplicate the genesis vesting schedule, one
+			// of the components of the circ supply calc.
+			// This field is NOT needed by the LegacyVM, and also NOT needed by the FVM from v15 onwards.
+			filVested, err := sm.GetFilVested(ctx, e)
+			if err != nil {
+				return nil, err
+			}
+
+			vmopt.FilVested = filVested
+			return vm.NewFVM(ctx, vmopt)
+		}
+
 		return sm.VMConstructor()(ctx, vmopt)
 	}
 
-	runCron := func(vmCron *vm.VM, epoch abi.ChainEpoch) error {
+	runCron := func(vmCron vm.Interface, epoch abi.ChainEpoch) error {
 		cronMsg := &types.Message{
 			To:         cron.Address,
 			From:       builtin.SystemActorAddr,

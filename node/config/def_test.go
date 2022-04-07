@@ -32,6 +32,24 @@ func TestDefaultFullNodeRoundtrip(t *testing.T) {
 	require.True(t, reflect.DeepEqual(c, c2))
 }
 
+func TestDefaultFullNodeCommentRoundtrip(t *testing.T) {
+	c := DefaultFullNode()
+
+	var s string
+	{
+		c, err := ConfigComment(DefaultFullNode())
+		require.NoError(t, err)
+		s = string(c)
+	}
+
+	c2, err := FromReader(strings.NewReader(s), DefaultFullNode())
+	require.NoError(t, err)
+
+	fmt.Println(s)
+
+	require.True(t, reflect.DeepEqual(c, c2))
+}
+
 func TestDefaultMinerRoundtrip(t *testing.T) {
 	c := DefaultStorageMiner()
 
@@ -51,4 +69,10 @@ func TestDefaultMinerRoundtrip(t *testing.T) {
 	fmt.Println(s)
 
 	require.True(t, reflect.DeepEqual(c, c2))
+}
+
+func TestDefaultStorageMiner_SetsIndexIngestTopic(t *testing.T) {
+	subject := DefaultStorageMiner()
+	require.True(t, subject.IndexProvider.Enable)
+	require.Equal(t, "/indexer/ingest/mainnet", subject.IndexProvider.TopicName)
 }

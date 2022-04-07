@@ -68,6 +68,8 @@ func main() {
 		sendCsvCmd,
 		terminationsCmd,
 		migrationsCmd,
+		diffCmd,
+		itestdCmd,
 	}
 
 	app := &cli.App{

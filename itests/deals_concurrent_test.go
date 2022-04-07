@@ -8,13 +8,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/stretchr/testify/require"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/go-state-types/abi"
+	provider "github.com/filecoin-project/index-provider"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -47,7 +49,9 @@ func TestDealWithMarketAndMinerNode(t *testing.T) {
 	runTest := func(t *testing.T, n int, fastRetrieval bool, carExport bool) {
 		api.RunningNodeType = api.NodeMiner // TODO(anteva): fix me
 
-		client, main, market, _ := kit.EnsembleWithMinerAndMarketNodes(t, kit.ThroughRPC())
+		idxProv := shared_testutil.NewMockIndexProvider()
+		idxProvOpt := kit.ConstructorOpts(node.Override(new(provider.Interface), idxProv))
+		client, main, market, _ := kit.EnsembleWithMinerAndMarketNodes(t, kit.ThroughRPC(), idxProvOpt)
 
 		dh := kit.NewDealHarness(t, client, main, market)
 
@@ -56,6 +60,7 @@ func TestDealWithMarketAndMinerNode(t *testing.T) {
 			FastRetrieval: fastRetrieval,
 			CarExport:     carExport,
 			StartEpoch:    startEpoch,
+			IndexProvider: idxProv,
 		})
 	}
 

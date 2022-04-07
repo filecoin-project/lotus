@@ -166,7 +166,7 @@ func (p *pieceProvider) ReadPiece(ctx context.Context, sector storage.SectorRef,
 
 	r, err := p.tryReadUnsealedPiece(ctx, unsealed, sector, pieceOffset, size)
 
-	log.Debugf("result of first tryReadUnsealedPiece: r=%+v, err=%s", r, err)
+	log.Debugf("result of first tryReadUnsealedPiece: r=%s, err=%s", r, err)
 
 	if xerrors.Is(err, storiface.ErrSectorNotFound) {
 		log.Debugf("no unsealed sector file with unsealed piece, sector=%+v, pieceOffset=%d, size=%d", sector, pieceOffset, size)

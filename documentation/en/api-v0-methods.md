@@ -128,9 +128,15 @@
   * [NetConnectedness](#NetConnectedness)
   * [NetDisconnect](#NetDisconnect)
   * [NetFindPeer](#NetFindPeer)
+  * [NetLimit](#NetLimit)
   * [NetPeerInfo](#NetPeerInfo)
   * [NetPeers](#NetPeers)
+  * [NetProtectAdd](#NetProtectAdd)
+  * [NetProtectList](#NetProtectList)
+  * [NetProtectRemove](#NetProtectRemove)
   * [NetPubsubScores](#NetPubsubScores)
+  * [NetSetLimit](#NetSetLimit)
+  * [NetStat](#NetStat)
 * [Paych](#Paych)
   * [PaychAllocateLane](#PaychAllocateLane)
   * [PaychAvailableFunds](#PaychAvailableFunds)
@@ -3821,6 +3827,32 @@ Response:
 }
 ```
 
+### NetLimit
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response:
+```json
+{
+  "Memory": 123,
+  "Streams": 3,
+  "StreamsInbound": 1,
+  "StreamsOutbound": 2,
+  "Conns": 4,
+  "ConnsInbound": 3,
+  "ConnsOutbound": 4,
+  "FD": 5
+}
+```
+
 ### NetPeerInfo
 
 
@@ -3876,6 +3908,52 @@ Response:
 ]
 ```
 
+### NetProtectAdd
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  ]
+]
+```
+
+Response: `{}`
+
+### NetProtectList
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+### NetProtectRemove
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  ]
+]
+```
+
+Response: `{}`
+
 ### NetPubsubScores
 
 
@@ -3904,6 +3982,94 @@ Response:
     }
   }
 ]
+```
+
+### NetSetLimit
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value",
+  {
+    "Memory": 123,
+    "Streams": 3,
+    "StreamsInbound": 1,
+    "StreamsOutbound": 2,
+    "Conns": 4,
+    "ConnsInbound": 3,
+    "ConnsOutbound": 4,
+    "FD": 5
+  }
+]
+```
+
+Response: `{}`
+
+### NetStat
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response:
+```json
+{
+  "System": {
+    "NumStreamsInbound": 123,
+    "NumStreamsOutbound": 123,
+    "NumConnsInbound": 123,
+    "NumConnsOutbound": 123,
+    "NumFD": 123,
+    "Memory": 9
+  },
+  "Transient": {
+    "NumStreamsInbound": 123,
+    "NumStreamsOutbound": 123,
+    "NumConnsInbound": 123,
+    "NumConnsOutbound": 123,
+    "NumFD": 123,
+    "Memory": 9
+  },
+  "Services": {
+    "abc": {
+      "NumStreamsInbound": 1,
+      "NumStreamsOutbound": 2,
+      "NumConnsInbound": 3,
+      "NumConnsOutbound": 4,
+      "NumFD": 5,
+      "Memory": 123
+    }
+  },
+  "Protocols": {
+    "abc": {
+      "NumStreamsInbound": 1,
+      "NumStreamsOutbound": 2,
+      "NumConnsInbound": 3,
+      "NumConnsOutbound": 4,
+      "NumFD": 5,
+      "Memory": 123
+    }
+  },
+  "Peers": {
+    "abc": {
+      "NumStreamsInbound": 1,
+      "NumStreamsOutbound": 2,
+      "NumConnsInbound": 3,
+      "NumConnsOutbound": 4,
+      "NumFD": 5,
+      "Memory": 123
+    }
+  }
+}
 ```
 
 ## Paych
@@ -3944,6 +4110,8 @@ Response:
   "To": "f01234",
   "ConfirmedAmt": "0",
   "PendingAmt": "0",
+  "NonReservedAmt": "0",
+  "PendingAvailableAmt": "0",
   "PendingWaitSentinel": null,
   "QueuedAmt": "0",
   "VoucherReedeemedAmt": "0"
@@ -3971,6 +4139,8 @@ Response:
   "To": "f01234",
   "ConfirmedAmt": "0",
   "PendingAmt": "0",
+  "NonReservedAmt": "0",
+  "PendingAvailableAmt": "0",
   "PendingWaitSentinel": null,
   "QueuedAmt": "0",
   "VoucherReedeemedAmt": "0"

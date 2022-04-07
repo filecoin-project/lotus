@@ -111,6 +111,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	Committing: planCommitting,
 	CommitFinalize: planOne(
 		on(SectorFinalized{}, SubmitCommit),
+		on(SectorFinalizedAvailable{}, SubmitCommit),
 		on(SectorFinalizeFailed{}, CommitFinalizeFailed),
 	),
 	SubmitCommit: planOne(
@@ -136,6 +137,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 
 	FinalizeSector: planOne(
 		on(SectorFinalized{}, Proving),
+		on(SectorFinalizedAvailable{}, Available),
 		on(SectorFinalizeFailed{}, FinalizeFailed),
 	),
 
@@ -283,7 +285,11 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	Proving: planOne(
 		on(SectorFaultReported{}, FaultReported),
 		on(SectorFaulty{}, Faulty),
+		on(SectorMarkForUpdate{}, Available),
+	),
+	Available: planOne(
 		on(SectorStartCCUpdate{}, SnapDealsWaitDeals),
+		on(SectorAbortUpgrade{}, Proving),
 	),
 	Terminating: planOne(
 		on(SectorTerminating{}, TerminateWait),
@@ -314,7 +320,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	FaultReported: final, // not really supported right now
 
 	FaultedFinal: final,
-	Removed:      final,
+	Removed:      finalRemoved,
 
 	FailedUnrecoverable: final,
 }
@@ -393,7 +399,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	processed, err := p(events, state)
 	if err != nil {
-		return nil, 0, xerrors.Errorf("running planner for state %s failed: %w", state.State, err)
+		return nil, processed, xerrors.Errorf("running planner for state %s failed: %w", state.State, err)
 	}
 
 	/////
@@ -558,6 +564,8 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	// Post-seal
 	case Proving:
 		return m.handleProvingSector, processed, nil
+	case Available:
+		return m.handleAvailableSector, processed, nil
 	case Terminating:
 		return m.handleTerminating, processed, nil
 	case TerminateWait:
@@ -684,6 +692,12 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 func (m *Sealing) ForceSectorState(ctx context.Context, id abi.SectorNumber, state SectorState) error {
 	m.startupWait.Wait()
 	return m.sectors.Send(id, SectorForceState{state})
+}
+
+// as sector has been removed, it's no needs to care about later events,
+// just returns length of events as `processed` is ok.
+func finalRemoved(events []statemachine.Event, state *SectorInfo) (uint64, error) {
+	return uint64(len(events)), nil
 }
 
 func final(events []statemachine.Event, state *SectorInfo) (uint64, error) {

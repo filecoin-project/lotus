@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/libp2p/go-libp2p-core/host"
+
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -61,7 +63,7 @@ func NewMinerAPI(lc fx.Lifecycle, r repo.LockedRepo, pieceStore dtypes.ProviderP
 // DAGStore constructs a DAG store using the supplied minerAPI, and the
 // user configuration. It returns both the DAGStore and the Wrapper suitable for
 // passing to markets.
-func DAGStore(lc fx.Lifecycle, r repo.LockedRepo, minerAPI mdagstore.MinerAPI) (*dagstore.DAGStore, *mdagstore.Wrapper, error) {
+func DAGStore(lc fx.Lifecycle, r repo.LockedRepo, minerAPI mdagstore.MinerAPI, h host.Host) (*dagstore.DAGStore, *mdagstore.Wrapper, error) {
 	cfg, err := extractDAGStoreConfig(r)
 	if err != nil {
 		return nil, nil, err
@@ -80,7 +82,7 @@ func DAGStore(lc fx.Lifecycle, r repo.LockedRepo, minerAPI mdagstore.MinerAPI) (
 		}
 	}
 
-	dagst, w, err := mdagstore.NewDAGStore(cfg, minerAPI)
+	dagst, w, err := mdagstore.NewDAGStore(cfg, minerAPI, h)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("failed to create DAG store: %w", err)
 	}

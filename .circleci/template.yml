@@ -2,7 +2,6 @@ version: 2.1
 orbs:
   go: gotest/tools@0.0.13
   aws-cli: circleci/aws-cli@1.3.2
-  packer: salaxander/packer@0.0.3
 
 executors:
   golang:
@@ -12,6 +11,16 @@ executors:
   ubuntu:
     docker:
       - image: ubuntu:20.04
+  packer:
+    description: |
+      The HashiCorp provided Packer container
+    parameters:
+      packer-version:
+        type: string
+        default: "1.8"
+    docker:
+      - image: hashicorp/packer:<< parameters.packer-version >>
+
 
 commands:
   install-deps:
@@ -74,6 +83,26 @@ commands:
           name: fetch all tags
           command: |
             git fetch --all
+
+  packer_build:
+    description: "Run a packer build"
+    parameters:
+      template:
+        description: |
+          The name of the packer template file
+        type: string
+        default: packer.json
+      args:
+        description: |
+          Arguments to pass to the packer build command
+        type: string
+        default: ""
+
+    steps:
+      - run:
+          name: "Run a packer build"
+          command: packer build << parameters.args >> << parameters.template >>
+          no_output_timeout: 30m
 
 jobs:
   mod-tidy-check:
@@ -390,7 +419,7 @@ jobs:
 
   build-appimage:
     machine:
-      image: ubuntu-2004:202104-01
+      image: ubuntu-2004:202111-02
     steps:
       - checkout
       - attach_workspace:
@@ -398,6 +427,16 @@ jobs:
       - run:
           name: install appimage-builder
           command: |
+            # appimage-builder requires /dev/snd to exist. It creates containers during the testing phase
+            # that pass sound devices from the host to the testing container. (hard coded!)
+            # https://github.com/AppImageCrafters/appimage-builder/blob/master/appimagebuilder/modules/test/execution_test.py#L54
+            # Circleci doesn't provide a working sound device; this is enough to fake it.
+            if [ ! -e /dev/snd ]
+            then
+              sudo mkdir /dev/snd
+              sudo mknod /dev/snd/ControlC0 c 1 2
+            fi
+
             # docs: https://appimage-builder.readthedocs.io/en/latest/intro/install.html
             sudo apt update
             sudo apt install -y python3-pip python3-setuptools patchelf desktop-file-utils libgdk-pixbuf2.0-dev fakeroot strace
@@ -618,6 +657,11 @@ jobs:
         default: "latest"
         description: A comma-separated string containing docker image tags to build and push (default = latest)
 
+      target:
+        type: string
+        default: "lotus-all-in-one"
+        description: Docker target to build
+
     steps:
       - run:
           name: Confirm that environment variables are set
@@ -657,6 +701,7 @@ jobs:
 
             docker build \
               <<#parameters.extra-build-args>><<parameters.extra-build-args>><</parameters.extra-build-args>> \
+              --target <<parameters.target>> \
               -f <<parameters.path>>/<<parameters.dockerfile>> \
               $docker_tag_args \
               <<parameters.path>>
@@ -669,42 +714,16 @@ jobs:
               docker push $<<parameters.account-url>>/<<parameters.repo>>:${tag}
             done
 
-  publish-packer-mainnet:
-    description: build and push AWS IAM and DigitalOcean droplet.
+  publish-packer-snap:
+    description: build packer image with snap. mainnet only.
     executor:
-      name: packer/default
-      packer-version: 1.6.6
+      name: packer
     steps:
       - checkout
       - attach_workspace:
           at: "."
-      - packer/build:
-          template: tools/packer/lotus.pkr.hcl
-          args: "-var ci_workspace_bins=./linux -var lotus_network=mainnet -var git_tag=$CIRCLE_TAG"
-  publish-packer-calibrationnet:
-    description: build and push AWS IAM and DigitalOcean droplet.
-    executor:
-      name: packer/default
-      packer-version: 1.6.6
-    steps:
-      - checkout
-      - attach_workspace:
-          at: "."
-      - packer/build:
-          template: tools/packer/lotus.pkr.hcl
-          args: "-var ci_workspace_bins=./linux-calibrationnet -var lotus_network=calibrationnet -var git_tag=$CIRCLE_TAG"
-  publish-packer-butterflynet:
-    description: build and push AWS IAM and DigitalOcean droplet.
-    executor:
-      name: packer/default
-      packer-version: 1.6.6
-    steps:
-      - checkout
-      - attach_workspace:
-          at: "."
-      - packer/build:
-          template: tools/packer/lotus.pkr.hcl
-          args: "-var ci_workspace_bins=./linux-butterflynet -var lotus_network=butterflynet -var git_tag=$CIRCLE_TAG"
+      - packer_build:
+          template: tools/packer/lotus-snap.pkr.hcl
   publish-dockerhub:
     description: publish to dockerhub
     machine:
@@ -816,10 +835,19 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-appimage:
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish:
           requires:
             - build-all
             - build-macos
+            - build-appimage
           filters:
             branches:
               ignore:
@@ -832,36 +860,13 @@ workflows:
           path: .
           repo: lotus-dev
           tag: '${CIRCLE_SHA1:0:8}'
-      - publish-packer-mainnet:
-          requires:
-            - build-all
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - publish-packer-calibrationnet:
-          requires:
-            - build-ntwk-calibration
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - publish-packer-butterflynet:
-          requires:
-            - build-ntwk-butterfly
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+          target: lotus-all-in-one
+      - build-and-push-image:
+          dockerfile: Dockerfile.lotus
+          path: .
+          repo: lotus-test
+          tag: '${CIRCLE_SHA1:0:8}'
+          target: lotus-test
       - publish-snapcraft:
           name: publish-snapcraft-stable
           channel: stable
@@ -898,3 +903,13 @@ workflows:
       - publish-dockerhub:
           name: publish-dockerhub-nightly
           tag: nightly
+  monthly:
+    triggers:
+      - schedule:
+          cron: "0 0 1 * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - publish-packer-snap

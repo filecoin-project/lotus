@@ -6,12 +6,11 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/streadway/quantile"
+	"github.com/ipfs/go-cid"
+	"github.com/koalacxr/quantile"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"

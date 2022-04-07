@@ -35,6 +35,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
+	provider "github.com/filecoin-project/index-provider"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -61,6 +62,7 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/markets"
 	"github.com/filecoin-project/lotus/markets/dagstore"
+	"github.com/filecoin-project/lotus/markets/idxprov"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/markets/pricing"
 	lotusminer "github.com/filecoin-project/lotus/miner"
@@ -584,10 +586,12 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 	h host.Host, ds dtypes.MetadataDS,
 	r repo.LockedRepo,
 	pieceStore dtypes.ProviderPieceStore,
+	indexer provider.Interface,
 	dataTransfer dtypes.ProviderDataTransfer,
 	spn storagemarket.StorageProviderNode,
 	df dtypes.StorageDealFilter,
 	dsw *dagstore.Wrapper,
+	meshCreator idxprov.MeshCreator,
 ) (storagemarket.StorageProvider, error) {
 	net := smnet.NewFromLibp2pHost(h)
 
@@ -612,11 +616,13 @@ func StorageProvider(minerAddress dtypes.MinerAddress,
 		namespace.Wrap(ds, datastore.NewKey("/deals/provider")),
 		store,
 		dsw,
+		indexer,
 		pieceStore,
 		dataTransfer,
 		spn,
 		address.Address(minerAddress),
 		storedAsk,
+		meshCreator,
 		opt,
 	)
 }
@@ -891,6 +897,8 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				MaxSealingSectorsForDeals:       cfg.MaxSealingSectorsForDeals,
 				CommittedCapacitySectorLifetime: config.Duration(cfg.CommittedCapacitySectorLifetime),
 				WaitDealsDelay:                  config.Duration(cfg.WaitDealsDelay),
+				MakeNewSectorForDeals:           cfg.MakeNewSectorForDeals,
+				MakeCCSectorsAvailable:          cfg.MakeCCSectorsAvailable,
 				AlwaysKeepUnsealedCopy:          cfg.AlwaysKeepUnsealedCopy,
 				FinalizeEarly:                   cfg.FinalizeEarly,
 
@@ -926,9 +934,10 @@ func ToSealingConfig(cfg *config.StorageMiner) sealiface.Config {
 		MaxSealingSectors:               cfg.Sealing.MaxSealingSectors,
 		MaxSealingSectorsForDeals:       cfg.Sealing.MaxSealingSectorsForDeals,
 		StartEpochSealingBuffer:         abi.ChainEpoch(cfg.Dealmaking.StartEpochSealingBuffer),
-		MakeNewSectorForDeals:           cfg.Dealmaking.MakeNewSectorForDeals,
+		MakeNewSectorForDeals:           cfg.Sealing.MakeNewSectorForDeals,
 		CommittedCapacitySectorLifetime: time.Duration(cfg.Sealing.CommittedCapacitySectorLifetime),
 		WaitDealsDelay:                  time.Duration(cfg.Sealing.WaitDealsDelay),
+		MakeCCSectorsAvailable:          cfg.Sealing.MakeCCSectorsAvailable,
 		AlwaysKeepUnsealedCopy:          cfg.Sealing.AlwaysKeepUnsealedCopy,
 		FinalizeEarly:                   cfg.Sealing.FinalizeEarly,
 

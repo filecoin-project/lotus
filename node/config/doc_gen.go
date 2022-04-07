@@ -105,6 +105,14 @@ and storage providers for storage deals`,
 			Comment: `The maximum number of simultaneous data transfers between the client
 and storage providers for retrieval deals`,
 		},
+		{
+			Name: "OffChainRetrieval",
+			Type: "bool",
+
+			Comment: `Require that retrievals perform no on-chain operations. Paid retrievals
+without existing payment channels with available funds will fail instead
+of automatically performing on-chain operations.`,
+		},
 	},
 	"Common": []DocField{
 		{
@@ -116,6 +124,12 @@ and storage providers for retrieval deals`,
 		{
 			Name: "Backup",
 			Type: "Backup",
+
+			Comment: ``,
+		},
+		{
+			Name: "Logging",
+			Type: "Logging",
 
 			Comment: ``,
 		},
@@ -241,14 +255,6 @@ This includes the time the deal will need to get transferred and published
 before being assigned to a sector`,
 		},
 		{
-			Name: "MakeNewSectorForDeals",
-			Type: "bool",
-
-			Comment: `Whether new sectors are created to pack incoming deals
-When this is set to false no new sectors will be created for sealing incoming deals
-This is useful for forcing all deals to be assigned as snap deals to sectors marked for upgrade`,
-		},
-		{
 			Name: "MaxDealStartDelay",
 			Type: "Duration",
 
@@ -366,6 +372,49 @@ see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-f
 			Comment: ``,
 		},
 	},
+	"IndexProviderConfig": []DocField{
+		{
+			Name: "Enable",
+			Type: "bool",
+
+			Comment: `Enable set whether to enable indexing announcement to the network and expose endpoints that
+allow indexer nodes to process announcements. Disabled by default.`,
+		},
+		{
+			Name: "EntriesCacheCapacity",
+			Type: "int",
+
+			Comment: `EntriesCacheCapacity sets the maximum capacity to use for caching the indexing advertisement
+entries. Defaults to 1024 if not specified. The cache is evicted using LRU policy. The
+maximum storage used by the cache is a factor of EntriesCacheCapacity, EntriesChunkSize and
+the length of multihashes being advertised. For example, advertising 128-bit long multihashes
+with the default EntriesCacheCapacity, and EntriesChunkSize means the cache size can grow to
+256MiB when full.`,
+		},
+		{
+			Name: "EntriesChunkSize",
+			Type: "int",
+
+			Comment: `EntriesChunkSize sets the maximum number of multihashes to include in a single entries chunk.
+Defaults to 16384 if not specified. Note that chunks are chained together for indexing
+advertisements that include more multihashes than the configured EntriesChunkSize.`,
+		},
+		{
+			Name: "TopicName",
+			Type: "string",
+
+			Comment: `TopicName sets the topic name on which the changes to the advertised content are announced.
+Defaults to '/indexer/ingest/mainnet' if not specified.`,
+		},
+		{
+			Name: "PurgeCacheOnStart",
+			Type: "bool",
+
+			Comment: `PurgeCacheOnStart sets whether to clear any cached entries chunks when the provider engine
+starts. By default, the cache is rehydrated from previously cached entries stored in
+datastore if any is present.`,
+		},
+	},
 	"Libp2p": []DocField{
 		{
 			Name: "ListenAddresses",
@@ -431,6 +480,14 @@ count towards this limit.`,
 
 			Comment: `ConnMgrGrace is a time duration that new connections are immune from being
 closed by the connection manager.`,
+		},
+	},
+	"Logging": []DocField{
+		{
+			Name: "SubsystemLevels",
+			Type: "map[string]string",
+
+			Comment: `SubsystemLevels specify per-subsystem log levels`,
 		},
 	},
 	"MinerAddressConfig": []DocField{
@@ -686,6 +743,20 @@ avoid the relatively high cost of unsealing the data later, at the cost of more 
 			Comment: `Run sector finalization before submitting sector proof to the chain`,
 		},
 		{
+			Name: "MakeNewSectorForDeals",
+			Type: "bool",
+
+			Comment: `Whether new sectors are created to pack incoming deals
+When this is set to false no new sectors will be created for sealing incoming deals
+This is useful for forcing all deals to be assigned as snap deals to sectors marked for upgrade`,
+		},
+		{
+			Name: "MakeCCSectorsAvailable",
+			Type: "bool",
+
+			Comment: `After sealing CC sectors, make them available for upgrading with deals`,
+		},
+		{
 			Name: "CollateralFromMinerBalance",
 			Type: "bool",
 
@@ -838,6 +909,12 @@ Default is 20 (about once a week).`,
 		{
 			Name: "Dealmaking",
 			Type: "DealmakingConfig",
+
+			Comment: ``,
+		},
+		{
+			Name: "IndexProvider",
+			Type: "IndexProviderConfig",
 
 			Comment: ``,
 		},

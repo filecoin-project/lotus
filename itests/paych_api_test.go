@@ -51,7 +51,7 @@ func TestPaymentChannelsAPI(t *testing.T) {
 		Miner(&miner, &paymentCreator, kit.WithAllSubsystems()).
 		Start().
 		InterconnectAll()
-	bms := ens.BeginMining(blockTime)
+	bms := ens.BeginMiningMustPost(blockTime)
 	bm := bms[0]
 
 	// send some funds to register the receiver
@@ -65,7 +65,9 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	require.NoError(t, err)
 
 	channelAmt := int64(7000)
-	channelInfo, err := paymentCreator.PaychGet(ctx, createrAddr, receiverAddr, abi.NewTokenAmount(channelAmt))
+	channelInfo, err := paymentCreator.PaychGet(ctx, createrAddr, receiverAddr, abi.NewTokenAmount(channelAmt), api.PaychGetOpts{
+		OffChain: false,
+	})
 	require.NoError(t, err)
 
 	channel, err := paymentCreator.PaychGetWaitReady(ctx, channelInfo.WaitSentinel)

@@ -15,6 +15,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	ci "github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/routing"
@@ -32,6 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/alerting"
+	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
@@ -68,6 +70,7 @@ var (
 	BandwidthReporterKey = special{11} // Libp2p option
 	ConnGaterKey         = special{12} // libp2p option
 	DAGStoreKey          = special{13} // constructor returns multiple values
+	ResourceManagerKey   = special{14} // Libp2p option
 )
 
 type invoke int
@@ -102,6 +105,8 @@ const (
 	HandleIncomingMessagesKey
 	HandleMigrateClientFundsKey
 	HandlePaymentChannelManagerKey
+
+	RelayIndexerMessagesKey
 
 	// miner
 	GetParamsKey
@@ -215,6 +220,10 @@ var LibP2P = Options(
 	Override(ConnectionManagerKey, lp2p.ConnectionManager(50, 200, 20*time.Second, nil)),
 	Override(new(*conngater.BasicConnectionGater), lp2p.ConnGater),
 	Override(ConnGaterKey, lp2p.ConnGaterOption),
+
+	// Services (resource management)
+	Override(new(network.ResourceManager), lp2p.ResourceManager(200)),
+	Override(ResourceManagerKey, lp2p.ResourceManagerOption),
 )
 
 func IsType(t repo.RepoType) func(s *Settings) bool {
@@ -241,6 +250,9 @@ func Base() Option {
 
 // Config sets up constructors based on the provided Config
 func ConfigCommon(cfg *config.Common, enableLibp2pNode bool) Option {
+	// setup logging early
+	lotuslog.SetLevelsFromConfig(cfg.Logging.SubsystemLevels)
+
 	return Options(
 		func(s *Settings) error { s.Config = true; return nil },
 		Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
@@ -270,6 +282,7 @@ func ConfigCommon(cfg *config.Common, enableLibp2pNode bool) Option {
 				cfg.Libp2p.ConnMgrHigh,
 				time.Duration(cfg.Libp2p.ConnMgrGrace),
 				cfg.Libp2p.ProtectedPeers)),
+			Override(new(network.ResourceManager), lp2p.ResourceManager(cfg.Libp2p.ConnMgrHigh)),
 			Override(new(*pubsub.PubSub), lp2p.GossipSub),
 			Override(new(*config.Pubsub), &cfg.Pubsub),
 

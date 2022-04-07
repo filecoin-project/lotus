@@ -22,8 +22,6 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
-	"github.com/ipfs/go-path"
-	"github.com/ipfs/go-path/resolver"
 	mh "github.com/multiformats/go-multihash"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
@@ -36,6 +34,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/lib/oldpath"
+	"github.com/filecoin-project/lotus/lib/oldpath/oldresolver"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
@@ -550,17 +550,16 @@ func resolveOnce(bs blockstore.Blockstore, tse stmgr.Executor) func(ctx context.
 }
 
 func (a *ChainAPI) ChainGetNode(ctx context.Context, p string) (*api.IpldObject, error) {
-	ip, err := path.ParsePath(p)
+	ip, err := oldpath.ParsePath(p)
 	if err != nil {
 		return nil, xerrors.Errorf("parsing path: %w", err)
 	}
 
 	bs := a.ExposedBlockstore
 	bsvc := blockservice.New(bs, offline.Exchange(bs))
-
 	dag := merkledag.NewDAGService(bsvc)
 
-	r := &resolver.Resolver{
+	r := &oldresolver.Resolver{
 		DAG:         dag,
 		ResolveOnce: resolveOnce(bs, a.TsExec),
 	}

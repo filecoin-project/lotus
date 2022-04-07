@@ -23,6 +23,7 @@
   * [DagstoreInitializeAll](#DagstoreInitializeAll)
   * [DagstoreInitializeShard](#DagstoreInitializeShard)
   * [DagstoreListShards](#DagstoreListShards)
+  * [DagstoreLookupPieces](#DagstoreLookupPieces)
   * [DagstoreRecoverShard](#DagstoreRecoverShard)
 * [Deals](#Deals)
   * [DealsConsiderOfflineRetrievalDeals](#DealsConsiderOfflineRetrievalDeals)
@@ -43,6 +44,9 @@
   * [DealsSetPieceCidBlocklist](#DealsSetPieceCidBlocklist)
 * [I](#I)
   * [ID](#ID)
+* [Indexer](#Indexer)
+  * [IndexerAnnounceAllDeals](#IndexerAnnounceAllDeals)
+  * [IndexerAnnounceDeal](#IndexerAnnounceDeal)
 * [Log](#Log)
   * [LogAlerts](#LogAlerts)
   * [LogList](#LogList)
@@ -81,9 +85,15 @@
   * [NetConnectedness](#NetConnectedness)
   * [NetDisconnect](#NetDisconnect)
   * [NetFindPeer](#NetFindPeer)
+  * [NetLimit](#NetLimit)
   * [NetPeerInfo](#NetPeerInfo)
   * [NetPeers](#NetPeers)
+  * [NetProtectAdd](#NetProtectAdd)
+  * [NetProtectList](#NetProtectList)
+  * [NetProtectRemove](#NetProtectRemove)
   * [NetPubsubScores](#NetPubsubScores)
+  * [NetSetLimit](#NetSetLimit)
+  * [NetStat](#NetStat)
 * [Pieces](#Pieces)
   * [PiecesGetCIDInfo](#PiecesGetCIDInfo)
   * [PiecesGetPieceInfo](#PiecesGetPieceInfo)
@@ -514,6 +524,32 @@ Response:
 ]
 ```
 
+### DagstoreLookupPieces
+DagstoreLookupPieces returns information about shards that contain the given CID.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response:
+```json
+[
+  {
+    "Key": "baga6ea4seaqecmtz7iak33dsfshi627abz4i4665dfuzr3qfs4bmad6dx3iigdq",
+    "State": "ShardStateAvailable",
+    "Error": "\u003cerror\u003e"
+  }
+]
+```
+
 ### DagstoreRecoverShard
 DagstoreRecoverShard attempts to recover a failed shard.
 
@@ -772,6 +808,37 @@ Inputs: `null`
 
 Response: `"12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"`
 
+## Indexer
+
+
+### IndexerAnnounceAllDeals
+IndexerAnnounceAllDeals informs the indexer nodes aboutall active deals.
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `{}`
+
+### IndexerAnnounceDeal
+IndexerAnnounceDeal informs indexer nodes that a new deal was received,
+so they can download its index
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+]
+```
+
+Response: `{}`
+
 ## Log
 
 
@@ -872,7 +939,7 @@ Response:
 {
   "ReceivingTransfers": [
     {
-      "RequestID": 4,
+      "RequestID": {},
       "RequestState": "string value",
       "IsCurrentChannelRequest": true,
       "ChannelID": {
@@ -916,7 +983,7 @@ Response:
   ],
   "SendingTransfers": [
     {
-      "RequestID": 4,
+      "RequestID": {},
       "RequestState": "string value",
       "IsCurrentChannelRequest": true,
       "ChannelID": {
@@ -1703,6 +1770,32 @@ Response:
 }
 ```
 
+### NetLimit
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response:
+```json
+{
+  "Memory": 123,
+  "Streams": 3,
+  "StreamsInbound": 1,
+  "StreamsOutbound": 2,
+  "Conns": 4,
+  "ConnsInbound": 3,
+  "ConnsOutbound": 4,
+  "FD": 5
+}
+```
+
 ### NetPeerInfo
 
 
@@ -1758,6 +1851,52 @@ Response:
 ]
 ```
 
+### NetProtectAdd
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  ]
+]
+```
+
+Response: `{}`
+
+### NetProtectList
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+### NetProtectRemove
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  [
+    "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+  ]
+]
+```
+
+Response: `{}`
+
 ### NetPubsubScores
 
 
@@ -1786,6 +1925,94 @@ Response:
     }
   }
 ]
+```
+
+### NetSetLimit
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value",
+  {
+    "Memory": 123,
+    "Streams": 3,
+    "StreamsInbound": 1,
+    "StreamsOutbound": 2,
+    "Conns": 4,
+    "ConnsInbound": 3,
+    "ConnsOutbound": 4,
+    "FD": 5
+  }
+]
+```
+
+Response: `{}`
+
+### NetStat
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response:
+```json
+{
+  "System": {
+    "NumStreamsInbound": 123,
+    "NumStreamsOutbound": 123,
+    "NumConnsInbound": 123,
+    "NumConnsOutbound": 123,
+    "NumFD": 123,
+    "Memory": 9
+  },
+  "Transient": {
+    "NumStreamsInbound": 123,
+    "NumStreamsOutbound": 123,
+    "NumConnsInbound": 123,
+    "NumConnsOutbound": 123,
+    "NumFD": 123,
+    "Memory": 9
+  },
+  "Services": {
+    "abc": {
+      "NumStreamsInbound": 1,
+      "NumStreamsOutbound": 2,
+      "NumConnsInbound": 3,
+      "NumConnsOutbound": 4,
+      "NumFD": 5,
+      "Memory": 123
+    }
+  },
+  "Protocols": {
+    "abc": {
+      "NumStreamsInbound": 1,
+      "NumStreamsOutbound": 2,
+      "NumConnsInbound": 3,
+      "NumConnsOutbound": 4,
+      "NumFD": 5,
+      "Memory": 123
+    }
+  },
+  "Peers": {
+    "abc": {
+      "NumStreamsInbound": 1,
+      "NumStreamsOutbound": 2,
+      "NumConnsInbound": 3,
+      "NumConnsOutbound": 4,
+      "NumFD": 5,
+      "Memory": 123
+    }
+  }
+}
 ```
 
 ## Pieces

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -385,6 +386,235 @@ func TestSplitStoreSuppressCompactionNearUpgrade(t *testing.T) {
 	if coldCnt != 18 {
 		t.Errorf("expected %d blocks, but got %d", 18, coldCnt)
 	}
+}
+
+func testSplitStoreReification(t *testing.T, f func(context.Context, blockstore.Blockstore, cid.Cid) error) {
+	ds := dssync.MutexWrap(datastore.NewMapDatastore())
+	hot := newMockStore()
+	cold := newMockStore()
+
+	mkRandomBlock := func() blocks.Block {
+		data := make([]byte, 128)
+		_, err := rand.Read(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return blocks.NewBlock(data)
+	}
+
+	block1 := mkRandomBlock()
+	block2 := mkRandomBlock()
+	block3 := mkRandomBlock()
+
+	hdr := mock.MkBlock(nil, 0, 0)
+	hdr.Messages = block1.Cid()
+	hdr.ParentMessageReceipts = block2.Cid()
+	hdr.ParentStateRoot = block3.Cid()
+	block4, err := hdr.ToStorageBlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	allBlocks := []blocks.Block{block1, block2, block3, block4}
+	for _, blk := range allBlocks {
+		err := cold.Put(context.Background(), blk)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	path, err := ioutil.TempDir("", "splitstore.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() {
+		_ = os.RemoveAll(path)
+	})
+
+	ss, err := Open(path, ds, hot, cold, &Config{MarkSetType: "map"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ss.Close() //nolint
+
+	ss.warmupEpoch = 1
+	go ss.reifyOrchestrator()
+
+	waitForReification := func() {
+		for {
+			ss.reifyMx.Lock()
+			ready := len(ss.reifyPend) == 0 && len(ss.reifyInProgress) == 0
+			ss.reifyMx.Unlock()
+
+			if ready {
+				return
+			}
+
+			time.Sleep(time.Millisecond)
+		}
+	}
+
+	// first access using the standard view
+	err = f(context.Background(), ss, block4.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// nothing should be reified
+	waitForReification()
+	for _, blk := range allBlocks {
+		has, err := hot.Has(context.Background(), blk.Cid())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if has {
+			t.Fatal("block unexpectedly reified")
+		}
+	}
+
+	// now make the hot/reifying view and ensure access reifies
+	err = f(blockstore.WithHotView(context.Background()), ss, block4.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// everything should be reified
+	waitForReification()
+	for i, blk := range allBlocks {
+		has, err := hot.Has(context.Background(), blk.Cid())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if !has {
+			t.Fatalf("block%d was not reified", i+1)
+		}
+	}
+}
+
+func testSplitStoreReificationLimit(t *testing.T, f func(context.Context, blockstore.Blockstore, cid.Cid) error) {
+	ds := dssync.MutexWrap(datastore.NewMapDatastore())
+	hot := newMockStore()
+	cold := newMockStore()
+
+	mkRandomBlock := func() blocks.Block {
+		data := make([]byte, 128)
+		_, err := rand.Read(data)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return blocks.NewBlock(data)
+	}
+
+	block1 := mkRandomBlock()
+	block2 := mkRandomBlock()
+	block3 := mkRandomBlock()
+
+	hdr := mock.MkBlock(nil, 0, 0)
+	hdr.Messages = block1.Cid()
+	hdr.ParentMessageReceipts = block2.Cid()
+	hdr.ParentStateRoot = block3.Cid()
+	block4, err := hdr.ToStorageBlock()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	allBlocks := []blocks.Block{block1, block2, block3, block4}
+	for _, blk := range allBlocks {
+		err := cold.Put(context.Background(), blk)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	path, err := ioutil.TempDir("", "splitstore.*")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Cleanup(func() {
+		_ = os.RemoveAll(path)
+	})
+
+	ss, err := Open(path, ds, hot, cold, &Config{MarkSetType: "map"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer ss.Close() //nolint
+
+	ss.warmupEpoch = 1
+	go ss.reifyOrchestrator()
+
+	waitForReification := func() {
+		for {
+			ss.reifyMx.Lock()
+			ready := len(ss.reifyPend) == 0 && len(ss.reifyInProgress) == 0
+			ss.reifyMx.Unlock()
+
+			if ready {
+				return
+			}
+
+			time.Sleep(time.Millisecond)
+		}
+	}
+
+	// do a hot access -- nothing should be reified as the limit should be exceeded
+	oldReifyLimit := ReifyLimit
+	ReifyLimit = 2
+	t.Cleanup(func() {
+		ReifyLimit = oldReifyLimit
+	})
+
+	err = f(blockstore.WithHotView(context.Background()), ss, block4.Cid())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	waitForReification()
+
+	for _, blk := range allBlocks {
+		has, err := hot.Has(context.Background(), blk.Cid())
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if has {
+			t.Fatal("block unexpectedly reified")
+		}
+	}
+
+}
+
+func TestSplitStoreReification(t *testing.T) {
+	t.Log("test reification with Has")
+	testSplitStoreReification(t, func(ctx context.Context, s blockstore.Blockstore, c cid.Cid) error {
+		_, err := s.Has(ctx, c)
+		return err
+	})
+	t.Log("test reification with Get")
+	testSplitStoreReification(t, func(ctx context.Context, s blockstore.Blockstore, c cid.Cid) error {
+		_, err := s.Get(ctx, c)
+		return err
+	})
+	t.Log("test reification with GetSize")
+	testSplitStoreReification(t, func(ctx context.Context, s blockstore.Blockstore, c cid.Cid) error {
+		_, err := s.GetSize(ctx, c)
+		return err
+	})
+	t.Log("test reification with View")
+	testSplitStoreReification(t, func(ctx context.Context, s blockstore.Blockstore, c cid.Cid) error {
+		return s.View(ctx, c, func(_ []byte) error { return nil })
+	})
+	t.Log("test reification limit")
+	testSplitStoreReificationLimit(t, func(ctx context.Context, s blockstore.Blockstore, c cid.Cid) error {
+		_, err := s.Has(ctx, c)
+		return err
+	})
 }
 
 type mockChain struct {

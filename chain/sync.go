@@ -1244,25 +1244,3 @@ func (syncer *Syncer) CheckBadBlockCache(blk cid.Cid) (string, bool) {
 	bbr, ok := syncer.bad.Has(blk)
 	return bbr.String(), ok
 }
-
-func (syncer *Syncer) getLatestBeaconEntry(ctx context.Context, ts *types.TipSet) (*types.BeaconEntry, error) {
-	cur := ts
-	for i := 0; i < 20; i++ {
-		cbe := cur.Blocks()[0].BeaconEntries
-		if len(cbe) > 0 {
-			return &cbe[len(cbe)-1], nil
-		}
-
-		if cur.Height() == 0 {
-			return nil, xerrors.Errorf("made it back to genesis block without finding beacon entry")
-		}
-
-		next, err := syncer.store.LoadTipSet(ctx, cur.Parents())
-		if err != nil {
-			return nil, xerrors.Errorf("failed to load parents when searching back for latest beacon entry: %w", err)
-		}
-		cur = next
-	}
-
-	return nil, xerrors.Errorf("found NO beacon entries in the 20 latest tipsets")
-}

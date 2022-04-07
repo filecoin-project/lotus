@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/network"
+
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -57,7 +59,7 @@ type MessageSendSpec struct {
 // GraphSyncDataTransfer provides diagnostics on a data transfer happening over graphsync
 type GraphSyncDataTransfer struct {
 	// GraphSync request id for this transfer
-	RequestID graphsync.RequestID
+	RequestID *graphsync.RequestID
 	// Graphsync state for this transfer
 	RequestState string
 	// If a channel ID is present, indicates whether this is the current graphsync request for this channel
@@ -121,6 +123,28 @@ func NewDataTransferChannel(hostID peer.ID, channelState datatransfer.ChannelSta
 		channel.OtherPeer = channelState.Sender()
 	}
 	return channel
+}
+
+type NetStat struct {
+	System    *network.ScopeStat           `json:",omitempty"`
+	Transient *network.ScopeStat           `json:",omitempty"`
+	Services  map[string]network.ScopeStat `json:",omitempty"`
+	Protocols map[string]network.ScopeStat `json:",omitempty"`
+	Peers     map[string]network.ScopeStat `json:",omitempty"`
+}
+
+type NetLimit struct {
+	Dynamic bool `json:",omitempty"`
+	// set if Dynamic is false
+	Memory int64 `json:",omitempty"`
+	// set if Dynamic is true
+	MemoryFraction float64 `json:",omitempty"`
+	MinMemory      int64   `json:",omitempty"`
+	MaxMemory      int64   `json:",omitempty"`
+
+	Streams, StreamsInbound, StreamsOutbound int
+	Conns, ConnsInbound, ConnsOutbound       int
+	FD                                       int
 }
 
 type NetBlockList struct {
