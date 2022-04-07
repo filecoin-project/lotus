@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
-
 	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
 
 	power8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/power"
@@ -31,14 +30,13 @@ func load8(store adt.Store, root cid.Cid) (State, error) {
 
 func make8(store adt.Store) (State, error) {
 	out := state8{store: store}
-	
-		s, err := power8.ConstructState(store)
-		if err != nil {
-			return nil, err
-		}
 
-		out.State = *s
-	
+	s, err := power8.ConstructState(store)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
 
 	return &out, nil
 }

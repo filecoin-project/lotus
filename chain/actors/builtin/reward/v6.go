@@ -40,7 +40,7 @@ func (s *state6) ThisEpochReward() (abi.TokenAmount, error) {
 
 func (s *state6) ThisEpochRewardSmoothed() (builtin.FilterEstimate, error) {
 
-		return builtin.FilterEstimate{
+	return builtin.FilterEstimate{
 		PositionEstimate: s.State.ThisEpochRewardSmoothed.PositionEstimate,
 		VelocityEstimate: s.State.ThisEpochRewardSmoothed.VelocityEstimate,
 	}, nil

@@ -11,7 +11,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
-
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
 )
@@ -29,19 +28,18 @@ func load0(store adt.Store, root cid.Cid) (State, error) {
 
 func make0(store adt.Store) (State, error) {
 	out := state0{store: store}
-	
-		em, err := adt0.MakeEmptyMap(store).Root()
-		if err != nil {
-			return nil, err
-		}
 
-		emm, err := adt0.MakeEmptyMultimap(store).Root()
-		if err != nil {
-			return nil, err
-		}
+	em, err := adt0.MakeEmptyMap(store).Root()
+	if err != nil {
+		return nil, err
+	}
 
-		out.State = *power0.ConstructState(em, emm)
-	
+	emm, err := adt0.MakeEmptyMultimap(store).Root()
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *power0.ConstructState(em, emm)
 
 	return &out, nil
 }

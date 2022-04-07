@@ -73,8 +73,6 @@ func (m message0) Create(
 	}, nil
 }
 
-
-
 func (m message0) Propose(msig, to address.Address, amt abi.TokenAmount,
 	method abi.MethodNum, params []byte) (*types.Message, error) {
 
@@ -142,4 +140,3 @@ func (m message0) Cancel(msig address.Address, txID uint64, hashData *ProposalHa
 		Params: enc,
 	}, nil
 }
-

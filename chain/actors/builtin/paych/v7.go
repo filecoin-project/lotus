@@ -113,7 +113,6 @@ func (ls *laneState7) Nonce() (uint64, error) {
 	return ls.LaneState.Nonce, nil
 }
 
-
 func toV7SignedVoucher(sv SignedVoucher) paych7.SignedVoucher {
 	return paych7.SignedVoucher{
 		ChannelAddr:     sv.ChannelAddr,

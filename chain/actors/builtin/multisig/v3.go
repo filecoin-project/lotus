@@ -14,7 +14,6 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
-
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
 
 	msig3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/multisig"
@@ -39,14 +38,14 @@ func make3(store adt.Store, signers []address.Address, threshold uint64, startEp
 	out.State.StartEpoch = startEpoch
 	out.State.UnlockDuration = unlockDuration
 	out.State.InitialBalance = initialBalance
-	
-		em, err := adt3.StoreEmptyMap(store, builtin3.DefaultHamtBitwidth)
-		if err != nil {
-			return nil, err
-		}
 
-		out.State.PendingTxns = em
-	
+	em, err := adt3.StoreEmptyMap(store, builtin3.DefaultHamtBitwidth)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State.PendingTxns = em
+
 	return &out, nil
 }
 
