@@ -5,6 +5,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-state-types/big"
@@ -168,6 +170,10 @@ func (x *FvmExtern) VerifyBlockSig(ctx context.Context, blk *types.BlockHeader) 
 }
 
 func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerId address.Address, height abi.ChainEpoch) (address.Address, int64, error) {
+	if height < x.epoch-policy.ChainFinality {
+		return address.Undef, 0, xerrors.Errorf("cannot get worker key (currEpoch %d, height %d)", x.epoch, height)
+	}
+
 	gasUsed := int64(0)
 	gasAdder := func(gc GasCharge) {
 		// technically not overflow safe, but that's fine
