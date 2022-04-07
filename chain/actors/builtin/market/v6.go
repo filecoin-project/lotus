@@ -177,30 +177,8 @@ func (s *dealStates6) array() adt.Array {
 	return s.Array
 }
 
-func fromV6DealState(v6 market6.DealState) (DealState, error) {
-
-	label, err := labelFromGoString(v6.Label)
-	if err != nil {
-		return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
-	}
-
-	return DealProposal{
-		PieceCID:     v6.PieceCID,
-		PieceSize:    v6.PieceSize,
-		VerifiedDeal: v6.VerifiedDeal,
-		Client:       v6.Client,
-		Provider:     v6.Provider,
-
-		Label: label,
-
-		StartEpoch:           v6.StartEpoch,
-		EndEpoch:             v6.EndEpoch,
-		StoragePricePerEpoch: v6.StoragePricePerEpoch,
-
-		ProviderCollateral: v6.ProviderCollateral,
-		ClientCollateral:   v6.ClientCollateral,
-	}, nil
-
+func fromV6DealState(v6 market6.DealState) DealState {
+	return (DealState)(v6)
 }
 
 type dealProposals6 struct {
@@ -255,10 +233,29 @@ func (s *dealProposals6) array() adt.Array {
 	return s.Array
 }
 
-func fromV6DealProposal(v6 market6.DealProposal) DealProposal {
+func fromV6DealProposal(v6 market6.DealProposal) (DealProposal, error) {
 
-	return (DealProposal)(v6)
+	label, err := labelFromGoString(v6.Label)
+	if err != nil {
+		return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
+	}
 
+	return DealProposal{
+		PieceCID:     v6.PieceCID,
+		PieceSize:    v6.PieceSize,
+		VerifiedDeal: v6.VerifiedDeal,
+		Client:       v6.Client,
+		Provider:     v6.Provider,
+
+		Label: label,
+
+		StartEpoch:           v6.StartEpoch,
+		EndEpoch:             v6.EndEpoch,
+		StoragePricePerEpoch: v6.StoragePricePerEpoch,
+
+		ProviderCollateral: v6.ProviderCollateral,
+		ClientCollateral:   v6.ClientCollateral,
+	}, nil
 }
 
 func (s *state6) GetState() interface{} {

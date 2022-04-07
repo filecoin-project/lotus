@@ -177,27 +177,8 @@ func (s *dealStates8) array() adt.Array {
 	return s.Array
 }
 
-func fromV8DealState(v8 market8.DealState) (DealState, error) {
-
-	label := v8.Label
-
-	return DealProposal{
-		PieceCID:     v8.PieceCID,
-		PieceSize:    v8.PieceSize,
-		VerifiedDeal: v8.VerifiedDeal,
-		Client:       v8.Client,
-		Provider:     v8.Provider,
-
-		Label: label,
-
-		StartEpoch:           v8.StartEpoch,
-		EndEpoch:             v8.EndEpoch,
-		StoragePricePerEpoch: v8.StoragePricePerEpoch,
-
-		ProviderCollateral: v8.ProviderCollateral,
-		ClientCollateral:   v8.ClientCollateral,
-	}, nil
-
+func fromV8DealState(v8 market8.DealState) DealState {
+	return (DealState)(v8)
 }
 
 type dealProposals8 struct {
@@ -252,27 +233,26 @@ func (s *dealProposals8) array() adt.Array {
 	return s.Array
 }
 
-func fromV8DealProposal(v8 market8.DealProposal) DealProposal {
+func fromV8DealProposal(v8 market8.DealProposal) (DealProposal, error) {
 
-	label, err := v8.Label.ToString()
-	if err != nil {
-		bs, _ := v8.Label.ToBytes()
-		label = string(bs)
-	}
+	label := v8.Label
+
 	return DealProposal{
-		PieceCID:             v8.PieceCID,
-		PieceSize:            v8.PieceSize,
-		VerifiedDeal:         v8.VerifiedDeal,
-		Client:               v8.Client,
-		Provider:             v8.Provider,
-		Label:                label,
+		PieceCID:     v8.PieceCID,
+		PieceSize:    v8.PieceSize,
+		VerifiedDeal: v8.VerifiedDeal,
+		Client:       v8.Client,
+		Provider:     v8.Provider,
+
+		Label: label,
+
 		StartEpoch:           v8.StartEpoch,
 		EndEpoch:             v8.EndEpoch,
 		StoragePricePerEpoch: v8.StoragePricePerEpoch,
-		ProviderCollateral:   v8.ProviderCollateral,
-		ClientCollateral:     v8.ClientCollateral,
-	}
 
+		ProviderCollateral: v8.ProviderCollateral,
+		ClientCollateral:   v8.ClientCollateral,
+	}, nil
 }
 
 func (s *state8) GetState() interface{} {
