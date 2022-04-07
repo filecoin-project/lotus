@@ -189,8 +189,34 @@ func (s *dealStates{{.v}}) array() adt.Array {
 	return s.Array
 }
 
-func fromV{{.v}}DealState(v{{.v}} market{{.v}}.DealState) DealState {
-	return (DealState)(v{{.v}})
+func fromV{{.v}}DealState(v{{.v}} market{{.v}}.DealState) (DealState, error) {
+	{{if (le .v 7)}}
+        label, err := labelFromGoString(v{{.v}}.Label)
+        if err != nil {
+            return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
+        }
+    {{else}}
+        label := v{{.v}}.Label
+    {{end}}
+
+
+    return DealProposal{
+        PieceCID    : v{{.v}}.PieceCID,
+        PieceSize    : v{{.v}}.PieceSize,
+        VerifiedDeal :v{{.v}}.VerifiedDeal,
+        Client       :v{{.v}}.Client,
+        Provider     :v{{.v}}.Provider,
+
+        Label: label,
+
+        StartEpoch      : v{{.v}}.StartEpoch,
+        EndEpoch           :v{{.v}}.EndEpoch,
+        StoragePricePerEpoch :v{{.v}}.StoragePricePerEpoch,
+
+        ProviderCollateral :v{{.v}}.ProviderCollateral,
+        ClientCollateral   :v{{.v}}.ClientCollateral,
+    }, nil
+
 }
 
 type dealProposals{{.v}} struct {

@@ -177,8 +177,27 @@ func (s *dealStates8) array() adt.Array {
 	return s.Array
 }
 
-func fromV8DealState(v8 market8.DealState) DealState {
-	return (DealState)(v8)
+func fromV8DealState(v8 market8.DealState) (DealState, error) {
+
+	label := v8.Label
+
+	return DealProposal{
+		PieceCID:     v8.PieceCID,
+		PieceSize:    v8.PieceSize,
+		VerifiedDeal: v8.VerifiedDeal,
+		Client:       v8.Client,
+		Provider:     v8.Provider,
+
+		Label: label,
+
+		StartEpoch:           v8.StartEpoch,
+		EndEpoch:             v8.EndEpoch,
+		StoragePricePerEpoch: v8.StoragePricePerEpoch,
+
+		ProviderCollateral: v8.ProviderCollateral,
+		ClientCollateral:   v8.ClientCollateral,
+	}, nil
+
 }
 
 type dealProposals8 struct {
