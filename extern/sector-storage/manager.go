@@ -273,7 +273,7 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storage.SectorR
 	defer cancel()
 
 	log.Debugf("acquire unseal sector lock for sector %d", sector.ID)
-	if err := m.index.StorageLock(ctx, sector.ID, storiface.FTSealed|storiface.FTCache, storiface.FTUnsealed); err != nil {
+	if err := m.index.StorageLock(ctx, sector.ID, storiface.FTSealed|storiface.FTCache|storiface.FTUpdate|storiface.FTUpdateCache, storiface.FTUnsealed); err != nil {
 		return xerrors.Errorf("acquiring unseal sector lock: %w", err)
 	}
 
@@ -281,8 +281,12 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storage.SectorR
 	// put it in the sealing scratch space.
 	sealFetch := func(ctx context.Context, worker Worker) error {
 		log.Debugf("copy sealed/cache sector data for sector %d", sector.ID)
-		if _, err := m.waitSimpleCall(ctx)(worker.Fetch(ctx, sector, storiface.FTSealed|storiface.FTCache, storiface.PathSealing, storiface.AcquireCopy)); err != nil {
-			return xerrors.Errorf("copy sealed/cache sector data: %w", err)
+		_, err := m.waitSimpleCall(ctx)(worker.Fetch(ctx, sector, storiface.FTSealed|storiface.FTCache, storiface.PathSealing, storiface.AcquireCopy))
+		if err != nil {
+			_, err2 := m.waitSimpleCall(ctx)(worker.Fetch(ctx, sector, storiface.FTUpdate|storiface.FTUpdateCache, storiface.PathSealing, storiface.AcquireCopy))
+			if err2 != nil {
+				return xerrors.Errorf("copy sealed/cache sector data: %w %w", err, err2)
+			}
 		}
 
 		return nil
