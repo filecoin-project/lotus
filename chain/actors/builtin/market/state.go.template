@@ -231,7 +231,28 @@ func (s *dealProposals{{.v}}) array() adt.Array {
 }
 
 func fromV{{.v}}DealProposal(v{{.v}} market{{.v}}.DealProposal) DealProposal {
+{{if .isv8 }}
+    label, err := v8.Label.ToString()
+    if err != nil {
+      bs, _ := v8.Label.ToBytes()
+      label = string(bs)
+    }
+    return DealProposal{
+      PieceCID: v8.PieceCID,
+      PieceSize: v8.PieceSize,
+      VerifiedDeal: v8.VerifiedDeal,
+      Client: v8.Client,
+      Provider: v8.Provider,
+      Label: label,
+      StartEpoch: v8.StartEpoch,
+      EndEpoch: v8.EndEpoch,
+      StoragePricePerEpoch: v8.StoragePricePerEpoch,
+      ProviderCollateral: v8.ProviderCollateral,
+      ClientCollateral: v8.ClientCollateral,
+   }
+{{else}}
 	return (DealProposal)(v{{.v}})
+{{end}}
 }
 
 func (s *state{{.v}}) GetState() interface{} {
