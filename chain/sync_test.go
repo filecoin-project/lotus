@@ -126,27 +126,27 @@ func prepSyncTestWithV5Height(t testing.TB, h int, v5height abi.ChainEpoch) *syn
 		// prepare for upgrade.
 		Network:   network.Version9,
 		Height:    1,
-		Migration: filcns.UpgradeActorsV2,
+		Migration: filcns.LegacyMigration(filcns.UpgradeActorsV2),
 	}, {
 		Network:   network.Version10,
 		Height:    2,
-		Migration: filcns.UpgradeActorsV3,
+		Migration: filcns.LegacyMigration(filcns.UpgradeActorsV3),
 	}, {
 		Network:   network.Version12,
 		Height:    3,
-		Migration: filcns.UpgradeActorsV4,
+		Migration: filcns.LegacyMigration(filcns.UpgradeActorsV4),
 	}, {
 		Network:   network.Version13,
 		Height:    v5height,
-		Migration: filcns.UpgradeActorsV5,
+		Migration: filcns.LegacyMigration(filcns.UpgradeActorsV5),
 	}, {
 		Network:   network.Version14,
 		Height:    v5height + 10,
-		Migration: filcns.UpgradeActorsV6,
+		Migration: filcns.LegacyMigration(filcns.UpgradeActorsV6),
 	}, {
 		Network:   network.Version15,
 		Height:    v5height + 15,
-		Migration: filcns.UpgradeActorsV7,
+		Migration: filcns.LegacyMigration(filcns.UpgradeActorsV7),
 	}, {
 		Network:   network.Version16,
 		Height:    v5height + 20,
