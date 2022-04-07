@@ -22,8 +22,8 @@ func ErrorGenesis() Genesis {
 	}
 }
 
-func LoadGenesis(genBytes []byte) func(fx.Lifecycle, helpers.MetricsCtx, dtypes.ChainBlockstore) Genesis {
-	return func(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.ChainBlockstore) Genesis {
+func LoadGenesis(genBytes []byte) func(fx.Lifecycle, helpers.MetricsCtx, dtypes.ChainBlockstore, dtypes.BuiltinActorsLoaded) Genesis {
+	return func(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.ChainBlockstore, _ dtypes.BuiltinActorsLoaded) Genesis {
 		return func() (header *types.BlockHeader, e error) {
 			ctx := helpers.LifecycleCtx(mctx, lc)
 			c, err := car.LoadCar(ctx, bs, bytes.NewReader(genBytes))
@@ -49,7 +49,7 @@ func LoadGenesis(genBytes []byte) func(fx.Lifecycle, helpers.MetricsCtx, dtypes.
 
 func DoSetGenesis(_ dtypes.AfterGenesisSet) {}
 
-func SetGenesis(lc fx.Lifecycle, mctx helpers.MetricsCtx, cs *store.ChainStore, g Genesis) (dtypes.AfterGenesisSet, error) {
+func SetGenesis(lc fx.Lifecycle, mctx helpers.MetricsCtx, cs *store.ChainStore, g Genesis, _ dtypes.BuiltinActorsLoaded) (dtypes.AfterGenesisSet, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 	genFromRepo, err := cs.GetGenesis(ctx)
 	if err == nil {
