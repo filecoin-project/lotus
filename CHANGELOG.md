@@ -1,9 +1,9 @@
 # Lotus changelog
 
-# 1.15.1-rc6 / 2022-04-07
+# 1.15.1 / 2022-04-07
 
-This is the sixth release candidate of the next *highly recommended* feature release v1.15.1. This feature release introduces Index Provider, GraphSync v2, and many other latest functionalities, improvements and bug fixes. 
-More importantly, node operator can now enable the FVM(experimental) to sync mainnet!!
+This is a *HIGHLY recommended* feature release v1.15.1, especially for node operators and storage providers who want to be a part of the content addressing network of Filecoin and IPFS.
+This feature release introduces Index Provider, GraphSync v2, and many other latest functionalities, improvements and bug fixes. More importantly, node operator can now enable the FVM(experimental) to sync mainnet!!
 
 ## Highlights
 
@@ -37,6 +37,7 @@ Follow the instruction [here](https://lotus.filecoin.io/storage-providers/operat
 
 ## New Features
 - feat: sealing: Sector upgrade queue ([filecoin-project/lotus#8333](https://github.com/filecoin-project/lotus/pull/8333))
+  - see more details in docs: [here](https://lotus.filecoin.io/storage-providers/operate/snap-deals/#snap-deal-queue)
 - feat: market utils: Support unixfsnode in TraverseDag ([filecoin-project/lotus#8168](https://github.com/filecoin-project/lotus/pull/8168))
 - feat: config: enable indexer providing by default ([filecoin-project/lotus#8314](https://github.com/filecoin-project/lotus/pull/8314))
 - feat: api: Make ClientCalcCommP multithreaded ([filecoin-project/lotus#8276](https://github.com/filecoin-project/lotus/pull/8276))
