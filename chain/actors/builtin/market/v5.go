@@ -219,7 +219,9 @@ func (s *dealProposals5) array() adt.Array {
 }
 
 func fromV5DealProposal(v5 market5.DealProposal) DealProposal {
+
 	return (DealProposal)(v5)
+
 }
 
 func (s *state5) GetState() interface{} {

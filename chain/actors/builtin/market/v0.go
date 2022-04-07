@@ -224,7 +224,9 @@ func (s *dealProposals0) array() adt.Array {
 }
 
 func fromV0DealProposal(v0 market0.DealProposal) DealProposal {
+
 	return (DealProposal)(v0)
+
 }
 
 func (s *state0) GetState() interface{} {
