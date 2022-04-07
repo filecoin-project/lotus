@@ -44,11 +44,9 @@ func waitUpTo(fn func(), waitTime time.Duration, errMsg string) {
 		close(ch)
 	}()
 
-	timer := time.NewTimer(waitTime)
-	defer timer.Stop()
 	select {
 	case <-ch:
-	case <-timer.C:
+	case <-time.After(waitTime):
 		fmt.Println(errMsg)
 		return
 	}
