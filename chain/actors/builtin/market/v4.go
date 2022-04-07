@@ -29,14 +29,14 @@ func load4(store adt.Store, root cid.Cid) (State, error) {
 
 func make4(store adt.Store) (State, error) {
 	out := state4{store: store}
-	
-		s, err := market4.ConstructState(store)
-		if err != nil {
-			return nil, err
-		}
 
-		out.State = *s
-	
+	s, err := market4.ConstructState(store)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
+
 	return &out, nil
 }
 
@@ -242,12 +242,12 @@ type publishStorageDealsReturn4 struct {
 }
 
 func (r *publishStorageDealsReturn4) IsDealValid(index uint64) (bool, error) {
-	
-	    // PublishStorageDeals only succeeded if all deals were valid in this version of actors
-	    return true, nil
-	
+
+	// PublishStorageDeals only succeeded if all deals were valid in this version of actors
+	return true, nil
+
 }
 
 func (r *publishStorageDealsReturn4) DealIDs() ([]abi.DealID, error) {
-    return r.IDs, nil
+	return r.IDs, nil
 }

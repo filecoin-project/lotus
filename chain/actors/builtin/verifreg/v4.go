@@ -26,14 +26,14 @@ func load4(store adt.Store, root cid.Cid) (State, error) {
 
 func make4(store adt.Store, rootKeyAddress address.Address) (State, error) {
 	out := state4{store: store}
-	
-		s, err := verifreg4.ConstructState(store, rootKeyAddress)
-		if err != nil {
-			return nil, err
-		}
 
-		out.State = *s
-	
+	s, err := verifreg4.ConstructState(store, rootKeyAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	out.State = *s
+
 	return &out, nil
 }
 
@@ -75,8 +75,8 @@ func (s *state4) verifiers() (adt.Map, error) {
 }
 
 func (s *state4) removeDataCapProposalIDs() (adt.Map, error) {
-    return nil, nil
-    
+	return nil, nil
+
 }
 
 func (s *state4) GetState() interface{} {
