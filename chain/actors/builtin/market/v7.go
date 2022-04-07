@@ -219,7 +219,9 @@ func (s *dealProposals7) array() adt.Array {
 }
 
 func fromV7DealProposal(v7 market7.DealProposal) DealProposal {
+
 	return (DealProposal)(v7)
+
 }
 
 func (s *state7) GetState() interface{} {
