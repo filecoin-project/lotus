@@ -39,6 +39,7 @@ commands:
             - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
       - run: git submodule sync
       - run: git submodule update --init
+      - fetch_builtin_actors
   download-params:
     steps:
       - restore_cache:
@@ -74,6 +75,23 @@ commands:
           name: fetch all tags
           command: |
             git fetch --all
+  fetch_builtin_actors:
+    steps:
+      - restore_cache:
+          name: restore builtin actors bundle cache
+          keys:
+            - 'builtin-actors-v8.car'
+          paths:
+            - build/builtin-actors/
+      - run:
+          name: fetch builtin actor bundles
+          command: |
+            build/builtin-actors/fetch-bundles.sh
+      - save_cache:
+          name: save builtin actors bundle cache
+          key: 'builtin-actors-v8.car'
+          paths:
+            - build/builtin-actors/
 
 jobs:
   mod-tidy-check:
@@ -195,7 +213,7 @@ jobs:
 
   test-conformance:
     description: |
-      Run tests using a corpus of interoperable test vectors for Filecoin 
+      Run tests using a corpus of interoperable test vectors for Filecoin
       implementations to test their correctness and compliance with the Filecoin
       specifications.
     parameters:
