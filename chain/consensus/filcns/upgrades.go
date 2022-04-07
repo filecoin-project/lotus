@@ -61,7 +61,7 @@ type LegacyPreMigrationFunc = func(
 	height abi.ChainEpoch, ts *types.TipSet,
 ) error
 
-func legacyMigration(f LegacyMigrationFunc) stmgr.MigrationFunc {
+func LegacyMigration(f LegacyMigrationFunc) stmgr.MigrationFunc {
 	return func(
 		ctx context.Context,
 		sm *stmgr.StateManager, cache stmgr.MigrationCache,
@@ -74,7 +74,7 @@ func legacyMigration(f LegacyMigrationFunc) stmgr.MigrationFunc {
 	}
 }
 
-func legacyPreMigration(f LegacyPreMigrationFunc) stmgr.PreMigrationFunc {
+func LegacyPreMigration(f LegacyPreMigrationFunc) stmgr.PreMigrationFunc {
 	return func(
 		ctx context.Context,
 		sm *stmgr.StateManager, cache stmgr.MigrationCache,
@@ -97,7 +97,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	updates := []stmgr.Upgrade{{
 		Height:    build.UpgradeBreezeHeight,
 		Network:   network.Version1,
-		Migration: legacyMigration(UpgradeFaucetBurnRecovery),
+		Migration: LegacyMigration(UpgradeFaucetBurnRecovery),
 		Manifest:  cid.Undef,
 	}, {
 		Height:    build.UpgradeSmokeHeight,
@@ -107,18 +107,18 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	}, {
 		Height:    build.UpgradeIgnitionHeight,
 		Network:   network.Version3,
-		Migration: legacyMigration(UpgradeIgnition),
+		Migration: LegacyMigration(UpgradeIgnition),
 		Manifest:  cid.Undef,
 	}, {
 		Height:    build.UpgradeRefuelHeight,
 		Network:   network.Version3,
-		Migration: legacyMigration(UpgradeRefuel),
+		Migration: LegacyMigration(UpgradeRefuel),
 		Manifest:  cid.Undef,
 	}, {
 		Height:    build.UpgradeAssemblyHeight,
 		Network:   network.Version4,
 		Expensive: true,
-		Migration: legacyMigration(UpgradeActorsV2),
+		Migration: LegacyMigration(UpgradeActorsV2),
 		Manifest:  cid.Undef,
 	}, {
 		Height:    build.UpgradeTapeHeight,
@@ -128,7 +128,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	}, {
 		Height:    build.UpgradeLiftoffHeight,
 		Network:   network.Version5,
-		Migration: legacyMigration(UpgradeLiftoff),
+		Migration: LegacyMigration(UpgradeLiftoff),
 		Manifest:  cid.Undef,
 	}, {
 		Height:    build.UpgradeKumquatHeight,
@@ -138,7 +138,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	}, {
 		Height:    build.UpgradeCalicoHeight,
 		Network:   network.Version7,
-		Migration: legacyMigration(UpgradeCalico),
+		Migration: LegacyMigration(UpgradeCalico),
 		Manifest:  cid.Undef,
 	}, {
 		Height:    build.UpgradePersianHeight,
@@ -153,14 +153,14 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	}, {
 		Height:    build.UpgradeTrustHeight,
 		Network:   network.Version10,
-		Migration: legacyMigration(UpgradeActorsV3),
+		Migration: LegacyMigration(UpgradeActorsV3),
 		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    legacyPreMigration(PreUpgradeActorsV3),
+			PreMigration:    LegacyPreMigration(PreUpgradeActorsV3),
 			StartWithin:     120,
 			DontStartWithin: 60,
 			StopWithin:      35,
 		}, {
-			PreMigration:    legacyPreMigration(PreUpgradeActorsV3),
+			PreMigration:    LegacyPreMigration(PreUpgradeActorsV3),
 			StartWithin:     30,
 			DontStartWithin: 15,
 			StopWithin:      5,
@@ -175,14 +175,14 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	}, {
 		Height:    build.UpgradeTurboHeight,
 		Network:   network.Version12,
-		Migration: legacyMigration(UpgradeActorsV4),
+		Migration: LegacyMigration(UpgradeActorsV4),
 		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    legacyPreMigration(PreUpgradeActorsV4),
+			PreMigration:    LegacyPreMigration(PreUpgradeActorsV4),
 			StartWithin:     120,
 			DontStartWithin: 60,
 			StopWithin:      35,
 		}, {
-			PreMigration:    legacyPreMigration(PreUpgradeActorsV4),
+			PreMigration:    LegacyPreMigration(PreUpgradeActorsV4),
 			StartWithin:     30,
 			DontStartWithin: 15,
 			StopWithin:      5,
@@ -192,14 +192,14 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	}, {
 		Height:    build.UpgradeHyperdriveHeight,
 		Network:   network.Version13,
-		Migration: legacyMigration(UpgradeActorsV5),
+		Migration: LegacyMigration(UpgradeActorsV5),
 		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    legacyPreMigration(PreUpgradeActorsV5),
+			PreMigration:    LegacyPreMigration(PreUpgradeActorsV5),
 			StartWithin:     120,
 			DontStartWithin: 60,
 			StopWithin:      35,
 		}, {
-			PreMigration:    legacyPreMigration(PreUpgradeActorsV5),
+			PreMigration:    LegacyPreMigration(PreUpgradeActorsV5),
 			StartWithin:     30,
 			DontStartWithin: 15,
 			StopWithin:      5,
@@ -209,14 +209,14 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	}, {
 		Height:    build.UpgradeChocolateHeight,
 		Network:   network.Version14,
-		Migration: legacyMigration(UpgradeActorsV6),
+		Migration: LegacyMigration(UpgradeActorsV6),
 		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    legacyPreMigration(PreUpgradeActorsV6),
+			PreMigration:    LegacyPreMigration(PreUpgradeActorsV6),
 			StartWithin:     120,
 			DontStartWithin: 60,
 			StopWithin:      35,
 		}, {
-			PreMigration:    legacyPreMigration(PreUpgradeActorsV6),
+			PreMigration:    LegacyPreMigration(PreUpgradeActorsV6),
 			StartWithin:     30,
 			DontStartWithin: 15,
 			StopWithin:      5,
@@ -226,9 +226,9 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	}, {
 		Height:    build.UpgradeOhSnapHeight,
 		Network:   network.Version15,
-		Migration: legacyMigration(UpgradeActorsV7),
+		Migration: LegacyMigration(UpgradeActorsV7),
 		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    legacyPreMigration(PreUpgradeActorsV7),
+			PreMigration:    LegacyPreMigration(PreUpgradeActorsV7),
 			StartWithin:     180,
 			DontStartWithin: 60,
 			StopWithin:      5,
