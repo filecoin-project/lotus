@@ -3,6 +3,9 @@ set -e
 
 cd $(dirname "$0")
 
+# gateway to use
+dweb="dweb.link"
+
 actors7_cid=""
 actors7_hash=""
 actors8_cid="bafybeictmywrut5tprz5fnoti6adfwuvixvrfardhqwldxosmdsfavc56e"
@@ -36,7 +39,7 @@ fetch() {
         return 0
     else
         echo "fetching $cid to $output"
-        curl -k "https://dweb.link/ipfs/$cid" -o $output
+        curl -k "https://$dweb/ipfs/$cid" -o $output
         check $output $hash || die "hash mismatch"
     fi
 }
