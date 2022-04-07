@@ -30,7 +30,7 @@ func SDRUpgradeAt(calico, persian abi.ChainEpoch) EnsembleOpt {
 	}, stmgr.Upgrade{
 		Network:   network.Version7,
 		Height:    calico,
-		Migration: filcns.UpgradeCalico,
+		Migration: filcns.LegacyMigration(filcns.UpgradeCalico),
 	}, stmgr.Upgrade{
 		Network: network.Version8,
 		Height:  persian,
@@ -66,6 +66,6 @@ func TurboUpgradeAt(upgradeHeight abi.ChainEpoch) EnsembleOpt {
 	}, stmgr.Upgrade{
 		Network:   network.Version12,
 		Height:    upgradeHeight,
-		Migration: filcns.UpgradeActorsV4,
+		Migration: filcns.LegacyMigration(filcns.UpgradeActorsV4),
 	})
 }
