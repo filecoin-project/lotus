@@ -265,7 +265,7 @@ func TestWalletDelete(t *testing.T) {
 	mockApi.EXPECT().WalletDelete(ctx, addr).Return(nil)
 
 	//stm: @CLI_WALLET_DELETE_001
-	err = app.Run([]string{"wallet", "delete", "f01234"})
+	err = app.Run([]string{"wallet", "soft-delete", "f01234"})
 	assert.NoError(t, err)
 }
 
