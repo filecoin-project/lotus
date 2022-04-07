@@ -110,6 +110,7 @@ func generateState(actDir string) error {
 		err := tpl.Execute(&b, map[string]interface{}{
 			"v":      version,
 			"import": getVersionImports()[version],
+			"isv8":   version == 8,
 		})
 		if err != nil {
 			return err
