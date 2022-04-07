@@ -70,6 +70,7 @@ Follow the instruction [here](https://lotus.filecoin.io/storage-providers/operat
 - feat: config: Move MakeNewSectorForDeals config into the Sealing section([filecoin-project/lotus#8382](https://github.com/filecoin-project/lotus/pull/8382))
 
 ## Bug Fixes
+- fix: FVM: add finality check for consensus faults #8452
 - fix: market: Reuse the market PubSub in index provider #8451
 - fix: market: set all index provider options based on lotus config #8444  
 - fix: sealing: Fix PR1 worker selection (#8421)
