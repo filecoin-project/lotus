@@ -271,7 +271,7 @@ func (mapi *CurrentDealInfoMockAPI) ChainGetMessage(ctx context.Context, c cid.C
 	for k, dl := range mapi.MarketDeals {
 		dealIDs = append(dealIDs, k.DealID)
 		deals = append(deals, market.ClientDealProposal{
-			Proposal: market8.DealProposal(market.DealProposal(dl.Proposal)),
+			Proposal: market8.DealProposal(dl.Proposal),
 			ClientSignature: crypto.Signature{
 				Data: []byte("foo bar cat dog"),
 				Type: crypto.SigTypeBLS,
