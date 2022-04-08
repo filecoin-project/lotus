@@ -2,6 +2,7 @@ package actors
 
 import (
 	"context"
+	"strings"
 	"sync"
 
 	"golang.org/x/xerrors"
@@ -101,4 +102,13 @@ func GetActorMetaByCode(c cid.Cid) (string, Version, bool) {
 	}
 
 	return entry.name, entry.version, true
+}
+
+func CanonicalName(name string) string {
+	idx := strings.LastIndex(name, "/")
+	if idx >= 0 {
+		return name[idx+1:]
+	}
+
+	return name
 }
