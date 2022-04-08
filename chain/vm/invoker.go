@@ -109,13 +109,15 @@ func (ar *ActorRegistry) Register(av actors.Version, pred ActorPredicate, vmacto
 		ac := a.Code()
 		ar.actors[ac] = ai
 
-		// necessary to make genesis work for testing
+		// necessary to make stuff work
+		var realCode cid.Cid
 		if av >= actors.Version8 {
 			name := actors.CanonicalName(builtin.ActorNameByCode(ac))
 
-			ac, ok := actors.GetActorCodeID(av, name)
+			var ok bool
+			realCode, ok = actors.GetActorCodeID(av, name)
 			if ok {
-				ar.actors[ac] = ai
+				ar.actors[realCode] = ai
 			}
 		}
 
@@ -163,6 +165,9 @@ func (ar *ActorRegistry) Register(av actors.Version, pred ActorPredicate, vmacto
 			}
 		}
 		ar.Methods[a.Code()] = methods
+		if realCode.Defined() {
+			ar.Methods[realCode] = methods
+		}
 	}
 }
 
