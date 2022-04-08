@@ -272,6 +272,7 @@ func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 				notAfterEpoch = stopEpoch - 1
 			}
 
+			manifest := migration.manifest
 			// Add an op to start a pre-migration.
 			schedule = append(schedule, op{
 				after:    afterEpoch,
@@ -282,7 +283,7 @@ func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 					wg.Add(1)
 					go func() {
 						defer wg.Done()
-						runPreMigration(preCtx, sm, migration.manifest, migrationFunc, cache, ts)
+						runPreMigration(preCtx, sm, manifest, migrationFunc, cache, ts)
 					}()
 				},
 			})
