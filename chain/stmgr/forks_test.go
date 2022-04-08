@@ -130,7 +130,7 @@ func TestForkHeightTriggers(t *testing.T) {
 			Network: network.Version1,
 			Height:  testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
-				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+				mf cid.Cid, root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 				cst := ipldcbor.NewCborStore(sm.ChainStore().StateBlockstore())
 
 				st, err := sm.StateTree(root)
@@ -168,7 +168,7 @@ func TestForkHeightTriggers(t *testing.T) {
 	}
 
 	inv := filcns.NewActorRegistry()
-	inv.Register(nil, testActor{})
+	inv.Register(actors.Version0, nil, testActor{})
 
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
 		nvm, err := vm.NewLegacyVM(ctx, vmopt)
@@ -276,7 +276,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 			Expensive: true,
 			Height:    testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
-				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+				mf cid.Cid, root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 				migrationCount++
 				return root, nil
 			}}}, cg.BeaconSchedule())
@@ -285,7 +285,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 	}
 
 	inv := filcns.NewActorRegistry()
-	inv.Register(nil, testActor{})
+	inv.Register(actors.Version0, nil, testActor{})
 
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
 		nvm, err := vm.NewLegacyVM(ctx, vmopt)
@@ -412,7 +412,7 @@ func TestForkPreMigration(t *testing.T) {
 			Network: network.Version1,
 			Height:  testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
-				root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+				mf cid.Cid, root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 
 				// Make sure the test that should be canceled, is canceled.
 				select {
@@ -431,7 +431,7 @@ func TestForkPreMigration(t *testing.T) {
 			PreMigrations: []PreMigration{{
 				StartWithin: 20,
 				PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
-					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
+					_ cid.Cid, _ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
 					wait20.Done()
 					wait20.Wait()
 
@@ -445,7 +445,7 @@ func TestForkPreMigration(t *testing.T) {
 			}, {
 				StartWithin: 20,
 				PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
-					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
+					_ cid.Cid, _ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
 					wait20.Done()
 					wait20.Wait()
 
@@ -459,7 +459,7 @@ func TestForkPreMigration(t *testing.T) {
 			}, {
 				StartWithin: 20,
 				PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
-					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
+					_ cid.Cid, _ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
 					wait20.Done()
 					wait20.Wait()
 
@@ -475,7 +475,7 @@ func TestForkPreMigration(t *testing.T) {
 				StartWithin: 15,
 				StopWithin:  5,
 				PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
-					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
+					_ cid.Cid, _ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
 
 					<-ctx.Done()
 					close(wasCanceled)
@@ -487,7 +487,7 @@ func TestForkPreMigration(t *testing.T) {
 			}, {
 				StartWithin: 10,
 				PreMigration: func(ctx context.Context, _ *StateManager, cache MigrationCache,
-					_ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
+					_ cid.Cid, _ cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) error {
 
 					checkCache(t, cache)
 
@@ -506,7 +506,7 @@ func TestForkPreMigration(t *testing.T) {
 	}()
 
 	inv := filcns.NewActorRegistry()
-	inv.Register(nil, testActor{})
+	inv.Register(actors.Version0, nil, testActor{})
 
 	sm.SetVMConstructor(func(ctx context.Context, vmopt *vm.VMOpts) (vm.Interface, error) {
 		nvm, err := vm.NewLegacyVM(ctx, vmopt)
