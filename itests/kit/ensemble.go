@@ -418,7 +418,7 @@ func (n *Ensemble) Start() *Ensemble {
 				// nv, err := m.FullNode.FullNode.StateNetworkVersion(ctx, types.EmptyTSK)
 				// require.NoError(n.t, err)
 
-				// this doesn't currently work with the FVM -- we need to specify policy somehow
+				// TODO this doesn't currently work with the FVM -- we need to specify policy somehow
 				// proofType, err := miner.WindowPoStProofTypeFromSectorSize(m.options.sectorSize)
 				// require.NoError(n.t, err)
 				// so do this instead, which works:
