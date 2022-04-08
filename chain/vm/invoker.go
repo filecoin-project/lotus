@@ -89,20 +89,34 @@ func (ar *ActorRegistry) Invoke(codeCid cid.Cid, rt vmr.Runtime, method abi.Meth
 
 }
 
-func (ar *ActorRegistry) Register(pred ActorPredicate, actors ...rtt.VMActor) {
+func (ar *ActorRegistry) Register(av actors.Version, pred ActorPredicate, vmactors ...rtt.VMActor) {
 	if pred == nil {
 		pred = func(vmr.Runtime, rtt.VMActor) error { return nil }
 	}
-	for _, a := range actors {
+	for _, a := range vmactors {
 		// register in the `actors` map (for the invoker)
 		code, err := ar.transform(a)
 		if err != nil {
 			panic(xerrors.Errorf("%s: %w", string(a.Code().Hash()), err))
 		}
-		ar.actors[a.Code()] = &actorInfo{
+
+		ai := &actorInfo{
 			methods:   code,
 			vmActor:   a,
 			predicate: pred,
+		}
+
+		ac := a.Code()
+		ar.actors[ac] = ai
+
+		// necessary to make genesis work for testing
+		if av >= actors.Version8 {
+			name := actors.CanonicalName(builtin.ActorNameByCode(ac))
+
+			ac, ok := actors.GetActorCodeID(av, name)
+			if ok {
+				ar.actors[ac] = ai
+			}
 		}
 
 		// register in the `Methods` map (used by statemanager utils)

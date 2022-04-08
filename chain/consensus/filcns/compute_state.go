@@ -53,18 +53,18 @@ func NewActorRegistry() *vm.ActorRegistry {
 	// TODO: define all these properties on the actors themselves, in specs-actors.
 	/* inline-gen template
 	{{range .actorVersions}}
-	inv.Register(vm.ActorsVersionPredicate(actors.Version{{.}}), exported{{.}}.BuiltinActors()...){{end}}
+	inv.Register(actors.Version{{.}}, vm.ActorsVersionPredicate(actors.Version{{.}}), exported{{.}}.BuiltinActors()...){{end}}
 
 	/* inline-gen start */
 
-	inv.Register(vm.ActorsVersionPredicate(actors.Version0), exported0.BuiltinActors()...)
-	inv.Register(vm.ActorsVersionPredicate(actors.Version2), exported2.BuiltinActors()...)
-	inv.Register(vm.ActorsVersionPredicate(actors.Version3), exported3.BuiltinActors()...)
-	inv.Register(vm.ActorsVersionPredicate(actors.Version4), exported4.BuiltinActors()...)
-	inv.Register(vm.ActorsVersionPredicate(actors.Version5), exported5.BuiltinActors()...)
-	inv.Register(vm.ActorsVersionPredicate(actors.Version6), exported6.BuiltinActors()...)
-	inv.Register(vm.ActorsVersionPredicate(actors.Version7), exported7.BuiltinActors()...)
-	inv.Register(vm.ActorsVersionPredicate(actors.Version8), exported8.BuiltinActors()...)
+	inv.Register(actors.Version0, vm.ActorsVersionPredicate(actors.Version0), exported0.BuiltinActors()...)
+	inv.Register(actors.Version2, vm.ActorsVersionPredicate(actors.Version2), exported2.BuiltinActors()...)
+	inv.Register(actors.Version3, vm.ActorsVersionPredicate(actors.Version3), exported3.BuiltinActors()...)
+	inv.Register(actors.Version4, vm.ActorsVersionPredicate(actors.Version4), exported4.BuiltinActors()...)
+	inv.Register(actors.Version5, vm.ActorsVersionPredicate(actors.Version5), exported5.BuiltinActors()...)
+	inv.Register(actors.Version6, vm.ActorsVersionPredicate(actors.Version6), exported6.BuiltinActors()...)
+	inv.Register(actors.Version7, vm.ActorsVersionPredicate(actors.Version7), exported7.BuiltinActors()...)
+	inv.Register(actors.Version8, vm.ActorsVersionPredicate(actors.Version8), exported8.BuiltinActors()...)
 
 	/* inline-gen end */
 
