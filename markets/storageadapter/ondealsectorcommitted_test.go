@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
+	market8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/market"
 
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 
@@ -32,7 +32,7 @@ import (
 )
 
 func TestOnDealSectorPreCommitted(t *testing.T) {
-	label, err := market7.NewDealLabelFromString("success")
+	label, err := market8.NewLabelFromString("success")
 	require.NoError(t, err)
 
 	provider := address.TestAddress
@@ -255,7 +255,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 }
 
 func TestOnDealSectorCommitted(t *testing.T) {
-	label, err := market7.NewDealLabelFromString("success")
+	label, err := market8.NewLabelFromString("success")
 	require.NoError(t, err)
 
 	provider := address.TestAddress
