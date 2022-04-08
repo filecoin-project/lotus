@@ -75,23 +75,27 @@ type Rule interface{}
 type Filter func(map[FilterParam]interface{}) error
 type RuleParser func(context.Context, Rule) (Filter, error)
 
-var ruleParsers = map[string]RuleParser{
-	"AnyAccepts": AnyAccepts,
+var ruleParsers map[string]RuleParser
 
-	"Sign": Sign,
+func init() {
+	ruleParsers = map[string]RuleParser{
+		"AnyAccepts": AnyAccepts,
 
-	"Message":     checkRule(ParamAction, ActionSign, Message),
-	"Source":      checkRule(ParamSignType, SignTypeMessage, AddrRule(ParamSource)),
-	"Destination": checkRule(ParamSignType, SignTypeMessage, AddrRule(ParamDestination)),
-	"Method":      checkRule(ParamSignType, SignTypeMessage, MethodRule),
-	"Value":       checkRule(ParamSignType, SignTypeMessage, ValueRule(ParamValue)),
-	"MaxFee":      checkRule(ParamSignType, SignTypeMessage, ValueRule(ParamMaxFee)),
+		"Sign": Sign,
 
-	"Block":        checkRule(ParamAction, ActionSign, Block),
-	"DealProposal": checkRule(ParamAction, ActionSign, DealProposal),
+		"Message":     checkRule(ParamAction, ActionSign, Message),
+		"Source":      checkRule(ParamSignType, SignTypeMessage, AddrRule(ParamSource)),
+		"Destination": checkRule(ParamSignType, SignTypeMessage, AddrRule(ParamDestination)),
+		"Method":      checkRule(ParamSignType, SignTypeMessage, MethodRule),
+		"Value":       checkRule(ParamSignType, SignTypeMessage, ValueRule(ParamValue)),
+		"MaxFee":      checkRule(ParamSignType, SignTypeMessage, ValueRule(ParamMaxFee)),
 
-	"Accept": finalRule(ErrAccept),
-	"Reject": finalRule(ErrReject),
+		"Block":        checkRule(ParamAction, ActionSign, Block),
+		"DealProposal": checkRule(ParamAction, ActionSign, DealProposal),
+
+		"Accept": finalRule(ErrAccept),
+		"Reject": finalRule(ErrReject),
+	}
 }
 
 // Core rules
@@ -409,11 +413,11 @@ func ValueRule(param FilterParam) func(ctx context.Context, r Rule) (Filter, err
 			return nil, xerrors.Errorf("parsing value subrule: %w", err)
 		}
 
-		var more bool
+		less := true
 		valField, ok := fields["LessThan"]
 		if !ok {
 			valField, ok = fields["MoreThan"]
-			more = true
+			less = false
 
 			if !ok {
 				return nil, xerrors.Errorf("value rule must have one of 'LessThan' or 'MoreThan' fields")
@@ -439,8 +443,8 @@ func ValueRule(param FilterParam) func(ctx context.Context, r Rule) (Filter, err
 			if !ok {
 				return xerrors.Errorf("value param with wrong type")
 			}
-			if (more && a.GreaterThan(abi.TokenAmount(val))) ||
-				(!more && a.LessThan(abi.TokenAmount(val))) {
+			if (less && a.GreaterThan(abi.TokenAmount(val))) ||
+				(!less && a.LessThan(abi.TokenAmount(val))) {
 				return nil
 			}
 			return sub(params)
