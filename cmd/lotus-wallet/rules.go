@@ -113,7 +113,7 @@ func finalRule(err error) func(ctx context.Context, r Rule) (Filter, error) {
 		}
 
 		if len(rules) != 0 {
-			return nil, xerrors.Errorf("final rule must be an empty map", rules)
+			return nil, xerrors.Errorf("final rule must be an empty map, had %d elements", rules)
 		}
 
 		return func(params map[FilterParam]interface{}) error {
@@ -157,11 +157,11 @@ func AnyAccepts(ctx context.Context, r Rule) (Filter, error) {
 func ParseRule(ctx context.Context, r Rule) (Filter, error) {
 	rules, ok := r.(map[string]interface{})
 	if !ok {
-		return nil, xerrors.Errorf("expected rule to be a map")
+		return nil, xerrors.Errorf("expected rule to be a map, was %T", r)
 	}
 
 	if len(rules) != 1 {
-		return nil, xerrors.Errorf("expected one rule, had %d", rules)
+		return nil, xerrors.Errorf("expected one rule, had %d", len(rules))
 	}
 
 	for p, r := range rules {
@@ -196,7 +196,7 @@ func Sign(ctx context.Context, r Rule) (Filter, error) {
 
 	sub, err := ParseRule(ctx, r)
 	if err != nil {
-		return nil, xerrors.Errorf("parsing next rule %d: %w", err)
+		return nil, xerrors.Errorf("parsing next rule: %w", err)
 	}
 
 	return func(params map[FilterParam]interface{}) error {
@@ -215,7 +215,7 @@ func Message(ctx context.Context, r Rule) (Filter, error) {
 
 	sub, err := ParseRule(ctx, r)
 	if err != nil {
-		return nil, xerrors.Errorf("parsing next rule %d: %w", err)
+		return nil, xerrors.Errorf("parsing next rule: %w", err)
 	}
 
 	return func(params map[FilterParam]interface{}) error {
@@ -249,7 +249,7 @@ func DealProposal(ctx context.Context, r Rule) (Filter, error) {
 
 	sub, err := ParseRule(ctx, r)
 	if err != nil {
-		return nil, xerrors.Errorf("parsing next rule %d: %w", err)
+		return nil, xerrors.Errorf("parsing next rule: %w", err)
 	}
 
 	return func(params map[FilterParam]interface{}) error {

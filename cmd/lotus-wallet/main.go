@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/filecoin-project/lotus/api/v0api"
@@ -99,6 +101,12 @@ To configure your lotus node to use a remote wallet:
 var getApiKeyCmd = &cli.Command{
 	Name:  "get-api-key",
 	Usage: "Generate API Key",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "rules",
+			Usage: "filtering rules",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		lr, ks, err := openRepo(cctx)
 		if err != nil {
@@ -106,9 +114,25 @@ var getApiKeyCmd = &cli.Command{
 		}
 		defer lr.Close() // nolint
 
+		var rules Rule
+		if cctx.IsSet("rules") {
+			var r interface{}
+			if err := json.Unmarshal([]byte(cctx.String("rules")), &r); err != nil {
+				return xerrors.Errorf("unmarshalling rules: %w", err)
+			}
+
+			_, err := ParseRule(cctx.Context, r)
+			if err != nil {
+				return xerrors.Errorf("parsing rules: %w", err)
+			}
+
+			rules = &r
+		}
+
 		p := jwtPayload{
 			Allow:   []auth.Permission{api.PermAdmin},
 			Created: time.Now(),
+			Rules:   &rules,
 		}
 
 		authKey, err := modules.APISecret(ks, lr)
@@ -125,6 +149,10 @@ var getApiKeyCmd = &cli.Command{
 		return nil
 	},
 }
+
+type jwtTok struct{}
+
+var tokenKey jwtTok
 
 var runCmd = &cli.Command{
 	Name:  "run",
@@ -151,6 +179,10 @@ var runCmd = &cli.Command{
 			Name:   "disable-auth",
 			Usage:  "(insecure) disable api auth",
 			Hidden: true,
+		},
+		&cli.BoolFlag{
+			Name:  "rule-must-accept",
+			Usage: "require all operations to be accepted by rule filters",
 		},
 	},
 	Description: "Needs FULLNODE_API_INFO env-var to be set before running (see lotus-wallet --help for setup instructions)",
@@ -190,6 +222,11 @@ var runCmd = &cli.Command{
 				Local:  lw,
 				Ledger: ledgerwallet.NewWallet(ds),
 			}
+		}
+
+		w = &FilteredWallet{
+			under:      w,
+			mustAccept: cctx.Bool("rule-must-accept"),
 		}
 
 		address := cctx.String("listen")
@@ -234,19 +271,47 @@ var runCmd = &cli.Command{
 			}
 
 			authVerify := func(ctx context.Context, token string) ([]auth.Permission, error) {
-				var payload jwtPayload
-				if _, err := jwt.Verify([]byte(token), (*jwt.HMACSHA)(authKey), &payload); err != nil {
-					return nil, xerrors.Errorf("JWT Verification failed: %w", err)
+				payload, ok := ctx.Value(tokenKey).(jwtPayload)
+				if !ok {
+					return nil, xerrors.Errorf("jwt payload not set on request context")
 				}
 
 				return payload.Allow, nil
 			}
 
 			log.Info("API auth enabled, use 'lotus-wallet get-api-key' to get API key")
-			handler = &auth.Handler{
+			ah := &auth.Handler{
 				Verify: authVerify,
 				Next:   mux.ServeHTTP,
 			}
+
+			handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				token := r.Header.Get("Authorization")
+				if token == "" {
+					token = r.FormValue("token")
+					if token != "" {
+						token = "Bearer " + token
+					}
+				}
+
+				if token != "" {
+					if !strings.HasPrefix(token, "Bearer ") {
+						log.Warn("missing Bearer prefix in auth header")
+						w.WriteHeader(401)
+						return
+					}
+					token = strings.TrimPrefix(token, "Bearer ")
+
+					var payload jwtPayload
+					if _, err := jwt.Verify([]byte(token), (*jwt.HMACSHA)(authKey), &payload); err != nil {
+						http.Error(w, fmt.Sprintf("JWT Verification failed: %s", err), http.StatusForbidden)
+					}
+
+					r = r.Clone(context.WithValue(r.Context(), tokenKey, payload))
+				}
+
+				ah.ServeHTTP(w, r)
+			})
 		}
 
 		srv := &http.Server{
