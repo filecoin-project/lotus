@@ -6,6 +6,8 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/lotus/api"
@@ -17,35 +19,71 @@ type FilteredWallet struct {
 	mustAccept bool
 }
 
+func (c *FilteredWallet) applyRules(ctx context.Context, filterParams map[FilterParam]interface{}) error {
+	p, ok := ctx.Value(tokenKey).(jwtPayload)
+	if !ok {
+		return xerrors.Errorf("jwt payload not set on request context")
+	}
+	if c.mustAccept && p.Rules == nil {
+		return xerrors.Errorf("token with no rules")
+	}
+	if p.Rules != nil {
+		f, err := ParseRule(ctx, *p.Rules)
+		if err != nil {
+			return xerrors.Errorf("parsing rules: %w", err)
+		}
+
+		fres := f(filterParams)
+		switch fres {
+		case nil:
+			if c.mustAccept {
+				return xerrors.Errorf("filter didn't accept")
+			}
+			fallthrough
+		case ErrAccept:
+
+		default:
+			return xerrors.Errorf("filter error: %w", fres)
+		}
+	}
+
+	return nil
+}
+
 func (c *FilteredWallet) WalletNew(ctx context.Context, typ types.KeyType) (address.Address, error) {
-	log.Infow("WalletNew", "type", typ)
-	// TODO FILTER!
+	filterParams := map[FilterParam]interface{}{
+		ParamAction: ActionNew,
+	}
+	if err := c.applyRules(ctx, filterParams); err != nil {
+		return address.Undef, err
+	}
 
 	return c.under.WalletNew(ctx, typ)
 }
 
 func (c *FilteredWallet) WalletHas(ctx context.Context, addr address.Address) (bool, error) {
-	log.Infow("WalletHas", "address", addr)
-	// TODO FILTER!
+	filterParams := map[FilterParam]interface{}{
+		ParamAction: ActionHas,
+	}
+	if err := c.applyRules(ctx, filterParams); err != nil {
+		return false, err
+	}
 
 	return c.under.WalletHas(ctx, addr)
 }
 
 func (c *FilteredWallet) WalletList(ctx context.Context) ([]address.Address, error) {
-	// TODO FILTER!
+	filterParams := map[FilterParam]interface{}{
+		ParamAction: ActionList,
+	}
+	if err := c.applyRules(ctx, filterParams); err != nil {
+		return nil, err
+	}
 
 	return c.under.WalletList(ctx)
 }
 
 func (c *FilteredWallet) WalletSign(ctx context.Context, k address.Address, msg []byte, meta api.MsgMeta) (*crypto.Signature, error) {
-	p, ok := ctx.Value(tokenKey).(jwtPayload)
-	if !ok {
-		return nil, xerrors.Errorf("jwt payload not set on request context")
-	}
-	if c.mustAccept && p.Rules == nil {
-		return nil, xerrors.Errorf("token with no rules")
-	}
-
 	var filterParams map[FilterParam]interface{}
 
 	switch meta.Type {
@@ -75,62 +113,72 @@ func (c *FilteredWallet) WalletSign(ctx context.Context, k address.Address, msg 
 			ParamMaxFee:      cmsg.RequiredFunds(),
 		}
 	case api.MTBlock:
-		// TODO FILTER PARAMS!
+		bh, err := types.DecodeBlock(msg)
+		if err != nil {
+			return nil, xerrors.Errorf("decode block header: %w", err)
+		}
+
 		filterParams = map[FilterParam]interface{}{
 			ParamAction:   ActionSign,
 			ParamSignType: api.MTBlock,
+
+			ParamMiner: bh.Miner,
 		}
 	case api.MTDealProposal:
-		// TODO FILTER PARAMS!
+		var dp market0.DealProposal
+		if err := dp.UnmarshalCBOR(bytes.NewReader(msg)); err != nil {
+			return nil, xerrors.Errorf("unmarshalling deal proposal: %w", err)
+		}
+
 		filterParams = map[FilterParam]interface{}{
 			ParamAction:   ActionSign,
 			ParamSignType: api.MTDealProposal,
 		}
 	default:
-		// TODO FILTER PARAMS!
 		filterParams = map[FilterParam]interface{}{
 			ParamAction:   ActionSign,
 			ParamSignType: api.MTUnknown,
 		}
 	}
 
-	if p.Rules != nil {
-		f, err := ParseRule(ctx, *p.Rules)
-		if err != nil {
-			return nil, xerrors.Errorf("parsing rules: %w", err)
-		}
+	filterParams[ParamSigner] = k
 
-		fres := f(filterParams)
-		switch fres {
-		case nil:
-			if c.mustAccept {
-				return nil, xerrors.Errorf("filter didn't accept")
-			}
-			fallthrough
-		case ErrAccept:
-
-		default:
-			return nil, xerrors.Errorf("filter error: %w", fres)
-		}
+	if err := c.applyRules(ctx, filterParams); err != nil {
+		return nil, err
 	}
 
 	return c.under.WalletSign(ctx, k, msg, meta)
 }
 
 func (c *FilteredWallet) WalletExport(ctx context.Context, a address.Address) (*types.KeyInfo, error) {
-	log.Infow("WalletExport", "address", a)
-	// TODO FILTER!
+	filterParams := map[FilterParam]interface{}{
+		ParamAction: ActionExport,
+	}
+	if err := c.applyRules(ctx, filterParams); err != nil {
+		return nil, err
+	}
+
 	return c.under.WalletExport(ctx, a)
 }
 
 func (c *FilteredWallet) WalletImport(ctx context.Context, ki *types.KeyInfo) (address.Address, error) {
-	log.Infow("WalletImport", "type", ki.Type)
-	// TODO FILTER!
+	filterParams := map[FilterParam]interface{}{
+		ParamAction: ActionImport,
+	}
+	if err := c.applyRules(ctx, filterParams); err != nil {
+		return address.Undef, err
+	}
+
 	return c.under.WalletImport(ctx, ki)
 }
 
 func (c *FilteredWallet) WalletDelete(ctx context.Context, addr address.Address) error {
-	log.Infow("WalletDelete", "address", addr)
-	// TODO FILTER!
+	filterParams := map[FilterParam]interface{}{
+		ParamAction: ActionDelete,
+	}
+	if err := c.applyRules(ctx, filterParams); err != nil {
+		return err
+	}
+
 	return c.under.WalletDelete(ctx, addr)
 }

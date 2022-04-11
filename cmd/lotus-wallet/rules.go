@@ -54,12 +54,22 @@ const (
 	ParamMethod      FilterParam = "Method"      // requires SignType=Message
 	ParamValue       FilterParam = "Value"       // requires SignType=Message
 	ParamMaxFee      FilterParam = "MaxFee"      // requires SignType=Message
+
+	ParamMiner  FilterParam = "Miner"  // requires SignType=Message
+	ParamSigner FilterParam = "Signer" // requires SignType=Message
 )
 
 type Action string
 
 const (
+	ActionNew  Action = "New"
+	ActionHas  Action = "Has"
+	ActionList Action = "List"
 	ActionSign Action = "Sign"
+
+	ActionExport Action = "Export"
+	ActionImport Action = "Import"
+	ActionDelete Action = "Delete"
 )
 
 type SignType string
@@ -81,7 +91,10 @@ func init() {
 	ruleParsers = map[string]RuleParser{
 		"AnyAccepts": AnyAccepts,
 
-		"Sign": Sign,
+		"New":  action(ActionNew),
+		"Sign": action(ActionSign),
+
+		"Signer": checkRule(ParamAction, ActionSign, AddrRule(ParamSigner)),
 
 		"Message":     checkRule(ParamAction, ActionSign, Message),
 		"Source":      checkRule(ParamSignType, SignTypeMessage, AddrRule(ParamSource)),
@@ -90,7 +103,9 @@ func init() {
 		"Value":       checkRule(ParamSignType, SignTypeMessage, ValueRule(ParamValue)),
 		"MaxFee":      checkRule(ParamSignType, SignTypeMessage, ValueRule(ParamMaxFee)),
 
-		"Block":        checkRule(ParamAction, ActionSign, Block),
+		"Block": checkRule(ParamAction, ActionSign, Block),
+		"Miner": checkRule(ParamSignType, SignTypeBlock, AddrRule(ParamMiner)),
+
 		"DealProposal": checkRule(ParamAction, ActionSign, DealProposal),
 
 		"Accept": finalRule(ErrAccept),
@@ -189,23 +204,25 @@ func checkRule(fp FilterParam, is interface{}, sub RuleParser) RuleParser {
 
 // With action
 
-// Sign matches WalletSign
+// action matches specified action
 // r: {"ruleName": ...}
-func Sign(ctx context.Context, r Rule) (Filter, error) {
-	ctx = context.WithValue(ctx, ParamAction, ActionSign)
+func action(action Action) func(ctx context.Context, r Rule) (Filter, error) {
+	return func(ctx context.Context, r Rule) (Filter, error) {
+		ctx = context.WithValue(ctx, ParamAction, action)
 
-	sub, err := ParseRule(ctx, r)
-	if err != nil {
-		return nil, xerrors.Errorf("parsing next rule: %w", err)
-	}
-
-	return func(params map[FilterParam]interface{}) error {
-		if params[ParamAction] != ActionSign {
-			return nil
+		sub, err := ParseRule(ctx, r)
+		if err != nil {
+			return nil, xerrors.Errorf("parsing next rule: %w", err)
 		}
 
-		return sub(params)
-	}, nil
+		return func(params map[FilterParam]interface{}) error {
+			if params[ParamAction] != action {
+				return nil
+			}
+
+			return sub(params)
+		}, nil
+	}
 }
 
 // Sign type filters
