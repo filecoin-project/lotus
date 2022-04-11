@@ -7,7 +7,11 @@ USAGE:
    lotus-worker [global options] command [command options] [arguments...]
 
 VERSION:
+<<<<<<< HEAD
    1.15.2-dev
+=======
+   1.15.1
+>>>>>>> releases
 
 COMMANDS:
    run         Start lotus worker

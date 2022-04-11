@@ -5,17 +5,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-storedcounter"
+	"github.com/ipfs/go-datastore"
 
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
@@ -30,14 +30,9 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-statestore"
-	"github.com/filecoin-project/go-storedcounter"
 	provider "github.com/filecoin-project/index-provider"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	graphsync "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
@@ -976,39 +971,37 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 
 func ToSealingConfig(dealmakingCfg config.DealmakingConfig, sealingCfg config.SealingConfig) sealiface.Config {
 	return sealiface.Config{
-		MaxWaitDealsSectors:             sealingCfg.MaxWaitDealsSectors,
-		MaxSealingSectors:               sealingCfg.MaxSealingSectors,
-		MaxSealingSectorsForDeals:       sealingCfg.MaxSealingSectorsForDeals,
-		PreferNewSectorsForDeals:        sealingCfg.PreferNewSectorsForDeals,
-		MaxUpgradingSectors:             sealingCfg.MaxUpgradingSectors,
-		StartEpochSealingBuffer:         abi.ChainEpoch(dealmakingCfg.StartEpochSealingBuffer),
-		MakeNewSectorForDeals:           sealingCfg.MakeNewSectorForDeals,
-		CommittedCapacitySectorLifetime: time.Duration(sealingCfg.CommittedCapacitySectorLifetime),
-		WaitDealsDelay:                  time.Duration(sealingCfg.WaitDealsDelay),
-		MakeCCSectorsAvailable:          sealingCfg.MakeCCSectorsAvailable,
-		AlwaysKeepUnsealedCopy:          sealingCfg.AlwaysKeepUnsealedCopy,
-		FinalizeEarly:                   sealingCfg.FinalizeEarly,
+		MaxWaitDealsSectors:             cfg.Sealing.MaxWaitDealsSectors,
+		MaxSealingSectors:               cfg.Sealing.MaxSealingSectors,
+		MaxSealingSectorsForDeals:       cfg.Sealing.MaxSealingSectorsForDeals,
+		StartEpochSealingBuffer:         abi.ChainEpoch(cfg.Dealmaking.StartEpochSealingBuffer),
+		MakeNewSectorForDeals:           cfg.Sealing.MakeNewSectorForDeals,
+		CommittedCapacitySectorLifetime: time.Duration(cfg.Sealing.CommittedCapacitySectorLifetime),
+		WaitDealsDelay:                  time.Duration(cfg.Sealing.WaitDealsDelay),
+		MakeCCSectorsAvailable:          cfg.Sealing.MakeCCSectorsAvailable,
+		AlwaysKeepUnsealedCopy:          cfg.Sealing.AlwaysKeepUnsealedCopy,
+		FinalizeEarly:                   cfg.Sealing.FinalizeEarly,
 
-		CollateralFromMinerBalance: sealingCfg.CollateralFromMinerBalance,
-		AvailableBalanceBuffer:     types.BigInt(sealingCfg.AvailableBalanceBuffer),
-		DisableCollateralFallback:  sealingCfg.DisableCollateralFallback,
+		CollateralFromMinerBalance: cfg.Sealing.CollateralFromMinerBalance,
+		AvailableBalanceBuffer:     types.BigInt(cfg.Sealing.AvailableBalanceBuffer),
+		DisableCollateralFallback:  cfg.Sealing.DisableCollateralFallback,
 
-		BatchPreCommits:     sealingCfg.BatchPreCommits,
-		MaxPreCommitBatch:   sealingCfg.MaxPreCommitBatch,
-		PreCommitBatchWait:  time.Duration(sealingCfg.PreCommitBatchWait),
-		PreCommitBatchSlack: time.Duration(sealingCfg.PreCommitBatchSlack),
+		BatchPreCommits:     cfg.Sealing.BatchPreCommits,
+		MaxPreCommitBatch:   cfg.Sealing.MaxPreCommitBatch,
+		PreCommitBatchWait:  time.Duration(cfg.Sealing.PreCommitBatchWait),
+		PreCommitBatchSlack: time.Duration(cfg.Sealing.PreCommitBatchSlack),
 
-		AggregateCommits:           sealingCfg.AggregateCommits,
-		MinCommitBatch:             sealingCfg.MinCommitBatch,
-		MaxCommitBatch:             sealingCfg.MaxCommitBatch,
-		CommitBatchWait:            time.Duration(sealingCfg.CommitBatchWait),
-		CommitBatchSlack:           time.Duration(sealingCfg.CommitBatchSlack),
-		AggregateAboveBaseFee:      types.BigInt(sealingCfg.AggregateAboveBaseFee),
-		BatchPreCommitAboveBaseFee: types.BigInt(sealingCfg.BatchPreCommitAboveBaseFee),
+		AggregateCommits:           cfg.Sealing.AggregateCommits,
+		MinCommitBatch:             cfg.Sealing.MinCommitBatch,
+		MaxCommitBatch:             cfg.Sealing.MaxCommitBatch,
+		CommitBatchWait:            time.Duration(cfg.Sealing.CommitBatchWait),
+		CommitBatchSlack:           time.Duration(cfg.Sealing.CommitBatchSlack),
+		AggregateAboveBaseFee:      types.BigInt(cfg.Sealing.AggregateAboveBaseFee),
+		BatchPreCommitAboveBaseFee: types.BigInt(cfg.Sealing.BatchPreCommitAboveBaseFee),
 
-		TerminateBatchMax:  sealingCfg.TerminateBatchMax,
-		TerminateBatchMin:  sealingCfg.TerminateBatchMin,
-		TerminateBatchWait: time.Duration(sealingCfg.TerminateBatchWait),
+		TerminateBatchMax:  cfg.Sealing.TerminateBatchMax,
+		TerminateBatchMin:  cfg.Sealing.TerminateBatchMin,
+		TerminateBatchWait: time.Duration(cfg.Sealing.TerminateBatchWait),
 	}
 }
 
