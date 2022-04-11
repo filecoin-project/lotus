@@ -1247,7 +1247,9 @@ func (a *API) newRetrievalInfo(ctx context.Context, v rm.ClientDealState) api.Re
 	return a.newRetrievalInfoWithTransfer(transferCh, v)
 }
 
-func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error) {
+const dealProtoPrefix = "/fil/storage/mk/"
+
+func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*api.StorageAsk, error) {
 	mi, err := a.StateMinerInfo(ctx, miner, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting miner info: %w", err)
@@ -1258,7 +1260,22 @@ func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Addre
 	if err != nil {
 		return nil, err
 	}
-	return ask, nil
+	res := &api.StorageAsk{
+		Response: ask,
+	}
+
+	ps, err := a.Host.Peerstore().GetProtocols(p)
+	if err != nil {
+		return nil, err
+	}
+	for _, s := range ps {
+		if strings.HasPrefix(s, dealProtoPrefix) {
+			res.DealProtocols = append(res.DealProtocols, s)
+		}
+	}
+	sort.Strings(res.DealProtocols)
+
+	return res, nil
 }
 
 func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet, error) {

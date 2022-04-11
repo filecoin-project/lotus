@@ -515,7 +515,7 @@ The minimum value is 518400 (6 months).`,
 }
 
 func interactiveDeal(cctx *cli.Context) error {
-	api, closer, err := GetFullNodeAPI(cctx)
+	api, closer, err := GetFullNodeAPIV1(cctx)
 	if err != nil {
 		return err
 	}
@@ -873,7 +873,7 @@ uiLoop:
 					continue uiLoop
 				}
 
-				ask = append(ask, *a)
+				ask = append(ask, *a.Response)
 			}
 
 			// TODO: run more validation
@@ -1403,9 +1403,13 @@ var clientListAsksCmd = &cli.Command{
 			Value: "text",
 			Usage: "Either 'text' or 'csv'",
 		},
+		&cli.BoolFlag{
+			Name:  "protocols",
+			Usage: "Output supported deal protocols",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
+		api, closer, err := GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
@@ -1422,14 +1426,19 @@ var clientListAsksCmd = &cli.Command{
 				return asks[i].Ping < asks[j].Ping
 			})
 		}
-		pfmt := "%s: min:%s max:%s price:%s/GiB/Epoch verifiedPrice:%s/GiB/Epoch ping:%s\n"
+		pfmt := "%s: min:%s max:%s price:%s/GiB/Epoch verifiedPrice:%s/GiB/Epoch ping:%s protos:%s\n"
 		if cctx.String("output-format") == "csv" {
-			fmt.Printf("Miner,Min,Max,Price,VerifiedPrice,Ping\n")
-			pfmt = "%s,%s,%s,%s,%s,%s\n"
+			fmt.Printf("Miner,Min,Max,Price,VerifiedPrice,Ping,Protocols")
+			pfmt = "%s,%s,%s,%s,%s,%s,%s\n"
 		}
 
 		for _, a := range asks {
 			ask := a.Ask
+
+			protos := ""
+			if cctx.Bool("protocols") {
+				protos = "[" + strings.Join(a.DealProtocols, ",") + "]"
+			}
 
 			fmt.Printf(pfmt, ask.Miner,
 				types.SizeStr(types.NewInt(uint64(ask.MinPieceSize))),
@@ -1437,6 +1446,7 @@ var clientListAsksCmd = &cli.Command{
 				types.FIL(ask.Price),
 				types.FIL(ask.VerifiedPrice),
 				a.Ping,
+				protos,
 			)
 		}
 
@@ -1445,11 +1455,13 @@ var clientListAsksCmd = &cli.Command{
 }
 
 type QueriedAsk struct {
-	Ask  *storagemarket.StorageAsk
+	Ask           *storagemarket.StorageAsk
+	DealProtocols []string
+
 	Ping time.Duration
 }
 
-func GetAsks(ctx context.Context, api v0api.FullNode) ([]QueriedAsk, error) {
+func GetAsks(ctx context.Context, api lapi.FullNode) ([]QueriedAsk, error) {
 	isTTY := true
 	if fileInfo, _ := os.Stdout.Stat(); (fileInfo.Mode() & os.ModeCharDevice) == 0 {
 		isTTY = false
@@ -1560,7 +1572,9 @@ loop:
 				atomic.AddInt64(&got, 1)
 				lk.Lock()
 				asks = append(asks, QueriedAsk{
-					Ask:  ask,
+					Ask:           ask.Response,
+					DealProtocols: ask.DealProtocols,
+
 					Ping: pingDuration,
 				})
 				lk.Unlock()

@@ -1897,14 +1897,19 @@ Inputs:
 Response:
 ```json
 {
-  "Price": "0",
-  "VerifiedPrice": "0",
-  "MinPieceSize": 1032,
-  "MaxPieceSize": 1032,
-  "Miner": "f01234",
-  "Timestamp": 10101,
-  "Expiry": 10101,
-  "SeqNo": 42
+  "Response": {
+    "Price": "0",
+    "VerifiedPrice": "0",
+    "MinPieceSize": 1032,
+    "MaxPieceSize": 1032,
+    "Miner": "f01234",
+    "Timestamp": 10101,
+    "Expiry": 10101,
+    "SeqNo": 42
+  },
+  "DealProtocols": [
+    "string value"
+  ]
 }
 ```
 

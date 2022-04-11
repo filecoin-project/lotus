@@ -190,7 +190,7 @@ type FullNodeStruct struct {
 
 		ClientMinerQueryOffer func(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 *cid.Cid) (QueryOffer, error) `perm:"read"`
 
-		ClientQueryAsk func(p0 context.Context, p1 peer.ID, p2 address.Address) (*storagemarket.StorageAsk, error) `perm:"read"`
+		ClientQueryAsk func(p0 context.Context, p1 peer.ID, p2 address.Address) (*StorageAsk, error) `perm:"read"`
 
 		ClientRemoveImport func(p0 context.Context, p1 imports.ID) error `perm:"admin"`
 
@@ -1571,14 +1571,14 @@ func (s *FullNodeStub) ClientMinerQueryOffer(p0 context.Context, p1 address.Addr
 	return *new(QueryOffer), ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 address.Address) (*storagemarket.StorageAsk, error) {
+func (s *FullNodeStruct) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 address.Address) (*StorageAsk, error) {
 	if s.Internal.ClientQueryAsk == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.ClientQueryAsk(p0, p1, p2)
 }
 
-func (s *FullNodeStub) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 address.Address) (*storagemarket.StorageAsk, error) {
+func (s *FullNodeStub) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 address.Address) (*StorageAsk, error) {
 	return nil, ErrNotSupported
 }
 

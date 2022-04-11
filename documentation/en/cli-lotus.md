@@ -794,6 +794,7 @@ CATEGORY:
 OPTIONS:
    --by-ping              sort by ping (default: false)
    --output-format value  Either 'text' or 'csv' (default: "text")
+   --protocols            Output supported deal protocols (default: false)
    --help, -h             show help (default: false)
    
 ```

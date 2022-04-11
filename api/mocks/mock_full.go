@@ -14,7 +14,6 @@ import (
 	bitfield "github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	retrievalmarket "github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	storagemarket "github.com/filecoin-project/go-fil-markets/storagemarket"
 	auth "github.com/filecoin-project/go-jsonrpc/auth"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
@@ -746,10 +745,10 @@ func (mr *MockFullNodeMockRecorder) ClientMinerQueryOffer(arg0, arg1, arg2, arg3
 }
 
 // ClientQueryAsk mocks base method.
-func (m *MockFullNode) ClientQueryAsk(arg0 context.Context, arg1 peer.ID, arg2 address.Address) (*storagemarket.StorageAsk, error) {
+func (m *MockFullNode) ClientQueryAsk(arg0 context.Context, arg1 peer.ID, arg2 address.Address) (*api.StorageAsk, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ClientQueryAsk", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*storagemarket.StorageAsk)
+	ret0, _ := ret[0].(*api.StorageAsk)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
