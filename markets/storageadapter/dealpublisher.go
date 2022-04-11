@@ -58,7 +58,7 @@ type DealPublisher struct {
 	publishSpec           *api.MessageSendSpec
 
 	lk                      sync.Mutex
-	pending                 []*pendingDeal ``
+	pending                 []*pendingDeal
 	cancelWaitForMoreDeals  context.CancelFunc
 	publishPeriodStart      time.Time
 	startEpochSealingBuffer abi.ChainEpoch
