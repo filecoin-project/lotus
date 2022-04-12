@@ -124,7 +124,6 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 					upgrade:       upgrade.Migration,
 					preMigrations: upgrade.PreMigrations,
 					cache:         nv16.NewMemMigrationCache(),
-					manifest:      upgrade.Manifest,
 				}
 				stateMigrations[upgrade.Height] = migration
 			}

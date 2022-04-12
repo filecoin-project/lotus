@@ -48,7 +48,6 @@ type MigrationFunc func(
 	ctx context.Context,
 	sm *StateManager, cache MigrationCache,
 	cb ExecMonitor,
-	manifest cid.Cid,
 	oldState cid.Cid,
 	height abi.ChainEpoch, ts *types.TipSet,
 ) (newState cid.Cid, err error)
@@ -58,7 +57,6 @@ type MigrationFunc func(
 type PreMigrationFunc func(
 	ctx context.Context,
 	sm *StateManager, cache MigrationCache,
-	manifest cid.Cid,
 	oldState cid.Cid,
 	height abi.ChainEpoch, ts *types.TipSet,
 ) error
@@ -95,10 +93,6 @@ type Upgrade struct {
 	// These functions should fill the given cache with information that can speed up the
 	// eventual full migration at the upgrade epoch.
 	PreMigrations []PreMigration
-
-	// Manifest is the migration manifest CID, starting with nv16; for older migrations it is
-	// undefined
-	Manifest cid.Cid
 }
 
 type UpgradeSchedule []Upgrade
@@ -182,7 +176,7 @@ func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, heig
 		// Yes, we clone the cache, even for the final upgrade epoch. Why? Reverts. We may
 		// have to migrate multiple times.
 		tmpCache := u.cache.Clone()
-		retCid, err = u.upgrade(ctx, sm, tmpCache, cb, u.manifest, root, height, ts)
+		retCid, err = u.upgrade(ctx, sm, tmpCache, cb, root, height, ts)
 		if err != nil {
 			log.Errorw("FAILED migration", "height", height, "from", root, "error", err)
 			return cid.Undef, err
@@ -219,7 +213,7 @@ func (sm *StateManager) hasExpensiveFork(height abi.ChainEpoch) bool {
 	return ok
 }
 
-func runPreMigration(ctx context.Context, sm *StateManager, manifest cid.Cid, fn PreMigrationFunc, cache *nv16.MemMigrationCache, ts *types.TipSet) {
+func runPreMigration(ctx context.Context, sm *StateManager, fn PreMigrationFunc, cache *nv16.MemMigrationCache, ts *types.TipSet) {
 	height := ts.Height()
 	parent := ts.ParentState()
 
@@ -231,7 +225,7 @@ func runPreMigration(ctx context.Context, sm *StateManager, manifest cid.Cid, fn
 	// migration to use the cache may assume that
 	// certain blocks exist, even if they don't.
 	tmpCache := cache.Clone()
-	err := fn(ctx, sm, tmpCache, manifest, parent, height, ts)
+	err := fn(ctx, sm, tmpCache, parent, height, ts)
 	if err != nil {
 		log.Errorw("FAILED pre-migration", "error", err)
 		return
@@ -272,7 +266,6 @@ func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 				notAfterEpoch = stopEpoch - 1
 			}
 
-			manifest := migration.manifest
 			// Add an op to start a pre-migration.
 			schedule = append(schedule, op{
 				after:    afterEpoch,
@@ -283,7 +276,7 @@ func (sm *StateManager) preMigrationWorker(ctx context.Context) {
 					wg.Add(1)
 					go func() {
 						defer wg.Done()
-						runPreMigration(preCtx, sm, manifest, migrationFunc, cache, ts)
+						runPreMigration(preCtx, sm, migrationFunc, cache, ts)
 					}()
 				},
 			})

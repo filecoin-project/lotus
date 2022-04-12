@@ -46,194 +46,132 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 
-type LegacyMigrationFunc = func(
-	ctx context.Context,
-	sm *stmgr.StateManager, cache stmgr.MigrationCache,
-	cb stmgr.ExecMonitor,
-	oldState cid.Cid,
-	height abi.ChainEpoch, ts *types.TipSet,
-) (newState cid.Cid, err error)
-
-type LegacyPreMigrationFunc = func(
-	ctx context.Context,
-	sm *stmgr.StateManager, cache stmgr.MigrationCache,
-	oldState cid.Cid,
-	height abi.ChainEpoch, ts *types.TipSet,
-) error
-
-func LegacyMigration(f LegacyMigrationFunc) stmgr.MigrationFunc {
-	return func(
-		ctx context.Context,
-		sm *stmgr.StateManager, cache stmgr.MigrationCache,
-		cb stmgr.ExecMonitor,
-		manifest cid.Cid,
-		oldState cid.Cid,
-		height abi.ChainEpoch, ts *types.TipSet,
-	) (newState cid.Cid, err error) {
-		return f(ctx, sm, cache, cb, oldState, height, ts)
-	}
-}
-
-func LegacyPreMigration(f LegacyPreMigrationFunc) stmgr.PreMigrationFunc {
-	return func(
-		ctx context.Context,
-		sm *stmgr.StateManager, cache stmgr.MigrationCache,
-		manifest cid.Cid,
-		oldState cid.Cid,
-		height abi.ChainEpoch, ts *types.TipSet,
-	) error {
-		return f(ctx, sm, cache, oldState, height, ts)
-	}
-}
-
 func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	var us stmgr.UpgradeSchedule
-
-	v8ManifestCid, ok := actors.GetManifest(actors.Version8)
-	if !ok {
-		v8ManifestCid = cid.Undef
-	}
 
 	updates := []stmgr.Upgrade{{
 		Height:    build.UpgradeBreezeHeight,
 		Network:   network.Version1,
-		Migration: LegacyMigration(UpgradeFaucetBurnRecovery),
-		Manifest:  cid.Undef,
+		Migration: UpgradeFaucetBurnRecovery,
 	}, {
 		Height:    build.UpgradeSmokeHeight,
 		Network:   network.Version2,
 		Migration: nil,
-		Manifest:  cid.Undef,
 	}, {
 		Height:    build.UpgradeIgnitionHeight,
 		Network:   network.Version3,
-		Migration: LegacyMigration(UpgradeIgnition),
-		Manifest:  cid.Undef,
+		Migration: UpgradeIgnition,
 	}, {
 		Height:    build.UpgradeRefuelHeight,
 		Network:   network.Version3,
-		Migration: LegacyMigration(UpgradeRefuel),
-		Manifest:  cid.Undef,
+		Migration: UpgradeRefuel,
 	}, {
 		Height:    build.UpgradeAssemblyHeight,
 		Network:   network.Version4,
 		Expensive: true,
-		Migration: LegacyMigration(UpgradeActorsV2),
-		Manifest:  cid.Undef,
+		Migration: UpgradeActorsV2,
 	}, {
 		Height:    build.UpgradeTapeHeight,
 		Network:   network.Version5,
 		Migration: nil,
-		Manifest:  cid.Undef,
 	}, {
 		Height:    build.UpgradeLiftoffHeight,
 		Network:   network.Version5,
-		Migration: LegacyMigration(UpgradeLiftoff),
-		Manifest:  cid.Undef,
+		Migration: UpgradeLiftoff,
 	}, {
 		Height:    build.UpgradeKumquatHeight,
 		Network:   network.Version6,
 		Migration: nil,
-		Manifest:  cid.Undef,
 	}, {
 		Height:    build.UpgradeCalicoHeight,
 		Network:   network.Version7,
-		Migration: LegacyMigration(UpgradeCalico),
-		Manifest:  cid.Undef,
+		Migration: UpgradeCalico,
 	}, {
 		Height:    build.UpgradePersianHeight,
 		Network:   network.Version8,
 		Migration: nil,
-		Manifest:  cid.Undef,
 	}, {
 		Height:    build.UpgradeOrangeHeight,
 		Network:   network.Version9,
 		Migration: nil,
-		Manifest:  cid.Undef,
 	}, {
 		Height:    build.UpgradeTrustHeight,
 		Network:   network.Version10,
-		Migration: LegacyMigration(UpgradeActorsV3),
+		Migration: UpgradeActorsV3,
 		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    LegacyPreMigration(PreUpgradeActorsV3),
+			PreMigration:    PreUpgradeActorsV3,
 			StartWithin:     120,
 			DontStartWithin: 60,
 			StopWithin:      35,
 		}, {
-			PreMigration:    LegacyPreMigration(PreUpgradeActorsV3),
+			PreMigration:    PreUpgradeActorsV3,
 			StartWithin:     30,
 			DontStartWithin: 15,
 			StopWithin:      5,
 		}},
-		Manifest:  cid.Undef,
 		Expensive: true,
 	}, {
 		Height:    build.UpgradeNorwegianHeight,
 		Network:   network.Version11,
 		Migration: nil,
-		Manifest:  cid.Undef,
 	}, {
 		Height:    build.UpgradeTurboHeight,
 		Network:   network.Version12,
-		Migration: LegacyMigration(UpgradeActorsV4),
+		Migration: UpgradeActorsV4,
 		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    LegacyPreMigration(PreUpgradeActorsV4),
+			PreMigration:    PreUpgradeActorsV4,
 			StartWithin:     120,
 			DontStartWithin: 60,
 			StopWithin:      35,
 		}, {
-			PreMigration:    LegacyPreMigration(PreUpgradeActorsV4),
+			PreMigration:    PreUpgradeActorsV4,
 			StartWithin:     30,
 			DontStartWithin: 15,
 			StopWithin:      5,
 		}},
-		Manifest:  cid.Undef,
 		Expensive: true,
 	}, {
 		Height:    build.UpgradeHyperdriveHeight,
 		Network:   network.Version13,
-		Migration: LegacyMigration(UpgradeActorsV5),
+		Migration: UpgradeActorsV5,
 		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    LegacyPreMigration(PreUpgradeActorsV5),
+			PreMigration:    PreUpgradeActorsV5,
 			StartWithin:     120,
 			DontStartWithin: 60,
 			StopWithin:      35,
 		}, {
-			PreMigration:    LegacyPreMigration(PreUpgradeActorsV5),
+			PreMigration:    PreUpgradeActorsV5,
 			StartWithin:     30,
 			DontStartWithin: 15,
 			StopWithin:      5,
 		}},
-		Manifest:  cid.Undef,
 		Expensive: true,
 	}, {
 		Height:    build.UpgradeChocolateHeight,
 		Network:   network.Version14,
-		Migration: LegacyMigration(UpgradeActorsV6),
+		Migration: UpgradeActorsV6,
 		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    LegacyPreMigration(PreUpgradeActorsV6),
+			PreMigration:    PreUpgradeActorsV6,
 			StartWithin:     120,
 			DontStartWithin: 60,
 			StopWithin:      35,
 		}, {
-			PreMigration:    LegacyPreMigration(PreUpgradeActorsV6),
+			PreMigration:    PreUpgradeActorsV6,
 			StartWithin:     30,
 			DontStartWithin: 15,
 			StopWithin:      5,
 		}},
-		Manifest:  cid.Undef,
 		Expensive: true,
 	}, {
 		Height:    build.UpgradeOhSnapHeight,
 		Network:   network.Version15,
-		Migration: LegacyMigration(UpgradeActorsV7),
+		Migration: UpgradeActorsV7,
 		PreMigrations: []stmgr.PreMigration{{
-			PreMigration:    LegacyPreMigration(PreUpgradeActorsV7),
+			PreMigration:    PreUpgradeActorsV7,
 			StartWithin:     180,
 			DontStartWithin: 60,
 			StopWithin:      5,
 		}},
-		Manifest:  cid.Undef,
 		Expensive: true,
 	}, {
 		Height:    build.UpgradeFVM1Height,
@@ -245,7 +183,6 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 			DontStartWithin: 60,
 			StopWithin:      5,
 		}},
-		Manifest:  v8ManifestCid,
 		Expensive: true,
 	},
 	}
@@ -1381,7 +1318,7 @@ func upgradeActorsV7Common(
 	return newRoot, nil
 }
 
-func UpgradeActorsV8(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor, manifest cid.Cid, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+func UpgradeActorsV8(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, cb stmgr.ExecMonitor, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 	// Use all the CPUs except 3.
 	workerCount := runtime.NumCPU() - 3
 	if workerCount <= 0 {
@@ -1395,7 +1332,7 @@ func UpgradeActorsV8(ctx context.Context, sm *stmgr.StateManager, cache stmgr.Mi
 		ProgressLogPeriod: 10 * time.Second,
 	}
 
-	newRoot, err := upgradeActorsV8Common(ctx, sm, cache, manifest, root, epoch, ts, config)
+	newRoot, err := upgradeActorsV8Common(ctx, sm, cache, root, epoch, ts, config)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("migrating actors v6 state: %w", err)
 	}
@@ -1403,7 +1340,7 @@ func UpgradeActorsV8(ctx context.Context, sm *stmgr.StateManager, cache stmgr.Mi
 	return newRoot, nil
 }
 
-func PreUpgradeActorsV8(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, manifest cid.Cid, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
+func PreUpgradeActorsV8(ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache, root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet) error {
 	// Use half the CPUs for pre-migration, but leave at least 3.
 	workerCount := runtime.NumCPU()
 	if workerCount <= 4 {
@@ -1420,13 +1357,12 @@ func PreUpgradeActorsV8(ctx context.Context, sm *stmgr.StateManager, cache stmgr
 	config := nv16.Config{MaxWorkers: uint(workerCount),
 		ProgressLogPeriod: time.Minute * 5}
 
-	_, err = upgradeActorsV8Common(ctx, sm, cache, manifest, lbRoot, epoch, lbts, config)
+	_, err = upgradeActorsV8Common(ctx, sm, cache, lbRoot, epoch, lbts, config)
 	return err
 }
 
 func upgradeActorsV8Common(
 	ctx context.Context, sm *stmgr.StateManager, cache stmgr.MigrationCache,
-	manifest cid.Cid,
 	root cid.Cid, epoch abi.ChainEpoch, ts *types.TipSet,
 	config nv16.Config,
 ) (cid.Cid, error) {
@@ -1444,6 +1380,11 @@ func upgradeActorsV8Common(
 			"expected state root version 4 for actors v8 upgrade, got %d",
 			stateRoot.Version,
 		)
+	}
+
+	manifest, ok := actors.GetManifest(actors.Version8)
+	if !ok {
+		return cid.Undef, xerrors.Errorf("no manifest CID for v8 upgrade")
 	}
 
 	// Perform the migration
