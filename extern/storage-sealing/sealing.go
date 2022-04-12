@@ -6,7 +6,10 @@ import (
 	"sync"
 	"time"
 
-	cid "github.com/ipfs/go-cid/_rsrch/cidiface"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log/v2"
@@ -17,7 +20,7 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
-	statemachine "github.com/filecoin-project/go-statemachine"
+	"github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
@@ -177,8 +180,6 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 		sectorTimers:   map[abi.SectorID]*time.Timer{},
 		pendingPieces:  map[cid.Cid]*pendingPiece{},
 		assignedPieces: map[abi.SectorID][]cid.Cid{},
-
-		available: map[abi.SectorID]struct{}{},
 
 		available: map[abi.SectorID]struct{}{},
 

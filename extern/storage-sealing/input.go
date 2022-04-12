@@ -5,7 +5,9 @@ import (
 	"sort"
 	"time"
 
-	cid "github.com/ipfs/go-cid/_rsrch/cidiface"
+	"github.com/filecoin-project/go-padreader"
+	"github.com/filecoin-project/go-statemachine"
+	"github.com/ipfs/go-cid"
 
 	"golang.org/x/xerrors"
 

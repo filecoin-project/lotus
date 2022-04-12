@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/filecoin-project/go-ds-versioning/pkg/statestore"
+	"github.com/filecoin-project/go-statestore"
 	"github.com/hashicorp/go-multierror"
 	"github.com/mitchellh/go-homedir"
 

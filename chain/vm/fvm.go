@@ -5,7 +5,7 @@ import (
 	"context"
 	"time"
 
-	cid "github.com/ipfs/go-cid/_rsrch/cidiface"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
