@@ -143,9 +143,9 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 		return dealID, nil, xerrors.Errorf("could not find deal in publish deals message %s", publishCid)
 	}
 
-	if dealIdx >= len(dealIDs) {
+	if dealIdx >= len(pubDealsParams.Deals) {
 		return dealID, nil, xerrors.Errorf(
-			"deal index %d out of bounds of deals (len %d) in publish deals message %s",
+			"deal index %d out of bounds of deal proposals (len %d) in publish deals message %s",
 			dealIdx, len(dealIDs), publishCid)
 	}
 
