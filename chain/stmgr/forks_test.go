@@ -130,7 +130,7 @@ func TestForkHeightTriggers(t *testing.T) {
 			Network: network.Version1,
 			Height:  testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
-				root cid.Cid, _ cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+				_ cid.Cid, root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 				cst := ipldcbor.NewCborStore(sm.ChainStore().StateBlockstore())
 
 				st, err := sm.StateTree(root)
@@ -276,7 +276,7 @@ func testForkRefuseCall(t *testing.T, nullsBefore, nullsAfter int) {
 			Expensive: true,
 			Height:    testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
-				root cid.Cid, _ cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+				_ cid.Cid, root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 				migrationCount++
 				return root, nil
 			}}}, cg.BeaconSchedule())
@@ -412,7 +412,7 @@ func TestForkPreMigration(t *testing.T) {
 			Network: network.Version1,
 			Height:  testForkHeight,
 			Migration: func(ctx context.Context, sm *StateManager, cache MigrationCache, cb ExecMonitor,
-				root cid.Cid, _ cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
+				_ cid.Cid, root cid.Cid, height abi.ChainEpoch, ts *types.TipSet) (cid.Cid, error) {
 
 				// Make sure the test that should be canceled, is canceled.
 				select {
