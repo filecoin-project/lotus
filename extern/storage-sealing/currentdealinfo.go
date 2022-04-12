@@ -3,6 +3,7 @@ package sealing
 import (
 	"bytes"
 	"context"
+	"fmt"
 
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -84,6 +85,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 	if err != nil {
 		return dealID, nil, xerrors.Errorf("getting network version: %w", err)
 	}
+	fmt.Printf("nv: %d\n", nv)
 
 	retval, err := market.DecodePublishStorageDealsReturn(lookup.Receipt.Return, nv)
 	if err != nil {
@@ -94,6 +96,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 	if err != nil {
 		return dealID, nil, xerrors.Errorf("looking for publish deal message %s: getting dealIDs: %w", publishCid, err)
 	}
+	fmt.Printf("unserialized deal ids: %v\n", dealIDs)
 
 	// TODO: Can we delete this? We're well past the point when we first introduced the proposals into sealing deal info
 	// Previously, publish deals messages contained a single deal, and the
@@ -158,6 +161,11 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 		return dealID, nil, xerrors.New("deal was invalid at publication")
 	}
 
+	// final check against for invalid return value output
+	// should not be reachable from onchain output, only pathological test cases
+	if outIdx >= len(dealIDs) {
+		return dealID, nil, xerrors.Errorf("invalid publish storage deals ret marking %d as valid while only returning %d valid deals in publish deal message %s", outIdx, len(dealIDs), publishCid)
+	}
 	return dealIDs[outIdx], lookup.TipSetTok, nil
 }
 
