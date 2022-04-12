@@ -1,6 +1,7 @@
 package actors
 
 import (
+	"bytes"
 	"context"
 	"strings"
 	"sync"
@@ -9,7 +10,9 @@ import (
 
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	car "github.com/ipld/go-car"
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/specs-actors/v8/actors/builtin/manifest"
 )
@@ -106,4 +109,18 @@ func CanonicalName(name string) string {
 	}
 
 	return name
+}
+
+func LoadBundle(ctx context.Context, bs blockstore.Blockstore, av Version, data []byte) error {
+	blobr := bytes.NewReader(data)
+
+	hdr, err := car.LoadCar(ctx, bs, blobr)
+	if err != nil {
+		return xerrors.Errorf("error loading builtin actors v%d bundle: %w", av, err)
+	}
+
+	manifestCid := hdr.Roots[0]
+	AddManifest(av, manifestCid)
+
+	return nil
 }

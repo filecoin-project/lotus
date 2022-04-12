@@ -1,8 +1,6 @@
 package modules
 
 import (
-	"bytes"
-
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -12,7 +10,6 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
-	car "github.com/ipld/go-car"
 )
 
 func LoadBultinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.UniversalBlockstore) (result dtypes.BuiltinActorsLoaded, err error) {
@@ -22,14 +19,18 @@ func LoadBultinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.Univer
 	//      not already loaded.
 	//      For now, we just embed the v8 bundle and adjust the manifest CIDs for the migration/actor
 	//      metadata.
-	blobr := bytes.NewReader(build.BuiltinActorsV8Bundle())
-	hdr, err := car.LoadCar(ctx, bs, blobr)
-	if err != nil {
-		return result, xerrors.Errorf("error loading builtin actors v8 bundle: %w", err)
+	if len(build.BuiltinActorsV8Bundle()) > 0 {
+		if err := actors.LoadBundle(ctx, bs, actors.Version8, build.BuiltinActorsV8Bundle()); err != nil {
+			return result, err
+		}
 	}
 
-	manifestCid := hdr.Roots[0]
-	actors.ManifestCids[actors.Version8] = manifestCid
+	// for testing -- need to also set LOTUS_USE_FVM_CUSTOM_BUNDLE=1 to force the fvm to use it.
+	if len(build.BuiltinActorsV7Bundle()) > 0 {
+		if err := actors.LoadBundle(ctx, bs, actors.Version7, build.BuiltinActorsV7Bundle()); err != nil {
+			return result, err
+		}
+	}
 
 	cborStore := cbor.NewCborStore(bs)
 	if err := actors.LoadManifests(ctx, cborStore); err != nil {
