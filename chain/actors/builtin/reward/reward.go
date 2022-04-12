@@ -36,81 +36,33 @@ func init() {
 		return load0(store, root)
 	})
 
-	if c, ok := actors.GetActorCodeID(actors.Version0, "reward"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load0(store, root)
-		})
-	}
-
 	builtin.RegisterActorState(builtin2.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load2(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version2, "reward"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load2(store, root)
-		})
-	}
 
 	builtin.RegisterActorState(builtin3.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load3(store, root)
 	})
 
-	if c, ok := actors.GetActorCodeID(actors.Version3, "reward"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load3(store, root)
-		})
-	}
-
 	builtin.RegisterActorState(builtin4.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load4(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version4, "reward"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load4(store, root)
-		})
-	}
 
 	builtin.RegisterActorState(builtin5.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load5(store, root)
 	})
 
-	if c, ok := actors.GetActorCodeID(actors.Version5, "reward"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load5(store, root)
-		})
-	}
-
 	builtin.RegisterActorState(builtin6.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load6(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version6, "reward"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load6(store, root)
-		})
-	}
 
 	builtin.RegisterActorState(builtin7.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load7(store, root)
 	})
 
-	if c, ok := actors.GetActorCodeID(actors.Version7, "reward"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load7(store, root)
-		})
-	}
-
 	builtin.RegisterActorState(builtin8.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load8(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version8, "reward"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load8(store, root)
-		})
-	}
 }
 
 var (

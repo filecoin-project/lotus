@@ -48,81 +48,33 @@ func init() {
 		return load0(store, root)
 	})
 
-	if c, ok := actors.GetActorCodeID(actors.Version0, "storageminer"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load0(store, root)
-		})
-	}
-
 	builtin.RegisterActorState(builtin2.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load2(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version2, "storageminer"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load2(store, root)
-		})
-	}
 
 	builtin.RegisterActorState(builtin3.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load3(store, root)
 	})
 
-	if c, ok := actors.GetActorCodeID(actors.Version3, "storageminer"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load3(store, root)
-		})
-	}
-
 	builtin.RegisterActorState(builtin4.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load4(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version4, "storageminer"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load4(store, root)
-		})
-	}
 
 	builtin.RegisterActorState(builtin5.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load5(store, root)
 	})
 
-	if c, ok := actors.GetActorCodeID(actors.Version5, "storageminer"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load5(store, root)
-		})
-	}
-
 	builtin.RegisterActorState(builtin6.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load6(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version6, "storageminer"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load6(store, root)
-		})
-	}
 
 	builtin.RegisterActorState(builtin7.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load7(store, root)
 	})
 
-	if c, ok := actors.GetActorCodeID(actors.Version7, "storageminer"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load7(store, root)
-		})
-	}
-
 	builtin.RegisterActorState(builtin8.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load8(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version8, "storageminer"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load8(store, root)
-		})
-	}
 
 }
 

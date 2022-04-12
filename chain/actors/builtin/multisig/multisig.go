@@ -43,81 +43,33 @@ func init() {
 		return load0(store, root)
 	})
 
-	if c, ok := actors.GetActorCodeID(actors.Version0, "multisig"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load0(store, root)
-		})
-	}
-
 	builtin.RegisterActorState(builtin2.MultisigActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load2(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version2, "multisig"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load2(store, root)
-		})
-	}
 
 	builtin.RegisterActorState(builtin3.MultisigActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load3(store, root)
 	})
 
-	if c, ok := actors.GetActorCodeID(actors.Version3, "multisig"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load3(store, root)
-		})
-	}
-
 	builtin.RegisterActorState(builtin4.MultisigActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load4(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version4, "multisig"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load4(store, root)
-		})
-	}
 
 	builtin.RegisterActorState(builtin5.MultisigActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load5(store, root)
 	})
 
-	if c, ok := actors.GetActorCodeID(actors.Version5, "multisig"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load5(store, root)
-		})
-	}
-
 	builtin.RegisterActorState(builtin6.MultisigActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load6(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version6, "multisig"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load6(store, root)
-		})
-	}
 
 	builtin.RegisterActorState(builtin7.MultisigActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load7(store, root)
 	})
 
-	if c, ok := actors.GetActorCodeID(actors.Version7, "multisig"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load7(store, root)
-		})
-	}
-
 	builtin.RegisterActorState(builtin8.MultisigActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load8(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version8, "multisig"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load8(store, root)
-		})
-	}
 }
 
 func Load(store adt.Store, act *types.Actor) (State, error) {

@@ -43,81 +43,33 @@ func init() {
 		return load0(store, root)
 	})
 
-	if c, ok := actors.GetActorCodeID(actors.Version0, "paymentchannel"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load0(store, root)
-		})
-	}
-
 	builtin.RegisterActorState(builtin2.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load2(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version2, "paymentchannel"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load2(store, root)
-		})
-	}
 
 	builtin.RegisterActorState(builtin3.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load3(store, root)
 	})
 
-	if c, ok := actors.GetActorCodeID(actors.Version3, "paymentchannel"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load3(store, root)
-		})
-	}
-
 	builtin.RegisterActorState(builtin4.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load4(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version4, "paymentchannel"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load4(store, root)
-		})
-	}
 
 	builtin.RegisterActorState(builtin5.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load5(store, root)
 	})
 
-	if c, ok := actors.GetActorCodeID(actors.Version5, "paymentchannel"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load5(store, root)
-		})
-	}
-
 	builtin.RegisterActorState(builtin6.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load6(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version6, "paymentchannel"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load6(store, root)
-		})
-	}
 
 	builtin.RegisterActorState(builtin7.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load7(store, root)
 	})
 
-	if c, ok := actors.GetActorCodeID(actors.Version7, "paymentchannel"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load7(store, root)
-		})
-	}
-
 	builtin.RegisterActorState(builtin8.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load8(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version8, "paymentchannel"); ok {
-		builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load8(store, root)
-		})
-	}
 }
 
 // Load returns an abstract copy of payment channel state, irregardless of actor version
