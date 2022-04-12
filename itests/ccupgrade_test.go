@@ -101,3 +101,23 @@ func runTestCCUpgrade(t *testing.T) *kit.TestFullNode {
 
 	return client
 }
+
+func TestCCUpgradeAndPoSt(t *testing.T) {
+	kit.QuietMiningLogs()
+	t.Run("upgrade and then post", func(t *testing.T) {
+		ctx := context.Background()
+		n := runTestCCUpgrade(t)
+		ts, err := n.ChainHead(ctx)
+		require.NoError(t, err)
+		start := ts.Height()
+		// wait for a full proving period
+		t.Log("waiting for chain")
+
+		n.WaitTillChain(ctx, func(ts *types.TipSet) bool {
+			if ts.Height() > start+abi.ChainEpoch(2880) {
+				return true
+			}
+			return false
+		})
+	})
+}
