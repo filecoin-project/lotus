@@ -1535,8 +1535,10 @@ var ChainInstallCmd = &cli.Command{
 			return xerrors.Errorf("failed to push message: %w", err)
 		}
 
+		afmt.Printf("gas limit: %d\n", smsg.Message.GasLimit)
+
 		afmt.Println("waiting for message to execute...")
-		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 900)
+		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 0)
 		if err != nil {
 			return xerrors.Errorf("error waiting for message: %w", err)
 		}
