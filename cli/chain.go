@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	init8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/init"
 	cid "github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -61,6 +62,7 @@ var ChainCmd = &cli.Command{
 		ChainDecodeCmd,
 		ChainEncodeCmd,
 		ChainDisputeSetCmd,
+		ChainInstallCmd,
 	},
 }
 
@@ -1457,4 +1459,102 @@ func createExportFile(app *cli.App, path string) (io.WriteCloser, error) {
 		return nil, err
 	}
 	return fi, nil
+}
+
+var ChainInstallCmd = &cli.Command{
+	Name:      "install",
+	Usage:     "Install a new actor and return the actor code CID",
+	ArgsUsage: "code",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "optionally specify the account to use for sending the installation message",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must pass the filename containing actor code")
+		}
+
+		filename := cctx.Args().First()
+		file, err := os.Open(filename)
+		if err != nil {
+			return err
+		}
+		defer file.Close() //nolint
+
+		code, err := io.ReadAll(file)
+		if err != nil {
+			return err
+		}
+
+		params, err := actors.SerializeParams(&init8.InstallParams{
+			Code: code,
+		})
+		if err != nil {
+			return xerrors.Errorf("failed to serialize params: %w", err)
+		}
+
+		var fromAddr address.Address
+		if from := cctx.String("from"); from == "" {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = defaddr
+		} else {
+			addr, err := address.NewFromString(from)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = addr
+		}
+
+		msg := &types.Message{
+			To:     builtin.InitActorAddr,
+			From:   fromAddr,
+			Value:  big.Zero(),
+			Method: 3,
+			Params: params,
+		}
+
+		afmt.Println("sending message...")
+		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
+		if err != nil {
+			return xerrors.Errorf("failed to push message: %w", err)
+		}
+
+		afmt.Println("waiting for message to execute...")
+		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 900)
+		if err != nil {
+			return xerrors.Errorf("error waiting for message: %w", err)
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			return xerrors.Errorf("actor installation failed")
+		}
+
+		var result init8.InstallReturn
+		r := bytes.NewReader(wait.Receipt.Return)
+		if err := result.UnmarshalCBOR(r); err != nil {
+			return xerrors.Errorf("error unmarshaling return value: %w", err)
+		}
+
+		afmt.Printf("Actor Code CID: %s\n", result.CodeCid)
+		afmt.Printf("Installed: %t\n", result.Installed)
+
+		return nil
+	},
 }
