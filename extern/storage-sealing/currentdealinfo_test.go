@@ -209,9 +209,9 @@ func TestGetCurrentDealInfo(t *testing.T) {
 					Return:   []byte("applesauce"),
 				},
 			},
-			targetProposal: &proposal,
-			expectedDealID: zeroDealID,
-			expectedError:  xerrors.Errorf("looking for publish deal message %s: decoding message return: failed to unmarshal PublishStorageDealsReturn: cbor input should be of type array", dummyCid),
+			targetProposaßl: &proposal,
+			expectedDealID:  zeroDealID,
+			expectedError:   xerrors.Errorf("looking for publish deal message %s: decoding message return: failed to unmarshal PublishStorageDealsReturn: cbor input should be of type array", dummyCid),
 		},
 	}
 	runTestCase := func(testCase string, data testCaseData) {

@@ -149,7 +149,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 			dealIdx, len(dealIDs), publishCid)
 	}
 
-	valid, err := retval.IsDealValid(uint64(dealIdx))
+	valid, outIdx, err := retval.IsDealValid(uint64(dealIdx))
 	if err != nil {
 		return dealID, nil, xerrors.Errorf("determining deal validity: %w", err)
 	}
@@ -158,7 +158,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 		return dealID, nil, xerrors.New("deal was invalid at publication")
 	}
 
-	return dealIDs[dealIdx], lookup.TipSetTok, nil
+	return dealIDs[outIdx], lookup.TipSetTok, nil
 }
 
 func (mgr *CurrentDealInfoManager) CheckDealEquality(ctx context.Context, tok TipSetToken, p1, p2 market.DealProposal) (bool, error) {

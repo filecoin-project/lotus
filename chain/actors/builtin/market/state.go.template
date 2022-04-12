@@ -8,6 +8,11 @@ import (
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
+	{{if (ge .v 6)}}
+	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
+	"github.com/filecoin-project/go-bitfield"
+	{{end}}
+
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -253,12 +258,29 @@ type publishStorageDealsReturn{{.v}} struct {
 	market{{.v}}.PublishStorageDealsReturn
 }
 
-func (r *publishStorageDealsReturn{{.v}}) IsDealValid(index uint64) (bool, error) {
+func (r *publishStorageDealsReturn{{.v}}) IsDealValid(index uint64) (bool, int, error) {
 	{{if (ge .v 6)}}
-	    return r.ValidDeals.IsSet(index)
+	set, err := r.ValidDeals.IsSet(index)
+	if err != nil || !set {
+		return false, -1, err
+	}
+	maskBf, err := bitfield.NewFromIter(&rlepluslazy.RunSliceIterator{
+		Runs: []rlepluslazy.Run{rlepluslazy.Run{Val: true, Len: index}}})
+	if err != nil {
+		return false, -1, err
+	}
+	before, err := bitfield.IntersectBitField(maskBf, r.ValidDeals)
+	if err != nil {
+		return false, -1, err
+	}
+	outIdx, err := before.Count()
+	if err != nil {
+		return false, -1, err
+	}
+	return set, int(outIdx), nil
 	{{else}}
 	    // PublishStorageDeals only succeeded if all deals were valid in this version of actors
-	    return true, nil
+	    return true, int(index), nil
 	{{end}}
 }
 
