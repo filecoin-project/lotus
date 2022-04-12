@@ -499,7 +499,7 @@ var walletVerify = &cli.Command{
 }
 
 var walletDelete = &cli.Command{
-	Name:      "soft-delete",
+	Name:      "delete",
 	Usage:     "Soft delete an address from the wallet - hard deletion needed for permanent removal",
 	ArgsUsage: "<address> ",
 	Action: func(cctx *cli.Context) error {

@@ -212,7 +212,7 @@ COMMANDS:
    set-default  Set default wallet address
    sign         sign a message
    verify       verify the signature of a message
-   soft-delete  Soft delete an address from the wallet - hard deletion needed for permanent removal
+   delete       Soft delete an address from the wallet - hard deletion needed for permanent removal
    market       Interact with market balances
    help, h      Shows a list of commands or help for one command
 
@@ -343,13 +343,13 @@ OPTIONS:
    
 ```
 
-### lotus wallet soft-delete
+### lotus wallet delete
 ```
 NAME:
-   lotus wallet soft-delete - Soft delete an address from the wallet - hard deletion needed for permanent removal
+   lotus wallet delete - Soft delete an address from the wallet - hard deletion needed for permanent removal
 
 USAGE:
-   lotus wallet soft-delete [command options] <address> 
+   lotus wallet delete [command options] <address> 
 
 OPTIONS:
    --help, -h  show help (default: false)
