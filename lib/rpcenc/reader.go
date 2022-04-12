@@ -15,13 +15,14 @@ import (
 	"sync"
 	"time"
 
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
+
 	"github.com/google/uuid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
 var log = logging.Logger("rpcenc")

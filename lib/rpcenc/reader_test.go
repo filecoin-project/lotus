@@ -9,12 +9,13 @@ import (
 	"strings"
 	"testing"
 
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
+
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
 type ReaderHandler struct {

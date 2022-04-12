@@ -5,6 +5,8 @@ import (
 	"sort"
 	"time"
 
+	"github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
+
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-statemachine"
 	"github.com/ipfs/go-cid"
@@ -220,7 +222,7 @@ func (m *Sealing) handleAddPiece(ctx statemachine.Context, sector SectorInfo) er
 				m.minerSector(sector.SectorType, sector.SectorNumber),
 				pieceSizes,
 				p.Unpadded(),
-				NewNullReader(p.Unpadded()))
+				nullreader.NewNullReader(p.Unpadded()))
 			if err != nil {
 				err = xerrors.Errorf("writing padding piece: %w", err)
 				deal.accepted(sector.SectorNumber, offset, err)

@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 
+	"github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -91,7 +93,7 @@ func (m *Sealing) padSector(ctx context.Context, sectorID storage.SectorRef, exi
 	for i, size := range sizes {
 		expectCid := zerocomm.ZeroPieceCommitment(size)
 
-		ppi, err := m.sealer.AddPiece(ctx, sectorID, existingPieceSizes, size, NewNullReader(size))
+		ppi, err := m.sealer.AddPiece(ctx, sectorID, existingPieceSizes, size, nullreader.NewNullReader(size))
 		if err != nil {
 			return nil, xerrors.Errorf("add piece: %w", err)
 		}
