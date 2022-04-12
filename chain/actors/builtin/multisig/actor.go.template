@@ -29,12 +29,6 @@ func init() {
 	builtin.RegisterActorState(builtin{{.}}.MultisigActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load{{.}}(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version{{.}}, "multisig"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load{{.}}(store, root)
-		})
-	}
 {{end}}}
 
 func Load(store adt.Store, act *types.Actor) (State, error) {

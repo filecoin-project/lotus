@@ -29,12 +29,6 @@ func init() {
 	builtin.RegisterActorState(builtin{{.}}.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load{{.}}(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version{{.}}, "paymentchannel"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load{{.}}(store, root)
-		})
-	}
 {{end}}}
 
 // Load returns an abstract copy of payment channel state, irregardless of actor version

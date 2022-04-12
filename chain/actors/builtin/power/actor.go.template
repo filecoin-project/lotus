@@ -24,12 +24,6 @@ func init() {
 	builtin.RegisterActorState(builtin{{.}}.StoragePowerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load{{.}}(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version{{.}}, "storagepower"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load{{.}}(store, root)
-		})
-	}
 {{end}}}
 
 var (

@@ -23,12 +23,6 @@ func init() {
 	builtin.RegisterActorState(builtin{{.}}.InitActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load{{.}}(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version{{.}}, "init"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load{{.}}(store, root)
-		})
-	}
 {{end}}}
 
 var (

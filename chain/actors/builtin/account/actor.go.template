@@ -21,12 +21,6 @@ func init() {
 	builtin.RegisterActorState(builtin{{.}}.AccountActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load{{.}}(store, root)
 	})
-
-	if c, ok := actors.GetActorCodeID(actors.Version{{.}}, "account"); ok {
-    	builtin.RegisterActorState(c, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-			return load{{.}}(store, root)
-		})
-	}
 {{end}}}
 
 var Methods = builtin4.MethodsAccount
