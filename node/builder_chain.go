@@ -53,7 +53,7 @@ var ChainNode = Options(
 	//      right manifest cid.
 	//      This restriction will be lifted once we have the final actors v8 bundle and we know
 	//      the manifest cid.
-	Override(BuiltinActorsKey, modules.LoadBultinActors),
+	Override(new(dtypes.BuiltinActorsLoaded), modules.LoadBultinActors),
 
 	// Consensus settings
 	Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
