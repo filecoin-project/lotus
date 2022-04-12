@@ -55,7 +55,6 @@ type migration struct {
 	upgrade       MigrationFunc
 	preMigrations []PreMigration
 	cache         *nv16.MemMigrationCache
-	manifest      cid.Cid
 }
 
 type Executor interface {
