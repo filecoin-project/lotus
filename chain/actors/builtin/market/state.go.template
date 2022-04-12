@@ -256,20 +256,20 @@ func fromV{{.v}}DealProposal(v{{.v}} market{{.v}}.DealProposal) (DealProposal, e
     {{end}}
 
     return DealProposal{
-        PieceCID    : v{{.v}}.PieceCID,
-        PieceSize    : v{{.v}}.PieceSize,
-        VerifiedDeal :v{{.v}}.VerifiedDeal,
-        Client       :v{{.v}}.Client,
-        Provider     :v{{.v}}.Provider,
+        PieceCID: v{{.v}}.PieceCID,
+        PieceSize: v{{.v}}.PieceSize,
+        VerifiedDeal: v{{.v}}.VerifiedDeal,
+        Client: v{{.v}}.Client,
+        Provider: v{{.v}}.Provider,
 
         Label: label,
 
-        StartEpoch      : v{{.v}}.StartEpoch,
-        EndEpoch           :v{{.v}}.EndEpoch,
-        StoragePricePerEpoch :v{{.v}}.StoragePricePerEpoch,
+        StartEpoch: v{{.v}}.StartEpoch,
+        EndEpoch: v{{.v}}.EndEpoch,
+        StoragePricePerEpoch: v{{.v}}.StoragePricePerEpoch,
 
-        ProviderCollateral :v{{.v}}.ProviderCollateral,
-        ClientCollateral   :v{{.v}}.ClientCollateral,
+        ProviderCollateral: v{{.v}}.ProviderCollateral,
+        ClientCollateral: v{{.v}}.ClientCollateral,
     }, nil
 }
 
