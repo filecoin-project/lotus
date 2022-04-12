@@ -17,7 +17,7 @@ import (
 const BootstrappersFile = ""
 const GenesisFile = ""
 
-const GenesisNetworkVersion = network.Version15
+const GenesisNetworkVersion = network.Version16
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
