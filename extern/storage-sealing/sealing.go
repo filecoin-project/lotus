@@ -108,8 +108,6 @@ type Sealing struct {
 	assignedPieces map[abi.SectorID][]cid.Cid
 	nextDealSector *abi.SectorNumber // used to prevent a race where we could create a new sector more than once
 
-	upgradeLk sync.Mutex
-	toUpgrade map[abi.SectorNumber]struct{}
 	available map[abi.SectorID]struct{}
 
 	notifee SectorStateNotifee
