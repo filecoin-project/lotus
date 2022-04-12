@@ -379,7 +379,8 @@ func (m *GasModule) GasEstimateMessageGas(ctx context.Context, msg *types.Messag
 		msg.GasFeeCap = feeCap
 	}
 
-	messagepool.CapGasFee(m.GetMaxFee, msg, spec)
+	// XXX disable this to make things work.
+	//messagepool.CapGasFee(m.GetMaxFee, msg, spec)
 
 	return msg, nil
 }
