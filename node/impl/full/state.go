@@ -603,15 +603,16 @@ func (m *StateModule) StateWaitMsg(ctx context.Context, msg cid.Cid, confidence 
 		vmsg := cmsg.VMMessage()
 
 		t, err := stmgr.GetReturnType(ctx, m.StateManager, vmsg.To, vmsg.Method, ts)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to get return type: %w", err)
-		}
+		if err == nil {
+			// user actors by definition are unknown, so don't cry over spilled milk
+			if err := t.UnmarshalCBOR(bytes.NewReader(recpt.Return)); err != nil {
+				return nil, err
+			}
 
-		if err := t.UnmarshalCBOR(bytes.NewReader(recpt.Return)); err != nil {
-			return nil, err
+			returndec = t
+		} else {
+			log.Warnf("unknown method %d for actor %s", vmsg.Method, vmsg.To)
 		}
-
-		returndec = t
 	}
 
 	return &api.MsgLookup{
