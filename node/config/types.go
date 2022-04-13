@@ -169,7 +169,7 @@ type DealmakingConfig struct {
 type IndexProviderConfig struct {
 
 	// Enable set whether to enable indexing announcement to the network and expose endpoints that
-	// allow indexer nodes to process announcements. Disabled by default.
+	// allow indexer nodes to process announcements. Enabled by default.
 	Enable bool
 
 	// EntriesCacheCapacity sets the maximum capacity to use for caching the indexing advertisement
