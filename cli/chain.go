@@ -1513,8 +1513,8 @@ var ChainPruneCmd = &cli.Command{
 }
 
 var ChainExecCmd = &cli.Command{
-	Name:      "exec",
-	Usage:     "Execute a new actor and return its address",
+	Name:      "create-actor",
+	Usage:     "Create an new actor via the init actor and return its address",
 	ArgsUsage: "code-cid [params]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
