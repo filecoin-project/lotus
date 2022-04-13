@@ -64,6 +64,7 @@ var ChainCmd = &cli.Command{
 		ChainDisputeSetCmd,
 		ChainInstallCmd,
 		ChainExecCmd,
+		ChainInvokeCmd,
 	},
 }
 
@@ -1657,6 +1658,101 @@ var ChainExecCmd = &cli.Command{
 
 		afmt.Printf("ID Address: %s\n", result.IDAddress)
 		afmt.Printf("Robust Address: %s\n", result.RobustAddress)
+
+		return nil
+	},
+}
+
+var ChainInvokeCmd = &cli.Command{
+	Name:      "invoke",
+	Usage:     "Invoke a method in an actor",
+	ArgsUsage: "address method [params]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "optionally specify the account to use for sending the exec message",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if argc := cctx.Args().Len(); argc < 2 || argc > 3 {
+			return xerrors.Errorf("must pass the address, method and (optionally) method params")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return xerrors.Errorf("failed to decode address: %w", err)
+		}
+
+		method, err := strconv.Atoi(cctx.Args().Get(1))
+		if err != nil {
+			return xerrors.Errorf("failed to parse method: %w", err)
+		}
+
+		var params []byte
+		if cctx.Args().Len() == 3 {
+			params, err = base64.StdEncoding.DecodeString(cctx.Args().Get(2))
+			if err != nil {
+				return xerrors.Errorf("decoding base64 value: %w", err)
+			}
+		}
+
+		var fromAddr address.Address
+		if from := cctx.String("from"); from == "" {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = defaddr
+		} else {
+			addr, err := address.NewFromString(from)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = addr
+		}
+
+		msg := &types.Message{
+			To:     addr,
+			From:   fromAddr,
+			Value:  big.Zero(),
+			Method: abi.MethodNum(method),
+			Params: params,
+		}
+
+		afmt.Println("sending message...")
+		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
+		if err != nil {
+			return xerrors.Errorf("failed to push message: %w", err)
+		}
+
+		afmt.Println("waiting for message to execute...")
+		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 0)
+		if err != nil {
+			return xerrors.Errorf("error waiting for message: %w", err)
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			return xerrors.Errorf("actor execution failed")
+		}
+
+		if len(wait.Receipt.Return) > 0 {
+			result := base64.StdEncoding.EncodeToString(wait.Receipt.Return)
+			afmt.Println(result)
+		} else {
+			afmt.Println("OK")
+		}
 
 		return nil
 	},
