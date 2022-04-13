@@ -1464,7 +1464,7 @@ func createExportFile(app *cli.App, path string) (io.WriteCloser, error) {
 }
 
 var ChainInstallCmd = &cli.Command{
-	Name:      "install",
+	Name:      "install-actor",
 	Usage:     "Install a new actor and return the actor code CID",
 	ArgsUsage: "code",
 	Flags: []cli.Flag{
@@ -1564,8 +1564,8 @@ var ChainInstallCmd = &cli.Command{
 }
 
 var ChainExecCmd = &cli.Command{
-	Name:      "exec",
-	Usage:     "Execute a new actor and return its address",
+	Name:      "create-actor",
+	Usage:     "Create an new actor via the init actor and return its address",
 	ArgsUsage: "code-cid [params]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
