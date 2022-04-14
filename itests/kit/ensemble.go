@@ -26,8 +26,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -61,11 +59,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/mockstorage"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	power3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/power"
-	"github.com/ipfs/go-datastore"
-	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
-	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
-	"github.com/stretchr/testify/require"
 )
 
 func init() {
