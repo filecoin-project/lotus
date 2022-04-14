@@ -34,7 +34,7 @@ fetch() {
         return 0
     else
         echo "fetching $cid to $output"
-        curl -k "https://$dweb/ipfs/$cid" -o "$output"
+        curl --retry 3 -k "https://$dweb/ipfs/$cid" -o "$output"
         check "$output" "$hash" || die "hash mismatch"
     fi
 }
