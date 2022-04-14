@@ -2,7 +2,6 @@ package market
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -246,9 +245,7 @@ type publishStorageDealsReturn7 struct {
 }
 
 func (r *publishStorageDealsReturn7) IsDealValid(index uint64) (bool, int, error) {
-
 	set, err := r.ValidDeals.IsSet(index)
-	fmt.Printf("set: %t\n", set)
 	if err != nil || !set {
 		return false, -1, err
 	}
@@ -265,7 +262,6 @@ func (r *publishStorageDealsReturn7) IsDealValid(index uint64) (bool, int, error
 	if err != nil {
 		return false, -1, err
 	}
-	fmt.Printf("outIdx: %t\n")
 	return set, int(outIdx), nil
 
 }

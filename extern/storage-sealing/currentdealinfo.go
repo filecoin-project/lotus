@@ -85,7 +85,6 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 	if err != nil {
 		return dealID, nil, xerrors.Errorf("getting network version: %w", err)
 	}
-	fmt.Printf("nv: %d\n", nv)
 
 	retval, err := market.DecodePublishStorageDealsReturn(lookup.Receipt.Return, nv)
 	if err != nil {
@@ -96,7 +95,6 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 	if err != nil {
 		return dealID, nil, xerrors.Errorf("looking for publish deal message %s: getting dealIDs: %w", publishCid, err)
 	}
-	fmt.Printf("unserialized deal ids: %v\n", dealIDs)
 
 	// TODO: Can we delete this? We're well past the point when we first introduced the proposals into sealing deal info
 	// Previously, publish deals messages contained a single deal, and the
@@ -141,6 +139,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 			break
 		}
 	}
+	fmt.Printf("found dealIdx %d\n", dealIdx)
 
 	if dealIdx == -1 {
 		return dealID, nil, xerrors.Errorf("could not find deal in publish deals message %s", publishCid)

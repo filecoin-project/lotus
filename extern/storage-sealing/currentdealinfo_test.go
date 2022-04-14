@@ -195,9 +195,9 @@ func TestGetCurrentDealInfo(t *testing.T) {
 				},
 			},
 			marketDeals: map[abi.DealID]*api.MarketDeal{
+				anotherDealID: anotherDeal,
 				earlierDealID: earlierDeal,
 				successDealID: successDeal,
-				anotherDealID: anotherDeal,
 			},
 			targetProposal:     &proposal,
 			expectedDealID:     successDealID,
@@ -320,10 +320,17 @@ type CurrentDealInfoMockAPI struct {
 }
 
 func (mapi *CurrentDealInfoMockAPI) ChainGetMessage(ctx context.Context, c cid.Cid) (*types.Message, error) {
-	var dealIDs []abi.DealID
+	var keys []marketDealKey
+	for k := range mapi.MarketDeals {
+		keys = append(keys, k)
+	}
+	sort.SliceStable(keys, func(i, j int) bool {
+		return keys[i].DealID < keys[j].DealID
+	})
+
 	var deals []market2.ClientDealProposal
-	for k, dl := range mapi.MarketDeals {
-		dealIDs = append(dealIDs, k.DealID)
+	for _, k := range keys {
+		dl := mapi.MarketDeals[k]
 		deals = append(deals, market2.ClientDealProposal{
 			Proposal: market2.DealProposal(dl.Proposal),
 			ClientSignature: crypto.Signature{
@@ -332,15 +339,14 @@ func (mapi *CurrentDealInfoMockAPI) ChainGetMessage(ctx context.Context, c cid.C
 			},
 		})
 	}
-	sort.SliceStable(deals, func(i, j int) bool {
-		return dealIDs[i] < dealIDs[j]
-	})
+
 	buf := new(bytes.Buffer)
 	params := market2.PublishStorageDealsParams{Deals: deals}
 	err := params.MarshalCBOR(buf)
 	if err != nil {
 		panic(err)
 	}
+
 	return &types.Message{
 		Params: buf.Bytes(),
 	}, nil
