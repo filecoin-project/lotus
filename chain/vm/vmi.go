@@ -19,7 +19,7 @@ type Interface interface {
 	Flush(ctx context.Context) (cid.Cid, error)
 }
 
-func NewVM(ctx context.Context, opts *VMOpts) (VMI, error) {
+func NewVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 	if opts.NetworkVersion >= network.Version16 {
 		return NewFVM(ctx, opts)
 	}

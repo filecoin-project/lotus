@@ -27,6 +27,8 @@ var actorMeta map[cid.Cid]actorEntry
 var (
 	loadOnce  sync.Once
 	loadError error
+
+	manifestMx sync.Mutex
 )
 
 type actorEntry struct {
