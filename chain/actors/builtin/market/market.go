@@ -205,6 +205,7 @@ func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStora
 	if err != nil {
 		return nil, err
 	}
+
 	switch av {
 
 	case actors.Version0:

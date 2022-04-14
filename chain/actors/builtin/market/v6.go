@@ -245,6 +245,7 @@ type publishStorageDealsReturn6 struct {
 }
 
 func (r *publishStorageDealsReturn6) IsDealValid(index uint64) (bool, int, error) {
+
 	set, err := r.ValidDeals.IsSet(index)
 	if err != nil || !set {
 		return false, -1, err
