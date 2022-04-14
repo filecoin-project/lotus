@@ -45,6 +45,7 @@ import (
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -217,10 +218,7 @@ var initCmd = &cli.Command{
 			}
 
 			if len(build.BuiltinActorsV8Bundle()) > 0 {
-				bs, err := lr.Blockstore(context.TODO(), repo.UniversalBlockstore)
-				if err != nil {
-					return xerrors.Errorf("error opening blockstore: %w", err)
-				}
+				bs := blockstore.NewMemory()
 
 				if err := actors.LoadBundle(context.TODO(), bs, actors.Version8, build.BuiltinActorsV8Bundle()); err != nil {
 					return xerrors.Errorf("error loading actor bundle: %w", err)
