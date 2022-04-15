@@ -1,6 +1,8 @@
 package market
 
 import (
+	"unicode/utf8"
+
 	"github.com/filecoin-project/go-state-types/network"
 	"golang.org/x/xerrors"
 
@@ -12,6 +14,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+    market{{.latestVersion}} "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/builtin/market"
 {{range .versions}}
 	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
 {{end}}
@@ -35,6 +38,21 @@ var (
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
+	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
+       if name != "storagemarket" {
+          return nil, xerrors.Errorf("actor code is not storagemarket: %s", name)
+       }
+
+       switch av {
+            {{range .versions}}
+			case actors.Version{{.}}:
+                 return load{{.}}(store, act.Head)
+            {{end}}
+            default:
+                return nil, xerrors.Errorf("unknown actor version: %d", av)
+       }
+	}
+
 	switch act.Code {
 {{range .versions}}
 	case builtin{{.}}.StorageMarketActorCodeID:
@@ -55,6 +73,10 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 }
 
 func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+    if c, ok := actors.GetActorCodeID(av, "storagemarket"); ok {
+       return c, nil
+    }
+
 	switch av {
 {{range .versions}}
 	case actors.Version{{.}}:
@@ -103,7 +125,7 @@ type DealProposals interface {
 	decode(*cbg.Deferred) (*DealProposal, error)
 }
 
-type PublishStorageDealsParams = market0.PublishStorageDealsParams
+type PublishStorageDealsParams = market{{.latestVersion}}.PublishStorageDealsParams
 
 type PublishStorageDealsReturn interface {
     DealIDs() ([]abi.DealID, error)
@@ -129,7 +151,7 @@ func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStora
 type VerifyDealsForActivationParams = market0.VerifyDealsForActivationParams
 type WithdrawBalanceParams = market0.WithdrawBalanceParams
 
-type ClientDealProposal = market0.ClientDealProposal
+type ClientDealProposal = market{{.latestVersion}}.ClientDealProposal
 
 type DealState struct {
 	SectorStartEpoch abi.ChainEpoch // -1 if not yet included in proven sector
@@ -143,7 +165,7 @@ type DealProposal struct {
 	VerifiedDeal		 bool
 	Client				 address.Address
 	Provider			 address.Address
-	Label				 string
+	Label				 market{{.latestVersion}}.DealLabel
 	StartEpoch			 abi.ChainEpoch
 	EndEpoch			 abi.ChainEpoch
 	StoragePricePerEpoch abi.TokenAmount
@@ -201,4 +223,12 @@ func (deal DealProposal) GetDealFees(height abi.ChainEpoch) (abi.TokenAmount, ab
 	   }
 
 	   return ef, big.Sub(tf, ef)
+}
+
+func labelFromGoString(s string) (market{{.latestVersion}}.DealLabel, error) {
+	if utf8.ValidString(s) {
+		return market{{.latestVersion}}.NewLabelFromString(s)
+	} else {
+		return market{{.latestVersion}}.NewLabelFromBytes([]byte(s))
+	}
 }

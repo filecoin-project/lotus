@@ -26,6 +26,10 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 }
 
 func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+    if c, ok := actors.GetActorCodeID(av, "system"); ok {
+       return c, nil
+    }
+
 	switch av {
 {{range .versions}}
 	case actors.Version{{.}}:

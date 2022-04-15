@@ -19,10 +19,12 @@ import (
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+
+	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
 )
 
 var (
-	Address = builtin7.SystemActorAddr
+	Address = builtin8.SystemActorAddr
 )
 
 func MakeState(store adt.Store, av actors.Version) (State, error) {
@@ -49,11 +51,18 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 	case actors.Version7:
 		return make7(store)
 
+	case actors.Version8:
+		return make8(store)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
 func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	if c, ok := actors.GetActorCodeID(av, "system"); ok {
+		return c, nil
+	}
+
 	switch av {
 
 	case actors.Version0:
@@ -76,6 +85,9 @@ func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	case actors.Version7:
 		return builtin7.SystemActorCodeID, nil
+
+	case actors.Version8:
+		return builtin8.SystemActorCodeID, nil
 
 	}
 

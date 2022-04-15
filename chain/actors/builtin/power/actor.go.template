@@ -32,6 +32,21 @@ var (
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
+	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
+       if name != "storagepower" {
+          return nil, xerrors.Errorf("actor code is not storagepower: %s", name)
+       }
+
+       switch av {
+            {{range .versions}}
+			case actors.Version{{.}}:
+                 return load{{.}}(store, act.Head)
+            {{end}}
+            default:
+                return nil, xerrors.Errorf("unknown actor version: %d", av)
+       }
+	}
+
 	switch act.Code {
 {{range .versions}}
 	case builtin{{.}}.StoragePowerActorCodeID:
@@ -52,6 +67,10 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 }
 
 func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+    if c, ok := actors.GetActorCodeID(av, "storagepower"); ok {
+       return c, nil
+    }
+
 	switch av {
 {{range .versions}}
 	case actors.Version{{.}}:

@@ -13,7 +13,7 @@ import (
 	"github.com/ipfs/go-cid"
 
 	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	msig7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/multisig"
+	msig8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/multisig"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -28,6 +28,8 @@ import (
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+
+	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -64,9 +66,49 @@ func init() {
 	builtin.RegisterActorState(builtin7.MultisigActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load7(store, root)
 	})
+
+	builtin.RegisterActorState(builtin8.MultisigActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load8(store, root)
+	})
 }
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
+	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
+		if name != "multisig" {
+			return nil, xerrors.Errorf("actor code is not multisig: %s", name)
+		}
+
+		switch av {
+
+		case actors.Version0:
+			return load0(store, act.Head)
+
+		case actors.Version2:
+			return load2(store, act.Head)
+
+		case actors.Version3:
+			return load3(store, act.Head)
+
+		case actors.Version4:
+			return load4(store, act.Head)
+
+		case actors.Version5:
+			return load5(store, act.Head)
+
+		case actors.Version6:
+			return load6(store, act.Head)
+
+		case actors.Version7:
+			return load7(store, act.Head)
+
+		case actors.Version8:
+			return load8(store, act.Head)
+
+		default:
+			return nil, xerrors.Errorf("unknown actor version: %d", av)
+		}
+	}
+
 	switch act.Code {
 
 	case builtin0.MultisigActorCodeID:
@@ -89,6 +131,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	case builtin7.MultisigActorCodeID:
 		return load7(store, act.Head)
+
+	case builtin8.MultisigActorCodeID:
+		return load8(store, act.Head)
 
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
@@ -118,11 +163,18 @@ func MakeState(store adt.Store, av actors.Version, signers []address.Address, th
 	case actors.Version7:
 		return make7(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
 
+	case actors.Version8:
+		return make8(store, signers, threshold, startEpoch, unlockDuration, initialBalance)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
 func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	if c, ok := actors.GetActorCodeID(av, "multisig"); ok {
+		return c, nil
+	}
+
 	switch av {
 
 	case actors.Version0:
@@ -145,6 +197,9 @@ func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	case actors.Version7:
 		return builtin7.MultisigActorCodeID, nil
+
+	case actors.Version8:
+		return builtin8.MultisigActorCodeID, nil
 
 	}
 
@@ -171,7 +226,7 @@ type State interface {
 
 type Transaction = msig0.Transaction
 
-var Methods = builtin7.MethodsMultisig
+var Methods = builtin8.MethodsMultisig
 
 func Message(version actors.Version, from address.Address) MessageBuilder {
 	switch version {
@@ -196,6 +251,9 @@ func Message(version actors.Version, from address.Address) MessageBuilder {
 
 	case actors.Version7:
 		return message7{message0{from}}
+
+	case actors.Version8:
+		return message8{message0{from}}
 	default:
 		panic(fmt.Sprintf("unsupported actors version: %d", version))
 	}
@@ -219,13 +277,13 @@ type MessageBuilder interface {
 }
 
 // this type is the same between v0 and v2
-type ProposalHashData = msig7.ProposalHashData
-type ProposeReturn = msig7.ProposeReturn
-type ProposeParams = msig7.ProposeParams
-type ApproveReturn = msig7.ApproveReturn
+type ProposalHashData = msig8.ProposalHashData
+type ProposeReturn = msig8.ProposeReturn
+type ProposeParams = msig8.ProposeParams
+type ApproveReturn = msig8.ApproveReturn
 
 func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
-	params := msig7.TxnIDParams{ID: msig7.TxnID(id)}
+	params := msig8.TxnIDParams{ID: msig8.TxnID(id)}
 	if data != nil {
 		if data.Requester.Protocol() != address.ID {
 			return nil, xerrors.Errorf("proposer address must be an ID address, was %s", data.Requester)

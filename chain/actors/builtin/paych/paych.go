@@ -29,6 +29,8 @@ import (
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
+	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -64,10 +66,50 @@ func init() {
 	builtin.RegisterActorState(builtin7.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load7(store, root)
 	})
+
+	builtin.RegisterActorState(builtin8.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load8(store, root)
+	})
 }
 
 // Load returns an abstract copy of payment channel state, irregardless of actor version
 func Load(store adt.Store, act *types.Actor) (State, error) {
+	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
+		if name != "paymentchannel" {
+			return nil, xerrors.Errorf("actor code is not paymentchannel: %s", name)
+		}
+
+		switch av {
+
+		case actors.Version0:
+			return load0(store, act.Head)
+
+		case actors.Version2:
+			return load2(store, act.Head)
+
+		case actors.Version3:
+			return load3(store, act.Head)
+
+		case actors.Version4:
+			return load4(store, act.Head)
+
+		case actors.Version5:
+			return load5(store, act.Head)
+
+		case actors.Version6:
+			return load6(store, act.Head)
+
+		case actors.Version7:
+			return load7(store, act.Head)
+
+		case actors.Version8:
+			return load8(store, act.Head)
+
+		default:
+			return nil, xerrors.Errorf("unknown actor version: %d", av)
+		}
+	}
+
 	switch act.Code {
 
 	case builtin0.PaymentChannelActorCodeID:
@@ -90,6 +132,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	case builtin7.PaymentChannelActorCodeID:
 		return load7(store, act.Head)
+
+	case builtin8.PaymentChannelActorCodeID:
+		return load8(store, act.Head)
 
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
@@ -119,11 +164,18 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 	case actors.Version7:
 		return make7(store)
 
+	case actors.Version8:
+		return make8(store)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
 func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	if c, ok := actors.GetActorCodeID(av, "paymentchannel"); ok {
+		return c, nil
+	}
+
 	switch av {
 
 	case actors.Version0:
@@ -146,6 +198,9 @@ func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	case actors.Version7:
 		return builtin7.PaymentChannelActorCodeID, nil
+
+	case actors.Version8:
+		return builtin8.PaymentChannelActorCodeID, nil
 
 	}
 
@@ -200,7 +255,7 @@ func DecodeSignedVoucher(s string) (*SignedVoucher, error) {
 	return &sv, nil
 }
 
-var Methods = builtin7.MethodsPaych
+var Methods = builtin8.MethodsPaych
 
 func Message(version actors.Version, from address.Address) MessageBuilder {
 	switch version {
@@ -225,6 +280,9 @@ func Message(version actors.Version, from address.Address) MessageBuilder {
 
 	case actors.Version7:
 		return message7{from}
+
+	case actors.Version8:
+		return message8{from}
 
 	default:
 		panic(fmt.Sprintf("unsupported actors version: %d", version))

@@ -51,6 +51,10 @@ var MinerNode = Options(
 
 	// Mining / proving
 	Override(new(*storage.AddressSelector), modules.AddressSelector(nil)),
+
+	// builtin actors manifest
+	Override(new(dtypes.BuiltinActorsLoaded), modules.LoadBultinActors),
+	Override(new(dtypes.UniversalBlockstore), modules.MemoryBlockstore),
 )
 
 func ConfigStorageMiner(c interface{}) Option {

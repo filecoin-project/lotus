@@ -580,6 +580,23 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 		return nil, xerrors.Errorf("setup miners failed: %w", err)
 	}
 
+	if template.NetworkVersion >= network.Version16 {
+		st, err := state.LoadStateTree(cbor.NewCborStore(bs), stateroot)
+		if err != nil {
+			return nil, xerrors.Errorf("error loading state tree")
+		}
+
+		err = patchManifestCodeCids(st, template.NetworkVersion)
+		if err != nil {
+			return nil, xerrors.Errorf("error patching state tree: %w", err)
+		}
+
+		stateroot, err = st.Flush(ctx)
+		if err != nil {
+			return nil, xerrors.Errorf("flush state tree failed: %w", err)
+		}
+	}
+
 	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))
 	emptyroot, err := adt0.MakeEmptyArray(store).Root()
 	if err != nil {

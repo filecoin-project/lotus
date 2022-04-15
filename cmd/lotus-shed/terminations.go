@@ -167,8 +167,16 @@ var terminationsCmd = &cli.Command{
 							if err != nil {
 								return err
 							}
+							label, err := prop.Label.ToString()
+							if err != nil {
+								labelBs, err := prop.Label.ToBytes()
+								if err != nil {
+									return err
+								}
+								label = string(labelBs)
+							}
 							if find {
-								fmt.Printf("%s, %d, %d, %s, %s, %s\n", msg.To, sector.SectorNumber, deal, prop.Client, prop.PieceCID, prop.Label)
+								fmt.Printf("%s, %d, %d, %s, %s, %s\n", msg.To, sector.SectorNumber, deal, prop.Client, prop.PieceCID, label)
 							}
 						}
 					}

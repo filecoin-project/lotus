@@ -23,13 +23,17 @@ import (
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	rt6 "github.com/filecoin-project/specs-actors/v6/actors/runtime"
 	rt7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
+	rt8 "github.com/filecoin-project/specs-actors/v8/actors/runtime"
 	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
+	mh "github.com/multiformats/go-multihash"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -153,6 +157,7 @@ var _ rt4.Runtime = (*Runtime)(nil)
 var _ rt5.Runtime = (*Runtime)(nil)
 var _ rt6.Runtime = (*Runtime)(nil)
 var _ rt7.Runtime = (*Runtime)(nil)
+var _ rt8.Runtime = (*Runtime)(nil)
 
 func (rt *Runtime) shimCall(f func() interface{}) (rval []byte, aerr aerrors.ActorError) {
 	defer func() {
@@ -218,6 +223,23 @@ func (rt *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) 
 		}
 
 		panic(aerrors.Fatalf("failed to get actor: %s", err))
+	}
+
+	// required for genesis/testing
+	if nv := rt.NetworkVersion(); nv >= network.Version16 {
+		name, av, ok := actors.GetActorMetaByCode(act.Code)
+
+		if ok {
+			// lies, lies, lies
+			builder := cid.V1Builder{Codec: cid.Raw, MhType: mh.IDENTITY}
+			synthetic := fmt.Sprintf("fil/%d/%s", av, name)
+			syntheticCid, err := builder.Sum([]byte(synthetic))
+			if err != nil {
+				panic(aerrors.Fatalf("failed to generate synthetic CID: %s", err))
+			}
+
+			return syntheticCid, true
+		}
 	}
 
 	return act.Code, true
@@ -364,6 +386,20 @@ func (rt *Runtime) ValidateImmediateCallerType(ts ...cid.Cid) {
 	for _, t := range ts {
 		if t == callerCid {
 			return
+		}
+
+		// this really only for genesis in tests; nv16 will be running on FVM anyway.
+		if nv := rt.NetworkVersion(); nv >= network.Version16 {
+			av, err := actors.VersionForNetwork(nv)
+			if err != nil {
+				panic(aerrors.Fatalf("failed to get actors version for network version %d", nv))
+			}
+
+			name := actors.CanonicalName(builtin.ActorNameByCode(t))
+			ac, ok := actors.GetActorCodeID(av, name)
+			if ok && ac == callerCid {
+				return
+			}
 		}
 	}
 	rt.Abortf(exitcode.SysErrForbidden, "caller cid type %q was not one of %v", callerCid, ts)

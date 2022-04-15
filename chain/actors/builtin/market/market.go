@@ -1,6 +1,8 @@
 package market
 
 import (
+	"unicode/utf8"
+
 	"github.com/filecoin-project/go-state-types/network"
 	"golang.org/x/xerrors"
 
@@ -12,6 +14,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	market8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/market"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -26,6 +29,8 @@ import (
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+
+	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -62,14 +67,54 @@ func init() {
 	builtin.RegisterActorState(builtin7.StorageMarketActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load7(store, root)
 	})
+
+	builtin.RegisterActorState(builtin8.StorageMarketActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load8(store, root)
+	})
 }
 
 var (
-	Address = builtin7.StorageMarketActorAddr
-	Methods = builtin7.MethodsMarket
+	Address = builtin8.StorageMarketActorAddr
+	Methods = builtin8.MethodsMarket
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
+	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
+		if name != "storagemarket" {
+			return nil, xerrors.Errorf("actor code is not storagemarket: %s", name)
+		}
+
+		switch av {
+
+		case actors.Version0:
+			return load0(store, act.Head)
+
+		case actors.Version2:
+			return load2(store, act.Head)
+
+		case actors.Version3:
+			return load3(store, act.Head)
+
+		case actors.Version4:
+			return load4(store, act.Head)
+
+		case actors.Version5:
+			return load5(store, act.Head)
+
+		case actors.Version6:
+			return load6(store, act.Head)
+
+		case actors.Version7:
+			return load7(store, act.Head)
+
+		case actors.Version8:
+			return load8(store, act.Head)
+
+		default:
+			return nil, xerrors.Errorf("unknown actor version: %d", av)
+		}
+	}
+
 	switch act.Code {
 
 	case builtin0.StorageMarketActorCodeID:
@@ -92,6 +137,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	case builtin7.StorageMarketActorCodeID:
 		return load7(store, act.Head)
+
+	case builtin8.StorageMarketActorCodeID:
+		return load8(store, act.Head)
 
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
@@ -121,11 +169,18 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 	case actors.Version7:
 		return make7(store)
 
+	case actors.Version8:
+		return make8(store)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
 func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	if c, ok := actors.GetActorCodeID(av, "storagemarket"); ok {
+		return c, nil
+	}
+
 	switch av {
 
 	case actors.Version0:
@@ -148,6 +203,9 @@ func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	case actors.Version7:
 		return builtin7.StorageMarketActorCodeID, nil
+
+	case actors.Version8:
+		return builtin8.StorageMarketActorCodeID, nil
 
 	}
 
@@ -192,7 +250,7 @@ type DealProposals interface {
 	decode(*cbg.Deferred) (*DealProposal, error)
 }
 
-type PublishStorageDealsParams = market0.PublishStorageDealsParams
+type PublishStorageDealsParams = market8.PublishStorageDealsParams
 
 type PublishStorageDealsReturn interface {
 	DealIDs() ([]abi.DealID, error)
@@ -229,6 +287,9 @@ func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStora
 	case actors.Version7:
 		return decodePublishStorageDealsReturn7(b)
 
+	case actors.Version8:
+		return decodePublishStorageDealsReturn8(b)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -236,7 +297,7 @@ func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStora
 type VerifyDealsForActivationParams = market0.VerifyDealsForActivationParams
 type WithdrawBalanceParams = market0.WithdrawBalanceParams
 
-type ClientDealProposal = market0.ClientDealProposal
+type ClientDealProposal = market8.ClientDealProposal
 
 type DealState struct {
 	SectorStartEpoch abi.ChainEpoch // -1 if not yet included in proven sector
@@ -250,7 +311,7 @@ type DealProposal struct {
 	VerifiedDeal         bool
 	Client               address.Address
 	Provider             address.Address
-	Label                string
+	Label                market8.DealLabel
 	StartEpoch           abi.ChainEpoch
 	EndEpoch             abi.ChainEpoch
 	StoragePricePerEpoch abi.TokenAmount
@@ -308,4 +369,12 @@ func (deal DealProposal) GetDealFees(height abi.ChainEpoch) (abi.TokenAmount, ab
 	}
 
 	return ef, big.Sub(tf, ef)
+}
+
+func labelFromGoString(s string) (market8.DealLabel, error) {
+	if utf8.ValidString(s) {
+		return market8.NewLabelFromString(s)
+	} else {
+		return market8.NewLabelFromBytes([]byte(s))
+	}
 }

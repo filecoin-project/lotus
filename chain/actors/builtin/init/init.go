@@ -27,6 +27,8 @@ import (
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+
+	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
 )
 
 func init() {
@@ -58,14 +60,54 @@ func init() {
 	builtin.RegisterActorState(builtin7.InitActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
 		return load7(store, root)
 	})
+
+	builtin.RegisterActorState(builtin8.InitActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load8(store, root)
+	})
 }
 
 var (
-	Address = builtin7.InitActorAddr
-	Methods = builtin7.MethodsInit
+	Address = builtin8.InitActorAddr
+	Methods = builtin8.MethodsInit
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
+	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
+		if name != "init" {
+			return nil, xerrors.Errorf("actor code is not init: %s", name)
+		}
+
+		switch av {
+
+		case actors.Version0:
+			return load0(store, act.Head)
+
+		case actors.Version2:
+			return load2(store, act.Head)
+
+		case actors.Version3:
+			return load3(store, act.Head)
+
+		case actors.Version4:
+			return load4(store, act.Head)
+
+		case actors.Version5:
+			return load5(store, act.Head)
+
+		case actors.Version6:
+			return load6(store, act.Head)
+
+		case actors.Version7:
+			return load7(store, act.Head)
+
+		case actors.Version8:
+			return load8(store, act.Head)
+
+		default:
+			return nil, xerrors.Errorf("unknown actor version: %d", av)
+		}
+	}
+
 	switch act.Code {
 
 	case builtin0.InitActorCodeID:
@@ -88,6 +130,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	case builtin7.InitActorCodeID:
 		return load7(store, act.Head)
+
+	case builtin8.InitActorCodeID:
+		return load8(store, act.Head)
 
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
@@ -117,11 +162,18 @@ func MakeState(store adt.Store, av actors.Version, networkName string) (State, e
 	case actors.Version7:
 		return make7(store, networkName)
 
+	case actors.Version8:
+		return make8(store, networkName)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
 
 func GetActorCodeID(av actors.Version) (cid.Cid, error) {
+	if c, ok := actors.GetActorCodeID(av, "init"); ok {
+		return c, nil
+	}
+
 	switch av {
 
 	case actors.Version0:
@@ -144,6 +196,9 @@ func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	case actors.Version7:
 		return builtin7.InitActorCodeID, nil
+
+	case actors.Version8:
+		return builtin8.InitActorCodeID, nil
 
 	}
 

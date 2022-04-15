@@ -27,6 +27,7 @@ import (
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
 
 	/* inline-gen end */
 
@@ -133,6 +134,8 @@ func newAccountActor(ver actors.Version) *types.Actor {
 		code = builtin6.AccountActorCodeID
 	case actors.Version7:
 		code = builtin7.AccountActorCodeID
+	case actors.Version8:
+		code = builtin8.AccountActorCodeID
 		/* inline-gen end */
 	default:
 		panic("unsupported actors version")

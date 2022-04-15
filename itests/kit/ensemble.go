@@ -26,8 +26,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -59,6 +57,8 @@ import (
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/mockstorage"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	power3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/power"
 )
 
 func init() {
@@ -408,17 +408,20 @@ func (n *Ensemble) Start() *Ensemble {
 
 				// we get the proof type for the requested sector size, for
 				// the current network version.
-				nv, err := m.FullNode.FullNode.StateNetworkVersion(ctx, types.EmptyTSK)
-				require.NoError(n.t, err)
+				// nv, err := m.FullNode.FullNode.StateNetworkVersion(ctx, types.EmptyTSK)
+				// require.NoError(n.t, err)
 
-				proofType, err := miner.SealProofTypeFromSectorSize(m.options.sectorSize, nv)
-				require.NoError(n.t, err)
+				// TODO this doesn't currently work with the FVM -- we need to specify policy somehow
+				// proofType, err := miner.WindowPoStProofTypeFromSectorSize(m.options.sectorSize)
+				// require.NoError(n.t, err)
+				// so do this instead, which works:
+				proofType := abi.RegisteredPoStProof_StackedDrgWindow64GiBV1
 
-				params, aerr := actors.SerializeParams(&power2.CreateMinerParams{
-					Owner:         m.OwnerKey.Address,
-					Worker:        m.OwnerKey.Address,
-					SealProofType: proofType,
-					Peer:          abi.PeerID(m.Libp2p.PeerID),
+				params, aerr := actors.SerializeParams(&power3.CreateMinerParams{
+					Owner:               m.OwnerKey.Address,
+					Worker:              m.OwnerKey.Address,
+					WindowPoStProofType: proofType,
+					Peer:                abi.PeerID(m.Libp2p.PeerID),
 				})
 				require.NoError(n.t, aerr)
 
@@ -437,7 +440,7 @@ func (n *Ensemble) Start() *Ensemble {
 				require.NoError(n.t, err)
 				require.Equal(n.t, exitcode.Ok, mw.Receipt.ExitCode)
 
-				var retval power2.CreateMinerReturn
+				var retval power3.CreateMinerReturn
 				err = retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return))
 				require.NoError(n.t, err, "failed to create miner")
 
