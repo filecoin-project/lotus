@@ -21,7 +21,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/mitchellh/go-homedir"
@@ -220,13 +219,8 @@ var initCmd = &cli.Command{
 			if len(build.BuiltinActorsV8Bundle()) > 0 {
 				bs := blockstore.NewMemory()
 
-				if err := actors.LoadBundle(context.TODO(), bs, actors.Version8, build.BuiltinActorsV8Bundle()); err != nil {
-					return xerrors.Errorf("error loading actor bundle: %w", err)
-				}
-
-				cborStore := cbor.NewCborStore(bs)
-				if err := actors.LoadManifests(ctx, cborStore); err != nil {
-					return xerrors.Errorf("error loading actor manifests: %w", err)
+				if err := actors.LoadManifestFromBundle(context.TODO(), bs, actors.Version8, build.BuiltinActorsV8Bundle()); err != nil {
+					return xerrors.Errorf("error loading actor manifest: %w", err)
 				}
 			}
 

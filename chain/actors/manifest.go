@@ -126,3 +126,12 @@ func LoadBundle(ctx context.Context, bs blockstore.Blockstore, av Version, data 
 
 	return nil
 }
+
+func LoadManifestFromBundle(ctx context.Context, bs blockstore.Blockstore, av Version, data []byte) error {
+	if err := LoadBundle(ctx, bs, av, data); err != nil {
+		return err
+	}
+
+	cborStore := cbor.NewCborStore(bs)
+	return LoadManifests(ctx, cborStore)
+}
