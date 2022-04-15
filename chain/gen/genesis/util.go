@@ -50,7 +50,7 @@ func doExecValue(ctx context.Context, vm *vm.LegacyVM, to, from address.Address,
 	return ret.Return, nil
 }
 
-func patchStateTree(st *state.StateTree, nv network.Version) error {
+func patchManifestCodeCids(st *state.StateTree, nv network.Version) error {
 	av, err := actors.VersionForNetwork(nv)
 	if err != nil {
 		return err

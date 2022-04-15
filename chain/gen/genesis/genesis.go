@@ -586,7 +586,7 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 			return nil, xerrors.Errorf("error loading state tree")
 		}
 
-		err = patchStateTree(st, template.NetworkVersion)
+		err = patchManifestCodeCids(st, template.NetworkVersion)
 		if err != nil {
 			return nil, xerrors.Errorf("error patching state tree: %w", err)
 		}
