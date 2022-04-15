@@ -414,14 +414,9 @@ func (sb *Sealer) AcquireSectorKeyOrRegenerate(ctx context.Context, sector stora
 		return paths, done, xerrors.Errorf("recomputing empty data: %w", err)
 	}
 
-	pc1, err := sb.SealPreCommit1(ctx, sector, randomness, []abi.PieceInfo{{PieceCID: zerocomm.ZeroPieceCommitment(paddedSize.Unpadded()), Size: paddedSize}})
+	err = sb.RegenerateSectorKey(ctx, sector, randomness, []abi.PieceInfo{{PieceCID: zerocomm.ZeroPieceCommitment(paddedSize.Unpadded()), Size: paddedSize}})
 	if err != nil {
 		return paths, done, xerrors.Errorf("during pc1: %w", err)
-	}
-
-	_, err = sb.SealPreCommit2(ctx, sector, pc1)
-	if err != nil {
-		return paths, done, xerrors.Errorf("during pc2: %w", err)
 	}
 
 	// Sector key should exist now, let's grab the paths
@@ -658,6 +653,51 @@ func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector storag
 	}
 
 	return true, nil
+}
+
+func (sb *Sealer) RegenerateSectorKey(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) error {
+	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUnsealed|storiface.FTCache, storiface.FTSealed, storiface.PathSealing)
+	if err != nil {
+		return xerrors.Errorf("acquiring sector paths: %w", err)
+	}
+	defer done()
+
+	e, err := os.OpenFile(paths.Sealed, os.O_RDWR|os.O_CREATE, 0644) // nolint:gosec
+	if err != nil {
+		return xerrors.Errorf("ensuring sealed file exists: %w", err)
+	}
+	if err := e.Close(); err != nil {
+		return err
+	}
+
+	var sum abi.UnpaddedPieceSize
+	for _, piece := range pieces {
+		sum += piece.Size.Unpadded()
+	}
+	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		return err
+	}
+	ussize := abi.PaddedPieceSize(ssize).Unpadded()
+	if sum != ussize {
+		return xerrors.Errorf("aggregated piece sizes don't match sector size: %d != %d (%d)", sum, ussize, int64(ussize-sum))
+	}
+
+	// TODO: context cancellation respect
+	_, err = ffi.SealPreCommitPhase1(
+		sector.ProofType,
+		paths.Cache,
+		paths.Unsealed,
+		paths.Sealed,
+		sector.ID.Number,
+		sector.ID.Miner,
+		ticket,
+		pieces,
+	)
+	if err != nil {
+		return xerrors.Errorf("presealing sector %d (%s): %w", sector.ID.Number, paths.Unsealed, err)
+	}
+	return nil
 }
 
 func (sb *Sealer) SealPreCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage.PreCommit1Out, err error) {
