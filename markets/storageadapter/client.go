@@ -231,13 +231,13 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, xerrors.Errorf("getting dealIDs: %w", err)
 	}
 
-	if dealIdx >= len(dealIDs) {
+	if dealIdx >= len(params.Deals) {
 		return 0, xerrors.Errorf(
 			"deal index %d out of bounds of deals (len %d) in publish deals message %s",
-			dealIdx, len(dealIDs), pubmsg.Cid())
+			dealIdx, len(params.Deals), pubmsg.Cid())
 	}
 
-	valid, err := res.IsDealValid(uint64(dealIdx))
+	valid, outIdx, err := res.IsDealValid(uint64(dealIdx))
 	if err != nil {
 		return 0, xerrors.Errorf("determining deal validity: %w", err)
 	}
@@ -246,7 +246,7 @@ func (c *ClientNodeAdapter) ValidatePublishedDeal(ctx context.Context, deal stor
 		return 0, xerrors.New("deal was invalid at publication")
 	}
 
-	return dealIDs[dealIdx], nil
+	return dealIDs[outIdx], nil
 }
 
 var clientOverestimation = struct {
