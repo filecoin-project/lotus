@@ -45,9 +45,11 @@ fetch_bundle() {
 
     # fetch the hash first and check if it matches what we (may) already have
     curl -L --retry 3 https://github.com/filecoin-project/builtin-actors/releases/download/$rel/$hash -o $hash || die "error fetching hash for $ver/$net"
-    if (shasum -a 256 --check $hash); then
-        popd
-        return 0
+    if [ -e $target ]; then
+        if (shasum -a 256 --check $hash); then
+            popd
+            return 0
+        fi
     fi
 
     # we don't have the (correct) bundle, fetch it
