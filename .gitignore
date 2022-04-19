@@ -49,4 +49,4 @@ bin/tmp/*
 .idea
 scratchpad
 
-build/builtin-actors/*.car
+build/builtin-actors/v*
