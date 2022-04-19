@@ -9,13 +9,13 @@ import (
 	"strings"
 	"testing"
 
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
-
 	"github.com/gorilla/mux"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc"
+
+	"github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
 )
 
 type ReaderHandler struct {
@@ -58,7 +58,7 @@ func (h *ReaderHandler) ReadAll(ctx context.Context, r io.Reader) ([]byte, error
 }
 
 func (h *ReaderHandler) ReadNullLen(ctx context.Context, r io.Reader) (int64, error) {
-	return r.(*sealing.NullReader).N, nil
+	return r.(*nullreader.NullReader).N, nil
 }
 
 func (h *ReaderHandler) ReadUrl(ctx context.Context, u string) (string, error) {
@@ -119,7 +119,7 @@ func TestNullReaderProxy(t *testing.T) {
 
 	defer closer()
 
-	n, err := client.ReadNullLen(context.TODO(), sealing.NewNullReader(1016))
+	n, err := client.ReadNullLen(context.TODO(), nullreader.NewNullReader(1016))
 	require.NoError(t, err)
 	require.Equal(t, int64(1016), n)
 }
