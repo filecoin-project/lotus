@@ -1,6 +1,10 @@
 package modules
 
 import (
+	"fmt"
+	"io"
+	"os"
+
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -29,6 +33,41 @@ func LoadBultinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.Univer
 	if len(build.BuiltinActorsV7Bundle()) > 0 {
 		if err := actors.LoadBundle(ctx, bs, actors.Version7, build.BuiltinActorsV7Bundle()); err != nil {
 			return result, err
+		}
+	}
+
+	cborStore := cbor.NewCborStore(bs)
+	if err := actors.LoadManifests(ctx, cborStore); err != nil {
+		return result, xerrors.Errorf("error loading actor manifests: %w", err)
+	}
+
+	return result, nil
+}
+
+// for itests
+func LoadBuiltinActorsTesting(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtypes.UniversalBlockstore) (result dtypes.BuiltinActorsLoaded, err error) {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+
+	base := os.Getenv("LOTUS_SRC_DIR")
+	if base == "" {
+		base = "."
+	}
+
+	for _, ver := range []actors.Version{actors.Version8} {
+		path := fmt.Sprintf("%s/build/builtin-actors/v%d/builtin-actors-testing.car", base, ver)
+
+		file, err := os.Open(path)
+		if err != nil {
+			return result, xerrors.Errorf("error opening v%d bundle: %w", ver, err)
+		}
+
+		bundle, err := io.ReadAll(file)
+		if err != nil {
+			return result, xerrors.Errorf("error reading v%d bundle: %w", ver, err)
+		}
+
+		if err := actors.LoadBundle(ctx, bs, actors.Version8, bundle); err != nil {
+			return result, xerrors.Errorf("error loading v%d bundle: %w", ver, err)
 		}
 	}
 
