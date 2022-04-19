@@ -15,8 +15,6 @@ import (
 	"os"
 	"runtime"
 
-	nr "github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
-
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -33,6 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/fr32"
 	"github.com/filecoin-project/lotus/extern/sector-storage/partialfile"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	nr "github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
 )
 
 var _ Storage = &Sealer{}
