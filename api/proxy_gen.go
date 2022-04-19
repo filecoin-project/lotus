@@ -364,6 +364,8 @@ type FullNodeStruct struct {
 
 		StateLookupID func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) `perm:"read"`
 
+		StateLookupRobustAddress func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) `perm:"read"`
+
 		StateMarketBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MarketBalance, error) `perm:"read"`
 
 		StateMarketDeals func(p0 context.Context, p1 types.TipSetKey) (map[string]MarketDeal, error) `perm:"read"`
@@ -2525,6 +2527,17 @@ func (s *FullNodeStruct) StateLookupID(p0 context.Context, p1 address.Address, p
 }
 
 func (s *FullNodeStub) StateLookupID(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
+	return *new(address.Address), ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateLookupRobustAddress(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
+	if s.Internal.StateLookupRobustAddress == nil {
+		return *new(address.Address), ErrNotSupported
+	}
+	return s.Internal.StateLookupRobustAddress(p0, p1, p2)
+}
+
+func (s *FullNodeStub) StateLookupRobustAddress(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (address.Address, error) {
 	return *new(address.Address), ErrNotSupported
 }
 

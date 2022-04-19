@@ -181,6 +181,7 @@
   * [StateListMessages](#StateListMessages)
   * [StateListMiners](#StateListMiners)
   * [StateLookupID](#StateLookupID)
+  * [StateLookupRobustAddress](#StateLookupRobustAddress)
   * [StateMarketBalance](#StateMarketBalance)
   * [StateMarketDeals](#StateMarketDeals)
   * [StateMarketParticipants](#StateMarketParticipants)
@@ -5037,7 +5038,7 @@ A nil TipSetKey can be provided as a param, this will cause the heaviest tipset 
 
 
 ### StateAccountKey
-StateAccountKey returns the public key address of the given ID address
+StateAccountKey returns the public key address of the given ID address for secp and bls accounts
 
 
 Perms: read
@@ -5781,6 +5782,29 @@ Response:
 
 ### StateLookupID
 StateLookupID retrieves the ID address of the given address
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"f01234"`
+
+### StateLookupRobustAddress
+StateLookupRobustAddress returns the public key address of the given ID address for non-account addresses (multisig, miners etc)
 
 
 Perms: read

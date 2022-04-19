@@ -875,6 +875,11 @@ workflows:
           target: "./itests/get_messages_in_ts_test.go"
       
       - test:
+          name: test-itest-lookup_robust_address
+          suite: itest-lookup_robust_address
+          target: "./itests/lookup_robust_address_test.go"
+      
+      - test:
           name: test-itest-mempool
           suite: itest-mempool
           target: "./itests/mempool_test.go"

@@ -522,8 +522,10 @@ type FullNode interface {
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*MarketDeal, error) //perm:read
 	// StateLookupID retrieves the ID address of the given address
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error) //perm:read
-	// StateAccountKey returns the public key address of the given ID address
+	// StateAccountKey returns the public key address of the given ID address for secp and bls accounts
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error) //perm:read
+	// StateLookupRobustAddress returns the public key address of the given ID address for non-account addresses (multisig, miners etc)
+	StateLookupRobustAddress(context.Context, address.Address, types.TipSetKey) (address.Address, error) //perm:read
 	// StateChangedActors returns all the actors whose states change between the two given state CIDs
 	// TODO: Should this take tipset keys instead?
 	StateChangedActors(context.Context, cid.Cid, cid.Cid) (map[string]types.Actor, error) //perm:read

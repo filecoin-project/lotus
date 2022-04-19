@@ -2496,6 +2496,21 @@ func (mr *MockFullNodeMockRecorder) StateLookupID(arg0, arg1, arg2 interface{}) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateLookupID", reflect.TypeOf((*MockFullNode)(nil).StateLookupID), arg0, arg1, arg2)
 }
 
+// StateLookupRobustAddress mocks base method.
+func (m *MockFullNode) StateLookupRobustAddress(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (address.Address, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateLookupRobustAddress", arg0, arg1, arg2)
+	ret0, _ := ret[0].(address.Address)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateLookupRobustAddress indicates an expected call of StateLookupRobustAddress.
+func (mr *MockFullNodeMockRecorder) StateLookupRobustAddress(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateLookupRobustAddress", reflect.TypeOf((*MockFullNode)(nil).StateLookupRobustAddress), arg0, arg1, arg2)
+}
+
 // StateMarketBalance mocks base method.
 func (m *MockFullNode) StateMarketBalance(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (api.MarketBalance, error) {
 	m.ctrl.T.Helper()
