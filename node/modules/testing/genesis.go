@@ -30,8 +30,8 @@ import (
 
 var glog = logging.Logger("genesis")
 
-func MakeGenesisMem(out io.Writer, template genesis.Template) func(bs dtypes.ChainBlockstore, syscalls vm.SyscallBuilder, j journal.Journal) modules.Genesis {
-	return func(bs dtypes.ChainBlockstore, syscalls vm.SyscallBuilder, j journal.Journal) modules.Genesis {
+func MakeGenesisMem(out io.Writer, template genesis.Template) func(bs dtypes.ChainBlockstore, syscalls vm.SyscallBuilder, j journal.Journal, _ dtypes.BuiltinActorsLoaded) modules.Genesis {
+	return func(bs dtypes.ChainBlockstore, syscalls vm.SyscallBuilder, j journal.Journal, _ dtypes.BuiltinActorsLoaded) modules.Genesis {
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
 			b, err := genesis2.MakeGenesisBlock(context.TODO(), j, bs, syscalls, template)
@@ -51,8 +51,8 @@ func MakeGenesisMem(out io.Writer, template genesis.Template) func(bs dtypes.Cha
 	}
 }
 
-func MakeGenesis(outFile, genesisTemplate string) func(bs dtypes.ChainBlockstore, syscalls vm.SyscallBuilder, j journal.Journal) modules.Genesis {
-	return func(bs dtypes.ChainBlockstore, syscalls vm.SyscallBuilder, j journal.Journal) modules.Genesis {
+func MakeGenesis(outFile, genesisTemplate string) func(bs dtypes.ChainBlockstore, syscalls vm.SyscallBuilder, j journal.Journal, _ dtypes.BuiltinActorsLoaded) modules.Genesis {
+	return func(bs dtypes.ChainBlockstore, syscalls vm.SyscallBuilder, j journal.Journal, _ dtypes.BuiltinActorsLoaded) modules.Genesis {
 		return func() (*types.BlockHeader, error) {
 			glog.Warn("Generating new random genesis block, note that this SHOULD NOT happen unless you are setting up new network")
 			genesisTemplate, err := homedir.Expand(genesisTemplate)

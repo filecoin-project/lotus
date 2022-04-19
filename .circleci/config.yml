@@ -86,22 +86,10 @@ commands:
             git fetch --all
   fetch_builtin_actors:
     steps:
-      - restore_cache:
-          name: restore builtin actors bundle cache
-          keys:
-            - 'builtin-actors-v8.car'
-          paths:
-            - build/builtin-actors/
       - run:
           name: fetch builtin actor bundles
           command: |
             build/builtin-actors/fetch-bundles.sh
-      - save_cache:
-          name: save builtin actors bundle cache
-          key: 'builtin-actors-v8.car'
-          paths:
-            - build/builtin-actors/
-
   packer_build:
     description: "Run a packer build"
     parameters:
@@ -214,6 +202,7 @@ jobs:
           environment:
             TEST_RUSTPROOFS_LOGS: << parameters.proofs-log-test >>
             SKIP_CONFORMANCE: "1"
+            LOTUS_SRC_DIR: /home/circleci/project
           command: |
             mkdir -p /tmp/test-reports/<< parameters.suite >>
             mkdir -p /tmp/test-artifacts

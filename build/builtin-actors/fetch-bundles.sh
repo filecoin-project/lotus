@@ -3,50 +3,83 @@ set -e
 
 cd "$(dirname "$0")"
 
-# gateway to use
-dweb="dweb.link"
-
-actors7_cid=""
-actors7_hash=""
-actors8_cid="bafybeictmywrut5tprz5fnoti6adfwuvixvrfardhqwldxosmdsfavc56e"
-actors8_hash="687b38f59b0c32800f55a8f1f303de214ec173c90e653984d67f393bc41c1416"
+. bundles.env
 
 die() {
     echo "$1"
     exit 1
 }
 
-check() {
-    file=$1
-    hash=$2
-    if [ -e "$file" ]; then
-        echo "$hash  $file" | shasum -a 256 --check
-    else
-        return 1
-    fi
-}
-
 fetch() {
-    output=$1
-    cid=$2
-    hash=$3
-    if (check "$output" "$hash"); then
-        return 0
-    else
-        echo "fetching $cid to $output"
-        curl --retry 3 -k "https://$dweb/ipfs/$cid" -o "$output"
-        check "$output" "$hash" || die "hash mismatch"
+    ver=$1
+    rel=$2
+
+    if [ ! -e $ver ]; then
+        mkdir $ver
     fi
+
+    if [ -e $ver/release ]; then
+       cur=$(cat $ver/release)
+       if [ $cur == $rel ]; then
+           return 0
+       fi
+    fi
+
+    for net in mainnet caterpillarnet butterflynet calibrationnet devnet testing; do
+        fetch_bundle $ver $rel $net
+    done
+
+    # remember the current release so that we don't have to hit github unless we have modified it
+    echo $rel > $ver/release
 }
 
-if [ -n "$actors7_cid" ]; then
-    fetch builtin-actors-v7.car "$actors7_cid" "$actors7_hash"
+fetch_bundle() {
+    ver=$1
+    rel=$2
+    net=$3
+
+    target=builtin-actors-$net.car
+    hash=builtin-actors-$net.sha256
+
+    pushd $ver
+
+    # fetch the hash first and check if it matches what we (may) already have
+    curl -L --retry 3 https://github.com/filecoin-project/builtin-actors/releases/download/$rel/$hash -o $hash || die "error fetching hash for $ver/$net"
+    if [ -e $target ]; then
+        if (shasum -a 256 --check $hash); then
+            popd
+            return 0
+        fi
+    fi
+
+    # we don't have the (correct) bundle, fetch it
+    curl -L --retry 3 https://github.com/filecoin-project/builtin-actors/releases/download/$rel/$target -o $target || die "error fetching bundle for $ver/$net"
+    # verify
+    shasum -a 256 --check $hash || die "hash mismatch"
+    # all good
+    popd
+}
+
+touch_bundles() {
+    ver=$1
+
+    if [ ! -e $ver ]; then
+        mkdir $ver
+    fi
+
+    for net in mainnet caterpillarnet butterflynet calibrationnet devnet testing; do
+        touch $ver/builtin-actors-$net.car
+    done
+}
+
+if [ -n "$actors7_release" ]; then
+    fetch v7 "$actors7_release"
 else
-    touch builtin-actors-v7.car
+    touch_bundles v7
 fi
 
-if [ -n "$actors8_cid" ]; then
-    fetch builtin-actors-v8.car "$actors8_cid" "$actors8_hash"
+if [ -n "$actors8_release" ]; then
+    fetch v8 "$actors8_release"
 else
-    touch builtin-actors-v8.car
+    touch_bundles v8
 fi

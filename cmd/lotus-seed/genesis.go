@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -12,9 +13,11 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
@@ -577,7 +580,12 @@ var genesisCarCmd = &cli.Command{
 		jrnl := journal.NilJournal()
 		bstor := blockstore.WrapIDStore(blockstore.NewMemorySync())
 		sbldr := vm.Syscalls(ffiwrapper.ProofVerifier)
-		_, err := testing.MakeGenesis(ofile, c.Args().First())(bstor, sbldr, jrnl)()
+		if len(build.BuiltinActorsV8Bundle()) > 0 {
+			if err := actors.LoadManifestFromBundle(context.TODO(), bstor, actors.Version8, build.BuiltinActorsV8Bundle()); err != nil {
+				return xerrors.Errorf("error loading actor manifest: %w", err)
+			}
+		}
+		_, err := testing.MakeGenesis(ofile, c.Args().First())(bstor, sbldr, jrnl, dtypes.BuiltinActorsLoaded{})()
 		return err
 	},
 }
