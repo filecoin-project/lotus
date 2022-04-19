@@ -58,10 +58,26 @@ fetch_bundle() {
     popd
 }
 
+touch_bundles() {
+    ver=$1
+
+    if [ ! -e $ver ]; then
+        mkdir $ver
+    fi
+
+    for net in mainnet caterpillarnet butterflynet calibrationnet devnet testing; do
+        touch $ver/builtin-actors-$net.car
+    done
+}
+
 if [ -n "$actors7_release" ]; then
     fetch v7 "$actors7_release"
+else
+    touch_bundles v7
 fi
 
 if [ -n "$actors8_release" ]; then
     fetch v8 "$actors8_release"
+else
+    touch_bundles v8
 fi
