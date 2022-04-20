@@ -165,9 +165,12 @@ func (gw *Node) checkTimestamp(at time.Time) error {
 func (gw *Node) limit(ctx context.Context, tokens int) error {
 	ctx2, cancel := context.WithTimeout(ctx, gw.rateLimitTimeout)
 	defer cancel()
+	if !gw.rateLimiter.AllowN(time.Now(), tokens) {
+		return fmt.Errorf("server busy")
+	}
 	err := gw.rateLimiter.WaitN(ctx2, tokens)
 	if err != nil {
-		return fmt.Errorf("rate limited: %w", err)
+		return fmt.Errorf("server busy, cannot complete before timeout %w", err)
 	}
 	return nil
 }
