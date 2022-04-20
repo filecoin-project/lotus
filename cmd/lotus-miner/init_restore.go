@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 
 	"github.com/docker/go-units"
@@ -22,7 +23,6 @@ import (
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -74,7 +74,7 @@ var restoreCmd = &cli.Command{
 
 		repoPath := cctx.String(FlagMinerRepo)
 
-		if err := restore(ctx, cctx, repoPath, storageCfg, nil, func(api lapi.FullNode, maddr address.Address, peerid peer.ID, mi miner.MinerInfo) error {
+		if err := restore(ctx, cctx, repoPath, storageCfg, nil, func(api lapi.FullNode, maddr address.Address, peerid peer.ID, mi api.MinerInfo) error {
 			log.Info("Checking proof parameters")
 
 			if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(mi.SectorSize)); err != nil {
@@ -96,7 +96,7 @@ var restoreCmd = &cli.Command{
 	},
 }
 
-func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfig *stores.StorageConfig, manageConfig func(*config.StorageMiner) error, after func(api lapi.FullNode, addr address.Address, peerid peer.ID, mi miner.MinerInfo) error) error {
+func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfig *stores.StorageConfig, manageConfig func(*config.StorageMiner) error, after func(api lapi.FullNode, addr address.Address, peerid peer.ID, mi api.MinerInfo) error) error {
 	if cctx.Args().Len() != 1 {
 		return xerrors.Errorf("expected 1 argument")
 	}

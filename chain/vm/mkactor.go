@@ -14,12 +14,6 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	/* inline-gen template
-	   {{range .actorVersions}}
-	   	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"{{end}}
-
-	/* inline-gen start */
-
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
@@ -27,9 +21,6 @@ import (
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
-	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
-
-	/* inline-gen end */
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -114,12 +105,6 @@ func newAccountActor(ver actors.Version) *types.Actor {
 	// TODO: ActorsUpgrade use a global actor registry?
 	var code cid.Cid
 	switch ver {
-	/* inline-gen template
-	   {{range .actorVersions}}
-		case actors.Version{{.}}:
-			code = builtin{{.}}.AccountActorCodeID{{end}}
-	/* inline-gen start */
-
 	case actors.Version0:
 		code = builtin0.AccountActorCodeID
 	case actors.Version2:
@@ -134,9 +119,6 @@ func newAccountActor(ver actors.Version) *types.Actor {
 		code = builtin6.AccountActorCodeID
 	case actors.Version7:
 		code = builtin7.AccountActorCodeID
-	case actors.Version8:
-		code = builtin8.AccountActorCodeID
-		/* inline-gen end */
 	default:
 		panic("unsupported actors version")
 	}

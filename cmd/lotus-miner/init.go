@@ -13,7 +13,8 @@ import (
 	"path/filepath"
 	"strconv"
 
-	market8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/market"
+	"github.com/filecoin-project/go-state-types/builtin"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 
 	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
 
@@ -609,7 +610,7 @@ func configureStorageMiner(ctx context.Context, api v1api.FullNode, addr address
 	msg := &types.Message{
 		To:         addr,
 		From:       mi.Worker,
-		Method:     miner.Methods.ChangePeerID,
+		Method:     builtin.MethodsMiner.ChangePeerID,
 		Params:     enc,
 		Value:      types.NewInt(0),
 		GasPremium: gasPrice,

@@ -4,7 +4,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -29,43 +28,8 @@ import (
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
-	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
+	builtin8 "github.com/filecoin-project/go-state-types/builtin"
 )
-
-func init() {
-
-	builtin.RegisterActorState(builtin0.StoragePowerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load0(store, root)
-	})
-
-	builtin.RegisterActorState(builtin2.StoragePowerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load2(store, root)
-	})
-
-	builtin.RegisterActorState(builtin3.StoragePowerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load3(store, root)
-	})
-
-	builtin.RegisterActorState(builtin4.StoragePowerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load4(store, root)
-	})
-
-	builtin.RegisterActorState(builtin5.StoragePowerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load5(store, root)
-	})
-
-	builtin.RegisterActorState(builtin6.StoragePowerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load6(store, root)
-	})
-
-	builtin.RegisterActorState(builtin7.StoragePowerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load7(store, root)
-	})
-
-	builtin.RegisterActorState(builtin8.StoragePowerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load8(store, root)
-	})
-}
 
 var (
 	Address = builtin8.StoragePowerActorAddr
@@ -74,38 +38,15 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-		if name != "storagepower" {
-			return nil, xerrors.Errorf("actor code is not storagepower: %s", name)
+		if name != actors.PowerKey {
+			return nil, xerrors.Errorf("actor code is not power: %s", name)
 		}
 
 		switch av {
 
-		case actors.Version0:
-			return load0(store, act.Head)
-
-		case actors.Version2:
-			return load2(store, act.Head)
-
-		case actors.Version3:
-			return load3(store, act.Head)
-
-		case actors.Version4:
-			return load4(store, act.Head)
-
-		case actors.Version5:
-			return load5(store, act.Head)
-
-		case actors.Version6:
-			return load6(store, act.Head)
-
-		case actors.Version7:
-			return load7(store, act.Head)
-
 		case actors.Version8:
 			return load8(store, act.Head)
 
-		default:
-			return nil, xerrors.Errorf("unknown actor version: %d", av)
 		}
 	}
 
@@ -132,10 +73,8 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	case builtin7.StoragePowerActorCodeID:
 		return load7(store, act.Head)
 
-	case builtin8.StoragePowerActorCodeID:
-		return load8(store, act.Head)
-
 	}
+
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
@@ -168,42 +107,6 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
-}
-
-func GetActorCodeID(av actors.Version) (cid.Cid, error) {
-	if c, ok := actors.GetActorCodeID(av, "storagepower"); ok {
-		return c, nil
-	}
-
-	switch av {
-
-	case actors.Version0:
-		return builtin0.StoragePowerActorCodeID, nil
-
-	case actors.Version2:
-		return builtin2.StoragePowerActorCodeID, nil
-
-	case actors.Version3:
-		return builtin3.StoragePowerActorCodeID, nil
-
-	case actors.Version4:
-		return builtin4.StoragePowerActorCodeID, nil
-
-	case actors.Version5:
-		return builtin5.StoragePowerActorCodeID, nil
-
-	case actors.Version6:
-		return builtin6.StoragePowerActorCodeID, nil
-
-	case actors.Version7:
-		return builtin7.StoragePowerActorCodeID, nil
-
-	case actors.Version8:
-		return builtin8.StoragePowerActorCodeID, nil
-
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
 
 type State interface {

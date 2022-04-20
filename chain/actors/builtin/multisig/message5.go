@@ -50,11 +50,9 @@ func (m message5) Create(
 		return nil, actErr
 	}
 
-	actorCodeID := builtin5.MultisigActorCodeID
-
 	// new actors are created by invoking 'exec' on the init actor with the constructor params
 	execParams := &init5.ExecParams{
-		CodeCID:           actorCodeID,
+		CodeCID:           builtin5.MultisigActorCodeID,
 		ConstructorParams: enc,
 	}
 

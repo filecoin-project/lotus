@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+
 	tutils "github.com/filecoin-project/specs-actors/support/testing"
 
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -18,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/dline"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -29,7 +30,7 @@ func init() {
 }
 
 type proveRes struct {
-	posts []miner.SubmitWindowedPoStParams
+	posts []minertypes.SubmitWindowedPoStParams
 	err   error
 }
 
@@ -85,10 +86,10 @@ func (m *mockAPI) setDeadline(di *dline.Info) {
 }
 
 func (m *mockAPI) getDeadline(currentEpoch abi.ChainEpoch) *dline.Info {
-	close := miner.WPoStChallengeWindow - 1
+	close := minertypes.WPoStChallengeWindow - 1
 	dlIdx := uint64(0)
 	for close < currentEpoch {
-		close += miner.WPoStChallengeWindow
+		close += minertypes.WPoStChallengeWindow
 		dlIdx++
 	}
 	return NewDeadlineInfo(0, dlIdx, currentEpoch)
@@ -161,7 +162,7 @@ func (m *mockAPI) startSubmitPoST(
 	ctx context.Context,
 	ts *types.TipSet,
 	deadline *dline.Info,
-	posts []miner.SubmitWindowedPoStParams,
+	posts []minertypes.SubmitWindowedPoStParams,
 	completeSubmitPoST CompleteSubmitPoSTCb,
 ) context.CancelFunc {
 	ctx, cancel := context.WithCancel(ctx)
@@ -225,7 +226,7 @@ func TestChangeHandlerBasic(t *testing.T) {
 	require.Equal(t, SubmitStateStart, s.submitState(di))
 
 	// Send a response to the call to generate proofs
-	posts := []miner.SubmitWindowedPoStParams{{Deadline: di.Index}}
+	posts := []minertypes.SubmitWindowedPoStParams{{Deadline: di.Index}}
 	mock.proveResult <- &proveRes{posts: posts}
 
 	// Should move to proving complete
@@ -291,7 +292,7 @@ func TestChangeHandlerFromProvingToSubmittingNoHeadChange(t *testing.T) {
 	require.Equal(t, SubmitStateStart, s.submitState(di))
 
 	// Send a response to the call to generate proofs
-	posts := []miner.SubmitWindowedPoStParams{{Deadline: di.Index}}
+	posts := []minertypes.SubmitWindowedPoStParams{{Deadline: di.Index}}
 	mock.proveResult <- &proveRes{posts: posts}
 
 	// Should move to proving complete
@@ -346,7 +347,7 @@ func TestChangeHandlerFromProvingEmptyProofsToComplete(t *testing.T) {
 	require.Equal(t, SubmitStateStart, s.submitState(di))
 
 	// Send a response to the call to generate proofs with an empty proofs array
-	posts := []miner.SubmitWindowedPoStParams{}
+	posts := []minertypes.SubmitWindowedPoStParams{}
 	mock.proveResult <- &proveRes{posts: posts}
 
 	// Should move to proving complete
@@ -368,7 +369,7 @@ func TestChangeHandlerDontStartUntilProvingPeriod(t *testing.T) {
 	s := makeScaffolding(t)
 	mock := s.mock
 
-	periodStart := miner.WPoStProvingPeriod
+	periodStart := minertypes.WPoStProvingPeriod
 	dlIdx := uint64(1)
 	currentEpoch := abi.ChainEpoch(10)
 	di := NewDeadlineInfo(periodStart, dlIdx, currentEpoch)
@@ -390,7 +391,7 @@ func TestChangeHandlerDontStartUntilProvingPeriod(t *testing.T) {
 	}
 
 	// Advance the head to the next proving period's first epoch
-	currentEpoch = periodStart + miner.WPoStChallengeWindow
+	currentEpoch = periodStart + minertypes.WPoStChallengeWindow
 	di = NewDeadlineInfo(periodStart, dlIdx, currentEpoch)
 	mock.setDeadline(di)
 	go triggerHeadAdvance(t, s, currentEpoch)
@@ -431,7 +432,7 @@ func TestChangeHandlerStartProvingNextDeadline(t *testing.T) {
 	require.Equal(t, postStatusProving, s.mock.getPostStatus(di))
 
 	// Send a response to the call to generate proofs
-	posts := []miner.SubmitWindowedPoStParams{{Deadline: di.Index}}
+	posts := []minertypes.SubmitWindowedPoStParams{{Deadline: di.Index}}
 	mock.proveResult <- &proveRes{posts: posts}
 
 	// Should move to proving complete
@@ -466,7 +467,7 @@ func TestChangeHandlerProvingRounds(t *testing.T) {
 	s.ch.start()
 
 	completeProofIndex := abi.ChainEpoch(10)
-	for currentEpoch := abi.ChainEpoch(1); currentEpoch < miner.WPoStChallengeWindow*5; currentEpoch++ {
+	for currentEpoch := abi.ChainEpoch(1); currentEpoch < minertypes.WPoStChallengeWindow*5; currentEpoch++ {
 		// Trigger a head change
 		di := mock.getDeadline(currentEpoch)
 		go triggerHeadAdvance(t, s, currentEpoch+ChallengeConfidence)
@@ -507,7 +508,7 @@ func TestChangeHandlerProvingRounds(t *testing.T) {
 
 		if currentEpoch == completeProofEpoch {
 			// Send a response to the call to generate proofs
-			posts := []miner.SubmitWindowedPoStParams{{Deadline: di.Index}}
+			posts := []minertypes.SubmitWindowedPoStParams{{Deadline: di.Index}}
 			mock.proveResult <- &proveRes{posts: posts}
 
 			// Should move to proving complete
@@ -562,7 +563,7 @@ func TestChangeHandlerProvingErrorRecovery(t *testing.T) {
 	require.Equal(t, postStatusProving, s.mock.getPostStatus(di))
 
 	// Send a success response to the call to generate proofs
-	posts := []miner.SubmitWindowedPoStParams{{Deadline: di.Index}}
+	posts := []minertypes.SubmitWindowedPoStParams{{Deadline: di.Index}}
 	mock.proveResult <- &proveRes{posts: posts}
 
 	// Should move to proving complete
@@ -597,7 +598,7 @@ func TestChangeHandlerSubmitErrorRecovery(t *testing.T) {
 	require.Equal(t, SubmitStateStart, s.submitState(di))
 
 	// Send a response to the call to generate proofs
-	posts := []miner.SubmitWindowedPoStParams{{Deadline: di.Index}}
+	posts := []minertypes.SubmitWindowedPoStParams{{Deadline: di.Index}}
 	mock.proveResult <- &proveRes{posts: posts}
 
 	// Should move to proving complete
@@ -665,7 +666,7 @@ func TestChangeHandlerProveExpiry(t *testing.T) {
 	require.Equal(t, postStatusProving, s.mock.getPostStatus(di))
 
 	// Move to a height that expires the current proof
-	currentEpoch = miner.WPoStChallengeWindow
+	currentEpoch = minertypes.WPoStChallengeWindow
 	di = mock.getDeadline(currentEpoch)
 	go triggerHeadAdvance(t, s, currentEpoch)
 
@@ -676,7 +677,7 @@ func TestChangeHandlerProveExpiry(t *testing.T) {
 	require.True(t, mock.wasAbortCalled())
 
 	// Send a response to the call to generate proofs
-	posts := []miner.SubmitWindowedPoStParams{{Deadline: di.Index}}
+	posts := []minertypes.SubmitWindowedPoStParams{{Deadline: di.Index}}
 	mock.proveResult <- &proveRes{posts: posts}
 
 	// Should move to proving complete
@@ -709,7 +710,7 @@ func TestChangeHandlerSubmitExpiry(t *testing.T) {
 	require.Equal(t, SubmitStateStart, s.submitState(di))
 
 	// Send a response to the call to generate proofs
-	posts := []miner.SubmitWindowedPoStParams{{Deadline: di.Index}}
+	posts := []minertypes.SubmitWindowedPoStParams{{Deadline: di.Index}}
 	mock.proveResult <- &proveRes{posts: posts}
 
 	// Should move to proving complete
@@ -726,7 +727,7 @@ func TestChangeHandlerSubmitExpiry(t *testing.T) {
 	require.Equal(t, SubmitStateSubmitting, s.submitState(di))
 
 	// Move to a height that expires the submit
-	currentEpoch = miner.WPoStChallengeWindow
+	currentEpoch = minertypes.WPoStChallengeWindow
 	di = mock.getDeadline(currentEpoch)
 	go triggerHeadAdvance(t, s, currentEpoch)
 
@@ -763,7 +764,7 @@ func TestChangeHandlerProveRevert(t *testing.T) {
 	s.ch.start()
 
 	// Trigger a head change
-	currentEpoch := miner.WPoStChallengeWindow
+	currentEpoch := minertypes.WPoStChallengeWindow
 	go triggerHeadAdvance(t, s, currentEpoch)
 
 	// Should start proving
@@ -780,7 +781,7 @@ func TestChangeHandlerProveRevert(t *testing.T) {
 	require.Equal(t, postStatusProving, s.mock.getPostStatus(di))
 
 	// Send a response to the call to generate proofs
-	posts := []miner.SubmitWindowedPoStParams{{Deadline: di.Index}}
+	posts := []minertypes.SubmitWindowedPoStParams{{Deadline: di.Index}}
 	mock.proveResult <- &proveRes{posts: posts}
 
 	// Should move to proving complete
@@ -806,7 +807,7 @@ func TestChangeHandlerSubmittingRevert(t *testing.T) {
 	s.ch.start()
 
 	// Trigger a head change
-	currentEpoch := miner.WPoStChallengeWindow
+	currentEpoch := minertypes.WPoStChallengeWindow
 	go triggerHeadAdvance(t, s, currentEpoch)
 
 	// Submitter doesn't have anything to do yet
@@ -815,7 +816,7 @@ func TestChangeHandlerSubmittingRevert(t *testing.T) {
 	require.Equal(t, SubmitStateStart, s.submitState(di))
 
 	// Send a response to the call to generate proofs
-	posts := []miner.SubmitWindowedPoStParams{{Deadline: di.Index}}
+	posts := []minertypes.SubmitWindowedPoStParams{{Deadline: di.Index}}
 	mock.proveResult <- &proveRes{posts: posts}
 
 	// Should move to proving complete
@@ -881,7 +882,7 @@ func TestChangeHandlerSubmitCompleteRevert(t *testing.T) {
 	s.ch.start()
 
 	// Trigger a head change
-	currentEpoch := miner.WPoStChallengeWindow
+	currentEpoch := minertypes.WPoStChallengeWindow
 	go triggerHeadAdvance(t, s, currentEpoch)
 
 	// Submitter doesn't have anything to do yet
@@ -890,7 +891,7 @@ func TestChangeHandlerSubmitCompleteRevert(t *testing.T) {
 	require.Equal(t, SubmitStateStart, s.submitState(di))
 
 	// Send a response to the call to generate proofs
-	posts := []miner.SubmitWindowedPoStParams{{Deadline: di.Index}}
+	posts := []minertypes.SubmitWindowedPoStParams{{Deadline: di.Index}}
 	mock.proveResult <- &proveRes{posts: posts}
 
 	// Should move to proving complete
@@ -946,7 +947,7 @@ func TestChangeHandlerSubmitRevertTwoEpochs(t *testing.T) {
 	s.ch.start()
 
 	// Trigger a head change
-	currentEpoch := miner.WPoStChallengeWindow
+	currentEpoch := minertypes.WPoStChallengeWindow
 	go triggerHeadAdvance(t, s, currentEpoch)
 
 	// Submitter doesn't have anything to do yet
@@ -955,7 +956,7 @@ func TestChangeHandlerSubmitRevertTwoEpochs(t *testing.T) {
 	require.Equal(t, SubmitStateStart, s.submitState(diE1))
 
 	// Send a response to the call to generate proofs
-	posts := []miner.SubmitWindowedPoStParams{{Deadline: diE1.Index}}
+	posts := []minertypes.SubmitWindowedPoStParams{{Deadline: diE1.Index}}
 	mock.proveResult <- &proveRes{posts: posts}
 
 	// Should move to proving complete
@@ -981,7 +982,7 @@ func TestChangeHandlerSubmitRevertTwoEpochs(t *testing.T) {
 
 	// Should start proving epoch 2
 	// Send a response to the call to generate proofs
-	postsE2 := []miner.SubmitWindowedPoStParams{{Deadline: diE2.Index}}
+	postsE2 := []minertypes.SubmitWindowedPoStParams{{Deadline: diE2.Index}}
 	mock.proveResult <- &proveRes{posts: postsE2}
 
 	// Should move to proving complete for epoch 2
@@ -1051,7 +1052,7 @@ func TestChangeHandlerSubmitRevertAdvanceLess(t *testing.T) {
 	s.ch.start()
 
 	// Trigger a head change
-	currentEpoch := miner.WPoStChallengeWindow
+	currentEpoch := minertypes.WPoStChallengeWindow
 	go triggerHeadAdvance(t, s, currentEpoch)
 
 	// Submitter doesn't have anything to do yet
@@ -1060,7 +1061,7 @@ func TestChangeHandlerSubmitRevertAdvanceLess(t *testing.T) {
 	require.Equal(t, SubmitStateStart, s.submitState(diE1))
 
 	// Send a response to the call to generate proofs
-	posts := []miner.SubmitWindowedPoStParams{{Deadline: diE1.Index}}
+	posts := []minertypes.SubmitWindowedPoStParams{{Deadline: diE1.Index}}
 	mock.proveResult <- &proveRes{posts: posts}
 
 	// Should move to proving complete
@@ -1086,7 +1087,7 @@ func TestChangeHandlerSubmitRevertAdvanceLess(t *testing.T) {
 
 	// Should start proving epoch 2
 	// Send a response to the call to generate proofs
-	postsE2 := []miner.SubmitWindowedPoStParams{{Deadline: diE2.Index}}
+	postsE2 := []minertypes.SubmitWindowedPoStParams{{Deadline: diE2.Index}}
 	mock.proveResult <- &proveRes{posts: postsE2}
 
 	// Should move to proving complete for epoch 2

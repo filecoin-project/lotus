@@ -4,22 +4,20 @@ import (
 	"bytes"
 	"errors"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	rle "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
-	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
-
-	miner8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/miner"
-	adt8 "github.com/filecoin-project/specs-actors/v8/actors/util/adt"
+	builtin8 "github.com/filecoin-project/go-state-types/builtin"
+	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 )
 
 var _ State = (*state8)(nil)
@@ -196,7 +194,7 @@ func (s *state8) GetSectorExpiration(num abi.SectorNumber) (*SectorExpiration, e
 	return &out, nil
 }
 
-func (s *state8) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOnChainInfo, error) {
+func (s *state8) GetPrecommittedSector(num abi.SectorNumber) (*minertypes.SectorPreCommitOnChainInfo, error) {
 	info, ok, err := s.State.GetPrecommittedSector(s.store, num)
 	if !ok || err != nil {
 		return nil, err
@@ -207,7 +205,7 @@ func (s *state8) GetPrecommittedSector(num abi.SectorNumber) (*SectorPreCommitOn
 	return &ret, nil
 }
 
-func (s *state8) ForEachPrecommittedSector(cb func(SectorPreCommitOnChainInfo) error) error {
+func (s *state8) ForEachPrecommittedSector(cb func(minertypes.SectorPreCommitOnChainInfo) error) error {
 	precommitted, err := adt8.AsMap(s.store, s.State.PreCommittedSectors, builtin8.DefaultHamtBitwidth)
 	if err != nil {
 		return err
@@ -371,30 +369,19 @@ func (s *state8) Info() (MinerInfo, error) {
 		return MinerInfo{}, err
 	}
 
-	var pid *peer.ID
-	if peerID, err := peer.IDFromBytes(info.PeerId); err == nil {
-		pid = &peerID
-	}
-
 	mi := MinerInfo{
 		Owner:            info.Owner,
 		Worker:           info.Worker,
 		ControlAddresses: info.ControlAddresses,
 
-		NewWorker:         address.Undef,
-		WorkerChangeEpoch: -1,
+		PendingWorkerKey: (*WorkerKeyChange)(info.PendingWorkerKey),
 
-		PeerId:                     pid,
+		PeerId:                     info.PeerId,
 		Multiaddrs:                 info.Multiaddrs,
 		WindowPoStProofType:        info.WindowPoStProofType,
 		SectorSize:                 info.SectorSize,
 		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
 		ConsensusFaultElapsed:      info.ConsensusFaultElapsed,
-	}
-
-	if info.PendingWorkerKey != nil {
-		mi.NewWorker = info.PendingWorkerKey.NewWorker
-		mi.WorkerChangeEpoch = info.PendingWorkerKey.EffectiveAt
 	}
 
 	return mi, nil
@@ -426,11 +413,11 @@ func (s *state8) precommits() (adt.Map, error) {
 	return adt8.AsMap(s.store, s.PreCommittedSectors, builtin8.DefaultHamtBitwidth)
 }
 
-func (s *state8) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (SectorPreCommitOnChainInfo, error) {
+func (s *state8) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (minertypes.SectorPreCommitOnChainInfo, error) {
 	var sp miner8.SectorPreCommitOnChainInfo
 	err := sp.UnmarshalCBOR(bytes.NewReader(val.Raw))
 	if err != nil {
-		return SectorPreCommitOnChainInfo{}, err
+		return minertypes.SectorPreCommitOnChainInfo{}, err
 	}
 
 	return fromV8SectorPreCommitOnChainInfo(sp), nil
@@ -554,16 +541,14 @@ func fromV8SectorOnChainInfo(v8 miner8.SectorOnChainInfo) SectorOnChainInfo {
 	return info
 }
 
-func fromV8SectorPreCommitOnChainInfo(v8 miner8.SectorPreCommitOnChainInfo) SectorPreCommitOnChainInfo {
-
-	return SectorPreCommitOnChainInfo{
-		Info:               (SectorPreCommitInfo)(v8.Info),
+func fromV8SectorPreCommitOnChainInfo(v8 miner8.SectorPreCommitOnChainInfo) minertypes.SectorPreCommitOnChainInfo {
+	return minertypes.SectorPreCommitOnChainInfo{
+		Info:               (minertypes.SectorPreCommitInfo)(v8.Info),
 		PreCommitDeposit:   v8.PreCommitDeposit,
 		PreCommitEpoch:     v8.PreCommitEpoch,
 		DealWeight:         v8.DealWeight,
 		VerifiedDealWeight: v8.VerifiedDealWeight,
 	}
-
 }
 
 func (s *state8) GetState() interface{} {

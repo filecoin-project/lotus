@@ -5,8 +5,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -15,8 +15,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-actors/v8/actors/builtin/market"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"

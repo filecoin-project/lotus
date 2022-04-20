@@ -10,10 +10,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
-	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
-
-	init8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/init"
-	adt8 "github.com/filecoin-project/specs-actors/v8/actors/util/adt"
+	builtin8 "github.com/filecoin-project/go-state-types/builtin"
+	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
+	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 )
 
 var _ State = (*state8)(nil)

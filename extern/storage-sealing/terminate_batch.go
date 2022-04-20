@@ -14,18 +14,18 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/dline"
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/node/config"
 )
 
 type TerminateBatcherApi interface {
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*SectorLocation, error)
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
-	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
+	StateMinerInfo(context.Context, address.Address, TipSetToken) (api.MinerInfo, error)
 	StateMinerProvingDeadline(context.Context, address.Address, TipSetToken) (*dline.Info, error)
 	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tok TipSetToken) ([]api.Partition, error)
 }
@@ -119,7 +119,7 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 
 	b.lk.Lock()
 	defer b.lk.Unlock()
-	params := miner2.TerminateSectorsParams{}
+	params := miner.TerminateSectorsParams{}
 
 	var total uint64
 	for loc, sectors := range b.todo {
@@ -178,7 +178,7 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 
 		total += n
 
-		params.Terminations = append(params.Terminations, miner2.TerminationDeclaration{
+		params.Terminations = append(params.Terminations, miner.TerminationDeclaration{
 			Deadline:  loc.Deadline,
 			Partition: loc.Partition,
 			Sectors:   toTerminate,
@@ -220,7 +220,7 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		return nil, xerrors.Errorf("no good address found: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.TerminateSectors, big.Zero(), big.Int(b.feeCfg.MaxTerminateGasFee), enc.Bytes())
+	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, builtin.MethodsMiner.TerminateSectors, big.Zero(), big.Int(b.feeCfg.MaxTerminateGasFee), enc.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("sending message failed: %w", err)
 	}

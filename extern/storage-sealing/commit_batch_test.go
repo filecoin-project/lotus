@@ -9,6 +9,10 @@ import (
 	"testing"
 	"time"
 
+	prooftypes "github.com/filecoin-project/go-state-types/proof"
+
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
@@ -16,9 +20,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
-	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -26,6 +27,7 @@ import (
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/mocks"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
+	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 )
 
 func TestCommitBatcher(t *testing.T) {
@@ -35,7 +37,7 @@ func TestCommitBatcher(t *testing.T) {
 
 	ctx := context.Background()
 
-	as := func(ctx context.Context, mi miner.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
+	as := func(ctx context.Context, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
 		return t0123, big.Zero(), nil
 	}
 
@@ -107,14 +109,14 @@ func TestCommitBatcher(t *testing.T) {
 
 			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
 			s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version13, nil)
-			s.EXPECT().StateSectorPreCommitInfo(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&miner.SectorPreCommitOnChainInfo{
+			s.EXPECT().StateSectorPreCommitInfo(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&minertypes.SectorPreCommitOnChainInfo{
 				PreCommitDeposit: big.Zero(),
 			}, nil)
 
 			go func() {
 				defer done.Unlock()
 				pcres, pcerr = pcb.AddCommit(ctx, si, sealing.AggregateInput{
-					Info: proof5.AggregateSealVerifyInfo{
+					Info: prooftypes.AggregateSealVerifyInfo{
 						Number: sn,
 					},
 				})
@@ -186,7 +188,7 @@ func TestCommitBatcher(t *testing.T) {
 					ti--
 				}
 			}
-			s.EXPECT().StateSectorPreCommitInfo(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&miner.SectorPreCommitOnChainInfo{
+			s.EXPECT().StateSectorPreCommitInfo(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&minertypes.SectorPreCommitOnChainInfo{
 				PreCommitDeposit: big.Zero(),
 			}, nil).Times(pciC)
 			s.EXPECT().StateMinerInitialPledgeCollateral(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(big.Zero(), nil).Times(pciC)
@@ -380,7 +382,7 @@ func TestCommitBatcher(t *testing.T) {
 
 type fakeProver struct{}
 
-func (f fakeProver) AggregateSealProofs(aggregateInfo proof5.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error) {
+func (f fakeProver) AggregateSealProofs(aggregateInfo prooftypes.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error) {
 	return []byte("Trust me, I'm a proof"), nil
 }
 

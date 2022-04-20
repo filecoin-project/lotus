@@ -6,47 +6,45 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/cbor"
-	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 {{range .versions}}
-	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+    {{if (le . 7)}}
+	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+	{{else}}
+        builtin{{.}} "github.com/filecoin-project/go-state-types/builtin"
+    {{end}}
 {{end}}
 )
 
-func init() {
-{{range .versions}}
-	builtin.RegisterActorState(builtin{{.}}.AccountActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load{{.}}(store, root)
-	})
-{{end}}}
-
-var Methods = builtin4.MethodsAccount
+var Methods = builtin{{.latestVersion}}.MethodsAccount
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != "account" {
+       if name != actors.AccountKey {
           return nil, xerrors.Errorf("actor code is not account: %s", name)
        }
 
        switch av {
             {{range .versions}}
-			case actors.Version{{.}}:
-                 return load{{.}}(store, act.Head)
+                {{if (ge . 8)}}
+                case actors.Version{{.}}:
+                     return load{{.}}(store, act.Head)
+                 {{end}}
             {{end}}
-            default:
-                return nil, xerrors.Errorf("unknown actor version: %d", av)
        }
 	}
 
 	switch act.Code {
 {{range .versions}}
-	case builtin{{.}}.AccountActorCodeID:
-		return load{{.}}(store, act.Head)
+    {{if (le . 7)}}
+        case builtin{{.}}.AccountActorCodeID:
+            return load{{.}}(store, act.Head)
+    {{end}}
 {{end}}
 	}
+
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
@@ -58,21 +56,6 @@ func MakeState(store adt.Store, av actors.Version, addr address.Address) (State,
 {{end}}
 }
 	return nil, xerrors.Errorf("unknown actor version %d", av)
-}
-
-func GetActorCodeID(av actors.Version) (cid.Cid, error) {
-    if c, ok := actors.GetActorCodeID(av, "account"); ok {
-       return c, nil
-    }
-
-	switch av {
-{{range .versions}}
-	case actors.Version{{.}}:
-		return builtin{{.}}.AccountActorCodeID, nil
-{{end}}
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
 
 type State interface {

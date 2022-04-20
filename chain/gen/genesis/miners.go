@@ -6,6 +6,11 @@ import (
 	"fmt"
 	"math/rand"
 
+	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
 	runtime7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
 
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
@@ -23,7 +28,6 @@ import (
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
@@ -32,9 +36,11 @@ import (
 	power4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/power"
 	reward4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/reward"
 
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
@@ -116,7 +122,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 		dealIDs []abi.DealID
 	}, len(miners))
 
-	maxPeriods := policy.GetMaxSectorExpirationExtension() / miner.WPoStProvingPeriod
+	maxPeriods := policy.GetMaxSectorExpirationExtension() / minertypes.WPoStProvingPeriod
 	for i, m := range miners {
 		// Create miner through power actor
 		i := i
@@ -188,7 +194,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 		// Publish preseal deals
 
 		{
-			publish := func(params *market.PublishStorageDealsParams) error {
+			publish := func(params *markettypes.PublishStorageDealsParams) error {
 				fmt.Printf("publishing %d storage deals on miner %s with worker %s\n", len(params.Deals), params.Deals[0].Proposal.Provider, m.Worker)
 
 				ret, err := doExecValue(ctx, vm, market.Address, m.Worker, big.Zero(), builtin0.MethodsMarket.PublishStorageDeals, mustEnc(params))
@@ -213,11 +219,11 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 				return nil
 			}
 
-			params := &market.PublishStorageDealsParams{}
+			params := &markettypes.PublishStorageDealsParams{}
 			for _, preseal := range m.Sectors {
 				preseal.Deal.VerifiedDeal = true
 				preseal.Deal.EndEpoch = minerInfos[i].presealExp
-				params.Deals = append(params.Deals, market.ClientDealProposal{
+				params.Deals = append(params.Deals, markettypes.ClientDealProposal{
 					Proposal:        preseal.Deal,
 					ClientSignature: crypto.Signature{Type: crypto.SigTypeBLS}, // TODO: do we want to sign these? Or do we want to fake signatures for genesis setup?
 				})
@@ -227,7 +233,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 						return cid.Undef, err
 					}
 
-					params = &market.PublishStorageDealsParams{}
+					params = &markettypes.PublishStorageDealsParams{}
 				}
 			}
 
@@ -313,7 +319,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 		// Commit sectors
 		{
 			for pi, preseal := range m.Sectors {
-				params := &miner.SectorPreCommitInfo{
+				params := &minertypes.SectorPreCommitInfo{
 					SealProof:     preseal.ProofType,
 					SectorNumber:  preseal.SectorID,
 					SealedCID:     preseal.CommR,
@@ -380,13 +386,13 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 					return cid.Undef, xerrors.Errorf("getting current total power: %w", err)
 				}
 
-				pcd := miner0.PreCommitDepositForPower(&rewardSmoothed, tpow.QualityAdjPowerSmoothed, sectorWeight)
+				pcd := miner0.PreCommitDepositForPower((*smoothing0.FilterEstimate)(&rewardSmoothed), tpow.QualityAdjPowerSmoothed, sectorWeight)
 
 				pledge := miner0.InitialPledgeForPower(
 					sectorWeight,
 					baselinePower,
 					tpow.PledgeCollateral,
-					&rewardSmoothed,
+					(*smoothing0.FilterEstimate)(&rewardSmoothed),
 					tpow.QualityAdjPowerSmoothed,
 					circSupply(ctx, vm, minerInfos[i].maddr),
 				)
@@ -394,7 +400,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 				pledge = big.Add(pcd, pledge)
 
 				fmt.Println(types.FIL(pledge))
-				_, err = doExecValue(ctx, vm, minerInfos[i].maddr, m.Worker, pledge, miner.Methods.PreCommitSector, mustEnc(params))
+				_, err = doExecValue(ctx, vm, minerInfos[i].maddr, m.Worker, pledge, builtintypes.MethodsMiner.PreCommitSector, mustEnc(params))
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
 				}
@@ -417,7 +423,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 					paramBytes = mustEnc(confirmParams)
 				}
 
-				_, err = doExecValue(ctx, vm, minerInfos[i].maddr, power.Address, big.Zero(), miner.Methods.ConfirmSectorProofsValid, paramBytes)
+				_, err = doExecValue(ctx, vm, minerInfos[i].maddr, power.Address, big.Zero(), builtintypes.MethodsMiner.ConfirmSectorProofsValid, paramBytes)
 				if err != nil {
 					return cid.Undef, xerrors.Errorf("failed to confirm presealed sectors: %w", err)
 				}
@@ -609,7 +615,7 @@ func currentEpochBlockReward(ctx context.Context, vm *vm.LegacyVM, maddr address
 			return big.Zero(), builtin.FilterEstimate{}, err
 		}
 
-		return epochReward.ThisEpochBaselinePower, *epochReward.ThisEpochRewardSmoothed, nil
+		return epochReward.ThisEpochBaselinePower, builtin.FilterEstimate(*epochReward.ThisEpochRewardSmoothed), nil
 	case actors.Version2:
 		var epochReward reward2.ThisEpochRewardReturn
 

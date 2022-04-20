@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"context"
 
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	market8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/market"
 
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -130,7 +130,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 	// index of the target deal proposal
 	dealIdx := -1
 	for i, paramDeal := range pubDealsParams.Deals {
-		eq, err := mgr.CheckDealEquality(ctx, tok, *proposal, market.DealProposal(paramDeal.Proposal))
+		eq, err := mgr.CheckDealEquality(ctx, tok, *proposal, paramDeal.Proposal)
 		if err != nil {
 			return dealID, nil, xerrors.Errorf("comparing publish deal message %s proposal to deal proposal: %w", publishCid, err)
 		}

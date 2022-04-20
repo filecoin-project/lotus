@@ -10,49 +10,46 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
-	"github.com/ipfs/go-cid"
 
-	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	msig{{.latestVersion}} "github.com/filecoin-project/specs-actors{{import .latestVersion}}actors/builtin/multisig"
+	msig{{.latestVersion}} "github.com/filecoin-project/go-state-types/builtin{{import .latestVersion}}multisig"
 {{range .versions}}
-	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+    {{if (le . 7)}}
+	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+	{{else}}
+        builtin{{.}} "github.com/filecoin-project/go-state-types/builtin"
+    {{end}}
 {{end}}
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func init() {
-{{range .versions}}
-	builtin.RegisterActorState(builtin{{.}}.MultisigActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load{{.}}(store, root)
-	})
-{{end}}}
-
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != "multisig" {
+       if name != actors.MultisigKey {
           return nil, xerrors.Errorf("actor code is not multisig: %s", name)
        }
 
        switch av {
             {{range .versions}}
-			case actors.Version{{.}}:
-                 return load{{.}}(store, act.Head)
+                {{if (ge . 8)}}
+                case actors.Version{{.}}:
+                     return load{{.}}(store, act.Head)
+                 {{end}}
             {{end}}
-            default:
-                return nil, xerrors.Errorf("unknown actor version: %d", av)
        }
 	}
 
 	switch act.Code {
 {{range .versions}}
-	case builtin{{.}}.MultisigActorCodeID:
-		return load{{.}}(store, act.Head)
+    {{if (le . 7)}}
+        case builtin{{.}}.MultisigActorCodeID:
+            return load{{.}}(store, act.Head)
+    {{end}}
 {{end}}
 	}
+
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
@@ -64,21 +61,6 @@ func MakeState(store adt.Store, av actors.Version, signers []address.Address, th
 {{end}}
 }
 	return nil, xerrors.Errorf("unknown actor version %d", av)
-}
-
-func GetActorCodeID(av actors.Version) (cid.Cid, error) {
-    if c, ok := actors.GetActorCodeID(av, "multisig"); ok {
-       return c, nil
-    }
-
-	switch av {
-{{range .versions}}
-	case actors.Version{{.}}:
-		return builtin{{.}}.MultisigActorCodeID, nil
-{{end}}
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
 
 type State interface {
@@ -99,7 +81,7 @@ type State interface {
 	GetState() interface{}
 }
 
-type Transaction = msig0.Transaction
+type Transaction = msig{{.latestVersion}}.Transaction
 
 var Methods = builtin{{.latestVersion}}.MethodsMultisig
 

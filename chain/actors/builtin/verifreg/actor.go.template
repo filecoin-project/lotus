@@ -1,7 +1,6 @@
 package verifreg
 
 import (
-	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -9,23 +8,17 @@ import (
 
 	"github.com/filecoin-project/go-state-types/cbor"
 {{range .versions}}
-	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+    {{if (le . 7)}}
+	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+	{{else}}
+        builtin{{.}} "github.com/filecoin-project/go-state-types/builtin"
+    {{end}}
 {{end}}
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
-	verifreg{{.latestVersion}} "github.com/filecoin-project/specs-actors/v7/actors/builtin/verifreg"
 )
-
-func init() {
-{{range .versions}}
-	builtin.RegisterActorState(builtin{{.}}.VerifiedRegistryActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load{{.}}(store, root)
-	})
-{{end}}
-}
 
 var (
 	Address = builtin{{.latestVersion}}.VerifiedRegistryActorAddr
@@ -34,26 +27,29 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != "verifiedregistry" {
-          return nil, xerrors.Errorf("actor code is not verifiedregistry: %s", name)
+       if name != actors.VerifregKey {
+          return nil, xerrors.Errorf("actor code is not verifreg: %s", name)
        }
 
        switch av {
             {{range .versions}}
-			case actors.Version{{.}}:
-                 return load{{.}}(store, act.Head)
+                {{if (ge . 8)}}
+                case actors.Version{{.}}:
+                     return load{{.}}(store, act.Head)
+                 {{end}}
             {{end}}
-            default:
-                return nil, xerrors.Errorf("unknown actor version: %d", av)
        }
 	}
 
 	switch act.Code {
 {{range .versions}}
-	case builtin{{.}}.VerifiedRegistryActorCodeID:
-		return load{{.}}(store, act.Head)
+    {{if (le . 7)}}
+        case builtin{{.}}.VerifiedRegistryActorCodeID:
+            return load{{.}}(store, act.Head)
+    {{end}}
 {{end}}
 	}
+
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
@@ -66,27 +62,6 @@ func MakeState(store adt.Store, av actors.Version, rootKeyAddress address.Addres
 }
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
-
-func GetActorCodeID(av actors.Version) (cid.Cid, error) {
-    if c, ok := actors.GetActorCodeID(av, "verifiedregistry"); ok {
-       return c, nil
-    }
-
-	switch av {
-{{range .versions}}
-	case actors.Version{{.}}:
-		return builtin{{.}}.VerifiedRegistryActorCodeID, nil
-{{end}}
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
-}
-
-type RemoveDataCapProposal = verifreg{{.latestVersion}}.RemoveDataCapProposal
-type RemoveDataCapRequest = verifreg{{.latestVersion}}.RemoveDataCapRequest
-type RemoveDataCapParams = verifreg{{.latestVersion}}.RemoveDataCapParams
-type RmDcProposalID = verifreg{{.latestVersion}}.RmDcProposalID
-const SignatureDomainSeparation_RemoveDataCap = verifreg{{.latestVersion}}.SignatureDomainSeparation_RemoveDataCap
 
 type State interface {
 	cbor.Marshaler

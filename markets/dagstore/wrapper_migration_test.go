@@ -6,6 +6,8 @@ import (
 	"io"
 	"testing"
 
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
+
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 
 	"github.com/stretchr/testify/require"
@@ -20,8 +22,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	"github.com/filecoin-project/lotus/node/config"
-
-	"github.com/filecoin-project/specs-actors/v8/actors/builtin/market"
 )
 
 func TestShardRegistration(t *testing.T) {
@@ -63,8 +63,8 @@ func TestShardRegistration(t *testing.T) {
 		//stm: @MARKET_DAGSTORE_MIGRATE_DEALS_001
 		State:        storagemarket.StorageDealSealing,
 		SectorNumber: unsealedSector1,
-		ClientDealProposal: market.ClientDealProposal{
-			Proposal: market.DealProposal{
+		ClientDealProposal: markettypes.ClientDealProposal{
+			Proposal: markettypes.DealProposal{
 				PieceCID: pieceCidUnsealed,
 			},
 		},
@@ -72,8 +72,8 @@ func TestShardRegistration(t *testing.T) {
 		// Should be registered with lazy registration (because sector is sealed)
 		State:        storagemarket.StorageDealSealing,
 		SectorNumber: sealedSector,
-		ClientDealProposal: market.ClientDealProposal{
-			Proposal: market.DealProposal{
+		ClientDealProposal: markettypes.ClientDealProposal{
+			Proposal: markettypes.DealProposal{
 				PieceCID: pieceCidSealed,
 			},
 		},
@@ -82,8 +82,8 @@ func TestShardRegistration(t *testing.T) {
 		//stm: @MARKET_DAGSTORE_MIGRATE_DEALS_003
 		State:        storagemarket.StorageDealError,
 		SectorNumber: unsealedSector2,
-		ClientDealProposal: market.ClientDealProposal{
-			Proposal: market.DealProposal{
+		ClientDealProposal: markettypes.ClientDealProposal{
+			Proposal: markettypes.DealProposal{
 				PieceCID: pieceCidUnsealed2,
 			},
 		},
@@ -91,8 +91,8 @@ func TestShardRegistration(t *testing.T) {
 		// Should be ignored because deal is not yet sealing
 		State:        storagemarket.StorageDealFundsReserved,
 		SectorNumber: unsealedSector3,
-		ClientDealProposal: market.ClientDealProposal{
-			Proposal: market.DealProposal{
+		ClientDealProposal: markettypes.ClientDealProposal{
+			Proposal: markettypes.DealProposal{
 				PieceCID: pieceCidUnsealed3,
 			},
 		},

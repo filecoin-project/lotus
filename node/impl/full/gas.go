@@ -6,8 +6,9 @@ import (
 	"math/rand"
 	"sort"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
+	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
+
+	"github.com/filecoin-project/go-state-types/builtin"
 	lru "github.com/hashicorp/golang-lru"
 
 	"go.uber.org/fx"
@@ -312,7 +313,7 @@ func gasEstimateGasLimit(
 				return
 			}
 
-			if builtin.IsStorageMinerActor(act.Code) {
+			if lbuiltin.IsStorageMinerActor(act.Code) {
 				switch msgIn.Method {
 				case 5:
 					transitionalMulti = 3.954
@@ -344,7 +345,7 @@ func gasEstimateGasLimit(
 	st, err := smgr.ParentState(ts)
 	if err == nil {
 		act, err := st.GetActor(msg.To)
-		if err == nil && builtin.IsPaymentChannelActor(act.Code) && msgIn.Method == paych.Methods.Collect {
+		if err == nil && lbuiltin.IsPaymentChannelActor(act.Code) && msgIn.Method == builtin.MethodsPaych.Collect {
 			// add the refunded gas for DestroyActor back into the gas used
 			ret += 76e3
 		}

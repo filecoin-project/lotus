@@ -9,8 +9,8 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
-	paych8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/paych"
-	adt8 "github.com/filecoin-project/specs-actors/v8/actors/util/adt"
+	paych8 "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 )
 
 var _ State = (*state8)(nil)
@@ -111,20 +111,4 @@ func (ls *laneState8) Redeemed() (big.Int, error) {
 
 func (ls *laneState8) Nonce() (uint64, error) {
 	return ls.LaneState.Nonce, nil
-}
-
-func toV8SignedVoucher(sv SignedVoucher) paych8.SignedVoucher {
-	return paych8.SignedVoucher{
-		ChannelAddr:     sv.ChannelAddr,
-		TimeLockMin:     sv.TimeLockMin,
-		TimeLockMax:     sv.TimeLockMax,
-		SecretHash:      sv.SecretPreimage,
-		Extra:           sv.Extra,
-		Lane:            sv.Lane,
-		Nonce:           sv.Nonce,
-		Amount:          sv.Amount,
-		MinSettleHeight: sv.MinSettleHeight,
-		Merges:          sv.Merges,
-		Signature:       sv.Signature,
-	}
 }

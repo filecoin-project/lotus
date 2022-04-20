@@ -12,6 +12,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/builtin"
+
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -444,7 +446,7 @@ func (n *Ensemble) Start() *Ensemble {
 				msg := &types.Message{
 					To:     m.options.mainMiner.ActorAddr,
 					From:   m.options.mainMiner.OwnerKey.Address,
-					Method: miner.Methods.ChangePeerID,
+					Method: builtin.MethodsMiner.ChangePeerID,
 					Params: params,
 					Value:  types.NewInt(0),
 				}
@@ -555,7 +557,7 @@ func (n *Ensemble) Start() *Ensemble {
 			msg := &types.Message{
 				From:   m.OwnerKey.Address,
 				To:     m.ActorAddr,
-				Method: miner.Methods.ChangePeerID,
+				Method: builtin.MethodsMiner.ChangePeerID,
 				Params: enc,
 				Value:  types.NewInt(0),
 			}

@@ -17,12 +17,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	/* inline-gen template
-	   {{range .actorVersions}}
-	   	exported{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin/exported"{{end}}
-
-	/* inline-gen start */
-
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
 	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
 	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
@@ -30,9 +24,6 @@ import (
 	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
 	exported6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/exported"
 	exported7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/exported"
-	exported8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/exported"
-
-	/* inline-gen end */
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
@@ -50,13 +41,6 @@ import (
 func NewActorRegistry() *vm.ActorRegistry {
 	inv := vm.NewActorRegistry()
 
-	// TODO: define all these properties on the actors themselves, in specs-actors.
-	/* inline-gen template
-	{{range .actorVersions}}
-	inv.Register(actors.Version{{.}}, vm.ActorsVersionPredicate(actors.Version{{.}}), exported{{.}}.BuiltinActors()...){{end}}
-
-	/* inline-gen start */
-
 	inv.Register(actors.Version0, vm.ActorsVersionPredicate(actors.Version0), exported0.BuiltinActors()...)
 	inv.Register(actors.Version2, vm.ActorsVersionPredicate(actors.Version2), exported2.BuiltinActors()...)
 	inv.Register(actors.Version3, vm.ActorsVersionPredicate(actors.Version3), exported3.BuiltinActors()...)
@@ -64,9 +48,6 @@ func NewActorRegistry() *vm.ActorRegistry {
 	inv.Register(actors.Version5, vm.ActorsVersionPredicate(actors.Version5), exported5.BuiltinActors()...)
 	inv.Register(actors.Version6, vm.ActorsVersionPredicate(actors.Version6), exported6.BuiltinActors()...)
 	inv.Register(actors.Version7, vm.ActorsVersionPredicate(actors.Version7), exported7.BuiltinActors()...)
-	inv.Register(actors.Version8, vm.ActorsVersionPredicate(actors.Version8), exported8.BuiltinActors()...)
-
-	/* inline-gen end */
 
 	return inv
 }

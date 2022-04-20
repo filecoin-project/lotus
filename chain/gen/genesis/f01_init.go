@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -176,7 +178,7 @@ func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, i
 		return 0, nil, nil, err
 	}
 
-	actcid, err := init_.GetActorCodeID(av)
+	actcid, err := builtin.GetInitActorCodeID(av)
 	if err != nil {
 		return 0, nil, nil, err
 	}

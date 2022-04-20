@@ -7,7 +7,8 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/go-state-types/builtin"
+	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -111,7 +112,7 @@ var terminationsCmd = &cli.Command{
 
 			for _, v := range msgs {
 				msg := v.VMMessage()
-				if msg.Method != miner.Methods.TerminateSectors {
+				if msg.Method != builtin.MethodsMiner.TerminateSectors {
 					continue
 				}
 
@@ -125,7 +126,7 @@ var terminationsCmd = &cli.Command{
 					return err
 				}
 
-				if !builtin.IsStorageMinerActor(minerAct.Code) {
+				if !lbuiltin.IsStorageMinerActor(minerAct.Code) {
 					continue
 				}
 
