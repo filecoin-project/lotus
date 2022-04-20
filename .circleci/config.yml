@@ -1,12 +1,11 @@
 version: 2.1
 orbs:
-  go: gotest/tools@0.0.13
   aws-cli: circleci/aws-cli@1.3.2
 
 executors:
   golang:
     docker:
-      - image: circleci/golang:1.16.4
+      - image: cimg/go:1.17.9
     resource_class: 2xlarge
   ubuntu:
     docker:
@@ -25,8 +24,9 @@ executors:
 commands:
   install-deps:
     steps:
-      - go/install-ssh
-      - go/install: {package: git}
+      - run: |
+          sudo apt update
+          sudo apt install python-is-python3
   prepare:
     parameters:
       linux:
@@ -67,14 +67,14 @@ commands:
       - run: |
           apt update
           apt install -y wget
-          wget https://github.com/ipfs/go-ipfs/releases/download/v0.4.22/go-ipfs_v0.4.22_linux-amd64.tar.gz
-          wget https://github.com/ipfs/go-ipfs/releases/download/v0.4.22/go-ipfs_v0.4.22_linux-amd64.tar.gz.sha512
-          if [ "$(sha512sum go-ipfs_v0.4.22_linux-amd64.tar.gz)" != "$(cat go-ipfs_v0.4.22_linux-amd64.tar.gz.sha512)" ]
+          wget https://github.com/ipfs/go-ipfs/releases/download/v0.12.2/go-ipfs_v0.12.2_linux-amd64.tar.gz
+          wget https://github.com/ipfs/go-ipfs/releases/download/v0.12.2/go-ipfs_v0.12.2_linux-amd64.tar.gz.sha512
+          if [ "$(sha512sum go-ipfs_v0.12.2_linux-amd64.tar.gz)" != "$(cat go-ipfs_v0.12.2_linux-amd64.tar.gz.sha512)" ]
           then
             echo "ipfs failed checksum check"
             exit 1
           fi
-          tar -xf go-ipfs_v0.4.22_linux-amd64.tar.gz
+          tar -xf go-ipfs_v0.12.2_linux-amd64.tar.gz
           mv go-ipfs/ipfs /usr/local/bin/ipfs
           chmod +x /usr/local/bin/ipfs
   git_fetch_all_tags:
@@ -110,8 +110,12 @@ jobs:
     steps:
       - install-deps
       - prepare
-      - go/mod-tidy-check
-
+      - run: go mod tidy -v
+      - run:
+          name: Check git diff
+          command: |
+            git --no-pager diff go.mod go.sum
+            git --no-pager diff --quiet go.mod go.sum
   build-all:
     executor: golang
     steps:
@@ -188,9 +192,6 @@ jobs:
           command: make deps lotus
           no_output_timeout: 30m
       - download-params
-      - go/install-gotestsum:
-          gobin: $HOME/.local/bin
-          version: 0.5.2
       - run:
           name: go test
           environment:
@@ -215,8 +216,6 @@ jobs:
       - when:
           condition: << parameters.codecov-upload >>
           steps:
-            - go/install: {package: bash}
-            - go/install: {package: curl}
             - run:
                 shell: /bin/bash -eo pipefail
                 command: |
@@ -255,9 +254,6 @@ jobs:
                   cd extern/test-vectors
                   git fetch
                   git checkout origin/<< parameters.vectors-branch >>
-      - go/install-gotestsum:
-          gobin: $HOME/.local/bin
-          version: 0.5.2
       - run:
           name: install statediff globally
           command: |
@@ -370,8 +366,8 @@ jobs:
       - run:
           name: Install go
           command: |
-            curl -O https://dl.google.com/go/go1.16.4.darwin-amd64.pkg && \
-            sudo installer -pkg go1.16.4.darwin-amd64.pkg -target /
+            curl -O https://dl.google.com/go/go1.17.9.darwin-amd64.pkg && \
+            sudo installer -pkg go1.17.9.darwin-amd64.pkg -target /
       - run:
           name: Install pkg-config
           command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
@@ -512,9 +508,6 @@ jobs:
       executor:
         type: executor
         default: golang
-      golangci-lint-version:
-        type: string
-        default: 1.27.0
       concurrency:
         type: string
         default: '2'
@@ -533,13 +526,10 @@ jobs:
       - run:
           command: make deps
           no_output_timeout: 30m
-      - go/install-golangci-lint:
-          gobin: $HOME/.local/bin
-          version: << parameters.golangci-lint-version >>
       - run:
           name: Lint
           command: |
-            $HOME/.local/bin/golangci-lint run -v --timeout 2m \
+            golangci-lint run -v --timeout 2m \
               --concurrency << parameters.concurrency >> << parameters.args >>
   lint-all:
     <<: *lint
