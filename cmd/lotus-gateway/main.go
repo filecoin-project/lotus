@@ -133,6 +133,16 @@ var runCmd = &cli.Command{
 			Usage: "maximum number of blocks to search back through for message inclusion",
 			Value: int64(gateway.DefaultStateWaitLookbackLimit),
 		},
+		&cli.Int64Flag{
+			Name:  "rate-limit",
+			Usage: "rate-limit API calls. Use 0 to disable",
+			Value: 0,
+		},
+		&cli.DurationFlag{
+			Name:  "rate-limit-timeout",
+			Usage: "the maximum time to wait for the rate limter before returning an error to clients",
+			Value: gateway.DefaultRateLimitTimeout,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Starting lotus gateway")
@@ -151,9 +161,11 @@ var runCmd = &cli.Command{
 		defer closer()
 
 		var (
-			lookbackCap  = cctx.Duration("api-max-lookback")
-			address      = cctx.String("listen")
-			waitLookback = abi.ChainEpoch(cctx.Int64("api-wait-lookback-limit"))
+			lookbackCap      = cctx.Duration("api-max-lookback")
+			address          = cctx.String("listen")
+			waitLookback     = abi.ChainEpoch(cctx.Int64("api-wait-lookback-limit"))
+			rateLimit        = cctx.Int64("rate-limit")
+			rateLimitTimeout = cctx.Duration("rate-limit-timeout")
 		)
 
 		serverOptions := make([]jsonrpc.ServerOption, 0)
@@ -173,7 +185,7 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("failed to convert endpoint address to multiaddr: %w", err)
 		}
 
-		gwapi := gateway.NewNode(api, lookbackCap, waitLookback)
+		gwapi := gateway.NewNode(api, lookbackCap, waitLookback, rateLimit, rateLimitTimeout)
 		h, err := gateway.Handler(gwapi, serverOptions...)
 		if err != nil {
 			return xerrors.Errorf("failed to set up gateway HTTP handler")
