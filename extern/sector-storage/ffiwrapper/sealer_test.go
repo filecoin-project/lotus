@@ -71,18 +71,21 @@ func (s *seal) precommit(t *testing.T, sb *Sealer, id storage.SectorRef, done fu
 	r := data(id.ID.Number, dlen)
 	s.pi, err = sb.AddPiece(context.TODO(), id, []abi.UnpaddedPieceSize{}, dlen, r)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Errorf("%+v", err)
+		return
 	}
 
 	s.ticket = sealRand
 
 	p1, err := sb.SealPreCommit1(context.TODO(), id, s.ticket, []abi.PieceInfo{s.pi})
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Errorf("%+v", err)
+		return
 	}
 	cids, err := sb.SealPreCommit2(context.TODO(), id, p1)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Errorf("%+v", err)
+		return
 	}
 	s.cids = cids
 }
@@ -94,11 +97,13 @@ func (s *seal) commit(t *testing.T, sb *Sealer, done func()) storage.Proof {
 
 	pc1, err := sb.SealCommit1(context.TODO(), s.ref, s.ticket, seed, []abi.PieceInfo{s.pi}, s.cids)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Errorf("%+v", err)
+		return nil
 	}
 	proof, err := sb.SealCommit2(context.TODO(), s.ref, pc1)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Errorf("%+v", err)
+		return nil
 	}
 
 	ok, err := ProofVerifier.VerifySeal(proof2.SealVerifyInfo{
@@ -111,11 +116,13 @@ func (s *seal) commit(t *testing.T, sb *Sealer, done func()) storage.Proof {
 		UnsealedCID:           s.cids.Unsealed,
 	})
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Errorf("%+v", err)
+		return nil
 	}
 
 	if !ok {
-		t.Fatal("proof failed to validate")
+		t.Errorf("proof failed to validate")
+		return nil
 	}
 
 	return proof
@@ -458,17 +465,17 @@ func TestSealAndVerify3(t *testing.T) {
 	s3 := seal{ref: si3}
 
 	wg.Add(3)
-	go s1.precommit(t, sb, si1, wg.Done) //nolint: staticcheck
+	go s1.precommit(t, sb, si1, wg.Done)
 	time.Sleep(100 * time.Millisecond)
-	go s2.precommit(t, sb, si2, wg.Done) //nolint: staticcheck
+	go s2.precommit(t, sb, si2, wg.Done)
 	time.Sleep(100 * time.Millisecond)
-	go s3.precommit(t, sb, si3, wg.Done) //nolint: staticcheck
+	go s3.precommit(t, sb, si3, wg.Done)
 	wg.Wait()
 
 	wg.Add(3)
-	go s1.commit(t, sb, wg.Done) //nolint: staticcheck
-	go s2.commit(t, sb, wg.Done) //nolint: staticcheck
-	go s3.commit(t, sb, wg.Done) //nolint: staticcheck
+	go s1.commit(t, sb, wg.Done)
+	go s2.commit(t, sb, wg.Done)
+	go s3.commit(t, sb, wg.Done)
 	wg.Wait()
 
 	post(t, sb, nil, s1, s2, s3)
