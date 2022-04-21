@@ -16,12 +16,15 @@ import (
 type message7 struct{ from address.Address }
 
 func (m message7) Create(to address.Address, initialAmount abi.TokenAmount) (*types.Message, error) {
+
+	actorCodeID := builtin7.PaymentChannelActorCodeID
+
 	params, aerr := actors.SerializeParams(&paych7.ConstructorParams{From: m.from, To: to})
 	if aerr != nil {
 		return nil, aerr
 	}
 	enc, aerr := actors.SerializeParams(&init7.ExecParams{
-		CodeCID:           builtin7.PaymentChannelActorCodeID,
+		CodeCID:           actorCodeID,
 		ConstructorParams: params,
 	})
 	if aerr != nil {
