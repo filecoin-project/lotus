@@ -39,6 +39,7 @@ issues:
     - "package comment should be of the form"
     - "Potential hardcoded credentials"
     - "Use of weak random number generator"
+    - "xerrors.* is deprecated"
 
   exclude-use-default: false
   exclude-rules:
@@ -53,7 +54,7 @@ issues:
     - path: build/params_.*\.go
       linters:
         - golint
-          
+
     - path: api/apistruct/struct.go
       linters:
         - golint
