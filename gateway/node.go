@@ -95,7 +95,6 @@ type Node struct {
 	rateLimiter            *rate.Limiter
 	rateLimitTimeout       time.Duration
 	errLookback            error
-	errRateLimit           error
 }
 
 var (
@@ -121,7 +120,6 @@ func NewNode(api TargetAPI, lookbackCap time.Duration, stateWaitLookbackLimit ab
 		rateLimiter:            rate.NewLimiter(limit, stateRateLimitTokens),
 		rateLimitTimeout:       rateLimitTimeout,
 		errLookback:            fmt.Errorf("lookbacks of more than %s are disallowed", lookbackCap),
-		errRateLimit:           fmt.Errorf("this respones has been rate limited"),
 	}
 }
 
