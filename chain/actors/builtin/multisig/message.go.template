@@ -54,9 +54,17 @@ func (m message{{.v}}) Create(
 		return nil, actErr
 	}
 
+    {{if (le .v 7)}}
+    actorCodeID := builtin{{.v}}.MultisigActorCodeID
+    {{else}}
+    actorCodeID, ok := actors.GetActorCodeID(actors.Version{{.v}}, "multisig")
+    if !ok {
+      return nil, xerrors.Errorf("error getting actor multisig code id for actor version %d", {{.v}})
+    }
+    {{end}}
 	// new actors are created by invoking 'exec' on the init actor with the constructor params
 	execParams := &init{{.v}}.ExecParams{
-		CodeCID:           builtin{{.v}}.MultisigActorCodeID,
+		CodeCID:           actorCodeID,
 		ConstructorParams: enc,
 	}
 
