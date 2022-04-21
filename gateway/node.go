@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"go.opencensus.io/stats"
 	"golang.org/x/time/rate"
 	"golang.org/x/xerrors"
 
@@ -22,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/sigs"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
+	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/impl/full"
 )
 
@@ -165,12 +167,10 @@ func (gw *Node) checkTimestamp(at time.Time) error {
 func (gw *Node) limit(ctx context.Context, tokens int) error {
 	ctx2, cancel := context.WithTimeout(ctx, gw.rateLimitTimeout)
 	defer cancel()
-	if !gw.rateLimiter.AllowN(time.Now(), tokens) {
-		return fmt.Errorf("server busy")
-	}
 	err := gw.rateLimiter.WaitN(ctx2, tokens)
 	if err != nil {
-		return fmt.Errorf("server busy, cannot complete before timeout %w", err)
+		stats.Record(ctx, metrics.RateLimitCount.M(1))
+		return fmt.Errorf("server busy. %w", err)
 	}
 	return nil
 }
