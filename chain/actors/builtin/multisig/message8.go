@@ -50,9 +50,14 @@ func (m message8) Create(
 		return nil, actErr
 	}
 
+	actorCodeID, ok := actors.GetActorCodeID(actors.Version8, "multisig")
+	if !ok {
+		return nil, xerrors.Errorf("error getting actor multisig code id for actor version %d", 8)
+	}
+
 	// new actors are created by invoking 'exec' on the init actor with the constructor params
 	execParams := &init8.ExecParams{
-		CodeCID:           builtin8.MultisigActorCodeID,
+		CodeCID:           actorCodeID,
 		ConstructorParams: enc,
 	}
 
