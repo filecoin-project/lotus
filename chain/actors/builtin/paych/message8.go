@@ -1,6 +1,8 @@
 package paych
 
 import (
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
@@ -16,12 +18,18 @@ import (
 type message8 struct{ from address.Address }
 
 func (m message8) Create(to address.Address, initialAmount abi.TokenAmount) (*types.Message, error) {
+
+	actorCodeID, ok := actors.GetActorCodeID(actors.Version8, "paymentchannel")
+	if !ok {
+		return nil, xerrors.Errorf("error getting actor paymentchannel code id for actor version %d", 8)
+	}
+
 	params, aerr := actors.SerializeParams(&paych8.ConstructorParams{From: m.from, To: to})
 	if aerr != nil {
 		return nil, aerr
 	}
 	enc, aerr := actors.SerializeParams(&init8.ExecParams{
-		CodeCID:           builtin8.PaymentChannelActorCodeID,
+		CodeCID:           actorCodeID,
 		ConstructorParams: params,
 	})
 	if aerr != nil {
