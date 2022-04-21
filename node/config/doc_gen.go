@@ -404,7 +404,9 @@ advertisements that include more multihashes than the configured EntriesChunkSiz
 			Type: "string",
 
 			Comment: `TopicName sets the topic name on which the changes to the advertised content are announced.
-Defaults to '/indexer/ingest/mainnet' if not specified.`,
+If not explicitly specified, the topic name is automatically inferred from the network name
+in following format: '/indexer/ingest/<network-name>'
+Defaults to empty, which implies the topic name is inferred from network name.`,
 		},
 		{
 			Name: "PurgeCacheOnStart",
