@@ -290,7 +290,7 @@ func startNodes(
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	// Create a gateway server in front of the full node
-	gwapi := gateway.NewNode(full, lookbackCap, stateWaitLookbackLimit)
+	gwapi := gateway.NewNode(full, lookbackCap, stateWaitLookbackLimit, 0, time.Minute)
 	handler, err := gateway.Handler(gwapi)
 	require.NoError(t, err)
 
