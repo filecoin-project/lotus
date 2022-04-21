@@ -25,10 +25,7 @@ var manifests map[Version]*manifest.Manifest
 var actorMeta map[cid.Cid]actorEntry
 
 var (
-	loadOnce  sync.Once
-	loadError error
-
-	manifestMx sync.Mutex
+	manifestMx sync.RWMutex
 )
 
 type actorEntry struct {
@@ -44,17 +41,18 @@ func AddManifest(av Version, manifestCid cid.Cid) {
 }
 
 func GetManifest(av Version) (cid.Cid, bool) {
-	manifestMx.Lock()
-	defer manifestMx.Unlock()
+	manifestMx.RLock()
+	defer manifestMx.RUnlock()
 
 	c, ok := manifestCids[av]
 	return c, ok
 }
 
 func LoadManifests(ctx context.Context, store cbor.IpldStore) error {
-	// tests may invoke this concurrently, so we wrap it in a sync.Once
-	loadOnce.Do(func() { loadError = loadManifests(ctx, store) })
-	return loadError
+	manifestMx.Lock()
+	defer manifestMx.Unlock()
+
+	return loadManifests(ctx, store)
 }
 
 func loadManifests(ctx context.Context, store cbor.IpldStore) error {
@@ -87,6 +85,9 @@ func loadManifests(ctx context.Context, store cbor.IpldStore) error {
 }
 
 func GetActorCodeID(av Version, name string) (cid.Cid, bool) {
+	manifestMx.RLock()
+	defer manifestMx.RUnlock()
+
 	mf, ok := manifests[av]
 	if ok {
 		return mf.Get(name)
@@ -96,6 +97,9 @@ func GetActorCodeID(av Version, name string) (cid.Cid, bool) {
 }
 
 func GetActorMetaByCode(c cid.Cid) (string, Version, bool) {
+	manifestMx.RLock()
+	defer manifestMx.RUnlock()
+
 	entry, ok := actorMeta[c]
 	if !ok {
 		return "", -1, false

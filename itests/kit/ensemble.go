@@ -406,16 +406,8 @@ func (n *Ensemble) Start() *Ensemble {
 				// this is a miner created after genesis, so it won't have a preseal.
 				// we need to create it on chain.
 
-				// we get the proof type for the requested sector size, for
-				// the current network version.
-				// nv, err := m.FullNode.FullNode.StateNetworkVersion(ctx, types.EmptyTSK)
-				// require.NoError(n.t, err)
-
-				// TODO this doesn't currently work with the FVM -- we need to specify policy somehow
-				// proofType, err := miner.WindowPoStProofTypeFromSectorSize(m.options.sectorSize)
-				// require.NoError(n.t, err)
-				// so do this instead, which works:
-				proofType := abi.RegisteredPoStProof_StackedDrgWindow64GiBV1
+				proofType, err := miner.WindowPoStProofTypeFromSectorSize(m.options.sectorSize)
+				require.NoError(n.t, err)
 
 				params, aerr := actors.SerializeParams(&power3.CreateMinerParams{
 					Owner:               m.OwnerKey.Address,
