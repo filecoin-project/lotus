@@ -144,7 +144,7 @@ var runCmd = &cli.Command{
 			Hidden: true,
 		},
 	},
-	Description: "For setup instructions see 'lotus-wallet --help'",
+	Description: "Needs FULLNODE_API_INFO env-var to be set before running",
 	Action: func(cctx *cli.Context) error {
 		log.Info("Starting lotus wallet")
 
