@@ -353,6 +353,8 @@ type FullNode interface {
 	ClientRetrieve(ctx context.Context, params RetrievalOrder) (*RestrievalRes, error) //perm:admin
 	// ClientRetrieveWait waits for retrieval to be complete
 	ClientRetrieveWait(ctx context.Context, deal retrievalmarket.DealID) error //perm:admin
+	// ClientRemoveRetrieval removes retrieved data from the local retrieval store
+	ClientRemoveRetrieval(ctx context.Context, exportRef ExportRef) error
 	// ClientExport exports a file stored in the local filestore to a system file
 	ClientExport(ctx context.Context, exportRef ExportRef, fileRef FileRef) error //perm:admin
 	// ClientListRetrievals returns information about retrievals made by the local client

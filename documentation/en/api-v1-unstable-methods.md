@@ -57,6 +57,7 @@
   * [ClientMinerQueryOffer](#ClientMinerQueryOffer)
   * [ClientQueryAsk](#ClientQueryAsk)
   * [ClientRemoveImport](#ClientRemoveImport)
+  * [ClientRemoveRetrieval](#ClientRemoveRetrieval)
   * [ClientRestartDataTransfer](#ClientRestartDataTransfer)
   * [ClientRetrieve](#ClientRetrieve)
   * [ClientRetrieveTryRestartInsufficientFunds](#ClientRetrieveTryRestartInsufficientFunds)
@@ -1914,6 +1915,33 @@ Inputs:
 ```json
 [
   50
+]
+```
+
+Response: `{}`
+
+### ClientRemoveRetrieval
+ClientRemoveRetrieval removes retrieved data from the local retrieval store
+
+
+Perms: 
+
+Inputs:
+```json
+[
+  {
+    "Root": {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    "DAGs": [
+      {
+        "DataSelector": "Links/21/Hash/Links/42/Hash",
+        "ExportMerkleProof": true
+      }
+    ],
+    "FromLocalCAR": "string value",
+    "DealID": 5
+  }
 ]
 ```
 

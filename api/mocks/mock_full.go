@@ -773,6 +773,20 @@ func (mr *MockFullNodeMockRecorder) ClientRemoveImport(arg0, arg1 interface{}) *
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientRemoveImport", reflect.TypeOf((*MockFullNode)(nil).ClientRemoveImport), arg0, arg1)
 }
 
+// ClientRemoveRetrieval mocks base method.
+func (m *MockFullNode) ClientRemoveRetrieval(arg0 context.Context, arg1 api.ExportRef) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ClientRemoveRetrieval", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ClientRemoveRetrieval indicates an expected call of ClientRemoveRetrieval.
+func (mr *MockFullNodeMockRecorder) ClientRemoveRetrieval(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ClientRemoveRetrieval", reflect.TypeOf((*MockFullNode)(nil).ClientRemoveRetrieval), arg0, arg1)
+}
+
 // ClientRestartDataTransfer mocks base method.
 func (m *MockFullNode) ClientRestartDataTransfer(arg0 context.Context, arg1 datatransfer.TransferID, arg2 peer.ID, arg3 bool) error {
 	m.ctrl.T.Helper()

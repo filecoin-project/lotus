@@ -194,6 +194,8 @@ type FullNodeStruct struct {
 
 		ClientRemoveImport func(p0 context.Context, p1 imports.ID) error `perm:"admin"`
 
+		ClientRemoveRetrieval func(p0 context.Context, p1 ExportRef) error ``
+
 		ClientRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
 
 		ClientRetrieve func(p0 context.Context, p1 RetrievalOrder) (*RestrievalRes, error) `perm:"admin"`
@@ -1570,6 +1572,17 @@ func (s *FullNodeStruct) ClientRemoveImport(p0 context.Context, p1 imports.ID) e
 }
 
 func (s *FullNodeStub) ClientRemoveImport(p0 context.Context, p1 imports.ID) error {
+	return ErrNotSupported
+}
+
+func (s *FullNodeStruct) ClientRemoveRetrieval(p0 context.Context, p1 ExportRef) error {
+	if s.Internal.ClientRemoveRetrieval == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.ClientRemoveRetrieval(p0, p1)
+}
+
+func (s *FullNodeStub) ClientRemoveRetrieval(p0 context.Context, p1 ExportRef) error {
 	return ErrNotSupported
 }
 

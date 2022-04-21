@@ -934,18 +934,21 @@ func (ed *ExportDest) doWrite(cb func(io.Writer) error) error {
 	return f.Close()
 }
 
-func (a *API) ClientExport(ctx context.Context, exportRef api.ExportRef, ref api.FileRef) error {
-	return a.ClientExportInto(ctx, exportRef, ref.IsCAR, ExportDest{Path: ref.Path})
-}
+func (a *API) retrievalDagService(exportRef api.ExportRef) (
+	dserv format.DAGService,
+	retrieveIntoIPFS bool,
+	retrievalBs bstore.Blockstore,
+	carPath string,
+	err error) {
 
-func (a *API) ClientExportInto(ctx context.Context, exportRef api.ExportRef, car bool, dest ExportDest) error {
 	proxyBss, retrieveIntoIPFS := a.RtvlBlockstoreAccessor.(*retrievaladapter.ProxyBlockstoreAccessor)
 	carBss, retrieveIntoCAR := a.RtvlBlockstoreAccessor.(*retrievaladapter.CARBlockstoreAccessor)
-	carPath := exportRef.FromLocalCAR
+	carPath = exportRef.FromLocalCAR
 
 	if carPath == "" {
 		if !retrieveIntoIPFS && !retrieveIntoCAR {
-			return xerrors.Errorf("unsupported retrieval blockstore accessor")
+			err = xerrors.Errorf("unsupported retrieval blockstore accessor")
+			return
 		}
 
 		if retrieveIntoCAR {
@@ -953,20 +956,44 @@ func (a *API) ClientExportInto(ctx context.Context, exportRef api.ExportRef, car
 		}
 	}
 
-	var retrievalBs bstore.Blockstore
 	if retrieveIntoIPFS {
 		retrievalBs = proxyBss.Blockstore
 	} else {
-		cbs, err := stores.ReadOnlyFilestore(carPath)
+		var cbs stores.ClosableBlockstore
+		cbs, err = stores.ReadOnlyFilestore(carPath)
 		if err != nil {
-			return err
+			return
 		}
 		defer cbs.Close() //nolint:errcheck
 		retrievalBs = cbs
 	}
 
-	dserv := merkledag.NewDAGService(blockservice.New(retrievalBs, offline.Exchange(retrievalBs)))
+	dserv = merkledag.NewDAGService(blockservice.New(retrievalBs, offline.Exchange(retrievalBs)))
+	return
+}
 
+func (a *API) ClientRemoveRetrieval(ctx context.Context, exportRef api.ExportRef) error {
+	dserv, _, _, carPath, err := a.retrievalDagService(exportRef)
+	if err != nil {
+		return err
+	}
+	if carPath != "" {
+		os.Remove(carPath)
+	} else {
+		dserv.Remove(ctx, exportRef.Root)
+	}
+	return nil
+}
+
+func (a *API) ClientExport(ctx context.Context, exportRef api.ExportRef, ref api.FileRef) error {
+	return a.ClientExportInto(ctx, exportRef, ref.IsCAR, ExportDest{Path: ref.Path})
+}
+
+func (a *API) ClientExportInto(ctx context.Context, exportRef api.ExportRef, car bool, dest ExportDest) error {
+	dserv, retrieveIntoIPFS, retrievalBs, carPath, err := a.retrievalDagService(exportRef)
+	if err != nil {
+		return err
+	}
 	// Are we outputting a CAR?
 	if car {
 		// not IPFS and we do full selection - just extract the CARv1 from the CARv2 we stored the retrieval in
