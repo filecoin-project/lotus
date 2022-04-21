@@ -90,7 +90,7 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 		tt := tt
 		t.Run(tt.name, func(t *testing.T) {
 			mock := &mockGatewayDepsAPI{}
-			a := NewNode(mock, DefaultLookbackCap, DefaultStateWaitLookbackLimit)
+			a := NewNode(mock, DefaultLookbackCap, DefaultStateWaitLookbackLimit, 0, time.Minute)
 
 			// Create tipsets from genesis up to tskh and return the highest
 			ts := mock.createTipSets(tt.args.tskh, tt.args.genesisTS)
@@ -246,7 +246,7 @@ func TestGatewayVersion(t *testing.T) {
 	//stm: @GATEWAY_NODE_GET_VERSION_001
 	ctx := context.Background()
 	mock := &mockGatewayDepsAPI{}
-	a := NewNode(mock, DefaultLookbackCap, DefaultStateWaitLookbackLimit)
+	a := NewNode(mock, DefaultLookbackCap, DefaultStateWaitLookbackLimit, 0, time.Minute)
 
 	v, err := a.Version(ctx)
 	require.NoError(t, err)
