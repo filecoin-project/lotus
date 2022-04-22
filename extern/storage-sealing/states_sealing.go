@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"context"
 
-	"github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
-
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -23,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
 )
 
 var DealSectorPriority = 1024

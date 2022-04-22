@@ -5,8 +5,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
-
 	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-statemachine"
 	"github.com/ipfs/go-cid"
@@ -24,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 )
 
