@@ -32,7 +32,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
-	"github.com/filecoin-project/filecoin-ffi/generated"
+	"github.com/filecoin-project/filecoin-ffi/cgo"
 
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
@@ -883,13 +883,9 @@ func setupLogger(t *testing.T) *bytes.Buffer {
 		runtime.KeepAlive(w)
 	}()
 
-	resp := generated.FilInitLogFd(int32(w.Fd()))
-	resp.Deref()
-
-	defer generated.FilDestroyInitLogFdResponse(resp)
-
-	if resp.StatusCode != generated.FCPResponseStatusFCPNoError {
-		t.Fatal(generated.RawString(resp.ErrorMsg).Copy())
+	err := cgo.InitLogFd(int32(w.Fd()))
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	return &bb
