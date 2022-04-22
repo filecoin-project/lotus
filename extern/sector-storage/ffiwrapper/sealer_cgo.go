@@ -380,11 +380,11 @@ func (sb *Sealer) tryDecodeUpdatedReplica(ctx context.Context, sector storage.Se
 	}
 	defer done()
 
-	sealedPaths, releaseSectorKey, err := sb.AcquireSectorKeyOrRegenerate(ctx, sector, randomness)
+	sealedPaths, done2, err := sb.AcquireSectorKeyOrRegenerate(ctx, sector, randomness)
 	if err != nil {
 		return false, xerrors.Errorf("acquiring sealed sector: %w", err)
 	}
-	defer releaseSectorKey()
+	defer done2()
 
 	// Sector data stored in replica update
 	updateProof, err := sector.ProofType.RegisteredUpdateProof()

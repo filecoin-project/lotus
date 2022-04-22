@@ -282,11 +282,15 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storage.SectorR
 	sealFetch := func(ctx context.Context, worker Worker) error {
 		log.Debugf("copy sealed/cache sector data for sector %d", sector.ID)
 		_, err := m.waitSimpleCall(ctx)(worker.Fetch(ctx, sector, storiface.FTSealed|storiface.FTCache, storiface.PathSealing, storiface.AcquireCopy))
-		if err != nil {
-			_, err2 := m.waitSimpleCall(ctx)(worker.Fetch(ctx, sector, storiface.FTUpdate|storiface.FTUpdateCache, storiface.PathSealing, storiface.AcquireCopy))
-			if err2 != nil {
-				return xerrors.Errorf("copy sealed/cache sector data: %w %w", err, err2)
-			}
+		if err != nil && !xerrors.Is(err, storiface.ErrSectorNotFound) {
+			return err
+		}
+		_, err2 := m.waitSimpleCall(ctx)(worker.Fetch(ctx, sector, storiface.FTUpdate|storiface.FTUpdateCache, storiface.PathSealing, storiface.AcquireCopy))
+		if err2 != nil && !xerrors.Is(err, storiface.ErrSectorNotFound) {
+			return err
+		}
+		if err != nil && err2 != nil {
+			return xerrors.Errorf("cannot unseal piece. No sealed or updated sector found")
 		}
 
 		return nil
