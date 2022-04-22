@@ -36,7 +36,7 @@ func TestDealsRetryLackOfFunds(t *testing.T) {
 	//stm: @CLIENT_STORAGE_DEALS_LIST_IMPORTS_001
 	ctx := context.Background()
 	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
+	policy.SetPreCommitChallengeDelay(10)
 
 	t.Cleanup(func() {
 		policy.SetPreCommitChallengeDelay(oldDelay)
@@ -120,7 +120,7 @@ func TestDealsRetryLackOfFunds_blockInPublishDeal(t *testing.T) {
 	//stm: @CLIENT_STORAGE_DEALS_LIST_IMPORTS_001
 	ctx := context.Background()
 	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
+	policy.SetPreCommitChallengeDelay(10)
 
 	t.Cleanup(func() {
 		policy.SetPreCommitChallengeDelay(oldDelay)
@@ -201,7 +201,7 @@ func TestDealsRetryLackOfFunds_belowLimit(t *testing.T) {
 	//stm: @CLIENT_STORAGE_DEALS_LIST_IMPORTS_001
 	ctx := context.Background()
 	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
+	policy.SetPreCommitChallengeDelay(10)
 
 	t.Cleanup(func() {
 		policy.SetPreCommitChallengeDelay(oldDelay)

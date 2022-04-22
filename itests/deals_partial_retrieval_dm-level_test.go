@@ -46,7 +46,7 @@ func TestDMLevelPartialRetrieval(t *testing.T) {
 	//stm: @CLIENT_RETRIEVAL_RETRIEVE_001, @CLIENT_RETRIEVAL_FIND_001
 	ctx := context.Background()
 
-	policy.SetPreCommitChallengeDelay(2)
+	policy.SetPreCommitChallengeDelay(10)
 	kit.QuietMiningLogs()
 	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.MockProofs())
 	dh := kit.NewDealHarness(t, client, miner, miner)
