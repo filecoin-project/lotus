@@ -1,6 +1,6 @@
 ARG GO_VERSION=1.17.9
 
-FROM golang:${GO_VERSION}-buster as downloader
+FROM golang:${GO_VERSION}-bullseye as downloader
 
 ## Fetch the proof parameters.
 ## 1. Install the paramfetch binary first, so it can be cached over builds.

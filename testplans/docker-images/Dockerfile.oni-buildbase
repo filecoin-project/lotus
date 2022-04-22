@@ -1,6 +1,6 @@
 ARG GO_VERSION=1.17.9
 
-FROM golang:${GO_VERSION}-buster
+FROM golang:${GO_VERSION}-bullseye
 
 RUN apt-get update && apt-get install -y ca-certificates llvm clang mesa-opencl-icd ocl-icd-opencl-dev jq gcc git pkg-config bzr libhwloc-dev
 

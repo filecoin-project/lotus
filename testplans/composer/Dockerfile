@@ -1,11 +1,11 @@
-FROM golang:1.17.9-buster as tg-build
+FROM golang:1.17.9-bullseye as tg-build
 
 ARG TESTGROUND_REF="oni"
 WORKDIR /usr/src
 RUN git clone https://github.com/testground/testground.git
 RUN cd testground && git checkout $TESTGROUND_REF && go build .
 
-FROM python:3.8-buster
+FROM python:3.8-bullseye
 
 WORKDIR /usr/src/app
 

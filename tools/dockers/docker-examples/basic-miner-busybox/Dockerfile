@@ -1,4 +1,4 @@
-FROM golang:1.14.1-buster
+FROM golang:1.14.1-bullseye
 MAINTAINER ldoublewood <ldoublewood@gmail.com>
 
 ENV SRC_DIR /lotus
@@ -66,7 +66,7 @@ COPY --from=0 /etc/ssl/certs /etc/ssl/certs
 
 # This shared lib (part of glibc) doesn't seem to be included with busybox.
 COPY --from=0 /lib/x86_64-linux-gnu/libdl-2.28.so /lib/libdl.so.2
-COPY --from=0 /lib/x86_64-linux-gnu/libutil-2.28.so /lib/libutil.so.1 
+COPY --from=0 /lib/x86_64-linux-gnu/libutil-2.28.so /lib/libutil.so.1
 COPY --from=0 /usr/lib/x86_64-linux-gnu/libOpenCL.so.1.0.0 /lib/libOpenCL.so.1
 COPY --from=0 /lib/x86_64-linux-gnu/librt-2.28.so /lib/librt.so.1
 COPY --from=0 /lib/x86_64-linux-gnu/libgcc_s.so.1 /lib/libgcc_s.so.1
