@@ -883,8 +883,7 @@ func setupLogger(t *testing.T) *bytes.Buffer {
 		runtime.KeepAlive(w)
 	}()
 
-	err := cgo.InitLogFd(int32(w.Fd()))
-	if err != nil {
+	if err := cgo.InitLogFd(int32(w.Fd())); err != nil {
 		t.Fatal(err)
 	}
 
