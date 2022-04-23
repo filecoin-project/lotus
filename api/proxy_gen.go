@@ -366,7 +366,7 @@ type FullNodeStruct struct {
 
 		StateMarketBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (MarketBalance, error) `perm:"read"`
 
-		StateMarketDeals func(p0 context.Context, p1 types.TipSetKey) (map[string]MarketDeal, error) `perm:"read"`
+		StateMarketDeals func(p0 context.Context, p1 types.TipSetKey) (map[string]*MarketDeal, error) `perm:"read"`
 
 		StateMarketParticipants func(p0 context.Context, p1 types.TipSetKey) (map[string]MarketBalance, error) `perm:"read"`
 
@@ -671,7 +671,7 @@ type StorageMinerStruct struct {
 
 		DealsImportData func(p0 context.Context, p1 cid.Cid, p2 string) error `perm:"admin"`
 
-		DealsList func(p0 context.Context) ([]MarketDeal, error) `perm:"admin"`
+		DealsList func(p0 context.Context) ([]*MarketDeal, error) `perm:"admin"`
 
 		DealsPieceCidBlocklist func(p0 context.Context) ([]cid.Cid, error) `perm:"admin"`
 
@@ -709,7 +709,7 @@ type StorageMinerStruct struct {
 
 		MarketListDataTransfers func(p0 context.Context) ([]DataTransferChannel, error) `perm:"write"`
 
-		MarketListDeals func(p0 context.Context) ([]MarketDeal, error) `perm:"read"`
+		MarketListDeals func(p0 context.Context) ([]*MarketDeal, error) `perm:"read"`
 
 		MarketListIncompleteDeals func(p0 context.Context) ([]storagemarket.MinerDeal, error) `perm:"read"`
 
@@ -2539,15 +2539,15 @@ func (s *FullNodeStub) StateMarketBalance(p0 context.Context, p1 address.Address
 	return *new(MarketBalance), ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateMarketDeals(p0 context.Context, p1 types.TipSetKey) (map[string]MarketDeal, error) {
+func (s *FullNodeStruct) StateMarketDeals(p0 context.Context, p1 types.TipSetKey) (map[string]*MarketDeal, error) {
 	if s.Internal.StateMarketDeals == nil {
-		return *new(map[string]MarketDeal), ErrNotSupported
+		return *new(map[string]*MarketDeal), ErrNotSupported
 	}
 	return s.Internal.StateMarketDeals(p0, p1)
 }
 
-func (s *FullNodeStub) StateMarketDeals(p0 context.Context, p1 types.TipSetKey) (map[string]MarketDeal, error) {
-	return *new(map[string]MarketDeal), ErrNotSupported
+func (s *FullNodeStub) StateMarketDeals(p0 context.Context, p1 types.TipSetKey) (map[string]*MarketDeal, error) {
+	return *new(map[string]*MarketDeal), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateMarketParticipants(p0 context.Context, p1 types.TipSetKey) (map[string]MarketBalance, error) {
@@ -4024,15 +4024,15 @@ func (s *StorageMinerStub) DealsImportData(p0 context.Context, p1 cid.Cid, p2 st
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DealsList(p0 context.Context) ([]MarketDeal, error) {
+func (s *StorageMinerStruct) DealsList(p0 context.Context) ([]*MarketDeal, error) {
 	if s.Internal.DealsList == nil {
-		return *new([]MarketDeal), ErrNotSupported
+		return *new([]*MarketDeal), ErrNotSupported
 	}
 	return s.Internal.DealsList(p0)
 }
 
-func (s *StorageMinerStub) DealsList(p0 context.Context) ([]MarketDeal, error) {
-	return *new([]MarketDeal), ErrNotSupported
+func (s *StorageMinerStub) DealsList(p0 context.Context) ([]*MarketDeal, error) {
+	return *new([]*MarketDeal), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) DealsPieceCidBlocklist(p0 context.Context) ([]cid.Cid, error) {
@@ -4233,15 +4233,15 @@ func (s *StorageMinerStub) MarketListDataTransfers(p0 context.Context) ([]DataTr
 	return *new([]DataTransferChannel), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) MarketListDeals(p0 context.Context) ([]MarketDeal, error) {
+func (s *StorageMinerStruct) MarketListDeals(p0 context.Context) ([]*MarketDeal, error) {
 	if s.Internal.MarketListDeals == nil {
-		return *new([]MarketDeal), ErrNotSupported
+		return *new([]*MarketDeal), ErrNotSupported
 	}
 	return s.Internal.MarketListDeals(p0)
 }
 
-func (s *StorageMinerStub) MarketListDeals(p0 context.Context) ([]MarketDeal, error) {
-	return *new([]MarketDeal), ErrNotSupported
+func (s *StorageMinerStub) MarketListDeals(p0 context.Context) ([]*MarketDeal, error) {
+	return *new([]*MarketDeal), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) MarketListIncompleteDeals(p0 context.Context) ([]storagemarket.MinerDeal, error) {
