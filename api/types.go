@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
 
@@ -283,4 +284,36 @@ type ExportRef struct {
 
 	FromLocalCAR string // if specified, get data from a local CARv2 file.
 	DealID       retrievalmarket.DealID
+}
+
+type NetworkParams struct {
+	NetworkName             dtypes.NetworkName
+	BlockDelaySecs          uint64
+	ConsensusMinerMinPower  abi.StoragePower
+	SupportedProofTypes     []abi.RegisteredSealProof
+	PreCommitChallengeDelay abi.ChainEpoch
+	ForkUpgradeParams       ForkUpgradeParams
+}
+
+type ForkUpgradeParams struct {
+	UpgradeSmokeHeight         abi.ChainEpoch
+	UpgradeBreezeHeight        abi.ChainEpoch
+	UpgradeIgnitionHeight      abi.ChainEpoch
+	UpgradeLiftoffHeight       abi.ChainEpoch
+	UpgradeAssemblyHeight      abi.ChainEpoch
+	UpgradeRefuelHeight        abi.ChainEpoch
+	UpgradeTapeHeight          abi.ChainEpoch
+	UpgradeKumquatHeight       abi.ChainEpoch
+	UpgradePriceListOopsHeight abi.ChainEpoch
+	BreezeGasTampingDuration   abi.ChainEpoch
+	UpgradeCalicoHeight        abi.ChainEpoch
+	UpgradePersianHeight       abi.ChainEpoch
+	UpgradeOrangeHeight        abi.ChainEpoch
+	UpgradeClausHeight         abi.ChainEpoch
+	UpgradeTrustHeight         abi.ChainEpoch
+	UpgradeNorwegianHeight     abi.ChainEpoch
+	UpgradeTurboHeight         abi.ChainEpoch
+	UpgradeHyperdriveHeight    abi.ChainEpoch
+	UpgradeChocolateHeight     abi.ChainEpoch
+	UpgradeOhSnapHeight        abi.ChainEpoch
 }
