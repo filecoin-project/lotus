@@ -264,6 +264,12 @@ var runCmd = &cli.Command{
 			}
 		}
 
+		if cctx.Bool("prove-replica-update2") {
+			if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(ssize)); err != nil {
+				return xerrors.Errorf("get params: %w", err)
+			}
+		}
+
 		var taskTypes []sealtasks.TaskType
 
 		taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFinalizeReplicaUpdate)
