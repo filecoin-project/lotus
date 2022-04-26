@@ -1,6 +1,10 @@
 package build
 
-import "os"
+import (
+	"encoding/hex"
+	"hash/fnv"
+	"os"
+)
 
 var CurrentCommit string
 var BuildType int
@@ -16,24 +20,17 @@ const (
 )
 
 func BuildTypeString() string {
-	switch BuildType {
-	case BuildDefault:
-		return ""
-	case BuildMainnet:
-		return "+mainnet"
-	case Build2k:
-		return "+2k"
-	case BuildDebug:
-		return "+debug"
-	case BuildCalibnet:
-		return "+calibnet"
-	case BuildInteropnet:
-		return "+interopnet"
-	case BuildButterflynet:
-		return "+butterflynet"
-	default:
-		return "+huh?"
+	var currentNetwork string
+	currentNetwork, ok := os.LookupEnv("LOTUS_NETWORK")
+	if !ok {
+		currentNetwork = "mainnet"
 	}
+
+	h := fnv.New128a()
+	sum := h.Sum(MaybeGenesis())
+	sums := hex.EncodeToString(sum[:5])
+
+	return "+" + currentNetwork + "[" + sums + "]"
 }
 
 // BuildVersion is the local build version
