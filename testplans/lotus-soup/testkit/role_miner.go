@@ -527,8 +527,8 @@ func (m *LotusMiner) RunDefault() error {
 	)
 
 	t.RecordMessage("running miner")
-	t.RecordMessage("block delay: %v", build.BlockDelaySecs)
-	t.D().Gauge("miner.block-delay").Update(float64(build.BlockDelaySecs))
+	t.RecordMessage("block delay: %v", build.BlockDelaySecs())
+	t.D().Gauge("miner.block-delay").Update(float64(build.BlockDelaySecs()))
 
 	ctx := context.Background()
 	myActorAddr, err := m.MinerApi.ActorAddress(ctx)
