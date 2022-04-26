@@ -146,6 +146,10 @@ func init() {
 	addExample(map[string]api.MarketDeal{
 		"t026363": ExampleValue("init", reflect.TypeOf(api.MarketDeal{}), nil).(api.MarketDeal),
 	})
+	addExample(map[string]*api.MarketDeal{
+		"t026363": ExampleValue("init", reflect.TypeOf(&api.MarketDeal{}), nil).(*api.MarketDeal),
+	})
+
 	addExample(map[string]api.MarketBalance{
 		"t026363": ExampleValue("init", reflect.TypeOf(api.MarketBalance{}), nil).(api.MarketBalance),
 	})
