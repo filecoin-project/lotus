@@ -2,6 +2,7 @@ package build
 
 import (
 	_ "embed"
+
 	"encoding/json"
 	"io/ioutil"
 	"os"
@@ -13,11 +14,6 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/ipfs/go-cid"
 )
-
-//go:embed params/params.json
-var paramsBytes []byte
-
-var activeNetworkParams networkParams
 
 type bootstrapperList []string
 type networkConfig struct {
@@ -46,6 +42,11 @@ type networkParams struct {
 	Upgrades      upgradeList
 }
 
+//go:embed params/params.json
+var paramsBytes []byte
+
+var activeNetworkParams networkParams
+
 func init() {
 	networks := make(map[string]networkParams)
 	var paramb []byte
@@ -67,6 +68,10 @@ func init() {
 	currentNetwork, ok := os.LookupEnv("LOTUS_NETWORK")
 	if !ok {
 		currentNetwork = "mainnet"
+	}
+
+	if currentNetwork == "mainnet" {
+		BuildType |= BuildMainnet
 	}
 
 	activeNetworkParams, ok = networks[currentNetwork]

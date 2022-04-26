@@ -10,13 +10,9 @@ var CurrentCommit string
 var BuildType int
 
 const (
-	BuildDefault      = 0
-	BuildMainnet      = 0x1
-	Build2k           = 0x2
-	BuildDebug        = 0x3
-	BuildCalibnet     = 0x4
-	BuildInteropnet   = 0x5
-	BuildButterflynet = 0x7
+	BuildDefault = 0
+	BuildMainnet = 0x1
+	BuildDebug   = 0x2
 )
 
 func BuildTypeString() string {
@@ -30,7 +26,13 @@ func BuildTypeString() string {
 	sum := h.Sum(MaybeGenesis())
 	sums := hex.EncodeToString(sum[:5])
 
-	return "+" + currentNetwork + "[" + sums + "]"
+	debugstr := ""
+
+	if BuildType|BuildDebug != 0 {
+		debugstr = "+DEBUG"
+	}
+
+	return "+" + currentNetwork + "[" + sums + "]" + debugstr
 }
 
 // BuildVersion is the local build version
