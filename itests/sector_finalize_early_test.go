@@ -9,13 +9,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/node/modules"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/node/repo"
 )
 
 func TestDealsWithFinalizeEarly(t *testing.T) {
@@ -34,14 +29,7 @@ func TestDealsWithFinalizeEarly(t *testing.T) {
 
 	var blockTime = 50 * time.Millisecond
 
-	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.ConstructorOpts(
-		node.ApplyIf(node.IsType(repo.StorageMiner), node.Override(new(dtypes.GetSealingConfigFunc), func() (dtypes.GetSealingConfigFunc, error) {
-			return func() (sealiface.Config, error) {
-				cf := config.DefaultStorageMiner()
-				cf.Sealing.FinalizeEarly = true
-				return modules.ToSealingConfig(cf.Dealmaking, cf.Sealing), nil
-			}, nil
-		})))) // no mock proofs.
+	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.MutateSealingConfig(func(sc *config.SealingConfig) { sc.FinalizeEarly = true })) // no mock proofs.
 	ens.InterconnectAll().BeginMining(blockTime)
 	dh := kit.NewDealHarness(t, client, miner, miner)
 

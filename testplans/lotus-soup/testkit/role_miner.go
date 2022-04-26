@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
@@ -198,7 +199,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 		var localPaths []stores.LocalPath
 
 		b, err := json.MarshalIndent(&stores.LocalStorageMeta{
-			ID:       stores.ID(uuid.New().String()),
+			ID:       storiface.ID(uuid.New().String()),
 			Weight:   10,
 			CanSeal:  true,
 			CanStore: true,

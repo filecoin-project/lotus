@@ -75,6 +75,11 @@ func ConfigStorageMiner(c interface{}) Option {
 	enableLibp2pNode := cfg.Subsystems.EnableMarkets // we enable libp2p nodes if the storage market subsystem is enabled, otherwise we don't
 
 	return Options(
+
+		// Needed to instantiate pubsub used by index provider via ConfigCommon
+		Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
+		Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),
+		Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
 		ConfigCommon(&cfg.Common, enableLibp2pNode),
 
 		Override(CheckFDLimit, modules.CheckFdLimit(build.MinerFDLimit)), // recommend at least 100k FD limit to miners
@@ -83,6 +88,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
 		Override(new(*stores.Local), modules.LocalStorage),
 		Override(new(*stores.Remote), modules.RemoteStorage),
+		Override(new(stores.Store), From(new(*stores.Remote))),
 		Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
 
 		If(!cfg.Subsystems.EnableMining,
@@ -107,10 +113,10 @@ func ConfigStorageMiner(c interface{}) Option {
 
 			// Mining / proving
 			Override(new(*slashfilter.SlashFilter), modules.NewSlashFilter),
-			Override(new(*storage.Miner), modules.StorageMiner(config.DefaultStorageMiner().Fees)),
 			Override(new(*miner.Miner), modules.SetupBlockProducer),
 			Override(new(gen.WinningPoStProver), storage.NewWinningPoStProver),
 			Override(new(*storage.Miner), modules.StorageMiner(cfg.Fees)),
+			Override(new(*storage.WindowPoStScheduler), modules.WindowPostScheduler(cfg.Fees)),
 			Override(new(sectorblocks.SectorBuilder), From(new(*storage.Miner))),
 		),
 
@@ -213,7 +219,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees, &cfg.Dealmaking)),
 		),
 
-		Override(new(sectorstorage.SealerConfig), cfg.Storage),
+		Override(new(sectorstorage.Config), cfg.StorageManager()),
 		Override(new(*storage.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
 	)
 }

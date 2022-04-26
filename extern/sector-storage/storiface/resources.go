@@ -466,6 +466,104 @@ var ResourceTable = map[sealtasks.TaskType]map[abi.RegisteredSealProof]Resources
 			BaseMinMemory: 8 << 20,
 		},
 	},
+	sealtasks.TTGenerateWindowPoSt: {
+		abi.RegisteredSealProof_StackedDrg64GiBV1: Resources{
+			MaxMemory: 120 << 30, // TODO: Confirm
+			MinMemory: 60 << 30,
+
+			MaxParallelism:    -1,
+			MaxParallelismGPU: 6,
+			GPUUtilization:    1.0,
+
+			BaseMinMemory: 64 << 30, // params
+		},
+		abi.RegisteredSealProof_StackedDrg32GiBV1: Resources{
+			MaxMemory: 96 << 30,
+			MinMemory: 30 << 30,
+
+			MaxParallelism:    -1,
+			MaxParallelismGPU: 6,
+			GPUUtilization:    1.0,
+
+			BaseMinMemory: 32 << 30, // params
+		},
+		abi.RegisteredSealProof_StackedDrg512MiBV1: Resources{
+			MaxMemory: 3 << 29, // 1.5G
+			MinMemory: 1 << 30,
+
+			MaxParallelism: 1, // This is fine
+			GPUUtilization: 1.0,
+
+			BaseMinMemory: 10 << 30,
+		},
+		abi.RegisteredSealProof_StackedDrg2KiBV1: Resources{
+			MaxMemory: 2 << 10,
+			MinMemory: 2 << 10,
+
+			MaxParallelism: 1,
+			GPUUtilization: 1.0,
+
+			BaseMinMemory: 2 << 10,
+		},
+		abi.RegisteredSealProof_StackedDrg8MiBV1: Resources{
+			MaxMemory: 8 << 20,
+			MinMemory: 8 << 20,
+
+			MaxParallelism: 1,
+			GPUUtilization: 1.0,
+
+			BaseMinMemory: 8 << 20,
+		},
+	},
+	sealtasks.TTGenerateWinningPoSt: {
+		abi.RegisteredSealProof_StackedDrg64GiBV1: Resources{
+			MaxMemory: 1 << 30,
+			MinMemory: 1 << 30,
+
+			MaxParallelism:    -1,
+			MaxParallelismGPU: 6,
+			GPUUtilization:    1.0,
+
+			BaseMinMemory: 64 << 30, // params
+		},
+		abi.RegisteredSealProof_StackedDrg32GiBV1: Resources{
+			MaxMemory: 1 << 30,
+			MinMemory: 1 << 30,
+
+			MaxParallelism:    -1,
+			MaxParallelismGPU: 6,
+			GPUUtilization:    1.0,
+
+			BaseMinMemory: 32 << 30, // params
+		},
+		abi.RegisteredSealProof_StackedDrg512MiBV1: Resources{
+			MaxMemory: 2 << 10,
+			MinMemory: 2 << 10,
+
+			MaxParallelism: 1, // This is fine
+			GPUUtilization: 1.0,
+
+			BaseMinMemory: 10 << 30,
+		},
+		abi.RegisteredSealProof_StackedDrg2KiBV1: Resources{
+			MaxMemory: 2 << 10,
+			MinMemory: 2 << 10,
+
+			MaxParallelism: 1,
+			GPUUtilization: 1.0,
+
+			BaseMinMemory: 2 << 10,
+		},
+		abi.RegisteredSealProof_StackedDrg8MiBV1: Resources{
+			MaxMemory: 8 << 20,
+			MinMemory: 8 << 20,
+
+			MaxParallelism: 1,
+			GPUUtilization: 1.0,
+
+			BaseMinMemory: 8 << 20,
+		},
+	},
 }
 
 func init() {

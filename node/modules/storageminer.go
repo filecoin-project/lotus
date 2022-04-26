@@ -11,11 +11,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-statestore"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-storedcounter"
+	"github.com/ipfs/go-datastore"
+
 	"go.uber.org/fx"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
 	dtimpl "github.com/filecoin-project/go-data-transfer/impl"
 	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	dtgstransport "github.com/filecoin-project/go-data-transfer/transport/graphsync"
@@ -30,14 +38,9 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	smnet "github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-statestore"
-	"github.com/filecoin-project/go-storedcounter"
 	provider "github.com/filecoin-project/index-provider"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	graphsync "github.com/ipfs/go-graphsync/impl"
 	gsnet "github.com/ipfs/go-graphsync/network"
@@ -215,6 +218,7 @@ type StorageMinerParams struct {
 	GetSealingConfigFn dtypes.GetSealingConfigFunc
 	Journal            journal.Journal
 	AddrSel            *storage.AddressSelector
+	Maddr              dtypes.MinerAddress
 }
 
 func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*storage.Miner, error) {
@@ -231,19 +235,10 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 			gsd    = params.GetSealingConfigFn
 			j      = params.Journal
 			as     = params.AddrSel
+			maddr  = address.Address(params.Maddr)
 		)
 
-		maddr, err := minerAddrFromDS(ds)
-		if err != nil {
-			return nil, err
-		}
-
 		ctx := helpers.LifecycleCtx(mctx, lc)
-
-		fps, err := storage.NewWindowedPoStScheduler(api, fc, as, sealer, verif, sealer, j, maddr)
-		if err != nil {
-			return nil, err
-		}
 
 		sm, err := storage.NewMiner(api, maddr, ds, sealer, sc, verif, prover, gsd, fc, j, as)
 		if err != nil {
@@ -252,13 +247,43 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 
 		lc.Append(fx.Hook{
 			OnStart: func(context.Context) error {
-				go fps.Run(ctx)
 				return sm.Run(ctx)
 			},
 			OnStop: sm.Stop,
 		})
 
 		return sm, nil
+	}
+}
+
+func WindowPostScheduler(fc config.MinerFeeConfig) func(params StorageMinerParams) (*storage.WindowPoStScheduler, error) {
+	return func(params StorageMinerParams) (*storage.WindowPoStScheduler, error) {
+		var (
+			mctx   = params.MetricsCtx
+			lc     = params.Lifecycle
+			api    = params.API
+			sealer = params.Sealer
+			verif  = params.Verifier
+			j      = params.Journal
+			as     = params.AddrSel
+			maddr  = address.Address(params.Maddr)
+		)
+
+		ctx := helpers.LifecycleCtx(mctx, lc)
+
+		fps, err := storage.NewWindowedPoStScheduler(api, fc, as, sealer, verif, sealer, j, maddr)
+		if err != nil {
+			return nil, err
+		}
+
+		lc.Append(fx.Hook{
+			OnStart: func(context.Context) error {
+				go fps.Run(ctx)
+				return nil
+			},
+		})
+
+		return fps, nil
 	}
 }
 
@@ -717,11 +742,11 @@ func LocalStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStora
 	return stores.NewLocal(ctx, ls, si, urls)
 }
 
-func RemoteStorage(lstor *stores.Local, si stores.SectorIndex, sa sectorstorage.StorageAuth, sc sectorstorage.SealerConfig) *stores.Remote {
+func RemoteStorage(lstor *stores.Local, si stores.SectorIndex, sa sectorstorage.StorageAuth, sc sectorstorage.Config) *stores.Remote {
 	return stores.NewRemote(lstor, si, http.Header(sa), sc.ParallelFetchLimit, &stores.DefaultPartialFileHandler{})
 }
 
-func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *stores.Local, stor *stores.Remote, ls stores.LocalStorage, si stores.SectorIndex, sc sectorstorage.SealerConfig, ds dtypes.MetadataDS) (*sectorstorage.Manager, error) {
+func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *stores.Local, stor stores.Store, ls stores.LocalStorage, si stores.SectorIndex, sc sectorstorage.Config, ds dtypes.MetadataDS) (*sectorstorage.Manager, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	wsts := statestore.New(namespace.Wrap(ds, WorkerCallsPrefix))
@@ -916,8 +941,11 @@ func NewSetSealConfigFunc(r repo.LockedRepo) (dtypes.SetSealingConfigFunc, error
 				MaxWaitDealsSectors:             cfg.MaxWaitDealsSectors,
 				MaxSealingSectors:               cfg.MaxSealingSectors,
 				MaxSealingSectorsForDeals:       cfg.MaxSealingSectorsForDeals,
+				PreferNewSectorsForDeals:        cfg.PreferNewSectorsForDeals,
+				MaxUpgradingSectors:             cfg.MaxUpgradingSectors,
 				CommittedCapacitySectorLifetime: config.Duration(cfg.CommittedCapacitySectorLifetime),
 				WaitDealsDelay:                  config.Duration(cfg.WaitDealsDelay),
+				MakeNewSectorForDeals:           cfg.MakeNewSectorForDeals,
 				MakeCCSectorsAvailable:          cfg.MakeCCSectorsAvailable,
 				AlwaysKeepUnsealedCopy:          cfg.AlwaysKeepUnsealedCopy,
 				FinalizeEarly:                   cfg.FinalizeEarly,
@@ -954,8 +982,10 @@ func ToSealingConfig(dealmakingCfg config.DealmakingConfig, sealingCfg config.Se
 		MaxWaitDealsSectors:             sealingCfg.MaxWaitDealsSectors,
 		MaxSealingSectors:               sealingCfg.MaxSealingSectors,
 		MaxSealingSectorsForDeals:       sealingCfg.MaxSealingSectorsForDeals,
+		PreferNewSectorsForDeals:        sealingCfg.PreferNewSectorsForDeals,
+		MaxUpgradingSectors:             sealingCfg.MaxUpgradingSectors,
 		StartEpochSealingBuffer:         abi.ChainEpoch(dealmakingCfg.StartEpochSealingBuffer),
-		MakeNewSectorForDeals:           dealmakingCfg.MakeNewSectorForDeals,
+		MakeNewSectorForDeals:           sealingCfg.MakeNewSectorForDeals,
 		CommittedCapacitySectorLifetime: time.Duration(sealingCfg.CommittedCapacitySectorLifetime),
 		WaitDealsDelay:                  time.Duration(sealingCfg.WaitDealsDelay),
 		MakeCCSectorsAvailable:          sealingCfg.MakeCCSectorsAvailable,

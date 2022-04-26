@@ -16,7 +16,7 @@ func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) e
 	}
 
 	if si.State != Proving {
-		return xerrors.Errorf("can't mark sectors not in the 'Proving' state for upgrade")
+		return xerrors.Errorf("unable to snap-up sectors not in the 'Proving' state")
 	}
 
 	if si.hasDeals() {

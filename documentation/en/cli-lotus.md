@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.15.2-dev
+   1.15.3-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -212,7 +212,7 @@ COMMANDS:
    set-default  Set default wallet address
    sign         sign a message
    verify       verify the signature of a message
-   delete       Delete an account from the wallet
+   delete       Soft delete an address from the wallet - hard deletion needed for permanent removal
    market       Interact with market balances
    help, h      Shows a list of commands or help for one command
 
@@ -346,7 +346,7 @@ OPTIONS:
 ### lotus wallet delete
 ```
 NAME:
-   lotus wallet delete - Delete an account from the wallet
+   lotus wallet delete - Soft delete an address from the wallet - hard deletion needed for permanent removal
 
 USAGE:
    lotus wallet delete [command options] <address> 
@@ -794,6 +794,7 @@ CATEGORY:
 OPTIONS:
    --by-ping              sort by ping (default: false)
    --output-format value  Either 'text' or 'csv' (default: "text")
+   --protocols            Output supported deal protocols (default: false)
    --help, -h             show help (default: false)
    
 ```
@@ -2602,6 +2603,7 @@ USAGE:
 
 COMMANDS:
    peers           Print peers
+   ping            Ping peers
    connect         Connect to a peer
    listen          List listen addresses
    id              Get node identity
@@ -2634,6 +2636,21 @@ OPTIONS:
    --agent, -a     Print agent name (default: false)
    --extended, -x  Print extended peer information in json (default: false)
    --help, -h      show help (default: false)
+   
+```
+
+### lotus net ping
+```
+NAME:
+   lotus net ping - Ping peers
+
+USAGE:
+   lotus net ping [command options] [arguments...]
+
+OPTIONS:
+   --count value, -c value     specify the number of times it should ping (default: 10)
+   --interval value, -i value  minimum time between pings (default: 1s)
+   --help, -h                  show help (default: false)
    
 ```
 

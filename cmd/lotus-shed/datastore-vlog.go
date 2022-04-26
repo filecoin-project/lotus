@@ -14,6 +14,7 @@ import (
 	"github.com/dgraph-io/badger/v2/y"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/mitchellh/go-homedir"
 	"github.com/multiformats/go-base32"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -23,11 +24,6 @@ var datastoreVlog2CarCmd = &cli.Command{
 	Name:  "vlog2car",
 	Usage: "convert badger blockstore .vlog to .car",
 	Flags: []cli.Flag{
-		&cli.PathFlag{
-			Name:     "vlog",
-			Usage:    "vlog file",
-			Required: true,
-		},
 		&cli.PathFlag{
 			Name:     "car",
 			Usage:    "out car file name (no .car)",
@@ -39,10 +35,11 @@ var datastoreVlog2CarCmd = &cli.Command{
 			Value: "/blocks/",
 		},
 	},
+	ArgsUsage: "[vlog...]",
 	Action: func(cctx *cli.Context) error {
 		ctx := cctx.Context
 
-		maxSz := uint64(1 << 20)
+		maxSz := uint64(31 << 30)
 
 		carb := &rawCarb{
 			max:    maxSz,
@@ -53,11 +50,16 @@ var datastoreVlog2CarCmd = &cli.Command{
 		pref := cctx.String("key-prefix")
 		plen := len(pref)
 
-		{
+		for _, vlogPath := range cctx.Args().Slice() {
+			vlogPath, err := homedir.Expand(vlogPath)
+			if err != nil {
+				return xerrors.Errorf("expand vlog path: %w", err)
+			}
+
 			// NOTE: Some bits of code in this code block come from https://github.com/dgraph-io/badger, which is licensed
 			//  under Apache 2.0; See https://github.com/dgraph-io/badger/blob/master/LICENSE
 
-			vf, err := os.Open(cctx.Path("vlog"))
+			vf, err := os.Open(vlogPath)
 			if err != nil {
 				return xerrors.Errorf("open vlog file: %w", err)
 			}

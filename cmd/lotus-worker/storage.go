@@ -14,6 +14,7 @@ import (
 
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 const metaFile = "sectorstore.json"
@@ -101,7 +102,7 @@ var storageAttachCmd = &cli.Command{
 			}
 
 			cfg := &stores.LocalStorageMeta{
-				ID:         stores.ID(uuid.New().String()),
+				ID:         storiface.ID(uuid.New().String()),
 				Weight:     cctx.Uint64("weight"),
 				CanSeal:    cctx.Bool("seal"),
 				CanStore:   cctx.Bool("store"),

@@ -6,7 +6,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/go-statemachine"
+	statemachine "github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
@@ -134,15 +134,6 @@ func (m *Sealing) handleProvingSector(ctx statemachine.Context, sector SectorInf
 	// in case we revert into Proving without going into Available
 	delete(m.available, m.minerSectorID(sector.SectorNumber))
 	m.inputLk.Unlock()
-
-	cfg, err := m.getConfig()
-	if err != nil {
-		return xerrors.Errorf("getting sealing config: %w", err)
-	}
-
-	if err := m.sealer.ReleaseUnsealed(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber), sector.keepUnsealedRanges(true, cfg.AlwaysKeepUnsealedCopy)); err != nil {
-		log.Error(err)
-	}
 
 	// TODO: Watch termination
 	// TODO: Auto-extend if set
