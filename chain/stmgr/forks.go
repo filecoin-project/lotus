@@ -164,7 +164,7 @@ func (us UpgradeSchedule) GetNtwkVersion(e abi.ChainEpoch) (network.Version, err
 		}
 	}
 
-	return build.GenesisNetworkVersion, nil
+	return build.GenesisNetworkVersion(), nil
 }
 
 func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, cb ExecMonitor, ts *types.TipSet) (cid.Cid, error) {
