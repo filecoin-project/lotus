@@ -64,24 +64,6 @@ CLEAN+=build/.update-modules
 deps: $(BUILD_DEPS)
 .PHONY: deps
 
-build-devnets: build lotus-seed lotus-shed lotus-wallet lotus-gateway
-.PHONY: build-devnets
-
-debug: GOFLAGS+=-tags=debug
-debug: build-devnets
-
-2k: GOFLAGS+=-tags=2k
-2k: build-devnets
-
-calibnet: GOFLAGS+=-tags=calibnet
-calibnet: build-devnets
-
-butterflynet: GOFLAGS+=-tags=butterflynet
-butterflynet: build-devnets
-
-interopnet: GOFLAGS+=-tags=interopnet
-interopnet: build-devnets
-
 lotus: $(BUILD_DEPS)
 	rm -f lotus
 	$(GOCC) build $(GOFLAGS) -o lotus ./cmd/lotus
