@@ -15,6 +15,7 @@
 * [Check](#Check)
   * [CheckProvable](#CheckProvable)
 * [Compute](#Compute)
+  * [ComputeDataCid](#ComputeDataCid)
   * [ComputeProof](#ComputeProof)
   * [ComputeWindowPoSt](#ComputeWindowPoSt)
 * [Create](#Create)
@@ -361,6 +362,29 @@ Response:
 
 ## Compute
 
+
+### ComputeDataCid
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  1024,
+  {}
+]
+```
+
+Response:
+```json
+{
+  "Size": 1032,
+  "PieceCID": {
+    "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+  }
+}
+```
 
 ### ComputeProof
 
