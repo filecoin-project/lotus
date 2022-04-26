@@ -136,7 +136,7 @@ benchmarks:
 	@curl -X POST 'http://benchmark.kittyhawk.wtf/benchmark' -d '@bench.json' -u "${benchmark_http_cred}"
 .PHONY: benchmarks
 
-lotus-pond: 2k
+lotus-pond: 
 	$(GOCC) build -o lotus-pond ./lotuspond
 .PHONY: lotus-pond
 BINS+=lotus-pond
