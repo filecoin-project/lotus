@@ -280,36 +280,6 @@ jobs:
           path: /tmp/test-reports
       - store_artifacts:
           path: /tmp/test-artifacts/conformance-coverage.html
-  build-ntwk-calibration:
-    description: |
-      Compile lotus binaries for the calibration network
-    parameters:
-      <<: *test-params
-    executor: << parameters.executor >>
-    steps:
-      - install-deps
-      - prepare
-      - run: make calibnet
-      - run: mkdir linux-calibrationnet && mv lotus lotus-miner lotus-worker linux-calibrationnet
-      - persist_to_workspace:
-          root: "."
-          paths:
-            - linux-calibrationnet
-  build-ntwk-butterfly:
-    description: |
-      Compile lotus binaries for the butterfly network
-    parameters:
-      <<: *test-params
-    executor: << parameters.executor >>
-    steps:
-      - install-deps
-      - prepare
-      - run: make butterflynet
-      - run: mkdir linux-butterflynet && mv lotus lotus-miner lotus-worker linux-butterflynet
-      - persist_to_workspace:
-          root: "."
-          paths:
-            - linux-butterflynet
   build-lotus-soup:
     description: |
       Compile `lotus-soup` Testground test plan
@@ -802,16 +772,6 @@ workflows:
                 - master
       - build-debug
       - build-all:
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - build-ntwk-calibration:
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - build-ntwk-butterfly:
           filters:
             tags:
               only:
