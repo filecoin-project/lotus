@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/mitchellh/go-homedir"
 
 	"github.com/filecoin-project/lotus/build"
 
@@ -23,7 +24,10 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
+
+	lapi "github.com/filecoin-project/lotus/api"
 )
 
 var walletCmd = &cli.Command{
@@ -41,6 +45,13 @@ var walletCmd = &cli.Command{
 		walletVerify,
 		walletDelete,
 		walletMarket,
+
+		// wallet-security  command
+		walletAddPasswd,
+		walletResetPasswd,
+		walletClearPasswd,
+		walletEncrypt,
+		walletDecrypt,
 	},
 }
 
@@ -744,4 +755,231 @@ var walletMarketAdd = &cli.Command{
 
 		return nil
 	},
+}
+
+var walletAddPasswd = &cli.Command{
+	Name:  "addpasswd",
+	Usage: "Add wallet password",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if wallet.GetSetupStateForLocal(getWalletRepo(cctx)) {
+			fmt.Println("The password has been set, please reset it if you modify it.")
+			return nil
+		}
+
+		passwd := wallet.Prompt("Enter password:\n")
+		if passwd == "" {
+			return xerrors.Errorf("Password required!")
+		}
+		if err := wallet.RegexpPasswd(passwd); err != nil {
+			return err
+		}
+
+		passwd_ag := wallet.Prompt("Enter password again:\n")
+		if passwd_ag == "" {
+			return xerrors.Errorf("Password required!")
+		}
+		if err := wallet.RegexpPasswd(passwd_ag); err != nil {
+			return err
+		}
+		if passwd != passwd_ag {
+			return xerrors.Errorf("The two passwords do not match!")
+		}
+
+		_, err = api.WalletCustomMethod(ctx, lapi.WalletAddPasswd, []interface{}{passwd, getWalletRepo(cctx)})
+		if err != nil {
+			fmt.Println(err.Error())
+			return err
+		}
+		fmt.Println("Password added successful.")
+		return nil
+	},
+}
+var walletResetPasswd = &cli.Command{
+	Name:  "resetpasswd",
+	Usage: "Reset wallet password",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+		if !wallet.GetSetupStateForLocal(getWalletRepo(cctx)) {
+			fmt.Println("Password is not set.")
+			return nil
+		}
+
+		passwd := wallet.Prompt("Enter old-Password:\n")
+		if passwd == "" {
+			return xerrors.Errorf("old-Password required!")
+		}
+		if err := wallet.RegexpPasswd(passwd); err != nil {
+			return err
+		}
+
+		rest, _ := api.WalletCustomMethod(ctx, lapi.WalletCheckPasswd, []interface{}{passwd})
+		if !rest.(bool) {
+			return xerrors.Errorf("Password verification failed.")
+		}
+
+		newPasswd := wallet.Prompt("Enter new-Password:\n")
+		if passwd == "" {
+			return xerrors.Errorf("new-Password required!")
+		}
+		if err := wallet.RegexpPasswd(newPasswd); err != nil {
+			return fmt.Errorf("new passwd : %w", err)
+		}
+
+		newPasswd_ag := wallet.Prompt("Enter new-Password again:\n")
+		if newPasswd_ag == "" {
+			return xerrors.Errorf("new-Password required!")
+		}
+		if err := wallet.RegexpPasswd(newPasswd_ag); err != nil {
+			return err
+		}
+		if newPasswd != newPasswd_ag {
+			return xerrors.Errorf("The two passwords do not match!")
+		}
+
+		_, err = api.WalletCustomMethod(ctx, lapi.WalletResetPasswd, []interface{}{passwd, newPasswd})
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("Password reset successful.")
+		return nil
+	},
+}
+var walletClearPasswd = &cli.Command{
+	Name:  "clearpasswd",
+	Usage: "Clear wallet password",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+		if !wallet.GetSetupStateForLocal(getWalletRepo(cctx)) {
+			fmt.Println("Password is not set.")
+			return nil
+		}
+
+		passwd := wallet.Prompt("Enter Password:\n")
+		if passwd == "" {
+			return xerrors.Errorf("Password required!")
+		}
+		if err := wallet.RegexpPasswd(passwd); err != nil {
+			return err
+		}
+
+		_, err = api.WalletCustomMethod(ctx, lapi.WalletClearPasswd, []interface{}{passwd})
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("Password clear successful.")
+		return nil
+	},
+}
+var walletEncrypt = &cli.Command{
+	Name:      "encrypt",
+	Usage:     "encrypt wallet account",
+	ArgsUsage: "[address]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+		if !wallet.GetSetupStateForLocal(getWalletRepo(cctx)) {
+			fmt.Println("Password is not set.")
+			return nil
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		rest, _ := api.WalletCustomMethod(ctx, lapi.WalletIsEncrypt, []interface{}{addr})
+		if rest != nil && !rest.(bool) {
+			passwd := wallet.Prompt("Enter Password:\n")
+			if passwd == "" {
+				return xerrors.Errorf("Password required!")
+			}
+			if err := wallet.RegexpPasswd(passwd); err != nil {
+				return err
+			}
+
+			_, err = api.WalletCustomMethod(ctx, lapi.WalletEncrypt, []interface{}{addr, passwd})
+			if err != nil {
+				return err
+			}
+
+			fmt.Println("Wallet encrypt success.")
+		} else {
+			fmt.Println("Wallet is encrypted.")
+		}
+		return nil
+	},
+}
+var walletDecrypt = &cli.Command{
+	Name:      "decrypt",
+	Usage:     "decrypt wallet account",
+	ArgsUsage: "[address]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+		if !wallet.GetSetupStateForLocal(getWalletRepo(cctx)) {
+			fmt.Println("Password is not set.")
+			return nil
+		}
+
+		addr, err := address.NewFromString(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		rest, _ := api.WalletCustomMethod(ctx, lapi.WalletIsEncrypt, []interface{}{addr})
+		if rest != nil && rest.(bool) {
+			passwd := wallet.Prompt("Enter Password:\n")
+			if passwd == "" {
+				return xerrors.Errorf("Password required!")
+			}
+			if err := wallet.RegexpPasswd(passwd); err != nil {
+				return err
+			}
+
+			_, err = api.WalletCustomMethod(ctx, lapi.WalletDecrypt, []interface{}{addr, passwd})
+			if err != nil {
+				return err
+			}
+
+			fmt.Println("Wallet decrypt success.")
+		} else {
+			fmt.Println("Wallet is decrypted.")
+		}
+		return nil
+	},
+}
+
+func getWalletRepo(cctx *cli.Context) string {
+	passwdPath, err := homedir.Expand(cctx.String("repo"))
+	if err != nil {
+		return ""
+	}
+	return passwdPath + "/keystore/passwd"
 }

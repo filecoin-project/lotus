@@ -297,6 +297,9 @@ type FullNode interface {
 	// WalletValidateAddress validates whether a given string can be decoded as a well-formed address
 	WalletValidateAddress(context.Context, string) (address.Address, error) //perm:read
 
+	// WalletCustomMethod wallet extension operation
+	WalletCustomMethod(context.Context, api.WalletMethod, []interface{}) (interface{}, error) //perm:admin
+
 	// Other
 
 	// MethodGroup: Client

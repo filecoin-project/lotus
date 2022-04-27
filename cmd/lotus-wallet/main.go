@@ -78,7 +78,7 @@ To configure your lotus node to use a remote wallet:
 			},
 		},
 
-		Commands: local,
+		Commands: append(local, lcli.GetWalletCmd()...),
 	}
 	app.Setup()
 

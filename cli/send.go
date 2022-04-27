@@ -10,8 +10,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet"
 )
 
 var sendCmd = &cli.Command{
@@ -138,6 +140,32 @@ var sendCmd = &cli.Command{
 				return fmt.Errorf("failed to decode hex params: %w", err)
 			}
 			params.Params = decparams
+		}
+
+		// wallet-security  send
+		if params.From == address.Undef {
+			defaddr, err := srv.FullNodeAPI().WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			params.From = defaddr
+		}
+		if wallet.GetSetupStateForLocal(getWalletRepo(cctx)) {
+			rest, _ := srv.FullNodeAPI().WalletCustomMethod(ctx, api.WalletIsEncrypt, []interface{}{params.From})
+			if rest != nil && rest.(bool) {
+				passwd := wallet.Prompt("Enter Password:\n")
+				if passwd == "" {
+					return xerrors.Errorf("Password required!")
+				}
+				if err := wallet.RegexpPasswd(passwd); err != nil {
+					return err
+				}
+
+				rest, _ := srv.FullNodeAPI().WalletCustomMethod(ctx, api.WalletCheckPasswd, []interface{}{passwd})
+				if !rest.(bool) {
+					return xerrors.Errorf("Password verification failed.")
+				}
+			}
 		}
 
 		if cctx.IsSet("nonce") {

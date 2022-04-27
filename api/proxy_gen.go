@@ -471,6 +471,8 @@ type FullNodeStruct struct {
 		WalletValidateAddress func(p0 context.Context, p1 string) (address.Address, error) `perm:"read"`
 
 		WalletVerify func(p0 context.Context, p1 address.Address, p2 []byte, p3 *crypto.Signature) (bool, error) `perm:"read"`
+
+		WalletCustomMethod func(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) `perm:"admin"`
 	}
 }
 
@@ -878,6 +880,8 @@ type WalletStruct struct {
 		WalletNew func(p0 context.Context, p1 types.KeyType) (address.Address, error) `perm:"admin"`
 
 		WalletSign func(p0 context.Context, p1 address.Address, p2 []byte, p3 MsgMeta) (*crypto.Signature, error) `perm:"admin"`
+
+		WalletCustomMethod func(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) `perm:"admin"`
 	}
 }
 
@@ -3114,6 +3118,16 @@ func (s *FullNodeStub) WalletVerify(p0 context.Context, p1 address.Address, p2 [
 	return false, ErrNotSupported
 }
 
+func (s *FullNodeStruct) WalletCustomMethod(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) {
+	if s.Internal.WalletCustomMethod == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.WalletCustomMethod(p0, p1, p2)
+}
+func (s *FullNodeStub) WalletCustomMethod(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) {
+	return nil, ErrNotSupported
+}
+
 func (s *GatewayStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) {
 	if s.Internal.ChainGetBlockMessages == nil {
 		return nil, ErrNotSupported
@@ -5102,6 +5116,16 @@ func (s *WalletStruct) WalletSign(p0 context.Context, p1 address.Address, p2 []b
 }
 
 func (s *WalletStub) WalletSign(p0 context.Context, p1 address.Address, p2 []byte, p3 MsgMeta) (*crypto.Signature, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *WalletStruct) WalletCustomMethod(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) {
+	if s.Internal.WalletCustomMethod == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.WalletCustomMethod(p0, p1, p2)
+}
+func (s *WorkerStub) WalletCustomMethod(p0 context.Context, p1 WalletMethod, p2 []interface{}) (interface{}, error) {
 	return nil, ErrNotSupported
 }
 

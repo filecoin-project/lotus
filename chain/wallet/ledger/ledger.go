@@ -240,3 +240,8 @@ var dsLedgerPrefix = "/ledgerkey/"
 func keyForAddr(addr address.Address) datastore.Key {
 	return datastore.NewKey(dsLedgerPrefix + addr.String())
 }
+
+// WalletCustomMethod dont use this method for LedgerWallet
+func (lw *LedgerWallet) WalletCustomMethod(ctx context.Context, meth api.WalletMethod, args []interface{}) (interface{}, error) {
+	return nil, xerrors.Errorf("LedgerWallet do not support extension operations for the time being")
+}

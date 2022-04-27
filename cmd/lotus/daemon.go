@@ -36,6 +36,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/chain/wallet"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
@@ -232,6 +233,17 @@ var DaemonCmd = &cli.Command{
 			return xerrors.Errorf("repo init error: %w", err)
 		}
 		freshRepo := err != repo.ErrRepoExists
+
+		passwdPath, err := homedir.Expand(cctx.String("repo"))
+		if err != nil {
+			return err
+		}
+		ok := wallet.GetSetupState(passwdPath + "/keystore/passwd")
+		if !ok {
+			log.Info("Wallet has no password")
+		} else {
+			log.Info("Wallet has password")
+		}
 
 		if !isLite {
 			if err := paramfetch.GetParams(lcli.ReqContext(cctx), build.ParametersJSON(), build.SrsJSON(), 0); err != nil {

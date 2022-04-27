@@ -1,7 +1,9 @@
 package wallet
 
 import (
+	"bytes"
 	"context"
+	"fmt"
 	"sort"
 	"strings"
 	"sync"
@@ -67,7 +69,11 @@ func (w *LocalWallet) WalletSign(ctx context.Context, addr address.Address, msg 
 		return nil, xerrors.Errorf("signing using key '%s': %w", addr.String(), types.ErrKeyInfoNotFound)
 	}
 
-	return sigs.Sign(ActSigType(ki.Type), ki.PrivateKey, msg)
+	pk, err := UnMakeByte(ki.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	return sigs.Sign(ActSigType(ki.Type), pk, msg)
 }
 
 func (w *LocalWallet) findKey(addr address.Address) (*Key, error) {
@@ -141,7 +147,14 @@ func (w *LocalWallet) WalletExport(ctx context.Context, addr address.Address) (*
 		return nil, xerrors.Errorf("key not found")
 	}
 
-	return &k.KeyInfo, nil
+	pk, err := UnMakeByte(k.PrivateKey)
+	if err != nil {
+		return nil, err
+	}
+	var pki types.KeyInfo
+	pki.Type = k.Type
+	pki.PrivateKey = pk
+	return &pki, nil
 }
 
 func (w *LocalWallet) WalletImport(ctx context.Context, ki *types.KeyInfo) (address.Address, error) {
@@ -152,6 +165,12 @@ func (w *LocalWallet) WalletImport(ctx context.Context, ki *types.KeyInfo) (addr
 	if err != nil {
 		return address.Undef, xerrors.Errorf("failed to make key: %w", err)
 	}
+
+	pk, err := MakeByte(k.PrivateKey)
+	if err != nil {
+		return address.Undef, err
+	}
+	k.PrivateKey = pk
 
 	if err := w.keystore.Put(KNamePrefix+k.Address.String(), k.KeyInfo); err != nil {
 		return address.Undef, xerrors.Errorf("saving to keystore: %w", err)
@@ -362,3 +381,458 @@ func (n nilDefault) SetDefault(a address.Address) error {
 
 var NilDefault nilDefault
 var _ Default = NilDefault
+
+func (w *LocalWallet) WalletListEncrypt(context.Context) ([]api.AddrListEncrypt, error) {
+	all, err := w.keystore.List()
+	if err != nil {
+		return nil, xerrors.Errorf("listing keystore: %w", err)
+	}
+
+	sort.Strings(all)
+
+	seen := map[address.Address]struct{}{}
+	out := make([]api.AddrListEncrypt, 0, len(all))
+	for _, a := range all {
+		var addr address.Address
+		var err error
+		if strings.HasPrefix(a, KNamePrefix) {
+			name := strings.TrimPrefix(a, KNamePrefix)
+			addr, err = address.NewFromString(name)
+			if err != nil {
+				return nil, xerrors.Errorf("converting name to address: %w", err)
+			}
+
+			if _, ok := seen[addr]; ok {
+				continue // got duplicate with a different prefix
+			}
+			seen[addr] = struct{}{}
+
+			key, err := w.findKey(addr)
+			if err != nil {
+				return nil, err
+			}
+
+			pk := key.PrivateKey
+			var encrypt bool
+			if pk[0] == 0xff && pk[1] == 0xff && pk[2] == 0xff && pk[3] == 0xff {
+				encrypt = true
+			}
+
+			out = append(out, api.AddrListEncrypt{Addr: addr, Encrypt: encrypt})
+		}
+	}
+
+	sort.Slice(out, func(i, j int) bool {
+		return out[i].Addr.String() < out[j].Addr.String()
+	})
+
+	return out, nil
+}
+
+func (w *LocalWallet) WalletExportEncrypt(ctx context.Context, addr address.Address, passwd string) (*types.KeyInfo, error) {
+	if IsSetup() {
+		if err := CheckPasswd([]byte(passwd)); err != nil {
+			return nil, err
+		}
+	}
+	return w.WalletExport(ctx, addr)
+}
+
+func (w *LocalWallet) WalletDeleteEncrypt(ctx context.Context, addr address.Address, passwd string) error {
+	if IsSetup() {
+		if err := CheckPasswd([]byte(passwd)); err != nil {
+			return err
+		}
+	}
+	return w.WalletDelete(ctx, addr)
+}
+
+func (w *LocalWallet) WalletAddPasswd(ctx context.Context, passwd string, path string) error {
+
+	if IsSetup() {
+		err := xerrors.Errorf("The password has been set, please reset it if you modify it.")
+		log.Warn(err.Error())
+		return err
+	}
+
+	if err := RegexpPasswd(passwd); err != nil {
+		return err
+	}
+
+	err := SetupPasswd([]byte(passwd), path)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (w *LocalWallet) WalletResetPasswd(ctx context.Context, oldPasswd, newPasswd string) (bool, error) {
+	if !IsSetup() {
+		return false, xerrors.Errorf("Password is not set.")
+	}
+
+	if err := CheckPasswd([]byte(oldPasswd)); err != nil {
+		return false, err
+	}
+
+	if err := RegexpPasswd(newPasswd); err != nil {
+		return false, err
+	}
+
+	addr_list, err := w.WalletList(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	addr_all := make(map[address.Address]*KeyInfo)
+	for _, v := range addr_list {
+		k, err := w.findKey(v)
+		if err != nil {
+			return false, fmt.Errorf("failed to find key to export: %w", err)
+		}
+		if k == nil {
+			return false, fmt.Errorf("key not found")
+		}
+
+		pk, err := UnMakeByte(k.PrivateKey)
+		if err != nil {
+			return false, err
+		}
+
+		ki := &KeyInfo{
+			KeyInfo: types.KeyInfo{
+				Type:       k.Type,
+				PrivateKey: pk,
+			},
+			Enc: IsPrivateKeyEnc(k.PrivateKey),
+		}
+		addr_all[v] = ki
+
+		err = w.WalletDeleteKey2(v)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	setDefault := true
+	defalutAddr, err := w.GetDefault()
+	if err != nil {
+		setDefault = false
+	}
+
+	err = ResetPasswd([]byte(newPasswd))
+	if err != nil {
+		return false, err
+	}
+
+	for addr, v := range addr_all {
+		k, err := NewKey(v.KeyInfo)
+		if err != nil {
+			return false, fmt.Errorf("failed to make key: %w", err)
+		}
+
+		if v.Enc {
+			pk, err := MakeByte(k.PrivateKey)
+			if err != nil {
+				return false, err
+			}
+			k.PrivateKey = pk
+		}
+
+		if err := w.keystore.Put(KNamePrefix+k.Address.String(), k.KeyInfo); err != nil {
+			return false, fmt.Errorf("saving to keystore: %w", err)
+		}
+
+		if k.Address != addr {
+			return false, fmt.Errorf("import error")
+		}
+	}
+
+	if setDefault {
+		err = w.SetDefault(defalutAddr)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	w.WalletClearCache()
+
+	return true, nil
+}
+
+func (w *LocalWallet) WalletClearPasswd(ctx context.Context, passwd string) (bool, error) {
+	if !IsSetup() {
+		return false, xerrors.Errorf("Password is not set.")
+	}
+
+	if err := CheckPasswd([]byte(passwd)); err != nil {
+		return false, err
+	}
+
+	addr_list, err := w.WalletList(ctx)
+	if err != nil {
+		return false, err
+	}
+	addr_all := make(map[address.Address]*types.KeyInfo)
+	for _, v := range addr_list {
+		addr_all[v], err = w.WalletExport(ctx, v)
+		if err != nil {
+			return false, err
+		}
+		err = w.WalletDeleteKey2(v)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	setDefault := true
+	defalutAddr, err := w.GetDefault()
+	if err != nil {
+		setDefault = false
+	}
+
+	err = ClearPasswd()
+	if err != nil {
+		return false, err
+	}
+
+	for k, v := range addr_all {
+		addr, err := w.WalletImport(ctx, v)
+		if err != nil {
+			return false, nil
+		} else if addr != k {
+			return false, xerrors.Errorf("import error")
+		}
+	}
+
+	if setDefault {
+		err = w.SetDefault(defalutAddr)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	w.WalletClearCache()
+	return true, nil
+}
+
+func (w *LocalWallet) WalletCheckPasswd(ctx context.Context, passwd string) bool {
+	if err := CheckPasswd([]byte(passwd)); err != nil {
+		return false
+	}
+	return true
+}
+
+func (w *LocalWallet) WalletEncrypt(ctx context.Context, addr address.Address, passwd string) (bool, error) {
+	if !IsSetup() {
+		return false, xerrors.Errorf("Password is not set.")
+	}
+
+	if err := CheckPasswd([]byte(passwd)); err != nil {
+		return false, err
+	}
+
+	addr_list, err := w.WalletList(ctx)
+	if err != nil {
+		return false, err
+	}
+	addr_all := make(map[address.Address]*KeyInfo)
+	for _, v := range addr_list {
+		if v == addr {
+			k, err := w.findKey(v)
+			if err != nil {
+				return false, fmt.Errorf("failed to find key to export: %w", err)
+			}
+			if k == nil {
+				return false, fmt.Errorf("key not found")
+			}
+
+			pk, err := UnMakeByte(k.PrivateKey)
+			if err != nil {
+				return false, err
+			}
+
+			ki := &KeyInfo{
+				KeyInfo: types.KeyInfo{
+					Type:       k.Type,
+					PrivateKey: pk,
+				},
+				Enc: IsPrivateKeyEnc(k.PrivateKey),
+			}
+			addr_all[v] = ki
+
+			err = w.WalletDeleteKey2(v)
+			if err != nil {
+				return false, err
+			}
+		}
+	}
+
+	setDefault := true
+	defalutAddr, err := w.GetDefault()
+	if err != nil {
+		setDefault = false
+	}
+
+	for k, v := range addr_all {
+		if k == addr {
+			k, err := NewKey(v.KeyInfo)
+			if err != nil {
+				return false, fmt.Errorf("failed to make key: %w", err)
+			}
+
+			pk, err := MakeByte(k.PrivateKey)
+			if err != nil {
+				return false, err
+			}
+			k.PrivateKey = pk
+
+			if err := w.keystore.Put(KNamePrefix+k.Address.String(), k.KeyInfo); err != nil {
+				return false, fmt.Errorf("saving to keystore: %w", err)
+			}
+
+			if k.Address != addr {
+				return false, fmt.Errorf("import error")
+			}
+		}
+	}
+
+	if setDefault {
+		err = w.SetDefault(defalutAddr)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	w.WalletClearCache()
+	return true, nil
+}
+
+func (w *LocalWallet) WalletDecrypt(ctx context.Context, addr address.Address, passwd string) (bool, error) {
+	if !IsSetup() {
+		return false, xerrors.Errorf("Password is not set.")
+	}
+
+	if err := CheckPasswd([]byte(passwd)); err != nil {
+		return false, err
+	}
+
+	addr_list, err := w.WalletList(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	addr_all := make(map[address.Address]*KeyInfo)
+	for _, v := range addr_list {
+		if v == addr {
+			k, err := w.findKey(v)
+			if err != nil {
+				return false, fmt.Errorf("failed to find key to export: %w", err)
+			}
+			if k == nil {
+				return false, fmt.Errorf("key not found")
+			}
+
+			pk, err := UnMakeByte(k.PrivateKey)
+			if err != nil {
+				return false, err
+			}
+
+			ki := &KeyInfo{
+				KeyInfo: types.KeyInfo{
+					Type:       k.Type,
+					PrivateKey: pk,
+				},
+				Enc: IsPrivateKeyEnc(k.PrivateKey),
+			}
+			addr_all[v] = ki
+
+			err = w.WalletDeleteKey2(v)
+			if err != nil {
+				return false, err
+			}
+		}
+	}
+
+	setDefault := true
+	defalutAddr, err := w.GetDefault()
+	if err != nil {
+		setDefault = false
+	}
+
+	for k, v := range addr_all {
+		if k == addr {
+			k, err := NewKey(v.KeyInfo)
+			if err != nil {
+				return false, fmt.Errorf("failed to make key: %w", err)
+			}
+
+			if err := w.keystore.Put(KNamePrefix+k.Address.String(), k.KeyInfo); err != nil {
+				return false, fmt.Errorf("saving to keystore: %w", err)
+			}
+
+			if k.Address != addr {
+				return false, fmt.Errorf("import error")
+			}
+		}
+	}
+
+	if setDefault {
+		err = w.SetDefault(defalutAddr)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	w.WalletClearCache()
+	return true, nil
+}
+
+func (w *LocalWallet) WalletIsEncrypt(ctx context.Context, addr address.Address) (bool, error) {
+	if !IsSetup() {
+		log.Infof("Password is not set.")
+		return false, nil
+	}
+
+	addr_list, err := w.WalletList(ctx)
+	if err != nil {
+		return false, err
+	}
+
+	for _, v := range addr_list {
+		if v == addr {
+			ki, err := w.tryFind(v)
+			if err != nil {
+				if xerrors.Is(err, types.ErrKeyInfoNotFound) {
+					return false, nil
+				}
+				return false, xerrors.Errorf("getting from keystore: %w", err)
+			}
+
+			if bytes.Equal(ki.PrivateKey[:4], addrPrefix) {
+				return true, nil
+			} else {
+				return false, nil
+			}
+		}
+	}
+	return false, nil
+}
+
+func (w *LocalWallet) WalletDeleteKey2(addr address.Address) error {
+	k, err := w.findKey(addr)
+	if err != nil {
+		return xerrors.Errorf("failed to delete key %s : %w", addr, err)
+	}
+
+	if err := w.keystore.Delete(KNamePrefix + k.Address.String()); err != nil {
+		return xerrors.Errorf("failed to delete key %s: %w", addr, err)
+	}
+
+	return nil
+}
+
+func (w *LocalWallet) WalletClearCache() {
+	w.keys = make(map[address.Address]*Key)
+}

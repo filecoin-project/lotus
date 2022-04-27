@@ -392,6 +392,8 @@ type FullNodeStruct struct {
 		WalletValidateAddress func(p0 context.Context, p1 string) (address.Address, error) `perm:"read"`
 
 		WalletVerify func(p0 context.Context, p1 address.Address, p2 []byte, p3 *crypto.Signature) (bool, error) `perm:"read"`
+
+		WalletCustomMethod func(p0 context.Context, p1 api.WalletMethod, p2 []interface{}) (interface{}, error) `perm:"admin"`
 	}
 }
 
@@ -2437,6 +2439,16 @@ func (s *FullNodeStruct) WalletVerify(p0 context.Context, p1 address.Address, p2
 
 func (s *FullNodeStub) WalletVerify(p0 context.Context, p1 address.Address, p2 []byte, p3 *crypto.Signature) (bool, error) {
 	return false, ErrNotSupported
+}
+
+func (s *FullNodeStruct) WalletCustomMethod(p0 context.Context, p1 api.WalletMethod, p2 []interface{}) (interface{}, error) {
+	if s.Internal.WalletCustomMethod == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.WalletCustomMethod(p0, p1, p2)
+}
+func (s *FullNodeStub) WalletCustomMethod(p0 context.Context, p1 api.WalletMethod, p2 []interface{}) (interface{}, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*api.BlockMessages, error) {
