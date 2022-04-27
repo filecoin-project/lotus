@@ -58,14 +58,6 @@ func (sb *Sealer) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, 
 
 	maxSizeSpt := abi.RegisteredSealProof_StackedDrg64GiBV1_1
 
-	var done func()
-
-	defer func() {
-		if done != nil {
-			done()
-		}
-	}()
-
 	throttle := make(chan []byte, parallel)
 	piecePromises := make([]func() (abi.PieceInfo, error), 0)
 
@@ -123,7 +115,7 @@ func (sb *Sealer) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, 
 				}
 
 				return abi.PieceInfo{
-					Size:     abi.UnpaddedPieceSize(len(buf[:read])).Padded(),
+					Size:     abi.UnpaddedPieceSize(read).Padded(),
 					PieceCID: e.Cid,
 				}, nil
 			case <-ctx.Done():

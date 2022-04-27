@@ -54,6 +54,12 @@ func TestWorkerDataCid(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, abi.PaddedPieceSize(1024), pi.Size)
 	require.Equal(t, "baga6ea4seaqlhznlutptgfwhffupyer6txswamerq5fc2jlwf2lys2mm5jtiaeq", pi.PieceCID.String())
+
+	bigPiece := abi.PaddedPieceSize(16 << 20).Unpadded()
+	pi, err = miner.ComputeDataCid(ctx, bigPiece, strings.NewReader(strings.Repeat("a", int(bigPiece))))
+	require.NoError(t, err)
+	require.Equal(t, bigPiece.Padded(), pi.Size)
+	require.Equal(t, "baga6ea4seaqmhoxl2ybw5m2wyd3pt3h4zmp7j52yumzu2rar26twns3uocq7yfa", pi.PieceCID.String())
 }
 
 func TestWinningPostWorker(t *testing.T) {
