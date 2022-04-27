@@ -25,7 +25,7 @@ fetch() {
        fi
     fi
 
-    for net in mainnet caterpillarnet butterflynet calibrationnet devnet testing; do
+    for net in mainnet caterpillarnet butterflynet calibrationnet devnet testing testing-fake-proofs; do
         fetch_bundle $ver $rel $net
     done
 
@@ -67,7 +67,7 @@ touch_bundles() {
         mkdir $ver
     fi
 
-    for net in mainnet caterpillarnet butterflynet calibrationnet devnet testing; do
+    for net in mainnet caterpillarnet butterflynet calibrationnet devnet testing testing-fake-proofs; do
         touch $ver/builtin-actors-$net.car
     done
 }

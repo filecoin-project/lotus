@@ -53,8 +53,17 @@ func LoadBuiltinActorsTesting(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtype
 		base = "."
 	}
 
+	var template string
+	if build.InsecurePoStValidation {
+		template = "%s/build/builtin-actors/v%d/builtin-actors-testing-fake-proofs.car"
+	} else {
+		template = "%s/build/builtin-actors/v%d/builtin-actors-testing.car"
+	}
+
 	for _, ver := range []actors.Version{actors.Version8} {
-		path := fmt.Sprintf("%s/build/builtin-actors/v%d/builtin-actors-testing.car", base, ver)
+		path := fmt.Sprintf(template, base, ver)
+
+		log.Infof("loading testing bundle: %s", path)
 
 		file, err := os.Open(path)
 		if err != nil {
