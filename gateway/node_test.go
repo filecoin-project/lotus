@@ -252,3 +252,27 @@ func TestGatewayVersion(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, api.FullAPIVersion1, v.APIVersion)
 }
+
+func TestGatewayLimitTokensAvailable(t *testing.T) {
+	ctx := context.Background()
+	mock := &mockGatewayDepsAPI{}
+	tokens := 3
+	a := NewNode(mock, DefaultLookbackCap, DefaultStateWaitLookbackLimit, int64(tokens), time.Minute)
+	require.NoError(t, a.limit(ctx, tokens), "requests should not be limited when there are enough tokens availble")
+}
+
+func TestGatewayLimitTokensNotAvailable(t *testing.T) {
+	ctx := context.Background()
+	mock := &mockGatewayDepsAPI{}
+	tokens := 3
+	a := NewNode(mock, DefaultLookbackCap, DefaultStateWaitLookbackLimit, int64(1), time.Millisecond)
+	var err error
+	// try to be rate limited
+	for i := 0; i <= 1000; i++ {
+		err = a.limit(ctx, tokens)
+		if err != nil {
+			break
+		}
+	}
+	require.Error(t, err, "requiests should be rate limited when they hit limits")
+}
