@@ -80,6 +80,10 @@ func (mgr *SectorMgr) SectorsUnsealPiece(ctx context.Context, sector storage.Sec
 	panic("SectorMgr: unsealing piece: implement me")
 }
 
+func (mgr *SectorMgr) DataCid(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
+	panic("todo")
+}
+
 func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorID storage.SectorRef, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
 	log.Warn("Add piece: ", sectorID, size, sectorID.ProofType)
 
@@ -536,6 +540,10 @@ func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStPr
 }
 
 var _ storiface.WorkerReturn = &SectorMgr{}
+
+func (mgr *SectorMgr) ReturnDataCid(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err *storiface.CallError) error {
+	panic("not supported")
+}
 
 func (mgr *SectorMgr) ReturnAddPiece(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err *storiface.CallError) error {
 	panic("not supported")
