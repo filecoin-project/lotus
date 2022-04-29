@@ -68,7 +68,7 @@ done
 pids=()
 for (( i=0; i<${#ldlist[@]}; i++ )); do
   repo=${ldlist[$i]}
-  ./lotus --repo="${repo}" daemon --api "3000$i" --bootstrap=false --genesis build/genesis/devnet.car &
+  ./lotus --repo="${repo}" daemon --api "3000$i" --bootstrap=false --genesis build/genesis/devnet.car 2>/dev/null &
   pids+=($!)
 done
 
@@ -87,12 +87,27 @@ mdt01000=$(mktemp -d)
 mdt01001=$(mktemp -d)
 mdt01002=$(mktemp -d)
 
-env LOTUS_PATH="${ldt01000}" LOTUS_MINER_PATH="${mdt01000}" ./lotus-miner init --genesis-miner --actor=t01000 --pre-sealed-sectors="${sdt01000}" --pre-sealed-metadata="${sdt01000}/pre-seal-t01000.json" --nosync=true --sector-size="${SECTOR_SIZE}" || true
-env LOTUS_PATH="${ldt01000}" LOTUS_MINER_PATH="${mdt01000}" ./lotus-miner run --nosync &
+cat > ${mdt01000}/config.toml <<EOF
+[IndexProvider]
+  enable = false
+EOF
+
+cat > ${mdt01001}/config.toml <<EOF
+[IndexProvider]
+  enable = false
+EOF
+
+cat > ${mdt01002}/config.toml <<EOF
+[IndexProvider]
+  enable = false
+EOF
+
+env LOTUS_PATH="${ldt01000}" LOTUS_MINER_PATH="${mdt01000}" ./lotus-miner init --genesis-miner=true --actor=t01000 --pre-sealed-sectors="${sdt01000}" --pre-sealed-metadata="${sdt01000}/pre-seal-t01000.json" --nosync=true --sector-size="${SECTOR_SIZE}" || true
+env LOTUS_PATH="${ldt01000}" LOTUS_MINER_PATH="${mdt01000}" ./lotus-miner run 2>/dev/null --nosync &
 mpid=$!
 
-env LOTUS_PATH="${ldt01001}" LOTUS_MINER_PATH="${mdt01001}" ./lotus-miner init                 --actor=t01001 --pre-sealed-sectors="${sdt01001}" --pre-sealed-metadata="${sdt01001}/pre-seal-t01001.json" --nosync=true --sector-size="${SECTOR_SIZE}" || true
-env LOTUS_PATH="${ldt01002}" LOTUS_MINER_PATH="${mdt01002}" ./lotus-miner init                 --actor=t01002 --pre-sealed-sectors="${sdt01002}" --pre-sealed-metadata="${sdt01002}/pre-seal-t01002.json" --nosync=true --sector-size="${SECTOR_SIZE}" || true
+env LOTUS_PATH="${ldt01001}" LOTUS_MINER_PATH="${mdt01001}" ./lotus-miner init --genesis-miner=false --actor=t01001 --pre-sealed-sectors="${sdt01001}" --pre-sealed-metadata="${sdt01001}/pre-seal-t01001.json" --nosync=true --sector-size="${SECTOR_SIZE}" || true
+env LOTUS_PATH="${ldt01002}" LOTUS_MINER_PATH="${mdt01002}" ./lotus-miner init --genesis-miner=false --actor=t01002 --pre-sealed-sectors="${sdt01002}" --pre-sealed-metadata="${sdt01002}/pre-seal-t01002.json" --nosync=true --sector-size="${SECTOR_SIZE}" || true
 
 kill $mpid
 wait $mpid
