@@ -68,6 +68,10 @@ type schedTestWorker struct {
 	ignoreResources bool
 }
 
+func (s *schedTestWorker) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error) {
+	panic("implement me")
+}
+
 func (s *schedTestWorker) SealPreCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error) {
 	panic("implement me")
 }

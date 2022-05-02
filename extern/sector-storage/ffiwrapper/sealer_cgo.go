@@ -51,6 +51,120 @@ func (sb *Sealer) NewSector(ctx context.Context, sector storage.SectorRef) error
 	return nil
 }
 
+func (sb *Sealer) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (abi.PieceInfo, error) {
+	// TODO: allow tuning those:
+	chunk := abi.PaddedPieceSize(4 << 20)
+	parallel := runtime.NumCPU()
+
+	maxSizeSpt := abi.RegisteredSealProof_StackedDrg64GiBV1_1
+
+	throttle := make(chan []byte, parallel)
+	piecePromises := make([]func() (abi.PieceInfo, error), 0)
+
+	buf := make([]byte, chunk.Unpadded())
+	for i := 0; i < parallel; i++ {
+		if abi.UnpaddedPieceSize(i)*chunk.Unpadded() >= pieceSize {
+			break // won't use this many buffers
+		}
+		throttle <- make([]byte, chunk.Unpadded())
+	}
+
+	for {
+		var read int
+		for rbuf := buf; len(rbuf) > 0; {
+			n, err := pieceData.Read(rbuf)
+			if err != nil && err != io.EOF {
+				return abi.PieceInfo{}, xerrors.Errorf("pr read error: %w", err)
+			}
+
+			rbuf = rbuf[n:]
+			read += n
+
+			if err == io.EOF {
+				break
+			}
+		}
+		if read == 0 {
+			break
+		}
+
+		done := make(chan struct {
+			cid.Cid
+			error
+		}, 1)
+		pbuf := <-throttle
+		copy(pbuf, buf[:read])
+
+		go func(read int) {
+			defer func() {
+				throttle <- pbuf
+			}()
+
+			c, err := sb.pieceCid(maxSizeSpt, pbuf[:read])
+			done <- struct {
+				cid.Cid
+				error
+			}{c, err}
+		}(read)
+
+		piecePromises = append(piecePromises, func() (abi.PieceInfo, error) {
+			select {
+			case e := <-done:
+				if e.error != nil {
+					return abi.PieceInfo{}, e.error
+				}
+
+				return abi.PieceInfo{
+					Size:     abi.UnpaddedPieceSize(read).Padded(),
+					PieceCID: e.Cid,
+				}, nil
+			case <-ctx.Done():
+				return abi.PieceInfo{}, ctx.Err()
+			}
+		})
+	}
+
+	if len(piecePromises) == 1 {
+		return piecePromises[0]()
+	}
+
+	var payloadRoundedBytes abi.PaddedPieceSize
+	pieceCids := make([]abi.PieceInfo, len(piecePromises))
+	for i, promise := range piecePromises {
+		pinfo, err := promise()
+		if err != nil {
+			return abi.PieceInfo{}, err
+		}
+
+		pieceCids[i] = pinfo
+		payloadRoundedBytes += pinfo.Size
+	}
+
+	pieceCID, err := ffi.GenerateUnsealedCID(maxSizeSpt, pieceCids)
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("generate unsealed CID: %w", err)
+	}
+
+	// validate that the pieceCID was properly formed
+	if _, err := commcid.CIDToPieceCommitmentV1(pieceCID); err != nil {
+		return abi.PieceInfo{}, err
+	}
+
+	if payloadRoundedBytes < pieceSize.Padded() {
+		paddedCid, err := commpffi.ZeroPadPieceCommitment(pieceCID, payloadRoundedBytes.Unpadded(), pieceSize)
+		if err != nil {
+			return abi.PieceInfo{}, xerrors.Errorf("failed to pad data: %w", err)
+		}
+
+		pieceCID = paddedCid
+	}
+
+	return abi.PieceInfo{
+		Size:     pieceSize.Padded(),
+		PieceCID: pieceCID,
+	}, nil
+}
+
 func (sb *Sealer) AddPiece(ctx context.Context, sector storage.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, file storage.Data) (abi.PieceInfo, error) {
 	// TODO: allow tuning those:
 	chunk := abi.PaddedPieceSize(4 << 20)
