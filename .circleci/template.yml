@@ -800,11 +800,7 @@ workflows:
               only:
                 - master
       - build-debug
-      - build-all:
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-all
       - build-ntwk-calibration:
           filters:
             tags:
@@ -816,14 +812,7 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-lotus-soup
-      - build-macos:
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-macos
       - build-appimage:
           filters:
             branches:
