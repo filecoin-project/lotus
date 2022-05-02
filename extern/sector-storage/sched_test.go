@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
@@ -58,13 +59,17 @@ var constrainedWorkerResources = storiface.WorkerResources{
 type schedTestWorker struct {
 	name      string
 	taskTypes map[sealtasks.TaskType]struct{}
-	paths     []stores.StoragePath
+	paths     []storiface.StoragePath
 
 	closed  bool
 	session uuid.UUID
 
 	resources       storiface.WorkerResources
 	ignoreResources bool
+}
+
+func (s *schedTestWorker) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error) {
+	panic("implement me")
 }
 
 func (s *schedTestWorker) SealPreCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error) {
@@ -139,11 +144,19 @@ func (s *schedTestWorker) ReadPiece(ctx context.Context, writer io.Writer, id st
 	panic("implement me")
 }
 
+func (s *schedTestWorker) GenerateWinningPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, mid abi.ActorID, sectors []storiface.PostSectorChallenge, randomness abi.PoStRandomness) ([]proof.PoStProof, error) {
+	panic("implement me")
+}
+
+func (s *schedTestWorker) GenerateWindowPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, mid abi.ActorID, sectors []storiface.PostSectorChallenge, partitionIdx int, randomness abi.PoStRandomness) (storiface.WindowPoStResult, error) {
+	panic("implement me")
+}
+
 func (s *schedTestWorker) TaskTypes(ctx context.Context) (map[sealtasks.TaskType]struct{}, error) {
 	return s.taskTypes, nil
 }
 
-func (s *schedTestWorker) Paths(ctx context.Context) ([]stores.StoragePath, error) {
+func (s *schedTestWorker) Paths(ctx context.Context) ([]storiface.StoragePath, error) {
 	return s.paths, nil
 }
 
@@ -174,7 +187,7 @@ func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name str
 	w := &schedTestWorker{
 		name:      name,
 		taskTypes: taskTypes,
-		paths:     []stores.StoragePath{{ID: "bb-8", Weight: 2, LocalPath: "<octopus>food</octopus>", CanSeal: true, CanStore: true}},
+		paths:     []storiface.StoragePath{{ID: "bb-8", Weight: 2, LocalPath: "<octopus>food</octopus>", CanSeal: true, CanStore: true}},
 
 		session: uuid.New(),
 
@@ -183,7 +196,7 @@ func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name str
 	}
 
 	for _, path := range w.paths {
-		err := index.StorageAttach(context.TODO(), stores.StorageInfo{
+		err := index.StorageAttach(context.TODO(), storiface.StorageInfo{
 			ID:       path.ID,
 			URLs:     nil,
 			Weight:   path.Weight,
@@ -198,7 +211,15 @@ func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name str
 		require.NoError(t, err)
 	}
 
-	require.NoError(t, sched.runWorker(context.TODO(), w))
+	sessID, err := w.Session(context.TODO())
+	require.NoError(t, err)
+
+	wid := storiface.WorkerID(sessID)
+
+	wh, err := newWorkerHandle(context.TODO(), w)
+	require.NoError(t, err)
+
+	require.NoError(t, sched.runWorker(context.TODO(), wid, wh))
 }
 
 func TestSchedStartStop(t *testing.T) {

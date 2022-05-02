@@ -98,7 +98,10 @@ func (wt *workTracker) track(ctx context.Context, ready chan struct{}, wid stori
 		wt.lk.Lock()
 		delete(wt.prepared, prepID)
 	}
+
+	wt.lk.Unlock()
 	callID, err := cb()
+	wt.lk.Lock()
 	if err != nil {
 		return callID, err
 	}
@@ -181,6 +184,12 @@ func (t *trackedWorker) SealCommit2(ctx context.Context, sector storage.SectorRe
 
 func (t *trackedWorker) FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) (storiface.CallID, error) {
 	return t.tracker.track(ctx, t.execute, t.wid, t.workerInfo, sector, sealtasks.TTFinalize, func() (storiface.CallID, error) { return t.Worker.FinalizeSector(ctx, sector, keepUnsealed) })
+}
+
+func (t *trackedWorker) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error) {
+	return t.tracker.track(ctx, t.execute, t.wid, t.workerInfo, storage.NoSectorRef, sealtasks.TTDataCid, func() (storiface.CallID, error) {
+		return t.Worker.DataCid(ctx, pieceSize, pieceData)
+	})
 }
 
 func (t *trackedWorker) AddPiece(ctx context.Context, sector storage.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error) {

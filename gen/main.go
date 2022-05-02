@@ -4,12 +4,15 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/lotus/chain/vm"
+
 	gen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/cmd/lotus-shed/shedgen"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/node/hello"
@@ -31,6 +34,14 @@ func main() {
 		types.BeaconEntry{},
 		types.StateRoot{},
 		types.StateInfo0{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+
+	err = gen.WriteTupleEncodersToFile("./chain/vm/cbor_gen.go", "vm",
+		vm.FvmExecutionTrace{},
 	)
 	if err != nil {
 		fmt.Println(err)
@@ -101,6 +112,13 @@ func main() {
 		sectorstorage.Call{},
 		sectorstorage.WorkState{},
 		sectorstorage.WorkID{},
+	)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
+	err = gen.WriteMapEncodersToFile("./cmd/lotus-shed/shedgen/cbor_gen.go", "shedgen",
+		shedgen.CarbNode{},
 	)
 	if err != nil {
 		fmt.Println(err)

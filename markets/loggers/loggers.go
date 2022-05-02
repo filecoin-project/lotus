@@ -40,6 +40,7 @@ func DataTransferLogger(event datatransfer.Event, state datatransfer.ChannelStat
 		"sent", state.Sent(),
 		"received", state.Received(),
 		"queued", state.Queued(),
+		"received count", state.ReceivedCidsTotal(),
 		"total size", state.TotalSize(),
 		"remote peer", state.OtherPeer(),
 		"event message", event.Message,

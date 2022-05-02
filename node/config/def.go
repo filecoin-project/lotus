@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding"
+
 	"os"
 	"strconv"
 	"time"
@@ -45,6 +46,14 @@ func defCommon() Common {
 		API: API{
 			ListenAddress: "/ip4/127.0.0.1/tcp/1234/http",
 			Timeout:       Duration(30 * time.Second),
+		},
+		Logging: Logging{
+			SubsystemLevels: map[string]string{
+				"example-subsystem": "INFO",
+			},
+		},
+		Backup: Backup{
+			DisableMetadataLog: true,
 		},
 		Libp2p: Libp2p{
 			ListenAddresses: []string{
@@ -104,6 +113,7 @@ func DefaultStorageMiner() *StorageMiner {
 			WaitDealsDelay:            Duration(time.Hour * 6),
 			AlwaysKeepUnsealedCopy:    true,
 			FinalizeEarly:             false,
+			MakeNewSectorForDeals:     true,
 
 			CollateralFromMinerBalance: false,
 			AvailableBalanceBuffer:     types.FIL(big.Zero()),
@@ -131,7 +141,11 @@ func DefaultStorageMiner() *StorageMiner {
 			TerminateBatchWait: Duration(5 * time.Minute),
 		},
 
-		Storage: sectorstorage.SealerConfig{
+		Proving: ProvingConfig{
+			ParallelCheckLimit: 128,
+		},
+
+		Storage: SealerConfig{
 			AllowAddPiece:            true,
 			AllowPreCommit1:          true,
 			AllowPreCommit2:          true,
@@ -157,7 +171,6 @@ func DefaultStorageMiner() *StorageMiner {
 			ConsiderVerifiedStorageDeals:   true,
 			ConsiderUnverifiedStorageDeals: true,
 			PieceCidBlocklist:              []cid.Cid{},
-			MakeNewSectorForDeals:          true,
 			// TODO: It'd be nice to set this based on sector size
 			MaxDealStartDelay:               Duration(time.Hour * 24 * 14),
 			ExpectedSealDuration:            Duration(time.Hour * 24),
@@ -180,6 +193,16 @@ func DefaultStorageMiner() *StorageMiner {
 					Path: "",
 				},
 			},
+		},
+
+		IndexProvider: IndexProviderConfig{
+			Enable:               true,
+			EntriesCacheCapacity: 1024,
+			EntriesChunkSize:     16384,
+			// The default empty TopicName means it is inferred from network name, in the following
+			// format: "/indexer/ingest/<network-name>"
+			TopicName:         "",
+			PurgeCacheOnStart: false,
 		},
 
 		Subsystems: MinerSubsystemConfig{
@@ -222,6 +245,7 @@ func DefaultStorageMiner() *StorageMiner {
 			GCInterval:                 Duration(1 * time.Minute),
 		},
 	}
+
 	cfg.Common.API.ListenAddress = "/ip4/127.0.0.1/tcp/2345/http"
 	cfg.Common.API.RemoteListenAddress = "127.0.0.1:2345"
 	return cfg

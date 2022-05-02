@@ -71,18 +71,21 @@ func (s *seal) precommit(t *testing.T, sb *Sealer, id storage.SectorRef, done fu
 	r := data(id.ID.Number, dlen)
 	s.pi, err = sb.AddPiece(context.TODO(), id, []abi.UnpaddedPieceSize{}, dlen, r)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Errorf("%+v", err)
+		return
 	}
 
 	s.ticket = sealRand
 
 	p1, err := sb.SealPreCommit1(context.TODO(), id, s.ticket, []abi.PieceInfo{s.pi})
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Errorf("%+v", err)
+		return
 	}
 	cids, err := sb.SealPreCommit2(context.TODO(), id, p1)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Errorf("%+v", err)
+		return
 	}
 	s.cids = cids
 }
@@ -94,11 +97,13 @@ func (s *seal) commit(t *testing.T, sb *Sealer, done func()) storage.Proof {
 
 	pc1, err := sb.SealCommit1(context.TODO(), s.ref, s.ticket, seed, []abi.PieceInfo{s.pi}, s.cids)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Errorf("%+v", err)
+		return nil
 	}
 	proof, err := sb.SealCommit2(context.TODO(), s.ref, pc1)
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Errorf("%+v", err)
+		return nil
 	}
 
 	ok, err := ProofVerifier.VerifySeal(proof2.SealVerifyInfo{
@@ -111,11 +116,13 @@ func (s *seal) commit(t *testing.T, sb *Sealer, done func()) storage.Proof {
 		UnsealedCID:           s.cids.Unsealed,
 	})
 	if err != nil {
-		t.Fatalf("%+v", err)
+		t.Errorf("%+v", err)
+		return nil
 	}
 
 	if !ok {
-		t.Fatal("proof failed to validate")
+		t.Errorf("proof failed to validate")
+		return nil
 	}
 
 	return proof
@@ -295,7 +302,7 @@ func TestSealAndVerify(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	cleanup := func() {
+	t.Cleanup(func() {
 		if t.Failed() {
 			fmt.Printf("not removing %s\n", cdir)
 			return
@@ -303,8 +310,7 @@ func TestSealAndVerify(t *testing.T) {
 		if err := os.RemoveAll(cdir); err != nil {
 			t.Error(err)
 		}
-	}
-	defer cleanup()
+	})
 
 	si := storage.SectorRef{
 		ID:        abi.SectorID{Miner: miner, Number: 1},
@@ -369,7 +375,7 @@ func TestSealPoStNoCommit(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
-	cleanup := func() {
+	t.Cleanup(func() {
 		if t.Failed() {
 			fmt.Printf("not removing %s\n", dir)
 			return
@@ -377,8 +383,7 @@ func TestSealPoStNoCommit(t *testing.T) {
 		if err := os.RemoveAll(dir); err != nil {
 			t.Error(err)
 		}
-	}
-	defer cleanup()
+	})
 
 	si := storage.SectorRef{
 		ID:        abi.SectorID{Miner: miner, Number: 1},
@@ -434,13 +439,11 @@ func TestSealAndVerify3(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
-	cleanup := func() {
+	t.Cleanup(func() {
 		if err := os.RemoveAll(dir); err != nil {
 			t.Error(err)
 		}
-	}
-
-	defer cleanup()
+	})
 
 	var wg sync.WaitGroup
 
@@ -462,17 +465,17 @@ func TestSealAndVerify3(t *testing.T) {
 	s3 := seal{ref: si3}
 
 	wg.Add(3)
-	go s1.precommit(t, sb, si1, wg.Done) //nolint: staticcheck
+	go s1.precommit(t, sb, si1, wg.Done)
 	time.Sleep(100 * time.Millisecond)
-	go s2.precommit(t, sb, si2, wg.Done) //nolint: staticcheck
+	go s2.precommit(t, sb, si2, wg.Done)
 	time.Sleep(100 * time.Millisecond)
-	go s3.precommit(t, sb, si3, wg.Done) //nolint: staticcheck
+	go s3.precommit(t, sb, si3, wg.Done)
 	wg.Wait()
 
 	wg.Add(3)
-	go s1.commit(t, sb, wg.Done) //nolint: staticcheck
-	go s2.commit(t, sb, wg.Done) //nolint: staticcheck
-	go s3.commit(t, sb, wg.Done) //nolint: staticcheck
+	go s1.commit(t, sb, wg.Done)
+	go s2.commit(t, sb, wg.Done)
+	go s3.commit(t, sb, wg.Done)
 	wg.Wait()
 
 	post(t, sb, nil, s1, s2, s3)
@@ -512,7 +515,7 @@ func TestSealAndVerifyAggregate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%+v", err)
 	}
-	cleanup := func() {
+	t.Cleanup(func() {
 		if t.Failed() {
 			fmt.Printf("not removing %s\n", cdir)
 			return
@@ -520,8 +523,7 @@ func TestSealAndVerifyAggregate(t *testing.T) {
 		if err := os.RemoveAll(cdir); err != nil {
 			t.Error(err)
 		}
-	}
-	defer cleanup()
+	})
 
 	avi := proof5.AggregateSealVerifyProofAndInfos{
 		Miner:          miner,
@@ -917,7 +919,7 @@ func TestMulticoreSDR(t *testing.T) {
 		t.Fatalf("%+v", err)
 	}
 
-	cleanup := func() {
+	t.Cleanup(func() {
 		if t.Failed() {
 			fmt.Printf("not removing %s\n", dir)
 			return
@@ -925,8 +927,7 @@ func TestMulticoreSDR(t *testing.T) {
 		if err := os.RemoveAll(dir); err != nil {
 			t.Error(err)
 		}
-	}
-	defer cleanup()
+	})
 
 	si := storage.SectorRef{
 		ID:        abi.SectorID{Miner: miner, Number: 1},
@@ -949,4 +950,58 @@ func TestMulticoreSDR(t *testing.T) {
 	}
 
 	require.True(t, ok)
+}
+
+func TestPoStChallengeAssumptions(t *testing.T) {
+	var r [32]byte
+	rand.Read(r[:])
+	r[31] &= 0x3f
+
+	// behaves like a pure function
+	{
+		c1, err := ffi.GeneratePoStFallbackSectorChallenges(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1, 1000, r[:], []abi.SectorNumber{1, 2, 3, 4})
+		require.NoError(t, err)
+
+		c2, err := ffi.GeneratePoStFallbackSectorChallenges(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1, 1000, r[:], []abi.SectorNumber{1, 2, 3, 4})
+		require.NoError(t, err)
+
+		require.Equal(t, c1, c2)
+	}
+
+	// doesn't sort, challenges position dependant
+	{
+		c1, err := ffi.GeneratePoStFallbackSectorChallenges(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1, 1000, r[:], []abi.SectorNumber{1, 2, 3, 4})
+		require.NoError(t, err)
+
+		c2, err := ffi.GeneratePoStFallbackSectorChallenges(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1, 1000, r[:], []abi.SectorNumber{4, 2, 3, 1})
+		require.NoError(t, err)
+
+		require.NotEqual(t, c1, c2)
+
+		require.Equal(t, c1.Challenges[2], c2.Challenges[2])
+		require.Equal(t, c1.Challenges[3], c2.Challenges[3])
+
+		require.NotEqual(t, c1.Challenges[1], c2.Challenges[1])
+		require.NotEqual(t, c1.Challenges[4], c2.Challenges[4])
+	}
+
+	// length doesn't matter
+	{
+		c1, err := ffi.GeneratePoStFallbackSectorChallenges(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1, 1000, r[:], []abi.SectorNumber{1})
+		require.NoError(t, err)
+
+		c2, err := ffi.GeneratePoStFallbackSectorChallenges(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1, 1000, r[:], []abi.SectorNumber{1, 2})
+		require.NoError(t, err)
+
+		require.NotEqual(t, c1, c2)
+		require.Equal(t, c1.Challenges[1], c2.Challenges[1])
+	}
+
+	// generate dedupes
+	{
+		c1, err := ffi.GeneratePoStFallbackSectorChallenges(abi.RegisteredPoStProof_StackedDrgWindow32GiBV1, 1000, r[:], []abi.SectorNumber{1, 2, 1, 4})
+		require.NoError(t, err)
+		require.Len(t, c1.Sectors, 3)
+		require.Len(t, c1.Challenges, 3)
+	}
 }

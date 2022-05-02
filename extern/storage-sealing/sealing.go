@@ -6,19 +6,21 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
-	statemachine "github.com/filecoin-project/go-statemachine"
+	"github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
@@ -63,7 +65,7 @@ type SealingAPI interface {
 	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
 	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
 	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, TipSetToken) (bool, error)
-	StateMinerActiveSectors(context.Context, address.Address, TipSetToken) ([]*miner.SectorOnChainInfo, error)
+	StateMinerActiveSectors(context.Context, address.Address, TipSetToken) (bitfield.BitField, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, TipSetToken) (*api.MarketDeal, error)
 	StateMarketStorageDealProposal(context.Context, abi.DealID, TipSetToken) (market.DealProposal, error)
 	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
@@ -104,10 +106,9 @@ type Sealing struct {
 	sectorTimers   map[abi.SectorID]*time.Timer
 	pendingPieces  map[cid.Cid]*pendingPiece
 	assignedPieces map[abi.SectorID][]cid.Cid
-	creating       *abi.SectorNumber // used to prevent a race where we could create a new sector more than once
+	nextDealSector *abi.SectorNumber // used to prevent a race where we could create a new sector more than once
 
-	upgradeLk sync.Mutex
-	toUpgrade map[abi.SectorNumber]struct{}
+	available map[abi.SectorID]struct{}
 
 	notifee SectorStateNotifee
 	addrSel AddrSel
@@ -129,11 +130,11 @@ type openSector struct {
 	maybeAccept func(cid.Cid) error // called with inputLk
 }
 
-func (o *openSector) dealFitsInLifetime(dealEnd abi.ChainEpoch, expF func(sn abi.SectorNumber) (abi.ChainEpoch, error)) (bool, error) {
+func (o *openSector) dealFitsInLifetime(dealEnd abi.ChainEpoch, expF expFn) (bool, error) {
 	if !o.ccUpdate {
 		return true, nil
 	}
-	expiration, err := expF(o.number)
+	expiration, _, err := expF(o.number)
 	if err != nil {
 		return false, err
 	}
@@ -177,7 +178,8 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 		sectorTimers:   map[abi.SectorID]*time.Timer{},
 		pendingPieces:  map[cid.Cid]*pendingPiece{},
 		assignedPieces: map[abi.SectorID][]cid.Cid{},
-		toUpgrade:      map[abi.SectorNumber]struct{}{},
+
+		available: map[abi.SectorID]struct{}{},
 
 		notifee: notifee,
 		addrSel: as,

@@ -9,6 +9,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -112,13 +113,25 @@ func (s SealingAPIAdapter) StateMinerSectorAllocated(ctx context.Context, maddr 
 	return s.delegate.StateMinerSectorAllocated(ctx, maddr, sid, tsk)
 }
 
-func (s SealingAPIAdapter) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tok sealing.TipSetToken) ([]*miner.SectorOnChainInfo, error) {
+func (s SealingAPIAdapter) StateMinerActiveSectors(ctx context.Context, maddr address.Address, tok sealing.TipSetToken) (bitfield.BitField, error) {
 	tsk, err := types.TipSetKeyFromBytes(tok)
 	if err != nil {
-		return nil, xerrors.Errorf("faile dto unmarshal TipSetToken to TipSetKey: %w", err)
+		return bitfield.BitField{}, xerrors.Errorf("failed to unmarshal TipSetToken to TipSetKey: %w", err)
 	}
 
-	return s.delegate.StateMinerActiveSectors(ctx, maddr, tsk)
+	act, err := s.delegate.StateGetActor(ctx, maddr, tsk)
+	if err != nil {
+		return bitfield.BitField{}, xerrors.Errorf("getting miner actor: temp error: %+v", err)
+	}
+
+	stor := store.ActorStore(ctx, blockstore.NewAPIBlockstore(s.delegate))
+
+	state, err := miner.Load(stor, act)
+	if err != nil {
+		return bitfield.BitField{}, xerrors.Errorf("loading miner state: %+v", err)
+	}
+
+	return miner.AllPartSectors(state, miner.Partition.ActiveSectors)
 }
 
 func (s SealingAPIAdapter) StateWaitMsg(ctx context.Context, mcid cid.Cid) (sealing.MsgLookup, error) {

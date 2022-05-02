@@ -18,6 +18,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+func (cs *ChainStore) UnionStore() bstore.Blockstore {
+	return bstore.Union(cs.stateBlockstore, cs.chainBlockstore)
+}
+
 func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, w io.Writer) error {
 	h := &car.CarHeader{
 		Roots:   ts.Cids(),
@@ -28,7 +32,7 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 		return xerrors.Errorf("failed to write car header: %s", err)
 	}
 
-	unionBs := bstore.Union(cs.stateBlockstore, cs.chainBlockstore)
+	unionBs := cs.UnionStore()
 	return cs.WalkSnapshot(ctx, ts, inclRecentRoots, skipOldMsgs, true, func(c cid.Cid) error {
 		blk, err := unionBs.Get(ctx, c)
 		if err != nil {

@@ -449,6 +449,15 @@ func (m *StateModule) StateLookupID(ctx context.Context, addr address.Address, t
 	return m.StateManager.LookupID(ctx, addr, ts)
 }
 
+func (a *StateAPI) StateLookupRobustAddress(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+	}
+
+	return a.StateManager.LookupRobustAddress(ctx, addr, ts)
+}
+
 func (m *StateModule) StateAccountKey(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
 	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {

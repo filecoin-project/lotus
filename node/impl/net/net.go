@@ -4,8 +4,10 @@ import (
 	"context"
 	"sort"
 	"strings"
+	"time"
 
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/metrics"
@@ -15,6 +17,7 @@ import (
 	swarm "github.com/libp2p/go-libp2p-swarm"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	"github.com/libp2p/go-libp2p/p2p/net/conngater"
+	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/lotus/api"
@@ -175,6 +178,14 @@ func (a *NetAPI) NetBandwidthStatsByPeer(ctx context.Context) (map[string]metric
 		out[p.String()] = s
 	}
 	return out, nil
+}
+
+func (a *NetAPI) NetPing(ctx context.Context, p peer.ID) (time.Duration, error) {
+	result, ok := <-ping.Ping(ctx, a.Host, p)
+	if !ok {
+		return 0, xerrors.Errorf("didn't get ping result: %w", ctx.Err())
+	}
+	return result.RTT, result.Error
 }
 
 func (a *NetAPI) NetBandwidthStatsByProtocol(ctx context.Context) (map[protocol.ID]metrics.Stats, error) {

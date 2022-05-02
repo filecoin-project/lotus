@@ -65,7 +65,7 @@ var ChainNode = Options(
 	Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
 	Override(new(ffiwrapper.Prover), ffiwrapper.ProofProver),
 
-	// Consensus: VM
+	// Consensus: LegacyVM
 	Override(new(vm.SyscallBuilder), vm.Syscalls),
 
 	// Consensus: Chain storage/access
@@ -133,6 +133,8 @@ var ChainNode = Options(
 	Override(HandleMigrateClientFundsKey, modules.HandleMigrateClientFunds),
 
 	Override(new(*full.GasPriceCache), full.NewGasPriceCache),
+
+	Override(RelayIndexerMessagesKey, modules.RelayIndexerMessages),
 
 	// Lite node API
 	ApplyIf(isLiteNode,

@@ -1768,6 +1768,9 @@ var StateSectorCmd = &cli.Command{
 		fmt.Println("SectorNumber: ", si.SectorNumber)
 		fmt.Println("SealProof: ", si.SealProof)
 		fmt.Println("SealedCID: ", si.SealedCID)
+		if si.SectorKeyCID != nil {
+			fmt.Println("SectorKeyCID: ", si.SectorKeyCID)
+		}
 		fmt.Println("DealIDs: ", si.DealIDs)
 		fmt.Println()
 		fmt.Println("Activation: ", EpochTime(ts.Height(), si.Activation))

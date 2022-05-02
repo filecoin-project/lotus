@@ -1,3 +1,4 @@
+//stm: #unit
 package store_test
 
 import (
@@ -10,6 +11,9 @@ import (
 )
 
 func TestChainCheckpoint(t *testing.T) {
+	//stm: @CHAIN_GEN_NEXT_TIPSET_FROM_MINERS_001
+	//stm: @CHAIN_STORE_GET_TIPSET_FROM_KEY_001, @CHAIN_STORE_SET_HEAD_001, @CHAIN_STORE_GET_HEAVIEST_TIPSET_001
+	//stm: @CHAIN_STORE_SET_CHECKPOINT_001, @CHAIN_STORE_MAYBE_TAKE_HEAVIER_TIPSET_001, @CHAIN_STORE_REMOVE_CHECKPOINT_001
 	ctx := context.Background()
 
 	cg, err := gen.NewGenerator()

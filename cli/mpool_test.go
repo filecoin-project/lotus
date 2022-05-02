@@ -1,4 +1,4 @@
-//stm: #cli
+//stm: #unit
 package cli
 
 import (

@@ -1,3 +1,4 @@
+//stm: #integration
 package main
 
 import (
@@ -49,6 +50,7 @@ func TestMinerAllInfo(t *testing.T) {
 
 	t.Run("pre-info-all", run)
 
+	//stm: @CLIENT_DATA_IMPORT_001, @CLIENT_STORAGE_DEALS_GET_001
 	dh := kit.NewDealHarness(t, client, miner, miner)
 	deal, res, inPath := dh.MakeOnlineDeal(context.Background(), kit.MakeFullDealParams{Rseed: 6})
 	outPath := dh.PerformRetrieval(context.Background(), deal, res.Root, false)

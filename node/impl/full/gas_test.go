@@ -13,6 +13,7 @@ import (
 )
 
 func TestMedian(t *testing.T) {
+	//stm: @MARKET_GAS_GET_MEDIAN_PREMIUM_001
 	require.Equal(t, types.NewInt(5), medianGasPremium([]GasMeta{
 		{big.NewInt(5), build.BlockGasTarget},
 	}, 1))

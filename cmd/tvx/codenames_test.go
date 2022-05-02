@@ -1,3 +1,4 @@
+//stm: #unit
 package main
 
 import (
@@ -10,6 +11,7 @@ import (
 )
 
 func TestProtocolCodenames(t *testing.T) {
+	//stm: @OTHER_IMPLEMENTATION_EPOCH_CODENAMES_001
 	if height := abi.ChainEpoch(100); GetProtocolCodename(height) != "genesis" {
 		t.Fatal("expected genesis codename")
 	}

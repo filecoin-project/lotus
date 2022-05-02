@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/libp2p/go-libp2p-core/host"
+
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -23,88 +25,70 @@ const (
 )
 
 // NewMinerAPI creates a new MinerAPI adaptor for the dagstore mounts.
-func NewMinerAPI(lc fx.Lifecycle, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, sa mdagstore.SectorAccessor) (mdagstore.MinerAPI, error) {
-	cfg, err := extractDAGStoreConfig(r)
-	if err != nil {
-		return nil, err
-	}
-
-	// caps the amount of concurrent calls to the storage, so that we don't
-	// spam it during heavy processes like bulk migration.
-	if v, ok := os.LookupEnv("LOTUS_DAGSTORE_MOUNT_CONCURRENCY"); ok {
-		concurrency, err := strconv.Atoi(v)
-		if err == nil {
-			cfg.MaxConcurrencyStorageCalls = concurrency
-		}
-	}
-
-	mountApi := mdagstore.NewMinerAPI(pieceStore, sa, cfg.MaxConcurrencyStorageCalls, cfg.MaxConcurrentUnseals)
-	ready := make(chan error, 1)
-	pieceStore.OnReady(func(err error) {
-		ready <- err
-	})
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			if err := <-ready; err != nil {
-				return fmt.Errorf("aborting dagstore start; piecestore failed to start: %s", err)
+func NewMinerAPI(cfg config.DAGStoreConfig) func(fx.Lifecycle, repo.LockedRepo, dtypes.ProviderPieceStore, mdagstore.SectorAccessor) (mdagstore.MinerAPI, error) {
+	return func(lc fx.Lifecycle, r repo.LockedRepo, pieceStore dtypes.ProviderPieceStore, sa mdagstore.SectorAccessor) (mdagstore.MinerAPI, error) {
+		// caps the amount of concurrent calls to the storage, so that we don't
+		// spam it during heavy processes like bulk migration.
+		if v, ok := os.LookupEnv("LOTUS_DAGSTORE_MOUNT_CONCURRENCY"); ok {
+			concurrency, err := strconv.Atoi(v)
+			if err == nil {
+				cfg.MaxConcurrencyStorageCalls = concurrency
 			}
-			return mountApi.Start(ctx)
-		},
-		OnStop: func(context.Context) error {
-			return nil
-		},
-	})
+		}
 
-	return mountApi, nil
+		mountApi := mdagstore.NewMinerAPI(pieceStore, sa, cfg.MaxConcurrencyStorageCalls, cfg.MaxConcurrentUnseals)
+		ready := make(chan error, 1)
+		pieceStore.OnReady(func(err error) {
+			ready <- err
+		})
+		lc.Append(fx.Hook{
+			OnStart: func(ctx context.Context) error {
+				if err := <-ready; err != nil {
+					return fmt.Errorf("aborting dagstore start; piecestore failed to start: %s", err)
+				}
+				return mountApi.Start(ctx)
+			},
+			OnStop: func(context.Context) error {
+				return nil
+			},
+		})
+
+		return mountApi, nil
+	}
 }
 
 // DAGStore constructs a DAG store using the supplied minerAPI, and the
 // user configuration. It returns both the DAGStore and the Wrapper suitable for
 // passing to markets.
-func DAGStore(lc fx.Lifecycle, r repo.LockedRepo, minerAPI mdagstore.MinerAPI) (*dagstore.DAGStore, *mdagstore.Wrapper, error) {
-	cfg, err := extractDAGStoreConfig(r)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	// fall back to default root directory if not explicitly set in the config.
-	if cfg.RootDir == "" {
-		cfg.RootDir = filepath.Join(r.Path(), DefaultDAGStoreDir)
-	}
-
-	v, ok := os.LookupEnv(EnvDAGStoreCopyConcurrency)
-	if ok {
-		concurrency, err := strconv.Atoi(v)
-		if err == nil {
-			cfg.MaxConcurrentReadyFetches = concurrency
+func DAGStore(cfg config.DAGStoreConfig) func(lc fx.Lifecycle, r repo.LockedRepo, minerAPI mdagstore.MinerAPI, h host.Host) (*dagstore.DAGStore, *mdagstore.Wrapper, error) {
+	return func(lc fx.Lifecycle, r repo.LockedRepo, minerAPI mdagstore.MinerAPI, h host.Host) (*dagstore.DAGStore, *mdagstore.Wrapper, error) {
+		// fall back to default root directory if not explicitly set in the config.
+		if cfg.RootDir == "" {
+			cfg.RootDir = filepath.Join(r.Path(), DefaultDAGStoreDir)
 		}
-	}
 
-	dagst, w, err := mdagstore.NewDAGStore(cfg, minerAPI)
-	if err != nil {
-		return nil, nil, xerrors.Errorf("failed to create DAG store: %w", err)
-	}
+		v, ok := os.LookupEnv(EnvDAGStoreCopyConcurrency)
+		if ok {
+			concurrency, err := strconv.Atoi(v)
+			if err == nil {
+				cfg.MaxConcurrentReadyFetches = concurrency
+			}
+		}
 
-	lc.Append(fx.Hook{
-		OnStart: func(ctx context.Context) error {
-			return w.Start(ctx)
-		},
-		OnStop: func(context.Context) error {
-			return w.Close()
-		},
-	})
+		dagst, w, err := mdagstore.NewDAGStore(cfg, minerAPI, h)
+		if err != nil {
+			return nil, nil, xerrors.Errorf("failed to create DAG store: %w", err)
+		}
 
-	return dagst, w, nil
-}
+		lc.Append(fx.Hook{
+			OnStart: func(ctx context.Context) error {
+				return w.Start(ctx)
+			},
+			OnStop: func(context.Context) error {
+				return w.Close()
+			},
+		})
 
-func extractDAGStoreConfig(r repo.LockedRepo) (config.DAGStoreConfig, error) {
-	cfg, err := r.Config()
-	if err != nil {
-		return config.DAGStoreConfig{}, xerrors.Errorf("could not load config: %w", err)
+		return dagst, w, nil
 	}
-	mcfg, ok := cfg.(*config.StorageMiner)
-	if !ok {
-		return config.DAGStoreConfig{}, xerrors.Errorf("config not expected type; expected config.StorageMiner, got: %T", cfg)
-	}
-	return mcfg.DAGStore, nil
 }

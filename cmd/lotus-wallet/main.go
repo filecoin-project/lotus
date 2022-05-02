@@ -144,7 +144,7 @@ var runCmd = &cli.Command{
 			Hidden: true,
 		},
 	},
-	Description: "For setup instructions see 'lotus-wallet --help'",
+	Description: "Needs FULLNODE_API_INFO env-var to be set before running (see lotus-wallet --help for setup instructions)",
 	Action: func(cctx *cli.Context) error {
 		log.Info("Starting lotus wallet")
 
@@ -278,7 +278,7 @@ func openRepo(cctx *cli.Context) (repo.LockedRepo, types.KeyStore, error) {
 		return nil, nil, err
 	}
 	if !ok {
-		if err := r.Init(repo.Worker); err != nil {
+		if err := r.Init(repo.Wallet); err != nil {
 			return nil, nil, err
 		}
 	}

@@ -184,14 +184,14 @@ func (m *Sealing) handleComputeProofFailed(ctx statemachine.Context, sector Sect
 }
 
 func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sector SectorInfo) error {
+	if err := failedCooldown(ctx, sector); err != nil {
+		return err
+	}
+
 	if sector.ReplicaUpdateMessage != nil {
 		mw, err := m.Api.StateSearchMsg(ctx.Context(), *sector.ReplicaUpdateMessage)
 		if err != nil {
 			// API error
-			if err := failedCooldown(ctx, sector); err != nil {
-				return err
-			}
-
 			return ctx.Send(SectorRetrySubmitReplicaUpdateWait{})
 		}
 
@@ -238,7 +238,7 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 	}
 
 	// Abort upgrade for sectors that went faulty since being marked for upgrade
-	active, err := sectorActive(ctx.Context(), m.Api, m.maddr, tok, sector.SectorNumber)
+	active, err := m.sectorActive(ctx.Context(), tok, sector.SectorNumber)
 	if err != nil {
 		log.Errorf("sector active check: api error, not proceeding: %+v", err)
 		return nil
@@ -246,10 +246,6 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 	if !active {
 		log.Errorf("sector marked for upgrade %d no longer active, aborting upgrade", sector.SectorNumber)
 		return ctx.Send(SectorAbortUpgrade{})
-	}
-
-	if err := failedCooldown(ctx, sector); err != nil {
-		return err
 	}
 
 	return ctx.Send(SectorRetrySubmitReplicaUpdate{})
@@ -421,6 +417,16 @@ func (m *Sealing) handleAbortUpgrade(ctx statemachine.Context, sector SectorInfo
 	if err := m.sealer.ReleaseReplicaUpgrade(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber)); err != nil {
 		return xerrors.Errorf("removing CC update files from sector storage")
 	}
+
+	cfg, err := m.getConfig()
+	if err != nil {
+		return xerrors.Errorf("getting sealing config: %w", err)
+	}
+
+	if err := m.sealer.ReleaseUnsealed(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber), sector.keepUnsealedRanges(sector.CCPieces, true, cfg.AlwaysKeepUnsealedCopy)); err != nil {
+		log.Error(err)
+	}
+
 	return ctx.Send(SectorRevertUpgradeToProving{})
 }
 

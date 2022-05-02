@@ -20,7 +20,13 @@
   #
   # type: bool
   # env var: LOTUS_BACKUP_DISABLEMETADATALOG
-  #DisableMetadataLog = false
+  #DisableMetadataLog = true
+
+
+[Logging]
+  [Logging.SubsystemLevels]
+    # env var: LOTUS_LOGGING_SUBSYSTEMLEVELS_EXAMPLE-SUBSYSTEM
+    #example-subsystem = "INFO"
 
 
 [Libp2p]

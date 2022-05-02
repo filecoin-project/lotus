@@ -80,6 +80,10 @@ func (mgr *SectorMgr) SectorsUnsealPiece(ctx context.Context, sector storage.Sec
 	panic("SectorMgr: unsealing piece: implement me")
 }
 
+func (mgr *SectorMgr) DataCid(ctx context.Context, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
+	panic("todo")
+}
+
 func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorID storage.SectorRef, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
 	log.Warn("Add piece: ", sectorID, size, sectorID.ProofType)
 
@@ -425,12 +429,28 @@ func generateFakePoSt(sectorInfo []proof.SectorInfo, rpt func(abi.RegisteredSeal
 	}
 }
 
-func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (mount.Reader, bool, error) {
-	if uint64(offset) != 0 {
-		panic("implme")
-	}
+func (mgr *SectorMgr) GenerateWinningPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte) ([]proof.PoStProof, error) {
+	panic("implement me")
+}
 
-	br := bytes.NewReader(mgr.pieces[mgr.sectors[sector.ID].pieces[0]][:size])
+func (mgr *SectorMgr) GenerateWindowPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte, partitionIdx int) (proof.PoStProof, error) {
+	panic("implement me")
+}
+
+func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (mount.Reader, bool, error) {
+	off := storiface.UnpaddedByteIndex(0)
+	var piece cid.Cid
+	for _, c := range mgr.sectors[sector.ID].pieces {
+		piece = c
+		if off >= offset {
+			break
+		}
+		off += storiface.UnpaddedByteIndex(len(mgr.pieces[piece]))
+	}
+	if off > offset {
+		panic("non-aligned offset todo")
+	}
+	br := bytes.NewReader(mgr.pieces[piece][:size])
 
 	return struct {
 		io.ReadCloser
@@ -505,7 +525,7 @@ func (mgr *SectorMgr) Remove(ctx context.Context, sector storage.SectorRef) erro
 	return nil
 }
 
-func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, ids []storage.SectorRef, update []bool, rg storiface.RGetter) (map[abi.SectorID]string, error) {
+func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, ids []storage.SectorRef, rg storiface.RGetter) (map[abi.SectorID]string, error) {
 	bad := map[abi.SectorID]string{}
 
 	for _, sid := range ids {
@@ -520,6 +540,10 @@ func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStPr
 }
 
 var _ storiface.WorkerReturn = &SectorMgr{}
+
+func (mgr *SectorMgr) ReturnDataCid(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err *storiface.CallError) error {
+	panic("not supported")
+}
 
 func (mgr *SectorMgr) ReturnAddPiece(ctx context.Context, callID storiface.CallID, pi abi.PieceInfo, err *storiface.CallError) error {
 	panic("not supported")

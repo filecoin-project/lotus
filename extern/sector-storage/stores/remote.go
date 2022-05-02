@@ -14,6 +14,7 @@ import (
 	gopath "path"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
@@ -44,12 +45,36 @@ type Remote struct {
 	pfHandler PartialFileHandler
 }
 
-func (r *Remote) RemoveCopies(ctx context.Context, s abi.SectorID, types storiface.SectorFileType) error {
-	// TODO: do this on remotes too
-	//  (not that we really need to do that since it's always called by the
-	//   worker which pulled the copy)
+func (r *Remote) RemoveCopies(ctx context.Context, s abi.SectorID, typ storiface.SectorFileType) error {
+	if bits.OnesCount(uint(typ)) != 1 {
+		return xerrors.New("RemoveCopies expects one file type")
+	}
 
-	return r.local.RemoveCopies(ctx, s, types)
+	if err := r.local.RemoveCopies(ctx, s, typ); err != nil {
+		return xerrors.Errorf("removing local copies: %w", err)
+	}
+
+	si, err := r.index.StorageFindSector(ctx, s, typ, 0, false)
+	if err != nil {
+		return xerrors.Errorf("finding existing sector %d(t:%d) failed: %w", s, typ, err)
+	}
+
+	var hasPrimary bool
+	var keep []storiface.ID
+	for _, info := range si {
+		if info.Primary {
+			hasPrimary = true
+			keep = append(keep, info.ID)
+			break
+		}
+	}
+
+	if !hasPrimary {
+		log.Warnf("remote RemoveCopies: no primary copies of sector %v (%s), not removing anything", s, typ)
+		return nil
+	}
+
+	return r.Remove(ctx, s, typ, true, keep)
 }
 
 func NewRemote(local Store, index SectorIndex, auth http.Header, fetchLimit int, pfHandler PartialFileHandler) *Remote {
@@ -149,14 +174,14 @@ func (r *Remote) AcquireSector(ctx context.Context, s storage.SectorRef, existin
 		storiface.SetPathByType(&paths, fileType, dest)
 		storiface.SetPathByType(&stores, fileType, storageID)
 
-		if err := r.index.StorageDeclareSector(ctx, ID(storageID), s.ID, fileType, op == storiface.AcquireMove); err != nil {
+		if err := r.index.StorageDeclareSector(ctx, storiface.ID(storageID), s.ID, fileType, op == storiface.AcquireMove); err != nil {
 			log.Warnf("declaring sector %v in %s failed: %+v", s, storageID, err)
 			continue
 		}
 
 		if op == storiface.AcquireMove {
-			id := ID(storageID)
-			if err := r.deleteFromRemote(ctx, url, &id); err != nil {
+			id := storiface.ID(storageID)
+			if err := r.deleteFromRemote(ctx, url, []storiface.ID{id}); err != nil {
 				log.Warnf("deleting sector %v from %s (delete %s): %+v", s, storageID, url, err)
 			}
 		}
@@ -333,7 +358,7 @@ func (r *Remote) MoveStorage(ctx context.Context, s storage.SectorRef, types sto
 	return r.local.MoveStorage(ctx, s, types)
 }
 
-func (r *Remote) Remove(ctx context.Context, sid abi.SectorID, typ storiface.SectorFileType, force bool, keepIn []ID) error {
+func (r *Remote) Remove(ctx context.Context, sid abi.SectorID, typ storiface.SectorFileType, force bool, keepIn []storiface.ID) error {
 	if bits.OnesCount(uint(typ)) != 1 {
 		return xerrors.New("delete expects one file type")
 	}
@@ -355,7 +380,7 @@ storeLoop:
 			}
 		}
 		for _, url := range info.URLs {
-			if err := r.deleteFromRemote(ctx, url, nil); err != nil {
+			if err := r.deleteFromRemote(ctx, url, keepIn); err != nil {
 				log.Warnf("remove %s: %+v", url, err)
 				continue
 			}
@@ -366,9 +391,9 @@ storeLoop:
 	return nil
 }
 
-func (r *Remote) deleteFromRemote(ctx context.Context, url string, keepIn *ID) error {
+func (r *Remote) deleteFromRemote(ctx context.Context, url string, keepIn storiface.IDList) error {
 	if keepIn != nil {
-		url = url + "?keep=" + string(*keepIn)
+		url = url + "?keep=" + keepIn.String()
 	}
 
 	log.Infof("Delete %s", url)
@@ -393,7 +418,7 @@ func (r *Remote) deleteFromRemote(ctx context.Context, url string, keepIn *ID) e
 	return nil
 }
 
-func (r *Remote) FsStat(ctx context.Context, id ID) (fsutil.FsStat, error) {
+func (r *Remote) FsStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, error) {
 	st, err := r.local.FsStat(ctx, id)
 	switch err {
 	case nil:
@@ -736,6 +761,89 @@ func (r *Remote) Reserve(ctx context.Context, sid storage.SectorRef, ft storifac
 	return func() {
 
 	}, nil
+}
+
+func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.ActorID, sinfo storiface.PostSectorChallenge, ppt abi.RegisteredPoStProof) ([]byte, error) {
+	p, err := r.local.GenerateSingleVanillaProof(ctx, minerID, sinfo, ppt)
+	if err != errPathNotFound {
+		return p, err
+	}
+
+	sid := abi.SectorID{
+		Miner:  minerID,
+		Number: sinfo.SectorNumber,
+	}
+
+	ft := storiface.FTSealed | storiface.FTCache
+	if sinfo.Update {
+		ft = storiface.FTUpdate | storiface.FTUpdateCache
+	}
+
+	si, err := r.index.StorageFindSector(ctx, sid, ft, 0, false)
+	if err != nil {
+		return nil, xerrors.Errorf("finding sector %d failed: %w", sid, err)
+	}
+
+	requestParams := SingleVanillaParams{
+		Miner:     minerID,
+		Sector:    sinfo,
+		ProofType: ppt,
+	}
+	jreq, err := json.Marshal(requestParams)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, info := range si {
+		for _, u := range info.BaseURLs {
+			url := fmt.Sprintf("%s/vanilla/single", u)
+
+			req, err := http.NewRequest("POST", url, strings.NewReader(string(jreq)))
+			if err != nil {
+				return nil, xerrors.Errorf("request: %w", err)
+			}
+
+			if r.auth != nil {
+				req.Header = r.auth.Clone()
+			}
+			req = req.WithContext(ctx)
+
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return nil, xerrors.Errorf("do request: %w", err)
+			}
+
+			if resp.StatusCode != http.StatusOK {
+				if resp.StatusCode == http.StatusNotFound {
+					log.Debugw("reading vanilla proof from remote not-found response", "url", url, "store", info.ID)
+					continue
+				}
+				body, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					return nil, xerrors.Errorf("resp.Body ReadAll: %w", err)
+				}
+
+				if err := resp.Body.Close(); err != nil {
+					log.Error("response close: ", err)
+				}
+
+				return nil, xerrors.Errorf("non-200 code from %s: '%s'", url, string(body))
+			}
+
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				if err := resp.Body.Close(); err != nil {
+					log.Error("response close: ", err)
+				}
+
+				return nil, xerrors.Errorf("resp.Body ReadAll: %w", err)
+			}
+
+			return body, nil
+		}
+	}
+
+	return nil, xerrors.Errorf("sector not found")
 }
 
 var _ Store = &Remote{}

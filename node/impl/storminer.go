@@ -16,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/gen"
 
 	"github.com/google/uuid"
@@ -92,6 +93,8 @@ type StorageMinerAPI struct {
 	storiface.WorkerReturn `optional:"true"`
 	AddrSel                *storage.AddressSelector
 
+	WdPoSt *storage.WindowPoStScheduler `optional:"true"`
+
 	Epp gen.WinningPoStProver `optional:"true"`
 	DS  dtypes.MetadataDS
 
@@ -131,8 +134,8 @@ func (sm *StorageMinerAPI) ServeRemote(perm bool) func(w http.ResponseWriter, r 
 	}
 }
 
-func (sm *StorageMinerAPI) WorkerStats(context.Context) (map[uuid.UUID]storiface.WorkerStats, error) {
-	return sm.StorageMgr.WorkerStats(), nil
+func (sm *StorageMinerAPI) WorkerStats(ctx context.Context) (map[uuid.UUID]storiface.WorkerStats, error) {
+	return sm.StorageMgr.WorkerStats(ctx), nil
 }
 
 func (sm *StorageMinerAPI) WorkerJobs(ctx context.Context) (map[uuid.UUID][]storiface.WorkerJob, error) {
@@ -294,13 +297,13 @@ func (sm *StorageMinerAPI) SectorsSummary(ctx context.Context) (map[api.SectorSt
 	return out, nil
 }
 
-func (sm *StorageMinerAPI) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {
+func (sm *StorageMinerAPI) StorageLocal(ctx context.Context) (map[storiface.ID]string, error) {
 	l, err := sm.LocalStore.Local(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := map[stores.ID]string{}
+	out := map[storiface.ID]string{}
 	for _, st := range l {
 		out[st.ID] = st.LocalPath
 	}
@@ -324,7 +327,7 @@ func (sm *StorageMinerAPI) SectorsRefs(ctx context.Context) (map[string][]api.Se
 	return out, nil
 }
 
-func (sm *StorageMinerAPI) StorageStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) {
+func (sm *StorageMinerAPI) StorageStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, error) {
 	return sm.RemoteStore.FsStat(ctx, id)
 }
 
@@ -405,6 +408,25 @@ func (sm *StorageMinerAPI) SectorCommitPending(ctx context.Context) ([]abi.Secto
 
 func (sm *StorageMinerAPI) SectorMatchPendingPiecesToOpenSectors(ctx context.Context) error {
 	return sm.Miner.SectorMatchPendingPiecesToOpenSectors(ctx)
+}
+
+func (sm *StorageMinerAPI) ComputeWindowPoSt(ctx context.Context, dlIdx uint64, tsk types.TipSetKey) ([]lminer.SubmitWindowedPoStParams, error) {
+	var ts *types.TipSet
+	var err error
+	if tsk == types.EmptyTSK {
+		ts, err = sm.Full.ChainHead(ctx)
+	} else {
+		ts, err = sm.Full.ChainGetTipSet(ctx, tsk)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	return sm.WdPoSt.ComputePoSt(ctx, dlIdx, ts)
+}
+
+func (sm *StorageMinerAPI) ComputeDataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData sto.Data) (abi.PieceInfo, error) {
+	return sm.StorageMgr.DataCid(ctx, pieceSize, pieceData)
 }
 
 func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {
@@ -676,18 +698,18 @@ func (tc *transferConverter) convertTransfer(channelID datatransfer.ChannelID, h
 	}
 	var channelIDPtr *datatransfer.ChannelID
 	if !hasChannelID {
-		diagnostics = append(diagnostics, fmt.Sprintf("No data transfer channel id for GraphSync request ID %d", requestID))
+		diagnostics = append(diagnostics, fmt.Sprintf("No data transfer channel id for GraphSync request ID %s", requestID))
 	} else {
 		channelIDPtr = &channelID
 		if isCurrentChannelRequest && !hasState {
 			diagnostics = append(diagnostics, fmt.Sprintf("No current request state for data transfer channel id %s", channelID))
 		} else if !isCurrentChannelRequest && hasState {
-			diagnostics = append(diagnostics, fmt.Sprintf("Graphsync request %d is a previous request on data transfer channel id %s that was restarted, but it is still running", requestID, channelID))
+			diagnostics = append(diagnostics, fmt.Sprintf("Graphsync request %s is a previous request on data transfer channel id %s that was restarted, but it is still running", requestID, channelID))
 		}
 	}
 	diagnostics = append(diagnostics, tc.gsDiagnostics[requestID]...)
 	transfer := &api.GraphSyncDataTransfer{
-		RequestID:               requestID,
+		RequestID:               &requestID,
 		RequestState:            stateString,
 		IsCurrentChannelRequest: isCurrentChannelRequest,
 		ChannelID:               channelIDPtr,
@@ -717,7 +739,7 @@ func (tc *transferConverter) collectRemainingTransfers() {
 			channelID := channelID
 			cs := api.NewDataTransferChannel(channelState.SelfPeer(), channelState)
 			transfer := &api.GraphSyncDataTransfer{
-				RequestID:               graphsync.RequestID(-1),
+				RequestID:               nil,
 				RequestState:            "graphsync state unknown",
 				IsCurrentChannelRequest: false,
 				ChannelID:               &channelID,
@@ -1008,6 +1030,52 @@ func (sm *StorageMinerAPI) DagstoreGC(ctx context.Context) ([]api.DagstoreShardR
 	return ret, nil
 }
 
+func (sm *StorageMinerAPI) IndexerAnnounceDeal(ctx context.Context, proposalCid cid.Cid) error {
+	return sm.StorageProvider.AnnounceDealToIndexer(ctx, proposalCid)
+}
+
+func (sm *StorageMinerAPI) IndexerAnnounceAllDeals(ctx context.Context) error {
+	return sm.StorageProvider.AnnounceAllDealsToIndexer(ctx)
+}
+
+func (sm *StorageMinerAPI) DagstoreLookupPieces(ctx context.Context, cid cid.Cid) ([]api.DagstoreShardInfo, error) {
+	if sm.DAGStore == nil {
+		return nil, fmt.Errorf("dagstore not available on this node")
+	}
+
+	keys, err := sm.DAGStore.TopLevelIndex.GetShardsForMultihash(ctx, cid.Hash())
+	if err != nil {
+		return nil, err
+	}
+
+	var ret []api.DagstoreShardInfo
+
+	for _, k := range keys {
+		shard, err := sm.DAGStore.GetShardInfo(k)
+		if err != nil {
+			return nil, err
+		}
+
+		ret = append(ret, api.DagstoreShardInfo{
+			Key:   k.String(),
+			State: shard.ShardState.String(),
+			Error: func() string {
+				if shard.Error == nil {
+					return ""
+				}
+				return shard.Error.Error()
+			}(),
+		})
+	}
+
+	// order by key.
+	sort.SliceStable(ret, func(i, j int) bool {
+		return ret[i].Key < ret[j].Key
+	})
+
+	return ret, nil
+}
+
 func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]api.MarketDeal, error) {
 	return sm.listDeals(ctx)
 }
@@ -1127,23 +1195,23 @@ func (sm *StorageMinerAPI) CreateBackup(ctx context.Context, fpath string) error
 	return backup(ctx, sm.DS, fpath)
 }
 
-func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []sto.SectorRef, update []bool, expensive bool) (map[abi.SectorNumber]string, error) {
+func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []sto.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) {
 	var rg storiface.RGetter
 	if expensive {
-		rg = func(ctx context.Context, id abi.SectorID) (cid.Cid, error) {
+		rg = func(ctx context.Context, id abi.SectorID) (cid.Cid, bool, error) {
 			si, err := sm.Miner.SectorsStatus(ctx, id.Number, false)
 			if err != nil {
-				return cid.Undef, err
+				return cid.Undef, false, err
 			}
 			if si.CommR == nil {
-				return cid.Undef, xerrors.Errorf("commr is nil")
+				return cid.Undef, false, xerrors.Errorf("commr is nil")
 			}
 
-			return *si.CommR, nil
+			return *si.CommR, si.ReplicaUpdateMessage != nil, nil
 		}
 	}
 
-	bad, err := sm.StorageMgr.CheckProvable(ctx, pp, sectors, update, rg)
+	bad, err := sm.StorageMgr.CheckProvable(ctx, pp, sectors, rg)
 	if err != nil {
 		return nil, err
 	}

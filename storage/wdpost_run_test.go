@@ -1,14 +1,10 @@
+//stm: #unit
 package storage
 
 import (
 	"bytes"
 	"context"
 	"testing"
-
-	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
-
-	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
-	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
@@ -19,11 +15,21 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/specs-storage/storage"
 
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
+	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
+	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
+	"github.com/filecoin-project/specs-actors/v6/actors/runtime/proof"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -31,10 +37,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/journal"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
-	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 )
 
 type mockStorageMinerAPI struct {
@@ -116,6 +118,14 @@ func (m *mockStorageMinerAPI) GasEstimateFeeCap(context.Context, *types.Message,
 type mockProver struct {
 }
 
+func (m *mockProver) GenerateWinningPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte) ([]proof.PoStProof, error) {
+	panic("implement me")
+}
+
+func (m *mockProver) GenerateWindowPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte, partitionIdx int) (proof.PoStProof, error) {
+	panic("implement me")
+}
+
 func (m *mockProver) GenerateWinningPoSt(context.Context, abi.ActorID, []proof7.ExtendedSectorInfo, abi.PoStRandomness) ([]proof2.PoStProof, error) {
 	panic("implement me")
 }
@@ -168,7 +178,7 @@ func (m mockVerif) GenerateWinningPoStSectorChallenge(context.Context, abi.Regis
 type mockFaultTracker struct {
 }
 
-func (m mockFaultTracker) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, update []bool, rg storiface.RGetter) (map[abi.SectorID]string, error) {
+func (m mockFaultTracker) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, rg storiface.RGetter) (map[abi.SectorID]string, error) {
 	// Returns "bad" sectors so just return empty map meaning all sectors are good
 	return map[abi.SectorID]string{}, nil
 }
@@ -176,6 +186,10 @@ func (m mockFaultTracker) CheckProvable(ctx context.Context, pp abi.RegisteredPo
 // TestWDPostDoPost verifies that doPost will send the correct number of window
 // PoST messages for a given number of partitions
 func TestWDPostDoPost(t *testing.T) {
+	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
+	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
+	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 	ctx := context.Background()
 	expectedMsgCount := 5
 
@@ -190,6 +204,7 @@ func TestWDPostDoPost(t *testing.T) {
 	// Work out the number of partitions that can be included in a message
 	// without exceeding the message sector limit
 
+	//stm: @BLOCKCHAIN_POLICY_GET_MAX_POST_PARTITIONS_001
 	partitionsPerMsg, err := policy.GetMaxPoStPartitions(network.Version13, proofType)
 	require.NoError(t, err)
 	if partitionsPerMsg > miner5.AddressedPartitionsMax {

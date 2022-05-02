@@ -20,6 +20,7 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
+	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -38,6 +39,9 @@ type WorkerConfig struct {
 	// worker regardless of its currently available resources. Used in testing
 	// with the local worker.
 	IgnoreResourceFiltering bool
+
+	MaxParallelChallengeReads int           // 0 = no limit
+	ChallengeReadTimeout      time.Duration // 0 = no timeout
 }
 
 // used do provide custom proofs impl (mostly used in testing)
@@ -61,6 +65,9 @@ type LocalWorker struct {
 	running     sync.WaitGroup
 	taskLk      sync.Mutex
 
+	challengeThrottle    chan struct{}
+	challengeReadTimeout time.Duration
+
 	session     uuid.UUID
 	testDisable int64
 	closing     chan struct{}
@@ -81,13 +88,18 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, envLookup EnvFunc,
 		ct: &workerCallTracker{
 			st: cst,
 		},
-		acceptTasks:     acceptTasks,
-		executor:        executor,
-		noSwap:          wcfg.NoSwap,
-		envLookup:       envLookup,
-		ignoreResources: wcfg.IgnoreResourceFiltering,
-		session:         uuid.New(),
-		closing:         make(chan struct{}),
+		acceptTasks:          acceptTasks,
+		executor:             executor,
+		noSwap:               wcfg.NoSwap,
+		envLookup:            envLookup,
+		ignoreResources:      wcfg.IgnoreResourceFiltering,
+		challengeReadTimeout: wcfg.ChallengeReadTimeout,
+		session:              uuid.New(),
+		closing:              make(chan struct{}),
+	}
+
+	if wcfg.MaxParallelChallengeReads > 0 {
+		w.challengeThrottle = make(chan struct{}, wcfg.MaxParallelChallengeReads)
 	}
 
 	if w.executor == nil {
@@ -154,7 +166,7 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector stor
 			}
 
 			sid := storiface.PathByType(storageIDs, fileType)
-			if err := l.w.sindex.StorageDeclareSector(ctx, stores.ID(sid), sector.ID, fileType, l.op == storiface.AcquireMove); err != nil {
+			if err := l.w.sindex.StorageDeclareSector(ctx, storiface.ID(sid), sector.ID, fileType, l.op == storiface.AcquireMove); err != nil {
 				log.Errorf("declare sector error: %+v", err)
 			}
 		}
@@ -168,6 +180,7 @@ func (l *LocalWorker) ffiExec() (ffiwrapper.Storage, error) {
 type ReturnType string
 
 const (
+	DataCid               ReturnType = "DataCid"
 	AddPiece              ReturnType = "AddPiece"
 	SealPreCommit1        ReturnType = "SealPreCommit1"
 	SealPreCommit2        ReturnType = "SealPreCommit2"
@@ -220,6 +233,7 @@ func rfunc(in interface{}) func(context.Context, storiface.CallID, storiface.Wor
 }
 
 var returnFunc = map[ReturnType]func(context.Context, storiface.CallID, storiface.WorkerReturn, interface{}, *storiface.CallError) error{
+	DataCid:               rfunc(storiface.WorkerReturn.ReturnDataCid),
 	AddPiece:              rfunc(storiface.WorkerReturn.ReturnAddPiece),
 	SealPreCommit1:        rfunc(storiface.WorkerReturn.ReturnSealPreCommit1),
 	SealPreCommit2:        rfunc(storiface.WorkerReturn.ReturnSealPreCommit2),
@@ -327,6 +341,17 @@ func (l *LocalWorker) NewSector(ctx context.Context, sector storage.SectorRef) e
 	}
 
 	return sb.NewSector(ctx, sector)
+}
+
+func (l *LocalWorker) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error) {
+	sb, err := l.executor()
+	if err != nil {
+		return storiface.UndefCall, err
+	}
+
+	return l.asyncCall(ctx, storage.NoSectorRef, DataCid, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+		return sb.DataCid(ctx, pieceSize, pieceData)
+	})
 }
 
 func (l *LocalWorker) AddPiece(ctx context.Context, sector storage.SectorRef, epcs []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (storiface.CallID, error) {
@@ -516,7 +541,20 @@ func (l *LocalWorker) Remove(ctx context.Context, sector abi.SectorID) error {
 
 func (l *LocalWorker) MoveStorage(ctx context.Context, sector storage.SectorRef, types storiface.SectorFileType) (storiface.CallID, error) {
 	return l.asyncCall(ctx, sector, MoveStorage, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
-		return nil, l.storage.MoveStorage(ctx, sector, types)
+		if err := l.storage.MoveStorage(ctx, sector, types); err != nil {
+			return nil, xerrors.Errorf("move to storage: %w", err)
+		}
+
+		for _, fileType := range storiface.PathTypes {
+			if fileType&types == 0 {
+				continue
+			}
+
+			if err := l.storage.RemoveCopies(ctx, sector.ID, fileType); err != nil {
+				return nil, xerrors.Errorf("rm copies (t:%s, s:%v): %w", fileType, sector, err)
+			}
+		}
+		return nil, nil
 	})
 }
 
@@ -546,6 +584,123 @@ func (l *LocalWorker) UnsealPiece(ctx context.Context, sector storage.SectorRef,
 	})
 }
 
+func (l *LocalWorker) GenerateWinningPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, mid abi.ActorID, sectors []storiface.PostSectorChallenge, randomness abi.PoStRandomness) ([]proof.PoStProof, error) {
+	sb, err := l.executor()
+	if err != nil {
+		return nil, err
+	}
+
+	// don't throttle winningPoSt
+	// * Always want it done asap
+	// * It's usually just one sector
+	var wg sync.WaitGroup
+	wg.Add(len(sectors))
+
+	vproofs := make([][]byte, len(sectors))
+	var rerr error
+
+	for i, s := range sectors {
+		go func(i int, s storiface.PostSectorChallenge) {
+			defer wg.Done()
+
+			if l.challengeReadTimeout > 0 {
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithTimeout(ctx, l.challengeReadTimeout)
+				defer cancel()
+			}
+
+			vanilla, err := l.storage.GenerateSingleVanillaProof(ctx, mid, s, ppt)
+			if err != nil {
+				rerr = multierror.Append(rerr, xerrors.Errorf("get winning sector:%d,vanila failed: %w", s.SectorNumber, err))
+				return
+			}
+			if vanilla == nil {
+				rerr = multierror.Append(rerr, xerrors.Errorf("get winning sector:%d,vanila is nil", s.SectorNumber))
+			}
+			vproofs[i] = vanilla
+		}(i, s)
+	}
+	wg.Wait()
+
+	if rerr != nil {
+		return nil, rerr
+	}
+
+	return sb.GenerateWinningPoStWithVanilla(ctx, ppt, mid, randomness, vproofs)
+}
+
+func (l *LocalWorker) GenerateWindowPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, mid abi.ActorID, sectors []storiface.PostSectorChallenge, partitionIdx int, randomness abi.PoStRandomness) (storiface.WindowPoStResult, error) {
+	sb, err := l.executor()
+	if err != nil {
+		return storiface.WindowPoStResult{}, err
+	}
+
+	var slk sync.Mutex
+	var skipped []abi.SectorID
+
+	var wg sync.WaitGroup
+	wg.Add(len(sectors))
+
+	vproofs := make([][]byte, len(sectors))
+
+	for i, s := range sectors {
+		if l.challengeThrottle != nil {
+			select {
+			case l.challengeThrottle <- struct{}{}:
+			case <-ctx.Done():
+				return storiface.WindowPoStResult{}, xerrors.Errorf("context error waiting on challengeThrottle %w", err)
+			}
+		}
+
+		go func(i int, s storiface.PostSectorChallenge) {
+			defer wg.Done()
+			defer func() {
+				if l.challengeThrottle != nil {
+					<-l.challengeThrottle
+				}
+			}()
+
+			if l.challengeReadTimeout > 0 {
+				var cancel context.CancelFunc
+				ctx, cancel = context.WithTimeout(ctx, l.challengeReadTimeout)
+				defer cancel()
+			}
+
+			vanilla, err := l.storage.GenerateSingleVanillaProof(ctx, mid, s, ppt)
+			slk.Lock()
+			defer slk.Unlock()
+
+			if err != nil || vanilla == nil {
+				skipped = append(skipped, abi.SectorID{
+					Miner:  mid,
+					Number: s.SectorNumber,
+				})
+				log.Errorf("reading PoSt challenge for sector %d, vlen:%d, err: %s", s.SectorNumber, len(vanilla), err)
+				return
+			}
+
+			vproofs[i] = vanilla
+		}(i, s)
+	}
+	wg.Wait()
+
+	if len(skipped) > 0 {
+		// This should happen rarely because before entering GenerateWindowPoSt we check all sectors by reading challenges.
+		// When it does happen, window post runner logic will just re-check sectors, and retry with newly-discovered-bad sectors skipped
+		log.Errorf("couldn't read some challenges (skipped %d)", len(skipped))
+
+		// note: can't return an error as this in an jsonrpc call
+		return storiface.WindowPoStResult{Skipped: skipped}, nil
+	}
+
+	res, err := sb.GenerateWindowPoStWithVanilla(ctx, ppt, mid, randomness, vproofs, partitionIdx)
+
+	return storiface.WindowPoStResult{
+		PoStProofs: res,
+		Skipped:    skipped,
+	}, err
+}
+
 func (l *LocalWorker) TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error) {
 	l.taskLk.Lock()
 	defer l.taskLk.Unlock()
@@ -569,7 +724,7 @@ func (l *LocalWorker) TaskEnable(ctx context.Context, tt sealtasks.TaskType) err
 	return nil
 }
 
-func (l *LocalWorker) Paths(ctx context.Context) ([]stores.StoragePath, error) {
+func (l *LocalWorker) Paths(ctx context.Context) ([]storiface.StoragePath, error) {
 	return l.localStore.Local(ctx)
 }
 

@@ -31,8 +31,10 @@ func ExtractTar(body io.Reader, dir string, buf []byte) error {
 		case nil:
 		}
 
+		//nolint:gosec
 		f, err := os.Create(filepath.Join(dir, header.Name))
 		if err != nil {
+			//nolint:gosec
 			return xerrors.Errorf("creating file %s: %w", filepath.Join(dir, header.Name), err)
 		}
 

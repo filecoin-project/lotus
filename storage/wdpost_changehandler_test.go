@@ -1,3 +1,4 @@
+//stm: #unit
 package storage
 
 import (
@@ -200,6 +201,10 @@ func (m *mockAPI) setChangeHandler(ch *changeHandler) {
 
 // TestChangeHandlerBasic verifies we can generate a proof and submit it
 func TestChangeHandlerBasic(t *testing.T) {
+	//stm: @WDPOST_CHANGE_HANDLER_START_001, @WDPOST_CHANGE_HANDLER_UPDATE_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_001, @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_PW_001
+	//stm: @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_004, @WDPOST_PROVE_HANDLER_PROCESS_POST_RESULT_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_PROCESS_RESULTS_001
 	s := makeScaffolding(t)
 	mock := s.mock
 
@@ -248,6 +253,10 @@ func TestChangeHandlerBasic(t *testing.T) {
 // chain is already advanced past the confidence interval, we should move from
 // proving to submitting without a head change in between.
 func TestChangeHandlerFromProvingToSubmittingNoHeadChange(t *testing.T) {
+	//stm: @WDPOST_CHANGE_HANDLER_START_001, @WDPOST_CHANGE_HANDLER_UPDATE_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_001, @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_PW_001
+	//stm: @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_004, @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_005
+	//stm: @WDPOST_PROVE_HANDLER_PROCESS_POST_RESULT_001
 	s := makeScaffolding(t)
 	mock := s.mock
 
@@ -299,6 +308,10 @@ func TestChangeHandlerFromProvingToSubmittingNoHeadChange(t *testing.T) {
 // proofs generated we should not submit anything to chain but submit state
 // should move to completed
 func TestChangeHandlerFromProvingEmptyProofsToComplete(t *testing.T) {
+	//stm: @WDPOST_CHANGE_HANDLER_START_001, @WDPOST_CHANGE_HANDLER_UPDATE_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_001, @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_PW_001
+	//stm: @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_004, @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_005, @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_006
+	//stm: @WDPOST_PROVE_HANDLER_PROCESS_POST_RESULT_001
 	s := makeScaffolding(t)
 	mock := s.mock
 
@@ -349,6 +362,9 @@ func TestChangeHandlerFromProvingEmptyProofsToComplete(t *testing.T) {
 // TestChangeHandlerDontStartUntilProvingPeriod tests that the handler
 // ignores updates until the proving period has been reached.
 func TestChangeHandlerDontStartUntilProvingPeriod(t *testing.T) {
+	//stm: @WDPOST_CHANGE_HANDLER_START_001, @WDPOST_CHANGE_HANDLER_UPDATE_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_001, @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_PW_001
+	//stm: @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_004
 	s := makeScaffolding(t)
 	mock := s.mock
 
@@ -387,6 +403,9 @@ func TestChangeHandlerDontStartUntilProvingPeriod(t *testing.T) {
 // TestChangeHandlerStartProvingNextDeadline verifies that the proof handler
 // starts proving the next deadline after the current one
 func TestChangeHandlerStartProvingNextDeadline(t *testing.T) {
+	//stm: @WDPOST_CHANGE_HANDLER_START_001, @WDPOST_CHANGE_HANDLER_UPDATE_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_001, @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_PW_001
+	//stm: @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_004, @WDPOST_PROVE_HANDLER_PROCESS_POST_RESULT_001
 	s := makeScaffolding(t)
 	mock := s.mock
 
@@ -436,6 +455,10 @@ func TestChangeHandlerStartProvingNextDeadline(t *testing.T) {
 // TestChangeHandlerProvingRounds verifies we can generate several rounds of
 // proofs as the chain head advances
 func TestChangeHandlerProvingRounds(t *testing.T) {
+	//stm: @WDPOST_CHANGE_HANDLER_START_001, @WDPOST_CHANGE_HANDLER_UPDATE_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_001, @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_PW_001
+	//stm: @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_002, @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_003, @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_005
+	//stm: @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_004, @WDPOST_PROVE_HANDLER_PROCESS_POST_RESULT_001
 	s := makeScaffolding(t)
 	mock := s.mock
 
@@ -506,6 +529,9 @@ func TestChangeHandlerProvingRounds(t *testing.T) {
 // TestChangeHandlerProvingErrorRecovery verifies that the proof handler
 // recovers correctly from an error
 func TestChangeHandlerProvingErrorRecovery(t *testing.T) {
+	//stm: @WDPOST_CHANGE_HANDLER_START_001, @WDPOST_CHANGE_HANDLER_UPDATE_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_001, @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_PW_001
+	//stm: @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_004, @WDPOST_PROVE_HANDLER_PROCESS_POST_RESULT_001
 	s := makeScaffolding(t)
 	mock := s.mock
 
@@ -547,6 +573,10 @@ func TestChangeHandlerProvingErrorRecovery(t *testing.T) {
 // TestChangeHandlerSubmitErrorRecovery verifies that the submit handler
 // recovers correctly from an error
 func TestChangeHandlerSubmitErrorRecovery(t *testing.T) {
+	//stm: @WDPOST_CHANGE_HANDLER_START_001, @WDPOST_CHANGE_HANDLER_UPDATE_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_001, @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_PW_001
+	//stm: @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_004, @WDPOST_PROVE_HANDLER_PROCESS_POST_RESULT_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_PROCESS_RESULTS_001
 	s := makeScaffolding(t)
 	mock := s.mock
 
@@ -616,6 +646,9 @@ func TestChangeHandlerSubmitErrorRecovery(t *testing.T) {
 // TestChangeHandlerProveExpiry verifies that the prove handler
 // behaves correctly on expiry
 func TestChangeHandlerProveExpiry(t *testing.T) {
+	//stm: @WDPOST_CHANGE_HANDLER_START_001, @WDPOST_CHANGE_HANDLER_UPDATE_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_001, @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_PW_001
+	//stm: @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_004, @WDPOST_PROVE_HANDLER_PROCESS_POST_RESULT_001
 	s := makeScaffolding(t)
 	mock := s.mock
 
@@ -654,6 +687,9 @@ func TestChangeHandlerProveExpiry(t *testing.T) {
 // TestChangeHandlerSubmitExpiry verifies that the submit handler
 // behaves correctly on expiry
 func TestChangeHandlerSubmitExpiry(t *testing.T) {
+	//stm: @WDPOST_CHANGE_HANDLER_START_001, @WDPOST_CHANGE_HANDLER_UPDATE_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_001, @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_PW_001
+	//stm: @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_004, @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_002, @WDPOST_PROVE_HANDLER_PROCESS_POST_RESULT_001
 	s := makeScaffolding(t)
 	mock := s.mock
 
@@ -717,6 +753,9 @@ func TestChangeHandlerSubmitExpiry(t *testing.T) {
 // TestChangeHandlerProveRevert verifies that the prove handler
 // behaves correctly on revert
 func TestChangeHandlerProveRevert(t *testing.T) {
+	//stm: @WDPOST_CHANGE_HANDLER_START_001, @WDPOST_CHANGE_HANDLER_UPDATE_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_001, @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_PW_001
+	//stm: @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_004, @WDPOST_PROVE_HANDLER_PROCESS_POST_RESULT_001
 	s := makeScaffolding(t)
 	mock := s.mock
 
@@ -753,6 +792,10 @@ func TestChangeHandlerProveRevert(t *testing.T) {
 // TestChangeHandlerSubmittingRevert verifies that the submit handler
 // behaves correctly when there's a revert from the submitting state
 func TestChangeHandlerSubmittingRevert(t *testing.T) {
+	//stm: @WDPOST_CHANGE_HANDLER_START_001, @WDPOST_CHANGE_HANDLER_UPDATE_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_001, @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_PW_001
+	//stm: @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_004, @WDPOST_PROVE_HANDLER_PROCESS_POST_RESULT_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_PROCESS_RESULTS_001
 	s := makeScaffolding(t)
 	mock := s.mock
 
@@ -824,6 +867,10 @@ func TestChangeHandlerSubmittingRevert(t *testing.T) {
 // TestChangeHandlerSubmitCompleteRevert verifies that the submit handler
 // behaves correctly when there's a revert from the submit complete state
 func TestChangeHandlerSubmitCompleteRevert(t *testing.T) {
+	//stm: @WDPOST_CHANGE_HANDLER_START_001, @WDPOST_CHANGE_HANDLER_UPDATE_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_001, @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_PW_001
+	//stm: @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_004, @WDPOST_PROVE_HANDLER_PROCESS_POST_RESULT_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_PROCESS_RESULTS_001
 	s := makeScaffolding(t)
 	mock := s.mock
 
@@ -885,6 +932,10 @@ func TestChangeHandlerSubmitCompleteRevert(t *testing.T) {
 // TestChangeHandlerSubmitRevertTwoEpochs verifies that the submit handler
 // behaves correctly when the revert is two epochs deep
 func TestChangeHandlerSubmitRevertTwoEpochs(t *testing.T) {
+	//stm: @WDPOST_CHANGE_HANDLER_START_001, @WDPOST_CHANGE_HANDLER_UPDATE_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_001, @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_PW_001
+	//stm: @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_004, @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_002,  @WDPOST_PROVE_HANDLER_PROCESS_POST_RESULT_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_PROCESS_RESULTS_001
 	s := makeScaffolding(t)
 	mock := s.mock
 
@@ -986,6 +1037,10 @@ func TestChangeHandlerSubmitRevertTwoEpochs(t *testing.T) {
 // behaves correctly when the revert is two epochs deep and the advance is
 // to a lower height than before
 func TestChangeHandlerSubmitRevertAdvanceLess(t *testing.T) {
+	//stm: @WDPOST_CHANGE_HANDLER_START_001, @WDPOST_CHANGE_HANDLER_UPDATE_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_001, @WDPOST_SUBMIT_HANDLER_PROCESS_HEAD_CHANGE_PW_001
+	//stm: @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_004, @WDPOST_SUBMIT_HANDLER_SUBMIT_IF_READY_002,  @WDPOST_PROVE_HANDLER_PROCESS_POST_RESULT_001
+	//stm: @WDPOST_SUBMIT_HANDLER_PROCESS_PROCESS_RESULTS_001
 	s := makeScaffolding(t)
 	mock := s.mock
 

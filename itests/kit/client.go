@@ -111,9 +111,15 @@ func RunClientTest(t *testing.T, cmds []*lcli.Command, clientNode *TestFullNode)
 	tmpdir, err := ioutil.TempDir(os.TempDir(), "test-cli-client")
 	require.NoError(t, err)
 	path := filepath.Join(tmpdir, "outfile.dat")
-	out = clientCLI.RunCmd("client", "retrieve", dataCid.String(), path)
-	fmt.Println("retrieve:\n", out)
-	require.Regexp(t, regexp.MustCompile("Success"), out)
+
+	// Wait for client retrieve to succeed.
+	for {
+		out = clientCLI.RunCmd("client", "retrieve", dataCid.String(), path)
+		fmt.Println("retrieve:\n", out)
+		if strings.Contains(out, "Success") {
+			break
+		}
+	}
 }
 
 func CreateImportFile(ctx context.Context, client api.FullNode, rseed int, size int) (res *api.ImportRes, path string, data []byte, err error) {
