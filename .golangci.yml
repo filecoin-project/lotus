@@ -25,7 +25,7 @@ skip-dirs:
 
 issues:
   exclude:
-    - "func name will be used as test\\.Test.* by other packages, and that stutters; consider calling this"
+    - "by other packages, and that stutters; consider calling this"
     - "Potential file inclusion via variable"
     - "should have( a package)? comment"
     - "Error return value of `logging.SetLogLevel` is not checked"
@@ -37,6 +37,9 @@ issues:
     - "string .* has .* occurrences, make it a constant"
     - "a blank import should be only in a main or test package, or have a comment justifying it"
     - "package comment should be of the form"
+    - "Potential hardcoded credentials"
+    - "Use of weak random number generator"
+    - "xerrors.* is deprecated"
 
   exclude-use-default: false
   exclude-rules:
@@ -51,7 +54,7 @@ issues:
     - path: build/params_.*\.go
       linters:
         - golint
-          
+
     - path: api/apistruct/struct.go
       linters:
         - golint

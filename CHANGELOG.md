@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# 1.15.2-rc1 / 2022-04-13
+# 1.15.2-rc2 / 2022-04-26
 
-This is the first release candidate of the next highly recommended feature release v1.15.2. This feature release introduces many new features and  for SPs, including PoSt workers, sealing scheduler, snap deal queue and so on. 
+This is the second release candidate of the next highly recommended feature release v1.15.2. This feature release introduces many new features and  for SPs, including PoSt workers, sealing scheduler, snap deal queue and so on. 
 
 ## Highlights
 ### ❣️❣️❣️ PoSt Workers ❣️❣️❣️
@@ -84,9 +84,10 @@ The Filecoin Network introduced Snap Deal with the network v15 OhSnap upgrade, a
 - fix: miner cli: Estimate deal weight in sector list when upgrading ([filecoin-project/lotus#8336](https://github.com/filecoin-project/lotus/pull/8336))
 - fix: sealing: FinalizeSector doesn't need sealed replica access ([filecoin-project/lotus#8337](https://github.com/filecoin-project/lotus/pull/8337))
 - fix: cli: add ArgsUsage field to clientGetDealCmd ([filecoin-project/lotus#8241](https://github.com/filecoin-project/lotus/pull/8241))
-
+- fix: market: Infer index provider topic from network name by default #8533
+- 
 ## Dependency Updates
-- Update libp2p to v0.18.1 ([filecoin-project/lotus#8469](https://github.com/filecoin-project/lotus/pull/8469))
+- deps: update go-libp2p@v0.19 #8533
 - chore: ffi: update the FFI to update the FVM ([filecoin-project/lotus#8440](https://github.com/filecoin-project/lotus/pull/8440))
 - deps: ffi: pull ffi that includes the latest fvm ([filecoin-project/lotus#8424](https://github.com/filecoin-project/lotus/pull/8424))
 - Update to go-log 2.5.1 ([filecoin-project/lotus#8422](https://github.com/filecoin-project/lotus/pull/8422))
@@ -107,6 +108,7 @@ The Filecoin Network introduced Snap Deal with the network v15 OhSnap upgrade, a
 - Update Dockerfile.lotus
 - chore:sealing:remove endpoint from cli ([filecoin-project/lotus#8215](https://github.com/filecoin-project/lotus/pull/8215))
 - chore: build: bump the master version to v1.15.2-dev ([filecoin-project/lotus#8322](https://github.com/filecoin-project/lotus/pull/8322))
+- chore: fix lint issue #8533
 
 ## Contributors
 
