@@ -1,6 +1,6 @@
 # Lotus changelog
 
-# 1.15.2-rc2 / 2022-04-26
+# 1.15.2-rc2 / 2022-05-02
 
 This is the second release candidate of the next highly recommended feature release v1.15.2. This feature release introduces many new features and  for SPs, including PoSt workers, sealing scheduler, snap deal queue and so on. 
 
@@ -88,7 +88,7 @@ The Filecoin Network introduced Snap Deal with the network v15 OhSnap upgrade, a
 - 
 ## Dependency Updates
 - deps: update go-libp2p@v0.19 #8533
-- chore: ffi: update the FFI to update the FVM ([filecoin-project/lotus#8440](https://github.com/filecoin-project/lotus/pull/8440))
+- deps: ffi: update ffi that includes the log fix #8577
 - deps: ffi: pull ffi that includes the latest fvm ([filecoin-project/lotus#8424](https://github.com/filecoin-project/lotus/pull/8424))
 - Update to go-log 2.5.1 ([filecoin-project/lotus#8422](https://github.com/filecoin-project/lotus/pull/8422))
 - chore(deps): update go-data-transfer with fixes (master edition) ([filecoin-project/lotus#8411](https://github.com/filecoin-project/lotus/pull/8411))
