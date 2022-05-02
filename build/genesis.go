@@ -15,12 +15,16 @@ var log = logging.Logger("build")
 var genesisfs embed.FS
 
 func MaybeGenesis() []byte {
-	genBytes, err := genesisfs.ReadFile(path.Join("genesis", activeNetworkParams.Config.GenesisFile))
+	genBytes, err := getGenesisFor(activeNetworkParams.Config.GenesisFile)
 	if err != nil {
 		log.Warnf("loading built-in genesis: %s", err)
 		return nil
 	}
 	return genBytes
+}
+
+func getGenesisFor(filename string) ([]byte, error) {
+	return genesisfs.ReadFile(path.Join("genesis", filename))
 }
 
 func GenesisNetworkVersion() network.Version {
