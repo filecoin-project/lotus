@@ -258,7 +258,7 @@ func TestGatewayLimitTokensAvailable(t *testing.T) {
 	mock := &mockGatewayDepsAPI{}
 	tokens := 3
 	a := NewNode(mock, DefaultLookbackCap, DefaultStateWaitLookbackLimit, int64(tokens), time.Minute)
-	require.NoError(t, a.limit(ctx, tokens), "requests should not be limited when there are enough tokens availble")
+	require.NoError(t, a.limit(ctx, tokens), "requests should not be limited when there are enough tokens available")
 }
 
 func TestGatewayLimitTokensNotAvailable(t *testing.T) {
