@@ -15,7 +15,7 @@ may be subject to change.
 Complete gas balancing is performed using `lotus-bench` the process is based on importing a chain export
 and collecting gas traces which are later aggregated.
 
-Before building `lotus-bench` make sure `EnableGasTracing` in `chain/vm/runtime.go` is set to `true`.
+Before building `lotus-bench` make sure `EnableDetailedTracing` in `chain/vm/runtime.go` is set to `true`.
 
 The process can be started using `./lotus-bench import` with `--car` flag set to the location of
 CAR chain export. `--start-epoch` and `--end-epoch` can be used to to limit the range of epochs to run
