@@ -19,8 +19,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 )
 
-// TODO: check if this exists anywhere else
-
 type MultiaddrSlice []ma.Multiaddr
 
 func (m *MultiaddrSlice) UnmarshalJSON(raw []byte) (err error) {
