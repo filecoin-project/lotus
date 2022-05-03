@@ -85,9 +85,58 @@ type path struct {
 
 	reserved     int64
 	reservations map[abi.SectorID]storiface.SectorFileType
+
+	statLk   sync.Mutex
+	statDone chan struct{}
+
+	lastStat *fsutil.FsStat // nil if no stat / was error
 }
 
 func (p *path) stat(ls LocalStorage) (fsutil.FsStat, error) {
+	for {
+		p.statLk.Lock()
+		if p.statDone == nil {
+			p.statDone = make(chan struct{})
+			p.statLk.Unlock()
+
+			st, err := p.doStat(ls)
+
+			p.statLk.Lock()
+			p.lastStat = nil
+			if err == nil {
+				p.lastStat = &st
+			}
+			close(p.statDone)
+			p.statDone = nil
+			p.statLk.Unlock()
+			return st, err
+		}
+
+		doneCh := p.statDone
+		p.statLk.Unlock()
+
+		select {
+		case <-doneCh:
+			// todo context?
+		}
+
+		p.statLk.Lock()
+		if p.lastStat == nil {
+			p.statLk.Unlock()
+			continue
+		}
+
+		st := *p.lastStat
+
+		p.statLk.Unlock()
+
+		return st, nil
+	}
+}
+
+func (p *path) doStat(ls LocalStorage) (fsutil.FsStat, error) {
+	start := time.Now()
+
 	stat, err := ls.Stat(p.local)
 	if err != nil {
 		return fsutil.FsStat{}, xerrors.Errorf("stat %s: %w", p.local, err)
@@ -154,6 +203,8 @@ func (p *path) stat(ls LocalStorage) (fsutil.FsStat, error) {
 			stat.Available = avail
 		}
 	}
+
+	log.Infow("storage stat", "took", time.Now().Sub(start), "reservations", len(p.reservations))
 
 	return stat, err
 }
