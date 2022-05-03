@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# 1.15.2-rc2 / 2022-05-02
+# 1.15.2-rc3 / 2022-05-03
 
-This is the second release candidate of the next highly recommended feature release v1.15.2. This feature release introduces many new features and  for SPs, including PoSt workers, sealing scheduler, snap deal queue and so on. 
+This is the third release candidate of the next highly recommended feature release v1.15.2. This feature release introduces many new features and  for SPs, including PoSt workers, sealing scheduler, snap deal queue and so on. 
 
 ## Highlights
 ### ❣️❣️❣️ PoSt Workers ❣️❣️❣️
@@ -85,7 +85,9 @@ The Filecoin Network introduced Snap Deal with the network v15 OhSnap upgrade, a
 - fix: sealing: FinalizeSector doesn't need sealed replica access ([filecoin-project/lotus#8337](https://github.com/filecoin-project/lotus/pull/8337))
 - fix: cli: add ArgsUsage field to clientGetDealCmd ([filecoin-project/lotus#8241](https://github.com/filecoin-project/lotus/pull/8241))
 - fix: market: Infer index provider topic from network name by default #8533
-- 
+- fix: deps: Update to FFI with logger bump #8588
+- fix: sealing: Finalize snap sectors before submitting proofs #8588
+
 ## Dependency Updates
 - deps: update go-libp2p@v0.19 #8533
 - deps: ffi: update ffi that includes the log fix #8577
@@ -97,6 +99,7 @@ The Filecoin Network introduced Snap Deal with the network v15 OhSnap upgrade, a
 - chore: ffi: the latest fvm release ([filecoin-project/lotus#8381](https://github.com/filecoin-project/lotus/pull/8381))
 - Update params for interopnet for fvm ([filecoin-project/lotus#8119](https://github.com/filecoin-project/lotus/pull/8119))
 - github.com/filecoin-project/specs-storage (v0.2.0 -> v0.2.2):
+- ci: deps: macos build deps #8588
 
 ## Others
 - chore: merge releases back to master ([filecoin-project/lotus#8468](https://github.com/filecoin-project/lotus/pull/8468))
