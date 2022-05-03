@@ -522,8 +522,9 @@ var provingComputeCmd = &cli.Command{
 }
 
 var provingComputeWindowPoStCmd = &cli.Command{
-	Name:  "window-post",
-	Usage: "Compute WindowPoSt for a specific deadline",
+	Name:    "windowed-post",
+	Aliases: []string{"window-post"},
+	Usage:   "Compute WindowPoSt for a specific deadline",
 	Description: `Note: This command is intended to be used to verify PoSt compute performance.
 It will not send any messages to the chain.`,
 	ArgsUsage: "[deadline index]",

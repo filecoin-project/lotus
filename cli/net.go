@@ -358,7 +358,8 @@ var NetId = &cli.Command{
 }
 
 var NetFindPeer = &cli.Command{
-	Name:      "findpeer",
+	Name:      "find-peer",
+	Aliases:   []string{"findpeer"},
 	Usage:     "Find the addresses of a given peerID",
 	ArgsUsage: "[peerId]",
 	Action: func(cctx *cli.Context) error {
