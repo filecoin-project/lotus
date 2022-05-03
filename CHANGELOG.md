@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# 1.15.2-rc2 / 2022-05-02
+# 1.15.2-rc3 / 2022-05-03
 
-This is the second release candidate of the next highly recommended feature release v1.15.2. This feature release introduces many new features and  for SPs, including PoSt workers, sealing scheduler, snap deal queue and so on. 
+This is the third release candidate of the next highly recommended feature release v1.15.2. This feature release introduces many new features and  for SPs, including PoSt workers, sealing scheduler, snap deal queue and so on. 
 
 ## Highlights
 ### ❣️❣️❣️ PoSt Workers ❣️❣️❣️
