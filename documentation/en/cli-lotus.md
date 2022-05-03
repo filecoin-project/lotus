@@ -1726,30 +1726,30 @@ USAGE:
    lotus state command [command options] [arguments...]
 
 COMMANDS:
-   power                   Query network or miner power
-   sectors                 Query the sector set of a miner
-   active-sectors          Query the active sector set of a miner
-   list-actors             list all actors in the network
-   list-miners             list all miners in the network
-   circulating-supply      Get the exact current circulating supply of Filecoin
-   sector                  Get miner sector info
-   get-actor               Print actor information
-   lookup                  Find corresponding ID address
-   replay                  Replay a particular message
-   sector-size             Look up miners sector size
-   read-state              View a json representation of an actors state
-   list-messages           list messages on chain matching given criteria
-   compute-state           Perform state computations
-   call                    Invoke a method on an actor locally
-   get-deal                View on-chain deal info
-   wait-msg                Wait for a message to appear on chain
-   search-msg              Search to see whether a message has appeared on chain
-   miner-info              Retrieve miner information
-   market                  Inspect the storage market actor
-   exec-trace              Get the execution trace of a given message
-   network-version         Returns the network version
-   miner-proving-deadline  Retrieve information about a given miner's proving deadline
-   help, h                 Shows a list of commands or help for one command
+   power                       Query network or miner power
+   sectors                     Query the sector set of a miner
+   active-sectors              Query the active sector set of a miner
+   list-actors                 list all actors in the network
+   list-miners                 list all miners in the network
+   circulating-supply          Get the exact current circulating supply of Filecoin
+   sector, sector-info         Get miner sector info
+   get-actor                   Print actor information
+   lookup                      Find corresponding ID address
+   replay                      Replay a particular message
+   sector-size                 Look up miners sector size
+   read-state                  View a json representation of an actors state
+   list-messages               list messages on chain matching given criteria
+   compute-state               Perform state computations
+   call                        Invoke a method on an actor locally
+   get-deal                    View on-chain deal info
+   wait-msg, wait-message      Wait for a message to appear on chain
+   search-msg, search-message  Search to see whether a message has appeared on chain
+   miner-info                  Retrieve miner information
+   market                      Inspect the storage market actor
+   exec-trace                  Get the execution trace of a given message
+   network-version             Returns the network version
+   miner-proving-deadline      Retrieve information about a given miner's proving deadline
+   help, h                     Shows a list of commands or help for one command
 
 OPTIONS:
    --tipset value  specify tipset to call method on (pass comma separated array of cids)
@@ -1837,17 +1837,8 @@ OPTIONS:
    
 ```
 
-### lotus state sector
+#### lotus state sector, sector-info
 ```
-NAME:
-   lotus state sector - Get miner sector info
-
-USAGE:
-   lotus state sector [command options] [minerAddress] [sectorNumber]
-
-OPTIONS:
-   --help, -h  show help (default: false)
-   
 ```
 
 ### lotus state get-actor
@@ -1985,31 +1976,12 @@ OPTIONS:
    
 ```
 
-### lotus state wait-msg
+#### lotus state wait-msg, wait-message
 ```
-NAME:
-   lotus state wait-msg - Wait for a message to appear on chain
-
-USAGE:
-   lotus state wait-msg [command options] [messageCid]
-
-OPTIONS:
-   --timeout value  (default: "10m")
-   --help, -h       show help (default: false)
-   
 ```
 
-### lotus state search-msg
+#### lotus state search-msg, search-message
 ```
-NAME:
-   lotus state search-msg - Search to see whether a message has appeared on chain
-
-USAGE:
-   lotus state search-msg [command options] [messageCid]
-
-OPTIONS:
-   --help, -h  show help (default: false)
-   
 ```
 
 ### lotus state miner-info
@@ -2103,24 +2075,24 @@ USAGE:
    lotus chain command [command options] [arguments...]
 
 COMMANDS:
-   head             Print chain head
-   getblock         Get a block and print its details
-   read-obj         Read the raw bytes of an object
-   delete-obj       Delete an object from the chain blockstore
-   stat-obj         Collect size and ipld link counts for objs
-   getmessage       Get and print a message by its cid
-   sethead          manually set the local nodes head tipset (Caution: normally only used for recovery)
-   list, love       View a segment of the chain
-   get              Get chain DAG node by path
-   bisect           bisect chain for an event
-   export           export chain to a car file
-   slash-consensus  Report consensus fault
-   gas-price        Estimate gas prices
-   inspect-usage    Inspect block space usage of a given tipset
-   decode           decode various types
-   encode           encode various types
-   disputer         interact with the window post disputer
-   help, h          Shows a list of commands or help for one command
+   head                              Print chain head
+   get-block, getblock               Get a block and print its details
+   read-obj                          Read the raw bytes of an object
+   delete-obj                        Delete an object from the chain blockstore
+   stat-obj                          Collect size and ipld link counts for objs
+   getmessage, get-message, get-msg  Get and print a message by its cid
+   sethead, set-head                 manually set the local nodes head tipset (Caution: normally only used for recovery)
+   list, love                        View a segment of the chain
+   get                               Get chain DAG node by path
+   bisect                            bisect chain for an event
+   export                            export chain to a car file
+   slash-consensus                   Report consensus fault
+   gas-price                         Estimate gas prices
+   inspect-usage                     Inspect block space usage of a given tipset
+   decode                            decode various types
+   encode                            encode various types
+   disputer                          interact with the window post disputer
+   help, h                           Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -2140,18 +2112,8 @@ OPTIONS:
    
 ```
 
-### lotus chain getblock
+#### lotus chain get-block, getblock
 ```
-NAME:
-   lotus chain getblock - Get a block and print its details
-
-USAGE:
-   lotus chain getblock [command options] [blockCid]
-
-OPTIONS:
-   --raw       print just the raw block header (default: false)
-   --help, -h  show help (default: false)
-   
 ```
 
 ### lotus chain read-obj
@@ -2204,32 +2166,12 @@ OPTIONS:
    
 ```
 
-### lotus chain getmessage
+##### lotus chain getmessage, get-message, get-msg
 ```
-NAME:
-   lotus chain getmessage - Get and print a message by its cid
-
-USAGE:
-   lotus chain getmessage [command options] [messageCid]
-
-OPTIONS:
-   --help, -h  show help (default: false)
-   
 ```
 
-### lotus chain sethead
+#### lotus chain sethead, set-head
 ```
-NAME:
-   lotus chain sethead - manually set the local nodes head tipset (Caution: normally only used for recovery)
-
-USAGE:
-   lotus chain sethead [command options] [tipsetkey]
-
-OPTIONS:
-   --genesis      reset head to genesis (default: false)
-   --epoch value  reset head to given epoch (default: 0)
-   --help, -h     show help (default: false)
-   
 ```
 
 #### lotus chain list, love
@@ -2602,22 +2544,22 @@ USAGE:
    lotus net command [command options] [arguments...]
 
 COMMANDS:
-   peers           Print peers
-   ping            Ping peers
-   connect         Connect to a peer
-   listen          List listen addresses
-   id              Get node identity
-   findpeer        Find the addresses of a given peerID
-   scores          Print peers' pubsub scores
-   reachability    Print information about reachability from the internet
-   bandwidth       Print bandwidth usage information
-   block           Manage network connection gating rules
-   stat            Report resource usage for a scope
-   limit           Get or set resource limits for a scope
-   protect         Add one or more peer IDs to the list of protected peer connections
-   unprotect       Remove one or more peer IDs from the list of protected peer connections.
-   list-protected  List the peer IDs with protected connection.
-   help, h         Shows a list of commands or help for one command
+   peers                Print peers
+   ping                 Ping peers
+   connect              Connect to a peer
+   listen               List listen addresses
+   id                   Get node identity
+   find-peer, findpeer  Find the addresses of a given peerID
+   scores               Print peers' pubsub scores
+   reachability         Print information about reachability from the internet
+   bandwidth            Print bandwidth usage information
+   block                Manage network connection gating rules
+   stat                 Report resource usage for a scope
+   limit                Get or set resource limits for a scope
+   protect              Add one or more peer IDs to the list of protected peer connections
+   unprotect            Remove one or more peer IDs from the list of protected peer connections.
+   list-protected       List the peer IDs with protected connection.
+   help, h              Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -2693,17 +2635,8 @@ OPTIONS:
    
 ```
 
-### lotus net findpeer
+#### lotus net find-peer, findpeer
 ```
-NAME:
-   lotus net findpeer - Find the addresses of a given peerID
-
-USAGE:
-   lotus net findpeer [command options] [peerId]
-
-OPTIONS:
-   --help, -h  show help (default: false)
-   
 ```
 
 ### lotus net scores
