@@ -388,7 +388,6 @@ jobs:
       - restore_cache:
           name: restore cargo cache
           key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
-      - install-deps
       - run:
           command: make build
           no_output_timeout: 30m
@@ -1001,11 +1000,7 @@ workflows:
               only:
                 - master
       - build-debug
-      - build-all:
-          filters:
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-all
       - build-ntwk-calibration:
           filters:
             tags:
@@ -1017,14 +1012,7 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-lotus-soup
-      - build-macos:
-          filters:
-            branches:
-              ignore:
-                - /.*/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-macos
       - build-appimage:
           filters:
             branches:
