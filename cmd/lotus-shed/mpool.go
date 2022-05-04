@@ -20,7 +20,8 @@ var mpoolCmd = &cli.Command{
 }
 
 var minerSelectMsgsCmd = &cli.Command{
-	Name: "miner-select-msgs",
+	Name:    "miner-select-messages",
+	Aliases: []string{"miner-select-msgs"},
 	Flags: []cli.Flag{
 		&cli.Float64Flag{
 			Name:  "ticket-quality",

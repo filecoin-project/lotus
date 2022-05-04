@@ -119,7 +119,7 @@ var minerFaultsCmd = &cli.Command{
 
 var minerCreateCmd = &cli.Command{
 	Name:      "create",
-	Usage:     "sends a create miner msg",
+	Usage:     "sends a create miner message",
 	ArgsUsage: "[sender] [owner] [worker] [sector size]",
 	Action: func(cctx *cli.Context) error {
 		wapi, closer, err := lcli.GetFullNodeAPI(cctx)
