@@ -196,7 +196,7 @@ func DefaultStorageMiner() *StorageMiner {
 		},
 
 		IndexProvider: IndexProviderConfig{
-			Enable:               true,
+			Enable:               false,
 			EntriesCacheCapacity: 1024,
 			EntriesChunkSize:     16384,
 			// The default empty TopicName means it is inferred from network name, in the following
