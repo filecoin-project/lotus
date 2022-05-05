@@ -827,7 +827,7 @@ func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.Act
 					log.Error("response close: ", err)
 				}
 
-				return nil, xerrors.Errorf("non-200 code from %s: '%s'", url, string(body))
+				return nil, xerrors.Errorf("non-200 code from %s: '%s'", url, strings.TrimSpace(string(body)))
 			}
 
 			body, err := ioutil.ReadAll(resp.Body)
