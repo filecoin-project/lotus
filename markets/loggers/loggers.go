@@ -22,12 +22,20 @@ func StorageProviderLogger(event storagemarket.ProviderEvent, deal storagemarket
 
 // RetrievalClientLogger logs events from the retrieval client
 func RetrievalClientLogger(event retrievalmarket.ClientEvent, deal retrievalmarket.ClientDealState) {
-	log.Infow("retrieval client event", "name", retrievalmarket.ClientEvents[event], "deal ID", deal.ID, "state", retrievalmarket.DealStatuses[deal.Status], "message", deal.Message)
+	method := log.Infow
+	if event == retrievalmarket.ClientEventBlocksReceived {
+		method = log.Debugw
+	}
+	method("retrieval client event", "name", retrievalmarket.ClientEvents[event], "deal ID", deal.ID, "state", retrievalmarket.DealStatuses[deal.Status], "message", deal.Message)
 }
 
 // RetrievalProviderLogger logs events from the retrieval provider
 func RetrievalProviderLogger(event retrievalmarket.ProviderEvent, deal retrievalmarket.ProviderDealState) {
-	log.Infow("retrieval provider event", "name", retrievalmarket.ProviderEvents[event], "deal ID", deal.ID, "receiver", deal.Receiver, "state", retrievalmarket.DealStatuses[deal.Status], "message", deal.Message)
+	method := log.Infow
+	if event == retrievalmarket.ProviderEventBlockSent {
+		method = log.Debugw
+	}
+	method("retrieval provider event", "name", retrievalmarket.ProviderEvents[event], "deal ID", deal.ID, "receiver", deal.Receiver, "state", retrievalmarket.DealStatuses[deal.Status], "message", deal.Message)
 }
 
 // DataTransferLogger logs events from the data transfer module
