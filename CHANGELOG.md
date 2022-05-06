@@ -1,13 +1,15 @@
 # Lotus changelog
 
-# 1.15.2-rc3 / 2022-05-03
+# 1.15.2 / 2022-05-06
 
-This is the third release candidate of the next highly recommended feature release v1.15.2. This feature release introduces many new features and  for SPs, including PoSt workers, sealing scheduler, snap deal queue and so on. 
+This is a highly recommended feature lotus release v1.15.2. This feature release introduces many new features and  for SPs, including PoSt workers, sealing scheduler, snap deal queue and so on. 
+
+Note: You need to be using go v1.17.9&up from this release onwards.
 
 ## Highlights
 ### ❣️❣️❣️ PoSt Workers ❣️❣️❣️
 ‼️️Attention - the long-awaited yet highly requested PoSt workers, they are here! And they come in as a combo: you may setup PoSt workers for both winningPoSt or/and windowPoSt worker. You can also setup any number of PoSt workers as long as you have the hardware resources!
-For more details and learn how to set it up, see the (WIP) docs [here](https://deploy-preview-158--lotus-docs.netlify.app/storage-providers/seal-workers/post-workers/). You can also find early result of the PoSt workers performance by the community [here](https://github.com/filecoin-project/lotus/discussions/8375).
+For more details and learn how to set it up, see the docs [here](https://lotus.filecoin.io/storage-providers/seal-workers/post-workers/). You can also find early result of the PoSt workers performance by the community [here](https://github.com/filecoin-project/lotus/discussions/8375).
 - feat: PoSt workers ([filecoin-project/lotus#7971](https://github.com/filecoin-project/lotus/pull/7971))
 - feat: storage: Parallel proving checks ([filecoin-project/lotus#8391](https://github.com/filecoin-project/lotus/pull/8391))
   - adjust `ParallelCheckLimit` according to your resource setup to get pre-post checkers run faster!
@@ -117,35 +119,35 @@ The Filecoin Network introduced Snap Deal with the network v15 OhSnap upgrade, a
 
 | Contributor | Commits | Lines ± | Files Changed |
 |-------------|---------|---------|---------------|
-| Łukasz Magiera | 95 | +5147/-2922 | 401 |
-| mz-sirius | 3 | +1789/-546 | 48 |
-| Anton Evangelatov | 11 | +777/-567 | 121 |
-| Aayush | 11 | +336/-231 | 28 |
+| @magik6k | 95 | +5147/-2922 | 401 |
+| @mz-sirius | 3 | +1789/-546 | 48 |
+| @nonsense  | 11 | +777/-567 | 121 |
+| @arajasek | 11 | +336/-231 | 28 |
 | Darko Brdareski | 1 | +463/-13 | 95 |
-| Cory Schwartz | 11 | +147/-217 | 13 |
+| @coryschwartz | 11 | +147/-217 | 13 |
 | spark8899 | 2 | +300/-0 | 2 |
-| zenground0 | 2 | +6/-193 | 7 |
+| @zenground0 | 2 | +6/-193 | 7 |
 | Eng Zer Jun | 1 | +31/-158 | 11 |
 | Kevin Li | 2 | +174/-0 | 14 |
-| Aayush Rajasekaran | 5 | +85/-86 | 18 |
-| Jiaying Wang | 1 | +0/-119 | 3 |
-| jennijuju | 1 | +0/-98 | 6 |
-| Raúl Kripalani | 1 | +60/-1 | 1 |
-| frrist | 1 | +56/-0 | 2 |
-| vyzo | 3 | +18/-16 | 5 |
-| Masih H. Derkani | 3 | +29/-4 | 3 |
-| Jennifer Wang | 4 | +18/-11 | 11 |
-| hannahhoward | 1 | +13/-10 | 2 |
-| Dirk McCormick | 1 | +21/-1 | 1 |
+| @arajasek | 5 | +85/-86 | 18 |
+| @jennijuju | 1 | +0/-119 | 3 |
+| @jennijuju | 1 | +0/-98 | 6 |
+| @raulk | 1 | +60/-1 | 1 |
+| @frrist | 1 | +56/-0 | 2 |
+| @vyzo | 3 | +18/-16 | 5 |
+| @Masih | 3 | +29/-4 | 3 |
+| @jennijuju | 4 | +18/-11 | 11 |
+| @hannahhoward | 1 | +13/-10 | 2 |
+| @dirkmc | 1 | +21/-1 | 1 |
 | koalacxr | 1 | +10/-11 | 4 |
 | Aarsh Shah | 1 | +19/-1 | 1 |
-| Rjan | 6 | +10/-8 | 7 |
-| zl | 1 | +7/-1 | 1 |
+| @Rjan | 6 | +10/-8 | 7 |
+| @zl | 1 | +7/-1 | 1 |
 | KAYUII | 1 | +3/-2 | 1 |
-| simlecode | 1 | +4/-0 | 1 |
-| dirkmc | 1 | +1/-3 | 1 |
+| @simlecode | 1 | +4/-0 | 1 |
+| @dirkmc | 1 | +1/-3 | 1 |
 | Jerry | 1 | +3/-0 | 1 |
-| Steven Allen | 1 | +1/-1 | 1 |
+| @steblian | 1 | +1/-1 | 1 |
 | Geoff Stuart | 1 | +1/-0 | 1 |
 | Florian Ruen | 1 | +0/-1 | 1 |
 
