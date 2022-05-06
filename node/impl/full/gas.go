@@ -295,31 +295,21 @@ func gasEstimateGasLimit(
 		return -1, xerrors.Errorf("message execution failed: exit %s, reason: %s", res.MsgRct.ExitCode, res.Error)
 	}
 
+	ret := res.MsgRct.GasUsed
+
 	// Special case for PaymentChannel collect, which is deleting actor
+	// We ignore errors in this special case since they CAN occur,
+	// and we just want to detect existing payment channel actors
 	st, err := smgr.ParentState(ts)
-	if err != nil {
-		_ = err
-		// somewhat ignore it as it can happen and we just want to detect
-		// an existing PaymentChannel actor
-		return res.MsgRct.GasUsed, nil
-	}
-	act, err := st.GetActor(msg.To)
-	if err != nil {
-		_ = err
-		// somewhat ignore it as it can happen and we just want to detect
-		// an existing PaymentChannel actor
-		return res.MsgRct.GasUsed, nil
+	if err == nil {
+		act, err := st.GetActor(msg.To)
+		if err == nil && builtin.IsPaymentChannelActor(act.Code) && msgIn.Method == paych.Methods.Collect {
+			// add the refunded gas for DestroyActor back into the gas used
+			ret += 76e3
+		}
 	}
 
-	if !builtin.IsPaymentChannelActor(act.Code) {
-		return res.MsgRct.GasUsed, nil
-	}
-	if msgIn.Method != paych.Methods.Collect {
-		return res.MsgRct.GasUsed, nil
-	}
-
-	// return GasUsed without the refund for DestoryActor
-	return res.MsgRct.GasUsed + 76e3, nil
+	return ret, nil
 }
 
 func (m *GasModule) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, _ types.TipSetKey) (*types.Message, error) {
