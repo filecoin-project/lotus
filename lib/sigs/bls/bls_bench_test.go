@@ -1,3 +1,5 @@
+//stm: ignore
+// Ignored because implementation relies on external (ffi) lib
 package bls
 
 import (

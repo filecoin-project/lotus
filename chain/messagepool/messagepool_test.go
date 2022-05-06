@@ -854,7 +854,6 @@ func TestMessageValueTooHigh(t *testing.T) {
 			Message:   *msg,
 			Signature: *sig,
 		}
-
 		err = mp.Add(context.TODO(), sm)
 		assert.Error(t, err)
 	}
@@ -901,8 +900,7 @@ func TestMessageSignatureInvalid(t *testing.T) {
 		}
 		err = mp.Add(context.TODO(), sm)
 		assert.Error(t, err)
-		// assert.Contains(t, err.Error(), "invalid signature length")
-		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid signature length")
 	}
 }
 
@@ -926,14 +924,29 @@ func TestAddMessageTwice(t *testing.T) {
 	to := mock.Address(1001)
 
 	{
-		// create a valid messages
-		sm := makeTestMessage(w, from, to, 0, 50_000_000, minimumBaseFee.Uint64())
+		msg := &types.Message{
+			To:         to,
+			From:       from,
+			Value:      types.NewInt(1),
+			Nonce:      0,
+			GasLimit:   50000000,
+			GasFeeCap:  types.NewInt(minimumBaseFee.Uint64()),
+			GasPremium: types.NewInt(1),
+			Params:     make([]byte, 32<<10),
+		}
+
+		sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), api.MsgMeta{})
+		if err != nil {
+			panic(err)
+		}
+		sm := &types.SignedMessage{
+			Message:   *msg,
+			Signature: *sig,
+		}
 		mustAdd(t, mp, sm)
 
-		// try to add it twice
 		err = mp.Add(context.TODO(), sm)
-		// assert.Contains(t, err.Error(), "with nonce 0 already in mpool")
-		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "with nonce 0 already in mpool")
 	}
 }
 
@@ -963,8 +976,7 @@ func TestAddMessageTwiceNonceGap(t *testing.T) {
 
 		// then try to add message again
 		err = mp.Add(context.TODO(), sm)
-		// assert.Contains(t, err.Error(), "unfulfilled nonce gap")
-		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "unfulfilled nonce gap")
 	}
 }
 

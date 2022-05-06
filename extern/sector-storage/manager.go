@@ -7,16 +7,17 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/google/uuid"
+	"github.com/filecoin-project/go-statestore"
 	"github.com/hashicorp/go-multierror"
-	"github.com/ipfs/go-cid"
-	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
+
+	"github.com/google/uuid"
+	cid "github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -36,7 +37,7 @@ type Worker interface {
 	TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error)
 
 	// Returns paths accessible to the worker
-	Paths(context.Context) ([]stores.StoragePath, error)
+	Paths(context.Context) ([]storiface.StoragePath, error)
 
 	Info(context.Context) (storiface.WorkerInfo, error)
 
@@ -56,17 +57,21 @@ var ClosedWorkerID = uuid.UUID{}
 
 type Manager struct {
 	ls         stores.LocalStorage
-	storage    *stores.Remote
+	storage    stores.Store
 	localStore *stores.Local
 	remoteHnd  *stores.FetchHandler
 	index      stores.SectorIndex
 
-	sched *scheduler
+	sched            *scheduler
+	windowPoStSched  *poStScheduler
+	winningPoStSched *poStScheduler
 
-	storage.Prover
+	localProver storage.Prover
 
 	workLk sync.Mutex
 	work   *statestore.StateStore
+
+	parallelCheckLimit int
 
 	callToWork map[storiface.CallID]WorkID
 	// used when we get an early return and there's no callToWork mapping
@@ -75,6 +80,8 @@ type Manager struct {
 	results map[WorkID]result
 	waitRes map[WorkID]chan struct{}
 }
+
+var _ storage.Prover = &Manager{}
 
 type result struct {
 	r   interface{}
@@ -95,7 +102,7 @@ const (
 	ResourceFilteringDisabled = ResourceFilteringStrategy("disabled")
 )
 
-type SealerConfig struct {
+type Config struct {
 	ParallelFetchLimit int
 
 	// Local worker config
@@ -112,6 +119,9 @@ type SealerConfig struct {
 	// to use when evaluating tasks against this worker. An empty value defaults
 	// to "hardware".
 	ResourceFiltering ResourceFilteringStrategy
+
+	// PoSt config
+	ParallelCheckLimit int
 }
 
 type StorageAuth http.Header
@@ -119,7 +129,7 @@ type StorageAuth http.Header
 type WorkerStateStore *statestore.StateStore
 type ManagerStateStore *statestore.StateStore
 
-func New(ctx context.Context, lstor *stores.Local, stor *stores.Remote, ls stores.LocalStorage, si stores.SectorIndex, sc SealerConfig, wss WorkerStateStore, mss ManagerStateStore) (*Manager, error) {
+func New(ctx context.Context, lstor *stores.Local, stor stores.Store, ls stores.LocalStorage, si stores.SectorIndex, sc Config, wss WorkerStateStore, mss ManagerStateStore) (*Manager, error) {
 	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor, index: si})
 	if err != nil {
 		return nil, xerrors.Errorf("creating prover instance: %w", err)
@@ -132,9 +142,13 @@ func New(ctx context.Context, lstor *stores.Local, stor *stores.Remote, ls store
 		remoteHnd:  &stores.FetchHandler{Local: lstor, PfHandler: &stores.DefaultPartialFileHandler{}},
 		index:      si,
 
-		sched: newScheduler(),
+		sched:            newScheduler(),
+		windowPoStSched:  newPoStScheduler(sealtasks.TTGenerateWindowPoSt),
+		winningPoStSched: newPoStScheduler(sealtasks.TTGenerateWinningPoSt),
 
-		Prover: prover,
+		localProver: prover,
+
+		parallelCheckLimit: sc.ParallelCheckLimit,
 
 		work:       mss,
 		callToWork: map[storiface.CallID]WorkID{},
@@ -207,7 +221,32 @@ func (m *Manager) AddLocalStorage(ctx context.Context, path string) error {
 }
 
 func (m *Manager) AddWorker(ctx context.Context, w Worker) error {
-	return m.sched.runWorker(ctx, w)
+	sessID, err := w.Session(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting worker session: %w", err)
+	}
+	if sessID == ClosedWorkerID {
+		return xerrors.Errorf("worker already closed")
+	}
+
+	wid := storiface.WorkerID(sessID)
+
+	whnd, err := newWorkerHandle(ctx, w)
+	if err != nil {
+		return err
+	}
+
+	tasks, err := w.TaskTypes(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting worker tasks: %w", err)
+	}
+
+	if m.windowPoStSched.MaybeAddWorker(wid, tasks, whnd) ||
+		m.winningPoStSched.MaybeAddWorker(wid, tasks, whnd) {
+		return nil
+	}
+
+	return m.sched.runWorker(ctx, wid, whnd)
 }
 
 func (m *Manager) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -655,11 +694,31 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storage.Sect
 		err = multierr.Append(err, move(moveUnsealed))
 	}
 
+	if err != nil {
+		return xerrors.Errorf("moving sector to storage: %w", err)
+	}
+
 	return nil
 }
 
 func (m *Manager) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) error {
-	return nil
+	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		return err
+	}
+	if len(safeToFree) == 0 || safeToFree[0].Offset != 0 || safeToFree[0].Size.Padded() != abi.PaddedPieceSize(ssize) {
+		// todo support partial free
+		return nil
+	}
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	if err := m.index.StorageLock(ctx, sector.ID, storiface.FTNone, storiface.FTUnsealed); err != nil {
+		return xerrors.Errorf("acquiring sector lock: %w", err)
+	}
+
+	return m.storage.Remove(ctx, sector.ID, storiface.FTUnsealed, true, nil)
 }
 
 func (m *Manager) ReleaseSectorKey(ctx context.Context, sector storage.SectorRef) error {
@@ -980,13 +1039,13 @@ func (m *Manager) ReturnFetch(ctx context.Context, callID storiface.CallID, err 
 	return m.returnResult(ctx, callID, nil, err)
 }
 
-func (m *Manager) StorageLocal(ctx context.Context) (map[stores.ID]string, error) {
+func (m *Manager) StorageLocal(ctx context.Context) (map[storiface.ID]string, error) {
 	l, err := m.localStore.Local(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	out := map[stores.ID]string{}
+	out := map[storiface.ID]string{}
 	for _, st := range l {
 		out[st.ID] = st.LocalPath
 	}
@@ -994,7 +1053,7 @@ func (m *Manager) StorageLocal(ctx context.Context) (map[stores.ID]string, error
 	return out, nil
 }
 
-func (m *Manager) FsStat(ctx context.Context, id stores.ID) (fsutil.FsStat, error) {
+func (m *Manager) FsStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, error) {
 	return m.storage.FsStat(ctx, id)
 }
 
@@ -1052,6 +1111,8 @@ func (m *Manager) SchedDiag(ctx context.Context, doSched bool) (interface{}, err
 }
 
 func (m *Manager) Close(ctx context.Context) error {
+	m.windowPoStSched.schedClose()
+	m.winningPoStSched.schedClose()
 	return m.sched.Close(ctx)
 }
 

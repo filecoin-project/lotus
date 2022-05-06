@@ -51,7 +51,7 @@ var EmptyObjectCid cid.Cid
 
 // TryCreateAccountActor creates account actors from only BLS/SECP256K1 addresses.
 func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, address.Address, aerrors.ActorError) {
-	if err := rt.chargeGasSafe(PricelistByEpoch(rt.height).OnCreateActor()); err != nil {
+	if err := rt.chargeGasSafe(PricelistByEpochAndNetworkVersion(rt.height, rt.NetworkVersion()).OnCreateActor()); err != nil {
 		return nil, address.Undef, err
 	}
 

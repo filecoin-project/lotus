@@ -14,6 +14,8 @@
   * [FinalizeSector](#FinalizeSector)
 * [Generate](#Generate)
   * [GenerateSectorKeyFromData](#GenerateSectorKeyFromData)
+  * [GenerateWindowPoSt](#GenerateWindowPoSt)
+  * [GenerateWinningPoSt](#GenerateWinningPoSt)
 * [Move](#Move)
   * [MoveStorage](#MoveStorage)
 * [Process](#Process)
@@ -108,6 +110,170 @@ Response:
       "string value"
     ],
     "Resources": {
+      "post/v0/windowproof": {
+        "0": {
+          "MinMemory": 2048,
+          "MaxMemory": 2048,
+          "GPUUtilization": 1,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 2048
+        },
+        "1": {
+          "MinMemory": 8388608,
+          "MaxMemory": 8388608,
+          "GPUUtilization": 1,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 8388608
+        },
+        "2": {
+          "MinMemory": 1073741824,
+          "MaxMemory": 1610612736,
+          "GPUUtilization": 1,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 10737418240
+        },
+        "3": {
+          "MinMemory": 32212254720,
+          "MaxMemory": 103079215104,
+          "GPUUtilization": 1,
+          "MaxParallelism": -1,
+          "MaxParallelismGPU": 6,
+          "BaseMinMemory": 34359738368
+        },
+        "4": {
+          "MinMemory": 64424509440,
+          "MaxMemory": 128849018880,
+          "GPUUtilization": 1,
+          "MaxParallelism": -1,
+          "MaxParallelismGPU": 6,
+          "BaseMinMemory": 68719476736
+        },
+        "5": {
+          "MinMemory": 2048,
+          "MaxMemory": 2048,
+          "GPUUtilization": 1,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 2048
+        },
+        "6": {
+          "MinMemory": 8388608,
+          "MaxMemory": 8388608,
+          "GPUUtilization": 1,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 8388608
+        },
+        "7": {
+          "MinMemory": 1073741824,
+          "MaxMemory": 1610612736,
+          "GPUUtilization": 1,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 10737418240
+        },
+        "8": {
+          "MinMemory": 32212254720,
+          "MaxMemory": 103079215104,
+          "GPUUtilization": 1,
+          "MaxParallelism": -1,
+          "MaxParallelismGPU": 6,
+          "BaseMinMemory": 34359738368
+        },
+        "9": {
+          "MinMemory": 64424509440,
+          "MaxMemory": 128849018880,
+          "GPUUtilization": 1,
+          "MaxParallelism": -1,
+          "MaxParallelismGPU": 6,
+          "BaseMinMemory": 68719476736
+        }
+      },
+      "post/v0/winningproof": {
+        "0": {
+          "MinMemory": 2048,
+          "MaxMemory": 2048,
+          "GPUUtilization": 1,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 2048
+        },
+        "1": {
+          "MinMemory": 8388608,
+          "MaxMemory": 8388608,
+          "GPUUtilization": 1,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 8388608
+        },
+        "2": {
+          "MinMemory": 2048,
+          "MaxMemory": 2048,
+          "GPUUtilization": 1,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 10737418240
+        },
+        "3": {
+          "MinMemory": 1073741824,
+          "MaxMemory": 1073741824,
+          "GPUUtilization": 1,
+          "MaxParallelism": -1,
+          "MaxParallelismGPU": 6,
+          "BaseMinMemory": 34359738368
+        },
+        "4": {
+          "MinMemory": 1073741824,
+          "MaxMemory": 1073741824,
+          "GPUUtilization": 1,
+          "MaxParallelism": -1,
+          "MaxParallelismGPU": 6,
+          "BaseMinMemory": 68719476736
+        },
+        "5": {
+          "MinMemory": 2048,
+          "MaxMemory": 2048,
+          "GPUUtilization": 1,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 2048
+        },
+        "6": {
+          "MinMemory": 8388608,
+          "MaxMemory": 8388608,
+          "GPUUtilization": 1,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 8388608
+        },
+        "7": {
+          "MinMemory": 2048,
+          "MaxMemory": 2048,
+          "GPUUtilization": 1,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 10737418240
+        },
+        "8": {
+          "MinMemory": 1073741824,
+          "MaxMemory": 1073741824,
+          "GPUUtilization": 1,
+          "MaxParallelism": -1,
+          "MaxParallelismGPU": 6,
+          "BaseMinMemory": 34359738368
+        },
+        "9": {
+          "MinMemory": 1073741824,
+          "MaxMemory": 1073741824,
+          "GPUUtilization": 1,
+          "MaxParallelism": -1,
+          "MaxParallelismGPU": 6,
+          "BaseMinMemory": 68719476736
+        }
+      },
       "seal/v0/addpiece": {
         "0": {
           "MinMemory": 2048,
@@ -1216,6 +1382,87 @@ Response:
   },
   "ID": "07070707-0707-0707-0707-070707070707"
 }
+```
+
+### GenerateWindowPoSt
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  8,
+  1000,
+  [
+    {
+      "SealProof": 8,
+      "SectorNumber": 9,
+      "SealedCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Challenge": [
+        42
+      ],
+      "Update": true
+    }
+  ],
+  123,
+  "Bw=="
+]
+```
+
+Response:
+```json
+{
+  "PoStProofs": {
+    "PoStProof": 8,
+    "ProofBytes": "Ynl0ZSBhcnJheQ=="
+  },
+  "Skipped": [
+    {
+      "Miner": 1000,
+      "Number": 9
+    }
+  ]
+}
+```
+
+### GenerateWinningPoSt
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  8,
+  1000,
+  [
+    {
+      "SealProof": 8,
+      "SectorNumber": 9,
+      "SealedCID": {
+        "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+      },
+      "Challenge": [
+        42
+      ],
+      "Update": true
+    }
+  ],
+  "Bw=="
+]
+```
+
+Response:
+```json
+[
+  {
+    "PoStProof": 8,
+    "ProofBytes": "Ynl0ZSBhcnJheQ=="
+  }
+]
 ```
 
 ## Move

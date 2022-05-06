@@ -291,11 +291,13 @@
   #EntriesChunkSize = 16384
 
   # TopicName sets the topic name on which the changes to the advertised content are announced.
-  # Defaults to '/indexer/ingest/mainnet' if not specified.
+  # If not explicitly specified, the topic name is automatically inferred from the network name
+  # in following format: '/indexer/ingest/<network-name>'
+  # Defaults to empty, which implies the topic name is inferred from network name.
   #
   # type: string
   # env var: LOTUS_INDEXPROVIDER_TOPICNAME
-  #TopicName = "/indexer/ingest/mainnet"
+  #TopicName = ""
 
   # PurgeCacheOnStart sets whether to clear any cached entries chunks when the provider engine
   # starts. By default, the cache is rehydrated from previously cached entries stored in
@@ -304,6 +306,14 @@
   # type: bool
   # env var: LOTUS_INDEXPROVIDER_PURGECACHEONSTART
   #PurgeCacheOnStart = false
+
+
+[Proving]
+  # Maximum number of sector checks to run in parallel. (0 = unlimited)
+  #
+  # type: int
+  # env var: LOTUS_PROVING_PARALLELCHECKLIMIT
+  #ParallelCheckLimit = 128
 
 
 [Sealing]
@@ -317,17 +327,32 @@
   # env var: LOTUS_SEALING_MAXWAITDEALSSECTORS
   #MaxWaitDealsSectors = 2
 
-  # Upper bound on how many sectors can be sealing at the same time when creating new CC sectors (0 = unlimited)
+  # Upper bound on how many sectors can be sealing+upgrading at the same time when creating new CC sectors (0 = unlimited)
   #
   # type: uint64
   # env var: LOTUS_SEALING_MAXSEALINGSECTORS
   #MaxSealingSectors = 0
 
-  # Upper bound on how many sectors can be sealing at the same time when creating new sectors with deals (0 = unlimited)
+  # Upper bound on how many sectors can be sealing+upgrading at the same time when creating new sectors with deals (0 = unlimited)
   #
   # type: uint64
   # env var: LOTUS_SEALING_MAXSEALINGSECTORSFORDEALS
   #MaxSealingSectorsForDeals = 0
+
+  # Prefer creating new sectors even if there are sectors Available for upgrading.
+  # This setting combined with MaxUpgradingSectors set to a value higher than MaxSealingSectorsForDeals makes it
+  # possible to use fast sector upgrades to handle high volumes of storage deals, while still using the simple sealing
+  # flow when the volume of storage deals is lower.
+  #
+  # type: bool
+  # env var: LOTUS_SEALING_PREFERNEWSECTORSFORDEALS
+  #PreferNewSectorsForDeals = false
+
+  # Upper bound on how many sectors can be sealing+upgrading at the same time when upgrading CC sectors with deals (0 = MaxSealingSectorsForDeals)
+  #
+  # type: uint64
+  # env var: LOTUS_SEALING_MAXUPGRADINGSECTORS
+  #MaxUpgradingSectors = 0
 
   # CommittedCapacitySectorLifetime is the duration a Committed Capacity (CC) sector will
   # live before it must be extended or converted into sector containing deals before it is
@@ -469,33 +494,49 @@
 
 
 [Storage]
+  # type: int
   # env var: LOTUS_STORAGE_PARALLELFETCHLIMIT
   #ParallelFetchLimit = 10
 
+  # Local worker config
+  #
+  # type: bool
   # env var: LOTUS_STORAGE_ALLOWADDPIECE
   #AllowAddPiece = true
 
+  # type: bool
   # env var: LOTUS_STORAGE_ALLOWPRECOMMIT1
   #AllowPreCommit1 = true
 
+  # type: bool
   # env var: LOTUS_STORAGE_ALLOWPRECOMMIT2
   #AllowPreCommit2 = true
 
+  # type: bool
   # env var: LOTUS_STORAGE_ALLOWCOMMIT
   #AllowCommit = true
 
+  # type: bool
   # env var: LOTUS_STORAGE_ALLOWUNSEAL
   #AllowUnseal = true
 
+  # type: bool
   # env var: LOTUS_STORAGE_ALLOWREPLICAUPDATE
   #AllowReplicaUpdate = true
 
+  # type: bool
   # env var: LOTUS_STORAGE_ALLOWPROVEREPLICAUPDATE2
   #AllowProveReplicaUpdate2 = true
 
+  # type: bool
   # env var: LOTUS_STORAGE_ALLOWREGENSECTORKEY
   #AllowRegenSectorKey = true
 
+  # ResourceFiltering instructs the system which resource filtering strategy
+  # to use when evaluating tasks against this worker. An empty value defaults
+  # to "hardware".
+  #
+  # type: sectorstorage.ResourceFilteringStrategy
   # env var: LOTUS_STORAGE_RESOURCEFILTERING
   #ResourceFiltering = "hardware"
 

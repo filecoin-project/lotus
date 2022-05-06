@@ -7,8 +7,9 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/specs-storage/storage"
 )
@@ -29,7 +30,7 @@ type Worker interface {
 
 	// TaskType -> Weight
 	TaskTypes(context.Context) (map[sealtasks.TaskType]struct{}, error) //perm:admin
-	Paths(context.Context) ([]stores.StoragePath, error)                //perm:admin
+	Paths(context.Context) ([]storiface.StoragePath, error)             //perm:admin
 	Info(context.Context) (storiface.WorkerInfo, error)                 //perm:admin
 
 	// storiface.WorkerCalls
@@ -48,6 +49,9 @@ type Worker interface {
 	MoveStorage(ctx context.Context, sector storage.SectorRef, types storiface.SectorFileType) (storiface.CallID, error)                                                                                 //perm:admin
 	UnsealPiece(context.Context, storage.SectorRef, storiface.UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (storiface.CallID, error)                                           //perm:admin
 	Fetch(context.Context, storage.SectorRef, storiface.SectorFileType, storiface.PathType, storiface.AcquireMode) (storiface.CallID, error)                                                             //perm:admin
+
+	GenerateWinningPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, mid abi.ActorID, sectors []storiface.PostSectorChallenge, randomness abi.PoStRandomness) ([]proof.PoStProof, error)                           //perm:admin
+	GenerateWindowPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, mid abi.ActorID, sectors []storiface.PostSectorChallenge, partitionIdx int, randomness abi.PoStRandomness) (storiface.WindowPoStResult, error) //perm:admin
 
 	TaskDisable(ctx context.Context, tt sealtasks.TaskType) error //perm:admin
 	TaskEnable(ctx context.Context, tt sealtasks.TaskType) error  //perm:admin

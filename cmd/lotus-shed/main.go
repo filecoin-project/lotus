@@ -22,6 +22,7 @@ func main() {
 		bitFieldCmd,
 		cronWcCmd,
 		frozenMinersCmd,
+		dealLabelCmd,
 		keyinfoCmd,
 		jwtCmd,
 		noncefix,

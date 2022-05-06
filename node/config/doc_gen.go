@@ -404,7 +404,9 @@ advertisements that include more multihashes than the configured EntriesChunkSiz
 			Type: "string",
 
 			Comment: `TopicName sets the topic name on which the changes to the advertised content are announced.
-Defaults to '/indexer/ingest/mainnet' if not specified.`,
+If not explicitly specified, the topic name is automatically inferred from the network name
+in following format: '/indexer/ingest/<network-name>'
+Defaults to empty, which implies the topic name is inferred from network name.`,
 		},
 		{
 			Name: "PurgeCacheOnStart",
@@ -620,6 +622,14 @@ over the worker address if this flag is set.`,
 			Comment: ``,
 		},
 	},
+	"ProvingConfig": []DocField{
+		{
+			Name: "ParallelCheckLimit",
+			Type: "int",
+
+			Comment: `Maximum number of sector checks to run in parallel. (0 = unlimited)`,
+		},
+	},
 	"Pubsub": []DocField{
 		{
 			Name: "Bootstrapper",
@@ -691,6 +701,70 @@ default value is true`,
 This parameter is ONLY applicable if the retrieval pricing policy strategy has been configured to "external".`,
 		},
 	},
+	"SealerConfig": []DocField{
+		{
+			Name: "ParallelFetchLimit",
+			Type: "int",
+
+			Comment: ``,
+		},
+		{
+			Name: "AllowAddPiece",
+			Type: "bool",
+
+			Comment: `Local worker config`,
+		},
+		{
+			Name: "AllowPreCommit1",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "AllowPreCommit2",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "AllowCommit",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "AllowUnseal",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "AllowReplicaUpdate",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "AllowProveReplicaUpdate2",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "AllowRegenSectorKey",
+			Type: "bool",
+
+			Comment: ``,
+		},
+		{
+			Name: "ResourceFiltering",
+			Type: "sectorstorage.ResourceFilteringStrategy",
+
+			Comment: `ResourceFiltering instructs the system which resource filtering strategy
+to use when evaluating tasks against this worker. An empty value defaults
+to "hardware".`,
+		},
+	},
 	"SealingConfig": []DocField{
 		{
 			Name: "MaxWaitDealsSectors",
@@ -706,13 +780,28 @@ Note that setting this number too high in relation to deal ingestion rate may re
 			Name: "MaxSealingSectors",
 			Type: "uint64",
 
-			Comment: `Upper bound on how many sectors can be sealing at the same time when creating new CC sectors (0 = unlimited)`,
+			Comment: `Upper bound on how many sectors can be sealing+upgrading at the same time when creating new CC sectors (0 = unlimited)`,
 		},
 		{
 			Name: "MaxSealingSectorsForDeals",
 			Type: "uint64",
 
-			Comment: `Upper bound on how many sectors can be sealing at the same time when creating new sectors with deals (0 = unlimited)`,
+			Comment: `Upper bound on how many sectors can be sealing+upgrading at the same time when creating new sectors with deals (0 = unlimited)`,
+		},
+		{
+			Name: "PreferNewSectorsForDeals",
+			Type: "bool",
+
+			Comment: `Prefer creating new sectors even if there are sectors Available for upgrading.
+This setting combined with MaxUpgradingSectors set to a value higher than MaxSealingSectorsForDeals makes it
+possible to use fast sector upgrades to handle high volumes of storage deals, while still using the simple sealing
+flow when the volume of storage deals is lower.`,
+		},
+		{
+			Name: "MaxUpgradingSectors",
+			Type: "uint64",
+
+			Comment: `Upper bound on how many sectors can be sealing+upgrading at the same time when upgrading CC sectors with deals (0 = MaxSealingSectorsForDeals)`,
 		},
 		{
 			Name: "CommittedCapacitySectorLifetime",
@@ -919,6 +1008,12 @@ Default is 20 (about once a week).`,
 			Comment: ``,
 		},
 		{
+			Name: "Proving",
+			Type: "ProvingConfig",
+
+			Comment: ``,
+		},
+		{
 			Name: "Sealing",
 			Type: "SealingConfig",
 
@@ -926,7 +1021,7 @@ Default is 20 (about once a week).`,
 		},
 		{
 			Name: "Storage",
-			Type: "sectorstorage.SealerConfig",
+			Type: "SealerConfig",
 
 			Comment: ``,
 		},

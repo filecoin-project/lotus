@@ -131,6 +131,7 @@
   * [NetLimit](#NetLimit)
   * [NetPeerInfo](#NetPeerInfo)
   * [NetPeers](#NetPeers)
+  * [NetPing](#NetPing)
   * [NetProtectAdd](#NetProtectAdd)
   * [NetProtectList](#NetProtectList)
   * [NetProtectRemove](#NetProtectRemove)
@@ -3907,6 +3908,20 @@ Response:
   }
 ]
 ```
+
+### NetPing
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+Response: `60000000000`
 
 ### NetProtectAdd
 

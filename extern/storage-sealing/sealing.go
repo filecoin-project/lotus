@@ -6,20 +6,21 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
+
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
-	statemachine "github.com/filecoin-project/go-statemachine"
+	"github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
@@ -107,8 +108,6 @@ type Sealing struct {
 	assignedPieces map[abi.SectorID][]cid.Cid
 	nextDealSector *abi.SectorNumber // used to prevent a race where we could create a new sector more than once
 
-	upgradeLk sync.Mutex
-	toUpgrade map[abi.SectorNumber]struct{}
 	available map[abi.SectorID]struct{}
 
 	notifee SectorStateNotifee
@@ -179,7 +178,6 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 		sectorTimers:   map[abi.SectorID]*time.Timer{},
 		pendingPieces:  map[cid.Cid]*pendingPiece{},
 		assignedPieces: map[abi.SectorID][]cid.Cid{},
-		toUpgrade:      map[abi.SectorNumber]struct{}{},
 
 		available: map[abi.SectorID]struct{}{},
 

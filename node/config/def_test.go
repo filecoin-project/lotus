@@ -1,3 +1,4 @@
+//stm: #unit
 package config
 
 import (
@@ -12,6 +13,7 @@ import (
 )
 
 func TestDefaultFullNodeRoundtrip(t *testing.T) {
+	//stm: @OTHER_IMPLEMENTATION_001
 	c := DefaultFullNode()
 
 	var s string
@@ -51,6 +53,7 @@ func TestDefaultFullNodeCommentRoundtrip(t *testing.T) {
 }
 
 func TestDefaultMinerRoundtrip(t *testing.T) {
+	//stm: @OTHER_IMPLEMENTATION_001
 	c := DefaultStorageMiner()
 
 	var s string
@@ -71,8 +74,8 @@ func TestDefaultMinerRoundtrip(t *testing.T) {
 	require.True(t, reflect.DeepEqual(c, c2))
 }
 
-func TestDefaultStorageMiner_SetsIndexIngestTopic(t *testing.T) {
+func TestDefaultStorageMiner_IsEmpty(t *testing.T) {
 	subject := DefaultStorageMiner()
 	require.True(t, subject.IndexProvider.Enable)
-	require.Equal(t, "/indexer/ingest/mainnet", subject.IndexProvider.TopicName)
+	require.Equal(t, "", subject.IndexProvider.TopicName)
 }

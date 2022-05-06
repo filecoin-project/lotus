@@ -360,7 +360,7 @@ type FullNode interface {
 	// ClientGetRetrievalUpdates returns status of updated retrieval deals
 	ClientGetRetrievalUpdates(ctx context.Context) (<-chan RetrievalInfo, error) //perm:write
 	// ClientQueryAsk returns a signed StorageAsk from the specified miner.
-	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error) //perm:read
+	ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*StorageAsk, error) //perm:read
 	// ClientCalcCommP calculates the CommP and data size of the specified CID
 	ClientDealPieceCID(ctx context.Context, root cid.Cid) (DataCIDSize, error) //perm:read
 	// ClientCalcCommP calculates the CommP for a specified file
@@ -726,6 +726,12 @@ type FullNode interface {
 	// LOTUS_BACKUP_BASE_PATH environment variable set to some path, and that
 	// the path specified when calling CreateBackup is within the base path
 	CreateBackup(ctx context.Context, fpath string) error //perm:admin
+}
+
+type StorageAsk struct {
+	Response *storagemarket.StorageAsk
+
+	DealProtocols []string
 }
 
 type FileRef struct {

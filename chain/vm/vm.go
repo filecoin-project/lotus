@@ -42,7 +42,7 @@ const MaxCallDepth = 4096
 
 var (
 	log            = logging.Logger("vm")
-	actorLog       = logging.Logger("actors")
+	actorLog       = logging.WithSkip(logging.Logger("actors"), 1)
 	gasOnActorExec = newGasCharge("OnActorExec", 0, 0)
 )
 
@@ -135,7 +135,7 @@ func (vm *LegacyVM) makeRuntime(ctx context.Context, msg *types.Message, parent 
 		gasAvailable:     msg.GasLimit,
 		depth:            0,
 		numActorsCreated: 0,
-		pricelist:        PricelistByEpoch(vm.blockHeight),
+		pricelist:        PricelistByEpochAndNetworkVersion(vm.blockHeight, vm.networkVersion),
 		allowInternal:    true,
 		callerValidated:  false,
 		executionTrace:   types.ExecutionTrace{Msg: msg},
@@ -431,7 +431,7 @@ func (vm *LegacyVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*App
 		return nil, err
 	}
 
-	pl := PricelistByEpoch(vm.blockHeight)
+	pl := PricelistByEpochAndNetworkVersion(vm.blockHeight, vm.networkVersion)
 
 	msgGas := pl.OnChainMessage(cmsg.ChainLength())
 	msgGasCost := msgGas.Total()

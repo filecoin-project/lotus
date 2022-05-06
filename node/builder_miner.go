@@ -88,6 +88,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
 		Override(new(*stores.Local), modules.LocalStorage),
 		Override(new(*stores.Remote), modules.RemoteStorage),
+		Override(new(stores.Store), From(new(*stores.Remote))),
 		Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
 
 		If(!cfg.Subsystems.EnableMining,
@@ -112,10 +113,10 @@ func ConfigStorageMiner(c interface{}) Option {
 
 			// Mining / proving
 			Override(new(*slashfilter.SlashFilter), modules.NewSlashFilter),
-			Override(new(*storage.Miner), modules.StorageMiner(config.DefaultStorageMiner().Fees)),
 			Override(new(*miner.Miner), modules.SetupBlockProducer),
 			Override(new(gen.WinningPoStProver), storage.NewWinningPoStProver),
 			Override(new(*storage.Miner), modules.StorageMiner(cfg.Fees)),
+			Override(new(*storage.WindowPoStScheduler), modules.WindowPostScheduler(cfg.Fees)),
 			Override(new(sectorblocks.SectorBuilder), From(new(*storage.Miner))),
 		),
 
@@ -158,8 +159,8 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
 
 			// DAG Store
-			Override(new(dagstore.MinerAPI), modules.NewMinerAPI),
-			Override(DAGStoreKey, modules.DAGStore),
+			Override(new(dagstore.MinerAPI), modules.NewMinerAPI(cfg.DAGStore)),
+			Override(DAGStoreKey, modules.DAGStore(cfg.DAGStore)),
 
 			// Markets (retrieval)
 			Override(new(dagstore.SectorAccessor), sectoraccessor.NewSectorAccessor),
@@ -218,7 +219,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(storagemarket.StorageProviderNode), storageadapter.NewProviderNodeAdapter(&cfg.Fees, &cfg.Dealmaking)),
 		),
 
-		Override(new(sectorstorage.SealerConfig), cfg.Storage),
+		Override(new(sectorstorage.Config), cfg.StorageManager()),
 		Override(new(*storage.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
 	)
 }

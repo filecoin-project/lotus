@@ -1,3 +1,4 @@
+//stm: #unit
 package main
 
 import (
@@ -23,6 +24,7 @@ import (
 )
 
 func TestWorkerKeyChange(t *testing.T) {
+	//stm: @OTHER_WORKER_KEY_CHANGE_001
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
@@ -70,7 +72,7 @@ func TestWorkerKeyChange(t *testing.T) {
 	result := output.String()
 	output.Reset()
 
-	require.Contains(t, result, fmt.Sprintf("Worker key change to %s successfully proposed.", newKey))
+	require.Contains(t, result, fmt.Sprintf("Worker key change to %s successfully sent", newKey))
 
 	epochRe := regexp.MustCompile("at or after height (?P<epoch>[0-9]+) to complete")
 	matches := epochRe.FindStringSubmatch(result)

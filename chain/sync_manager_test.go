@@ -1,3 +1,4 @@
+//stm: #unit
 package chain
 
 import (
@@ -78,6 +79,7 @@ func assertGetSyncOp(t *testing.T, c chan *syncOp, ts *types.TipSet) {
 }
 
 func TestSyncManagerEdgeCase(t *testing.T) {
+	//stm: @CHAIN_SYNCER_SET_PEER_HEAD_001
 	ctx := context.Background()
 
 	a := mock.TipSet(mock.MkBlock(genTs, 1, 1))
@@ -161,6 +163,7 @@ func TestSyncManagerEdgeCase(t *testing.T) {
 }
 
 func TestSyncManager(t *testing.T) {
+	//stm: @CHAIN_SYNCER_SET_PEER_HEAD_001
 	ctx := context.Background()
 
 	a := mock.TipSet(mock.MkBlock(genTs, 1, 1))

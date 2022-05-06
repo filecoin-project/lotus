@@ -137,6 +137,7 @@
   * [NetLimit](#NetLimit)
   * [NetPeerInfo](#NetPeerInfo)
   * [NetPeers](#NetPeers)
+  * [NetPing](#NetPing)
   * [NetProtectAdd](#NetProtectAdd)
   * [NetProtectList](#NetProtectList)
   * [NetProtectRemove](#NetProtectRemove)
@@ -1896,14 +1897,19 @@ Inputs:
 Response:
 ```json
 {
-  "Price": "0",
-  "VerifiedPrice": "0",
-  "MinPieceSize": 1032,
-  "MaxPieceSize": 1032,
-  "Miner": "f01234",
-  "Timestamp": 10101,
-  "Expiry": 10101,
-  "SeqNo": 42
+  "Response": {
+    "Price": "0",
+    "VerifiedPrice": "0",
+    "MinPieceSize": 1032,
+    "MaxPieceSize": 1032,
+    "Miner": "f01234",
+    "Timestamp": 10101,
+    "Expiry": 10101,
+    "SeqNo": 42
+  },
+  "DealProtocols": [
+    "string value"
+  ]
 }
 ```
 
@@ -4269,6 +4275,20 @@ Response:
   }
 ]
 ```
+
+### NetPing
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "12D3KooWGzxzKZYveHXtpG6AsrUJBcWxHBFS2HsEoGTxrMLvKXtf"
+]
+```
+
+Response: `60000000000`
 
 ### NetProtectAdd
 

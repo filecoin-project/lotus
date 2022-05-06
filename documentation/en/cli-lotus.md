@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.15.1
+   1.15.2
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -770,7 +770,7 @@ NAME:
    lotus client get-deal - Print detailed deal information
 
 USAGE:
-   lotus client get-deal [command options] [arguments...]
+   lotus client get-deal [command options] [proposalCID]
 
 CATEGORY:
    STORAGE
@@ -794,6 +794,7 @@ CATEGORY:
 OPTIONS:
    --by-ping              sort by ping (default: false)
    --output-format value  Either 'text' or 'csv' (default: "text")
+   --protocols            Output supported deal protocols (default: false)
    --help, -h             show help (default: false)
    
 ```
@@ -2602,6 +2603,7 @@ USAGE:
 
 COMMANDS:
    peers           Print peers
+   ping            Ping peers
    connect         Connect to a peer
    listen          List listen addresses
    id              Get node identity
@@ -2634,6 +2636,21 @@ OPTIONS:
    --agent, -a     Print agent name (default: false)
    --extended, -x  Print extended peer information in json (default: false)
    --help, -h      show help (default: false)
+   
+```
+
+### lotus net ping
+```
+NAME:
+   lotus net ping - Ping peers
+
+USAGE:
+   lotus net ping [command options] [arguments...]
+
+OPTIONS:
+   --count value, -c value     specify the number of times it should ping (default: 10)
+   --interval value, -i value  minimum time between pings (default: 1s)
+   --help, -h                  show help (default: false)
    
 ```
 

@@ -1,3 +1,4 @@
+//stm: #unit
 package vm
 
 import (
@@ -22,6 +23,7 @@ func (*NotAVeryGoodMarshaler) MarshalCBOR(writer io.Writer) error {
 var _ cbg.CBORMarshaler = &NotAVeryGoodMarshaler{}
 
 func TestRuntimePutErrors(t *testing.T) {
+	//stm: @CHAIN_VM_STORE_PUT_002
 	defer func() {
 		err := recover()
 		if err == nil {

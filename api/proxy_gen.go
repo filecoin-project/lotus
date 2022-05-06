@@ -25,12 +25,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	"github.com/filecoin-project/lotus/journal/alerting"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
+	"github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -190,7 +190,7 @@ type FullNodeStruct struct {
 
 		ClientMinerQueryOffer func(p0 context.Context, p1 address.Address, p2 cid.Cid, p3 *cid.Cid) (QueryOffer, error) `perm:"read"`
 
-		ClientQueryAsk func(p0 context.Context, p1 peer.ID, p2 address.Address) (*storagemarket.StorageAsk, error) `perm:"read"`
+		ClientQueryAsk func(p0 context.Context, p1 peer.ID, p2 address.Address) (*StorageAsk, error) `perm:"read"`
 
 		ClientRemoveImport func(p0 context.Context, p1 imports.ID) error `perm:"admin"`
 
@@ -597,6 +597,8 @@ type NetStruct struct {
 
 		NetPeers func(p0 context.Context) ([]peer.AddrInfo, error) `perm:"read"`
 
+		NetPing func(p0 context.Context, p1 peer.ID) (time.Duration, error) `perm:"read"`
+
 		NetProtectAdd func(p0 context.Context, p1 []peer.ID) error `perm:"admin"`
 
 		NetProtectList func(p0 context.Context) ([]peer.ID, error) `perm:"read"`
@@ -635,9 +637,11 @@ type StorageMinerStruct struct {
 
 		ActorSectorSize func(p0 context.Context, p1 address.Address) (abi.SectorSize, error) `perm:"read"`
 
-		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storage.SectorRef, p3 []bool, p4 bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
+		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storage.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
 
 		ComputeProof func(p0 context.Context, p1 []builtin.ExtendedSectorInfo, p2 abi.PoStRandomness, p3 abi.ChainEpoch, p4 abinetwork.Version) ([]builtin.PoStProof, error) `perm:"read"`
+
+		ComputeWindowPoSt func(p0 context.Context, p1 uint64, p2 types.TipSetKey) ([]miner.SubmitWindowedPoStParams, error) `perm:"admin"`
 
 		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
 
@@ -823,29 +827,29 @@ type StorageMinerStruct struct {
 
 		StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
 
-		StorageAttach func(p0 context.Context, p1 stores.StorageInfo, p2 fsutil.FsStat) error `perm:"admin"`
+		StorageAttach func(p0 context.Context, p1 storiface.StorageInfo, p2 fsutil.FsStat) error `perm:"admin"`
 
-		StorageBestAlloc func(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]stores.StorageInfo, error) `perm:"admin"`
+		StorageBestAlloc func(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]storiface.StorageInfo, error) `perm:"admin"`
 
-		StorageDeclareSector func(p0 context.Context, p1 stores.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) error `perm:"admin"`
+		StorageDeclareSector func(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) error `perm:"admin"`
 
-		StorageDropSector func(p0 context.Context, p1 stores.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error `perm:"admin"`
+		StorageDropSector func(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error `perm:"admin"`
 
-		StorageFindSector func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]stores.SectorStorageInfo, error) `perm:"admin"`
+		StorageFindSector func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]storiface.SectorStorageInfo, error) `perm:"admin"`
 
 		StorageGetLocks func(p0 context.Context) (storiface.SectorLocks, error) `perm:"admin"`
 
-		StorageInfo func(p0 context.Context, p1 stores.ID) (stores.StorageInfo, error) `perm:"admin"`
+		StorageInfo func(p0 context.Context, p1 storiface.ID) (storiface.StorageInfo, error) `perm:"admin"`
 
-		StorageList func(p0 context.Context) (map[stores.ID][]stores.Decl, error) `perm:"admin"`
+		StorageList func(p0 context.Context) (map[storiface.ID][]storiface.Decl, error) `perm:"admin"`
 
-		StorageLocal func(p0 context.Context) (map[stores.ID]string, error) `perm:"admin"`
+		StorageLocal func(p0 context.Context) (map[storiface.ID]string, error) `perm:"admin"`
 
 		StorageLock func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) error `perm:"admin"`
 
-		StorageReportHealth func(p0 context.Context, p1 stores.ID, p2 stores.HealthReport) error `perm:"admin"`
+		StorageReportHealth func(p0 context.Context, p1 storiface.ID, p2 storiface.HealthReport) error `perm:"admin"`
 
-		StorageStat func(p0 context.Context, p1 stores.ID) (fsutil.FsStat, error) `perm:"admin"`
+		StorageStat func(p0 context.Context, p1 storiface.ID) (fsutil.FsStat, error) `perm:"admin"`
 
 		StorageTryLock func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) (bool, error) `perm:"admin"`
 
@@ -898,11 +902,15 @@ type WorkerStruct struct {
 
 		GenerateSectorKeyFromData func(p0 context.Context, p1 storage.SectorRef, p2 cid.Cid) (storiface.CallID, error) `perm:"admin"`
 
+		GenerateWindowPoSt func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 abi.ActorID, p3 []storiface.PostSectorChallenge, p4 int, p5 abi.PoStRandomness) (storiface.WindowPoStResult, error) `perm:"admin"`
+
+		GenerateWinningPoSt func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 abi.ActorID, p3 []storiface.PostSectorChallenge, p4 abi.PoStRandomness) ([]proof.PoStProof, error) `perm:"admin"`
+
 		Info func(p0 context.Context) (storiface.WorkerInfo, error) `perm:"admin"`
 
 		MoveStorage func(p0 context.Context, p1 storage.SectorRef, p2 storiface.SectorFileType) (storiface.CallID, error) `perm:"admin"`
 
-		Paths func(p0 context.Context) ([]stores.StoragePath, error) `perm:"admin"`
+		Paths func(p0 context.Context) ([]storiface.StoragePath, error) `perm:"admin"`
 
 		ProcessSession func(p0 context.Context) (uuid.UUID, error) `perm:"admin"`
 
@@ -1563,14 +1571,14 @@ func (s *FullNodeStub) ClientMinerQueryOffer(p0 context.Context, p1 address.Addr
 	return *new(QueryOffer), ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 address.Address) (*storagemarket.StorageAsk, error) {
+func (s *FullNodeStruct) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 address.Address) (*StorageAsk, error) {
 	if s.Internal.ClientQueryAsk == nil {
 		return nil, ErrNotSupported
 	}
 	return s.Internal.ClientQueryAsk(p0, p1, p2)
 }
 
-func (s *FullNodeStub) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 address.Address) (*storagemarket.StorageAsk, error) {
+func (s *FullNodeStub) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 address.Address) (*StorageAsk, error) {
 	return nil, ErrNotSupported
 }
 
@@ -3708,6 +3716,17 @@ func (s *NetStub) NetPeers(p0 context.Context) ([]peer.AddrInfo, error) {
 	return *new([]peer.AddrInfo), ErrNotSupported
 }
 
+func (s *NetStruct) NetPing(p0 context.Context, p1 peer.ID) (time.Duration, error) {
+	if s.Internal.NetPing == nil {
+		return *new(time.Duration), ErrNotSupported
+	}
+	return s.Internal.NetPing(p0, p1)
+}
+
+func (s *NetStub) NetPing(p0 context.Context, p1 peer.ID) (time.Duration, error) {
+	return *new(time.Duration), ErrNotSupported
+}
+
 func (s *NetStruct) NetProtectAdd(p0 context.Context, p1 []peer.ID) error {
 	if s.Internal.NetProtectAdd == nil {
 		return ErrNotSupported
@@ -3818,14 +3837,14 @@ func (s *StorageMinerStub) ActorSectorSize(p0 context.Context, p1 address.Addres
 	return *new(abi.SectorSize), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storage.SectorRef, p3 []bool, p4 bool) (map[abi.SectorNumber]string, error) {
+func (s *StorageMinerStruct) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storage.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) {
 	if s.Internal.CheckProvable == nil {
 		return *new(map[abi.SectorNumber]string), ErrNotSupported
 	}
-	return s.Internal.CheckProvable(p0, p1, p2, p3, p4)
+	return s.Internal.CheckProvable(p0, p1, p2, p3)
 }
 
-func (s *StorageMinerStub) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storage.SectorRef, p3 []bool, p4 bool) (map[abi.SectorNumber]string, error) {
+func (s *StorageMinerStub) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storage.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) {
 	return *new(map[abi.SectorNumber]string), ErrNotSupported
 }
 
@@ -3838,6 +3857,17 @@ func (s *StorageMinerStruct) ComputeProof(p0 context.Context, p1 []builtin.Exten
 
 func (s *StorageMinerStub) ComputeProof(p0 context.Context, p1 []builtin.ExtendedSectorInfo, p2 abi.PoStRandomness, p3 abi.ChainEpoch, p4 abinetwork.Version) ([]builtin.PoStProof, error) {
 	return *new([]builtin.PoStProof), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) ComputeWindowPoSt(p0 context.Context, p1 uint64, p2 types.TipSetKey) ([]miner.SubmitWindowedPoStParams, error) {
+	if s.Internal.ComputeWindowPoSt == nil {
+		return *new([]miner.SubmitWindowedPoStParams), ErrNotSupported
+	}
+	return s.Internal.ComputeWindowPoSt(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) ComputeWindowPoSt(p0 context.Context, p1 uint64, p2 types.TipSetKey) ([]miner.SubmitWindowedPoStParams, error) {
+	return *new([]miner.SubmitWindowedPoStParams), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) CreateBackup(p0 context.Context, p1 string) error {
@@ -4852,59 +4882,59 @@ func (s *StorageMinerStub) StorageAddLocal(p0 context.Context, p1 string) error 
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) StorageAttach(p0 context.Context, p1 stores.StorageInfo, p2 fsutil.FsStat) error {
+func (s *StorageMinerStruct) StorageAttach(p0 context.Context, p1 storiface.StorageInfo, p2 fsutil.FsStat) error {
 	if s.Internal.StorageAttach == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.StorageAttach(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) StorageAttach(p0 context.Context, p1 stores.StorageInfo, p2 fsutil.FsStat) error {
+func (s *StorageMinerStub) StorageAttach(p0 context.Context, p1 storiface.StorageInfo, p2 fsutil.FsStat) error {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) StorageBestAlloc(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]stores.StorageInfo, error) {
+func (s *StorageMinerStruct) StorageBestAlloc(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]storiface.StorageInfo, error) {
 	if s.Internal.StorageBestAlloc == nil {
-		return *new([]stores.StorageInfo), ErrNotSupported
+		return *new([]storiface.StorageInfo), ErrNotSupported
 	}
 	return s.Internal.StorageBestAlloc(p0, p1, p2, p3)
 }
 
-func (s *StorageMinerStub) StorageBestAlloc(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]stores.StorageInfo, error) {
-	return *new([]stores.StorageInfo), ErrNotSupported
+func (s *StorageMinerStub) StorageBestAlloc(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]storiface.StorageInfo, error) {
+	return *new([]storiface.StorageInfo), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) StorageDeclareSector(p0 context.Context, p1 stores.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) error {
+func (s *StorageMinerStruct) StorageDeclareSector(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) error {
 	if s.Internal.StorageDeclareSector == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.StorageDeclareSector(p0, p1, p2, p3, p4)
 }
 
-func (s *StorageMinerStub) StorageDeclareSector(p0 context.Context, p1 stores.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) error {
+func (s *StorageMinerStub) StorageDeclareSector(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) error {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) StorageDropSector(p0 context.Context, p1 stores.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error {
+func (s *StorageMinerStruct) StorageDropSector(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error {
 	if s.Internal.StorageDropSector == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.StorageDropSector(p0, p1, p2, p3)
 }
 
-func (s *StorageMinerStub) StorageDropSector(p0 context.Context, p1 stores.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error {
+func (s *StorageMinerStub) StorageDropSector(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) StorageFindSector(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]stores.SectorStorageInfo, error) {
+func (s *StorageMinerStruct) StorageFindSector(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]storiface.SectorStorageInfo, error) {
 	if s.Internal.StorageFindSector == nil {
-		return *new([]stores.SectorStorageInfo), ErrNotSupported
+		return *new([]storiface.SectorStorageInfo), ErrNotSupported
 	}
 	return s.Internal.StorageFindSector(p0, p1, p2, p3, p4)
 }
 
-func (s *StorageMinerStub) StorageFindSector(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]stores.SectorStorageInfo, error) {
-	return *new([]stores.SectorStorageInfo), ErrNotSupported
+func (s *StorageMinerStub) StorageFindSector(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]storiface.SectorStorageInfo, error) {
+	return *new([]storiface.SectorStorageInfo), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageGetLocks(p0 context.Context) (storiface.SectorLocks, error) {
@@ -4918,37 +4948,37 @@ func (s *StorageMinerStub) StorageGetLocks(p0 context.Context) (storiface.Sector
 	return *new(storiface.SectorLocks), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) StorageInfo(p0 context.Context, p1 stores.ID) (stores.StorageInfo, error) {
+func (s *StorageMinerStruct) StorageInfo(p0 context.Context, p1 storiface.ID) (storiface.StorageInfo, error) {
 	if s.Internal.StorageInfo == nil {
-		return *new(stores.StorageInfo), ErrNotSupported
+		return *new(storiface.StorageInfo), ErrNotSupported
 	}
 	return s.Internal.StorageInfo(p0, p1)
 }
 
-func (s *StorageMinerStub) StorageInfo(p0 context.Context, p1 stores.ID) (stores.StorageInfo, error) {
-	return *new(stores.StorageInfo), ErrNotSupported
+func (s *StorageMinerStub) StorageInfo(p0 context.Context, p1 storiface.ID) (storiface.StorageInfo, error) {
+	return *new(storiface.StorageInfo), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) StorageList(p0 context.Context) (map[stores.ID][]stores.Decl, error) {
+func (s *StorageMinerStruct) StorageList(p0 context.Context) (map[storiface.ID][]storiface.Decl, error) {
 	if s.Internal.StorageList == nil {
-		return *new(map[stores.ID][]stores.Decl), ErrNotSupported
+		return *new(map[storiface.ID][]storiface.Decl), ErrNotSupported
 	}
 	return s.Internal.StorageList(p0)
 }
 
-func (s *StorageMinerStub) StorageList(p0 context.Context) (map[stores.ID][]stores.Decl, error) {
-	return *new(map[stores.ID][]stores.Decl), ErrNotSupported
+func (s *StorageMinerStub) StorageList(p0 context.Context) (map[storiface.ID][]storiface.Decl, error) {
+	return *new(map[storiface.ID][]storiface.Decl), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) StorageLocal(p0 context.Context) (map[stores.ID]string, error) {
+func (s *StorageMinerStruct) StorageLocal(p0 context.Context) (map[storiface.ID]string, error) {
 	if s.Internal.StorageLocal == nil {
-		return *new(map[stores.ID]string), ErrNotSupported
+		return *new(map[storiface.ID]string), ErrNotSupported
 	}
 	return s.Internal.StorageLocal(p0)
 }
 
-func (s *StorageMinerStub) StorageLocal(p0 context.Context) (map[stores.ID]string, error) {
-	return *new(map[stores.ID]string), ErrNotSupported
+func (s *StorageMinerStub) StorageLocal(p0 context.Context) (map[storiface.ID]string, error) {
+	return *new(map[storiface.ID]string), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageLock(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) error {
@@ -4962,25 +4992,25 @@ func (s *StorageMinerStub) StorageLock(p0 context.Context, p1 abi.SectorID, p2 s
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) StorageReportHealth(p0 context.Context, p1 stores.ID, p2 stores.HealthReport) error {
+func (s *StorageMinerStruct) StorageReportHealth(p0 context.Context, p1 storiface.ID, p2 storiface.HealthReport) error {
 	if s.Internal.StorageReportHealth == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.StorageReportHealth(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) StorageReportHealth(p0 context.Context, p1 stores.ID, p2 stores.HealthReport) error {
+func (s *StorageMinerStub) StorageReportHealth(p0 context.Context, p1 storiface.ID, p2 storiface.HealthReport) error {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) StorageStat(p0 context.Context, p1 stores.ID) (fsutil.FsStat, error) {
+func (s *StorageMinerStruct) StorageStat(p0 context.Context, p1 storiface.ID) (fsutil.FsStat, error) {
 	if s.Internal.StorageStat == nil {
 		return *new(fsutil.FsStat), ErrNotSupported
 	}
 	return s.Internal.StorageStat(p0, p1)
 }
 
-func (s *StorageMinerStub) StorageStat(p0 context.Context, p1 stores.ID) (fsutil.FsStat, error) {
+func (s *StorageMinerStub) StorageStat(p0 context.Context, p1 storiface.ID) (fsutil.FsStat, error) {
 	return *new(fsutil.FsStat), ErrNotSupported
 }
 
@@ -5171,6 +5201,28 @@ func (s *WorkerStub) GenerateSectorKeyFromData(p0 context.Context, p1 storage.Se
 	return *new(storiface.CallID), ErrNotSupported
 }
 
+func (s *WorkerStruct) GenerateWindowPoSt(p0 context.Context, p1 abi.RegisteredPoStProof, p2 abi.ActorID, p3 []storiface.PostSectorChallenge, p4 int, p5 abi.PoStRandomness) (storiface.WindowPoStResult, error) {
+	if s.Internal.GenerateWindowPoSt == nil {
+		return *new(storiface.WindowPoStResult), ErrNotSupported
+	}
+	return s.Internal.GenerateWindowPoSt(p0, p1, p2, p3, p4, p5)
+}
+
+func (s *WorkerStub) GenerateWindowPoSt(p0 context.Context, p1 abi.RegisteredPoStProof, p2 abi.ActorID, p3 []storiface.PostSectorChallenge, p4 int, p5 abi.PoStRandomness) (storiface.WindowPoStResult, error) {
+	return *new(storiface.WindowPoStResult), ErrNotSupported
+}
+
+func (s *WorkerStruct) GenerateWinningPoSt(p0 context.Context, p1 abi.RegisteredPoStProof, p2 abi.ActorID, p3 []storiface.PostSectorChallenge, p4 abi.PoStRandomness) ([]proof.PoStProof, error) {
+	if s.Internal.GenerateWinningPoSt == nil {
+		return *new([]proof.PoStProof), ErrNotSupported
+	}
+	return s.Internal.GenerateWinningPoSt(p0, p1, p2, p3, p4)
+}
+
+func (s *WorkerStub) GenerateWinningPoSt(p0 context.Context, p1 abi.RegisteredPoStProof, p2 abi.ActorID, p3 []storiface.PostSectorChallenge, p4 abi.PoStRandomness) ([]proof.PoStProof, error) {
+	return *new([]proof.PoStProof), ErrNotSupported
+}
+
 func (s *WorkerStruct) Info(p0 context.Context) (storiface.WorkerInfo, error) {
 	if s.Internal.Info == nil {
 		return *new(storiface.WorkerInfo), ErrNotSupported
@@ -5193,15 +5245,15 @@ func (s *WorkerStub) MoveStorage(p0 context.Context, p1 storage.SectorRef, p2 st
 	return *new(storiface.CallID), ErrNotSupported
 }
 
-func (s *WorkerStruct) Paths(p0 context.Context) ([]stores.StoragePath, error) {
+func (s *WorkerStruct) Paths(p0 context.Context) ([]storiface.StoragePath, error) {
 	if s.Internal.Paths == nil {
-		return *new([]stores.StoragePath), ErrNotSupported
+		return *new([]storiface.StoragePath), ErrNotSupported
 	}
 	return s.Internal.Paths(p0)
 }
 
-func (s *WorkerStub) Paths(p0 context.Context) ([]stores.StoragePath, error) {
-	return *new([]stores.StoragePath), ErrNotSupported
+func (s *WorkerStub) Paths(p0 context.Context) ([]storiface.StoragePath, error) {
+	return *new([]storiface.StoragePath), ErrNotSupported
 }
 
 func (s *WorkerStruct) ProcessSession(p0 context.Context) (uuid.UUID, error) {

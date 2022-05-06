@@ -28,4 +28,4 @@ func (i UnpaddedByteIndex) Valid() error {
 
 type PaddedByteIndex uint64
 
-type RGetter func(ctx context.Context, id abi.SectorID) (cid.Cid, error)
+type RGetter func(ctx context.Context, id abi.SectorID) (sealed cid.Cid, update bool, err error)

@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.15.1
+   1.15.2
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -1200,6 +1200,7 @@ USAGE:
 
 COMMANDS:
    peers           Print peers
+   ping            Ping peers
    connect         Connect to a peer
    listen          List listen addresses
    id              Get node identity
@@ -1232,6 +1233,21 @@ OPTIONS:
    --agent, -a     Print agent name (default: false)
    --extended, -x  Print extended peer information in json (default: false)
    --help, -h      show help (default: false)
+   
+```
+
+### lotus-miner net ping
+```
+NAME:
+   lotus-miner net ping - Ping peers
+
+USAGE:
+   lotus-miner net ping [command options] [arguments...]
+
+OPTIONS:
+   --count value, -c value     specify the number of times it should ping (default: 10)
+   --interval value, -i value  minimum time between pings (default: 1s)
+   --help, -h                  show help (default: false)
    
 ```
 
@@ -1664,7 +1680,6 @@ COMMANDS:
    remove                Forcefully remove a sector (WARNING: This means losing power and collateral for the removed sector (use 'terminate' for lower penalty))
    snap-up               Mark a committed capacity sector to be filled with deals
    abort-upgrade         Abort the attempted (SnapDeals) upgrade of a CC sector, reverting it to as before
-   mark-for-upgrade      Mark a committed capacity sector for replacement by a sector with deals
    seal                  Manually start sealing a sector (filling any unused space with junk)
    set-seal-delay        Set the time, in minutes, that a new sector waits for deals before sealing starts
    get-cc-collateral     Get the collateral required to pledge a committed capacity sector
@@ -1912,19 +1927,6 @@ OPTIONS:
    
 ```
 
-### lotus-miner sectors mark-for-upgrade
-```
-NAME:
-   lotus-miner sectors mark-for-upgrade - Mark a committed capacity sector for replacement by a sector with deals
-
-USAGE:
-   lotus-miner sectors mark-for-upgrade [command options] <sectorNum>
-
-OPTIONS:
-   --help, -h  show help (default: false)
-   
-```
-
 ### lotus-miner sectors seal
 ```
 NAME:
@@ -2038,6 +2040,8 @@ COMMANDS:
    deadline   View the current proving period deadline information by its index 
    faults     View the currently known proving faulty sectors information
    check      Check sectors provable
+   workers    list workers
+   compute    
    help, h    Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2109,7 +2113,56 @@ OPTIONS:
    --only-bad          print only bad sectors (default: false)
    --slow              run slower checks (default: false)
    --storage-id value  filter sectors by storage path (path id)
+   --faulty            only check faulty sectors (default: false)
    --help, -h          show help (default: false)
+   
+```
+
+### lotus-miner proving workers
+```
+NAME:
+   lotus-miner proving workers - list workers
+
+USAGE:
+   lotus-miner proving workers [command options] [arguments...]
+
+OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner proving compute
+```
+NAME:
+   lotus-miner proving compute - A new cli application
+
+USAGE:
+   lotus-miner proving compute command [command options] [arguments...]
+
+COMMANDS:
+   window-post  Compute WindowPoSt for a specific deadline
+   help, h      Shows a list of commands or help for one command
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+#### lotus-miner proving compute window-post
+```
+NAME:
+   lotus-miner proving compute window-post - Compute WindowPoSt for a specific deadline
+
+USAGE:
+   lotus-miner proving compute window-post [command options] [deadline index]
+
+DESCRIPTION:
+   Note: This command is intended to be used to verify PoSt compute performance.
+   It will not send any messages to the chain.
+
+OPTIONS:
+   --help, -h  show help (default: false)
    
 ```
 

@@ -28,8 +28,8 @@ import (
 func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo) (network.ResourceManager, error) {
 	return func(lc fx.Lifecycle, repo repo.LockedRepo) (network.ResourceManager, error) {
 		envvar := os.Getenv("LOTUS_RCMGR")
-		if envvar == "" || envvar == "0" {
-			// TODO opt-in for now -- flip this to enabled by default once we are comfortable with testing
+		if envvar == "0" {
+			// this is enabled by default; specify LOTUS_RCMGR=0 to disable
 			log.Info("libp2p resource manager is disabled")
 			return network.NullResourceManager, nil
 		}

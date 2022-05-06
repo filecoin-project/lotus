@@ -3,6 +3,8 @@ package vm
 import (
 	"fmt"
 
+	"github.com/filecoin-project/go-state-types/network"
+
 	vmr "github.com/filecoin-project/specs-actors/v7/actors/runtime"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
@@ -82,145 +84,153 @@ type Pricelist interface {
 	OnVerifyConsensusFault() GasCharge
 }
 
-// Prices are the price lists per starting epoch. Public for testing purposes
-// (concretely to allow the test vector runner to rebase prices).
-var Prices = map[abi.ChainEpoch]Pricelist{
-	abi.ChainEpoch(0): &pricelistV0{
-		computeGasMulti: 1,
-		storageGasMulti: 1000,
+var priceListGenesis = pricelistV0{
+	computeGasMulti: 1,
+	storageGasMulti: 1000,
 
-		onChainMessageComputeBase:    38863,
-		onChainMessageStorageBase:    36,
-		onChainMessageStoragePerByte: 1,
+	onChainMessageComputeBase:    38863,
+	onChainMessageStorageBase:    36,
+	onChainMessageStoragePerByte: 1,
 
-		onChainReturnValuePerByte: 1,
+	onChainReturnValuePerByte: 1,
 
-		sendBase:                29233,
-		sendTransferFunds:       27500,
-		sendTransferOnlyPremium: 159672,
-		sendInvokeMethod:        -5377,
+	sendBase:                29233,
+	sendTransferFunds:       27500,
+	sendTransferOnlyPremium: 159672,
+	sendInvokeMethod:        -5377,
 
-		ipldGetBase:    75242,
-		ipldPutBase:    84070,
-		ipldPutPerByte: 1,
+	ipldGetBase:    75242,
+	ipldPutBase:    84070,
+	ipldPutPerByte: 1,
 
-		createActorCompute: 1108454,
-		createActorStorage: 36 + 40,
-		deleteActor:        -(36 + 40), // -createActorStorage
+	createActorCompute: 1108454,
+	createActorStorage: 36 + 40,
+	deleteActor:        -(36 + 40), // -createActorStorage
 
-		verifySignature: map[crypto.SigType]int64{
-			crypto.SigTypeBLS:       16598605,
-			crypto.SigTypeSecp256k1: 1637292,
-		},
-
-		hashingBase:                  31355,
-		computeUnsealedSectorCidBase: 98647,
-		verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
-		verifyAggregateSealBase:      0,
-		verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
-			abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
-				flat:  123861062,
-				scale: 9226981,
-			},
-			abi.RegisteredPoStProof_StackedDrgWindow32GiBV1: {
-				flat:  748593537,
-				scale: 85639,
-			},
-			abi.RegisteredPoStProof_StackedDrgWindow64GiBV1: {
-				flat:  748593537,
-				scale: 85639,
-			},
-		},
-		verifyPostDiscount:   true,
-		verifyConsensusFault: 495422,
+	verifySignature: map[crypto.SigType]int64{
+		crypto.SigTypeBLS:       16598605,
+		crypto.SigTypeSecp256k1: 1637292,
 	},
-	abi.ChainEpoch(build.UpgradeCalicoHeight): &pricelistV0{
-		computeGasMulti: 1,
-		storageGasMulti: 1300,
 
-		onChainMessageComputeBase:    38863,
-		onChainMessageStorageBase:    36,
-		onChainMessageStoragePerByte: 1,
-
-		onChainReturnValuePerByte: 1,
-
-		sendBase:                29233,
-		sendTransferFunds:       27500,
-		sendTransferOnlyPremium: 159672,
-		sendInvokeMethod:        -5377,
-
-		ipldGetBase:    114617,
-		ipldPutBase:    353640,
-		ipldPutPerByte: 1,
-
-		createActorCompute: 1108454,
-		createActorStorage: 36 + 40,
-		deleteActor:        -(36 + 40), // -createActorStorage
-
-		verifySignature: map[crypto.SigType]int64{
-			crypto.SigTypeBLS:       16598605,
-			crypto.SigTypeSecp256k1: 1637292,
+	hashingBase:                  31355,
+	computeUnsealedSectorCidBase: 98647,
+	verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
+	verifyAggregateSealBase:      0,
+	verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
+		abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
+			flat:  123861062,
+			scale: 9226981,
 		},
-
-		hashingBase:                  31355,
-		computeUnsealedSectorCidBase: 98647,
-		verifySealBase:               2000, // TODO gas, it VerifySeal syscall is not used
-
-		verifyAggregateSealPer: map[abi.RegisteredSealProof]int64{
-			abi.RegisteredSealProof_StackedDrg32GiBV1_1: 449900,
-			abi.RegisteredSealProof_StackedDrg64GiBV1_1: 359272,
+		abi.RegisteredPoStProof_StackedDrgWindow32GiBV1: {
+			flat:  748593537,
+			scale: 85639,
 		},
-		verifyAggregateSealSteps: map[abi.RegisteredSealProof]stepCost{
-			abi.RegisteredSealProof_StackedDrg32GiBV1_1: {
-				{4, 103994170},
-				{7, 112356810},
-				{13, 122912610},
-				{26, 137559930},
-				{52, 162039100},
-				{103, 210960780},
-				{205, 318351180},
-				{410, 528274980},
-			},
-			abi.RegisteredSealProof_StackedDrg64GiBV1_1: {
-				{4, 102581240},
-				{7, 110803030},
-				{13, 120803700},
-				{26, 134642130},
-				{52, 157357890},
-				{103, 203017690},
-				{205, 304253590},
-				{410, 509880640},
-			},
+		abi.RegisteredPoStProof_StackedDrgWindow64GiBV1: {
+			flat:  748593537,
+			scale: 85639,
 		},
-
-		verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
-			abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
-				flat:  117680921,
-				scale: 43780,
-			},
-			abi.RegisteredPoStProof_StackedDrgWindow32GiBV1: {
-				flat:  117680921,
-				scale: 43780,
-			},
-			abi.RegisteredPoStProof_StackedDrgWindow64GiBV1: {
-				flat:  117680921,
-				scale: 43780,
-			},
-		},
-		verifyPostDiscount:   false,
-		verifyConsensusFault: 495422,
-
-		verifyReplicaUpdate: 36316136,
 	},
+	verifyPostDiscount:   true,
+	verifyConsensusFault: 495422,
 }
 
-// PricelistByEpoch finds the latest prices for the given epoch
-func PricelistByEpoch(epoch abi.ChainEpoch) Pricelist {
+var priceListCalico = pricelistV0{
+	computeGasMulti: 1,
+	storageGasMulti: 1300,
+
+	onChainMessageComputeBase:    38863,
+	onChainMessageStorageBase:    36,
+	onChainMessageStoragePerByte: 1,
+
+	onChainReturnValuePerByte: 1,
+
+	sendBase:                29233,
+	sendTransferFunds:       27500,
+	sendTransferOnlyPremium: 159672,
+	sendInvokeMethod:        -5377,
+
+	ipldGetBase:    114617,
+	ipldPutBase:    353640,
+	ipldPutPerByte: 1,
+
+	createActorCompute: 1108454,
+	createActorStorage: 36 + 40,
+	deleteActor:        -(36 + 40), // -createActorStorage
+
+	verifySignature: map[crypto.SigType]int64{
+		crypto.SigTypeBLS:       16598605,
+		crypto.SigTypeSecp256k1: 1637292,
+	},
+
+	hashingBase:                  31355,
+	computeUnsealedSectorCidBase: 98647,
+	verifySealBase:               2000, // TODO gas, it VerifySeal syscall is not used
+
+	verifyAggregateSealPer: map[abi.RegisteredSealProof]int64{
+		abi.RegisteredSealProof_StackedDrg32GiBV1_1: 449900,
+		abi.RegisteredSealProof_StackedDrg64GiBV1_1: 359272,
+	},
+	verifyAggregateSealSteps: map[abi.RegisteredSealProof]stepCost{
+		abi.RegisteredSealProof_StackedDrg32GiBV1_1: {
+			{4, 103994170},
+			{7, 112356810},
+			{13, 122912610},
+			{26, 137559930},
+			{52, 162039100},
+			{103, 210960780},
+			{205, 318351180},
+			{410, 528274980},
+		},
+		abi.RegisteredSealProof_StackedDrg64GiBV1_1: {
+			{4, 102581240},
+			{7, 110803030},
+			{13, 120803700},
+			{26, 134642130},
+			{52, 157357890},
+			{103, 203017690},
+			{205, 304253590},
+			{410, 509880640},
+		},
+	},
+
+	verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
+		abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
+			flat:  117680921,
+			scale: 43780,
+		},
+		abi.RegisteredPoStProof_StackedDrgWindow32GiBV1: {
+			flat:  117680921,
+			scale: 43780,
+		},
+		abi.RegisteredPoStProof_StackedDrgWindow64GiBV1: {
+			flat:  117680921,
+			scale: 43780,
+		},
+	},
+	verifyPostDiscount:   false,
+	verifyConsensusFault: 495422,
+
+	verifyReplicaUpdate: 36316136,
+}
+
+// Prices are the price lists per starting epoch.
+// For network v8 and onwards, this is disregarded; the pricelist is selected by network version.
+var pricesByEpoch = map[abi.ChainEpoch]Pricelist{
+	abi.ChainEpoch(0):                         &priceListGenesis,
+	abi.ChainEpoch(build.UpgradeCalicoHeight): &priceListCalico,
+}
+
+// PricelistByEpochAndNetworkVersion finds the latest prices for the given epoch
+func PricelistByEpochAndNetworkVersion(epoch abi.ChainEpoch, nv network.Version) Pricelist {
+	if nv >= network.Version8 {
+		return &priceListCalico
+	}
+
 	// since we are storing the prices as map or epoch to price
 	// we need to get the price with the highest epoch that is lower or equal to the `epoch` arg
 	bestEpoch := abi.ChainEpoch(0)
-	bestPrice := Prices[bestEpoch]
-	for e, pl := range Prices {
+	bestPrice := pricesByEpoch[bestEpoch]
+	for e, pl := range pricesByEpoch {
 		// if `e` happened after `bestEpoch` and `e` is earlier or equal to the target `epoch`
 		if e > bestEpoch && e <= epoch {
 			bestEpoch = e

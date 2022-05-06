@@ -425,6 +425,14 @@ func generateFakePoSt(sectorInfo []proof.SectorInfo, rpt func(abi.RegisteredSeal
 	}
 }
 
+func (mgr *SectorMgr) GenerateWinningPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte) ([]proof.PoStProof, error) {
+	panic("implement me")
+}
+
+func (mgr *SectorMgr) GenerateWindowPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte, partitionIdx int) (proof.PoStProof, error) {
+	panic("implement me")
+}
+
 func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (mount.Reader, bool, error) {
 	off := storiface.UnpaddedByteIndex(0)
 	var piece cid.Cid
@@ -513,7 +521,7 @@ func (mgr *SectorMgr) Remove(ctx context.Context, sector storage.SectorRef) erro
 	return nil
 }
 
-func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, ids []storage.SectorRef, update []bool, rg storiface.RGetter) (map[abi.SectorID]string, error) {
+func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, ids []storage.SectorRef, rg storiface.RGetter) (map[abi.SectorID]string, error) {
 	bad := map[abi.SectorID]string{}
 
 	for _, sid := range ids {

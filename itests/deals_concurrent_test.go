@@ -27,6 +27,10 @@ import (
 // TestDealWithMarketAndMinerNode is running concurrently a number of storage and retrieval deals towards a miner
 // architecture where the `mining/sealing/proving` node is a separate process from the `markets` node
 func TestDealWithMarketAndMinerNode(t *testing.T) {
+	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
+	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
+	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}
@@ -126,6 +130,10 @@ func TestDealCyclesConcurrent(t *testing.T) {
 }
 
 func TestSimultanenousTransferLimit(t *testing.T) {
+	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
+	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
+	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 	t.Skip("skipping as flaky #7152")
 
 	if testing.Short() {
