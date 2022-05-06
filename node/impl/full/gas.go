@@ -309,6 +309,11 @@ func gasEstimateGasLimit(
 		}
 	}
 
+	// Overestimate gas used around the
+	if ts.Height() <= build.UpgradeFVM1Height && (build.UpgradeFVM1Height-ts.Height() <= 5) {
+		ret *= 2
+	}
+
 	return ret, nil
 }
 
