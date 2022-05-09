@@ -73,7 +73,86 @@ To configure your lotus node to use a remote wallet:
   * Find the '[Wallet]' section
   * Set 'RemoteBackend' to '[api key]:http://[wallet ip]:[wallet port]'
     (the default port is 1777)
-* Start (or restart) the lotus daemon`,
+* Start (or restart) the lotus daemon
+
+RULES:
+lotus-wallet api tokens can carry filtering rules, limiting what actions can be
+performed with the token.
+
+Rule is a json object (map) with a single entry, where the key is specifying an
+action, and the value contains action parameter. Some actions may take
+additional sub-rules as parameters.
+
+Rule execution can halt with 'Accept' or 'Reject' or finish without either of 
+those things happening, in which case the filter will accept or reject based on
+the value of the --rule-must-accept flag.
+
+Special rules - Rules valid anywhere 
+- {"Accept":{}} - Finish rule execution, accept action
+- {"Reject":{}} - Finish rule execution, reject action
+- {"AnyAccepts": [Rule...]} - Accepts when at least one sub-rule accepts; Stops
+                              on first Accept or Reject
+
+Action rules - Rules matching actions
+- {"New": Rule} - If WalletNew is called, execute the sub-rule
+- {"Sign": Rule} - If WalletSign is called, execute the sub-rule
+
+Sign rules - Rules matching signature parameters - can only be called as a 
+                  sub-rule of the "Sign" rule
+- {"Signer": {"Addr":["fXXX",..], "Next": Rule}} - Check that the signer address
+  is one of the specified addresses
+- {"Message": Rule} - WalletSign signing a chain message
+- {"Block": Rule} - WalletSign signing a block header
+- {"DealProposal": Rule} - WalletSign signing a deal proposal
+
+Message rules - Rules matching message fields - can only be called as sub-rules
+                of the "Message" rule.
+- {"Source": {"Addr":["fXXX",..], "Next": Rule}} - Check that the source address
+  is one of the specified addresses
+- {"Destination": {"Addr":["fXXX",..], "Next": Rule}} - Check that the
+  destination address is one of the specified addresses
+- {"Method": {"Method":[number..], "Next": Rule}} - Check that the method number
+  is one of the specified numbers
+- {"Value":{("LessThan"|"MoreThan"): "[fil]", "Next": Rule}} - Check that
+  message value is less/more that the specified value
+- {"MaxFee":{("LessThan"|"MoreThan"): "[fil]", "Next": Rule}} - Check that
+  maximum message fees are less/more that the specified value.
+
+Block rules - Rules matching block header fields - can only be called as
+              sub-rules of the "Block" rule.
+- {"Miner": {"Addr":["fXXX",..], "Next": Rule}} - Check that the block miner
+  address is one of the specified addresses
+
+Example rules:
+
+- Only allow signing messages from f3aaa
+	{"AnyAccepts":[
+		{"Sign": {"Signer":{"Addr":["f3aaa"], "Next": {"Accept":{}}}}},
+		{"Reject": {}}
+	]}
+
+- Disallow ExtendSectorExpiration, TerminateSectors, DeclareFaults,
+  DeclareFaultsRecovered (Methods 8, 9, 10, 11)
+	{"Sign": {"Message": {"Method":
+		{"Method": [8,9,10,11], "Next":{"Reject":{}}}
+	}}}
+
+- Allow PoSt messages from f3aaa and f3bbb, and block mining from f3aaa on
+  miner f01000
+	{"AnyAccepts":[
+		{"Sign": {"Signer":{"Addr":["f3aaa"], "Next": {"Block": {"Miner":
+			{"Addr":["f01000"], "Next": {"Accept": {}}}
+		}}}}},
+		{"Sign": {"Signer":{"Addr":["f3aaa", "f3bbb"], "Next":
+			{"Message": {"AnyAccepts": [
+				{"Method": [5, 10, 11], "Next": {"Destination":
+					{"Addr":["f01000"], "Next": {"Accept": {}}}
+				}}
+			]}}
+		}}},
+		{"Reject": {}}
+	]}
+`,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    FlagWalletRepo,
@@ -104,7 +183,7 @@ var getApiKeyCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "rules",
-			Usage: "filtering rules",
+			Usage: "filtering rule object (see 'lotus-wallet --help')",
 		},
 	},
 	Action: func(cctx *cli.Context) error {

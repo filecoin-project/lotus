@@ -13,7 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func TestRules(t *testing.T) {
+func TestMsgRules(t *testing.T) {
 	ctx := context.Background()
 
 	makeRule := func(ruleStr string) Filter {
