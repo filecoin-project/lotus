@@ -19,7 +19,7 @@ func BuildTypeString() string {
 	var currentNetwork string
 	currentNetwork, ok := os.LookupEnv("LOTUS_NETWORK")
 	if !ok {
-		currentNetwork = "mainnet"
+		currentNetwork = buildDefaultNetwork
 	}
 
 	h := fnv.New128a()
