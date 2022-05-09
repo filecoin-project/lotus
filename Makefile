@@ -65,10 +65,22 @@ deps: $(BUILD_DEPS)
 .PHONY: deps
 
 build-devnets: build lotus-seed lotus-shed lotus-wallet lotus-gateway
-.PHONY:build-devnets
+.PHONY: build-devnets
 
-debug: GOFLAGS += -tags=debug
+debug: GOFLAGS+=-tags=debug
 debug: build-devnets
+
+2k: GOFLAGS+=-tags=2k
+2k: build-devnets
+
+calibnet: GOFLAGS+=-tags=calibnet
+calibnet: build-devnets
+
+butterflynet: GOFLAGS+=-tags=butterflynet
+butterflynet: build-devnets
+
+interopnet: GOFLAGS+=-tags=interopnet
+interopnet: build-devnets
 
 lotus: $(BUILD_DEPS)
 	rm -f lotus
@@ -136,7 +148,7 @@ benchmarks:
 	@curl -X POST 'http://benchmark.kittyhawk.wtf/benchmark' -d '@bench.json' -u "${benchmark_http_cred}"
 .PHONY: benchmarks
 
-lotus-pond: 
+lotus-pond: 2k
 	$(GOCC) build -o lotus-pond ./lotuspond
 .PHONY: lotus-pond
 BINS+=lotus-pond
