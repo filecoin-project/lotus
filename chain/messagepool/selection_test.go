@@ -1599,7 +1599,7 @@ readLoop:
 
 	mp, tma := makeTestMpool()
 
-	block := tma.nextBlockWithHeight(build.UpgradeBreezeHeight + 10)
+	block := tma.nextBlockWithHeight(uint64(build.UpgradeBreezeHeight()) + 10)
 	ts := mock.TipSet(block)
 	tma.applyBlock(t, block)
 

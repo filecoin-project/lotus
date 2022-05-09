@@ -489,5 +489,5 @@ func getPreCommitCutoff(curEpoch abi.ChainEpoch, si SectorInfo) (time.Time, erro
 		return time.Now(), xerrors.Errorf("cutoff has already passed (cutoff %d <= curEpoch %d)", cutoffEpoch, curEpoch)
 	}
 
-	return time.Now().Add(time.Duration(cutoffEpoch-curEpoch) * time.Duration(build.BlockDelaySecs) * time.Second), nil
+	return time.Now().Add(time.Duration(cutoffEpoch-curEpoch) * time.Duration(build.BlockDelaySecs()) * time.Second), nil
 }

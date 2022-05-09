@@ -4,6 +4,7 @@ import (
 	"embed"
 	"path"
 
+	"github.com/filecoin-project/go-state-types/network"
 	logging "github.com/ipfs/go-log/v2"
 )
 
@@ -14,10 +15,18 @@ var log = logging.Logger("build")
 var genesisfs embed.FS
 
 func MaybeGenesis() []byte {
-	genBytes, err := genesisfs.ReadFile(path.Join("genesis", GenesisFile))
+	genBytes, err := getGenesisFor(activeNetworkParams.Config.GenesisFile)
 	if err != nil {
 		log.Warnf("loading built-in genesis: %s", err)
 		return nil
 	}
 	return genBytes
+}
+
+func getGenesisFor(filename string) ([]byte, error) {
+	return genesisfs.ReadFile(path.Join("genesis", filename))
+}
+
+func GenesisNetworkVersion() network.Version {
+	return activeNetworkParams.Config.GenesisNetworkVersion
 }

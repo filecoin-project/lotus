@@ -492,7 +492,7 @@ func (s *WindowPoStScheduler) asyncFaultRecover(di dline.Info, ts *types.TipSet)
 			return j
 		})
 
-		if ts.Height() > build.UpgradeIgnitionHeight {
+		if ts.Height() > build.UpgradeIgnitionHeight() {
 			return // FORK: declaring faults after ignition upgrade makes no sense
 		}
 

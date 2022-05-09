@@ -18,7 +18,7 @@ func ComputeNextBaseFee(baseFee types.BigInt, gasLimitUsed int64, noOfBlocks int
 	// nextBaseFee = max(nextBaseFee, build.MinimumBaseFee)
 
 	var delta int64
-	if epoch > build.UpgradeSmokeHeight {
+	if epoch > build.UpgradeSmokeHeight() {
 		delta = gasLimitUsed / int64(noOfBlocks)
 		delta -= build.BlockGasTarget
 	} else {
@@ -46,7 +46,7 @@ func ComputeNextBaseFee(baseFee types.BigInt, gasLimitUsed int64, noOfBlocks int
 }
 
 func (cs *ChainStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet) (abi.TokenAmount, error) {
-	if build.UpgradeBreezeHeight >= 0 && ts.Height() > build.UpgradeBreezeHeight && ts.Height() < build.UpgradeBreezeHeight+build.BreezeGasTampingDuration {
+	if build.UpgradeBreezeHeight() >= 0 && ts.Height() > build.UpgradeBreezeHeight() && ts.Height() < build.UpgradeBreezeHeight()+build.BreezeGasTampingDuration() {
 		return abi.NewTokenAmount(100), nil
 	}
 

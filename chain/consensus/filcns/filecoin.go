@@ -113,7 +113,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 	}
 
 	nulls := h.Height - (baseTs.Height() + 1)
-	if tgtTs := baseTs.MinTimestamp() + build.BlockDelaySecs*uint64(nulls+1); h.Timestamp != tgtTs {
+	if tgtTs := baseTs.MinTimestamp() + build.BlockDelaySecs()*uint64(nulls+1); h.Timestamp != tgtTs {
 		return xerrors.Errorf("block has wrong timestamp: %d != %d", h.Timestamp, tgtTs)
 	}
 
@@ -126,7 +126,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 	}
 
 	msgsCheck := async.Err(func() error {
-		if b.Cid() == build.WhitelistedBlock {
+		if b.Cid() == build.WhitelistedBlock() {
 			return nil
 		}
 
@@ -276,7 +276,7 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 			return xerrors.Errorf("failed to marshal miner address to cbor: %w", err)
 		}
 
-		if h.Height > build.UpgradeSmokeHeight {
+		if h.Height > build.UpgradeSmokeHeight() {
 			buf.Write(baseTs.MinTicket().VRFProof)
 		}
 
@@ -610,7 +610,7 @@ func (filec *FilecoinEC) IsEpochBeyondCurrMax(epoch abi.ChainEpoch) bool {
 	}
 
 	now := uint64(build.Clock.Now().Unix())
-	return epoch > (abi.ChainEpoch((now-filec.genesis.MinTimestamp())/build.BlockDelaySecs) + MaxHeightDrift)
+	return epoch > (abi.ChainEpoch((now-filec.genesis.MinTimestamp())/build.BlockDelaySecs()) + MaxHeightDrift)
 }
 
 func (filec *FilecoinEC) minerIsValid(ctx context.Context, maddr address.Address, baseTs *types.TipSet) error {

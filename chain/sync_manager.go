@@ -4,7 +4,6 @@ import (
 	"context"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -17,28 +16,19 @@ import (
 )
 
 var (
-	BootstrapPeerThreshold = build.BootstrapPeerThreshold
-
 	RecentSyncBufferSize = 10
 	MaxSyncWorkers       = 5
 	SyncWorkerHistory    = 3
 
 	InitialSyncTimeThreshold = 15 * time.Minute
 
-	coalesceTipsets = false
+	coalesceTipsets        = false
+	BootstrapPeerThreshold = build.BootstrapPeerThreshold()
 )
 
 func init() {
 	coalesceTipsets = os.Getenv("LOTUS_SYNC_FORMTS_PEND") == "yes"
 
-	if bootstrapPeerThreshold := os.Getenv("LOTUS_SYNC_BOOTSTRAP_PEERS"); bootstrapPeerThreshold != "" {
-		threshold, err := strconv.Atoi(bootstrapPeerThreshold)
-		if err != nil {
-			log.Errorf("failed to parse 'LOTUS_SYNC_BOOTSTRAP_PEERS' env var: %s", err)
-		} else {
-			BootstrapPeerThreshold = threshold
-		}
-	}
 }
 
 type SyncFunc func(context.Context, *types.TipSet) error
@@ -203,7 +193,7 @@ func (sm *syncManager) handlePeerHead(head peerHead) {
 
 		// not yet; do we have enough peers?
 		if len(sm.heads) < BootstrapPeerThreshold {
-			log.Debugw("not tracking enough peers to start sync worker", "have", len(sm.heads), "need", BootstrapPeerThreshold)
+			log.Debugw("not tracking enough peers to start sync worker", "have", len(sm.heads), "need", build.BootstrapPeerThreshold())
 			// not enough peers; track it and wait
 			return
 		}

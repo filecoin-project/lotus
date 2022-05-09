@@ -562,7 +562,7 @@ var runCmd = &cli.Command{
 				msgs, err := api.MpoolPending(ctx, types.EmptyTSK)
 				if err != nil {
 					log.Warnw("failed to fetch pending messages", "err", err)
-					time.Sleep(time.Duration(int64(time.Second) * int64(build.BlockDelaySecs)))
+					time.Sleep(time.Duration(int64(time.Second) * int64(build.BlockDelaySecs())))
 					continue
 				}
 
@@ -578,7 +578,7 @@ var runCmd = &cli.Command{
 				}
 
 				log.Warnw("messages in mpool over max message queue", "message_count", count, "max_message_queue", maxMessageQueue)
-				time.Sleep(time.Duration(int64(time.Second) * int64(build.BlockDelaySecs)))
+				time.Sleep(time.Duration(int64(time.Second) * int64(build.BlockDelaySecs())))
 			}
 		}
 

@@ -203,7 +203,7 @@ var consensusCheckCmd = &cli.Command{
 			tnow := uint64(time.Now().Unix())
 			tgen := nodes[0].genesisTipset.MinTimestamp()
 
-			target = abi.ChainEpoch((tnow - tgen) / build.BlockDelaySecs)
+			target = abi.ChainEpoch((tnow - tgen) / build.BlockDelaySecs())
 		default:
 			h, err := strconv.Atoi(strings.TrimSpace(cctx.String("height")))
 			if err != nil {

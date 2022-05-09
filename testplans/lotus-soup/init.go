@@ -12,9 +12,7 @@ import (
 )
 
 func init() {
-	build.BlockDelaySecs = 3
-	build.PropagationDelaySecs = 1
-
+	os.Setenv("LOTUS_NETWORK", "soup")
 	_ = log.SetLogLevel("*", "DEBUG")
 	_ = log.SetLogLevel("dht", "WARN")
 	_ = log.SetLogLevel("swarm2", "WARN")
@@ -52,12 +50,4 @@ func init() {
 	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg8MiBV1)
 
 	policy.SetMinVerifiedDealSize(abi.NewTokenAmount(256))
-
-	// Disable upgrades.
-	build.UpgradeSmokeHeight = -1
-	build.UpgradeIgnitionHeight = -2
-	build.UpgradeLiftoffHeight = -3
-	// We need to _run_ this upgrade because genesis doesn't support v2, so
-	// we run it at height 0.
-	build.UpgradeAssemblyHeight = 0
 }

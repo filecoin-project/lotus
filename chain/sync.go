@@ -170,14 +170,14 @@ func (syncer *Syncer) Start() {
 
 func (syncer *Syncer) runMetricsTricker(tickerCtx context.Context) {
 	genesisTime := time.Unix(int64(syncer.Genesis.MinTimestamp()), 0)
-	ticker := build.Clock.Ticker(time.Duration(build.BlockDelaySecs) * time.Second)
+	ticker := build.Clock.Ticker(time.Duration(build.BlockDelaySecs()) * time.Second)
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ticker.C:
 			sinceGenesis := build.Clock.Now().Sub(genesisTime)
-			expectedHeight := int64(sinceGenesis.Seconds()) / int64(build.BlockDelaySecs)
+			expectedHeight := int64(sinceGenesis.Seconds()) / int64(build.BlockDelaySecs())
 
 			stats.Record(tickerCtx, metrics.ChainNodeHeightExpected.M(expectedHeight))
 		case <-tickerCtx.Done():

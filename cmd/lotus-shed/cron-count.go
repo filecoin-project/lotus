@@ -60,7 +60,7 @@ func findDeadlineCrons(c *cli.Context) (map[address.Address]struct{}, error) {
 		// All miners have active cron before v4.
 		// v4 upgrade epoch is last epoch running v3 epoch and api.StateReadState reads
 		// parent state, so v4 state isn't read until upgrade epoch + 2
-		if ts.Height() <= build.UpgradeTurboHeight+1 {
+		if ts.Height() <= build.UpgradeTurboHeight()+1 {
 			activeMiners[mAddr] = struct{}{}
 			continue
 		}

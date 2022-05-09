@@ -111,7 +111,6 @@ var priceListGenesis = pricelistV0{
 		crypto.SigTypeBLS:       16598605,
 		crypto.SigTypeSecp256k1: 1637292,
 	},
-
 	hashingBase:                  31355,
 	computeUnsealedSectorCidBase: 98647,
 	verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
@@ -216,8 +215,8 @@ var priceListCalico = pricelistV0{
 // Prices are the price lists per starting epoch.
 // For network v8 and onwards, this is disregarded; the pricelist is selected by network version.
 var pricesByEpoch = map[abi.ChainEpoch]Pricelist{
-	abi.ChainEpoch(0):                         &priceListGenesis,
-	abi.ChainEpoch(build.UpgradeCalicoHeight): &priceListCalico,
+	abi.ChainEpoch(0):           &priceListGenesis,
+	build.UpgradeCalicoHeight(): &priceListCalico,
 }
 
 // PricelistByEpochAndNetworkVersion finds the latest prices for the given epoch

@@ -226,6 +226,7 @@ func TestWindowPostBaseFeeNoBurn(t *testing.T) {
 	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 
 	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
+	t.Skip()
 	kit.Expensive(t)
 
 	kit.QuietMiningLogs()
@@ -237,10 +238,6 @@ func TestWindowPostBaseFeeNoBurn(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	och := build.UpgradeClausHeight
-	build.UpgradeClausHeight = 0
-	t.Cleanup(func() { build.UpgradeClausHeight = och })
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs(), kit.GenesisNetworkVersion(network.Version9))
 	ens.InterconnectAll().BeginMining(blocktime)

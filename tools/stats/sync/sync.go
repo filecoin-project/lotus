@@ -70,14 +70,14 @@ func SyncWait(ctx context.Context, napi SyncWaitApi) error {
 			)
 		}
 
-		if build.Clock.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs)*30 {
+		if build.Clock.Now().Unix()-int64(head.MinTimestamp()) < int64(build.BlockDelaySecs())*30 {
 			break
 		}
 
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-build.Clock.After(time.Duration(int64(build.BlockDelaySecs) * int64(time.Second))):
+		case <-build.Clock.After(time.Duration(int64(build.BlockDelaySecs()) * int64(time.Second))):
 		}
 	}
 

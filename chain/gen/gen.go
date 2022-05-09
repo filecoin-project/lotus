@@ -228,7 +228,7 @@ func NewGeneratorWithSectorsAndUpgradeSchedule(numSectors int, us stmgr.UpgradeS
 		VerifregRootKey:  DefaultVerifregRootkeyActor,
 		RemainderAccount: DefaultRemainderAccountActor,
 		NetworkName:      uuid.New().String(),
-		Timestamp:        uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs) * time.Second).Unix()),
+		Timestamp:        uint64(build.Clock.Now().Add(-500 * time.Duration(build.BlockDelaySecs()) * time.Second).Unix()),
 	}
 
 	genb, err := genesis2.MakeGenesisBlock(context.TODO(), j, bs, sys, tpl)
@@ -373,7 +373,7 @@ func (cg *ChainGen) nextBlockProof(ctx context.Context, pts *types.TipSet, m add
 		return nil, nil, nil, xerrors.Errorf("failed to cbor marshal address: %w", err)
 	}
 
-	if round > build.UpgradeSmokeHeight {
+	if round > build.UpgradeSmokeHeight() {
 		buf.Write(pts.MinTicket().VRFProof)
 	}
 
@@ -498,7 +498,7 @@ func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticke
 	if cg.Timestamper != nil {
 		ts = cg.Timestamper(parents, height-parents.Height())
 	} else {
-		ts = parents.MinTimestamp() + uint64(height-parents.Height())*build.BlockDelaySecs
+		ts = parents.MinTimestamp() + uint64(height-parents.Height())*build.BlockDelaySecs()
 	}
 
 	fblk, err := filcns.NewFilecoinExpectedConsensus(cg.sm, nil, nil, nil).CreateBlock(context.TODO(), cg.w, &api.BlockTemplate{

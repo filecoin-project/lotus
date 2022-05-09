@@ -8,4 +8,8 @@ func init() {
 	BuildType |= BuildDebug
 }
 
-// NOTE: Also includes settings from params_2k
+// SlashablePowerDelay is the number of epochs after ElectionPeriodStart, after
+// which the miner is slashed
+//
+// Epochs
+const SlashablePowerDelay = 20

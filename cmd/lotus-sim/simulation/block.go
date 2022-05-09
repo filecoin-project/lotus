@@ -58,7 +58,7 @@ func (sim *Simulation) makeTipSet(ctx context.Context, messages []*types.Message
 		return nil, xerrors.Errorf("failed to store block messages: %w", err)
 	}
 
-	uts := parentTs.MinTimestamp() + build.BlockDelaySecs
+	uts := parentTs.MinTimestamp() + build.BlockDelaySecs()
 
 	blks := []*types.BlockHeader{{
 		Miner:                 parentTs.MinTicketBlock().Miner, // keep reusing the same miner.

@@ -2,33 +2,30 @@ package build
 
 import (
 	"context"
-	"embed"
-	"path"
-	"strings"
+	"os"
+	"strconv"
 
 	"github.com/filecoin-project/lotus/lib/addrutil"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 )
 
-//go:embed bootstrap
-var bootstrapfs embed.FS
-
 func BuiltinBootstrap() ([]peer.AddrInfo, error) {
 	if DisableBuiltinAssets {
 		return nil, nil
 	}
-	if BootstrappersFile != "" {
-		spi, err := bootstrapfs.ReadFile(path.Join("bootstrap", BootstrappersFile))
+	return addrutil.ParseAddresses(context.TODO(), activeNetworkParams.Bootstrappers)
+}
+
+func BootstrapPeerThreshold() int {
+	threshold := activeNetworkParams.Config.BootstrapPeerThreshold
+	if ev, ok := os.LookupEnv("LOTUS_SYNC_BOOTSTRAP_PEERS"); ok {
+		envthreshold, err := strconv.Atoi(ev)
 		if err != nil {
-			return nil, err
+			log.Errorf("failed to parse 'LOTUS_SYNC_BOOTSTRAP_PEERS' env var: %s", err)
+		} else {
+			threshold = envthreshold
 		}
-		if len(spi) == 0 {
-			return nil, nil
-		}
-
-		return addrutil.ParseAddresses(context.TODO(), strings.Split(strings.TrimSpace(string(spi)), "\n"))
 	}
-
-	return nil, nil
+	return threshold
 }

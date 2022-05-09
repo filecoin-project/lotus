@@ -59,7 +59,7 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 			// So resulting tipset height will be 5 epochs earlier than LookbackCap.
 			h:         abi.ChainEpoch(1),
 			tskh:      abi.ChainEpoch(5),
-			genesisTS: lookbackTimestamp - build.BlockDelaySecs*10,
+			genesisTS: lookbackTimestamp - build.BlockDelaySecs()*10,
 		},
 		expErr: true,
 	}, {
@@ -71,7 +71,7 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 			// - tipset height will be 2 epochs later than LookbackCap.
 			h:         abi.ChainEpoch(1),
 			tskh:      abi.ChainEpoch(5),
-			genesisTS: lookbackTimestamp - build.BlockDelaySecs*3,
+			genesisTS: lookbackTimestamp - build.BlockDelaySecs()*3,
 		},
 		expErr: true,
 	}, {
@@ -178,7 +178,7 @@ func (m *mockGatewayDepsAPI) createTipSets(h abi.ChainEpoch, genesisTimestamp ui
 
 	targeth := h + 1 // add one for genesis block
 	if genesisTimestamp == 0 {
-		genesisTimestamp = uint64(time.Now().Unix()) - build.BlockDelaySecs*uint64(targeth)
+		genesisTimestamp = uint64(time.Now().Unix()) - build.BlockDelaySecs()*uint64(targeth)
 	}
 	var currts *types.TipSet
 	for currh := abi.ChainEpoch(0); currh < targeth; currh++ {

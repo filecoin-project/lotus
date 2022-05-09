@@ -38,7 +38,7 @@ func ChainBitswap(lc fx.Lifecycle, mctx helpers.MetricsCtx, host host.Host, rt r
 
 	// Write all incoming bitswap blocks into a temporary blockstore for two
 	// block times. If they validate, they'll be persisted later.
-	cache := blockstore.NewTimedCacheBlockstore(2 * time.Duration(build.BlockDelaySecs) * time.Second)
+	cache := blockstore.NewTimedCacheBlockstore(2 * time.Duration(build.BlockDelaySecs()) * time.Second)
 	lc.Append(fx.Hook{OnStop: cache.Stop, OnStart: cache.Start})
 
 	bitswapBs := blockstore.NewTieredBstore(bs, cache)
