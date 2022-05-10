@@ -196,8 +196,10 @@ func DefaultStorageMiner() *StorageMiner {
 			Enable:               true,
 			EntriesCacheCapacity: 1024,
 			EntriesChunkSize:     16384,
-			TopicName:            "/indexer/ingest/mainnet",
-			PurgeCacheOnStart:    false,
+			// The default empty TopicName means it is inferred from network name, in the following
+			// format: "/indexer/ingest/<network-name>"
+			TopicName:         "",
+			PurgeCacheOnStart: false,
 		},
 
 		Subsystems: MinerSubsystemConfig{
