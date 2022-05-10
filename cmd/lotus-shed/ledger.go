@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	lcli "github.com/filecoin-project/lotus/cli"
+	cliutil "github.com/filecoin-project/lotus/cli/util"
 )
 
 var ledgerCmd = &cli.Command{
@@ -28,6 +29,7 @@ var ledgerCmd = &cli.Command{
 		ledgerKeyInfoCmd,
 		ledgerSignTestCmd,
 		ledgerShowCmd,
+		ledgerNewAddressesCmd,
 	},
 }
 
@@ -288,6 +290,75 @@ var ledgerShowCmd = &cli.Command{
 
 		fmt.Println(a)
 
+		return nil
+	},
+}
+
+var ledgerNewAddressesCmd = &cli.Command{
+	Name:  "new",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		ctx := lcli.ReqContext(cctx)
+
+		if cctx.NArg() != 1 {
+			return fmt.Errorf("must pass account index")
+		}
+
+		index, err := strconv.Atoi(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		if index < 0 {
+			return fmt.Errorf("account index must greater than 0")
+		}
+
+		api, closer, err := cliutil.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		fl, err := ledgerfil.FindLedgerFilecoinApp()
+		if err != nil {
+			return err
+		}
+		defer fl.Close() // nolint
+
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+
+		p := []uint32{hdHard | 44, hdHard | 461, hdHard, 0, uint32(index)}
+		pubk, err := fl.GetPublicKeySECP256K1(p)
+		if err != nil {
+			return err
+		}
+
+		addr, err := address.NewSecp256k1Address(pubk)
+		if err != nil {
+			return err
+		}
+
+		var pd ledgerwallet.LedgerKeyInfo
+		pd.Address = addr
+		pd.Path = p
+
+		b, err := json.Marshal(pd)
+		if err != nil {
+			return err
+		}
+
+		var ki types.KeyInfo
+		ki.Type = types.KTSecp256k1Ledger
+		ki.PrivateKey = b
+
+		_, err = api.WalletImport(ctx, &ki)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("%s %s\n", addr, printHDPath(p))
 		return nil
 	},
 }
