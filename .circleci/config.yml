@@ -395,7 +395,6 @@ jobs:
       - restore_cache:
           name: restore cargo cache
           key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
-      - install-deps
       - run:
           command: make build
           no_output_timeout: 30m
@@ -872,6 +871,11 @@ workflows:
           target: "./itests/get_messages_in_ts_test.go"
       
       - test:
+          name: test-itest-lookup_robust_address
+          suite: itest-lookup_robust_address
+          target: "./itests/lookup_robust_address_test.go"
+      
+      - test:
           name: test-itest-mempool
           suite: itest-mempool
           target: "./itests/mempool_test.go"
@@ -1021,9 +1025,6 @@ workflows:
       - build-lotus-soup
       - build-macos:
           filters:
-            branches:
-              ignore:
-                - /.*/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/

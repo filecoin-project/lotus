@@ -14,7 +14,8 @@ import (
 )
 
 var blockmsgidCmd = &cli.Command{
-	Name:      "blockmsgid",
+	Name:      "block-message-id",
+	Aliases:   []string{"blockmsgid"},
 	Usage:     "Print a block's pubsub message ID",
 	ArgsUsage: "<blockCid> ...",
 	Action: func(cctx *cli.Context) error {

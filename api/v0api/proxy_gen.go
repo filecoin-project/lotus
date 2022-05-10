@@ -267,6 +267,8 @@ type FullNodeStruct struct {
 
 		StateGetActor func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) `perm:"read"`
 
+		StateGetNetworkParams func(p0 context.Context) (*api.NetworkParams, error) `perm:"read"`
+
 		StateGetRandomnessFromBeacon func(p0 context.Context, p1 crypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) `perm:"read"`
 
 		StateGetRandomnessFromTickets func(p0 context.Context, p1 crypto.DomainSeparationTag, p2 abi.ChainEpoch, p3 []byte, p4 types.TipSetKey) (abi.Randomness, error) `perm:"read"`
@@ -1743,6 +1745,17 @@ func (s *FullNodeStruct) StateGetActor(p0 context.Context, p1 address.Address, p
 }
 
 func (s *FullNodeStub) StateGetActor(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*types.Actor, error) {
+	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateGetNetworkParams(p0 context.Context) (*api.NetworkParams, error) {
+	if s.Internal.StateGetNetworkParams == nil {
+		return nil, ErrNotSupported
+	}
+	return s.Internal.StateGetNetworkParams(p0)
+}
+
+func (s *FullNodeStub) StateGetNetworkParams(p0 context.Context) (*api.NetworkParams, error) {
 	return nil, ErrNotSupported
 }
 

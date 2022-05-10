@@ -7,7 +7,7 @@ USAGE:
    lotus-worker [global options] command [command options] [arguments...]
 
 VERSION:
-   1.15.2-dev
+   1.15.3-dev
 
 COMMANDS:
    run         Start lotus worker
@@ -173,7 +173,7 @@ NAME:
    lotus-worker tasks enable - Enable a task type
 
 USAGE:
-   lotus-worker tasks enable [command options] [UNS|C2|PC2|PC1|PR2|RU|AP|GSK]
+   lotus-worker tasks enable [command options] [UNS|C2|PC2|PC1|PR2|RU|AP|DC|GSK]
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -186,7 +186,7 @@ NAME:
    lotus-worker tasks disable - Disable a task type
 
 USAGE:
-   lotus-worker tasks disable [command options] [UNS|C2|PC2|PC1|PR2|RU|AP|GSK]
+   lotus-worker tasks disable [command options] [UNS|C2|PC2|PC1|PR2|RU|AP|DC|GSK]
 
 OPTIONS:
    --help, -h  show help (default: false)

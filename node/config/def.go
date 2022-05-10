@@ -52,6 +52,9 @@ func defCommon() Common {
 				"example-subsystem": "INFO",
 			},
 		},
+		Backup: Backup{
+			DisableMetadataLog: true,
+		},
 		Libp2p: Libp2p{
 			ListenAddresses: []string{
 				"/ip4/0.0.0.0/tcp/0",
@@ -196,8 +199,10 @@ func DefaultStorageMiner() *StorageMiner {
 			Enable:               true,
 			EntriesCacheCapacity: 1024,
 			EntriesChunkSize:     16384,
-			TopicName:            "/indexer/ingest/mainnet",
-			PurgeCacheOnStart:    false,
+			// The default empty TopicName means it is inferred from network name, in the following
+			// format: "/indexer/ingest/<network-name>"
+			TopicName:         "",
+			PurgeCacheOnStart: false,
 		},
 
 		Subsystems: MinerSubsystemConfig{

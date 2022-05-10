@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.15.2-dev
+   1.15.3-dev
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -236,35 +236,24 @@ USAGE:
    lotus-miner actor command [command options] [arguments...]
 
 COMMANDS:
-   set-addrs              set addresses that your miner can be publicly dialed on
-   withdraw               withdraw available balance
-   repay-debt             pay down a miner's debt
-   set-peer-id            set the peer id of your miner
-   set-owner              Set owner address (this command should be invoked twice, first with the old owner as the senderAddress, and then with the new owner)
-   control                Manage control addresses
-   propose-change-worker  Propose a worker address change
-   confirm-change-worker  Confirm a worker address change
-   compact-allocated      compact allocated sectors bitfield
-   help, h                Shows a list of commands or help for one command
+   set-addresses, set-addrs  set addresses that your miner can be publicly dialed on
+   withdraw                  withdraw available balance
+   repay-debt                pay down a miner's debt
+   set-peer-id               set the peer id of your miner
+   set-owner                 Set owner address (this command should be invoked twice, first with the old owner as the senderAddress, and then with the new owner)
+   control                   Manage control addresses
+   propose-change-worker     Propose a worker address change
+   confirm-change-worker     Confirm a worker address change
+   compact-allocated         compact allocated sectors bitfield
+   help, h                   Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)
    
 ```
 
-### lotus-miner actor set-addrs
+#### lotus-miner actor set-addresses, set-addrs
 ```
-NAME:
-   lotus-miner actor set-addrs - set addresses that your miner can be publicly dialed on
-
-USAGE:
-   lotus-miner actor set-addrs [command options] [arguments...]
-
-OPTIONS:
-   --gas-limit value  set gas limit (default: 0)
-   --unset            unset address (default: false)
-   --help, -h         show help (default: false)
-   
 ```
 
 ### lotus-miner actor withdraw
@@ -1199,22 +1188,22 @@ USAGE:
    lotus-miner net command [command options] [arguments...]
 
 COMMANDS:
-   peers           Print peers
-   ping            Ping peers
-   connect         Connect to a peer
-   listen          List listen addresses
-   id              Get node identity
-   findpeer        Find the addresses of a given peerID
-   scores          Print peers' pubsub scores
-   reachability    Print information about reachability from the internet
-   bandwidth       Print bandwidth usage information
-   block           Manage network connection gating rules
-   stat            Report resource usage for a scope
-   limit           Get or set resource limits for a scope
-   protect         Add one or more peer IDs to the list of protected peer connections
-   unprotect       Remove one or more peer IDs from the list of protected peer connections.
-   list-protected  List the peer IDs with protected connection.
-   help, h         Shows a list of commands or help for one command
+   peers                Print peers
+   ping                 Ping peers
+   connect              Connect to a peer
+   listen               List listen addresses
+   id                   Get node identity
+   find-peer, findpeer  Find the addresses of a given peerID
+   scores               Print peers' pubsub scores
+   reachability         Print information about reachability from the internet
+   bandwidth            Print bandwidth usage information
+   block                Manage network connection gating rules
+   stat                 Report resource usage for a scope
+   limit                Get or set resource limits for a scope
+   protect              Add one or more peer IDs to the list of protected peer connections
+   unprotect            Remove one or more peer IDs from the list of protected peer connections.
+   list-protected       List the peer IDs with protected connection.
+   help, h              Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -1290,17 +1279,8 @@ OPTIONS:
    
 ```
 
-### lotus-miner net findpeer
+#### lotus-miner net find-peer, findpeer
 ```
-NAME:
-   lotus-miner net findpeer - Find the addresses of a given peerID
-
-USAGE:
-   lotus-miner net findpeer [command options] [peerId]
-
-OPTIONS:
-   --help, -h  show help (default: false)
-   
 ```
 
 ### lotus-miner net scores
@@ -2141,29 +2121,16 @@ USAGE:
    lotus-miner proving compute command [command options] [arguments...]
 
 COMMANDS:
-   window-post  Compute WindowPoSt for a specific deadline
-   help, h      Shows a list of commands or help for one command
+   windowed-post, window-post  Compute WindowPoSt for a specific deadline
+   help, h                     Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)
    
 ```
 
-#### lotus-miner proving compute window-post
+##### lotus-miner proving compute windowed-post, window-post
 ```
-NAME:
-   lotus-miner proving compute window-post - Compute WindowPoSt for a specific deadline
-
-USAGE:
-   lotus-miner proving compute window-post [command options] [deadline index]
-
-DESCRIPTION:
-   Note: This command is intended to be used to verify PoSt compute performance.
-   It will not send any messages to the chain.
-
-OPTIONS:
-   --help, -h  show help (default: false)
-   
 ```
 
 ## lotus-miner storage

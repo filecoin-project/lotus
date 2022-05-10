@@ -201,7 +201,7 @@ BINS+=lotus-health
 
 lotus-wallet:
 	rm -f lotus-wallet
-	$(GOCC) build -o lotus-wallet ./cmd/lotus-wallet
+	$(GOCC) build $(GOFLAGS) -o lotus-wallet ./cmd/lotus-wallet
 .PHONY: lotus-wallet
 BINS+=lotus-wallet
 

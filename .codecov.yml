@@ -17,6 +17,7 @@ coverage:
   status:
     patch: off
     project:
+      threshold: 1%
       tools-and-tests:
         target: auto
         threshold: 1%
@@ -34,27 +35,27 @@ coverage:
       markets: 
         target: auto
         threshold: 1%
-        informational: false        
+        informational: true        
         paths: 
           - "markets"
           - "paychmgr"
       miner: 
         target: auto
         threshold: 1.5%
-        informational: false       
+        informational: true
         paths: 
           - "miner"
           - "storage"
       chain:
         target: auto
         threshold: 1%
-        informational: false
+        informational: true
         paths:
           - "chain"
       node:
         target: auto
         threshold: 1%
-        informational: false
+        informational: true
         paths: 
           - "node"
           - "blockstore"

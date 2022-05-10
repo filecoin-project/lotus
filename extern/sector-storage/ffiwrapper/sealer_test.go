@@ -27,7 +27,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
-	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
@@ -41,7 +41,7 @@ import (
 )
 
 func init() {
-	logging.SetLogLevel("*", "DEBUG") //nolint: errcheck
+	logging.SetLogLevel("*", "DEBUG") // nolint: errcheck
 }
 
 var sealProofType = abi.RegisteredSealProof_StackedDrg2KiBV1

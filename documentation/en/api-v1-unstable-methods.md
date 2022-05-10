@@ -175,12 +175,14 @@
   * [StateDecodeParams](#StateDecodeParams)
   * [StateEncodeParams](#StateEncodeParams)
   * [StateGetActor](#StateGetActor)
+  * [StateGetNetworkParams](#StateGetNetworkParams)
   * [StateGetRandomnessFromBeacon](#StateGetRandomnessFromBeacon)
   * [StateGetRandomnessFromTickets](#StateGetRandomnessFromTickets)
   * [StateListActors](#StateListActors)
   * [StateListMessages](#StateListMessages)
   * [StateListMiners](#StateListMiners)
   * [StateLookupID](#StateLookupID)
+  * [StateLookupRobustAddress](#StateLookupRobustAddress)
   * [StateMarketBalance](#StateMarketBalance)
   * [StateMarketDeals](#StateMarketDeals)
   * [StateMarketParticipants](#StateMarketParticipants)
@@ -5037,7 +5039,7 @@ A nil TipSetKey can be provided as a param, this will cause the heaviest tipset 
 
 
 ### StateAccountKey
-StateAccountKey returns the public key address of the given ID address
+StateAccountKey returns the public key address of the given ID address for secp and bls accounts
 
 
 Perms: read
@@ -5641,6 +5643,49 @@ Response:
 }
 ```
 
+### StateGetNetworkParams
+StateGetNetworkParams return current network params
+
+
+Perms: read
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "NetworkName": "lotus",
+  "BlockDelaySecs": 42,
+  "ConsensusMinerMinPower": "0",
+  "SupportedProofTypes": [
+    8
+  ],
+  "PreCommitChallengeDelay": 10101,
+  "ForkUpgradeParams": {
+    "UpgradeSmokeHeight": 10101,
+    "UpgradeBreezeHeight": 10101,
+    "UpgradeIgnitionHeight": 10101,
+    "UpgradeLiftoffHeight": 10101,
+    "UpgradeAssemblyHeight": 10101,
+    "UpgradeRefuelHeight": 10101,
+    "UpgradeTapeHeight": 10101,
+    "UpgradeKumquatHeight": 10101,
+    "UpgradePriceListOopsHeight": 10101,
+    "BreezeGasTampingDuration": 10101,
+    "UpgradeCalicoHeight": 10101,
+    "UpgradePersianHeight": 10101,
+    "UpgradeOrangeHeight": 10101,
+    "UpgradeClausHeight": 10101,
+    "UpgradeTrustHeight": 10101,
+    "UpgradeNorwegianHeight": 10101,
+    "UpgradeTurboHeight": 10101,
+    "UpgradeHyperdriveHeight": 10101,
+    "UpgradeChocolateHeight": 10101,
+    "UpgradeOhSnapHeight": 10101
+  }
+}
+```
+
 ### StateGetRandomnessFromBeacon
 StateGetRandomnessFromBeacon is used to sample the beacon for randomness.
 
@@ -5781,6 +5826,29 @@ Response:
 
 ### StateLookupID
 StateLookupID retrieves the ID address of the given address
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response: `"f01234"`
+
+### StateLookupRobustAddress
+StateLookupRobustAddress returns the public key address of the given ID address for non-account addresses (multisig, miners etc)
 
 
 Perms: read

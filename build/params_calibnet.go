@@ -59,12 +59,19 @@ const UpgradeOhSnapHeight = 682006
 
 var UpgradeFVM1Height = abi.ChainEpoch(99999999999999)
 
+var SupportedProofTypes = []abi.RegisteredSealProof{
+	abi.RegisteredSealProof_StackedDrg32GiBV1,
+	abi.RegisteredSealProof_StackedDrg64GiBV1,
+}
+var ConsensusMinerMinPower = abi.NewStoragePower(32 << 30)
+var MinVerifiedDealSize = abi.NewStoragePower(1 << 20)
+var PreCommitChallengeDelay = abi.ChainEpoch(150)
+
 func init() {
-	policy.SetConsensusMinerMinPower(abi.NewStoragePower(32 << 30))
-	policy.SetSupportedProofTypes(
-		abi.RegisteredSealProof_StackedDrg32GiBV1,
-		abi.RegisteredSealProof_StackedDrg64GiBV1,
-	)
+	policy.SetSupportedProofTypes(SupportedProofTypes...)
+	policy.SetConsensusMinerMinPower(ConsensusMinerMinPower)
+	policy.SetMinVerifiedDealSize(MinVerifiedDealSize)
+	policy.SetPreCommitChallengeDelay(PreCommitChallengeDelay)
 
 	SetAddressNetwork(address.Testnet)
 
