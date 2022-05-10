@@ -14,8 +14,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/network"
 
-	"github.com/filecoin-project/go-state-types/big"
-
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/state"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -349,14 +347,13 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 			GasUsed:  ret.GasUsed,
 		},
 		GasCosts: &GasOutputs{
-			// TODO: do the other optional fields eventually
-			BaseFeeBurn:        big.Zero(),
-			OverEstimationBurn: big.Zero(),
+			BaseFeeBurn:        ret.BaseFeeBurn,
+			OverEstimationBurn: ret.OverEstimationBurn,
 			MinerPenalty:       ret.MinerPenalty,
 			MinerTip:           ret.MinerTip,
-			Refund:             big.Zero(),
-			GasRefund:          0,
-			GasBurned:          0,
+			Refund:             ret.Refund,
+			GasRefund:          ret.GasRefund,
+			GasBurned:          ret.GasBurned,
 		},
 		ActorErr:       aerr,
 		ExecutionTrace: et.ToExecutionTrace(),
