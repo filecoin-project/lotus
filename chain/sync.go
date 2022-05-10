@@ -260,7 +260,7 @@ func (syncer *Syncer) IncomingBlocks(ctx context.Context) (<-chan *types.BlockHe
 	out := make(chan *types.BlockHeader, 10)
 
 	go func() {
-		defer syncer.incoming.Unsub(sub, LocalIncoming)
+		defer syncer.incoming.Unsub(sub)
 
 		for {
 			select {
