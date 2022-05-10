@@ -186,7 +186,9 @@ type IndexProviderConfig struct {
 	EntriesChunkSize int
 
 	// TopicName sets the topic name on which the changes to the advertised content are announced.
-	// Defaults to '/indexer/ingest/mainnet' if not specified.
+	// If not explicitly specified, the topic name is automatically inferred from the network name
+	// in following format: '/indexer/ingest/<network-name>'
+	// Defaults to empty, which implies the topic name is inferred from network name.
 	TopicName string
 
 	// PurgeCacheOnStart sets whether to clear any cached entries chunks when the provider engine
