@@ -50,3 +50,4 @@ bin/tmp/*
 scratchpad
 
 build/builtin-actors/v*
+build/builtin-actors/*.car

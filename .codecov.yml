@@ -17,6 +17,7 @@ coverage:
   status:
     patch: off
     project:
+      threshold: 1%
       tools-and-tests:
         target: auto
         threshold: 1%
