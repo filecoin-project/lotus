@@ -1477,7 +1477,7 @@ func (mp *MessagePool) Updates(ctx context.Context) (<-chan api.MpoolUpdate, err
 	sub := mp.changes.Sub(localUpdates)
 
 	go func() {
-		defer mp.changes.Unsub(sub, localUpdates)
+		defer mp.changes.Unsub(sub)
 		defer close(out)
 
 		for {
