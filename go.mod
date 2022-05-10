@@ -46,6 +46,7 @@ require (
 	github.com/filecoin-project/go-statestore v0.2.0
 	github.com/filecoin-project/go-storedcounter v0.1.0
 	github.com/filecoin-project/index-provider v0.5.0
+	github.com/filecoin-project/pubsub v1.0.0
 	github.com/filecoin-project/specs-actors v0.9.14
 	github.com/filecoin-project/specs-actors/v2 v2.3.6
 	github.com/filecoin-project/specs-actors/v3 v3.1.1
@@ -140,14 +141,13 @@ require (
 	github.com/prometheus/client_golang v1.12.1
 	github.com/raulk/clock v1.1.0
 	github.com/raulk/go-watchdog v1.2.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/whyrusleeping/bencher v0.0.0-20190829221104-bb6607aa8bba
 	github.com/whyrusleeping/cbor-gen v0.0.0-20220302191723-37c43cae8e14
 	github.com/whyrusleeping/ledger-filecoin-go v0.9.1-0.20201010031517-c3dcc1bddce4
 	github.com/whyrusleeping/multiaddr-filter v0.0.0-20160516205228-e903e4adabd7
-	github.com/whyrusleeping/pubsub v0.0.0-20190708150250-92bcb0691325
 	github.com/xorcare/golden v0.6.1-0.20191112154924-b87f686d7542
 	go.opencensus.io v0.23.0
 	go.opentelemetry.io/otel v1.3.0
