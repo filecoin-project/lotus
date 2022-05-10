@@ -85,56 +85,9 @@ type path struct {
 
 	reserved     int64
 	reservations map[abi.SectorID]storiface.SectorFileType
-
-	statLk   sync.Mutex
-	statDone chan struct{}
-
-	lastStat *fsutil.FsStat // nil if no stat / was error
 }
 
 func (p *path) stat(ls LocalStorage) (fsutil.FsStat, error) {
-	for {
-		p.statLk.Lock()
-		if p.statDone == nil {
-			p.statDone = make(chan struct{})
-			p.statLk.Unlock()
-
-			st, err := p.doStat(ls)
-
-			p.statLk.Lock()
-			p.lastStat = nil
-			if err == nil {
-				p.lastStat = &st
-			}
-			close(p.statDone)
-			p.statDone = nil
-			p.statLk.Unlock()
-			return st, err
-		}
-
-		doneCh := p.statDone
-		p.statLk.Unlock()
-
-		select {
-		case <-doneCh:
-			// todo context?
-		}
-
-		p.statLk.Lock()
-		if p.lastStat == nil {
-			p.statLk.Unlock()
-			continue
-		}
-
-		st := *p.lastStat
-
-		p.statLk.Unlock()
-
-		return st, nil
-	}
-}
-
-func (p *path) doStat(ls LocalStorage) (fsutil.FsStat, error) {
 	start := time.Now()
 
 	stat, err := ls.Stat(p.local)
@@ -217,7 +170,7 @@ type URLs []string
 
 func NewLocal(ctx context.Context, ls LocalStorage, index SectorIndex, urls []string) (*Local, error) {
 	l := &Local{
-		localStorage: ls,
+		localStorage: newCachedLocalStorage(ls),
 		index:        index,
 		urls:         urls,
 
