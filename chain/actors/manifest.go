@@ -136,7 +136,7 @@ func FetchAndLoadBundle(ctx context.Context, basePath string, bs blockstore.Bloc
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("error opening bundle for builtin-actors vresion %d: %w", av, err)
 	}
-	defer f.Close()
+	defer f.Close() //nolint
 
 	data, err := io.ReadAll(f)
 	if err != nil {
