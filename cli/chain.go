@@ -1043,6 +1043,82 @@ var ChainBisectCmd = &cli.Command{
 	},
 }
 
+var ChainExportRangeCmd = &cli.Command{
+	Name:      "export-range",
+	Usage:     "export range of chain states to a car file",
+	ArgsUsage: "[outputPath]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "specify start of range to export state",
+		},
+		&cli.StringFlag{
+			Name:  "to",
+			Usage: "specify end of range to export state",
+		},
+		&cli.BoolFlag{
+			Name: "skip-old-msgs",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify filename to export chain to")
+		}
+
+		fromCs, err := ParseTipSetString(cctx.String("from"))
+		if err != nil {
+			return xerrors.Errorf("failed to parse tipset (%q): %w", cctx.String("from"), err)
+		}
+		from := types.NewTipSetKey(fromCs...)
+		toCs, err := ParseTipSetString(cctx.String("from"))
+		if err != nil {
+			return xerrors.Errorf("failed to parse tipset (%q): %w", cctx.String("to"), err)
+		}
+		to := types.NewTipSetKey(toCs...)
+
+		fi, err := createExportFile(cctx.App, cctx.Args().First())
+		if err != nil {
+			return err
+		}
+		defer func() {
+			err := fi.Close()
+			if err != nil {
+				fmt.Printf("error closing output file: %+v", err)
+			}
+		}()
+
+		skipold := cctx.Bool("skip-old-msgs")
+
+		stream, err := api.ChainExportRange(ctx, skipold, from, to)
+		if err != nil {
+			return err
+		}
+
+		var last bool
+		for b := range stream {
+			last = len(b) == 0
+
+			_, err := fi.Write(b)
+			if err != nil {
+				return err
+			}
+		}
+
+		if !last {
+			return xerrors.Errorf("incomplete export (remote connection lost?)")
+		}
+
+		return nil
+	},
+}
+
 var ChainExportCmd = &cli.Command{
 	Name:      "export",
 	Usage:     "export chain to a car file",
