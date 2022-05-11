@@ -584,17 +584,39 @@ func (m *ChainModule) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.M
 	return cm.VMMessage(), nil
 }
 
-func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipoldmsgs bool, tsk types.TipSetKey) (<-chan []byte, error) {
-	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+func (a *ChainAPI) ChainExportRange(ctx context.Context, skipoldmsgs bool, from, to types.TipSetKey) (<-chan []byte, error) {
+	export := func(w io.Writer) error {
+		from, err := a.Chain.GetTipSetFromKey(ctx, from)
+		if err != nil {
+			return xerrors.Errorf("loading from tipset %s: %w", from, err)
+		}
+		to, err := a.Chain.GetTipSetFromKey(ctx, to)
+		if err != nil {
+			return xerrors.Errorf("loading tipset %s: %w", to, err)
+		}
+		return a.Chain.ExportRange(ctx, from, to, skipoldmsgs, w)
 	}
+	return a.chainExport(ctx, export)
+}
+
+func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipoldmsgs bool, tsk types.TipSetKey) (<-chan []byte, error) {
+	export := func(w io.Writer) error {
+		ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
+		if err != nil {
+			return xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		}
+		return a.Chain.Export(ctx, ts, nroots, skipoldmsgs, w)
+	}
+	return a.chainExport(ctx, export)
+}
+
+func (a *ChainAPI) chainExport(ctx context.Context, export func(w io.Writer) error) (<-chan []byte, error) {
+
 	r, w := io.Pipe()
 	out := make(chan []byte)
 	go func() {
 		bw := bufio.NewWriterSize(w, 1<<20)
-
-		err := a.Chain.Export(ctx, ts, nroots, skipoldmsgs, bw)
+		err := export(bw)
 		bw.Flush()            //nolint:errcheck // it is a write to a pipe
 		w.CloseWithError(err) //nolint:errcheck // it is a pipe
 	}()
