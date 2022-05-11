@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
@@ -580,11 +579,12 @@ var genesisCarCmd = &cli.Command{
 		jrnl := journal.NilJournal()
 		bstor := blockstore.WrapIDStore(blockstore.NewMemorySync())
 		sbldr := vm.Syscalls(ffiwrapper.ProofVerifier)
-		if len(build.BuiltinActorsV8Bundle()) > 0 {
-			if err := actors.LoadManifestFromBundle(context.TODO(), bstor, actors.Version8, build.BuiltinActorsV8Bundle()); err != nil {
-				return xerrors.Errorf("error loading actor manifest: %w", err)
-			}
+
+		// load appropriate bundles
+		if err := actors.FetchAndLoadBundles(c.Context, bstor, build.BuiltinActorReleases); err != nil {
+			return err
 		}
+
 		_, err := testing.MakeGenesis(ofile, c.Args().First())(bstor, sbldr, jrnl, dtypes.BuiltinActorsLoaded{})()
 		return err
 	},

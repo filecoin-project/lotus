@@ -3,6 +3,8 @@ package actors
 import (
 	"bytes"
 	"context"
+	"io"
+	"os"
 	"strings"
 	"sync"
 
@@ -15,6 +17,8 @@ import (
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/specs-actors/v8/actors/builtin/manifest"
+
+	"github.com/mitchellh/go-homedir"
 )
 
 var manifestCids map[Version]cid.Cid = map[Version]cid.Cid{
@@ -117,6 +121,40 @@ func CanonicalName(name string) string {
 	return name
 }
 
+func FetchAndLoadBundle(ctx context.Context, basePath string, bs blockstore.Blockstore, av Version, rel, netw string) (cid.Cid, error) {
+	fetcher, err := NewBundleFetcher(basePath)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("error creating fetcher for builtin-actors version %d: %w", av, err)
+	}
+
+	path, err := fetcher.Fetch(av, rel, netw)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("error fetching bundle for builtin-actors version %d: %w", av, err)
+	}
+
+	f, err := os.Open(path)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("error opening bundle for builtin-actors vresion %d: %w", av, err)
+	}
+	defer f.Close()
+
+	data, err := io.ReadAll(f)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("error reading bundle for builtin-actors vresion %d: %w", av, err)
+	}
+
+	if err := LoadBundle(ctx, bs, av, data); err != nil {
+		return cid.Undef, xerrors.Errorf("error loading bundle for builtin-actors vresion %d: %w", av, err)
+	}
+
+	mfCid, ok := GetManifest(av)
+	if !ok {
+		return cid.Undef, xerrors.Errorf("missing manifest CID for builtin-actors vrsion %d", av)
+	}
+
+	return mfCid, nil
+}
+
 func LoadBundle(ctx context.Context, bs blockstore.Blockstore, av Version, data []byte) error {
 	blobr := bytes.NewReader(data)
 
@@ -131,11 +169,34 @@ func LoadBundle(ctx context.Context, bs blockstore.Blockstore, av Version, data 
 	return nil
 }
 
-func LoadManifestFromBundle(ctx context.Context, bs blockstore.Blockstore, av Version, data []byte) error {
-	if err := LoadBundle(ctx, bs, av, data); err != nil {
+// utility for blanket loading outside DI
+func FetchAndLoadBundles(ctx context.Context, bs blockstore.Blockstore, bar map[Version]string) error {
+	// TODO: how to get the network name properly?
+	netw := "mainnet"
+	if v := os.Getenv("LOTUS_FIL_NETWORK"); v != "" {
+		netw = v
+	}
+
+	// TODO: how to get the repo properly?
+	path, err := homedir.Expand("~/.lotus")
+	if err != nil {
 		return err
 	}
 
+	if p := os.Getenv("LOTUS_PATH"); p != "" {
+		path = p
+	}
+
+	for av, rel := range bar {
+		if _, err := FetchAndLoadBundle(ctx, path, bs, av, rel, netw); err != nil {
+			return err
+		}
+	}
+
 	cborStore := cbor.NewCborStore(bs)
-	return LoadManifests(ctx, cborStore)
+	if err := LoadManifests(ctx, cborStore); err != nil {
+		return err
+	}
+
+	return nil
 }

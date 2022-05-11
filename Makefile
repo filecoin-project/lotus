@@ -57,14 +57,6 @@ build/.update-modules:
 
 # end git modules
 
-# builtin actor bundles
-builtin-actor-bundles:
-	./build/builtin-actors/fetch-bundles.sh
-
-BUILD_DEPS+=builtin-actor-bundles
-
-.PHONY: builtin-actor-bundles
-
 ## MAIN BINARIES
 
 CLEAN+=build/.update-modules
