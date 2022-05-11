@@ -21,23 +21,12 @@ import (
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
-	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
 const (
 	metadataTraceContext = "traceContext"
 )
-
-func loadBundles(ctx context.Context) error {
-	// preload manifest so that we have the correct code CID inventory for cli since that doesn't
-	// go through CI
-	bs := blockstore.NewMemory()
-
-	return actors.FetchAndLoadBundles(ctx, bs, build.BuiltinActorReleases)
-}
 
 // GetAPIInfo returns the API endpoint to use for the specified kind of repo.
 //
@@ -48,11 +37,6 @@ func loadBundles(ctx context.Context) error {
 //  3. deprecated *_API_INFO environment variables
 //  4. *-repo command line flags.
 func GetAPIInfo(ctx *cli.Context, t repo.RepoType) (APIInfo, error) {
-	// do this first
-	if err := loadBundles(ctx.Context); err != nil {
-		return APIInfo{}, fmt.Errorf("error loading builtin-actor bundles: %w", err)
-	}
-
 	// Check if there was a flag passed with the listen address of the API
 	// server (only used by the tests)
 	for _, f := range t.APIFlags() {
