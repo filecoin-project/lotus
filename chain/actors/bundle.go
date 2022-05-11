@@ -25,7 +25,7 @@ type BundleFetcher struct {
 func NewBundleFetcher(basepath string) (*BundleFetcher, error) {
 	path := filepath.Join(basepath, "builtin-actors")
 	if err := os.MkdirAll(path, 0755); err != nil {
-		return nil, xerrors.Errorf("error making bundle directory %s: %w: err")
+		return nil, xerrors.Errorf("error making bundle directory %s: %w", path, err)
 	}
 
 	return &BundleFetcher{path: path}, nil
@@ -38,7 +38,7 @@ func (b *BundleFetcher) Fetch(version Version, release, netw string) (path strin
 	bundleBasePath := filepath.Join(b.path, fmt.Sprintf("v%d", version), release)
 
 	if err := os.MkdirAll(bundleBasePath, 0755); err != nil {
-		return "", xerrors.Errorf("error making bundle directory %s: %w: err")
+		return "", xerrors.Errorf("error making bundle directory %s: %w", bundleBasePath, err)
 	}
 
 	// check if it exists; if it does, check the hash
@@ -69,11 +69,11 @@ func (b *BundleFetcher) Fetch(version Version, release, netw string) (path strin
 func (b *BundleFetcher) fetchURL(url, path string) error {
 	logb.Infof("fetching URL: %s", url)
 
-	resp, err := http.Get(url)
+	resp, err := http.Get(url) //nolint
 	if err != nil {
 		return xerrors.Errorf("error fetching %s: %w", url, err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() //nolint
 
 	if resp.StatusCode != http.StatusOK {
 		return xerrors.Errorf("error fetching %s: http response status is %d", url, resp.StatusCode)
@@ -83,7 +83,7 @@ func (b *BundleFetcher) fetchURL(url, path string) error {
 	if err != nil {
 		return xerrors.Errorf("error opening %s for writing: %w", path, err)
 	}
-	defer f.Close()
+	defer f.Close() //nolint
 
 	if _, err := io.Copy(f, resp.Body); err != nil {
 		return xerrors.Errorf("error writing %s: %w", path, err)
@@ -116,7 +116,7 @@ func (b *BundleFetcher) check(bundleBasePath, bundleFile, bundleHash string) err
 	if err != nil {
 		return xerrors.Errorf("error opening %s: %w", bundleHashPath, err)
 	}
-	defer f.Close()
+	defer f.Close() //nolint
 
 	bs, err := io.ReadAll(f)
 	if err != nil {
@@ -135,7 +135,7 @@ func (b *BundleFetcher) check(bundleBasePath, bundleFile, bundleHash string) err
 	if err != nil {
 		return xerrors.Errorf("error opening %s: %w", bundleFilePath, err)
 	}
-	defer f.Close()
+	defer f.Close() //nolint
 
 	h256 := sha256.New()
 	if _, err := io.Copy(h256, f); err != nil {

@@ -58,7 +58,7 @@ func LoadBultinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRep
 		}
 
 		// ok, we don't have it -- fetch it and add it to the blockstore
-		mfCid, err := actors.FetchAndLoadBundle(ctx, r.Path(), bs, av, rel, string(netw))
+		mfCid, err := actors.FetchAndLoadBundle(ctx, r.Path(), bs, av, rel, netw)
 		if err != nil {
 			return result, err
 		}
