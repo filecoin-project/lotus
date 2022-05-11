@@ -1334,7 +1334,7 @@ func UpgradeActorsV8(ctx context.Context, sm *stmgr.StateManager, cache stmgr.Mi
 
 	newRoot, err := upgradeActorsV8Common(ctx, sm, cache, root, epoch, ts, config)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("migrating actors v6 state: %w", err)
+		return cid.Undef, xerrors.Errorf("migrating actors v7 state: %w", err)
 	}
 
 	return newRoot, nil
