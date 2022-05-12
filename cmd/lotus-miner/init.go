@@ -58,6 +58,7 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
 	storageminer "github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/node/bundle"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -216,12 +217,11 @@ var initCmd = &cli.Command{
 				return err
 			}
 
-			if len(build.BuiltinActorsV8Bundle()) > 0 {
-				bs := blockstore.NewMemory()
+			// load bundles
+			bs := blockstore.NewMemory()
 
-				if err := actors.LoadManifestFromBundle(context.TODO(), bs, actors.Version8, build.BuiltinActorsV8Bundle()); err != nil {
-					return xerrors.Errorf("error loading actor manifest: %w", err)
-				}
+			if err := bundle.FetchAndLoadBundles(ctx, bs, build.BuiltinActorReleases); err != nil {
+				return err
 			}
 
 			var localPaths []stores.LocalPath

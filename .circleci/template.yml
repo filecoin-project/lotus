@@ -48,7 +48,6 @@ commands:
             - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
       - run: git submodule sync
       - run: git submodule update --init
-      - fetch_builtin_actors
   download-params:
     steps:
       - restore_cache:
@@ -84,12 +83,6 @@ commands:
           name: fetch all tags
           command: |
             git fetch --all
-  fetch_builtin_actors:
-    steps:
-      - run:
-          name: fetch builtin actor bundles
-          command: |
-            build/builtin-actors/fetch-bundles.sh
   packer_build:
     description: "Run a packer build"
     parameters:
