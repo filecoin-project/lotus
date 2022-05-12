@@ -22,6 +22,7 @@
   * [CreateBackup](#CreateBackup)
 * [Dagstore](#Dagstore)
   * [DagstoreGC](#DagstoreGC)
+  * [DagstoreRegisterShard] (#DagstoreRegisterShard)
   * [DagstoreInitializeAll](#DagstoreInitializeAll)
   * [DagstoreInitializeShard](#DagstoreInitializeShard)
   * [DagstoreListShards](#DagstoreListShards)
@@ -508,6 +509,22 @@ Response:
   }
 ]
 ```
+
+### DagstoreRegisterShard
+DagstoreRegisterShard registers a shard with the dagstore. It takes
+a PieceCID as input and generates a success or error message.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
 
 ### DagstoreInitializeAll
 DagstoreInitializeAll initializes all uninitialized shards in bulk,
