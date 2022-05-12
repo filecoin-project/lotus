@@ -8,7 +8,7 @@ import (
 
 var NetworkBundle string
 
-//go:embed bundle.toml
+//go:embed bundles.toml
 var BuiltinActorBundles []byte
 
 type BundleSpec struct {
