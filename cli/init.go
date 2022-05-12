@@ -5,7 +5,7 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/node/bundle"
 )
 
 func init() {
@@ -13,7 +13,7 @@ func init() {
 	// go through CI
 	bs := blockstore.NewMemory()
 
-	if err := actors.FetchAndLoadBundles(context.Background(), bs, build.BuiltinActorReleases); err != nil {
+	if err := bundle.FetchAndLoadBundles(context.Background(), bs, build.BuiltinActorReleases); err != nil {
 		panic(err)
 	}
 }

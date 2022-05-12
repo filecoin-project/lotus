@@ -58,6 +58,7 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
 	storageminer "github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/node/bundle"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -219,7 +220,7 @@ var initCmd = &cli.Command{
 			// load bundles
 			bs := blockstore.NewMemory()
 
-			if err := actors.FetchAndLoadBundles(ctx, bs, build.BuiltinActorReleases); err != nil {
+			if err := bundle.FetchAndLoadBundles(ctx, bs, build.BuiltinActorReleases); err != nil {
 				return err
 			}
 

@@ -2,7 +2,6 @@ package modules
 
 import (
 	"fmt"
-	"os"
 	"sync"
 
 	"go.uber.org/fx"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/node/bundle"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -22,12 +22,11 @@ import (
 func LoadBuiltinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo, bs dtypes.UniversalBlockstore, ds dtypes.MetadataDS) (result dtypes.BuiltinActorsLoaded, err error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
-	// TODO how to properly get the network name?
-	//      putting it as a dep in inputs causes a stack overflow in DI from circular dependency
-	//      sigh...
-	netw := "mainnet"
-	if v := os.Getenv("LOTUS_FIL_NETWORK"); v != "" {
-		netw = v
+	// We can't put it as a dep in inputs causes a stack overflow in DI from circular dependency
+	// So we pass it through ldflags instead
+	netw := build.NetworkBundle
+	if netw == "" {
+		netw = "mainnet"
 	}
 
 	for av, rel := range build.BuiltinActorReleases {
@@ -58,7 +57,7 @@ func LoadBuiltinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 		}
 
 		// ok, we don't have it -- fetch it and add it to the blockstore
-		mfCid, err := actors.FetchAndLoadBundle(ctx, r.Path(), bs, av, rel, netw)
+		mfCid, err := bundle.FetchAndLoadBundle(ctx, r.Path(), bs, av, rel, netw)
 		if err != nil {
 			return result, err
 		}
@@ -95,7 +94,7 @@ func LoadBuiltinActorsTesting(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtype
 	for av, rel := range build.BuiltinActorReleases {
 		const basePath = "/tmp/lotus-testing"
 
-		if _, err := actors.FetchAndLoadBundle(ctx, basePath, bs, av, rel, netw); err != nil {
+		if _, err := bundle.FetchAndLoadBundle(ctx, basePath, bs, av, rel, netw); err != nil {
 			return result, xerrors.Errorf("error loading bundle for builtin-actors vresion %d: %w", av, err)
 		}
 	}
