@@ -71,15 +71,19 @@ debug: GOFLAGS+=-tags=debug
 debug: build-devnets
 
 2k: GOFLAGS+=-tags=2k
+2k: GOFLAGS+=-ldflags=-X=github.com/filecoin-project/lotus/build.NetworkBundle=devnet
 2k: build-devnets
 
 calibnet: GOFLAGS+=-tags=calibnet
+calibnet: GOFLAGS+=-ldflags=-X=github.com/filecoin-project/lotus/build.NetworkBundle=calibrationnet
 calibnet: build-devnets
 
 butterflynet: GOFLAGS+=-tags=butterflynet
+butterflynet: GOFLAGS+=-ldflags=-X=github.com/filecoin-project/lotus/build.NetworkBundle=butterflynet
 butterflynet: build-devnets
 
 interopnet: GOFLAGS+=-tags=interopnet
+interopnet: GOFLAGS+=-ldflags=-X=github.com/filecoin-project/lotus/build.NetworkBundle=caterpillarnet
 interopnet: build-devnets
 
 lotus: $(BUILD_DEPS)
