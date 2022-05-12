@@ -12,10 +12,10 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/node/bundle"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/google/uuid"
@@ -581,7 +581,7 @@ var genesisCarCmd = &cli.Command{
 		sbldr := vm.Syscalls(ffiwrapper.ProofVerifier)
 
 		// load appropriate bundles
-		if err := actors.FetchAndLoadBundles(c.Context, bstor, build.BuiltinActorReleases); err != nil {
+		if err := bundle.FetchAndLoadBundles(c.Context, bstor, build.BuiltinActorReleases); err != nil {
 			return err
 		}
 
