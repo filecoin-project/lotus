@@ -67,7 +67,7 @@ func init() {
 
 	currentNetwork, ok := os.LookupEnv("LOTUS_NETWORK")
 	if !ok {
-		currentNetwork = "mainnet"
+		currentNetwork = buildDefaultNetwork
 	}
 
 	if currentNetwork == "mainnet" {
