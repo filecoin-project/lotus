@@ -6,10 +6,12 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"golang.org/x/xerrors"
 
@@ -69,27 +71,38 @@ func (b *BundleFetcher) Fetch(version int, release, netw string) (path string, e
 func (b *BundleFetcher) fetchURL(url, path string) error {
 	log.Infof("fetching URL: %s", url)
 
-	resp, err := http.Get(url) //nolint
-	if err != nil {
-		return xerrors.Errorf("error fetching %s: %w", url, err)
-	}
-	defer resp.Body.Close() //nolint
+	for i := 0; i < 3; i++ {
+		resp, err := http.Get(url) //nolint
+		if err != nil {
+			if isTemporary(err) {
+				log.Warnf("temporary error fetching %s: %s; retrying in 1s", url, err)
+				time.Sleep(time.Second)
+				continue
+			}
+			return xerrors.Errorf("error fetching %s: %w", url, err)
+		}
+		defer resp.Body.Close() //nolint
 
-	if resp.StatusCode != http.StatusOK {
-		return xerrors.Errorf("error fetching %s: http response status is %d", url, resp.StatusCode)
+		if resp.StatusCode != http.StatusOK {
+			log.Warnf("unexpected response fetching %s: %s (%d); retrying in 1s", url, resp.Status, resp.StatusCode)
+			time.Sleep(time.Second)
+			continue
+		}
+
+		f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+		if err != nil {
+			return xerrors.Errorf("error opening %s for writing: %w", path, err)
+		}
+		defer f.Close() //nolint
+
+		if _, err := io.Copy(f, resp.Body); err != nil {
+			return xerrors.Errorf("error writing %s: %w", path, err)
+		}
+
+		return nil
 	}
 
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		return xerrors.Errorf("error opening %s for writing: %w", path, err)
-	}
-	defer f.Close() //nolint
-
-	if _, err := io.Copy(f, resp.Body); err != nil {
-		return xerrors.Errorf("error writing %s: %w", path, err)
-	}
-
-	return nil
+	return xerrors.Errorf("all attempts to fetch %s failed", url)
 }
 
 func (b *BundleFetcher) fetch(release, bundleBasePath, bundleFile, bundleHash string) error {
@@ -148,4 +161,12 @@ func (b *BundleFetcher) check(bundleBasePath, bundleFile, bundleHash string) err
 	}
 
 	return nil
+}
+
+func isTemporary(err error) bool {
+	if ne, ok := err.(net.Error); ok {
+		return ne.Temporary()
+	}
+
+	return false
 }
