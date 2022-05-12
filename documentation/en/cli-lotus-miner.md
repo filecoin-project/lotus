@@ -1035,6 +1035,7 @@ USAGE:
 
 COMMANDS:
    list-shards       List all shards known to the dagstore, with their current status
+   register-shard    Register a shard
    initialize-shard  Initialize the specified shard
    recover-shard     Attempt to recover a shard in errored state
    initialize-all    Initialize all uninitialized shards, streaming results as they're produced; only shards for unsealed pieces are initialized by default
@@ -1054,6 +1055,20 @@ NAME:
 
 USAGE:
    lotus-miner dagstore list-shards [command options] [arguments...]
+
+OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner dagstore register-shard
+```
+NAME:
+   lotus-miner dagstore register-shard - Register a shard
+
+USAGE:
+   lotus-miner dagstore register-shard [command options] [key]
 
 OPTIONS:
    --color     use color in display output (default: depends on output being a TTY)
