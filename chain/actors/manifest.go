@@ -178,14 +178,13 @@ func FetchAndLoadBundles(ctx context.Context, bs blockstore.Blockstore, bar map[
 		netw = v
 	}
 
-	// TODO: how to get the repo properly?
-	path, err := homedir.Expand("~/.lotus")
-	if err != nil {
-		return err
-	}
-
-	if p := os.Getenv("LOTUS_PATH"); p != "" {
-		path = p
+	path := os.Getenv("LOTUS_PATH")
+	if path == "" {
+		var err error
+		path, err = homedir.Expand("~/.lotus")
+		if err != nil {
+			return err
+		}
 	}
 
 	for av, rel := range bar {
