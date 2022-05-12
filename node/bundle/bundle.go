@@ -1,4 +1,4 @@
-package actors
+package bundle
 
 import (
 	"bytes"
@@ -16,7 +16,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 )
 
-var logb = logging.Logger("bundle-fetcher")
+var log = logging.Logger("bundle-fetcher")
 
 type BundleFetcher struct {
 	path string
@@ -31,7 +31,7 @@ func NewBundleFetcher(basepath string) (*BundleFetcher, error) {
 	return &BundleFetcher{path: path}, nil
 }
 
-func (b *BundleFetcher) Fetch(version Version, release, netw string) (path string, err error) {
+func (b *BundleFetcher) Fetch(version int, release, netw string) (path string, err error) {
 	bundleName := fmt.Sprintf("builtin-actors-%s", netw)
 	bundleFile := fmt.Sprintf("%s.car", bundleName)
 	bundleHash := fmt.Sprintf("%s.sha256", bundleName)
@@ -49,17 +49,17 @@ func (b *BundleFetcher) Fetch(version Version, release, netw string) (path strin
 			return bundleFilePath, nil
 		}
 
-		logb.Warnf("invalid bundle %s: %s; refetching", bundleName, err)
+		log.Warnf("invalid bundle %s: %s; refetching", bundleName, err)
 	}
 
-	logb.Infof("fetching bundle %s", bundleFile)
+	log.Infof("fetching bundle %s", bundleFile)
 	if err := b.fetch(release, bundleBasePath, bundleFile, bundleHash); err != nil {
-		logb.Errorf("error fetching bundle %s: %s", bundleName, err)
+		log.Errorf("error fetching bundle %s: %s", bundleName, err)
 		return "", xerrors.Errorf("error fetching bundle: %w", err)
 	}
 
 	if err := b.check(bundleBasePath, bundleFile, bundleHash); err != nil {
-		logb.Errorf("error checking bundle %s: %s", bundleName, err)
+		log.Errorf("error checking bundle %s: %s", bundleName, err)
 		return "", xerrors.Errorf("error checking bundle: %s", err)
 	}
 
@@ -67,7 +67,7 @@ func (b *BundleFetcher) Fetch(version Version, release, netw string) (path strin
 }
 
 func (b *BundleFetcher) fetchURL(url, path string) error {
-	logb.Infof("fetching URL: %s", url)
+	log.Infof("fetching URL: %s", url)
 
 	resp, err := http.Get(url) //nolint
 	if err != nil {

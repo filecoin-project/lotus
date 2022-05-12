@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/node/bundle"
 	"github.com/filecoin-project/specs-actors/v8/actors/builtin/manifest"
 
 	"github.com/mitchellh/go-homedir"
@@ -122,12 +123,12 @@ func CanonicalName(name string) string {
 }
 
 func FetchAndLoadBundle(ctx context.Context, basePath string, bs blockstore.Blockstore, av Version, rel, netw string) (cid.Cid, error) {
-	fetcher, err := NewBundleFetcher(basePath)
+	fetcher, err := bundle.NewBundleFetcher(basePath)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("error creating fetcher for builtin-actors version %d: %w", av, err)
 	}
 
-	path, err := fetcher.Fetch(av, rel, netw)
+	path, err := fetcher.Fetch(int(av), rel, netw)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("error fetching bundle for builtin-actors version %d: %w", av, err)
 	}
