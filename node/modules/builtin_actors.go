@@ -19,7 +19,7 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
-func LoadBultinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo, bs dtypes.UniversalBlockstore, ds dtypes.MetadataDS) (result dtypes.BuiltinActorsLoaded, err error) {
+func LoadBuiltinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRepo, bs dtypes.UniversalBlockstore, ds dtypes.MetadataDS) (result dtypes.BuiltinActorsLoaded, err error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	// TODO how to properly get the network name?
