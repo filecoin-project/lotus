@@ -19,6 +19,7 @@ var dagstoreCmd = &cli.Command{
 	Usage: "Manage the dagstore on the markets subsystem",
 	Subcommands: []*cli.Command{
 		dagstoreListShardsCmd,
+		dagstoreRegisterShardCmd,
 		dagstoreInitializeShardCmd,
 		dagstoreRecoverShardCmd,
 		dagstoreInitializeAllCmd,
@@ -61,7 +62,7 @@ var dagstoreListShardsCmd = &cli.Command{
 
 var dagstoreRegisterShardCmd = &cli.Command{
 	Name:      "register-shard",
-	ArgsUsage: "[key/pieceCID]",
+	ArgsUsage: "[key]",
 	Usage:     "Register a shard",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
