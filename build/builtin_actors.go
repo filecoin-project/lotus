@@ -1,14 +1,27 @@
 package build
 
 import (
+	"bytes"
+
 	"github.com/filecoin-project/lotus/chain/actors"
+
+	"github.com/BurntSushi/toml"
 )
 
-// TODO a nicer interface would be to embed (and parse) a toml file containing the releases
 var BuiltinActorReleases map[actors.Version]string
 
 func init() {
-	BuiltinActorReleases = map[actors.Version]string{
-		actors.Version8: "b71c2ec785aec23d",
+	BuiltinActorReleases = make(map[actors.Version]string)
+
+	spec := BundleSpec{}
+
+	r := bytes.NewReader(BuiltinActorBundles)
+	_, err := toml.DecodeReader(r, &spec)
+	if err != nil {
+		panic(err)
+	}
+
+	for _, b := range spec.Bundles {
+		BuiltinActorReleases[b.Version] = b.Release
 	}
 }
