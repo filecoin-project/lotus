@@ -18,7 +18,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 )
 
-var log = logging.Logger("bundle-fetcher")
+var log = logging.Logger("bundle")
 
 type BundleFetcher struct {
 	path string

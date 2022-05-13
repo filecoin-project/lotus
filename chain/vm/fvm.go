@@ -3,7 +3,6 @@ package vm
 import (
 	"bytes"
 	"context"
-	"os"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -288,7 +287,7 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		Tracing:        EnableDetailedTracing,
 	}
 
-	if os.Getenv("LOTUS_USE_FVM_CUSTOM_BUNDLE") == "1" {
+	if opts.NetworkVersion < network.Version16 {
 		av, err := actors.VersionForNetwork(opts.NetworkVersion)
 		if err != nil {
 			return nil, xerrors.Errorf("mapping network version to actors version: %w", err)

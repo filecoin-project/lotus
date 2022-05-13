@@ -30,6 +30,12 @@ func LoadBuiltinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 	}
 
 	for av, rel := range build.BuiltinActorReleases {
+		// if it is prior to v8 and not mainnet, then we don't really have a bundle
+		if av < actors.Version8 && netw != "mainnet" {
+			log.Warnf("no builtin-actors bundle for %s/v%d", netw, av)
+			continue
+		}
+
 		// first check to see if we know this release
 		key := dstore.NewKey(fmt.Sprintf("/builtin-actors/v%d/%s", av, rel))
 

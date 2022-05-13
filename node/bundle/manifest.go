@@ -68,6 +68,12 @@ func FetchAndLoadBundles(ctx context.Context, bs blockstore.Blockstore, bar map[
 	}
 
 	for av, rel := range bar {
+		// if it is prior to v8 and not mainnet, then we don't really have a bundle
+		if av < actors.Version8 && netw != "mainnet" {
+			log.Warnf("no builtin-actors bundle for %s/v%d", netw, av)
+			continue
+		}
+
 		if _, err := FetchAndLoadBundle(ctx, path, bs, av, rel, netw); err != nil {
 			return err
 		}
