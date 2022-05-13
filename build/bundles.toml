@@ -1,3 +1,7 @@
 [[bundles]]
 version = 8
 release = "b71c2ec785aec23d"
+
+[[bundles]]
+version = 7
+release = "8df1101fc15b616b"
