@@ -495,7 +495,7 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 		NetworkVersion: nv,
 		BaseFee:        big.Zero(),
 	}
-	vm, err := vm.NewLegacyVM(ctx, &vmopt)
+	vm, err := vm.NewVM(ctx, &vmopt)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewLegacyVM: %w", err)
 	}
@@ -578,23 +578,6 @@ func MakeGenesisBlock(ctx context.Context, j journal.Journal, bs bstore.Blocksto
 	stateroot, err = SetupStorageMiners(ctx, cs, sys, stateroot, template.Miners, template.NetworkVersion)
 	if err != nil {
 		return nil, xerrors.Errorf("setup miners failed: %w", err)
-	}
-
-	if template.NetworkVersion >= network.Version16 {
-		st, err := state.LoadStateTree(cbor.NewCborStore(bs), stateroot)
-		if err != nil {
-			return nil, xerrors.Errorf("error loading state tree")
-		}
-
-		err = patchManifestCodeCids(st, template.NetworkVersion)
-		if err != nil {
-			return nil, xerrors.Errorf("error patching state tree: %w", err)
-		}
-
-		stateroot, err = st.Flush(ctx)
-		if err != nil {
-			return nil, xerrors.Errorf("flush state tree failed: %w", err)
-		}
 	}
 
 	store := adt.WrapStore(ctx, cbor.NewCborStore(bs))

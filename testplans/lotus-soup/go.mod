@@ -9,9 +9,9 @@ require (
 	github.com/drand/drand v1.3.0
 	github.com/filecoin-project/go-address v0.0.6
 	github.com/filecoin-project/go-data-transfer v1.15.1
-	github.com/filecoin-project/go-fil-markets v1.20.2
+	github.com/filecoin-project/go-fil-markets v1.20.1-v16-1
 	github.com/filecoin-project/go-jsonrpc v0.1.5
-	github.com/filecoin-project/go-state-types v0.1.6
+	github.com/filecoin-project/go-state-types v0.1.7
 	github.com/filecoin-project/go-storedcounter v0.1.0
 	github.com/filecoin-project/lotus v0.0.0-00010101000000-000000000000
 	github.com/filecoin-project/specs-actors v0.9.15-0.20220514164640-94e0d5e123bd
@@ -99,7 +99,7 @@ require (
 	github.com/filecoin-project/go-paramfetch v0.0.4 // indirect
 	github.com/filecoin-project/go-statemachine v1.0.2 // indirect
 	github.com/filecoin-project/go-statestore v0.2.0 // indirect
-	github.com/filecoin-project/index-provider v0.6.1 // indirect
+	github.com/filecoin-project/index-provider v0.5.0 // indirect
 	github.com/filecoin-project/specs-actors/v2 v2.3.6 // indirect
 	github.com/filecoin-project/specs-actors/v3 v3.1.2 // indirect
 	github.com/filecoin-project/specs-actors/v4 v4.0.2 // indirect
@@ -108,7 +108,7 @@ require (
 	github.com/filecoin-project/specs-actors/v7 v7.0.1-0.20220511223846-637436c27154 // indirect
 	github.com/filecoin-project/specs-actors/v8 v8.0.0-20220422153930-0afe155bfffa // indirect
 	github.com/filecoin-project/specs-storage v0.4.0 // indirect
-	github.com/filecoin-project/storetheindex v0.4.0 // indirect
+	github.com/filecoin-project/storetheindex v0.3.5 // indirect
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
 	github.com/fsnotify/fsnotify v1.5.1 // indirect

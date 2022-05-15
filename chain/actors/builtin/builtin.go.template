@@ -10,6 +10,7 @@ import (
 	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
 	{{else}}
         builtin{{.}} "github.com/filecoin-project/go-state-types/builtin"
+        builtin{{.}}sa "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
     {{end}}
 {{end}}
 
@@ -62,12 +63,15 @@ func ActorNameByCode(c cid.Cid) string {
 	}
 
 	switch {
-		{{range .versions}}
-		    {{if (le . 7)}}
+	    {{range .versions}}
+            {{if (le . 7)}}
                 case builtin{{.}}.IsBuiltinActor(c):
                 return builtin{{.}}.ActorNameByCode(c)
-		    {{end}}
-		{{end}}
+            {{else}}
+                case builtin{{.}}sa.IsBuiltinActor(c):
+                return builtin{{.}}sa.ActorNameByCode(c)
+            {{end}}
+        {{end}}
 	default:
 		return "<unknown>"
 	}
