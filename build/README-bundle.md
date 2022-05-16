@@ -29,3 +29,13 @@ release = tag # release gag
 path = /path/to/builtin-actors.car
 development = true
 ```
+
+## Local Storage
+
+Bundles downloaded from github will be stored in
+`$LOTUS_PATH/builtin-actors/vXXX/YYY/builtin-actors-ZZZ.car``, where
+`XXX` is the actors version, `YYY` is the release tag, and `ZZZ` is
+the network bundle name.
+
+The sha256 sum of the bundle will be stored next to it, in
+`$LOTUS_PATH/builtin-actors/vXXX/YYY/builtin-actors-ZZZ.sha256`
