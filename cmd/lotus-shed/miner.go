@@ -9,17 +9,18 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-bitfield"
-	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
-
-	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-
-	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
-
-	"github.com/docker/go-units"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/crypto"
+	power7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/power"
+	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
+	"github.com/docker/go-units"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/build"
@@ -42,6 +43,7 @@ var minerCmd = &cli.Command{
 		minerCreateCmd,
 		minerFaultsCmd,
 		sendInvalidWindowPoStCmd,
+		generateAndSendConsensusFaultCmd,
 	},
 }
 
@@ -80,7 +82,7 @@ var minerFaultsCmd = &cli.Command{
 			return err
 		}
 
-		faults, err := faultBf.All(miner2.SectorsMax)
+		faults, err := faultBf.All(abi.MaxSectorNumber)
 		if err != nil {
 			return err
 		}
@@ -221,7 +223,7 @@ var minerCreateCmd = &cli.Command{
 			return xerrors.Errorf("getting post proof type: %w", err)
 		}
 
-		params, err := actors.SerializeParams(&power6.CreateMinerParams{
+		params, err := actors.SerializeParams(&power7.CreateMinerParams{
 			Owner:               owner,
 			Worker:              worker,
 			WindowPoStProofType: spt,
@@ -257,7 +259,7 @@ var minerCreateCmd = &cli.Command{
 			return xerrors.Errorf("create miner failed: exit code %d", mw.Receipt.ExitCode)
 		}
 
-		var retval power6.CreateMinerReturn
+		var retval power7.CreateMinerReturn
 		if err := retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return)); err != nil {
 			return err
 		}
@@ -382,8 +384,7 @@ var sendInvalidWindowPoStCmd = &cli.Command{
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("really-do-it") {
-			fmt.Println("Pass --really-do-it to actually execute this action")
-			return nil
+			return xerrors.Errorf("Pass --really-do-it to actually execute this action")
 		}
 
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
@@ -423,26 +424,24 @@ var sendInvalidWindowPoStCmd = &cli.Command{
 			return xerrors.Errorf("getting proof size: %w", err)
 		}
 
-		var partitions []miner.PoStPartition
-		var proofs []proof.PoStProof
+		var partitions []miner8.PoStPartition
 
-		emptyProof := proof.PoStProof{
+		emptyProof := []proof.PoStProof{{
 			PoStProof:  minfo.WindowPoStProofType,
-			ProofBytes: make([]byte, 0, proofSize)}
+			ProofBytes: make([]byte, proofSize)}}
 
 		for _, partition := range partitionIndices {
-			newPartition := miner.PoStPartition{
+			newPartition := miner8.PoStPartition{
 				Index:   uint64(partition),
 				Skipped: bitfield.New(),
 			}
 			partitions = append(partitions, newPartition)
-			proofs = append(proofs, emptyProof)
 		}
 
-		params := miner.SubmitWindowedPoStParams{
+		params := miner8.SubmitWindowedPoStParams{
 			Deadline:         deadline.Index,
 			Partitions:       partitions,
-			Proofs:           proofs,
+			Proofs:           emptyProof,
 			ChainCommitEpoch: deadline.Challenge,
 			ChainCommitRand:  checkRand,
 		}
@@ -456,7 +455,108 @@ var sendInvalidWindowPoStCmd = &cli.Command{
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			From:   minfo.Worker,
 			To:     maddr,
-			Method: miner.Methods.SubmitWindowedPoSt,
+			Method: builtin.MethodsMiner.SubmitWindowedPoSt,
+			Value:  big.Zero(),
+			Params: sp,
+		}, nil)
+		if err != nil {
+			return xerrors.Errorf("mpool push: %w", err)
+		}
+
+		fmt.Println("Message CID:", smsg.Cid())
+
+		return nil
+	},
+}
+
+var generateAndSendConsensusFaultCmd = &cli.Command{
+	Name:        "generate-and-send-consensus-fault",
+	Usage:       "Provided a block CID mined by the miner, will create another block at the same height, and send both block headers to generate a consensus fault.",
+	Description: `Note: This is meant for testing purposes and should NOT be used on mainnet or you will be slashed`,
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "Actually send transaction performing the action",
+			Value: false,
+		},
+		&cli.StringFlag{
+			Name:  "actor",
+			Usage: "TODO",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Bool("really-do-it") {
+			return xerrors.Errorf("Pass --really-do-it to actually execute this action")
+		}
+
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("expected 1 arg (blockCID)")
+		}
+
+		blockCid, err := cid.Parse(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+
+		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		maddr, err := address.NewFromString(cctx.String("actor"))
+		if err != nil {
+			return xerrors.Errorf("getting actor address: %w", err)
+		}
+
+		minfo, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("getting miner info: %w", err)
+		}
+
+		blockHeader, err := api.ChainGetBlock(ctx, blockCid)
+
+		blockHeaderCopy := *blockHeader
+		blockHeaderCopy.ForkSignaling = blockHeader.ForkSignaling + 1
+
+		signingBytes, err := blockHeaderCopy.SigningBytes()
+		if err != nil {
+			return xerrors.Errorf("getting bytes to sign second block: %w", err)
+		}
+
+		sig, err := api.WalletSign(ctx, minfo.Worker, signingBytes)
+		if err != nil {
+			return xerrors.Errorf("signing second block: %w", err)
+		}
+		blockHeaderCopy.BlockSig = sig
+
+		buf1 := new(bytes.Buffer)
+		err = blockHeader.MarshalCBOR(buf1)
+		if err != nil {
+			return xerrors.Errorf("marshalling block header 1: %w", err)
+		}
+		buf2 := new(bytes.Buffer)
+		err = blockHeaderCopy.MarshalCBOR(buf2)
+		if err != nil {
+			return xerrors.Errorf("marshalling block header 2: %w", err)
+		}
+
+		params := miner8.ReportConsensusFaultParams{
+			BlockHeader1: buf1.Bytes(),
+			BlockHeader2: buf2.Bytes(),
+		}
+
+		sp, err := actors.SerializeParams(&params)
+		if err != nil {
+			return xerrors.Errorf("serializing params: %w", err)
+		}
+
+		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+			From:   minfo.Worker,
+			To:     maddr,
+			Method: builtin.MethodsMiner.ReportConsensusFault,
 			Value:  big.Zero(),
 			Params: sp,
 		}, nil)
