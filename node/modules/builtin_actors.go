@@ -120,7 +120,7 @@ func LoadBuiltinActorsTesting(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtype
 
 	for av, bd := range build.BuiltinActorReleases {
 		if bd.Path != "" {
-			// we need the appopriate bundle for tests; it should live next to the main bundle, with the
+			// we need the appropriate bundle for tests; it should live next to the main bundle, with the
 			// appropriate network name
 			path := filepath.Join(filepath.Dir(bd.Path), fmt.Sprintf("builtin-actors-%s.car", netw))
 			if _, err := bundle.LoadBundle(ctx, bs, path, av); err != nil {
