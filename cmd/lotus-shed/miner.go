@@ -370,12 +370,16 @@ var sendInvalidWindowPoStCmd = &cli.Command{
 			Usage: "Actually send transaction performing the action",
 			Value: false,
 		},
+		&cli.Int64SliceFlag{
+			Name:     "partitions",
+			Usage:    "list of partitions to compact sectors in",
+			Required: true,
+		},
 		&cli.StringFlag{
 			Name:  "actor",
 			Usage: "TODO",
 		},
 	},
-	ArgsUsage: "",
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("really-do-it") {
 			fmt.Println("Pass --really-do-it to actually execute this action")
@@ -402,10 +406,10 @@ var sendInvalidWindowPoStCmd = &cli.Command{
 
 		deadline, err := api.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
 
-		//buf := new(bytes.Buffer)
-		//if err := maddr.MarshalCBOR(buf); err != nil {
-		//	return xerrors.Errorf("failed to marshal address to cbor: %w", err)
-		//}
+		partitionIndices := cctx.Int64Slice("partitions")
+		if len(partitionIndices) <= 0 {
+			return fmt.Errorf("must include at least one partition to compact")
+		}
 
 		chainHead, err := api.ChainHead(ctx)
 		if err != nil {
@@ -419,15 +423,26 @@ var sendInvalidWindowPoStCmd = &cli.Command{
 			return xerrors.Errorf("getting proof size: %w", err)
 		}
 
-		params := miner.SubmitWindowedPoStParams{
-			Deadline: deadline.Index,
-			Partitions: []miner.PoStPartition{{
-				Index:   0,
+		var partitions []miner.PoStPartition
+		var proofs []proof.PoStProof
+
+		emptyProof := proof.PoStProof{
+			PoStProof:  minfo.WindowPoStProofType,
+			ProofBytes: make([]byte, 0, proofSize)}
+
+		for _, partition := range partitionIndices {
+			newPartition := miner.PoStPartition{
+				Index:   uint64(partition),
 				Skipped: bitfield.New(),
-			}},
-			Proofs: []proof.PoStProof{{
-				PoStProof:  minfo.WindowPoStProofType,
-				ProofBytes: make([]byte, 0, proofSize)}},
+			}
+			partitions = append(partitions, newPartition)
+			proofs = append(proofs, emptyProof)
+		}
+
+		params := miner.SubmitWindowedPoStParams{
+			Deadline:         deadline.Index,
+			Partitions:       partitions,
+			Proofs:           proofs,
 			ChainCommitEpoch: deadline.Challenge,
 			ChainCommitRand:  checkRand,
 		}
@@ -437,6 +452,7 @@ var sendInvalidWindowPoStCmd = &cli.Command{
 			return xerrors.Errorf("serializing params: %w", err)
 		}
 
+		fmt.Printf("submitting bad PoST for %d paritions\n", len(partitionIndices))
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			From:   minfo.Worker,
 			To:     maddr,
