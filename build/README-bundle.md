@@ -43,5 +43,5 @@ The sha256 sum of the bundle will be stored next to it, in
 On startup, if a bundle is recorded as loaded the manifest CID will be
 checked for presence in the blockstore.  If the manifest is missing,
 then the bundle will be reloaded from the local file (if it exists) or
-referched from github.  The sha256 sum is always checked before
+refetched from github.  The sha256 sum is always checked before
 loading the bundle.
