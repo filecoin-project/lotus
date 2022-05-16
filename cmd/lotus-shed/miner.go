@@ -9,6 +9,10 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/filecoin-project/go-bitfield"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
@@ -37,6 +41,7 @@ var minerCmd = &cli.Command{
 		minerUnpackInfoCmd,
 		minerCreateCmd,
 		minerFaultsCmd,
+		sendInvalidWindowPoStCmd,
 	},
 }
 
@@ -352,5 +357,99 @@ var minerUnpackInfoCmd = &cli.Command{
 				}
 			}
 		}
+	},
+}
+
+var sendInvalidWindowPoStCmd = &cli.Command{
+	Name:        "send-invalid-windowed-post",
+	Usage:       "Sends an invalid windowed post for a specific deadline",
+	Description: `Note: This is meant for testing purposes and should NOT be used on mainnet or you will be slashed`,
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "Actually send transaction performing the action",
+			Value: false,
+		},
+		&cli.StringFlag{
+			Name:  "actor",
+			Usage: "TODO",
+		},
+	},
+	ArgsUsage: "",
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Bool("really-do-it") {
+			fmt.Println("Pass --really-do-it to actually execute this action")
+			return nil
+		}
+
+		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		maddr, err := address.NewFromString(cctx.String("actor"))
+		if err != nil {
+			return err
+		}
+
+		minfo, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		deadline, err := api.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
+
+		//buf := new(bytes.Buffer)
+		//if err := maddr.MarshalCBOR(buf); err != nil {
+		//	return xerrors.Errorf("failed to marshal address to cbor: %w", err)
+		//}
+
+		chainHead, err := api.ChainHead(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting chain head: %w", err)
+		}
+
+		checkRand, err := api.StateGetRandomnessFromTickets(ctx, crypto.DomainSeparationTag_PoStChainCommit, deadline.Challenge, nil, chainHead.Key())
+
+		proofSize, err := minfo.WindowPoStProofType.ProofSize()
+		if err != nil {
+			return xerrors.Errorf("getting proof size: %w", err)
+		}
+
+		params := miner.SubmitWindowedPoStParams{
+			Deadline: deadline.Index,
+			Partitions: []miner.PoStPartition{{
+				Index:   0,
+				Skipped: bitfield.New(),
+			}},
+			Proofs: []proof.PoStProof{{
+				PoStProof:  minfo.WindowPoStProofType,
+				ProofBytes: make([]byte, 0, proofSize)}},
+			ChainCommitEpoch: deadline.Challenge,
+			ChainCommitRand:  checkRand,
+		}
+
+		sp, err := actors.SerializeParams(&params)
+		if err != nil {
+			return xerrors.Errorf("serializing params: %w", err)
+		}
+
+		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+			From:   minfo.Worker,
+			To:     maddr,
+			Method: miner.Methods.SubmitWindowedPoSt,
+			Value:  big.Zero(),
+			Params: sp,
+		}, nil)
+		if err != nil {
+			return xerrors.Errorf("mpool push: %w", err)
+		}
+
+		fmt.Println("Message CID:", smsg.Cid())
+
+		return nil
 	},
 }
