@@ -16,7 +16,7 @@ If you don't want to fetch the bundle from github, you can specify an explicit p
 ```toml
 [[bundles]]
 version = X   # actors version
-release = tag # release gag
+release = tag # release tag
 path = /path/to/builtin-actors.car
 ```
 
