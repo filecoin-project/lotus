@@ -28,6 +28,10 @@ func FetchAndLoadBundle(ctx context.Context, basePath string, bs blockstore.Bloc
 		return cid.Undef, xerrors.Errorf("error fetching bundle for builtin-actors version %d: %w", av, err)
 	}
 
+	return LoadBundle(ctx, bs, path, av)
+}
+
+func LoadBundle(ctx context.Context, bs blockstore.Blockstore, path string, av actors.Version) (cid.Cid, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("error opening bundle for builtin-actors vresion %d: %w", av, err)
@@ -52,7 +56,7 @@ func FetchAndLoadBundle(ctx context.Context, basePath string, bs blockstore.Bloc
 }
 
 // utility for blanket loading outside DI
-func FetchAndLoadBundles(ctx context.Context, bs blockstore.Blockstore, bar map[actors.Version]string) error {
+func FetchAndLoadBundles(ctx context.Context, bs blockstore.Blockstore, bar map[actors.Version]build.Bundle) error {
 	netw := build.NetworkBundle
 	if netw == "" {
 		netw = "mainnet"
@@ -67,9 +71,15 @@ func FetchAndLoadBundles(ctx context.Context, bs blockstore.Blockstore, bar map[
 		}
 	}
 
-	for av, rel := range bar {
-		if _, err := FetchAndLoadBundle(ctx, path, bs, av, rel, netw); err != nil {
-			return err
+	for av, bd := range bar {
+		if bd.Path != "" {
+			if _, err := LoadBundle(ctx, bs, bd.Path, av); err != nil {
+				return err
+			}
+		} else {
+			if _, err := FetchAndLoadBundle(ctx, path, bs, av, bd.Release, netw); err != nil {
+				return err
+			}
 		}
 	}
 
