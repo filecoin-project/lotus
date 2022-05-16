@@ -2,6 +2,7 @@ package modules
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"go.uber.org/fx"
@@ -69,6 +70,11 @@ func LoadBuiltinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 		mfCid, err := bundle.FetchAndLoadBundle(ctx, r.Path(), bs, av, rel, netw)
 		if err != nil {
 			return result, err
+		}
+
+		if rel == "dev" || strings.HasPrefix(rel, "dev.") {
+			// don't store the release key so that we always load development bundles
+			continue
 		}
 
 		// add the release key with the manifest to avoid reloading it in next restart.
