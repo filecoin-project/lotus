@@ -2152,7 +2152,7 @@ var sectorsCompactPartitionsCmd = &cli.Command{
 			partitions.Set(uint64(partition))
 		}
 
-		params := miner5.CompactPartitionsParams{
+		params := miner.CompactPartitionsParams{
 			Deadline:   deadline,
 			Partitions: partitions,
 		}
@@ -2165,7 +2165,7 @@ var sectorsCompactPartitionsCmd = &cli.Command{
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			From:   minfo.Worker,
 			To:     maddr,
-			Method: miner.Methods.CompactPartitions,
+			Method: builtin.MethodsMiner.CompactPartitions,
 			Value:  big.Zero(),
 			Params: sp,
 		}, nil)
