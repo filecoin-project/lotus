@@ -66,7 +66,7 @@ func LoadBuiltinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 			return result, xerrors.Errorf("error loading %s from datastore: %w", key, err)
 		}
 
-		// we haven't recorded it in the daatastore, so we need to load it
+		// we haven't recorded it in the datastore, so we need to load it
 		var mfCid cid.Cid
 		if bd.Path != "" {
 			// this is a local bundle, load it directly from the filessystem
