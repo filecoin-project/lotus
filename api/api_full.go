@@ -919,20 +919,6 @@ type MinerPower struct {
 	HasMinPower bool
 }
 
-type MinerInfo struct {
-	Owner                      address.Address   // Must be an ID-address.
-	Worker                     address.Address   // Must be an ID-address.
-	NewWorker                  address.Address   // Must be an ID-address.
-	ControlAddresses           []address.Address // Must be an ID-addresses.
-	WorkerChangeEpoch          abi.ChainEpoch
-	PeerId                     *peer.ID
-	Multiaddrs                 []abi.Multiaddrs
-	WindowPoStProofType        abi.RegisteredPoStProof
-	SectorSize                 abi.SectorSize
-	WindowPoStPartitionSectors uint64
-	ConsensusFaultElapsed      abi.ChainEpoch
-}
-
 type QueryOffer struct {
 	Err string
 

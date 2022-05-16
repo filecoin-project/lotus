@@ -25,17 +25,19 @@ var manifestCids map[Version]cid.Cid = map[Version]cid.Cid{
 var manifests map[Version]*manifest.Manifest
 var actorMeta map[cid.Cid]actorEntry
 
-const AccountKey = "account"
-const CronKey = "cron"
-const InitKey = "init"
-const MarketKey = "storagemarket"
-const MinerKey = "storageminer"
-const MultisigKey = "multisig"
-const PaychKey = "paymentchannel"
-const PowerKey = "storagepower"
-const RewardKey = "reward"
-const SystemKey = "system"
-const VerifregKey = "verifiedregistry"
+const (
+	AccountKey  = "account"
+	CronKey     = "cron"
+	InitKey     = "init"
+	MarketKey   = "storagemarket"
+	MinerKey    = "storageminer"
+	MultisigKey = "multisig"
+	PaychKey    = "paymentchannel"
+	PowerKey    = "storagepower"
+	RewardKey   = "reward"
+	SystemKey   = "system"
+	VerifregKey = "verifiedregistry"
+)
 
 var (
 	manifestMx sync.RWMutex
