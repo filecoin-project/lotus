@@ -40,6 +40,8 @@ build/paramfetch.sh
 /bundle
 /darwin
 /linux
+*.snap
+build/builtin-actors
 
 *-fuzz.zip
 /chain/types/work_msg/

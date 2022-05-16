@@ -10,39 +10,36 @@ import (
 
 var errMarkSetClosed = errors.New("markset closed")
 
-// MarkSet is a utility to keep track of seen CID, and later query for them.
-//
-// * If the expected dataset is large, it can be backed by a datastore (e.g. bbolt).
-// * If a probabilistic result is acceptable, it can be backed by a bloom filter
+// MarkSet is an interface for tracking CIDs during chain and object walks
 type MarkSet interface {
+	ObjectVisitor
 	Mark(cid.Cid) error
+	MarkMany([]cid.Cid) error
 	Has(cid.Cid) (bool, error)
 	Close() error
-	SetConcurrent()
-}
 
-type MarkSetVisitor interface {
-	MarkSet
-	ObjectVisitor
+	// BeginCriticalSection ensures that the markset is persisted to disk for recovery in case
+	// of abnormal termination during the critical section span.
+	BeginCriticalSection() error
+	// EndCriticalSection ends the critical section span.
+	EndCriticalSection()
 }
 
 type MarkSetEnv interface {
-	// Create creates a new markset within the environment.
-	// name is a unique name for this markset, mapped to the filesystem in disk-backed environments
+	// New creates a new markset within the environment.
+	// name is a unique name for this markset, mapped to the filesystem for on-disk persistence.
 	// sizeHint is a hint about the expected size of the markset
-	Create(name string, sizeHint int64) (MarkSet, error)
-	// CreateVisitor is like Create, but returns a wider interface that supports atomic visits.
-	// It may not be supported by some markset types (e.g. bloom).
-	CreateVisitor(name string, sizeHint int64) (MarkSetVisitor, error)
-	// SupportsVisitor returns true if the marksets created by this environment support the visitor interface.
-	SupportsVisitor() bool
+	New(name string, sizeHint int64) (MarkSet, error)
+	// Recover recovers an existing markset persisted on-disk.
+	Recover(name string) (MarkSet, error)
+	// Close closes the markset
 	Close() error
 }
 
 func OpenMarkSetEnv(path string, mtype string) (MarkSetEnv, error) {
 	switch mtype {
 	case "map":
-		return NewMapMarkSetEnv()
+		return NewMapMarkSetEnv(path)
 	case "badger":
 		return NewBadgerMarkSetEnv(path)
 	default:

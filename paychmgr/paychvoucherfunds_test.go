@@ -23,6 +23,7 @@ import (
 // insufficient funds, then adding funds to the channel, then adding the
 // voucher again
 func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
+	//stm: @TOKEN_PAYCH_WAIT_READY_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -46,7 +47,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 
 	// Send create message for a channel with value 10
 	createAmt := big.NewInt(10)
-	_, createMsgCid, err := mgr.GetPaych(ctx, from, to, createAmt)
+	_, createMsgCid, err := mgr.GetPaych(ctx, from, to, createAmt, onChainReserve)
 	require.NoError(t, err)
 
 	// Send create channel response
@@ -82,7 +83,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 	require.Equal(t, res.Shortfall, excessAmt)
 
 	// Add funds so as to cover the voucher shortfall
-	_, addFundsMsgCid, err := mgr.GetPaych(ctx, from, to, excessAmt)
+	_, addFundsMsgCid, err := mgr.GetPaych(ctx, from, to, excessAmt, onChainReserve)
 	require.NoError(t, err)
 
 	// Trigger add funds confirmation

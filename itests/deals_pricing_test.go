@@ -1,3 +1,4 @@
+//stm: #integration
 package itests
 
 import (
@@ -12,6 +13,12 @@ import (
 )
 
 func TestQuotePriceForUnsealedRetrieval(t *testing.T) {
+	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
+	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
+	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
+
+	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
 	var (
 		ctx       = context.Background()
 		blocktime = 50 * time.Millisecond
@@ -43,10 +50,12 @@ func TestQuotePriceForUnsealedRetrieval(t *testing.T) {
 	_, res2, _ := dh.MakeOnlineDeal(ctx, kit.MakeFullDealParams{Rseed: 6})
 	require.Equal(t, res1.Root, res2.Root)
 
+	//stm: @CLIENT_STORAGE_DEALS_GET_001
 	// Retrieval
 	dealInfo, err := client.ClientGetDealInfo(ctx, *deal1)
 	require.NoError(t, err)
 
+	//stm: @CLIENT_RETRIEVAL_FIND_001
 	// fetch quote -> zero for unsealed price since unsealed file already exists.
 	offers, err := client.ClientFindData(ctx, res1.Root, &dealInfo.PieceCID)
 	require.NoError(t, err)
@@ -56,11 +65,13 @@ func TestQuotePriceForUnsealedRetrieval(t *testing.T) {
 	require.Equal(t, dealInfo.Size*uint64(ppb), offers[0].MinPrice.Uint64())
 
 	// remove ONLY one unsealed file
+	//stm: @STORAGE_LIST_001, @MINER_SECTOR_LIST_001
 	ss, err := miner.StorageList(context.Background())
 	require.NoError(t, err)
 	_, err = miner.SectorsList(ctx)
 	require.NoError(t, err)
 
+	//stm: @STORAGE_DROP_SECTOR_001, @STORAGE_LIST_001
 iLoop:
 	for storeID, sd := range ss {
 		for _, sector := range sd {
@@ -70,6 +81,7 @@ iLoop:
 		}
 	}
 
+	//stm: @CLIENT_RETRIEVAL_FIND_001
 	// get retrieval quote -> zero for unsealed price as unsealed file exists.
 	offers, err = client.ClientFindData(ctx, res1.Root, &dealInfo.PieceCID)
 	require.NoError(t, err)
@@ -89,6 +101,7 @@ iLoop:
 		}
 	}
 
+	//stm: @CLIENT_RETRIEVAL_FIND_001
 	// fetch quote -> non-zero for unseal price as we no more unsealed files.
 	offers, err = client.ClientFindData(ctx, res1.Root, &dealInfo.PieceCID)
 	require.NoError(t, err)
@@ -100,6 +113,10 @@ iLoop:
 }
 
 func TestZeroPricePerByteRetrieval(t *testing.T) {
+	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
+	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
+	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 	if testing.Short() {
 		t.Skip("skipping test in short mode")
 	}

@@ -3,6 +3,7 @@ package mock
 import (
 	"context"
 	"fmt"
+	"math/rand"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -24,15 +25,7 @@ func Address(i uint64) address.Address {
 }
 
 func MkMessage(from, to address.Address, nonce uint64, w *wallet.LocalWallet) *types.SignedMessage {
-	msg := &types.Message{
-		To:         to,
-		From:       from,
-		Value:      types.NewInt(1),
-		Nonce:      nonce,
-		GasLimit:   1000000,
-		GasFeeCap:  types.NewInt(100),
-		GasPremium: types.NewInt(1),
-	}
+	msg := UnsignedMessage(from, to, nonce)
 
 	sig, err := w.WalletSign(context.TODO(), from, msg.Cid().Bytes(), api.MsgMeta{})
 	if err != nil {
@@ -95,4 +88,36 @@ func TipSet(blks ...*types.BlockHeader) *types.TipSet {
 		panic(err)
 	}
 	return ts
+}
+
+// Generates count new addresses using the provided seed, and returns them
+func RandomActorAddresses(seed int64, count int) ([]*address.Address, error) {
+	randAddrs := make([]*address.Address, count)
+	source := rand.New(rand.NewSource(seed))
+	for i := 0; i < count; i++ {
+		bytes := make([]byte, 32)
+		_, err := source.Read(bytes)
+		if err != nil {
+			return nil, err
+		}
+
+		addr, err := address.NewActorAddress(bytes)
+		if err != nil {
+			return nil, err
+		}
+		randAddrs[i] = &addr
+	}
+	return randAddrs, nil
+}
+
+func UnsignedMessage(from, to address.Address, nonce uint64) *types.Message {
+	return &types.Message{
+		To:         to,
+		From:       from,
+		Value:      types.NewInt(1),
+		Nonce:      nonce,
+		GasLimit:   1000000,
+		GasFeeCap:  types.NewInt(100),
+		GasPremium: types.NewInt(1),
+	}
 }

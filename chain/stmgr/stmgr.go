@@ -4,6 +4,10 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+
+	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
+
 	"github.com/filecoin-project/lotus/chain/rand"
 
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -18,18 +22,18 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 
-	// Used for genesis.
-	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
-	"github.com/filecoin-project/specs-actors/v3/actors/migration/nv10"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+
+	// Used for genesis.
+	msig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
 )
 
 const LookbackNoLimit = api.LookbackNoLimit
@@ -53,7 +57,7 @@ type versionSpec struct {
 type migration struct {
 	upgrade       MigrationFunc
 	preMigrations []PreMigration
-	cache         *nv10.MemMigrationCache
+	cache         *nv15.MemMigrationCache
 }
 
 type Executor interface {
@@ -83,7 +87,7 @@ type StateManager struct {
 	compWait            map[string]chan struct{}
 	stlk                sync.Mutex
 	genesisMsigLk       sync.Mutex
-	newVM               func(context.Context, *vm.VMOpts) (*vm.VM, error)
+	newVM               func(context.Context, *vm.VMOpts) (vm.Interface, error)
 	Syscalls            vm.SyscallBuilder
 	preIgnitionVesting  []msig0.State
 	postIgnitionVesting []msig0.State
@@ -121,7 +125,7 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 				migration := &migration{
 					upgrade:       upgrade.Migration,
 					preMigrations: upgrade.PreMigrations,
-					cache:         nv10.NewMemMigrationCache(),
+					cache:         nv15.NewMemMigrationCache(),
 				}
 				stateMigrations[upgrade.Height] = migration
 			}
@@ -317,10 +321,52 @@ func (sm *StateManager) LookupID(ctx context.Context, addr address.Address, ts *
 	return state.LookupID(addr)
 }
 
+func (sm *StateManager) LookupRobustAddress(ctx context.Context, idAddr address.Address, ts *types.TipSet) (address.Address, error) {
+	idAddrDecoded, err := address.IDFromAddress(idAddr)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to decode provided address as id addr: %w", err)
+	}
+
+	cst := cbor.NewCborStore(sm.cs.StateBlockstore())
+	wrapStore := adt.WrapStore(ctx, cst)
+
+	stateTree, err := state.LoadStateTree(cst, sm.parentState(ts))
+	if err != nil {
+		return address.Undef, xerrors.Errorf("load state tree: %w", err)
+	}
+
+	initActor, err := stateTree.GetActor(_init.Address)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("load init actor: %w", err)
+	}
+
+	initState, err := _init.Load(wrapStore, initActor)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("load init state: %w", err)
+	}
+	robustAddr := address.Undef
+
+	err = initState.ForEachActor(func(id abi.ActorID, addr address.Address) error {
+		if uint64(id) == idAddrDecoded {
+			robustAddr = addr
+			// Hacky way to early return from ForEach
+			return xerrors.New("robust address found")
+		}
+		return nil
+	})
+	if robustAddr == address.Undef {
+		if err == nil {
+			return address.Undef, xerrors.Errorf("Address %s not found", idAddr.String())
+		}
+		return address.Undef, xerrors.Errorf("finding address: %w", err)
+	}
+	return robustAddr, nil
+}
+
 func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) error {
 	tschain := []*types.TipSet{ts}
 	for ts.Height() != 0 {
-		next, err := sm.cs.LoadTipSet(ts.Parents())
+		next, err := sm.cs.LoadTipSet(ctx, ts.Parents())
 		if err != nil {
 			return err
 		}
@@ -346,17 +392,17 @@ func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) err
 	return nil
 }
 
-func (sm *StateManager) SetVMConstructor(nvm func(context.Context, *vm.VMOpts) (*vm.VM, error)) {
+func (sm *StateManager) SetVMConstructor(nvm func(context.Context, *vm.VMOpts) (vm.Interface, error)) {
 	sm.newVM = nvm
 }
 
-func (sm *StateManager) VMConstructor() func(context.Context, *vm.VMOpts) (*vm.VM, error) {
-	return func(ctx context.Context, opts *vm.VMOpts) (*vm.VM, error) {
+func (sm *StateManager) VMConstructor() func(context.Context, *vm.VMOpts) (vm.Interface, error) {
+	return func(ctx context.Context, opts *vm.VMOpts) (vm.Interface, error) {
 		return sm.newVM(ctx, opts)
 	}
 }
 
-func (sm *StateManager) GetNtwkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
+func (sm *StateManager) GetNetworkVersion(ctx context.Context, height abi.ChainEpoch) network.Version {
 	// The epochs here are the _last_ epoch for every version, or -1 if the
 	// version is disabled.
 	for _, spec := range sm.networkVersions {
@@ -372,36 +418,24 @@ func (sm *StateManager) VMSys() vm.SyscallBuilder {
 }
 
 func (sm *StateManager) GetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
-	pts, err := sm.ChainStore().GetTipSetFromKey(tsk)
+	pts, err := sm.ChainStore().GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
-	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon)
-	rnv := sm.GetNtwkVersion(ctx, randEpoch)
+	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon, sm.GetNetworkVersion)
 
-	if rnv >= network.Version14 {
-		return r.GetBeaconRandomnessV3(ctx, personalization, randEpoch, entropy)
-	} else if rnv == network.Version13 {
-		return r.GetBeaconRandomnessV2(ctx, personalization, randEpoch, entropy)
-	}
-
-	return r.GetBeaconRandomnessV1(ctx, personalization, randEpoch, entropy)
+	return r.GetBeaconRandomness(ctx, personalization, randEpoch, entropy)
 
 }
 
 func (sm *StateManager) GetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
-	pts, err := sm.ChainStore().LoadTipSet(tsk)
+	pts, err := sm.ChainStore().LoadTipSet(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset key: %w", err)
 	}
 
-	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon)
-	rnv := sm.GetNtwkVersion(ctx, randEpoch)
+	r := rand.NewStateRand(sm.ChainStore(), pts.Cids(), sm.beacon, sm.GetNetworkVersion)
 
-	if rnv >= network.Version13 {
-		return r.GetChainRandomnessV2(ctx, personalization, randEpoch, entropy)
-	}
-
-	return r.GetChainRandomnessV1(ctx, personalization, randEpoch, entropy)
+	return r.GetChainRandomness(ctx, personalization, randEpoch, entropy)
 }

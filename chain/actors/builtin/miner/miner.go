@@ -23,6 +23,7 @@ import (
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
+	miner7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
 
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 
@@ -35,6 +36,8 @@ import (
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
 
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+
+	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 )
 
 func init() {
@@ -63,9 +66,13 @@ func init() {
 		return load6(store, root)
 	})
 
+	builtin.RegisterActorState(builtin7.StorageMinerActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load7(store, root)
+	})
+
 }
 
-var Methods = builtin6.MethodsMiner
+var Methods = builtin7.MethodsMiner
 
 // Unchanged between v0, v2, v3, v4, and v5 actors
 var WPoStProvingPeriod = miner0.WPoStProvingPeriod
@@ -102,6 +109,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	case builtin6.StorageMinerActorCodeID:
 		return load6(store, act.Head)
 
+	case builtin7.StorageMinerActorCodeID:
+		return load7(store, act.Head)
+
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
@@ -127,6 +137,9 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 	case actors.Version6:
 		return make6(store)
 
+	case actors.Version7:
+		return make7(store)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -151,6 +164,9 @@ func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 
 	case actors.Version6:
 		return builtin6.StorageMinerActorCodeID, nil
+
+	case actors.Version7:
+		return builtin7.StorageMinerActorCodeID, nil
 
 	}
 
@@ -251,6 +267,7 @@ type SectorOnChainInfo struct {
 	InitialPledge         abi.TokenAmount
 	ExpectedDayReward     abi.TokenAmount
 	ExpectedStoragePledge abi.TokenAmount
+	SectorKeyCID          *cid.Cid
 }
 
 type SectorPreCommitInfo = miner0.SectorPreCommitInfo
@@ -266,6 +283,7 @@ type SectorPreCommitOnChainInfo struct {
 type PoStPartition = miner0.PoStPartition
 type RecoveryDeclaration = miner0.RecoveryDeclaration
 type FaultDeclaration = miner0.FaultDeclaration
+type ReplicaUpdate = miner7.ReplicaUpdate
 
 // Params
 type DeclareFaultsParams = miner0.DeclareFaultsParams
@@ -274,6 +292,7 @@ type SubmitWindowedPoStParams = miner0.SubmitWindowedPoStParams
 type ProveCommitSectorParams = miner0.ProveCommitSectorParams
 type DisputeWindowedPoStParams = miner3.DisputeWindowedPoStParams
 type ProveCommitAggregateParams = miner5.ProveCommitAggregateParams
+type ProveReplicaUpdatesParams = miner7.ProveReplicaUpdatesParams
 
 func PreferredSealProofTypeFromWindowPoStType(nver network.Version, proof abi.RegisteredPoStProof) (abi.RegisteredSealProof, error) {
 	// We added support for the new proofs in network version 7, and removed support for the old

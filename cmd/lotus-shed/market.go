@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
@@ -198,7 +199,7 @@ var marketExportDatastoreCmd = &cli.Command{
 		}
 
 		// Write the backup to the file
-		if err := bds.Backup(out); err != nil {
+		if err := bds.Backup(context.Background(), out); err != nil {
 			if cerr := out.Close(); cerr != nil {
 				log.Errorw("error closing backup file while handling backup error", "closeErr", cerr, "backupErr", err)
 			}
@@ -215,7 +216,7 @@ var marketExportDatastoreCmd = &cli.Command{
 }
 
 func exportPrefix(prefix string, ds datastore.Batching, backupDs datastore.Batching) error {
-	q, err := ds.Query(dsq.Query{
+	q, err := ds.Query(context.Background(), dsq.Query{
 		Prefix: prefix,
 	})
 	if err != nil {
@@ -225,7 +226,7 @@ func exportPrefix(prefix string, ds datastore.Batching, backupDs datastore.Batch
 
 	for res := range q.Next() {
 		fmt.Println("Exporting key " + res.Key)
-		err := backupDs.Put(datastore.NewKey(res.Key), res.Value)
+		err := backupDs.Put(context.Background(), datastore.NewKey(res.Key), res.Value)
 		if err != nil {
 			return xerrors.Errorf("putting %s to backup datastore: %w", res.Key, err)
 		}

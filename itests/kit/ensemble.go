@@ -7,16 +7,27 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net"
+	"net/http"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/namespace"
+	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
+	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -32,10 +43,14 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
+	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/markets/idxprov"
+	idxprov_test "github.com/filecoin-project/lotus/markets/idxprov/idxprov_test"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
@@ -44,13 +59,6 @@ import (
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/mockstorage"
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
-	"github.com/ipfs/go-datastore"
-	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
-	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
-	"github.com/stretchr/testify/require"
 )
 
 func init() {
@@ -109,10 +117,12 @@ type Ensemble struct {
 	inactive struct {
 		fullnodes []*TestFullNode
 		miners    []*TestMiner
+		workers   []*TestWorker
 	}
 	active struct {
 		fullnodes []*TestFullNode
 		miners    []*TestMiner
+		workers   []*TestWorker
 		bms       map[*TestMiner]*BlockMiner
 	}
 	genesis struct {
@@ -149,6 +159,11 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 	}
 
 	return n
+}
+
+// Mocknet returns the underlying mocknet.
+func (n *Ensemble) Mocknet() mocknet.Mocknet {
+	return n.mn
 }
 
 // FullNode enrolls a new full node.
@@ -268,6 +283,32 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 	return n
 }
 
+// Worker enrolls a new worker, using the provided full node for chain
+// interactions.
+func (n *Ensemble) Worker(minerNode *TestMiner, worker *TestWorker, opts ...NodeOpt) *Ensemble {
+	require.NotNil(n.t, minerNode, "miner node required when instantiating worker")
+
+	options := DefaultNodeOpts
+	for _, o := range opts {
+		err := o(&options)
+		require.NoError(n.t, err)
+	}
+
+	rl, err := net.Listen("tcp", "127.0.0.1:")
+	require.NoError(n.t, err)
+
+	*worker = TestWorker{
+		t:              n.t,
+		MinerNode:      minerNode,
+		RemoteListener: rl,
+		options:        options,
+	}
+
+	n.inactive.workers = append(n.inactive.workers, worker)
+
+	return n
+}
+
 // Start starts all enrolled nodes.
 func (n *Ensemble) Start() *Ensemble {
 	ctx := context.Background()
@@ -277,7 +318,7 @@ func (n *Ensemble) Start() *Ensemble {
 		// We haven't been bootstrapped yet, we need to generate genesis and
 		// create the networking backbone.
 		gtempl = n.generateGenesis()
-		n.mn = mocknet.New(ctx)
+		n.mn = mocknet.New()
 	}
 
 	// ---------------------
@@ -437,6 +478,7 @@ func (n *Ensemble) Start() *Ensemble {
 		// require.NoError(n.t, err)
 
 		r := repo.NewMemory(nil)
+		n.t.Cleanup(r.Cleanup)
 
 		lr, err := r.Lock(repo.StorageMiner)
 		require.NoError(n.t, err)
@@ -487,7 +529,7 @@ func (n *Ensemble) Start() *Ensemble {
 		ds, err := lr.Datastore(context.TODO(), "/metadata")
 		require.NoError(n.t, err)
 
-		err = ds.Put(datastore.NewKey("miner-address"), m.ActorAddr.Bytes())
+		err = ds.Put(ctx, datastore.NewKey("miner-address"), m.ActorAddr.Bytes())
 		require.NoError(n.t, err)
 
 		nic := storedcounter.New(ds, datastore.NewKey(modules.StorageCounterDSPrefix))
@@ -497,6 +539,16 @@ func (n *Ensemble) Start() *Ensemble {
 		}
 		_, err = nic.Next()
 		require.NoError(n.t, err)
+
+		// using real proofs, therefore need real sectors.
+		if !n.bootstrapped && !n.options.mockProofs {
+			psd := m.PresealDir
+			err := lr.SetStorage(func(sc *stores.StorageConfig) {
+				sc.StoragePaths = append(sc.StoragePaths, stores.LocalPath{Path: psd})
+			})
+
+			require.NoError(n.t, err)
+		}
 
 		err = lr.Close()
 		require.NoError(n.t, err)
@@ -517,6 +569,8 @@ func (n *Ensemble) Start() *Ensemble {
 			require.NoError(n.t, err2)
 		}
 
+		noLocal := m.options.minerNoLocalSealing
+
 		var mineBlock = make(chan lotusminer.MineReq)
 		opts := []node.Option{
 			node.StorageMiner(&m.StorageMiner, cfg.Subsystems),
@@ -531,14 +585,28 @@ func (n *Ensemble) Start() *Ensemble {
 
 			// disable resource filtering so that local worker gets assigned tasks
 			// regardless of system pressure.
-			node.Override(new(sectorstorage.SealerConfig), func() sectorstorage.SealerConfig {
+			node.Override(new(sectorstorage.Config), func() sectorstorage.Config {
 				scfg := config.DefaultStorageMiner()
+
+				if noLocal {
+					scfg.Storage.AllowAddPiece = false
+					scfg.Storage.AllowPreCommit1 = false
+					scfg.Storage.AllowPreCommit2 = false
+					scfg.Storage.AllowCommit = false
+				}
+
 				scfg.Storage.ResourceFiltering = sectorstorage.ResourceFilteringDisabled
-				return scfg.Storage
+				return scfg.StorageManager()
 			}),
 
 			// upgrades
 			node.Override(new(stmgr.UpgradeSchedule), n.options.upgradeSchedule),
+		}
+
+		if m.options.subsystems.Has(SMarkets) {
+			opts = append(opts,
+				node.Override(new(idxprov.MeshCreator), idxprov_test.NewNoopMeshCreator),
+			)
 		}
 
 		// append any node builder options.
@@ -578,13 +646,9 @@ func (n *Ensemble) Start() *Ensemble {
 		stop, err := node.New(ctx, opts...)
 		require.NoError(n.t, err)
 
-		// using real proofs, therefore need real sectors.
-		if !n.bootstrapped && !n.options.mockProofs {
-			err := m.StorageAddLocal(ctx, m.PresealDir)
-			require.NoError(n.t, err)
-		}
-
 		n.t.Cleanup(func() { _ = stop(context.Background()) })
+
+		m.BaseAPI = m.StorageMiner
 
 		// Are we hitting this node through its RPC?
 		if m.options.rpc {
@@ -610,6 +674,65 @@ func (n *Ensemble) Start() *Ensemble {
 	// If we are here, we have processed all inactive miners and moved them
 	// to active, so clear the slice.
 	n.inactive.miners = n.inactive.miners[:0]
+
+	// ---------------------
+	//  WORKERS
+	// ---------------------
+
+	// Create all inactive workers.
+	for i, m := range n.inactive.workers {
+		r := repo.NewMemory(nil)
+
+		lr, err := r.Lock(repo.Worker)
+		require.NoError(n.t, err)
+
+		ds, err := lr.Datastore(context.Background(), "/metadata")
+		require.NoError(n.t, err)
+
+		addr := m.RemoteListener.Addr().String()
+
+		localStore, err := stores.NewLocal(ctx, lr, m.MinerNode, []string{"http://" + addr + "/remote"})
+		require.NoError(n.t, err)
+
+		auth := http.Header(nil)
+
+		remote := stores.NewRemote(localStore, m.MinerNode, auth, 20, &stores.DefaultPartialFileHandler{})
+		store := m.options.workerStorageOpt(remote)
+
+		fh := &stores.FetchHandler{Local: localStore, PfHandler: &stores.DefaultPartialFileHandler{}}
+		m.FetchHandler = fh.ServeHTTP
+
+		wsts := statestore.New(namespace.Wrap(ds, modules.WorkerCallsPrefix))
+
+		workerApi := &sealworker.Worker{
+			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
+				TaskTypes: m.options.workerTasks,
+				NoSwap:    false,
+			}, store, localStore, m.MinerNode, m.MinerNode, wsts),
+			LocalStore: localStore,
+			Storage:    lr,
+		}
+
+		m.Worker = workerApi
+
+		require.True(n.t, m.options.rpc)
+
+		withRPC := workerRpc(n.t, m)
+		n.inactive.workers[i] = withRPC
+
+		err = m.MinerNode.WorkerConnect(ctx, "http://"+addr+"/rpc/v0")
+		require.NoError(n.t, err)
+
+		n.active.workers = append(n.active.workers, m)
+	}
+
+	// If we are here, we have processed all inactive workers and moved them
+	// to active, so clear the slice.
+	n.inactive.workers = n.inactive.workers[:0]
+
+	// ---------------------
+	//  MISC
+	// ---------------------
 
 	// Link all the nodes.
 	err = n.mn.LinkAll()
@@ -673,6 +796,43 @@ func (n *Ensemble) Connect(from api.Net, to ...api.Net) *Ensemble {
 		require.NoError(n.t, err)
 	}
 	return n
+}
+
+func (n *Ensemble) BeginMiningMustPost(blocktime time.Duration, miners ...*TestMiner) []*BlockMiner {
+	ctx := context.Background()
+
+	// wait one second to make sure that nodes are connected and have handshaken.
+	// TODO make this deterministic by listening to identify events on the
+	//  libp2p eventbus instead (or something else).
+	time.Sleep(1 * time.Second)
+
+	var bms []*BlockMiner
+	if len(miners) == 0 {
+		// no miners have been provided explicitly, instantiate block miners
+		// for all active miners that aren't still mining.
+		for _, m := range n.active.miners {
+			if _, ok := n.active.bms[m]; ok {
+				continue // skip, already have a block miner
+			}
+			miners = append(miners, m)
+		}
+	}
+
+	if len(miners) > 1 {
+		n.t.Fatalf("Only one active miner for MustPost, but have %d", len(miners))
+	}
+
+	for _, m := range miners {
+		bm := NewBlockMiner(n.t, m)
+		bm.MineBlocksMustPost(ctx, blocktime)
+		n.t.Cleanup(bm.Stop)
+
+		bms = append(bms, bm)
+
+		n.active.bms[m] = bm
+	}
+
+	return bms
 }
 
 // BeginMining kicks off mining for the specified miners. If nil or 0-length,

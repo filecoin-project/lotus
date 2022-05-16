@@ -196,7 +196,7 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{172}); err != nil {
+	if _, err := w.Write([]byte{174}); err != nil {
 		return err
 	}
 
@@ -343,6 +343,38 @@ func (t *ChannelInfo) MarshalCBOR(w io.Writer) error {
 	}
 
 	if err := t.Amount.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.AvailableAmount (big.Int) (struct)
+	if len("AvailableAmount") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"AvailableAmount\" was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("AvailableAmount"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("AvailableAmount")); err != nil {
+		return err
+	}
+
+	if err := t.AvailableAmount.MarshalCBOR(w); err != nil {
+		return err
+	}
+
+	// t.PendingAvailableAmount (big.Int) (struct)
+	if len("PendingAvailableAmount") > cbg.MaxLength {
+		return xerrors.Errorf("Value in field \"PendingAvailableAmount\" was too long")
+	}
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("PendingAvailableAmount"))); err != nil {
+		return err
+	}
+	if _, err := io.WriteString(w, string("PendingAvailableAmount")); err != nil {
+		return err
+	}
+
+	if err := t.PendingAvailableAmount.MarshalCBOR(w); err != nil {
 		return err
 	}
 
@@ -575,6 +607,26 @@ func (t *ChannelInfo) UnmarshalCBOR(r io.Reader) error {
 
 				if err := t.Amount.UnmarshalCBOR(br); err != nil {
 					return xerrors.Errorf("unmarshaling t.Amount: %w", err)
+				}
+
+			}
+			// t.AvailableAmount (big.Int) (struct)
+		case "AvailableAmount":
+
+			{
+
+				if err := t.AvailableAmount.UnmarshalCBOR(br); err != nil {
+					return xerrors.Errorf("unmarshaling t.AvailableAmount: %w", err)
+				}
+
+			}
+			// t.PendingAvailableAmount (big.Int) (struct)
+		case "PendingAvailableAmount":
+
+			{
+
+				if err := t.PendingAvailableAmount.UnmarshalCBOR(br); err != nil {
+					return xerrors.Errorf("unmarshaling t.PendingAvailableAmount: %w", err)
 				}
 
 			}

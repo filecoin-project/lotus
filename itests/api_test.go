@@ -1,3 +1,4 @@
+//stm: #integration
 package itests
 
 import (
@@ -19,6 +20,12 @@ import (
 )
 
 func TestAPI(t *testing.T) {
+	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
+	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
+	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
+
+	//stm: @CHAIN_STATE_MINER_INFO_001
 	t.Run("direct", func(t *testing.T) {
 		runAPITest(t)
 	})
@@ -116,11 +123,13 @@ func (ts *apiSuite) testSearchMsg(t *testing.T) {
 	sm, err := full.MpoolPushMessage(ctx, msg, nil)
 	require.NoError(t, err)
 
+	//stm: @CHAIN_STATE_WAIT_MSG_001
 	res, err := full.StateWaitMsg(ctx, sm.Cid(), 1, lapi.LookbackNoLimit, true)
 	require.NoError(t, err)
 
 	require.Equal(t, exitcode.Ok, res.Receipt.ExitCode, "message not successful")
 
+	//stm: @CHAIN_STATE_SEARCH_MSG_001
 	searchRes, err := full.StateSearchMsg(ctx, types.EmptyTSK, sm.Cid(), lapi.LookbackNoLimit, true)
 	require.NoError(t, err)
 	require.NotNil(t, searchRes)

@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.13.2-dev
+   1.15.3-dev
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -63,6 +63,7 @@ OPTIONS:
    --import-chain value      on first run, load chain from given file or url and validate
    --import-snapshot value   import chain state from a given chain export file or url
    --halt-after-import       halt the process after importing chain from file (default: false)
+   --lite                    start lotus in lite mode (default: false)
    --pprof value             specify name of file for writing cpu profile to
    --profile value           specify type of node
    --manage-fdlimit          manage open file limit (default: true)
@@ -71,7 +72,6 @@ OPTIONS:
    --restore value           restore from backup file
    --restore-config value    config file to use when restoring from backup
    --help, -h                show help (default: false)
-   --version, -v             print the version (default: false)
    
 ```
 
@@ -98,11 +98,11 @@ USAGE:
 
 DESCRIPTION:
    The backup command writes a copy of node metadata under the specified path
-
-Online backups:
-For security reasons, the daemon must be have LOTUS_BACKUP_BASE_PATH env var set
-to a path where backup files are supposed to be saved, and the path specified in
-this command must be within this base path
+   
+   Online backups:
+   For security reasons, the daemon must be have LOTUS_BACKUP_BASE_PATH env var set
+   to a path where backup files are supposed to be saved, and the path specified in
+   this command must be within this base path
 
 OPTIONS:
    --offline   create backup without the node running (default: false)
@@ -124,8 +124,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -213,13 +212,12 @@ COMMANDS:
    set-default  Set default wallet address
    sign         sign a message
    verify       verify the signature of a message
-   delete       Delete an account from the wallet
+   delete       Soft delete an address from the wallet - hard deletion needed for permanent removal
    market       Interact with market balances
    help, h      Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -348,7 +346,7 @@ OPTIONS:
 ### lotus wallet delete
 ```
 NAME:
-   lotus wallet delete - Delete an account from the wallet
+   lotus wallet delete - Soft delete an address from the wallet - hard deletion needed for permanent removal
 
 USAGE:
    lotus wallet delete [command options] <address> 
@@ -372,8 +370,7 @@ COMMANDS:
    help, h   Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -425,6 +422,7 @@ COMMANDS:
      stat    Print information about a locally stored file (piece size, etc)
    RETRIEVAL:
      find              Find data in the network
+     retrieval-ask     Get a miner's retrieval ask
      retrieve          Retrieve data from network
      cat               Show data from network
      ls                List object links
@@ -447,8 +445,7 @@ COMMANDS:
      cancel-transfer   Force cancel a data transfer
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -535,6 +532,23 @@ OPTIONS:
    
 ```
 
+### lotus client retrieval-ask
+```
+NAME:
+   lotus client retrieval-ask - Get a miner's retrieval ask
+
+USAGE:
+   lotus client retrieval-ask [command options] [minerAddress] [data CID]
+
+CATEGORY:
+   RETRIEVAL
+
+OPTIONS:
+   --size value  data size in bytes (default: 0)
+   --help, -h    show help (default: false)
+   
+```
+
 ### lotus client retrieve
 ```
 NAME:
@@ -548,47 +562,47 @@ CATEGORY:
 
 DESCRIPTION:
    Retrieve data from the Filecoin network.
-
-The retrieve command will attempt to find a provider make a retrieval deal with
-them. In case a provider can't be found, it can be specified with the --provider
-flag.
-
-By default the data will be interpreted as DAG-PB UnixFSv1 File. Alternatively
-a CAR file containing the raw IPLD graph can be exported by setting the --car
-flag.
-
-Partial Retrieval:
-
-The --data-selector flag can be used to specify a sub-graph to fetch. The
-selector can be specified as either IPLD datamodel text-path selector, or IPLD
-json selector.
-
-In case of unixfs retrieval, the selector must point at a single root node, and
-match the entire graph under that node.
-
-In case of CAR retrieval, the selector must have one common "sub-root" node.
-
-Examples:
-
-- Retrieve a file by CID
-  $ lotus client retrieve Qm... my-file.txt
-
-- Retrieve a file by CID from f0123
-  $ lotus client retrieve --provider f0123 Qm... my-file.txt
-
-- Retrieve a first file from a specified directory
-  $ lotus client retrieve --data-selector /Links/0/Hash Qm... my-file.txt
-
+   
+   The retrieve command will attempt to find a provider make a retrieval deal with
+   them. In case a provider can't be found, it can be specified with the --provider
+   flag.
+   
+   By default the data will be interpreted as DAG-PB UnixFSv1 File. Alternatively
+   a CAR file containing the raw IPLD graph can be exported by setting the --car
+   flag.
+   
+   Partial Retrieval:
+   
+   The --data-selector flag can be used to specify a sub-graph to fetch. The
+   selector can be specified as either IPLD datamodel text-path selector, or IPLD
+   json selector.
+   
+   In case of unixfs retrieval, the selector must point at a single root node, and
+   match the entire graph under that node.
+   
+   In case of CAR retrieval, the selector must have one common "sub-root" node.
+   
+   Examples:
+   
+   - Retrieve a file by CID
+     $ lotus client retrieve Qm... my-file.txt
+   
+   - Retrieve a file by CID from f0123
+     $ lotus client retrieve --provider f0123 Qm... my-file.txt
+   
+   - Retrieve a first file from a specified directory
+     $ lotus client retrieve --data-selector /Links/0/Hash Qm... my-file.txt
 
 OPTIONS:
-   --car                                                  export to a car file instead of a regular file (default: false)
-   --data-selector value, --data-selector-selector value  IPLD datamodel text-path selector, or IPLD json selector
-   --from value                                           address to send transactions from
-   --provider value, --miner value                        provider to use for retrieval, if not present it'll use local discovery
-   --maxPrice value                                       maximum price the client is willing to consider (default: 0 FIL)
-   --pieceCid value                                       require data to be retrieved from a specific Piece CID
-   --allow-local                                          (default: false)
-   --help, -h                                             show help (default: false)
+   --car                                                   Export to a car file instead of a regular file (default: false)
+   --data-selector value, --datamodel-path-selector value  IPLD datamodel text-path selector, or IPLD json selector
+   --car-export-merkle-proof                               (requires --data-selector and --car) Export data-selector merkle proof (default: false)
+   --from value                                            address to send transactions from
+   --provider value, --miner value                         provider to use for retrieval, if not present it'll use local discovery
+   --maxPrice value                                        maximum price the client is willing to consider (default: 0 FIL)
+   --pieceCid value                                        require data to be retrieved from a specific Piece CID
+   --allow-local                                           (default: false)
+   --help, -h                                              show help (default: false)
    
 ```
 
@@ -690,13 +704,13 @@ CATEGORY:
 
 DESCRIPTION:
    Make a deal with a miner.
-dataCid comes from running 'lotus client import'.
-miner is the address of the miner you wish to make a deal with.
-price is measured in FIL/Epoch. Miners usually don't accept a bid
-lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
-with 'lotus client query-ask <miner address>'.
-duration is how long the miner should store the data for, in blocks.
-The minimum value is 518400 (6 months).
+   dataCid comes from running 'lotus client import'.
+   miner is the address of the miner you wish to make a deal with.
+   price is measured in FIL/Epoch. Miners usually don't accept a bid
+   lower than their advertised ask (which is in FIL/GiB/Epoch). You can check a miners listed price
+   with 'lotus client query-ask <miner address>'.
+   duration is how long the miner should store the data for, in blocks.
+   The minimum value is 518400 (6 months).
 
 OPTIONS:
    --manual-piece-cid value     manually specify piece commitment for data (dataCid must be to a car file)
@@ -756,7 +770,7 @@ NAME:
    lotus client get-deal - Print detailed deal information
 
 USAGE:
-   lotus client get-deal [command options] [arguments...]
+   lotus client get-deal [command options] [proposalCID]
 
 CATEGORY:
    STORAGE
@@ -780,6 +794,7 @@ CATEGORY:
 OPTIONS:
    --by-ping              sort by ping (default: false)
    --output-format value  Either 'text' or 'csv' (default: "text")
+   --protocols            Output supported deal protocols (default: false)
    --help, -h             show help (default: false)
    
 ```
@@ -957,7 +972,6 @@ COMMANDS:
 OPTIONS:
    --confidence value  number of block confirmations to wait for (default: 5)
    --help, -h          show help (default: false)
-   --version, -v       print the version (default: false)
    
 ```
 
@@ -1215,16 +1229,16 @@ USAGE:
    lotus filplus command [command options] [arguments...]
 
 COMMANDS:
-   grant-datacap         give allowance to the specified verified client address
-   list-notaries         list all notaries
-   list-clients          list all verified clients
-   check-client-datacap  check verified client remaining bytes
-   check-notary-datacap  check a notary's remaining bytes
-   help, h               Shows a list of commands or help for one command
+   grant-datacap                  give allowance to the specified verified client address
+   list-notaries                  list all notaries
+   list-clients                   list all verified clients
+   check-client-datacap           check verified client remaining bytes
+   check-notary-datacap           check a notary's remaining bytes
+   sign-remove-data-cap-proposal  allows a notary to sign a Remove Data Cap Proposal
+   help, h                        Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1294,6 +1308,20 @@ OPTIONS:
    
 ```
 
+### lotus filplus sign-remove-data-cap-proposal
+```
+NAME:
+   lotus filplus sign-remove-data-cap-proposal - allows a notary to sign a Remove Data Cap Proposal
+
+USAGE:
+   lotus filplus sign-remove-data-cap-proposal [command options] [arguments...]
+
+OPTIONS:
+   --id value  specify the RemoveDataCapProposal ID (will look up on chain if unspecified) (default: 0)
+   --help, -h  show help (default: false)
+   
+```
+
 ## lotus paych
 ```
 NAME:
@@ -1313,8 +1341,7 @@ COMMANDS:
    help, h            Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1328,6 +1355,7 @@ USAGE:
 
 OPTIONS:
    --restart-retrievals  restart stalled retrieval deals on this payment channel (default: true)
+   --reserve             mark funds as reserved (default: false)
    --help, -h            show help (default: false)
    
 ```
@@ -1363,8 +1391,7 @@ COMMANDS:
    help, h         Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1515,8 +1542,7 @@ COMMANDS:
    help, h       Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1568,8 +1594,7 @@ COMMANDS:
    help, h   Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -1624,7 +1649,7 @@ NAME:
    lotus mpool replace - replace a message in the mempool
 
 USAGE:
-   lotus mpool replace [command options] <from nonce> | <message-cid>
+   lotus mpool replace [command options] <from> <nonce> | <message-cid>
 
 OPTIONS:
    --gas-feecap value   gas feecap for new message (burn and pay to miner, attoFIL/GasUnit)
@@ -1701,35 +1726,34 @@ USAGE:
    lotus state command [command options] [arguments...]
 
 COMMANDS:
-   power                   Query network or miner power
-   sectors                 Query the sector set of a miner
-   active-sectors          Query the active sector set of a miner
-   list-actors             list all actors in the network
-   list-miners             list all miners in the network
-   circulating-supply      Get the exact current circulating supply of Filecoin
-   sector                  Get miner sector info
-   get-actor               Print actor information
-   lookup                  Find corresponding ID address
-   replay                  Replay a particular message
-   sector-size             Look up miners sector size
-   read-state              View a json representation of an actors state
-   list-messages           list messages on chain matching given criteria
-   compute-state           Perform state computations
-   call                    Invoke a method on an actor locally
-   get-deal                View on-chain deal info
-   wait-msg                Wait for a message to appear on chain
-   search-msg              Search to see whether a message has appeared on chain
-   miner-info              Retrieve miner information
-   market                  Inspect the storage market actor
-   exec-trace              Get the execution trace of a given message
-   network-version         Returns the network version
-   miner-proving-deadline  Retrieve information about a given miner's proving deadline
-   help, h                 Shows a list of commands or help for one command
+   power                       Query network or miner power
+   sectors                     Query the sector set of a miner
+   active-sectors              Query the active sector set of a miner
+   list-actors                 list all actors in the network
+   list-miners                 list all miners in the network
+   circulating-supply          Get the exact current circulating supply of Filecoin
+   sector, sector-info         Get miner sector info
+   get-actor                   Print actor information
+   lookup                      Find corresponding ID address
+   replay                      Replay a particular message
+   sector-size                 Look up miners sector size
+   read-state                  View a json representation of an actors state
+   list-messages               list messages on chain matching given criteria
+   compute-state               Perform state computations
+   call                        Invoke a method on an actor locally
+   get-deal                    View on-chain deal info
+   wait-msg, wait-message      Wait for a message to appear on chain
+   search-msg, search-message  Search to see whether a message has appeared on chain
+   miner-info                  Retrieve miner information
+   market                      Inspect the storage market actor
+   exec-trace                  Get the execution trace of a given message
+   network-version             Returns the network version
+   miner-proving-deadline      Retrieve information about a given miner's proving deadline
+   help, h                     Shows a list of commands or help for one command
 
 OPTIONS:
    --tipset value  specify tipset to call method on (pass comma separated array of cids)
    --help, -h      show help (default: false)
-   --version, -v   print the version (default: false)
    
 ```
 
@@ -1813,17 +1837,8 @@ OPTIONS:
    
 ```
 
-### lotus state sector
+#### lotus state sector, sector-info
 ```
-NAME:
-   lotus state sector - Get miner sector info
-
-USAGE:
-   lotus state sector [command options] [minerAddress] [sectorNumber]
-
-OPTIONS:
-   --help, -h  show help (default: false)
-   
 ```
 
 ### lotus state get-actor
@@ -1961,31 +1976,12 @@ OPTIONS:
    
 ```
 
-### lotus state wait-msg
+#### lotus state wait-msg, wait-message
 ```
-NAME:
-   lotus state wait-msg - Wait for a message to appear on chain
-
-USAGE:
-   lotus state wait-msg [command options] [messageCid]
-
-OPTIONS:
-   --timeout value  (default: "10m")
-   --help, -h       show help (default: false)
-   
 ```
 
-### lotus state search-msg
+#### lotus state search-msg, search-message
 ```
-NAME:
-   lotus state search-msg - Search to see whether a message has appeared on chain
-
-USAGE:
-   lotus state search-msg [command options] [messageCid]
-
-OPTIONS:
-   --help, -h  show help (default: false)
-   
 ```
 
 ### lotus state miner-info
@@ -2014,8 +2010,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2080,28 +2075,27 @@ USAGE:
    lotus chain command [command options] [arguments...]
 
 COMMANDS:
-   head             Print chain head
-   getblock         Get a block and print its details
-   read-obj         Read the raw bytes of an object
-   delete-obj       Delete an object from the chain blockstore
-   stat-obj         Collect size and ipld link counts for objs
-   getmessage       Get and print a message by its cid
-   sethead          manually set the local nodes head tipset (Caution: normally only used for recovery)
-   list, love       View a segment of the chain
-   get              Get chain DAG node by path
-   bisect           bisect chain for an event
-   export           export chain to a car file
-   slash-consensus  Report consensus fault
-   gas-price        Estimate gas prices
-   inspect-usage    Inspect block space usage of a given tipset
-   decode           decode various types
-   encode           encode various types
-   disputer         interact with the window post disputer
-   help, h          Shows a list of commands or help for one command
+   head                              Print chain head
+   get-block, getblock               Get a block and print its details
+   read-obj                          Read the raw bytes of an object
+   delete-obj                        Delete an object from the chain blockstore
+   stat-obj                          Collect size and ipld link counts for objs
+   getmessage, get-message, get-msg  Get and print a message by its cid
+   sethead, set-head                 manually set the local nodes head tipset (Caution: normally only used for recovery)
+   list, love                        View a segment of the chain
+   get                               Get chain DAG node by path
+   bisect                            bisect chain for an event
+   export                            export chain to a car file
+   slash-consensus                   Report consensus fault
+   gas-price                         Estimate gas prices
+   inspect-usage                     Inspect block space usage of a given tipset
+   decode                            decode various types
+   encode                            encode various types
+   disputer                          interact with the window post disputer
+   help, h                           Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2118,18 +2112,8 @@ OPTIONS:
    
 ```
 
-### lotus chain getblock
+#### lotus chain get-block, getblock
 ```
-NAME:
-   lotus chain getblock - Get a block and print its details
-
-USAGE:
-   lotus chain getblock [command options] [blockCid]
-
-OPTIONS:
-   --raw       print just the raw block header (default: false)
-   --help, -h  show help (default: false)
-   
 ```
 
 ### lotus chain read-obj
@@ -2172,10 +2156,9 @@ USAGE:
 
 DESCRIPTION:
    Collect object size and ipld link count for an object.
-
-   When a base is provided it will be walked first, and all links visisted
-   will be ignored when the passed in object is walked.
-
+   
+      When a base is provided it will be walked first, and all links visisted
+      will be ignored when the passed in object is walked.
 
 OPTIONS:
    --base value  ignore links found in this obj
@@ -2183,32 +2166,12 @@ OPTIONS:
    
 ```
 
-### lotus chain getmessage
+##### lotus chain getmessage, get-message, get-msg
 ```
-NAME:
-   lotus chain getmessage - Get and print a message by its cid
-
-USAGE:
-   lotus chain getmessage [command options] [messageCid]
-
-OPTIONS:
-   --help, -h  show help (default: false)
-   
 ```
 
-### lotus chain sethead
+#### lotus chain sethead, set-head
 ```
-NAME:
-   lotus chain sethead - manually set the local nodes head tipset (Caution: normally only used for recovery)
-
-USAGE:
-   lotus chain sethead [command options] [tipsetkey]
-
-OPTIONS:
-   --genesis      reset head to genesis (default: false)
-   --epoch value  reset head to given epoch (default: 0)
-   --help, -h     show help (default: false)
-   
 ```
 
 #### lotus chain list, love
@@ -2225,34 +2188,33 @@ USAGE:
 
 DESCRIPTION:
    Get ipld node under a specified path:
-
-   lotus chain get /ipfs/[cid]/some/path
-
-   Path prefixes:
-   - /ipfs/[cid], /ipld/[cid] - traverse IPLD path
-   - /pstate - traverse from head.ParentStateRoot
-
-   Note:
-   You can use special path elements to traverse through some data structures:
-   - /ipfs/[cid]/@H:elem - get 'elem' from hamt
-   - /ipfs/[cid]/@Hi:123 - get varint elem 123 from hamt
-   - /ipfs/[cid]/@Hu:123 - get uvarint elem 123 from hamt
-   - /ipfs/[cid]/@Ha:t01 - get element under Addr(t01).Bytes
-   - /ipfs/[cid]/@A:10   - get 10th amt element
-   - .../@Ha:t01/@state  - get pretty map-based actor state
-
-   List of --as-type types:
-   - raw
-   - block
-   - message
-   - smessage, signedmessage
-   - actor
-   - amt
-   - hamt-epoch
-   - hamt-address
-   - cronevent
-   - account-state
-
+   
+      lotus chain get /ipfs/[cid]/some/path
+   
+      Path prefixes:
+      - /ipfs/[cid], /ipld/[cid] - traverse IPLD path
+      - /pstate - traverse from head.ParentStateRoot
+   
+      Note:
+      You can use special path elements to traverse through some data structures:
+      - /ipfs/[cid]/@H:elem - get 'elem' from hamt
+      - /ipfs/[cid]/@Hi:123 - get varint elem 123 from hamt
+      - /ipfs/[cid]/@Hu:123 - get uvarint elem 123 from hamt
+      - /ipfs/[cid]/@Ha:t01 - get element under Addr(t01).Bytes
+      - /ipfs/[cid]/@A:10   - get 10th amt element
+      - .../@Ha:t01/@state  - get pretty map-based actor state
+   
+      List of --as-type types:
+      - raw
+      - block
+      - message
+      - smessage, signedmessage
+      - actor
+      - amt
+      - hamt-epoch
+      - hamt-address
+      - cronevent
+      - account-state
 
 OPTIONS:
    --as-type value  specify type to interpret output as
@@ -2272,18 +2234,17 @@ USAGE:
 
 DESCRIPTION:
    Bisect the chain state tree:
-
-   lotus chain bisect [min height] [max height] '1/2/3/state/path' 'shell command' 'args'
-
-   Returns the first tipset in which condition is true
-                  v
-   [start] FFFFFFFTTT [end]
-
-   Example: find height at which deal ID 100 000 appeared
-    - lotus chain bisect 1 32000 '@Ha:t03/1' jq -e '.[2] > 100000'
-
-   For special path elements see 'chain get' help
-
+   
+      lotus chain bisect [min height] [max height] '1/2/3/state/path' 'shell command' 'args'
+   
+      Returns the first tipset in which condition is true
+                     v
+      [start] FFFFFFFTTT [end]
+   
+      Example: find height at which deal ID 100 000 appeared
+       - lotus chain bisect 1 32000 '@Ha:t03/1' jq -e '.[2] > 100000'
+   
+      For special path elements see 'chain get' help
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -2363,8 +2324,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2396,8 +2356,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2434,7 +2393,6 @@ OPTIONS:
    --max-fee value  Spend up to X FIL per DisputeWindowedPoSt message
    --from value     optionally specify the account to send messages from
    --help, -h       show help (default: false)
-   --version, -v    print the version (default: false)
    
 ```
 
@@ -2480,8 +2438,7 @@ COMMANDS:
    help, h    Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2508,23 +2465,22 @@ USAGE:
 
 DESCRIPTION:
    Set the log level for logging systems:
-
-   The system flag can be specified multiple times.
-
-   eg) log set-level --system chain --system chainxchg debug
-
-   Available Levels:
-   debug
-   info
-   warn
-   error
-
-   Environment Variables:
-   GOLOG_LOG_LEVEL - Default log level for all log systems
-   GOLOG_LOG_FMT   - Change output log format (json, nocolor)
-   GOLOG_FILE      - Write logs to file
-   GOLOG_OUTPUT    - Specify whether to output to file, stderr, stdout or a combination, i.e. file+stderr
-
+   
+      The system flag can be specified multiple times.
+   
+      eg) log set-level --system chain --system chainxchg debug
+   
+      Available Levels:
+      debug
+      info
+      warn
+      error
+   
+      Environment Variables:
+      GOLOG_LOG_LEVEL - Default log level for all log systems
+      GOLOG_LOG_FMT   - Change output log format (json, nocolor)
+      GOLOG_FILE      - Write logs to file
+      GOLOG_OUTPUT    - Specify whether to output to file, stderr, stdout or a combination, i.e. file+stderr
 
 OPTIONS:
    --system value  limit to log system
@@ -2588,20 +2544,25 @@ USAGE:
    lotus net command [command options] [arguments...]
 
 COMMANDS:
-   peers         Print peers
-   connect       Connect to a peer
-   listen        List listen addresses
-   id            Get node identity
-   findpeer      Find the addresses of a given peerID
-   scores        Print peers' pubsub scores
-   reachability  Print information about reachability from the internet
-   bandwidth     Print bandwidth usage information
-   block         Manage network connection gating rules
-   help, h       Shows a list of commands or help for one command
+   peers                Print peers
+   ping                 Ping peers
+   connect              Connect to a peer
+   listen               List listen addresses
+   id                   Get node identity
+   find-peer, findpeer  Find the addresses of a given peerID
+   scores               Print peers' pubsub scores
+   reachability         Print information about reachability from the internet
+   bandwidth            Print bandwidth usage information
+   block                Manage network connection gating rules
+   stat                 Report resource usage for a scope
+   limit                Get or set resource limits for a scope
+   protect              Add one or more peer IDs to the list of protected peer connections
+   unprotect            Remove one or more peer IDs from the list of protected peer connections.
+   list-protected       List the peer IDs with protected connection.
+   help, h              Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2617,6 +2578,21 @@ OPTIONS:
    --agent, -a     Print agent name (default: false)
    --extended, -x  Print extended peer information in json (default: false)
    --help, -h      show help (default: false)
+   
+```
+
+### lotus net ping
+```
+NAME:
+   lotus net ping - Ping peers
+
+USAGE:
+   lotus net ping [command options] [arguments...]
+
+OPTIONS:
+   --count value, -c value     specify the number of times it should ping (default: 10)
+   --interval value, -i value  minimum time between pings (default: 1s)
+   --help, -h                  show help (default: false)
    
 ```
 
@@ -2659,17 +2635,8 @@ OPTIONS:
    
 ```
 
-### lotus net findpeer
+#### lotus net find-peer, findpeer
 ```
-NAME:
-   lotus net findpeer - Find the addresses of a given peerID
-
-USAGE:
-   lotus net findpeer [command options] [peerId]
-
-OPTIONS:
-   --help, -h  show help (default: false)
-   
 ```
 
 ### lotus net scores
@@ -2729,8 +2696,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2749,8 +2715,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2808,8 +2773,7 @@ COMMANDS:
    help, h  Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 
@@ -2865,6 +2829,95 @@ OPTIONS:
    
 ```
 
+### lotus net stat
+```
+NAME:
+   lotus net stat - Report resource usage for a scope
+
+USAGE:
+   lotus net stat [command options] scope
+
+DESCRIPTION:
+   Report resource usage for a scope.
+   
+     The scope can be one of the following:
+     - system        -- reports the system aggregate resource usage.
+     - transient     -- reports the transient resource usage.
+     - svc:<service> -- reports the resource usage of a specific service.
+     - proto:<proto> -- reports the resource usage of a specific protocol.
+     - peer:<peer>   -- reports the resource usage of a specific peer.
+     - all           -- reports the resource usage for all currently active scopes.
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus net limit
+```
+NAME:
+   lotus net limit - Get or set resource limits for a scope
+
+USAGE:
+   lotus net limit [command options] scope [limit]
+
+DESCRIPTION:
+   Get or set resource limits for a scope.
+   
+     The scope can be one of the following:
+     - system        -- reports the system aggregate resource usage.
+     - transient     -- reports the transient resource usage.
+     - svc:<service> -- reports the resource usage of a specific service.
+     - proto:<proto> -- reports the resource usage of a specific protocol.
+     - peer:<peer>   -- reports the resource usage of a specific peer.
+   
+    The limit is json-formatted, with the same structure as the limits file.
+
+OPTIONS:
+   --set       set the limit for a scope (default: false)
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus net protect
+```
+NAME:
+   lotus net protect - Add one or more peer IDs to the list of protected peer connections
+
+USAGE:
+   lotus net protect [command options] <peer-id> [<peer-id>...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus net unprotect
+```
+NAME:
+   lotus net unprotect - Remove one or more peer IDs from the list of protected peer connections.
+
+USAGE:
+   lotus net unprotect [command options] <peer-id> [<peer-id>...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus net list-protected
+```
+NAME:
+   lotus net list-protected - List the peer IDs with protected connection.
+
+USAGE:
+   lotus net list-protected [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
 ## lotus sync
 ```
 NAME:
@@ -2883,8 +2936,7 @@ COMMANDS:
    help, h     Shows a list of commands or help for one command
 
 OPTIONS:
-   --help, -h     show help (default: false)
-   --version, -v  print the version (default: false)
+   --help, -h  show help (default: false)
    
 ```
 

@@ -1,3 +1,5 @@
+//stm: ignore
+//Only tests external library behavior, therefore it should not be annotated
 package drand
 
 import (

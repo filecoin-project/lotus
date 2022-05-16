@@ -49,23 +49,23 @@ AppDir:
     fedora:
       image: appimagecrafters/tests-env:fedora-30
       command: ./AppRun
-      use_host_x: true
+      use_host_x: false
     debian:
       image: appimagecrafters/tests-env:debian-stable
       command: ./AppRun
-      use_host_x: true
+      use_host_x: false
     arch:
       image: appimagecrafters/tests-env:archlinux-latest
       command: ./AppRun
-      use_host_x: true
+      use_host_x: false
     centos:
       image: appimagecrafters/tests-env:centos-7
       command: ./AppRun
-      use_host_x: true
+      use_host_x: false
     ubuntu:
       image: appimagecrafters/tests-env:ubuntu-xenial
       command: ./AppRun
-      use_host_x: true
+      use_host_x: false
 AppImage:
   arch: x86_64
   update-information: guess

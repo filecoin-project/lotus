@@ -17,8 +17,6 @@ import (
 	"time"
 
 	ocprom "contrib.go.opencensus.io/exporter/prometheus"
-	"github.com/cockroachdb/pebble"
-	"github.com/cockroachdb/pebble/bloom"
 	"github.com/ipfs/go-cid"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -46,7 +44,6 @@ import (
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
 	measure "github.com/ipfs/go-ds-measure"
-	pebbleds "github.com/ipfs/go-ds-pebble"
 
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -115,9 +112,6 @@ var importBenchCmd = &cli.Command{
 			Name: "only-import",
 		},
 		&cli.BoolFlag{
-			Name: "use-pebble",
-		},
-		&cli.BoolFlag{
 			Name: "use-native-badger",
 		},
 		&cli.StringFlag{
@@ -178,29 +172,6 @@ var importBenchCmd = &cli.Command{
 		)
 
 		switch {
-		case cctx.Bool("use-pebble"):
-			log.Info("using pebble")
-			cache := 512
-			ds, err = pebbleds.NewDatastore(tdir, &pebble.Options{
-				// Pebble has a single combined cache area and the write
-				// buffers are taken from this too. Assign all available
-				// memory allowance for cache.
-				Cache: pebble.NewCache(int64(cache * 1024 * 1024)),
-				// The size of memory table(as well as the write buffer).
-				// Note, there may have more than two memory tables in the system.
-				// MemTableStopWritesThreshold can be configured to avoid the memory abuse.
-				MemTableSize: cache * 1024 * 1024 / 4,
-				// The default compaction concurrency(1 thread),
-				// Here use all available CPUs for faster compaction.
-				MaxConcurrentCompactions: runtime.NumCPU(),
-				// Per-level options. Options for at least one level must be specified. The
-				// options for the last level are used for all subsequent levels.
-				Levels: []pebble.LevelOptions{
-					{TargetFileSize: 16 * 1024 * 1024, FilterPolicy: bloom.FilterPolicy(10), Compression: pebble.NoCompression},
-				},
-				Logger: log,
-			})
-
 		case cctx.Bool("use-native-badger"):
 			log.Info("using native badger")
 			var opts badgerbs.Options
@@ -333,7 +304,7 @@ var importBenchCmd = &cli.Command{
 				return fmt.Errorf("no CAR file provided for import")
 			}
 
-			head, err = cs.Import(carFile)
+			head, err = cs.Import(cctx.Context, carFile)
 			if err != nil {
 				return err
 			}
@@ -356,7 +327,7 @@ var importBenchCmd = &cli.Command{
 				return xerrors.Errorf("failed to parse head tipset key: %w", err)
 			}
 
-			head, err = cs.LoadTipSet(types.NewTipSetKey(cids...))
+			head, err = cs.LoadTipSet(cctx.Context, types.NewTipSetKey(cids...))
 			if err != nil {
 				return err
 			}
@@ -365,7 +336,7 @@ var importBenchCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			head, err = cs.LoadTipSet(types.NewTipSetKey(cr.Header.Roots...))
+			head, err = cs.LoadTipSet(cctx.Context, types.NewTipSetKey(cr.Header.Roots...))
 			if err != nil {
 				return err
 			}
@@ -382,7 +353,7 @@ var importBenchCmd = &cli.Command{
 			if cids, err = lcli.ParseTipSetString(tsk); err != nil {
 				return xerrors.Errorf("failed to parse genesis tipset key: %w", err)
 			}
-			genesis, err = cs.LoadTipSet(types.NewTipSetKey(cids...))
+			genesis, err = cs.LoadTipSet(cctx.Context, types.NewTipSetKey(cids...))
 		} else {
 			log.Warnf("getting genesis by height; this will be slow; pass in the genesis tipset through --genesis-tipset")
 			// fallback to the slow path of walking the chain.
@@ -393,7 +364,7 @@ var importBenchCmd = &cli.Command{
 			return err
 		}
 
-		if err = cs.SetGenesis(genesis.Blocks()[0]); err != nil {
+		if err = cs.SetGenesis(cctx.Context, genesis.Blocks()[0]); err != nil {
 			return err
 		}
 
@@ -404,10 +375,10 @@ var importBenchCmd = &cli.Command{
 			if cids, err = lcli.ParseTipSetString(tsk); err != nil {
 				return xerrors.Errorf("failed to end genesis tipset key: %w", err)
 			}
-			end, err = cs.LoadTipSet(types.NewTipSetKey(cids...))
+			end, err = cs.LoadTipSet(cctx.Context, types.NewTipSetKey(cids...))
 		} else if h := cctx.Int64("end-height"); h != 0 {
 			log.Infof("getting end tipset at height %d...", h)
-			end, err = cs.GetTipsetByHeight(context.TODO(), abi.ChainEpoch(h), head, true)
+			end, err = cs.GetTipsetByHeight(cctx.Context, abi.ChainEpoch(h), head, true)
 		}
 
 		if err != nil {
@@ -426,7 +397,7 @@ var importBenchCmd = &cli.Command{
 			if cids, err = lcli.ParseTipSetString(tsk); err != nil {
 				return xerrors.Errorf("failed to start genesis tipset key: %w", err)
 			}
-			start, err = cs.LoadTipSet(types.NewTipSetKey(cids...))
+			start, err = cs.LoadTipSet(cctx.Context, types.NewTipSetKey(cids...))
 		} else if h := cctx.Int64("start-height"); h != 0 {
 			log.Infof("getting start tipset at height %d...", h)
 			// lookback from the end tipset (which falls back to head if not supplied).
@@ -439,7 +410,7 @@ var importBenchCmd = &cli.Command{
 
 		if start != nil {
 			startEpoch = start.Height()
-			if err := cs.ForceHeadSilent(context.Background(), start); err != nil {
+			if err := cs.ForceHeadSilent(cctx.Context, start); err != nil {
 				// if err := cs.SetHead(start); err != nil {
 				return err
 			}
@@ -450,7 +421,7 @@ var importBenchCmd = &cli.Command{
 			if h := ts.Height(); h%100 == 0 {
 				log.Infof("walking back the chain; loaded tipset at height %d...", h)
 			}
-			next, err := cs.LoadTipSet(ts.Parents())
+			next, err := cs.LoadTipSet(cctx.Context, ts.Parents())
 			if err != nil {
 				return err
 			}

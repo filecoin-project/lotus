@@ -6,7 +6,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/go-statemachine"
+	statemachine "github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
@@ -130,15 +130,21 @@ func (m *Sealing) handleRemoving(ctx statemachine.Context, sector SectorInfo) er
 func (m *Sealing) handleProvingSector(ctx statemachine.Context, sector SectorInfo) error {
 	// TODO: track sector health / expiration
 
-	cfg, err := m.getConfig()
-	if err != nil {
-		return xerrors.Errorf("getting sealing config: %w", err)
-	}
+	m.inputLk.Lock()
+	// in case we revert into Proving without going into Available
+	delete(m.available, m.minerSectorID(sector.SectorNumber))
+	m.inputLk.Unlock()
 
-	if err := m.sealer.ReleaseUnsealed(ctx.Context(), m.minerSector(sector.SectorType, sector.SectorNumber), sector.keepUnsealedRanges(true, cfg.AlwaysKeepUnsealedCopy)); err != nil {
-		log.Error(err)
-	}
+	// TODO: Watch termination
+	// TODO: Auto-extend if set
 
+	return nil
+}
+
+func (m *Sealing) handleAvailableSector(ctx statemachine.Context, sector SectorInfo) error {
+	m.inputLk.Lock()
+	m.available[m.minerSectorID(sector.SectorNumber)] = struct{}{}
+	m.inputLk.Unlock()
 	// TODO: Watch termination
 	// TODO: Auto-extend if set
 

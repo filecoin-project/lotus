@@ -124,7 +124,9 @@ func runSender(ctx context.Context, t *testkit.TestEnvironment, clients []*testk
 
 	time.Sleep(20 * time.Second)
 
-	channel, err := cl.FullApi.PaychGet(ctx, cl.Wallet.Address, recv.WalletAddr, channelAmt)
+	channel, err := cl.FullApi.PaychGet(ctx, cl.Wallet.Address, recv.WalletAddr, channelAmt, api.PaychGetOpts{
+		OffChain: false,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to create payment channel: %w", err)
 	}

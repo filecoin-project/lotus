@@ -141,7 +141,7 @@ func (hs *Service) SayHello(ctx context.Context, pid peer.ID) error {
 		return err
 	}
 
-	gen, err := hs.cs.GetGenesis()
+	gen, err := hs.cs.GetGenesis(ctx)
 	if err != nil {
 		return err
 	}

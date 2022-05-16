@@ -78,7 +78,7 @@ func RetrieveData(t *TestEnvironment, ctx context.Context, client api.FullNode, 
 
 func ExtractCarData(ctx context.Context, rdata []byte, rpath string) []byte {
 	bserv := dstest.Bserv()
-	ch, err := car.LoadCar(bserv.Blockstore(), bytes.NewReader(rdata))
+	ch, err := car.LoadCar(ctx, bserv.Blockstore(), bytes.NewReader(rdata))
 	if err != nil {
 		panic(err)
 	}

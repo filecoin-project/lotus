@@ -19,7 +19,13 @@ import (
 func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface{}, uint64, error) {
 	next, processed, err := m.plan(events, user.(*SectorInfo))
 	if err != nil || next == nil {
-		return nil, processed, err
+		l := Log{
+			Timestamp: uint64(time.Now().Unix()),
+			Message:   fmt.Sprintf("state machine error: %s", err),
+			Kind:      fmt.Sprintf("error;%T", err),
+		}
+		user.(*SectorInfo).logAppend(l)
+		return nil, processed, nil
 	}
 
 	return func(ctx statemachine.Context, si SectorInfo) error {
@@ -105,6 +111,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	Committing: planCommitting,
 	CommitFinalize: planOne(
 		on(SectorFinalized{}, SubmitCommit),
+		on(SectorFinalizedAvailable{}, SubmitCommit),
 		on(SectorFinalizeFailed{}, CommitFinalizeFailed),
 	),
 	SubmitCommit: planOne(
@@ -130,9 +137,61 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 
 	FinalizeSector: planOne(
 		on(SectorFinalized{}, Proving),
+		on(SectorFinalizedAvailable{}, Available),
 		on(SectorFinalizeFailed{}, FinalizeFailed),
 	),
 
+	// Snap deals
+	SnapDealsWaitDeals: planOne(
+		on(SectorAddPiece{}, SnapDealsAddPiece),
+		on(SectorStartPacking{}, SnapDealsPacking),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
+	),
+	SnapDealsAddPiece: planOne(
+		on(SectorPieceAdded{}, SnapDealsWaitDeals),
+		apply(SectorStartPacking{}),
+		apply(SectorAddPiece{}),
+		on(SectorAddPieceFailed{}, SnapDealsAddPieceFailed),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
+	),
+	SnapDealsPacking: planOne(
+		on(SectorPacked{}, UpdateReplica),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
+	),
+	UpdateReplica: planOne(
+		on(SectorReplicaUpdate{}, ProveReplicaUpdate),
+		on(SectorUpdateReplicaFailed{}, ReplicaUpdateFailed),
+		on(SectorDealsExpired{}, SnapDealsDealsExpired),
+		on(SectorInvalidDealIDs{}, SnapDealsRecoverDealIDs),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
+	),
+	ProveReplicaUpdate: planOne(
+		on(SectorProveReplicaUpdate{}, FinalizeReplicaUpdate),
+		on(SectorProveReplicaUpdateFailed{}, ReplicaUpdateFailed),
+		on(SectorDealsExpired{}, SnapDealsDealsExpired),
+		on(SectorInvalidDealIDs{}, SnapDealsRecoverDealIDs),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
+	),
+	FinalizeReplicaUpdate: planOne(
+		on(SectorFinalized{}, SubmitReplicaUpdate),
+		on(SectorFinalizeFailed{}, FinalizeReplicaUpdateFailed),
+	),
+	SubmitReplicaUpdate: planOne(
+		on(SectorReplicaUpdateSubmitted{}, ReplicaUpdateWait),
+		on(SectorSubmitReplicaUpdateFailed{}, ReplicaUpdateFailed),
+	),
+	ReplicaUpdateWait: planOne(
+		on(SectorReplicaUpdateLanded{}, UpdateActivating),
+		on(SectorSubmitReplicaUpdateFailed{}, ReplicaUpdateFailed),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
+	),
+	UpdateActivating: planOne(
+		on(SectorUpdateActive{}, ReleaseSectorKey),
+	),
+	ReleaseSectorKey: planOne(
+		on(SectorKeyReleased{}, Proving),
+		on(SectorReleaseKeyFailed{}, ReleaseSectorKeyFailed),
+	),
 	// Sealing errors
 
 	AddPieceFailed: planOne(
@@ -188,11 +247,49 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 		onReturning(SectorUpdateDealIDs{}),
 	),
 
+	// Snap Deals Errors
+	SnapDealsAddPieceFailed: planOne(
+		on(SectorRetryWaitDeals{}, SnapDealsWaitDeals),
+		apply(SectorStartPacking{}),
+		apply(SectorAddPiece{}),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
+	),
+	SnapDealsDealsExpired: planOne(
+		on(SectorAbortUpgrade{}, AbortUpgrade),
+	),
+	SnapDealsRecoverDealIDs: planOne(
+		on(SectorUpdateDealIDs{}, SubmitReplicaUpdate),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
+	),
+	AbortUpgrade: planOneOrIgnore(
+		on(SectorRevertUpgradeToProving{}, Proving),
+	),
+	ReplicaUpdateFailed: planOne(
+		on(SectorRetrySubmitReplicaUpdateWait{}, ReplicaUpdateWait),
+		on(SectorRetrySubmitReplicaUpdate{}, SubmitReplicaUpdate),
+		on(SectorRetryReplicaUpdate{}, UpdateReplica),
+		on(SectorRetryProveReplicaUpdate{}, ProveReplicaUpdate),
+		on(SectorInvalidDealIDs{}, SnapDealsRecoverDealIDs),
+		on(SectorDealsExpired{}, SnapDealsDealsExpired),
+		on(SectorAbortUpgrade{}, AbortUpgrade),
+	),
+	ReleaseSectorKeyFailed: planOne(
+		on(SectorUpdateActive{}, ReleaseSectorKey),
+	),
+	FinalizeReplicaUpdateFailed: planOne(
+		on(SectorRetryFinalize{}, FinalizeReplicaUpdate),
+	),
+
 	// Post-seal
 
 	Proving: planOne(
 		on(SectorFaultReported{}, FaultReported),
 		on(SectorFaulty{}, Faulty),
+		on(SectorMarkForUpdate{}, Available),
+	),
+	Available: planOne(
+		on(SectorStartCCUpdate{}, SnapDealsWaitDeals),
+		on(SectorAbortUpgrade{}, Proving),
 	),
 	Terminating: planOne(
 		on(SectorTerminating{}, TerminateWait),
@@ -209,7 +306,7 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	TerminateFailed: planOne(
 	// SectorTerminating (global)
 	),
-	Removing: planOne(
+	Removing: planOneOrIgnore(
 		on(SectorRemoved{}, Removed),
 		on(SectorRemoveFailed{}, RemoveFailed),
 	),
@@ -223,9 +320,24 @@ var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *Secto
 	FaultReported: final, // not really supported right now
 
 	FaultedFinal: final,
-	Removed:      final,
+	Removed:      finalRemoved,
 
 	FailedUnrecoverable: final,
+}
+
+func (state *SectorInfo) logAppend(l Log) {
+	if len(state.Log) > 8000 {
+		log.Warnw("truncating sector log", "sector", state.SectorNumber)
+		state.Log[2000] = Log{
+			Timestamp: uint64(time.Now().Unix()),
+			Message:   "truncating log (above 8000 entries)",
+			Kind:      fmt.Sprintf("truncate"),
+		}
+
+		state.Log = append(state.Log[:2000], state.Log[6000:]...)
+	}
+
+	state.Log = append(state.Log, l)
 }
 
 func (m *Sealing) logEvents(events []statemachine.Event, state *SectorInfo) {
@@ -256,18 +368,7 @@ func (m *Sealing) logEvents(events []statemachine.Event, state *SectorInfo) {
 			l.Trace = fmt.Sprintf("%+v", err)
 		}
 
-		if len(state.Log) > 8000 {
-			log.Warnw("truncating sector log", "sector", state.SectorNumber)
-			state.Log[2000] = Log{
-				Timestamp: uint64(time.Now().Unix()),
-				Message:   "truncating log (above 8000 entries)",
-				Kind:      fmt.Sprintf("truncate"),
-			}
-
-			state.Log = append(state.Log[:2000], state.Log[6000:]...)
-		}
-
-		state.Log = append(state.Log, l)
+		state.logAppend(l)
 	}
 }
 
@@ -298,7 +399,7 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 
 	processed, err := p(events, state)
 	if err != nil {
-		return nil, 0, xerrors.Errorf("running planner for state %s failed: %w", state.State, err)
+		return nil, processed, xerrors.Errorf("running planner for state %s failed: %w", state.State, err)
 	}
 
 	/////
@@ -355,13 +456,6 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 		log.Errorw("update sector stats", "error", err)
 	}
 
-	// todo: drop this, use Context iface everywhere
-	wrapCtx := func(f func(Context, SectorInfo) error) func(statemachine.Context, SectorInfo) error {
-		return func(ctx statemachine.Context, info SectorInfo) error {
-			return f(&ctx, info)
-		}
-	}
-
 	switch state.State {
 	// Happy path
 	case Empty:
@@ -403,6 +497,28 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	case FinalizeSector:
 		return m.handleFinalizeSector, processed, nil
 
+	// Snap deals updates
+	case SnapDealsWaitDeals:
+		return m.handleWaitDeals, processed, nil
+	case SnapDealsAddPiece:
+		return m.handleAddPiece, processed, nil
+	case SnapDealsPacking:
+		return m.handlePacking, processed, nil
+	case UpdateReplica:
+		return m.handleReplicaUpdate, processed, nil
+	case ProveReplicaUpdate:
+		return m.handleProveReplicaUpdate, processed, nil
+	case SubmitReplicaUpdate:
+		return m.handleSubmitReplicaUpdate, processed, nil
+	case ReplicaUpdateWait:
+		return m.handleReplicaUpdateWait, processed, nil
+	case FinalizeReplicaUpdate:
+		return m.handleFinalizeReplicaUpdate, processed, nil
+	case UpdateActivating:
+		return m.handleUpdateActivating, processed, nil
+	case ReleaseSectorKey:
+		return m.handleReleaseSectorKey, processed, nil
+
 	// Handled failure modes
 	case AddPieceFailed:
 		return m.handleAddPieceFailed, processed, nil
@@ -426,11 +542,30 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	case DealsExpired:
 		return m.handleDealsExpired, processed, nil
 	case RecoverDealIDs:
-		return wrapCtx(m.HandleRecoverDealIDs), processed, nil
+		return m.HandleRecoverDealIDs, processed, nil
+
+	// Snap Deals failure modes
+	case SnapDealsAddPieceFailed:
+		return m.handleAddPieceFailed, processed, nil
+
+	case SnapDealsDealsExpired:
+		return m.handleDealsExpiredSnapDeals, processed, nil
+	case SnapDealsRecoverDealIDs:
+		return m.handleSnapDealsRecoverDealIDs, processed, nil
+	case ReplicaUpdateFailed:
+		return m.handleSubmitReplicaUpdateFailed, processed, nil
+	case ReleaseSectorKeyFailed:
+		return m.handleReleaseSectorKeyFailed, 0, err
+	case FinalizeReplicaUpdateFailed:
+		return m.handleFinalizeFailed, processed, nil
+	case AbortUpgrade:
+		return m.handleAbortUpgrade, processed, nil
 
 	// Post-seal
 	case Proving:
 		return m.handleProvingSector, processed, nil
+	case Available:
+		return m.handleAvailableSector, processed, nil
 	case Terminating:
 		return m.handleTerminating, processed, nil
 	case TerminateWait:
@@ -559,6 +694,12 @@ func (m *Sealing) ForceSectorState(ctx context.Context, id abi.SectorNumber, sta
 	return m.sectors.Send(id, SectorForceState{state})
 }
 
+// as sector has been removed, it's no needs to care about later events,
+// just returns length of events as `processed` is ok.
+func finalRemoved(events []statemachine.Event, state *SectorInfo) (uint64, error) {
+	return uint64(len(events)), nil
+}
+
 func final(events []statemachine.Event, state *SectorInfo) (uint64, error) {
 	if len(events) > 0 {
 		if gm, ok := events[0].User.(globalMutator); ok {
@@ -640,5 +781,18 @@ func planOne(ts ...func() (mut mutator, next func(*SectorInfo) (more bool, err e
 		}
 
 		return uint64(len(events)), nil
+	}
+}
+
+// planOne but ignores unhandled states without erroring, this prevents the need to handle all possible events creating
+// error during forced override
+func planOneOrIgnore(ts ...func() (mut mutator, next func(*SectorInfo) (more bool, err error))) func(events []statemachine.Event, state *SectorInfo) (uint64, error) {
+	f := planOne(ts...)
+	return func(events []statemachine.Event, state *SectorInfo) (uint64, error) {
+		cnt, err := f(events, state)
+		if err != nil {
+			log.Warnf("planOneOrIgnore: ignoring error from planOne: %s", err)
+		}
+		return cnt, nil
 	}
 }

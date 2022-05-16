@@ -13,8 +13,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-func (sm *StateManager) ParentStateTsk(tsk types.TipSetKey) (*state.StateTree, error) {
-	ts, err := sm.cs.GetTipSetFromKey(tsk)
+func (sm *StateManager) ParentStateTsk(ctx context.Context, tsk types.TipSetKey) (*state.StateTree, error) {
+	ts, err := sm.cs.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -57,8 +57,8 @@ func (sm *StateManager) LoadActor(_ context.Context, addr address.Address, ts *t
 	return state.GetActor(addr)
 }
 
-func (sm *StateManager) LoadActorTsk(_ context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error) {
-	state, err := sm.ParentStateTsk(tsk)
+func (sm *StateManager) LoadActorTsk(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*types.Actor, error) {
+	state, err := sm.ParentStateTsk(ctx, tsk)
 	if err != nil {
 		return nil, err
 	}

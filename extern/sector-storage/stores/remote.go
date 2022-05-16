@@ -14,6 +14,7 @@ import (
 	gopath "path"
 	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
@@ -44,12 +45,36 @@ type Remote struct {
 	pfHandler PartialFileHandler
 }
 
-func (r *Remote) RemoveCopies(ctx context.Context, s abi.SectorID, types storiface.SectorFileType) error {
-	// TODO: do this on remotes too
-	//  (not that we really need to do that since it's always called by the
-	//   worker which pulled the copy)
+func (r *Remote) RemoveCopies(ctx context.Context, s abi.SectorID, typ storiface.SectorFileType) error {
+	if bits.OnesCount(uint(typ)) != 1 {
+		return xerrors.New("RemoveCopies expects one file type")
+	}
 
-	return r.local.RemoveCopies(ctx, s, types)
+	if err := r.local.RemoveCopies(ctx, s, typ); err != nil {
+		return xerrors.Errorf("removing local copies: %w", err)
+	}
+
+	si, err := r.index.StorageFindSector(ctx, s, typ, 0, false)
+	if err != nil {
+		return xerrors.Errorf("finding existing sector %d(t:%d) failed: %w", s, typ, err)
+	}
+
+	var hasPrimary bool
+	var keep []storiface.ID
+	for _, info := range si {
+		if info.Primary {
+			hasPrimary = true
+			keep = append(keep, info.ID)
+			break
+		}
+	}
+
+	if !hasPrimary {
+		log.Warnf("remote RemoveCopies: no primary copies of sector %v (%s), not removing anything", s, typ)
+		return nil
+	}
+
+	return r.Remove(ctx, s, typ, true, keep)
 }
 
 func NewRemote(local Store, index SectorIndex, auth http.Header, fetchLimit int, pfHandler PartialFileHandler) *Remote {
@@ -149,14 +174,14 @@ func (r *Remote) AcquireSector(ctx context.Context, s storage.SectorRef, existin
 		storiface.SetPathByType(&paths, fileType, dest)
 		storiface.SetPathByType(&stores, fileType, storageID)
 
-		if err := r.index.StorageDeclareSector(ctx, ID(storageID), s.ID, fileType, op == storiface.AcquireMove); err != nil {
+		if err := r.index.StorageDeclareSector(ctx, storiface.ID(storageID), s.ID, fileType, op == storiface.AcquireMove); err != nil {
 			log.Warnf("declaring sector %v in %s failed: %+v", s, storageID, err)
 			continue
 		}
 
 		if op == storiface.AcquireMove {
-			id := ID(storageID)
-			if err := r.deleteFromRemote(ctx, url, &id); err != nil {
+			id := storiface.ID(storageID)
+			if err := r.deleteFromRemote(ctx, url, []storiface.ID{id}); err != nil {
 				log.Warnf("deleting sector %v from %s (delete %s): %+v", s, storageID, url, err)
 			}
 		}
@@ -333,7 +358,7 @@ func (r *Remote) MoveStorage(ctx context.Context, s storage.SectorRef, types sto
 	return r.local.MoveStorage(ctx, s, types)
 }
 
-func (r *Remote) Remove(ctx context.Context, sid abi.SectorID, typ storiface.SectorFileType, force bool, keepIn []ID) error {
+func (r *Remote) Remove(ctx context.Context, sid abi.SectorID, typ storiface.SectorFileType, force bool, keepIn []storiface.ID) error {
 	if bits.OnesCount(uint(typ)) != 1 {
 		return xerrors.New("delete expects one file type")
 	}
@@ -355,7 +380,7 @@ storeLoop:
 			}
 		}
 		for _, url := range info.URLs {
-			if err := r.deleteFromRemote(ctx, url, nil); err != nil {
+			if err := r.deleteFromRemote(ctx, url, keepIn); err != nil {
 				log.Warnf("remove %s: %+v", url, err)
 				continue
 			}
@@ -366,9 +391,9 @@ storeLoop:
 	return nil
 }
 
-func (r *Remote) deleteFromRemote(ctx context.Context, url string, keepIn *ID) error {
+func (r *Remote) deleteFromRemote(ctx context.Context, url string, keepIn storiface.IDList) error {
 	if keepIn != nil {
-		url = url + "?keep=" + string(*keepIn)
+		url = url + "?keep=" + keepIn.String()
 	}
 
 	log.Infof("Delete %s", url)
@@ -393,7 +418,7 @@ func (r *Remote) deleteFromRemote(ctx context.Context, url string, keepIn *ID) e
 	return nil
 }
 
-func (r *Remote) FsStat(ctx context.Context, id ID) (fsutil.FsStat, error) {
+func (r *Remote) FsStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, error) {
 	st, err := r.local.FsStat(ctx, id)
 	switch err {
 	case nil:
@@ -585,7 +610,7 @@ func (r *Remote) CheckIsUnsealed(ctx context.Context, s storage.SectorRef, offse
 // 1. no worker(local worker included) has an unsealed file for the given sector OR
 // 2. no worker(local worker included) has the unsealed piece in their unsealed sector file.
 // Will return a nil reader and a nil error in such a case.
-func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size abi.PaddedPieceSize) (io.ReadCloser, error) {
+func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size abi.PaddedPieceSize) (func(startOffsetAligned storiface.PaddedByteIndex) (io.ReadCloser, error), error) {
 	ft := storiface.FTUnsealed
 
 	// check if we have the unsealed sector file locally
@@ -623,7 +648,52 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 
 		if has {
 			log.Infof("returning piece reader for local unsealed piece sector=%+v, (offset=%d, size=%d)", s.ID, offset, size)
-			return r.pfHandler.Reader(pf, storiface.PaddedByteIndex(offset), size)
+
+			return func(startOffsetAligned storiface.PaddedByteIndex) (io.ReadCloser, error) {
+				// don't reuse between readers unless closed
+				f := pf
+				pf = nil
+
+				if f == nil {
+					f, err = r.pfHandler.OpenPartialFile(abi.PaddedPieceSize(ssize), path)
+					if err != nil {
+						return nil, xerrors.Errorf("opening partial file: %w", err)
+					}
+					log.Debugf("local partial file (re)opened %s (+%d,%d)", path, offset, size)
+				}
+
+				r, err := r.pfHandler.Reader(f, storiface.PaddedByteIndex(offset)+startOffsetAligned, size-abi.PaddedPieceSize(startOffsetAligned))
+				if err != nil {
+					return nil, err
+				}
+
+				return struct {
+					io.Reader
+					io.Closer
+				}{
+					Reader: r,
+					Closer: funcCloser(func() error {
+						// if we already have a reader cached, close this one
+						if pf != nil {
+							if f == nil {
+								return nil
+							}
+							if pf == f {
+								pf = nil
+							}
+
+							tmp := f
+							f = nil
+							return tmp.Close()
+						}
+
+						// otherwise stash it away for reuse
+						pf = f
+						return nil
+					}),
+				}, nil
+			}, nil
+
 		}
 
 		log.Debugf("miner has unsealed file but not unseal piece, %s (+%d,%d)", path, offset, size)
@@ -666,16 +736,18 @@ func (r *Remote) Reader(ctx context.Context, s storage.SectorRef, offset, size a
 				continue
 			}
 
-			// readRemote fetches a reader that we can use to read the unsealed piece from the remote worker.
-			// It uses a ranged HTTP query to ensure we ONLY read the unsealed piece and not the entire unsealed file.
-			rd, err := r.readRemote(ctx, url, offset, size)
-			if err != nil {
-				log.Warnw("reading from remote", "url", url, "error", err)
-				lastErr = err
-				continue
-			}
-			log.Infof("Read remote %s (+%d,%d)", url, offset, size)
-			return rd, nil
+			return func(startOffsetAligned storiface.PaddedByteIndex) (io.ReadCloser, error) {
+				// readRemote fetches a reader that we can use to read the unsealed piece from the remote worker.
+				// It uses a ranged HTTP query to ensure we ONLY read the unsealed piece and not the entire unsealed file.
+				rd, err := r.readRemote(ctx, url, offset+abi.PaddedPieceSize(startOffsetAligned), size)
+				if err != nil {
+					log.Warnw("reading from remote", "url", url, "error", err)
+					return nil, err
+				}
+
+				return rd, err
+			}, nil
+
 		}
 	}
 
@@ -691,4 +763,95 @@ func (r *Remote) Reserve(ctx context.Context, sid storage.SectorRef, ft storifac
 	}, nil
 }
 
+func (r *Remote) GenerateSingleVanillaProof(ctx context.Context, minerID abi.ActorID, sinfo storiface.PostSectorChallenge, ppt abi.RegisteredPoStProof) ([]byte, error) {
+	p, err := r.local.GenerateSingleVanillaProof(ctx, minerID, sinfo, ppt)
+	if err != errPathNotFound {
+		return p, err
+	}
+
+	sid := abi.SectorID{
+		Miner:  minerID,
+		Number: sinfo.SectorNumber,
+	}
+
+	ft := storiface.FTSealed | storiface.FTCache
+	if sinfo.Update {
+		ft = storiface.FTUpdate | storiface.FTUpdateCache
+	}
+
+	si, err := r.index.StorageFindSector(ctx, sid, ft, 0, false)
+	if err != nil {
+		return nil, xerrors.Errorf("finding sector %d failed: %w", sid, err)
+	}
+
+	requestParams := SingleVanillaParams{
+		Miner:     minerID,
+		Sector:    sinfo,
+		ProofType: ppt,
+	}
+	jreq, err := json.Marshal(requestParams)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, info := range si {
+		for _, u := range info.BaseURLs {
+			url := fmt.Sprintf("%s/vanilla/single", u)
+
+			req, err := http.NewRequest("POST", url, strings.NewReader(string(jreq)))
+			if err != nil {
+				return nil, xerrors.Errorf("request: %w", err)
+			}
+
+			if r.auth != nil {
+				req.Header = r.auth.Clone()
+			}
+			req = req.WithContext(ctx)
+
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				return nil, xerrors.Errorf("do request: %w", err)
+			}
+
+			if resp.StatusCode != http.StatusOK {
+				if resp.StatusCode == http.StatusNotFound {
+					log.Debugw("reading vanilla proof from remote not-found response", "url", url, "store", info.ID)
+					continue
+				}
+				body, err := ioutil.ReadAll(resp.Body)
+				if err != nil {
+					return nil, xerrors.Errorf("resp.Body ReadAll: %w", err)
+				}
+
+				if err := resp.Body.Close(); err != nil {
+					log.Error("response close: ", err)
+				}
+
+				return nil, xerrors.Errorf("non-200 code from %s: '%s'", url, strings.TrimSpace(string(body)))
+			}
+
+			body, err := ioutil.ReadAll(resp.Body)
+			if err != nil {
+				if err := resp.Body.Close(); err != nil {
+					log.Error("response close: ", err)
+				}
+
+				return nil, xerrors.Errorf("resp.Body ReadAll: %w", err)
+			}
+
+			return body, nil
+		}
+	}
+
+	return nil, xerrors.Errorf("sector not found")
+}
+
 var _ Store = &Remote{}
+
+type funcCloser func() error
+
+func (f funcCloser) Close() error {
+	return f()
+}
+
+var _ io.Closer = funcCloser(nil)

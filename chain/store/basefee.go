@@ -58,7 +58,7 @@ func (cs *ChainStore) ComputeBaseFee(ctx context.Context, ts *types.TipSet) (abi
 	seen := make(map[cid.Cid]struct{})
 
 	for _, b := range ts.Blocks() {
-		msg1, msg2, err := cs.MessagesForBlock(b)
+		msg1, msg2, err := cs.MessagesForBlock(ctx, b)
 		if err != nil {
 			return zero, xerrors.Errorf("error getting messages for: %s: %w", b.Cid(), err)
 		}

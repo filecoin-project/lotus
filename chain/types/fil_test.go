@@ -1,3 +1,4 @@
+//stm: #unit
 package types
 
 import (
@@ -7,6 +8,7 @@ import (
 )
 
 func TestFilShort(t *testing.T) {
+	//stm: @TYPES_FIL_PARSE_001
 	for _, s := range []struct {
 		fil    string
 		expect string

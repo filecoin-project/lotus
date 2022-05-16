@@ -24,6 +24,15 @@ var ProtocolCodenames = []struct {
 	{build.UpgradeTapeHeight + 1, "tape"},
 	{build.UpgradeLiftoffHeight + 1, "liftoff"},
 	{build.UpgradeKumquatHeight + 1, "postliftoff"},
+	{build.UpgradeCalicoHeight + 1, "calico"},
+	{build.UpgradePersianHeight + 1, "persian"},
+	{build.UpgradeOrangeHeight + 1, "orange"},
+	{build.UpgradeTrustHeight + 1, "trust"},
+	{build.UpgradeNorwegianHeight + 1, "norwegian"},
+	{build.UpgradeTurboHeight + 1, "turbo"},
+	{build.UpgradeHyperdriveHeight + 1, "hyperdrive"},
+	{build.UpgradeChocolateHeight + 1, "chocolate"},
+	{build.UpgradeOhSnapHeight + 1, "ohsnap"},
 }
 
 // GetProtocolCodename gets the protocol codename associated with a height.

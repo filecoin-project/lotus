@@ -47,6 +47,12 @@ var (
 	WorkerHostname, _ = tag.NewKey("worker_hostname")
 	StorageID, _      = tag.NewKey("storage_id")
 	SectorState, _    = tag.NewKey("sector_state")
+
+	// rcmgr
+	ServiceID, _  = tag.NewKey("svc")
+	ProtocolID, _ = tag.NewKey("proto")
+	Direction, _  = tag.NewKey("direction")
+	UseFD, _      = tag.NewKey("use_fd")
 )
 
 // Measures
@@ -76,6 +82,8 @@ var (
 	ChainNodeHeight                     = stats.Int64("chain/node_height", "Current Height of the node", stats.UnitDimensionless)
 	ChainNodeHeightExpected             = stats.Int64("chain/node_height_expected", "Expected Height of the node", stats.UnitDimensionless)
 	ChainNodeWorkerHeight               = stats.Int64("chain/node_worker_height", "Current Height of workers on the node", stats.UnitDimensionless)
+	IndexerMessageValidationFailure     = stats.Int64("indexer/failure", "Counter for indexer message validation failures", stats.UnitDimensionless)
+	IndexerMessageValidationSuccess     = stats.Int64("indexer/success", "Counter for indexer message validation successes", stats.UnitDimensionless)
 	MessagePublished                    = stats.Int64("message/published", "Counter for total locally published messages", stats.UnitDimensionless)
 	MessageReceived                     = stats.Int64("message/received", "Counter for total received messages", stats.UnitDimensionless)
 	MessageValidationFailure            = stats.Int64("message/failure", "Counter for message validation failures", stats.UnitDimensionless)
@@ -128,12 +136,37 @@ var (
 	StorageLimitUsedBytes   = stats.Int64("storage/path_limit_used_bytes", "used optional storage limit bytes", stats.UnitBytes)
 	StorageLimitMaxBytes    = stats.Int64("storage/path_limit_max_bytes", "optional storage limit", stats.UnitBytes)
 
+	DagStorePRInitCount        = stats.Int64("dagstore/pr_init_count", "PieceReader init count", stats.UnitDimensionless)
+	DagStorePRBytesRequested   = stats.Int64("dagstore/pr_requested_bytes", "PieceReader requested bytes", stats.UnitBytes)
+	DagStorePRBytesDiscarded   = stats.Int64("dagstore/pr_discarded_bytes", "PieceReader discarded bytes", stats.UnitBytes)
+	DagStorePRDiscardCount     = stats.Int64("dagstore/pr_discard_count", "PieceReader discard count", stats.UnitDimensionless)
+	DagStorePRSeekBackCount    = stats.Int64("dagstore/pr_seek_back_count", "PieceReader seek back count", stats.UnitDimensionless)
+	DagStorePRSeekForwardCount = stats.Int64("dagstore/pr_seek_forward_count", "PieceReader seek forward count", stats.UnitDimensionless)
+	DagStorePRSeekBackBytes    = stats.Int64("dagstore/pr_seek_back_bytes", "PieceReader seek back bytes", stats.UnitBytes)
+	DagStorePRSeekForwardBytes = stats.Int64("dagstore/pr_seek_forward_bytes", "PieceReader seek forward bytes", stats.UnitBytes)
+
 	// splitstore
 	SplitstoreMiss                  = stats.Int64("splitstore/miss", "Number of misses in hotstre access", stats.UnitDimensionless)
 	SplitstoreCompactionTimeSeconds = stats.Float64("splitstore/compaction_time", "Compaction time in seconds", stats.UnitSeconds)
 	SplitstoreCompactionHot         = stats.Int64("splitstore/hot", "Number of hot blocks in last compaction", stats.UnitDimensionless)
 	SplitstoreCompactionCold        = stats.Int64("splitstore/cold", "Number of cold blocks in last compaction", stats.UnitDimensionless)
 	SplitstoreCompactionDead        = stats.Int64("splitstore/dead", "Number of dead blocks in last compaction", stats.UnitDimensionless)
+
+	// rcmgr
+	RcmgrAllowConn      = stats.Int64("rcmgr/allow_conn", "Number of allowed connections", stats.UnitDimensionless)
+	RcmgrBlockConn      = stats.Int64("rcmgr/block_conn", "Number of blocked connections", stats.UnitDimensionless)
+	RcmgrAllowStream    = stats.Int64("rcmgr/allow_stream", "Number of allowed streams", stats.UnitDimensionless)
+	RcmgrBlockStream    = stats.Int64("rcmgr/block_stream", "Number of blocked streams", stats.UnitDimensionless)
+	RcmgrAllowPeer      = stats.Int64("rcmgr/allow_peer", "Number of allowed peer connections", stats.UnitDimensionless)
+	RcmgrBlockPeer      = stats.Int64("rcmgr/block_peer", "Number of blocked peer connections", stats.UnitDimensionless)
+	RcmgrAllowProto     = stats.Int64("rcmgr/allow_proto", "Number of allowed streams attached to a protocol", stats.UnitDimensionless)
+	RcmgrBlockProto     = stats.Int64("rcmgr/block_proto", "Number of blocked blocked streams attached to a protocol", stats.UnitDimensionless)
+	RcmgrBlockProtoPeer = stats.Int64("rcmgr/block_proto", "Number of blocked blocked streams attached to a protocol for a specific peer", stats.UnitDimensionless)
+	RcmgrAllowSvc       = stats.Int64("rcmgr/allow_svc", "Number of allowed streams attached to a service", stats.UnitDimensionless)
+	RcmgrBlockSvc       = stats.Int64("rcmgr/block_svc", "Number of blocked blocked streams attached to a service", stats.UnitDimensionless)
+	RcmgrBlockSvcPeer   = stats.Int64("rcmgr/block_svc", "Number of blocked blocked streams attached to a service for a specific peer", stats.UnitDimensionless)
+	RcmgrAllowMem       = stats.Int64("rcmgr/allow_mem", "Number of allowed memory reservations", stats.UnitDimensionless)
+	RcmgrBlockMem       = stats.Int64("rcmgr/block_mem", "Number of blocked memory reservations", stats.UnitDimensionless)
 )
 
 var (
@@ -190,6 +223,15 @@ var (
 			bounds = append(bounds, 600*1000) // final cutoff at 10m
 			return view.Distribution(bounds...)
 		}(),
+	}
+	IndexerMessageValidationFailureView = &view.View{
+		Measure:     IndexerMessageValidationFailure,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{FailureType, Local},
+	}
+	IndexerMessageValidationSuccessView = &view.View{
+		Measure:     IndexerMessageValidationSuccess,
+		Aggregation: view.Count(),
 	}
 	MessagePublishedView = &view.View{
 		Measure:     MessagePublished,
@@ -383,6 +425,39 @@ var (
 		TagKeys:     []tag.Key{StorageID},
 	}
 
+	DagStorePRInitCountView = &view.View{
+		Measure:     DagStorePRInitCount,
+		Aggregation: view.Count(),
+	}
+	DagStorePRBytesRequestedView = &view.View{
+		Measure:     DagStorePRBytesRequested,
+		Aggregation: view.Sum(),
+	}
+	DagStorePRBytesDiscardedView = &view.View{
+		Measure:     DagStorePRBytesDiscarded,
+		Aggregation: view.Sum(),
+	}
+	DagStorePRDiscardCountView = &view.View{
+		Measure:     DagStorePRDiscardCount,
+		Aggregation: view.Count(),
+	}
+	DagStorePRSeekBackCountView = &view.View{
+		Measure:     DagStorePRSeekBackCount,
+		Aggregation: view.Count(),
+	}
+	DagStorePRSeekForwardCountView = &view.View{
+		Measure:     DagStorePRSeekForwardCount,
+		Aggregation: view.Count(),
+	}
+	DagStorePRSeekBackBytesView = &view.View{
+		Measure:     DagStorePRSeekBackBytes,
+		Aggregation: view.Sum(),
+	}
+	DagStorePRSeekForwardBytesView = &view.View{
+		Measure:     DagStorePRSeekForwardBytes,
+		Aggregation: view.Sum(),
+	}
+
 	// splitstore
 	SplitstoreMissView = &view.View{
 		Measure:     SplitstoreMiss,
@@ -454,6 +529,76 @@ var (
 		Measure:     GraphsyncSendingPeersPending,
 		Aggregation: view.LastValue(),
 	}
+
+	// rcmgr
+	RcmgrAllowConnView = &view.View{
+		Measure:     RcmgrAllowConn,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{Direction, UseFD},
+	}
+	RcmgrBlockConnView = &view.View{
+		Measure:     RcmgrBlockConn,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{Direction, UseFD},
+	}
+	RcmgrAllowStreamView = &view.View{
+		Measure:     RcmgrAllowStream,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{PeerID, Direction},
+	}
+	RcmgrBlockStreamView = &view.View{
+		Measure:     RcmgrBlockStream,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{PeerID, Direction},
+	}
+	RcmgrAllowPeerView = &view.View{
+		Measure:     RcmgrAllowPeer,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{PeerID},
+	}
+	RcmgrBlockPeerView = &view.View{
+		Measure:     RcmgrBlockPeer,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{PeerID},
+	}
+	RcmgrAllowProtoView = &view.View{
+		Measure:     RcmgrAllowProto,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{ProtocolID},
+	}
+	RcmgrBlockProtoView = &view.View{
+		Measure:     RcmgrBlockProto,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{ProtocolID},
+	}
+	RcmgrBlockProtoPeerView = &view.View{
+		Measure:     RcmgrBlockProtoPeer,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{ProtocolID, PeerID},
+	}
+	RcmgrAllowSvcView = &view.View{
+		Measure:     RcmgrAllowSvc,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{ServiceID},
+	}
+	RcmgrBlockSvcView = &view.View{
+		Measure:     RcmgrBlockSvc,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{ServiceID},
+	}
+	RcmgrBlockSvcPeerView = &view.View{
+		Measure:     RcmgrBlockSvcPeer,
+		Aggregation: view.Count(),
+		TagKeys:     []tag.Key{ServiceID, PeerID},
+	}
+	RcmgrAllowMemView = &view.View{
+		Measure:     RcmgrAllowMem,
+		Aggregation: view.Count(),
+	}
+	RcmgrBlockMemView = &view.View{
+		Measure:     RcmgrBlockMem,
+		Aggregation: view.Count(),
+	}
 )
 
 // DefaultViews is an array of OpenCensus views for metric gathering purposes
@@ -475,6 +620,21 @@ var DefaultViews = func() []*view.View {
 		GraphsyncSendingTotalMemoryAllocatedView,
 		GraphsyncSendingTotalPendingAllocationsView,
 		GraphsyncSendingPeersPendingView,
+
+		RcmgrAllowConnView,
+		RcmgrBlockConnView,
+		RcmgrAllowStreamView,
+		RcmgrBlockStreamView,
+		RcmgrAllowPeerView,
+		RcmgrBlockPeerView,
+		RcmgrAllowProtoView,
+		RcmgrBlockProtoView,
+		RcmgrBlockProtoPeerView,
+		RcmgrAllowSvcView,
+		RcmgrBlockSvcView,
+		RcmgrBlockSvcPeerView,
+		RcmgrAllowMemView,
+		RcmgrBlockMemView,
 	}
 	views = append(views, blockstore.DefaultViews...)
 	views = append(views, rpcmetrics.DefaultViews...)
@@ -490,6 +650,8 @@ var ChainNodeViews = append([]*view.View{
 	BlockValidationSuccessView,
 	BlockValidationDurationView,
 	BlockDelayView,
+	IndexerMessageValidationFailureView,
+	IndexerMessageValidationSuccessView,
 	MessagePublishedView,
 	MessageReceivedView,
 	MessageValidationFailureView,
@@ -539,6 +701,14 @@ var MinerNodeViews = append([]*view.View{
 	StorageReservedBytesView,
 	StorageLimitUsedBytesView,
 	StorageLimitMaxBytesView,
+	DagStorePRInitCountView,
+	DagStorePRBytesRequestedView,
+	DagStorePRBytesDiscardedView,
+	DagStorePRDiscardCountView,
+	DagStorePRSeekBackCountView,
+	DagStorePRSeekForwardCountView,
+	DagStorePRSeekBackBytesView,
+	DagStorePRSeekForwardBytesView,
 }, DefaultViews...)
 
 // SinceInMilliseconds returns the duration of time since the provide time as a float64.

@@ -1,3 +1,4 @@
+//stm: #unit
 package retrievaladapter
 
 import (
@@ -18,6 +19,7 @@ import (
 )
 
 func TestGetPricingInput(t *testing.T) {
+	//stm: @CHAIN_STATE_MARKET_STORAGE_DEAL_001
 	ctx := context.Background()
 	tsk := &types.TipSet{}
 	key := tsk.Key()

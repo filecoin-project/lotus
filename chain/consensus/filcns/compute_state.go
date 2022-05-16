@@ -2,6 +2,7 @@ package filcns
 
 import (
 	"context"
+	"os"
 	"sync/atomic"
 
 	"github.com/filecoin-project/lotus/chain/rand"
@@ -28,9 +29,11 @@ import (
 	exported4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/exported"
 	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
 	exported6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/exported"
+	exported7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/exported"
 
 	/* inline-gen end */
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -59,6 +62,7 @@ func NewActorRegistry() *vm.ActorRegistry {
 	inv.Register(vm.ActorsVersionPredicate(actors.Version4), exported4.BuiltinActors()...)
 	inv.Register(vm.ActorsVersionPredicate(actors.Version5), exported5.BuiltinActors()...)
 	inv.Register(vm.ActorsVersionPredicate(actors.Version6), exported6.BuiltinActors()...)
+	inv.Register(vm.ActorsVersionPredicate(actors.Version7), exported7.BuiltinActors()...)
 
 	/* inline-gen end */
 
@@ -90,29 +94,38 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 		partDone()
 	}()
 
-	makeVmWithBaseState := func(base cid.Cid) (*vm.VM, error) {
+	ctx = blockstore.WithHotView(ctx)
+	makeVmWithBaseStateAndEpoch := func(base cid.Cid, e abi.ChainEpoch) (vm.Interface, error) {
 		vmopt := &vm.VMOpts{
 			StateBase:      base,
-			Epoch:          epoch,
+			Epoch:          e,
 			Rand:           r,
 			Bstore:         sm.ChainStore().StateBlockstore(),
 			Actors:         NewActorRegistry(),
 			Syscalls:       sm.Syscalls,
 			CircSupplyCalc: sm.GetVMCirculatingSupply,
-			NtwkVersion:    sm.GetNtwkVersion,
+			NetworkVersion: sm.GetNetworkVersion(ctx, e),
 			BaseFee:        baseFee,
 			LookbackState:  stmgr.LookbackStateGetterForTipset(sm, ts),
+		}
+
+		if os.Getenv("LOTUS_USE_FVM_EXPERIMENTAL") == "1" {
+			// This is needed so that the FVM does not have to duplicate the genesis vesting schedule, one
+			// of the components of the circ supply calc.
+			// This field is NOT needed by the LegacyVM, and also NOT needed by the FVM from v15 onwards.
+			filVested, err := sm.GetFilVested(ctx, e)
+			if err != nil {
+				return nil, err
+			}
+
+			vmopt.FilVested = filVested
+			return vm.NewFVM(ctx, vmopt)
 		}
 
 		return sm.VMConstructor()(ctx, vmopt)
 	}
 
-	vmi, err := makeVmWithBaseState(pstate)
-	if err != nil {
-		return cid.Undef, cid.Undef, xerrors.Errorf("making vm: %w", err)
-	}
-
-	runCron := func(epoch abi.ChainEpoch) error {
+	runCron := func(vmCron vm.Interface, epoch abi.ChainEpoch) error {
 		cronMsg := &types.Message{
 			To:         cron.Address,
 			From:       builtin.SystemActorAddr,
@@ -124,55 +137,57 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 			Method:     cron.Methods.EpochTick,
 			Params:     nil,
 		}
-		ret, err := vmi.ApplyImplicitMessage(ctx, cronMsg)
+		ret, err := vmCron.ApplyImplicitMessage(ctx, cronMsg)
 		if err != nil {
-			return err
+			return xerrors.Errorf("running cron: %w", err)
 		}
+
 		if em != nil {
 			if err := em.MessageApplied(ctx, ts, cronMsg.Cid(), cronMsg, ret, true); err != nil {
 				return xerrors.Errorf("callback failed on cron message: %w", err)
 			}
 		}
 		if ret.ExitCode != 0 {
-			return xerrors.Errorf("CheckProofSubmissions exit was non-zero: %d", ret.ExitCode)
+			return xerrors.Errorf("cron exit was non-zero: %d", ret.ExitCode)
 		}
 
 		return nil
 	}
 
 	for i := parentEpoch; i < epoch; i++ {
+		var err error
 		if i > parentEpoch {
-			// run cron for null rounds if any
-			if err := runCron(i); err != nil {
-				return cid.Undef, cid.Undef, err
+			vmCron, err := makeVmWithBaseStateAndEpoch(pstate, i)
+			if err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("making cron vm: %w", err)
 			}
 
-			pstate, err = vmi.Flush(ctx)
+			// run cron for null rounds if any
+			if err = runCron(vmCron, i); err != nil {
+				return cid.Undef, cid.Undef, xerrors.Errorf("running cron: %w", err)
+			}
+
+			pstate, err = vmCron.Flush(ctx)
 			if err != nil {
-				return cid.Undef, cid.Undef, xerrors.Errorf("flushing vm: %w", err)
+				return cid.Undef, cid.Undef, xerrors.Errorf("flushing cron vm: %w", err)
 			}
 		}
 
 		// handle state forks
 		// XXX: The state tree
-		newState, err := sm.HandleStateForks(ctx, pstate, i, em, ts)
+		pstate, err = sm.HandleStateForks(ctx, pstate, i, em, ts)
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("error handling state forks: %w", err)
 		}
-
-		if pstate != newState {
-			vmi, err = makeVmWithBaseState(newState)
-			if err != nil {
-				return cid.Undef, cid.Undef, xerrors.Errorf("making vm: %w", err)
-			}
-		}
-
-		vmi.SetBlockHeight(i + 1)
-		pstate = newState
 	}
 
 	partDone()
 	partDone = metrics.Timer(ctx, metrics.VMApplyMessages)
+
+	vmi, err := makeVmWithBaseStateAndEpoch(pstate, epoch)
+	if err != nil {
+		return cid.Undef, cid.Undef, xerrors.Errorf("making vm: %w", err)
+	}
 
 	var receipts []cbg.CBORMarshaler
 	processedMsgs := make(map[cid.Cid]struct{})
@@ -241,7 +256,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 	partDone()
 	partDone = metrics.Timer(ctx, metrics.VMApplyCron)
 
-	if err := runCron(epoch); err != nil {
+	if err := runCron(vmi, epoch); err != nil {
 		return cid.Cid{}, cid.Cid{}, err
 	}
 
@@ -289,7 +304,7 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context, sm *stmgr.StateManag
 	var parentEpoch abi.ChainEpoch
 	pstate := blks[0].ParentStateRoot
 	if blks[0].Height > 0 {
-		parent, err := sm.ChainStore().GetBlock(blks[0].Parents[0])
+		parent, err := sm.ChainStore().GetBlock(ctx, blks[0].Parents[0])
 		if err != nil {
 			return cid.Undef, cid.Undef, xerrors.Errorf("getting parent block: %w", err)
 		}
@@ -297,9 +312,9 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context, sm *stmgr.StateManag
 		parentEpoch = parent.Height
 	}
 
-	r := rand.NewStateRand(sm.ChainStore(), ts.Cids(), sm.Beacon())
+	r := rand.NewStateRand(sm.ChainStore(), ts.Cids(), sm.Beacon(), sm.GetNetworkVersion)
 
-	blkmsgs, err := sm.ChainStore().BlockMsgsForTipset(ts)
+	blkmsgs, err := sm.ChainStore().BlockMsgsForTipset(ctx, ts)
 	if err != nil {
 		return cid.Undef, cid.Undef, xerrors.Errorf("getting block messages for tipset: %w", err)
 	}

@@ -69,7 +69,11 @@ func genLibp2pKey() (crypto.PrivKey, error) {
 
 func ConnectionManager(low, high uint, grace time.Duration, protected []string) func() (opts Libp2pOpts, err error) {
 	return func() (Libp2pOpts, error) {
-		cm := connmgr.NewConnManager(int(low), int(high), grace)
+		cm, err := connmgr.NewConnManager(int(low), int(high), connmgr.WithGracePeriod(grace))
+		if err != nil {
+			return Libp2pOpts{}, err
+		}
+
 		for _, p := range protected {
 			pid, err := peer.IDFromString(p)
 			if err != nil {

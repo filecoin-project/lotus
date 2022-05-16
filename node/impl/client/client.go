@@ -16,6 +16,7 @@ import (
 	format "github.com/ipfs/go-ipld-format"
 	unixfile "github.com/ipfs/go-unixfs/file"
 	"github.com/ipld/go-car"
+	"github.com/ipld/go-car/util"
 	carv2 "github.com/ipld/go-car/v2"
 	carv2bs "github.com/ipld/go-car/v2/blockstore"
 	"github.com/ipld/go-ipld-prime/datamodel"
@@ -41,12 +42,10 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/multiformats/go-multibase"
-	mh "github.com/multiformats/go-multihash"
 	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
-	"github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	"github.com/filecoin-project/go-commp-utils/writer"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 
@@ -56,6 +55,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
 
+	"github.com/filecoin-project/lotus/lib/unixfs"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 
@@ -79,7 +79,7 @@ import (
 
 var log = logging.Logger("client")
 
-var DefaultHashFunction = uint64(mh.BLAKE2B_MIN + 31)
+var DefaultHashFunction = unixfs.DefaultHashFunction
 
 // 8 days ~=  SealDuration + PreCommit + MaxProveCommitDuration + 8 hour buffer
 const dealStartBufferHours uint64 = 8 * 24
@@ -149,7 +149,7 @@ func (a *API) dealStarter(ctx context.Context, params *api.StartDealParams, isSt
 		if err != nil {
 			return nil, xerrors.Errorf("failed to find blockstore for root CID: %w", err)
 		}
-		if has, err := bs.Has(params.Data.Root); err != nil {
+		if has, err := bs.Has(ctx, params.Data.Root); err != nil {
 			return nil, xerrors.Errorf("failed to query blockstore for root CID: %w", err)
 		} else if !has {
 			return nil, xerrors.Errorf("failed to find root CID in blockstore: %w", err)
@@ -489,6 +489,7 @@ func (a *API) makeRetrievalQuery(ctx context.Context, rp rm.RetrievalPeer, paylo
 		Size:                    queryResponse.Size,
 		MinPrice:                queryResponse.PieceRetrievalPrice(),
 		UnsealPrice:             queryResponse.UnsealPrice,
+		PricePerByte:            queryResponse.MinPricePerByte,
 		PaymentInterval:         queryResponse.MaxPaymentInterval,
 		PaymentIntervalIncrease: queryResponse.MaxPaymentIntervalIncrease,
 		Miner:                   queryResponse.PaymentAddress, // TODO: check
@@ -519,7 +520,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 		}
 		defer f.Close() //nolint:errcheck
 
-		hd, _, err := car.ReadHeader(bufio.NewReader(f))
+		hd, err := car.ReadHeader(bufio.NewReader(f))
 		if err != nil {
 			return nil, xerrors.Errorf("failed to read CAR header: %w", err)
 		}
@@ -547,7 +548,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 		}()
 
 		// perform the unixfs chunking.
-		root, err = a.createUnixFSFilestore(ctx, ref.Path, carPath)
+		root, err = unixfs.CreateFilestore(ctx, ref.Path, carPath)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to import file using unixfs: %w", err)
 		}
@@ -617,7 +618,7 @@ func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, erro
 	// once the DAG is formed and the root is calculated, we overwrite the
 	// inner carv1 header with the final root.
 
-	b, err := unixFSCidBuilder()
+	b, err := unixfs.CidBuilder()
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -634,7 +635,7 @@ func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, erro
 		return cid.Undef, xerrors.Errorf("failed to create carv2 read/write blockstore: %w", err)
 	}
 
-	root, err := buildUnixFS(ctx, file, bs, false)
+	root, err := unixfs.Build(ctx, file, bs, false)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to build unixfs dag: %w", err)
 	}
@@ -763,7 +764,7 @@ func (a *API) ClientCancelRetrievalDeal(ctx context.Context, dealID rm.DealID) e
 	}
 }
 
-func getDataSelector(dps *api.Selector) (datamodel.Node, error) {
+func getDataSelector(dps *api.Selector, matchPath bool) (datamodel.Node, error) {
 	sel := selectorparse.CommonSelector_ExploreAllRecursively
 	if dps != nil {
 
@@ -777,13 +778,11 @@ func getDataSelector(dps *api.Selector) (datamodel.Node, error) {
 			ssb := builder.NewSelectorSpecBuilder(basicnode.Prototype.Any)
 
 			selspec, err := textselector.SelectorSpecFromPath(
-				textselector.Expression(*dps),
+				textselector.Expression(*dps), matchPath,
 
-				// URGH - this is a direct copy from https://github.com/filecoin-project/go-fil-markets/blob/v1.12.0/shared/selectors.go#L10-L16
-				// Unable to use it because we need the SelectorSpec, and markets exposes just a reified node
 				ssb.ExploreRecursive(
 					selector.RecursionLimitNone(),
-					ssb.ExploreAll(ssb.ExploreRecursiveEdge()),
+					ssb.ExploreUnion(ssb.Matcher(), ssb.ExploreAll(ssb.ExploreRecursiveEdge())),
 				),
 			)
 			if err != nil {
@@ -799,7 +798,7 @@ func getDataSelector(dps *api.Selector) (datamodel.Node, error) {
 }
 
 func (a *API) ClientRetrieve(ctx context.Context, params api.RetrievalOrder) (*api.RestrievalRes, error) {
-	sel, err := getDataSelector(params.DataSelector)
+	sel, err := getDataSelector(params.DataSelector, false)
 	if err != nil {
 		return nil, err
 	}
@@ -973,24 +972,14 @@ func (a *API) ClientExportInto(ctx context.Context, exportRef api.ExportRef, car
 		if !retrieveIntoIPFS && len(exportRef.DAGs) == 0 && dest.Writer == nil {
 			return carv2.ExtractV1File(carPath, dest.Path)
 		}
-
-		// if this is a path-selector, the user expects the car to start from the
-		// root they asked for ( full merkle proof, no heuristic )
-		if len(exportRef.DAGs) == 1 && exportRef.DAGs[0].DataSelector != nil && !strings.HasPrefix(string(*exportRef.DAGs[0].DataSelector), "{") {
-			sel, err := getDataSelector(exportRef.DAGs[0].DataSelector)
-			if err != nil {
-				return xerrors.Errorf("parsing dag spec: %w", err)
-			}
-			return a.outputCAR(ctx, []dagSpec{{root: exportRef.Root, selector: sel}}, retrievalBs, dest)
-		}
 	}
 
-	roots, err := parseDagSpec(ctx, exportRef.Root, exportRef.DAGs, dserv, !car)
+	roots, err := parseDagSpec(ctx, exportRef.Root, exportRef.DAGs, dserv, car)
 	if err != nil {
 		return xerrors.Errorf("parsing dag spec: %w", err)
 	}
 	if car {
-		return a.outputCAR(ctx, roots, retrievalBs, dest)
+		return a.outputCAR(ctx, dserv, retrievalBs, exportRef.Root, roots, dest)
 	}
 
 	if len(roots) != 1 {
@@ -1000,112 +989,67 @@ func (a *API) ClientExportInto(ctx context.Context, exportRef api.ExportRef, car
 	return a.outputUnixFS(ctx, roots[0].root, dserv, dest)
 }
 
-func (a *API) outputCAR(ctx context.Context, dags []dagSpec, bs bstore.Blockstore, dest ExportDest) error {
+func (a *API) outputCAR(ctx context.Context, ds format.DAGService, bs bstore.Blockstore, root cid.Cid, dags []dagSpec, dest ExportDest) error {
 	// generating a CARv1 from the configured blockstore
-	carDags := make([]car.Dag, len(dags))
+	roots := make([]cid.Cid, len(dags))
 	for i, dag := range dags {
-		carDags[i] = car.Dag{
-			Root:     dag.root,
-			Selector: dag.selector,
-		}
+		roots[i] = dag.root
 	}
 
 	return dest.doWrite(func(w io.Writer) error {
-		return car.NewSelectiveCar(
-			ctx,
-			bs,
-			carDags,
-			car.MaxTraversalLinks(config.MaxTraversalLinks),
-		).Write(w)
-	})
-}
 
-type dagSpec struct {
-	root     cid.Cid
-	selector ipld.Node
-}
+		if err := car.WriteHeader(&car.CarHeader{
+			Roots:   roots,
+			Version: 1,
+		}, w); err != nil {
+			return fmt.Errorf("failed to write car header: %s", err)
+		}
 
-func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds format.DAGService, rootOnNodeBoundary bool) ([]dagSpec, error) {
-	if len(dsp) == 0 {
-		return []dagSpec{
-			{
-				root:     root,
-				selector: nil,
-			},
-		}, nil
-	}
+		cs := cid.NewSet()
 
-	out := make([]dagSpec, len(dsp))
-	for i, spec := range dsp {
-
-		// if a selector is specified, find it's root node
-		if spec.DataSelector != nil {
-			var rsn ipld.Node
-
-			if strings.HasPrefix(string(*spec.DataSelector), "{") {
-				var err error
-				rsn, err = selectorparse.ParseJSONSelector(string(*spec.DataSelector))
-				if err != nil {
-					return nil, xerrors.Errorf("failed to parse json-selector '%s': %w", *spec.DataSelector, err)
-				}
-			} else {
-				selspec, _ := textselector.SelectorSpecFromPath(textselector.Expression(*spec.DataSelector), nil) //nolint:errcheck
-				rsn = selspec.Node()
-			}
-
-			var newRoot cid.Cid
-
-			var errHalt = errors.New("halt walk")
-
+		for _, dagSpec := range dags {
 			if err := utils.TraverseDag(
 				ctx,
 				ds,
 				root,
-				rsn,
+				dagSpec.selector,
 				func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
 					if r == traversal.VisitReason_SelectionMatch {
-						if rootOnNodeBoundary && p.LastBlock.Path.String() != p.Path.String() {
-							return xerrors.Errorf("unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", p.Path.String())
-						}
-
+						var c cid.Cid
 						if p.LastBlock.Link == nil {
-							// this is likely the root node that we've matched here
-							newRoot = root
-							return errHalt
+							c = root
+						} else {
+							cidLnk, castOK := p.LastBlock.Link.(cidlink.Link)
+							if !castOK {
+								return xerrors.Errorf("cidlink cast unexpectedly failed on '%s'", p.LastBlock.Link)
+							}
+
+							c = cidLnk.Cid
 						}
 
-						cidLnk, castOK := p.LastBlock.Link.(cidlink.Link)
-						if !castOK {
-							return xerrors.Errorf("cidlink cast unexpectedly failed on '%s'", p.LastBlock.Link)
+						if cs.Visit(c) {
+							nb, err := bs.Get(ctx, c)
+							if err != nil {
+								return xerrors.Errorf("getting block data: %w", err)
+							}
+
+							err = util.LdWrite(w, c.Bytes(), nb.RawData())
+							if err != nil {
+								return xerrors.Errorf("writing block data: %w", err)
+							}
 						}
 
-						newRoot = cidLnk.Cid
-
-						return errHalt
+						return nil
 					}
 					return nil
 				},
-			); err != nil && err != errHalt {
-				return nil, xerrors.Errorf("error while locating partial retrieval sub-root: %w", err)
-			}
-
-			if newRoot == cid.Undef {
-				return nil, xerrors.Errorf("path selection does not match a node within %s", root)
-			}
-
-			out[i].root = newRoot
-		}
-
-		if spec.DataSelector != nil {
-			var err error
-			out[i].selector, err = getDataSelector(spec.DataSelector)
-			if err != nil {
-				return nil, err
+			); err != nil {
+				return xerrors.Errorf("error while traversing car dag: %w", err)
 			}
 		}
-	}
 
-	return out, nil
+		return nil
+	})
 }
 
 func (a *API) outputUnixFS(ctx context.Context, root cid.Cid, ds format.DAGService, dest ExportDest) error {
@@ -1132,6 +1076,93 @@ func (a *API) outputUnixFS(ctx context.Context, root cid.Cid, ds format.DAGServi
 	default:
 		return fmt.Errorf("file type %T is not supported", nd)
 	}
+}
+
+type dagSpec struct {
+	root     cid.Cid
+	selector ipld.Node
+}
+
+func parseDagSpec(ctx context.Context, root cid.Cid, dsp []api.DagSpec, ds format.DAGService, car bool) ([]dagSpec, error) {
+	if len(dsp) == 0 {
+		return []dagSpec{
+			{
+				root:     root,
+				selector: nil,
+			},
+		}, nil
+	}
+
+	out := make([]dagSpec, len(dsp))
+	for i, spec := range dsp {
+
+		if spec.DataSelector == nil {
+			return nil, xerrors.Errorf("invalid DagSpec at position %d: `DataSelector` can not be nil", i)
+		}
+
+		// reify selector
+		var err error
+		out[i].selector, err = getDataSelector(spec.DataSelector, car && spec.ExportMerkleProof)
+		if err != nil {
+			return nil, err
+		}
+
+		// find the pointed-at root node within the containing ds
+		var rsn ipld.Node
+
+		if strings.HasPrefix(string(*spec.DataSelector), "{") {
+			var err error
+			rsn, err = selectorparse.ParseJSONSelector(string(*spec.DataSelector))
+			if err != nil {
+				return nil, xerrors.Errorf("failed to parse json-selector '%s': %w", *spec.DataSelector, err)
+			}
+		} else {
+			selspec, _ := textselector.SelectorSpecFromPath(textselector.Expression(*spec.DataSelector), car && spec.ExportMerkleProof, nil) //nolint:errcheck
+			rsn = selspec.Node()
+		}
+
+		var newRoot cid.Cid
+		var errHalt = errors.New("halt walk")
+		if err := utils.TraverseDag(
+			ctx,
+			ds,
+			root,
+			rsn,
+			func(p traversal.Progress, n ipld.Node, r traversal.VisitReason) error {
+				if r == traversal.VisitReason_SelectionMatch {
+					if !car && p.LastBlock.Path.String() != p.Path.String() {
+						return xerrors.Errorf("unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", p.Path.String())
+					}
+
+					if p.LastBlock.Link == nil {
+						// this is likely the root node that we've matched here
+						newRoot = root
+						return errHalt
+					}
+
+					cidLnk, castOK := p.LastBlock.Link.(cidlink.Link)
+					if !castOK {
+						return xerrors.Errorf("cidlink cast unexpectedly failed on '%s'", p.LastBlock.Link)
+					}
+
+					newRoot = cidLnk.Cid
+
+					return errHalt
+				}
+				return nil
+			},
+		); err != nil && err != errHalt {
+			return nil, xerrors.Errorf("error while locating partial retrieval sub-root: %w", err)
+		}
+
+		if newRoot == cid.Undef {
+			return nil, xerrors.Errorf("path selection does not match a node within %s", root)
+		}
+
+		out[i].root = newRoot
+	}
+
+	return out, nil
 }
 
 func (a *API) ClientListRetrievals(ctx context.Context) ([]api.RetrievalInfo, error) {
@@ -1216,7 +1247,9 @@ func (a *API) newRetrievalInfo(ctx context.Context, v rm.ClientDealState) api.Re
 	return a.newRetrievalInfoWithTransfer(transferCh, v)
 }
 
-func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error) {
+const dealProtoPrefix = "/fil/storage/mk/"
+
+func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*api.StorageAsk, error) {
 	mi, err := a.StateMinerInfo(ctx, miner, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("failed getting miner info: %w", err)
@@ -1227,34 +1260,33 @@ func (a *API) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Addre
 	if err != nil {
 		return nil, err
 	}
-	return ask, nil
+	res := &api.StorageAsk{
+		Response: ask,
+	}
+
+	ps, err := a.Host.Peerstore().GetProtocols(p)
+	if err != nil {
+		return nil, err
+	}
+	for _, s := range ps {
+		if strings.HasPrefix(s, dealProtoPrefix) {
+			res.DealProtocols = append(res.DealProtocols, s)
+		}
+	}
+	sort.Strings(res.DealProtocols)
+
+	return res, nil
 }
 
 func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet, error) {
-
-	// Hard-code the sector type to 32GiBV1_1, because:
-	// - ffiwrapper.GeneratePieceCIDFromFile requires a RegisteredSealProof
-	// - commP itself is sector-size independent, with rather low probability of that changing
-	//   ( note how the final rust call is identical for every RegSP type )
-	//   https://github.com/filecoin-project/rust-filecoin-proofs-api/blob/v5.0.0/src/seal.rs#L1040-L1050
-	//
-	// IF/WHEN this changes in the future we will have to be able to calculate
-	// "old style" commP, and thus will need to introduce a version switch or similar
-	arbitraryProofType := abi.RegisteredSealProof_StackedDrg32GiBV1_1
-
 	rdr, err := os.Open(inpath)
 	if err != nil {
 		return nil, err
 	}
 	defer rdr.Close() //nolint:errcheck
 
-	stat, err := rdr.Stat()
-	if err != nil {
-		return nil, err
-	}
-
 	// check that the data is a car file; if it's not, retrieval won't work
-	_, _, err = car.ReadHeader(bufio.NewReader(rdr))
+	_, err = car.ReadHeader(bufio.NewReader(rdr))
 	if err != nil {
 		return nil, xerrors.Errorf("not a car file: %w", err)
 	}
@@ -1263,16 +1295,20 @@ func (a *API) ClientCalcCommP(ctx context.Context, inpath string) (*api.CommPRet
 		return nil, xerrors.Errorf("seek to start: %w", err)
 	}
 
-	pieceReader, pieceSize := padreader.New(rdr, uint64(stat.Size()))
-	commP, err := ffiwrapper.GeneratePieceCIDFromFile(arbitraryProofType, pieceReader, pieceSize)
+	w := &writer.Writer{}
+	_, err = io.CopyBuffer(w, rdr, make([]byte, writer.CommPBuf))
+	if err != nil {
+		return nil, xerrors.Errorf("copy into commp writer: %w", err)
+	}
 
+	commp, err := w.Sum()
 	if err != nil {
 		return nil, xerrors.Errorf("computing commP failed: %w", err)
 	}
 
 	return &api.CommPRet{
-		Root: commP,
-		Size: pieceSize,
+		Root: commp.PieceCID,
+		Size: commp.PieceSize.Unpadded(),
 	}, nil
 }
 
@@ -1345,7 +1381,7 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 	defer os.Remove(tmp) //nolint:errcheck
 
 	// generate and import the UnixFS DAG into a filestore (positional reference) CAR.
-	root, err := a.createUnixFSFilestore(ctx, ref.Path, tmp)
+	root, err := unixfs.CreateFilestore(ctx, ref.Path, tmp)
 	if err != nil {
 		return xerrors.Errorf("failed to import file using unixfs: %w", err)
 	}

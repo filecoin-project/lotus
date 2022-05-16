@@ -135,7 +135,7 @@ func (nd *Node) CreateSim(ctx context.Context, name string, head *types.TipSet) 
 		StateManager: sm,
 		stages:       stages,
 	}
-	if has, err := nd.MetadataDS.Has(sim.key("head")); err != nil {
+	if has, err := nd.MetadataDS.Has(ctx, sim.key("head")); err != nil {
 		return nil, err
 	} else if has {
 		return nil, xerrors.Errorf("simulation named %s already exists", name)
@@ -155,7 +155,7 @@ func (nd *Node) CreateSim(ctx context.Context, name string, head *types.TipSet) 
 // ListSims lists all simulations.
 func (nd *Node) ListSims(ctx context.Context) ([]string, error) {
 	prefix := simulationPrefix.ChildString("head").String()
-	items, err := nd.MetadataDS.Query(query.Query{
+	items, err := nd.MetadataDS.Query(ctx, query.Query{
 		Prefix:   prefix,
 		KeysOnly: true,
 		Orders:   []query.Order{query.OrderByKey{}},
@@ -192,7 +192,7 @@ func (nd *Node) DeleteSim(ctx context.Context, name string) error {
 	var err error
 	for _, field := range simFields {
 		key := simulationPrefix.ChildString(field).ChildString(name)
-		err = multierr.Append(err, nd.MetadataDS.Delete(key))
+		err = multierr.Append(err, nd.MetadataDS.Delete(ctx, key))
 	}
 	return err
 }
@@ -209,7 +209,7 @@ func (nd *Node) CopySim(ctx context.Context, oldName, newName string) error {
 	values := make(map[string][]byte)
 	for _, field := range simFields {
 		key := simulationPrefix.ChildString(field).ChildString(oldName)
-		value, err := nd.MetadataDS.Get(key)
+		value, err := nd.MetadataDS.Get(ctx, key)
 		if err == datastore.ErrNotFound {
 			continue
 		} else if err != nil {
@@ -226,9 +226,9 @@ func (nd *Node) CopySim(ctx context.Context, oldName, newName string) error {
 		key := simulationPrefix.ChildString(field).ChildString(newName)
 		var err error
 		if value, ok := values[field]; ok {
-			err = nd.MetadataDS.Put(key, value)
+			err = nd.MetadataDS.Put(ctx, key, value)
 		} else {
-			err = nd.MetadataDS.Delete(key)
+			err = nd.MetadataDS.Delete(ctx, key)
 		}
 		if err != nil {
 			return err

@@ -3,14 +3,18 @@ package vm
 import (
 	"fmt"
 
+	"github.com/filecoin-project/go-state-types/network"
+
+	vmr "github.com/filecoin-project/specs-actors/v7/actors/runtime"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	"github.com/filecoin-project/go-address"
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/lotus/build"
-	vmr5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/build"
 )
 
 type GasCharge struct {
@@ -48,7 +52,7 @@ func newGasCharge(name string, computeGas int64, storageGas int64) GasCharge {
 	}
 }
 
-// Pricelist provides prices for operations in the VM.
+// Pricelist provides prices for operations in the LegacyVM.
 //
 // Note: this interface should be APPEND ONLY since last chain checkpoint
 type Pricelist interface {
@@ -73,147 +77,160 @@ type Pricelist interface {
 	OnVerifySignature(sigType crypto.SigType, planTextSize int) (GasCharge, error)
 	OnHashing(dataSize int) GasCharge
 	OnComputeUnsealedSectorCid(proofType abi.RegisteredSealProof, pieces []abi.PieceInfo) GasCharge
-	OnVerifySeal(info proof5.SealVerifyInfo) GasCharge
-	OnVerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) GasCharge
-	OnVerifyPost(info proof5.WindowPoStVerifyInfo) GasCharge
+	OnVerifySeal(info proof7.SealVerifyInfo) GasCharge
+	OnVerifyAggregateSeals(aggregate proof7.AggregateSealVerifyProofAndInfos) GasCharge
+	OnVerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) GasCharge
+	OnVerifyPost(info proof7.WindowPoStVerifyInfo) GasCharge
 	OnVerifyConsensusFault() GasCharge
 }
 
-var prices = map[abi.ChainEpoch]Pricelist{
-	abi.ChainEpoch(0): &pricelistV0{
-		computeGasMulti: 1,
-		storageGasMulti: 1000,
+var priceListGenesis = pricelistV0{
+	computeGasMulti: 1,
+	storageGasMulti: 1000,
 
-		onChainMessageComputeBase:    38863,
-		onChainMessageStorageBase:    36,
-		onChainMessageStoragePerByte: 1,
+	onChainMessageComputeBase:    38863,
+	onChainMessageStorageBase:    36,
+	onChainMessageStoragePerByte: 1,
 
-		onChainReturnValuePerByte: 1,
+	onChainReturnValuePerByte: 1,
 
-		sendBase:                29233,
-		sendTransferFunds:       27500,
-		sendTransferOnlyPremium: 159672,
-		sendInvokeMethod:        -5377,
+	sendBase:                29233,
+	sendTransferFunds:       27500,
+	sendTransferOnlyPremium: 159672,
+	sendInvokeMethod:        -5377,
 
-		ipldGetBase:    75242,
-		ipldPutBase:    84070,
-		ipldPutPerByte: 1,
+	ipldGetBase:    75242,
+	ipldPutBase:    84070,
+	ipldPutPerByte: 1,
 
-		createActorCompute: 1108454,
-		createActorStorage: 36 + 40,
-		deleteActor:        -(36 + 40), // -createActorStorage
+	createActorCompute: 1108454,
+	createActorStorage: 36 + 40,
+	deleteActor:        -(36 + 40), // -createActorStorage
 
-		verifySignature: map[crypto.SigType]int64{
-			crypto.SigTypeBLS:       16598605,
-			crypto.SigTypeSecp256k1: 1637292,
-		},
-
-		hashingBase:                  31355,
-		computeUnsealedSectorCidBase: 98647,
-		verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
-		verifyAggregateSealBase:      0,
-		verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
-			abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
-				flat:  123861062,
-				scale: 9226981,
-			},
-			abi.RegisteredPoStProof_StackedDrgWindow32GiBV1: {
-				flat:  748593537,
-				scale: 85639,
-			},
-			abi.RegisteredPoStProof_StackedDrgWindow64GiBV1: {
-				flat:  748593537,
-				scale: 85639,
-			},
-		},
-		verifyPostDiscount:   true,
-		verifyConsensusFault: 495422,
+	verifySignature: map[crypto.SigType]int64{
+		crypto.SigTypeBLS:       16598605,
+		crypto.SigTypeSecp256k1: 1637292,
 	},
-	abi.ChainEpoch(build.UpgradeCalicoHeight): &pricelistV0{
-		computeGasMulti: 1,
-		storageGasMulti: 1300,
 
-		onChainMessageComputeBase:    38863,
-		onChainMessageStorageBase:    36,
-		onChainMessageStoragePerByte: 1,
-
-		onChainReturnValuePerByte: 1,
-
-		sendBase:                29233,
-		sendTransferFunds:       27500,
-		sendTransferOnlyPremium: 159672,
-		sendInvokeMethod:        -5377,
-
-		ipldGetBase:    114617,
-		ipldPutBase:    353640,
-		ipldPutPerByte: 1,
-
-		createActorCompute: 1108454,
-		createActorStorage: 36 + 40,
-		deleteActor:        -(36 + 40), // -createActorStorage
-
-		verifySignature: map[crypto.SigType]int64{
-			crypto.SigTypeBLS:       16598605,
-			crypto.SigTypeSecp256k1: 1637292,
+	hashingBase:                  31355,
+	computeUnsealedSectorCidBase: 98647,
+	verifySealBase:               2000, // TODO gas , it VerifySeal syscall is not used
+	verifyAggregateSealBase:      0,
+	verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
+		abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
+			flat:  123861062,
+			scale: 9226981,
 		},
-
-		hashingBase:                  31355,
-		computeUnsealedSectorCidBase: 98647,
-		verifySealBase:               2000, // TODO gas, it VerifySeal syscall is not used
-
-		verifyAggregateSealPer: map[abi.RegisteredSealProof]int64{
-			abi.RegisteredSealProof_StackedDrg32GiBV1_1: 449900,
-			abi.RegisteredSealProof_StackedDrg64GiBV1_1: 359272,
+		abi.RegisteredPoStProof_StackedDrgWindow32GiBV1: {
+			flat:  748593537,
+			scale: 85639,
 		},
-		verifyAggregateSealSteps: map[abi.RegisteredSealProof]stepCost{
-			abi.RegisteredSealProof_StackedDrg32GiBV1_1: {
-				{4, 103994170},
-				{7, 112356810},
-				{13, 122912610},
-				{26, 137559930},
-				{52, 162039100},
-				{103, 210960780},
-				{205, 318351180},
-				{410, 528274980},
-			},
-			abi.RegisteredSealProof_StackedDrg64GiBV1_1: {
-				{4, 102581240},
-				{7, 110803030},
-				{13, 120803700},
-				{26, 134642130},
-				{52, 157357890},
-				{103, 203017690},
-				{205, 304253590},
-				{410, 509880640},
-			},
+		abi.RegisteredPoStProof_StackedDrgWindow64GiBV1: {
+			flat:  748593537,
+			scale: 85639,
 		},
-
-		verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
-			abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
-				flat:  117680921,
-				scale: 43780,
-			},
-			abi.RegisteredPoStProof_StackedDrgWindow32GiBV1: {
-				flat:  117680921,
-				scale: 43780,
-			},
-			abi.RegisteredPoStProof_StackedDrgWindow64GiBV1: {
-				flat:  117680921,
-				scale: 43780,
-			},
-		},
-		verifyPostDiscount:   false,
-		verifyConsensusFault: 495422,
 	},
+	verifyPostDiscount:   true,
+	verifyConsensusFault: 495422,
 }
 
-// PricelistByEpoch finds the latest prices for the given epoch
-func PricelistByEpoch(epoch abi.ChainEpoch) Pricelist {
+var priceListCalico = pricelistV0{
+	computeGasMulti: 1,
+	storageGasMulti: 1300,
+
+	onChainMessageComputeBase:    38863,
+	onChainMessageStorageBase:    36,
+	onChainMessageStoragePerByte: 1,
+
+	onChainReturnValuePerByte: 1,
+
+	sendBase:                29233,
+	sendTransferFunds:       27500,
+	sendTransferOnlyPremium: 159672,
+	sendInvokeMethod:        -5377,
+
+	ipldGetBase:    114617,
+	ipldPutBase:    353640,
+	ipldPutPerByte: 1,
+
+	createActorCompute: 1108454,
+	createActorStorage: 36 + 40,
+	deleteActor:        -(36 + 40), // -createActorStorage
+
+	verifySignature: map[crypto.SigType]int64{
+		crypto.SigTypeBLS:       16598605,
+		crypto.SigTypeSecp256k1: 1637292,
+	},
+
+	hashingBase:                  31355,
+	computeUnsealedSectorCidBase: 98647,
+	verifySealBase:               2000, // TODO gas, it VerifySeal syscall is not used
+
+	verifyAggregateSealPer: map[abi.RegisteredSealProof]int64{
+		abi.RegisteredSealProof_StackedDrg32GiBV1_1: 449900,
+		abi.RegisteredSealProof_StackedDrg64GiBV1_1: 359272,
+	},
+	verifyAggregateSealSteps: map[abi.RegisteredSealProof]stepCost{
+		abi.RegisteredSealProof_StackedDrg32GiBV1_1: {
+			{4, 103994170},
+			{7, 112356810},
+			{13, 122912610},
+			{26, 137559930},
+			{52, 162039100},
+			{103, 210960780},
+			{205, 318351180},
+			{410, 528274980},
+		},
+		abi.RegisteredSealProof_StackedDrg64GiBV1_1: {
+			{4, 102581240},
+			{7, 110803030},
+			{13, 120803700},
+			{26, 134642130},
+			{52, 157357890},
+			{103, 203017690},
+			{205, 304253590},
+			{410, 509880640},
+		},
+	},
+
+	verifyPostLookup: map[abi.RegisteredPoStProof]scalingCost{
+		abi.RegisteredPoStProof_StackedDrgWindow512MiBV1: {
+			flat:  117680921,
+			scale: 43780,
+		},
+		abi.RegisteredPoStProof_StackedDrgWindow32GiBV1: {
+			flat:  117680921,
+			scale: 43780,
+		},
+		abi.RegisteredPoStProof_StackedDrgWindow64GiBV1: {
+			flat:  117680921,
+			scale: 43780,
+		},
+	},
+	verifyPostDiscount:   false,
+	verifyConsensusFault: 495422,
+
+	verifyReplicaUpdate: 36316136,
+}
+
+// Prices are the price lists per starting epoch.
+// For network v8 and onwards, this is disregarded; the pricelist is selected by network version.
+var pricesByEpoch = map[abi.ChainEpoch]Pricelist{
+	abi.ChainEpoch(0):                         &priceListGenesis,
+	abi.ChainEpoch(build.UpgradeCalicoHeight): &priceListCalico,
+}
+
+// PricelistByEpochAndNetworkVersion finds the latest prices for the given epoch
+func PricelistByEpochAndNetworkVersion(epoch abi.ChainEpoch, nv network.Version) Pricelist {
+	if nv >= network.Version8 {
+		return &priceListCalico
+	}
+
 	// since we are storing the prices as map or epoch to price
 	// we need to get the price with the highest epoch that is lower or equal to the `epoch` arg
 	bestEpoch := abi.ChainEpoch(0)
-	bestPrice := prices[bestEpoch]
-	for e, pl := range prices {
+	bestPrice := pricesByEpoch[bestEpoch]
+	for e, pl := range pricesByEpoch {
 		// if `e` happened after `bestEpoch` and `e` is earlier or equal to the target `epoch`
 		if e > bestEpoch && e <= epoch {
 			bestEpoch = e
@@ -227,7 +244,7 @@ func PricelistByEpoch(epoch abi.ChainEpoch) Pricelist {
 }
 
 type pricedSyscalls struct {
-	under     vmr5.Syscalls
+	under     vmr.Syscalls
 	pl        Pricelist
 	chargeGas func(GasCharge)
 }
@@ -261,7 +278,7 @@ func (ps pricedSyscalls) ComputeUnsealedSectorCID(reg abi.RegisteredSealProof, p
 }
 
 // Verifies a sector seal proof.
-func (ps pricedSyscalls) VerifySeal(vi proof5.SealVerifyInfo) error {
+func (ps pricedSyscalls) VerifySeal(vi proof7.SealVerifyInfo) error {
 	ps.chargeGas(ps.pl.OnVerifySeal(vi))
 	defer ps.chargeGas(gasOnActorExec)
 
@@ -269,7 +286,7 @@ func (ps pricedSyscalls) VerifySeal(vi proof5.SealVerifyInfo) error {
 }
 
 // Verifies a proof of spacetime.
-func (ps pricedSyscalls) VerifyPoSt(vi proof5.WindowPoStVerifyInfo) error {
+func (ps pricedSyscalls) VerifyPoSt(vi proof7.WindowPoStVerifyInfo) error {
 	ps.chargeGas(ps.pl.OnVerifyPost(vi))
 	defer ps.chargeGas(gasOnActorExec)
 
@@ -286,14 +303,14 @@ func (ps pricedSyscalls) VerifyPoSt(vi proof5.WindowPoStVerifyInfo) error {
 // the "parent grinding fault", in which case it must be the sibling of h1 (same parent tipset) and one of the
 // blocks in the parent of h2 (i.e. h2's grandparent).
 // Returns nil and an error if the headers don't prove a fault.
-func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte) (*vmr5.ConsensusFault, error) {
+func (ps pricedSyscalls) VerifyConsensusFault(h1 []byte, h2 []byte, extra []byte) (*vmr.ConsensusFault, error) {
 	ps.chargeGas(ps.pl.OnVerifyConsensusFault())
 	defer ps.chargeGas(gasOnActorExec)
 
 	return ps.under.VerifyConsensusFault(h1, h2, extra)
 }
 
-func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]proof5.SealVerifyInfo) (map[address.Address][]bool, error) {
+func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]proof7.SealVerifyInfo) (map[address.Address][]bool, error) {
 	count := int64(0)
 	for _, svis := range inp {
 		count += int64(len(svis))
@@ -307,9 +324,16 @@ func (ps pricedSyscalls) BatchVerifySeals(inp map[address.Address][]proof5.SealV
 	return ps.under.BatchVerifySeals(inp)
 }
 
-func (ps pricedSyscalls) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) error {
+func (ps pricedSyscalls) VerifyAggregateSeals(aggregate proof7.AggregateSealVerifyProofAndInfos) error {
 	ps.chargeGas(ps.pl.OnVerifyAggregateSeals(aggregate))
 	defer ps.chargeGas(gasOnActorExec)
 
 	return ps.under.VerifyAggregateSeals(aggregate)
+}
+
+func (ps pricedSyscalls) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) error {
+	ps.chargeGas(ps.pl.OnVerifyReplicaUpdate(update))
+	defer ps.chargeGas(gasOnActorExec)
+
+	return ps.under.VerifyReplicaUpdate(update)
 }

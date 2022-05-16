@@ -14,6 +14,7 @@ import (
 	"github.com/fatih/color"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/hashicorp/go-multierror"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
@@ -54,7 +55,8 @@ var TipsetVectorOpts struct {
 func ExecuteMessageVector(r Reporter, vector *schema.TestVector, variant *schema.Variant) (diffs []string, err error) {
 	var (
 		ctx       = context.Background()
-		baseEpoch = variant.Epoch
+		baseEpoch = abi.ChainEpoch(variant.Epoch)
+		nv        = network.Version(variant.NetworkVersion)
 		root      = vector.Pre.StateTree.RootCID
 	)
 
@@ -76,18 +78,19 @@ func ExecuteMessageVector(r Reporter, vector *schema.TestVector, variant *schema
 
 		// add the epoch offset if one is set.
 		if m.EpochOffset != nil {
-			baseEpoch += *m.EpochOffset
+			baseEpoch += abi.ChainEpoch(*m.EpochOffset)
 		}
 
 		// Execute the message.
 		var ret *vm.ApplyRet
 		ret, root, err = driver.ExecuteMessage(bs, ExecuteMessageParams{
-			Preroot:    root,
-			Epoch:      abi.ChainEpoch(baseEpoch),
-			Message:    msg,
-			BaseFee:    BaseFeeOrDefault(vector.Pre.BaseFee),
-			CircSupply: CircSupplyOrDefault(vector.Pre.CircSupply),
-			Rand:       NewReplayingRand(r, vector.Randomness),
+			Preroot:        root,
+			Epoch:          baseEpoch,
+			Message:        msg,
+			BaseFee:        BaseFeeOrDefault(vector.Pre.BaseFee),
+			CircSupply:     CircSupplyOrDefault(vector.Pre.CircSupply),
+			Rand:           NewReplayingRand(r, vector.Randomness),
+			NetworkVersion: nv,
 		})
 		if err != nil {
 			r.Fatalf("fatal failure when executing message: %s", err)
@@ -184,8 +187,10 @@ func ExecuteTipsetVector(r Reporter, vector *schema.TestVector, variant *schema.
 func AssertMsgResult(r Reporter, expected *schema.Receipt, actual *vm.ApplyRet, label string) {
 	r.Helper()
 
+	applyret := actual
 	if expected, actual := exitcode.ExitCode(expected.ExitCode), actual.ExitCode; expected != actual {
 		r.Errorf("exit code of msg %s did not match; expected: %s, got: %s", label, expected, actual)
+		r.Errorf("\t\\==> actor error: %s", applyret.ActorErr)
 	}
 	if expected, actual := expected.GasUsed, actual.GasUsed; expected != actual {
 		r.Errorf("gas used of msg %s did not match; expected: %d, got: %d", label, expected, actual)
@@ -282,7 +287,7 @@ func writeStateToTempCAR(bs blockstore.Blockstore, roots ...cid.Cid) (string, er
 				continue
 			}
 			// ignore things we don't have, the state tree is incomplete.
-			if has, err := bs.Has(link.Cid); err != nil {
+			if has, err := bs.Has(context.TODO(), link.Cid); err != nil {
 				return nil, err
 			} else if has {
 				out = append(out, link)
@@ -317,7 +322,7 @@ func LoadBlockstore(vectorCAR schema.Base64EncodedBytes) (blockstore.Blockstore,
 	defer r.Close() // nolint
 
 	// Load the CAR embedded in the test vector into the Blockstore.
-	_, err = car.LoadCar(bs, r)
+	_, err = car.LoadCar(context.TODO(), bs, r)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load state tree car from test vector: %s", err)
 	}

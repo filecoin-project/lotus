@@ -31,7 +31,7 @@ func (sim *Simulation) storeMessages(ctx context.Context, messages []*types.Mess
 	// fail a pre-commit...
 	var msgCids []cid.Cid
 	for _, msg := range messages {
-		c, err := sim.Node.Chainstore.PutMessage(msg)
+		c, err := sim.Node.Chainstore.PutMessage(ctx, msg)
 		if err != nil {
 			return cid.Undef, err
 		}

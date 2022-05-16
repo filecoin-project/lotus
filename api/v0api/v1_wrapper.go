@@ -3,6 +3,9 @@ package v0api
 import (
 	"context"
 
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/libp2p/go-libp2p-core/peer"
+
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -329,11 +332,24 @@ func (w *WrapperV1Full) clientRetrieve(ctx context.Context, order RetrievalOrder
 	if order.DatamodelPathSelector != nil {
 		s := api.Selector(*order.DatamodelPathSelector)
 		eref.DAGs = append(eref.DAGs, api.DagSpec{
-			DataSelector: &s,
+			DataSelector:      &s,
+			ExportMerkleProof: true,
 		})
 	}
 
 	finish(w.ClientExport(ctx, eref, *ref))
+}
+
+func (w *WrapperV1Full) PaychGet(ctx context.Context, from, to address.Address, amt types.BigInt) (*api.ChannelInfo, error) {
+	return w.FullNode.PaychFund(ctx, from, to, amt)
+}
+
+func (w *WrapperV1Full) ClientQueryAsk(ctx context.Context, p peer.ID, miner address.Address) (*storagemarket.StorageAsk, error) {
+	a, err := w.FullNode.ClientQueryAsk(ctx, p, miner)
+	if err != nil {
+		return nil, err
+	}
+	return a.Response, nil
 }
 
 var _ FullNode = &WrapperV1Full{}

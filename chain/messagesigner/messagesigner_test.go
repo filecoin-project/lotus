@@ -1,3 +1,4 @@
+//stm: #unit
 package messagesigner
 
 import (
@@ -60,6 +61,7 @@ func TestMessageSignerSignMessage(t *testing.T) {
 	to2, err := w.WalletNew(ctx, types.KTSecp256k1)
 	require.NoError(t, err)
 
+	//stm: @CHAIN_MESSAGE_SIGNER_NEW_SIGNER_001, @CHAIN_MESSAGE_SIGNER_SIGN_MESSAGE_001, @CHAIN_MESSAGE_SIGNER_SIGN_MESSAGE_005
 	type msgSpec struct {
 		msg        *types.Message
 		mpoolNonce [1]uint64

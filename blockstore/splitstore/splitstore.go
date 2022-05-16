@@ -18,6 +18,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	bstore "github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
 
@@ -47,6 +49,9 @@ var (
 	enableDebugLog = false
 	// set this to true if you want to track origin stack traces in the write log
 	enableDebugLogWriteTraces = false
+
+	// upgradeBoundary is the boundary before and after an upgrade where we suppress compaction
+	upgradeBoundary = build.Finality
 )
 
 func init() {
@@ -98,6 +103,12 @@ type ChainAccessor interface {
 	SubscribeHeadChanges(change func(revert []*types.TipSet, apply []*types.TipSet) error)
 }
 
+// upgradeRange is a precomputed epoch range during which we shouldn't compact so as to not
+// interfere with an upgrade
+type upgradeRange struct {
+	start, end abi.ChainEpoch
+}
+
 // hotstore is the interface that must be satisfied by the hot blockstore; it is an extension
 // of the Blockstore interface with the traits we need for compaction.
 type hotstore interface {
@@ -118,12 +129,12 @@ type SplitStore struct {
 
 	headChangeMx sync.Mutex
 
-	coldPurgeSize int
-
 	chain ChainAccessor
 	ds    dstore.Datastore
 	cold  bstore.Blockstore
 	hot   hotstore
+
+	upgrades []upgradeRange
 
 	markSetEnv  MarkSetEnv
 	markSetSize int64
@@ -145,6 +156,17 @@ type SplitStore struct {
 	txnRefsMx       sync.Mutex
 	txnRefs         map[cid.Cid]struct{}
 	txnMissing      map[cid.Cid]struct{}
+	txnMarkSet      MarkSet
+	txnSyncMx       sync.Mutex
+	txnSyncCond     sync.Cond
+	txnSync         bool
+
+	// background cold object reification
+	reifyWorkers    sync.WaitGroup
+	reifyMx         sync.Mutex
+	reifyCond       sync.Cond
+	reifyPend       map[cid.Cid]struct{}
+	reifyInProgress map[cid.Cid]struct{}
 
 	// registered protectors
 	protectors []func(func(cid.Cid) error) error
@@ -173,10 +195,6 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 		return nil, err
 	}
 
-	if !markSetEnv.SupportsVisitor() {
-		return nil, xerrors.Errorf("markset type does not support atomic visitors")
-	}
-
 	// and now we can make a SplitStore
 	ss := &SplitStore{
 		cfg:        cfg,
@@ -185,12 +203,15 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 		cold:       cold,
 		hot:        hots,
 		markSetEnv: markSetEnv,
-
-		coldPurgeSize: defaultColdPurgeSize,
 	}
 
 	ss.txnViewsCond.L = &ss.txnViewsMx
+	ss.txnSyncCond.L = &ss.txnSyncMx
 	ss.ctx, ss.cancel = context.WithCancel(context.Background())
+
+	ss.reifyCond.L = &ss.reifyMx
+	ss.reifyPend = make(map[cid.Cid]struct{})
+	ss.reifyInProgress = make(map[cid.Cid]struct{})
 
 	if enableDebugLog {
 		ss.debug, err = openDebugLog(path)
@@ -199,21 +220,29 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 		}
 	}
 
+	if ss.checkpointExists() {
+		log.Info("found compaction checkpoint; resuming compaction")
+		if err := ss.completeCompaction(); err != nil {
+			markSetEnv.Close() //nolint:errcheck
+			return nil, xerrors.Errorf("error resuming compaction: %w", err)
+		}
+	}
+
 	return ss, nil
 }
 
 // Blockstore interface
-func (s *SplitStore) DeleteBlock(_ cid.Cid) error {
+func (s *SplitStore) DeleteBlock(_ context.Context, _ cid.Cid) error {
 	// afaict we don't seem to be using this method, so it's not implemented
 	return errors.New("DeleteBlock not implemented on SplitStore; don't do this Luke!") //nolint
 }
 
-func (s *SplitStore) DeleteMany(_ []cid.Cid) error {
+func (s *SplitStore) DeleteMany(_ context.Context, _ []cid.Cid) error {
 	// afaict we don't seem to be using this method, so it's not implemented
 	return errors.New("DeleteMany not implemented on SplitStore; don't do this Luke!") //nolint
 }
 
-func (s *SplitStore) Has(cid cid.Cid) (bool, error) {
+func (s *SplitStore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 	if isIdentiyCid(cid) {
 		return true, nil
 	}
@@ -221,7 +250,21 @@ func (s *SplitStore) Has(cid cid.Cid) (bool, error) {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	has, err := s.hot.Has(cid)
+	// critical section
+	if s.txnMarkSet != nil {
+		has, err := s.txnMarkSet.Has(cid)
+		if err != nil {
+			return false, err
+		}
+
+		if has {
+			return s.has(cid)
+		}
+
+		return s.cold.Has(ctx, cid)
+	}
+
+	has, err := s.hot.Has(ctx, cid)
 
 	if err != nil {
 		return has, err
@@ -232,10 +275,16 @@ func (s *SplitStore) Has(cid cid.Cid) (bool, error) {
 		return true, nil
 	}
 
-	return s.cold.Has(cid)
+	has, err = s.cold.Has(ctx, cid)
+	if has && bstore.IsHotView(ctx) {
+		s.reifyColdObject(cid)
+	}
+
+	return has, err
+
 }
 
-func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
+func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
 	if isIdentiyCid(cid) {
 		data, err := decodeIdentityCid(cid)
 		if err != nil {
@@ -248,7 +297,21 @@ func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	blk, err := s.hot.Get(cid)
+	// critical section
+	if s.txnMarkSet != nil {
+		has, err := s.txnMarkSet.Has(cid)
+		if err != nil {
+			return nil, err
+		}
+
+		if has {
+			return s.get(cid)
+		}
+
+		return s.cold.Get(ctx, cid)
+	}
+
+	blk, err := s.hot.Get(ctx, cid)
 
 	switch err {
 	case nil:
@@ -260,10 +323,13 @@ func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
 			s.debug.LogReadMiss(cid)
 		}
 
-		blk, err = s.cold.Get(cid)
+		blk, err = s.cold.Get(ctx, cid)
 		if err == nil {
-			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
+			if bstore.IsHotView(ctx) {
+				s.reifyColdObject(cid)
+			}
 
+			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
 		}
 		return blk, err
 
@@ -272,7 +338,7 @@ func (s *SplitStore) Get(cid cid.Cid) (blocks.Block, error) {
 	}
 }
 
-func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
+func (s *SplitStore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 	if isIdentiyCid(cid) {
 		data, err := decodeIdentityCid(cid)
 		if err != nil {
@@ -285,7 +351,21 @@ func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	size, err := s.hot.GetSize(cid)
+	// critical section
+	if s.txnMarkSet != nil {
+		has, err := s.txnMarkSet.Has(cid)
+		if err != nil {
+			return 0, err
+		}
+
+		if has {
+			return s.getSize(cid)
+		}
+
+		return s.cold.GetSize(ctx, cid)
+	}
+
+	size, err := s.hot.GetSize(ctx, cid)
 
 	switch err {
 	case nil:
@@ -297,8 +377,12 @@ func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 			s.debug.LogReadMiss(cid)
 		}
 
-		size, err = s.cold.GetSize(cid)
+		size, err = s.cold.GetSize(ctx, cid)
 		if err == nil {
+			if bstore.IsHotView(ctx) {
+				s.reifyColdObject(cid)
+			}
+
 			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
 		}
 		return size, err
@@ -308,7 +392,7 @@ func (s *SplitStore) GetSize(cid cid.Cid) (int, error) {
 	}
 }
 
-func (s *SplitStore) Put(blk blocks.Block) error {
+func (s *SplitStore) Put(ctx context.Context, blk blocks.Block) error {
 	if isIdentiyCid(blk.Cid()) {
 		return nil
 	}
@@ -316,18 +400,24 @@ func (s *SplitStore) Put(blk blocks.Block) error {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	err := s.hot.Put(blk)
+	err := s.hot.Put(ctx, blk)
 	if err != nil {
 		return err
 	}
 
 	s.debug.LogWrite(blk)
 
+	// critical section
+	if s.txnMarkSet != nil {
+		s.markLiveRefs([]cid.Cid{blk.Cid()})
+		return nil
+	}
+
 	s.trackTxnRef(blk.Cid())
 	return nil
 }
 
-func (s *SplitStore) PutMany(blks []blocks.Block) error {
+func (s *SplitStore) PutMany(ctx context.Context, blks []blocks.Block) error {
 	// filter identites
 	idcids := 0
 	for _, blk := range blks {
@@ -361,12 +451,18 @@ func (s *SplitStore) PutMany(blks []blocks.Block) error {
 	s.txnLk.RLock()
 	defer s.txnLk.RUnlock()
 
-	err := s.hot.PutMany(blks)
+	err := s.hot.PutMany(ctx, blks)
 	if err != nil {
 		return err
 	}
 
 	s.debug.LogWriteMany(blks)
+
+	// critical section
+	if s.txnMarkSet != nil {
+		s.markLiveRefs(batch)
+		return nil
+	}
 
 	s.trackTxnRefMany(batch)
 	return nil
@@ -417,7 +513,7 @@ func (s *SplitStore) HashOnRead(enabled bool) {
 	s.cold.HashOnRead(enabled)
 }
 
-func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
+func (s *SplitStore) View(ctx context.Context, cid cid.Cid, cb func([]byte) error) error {
 	if isIdentiyCid(cid) {
 		data, err := decodeIdentityCid(cid)
 		if err != nil {
@@ -425,6 +521,23 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 		}
 
 		return cb(data)
+	}
+
+	// critical section
+	s.txnLk.RLock() // the lock is released in protectView if we are not in critical section
+	if s.txnMarkSet != nil {
+		has, err := s.txnMarkSet.Has(cid)
+		s.txnLk.RUnlock()
+
+		if err != nil {
+			return err
+		}
+
+		if has {
+			return s.view(cid, cb)
+		}
+
+		return s.cold.View(ctx, cid, cb)
 	}
 
 	// views are (optimistically) protected two-fold:
@@ -438,15 +551,19 @@ func (s *SplitStore) View(cid cid.Cid, cb func([]byte) error) error {
 	s.protectView(cid)
 	defer s.viewDone()
 
-	err := s.hot.View(cid, cb)
+	err := s.hot.View(ctx, cid, cb)
 	switch err {
 	case bstore.ErrNotFound:
 		if s.isWarm() {
 			s.debug.LogReadMiss(cid)
 		}
 
-		err = s.cold.View(cid, cb)
+		err = s.cold.View(ctx, cid, cb)
 		if err == nil {
+			if bstore.IsHotView(ctx) {
+				s.reifyColdObject(cid)
+			}
+
 			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
 		}
 		return err
@@ -463,16 +580,33 @@ func (s *SplitStore) isWarm() bool {
 }
 
 // State tracking
-func (s *SplitStore) Start(chain ChainAccessor) error {
+func (s *SplitStore) Start(chain ChainAccessor, us stmgr.UpgradeSchedule) error {
 	s.chain = chain
 	curTs := chain.GetHeaviestTipSet()
+
+	// precompute the upgrade boundaries
+	s.upgrades = make([]upgradeRange, 0, len(us))
+	for _, upgrade := range us {
+		boundary := upgrade.Height
+		for _, pre := range upgrade.PreMigrations {
+			preMigrationBoundary := upgrade.Height - pre.StartWithin
+			if preMigrationBoundary < boundary {
+				boundary = preMigrationBoundary
+			}
+		}
+
+		upgradeStart := boundary - upgradeBoundary
+		upgradeEnd := upgrade.Height + upgradeBoundary
+
+		s.upgrades = append(s.upgrades, upgradeRange{start: upgradeStart, end: upgradeEnd})
+	}
 
 	// should we warmup
 	warmup := false
 
 	// load base epoch from metadata ds
 	// if none, then use current epoch because it's a fresh start
-	bs, err := s.ds.Get(baseEpochKey)
+	bs, err := s.ds.Get(s.ctx, baseEpochKey)
 	switch err {
 	case nil:
 		s.baseEpoch = bytesToEpoch(bs)
@@ -493,7 +627,7 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 	}
 
 	// load warmup epoch from metadata ds
-	bs, err = s.ds.Get(warmupEpochKey)
+	bs, err = s.ds.Get(s.ctx, warmupEpochKey)
 	switch err {
 	case nil:
 		s.warmupEpoch = bytesToEpoch(bs)
@@ -506,7 +640,7 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 	}
 
 	// load markSetSize from metadata ds to provide a size hint for marksets
-	bs, err = s.ds.Get(markSetSizeKey)
+	bs, err = s.ds.Get(s.ctx, markSetSizeKey)
 	switch err {
 	case nil:
 		s.markSetSize = bytesToInt64(bs)
@@ -517,7 +651,7 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 	}
 
 	// load compactionIndex from metadata ds to provide a hint as to when to perform moving gc
-	bs, err = s.ds.Get(compactionIndexKey)
+	bs, err = s.ds.Get(s.ctx, compactionIndexKey)
 	switch err {
 	case nil:
 		s.compactionIndex = bytesToInt64(bs)
@@ -539,6 +673,9 @@ func (s *SplitStore) Start(chain ChainAccessor) error {
 		}
 	}
 
+	// spawn the reifier
+	go s.reifyOrchestrator()
+
 	// watch the chain
 	chain.SubscribeHeadChanges(s.HeadChange)
 
@@ -559,12 +696,19 @@ func (s *SplitStore) Close() error {
 	}
 
 	if atomic.LoadInt32(&s.compacting) == 1 {
+		s.txnSyncMx.Lock()
+		s.txnSync = true
+		s.txnSyncCond.Broadcast()
+		s.txnSyncMx.Unlock()
+
 		log.Warn("close with ongoing compaction in progress; waiting for it to finish...")
 		for atomic.LoadInt32(&s.compacting) == 1 {
 			time.Sleep(time.Second)
 		}
 	}
 
+	s.reifyCond.Broadcast()
+	s.reifyWorkers.Wait()
 	s.cancel()
 	return multierr.Combine(s.markSetEnv.Close(), s.debug.Close())
 }
@@ -579,5 +723,5 @@ func (s *SplitStore) checkClosing() error {
 
 func (s *SplitStore) setBaseEpoch(epoch abi.ChainEpoch) error {
 	s.baseEpoch = epoch
-	return s.ds.Put(baseEpochKey, epochToBytes(epoch))
+	return s.ds.Put(s.ctx, baseEpochKey, epochToBytes(epoch))
 }

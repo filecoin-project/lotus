@@ -53,6 +53,10 @@ func (s *state2) VerifierDataCap(addr address.Address) (bool, abi.StoragePower, 
 	return getDataCap(s.store, actors.Version2, s.verifiers, addr)
 }
 
+func (s *state2) RemoveDataCapProposalID(verifier address.Address, client address.Address) (bool, uint64, error) {
+	return getRemoveDataCapProposalID(s.store, actors.Version2, s.removeDataCapProposalIDs, verifier, client)
+}
+
 func (s *state2) ForEachVerifier(cb func(addr address.Address, dcap abi.StoragePower) error) error {
 	return forEachCap(s.store, actors.Version2, s.verifiers, cb)
 }
@@ -67,6 +71,11 @@ func (s *state2) verifiedClients() (adt.Map, error) {
 
 func (s *state2) verifiers() (adt.Map, error) {
 	return adt2.AsMap(s.store, s.Verifiers)
+}
+
+func (s *state2) removeDataCapProposalIDs() (adt.Map, error) {
+	return nil, nil
+
 }
 
 func (s *state2) GetState() interface{} {

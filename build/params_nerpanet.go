@@ -50,23 +50,29 @@ const UpgradeHyperdriveHeight = 379178
 
 const UpgradeChocolateHeight = 999999999
 
+var SupportedProofTypes = []abi.RegisteredSealProof{
+	abi.RegisteredSealProof_StackedDrg512MiBV1,
+	abi.RegisteredSealProof_StackedDrg32GiBV1,
+	abi.RegisteredSealProof_StackedDrg64GiBV1,
+}
+
+// Minimum block production power is set to 4 TiB
+// Rationale is to discourage small-scale miners from trying to take over the network
+// One needs to invest in ~2.3x the compute to break consensus, making it not worth it
+//
+// DOWNSIDE: the fake-seals need to be kept alive/protected, otherwise network will seize
+//
+var ConsensusMinerMinPower = abi.NewStoragePower(4 << 40)
+var MinVerifiedDealSize = abi.NewStoragePower(1 << 20)
+
+// Lower the most time-consuming parts of PoRep
+var PreCommitChallengeDelay = abi.ChainEpoch(10)
+
 func init() {
-	// Minimum block production power is set to 4 TiB
-	// Rationale is to discourage small-scale miners from trying to take over the network
-	// One needs to invest in ~2.3x the compute to break consensus, making it not worth it
-	//
-	// DOWNSIDE: the fake-seals need to be kept alive/protected, otherwise network will seize
-	//
-	policy.SetConsensusMinerMinPower(abi.NewStoragePower(4 << 40))
-
-	policy.SetSupportedProofTypes(
-		abi.RegisteredSealProof_StackedDrg512MiBV1,
-		abi.RegisteredSealProof_StackedDrg32GiBV1,
-		abi.RegisteredSealProof_StackedDrg64GiBV1,
-	)
-
-	// Lower the most time-consuming parts of PoRep
-	policy.SetPreCommitChallengeDelay(10)
+	policy.SetSupportedProofTypes(SupportedProofTypes...)
+	policy.SetConsensusMinerMinPower(ConsensusMinerMinPower)
+	policy.SetMinVerifiedDealSize(MinVerifiedDealSize)
+	policy.SetPreCommitChallengeDelay(PreCommitChallengeDelay)
 
 	// TODO - make this a variable
 	//miner.WPoStChallengeLookback = abi.ChainEpoch(2)

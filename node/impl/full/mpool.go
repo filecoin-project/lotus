@@ -51,11 +51,11 @@ func (a *MpoolAPI) MpoolGetConfig(context.Context) (*types.MpoolConfig, error) {
 }
 
 func (a *MpoolAPI) MpoolSetConfig(ctx context.Context, cfg *types.MpoolConfig) error {
-	return a.Mpool.SetConfig(cfg)
+	return a.Mpool.SetConfig(ctx, cfg)
 }
 
 func (a *MpoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey, ticketQuality float64) ([]*types.SignedMessage, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -64,7 +64,7 @@ func (a *MpoolAPI) MpoolSelect(ctx context.Context, tsk types.TipSetKey, ticketQ
 }
 
 func (a *MpoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*types.SignedMessage, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
@@ -87,7 +87,7 @@ func (a *MpoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*ty
 
 			// different blocks in tipsets of the same height
 			// we exclude messages that have been included in blocks in the mpool tipset
-			have, err := a.Mpool.MessagesForBlocks(mpts.Blocks())
+			have, err := a.Mpool.MessagesForBlocks(ctx, mpts.Blocks())
 			if err != nil {
 				return nil, xerrors.Errorf("getting messages for base ts: %w", err)
 			}
@@ -97,7 +97,7 @@ func (a *MpoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*ty
 			}
 		}
 
-		msgs, err := a.Mpool.MessagesForBlocks(ts.Blocks())
+		msgs, err := a.Mpool.MessagesForBlocks(ctx, ts.Blocks())
 		if err != nil {
 			return nil, xerrors.Errorf(": %w", err)
 		}
@@ -115,7 +115,7 @@ func (a *MpoolAPI) MpoolPending(ctx context.Context, tsk types.TipSetKey) ([]*ty
 			return pending, nil
 		}
 
-		ts, err = a.Chain.LoadTipSet(ts.Parents())
+		ts, err = a.Chain.LoadTipSet(ctx, ts.Parents())
 		if err != nil {
 			return nil, xerrors.Errorf("loading parent tipset: %w", err)
 		}

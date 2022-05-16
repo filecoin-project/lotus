@@ -1,6 +1,8 @@
 package splitstore
 
 import (
+	"sync"
+
 	cid "github.com/ipfs/go-cid"
 )
 
@@ -17,16 +19,42 @@ func (v *noopVisitor) Visit(_ cid.Cid) (bool, error) {
 	return true, nil
 }
 
-type cidSetVisitor struct {
+type tmpVisitor struct {
 	set *cid.Set
 }
 
-var _ ObjectVisitor = (*cidSetVisitor)(nil)
+var _ ObjectVisitor = (*tmpVisitor)(nil)
 
-func (v *cidSetVisitor) Visit(c cid.Cid) (bool, error) {
+func (v *tmpVisitor) Visit(c cid.Cid) (bool, error) {
+	if isUnitaryObject(c) {
+		return false, nil
+	}
+
 	return v.set.Visit(c), nil
 }
 
-func tmpVisitor() ObjectVisitor {
-	return &cidSetVisitor{set: cid.NewSet()}
+func newTmpVisitor() ObjectVisitor {
+	return &tmpVisitor{set: cid.NewSet()}
+}
+
+type concurrentVisitor struct {
+	mx  sync.Mutex
+	set *cid.Set
+}
+
+var _ ObjectVisitor = (*concurrentVisitor)(nil)
+
+func newConcurrentVisitor() *concurrentVisitor {
+	return &concurrentVisitor{set: cid.NewSet()}
+}
+
+func (v *concurrentVisitor) Visit(c cid.Cid) (bool, error) {
+	if isUnitaryObject(c) {
+		return false, nil
+	}
+
+	v.mx.Lock()
+	defer v.mx.Unlock()
+
+	return v.set.Visit(c), nil
 }

@@ -8,7 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 )
 
-var MTTresh = uint64(32 << 20)
+var MTTresh = uint64(512 << 10)
 
 func mtChunkCount(usz abi.PaddedPieceSize) uint64 {
 	threads := (uint64(usz)) / MTTresh

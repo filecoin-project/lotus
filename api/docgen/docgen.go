@@ -1,6 +1,7 @@
 package docgen
 
 import (
+	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -15,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-graphsync"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -38,7 +40,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -120,6 +121,7 @@ func init() {
 	addExample(api.FullAPIVersion1)
 	addExample(api.PCHInbound)
 	addExample(time.Minute)
+	addExample(graphsync.NewRequestID())
 	addExample(datatransfer.TransferID(3))
 	addExample(datatransfer.Ongoing)
 	addExample(storeIDExample)
@@ -196,10 +198,10 @@ func init() {
 		},
 	})
 	addExample(api.SectorState(sealing.Proving))
-	addExample(stores.ID("76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8"))
+	addExample(storiface.ID("76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8"))
 	addExample(storiface.FTUnsealed)
 	addExample(storiface.PathSealing)
-	addExample(map[stores.ID][]stores.Decl{
+	addExample(map[storiface.ID][]storiface.Decl{
 		"76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8": {
 			{
 				SectorID:       abi.SectorID{Miner: 1000, Number: 100},
@@ -207,7 +209,7 @@ func init() {
 			},
 		},
 	})
-	addExample(map[stores.ID]string{
+	addExample(map[storiface.ID]string{
 		"76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8": "/data/path",
 	})
 	addExample(map[uuid.UUID][]storiface.WorkerJob{
@@ -231,16 +233,18 @@ func init() {
 				Hostname: "host",
 				Resources: storiface.WorkerResources{
 					MemPhysical: 256 << 30,
+					MemUsed:     2 << 30,
 					MemSwap:     120 << 30,
-					MemReserved: 2 << 30,
+					MemSwapUsed: 2 << 30,
 					CPUs:        64,
 					GPUs:        []string{"aGPU 1337"},
+					Resources:   storiface.ResourceTable,
 				},
 			},
 			Enabled:    true,
 			MemUsedMin: 0,
 			MemUsedMax: 0,
-			GpuUsed:    false,
+			GpuUsed:    0,
 			CpuUse:     0,
 		},
 	})
@@ -248,10 +252,18 @@ func init() {
 	addExample(map[abi.SectorNumber]string{
 		123: "can't acquire read lock",
 	})
+	addExample(json.RawMessage(`"json raw message"`))
 	addExample(map[api.SectorState]int{
 		api.SectorState(sealing.Proving): 120,
 	})
 	addExample([]abi.SectorNumber{123, 124})
+	addExample([]storiface.SectorLock{
+		{
+			Sector: abi.SectorID{Number: 123, Miner: 1000},
+			Write:  [storiface.FileTypes]uint{0, 0, 1},
+			Read:   [storiface.FileTypes]uint{2, 3, 0},
+		},
+	})
 
 	// worker specific
 	addExample(storiface.AcquireMove)
@@ -286,6 +298,35 @@ func init() {
 		State: "ShardStateAvailable",
 		Error: "<error>",
 	})
+	addExample(storiface.ResourceTable)
+	addExample(network.ScopeStat{
+		Memory:             123,
+		NumStreamsInbound:  1,
+		NumStreamsOutbound: 2,
+		NumConnsInbound:    3,
+		NumConnsOutbound:   4,
+		NumFD:              5,
+	})
+	addExample(map[string]network.ScopeStat{
+		"abc": {
+			Memory:             123,
+			NumStreamsInbound:  1,
+			NumStreamsOutbound: 2,
+			NumConnsInbound:    3,
+			NumConnsOutbound:   4,
+			NumFD:              5,
+		}})
+	addExample(api.NetLimit{
+		Memory:          123,
+		StreamsInbound:  1,
+		StreamsOutbound: 2,
+		Streams:         3,
+		ConnsInbound:    3,
+		ConnsOutbound:   4,
+		Conns:           4,
+		FD:              5,
+	})
+
 }
 
 func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []reflect.Type) {
@@ -336,7 +377,7 @@ func ExampleValue(method string, t, parent reflect.Type) interface{} {
 	switch t.Kind() {
 	case reflect.Slice:
 		out := reflect.New(t).Elem()
-		reflect.Append(out, reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
+		out = reflect.Append(out, reflect.ValueOf(ExampleValue(method, t.Elem(), t)))
 		return out.Interface()
 	case reflect.Chan:
 		return ExampleValue(method, t.Elem(), nil)

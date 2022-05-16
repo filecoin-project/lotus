@@ -7,6 +7,9 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
 	"io"
 	"math/bits"
 	"os"
@@ -15,14 +18,16 @@ import (
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
+	"github.com/detailyang/go-fallocate"
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
-	commcid "github.com/filecoin-project/go-fil-commcid"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-storage/storage"
-
 	commpffi "github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
+	commcid "github.com/filecoin-project/go-fil-commcid"
+	"github.com/filecoin-project/go-state-types/abi"
+	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+	"github.com/filecoin-project/specs-storage/storage"
+
 	"github.com/filecoin-project/lotus/extern/sector-storage/fr32"
 	"github.com/filecoin-project/lotus/extern/sector-storage/partialfile"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -44,6 +49,120 @@ func (sb *Sealer) NewSector(ctx context.Context, sector storage.SectorRef) error
 	// TODO: Allocate the sector here instead of in addpiece
 
 	return nil
+}
+
+func (sb *Sealer) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (abi.PieceInfo, error) {
+	// TODO: allow tuning those:
+	chunk := abi.PaddedPieceSize(4 << 20)
+	parallel := runtime.NumCPU()
+
+	maxSizeSpt := abi.RegisteredSealProof_StackedDrg64GiBV1_1
+
+	throttle := make(chan []byte, parallel)
+	piecePromises := make([]func() (abi.PieceInfo, error), 0)
+
+	buf := make([]byte, chunk.Unpadded())
+	for i := 0; i < parallel; i++ {
+		if abi.UnpaddedPieceSize(i)*chunk.Unpadded() >= pieceSize {
+			break // won't use this many buffers
+		}
+		throttle <- make([]byte, chunk.Unpadded())
+	}
+
+	for {
+		var read int
+		for rbuf := buf; len(rbuf) > 0; {
+			n, err := pieceData.Read(rbuf)
+			if err != nil && err != io.EOF {
+				return abi.PieceInfo{}, xerrors.Errorf("pr read error: %w", err)
+			}
+
+			rbuf = rbuf[n:]
+			read += n
+
+			if err == io.EOF {
+				break
+			}
+		}
+		if read == 0 {
+			break
+		}
+
+		done := make(chan struct {
+			cid.Cid
+			error
+		}, 1)
+		pbuf := <-throttle
+		copy(pbuf, buf[:read])
+
+		go func(read int) {
+			defer func() {
+				throttle <- pbuf
+			}()
+
+			c, err := sb.pieceCid(maxSizeSpt, pbuf[:read])
+			done <- struct {
+				cid.Cid
+				error
+			}{c, err}
+		}(read)
+
+		piecePromises = append(piecePromises, func() (abi.PieceInfo, error) {
+			select {
+			case e := <-done:
+				if e.error != nil {
+					return abi.PieceInfo{}, e.error
+				}
+
+				return abi.PieceInfo{
+					Size:     abi.UnpaddedPieceSize(read).Padded(),
+					PieceCID: e.Cid,
+				}, nil
+			case <-ctx.Done():
+				return abi.PieceInfo{}, ctx.Err()
+			}
+		})
+	}
+
+	if len(piecePromises) == 1 {
+		return piecePromises[0]()
+	}
+
+	var payloadRoundedBytes abi.PaddedPieceSize
+	pieceCids := make([]abi.PieceInfo, len(piecePromises))
+	for i, promise := range piecePromises {
+		pinfo, err := promise()
+		if err != nil {
+			return abi.PieceInfo{}, err
+		}
+
+		pieceCids[i] = pinfo
+		payloadRoundedBytes += pinfo.Size
+	}
+
+	pieceCID, err := ffi.GenerateUnsealedCID(maxSizeSpt, pieceCids)
+	if err != nil {
+		return abi.PieceInfo{}, xerrors.Errorf("generate unsealed CID: %w", err)
+	}
+
+	// validate that the pieceCID was properly formed
+	if _, err := commcid.CIDToPieceCommitmentV1(pieceCID); err != nil {
+		return abi.PieceInfo{}, err
+	}
+
+	if payloadRoundedBytes < pieceSize.Padded() {
+		paddedCid, err := commpffi.ZeroPadPieceCommitment(pieceCID, payloadRoundedBytes.Unpadded(), pieceSize)
+		if err != nil {
+			return abi.PieceInfo{}, xerrors.Errorf("failed to pad data: %w", err)
+		}
+
+		pieceCID = paddedCid
+	}
+
+	return abi.PieceInfo{
+		Size:     pieceSize.Padded(),
+		PieceCID: pieceCID,
+	}, nil
 }
 
 func (sb *Sealer) AddPiece(ctx context.Context, sector storage.SectorRef, existingPieceSizes []abi.UnpaddedPieceSize, pieceSize abi.UnpaddedPieceSize, file storage.Data) (abi.PieceInfo, error) {
@@ -250,6 +369,23 @@ func (sb *Sealer) pieceCid(spt abi.RegisteredSealProof, in []byte) (cid.Cid, err
 	return pieceCID, werr()
 }
 
+func (sb *Sealer) tryDecodeUpdatedReplica(ctx context.Context, sector storage.SectorRef, commD cid.Cid, unsealedPath string) (bool, error) {
+	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUpdate|storiface.FTSealed|storiface.FTCache, storiface.FTNone, storiface.PathStorage)
+	if xerrors.Is(err, storiface.ErrSectorNotFound) {
+		return false, nil
+	} else if err != nil {
+		return false, xerrors.Errorf("reading updated replica: %w", err)
+	}
+	defer done()
+
+	// Sector data stored in replica update
+	updateProof, err := sector.ProofType.RegisteredUpdateProof()
+	if err != nil {
+		return false, err
+	}
+	return true, ffi.SectorUpdate.DecodeFrom(updateProof, unsealedPath, paths.Update, paths.Sealed, paths.Cache, commD)
+}
+
 func (sb *Sealer) UnsealPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd cid.Cid) error {
 	ssize, err := sector.ProofType.SectorSize()
 	if err != nil {
@@ -300,6 +436,16 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector storage.SectorRef, off
 		return nil
 	}
 
+	// If piece data stored in updated replica decode whole sector
+	decoded, err := sb.tryDecodeUpdatedReplica(ctx, sector, commd, unsealedPath.Unsealed)
+	if err != nil {
+		return xerrors.Errorf("decoding sector from replica: %w", err)
+	}
+	if decoded {
+		return pf.MarkAllocated(0, maxPieceSize)
+	}
+
+	// Piece data sealed in sector
 	srcPaths, srcDone, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache|storiface.FTSealed, storiface.FTNone, storiface.PathStorage)
 	if err != nil {
 		return xerrors.Errorf("acquire sealed sector paths: %w", err)
@@ -530,8 +676,18 @@ func (sb *Sealer) SealPreCommit1(ctx context.Context, sector storage.SectorRef, 
 	if err != nil {
 		return nil, xerrors.Errorf("presealing sector %d (%s): %w", sector.ID.Number, paths.Unsealed, err)
 	}
-	return p1o, nil
+
+	p1odec := map[string]interface{}{}
+	if err := json.Unmarshal(p1o, &p1odec); err != nil {
+		return nil, xerrors.Errorf("unmarshaling pc1 output: %w", err)
+	}
+
+	p1odec["_lotus_SealRandomness"] = ticket
+
+	return json.Marshal(&p1odec)
 }
+
+var PC2CheckRounds = 3
 
 func (sb *Sealer) SealPreCommit2(ctx context.Context, sector storage.SectorRef, phase1Out storage.PreCommit1Out) (storage.SectorCids, error) {
 	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTSealed|storiface.FTCache, 0, storiface.PathSealing)
@@ -543,6 +699,50 @@ func (sb *Sealer) SealPreCommit2(ctx context.Context, sector storage.SectorRef, 
 	sealedCID, unsealedCID, err := ffi.SealPreCommitPhase2(phase1Out, paths.Cache, paths.Sealed)
 	if err != nil {
 		return storage.SectorCids{}, xerrors.Errorf("presealing sector %d (%s): %w", sector.ID.Number, paths.Unsealed, err)
+	}
+
+	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		return storage.SectorCids{}, xerrors.Errorf("get ssize: %w", err)
+	}
+
+	p1odec := map[string]interface{}{}
+	if err := json.Unmarshal(phase1Out, &p1odec); err != nil {
+		return storage.SectorCids{}, xerrors.Errorf("unmarshaling pc1 output: %w", err)
+	}
+
+	var ticket abi.SealRandomness
+	ti, found := p1odec["_lotus_SealRandomness"]
+
+	if found {
+		ticket, err = base64.StdEncoding.DecodeString(ti.(string))
+		if err != nil {
+			return storage.SectorCids{}, xerrors.Errorf("decoding ticket: %w", err)
+		}
+
+		for i := 0; i < PC2CheckRounds; i++ {
+			var sd [32]byte
+			_, _ = rand.Read(sd[:])
+
+			_, err := ffi.SealCommitPhase1(
+				sector.ProofType,
+				sealedCID,
+				unsealedCID,
+				paths.Cache,
+				paths.Sealed,
+				sector.ID.Number,
+				sector.ID.Miner,
+				ticket,
+				sd[:],
+				[]abi.PieceInfo{{Size: abi.PaddedPieceSize(ssize), PieceCID: unsealedCID}},
+			)
+			if err != nil {
+				log.Warn("checking PreCommit failed: ", err)
+				log.Warnf("num:%d tkt:%v seed:%v sealedCID:%v, unsealedCID:%v", sector.ID.Number, ticket, sd[:], sealedCID, unsealedCID)
+
+				return storage.SectorCids{}, xerrors.Errorf("checking PreCommit failed: %w", err)
+			}
+		}
 	}
 
 	return storage.SectorCids{
@@ -582,7 +782,109 @@ func (sb *Sealer) SealCommit2(ctx context.Context, sector storage.SectorRef, pha
 	return ffi.SealCommitPhase2(phase1Out, sector.ID.Number, sector.ID.Miner)
 }
 
-func (sb *Sealer) FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error {
+func (sb *Sealer) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, pieces []abi.PieceInfo) (storage.ReplicaUpdateOut, error) {
+	empty := storage.ReplicaUpdateOut{}
+	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUnsealed|storiface.FTSealed|storiface.FTCache, storiface.FTUpdate|storiface.FTUpdateCache, storiface.PathSealing)
+	if err != nil {
+		return empty, xerrors.Errorf("failed to acquire sector paths: %w", err)
+	}
+	defer done()
+
+	updateProofType := abi.SealProofInfos[sector.ProofType].UpdateProof
+
+	s, err := os.Stat(paths.Sealed)
+	if err != nil {
+		return empty, err
+	}
+	sealedSize := s.Size()
+
+	u, err := os.OpenFile(paths.Update, os.O_RDWR|os.O_CREATE, 0644) // nolint:gosec
+	if err != nil {
+		return empty, xerrors.Errorf("ensuring updated replica file exists: %w", err)
+	}
+	if err := fallocate.Fallocate(u, 0, sealedSize); err != nil {
+		return empty, xerrors.Errorf("allocating space for replica update file: %w", err)
+	}
+
+	if err := u.Close(); err != nil {
+		return empty, err
+	}
+
+	if err := os.Mkdir(paths.UpdateCache, 0755); err != nil { // nolint
+		if os.IsExist(err) {
+			log.Warnf("existing cache in %s; removing", paths.UpdateCache)
+
+			if err := os.RemoveAll(paths.UpdateCache); err != nil {
+				return empty, xerrors.Errorf("remove existing sector cache from %s (sector %d): %w", paths.UpdateCache, sector, err)
+			}
+
+			if err := os.Mkdir(paths.UpdateCache, 0755); err != nil { // nolint:gosec
+				return empty, xerrors.Errorf("mkdir cache path after cleanup: %w", err)
+			}
+		} else {
+			return empty, err
+		}
+	}
+	sealed, unsealed, err := ffi.SectorUpdate.EncodeInto(updateProofType, paths.Update, paths.UpdateCache, paths.Sealed, paths.Cache, paths.Unsealed, pieces)
+	if err != nil {
+		return empty, xerrors.Errorf("failed to update replica %d with new deal data: %w", sector.ID.Number, err)
+	}
+	return storage.ReplicaUpdateOut{NewSealed: sealed, NewUnsealed: unsealed}, nil
+}
+
+func (sb *Sealer) ProveReplicaUpdate1(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid) (storage.ReplicaVanillaProofs, error) {
+	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTSealed|storiface.FTCache|storiface.FTUpdate|storiface.FTUpdateCache, storiface.FTNone, storiface.PathSealing)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to acquire sector paths: %w", err)
+	}
+	defer done()
+
+	updateProofType := abi.SealProofInfos[sector.ProofType].UpdateProof
+
+	vanillaProofs, err := ffi.SectorUpdate.GenerateUpdateVanillaProofs(updateProofType, sectorKey, newSealed, newUnsealed, paths.Update, paths.UpdateCache, paths.Sealed, paths.Cache)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to generate proof of replica update for sector %d: %w", sector.ID.Number, err)
+	}
+	return vanillaProofs, nil
+}
+
+func (sb *Sealer) ProveReplicaUpdate2(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid, vanillaProofs storage.ReplicaVanillaProofs) (storage.ReplicaUpdateProof, error) {
+	updateProofType := abi.SealProofInfos[sector.ProofType].UpdateProof
+	return ffi.SectorUpdate.GenerateUpdateProofWithVanilla(updateProofType, sectorKey, newSealed, newUnsealed, vanillaProofs)
+}
+
+func (sb *Sealer) GenerateSectorKeyFromData(ctx context.Context, sector storage.SectorRef, commD cid.Cid) error {
+	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUnsealed|storiface.FTCache|storiface.FTUpdate|storiface.FTUpdateCache, storiface.FTSealed, storiface.PathSealing)
+	defer done()
+	if err != nil {
+		return xerrors.Errorf("failed to acquire sector paths: %w", err)
+	}
+
+	s, err := os.Stat(paths.Update)
+	if err != nil {
+		return xerrors.Errorf("measuring update file size: %w", err)
+	}
+	sealedSize := s.Size()
+	e, err := os.OpenFile(paths.Sealed, os.O_RDWR|os.O_CREATE, 0644) // nolint:gosec
+	if err != nil {
+		return xerrors.Errorf("ensuring sector key file exists: %w", err)
+	}
+	if err := fallocate.Fallocate(e, 0, sealedSize); err != nil {
+		return xerrors.Errorf("allocating space for sector key file: %w", err)
+	}
+	if err := e.Close(); err != nil {
+		return err
+	}
+
+	updateProofType := abi.SealProofInfos[sector.ProofType].UpdateProof
+	return ffi.SectorUpdate.RemoveData(updateProofType, paths.Sealed, paths.Cache, paths.Update, paths.UpdateCache, paths.Unsealed, commD)
+}
+
+func (sb *Sealer) ReleaseSealed(ctx context.Context, sector storage.SectorRef) error {
+	return xerrors.Errorf("not supported at this layer")
+}
+
+func (sb *Sealer) freeUnsealed(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error {
 	ssize, err := sector.ProofType.SectorSize()
 	if err != nil {
 		return err
@@ -647,6 +949,19 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector storage.SectorRef, 
 
 	}
 
+	return nil
+}
+
+func (sb *Sealer) FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error {
+	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		return err
+	}
+
+	if err := sb.freeUnsealed(ctx, sector, keepUnsealed); err != nil {
+		return err
+	}
+
 	paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, 0, storiface.PathStorage)
 	if err != nil {
 		return xerrors.Errorf("acquiring sector cache path: %w", err)
@@ -656,6 +971,43 @@ func (sb *Sealer) FinalizeSector(ctx context.Context, sector storage.SectorRef, 
 	return ffi.ClearCache(uint64(ssize), paths.Cache)
 }
 
+func (sb *Sealer) FinalizeReplicaUpdate(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error {
+	ssize, err := sector.ProofType.SectorSize()
+	if err != nil {
+		return err
+	}
+
+	if err := sb.freeUnsealed(ctx, sector, keepUnsealed); err != nil {
+		return err
+	}
+
+	{
+		paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTCache, 0, storiface.PathStorage)
+		if err != nil {
+			return xerrors.Errorf("acquiring sector cache path: %w", err)
+		}
+		defer done()
+
+		if err := ffi.ClearCache(uint64(ssize), paths.Cache); err != nil {
+			return xerrors.Errorf("clear cache: %w", err)
+		}
+	}
+
+	{
+		paths, done, err := sb.sectors.AcquireSector(ctx, sector, storiface.FTUpdateCache, 0, storiface.PathStorage)
+		if err != nil {
+			return xerrors.Errorf("acquiring sector cache path: %w", err)
+		}
+		defer done()
+
+		if err := ffi.ClearCache(uint64(ssize), paths.UpdateCache); err != nil {
+			return xerrors.Errorf("clear cache: %w", err)
+		}
+	}
+
+	return nil
+}
+
 func (sb *Sealer) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) error {
 	// This call is meant to mark storage as 'freeable'. Given that unsealing is
 	// very expensive, we don't remove data as soon as we can - instead we only
@@ -663,6 +1015,14 @@ func (sb *Sealer) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef,
 
 	// This function should not be called at this layer, everything should be
 	// handled in localworker
+	return xerrors.Errorf("not supported at this layer")
+}
+
+func (sb *Sealer) ReleaseReplicaUpgrade(ctx context.Context, sector storage.SectorRef) error {
+	return xerrors.Errorf("not supported at this layer")
+}
+
+func (sb *Sealer) ReleaseSectorKey(ctx context.Context, sector storage.SectorRef) error {
 	return xerrors.Errorf("not supported at this layer")
 }
 
@@ -731,4 +1091,24 @@ func GenerateUnsealedCID(proofType abi.RegisteredSealProof, pieces []abi.PieceIn
 	}
 
 	return ffi.GenerateUnsealedCID(proofType, allPieces)
+}
+
+func (sb *Sealer) GenerateWinningPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, vanillas [][]byte) ([]proof5.PoStProof, error) {
+	return ffi.GenerateWinningPoStWithVanilla(proofType, minerID, randomness, vanillas)
+}
+
+func (sb *Sealer) GenerateWindowPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte, partitionIdx int) (proof5.PoStProof, error) {
+	pp, err := ffi.GenerateSinglePartitionWindowPoStWithVanilla(proofType, minerID, randomness, proofs, uint(partitionIdx))
+	if err != nil {
+		return proof5.PoStProof{}, err
+	}
+	if pp == nil {
+		// should be impossible, but just in case do not panic
+		return proof5.PoStProof{}, xerrors.New("postproof was nil")
+	}
+
+	return proof5.PoStProof{
+		PoStProof:  pp.PoStProof,
+		ProofBytes: pp.ProofBytes,
+	}, nil
 }

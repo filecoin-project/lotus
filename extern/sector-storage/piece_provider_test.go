@@ -7,6 +7,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"os"
 	"testing"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -29,7 +30,7 @@ import (
 // only uses miner and does NOT use any remote worker.
 func TestPieceProviderSimpleNoRemoteWorker(t *testing.T) {
 	// Set up sector storage manager
-	sealerCfg := SealerConfig{
+	sealerCfg := Config{
 		ParallelFetchLimit: 10,
 		AllowAddPiece:      true,
 		AllowPreCommit1:    true,
@@ -88,7 +89,7 @@ func TestReadPieceRemoteWorkers(t *testing.T) {
 	logging.SetAllLoggers(logging.LevelDebug)
 
 	// miner's worker can only add pieces to an unsealed sector.
-	sealerCfg := SealerConfig{
+	sealerCfg := Config{
 		ParallelFetchLimit: 10,
 		AllowAddPiece:      true,
 		AllowPreCommit1:    false,
@@ -197,7 +198,7 @@ func generatePieceData(size uint64) []byte {
 	return bz
 }
 
-func newPieceProviderTestHarness(t *testing.T, mgrConfig SealerConfig, sectorProofType abi.RegisteredSealProof) *pieceProviderTestHarness {
+func newPieceProviderTestHarness(t *testing.T, mgrConfig Config, sectorProofType abi.RegisteredSealProof) *pieceProviderTestHarness {
 	ctx := context.Background()
 	// listen on tcp socket to create an http server later
 	address := "0.0.0.0:0"
@@ -286,7 +287,7 @@ func (p *pieceProviderTestHarness) addRemoteWorker(t *testing.T, tasks []sealtas
 
 	worker := newLocalWorker(nil, WorkerConfig{
 		TaskTypes: tasks,
-	}, remote, localStore, p.index, p.mgr, csts)
+	}, os.LookupEnv, remote, localStore, p.index, p.mgr, csts)
 
 	p.servers = append(p.servers, svc)
 	p.localStores = append(p.localStores, localStore)

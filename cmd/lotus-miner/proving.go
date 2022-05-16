@@ -1,10 +1,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strconv"
 	"text/tabwriter"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
@@ -17,7 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/specs-storage/storage"
 )
 
@@ -30,6 +32,8 @@ var provingCmd = &cli.Command{
 		provingDeadlineInfoCmd,
 		provingFaultsCmd,
 		provingCheckProvableCmd,
+		workersCmd(false),
+		provingComputeCmd,
 	},
 }
 
@@ -365,6 +369,10 @@ var provingCheckProvableCmd = &cli.Command{
 			Name:  "storage-id",
 			Usage: "filter sectors by storage path (path id)",
 		},
+		&cli.BoolFlag{
+			Name:  "faulty",
+			Usage: "only check faulty sectors",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 1 {
@@ -376,7 +384,7 @@ var provingCheckProvableCmd = &cli.Command{
 			return xerrors.Errorf("could not parse deadline index: %w", err)
 		}
 
-		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		api, closer, err := lcli.GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
@@ -420,11 +428,43 @@ var provingCheckProvableCmd = &cli.Command{
 			if err != nil {
 				return err
 			}
-			decls := sl[stores.ID(cctx.String("storage-id"))]
+			decls := sl[storiface.ID(cctx.String("storage-id"))]
 
 			filter = map[abi.SectorID]struct{}{}
 			for _, decl := range decls {
 				filter[decl.SectorID] = struct{}{}
+			}
+		}
+
+		if cctx.Bool("faulty") {
+			parts, err := getAllPartitions(ctx, addr, api)
+			if err != nil {
+				return xerrors.Errorf("getting partitions: %w", err)
+			}
+
+			if filter != nil {
+				for k := range filter {
+					set, err := parts.FaultySectors.IsSet(uint64(k.Number))
+					if err != nil {
+						return err
+					}
+					if !set {
+						delete(filter, k)
+					}
+				}
+			} else {
+				filter = map[abi.SectorID]struct{}{}
+
+				err = parts.FaultySectors.ForEach(func(s uint64) error {
+					filter[abi.SectorID{
+						Miner:  abi.ActorID(mid),
+						Number: abi.SectorNumber(s),
+					}] = struct{}{}
+					return nil
+				})
+				if err != nil {
+					return err
+				}
 			}
 		}
 
@@ -471,5 +511,53 @@ var provingCheckProvableCmd = &cli.Command{
 		}
 
 		return tw.Flush()
+	},
+}
+
+var provingComputeCmd = &cli.Command{
+	Name: "compute",
+	Subcommands: []*cli.Command{
+		provingComputeWindowPoStCmd,
+	},
+}
+
+var provingComputeWindowPoStCmd = &cli.Command{
+	Name:    "windowed-post",
+	Aliases: []string{"window-post"},
+	Usage:   "Compute WindowPoSt for a specific deadline",
+	Description: `Note: This command is intended to be used to verify PoSt compute performance.
+It will not send any messages to the chain.`,
+	ArgsUsage: "[deadline index]",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("must pass deadline index")
+		}
+
+		dlIdx, err := strconv.ParseUint(cctx.Args().Get(0), 10, 64)
+		if err != nil {
+			return xerrors.Errorf("could not parse deadline index: %w", err)
+		}
+
+		sapi, scloser, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer scloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		start := time.Now()
+		res, err := sapi.ComputeWindowPoSt(ctx, dlIdx, types.EmptyTSK)
+		fmt.Printf("Took %s\n", time.Now().Sub(start))
+		if err != nil {
+			return err
+		}
+		jr, err := json.Marshal(res)
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(jr))
+
+		return nil
 	},
 }

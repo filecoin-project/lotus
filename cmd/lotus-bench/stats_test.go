@@ -1,3 +1,4 @@
+//stm: #unit
 package main
 
 import (

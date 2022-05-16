@@ -16,7 +16,7 @@ func findDoc(root interface{}, section, name string) *DocField {
 	return findDocSect("Common", section, name)
 }
 
-func findDocSect(root string, section, name string) *DocField {
+func findDocSect(root, section, name string) *DocField {
 	path := strings.Split(section, ".")
 
 	docSection := Doc[root]

@@ -62,18 +62,29 @@ const UpgradeNorwegianHeight = 665280
 const UpgradeTurboHeight = 712320
 
 // 2021-06-30T22:00:00Z
-var UpgradeHyperdriveHeight = abi.ChainEpoch(892800)
+const UpgradeHyperdriveHeight = 892800
 
 // 2021-10-26T13:30:00Z
-var UpgradeChocolateHeight = abi.ChainEpoch(1231620)
+const UpgradeChocolateHeight = 1231620
+
+// 2022-03-01T15:00:00Z
+var UpgradeOhSnapHeight = abi.ChainEpoch(1594680)
+
+var SupportedProofTypes = []abi.RegisteredSealProof{
+	abi.RegisteredSealProof_StackedDrg32GiBV1,
+	abi.RegisteredSealProof_StackedDrg64GiBV1,
+}
+var ConsensusMinerMinPower = abi.NewStoragePower(10 << 40)
+var MinVerifiedDealSize = abi.NewStoragePower(1 << 20)
+var PreCommitChallengeDelay = abi.ChainEpoch(150)
 
 func init() {
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_CHOCOLATE") == "1" {
-		UpgradeChocolateHeight = math.MaxInt64
+	if os.Getenv("LOTUS_DISABLE_SNAPDEALS") == "1" {
+		UpgradeOhSnapHeight = math.MaxInt64
 	}
 
 	Devnet = false

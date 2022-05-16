@@ -33,6 +33,12 @@ var (
 	MinimumBaseFee        = int64(100)
 	BlockDelaySecs        = uint64(builtin2.EpochDurationSeconds)
 	PropagationDelaySecs  = uint64(6)
+	SupportedProofTypes   = []abi.RegisteredSealProof{
+		abi.RegisteredSealProof_StackedDrg32GiBV1,
+		abi.RegisteredSealProof_StackedDrg64GiBV1,
+	}
+	ConsensusMinerMinPower  = abi.NewStoragePower(10 << 40)
+	PreCommitChallengeDelay = abi.ChainEpoch(150)
 
 	AllowableClockDriftSecs = uint64(1)
 
@@ -99,6 +105,7 @@ var (
 	UpgradeTurboHeight      abi.ChainEpoch = -14
 	UpgradeHyperdriveHeight abi.ChainEpoch = -15
 	UpgradeChocolateHeight  abi.ChainEpoch = -16
+	UpgradeOhSnapHeight     abi.ChainEpoch = -17
 
 	DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 		0: DrandMainnet,
@@ -106,8 +113,8 @@ var (
 
 	GenesisNetworkVersion = network.Version0
 
-	NewestNetworkVersion       = network.Version14
-	ActorUpgradeNetworkVersion = network.Version4
+	NewestNetworkVersion       = network.Version15
+	ActorUpgradeNetworkVersion = network.Version15
 
 	Devnet      = true
 	ZeroAddress = MustParseAddress("f3yaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaby2smx7a")

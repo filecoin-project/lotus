@@ -39,7 +39,9 @@ func (m message3) Create(to address.Address, initialAmount abi.TokenAmount) (*ty
 
 func (m message3) Update(paych address.Address, sv *SignedVoucher, secret []byte) (*types.Message, error) {
 	params, aerr := actors.SerializeParams(&paych3.UpdateChannelStateParams{
-		Sv:     *sv,
+
+		Sv: *sv,
+
 		Secret: secret,
 	})
 	if aerr != nil {

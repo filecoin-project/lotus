@@ -20,7 +20,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	msg, err := sm.cs.GetCMessage(mcid)
+	msg, err := sm.cs.GetCMessage(ctx, mcid)
 	if err != nil {
 		return nil, nil, cid.Undef, fmt.Errorf("failed to load message: %w", err)
 	}
@@ -40,7 +40,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 		return nil, nil, cid.Undef, fmt.Errorf("expected current head on SHC stream (got %s)", head[0].Type)
 	}
 
-	r, foundMsg, err := sm.tipsetExecutedMessage(head[0].Val, mcid, msg.VMMessage(), allowReplaced)
+	r, foundMsg, err := sm.tipsetExecutedMessage(ctx, head[0].Val, mcid, msg.VMMessage(), allowReplaced)
 	if err != nil {
 		return nil, nil, cid.Undef, err
 	}
@@ -93,7 +93,7 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 					if candidateTs != nil && val.Val.Height() >= candidateTs.Height()+abi.ChainEpoch(confidence) {
 						return candidateTs, candidateRcp, candidateFm, nil
 					}
-					r, foundMsg, err := sm.tipsetExecutedMessage(val.Val, mcid, msg.VMMessage(), allowReplaced)
+					r, foundMsg, err := sm.tipsetExecutedMessage(ctx, val.Val, mcid, msg.VMMessage(), allowReplaced)
 					if err != nil {
 						return nil, nil, cid.Undef, err
 					}
@@ -130,12 +130,12 @@ func (sm *StateManager) WaitForMessage(ctx context.Context, mcid cid.Cid, confid
 }
 
 func (sm *StateManager) SearchForMessage(ctx context.Context, head *types.TipSet, mcid cid.Cid, lookbackLimit abi.ChainEpoch, allowReplaced bool) (*types.TipSet, *types.MessageReceipt, cid.Cid, error) {
-	msg, err := sm.cs.GetCMessage(mcid)
+	msg, err := sm.cs.GetCMessage(ctx, mcid)
 	if err != nil {
 		return nil, nil, cid.Undef, fmt.Errorf("failed to load message: %w", err)
 	}
 
-	r, foundMsg, err := sm.tipsetExecutedMessage(head, mcid, msg.VMMessage(), allowReplaced)
+	r, foundMsg, err := sm.tipsetExecutedMessage(ctx, head, mcid, msg.VMMessage(), allowReplaced)
 	if err != nil {
 		return nil, nil, cid.Undef, err
 	}
@@ -201,7 +201,7 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 			return nil, nil, cid.Undef, nil
 		}
 
-		pts, err := sm.cs.LoadTipSet(cur.Parents())
+		pts, err := sm.cs.LoadTipSet(ctx, cur.Parents())
 		if err != nil {
 			return nil, nil, cid.Undef, xerrors.Errorf("failed to load tipset during msg wait searchback: %w", err)
 		}
@@ -214,7 +214,7 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 
 		// check that between cur and parent tipset the nonce fell into range of our message
 		if actorNoExist || (curActor.Nonce > mNonce && act.Nonce <= mNonce) {
-			r, foundMsg, err := sm.tipsetExecutedMessage(cur, m.Cid(), m.VMMessage(), allowReplaced)
+			r, foundMsg, err := sm.tipsetExecutedMessage(ctx, cur, m.Cid(), m.VMMessage(), allowReplaced)
 			if err != nil {
 				return nil, nil, cid.Undef, xerrors.Errorf("checking for message execution during lookback: %w", err)
 			}
@@ -229,18 +229,18 @@ func (sm *StateManager) searchBackForMsg(ctx context.Context, from *types.TipSet
 	}
 }
 
-func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid, vmm *types.Message, allowReplaced bool) (*types.MessageReceipt, cid.Cid, error) {
+func (sm *StateManager) tipsetExecutedMessage(ctx context.Context, ts *types.TipSet, msg cid.Cid, vmm *types.Message, allowReplaced bool) (*types.MessageReceipt, cid.Cid, error) {
 	// The genesis block did not execute any messages
 	if ts.Height() == 0 {
 		return nil, cid.Undef, nil
 	}
 
-	pts, err := sm.cs.LoadTipSet(ts.Parents())
+	pts, err := sm.cs.LoadTipSet(ctx, ts.Parents())
 	if err != nil {
 		return nil, cid.Undef, err
 	}
 
-	cm, err := sm.cs.MessagesForTipset(pts)
+	cm, err := sm.cs.MessagesForTipset(ctx, pts)
 	if err != nil {
 		return nil, cid.Undef, err
 	}
@@ -267,7 +267,7 @@ func (sm *StateManager) tipsetExecutedMessage(ts *types.TipSet, msg cid.Cid, vmm
 					}
 				}
 
-				pr, err := sm.cs.GetParentReceipt(ts.Blocks()[0], i)
+				pr, err := sm.cs.GetParentReceipt(ctx, ts.Blocks()[0], i)
 				if err != nil {
 					return nil, cid.Undef, err
 				}

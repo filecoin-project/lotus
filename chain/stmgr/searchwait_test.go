@@ -1,3 +1,4 @@
+//stm: #unit
 package stmgr_test
 
 import (
@@ -12,6 +13,8 @@ import (
 )
 
 func TestSearchForMessageReplacements(t *testing.T) {
+	//stm: @CHAIN_GEN_NEXT_TIPSET_001
+	//stm: @CHAIN_STATE_SEARCH_MSG_001
 	ctx := context.Background()
 	cg, err := gen.NewGenerator()
 	if err != nil {
@@ -75,7 +78,7 @@ func TestSearchForMessageReplacements(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = cg.Blockstore().Put(rmb)
+	err = cg.Blockstore().Put(ctx, rmb)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +120,7 @@ func TestSearchForMessageReplacements(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = cg.Blockstore().Put(nrmb)
+	err = cg.Blockstore().Put(ctx, nrmb)
 	if err != nil {
 		t.Fatal(err)
 	}

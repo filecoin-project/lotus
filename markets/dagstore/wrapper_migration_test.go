@@ -1,14 +1,20 @@
+//stm: #integration
 package dagstore
 
 import (
 	"context"
+	"io"
 	"testing"
 
-	"github.com/filecoin-project/dagstore"
+	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
+
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/dagstore"
+	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/testnodes"
 	tut "github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
@@ -54,6 +60,7 @@ func TestShardRegistration(t *testing.T) {
 
 	deals := []storagemarket.MinerDeal{{
 		// Should be registered
+		//stm: @MARKET_DAGSTORE_MIGRATE_DEALS_001
 		State:        storagemarket.StorageDealSealing,
 		SectorNumber: unsealedSector1,
 		ClientDealProposal: market.ClientDealProposal{
@@ -72,6 +79,7 @@ func TestShardRegistration(t *testing.T) {
 		},
 	}, {
 		// Should be ignored because deal is no longer active
+		//stm: @MARKET_DAGSTORE_MIGRATE_DEALS_003
 		State:        storagemarket.StorageDealError,
 		SectorNumber: unsealedSector2,
 		ClientDealProposal: market.ClientDealProposal{
@@ -93,8 +101,11 @@ func TestShardRegistration(t *testing.T) {
 	cfg := config.DefaultStorageMiner().DAGStore
 	cfg.RootDir = t.TempDir()
 
-	mapi := NewMinerAPI(ps, sa, 10)
-	dagst, w, err := NewDAGStore(cfg, mapi)
+	h, err := mocknet.New().GenPeer()
+	require.NoError(t, err)
+
+	mapi := NewMinerAPI(ps, &wrappedSA{sa}, 10, 5)
+	dagst, w, err := NewDAGStore(cfg, mapi, h)
 	require.NoError(t, err)
 	require.NotNil(t, dagst)
 	require.NotNil(t, w)
@@ -106,6 +117,7 @@ func TestShardRegistration(t *testing.T) {
 	require.True(t, migrated)
 	require.NoError(t, err)
 
+	//stm: @MARKET_DAGSTORE_GET_ALL_SHARDS_001
 	info := dagst.AllShardsInfo()
 	require.Len(t, info, 2)
 	for _, i := range info {
@@ -113,9 +125,32 @@ func TestShardRegistration(t *testing.T) {
 	}
 
 	// Run register shard migration again
+	//stm: @MARKET_DAGSTORE_MIGRATE_DEALS_002
 	migrated, err = w.MigrateDeals(ctx, deals)
 	require.False(t, migrated)
 	require.NoError(t, err)
 
 	// ps.VerifyExpectations(t)
 }
+
+type wrappedSA struct {
+	retrievalmarket.SectorAccessor
+}
+
+func (w *wrappedSA) UnsealSectorAt(ctx context.Context, sectorID abi.SectorNumber, pieceOffset abi.UnpaddedPieceSize, length abi.UnpaddedPieceSize) (mount.Reader, error) {
+	r, err := w.UnsealSector(ctx, sectorID, pieceOffset, length)
+	if err != nil {
+		return nil, err
+	}
+	return struct {
+		io.ReadCloser
+		io.Seeker
+		io.ReaderAt
+	}{
+		ReadCloser: r,
+		Seeker:     nil,
+		ReaderAt:   nil,
+	}, err
+}
+
+var _ SectorAccessor = &wrappedSA{}

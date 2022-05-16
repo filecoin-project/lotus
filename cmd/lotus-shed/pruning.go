@@ -171,7 +171,7 @@ var stateTreePruneCmd = &cli.Command{
 		cs := store.NewChainStore(bs, bs, mds, filcns.Weight, nil)
 		defer cs.Close() //nolint:errcheck
 
-		if err := cs.Load(); err != nil {
+		if err := cs.Load(context.Background()); err != nil {
 			return fmt.Errorf("loading chainstore: %w", err)
 		}
 

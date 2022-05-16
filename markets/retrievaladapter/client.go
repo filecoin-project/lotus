@@ -10,6 +10,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multiaddr"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
@@ -17,6 +18,8 @@ import (
 )
 
 type retrievalClientNode struct {
+	forceOffChain bool
+
 	chainAPI full.ChainAPI
 	payAPI   payapi.PaychAPI
 	stateAPI full.StateAPI
@@ -24,8 +27,13 @@ type retrievalClientNode struct {
 
 // NewRetrievalClientNode returns a new node adapter for a retrieval client that talks to the
 // Lotus Node
-func NewRetrievalClientNode(payAPI payapi.PaychAPI, chainAPI full.ChainAPI, stateAPI full.StateAPI) retrievalmarket.RetrievalClientNode {
-	return &retrievalClientNode{payAPI: payAPI, chainAPI: chainAPI, stateAPI: stateAPI}
+func NewRetrievalClientNode(forceOffChain bool, payAPI payapi.PaychAPI, chainAPI full.ChainAPI, stateAPI full.StateAPI) retrievalmarket.RetrievalClientNode {
+	return &retrievalClientNode{
+		forceOffChain: forceOffChain,
+		chainAPI:      chainAPI,
+		payAPI:        payAPI,
+		stateAPI:      stateAPI,
+	}
 }
 
 // GetOrCreatePaymentChannel sets up a new payment channel if one does not exist
@@ -34,10 +42,14 @@ func NewRetrievalClientNode(payAPI payapi.PaychAPI, chainAPI full.ChainAPI, stat
 func (rcn *retrievalClientNode) GetOrCreatePaymentChannel(ctx context.Context, clientAddress address.Address, minerAddress address.Address, clientFundsAvailable abi.TokenAmount, tok shared.TipSetToken) (address.Address, cid.Cid, error) {
 	// TODO: respect the provided TipSetToken (a serialized TipSetKey) when
 	// querying the chain
-	ci, err := rcn.payAPI.PaychGet(ctx, clientAddress, minerAddress, clientFundsAvailable)
+	ci, err := rcn.payAPI.PaychGet(ctx, clientAddress, minerAddress, clientFundsAvailable, api.PaychGetOpts{
+		OffChain: rcn.forceOffChain,
+	})
 	if err != nil {
+		log.Errorw("paych get failed", "error", err)
 		return address.Undef, cid.Undef, err
 	}
+
 	return ci.Channel, ci.WaitSentinel, nil
 }
 

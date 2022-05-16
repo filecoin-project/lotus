@@ -34,6 +34,12 @@ func (b *Provider) AcquireSector(ctx context.Context, id storage.SectorRef, exis
 	if err := os.Mkdir(filepath.Join(b.Root, storiface.FTCache.String()), 0755); err != nil && !os.IsExist(err) { // nolint
 		return storiface.SectorPaths{}, nil, err
 	}
+	if err := os.Mkdir(filepath.Join(b.Root, storiface.FTUpdate.String()), 0755); err != nil && !os.IsExist(err) { // nolint
+		return storiface.SectorPaths{}, nil, err
+	}
+	if err := os.Mkdir(filepath.Join(b.Root, storiface.FTUpdateCache.String()), 0755); err != nil && !os.IsExist(err) { // nolint
+		return storiface.SectorPaths{}, nil, err
+	}
 
 	done := func() {}
 

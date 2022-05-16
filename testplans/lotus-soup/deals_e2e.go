@@ -207,7 +207,9 @@ func initPaymentChannel(t *testkit.TestEnvironment, ctx context.Context, cl *tes
 	t.RecordMessage("my balance: %d", balance)
 	t.RecordMessage("creating payment channel; from=%s, to=%s, funds=%d", cl.Wallet.Address, recv.WalletAddr, balance)
 
-	channel, err := cl.FullApi.PaychGet(ctx, cl.Wallet.Address, recv.WalletAddr, balance)
+	channel, err := cl.FullApi.PaychGet(ctx, cl.Wallet.Address, recv.WalletAddr, balance, api.PaychGetOpts{
+		OffChain: false,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to create payment channel: %w", err)
 	}
@@ -230,7 +232,9 @@ func initPaymentChannel(t *testkit.TestEnvironment, ctx context.Context, cl *tes
 	// we wait for 2 confirmations, so we have the assurance the channel is tracked.
 
 	t.RecordMessage("reloading paych; now it should have an address")
-	channel, err = cl.FullApi.PaychGet(ctx, cl.Wallet.Address, recv.WalletAddr, big.Zero())
+	channel, err = cl.FullApi.PaychGet(ctx, cl.Wallet.Address, recv.WalletAddr, big.Zero(), api.PaychGetOpts{
+		OffChain: false,
+	})
 	if err != nil {
 		return fmt.Errorf("failed to reload payment channel: %w", err)
 	}

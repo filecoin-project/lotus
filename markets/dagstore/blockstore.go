@@ -1,6 +1,7 @@
 package dagstore
 
 import (
+	"context"
 	"io"
 
 	blocks "github.com/ipfs/go-block-format"
@@ -20,14 +21,14 @@ type Blockstore struct {
 
 var _ bstore.Blockstore = (*Blockstore)(nil)
 
-func (b *Blockstore) DeleteBlock(c cid.Cid) error {
+func (b *Blockstore) DeleteBlock(context.Context, cid.Cid) error {
 	return xerrors.Errorf("DeleteBlock called but not implemented")
 }
 
-func (b *Blockstore) Put(block blocks.Block) error {
+func (b *Blockstore) Put(context.Context, blocks.Block) error {
 	return xerrors.Errorf("Put called but not implemented")
 }
 
-func (b *Blockstore) PutMany(blocks []blocks.Block) error {
+func (b *Blockstore) PutMany(context.Context, []blocks.Block) error {
 	return xerrors.Errorf("PutMany called but not implemented")
 }

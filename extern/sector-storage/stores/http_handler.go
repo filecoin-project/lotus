@@ -1,10 +1,12 @@
 package stores
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
@@ -52,6 +54,7 @@ func (handler *FetchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	mux := mux.NewRouter()
 
 	mux.HandleFunc("/remote/stat/{id}", handler.remoteStatFs).Methods("GET")
+	mux.HandleFunc("/remote/vanilla/single", handler.generateSingleVanillaProof).Methods("POST")
 	mux.HandleFunc("/remote/{type}/{id}/{spt}/allocated/{offset}/{size}", handler.remoteGetAllocated).Methods("GET")
 	mux.HandleFunc("/remote/{type}/{id}", handler.remoteGetSector).Methods("GET")
 	mux.HandleFunc("/remote/{type}/{id}", handler.remoteDeleteSector).Methods("DELETE")
@@ -61,7 +64,7 @@ func (handler *FetchHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (handler *FetchHandler) remoteStatFs(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	id := ID(vars["id"])
+	id := storiface.ID(vars["id"])
 
 	st, err := handler.Local.FsStat(r.Context(), id)
 	switch err {
@@ -84,7 +87,6 @@ func (handler *FetchHandler) remoteStatFs(w http.ResponseWriter, r *http.Request
 // remoteGetSector returns the sector file/tared directory byte stream for the sectorID and sector file type sent in the request.
 // returns an error if it does NOT have the required sector file/dir.
 func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Request) {
-	log.Infof("SERVE GET %s", r.URL)
 	vars := mux.Vars(r)
 
 	id, err := storiface.ParseSectorID(vars["id"])
@@ -173,7 +175,7 @@ func (handler *FetchHandler) remoteDeleteSector(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if err := handler.Local.Remove(r.Context(), id, ft, false, []ID{ID(r.FormValue("keep"))}); err != nil {
+	if err := handler.Local.Remove(r.Context(), id, ft, false, storiface.ParseIDList(r.FormValue("keep"))); err != nil {
 		log.Errorf("%+v", err)
 		w.WriteHeader(500)
 		return
@@ -287,6 +289,29 @@ func (handler *FetchHandler) remoteGetAllocated(w http.ResponseWriter, r *http.R
 	w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
 }
 
+type SingleVanillaParams struct {
+	Miner     abi.ActorID
+	Sector    storiface.PostSectorChallenge
+	ProofType abi.RegisteredPoStProof
+}
+
+func (handler *FetchHandler) generateSingleVanillaProof(w http.ResponseWriter, r *http.Request) {
+	var params SingleVanillaParams
+	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	vanilla, err := handler.Local.GenerateSingleVanillaProof(r.Context(), params.Miner, params.Sector, params.ProofType)
+	if err != nil {
+		http.Error(w, err.Error(), 500)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(vanilla))
+}
+
 func ftFromString(t string) (storiface.SectorFileType, error) {
 	switch t {
 	case storiface.FTUnsealed.String():
@@ -295,6 +320,10 @@ func ftFromString(t string) (storiface.SectorFileType, error) {
 		return storiface.FTSealed, nil
 	case storiface.FTCache.String():
 		return storiface.FTCache, nil
+	case storiface.FTUpdate.String():
+		return storiface.FTUpdate, nil
+	case storiface.FTUpdateCache.String():
+		return storiface.FTUpdateCache, nil
 	default:
 		return 0, xerrors.Errorf("unknown sector file type: '%s'", t)
 	}

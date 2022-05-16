@@ -1,7 +1,12 @@
 package main
 
 import (
+	"encoding/hex"
 	"fmt"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
+
+	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -35,6 +40,7 @@ var verifRegCmd = &cli.Command{
 		verifRegListClientsCmd,
 		verifRegCheckClientCmd,
 		verifRegCheckVerifierCmd,
+		verifRegRemoveVerifiedClientDataCapCmd,
 	},
 }
 
@@ -406,6 +412,157 @@ var verifRegCheckVerifierCmd = &cli.Command{
 
 		fmt.Println(dcap)
 
+		return nil
+	},
+}
+
+var verifRegRemoveVerifiedClientDataCapCmd = &cli.Command{
+	Name:      "remove-verified-client-data-cap",
+	Usage:     "Remove data cap from verified client",
+	ArgsUsage: "<message sender> <client address> <allowance to remove> <verifier 1 address> <verifier 1 signature> <verifier 2 address> <verifier 2 signature>",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 7 {
+			return fmt.Errorf("must specify seven arguments: sender, client, allowance to remove, verifier 1 address, verifier 1 signature, verifier 2 address, verifier 2 signature")
+		}
+
+		srv, err := lcli.GetFullNodeServices(cctx)
+		if err != nil {
+			return err
+		}
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
+		ctx := lcli.ReqContext(cctx)
+
+		sender, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		client, err := address.NewFromString(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		allowanceToRemove, err := types.BigFromString(cctx.Args().Get(2))
+		if err != nil {
+			return err
+		}
+
+		verifier1Addr, err := address.NewFromString(cctx.Args().Get(3))
+		if err != nil {
+			return err
+		}
+
+		verifier1Sig, err := hex.DecodeString(cctx.Args().Get(4))
+		if err != nil {
+			return err
+		}
+
+		verifier2Addr, err := address.NewFromString(cctx.Args().Get(5))
+		if err != nil {
+			return err
+		}
+
+		verifier2Sig, err := hex.DecodeString(cctx.Args().Get(6))
+		if err != nil {
+			return err
+		}
+
+		var sig1 crypto.Signature
+		if err := sig1.UnmarshalBinary(verifier1Sig); err != nil {
+			return xerrors.Errorf("couldn't unmarshal sig: %w", err)
+		}
+
+		var sig2 crypto.Signature
+		if err := sig2.UnmarshalBinary(verifier2Sig); err != nil {
+			return xerrors.Errorf("couldn't unmarshal sig: %w", err)
+		}
+
+		params, err := actors.SerializeParams(&verifreg.RemoveDataCapParams{
+			VerifiedClientToRemove: client,
+			DataCapAmountToRemove:  allowanceToRemove,
+			VerifierRequest1: verifreg.RemoveDataCapRequest{
+				Verifier:          verifier1Addr,
+				VerifierSignature: sig1,
+			},
+			VerifierRequest2: verifreg.RemoveDataCapRequest{
+				Verifier:          verifier2Addr,
+				VerifierSignature: sig2,
+			},
+		})
+		if err != nil {
+			return err
+		}
+
+		vrk, err := api.StateVerifiedRegistryRootKey(ctx, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		vrkState, err := api.StateGetActor(ctx, vrk, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		apibs := blockstore.NewAPIBlockstore(api)
+		store := adt.WrapStore(ctx, cbor.NewCborStore(apibs))
+
+		st, err := multisig.Load(store, vrkState)
+		if err != nil {
+			return err
+		}
+
+		signers, err := st.Signers()
+		if err != nil {
+			return err
+		}
+
+		senderIsSigner := false
+		senderIdAddr, err := address.IDFromAddress(sender)
+		if err != nil {
+			return err
+		}
+
+		for _, signer := range signers {
+			signerIdAddr, err := address.IDFromAddress(signer)
+			if err != nil {
+				return err
+			}
+
+			if signerIdAddr == senderIdAddr {
+				senderIsSigner = true
+			}
+		}
+
+		if !senderIsSigner {
+			return fmt.Errorf("sender must be a vrk signer")
+		}
+
+		proto, err := api.MsigPropose(ctx, vrk, verifreg.Address, big.Zero(), sender, uint64(verifreg.Methods.RemoveVerifiedClientDataCap), params)
+		if err != nil {
+			return err
+		}
+
+		sm, _, err := srv.PublishMessage(ctx, proto, false)
+		if err != nil {
+			return err
+		}
+
+		msgCid := sm.Cid()
+
+		fmt.Printf("message sent, now waiting on cid: %s\n", msgCid)
+
+		mwait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		if err != nil {
+			return err
+		}
+
+		if mwait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("failed to removed verified data cap: %d", mwait.Receipt.ExitCode)
+		}
+
+		//TODO: Internal msg might still have failed
 		return nil
 	},
 }

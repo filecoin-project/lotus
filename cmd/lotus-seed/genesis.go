@@ -508,12 +508,19 @@ var genesisSetRemainderCmd = &cli.Command{
 }
 
 var genesisSetActorVersionCmd = &cli.Command{
-	Name:      "set-network-version",
-	Usage:     "Set the version that this network will start from",
-	ArgsUsage: "<genesisFile> <actorVersion>",
+	Name:  "set-network-version",
+	Usage: "Set the version that this network will start from",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:  "network-version",
+			Usage: "network version to start genesis with",
+			Value: int(build.GenesisNetworkVersion),
+		},
+	},
+	ArgsUsage: "<genesisFile>",
 	Action: func(cctx *cli.Context) error {
-		if cctx.Args().Len() != 2 {
-			return fmt.Errorf("must specify genesis file and network version (e.g. '0'")
+		if cctx.Args().Len() != 1 {
+			return fmt.Errorf("must specify genesis file")
 		}
 
 		genf, err := homedir.Expand(cctx.Args().First())
@@ -531,16 +538,12 @@ var genesisSetActorVersionCmd = &cli.Command{
 			return xerrors.Errorf("unmarshal genesis template: %w", err)
 		}
 
-		nv, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
-		if err != nil {
-			return xerrors.Errorf("parsing network version: %w", err)
-		}
-
-		if nv > uint64(build.NewestNetworkVersion) {
+		nv := network.Version(cctx.Int("network-version"))
+		if nv > build.NewestNetworkVersion {
 			return xerrors.Errorf("invalid network version: %d", nv)
 		}
 
-		template.NetworkVersion = network.Version(nv)
+		template.NetworkVersion = nv
 
 		b, err = json.MarshalIndent(&template, "", "  ")
 		if err != nil {

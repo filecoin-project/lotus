@@ -50,8 +50,13 @@ var infoAllCmd = &cli.Command{
 			fmt.Println("ERROR: ", err)
 		}
 
-		fmt.Println("\n#: Worker List")
-		if err := sealingWorkersCmd.Action(cctx); err != nil {
+		fmt.Println("\n#: Sealing Worker List")
+		if err := workersCmd(true).Action(cctx); err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
+		fmt.Println("\n#: Proving Worker List")
+		if err := workersCmd(false).Action(cctx); err != nil {
 			fmt.Println("ERROR: ", err)
 		}
 
@@ -93,6 +98,11 @@ var infoAllCmd = &cli.Command{
 
 		fmt.Println("\n#: Sealing Jobs")
 		if err := sealingJobsCmd.Action(cctx); err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
+		fmt.Println("\n#: Storage Locks")
+		if err := storageLocks.Action(cctx); err != nil {
 			fmt.Println("ERROR: ", err)
 		}
 
@@ -189,6 +199,11 @@ var infoAllCmd = &cli.Command{
 
 		fmt.Println("\n#: Sector List")
 		if err := sectorsListCmd.Action(cctx); err != nil {
+			fmt.Println("ERROR: ", err)
+		}
+
+		fmt.Println("\n#: Storage Sector List")
+		if err := storageListSectorsCmd.Action(cctx); err != nil {
 			fmt.Println("ERROR: ", err)
 		}
 

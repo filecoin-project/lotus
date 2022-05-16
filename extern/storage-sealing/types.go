@@ -73,7 +73,7 @@ type SectorInfo struct {
 
 	// PreCommit2
 	CommD *cid.Cid
-	CommR *cid.Cid
+	CommR *cid.Cid // SectorKey
 	Proof []byte
 
 	PreCommitInfo    *miner.SectorPreCommitInfo
@@ -90,6 +90,14 @@ type SectorInfo struct {
 	// Committing
 	CommitMessage *cid.Cid
 	InvalidProofs uint64 // failed proof computations (doesn't validate with proof inputs; can't compute)
+
+	// CCUpdate
+	CCUpdate             bool
+	CCPieces             []Piece
+	UpdateSealed         *cid.Cid
+	UpdateUnsealed       *cid.Cid
+	ReplicaUpdateProof   storage.ReplicaUpdateProof
+	ReplicaUpdateMessage *cid.Cid
 
 	// Faults
 	FaultReportMsg *cid.Cid
@@ -157,11 +165,11 @@ func (t *SectorInfo) sealingCtx(ctx context.Context) context.Context {
 
 // Returns list of offset/length tuples of sector data ranges which clients
 // requested to keep unsealed
-func (t *SectorInfo) keepUnsealedRanges(invert, alwaysKeep bool) []storage.Range {
+func (t *SectorInfo) keepUnsealedRanges(pieces []Piece, invert, alwaysKeep bool) []storage.Range {
 	var out []storage.Range
 
 	var at abi.UnpaddedPieceSize
-	for _, piece := range t.Pieces {
+	for _, piece := range pieces {
 		psize := piece.Piece.Size.Unpadded()
 		at += psize
 

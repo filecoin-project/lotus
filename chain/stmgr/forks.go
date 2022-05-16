@@ -8,6 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/lotus/build"
+
+	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -15,8 +19,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-actors/v3/actors/migration/nv10"
-
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
@@ -161,7 +163,8 @@ func (us UpgradeSchedule) GetNtwkVersion(e abi.ChainEpoch) (network.Version, err
 			return u.Network, nil
 		}
 	}
-	return network.Version0, xerrors.Errorf("Epoch %d has no defined network version", e)
+
+	return build.GenesisNetworkVersion, nil
 }
 
 func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, height abi.ChainEpoch, cb ExecMonitor, ts *types.TipSet) (cid.Cid, error) {
@@ -211,7 +214,7 @@ func (sm *StateManager) hasExpensiveFork(height abi.ChainEpoch) bool {
 	return ok
 }
 
-func runPreMigration(ctx context.Context, sm *StateManager, fn PreMigrationFunc, cache *nv10.MemMigrationCache, ts *types.TipSet) {
+func runPreMigration(ctx context.Context, sm *StateManager, fn PreMigrationFunc, cache *nv15.MemMigrationCache, ts *types.TipSet) {
 	height := ts.Height()
 	parent := ts.ParentState()
 

@@ -1,25 +1,40 @@
 package sectorstorage
 
 import (
+	"context"
 	"time"
 
 	"github.com/google/uuid"
 
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
-func (m *Manager) WorkerStats() map[uuid.UUID]storiface.WorkerStats {
+func (m *Manager) WorkerStats(ctx context.Context) map[uuid.UUID]storiface.WorkerStats {
 	m.sched.workersLk.RLock()
-	defer m.sched.workersLk.RUnlock()
 
 	out := map[uuid.UUID]storiface.WorkerStats{}
 
-	for id, handle := range m.sched.workers {
+	cb := func(ctx context.Context, id storiface.WorkerID, handle *workerHandle) {
 		handle.lk.Lock()
-		out[uuid.UUID(id)] = storiface.WorkerStats{
-			Info:    handle.info,
-			Enabled: handle.enabled,
 
+		ctx, cancel := context.WithTimeout(ctx, 3*time.Second)
+		defer cancel()
+
+		tt, err := handle.workerRpc.TaskTypes(ctx)
+		var taskList []sealtasks.TaskType
+		if err != nil {
+			log.Warnw("getting worker task types in WorkerStats", "error", err)
+		} else {
+			for taskType := range tt {
+				taskList = append(taskList, taskType)
+			}
+		}
+
+		out[uuid.UUID(id)] = storiface.WorkerStats{
+			Info:       handle.info,
+			Tasks:      taskList,
+			Enabled:    handle.enabled,
 			MemUsedMin: handle.active.memUsedMin,
 			MemUsedMax: handle.active.memUsedMax,
 			GpuUsed:    handle.active.gpuUsed,
@@ -28,6 +43,15 @@ func (m *Manager) WorkerStats() map[uuid.UUID]storiface.WorkerStats {
 		handle.lk.Unlock()
 	}
 
+	for id, handle := range m.sched.workers {
+		cb(ctx, id, handle)
+	}
+
+	m.sched.workersLk.RUnlock()
+
+	//list post workers
+	m.winningPoStSched.WorkerStats(ctx, cb)
+	m.windowPoStSched.WorkerStats(ctx, cb)
 	return out
 }
 

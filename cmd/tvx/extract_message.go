@@ -8,12 +8,11 @@ import (
 	"io"
 	"log"
 
-	"github.com/filecoin-project/lotus/api/v0api"
-
 	"github.com/fatih/color"
 	"github.com/filecoin-project/go-address"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
@@ -43,6 +42,15 @@ func doExtractMessage(opts extractOpts) error {
 		return fmt.Errorf("failed to resolve message and tipsets from chain: %w", err)
 	}
 
+	// Assumes that the desired message isn't at the boundary of network versions.
+	// Otherwise this will be inaccurate. But it's such a tiny edge case that
+	// it's not worth spending the time to support boundary messages unless
+	// actually needed.
+	nv, err := FullAPI.StateNetworkVersion(ctx, incTs.Key())
+	if err != nil {
+		return fmt.Errorf("failed to resolve network version from inclusion height: %w", err)
+	}
+
 	// get the circulating supply before the message was executed.
 	circSupplyDetail, err := FullAPI.StateVMCirculatingSupplyInternal(ctx, incTs.Key())
 	if err != nil {
@@ -53,6 +61,7 @@ func doExtractMessage(opts extractOpts) error {
 
 	log.Printf("message was executed in tipset: %s", execTs.Key())
 	log.Printf("message was included in tipset: %s", incTs.Key())
+	log.Printf("network version at inclusion: %d", nv)
 	log.Printf("circulating supply at inclusion tipset: %d", circSupply)
 	log.Printf("finding precursor messages using mode: %s", opts.precursor)
 
@@ -110,7 +119,8 @@ func doExtractMessage(opts extractOpts) error {
 			CircSupply: circSupplyDetail.FilCirculating,
 			BaseFee:    basefee,
 			// recorded randomness will be discarded.
-			Rand: conformance.NewRecordingRand(new(conformance.LogReporter), FullAPI),
+			Rand:           conformance.NewRecordingRand(new(conformance.LogReporter), FullAPI),
+			NetworkVersion: nv,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to execute precursor message: %w", err)
@@ -140,12 +150,13 @@ func doExtractMessage(opts extractOpts) error {
 
 		preroot = root
 		applyret, postroot, err = driver.ExecuteMessage(pst.Blockstore, conformance.ExecuteMessageParams{
-			Preroot:    preroot,
-			Epoch:      execTs.Height(),
-			Message:    msg,
-			CircSupply: circSupplyDetail.FilCirculating,
-			BaseFee:    basefee,
-			Rand:       recordingRand,
+			Preroot:        preroot,
+			Epoch:          execTs.Height(),
+			Message:        msg,
+			CircSupply:     circSupplyDetail.FilCirculating,
+			BaseFee:        basefee,
+			Rand:           recordingRand,
+			NetworkVersion: nv,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to execute message: %w", err)
@@ -259,11 +270,6 @@ func doExtractMessage(opts extractOpts) error {
 	}
 
 	ntwkName, err := FullAPI.StateNetworkName(ctx)
-	if err != nil {
-		return err
-	}
-
-	nv, err := FullAPI.StateNetworkVersion(ctx, execTs.Key())
 	if err != nil {
 		return err
 	}

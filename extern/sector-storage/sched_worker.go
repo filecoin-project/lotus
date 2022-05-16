@@ -4,17 +4,18 @@ import (
 	"context"
 	"time"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 type schedWorker struct {
 	sched  *scheduler
 	worker *workerHandle
 
-	wid WorkerID
+	wid storiface.WorkerID
 
 	heartbeatTimer   *time.Ticker
 	scheduledWindows chan *schedWindow
@@ -23,19 +24,10 @@ type schedWorker struct {
 	windowsRequested int
 }
 
-// context only used for startup
-func (sh *scheduler) runWorker(ctx context.Context, w Worker) error {
+func newWorkerHandle(ctx context.Context, w Worker) (*workerHandle, error) {
 	info, err := w.Info(ctx)
 	if err != nil {
-		return xerrors.Errorf("getting worker info: %w", err)
-	}
-
-	sessID, err := w.Session(ctx)
-	if err != nil {
-		return xerrors.Errorf("getting worker session: %w", err)
-	}
-	if sessID == ClosedWorkerID {
-		return xerrors.Errorf("worker already closed")
+		return nil, xerrors.Errorf("getting worker info: %w", err)
 	}
 
 	worker := &workerHandle{
@@ -50,8 +42,11 @@ func (sh *scheduler) runWorker(ctx context.Context, w Worker) error {
 		closedMgr:  make(chan struct{}),
 	}
 
-	wid := WorkerID(sessID)
+	return worker, nil
+}
 
+// context only used for startup
+func (sh *scheduler) runWorker(ctx context.Context, wid storiface.WorkerID, worker *workerHandle) error {
 	sh.workersLk.Lock()
 	_, exist := sh.workers[wid]
 	if exist {
@@ -237,7 +232,7 @@ func (sw *schedWorker) checkSession(ctx context.Context) bool {
 			continue
 		}
 
-		if WorkerID(curSes) != sw.wid {
+		if storiface.WorkerID(curSes) != sw.wid {
 			if curSes != ClosedWorkerID {
 				// worker restarted
 				log.Warnw("worker session changed (worker restarted?)", "initial", sw.wid, "current", curSes)
@@ -296,7 +291,7 @@ func (sw *schedWorker) workerCompactWindows() {
 			var moved []int
 
 			for ti, todo := range window.todo {
-				needRes := ResourceTable[todo.taskType][todo.sector.ProofType]
+				needRes := worker.info.Resources.ResourceSpec(todo.sector.ProofType, todo.taskType)
 				if !lower.allocated.canHandleRequest(needRes, sw.wid, "compactWindows", worker.info) {
 					continue
 				}
@@ -357,7 +352,7 @@ assignLoop:
 
 			worker.lk.Lock()
 			for t, todo := range firstWindow.todo {
-				needRes := ResourceTable[todo.taskType][todo.sector.ProofType]
+				needRes := worker.info.Resources.ResourceSpec(todo.sector.ProofType, todo.taskType)
 				if worker.preparing.canHandleRequest(needRes, sw.wid, "startPreparing", worker.info) {
 					tidx = t
 					break
@@ -418,7 +413,7 @@ assignLoop:
 					continue
 				}
 
-				needRes := ResourceTable[todo.taskType][todo.sector.ProofType]
+				needRes := storiface.ResourceTable[todo.taskType][todo.sector.ProofType]
 				if worker.active.canHandleRequest(needRes, sw.wid, "startPreparing", worker.info) {
 					tidx = t
 					break
@@ -456,7 +451,7 @@ assignLoop:
 func (sw *schedWorker) startProcessingTask(req *workerRequest) error {
 	w, sh := sw.worker, sw.sched
 
-	needRes := ResourceTable[req.taskType][req.sector.ProofType]
+	needRes := w.info.Resources.ResourceSpec(req.sector.ProofType, req.taskType)
 
 	w.lk.Lock()
 	w.preparing.add(w.info.Resources, needRes)
@@ -539,7 +534,7 @@ func (sw *schedWorker) startProcessingTask(req *workerRequest) error {
 func (sw *schedWorker) startProcessingReadyTask(req *workerRequest) error {
 	w, sh := sw.worker, sw.sched
 
-	needRes := ResourceTable[req.taskType][req.sector.ProofType]
+	needRes := w.info.Resources.ResourceSpec(req.sector.ProofType, req.taskType)
 
 	w.active.add(w.info.Resources, needRes)
 
@@ -579,7 +574,7 @@ func (sw *schedWorker) startProcessingReadyTask(req *workerRequest) error {
 	return nil
 }
 
-func (sh *scheduler) workerCleanup(wid WorkerID, w *workerHandle) {
+func (sh *scheduler) workerCleanup(wid storiface.WorkerID, w *workerHandle) {
 	select {
 	case <-w.closingMgr:
 	default:

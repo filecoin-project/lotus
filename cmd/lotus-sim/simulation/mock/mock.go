@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
@@ -70,7 +72,13 @@ func (mockVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyPro
 	)
 	return false, nil
 }
-func (mockVerifier) VerifyWinningPoSt(ctx context.Context, info proof5.WinningPoStVerifyInfo) (bool, error) {
+
+// TODO: do the thing
+func (mockVerifier) VerifyReplicaUpdate(update proof7.ReplicaUpdateInfo) (bool, error) {
+	return false, nil
+}
+
+func (mockVerifier) VerifyWinningPoSt(ctx context.Context, info proof7.WinningPoStVerifyInfo) (bool, error) {
 	panic("should not be called")
 }
 func (mockVerifier) VerifyWindowPoSt(ctx context.Context, info proof5.WindowPoStVerifyInfo) (bool, error) {

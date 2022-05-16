@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-graphsync"
 	exchange "github.com/ipfs/go-ipfs-exchange-interface"
 
+	dtnet "github.com/filecoin-project/go-data-transfer/network"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/requestvalidation"
 
@@ -85,6 +86,7 @@ type ProviderRequestValidator *requestvalidation.UnifiedRequestValidator
 
 // ProviderDataTransfer is a data transfer manager for the provider
 type ProviderDataTransfer datatransfer.Manager
-
+type ProviderTransferNetwork dtnet.DataTransferNetwork
+type ProviderTransport datatransfer.Transport
 type StagingBlockstore blockstore.BasicBlockstore
 type StagingGraphsync graphsync.GraphExchange

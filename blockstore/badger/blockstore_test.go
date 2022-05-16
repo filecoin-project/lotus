@@ -1,9 +1,10 @@
+//stm: #unit
 package badgerbs
 
 import (
 	"bytes"
+	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -19,6 +20,8 @@ import (
 )
 
 func TestBadgerBlockstore(t *testing.T) {
+	//stm: @SPLITSTORE_BADGER_PUT_001, @SPLITSTORE_BADGER_POOLED_STORAGE_KEY_001
+	//stm: @SPLITSTORE_BADGER_OPEN_001, @SPLITSTORE_BADGER_CLOSE_001
 	(&Suite{
 		NewBlockstore:  newBlockstore(DefaultOptions),
 		OpenBlockstore: openBlockstore(DefaultOptions),
@@ -37,6 +40,8 @@ func TestBadgerBlockstore(t *testing.T) {
 }
 
 func TestStorageKey(t *testing.T) {
+	//stm: @SPLITSTORE_BADGER_OPEN_001, @SPLITSTORE_BADGER_CLOSE_001
+	//stm: @SPLITSTORE_BADGER_STORAGE_KEY_001
 	bs, _ := newBlockstore(DefaultOptions)(t)
 	bbs := bs.(*Blockstore)
 	defer bbs.Close() //nolint:errcheck
@@ -72,19 +77,12 @@ func newBlockstore(optsSupplier func(path string) Options) func(tb testing.TB) (
 	return func(tb testing.TB) (bs blockstore.BasicBlockstore, path string) {
 		tb.Helper()
 
-		path, err := ioutil.TempDir("", "")
-		if err != nil {
-			tb.Fatal(err)
-		}
+		path = tb.TempDir()
 
 		db, err := Open(optsSupplier(path))
 		if err != nil {
 			tb.Fatal(err)
 		}
-
-		tb.Cleanup(func() {
-			_ = os.RemoveAll(path)
-		})
 
 		return db, path
 	}
@@ -98,16 +96,10 @@ func openBlockstore(optsSupplier func(path string) Options) func(tb testing.TB, 
 }
 
 func testMove(t *testing.T, optsF func(string) Options) {
-	basePath, err := ioutil.TempDir("", "")
-	if err != nil {
-		t.Fatal(err)
-	}
+	ctx := context.Background()
+	basePath := t.TempDir()
 
 	dbPath := filepath.Join(basePath, "db")
-
-	t.Cleanup(func() {
-		_ = os.RemoveAll(basePath)
-	})
 
 	db, err := Open(optsF(dbPath))
 	if err != nil {
@@ -122,7 +114,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 	// add some blocks
 	for i := 0; i < 10; i++ {
 		blk := blocks.NewBlock([]byte(fmt.Sprintf("some data %d", i)))
-		err := db.Put(blk)
+		err := db.Put(ctx, blk)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -132,7 +124,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 	// delete some of them
 	for i := 5; i < 10; i++ {
 		c := have[i].Cid()
-		err := db.DeleteBlock(c)
+		err := db.DeleteBlock(ctx, c)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -145,7 +137,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 	g.Go(func() error {
 		for i := 10; i < 1000; i++ {
 			blk := blocks.NewBlock([]byte(fmt.Sprintf("some data %d", i)))
-			err := db.Put(blk)
+			err := db.Put(ctx, blk)
 			if err != nil {
 				return err
 			}
@@ -165,7 +157,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 	// now check that we have all the blocks in have and none in the deleted lists
 	checkBlocks := func() {
 		for _, blk := range have {
-			has, err := db.Has(blk.Cid())
+			has, err := db.Has(ctx, blk.Cid())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -174,7 +166,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 				t.Fatal("missing block")
 			}
 
-			blk2, err := db.Get(blk.Cid())
+			blk2, err := db.Get(ctx, blk.Cid())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -185,7 +177,7 @@ func testMove(t *testing.T, optsF func(string) Options) {
 		}
 
 		for _, c := range deleted {
-			has, err := db.Has(c)
+			has, err := db.Has(ctx, c)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -263,10 +255,16 @@ func testMove(t *testing.T, optsF func(string) Options) {
 }
 
 func TestMoveNoPrefix(t *testing.T) {
+	//stm: @SPLITSTORE_BADGER_OPEN_001, @SPLITSTORE_BADGER_CLOSE_001
+	//stm: @SPLITSTORE_BADGER_PUT_001, @SPLITSTORE_BADGER_POOLED_STORAGE_KEY_001
+	//stm: @SPLITSTORE_BADGER_DELETE_001, @SPLITSTORE_BADGER_COLLECT_GARBAGE_001
 	testMove(t, DefaultOptions)
 }
 
 func TestMoveWithPrefix(t *testing.T) {
+	//stm: @SPLITSTORE_BADGER_OPEN_001, @SPLITSTORE_BADGER_CLOSE_001
+	//stm: @SPLITSTORE_BADGER_PUT_001, @SPLITSTORE_BADGER_POOLED_STORAGE_KEY_001
+	//stm: @SPLITSTORE_BADGER_DELETE_001, @SPLITSTORE_BADGER_COLLECT_GARBAGE_001
 	testMove(t, func(path string) Options {
 		opts := DefaultOptions(path)
 		opts.Prefix = "/prefixed/"

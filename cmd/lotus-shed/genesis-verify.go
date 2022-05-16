@@ -64,7 +64,7 @@ var genesisVerifyCmd = &cli.Command{
 			return xerrors.Errorf("opening the car file: %w", err)
 		}
 
-		ts, err := cs.Import(f)
+		ts, err := cs.Import(cctx.Context, f)
 		if err != nil {
 			return err
 		}

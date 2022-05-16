@@ -19,72 +19,72 @@ func Union(stores ...Blockstore) Blockstore {
 	return unionBlockstore(stores)
 }
 
-func (m unionBlockstore) Has(cid cid.Cid) (has bool, err error) {
+func (m unionBlockstore) Has(ctx context.Context, cid cid.Cid) (has bool, err error) {
 	for _, bs := range m {
-		if has, err = bs.Has(cid); has || err != nil {
+		if has, err = bs.Has(ctx, cid); has || err != nil {
 			break
 		}
 	}
 	return has, err
 }
 
-func (m unionBlockstore) Get(cid cid.Cid) (blk blocks.Block, err error) {
+func (m unionBlockstore) Get(ctx context.Context, cid cid.Cid) (blk blocks.Block, err error) {
 	for _, bs := range m {
-		if blk, err = bs.Get(cid); err == nil || err != ErrNotFound {
+		if blk, err = bs.Get(ctx, cid); err == nil || err != ErrNotFound {
 			break
 		}
 	}
 	return blk, err
 }
 
-func (m unionBlockstore) View(cid cid.Cid, callback func([]byte) error) (err error) {
+func (m unionBlockstore) View(ctx context.Context, cid cid.Cid, callback func([]byte) error) (err error) {
 	for _, bs := range m {
-		if err = bs.View(cid, callback); err == nil || err != ErrNotFound {
+		if err = bs.View(ctx, cid, callback); err == nil || err != ErrNotFound {
 			break
 		}
 	}
 	return err
 }
 
-func (m unionBlockstore) GetSize(cid cid.Cid) (size int, err error) {
+func (m unionBlockstore) GetSize(ctx context.Context, cid cid.Cid) (size int, err error) {
 	for _, bs := range m {
-		if size, err = bs.GetSize(cid); err == nil || err != ErrNotFound {
+		if size, err = bs.GetSize(ctx, cid); err == nil || err != ErrNotFound {
 			break
 		}
 	}
 	return size, err
 }
 
-func (m unionBlockstore) Put(block blocks.Block) (err error) {
+func (m unionBlockstore) Put(ctx context.Context, block blocks.Block) (err error) {
 	for _, bs := range m {
-		if err = bs.Put(block); err != nil {
+		if err = bs.Put(ctx, block); err != nil {
 			break
 		}
 	}
 	return err
 }
 
-func (m unionBlockstore) PutMany(blks []blocks.Block) (err error) {
+func (m unionBlockstore) PutMany(ctx context.Context, blks []blocks.Block) (err error) {
 	for _, bs := range m {
-		if err = bs.PutMany(blks); err != nil {
+		if err = bs.PutMany(ctx, blks); err != nil {
 			break
 		}
 	}
 	return err
 }
 
-func (m unionBlockstore) DeleteBlock(cid cid.Cid) (err error) {
+func (m unionBlockstore) DeleteBlock(ctx context.Context, cid cid.Cid) (err error) {
 	for _, bs := range m {
-		if err = bs.DeleteBlock(cid); err != nil {
+		if err = bs.DeleteBlock(ctx, cid); err != nil {
 			break
 		}
 	}
 	return err
 }
 
-func (m unionBlockstore) DeleteMany(cids []cid.Cid) (err error) {
+func (m unionBlockstore) DeleteMany(ctx context.Context, cids []cid.Cid) (err error) {
 	for _, bs := range m {
-		if err = bs.DeleteMany(cids); err != nil {
+		if err = bs.DeleteMany(ctx, cids); err != nil {
 			break
 		}
 	}

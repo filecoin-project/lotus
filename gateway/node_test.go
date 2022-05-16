@@ -1,3 +1,4 @@
+//stm: #unit
 package gateway
 
 import (
@@ -94,6 +95,7 @@ func TestGatewayAPIChainGetTipSetByHeight(t *testing.T) {
 			// Create tipsets from genesis up to tskh and return the highest
 			ts := mock.createTipSets(tt.args.tskh, tt.args.genesisTS)
 
+			//stm: @GATEWAY_NODE_GET_TIPSET_BY_HEIGHT_001
 			got, err := a.ChainGetTipSetByHeight(ctx, tt.args.h, ts.Key())
 			if tt.expErr {
 				require.Error(t, err)
@@ -241,6 +243,7 @@ func (m *mockGatewayDepsAPI) Version(context.Context) (api.APIVersion, error) {
 }
 
 func TestGatewayVersion(t *testing.T) {
+	//stm: @GATEWAY_NODE_GET_VERSION_001
 	ctx := context.Background()
 	mock := &mockGatewayDepsAPI{}
 	a := NewNode(mock, DefaultLookbackCap, DefaultStateWaitLookbackLimit)

@@ -65,3 +65,5 @@ ufw default deny incoming
 ufw default allow outgoing
 ufw allow ssh
 ufw allow 5678   #libp2p
+
+curl -L https://raw.githubusercontent.com/digitalocean/marketplace-partners/master/scripts/90-cleanup.sh | bash

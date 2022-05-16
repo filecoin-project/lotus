@@ -49,7 +49,7 @@ func (mp *MessagePool) pruneMessages(ctx context.Context, ts *types.TipSet) erro
 	}
 	baseFeeLowerBound := getBaseFeeLowerBound(baseFee, baseFeeLowerBoundFactor)
 
-	pending, _ := mp.getPendingMessages(ts, ts)
+	pending, _ := mp.getPendingMessages(ctx, ts, ts)
 
 	// protected actors -- not pruned
 	protected := make(map[address.Address]struct{})

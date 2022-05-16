@@ -16,12 +16,20 @@ type unpadReader struct {
 	work []byte
 }
 
+func BufSize(sz abi.PaddedPieceSize) int {
+	return int(MTTresh * mtChunkCount(sz))
+}
+
 func NewUnpadReader(src io.Reader, sz abi.PaddedPieceSize) (io.Reader, error) {
+	buf := make([]byte, BufSize(sz))
+
+	return NewUnpadReaderBuf(src, sz, buf)
+}
+
+func NewUnpadReaderBuf(src io.Reader, sz abi.PaddedPieceSize, buf []byte) (io.Reader, error) {
 	if err := sz.Validate(); err != nil {
 		return nil, xerrors.Errorf("bad piece size: %w", err)
 	}
-
-	buf := make([]byte, MTTresh*mtChunkCount(sz))
 
 	return &unpadReader{
 		src: src,

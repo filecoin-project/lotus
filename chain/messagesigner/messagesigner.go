@@ -84,7 +84,7 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, cb
 	}
 
 	// If the callback executed successfully, write the nonce to the datastore
-	if err := ms.saveNonce(msg.From, nonce); err != nil {
+	if err := ms.saveNonce(ctx, msg.From, nonce); err != nil {
 		return nil, xerrors.Errorf("failed to save nonce: %w", err)
 	}
 
@@ -105,7 +105,7 @@ func (ms *MessageSigner) nextNonce(ctx context.Context, addr address.Address) (u
 
 	// Get the next nonce for this address from the datastore
 	addrNonceKey := ms.dstoreKey(addr)
-	dsNonceBytes, err := ms.ds.Get(addrNonceKey)
+	dsNonceBytes, err := ms.ds.Get(ctx, addrNonceKey)
 
 	switch {
 	case xerrors.Is(err, datastore.ErrNotFound):
@@ -139,7 +139,7 @@ func (ms *MessageSigner) nextNonce(ctx context.Context, addr address.Address) (u
 
 // saveNonce increments the nonce for this address and writes it to the
 // datastore
-func (ms *MessageSigner) saveNonce(addr address.Address, nonce uint64) error {
+func (ms *MessageSigner) saveNonce(ctx context.Context, addr address.Address, nonce uint64) error {
 	// Increment the nonce
 	nonce++
 
@@ -150,7 +150,7 @@ func (ms *MessageSigner) saveNonce(addr address.Address, nonce uint64) error {
 	if err != nil {
 		return xerrors.Errorf("failed to marshall nonce: %w", err)
 	}
-	err = ms.ds.Put(addrNonceKey, buf.Bytes())
+	err = ms.ds.Put(ctx, addrNonceKey, buf.Bytes())
 	if err != nil {
 		return xerrors.Errorf("failed to write nonce to datastore: %w", err)
 	}

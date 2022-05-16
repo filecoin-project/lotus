@@ -142,7 +142,7 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Re
 
 	go func() {
 		start := build.Clock.Now()
-		log.Infow("start fetching randomness", "round", round)
+		log.Debugw("start fetching randomness", "round", round)
 		resp, err := db.client.Get(ctx, round)
 
 		var br beacon.Response
@@ -152,7 +152,7 @@ func (db *DrandBeacon) Entry(ctx context.Context, round uint64) <-chan beacon.Re
 			br.Entry.Round = resp.Round()
 			br.Entry.Data = resp.Signature()
 		}
-		log.Infow("done fetching randomness", "round", round, "took", build.Clock.Since(start))
+		log.Debugw("done fetching randomness", "round", round, "took", build.Clock.Since(start))
 		out <- br
 		close(out)
 	}()

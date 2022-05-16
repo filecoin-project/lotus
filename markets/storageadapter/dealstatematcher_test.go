@@ -1,3 +1,4 @@
+//stm: #unit
 package storageadapter
 
 import (
@@ -27,6 +28,7 @@ import (
 )
 
 func TestDealStateMatcher(t *testing.T) {
+	//stm: @CHAIN_STATE_GET_ACTOR_001
 	ctx := context.Background()
 	bs := bstore.NewMemorySync()
 	store := adt2.WrapStore(ctx, cbornode.NewCborStore(bs))

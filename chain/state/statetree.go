@@ -159,7 +159,7 @@ func VersionForNetwork(ver network.Version) (types.StateTreeVersion, error) {
 
 		/* inline-gen start */
 
-	case network.Version13, network.Version14:
+	case network.Version13, network.Version14, network.Version15:
 
 		/* inline-gen end */
 		return types.StateTreeVersion4, nil

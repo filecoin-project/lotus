@@ -2,6 +2,7 @@ package market
 
 import (
 	"bytes"
+	"context"
 
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-datastore"
@@ -27,7 +28,7 @@ func newStore(ds dtypes.MetadataDS) *Store {
 }
 
 // save the state to the datastore
-func (ps *Store) save(state *FundedAddressState) error {
+func (ps *Store) save(ctx context.Context, state *FundedAddressState) error {
 	k := dskeyForAddr(state.Addr)
 
 	b, err := cborrpc.Dump(state)
@@ -35,14 +36,14 @@ func (ps *Store) save(state *FundedAddressState) error {
 		return err
 	}
 
-	return ps.ds.Put(k, b)
+	return ps.ds.Put(ctx, k, b)
 }
 
 // get the state for the given address
-func (ps *Store) get(addr address.Address) (*FundedAddressState, error) {
+func (ps *Store) get(ctx context.Context, addr address.Address) (*FundedAddressState, error) {
 	k := dskeyForAddr(addr)
 
-	data, err := ps.ds.Get(k)
+	data, err := ps.ds.Get(ctx, k)
 	if err != nil {
 		return nil, err
 	}
@@ -56,8 +57,8 @@ func (ps *Store) get(addr address.Address) (*FundedAddressState, error) {
 }
 
 // forEach calls iter with each address in the datastore
-func (ps *Store) forEach(iter func(*FundedAddressState)) error {
-	res, err := ps.ds.Query(dsq.Query{Prefix: dsKeyAddr})
+func (ps *Store) forEach(ctx context.Context, iter func(*FundedAddressState)) error {
+	res, err := ps.ds.Query(ctx, dsq.Query{Prefix: dsKeyAddr})
 	if err != nil {
 		return err
 	}

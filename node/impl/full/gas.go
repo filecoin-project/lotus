@@ -82,14 +82,14 @@ type GasMeta struct {
 	Limit int64
 }
 
-func (g *GasPriceCache) GetTSGasStats(cstore *store.ChainStore, ts *types.TipSet) ([]GasMeta, error) {
+func (g *GasPriceCache) GetTSGasStats(ctx context.Context, cstore *store.ChainStore, ts *types.TipSet) ([]GasMeta, error) {
 	i, has := g.c.Get(ts.Key())
 	if has {
 		return i.([]GasMeta), nil
 	}
 
 	var prices []GasMeta
-	msgs, err := cstore.MessagesForTipset(ts)
+	msgs, err := cstore.MessagesForTipset(ctx, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("loading messages: %w", err)
 	}
@@ -173,7 +173,7 @@ func (a *GasAPI) GasEstimateGasPremium(
 	gaslimit int64,
 	_ types.TipSetKey,
 ) (types.BigInt, error) {
-	return gasEstimateGasPremium(a.Chain, a.PriceCache, nblocksincl)
+	return gasEstimateGasPremium(ctx, a.Chain, a.PriceCache, nblocksincl)
 }
 func (m *GasModule) GasEstimateGasPremium(
 	ctx context.Context,
@@ -182,9 +182,9 @@ func (m *GasModule) GasEstimateGasPremium(
 	gaslimit int64,
 	_ types.TipSetKey,
 ) (types.BigInt, error) {
-	return gasEstimateGasPremium(m.Chain, m.PriceCache, nblocksincl)
+	return gasEstimateGasPremium(ctx, m.Chain, m.PriceCache, nblocksincl)
 }
-func gasEstimateGasPremium(cstore *store.ChainStore, cache *GasPriceCache, nblocksincl uint64) (types.BigInt, error) {
+func gasEstimateGasPremium(ctx context.Context, cstore *store.ChainStore, cache *GasPriceCache, nblocksincl uint64) (types.BigInt, error) {
 	if nblocksincl == 0 {
 		nblocksincl = 1
 	}
@@ -198,13 +198,13 @@ func gasEstimateGasPremium(cstore *store.ChainStore, cache *GasPriceCache, nbloc
 			break // genesis
 		}
 
-		pts, err := cstore.LoadTipSet(ts.Parents())
+		pts, err := cstore.LoadTipSet(ctx, ts.Parents())
 		if err != nil {
 			return types.BigInt{}, err
 		}
 
 		blocks += len(pts.Blocks())
-		meta, err := cache.GetTSGasStats(cstore, pts)
+		meta, err := cache.GetTSGasStats(ctx, cstore, pts)
 		if err != nil {
 			return types.BigInt{}, err
 		}
@@ -236,14 +236,14 @@ func gasEstimateGasPremium(cstore *store.ChainStore, cache *GasPriceCache, nbloc
 }
 
 func (a *GasAPI) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, tsk types.TipSetKey) (int64, error) {
-	ts, err := a.Chain.GetTipSetFromKey(tsk)
+	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return -1, xerrors.Errorf("getting tipset: %w", err)
 	}
 	return gasEstimateGasLimit(ctx, a.Chain, a.Stmgr, a.Mpool, msgIn, ts)
 }
 func (m *GasModule) GasEstimateGasLimit(ctx context.Context, msgIn *types.Message, tsk types.TipSetKey) (int64, error) {
-	ts, err := m.Chain.GetTipSetFromKey(tsk)
+	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return -1, xerrors.Errorf("getting tipset: %w", err)
 	}
@@ -283,7 +283,7 @@ func gasEstimateGasLimit(
 		if err != stmgr.ErrExpensiveFork {
 			break
 		}
-		ts, err = cstore.GetTipSetFromKey(ts.Parents())
+		ts, err = cstore.GetTipSetFromKey(ctx, ts.Parents())
 		if err != nil {
 			return -1, xerrors.Errorf("getting parent tipset: %w", err)
 		}

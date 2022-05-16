@@ -30,7 +30,7 @@ func PreparePubsubTracer(t *TestEnvironment) (*PubsubTracer, error) {
 	tracedIP := t.NetClient.MustGetDataNetworkIP().String()
 	tracedAddr := fmt.Sprintf("/ip4/%s/tcp/4001", tracedIP)
 
-	host, err := libp2p.New(ctx,
+	host, err := libp2p.New(
 		libp2p.Identity(privk),
 		libp2p.ListenAddrStrings(tracedAddr),
 	)

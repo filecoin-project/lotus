@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/miner"
 	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -61,6 +62,8 @@ func (ms MinerSubsystem) All() [MinerSubsystems]bool {
 type TestMiner struct {
 	api.StorageMiner
 
+	BaseAPI api.StorageMiner
+
 	t *testing.T
 
 	// ListenAddr is the address on which an API server is listening, if an
@@ -87,7 +90,10 @@ type TestMiner struct {
 
 func (tm *TestMiner) PledgeSectors(ctx context.Context, n, existing int, blockNotif <-chan struct{}) {
 	toCheck := tm.StartPledge(ctx, n, existing, blockNotif)
+	tm.WaitSectorsProving(ctx, toCheck)
+}
 
+func (tm *TestMiner) WaitSectorsProving(ctx context.Context, toCheck map[abi.SectorNumber]struct{}) {
 	for len(toCheck) > 0 {
 		tm.FlushSealingBatches(ctx)
 
@@ -96,7 +102,7 @@ func (tm *TestMiner) PledgeSectors(ctx context.Context, n, existing int, blockNo
 			st, err := tm.StorageMiner.SectorsStatus(ctx, n, false)
 			require.NoError(tm.t, err)
 			states[st.State]++
-			if st.State == api.SectorState(sealing.Proving) {
+			if st.State == api.SectorState(sealing.Proving) || st.State == api.SectorState(sealing.Available) {
 				delete(toCheck, n)
 			}
 			if strings.Contains(string(st.State), "Fail") {
@@ -105,9 +111,8 @@ func (tm *TestMiner) PledgeSectors(ctx context.Context, n, existing int, blockNo
 		}
 
 		build.Clock.Sleep(100 * time.Millisecond)
-		fmt.Printf("WaitSeal: %d %+v\n", len(toCheck), states)
+		fmt.Printf("WaitSectorsProving: %d %+v\n", len(toCheck), states)
 	}
-
 }
 
 func (tm *TestMiner) StartPledge(ctx context.Context, n, existing int, blockNotif <-chan struct{}) map[abi.SectorNumber]struct{} {
@@ -177,7 +182,7 @@ func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, weight uint64
 	}
 
 	cfg := &stores.LocalStorageMeta{
-		ID:       stores.ID(uuid.New().String()),
+		ID:       storiface.ID(uuid.New().String()),
 		Weight:   weight,
 		CanSeal:  seal,
 		CanStore: store,

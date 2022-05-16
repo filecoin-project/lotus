@@ -1,6 +1,8 @@
 package blockstore
 
 import (
+	"context"
+
 	cid "github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
@@ -27,7 +29,7 @@ type BasicBlockstore = blockstore.Blockstore
 type Viewer = blockstore.Viewer
 
 type BatchDeleter interface {
-	DeleteMany(cids []cid.Cid) error
+	DeleteMany(ctx context.Context, cids []cid.Cid) error
 }
 
 // BlockstoreIterator is a trait for efficient iteration
@@ -93,17 +95,17 @@ type adaptedBlockstore struct {
 
 var _ Blockstore = (*adaptedBlockstore)(nil)
 
-func (a *adaptedBlockstore) View(cid cid.Cid, callback func([]byte) error) error {
-	blk, err := a.Get(cid)
+func (a *adaptedBlockstore) View(ctx context.Context, cid cid.Cid, callback func([]byte) error) error {
+	blk, err := a.Get(ctx, cid)
 	if err != nil {
 		return err
 	}
 	return callback(blk.RawData())
 }
 
-func (a *adaptedBlockstore) DeleteMany(cids []cid.Cid) error {
+func (a *adaptedBlockstore) DeleteMany(ctx context.Context, cids []cid.Cid) error {
 	for _, cid := range cids {
-		err := a.DeleteBlock(cid)
+		err := a.DeleteBlock(ctx, cid)
 		if err != nil {
 			return err
 		}

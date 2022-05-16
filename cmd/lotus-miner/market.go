@@ -212,6 +212,7 @@ var setAskCmd = &cli.Command{
 			Name:        "max-piece-size",
 			Usage:       "Set maximum piece size (w/bit-padding, in bytes) in ask to `SIZE`",
 			DefaultText: "miner sector size",
+			Value:       "0",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -638,6 +639,7 @@ var dataTransfersCmd = &cli.Command{
 		transfersListCmd,
 		marketRestartTransfer,
 		marketCancelTransfer,
+		transfersDiagnosticsCmd,
 	},
 }
 
@@ -853,6 +855,38 @@ var transfersListCmd = &cli.Command{
 			}
 		}
 		lcli.OutputDataTransferChannels(os.Stdout, channels, verbose, completed, showFailed)
+		return nil
+	},
+}
+
+var transfersDiagnosticsCmd = &cli.Command{
+	Name:  "diagnostics",
+	Usage: "Get detailed diagnostics on active transfers with a specific peer",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Args().Present() {
+			return cli.ShowCommandHelp(cctx, cctx.Command.Name)
+		}
+		api, closer, err := lcli.GetMarketsAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		targetPeer, err := peer.Decode(cctx.Args().First())
+		if err != nil {
+			return err
+		}
+		diagnostics, err := api.MarketDataTransferDiagnostics(ctx, targetPeer)
+		if err != nil {
+			return err
+		}
+		out, err := json.MarshalIndent(diagnostics, "", "\t")
+		if err != nil {
+			return err
+		}
+		fmt.Println(string(out))
 		return nil
 	},
 }

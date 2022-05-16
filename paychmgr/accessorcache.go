@@ -1,6 +1,10 @@
 package paychmgr
 
-import "github.com/filecoin-project/go-address"
+import (
+	"context"
+
+	"github.com/filecoin-project/go-address"
+)
 
 // accessorByFromTo gets a channel accessor for a given from / to pair.
 // The channel accessor facilitates locking a channel so that operations
@@ -36,10 +40,10 @@ func (pm *Manager) accessorByFromTo(from address.Address, to address.Address) (*
 // The channel accessor facilitates locking a channel so that operations
 // must be performed sequentially on a channel (but can be performed at
 // the same time on different channels).
-func (pm *Manager) accessorByAddress(ch address.Address) (*channelAccessor, error) {
+func (pm *Manager) accessorByAddress(ctx context.Context, ch address.Address) (*channelAccessor, error) {
 	// Get the channel from / to
 	pm.lk.RLock()
-	channelInfo, err := pm.store.ByAddress(ch)
+	channelInfo, err := pm.store.ByAddress(ctx, ch)
 	pm.lk.RUnlock()
 	if err != nil {
 		return nil, err

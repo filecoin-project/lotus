@@ -1,3 +1,4 @@
+//stm: #unit
 package sectorstorage
 
 import (
@@ -16,6 +17,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
@@ -41,27 +43,33 @@ func TestWithPriority(t *testing.T) {
 var decentWorkerResources = storiface.WorkerResources{
 	MemPhysical: 128 << 30,
 	MemSwap:     200 << 30,
-	MemReserved: 2 << 30,
+	MemUsed:     1 << 30,
+	MemSwapUsed: 1 << 30,
 	CPUs:        32,
-	GPUs:        []string{"a GPU"},
+	GPUs:        []string{},
 }
 
 var constrainedWorkerResources = storiface.WorkerResources{
 	MemPhysical: 1 << 30,
-	MemReserved: 2 << 30,
+	MemUsed:     1 << 30,
+	MemSwapUsed: 1 << 30,
 	CPUs:        1,
 }
 
 type schedTestWorker struct {
 	name      string
 	taskTypes map[sealtasks.TaskType]struct{}
-	paths     []stores.StoragePath
+	paths     []storiface.StoragePath
 
 	closed  bool
 	session uuid.UUID
 
 	resources       storiface.WorkerResources
 	ignoreResources bool
+}
+
+func (s *schedTestWorker) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error) {
+	panic("implement me")
 }
 
 func (s *schedTestWorker) SealPreCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error) {
@@ -100,6 +108,26 @@ func (s *schedTestWorker) AddPiece(ctx context.Context, sector storage.SectorRef
 	panic("implement me")
 }
 
+func (s *schedTestWorker) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, peices []abi.PieceInfo) (storiface.CallID, error) {
+	panic("implement me")
+}
+
+func (s *schedTestWorker) ProveReplicaUpdate1(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid) (storiface.CallID, error) {
+	panic("implement me")
+}
+
+func (s *schedTestWorker) ProveReplicaUpdate2(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid, vanillaProofs storage.ReplicaVanillaProofs) (storiface.CallID, error) {
+	panic("implement me")
+}
+
+func (s *schedTestWorker) GenerateSectorKeyFromData(ctx context.Context, sector storage.SectorRef, commD cid.Cid) (storiface.CallID, error) {
+	panic("implement me")
+}
+
+func (s *schedTestWorker) FinalizeReplicaUpdate(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) (storiface.CallID, error) {
+	panic("implement me")
+}
+
 func (s *schedTestWorker) MoveStorage(ctx context.Context, sector storage.SectorRef, types storiface.SectorFileType) (storiface.CallID, error) {
 	panic("implement me")
 }
@@ -116,11 +144,19 @@ func (s *schedTestWorker) ReadPiece(ctx context.Context, writer io.Writer, id st
 	panic("implement me")
 }
 
+func (s *schedTestWorker) GenerateWinningPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, mid abi.ActorID, sectors []storiface.PostSectorChallenge, randomness abi.PoStRandomness) ([]proof.PoStProof, error) {
+	panic("implement me")
+}
+
+func (s *schedTestWorker) GenerateWindowPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, mid abi.ActorID, sectors []storiface.PostSectorChallenge, partitionIdx int, randomness abi.PoStRandomness) (storiface.WindowPoStResult, error) {
+	panic("implement me")
+}
+
 func (s *schedTestWorker) TaskTypes(ctx context.Context) (map[sealtasks.TaskType]struct{}, error) {
 	return s.taskTypes, nil
 }
 
-func (s *schedTestWorker) Paths(ctx context.Context) ([]stores.StoragePath, error) {
+func (s *schedTestWorker) Paths(ctx context.Context) ([]storiface.StoragePath, error) {
 	return s.paths, nil
 }
 
@@ -151,7 +187,7 @@ func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name str
 	w := &schedTestWorker{
 		name:      name,
 		taskTypes: taskTypes,
-		paths:     []stores.StoragePath{{ID: "bb-8", Weight: 2, LocalPath: "<octopus>food</octopus>", CanSeal: true, CanStore: true}},
+		paths:     []storiface.StoragePath{{ID: "bb-8", Weight: 2, LocalPath: "<octopus>food</octopus>", CanSeal: true, CanStore: true}},
 
 		session: uuid.New(),
 
@@ -160,7 +196,7 @@ func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name str
 	}
 
 	for _, path := range w.paths {
-		err := index.StorageAttach(context.TODO(), stores.StorageInfo{
+		err := index.StorageAttach(context.TODO(), storiface.StorageInfo{
 			ID:       path.ID,
 			URLs:     nil,
 			Weight:   path.Weight,
@@ -175,7 +211,15 @@ func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name str
 		require.NoError(t, err)
 	}
 
-	require.NoError(t, sched.runWorker(context.TODO(), w))
+	sessID, err := w.Session(context.TODO())
+	require.NoError(t, err)
+
+	wid := storiface.WorkerID(sessID)
+
+	wh, err := newWorkerHandle(context.TODO(), w)
+	require.NoError(t, err)
+
+	require.NoError(t, sched.runWorker(context.TODO(), wid, wh))
 }
 
 func TestSchedStartStop(t *testing.T) {
@@ -188,6 +232,10 @@ func TestSchedStartStop(t *testing.T) {
 }
 
 func TestSched(t *testing.T) {
+	//stm: @WORKER_JOBS_001
+	storiface.ParallelNum = 1
+	storiface.ParallelDenom = 1
+
 	ctx, done := context.WithTimeout(context.Background(), 30*time.Second)
 	defer done()
 
@@ -254,7 +302,9 @@ func TestSched(t *testing.T) {
 
 					return nil
 				}, noopAction)
-				require.NoError(t, err, fmt.Sprint(l, l2))
+				if err != context.Canceled {
+					require.NoError(t, err, fmt.Sprint(l, l2))
+				}
 			}()
 
 			<-sched.testSync
@@ -299,9 +349,6 @@ func TestSched(t *testing.T) {
 	}
 
 	testFunc := func(workers []workerSpec, tasks []task) func(t *testing.T) {
-		ParallelNum = 1
-		ParallelDenom = 1
-
 		return func(t *testing.T) {
 			index := stores.NewIndex()
 
@@ -558,7 +605,7 @@ func BenchmarkTrySched(b *testing.B) {
 				b.StopTimer()
 
 				sched := newScheduler()
-				sched.workers[WorkerID{}] = &workerHandle{
+				sched.workers[storiface.WorkerID{}] = &workerHandle{
 					workerRpc: nil,
 					info: storiface.WorkerInfo{
 						Hostname:  "t",
@@ -570,7 +617,7 @@ func BenchmarkTrySched(b *testing.B) {
 
 				for i := 0; i < windows; i++ {
 					sched.openWindows = append(sched.openWindows, &schedWindowRequest{
-						worker: WorkerID{},
+						worker: storiface.WorkerID{},
 						done:   make(chan *schedWindow, 1000),
 					})
 				}
@@ -616,7 +663,7 @@ func TestWindowCompact(t *testing.T) {
 						taskType: task,
 						sector:   storage.SectorRef{ProofType: spt},
 					})
-					window.allocated.add(wh.info.Resources, ResourceTable[task][spt])
+					window.allocated.add(wh.info.Resources, storiface.ResourceTable[task][spt])
 				}
 
 				wh.activeWindows = append(wh.activeWindows, window)
@@ -635,7 +682,7 @@ func TestWindowCompact(t *testing.T) {
 
 				for ti, task := range tasks {
 					require.Equal(t, task, wh.activeWindows[wi].todo[ti].taskType, "%d, %d", wi, ti)
-					expectRes.add(wh.info.Resources, ResourceTable[task][spt])
+					expectRes.add(wh.info.Resources, storiface.ResourceTable[task][spt])
 				}
 
 				require.Equal(t, expectRes.cpuUse, wh.activeWindows[wi].allocated.cpuUse, "%d", wi)

@@ -22,6 +22,7 @@ func main() {
 		bitFieldCmd,
 		cronWcCmd,
 		frozenMinersCmd,
+		dealLabelCmd,
 		keyinfoCmd,
 		jwtCmd,
 		noncefix,
@@ -65,6 +66,11 @@ func main() {
 		fr32Cmd,
 		chainCmd,
 		balancerCmd,
+		sendCsvCmd,
+		terminationsCmd,
+		migrationsCmd,
+		diffCmd,
+		itestdCmd,
 	}
 
 	app := &cli.App{

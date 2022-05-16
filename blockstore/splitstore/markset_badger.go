@@ -3,6 +3,7 @@ package splitstore
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 
 	"golang.org/x/xerrors"
@@ -28,13 +29,13 @@ type BadgerMarkSet struct {
 	writers int
 	seqno   int
 	version int
+	persist bool
 
 	db   *badger.DB
 	path string
 }
 
 var _ MarkSet = (*BadgerMarkSet)(nil)
-var _ MarkSetVisitor = (*BadgerMarkSet)(nil)
 
 var badgerMarkSetBatchSize = 16384
 
@@ -48,11 +49,10 @@ func NewBadgerMarkSetEnv(path string) (MarkSetEnv, error) {
 	return &BadgerMarkSetEnv{path: msPath}, nil
 }
 
-func (e *BadgerMarkSetEnv) create(name string, sizeHint int64) (*BadgerMarkSet, error) {
-	name += ".tmp"
+func (e *BadgerMarkSetEnv) New(name string, sizeHint int64) (MarkSet, error) {
 	path := filepath.Join(e.path, name)
 
-	db, err := openTransientBadgerDB(path)
+	db, err := openBadgerDB(path, false)
 	if err != nil {
 		return nil, xerrors.Errorf("error creating badger db: %w", err)
 	}
@@ -68,18 +68,72 @@ func (e *BadgerMarkSetEnv) create(name string, sizeHint int64) (*BadgerMarkSet, 
 	return ms, nil
 }
 
-func (e *BadgerMarkSetEnv) Create(name string, sizeHint int64) (MarkSet, error) {
-	return e.create(name, sizeHint)
-}
+func (e *BadgerMarkSetEnv) Recover(name string) (MarkSet, error) {
+	path := filepath.Join(e.path, name)
 
-func (e *BadgerMarkSetEnv) CreateVisitor(name string, sizeHint int64) (MarkSetVisitor, error) {
-	return e.create(name, sizeHint)
-}
+	if _, err := os.Stat(path); err != nil {
+		return nil, xerrors.Errorf("error stating badger db path: %w", err)
+	}
 
-func (e *BadgerMarkSetEnv) SupportsVisitor() bool { return true }
+	db, err := openBadgerDB(path, true)
+	if err != nil {
+		return nil, xerrors.Errorf("error creating badger db: %w", err)
+	}
+
+	ms := &BadgerMarkSet{
+		pend:    make(map[string]struct{}),
+		writing: make(map[int]map[string]struct{}),
+		db:      db,
+		path:    path,
+		persist: true,
+	}
+	ms.cond.L = &ms.mx
+
+	return ms, nil
+}
 
 func (e *BadgerMarkSetEnv) Close() error {
-	return os.RemoveAll(e.path)
+	return nil
+}
+
+func (s *BadgerMarkSet) BeginCriticalSection() error {
+	s.mx.Lock()
+
+	if s.persist {
+		s.mx.Unlock()
+		return nil
+	}
+
+	var write bool
+	var seqno int
+	if len(s.pend) > 0 {
+		write = true
+		seqno = s.nextBatch()
+	}
+
+	s.persist = true
+	s.mx.Unlock()
+
+	if write {
+		// all writes sync once perist is true
+		return s.write(seqno)
+	}
+
+	// wait for any pending writes and sync
+	s.mx.Lock()
+	for s.writers > 0 {
+		s.cond.Wait()
+	}
+	s.mx.Unlock()
+
+	return s.db.Sync()
+}
+
+func (s *BadgerMarkSet) EndCriticalSection() {
+	s.mx.Lock()
+	defer s.mx.Unlock()
+
+	s.persist = false
 }
 
 func (s *BadgerMarkSet) Mark(c cid.Cid) error {
@@ -90,6 +144,23 @@ func (s *BadgerMarkSet) Mark(c cid.Cid) error {
 	}
 
 	write, seqno := s.put(string(c.Hash()))
+	s.mx.Unlock()
+
+	if write {
+		return s.write(seqno)
+	}
+
+	return nil
+}
+
+func (s *BadgerMarkSet) MarkMany(batch []cid.Cid) error {
+	s.mx.Lock()
+	if s.pend == nil {
+		s.mx.Unlock()
+		return errMarkSetClosed
+	}
+
+	write, seqno := s.putMany(batch)
 	s.mx.Unlock()
 
 	if write {
@@ -204,16 +275,34 @@ func (s *BadgerMarkSet) tryDB(key []byte) (has bool, err error) {
 // writer holds the exclusive lock
 func (s *BadgerMarkSet) put(key string) (write bool, seqno int) {
 	s.pend[key] = struct{}{}
-	if len(s.pend) < badgerMarkSetBatchSize {
+	if !s.persist && len(s.pend) < badgerMarkSetBatchSize {
 		return false, 0
 	}
 
-	seqno = s.seqno
+	seqno = s.nextBatch()
+	return true, seqno
+}
+
+func (s *BadgerMarkSet) putMany(batch []cid.Cid) (write bool, seqno int) {
+	for _, c := range batch {
+		key := string(c.Hash())
+		s.pend[key] = struct{}{}
+	}
+
+	if !s.persist && len(s.pend) < badgerMarkSetBatchSize {
+		return false, 0
+	}
+
+	seqno = s.nextBatch()
+	return true, seqno
+}
+
+func (s *BadgerMarkSet) nextBatch() int {
+	seqno := s.seqno
 	s.seqno++
 	s.writing[seqno] = s.pend
 	s.pend = make(map[string]struct{})
-
-	return true, seqno
+	return seqno
 }
 
 func (s *BadgerMarkSet) write(seqno int) (err error) {
@@ -258,6 +347,14 @@ func (s *BadgerMarkSet) write(seqno int) (err error) {
 		return xerrors.Errorf("error flushing batch to badger markset: %w", err)
 	}
 
+	s.mx.RLock()
+	persist := s.persist
+	s.mx.RUnlock()
+
+	if persist {
+		return s.db.Sync()
+	}
+
 	return nil
 }
 
@@ -277,26 +374,29 @@ func (s *BadgerMarkSet) Close() error {
 	db := s.db
 	s.db = nil
 
-	return closeTransientBadgerDB(db, s.path)
+	return closeBadgerDB(db, s.path, s.persist)
 }
 
-func (s *BadgerMarkSet) SetConcurrent() {}
+func openBadgerDB(path string, recover bool) (*badger.DB, error) {
+	// if it is not a recovery, clean up first
+	if !recover {
+		err := os.RemoveAll(path)
+		if err != nil {
+			return nil, xerrors.Errorf("error clearing markset directory: %w", err)
+		}
 
-func openTransientBadgerDB(path string) (*badger.DB, error) {
-	// clean up first
-	err := os.RemoveAll(path)
-	if err != nil {
-		return nil, xerrors.Errorf("error clearing markset directory: %w", err)
-	}
-
-	err = os.MkdirAll(path, 0755) //nolint:gosec
-	if err != nil {
-		return nil, xerrors.Errorf("error creating markset directory: %w", err)
+		err = os.MkdirAll(path, 0755) //nolint:gosec
+		if err != nil {
+			return nil, xerrors.Errorf("error creating markset directory: %w", err)
+		}
 	}
 
 	opts := badger.DefaultOptions(path)
+	// we manually sync when we are in critical section
 	opts.SyncWrites = false
+	// no need to do that
 	opts.CompactL0OnClose = false
+	// we store hashes, not much to gain by compression
 	opts.Compression = options.None
 	// Note: We use FileIO for loading modes to avoid memory thrashing and interference
 	//       between the system blockstore and the markset.
@@ -305,6 +405,15 @@ func openTransientBadgerDB(path string) (*badger.DB, error) {
 	//       exceeded 1GB in size.
 	opts.TableLoadingMode = options.FileIO
 	opts.ValueLogLoadingMode = options.FileIO
+	// We increase the number of L0 tables before compaction to make it unlikely to
+	// be necessary.
+	opts.NumLevelZeroTables = 20      // default is 5
+	opts.NumLevelZeroTablesStall = 30 // default is 10
+	// increase the number of compactors from default 2 so that if we ever have to
+	// compact, it is fast
+	if runtime.NumCPU()/2 > opts.NumCompactors {
+		opts.NumCompactors = runtime.NumCPU() / 2
+	}
 	opts.Logger = &badgerLogger{
 		SugaredLogger: log.Desugar().WithOptions(zap.AddCallerSkip(1)).Sugar(),
 		skip2:         log.Desugar().WithOptions(zap.AddCallerSkip(2)).Sugar(),
@@ -313,10 +422,14 @@ func openTransientBadgerDB(path string) (*badger.DB, error) {
 	return badger.Open(opts)
 }
 
-func closeTransientBadgerDB(db *badger.DB, path string) error {
+func closeBadgerDB(db *badger.DB, path string, persist bool) error {
 	err := db.Close()
 	if err != nil {
 		return xerrors.Errorf("error closing badger markset: %w", err)
+	}
+
+	if persist {
+		return nil
 	}
 
 	err = os.RemoveAll(path)

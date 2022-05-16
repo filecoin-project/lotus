@@ -1,4 +1,54 @@
 {
+  "v28-empty-sector-update-merkletree-poseidon_hasher-8-0-0-61fa69f38b9cc771ba27b670124714b4ea77fbeae05e377fb859c4a43b73a30c.params": {
+    "cid": "Qma5WL6abSqYg9uUQAZ3EHS286bsNsha7oAGsJBD48Bq2q",
+    "digest": "c3ad7bb549470b82ad52ed070aebb4f4",
+    "sector_size": 536870912
+  },
+  "v28-empty-sector-update-merkletree-poseidon_hasher-8-0-0-61fa69f38b9cc771ba27b670124714b4ea77fbeae05e377fb859c4a43b73a30c.vk": {
+    "cid": "QmUa7f9JtJMsqJJ3s3ZXk6WyF4xJLE8FiqYskZGgk8GCDv",
+    "digest": "994c5b7d450ca9da348c910689f2dc7f",
+    "sector_size": 536870912
+  },
+  "v28-empty-sector-update-merkletree-poseidon_hasher-8-0-0-92180959e1918d26350b8e6cfe217bbdd0a2d8de51ebec269078b364b715ad63.params": {
+    "cid": "QmQiT4qBGodrVNEgVTDXxBNDdPbaD8Ag7Sx3ZTq1zHX79S",
+    "digest": "5aedd2cf3e5c0a15623d56a1b43110ad",
+    "sector_size": 8388608
+  },
+  "v28-empty-sector-update-merkletree-poseidon_hasher-8-0-0-92180959e1918d26350b8e6cfe217bbdd0a2d8de51ebec269078b364b715ad63.vk": {
+    "cid": "QmdcpKUQvHM8RFRVKbk1yHfEqMcBzhtFWKRp9SNEmWq37i",
+    "digest": "abd80269054d391a734febdac0d2e687",
+    "sector_size": 8388608
+  },
+  "v28-empty-sector-update-merkletree-poseidon_hasher-8-0-0-fb9e095bebdd77511c0269b967b4d87ba8b8a525edaa0e165de23ba454510194.params": {
+    "cid": "QmYM6Hg7mjmvA3ZHTsqkss1fkdyDju5dDmLiBZGJ5pz9y9",
+    "digest": "311f92a3e75036ced01b1c0025f1fa0c",
+    "sector_size": 2048
+  },
+  "v28-empty-sector-update-merkletree-poseidon_hasher-8-0-0-fb9e095bebdd77511c0269b967b4d87ba8b8a525edaa0e165de23ba454510194.vk": {
+    "cid": "QmaQsTLL3nc5dw6wAvaioJSBfd1jhQrA2o6ucFf7XeV74P",
+    "digest": "eadad9784969890d30f2749708c79771",
+    "sector_size": 2048
+  },
+  "v28-empty-sector-update-merkletree-poseidon_hasher-8-8-0-3b7f44a9362e3985369454947bc94022e118211e49fd672d52bec1cbfd599d18.params": {
+    "cid": "QmNPc75iEfcahCwNKdqnWLtxnjspUGGR4iscjiz3wP3RtS",
+    "digest": "1b3cfd761a961543f9eb273e435a06a2",
+    "sector_size": 34359738368
+  },
+  "v28-empty-sector-update-merkletree-poseidon_hasher-8-8-0-3b7f44a9362e3985369454947bc94022e118211e49fd672d52bec1cbfd599d18.vk": {
+    "cid": "QmdFFUe1gcz9MMHc6YW8aoV48w4ckvcERjt7PkydQAMfCN",
+    "digest": "3a6941983754737fde880d29c7094905",
+    "sector_size": 34359738368
+  },
+  "v28-empty-sector-update-merkletree-poseidon_hasher-8-8-2-102e1444a7e9a97ebf1e3d6855dcc77e66c011ea66f936d9b2c508f87f2f83a7.params": {
+    "cid": "QmUB6xTVjzBQGuDNeyJMrrJ1byk58vhPm8eY2Lv9pgwanp",
+    "digest": "1a392e7b759fb18e036c7559b5ece816",
+    "sector_size": 68719476736
+  },
+  "v28-empty-sector-update-merkletree-poseidon_hasher-8-8-2-102e1444a7e9a97ebf1e3d6855dcc77e66c011ea66f936d9b2c508f87f2f83a7.vk": {
+    "cid": "Qmd794Jty7k26XJ8Eg4NDEks65Qk8G4GVfGkwqvymv8HAg",
+    "digest": "80e366df2f1011953c2d01c7b7c9ee8e",
+    "sector_size": 68719476736
+  },
   "v28-proof-of-spacetime-fallback-merkletree-poseidon_hasher-8-0-0-0170db1f394b35d995252228ee359194b13199d259380541dc529fb0099096b0.params": {
     "cid": "QmVxjFRyhmyQaZEtCh7nk2abc7LhFkzhnRX4rcHqCCpikR",
     "digest": "7610b9f82bfc88405b7a832b651ce2f6",

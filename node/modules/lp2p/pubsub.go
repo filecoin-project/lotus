@@ -114,6 +114,22 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
 	}
 
+	ingestTopicParams := &pubsub.TopicScoreParams{
+		// expected ~0.5 confirmed deals / min. sampled
+		TopicWeight: 0.1,
+
+		TimeInMeshWeight:  0.00027, // ~1/3600
+		TimeInMeshQuantum: time.Second,
+		TimeInMeshCap:     1,
+
+		FirstMessageDeliveriesWeight: 0.5,
+		FirstMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
+		FirstMessageDeliveriesCap:    100, // allowing for burstiness
+
+		InvalidMessageDeliveriesWeight: -1000,
+		InvalidMessageDeliveriesDecay:  pubsub.ScoreParameterDecay(time.Hour),
+	}
+
 	topicParams := map[string]*pubsub.TopicScoreParams{
 		build.BlocksTopic(in.Nn): {
 			// expected 10 blocks/min
@@ -207,6 +223,9 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 		pgTopicWeights[topic] = 5
 		drandTopics = append(drandTopics, topic)
 	}
+
+	// Index ingestion whitelist
+	topicParams[build.IndexerIngestTopic(in.Nn)] = ingestTopicParams
 
 	// IP colocation whitelist
 	var ipcoloWhitelist []*net.IPNet
@@ -333,6 +352,7 @@ func GossipSub(in GossipIn) (service *pubsub.PubSub, err error) {
 	allowTopics := []string{
 		build.BlocksTopic(in.Nn),
 		build.MessagesTopic(in.Nn),
+		build.IndexerIngestTopic(in.Nn),
 	}
 	allowTopics = append(allowTopics, drandTopics...)
 	options = append(options,

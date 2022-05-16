@@ -20,6 +20,7 @@ import (
 //  We should implement some wait-for-api logic
 type ErrApi struct{ error }
 
+type ErrNoDeals struct{ error }
 type ErrInvalidDeals struct{ error }
 type ErrInvalidPiece struct{ error }
 type ErrExpiredDeals struct{ error }
@@ -35,11 +36,16 @@ type ErrInvalidProof struct{ error }
 type ErrNoPrecommit struct{ error }
 type ErrCommitWaitFailed struct{ error }
 
-func checkPieces(ctx context.Context, maddr address.Address, si SectorInfo, api SealingAPI) error {
+type ErrBadRU struct{ error }
+type ErrBadPR struct{ error }
+
+func checkPieces(ctx context.Context, maddr address.Address, si SectorInfo, api SealingAPI, mustHaveDeals bool) error {
 	tok, height, err := api.ChainHead(ctx)
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("getting chain head: %w", err)}
 	}
+
+	dealCount := 0
 
 	for i, p := range si.Pieces {
 		// if no deal is associated with the piece, ensure that we added it as
@@ -51,6 +57,8 @@ func checkPieces(ctx context.Context, maddr address.Address, si SectorInfo, api 
 			}
 			continue
 		}
+
+		dealCount++
 
 		proposal, err := api.StateMarketStorageDealProposal(ctx, p.DealInfo.DealID, tok)
 		if err != nil {
@@ -74,13 +82,17 @@ func checkPieces(ctx context.Context, maddr address.Address, si SectorInfo, api 
 		}
 	}
 
+	if mustHaveDeals && dealCount <= 0 {
+		return &ErrNoDeals{(xerrors.Errorf("sector %d must have deals, but does not", si.SectorNumber))}
+	}
+
 	return nil
 }
 
 // checkPrecommit checks that data commitment generated in the sealing process
 //  matches pieces, and that the seal ticket isn't expired
 func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, tok TipSetToken, height abi.ChainEpoch, api SealingAPI) (err error) {
-	if err := checkPieces(ctx, maddr, si, api); err != nil {
+	if err := checkPieces(ctx, maddr, si, api, false); err != nil {
 		return err
 	}
 
@@ -181,9 +193,43 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		return &ErrInvalidProof{xerrors.New("invalid proof (compute error?)")}
 	}
 
-	if err := checkPieces(ctx, m.maddr, si, m.Api); err != nil {
+	if err := checkPieces(ctx, m.maddr, si, m.Api, false); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+// check that sector info is good after running a replica update
+func checkReplicaUpdate(ctx context.Context, maddr address.Address, si SectorInfo, tok TipSetToken, api SealingAPI) error {
+
+	if err := checkPieces(ctx, maddr, si, api, true); err != nil {
+		return err
+	}
+	if !si.CCUpdate {
+		return xerrors.Errorf("replica update on sector not marked for update")
+	}
+
+	commD, err := api.StateComputeDataCommitment(ctx, maddr, si.SectorType, si.dealIDs(), tok)
+	if err != nil {
+		return &ErrApi{xerrors.Errorf("calling StateComputeDataCommitment: %w", err)}
+	}
+
+	if si.UpdateUnsealed == nil {
+		return &ErrBadRU{xerrors.New("nil UpdateUnsealed cid after replica update")}
+	}
+
+	if !commD.Equals(*si.UpdateUnsealed) {
+		return &ErrBadRU{xerrors.Errorf("calculated CommD differs from updated replica: %s != %s", commD, *si.UpdateUnsealed)}
+	}
+
+	if si.UpdateSealed == nil {
+		return &ErrBadRU{xerrors.Errorf("nil sealed cid")}
+	}
+	if si.ReplicaUpdateProof == nil {
+		return &ErrBadPR{xerrors.Errorf("nil PR2 proof")}
+	}
+
+	return nil
+
 }

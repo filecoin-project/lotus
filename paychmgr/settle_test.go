@@ -1,3 +1,4 @@
+//stm: #unit
 package paychmgr
 
 import (
@@ -14,6 +15,7 @@ import (
 )
 
 func TestPaychSettle(t *testing.T) {
+	//stm: @TOKEN_PAYCH_WAIT_READY_001, @TOKEN_PAYCH_SETTLE_001, @TOKEN_PAYCH_LIST_CHANNELS_001
 	ctx := context.Background()
 	store := NewStore(ds_sync.MutexWrap(ds.NewMapDatastore()))
 
@@ -29,7 +31,7 @@ func TestPaychSettle(t *testing.T) {
 	require.NoError(t, err)
 
 	amt := big.NewInt(10)
-	_, mcid, err := mgr.GetPaych(ctx, from, to, amt)
+	_, mcid, err := mgr.GetPaych(ctx, from, to, amt, onChainReserve)
 	require.NoError(t, err)
 
 	// Send channel create response
@@ -49,7 +51,7 @@ func TestPaychSettle(t *testing.T) {
 	// (should create a new channel because the previous channel
 	// is settling)
 	amt2 := big.NewInt(5)
-	_, mcid2, err := mgr.GetPaych(ctx, from, to, amt2)
+	_, mcid2, err := mgr.GetPaych(ctx, from, to, amt2, onChainReserve)
 	require.NoError(t, err)
 	require.NotEqual(t, cid.Undef, mcid2)
 
@@ -63,7 +65,7 @@ func TestPaychSettle(t *testing.T) {
 	require.NotEqual(t, ch, ch2)
 
 	// There should now be two channels
-	cis, err := mgr.ListChannels()
+	cis, err := mgr.ListChannels(ctx)
 	require.NoError(t, err)
 	require.Len(t, cis, 2)
 }

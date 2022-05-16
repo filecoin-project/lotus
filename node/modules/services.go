@@ -35,6 +35,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	marketevents "github.com/filecoin-project/lotus/markets/loggers"
 	"github.com/filecoin-project/lotus/node/hello"
+	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -198,6 +199,36 @@ func HandleIncomingMessages(mctx helpers.MetricsCtx, lc fx.Lifecycle, ps *pubsub
 	waitForSync(stmgr, pubsubMsgsSyncEpochs, subscribe)
 }
 
+func RelayIndexerMessages(lc fx.Lifecycle, ps *pubsub.PubSub, nn dtypes.NetworkName, h host.Host, chainModule full.ChainModuleAPI, stateModule full.StateModuleAPI) error {
+	topicName := build.IndexerIngestTopic(nn)
+
+	v := sub.NewIndexerMessageValidator(h.ID(), chainModule, stateModule)
+
+	if err := ps.RegisterTopicValidator(topicName, v.Validate); err != nil {
+		return xerrors.Errorf("failed to register validator for topic %s, err: %w", topicName, err)
+	}
+
+	topicHandle, err := ps.Join(topicName)
+	if err != nil {
+		return xerrors.Errorf("failed to join pubsub topic %s: %w", topicName, err)
+	}
+	cancelFunc, err := topicHandle.Relay()
+	if err != nil {
+		return xerrors.Errorf("failed to relay to pubsub messages for topic %s: %w", topicName, err)
+	}
+
+	// Cancel message relay on shutdown.
+	lc.Append(fx.Hook{
+		OnStop: func(_ context.Context) error {
+			cancelFunc()
+			return nil
+		},
+	})
+
+	log.Infof("relaying messages for pubsub topic %s", topicName)
+	return nil
+}
+
 func NewLocalDiscovery(lc fx.Lifecycle, ds dtypes.MetadataDS) (*discoveryimpl.Local, error) {
 	local, err := discoveryimpl.NewLocal(namespace.Wrap(ds, datastore.NewKey("/deals/local")))
 	if err != nil {
@@ -228,8 +259,8 @@ func BuiltinDrandConfig() dtypes.DrandSchedule {
 	return build.DrandConfigSchedule()
 }
 
-func RandomSchedule(p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Schedule, error) {
-	gen, err := p.Cs.GetGenesis()
+func RandomSchedule(lc fx.Lifecycle, mctx helpers.MetricsCtx, p RandomBeaconParams, _ dtypes.AfterGenesisSet) (beacon.Schedule, error) {
+	gen, err := p.Cs.GetGenesis(helpers.LifecycleCtx(mctx, lc))
 	if err != nil {
 		return nil, err
 	}

@@ -2,6 +2,7 @@ package sectorstorage
 
 import (
 	"context"
+	"math"
 	"math/rand"
 	"sort"
 	"sync"
@@ -53,7 +54,7 @@ type WorkerSelector interface {
 
 type scheduler struct {
 	workersLk sync.RWMutex
-	workers   map[WorkerID]*workerHandle
+	workers   map[storiface.WorkerID]*workerHandle
 
 	schedule       chan *workerRequest
 	windowRequests chan *schedWindowRequest
@@ -76,6 +77,10 @@ type scheduler struct {
 type workerHandle struct {
 	workerRpc Worker
 
+	tasksCache  map[sealtasks.TaskType]struct{}
+	tasksUpdate time.Time
+	tasksLk     sync.Mutex
+
 	info storiface.WorkerInfo
 
 	preparing *activeResources // use with workerHandle.lk
@@ -95,7 +100,7 @@ type workerHandle struct {
 }
 
 type schedWindowRequest struct {
-	worker WorkerID
+	worker storiface.WorkerID
 
 	done chan *schedWindow
 }
@@ -107,14 +112,14 @@ type schedWindow struct {
 
 type workerDisableReq struct {
 	activeWindows []*schedWindow
-	wid           WorkerID
+	wid           storiface.WorkerID
 	done          func()
 }
 
 type activeResources struct {
 	memUsedMin uint64
 	memUsedMax uint64
-	gpuUsed    bool
+	gpuUsed    float64
 	cpuUse     uint64
 
 	cond    *sync.Cond
@@ -145,7 +150,7 @@ type workerResponse struct {
 
 func newScheduler() *scheduler {
 	return &scheduler{
-		workers: map[WorkerID]*workerHandle{},
+		workers: map[storiface.WorkerID]*workerHandle{},
 
 		schedule:       make(chan *workerRequest),
 		windowRequests: make(chan *schedWindowRequest, 20),
@@ -361,7 +366,7 @@ func (sh *scheduler) trySched() {
 	}
 
 	windows := make([]schedWindow, windowsLen)
-	acceptableWindows := make([][]int, queueLen)
+	acceptableWindows := make([][]int, queueLen) // QueueIndex -> []OpenWindowIndex
 
 	// Step 1
 	throttle := make(chan struct{}, windowsLen)
@@ -378,7 +383,6 @@ func (sh *scheduler) trySched() {
 			}()
 
 			task := (*sh.schedQueue)[sqi]
-			needRes := ResourceTable[task.taskType][task.sector.ProofType]
 
 			task.indexHeap = sqi
 			for wnd, windowRequest := range sh.openWindows {
@@ -393,6 +397,8 @@ func (sh *scheduler) trySched() {
 					log.Debugw("skipping disabled worker", "worker", windowRequest.worker)
 					continue
 				}
+
+				needRes := worker.info.Resources.ResourceSpec(task.sector.ProofType, task.taskType)
 
 				// TODO: allow bigger windows
 				if !windows[wnd].allocated.canHandleRequest(needRes, windowRequest.worker, "schedAcceptable", worker.info) {
@@ -454,33 +460,57 @@ func (sh *scheduler) trySched() {
 	// Step 2
 	scheduled := 0
 	rmQueue := make([]int, 0, queueLen)
+	workerUtil := map[storiface.WorkerID]float64{}
 
 	for sqi := 0; sqi < queueLen; sqi++ {
 		task := (*sh.schedQueue)[sqi]
-		needRes := ResourceTable[task.taskType][task.sector.ProofType]
 
 		selectedWindow := -1
-		for _, wnd := range acceptableWindows[task.indexHeap] {
-			wid := sh.openWindows[wnd].worker
-			info := sh.workers[wid].info
+		var needRes storiface.Resources
+		var info storiface.WorkerInfo
+		var bestWid storiface.WorkerID
+		bestUtilization := math.MaxFloat64 // smaller = better
 
-			log.Debugf("SCHED try assign sqi:%d sector %d to window %d", sqi, task.sector.ID.Number, wnd)
+		for i, wnd := range acceptableWindows[task.indexHeap] {
+			wid := sh.openWindows[wnd].worker
+			w := sh.workers[wid]
+
+			res := info.Resources.ResourceSpec(task.sector.ProofType, task.taskType)
+
+			log.Debugf("SCHED try assign sqi:%d sector %d to window %d (awi:%d)", sqi, task.sector.ID.Number, wnd, i)
 
 			// TODO: allow bigger windows
 			if !windows[wnd].allocated.canHandleRequest(needRes, wid, "schedAssign", info) {
 				continue
 			}
 
-			log.Debugf("SCHED ASSIGNED sqi:%d sector %d task %s to window %d", sqi, task.sector.ID.Number, task.taskType, wnd)
+			wu, found := workerUtil[wid]
+			if !found {
+				wu = w.utilization()
+				workerUtil[wid] = wu
+			}
+			if wu >= bestUtilization {
+				// acceptable worker list is initially sorted by utilization, and the initially-best workers
+				// will be assigned tasks first. This means that if we find a worker which isn't better, it
+				// probably means that the other workers aren't better either.
+				//
+				// utilization
+				// ^
+				// |       /
+				// | \    /
+				// |  \  /
+				// |   *
+				// #--------> acceptableWindow index
+				//
+				// * -> we're here
+				break
+			}
 
-			windows[wnd].allocated.add(info.Resources, needRes)
-			// TODO: We probably want to re-sort acceptableWindows here based on new
-			//  workerHandle.utilization + windows[wnd].allocated.utilization (workerHandle.utilization is used in all
-			//  task selectors, but not in the same way, so need to figure out how to do that in a non-O(n^2 way), and
-			//  without additional network roundtrips (O(n^2) could be avoided by turning acceptableWindows.[] into heaps))
-
+			info = w.info
+			needRes = res
+			bestWid = wid
 			selectedWindow = wnd
-			break
+			bestUtilization = wu
 		}
 
 		if selectedWindow < 0 {
@@ -488,6 +518,15 @@ func (sh *scheduler) trySched() {
 			continue
 		}
 
+		log.Debugw("SCHED ASSIGNED",
+			"sqi", sqi,
+			"sector", task.sector.ID.Number,
+			"task", task.taskType,
+			"window", selectedWindow,
+			"worker", bestWid,
+			"utilization", bestUtilization)
+
+		workerUtil[bestWid] += windows[selectedWindow].allocated.add(info.Resources, needRes)
 		windows[selectedWindow].todo = append(windows[selectedWindow].todo, task)
 
 		rmQueue = append(rmQueue, sqi)

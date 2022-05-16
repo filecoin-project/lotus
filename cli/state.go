@@ -1428,6 +1428,7 @@ func jsonReturn(code cid.Cid, method abi.MethodNum, ret []byte) (string, error) 
 
 var StateWaitMsgCmd = &cli.Command{
 	Name:      "wait-msg",
+	Aliases:   []string{"wait-message"},
 	Usage:     "Wait for a message to appear on chain",
 	ArgsUsage: "[messageCid]",
 	Flags: []cli.Flag{
@@ -1470,6 +1471,7 @@ var StateWaitMsgCmd = &cli.Command{
 
 var StateSearchMsgCmd = &cli.Command{
 	Name:      "search-msg",
+	Aliases:   []string{"search-message"},
 	Usage:     "Search to see whether a message has appeared on chain",
 	ArgsUsage: "[messageCid]",
 	Action: func(cctx *cli.Context) error {
@@ -1727,6 +1729,7 @@ var StateCircSupplyCmd = &cli.Command{
 
 var StateSectorCmd = &cli.Command{
 	Name:      "sector",
+	Aliases:   []string{"sector-info"},
 	Usage:     "Get miner sector info",
 	ArgsUsage: "[minerAddress] [sectorNumber]",
 	Action: func(cctx *cli.Context) error {
@@ -1768,6 +1771,9 @@ var StateSectorCmd = &cli.Command{
 		fmt.Println("SectorNumber: ", si.SectorNumber)
 		fmt.Println("SealProof: ", si.SealProof)
 		fmt.Println("SealedCID: ", si.SealedCID)
+		if si.SectorKeyCID != nil {
+			fmt.Println("SectorKeyCID: ", si.SectorKeyCID)
+		}
 		fmt.Println("DealIDs: ", si.DealIDs)
 		fmt.Println()
 		fmt.Println("Activation: ", EpochTime(ts.Height(), si.Activation))

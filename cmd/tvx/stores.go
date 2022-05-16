@@ -113,14 +113,14 @@ func (pb *proxyingBlockstore) FinishTracing() map[cid.Cid]struct{} {
 	return ret
 }
 
-func (pb *proxyingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
+func (pb *proxyingBlockstore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
 	pb.lk.Lock()
 	if pb.tracing {
 		pb.traced[cid] = struct{}{}
 	}
 	pb.lk.Unlock()
 
-	if block, err := pb.Blockstore.Get(cid); err == nil {
+	if block, err := pb.Blockstore.Get(ctx, cid); err == nil {
 		return block, err
 	}
 
@@ -134,7 +134,7 @@ func (pb *proxyingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 		return nil, err
 	}
 
-	err = pb.Blockstore.Put(block)
+	err = pb.Blockstore.Put(ctx, block)
 	if err != nil {
 		return nil, err
 	}
@@ -142,16 +142,16 @@ func (pb *proxyingBlockstore) Get(cid cid.Cid) (blocks.Block, error) {
 	return block, nil
 }
 
-func (pb *proxyingBlockstore) Put(block blocks.Block) error {
+func (pb *proxyingBlockstore) Put(ctx context.Context, block blocks.Block) error {
 	pb.lk.Lock()
 	if pb.tracing {
 		pb.traced[block.Cid()] = struct{}{}
 	}
 	pb.lk.Unlock()
-	return pb.Blockstore.Put(block)
+	return pb.Blockstore.Put(ctx, block)
 }
 
-func (pb *proxyingBlockstore) PutMany(blocks []blocks.Block) error {
+func (pb *proxyingBlockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
 	pb.lk.Lock()
 	if pb.tracing {
 		for _, b := range blocks {
@@ -159,5 +159,5 @@ func (pb *proxyingBlockstore) PutMany(blocks []blocks.Block) error {
 		}
 	}
 	pb.lk.Unlock()
-	return pb.Blockstore.PutMany(blocks)
+	return pb.Blockstore.PutMany(ctx, blocks)
 }

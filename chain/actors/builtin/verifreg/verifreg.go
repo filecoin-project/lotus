@@ -21,10 +21,13 @@ import (
 
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
+	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
+	verifreg7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/verifreg"
 )
 
 func init() {
@@ -53,11 +56,15 @@ func init() {
 		return load6(store, root)
 	})
 
+	builtin.RegisterActorState(builtin7.VerifiedRegistryActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
+		return load7(store, root)
+	})
+
 }
 
 var (
-	Address = builtin6.VerifiedRegistryActorAddr
-	Methods = builtin6.MethodsVerifiedRegistry
+	Address = builtin7.VerifiedRegistryActorAddr
+	Methods = builtin7.MethodsVerifiedRegistry
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
@@ -80,6 +87,9 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 
 	case builtin6.VerifiedRegistryActorCodeID:
 		return load6(store, act.Head)
+
+	case builtin7.VerifiedRegistryActorCodeID:
+		return load7(store, act.Head)
 
 	}
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
@@ -106,6 +116,9 @@ func MakeState(store adt.Store, av actors.Version, rootKeyAddress address.Addres
 	case actors.Version6:
 		return make6(store, rootKeyAddress)
 
+	case actors.Version7:
+		return make7(store, rootKeyAddress)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
 }
@@ -131,10 +144,20 @@ func GetActorCodeID(av actors.Version) (cid.Cid, error) {
 	case actors.Version6:
 		return builtin6.VerifiedRegistryActorCodeID, nil
 
+	case actors.Version7:
+		return builtin7.VerifiedRegistryActorCodeID, nil
+
 	}
 
 	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
+
+type RemoveDataCapProposal = verifreg7.RemoveDataCapProposal
+type RemoveDataCapRequest = verifreg7.RemoveDataCapRequest
+type RemoveDataCapParams = verifreg7.RemoveDataCapParams
+type RmDcProposalID = verifreg7.RmDcProposalID
+
+const SignatureDomainSeparation_RemoveDataCap = verifreg7.SignatureDomainSeparation_RemoveDataCap
 
 type State interface {
 	cbor.Marshaler
@@ -142,6 +165,7 @@ type State interface {
 	RootKey() (address.Address, error)
 	VerifiedClientDataCap(address.Address) (bool, abi.StoragePower, error)
 	VerifierDataCap(address.Address) (bool, abi.StoragePower, error)
+	RemoveDataCapProposalID(verifier address.Address, client address.Address) (bool, uint64, error)
 	ForEachVerifier(func(addr address.Address, dcap abi.StoragePower) error) error
 	ForEachClient(func(addr address.Address, dcap abi.StoragePower) error) error
 	GetState() interface{}

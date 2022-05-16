@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/rand"
 
+	runtime7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
+
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
 	"github.com/ipfs/go-cid"
@@ -29,7 +31,6 @@ import (
 	market4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/market"
 	power4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/power"
 	reward4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/reward"
-	runtime5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -57,7 +58,7 @@ func MinerAddress(genesisIndex uint64) address.Address {
 }
 
 type fakedSigSyscalls struct {
-	runtime5.Syscalls
+	runtime7.Syscalls
 }
 
 func (fss *fakedSigSyscalls) VerifySignature(signature crypto.Signature, signer address.Address, plaintext []byte) error {
@@ -65,7 +66,7 @@ func (fss *fakedSigSyscalls) VerifySignature(signature crypto.Signature, signer 
 }
 
 func mkFakedSigSyscalls(base vm.SyscallBuilder) vm.SyscallBuilder {
-	return func(ctx context.Context, rt *vm.Runtime) runtime5.Syscalls {
+	return func(ctx context.Context, rt *vm.Runtime) runtime7.Syscalls {
 		return &fakedSigSyscalls{
 			base(ctx, rt),
 		}
@@ -93,15 +94,14 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 		Actors:         filcns.NewActorRegistry(),
 		Syscalls:       mkFakedSigSyscalls(sys),
 		CircSupplyCalc: csc,
-		NtwkVersion: func(_ context.Context, _ abi.ChainEpoch) network.Version {
-			return nv
-		},
-		BaseFee: types.NewInt(0),
+		NetworkVersion: nv,
+		BaseFee:        big.Zero(),
+		FilVested:      big.Zero(),
 	}
 
-	vm, err := vm.NewVM(ctx, vmopt)
+	vm, err := vm.NewLegacyVM(ctx, vmopt)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create NewVM: %w", err)
+		return cid.Undef, xerrors.Errorf("failed to create NewLegacyVM: %w", err)
 	}
 
 	if len(miners) == 0 {
@@ -509,37 +509,19 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 // TODO: copied from actors test harness, deduplicate or remove from here
 type fakeRand struct{}
 
-func (fr *fakeRand) GetChainRandomnessV2(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) GetChainRandomness(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
 	return out, nil
 }
 
-func (fr *fakeRand) GetChainRandomnessV1(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(randEpoch * 1000))).Read(out) //nolint
-	return out, nil
-}
-
-func (fr *fakeRand) GetBeaconRandomnessV3(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
+func (fr *fakeRand) GetBeaconRandomness(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
 	out := make([]byte, 32)
 	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
 	return out, nil
 }
 
-func (fr *fakeRand) GetBeaconRandomnessV2(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
-	return out, nil
-}
-
-func (fr *fakeRand) GetBeaconRandomnessV1(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte) ([]byte, error) {
-	out := make([]byte, 32)
-	_, _ = rand.New(rand.NewSource(int64(randEpoch))).Read(out) //nolint
-	return out, nil
-}
-
-func currentTotalPower(ctx context.Context, vm *vm.VM, maddr address.Address) (*power0.CurrentTotalPowerReturn, error) {
+func currentTotalPower(ctx context.Context, vm *vm.LegacyVM, maddr address.Address) (*power0.CurrentTotalPowerReturn, error) {
 	pwret, err := doExecValue(ctx, vm, power.Address, maddr, big.Zero(), builtin0.MethodsPower.CurrentTotalPower, nil)
 	if err != nil {
 		return nil, err
@@ -552,7 +534,7 @@ func currentTotalPower(ctx context.Context, vm *vm.VM, maddr address.Address) (*
 	return &pwr, nil
 }
 
-func dealWeight(ctx context.Context, vm *vm.VM, maddr address.Address, dealIDs []abi.DealID, sectorStart, sectorExpiry abi.ChainEpoch, av actors.Version) (abi.DealWeight, abi.DealWeight, error) {
+func dealWeight(ctx context.Context, vm *vm.LegacyVM, maddr address.Address, dealIDs []abi.DealID, sectorStart, sectorExpiry abi.ChainEpoch, av actors.Version) (abi.DealWeight, abi.DealWeight, error) {
 	// TODO: This hack should move to market actor wrapper
 	if av <= actors.Version2 {
 		params := &market0.VerifyDealsForActivationParams{
@@ -612,7 +594,7 @@ func dealWeight(ctx context.Context, vm *vm.VM, maddr address.Address, dealIDs [
 	return dealWeights.Sectors[0].DealWeight, dealWeights.Sectors[0].VerifiedDealWeight, nil
 }
 
-func currentEpochBlockReward(ctx context.Context, vm *vm.VM, maddr address.Address, av actors.Version) (abi.StoragePower, builtin.FilterEstimate, error) {
+func currentEpochBlockReward(ctx context.Context, vm *vm.LegacyVM, maddr address.Address, av actors.Version) (abi.StoragePower, builtin.FilterEstimate, error) {
 	rwret, err := doExecValue(ctx, vm, reward.Address, maddr, big.Zero(), reward.Methods.ThisEpochReward, nil)
 	if err != nil {
 		return big.Zero(), builtin.FilterEstimate{}, err
@@ -647,7 +629,7 @@ func currentEpochBlockReward(ctx context.Context, vm *vm.VM, maddr address.Addre
 	return epochReward.ThisEpochBaselinePower, builtin.FilterEstimate(epochReward.ThisEpochRewardSmoothed), nil
 }
 
-func circSupply(ctx context.Context, vmi *vm.VM, maddr address.Address) abi.TokenAmount {
+func circSupply(ctx context.Context, vmi *vm.LegacyVM, maddr address.Address) abi.TokenAmount {
 	unsafeVM := &vm.UnsafeVM{VM: vmi}
 	rt := unsafeVM.MakeRuntime(ctx, &types.Message{
 		GasLimit: 1_000_000_000,

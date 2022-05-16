@@ -1,12 +1,14 @@
 package cli
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/urfave/cli/v2"
@@ -28,6 +30,7 @@ var NetCmd = &cli.Command{
 	Usage: "Manage P2P Network",
 	Subcommands: []*cli.Command{
 		NetPeers,
+		NetPing,
 		NetConnect,
 		NetListen,
 		NetId,
@@ -36,6 +39,11 @@ var NetCmd = &cli.Command{
 		NetReachability,
 		NetBandwidthCmd,
 		NetBlockCmd,
+		NetStatCmd,
+		NetLimitCmd,
+		NetProtectAdd,
+		NetProtectRemove,
+		NetProtectList,
 	},
 }
 
@@ -108,6 +116,82 @@ var NetPeers = &cli.Command{
 			}
 		}
 
+		return nil
+	},
+}
+
+var NetPing = &cli.Command{
+	Name:  "ping",
+	Usage: "Ping peers",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:    "count",
+			Value:   10,
+			Aliases: []string{"c"},
+			Usage:   "specify the number of times it should ping",
+		},
+		&cli.DurationFlag{
+			Name:    "interval",
+			Value:   time.Second,
+			Aliases: []string{"i"},
+			Usage:   "minimum time between pings",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("please provide a peerID")
+		}
+
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := ReqContext(cctx)
+
+		pis, err := addrInfoFromArg(ctx, cctx)
+		if err != nil {
+			return err
+		}
+
+		count := cctx.Int("count")
+		interval := cctx.Duration("interval")
+
+		for _, pi := range pis {
+			err := api.NetConnect(ctx, pi)
+			if err != nil {
+				return xerrors.Errorf("connect: %w", err)
+			}
+
+			fmt.Printf("PING %s\n", pi.ID)
+			var avg time.Duration
+			var successful int
+
+			for i := 0; i < count && ctx.Err() == nil; i++ {
+				start := time.Now()
+
+				rtt, err := api.NetPing(ctx, pi.ID)
+				if err != nil {
+					if ctx.Err() != nil {
+						break
+					}
+					log.Errorf("Ping failed: error=%v", err)
+					continue
+				}
+				fmt.Printf("Pong received: time=%v\n", rtt)
+				avg = avg + rtt
+				successful++
+
+				wctx, cancel := context.WithTimeout(ctx, time.Until(start.Add(interval)))
+				<-wctx.Done()
+				cancel()
+			}
+
+			if successful > 0 {
+				fmt.Printf("Average latency: %v\n", avg/time.Duration(successful))
+			}
+		}
 		return nil
 	},
 }
@@ -187,45 +271,9 @@ var NetConnect = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		pis, err := addrutil.ParseAddresses(ctx, cctx.Args().Slice())
+		pis, err := addrInfoFromArg(ctx, cctx)
 		if err != nil {
-			a, perr := address.NewFromString(cctx.Args().First())
-			if perr != nil {
-				return err
-			}
-
-			na, fc, err := GetFullNodeAPI(cctx)
-			if err != nil {
-				return err
-			}
-			defer fc()
-
-			mi, err := na.StateMinerInfo(ctx, a, types.EmptyTSK)
-			if err != nil {
-				return xerrors.Errorf("getting miner info: %w", err)
-			}
-
-			if mi.PeerId == nil {
-				return xerrors.Errorf("no PeerID for miner")
-			}
-			multiaddrs := make([]multiaddr.Multiaddr, 0, len(mi.Multiaddrs))
-			for i, a := range mi.Multiaddrs {
-				maddr, err := multiaddr.NewMultiaddrBytes(a)
-				if err != nil {
-					log.Warnf("parsing multiaddr %d (%x): %s", i, a, err)
-					continue
-				}
-				multiaddrs = append(multiaddrs, maddr)
-			}
-
-			pi := peer.AddrInfo{
-				ID:    *mi.PeerId,
-				Addrs: multiaddrs,
-			}
-
-			fmt.Printf("%s -> %s\n", a, pi)
-
-			pis = append(pis, pi)
+			return err
 		}
 
 		for _, pi := range pis {
@@ -240,6 +288,51 @@ var NetConnect = &cli.Command{
 
 		return nil
 	},
+}
+
+func addrInfoFromArg(ctx context.Context, cctx *cli.Context) ([]peer.AddrInfo, error) {
+	pis, err := addrutil.ParseAddresses(ctx, cctx.Args().Slice())
+	if err != nil {
+		a, perr := address.NewFromString(cctx.Args().First())
+		if perr != nil {
+			return nil, err
+		}
+
+		na, fc, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return nil, err
+		}
+		defer fc()
+
+		mi, err := na.StateMinerInfo(ctx, a, types.EmptyTSK)
+		if err != nil {
+			return nil, xerrors.Errorf("getting miner info: %w", err)
+		}
+
+		if mi.PeerId == nil {
+			return nil, xerrors.Errorf("no PeerID for miner")
+		}
+		multiaddrs := make([]multiaddr.Multiaddr, 0, len(mi.Multiaddrs))
+		for i, a := range mi.Multiaddrs {
+			maddr, err := multiaddr.NewMultiaddrBytes(a)
+			if err != nil {
+				log.Warnf("parsing multiaddr %d (%x): %s", i, a, err)
+				continue
+			}
+			multiaddrs = append(multiaddrs, maddr)
+		}
+
+		pi := peer.AddrInfo{
+			ID:    *mi.PeerId,
+			Addrs: multiaddrs,
+		}
+
+		fmt.Printf("%s -> %s\n", a, pi)
+
+		pis = append(pis, pi)
+	}
+
+	return pis, err
 }
 
 var NetId = &cli.Command{
@@ -265,7 +358,8 @@ var NetId = &cli.Command{
 }
 
 var NetFindPeer = &cli.Command{
-	Name:      "findpeer",
+	Name:      "find-peer",
+	Aliases:   []string{"findpeer"},
 	Usage:     "Find the addresses of a given peerID",
 	ArgsUsage: "[peerId]",
 	Action: func(cctx *cli.Context) error {
@@ -603,6 +697,211 @@ var NetBlockListCmd = &cli.Command{
 			}
 		}
 
+		return nil
+	},
+}
+
+var NetStatCmd = &cli.Command{
+	Name:      "stat",
+	Usage:     "Report resource usage for a scope",
+	ArgsUsage: "scope",
+	Description: `Report resource usage for a scope.
+
+  The scope can be one of the following:
+  - system        -- reports the system aggregate resource usage.
+  - transient     -- reports the transient resource usage.
+  - svc:<service> -- reports the resource usage of a specific service.
+  - proto:<proto> -- reports the resource usage of a specific protocol.
+  - peer:<peer>   -- reports the resource usage of a specific peer.
+  - all           -- reports the resource usage for all currently active scopes.
+`,
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		args := cctx.Args().Slice()
+		if len(args) != 1 {
+			return xerrors.Errorf("must specify exactly one scope")
+		}
+		scope := args[0]
+
+		result, err := api.NetStat(ctx, scope)
+		if err != nil {
+			return err
+		}
+
+		enc := json.NewEncoder(os.Stdout)
+		return enc.Encode(result)
+	},
+}
+
+var NetLimitCmd = &cli.Command{
+	Name:      "limit",
+	Usage:     "Get or set resource limits for a scope",
+	ArgsUsage: "scope [limit]",
+	Description: `Get or set resource limits for a scope.
+
+  The scope can be one of the following:
+  - system        -- reports the system aggregate resource usage.
+  - transient     -- reports the transient resource usage.
+  - svc:<service> -- reports the resource usage of a specific service.
+  - proto:<proto> -- reports the resource usage of a specific protocol.
+  - peer:<peer>   -- reports the resource usage of a specific peer.
+
+ The limit is json-formatted, with the same structure as the limits file.
+`,
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "set",
+			Usage: "set the limit for a scope",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+		args := cctx.Args().Slice()
+
+		if cctx.Bool("set") {
+			if len(args) != 2 {
+				return xerrors.Errorf("must specify exactly a scope and a limit")
+			}
+			scope := args[0]
+			limitStr := args[1]
+
+			var limit atypes.NetLimit
+			err := json.Unmarshal([]byte(limitStr), &limit)
+			if err != nil {
+				return xerrors.Errorf("error decoding limit: %w", err)
+			}
+
+			return api.NetSetLimit(ctx, scope, limit)
+
+		}
+
+		if len(args) != 1 {
+			return xerrors.Errorf("must specify exactly one scope")
+		}
+		scope := args[0]
+
+		result, err := api.NetLimit(ctx, scope)
+		if err != nil {
+			return err
+		}
+
+		enc := json.NewEncoder(os.Stdout)
+		return enc.Encode(result)
+	},
+}
+
+var NetProtectAdd = &cli.Command{
+	Name:      "protect",
+	Usage:     "Add one or more peer IDs to the list of protected peer connections",
+	ArgsUsage: "<peer-id> [<peer-id>...]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		pids, err := decodePeerIDsFromArgs(cctx)
+		if err != nil {
+			return err
+		}
+
+		err = api.NetProtectAdd(ctx, pids)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("added to protected peers:")
+		for _, pid := range pids {
+			fmt.Printf(" %s\n", pid)
+		}
+		return nil
+	},
+}
+
+var NetProtectRemove = &cli.Command{
+	Name:      "unprotect",
+	Usage:     "Remove one or more peer IDs from the list of protected peer connections.",
+	ArgsUsage: "<peer-id> [<peer-id>...]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		pids, err := decodePeerIDsFromArgs(cctx)
+		if err != nil {
+			return err
+		}
+
+		err = api.NetProtectRemove(ctx, pids)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("removed from protected peers:")
+		for _, pid := range pids {
+			fmt.Printf(" %s\n", pid)
+		}
+		return nil
+	},
+}
+
+// decodePeerIDsFromArgs decodes all the arguments present in cli.Context.Args as peer.ID.
+//
+// This function requires at least one argument to be present, and arguments must not be empty
+// string. Otherwise, an error is returned.
+func decodePeerIDsFromArgs(cctx *cli.Context) ([]peer.ID, error) {
+	pidArgs := cctx.Args().Slice()
+	if len(pidArgs) == 0 {
+		return nil, xerrors.Errorf("must specify at least one peer ID as an argument")
+	}
+	var pids []peer.ID
+	for _, pidStr := range pidArgs {
+		if pidStr == "" {
+			return nil, xerrors.Errorf("peer ID must not be empty")
+		}
+		pid, err := peer.Decode(pidStr)
+		if err != nil {
+			return nil, err
+		}
+		pids = append(pids, pid)
+	}
+	return pids, nil
+}
+
+var NetProtectList = &cli.Command{
+	Name:  "list-protected",
+	Usage: "List the peer IDs with protected connection.",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+		pids, err := api.NetProtectList(ctx)
+		if err != nil {
+			return err
+		}
+
+		for _, pid := range pids {
+			fmt.Printf("%s\n", pid)
+		}
 		return nil
 	},
 }
