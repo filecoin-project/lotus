@@ -2,7 +2,7 @@
 
 With NV16, builtin actor bundles must be loaded into lotus for the FVM to operate.
 
-The bundles are specified in build/bundles.toml using the foloowing syntax:
+The bundles are specified in build/bundles.toml using the following syntax:
 ```toml
 [[bundles]]
 version = X   # actors version
