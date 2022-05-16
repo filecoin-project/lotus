@@ -23,6 +23,7 @@ type Bundle struct {
 	// Path is the (optional) bundle path; uses the appropriate release bundle if unset
 	Path string
 	// Devlopment indicates whether this is a development version; when set, in conjunction with path,
-	// it will always load the bundle to the blockstore
+	// it will always load the bundle to the blockstore, without recording the manifest CID in the
+	// datastore.
 	Development bool
 }
