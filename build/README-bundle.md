@@ -39,3 +39,9 @@ the network bundle name.
 
 The sha256 sum of the bundle will be stored next to it, in
 `$LOTUS_PATH/builtin-actors/vXXX/YYY/builtin-actors-ZZZ.sha256`
+
+On startup, if a bundle is recorded as loaded the manifest CID will be
+checked for presence in the blockstore.  If the manifest is missing,
+then the bundle will be reloaded from the local file (if it exists) or
+referched from github.  The sha256 sum is always checked before
+loading the bundle.
