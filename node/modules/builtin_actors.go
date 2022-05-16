@@ -68,21 +68,26 @@ func LoadBuiltinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 
 		// we haven't recorded it in the datastore, so we need to load it
 		var mfCid cid.Cid
-		if bd.Path != "" {
+		switch {
+		case bd.Path != "":
 			// this is a local bundle, load it directly from the filessystem
 			mfCid, err = bundle.LoadBundle(ctx, bs, bd.Path, av)
 			if err != nil {
 				return result, err
 			}
-		} else {
+
+		case bd.Release != "":
 			// fetch it and add it to the blockstore
 			mfCid, err = bundle.FetchAndLoadBundle(ctx, r.Path(), bs, av, bd.Release, netw)
 			if err != nil {
 				return result, err
 			}
+
+		default:
+			return result, xerrors.Errorf("no release or path specified for version %d bundle", av)
 		}
 
-		if bd.Development {
+		if bd.Development || bd.Release == "" {
 			// don't store the release key so that we always load development bundles
 			continue
 		}
@@ -119,18 +124,23 @@ func LoadBuiltinActorsTesting(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtype
 	defer testingBundleMx.Unlock()
 
 	for av, bd := range build.BuiltinActorReleases {
-		if bd.Path != "" {
+		switch {
+		case bd.Path != "":
 			// we need the appropriate bundle for tests; it should live next to the main bundle, with the
 			// appropriate network name
 			path := filepath.Join(filepath.Dir(bd.Path), fmt.Sprintf("builtin-actors-%s.car", netw))
 			if _, err := bundle.LoadBundle(ctx, bs, path, av); err != nil {
 				return result, xerrors.Errorf("error loading testing bundle for builtin-actors version %d/%s: %w", av, netw, err)
 			}
-		} else {
+
+		case bd.Release != "":
 			const basePath = "/tmp/lotus-testing"
 			if _, err := bundle.FetchAndLoadBundle(ctx, basePath, bs, av, bd.Release, netw); err != nil {
 				return result, xerrors.Errorf("error loading testing bundle for builtin-actors version %d/%s: %w", av, netw, err)
 			}
+
+		default:
+			return result, xerrors.Errorf("no path or release specified for version %d bundle", av)
 		}
 	}
 
