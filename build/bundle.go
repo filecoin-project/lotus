@@ -16,13 +16,13 @@ type BundleSpec struct {
 }
 
 type Bundle struct {
-	// actors version in this bundle
+	// Version is the actors version in this bundle
 	Version actors.Version
-	// release id
+	// Release is the release id
 	Release string
-	// bundle path: optional, uses the appropriate release bundle if unset
+	// Path is the (optional) bundle path; uses the appropriate release bundle if unset
 	Path string
-	// development version; when set, in conjunction with path, it will always
-	// load the bundle to the blockstore
+	// Devlopment indicates whether this is a development version; when set, in conjunction with path,
+	// it will always load the bundle to the blockstore
 	Development bool
 }
