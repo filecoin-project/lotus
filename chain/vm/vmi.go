@@ -19,13 +19,15 @@ type Interface interface {
 	Flush(ctx context.Context) (cid.Cid, error)
 }
 
+var experimentalUseFvm = os.Getenv("LOTUS_USE_FVM_EXPERIMENTAL") == "1"
+
 func NewVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 	if opts.NetworkVersion >= network.Version16 {
 		return NewFVM(ctx, opts)
 	}
 
 	// Remove after v16 upgrade, this is only to support testing and validation of the FVM
-	if os.Getenv("LOTUS_USE_FVM_EXPERIMENTAL") == "1" {
+	if experimentalUseFvm && opts.NetworkVersion >= network.Version15 {
 		return NewFVM(ctx, opts)
 	}
 
