@@ -37,7 +37,7 @@ type Bundle struct {
 	Release string
 	// Path is the (optional) bundle path; takes precedence over url
 	Path map[string]string
-	// URL is the (optional) bundle URL; takes precdence over github release
+	// URL is the (optional) bundle URL; takes precedence over github release
 	URL map[string]BundleURL
 	// Devlopment indicates whether this is a development version; when set, in conjunction with path,
 	// it will always load the bundle to the blockstore, without recording the manifest CID in the

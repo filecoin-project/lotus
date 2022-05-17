@@ -49,17 +49,17 @@ func FetchAndLoadBundleFromURL(ctx context.Context, basePath string, bs blocksto
 func LoadBundle(ctx context.Context, bs blockstore.Blockstore, path string, av actors.Version) (cid.Cid, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("error opening bundle for builtin-actors vresion %d: %w", av, err)
+		return cid.Undef, xerrors.Errorf("error opening bundle for builtin-actors version %d: %w", av, err)
 	}
 	defer f.Close() //nolint
 
 	data, err := io.ReadAll(f)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("error reading bundle for builtin-actors vresion %d: %w", av, err)
+		return cid.Undef, xerrors.Errorf("error reading bundle for builtin-actors version %d: %w", av, err)
 	}
 
 	if err := actors.LoadBundle(ctx, bs, av, data); err != nil {
-		return cid.Undef, xerrors.Errorf("error loading bundle for builtin-actors vresion %d: %w", av, err)
+		return cid.Undef, xerrors.Errorf("error loading bundle for builtin-actors version %d: %w", av, err)
 	}
 
 	mfCid, ok := actors.GetManifest(av)
