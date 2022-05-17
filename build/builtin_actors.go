@@ -8,10 +8,10 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-var BuiltinActorReleases map[actors.Version]string
+var BuiltinActorReleases map[actors.Version]Bundle
 
 func init() {
-	BuiltinActorReleases = make(map[actors.Version]string)
+	BuiltinActorReleases = make(map[actors.Version]Bundle)
 
 	spec := BundleSpec{}
 
@@ -22,6 +22,6 @@ func init() {
 	}
 
 	for _, b := range spec.Bundles {
-		BuiltinActorReleases[b.Version] = b.Release
+		BuiltinActorReleases[b.Version] = b
 	}
 }
