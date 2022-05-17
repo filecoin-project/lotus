@@ -21,13 +21,18 @@ type Bundle struct {
 	// Release is the release id
 	Release string
 	// Path is the (optional) bundle path; takes precedence over url
-	Path string
+	Path map[string]string
 	// URL is the (optional) bundle URL; takes precdence over github release
-	URL string
-	// CHecksum is the bundle sha256 checksume in hex, when specifying a URL.
-	Checksum string
+	URL map[string]BundleURL
 	// Devlopment indicates whether this is a development version; when set, in conjunction with path,
 	// it will always load the bundle to the blockstore, without recording the manifest CID in the
 	// datastore.
 	Development bool
+}
+
+type BundleURL struct {
+	// URL is the url of the bundle
+	URL string
+	// Checksum is the sha256 checksum of the bundle
+	Checksum string
 }

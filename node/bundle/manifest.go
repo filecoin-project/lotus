@@ -97,13 +97,13 @@ func FetchAndLoadBundles(ctx context.Context, bs blockstore.Blockstore, bar map[
 				return err
 			}
 
-		case bd.Path != "":
-			if _, err := LoadBundle(ctx, bs, bd.Path, av); err != nil {
+		case bd.Path[netw] != "":
+			if _, err := LoadBundle(ctx, bs, bd.Path[netw], av); err != nil {
 				return err
 			}
 
-		case bd.URL != "":
-			if _, err := FetchAndLoadBundleFromURL(ctx, path, bs, av, bd.Release, netw, bd.URL, bd.Checksum); err != nil {
+		case bd.URL[netw].URL != "":
+			if _, err := FetchAndLoadBundleFromURL(ctx, path, bs, av, bd.Release, netw, bd.URL[netw].URL, bd.URL[netw].Checksum); err != nil {
 				return err
 			}
 
