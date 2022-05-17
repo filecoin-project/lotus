@@ -1143,10 +1143,15 @@ var sectorsExtendCmd = &cli.Command{
 			Usage:    "when extending v1 sectors, skip sectors whose current expiration is more than <cutoff> epochs from now (infinity if unspecified)",
 			Required: false,
 		},
-		&cli.StringFlag{},
+		&cli.StringFlag{
+			Name:     "max-fee",
+			Value:    "1",
+			Usage:    "use up to this amount of FIL for one message, pass this flag to avoid message congestion",
+			Required: false,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
-		api, nCloser, err := lcli.GetFullNodeAPI(cctx)
+		nodeAPI, nCloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
@@ -1166,12 +1171,12 @@ var sectorsExtendCmd = &cli.Command{
 				return xerrors.Errorf("must pass new expiration when extend all sectors")
 			}
 
-			head, err := api.ChainHead(ctx)
+			head, err := nodeAPI.ChainHead(ctx)
 			if err != nil {
 				return err
 			}
 
-			nv, err := api.StateNetworkVersion(ctx, types.EmptyTSK)
+			nv, err := nodeAPI.StateNetworkVersion(ctx, types.EmptyTSK)
 			if err != nil {
 				return err
 			}
@@ -1188,7 +1193,7 @@ var sectorsExtendCmd = &cli.Command{
 				return diff <= abi.ChainEpoch(cctx.Int64("tolerance"))
 			}
 
-			sis, err := api.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
+			sis, err := nodeAPI.StateMinerActiveSectors(ctx, maddr, types.EmptyTSK)
 			if err != nil {
 				return xerrors.Errorf("getting miner sector infos: %w", err)
 			}
@@ -1233,7 +1238,7 @@ var sectorsExtendCmd = &cli.Command{
 					continue
 				}
 
-				p, err := api.StateSectorPartition(ctx, maddr, si.SectorNumber, types.EmptyTSK)
+				p, err := nodeAPI.StateSectorPartition(ctx, maddr, si.SectorNumber, types.EmptyTSK)
 				if err != nil {
 					return xerrors.Errorf("getting sector location for sector %d: %w", si.SectorNumber, err)
 				}
@@ -1309,7 +1314,7 @@ var sectorsExtendCmd = &cli.Command{
 					return xerrors.Errorf("could not parse sector %d: %w", i, err)
 				}
 
-				p, err := api.StateSectorPartition(ctx, maddr, abi.SectorNumber(id), types.EmptyTSK)
+				p, err := nodeAPI.StateSectorPartition(ctx, maddr, abi.SectorNumber(id), types.EmptyTSK)
 				if err != nil {
 					return xerrors.Errorf("getting sector location for sector %d: %w", id, err)
 				}
@@ -1341,25 +1346,27 @@ var sectorsExtendCmd = &cli.Command{
 			return nil
 		}
 
-		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		mi, err := nodeAPI.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
 
+		maxFee := cctx.String("max-fee")
+		spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(types.MustParseFIL(maxFee))}
 		for i := range params {
 			sp, aerr := actors.SerializeParams(&params[i])
 			if aerr != nil {
 				return xerrors.Errorf("serializing params: %w", err)
 			}
 
-			smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+			smsg, err := nodeAPI.MpoolPushMessage(ctx, &types.Message{
 				From:   mi.Worker,
 				To:     maddr,
 				Method: miner.Methods.ExtendSectorExpiration,
 
 				Value:  big.Zero(),
 				Params: sp,
-			}, nil)
+			}, spec)
 			if err != nil {
 				return xerrors.Errorf("mpool push message: %w", err)
 			}
