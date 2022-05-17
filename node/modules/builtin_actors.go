@@ -2,7 +2,7 @@ package modules
 
 import (
 	"fmt"
-	"path/filepath"
+	"os"
 	"sync"
 
 	"go.uber.org/fx"
@@ -67,18 +67,34 @@ func LoadBuiltinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 		}
 
 		// we haven't recorded it in the datastore, so we need to load it
+		envvar := fmt.Sprintf("LOTUS_BUILTIN_ACTORS_V%d_BUNDLE", av)
 		var mfCid cid.Cid
 		switch {
-		case bd.Path != "":
+		case os.Getenv(envvar) != "":
+			path := os.Getenv(envvar)
+
+			mfCid, err = bundle.LoadBundle(ctx, bs, path, av)
+			if err != nil {
+				return result, err
+			}
+
+		case bd.Path[netw] != "":
 			// this is a local bundle, load it directly from the filessystem
-			mfCid, err = bundle.LoadBundle(ctx, bs, bd.Path, av)
+			mfCid, err = bundle.LoadBundle(ctx, bs, bd.Path[netw], av)
+			if err != nil {
+				return result, err
+			}
+
+		case bd.URL[netw].URL != "":
+			// fetch it from the specified URL
+			mfCid, err = bundle.FetchAndLoadBundleFromURL(ctx, r.Path(), bs, av, bd.Release, netw, bd.URL[netw].URL, bd.URL[netw].Checksum)
 			if err != nil {
 				return result, err
 			}
 
 		case bd.Release != "":
 			// fetch it and add it to the blockstore
-			mfCid, err = bundle.FetchAndLoadBundle(ctx, r.Path(), bs, av, bd.Release, netw)
+			mfCid, err = bundle.FetchAndLoadBundleFromRelease(ctx, r.Path(), bs, av, bd.Release, netw)
 			if err != nil {
 				return result, err
 			}
@@ -123,24 +139,27 @@ func LoadBuiltinActorsTesting(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtype
 	testingBundleMx.Lock()
 	defer testingBundleMx.Unlock()
 
+	const basePath = "/tmp/lotus-testing"
 	for av, bd := range build.BuiltinActorReleases {
 		switch {
-		case bd.Path != "":
-			// we need the appropriate bundle for tests; it should live next to the main bundle, with the
-			// appropriate network name
-			path := filepath.Join(filepath.Dir(bd.Path), fmt.Sprintf("builtin-actors-%s.car", netw))
-			if _, err := bundle.LoadBundle(ctx, bs, path, av); err != nil {
+		case bd.Path[netw] != "":
+			if _, err := bundle.LoadBundle(ctx, bs, bd.Path[netw], av); err != nil {
 				return result, xerrors.Errorf("error loading testing bundle for builtin-actors version %d/%s: %w", av, netw, err)
 			}
 
+		case bd.URL[netw].URL != "":
+			// fetch it from the specified URL
+			if _, err := bundle.FetchAndLoadBundleFromURL(ctx, basePath, bs, av, bd.Release, netw, bd.URL[netw].URL, bd.URL[netw].Checksum); err != nil {
+				return result, err
+			}
+
 		case bd.Release != "":
-			const basePath = "/tmp/lotus-testing"
-			if _, err := bundle.FetchAndLoadBundle(ctx, basePath, bs, av, bd.Release, netw); err != nil {
+			if _, err := bundle.FetchAndLoadBundleFromRelease(ctx, basePath, bs, av, bd.Release, netw); err != nil {
 				return result, xerrors.Errorf("error loading testing bundle for builtin-actors version %d/%s: %w", av, netw, err)
 			}
 
 		default:
-			return result, xerrors.Errorf("no path or release specified for version %d bundle", av)
+			return result, xerrors.Errorf("no path or release specified for version %d testing bundle", av)
 		}
 	}
 
