@@ -6,9 +6,17 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
-	init{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/init"
-	multisig{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/multisig"
+    {{if (le .v 7)}}
+	    builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
+	    init{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/init"
+	    multisig{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/multisig"
+    {{else}}
+        builtin{{.v}} "github.com/filecoin-project/go-state-types/builtin"
+        multisig{{.v}} "github.com/filecoin-project/go-state-types/builtin/v8/multisig"
+        init{{.v}} "github.com/filecoin-project/go-state-types/builtin/v8/init"
+        "github.com/filecoin-project/lotus/chain/actors/builtin"
+    {{end}}
+
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
@@ -54,19 +62,24 @@ func (m message{{.v}}) Create(
 		return nil, actErr
 	}
 
-    {{if (le .v 7)}}
-    actorCodeID := builtin{{.v}}.MultisigActorCodeID
-    {{else}}
-    actorCodeID, ok := actors.GetActorCodeID(actors.Version{{.v}}, "multisig")
-    if !ok {
-      return nil, xerrors.Errorf("error getting actor multisig code id for actor version %d", {{.v}})
-    }
-    {{end}}
-	// new actors are created by invoking 'exec' on the init actor with the constructor params
-	execParams := &init{{.v}}.ExecParams{
-		CodeCID:           actorCodeID,
-		ConstructorParams: enc,
-	}
+	{{if (le .v 7)}}
+        // new actors are created by invoking 'exec' on the init actor with the constructor params
+        execParams := &init{{.v}}.ExecParams{
+            CodeCID:           builtin{{.v}}.MultisigActorCodeID,
+            ConstructorParams: enc,
+        }
+	{{else}}
+        code, err := builtin.GetMultisigActorCodeID(actors.Version{{.v}})
+        if err != nil {
+            return nil, xerrors.Errorf("failed to get multisig code ID")
+        }
+
+        // new actors are created by invoking 'exec' on the init actor with the constructor params
+        execParams := &init8.ExecParams{
+            CodeCID:           code,
+            ConstructorParams: enc,
+        }
+	{{end}}
 
 	enc, actErr = actors.SerializeParams(execParams)
 	if actErr != nil {

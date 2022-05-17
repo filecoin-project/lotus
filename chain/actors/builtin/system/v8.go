@@ -5,7 +5,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
-	system8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/system"
+	system8 "github.com/filecoin-project/go-state-types/builtin/v8/system"
 )
 
 var _ State = (*state8)(nil)

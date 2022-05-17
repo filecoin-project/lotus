@@ -16,11 +16,11 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage"
@@ -29,7 +29,7 @@ import (
 type dealPublisherAPI interface {
 	ChainHead(context.Context) (*types.TipSet, error)
 	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error)
-	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 	WalletHas(context.Context, address.Address) (bool, error)
@@ -355,10 +355,10 @@ func (p *DealPublisher) validateDeal(deal market.ClientDealProposal) error {
 	}
 
 	res, err := p.api.StateCall(p.ctx, &types.Message{
-		To:     market.Address,
+		To:     builtin.StorageMarketActorAddr,
 		From:   addr,
 		Value:  types.NewInt(0),
-		Method: market.Methods.PublishStorageDeals,
+		Method: builtin.MethodsMarket.PublishStorageDeals,
 		Params: params,
 	}, head.Key())
 	if err != nil {
@@ -412,10 +412,10 @@ func (p *DealPublisher) publishDealProposals(deals []market.ClientDealProposal) 
 	}
 
 	smsg, err := p.api.MpoolPushMessage(p.ctx, &types.Message{
-		To:     market.Address,
+		To:     builtin.StorageMarketActorAddr,
 		From:   addr,
 		Value:  types.NewInt(0),
-		Method: market.Methods.PublishStorageDeals,
+		Method: builtin.MethodsMarket.PublishStorageDeals,
 		Params: params,
 	}, p.publishSpec)
 

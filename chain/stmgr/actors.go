@@ -17,6 +17,7 @@ import (
 
 	"golang.org/x/xerrors"
 
+	miner_types "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
@@ -89,7 +90,7 @@ func GetPowerRaw(ctx context.Context, sm *StateManager, st cid.Cid, maddr addres
 	return mpow, tpow, minpow, nil
 }
 
-func PreCommitInfo(ctx context.Context, sm *StateManager, maddr address.Address, sid abi.SectorNumber, ts *types.TipSet) (*miner.SectorPreCommitOnChainInfo, error) {
+func PreCommitInfo(ctx context.Context, sm *StateManager, maddr address.Address, sid abi.SectorNumber, ts *types.TipSet) (*miner_types.SectorPreCommitOnChainInfo, error) {
 	act, err := sm.LoadActor(ctx, maddr, ts)
 	if err != nil {
 		return nil, xerrors.Errorf("(get sset) failed to load miner actor: %w", err)

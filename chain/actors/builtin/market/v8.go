@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 
-	market8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/market"
-	adt8 "github.com/filecoin-project/specs-actors/v8/actors/util/adt"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 )
 
 var _ State = (*state8)(nil)

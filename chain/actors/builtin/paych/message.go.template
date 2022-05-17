@@ -8,9 +8,17 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
-	init{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/init"
-	paych{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/paych"
+	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+    {{if (le .v 7)}}
+	    builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
+	    init{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/init"
+	    paych{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/paych"
+    {{else}}
+        builtin{{.v}} "github.com/filecoin-project/go-state-types/builtin"
+        paych{{.v}} "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+        init{{.v}} "github.com/filecoin-project/go-state-types/builtin/v8/init"
+    {{end}}
+
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
@@ -50,10 +58,10 @@ func (m message{{.v}}) Create(to address.Address, initialAmount abi.TokenAmount)
 	}, nil
 }
 
-func (m message{{.v}}) Update(paych address.Address, sv *SignedVoucher, secret []byte) (*types.Message, error) {
+func (m message{{.v}}) Update(paych address.Address, sv *paychtypes.SignedVoucher, secret []byte) (*types.Message, error) {
 	params, aerr := actors.SerializeParams(&paych{{.v}}.UpdateChannelStateParams{
-	{{if (ge .v 7)}}
-	    Sv:     toV{{.v}}SignedVoucher(*sv),
+	{{if (le .v 6)}}
+	    Sv:     toV0SignedVoucher(*sv),
 	{{else}}
 		Sv:     *sv,
 	{{end}}

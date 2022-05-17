@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"testing"
 
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
+
 	"github.com/ipfs/go-cid"
 
 	"gotest.tools/assert"
@@ -12,7 +14,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	api "github.com/filecoin-project/lotus/api"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
-	market8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/market"
 )
 
 func TestSectorInfoSerialization(t *testing.T) {
@@ -29,7 +30,7 @@ func TestSectorInfoSerialization(t *testing.T) {
 			StartEpoch: 0,
 			EndEpoch:   100,
 		},
-		DealProposal: &market8.DealProposal{
+		DealProposal: &markettypes.DealProposal{
 			PieceCID:             dummyCid,
 			PieceSize:            5,
 			Client:               tutils.NewActorAddr(t, "client"),

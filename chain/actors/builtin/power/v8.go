@@ -11,10 +11,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
-	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
-
-	power8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/power"
-	adt8 "github.com/filecoin-project/specs-actors/v8/actors/util/adt"
+	builtin8 "github.com/filecoin-project/go-state-types/builtin"
+	power8 "github.com/filecoin-project/go-state-types/builtin/v8/power"
+	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 )
 
 var _ State = (*state8)(nil)
@@ -86,7 +85,7 @@ func (s *state8) MinerNominalPowerMeetsConsensusMinimum(a address.Address) (bool
 }
 
 func (s *state8) TotalPowerSmoothed() (builtin.FilterEstimate, error) {
-	return builtin.FromV8FilterEstimate(s.State.ThisEpochQAPowerSmoothed), nil
+	return builtin.FilterEstimate(s.State.ThisEpochQAPowerSmoothed), nil
 }
 
 func (s *state8) MinerCounts() (uint64, uint64, error) {

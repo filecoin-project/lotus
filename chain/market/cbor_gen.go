@@ -25,30 +25,31 @@ func (t *FundedAddressState) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write(lengthBufFundedAddressState); err != nil {
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write(lengthBufFundedAddressState); err != nil {
 		return err
 	}
 
-	scratch := make([]byte, 9)
-
 	// t.Addr (address.Address) (struct)
-	if err := t.Addr.MarshalCBOR(w); err != nil {
+	if err := t.Addr.MarshalCBOR(cw); err != nil {
 		return err
 	}
 
 	// t.AmtReserved (big.Int) (struct)
-	if err := t.AmtReserved.MarshalCBOR(w); err != nil {
+	if err := t.AmtReserved.MarshalCBOR(cw); err != nil {
 		return err
 	}
 
 	// t.MsgCid (cid.Cid) (struct)
 
 	if t.MsgCid == nil {
-		if _, err := w.Write(cbg.CborNull); err != nil {
+		if _, err := cw.Write(cbg.CborNull); err != nil {
 			return err
 		}
 	} else {
-		if err := cbg.WriteCidBuf(scratch, w, *t.MsgCid); err != nil {
+		if err := cbg.WriteCid(cw, *t.MsgCid); err != nil {
 			return xerrors.Errorf("failed to write cid field t.MsgCid: %w", err)
 		}
 	}
@@ -56,16 +57,21 @@ func (t *FundedAddressState) MarshalCBOR(w io.Writer) error {
 	return nil
 }
 
-func (t *FundedAddressState) UnmarshalCBOR(r io.Reader) error {
+func (t *FundedAddressState) UnmarshalCBOR(r io.Reader) (err error) {
 	*t = FundedAddressState{}
 
-	br := cbg.GetPeeker(r)
-	scratch := make([]byte, 8)
+	cr := cbg.NewCborReader(r)
 
-	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
+	maj, extra, err := cr.ReadHeader()
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
 	if maj != cbg.MajArray {
 		return fmt.Errorf("cbor input should be of type array")
 	}
@@ -78,7 +84,7 @@ func (t *FundedAddressState) UnmarshalCBOR(r io.Reader) error {
 
 	{
 
-		if err := t.Addr.UnmarshalCBOR(br); err != nil {
+		if err := t.Addr.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.Addr: %w", err)
 		}
 
@@ -87,7 +93,7 @@ func (t *FundedAddressState) UnmarshalCBOR(r io.Reader) error {
 
 	{
 
-		if err := t.AmtReserved.UnmarshalCBOR(br); err != nil {
+		if err := t.AmtReserved.UnmarshalCBOR(cr); err != nil {
 			return xerrors.Errorf("unmarshaling t.AmtReserved: %w", err)
 		}
 
@@ -96,16 +102,16 @@ func (t *FundedAddressState) UnmarshalCBOR(r io.Reader) error {
 
 	{
 
-		b, err := br.ReadByte()
+		b, err := cr.ReadByte()
 		if err != nil {
 			return err
 		}
 		if b != cbg.CborNull[0] {
-			if err := br.UnreadByte(); err != nil {
+			if err := cr.UnreadByte(); err != nil {
 				return err
 			}
 
-			c, err := cbg.ReadCid(br)
+			c, err := cbg.ReadCid(cr)
 			if err != nil {
 				return xerrors.Errorf("failed to read cid field t.MsgCid: %w", err)
 			}

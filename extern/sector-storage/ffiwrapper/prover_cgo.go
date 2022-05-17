@@ -5,7 +5,7 @@ package ffiwrapper
 
 import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+	"github.com/filecoin-project/go-state-types/proof"
 )
 
 var ProofProver = proofProver{}
@@ -14,6 +14,6 @@ var _ Prover = ProofProver
 
 type proofProver struct{}
 
-func (v proofProver) AggregateSealProofs(aggregateInfo proof5.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error) {
+func (v proofProver) AggregateSealProofs(aggregateInfo proof.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error) {
 	return ffi.AggregateSealProofs(aggregateInfo, proofs)
 }

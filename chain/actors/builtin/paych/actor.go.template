@@ -10,76 +10,48 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/cbor"
-	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
 
 	paych0 "github.com/filecoin-project/specs-actors/actors/builtin/paych"
+	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 {{range .versions}}
-	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+    {{if (le . 7)}}
+	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+    {{end}}
 {{end}}
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 )
-
-func init() {
-{{range .versions}}
-	builtin.RegisterActorState(builtin{{.}}.PaymentChannelActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load{{.}}(store, root)
-	})
-{{end}}}
 
 // Load returns an abstract copy of payment channel state, irregardless of actor version
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != "paymentchannel" {
-          return nil, xerrors.Errorf("actor code is not paymentchannel: %s", name)
+       if name != actors.PaychKey {
+          return nil, xerrors.Errorf("actor code is not paych: %s", name)
        }
 
        switch av {
             {{range .versions}}
-			case actors.Version{{.}}:
-                 return load{{.}}(store, act.Head)
+                {{if (ge . 8)}}
+                case actors.Version{{.}}:
+                     return load{{.}}(store, act.Head)
+                 {{end}}
             {{end}}
-            default:
-                return nil, xerrors.Errorf("unknown actor version: %d", av)
        }
 	}
 
 	switch act.Code {
 {{range .versions}}
-	case builtin{{.}}.PaymentChannelActorCodeID:
-		return load{{.}}(store, act.Head)
+    {{if (le . 7)}}
+        case builtin{{.}}.PaymentChannelActorCodeID:
+            return load{{.}}(store, act.Head)
+    {{end}}
 {{end}}
 	}
+
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
-}
-
-func MakeState(store adt.Store, av actors.Version) (State, error) {
-	switch av {
-{{range .versions}}
-	case actors.Version{{.}}:
-		return make{{.}}(store)
-{{end}}
-}
-	return nil, xerrors.Errorf("unknown actor version %d", av)
-}
-
-func GetActorCodeID(av actors.Version) (cid.Cid, error) {
-    if c, ok := actors.GetActorCodeID(av, "paymentchannel"); ok {
-       return c, nil
-    }
-
-	switch av {
-{{range .versions}}
-	case actors.Version{{.}}:
-		return builtin{{.}}.PaymentChannelActorCodeID, nil
-{{end}}
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
 
 // State is an abstract version of payment channel state that works across
@@ -112,25 +84,20 @@ type LaneState interface {
 	Nonce() (uint64, error)
 }
 
-type SignedVoucher = paych0.SignedVoucher
-type ModVerifyParams = paych0.ModVerifyParams
-
 // DecodeSignedVoucher decodes base64 encoded signed voucher.
-func DecodeSignedVoucher(s string) (*SignedVoucher, error) {
+func DecodeSignedVoucher(s string) (*paychtypes.SignedVoucher, error) {
 	data, err := base64.RawURLEncoding.DecodeString(s)
 	if err != nil {
 		return nil, err
 	}
 
-	var sv SignedVoucher
+	var sv paychtypes.SignedVoucher
 	if err := ipldcbor.DecodeInto(data, &sv); err != nil {
 		return nil, err
 	}
 
 	return &sv, nil
 }
-
-var Methods = builtin{{.latestVersion}}.MethodsPaych
 
 func Message(version actors.Version, from address.Address) MessageBuilder {
 	switch version {
@@ -145,7 +112,23 @@ func Message(version actors.Version, from address.Address) MessageBuilder {
 
 type MessageBuilder interface {
 	Create(to address.Address, initialAmount abi.TokenAmount) (*types.Message, error)
-	Update(paych address.Address, voucher *SignedVoucher, secret []byte) (*types.Message, error)
+	Update(paych address.Address, voucher *paychtypes.SignedVoucher, secret []byte) (*types.Message, error)
 	Settle(paych address.Address) (*types.Message, error)
 	Collect(paych address.Address) (*types.Message, error)
+}
+
+func toV0SignedVoucher(sv paychtypes.SignedVoucher) paych0.SignedVoucher {
+	return paych0.SignedVoucher{
+		ChannelAddr:     sv.ChannelAddr,
+		TimeLockMin:     sv.TimeLockMin,
+		TimeLockMax:     sv.TimeLockMax,
+		SecretPreimage:  sv.SecretHash,
+		Extra:           (*paych0.ModVerifyParams)(sv.Extra),
+		Lane:            sv.Lane,
+		Nonce:           sv.Nonce,
+		Amount:          sv.Amount,
+		MinSettleHeight: sv.MinSettleHeight,
+		Merges:          nil,
+		Signature:       sv.Signature,
+	}
 }

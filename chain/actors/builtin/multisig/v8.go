@@ -4,8 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	adt8 "github.com/filecoin-project/specs-actors/v8/actors/util/adt"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
@@ -14,9 +12,9 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
-	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
-
-	msig8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/multisig"
+	builtin8 "github.com/filecoin-project/go-state-types/builtin"
+	msig8 "github.com/filecoin-project/go-state-types/builtin/v8/multisig"
+	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
 )
 
 var _ State = (*state8)(nil)
@@ -111,7 +109,7 @@ func (s *state8) decodeTransaction(val *cbg.Deferred) (Transaction, error) {
 	if err := tx.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return Transaction{}, err
 	}
-	return tx, nil
+	return Transaction(tx), nil
 }
 
 func (s *state8) GetState() interface{} {

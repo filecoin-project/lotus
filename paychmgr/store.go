@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 )
 
 var ErrChannelNotTracked = errors.New("channel not tracked")

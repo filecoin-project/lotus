@@ -6,6 +6,11 @@ import (
 	"testing"
 	"time"
 
+	prooftypes "github.com/filecoin-project/go-state-types/proof"
+
+	"github.com/filecoin-project/go-state-types/builtin"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -13,10 +18,8 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	minerActor "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
-	proof3 "github.com/filecoin-project/specs-actors/v3/actors/runtime/proof"
 	"github.com/stretchr/testify/require"
 )
 
@@ -140,7 +143,7 @@ func TestWindowPostDispute(t *testing.T) {
 
 	// OBJECTION! The good miner files a DISPUTE!!!!
 	{
-		params := &minerActor.DisputeWindowedPoStParams{
+		params := &minertypes.DisputeWindowedPoStParams{
 			Deadline:  evilSectorLoc.Deadline,
 			PoStIndex: 0,
 		}
@@ -150,7 +153,7 @@ func TestWindowPostDispute(t *testing.T) {
 
 		msg := &types.Message{
 			To:     evilMinerAddr,
-			Method: minerActor.Methods.DisputeWindowedPoSt,
+			Method: builtin.MethodsMiner.DisputeWindowedPoSt,
 			Params: enc,
 			Value:  types.NewInt(0),
 			From:   defaultFrom,
@@ -182,8 +185,8 @@ func TestWindowPostDispute(t *testing.T) {
 		minerInfo, err := client.StateMinerInfo(ctx, evilMinerAddr, types.EmptyTSK)
 		require.NoError(t, err)
 
-		params := &minerActor.DeclareFaultsRecoveredParams{
-			Recoveries: []minerActor.RecoveryDeclaration{{
+		params := &minertypes.DeclareFaultsRecoveredParams{
+			Recoveries: []minertypes.RecoveryDeclaration{{
 				Deadline:  evilSectorLoc.Deadline,
 				Partition: evilSectorLoc.Partition,
 				Sectors:   bitfield.NewFromSet([]uint64{uint64(evilSectorNo)}),
@@ -195,7 +198,7 @@ func TestWindowPostDispute(t *testing.T) {
 
 		msg := &types.Message{
 			To:     evilMinerAddr,
-			Method: minerActor.Methods.DeclareFaultsRecovered,
+			Method: builtin.MethodsMiner.DeclareFaultsRecovered,
 			Params: enc,
 			Value:  types.FromFil(30), // repay debt.
 			From:   minerInfo.Owner,
@@ -310,7 +313,7 @@ waitForProof:
 
 	// Try to object to the proof. This should fail.
 	{
-		params := &minerActor.DisputeWindowedPoStParams{
+		params := &minertypes.DisputeWindowedPoStParams{
 			Deadline:  targetDeadline,
 			PoStIndex: 0,
 		}
@@ -320,7 +323,7 @@ waitForProof:
 
 		msg := &types.Message{
 			To:     maddr,
-			Method: minerActor.Methods.DisputeWindowedPoSt,
+			Method: builtin.MethodsMiner.DisputeWindowedPoSt,
 			Params: enc,
 			Value:  types.NewInt(0),
 			From:   defaultFrom,
@@ -356,12 +359,12 @@ func submitBadProof(
 	if err != nil {
 		return err
 	}
-	params := &minerActor.SubmitWindowedPoStParams{
+	params := &minertypes.SubmitWindowedPoStParams{
 		ChainCommitEpoch: commEpoch,
 		ChainCommitRand:  commRand,
 		Deadline:         dlIdx,
-		Partitions:       []minerActor.PoStPartition{{Index: partIdx}},
-		Proofs: []proof3.PoStProof{{
+		Partitions:       []minertypes.PoStPartition{{Index: partIdx}},
+		Proofs: []prooftypes.PoStProof{{
 			PoStProof:  minerInfo.WindowPoStProofType,
 			ProofBytes: []byte("I'm soooo very evil."),
 		}},
@@ -374,7 +377,7 @@ func submitBadProof(
 
 	msg := &types.Message{
 		To:     maddr,
-		Method: minerActor.Methods.SubmitWindowedPoSt,
+		Method: builtin.MethodsMiner.SubmitWindowedPoSt,
 		Params: enc,
 		Value:  types.NewInt(0),
 		From:   owner,

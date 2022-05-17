@@ -3,10 +3,12 @@ package genesis
 import (
 	"encoding/json"
 
+	"github.com/filecoin-project/lotus/chain/wallet"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/network"
-	market8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/market"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 )
@@ -19,11 +21,12 @@ const (
 )
 
 type PreSeal struct {
-	CommR     cid.Cid
-	CommD     cid.Cid
-	SectorID  abi.SectorNumber
-	Deal      market8.DealProposal
-	ProofType abi.RegisteredSealProof
+	CommR         cid.Cid
+	CommD         cid.Cid
+	SectorID      abi.SectorNumber
+	Deal          market8.DealProposal
+	DealClientKey *wallet.Key
+	ProofType     abi.RegisteredSealProof
 }
 
 type Miner struct {

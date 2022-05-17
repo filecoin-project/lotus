@@ -7,7 +7,8 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 )
 
 func TestNextDeadline(t *testing.T) {
@@ -22,14 +23,14 @@ func TestNextDeadline(t *testing.T) {
 	require.EqualValues(t, 0, di.Open)
 	require.EqualValues(t, 60, di.Close)
 
-	for i := 1; i < 1+int(miner.WPoStPeriodDeadlines)*2; i++ {
+	for i := 1; i < 1+int(minertypes.WPoStPeriodDeadlines)*2; i++ {
 		//stm: @WDPOST_NEXT_DEADLINE_001
 		di = nextDeadline(di)
-		deadlineIdx = i % int(miner.WPoStPeriodDeadlines)
-		expPeriodStart := int(miner.WPoStProvingPeriod) * (i / int(miner.WPoStPeriodDeadlines))
-		expOpen := expPeriodStart + deadlineIdx*int(miner.WPoStChallengeWindow)
-		expClose := expOpen + int(miner.WPoStChallengeWindow)
-		expChallenge := expOpen - int(miner.WPoStChallengeLookback)
+		deadlineIdx = i % int(minertypes.WPoStPeriodDeadlines)
+		expPeriodStart := int(minertypes.WPoStProvingPeriod) * (i / int(minertypes.WPoStPeriodDeadlines))
+		expOpen := expPeriodStart + deadlineIdx*int(minertypes.WPoStChallengeWindow)
+		expClose := expOpen + int(minertypes.WPoStChallengeWindow)
+		expChallenge := expOpen - int(minertypes.WPoStChallengeLookback)
 		//fmt.Printf("%d: %d@%d %d-%d (%d)\n", i, expPeriodStart, deadlineIdx, expOpen, expClose, expChallenge)
 		require.EqualValues(t, deadlineIdx, di.Index)
 		require.EqualValues(t, expPeriodStart, di.PeriodStart)

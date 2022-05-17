@@ -11,10 +11,10 @@ import (
 	address "github.com/filecoin-project/go-address"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
+	miner "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	network "github.com/filecoin-project/go-state-types/network"
-	miner "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	api "github.com/filecoin-project/lotus/api"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	gomock "github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"
 )
@@ -104,10 +104,10 @@ func (mr *MockCommitBatcherApiMockRecorder) StateMinerAvailableBalance(arg0, arg
 }
 
 // StateMinerInfo mocks base method.
-func (m *MockCommitBatcherApi) StateMinerInfo(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (miner.MinerInfo, error) {
+func (m *MockCommitBatcherApi) StateMinerInfo(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (api.MinerInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerInfo", arg0, arg1, arg2)
-	ret0, _ := ret[0].(miner.MinerInfo)
+	ret0, _ := ret[0].(api.MinerInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -119,7 +119,7 @@ func (mr *MockCommitBatcherApiMockRecorder) StateMinerInfo(arg0, arg1, arg2 inte
 }
 
 // StateMinerInitialPledgeCollateral mocks base method.
-func (m *MockCommitBatcherApi) StateMinerInitialPledgeCollateral(arg0 context.Context, arg1 address.Address, arg2 miner0.SectorPreCommitInfo, arg3 sealing.TipSetToken) (big.Int, error) {
+func (m *MockCommitBatcherApi) StateMinerInitialPledgeCollateral(arg0 context.Context, arg1 address.Address, arg2 miner.SectorPreCommitInfo, arg3 sealing.TipSetToken) (big.Int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerInitialPledgeCollateral", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(big.Int)

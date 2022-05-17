@@ -4,7 +4,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/actors"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -23,47 +22,12 @@ import (
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
-	builtin8 "github.com/filecoin-project/specs-actors/v8/actors/builtin"
+	builtin8 "github.com/filecoin-project/go-state-types/builtin"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 )
-
-func init() {
-
-	builtin.RegisterActorState(builtin0.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load0(store, root)
-	})
-
-	builtin.RegisterActorState(builtin2.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load2(store, root)
-	})
-
-	builtin.RegisterActorState(builtin3.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load3(store, root)
-	})
-
-	builtin.RegisterActorState(builtin4.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load4(store, root)
-	})
-
-	builtin.RegisterActorState(builtin5.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load5(store, root)
-	})
-
-	builtin.RegisterActorState(builtin6.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load6(store, root)
-	})
-
-	builtin.RegisterActorState(builtin7.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load7(store, root)
-	})
-
-	builtin.RegisterActorState(builtin8.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load8(store, root)
-	})
-}
 
 var (
 	Address = builtin8.RewardActorAddr
@@ -72,38 +36,15 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-		if name != "reward" {
+		if name != actors.RewardKey {
 			return nil, xerrors.Errorf("actor code is not reward: %s", name)
 		}
 
 		switch av {
 
-		case actors.Version0:
-			return load0(store, act.Head)
-
-		case actors.Version2:
-			return load2(store, act.Head)
-
-		case actors.Version3:
-			return load3(store, act.Head)
-
-		case actors.Version4:
-			return load4(store, act.Head)
-
-		case actors.Version5:
-			return load5(store, act.Head)
-
-		case actors.Version6:
-			return load6(store, act.Head)
-
-		case actors.Version7:
-			return load7(store, act.Head)
-
 		case actors.Version8:
 			return load8(store, act.Head)
 
-		default:
-			return nil, xerrors.Errorf("unknown actor version: %d", av)
 		}
 	}
 
@@ -130,10 +71,8 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	case builtin7.RewardActorCodeID:
 		return load7(store, act.Head)
 
-	case builtin8.RewardActorCodeID:
-		return load8(store, act.Head)
-
 	}
+
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
@@ -166,42 +105,6 @@ func MakeState(store adt.Store, av actors.Version, currRealizedPower abi.Storage
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
-}
-
-func GetActorCodeID(av actors.Version) (cid.Cid, error) {
-	if c, ok := actors.GetActorCodeID(av, "reward"); ok {
-		return c, nil
-	}
-
-	switch av {
-
-	case actors.Version0:
-		return builtin0.RewardActorCodeID, nil
-
-	case actors.Version2:
-		return builtin2.RewardActorCodeID, nil
-
-	case actors.Version3:
-		return builtin3.RewardActorCodeID, nil
-
-	case actors.Version4:
-		return builtin4.RewardActorCodeID, nil
-
-	case actors.Version5:
-		return builtin5.RewardActorCodeID, nil
-
-	case actors.Version6:
-		return builtin6.RewardActorCodeID, nil
-
-	case actors.Version7:
-		return builtin7.RewardActorCodeID, nil
-
-	case actors.Version8:
-		return builtin8.RewardActorCodeID, nil
-
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
 
 type State interface {

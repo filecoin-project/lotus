@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	market8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/market"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 
 	bstore "github.com/ipfs/go-ipfs-blockstore"
 	format "github.com/ipfs/go-ipld-format"

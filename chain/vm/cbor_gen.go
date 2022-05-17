@@ -26,19 +26,20 @@ func (t *FvmExecutionTrace) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write(lengthBufFvmExecutionTrace); err != nil {
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write(lengthBufFvmExecutionTrace); err != nil {
 		return err
 	}
 
-	scratch := make([]byte, 9)
-
 	// t.Msg (types.Message) (struct)
-	if err := t.Msg.MarshalCBOR(w); err != nil {
+	if err := t.Msg.MarshalCBOR(cw); err != nil {
 		return err
 	}
 
 	// t.MsgRct (types.MessageReceipt) (struct)
-	if err := t.MsgRct.MarshalCBOR(w); err != nil {
+	if err := t.MsgRct.MarshalCBOR(cw); err != nil {
 		return err
 	}
 
@@ -47,7 +48,7 @@ func (t *FvmExecutionTrace) MarshalCBOR(w io.Writer) error {
 		return xerrors.Errorf("Value in field t.Error was too long")
 	}
 
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len(t.Error))); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len(t.Error))); err != nil {
 		return err
 	}
 	if _, err := io.WriteString(w, string(t.Error)); err != nil {
@@ -59,27 +60,32 @@ func (t *FvmExecutionTrace) MarshalCBOR(w io.Writer) error {
 		return xerrors.Errorf("Slice value in field t.Subcalls was too long")
 	}
 
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajArray, uint64(len(t.Subcalls))); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajArray, uint64(len(t.Subcalls))); err != nil {
 		return err
 	}
 	for _, v := range t.Subcalls {
-		if err := v.MarshalCBOR(w); err != nil {
+		if err := v.MarshalCBOR(cw); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (t *FvmExecutionTrace) UnmarshalCBOR(r io.Reader) error {
+func (t *FvmExecutionTrace) UnmarshalCBOR(r io.Reader) (err error) {
 	*t = FvmExecutionTrace{}
 
-	br := cbg.GetPeeker(r)
-	scratch := make([]byte, 8)
+	cr := cbg.NewCborReader(r)
 
-	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
+	maj, extra, err := cr.ReadHeader()
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
 	if maj != cbg.MajArray {
 		return fmt.Errorf("cbor input should be of type array")
 	}
@@ -92,16 +98,16 @@ func (t *FvmExecutionTrace) UnmarshalCBOR(r io.Reader) error {
 
 	{
 
-		b, err := br.ReadByte()
+		b, err := cr.ReadByte()
 		if err != nil {
 			return err
 		}
 		if b != cbg.CborNull[0] {
-			if err := br.UnreadByte(); err != nil {
+			if err := cr.UnreadByte(); err != nil {
 				return err
 			}
 			t.Msg = new(types.Message)
-			if err := t.Msg.UnmarshalCBOR(br); err != nil {
+			if err := t.Msg.UnmarshalCBOR(cr); err != nil {
 				return xerrors.Errorf("unmarshaling t.Msg pointer: %w", err)
 			}
 		}
@@ -111,16 +117,16 @@ func (t *FvmExecutionTrace) UnmarshalCBOR(r io.Reader) error {
 
 	{
 
-		b, err := br.ReadByte()
+		b, err := cr.ReadByte()
 		if err != nil {
 			return err
 		}
 		if b != cbg.CborNull[0] {
-			if err := br.UnreadByte(); err != nil {
+			if err := cr.UnreadByte(); err != nil {
 				return err
 			}
 			t.MsgRct = new(types.MessageReceipt)
-			if err := t.MsgRct.UnmarshalCBOR(br); err != nil {
+			if err := t.MsgRct.UnmarshalCBOR(cr); err != nil {
 				return xerrors.Errorf("unmarshaling t.MsgRct pointer: %w", err)
 			}
 		}
@@ -129,7 +135,7 @@ func (t *FvmExecutionTrace) UnmarshalCBOR(r io.Reader) error {
 	// t.Error (string) (string)
 
 	{
-		sval, err := cbg.ReadStringBuf(br, scratch)
+		sval, err := cbg.ReadString(cr)
 		if err != nil {
 			return err
 		}
@@ -138,7 +144,7 @@ func (t *FvmExecutionTrace) UnmarshalCBOR(r io.Reader) error {
 	}
 	// t.Subcalls ([]vm.FvmExecutionTrace) (slice)
 
-	maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
+	maj, extra, err = cr.ReadHeader()
 	if err != nil {
 		return err
 	}
@@ -158,7 +164,7 @@ func (t *FvmExecutionTrace) UnmarshalCBOR(r io.Reader) error {
 	for i := 0; i < int(extra); i++ {
 
 		var v FvmExecutionTrace
-		if err := v.UnmarshalCBOR(br); err != nil {
+		if err := v.UnmarshalCBOR(cr); err != nil {
 			return err
 		}
 

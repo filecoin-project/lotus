@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	prooftypes "github.com/filecoin-project/go-state-types/proof"
+
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 
@@ -21,9 +23,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
-	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -559,8 +558,8 @@ func (wpp badWpp) GenerateCandidates(context.Context, abi.PoStRandomness, uint64
 	return []uint64{1}, nil
 }
 
-func (wpp badWpp) ComputeProof(context.Context, []proof7.ExtendedSectorInfo, abi.PoStRandomness, abi.ChainEpoch, network.Version) ([]proof2.PoStProof, error) {
-	return []proof2.PoStProof{
+func (wpp badWpp) ComputeProof(context.Context, []prooftypes.ExtendedSectorInfo, abi.PoStRandomness, abi.ChainEpoch, network.Version) ([]prooftypes.PoStProof, error) {
+	return []prooftypes.PoStProof{
 		{
 			PoStProof:  abi.RegisteredPoStProof_StackedDrgWinning2KiBV1,
 			ProofBytes: []byte("evil"),

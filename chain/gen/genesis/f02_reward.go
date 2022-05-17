@@ -3,6 +3,8 @@ package genesis
 import (
 	"context"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
@@ -28,7 +30,7 @@ func SetupRewardActor(ctx context.Context, bs bstore.Blockstore, qaPower big.Int
 		return nil, err
 	}
 
-	actcid, err := reward.GetActorCodeID(av)
+	actcid, err := builtin.GetRewardActorCodeID(av)
 	if err != nil {
 		return nil, err
 	}

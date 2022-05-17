@@ -4,6 +4,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 	init7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/init"
 	paych7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/paych"
@@ -40,10 +42,10 @@ func (m message7) Create(to address.Address, initialAmount abi.TokenAmount) (*ty
 	}, nil
 }
 
-func (m message7) Update(paych address.Address, sv *SignedVoucher, secret []byte) (*types.Message, error) {
+func (m message7) Update(paych address.Address, sv *paychtypes.SignedVoucher, secret []byte) (*types.Message, error) {
 	params, aerr := actors.SerializeParams(&paych7.UpdateChannelStateParams{
 
-		Sv: toV7SignedVoucher(*sv),
+		Sv: *sv,
 
 		Secret: secret,
 	})

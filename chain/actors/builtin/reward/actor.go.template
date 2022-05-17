@@ -3,26 +3,22 @@ package reward
 import (
 	"github.com/filecoin-project/go-state-types/abi"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
-	"github.com/ipfs/go-cid"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/cbor"
 {{range .versions}}
-	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+    {{if (le . 7)}}
+	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
+	{{else}}
+        builtin{{.}} "github.com/filecoin-project/go-state-types/builtin"
+    {{end}}
 {{end}}
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 )
-
-func init() {
-{{range .versions}}
-	builtin.RegisterActorState(builtin{{.}}.RewardActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load{{.}}(store, root)
-	})
-{{end}}}
 
 var (
 	Address = builtin{{.latestVersion}}.RewardActorAddr
@@ -31,26 +27,29 @@ var (
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
 	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
-       if name != "reward" {
+       if name != actors.RewardKey {
           return nil, xerrors.Errorf("actor code is not reward: %s", name)
        }
 
        switch av {
             {{range .versions}}
-			case actors.Version{{.}}:
-                 return load{{.}}(store, act.Head)
+                {{if (ge . 8)}}
+                case actors.Version{{.}}:
+                     return load{{.}}(store, act.Head)
+                 {{end}}
             {{end}}
-            default:
-                return nil, xerrors.Errorf("unknown actor version: %d", av)
        }
 	}
 
 	switch act.Code {
 {{range .versions}}
-	case builtin{{.}}.RewardActorCodeID:
-		return load{{.}}(store, act.Head)
+    {{if (le . 7)}}
+        case builtin{{.}}.RewardActorCodeID:
+            return load{{.}}(store, act.Head)
+    {{end}}
 {{end}}
 	}
+
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
@@ -62,21 +61,6 @@ func MakeState(store adt.Store, av actors.Version, currRealizedPower abi.Storage
 {{end}}
 }
 	return nil, xerrors.Errorf("unknown actor version %d", av)
-}
-
-func GetActorCodeID(av actors.Version) (cid.Cid, error) {
-    if c, ok := actors.GetActorCodeID(av, "reward"); ok {
-       return c, nil
-    }
-
-	switch av {
-{{range .versions}}
-	case actors.Version{{.}}:
-		return builtin{{.}}.RewardActorCodeID, nil
-{{end}}
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
 
 type State interface {

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/filecoin-project/go-address"
+
 	"github.com/libp2p/go-libp2p-core/network"
 
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -285,4 +287,18 @@ type ExportRef struct {
 
 	FromLocalCAR string // if specified, get data from a local CARv2 file.
 	DealID       retrievalmarket.DealID
+}
+
+type MinerInfo struct {
+	Owner                      address.Address   // Must be an ID-address.
+	Worker                     address.Address   // Must be an ID-address.
+	NewWorker                  address.Address   // Must be an ID-address.
+	ControlAddresses           []address.Address // Must be an ID-addresses.
+	WorkerChangeEpoch          abi.ChainEpoch
+	PeerId                     *peer.ID
+	Multiaddrs                 []abi.Multiaddrs
+	WindowPoStProofType        abi.RegisteredPoStProof
+	SectorSize                 abi.SectorSize
+	WindowPoStPartitionSectors uint64
+	ConsensusFaultElapsed      abi.ChainEpoch
 }

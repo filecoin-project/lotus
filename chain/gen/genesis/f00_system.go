@@ -3,15 +3,18 @@ package genesis
 import (
 	"context"
 
+	systemtypes "github.com/filecoin-project/go-state-types/builtin/v8/system"
+
+	"github.com/filecoin-project/go-state-types/manifest"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/system"
-
-	"github.com/filecoin-project/specs-actors/v8/actors/builtin/manifest"
-	system8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/system"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 
@@ -38,7 +41,7 @@ func SetupSystemActor(ctx context.Context, bs bstore.Blockstore, av actors.Versi
 			return nil, xerrors.Errorf("loading manifest for actors version %d: %w", av, err)
 		}
 
-		st8 := st.GetState().(*system8.State)
+		st8 := st.GetState().(*systemtypes.State)
 		st8.BuiltinActors = mf.Data
 	}
 
@@ -47,7 +50,7 @@ func SetupSystemActor(ctx context.Context, bs bstore.Blockstore, av actors.Versi
 		return nil, err
 	}
 
-	actcid, err := system.GetActorCodeID(av)
+	actcid, err := builtin.GetSystemActorCodeID(av)
 	if err != nil {
 		return nil, err
 	}

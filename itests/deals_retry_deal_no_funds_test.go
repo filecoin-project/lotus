@@ -261,7 +261,7 @@ func TestDealsRetryLackOfFunds_belowLimit(t *testing.T) {
 	dp.EpochPrice = abi.NewTokenAmount(62500000) // minimum asking price.
 	deal := dh.StartDeal(ctx, dp)
 
-	err = dh.ExpectDealFailure(ctx, deal, "actor balance less than needed")
+	err = dh.ExpectDealFailure(ctx, deal, "Actor balance less than needed")
 	if err != nil {
 		t.Fatal(err)
 	}

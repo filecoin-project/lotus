@@ -12,8 +12,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 
+{{if (le .v 7)}}
 	market{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/market"
 	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
+{{else}}
+	market{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}market"
+	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
+{{end}}
 )
 
 var _ State = (*state{{.v}})(nil)
