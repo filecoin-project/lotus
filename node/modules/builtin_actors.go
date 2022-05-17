@@ -2,6 +2,7 @@ package modules
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"sync"
 
@@ -69,6 +70,18 @@ func LoadBuiltinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 		// we haven't recorded it in the datastore, so we need to load it
 		var mfCid cid.Cid
 		switch {
+		case bd.EnvVar != "":
+			// this is a local bundle, specified by an env var to load from the filesystem
+			path := os.Getenv(bd.EnvVar)
+			if path == "" {
+				return result, xerrors.Errorf("bundle envvar is empty: %s", bd.EnvVar)
+			}
+
+			mfCid, err = bundle.LoadBundle(ctx, bs, path, av)
+			if err != nil {
+				return result, err
+			}
+
 		case bd.Path != "":
 			// this is a local bundle, load it directly from the filessystem
 			mfCid, err = bundle.LoadBundle(ctx, bs, bd.Path, av)
@@ -76,9 +89,16 @@ func LoadBuiltinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 				return result, err
 			}
 
+		case bd.URL != "":
+			// fetch it from the specified URL
+			mfCid, err = bundle.FetchAndLoadBundleFromURL(ctx, r.Path(), bs, av, bd.Release, netw, bd.URL, bd.Checksum)
+			if err != nil {
+				return result, err
+			}
+
 		case bd.Release != "":
 			// fetch it and add it to the blockstore
-			mfCid, err = bundle.FetchAndLoadBundle(ctx, r.Path(), bs, av, bd.Release, netw)
+			mfCid, err = bundle.FetchAndLoadBundleFromRelease(ctx, r.Path(), bs, av, bd.Release, netw)
 			if err != nil {
 				return result, err
 			}
@@ -135,12 +155,12 @@ func LoadBuiltinActorsTesting(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtype
 
 		case bd.Release != "":
 			const basePath = "/tmp/lotus-testing"
-			if _, err := bundle.FetchAndLoadBundle(ctx, basePath, bs, av, bd.Release, netw); err != nil {
+			if _, err := bundle.FetchAndLoadBundleFromRelease(ctx, basePath, bs, av, bd.Release, netw); err != nil {
 				return result, xerrors.Errorf("error loading testing bundle for builtin-actors version %d/%s: %w", av, netw, err)
 			}
 
 		default:
-			return result, xerrors.Errorf("no path or release specified for version %d bundle", av)
+			return result, xerrors.Errorf("no path or release specified for version %d testing bundle", av)
 		}
 	}
 

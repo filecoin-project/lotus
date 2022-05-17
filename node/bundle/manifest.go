@@ -17,13 +17,27 @@ import (
 	"github.com/mitchellh/go-homedir"
 )
 
-func FetchAndLoadBundle(ctx context.Context, basePath string, bs blockstore.Blockstore, av actors.Version, rel, netw string) (cid.Cid, error) {
+func FetchAndLoadBundleFromRelease(ctx context.Context, basePath string, bs blockstore.Blockstore, av actors.Version, rel, netw string) (cid.Cid, error) {
 	fetcher, err := NewBundleFetcher(basePath)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("error creating fetcher for builtin-actors version %d: %w", av, err)
 	}
 
-	path, err := fetcher.Fetch(int(av), rel, netw)
+	path, err := fetcher.FetchFromRelease(int(av), rel, netw)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("error fetching bundle for builtin-actors version %d: %w", av, err)
+	}
+
+	return LoadBundle(ctx, bs, path, av)
+}
+
+func FetchAndLoadBundleFromURL(ctx context.Context, basePath string, bs blockstore.Blockstore, av actors.Version, rel, netw, url, cksum string) (cid.Cid, error) {
+	fetcher, err := NewBundleFetcher(basePath)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("error creating fetcher for builtin-actors version %d: %w", av, err)
+	}
+
+	path, err := fetcher.FetchFromURL(int(av), rel, netw, url, cksum)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("error fetching bundle for builtin-actors version %d: %w", av, err)
 	}
@@ -72,12 +86,30 @@ func FetchAndLoadBundles(ctx context.Context, bs blockstore.Blockstore, bar map[
 	}
 
 	for av, bd := range bar {
-		if bd.Path != "" {
+		switch {
+		case bd.EnvVar != "":
+			// this is a local bundle, specified by an env var to load from the filesystem
+			path := os.Getenv(bd.EnvVar)
+			if path == "" {
+				return xerrors.Errorf("bundle envvar is empty: %s", bd.EnvVar)
+			}
+
+			if _, err := LoadBundle(ctx, bs, path, av); err != nil {
+				return err
+			}
+
+		case bd.Path != "":
 			if _, err := LoadBundle(ctx, bs, bd.Path, av); err != nil {
 				return err
 			}
-		} else {
-			if _, err := FetchAndLoadBundle(ctx, path, bs, av, bd.Release, netw); err != nil {
+
+		case bd.URL != "":
+			if _, err := FetchAndLoadBundleFromURL(ctx, path, bs, av, bd.Release, netw, bd.URL, bd.Checksum); err != nil {
+				return err
+			}
+
+		case bd.Release != "":
+			if _, err := FetchAndLoadBundleFromRelease(ctx, path, bs, av, bd.Release, netw); err != nil {
 				return err
 			}
 		}

@@ -33,7 +33,7 @@ func NewBundleFetcher(basepath string) (*BundleFetcher, error) {
 	return &BundleFetcher{path: path}, nil
 }
 
-func (b *BundleFetcher) Fetch(version int, release, netw string) (path string, err error) {
+func (b *BundleFetcher) FetchFromRelease(version int, release, netw string) (path string, err error) {
 	bundleName := fmt.Sprintf("builtin-actors-%s", netw)
 	bundleFile := fmt.Sprintf("%s.car", bundleName)
 	bundleHash := fmt.Sprintf("%s.sha256", bundleName)
@@ -46,7 +46,7 @@ func (b *BundleFetcher) Fetch(version int, release, netw string) (path string, e
 	// check if it exists; if it does, check the hash
 	bundleFilePath := filepath.Join(bundleBasePath, bundleFile)
 	if _, err := os.Stat(bundleFilePath); err == nil {
-		err := b.check(bundleBasePath, bundleFile, bundleHash)
+		err := b.checkRelease(bundleBasePath, bundleFile, bundleHash)
 		if err == nil {
 			return bundleFilePath, nil
 		}
@@ -55,12 +55,46 @@ func (b *BundleFetcher) Fetch(version int, release, netw string) (path string, e
 	}
 
 	log.Infof("fetching bundle %s", bundleFile)
-	if err := b.fetch(release, bundleBasePath, bundleFile, bundleHash); err != nil {
+	if err := b.fetchFromRelease(release, bundleBasePath, bundleFile, bundleHash); err != nil {
 		log.Errorf("error fetching bundle %s: %s", bundleName, err)
 		return "", xerrors.Errorf("error fetching bundle: %w", err)
 	}
 
-	if err := b.check(bundleBasePath, bundleFile, bundleHash); err != nil {
+	if err := b.checkRelease(bundleBasePath, bundleFile, bundleHash); err != nil {
+		log.Errorf("error checking bundle %s: %s", bundleName, err)
+		return "", xerrors.Errorf("error checking bundle: %s", err)
+	}
+
+	return bundleFilePath, nil
+}
+
+func (b *BundleFetcher) FetchFromURL(version int, release, netw, url, cksum string) (path string, err error) {
+	bundleName := fmt.Sprintf("builtin-actors-%s", netw)
+	bundleFile := fmt.Sprintf("%s.car", bundleName)
+	bundleBasePath := filepath.Join(b.path, fmt.Sprintf("v%d", version), release)
+
+	if err := os.MkdirAll(bundleBasePath, 0755); err != nil {
+		return "", xerrors.Errorf("error making bundle directory %s: %w", bundleBasePath, err)
+	}
+
+	// check if it exists; if it does, check the hash
+	bundleFilePath := filepath.Join(bundleBasePath, bundleFile)
+	if _, err := os.Stat(bundleFilePath); err == nil {
+		err := b.checkHash(bundleBasePath, bundleFile, cksum)
+		if err == nil {
+			return bundleFilePath, nil
+		}
+
+		log.Warnf("invalid bundle %s: %s; refetching", bundleName, err)
+	}
+
+	log.Infof("fetching bundle %s", bundleFile)
+	if err := b.fetchFromURL(bundleBasePath, bundleFile, url); err != nil {
+		log.Errorf("error fetching bundle %s: %s", bundleName, err)
+		return "", xerrors.Errorf("error fetching bundle: %w", err)
+	}
+
+	if err := b.checkHash(bundleBasePath, bundleFile, cksum); err != nil {
 		log.Errorf("error checking bundle %s: %s", bundleName, err)
 		return "", xerrors.Errorf("error checking bundle: %s", err)
 	}
@@ -105,7 +139,7 @@ func (b *BundleFetcher) fetchURL(url, path string) error {
 	return xerrors.Errorf("all attempts to fetch %s failed", url)
 }
 
-func (b *BundleFetcher) fetch(release, bundleBasePath, bundleFile, bundleHash string) error {
+func (b *BundleFetcher) fetchFromRelease(release, bundleBasePath, bundleFile, bundleHash string) error {
 	bundleHashUrl := fmt.Sprintf("https://github.com/filecoin-project/builtin-actors/releases/download/%s/%s",
 		release, bundleHash)
 	bundleHashPath := filepath.Join(bundleBasePath, bundleHash)
@@ -123,7 +157,12 @@ func (b *BundleFetcher) fetch(release, bundleBasePath, bundleFile, bundleHash st
 	return nil
 }
 
-func (b *BundleFetcher) check(bundleBasePath, bundleFile, bundleHash string) error {
+func (b *BundleFetcher) fetchFromURL(bundleBasePath, bundleFile, url string) error {
+	bundleFilePath := filepath.Join(bundleBasePath, bundleFile)
+	return b.fetchURL(url, bundleFilePath)
+}
+
+func (b *BundleFetcher) checkRelease(bundleBasePath, bundleFile, bundleHash string) error {
 	bundleHashPath := filepath.Join(bundleBasePath, bundleHash)
 	f, err := os.Open(bundleHashPath)
 	if err != nil {
@@ -138,13 +177,18 @@ func (b *BundleFetcher) check(bundleBasePath, bundleFile, bundleHash string) err
 
 	parts := strings.Split(string(bs), " ")
 	hashHex := parts[0]
-	expectedDigest, err := hex.DecodeString(hashHex)
+
+	return b.checkHash(bundleBasePath, bundleFile, hashHex)
+}
+
+func (b *BundleFetcher) checkHash(bundleBasePath, bundleFile, cksum string) error {
+	expectedDigest, err := hex.DecodeString(cksum)
 	if err != nil {
-		return xerrors.Errorf("error decoding digest from %s: %w", bundleHashPath, err)
+		return xerrors.Errorf("error decoding digest from %s: %w", cksum, err)
 	}
 
 	bundleFilePath := filepath.Join(bundleBasePath, bundleFile)
-	f, err = os.Open(bundleFilePath)
+	f, err := os.Open(bundleFilePath)
 	if err != nil {
 		return xerrors.Errorf("error opening %s: %w", bundleFilePath, err)
 	}
