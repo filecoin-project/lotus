@@ -68,14 +68,11 @@ func LoadBuiltinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 		}
 
 		// we haven't recorded it in the datastore, so we need to load it
+		envvar := fmt.Sprintf("LOGUS_BUILTIN_ACTORS_V%d_BUNDLE", av)
 		var mfCid cid.Cid
 		switch {
-		case bd.EnvVar != "":
-			// this is a local bundle, specified by an env var to load from the filesystem
-			path := os.Getenv(bd.EnvVar)
-			if path == "" {
-				return result, xerrors.Errorf("bundle envvar is empty: %s", bd.EnvVar)
-			}
+		case os.Getenv(envvar) != "":
+			path := os.Getenv(envvar)
 
 			mfCid, err = bundle.LoadBundle(ctx, bs, path, av)
 			if err != nil {

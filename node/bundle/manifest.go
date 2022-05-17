@@ -2,6 +2,7 @@ package bundle
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"os"
 
@@ -86,13 +87,11 @@ func FetchAndLoadBundles(ctx context.Context, bs blockstore.Blockstore, bar map[
 	}
 
 	for av, bd := range bar {
+		envvar := fmt.Sprintf("LOGUS_BUILTIN_ACTORS_V%d_BUNDLE", av)
 		switch {
-		case bd.EnvVar != "":
+		case os.Getenv(envvar) != "":
 			// this is a local bundle, specified by an env var to load from the filesystem
-			path := os.Getenv(bd.EnvVar)
-			if path == "" {
-				return xerrors.Errorf("bundle envvar is empty: %s", bd.EnvVar)
-			}
+			path := os.Getenv(envvar)
 
 			if _, err := LoadBundle(ctx, bs, path, av); err != nil {
 				return err

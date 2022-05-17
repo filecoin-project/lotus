@@ -34,10 +34,10 @@ development = true
 
 - You can also specify a URL, together with a sha256 checksum to avoid downloading from
   github.
-- You can also specify an EnvVar, to provide the path dynamically at runtime.
+- You can also specify an environment variable (`LOTUS_BUILTIN_ACTORS_VX_BUNDLE`), to provide the path dynamically at runtime.
 
 The precedence for bundle fetching/loading is as folllows:
-- Check the EnvVar; use the bundle specified by it.
+- Check the environment variable `LOTUS_BUILTIN_ACTORS_VX_BUNDLE` for version X bundle; use it if set.
 - Check the Path; use the bundle specified by it.
 - Check the URL; use the bundle specified by it, and verify the checksum which must be present.
 - Otherwise, use the release tag and download from github.

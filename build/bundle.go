@@ -20,8 +20,6 @@ type Bundle struct {
 	Version actors.Version
 	// Release is the release id
 	Release string
-	// EnvVar is the (optional) env var specifying the bundle path; takes precdence over path
-	EnvVar string
 	// Path is the (optional) bundle path; takes precedence over url
 	Path string
 	// URL is the (optional) bundle URL; takes precdence over github release
