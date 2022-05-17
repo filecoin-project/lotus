@@ -8,6 +8,21 @@ import (
 
 var NetworkBundle string
 
+func GetNetworkBundle() string {
+	switch NetworkBundle {
+	case "devnet":
+		return "devnet"
+	case "calibnet", "calibrationnet":
+		return "calibrationnet"
+	case "butterflynet":
+		return "butterflynet"
+	case "interopnet", "caterpillarnet":
+		return "caterpillarnet"
+	default:
+		return "mainnet"
+	}
+}
+
 //go:embed bundles.toml
 var BuiltinActorBundles []byte
 
