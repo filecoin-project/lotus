@@ -87,7 +87,7 @@ func FetchAndLoadBundles(ctx context.Context, bs blockstore.Blockstore, bar map[
 	}
 
 	for av, bd := range bar {
-		envvar := fmt.Sprintf("LOGUS_BUILTIN_ACTORS_V%d_BUNDLE", av)
+		envvar := fmt.Sprintf("LOTUS_BUILTIN_ACTORS_V%d_BUNDLE", av)
 		switch {
 		case os.Getenv(envvar) != "":
 			// this is a local bundle, specified by an env var to load from the filesystem

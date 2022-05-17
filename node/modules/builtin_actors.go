@@ -67,7 +67,7 @@ func LoadBuiltinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 		}
 
 		// we haven't recorded it in the datastore, so we need to load it
-		envvar := fmt.Sprintf("LOGUS_BUILTIN_ACTORS_V%d_BUNDLE", av)
+		envvar := fmt.Sprintf("LOTUS_BUILTIN_ACTORS_V%d_BUNDLE", av)
 		var mfCid cid.Cid
 		switch {
 		case os.Getenv(envvar) != "":
