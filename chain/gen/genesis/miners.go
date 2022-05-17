@@ -238,20 +238,26 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 			for _, preseal := range m.Sectors {
 				preseal.Deal.VerifiedDeal = true
 				preseal.Deal.EndEpoch = minerInfos[i].presealExp
-				buf, err := cborutil.Dump(&preseal.Deal)
-				if err != nil {
-					return cid.Undef, fmt.Errorf("failed to marshal proposal: %w", err)
-				}
-
-				sig, err := sigs.Sign(wallet.ActSigType(preseal.DealClientKey.Type), preseal.DealClientKey.PrivateKey, buf)
-				if err != nil {
-					return cid.Undef, fmt.Errorf("failed to sign proposal: %w", err)
-				}
-
-				params.Deals = append(params.Deals, markettypes.ClientDealProposal{
+				p := markettypes.ClientDealProposal{
 					Proposal:        preseal.Deal,
-					ClientSignature: *sig,
-				})
+					ClientSignature: crypto.Signature{Type: crypto.SigTypeBLS},
+				}
+
+				if av >= actors.Version8 {
+					buf, err := cborutil.Dump(&preseal.Deal)
+					if err != nil {
+						return cid.Undef, fmt.Errorf("failed to marshal proposal: %w", err)
+					}
+
+					sig, err := sigs.Sign(wallet.ActSigType(preseal.DealClientKey.Type), preseal.DealClientKey.PrivateKey, buf)
+					if err != nil {
+						return cid.Undef, fmt.Errorf("failed to sign proposal: %w", err)
+					}
+
+					p.ClientSignature = *sig
+				}
+
+				params.Deals = append(params.Deals, p)
 
 				if len(params.Deals) == cbg.MaxLength {
 					if err := publish(params); err != nil {
