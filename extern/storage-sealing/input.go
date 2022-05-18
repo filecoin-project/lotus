@@ -641,6 +641,21 @@ func (m *Sealing) createSector(ctx context.Context, cfg sealiface.Config, sp abi
 	return sid, err
 }
 
+func (m *Sealing) SectorTryCreateNewSector(ctx context.Context) (abi.SectorNumber, error) {
+	sp, err := m.currentSealProof(ctx)
+	if err != nil {
+		return 0, xerrors.Errorf("failed to get current seal proof: %w", err)
+	}
+
+	cfg, err := m.getConfig()
+	if err != nil {
+		return 0, xerrors.Errorf("getting storage config: %w", err)
+	}
+	sid, err := m.createSector(ctx, cfg, sp)
+
+	return sid, err
+}
+
 func (m *Sealing) tryGetDealSector(ctx context.Context, sp abi.RegisteredSealProof, ef expFn) error {
 	m.startupWait.Wait()
 
@@ -710,7 +725,7 @@ func (m *Sealing) tryGetDealSector(ctx context.Context, sp abi.RegisteredSealPro
 
 func (m *Sealing) StartPacking(sid abi.SectorNumber) error {
 	m.startupWait.Wait()
-
+	println("starting to seal deal sector", "sector", sid, "trigger", "user")
 	log.Infow("starting to seal deal sector", "sector", sid, "trigger", "user")
 	return m.sectors.Send(uint64(sid), SectorStartPacking{})
 }

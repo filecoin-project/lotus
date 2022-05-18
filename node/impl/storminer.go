@@ -410,6 +410,10 @@ func (sm *StorageMinerAPI) SectorMatchPendingPiecesToOpenSectors(ctx context.Con
 	return sm.Miner.SectorMatchPendingPiecesToOpenSectors(ctx)
 }
 
+func (sm *StorageMinerAPI) SectorTryCreateNewSector(ctx context.Context) (abi.SectorNumber, error) {
+	return sm.Miner.SectorTryCreateNewSector(ctx)
+}
+
 func (sm *StorageMinerAPI) ComputeWindowPoSt(ctx context.Context, dlIdx uint64, tsk types.TipSetKey) ([]lminer.SubmitWindowedPoStParams, error) {
 	var ts *types.TipSet
 	var err error
