@@ -150,7 +150,7 @@ type workerResponse struct {
 
 func newScheduler() *Scheduler {
 	return &Scheduler{
-		assigner: &AssignerUtil{},
+		assigner: NewLowestUtilizationAssigner(),
 
 		Workers: map[storiface.WorkerID]*WorkerHandle{},
 
