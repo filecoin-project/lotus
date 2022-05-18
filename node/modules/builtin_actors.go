@@ -29,7 +29,7 @@ func LoadBuiltinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 
 	for av, bd := range build.BuiltinActorReleases {
 		// first check to see if we know this release
-		key := dstore.NewKey(fmt.Sprintf("/builtin-actors/v%d/%s", av, bd.Release))
+		key := dstore.NewKey(fmt.Sprintf("/builtin-actors/v%d/%s/%s", av, bd.Release, netw))
 
 		data, err := ds.Get(ctx, key)
 		switch err {
