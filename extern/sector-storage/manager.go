@@ -62,7 +62,7 @@ type Manager struct {
 	remoteHnd  *stores.FetchHandler
 	index      stores.SectorIndex
 
-	sched            *scheduler
+	sched            *Scheduler
 	windowPoStSched  *poStScheduler
 	winningPoStSched *poStScheduler
 
