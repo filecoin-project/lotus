@@ -1818,7 +1818,7 @@ OPTIONS:
    --tolerance value          when extending v1 or all sectors, don't try to extend sectors by fewer than this number of epochs (default: 20160)
    --expiration-ignore value  when extending v1 or all sectors, skip sectors whose current expiration is less than <ignore> epochs from now (default: 120)
    --expiration-cutoff value  when extending v1 sectors, skip sectors whose current expiration is more than <cutoff> epochs from now (infinity if unspecified) (default: 0)
-   --max-fee value            use up to this amount of FIL for one message, pass this flag to avoid message congestion (default: "1")
+   --max-fee value            use up to this amount of FIL for one message, pass this flag to avoid message congestion (default: "10")
    --help, -h                 show help (default: false)
    
 ```

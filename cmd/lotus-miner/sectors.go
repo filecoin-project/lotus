@@ -25,6 +25,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -1145,7 +1146,7 @@ var sectorsExtendCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:     "max-fee",
-			Value:    "1",
+			Value:    "10",
 			Usage:    "use up to this amount of FIL for one message, pass this flag to avoid message congestion",
 			Required: false,
 		},
@@ -1372,6 +1373,18 @@ var sectorsExtendCmd = &cli.Command{
 			}
 
 			fmt.Println(smsg.Cid())
+
+			// wait for it to get mined into a block
+			wait, err := nodeAPI.StateWaitMsg(ctx, smsg.Cid(), build.MessageConfidence)
+			if err != nil {
+				return err
+			}
+
+			// check it executed successfully
+			if wait.Receipt.ExitCode != 0 {
+				fmt.Println("sectors extend failed!")
+				return err
+			}
 		}
 
 		return nil
