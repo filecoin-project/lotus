@@ -56,6 +56,7 @@ var sectorsCmd = &cli.Command{
 		sectorsSnapAbortCmd,
 		sectorsStartSealCmd,
 		sectorsSealDelayCmd,
+		sectorsNewSector,
 		sectorsCapacityCollateralCmd,
 		sectorsBatching,
 		sectorsRefreshPieceMatchingCmd,
@@ -1587,6 +1588,25 @@ var sectorsStartSealCmd = &cli.Command{
 		}
 
 		return nodeApi.SectorStartSealing(ctx, abi.SectorNumber(id))
+	},
+}
+
+var sectorsNewSector = &cli.Command{
+	Name:  "new-sector",
+	Usage: "Manually create a new sector",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		sector, err := nodeApi.SectorTryCreateNewSector(ctx) //.SectorStartSealing(ctx, abi.SectorNumber(id))
+		println("new sector creation is in progress %s", sector)
+		println("errro: %s", err)
+
+		return err
 	},
 }
 

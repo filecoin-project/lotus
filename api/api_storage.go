@@ -65,6 +65,10 @@ type StorageMiner interface {
 	SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storiface.Data, d PieceDealInfo) (SectorOffset, error) //perm:admin
 
 	SectorsUnsealPiece(ctx context.Context, sector storiface.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error //perm:admin
+	// Add a new unassigned sector
+	SectorTryCreateNewSector(ctx context.Context) (abi.SectorNumber, error) //perm:admin
+
+	SectorsUnsealPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error //perm:admin
 
 	// List all staged sectors
 	SectorsList(context.Context) ([]abi.SectorNumber, error) //perm:read

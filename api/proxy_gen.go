@@ -836,6 +836,8 @@ type StorageMinerStruct struct {
 
 		SectorTerminatePending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
 
+		SectorTryCreateNewSector func(p0 context.Context) (abi.SectorNumber, error) `perm:"admin"`
+
 		SectorsList func(p0 context.Context) ([]abi.SectorNumber, error) `perm:"read"`
 
 		SectorsListInStates func(p0 context.Context, p1 []SectorState) ([]abi.SectorNumber, error) `perm:"read"`
@@ -4940,6 +4942,17 @@ func (s *StorageMinerStruct) SectorTerminatePending(p0 context.Context) ([]abi.S
 
 func (s *StorageMinerStub) SectorTerminatePending(p0 context.Context) ([]abi.SectorID, error) {
 	return *new([]abi.SectorID), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorTryCreateNewSector(p0 context.Context) (abi.SectorNumber, error) {
+	if s.Internal.SectorTryCreateNewSector == nil {
+		return *new(abi.SectorNumber), ErrNotSupported
+	}
+	return s.Internal.SectorTryCreateNewSector(p0)
+}
+
+func (s *StorageMinerStub) SectorTryCreateNewSector(p0 context.Context) (abi.SectorNumber, error) {
+	return *new(abi.SectorNumber), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorsList(p0 context.Context) ([]abi.SectorNumber, error) {
