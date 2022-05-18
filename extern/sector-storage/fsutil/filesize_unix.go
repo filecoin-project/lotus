@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"syscall"
+	"time"
 
 	"golang.org/x/xerrors"
 )
@@ -15,6 +16,8 @@ type SizeInfo struct {
 // FileSize returns bytes used by a file or directory on disk
 // NOTE: We care about the allocated bytes, not file or directory size
 func FileSize(path string) (SizeInfo, error) {
+	start := time.Now()
+
 	var size int64
 	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -32,6 +35,11 @@ func FileSize(path string) (SizeInfo, error) {
 		}
 		return err
 	})
+
+	if time.Now().Sub(start) >= 3*time.Second {
+		log.Warnw("very slow file size check", "took", time.Now().Sub(start), "path", path)
+	}
+
 	if err != nil {
 		if os.IsNotExist(err) {
 			return SizeInfo{}, os.ErrNotExist
