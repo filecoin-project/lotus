@@ -1144,6 +1144,12 @@ var sectorsExtendCmd = &cli.Command{
 			Usage:    "when extending v1 sectors, skip sectors whose current expiration is more than <cutoff> epochs from now (infinity if unspecified)",
 			Required: false,
 		},
+		&cli.Float64Flag{
+			Name:     "max-base-fee",
+			Value:    1.0,
+			Usage:    "only submit extend message when base fee is lower than this amount of nanoFIL, pass this flag to save your gas",
+			Required: false,
+		},
 		&cli.StringFlag{
 			Name:     "max-fee",
 			Value:    "10",
@@ -1354,10 +1360,28 @@ var sectorsExtendCmd = &cli.Command{
 
 		maxFee := cctx.String("max-fee")
 		spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(types.MustParseFIL(maxFee))}
+
+		maxBaseFee := abi.NewTokenAmount(int64(cctx.Float64("max-base-fee") * 1e9))
+
 		for i := range params {
 			sp, aerr := actors.SerializeParams(&params[i])
 			if aerr != nil {
 				return xerrors.Errorf("serializing params: %w", err)
+			}
+
+			for {
+				head, err := nodeAPI.ChainHead(ctx)
+				if err != nil {
+					return err
+				}
+
+				curBaseFee := head.Blocks()[0].ParentBaseFee
+				if curBaseFee.LessThanEqual(maxBaseFee) {
+					break
+				}
+
+				fmt.Println("current base fee", float64(curBaseFee.Int64())/1e9, "nanoFIL is higher than", cctx.Float64("max-base-fee"), "nanoFIL, just wait")
+				time.Sleep(30 * time.Second)
 			}
 
 			smsg, err := nodeAPI.MpoolPushMessage(ctx, &types.Message{
