@@ -7,13 +7,12 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	"github.com/ipfs/go-cid"
 )
 
 const BootstrappersFile = "interopnet.pi"
@@ -48,7 +47,7 @@ var UpgradeTurboHeight = abi.ChainEpoch(-15)
 var UpgradeHyperdriveHeight = abi.ChainEpoch(-16)
 var UpgradeChocolateHeight = abi.ChainEpoch(-17)
 var UpgradeOhSnapHeight = abi.ChainEpoch(-18)
-var UpgradeFVM1Height = abi.ChainEpoch(3000)
+var UpgradeFVM1Height = abi.ChainEpoch(100)
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
