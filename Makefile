@@ -68,6 +68,7 @@ build-devnets: build lotus-seed lotus-shed lotus-wallet lotus-gateway
 .PHONY: build-devnets
 
 debug: GOFLAGS+=-tags=debug
+debug: GOFLAGS+=-ldflags=-X=github.com/filecoin-project/lotus/build.NetworkBundle=devnet
 debug: build-devnets
 
 2k: GOFLAGS+=-tags=2k

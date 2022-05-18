@@ -10,7 +10,7 @@ var NetworkBundle string
 
 func GetNetworkBundle() string {
 	switch NetworkBundle {
-	case "devnet":
+	case "devnet", "2k", "debug":
 		return "devnet"
 	case "calibnet", "calibrationnet":
 		return "calibrationnet"
