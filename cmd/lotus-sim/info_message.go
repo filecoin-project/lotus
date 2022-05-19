@@ -16,6 +16,7 @@ import (
 
 var infoMessageSizeSimCommand = &cli.Command{
 	Name:        "message-size",
+	Aliases:     []string{"msg-size"},
 	Description: "Output information about message size distribution",
 	Flags: []cli.Flag{
 		&cli.Int64Flag{

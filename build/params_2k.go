@@ -53,11 +53,19 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }
 
+var SupportedProofTypes = []abi.RegisteredSealProof{
+	abi.RegisteredSealProof_StackedDrg2KiBV1,
+	abi.RegisteredSealProof_StackedDrg8MiBV1,
+}
+var ConsensusMinerMinPower = abi.NewStoragePower(2048)
+var MinVerifiedDealSize = abi.NewStoragePower(256)
+var PreCommitChallengeDelay = abi.ChainEpoch(10)
+
 func init() {
-	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1, abi.RegisteredSealProof_StackedDrg8MiBV1)
-	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
-	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
-	policy.SetPreCommitChallengeDelay(abi.ChainEpoch(10))
+	policy.SetSupportedProofTypes(SupportedProofTypes...)
+	policy.SetConsensusMinerMinPower(ConsensusMinerMinPower)
+	policy.SetMinVerifiedDealSize(MinVerifiedDealSize)
+	policy.SetPreCommitChallengeDelay(PreCommitChallengeDelay)
 
 	getUpgradeHeight := func(ev string, def abi.ChainEpoch) abi.ChainEpoch {
 		hs, found := os.LookupEnv(ev)
