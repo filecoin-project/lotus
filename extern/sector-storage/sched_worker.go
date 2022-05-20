@@ -526,6 +526,7 @@ func (sw *schedWorker) startProcessingTask(req *workerRequest) error {
 		if err != nil {
 			log.Errorf("error executing worker (withResources): %+v", err)
 		}
+		sh.TaskReduce(req.taskType, sw.wid)
 	}()
 
 	return nil
@@ -555,6 +556,7 @@ func (sw *schedWorker) startProcessingReadyTask(req *workerRequest) error {
 		w.lk.Lock()
 
 		w.active.free(w.info.Resources, needRes)
+		sh.TaskReduce(req.taskType, sw.wid)
 
 		select {
 		case sw.taskDone <- struct{}{}:

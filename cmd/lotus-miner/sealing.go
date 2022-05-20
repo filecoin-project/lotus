@@ -152,6 +152,12 @@ func workersCmd(sealing bool) *cli.Command {
 				for _, gpu := range stat.Info.Resources.GPUs {
 					fmt.Printf("\tGPU: %s\n", color.New(gpuCol).Sprintf("%s, %sused", gpu, gpuUse))
 				}
+
+				plConfig, ok := stat.Info.TaskLimits[sealtasks.TTPreCommit1]
+				if ok && plConfig.LimitCount > 0 {
+					fmt.Printf("\tP1LIMIT:  [%s] %d/%d tasks are running\n",
+						barString(float64(plConfig.LimitCount), 0, float64(plConfig.RunCount)), plConfig.RunCount, plConfig.LimitCount)
+				}
 			}
 
 			return nil

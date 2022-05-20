@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -31,6 +32,14 @@ type WorkerInfo struct {
 	// Default should be false (zero value, i.e. resources taken into account).
 	IgnoreResources bool
 	Resources       WorkerResources
+
+	TaskLimits  map[sealtasks.TaskType]*LimitConfig
+	TaskLimitLk sync.Mutex
+}
+
+type LimitConfig struct {
+	LimitCount int
+	RunCount   int
 }
 
 type WorkerResources struct {

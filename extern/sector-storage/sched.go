@@ -484,6 +484,10 @@ func (sh *scheduler) trySched() {
 				continue
 			}
 
+			if !sh.CanHandleTask(task.taskType, wid) {
+				continue
+			}
+
 			wu, found := workerUtil[wid]
 			if !found {
 				wu = w.utilization()
@@ -503,6 +507,7 @@ func (sh *scheduler) trySched() {
 				// #--------> acceptableWindow index
 				//
 				// * -> we're here
+				sh.TaskAdd(task.taskType, bestWid)
 				break
 			}
 
@@ -609,4 +614,56 @@ func (sh *scheduler) Close(ctx context.Context) error {
 		return ctx.Err()
 	}
 	return nil
+}
+
+func (sh *scheduler) CanHandleTask(taskType sealtasks.TaskType, wid storiface.WorkerID) (flag bool) {
+	if wh, ok := sh.workers[wid]; ok {
+		wh.info.TaskLimitLk.Lock()
+		defer wh.info.TaskLimitLk.Unlock()
+		taskLimit, ok := wh.info.TaskLimits[taskType]
+		if !ok {
+			flag = true
+			return
+		}
+		log.Debugf("CanHandleTask: %v:%v", taskLimit.LimitCount, taskLimit.RunCount)
+		if taskLimit.LimitCount > 0 {
+			freeCount := taskLimit.LimitCount - taskLimit.RunCount
+			if freeCount > 0 {
+				flag = true
+			}
+		} else {
+			flag = true
+		}
+	} else {
+		flag = true
+	}
+	return
+}
+
+func (sh *scheduler) TaskAdd(taskType sealtasks.TaskType, wid storiface.WorkerID) {
+	log.Debugf("begin task add:%v-%v", wid, taskType)
+	if wh, ok := sh.workers[wid]; ok {
+		wh.info.TaskLimitLk.Lock()
+		defer wh.info.TaskLimitLk.Unlock()
+		taskLimit, ok := wh.info.TaskLimits[taskType]
+		if ok {
+			log.Debugf("task limit:%v-%v", taskLimit.LimitCount, taskLimit.RunCount)
+			taskLimit.RunCount++
+		}
+	}
+
+}
+
+func (sh *scheduler) TaskReduce(taskType sealtasks.TaskType, wid storiface.WorkerID) {
+	log.Debugf("begin task reduce:%v-%v", wid, taskType)
+	if wh, ok := sh.workers[wid]; ok {
+		wh.info.TaskLimitLk.Lock()
+		defer wh.info.TaskLimitLk.Unlock()
+		taskLimit, ok := wh.info.TaskLimits[taskType]
+		if ok {
+			log.Debugf("task limit:%v-%v", taskLimit.LimitCount, taskLimit.RunCount)
+			taskLimit.RunCount--
+		}
+	}
+
 }

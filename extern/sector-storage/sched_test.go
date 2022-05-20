@@ -161,9 +161,15 @@ func (s *schedTestWorker) Paths(ctx context.Context) ([]storiface.StoragePath, e
 }
 
 func (s *schedTestWorker) Info(ctx context.Context) (storiface.WorkerInfo, error) {
+	taskLimits := make(map[sealtasks.TaskType]*storiface.LimitConfig)
+	taskLimits[sealtasks.TTPreCommit1] = &storiface.LimitConfig{
+		LimitCount: 6,
+		RunCount:   0,
+	}
 	return storiface.WorkerInfo{
 		Hostname:        s.name,
 		IgnoreResources: s.ignoreResources,
+		TaskLimits:      taskLimits,
 		Resources:       s.resources,
 	}, nil
 }
