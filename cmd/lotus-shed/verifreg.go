@@ -193,7 +193,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
+		fmt.Println("DEPRECATED: This behavior is being moved to `lotus filplus`")
 		froms := cctx.String("from")
 		if froms == "" {
 			return fmt.Errorf("must specify from address with --from")
@@ -262,7 +262,7 @@ var verifRegListVerifiersCmd = &cli.Command{
 	Usage:  "list all verifiers",
 	Hidden: true,
 	Action: func(cctx *cli.Context) error {
-		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
+		fmt.Println("DEPRECATED: This behavior is being moved to `lotus filplus`")
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -294,7 +294,7 @@ var verifRegListClientsCmd = &cli.Command{
 	Usage:  "list all verified clients",
 	Hidden: true,
 	Action: func(cctx *cli.Context) error {
-		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
+		fmt.Println("DEPRECATED: This behavior is being moved to `lotus filplus`")
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -326,7 +326,7 @@ var verifRegCheckClientCmd = &cli.Command{
 	Usage:  "check verified client remaining bytes",
 	Hidden: true,
 	Action: func(cctx *cli.Context) error {
-		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
+		fmt.Println("DEPRECATED: This behavior is being moved to `lotus filplus`")
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify client address to check")
 		}
@@ -362,7 +362,7 @@ var verifRegCheckVerifierCmd = &cli.Command{
 	Usage:  "check verifiers remaining bytes",
 	Hidden: true,
 	Action: func(cctx *cli.Context) error {
-		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
+		fmt.Println("DEPRECATED: This behavior is being moved to `lotus filplus`")
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify verifier address to check")
 		}
