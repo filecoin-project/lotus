@@ -165,6 +165,13 @@ func (gw *Node) checkTimestamp(at time.Time) error {
 func (gw *Node) limit(ctx context.Context, tokens int) error {
 	ctx2, cancel := context.WithTimeout(ctx, gw.rateLimitTimeout)
 	defer cancel()
+	if perConnLimiter, ok := ctx2.Value("limiter").(*rate.Limiter); ok {
+		err := perConnLimiter.WaitN(ctx2, tokens)
+		if err != nil {
+			return fmt.Errorf("connection limited. %w", err)
+		}
+	}
+
 	err := gw.rateLimiter.WaitN(ctx2, tokens)
 	if err != nil {
 		stats.Record(ctx, metrics.RateLimitCount.M(1))
@@ -212,7 +219,7 @@ func (gw *Node) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	if err := gw.limit(ctx, chainRateLimitTokens); err != nil {
 		return nil, err
 	}
-	// TODO: cache and invalidate cache when timestamp is up (or have internal ChainNotify)
+
 	return gw.target.ChainHead(ctx)
 }
 

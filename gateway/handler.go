@@ -1,7 +1,11 @@
 package gateway
 
 import (
+	"context"
+	"net"
 	"net/http"
+	"sync"
+	"time"
 
 	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/filecoin-project/go-jsonrpc"
@@ -11,10 +15,11 @@ import (
 	"github.com/filecoin-project/lotus/metrics/proxy"
 	"github.com/gorilla/mux"
 	promclient "github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/time/rate"
 )
 
 // Handler returns a gateway http.Handler, to be mounted as-is on the server.
-func Handler(a api.Gateway, opts ...jsonrpc.ServerOption) (http.Handler, error) {
+func Handler(a api.Gateway, rateLimit int64, connPerMinute int64, opts ...jsonrpc.ServerOption) (http.Handler, error) {
 	m := mux.NewRouter()
 
 	serveRpc := func(path string, hnd interface{}) {
@@ -44,5 +49,95 @@ func Handler(a api.Gateway, opts ...jsonrpc.ServerOption) (http.Handler, error) 
 		Next:   mux.ServeHTTP,
 	}*/
 
-	return m, nil
+	rlh := NewRateLimiterHandler(m, rateLimit)
+	clh := NewConnectionRateLimiterHandler(rlh, connPerMinute)
+	return clh, nil
+}
+
+func NewRateLimiterHandler(handler http.Handler, rateLimit int64) *RateLimiterHandler {
+	limiter := limiterFromRateLimit(rateLimit)
+
+	return &RateLimiterHandler{
+		handler: handler,
+		limiter: limiter,
+	}
+}
+
+// Adds a rate limiter to the request context for per-connection rate limiting
+type RateLimiterHandler struct {
+	handler http.Handler
+	limiter *rate.Limiter
+}
+
+func (h RateLimiterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	r2 := r.WithContext(context.WithValue(r.Context(), "limiter", h.limiter))
+	h.handler.ServeHTTP(w, r2)
+}
+
+// this blocks new connections if there have already been too many.
+func NewConnectionRateLimiterHandler(handler http.Handler, connPerMinute int64) *ConnectionRateLimiterHandler {
+	ipmap := make(map[string]int64)
+	return &ConnectionRateLimiterHandler{
+		ipmap:         ipmap,
+		connPerMinute: connPerMinute,
+		handler:       handler,
+	}
+}
+
+type ConnectionRateLimiterHandler struct {
+	mu            sync.Mutex
+	ipmap         map[string]int64
+	connPerMinute int64
+	handler       http.Handler
+}
+
+func (h *ConnectionRateLimiterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if h.connPerMinute == 0 {
+		h.handler.ServeHTTP(w, r)
+		return
+	}
+	host, _, err := net.SplitHostPort(r.RemoteAddr)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	h.mu.Lock()
+	seen, ok := h.ipmap[host]
+	if !ok {
+		h.ipmap[host] = 1
+		h.mu.Unlock()
+		h.handler.ServeHTTP(w, r)
+		return
+	}
+	// rate limited
+	if seen > h.connPerMinute {
+		h.mu.Unlock()
+		w.WriteHeader(http.StatusTooManyRequests)
+		return
+	}
+	h.ipmap[host] = seen + 1
+	h.mu.Unlock()
+	go func() {
+		select {
+		case <-time.After(time.Minute):
+			h.mu.Lock()
+			defer h.mu.Unlock()
+			h.ipmap[host] = h.ipmap[host] - 1
+			if h.ipmap[host] <= 0 {
+				delete(h.ipmap, host)
+			}
+		}
+	}()
+	h.handler.ServeHTTP(w, r)
+}
+
+func limiterFromRateLimit(rateLimit int64) *rate.Limiter {
+	var limit rate.Limit
+	if rateLimit == 0 {
+		limit = rate.Inf
+	} else {
+		limit = rate.Every(time.Second / time.Duration(rateLimit))
+	}
+	return rate.NewLimiter(limit, stateRateLimitTokens)
 }
