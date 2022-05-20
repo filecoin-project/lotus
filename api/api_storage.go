@@ -227,6 +227,9 @@ type StorageMiner interface {
 	// DagstoreGC runs garbage collection on the DAG store.
 	DagstoreGC(ctx context.Context) ([]DagstoreShardResult, error) //perm:admin
 
+	// DagstoreRegisterShard registers a shard manually with dagstore with given pieceCID
+	DagstoreRegisterShard(ctx context.Context, key string) error //perm:admin
+
 	// IndexerAnnounceDeal informs indexer nodes that a new deal was received,
 	// so they can download its index
 	IndexerAnnounceDeal(ctx context.Context, proposalCid cid.Cid) error //perm:admin
