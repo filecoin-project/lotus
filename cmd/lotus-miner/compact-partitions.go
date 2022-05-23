@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -32,9 +31,14 @@ var sectorsCompactPartitions = &cli.Command{
 	Action: func(cctx *cli.Context) error {
 		ctx := lcli.ReqContext(cctx)
 		maddr, err := getActorAddress(ctx, cctx)
+		if err != nil {
+			return err
+		}
 		api, nCloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
 		defer nCloser()
-
 		deadline := cctx.Uint64("deadline")
 		partitionString := cctx.String("partitions")
 		partArr := strings.Split(partitionString, "-")
@@ -47,12 +51,16 @@ var sectorsCompactPartitions = &cli.Command{
 			}
 			partId = append(partId, parseId)
 		}
-
 		partitions := bitfield.NewFromSet(partId)
 		param := miner.CompactPartitionsParams{Deadline: deadline, Partitions: partitions}
 		sp, err := actors.SerializeParams(&param)
-
+		if err != nil {
+			return err
+		}
 		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
 		msg := &types.Message{
 			From:   mi.Worker,
 			To:     maddr,
@@ -66,7 +74,7 @@ var sectorsCompactPartitions = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("push compact-partitions daedline: %d cid: %s\n", cctx.Uint64("deadline"), sm.Cid())
+		log.Infof("push compact-partitions daedline: %d cid: %s\n", cctx.Uint64("deadline"), sm.Cid())
 
 		return nil
 	},
