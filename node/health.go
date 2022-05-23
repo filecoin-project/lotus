@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	lapi "github.com/filecoin-project/lotus/api"
@@ -17,11 +18,11 @@ type HealthHandler struct {
 }
 
 func (h *HealthHandler) SetHealthy(healthy bool) {
-	h := int32(0)
+	var hi32 int32
 	if healthy {
-		h = 1
+		hi32 = 1
 	}
-	atomic.StoreInt32(&h.healthy, h)
+	atomic.StoreInt32(&h.healthy, hi32)
 }
 
 func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -32,30 +33,30 @@ func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// The backend is considered alive so long as there have been recent
-// head changes. Being alive doesn't mean we are up to date, just moving.
+// Check that the node is still working. That is, that it's still processing the chain.
+// If there have been no recent changes, consider the node to be dead.
 func NewLiveHandler(api lapi.FullNode) *HealthHandler {
 	ctx := context.Background()
 	h := HealthHandler{}
 	go func() {
-		const reset = 5
-		var countdown = 0
+		const reset int32 = 5
+		var countdown int32 = 0
 		minutely := time.NewTicker(time.Minute)
 		headCh, err := api.ChainNotify(ctx)
 		if err != nil {
-			healthlog.Warnf("failed to instantiate chain notify channel; liveliness cannot be determined. %s", err)
+			healthlog.Warnf("failed to instantiate chain notify channel; liveness cannot be determined. %s", err)
 			h.SetHealthy(false)
 			return
 		}
 		for {
 			select {
 			case <-minutely.C:
-				countdown = countdown - 1
-				if countdown == 0 {
+				atomic.AddInt32(&countdown, -1)
+				if countdown <= 0 {
 					h.SetHealthy(false)
 				}
 			case <-headCh:
-				countdown = reset
+				atomic.StoreInt32(&countdown, reset)
 				h.SetHealthy(true)
 			}
 		}
@@ -64,8 +65,8 @@ func NewLiveHandler(api lapi.FullNode) *HealthHandler {
 }
 
 // Check if we are ready to handle traffic.
-// 1. sync workers are caught up.
-// 2
+// 1. sync workers are reasonably up to date.
+// 2. libp2p is servicable
 func NewReadyHandler(api lapi.FullNode) *HealthHandler {
 	ctx := context.Background()
 	h := HealthHandler{}
