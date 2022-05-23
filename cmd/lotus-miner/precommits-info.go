@@ -15,7 +15,7 @@ import (
 
 var sectorPreCommitsCmd = &cli.Command{
 	Name:  "precommits",
-	Usage: "Print precommits info",
+	Usage: "Print on-chain precommit info",
 	Action: func(cctx *cli.Context) error {
 		ctx := lcli.ReqContext(cctx)
 		mapi, closer, err := lcli.GetFullNodeAPI(cctx)
