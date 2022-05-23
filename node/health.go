@@ -6,8 +6,11 @@ import (
 	"time"
 
 	lapi "github.com/filecoin-project/lotus/api"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/network"
 )
+
+var healthlog = logging.Logger("healthcheck")
 
 type HealthHandler struct {
 	healthy bool
@@ -36,7 +39,9 @@ func NewLiveHandler(api lapi.FullNode) *HealthHandler {
 		minutely := time.NewTicker(time.Minute)
 		headCh, err := api.ChainNotify(ctx)
 		if err != nil {
-			//TODO
+			healthlog.Warnf("failed to instantiate chain notify channel; liveliness cannot be determined. %s", err)
+			h.SetHealthy(false)
+			return
 		}
 		for {
 			select {
