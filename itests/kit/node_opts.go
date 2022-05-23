@@ -41,6 +41,7 @@ type nodeOpts struct {
 	sectorSize           abi.SectorSize
 	maxStagingDealsBytes int64
 	minerNoLocalSealing  bool // use worker
+	minerAssigner        string
 
 	workerTasks      []sealtasks.TaskType
 	workerStorageOpt func(stores.Store) stores.Store
@@ -93,6 +94,13 @@ func WithMaxStagingDealsBytes(size int64) NodeOpt {
 func WithNoLocalSealing(nope bool) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.minerNoLocalSealing = nope
+		return nil
+	}
+}
+
+func WithAssigner(a string) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.minerAssigner = a
 		return nil
 	}
 }
