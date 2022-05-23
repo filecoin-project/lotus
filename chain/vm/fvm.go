@@ -314,7 +314,8 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 
 func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
 	start := build.Clock.Now()
-	msgBytes, err := cmsg.VMMessage().Serialize()
+	vmMsg := cmsg.VMMessage()
+	msgBytes, err := vmMsg.Serialize()
 	if err != nil {
 		return nil, xerrors.Errorf("serializing msg: %w", err)
 	}
@@ -324,11 +325,11 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 		return nil, xerrors.Errorf("applying msg: %w", err)
 	}
 
-	var et FvmExecutionTrace
-	if len(ret.ExecTraceBytes) != 0 {
-		if err = et.UnmarshalCBOR(bytes.NewReader(ret.ExecTraceBytes)); err != nil {
-			return nil, xerrors.Errorf("failed to unmarshal exectrace: %w", err)
-		}
+	duration := time.Since(start)
+	receipt := types.MessageReceipt{
+		Return:   ret.Return,
+		ExitCode: exitcode.ExitCode(ret.ExitCode),
+		GasUsed:  ret.GasUsed,
 	}
 
 	var aerr aerrors.ActorError
@@ -340,12 +341,24 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 		aerr = aerrors.New(exitcode.ExitCode(ret.ExitCode), amsg)
 	}
 
+	var et types.ExecutionTrace
+	if len(ret.ExecTraceBytes) != 0 {
+		var fvmEt FvmExecutionTrace
+		if err = fvmEt.UnmarshalCBOR(bytes.NewReader(ret.ExecTraceBytes)); err != nil {
+			return nil, xerrors.Errorf("failed to unmarshal exectrace: %w", err)
+		}
+		et = fvmEt.ToExecutionTrace()
+	} else {
+		et.Msg = vmMsg
+		et.MsgRct = &receipt
+		et.Duration = duration
+		if aerr != nil {
+			et.Error = aerr.Error()
+		}
+	}
+
 	return &ApplyRet{
-		MessageReceipt: types.MessageReceipt{
-			Return:   ret.Return,
-			ExitCode: exitcode.ExitCode(ret.ExitCode),
-			GasUsed:  ret.GasUsed,
-		},
+		MessageReceipt: receipt,
 		GasCosts: &GasOutputs{
 			BaseFeeBurn:        ret.BaseFeeBurn,
 			OverEstimationBurn: ret.OverEstimationBurn,
@@ -356,14 +369,15 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 			GasBurned:          ret.GasBurned,
 		},
 		ActorErr:       aerr,
-		ExecutionTrace: et.ToExecutionTrace(),
-		Duration:       time.Since(start),
+		ExecutionTrace: et,
+		Duration:       duration,
 	}, nil
 }
 
 func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*ApplyRet, error) {
 	start := build.Clock.Now()
-	msgBytes, err := cmsg.VMMessage().Serialize()
+	vmMsg := cmsg.VMMessage()
+	msgBytes, err := vmMsg.Serialize()
 	if err != nil {
 		return nil, xerrors.Errorf("serializing msg: %w", err)
 	}
@@ -372,11 +386,11 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 		return nil, xerrors.Errorf("applying msg: %w", err)
 	}
 
-	var et FvmExecutionTrace
-	if len(ret.ExecTraceBytes) != 0 {
-		if err = et.UnmarshalCBOR(bytes.NewReader(ret.ExecTraceBytes)); err != nil {
-			return nil, xerrors.Errorf("failed to unmarshal exectrace: %w", err)
-		}
+	duration := time.Since(start)
+	receipt := types.MessageReceipt{
+		Return:   ret.Return,
+		ExitCode: exitcode.ExitCode(ret.ExitCode),
+		GasUsed:  ret.GasUsed,
 	}
 
 	var aerr aerrors.ActorError
@@ -388,15 +402,27 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 		aerr = aerrors.New(exitcode.ExitCode(ret.ExitCode), amsg)
 	}
 
+	var et types.ExecutionTrace
+	if len(ret.ExecTraceBytes) != 0 {
+		var fvmEt FvmExecutionTrace
+		if err = fvmEt.UnmarshalCBOR(bytes.NewReader(ret.ExecTraceBytes)); err != nil {
+			return nil, xerrors.Errorf("failed to unmarshal exectrace: %w", err)
+		}
+		et = fvmEt.ToExecutionTrace()
+	} else {
+		et.Msg = vmMsg
+		et.MsgRct = &receipt
+		et.Duration = duration
+		if aerr != nil {
+			et.Error = aerr.Error()
+		}
+	}
+
 	return &ApplyRet{
-		MessageReceipt: types.MessageReceipt{
-			Return:   ret.Return,
-			ExitCode: exitcode.ExitCode(ret.ExitCode),
-			GasUsed:  ret.GasUsed,
-		},
+		MessageReceipt: receipt,
 		ActorErr:       aerr,
-		ExecutionTrace: et.ToExecutionTrace(),
-		Duration:       time.Since(start),
+		ExecutionTrace: et,
+		Duration:       duration,
 	}, nil
 }
 
