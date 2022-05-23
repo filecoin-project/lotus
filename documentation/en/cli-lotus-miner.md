@@ -1680,6 +1680,7 @@ COMMANDS:
    get-cc-collateral     Get the collateral required to pledge a committed capacity sector
    batching              manage batch sector operations
    match-pending-pieces  force a refreshed match of pending pieces to open sectors without manually waiting for more deals
+   compact-partitions    removes dead sectors from partitions and reduces the number of partitions used if possible
    help, h               Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2018,6 +2019,22 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner sectors compact-partitions
+```
+NAME:
+   lotus-miner sectors compact-partitions - removes dead sectors from partitions and reduces the number of partitions used if possible
+
+USAGE:
+   lotus-miner sectors compact-partitions [command options] [arguments...]
+
+OPTIONS:
+   --deadline value    the deadline to compact the partitions in (default: 0)
+   --partitions value  list of partitions to compact sectors in
+   --really-do-it      Actually send transaction performing the action (default: false)
+   --help, -h          show help (default: false)
    
 ```
 

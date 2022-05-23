@@ -58,6 +58,7 @@ var sectorsCmd = &cli.Command{
 		sectorsCapacityCollateralCmd,
 		sectorsBatching,
 		sectorsRefreshPieceMatchingCmd,
+		sectorsCompactPartitionsCmd,
 	},
 }
 
@@ -2087,4 +2088,90 @@ func yesno(b bool) string {
 		return color.GreenString("YES")
 	}
 	return color.RedString("NO")
+}
+
+var sectorsCompactPartitionsCmd = &cli.Command{
+	Name:  "compact-partitions",
+	Usage: "removes dead sectors from partitions and reduces the number of partitions used if possible",
+	Flags: []cli.Flag{
+		&cli.Uint64Flag{
+			Name:     "deadline",
+			Usage:    "the deadline to compact the partitions in",
+			Required: true,
+		},
+		&cli.Int64SliceFlag{
+			Name:     "partitions",
+			Usage:    "list of partitions to compact sectors in",
+			Required: true,
+		},
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "Actually send transaction performing the action",
+			Value: false,
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Bool("really-do-it") {
+			fmt.Println("Pass --really-do-it to actually execute this action")
+			return nil
+		}
+
+		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		maddr, err := getActorAddress(ctx, cctx)
+		if err != nil {
+			return err
+		}
+
+		minfo, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		deadline := cctx.Uint64("deadline")
+		if err != nil {
+			return err
+		}
+
+		parts := cctx.Int64Slice("partitions")
+		if len(parts) <= 0 {
+			return fmt.Errorf("must include at least one partition to compact")
+		}
+
+		partitions := bitfield.BitField{}
+		for _, partition := range parts {
+			partitions.Set(uint64(partition))
+		}
+
+		params := miner5.CompactPartitionsParams{
+			Deadline:   deadline,
+			Partitions: partitions,
+		}
+
+		sp, err := actors.SerializeParams(&params)
+		if err != nil {
+			return xerrors.Errorf("serializing params: %w", err)
+		}
+
+		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
+			From:   minfo.Worker,
+			To:     maddr,
+			Method: miner.Methods.CompactPartitions,
+			Value:  big.Zero(),
+			Params: sp,
+		}, nil)
+		if err != nil {
+			return xerrors.Errorf("mpool push: %w", err)
+		}
+
+		fmt.Println("Message CID:", smsg.Cid())
+
+		return nil
+	},
 }
