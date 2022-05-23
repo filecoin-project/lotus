@@ -14,7 +14,7 @@ import (
 )
 
 var sectorPreCommitsCmd = &cli.Command{
-	Name:  "precommits-info",
+	Name:  "precommits",
 	Usage: "Print precommits info",
 	Action: func(cctx *cli.Context) error {
 		ctx := lcli.ReqContext(cctx)
