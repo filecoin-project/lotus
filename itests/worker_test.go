@@ -57,6 +57,22 @@ func TestWorkerPledgeSpread(t *testing.T) {
 	miner.PledgeSectors(ctx, 1, 0, nil)
 }
 
+func TestWorkerPledgeLocalFin(t *testing.T) {
+	ctx := context.Background()
+	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(),
+		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2, sealtasks.TTUnseal}),
+		kit.WithDisallowRemoteFinalize(true),
+	) // no mock proofs
+
+	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
+
+	e, err := worker.Enabled(ctx)
+	require.NoError(t, err)
+	require.True(t, e)
+
+	miner.PledgeSectors(ctx, 1, 0, nil)
+}
+
 func TestWorkerDataCid(t *testing.T) {
 	ctx := context.Background()
 	_, miner, worker, _ := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
