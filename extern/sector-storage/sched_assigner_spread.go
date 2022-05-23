@@ -20,7 +20,6 @@ func SpreadWS(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []
 		task := (*sh.SchedQueue)[sqi]
 
 		selectedWindow := -1
-		var info storiface.WorkerInfo
 		var bestWid storiface.WorkerID
 		bestAssigned := math.MaxInt // smaller = better
 
@@ -28,11 +27,11 @@ func SpreadWS(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []
 			wid := sh.OpenWindows[wnd].Worker
 			w := sh.Workers[wid]
 
-			res := info.Resources.ResourceSpec(task.Sector.ProofType, task.TaskType)
+			res := w.Info.Resources.ResourceSpec(task.Sector.ProofType, task.TaskType)
 
 			log.Debugf("SCHED try assign sqi:%d sector %d to window %d (awi:%d)", sqi, task.Sector.ID.Number, wnd, i)
 
-			if !windows[wnd].Allocated.CanHandleRequest(res, wid, "schedAssign", info) {
+			if !windows[wnd].Allocated.CanHandleRequest(res, wid, "schedAssign", w.Info) {
 				continue
 			}
 
@@ -41,7 +40,6 @@ func SpreadWS(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []
 				continue
 			}
 
-			info = w.Info
 			bestWid = wid
 			selectedWindow = wnd
 			bestAssigned = wu
