@@ -16,10 +16,13 @@ func SpreadWS(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []
 	scheduled := 0
 	rmQueue := make([]int, 0, queueLen)
 	workerAssigned := map[storiface.WorkerID]int{}
+
 	for sqi := 0; sqi < queueLen; sqi++ {
 		task := (*sh.SchedQueue)[sqi]
 
 		selectedWindow := -1
+		var needRes storiface.Resources
+		var info storiface.WorkerInfo
 		var bestWid storiface.WorkerID
 		bestAssigned := math.MaxInt // smaller = better
 
@@ -40,6 +43,8 @@ func SpreadWS(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []
 				continue
 			}
 
+			info = w.Info
+			needRes = res
 			bestWid = wid
 			selectedWindow = wnd
 			bestAssigned = wu
@@ -59,6 +64,7 @@ func SpreadWS(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []
 			"assigned", bestAssigned)
 
 		workerAssigned[bestWid]++
+		windows[selectedWindow].Allocated.Add(info.Resources, needRes)
 		windows[selectedWindow].Todo = append(windows[selectedWindow].Todo, task)
 
 		rmQueue = append(rmQueue, sqi)
