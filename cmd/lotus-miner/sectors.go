@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-    "github.com/docker/go-units"
+	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
