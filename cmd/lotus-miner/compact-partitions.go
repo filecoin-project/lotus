@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/v7/actors/builtin"
+	"github.com/urfave/cli/v2"
 	"strconv"
 	"strings"
 )
