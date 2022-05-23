@@ -1668,6 +1668,7 @@ COMMANDS:
    update-state          ADVANCED: manually update the state of a sector, this may aid in error recovery
    pledge                store random data in a sector
    check-expire          Inspect expiring sectors
+   compact-partitions    Compact partitions
    expired               Get or cleanup expired sectors
    renew                 Renew expiring sectors while not exceeding each sector's max life
    extend                Extend sector expiration
@@ -1776,6 +1777,21 @@ USAGE:
 OPTIONS:
    --cutoff value  skip sectors whose current expiration is more than <cutoff> epochs from now, defaults to 60 days (default: 172800)
    --help, -h      show help (default: false)
+   
+```
+
+### lotus-miner sectors compact-partitions
+```
+NAME:
+   lotus-miner sectors compact-partitions - Compact partitions
+
+USAGE:
+   lotus-miner sectors compact-partitions [command options] [arguments...]
+
+OPTIONS:
+   --deadline value    compact deadline (default: 0)
+   --partitions value  compact partitions split for '-' , eg:0-1
+   --help, -h          show help (default: false)
    
 ```
 
