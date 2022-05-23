@@ -1667,7 +1667,7 @@ COMMANDS:
    refs                  List References to sectors
    update-state          ADVANCED: manually update the state of a sector, this may aid in error recovery
    pledge                store random data in a sector
-   precommits-info       Print precommits info
+   precommits            Print on-chain precommit info
    check-expire          Inspect expiring sectors
    expired               Get or cleanup expired sectors
    renew                 Renew expiring sectors while not exceeding each sector's max life
@@ -1766,13 +1766,13 @@ OPTIONS:
    
 ```
 
-### lotus-miner sectors precommits-info
+### lotus-miner sectors precommits
 ```
 NAME:
-   lotus-miner sectors precommits-info - Print precommits info
+   lotus-miner sectors precommits - Print on-chain precommit info
 
 USAGE:
-   lotus-miner sectors precommits-info [command options] [arguments...]
+   lotus-miner sectors precommits [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help (default: false)
