@@ -54,7 +54,7 @@ func TestWorkerPledgeSpread(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, e)
 
-	miner.PledgeSectors(ctx, 4, 0, nil)
+	miner.PledgeSectors(ctx, 1, 0, nil)
 }
 
 func TestWorkerDataCid(t *testing.T) {
