@@ -13,15 +13,19 @@ import (
 var healthlog = logging.Logger("healthcheck")
 
 type HealthHandler struct {
-	healthy bool
+	healthy int32
 }
 
 func (h *HealthHandler) SetHealthy(healthy bool) {
-	h.healthy = healthy
+	h := int32(0)
+	if healthy {
+		h = 1
+	}
+	atomic.StoreInt32(&h.healthy, h)
 }
 
 func (h *HealthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if !h.healthy {
+	if atomic.LoadInt32(&h.healthy) != 1 {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
