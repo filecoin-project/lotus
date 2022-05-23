@@ -223,7 +223,8 @@ func addTestWorker(t *testing.T, sched *Scheduler, index *stores.Index, name str
 }
 
 func TestSchedStartStop(t *testing.T) {
-	sched := newScheduler()
+	sched, err := newScheduler("")
+	require.NoError(t, err)
 	go sched.runSched()
 
 	addTestWorker(t, sched, stores.NewIndex(), "fred", nil, decentWorkerResources, false)
@@ -352,7 +353,8 @@ func TestSched(t *testing.T) {
 		return func(t *testing.T) {
 			index := stores.NewIndex()
 
-			sched := newScheduler()
+			sched, err := newScheduler("")
+			require.NoError(t, err)
 			sched.testSync = make(chan struct{})
 
 			go sched.runSched()
@@ -604,7 +606,8 @@ func BenchmarkTrySched(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				b.StopTimer()
 
-				sched := newScheduler()
+				sched, err := newScheduler("")
+				require.NoError(b, err)
 				sched.Workers[storiface.WorkerID{}] = &WorkerHandle{
 					workerRpc: nil,
 					Info: storiface.WorkerInfo{

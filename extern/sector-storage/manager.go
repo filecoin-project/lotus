@@ -122,6 +122,8 @@ type Config struct {
 
 	// PoSt config
 	ParallelCheckLimit int
+
+	Assigner string
 }
 
 type StorageAuth http.Header
@@ -135,6 +137,11 @@ func New(ctx context.Context, lstor *stores.Local, stor stores.Store, ls stores.
 		return nil, xerrors.Errorf("creating prover instance: %w", err)
 	}
 
+	sh, err := newScheduler(sc.Assigner)
+	if err != nil {
+		return nil, err
+	}
+
 	m := &Manager{
 		ls:         ls,
 		storage:    stor,
@@ -142,7 +149,7 @@ func New(ctx context.Context, lstor *stores.Local, stor stores.Store, ls stores.
 		remoteHnd:  &stores.FetchHandler{Local: lstor, PfHandler: &stores.DefaultPartialFileHandler{}},
 		index:      si,
 
-		sched:            newScheduler(),
+		sched:            sh,
 		windowPoStSched:  newPoStScheduler(sealtasks.TTGenerateWindowPoSt),
 		winningPoStSched: newPoStScheduler(sealtasks.TTGenerateWinningPoSt),
 

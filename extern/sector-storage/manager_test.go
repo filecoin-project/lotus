@@ -109,6 +109,9 @@ func newTestMgr(ctx context.Context, t *testing.T, ds datastore.Datastore) (*Man
 
 	stor := stores.NewRemote(lstor, si, nil, 6000, &stores.DefaultPartialFileHandler{})
 
+	sh, err := newScheduler("")
+	require.NoError(t, err)
+
 	m := &Manager{
 		ls:         st,
 		storage:    stor,
@@ -116,7 +119,7 @@ func newTestMgr(ctx context.Context, t *testing.T, ds datastore.Datastore) (*Man
 		remoteHnd:  &stores.FetchHandler{Local: lstor},
 		index:      si,
 
-		sched:            newScheduler(),
+		sched:            sh,
 		windowPoStSched:  newPoStScheduler(sealtasks.TTGenerateWindowPoSt),
 		winningPoStSched: newPoStScheduler(sealtasks.TTGenerateWinningPoSt),
 

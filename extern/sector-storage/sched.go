@@ -148,9 +148,19 @@ type workerResponse struct {
 	err error
 }
 
-func newScheduler() *Scheduler {
+func newScheduler(assigner string) (*Scheduler, error) {
+	var a Assigner
+	switch assigner {
+	case "", "utilization":
+		a = NewLowestUtilizationAssigner()
+	case "spread":
+		a = NewSpreadAssigner()
+	default:
+		return nil, xerrors.Errorf("unknown assigner '%s'", assigner)
+	}
+
 	return &Scheduler{
-		assigner: NewLowestUtilizationAssigner(),
+		assigner: a,
 
 		Workers: map[storiface.WorkerID]*WorkerHandle{},
 
@@ -171,7 +181,7 @@ func newScheduler() *Scheduler {
 
 		closing: make(chan struct{}),
 		closed:  make(chan struct{}),
-	}
+	}, nil
 }
 
 func (sh *Scheduler) Schedule(ctx context.Context, sector storage.SectorRef, taskType sealtasks.TaskType, sel WorkerSelector, prepare WorkerAction, work WorkerAction) error {

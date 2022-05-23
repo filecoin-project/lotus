@@ -159,6 +159,8 @@ func DefaultStorageMiner() *StorageMiner {
 			// it's the ratio between 10gbit / 1gbit
 			ParallelFetchLimit: 10,
 
+			Assigner: "utilization",
+
 			// By default use the hardware resource filtering strategy.
 			ResourceFiltering: sectorstorage.ResourceFilteringHardware,
 		},

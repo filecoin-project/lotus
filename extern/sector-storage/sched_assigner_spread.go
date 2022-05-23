@@ -6,26 +6,23 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
-func NewLowestUtilizationAssigner() Assigner {
+func NewSpreadAssigner() Assigner {
 	return &AssignerCommon{
-		WindowSel: LowestUtilizationWS,
+		WindowSel: SpreadWS,
 	}
 }
 
-func LowestUtilizationWS(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []SchedWindow) int {
-	// Step 2
+func SpreadWS(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []SchedWindow) int {
 	scheduled := 0
 	rmQueue := make([]int, 0, queueLen)
-	workerUtil := map[storiface.WorkerID]float64{}
-
+	workerAssigned := map[storiface.WorkerID]int{}
 	for sqi := 0; sqi < queueLen; sqi++ {
 		task := (*sh.SchedQueue)[sqi]
 
 		selectedWindow := -1
-		var needRes storiface.Resources
 		var info storiface.WorkerInfo
 		var bestWid storiface.WorkerID
-		bestUtilization := math.MaxFloat64 // smaller = better
+		bestAssigned := math.MaxInt // smaller = better
 
 		for i, wnd := range acceptableWindows[task.IndexHeap] {
 			wid := sh.OpenWindows[wnd].Worker
@@ -35,38 +32,19 @@ func LowestUtilizationWS(sh *Scheduler, queueLen int, acceptableWindows [][]int,
 
 			log.Debugf("SCHED try assign sqi:%d sector %d to window %d (awi:%d)", sqi, task.Sector.ID.Number, wnd, i)
 
-			// TODO: allow bigger windows
-			if !windows[wnd].Allocated.CanHandleRequest(needRes, wid, "schedAssign", info) {
+			if !windows[wnd].Allocated.CanHandleRequest(res, wid, "schedAssign", info) {
 				continue
 			}
 
-			wu, found := workerUtil[wid]
-			if !found {
-				wu = w.Utilization()
-				workerUtil[wid] = wu
-			}
-			if wu >= bestUtilization {
-				// acceptable worker list is initially sorted by utilization, and the initially-best workers
-				// will be assigned tasks first. This means that if we find a worker which isn't better, it
-				// probably means that the other workers aren't better either.
-				//
-				// utilization
-				// ^
-				// |       /
-				// | \    /
-				// |  \  /
-				// |   *
-				// #--------> acceptableWindow index
-				//
-				// * -> we're here
-				break
+			wu, _ := workerAssigned[wid]
+			if wu >= bestAssigned {
+				continue
 			}
 
 			info = w.Info
-			needRes = res
 			bestWid = wid
 			selectedWindow = wnd
-			bestUtilization = wu
+			bestAssigned = wu
 		}
 
 		if selectedWindow < 0 {
@@ -80,9 +58,9 @@ func LowestUtilizationWS(sh *Scheduler, queueLen int, acceptableWindows [][]int,
 			"task", task.TaskType,
 			"window", selectedWindow,
 			"worker", bestWid,
-			"utilization", bestUtilization)
+			"assigned", bestAssigned)
 
-		workerUtil[bestWid] += windows[selectedWindow].Allocated.Add(info.Resources, needRes)
+		workerAssigned[bestWid] += 1
 		windows[selectedWindow].Todo = append(windows[selectedWindow].Todo, task)
 
 		rmQueue = append(rmQueue, sqi)
