@@ -60,7 +60,7 @@ func SpreadWS(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []
 			"worker", bestWid,
 			"assigned", bestAssigned)
 
-		workerAssigned[bestWid] += 1
+		workerAssigned[bestWid]++
 		windows[selectedWindow].Todo = append(windows[selectedWindow].Todo, task)
 
 		rmQueue = append(rmQueue, sqi)
