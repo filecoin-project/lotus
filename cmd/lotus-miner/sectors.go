@@ -11,13 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
@@ -46,6 +43,7 @@ var sectorsCmd = &cli.Command{
 		sectorsUpdateCmd,
 		sectorsPledgeCmd,
 		sectorsCheckExpireCmd,
+		sectorsCompactPartitions,
 		sectorsExpiredCmd,
 		sectorsRenewCmd,
 		sectorsExtendCmd,
