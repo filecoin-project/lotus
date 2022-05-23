@@ -768,7 +768,16 @@ This parameter is ONLY applicable if the retrieval pricing policy strategy has b
 			Name: "DisallowRemoteFinalize",
 			Type: "bool",
 
-			Comment: `If you see stuck Finalize tasks after enabling this setting, check
+			Comment: `DisallowRemoteFinalize when set to true will force all Finalize tasks to
+run on workers with local access to both long-term storage and the sealing
+path containing the sector.
+--
+WARNING: Only set this if all workers have access to long-term storage
+paths. If this flag is enabled, and there are workers without long-term
+storage access, sectors will not be moved from them, and Finalize tasks
+will appear to be stuck.
+--
+If you see stuck Finalize tasks after enabling this setting, check
 'lotus-miner sealing sched-diag' and 'lotus-miner storage find [sector num]'`,
 		},
 		{
