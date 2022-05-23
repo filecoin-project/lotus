@@ -13,18 +13,20 @@ import (
 )
 
 type moveSelector struct {
-	index     stores.SectorIndex
-	sector    abi.SectorID
-	alloc     storiface.SectorFileType
-	destPtype storiface.PathType
+	index       stores.SectorIndex
+	sector      abi.SectorID
+	alloc       storiface.SectorFileType
+	destPtype   storiface.PathType
+	allowRemote bool
 }
 
-func newMoveSelector(index stores.SectorIndex, sector abi.SectorID, alloc storiface.SectorFileType, destPtype storiface.PathType) *moveSelector {
+func newMoveSelector(index stores.SectorIndex, sector abi.SectorID, alloc storiface.SectorFileType, destPtype storiface.PathType, allowRemote bool) *moveSelector {
 	return &moveSelector{
-		index:     index,
-		sector:    sector,
-		alloc:     alloc,
-		destPtype: destPtype,
+		index:       index,
+		sector:      sector,
+		alloc:       alloc,
+		destPtype:   destPtype,
+		allowRemote: allowRemote,
 	}
 }
 
@@ -86,7 +88,7 @@ func (s *moveSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.
 		}
 	}
 
-	return ok, false, nil
+	return ok && s.allowRemote, false, nil
 }
 
 func (s *moveSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *WorkerHandle) (bool, error) {

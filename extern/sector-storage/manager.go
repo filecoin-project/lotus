@@ -71,7 +71,8 @@ type Manager struct {
 	workLk sync.Mutex
 	work   *statestore.StateStore
 
-	parallelCheckLimit int
+	parallelCheckLimit     int
+	disallowRemoteFinalize bool
 
 	callToWork map[storiface.CallID]WorkID
 	// used when we get an early return and there's no callToWork mapping
@@ -123,6 +124,8 @@ type Config struct {
 	// PoSt config
 	ParallelCheckLimit int
 
+	DisallowRemoteFinalize bool
+
 	Assigner string
 }
 
@@ -155,7 +158,8 @@ func New(ctx context.Context, lstor *stores.Local, stor stores.Store, ls stores.
 
 		localProver: prover,
 
-		parallelCheckLimit: sc.ParallelCheckLimit,
+		parallelCheckLimit:     sc.ParallelCheckLimit,
+		disallowRemoteFinalize: sc.DisallowRemoteFinalize,
 
 		work:       mss,
 		callToWork: map[storiface.CallID]WorkID{},
@@ -634,7 +638,7 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storage.SectorRef, 
 	}
 
 	// get a selector for moving stuff into long-term storage
-	fetchSel := newMoveSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, storiface.PathStorage)
+	fetchSel := newMoveSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, storiface.PathStorage, !m.disallowRemoteFinalize)
 
 	// only move the unsealed file if it still exists and needs moving
 	moveUnsealed := unsealed
@@ -712,7 +716,7 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storage.Sect
 
 	move := func(types storiface.SectorFileType) error {
 		// get a selector for moving stuff into long-term storage
-		fetchSel := newMoveSelector(m.index, sector.ID, types, storiface.PathStorage)
+		fetchSel := newMoveSelector(m.index, sector.ID, types, storiface.PathStorage, !m.disallowRemoteFinalize)
 		{
 			if len(keepUnsealed) == 0 {
 				moveUnsealed = storiface.FTNone

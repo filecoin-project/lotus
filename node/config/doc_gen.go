@@ -765,6 +765,13 @@ This parameter is ONLY applicable if the retrieval pricing policy strategy has b
 "spread" - assign tasks to as many distinct workers as possible.`,
 		},
 		{
+			Name: "DisallowRemoteFinalize",
+			Type: "bool",
+
+			Comment: `If you see stuck Finalize tasks after enabling this setting, check
+'lotus-miner sealing sched-diag' and 'lotus-miner storage find [sector num]'`,
+		},
+		{
 			Name: "ResourceFiltering",
 			Type: "sectorstorage.ResourceFilteringStrategy",
 
