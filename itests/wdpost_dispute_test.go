@@ -226,7 +226,8 @@ func TestWindowPostDispute(t *testing.T) {
 	// Now try to be evil again
 	err = submitBadProof(ctx, client, evilMiner.OwnerKey.Address, evilMinerAddr, di, evilSectorLoc.Deadline, evilSectorLoc.Partition)
 	require.Error(t, err)
-	require.Equal(t, 16, err)
+	require.Contains(t, err.Error(), "window post failed: invalid PoSt")
+	require.Contains(t, err.Error(), "(RetCode=16)")
 
 	// It didn't work because we're recovering.
 }
@@ -330,7 +331,8 @@ waitForProof:
 		}
 		_, err := client.MpoolPushMessage(ctx, msg, nil)
 		require.Error(t, err)
-		require.Equal(t, err, 16)
+		require.Contains(t, err.Error(), "failed to dispute valid post")
+		require.Contains(t, err.Error(), "(RetCode=16)")
 	}
 }
 
