@@ -49,7 +49,7 @@ OPTIONS:
    --regen-sector-key            enable regen sector key (default: true)
    --windowpost                  enable window post (default: false)
    --winningpost                 enable winning post (default: false)
-   --no-default                  disable all default tasks, use the worker for storage only (default: false)
+   --no-default                  disable all default compute tasks, use the worker for storage/fetching only (default: false)
    --parallel-fetch-limit value  maximum fetch operations to run in parallel (default: 5)
    --post-parallel-reads value   maximum number of parallel challenge reads (0 = no limit) (default: 128)
    --post-read-timeout value     time limit for reading PoSt challenges (0 = no limit) (default: 0s)

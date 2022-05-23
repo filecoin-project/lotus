@@ -189,7 +189,7 @@ var runCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:  "no-default",
-			Usage: "disable all default tasks, use the worker for storage only",
+			Usage: "disable all default compute tasks, use the worker for storage/fetching only",
 			Value: false,
 		},
 		&cli.IntFlag{
