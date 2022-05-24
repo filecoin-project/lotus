@@ -436,7 +436,7 @@ var sealingDataCidCmd = &cli.Command{
 				return xerrors.Errorf("file larger than the piece")
 			}
 		} else {
-			psize = padreader.PaddedSize(uint64(sz)).Padded()
+			psize = padreader.PaddedSize(sz).Padded()
 		}
 
 		pc, err := nodeApi.ComputeDataCid(ctx, psize.Unpadded(), r)

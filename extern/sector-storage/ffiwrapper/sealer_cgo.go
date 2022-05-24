@@ -32,6 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/partialfile"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	nr "github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
+	"github.com/filecoin-project/lotus/lib/nullreader"
 )
 
 var _ Storage = &Sealer{}
@@ -53,6 +54,11 @@ func (sb *Sealer) NewSector(ctx context.Context, sector storage.SectorRef) error
 }
 
 func (sb *Sealer) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (abi.PieceInfo, error) {
+	pieceData = io.LimitReader(io.MultiReader(
+		pieceData,
+		nullreader.Reader{},
+	), int64(pieceSize))
+
 	// TODO: allow tuning those:
 	chunk := abi.PaddedPieceSize(4 << 20)
 	parallel := runtime.NumCPU()
@@ -73,6 +79,7 @@ func (sb *Sealer) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, 
 	for {
 		var read int
 		for rbuf := buf; len(rbuf) > 0; {
+
 			n, err := pieceData.Read(rbuf)
 			if err != nil && err != io.EOF {
 				return abi.PieceInfo{}, xerrors.Errorf("pr read error: %w", err)
