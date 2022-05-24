@@ -107,6 +107,7 @@ var (
 	}
 
 	GenesisNetworkVersion = network.Version0
+	NetworkBundle         = "devnet"
 
 	NewestNetworkVersion       = network.Version15
 	ActorUpgradeNetworkVersion = network.Version15

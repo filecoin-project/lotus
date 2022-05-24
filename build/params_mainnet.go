@@ -19,6 +19,7 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	UpgradeSmokeHeight: DrandMainnet,
 }
 
+const NetworkBundle = "mainnet"
 const GenesisNetworkVersion = network.Version0
 
 const BootstrappersFile = "mainnet.pi"

@@ -16,6 +16,7 @@ import (
 
 const BootstrappersFile = ""
 const GenesisFile = ""
+const NetworkBundle = "devnet"
 
 const GenesisNetworkVersion = network.Version15
 

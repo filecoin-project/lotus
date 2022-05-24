@@ -68,23 +68,18 @@ build-devnets: build lotus-seed lotus-shed lotus-wallet lotus-gateway lotus-foun
 .PHONY: build-devnets
 
 debug: GOFLAGS+=-tags=debug
-debug: GOFLAGS+=-ldflags=-X=github.com/filecoin-project/lotus/build.NetworkBundle=devnet
 debug: build-devnets
 
 2k: GOFLAGS+=-tags=2k
-2k: GOFLAGS+=-ldflags=-X=github.com/filecoin-project/lotus/build.NetworkBundle=devnet
 2k: build-devnets
 
 calibnet: GOFLAGS+=-tags=calibnet
-calibnet: GOFLAGS+=-ldflags=-X=github.com/filecoin-project/lotus/build.NetworkBundle=calibnet
 calibnet: build-devnets
 
 butterflynet: GOFLAGS+=-tags=butterflynet
-butterflynet: GOFLAGS+=-ldflags=-X=github.com/filecoin-project/lotus/build.NetworkBundle=butterflynet
 butterflynet: build-devnets
 
 interopnet: GOFLAGS+=-tags=interopnet
-interopnet: GOFLAGS+=-ldflags=-X=github.com/filecoin-project/lotus/build.NetworkBundle=interopnet
 interopnet: build-devnets
 
 lotus: $(BUILD_DEPS)
