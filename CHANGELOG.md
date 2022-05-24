@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# 1.15.3-rc1 / 2022-05-13
+# 1.15.3-rc2 / 2022-05-24
 
-This is the first rc of an optional release of lotus, detailed changelog will be updated later.
+This is the second rc of an optional release of lotus, detailed changelog will be updated later.
 
 - fix: Make deal making logs much less noisy ([filecoin-project/lotus#8622](https://github.com/filecoin-project/lotus/pull/8622))
 - chore: merge releases back into master ([filecoin-project/lotus#8638](https://github.com/filecoin-project/lotus/pull/8638))
