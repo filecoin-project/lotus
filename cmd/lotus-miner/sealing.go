@@ -11,11 +11,15 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
 	"github.com/google/uuid"
+	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-padreader"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 
@@ -31,6 +35,7 @@ var sealingCmd = &cli.Command{
 		workersCmd(true),
 		sealingSchedDiagCmd,
 		sealingAbortCmd,
+		sealingDataCidCmd,
 	},
 }
 
@@ -347,5 +352,69 @@ var sealingAbortCmd = &cli.Command{
 		fmt.Printf("aborting job %s, task %s, sector %d, running on host %s\n", job.ID.String(), job.Task.Short(), job.Sector.Number, job.Hostname)
 
 		return nodeApi.SealingAbort(ctx, job.ID)
+	},
+}
+
+var sealingDataCidCmd = &cli.Command{
+	Name:      "data-cid",
+	Usage:     "Compute data CID using workers",
+	ArgsUsage: "[file] <padded piece size>",
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() < 1 || cctx.Args().Len() > 2 {
+			return xerrors.Errorf("expected 1 or 2 arguments")
+		}
+
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		p, err := homedir.Expand(cctx.Args().First())
+		if err != nil {
+			return xerrors.Errorf("expanding path: %w", err)
+		}
+
+		f, err := os.OpenFile(p, os.O_RDONLY, 0)
+		if err != nil {
+			return xerrors.Errorf("opening source file: %w", err)
+		}
+
+		st, err := f.Stat()
+		if err != nil {
+			return xerrors.Errorf("stat: %w", err)
+		}
+
+		var psize abi.PaddedPieceSize
+		if cctx.Args().Len() == 2 {
+			rps, err := humanize.ParseBytes(cctx.Args().Get(1))
+			if err != nil {
+				return xerrors.Errorf("parsing piece size: %w", err)
+			}
+			psize = abi.PaddedPieceSize(rps)
+			if err := psize.Validate(); err != nil {
+				return xerrors.Errorf("checking piece size: %w", err)
+			}
+			if st.Size() > int64(psize.Unpadded()) {
+				return xerrors.Errorf("file larger than the piece")
+			}
+		} else {
+			psize = padreader.PaddedSize(uint64(st.Size())).Padded()
+		}
+
+		ir, err := padreader.NewInflator(f, uint64(st.Size()), psize.Unpadded())
+		if err != nil {
+			return err
+		}
+
+		pc, err := nodeApi.ComputeDataCid(ctx, psize.Unpadded(), ir)
+		if err != nil {
+			return xerrors.Errorf("computing data CID: %w", err)
+		}
+
+		fmt.Println(pc.PieceCID, " ", pc.Size)
+		return nil
 	},
 }

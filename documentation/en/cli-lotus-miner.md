@@ -2331,6 +2331,7 @@ COMMANDS:
    workers     list workers
    sched-diag  Dump internal scheduler state
    abort       Abort a running job
+   data-cid    Compute data CID
    help, h     Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2388,6 +2389,19 @@ NAME:
 
 USAGE:
    lotus-miner sealing abort [command options] [callid]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner sealing data-cid
+```
+NAME:
+   lotus-miner sealing data-cid - Compute data CID
+
+USAGE:
+   lotus-miner sealing data-cid [command options] [file] <padded piece size>
 
 OPTIONS:
    --help, -h  show help (default: false)
