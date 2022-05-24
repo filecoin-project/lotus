@@ -21,6 +21,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
 )
 
 var DealSectorPriority = 1024
@@ -91,7 +92,7 @@ func (m *Sealing) padSector(ctx context.Context, sectorID storage.SectorRef, exi
 	for i, size := range sizes {
 		expectCid := zerocomm.ZeroPieceCommitment(size)
 
-		ppi, err := m.sealer.AddPiece(ctx, sectorID, existingPieceSizes, size, NewNullReader(size))
+		ppi, err := m.sealer.AddPiece(ctx, sectorID, existingPieceSizes, size, nullreader.NewNullReader(size))
 		if err != nil {
 			return nil, xerrors.Errorf("add piece: %w", err)
 		}
