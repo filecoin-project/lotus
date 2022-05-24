@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/filecoin-project/lotus/lib/httpreader"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -24,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
+	"github.com/filecoin-project/lotus/lib/httpreader"
 )
 
 var log = logging.Logger("rpcenc")
@@ -35,7 +35,7 @@ type StreamType string
 const (
 	Null       StreamType = "null"
 	PushStream StreamType = "push"
-	HttpUrl    StreamType = "http"
+	HTTP       StreamType = "http"
 	// TODO: Data transfer handoff to workers?
 )
 
@@ -108,7 +108,7 @@ func ReaderParamEncoder(addr string) jsonrpc.Option {
 			return reflect.ValueOf(ReaderStream{Type: Null, Info: fmt.Sprint(r.N)}), nil
 		}
 		if r, ok := r.(*httpreader.HttpReader); ok && r.URL != "" {
-			return reflect.ValueOf(ReaderStream{Type: HttpUrl, Info: r.URL}), nil
+			return reflect.ValueOf(ReaderStream{Type: HTTP, Info: r.URL}), nil
 		}
 
 		reqID := uuid.New()
@@ -426,7 +426,7 @@ func ReaderParamDecoder() (http.HandlerFunc, jsonrpc.ServerOption) {
 			}
 
 			return reflect.ValueOf(nullreader.NewNullReader(abi.UnpaddedPieceSize(n))), nil
-		case HttpUrl:
+		case HTTP:
 			return reflect.ValueOf(&httpreader.HttpReader{URL: rs.Info}), nil
 		}
 
