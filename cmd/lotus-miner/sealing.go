@@ -4,7 +4,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/lotus/lib/httpreader"
+	"io"
 	"math"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
@@ -358,7 +361,13 @@ var sealingAbortCmd = &cli.Command{
 var sealingDataCidCmd = &cli.Command{
 	Name:      "data-cid",
 	Usage:     "Compute data CID using workers",
-	ArgsUsage: "[file] <padded piece size>",
+	ArgsUsage: "[file/url] <padded piece size>",
+	Flags: []cli.Flag{
+		&cli.Uint64Flag{
+			Name:  "file-size",
+			Usage: "real file size",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() < 1 || cctx.Args().Len() > 2 {
 			return xerrors.Errorf("expected 1 or 2 arguments")
@@ -372,19 +381,45 @@ var sealingDataCidCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		p, err := homedir.Expand(cctx.Args().First())
-		if err != nil {
-			return xerrors.Errorf("expanding path: %w", err)
-		}
+		var r io.Reader
+		sz := cctx.Uint64("file-size")
 
-		f, err := os.OpenFile(p, os.O_RDONLY, 0)
-		if err != nil {
-			return xerrors.Errorf("opening source file: %w", err)
-		}
+		if strings.HasPrefix(cctx.Args().First(), "http://") || strings.HasPrefix(cctx.Args().First(), "https://") {
+			r = &httpreader.HttpReader{
+				URL: cctx.Args().First(),
+			}
 
-		st, err := f.Stat()
-		if err != nil {
-			return xerrors.Errorf("stat: %w", err)
+			if !cctx.IsSet("file-size") {
+				resp, err := http.Head(cctx.Args().First())
+				if err != nil {
+					return xerrors.Errorf("http head: %w", err)
+				}
+
+				if resp.ContentLength < 0 {
+					return xerrors.Errorf("head response didn't contain content length; specify --file-size")
+				}
+				sz = uint64(resp.ContentLength)
+			}
+		} else {
+			p, err := homedir.Expand(cctx.Args().First())
+			if err != nil {
+				return xerrors.Errorf("expanding path: %w", err)
+			}
+
+			f, err := os.OpenFile(p, os.O_RDONLY, 0)
+			if err != nil {
+				return xerrors.Errorf("opening source file: %w", err)
+			}
+
+			if !cctx.IsSet("file-size") {
+				st, err := f.Stat()
+				if err != nil {
+					return xerrors.Errorf("stat: %w", err)
+				}
+				sz = uint64(st.Size())
+			}
+
+			r = f
 		}
 
 		var psize abi.PaddedPieceSize
@@ -397,19 +432,14 @@ var sealingDataCidCmd = &cli.Command{
 			if err := psize.Validate(); err != nil {
 				return xerrors.Errorf("checking piece size: %w", err)
 			}
-			if st.Size() > int64(psize.Unpadded()) {
+			if sz > uint64(psize.Unpadded()) {
 				return xerrors.Errorf("file larger than the piece")
 			}
 		} else {
-			psize = padreader.PaddedSize(uint64(st.Size())).Padded()
+			psize = padreader.PaddedSize(uint64(sz)).Padded()
 		}
 
-		ir, err := padreader.NewInflator(f, uint64(st.Size()), psize.Unpadded())
-		if err != nil {
-			return err
-		}
-
-		pc, err := nodeApi.ComputeDataCid(ctx, psize.Unpadded(), ir)
+		pc, err := nodeApi.ComputeDataCid(ctx, psize.Unpadded(), r)
 		if err != nil {
 			return xerrors.Errorf("computing data CID: %w", err)
 		}
