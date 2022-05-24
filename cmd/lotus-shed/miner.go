@@ -389,7 +389,7 @@ var sendInvalidWindowPoStCmd = &cli.Command{
 
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
-			return err
+			return xerrors.Errorf("getting api: %w", err)
 		}
 		defer acloser()
 
@@ -397,15 +397,18 @@ var sendInvalidWindowPoStCmd = &cli.Command{
 
 		maddr, err := address.NewFromString(cctx.String("actor"))
 		if err != nil {
-			return err
+			return xerrors.Errorf("getting actor address: %w", err)
 		}
 
 		minfo, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 		if err != nil {
-			return err
+			return xerrors.Errorf("getting mienr info: %w", err)
 		}
 
 		deadline, err := api.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("getting deadline: %w", err)
+		}
 
 		partitionIndices := cctx.Int64Slice("partitions")
 		if len(partitionIndices) <= 0 {
@@ -418,6 +421,9 @@ var sendInvalidWindowPoStCmd = &cli.Command{
 		}
 
 		checkRand, err := api.StateGetRandomnessFromTickets(ctx, crypto.DomainSeparationTag_PoStChainCommit, deadline.Challenge, nil, chainHead.Key())
+		if err != nil {
+			return xerrors.Errorf("getting randomness: %w", err)
+		}
 
 		proofSize, err := minfo.WindowPoStProofType.ProofSize()
 		if err != nil {
@@ -495,12 +501,12 @@ var generateAndSendConsensusFaultCmd = &cli.Command{
 
 		blockCid, err := cid.Parse(cctx.Args().First())
 		if err != nil {
-			return err
+			return xerrors.Errorf("getting first arg: %w", err)
 		}
 
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
-			return err
+			return xerrors.Errorf("getting chain head: %w", err)
 		}
 		defer acloser()
 
@@ -517,6 +523,9 @@ var generateAndSendConsensusFaultCmd = &cli.Command{
 		}
 
 		blockHeader, err := api.ChainGetBlock(ctx, blockCid)
+		if err != nil {
+			return xerrors.Errorf("getting block header: %w", err)
+		}
 
 		blockHeaderCopy := *blockHeader
 		blockHeaderCopy.ForkSignaling = blockHeader.ForkSignaling + 1
