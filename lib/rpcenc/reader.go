@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/lotus/lib/httpreader"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -34,6 +35,7 @@ type StreamType string
 const (
 	Null       StreamType = "null"
 	PushStream StreamType = "push"
+	HttpUrl    StreamType = "http"
 	// TODO: Data transfer handoff to workers?
 )
 
@@ -104,6 +106,9 @@ func ReaderParamEncoder(addr string) jsonrpc.Option {
 
 		if r, ok := r.(*nullreader.NullReader); ok {
 			return reflect.ValueOf(ReaderStream{Type: Null, Info: fmt.Sprint(r.N)}), nil
+		}
+		if r, ok := r.(*httpreader.HttpReader); ok && r.URL != "" {
+			return reflect.ValueOf(ReaderStream{Type: HttpUrl, Info: r.URL}), nil
 		}
 
 		reqID := uuid.New()
@@ -413,13 +418,16 @@ func ReaderParamDecoder() (http.HandlerFunc, jsonrpc.ServerOption) {
 			return reflect.Value{}, xerrors.Errorf("unmarshaling reader id: %w", err)
 		}
 
-		if rs.Type == Null {
+		switch rs.Type {
+		case Null:
 			n, err := strconv.ParseInt(rs.Info, 10, 64)
 			if err != nil {
 				return reflect.Value{}, xerrors.Errorf("parsing null byte count: %w", err)
 			}
 
 			return reflect.ValueOf(nullreader.NewNullReader(abi.UnpaddedPieceSize(n))), nil
+		case HttpUrl:
+			return reflect.ValueOf(&httpreader.HttpReader{URL: rs.Info}), nil
 		}
 
 		u, err := uuid.Parse(rs.Info)
