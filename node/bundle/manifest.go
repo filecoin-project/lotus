@@ -72,7 +72,7 @@ func LoadBundle(ctx context.Context, bs blockstore.Blockstore, path string, av a
 
 // utility for blanket loading outside DI
 func FetchAndLoadBundles(ctx context.Context, bs blockstore.Blockstore, bar map[actors.Version]build.Bundle) error {
-	netw := build.GetNetworkBundle()
+	netw := build.NetworkBundle
 
 	path := os.Getenv("LOTUS_PATH")
 	if path == "" {

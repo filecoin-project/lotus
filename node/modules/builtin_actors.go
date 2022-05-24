@@ -25,7 +25,7 @@ func LoadBuiltinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 
 	// We can't put it as a dep in inputs causes a stack overflow in DI from circular dependency
 	// So we pass it through ldflags instead
-	netw := build.GetNetworkBundle()
+	netw := build.NetworkBundle
 
 	for av, bd := range build.BuiltinActorReleases {
 		// first check to see if we know this release

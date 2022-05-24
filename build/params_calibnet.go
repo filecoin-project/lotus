@@ -18,6 +18,7 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 
 const GenesisNetworkVersion = network.Version0
 
+const NetworkBundle = "calibrationnet"
 const BootstrappersFile = "calibnet.pi"
 const GenesisFile = "calibnet.car"
 

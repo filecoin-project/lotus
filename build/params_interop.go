@@ -15,6 +15,7 @@ import (
 	"github.com/ipfs/go-cid"
 )
 
+const NetworkBundle = "caterpillarnet"
 const BootstrappersFile = "interopnet.pi"
 const GenesisFile = "interopnet.car"
 
