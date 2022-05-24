@@ -4,20 +4,27 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
 	"github.com/google/uuid"
+	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-padreader"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/lib/httpreader"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -31,6 +38,7 @@ var sealingCmd = &cli.Command{
 		workersCmd(true),
 		sealingSchedDiagCmd,
 		sealingAbortCmd,
+		sealingDataCidCmd,
 	},
 }
 
@@ -347,5 +355,96 @@ var sealingAbortCmd = &cli.Command{
 		fmt.Printf("aborting job %s, task %s, sector %d, running on host %s\n", job.ID.String(), job.Task.Short(), job.Sector.Number, job.Hostname)
 
 		return nodeApi.SealingAbort(ctx, job.ID)
+	},
+}
+
+var sealingDataCidCmd = &cli.Command{
+	Name:      "data-cid",
+	Usage:     "Compute data CID using workers",
+	ArgsUsage: "[file/url] <padded piece size>",
+	Flags: []cli.Flag{
+		&cli.Uint64Flag{
+			Name:  "file-size",
+			Usage: "real file size",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() < 1 || cctx.Args().Len() > 2 {
+			return xerrors.Errorf("expected 1 or 2 arguments")
+		}
+
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		var r io.Reader
+		sz := cctx.Uint64("file-size")
+
+		if strings.HasPrefix(cctx.Args().First(), "http://") || strings.HasPrefix(cctx.Args().First(), "https://") {
+			r = &httpreader.HttpReader{
+				URL: cctx.Args().First(),
+			}
+
+			if !cctx.IsSet("file-size") {
+				resp, err := http.Head(cctx.Args().First())
+				if err != nil {
+					return xerrors.Errorf("http head: %w", err)
+				}
+
+				if resp.ContentLength < 0 {
+					return xerrors.Errorf("head response didn't contain content length; specify --file-size")
+				}
+				sz = uint64(resp.ContentLength)
+			}
+		} else {
+			p, err := homedir.Expand(cctx.Args().First())
+			if err != nil {
+				return xerrors.Errorf("expanding path: %w", err)
+			}
+
+			f, err := os.OpenFile(p, os.O_RDONLY, 0)
+			if err != nil {
+				return xerrors.Errorf("opening source file: %w", err)
+			}
+
+			if !cctx.IsSet("file-size") {
+				st, err := f.Stat()
+				if err != nil {
+					return xerrors.Errorf("stat: %w", err)
+				}
+				sz = uint64(st.Size())
+			}
+
+			r = f
+		}
+
+		var psize abi.PaddedPieceSize
+		if cctx.Args().Len() == 2 {
+			rps, err := humanize.ParseBytes(cctx.Args().Get(1))
+			if err != nil {
+				return xerrors.Errorf("parsing piece size: %w", err)
+			}
+			psize = abi.PaddedPieceSize(rps)
+			if err := psize.Validate(); err != nil {
+				return xerrors.Errorf("checking piece size: %w", err)
+			}
+			if sz > uint64(psize.Unpadded()) {
+				return xerrors.Errorf("file larger than the piece")
+			}
+		} else {
+			psize = padreader.PaddedSize(sz).Padded()
+		}
+
+		pc, err := nodeApi.ComputeDataCid(ctx, psize.Unpadded(), r)
+		if err != nil {
+			return xerrors.Errorf("computing data CID: %w", err)
+		}
+
+		fmt.Println(pc.PieceCID, " ", pc.Size)
+		return nil
 	},
 }
