@@ -79,11 +79,6 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		// future. It's not guaranteed to be accurate... but that's fine.
 	}
 
-	filVested, err := sm.GetFilVested(ctx, height)
-	if err != nil {
-		return cid.Undef, nil, err
-	}
-
 	r := rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, sm.GetNetworkVersion)
 	vmopt := &vm.VMOpts{
 		StateBase:      base,
@@ -95,7 +90,6 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NetworkVersion: sm.GetNetworkVersion(ctx, height),
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
-		FilVested:      filVested,
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 	}
 	vmi, err := sm.newVM(ctx, vmopt)

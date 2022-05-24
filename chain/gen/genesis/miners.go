@@ -109,7 +109,6 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 			CircSupplyCalc: csc,
 			NetworkVersion: nv,
 			BaseFee:        big.Zero(),
-			FilVested:      big.Zero(),
 		}
 
 		return vm.NewVM(ctx, vmopt)

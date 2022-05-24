@@ -491,7 +491,6 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 		Actors:         filcns.NewActorRegistry(),
 		Syscalls:       mkFakedSigSyscalls(sys),
 		CircSupplyCalc: csc,
-		FilVested:      big.Zero(),
 		NetworkVersion: nv,
 		BaseFee:        big.Zero(),
 	}
