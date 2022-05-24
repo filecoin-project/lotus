@@ -39,23 +39,49 @@ func NewLiveHandler(api lapi.FullNode) *HealthHandler {
 	ctx := context.Background()
 	h := HealthHandler{}
 	go func() {
-		const reset int32 = 5
-		var countdown int32 = 0
+		const (
+			reset      int32         = 5
+			maxbackoff time.Duration = time.Minute
+			minbackoff time.Duration = time.Second
+		)
+		var (
+			countdown int32
+			headCh    <-chan []*lapi.HeadChange
+			backoff   time.Duration = minbackoff
+			err       error
+		)
 		minutely := time.NewTicker(time.Minute)
-		headCh, err := api.ChainNotify(ctx)
-		if err != nil {
-			healthlog.Warnf("failed to instantiate chain notify channel; liveness cannot be determined. %s", err)
-			h.SetHealthy(false)
-			return
-		}
 		for {
+			if headCh == nil {
+				healthlog.Infof("waiting %v before starting ChainNotify channel", backoff)
+				<-time.After(backoff)
+				headCh, err = api.ChainNotify(ctx)
+				if err != nil {
+					healthlog.Warnf("failed to instantiate ChainNotify channel; cannot determine liveness. %s", err)
+					h.SetHealthy(false)
+					nextbackoff := 2 * backoff
+					if nextbackoff > maxbackoff {
+						nextbackoff = maxbackoff
+					}
+					backoff = nextbackoff
+					continue
+				} else {
+					healthlog.Infof("started ChainNotify channel")
+					backoff = minbackoff
+				}
+			}
 			select {
 			case <-minutely.C:
 				atomic.AddInt32(&countdown, -1)
 				if countdown <= 0 {
 					h.SetHealthy(false)
 				}
-			case <-headCh:
+			case _, ok := <-headCh:
+				if !ok { // channel is closed, enter reconnect loop.
+					h.SetHealthy(false)
+					headCh = nil
+					continue
+				}
 				atomic.StoreInt32(&countdown, reset)
 				h.SetHealthy(true)
 			}
