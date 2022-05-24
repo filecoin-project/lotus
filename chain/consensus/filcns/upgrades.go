@@ -44,6 +44,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/node/bundle"
 )
 
 func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
@@ -1368,6 +1369,13 @@ func upgradeActorsV8Common(
 ) (cid.Cid, error) {
 	buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), blockstore.NewMemorySync())
 	store := store.ActorStore(ctx, buf)
+
+	// ensure that the manifet is loaded in the blockstore
+	if err := bundle.FetchAndLoadBundles(ctx, buf, map[actors.Version]build.Bundle{
+		actors.Version8: build.BuiltinActorReleases[actors.Version8],
+	}); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
+	}
 
 	// Load the state root.
 	var stateRoot types.StateRoot

@@ -18,10 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
-var manifestCids map[Version]cid.Cid = map[Version]cid.Cid{
-	// TODO fill in manifest CIDs for v8 and upwards once these are fixed
-}
-
+var manifestCids map[Version]cid.Cid
 var manifests map[Version]*manifest.Manifest
 var actorMeta map[cid.Cid]actorEntry
 
@@ -51,6 +48,10 @@ type actorEntry struct {
 func AddManifest(av Version, manifestCid cid.Cid) {
 	manifestMx.Lock()
 	defer manifestMx.Unlock()
+
+	if manifestCids == nil {
+		manifestCids = make(map[Version]cid.Cid)
+	}
 
 	manifestCids[av] = manifestCid
 }
