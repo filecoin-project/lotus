@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/go-state-types/builtin"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/lotus/api"
@@ -226,7 +226,8 @@ func TestWindowPostDispute(t *testing.T) {
 	// Now try to be evil again
 	err = submitBadProof(ctx, client, evilMiner.OwnerKey.Address, evilMinerAddr, di, evilSectorLoc.Deadline, evilSectorLoc.Partition)
 	require.Error(t, err)
-	require.Equal(t, 16, err)
+	require.Contains(t, err.Error(), "invalid post was submitted")
+	require.Contains(t, err.Error(), "(RetCode=16)")
 
 	// It didn't work because we're recovering.
 }
@@ -330,7 +331,8 @@ waitForProof:
 		}
 		_, err := client.MpoolPushMessage(ctx, msg, nil)
 		require.Error(t, err)
-		require.Equal(t, err, 16)
+		require.Contains(t, err.Error(), "failed to dispute valid post")
+		require.Contains(t, err.Error(), "(RetCode=16)")
 	}
 }
 
