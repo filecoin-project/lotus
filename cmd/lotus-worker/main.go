@@ -182,10 +182,14 @@ var runCmd = &cli.Command{
 			Usage: "enable window post",
 			Value: false,
 		},
-
 		&cli.BoolFlag{
 			Name:  "winningpost",
 			Usage: "enable winning post",
+			Value: false,
+		},
+		&cli.BoolFlag{
+			Name:  "no-default",
+			Usage: "disable all default compute tasks, use the worker for storage/fetching only",
 			Value: false,
 		},
 		&cli.IntFlag{
@@ -308,8 +312,11 @@ var runCmd = &cli.Command{
 		}
 
 		if workerType == "" {
-			workerType = sealtasks.WorkerSealing
 			taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFinalizeReplicaUpdate)
+
+			if !cctx.Bool("no-default") {
+				workerType = sealtasks.WorkerSealing
+			}
 		}
 
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("addpiece")) && cctx.Bool("addpiece") {
@@ -335,6 +342,10 @@ var runCmd = &cli.Command{
 		}
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("regen-sector-key")) && cctx.Bool("regen-sector-key") {
 			taskTypes = append(taskTypes, sealtasks.TTRegenSectorKey)
+		}
+
+		if cctx.Bool("no-default") && workerType == "" {
+			workerType = sealtasks.WorkerSealing
 		}
 
 		if len(taskTypes) == 0 {

@@ -897,13 +897,13 @@ This is useful for forcing all deals to be assigned as snap deals to sectors mar
 			Name: "MinCommitBatch",
 			Type: "int",
 
-			Comment: `maximum batched commit size - batches will be sent immediately above this size`,
+			Comment: `minimum batched commit size - batches above this size will eventually be sent on a timeout`,
 		},
 		{
 			Name: "MaxCommitBatch",
 			Type: "int",
 
-			Comment: ``,
+			Comment: `maximum batched commit size - batches will be sent immediately above this size`,
 		},
 		{
 			Name: "CommitBatchWait",

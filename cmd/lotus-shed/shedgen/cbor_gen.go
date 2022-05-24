@@ -23,18 +23,19 @@ func (t *CarbNode) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{161}); err != nil {
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write([]byte{161}); err != nil {
 		return err
 	}
-
-	scratch := make([]byte, 9)
 
 	// t.Sub ([]cid.Cid) (slice)
 	if len("Sub") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Sub\" was too long")
 	}
 
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Sub"))); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Sub"))); err != nil {
 		return err
 	}
 	if _, err := io.WriteString(w, string("Sub")); err != nil {
@@ -45,27 +46,32 @@ func (t *CarbNode) MarshalCBOR(w io.Writer) error {
 		return xerrors.Errorf("Slice value in field t.Sub was too long")
 	}
 
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajArray, uint64(len(t.Sub))); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajArray, uint64(len(t.Sub))); err != nil {
 		return err
 	}
 	for _, v := range t.Sub {
-		if err := cbg.WriteCidBuf(scratch, w, v); err != nil {
+		if err := cbg.WriteCid(w, v); err != nil {
 			return xerrors.Errorf("failed writing cid field t.Sub: %w", err)
 		}
 	}
 	return nil
 }
 
-func (t *CarbNode) UnmarshalCBOR(r io.Reader) error {
+func (t *CarbNode) UnmarshalCBOR(r io.Reader) (err error) {
 	*t = CarbNode{}
 
-	br := cbg.GetPeeker(r)
-	scratch := make([]byte, 8)
+	cr := cbg.NewCborReader(r)
 
-	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
+	maj, extra, err := cr.ReadHeader()
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
 	if maj != cbg.MajMap {
 		return fmt.Errorf("cbor input should be of type map")
 	}
@@ -80,7 +86,7 @@ func (t *CarbNode) UnmarshalCBOR(r io.Reader) error {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadStringBuf(br, scratch)
+			sval, err := cbg.ReadString(cr)
 			if err != nil {
 				return err
 			}
@@ -92,7 +98,7 @@ func (t *CarbNode) UnmarshalCBOR(r io.Reader) error {
 		// t.Sub ([]cid.Cid) (slice)
 		case "Sub":
 
-			maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
+			maj, extra, err = cr.ReadHeader()
 			if err != nil {
 				return err
 			}
@@ -111,7 +117,7 @@ func (t *CarbNode) UnmarshalCBOR(r io.Reader) error {
 
 			for i := 0; i < int(extra); i++ {
 
-				c, err := cbg.ReadCid(br)
+				c, err := cbg.ReadCid(cr)
 				if err != nil {
 					return xerrors.Errorf("reading cid field t.Sub failed: %w", err)
 				}

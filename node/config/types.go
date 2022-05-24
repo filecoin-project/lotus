@@ -290,8 +290,9 @@ type SealingConfig struct {
 
 	// enable / disable commit aggregation (takes effect after nv13)
 	AggregateCommits bool
-	// maximum batched commit size - batches will be sent immediately above this size
+	// minimum batched commit size - batches above this size will eventually be sent on a timeout
 	MinCommitBatch int
+	// maximum batched commit size - batches will be sent immediately above this size
 	MaxCommitBatch int
 	// how long to wait before submitting a batch after crossing the minimum batch size
 	CommitBatchWait Duration
