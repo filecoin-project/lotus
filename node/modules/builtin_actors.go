@@ -136,6 +136,9 @@ func LoadBuiltinActorsTesting(lc fx.Lifecycle, mctx helpers.MetricsCtx, bs dtype
 	testingBundleMx.Lock()
 	defer testingBundleMx.Unlock()
 
+	// don't clobber the bundle during migration
+	build.NetworkBundle = netw
+
 	const basePath = "/tmp/lotus-testing"
 	for av, bd := range build.BuiltinActorReleases {
 		switch {
