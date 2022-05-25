@@ -11,6 +11,7 @@ import (
 
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
@@ -22,7 +23,6 @@ import (
 
 	"github.com/docker/go-units"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -374,12 +374,12 @@ var sendInvalidWindowPoStCmd = &cli.Command{
 		},
 		&cli.Int64SliceFlag{
 			Name:     "partitions",
-			Usage:    "list of partitions to compact sectors in",
+			Usage:    "list of partitions to submit invalid post for",
 			Required: true,
 		},
 		&cli.StringFlag{
 			Name:  "actor",
-			Usage: "TODO",
+			Usage: "Specify the address of the miner to run this command",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -469,7 +469,18 @@ var sendInvalidWindowPoStCmd = &cli.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		fmt.Println("Message CID:", smsg.Cid())
+		fmt.Printf("Invalid PoST in message %s\n", smsg.Cid())
+
+		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 0)
+		if err != nil {
+			return err
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			fmt.Println(cctx.App.Writer, "Invalid PoST message failed!")
+			return err
+		}
 
 		return nil
 	},
@@ -479,23 +490,8 @@ var generateAndSendConsensusFaultCmd = &cli.Command{
 	Name:        "generate-and-send-consensus-fault",
 	Usage:       "Provided a block CID mined by the miner, will create another block at the same height, and send both block headers to generate a consensus fault.",
 	Description: `Note: This is meant for testing purposes and should NOT be used on mainnet or you will be slashed`,
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:  "really-do-it",
-			Usage: "Actually send transaction performing the action",
-			Value: false,
-		},
-		&cli.StringFlag{
-			Name:  "actor",
-			Usage: "TODO",
-		},
-	},
 	Action: func(cctx *cli.Context) error {
-		if !cctx.Bool("really-do-it") {
-			return xerrors.Errorf("Pass --really-do-it to actually execute this action")
-		}
-
-		if cctx.Args().Len() != 1 {
+		if cctx.NArg() != 1 {
 			return xerrors.Errorf("expected 1 arg (blockCID)")
 		}
 
@@ -512,21 +508,20 @@ var generateAndSendConsensusFaultCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := address.NewFromString(cctx.String("actor"))
+		blockHeader, err := api.ChainGetBlock(ctx, blockCid)
 		if err != nil {
-			return xerrors.Errorf("getting actor address: %w", err)
+			return xerrors.Errorf("getting block header: %w", err)
 		}
+
+		maddr := blockHeader.Miner
 
 		minfo, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting miner info: %w", err)
 		}
 
-		blockHeader, err := api.ChainGetBlock(ctx, blockCid)
-		if err != nil {
-			return xerrors.Errorf("getting block header: %w", err)
-		}
-
+		// We are changing one field in the block header, then resigning the new block.
+		// This gives two different blocks signed by the same miner at the same height which will result in a consensus fault.
 		blockHeaderCopy := *blockHeader
 		blockHeaderCopy.ForkSignaling = blockHeader.ForkSignaling + 1
 
@@ -573,7 +568,18 @@ var generateAndSendConsensusFaultCmd = &cli.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		fmt.Println("Message CID:", smsg.Cid())
+		fmt.Printf("Consensus fault reported in message %s\n", smsg.Cid())
+
+		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 0)
+		if err != nil {
+			return err
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			fmt.Println(cctx.App.Writer, "Report consensus fault failed!")
+			return err
+		}
 
 		return nil
 	},
