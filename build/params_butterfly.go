@@ -18,7 +18,8 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 
 const GenesisNetworkVersion = network.Version14
 
-const NetworkBundle = "butterflynet"
+var NetworkBundle = "butterflynet"
+
 const BootstrappersFile = "butterflynet.pi"
 const GenesisFile = "butterflynet.car"
 
