@@ -413,7 +413,7 @@ assignLoop:
 					continue
 				}
 
-				needRes := storiface.ResourceTable[todo.taskType][todo.sector.ProofType]
+				needRes := worker.info.Resources.ResourceSpec(todo.sector.ProofType, todo.taskType)
 				if worker.active.canHandleRequest(todo.SealTask(), needRes, sw.wid, "startPreparing", worker.info) {
 					tidx = t
 					break
