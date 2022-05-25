@@ -197,6 +197,14 @@ var provingInfoCmd = &cli.Command{
 var provingDeadlinesCmd = &cli.Command{
 	Name:  "deadlines",
 	Usage: "View the current proving period deadlines information",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "live",
+			Usage:   "View live deadlines information",
+			Value:   false,
+			Aliases: []string{"l"},
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
@@ -239,28 +247,53 @@ var provingDeadlinesCmd = &cli.Command{
 
 			sectors := uint64(0)
 			faults := uint64(0)
+			var PartitionSum int
 
-			for _, partition := range partitions {
-				sc, err := partition.AllSectors.Count()
-				if err != nil {
-					return err
+			if cctx.Bool("live") {
+				for _, partition := range partitions {
+					sc, err := partition.LiveSectors.Count()
+					if err != nil {
+						return err
+					}
+
+					if sc > 0 {
+						PartitionSum++
+					}
+
+					sectors += sc
+
+					fc, err := partition.FaultySectors.Count()
+					if err != nil {
+						return err
+					}
+
+					faults += fc
+
 				}
+			} else {
+				for _, partition := range partitions {
+					PartitionSum++
 
-				sectors += sc
+					sc, err := partition.AllSectors.Count()
+					if err != nil {
+						return err
+					}
 
-				fc, err := partition.FaultySectors.Count()
-				if err != nil {
-					return err
+					sectors += sc
+
+					fc, err := partition.FaultySectors.Count()
+					if err != nil {
+						return err
+					}
+
+					faults += fc
 				}
-
-				faults += fc
 			}
-
 			var cur string
 			if di.Index == uint64(dlIdx) {
 				cur += "\t(current)"
 			}
-			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d)\t%d%s\n", dlIdx, len(partitions), sectors, faults, provenPartitions, cur)
+			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d)\t%d%s\n", dlIdx, PartitionSum, sectors, faults, provenPartitions, cur)
 		}
 
 		return tw.Flush()
