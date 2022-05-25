@@ -9,10 +9,8 @@ import (
 	"time"
 
 	"github.com/fatih/color"
-	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -34,6 +32,7 @@ var provingCmd = &cli.Command{
 		provingCheckProvableCmd,
 		workersCmd(false),
 		provingComputeCmd,
+		provingLivesCmd,
 	},
 }
 
@@ -559,5 +558,61 @@ It will not send any messages to the chain.`,
 		fmt.Println(string(jr))
 
 		return nil
+	},
+}
+
+var provingLivesCmd = &cli.Command{
+	Name:  "lives",
+	Usage: "View the currently known proving live sectors information",
+	Action: func(cctx *cli.Context) error {
+		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		stor := store.ActorStore(ctx, blockstore.NewAPIBlockstore(api))
+
+		maddr, err := getActorAddress(ctx, cctx)
+		if err != nil {
+			return err
+		}
+
+		mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		mas, err := miner.Load(stor, mact)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Miner: %s\n", color.BlueString("%s", maddr))
+
+		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+		_, _ = fmt.Fprintln(tw, "deadline\tpartition\tsectorsTotal")
+		err = mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
+			return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
+				faults, err := part.LiveSectors()
+				if err != nil {
+					return err
+				}
+
+				total, err := faults.Count()
+				if err != nil {
+					return err
+				}
+
+				_, _ = fmt.Fprintf(tw, "%d\t%d\t%d\n", dlIdx, partIdx, total)
+				return nil
+			})
+		})
+		if err != nil {
+			return err
+		}
+		return tw.Flush()
 	},
 }
