@@ -260,7 +260,7 @@ minerLoop:
 			}
 
 			// just wait for the beacon entry to become available before we select our final mining base
-			_, err = m.api.BeaconGetEntry(ctx, prebase.TipSet.Height()+prebase.NullRounds+1)
+			_, err = m.api.StateGetBeaconEntry(ctx, prebase.TipSet.Height()+prebase.NullRounds+1)
 			if err != nil {
 				log.Errorf("failed getting beacon entry: %s", err)
 				if !m.niceSleep(time.Second) {

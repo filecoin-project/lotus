@@ -264,7 +264,8 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 			return nil
 		}
 
-		if err := beacon.ValidateBlockValues(filec.beacon, h, baseTs.Height(), *prevBeacon); err != nil {
+		nv := filec.sm.GetNetworkVersion(ctx, h.Height)
+		if err := beacon.ValidateBlockValues(filec.beacon, nv, h, baseTs.Height(), *prevBeacon); err != nil {
 			return xerrors.Errorf("failed to validate blocks random beacon values: %w", err)
 		}
 		return nil
@@ -488,7 +489,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 		// Phase 2: (Partial) semantic validation:
 		// the sender exists and is an account actor, and the nonces make sense
 		var sender address.Address
-		if filec.sm.GetNetworkVersion(ctx, b.Header.Height) >= network.Version13 {
+		if nv >= network.Version13 {
 			sender, err = st.LookupID(m.From)
 			if err != nil {
 				return xerrors.Errorf("failed to lookup sender %s: %w", m.From, err)

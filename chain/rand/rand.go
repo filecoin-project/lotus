@@ -198,7 +198,9 @@ func (sr *stateRand) extractBeaconEntryForEpoch(ctx context.Context, filecoinEpo
 		return nil, err
 	}
 
-	round := sr.beacon.BeaconForEpoch(filecoinEpoch).MaxBeaconRoundForEpoch(filecoinEpoch)
+	nv := sr.networkVersionGetter(ctx, filecoinEpoch)
+
+	round := sr.beacon.BeaconForEpoch(filecoinEpoch).MaxBeaconRoundForEpoch(nv, filecoinEpoch)
 
 	for i := 0; i < 20; i++ {
 		cbe := randTs.Blocks()[0].BeaconEntries

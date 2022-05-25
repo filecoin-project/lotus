@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -1456,4 +1457,23 @@ func (a *StateAPI) StateGetRandomnessFromTickets(ctx context.Context, personaliz
 func (a *StateAPI) StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
 	return a.StateManager.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, tsk)
 
+}
+
+func (a *StateAPI) StateGetBeaconEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+	b := a.Beacon.BeaconForEpoch(epoch)
+	rr := b.MaxBeaconRoundForEpoch(a.StateManager.GetNetworkVersion(ctx, epoch), epoch)
+	e := b.Entry(ctx, rr)
+
+	select {
+	case be, ok := <-e:
+		if !ok {
+			return nil, fmt.Errorf("beacon get returned no value")
+		}
+		if be.Err != nil {
+			return nil, be.Err
+		}
+		return &be.Entry, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
