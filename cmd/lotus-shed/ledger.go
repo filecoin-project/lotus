@@ -308,10 +308,6 @@ var ledgerNewAddressesCmd = &cli.Command{
 			return err
 		}
 
-		if index < 0 {
-			return fmt.Errorf("account index must greater than 0")
-		}
-
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
