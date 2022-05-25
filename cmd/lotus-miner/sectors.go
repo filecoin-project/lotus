@@ -2091,6 +2091,7 @@ func yesno(b bool) string {
 	return color.RedString("NO")
 }
 
+// TODO simulate this call if --really-do-it is not used
 var sectorsCompactPartitionsCmd = &cli.Command{
 	Name:  "compact-partitions",
 	Usage: "removes dead sectors from partitions and reduces the number of partitions used if possible",
@@ -2112,7 +2113,7 @@ var sectorsCompactPartitionsCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:  "actor",
-			Usage: "TODO",
+			Usage: "Specify the address of the miner to run this command",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -2140,6 +2141,9 @@ var sectorsCompactPartitionsCmd = &cli.Command{
 		}
 
 		deadline := cctx.Uint64("deadline")
+		if deadline > miner.WPoStPeriodDeadlines {
+			return fmt.Errorf("deadline %d out of range", deadline)
+		}
 
 		parts := cctx.Int64Slice("partitions")
 		if len(parts) <= 0 {
@@ -2173,7 +2177,18 @@ var sectorsCompactPartitionsCmd = &cli.Command{
 			return xerrors.Errorf("mpool push: %w", err)
 		}
 
-		fmt.Println("Message CID:", smsg.Cid())
+		fmt.Printf("Requested compact partitions in message %s\n", smsg.Cid())
+
+		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 0)
+		if err != nil {
+			return err
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			fmt.Println(cctx.App.Writer, "compact partitions failed!")
+			return err
+		}
 
 		return nil
 	},
