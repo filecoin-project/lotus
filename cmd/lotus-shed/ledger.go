@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	lcli "github.com/filecoin-project/lotus/cli"
-	cliutil "github.com/filecoin-project/lotus/cli/util"
 )
 
 var ledgerCmd = &cli.Command{
@@ -304,7 +303,7 @@ var ledgerNewAddressesCmd = &cli.Command{
 			return fmt.Errorf("must pass account index")
 		}
 
-		index, err := strconv.Atoi(cctx.Args().First())
+		index, err := strconv.ParseUint(cctx.Args().First(), 10, 32)
 		if err != nil {
 			return err
 		}
@@ -313,7 +312,7 @@ var ledgerNewAddressesCmd = &cli.Command{
 			return fmt.Errorf("account index must greater than 0")
 		}
 
-		api, closer, err := cliutil.GetFullNodeAPI(cctx)
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
 		}
