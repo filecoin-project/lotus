@@ -105,7 +105,7 @@ func (ps *poStScheduler) Schedule(ctx context.Context, primary bool, spt abi.Reg
 	selected := candidates[0]
 	worker := ps.workers[selected.id]
 
-	return worker.active.withResources(selected.id, worker.info, selected.res, &ps.lk, func() error {
+	return worker.active.withResources(selected.id, worker.info, ps.postType.SealTask(spt), selected.res, &ps.lk, func() error {
 		ps.lk.Unlock()
 		defer ps.lk.Lock()
 
@@ -124,7 +124,7 @@ func (ps *poStScheduler) readyWorkers(spt abi.RegisteredSealProof) (bool, []cand
 	for wid, wr := range ps.workers {
 		needRes := wr.info.Resources.ResourceSpec(spt, ps.postType)
 
-		if !wr.active.canHandleRequest(needRes, wid, "post-readyWorkers", wr.info) {
+		if !wr.active.canHandleRequest(ps.postType.SealTask(spt), needRes, wid, "post-readyWorkers", wr.info) {
 			continue
 		}
 

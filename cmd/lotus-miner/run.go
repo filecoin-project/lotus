@@ -4,7 +4,6 @@ import (
 	"fmt"
 	_ "net/http/pprof"
 	"os"
-	"strconv"
 
 	"github.com/filecoin-project/lotus/api/v1api"
 
@@ -50,11 +49,6 @@ var runCmd = &cli.Command{
 			Usage: "manage open file limit",
 			Value: true,
 		},
-		&cli.IntFlag{
-			Name:  "parallel-p1-limit",
-			Usage: "maximum pre commit1 operations to run in parallel",
-			Value: -1,
-		},
 	},
 	Action: func(cctx *cli.Context) error {
 		if !cctx.Bool("enable-gpu-proving") {
@@ -63,8 +57,6 @@ var runCmd = &cli.Command{
 				return err
 			}
 		}
-
-		os.Setenv("PARALLEL_P1_LIMIT", strconv.Itoa(cctx.Int("parallel-p1-limit")))
 
 		ctx, _ := tag.New(lcli.DaemonContext(cctx),
 			tag.Insert(metrics.Version, build.BuildVersion),

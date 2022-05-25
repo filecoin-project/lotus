@@ -116,16 +116,6 @@ type workerDisableReq struct {
 	done          func()
 }
 
-type activeResources struct {
-	memUsedMin uint64
-	memUsedMax uint64
-	gpuUsed    float64
-	cpuUse     uint64
-
-	cond    *sync.Cond
-	waiting int
-}
-
 type workerRequest struct {
 	sector   storage.SectorRef
 	taskType sealtasks.TaskType
@@ -211,6 +201,13 @@ func (r *workerRequest) respond(err error) {
 	case r.ret <- workerResponse{err: err}:
 	case <-r.ctx.Done():
 		log.Warnf("request got cancelled before we could respond")
+	}
+}
+
+func (r *workerRequest) SealTask() sealtasks.SealTaskType {
+	return sealtasks.SealTaskType{
+		TaskType:            r.taskType,
+		RegisteredSealProof: r.sector.ProofType,
 	}
 }
 
@@ -366,6 +363,9 @@ func (sh *scheduler) trySched() {
 	}
 
 	windows := make([]schedWindow, windowsLen)
+	for i := range windows {
+		windows[i].allocated = *newActiveResources()
+	}
 	acceptableWindows := make([][]int, queueLen) // QueueIndex -> []OpenWindowIndex
 
 	// Step 1
@@ -401,7 +401,7 @@ func (sh *scheduler) trySched() {
 				needRes := worker.info.Resources.ResourceSpec(task.sector.ProofType, task.taskType)
 
 				// TODO: allow bigger windows
-				if !windows[wnd].allocated.canHandleRequest(needRes, windowRequest.worker, "schedAcceptable", worker.info) {
+				if !windows[wnd].allocated.canHandleRequest(task.SealTask(), needRes, windowRequest.worker, "schedAcceptable", worker.info) {
 					continue
 				}
 
@@ -475,16 +475,12 @@ func (sh *scheduler) trySched() {
 			wid := sh.openWindows[wnd].worker
 			w := sh.workers[wid]
 
-			res := info.Resources.ResourceSpec(task.sector.ProofType, task.taskType)
+			res := w.info.Resources.ResourceSpec(task.sector.ProofType, task.taskType)
 
 			log.Debugf("SCHED try assign sqi:%d sector %d to window %d (awi:%d)", sqi, task.sector.ID.Number, wnd, i)
 
 			// TODO: allow bigger windows
-			if !windows[wnd].allocated.canHandleRequest(needRes, wid, "schedAssign", info) {
-				continue
-			}
-
-			if !sh.CanHandleTask(task.taskType, wid) {
+			if !windows[wnd].allocated.canHandleRequest(task.SealTask(), res, wid, "schedAssign", w.info) {
 				continue
 			}
 
@@ -507,7 +503,6 @@ func (sh *scheduler) trySched() {
 				// #--------> acceptableWindow index
 				//
 				// * -> we're here
-				sh.TaskAdd(task.taskType, bestWid)
 				break
 			}
 
@@ -531,7 +526,7 @@ func (sh *scheduler) trySched() {
 			"worker", bestWid,
 			"utilization", bestUtilization)
 
-		workerUtil[bestWid] += windows[selectedWindow].allocated.add(info.Resources, needRes)
+		workerUtil[bestWid] += windows[selectedWindow].allocated.add(task.SealTask(), info.Resources, needRes)
 		windows[selectedWindow].todo = append(windows[selectedWindow].todo, task)
 
 		rmQueue = append(rmQueue, sqi)
@@ -614,56 +609,4 @@ func (sh *scheduler) Close(ctx context.Context) error {
 		return ctx.Err()
 	}
 	return nil
-}
-
-func (sh *scheduler) CanHandleTask(taskType sealtasks.TaskType, wid storiface.WorkerID) (flag bool) {
-	if wh, ok := sh.workers[wid]; ok {
-		wh.info.TaskLimitLk.Lock()
-		defer wh.info.TaskLimitLk.Unlock()
-		taskLimit, ok := wh.info.TaskLimits[taskType]
-		if !ok {
-			flag = true
-			return
-		}
-		log.Debugf("CanHandleTask: %v:%v", taskLimit.LimitCount, taskLimit.RunCount)
-		if taskLimit.LimitCount > 0 {
-			freeCount := taskLimit.LimitCount - taskLimit.RunCount
-			if freeCount > 0 {
-				flag = true
-			}
-		} else {
-			flag = true
-		}
-	} else {
-		flag = true
-	}
-	return
-}
-
-func (sh *scheduler) TaskAdd(taskType sealtasks.TaskType, wid storiface.WorkerID) {
-	log.Debugf("begin task add:%v-%v", wid, taskType)
-	if wh, ok := sh.workers[wid]; ok {
-		wh.info.TaskLimitLk.Lock()
-		defer wh.info.TaskLimitLk.Unlock()
-		taskLimit, ok := wh.info.TaskLimits[taskType]
-		if ok {
-			log.Debugf("task limit:%v-%v", taskLimit.LimitCount, taskLimit.RunCount)
-			taskLimit.RunCount++
-		}
-	}
-
-}
-
-func (sh *scheduler) TaskReduce(taskType sealtasks.TaskType, wid storiface.WorkerID) {
-	log.Debugf("begin task reduce:%v-%v", wid, taskType)
-	if wh, ok := sh.workers[wid]; ok {
-		wh.info.TaskLimitLk.Lock()
-		defer wh.info.TaskLimitLk.Unlock()
-		taskLimit, ok := wh.info.TaskLimits[taskType]
-		if ok {
-			log.Debugf("task limit:%v-%v", taskLimit.LimitCount, taskLimit.RunCount)
-			taskLimit.RunCount--
-		}
-	}
-
 }

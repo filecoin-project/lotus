@@ -39,7 +39,14 @@ func (m *Manager) WorkerStats(ctx context.Context) map[uuid.UUID]storiface.Worke
 			MemUsedMax: handle.active.memUsedMax,
 			GpuUsed:    handle.active.gpuUsed,
 			CpuUse:     handle.active.cpuUse,
+
+			TaskCounts: map[string]int{},
 		}
+
+		for tt, count := range handle.active.taskCounters {
+			out[uuid.UUID(id)].TaskCounts[tt.String()] = count
+		}
+
 		handle.lk.Unlock()
 	}
 

@@ -161,15 +161,9 @@ func (s *schedTestWorker) Paths(ctx context.Context) ([]storiface.StoragePath, e
 }
 
 func (s *schedTestWorker) Info(ctx context.Context) (storiface.WorkerInfo, error) {
-	taskLimits := make(map[sealtasks.TaskType]*storiface.LimitConfig)
-	taskLimits[sealtasks.TTPreCommit1] = &storiface.LimitConfig{
-		LimitCount: 6,
-		RunCount:   0,
-	}
 	return storiface.WorkerInfo{
 		Hostname:        s.name,
 		IgnoreResources: s.ignoreResources,
-		TaskLimits:      taskLimits,
 		Resources:       s.resources,
 	}, nil
 }
@@ -617,8 +611,8 @@ func BenchmarkTrySched(b *testing.B) {
 						Hostname:  "t",
 						Resources: decentWorkerResources,
 					},
-					preparing: &activeResources{},
-					active:    &activeResources{},
+					preparing: newActiveResources(),
+					active:    newActiveResources(),
 				}
 
 				for i := 0; i < windows; i++ {
@@ -662,14 +656,16 @@ func TestWindowCompact(t *testing.T) {
 			}
 
 			for _, windowTasks := range start {
-				window := &schedWindow{}
+				window := &schedWindow{
+					allocated: *newActiveResources(),
+				}
 
 				for _, task := range windowTasks {
 					window.todo = append(window.todo, &workerRequest{
 						taskType: task,
 						sector:   storage.SectorRef{ProofType: spt},
 					})
-					window.allocated.add(wh.info.Resources, storiface.ResourceTable[task][spt])
+					window.allocated.add(task.SealTask(spt), wh.info.Resources, storiface.ResourceTable[task][spt])
 				}
 
 				wh.activeWindows = append(wh.activeWindows, window)
@@ -688,7 +684,7 @@ func TestWindowCompact(t *testing.T) {
 
 				for ti, task := range tasks {
 					require.Equal(t, task, wh.activeWindows[wi].todo[ti].taskType, "%d, %d", wi, ti)
-					expectRes.add(wh.info.Resources, storiface.ResourceTable[task][spt])
+					expectRes.add(task.SealTask(spt), wh.info.Resources, storiface.ResourceTable[task][spt])
 				}
 
 				require.Equal(t, expectRes.cpuUse, wh.activeWindows[wi].allocated.cpuUse, "%d", wi)
