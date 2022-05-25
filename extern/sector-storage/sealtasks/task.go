@@ -2,9 +2,10 @@ package sealtasks
 
 import (
 	"fmt"
-	"golang.org/x/xerrors"
 	"strconv"
 	"strings"
+
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 )

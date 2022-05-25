@@ -680,7 +680,7 @@ func TestWindowCompact(t *testing.T) {
 			require.Equal(t, len(start)-len(expect), -sw.windowsRequested)
 
 			for wi, tasks := range expect {
-				var expectRes activeResources
+				expectRes := newActiveResources()
 
 				for ti, task := range tasks {
 					require.Equal(t, task, wh.activeWindows[wi].todo[ti].taskType, "%d, %d", wi, ti)

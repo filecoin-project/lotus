@@ -61,9 +61,7 @@ func (a *activeResources) add(tt sealtasks.SealTaskType, wr storiface.WorkerReso
 	a.cpuUse += r.Threads(wr.CPUs, len(wr.GPUs))
 	a.memUsedMin += r.MinMemory
 	a.memUsedMax += r.MaxMemory
-	t := a.taskCounters[tt]
-	t++
-	a.taskCounters[tt] = t
+	a.taskCounters[tt]++
 
 	return a.utilization(wr) - startUtil
 }
