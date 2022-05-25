@@ -315,6 +315,12 @@ func TestSnapDeals(t *testing.T) {
 	require.NoError(t, m.GenerateSectorKeyFromData(ctx, sid, out.NewUnsealed))
 	fmt.Printf("GSK duration (%s): %s\n", ss.ShortString(), time.Since(startGSK))
 
+	fmt.Printf("Remove data\n")
+	require.NoError(t, m.FinalizeSector(ctx, sid, nil))
+	fmt.Printf("Release Sector Key\n")
+	require.NoError(t, m.ReleaseSectorKey(ctx, sid))
+	fmt.Printf("Unseal Replica\n")
+	require.NoError(t, m.SectorsUnsealPiece(ctx, sid, 0, p1.Size.Unpadded(), ticket, &out.NewUnsealed))
 }
 
 func TestRedoPC1(t *testing.T) {

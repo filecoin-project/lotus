@@ -7,7 +7,7 @@ USAGE:
    lotus-miner [global options] command [command options] [arguments...]
 
 VERSION:
-   1.15.3-dev
+   1.15.4-dev
 
 COMMANDS:
    init     Initialize a lotus miner repo
@@ -1035,6 +1035,7 @@ USAGE:
 
 COMMANDS:
    list-shards       List all shards known to the dagstore, with their current status
+   register-shard    Register a shard
    initialize-shard  Initialize the specified shard
    recover-shard     Attempt to recover a shard in errored state
    initialize-all    Initialize all uninitialized shards, streaming results as they're produced; only shards for unsealed pieces are initialized by default
@@ -1054,6 +1055,20 @@ NAME:
 
 USAGE:
    lotus-miner dagstore list-shards [command options] [arguments...]
+
+OPTIONS:
+   --color     use color in display output (default: depends on output being a TTY)
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner dagstore register-shard
+```
+NAME:
+   lotus-miner dagstore register-shard - Register a shard
+
+USAGE:
+   lotus-miner dagstore register-shard [command options] [key]
 
 OPTIONS:
    --color     use color in display output (default: depends on output being a TTY)
@@ -1652,6 +1667,7 @@ COMMANDS:
    refs                  List References to sectors
    update-state          ADVANCED: manually update the state of a sector, this may aid in error recovery
    pledge                store random data in a sector
+   precommits            Print on-chain precommit info
    check-expire          Inspect expiring sectors
    expired               Get or cleanup expired sectors
    renew                 Renew expiring sectors while not exceeding each sector's max life
@@ -1665,6 +1681,7 @@ COMMANDS:
    get-cc-collateral     Get the collateral required to pledge a committed capacity sector
    batching              manage batch sector operations
    match-pending-pieces  force a refreshed match of pending pieces to open sectors without manually waiting for more deals
+   compact-partitions    removes dead sectors from partitions and reduces the number of partitions used if possible
    help, h               Shows a list of commands or help for one command
 
 OPTIONS:
@@ -1744,6 +1761,19 @@ NAME:
 
 USAGE:
    lotus-miner sectors pledge [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner sectors precommits
+```
+NAME:
+   lotus-miner sectors precommits - Print on-chain precommit info
+
+USAGE:
+   lotus-miner sectors precommits [command options] [arguments...]
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -2003,6 +2033,22 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner sectors compact-partitions
+```
+NAME:
+   lotus-miner sectors compact-partitions - removes dead sectors from partitions and reduces the number of partitions used if possible
+
+USAGE:
+   lotus-miner sectors compact-partitions [command options] [arguments...]
+
+OPTIONS:
+   --deadline value    the deadline to compact the partitions in (default: 0)
+   --partitions value  list of partitions to compact sectors in
+   --really-do-it      Actually send transaction performing the action (default: false)
+   --help, -h          show help (default: false)
    
 ```
 
@@ -2285,6 +2331,7 @@ COMMANDS:
    workers     list workers
    sched-diag  Dump internal scheduler state
    abort       Abort a running job
+   data-cid    Compute data CID using workers
    help, h     Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2345,5 +2392,19 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner sealing data-cid
+```
+NAME:
+   lotus-miner sealing data-cid - Compute data CID using workers
+
+USAGE:
+   lotus-miner sealing data-cid [command options] [file/url] <padded piece size>
+
+OPTIONS:
+   --file-size value  real file size (default: 0)
+   --help, -h         show help (default: false)
    
 ```

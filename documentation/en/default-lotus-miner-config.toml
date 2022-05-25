@@ -444,12 +444,14 @@
   # env var: LOTUS_SEALING_AGGREGATECOMMITS
   #AggregateCommits = true
 
-  # maximum batched commit size - batches will be sent immediately above this size
+  # minimum batched commit size - batches above this size will eventually be sent on a timeout
   #
   # type: int
   # env var: LOTUS_SEALING_MINCOMMITBATCH
   #MinCommitBatch = 4
 
+  # maximum batched commit size - batches will be sent immediately above this size
+  #
   # type: int
   # env var: LOTUS_SEALING_MAXCOMMITBATCH
   #MaxCommitBatch = 819

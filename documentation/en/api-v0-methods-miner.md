@@ -27,6 +27,7 @@
   * [DagstoreListShards](#DagstoreListShards)
   * [DagstoreLookupPieces](#DagstoreLookupPieces)
   * [DagstoreRecoverShard](#DagstoreRecoverShard)
+  * [DagstoreRegisterShard](#DagstoreRegisterShard)
 * [Deals](#Deals)
   * [DealsConsiderOfflineRetrievalDeals](#DealsConsiderOfflineRetrievalDeals)
   * [DealsConsiderOfflineStorageDeals](#DealsConsiderOfflineStorageDeals)
@@ -629,6 +630,21 @@ error.
 
 
 Perms: write
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
+
+### DagstoreRegisterShard
+DagstoreRegisterShard registers a shard manually with dagstore with given pieceCID
+
+
+Perms: admin
 
 Inputs:
 ```json
