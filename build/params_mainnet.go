@@ -1,11 +1,14 @@
-//go:build !debug && !2k && !testground && !calibnet && !nerpanet && !butterflynet && !interopnet
-// +build !debug,!2k,!testground,!calibnet,!nerpanet,!butterflynet,!interopnet
+//go:build !debug && !2k && !testground && !calibnet && !butterflynet && !interopnet
+// +build !debug,!2k,!testground,!calibnet,!butterflynet,!interopnet
 
 package build
 
 import (
 	"math"
 	"os"
+
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -73,6 +76,8 @@ const UpgradeChocolateHeight = 1231620
 var UpgradeOhSnapHeight = abi.ChainEpoch(1594680)
 
 var UpgradeFVM1Height = abi.ChainEpoch(99999999999999)
+
+var ActorsCIDs = map[actors.Version]cid.Cid{}
 
 func init() {
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
