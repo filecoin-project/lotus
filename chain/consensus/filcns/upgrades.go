@@ -175,7 +175,7 @@ func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 		}},
 		Expensive: true,
 	}, {
-		Height:    build.UpgradeFVM1Height,
+		Height:    build.UpgradeSkyrHeight,
 		Network:   network.Version16,
 		Migration: UpgradeActorsV8,
 		PreMigrations: []stmgr.PreMigration{{

@@ -51,7 +51,7 @@ var UpgradeTurboHeight = abi.ChainEpoch(-15)
 var UpgradeHyperdriveHeight = abi.ChainEpoch(-16)
 var UpgradeChocolateHeight = abi.ChainEpoch(-17)
 var UpgradeOhSnapHeight = abi.ChainEpoch(-18)
-var UpgradeFVM1Height = abi.ChainEpoch(100)
+var UpgradeSkyrHeight = abi.ChainEpoch(100)
 
 var ActorsCIDs = map[actors.Version]cid.Cid{
 	actors.Version8: MustParseCid("bafy2bzaceadr77tamp35bbb3rtio4ver4pnk2cbxqif3nn3mrmxra2nlvwoce"),
@@ -103,7 +103,7 @@ func init() {
 	UpgradeHyperdriveHeight = getUpgradeHeight("LOTUS_HYPERDRIVE_HEIGHT", UpgradeHyperdriveHeight)
 	UpgradeChocolateHeight = getUpgradeHeight("LOTUS_CHOCOLATE_HEIGHT", UpgradeChocolateHeight)
 	UpgradeOhSnapHeight = getUpgradeHeight("LOTUS_OHSNAP_HEIGHT", UpgradeOhSnapHeight)
-	UpgradeFVM1Height = getUpgradeHeight("LOTUS_FVM1_HEIGHT", UpgradeFVM1Height)
+	UpgradeSkyrHeight = getUpgradeHeight("LOTUS_SKYR_HEIGHT", UpgradeSkyrHeight)
 
 	BuildType |= BuildInteropnet
 	SetAddressNetwork(address.Testnet)
