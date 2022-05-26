@@ -3,6 +3,7 @@ package vm
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 	"time"
 
@@ -413,12 +414,18 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 		}
 	}
 
-	return &ApplyRet{
+	applyRet := &ApplyRet{
 		MessageReceipt: receipt,
 		ActorErr:       aerr,
 		ExecutionTrace: et,
 		Duration:       duration,
-	}, nil
+	}
+
+	if ret.ExitCode != 0 {
+		return applyRet, fmt.Errorf("implicit message failed with exit code: %d and error: %w", ret.ExitCode, applyRet.ActorErr)
+	}
+
+	return applyRet, nil
 }
 
 func (vm *FVM) Flush(ctx context.Context) (cid.Cid, error) {
