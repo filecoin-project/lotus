@@ -20,7 +20,7 @@ Lotus is an implementation of the Filecoin Distributed Storage Network. For more
 
 > Note: The default `master` branch is the dev branch, please use with caution. For the latest stable version, checkout the most recent [`Latest release`](https://github.com/filecoin-project/lotus/releases).
  
-For complete instructions on how to build, install and setup lotus, please visit [https://docs.filecoin.io/get-started/lotus](https://docs.filecoin.io/get-started/lotus/). Basic build instructions can be found further down in this readme.
+For complete instructions on how to build, install and setup lotus, please visit https://lotus.filecoin.io/. Basic build instructions can be found further down in this readme.
 
 ## Reporting a Vulnerability
 
@@ -67,7 +67,7 @@ Fedora:
 sudo dnf -y install gcc make git bzr jq pkgconfig mesa-libOpenCL mesa-libOpenCL-devel opencl-headers ocl-icd ocl-icd-devel clang llvm wget hwloc libhwloc-dev
 ```
 
-For other distributions you can find the required dependencies [here.](https://docs.filecoin.io/get-started/lotus/installation/#system-specific) For instructions specific to macOS, you can find them [here.](https://docs.filecoin.io/get-started/lotus/installation/#macos)
+For other distributions you can find the required dependencies [here.](https://lotus.filecoin.io/lotus/install/prerequisites/) For instructions specific to macOS, you can find them [here.](https://lotus.filecoin.io/lotus/install/macos/)
 
 #### Go
 
@@ -101,7 +101,7 @@ Note: The default branch `master` is the dev branch where the latest new feature
 
 2. To join mainnet, checkout the [latest release](https://github.com/filecoin-project/lotus/releases).
 
-   If you are changing networks from a previous Lotus installation or there has been a network reset, read the [Switch networks guide](https://docs.filecoin.io/get-started/lotus/switch-networks/) before proceeding.
+   If you are changing networks from a previous Lotus installation or there has been a network reset, read the [Switch networks guide](https://lotus.filecoin.io/lotus/manage/switch-networks/) before proceeding.
 
    For networks other than mainnet, look up the current branch or tag/commit for the network you want to join in the [Filecoin networks dashboard](https://network.filecoin.io), then build Lotus for your specific network below.
 
@@ -113,8 +113,8 @@ Note: The default branch `master` is the dev branch where the latest new feature
 
    Currently, the latest code on the _master_ branch corresponds to mainnet.
 
-3. If you are in China, see "[Lotus: tips when running in China](https://docs.filecoin.io/get-started/lotus/tips-running-in-china/)".
-4. This build instruction uses the prebuilt proofs binaries. If you want to build the proof binaries from source check the [complete instructions](https://docs.filecoin.io/get-started/lotus/installation/#build-and-install-lotus). Note, if you are building the proof binaries from source, [installing rustup](https://docs.filecoin.io/get-started/lotus/installation/#rustup) is also needed.
+3. If you are in China, see "[Lotus: tips when running in China](https://lotus.filecoin.io/lotus/configure/nodes-in-china/)".
+4. This build instruction uses the prebuilt proofs binaries. If you want to build the proof binaries from source check the [complete instructions](https://lotus.filecoin.io/lotus/install/linux/#building-from-source). Note, if you are building the proof binaries from source, [installing rustup](https://lotus.filecoin.io/lotus/install/linux/#rustup) is also needed.
 
 5. Build and install Lotus:
 
@@ -129,9 +129,9 @@ Note: The default branch `master` is the dev branch where the latest new feature
 
    This will put `lotus`, `lotus-miner` and `lotus-worker` in `/usr/local/bin`.
 
-   `lotus` will use the `$HOME/.lotus` folder by default for storage (configuration, chain data, wallets, etc). See [advanced options](https://docs.filecoin.io/get-started/lotus/configuration-and-advanced-usage/) for information on how to customize the Lotus folder.
+   `lotus` will use the `$HOME/.lotus` folder by default for storage (configuration, chain data, wallets, etc). See [advanced options](https://lotus.filecoin.io/lotus/configure/defaults/) for information on how to customize the Lotus folder.
 
-6. You should now have Lotus installed. You can now [start the Lotus daemon and sync the chain](https://docs.filecoin.io/get-started/lotus/installation/#start-the-lotus-daemon-and-sync-the-chain).
+6. You should now have Lotus installed. You can now [start the Lotus daemon and sync the chain](https://lotus.filecoin.io/lotus/install/lotus-lite/).
 
 ## License
 
