@@ -30,6 +30,81 @@ import (
 var simpleCmd = &cli.Command{
 	Name:  "simple",
 	Usage: "Run basic sector operations",
+	Description: `Example sealing steps:
+
+> Create unsealed sector file
+
+$ ./lotus-bench simple addpiece --sector-size 2K /dev/zero /tmp/unsealed
+AddPiece 25.23225ms (79.26 KiB/s)
+baga6ea4seaqpy7usqklokfx2vxuynmupslkeutzexe2uqurdg5vhtebhxqmpqmy 2048
+
+> Run PreCommit1
+
+$ ./lotus-bench simple precommit1 --sector-size 2k /tmp/unsealed /tmp/sealed /tmp/cache baga6ea4seaqpy7usqklokfx2vxuynmupslkeutzexe2uqurdg5vhtebhxqmpqmy 2048 
+PreCommit1 30.151666ms (66.33 KiB/s)
+eyJfbG90dXNfU2VhbFJhbmRvbW5lc3MiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFB[...]==
+
+> Run PreCommit2
+
+$ ./lotus-bench simple precommit2 --sector-size 2k /tmp/sealed /tmp/cache eyJfbG90dXNfU2VhbFJhbmRvbW5lc3MiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFB[...]==
+PreCommit2 75.320167ms (26.55 KiB/s)
+d:baga6ea4seaqpy7usqklokfx2vxuynmupslkeutzexe2uqurdg5vhtebhxqmpqmy r:bagboea4b5abcbrshxgmmpaucffwp2elaofbcrvb7hmcu3653o4lsw2arlor4hn3c
+
+> Run Commit1
+
+$ ./lotus-bench simple commit1 --sector-size 2k /tmp/sl /tmp/cac baga6ea4seaqpy7usqklokfx2vxuynmupslkeutzexe2uqurdg5vhtebhxqmpqmy bagboea4b5abcbrshxgmmpaucffwp2elaofbcrvb7hmcu3653o4lsw2arlor4hn3c /tmp/c1.json
+Commit1 20.691875ms (96.66 KiB/s)
+
+> Run Commit2
+
+$ ./lotus-bench simple commit2 /tmp/c1.json
+[...]
+Commit2: 13.829147792s (148 B/s)
+proof: 8b624a6a4b272a6196517f858d07205c586cfae77fc026e8e9340acefbb8fc1d5af25b33724756c0a4481a800e14ff1ea914c3ce20bf6e2932296ad8ffa32867989ceae62e50af1479ca56a1ea5228cc8acf5ca54bc0b8e452bf74194b758b2c12ece76599a8b93f6b3dd9f0b1bb2e023bf311e9a404c7d453aeddf284e46025b63b631610de6ff6621bc6f630a14dd3ad59edbe6e940fdebbca3d97bea2708fd21764ea929f4699ebc93d818037a74be3363bdb2e8cc29b3e386c6376ff98fa
+
+----
+Example PoSt steps:
+
+> Try window-post
+
+$ ./lotus-bench simple window-post --sector-size 2k /tmp/sealed /tmp/cache bagboea4b5abcbrshxgmmpaucffwp2elaofbcrvb7hmcu3653o4lsw2arlor4hn3c 1
+Vanilla 14.192625ms (140.9 KiB/s)
+Proof 387.819333ms (5.156 KiB/s)
+mI6TdveK9wMqHwVsRlVa90q44yGEIsNqLpTQLB...
+
+> Try winning-post
+
+$ ./lotus-bench simple winning-post --sector-size 2k /tmp/sealed /tmp/cache bagboea4b5abcbrshxgmmpaucffwp2elaofbcrvb7hmcu3653o4lsw2arlor4hn3c 1
+Vanilla 19.266625ms (103.8 KiB/s)
+Proof 1.234634708s (1.619 KiB/s)
+o4VBUf2wBHuvmm58XY8wgCC/1xBqfujlgmNs...
+
+----
+Example SnapDeals steps:
+
+> Create unsealed update file
+
+$ ./lotus-bench simple addpiece --sector-size 2K /dev/random /tmp/new-unsealed
+AddPiece 23.845958ms (83.87 KiB/s)
+baga6ea4seaqkt24j5gbf2ye2wual5gn7a5yl2tqb52v2sk4nvur4bdy7lg76cdy 2048
+
+> Create updated sealed file
+
+$ ./lotus-bench simple replicaupdate --sector-size 2K /tmp/sealed /tmp/cache /tmp/new-unsealed /tmp/update /tmp/update-cache baga6ea4seaqkt24j5gbf2ye2wual5gn7a5yl2tqb52v2sk4nvur4bdy7lg76cdy 2048
+ReplicaUpdate 63.0815ms (31.7 KiB/s)
+d:baga6ea4seaqkt24j5gbf2ye2wual5gn7a5yl2tqb52v2sk4nvur4bdy7lg76cdy r:bagboea4b5abcaydcwlbtdx5dph2a3efpqt42emxpn3be76iu4e4lx3ltrpmpi7af
+
+> Run ProveReplicaUpdate1
+
+$ ./lotus-bench simple provereplicaupdate1 --sector-size 2K /tmp/sl /tmp/cac /tmp/update /tmp/update-cache bagboea4b5abcbrshxgmmpaucffwp2elaofbcrvb7hmcu3653o4lsw2arlor4hn3c bagboea4b5abcaydcwlbtdx5dph2a3efpqt42emxpn3be76iu4e4lx3ltrpmpi7af baga6ea4seaqkt24j5gbf2ye2wual5gn7a5yl2tqb52v2sk4nvur4bdy7lg76cdy /tmp/pr1.json
+ProveReplicaUpdate1 18.373375ms (108.9 KiB/s)
+
+> Run ProveReplicaUpdate2
+
+$ ./lotus-bench simple provereplicaupdate2 --sector-size 2K bagboea4b5abcbrshxgmmpaucffwp2elaofbcrvb7hmcu3653o4lsw2arlor4hn3c bagboea4b5abcaydcwlbtdx5dph2a3efpqt42emxpn3be76iu4e4lx3ltrpmpi7af baga6ea4seaqkt24j5gbf2ye2wual5gn7a5yl2tqb52v2sk4nvur4bdy7lg76cdy /tmp/pr1.json
+ProveReplicaUpdate2 7.339033459s (279 B/s)
+p: pvC0JBrEyUqtIIUvB2UUx/2a24c3Cvnu6AZ0D3IMBYAu...
+`,
 	Subcommands: []*cli.Command{
 		simpleAddPiece,
 		simplePreCommit1,
@@ -783,7 +858,7 @@ var simpleProveReplicaUpdate1 = &cli.Command{
 
 		vpjb, err := json.Marshal(&rvp)
 		if err != nil {
-			return xerrors.Errorf("json marshal vanillla proofs: %w", err)
+			return xerrors.Errorf("json marshal vanilla proofs: %w", err)
 		}
 
 		if err := ioutil.WriteFile(cctx.Args().Get(7), vpjb, 0666); err != nil {
