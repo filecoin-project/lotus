@@ -8,13 +8,13 @@ import (
 )
 
 func TestRequestQueue(t *testing.T) {
-	rq := &requestQueue{}
+	rq := &RequestQueue{}
 
-	rq.Push(&workerRequest{taskType: sealtasks.TTAddPiece})
-	rq.Push(&workerRequest{taskType: sealtasks.TTPreCommit1})
-	rq.Push(&workerRequest{taskType: sealtasks.TTPreCommit2})
-	rq.Push(&workerRequest{taskType: sealtasks.TTPreCommit1})
-	rq.Push(&workerRequest{taskType: sealtasks.TTAddPiece})
+	rq.Push(&WorkerRequest{TaskType: sealtasks.TTAddPiece})
+	rq.Push(&WorkerRequest{TaskType: sealtasks.TTPreCommit1})
+	rq.Push(&WorkerRequest{TaskType: sealtasks.TTPreCommit2})
+	rq.Push(&WorkerRequest{TaskType: sealtasks.TTPreCommit1})
+	rq.Push(&WorkerRequest{TaskType: sealtasks.TTAddPiece})
 
 	dump := func(s string) {
 		fmt.Println("---")
@@ -22,7 +22,7 @@ func TestRequestQueue(t *testing.T) {
 
 		for sqi := 0; sqi < rq.Len(); sqi++ {
 			task := (*rq)[sqi]
-			fmt.Println(sqi, task.taskType)
+			fmt.Println(sqi, task.TaskType)
 		}
 	}
 
@@ -32,31 +32,31 @@ func TestRequestQueue(t *testing.T) {
 
 	dump("pop 1")
 
-	if pt.taskType != sealtasks.TTPreCommit2 {
-		t.Error("expected precommit2, got", pt.taskType)
+	if pt.TaskType != sealtasks.TTPreCommit2 {
+		t.Error("expected precommit2, got", pt.TaskType)
 	}
 
 	pt = rq.Remove(0)
 
 	dump("pop 2")
 
-	if pt.taskType != sealtasks.TTPreCommit1 {
-		t.Error("expected precommit1, got", pt.taskType)
+	if pt.TaskType != sealtasks.TTPreCommit1 {
+		t.Error("expected precommit1, got", pt.TaskType)
 	}
 
 	pt = rq.Remove(1)
 
 	dump("pop 3")
 
-	if pt.taskType != sealtasks.TTAddPiece {
-		t.Error("expected addpiece, got", pt.taskType)
+	if pt.TaskType != sealtasks.TTAddPiece {
+		t.Error("expected addpiece, got", pt.TaskType)
 	}
 
 	pt = rq.Remove(0)
 
 	dump("pop 4")
 
-	if pt.taskType != sealtasks.TTPreCommit1 {
-		t.Error("expected precommit1, got", pt.taskType)
+	if pt.TaskType != sealtasks.TTPreCommit1 {
+		t.Error("expected precommit1, got", pt.TaskType)
 	}
 }

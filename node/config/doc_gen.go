@@ -757,6 +757,14 @@ This parameter is ONLY applicable if the retrieval pricing policy strategy has b
 			Comment: ``,
 		},
 		{
+			Name: "Assigner",
+			Type: "string",
+
+			Comment: `Assigner specifies the worker assigner to use when scheduling tasks.
+"utilization" (default) - assign tasks to workers with lowest utilization.
+"spread" - assign tasks to as many distinct workers as possible.`,
+		},
+		{
 			Name: "ResourceFiltering",
 			Type: "sectorstorage.ResourceFilteringStrategy",
 
