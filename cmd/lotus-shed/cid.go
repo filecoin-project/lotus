@@ -1,11 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"io"
+	"os"
+
+	"github.com/ipld/go-car"
+	"golang.org/x/net/context"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
@@ -17,6 +24,7 @@ var cidCmd = &cli.Command{
 	Usage: "Cid command",
 	Subcommands: cli.Commands{
 		cidIdCmd,
+		cidFromCarCmd,
 	},
 }
 
@@ -79,6 +87,52 @@ var cidIdCmd = &cli.Command{
 		default:
 			return xerrors.Errorf("unrecognized codec: %s", cctx.String("codec"))
 		}
+
+		return nil
+	},
+}
+
+var cidFromCarCmd = &cli.Command{
+	Name:      "manifest-cid-from-car",
+	Usage:     "Get the manifest CID from a car file",
+	ArgsUsage: "[path]",
+	Action: func(cctx *cli.Context) error {
+		ctx := context.TODO()
+
+		cf := cctx.Args().Get(0)
+		f, err := os.OpenFile(cf, os.O_RDONLY, 0664)
+		if err != nil {
+			return xerrors.Errorf("opening the car file: %w", err)
+		}
+
+		bs := modules.MemoryBlockstore()
+		if err != nil {
+			return err
+		}
+
+		defer func() {
+			if c, ok := bs.(io.Closer); ok {
+				if err := c.Close(); err != nil {
+					log.Warnf("failed to close blockstore: %s", err)
+				}
+			}
+		}()
+
+		data, err := io.ReadAll(f)
+		if err != nil {
+			return xerrors.Errorf("error reading car file: %w", err)
+		}
+
+		blobr := bytes.NewReader(data)
+
+		hdr, err := car.LoadCar(ctx, bs, blobr)
+		if err != nil {
+			return xerrors.Errorf("error loading car file: %w", err)
+		}
+
+		manifestCid := hdr.Roots[0]
+
+		fmt.Printf("Manifest CID: %s\n", manifestCid.String())
 
 		return nil
 	},
