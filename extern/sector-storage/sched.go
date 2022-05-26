@@ -44,7 +44,9 @@ const mib = 1 << 20
 type WorkerAction func(ctx context.Context, w Worker) error
 
 type WorkerSelector interface {
-	Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, a *WorkerHandle) (bool, error) // true if worker is acceptable for performing a task
+	// Ok is true if worker is acceptable for performing a task.
+	// If any worker is preferred for a task, other workers won't be considered for that task.
+	Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, a *WorkerHandle) (ok, preferred bool, err error)
 
 	Cmp(ctx context.Context, task sealtasks.TaskType, a, b *WorkerHandle) (bool, error) // true if a is preferred over b
 }

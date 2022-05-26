@@ -71,7 +71,8 @@ type Manager struct {
 	workLk sync.Mutex
 	work   *statestore.StateStore
 
-	parallelCheckLimit int
+	parallelCheckLimit     int
+	disallowRemoteFinalize bool
 
 	callToWork map[storiface.CallID]WorkID
 	// used when we get an early return and there's no callToWork mapping
@@ -123,6 +124,8 @@ type Config struct {
 	// PoSt config
 	ParallelCheckLimit int
 
+	DisallowRemoteFinalize bool
+
 	Assigner string
 }
 
@@ -155,7 +158,8 @@ func New(ctx context.Context, lstor *stores.Local, stor stores.Store, ls stores.
 
 		localProver: prover,
 
-		parallelCheckLimit: sc.ParallelCheckLimit,
+		parallelCheckLimit:     sc.ParallelCheckLimit,
+		disallowRemoteFinalize: sc.DisallowRemoteFinalize,
 
 		work:       mss,
 		callToWork: map[storiface.CallID]WorkID{},
@@ -592,6 +596,7 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storage.SectorRef, 
 		return xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
+	// first check if the unsealed file exists anywhere; If it doesn't ignore it
 	unsealed := storiface.FTUnsealed
 	{
 		unsealedStores, err := m.index.StorageFindSector(ctx, sector.ID, storiface.FTUnsealed, 0, false)
@@ -604,6 +609,8 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storage.SectorRef, 
 		}
 	}
 
+	// Make sure that the sealed file is still in sealing storage; In case it already
+	// isn't, we want to do finalize in long-term storage
 	pathType := storiface.PathStorage
 	{
 		sealedStores, err := m.index.StorageFindSector(ctx, sector.ID, storiface.FTSealed, 0, false)
@@ -619,6 +626,8 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storage.SectorRef, 
 		}
 	}
 
+	// do the cache trimming wherever the likely still very large cache lives.
+	// we really don't want to move it.
 	selector := newExistingSelector(m.index, sector.ID, storiface.FTCache, false)
 
 	err := m.sched.Schedule(ctx, sector, sealtasks.TTFinalize, selector,
@@ -631,7 +640,10 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storage.SectorRef, 
 		return err
 	}
 
-	fetchSel := newAllocSelector(m.index, storiface.FTCache|storiface.FTSealed, storiface.PathStorage)
+	// get a selector for moving stuff into long-term storage
+	fetchSel := newMoveSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, storiface.PathStorage, !m.disallowRemoteFinalize)
+
+	// only move the unsealed file if it still exists and needs moving
 	moveUnsealed := unsealed
 	{
 		if len(keepUnsealed) == 0 {
@@ -639,6 +651,7 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storage.SectorRef, 
 		}
 	}
 
+	// move stuff to long-term storage
 	err = m.sched.Schedule(ctx, sector, sealtasks.TTFetch, fetchSel,
 		m.schedFetch(sector, storiface.FTCache|storiface.FTSealed|moveUnsealed, storiface.PathStorage, storiface.AcquireMove),
 		func(ctx context.Context, w Worker) error {
@@ -660,6 +673,7 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storage.Sect
 		return xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
+	// first check if the unsealed file exists anywhere; If it doesn't ignore it
 	moveUnsealed := storiface.FTUnsealed
 	{
 		unsealedStores, err := m.index.StorageFindSector(ctx, sector.ID, storiface.FTUnsealed, 0, false)
@@ -672,6 +686,8 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storage.Sect
 		}
 	}
 
+	// Make sure that the update file is still in sealing storage; In case it already
+	// isn't, we want to do finalize in long-term storage
 	pathType := storiface.PathStorage
 	{
 		sealedStores, err := m.index.StorageFindSector(ctx, sector.ID, storiface.FTUpdate, 0, false)
@@ -687,7 +703,9 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storage.Sect
 		}
 	}
 
-	selector := newExistingSelector(m.index, sector.ID, storiface.FTCache|storiface.FTUpdateCache, false)
+	// do the cache trimming wherever the likely still large cache lives.
+	// we really don't want to move it.
+	selector := newExistingSelector(m.index, sector.ID, storiface.FTUpdateCache, false)
 
 	err := m.sched.Schedule(ctx, sector, sealtasks.TTFinalizeReplicaUpdate, selector,
 		m.schedFetch(sector, storiface.FTCache|storiface.FTUpdateCache|moveUnsealed, pathType, storiface.AcquireMove),
@@ -700,7 +718,8 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storage.Sect
 	}
 
 	move := func(types storiface.SectorFileType) error {
-		fetchSel := newAllocSelector(m.index, types, storiface.PathStorage)
+		// get a selector for moving stuff into long-term storage
+		fetchSel := newMoveSelector(m.index, sector.ID, types, storiface.PathStorage, !m.disallowRemoteFinalize)
 		{
 			if len(keepUnsealed) == 0 {
 				moveUnsealed = storiface.FTNone

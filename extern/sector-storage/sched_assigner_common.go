@@ -61,8 +61,10 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 			}()
 
 			task := (*sh.SchedQueue)[sqi]
-
 			task.IndexHeap = sqi
+
+			var havePreferred bool
+
 			for wnd, windowRequest := range sh.OpenWindows {
 				worker, ok := sh.Workers[windowRequest.Worker]
 				if !ok {
@@ -84,7 +86,7 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 				}
 
 				rpcCtx, cancel := context.WithTimeout(task.Ctx, SelectorTimeout)
-				ok, err := task.Sel.Ok(rpcCtx, task.TaskType, task.Sector.ProofType, worker)
+				ok, preferred, err := task.Sel.Ok(rpcCtx, task.TaskType, task.Sector.ProofType, worker)
 				cancel()
 				if err != nil {
 					log.Errorf("trySched(1) req.Sel.Ok error: %+v", err)
@@ -93,6 +95,17 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 
 				if !ok {
 					continue
+				}
+
+				if havePreferred && !preferred {
+					// we have a way better worker for this task
+					continue
+				}
+
+				if preferred && !havePreferred {
+					// all workers we considered previously are much worse choice
+					acceptableWindows[sqi] = acceptableWindows[sqi][:0]
+					havePreferred = true
 				}
 
 				acceptableWindows[sqi] = append(acceptableWindows[sqi], wnd)

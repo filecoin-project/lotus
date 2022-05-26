@@ -34,14 +34,15 @@ type nodeOpts struct {
 	ownerKey      *wallet.Key
 	extraNodeOpts []node.Option
 
-	subsystems           MinerSubsystem
-	mainMiner            *TestMiner
-	disableLibp2p        bool
-	optBuilders          []OptBuilder
-	sectorSize           abi.SectorSize
-	maxStagingDealsBytes int64
-	minerNoLocalSealing  bool // use worker
-	minerAssigner        string
+	subsystems             MinerSubsystem
+	mainMiner              *TestMiner
+	disableLibp2p          bool
+	optBuilders            []OptBuilder
+	sectorSize             abi.SectorSize
+	maxStagingDealsBytes   int64
+	minerNoLocalSealing    bool // use worker
+	minerAssigner          string
+	disallowRemoteFinalize bool
 
 	workerTasks      []sealtasks.TaskType
 	workerStorageOpt func(stores.Store) stores.Store
@@ -101,6 +102,13 @@ func WithNoLocalSealing(nope bool) NodeOpt {
 func WithAssigner(a string) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.minerAssigner = a
+		return nil
+	}
+}
+
+func WithDisallowRemoteFinalize(d bool) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.disallowRemoteFinalize = d
 		return nil
 	}
 }

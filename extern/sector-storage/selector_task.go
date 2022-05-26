@@ -19,14 +19,14 @@ func newTaskSelector() *taskSelector {
 	return &taskSelector{}
 }
 
-func (s *taskSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, whnd *WorkerHandle) (bool, error) {
+func (s *taskSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, whnd *WorkerHandle) (bool, bool, error) {
 	tasks, err := whnd.TaskTypes(ctx)
 	if err != nil {
-		return false, xerrors.Errorf("getting supported worker task types: %w", err)
+		return false, false, xerrors.Errorf("getting supported worker task types: %w", err)
 	}
 	_, supported := tasks[task]
 
-	return supported, nil
+	return supported, false, nil
 }
 
 func (s *taskSelector) Cmp(ctx context.Context, _ sealtasks.TaskType, a, b *WorkerHandle) (bool, error) {

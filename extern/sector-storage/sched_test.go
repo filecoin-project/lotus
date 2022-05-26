@@ -584,9 +584,9 @@ func TestSched(t *testing.T) {
 
 type slowishSelector bool
 
-func (s slowishSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, a *WorkerHandle) (bool, error) {
+func (s slowishSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, a *WorkerHandle) (bool, bool, error) {
 	time.Sleep(200 * time.Microsecond)
-	return bool(s), nil
+	return bool(s), false, nil
 }
 
 func (s slowishSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *WorkerHandle) (bool, error) {
