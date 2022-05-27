@@ -49,8 +49,6 @@ const UpgradeOhSnapHeight = 240
 
 var UpgradeFVM1Height = abi.ChainEpoch(99999999999999)
 
-var ActorsCIDs = map[actors.Version]cid.Cid{}
-
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2 << 30))
 	policy.SetSupportedProofTypes(

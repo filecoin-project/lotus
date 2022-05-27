@@ -70,12 +70,6 @@ func LoadBundle(ctx context.Context, bs blockstore.Blockstore, path string, av a
 
 	// TODO: check that this only has one root?
 	manifestCid := hdr.Roots[0]
-
-	if val, ok := build.ActorsCIDs[av]; ok {
-		if val != manifestCid {
-			return cid.Undef, xerrors.Errorf("actors V%d manifest CID %s did not match CID given in params file: %s", av, manifestCid, val)
-		}
-	}
 	actors.AddManifest(av, manifestCid)
 
 	mfCid, ok := actors.GetManifest(av)

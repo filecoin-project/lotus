@@ -48,11 +48,6 @@ func LoadBuiltinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 
 			if has {
 				// it's there, no need to reload the bundle to the blockstore; just add it to the manifest list.
-				if val, ok := build.ActorsCIDs[av]; ok {
-					if val != mfCid {
-						return result, xerrors.Errorf("actors V%d manifest CID %s did not match CID given in params file: %s", av, mfCid, val)
-					}
-				}
 				actors.AddManifest(av, mfCid)
 				continue
 			}

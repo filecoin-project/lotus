@@ -122,5 +122,3 @@ var (
 )
 
 const BootstrapPeerThreshold = 1
-
-var ActorsCIDs = map[actors.Version]cid.Cid{}

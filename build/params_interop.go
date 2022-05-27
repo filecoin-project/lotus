@@ -53,10 +53,6 @@ var UpgradeChocolateHeight = abi.ChainEpoch(-17)
 var UpgradeOhSnapHeight = abi.ChainEpoch(-18)
 var UpgradeFVM1Height = abi.ChainEpoch(100)
 
-var ActorsCIDs = map[actors.Version]cid.Cid{
-	actors.Version8: MustParseCid("bafy2bzaceadr77tamp35bbb3rtio4ver4pnk2cbxqif3nn3mrmxra2nlvwoce"),
-}
-
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }

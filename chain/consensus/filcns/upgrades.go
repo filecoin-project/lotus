@@ -1395,12 +1395,6 @@ func upgradeActorsV8Common(
 		return cid.Undef, xerrors.Errorf("no manifest CID for v8 upgrade")
 	}
 
-	if val, ok := build.ActorsCIDs[actors.Version8]; ok {
-		if val != manifest {
-			return cid.Undef, xerrors.Errorf("actors V8 manifest CID %s did not match CID given in params file: %s", manifest, val)
-		}
-	}
-
 	// Perform the migration
 	newHamtRoot, err := nv16.MigrateStateTree(ctx, store, manifest, stateRoot.Actors, epoch, config, migrationLogger{}, cache)
 	if err != nil {

@@ -77,8 +77,6 @@ var UpgradeOhSnapHeight = abi.ChainEpoch(1594680)
 
 var UpgradeFVM1Height = abi.ChainEpoch(99999999999999)
 
-var ActorsCIDs = map[actors.Version]cid.Cid{}
-
 func init() {
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
 		SetAddressNetwork(address.Mainnet)
