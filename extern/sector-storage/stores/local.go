@@ -157,7 +157,9 @@ func (p *path) stat(ls LocalStorage) (fsutil.FsStat, error) {
 		}
 	}
 
-	log.Infow("storage stat", "took", time.Now().Sub(start), "reservations", len(p.reservations))
+	if time.Now().Sub(start) > 5*time.Second {
+		log.Warnw("slow storage stat", "took", time.Now().Sub(start), "reservations", len(p.reservations))
+	}
 
 	return stat, err
 }
