@@ -60,7 +60,7 @@ const UpgradeChocolateHeight = 312746
 // 2022-02-10T19:23:00Z
 const UpgradeOhSnapHeight = 682006
 
-var UpgradeFVM1Height = abi.ChainEpoch(99999999999999)
+var UpgradeSkyrHeight = abi.ChainEpoch(99999999999999)
 
 var ActorsCIDs = map[actors.Version]cid.Cid{}
 
