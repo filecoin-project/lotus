@@ -31,6 +31,15 @@ func LoadBuiltinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 		// first check to see if we know this release
 		key := dstore.NewKey(fmt.Sprintf("/builtin-actors/v%d/%s/%s", av, bd.Release, netw))
 
+		// expectedCid is the expected manifest CID, if specified for the release
+		expectedCid := cid.Undef
+		if c := bd.ManifestCID[netw]; c != "" {
+			expectedCid, err = cid.Decode(c)
+			if err != nil {
+				return result, xerrors.Errorf("error parsing expected manifest cid %s for %d/%s", c, av, netw)
+			}
+		}
+
 		data, err := ds.Get(ctx, key)
 		switch err {
 		case nil:
@@ -48,6 +57,10 @@ func LoadBuiltinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 
 			if has {
 				// it's there, no need to reload the bundle to the blockstore; just add it to the manifest list.
+				// but first do the verification check
+				if expectedCid.Defined() && expectedCid != mfCid {
+					return result, xerrors.Errorf("manifest CID %s does not match expected CID %s", mfCid, expectedCid)
+				}
 				actors.AddManifest(av, mfCid)
 				continue
 			}
@@ -98,6 +111,11 @@ func LoadBuiltinActors(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.LockedRe
 
 		default:
 			return result, xerrors.Errorf("no release or path specified for version %d bundle", av)
+		}
+
+		// verification check
+		if expectedCid.Defined() && expectedCid != mfCid {
+			return result, xerrors.Errorf("manifest CID %s does not match expected CID %s", mfCid, expectedCid)
 		}
 
 		if bd.Development || bd.Release == "" {

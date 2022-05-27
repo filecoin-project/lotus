@@ -93,31 +93,47 @@ func FetchAndLoadBundles(ctx context.Context, bs blockstore.Blockstore, bar map[
 		}
 	}
 
+	var err error
 	for av, bd := range bar {
+		// expectedCid is the expected manifest CID, if specified for the release
+		expectedCid := cid.Undef
+		if c := bd.ManifestCID[netw]; c != "" {
+			expectedCid, err = cid.Decode(c)
+			if err != nil {
+				return xerrors.Errorf("error parsing expected manifest cid %s for %d/%s", c, av, netw)
+			}
+		}
+
 		envvar := fmt.Sprintf("LOTUS_BUILTIN_ACTORS_V%d_BUNDLE", av)
+		var mfCid cid.Cid
 		switch {
 		case os.Getenv(envvar) != "":
 			// this is a local bundle, specified by an env var to load from the filesystem
 			path := os.Getenv(envvar)
 
-			if _, err := LoadBundle(ctx, bs, path, av); err != nil {
+			if mfCid, err = LoadBundle(ctx, bs, path, av); err != nil {
 				return err
 			}
 
 		case bd.Path[netw] != "":
-			if _, err := LoadBundle(ctx, bs, bd.Path[netw], av); err != nil {
+			if mfCid, err = LoadBundle(ctx, bs, bd.Path[netw], av); err != nil {
 				return err
 			}
 
 		case bd.URL[netw].URL != "":
-			if _, err := FetchAndLoadBundleFromURL(ctx, path, bs, av, bd.Release, netw, bd.URL[netw].URL, bd.URL[netw].Checksum); err != nil {
+			if mfCid, err = FetchAndLoadBundleFromURL(ctx, path, bs, av, bd.Release, netw, bd.URL[netw].URL, bd.URL[netw].Checksum); err != nil {
 				return err
 			}
 
 		case bd.Release != "":
-			if _, err := FetchAndLoadBundleFromRelease(ctx, path, bs, av, bd.Release, netw); err != nil {
+			if mfCid, err = FetchAndLoadBundleFromRelease(ctx, path, bs, av, bd.Release, netw); err != nil {
 				return err
 			}
+		}
+
+		// verification check
+		if expectedCid.Defined() && expectedCid != mfCid {
+			return xerrors.Errorf("manifest CID %s does not match expected CID %s", mfCid, expectedCid)
 		}
 	}
 

@@ -22,6 +22,8 @@ type Bundle struct {
 	Path map[string]string
 	// URL is the (optional) bundle URL; takes precedence over github release
 	URL map[string]BundleURL
+	// ManifestCID is the (optional) per network manifest CIDs for verification at load time
+	ManifestCID map[string]string
 	// Devlopment indicates whether this is a development version; when set, in conjunction with path,
 	// it will always load the bundle to the blockstore, without recording the manifest CID in the
 	// datastore.
