@@ -7,9 +7,6 @@ import (
 	"math"
 	"os"
 
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/go-address"
