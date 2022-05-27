@@ -54,7 +54,7 @@ var UpgradeOhSnapHeight = abi.ChainEpoch(-18)
 var UpgradeSkyrHeight = abi.ChainEpoch(100)
 
 var ActorsCIDs = map[actors.Version]cid.Cid{
-	actors.Version8: MustParseCid("bafy2bzacebkwjj5j2npj6d7vflvi7atqpqimrgh4hkvfrldk4bxhabuj3vb4m"),
+	actors.Version8: MustParseCid("bafy2bzacec2w2zpvykvrjtxrndaq3ow7fh3ytum5l3qyfy3p4nw7vyjybtgea"),
 }
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
