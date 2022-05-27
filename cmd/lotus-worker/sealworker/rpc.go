@@ -34,6 +34,7 @@ func WorkerHandler(authv func(ctx context.Context, token string) ([]auth.Permiss
 	}
 
 	rpcServer.Register("Filecoin", wapi)
+	rpcServer.AliasMethod("rpc.discover", "Filecoin.Discover")
 
 	mux.Handle("/rpc/v0", rpcServer)
 	mux.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)

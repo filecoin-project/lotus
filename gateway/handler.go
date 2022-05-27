@@ -20,6 +20,8 @@ func Handler(a api.Gateway, opts ...jsonrpc.ServerOption) (http.Handler, error) 
 	serveRpc := func(path string, hnd interface{}) {
 		rpcServer := jsonrpc.NewServer(opts...)
 		rpcServer.Register("Filecoin", hnd)
+		rpcServer.AliasMethod("rpc.discover", "Filecoin.Discover")
+
 		m.Handle(path, rpcServer)
 	}
 

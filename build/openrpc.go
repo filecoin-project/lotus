@@ -52,3 +52,11 @@ func OpenRPCDiscoverJSON_Worker() apitypes.OpenRPCDocument {
 	}
 	return mustReadGzippedOpenRPCDocument(data)
 }
+
+func OpenRPCDiscoverJSON_Gateway() apitypes.OpenRPCDocument {
+	data, err := openrpcfs.ReadFile("openrpc/gateway.json.gz")
+	if err != nil {
+		panic(err)
+	}
+	return mustReadGzippedOpenRPCDocument(data)
+}

@@ -71,6 +71,7 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 	serveRpc := func(path string, hnd interface{}) {
 		rpcServer := jsonrpc.NewServer(opts...)
 		rpcServer.Register("Filecoin", hnd)
+		rpcServer.AliasMethod("rpc.discover", "Filecoin.Discover")
 
 		var handler http.Handler = rpcServer
 		if permissioned {
@@ -131,6 +132,7 @@ func MinerHandler(a api.StorageMiner, permissioned bool) (http.Handler, error) {
 	readerHandler, readerServerOpt := rpcenc.ReaderParamDecoder()
 	rpcServer := jsonrpc.NewServer(readerServerOpt)
 	rpcServer.Register("Filecoin", mapi)
+	rpcServer.AliasMethod("rpc.discover", "Filecoin.Discover")
 
 	m.Handle("/rpc/v0", rpcServer)
 	m.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)
