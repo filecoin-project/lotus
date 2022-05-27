@@ -47,9 +47,12 @@ const UpgradeChocolateHeight = -17
 
 const UpgradeOhSnapHeight = 240
 
-var UpgradeSkyrHeight = abi.ChainEpoch(99999999999999)
+// 2022-05-31T14:32:00Z
+const UpgradeSkyrHeight = abi.ChainEpoch(333258)
 
-var ActorsCIDs = map[actors.Version]cid.Cid{}
+var ActorsCIDs = map[actors.Version]cid.Cid{
+	actors.Version8: MustParseCid("bafy2bzacedy4qgxbr6pbyfgcp7s7bdkc2whi5errnw67al5e2tk75j46iucv6"),
+}
 
 func init() {
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2 << 30))
