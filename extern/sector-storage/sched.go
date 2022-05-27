@@ -85,8 +85,8 @@ type WorkerHandle struct {
 
 	Info storiface.WorkerInfo
 
-	preparing *activeResources // use with WorkerHandle.lk
-	active    *activeResources // use with WorkerHandle.lk
+	preparing *ActiveResources // use with WorkerHandle.lk
+	active    *ActiveResources // use with WorkerHandle.lk
 
 	lk sync.Mutex // can be taken inside sched.workersLk.RLock
 
@@ -108,7 +108,7 @@ type SchedWindowRequest struct {
 }
 
 type SchedWindow struct {
-	Allocated activeResources
+	Allocated ActiveResources
 	Todo      []*WorkerRequest
 }
 
