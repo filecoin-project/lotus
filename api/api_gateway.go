@@ -66,4 +66,5 @@ type Gateway interface {
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*MsgLookup, error)
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 	Version(context.Context) (APIVersion, error)
+	Discover(context.Context) (apitypes.OpenRPCDocument, error)
 }
