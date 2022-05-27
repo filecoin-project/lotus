@@ -44,6 +44,9 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 	}
 
 	windows := make([]SchedWindow, windowsLen)
+	for i := range windows {
+		windows[i].Allocated = *NewActiveResources()
+	}
 	acceptableWindows := make([][]int, queueLen) // QueueIndex -> []OpenWindowIndex
 
 	// Step 1
@@ -81,7 +84,7 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 				needRes := worker.Info.Resources.ResourceSpec(task.Sector.ProofType, task.TaskType)
 
 				// TODO: allow bigger windows
-				if !windows[wnd].Allocated.CanHandleRequest(needRes, windowRequest.Worker, "schedAcceptable", worker.Info) {
+				if !windows[wnd].Allocated.CanHandleRequest(task.SealTask(), needRes, windowRequest.Worker, "schedAcceptable", worker.Info) {
 					continue
 				}
 

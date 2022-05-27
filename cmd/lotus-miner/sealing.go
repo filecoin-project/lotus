@@ -105,13 +105,20 @@ func workersCmd(sealing bool) *cli.Command {
 				return st[i].id.String() < st[j].id.String()
 			})
 
+			/*
+				Example output:
+
+				Worker c4d65451-07f8-4230-98ad-4f33dea2a8cc, host myhostname
+				        TASK: PC1(1/4) AP(15/15) GET(3)
+				        CPU:  [||||||||                                                        ] 16/128 core(s) in use
+				        RAM:  [||||||||                                                        ] 12% 125.8 GiB/1008 GiB
+				        VMEM: [||||||||                                                        ] 12% 125.8 GiB/1008 GiB
+				        GPU:  [                                                                ] 0% 0.00/1 gpu(s) in use
+				        GPU: NVIDIA GeForce RTX 3090, not used
+			*/
+
 			for _, stat := range st {
-				gpuUse := "not "
-				gpuCol := color.FgBlue
-				if stat.GpuUsed > 0 {
-					gpuCol = color.FgGreen
-					gpuUse = ""
-				}
+				// Worker uuid + name
 
 				var disabled string
 				if !stat.Enabled {
@@ -120,8 +127,52 @@ func workersCmd(sealing bool) *cli.Command {
 
 				fmt.Printf("Worker %s, host %s%s\n", stat.id, color.MagentaString(stat.Info.Hostname), disabled)
 
+				// Task counts
+				tc := make([][]string, 0, len(stat.TaskCounts))
+
+				for st, c := range stat.TaskCounts {
+					if c == 0 {
+						continue
+					}
+
+					stt, err := sealtasks.SttFromString(st)
+					if err != nil {
+						return err
+					}
+
+					str := fmt.Sprint(c)
+					if max := stat.Info.Resources.ResourceSpec(stt.RegisteredSealProof, stt.TaskType).MaxConcurrent; max > 0 {
+						switch {
+						case c < max:
+							str = color.GreenString(str)
+						case c >= max:
+							str = color.YellowString(str)
+						}
+						str = fmt.Sprintf("%s/%d", str, max)
+					} else {
+						str = color.CyanString(str)
+					}
+					str = fmt.Sprintf("%s(%s)", color.BlueString(stt.Short()), str)
+
+					tc = append(tc, []string{string(stt.TaskType), str})
+				}
+				sort.Slice(tc, func(i, j int) bool {
+					return sealtasks.TaskType(tc[i][0]).Less(sealtasks.TaskType(tc[j][0]))
+				})
+				var taskStr string
+				for _, t := range tc {
+					taskStr = t[1] + " "
+				}
+				if taskStr != "" {
+					fmt.Printf("\tTASK: %s\n", taskStr)
+				}
+
+				// CPU use
+
 				fmt.Printf("\tCPU:  [%s] %d/%d core(s) in use\n",
 					barString(float64(stat.Info.Resources.CPUs), 0, float64(stat.CpuUse)), stat.CpuUse, stat.Info.Resources.CPUs)
+
+				// RAM use
 
 				ramTotal := stat.Info.Resources.MemPhysical
 				ramTasks := stat.MemUsedMin
@@ -137,6 +188,8 @@ func workersCmd(sealing bool) *cli.Command {
 					types.SizeStr(types.NewInt(ramTasks+ramUsed)),
 					types.SizeStr(types.NewInt(stat.Info.Resources.MemPhysical)))
 
+				// VMEM use (ram+swap)
+
 				vmemTotal := stat.Info.Resources.MemPhysical + stat.Info.Resources.MemSwap
 				vmemTasks := stat.MemUsedMax
 				vmemUsed := stat.Info.Resources.MemUsed + stat.Info.Resources.MemSwapUsed
@@ -151,11 +204,20 @@ func workersCmd(sealing bool) *cli.Command {
 					types.SizeStr(types.NewInt(vmemTasks+vmemReserved)),
 					types.SizeStr(types.NewInt(vmemTotal)))
 
+				// GPU use
+
 				if len(stat.Info.Resources.GPUs) > 0 {
 					gpuBar := barString(float64(len(stat.Info.Resources.GPUs)), 0, stat.GpuUsed)
 					fmt.Printf("\tGPU:  [%s] %.f%% %.2f/%d gpu(s) in use\n", color.GreenString(gpuBar),
 						stat.GpuUsed*100/float64(len(stat.Info.Resources.GPUs)),
 						stat.GpuUsed, len(stat.Info.Resources.GPUs))
+				}
+
+				gpuUse := "not "
+				gpuCol := color.FgBlue
+				if stat.GpuUsed > 0 {
+					gpuCol = color.FgGreen
+					gpuUse = ""
 				}
 				for _, gpu := range stat.Info.Resources.GPUs {
 					fmt.Printf("\tGPU: %s\n", color.New(gpuCol).Sprintf("%s, %sused", gpu, gpuUse))

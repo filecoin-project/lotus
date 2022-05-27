@@ -34,8 +34,8 @@ func newWorkerHandle(ctx context.Context, w Worker) (*WorkerHandle, error) {
 		workerRpc: w,
 		Info:      info,
 
-		preparing: &activeResources{},
-		active:    &activeResources{},
+		preparing: NewActiveResources(),
+		active:    NewActiveResources(),
 		Enabled:   true,
 
 		closingMgr: make(chan struct{}),
@@ -292,14 +292,14 @@ func (sw *schedWorker) workerCompactWindows() {
 
 			for ti, todo := range window.Todo {
 				needRes := worker.Info.Resources.ResourceSpec(todo.Sector.ProofType, todo.TaskType)
-				if !lower.Allocated.CanHandleRequest(needRes, sw.wid, "compactWindows", worker.Info) {
+				if !lower.Allocated.CanHandleRequest(todo.SealTask(), needRes, sw.wid, "compactWindows", worker.Info) {
 					continue
 				}
 
 				moved = append(moved, ti)
 				lower.Todo = append(lower.Todo, todo)
-				lower.Allocated.Add(worker.Info.Resources, needRes)
-				window.Allocated.free(worker.Info.Resources, needRes)
+				lower.Allocated.Add(todo.SealTask(), worker.Info.Resources, needRes)
+				window.Allocated.Free(todo.SealTask(), worker.Info.Resources, needRes)
 			}
 
 			if len(moved) > 0 {
@@ -353,7 +353,7 @@ assignLoop:
 			worker.lk.Lock()
 			for t, todo := range firstWindow.Todo {
 				needRes := worker.Info.Resources.ResourceSpec(todo.Sector.ProofType, todo.TaskType)
-				if worker.preparing.CanHandleRequest(needRes, sw.wid, "startPreparing", worker.Info) {
+				if worker.preparing.CanHandleRequest(todo.SealTask(), needRes, sw.wid, "startPreparing", worker.Info) {
 					tidx = t
 					break
 				}
@@ -413,8 +413,8 @@ assignLoop:
 					continue
 				}
 
-				needRes := storiface.ResourceTable[todo.TaskType][todo.Sector.ProofType]
-				if worker.active.CanHandleRequest(needRes, sw.wid, "startPreparing", worker.Info) {
+				needRes := worker.Info.Resources.ResourceSpec(todo.Sector.ProofType, todo.TaskType)
+				if worker.active.CanHandleRequest(todo.SealTask(), needRes, sw.wid, "startPreparing", worker.Info) {
 					tidx = t
 					break
 				}
@@ -454,7 +454,7 @@ func (sw *schedWorker) startProcessingTask(req *WorkerRequest) error {
 	needRes := w.Info.Resources.ResourceSpec(req.Sector.ProofType, req.TaskType)
 
 	w.lk.Lock()
-	w.preparing.Add(w.Info.Resources, needRes)
+	w.preparing.Add(req.SealTask(), w.Info.Resources, needRes)
 	w.lk.Unlock()
 
 	go func() {
@@ -465,7 +465,7 @@ func (sw *schedWorker) startProcessingTask(req *WorkerRequest) error {
 		w.lk.Lock()
 
 		if err != nil {
-			w.preparing.free(w.Info.Resources, needRes)
+			w.preparing.Free(req.SealTask(), w.Info.Resources, needRes)
 			w.lk.Unlock()
 
 			select {
@@ -494,8 +494,8 @@ func (sw *schedWorker) startProcessingTask(req *WorkerRequest) error {
 		}()
 
 		// wait (if needed) for resources in the 'active' window
-		err = w.active.withResources(sw.wid, w.Info, needRes, &w.lk, func() error {
-			w.preparing.free(w.Info.Resources, needRes)
+		err = w.active.withResources(sw.wid, w.Info, req.SealTask(), needRes, &w.lk, func() error {
+			w.preparing.Free(req.SealTask(), w.Info.Resources, needRes)
 			w.lk.Unlock()
 			defer w.lk.Lock() // we MUST return locked from this function
 
@@ -536,7 +536,7 @@ func (sw *schedWorker) startProcessingReadyTask(req *WorkerRequest) error {
 
 	needRes := w.Info.Resources.ResourceSpec(req.Sector.ProofType, req.TaskType)
 
-	w.active.Add(w.Info.Resources, needRes)
+	w.active.Add(req.SealTask(), w.Info.Resources, needRes)
 
 	go func() {
 		// Do the work!
@@ -554,7 +554,7 @@ func (sw *schedWorker) startProcessingReadyTask(req *WorkerRequest) error {
 
 		w.lk.Lock()
 
-		w.active.free(w.Info.Resources, needRes)
+		w.active.Free(req.SealTask(), w.Info.Resources, needRes)
 
 		select {
 		case sw.taskDone <- struct{}{}:

@@ -9,8 +9,26 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
-func (a *activeResources) withResources(id storiface.WorkerID, wr storiface.WorkerInfo, r storiface.Resources, locker sync.Locker, cb func() error) error {
-	for !a.CanHandleRequest(r, id, "withResources", wr) {
+type ActiveResources struct {
+	memUsedMin uint64
+	memUsedMax uint64
+	gpuUsed    float64
+	cpuUse     uint64
+
+	taskCounters map[sealtasks.SealTaskType]int
+
+	cond    *sync.Cond
+	waiting int
+}
+
+func NewActiveResources() *ActiveResources {
+	return &ActiveResources{
+		taskCounters: map[sealtasks.SealTaskType]int{},
+	}
+}
+
+func (a *ActiveResources) withResources(id storiface.WorkerID, wr storiface.WorkerInfo, tt sealtasks.SealTaskType, r storiface.Resources, locker sync.Locker, cb func() error) error {
+	for !a.CanHandleRequest(tt, r, id, "withResources", wr) {
 		if a.cond == nil {
 			a.cond = sync.NewCond(locker)
 		}
@@ -19,22 +37,22 @@ func (a *activeResources) withResources(id storiface.WorkerID, wr storiface.Work
 		a.waiting--
 	}
 
-	a.Add(wr.Resources, r)
+	a.Add(tt, wr.Resources, r)
 
 	err := cb()
 
-	a.free(wr.Resources, r)
+	a.Free(tt, wr.Resources, r)
 
 	return err
 }
 
 // must be called with the same lock as the one passed to withResources
-func (a *activeResources) hasWorkWaiting() bool {
+func (a *ActiveResources) hasWorkWaiting() bool {
 	return a.waiting > 0
 }
 
-// add task resources to activeResources and return utilization difference
-func (a *activeResources) Add(wr storiface.WorkerResources, r storiface.Resources) float64 {
+// add task resources to ActiveResources and return utilization difference
+func (a *ActiveResources) Add(tt sealtasks.SealTaskType, wr storiface.WorkerResources, r storiface.Resources) float64 {
 	startUtil := a.utilization(wr)
 
 	if r.GPUUtilization > 0 {
@@ -43,17 +61,19 @@ func (a *activeResources) Add(wr storiface.WorkerResources, r storiface.Resource
 	a.cpuUse += r.Threads(wr.CPUs, len(wr.GPUs))
 	a.memUsedMin += r.MinMemory
 	a.memUsedMax += r.MaxMemory
+	a.taskCounters[tt]++
 
 	return a.utilization(wr) - startUtil
 }
 
-func (a *activeResources) free(wr storiface.WorkerResources, r storiface.Resources) {
+func (a *ActiveResources) Free(tt sealtasks.SealTaskType, wr storiface.WorkerResources, r storiface.Resources) {
 	if r.GPUUtilization > 0 {
 		a.gpuUsed -= r.GPUUtilization
 	}
 	a.cpuUse -= r.Threads(wr.CPUs, len(wr.GPUs))
 	a.memUsedMin -= r.MinMemory
 	a.memUsedMax -= r.MaxMemory
+	a.taskCounters[tt]--
 
 	if a.cond != nil {
 		a.cond.Broadcast()
@@ -62,7 +82,14 @@ func (a *activeResources) free(wr storiface.WorkerResources, r storiface.Resourc
 
 // CanHandleRequest evaluates if the worker has enough available resources to
 // handle the request.
-func (a *activeResources) CanHandleRequest(needRes storiface.Resources, wid storiface.WorkerID, caller string, info storiface.WorkerInfo) bool {
+func (a *ActiveResources) CanHandleRequest(tt sealtasks.SealTaskType, needRes storiface.Resources, wid storiface.WorkerID, caller string, info storiface.WorkerInfo) bool {
+	if needRes.MaxConcurrent > 0 {
+		if a.taskCounters[tt] >= needRes.MaxConcurrent {
+			log.Debugf("sched: not scheduling on worker %s for %s; at task limit tt=%s, curcount=%d", wid, caller, tt, a.taskCounters[tt])
+			return false
+		}
+	}
+
 	if info.IgnoreResources {
 		// shortcircuit; if this worker is ignoring resources, it can always handle the request.
 		return true
@@ -110,7 +137,7 @@ func (a *activeResources) CanHandleRequest(needRes storiface.Resources, wid stor
 }
 
 // utilization returns a number in 0..1 range indicating fraction of used resources
-func (a *activeResources) utilization(wr storiface.WorkerResources) float64 {
+func (a *ActiveResources) utilization(wr storiface.WorkerResources) float64 { // todo task type
 	var max float64
 
 	cpu := float64(a.cpuUse) / float64(wr.CPUs)
