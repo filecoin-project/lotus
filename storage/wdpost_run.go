@@ -595,6 +595,11 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 				if err != nil {
 					return nil, xerrors.Errorf("removing faults from set of sectors to prove: %w", err)
 				}
+				if manual {
+					// this is a check run, we want to prove faulty sectors, even
+					// if they are not declared as recovering.
+					toProve = partition.LiveSectors
+				}
 				toProve, err = bitfield.MergeBitFields(toProve, partition.RecoveringSectors)
 				if err != nil {
 					return nil, xerrors.Errorf("adding recoveries to set of sectors to prove: %w", err)
