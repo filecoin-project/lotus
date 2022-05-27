@@ -21,14 +21,14 @@ type activeResources struct {
 	waiting int
 }
 
-func newActiveResources() *activeResources {
+func NewActiveResources() *activeResources {
 	return &activeResources{
 		taskCounters: map[sealtasks.SealTaskType]int{},
 	}
 }
 
 func (a *activeResources) withResources(id storiface.WorkerID, wr storiface.WorkerInfo, tt sealtasks.SealTaskType, r storiface.Resources, locker sync.Locker, cb func() error) error {
-	for !a.canHandleRequest(tt, r, id, "withResources", wr) {
+	for !a.CanHandleRequest(tt, r, id, "withResources", wr) {
 		if a.cond == nil {
 			a.cond = sync.NewCond(locker)
 		}
@@ -37,11 +37,11 @@ func (a *activeResources) withResources(id storiface.WorkerID, wr storiface.Work
 		a.waiting--
 	}
 
-	a.add(tt, wr.Resources, r)
+	a.Add(tt, wr.Resources, r)
 
 	err := cb()
 
-	a.free(tt, wr.Resources, r)
+	a.Free(tt, wr.Resources, r)
 
 	return err
 }
@@ -52,7 +52,7 @@ func (a *activeResources) hasWorkWaiting() bool {
 }
 
 // add task resources to activeResources and return utilization difference
-func (a *activeResources) add(tt sealtasks.SealTaskType, wr storiface.WorkerResources, r storiface.Resources) float64 {
+func (a *activeResources) Add(tt sealtasks.SealTaskType, wr storiface.WorkerResources, r storiface.Resources) float64 {
 	startUtil := a.utilization(wr)
 
 	if r.GPUUtilization > 0 {
@@ -66,7 +66,7 @@ func (a *activeResources) add(tt sealtasks.SealTaskType, wr storiface.WorkerReso
 	return a.utilization(wr) - startUtil
 }
 
-func (a *activeResources) free(tt sealtasks.SealTaskType, wr storiface.WorkerResources, r storiface.Resources) {
+func (a *activeResources) Free(tt sealtasks.SealTaskType, wr storiface.WorkerResources, r storiface.Resources) {
 	if r.GPUUtilization > 0 {
 		a.gpuUsed -= r.GPUUtilization
 	}
@@ -80,9 +80,9 @@ func (a *activeResources) free(tt sealtasks.SealTaskType, wr storiface.WorkerRes
 	}
 }
 
-// canHandleRequest evaluates if the worker has enough available resources to
+// CanHandleRequest evaluates if the worker has enough available resources to
 // handle the request.
-func (a *activeResources) canHandleRequest(tt sealtasks.SealTaskType, needRes storiface.Resources, wid storiface.WorkerID, caller string, info storiface.WorkerInfo) bool {
+func (a *activeResources) CanHandleRequest(tt sealtasks.SealTaskType, needRes storiface.Resources, wid storiface.WorkerID, caller string, info storiface.WorkerInfo) bool {
 	if needRes.MaxConcurrent > 0 {
 		if a.taskCounters[tt] >= needRes.MaxConcurrent {
 			log.Debugf("sched: not scheduling on worker %s for %s; at task limit tt=%s, curcount=%d", wid, caller, tt, a.taskCounters[tt])
@@ -172,14 +172,14 @@ func (a *activeResources) utilization(wr storiface.WorkerResources) float64 { //
 	return max
 }
 
-func (wh *workerHandle) utilization() float64 {
+func (wh *WorkerHandle) Utilization() float64 {
 	wh.lk.Lock()
-	u := wh.active.utilization(wh.info.Resources)
-	u += wh.preparing.utilization(wh.info.Resources)
+	u := wh.active.utilization(wh.Info.Resources)
+	u += wh.preparing.utilization(wh.Info.Resources)
 	wh.lk.Unlock()
 	wh.wndLk.Lock()
 	for _, window := range wh.activeWindows {
-		u += window.allocated.utilization(wh.info.Resources)
+		u += window.Allocated.utilization(wh.Info.Resources)
 	}
 	wh.wndLk.Unlock()
 
@@ -188,7 +188,7 @@ func (wh *workerHandle) utilization() float64 {
 
 var tasksCacheTimeout = 30 * time.Second
 
-func (wh *workerHandle) TaskTypes(ctx context.Context) (t map[sealtasks.TaskType]struct{}, err error) {
+func (wh *WorkerHandle) TaskTypes(ctx context.Context) (t map[sealtasks.TaskType]struct{}, err error) {
 	wh.tasksLk.Lock()
 	defer wh.tasksLk.Unlock()
 

@@ -570,6 +570,8 @@ func (n *Ensemble) Start() *Ensemble {
 		}
 
 		noLocal := m.options.minerNoLocalSealing
+		assigner := m.options.minerAssigner
+		disallowRemoteFinalize := m.options.disallowRemoteFinalize
 
 		var mineBlock = make(chan lotusminer.MineReq)
 		opts := []node.Option{
@@ -595,6 +597,8 @@ func (n *Ensemble) Start() *Ensemble {
 					scfg.Storage.AllowCommit = false
 				}
 
+				scfg.Storage.Assigner = assigner
+				scfg.Storage.DisallowRemoteFinalize = disallowRemoteFinalize
 				scfg.Storage.ResourceFiltering = sectorstorage.ResourceFilteringDisabled
 				return scfg.StorageManager()
 			}),
