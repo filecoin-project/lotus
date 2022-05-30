@@ -135,7 +135,7 @@ func (vm *LegacyVM) makeRuntime(ctx context.Context, msg *types.Message, parent 
 		gasAvailable:     msg.GasLimit,
 		depth:            0,
 		numActorsCreated: 0,
-		pricelist:        PricelistByEpochAndNetworkVersion(vm.blockHeight, vm.networkVersion),
+		pricelist:        PricelistByEpoch(vm.blockHeight),
 		allowInternal:    true,
 		callerValidated:  false,
 		executionTrace:   types.ExecutionTrace{Msg: msg},
@@ -431,7 +431,7 @@ func (vm *LegacyVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*App
 		return nil, err
 	}
 
-	pl := PricelistByEpochAndNetworkVersion(vm.blockHeight, vm.networkVersion)
+	pl := PricelistByEpoch(vm.blockHeight)
 
 	msgGas := pl.OnChainMessage(cmsg.ChainLength())
 	msgGasCost := msgGas.Total()
