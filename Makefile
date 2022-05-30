@@ -185,7 +185,7 @@ BINS+=lotus-chainwatch
 
 lotus-bench:
 	rm -f lotus-bench
-	go build -o lotus-bench ./cmd/lotus-bench
+	go build $(GOFLAGS) -o lotus-bench ./cmd/lotus-bench
 .PHONY: lotus-bench
 BINS+=lotus-bench
 
