@@ -1933,19 +1933,8 @@ var StateSysActorCIDsCmd = &cli.Command{
 		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 		_, _ = fmt.Fprintln(tw, "\nActor\tCID\t")
 
-		for _, name := range []string{
-			actors.AccountKey,
-			actors.CronKey,
-			actors.InitKey,
-			actors.MarketKey,
-			actors.MinerKey,
-			actors.MultisigKey,
-			actors.PaychKey,
-			actors.PowerKey,
-			actors.RewardKey,
-			actors.SystemKey,
-			actors.VerifregKey,
-		} {
+		var actorKeys = actors.GetBuiltinActorsKeys()
+		for _, name := range actorKeys {
 			sysActorCID, ok := actors.GetActorCodeID(actorVersion, name)
 			if !ok {
 				return xerrors.Errorf("error getting actor %v code id for actor version %d", name,
