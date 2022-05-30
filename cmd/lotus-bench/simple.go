@@ -40,7 +40,7 @@ baga6ea4seaqpy7usqklokfx2vxuynmupslkeutzexe2uqurdg5vhtebhxqmpqmy 2048
 
 > Run PreCommit1
 
-$ ./lotus-bench simple precommit1 --sector-size 2k /tmp/unsealed /tmp/sealed /tmp/cache baga6ea4seaqpy7usqklokfx2vxuynmupslkeutzexe2uqurdg5vhtebhxqmpqmy 2048 
+$ ./lotus-bench simple precommit1 --sector-size 2k /tmp/unsealed /tmp/sealed /tmp/cache baga6ea4seaqpy7usqklokfx2vxuynmupslkeutzexe2uqurdg5vhtebhxqmpqmy 2048
 PreCommit1 30.151666ms (66.33 KiB/s)
 eyJfbG90dXNfU2VhbFJhbmRvbW5lc3MiOiJBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFBQUFB[...]==
 
@@ -959,22 +959,32 @@ var simpleProveReplicaUpdate2 = &cli.Command{
 }
 
 func ParsePieceInfos(cctx *cli.Context, firstArg int) ([]abi.PieceInfo, error) {
-	// supports only one for now
-
-	c, err := cid.Parse(cctx.Args().Get(firstArg))
-	if err != nil {
-		return nil, xerrors.Errorf("parse piece cid: %w", err)
+	args := cctx.Args().Len() - firstArg
+	if args%2 != 0 {
+		return nil, xerrors.Errorf("piece info argunemts need to be supplied in pairs")
+	}
+	if args < 2 {
+		return nil, xerrors.Errorf("need at least one piece info argument")
 	}
 
-	psize, err := strconv.ParseUint(cctx.Args().Get(firstArg+1), 10, 64)
-	if err != nil {
-		return nil, xerrors.Errorf("parse piece size: %w", err)
-	}
+	out := make([]abi.PieceInfo, args/2)
 
-	return []abi.PieceInfo{
-		{
+	for i := 0; i < args/2; i++ {
+		c, err := cid.Parse(cctx.Args().Get(firstArg + (i * 2)))
+		if err != nil {
+			return nil, xerrors.Errorf("parse piece cid: %w", err)
+		}
+
+		psize, err := strconv.ParseUint(cctx.Args().Get(firstArg+(i*2)+1), 10, 64)
+		if err != nil {
+			return nil, xerrors.Errorf("parse piece size: %w", err)
+		}
+
+		out[i] = abi.PieceInfo{
 			Size:     abi.PaddedPieceSize(psize),
 			PieceCID: c,
-		},
-	}, nil
+		}
+	}
+
+	return out, nil
 }
