@@ -804,6 +804,11 @@ workflows:
           target: "./itests/deals_concurrent_test.go"
       
       - test:
+          name: test-itest-deals_invalid_utf8_label
+          suite: itest-deals_invalid_utf8_label
+          target: "./itests/deals_invalid_utf8_label_test.go"
+      
+      - test:
           name: test-itest-deals_max_staging_deals
           suite: itest-deals_max_staging_deals
           target: "./itests/deals_max_staging_deals_test.go"
