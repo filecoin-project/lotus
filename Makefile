@@ -169,7 +169,7 @@ BINS+=lotus-fountain
 
 lotus-bench:
 	rm -f lotus-bench
-	$(GOCC) build -o lotus-bench ./cmd/lotus-bench
+	$(GOCC) build $(GOFLAGS) -o lotus-bench ./cmd/lotus-bench
 .PHONY: lotus-bench
 BINS+=lotus-bench
 
