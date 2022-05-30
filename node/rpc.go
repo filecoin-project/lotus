@@ -115,6 +115,8 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 	m.Handle("/debug/pprof-set/mutex", handleFractionOpt("MutexProfileFraction", func(x int) {
 		runtime.SetMutexProfileFraction(x)
 	}))
+	m.Handle("/health/livez", NewLiveHandler(a))
+	m.Handle("/health/readyz", NewReadyHandler(a))
 	m.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
 
 	return m, nil

@@ -291,7 +291,7 @@ func startNodes(
 
 	// Create a gateway server in front of the full node
 	gwapi := gateway.NewNode(full, lookbackCap, stateWaitLookbackLimit)
-	handler, err := gateway.Handler(gwapi)
+	handler, err := gateway.Handler(gwapi, full)
 	require.NoError(t, err)
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")
