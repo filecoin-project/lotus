@@ -32,6 +32,22 @@ const (
 	VerifregKey = "verifiedregistry"
 )
 
+func GetBuiltinActorsKeys() []string {
+	return []string{
+		AccountKey,
+		CronKey,
+		InitKey,
+		MarketKey,
+		MinerKey,
+		MultisigKey,
+		PaychKey,
+		PowerKey,
+		RewardKey,
+		SystemKey,
+		VerifregKey,
+	}
+}
+
 var (
 	manifestMx sync.RWMutex
 )
@@ -85,19 +101,8 @@ func loadManifests(ctx context.Context, store cbor.IpldStore) error {
 
 		manifests[av] = mf
 
-		for _, name := range []string{
-			AccountKey,
-			CronKey,
-			InitKey,
-			MarketKey,
-			MinerKey,
-			MultisigKey,
-			PaychKey,
-			PowerKey,
-			RewardKey,
-			SystemKey,
-			VerifregKey,
-		} {
+		var actorKeys = GetBuiltinActorsKeys()
+		for _, name := range actorKeys {
 			c, ok := mf.Get(name)
 			if ok {
 				actorMeta[c] = actorEntry{name: name, version: av}
