@@ -285,7 +285,7 @@ var provingDeadlinesCmd = &cli.Command{
 				}
 				live += lc
 				if cctx.IsSet("detailed") {
-					_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d|%d|%d|%d)\t\n", dlIdx, partIdx, sectors, faults, recovering, live, active)
+					_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d|%d|%d|%d)\t\n", dlIdx, partIdx, sc, fc, rc, lc, ac)
 				}
 			}
 
