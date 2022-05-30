@@ -8,11 +8,12 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/fatih/color"
+	"github.com/filecoin-project/go-address"
 	"github.com/urfave/cli/v2"
+
+	"github.com/fatih/color"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -34,7 +35,6 @@ var provingCmd = &cli.Command{
 		provingCheckProvableCmd,
 		workersCmd(false),
 		provingComputeCmd,
-		provingLivesCmd,
 	},
 }
 
@@ -198,6 +198,12 @@ var provingInfoCmd = &cli.Command{
 var provingDeadlinesCmd = &cli.Command{
 	Name:  "deadlines",
 	Usage: "View the current proving period deadlines information",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "detailed",
+			Usage: "print each partition deadlines information",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
@@ -225,7 +231,11 @@ var provingDeadlinesCmd = &cli.Command{
 		fmt.Printf("Miner: %s\n", color.BlueString("%s", maddr))
 
 		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "deadline\tpartitions\tsectors (faults)\tproven partitions")
+		if !cctx.IsSet("detailed") {
+			_, _ = fmt.Fprintln(tw, "deadline\tpartitions\tsectors (faults|recovering|live|active)\tproven partitions")
+		} else {
+			_, _ = fmt.Fprintln(tw, "deadline\tpartitions\tsectors (faults|recovering|live|active)\t")
+		}
 
 		for dlIdx, deadline := range deadlines {
 			partitions, err := api.StateMinerPartitions(ctx, maddr, uint64(dlIdx), types.EmptyTSK)
@@ -239,29 +249,51 @@ var provingDeadlinesCmd = &cli.Command{
 			}
 
 			sectors := uint64(0)
+			active := uint64(0)
 			faults := uint64(0)
+			live := uint64(0)
+			recovering := uint64(0)
 
-			for _, partition := range partitions {
+			for partIdx, partition := range partitions {
 				sc, err := partition.AllSectors.Count()
 				if err != nil {
 					return err
 				}
-
 				sectors += sc
+
+				ac, err := partition.ActiveSectors.Count()
+				if err != nil {
+					return err
+				}
+				active += ac
 
 				fc, err := partition.FaultySectors.Count()
 				if err != nil {
 					return err
 				}
-
 				faults += fc
+
+				rc, err := partition.RecoveringSectors.Count()
+				if err != nil {
+					return err
+				}
+				recovering += rc
+
+				lc, err := partition.LiveSectors.Count()
+				if err != nil {
+					return err
+				}
+				live += lc
+				if cctx.IsSet("detailed") {
+					_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d|%d|%d|%d)\t\n", dlIdx, partIdx, sectors, faults, recovering, live, active)
+				}
 			}
 
 			var cur string
 			if di.Index == uint64(dlIdx) {
 				cur += "\t(current)"
 			}
-			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d)\t%d%s\n", dlIdx, len(partitions), sectors, faults, provenPartitions, cur)
+			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d|%d|%d|%d)\t%d%s\n", dlIdx, len(partitions), sectors, faults, recovering, live, active, provenPartitions, cur)
 		}
 
 		return tw.Flush()
@@ -322,12 +354,12 @@ var provingDeadlineInfoCmd = &cli.Command{
 		fmt.Printf("Current:                  %t\n\n", di.Index == dlIdx)
 
 		for pIdx, partition := range partitions {
-			sectorCount, err := partition.AllSectors.Count()
+			sectorCount, err := partition.ActiveSectors.Count()
 			if err != nil {
 				return err
 			}
 
-			sectorNumbers, err := partition.AllSectors.All(sectorCount)
+			sectorNumbers, err := partition.ActiveSectors.All(sectorCount)
 			if err != nil {
 				return err
 			}
@@ -560,61 +592,5 @@ It will not send any messages to the chain.`,
 		fmt.Println(string(jr))
 
 		return nil
-	},
-}
-
-var provingLivesCmd = &cli.Command{
-	Name:  "lives",
-	Usage: "View the currently known proving live sectors information",
-	Action: func(cctx *cli.Context) error {
-		api, acloser, err := lcli.GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer acloser()
-
-		ctx := lcli.ReqContext(cctx)
-
-		stor := store.ActorStore(ctx, blockstore.NewAPIBlockstore(api))
-
-		maddr, err := getActorAddress(ctx, cctx)
-		if err != nil {
-			return err
-		}
-
-		mact, err := api.StateGetActor(ctx, maddr, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
-		mas, err := miner.Load(stor, mact)
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("Miner: %s\n", color.BlueString("%s", maddr))
-
-		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		_, _ = fmt.Fprintln(tw, "deadline\tpartition\tsectorsTotal")
-		err = mas.ForEachDeadline(func(dlIdx uint64, dl miner.Deadline) error {
-			return dl.ForEachPartition(func(partIdx uint64, part miner.Partition) error {
-				faults, err := part.LiveSectors()
-				if err != nil {
-					return err
-				}
-
-				total, err := faults.Count()
-				if err != nil {
-					return err
-				}
-
-				_, _ = fmt.Fprintf(tw, "%d\t%d\t%d\n", dlIdx, partIdx, total)
-				return nil
-			})
-		})
-		if err != nil {
-			return err
-		}
-		return tw.Flush()
 	},
 }

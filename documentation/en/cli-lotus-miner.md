@@ -2068,7 +2068,6 @@ COMMANDS:
    check      Check sectors provable
    workers    list workers
    compute    
-   lives      View the currently known proving live sectors information
    help, h    Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2098,6 +2097,7 @@ USAGE:
    lotus-miner proving deadlines [command options] [arguments...]
 
 OPTIONS:
+   --detailed  print each partition deadlines information (default: false)
    --help, -h  show help (default: false)
    
 ```
@@ -2178,19 +2178,6 @@ OPTIONS:
 
 ##### lotus-miner proving compute windowed-post, window-post
 ```
-```
-
-### lotus-miner proving lives
-```
-NAME:
-   lotus-miner proving lives - View the currently known proving live sectors information
-
-USAGE:
-   lotus-miner proving lives [command options] [arguments...]
-
-OPTIONS:
-   --help, -h  show help (default: false)
-   
 ```
 
 ## lotus-miner storage
