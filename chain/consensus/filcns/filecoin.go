@@ -468,7 +468,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 	}
 
 	nv := filec.sm.GetNetworkVersion(ctx, b.Header.Height)
-	pl := vm.PricelistByEpochAndNetworkVersion(b.Header.Height, nv)
+	pl := vm.PricelistByEpoch(b.Header.Height)
 	var sumGasLimit int64
 	checkMsg := func(msg types.ChainMsg) error {
 		m := msg.VMMessage()
