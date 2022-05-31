@@ -28,6 +28,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 
+	"github.com/filecoin-project/pubsub"
 	lru "github.com/hashicorp/golang-lru"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -35,7 +36,6 @@ import (
 	"github.com/ipfs/go-datastore/query"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/whyrusleeping/pubsub"
 	"golang.org/x/xerrors"
 )
 

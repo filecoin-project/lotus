@@ -605,6 +605,9 @@ type FullNode interface {
 	// StateGetRandomnessFromBeacon is used to sample the beacon for randomness.
 	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
 
+	// StateGetNetworkParams return current network params
+	StateGetNetworkParams(ctx context.Context) (*api.NetworkParams, error) //perm:read
+
 	// MethodGroup: Msig
 	// The Msig methods are used to interact with multisig wallets on the
 	// filecoin network

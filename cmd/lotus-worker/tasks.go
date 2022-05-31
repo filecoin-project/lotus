@@ -23,6 +23,7 @@ var tasksCmd = &cli.Command{
 
 var allowSetting = map[sealtasks.TaskType]struct{}{
 	sealtasks.TTAddPiece:            {},
+	sealtasks.TTDataCid:             {},
 	sealtasks.TTPreCommit1:          {},
 	sealtasks.TTPreCommit2:          {},
 	sealtasks.TTCommit2:             {},

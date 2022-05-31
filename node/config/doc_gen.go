@@ -378,7 +378,7 @@ see https://docs.filecoin.io/mine/lotus/miner-configuration/#using-filters-for-f
 			Type: "bool",
 
 			Comment: `Enable set whether to enable indexing announcement to the network and expose endpoints that
-allow indexer nodes to process announcements. Disabled by default.`,
+allow indexer nodes to process announcements. Enabled by default.`,
 		},
 		{
 			Name: "EntriesCacheCapacity",
