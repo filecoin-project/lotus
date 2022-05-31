@@ -1609,6 +1609,11 @@ var ChainExecCmd = &cli.Command{
 		afmt.Printf("ID Address: %s\n", result.IDAddress)
 		afmt.Printf("Robust Address: %s\n", result.RobustAddress)
 
+		if len(wait.Receipt.Return) > 0 {
+			result := base64.StdEncoding.EncodeToString(wait.Receipt.Return)
+			afmt.Printf("Return: %s\n", result)
+		}
+
 		return nil
 	},
 }
