@@ -39,6 +39,10 @@ func LowestUtilizationWS(sh *Scheduler, queueLen int, acceptableWindows [][]int,
 				continue
 			}
 
+			if !sh.CanHandleTask(task.TaskType, wid) {
+				continue
+			}
+
 			wu, found := workerUtil[wid]
 			if !found {
 				wu = w.Utilization()
@@ -83,6 +87,8 @@ func LowestUtilizationWS(sh *Scheduler, queueLen int, acceptableWindows [][]int,
 
 		workerUtil[bestWid] += windows[selectedWindow].Allocated.Add(task.SealTask(), info.Resources, needRes)
 		windows[selectedWindow].Todo = append(windows[selectedWindow].Todo, task)
+
+		sh.TaskAdd(task.TaskType, bestWid)
 
 		rmQueue = append(rmQueue, sqi)
 		scheduled++

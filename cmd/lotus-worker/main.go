@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -212,6 +213,11 @@ var runCmd = &cli.Command{
 			Usage: "used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function",
 			Value: "30m",
 		},
+		&cli.IntFlag{
+			Name:  "parallel-p1-limit",
+			Usage: "maximum precommit1 operations to run in parallel",
+			Value: -1,
+		},
 	},
 	Before: func(cctx *cli.Context) error {
 		if cctx.IsSet("address") {
@@ -231,6 +237,8 @@ var runCmd = &cli.Command{
 				return xerrors.Errorf("could not set no-gpu env: %+v", err)
 			}
 		}
+
+		os.Setenv("PARALLEL_P1_LIMIT", strconv.Itoa(cctx.Int("parallel-p1-limit")))
 
 		limit, _, err := ulimit.GetLimit()
 		switch {
@@ -293,6 +301,12 @@ var runCmd = &cli.Command{
 			return err
 		}
 
+		if cctx.Bool("commit") || cctx.Bool("prove-replica-update2") {
+			if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(ssize)); err != nil {
+				return xerrors.Errorf("get params: %w", err)
+			}
+		}
+
 		var taskTypes []sealtasks.TaskType
 		var workerType string
 		var needParams bool
@@ -309,6 +323,7 @@ var runCmd = &cli.Command{
 		}
 
 		if workerType == "" {
+			workerType = sealtasks.WorkerSealing
 			taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFinalizeReplicaUpdate)
 
 			if !cctx.Bool("no-default") {
