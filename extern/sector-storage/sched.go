@@ -447,12 +447,12 @@ func (sh *Scheduler) TaskReduce(taskType sealtasks.TaskType, wid storiface.Worke
 
 func (sh *Scheduler) TaskClean(wid storiface.WorkerID) {
 	if wh, ok := sh.Workers[wid]; ok {
-	 wh.TaskTotalLk.Lock()
-	 defer wh.TaskTotalLk.Unlock()
-   
-	 for k := range wh.Info.TaskLimits {
-	  wh.Info.TaskLimits[k] = 0
-	 }
+		wh.TaskTotalLk.Lock()
+		defer wh.TaskTotalLk.Unlock()
+
+		for k := range wh.Info.TaskLimits {
+			wh.Info.TaskLimits[k] = 0
+		}
 	}
-   
-   }
+
+}

@@ -3,10 +3,10 @@
 package api
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
-	"time"
-
+	"fmt"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -15,13 +15,16 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
@@ -30,32 +33,55 @@ import (
 	"github.com/filecoin-project/lotus/journal/alerting"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-graphsync"
 	metrics "github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	ma "github.com/multiformats/go-multiaddr"
+	"github.com/stretchr/testify/require"
 	xerrors "golang.org/x/xerrors"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"reflect"
+	"runtime"
+	"strconv"
+	"strings"
+	"testing"
+	"time"
+
 )
+
 
 var ErrNotSupported = xerrors.New("method not supported")
 
+
 type ChainIOStruct struct {
+
 	Internal struct {
+
 		ChainHasObj func(p0 context.Context, p1 cid.Cid) (bool, error) ``
 
 		ChainReadObj func(p0 context.Context, p1 cid.Cid) ([]byte, error) ``
+
 	}
 }
 
 type ChainIOStub struct {
+
 }
 
 type CommonStruct struct {
+
 	Internal struct {
+
 		AuthNew func(p0 context.Context, p1 []auth.Permission) ([]byte, error) `perm:"admin"`
 
 		AuthVerify func(p0 context.Context, p1 string) ([]auth.Permission, error) `perm:"read"`
@@ -68,47 +94,55 @@ type CommonStruct struct {
 
 		LogList func(p0 context.Context) ([]string, error) `perm:"write"`
 
-		LogSetLevel func(p0 context.Context, p1 string, p2 string) error `perm:"write"`
+		LogSetLevel func(p0 context.Context, p1 string, p2 string) (error) `perm:"write"`
 
 		Session func(p0 context.Context) (uuid.UUID, error) `perm:"read"`
 
-		Shutdown func(p0 context.Context) error `perm:"admin"`
+		Shutdown func(p0 context.Context) (error) `perm:"admin"`
 
 		Version func(p0 context.Context) (APIVersion, error) `perm:"read"`
+
 	}
 }
 
 type CommonStub struct {
+
 }
 
 type CommonNetStruct struct {
+
 	CommonStruct
 
 	NetStruct
 
 	Internal struct {
+
 	}
 }
 
 type CommonNetStub struct {
+
 	CommonStub
 
 	NetStub
+
 }
 
 type FullNodeStruct struct {
+
 	CommonStruct
 
 	NetStruct
 
 	Internal struct {
+
 		BeaconGetEntry func(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
 
 		ChainBlockstoreInfo func(p0 context.Context) (map[string]interface{}, error) `perm:"read"`
 
-		ChainCheckBlockstore func(p0 context.Context) error `perm:"admin"`
+		ChainCheckBlockstore func(p0 context.Context) (error) `perm:"admin"`
 
-		ChainDeleteObj func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
+		ChainDeleteObj func(p0 context.Context, p1 cid.Cid) (error) `perm:"admin"`
 
 		ChainExport func(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey) (<-chan []byte, error) `perm:"read"`
 
@@ -144,7 +178,7 @@ type FullNodeStruct struct {
 
 		ChainReadObj func(p0 context.Context, p1 cid.Cid) ([]byte, error) `perm:"read"`
 
-		ChainSetHead func(p0 context.Context, p1 types.TipSetKey) error `perm:"admin"`
+		ChainSetHead func(p0 context.Context, p1 types.TipSetKey) (error) `perm:"admin"`
 
 		ChainStatObj func(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (ObjStat, error) `perm:"read"`
 
@@ -152,9 +186,9 @@ type FullNodeStruct struct {
 
 		ClientCalcCommP func(p0 context.Context, p1 string) (*CommPRet, error) `perm:"write"`
 
-		ClientCancelDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
+		ClientCancelDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) (error) `perm:"write"`
 
-		ClientCancelRetrievalDeal func(p0 context.Context, p1 retrievalmarket.DealID) error `perm:"write"`
+		ClientCancelRetrievalDeal func(p0 context.Context, p1 retrievalmarket.DealID) (error) `perm:"write"`
 
 		ClientDataTransferUpdates func(p0 context.Context) (<-chan DataTransferChannel, error) `perm:"write"`
 
@@ -162,11 +196,11 @@ type FullNodeStruct struct {
 
 		ClientDealSize func(p0 context.Context, p1 cid.Cid) (DataSize, error) `perm:"read"`
 
-		ClientExport func(p0 context.Context, p1 ExportRef, p2 FileRef) error `perm:"admin"`
+		ClientExport func(p0 context.Context, p1 ExportRef, p2 FileRef) (error) `perm:"admin"`
 
 		ClientFindData func(p0 context.Context, p1 cid.Cid, p2 *cid.Cid) ([]QueryOffer, error) `perm:"read"`
 
-		ClientGenCar func(p0 context.Context, p1 FileRef, p2 string) error `perm:"write"`
+		ClientGenCar func(p0 context.Context, p1 FileRef, p2 string) (error) `perm:"write"`
 
 		ClientGetDealInfo func(p0 context.Context, p1 cid.Cid) (*DealInfo, error) `perm:"read"`
 
@@ -192,21 +226,21 @@ type FullNodeStruct struct {
 
 		ClientQueryAsk func(p0 context.Context, p1 peer.ID, p2 address.Address) (*StorageAsk, error) `perm:"read"`
 
-		ClientRemoveImport func(p0 context.Context, p1 imports.ID) error `perm:"admin"`
+		ClientRemoveImport func(p0 context.Context, p1 imports.ID) (error) `perm:"admin"`
 
-		ClientRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
+		ClientRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) (error) `perm:"write"`
 
 		ClientRetrieve func(p0 context.Context, p1 RetrievalOrder) (*RestrievalRes, error) `perm:"admin"`
 
-		ClientRetrieveTryRestartInsufficientFunds func(p0 context.Context, p1 address.Address) error `perm:"write"`
+		ClientRetrieveTryRestartInsufficientFunds func(p0 context.Context, p1 address.Address) (error) `perm:"write"`
 
-		ClientRetrieveWait func(p0 context.Context, p1 retrievalmarket.DealID) error `perm:"admin"`
+		ClientRetrieveWait func(p0 context.Context, p1 retrievalmarket.DealID) (error) `perm:"admin"`
 
 		ClientStartDeal func(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) `perm:"admin"`
 
 		ClientStatelessDeal func(p0 context.Context, p1 *StartDealParams) (*cid.Cid, error) `perm:"write"`
 
-		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
+		CreateBackup func(p0 context.Context, p1 string) (error) `perm:"admin"`
 
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
@@ -220,7 +254,7 @@ type FullNodeStruct struct {
 
 		MarketGetReserved func(p0 context.Context, p1 address.Address) (types.BigInt, error) `perm:"sign"`
 
-		MarketReleaseFunds func(p0 context.Context, p1 address.Address, p2 types.BigInt) error `perm:"sign"`
+		MarketReleaseFunds func(p0 context.Context, p1 address.Address, p2 types.BigInt) (error) `perm:"sign"`
 
 		MarketReserveFunds func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) `perm:"sign"`
 
@@ -242,7 +276,7 @@ type FullNodeStruct struct {
 
 		MpoolCheckReplaceMessages func(p0 context.Context, p1 []*types.Message) ([][]MessageCheckStatus, error) `perm:"read"`
 
-		MpoolClear func(p0 context.Context, p1 bool) error `perm:"write"`
+		MpoolClear func(p0 context.Context, p1 bool) (error) `perm:"write"`
 
 		MpoolGetConfig func(p0 context.Context) (*types.MpoolConfig, error) `perm:"read"`
 
@@ -258,7 +292,7 @@ type FullNodeStruct struct {
 
 		MpoolSelect func(p0 context.Context, p1 types.TipSetKey, p2 float64) ([]*types.SignedMessage, error) `perm:"read"`
 
-		MpoolSetConfig func(p0 context.Context, p1 *types.MpoolConfig) error `perm:"admin"`
+		MpoolSetConfig func(p0 context.Context, p1 *types.MpoolConfig) (error) `perm:"admin"`
 
 		MpoolSub func(p0 context.Context) (<-chan MpoolUpdate, error) `perm:"read"`
 
@@ -324,7 +358,7 @@ type FullNodeStruct struct {
 
 		PaychVoucherCheckSpendable func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (bool, error) `perm:"read"`
 
-		PaychVoucherCheckValid func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher) error `perm:"read"`
+		PaychVoucherCheckValid func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher) (error) `perm:"read"`
 
 		PaychVoucherCreate func(p0 context.Context, p1 address.Address, p2 types.BigInt, p3 uint64) (*VoucherCreateResult, error) `perm:"sign"`
 
@@ -434,19 +468,19 @@ type FullNodeStruct struct {
 
 		SyncCheckBad func(p0 context.Context, p1 cid.Cid) (string, error) `perm:"read"`
 
-		SyncCheckpoint func(p0 context.Context, p1 types.TipSetKey) error `perm:"admin"`
+		SyncCheckpoint func(p0 context.Context, p1 types.TipSetKey) (error) `perm:"admin"`
 
 		SyncIncomingBlocks func(p0 context.Context) (<-chan *types.BlockHeader, error) `perm:"read"`
 
-		SyncMarkBad func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
+		SyncMarkBad func(p0 context.Context, p1 cid.Cid) (error) `perm:"admin"`
 
 		SyncState func(p0 context.Context) (*SyncState, error) `perm:"read"`
 
-		SyncSubmitBlock func(p0 context.Context, p1 *types.BlockMsg) error `perm:"write"`
+		SyncSubmitBlock func(p0 context.Context, p1 *types.BlockMsg) (error) `perm:"write"`
 
-		SyncUnmarkAllBad func(p0 context.Context) error `perm:"admin"`
+		SyncUnmarkAllBad func(p0 context.Context) (error) `perm:"admin"`
 
-		SyncUnmarkBad func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
+		SyncUnmarkBad func(p0 context.Context, p1 cid.Cid) (error) `perm:"admin"`
 
 		SyncValidateTipset func(p0 context.Context, p1 types.TipSetKey) (bool, error) `perm:"read"`
 
@@ -454,7 +488,7 @@ type FullNodeStruct struct {
 
 		WalletDefaultAddress func(p0 context.Context) (address.Address, error) `perm:"write"`
 
-		WalletDelete func(p0 context.Context, p1 address.Address) error `perm:"admin"`
+		WalletDelete func(p0 context.Context, p1 address.Address) (error) `perm:"admin"`
 
 		WalletExport func(p0 context.Context, p1 address.Address) (*types.KeyInfo, error) `perm:"admin"`
 
@@ -466,7 +500,7 @@ type FullNodeStruct struct {
 
 		WalletNew func(p0 context.Context, p1 types.KeyType) (address.Address, error) `perm:"write"`
 
-		WalletSetDefault func(p0 context.Context, p1 address.Address) error `perm:"write"`
+		WalletSetDefault func(p0 context.Context, p1 address.Address) (error) `perm:"write"`
 
 		WalletSign func(p0 context.Context, p1 address.Address, p2 []byte) (*crypto.Signature, error) `perm:"sign"`
 
@@ -475,17 +509,22 @@ type FullNodeStruct struct {
 		WalletValidateAddress func(p0 context.Context, p1 string) (address.Address, error) `perm:"read"`
 
 		WalletVerify func(p0 context.Context, p1 address.Address, p2 []byte, p3 *crypto.Signature) (bool, error) `perm:"read"`
+
 	}
 }
 
 type FullNodeStub struct {
+
 	CommonStub
 
 	NetStub
+
 }
 
 type GatewayStruct struct {
+
 	Internal struct {
+
 		ChainGetBlockMessages func(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) ``
 
 		ChainGetGenesis func(p0 context.Context) (*types.TipSet, error) ``
@@ -561,14 +600,18 @@ type GatewayStruct struct {
 		Version func(p0 context.Context) (APIVersion, error) ``
 
 		WalletBalance func(p0 context.Context, p1 address.Address) (types.BigInt, error) ``
+
 	}
 }
 
 type GatewayStub struct {
+
 }
 
 type NetStruct struct {
+
 	Internal struct {
+
 		ID func(p0 context.Context) (peer.ID, error) `perm:"read"`
 
 		NetAddrsListen func(p0 context.Context) (peer.AddrInfo, error) `perm:"read"`
@@ -583,17 +626,17 @@ type NetStruct struct {
 
 		NetBandwidthStatsByProtocol func(p0 context.Context) (map[protocol.ID]metrics.Stats, error) `perm:"read"`
 
-		NetBlockAdd func(p0 context.Context, p1 NetBlockList) error `perm:"admin"`
+		NetBlockAdd func(p0 context.Context, p1 NetBlockList) (error) `perm:"admin"`
 
 		NetBlockList func(p0 context.Context) (NetBlockList, error) `perm:"read"`
 
-		NetBlockRemove func(p0 context.Context, p1 NetBlockList) error `perm:"admin"`
+		NetBlockRemove func(p0 context.Context, p1 NetBlockList) (error) `perm:"admin"`
 
-		NetConnect func(p0 context.Context, p1 peer.AddrInfo) error `perm:"write"`
+		NetConnect func(p0 context.Context, p1 peer.AddrInfo) (error) `perm:"write"`
 
 		NetConnectedness func(p0 context.Context, p1 peer.ID) (network.Connectedness, error) `perm:"read"`
 
-		NetDisconnect func(p0 context.Context, p1 peer.ID) error `perm:"write"`
+		NetDisconnect func(p0 context.Context, p1 peer.ID) (error) `perm:"write"`
 
 		NetFindPeer func(p0 context.Context, p1 peer.ID) (peer.AddrInfo, error) `perm:"read"`
 
@@ -605,38 +648,46 @@ type NetStruct struct {
 
 		NetPing func(p0 context.Context, p1 peer.ID) (time.Duration, error) `perm:"read"`
 
-		NetProtectAdd func(p0 context.Context, p1 []peer.ID) error `perm:"admin"`
+		NetProtectAdd func(p0 context.Context, p1 []peer.ID) (error) `perm:"admin"`
 
 		NetProtectList func(p0 context.Context) ([]peer.ID, error) `perm:"read"`
 
-		NetProtectRemove func(p0 context.Context, p1 []peer.ID) error `perm:"admin"`
+		NetProtectRemove func(p0 context.Context, p1 []peer.ID) (error) `perm:"admin"`
 
 		NetPubsubScores func(p0 context.Context) ([]PubsubScore, error) `perm:"read"`
 
-		NetSetLimit func(p0 context.Context, p1 string, p2 NetLimit) error `perm:"admin"`
+		NetSetLimit func(p0 context.Context, p1 string, p2 NetLimit) (error) `perm:"admin"`
 
 		NetStat func(p0 context.Context, p1 string) (NetStat, error) `perm:"read"`
+
 	}
 }
 
 type NetStub struct {
+
 }
 
 type SignableStruct struct {
+
 	Internal struct {
-		Sign func(p0 context.Context, p1 SignFunc) error ``
+
+		Sign func(p0 context.Context, p1 SignFunc) (error) ``
+
 	}
 }
 
 type SignableStub struct {
+
 }
 
 type StorageMinerStruct struct {
+
 	CommonStruct
 
 	NetStruct
 
 	Internal struct {
+
 		ActorAddress func(p0 context.Context) (address.Address, error) `perm:"read"`
 
 		ActorAddressConfig func(p0 context.Context) (AddressConfig, error) `perm:"read"`
@@ -651,21 +702,21 @@ type StorageMinerStruct struct {
 
 		ComputeWindowPoSt func(p0 context.Context, p1 uint64, p2 types.TipSetKey) ([]miner.SubmitWindowedPoStParams, error) `perm:"admin"`
 
-		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
+		CreateBackup func(p0 context.Context, p1 string) (error) `perm:"admin"`
 
 		DagstoreGC func(p0 context.Context) ([]DagstoreShardResult, error) `perm:"admin"`
 
 		DagstoreInitializeAll func(p0 context.Context, p1 DagstoreInitializeAllParams) (<-chan DagstoreInitializeAllEvent, error) `perm:"write"`
 
-		DagstoreInitializeShard func(p0 context.Context, p1 string) error `perm:"write"`
+		DagstoreInitializeShard func(p0 context.Context, p1 string) (error) `perm:"write"`
 
 		DagstoreListShards func(p0 context.Context) ([]DagstoreShardInfo, error) `perm:"read"`
 
 		DagstoreLookupPieces func(p0 context.Context, p1 cid.Cid) ([]DagstoreShardInfo, error) `perm:"admin"`
 
-		DagstoreRecoverShard func(p0 context.Context, p1 string) error `perm:"write"`
+		DagstoreRecoverShard func(p0 context.Context, p1 string) (error) `perm:"write"`
 
-		DagstoreRegisterShard func(p0 context.Context, p1 string) error `perm:"admin"`
+		DagstoreRegisterShard func(p0 context.Context, p1 string) (error) `perm:"admin"`
 
 		DealsConsiderOfflineRetrievalDeals func(p0 context.Context) (bool, error) `perm:"admin"`
 
@@ -679,31 +730,31 @@ type StorageMinerStruct struct {
 
 		DealsConsiderVerifiedStorageDeals func(p0 context.Context) (bool, error) `perm:"admin"`
 
-		DealsImportData func(p0 context.Context, p1 cid.Cid, p2 string) error `perm:"admin"`
+		DealsImportData func(p0 context.Context, p1 cid.Cid, p2 string) (error) `perm:"admin"`
 
 		DealsList func(p0 context.Context) ([]MarketDeal, error) `perm:"admin"`
 
 		DealsPieceCidBlocklist func(p0 context.Context) ([]cid.Cid, error) `perm:"admin"`
 
-		DealsSetConsiderOfflineRetrievalDeals func(p0 context.Context, p1 bool) error `perm:"admin"`
+		DealsSetConsiderOfflineRetrievalDeals func(p0 context.Context, p1 bool) (error) `perm:"admin"`
 
-		DealsSetConsiderOfflineStorageDeals func(p0 context.Context, p1 bool) error `perm:"admin"`
+		DealsSetConsiderOfflineStorageDeals func(p0 context.Context, p1 bool) (error) `perm:"admin"`
 
-		DealsSetConsiderOnlineRetrievalDeals func(p0 context.Context, p1 bool) error `perm:"admin"`
+		DealsSetConsiderOnlineRetrievalDeals func(p0 context.Context, p1 bool) (error) `perm:"admin"`
 
-		DealsSetConsiderOnlineStorageDeals func(p0 context.Context, p1 bool) error `perm:"admin"`
+		DealsSetConsiderOnlineStorageDeals func(p0 context.Context, p1 bool) (error) `perm:"admin"`
 
-		DealsSetConsiderUnverifiedStorageDeals func(p0 context.Context, p1 bool) error `perm:"admin"`
+		DealsSetConsiderUnverifiedStorageDeals func(p0 context.Context, p1 bool) (error) `perm:"admin"`
 
-		DealsSetConsiderVerifiedStorageDeals func(p0 context.Context, p1 bool) error `perm:"admin"`
+		DealsSetConsiderVerifiedStorageDeals func(p0 context.Context, p1 bool) (error) `perm:"admin"`
 
-		DealsSetPieceCidBlocklist func(p0 context.Context, p1 []cid.Cid) error `perm:"admin"`
+		DealsSetPieceCidBlocklist func(p0 context.Context, p1 []cid.Cid) (error) `perm:"admin"`
 
-		IndexerAnnounceAllDeals func(p0 context.Context) error `perm:"admin"`
+		IndexerAnnounceAllDeals func(p0 context.Context) (error) `perm:"admin"`
 
-		IndexerAnnounceDeal func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
+		IndexerAnnounceDeal func(p0 context.Context, p1 cid.Cid) (error) `perm:"admin"`
 
-		MarketCancelDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
+		MarketCancelDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) (error) `perm:"write"`
 
 		MarketDataTransferDiagnostics func(p0 context.Context, p1 peer.ID) (*TransferDiagnostics, error) `perm:"write"`
 
@@ -715,7 +766,7 @@ type StorageMinerStruct struct {
 
 		MarketGetRetrievalAsk func(p0 context.Context) (*retrievalmarket.Ask, error) `perm:"read"`
 
-		MarketImportDealData func(p0 context.Context, p1 cid.Cid, p2 string) error `perm:"write"`
+		MarketImportDealData func(p0 context.Context, p1 cid.Cid, p2 string) (error) `perm:"write"`
 
 		MarketListDataTransfers func(p0 context.Context) ([]DataTransferChannel, error) `perm:"write"`
 
@@ -727,15 +778,15 @@ type StorageMinerStruct struct {
 
 		MarketPendingDeals func(p0 context.Context) (PendingDealInfo, error) `perm:"write"`
 
-		MarketPublishPendingDeals func(p0 context.Context) error `perm:"admin"`
+		MarketPublishPendingDeals func(p0 context.Context) (error) `perm:"admin"`
 
-		MarketRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
+		MarketRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) (error) `perm:"write"`
 
-		MarketRetryPublishDeal func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
+		MarketRetryPublishDeal func(p0 context.Context, p1 cid.Cid) (error) `perm:"admin"`
 
-		MarketSetAsk func(p0 context.Context, p1 types.BigInt, p2 types.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error `perm:"admin"`
+		MarketSetAsk func(p0 context.Context, p1 types.BigInt, p2 types.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) (error) `perm:"admin"`
 
-		MarketSetRetrievalAsk func(p0 context.Context, p1 *retrievalmarket.Ask) error `perm:"admin"`
+		MarketSetRetrievalAsk func(p0 context.Context, p1 *retrievalmarket.Ask) (error) `perm:"admin"`
 
 		MiningBase func(p0 context.Context) (*types.TipSet, error) `perm:"read"`
 
@@ -749,47 +800,47 @@ type StorageMinerStruct struct {
 
 		PledgeSector func(p0 context.Context) (abi.SectorID, error) `perm:"write"`
 
-		ReturnAddPiece func(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error `perm:"admin"`
+		ReturnAddPiece func(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) (error) `perm:"admin"`
 
-		ReturnDataCid func(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error `perm:"admin"`
+		ReturnDataCid func(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) (error) `perm:"admin"`
 
-		ReturnFetch func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
+		ReturnFetch func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) `perm:"admin"`
 
-		ReturnFinalizeReplicaUpdate func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
+		ReturnFinalizeReplicaUpdate func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) `perm:"admin"`
 
-		ReturnFinalizeSector func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
+		ReturnFinalizeSector func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) `perm:"admin"`
 
-		ReturnGenerateSectorKeyFromData func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
+		ReturnGenerateSectorKeyFromData func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) `perm:"admin"`
 
-		ReturnMoveStorage func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
+		ReturnMoveStorage func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) `perm:"admin"`
 
-		ReturnProveReplicaUpdate1 func(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaVanillaProofs, p3 *storiface.CallError) error `perm:"admin"`
+		ReturnProveReplicaUpdate1 func(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaVanillaProofs, p3 *storiface.CallError) (error) `perm:"admin"`
 
-		ReturnProveReplicaUpdate2 func(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaUpdateProof, p3 *storiface.CallError) error `perm:"admin"`
+		ReturnProveReplicaUpdate2 func(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaUpdateProof, p3 *storiface.CallError) (error) `perm:"admin"`
 
-		ReturnReadPiece func(p0 context.Context, p1 storiface.CallID, p2 bool, p3 *storiface.CallError) error `perm:"admin"`
+		ReturnReadPiece func(p0 context.Context, p1 storiface.CallID, p2 bool, p3 *storiface.CallError) (error) `perm:"admin"`
 
-		ReturnReleaseUnsealed func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
+		ReturnReleaseUnsealed func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) `perm:"admin"`
 
-		ReturnReplicaUpdate func(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaUpdateOut, p3 *storiface.CallError) error `perm:"admin"`
+		ReturnReplicaUpdate func(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaUpdateOut, p3 *storiface.CallError) (error) `perm:"admin"`
 
-		ReturnSealCommit1 func(p0 context.Context, p1 storiface.CallID, p2 storage.Commit1Out, p3 *storiface.CallError) error `perm:"admin"`
+		ReturnSealCommit1 func(p0 context.Context, p1 storiface.CallID, p2 storage.Commit1Out, p3 *storiface.CallError) (error) `perm:"admin"`
 
-		ReturnSealCommit2 func(p0 context.Context, p1 storiface.CallID, p2 storage.Proof, p3 *storiface.CallError) error `perm:"admin"`
+		ReturnSealCommit2 func(p0 context.Context, p1 storiface.CallID, p2 storage.Proof, p3 *storiface.CallError) (error) `perm:"admin"`
 
-		ReturnSealPreCommit1 func(p0 context.Context, p1 storiface.CallID, p2 storage.PreCommit1Out, p3 *storiface.CallError) error `perm:"admin"`
+		ReturnSealPreCommit1 func(p0 context.Context, p1 storiface.CallID, p2 storage.PreCommit1Out, p3 *storiface.CallError) (error) `perm:"admin"`
 
-		ReturnSealPreCommit2 func(p0 context.Context, p1 storiface.CallID, p2 storage.SectorCids, p3 *storiface.CallError) error `perm:"admin"`
+		ReturnSealPreCommit2 func(p0 context.Context, p1 storiface.CallID, p2 storage.SectorCids, p3 *storiface.CallError) (error) `perm:"admin"`
 
-		ReturnUnsealPiece func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error `perm:"admin"`
+		ReturnUnsealPiece func(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) `perm:"admin"`
 
 		RuntimeSubsystems func(p0 context.Context) (MinerSubsystems, error) `perm:"read"`
 
-		SealingAbort func(p0 context.Context, p1 storiface.CallID) error `perm:"admin"`
+		SealingAbort func(p0 context.Context, p1 storiface.CallID) (error) `perm:"admin"`
 
 		SealingSchedDiag func(p0 context.Context, p1 bool) (interface{}, error) `perm:"admin"`
 
-		SectorAbortUpgrade func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
+		SectorAbortUpgrade func(p0 context.Context, p1 abi.SectorNumber) (error) `perm:"admin"`
 
 		SectorAddPieceToAny func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storage.Data, p3 PieceDealInfo) (SectorOffset, error) `perm:"admin"`
 
@@ -801,23 +852,23 @@ type StorageMinerStruct struct {
 
 		SectorGetSealDelay func(p0 context.Context) (time.Duration, error) `perm:"read"`
 
-		SectorMarkForUpgrade func(p0 context.Context, p1 abi.SectorNumber, p2 bool) error `perm:"admin"`
+		SectorMarkForUpgrade func(p0 context.Context, p1 abi.SectorNumber, p2 bool) (error) `perm:"admin"`
 
-		SectorMatchPendingPiecesToOpenSectors func(p0 context.Context) error `perm:"admin"`
+		SectorMatchPendingPiecesToOpenSectors func(p0 context.Context) (error) `perm:"admin"`
 
 		SectorPreCommitFlush func(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) `perm:"admin"`
 
 		SectorPreCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
 
-		SectorRemove func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
+		SectorRemove func(p0 context.Context, p1 abi.SectorNumber) (error) `perm:"admin"`
 
-		SectorSetExpectedSealDuration func(p0 context.Context, p1 time.Duration) error `perm:"write"`
+		SectorSetExpectedSealDuration func(p0 context.Context, p1 time.Duration) (error) `perm:"write"`
 
-		SectorSetSealDelay func(p0 context.Context, p1 time.Duration) error `perm:"write"`
+		SectorSetSealDelay func(p0 context.Context, p1 time.Duration) (error) `perm:"write"`
 
-		SectorStartSealing func(p0 context.Context, p1 abi.SectorNumber) error `perm:"write"`
+		SectorStartSealing func(p0 context.Context, p1 abi.SectorNumber) (error) `perm:"write"`
 
-		SectorTerminate func(p0 context.Context, p1 abi.SectorNumber) error `perm:"admin"`
+		SectorTerminate func(p0 context.Context, p1 abi.SectorNumber) (error) `perm:"admin"`
 
 		SectorTerminateFlush func(p0 context.Context) (*cid.Cid, error) `perm:"admin"`
 
@@ -833,19 +884,19 @@ type StorageMinerStruct struct {
 
 		SectorsSummary func(p0 context.Context) (map[SectorState]int, error) `perm:"read"`
 
-		SectorsUnsealPiece func(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) error `perm:"admin"`
+		SectorsUnsealPiece func(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) (error) `perm:"admin"`
 
-		SectorsUpdate func(p0 context.Context, p1 abi.SectorNumber, p2 SectorState) error `perm:"admin"`
+		SectorsUpdate func(p0 context.Context, p1 abi.SectorNumber, p2 SectorState) (error) `perm:"admin"`
 
-		StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
+		StorageAddLocal func(p0 context.Context, p1 string) (error) `perm:"admin"`
 
-		StorageAttach func(p0 context.Context, p1 storiface.StorageInfo, p2 fsutil.FsStat) error `perm:"admin"`
+		StorageAttach func(p0 context.Context, p1 storiface.StorageInfo, p2 fsutil.FsStat) (error) `perm:"admin"`
 
 		StorageBestAlloc func(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]storiface.StorageInfo, error) `perm:"admin"`
 
-		StorageDeclareSector func(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) error `perm:"admin"`
+		StorageDeclareSector func(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) (error) `perm:"admin"`
 
-		StorageDropSector func(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error `perm:"admin"`
+		StorageDropSector func(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType) (error) `perm:"admin"`
 
 		StorageFindSector func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]storiface.SectorStorageInfo, error) `perm:"admin"`
 
@@ -857,31 +908,36 @@ type StorageMinerStruct struct {
 
 		StorageLocal func(p0 context.Context) (map[storiface.ID]string, error) `perm:"admin"`
 
-		StorageLock func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) error `perm:"admin"`
+		StorageLock func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) (error) `perm:"admin"`
 
-		StorageReportHealth func(p0 context.Context, p1 storiface.ID, p2 storiface.HealthReport) error `perm:"admin"`
+		StorageReportHealth func(p0 context.Context, p1 storiface.ID, p2 storiface.HealthReport) (error) `perm:"admin"`
 
 		StorageStat func(p0 context.Context, p1 storiface.ID) (fsutil.FsStat, error) `perm:"admin"`
 
 		StorageTryLock func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) (bool, error) `perm:"admin"`
 
-		WorkerConnect func(p0 context.Context, p1 string) error `perm:"admin"`
+		WorkerConnect func(p0 context.Context, p1 string) (error) `perm:"admin"`
 
 		WorkerJobs func(p0 context.Context) (map[uuid.UUID][]storiface.WorkerJob, error) `perm:"admin"`
 
 		WorkerStats func(p0 context.Context) (map[uuid.UUID]storiface.WorkerStats, error) `perm:"admin"`
+
 	}
 }
 
 type StorageMinerStub struct {
+
 	CommonStub
 
 	NetStub
+
 }
 
 type WalletStruct struct {
+
 	Internal struct {
-		WalletDelete func(p0 context.Context, p1 address.Address) error `perm:"admin"`
+
+		WalletDelete func(p0 context.Context, p1 address.Address) (error) `perm:"admin"`
 
 		WalletExport func(p0 context.Context, p1 address.Address) (*types.KeyInfo, error) `perm:"admin"`
 
@@ -894,14 +950,18 @@ type WalletStruct struct {
 		WalletNew func(p0 context.Context, p1 types.KeyType) (address.Address, error) `perm:"admin"`
 
 		WalletSign func(p0 context.Context, p1 address.Address, p2 []byte, p3 MsgMeta) (*crypto.Signature, error) `perm:"admin"`
+
 	}
 }
 
 type WalletStub struct {
+
 }
 
 type WorkerStruct struct {
+
 	Internal struct {
+
 		AddPiece func(p0 context.Context, p1 storage.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 storage.Data) (storiface.CallID, error) `perm:"admin"`
 
 		DataCid func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storage.Data) (storiface.CallID, error) `perm:"admin"`
@@ -934,7 +994,7 @@ type WorkerStruct struct {
 
 		ReleaseUnsealed func(p0 context.Context, p1 storage.SectorRef, p2 []storage.Range) (storiface.CallID, error) `perm:"admin"`
 
-		Remove func(p0 context.Context, p1 abi.SectorID) error `perm:"admin"`
+		Remove func(p0 context.Context, p1 abi.SectorID) (error) `perm:"admin"`
 
 		ReplicaUpdate func(p0 context.Context, p1 storage.SectorRef, p2 []abi.PieceInfo) (storiface.CallID, error) `perm:"admin"`
 
@@ -948,13 +1008,13 @@ type WorkerStruct struct {
 
 		Session func(p0 context.Context) (uuid.UUID, error) `perm:"admin"`
 
-		SetEnabled func(p0 context.Context, p1 bool) error `perm:"admin"`
+		SetEnabled func(p0 context.Context, p1 bool) (error) `perm:"admin"`
 
-		StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
+		StorageAddLocal func(p0 context.Context, p1 string) (error) `perm:"admin"`
 
-		TaskDisable func(p0 context.Context, p1 sealtasks.TaskType) error `perm:"admin"`
+		TaskDisable func(p0 context.Context, p1 sealtasks.TaskType) (error) `perm:"admin"`
 
-		TaskEnable func(p0 context.Context, p1 sealtasks.TaskType) error `perm:"admin"`
+		TaskEnable func(p0 context.Context, p1 sealtasks.TaskType) (error) `perm:"admin"`
 
 		TaskTypes func(p0 context.Context) (map[sealtasks.TaskType]struct{}, error) `perm:"admin"`
 
@@ -962,12 +1022,18 @@ type WorkerStruct struct {
 
 		Version func(p0 context.Context) (Version, error) `perm:"admin"`
 
-		WaitQuiet func(p0 context.Context) error `perm:"admin"`
+		WaitQuiet func(p0 context.Context) (error) `perm:"admin"`
+
 	}
 }
 
 type WorkerStub struct {
+
 }
+
+
+
+
 
 func (s *ChainIOStruct) ChainHasObj(p0 context.Context, p1 cid.Cid) (bool, error) {
 	if s.Internal.ChainHasObj == nil {
@@ -990,6 +1056,9 @@ func (s *ChainIOStruct) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, er
 func (s *ChainIOStub) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, error) {
 	return *new([]byte), ErrNotSupported
 }
+
+
+
 
 func (s *CommonStruct) AuthNew(p0 context.Context, p1 []auth.Permission) ([]byte, error) {
 	if s.Internal.AuthNew == nil {
@@ -1057,14 +1126,14 @@ func (s *CommonStub) LogList(p0 context.Context) ([]string, error) {
 	return *new([]string), ErrNotSupported
 }
 
-func (s *CommonStruct) LogSetLevel(p0 context.Context, p1 string, p2 string) error {
+func (s *CommonStruct) LogSetLevel(p0 context.Context, p1 string, p2 string) (error) {
 	if s.Internal.LogSetLevel == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.LogSetLevel(p0, p1, p2)
 }
 
-func (s *CommonStub) LogSetLevel(p0 context.Context, p1 string, p2 string) error {
+func (s *CommonStub) LogSetLevel(p0 context.Context, p1 string, p2 string) (error) {
 	return ErrNotSupported
 }
 
@@ -1079,14 +1148,14 @@ func (s *CommonStub) Session(p0 context.Context) (uuid.UUID, error) {
 	return *new(uuid.UUID), ErrNotSupported
 }
 
-func (s *CommonStruct) Shutdown(p0 context.Context) error {
+func (s *CommonStruct) Shutdown(p0 context.Context) (error) {
 	if s.Internal.Shutdown == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.Shutdown(p0)
 }
 
-func (s *CommonStub) Shutdown(p0 context.Context) error {
+func (s *CommonStub) Shutdown(p0 context.Context) (error) {
 	return ErrNotSupported
 }
 
@@ -1100,6 +1169,12 @@ func (s *CommonStruct) Version(p0 context.Context) (APIVersion, error) {
 func (s *CommonStub) Version(p0 context.Context) (APIVersion, error) {
 	return *new(APIVersion), ErrNotSupported
 }
+
+
+
+
+
+
 
 func (s *FullNodeStruct) BeaconGetEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
 	if s.Internal.BeaconGetEntry == nil {
@@ -1123,25 +1198,25 @@ func (s *FullNodeStub) ChainBlockstoreInfo(p0 context.Context) (map[string]inter
 	return *new(map[string]interface{}), ErrNotSupported
 }
 
-func (s *FullNodeStruct) ChainCheckBlockstore(p0 context.Context) error {
+func (s *FullNodeStruct) ChainCheckBlockstore(p0 context.Context) (error) {
 	if s.Internal.ChainCheckBlockstore == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ChainCheckBlockstore(p0)
 }
 
-func (s *FullNodeStub) ChainCheckBlockstore(p0 context.Context) error {
+func (s *FullNodeStub) ChainCheckBlockstore(p0 context.Context) (error) {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) ChainDeleteObj(p0 context.Context, p1 cid.Cid) error {
+func (s *FullNodeStruct) ChainDeleteObj(p0 context.Context, p1 cid.Cid) (error) {
 	if s.Internal.ChainDeleteObj == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ChainDeleteObj(p0, p1)
 }
 
-func (s *FullNodeStub) ChainDeleteObj(p0 context.Context, p1 cid.Cid) error {
+func (s *FullNodeStub) ChainDeleteObj(p0 context.Context, p1 cid.Cid) (error) {
 	return ErrNotSupported
 }
 
@@ -1332,14 +1407,14 @@ func (s *FullNodeStub) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, err
 	return *new([]byte), ErrNotSupported
 }
 
-func (s *FullNodeStruct) ChainSetHead(p0 context.Context, p1 types.TipSetKey) error {
+func (s *FullNodeStruct) ChainSetHead(p0 context.Context, p1 types.TipSetKey) (error) {
 	if s.Internal.ChainSetHead == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ChainSetHead(p0, p1)
 }
 
-func (s *FullNodeStub) ChainSetHead(p0 context.Context, p1 types.TipSetKey) error {
+func (s *FullNodeStub) ChainSetHead(p0 context.Context, p1 types.TipSetKey) (error) {
 	return ErrNotSupported
 }
 
@@ -1376,25 +1451,25 @@ func (s *FullNodeStub) ClientCalcCommP(p0 context.Context, p1 string) (*CommPRet
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+func (s *FullNodeStruct) ClientCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) (error) {
 	if s.Internal.ClientCancelDataTransfer == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ClientCancelDataTransfer(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) ClientCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+func (s *FullNodeStub) ClientCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) (error) {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientCancelRetrievalDeal(p0 context.Context, p1 retrievalmarket.DealID) error {
+func (s *FullNodeStruct) ClientCancelRetrievalDeal(p0 context.Context, p1 retrievalmarket.DealID) (error) {
 	if s.Internal.ClientCancelRetrievalDeal == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ClientCancelRetrievalDeal(p0, p1)
 }
 
-func (s *FullNodeStub) ClientCancelRetrievalDeal(p0 context.Context, p1 retrievalmarket.DealID) error {
+func (s *FullNodeStub) ClientCancelRetrievalDeal(p0 context.Context, p1 retrievalmarket.DealID) (error) {
 	return ErrNotSupported
 }
 
@@ -1431,14 +1506,14 @@ func (s *FullNodeStub) ClientDealSize(p0 context.Context, p1 cid.Cid) (DataSize,
 	return *new(DataSize), ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientExport(p0 context.Context, p1 ExportRef, p2 FileRef) error {
+func (s *FullNodeStruct) ClientExport(p0 context.Context, p1 ExportRef, p2 FileRef) (error) {
 	if s.Internal.ClientExport == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ClientExport(p0, p1, p2)
 }
 
-func (s *FullNodeStub) ClientExport(p0 context.Context, p1 ExportRef, p2 FileRef) error {
+func (s *FullNodeStub) ClientExport(p0 context.Context, p1 ExportRef, p2 FileRef) (error) {
 	return ErrNotSupported
 }
 
@@ -1453,14 +1528,14 @@ func (s *FullNodeStub) ClientFindData(p0 context.Context, p1 cid.Cid, p2 *cid.Ci
 	return *new([]QueryOffer), ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientGenCar(p0 context.Context, p1 FileRef, p2 string) error {
+func (s *FullNodeStruct) ClientGenCar(p0 context.Context, p1 FileRef, p2 string) (error) {
 	if s.Internal.ClientGenCar == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ClientGenCar(p0, p1, p2)
 }
 
-func (s *FullNodeStub) ClientGenCar(p0 context.Context, p1 FileRef, p2 string) error {
+func (s *FullNodeStub) ClientGenCar(p0 context.Context, p1 FileRef, p2 string) (error) {
 	return ErrNotSupported
 }
 
@@ -1596,25 +1671,25 @@ func (s *FullNodeStub) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 address
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientRemoveImport(p0 context.Context, p1 imports.ID) error {
+func (s *FullNodeStruct) ClientRemoveImport(p0 context.Context, p1 imports.ID) (error) {
 	if s.Internal.ClientRemoveImport == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ClientRemoveImport(p0, p1)
 }
 
-func (s *FullNodeStub) ClientRemoveImport(p0 context.Context, p1 imports.ID) error {
+func (s *FullNodeStub) ClientRemoveImport(p0 context.Context, p1 imports.ID) (error) {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+func (s *FullNodeStruct) ClientRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) (error) {
 	if s.Internal.ClientRestartDataTransfer == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ClientRestartDataTransfer(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) ClientRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+func (s *FullNodeStub) ClientRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) (error) {
 	return ErrNotSupported
 }
 
@@ -1629,25 +1704,25 @@ func (s *FullNodeStub) ClientRetrieve(p0 context.Context, p1 RetrievalOrder) (*R
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) error {
+func (s *FullNodeStruct) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) (error) {
 	if s.Internal.ClientRetrieveTryRestartInsufficientFunds == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ClientRetrieveTryRestartInsufficientFunds(p0, p1)
 }
 
-func (s *FullNodeStub) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) error {
+func (s *FullNodeStub) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) (error) {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientRetrieveWait(p0 context.Context, p1 retrievalmarket.DealID) error {
+func (s *FullNodeStruct) ClientRetrieveWait(p0 context.Context, p1 retrievalmarket.DealID) (error) {
 	if s.Internal.ClientRetrieveWait == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ClientRetrieveWait(p0, p1)
 }
 
-func (s *FullNodeStub) ClientRetrieveWait(p0 context.Context, p1 retrievalmarket.DealID) error {
+func (s *FullNodeStub) ClientRetrieveWait(p0 context.Context, p1 retrievalmarket.DealID) (error) {
 	return ErrNotSupported
 }
 
@@ -1673,14 +1748,14 @@ func (s *FullNodeStub) ClientStatelessDeal(p0 context.Context, p1 *StartDealPara
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) CreateBackup(p0 context.Context, p1 string) error {
+func (s *FullNodeStruct) CreateBackup(p0 context.Context, p1 string) (error) {
 	if s.Internal.CreateBackup == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.CreateBackup(p0, p1)
 }
 
-func (s *FullNodeStub) CreateBackup(p0 context.Context, p1 string) error {
+func (s *FullNodeStub) CreateBackup(p0 context.Context, p1 string) (error) {
 	return ErrNotSupported
 }
 
@@ -1750,14 +1825,14 @@ func (s *FullNodeStub) MarketGetReserved(p0 context.Context, p1 address.Address)
 	return *new(types.BigInt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) MarketReleaseFunds(p0 context.Context, p1 address.Address, p2 types.BigInt) error {
+func (s *FullNodeStruct) MarketReleaseFunds(p0 context.Context, p1 address.Address, p2 types.BigInt) (error) {
 	if s.Internal.MarketReleaseFunds == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.MarketReleaseFunds(p0, p1, p2)
 }
 
-func (s *FullNodeStub) MarketReleaseFunds(p0 context.Context, p1 address.Address, p2 types.BigInt) error {
+func (s *FullNodeStub) MarketReleaseFunds(p0 context.Context, p1 address.Address, p2 types.BigInt) (error) {
 	return ErrNotSupported
 }
 
@@ -1871,14 +1946,14 @@ func (s *FullNodeStub) MpoolCheckReplaceMessages(p0 context.Context, p1 []*types
 	return *new([][]MessageCheckStatus), ErrNotSupported
 }
 
-func (s *FullNodeStruct) MpoolClear(p0 context.Context, p1 bool) error {
+func (s *FullNodeStruct) MpoolClear(p0 context.Context, p1 bool) (error) {
 	if s.Internal.MpoolClear == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.MpoolClear(p0, p1)
 }
 
-func (s *FullNodeStub) MpoolClear(p0 context.Context, p1 bool) error {
+func (s *FullNodeStub) MpoolClear(p0 context.Context, p1 bool) (error) {
 	return ErrNotSupported
 }
 
@@ -1959,14 +2034,14 @@ func (s *FullNodeStub) MpoolSelect(p0 context.Context, p1 types.TipSetKey, p2 fl
 	return *new([]*types.SignedMessage), ErrNotSupported
 }
 
-func (s *FullNodeStruct) MpoolSetConfig(p0 context.Context, p1 *types.MpoolConfig) error {
+func (s *FullNodeStruct) MpoolSetConfig(p0 context.Context, p1 *types.MpoolConfig) (error) {
 	if s.Internal.MpoolSetConfig == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.MpoolSetConfig(p0, p1)
 }
 
-func (s *FullNodeStub) MpoolSetConfig(p0 context.Context, p1 *types.MpoolConfig) error {
+func (s *FullNodeStub) MpoolSetConfig(p0 context.Context, p1 *types.MpoolConfig) (error) {
 	return ErrNotSupported
 }
 
@@ -2322,14 +2397,14 @@ func (s *FullNodeStub) PaychVoucherCheckSpendable(p0 context.Context, p1 address
 	return false, ErrNotSupported
 }
 
-func (s *FullNodeStruct) PaychVoucherCheckValid(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher) error {
+func (s *FullNodeStruct) PaychVoucherCheckValid(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher) (error) {
 	if s.Internal.PaychVoucherCheckValid == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.PaychVoucherCheckValid(p0, p1, p2)
 }
 
-func (s *FullNodeStub) PaychVoucherCheckValid(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher) error {
+func (s *FullNodeStub) PaychVoucherCheckValid(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher) (error) {
 	return ErrNotSupported
 }
 
@@ -2927,14 +3002,14 @@ func (s *FullNodeStub) SyncCheckBad(p0 context.Context, p1 cid.Cid) (string, err
 	return "", ErrNotSupported
 }
 
-func (s *FullNodeStruct) SyncCheckpoint(p0 context.Context, p1 types.TipSetKey) error {
+func (s *FullNodeStruct) SyncCheckpoint(p0 context.Context, p1 types.TipSetKey) (error) {
 	if s.Internal.SyncCheckpoint == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SyncCheckpoint(p0, p1)
 }
 
-func (s *FullNodeStub) SyncCheckpoint(p0 context.Context, p1 types.TipSetKey) error {
+func (s *FullNodeStub) SyncCheckpoint(p0 context.Context, p1 types.TipSetKey) (error) {
 	return ErrNotSupported
 }
 
@@ -2949,14 +3024,14 @@ func (s *FullNodeStub) SyncIncomingBlocks(p0 context.Context) (<-chan *types.Blo
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) SyncMarkBad(p0 context.Context, p1 cid.Cid) error {
+func (s *FullNodeStruct) SyncMarkBad(p0 context.Context, p1 cid.Cid) (error) {
 	if s.Internal.SyncMarkBad == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SyncMarkBad(p0, p1)
 }
 
-func (s *FullNodeStub) SyncMarkBad(p0 context.Context, p1 cid.Cid) error {
+func (s *FullNodeStub) SyncMarkBad(p0 context.Context, p1 cid.Cid) (error) {
 	return ErrNotSupported
 }
 
@@ -2971,36 +3046,36 @@ func (s *FullNodeStub) SyncState(p0 context.Context) (*SyncState, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg) error {
+func (s *FullNodeStruct) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg) (error) {
 	if s.Internal.SyncSubmitBlock == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SyncSubmitBlock(p0, p1)
 }
 
-func (s *FullNodeStub) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg) error {
+func (s *FullNodeStub) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg) (error) {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) SyncUnmarkAllBad(p0 context.Context) error {
+func (s *FullNodeStruct) SyncUnmarkAllBad(p0 context.Context) (error) {
 	if s.Internal.SyncUnmarkAllBad == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SyncUnmarkAllBad(p0)
 }
 
-func (s *FullNodeStub) SyncUnmarkAllBad(p0 context.Context) error {
+func (s *FullNodeStub) SyncUnmarkAllBad(p0 context.Context) (error) {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) SyncUnmarkBad(p0 context.Context, p1 cid.Cid) error {
+func (s *FullNodeStruct) SyncUnmarkBad(p0 context.Context, p1 cid.Cid) (error) {
 	if s.Internal.SyncUnmarkBad == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SyncUnmarkBad(p0, p1)
 }
 
-func (s *FullNodeStub) SyncUnmarkBad(p0 context.Context, p1 cid.Cid) error {
+func (s *FullNodeStub) SyncUnmarkBad(p0 context.Context, p1 cid.Cid) (error) {
 	return ErrNotSupported
 }
 
@@ -3037,14 +3112,14 @@ func (s *FullNodeStub) WalletDefaultAddress(p0 context.Context) (address.Address
 	return *new(address.Address), ErrNotSupported
 }
 
-func (s *FullNodeStruct) WalletDelete(p0 context.Context, p1 address.Address) error {
+func (s *FullNodeStruct) WalletDelete(p0 context.Context, p1 address.Address) (error) {
 	if s.Internal.WalletDelete == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.WalletDelete(p0, p1)
 }
 
-func (s *FullNodeStub) WalletDelete(p0 context.Context, p1 address.Address) error {
+func (s *FullNodeStub) WalletDelete(p0 context.Context, p1 address.Address) (error) {
 	return ErrNotSupported
 }
 
@@ -3103,14 +3178,14 @@ func (s *FullNodeStub) WalletNew(p0 context.Context, p1 types.KeyType) (address.
 	return *new(address.Address), ErrNotSupported
 }
 
-func (s *FullNodeStruct) WalletSetDefault(p0 context.Context, p1 address.Address) error {
+func (s *FullNodeStruct) WalletSetDefault(p0 context.Context, p1 address.Address) (error) {
 	if s.Internal.WalletSetDefault == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.WalletSetDefault(p0, p1)
 }
 
-func (s *FullNodeStub) WalletSetDefault(p0 context.Context, p1 address.Address) error {
+func (s *FullNodeStub) WalletSetDefault(p0 context.Context, p1 address.Address) (error) {
 	return ErrNotSupported
 }
 
@@ -3157,6 +3232,9 @@ func (s *FullNodeStruct) WalletVerify(p0 context.Context, p1 address.Address, p2
 func (s *FullNodeStub) WalletVerify(p0 context.Context, p1 address.Address, p2 []byte, p3 *crypto.Signature) (bool, error) {
 	return false, ErrNotSupported
 }
+
+
+
 
 func (s *GatewayStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*BlockMessages, error) {
 	if s.Internal.ChainGetBlockMessages == nil {
@@ -3576,6 +3654,9 @@ func (s *GatewayStub) WalletBalance(p0 context.Context, p1 address.Address) (typ
 	return *new(types.BigInt), ErrNotSupported
 }
 
+
+
+
 func (s *NetStruct) ID(p0 context.Context) (peer.ID, error) {
 	if s.Internal.ID == nil {
 		return *new(peer.ID), ErrNotSupported
@@ -3653,14 +3734,14 @@ func (s *NetStub) NetBandwidthStatsByProtocol(p0 context.Context) (map[protocol.
 	return *new(map[protocol.ID]metrics.Stats), ErrNotSupported
 }
 
-func (s *NetStruct) NetBlockAdd(p0 context.Context, p1 NetBlockList) error {
+func (s *NetStruct) NetBlockAdd(p0 context.Context, p1 NetBlockList) (error) {
 	if s.Internal.NetBlockAdd == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.NetBlockAdd(p0, p1)
 }
 
-func (s *NetStub) NetBlockAdd(p0 context.Context, p1 NetBlockList) error {
+func (s *NetStub) NetBlockAdd(p0 context.Context, p1 NetBlockList) (error) {
 	return ErrNotSupported
 }
 
@@ -3675,25 +3756,25 @@ func (s *NetStub) NetBlockList(p0 context.Context) (NetBlockList, error) {
 	return *new(NetBlockList), ErrNotSupported
 }
 
-func (s *NetStruct) NetBlockRemove(p0 context.Context, p1 NetBlockList) error {
+func (s *NetStruct) NetBlockRemove(p0 context.Context, p1 NetBlockList) (error) {
 	if s.Internal.NetBlockRemove == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.NetBlockRemove(p0, p1)
 }
 
-func (s *NetStub) NetBlockRemove(p0 context.Context, p1 NetBlockList) error {
+func (s *NetStub) NetBlockRemove(p0 context.Context, p1 NetBlockList) (error) {
 	return ErrNotSupported
 }
 
-func (s *NetStruct) NetConnect(p0 context.Context, p1 peer.AddrInfo) error {
+func (s *NetStruct) NetConnect(p0 context.Context, p1 peer.AddrInfo) (error) {
 	if s.Internal.NetConnect == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.NetConnect(p0, p1)
 }
 
-func (s *NetStub) NetConnect(p0 context.Context, p1 peer.AddrInfo) error {
+func (s *NetStub) NetConnect(p0 context.Context, p1 peer.AddrInfo) (error) {
 	return ErrNotSupported
 }
 
@@ -3708,14 +3789,14 @@ func (s *NetStub) NetConnectedness(p0 context.Context, p1 peer.ID) (network.Conn
 	return *new(network.Connectedness), ErrNotSupported
 }
 
-func (s *NetStruct) NetDisconnect(p0 context.Context, p1 peer.ID) error {
+func (s *NetStruct) NetDisconnect(p0 context.Context, p1 peer.ID) (error) {
 	if s.Internal.NetDisconnect == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.NetDisconnect(p0, p1)
 }
 
-func (s *NetStub) NetDisconnect(p0 context.Context, p1 peer.ID) error {
+func (s *NetStub) NetDisconnect(p0 context.Context, p1 peer.ID) (error) {
 	return ErrNotSupported
 }
 
@@ -3774,14 +3855,14 @@ func (s *NetStub) NetPing(p0 context.Context, p1 peer.ID) (time.Duration, error)
 	return *new(time.Duration), ErrNotSupported
 }
 
-func (s *NetStruct) NetProtectAdd(p0 context.Context, p1 []peer.ID) error {
+func (s *NetStruct) NetProtectAdd(p0 context.Context, p1 []peer.ID) (error) {
 	if s.Internal.NetProtectAdd == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.NetProtectAdd(p0, p1)
 }
 
-func (s *NetStub) NetProtectAdd(p0 context.Context, p1 []peer.ID) error {
+func (s *NetStub) NetProtectAdd(p0 context.Context, p1 []peer.ID) (error) {
 	return ErrNotSupported
 }
 
@@ -3796,14 +3877,14 @@ func (s *NetStub) NetProtectList(p0 context.Context) ([]peer.ID, error) {
 	return *new([]peer.ID), ErrNotSupported
 }
 
-func (s *NetStruct) NetProtectRemove(p0 context.Context, p1 []peer.ID) error {
+func (s *NetStruct) NetProtectRemove(p0 context.Context, p1 []peer.ID) (error) {
 	if s.Internal.NetProtectRemove == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.NetProtectRemove(p0, p1)
 }
 
-func (s *NetStub) NetProtectRemove(p0 context.Context, p1 []peer.ID) error {
+func (s *NetStub) NetProtectRemove(p0 context.Context, p1 []peer.ID) (error) {
 	return ErrNotSupported
 }
 
@@ -3818,14 +3899,14 @@ func (s *NetStub) NetPubsubScores(p0 context.Context) ([]PubsubScore, error) {
 	return *new([]PubsubScore), ErrNotSupported
 }
 
-func (s *NetStruct) NetSetLimit(p0 context.Context, p1 string, p2 NetLimit) error {
+func (s *NetStruct) NetSetLimit(p0 context.Context, p1 string, p2 NetLimit) (error) {
 	if s.Internal.NetSetLimit == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.NetSetLimit(p0, p1, p2)
 }
 
-func (s *NetStub) NetSetLimit(p0 context.Context, p1 string, p2 NetLimit) error {
+func (s *NetStub) NetSetLimit(p0 context.Context, p1 string, p2 NetLimit) (error) {
 	return ErrNotSupported
 }
 
@@ -3840,16 +3921,22 @@ func (s *NetStub) NetStat(p0 context.Context, p1 string) (NetStat, error) {
 	return *new(NetStat), ErrNotSupported
 }
 
-func (s *SignableStruct) Sign(p0 context.Context, p1 SignFunc) error {
+
+
+
+func (s *SignableStruct) Sign(p0 context.Context, p1 SignFunc) (error) {
 	if s.Internal.Sign == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.Sign(p0, p1)
 }
 
-func (s *SignableStub) Sign(p0 context.Context, p1 SignFunc) error {
+func (s *SignableStub) Sign(p0 context.Context, p1 SignFunc) (error) {
 	return ErrNotSupported
 }
+
+
+
 
 func (s *StorageMinerStruct) ActorAddress(p0 context.Context) (address.Address, error) {
 	if s.Internal.ActorAddress == nil {
@@ -3928,14 +4015,14 @@ func (s *StorageMinerStub) ComputeWindowPoSt(p0 context.Context, p1 uint64, p2 t
 	return *new([]miner.SubmitWindowedPoStParams), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) CreateBackup(p0 context.Context, p1 string) error {
+func (s *StorageMinerStruct) CreateBackup(p0 context.Context, p1 string) (error) {
 	if s.Internal.CreateBackup == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.CreateBackup(p0, p1)
 }
 
-func (s *StorageMinerStub) CreateBackup(p0 context.Context, p1 string) error {
+func (s *StorageMinerStub) CreateBackup(p0 context.Context, p1 string) (error) {
 	return ErrNotSupported
 }
 
@@ -3961,14 +4048,14 @@ func (s *StorageMinerStub) DagstoreInitializeAll(p0 context.Context, p1 Dagstore
 	return nil, ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DagstoreInitializeShard(p0 context.Context, p1 string) error {
+func (s *StorageMinerStruct) DagstoreInitializeShard(p0 context.Context, p1 string) (error) {
 	if s.Internal.DagstoreInitializeShard == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.DagstoreInitializeShard(p0, p1)
 }
 
-func (s *StorageMinerStub) DagstoreInitializeShard(p0 context.Context, p1 string) error {
+func (s *StorageMinerStub) DagstoreInitializeShard(p0 context.Context, p1 string) (error) {
 	return ErrNotSupported
 }
 
@@ -3994,25 +4081,25 @@ func (s *StorageMinerStub) DagstoreLookupPieces(p0 context.Context, p1 cid.Cid) 
 	return *new([]DagstoreShardInfo), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DagstoreRecoverShard(p0 context.Context, p1 string) error {
+func (s *StorageMinerStruct) DagstoreRecoverShard(p0 context.Context, p1 string) (error) {
 	if s.Internal.DagstoreRecoverShard == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.DagstoreRecoverShard(p0, p1)
 }
 
-func (s *StorageMinerStub) DagstoreRecoverShard(p0 context.Context, p1 string) error {
+func (s *StorageMinerStub) DagstoreRecoverShard(p0 context.Context, p1 string) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DagstoreRegisterShard(p0 context.Context, p1 string) error {
+func (s *StorageMinerStruct) DagstoreRegisterShard(p0 context.Context, p1 string) (error) {
 	if s.Internal.DagstoreRegisterShard == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.DagstoreRegisterShard(p0, p1)
 }
 
-func (s *StorageMinerStub) DagstoreRegisterShard(p0 context.Context, p1 string) error {
+func (s *StorageMinerStub) DagstoreRegisterShard(p0 context.Context, p1 string) (error) {
 	return ErrNotSupported
 }
 
@@ -4082,14 +4169,14 @@ func (s *StorageMinerStub) DealsConsiderVerifiedStorageDeals(p0 context.Context)
 	return false, ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DealsImportData(p0 context.Context, p1 cid.Cid, p2 string) error {
+func (s *StorageMinerStruct) DealsImportData(p0 context.Context, p1 cid.Cid, p2 string) (error) {
 	if s.Internal.DealsImportData == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.DealsImportData(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) DealsImportData(p0 context.Context, p1 cid.Cid, p2 string) error {
+func (s *StorageMinerStub) DealsImportData(p0 context.Context, p1 cid.Cid, p2 string) (error) {
 	return ErrNotSupported
 }
 
@@ -4115,113 +4202,113 @@ func (s *StorageMinerStub) DealsPieceCidBlocklist(p0 context.Context) ([]cid.Cid
 	return *new([]cid.Cid), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DealsSetConsiderOfflineRetrievalDeals(p0 context.Context, p1 bool) error {
+func (s *StorageMinerStruct) DealsSetConsiderOfflineRetrievalDeals(p0 context.Context, p1 bool) (error) {
 	if s.Internal.DealsSetConsiderOfflineRetrievalDeals == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.DealsSetConsiderOfflineRetrievalDeals(p0, p1)
 }
 
-func (s *StorageMinerStub) DealsSetConsiderOfflineRetrievalDeals(p0 context.Context, p1 bool) error {
+func (s *StorageMinerStub) DealsSetConsiderOfflineRetrievalDeals(p0 context.Context, p1 bool) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DealsSetConsiderOfflineStorageDeals(p0 context.Context, p1 bool) error {
+func (s *StorageMinerStruct) DealsSetConsiderOfflineStorageDeals(p0 context.Context, p1 bool) (error) {
 	if s.Internal.DealsSetConsiderOfflineStorageDeals == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.DealsSetConsiderOfflineStorageDeals(p0, p1)
 }
 
-func (s *StorageMinerStub) DealsSetConsiderOfflineStorageDeals(p0 context.Context, p1 bool) error {
+func (s *StorageMinerStub) DealsSetConsiderOfflineStorageDeals(p0 context.Context, p1 bool) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DealsSetConsiderOnlineRetrievalDeals(p0 context.Context, p1 bool) error {
+func (s *StorageMinerStruct) DealsSetConsiderOnlineRetrievalDeals(p0 context.Context, p1 bool) (error) {
 	if s.Internal.DealsSetConsiderOnlineRetrievalDeals == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.DealsSetConsiderOnlineRetrievalDeals(p0, p1)
 }
 
-func (s *StorageMinerStub) DealsSetConsiderOnlineRetrievalDeals(p0 context.Context, p1 bool) error {
+func (s *StorageMinerStub) DealsSetConsiderOnlineRetrievalDeals(p0 context.Context, p1 bool) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DealsSetConsiderOnlineStorageDeals(p0 context.Context, p1 bool) error {
+func (s *StorageMinerStruct) DealsSetConsiderOnlineStorageDeals(p0 context.Context, p1 bool) (error) {
 	if s.Internal.DealsSetConsiderOnlineStorageDeals == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.DealsSetConsiderOnlineStorageDeals(p0, p1)
 }
 
-func (s *StorageMinerStub) DealsSetConsiderOnlineStorageDeals(p0 context.Context, p1 bool) error {
+func (s *StorageMinerStub) DealsSetConsiderOnlineStorageDeals(p0 context.Context, p1 bool) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DealsSetConsiderUnverifiedStorageDeals(p0 context.Context, p1 bool) error {
+func (s *StorageMinerStruct) DealsSetConsiderUnverifiedStorageDeals(p0 context.Context, p1 bool) (error) {
 	if s.Internal.DealsSetConsiderUnverifiedStorageDeals == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.DealsSetConsiderUnverifiedStorageDeals(p0, p1)
 }
 
-func (s *StorageMinerStub) DealsSetConsiderUnverifiedStorageDeals(p0 context.Context, p1 bool) error {
+func (s *StorageMinerStub) DealsSetConsiderUnverifiedStorageDeals(p0 context.Context, p1 bool) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DealsSetConsiderVerifiedStorageDeals(p0 context.Context, p1 bool) error {
+func (s *StorageMinerStruct) DealsSetConsiderVerifiedStorageDeals(p0 context.Context, p1 bool) (error) {
 	if s.Internal.DealsSetConsiderVerifiedStorageDeals == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.DealsSetConsiderVerifiedStorageDeals(p0, p1)
 }
 
-func (s *StorageMinerStub) DealsSetConsiderVerifiedStorageDeals(p0 context.Context, p1 bool) error {
+func (s *StorageMinerStub) DealsSetConsiderVerifiedStorageDeals(p0 context.Context, p1 bool) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) DealsSetPieceCidBlocklist(p0 context.Context, p1 []cid.Cid) error {
+func (s *StorageMinerStruct) DealsSetPieceCidBlocklist(p0 context.Context, p1 []cid.Cid) (error) {
 	if s.Internal.DealsSetPieceCidBlocklist == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.DealsSetPieceCidBlocklist(p0, p1)
 }
 
-func (s *StorageMinerStub) DealsSetPieceCidBlocklist(p0 context.Context, p1 []cid.Cid) error {
+func (s *StorageMinerStub) DealsSetPieceCidBlocklist(p0 context.Context, p1 []cid.Cid) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) IndexerAnnounceAllDeals(p0 context.Context) error {
+func (s *StorageMinerStruct) IndexerAnnounceAllDeals(p0 context.Context) (error) {
 	if s.Internal.IndexerAnnounceAllDeals == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.IndexerAnnounceAllDeals(p0)
 }
 
-func (s *StorageMinerStub) IndexerAnnounceAllDeals(p0 context.Context) error {
+func (s *StorageMinerStub) IndexerAnnounceAllDeals(p0 context.Context) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) IndexerAnnounceDeal(p0 context.Context, p1 cid.Cid) error {
+func (s *StorageMinerStruct) IndexerAnnounceDeal(p0 context.Context, p1 cid.Cid) (error) {
 	if s.Internal.IndexerAnnounceDeal == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.IndexerAnnounceDeal(p0, p1)
 }
 
-func (s *StorageMinerStub) IndexerAnnounceDeal(p0 context.Context, p1 cid.Cid) error {
+func (s *StorageMinerStub) IndexerAnnounceDeal(p0 context.Context, p1 cid.Cid) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) MarketCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+func (s *StorageMinerStruct) MarketCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) (error) {
 	if s.Internal.MarketCancelDataTransfer == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.MarketCancelDataTransfer(p0, p1, p2, p3)
 }
 
-func (s *StorageMinerStub) MarketCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+func (s *StorageMinerStub) MarketCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) (error) {
 	return ErrNotSupported
 }
 
@@ -4280,14 +4367,14 @@ func (s *StorageMinerStub) MarketGetRetrievalAsk(p0 context.Context) (*retrieval
 	return nil, ErrNotSupported
 }
 
-func (s *StorageMinerStruct) MarketImportDealData(p0 context.Context, p1 cid.Cid, p2 string) error {
+func (s *StorageMinerStruct) MarketImportDealData(p0 context.Context, p1 cid.Cid, p2 string) (error) {
 	if s.Internal.MarketImportDealData == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.MarketImportDealData(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) MarketImportDealData(p0 context.Context, p1 cid.Cid, p2 string) error {
+func (s *StorageMinerStub) MarketImportDealData(p0 context.Context, p1 cid.Cid, p2 string) (error) {
 	return ErrNotSupported
 }
 
@@ -4346,58 +4433,58 @@ func (s *StorageMinerStub) MarketPendingDeals(p0 context.Context) (PendingDealIn
 	return *new(PendingDealInfo), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) MarketPublishPendingDeals(p0 context.Context) error {
+func (s *StorageMinerStruct) MarketPublishPendingDeals(p0 context.Context) (error) {
 	if s.Internal.MarketPublishPendingDeals == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.MarketPublishPendingDeals(p0)
 }
 
-func (s *StorageMinerStub) MarketPublishPendingDeals(p0 context.Context) error {
+func (s *StorageMinerStub) MarketPublishPendingDeals(p0 context.Context) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) MarketRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+func (s *StorageMinerStruct) MarketRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) (error) {
 	if s.Internal.MarketRestartDataTransfer == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.MarketRestartDataTransfer(p0, p1, p2, p3)
 }
 
-func (s *StorageMinerStub) MarketRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+func (s *StorageMinerStub) MarketRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) MarketRetryPublishDeal(p0 context.Context, p1 cid.Cid) error {
+func (s *StorageMinerStruct) MarketRetryPublishDeal(p0 context.Context, p1 cid.Cid) (error) {
 	if s.Internal.MarketRetryPublishDeal == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.MarketRetryPublishDeal(p0, p1)
 }
 
-func (s *StorageMinerStub) MarketRetryPublishDeal(p0 context.Context, p1 cid.Cid) error {
+func (s *StorageMinerStub) MarketRetryPublishDeal(p0 context.Context, p1 cid.Cid) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) MarketSetAsk(p0 context.Context, p1 types.BigInt, p2 types.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error {
+func (s *StorageMinerStruct) MarketSetAsk(p0 context.Context, p1 types.BigInt, p2 types.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) (error) {
 	if s.Internal.MarketSetAsk == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.MarketSetAsk(p0, p1, p2, p3, p4, p5)
 }
 
-func (s *StorageMinerStub) MarketSetAsk(p0 context.Context, p1 types.BigInt, p2 types.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) error {
+func (s *StorageMinerStub) MarketSetAsk(p0 context.Context, p1 types.BigInt, p2 types.BigInt, p3 abi.ChainEpoch, p4 abi.PaddedPieceSize, p5 abi.PaddedPieceSize) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) MarketSetRetrievalAsk(p0 context.Context, p1 *retrievalmarket.Ask) error {
+func (s *StorageMinerStruct) MarketSetRetrievalAsk(p0 context.Context, p1 *retrievalmarket.Ask) (error) {
 	if s.Internal.MarketSetRetrievalAsk == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.MarketSetRetrievalAsk(p0, p1)
 }
 
-func (s *StorageMinerStub) MarketSetRetrievalAsk(p0 context.Context, p1 *retrievalmarket.Ask) error {
+func (s *StorageMinerStub) MarketSetRetrievalAsk(p0 context.Context, p1 *retrievalmarket.Ask) (error) {
 	return ErrNotSupported
 }
 
@@ -4467,190 +4554,190 @@ func (s *StorageMinerStub) PledgeSector(p0 context.Context) (abi.SectorID, error
 	return *new(abi.SectorID), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ReturnAddPiece(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error {
+func (s *StorageMinerStruct) ReturnAddPiece(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) (error) {
 	if s.Internal.ReturnAddPiece == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ReturnAddPiece(p0, p1, p2, p3)
 }
 
-func (s *StorageMinerStub) ReturnAddPiece(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error {
+func (s *StorageMinerStub) ReturnAddPiece(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ReturnDataCid(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error {
+func (s *StorageMinerStruct) ReturnDataCid(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) (error) {
 	if s.Internal.ReturnDataCid == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ReturnDataCid(p0, p1, p2, p3)
 }
 
-func (s *StorageMinerStub) ReturnDataCid(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error {
+func (s *StorageMinerStub) ReturnDataCid(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ReturnFetch(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+func (s *StorageMinerStruct) ReturnFetch(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) {
 	if s.Internal.ReturnFetch == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ReturnFetch(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) ReturnFetch(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+func (s *StorageMinerStub) ReturnFetch(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ReturnFinalizeReplicaUpdate(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+func (s *StorageMinerStruct) ReturnFinalizeReplicaUpdate(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) {
 	if s.Internal.ReturnFinalizeReplicaUpdate == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ReturnFinalizeReplicaUpdate(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) ReturnFinalizeReplicaUpdate(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+func (s *StorageMinerStub) ReturnFinalizeReplicaUpdate(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ReturnFinalizeSector(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+func (s *StorageMinerStruct) ReturnFinalizeSector(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) {
 	if s.Internal.ReturnFinalizeSector == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ReturnFinalizeSector(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) ReturnFinalizeSector(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+func (s *StorageMinerStub) ReturnFinalizeSector(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ReturnGenerateSectorKeyFromData(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+func (s *StorageMinerStruct) ReturnGenerateSectorKeyFromData(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) {
 	if s.Internal.ReturnGenerateSectorKeyFromData == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ReturnGenerateSectorKeyFromData(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) ReturnGenerateSectorKeyFromData(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+func (s *StorageMinerStub) ReturnGenerateSectorKeyFromData(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ReturnMoveStorage(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+func (s *StorageMinerStruct) ReturnMoveStorage(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) {
 	if s.Internal.ReturnMoveStorage == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ReturnMoveStorage(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) ReturnMoveStorage(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+func (s *StorageMinerStub) ReturnMoveStorage(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ReturnProveReplicaUpdate1(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaVanillaProofs, p3 *storiface.CallError) error {
+func (s *StorageMinerStruct) ReturnProveReplicaUpdate1(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaVanillaProofs, p3 *storiface.CallError) (error) {
 	if s.Internal.ReturnProveReplicaUpdate1 == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ReturnProveReplicaUpdate1(p0, p1, p2, p3)
 }
 
-func (s *StorageMinerStub) ReturnProveReplicaUpdate1(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaVanillaProofs, p3 *storiface.CallError) error {
+func (s *StorageMinerStub) ReturnProveReplicaUpdate1(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaVanillaProofs, p3 *storiface.CallError) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ReturnProveReplicaUpdate2(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaUpdateProof, p3 *storiface.CallError) error {
+func (s *StorageMinerStruct) ReturnProveReplicaUpdate2(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaUpdateProof, p3 *storiface.CallError) (error) {
 	if s.Internal.ReturnProveReplicaUpdate2 == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ReturnProveReplicaUpdate2(p0, p1, p2, p3)
 }
 
-func (s *StorageMinerStub) ReturnProveReplicaUpdate2(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaUpdateProof, p3 *storiface.CallError) error {
+func (s *StorageMinerStub) ReturnProveReplicaUpdate2(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaUpdateProof, p3 *storiface.CallError) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ReturnReadPiece(p0 context.Context, p1 storiface.CallID, p2 bool, p3 *storiface.CallError) error {
+func (s *StorageMinerStruct) ReturnReadPiece(p0 context.Context, p1 storiface.CallID, p2 bool, p3 *storiface.CallError) (error) {
 	if s.Internal.ReturnReadPiece == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ReturnReadPiece(p0, p1, p2, p3)
 }
 
-func (s *StorageMinerStub) ReturnReadPiece(p0 context.Context, p1 storiface.CallID, p2 bool, p3 *storiface.CallError) error {
+func (s *StorageMinerStub) ReturnReadPiece(p0 context.Context, p1 storiface.CallID, p2 bool, p3 *storiface.CallError) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ReturnReleaseUnsealed(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+func (s *StorageMinerStruct) ReturnReleaseUnsealed(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) {
 	if s.Internal.ReturnReleaseUnsealed == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ReturnReleaseUnsealed(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) ReturnReleaseUnsealed(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+func (s *StorageMinerStub) ReturnReleaseUnsealed(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ReturnReplicaUpdate(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaUpdateOut, p3 *storiface.CallError) error {
+func (s *StorageMinerStruct) ReturnReplicaUpdate(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaUpdateOut, p3 *storiface.CallError) (error) {
 	if s.Internal.ReturnReplicaUpdate == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ReturnReplicaUpdate(p0, p1, p2, p3)
 }
 
-func (s *StorageMinerStub) ReturnReplicaUpdate(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaUpdateOut, p3 *storiface.CallError) error {
+func (s *StorageMinerStub) ReturnReplicaUpdate(p0 context.Context, p1 storiface.CallID, p2 storage.ReplicaUpdateOut, p3 *storiface.CallError) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ReturnSealCommit1(p0 context.Context, p1 storiface.CallID, p2 storage.Commit1Out, p3 *storiface.CallError) error {
+func (s *StorageMinerStruct) ReturnSealCommit1(p0 context.Context, p1 storiface.CallID, p2 storage.Commit1Out, p3 *storiface.CallError) (error) {
 	if s.Internal.ReturnSealCommit1 == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ReturnSealCommit1(p0, p1, p2, p3)
 }
 
-func (s *StorageMinerStub) ReturnSealCommit1(p0 context.Context, p1 storiface.CallID, p2 storage.Commit1Out, p3 *storiface.CallError) error {
+func (s *StorageMinerStub) ReturnSealCommit1(p0 context.Context, p1 storiface.CallID, p2 storage.Commit1Out, p3 *storiface.CallError) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ReturnSealCommit2(p0 context.Context, p1 storiface.CallID, p2 storage.Proof, p3 *storiface.CallError) error {
+func (s *StorageMinerStruct) ReturnSealCommit2(p0 context.Context, p1 storiface.CallID, p2 storage.Proof, p3 *storiface.CallError) (error) {
 	if s.Internal.ReturnSealCommit2 == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ReturnSealCommit2(p0, p1, p2, p3)
 }
 
-func (s *StorageMinerStub) ReturnSealCommit2(p0 context.Context, p1 storiface.CallID, p2 storage.Proof, p3 *storiface.CallError) error {
+func (s *StorageMinerStub) ReturnSealCommit2(p0 context.Context, p1 storiface.CallID, p2 storage.Proof, p3 *storiface.CallError) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ReturnSealPreCommit1(p0 context.Context, p1 storiface.CallID, p2 storage.PreCommit1Out, p3 *storiface.CallError) error {
+func (s *StorageMinerStruct) ReturnSealPreCommit1(p0 context.Context, p1 storiface.CallID, p2 storage.PreCommit1Out, p3 *storiface.CallError) (error) {
 	if s.Internal.ReturnSealPreCommit1 == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ReturnSealPreCommit1(p0, p1, p2, p3)
 }
 
-func (s *StorageMinerStub) ReturnSealPreCommit1(p0 context.Context, p1 storiface.CallID, p2 storage.PreCommit1Out, p3 *storiface.CallError) error {
+func (s *StorageMinerStub) ReturnSealPreCommit1(p0 context.Context, p1 storiface.CallID, p2 storage.PreCommit1Out, p3 *storiface.CallError) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ReturnSealPreCommit2(p0 context.Context, p1 storiface.CallID, p2 storage.SectorCids, p3 *storiface.CallError) error {
+func (s *StorageMinerStruct) ReturnSealPreCommit2(p0 context.Context, p1 storiface.CallID, p2 storage.SectorCids, p3 *storiface.CallError) (error) {
 	if s.Internal.ReturnSealPreCommit2 == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ReturnSealPreCommit2(p0, p1, p2, p3)
 }
 
-func (s *StorageMinerStub) ReturnSealPreCommit2(p0 context.Context, p1 storiface.CallID, p2 storage.SectorCids, p3 *storiface.CallError) error {
+func (s *StorageMinerStub) ReturnSealPreCommit2(p0 context.Context, p1 storiface.CallID, p2 storage.SectorCids, p3 *storiface.CallError) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) ReturnUnsealPiece(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+func (s *StorageMinerStruct) ReturnUnsealPiece(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) {
 	if s.Internal.ReturnUnsealPiece == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ReturnUnsealPiece(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) ReturnUnsealPiece(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) error {
+func (s *StorageMinerStub) ReturnUnsealPiece(p0 context.Context, p1 storiface.CallID, p2 *storiface.CallError) (error) {
 	return ErrNotSupported
 }
 
@@ -4665,14 +4752,14 @@ func (s *StorageMinerStub) RuntimeSubsystems(p0 context.Context) (MinerSubsystem
 	return *new(MinerSubsystems), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) SealingAbort(p0 context.Context, p1 storiface.CallID) error {
+func (s *StorageMinerStruct) SealingAbort(p0 context.Context, p1 storiface.CallID) (error) {
 	if s.Internal.SealingAbort == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SealingAbort(p0, p1)
 }
 
-func (s *StorageMinerStub) SealingAbort(p0 context.Context, p1 storiface.CallID) error {
+func (s *StorageMinerStub) SealingAbort(p0 context.Context, p1 storiface.CallID) (error) {
 	return ErrNotSupported
 }
 
@@ -4687,14 +4774,14 @@ func (s *StorageMinerStub) SealingSchedDiag(p0 context.Context, p1 bool) (interf
 	return nil, ErrNotSupported
 }
 
-func (s *StorageMinerStruct) SectorAbortUpgrade(p0 context.Context, p1 abi.SectorNumber) error {
+func (s *StorageMinerStruct) SectorAbortUpgrade(p0 context.Context, p1 abi.SectorNumber) (error) {
 	if s.Internal.SectorAbortUpgrade == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SectorAbortUpgrade(p0, p1)
 }
 
-func (s *StorageMinerStub) SectorAbortUpgrade(p0 context.Context, p1 abi.SectorNumber) error {
+func (s *StorageMinerStub) SectorAbortUpgrade(p0 context.Context, p1 abi.SectorNumber) (error) {
 	return ErrNotSupported
 }
 
@@ -4753,25 +4840,25 @@ func (s *StorageMinerStub) SectorGetSealDelay(p0 context.Context) (time.Duration
 	return *new(time.Duration), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) SectorMarkForUpgrade(p0 context.Context, p1 abi.SectorNumber, p2 bool) error {
+func (s *StorageMinerStruct) SectorMarkForUpgrade(p0 context.Context, p1 abi.SectorNumber, p2 bool) (error) {
 	if s.Internal.SectorMarkForUpgrade == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SectorMarkForUpgrade(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) SectorMarkForUpgrade(p0 context.Context, p1 abi.SectorNumber, p2 bool) error {
+func (s *StorageMinerStub) SectorMarkForUpgrade(p0 context.Context, p1 abi.SectorNumber, p2 bool) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) SectorMatchPendingPiecesToOpenSectors(p0 context.Context) error {
+func (s *StorageMinerStruct) SectorMatchPendingPiecesToOpenSectors(p0 context.Context) (error) {
 	if s.Internal.SectorMatchPendingPiecesToOpenSectors == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SectorMatchPendingPiecesToOpenSectors(p0)
 }
 
-func (s *StorageMinerStub) SectorMatchPendingPiecesToOpenSectors(p0 context.Context) error {
+func (s *StorageMinerStub) SectorMatchPendingPiecesToOpenSectors(p0 context.Context) (error) {
 	return ErrNotSupported
 }
 
@@ -4797,58 +4884,58 @@ func (s *StorageMinerStub) SectorPreCommitPending(p0 context.Context) ([]abi.Sec
 	return *new([]abi.SectorID), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) SectorRemove(p0 context.Context, p1 abi.SectorNumber) error {
+func (s *StorageMinerStruct) SectorRemove(p0 context.Context, p1 abi.SectorNumber) (error) {
 	if s.Internal.SectorRemove == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SectorRemove(p0, p1)
 }
 
-func (s *StorageMinerStub) SectorRemove(p0 context.Context, p1 abi.SectorNumber) error {
+func (s *StorageMinerStub) SectorRemove(p0 context.Context, p1 abi.SectorNumber) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) SectorSetExpectedSealDuration(p0 context.Context, p1 time.Duration) error {
+func (s *StorageMinerStruct) SectorSetExpectedSealDuration(p0 context.Context, p1 time.Duration) (error) {
 	if s.Internal.SectorSetExpectedSealDuration == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SectorSetExpectedSealDuration(p0, p1)
 }
 
-func (s *StorageMinerStub) SectorSetExpectedSealDuration(p0 context.Context, p1 time.Duration) error {
+func (s *StorageMinerStub) SectorSetExpectedSealDuration(p0 context.Context, p1 time.Duration) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) SectorSetSealDelay(p0 context.Context, p1 time.Duration) error {
+func (s *StorageMinerStruct) SectorSetSealDelay(p0 context.Context, p1 time.Duration) (error) {
 	if s.Internal.SectorSetSealDelay == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SectorSetSealDelay(p0, p1)
 }
 
-func (s *StorageMinerStub) SectorSetSealDelay(p0 context.Context, p1 time.Duration) error {
+func (s *StorageMinerStub) SectorSetSealDelay(p0 context.Context, p1 time.Duration) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) SectorStartSealing(p0 context.Context, p1 abi.SectorNumber) error {
+func (s *StorageMinerStruct) SectorStartSealing(p0 context.Context, p1 abi.SectorNumber) (error) {
 	if s.Internal.SectorStartSealing == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SectorStartSealing(p0, p1)
 }
 
-func (s *StorageMinerStub) SectorStartSealing(p0 context.Context, p1 abi.SectorNumber) error {
+func (s *StorageMinerStub) SectorStartSealing(p0 context.Context, p1 abi.SectorNumber) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) SectorTerminate(p0 context.Context, p1 abi.SectorNumber) error {
+func (s *StorageMinerStruct) SectorTerminate(p0 context.Context, p1 abi.SectorNumber) (error) {
 	if s.Internal.SectorTerminate == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SectorTerminate(p0, p1)
 }
 
-func (s *StorageMinerStub) SectorTerminate(p0 context.Context, p1 abi.SectorNumber) error {
+func (s *StorageMinerStub) SectorTerminate(p0 context.Context, p1 abi.SectorNumber) (error) {
 	return ErrNotSupported
 }
 
@@ -4929,47 +5016,47 @@ func (s *StorageMinerStub) SectorsSummary(p0 context.Context) (map[SectorState]i
 	return *new(map[SectorState]int), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) SectorsUnsealPiece(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) error {
+func (s *StorageMinerStruct) SectorsUnsealPiece(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) (error) {
 	if s.Internal.SectorsUnsealPiece == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SectorsUnsealPiece(p0, p1, p2, p3, p4, p5)
 }
 
-func (s *StorageMinerStub) SectorsUnsealPiece(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) error {
+func (s *StorageMinerStub) SectorsUnsealPiece(p0 context.Context, p1 storage.SectorRef, p2 storiface.UnpaddedByteIndex, p3 abi.UnpaddedPieceSize, p4 abi.SealRandomness, p5 *cid.Cid) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) SectorsUpdate(p0 context.Context, p1 abi.SectorNumber, p2 SectorState) error {
+func (s *StorageMinerStruct) SectorsUpdate(p0 context.Context, p1 abi.SectorNumber, p2 SectorState) (error) {
 	if s.Internal.SectorsUpdate == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SectorsUpdate(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) SectorsUpdate(p0 context.Context, p1 abi.SectorNumber, p2 SectorState) error {
+func (s *StorageMinerStub) SectorsUpdate(p0 context.Context, p1 abi.SectorNumber, p2 SectorState) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) StorageAddLocal(p0 context.Context, p1 string) error {
+func (s *StorageMinerStruct) StorageAddLocal(p0 context.Context, p1 string) (error) {
 	if s.Internal.StorageAddLocal == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.StorageAddLocal(p0, p1)
 }
 
-func (s *StorageMinerStub) StorageAddLocal(p0 context.Context, p1 string) error {
+func (s *StorageMinerStub) StorageAddLocal(p0 context.Context, p1 string) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) StorageAttach(p0 context.Context, p1 storiface.StorageInfo, p2 fsutil.FsStat) error {
+func (s *StorageMinerStruct) StorageAttach(p0 context.Context, p1 storiface.StorageInfo, p2 fsutil.FsStat) (error) {
 	if s.Internal.StorageAttach == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.StorageAttach(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) StorageAttach(p0 context.Context, p1 storiface.StorageInfo, p2 fsutil.FsStat) error {
+func (s *StorageMinerStub) StorageAttach(p0 context.Context, p1 storiface.StorageInfo, p2 fsutil.FsStat) (error) {
 	return ErrNotSupported
 }
 
@@ -4984,25 +5071,25 @@ func (s *StorageMinerStub) StorageBestAlloc(p0 context.Context, p1 storiface.Sec
 	return *new([]storiface.StorageInfo), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) StorageDeclareSector(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) error {
+func (s *StorageMinerStruct) StorageDeclareSector(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) (error) {
 	if s.Internal.StorageDeclareSector == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.StorageDeclareSector(p0, p1, p2, p3, p4)
 }
 
-func (s *StorageMinerStub) StorageDeclareSector(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) error {
+func (s *StorageMinerStub) StorageDeclareSector(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) StorageDropSector(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error {
+func (s *StorageMinerStruct) StorageDropSector(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType) (error) {
 	if s.Internal.StorageDropSector == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.StorageDropSector(p0, p1, p2, p3)
 }
 
-func (s *StorageMinerStub) StorageDropSector(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error {
+func (s *StorageMinerStub) StorageDropSector(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType) (error) {
 	return ErrNotSupported
 }
 
@@ -5061,25 +5148,25 @@ func (s *StorageMinerStub) StorageLocal(p0 context.Context) (map[storiface.ID]st
 	return *new(map[storiface.ID]string), ErrNotSupported
 }
 
-func (s *StorageMinerStruct) StorageLock(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) error {
+func (s *StorageMinerStruct) StorageLock(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) (error) {
 	if s.Internal.StorageLock == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.StorageLock(p0, p1, p2, p3)
 }
 
-func (s *StorageMinerStub) StorageLock(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) error {
+func (s *StorageMinerStub) StorageLock(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) (error) {
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) StorageReportHealth(p0 context.Context, p1 storiface.ID, p2 storiface.HealthReport) error {
+func (s *StorageMinerStruct) StorageReportHealth(p0 context.Context, p1 storiface.ID, p2 storiface.HealthReport) (error) {
 	if s.Internal.StorageReportHealth == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.StorageReportHealth(p0, p1, p2)
 }
 
-func (s *StorageMinerStub) StorageReportHealth(p0 context.Context, p1 storiface.ID, p2 storiface.HealthReport) error {
+func (s *StorageMinerStub) StorageReportHealth(p0 context.Context, p1 storiface.ID, p2 storiface.HealthReport) (error) {
 	return ErrNotSupported
 }
 
@@ -5105,14 +5192,14 @@ func (s *StorageMinerStub) StorageTryLock(p0 context.Context, p1 abi.SectorID, p
 	return false, ErrNotSupported
 }
 
-func (s *StorageMinerStruct) WorkerConnect(p0 context.Context, p1 string) error {
+func (s *StorageMinerStruct) WorkerConnect(p0 context.Context, p1 string) (error) {
 	if s.Internal.WorkerConnect == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.WorkerConnect(p0, p1)
 }
 
-func (s *StorageMinerStub) WorkerConnect(p0 context.Context, p1 string) error {
+func (s *StorageMinerStub) WorkerConnect(p0 context.Context, p1 string) (error) {
 	return ErrNotSupported
 }
 
@@ -5138,14 +5225,17 @@ func (s *StorageMinerStub) WorkerStats(p0 context.Context) (map[uuid.UUID]storif
 	return *new(map[uuid.UUID]storiface.WorkerStats), ErrNotSupported
 }
 
-func (s *WalletStruct) WalletDelete(p0 context.Context, p1 address.Address) error {
+
+
+
+func (s *WalletStruct) WalletDelete(p0 context.Context, p1 address.Address) (error) {
 	if s.Internal.WalletDelete == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.WalletDelete(p0, p1)
 }
 
-func (s *WalletStub) WalletDelete(p0 context.Context, p1 address.Address) error {
+func (s *WalletStub) WalletDelete(p0 context.Context, p1 address.Address) (error) {
 	return ErrNotSupported
 }
 
@@ -5214,6 +5304,9 @@ func (s *WalletStruct) WalletSign(p0 context.Context, p1 address.Address, p2 []b
 func (s *WalletStub) WalletSign(p0 context.Context, p1 address.Address, p2 []byte, p3 MsgMeta) (*crypto.Signature, error) {
 	return nil, ErrNotSupported
 }
+
+
+
 
 func (s *WorkerStruct) AddPiece(p0 context.Context, p1 storage.SectorRef, p2 []abi.UnpaddedPieceSize, p3 abi.UnpaddedPieceSize, p4 storage.Data) (storiface.CallID, error) {
 	if s.Internal.AddPiece == nil {
@@ -5391,14 +5484,14 @@ func (s *WorkerStub) ReleaseUnsealed(p0 context.Context, p1 storage.SectorRef, p
 	return *new(storiface.CallID), ErrNotSupported
 }
 
-func (s *WorkerStruct) Remove(p0 context.Context, p1 abi.SectorID) error {
+func (s *WorkerStruct) Remove(p0 context.Context, p1 abi.SectorID) (error) {
 	if s.Internal.Remove == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.Remove(p0, p1)
 }
 
-func (s *WorkerStub) Remove(p0 context.Context, p1 abi.SectorID) error {
+func (s *WorkerStub) Remove(p0 context.Context, p1 abi.SectorID) (error) {
 	return ErrNotSupported
 }
 
@@ -5468,47 +5561,47 @@ func (s *WorkerStub) Session(p0 context.Context) (uuid.UUID, error) {
 	return *new(uuid.UUID), ErrNotSupported
 }
 
-func (s *WorkerStruct) SetEnabled(p0 context.Context, p1 bool) error {
+func (s *WorkerStruct) SetEnabled(p0 context.Context, p1 bool) (error) {
 	if s.Internal.SetEnabled == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SetEnabled(p0, p1)
 }
 
-func (s *WorkerStub) SetEnabled(p0 context.Context, p1 bool) error {
+func (s *WorkerStub) SetEnabled(p0 context.Context, p1 bool) (error) {
 	return ErrNotSupported
 }
 
-func (s *WorkerStruct) StorageAddLocal(p0 context.Context, p1 string) error {
+func (s *WorkerStruct) StorageAddLocal(p0 context.Context, p1 string) (error) {
 	if s.Internal.StorageAddLocal == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.StorageAddLocal(p0, p1)
 }
 
-func (s *WorkerStub) StorageAddLocal(p0 context.Context, p1 string) error {
+func (s *WorkerStub) StorageAddLocal(p0 context.Context, p1 string) (error) {
 	return ErrNotSupported
 }
 
-func (s *WorkerStruct) TaskDisable(p0 context.Context, p1 sealtasks.TaskType) error {
+func (s *WorkerStruct) TaskDisable(p0 context.Context, p1 sealtasks.TaskType) (error) {
 	if s.Internal.TaskDisable == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.TaskDisable(p0, p1)
 }
 
-func (s *WorkerStub) TaskDisable(p0 context.Context, p1 sealtasks.TaskType) error {
+func (s *WorkerStub) TaskDisable(p0 context.Context, p1 sealtasks.TaskType) (error) {
 	return ErrNotSupported
 }
 
-func (s *WorkerStruct) TaskEnable(p0 context.Context, p1 sealtasks.TaskType) error {
+func (s *WorkerStruct) TaskEnable(p0 context.Context, p1 sealtasks.TaskType) (error) {
 	if s.Internal.TaskEnable == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.TaskEnable(p0, p1)
 }
 
-func (s *WorkerStub) TaskEnable(p0 context.Context, p1 sealtasks.TaskType) error {
+func (s *WorkerStub) TaskEnable(p0 context.Context, p1 sealtasks.TaskType) (error) {
 	return ErrNotSupported
 }
 
@@ -5545,16 +5638,18 @@ func (s *WorkerStub) Version(p0 context.Context) (Version, error) {
 	return *new(Version), ErrNotSupported
 }
 
-func (s *WorkerStruct) WaitQuiet(p0 context.Context) error {
+func (s *WorkerStruct) WaitQuiet(p0 context.Context) (error) {
 	if s.Internal.WaitQuiet == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.WaitQuiet(p0)
 }
 
-func (s *WorkerStub) WaitQuiet(p0 context.Context) error {
+func (s *WorkerStub) WaitQuiet(p0 context.Context) (error) {
 	return ErrNotSupported
 }
+
+
 
 var _ ChainIO = new(ChainIOStruct)
 var _ Common = new(CommonStruct)
@@ -5566,3 +5661,5 @@ var _ Signable = new(SignableStruct)
 var _ StorageMiner = new(StorageMinerStruct)
 var _ Wallet = new(WalletStruct)
 var _ Worker = new(WorkerStruct)
+
+

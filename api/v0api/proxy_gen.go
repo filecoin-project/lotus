@@ -4,18 +4,20 @@ package v0api
 
 import (
 	"context"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -23,21 +25,27 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 	"github.com/ipfs/go-cid"
+	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"golang.org/x/xerrors"
+
 )
+
 
 var ErrNotSupported = xerrors.New("method not supported")
 
+
 type FullNodeStruct struct {
+
 	CommonStruct
 
 	NetStruct
 
 	Internal struct {
+
 		BeaconGetEntry func(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) `perm:"read"`
 
-		ChainDeleteObj func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
+		ChainDeleteObj func(p0 context.Context, p1 cid.Cid) (error) `perm:"admin"`
 
 		ChainExport func(p0 context.Context, p1 abi.ChainEpoch, p2 bool, p3 types.TipSetKey) (<-chan []byte, error) `perm:"read"`
 
@@ -75,7 +83,7 @@ type FullNodeStruct struct {
 
 		ChainReadObj func(p0 context.Context, p1 cid.Cid) ([]byte, error) `perm:"read"`
 
-		ChainSetHead func(p0 context.Context, p1 types.TipSetKey) error `perm:"admin"`
+		ChainSetHead func(p0 context.Context, p1 types.TipSetKey) (error) `perm:"admin"`
 
 		ChainStatObj func(p0 context.Context, p1 cid.Cid, p2 cid.Cid) (api.ObjStat, error) `perm:"read"`
 
@@ -83,9 +91,9 @@ type FullNodeStruct struct {
 
 		ClientCalcCommP func(p0 context.Context, p1 string) (*api.CommPRet, error) `perm:"write"`
 
-		ClientCancelDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
+		ClientCancelDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) (error) `perm:"write"`
 
-		ClientCancelRetrievalDeal func(p0 context.Context, p1 retrievalmarket.DealID) error `perm:"write"`
+		ClientCancelRetrievalDeal func(p0 context.Context, p1 retrievalmarket.DealID) (error) `perm:"write"`
 
 		ClientDataTransferUpdates func(p0 context.Context) (<-chan api.DataTransferChannel, error) `perm:"write"`
 
@@ -95,7 +103,7 @@ type FullNodeStruct struct {
 
 		ClientFindData func(p0 context.Context, p1 cid.Cid, p2 *cid.Cid) ([]api.QueryOffer, error) `perm:"read"`
 
-		ClientGenCar func(p0 context.Context, p1 api.FileRef, p2 string) error `perm:"write"`
+		ClientGenCar func(p0 context.Context, p1 api.FileRef, p2 string) (error) `perm:"write"`
 
 		ClientGetDealInfo func(p0 context.Context, p1 cid.Cid) (*api.DealInfo, error) `perm:"read"`
 
@@ -121,13 +129,13 @@ type FullNodeStruct struct {
 
 		ClientQueryAsk func(p0 context.Context, p1 peer.ID, p2 address.Address) (*storagemarket.StorageAsk, error) `perm:"read"`
 
-		ClientRemoveImport func(p0 context.Context, p1 imports.ID) error `perm:"admin"`
+		ClientRemoveImport func(p0 context.Context, p1 imports.ID) (error) `perm:"admin"`
 
-		ClientRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error `perm:"write"`
+		ClientRestartDataTransfer func(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) (error) `perm:"write"`
 
-		ClientRetrieve func(p0 context.Context, p1 RetrievalOrder, p2 *api.FileRef) error `perm:"admin"`
+		ClientRetrieve func(p0 context.Context, p1 RetrievalOrder, p2 *api.FileRef) (error) `perm:"admin"`
 
-		ClientRetrieveTryRestartInsufficientFunds func(p0 context.Context, p1 address.Address) error `perm:"write"`
+		ClientRetrieveTryRestartInsufficientFunds func(p0 context.Context, p1 address.Address) (error) `perm:"write"`
 
 		ClientRetrieveWithEvents func(p0 context.Context, p1 RetrievalOrder, p2 *api.FileRef) (<-chan marketevents.RetrievalEvent, error) `perm:"admin"`
 
@@ -135,7 +143,7 @@ type FullNodeStruct struct {
 
 		ClientStatelessDeal func(p0 context.Context, p1 *api.StartDealParams) (*cid.Cid, error) `perm:"write"`
 
-		CreateBackup func(p0 context.Context, p1 string) error `perm:"admin"`
+		CreateBackup func(p0 context.Context, p1 string) (error) `perm:"admin"`
 
 		GasEstimateFeeCap func(p0 context.Context, p1 *types.Message, p2 int64, p3 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
@@ -149,7 +157,7 @@ type FullNodeStruct struct {
 
 		MarketGetReserved func(p0 context.Context, p1 address.Address) (types.BigInt, error) `perm:"sign"`
 
-		MarketReleaseFunds func(p0 context.Context, p1 address.Address, p2 types.BigInt) error `perm:"sign"`
+		MarketReleaseFunds func(p0 context.Context, p1 address.Address, p2 types.BigInt) (error) `perm:"sign"`
 
 		MarketReserveFunds func(p0 context.Context, p1 address.Address, p2 address.Address, p3 types.BigInt) (cid.Cid, error) `perm:"sign"`
 
@@ -165,7 +173,7 @@ type FullNodeStruct struct {
 
 		MpoolBatchPushUntrusted func(p0 context.Context, p1 []*types.SignedMessage) ([]cid.Cid, error) `perm:"write"`
 
-		MpoolClear func(p0 context.Context, p1 bool) error `perm:"write"`
+		MpoolClear func(p0 context.Context, p1 bool) (error) `perm:"write"`
 
 		MpoolGetConfig func(p0 context.Context) (*types.MpoolConfig, error) `perm:"read"`
 
@@ -181,7 +189,7 @@ type FullNodeStruct struct {
 
 		MpoolSelect func(p0 context.Context, p1 types.TipSetKey, p2 float64) ([]*types.SignedMessage, error) `perm:"read"`
 
-		MpoolSetConfig func(p0 context.Context, p1 *types.MpoolConfig) error `perm:"admin"`
+		MpoolSetConfig func(p0 context.Context, p1 *types.MpoolConfig) (error) `perm:"admin"`
 
 		MpoolSub func(p0 context.Context) (<-chan api.MpoolUpdate, error) `perm:"read"`
 
@@ -241,7 +249,7 @@ type FullNodeStruct struct {
 
 		PaychVoucherCheckSpendable func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher, p3 []byte, p4 []byte) (bool, error) `perm:"read"`
 
-		PaychVoucherCheckValid func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher) error `perm:"read"`
+		PaychVoucherCheckValid func(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher) (error) `perm:"read"`
 
 		PaychVoucherCreate func(p0 context.Context, p1 address.Address, p2 types.BigInt, p3 uint64) (*api.VoucherCreateResult, error) `perm:"sign"`
 
@@ -353,19 +361,19 @@ type FullNodeStruct struct {
 
 		SyncCheckBad func(p0 context.Context, p1 cid.Cid) (string, error) `perm:"read"`
 
-		SyncCheckpoint func(p0 context.Context, p1 types.TipSetKey) error `perm:"admin"`
+		SyncCheckpoint func(p0 context.Context, p1 types.TipSetKey) (error) `perm:"admin"`
 
 		SyncIncomingBlocks func(p0 context.Context) (<-chan *types.BlockHeader, error) `perm:"read"`
 
-		SyncMarkBad func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
+		SyncMarkBad func(p0 context.Context, p1 cid.Cid) (error) `perm:"admin"`
 
 		SyncState func(p0 context.Context) (*api.SyncState, error) `perm:"read"`
 
-		SyncSubmitBlock func(p0 context.Context, p1 *types.BlockMsg) error `perm:"write"`
+		SyncSubmitBlock func(p0 context.Context, p1 *types.BlockMsg) (error) `perm:"write"`
 
-		SyncUnmarkAllBad func(p0 context.Context) error `perm:"admin"`
+		SyncUnmarkAllBad func(p0 context.Context) (error) `perm:"admin"`
 
-		SyncUnmarkBad func(p0 context.Context, p1 cid.Cid) error `perm:"admin"`
+		SyncUnmarkBad func(p0 context.Context, p1 cid.Cid) (error) `perm:"admin"`
 
 		SyncValidateTipset func(p0 context.Context, p1 types.TipSetKey) (bool, error) `perm:"read"`
 
@@ -373,7 +381,7 @@ type FullNodeStruct struct {
 
 		WalletDefaultAddress func(p0 context.Context) (address.Address, error) `perm:"write"`
 
-		WalletDelete func(p0 context.Context, p1 address.Address) error `perm:"admin"`
+		WalletDelete func(p0 context.Context, p1 address.Address) (error) `perm:"admin"`
 
 		WalletExport func(p0 context.Context, p1 address.Address) (*types.KeyInfo, error) `perm:"admin"`
 
@@ -385,7 +393,7 @@ type FullNodeStruct struct {
 
 		WalletNew func(p0 context.Context, p1 types.KeyType) (address.Address, error) `perm:"write"`
 
-		WalletSetDefault func(p0 context.Context, p1 address.Address) error `perm:"write"`
+		WalletSetDefault func(p0 context.Context, p1 address.Address) (error) `perm:"write"`
 
 		WalletSign func(p0 context.Context, p1 address.Address, p2 []byte) (*crypto.Signature, error) `perm:"sign"`
 
@@ -394,17 +402,22 @@ type FullNodeStruct struct {
 		WalletValidateAddress func(p0 context.Context, p1 string) (address.Address, error) `perm:"read"`
 
 		WalletVerify func(p0 context.Context, p1 address.Address, p2 []byte, p3 *crypto.Signature) (bool, error) `perm:"read"`
+
 	}
 }
 
 type FullNodeStub struct {
+
 	CommonStub
 
 	NetStub
+
 }
 
 type GatewayStruct struct {
+
 	Internal struct {
+
 		ChainGetBlockMessages func(p0 context.Context, p1 cid.Cid) (*api.BlockMessages, error) ``
 
 		ChainGetMessage func(p0 context.Context, p1 cid.Cid) (*types.Message, error) ``
@@ -466,11 +479,17 @@ type GatewayStruct struct {
 		Version func(p0 context.Context) (api.APIVersion, error) ``
 
 		WalletBalance func(p0 context.Context, p1 address.Address) (types.BigInt, error) ``
+
 	}
 }
 
 type GatewayStub struct {
+
 }
+
+
+
+
 
 func (s *FullNodeStruct) BeaconGetEntry(p0 context.Context, p1 abi.ChainEpoch) (*types.BeaconEntry, error) {
 	if s.Internal.BeaconGetEntry == nil {
@@ -483,14 +502,14 @@ func (s *FullNodeStub) BeaconGetEntry(p0 context.Context, p1 abi.ChainEpoch) (*t
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) ChainDeleteObj(p0 context.Context, p1 cid.Cid) error {
+func (s *FullNodeStruct) ChainDeleteObj(p0 context.Context, p1 cid.Cid) (error) {
 	if s.Internal.ChainDeleteObj == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ChainDeleteObj(p0, p1)
 }
 
-func (s *FullNodeStub) ChainDeleteObj(p0 context.Context, p1 cid.Cid) error {
+func (s *FullNodeStub) ChainDeleteObj(p0 context.Context, p1 cid.Cid) (error) {
 	return ErrNotSupported
 }
 
@@ -692,14 +711,14 @@ func (s *FullNodeStub) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, err
 	return *new([]byte), ErrNotSupported
 }
 
-func (s *FullNodeStruct) ChainSetHead(p0 context.Context, p1 types.TipSetKey) error {
+func (s *FullNodeStruct) ChainSetHead(p0 context.Context, p1 types.TipSetKey) (error) {
 	if s.Internal.ChainSetHead == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ChainSetHead(p0, p1)
 }
 
-func (s *FullNodeStub) ChainSetHead(p0 context.Context, p1 types.TipSetKey) error {
+func (s *FullNodeStub) ChainSetHead(p0 context.Context, p1 types.TipSetKey) (error) {
 	return ErrNotSupported
 }
 
@@ -736,25 +755,25 @@ func (s *FullNodeStub) ClientCalcCommP(p0 context.Context, p1 string) (*api.Comm
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+func (s *FullNodeStruct) ClientCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) (error) {
 	if s.Internal.ClientCancelDataTransfer == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ClientCancelDataTransfer(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) ClientCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+func (s *FullNodeStub) ClientCancelDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) (error) {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientCancelRetrievalDeal(p0 context.Context, p1 retrievalmarket.DealID) error {
+func (s *FullNodeStruct) ClientCancelRetrievalDeal(p0 context.Context, p1 retrievalmarket.DealID) (error) {
 	if s.Internal.ClientCancelRetrievalDeal == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ClientCancelRetrievalDeal(p0, p1)
 }
 
-func (s *FullNodeStub) ClientCancelRetrievalDeal(p0 context.Context, p1 retrievalmarket.DealID) error {
+func (s *FullNodeStub) ClientCancelRetrievalDeal(p0 context.Context, p1 retrievalmarket.DealID) (error) {
 	return ErrNotSupported
 }
 
@@ -802,14 +821,14 @@ func (s *FullNodeStub) ClientFindData(p0 context.Context, p1 cid.Cid, p2 *cid.Ci
 	return *new([]api.QueryOffer), ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientGenCar(p0 context.Context, p1 api.FileRef, p2 string) error {
+func (s *FullNodeStruct) ClientGenCar(p0 context.Context, p1 api.FileRef, p2 string) (error) {
 	if s.Internal.ClientGenCar == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ClientGenCar(p0, p1, p2)
 }
 
-func (s *FullNodeStub) ClientGenCar(p0 context.Context, p1 api.FileRef, p2 string) error {
+func (s *FullNodeStub) ClientGenCar(p0 context.Context, p1 api.FileRef, p2 string) (error) {
 	return ErrNotSupported
 }
 
@@ -945,47 +964,47 @@ func (s *FullNodeStub) ClientQueryAsk(p0 context.Context, p1 peer.ID, p2 address
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientRemoveImport(p0 context.Context, p1 imports.ID) error {
+func (s *FullNodeStruct) ClientRemoveImport(p0 context.Context, p1 imports.ID) (error) {
 	if s.Internal.ClientRemoveImport == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ClientRemoveImport(p0, p1)
 }
 
-func (s *FullNodeStub) ClientRemoveImport(p0 context.Context, p1 imports.ID) error {
+func (s *FullNodeStub) ClientRemoveImport(p0 context.Context, p1 imports.ID) (error) {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+func (s *FullNodeStruct) ClientRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) (error) {
 	if s.Internal.ClientRestartDataTransfer == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ClientRestartDataTransfer(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) ClientRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) error {
+func (s *FullNodeStub) ClientRestartDataTransfer(p0 context.Context, p1 datatransfer.TransferID, p2 peer.ID, p3 bool) (error) {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientRetrieve(p0 context.Context, p1 RetrievalOrder, p2 *api.FileRef) error {
+func (s *FullNodeStruct) ClientRetrieve(p0 context.Context, p1 RetrievalOrder, p2 *api.FileRef) (error) {
 	if s.Internal.ClientRetrieve == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ClientRetrieve(p0, p1, p2)
 }
 
-func (s *FullNodeStub) ClientRetrieve(p0 context.Context, p1 RetrievalOrder, p2 *api.FileRef) error {
+func (s *FullNodeStub) ClientRetrieve(p0 context.Context, p1 RetrievalOrder, p2 *api.FileRef) (error) {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) error {
+func (s *FullNodeStruct) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) (error) {
 	if s.Internal.ClientRetrieveTryRestartInsufficientFunds == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.ClientRetrieveTryRestartInsufficientFunds(p0, p1)
 }
 
-func (s *FullNodeStub) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) error {
+func (s *FullNodeStub) ClientRetrieveTryRestartInsufficientFunds(p0 context.Context, p1 address.Address) (error) {
 	return ErrNotSupported
 }
 
@@ -1022,14 +1041,14 @@ func (s *FullNodeStub) ClientStatelessDeal(p0 context.Context, p1 *api.StartDeal
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) CreateBackup(p0 context.Context, p1 string) error {
+func (s *FullNodeStruct) CreateBackup(p0 context.Context, p1 string) (error) {
 	if s.Internal.CreateBackup == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.CreateBackup(p0, p1)
 }
 
-func (s *FullNodeStub) CreateBackup(p0 context.Context, p1 string) error {
+func (s *FullNodeStub) CreateBackup(p0 context.Context, p1 string) (error) {
 	return ErrNotSupported
 }
 
@@ -1099,14 +1118,14 @@ func (s *FullNodeStub) MarketGetReserved(p0 context.Context, p1 address.Address)
 	return *new(types.BigInt), ErrNotSupported
 }
 
-func (s *FullNodeStruct) MarketReleaseFunds(p0 context.Context, p1 address.Address, p2 types.BigInt) error {
+func (s *FullNodeStruct) MarketReleaseFunds(p0 context.Context, p1 address.Address, p2 types.BigInt) (error) {
 	if s.Internal.MarketReleaseFunds == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.MarketReleaseFunds(p0, p1, p2)
 }
 
-func (s *FullNodeStub) MarketReleaseFunds(p0 context.Context, p1 address.Address, p2 types.BigInt) error {
+func (s *FullNodeStub) MarketReleaseFunds(p0 context.Context, p1 address.Address, p2 types.BigInt) (error) {
 	return ErrNotSupported
 }
 
@@ -1187,14 +1206,14 @@ func (s *FullNodeStub) MpoolBatchPushUntrusted(p0 context.Context, p1 []*types.S
 	return *new([]cid.Cid), ErrNotSupported
 }
 
-func (s *FullNodeStruct) MpoolClear(p0 context.Context, p1 bool) error {
+func (s *FullNodeStruct) MpoolClear(p0 context.Context, p1 bool) (error) {
 	if s.Internal.MpoolClear == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.MpoolClear(p0, p1)
 }
 
-func (s *FullNodeStub) MpoolClear(p0 context.Context, p1 bool) error {
+func (s *FullNodeStub) MpoolClear(p0 context.Context, p1 bool) (error) {
 	return ErrNotSupported
 }
 
@@ -1275,14 +1294,14 @@ func (s *FullNodeStub) MpoolSelect(p0 context.Context, p1 types.TipSetKey, p2 fl
 	return *new([]*types.SignedMessage), ErrNotSupported
 }
 
-func (s *FullNodeStruct) MpoolSetConfig(p0 context.Context, p1 *types.MpoolConfig) error {
+func (s *FullNodeStruct) MpoolSetConfig(p0 context.Context, p1 *types.MpoolConfig) (error) {
 	if s.Internal.MpoolSetConfig == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.MpoolSetConfig(p0, p1)
 }
 
-func (s *FullNodeStub) MpoolSetConfig(p0 context.Context, p1 *types.MpoolConfig) error {
+func (s *FullNodeStub) MpoolSetConfig(p0 context.Context, p1 *types.MpoolConfig) (error) {
 	return ErrNotSupported
 }
 
@@ -1605,14 +1624,14 @@ func (s *FullNodeStub) PaychVoucherCheckSpendable(p0 context.Context, p1 address
 	return false, ErrNotSupported
 }
 
-func (s *FullNodeStruct) PaychVoucherCheckValid(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher) error {
+func (s *FullNodeStruct) PaychVoucherCheckValid(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher) (error) {
 	if s.Internal.PaychVoucherCheckValid == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.PaychVoucherCheckValid(p0, p1, p2)
 }
 
-func (s *FullNodeStub) PaychVoucherCheckValid(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher) error {
+func (s *FullNodeStub) PaychVoucherCheckValid(p0 context.Context, p1 address.Address, p2 *paych.SignedVoucher) (error) {
 	return ErrNotSupported
 }
 
@@ -2221,14 +2240,14 @@ func (s *FullNodeStub) SyncCheckBad(p0 context.Context, p1 cid.Cid) (string, err
 	return "", ErrNotSupported
 }
 
-func (s *FullNodeStruct) SyncCheckpoint(p0 context.Context, p1 types.TipSetKey) error {
+func (s *FullNodeStruct) SyncCheckpoint(p0 context.Context, p1 types.TipSetKey) (error) {
 	if s.Internal.SyncCheckpoint == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SyncCheckpoint(p0, p1)
 }
 
-func (s *FullNodeStub) SyncCheckpoint(p0 context.Context, p1 types.TipSetKey) error {
+func (s *FullNodeStub) SyncCheckpoint(p0 context.Context, p1 types.TipSetKey) (error) {
 	return ErrNotSupported
 }
 
@@ -2243,14 +2262,14 @@ func (s *FullNodeStub) SyncIncomingBlocks(p0 context.Context) (<-chan *types.Blo
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) SyncMarkBad(p0 context.Context, p1 cid.Cid) error {
+func (s *FullNodeStruct) SyncMarkBad(p0 context.Context, p1 cid.Cid) (error) {
 	if s.Internal.SyncMarkBad == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SyncMarkBad(p0, p1)
 }
 
-func (s *FullNodeStub) SyncMarkBad(p0 context.Context, p1 cid.Cid) error {
+func (s *FullNodeStub) SyncMarkBad(p0 context.Context, p1 cid.Cid) (error) {
 	return ErrNotSupported
 }
 
@@ -2265,36 +2284,36 @@ func (s *FullNodeStub) SyncState(p0 context.Context) (*api.SyncState, error) {
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg) error {
+func (s *FullNodeStruct) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg) (error) {
 	if s.Internal.SyncSubmitBlock == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SyncSubmitBlock(p0, p1)
 }
 
-func (s *FullNodeStub) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg) error {
+func (s *FullNodeStub) SyncSubmitBlock(p0 context.Context, p1 *types.BlockMsg) (error) {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) SyncUnmarkAllBad(p0 context.Context) error {
+func (s *FullNodeStruct) SyncUnmarkAllBad(p0 context.Context) (error) {
 	if s.Internal.SyncUnmarkAllBad == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SyncUnmarkAllBad(p0)
 }
 
-func (s *FullNodeStub) SyncUnmarkAllBad(p0 context.Context) error {
+func (s *FullNodeStub) SyncUnmarkAllBad(p0 context.Context) (error) {
 	return ErrNotSupported
 }
 
-func (s *FullNodeStruct) SyncUnmarkBad(p0 context.Context, p1 cid.Cid) error {
+func (s *FullNodeStruct) SyncUnmarkBad(p0 context.Context, p1 cid.Cid) (error) {
 	if s.Internal.SyncUnmarkBad == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.SyncUnmarkBad(p0, p1)
 }
 
-func (s *FullNodeStub) SyncUnmarkBad(p0 context.Context, p1 cid.Cid) error {
+func (s *FullNodeStub) SyncUnmarkBad(p0 context.Context, p1 cid.Cid) (error) {
 	return ErrNotSupported
 }
 
@@ -2331,14 +2350,14 @@ func (s *FullNodeStub) WalletDefaultAddress(p0 context.Context) (address.Address
 	return *new(address.Address), ErrNotSupported
 }
 
-func (s *FullNodeStruct) WalletDelete(p0 context.Context, p1 address.Address) error {
+func (s *FullNodeStruct) WalletDelete(p0 context.Context, p1 address.Address) (error) {
 	if s.Internal.WalletDelete == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.WalletDelete(p0, p1)
 }
 
-func (s *FullNodeStub) WalletDelete(p0 context.Context, p1 address.Address) error {
+func (s *FullNodeStub) WalletDelete(p0 context.Context, p1 address.Address) (error) {
 	return ErrNotSupported
 }
 
@@ -2397,14 +2416,14 @@ func (s *FullNodeStub) WalletNew(p0 context.Context, p1 types.KeyType) (address.
 	return *new(address.Address), ErrNotSupported
 }
 
-func (s *FullNodeStruct) WalletSetDefault(p0 context.Context, p1 address.Address) error {
+func (s *FullNodeStruct) WalletSetDefault(p0 context.Context, p1 address.Address) (error) {
 	if s.Internal.WalletSetDefault == nil {
 		return ErrNotSupported
 	}
 	return s.Internal.WalletSetDefault(p0, p1)
 }
 
-func (s *FullNodeStub) WalletSetDefault(p0 context.Context, p1 address.Address) error {
+func (s *FullNodeStub) WalletSetDefault(p0 context.Context, p1 address.Address) (error) {
 	return ErrNotSupported
 }
 
@@ -2451,6 +2470,9 @@ func (s *FullNodeStruct) WalletVerify(p0 context.Context, p1 address.Address, p2
 func (s *FullNodeStub) WalletVerify(p0 context.Context, p1 address.Address, p2 []byte, p3 *crypto.Signature) (bool, error) {
 	return false, ErrNotSupported
 }
+
+
+
 
 func (s *GatewayStruct) ChainGetBlockMessages(p0 context.Context, p1 cid.Cid) (*api.BlockMessages, error) {
 	if s.Internal.ChainGetBlockMessages == nil {
@@ -2793,5 +2815,9 @@ func (s *GatewayStub) WalletBalance(p0 context.Context, p1 address.Address) (typ
 	return *new(types.BigInt), ErrNotSupported
 }
 
+
+
 var _ FullNode = new(FullNodeStruct)
 var _ Gateway = new(GatewayStruct)
+
+
