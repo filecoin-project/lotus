@@ -31,7 +31,6 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 		envvar := os.Getenv("LOTUS_RCMGR")
 		if (isFullNode && envvar == "0") || // enable by default for full nodes
 			(!isFullNode && envvar != "1") { // otherwise, opt-in with envvar
-			// this is enabled by default; specify LOTUS_RCMGR=0 to disable
 			log.Info("libp2p resource manager is disabled")
 			return network.NullResourceManager, nil
 		}
