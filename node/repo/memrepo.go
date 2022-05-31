@@ -55,6 +55,10 @@ type lockedMemRepo struct {
 	token *byte
 }
 
+func (lmem *lockedMemRepo) RepoType() RepoType {
+	return lmem.t
+}
+
 func (lmem *lockedMemRepo) GetStorage() (stores.StorageConfig, error) {
 	if err := lmem.checkToken(); err != nil {
 		return stores.StorageConfig{}, err
