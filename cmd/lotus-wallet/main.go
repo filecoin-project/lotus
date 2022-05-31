@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"os"
@@ -185,6 +186,10 @@ var getApiKeyCmd = &cli.Command{
 			Name:  "rules",
 			Usage: "filtering rule object (see 'lotus-wallet --help')",
 		},
+		&cli.PathFlag{
+			Name:  "rules-file",
+			Usage: "path to filtering rules json file",
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		lr, ks, err := openRepo(cctx)
@@ -193,10 +198,22 @@ var getApiKeyCmd = &cli.Command{
 		}
 		defer lr.Close() // nolint
 
+		if cctx.IsSet("rules") && cctx.IsSet("rules-file") {
+			return xerrors.Errorf("only one of --rules or --rules-file can be set")
+		}
+
 		var rules Rule
-		if cctx.IsSet("rules") {
+		if cctx.IsSet("rules") || cctx.IsSet("rules-file") {
+			rb := []byte(cctx.String("rules"))
+			if cctx.IsSet("rules-file") {
+				rb, err = ioutil.ReadFile(cctx.Path("rules-file"))
+				if err != nil {
+					return xerrors.Errorf("reading rules file: %w", err)
+				}
+			}
+
 			var r interface{}
-			if err := json.Unmarshal([]byte(cctx.String("rules")), &r); err != nil {
+			if err := json.Unmarshal(rb, &r); err != nil {
 				return xerrors.Errorf("unmarshalling rules: %w", err)
 			}
 
