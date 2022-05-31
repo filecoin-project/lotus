@@ -64,7 +64,9 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		os.Setenv("PARALLEL_P1_LIMIT", strconv.Itoa(cctx.Int("parallel-p1-limit")))
+		if err := os.Setenv("PARALLEL_P1_LIMIT", strconv.Itoa(cctx.Int("parallel-p1-limit"))); err != nil {
+			return xerrors.Errorf("could not set parallel p1 limit env: %+v", err)
+		}
 
 		ctx, _ := tag.New(lcli.DaemonContext(cctx),
 			tag.Insert(metrics.Version, build.BuildVersion),

@@ -231,6 +231,9 @@ func init() {
 		uuid.MustParse("ef8d99a2-6865-4189-8ffa-9fef0f806eee"): {
 			Info: storiface.WorkerInfo{
 				Hostname: "host",
+				TaskLimits: map[sealtasks.TaskType]int{
+					sealtasks.TTPreCommit1: 10,
+				},
 				Resources: storiface.WorkerResources{
 					MemPhysical: 256 << 30,
 					MemUsed:     2 << 30,
@@ -241,7 +244,10 @@ func init() {
 					Resources:   storiface.ResourceTable,
 				},
 			},
-			Enabled:    true,
+			Enabled: true,
+			TaskTotal: map[sealtasks.TaskType]int{
+				sealtasks.TTPreCommit1: 5,
+			},
 			MemUsedMin: 0,
 			MemUsedMax: 0,
 			GpuUsed:    0,
@@ -325,6 +331,9 @@ func init() {
 		ConnsOutbound:   4,
 		Conns:           4,
 		FD:              5,
+	})
+	addExample(map[sealtasks.TaskType]int{
+		sealtasks.TTPreCommit1: 10,
 	})
 
 }

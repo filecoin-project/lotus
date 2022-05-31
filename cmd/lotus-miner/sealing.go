@@ -118,12 +118,7 @@ func workersCmd(sealing bool) *cli.Command {
 			*/
 
 			for _, stat := range st {
-				gpuUse := "not "
-				gpuCol := color.FgBlue
-				if stat.GpuUsed > 0 {
-					gpuCol = color.FgGreen
-					gpuUse = ""
-				}
+				// Worker uuid + name
 
 				var disabled string
 				if !stat.Enabled {
@@ -209,6 +204,13 @@ func workersCmd(sealing bool) *cli.Command {
 					types.SizeStr(types.NewInt(vmemTasks+vmemReserved)),
 					types.SizeStr(types.NewInt(vmemTotal)))
 
+				taskLimit, ok := stat.Info.TaskLimits[sealtasks.TTPreCommit1]
+				if ok && taskLimit > 0 {
+					runCount := stat.TaskTotal[sealtasks.TTPreCommit1]
+					fmt.Printf("      P1LIMIT:[%s] %d/%d tasks are running\n",
+						barString(float64(taskLimit), 0, float64(runCount)), runCount, taskLimit)
+				}
+
 				// GPU use
 
 				if len(stat.Info.Resources.GPUs) > 0 {
@@ -226,12 +228,6 @@ func workersCmd(sealing bool) *cli.Command {
 				}
 				for _, gpu := range stat.Info.Resources.GPUs {
 					fmt.Printf("\tGPU: %s\n", color.New(gpuCol).Sprintf("%s, %sused", gpu, gpuUse))
-				}
-
-				plConfig, ok := stat.Info.TaskLimits[sealtasks.TTPreCommit1]
-				if ok && plConfig.LimitCount > 0 {
-					fmt.Printf("\tP1LIMIT:  [%s] %d/%d tasks are running\n",
-						barString(float64(plConfig.LimitCount), 0, float64(plConfig.RunCount)), plConfig.RunCount, plConfig.LimitCount)
 				}
 			}
 
