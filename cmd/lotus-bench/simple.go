@@ -52,7 +52,7 @@ d:baga6ea4seaqpy7usqklokfx2vxuynmupslkeutzexe2uqurdg5vhtebhxqmpqmy r:bagboea4b5a
 
 > Run Commit1
 
-$ ./lotus-bench simple commit1 --sector-size 2k /tmp/sl /tmp/cac baga6ea4seaqpy7usqklokfx2vxuynmupslkeutzexe2uqurdg5vhtebhxqmpqmy bagboea4b5abcbrshxgmmpaucffwp2elaofbcrvb7hmcu3653o4lsw2arlor4hn3c /tmp/c1.json
+$ ./lotus-bench simple commit1 --sector-size 2k /tmp/sealed /tmp/cache baga6ea4seaqpy7usqklokfx2vxuynmupslkeutzexe2uqurdg5vhtebhxqmpqmy bagboea4b5abcbrshxgmmpaucffwp2elaofbcrvb7hmcu3653o4lsw2arlor4hn3c /tmp/c1.json
 Commit1 20.691875ms (96.66 KiB/s)
 
 > Run Commit2
@@ -96,7 +96,7 @@ d:baga6ea4seaqkt24j5gbf2ye2wual5gn7a5yl2tqb52v2sk4nvur4bdy7lg76cdy r:bagboea4b5a
 
 > Run ProveReplicaUpdate1
 
-$ ./lotus-bench simple provereplicaupdate1 --sector-size 2K /tmp/sl /tmp/cac /tmp/update /tmp/update-cache bagboea4b5abcbrshxgmmpaucffwp2elaofbcrvb7hmcu3653o4lsw2arlor4hn3c bagboea4b5abcaydcwlbtdx5dph2a3efpqt42emxpn3be76iu4e4lx3ltrpmpi7af baga6ea4seaqkt24j5gbf2ye2wual5gn7a5yl2tqb52v2sk4nvur4bdy7lg76cdy /tmp/pr1.json
+$ ./lotus-bench simple provereplicaupdate1 --sector-size 2K /tmp/sealed /tmp/cache /tmp/update /tmp/update-cache bagboea4b5abcbrshxgmmpaucffwp2elaofbcrvb7hmcu3653o4lsw2arlor4hn3c bagboea4b5abcaydcwlbtdx5dph2a3efpqt42emxpn3be76iu4e4lx3ltrpmpi7af baga6ea4seaqkt24j5gbf2ye2wual5gn7a5yl2tqb52v2sk4nvur4bdy7lg76cdy /tmp/pr1.json
 ProveReplicaUpdate1 18.373375ms (108.9 KiB/s)
 
 > Run ProveReplicaUpdate2
