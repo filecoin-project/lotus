@@ -76,7 +76,7 @@ To configure your lotus node to use a remote wallet:
     (the default port is 1777)
 * Start (or restart) the lotus daemon
 
-RULES:
+RULES (experimental!):
 lotus-wallet api tokens can carry filtering rules, limiting what actions can be
 performed with the token.
 
@@ -184,7 +184,7 @@ var getApiKeyCmd = &cli.Command{
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "rules",
-			Usage: "filtering rule object (see 'lotus-wallet --help')",
+			Usage: "experimental! filtering rule object (see 'lotus-wallet --help')",
 		},
 		&cli.PathFlag{
 			Name:  "rules-file",
@@ -278,7 +278,7 @@ var runCmd = &cli.Command{
 		},
 		&cli.BoolFlag{
 			Name:  "rule-must-accept",
-			Usage: "require all operations to be accepted by rule filters",
+			Usage: "(experimental!) require all operations to be accepted by rule filters",
 		},
 	},
 	Description: "Needs FULLNODE_API_INFO env-var to be set before running (see lotus-wallet --help for setup instructions)",
