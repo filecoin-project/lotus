@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# 1.15.3 / 2022-05-30
+# 1.15.3 / 2022-05-31
 
-This is an optional release of lotus, detailed changelog will be updated later.
+This is an optional release of lotus that include new APIs, some improvements and bug fixes.
 
 ## New Features
 - feat: api: add StateGetNetworkParams api ([filecoin-project/lotus#8546](https://github.com/filecoin-project/lotus/pull/8546))
@@ -54,7 +54,7 @@ This is an optional release of lotus, detailed changelog will be updated later.
 
 | Contributor | Commits | Lines ± | Files Changed |
 |-------------|---------|---------|---------------|
-| @steblian | 4 | +607/-95 | 19 |
+| @stebalien | 4 | +607/-95 | 19 |
 | @magik6k  | 9 | +550/-37 | 43 |
 | @geoff-vball | 5 | +279/-219 | 27 |
 | @simlecode | 1 | +306/-39 | 20 |
