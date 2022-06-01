@@ -89,7 +89,7 @@ var ruleParsers map[string]RuleParser
 
 func init() {
 	ruleParsers = map[string]RuleParser{
-		"AnyAccepts": AnyAccepts,
+		"First": First,
 
 		"New":  action(ActionNew),
 		"Sign": action(ActionSign),
@@ -137,9 +137,9 @@ func finalRule(err error) func(ctx context.Context, r Rule) (Filter, error) {
 	}
 }
 
-// AnyAccepts accepts when at least one subrule accepts; Stops on first Accept or Reject
+// First accepts when at least one subrule accepts; Stops on first Accept or Reject
 // r: [Rule...]
-func AnyAccepts(ctx context.Context, r Rule) (Filter, error) {
+func First(ctx context.Context, r Rule) (Filter, error) {
 	ruleList, ok := r.([]interface{})
 	if !ok {
 		return nil, xerrors.Errorf("expected AnyAccept to be an array")
@@ -172,7 +172,7 @@ func AnyAccepts(ctx context.Context, r Rule) (Filter, error) {
 func ParseRule(ctx context.Context, r Rule) (Filter, error) {
 	if arr, isArr := r.([]interface{}); isArr {
 		r = map[string]interface{}{
-			"AnyAccepts": arr,
+			"First": arr,
 		}
 	}
 

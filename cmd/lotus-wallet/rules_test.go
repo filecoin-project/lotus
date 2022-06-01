@@ -58,19 +58,19 @@ func TestMsgRules(t *testing.T) {
 	f = makeRule(`{"Reject":{}}`)
 	testMsgSignRule("reject", f, ErrReject, nil)
 
-	f = makeRule(`{"AnyAccepts":[
+	f = makeRule(`{"First":[
 		{"Accept": {}},
 		{"Reject": {}}
 	]}`)
 	testMsgSignRule("any-accept-first", f, ErrAccept, nil)
 
-	f = makeRule(`{"AnyAccepts":[
+	f = makeRule(`{"First":[
 		{"Reject": {}},
 		{"Accept": {}}
 	]}`)
 	testMsgSignRule("any-reject-first", f, ErrReject, nil)
 
-	f = makeRule(`{"AnyAccepts":[
+	f = makeRule(`{"First":[
 		{"Sign": {"Message": {"Method":{"Method":[2], "Next": {"Reject":{}}}}}},
 		{"Accept": {}}
 	]}`)
@@ -78,12 +78,12 @@ func TestMsgRules(t *testing.T) {
 		m[ParamMethod] = abi.MethodNum(2)
 	})
 
-	f = makeRule(`{"AnyAccepts":[
+	f = makeRule(`{"First":[
 		{"Sign": {"Message": {"Method":{"Method":[2], "Next": {"Reject":{}}}}}}
 	]}`)
 	testMsgSignRule("any-none", f, nil, nil)
 
-	f = makeRule(`{"AnyAccepts":[
+	f = makeRule(`{"First":[
 		{"Sign": {"Message": {"Method":{"Method":[2], "Next": {"Reject":{}}}}}},
 		{"Accept": {}}
 	]}`)
@@ -115,7 +115,7 @@ func TestMsgRules(t *testing.T) {
 		}
 	}
 
-	f = makeRule(`{"AnyAccepts":[
+	f = makeRule(`{"First":[
 		{"Sign": {"Message": {"Value":{"LessThan":"2", "Next": {"Accept":{}}}}}},
 		{"Sign": {"Message": {"Value":{"MoreThan":"4", "Next": {"Reject":{}}}}}}
 	]}`)
@@ -123,7 +123,7 @@ func TestMsgRules(t *testing.T) {
 	testMsgSignRule("value-between", f, nil, withVal(3))
 	testMsgSignRule("value-more", f, ErrReject, withVal(5))
 
-	// test array to AnyAccepts cast
+	// test array to First cast
 	f = makeRule(`[
 		{"Sign": {"Message": {"Value":{"LessThan":"2", "Next": {"Accept":{}}}}}},
 		{"Sign": {"Message": {"Value":{"MoreThan":"4", "Next": {"Reject":{}}}}}}

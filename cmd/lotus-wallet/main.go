@@ -91,7 +91,7 @@ the value of the --rule-must-accept flag.
 Special rules - Rules valid anywhere 
 - {"Accept":{}} - Finish rule execution, accept action
 - {"Reject":{}} - Finish rule execution, reject action
-- [Rule...], {"AnyAccepts": [Rule...]} - Accepts when at least one sub-rule
+- [Rule...], {"First": [Rule...]} - Accepts when at least one sub-rule
              accepts; Stops on first Accept or Reject
 
 Action rules - Rules matching actions
