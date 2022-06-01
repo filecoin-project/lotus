@@ -122,4 +122,13 @@ func TestMsgRules(t *testing.T) {
 	testMsgSignRule("value-less", f, ErrAccept, withVal(1))
 	testMsgSignRule("value-between", f, nil, withVal(3))
 	testMsgSignRule("value-more", f, ErrReject, withVal(5))
+
+	// test array to AnyAccepts cast
+	f = makeRule(`[
+		{"Sign": {"Message": {"Value":{"LessThan":"2", "Next": {"Accept":{}}}}}},
+		{"Sign": {"Message": {"Value":{"MoreThan":"4", "Next": {"Reject":{}}}}}}
+	]`)
+	testMsgSignRule("value-less", f, ErrAccept, withVal(1))
+	testMsgSignRule("value-between", f, nil, withVal(3))
+	testMsgSignRule("value-more", f, ErrReject, withVal(5))
 }

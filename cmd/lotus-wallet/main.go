@@ -91,8 +91,8 @@ the value of the --rule-must-accept flag.
 Special rules - Rules valid anywhere 
 - {"Accept":{}} - Finish rule execution, accept action
 - {"Reject":{}} - Finish rule execution, reject action
-- {"AnyAccepts": [Rule...]} - Accepts when at least one sub-rule accepts; Stops
-                              on first Accept or Reject
+- [Rule...], {"AnyAccepts": [Rule...]} - Accepts when at least one sub-rule
+             accepts; Stops on first Accept or Reject
 
 Action rules - Rules matching actions
 - {"New": Rule} - If WalletNew is called, execute the sub-rule
@@ -127,10 +127,10 @@ Block rules - Rules matching block header fields - can only be called as
 Example rules:
 
 - Only allow signing messages from f3aaa
-	{"AnyAccepts":[
+	[
 		{"Sign": {"Signer":{"Addr":["f3aaa"], "Next": {"Accept":{}}}}},
 		{"Reject": {}}
-	]}
+	]
 
 - Disallow ExtendSectorExpiration, TerminateSectors, DeclareFaults,
   DeclareFaultsRecovered (Methods 8, 9, 10, 11)
@@ -140,19 +140,19 @@ Example rules:
 
 - Allow PoSt messages from f3aaa and f3bbb, and block mining from f3aaa on
   miner f01000
-	{"AnyAccepts":[
+	[
 		{"Sign": {"Signer":{"Addr":["f3aaa"], "Next": {"Block": {"Miner":
 			{"Addr":["f01000"], "Next": {"Accept": {}}}
 		}}}}},
 		{"Sign": {"Signer":{"Addr":["f3aaa", "f3bbb"], "Next":
-			{"Message": {"AnyAccepts": [
+			{"Message": [
 				{"Method": [5, 10, 11], "Next": {"Destination":
 					{"Addr":["f01000"], "Next": {"Accept": {}}}
 				}}
-			]}}
+			]}
 		}}},
 		{"Reject": {}}
-	]}
+	]
 `,
 		Flags: []cli.Flag{
 			&cli.StringFlag{

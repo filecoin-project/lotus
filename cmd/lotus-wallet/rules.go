@@ -35,10 +35,10 @@ Rule examples:
 		  ]
 		}
 
-(AnyAccepts ([
+([
 	(Has (Addr ([f0234]) (Accept)))
 	(Sign Or[(Block (Reject)) (Message (To ([f0555]) (Accept)))])
-]))
+])
 
 
 */
@@ -170,6 +170,12 @@ func AnyAccepts(ctx context.Context, r Rule) (Filter, error) {
 // ParseRule parses a single rule
 // r: {"ruleName": ...}
 func ParseRule(ctx context.Context, r Rule) (Filter, error) {
+	if arr, isArr := r.([]interface{}); isArr {
+		r = map[string]interface{}{
+			"AnyAccepts": arr,
+		}
+	}
+
 	rules, ok := r.(map[string]interface{})
 	if !ok {
 		return nil, xerrors.Errorf("expected rule to be a map, was %T", r)
