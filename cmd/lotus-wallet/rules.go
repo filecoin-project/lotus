@@ -128,7 +128,7 @@ func finalRule(err error) func(ctx context.Context, r Rule) (Filter, error) {
 		}
 
 		if len(rules) != 0 {
-			return nil, xerrors.Errorf("final rule must be an empty map, had %d elements", rules)
+			return nil, xerrors.Errorf("final rule must be an empty map, had %d elements", len(rules))
 		}
 
 		return func(params map[FilterParam]interface{}) error {
@@ -255,7 +255,7 @@ func Block(ctx context.Context, r Rule) (Filter, error) {
 
 	sub, err := ParseRule(ctx, r)
 	if err != nil {
-		return nil, xerrors.Errorf("parsing next rule %d: %w", err)
+		return nil, xerrors.Errorf("parsing next rule: %w", err)
 	}
 
 	return func(params map[FilterParam]interface{}) error {
