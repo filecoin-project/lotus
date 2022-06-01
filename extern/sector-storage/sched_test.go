@@ -183,7 +183,7 @@ func (s *schedTestWorker) Close() error {
 
 var _ Worker = &schedTestWorker{}
 
-func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name string, taskTypes map[sealtasks.TaskType]struct{}, resources storiface.WorkerResources, ignoreResources bool) {
+func addTestWorker(t *testing.T, sched *Scheduler, index *stores.Index, name string, taskTypes map[sealtasks.TaskType]struct{}, resources storiface.WorkerResources, ignoreResources bool) {
 	w := &schedTestWorker{
 		name:      name,
 		taskTypes: taskTypes,
@@ -223,7 +223,8 @@ func addTestWorker(t *testing.T, sched *scheduler, index *stores.Index, name str
 }
 
 func TestSchedStartStop(t *testing.T) {
-	sched := newScheduler()
+	sched, err := newScheduler("")
+	require.NoError(t, err)
 	go sched.runSched()
 
 	addTestWorker(t, sched, stores.NewIndex(), "fred", nil, decentWorkerResources, false)
@@ -259,13 +260,13 @@ func TestSched(t *testing.T) {
 		wg sync.WaitGroup
 	}
 
-	type task func(*testing.T, *scheduler, *stores.Index, *runMeta)
+	type task func(*testing.T, *Scheduler, *stores.Index, *runMeta)
 
 	sched := func(taskName, expectWorker string, sid abi.SectorNumber, taskType sealtasks.TaskType) task {
 		_, _, l, _ := runtime.Caller(1)
 		_, _, l2, _ := runtime.Caller(2)
 
-		return func(t *testing.T, sched *scheduler, index *stores.Index, rm *runMeta) {
+		return func(t *testing.T, sched *Scheduler, index *stores.Index, rm *runMeta) {
 			done := make(chan struct{})
 			rm.done[taskName] = done
 
@@ -314,7 +315,7 @@ func TestSched(t *testing.T) {
 	taskStarted := func(name string) task {
 		_, _, l, _ := runtime.Caller(1)
 		_, _, l2, _ := runtime.Caller(2)
-		return func(t *testing.T, sched *scheduler, index *stores.Index, rm *runMeta) {
+		return func(t *testing.T, sched *Scheduler, index *stores.Index, rm *runMeta) {
 			select {
 			case rm.done[name] <- struct{}{}:
 			case <-ctx.Done():
@@ -326,7 +327,7 @@ func TestSched(t *testing.T) {
 	taskDone := func(name string) task {
 		_, _, l, _ := runtime.Caller(1)
 		_, _, l2, _ := runtime.Caller(2)
-		return func(t *testing.T, sched *scheduler, index *stores.Index, rm *runMeta) {
+		return func(t *testing.T, sched *Scheduler, index *stores.Index, rm *runMeta) {
 			select {
 			case rm.done[name] <- struct{}{}:
 			case <-ctx.Done():
@@ -339,7 +340,7 @@ func TestSched(t *testing.T) {
 	taskNotScheduled := func(name string) task {
 		_, _, l, _ := runtime.Caller(1)
 		_, _, l2, _ := runtime.Caller(2)
-		return func(t *testing.T, sched *scheduler, index *stores.Index, rm *runMeta) {
+		return func(t *testing.T, sched *Scheduler, index *stores.Index, rm *runMeta) {
 			select {
 			case rm.done[name] <- struct{}{}:
 				t.Fatal("not expected", l, l2)
@@ -352,7 +353,8 @@ func TestSched(t *testing.T) {
 		return func(t *testing.T) {
 			index := stores.NewIndex()
 
-			sched := newScheduler()
+			sched, err := newScheduler("")
+			require.NoError(t, err)
 			sched.testSync = make(chan struct{})
 
 			go sched.runSched()
@@ -378,7 +380,7 @@ func TestSched(t *testing.T) {
 	}
 
 	multTask := func(tasks ...task) task {
-		return func(t *testing.T, s *scheduler, index *stores.Index, meta *runMeta) {
+		return func(t *testing.T, s *Scheduler, index *stores.Index, meta *runMeta) {
 			for _, tsk := range tasks {
 				tsk(t, s, index, meta)
 			}
@@ -492,7 +494,7 @@ func TestSched(t *testing.T) {
 	}
 
 	diag := func() task {
-		return func(t *testing.T, s *scheduler, index *stores.Index, meta *runMeta) {
+		return func(t *testing.T, s *Scheduler, index *stores.Index, meta *runMeta) {
 			time.Sleep(20 * time.Millisecond)
 			for _, request := range s.diag().Requests {
 				log.Infof("!!! sDIAG: sid(%d) task(%s)", request.Sector.Number, request.TaskType)
@@ -582,12 +584,12 @@ func TestSched(t *testing.T) {
 
 type slowishSelector bool
 
-func (s slowishSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, a *workerHandle) (bool, error) {
+func (s slowishSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, a *WorkerHandle) (bool, bool, error) {
 	time.Sleep(200 * time.Microsecond)
-	return bool(s), nil
+	return bool(s), false, nil
 }
 
-func (s slowishSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *workerHandle) (bool, error) {
+func (s slowishSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *WorkerHandle) (bool, error) {
 	time.Sleep(100 * time.Microsecond)
 	return true, nil
 }
@@ -604,29 +606,30 @@ func BenchmarkTrySched(b *testing.B) {
 			for i := 0; i < b.N; i++ {
 				b.StopTimer()
 
-				sched := newScheduler()
-				sched.workers[storiface.WorkerID{}] = &workerHandle{
+				sched, err := newScheduler("")
+				require.NoError(b, err)
+				sched.Workers[storiface.WorkerID{}] = &WorkerHandle{
 					workerRpc: nil,
-					info: storiface.WorkerInfo{
+					Info: storiface.WorkerInfo{
 						Hostname:  "t",
 						Resources: decentWorkerResources,
 					},
-					preparing: &activeResources{},
-					active:    &activeResources{},
+					preparing: NewActiveResources(),
+					active:    NewActiveResources(),
 				}
 
 				for i := 0; i < windows; i++ {
-					sched.openWindows = append(sched.openWindows, &schedWindowRequest{
-						worker: storiface.WorkerID{},
-						done:   make(chan *schedWindow, 1000),
+					sched.OpenWindows = append(sched.OpenWindows, &SchedWindowRequest{
+						Worker: storiface.WorkerID{},
+						Done:   make(chan *SchedWindow, 1000),
 					})
 				}
 
 				for i := 0; i < queue; i++ {
-					sched.schedQueue.Push(&workerRequest{
-						taskType: sealtasks.TTCommit2,
-						sel:      slowishSelector(true),
-						ctx:      ctx,
+					sched.SchedQueue.Push(&WorkerRequest{
+						TaskType: sealtasks.TTCommit2,
+						Sel:      slowishSelector(true),
+						Ctx:      ctx,
 					})
 				}
 
@@ -644,26 +647,28 @@ func BenchmarkTrySched(b *testing.B) {
 }
 
 func TestWindowCompact(t *testing.T) {
-	sh := scheduler{}
+	sh := Scheduler{}
 	spt := abi.RegisteredSealProof_StackedDrg32GiBV1
 
 	test := func(start [][]sealtasks.TaskType, expect [][]sealtasks.TaskType) func(t *testing.T) {
 		return func(t *testing.T) {
-			wh := &workerHandle{
-				info: storiface.WorkerInfo{
+			wh := &WorkerHandle{
+				Info: storiface.WorkerInfo{
 					Resources: decentWorkerResources,
 				},
 			}
 
 			for _, windowTasks := range start {
-				window := &schedWindow{}
+				window := &SchedWindow{
+					Allocated: *NewActiveResources(),
+				}
 
 				for _, task := range windowTasks {
-					window.todo = append(window.todo, &workerRequest{
-						taskType: task,
-						sector:   storage.SectorRef{ProofType: spt},
+					window.Todo = append(window.Todo, &WorkerRequest{
+						TaskType: task,
+						Sector:   storage.SectorRef{ProofType: spt},
 					})
-					window.allocated.add(wh.info.Resources, storiface.ResourceTable[task][spt])
+					window.Allocated.Add(task.SealTask(spt), wh.Info.Resources, storiface.ResourceTable[task][spt])
 				}
 
 				wh.activeWindows = append(wh.activeWindows, window)
@@ -678,17 +683,17 @@ func TestWindowCompact(t *testing.T) {
 			require.Equal(t, len(start)-len(expect), -sw.windowsRequested)
 
 			for wi, tasks := range expect {
-				var expectRes activeResources
+				expectRes := NewActiveResources()
 
 				for ti, task := range tasks {
-					require.Equal(t, task, wh.activeWindows[wi].todo[ti].taskType, "%d, %d", wi, ti)
-					expectRes.add(wh.info.Resources, storiface.ResourceTable[task][spt])
+					require.Equal(t, task, wh.activeWindows[wi].Todo[ti].TaskType, "%d, %d", wi, ti)
+					expectRes.Add(task.SealTask(spt), wh.Info.Resources, storiface.ResourceTable[task][spt])
 				}
 
-				require.Equal(t, expectRes.cpuUse, wh.activeWindows[wi].allocated.cpuUse, "%d", wi)
-				require.Equal(t, expectRes.gpuUsed, wh.activeWindows[wi].allocated.gpuUsed, "%d", wi)
-				require.Equal(t, expectRes.memUsedMin, wh.activeWindows[wi].allocated.memUsedMin, "%d", wi)
-				require.Equal(t, expectRes.memUsedMax, wh.activeWindows[wi].allocated.memUsedMax, "%d", wi)
+				require.Equal(t, expectRes.cpuUse, wh.activeWindows[wi].Allocated.cpuUse, "%d", wi)
+				require.Equal(t, expectRes.gpuUsed, wh.activeWindows[wi].Allocated.gpuUsed, "%d", wi)
+				require.Equal(t, expectRes.memUsedMin, wh.activeWindows[wi].Allocated.memUsedMin, "%d", wi)
+				require.Equal(t, expectRes.memUsedMax, wh.activeWindows[wi].Allocated.memUsedMax, "%d", wi)
 			}
 
 		}

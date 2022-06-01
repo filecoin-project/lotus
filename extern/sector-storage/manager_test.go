@@ -109,6 +109,9 @@ func newTestMgr(ctx context.Context, t *testing.T, ds datastore.Datastore) (*Man
 
 	stor := stores.NewRemote(lstor, si, nil, 6000, &stores.DefaultPartialFileHandler{})
 
+	sh, err := newScheduler("")
+	require.NoError(t, err)
+
 	m := &Manager{
 		ls:         st,
 		storage:    stor,
@@ -116,7 +119,7 @@ func newTestMgr(ctx context.Context, t *testing.T, ds datastore.Datastore) (*Man
 		remoteHnd:  &stores.FetchHandler{Local: lstor},
 		index:      si,
 
-		sched:            newScheduler(),
+		sched:            sh,
 		windowPoStSched:  newPoStScheduler(sealtasks.TTGenerateWindowPoSt),
 		winningPoStSched: newPoStScheduler(sealtasks.TTGenerateWinningPoSt),
 
@@ -315,6 +318,12 @@ func TestSnapDeals(t *testing.T) {
 	require.NoError(t, m.GenerateSectorKeyFromData(ctx, sid, out.NewUnsealed))
 	fmt.Printf("GSK duration (%s): %s\n", ss.ShortString(), time.Since(startGSK))
 
+	fmt.Printf("Remove data\n")
+	require.NoError(t, m.FinalizeSector(ctx, sid, nil))
+	fmt.Printf("Release Sector Key\n")
+	require.NoError(t, m.ReleaseSectorKey(ctx, sid))
+	fmt.Printf("Unseal Replica\n")
+	require.NoError(t, m.SectorsUnsealPiece(ctx, sid, 0, p1.Size.Unpadded(), ticket, &out.NewUnsealed))
 }
 
 func TestRedoPC1(t *testing.T) {

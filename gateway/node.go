@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/lotus/api"
+	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -178,6 +179,10 @@ func (gw *Node) limit(ctx context.Context, tokens int) error {
 		return fmt.Errorf("server busy. %w", err)
 	}
 	return nil
+}
+
+func (gw *Node) Discover(ctx context.Context) (apitypes.OpenRPCDocument, error) {
+	return build.OpenRPCDiscoverJSON_Gateway(), nil
 }
 
 func (gw *Node) Version(ctx context.Context) (api.APIVersion, error) {

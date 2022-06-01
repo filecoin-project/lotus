@@ -23,25 +23,26 @@ func (t *CallID) MarshalCBOR(w io.Writer) error {
 		_, err := w.Write(cbg.CborNull)
 		return err
 	}
-	if _, err := w.Write([]byte{162}); err != nil {
+
+	cw := cbg.NewCborWriter(w)
+
+	if _, err := cw.Write([]byte{162}); err != nil {
 		return err
 	}
-
-	scratch := make([]byte, 9)
 
 	// t.Sector (abi.SectorID) (struct)
 	if len("Sector") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Sector\" was too long")
 	}
 
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("Sector"))); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("Sector"))); err != nil {
 		return err
 	}
 	if _, err := io.WriteString(w, string("Sector")); err != nil {
 		return err
 	}
 
-	if err := t.Sector.MarshalCBOR(w); err != nil {
+	if err := t.Sector.MarshalCBOR(cw); err != nil {
 		return err
 	}
 
@@ -50,7 +51,7 @@ func (t *CallID) MarshalCBOR(w io.Writer) error {
 		return xerrors.Errorf("Value in field \"ID\" was too long")
 	}
 
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajTextString, uint64(len("ID"))); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajTextString, uint64(len("ID"))); err != nil {
 		return err
 	}
 	if _, err := io.WriteString(w, string("ID")); err != nil {
@@ -61,26 +62,31 @@ func (t *CallID) MarshalCBOR(w io.Writer) error {
 		return xerrors.Errorf("Byte array in field t.ID was too long")
 	}
 
-	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajByteString, uint64(len(t.ID))); err != nil {
+	if err := cw.WriteMajorTypeHeader(cbg.MajByteString, uint64(len(t.ID))); err != nil {
 		return err
 	}
 
-	if _, err := w.Write(t.ID[:]); err != nil {
+	if _, err := cw.Write(t.ID[:]); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (t *CallID) UnmarshalCBOR(r io.Reader) error {
+func (t *CallID) UnmarshalCBOR(r io.Reader) (err error) {
 	*t = CallID{}
 
-	br := cbg.GetPeeker(r)
-	scratch := make([]byte, 8)
+	cr := cbg.NewCborReader(r)
 
-	maj, extra, err := cbg.CborReadHeaderBuf(br, scratch)
+	maj, extra, err := cr.ReadHeader()
 	if err != nil {
 		return err
 	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
 	if maj != cbg.MajMap {
 		return fmt.Errorf("cbor input should be of type map")
 	}
@@ -95,7 +101,7 @@ func (t *CallID) UnmarshalCBOR(r io.Reader) error {
 	for i := uint64(0); i < n; i++ {
 
 		{
-			sval, err := cbg.ReadStringBuf(br, scratch)
+			sval, err := cbg.ReadString(cr)
 			if err != nil {
 				return err
 			}
@@ -109,7 +115,7 @@ func (t *CallID) UnmarshalCBOR(r io.Reader) error {
 
 			{
 
-				if err := t.Sector.UnmarshalCBOR(br); err != nil {
+				if err := t.Sector.UnmarshalCBOR(cr); err != nil {
 					return xerrors.Errorf("unmarshaling t.Sector: %w", err)
 				}
 
@@ -117,7 +123,7 @@ func (t *CallID) UnmarshalCBOR(r io.Reader) error {
 			// t.ID (uuid.UUID) (array)
 		case "ID":
 
-			maj, extra, err = cbg.CborReadHeaderBuf(br, scratch)
+			maj, extra, err = cr.ReadHeader()
 			if err != nil {
 				return err
 			}
@@ -135,7 +141,7 @@ func (t *CallID) UnmarshalCBOR(r io.Reader) error {
 
 			t.ID = [16]uint8{}
 
-			if _, err := io.ReadFull(br, t.ID[:]); err != nil {
+			if _, err := io.ReadFull(cr, t.ID[:]); err != nil {
 				return err
 			}
 

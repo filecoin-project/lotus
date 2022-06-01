@@ -4,20 +4,27 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"math"
+	"net/http"
 	"os"
 	"sort"
 	"strings"
 	"text/tabwriter"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
 	"github.com/google/uuid"
+	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-padreader"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/lib/httpreader"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -31,6 +38,7 @@ var sealingCmd = &cli.Command{
 		workersCmd(true),
 		sealingSchedDiagCmd,
 		sealingAbortCmd,
+		sealingDataCidCmd,
 	},
 }
 
@@ -97,13 +105,20 @@ func workersCmd(sealing bool) *cli.Command {
 				return st[i].id.String() < st[j].id.String()
 			})
 
+			/*
+				Example output:
+
+				Worker c4d65451-07f8-4230-98ad-4f33dea2a8cc, host myhostname
+				        TASK: PC1(1/4) AP(15/15) GET(3)
+				        CPU:  [||||||||                                                        ] 16/128 core(s) in use
+				        RAM:  [||||||||                                                        ] 12% 125.8 GiB/1008 GiB
+				        VMEM: [||||||||                                                        ] 12% 125.8 GiB/1008 GiB
+				        GPU:  [                                                                ] 0% 0.00/1 gpu(s) in use
+				        GPU: NVIDIA GeForce RTX 3090, not used
+			*/
+
 			for _, stat := range st {
-				gpuUse := "not "
-				gpuCol := color.FgBlue
-				if stat.GpuUsed > 0 {
-					gpuCol = color.FgGreen
-					gpuUse = ""
-				}
+				// Worker uuid + name
 
 				var disabled string
 				if !stat.Enabled {
@@ -112,8 +127,52 @@ func workersCmd(sealing bool) *cli.Command {
 
 				fmt.Printf("Worker %s, host %s%s\n", stat.id, color.MagentaString(stat.Info.Hostname), disabled)
 
+				// Task counts
+				tc := make([][]string, 0, len(stat.TaskCounts))
+
+				for st, c := range stat.TaskCounts {
+					if c == 0 {
+						continue
+					}
+
+					stt, err := sealtasks.SttFromString(st)
+					if err != nil {
+						return err
+					}
+
+					str := fmt.Sprint(c)
+					if max := stat.Info.Resources.ResourceSpec(stt.RegisteredSealProof, stt.TaskType).MaxConcurrent; max > 0 {
+						switch {
+						case c < max:
+							str = color.GreenString(str)
+						case c >= max:
+							str = color.YellowString(str)
+						}
+						str = fmt.Sprintf("%s/%d", str, max)
+					} else {
+						str = color.CyanString(str)
+					}
+					str = fmt.Sprintf("%s(%s)", color.BlueString(stt.Short()), str)
+
+					tc = append(tc, []string{string(stt.TaskType), str})
+				}
+				sort.Slice(tc, func(i, j int) bool {
+					return sealtasks.TaskType(tc[i][0]).Less(sealtasks.TaskType(tc[j][0]))
+				})
+				var taskStr string
+				for _, t := range tc {
+					taskStr = t[1] + " "
+				}
+				if taskStr != "" {
+					fmt.Printf("\tTASK: %s\n", taskStr)
+				}
+
+				// CPU use
+
 				fmt.Printf("\tCPU:  [%s] %d/%d core(s) in use\n",
 					barString(float64(stat.Info.Resources.CPUs), 0, float64(stat.CpuUse)), stat.CpuUse, stat.Info.Resources.CPUs)
+
+				// RAM use
 
 				ramTotal := stat.Info.Resources.MemPhysical
 				ramTasks := stat.MemUsedMin
@@ -129,6 +188,8 @@ func workersCmd(sealing bool) *cli.Command {
 					types.SizeStr(types.NewInt(ramTasks+ramUsed)),
 					types.SizeStr(types.NewInt(stat.Info.Resources.MemPhysical)))
 
+				// VMEM use (ram+swap)
+
 				vmemTotal := stat.Info.Resources.MemPhysical + stat.Info.Resources.MemSwap
 				vmemTasks := stat.MemUsedMax
 				vmemUsed := stat.Info.Resources.MemUsed + stat.Info.Resources.MemSwapUsed
@@ -143,11 +204,20 @@ func workersCmd(sealing bool) *cli.Command {
 					types.SizeStr(types.NewInt(vmemTasks+vmemReserved)),
 					types.SizeStr(types.NewInt(vmemTotal)))
 
+				// GPU use
+
 				if len(stat.Info.Resources.GPUs) > 0 {
 					gpuBar := barString(float64(len(stat.Info.Resources.GPUs)), 0, stat.GpuUsed)
 					fmt.Printf("\tGPU:  [%s] %.f%% %.2f/%d gpu(s) in use\n", color.GreenString(gpuBar),
 						stat.GpuUsed*100/float64(len(stat.Info.Resources.GPUs)),
 						stat.GpuUsed, len(stat.Info.Resources.GPUs))
+				}
+
+				gpuUse := "not "
+				gpuCol := color.FgBlue
+				if stat.GpuUsed > 0 {
+					gpuCol = color.FgGreen
+					gpuUse = ""
 				}
 				for _, gpu := range stat.Info.Resources.GPUs {
 					fmt.Printf("\tGPU: %s\n", color.New(gpuCol).Sprintf("%s, %sused", gpu, gpuUse))
@@ -347,5 +417,96 @@ var sealingAbortCmd = &cli.Command{
 		fmt.Printf("aborting job %s, task %s, sector %d, running on host %s\n", job.ID.String(), job.Task.Short(), job.Sector.Number, job.Hostname)
 
 		return nodeApi.SealingAbort(ctx, job.ID)
+	},
+}
+
+var sealingDataCidCmd = &cli.Command{
+	Name:      "data-cid",
+	Usage:     "Compute data CID using workers",
+	ArgsUsage: "[file/url] <padded piece size>",
+	Flags: []cli.Flag{
+		&cli.Uint64Flag{
+			Name:  "file-size",
+			Usage: "real file size",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() < 1 || cctx.Args().Len() > 2 {
+			return xerrors.Errorf("expected 1 or 2 arguments")
+		}
+
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		var r io.Reader
+		sz := cctx.Uint64("file-size")
+
+		if strings.HasPrefix(cctx.Args().First(), "http://") || strings.HasPrefix(cctx.Args().First(), "https://") {
+			r = &httpreader.HttpReader{
+				URL: cctx.Args().First(),
+			}
+
+			if !cctx.IsSet("file-size") {
+				resp, err := http.Head(cctx.Args().First())
+				if err != nil {
+					return xerrors.Errorf("http head: %w", err)
+				}
+
+				if resp.ContentLength < 0 {
+					return xerrors.Errorf("head response didn't contain content length; specify --file-size")
+				}
+				sz = uint64(resp.ContentLength)
+			}
+		} else {
+			p, err := homedir.Expand(cctx.Args().First())
+			if err != nil {
+				return xerrors.Errorf("expanding path: %w", err)
+			}
+
+			f, err := os.OpenFile(p, os.O_RDONLY, 0)
+			if err != nil {
+				return xerrors.Errorf("opening source file: %w", err)
+			}
+
+			if !cctx.IsSet("file-size") {
+				st, err := f.Stat()
+				if err != nil {
+					return xerrors.Errorf("stat: %w", err)
+				}
+				sz = uint64(st.Size())
+			}
+
+			r = f
+		}
+
+		var psize abi.PaddedPieceSize
+		if cctx.Args().Len() == 2 {
+			rps, err := humanize.ParseBytes(cctx.Args().Get(1))
+			if err != nil {
+				return xerrors.Errorf("parsing piece size: %w", err)
+			}
+			psize = abi.PaddedPieceSize(rps)
+			if err := psize.Validate(); err != nil {
+				return xerrors.Errorf("checking piece size: %w", err)
+			}
+			if sz > uint64(psize.Unpadded()) {
+				return xerrors.Errorf("file larger than the piece")
+			}
+		} else {
+			psize = padreader.PaddedSize(sz).Padded()
+		}
+
+		pc, err := nodeApi.ComputeDataCid(ctx, psize.Unpadded(), r)
+		if err != nil {
+			return xerrors.Errorf("computing data CID: %w", err)
+		}
+
+		fmt.Println(pc.PieceCID, " ", pc.Size)
+		return nil
 	},
 }

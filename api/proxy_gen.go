@@ -512,6 +512,8 @@ type GatewayStruct struct {
 
 		ChainReadObj func(p0 context.Context, p1 cid.Cid) ([]byte, error) ``
 
+		Discover func(p0 context.Context) (apitypes.OpenRPCDocument, error) ``
+
 		GasEstimateMessageGas func(p0 context.Context, p1 *types.Message, p2 *MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) ``
 
 		MpoolPush func(p0 context.Context, p1 *types.SignedMessage) (cid.Cid, error) ``
@@ -662,6 +664,8 @@ type StorageMinerStruct struct {
 		DagstoreLookupPieces func(p0 context.Context, p1 cid.Cid) ([]DagstoreShardInfo, error) `perm:"admin"`
 
 		DagstoreRecoverShard func(p0 context.Context, p1 string) error `perm:"write"`
+
+		DagstoreRegisterShard func(p0 context.Context, p1 string) error `perm:"admin"`
 
 		DealsConsiderOfflineRetrievalDeals func(p0 context.Context) (bool, error) `perm:"admin"`
 
@@ -3297,6 +3301,17 @@ func (s *GatewayStub) ChainReadObj(p0 context.Context, p1 cid.Cid) ([]byte, erro
 	return *new([]byte), ErrNotSupported
 }
 
+func (s *GatewayStruct) Discover(p0 context.Context) (apitypes.OpenRPCDocument, error) {
+	if s.Internal.Discover == nil {
+		return *new(apitypes.OpenRPCDocument), ErrNotSupported
+	}
+	return s.Internal.Discover(p0)
+}
+
+func (s *GatewayStub) Discover(p0 context.Context) (apitypes.OpenRPCDocument, error) {
+	return *new(apitypes.OpenRPCDocument), ErrNotSupported
+}
+
 func (s *GatewayStruct) GasEstimateMessageGas(p0 context.Context, p1 *types.Message, p2 *MessageSendSpec, p3 types.TipSetKey) (*types.Message, error) {
 	if s.Internal.GasEstimateMessageGas == nil {
 		return nil, ErrNotSupported
@@ -3987,6 +4002,17 @@ func (s *StorageMinerStruct) DagstoreRecoverShard(p0 context.Context, p1 string)
 }
 
 func (s *StorageMinerStub) DagstoreRecoverShard(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) DagstoreRegisterShard(p0 context.Context, p1 string) error {
+	if s.Internal.DagstoreRegisterShard == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.DagstoreRegisterShard(p0, p1)
+}
+
+func (s *StorageMinerStub) DagstoreRegisterShard(p0 context.Context, p1 string) error {
 	return ErrNotSupported
 }
 

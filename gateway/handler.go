@@ -9,29 +9,32 @@ import (
 
 	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/lotus/api"
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/metrics/proxy"
+	"github.com/filecoin-project/lotus/node"
 	"github.com/gorilla/mux"
 	promclient "github.com/prometheus/client_golang/prometheus"
 	"golang.org/x/time/rate"
 )
 
 // Handler returns a gateway http.Handler, to be mounted as-is on the server.
-func Handler(a api.Gateway, rateLimit int64, connPerMinute int64, opts ...jsonrpc.ServerOption) (http.Handler, error) {
+func Handler(gwapi lapi.Gateway, api lapi.FullNode, rateLimit int64, connPerMinute int64, opts ...jsonrpc.ServerOption) (http.Handler, error) {
 	m := mux.NewRouter()
 
 	serveRpc := func(path string, hnd interface{}) {
 		rpcServer := jsonrpc.NewServer(opts...)
 		rpcServer.Register("Filecoin", hnd)
+		rpcServer.AliasMethod("rpc.discover", "Filecoin.Discover")
+
 		m.Handle(path, rpcServer)
 	}
 
-	ma := proxy.MetricedGatewayAPI(a)
+	ma := proxy.MetricedGatewayAPI(gwapi)
 
 	serveRpc("/rpc/v1", ma)
-	serveRpc("/rpc/v0", api.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), ma))
+	serveRpc("/rpc/v0", lapi.Wrap(new(v1api.FullNodeStruct), new(v0api.WrapperV1Full), ma))
 
 	registry := promclient.DefaultRegisterer.(*promclient.Registry)
 	exporter, err := prometheus.NewExporter(prometheus.Options{
@@ -42,6 +45,8 @@ func Handler(a api.Gateway, rateLimit int64, connPerMinute int64, opts ...jsonrp
 		return nil, err
 	}
 	m.Handle("/debug/metrics", exporter)
+	m.Handle("/health/livez", node.NewLiveHandler(api))
+	m.Handle("/health/readyz", node.NewReadyHandler(api))
 	m.PathPrefix("/").Handler(http.DefaultServeMux)
 
 	/*ah := &auth.Handler{

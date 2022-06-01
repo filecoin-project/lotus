@@ -198,7 +198,7 @@ var runCmd = &cli.Command{
 		}
 
 		gwapi := gateway.NewNode(api, lookbackCap, waitLookback, rateLimit, rateLimitTimeout)
-		h, err := gateway.Handler(gwapi, perConnRateLimit, connPerMinute, serverOptions...)
+		h, err := gateway.Handler(gwapi, api, perConnRateLimit, connPerMinute, serverOptions...)
 		if err != nil {
 			return xerrors.Errorf("failed to set up gateway HTTP handler")
 		}

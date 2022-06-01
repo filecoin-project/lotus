@@ -9,8 +9,26 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
-func (a *activeResources) withResources(id storiface.WorkerID, wr storiface.WorkerInfo, r storiface.Resources, locker sync.Locker, cb func() error) error {
-	for !a.canHandleRequest(r, id, "withResources", wr) {
+type ActiveResources struct {
+	memUsedMin uint64
+	memUsedMax uint64
+	gpuUsed    float64
+	cpuUse     uint64
+
+	taskCounters map[sealtasks.SealTaskType]int
+
+	cond    *sync.Cond
+	waiting int
+}
+
+func NewActiveResources() *ActiveResources {
+	return &ActiveResources{
+		taskCounters: map[sealtasks.SealTaskType]int{},
+	}
+}
+
+func (a *ActiveResources) withResources(id storiface.WorkerID, wr storiface.WorkerInfo, tt sealtasks.SealTaskType, r storiface.Resources, locker sync.Locker, cb func() error) error {
+	for !a.CanHandleRequest(tt, r, id, "withResources", wr) {
 		if a.cond == nil {
 			a.cond = sync.NewCond(locker)
 		}
@@ -19,22 +37,22 @@ func (a *activeResources) withResources(id storiface.WorkerID, wr storiface.Work
 		a.waiting--
 	}
 
-	a.add(wr.Resources, r)
+	a.Add(tt, wr.Resources, r)
 
 	err := cb()
 
-	a.free(wr.Resources, r)
+	a.Free(tt, wr.Resources, r)
 
 	return err
 }
 
 // must be called with the same lock as the one passed to withResources
-func (a *activeResources) hasWorkWaiting() bool {
+func (a *ActiveResources) hasWorkWaiting() bool {
 	return a.waiting > 0
 }
 
-// add task resources to activeResources and return utilization difference
-func (a *activeResources) add(wr storiface.WorkerResources, r storiface.Resources) float64 {
+// add task resources to ActiveResources and return utilization difference
+func (a *ActiveResources) Add(tt sealtasks.SealTaskType, wr storiface.WorkerResources, r storiface.Resources) float64 {
 	startUtil := a.utilization(wr)
 
 	if r.GPUUtilization > 0 {
@@ -43,26 +61,35 @@ func (a *activeResources) add(wr storiface.WorkerResources, r storiface.Resource
 	a.cpuUse += r.Threads(wr.CPUs, len(wr.GPUs))
 	a.memUsedMin += r.MinMemory
 	a.memUsedMax += r.MaxMemory
+	a.taskCounters[tt]++
 
 	return a.utilization(wr) - startUtil
 }
 
-func (a *activeResources) free(wr storiface.WorkerResources, r storiface.Resources) {
+func (a *ActiveResources) Free(tt sealtasks.SealTaskType, wr storiface.WorkerResources, r storiface.Resources) {
 	if r.GPUUtilization > 0 {
 		a.gpuUsed -= r.GPUUtilization
 	}
 	a.cpuUse -= r.Threads(wr.CPUs, len(wr.GPUs))
 	a.memUsedMin -= r.MinMemory
 	a.memUsedMax -= r.MaxMemory
+	a.taskCounters[tt]--
 
 	if a.cond != nil {
 		a.cond.Broadcast()
 	}
 }
 
-// canHandleRequest evaluates if the worker has enough available resources to
+// CanHandleRequest evaluates if the worker has enough available resources to
 // handle the request.
-func (a *activeResources) canHandleRequest(needRes storiface.Resources, wid storiface.WorkerID, caller string, info storiface.WorkerInfo) bool {
+func (a *ActiveResources) CanHandleRequest(tt sealtasks.SealTaskType, needRes storiface.Resources, wid storiface.WorkerID, caller string, info storiface.WorkerInfo) bool {
+	if needRes.MaxConcurrent > 0 {
+		if a.taskCounters[tt] >= needRes.MaxConcurrent {
+			log.Debugf("sched: not scheduling on worker %s for %s; at task limit tt=%s, curcount=%d", wid, caller, tt, a.taskCounters[tt])
+			return false
+		}
+	}
+
 	if info.IgnoreResources {
 		// shortcircuit; if this worker is ignoring resources, it can always handle the request.
 		return true
@@ -110,7 +137,7 @@ func (a *activeResources) canHandleRequest(needRes storiface.Resources, wid stor
 }
 
 // utilization returns a number in 0..1 range indicating fraction of used resources
-func (a *activeResources) utilization(wr storiface.WorkerResources) float64 {
+func (a *ActiveResources) utilization(wr storiface.WorkerResources) float64 { // todo task type
 	var max float64
 
 	cpu := float64(a.cpuUse) / float64(wr.CPUs)
@@ -145,14 +172,14 @@ func (a *activeResources) utilization(wr storiface.WorkerResources) float64 {
 	return max
 }
 
-func (wh *workerHandle) utilization() float64 {
+func (wh *WorkerHandle) Utilization() float64 {
 	wh.lk.Lock()
-	u := wh.active.utilization(wh.info.Resources)
-	u += wh.preparing.utilization(wh.info.Resources)
+	u := wh.active.utilization(wh.Info.Resources)
+	u += wh.preparing.utilization(wh.Info.Resources)
 	wh.lk.Unlock()
 	wh.wndLk.Lock()
 	for _, window := range wh.activeWindows {
-		u += window.allocated.utilization(wh.info.Resources)
+		u += window.Allocated.utilization(wh.Info.Resources)
 	}
 	wh.wndLk.Unlock()
 
@@ -161,7 +188,7 @@ func (wh *workerHandle) utilization() float64 {
 
 var tasksCacheTimeout = 30 * time.Second
 
-func (wh *workerHandle) TaskTypes(ctx context.Context) (t map[sealtasks.TaskType]struct{}, err error) {
+func (wh *WorkerHandle) TaskTypes(ctx context.Context) (t map[sealtasks.TaskType]struct{}, err error) {
 	wh.tasksLk.Lock()
 	defer wh.tasksLk.Unlock()
 

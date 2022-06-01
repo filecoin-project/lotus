@@ -17,7 +17,7 @@ import (
 
 type poStScheduler struct {
 	lk      sync.RWMutex
-	workers map[storiface.WorkerID]*workerHandle
+	workers map[storiface.WorkerID]*WorkerHandle
 	cond    *sync.Cond
 
 	postType sealtasks.TaskType
@@ -25,14 +25,14 @@ type poStScheduler struct {
 
 func newPoStScheduler(t sealtasks.TaskType) *poStScheduler {
 	ps := &poStScheduler{
-		workers:  map[storiface.WorkerID]*workerHandle{},
+		workers:  map[storiface.WorkerID]*WorkerHandle{},
 		postType: t,
 	}
 	ps.cond = sync.NewCond(&ps.lk)
 	return ps
 }
 
-func (ps *poStScheduler) MaybeAddWorker(wid storiface.WorkerID, tasks map[sealtasks.TaskType]struct{}, w *workerHandle) bool {
+func (ps *poStScheduler) MaybeAddWorker(wid storiface.WorkerID, tasks map[sealtasks.TaskType]struct{}, w *WorkerHandle) bool {
 	if _, ok := tasks[ps.postType]; !ok {
 		return false
 	}
@@ -49,10 +49,10 @@ func (ps *poStScheduler) MaybeAddWorker(wid storiface.WorkerID, tasks map[sealta
 	return true
 }
 
-func (ps *poStScheduler) delWorker(wid storiface.WorkerID) *workerHandle {
+func (ps *poStScheduler) delWorker(wid storiface.WorkerID) *WorkerHandle {
 	ps.lk.Lock()
 	defer ps.lk.Unlock()
-	var w *workerHandle = nil
+	var w *WorkerHandle = nil
 	if wh, ok := ps.workers[wid]; ok {
 		w = wh
 		delete(ps.workers, wid)
@@ -68,7 +68,7 @@ func (ps *poStScheduler) CanSched(ctx context.Context) bool {
 	}
 
 	for _, w := range ps.workers {
-		if w.enabled {
+		if w.Enabled {
 			return true
 		}
 	}
@@ -105,7 +105,7 @@ func (ps *poStScheduler) Schedule(ctx context.Context, primary bool, spt abi.Reg
 	selected := candidates[0]
 	worker := ps.workers[selected.id]
 
-	return worker.active.withResources(selected.id, worker.info, selected.res, &ps.lk, func() error {
+	return worker.active.withResources(selected.id, worker.Info, ps.postType.SealTask(spt), selected.res, &ps.lk, func() error {
 		ps.lk.Unlock()
 		defer ps.lk.Lock()
 
@@ -122,9 +122,9 @@ func (ps *poStScheduler) readyWorkers(spt abi.RegisteredSealProof) (bool, []cand
 	var accepts []candidateWorker
 	//if the gpus of the worker are insufficient or it's disabled, it cannot be scheduled
 	for wid, wr := range ps.workers {
-		needRes := wr.info.Resources.ResourceSpec(spt, ps.postType)
+		needRes := wr.Info.Resources.ResourceSpec(spt, ps.postType)
 
-		if !wr.active.canHandleRequest(needRes, wid, "post-readyWorkers", wr.info) {
+		if !wr.active.CanHandleRequest(ps.postType.SealTask(spt), needRes, wid, "post-readyWorkers", wr.Info) {
 			continue
 		}
 
@@ -145,16 +145,16 @@ func (ps *poStScheduler) readyWorkers(spt abi.RegisteredSealProof) (bool, []cand
 func (ps *poStScheduler) disable(wid storiface.WorkerID) {
 	ps.lk.Lock()
 	defer ps.lk.Unlock()
-	ps.workers[wid].enabled = false
+	ps.workers[wid].Enabled = false
 }
 
 func (ps *poStScheduler) enable(wid storiface.WorkerID) {
 	ps.lk.Lock()
 	defer ps.lk.Unlock()
-	ps.workers[wid].enabled = true
+	ps.workers[wid].Enabled = true
 }
 
-func (ps *poStScheduler) watch(wid storiface.WorkerID, worker *workerHandle) {
+func (ps *poStScheduler) watch(wid storiface.WorkerID, worker *WorkerHandle) {
 	heartbeatTimer := time.NewTicker(stores.HeartbeatInterval)
 	defer heartbeatTimer.Stop()
 
@@ -197,7 +197,7 @@ func (ps *poStScheduler) watch(wid storiface.WorkerID, worker *workerHandle) {
 	}
 }
 
-func (ps *poStScheduler) workerCleanup(wid storiface.WorkerID, w *workerHandle) {
+func (ps *poStScheduler) workerCleanup(wid storiface.WorkerID, w *WorkerHandle) {
 	select {
 	case <-w.closingMgr:
 	default:
@@ -223,7 +223,7 @@ func (ps *poStScheduler) schedClose() {
 	}
 }
 
-func (ps *poStScheduler) WorkerStats(ctx context.Context, cb func(ctx context.Context, wid storiface.WorkerID, worker *workerHandle)) {
+func (ps *poStScheduler) WorkerStats(ctx context.Context, cb func(ctx context.Context, wid storiface.WorkerID, worker *WorkerHandle)) {
 	ps.lk.RLock()
 	defer ps.lk.RUnlock()
 	for id, w := range ps.workers {
