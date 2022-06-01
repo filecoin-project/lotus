@@ -31,7 +31,7 @@ import (
 const (
 	DefaultLookbackCap            = time.Hour * 24
 	DefaultStateWaitLookbackLimit = abi.ChainEpoch(20)
-	DefaultRateLimitTimeout       = time.Minute * 10
+	DefaultRateLimitTimeout       = time.Second * 5
 	basicRateLimitTokens          = 1
 	walletRateLimitTokens         = 1
 	chainRateLimitTokens          = 2
