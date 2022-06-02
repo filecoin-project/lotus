@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+
 	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
 
 	"github.com/filecoin-project/lotus/chain/rand"
@@ -22,6 +24,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/state"
@@ -316,6 +319,48 @@ func (sm *StateManager) LookupID(ctx context.Context, addr address.Address, ts *
 		return address.Undef, xerrors.Errorf("load state tree: %w", err)
 	}
 	return state.LookupID(addr)
+}
+
+func (sm *StateManager) LookupRobustAddress(ctx context.Context, idAddr address.Address, ts *types.TipSet) (address.Address, error) {
+	idAddrDecoded, err := address.IDFromAddress(idAddr)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("failed to decode provided address as id addr: %w", err)
+	}
+
+	cst := cbor.NewCborStore(sm.cs.StateBlockstore())
+	wrapStore := adt.WrapStore(ctx, cst)
+
+	stateTree, err := state.LoadStateTree(cst, sm.parentState(ts))
+	if err != nil {
+		return address.Undef, xerrors.Errorf("load state tree: %w", err)
+	}
+
+	initActor, err := stateTree.GetActor(_init.Address)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("load init actor: %w", err)
+	}
+
+	initState, err := _init.Load(wrapStore, initActor)
+	if err != nil {
+		return address.Undef, xerrors.Errorf("load init state: %w", err)
+	}
+	robustAddr := address.Undef
+
+	err = initState.ForEachActor(func(id abi.ActorID, addr address.Address) error {
+		if uint64(id) == idAddrDecoded {
+			robustAddr = addr
+			// Hacky way to early return from ForEach
+			return xerrors.New("robust address found")
+		}
+		return nil
+	})
+	if robustAddr == address.Undef {
+		if err == nil {
+			return address.Undef, xerrors.Errorf("Address %s not found", idAddr.String())
+		}
+		return address.Undef, xerrors.Errorf("finding address: %w", err)
+	}
+	return robustAddr, nil
 }
 
 func (sm *StateManager) ValidateChain(ctx context.Context, ts *types.TipSet) error {

@@ -3,11 +3,13 @@ package vm
 import (
 	"bytes"
 	"context"
+	"sync/atomic"
 	"time"
 
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 
 	"github.com/filecoin-project/go-state-types/network"
@@ -41,12 +43,41 @@ type FvmExtern struct {
 	Rand
 	blockstore.Blockstore
 	epoch   abi.ChainEpoch
-	nv      network.Version
 	lbState LookbackStateGetter
 	base    cid.Cid
 }
 
-// VerifyConsensusFault is similar to the one in syscalls.go used by the LegacyVM, except it never errors
+// This may eventually become identical to ExecutionTrace, but we can make incremental progress towards that
+type FvmExecutionTrace struct {
+	Msg    *types.Message
+	MsgRct *types.MessageReceipt
+	Error  string
+
+	Subcalls []FvmExecutionTrace
+}
+
+func (t *FvmExecutionTrace) ToExecutionTrace() types.ExecutionTrace {
+	if t == nil {
+		return types.ExecutionTrace{}
+	}
+
+	ret := types.ExecutionTrace{
+		Msg:        t.Msg,
+		MsgRct:     t.MsgRct,
+		Error:      t.Error,
+		Duration:   0,
+		GasCharges: nil,
+		Subcalls:   make([]types.ExecutionTrace, len(t.Subcalls)),
+	}
+
+	for i, v := range t.Subcalls {
+		ret.Subcalls[i] = v.ToExecutionTrace()
+	}
+
+	return ret
+}
+
+// VerifyConsensusFault is similar to the one in syscalls.go used by the Lotus VM, except it never errors
 // Errors are logged and "no fault" is returned, which is functionally what go-actors does anyway
 func (x *FvmExtern) VerifyConsensusFault(ctx context.Context, a, b, extra []byte) (*ffi_cgo.ConsensusFault, int64) {
 	totalGas := int64(0)
@@ -183,7 +214,7 @@ func (x *FvmExtern) workerKeyAtLookback(ctx context.Context, minerId address.Add
 	}
 
 	cstWithoutGas := cbor.NewCborStore(x.Blockstore)
-	cbb := &gasChargingBlocks{gasAdder, PricelistByEpochAndNetworkVersion(x.epoch, x.nv), x.Blockstore}
+	cbb := &gasChargingBlocks{gasAdder, PricelistByEpoch(x.epoch), x.Blockstore}
 	cstWithGas := cbor.NewCborStore(cbb)
 
 	lbState, err := x.lbState(ctx, height)
@@ -243,15 +274,17 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 
 	fvmOpts := ffi.FVMOpts{
 		FVMVersion:     0,
-		Externs:        &FvmExtern{Rand: opts.Rand, Blockstore: opts.Bstore, lbState: opts.LookbackState, base: opts.StateBase, epoch: opts.Epoch, nv: opts.NetworkVersion},
+		Externs:        &FvmExtern{Rand: opts.Rand, Blockstore: opts.Bstore, lbState: opts.LookbackState, base: opts.StateBase, epoch: opts.Epoch},
 		Epoch:          opts.Epoch,
 		BaseFee:        opts.BaseFee,
 		BaseCircSupply: circToReport,
 		NetworkVersion: opts.NetworkVersion,
 		StateBase:      opts.StateBase,
+		Tracing:        EnableDetailedTracing,
 	}
 
 	fvm, err := ffi.CreateFVM(&fvmOpts)
+
 	if err != nil {
 		return nil, err
 	}
@@ -263,6 +296,7 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 
 func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
 	start := build.Clock.Now()
+	defer atomic.AddUint64(&StatApplied, 1)
 	msgBytes, err := cmsg.VMMessage().Serialize()
 	if err != nil {
 		return nil, xerrors.Errorf("serializing msg: %w", err)
@@ -271,6 +305,22 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 	ret, err := vm.fvm.ApplyMessage(msgBytes, uint(cmsg.ChainLength()))
 	if err != nil {
 		return nil, xerrors.Errorf("applying msg: %w", err)
+	}
+
+	var et FvmExecutionTrace
+	if len(ret.ExecTraceBytes) != 0 {
+		if err = et.UnmarshalCBOR(bytes.NewReader(ret.ExecTraceBytes)); err != nil {
+			return nil, xerrors.Errorf("failed to unmarshal exectrace: %w", err)
+		}
+	}
+
+	var aerr aerrors.ActorError
+	if ret.ExitCode != 0 {
+		amsg := ret.FailureInfo
+		if amsg == "" {
+			amsg = "unknown error"
+		}
+		aerr = aerrors.New(exitcode.ExitCode(ret.ExitCode), amsg)
 	}
 
 	return &ApplyRet{
@@ -289,16 +339,15 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 			GasRefund:          0,
 			GasBurned:          0,
 		},
-		// TODO: do these eventually, not consensus critical
-		// https://github.com/filecoin-project/ref-fvm/issues/318
-		ActorErr:       nil,
-		ExecutionTrace: types.ExecutionTrace{},
+		ActorErr:       aerr,
+		ExecutionTrace: et.ToExecutionTrace(),
 		Duration:       time.Since(start),
 	}, nil
 }
 
 func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*ApplyRet, error) {
 	start := build.Clock.Now()
+	defer atomic.AddUint64(&StatApplied, 1)
 	msgBytes, err := cmsg.VMMessage().Serialize()
 	if err != nil {
 		return nil, xerrors.Errorf("serializing msg: %w", err)
@@ -308,17 +357,30 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 		return nil, xerrors.Errorf("applying msg: %w", err)
 	}
 
+	var et FvmExecutionTrace
+	if len(ret.ExecTraceBytes) != 0 {
+		if err = et.UnmarshalCBOR(bytes.NewReader(ret.ExecTraceBytes)); err != nil {
+			return nil, xerrors.Errorf("failed to unmarshal exectrace: %w", err)
+		}
+	}
+
+	var aerr aerrors.ActorError
+	if ret.ExitCode != 0 {
+		amsg := ret.FailureInfo
+		if amsg == "" {
+			amsg = "unknown error"
+		}
+		aerr = aerrors.New(exitcode.ExitCode(ret.ExitCode), amsg)
+	}
+
 	return &ApplyRet{
 		MessageReceipt: types.MessageReceipt{
 			Return:   ret.Return,
 			ExitCode: exitcode.ExitCode(ret.ExitCode),
 			GasUsed:  ret.GasUsed,
 		},
-		GasCosts: nil,
-		// TODO: do these eventually, not consensus critical
-		// https://github.com/filecoin-project/ref-fvm/issues/318
-		ActorErr:       nil,
-		ExecutionTrace: types.ExecutionTrace{},
+		ActorErr:       aerr,
+		ExecutionTrace: et.ToExecutionTrace(),
 		Duration:       time.Since(start),
 	}, nil
 }

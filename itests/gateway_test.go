@@ -138,8 +138,8 @@ func TestGatewayWalletMsig(t *testing.T) {
 	//stm: @CHAIN_STATE_MINER_AVAILABLE_BALANCE_001
 	msigBalance, err := lite.MsigGetAvailableBalance(ctx, msig, types.EmptyTSK)
 	require.NoError(t, err)
-	require.Greater(t, msigBalance.Int64(), int64(0))
-	require.Less(t, msigBalance.Int64(), amt.Int64())
+	require.GreaterOrEqual(t, msigBalance.Int64(), int64(0))
+	require.LessOrEqual(t, msigBalance.Int64(), amt.Int64())
 
 	// Propose to add a new address to the msig
 	proto, err = lite.MsigAddPropose(ctx, msig, walletAddrs[0], walletAddrs[3], false)

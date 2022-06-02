@@ -70,6 +70,14 @@ const UpgradeChocolateHeight = 1231620
 // 2022-03-01T15:00:00Z
 var UpgradeOhSnapHeight = abi.ChainEpoch(1594680)
 
+var SupportedProofTypes = []abi.RegisteredSealProof{
+	abi.RegisteredSealProof_StackedDrg32GiBV1,
+	abi.RegisteredSealProof_StackedDrg64GiBV1,
+}
+var ConsensusMinerMinPower = abi.NewStoragePower(10 << 40)
+var MinVerifiedDealSize = abi.NewStoragePower(1 << 20)
+var PreCommitChallengeDelay = abi.ChainEpoch(150)
+
 func init() {
 	if os.Getenv("LOTUS_USE_TEST_ADDRESSES") != "1" {
 		SetAddressNetwork(address.Mainnet)

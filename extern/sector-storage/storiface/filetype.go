@@ -30,7 +30,7 @@ var FSOverheadSeal = map[SectorFileType]int{ // 10x overheads
 	FTUnsealed:    FSOverheadDen,
 	FTSealed:      FSOverheadDen,
 	FTUpdate:      FSOverheadDen,
-	FTUpdateCache: FSOverheadDen * 2,
+	FTUpdateCache: FSOverheadDen*2 + 1,
 	FTCache:       141, // 11 layers + D(2x ssize) + C + R'
 }
 
@@ -39,9 +39,9 @@ var FSOverheadSeal = map[SectorFileType]int{ // 10x overheads
 var FsOverheadFinalized = map[SectorFileType]int{
 	FTUnsealed:    FSOverheadDen,
 	FTSealed:      FSOverheadDen,
-	FTUpdate:      FSOverheadDen * 2, // XXX: we should clear the update cache on Finalize???
-	FTUpdateCache: FSOverheadDen,
-	FTCache:       2,
+	FTUpdate:      FSOverheadDen,
+	FTUpdateCache: 1,
+	FTCache:       1,
 }
 
 type SectorFileType int

@@ -425,6 +425,10 @@ func (sm *StorageMinerAPI) ComputeWindowPoSt(ctx context.Context, dlIdx uint64, 
 	return sm.WdPoSt.ComputePoSt(ctx, dlIdx, ts)
 }
 
+func (sm *StorageMinerAPI) ComputeDataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData sto.Data) (abi.PieceInfo, error) {
+	return sm.StorageMgr.DataCid(ctx, pieceSize, pieceData)
+}
+
 func (sm *StorageMinerAPI) WorkerConnect(ctx context.Context, url string) error {
 	w, err := connectRemoteWorker(ctx, sm, url)
 	if err != nil {

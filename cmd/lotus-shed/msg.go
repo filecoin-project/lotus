@@ -22,7 +22,8 @@ import (
 )
 
 var msgCmd = &cli.Command{
-	Name:      "msg",
+	Name:      "message",
+	Aliases:   []string{"msg"},
 	Usage:     "Translate message between various formats",
 	ArgsUsage: "Message in any form",
 	Action: func(cctx *cli.Context) error {

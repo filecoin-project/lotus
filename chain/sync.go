@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
 	"github.com/Gurpartap/async"
+	"github.com/filecoin-project/pubsub"
 	"github.com/hashicorp/go-multierror"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -22,7 +23,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
 	cbg "github.com/whyrusleeping/cbor-gen"
-	"github.com/whyrusleeping/pubsub"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
@@ -260,7 +260,7 @@ func (syncer *Syncer) IncomingBlocks(ctx context.Context) (<-chan *types.BlockHe
 	out := make(chan *types.BlockHeader, 10)
 
 	go func() {
-		defer syncer.incoming.Unsub(sub, LocalIncoming)
+		defer syncer.incoming.Unsub(sub)
 
 		for {
 			select {

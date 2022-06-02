@@ -44,13 +44,20 @@ const UpgradeChocolateHeight = -17
 
 const UpgradeOhSnapHeight = 240
 
+var SupportedProofTypes = []abi.RegisteredSealProof{
+	abi.RegisteredSealProof_StackedDrg512MiBV1,
+	abi.RegisteredSealProof_StackedDrg32GiBV1,
+	abi.RegisteredSealProof_StackedDrg64GiBV1,
+}
+var ConsensusMinerMinPower = abi.NewStoragePower(2 << 30)
+var MinVerifiedDealSize = abi.NewStoragePower(1 << 20)
+var PreCommitChallengeDelay = abi.ChainEpoch(150)
+
 func init() {
-	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2 << 30))
-	policy.SetSupportedProofTypes(
-		abi.RegisteredSealProof_StackedDrg512MiBV1,
-		abi.RegisteredSealProof_StackedDrg32GiBV1,
-		abi.RegisteredSealProof_StackedDrg64GiBV1,
-	)
+	policy.SetSupportedProofTypes(SupportedProofTypes...)
+	policy.SetConsensusMinerMinPower(ConsensusMinerMinPower)
+	policy.SetMinVerifiedDealSize(MinVerifiedDealSize)
+	policy.SetPreCommitChallengeDelay(PreCommitChallengeDelay)
 
 	SetAddressNetwork(address.Testnet)
 

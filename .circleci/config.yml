@@ -67,14 +67,14 @@ commands:
       - run: |
           apt update
           apt install -y wget
-          wget https://github.com/ipfs/go-ipfs/releases/download/v0.4.22/go-ipfs_v0.4.22_linux-amd64.tar.gz
-          wget https://github.com/ipfs/go-ipfs/releases/download/v0.4.22/go-ipfs_v0.4.22_linux-amd64.tar.gz.sha512
-          if [ "$(sha512sum go-ipfs_v0.4.22_linux-amd64.tar.gz)" != "$(cat go-ipfs_v0.4.22_linux-amd64.tar.gz.sha512)" ]
+          wget https://github.com/ipfs/go-ipfs/releases/download/v0.12.2/go-ipfs_v0.12.2_linux-amd64.tar.gz
+          wget https://github.com/ipfs/go-ipfs/releases/download/v0.12.2/go-ipfs_v0.12.2_linux-amd64.tar.gz.sha512
+          if [ "$(sha512sum go-ipfs_v0.12.2_linux-amd64.tar.gz)" != "$(cat go-ipfs_v0.12.2_linux-amd64.tar.gz.sha512)" ]
           then
             echo "ipfs failed checksum check"
             exit 1
           fi
-          tar -xf go-ipfs_v0.4.22_linux-amd64.tar.gz
+          tar -xf go-ipfs_v0.12.2_linux-amd64.tar.gz
           mv go-ipfs/ipfs /usr/local/bin/ipfs
           chmod +x /usr/local/bin/ipfs
   git_fetch_all_tags:
@@ -862,6 +862,11 @@ workflows:
           name: test-itest-get_messages_in_ts
           suite: itest-get_messages_in_ts
           target: "./itests/get_messages_in_ts_test.go"
+      
+      - test:
+          name: test-itest-lookup_robust_address
+          suite: itest-lookup_robust_address
+          target: "./itests/lookup_robust_address_test.go"
       
       - test:
           name: test-itest-mempool
