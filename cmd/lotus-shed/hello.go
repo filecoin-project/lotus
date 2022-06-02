@@ -81,7 +81,7 @@ var helloCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		ctx, done := context.WithTimeout(context.Background(), 10*time.Second)
+		ctx, done := context.WithTimeout(context.Background(), 5*time.Second)
 		defer done()
 		select {
 		case <-resultCh:
