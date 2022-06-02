@@ -59,11 +59,7 @@ var helloCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		priv, _, err := crypto.GenerateKeyPair(crypto.RSA, 2048)
-		if err != nil {
-			return err
-		}
-		h, err := libp2p.New(libp2p.Identity(priv))
+		h, err := libp2p.New()
 		if err != nil {
 			return err
 		}
