@@ -1603,8 +1603,10 @@ var sectorsNewSector = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 
 		sector, err := nodeApi.SectorTryCreateNewSector(ctx) //.SectorStartSealing(ctx, abi.SectorNumber(id))
-		println("new sector creation is in progress %s", sector)
-		println("errro: %s", err)
+		fmt.Println("new sector creation is in progress %s", sector)
+		if err != nil {
+			fmt.Println("errro: %s", err)
+		}
 
 		return err
 	},
