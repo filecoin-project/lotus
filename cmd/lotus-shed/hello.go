@@ -4,6 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -22,8 +25,6 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-	"os"
-	"time"
 )
 
 var helloCmd = &cli.Command{
@@ -63,7 +64,9 @@ var helloCmd = &cli.Command{
 			return err
 		}
 		h, err := libp2p.New(libp2p.Identity(priv))
-
+		if err != nil {
+			return err
+		}
 		err = h.Connect(ctx, pis[0])
 		if err != nil {
 			return err
