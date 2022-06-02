@@ -31,11 +31,11 @@ var helloCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+		h.SetStreamHandler(hello.ProtocolID, HandleStream)
 		err = h.Connect(ctx, pis[0])
 		if err != nil {
 			return err
 		}
-		h.SetStreamHandler(hello.ProtocolID, HandleStream)
 		ctx, done := context.WithTimeout(ctx, 5*time.Second)
 		defer done()
 		select {
