@@ -1,10 +1,8 @@
 package bundle
 
 import (
-	"bytes"
 	"context"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/ipld/go-car"
@@ -56,14 +54,7 @@ func LoadBundle(ctx context.Context, bs blockstore.Blockstore, path string, av a
 	}
 	defer f.Close() //nolint
 
-	data, err := io.ReadAll(f)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("error reading bundle for builtin-actors version %d: %w", av, err)
-	}
-
-	blobr := bytes.NewReader(data)
-
-	hdr, err := car.LoadCar(ctx, bs, blobr)
+	hdr, err := car.LoadCar(ctx, bs, f)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("error loading builtin actors v%d bundle: %w", av, err)
 	}
