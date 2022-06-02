@@ -150,7 +150,7 @@ var NetPing = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		pis, err := addrInfoFromArg(ctx, cctx)
+		pis, err := AddrInfoFromArg(ctx, cctx)
 		if err != nil {
 			return err
 		}
@@ -271,7 +271,7 @@ var NetConnect = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		pis, err := addrInfoFromArg(ctx, cctx)
+		pis, err := AddrInfoFromArg(ctx, cctx)
 		if err != nil {
 			return err
 		}
@@ -290,7 +290,7 @@ var NetConnect = &cli.Command{
 	},
 }
 
-func addrInfoFromArg(ctx context.Context, cctx *cli.Context) ([]peer.AddrInfo, error) {
+func AddrInfoFromArg(ctx context.Context, cctx *cli.Context) ([]peer.AddrInfo, error) {
 	pis, err := addrutil.ParseAddresses(ctx, cctx.Args().Slice())
 	if err != nil {
 		a, perr := address.NewFromString(cctx.Args().First())

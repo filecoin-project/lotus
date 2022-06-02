@@ -7,25 +7,22 @@ import (
 	"os"
 	"time"
 
-	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/lib/addrutil"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 )
+
+var resultCh chan bool
 
 var helloCmd = &cli.Command{
 	Name:        "hello",
@@ -44,6 +41,7 @@ var helloCmd = &cli.Command{
 
 	Action: func(cctx *cli.Context) error {
 		ctx := lcli.ReqContext(cctx)
+		resultCh = make(chan bool, 1)
 		cf := cctx.String("genesis-path")
 		f, err := os.OpenFile(cf, os.O_RDONLY, 0664)
 		if err != nil {
@@ -55,7 +53,7 @@ var helloCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		pis, err := addrInfoFromArg(ctx, cctx)
+		pis, err := lcli.AddrInfoFromArg(ctx, cctx)
 		if err != nil {
 			return err
 		}
@@ -83,54 +81,15 @@ var helloCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		time.Sleep(time.Second * 5)
+		ctx, done := context.WithTimeout(context.Background(), 10*time.Second)
+		defer done()
+		select {
+		case <-resultCh:
+		case <-ctx.Done():
+			fmt.Println("can't get hello message, please try again")
+		}
 		return nil
 	},
-}
-
-func addrInfoFromArg(ctx context.Context, cctx *cli.Context) ([]peer.AddrInfo, error) {
-	pis, err := addrutil.ParseAddresses(ctx, []string{cctx.String("multiaddr")})
-	if err != nil {
-		a, perr := address.NewFromString(cctx.String("multiaddr"))
-		if perr != nil {
-			return nil, err
-		}
-
-		na, fc, err := lcli.GetFullNodeAPI(cctx)
-		if err != nil {
-			return nil, err
-		}
-		defer fc()
-
-		mi, err := na.StateMinerInfo(ctx, a, types.EmptyTSK)
-		if err != nil {
-			return nil, xerrors.Errorf("getting miner info: %w", err)
-		}
-
-		if mi.PeerId == nil {
-			return nil, xerrors.Errorf("no PeerID for miner")
-		}
-		multiaddrs := make([]multiaddr.Multiaddr, 0, len(mi.Multiaddrs))
-		for i, a := range mi.Multiaddrs {
-			maddr, err := multiaddr.NewMultiaddrBytes(a)
-			if err != nil {
-				log.Warnf("parsing multiaddr %d (%x): %s", i, a, err)
-				continue
-			}
-			multiaddrs = append(multiaddrs, maddr)
-		}
-
-		pi := peer.AddrInfo{
-			ID:    *mi.PeerId,
-			Addrs: multiaddrs,
-		}
-
-		fmt.Printf("%s -> %s\n", a, pi)
-
-		pis = append(pis, pi)
-	}
-
-	return pis, err
 }
 
 func HandleStream(s inet.Stream) {
@@ -145,6 +104,7 @@ func HandleStream(s inet.Stream) {
 		return
 	}
 	fmt.Println(string(data))
+	resultCh <- true
 }
 
 func SayHello(ctx context.Context, pid peer.ID, h host.Host, hmsg *hello.HelloMessage) error {
