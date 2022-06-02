@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math"
 	"math/rand"
 	"os"
@@ -46,6 +47,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/lotusgocar"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 )
@@ -140,24 +142,71 @@ var clientImportCmd = &cli.Command{
 			return err
 		}
 
-		ref := lapi.FileRef{
-			Path:  absPath,
-			IsCAR: cctx.Bool("car"),
-		}
-		c, err := api.ClientImport(ctx, ref)
+		fpath, err := os.Stat(absPath)
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to stat file :%w", err)
 		}
 
-		encoder, err := GetCidEncoder(cctx)
+		f, err := ioutil.TempFile("", "")
 		if err != nil {
-			return err
+			return xerrors.Errorf("failed to create temp file: %w", err)
 		}
+		_ = f.Close() // close; we only want the path.
 
-		if !cctx.Bool("quiet") {
-			fmt.Printf("Import %d, Root ", c.ImportID)
+		tmp := f.Name()
+		defer os.Remove(tmp) //nolint:errcheck
+
+		if fpath.IsDir() {
+			fmt.Println("Input is a directory. Creating car file for import")
+
+			_, err := lotusgocar.Createcar(ctx, tmp, absPath)
+
+			if err != nil {
+				return xerrors.Errorf("failed to create car file: %w", err)
+			}
+
+			ref := lapi.FileRef{
+				Path:  tmp,
+				IsCAR: true,
+			}
+
+			c, err := api.ClientImport(ctx, ref)
+			if err != nil {
+				return err
+			}
+
+			encoder, err := GetCidEncoder(cctx)
+			if err != nil {
+				return err
+			}
+
+			if !cctx.Bool("quiet") {
+				fmt.Printf("Import %d, Root ", c.ImportID)
+			}
+			fmt.Println(encoder.Encode(c.Root))
+
+		} else {
+
+			ref := lapi.FileRef{
+				Path:  absPath,
+				IsCAR: cctx.Bool("car"),
+			}
+			c, err := api.ClientImport(ctx, ref)
+			if err != nil {
+				return err
+			}
+
+			encoder, err := GetCidEncoder(cctx)
+			if err != nil {
+				return err
+			}
+
+			if !cctx.Bool("quiet") {
+				fmt.Printf("Import %d, Root ", c.ImportID)
+			}
+			fmt.Println(encoder.Encode(c.Root))
+
 		}
-		fmt.Println(encoder.Encode(c.Root))
 
 		return nil
 	},
@@ -239,27 +288,25 @@ var clientCarGenCmd = &cli.Command{
 	Usage:     "Generate a car file from input",
 	ArgsUsage: "[inputPath outputPath]",
 	Action: func(cctx *cli.Context) error {
-		api, closer, err := GetFullNodeAPI(cctx)
-		if err != nil {
-			return err
-		}
-		defer closer()
 		ctx := ReqContext(cctx)
 
 		if cctx.Args().Len() != 2 {
 			return fmt.Errorf("usage: generate-car <inputPath> <outputPath>")
 		}
 
-		ref := lapi.FileRef{
-			Path:  cctx.Args().First(),
-			IsCAR: false,
-		}
+		root, err := lotusgocar.Createcar(ctx, cctx.Args().Get(1), cctx.Args().Get(0))
 
-		op := cctx.Args().Get(1)
-
-		if err = api.ClientGenCar(ctx, ref, op); err != nil {
+		if err != nil {
 			return err
 		}
+
+		encoder, err := GetCidEncoder(cctx)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Car file successfully created at %s with CID %s", cctx.Args().Get(1), encoder.Encode(root))
+
 		return nil
 	},
 }

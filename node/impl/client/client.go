@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"sort"
 	"strings"
@@ -511,6 +512,18 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 		return nil, xerrors.Errorf("failed to create import: %w", err)
 	}
 
+	carPath, err = imgr.AllocateCAR(id)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to create car path for import: %w", err)
+	}
+
+	defer func() {
+		if err != nil {
+			_ = os.Remove(carPath)
+			_ = imgr.Remove(id)
+		}
+	}()
+
 	if ref.IsCAR {
 		// user gave us a CAR file, use it as-is
 		// validate that it's either a carv1 or carv2, and has one root.
@@ -518,7 +531,7 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 		if err != nil {
 			return nil, xerrors.Errorf("failed to open CAR file: %w", err)
 		}
-		defer f.Close() //nolint:errcheck
+		//defer f.Close() //nolint:errcheck
 
 		hd, err := car.ReadHeader(bufio.NewReader(f))
 		if err != nil {
@@ -531,21 +544,25 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 			return nil, xerrors.Errorf("car version must be 1 or 2, is %d", hd.Version)
 		}
 
-		carPath = ref.Path
-		root = hd.Roots[0]
-	} else {
-		carPath, err = imgr.AllocateCAR(id)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to create car path for import: %w", err)
+		// explicitly closing the file to avoid conflict with ioutil
+
+		if err = f.Close(); err != nil {
+			return nil, xerrors.Errorf("error closing the file: %w", err)
 		}
 
-		// remove the import if something went wrong.
-		defer func() {
-			if err != nil {
-				_ = os.Remove(carPath)
-				_ = imgr.Remove(id)
-			}
-		}()
+		//carPath = ref.Path
+		root = hd.Roots[0]
+		input, err := ioutil.ReadFile(ref.Path)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to read car file for import: %w", err)
+		}
+
+		err = ioutil.WriteFile(carPath, input, 0644)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to write to import file: %w", err)
+		}
+
+	} else {
 
 		// perform the unixfs chunking.
 		root, err = unixfs.CreateFilestore(ctx, ref.Path, carPath)
