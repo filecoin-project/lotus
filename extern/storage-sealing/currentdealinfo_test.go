@@ -8,10 +8,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-bitfield"
+
 	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 
 	"github.com/filecoin-project/go-state-types/network"
+
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 
 	"golang.org/x/net/context"
 	"golang.org/x/xerrors"
@@ -38,10 +41,14 @@ func TestGetCurrentDealInfo(t *testing.T) {
 	other, err := markettypes.NewLabelFromString("other")
 	require.NoError(t, err)
 
+	another, err := markettypes.NewLabelFromString("another")
+	require.NoError(t, err)
+
 	ctx := context.Background()
 	dummyCid, _ := cid.Parse("bafkqaaa")
 	dummyCid2, _ := cid.Parse("bafkqaab")
 	zeroDealID := abi.DealID(0)
+	anotherDealID := abi.DealID(8)
 	earlierDealID := abi.DealID(9)
 	successDealID := abi.DealID(10)
 	proposal := market.DealProposal{
@@ -64,6 +71,16 @@ func TestGetCurrentDealInfo(t *testing.T) {
 		ClientCollateral:     abi.NewTokenAmount(1),
 		Label:                other,
 	}
+	anotherProposal := market.DealProposal{
+		PieceCID:             dummyCid2,
+		PieceSize:            abi.PaddedPieceSize(100),
+		Client:               tutils.NewActorAddr(t, "client"),
+		Provider:             tutils.NewActorAddr(t, "provider"),
+		StoragePricePerEpoch: abi.NewTokenAmount(1),
+		ProviderCollateral:   abi.NewTokenAmount(1),
+		ClientCollateral:     abi.NewTokenAmount(1),
+		Label:                another,
+	}
 	successDeal := &api.MarketDeal{
 		Proposal: proposal,
 		State: market.DealState{
@@ -73,6 +90,13 @@ func TestGetCurrentDealInfo(t *testing.T) {
 	}
 	earlierDeal := &api.MarketDeal{
 		Proposal: otherProposal,
+		State: market.DealState{
+			SectorStartEpoch: 1,
+			LastUpdatedEpoch: 2,
+		},
+	}
+	anotherDeal := &api.MarketDeal{
+		Proposal: anotherProposal,
 		State: market.DealState{
 			SectorStartEpoch: 1,
 			LastUpdatedEpoch: 2,
@@ -88,6 +112,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 		expectedDealID      abi.DealID
 		expectedMarketDeal  *api.MarketDeal
 		expectedError       error
+		networkVersion      network.Version
 	}
 	testCases := map[string]testCaseData{
 		"deal lookup succeeds": {
@@ -95,7 +120,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 			searchMessageLookup: &MsgLookup{
 				Receipt: MessageReceipt{
 					ExitCode: exitcode.Ok,
-					Return:   makePublishDealsReturnBytes(t, []abi.DealID{successDealID}),
+					Return:   makePublishDealsReturnBytesOldVersion(t, []abi.DealID{successDealID}),
 				},
 			},
 			marketDeals: map[abi.DealID]*api.MarketDeal{
@@ -110,7 +135,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 			searchMessageLookup: &MsgLookup{
 				Receipt: MessageReceipt{
 					ExitCode: exitcode.Ok,
-					Return:   makePublishDealsReturnBytes(t, []abi.DealID{earlierDealID, successDealID}),
+					Return:   makePublishDealsReturnBytesOldVersion(t, []abi.DealID{earlierDealID, successDealID}),
 				},
 			},
 			marketDeals: map[abi.DealID]*api.MarketDeal{
@@ -126,7 +151,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 			searchMessageLookup: &MsgLookup{
 				Receipt: MessageReceipt{
 					ExitCode: exitcode.Ok,
-					Return:   makePublishDealsReturnBytes(t, []abi.DealID{earlierDealID}),
+					Return:   makePublishDealsReturnBytesOldVersion(t, []abi.DealID{earlierDealID}),
 				},
 			},
 			marketDeals: map[abi.DealID]*api.MarketDeal{
@@ -136,12 +161,12 @@ func TestGetCurrentDealInfo(t *testing.T) {
 			expectedDealID: zeroDealID,
 			expectedError:  xerrors.Errorf("could not find deal in publish deals message %s", dummyCid),
 		},
-		"deal lookup fails mismatch count of deals and return values": {
+		"deal lookup handles invalid actor output with mismatched count of deals and return values": {
 			publishCid: dummyCid,
 			searchMessageLookup: &MsgLookup{
 				Receipt: MessageReceipt{
 					ExitCode: exitcode.Ok,
-					Return:   makePublishDealsReturnBytes(t, []abi.DealID{earlierDealID}),
+					Return:   makePublishDealsReturnBytesOldVersion(t, []abi.DealID{earlierDealID}),
 				},
 			},
 			marketDeals: map[abi.DealID]*api.MarketDeal{
@@ -150,14 +175,52 @@ func TestGetCurrentDealInfo(t *testing.T) {
 			},
 			targetProposal: &proposal,
 			expectedDealID: zeroDealID,
-			expectedError:  xerrors.Errorf("deal index 1 out of bounds of deals (len 1) in publish deals message %s", dummyCid),
+			expectedError:  xerrors.Errorf("invalid publish storage deals ret marking 1 as valid while only returning 1 valid deals in publish deal message %s", dummyCid),
 		},
+
+		"deal lookup fails when deal was not valid and index exceeds output array": {
+			publishCid: dummyCid,
+			searchMessageLookup: &MsgLookup{
+				Receipt: MessageReceipt{
+					ExitCode: exitcode.Ok,
+					Return:   makePublishDealsReturn(t, []abi.DealID{earlierDealID}, []uint64{0}),
+				},
+			},
+			marketDeals: map[abi.DealID]*api.MarketDeal{
+				earlierDealID: earlierDeal,
+				successDealID: successDeal,
+			},
+			targetProposal: &proposal,
+			expectedDealID: zeroDealID,
+			expectedError:  xerrors.Errorf("deal was invalid at publication"),
+			networkVersion: network.Version14,
+		},
+
+		"deal lookup succeeds when theres a separate deal failure": {
+			publishCid: dummyCid,
+			searchMessageLookup: &MsgLookup{
+				Receipt: MessageReceipt{
+					ExitCode: exitcode.Ok,
+					Return:   makePublishDealsReturn(t, []abi.DealID{anotherDealID, successDealID}, []uint64{0, 2}),
+				},
+			},
+			marketDeals: map[abi.DealID]*api.MarketDeal{
+				anotherDealID: anotherDeal,
+				earlierDealID: earlierDeal,
+				successDealID: successDeal,
+			},
+			targetProposal:     &proposal,
+			expectedDealID:     successDealID,
+			expectedMarketDeal: successDeal,
+			networkVersion:     network.Version14,
+		},
+
 		"deal lookup succeeds, target proposal nil, single deal in message": {
 			publishCid: dummyCid,
 			searchMessageLookup: &MsgLookup{
 				Receipt: MessageReceipt{
 					ExitCode: exitcode.Ok,
-					Return:   makePublishDealsReturnBytes(t, []abi.DealID{successDealID}),
+					Return:   makePublishDealsReturnBytesOldVersion(t, []abi.DealID{successDealID}),
 				},
 			},
 			marketDeals: map[abi.DealID]*api.MarketDeal{
@@ -172,7 +235,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 			searchMessageLookup: &MsgLookup{
 				Receipt: MessageReceipt{
 					ExitCode: exitcode.Ok,
-					Return:   makePublishDealsReturnBytes(t, []abi.DealID{earlierDealID, successDealID}),
+					Return:   makePublishDealsReturnBytesOldVersion(t, []abi.DealID{earlierDealID, successDealID}),
 				},
 			},
 			marketDeals: map[abi.DealID]*api.MarketDeal{
@@ -234,6 +297,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 				SearchMessageLookup: data.searchMessageLookup,
 				SearchMessageErr:    data.searchMessageErr,
 				MarketDeals:         marketDeals,
+				Version:             data.networkVersion,
 			}
 			dealInfoMgr := CurrentDealInfoManager{mockApi}
 
@@ -262,13 +326,21 @@ type CurrentDealInfoMockAPI struct {
 	SearchMessageErr    error
 
 	MarketDeals map[marketDealKey]*api.MarketDeal
+	Version     network.Version
 }
 
 func (mapi *CurrentDealInfoMockAPI) ChainGetMessage(ctx context.Context, c cid.Cid) (*types.Message, error) {
-	var dealIDs []abi.DealID
+	var keys []marketDealKey
+	for k := range mapi.MarketDeals {
+		keys = append(keys, k)
+	}
+	sort.SliceStable(keys, func(i, j int) bool {
+		return keys[i].DealID < keys[j].DealID
+	})
+
 	var deals []markettypes.ClientDealProposal
-	for k, dl := range mapi.MarketDeals {
-		dealIDs = append(dealIDs, k.DealID)
+	for _, k := range keys {
+		dl := mapi.MarketDeals[k]
 		deals = append(deals, markettypes.ClientDealProposal{
 			Proposal: dl.Proposal,
 			ClientSignature: crypto.Signature{
@@ -277,15 +349,14 @@ func (mapi *CurrentDealInfoMockAPI) ChainGetMessage(ctx context.Context, c cid.C
 			},
 		})
 	}
-	sort.SliceStable(deals, func(i, j int) bool {
-		return dealIDs[i] < dealIDs[j]
-	})
+
 	buf := new(bytes.Buffer)
 	params := markettypes.PublishStorageDealsParams{Deals: deals}
 	err := params.MarshalCBOR(buf)
 	if err != nil {
 		panic(err)
 	}
+
 	return &types.Message{
 		Params: buf.Bytes(),
 	}, nil
@@ -316,15 +387,28 @@ func (mapi *CurrentDealInfoMockAPI) StateSearchMsg(ctx context.Context, c cid.Ci
 }
 
 func (mapi *CurrentDealInfoMockAPI) StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error) {
-	return network.Version0, nil
+	return mapi.Version, nil
 }
 
-func makePublishDealsReturnBytes(t *testing.T, dealIDs []abi.DealID) []byte {
+func makePublishDealsReturnBytesOldVersion(t *testing.T, dealIDs []abi.DealID) []byte {
 	buf := new(bytes.Buffer)
 	dealsReturn := market0.PublishStorageDealsReturn{
 		IDs: dealIDs,
 	}
 	err := dealsReturn.MarshalCBOR(buf)
 	require.NoError(t, err)
+
+	return buf.Bytes()
+}
+
+func makePublishDealsReturn(t *testing.T, dealIDs []abi.DealID, validIdxs []uint64) []byte {
+	buf := new(bytes.Buffer)
+	dealsReturn := markettypes.PublishStorageDealsReturn{
+		IDs:        dealIDs,
+		ValidDeals: bitfield.NewFromSet(validIdxs),
+	}
+	err := dealsReturn.MarshalCBOR(buf)
+	require.NoError(t, err)
+
 	return buf.Bytes()
 }
