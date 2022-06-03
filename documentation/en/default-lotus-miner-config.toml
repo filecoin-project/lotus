@@ -20,7 +20,7 @@
   #
   # type: bool
   # env var: LOTUS_BACKUP_DISABLEMETADATALOG
-  #DisableMetadataLog = false
+  #DisableMetadataLog = true
 
 
 [Logging]
@@ -265,7 +265,7 @@
 
 [IndexProvider]
   # Enable set whether to enable indexing announcement to the network and expose endpoints that
-  # allow indexer nodes to process announcements. Disabled by default.
+  # allow indexer nodes to process announcements. Enabled by default.
   #
   # type: bool
   # env var: LOTUS_INDEXPROVIDER_ENABLE

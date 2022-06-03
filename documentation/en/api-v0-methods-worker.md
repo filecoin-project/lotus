@@ -9,6 +9,8 @@
   * [Version](#Version)
 * [Add](#Add)
   * [AddPiece](#AddPiece)
+* [Data](#Data)
+  * [DataCid](#DataCid)
 * [Finalize](#Finalize)
   * [FinalizeReplicaUpdate](#FinalizeReplicaUpdate)
   * [FinalizeSector](#FinalizeSector)
@@ -518,6 +520,88 @@ Response:
           "MaxParallelism": -1,
           "MaxParallelismGPU": 6,
           "BaseMinMemory": 68719476736
+        }
+      },
+      "seal/v0/datacid": {
+        "0": {
+          "MinMemory": 2048,
+          "MaxMemory": 2048,
+          "GPUUtilization": 0,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 2048
+        },
+        "1": {
+          "MinMemory": 8388608,
+          "MaxMemory": 8388608,
+          "GPUUtilization": 0,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 8388608
+        },
+        "2": {
+          "MinMemory": 1073741824,
+          "MaxMemory": 1073741824,
+          "GPUUtilization": 0,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 1073741824
+        },
+        "3": {
+          "MinMemory": 4294967296,
+          "MaxMemory": 4294967296,
+          "GPUUtilization": 0,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 1073741824
+        },
+        "4": {
+          "MinMemory": 8589934592,
+          "MaxMemory": 8589934592,
+          "GPUUtilization": 0,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 1073741824
+        },
+        "5": {
+          "MinMemory": 2048,
+          "MaxMemory": 2048,
+          "GPUUtilization": 0,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 2048
+        },
+        "6": {
+          "MinMemory": 8388608,
+          "MaxMemory": 8388608,
+          "GPUUtilization": 0,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 8388608
+        },
+        "7": {
+          "MinMemory": 1073741824,
+          "MaxMemory": 1073741824,
+          "GPUUtilization": 0,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 1073741824
+        },
+        "8": {
+          "MinMemory": 4294967296,
+          "MaxMemory": 4294967296,
+          "GPUUtilization": 0,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 1073741824
+        },
+        "9": {
+          "MinMemory": 8589934592,
+          "MaxMemory": 8589934592,
+          "GPUUtilization": 0,
+          "MaxParallelism": 1,
+          "MaxParallelismGPU": 0,
+          "BaseMinMemory": 1073741824
         }
       },
       "seal/v0/fetch": {
@@ -1242,7 +1326,6 @@ Response: `131584`
 
 
 ### AddPiece
-storiface.WorkerCalls
 
 
 Perms: admin
@@ -1260,6 +1343,34 @@ Inputs:
   [
     1024
   ],
+  1024,
+  {}
+]
+```
+
+Response:
+```json
+{
+  "Sector": {
+    "Miner": 1000,
+    "Number": 9
+  },
+  "ID": "07070707-0707-0707-0707-070707070707"
+}
+```
+
+## Data
+
+
+### DataCid
+storiface.WorkerCalls
+
+
+Perms: admin
+
+Inputs:
+```json
+[
   1024,
   {}
 ]

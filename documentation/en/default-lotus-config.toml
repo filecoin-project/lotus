@@ -20,7 +20,7 @@
   #
   # type: bool
   # env var: LOTUS_BACKUP_DISABLEMETADATALOG
-  #DisableMetadataLog = false
+  #DisableMetadataLog = true
 
 
 [Logging]

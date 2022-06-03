@@ -386,10 +386,15 @@ func (b *PreCommitBatcher) AddPreCommit(ctx context.Context, s SectorInfo, depos
 		return sealiface.PreCommitBatchRes{}, err
 	}
 
+	cutoff, err := getPreCommitCutoff(curEpoch, s)
+	if err != nil {
+		return sealiface.PreCommitBatchRes{}, xerrors.Errorf("failed to calculate cutoff: %w", err)
+	}
+
 	sn := s.SectorNumber
 
 	b.lk.Lock()
-	b.cutoffs[sn] = getPreCommitCutoff(curEpoch, s)
+	b.cutoffs[sn] = cutoff
 	b.todo[sn] = &preCommitEntry{
 		deposit: deposit,
 		pci:     in,
@@ -467,7 +472,7 @@ func (b *PreCommitBatcher) Stop(ctx context.Context) error {
 }
 
 // TODO: If this returned epochs, it would make testing much easier
-func getPreCommitCutoff(curEpoch abi.ChainEpoch, si SectorInfo) time.Time {
+func getPreCommitCutoff(curEpoch abi.ChainEpoch, si SectorInfo) (time.Time, error) {
 	cutoffEpoch := si.TicketEpoch + policy.MaxPreCommitRandomnessLookback
 	for _, p := range si.Pieces {
 		if p.DealInfo == nil {
@@ -481,8 +486,8 @@ func getPreCommitCutoff(curEpoch abi.ChainEpoch, si SectorInfo) time.Time {
 	}
 
 	if cutoffEpoch <= curEpoch {
-		return time.Now()
+		return time.Now(), xerrors.Errorf("cutoff has already passed (cutoff %d <= curEpoch %d)", cutoffEpoch, curEpoch)
 	}
 
-	return time.Now().Add(time.Duration(cutoffEpoch-curEpoch) * time.Duration(build.BlockDelaySecs) * time.Second)
+	return time.Now().Add(time.Duration(cutoffEpoch-curEpoch) * time.Duration(build.BlockDelaySecs) * time.Second), nil
 }

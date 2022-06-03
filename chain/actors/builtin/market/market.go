@@ -154,7 +154,7 @@ type DealProposals interface {
 type PublishStorageDealsReturn interface {
 	DealIDs() ([]abi.DealID, error)
 	// Note that this index is based on the batch of deals that were published, NOT the DealID
-	IsDealValid(index uint64) (bool, error)
+	IsDealValid(index uint64) (bool, int, error)
 }
 
 func DecodePublishStorageDealsReturn(b []byte, nv network.Version) (PublishStorageDealsReturn, error) {

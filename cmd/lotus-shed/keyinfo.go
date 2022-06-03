@@ -41,8 +41,9 @@ type keyInfoOutput struct {
 }
 
 var keyinfoCmd = &cli.Command{
-	Name:  "keyinfo",
-	Usage: "work with lotus keyinfo files (wallets and libp2p host keys)",
+	Name:    "key-info",
+	Aliases: []string{"keyinfo"},
+	Usage:   "work with lotus keyinfo files (wallets and libp2p host keys)",
 	Description: `The subcommands of keyinfo provide helpful tools for working with keyinfo files without
    having to run the lotus daemon.`,
 	Subcommands: []*cli.Command{

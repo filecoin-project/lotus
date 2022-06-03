@@ -289,7 +289,7 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		if cctx.Bool("commit") {
+		if cctx.Bool("commit") || cctx.Bool("prove-replica-update2") {
 			if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(ssize)); err != nil {
 				return xerrors.Errorf("get params: %w", err)
 			}
@@ -313,7 +313,7 @@ var runCmd = &cli.Command{
 		}
 
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("addpiece")) && cctx.Bool("addpiece") {
-			taskTypes = append(taskTypes, sealtasks.TTAddPiece)
+			taskTypes = append(taskTypes, sealtasks.TTAddPiece, sealtasks.TTDataCid)
 		}
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("precommit1")) && cctx.Bool("precommit1") {
 			taskTypes = append(taskTypes, sealtasks.TTPreCommit1)
