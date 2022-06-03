@@ -224,6 +224,7 @@
   * [SyncValidateTipset](#SyncValidateTipset)
 * [Wallet](#Wallet)
   * [WalletBalance](#WalletBalance)
+  * [WalletCustomMethod](#WalletCustomMethod)
   * [WalletDefaultAddress](#WalletDefaultAddress)
   * [WalletDelete](#WalletDelete)
   * [WalletExport](#WalletExport)
@@ -7365,6 +7366,25 @@ Inputs:
 ```
 
 Response: `"0"`
+
+### WalletCustomMethod
+yc wallet security WalletCustomMethod
+WalletCustomMethod wallet extension operation
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  0,
+  [
+    {}
+  ]
+]
+```
+
+Response: `{}`
 
 ### WalletDefaultAddress
 WalletDefaultAddress returns the address marked as default in the wallet.
