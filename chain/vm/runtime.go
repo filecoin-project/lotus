@@ -60,7 +60,7 @@ func (m *Message) ValueReceived() abi.TokenAmount {
 }
 
 // EnableDetailedTracing, if true, outputs gas tracing in execution traces.
-var EnableDetailedTracing = os.Getenv("LOTUS_VM_ENABLE_GAS_TRACING_VERY_SLOW") == "1"
+var EnableDetailedTracing = os.Getenv("LOTUS_VM_ENABLE_TRACING") == "1"
 
 type Runtime struct {
 	rt7.Message

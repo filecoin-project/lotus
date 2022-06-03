@@ -1,11 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"os"
 
 	"github.com/filecoin-project/lotus/blockstore"
@@ -106,18 +104,8 @@ var cidFromCarCmd = &cli.Command{
 		}
 
 		bs := blockstore.NewMemory()
-		if err != nil {
-			return err
-		}
 
-		data, err := io.ReadAll(f)
-		if err != nil {
-			return xerrors.Errorf("error reading car file: %w", err)
-		}
-
-		blobr := bytes.NewReader(data)
-
-		hdr, err := car.LoadCar(ctx, bs, blobr)
+		hdr, err := car.LoadCar(ctx, bs, f)
 		if err != nil {
 			return xerrors.Errorf("error loading car file: %w", err)
 		}
