@@ -109,7 +109,7 @@ require (
 	github.com/koalacxr/quantile v0.0.1
 	github.com/libp2p/go-buffer-pool v0.0.2
 	github.com/libp2p/go-eventbus v0.2.1
-	github.com/libp2p/go-libp2p v0.19.0
+	github.com/libp2p/go-libp2p v0.19.4
 	github.com/libp2p/go-libp2p-connmgr v0.3.1
 	github.com/libp2p/go-libp2p-core v0.15.1
 	github.com/libp2p/go-libp2p-discovery v0.6.0
@@ -277,8 +277,8 @@ require (
 	github.com/libp2p/go-stream-muxer-multistream v0.4.0 // indirect
 	github.com/libp2p/go-tcp-transport v0.5.1 // indirect
 	github.com/libp2p/go-ws-transport v0.6.0 // indirect
-	github.com/libp2p/go-yamux/v3 v3.1.1 // indirect
-	github.com/lucas-clemente/quic-go v0.27.0 // indirect
+	github.com/libp2p/go-yamux/v3 v3.1.2 // indirect
+	github.com/lucas-clemente/quic-go v0.27.1 // indirect
 	github.com/lucasb-eyer/go-colorful v1.0.3 // indirect
 	github.com/magefile/mage v1.9.0 // indirect
 	github.com/mailru/easyjson v0.7.6 // indirect

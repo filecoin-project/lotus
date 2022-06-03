@@ -1093,8 +1093,8 @@ github.com/libp2p/go-libp2p v0.17.0/go.mod h1:Fkin50rsGdv5mm5BshBUtPRZknt9esfmYX
 github.com/libp2p/go-libp2p v0.18.0-rc1/go.mod h1:RgYlH7IIWHXREimC92bw5Lg1V2R5XmSzuLHb5fTnr+8=
 github.com/libp2p/go-libp2p v0.18.0-rc3/go.mod h1:WYL+Xw1iuwi6rdfzw5VIEpD+HqzYucHZ6fcUuumbI3M=
 github.com/libp2p/go-libp2p v0.18.0-rc5/go.mod h1:aZPS5l84bDvCvP4jkyEUT/J6YOpUq33Fgqrs3K59mpI=
-github.com/libp2p/go-libp2p v0.19.0 h1:zosskMbaobL7UDCVLEe1m5CGs1TaFNFoN/M5XLiKg0U=
-github.com/libp2p/go-libp2p v0.19.0/go.mod h1:Ki9jJXLO2YqrTIFxofV7Twyd3INWPT97+r8hGt7XPjI=
+github.com/libp2p/go-libp2p v0.19.4 h1:50YL0YwPhWKDd+qbZQDEdnsmVAAkaCQrWUjpdHv4hNA=
+github.com/libp2p/go-libp2p v0.19.4/go.mod h1:MIt8y481VDhUe4ErWi1a4bvt/CjjFfOq6kZTothWIXY=
 github.com/libp2p/go-libp2p-asn-util v0.0.0-20200825225859-85005c6cf052/go.mod h1:nRMRTab+kZuk0LnKZpxhOVH/ndsdr2Nr//Zltc/vwgo=
 github.com/libp2p/go-libp2p-asn-util v0.1.0 h1:rABPCO77SjdbJ/eJ/ynIo8vWICy1VEnL5JAxJbQLo1E=
 github.com/libp2p/go-libp2p-asn-util v0.1.0/go.mod h1:wu+AnM9Ii2KgO5jMmS1rz9dvzTdj8BXqsPR9HR0XB7I=
@@ -1455,8 +1455,9 @@ github.com/libp2p/go-yamux/v2 v2.2.0/go.mod h1:3So6P6TV6r75R9jiBpiIKgU/66lOarCZj
 github.com/libp2p/go-yamux/v2 v2.3.0/go.mod h1:iTU+lOIn/2h0AgKcL49clNTwfEw+WSfDYrXe05EyKIs=
 github.com/libp2p/go-yamux/v3 v3.0.1/go.mod h1:s2LsDhHbh+RfCsQoICSYt58U2f8ijtPANFD8BmE74Bo=
 github.com/libp2p/go-yamux/v3 v3.0.2/go.mod h1:s2LsDhHbh+RfCsQoICSYt58U2f8ijtPANFD8BmE74Bo=
-github.com/libp2p/go-yamux/v3 v3.1.1 h1:X0qSVodCZciOu/f4KTp9V+O0LAqcqP2tdaUGB0+0lng=
 github.com/libp2p/go-yamux/v3 v3.1.1/go.mod h1:jeLEQgLXqE2YqX1ilAClIfCMDY+0uXQUKmmb/qp0gT4=
+github.com/libp2p/go-yamux/v3 v3.1.2 h1:lNEy28MBk1HavUAlzKgShp+F6mn/ea1nDYWftZhFW9Q=
+github.com/libp2p/go-yamux/v3 v3.1.2/go.mod h1:jeLEQgLXqE2YqX1ilAClIfCMDY+0uXQUKmmb/qp0gT4=
 github.com/libp2p/zeroconf/v2 v2.1.1/go.mod h1:fuJqLnUwZTshS3U/bMRJ3+ow/v9oid1n0DmyYyNO1Xs=
 github.com/lightstep/lightstep-tracer-common/golang/gogo v0.0.0-20190605223551-bc2310a04743/go.mod h1:qklhhLq1aX+mtWk9cPHPzaBjWImj5ULL6C7HFJtXQMM=
 github.com/lightstep/lightstep-tracer-go v0.18.1/go.mod h1:jlF1pusYV4pidLvZ+XD0UBX0ZE6WURAspgAczcDHrL4=
@@ -1466,8 +1467,9 @@ github.com/lucas-clemente/quic-go v0.21.2/go.mod h1:vF5M1XqhBAHgbjKcJOXY3JZz3GP0
 github.com/lucas-clemente/quic-go v0.23.0/go.mod h1:paZuzjXCE5mj6sikVLMvqXk8lJV2AsqtJ6bDhjEfxx0=
 github.com/lucas-clemente/quic-go v0.24.0/go.mod h1:paZuzjXCE5mj6sikVLMvqXk8lJV2AsqtJ6bDhjEfxx0=
 github.com/lucas-clemente/quic-go v0.25.0/go.mod h1:YtzP8bxRVCBlO77yRanE264+fY/T2U9ZlW1AaHOsMOg=
-github.com/lucas-clemente/quic-go v0.27.0 h1:v6WY87q9zD4dKASbG8hy/LpzAVNzEQzw8sEIeloJsc4=
 github.com/lucas-clemente/quic-go v0.27.0/go.mod h1:AzgQoPda7N+3IqMMMkywBKggIFo2KT6pfnlrQ2QieeI=
+github.com/lucas-clemente/quic-go v0.27.1 h1:sOw+4kFSVrdWOYmUjufQ9GBVPqZ+tu+jMtXxXNmRJyk=
+github.com/lucas-clemente/quic-go v0.27.1/go.mod h1:AzgQoPda7N+3IqMMMkywBKggIFo2KT6pfnlrQ2QieeI=
 github.com/lucasb-eyer/go-colorful v1.0.3 h1:QIbQXiugsb+q10B+MI+7DI1oQLdmnep86tWFlaaUAac=
 github.com/lucasb-eyer/go-colorful v1.0.3/go.mod h1:R4dSotOR9KMtayYi1e77YzuveK+i7ruzyGqttikkLy0=
 github.com/lufia/iostat v1.1.0/go.mod h1:rEPNA0xXgjHQjuI5Cy05sLlS2oRcSlWHRLrvh/AQ+Pg=
