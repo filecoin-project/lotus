@@ -10,13 +10,14 @@ import (
 
 	lapi "github.com/filecoin-project/lotus/api"
 
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/lotus/paychmgr"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/urfave/cli/v2"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
+	lpaych "github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -416,7 +417,7 @@ var paychVoucherCheckCmd = &cli.Command{
 			return err
 		}
 
-		sv, err := paych.DecodeSignedVoucher(cctx.Args().Get(1))
+		sv, err := lpaych.DecodeSignedVoucher(cctx.Args().Get(1))
 		if err != nil {
 			return err
 		}
@@ -452,7 +453,7 @@ var paychVoucherAddCmd = &cli.Command{
 			return err
 		}
 
-		sv, err := paych.DecodeSignedVoucher(cctx.Args().Get(1))
+		sv, err := lpaych.DecodeSignedVoucher(cctx.Args().Get(1))
 		if err != nil {
 			return err
 		}
@@ -610,7 +611,7 @@ var paychVoucherSubmitCmd = &cli.Command{
 			return err
 		}
 
-		sv, err := paych.DecodeSignedVoucher(cctx.Args().Get(1))
+		sv, err := lpaych.DecodeSignedVoucher(cctx.Args().Get(1))
 		if err != nil {
 			return err
 		}

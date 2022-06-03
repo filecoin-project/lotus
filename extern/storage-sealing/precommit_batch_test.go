@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+
 	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 
 	"github.com/filecoin-project/go-state-types/network"
@@ -21,13 +23,11 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/mocks"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	"github.com/filecoin-project/lotus/node/config"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 )
 
 var fc = config.MinerFeeConfig{
@@ -45,7 +45,7 @@ func TestPrecommitBatcher(t *testing.T) {
 
 	ctx := context.Background()
 
-	as := func(ctx context.Context, mi miner.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
+	as := func(ctx context.Context, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
 		return t0123, big.Zero(), nil
 	}
 
@@ -116,7 +116,7 @@ func TestPrecommitBatcher(t *testing.T) {
 
 			go func() {
 				defer done.Unlock()
-				pcres, pcerr = pcb.AddPreCommit(ctx, si, big.Zero(), &miner0.SectorPreCommitInfo{
+				pcres, pcerr = pcb.AddPreCommit(ctx, si, big.Zero(), &minertypes.SectorPreCommitInfo{
 					SectorNumber: si.SectorNumber,
 					SealedCID:    fakePieceCid(t),
 					DealIDs:      nil,
@@ -160,7 +160,7 @@ func TestPrecommitBatcher(t *testing.T) {
 			s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(big.NewInt(10001), nil)
 			s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version14, nil)
 
-			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(miner.MinerInfo{Owner: t0123, Worker: t0123}, nil)
+			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(api.MinerInfo{Owner: t0123, Worker: t0123}, nil)
 			s.EXPECT().SendMsg(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), funMatcher(func(i interface{}) bool {
 				b := i.([]byte)
 				var params miner6.PreCommitSectorBatchParams
@@ -181,7 +181,7 @@ func TestPrecommitBatcher(t *testing.T) {
 			s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(big.NewInt(9999), nil)
 			s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version14, nil)
 
-			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(miner.MinerInfo{Owner: t0123, Worker: t0123}, nil)
+			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(api.MinerInfo{Owner: t0123, Worker: t0123}, nil)
 			for _, number := range expect {
 				numClone := number
 				s.EXPECT().SendMsg(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), funMatcher(func(i interface{}) bool {

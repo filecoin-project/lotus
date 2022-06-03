@@ -10,6 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/builtin"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 
 	"golang.org/x/xerrors"
@@ -31,6 +35,9 @@ import (
 )
 
 func TestOnDealSectorPreCommitted(t *testing.T) {
+	label, err := markettypes.NewLabelFromString("success")
+	require.NoError(t, err)
+
 	provider := address.TestAddress
 	ctx := context.Background()
 	publishCid := generateCids(1)[0]
@@ -46,7 +53,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 		StoragePricePerEpoch: abi.NewTokenAmount(1),
 		ProviderCollateral:   abi.NewTokenAmount(1),
 		ClientCollateral:     abi.NewTokenAmount(1),
-		Label:                "success",
+		Label:                label,
 	}
 	unfinishedDeal := &api.MarketDeal{
 		Proposal: proposal,
@@ -91,7 +98,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			},
 			matchStates: []matchState{
 				{
-					msg: makeMessage(t, provider, miner.Methods.PreCommitSector, &miner.SectorPreCommitInfo{
+					msg: makeMessage(t, provider, builtin.MethodsMiner.PreCommitSector, &minertypes.SectorPreCommitInfo{
 						SectorNumber: sectorNumber,
 						SealedCID:    sealedCid,
 						DealIDs:      []abi.DealID{dealID},
@@ -109,7 +116,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			},
 			matchStates: []matchState{
 				{
-					msg: makeMessage(t, provider, miner.Methods.PreCommitSector, &miner.SectorPreCommitInfo{
+					msg: makeMessage(t, provider, builtin.MethodsMiner.PreCommitSector, &minertypes.SectorPreCommitInfo{
 						SectorNumber: sectorNumber,
 						SealedCID:    sealedCid,
 						DealIDs:      []abi.DealID{dealID},
@@ -126,8 +133,8 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 				MarketDeal: unfinishedDeal,
 			},
 			preCommitDiff: &miner.PreCommitChanges{
-				Added: []miner.SectorPreCommitOnChainInfo{{
-					Info: miner.SectorPreCommitInfo{
+				Added: []minertypes.SectorPreCommitOnChainInfo{{
+					Info: minertypes.SectorPreCommitInfo{
 						SectorNumber: sectorNumber,
 						DealIDs:      []abi.DealID{dealID},
 					},
@@ -167,7 +174,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			currentDealInfoErr2: errors.New("something went wrong"),
 			matchStates: []matchState{
 				{
-					msg: makeMessage(t, provider, miner.Methods.PreCommitSector, &miner.SectorPreCommitInfo{
+					msg: makeMessage(t, provider, builtin.MethodsMiner.PreCommitSector, &minertypes.SectorPreCommitInfo{
 						SectorNumber: sectorNumber,
 						SealedCID:    sealedCid,
 						DealIDs:      []abi.DealID{dealID},
@@ -252,6 +259,9 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 }
 
 func TestOnDealSectorCommitted(t *testing.T) {
+	label, err := markettypes.NewLabelFromString("success")
+	require.NoError(t, err)
+
 	provider := address.TestAddress
 	publishCid := generateCids(1)[0]
 	pieceCid := generateCids(1)[0]
@@ -265,7 +275,7 @@ func TestOnDealSectorCommitted(t *testing.T) {
 		StoragePricePerEpoch: abi.NewTokenAmount(1),
 		ProviderCollateral:   abi.NewTokenAmount(1),
 		ClientCollateral:     abi.NewTokenAmount(1),
-		Label:                "success",
+		Label:                label,
 	}
 	unfinishedDeal := &api.MarketDeal{
 		Proposal: proposal,
@@ -312,7 +322,7 @@ func TestOnDealSectorCommitted(t *testing.T) {
 			},
 			matchStates: []matchState{
 				{
-					msg: makeMessage(t, provider, miner.Methods.ProveCommitSector, &miner.ProveCommitSectorParams{
+					msg: makeMessage(t, provider, builtin.MethodsMiner.ProveCommitSector, &minertypes.ProveCommitSectorParams{
 						SectorNumber: sectorNumber,
 					}),
 				},
@@ -330,7 +340,7 @@ func TestOnDealSectorCommitted(t *testing.T) {
 			},
 			matchStates: []matchState{
 				{
-					msg: makeMessage(t, provider, miner.Methods.ProveCommitSector, &miner.ProveCommitSectorParams{
+					msg: makeMessage(t, provider, builtin.MethodsMiner.ProveCommitSector, &minertypes.ProveCommitSectorParams{
 						SectorNumber: sectorNumber,
 					}),
 					// Exit-code 1 means the prove-commit was unsuccessful
@@ -367,7 +377,7 @@ func TestOnDealSectorCommitted(t *testing.T) {
 			currentDealInfoErr2: errors.New("something went wrong"),
 			matchStates: []matchState{
 				{
-					msg: makeMessage(t, provider, miner.Methods.ProveCommitSector, &miner.ProveCommitSectorParams{
+					msg: makeMessage(t, provider, builtin.MethodsMiner.ProveCommitSector, &minertypes.ProveCommitSectorParams{
 						SectorNumber: sectorNumber,
 					}),
 				},
@@ -395,7 +405,7 @@ func TestOnDealSectorCommitted(t *testing.T) {
 			},
 			matchStates: []matchState{
 				{
-					msg: makeMessage(t, provider, miner.Methods.ProveCommitSector, &miner.ProveCommitSectorParams{
+					msg: makeMessage(t, provider, builtin.MethodsMiner.ProveCommitSector, &minertypes.ProveCommitSectorParams{
 						SectorNumber: sectorNumber,
 					}),
 				},

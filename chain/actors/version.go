@@ -20,9 +20,9 @@ const ({{range .actorVersions}}
 
 /* inline-gen start */
 
-var LatestVersion = 7
+var LatestVersion = 8
 
-var Versions = []int{0, 2, 3, 4, 5, 6, 7}
+var Versions = []int{0, 2, 3, 4, 5, 6, 7, 8}
 
 const (
 	Version0 Version = 0
@@ -32,6 +32,7 @@ const (
 	Version5 Version = 5
 	Version6 Version = 6
 	Version7 Version = 7
+	Version8 Version = 8
 )
 
 /* inline-gen end */
@@ -53,6 +54,8 @@ func VersionForNetwork(version network.Version) (Version, error) {
 		return Version6, nil
 	case network.Version15:
 		return Version7, nil
+	case network.Version16:
+		return Version8, nil
 	default:
 		return -1, fmt.Errorf("unsupported network version %d", version)
 	}

@@ -4,16 +4,18 @@ import (
 	"context"
 	"fmt"
 
+	lpaych "github.com/filecoin-project/lotus/chain/actors/builtin/paych"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
 )
@@ -82,7 +84,7 @@ func newChannelAccessor(pm *Manager, from address.Address, to address.Address) *
 	}
 }
 
-func (ca *channelAccessor) messageBuilder(ctx context.Context, from address.Address) (paych.MessageBuilder, error) {
+func (ca *channelAccessor) messageBuilder(ctx context.Context, from address.Address) (lpaych.MessageBuilder, error) {
 	nwVersion, err := ca.api.StateNetworkVersion(ctx, types.EmptyTSK)
 	if err != nil {
 		return nil, err
@@ -92,7 +94,7 @@ func (ca *channelAccessor) messageBuilder(ctx context.Context, from address.Addr
 	if err != nil {
 		return nil, err
 	}
-	return paych.Message(av, from), nil
+	return lpaych.Message(av, from), nil
 }
 
 func (ca *channelAccessor) getChannelInfo(ctx context.Context, addr address.Address) (*ChannelInfo, error) {
@@ -172,14 +174,14 @@ func (ca *channelAccessor) nextNonceForLane(ci *ChannelInfo, lane uint64) uint64
 	return maxnonce + 1
 }
 
-func (ca *channelAccessor) checkVoucherValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (map[uint64]paych.LaneState, error) {
+func (ca *channelAccessor) checkVoucherValid(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (map[uint64]lpaych.LaneState, error) {
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 
 	return ca.checkVoucherValidUnlocked(ctx, ch, sv)
 }
 
-func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (map[uint64]paych.LaneState, error) {
+func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch address.Address, sv *paych.SignedVoucher) (map[uint64]lpaych.LaneState, error) {
 	if sv.ChannelAddr != ch {
 		return nil, xerrors.Errorf("voucher ChannelAddr doesn't match channel address, got %s, expected %s", sv.ChannelAddr, ch)
 	}
@@ -194,7 +196,7 @@ func (ca *channelAccessor) checkVoucherValidUnlocked(ctx context.Context, ch add
 	if sv.TimeLockMin != 0 {
 		return nil, xerrors.Errorf("voucher is Min Time Locked")
 	}
-	if len(sv.SecretPreimage) != 0 {
+	if len(sv.SecretHash) != 0 {
 		return nil, xerrors.Errorf("voucher is Hash Locked")
 	}
 
@@ -479,7 +481,7 @@ func (ca *channelAccessor) listVouchers(ctx context.Context, ch address.Address)
 
 // laneState gets the LaneStates from chain, then applies all vouchers in
 // the data store over the chain state
-func (ca *channelAccessor) laneState(ctx context.Context, state paych.State, ch address.Address) (map[uint64]paych.LaneState, error) {
+func (ca *channelAccessor) laneState(ctx context.Context, state lpaych.State, ch address.Address) (map[uint64]lpaych.LaneState, error) {
 	// TODO: we probably want to call UpdateChannelState with all vouchers to be fully correct
 	//  (but technically dont't need to)
 
@@ -491,8 +493,8 @@ func (ca *channelAccessor) laneState(ctx context.Context, state paych.State, ch 
 	// Note: we use a map instead of an array to store laneStates because the
 	// client sets the lane ID (the index) and potentially they could use a
 	// very large index.
-	laneStates := make(map[uint64]paych.LaneState, laneCount)
-	err = state.ForEachLaneState(func(idx uint64, ls paych.LaneState) error {
+	laneStates := make(map[uint64]lpaych.LaneState, laneCount)
+	err = state.ForEachLaneState(func(idx uint64, ls lpaych.LaneState) error {
 		laneStates[idx] = ls
 		return nil
 	})
@@ -535,7 +537,7 @@ func (ca *channelAccessor) laneState(ctx context.Context, state paych.State, ch 
 }
 
 // Get the total redeemed amount across all lanes, after applying the voucher
-func (ca *channelAccessor) totalRedeemedWithVoucher(laneStates map[uint64]paych.LaneState, sv *paych.SignedVoucher) (big.Int, error) {
+func (ca *channelAccessor) totalRedeemedWithVoucher(laneStates map[uint64]lpaych.LaneState, sv *paych.SignedVoucher) (big.Int, error) {
 	// TODO: merges
 	if len(sv.Merges) != 0 {
 		return big.Int{}, xerrors.Errorf("dont currently support paych lane merges")

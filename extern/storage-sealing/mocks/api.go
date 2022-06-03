@@ -12,15 +12,14 @@ import (
 	bitfield "github.com/filecoin-project/go-bitfield"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
+	market "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	miner "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	dline "github.com/filecoin-project/go-state-types/dline"
 	network "github.com/filecoin-project/go-state-types/network"
 	api "github.com/filecoin-project/lotus/api"
-	market "github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	miner "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	types "github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	gomock "github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"
 )
@@ -245,10 +244,10 @@ func (mr *MockSealingAPIMockRecorder) StateMinerAvailableBalance(arg0, arg1, arg
 }
 
 // StateMinerInfo mocks base method.
-func (m *MockSealingAPI) StateMinerInfo(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (miner.MinerInfo, error) {
+func (m *MockSealingAPI) StateMinerInfo(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (api.MinerInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerInfo", arg0, arg1, arg2)
-	ret0, _ := ret[0].(miner.MinerInfo)
+	ret0, _ := ret[0].(api.MinerInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -260,7 +259,7 @@ func (mr *MockSealingAPIMockRecorder) StateMinerInfo(arg0, arg1, arg2 interface{
 }
 
 // StateMinerInitialPledgeCollateral mocks base method.
-func (m *MockSealingAPI) StateMinerInitialPledgeCollateral(arg0 context.Context, arg1 address.Address, arg2 miner0.SectorPreCommitInfo, arg3 sealing.TipSetToken) (big.Int, error) {
+func (m *MockSealingAPI) StateMinerInitialPledgeCollateral(arg0 context.Context, arg1 address.Address, arg2 miner.SectorPreCommitInfo, arg3 sealing.TipSetToken) (big.Int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerInitialPledgeCollateral", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(big.Int)
@@ -290,7 +289,7 @@ func (mr *MockSealingAPIMockRecorder) StateMinerPartitions(arg0, arg1, arg2, arg
 }
 
 // StateMinerPreCommitDepositForPower mocks base method.
-func (m *MockSealingAPI) StateMinerPreCommitDepositForPower(arg0 context.Context, arg1 address.Address, arg2 miner0.SectorPreCommitInfo, arg3 sealing.TipSetToken) (big.Int, error) {
+func (m *MockSealingAPI) StateMinerPreCommitDepositForPower(arg0 context.Context, arg1 address.Address, arg2 miner.SectorPreCommitInfo, arg3 sealing.TipSetToken) (big.Int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerPreCommitDepositForPower", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(big.Int)

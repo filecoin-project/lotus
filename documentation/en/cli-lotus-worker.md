@@ -7,7 +7,7 @@ USAGE:
    lotus-worker [global options] command [command options] [arguments...]
 
 VERSION:
-   1.15.4-dev
+   1.17.0-dev
 
 COMMANDS:
    run         Start lotus worker

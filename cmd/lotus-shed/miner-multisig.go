@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/filecoin-project/go-state-types/builtin"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
@@ -16,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/urfave/cli/v2"
@@ -88,7 +89,7 @@ var mmProposeWithdrawBalance = &cli.Command{
 			return err
 		}
 
-		pcid, err := api.MsigPropose(ctx, multisigAddr, minerAddr, big.Zero(), sender, uint64(miner.Methods.WithdrawBalance), sp)
+		pcid, err := api.MsigPropose(ctx, multisigAddr, minerAddr, big.Zero(), sender, uint64(builtin.MethodsMiner.WithdrawBalance), sp)
 		if err != nil {
 			return xerrors.Errorf("proposing message: %w", err)
 		}
@@ -167,7 +168,7 @@ var mmApproveWithdrawBalance = &cli.Command{
 			return err
 		}
 
-		acid, err := api.MsigApproveTxnHash(ctx, multisigAddr, txid, proposer, minerAddr, big.Zero(), sender, uint64(miner.Methods.WithdrawBalance), sp)
+		acid, err := api.MsigApproveTxnHash(ctx, multisigAddr, txid, proposer, minerAddr, big.Zero(), sender, uint64(builtin.MethodsMiner.WithdrawBalance), sp)
 		if err != nil {
 			return xerrors.Errorf("approving message: %w", err)
 		}
@@ -248,7 +249,7 @@ var mmProposeChangeOwner = &cli.Command{
 			return xerrors.Errorf("serializing params: %w", err)
 		}
 
-		pcid, err := api.MsigPropose(ctx, multisigAddr, minerAddr, big.Zero(), sender, uint64(miner.Methods.ChangeOwnerAddress), sp)
+		pcid, err := api.MsigPropose(ctx, multisigAddr, minerAddr, big.Zero(), sender, uint64(builtin.MethodsMiner.ChangeOwnerAddress), sp)
 		if err != nil {
 			return xerrors.Errorf("proposing message: %w", err)
 		}
@@ -338,7 +339,7 @@ var mmApproveChangeOwner = &cli.Command{
 			return xerrors.Errorf("serializing params: %w", err)
 		}
 
-		acid, err := api.MsigApproveTxnHash(ctx, multisigAddr, txid, proposer, minerAddr, big.Zero(), sender, uint64(miner.Methods.ChangeOwnerAddress), sp)
+		acid, err := api.MsigApproveTxnHash(ctx, multisigAddr, txid, proposer, minerAddr, big.Zero(), sender, uint64(builtin.MethodsMiner.ChangeOwnerAddress), sp)
 		if err != nil {
 			return xerrors.Errorf("approving message: %w", err)
 		}
@@ -435,7 +436,7 @@ var mmProposeChangeWorker = &cli.Command{
 			return xerrors.Errorf("serializing params: %w", err)
 		}
 
-		pcid, err := api.MsigPropose(ctx, multisigAddr, minerAddr, big.Zero(), sender, uint64(miner.Methods.ChangeWorkerAddress), sp)
+		pcid, err := api.MsigPropose(ctx, multisigAddr, minerAddr, big.Zero(), sender, uint64(builtin.MethodsMiner.ChangeWorkerAddress), sp)
 		if err != nil {
 			return xerrors.Errorf("proposing message: %w", err)
 		}
@@ -519,7 +520,7 @@ var mmConfirmChangeWorker = &cli.Command{
 			return xerrors.Errorf("worker key change cannot be confirmed until %d, current height is %d", mi.WorkerChangeEpoch, head.Height())
 		}
 
-		pcid, err := api.MsigPropose(ctx, multisigAddr, minerAddr, big.Zero(), sender, uint64(miner.Methods.ConfirmUpdateWorkerKey), nil)
+		pcid, err := api.MsigPropose(ctx, multisigAddr, minerAddr, big.Zero(), sender, uint64(builtin.MethodsMiner.ConfirmUpdateWorkerKey), nil)
 		if err != nil {
 			return xerrors.Errorf("proposing message: %w", err)
 		}
@@ -634,7 +635,7 @@ var mmProposeControlSet = &cli.Command{
 			return xerrors.Errorf("serializing params: %w", err)
 		}
 
-		pcid, err := api.MsigPropose(ctx, multisigAddr, minerAddr, big.Zero(), sender, uint64(miner.Methods.ChangeWorkerAddress), sp)
+		pcid, err := api.MsigPropose(ctx, multisigAddr, minerAddr, big.Zero(), sender, uint64(builtin.MethodsMiner.ChangeWorkerAddress), sp)
 		if err != nil {
 			return xerrors.Errorf("proposing message: %w", err)
 		}

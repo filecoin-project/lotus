@@ -29,8 +29,6 @@ import (
 	"github.com/ipld/go-car"
 	"golang.org/x/xerrors"
 
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
@@ -55,7 +53,7 @@ const msgsPerBlock = 20
 //nolint:deadcode,varcheck
 var log = logging.Logger("gen")
 
-var ValidWpostForTesting = []proof5.PoStProof{{
+var ValidWpostForTesting = []proof7.PoStProof{{
 	ProofBytes: []byte("valid proof"),
 }}
 
@@ -492,7 +490,7 @@ func (cg *ChainGen) NextTipSetFromMinersWithMessagesAndNulls(base *types.TipSet,
 
 func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticket *types.Ticket,
 	eticket *types.ElectionProof, bvals []types.BeaconEntry, height abi.ChainEpoch,
-	wpost []proof5.PoStProof, msgs []*types.SignedMessage) (*types.FullBlock, error) {
+	wpost []proof7.PoStProof, msgs []*types.SignedMessage) (*types.FullBlock, error) {
 
 	var ts uint64
 	if cg.Timestamper != nil {
@@ -620,7 +618,7 @@ func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*cr
 
 type WinningPoStProver interface {
 	GenerateCandidates(context.Context, abi.PoStRandomness, uint64) ([]uint64, error)
-	ComputeProof(context.Context, []proof7.ExtendedSectorInfo, abi.PoStRandomness, abi.ChainEpoch, network.Version) ([]proof5.PoStProof, error)
+	ComputeProof(context.Context, []proof7.ExtendedSectorInfo, abi.PoStRandomness, abi.ChainEpoch, network.Version) ([]proof7.PoStProof, error)
 }
 
 type wppProvider struct{}
@@ -629,7 +627,7 @@ func (wpp *wppProvider) GenerateCandidates(ctx context.Context, _ abi.PoStRandom
 	return []uint64{0}, nil
 }
 
-func (wpp *wppProvider) ComputeProof(context.Context, []proof7.ExtendedSectorInfo, abi.PoStRandomness, abi.ChainEpoch, network.Version) ([]proof5.PoStProof, error) {
+func (wpp *wppProvider) ComputeProof(context.Context, []proof7.ExtendedSectorInfo, abi.PoStRandomness, abi.ChainEpoch, network.Version) ([]proof7.PoStProof, error) {
 	return ValidWpostForTesting, nil
 }
 
@@ -680,11 +678,11 @@ type genFakeVerifier struct{}
 
 var _ ffiwrapper.Verifier = (*genFakeVerifier)(nil)
 
-func (m genFakeVerifier) VerifySeal(svi proof5.SealVerifyInfo) (bool, error) {
+func (m genFakeVerifier) VerifySeal(svi proof7.SealVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (m genFakeVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
+func (m genFakeVerifier) VerifyAggregateSeals(aggregate proof7.AggregateSealVerifyProofAndInfos) (bool, error) {
 	panic("not supported")
 }
 

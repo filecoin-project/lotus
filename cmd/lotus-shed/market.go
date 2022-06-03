@@ -6,6 +6,8 @@ import (
 	"os"
 	"path"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+
 	levelds "github.com/ipfs/go-ds-leveldb"
 	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
 
@@ -82,7 +84,7 @@ var marketDealFeesCmd = &cli.Command{
 
 			for _, deal := range deals {
 				if deal.Proposal.Provider == p {
-					e, p := deal.Proposal.GetDealFees(ht)
+					e, p := market.GetDealFees(deal.Proposal, ht)
 					ef = big.Add(ef, e)
 					pf = big.Add(pf, p)
 					count++
@@ -103,7 +105,7 @@ var marketDealFeesCmd = &cli.Command{
 				return err
 			}
 
-			ef, pf := deal.Proposal.GetDealFees(ht)
+			ef, pf := market.GetDealFees(deal.Proposal, ht)
 
 			fmt.Println("Earned fees: ", ef)
 			fmt.Println("Pending fees: ", pf)

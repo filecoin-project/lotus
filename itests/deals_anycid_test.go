@@ -32,7 +32,7 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 
 	ctx := context.Background()
 	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
+	policy.SetPreCommitChallengeDelay(10)
 	t.Cleanup(func() {
 		policy.SetPreCommitChallengeDelay(oldDelay)
 	})
