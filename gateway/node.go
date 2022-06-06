@@ -166,7 +166,7 @@ func (gw *Node) checkTimestamp(at time.Time) error {
 func (gw *Node) limit(ctx context.Context, tokens int) error {
 	ctx2, cancel := context.WithTimeout(ctx, gw.rateLimitTimeout)
 	defer cancel()
-	if perConnLimiter, ok := ctx2.Value("limiter").(*rate.Limiter); ok {
+	if perConnLimiter, ok := ctx2.Value(perConnLimiterKey).(*rate.Limiter); ok {
 		err := perConnLimiter.WaitN(ctx2, tokens)
 		if err != nil {
 			return fmt.Errorf("connection limited. %w", err)

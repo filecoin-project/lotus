@@ -19,6 +19,10 @@ import (
 	"golang.org/x/time/rate"
 )
 
+type perConnLimiterKeyType string
+
+const perConnLimiterKey = "limiter"
+
 // Handler returns a gateway http.Handler, to be mounted as-is on the server.
 func Handler(gwapi lapi.Gateway, api lapi.FullNode, rateLimit int64, connPerMinute int64, opts ...jsonrpc.ServerOption) (http.Handler, error) {
 	m := mux.NewRouter()
@@ -75,7 +79,7 @@ type RateLimiterHandler struct {
 }
 
 func (h RateLimiterHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	r2 := r.WithContext(context.WithValue(r.Context(), "limiter", h.limiter))
+	r2 := r.WithContext(context.WithValue(r.Context(), perConnLimiterKey, h.limiter))
 	h.handler.ServeHTTP(w, r2)
 }
 
