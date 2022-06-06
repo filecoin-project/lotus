@@ -1400,12 +1400,12 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 
 	input, err := ioutil.ReadFile(tmp)
 	if err != nil {
-		xerrors.Errorf("failed to read car file for export: %w", err)
+		return xerrors.Errorf("failed to read car file for export: %w", err)
 	}
 
 	err = ioutil.WriteFile(outputPath, input, 0644)
 	if err != nil {
-		xerrors.Errorf("failed to write to export file: %w", err)
+		return xerrors.Errorf("failed to write to export file: %w", err)
 	}
 
 	return nil

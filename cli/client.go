@@ -305,7 +305,7 @@ var clientCarGenCmd = &cli.Command{
 			return err
 		}
 
-		fmt.Printf("Car file successfully created at %s with CID %s", cctx.Args().Get(1), encoder.Encode(root))
+		fmt.Printf("Car file successfully created at %s with CID %s\n", cctx.Args().Get(1), encoder.Encode(root))
 
 		return nil
 	},
