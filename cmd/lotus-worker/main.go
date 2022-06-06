@@ -37,6 +37,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -61,6 +62,7 @@ func main() {
 		waitQuietCmd,
 		resourcesCmd,
 		tasksCmd,
+		configCmd,
 	}
 
 	app := &cli.App{
@@ -122,7 +124,6 @@ var runCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "listen",
 			Usage: "host address and port the worker api will listen on",
-			Value: "0.0.0.0:3456",
 		},
 		&cli.StringFlag{
 			Name:   "address",
@@ -433,6 +434,16 @@ var runCmd = &cli.Command{
 				log.Error("closing repo", err)
 			}
 		}()
+
+		c, err := lr.Config()
+		if err != nil {
+			return err
+		}
+		cfg, ok := c.(*config.StorageWorker)
+		if !ok {
+			return xerrors.Errorf("invalid config for repo, got: %T", c)
+		}
+
 		ds, err := lr.Datastore(context.Background(), "/metadata")
 		if err != nil {
 			return err
@@ -440,10 +451,16 @@ var runCmd = &cli.Command{
 
 		log.Info("Opening local storage; connecting to master")
 		const unspecifiedAddress = "0.0.0.0"
-		address := cctx.String("listen")
+		address := ""
+		if cctx.String("listen") != "" {
+			address = cctx.String("listen")
+		} else {
+			address = cfg.API.RemoteListenAddress
+		}
+
 		addressSlice := strings.Split(address, ":")
 		if ip := net.ParseIP(addressSlice[0]); ip != nil {
-			if ip.String() == unspecifiedAddress {
+			if ip.String() == unspecifiedAddress && cfg.API.ExtractRoutableIP == true {
 				timeout, err := time.ParseDuration(cctx.String("timeout"))
 				if err != nil {
 					return err
@@ -455,8 +472,7 @@ var runCmd = &cli.Command{
 				address = rip + ":" + addressSlice[1]
 			}
 		}
-
-		localStore, err := stores.NewLocal(ctx, lr, nodeApi, []string{"http://" + address + "/remote"})
+		localStore, err := stores.NewLocal(ctx, lr, nodeApi, []string{cfg.API.Protocol + "://" + address + "/remote"})
 		if err != nil {
 			return err
 		}

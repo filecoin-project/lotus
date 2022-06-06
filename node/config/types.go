@@ -10,6 +10,14 @@ import (
 // //
 // // After making edits here, run 'make cfgdoc-gen' (or 'make gen')
 
+type WorkerConfig struct {
+	API WorkerAPI
+}
+
+type StorageWorker struct {
+	WorkerConfig
+}
+
 // Common is common config between full node and miner
 type Common struct {
 	API     API
@@ -390,6 +398,13 @@ type MinerAddressConfig struct {
 	// A control address that doesn't have enough funds will still be chosen
 	// over the worker address if this flag is set.
 	DisableWorkerFallback bool
+}
+
+type WorkerAPI struct {
+	ExtractRoutableIP   bool
+	RemoteListenAddress string
+	Protocol            string
+	Timeout             Duration
 }
 
 // API contains configs for API endpoint

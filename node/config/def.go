@@ -102,6 +102,14 @@ func DefaultFullNode() *FullNode {
 	}
 }
 
+func DefaultStorageWorker() *StorageWorker {
+	cfg := &StorageWorker{}
+	cfg.API.Protocol = "http"
+	cfg.API.ExtractRoutableIP = true
+	cfg.API.RemoteListenAddress = "0.0.0.0:3456"
+	return cfg
+}
+
 func DefaultStorageMiner() *StorageMiner {
 	cfg := &StorageMiner{
 		Common: defCommon(),
