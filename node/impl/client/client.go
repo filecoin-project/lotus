@@ -56,6 +56,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/network"
 	"github.com/filecoin-project/go-fil-markets/stores"
 
+	"github.com/filecoin-project/lotus/lib/lotusgocar"
 	"github.com/filecoin-project/lotus/lib/unixfs"
 	"github.com/filecoin-project/lotus/markets/retrievaladapter"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
@@ -63,7 +64,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
 
-	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo/imports"
 
 	"github.com/filecoin-project/lotus/api"
@@ -525,33 +525,24 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 	}()
 
 	if ref.IsCAR {
-		// user gave us a CAR file, use it as-is
-		// validate that it's either a carv1 or carv2, and has one root.
-		f, err := os.Open(ref.Path)
-		if err != nil {
-			return nil, xerrors.Errorf("failed to open CAR file: %w", err)
-		}
-		//defer f.Close() //nolint:errcheck
 
-		hd, err := car.ReadHeader(bufio.NewReader(f))
+		cr, err := carv2.OpenReader(ref.Path)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to read CAR header: %w", err)
+			return nil, xerrors.Errorf("failed to create car file reader: %w", err)
 		}
-		if len(hd.Roots) != 1 {
+
+		defer cr.Close() //nolint:errcheck
+
+		roots, err := cr.Roots()
+		if err != nil {
 			return nil, xerrors.New("car file can have one and only one header")
 		}
-		if hd.Version != 1 && hd.Version != 2 {
-			return nil, xerrors.Errorf("car version must be 1 or 2, is %d", hd.Version)
+
+		if cr.Version != 1 && cr.Version != 2 {
+			return nil, xerrors.Errorf("car version must be 1 or 2, is %d", cr.Version)
 		}
 
-		// explicitly closing the file to avoid conflict with ioutil
-
-		if err = f.Close(); err != nil {
-			return nil, xerrors.Errorf("error closing the file: %w", err)
-		}
-
-		//carPath = ref.Path
-		root = hd.Roots[0]
+		root = roots[0]
 		input, err := ioutil.ReadFile(ref.Path)
 		if err != nil {
 			return nil, xerrors.Errorf("failed to read car file for import: %w", err)
@@ -565,10 +556,15 @@ func (a *API) ClientImport(ctx context.Context, ref api.FileRef) (res *api.Impor
 	} else {
 
 		// perform the unixfs chunking.
-		root, err = unixfs.CreateFilestore(ctx, ref.Path, carPath)
+		// root, err = unixfs.CreateFilestore(ctx, ref.Path, carPath)
+		// if err != nil {
+		// 	return nil, xerrors.Errorf("failed to import file using unixfs: %w", err)
+		// }
+		root, err = lotusgocar.Createcar(ctx, carPath, ref.Path)
 		if err != nil {
-			return nil, xerrors.Errorf("failed to import file using unixfs: %w", err)
+			return nil, xerrors.Errorf("failed to import file using go-car: %w", err)
 		}
+
 	}
 
 	if err = imgr.AddLabel(id, imports.LSource, "import"); err != nil {
@@ -1397,40 +1393,51 @@ func (a *API) ClientGenCar(ctx context.Context, ref api.FileRef, outputPath stri
 	}
 	defer os.Remove(tmp) //nolint:errcheck
 
-	// generate and import the UnixFS DAG into a filestore (positional reference) CAR.
-	root, err := unixfs.CreateFilestore(ctx, ref.Path, tmp)
+	_, err = lotusgocar.Createcar(ctx, tmp, ref.Path)
 	if err != nil {
 		return xerrors.Errorf("failed to import file using unixfs: %w", err)
 	}
 
-	// open the positional reference CAR as a filestore.
-	fs, err := stores.ReadOnlyFilestore(tmp)
+	input, err := ioutil.ReadFile(tmp)
 	if err != nil {
-		return xerrors.Errorf("failed to open filestore from carv2 in path %s: %w", tmp, err)
+		xerrors.Errorf("failed to read car file for export: %w", err)
 	}
-	defer fs.Close() //nolint:errcheck
 
-	f, err := os.Create(outputPath)
+	err = ioutil.WriteFile(outputPath, input, 0644)
 	if err != nil {
-		return err
+		xerrors.Errorf("failed to write to export file: %w", err)
 	}
 
-	// build a dense deterministic CAR (dense = containing filled leaves)
-	if err := car.NewSelectiveCar(
-		ctx,
-		fs,
-		[]car.Dag{{
-			Root:     root,
-			Selector: selectorparse.CommonSelector_ExploreAllRecursively,
-		}},
-		car.MaxTraversalLinks(config.MaxTraversalLinks),
-	).Write(
-		f,
-	); err != nil {
-		return xerrors.Errorf("failed to write CAR to output file: %w", err)
-	}
+	return nil
 
-	return f.Close()
+	// // open the positional reference CAR as a filestore.
+	// fs, err := stores.ReadOnlyFilestore(tmp)
+	// if err != nil {
+	// 	return xerrors.Errorf("failed to open filestore from carv2 in path %s: %w", tmp, err)
+	// }
+	// defer fs.Close() //nolint:errcheck
+
+	// f, err := os.Create(outputPath)
+	// if err != nil {
+	// 	return err
+	// }
+
+	// // build a dense deterministic CAR (dense = containing filled leaves)
+	// if err := car.NewSelectiveCar(
+	// 	ctx,
+	// 	fs,
+	// 	[]car.Dag{{
+	// 		Root:     root,
+	// 		Selector: selectorparse.CommonSelector_ExploreAllRecursively,
+	// 	}},
+	// 	car.MaxTraversalLinks(config.MaxTraversalLinks),
+	// ).Write(
+	// 	f,
+	// ); err != nil {
+	// 	return xerrors.Errorf("failed to write CAR to output file: %w", err)
+	// }
+
+	// return f.Close()
 }
 
 func (a *API) ClientListDataTransfers(ctx context.Context) ([]api.DataTransferChannel, error) {
