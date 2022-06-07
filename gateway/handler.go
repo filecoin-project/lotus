@@ -21,7 +21,7 @@ import (
 
 type perConnLimiterKeyType string
 
-const perConnLimiterKey = "limiter"
+const perConnLimiterKey perConnLimiterKeyType = "limiter"
 
 // Handler returns a gateway http.Handler, to be mounted as-is on the server.
 func Handler(gwapi lapi.Gateway, api lapi.FullNode, rateLimit int64, connPerMinute int64, opts ...jsonrpc.ServerOption) (http.Handler, error) {
