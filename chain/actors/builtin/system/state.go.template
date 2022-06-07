@@ -23,9 +23,11 @@ func load{{.v}}(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
-func make{{.v}}(store adt.Store) (State, error) {
+func make{{.v}}(store adt.Store{{if (ge .v 8)}}, builtinActors cid.Cid{{end}}) (State, error) {
 	out := state{{.v}}{store: store}
-	out.State = system{{.v}}.State{}
+	out.State = system{{.v}}.State{
+	{{if (ge .v 8)}}BuiltinActors: builtinActors,{{end}}
+	}
 	return &out, nil
 }
 
@@ -36,4 +38,12 @@ type state{{.v}} struct {
 
 func (s *state{{.v}}) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state{{.v}}) GetBuiltinActors() cid.Cid {
+{{if (le .v 7)}}
+	return cid.Undef
+{{else}}
+	return s.State.BuiltinActors
+{{end}}
 }
