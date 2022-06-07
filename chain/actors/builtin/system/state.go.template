@@ -37,3 +37,11 @@ type state{{.v}} struct {
 func (s *state{{.v}}) GetState() interface{} {
 	return &s.State
 }
+
+func (s *state{{.v}}) GetBuiltinActors() cid.Cid {
+{{if (le .v 7)}}
+	return cid.Undef
+{{else}}
+	return s.State.BuiltinActors
+{{end}}
+}

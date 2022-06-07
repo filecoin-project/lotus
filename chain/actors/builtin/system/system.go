@@ -4,6 +4,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/ipfs/go-cid"
 
 	"golang.org/x/xerrors"
 
@@ -103,4 +104,5 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 
 type State interface {
 	GetState() interface{}
+	GetBuiltinActors() cid.Cid
 }
