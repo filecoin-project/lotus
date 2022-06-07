@@ -98,7 +98,6 @@ func RunPeerMgr(mctx helpers.MetricsCtx, lc fx.Lifecycle, pmgr *peermgr.PeerMgr)
 }
 
 func RunChainExchange(h host.Host, svc exchange.Server) {
-	h.SetStreamHandler(exchange.BlockSyncProtocolID, svc.HandleStream)     // old
 	h.SetStreamHandler(exchange.ChainExchangeProtocolID, svc.HandleStream) // new
 }
 
