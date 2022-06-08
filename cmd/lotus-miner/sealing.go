@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math"
 	"net/http"
 	"os"
 	"sort"
@@ -40,20 +39,6 @@ var sealingCmd = &cli.Command{
 		sealingAbortCmd,
 		sealingDataCidCmd,
 	},
-}
-
-var barCols = float64(64)
-
-func barString(total, y, g float64) string {
-	yBars := int(math.Round(y / total * barCols))
-	gBars := int(math.Round(g / total * barCols))
-	eBars := int(barCols) - yBars - gBars
-	var barString = color.YellowString(strings.Repeat("|", yBars)) +
-		color.GreenString(strings.Repeat("|", gBars))
-	if eBars >= 0 {
-		barString += strings.Repeat(" ", eBars)
-	}
-	return barString
 }
 
 func workersCmd(sealing bool) *cli.Command {
@@ -170,7 +155,7 @@ func workersCmd(sealing bool) *cli.Command {
 				// CPU use
 
 				fmt.Printf("\tCPU:  [%s] %d/%d core(s) in use\n",
-					barString(float64(stat.Info.Resources.CPUs), 0, float64(stat.CpuUse)), stat.CpuUse, stat.Info.Resources.CPUs)
+					lcli.BarString(float64(stat.Info.Resources.CPUs), 0, float64(stat.CpuUse)), stat.CpuUse, stat.Info.Resources.CPUs)
 
 				// RAM use
 
@@ -181,7 +166,7 @@ func workersCmd(sealing bool) *cli.Command {
 				if ramUsed > ramTasks {
 					ramReserved = ramUsed - ramTasks
 				}
-				ramBar := barString(float64(ramTotal), float64(ramReserved), float64(ramTasks))
+				ramBar := lcli.BarString(float64(ramTotal), float64(ramReserved), float64(ramTasks))
 
 				fmt.Printf("\tRAM:  [%s] %d%% %s/%s\n", ramBar,
 					(ramTasks+ramReserved)*100/stat.Info.Resources.MemPhysical,
@@ -197,7 +182,7 @@ func workersCmd(sealing bool) *cli.Command {
 				if vmemUsed > vmemTasks {
 					vmemReserved = vmemUsed - vmemTasks
 				}
-				vmemBar := barString(float64(vmemTotal), float64(vmemReserved), float64(vmemTasks))
+				vmemBar := lcli.BarString(float64(vmemTotal), float64(vmemReserved), float64(vmemTasks))
 
 				fmt.Printf("\tVMEM: [%s] %d%% %s/%s\n", vmemBar,
 					(vmemTasks+vmemReserved)*100/vmemTotal,
@@ -214,7 +199,7 @@ func workersCmd(sealing bool) *cli.Command {
 				// GPU use
 
 				if len(stat.Info.Resources.GPUs) > 0 {
-					gpuBar := barString(float64(len(stat.Info.Resources.GPUs)), 0, stat.GpuUsed)
+					gpuBar := lcli.BarString(float64(len(stat.Info.Resources.GPUs)), 0, stat.GpuUsed)
 					fmt.Printf("\tGPU:  [%s] %.f%% %.2f/%d gpu(s) in use\n", color.GreenString(gpuBar),
 						stat.GpuUsed*100/float64(len(stat.Info.Resources.GPUs)),
 						stat.GpuUsed, len(stat.Info.Resources.GPUs))

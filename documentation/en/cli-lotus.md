@@ -2849,6 +2849,7 @@ DESCRIPTION:
      - all           -- reports the resource usage for all currently active scopes.
 
 OPTIONS:
+   --json      (default: false)
    --help, -h  show help (default: false)
    
 ```

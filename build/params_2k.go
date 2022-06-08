@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
@@ -48,6 +49,10 @@ var UpgradeHyperdriveHeight = abi.ChainEpoch(-16)
 var UpgradeChocolateHeight = abi.ChainEpoch(-17)
 
 var UpgradeOhSnapHeight = abi.ChainEpoch(-18)
+
+var UpgradeSkyrHeight = abi.ChainEpoch(100)
+
+var ActorsCIDs = map[actors.Version]cid.Cid{}
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,

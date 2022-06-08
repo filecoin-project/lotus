@@ -39,6 +39,7 @@ func main() {
 		marketCmd,
 		miscCmd,
 		mpoolCmd,
+		helloCmd,
 		genesisVerifyCmd,
 		mathCmd,
 		minerCmd,
