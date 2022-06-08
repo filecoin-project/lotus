@@ -95,7 +95,7 @@ var cidFromCarCmd = &cli.Command{
 	Usage:     "Get the manifest CID from a car file",
 	ArgsUsage: "[path]",
 	Action: func(cctx *cli.Context) error {
-		ctx := context.TODO()
+		ctx := cctx.Context
 
 		cf := cctx.Args().Get(0)
 		f, err := os.OpenFile(cf, os.O_RDONLY, 0664)
