@@ -28,7 +28,7 @@ require (
 	github.com/fatih/color v1.13.0
 	github.com/filecoin-project/dagstore v0.5.2
 	github.com/filecoin-project/filecoin-ffi v0.30.4-0.20200910194244-f640612a1a1f
-	github.com/filecoin-project/go-address v0.0.6
+	github.com/filecoin-project/go-address v1.0.0
 	github.com/filecoin-project/go-bitfield v0.2.4
 	github.com/filecoin-project/go-cbor-util v0.0.1
 	github.com/filecoin-project/go-commp-utils v0.1.3
