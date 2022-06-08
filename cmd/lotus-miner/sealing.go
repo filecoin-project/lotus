@@ -189,6 +189,13 @@ func workersCmd(sealing bool) *cli.Command {
 					types.SizeStr(types.NewInt(vmemTasks+vmemReserved)),
 					types.SizeStr(types.NewInt(vmemTotal)))
 
+				taskLimit, ok := stat.Info.TaskLimits[sealtasks.TTPreCommit1]
+				if ok && taskLimit > 0 {
+					runCount := stat.TaskTotal[sealtasks.TTPreCommit1]
+					fmt.Printf("      P1LIMIT:[%s] %d/%d tasks are running\n",
+						lcli.BarString(float64(taskLimit), 0, float64(runCount)), runCount, taskLimit)
+				}
+
 				// GPU use
 
 				if len(stat.Info.Resources.GPUs) > 0 {

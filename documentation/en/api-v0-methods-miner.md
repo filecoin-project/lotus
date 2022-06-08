@@ -4970,9 +4970,15 @@ Response:
             }
           }
         }
+      },
+      "TaskLimits": {
+        "seal/v0/precommit/1": 10
       }
     },
     "Tasks": null,
+    "TaskTotal": {
+      "seal/v0/precommit/1": 5
+    },
     "Enabled": true,
     "MemUsedMin": 0,
     "MemUsedMax": 0,

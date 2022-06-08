@@ -38,6 +38,10 @@ func SpreadWS(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []
 				continue
 			}
 
+			if !sh.CanHandleTask(task.TaskType, wid) {
+				continue
+			}
+
 			wu, _ := workerAssigned[wid]
 			if wu >= bestAssigned {
 				continue
@@ -66,6 +70,8 @@ func SpreadWS(sh *Scheduler, queueLen int, acceptableWindows [][]int, windows []
 		workerAssigned[bestWid]++
 		windows[selectedWindow].Allocated.Add(task.SealTask(), info.Resources, needRes)
 		windows[selectedWindow].Todo = append(windows[selectedWindow].Todo, task)
+
+		sh.TaskAdd(task.TaskType, bestWid)
 
 		rmQueue = append(rmQueue, sqi)
 		scheduled++

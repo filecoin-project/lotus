@@ -38,6 +38,8 @@ func newWorkerHandle(ctx context.Context, w Worker) (*WorkerHandle, error) {
 		active:    NewActiveResources(),
 		Enabled:   true,
 
+		TaskTotal: map[sealtasks.TaskType]int{},
+
 		closingMgr: make(chan struct{}),
 		closedMgr:  make(chan struct{}),
 	}
@@ -482,6 +484,9 @@ func (sw *schedWorker) startProcessingTask(req *WorkerRequest) error {
 			case <-sh.closing:
 				log.Warnf("scheduler closed while sending response (prepare error: %+v)", err)
 			}
+
+			sh.TaskReduce(req.TaskType, sw.wid)
+
 			return
 		}
 
@@ -526,6 +531,7 @@ func (sw *schedWorker) startProcessingTask(req *WorkerRequest) error {
 		if err != nil {
 			log.Errorf("error executing worker (withResources): %+v", err)
 		}
+		sh.TaskReduce(req.TaskType, sw.wid)
 	}()
 
 	return nil
@@ -555,6 +561,8 @@ func (sw *schedWorker) startProcessingReadyTask(req *WorkerRequest) error {
 		w.lk.Lock()
 
 		w.active.Free(req.SealTask(), w.Info.Resources, needRes)
+
+		sh.TaskReduce(req.TaskType, sw.wid)
 
 		select {
 		case sw.taskDone <- struct{}{}:
