@@ -25,7 +25,6 @@ import (
 	rt7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
 	"github.com/ipfs/go-cid"
 	ipldcbor "github.com/ipfs/go-ipld-cbor"
-	mh "github.com/multiformats/go-multihash"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -221,23 +220,6 @@ func (rt *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) 
 		}
 
 		panic(aerrors.Fatalf("failed to get actor: %s", err))
-	}
-
-	// required for genesis/testing
-	if nv := rt.NetworkVersion(); nv >= network.Version16 {
-		name, av, ok := actors.GetActorMetaByCode(act.Code)
-
-		if ok {
-			// lies, lies, lies
-			builder := cid.V1Builder{Codec: cid.Raw, MhType: mh.IDENTITY}
-			synthetic := fmt.Sprintf("fil/%d/%s", av, name)
-			syntheticCid, err := builder.Sum([]byte(synthetic))
-			if err != nil {
-				panic(aerrors.Fatalf("failed to generate synthetic CID: %s", err))
-			}
-
-			return syntheticCid, true
-		}
 	}
 
 	return act.Code, true
