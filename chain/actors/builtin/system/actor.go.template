@@ -49,11 +49,11 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av actors.Version) (State, error) {
+func MakeState(store adt.Store, av actors.Version, builtinActors cid.Cid) (State, error) {
 	switch av {
 {{range .versions}}
 	case actors.Version{{.}}:
-		return make{{.}}(store)
+		return make{{.}}(store{{if (ge . 8)}}, builtinActors{{end}})
 {{end}}
 }
 	return nil, xerrors.Errorf("unknown actor version %d", av)

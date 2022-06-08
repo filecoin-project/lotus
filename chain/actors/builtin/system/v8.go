@@ -19,9 +19,11 @@ func load8(store adt.Store, root cid.Cid) (State, error) {
 	return &out, nil
 }
 
-func make8(store adt.Store) (State, error) {
+func make8(store adt.Store, builtinActors cid.Cid) (State, error) {
 	out := state8{store: store}
-	out.State = system8.State{}
+	out.State = system8.State{
+		BuiltinActors: builtinActors,
+	}
 	return &out, nil
 }
 

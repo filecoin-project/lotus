@@ -71,7 +71,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
-func MakeState(store adt.Store, av actors.Version) (State, error) {
+func MakeState(store adt.Store, av actors.Version, builtinActors cid.Cid) (State, error) {
 	switch av {
 
 	case actors.Version0:
@@ -96,7 +96,7 @@ func MakeState(store adt.Store, av actors.Version) (State, error) {
 		return make7(store)
 
 	case actors.Version8:
-		return make8(store)
+		return make8(store, builtinActors)
 
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)

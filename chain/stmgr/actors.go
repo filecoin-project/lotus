@@ -3,19 +3,20 @@ package stmgr
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"os"
 
-	"github.com/filecoin-project/lotus/chain/rand"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/manifest"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/go-state-types/store"
 	cid "github.com/ipfs/go-cid"
-
-	"golang.org/x/xerrors"
 
 	miner_types "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/lotus/api"
@@ -24,7 +25,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/system"
 	"github.com/filecoin-project/lotus/chain/beacon"
+	"github.com/filecoin-project/lotus/chain/rand"
+	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -550,6 +554,62 @@ func (sm *StateManager) MarketBalance(ctx context.Context, addr address.Address,
 	}
 
 	return out, nil
+}
+
+func (sm *StateManager) GetManifest(ctx context.Context, root cid.Cid) (*manifest.Manifest, error) {
+	st, err := sm.StateTree(root)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get state tree: %w", err)
+	}
+	return GetManifestFromStateTree(ctx, st)
+}
+
+func GetManifestFromStateTree(ctx context.Context, st *state.StateTree) (*manifest.Manifest, error) {
+	wrapStore := store.WrapStore(ctx, st.Store)
+
+	systemActor, err := st.GetActor(system.Address)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get system actor: %w", err)
+	}
+	systemActorState, err := system.Load(wrapStore, systemActor)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load system actor state: %w", err)
+	}
+	actorsManifestCid := systemActorState.GetBuiltinActors()
+
+	mf := manifest.Manifest{
+		Version: 1,
+		Data:    actorsManifestCid,
+	}
+	if err := mf.Load(ctx, wrapStore); err != nil {
+		return nil, xerrors.Errorf("failed to load actor manifest: %w", err)
+	}
+	manifestData := manifest.ManifestData{}
+	if err := st.Store.Get(ctx, mf.Data, &manifestData); err != nil {
+		return nil, xerrors.Errorf("failed to load manifest data: %w", err)
+	}
+	return &mf, nil
+}
+
+func (sm *StateManager) GetManifestData(ctx context.Context, root cid.Cid) ([]manifest.ManifestEntry, error) {
+	st, err := sm.StateTree(root)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get state tree: %w", err)
+	}
+
+	return GetManifestDataFromStateTree(ctx, st)
+}
+
+func GetManifestDataFromStateTree(ctx context.Context, st *state.StateTree) ([]manifest.ManifestEntry, error) {
+	mf, err := GetManifestFromStateTree(ctx, st)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get manifest: %w", err)
+	}
+	manifestData := manifest.ManifestData{}
+	if err := st.Store.Get(ctx, mf.Data, &manifestData); err != nil {
+		return nil, xerrors.Errorf("filed to load manifest data: %w", err)
+	}
+	return manifestData.Entries, nil
 }
 
 var _ StateManagerAPI = (*StateManager)(nil)
