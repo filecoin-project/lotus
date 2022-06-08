@@ -92,6 +92,7 @@ var paychAddFundsCmd = &cli.Command{
 		}
 
 		// Wait for the message to be confirmed
+		fmt.Println("waiting for confirmation..")
 		chAddr, err := api.PaychGetWaitReady(ctx, info.WaitSentinel)
 		if err != nil {
 			return err
