@@ -11,10 +11,10 @@ require (
 	github.com/filecoin-project/go-data-transfer v1.15.1
 	github.com/filecoin-project/go-fil-markets v1.20.1-v16-1
 	github.com/filecoin-project/go-jsonrpc v0.1.5
-	github.com/filecoin-project/go-state-types v0.1.7
+	github.com/filecoin-project/go-state-types v0.1.9
 	github.com/filecoin-project/go-storedcounter v0.1.0
 	github.com/filecoin-project/lotus v0.0.0-00010101000000-000000000000
-	github.com/filecoin-project/specs-actors v0.9.15-0.20220514164640-94e0d5e123bd
+	github.com/filecoin-project/specs-actors v0.9.15
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/mux v1.8.0
 	github.com/hashicorp/go-multierror v1.1.1
@@ -27,7 +27,7 @@ require (
 	github.com/ipfs/go-unixfs v0.3.1
 	github.com/ipld/go-car v0.3.3
 	github.com/kpacha/opencensus-influxdb v0.0.0-20181102202715-663e2683a27c
-	github.com/libp2p/go-libp2p v0.19.3
+	github.com/libp2p/go-libp2p v0.19.4
 	github.com/libp2p/go-libp2p-core v0.15.1
 	github.com/libp2p/go-libp2p-pubsub-tracer v0.0.0-20200626141350-e730b32bf1e6
 	github.com/multiformats/go-multiaddr v0.5.0
@@ -104,10 +104,10 @@ require (
 	github.com/filecoin-project/specs-actors/v2 v2.3.6 // indirect
 	github.com/filecoin-project/specs-actors/v3 v3.1.2 // indirect
 	github.com/filecoin-project/specs-actors/v4 v4.0.2 // indirect
-	github.com/filecoin-project/specs-actors/v5 v5.0.6-0.20220514165557-0b29a778685b // indirect
-	github.com/filecoin-project/specs-actors/v6 v6.0.2-0.20220511204807-569c6d12432b // indirect
-	github.com/filecoin-project/specs-actors/v7 v7.0.1-0.20220511223846-637436c27154 // indirect
-	github.com/filecoin-project/specs-actors/v8 v8.0.0-20220422153930-0afe155bfffa // indirect
+	github.com/filecoin-project/specs-actors/v5 v5.0.6 // indirect
+	github.com/filecoin-project/specs-actors/v6 v6.0.2 // indirect
+	github.com/filecoin-project/specs-actors/v7 v7.0.1 // indirect
+	github.com/filecoin-project/specs-actors/v8 v8.0.0 // indirect
 	github.com/filecoin-project/specs-storage v0.4.1 // indirect
 	github.com/filecoin-project/storetheindex v0.3.5 // indirect
 	github.com/flynn/noise v1.0.0 // indirect
@@ -236,7 +236,7 @@ require (
 	github.com/libp2p/go-stream-muxer-multistream v0.4.0 // indirect
 	github.com/libp2p/go-tcp-transport v0.5.1 // indirect
 	github.com/libp2p/go-ws-transport v0.6.0 // indirect
-	github.com/libp2p/go-yamux/v3 v3.1.1 // indirect
+	github.com/libp2p/go-yamux/v3 v3.1.2 // indirect
 	github.com/lucas-clemente/quic-go v0.27.1 // indirect
 	github.com/lucasb-eyer/go-colorful v1.0.3 // indirect
 	github.com/magefile/mage v1.9.0 // indirect
