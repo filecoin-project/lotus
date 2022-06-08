@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
@@ -38,6 +39,8 @@ import (
 type ChainIO interface {
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
+	ChainPutObj(context.Context, blocks.Block) error
+	ChainPutMany(context.Context, []blocks.Block) error
 }
 
 const LookbackNoLimit = abi.ChainEpoch(-1)
@@ -122,6 +125,12 @@ type FullNode interface {
 
 	// ChainHasObj checks if a given CID exists in the chain blockstore.
 	ChainHasObj(context.Context, cid.Cid) (bool, error) //perm:read
+
+	// ChainPutObj puts a given object into the block store
+	ChainPutObj(context.Context, blocks.Block) error //perm:admin
+
+	// ChainPutMany puts a given array of objects into the block store
+	ChainPutMany(context.Context, []blocks.Block) error //perm:admin
 
 	// ChainStatObj returns statistics about the graph referenced by 'obj'.
 	// If 'base' is also specified, then the returned stat will be a diff

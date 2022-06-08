@@ -11,6 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -109,6 +110,12 @@ type FullNode interface {
 
 	// ChainDeleteObj deletes node referenced by the given CID
 	ChainDeleteObj(context.Context, cid.Cid) error //perm:admin
+
+	// ChainPutObj puts and object into the blockstore
+	ChainPutObj(context.Context, blocks.Block) error
+
+	// ChainPutMany puts an array of objects into the blockstore
+	ChainPutMany(context.Context, []blocks.Block) error
 
 	// ChainHasObj checks if a given CID exists in the chain blockstore.
 	ChainHasObj(context.Context, cid.Cid) (bool, error) //perm:read

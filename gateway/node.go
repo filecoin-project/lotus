@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -46,6 +47,8 @@ type TargetAPI interface {
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
 	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*api.HeadChange, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+	ChainPutObj(context.Context, blocks.Block) error
+	ChainPutMany(context.Context, []blocks.Block) error
 	ChainGetGenesis(context.Context) (*types.TipSet, error)
 	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
 	MpoolPushUntrusted(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
@@ -249,6 +252,14 @@ func (gw *Node) ChainGetGenesis(ctx context.Context) (*types.TipSet, error) {
 
 func (gw *Node) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
 	return gw.target.ChainReadObj(ctx, c)
+}
+
+func (gw *Node) ChainPutObj(ctx context.Context, block blocks.Block) error {
+	return gw.target.ChainPutObj(ctx, block)
+}
+
+func (gw *Node) ChainPutMany(ctx context.Context, blocks []blocks.Block) error {
+	return gw.target.ChainPutMany(ctx, blocks)
 }
 
 func (gw *Node) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {
