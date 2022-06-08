@@ -34,6 +34,7 @@ func (m *Manager) WorkerStats(ctx context.Context) map[uuid.UUID]storiface.Worke
 		out[uuid.UUID(id)] = storiface.WorkerStats{
 			Info:       handle.Info,
 			Tasks:      taskList,
+			TaskTotal:  handle.TaskTotal,
 			Enabled:    handle.Enabled,
 			MemUsedMin: handle.active.memUsedMin,
 			MemUsedMax: handle.active.memUsedMax,

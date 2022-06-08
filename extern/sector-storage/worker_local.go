@@ -7,6 +7,7 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -797,9 +798,23 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 		return storiface.WorkerInfo{}, xerrors.Errorf("interpreting resource env vars: %w", err)
 	}
 
+	// parallel-p1-limit
+	p1Limit := -1
+	if limit, ok := os.LookupEnv("PARALLEL_P1_LIMIT"); ok {
+		li, err := strconv.Atoi(limit)
+		if err != nil {
+			log.Errorf("failed to parse PARALLEL_P1_LIMIT env var, default=-1")
+		} else {
+			p1Limit = li
+		}
+	}
+	taskLimits := make(map[sealtasks.TaskType]int)
+	taskLimits[sealtasks.TTPreCommit1] = p1Limit
+
 	return storiface.WorkerInfo{
 		Hostname:        hostname,
 		IgnoreResources: l.ignoreResources,
+		TaskLimits:      taskLimits,
 		Resources: storiface.WorkerResources{
 			MemPhysical: memPhysical,
 			MemUsed:     memUsed,

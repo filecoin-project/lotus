@@ -88,6 +88,9 @@ type WorkerHandle struct {
 	preparing *ActiveResources // use with WorkerHandle.lk
 	active    *ActiveResources // use with WorkerHandle.lk
 
+	TaskTotal   map[sealtasks.TaskType]int
+	TaskTotalLk sync.Mutex
+
 	lk sync.Mutex // can be taken inside sched.workersLk.RLock
 
 	wndLk         sync.Mutex // can be taken inside sched.workersLk.RLock
@@ -302,6 +305,8 @@ func (sh *Scheduler) runSched() {
 					}
 				}
 
+				sh.TaskClean(req.wid)
+
 				openWindows := make([]*SchedWindowRequest, 0, len(sh.OpenWindows))
 				for _, window := range sh.OpenWindows {
 					if window.Worker != req.wid {
@@ -390,4 +395,64 @@ func (sh *Scheduler) Close(ctx context.Context) error {
 		return ctx.Err()
 	}
 	return nil
+}
+
+func (sh *Scheduler) CanHandleTask(taskType sealtasks.TaskType, wid storiface.WorkerID) bool {
+	if wh, ok := sh.Workers[wid]; ok {
+		if taskLimit, ok := wh.Info.TaskLimits[taskType]; ok {
+			if taskLimit > 0 {
+				wh.TaskTotalLk.Lock()
+				defer wh.TaskTotalLk.Unlock()
+
+				runCount := wh.TaskTotal[taskType]
+				freeCount := taskLimit - runCount
+				if freeCount <= 0 {
+					return false
+				}
+			}
+		}
+	}
+
+	return true
+}
+
+func (sh *Scheduler) TaskAdd(taskType sealtasks.TaskType, wid storiface.WorkerID) {
+	if wh, ok := sh.Workers[wid]; ok {
+		if _, ok := wh.Info.TaskLimits[taskType]; ok {
+			wh.TaskTotalLk.Lock()
+			defer wh.TaskTotalLk.Unlock()
+
+			runCount := wh.TaskTotal[taskType]
+			runCount++
+			wh.TaskTotal[taskType] = runCount
+		}
+	}
+}
+
+func (sh *Scheduler) TaskReduce(taskType sealtasks.TaskType, wid storiface.WorkerID) {
+	if wh, ok := sh.Workers[wid]; ok {
+		if _, ok := wh.Info.TaskLimits[taskType]; ok {
+			wh.TaskTotalLk.Lock()
+			defer wh.TaskTotalLk.Unlock()
+
+			runCount := wh.TaskTotal[taskType]
+			if runCount > 0 {
+				runCount--
+				wh.TaskTotal[taskType] = runCount
+			}
+		}
+	}
+
+}
+
+func (sh *Scheduler) TaskClean(wid storiface.WorkerID) {
+	if wh, ok := sh.Workers[wid]; ok {
+		wh.TaskTotalLk.Lock()
+		defer wh.TaskTotalLk.Unlock()
+
+		for k := range wh.Info.TaskLimits {
+			wh.Info.TaskLimits[k] = 0
+		}
+	}
+
 }

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -212,6 +213,11 @@ var runCmd = &cli.Command{
 			Usage: "used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function",
 			Value: "30m",
 		},
+		&cli.IntFlag{
+			Name:  "parallel-p1-limit",
+			Usage: "maximum precommit1 operations to run in parallel",
+			Value: -1,
+		},
 	},
 	Before: func(cctx *cli.Context) error {
 		if cctx.IsSet("address") {
@@ -230,6 +236,10 @@ var runCmd = &cli.Command{
 			if err := os.Setenv("BELLMAN_NO_GPU", "true"); err != nil {
 				return xerrors.Errorf("could not set no-gpu env: %+v", err)
 			}
+		}
+
+		if err := os.Setenv("PARALLEL_P1_LIMIT", strconv.Itoa(cctx.Int("parallel-p1-limit"))); err != nil {
+			return xerrors.Errorf("could not set parallel p1 limit env: %+v", err)
 		}
 
 		limit, _, err := ulimit.GetLimit()

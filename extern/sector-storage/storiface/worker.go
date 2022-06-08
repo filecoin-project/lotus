@@ -31,6 +31,8 @@ type WorkerInfo struct {
 	// Default should be false (zero value, i.e. resources taken into account).
 	IgnoreResources bool
 	Resources       WorkerResources
+
+	TaskLimits map[sealtasks.TaskType]int
 }
 
 type WorkerResources struct {
@@ -67,9 +69,10 @@ func (wr WorkerResources) ResourceSpec(spt abi.RegisteredSealProof, tt sealtasks
 }
 
 type WorkerStats struct {
-	Info    WorkerInfo
-	Tasks   []sealtasks.TaskType
-	Enabled bool
+	Info      WorkerInfo
+	Tasks     []sealtasks.TaskType
+	TaskTotal map[sealtasks.TaskType]int
+	Enabled   bool
 
 	MemUsedMin uint64
 	MemUsedMax uint64

@@ -1401,6 +1401,9 @@ Response:
         }
       }
     }
+  },
+  "TaskLimits": {
+    "seal/v0/precommit/1": 10
   }
 }
 ```
