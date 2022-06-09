@@ -5,12 +5,15 @@ import (
 	"math"
 	"time"
 
+	prooftypes "github.com/filecoin-project/go-state-types/proof"
+
+	"github.com/filecoin-project/go-state-types/builtin"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
@@ -129,8 +132,8 @@ func (stage *WindowPoStStage) queueMiner(
 	}
 
 	var (
-		partitions      []miner.PoStPartition
-		partitionGroups [][]miner.PoStPartition
+		partitions      []minertypes.PoStPartition
+		partitionGroups [][]minertypes.PoStPartition
 	)
 	// Only prove partitions with live sectors.
 	err = dl.ForEachPartition(func(idx uint64, part miner.Partition) error {
@@ -160,7 +163,7 @@ func (stage *WindowPoStStage) queueMiner(
 			return err
 		}
 		if liveCount-faultyCount > 0 {
-			partitions = append(partitions, miner.PoStPartition{Index: idx})
+			partitions = append(partitions, minertypes.PoStPartition{Index: idx})
 		}
 		return nil
 	})
@@ -177,10 +180,10 @@ func (stage *WindowPoStStage) queueMiner(
 		return err
 	}
 	for _, group := range partitionGroups {
-		params := miner.SubmitWindowedPoStParams{
+		params := minertypes.SubmitWindowedPoStParams{
 			Deadline:   di.Index,
 			Partitions: group,
-			Proofs: []proof5.PoStProof{{
+			Proofs: []prooftypes.PoStProof{{
 				PoStProof:  minerInfo.WindowPoStProofType,
 				ProofBytes: proof,
 			}},
@@ -194,7 +197,7 @@ func (stage *WindowPoStStage) queueMiner(
 		msg := &types.Message{
 			To:     addr,
 			From:   minerInfo.Worker,
-			Method: miner.Methods.SubmitWindowedPoSt,
+			Method: builtin.MethodsMiner.SubmitWindowedPoSt,
 			Params: enc,
 			Value:  types.NewInt(0),
 		}
@@ -216,7 +219,7 @@ func (stage *WindowPoStStage) load(ctx context.Context, bb *blockbuilder.BlockBu
 	}()
 
 	// reset
-	stage.wpostPeriods = make([][]address.Address, miner.WPoStChallengeWindow)
+	stage.wpostPeriods = make([][]address.Address, minertypes.WPoStChallengeWindow)
 	stage.pendingWposts = nil
 	stage.nextWpostEpoch = bb.Height() + 1
 
@@ -259,7 +262,7 @@ func (stage *WindowPoStStage) load(ctx context.Context, bb *blockbuilder.BlockBu
 		}
 		dinfo = dinfo.NextNotElapsed()
 
-		ppOffset := int(dinfo.PeriodStart % miner.WPoStChallengeWindow)
+		ppOffset := int(dinfo.PeriodStart % minertypes.WPoStChallengeWindow)
 		stage.wpostPeriods[ppOffset] = append(stage.wpostPeriods[ppOffset], minerAddr)
 
 		return stage.queueMiner(ctx, bb, minerAddr, minerState, commitEpoch, commitRand)
@@ -290,7 +293,7 @@ func (stage *WindowPoStStage) tick(ctx context.Context, bb *blockbuilder.BlockBu
 	// Perform a bit of catch up. This lets us do things like skip blocks at upgrades then catch
 	// up to make the simulation easier.
 	for ; stage.nextWpostEpoch <= targetHeight; stage.nextWpostEpoch++ {
-		if stage.nextWpostEpoch+miner.WPoStChallengeWindow < targetHeight {
+		if stage.nextWpostEpoch+minertypes.WPoStChallengeWindow < targetHeight {
 			bb.L().Warnw("skipping old window post", "deadline-open", stage.nextWpostEpoch)
 			continue
 		}
@@ -300,7 +303,7 @@ func (stage *WindowPoStStage) tick(ctx context.Context, bb *blockbuilder.BlockBu
 			return err
 		}
 
-		for _, addr := range stage.wpostPeriods[int(stage.nextWpostEpoch%miner.WPoStChallengeWindow)] {
+		for _, addr := range stage.wpostPeriods[int(stage.nextWpostEpoch%minertypes.WPoStChallengeWindow)] {
 			minerState, err := loadMiner(store, st, addr)
 			if err != nil {
 				return err

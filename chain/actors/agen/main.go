@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"go/format"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -77,7 +78,12 @@ func generateAdapters() error {
 				return err
 			}
 
-			if err := ioutil.WriteFile(filepath.Join(actDir, fmt.Sprintf("%s.go", act)), b.Bytes(), 0666); err != nil {
+			fmted, err := format.Source(b.Bytes())
+			if err != nil {
+				return err
+			}
+
+			if err := ioutil.WriteFile(filepath.Join(actDir, fmt.Sprintf("%s.go", act)), fmted, 0666); err != nil {
 				return err
 			}
 		}

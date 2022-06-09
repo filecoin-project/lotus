@@ -11,7 +11,7 @@ import (
 	abi "github.com/filecoin-project/go-state-types/abi"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	exitcode "github.com/filecoin-project/go-state-types/exitcode"
-	proof "github.com/filecoin-project/specs-actors/actors/runtime/proof"
+	proof "github.com/filecoin-project/go-state-types/proof"
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"

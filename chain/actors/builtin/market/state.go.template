@@ -17,8 +17,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 
+{{if (le .v 7)}}
 	market{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/market"
 	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
+{{else}}
+	market{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}market"
+	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
+{{end}}
 )
 
 var _ State = (*state{{.v}})(nil)
@@ -195,7 +200,7 @@ func (s *dealStates{{.v}}) array() adt.Array {
 }
 
 func fromV{{.v}}DealState(v{{.v}} market{{.v}}.DealState) DealState {
-	return (DealState)(v{{.v}})
+        return (DealState)(v{{.v}})
 }
 
 type dealProposals{{.v}} struct {
@@ -211,14 +216,24 @@ func (s *dealProposals{{.v}}) Get(dealID abi.DealID) (*DealProposal, bool, error
 	if !found {
 		return nil, false, nil
 	}
-	proposal := fromV{{.v}}DealProposal(proposal{{.v}})
-	return &proposal, true, nil
+
+    proposal, err := fromV{{.v}}DealProposal(proposal{{.v}})
+    if err != nil {
+        return nil, true, xerrors.Errorf("decoding proposal: %w", err)
+    }
+
+    return &proposal, true, nil
 }
 
 func (s *dealProposals{{.v}}) ForEach(cb func(dealID abi.DealID, dp DealProposal) error) error {
 	var dp{{.v}} market{{.v}}.DealProposal
 	return s.Array.ForEach(&dp{{.v}}, func(idx int64) error {
-		return cb(abi.DealID(idx), fromV{{.v}}DealProposal(dp{{.v}}))
+        dp, err := fromV{{.v}}DealProposal(dp{{.v}})
+        if err != nil {
+            return xerrors.Errorf("decoding proposal: %w", err)
+        }
+
+        return cb(abi.DealID(idx), dp)
 	})
 }
 
@@ -227,17 +242,47 @@ func (s *dealProposals{{.v}}) decode(val *cbg.Deferred) (*DealProposal, error) {
 	if err := dp{{.v}}.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
-	dp := fromV{{.v}}DealProposal(dp{{.v}})
-	return &dp, nil
+
+    dp, err := fromV{{.v}}DealProposal(dp{{.v}})
+    if err != nil {
+        return nil, err
+    }
+
+    return &dp, nil
 }
 
 func (s *dealProposals{{.v}}) array() adt.Array {
 	return s.Array
 }
 
-func fromV{{.v}}DealProposal(v{{.v}} market{{.v}}.DealProposal) DealProposal {
-	return (DealProposal)(v{{.v}})
+func fromV{{.v}}DealProposal(v{{.v}} market{{.v}}.DealProposal) (DealProposal, error) {
+    {{if (le .v 7)}}
+        label, err := labelFromGoString(v{{.v}}.Label)
+        if err != nil {
+            return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
+        }
+    {{else}}
+        label := v{{.v}}.Label
+    {{end}}
+
+    return DealProposal{
+        PieceCID: v{{.v}}.PieceCID,
+        PieceSize: v{{.v}}.PieceSize,
+        VerifiedDeal: v{{.v}}.VerifiedDeal,
+        Client: v{{.v}}.Client,
+        Provider: v{{.v}}.Provider,
+
+        Label: label,
+
+        StartEpoch: v{{.v}}.StartEpoch,
+        EndEpoch: v{{.v}}.EndEpoch,
+        StoragePricePerEpoch: v{{.v}}.StoragePricePerEpoch,
+
+        ProviderCollateral: v{{.v}}.ProviderCollateral,
+        ClientCollateral: v{{.v}}.ClientCollateral,
+    }, nil
 }
+
 
 func (s *state{{.v}}) GetState() interface{} {
 	return &s.State

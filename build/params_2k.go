@@ -18,7 +18,9 @@ import (
 const BootstrappersFile = ""
 const GenesisFile = ""
 
-const GenesisNetworkVersion = network.Version15
+var NetworkBundle = "devnet"
+
+const GenesisNetworkVersion = network.Version16
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
@@ -49,6 +51,9 @@ var UpgradeHyperdriveHeight = abi.ChainEpoch(-16)
 var UpgradeChocolateHeight = abi.ChainEpoch(-17)
 
 var UpgradeOhSnapHeight = abi.ChainEpoch(-18)
+var UpgradeSkyrHeight = abi.ChainEpoch(100)
+
+var ActorsCIDs = map[actors.Version]cid.Cid{}
 
 var UpgradeSkyrHeight = abi.ChainEpoch(100)
 
@@ -104,6 +109,7 @@ func init() {
 	UpgradeHyperdriveHeight = getUpgradeHeight("LOTUS_HYPERDRIVE_HEIGHT", UpgradeHyperdriveHeight)
 	UpgradeChocolateHeight = getUpgradeHeight("LOTUS_CHOCOLATE_HEIGHT", UpgradeChocolateHeight)
 	UpgradeOhSnapHeight = getUpgradeHeight("LOTUS_OHSNAP_HEIGHT", UpgradeOhSnapHeight)
+	UpgradeSkyrHeight = getUpgradeHeight("LOTUS_SKYR_HEIGHT", UpgradeSkyrHeight)
 
 	BuildType |= Build2k
 

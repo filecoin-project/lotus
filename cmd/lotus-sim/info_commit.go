@@ -6,12 +6,14 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/filecoin-project/go-state-types/builtin"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+
 	"github.com/ipfs/go-cid"
 	"github.com/koalacxr/quantile"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation"
@@ -85,8 +87,8 @@ var infoCommitGasSimCommand = &cli.Command{
 				if m.ExitCode != exitcode.Ok {
 					continue
 				}
-				if m.Method == miner.Methods.ProveCommitAggregate {
-					param := miner.ProveCommitAggregateParams{}
+				if m.Method == builtin.MethodsMiner.ProveCommitAggregate {
+					param := minertypes.ProveCommitAggregateParams{}
 					err := param.UnmarshalCBOR(bytes.NewReader(m.Params))
 					if err != nil {
 						log("failed to decode params: %+v", err)
@@ -109,7 +111,7 @@ var infoCommitGasSimCommand = &cli.Command{
 					hist.Observe(float64(c))
 				}
 
-				if m.Method == miner.Methods.ProveCommitSector {
+				if m.Method == builtin.MethodsMiner.ProveCommitSector {
 					gasSingle += uint64(m.GasUsed)
 					proofsSingle++
 					qua.Add(1)

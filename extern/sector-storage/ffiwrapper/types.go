@@ -4,7 +4,7 @@ import (
 	"context"
 	"io"
 
-	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+	"github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/ipfs/go-cid"
 

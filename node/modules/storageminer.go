@@ -219,6 +219,8 @@ type StorageMinerParams struct {
 	Journal            journal.Journal
 	AddrSel            *storage.AddressSelector
 	Maddr              dtypes.MinerAddress
+
+	ManifestLoaded dtypes.BuiltinActorsLoaded
 }
 
 func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*storage.Miner, error) {

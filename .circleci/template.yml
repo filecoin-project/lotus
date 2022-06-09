@@ -83,7 +83,6 @@ commands:
           name: fetch all tags
           command: |
             git fetch --all
-
   packer_build:
     description: "Run a packer build"
     parameters:
@@ -197,6 +196,7 @@ jobs:
           environment:
             TEST_RUSTPROOFS_LOGS: << parameters.proofs-log-test >>
             SKIP_CONFORMANCE: "1"
+            LOTUS_SRC_DIR: /home/circleci/project
           command: |
             mkdir -p /tmp/test-reports/<< parameters.suite >>
             mkdir -p /tmp/test-artifacts
@@ -223,7 +223,7 @@ jobs:
 
   test-conformance:
     description: |
-      Run tests using a corpus of interoperable test vectors for Filecoin 
+      Run tests using a corpus of interoperable test vectors for Filecoin
       implementations to test their correctness and compliance with the Filecoin
       specifications.
     parameters:

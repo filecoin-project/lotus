@@ -15,12 +15,12 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
@@ -31,7 +31,7 @@ import (
 
 type PreCommitBatcherApi interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
-	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
+	StateMinerInfo(context.Context, address.Address, TipSetToken) (api.MinerInfo, error)
 	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
 	ChainBaseFee(context.Context, TipSetToken) (abi.TokenAmount, error)
@@ -40,7 +40,7 @@ type PreCommitBatcherApi interface {
 
 type preCommitEntry struct {
 	deposit abi.TokenAmount
-	pci     *miner0.SectorPreCommitInfo
+	pci     *miner.SectorPreCommitInfo
 }
 
 type PreCommitBatcher struct {
@@ -281,7 +281,7 @@ func (b *PreCommitBatcher) processIndividually(cfg sealiface.Config) ([]sealifac
 	return res, nil
 }
 
-func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi miner.MinerInfo, avail *abi.TokenAmount, params *preCommitEntry) (cid.Cid, error) {
+func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo, avail *abi.TokenAmount, params *preCommitEntry) (cid.Cid, error) {
 	enc := new(bytes.Buffer)
 
 	if err := params.pci.MarshalCBOR(enc); err != nil {
@@ -309,7 +309,7 @@ func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi miner.MinerInf
 		return cid.Undef, xerrors.Errorf("no good address to send precommit message from: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.PreCommitSector, deposit, big.Int(b.feeCfg.MaxPreCommitGasFee), enc.Bytes())
+	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, builtin.MethodsMiner.PreCommitSector, deposit, big.Int(b.feeCfg.MaxPreCommitGasFee), enc.Bytes())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("pushing message to mpool: %w", err)
 	}
@@ -318,7 +318,7 @@ func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi miner.MinerInf
 }
 
 func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tok TipSetToken, bf abi.TokenAmount, nv network.Version) ([]sealiface.PreCommitBatchRes, error) {
-	params := miner5.PreCommitSectorBatchParams{}
+	params := miner.PreCommitSectorBatchParams{}
 	deposit := big.Zero()
 	var res sealiface.PreCommitBatchRes
 
@@ -366,7 +366,7 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tok TipSetToken, b
 		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("no good address found: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.PreCommitSectorBatch, needFunds, maxFee, enc.Bytes())
+	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, builtin.MethodsMiner.PreCommitSectorBatch, needFunds, maxFee, enc.Bytes())
 	if err != nil {
 		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("sending message failed: %w", err)
 	}
@@ -379,7 +379,7 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tok TipSetToken, b
 }
 
 // register PreCommit, wait for batch message, return message CID
-func (b *PreCommitBatcher) AddPreCommit(ctx context.Context, s SectorInfo, deposit abi.TokenAmount, in *miner0.SectorPreCommitInfo) (res sealiface.PreCommitBatchRes, err error) {
+func (b *PreCommitBatcher) AddPreCommit(ctx context.Context, s SectorInfo, deposit abi.TokenAmount, in *miner.SectorPreCommitInfo) (res sealiface.PreCommitBatchRes, err error) {
 	_, curEpoch, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		log.Errorf("getting chain head: %s", err)

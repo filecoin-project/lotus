@@ -37,6 +37,10 @@ func UniversalBlockstore(lc fx.Lifecycle, mctx helpers.MetricsCtx, r repo.Locked
 	return bs, err
 }
 
+func MemoryBlockstore() dtypes.UniversalBlockstore {
+	return blockstore.NewMemory()
+}
+
 func DiscardColdBlockstore(lc fx.Lifecycle, bs dtypes.UniversalBlockstore) (dtypes.ColdBlockstore, error) {
 	return blockstore.NewDiscardStore(bs), nil
 }

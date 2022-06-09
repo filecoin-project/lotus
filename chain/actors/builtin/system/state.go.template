@@ -5,7 +5,11 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 
+{{if (le .v 7)}}
 	system{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/system"
+{{else}}
+	system{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}system"
+{{end}}
 )
 
 var _ State = (*state{{.v}})(nil)
