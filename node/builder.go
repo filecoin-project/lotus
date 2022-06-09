@@ -384,9 +384,6 @@ func Test() Option {
 		Unset(new(*peermgr.PeerMgr)),
 		Override(new(beacon.Schedule), testing.RandomBeacon),
 		Override(new(*storageadapter.DealPublisher), storageadapter.NewDealPublisher(nil, storageadapter.PublishMsgConfig{})),
-		// use the testing bundles
-		Unset(new(dtypes.BuiltinActorsLoaded)),
-		Override(new(dtypes.BuiltinActorsLoaded), modules.LoadBuiltinActorsTesting),
 	)
 }
 

@@ -7,7 +7,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/ipfs/go-cid"
@@ -61,8 +60,6 @@ const UpgradeChocolateHeight = 312746
 const UpgradeOhSnapHeight = 682006
 
 var UpgradeSkyrHeight = abi.ChainEpoch(99999999999999)
-
-var ActorsCIDs = map[actors.Version]cid.Cid{}
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,

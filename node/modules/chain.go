@@ -178,6 +178,6 @@ func NewSlashFilter(ds dtypes.MetadataDS) *slashfilter.SlashFilter {
 	return slashfilter.New(ds)
 }
 
-func UpgradeSchedule(_ dtypes.BuiltinActorsLoaded) stmgr.UpgradeSchedule {
+func UpgradeSchedule() stmgr.UpgradeSchedule {
 	return filcns.DefaultUpgradeSchedule()
 }

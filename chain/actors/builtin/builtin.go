@@ -1,6 +1,8 @@
 package builtin
 
 import (
+	"fmt"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
@@ -65,9 +67,8 @@ func QAPowerForWeight(size abi.SectorSize, duration abi.ChainEpoch, dealWeight, 
 }
 
 func ActorNameByCode(c cid.Cid) string {
-	name, _, ok := actors.GetActorMetaByCode(c)
-	if ok {
-		return name
+	if name, version, ok := actors.GetActorMetaByCode(c); ok {
+		return fmt.Sprintf("fil/%d/%s", version, name)
 	}
 
 	switch {

@@ -17,7 +17,6 @@ import (
 
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 
-	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
@@ -128,5 +127,3 @@ var (
 )
 
 const BootstrapPeerThreshold = 1
-
-var ActorsCIDs = map[actors.Version]cid.Cid{}
