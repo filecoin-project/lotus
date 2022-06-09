@@ -7,6 +7,7 @@ import (
 	/* inline-gen template
 	   {{range .actorVersions}}
 	   	exported{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin/exported"{{end}}
+
 	/* inline-gen start */
 
 	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
