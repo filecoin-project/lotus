@@ -87,6 +87,7 @@ func newManager(pchstore *Store, pchapi managerAPI) (*Manager, error) {
 		channels: make(map[string]*channelAccessor),
 		pchapi:   pchapi,
 	}
+	pm.ctx, pm.shutdown = context.WithCancel(context.Background())
 	return pm, pm.Start()
 }
 

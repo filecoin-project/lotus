@@ -145,7 +145,7 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi lapi.FullNode, sel *l
 		}
 
 		if offer.MinPrice.GreaterThan(big.Int(maxPrice)) {
-			return nil, xerrors.Errorf("failed to find offer satisfying maxPrice: %s", maxPrice)
+			return nil, xerrors.Errorf("failed to find offer satisfying maxPrice: %s. Try increasing maxPrice", maxPrice)
 		}
 
 		o := offer.Order(payer)
