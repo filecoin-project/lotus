@@ -87,6 +87,18 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 				return err
 			}
 
+			pci, pciErr := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, tok)
+			if pciErr != nil {
+				log.Errorf("handlePreCommitFailed: StateSectorPreCommitInfo: api error, not proceeding: %+v", pciErr)
+				return nil
+			}
+
+			// PreCommitMessage is not nil, but SectorPreCommitInfo is nil, should try to resubmit
+			if pci == nil {
+				log.Warnw("handlePreCommitFailed:SectorPreCommitInfo is nil, will SectorRetryPreCommit", "sid", sector.SectorNumber, "err", err.Error())
+				return ctx.Send(SectorRetryPreCommit{})
+			}
+
 			return ctx.Send(SectorRetryPreCommitWait{})
 		}
 
