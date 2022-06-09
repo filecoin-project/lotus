@@ -881,6 +881,40 @@ var msigAddProposeCmd = &cli.Command{
 			from = defaddr
 		}
 
+		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
+
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		act, err := api.StateGetActor(ctx, msig, head.Key())
+		if err != nil {
+			return err
+		}
+
+		mstate, err := multisig.Load(store, act)
+		if err != nil {
+			return err
+		}
+
+		signers, err := mstate.Signers()
+		if err != nil {
+			return err
+		}
+
+		for _, s := range signers {
+			signerActor, err := api.StateAccountKey(ctx, s, types.EmptyTSK)
+			if err != nil {
+				return err
+			}
+
+			if signerActor == addr {
+				return fmt.Errorf("The add a signer address(%s) is included in the signers", addr.String())
+			}
+
+		}
+
 		proto, err := api.MsigAddPropose(ctx, msig, from, addr, cctx.Bool("increase-threshold"))
 		if err != nil {
 			return err
