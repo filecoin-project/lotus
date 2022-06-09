@@ -55,10 +55,6 @@ var UpgradeSkyrHeight = abi.ChainEpoch(100)
 
 var ActorsCIDs = map[actors.Version]cid.Cid{}
 
-var UpgradeSkyrHeight = abi.ChainEpoch(100)
-
-var ActorsCIDs = map[actors.Version]cid.Cid{}
-
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }
