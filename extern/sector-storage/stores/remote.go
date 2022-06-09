@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -411,7 +412,11 @@ func (r *Remote) deleteFromRemote(ctx context.Context, url string, keepIn storif
 	req.Header = r.auth
 	req = req.WithContext(ctx)
 
-	resp, err := http.DefaultClient.Do(req)
+	// Add call timeout period to prevent blocking
+	client := http.DefaultClient
+	client.Timeout = 60 * time.Second // 60 s, should be enough
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return xerrors.Errorf("do request: %w", err)
 	}
