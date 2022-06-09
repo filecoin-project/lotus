@@ -105,6 +105,32 @@ func (fullNode) APIInfoEnvVars() (primary string, fallbacks []string, deprecated
 	return "FULLNODE_API_INFO", nil, nil
 }
 
+// define config for storage worker
+
+var StorageWorker storageWorker
+
+type storageWorker struct{}
+
+func (storageWorker) Type() string {
+	return "StorageWorker"
+}
+
+func (storageWorker) Config() interface{} {
+	return config.DefaultStorageWorker()
+}
+
+func (storageWorker) APIFlags() []string {
+	return []string{"worker-api-url"}
+}
+
+func (storageWorker) RepoFlags() []string {
+	return []string{"worker-repo"}
+}
+
+func (storageWorker) APIInfoEnvVars() (primary string, fallbacks []string, deprecated []string) {
+	return "FULLNODE_API_INFO", nil, nil
+}
+
 var StorageMiner storageMiner
 
 type storageMiner struct{}
@@ -171,7 +197,7 @@ func (worker) Type() string {
 }
 
 func (worker) Config() interface{} {
-	return &struct{}{}
+	return config.DefaultStorageWorker()
 }
 
 func (worker) APIFlags() []string {
