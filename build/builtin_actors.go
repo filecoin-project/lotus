@@ -38,6 +38,20 @@ type Bundle struct {
 	Path map[string]string
 }
 
+// GetPathOverride returns a bundle path that should override any builtin bundles. If the
+// `LOTUS_BUILTIN_ACTORS_VN_BUNDLE` is set for the appropriate actors version, that path will be
+// returned instead.
+func (bd *Bundle) GetPathOverride(network string) (string, bool) {
+	envvar := fmt.Sprintf("LOTUS_BUILTIN_ACTORS_V%d_BUNDLE", bd.Version)
+	if path := os.Getenv(envvar); path != "" {
+		return path, true
+	} else if path := bd.Path[network]; path != "" {
+		return path, true
+	} else {
+		return "", false
+	}
+}
+
 //go:embed bundles.toml
 var builtinActorBundles []byte
 
@@ -77,29 +91,20 @@ func loadManifests(netw string) error {
 	newMetadata := make([]*BuiltinActorsMetadata, 0, len(BuiltinActorReleases))
 	// First, prefer external bundles and overrides.
 	for av, bd := range BuiltinActorReleases {
-		envvar := fmt.Sprintf("LOTUS_BUILTIN_ACTORS_V%d_BUNDLE", av)
-		var (
-			root      cid.Cid
-			actorCids map[string]cid.Cid
-			err       error
-		)
-		if path := os.Getenv(envvar); path != "" {
-			root, actorCids, err = readBundleManifestFromFile(path)
-		} else if path = bd.Path[netw]; path != "" {
-			root, actorCids, err = readBundleManifestFromFile(path)
+		if path, ok := bd.GetPathOverride(netw); ok {
+			root, actorCids, err := readBundleManifestFromFile(path)
+			if err != nil {
+				return err
+			}
+			newMetadata = append(newMetadata, &BuiltinActorsMetadata{
+				Network:     netw,
+				Version:     av,
+				ManifestCid: root,
+				Actors:      actorCids,
+			})
 		} else {
 			embedded[av] = struct{}{}
-			continue
 		}
-		if err != nil {
-			return err
-		}
-		newMetadata = append(newMetadata, &BuiltinActorsMetadata{
-			Network:     netw,
-			Version:     av,
-			ManifestCid: root,
-			Actors:      actorCids,
-		})
 	}
 
 	// Then fallback on embedded bundles

@@ -3,7 +3,6 @@ package bundle
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 	"os"
 
@@ -69,14 +68,11 @@ func LoadBundles(ctx context.Context, bs blockstore.Blockstore, versions ...acto
 			return xerrors.Errorf("unknown actors version %d", av)
 		}
 
-		envvar := fmt.Sprintf("LOTUS_BUILTIN_ACTORS_V%d_BUNDLE", av)
 		var (
 			root cid.Cid
 			err  error
 		)
-		if path := os.Getenv(envvar); path != "" {
-			root, err = LoadBundleFromFile(ctx, bs, path)
-		} else if path = bd.Path[netw]; path != "" {
+		if path, ok := bd.GetPathOverride(netw); ok {
 			root, err = LoadBundleFromFile(ctx, bs, path)
 		} else if embedded, ok := build.GetEmbeddedBuiltinActorsBundle(av); ok {
 			root, err = LoadBundle(ctx, bs, bytes.NewReader(embedded))
