@@ -1431,10 +1431,29 @@ func upgradeActorsV8Common(
 	return newRoot, nil
 }
 
-func UpgradeActorsCode(ctx context.Context, sm *stmgr.StateManager, newActorsManifestCid cid.Cid, root cid.Cid, av actors.Version, oldStateTreeVersion types.StateTreeVersion, newStateTreeVersion types.StateTreeVersion) (cid.Cid, error) {
-	bstore := sm.ChainStore().StateBlockstore()
-	return LiteMigration(ctx, bstore, newActorsManifestCid, root, av, oldStateTreeVersion, newStateTreeVersion)
-}
+// Example upgrade function if upgrade requires only code changes
+//func UpgradeActorsV9(ctx context.Context, sm *stmgr.StateManager, _ stmgr.MigrationCache, _ stmgr.ExecMonitor, root cid.Cid, _ abi.ChainEpoch, _ *types.TipSet) (cid.Cid, error) {
+//	buf := blockstore.NewTieredBstore(sm.ChainStore().StateBlockstore(), blockstore.NewMemorySync())
+//
+//	av := actors.Version9
+//	// This may change for upgrade
+//	newStateTreeVersion := types.StateTreeVersion4
+//
+//	// ensure that the manifest is loaded in the blockstore
+//	if err := bundle.FetchAndLoadBundles(ctx, buf, map[actors.Version]build.Bundle{
+//		av: build.BuiltinActorReleases[av],
+//	}); err != nil {
+//		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
+//	}
+//
+//	newActorsManifestCid, ok := actors.GetManifest(av)
+//	if !ok {
+//		return cid.Undef, xerrors.Errorf("no manifest CID for v8 upgrade")
+//	}
+//
+//	bstore := sm.ChainStore().StateBlockstore()
+//	return LiteMigration(ctx, bstore, newActorsManifestCid, root, av, types.StateTreeVersion4, newStateTreeVersion)
+//}
 
 func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsManifestCid cid.Cid, root cid.Cid, av actors.Version, oldStateTreeVersion types.StateTreeVersion, newStateTreeVersion types.StateTreeVersion) (cid.Cid, error) {
 	buf := blockstore.NewTieredBstore(bstore, blockstore.NewMemorySync())
@@ -1479,11 +1498,11 @@ func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsM
 		return cid.Undef, xerrors.Errorf("error loading new manifest data: %w", err)
 	}
 
-	if len(newManifestData.Entries) != len(actors.GetBuiltinActorsKeys()) {
-		return cid.Undef, xerrors.Errorf("incomplete new manifest with %d code CIDs", len(newManifestData.Entries))
-	}
 	if len(oldManifestData.Entries) != len(actors.GetBuiltinActorsKeys()) {
 		return cid.Undef, xerrors.Errorf("incomplete old manifest with %d code CIDs", len(oldManifestData.Entries))
+	}
+	if len(newManifestData.Entries) != len(actors.GetBuiltinActorsKeys()) {
+		return cid.Undef, xerrors.Errorf("incomplete new manifest with %d code CIDs", len(newManifestData.Entries))
 	}
 
 	// Maps prior version code CIDs to migration functions.
