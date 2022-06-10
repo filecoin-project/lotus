@@ -45,10 +45,6 @@ func (m *MockAPI) ChainPutObj(ctx context.Context, block blocks.Block) error {
 	return m.bs.Put(ctx, block)
 }
 
-func (m *MockAPI) ChainPutMany(ctx context.Context, blocks []blocks.Block) error {
-	return m.bs.PutMany(ctx, blocks)
-}
-
 func (m *MockAPI) StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error) {
 	m.lk.Lock()
 	defer m.lk.Unlock()

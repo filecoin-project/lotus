@@ -12,7 +12,6 @@ type ChainIO interface {
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainPutObj(context.Context, blocks.Block) error
-	ChainPutMany(context.Context, []blocks.Block) error
 }
 
 type apiBlockstore struct {
@@ -56,7 +55,13 @@ func (a *apiBlockstore) Put(ctx context.Context, block blocks.Block) error {
 }
 
 func (a *apiBlockstore) PutMany(ctx context.Context, blocks []blocks.Block) error {
-	return a.api.ChainPutMany(ctx, blocks)
+	for _, block := range blocks {
+		err := a.api.ChainPutObj(ctx, block)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (a *apiBlockstore) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {

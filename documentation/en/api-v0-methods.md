@@ -29,7 +29,6 @@
   * [ChainHasObj](#ChainHasObj)
   * [ChainHead](#ChainHead)
   * [ChainNotify](#ChainNotify)
-  * [ChainPutMany](#ChainPutMany)
   * [ChainPutObj](#ChainPutObj)
   * [ChainReadObj](#ChainReadObj)
   * [ChainSetHead](#ChainSetHead)
@@ -972,23 +971,6 @@ Response:
   }
 ]
 ```
-
-### ChainPutMany
-ChainPutMany puts an array of objects into the blockstore
-
-
-Perms: 
-
-Inputs:
-```json
-[
-  [
-    {}
-  ]
-]
-```
-
-Response: `{}`
 
 ### ChainPutObj
 ChainPutObj puts and object into the blockstore

@@ -48,7 +48,6 @@ type TargetAPI interface {
 	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*api.HeadChange, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainPutObj(context.Context, blocks.Block) error
-	ChainPutMany(context.Context, []blocks.Block) error
 	ChainGetGenesis(context.Context) (*types.TipSet, error)
 	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
 	MpoolPushUntrusted(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
@@ -255,10 +254,6 @@ func (gw *Node) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
 }
 
 func (gw *Node) ChainPutObj(context.Context, blocks.Block) error {
-	return xerrors.New("not supported")
-}
-
-func (gw *Node) ChainPutMany(context.Context, []blocks.Block) error {
 	return xerrors.New("not supported")
 }
 

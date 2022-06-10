@@ -266,10 +266,6 @@ func (a *ChainAPI) ChainPutObj(ctx context.Context, obj blocks.Block) error {
 	return a.ExposedBlockstore.Put(ctx, obj)
 }
 
-func (a *ChainAPI) ChainPutMany(ctx context.Context, objs []blocks.Block) error {
-	return a.ExposedBlockstore.PutMany(ctx, objs)
-}
-
 func (a *ChainAPI) ChainDeleteObj(ctx context.Context, obj cid.Cid) error {
 	return a.ExposedBlockstore.DeleteBlock(ctx, obj)
 }

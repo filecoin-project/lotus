@@ -1431,7 +1431,7 @@ func upgradeActorsV8Common(
 	return newRoot, nil
 }
 
-func UpgradeActorsCode(ctx context.Context, sm *stmgr.StateManager, newActorsManifestCid cid.Cid, root cid.Cid, av actors.Version, oldStateTreeVersion types.StateTreeVersion, newStateTreeVersion types.StateTreeVersion) (cid.Cid, error) { // nolint
+func UpgradeActorsCode(ctx context.Context, sm *stmgr.StateManager, newActorsManifestCid cid.Cid, root cid.Cid, av actors.Version, oldStateTreeVersion types.StateTreeVersion, newStateTreeVersion types.StateTreeVersion) (cid.Cid, error) {
 	bstore := sm.ChainStore().StateBlockstore()
 	return LiteMigration(ctx, bstore, newActorsManifestCid, root, av, oldStateTreeVersion, newStateTreeVersion)
 }

@@ -75,8 +75,6 @@ type FullNodeStruct struct {
 
 		ChainNotify func(p0 context.Context) (<-chan []*api.HeadChange, error) `perm:"read"`
 
-		ChainPutMany func(p0 context.Context, p1 []blocks.Block) error ``
-
 		ChainPutObj func(p0 context.Context, p1 blocks.Block) error ``
 
 		ChainReadObj func(p0 context.Context, p1 cid.Cid) ([]byte, error) `perm:"read"`
@@ -425,8 +423,6 @@ type GatewayStruct struct {
 
 		ChainNotify func(p0 context.Context) (<-chan []*api.HeadChange, error) ``
 
-		ChainPutMany func(p0 context.Context, p1 []blocks.Block) error ``
-
 		ChainPutObj func(p0 context.Context, p1 blocks.Block) error ``
 
 		ChainReadObj func(p0 context.Context, p1 cid.Cid) ([]byte, error) ``
@@ -689,17 +685,6 @@ func (s *FullNodeStruct) ChainNotify(p0 context.Context) (<-chan []*api.HeadChan
 
 func (s *FullNodeStub) ChainNotify(p0 context.Context) (<-chan []*api.HeadChange, error) {
 	return nil, ErrNotSupported
-}
-
-func (s *FullNodeStruct) ChainPutMany(p0 context.Context, p1 []blocks.Block) error {
-	if s.Internal.ChainPutMany == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.ChainPutMany(p0, p1)
-}
-
-func (s *FullNodeStub) ChainPutMany(p0 context.Context, p1 []blocks.Block) error {
-	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainPutObj(p0 context.Context, p1 blocks.Block) error {
@@ -2559,17 +2544,6 @@ func (s *GatewayStruct) ChainNotify(p0 context.Context) (<-chan []*api.HeadChang
 
 func (s *GatewayStub) ChainNotify(p0 context.Context) (<-chan []*api.HeadChange, error) {
 	return nil, ErrNotSupported
-}
-
-func (s *GatewayStruct) ChainPutMany(p0 context.Context, p1 []blocks.Block) error {
-	if s.Internal.ChainPutMany == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.ChainPutMany(p0, p1)
-}
-
-func (s *GatewayStub) ChainPutMany(p0 context.Context, p1 []blocks.Block) error {
-	return ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainPutObj(p0 context.Context, p1 blocks.Block) error {

@@ -36,7 +36,6 @@ import (
 type Gateway interface {
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainPutObj(context.Context, blocks.Block) error
-	ChainPutMany(context.Context, []blocks.Block) error
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 	ChainGetBlockMessages(context.Context, cid.Cid) (*api.BlockMessages, error)
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)

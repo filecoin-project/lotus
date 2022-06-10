@@ -114,9 +114,6 @@ type FullNode interface {
 	// ChainPutObj puts and object into the blockstore
 	ChainPutObj(context.Context, blocks.Block) error
 
-	// ChainPutMany puts an array of objects into the blockstore
-	ChainPutMany(context.Context, []blocks.Block) error
-
 	// ChainHasObj checks if a given CID exists in the chain blockstore.
 	ChainHasObj(context.Context, cid.Cid) (bool, error) //perm:read
 

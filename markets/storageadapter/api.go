@@ -22,7 +22,6 @@ type apiWrapper struct {
 		ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 		ChainHasObj(context.Context, cid.Cid) (bool, error)
 		ChainPutObj(context.Context, blocks.Block) error
-		ChainPutMany(context.Context, []blocks.Block) error
 	}
 }
 

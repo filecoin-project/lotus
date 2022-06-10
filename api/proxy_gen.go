@@ -49,8 +49,6 @@ type ChainIOStruct struct {
 	Internal struct {
 		ChainHasObj func(p0 context.Context, p1 cid.Cid) (bool, error) ``
 
-		ChainPutMany func(p0 context.Context, p1 []blocks.Block) error ``
-
 		ChainPutObj func(p0 context.Context, p1 blocks.Block) error ``
 
 		ChainReadObj func(p0 context.Context, p1 cid.Cid) ([]byte, error) ``
@@ -145,8 +143,6 @@ type FullNodeStruct struct {
 		ChainHead func(p0 context.Context) (*types.TipSet, error) `perm:"read"`
 
 		ChainNotify func(p0 context.Context) (<-chan []*HeadChange, error) `perm:"read"`
-
-		ChainPutMany func(p0 context.Context, p1 []blocks.Block) error `perm:"admin"`
 
 		ChainPutObj func(p0 context.Context, p1 blocks.Block) error `perm:"admin"`
 
@@ -519,8 +515,6 @@ type GatewayStruct struct {
 		ChainHead func(p0 context.Context) (*types.TipSet, error) ``
 
 		ChainNotify func(p0 context.Context) (<-chan []*HeadChange, error) ``
-
-		ChainPutMany func(p0 context.Context, p1 []blocks.Block) error ``
 
 		ChainPutObj func(p0 context.Context, p1 blocks.Block) error ``
 
@@ -990,17 +984,6 @@ func (s *ChainIOStub) ChainHasObj(p0 context.Context, p1 cid.Cid) (bool, error) 
 	return false, ErrNotSupported
 }
 
-func (s *ChainIOStruct) ChainPutMany(p0 context.Context, p1 []blocks.Block) error {
-	if s.Internal.ChainPutMany == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.ChainPutMany(p0, p1)
-}
-
-func (s *ChainIOStub) ChainPutMany(p0 context.Context, p1 []blocks.Block) error {
-	return ErrNotSupported
-}
-
 func (s *ChainIOStruct) ChainPutObj(p0 context.Context, p1 blocks.Block) error {
 	if s.Internal.ChainPutObj == nil {
 		return ErrNotSupported
@@ -1340,17 +1323,6 @@ func (s *FullNodeStruct) ChainNotify(p0 context.Context) (<-chan []*HeadChange, 
 
 func (s *FullNodeStub) ChainNotify(p0 context.Context) (<-chan []*HeadChange, error) {
 	return nil, ErrNotSupported
-}
-
-func (s *FullNodeStruct) ChainPutMany(p0 context.Context, p1 []blocks.Block) error {
-	if s.Internal.ChainPutMany == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.ChainPutMany(p0, p1)
-}
-
-func (s *FullNodeStub) ChainPutMany(p0 context.Context, p1 []blocks.Block) error {
-	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainPutObj(p0 context.Context, p1 blocks.Block) error {
@@ -3342,17 +3314,6 @@ func (s *GatewayStruct) ChainNotify(p0 context.Context) (<-chan []*HeadChange, e
 
 func (s *GatewayStub) ChainNotify(p0 context.Context) (<-chan []*HeadChange, error) {
 	return nil, ErrNotSupported
-}
-
-func (s *GatewayStruct) ChainPutMany(p0 context.Context, p1 []blocks.Block) error {
-	if s.Internal.ChainPutMany == nil {
-		return ErrNotSupported
-	}
-	return s.Internal.ChainPutMany(p0, p1)
-}
-
-func (s *GatewayStub) ChainPutMany(p0 context.Context, p1 []blocks.Block) error {
-	return ErrNotSupported
 }
 
 func (s *GatewayStruct) ChainPutObj(p0 context.Context, p1 blocks.Block) error {

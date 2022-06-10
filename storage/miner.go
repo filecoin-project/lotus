@@ -124,7 +124,6 @@ type fullNodeFilteredAPI interface {
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
 	ChainPutObj(context.Context, blocks.Block) error
-	ChainPutMany(context.Context, []blocks.Block) error
 	ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error)
 
 	WalletSign(context.Context, address.Address, []byte) (*crypto.Signature, error)
