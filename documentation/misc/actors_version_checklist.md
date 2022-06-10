@@ -1,6 +1,6 @@
-### Actor version integration checklist
+### Actor version integration checklist (v16 and onwards)
 
-- [ ] Import new actors
+- [ ] Import new go-state-types, if needed.
 - [ ] Define upgrade heights in `build/params_`
 - [ ] Generate adapters
   - [ ] Update `gen/inlinegen-data.json`
@@ -10,4 +10,5 @@
 - [ ] Update `chain/consensus/filcns/upgrades.go`
   - [ ] Schedule
   - [ ] Migration
+    - [ ] Create a new Migration that calls LiteMigration()
 - [ ] Update upgrade schedule in `chain/sync_test.go`
