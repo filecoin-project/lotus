@@ -4274,7 +4274,7 @@ Response:
       "ChannelAddr": "f01234",
       "TimeLockMin": 10101,
       "TimeLockMax": 10101,
-      "SecretPreimage": "Ynl0ZSBhcnJheQ==",
+      "SecretHash": "Ynl0ZSBhcnJheQ==",
       "Extra": {
         "Actor": "f01234",
         "Method": 1,
@@ -4351,7 +4351,7 @@ Inputs:
     "ChannelAddr": "f01234",
     "TimeLockMin": 10101,
     "TimeLockMax": 10101,
-    "SecretPreimage": "Ynl0ZSBhcnJheQ==",
+    "SecretHash": "Ynl0ZSBhcnJheQ==",
     "Extra": {
       "Actor": "f01234",
       "Method": 1,
@@ -4392,7 +4392,7 @@ Inputs:
     "ChannelAddr": "f01234",
     "TimeLockMin": 10101,
     "TimeLockMax": 10101,
-    "SecretPreimage": "Ynl0ZSBhcnJheQ==",
+    "SecretHash": "Ynl0ZSBhcnJheQ==",
     "Extra": {
       "Actor": "f01234",
       "Method": 1,
@@ -4433,7 +4433,7 @@ Inputs:
     "ChannelAddr": "f01234",
     "TimeLockMin": 10101,
     "TimeLockMax": 10101,
-    "SecretPreimage": "Ynl0ZSBhcnJheQ==",
+    "SecretHash": "Ynl0ZSBhcnJheQ==",
     "Extra": {
       "Actor": "f01234",
       "Method": 1,
@@ -4480,7 +4480,7 @@ Response:
     "ChannelAddr": "f01234",
     "TimeLockMin": 10101,
     "TimeLockMax": 10101,
-    "SecretPreimage": "Ynl0ZSBhcnJheQ==",
+    "SecretHash": "Ynl0ZSBhcnJheQ==",
     "Extra": {
       "Actor": "f01234",
       "Method": 1,
@@ -4524,7 +4524,7 @@ Response:
     "ChannelAddr": "f01234",
     "TimeLockMin": 10101,
     "TimeLockMax": 10101,
-    "SecretPreimage": "Ynl0ZSBhcnJheQ==",
+    "SecretHash": "Ynl0ZSBhcnJheQ==",
     "Extra": {
       "Actor": "f01234",
       "Method": 1,
@@ -4561,7 +4561,7 @@ Inputs:
     "ChannelAddr": "f01234",
     "TimeLockMin": 10101,
     "TimeLockMax": 10101,
-    "SecretPreimage": "Ynl0ZSBhcnJheQ==",
+    "SecretHash": "Ynl0ZSBhcnJheQ==",
     "Extra": {
       "Actor": "f01234",
       "Method": 1,
@@ -5491,7 +5491,7 @@ Response:
       "VerifiedDeal": true,
       "Client": "f01234",
       "Provider": "f01234",
-      "Label": "string value",
+      "Label": "",
       "StartEpoch": 10101,
       "EndEpoch": 10101,
       "StoragePricePerEpoch": "0",
@@ -5569,7 +5569,7 @@ Response:
     "VerifiedDeal": true,
     "Client": "f01234",
     "Provider": "f01234",
-    "Label": "string value",
+    "Label": "",
     "StartEpoch": 10101,
     "EndEpoch": 10101,
     "StoragePricePerEpoch": "0",
@@ -5624,6 +5624,8 @@ Response:
     "InitialPledge": "0",
     "ExpectedDayReward": "0",
     "ExpectedStoragePledge": "0",
+    "ReplacedSectorAge": 10101,
+    "ReplacedDayReward": "0",
     "SectorKeyCID": null
   }
 ]
@@ -6087,6 +6089,8 @@ Response:
     "InitialPledge": "0",
     "ExpectedDayReward": "0",
     "ExpectedStoragePledge": "0",
+    "ReplacedSectorAge": 10101,
+    "ReplacedDayReward": "0",
     "SectorKeyCID": null
   }
 ]
@@ -6122,7 +6126,7 @@ Inputs:
 ]
 ```
 
-Response: `15`
+Response: `16`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -6508,6 +6512,8 @@ Response:
   "InitialPledge": "0",
   "ExpectedDayReward": "0",
   "ExpectedStoragePledge": "0",
+  "ReplacedSectorAge": 10101,
+  "ReplacedDayReward": "0",
   "SectorKeyCID": null
 }
 ```

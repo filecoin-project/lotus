@@ -26,7 +26,7 @@ func TestDealPadding(t *testing.T) {
 
 	var blockTime = 250 * time.Millisecond
 	startEpoch := abi.ChainEpoch(2 << 12)
-	policy.SetPreCommitChallengeDelay(2)
+	policy.SetPreCommitChallengeDelay(10)
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.WithAllSubsystems()) // no mock proofs.
 	ens.InterconnectAll().BeginMining(blockTime)

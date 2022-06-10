@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/ipfs/go-cid"
@@ -23,9 +25,9 @@ import (
 	"github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/specs-storage/storage"
 
+	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -62,7 +64,7 @@ type SealingAPI interface {
 	StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tok TipSetToken) (address.Address, error)
 	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
-	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
+	StateMinerInfo(context.Context, address.Address, TipSetToken) (api.MinerInfo, error)
 	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
 	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, TipSetToken) (bool, error)
 	StateMinerActiveSectors(context.Context, address.Address, TipSetToken) (bitfield.BitField, error)
@@ -82,7 +84,7 @@ type SealingAPI interface {
 
 type SectorStateNotifee func(before, after SectorInfo)
 
-type AddrSel func(ctx context.Context, mi miner.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error)
+type AddrSel func(ctx context.Context, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error)
 
 type Sealing struct {
 	Api      SealingAPI
@@ -269,7 +271,7 @@ func (m *Sealing) currentSealProof(ctx context.Context) (abi.RegisteredSealProof
 		return 0, err
 	}
 
-	return miner.PreferredSealProofTypeFromWindowPoStType(ver, mi.WindowPoStProofType)
+	return lminer.PreferredSealProofTypeFromWindowPoStType(ver, mi.WindowPoStProofType)
 }
 
 func (m *Sealing) minerSector(spt abi.RegisteredSealProof, num abi.SectorNumber) storage.SectorRef {

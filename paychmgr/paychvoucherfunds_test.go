@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
@@ -68,7 +70,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a voucher with a value equal to the channel balance
-	voucher := paych.SignedVoucher{Amount: createAmt, Lane: 1}
+	voucher := paychtypes.SignedVoucher{Amount: createAmt, Lane: 1}
 	res, err := mgr.CreateVoucher(ctx, ch, voucher)
 	require.NoError(t, err)
 	require.NotNil(t, res.Voucher)
@@ -76,7 +78,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 	// Create a voucher in a different lane with an amount that exceeds the
 	// channel balance
 	excessAmt := types.NewInt(5)
-	voucher = paych.SignedVoucher{Amount: excessAmt, Lane: 2}
+	voucher = paychtypes.SignedVoucher{Amount: excessAmt, Lane: 2}
 	res, err = mgr.CreateVoucher(ctx, ch, voucher)
 	require.NoError(t, err)
 	require.Nil(t, res.Voucher)

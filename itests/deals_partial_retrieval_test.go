@@ -48,7 +48,7 @@ func TestPartialRetrieval(t *testing.T) {
 	//stm: @CLIENT_RETRIEVAL_RETRIEVE_001
 	ctx := context.Background()
 
-	policy.SetPreCommitChallengeDelay(2)
+	policy.SetPreCommitChallengeDelay(10)
 	kit.EnableLargeSectors(t)
 	kit.QuietMiningLogs()
 	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.MockProofs(), kit.SectorSize(512<<20))

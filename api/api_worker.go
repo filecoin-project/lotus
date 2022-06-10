@@ -3,12 +3,12 @@ package api
 import (
 	"context"
 
+	"github.com/filecoin-project/go-state-types/proof"
+
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
-
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/specs-storage/storage"

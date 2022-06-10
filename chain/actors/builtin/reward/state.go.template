@@ -7,9 +7,15 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
+{{if (le .v 7)}}
 	miner{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/miner"
 	reward{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/reward"
 	smoothing{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/smoothing"
+{{else}}
+	smoothing{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}util/smoothing"
+	miner{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}miner"
+	reward{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}reward"
+{{end}}
 )
 
 var _ State = (*state{{.v}})(nil)
@@ -45,7 +51,7 @@ func (s *state{{.v}}) ThisEpochRewardSmoothed() (builtin.FilterEstimate, error) 
 		VelocityEstimate: s.State.ThisEpochRewardSmoothed.VelocityEstimate,
 	}, nil
 {{else}}
-	return builtin.FromV0FilterEstimate(*s.State.ThisEpochRewardSmoothed), nil
+	return builtin.FilterEstimate(*s.State.ThisEpochRewardSmoothed), nil
 {{end}}
 }
 

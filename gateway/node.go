@@ -76,7 +76,7 @@ type TargetAPI interface {
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
 	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
 	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
-	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]api.Deadline, error)
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
@@ -542,12 +542,12 @@ func (gw *Node) StateMinerRecoveries(ctx context.Context, m address.Address, tsk
 	return gw.target.StateMinerRecoveries(ctx, m, tsk)
 }
 
-func (gw *Node) StateMinerInfo(ctx context.Context, m address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
+func (gw *Node) StateMinerInfo(ctx context.Context, m address.Address, tsk types.TipSetKey) (api.MinerInfo, error) {
 	if err := gw.limit(ctx, stateRateLimitTokens); err != nil {
-		return miner.MinerInfo{}, err
+		return api.MinerInfo{}, err
 	}
 	if err := gw.checkTipsetKey(ctx, tsk); err != nil {
-		return miner.MinerInfo{}, err
+		return api.MinerInfo{}, err
 	}
 	return gw.target.StateMinerInfo(ctx, m, tsk)
 }

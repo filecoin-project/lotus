@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -171,7 +173,7 @@ func TestPaymentChannelsAPI(t *testing.T) {
 	require.EqualValues(t, excessAmt, vouchRes.Shortfall, "Expected voucher shortfall of %d, got %d", excessAmt, vouchRes.Shortfall)
 
 	// Add a voucher whose value would exceed the channel balance
-	vouch := &paych.SignedVoucher{ChannelAddr: channel, Amount: excessAmt, Lane: 4, Nonce: 1}
+	vouch := &paychtypes.SignedVoucher{ChannelAddr: channel, Amount: excessAmt, Lane: 4, Nonce: 1}
 	vb, err := vouch.SigningBytes()
 	require.NoError(t, err)
 

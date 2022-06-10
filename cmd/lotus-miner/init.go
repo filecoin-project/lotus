@@ -13,6 +13,9 @@ import (
 	"path/filepath"
 	"strconv"
 
+	"github.com/filecoin-project/go-state-types/builtin"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
+
 	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
 
 	"github.com/docker/go-units"
@@ -36,13 +39,13 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -56,6 +59,7 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
 	storageminer "github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/node/bundle"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -211,6 +215,13 @@ var initCmd = &cli.Command{
 		{
 			lr, err := r.Lock(repo.StorageMiner)
 			if err != nil {
+				return err
+			}
+
+			// load bundles
+			bs := blockstore.NewMemory()
+
+			if err := bundle.FetchAndLoadBundles(ctx, bs, build.BuiltinActorReleases); err != nil {
 				return err
 			}
 
@@ -391,7 +402,7 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 	return mds.Put(ctx, datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
 }
 
-func findMarketDealID(ctx context.Context, api v1api.FullNode, deal market2.DealProposal) (abi.DealID, error) {
+func findMarketDealID(ctx context.Context, api v1api.FullNode, deal market8.DealProposal) (abi.DealID, error) {
 	// TODO: find a better way
 	//  (this is only used by genesis miners)
 
@@ -599,7 +610,7 @@ func configureStorageMiner(ctx context.Context, api v1api.FullNode, addr address
 	msg := &types.Message{
 		To:         addr,
 		From:       mi.Worker,
-		Method:     miner.Methods.ChangePeerID,
+		Method:     builtin.MethodsMiner.ChangePeerID,
 		Params:     enc,
 		Value:      types.NewInt(0),
 		GasPremium: gasPrice,
