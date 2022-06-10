@@ -4,9 +4,8 @@ import (
 	"context"
 	"os"
 
-	"github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-state-types/network"
+	cid "github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -25,11 +24,17 @@ var useFvmForMainnetV15 = os.Getenv("LOTUS_USE_FVM_TO_SYNC_MAINNET_V15") == "1"
 
 func NewVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 	if opts.NetworkVersion >= network.Version16 {
+		if os.Getenv("LOTUS_FVM_DEBUG") == "1" {
+			return NewDualExecutionFVM(ctx, opts)
+		}
 		return NewFVM(ctx, opts)
 	}
 
 	// Remove after v16 upgrade, this is only to support testing and validation of the FVM
 	if useFvmForMainnetV15 && opts.NetworkVersion >= network.Version15 {
+		if os.Getenv("LOTUS_FVM_DEBUG") == "1" {
+			return NewDualExecutionFVM(ctx, opts)
+		}
 		return NewFVM(ctx, opts)
 	}
 
