@@ -254,12 +254,12 @@ func (gw *Node) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
 	return gw.target.ChainReadObj(ctx, c)
 }
 
-func (gw *Node) ChainPutObj(ctx context.Context, block blocks.Block) error {
-	return gw.target.ChainPutObj(ctx, block)
+func (gw *Node) ChainPutObj(context.Context, blocks.Block) error {
+	return xerrors.New("not supported")
 }
 
-func (gw *Node) ChainPutMany(ctx context.Context, blocks []blocks.Block) error {
-	return gw.target.ChainPutMany(ctx, blocks)
+func (gw *Node) ChainPutMany(context.Context, []blocks.Block) error {
+	return xerrors.New("not supported")
 }
 
 func (gw *Node) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {

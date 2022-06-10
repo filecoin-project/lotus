@@ -1449,7 +1449,8 @@ func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsM
 
 	if stateRoot.Version != oldStateTreeVersion {
 		return cid.Undef, xerrors.Errorf(
-			"expected state root version 4 for actors code upgrade, got %d",
+			"expected state tree version %d for actors code upgrade, got %d",
+			oldStateTreeVersion,
 			stateRoot.Version,
 		)
 	}
@@ -1459,23 +1460,8 @@ func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsM
 		return cid.Undef, xerrors.Errorf("failed to load state tree: %w", err)
 	}
 
-	// Get old actors
-	systemActor, err := st.GetActor(system.Address)
+	oldManifest, err := stmgr.GetManifest(ctx, st)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to get system actor: %w", err)
-	}
-	systemActorState, err := system.Load(store, systemActor)
-	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to load system actor state: %w", err)
-	}
-	oldActorsManifestCid := systemActorState.GetBuiltinActors()
-
-	// load old manifest
-	oldManifest := manifest.Manifest{
-		Version: 1,
-		Data:    oldActorsManifestCid,
-	}
-	if err := oldManifest.Load(ctx, adtStore); err != nil {
 		return cid.Undef, xerrors.Errorf("error loading old actor manifest: %w", err)
 	}
 	oldManifestData := manifest.ManifestData{}
@@ -1506,7 +1492,7 @@ func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsM
 	for _, entry := range newManifestData.Entries {
 		oldCodeCid, ok := oldManifest.Get(entry.Name)
 		if !ok {
-			return cid.Undef, xerrors.Errorf("code cid for %s actor not found in manifest", entry.Name)
+			return cid.Undef, xerrors.Errorf("code cid for %s actor not found in old manifest", entry.Name)
 		}
 		migrations[oldCodeCid] = entry.Code
 	}
@@ -1525,29 +1511,24 @@ func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsM
 		if !ok {
 			return xerrors.Errorf("new code cid not found in migrations for actor %s", addr)
 		}
-		var newActor types.Actor
+		var head cid.Cid
 		if addr == system.Address {
 			newSystemState, err := system.MakeState(store, av, newManifest.Data)
 			if err != nil {
 				return xerrors.Errorf("could not make system actor state: %w", err)
 			}
-			systemStateHead, err := store.Put(ctx, newSystemState)
+			head, err = store.Put(ctx, newSystemState)
 			if err != nil {
 				return xerrors.Errorf("could not set system actor state head: %w", err)
 			}
-			newActor = types.Actor{
-				Code:    newCid,
-				Head:    systemStateHead,
-				Nonce:   actorIn.Nonce,
-				Balance: actorIn.Balance,
-			}
 		} else {
-			newActor = types.Actor{
-				Code:    newCid,
-				Head:    actorIn.Head,
-				Nonce:   actorIn.Nonce,
-				Balance: actorIn.Balance,
-			}
+			head = actorIn.Head
+		}
+		newActor := types.Actor{
+			Code:    newCid,
+			Head:    head,
+			Nonce:   actorIn.Nonce,
+			Balance: actorIn.Balance,
 		}
 		err = actorsOut.SetActor(addr, &newActor)
 		if err != nil {

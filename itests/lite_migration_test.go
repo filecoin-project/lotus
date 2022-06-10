@@ -47,7 +47,7 @@ func TestLiteMigration(t *testing.T) {
 	oldStateTree, err := state.LoadStateTree(ctxStore, stateRoot)
 	require.NoError(t, err)
 
-	oldManifest, err := stmgr.GetManifestFromStateTree(ctx, oldStateTree)
+	oldManifest, err := stmgr.GetManifest(ctx, oldStateTree)
 	require.NoError(t, err)
 	newManifestCid := makeTestManifest(t, ctxStore)
 	// Use the Cid we generated to get the new manifest instead of loading it from the state tree, because that would not test that we have the correct manifest in the state
