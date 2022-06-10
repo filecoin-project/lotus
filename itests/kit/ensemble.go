@@ -136,13 +136,6 @@ type Ensemble struct {
 
 // NewEnsemble instantiates a new blank Ensemble.
 func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
-	// Ensure we're using the right actors. This really shouldn't be some global thing, but it's the best we can do for now.
-	if build.InsecurePoStValidation {
-		require.NoError(t, build.UseNetworkBundle("testing-fake-proofs"))
-	} else {
-		require.NoError(t, build.UseNetworkBundle("testing"))
-	}
-
 	options := DefaultEnsembleOpts
 	for _, o := range opts {
 		err := o(&options)
@@ -165,6 +158,14 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 			Balance: acc.initialBalance,
 			Meta:    (&genesis.AccountMeta{Owner: acc.key.Address}).ActorMeta(),
 		})
+	}
+
+	// Ensure we're using the right actors. This really shouldn't be some global thing, but it's
+	// the best we can do for now.
+	if n.options.mockProofs {
+		require.NoError(t, build.UseNetworkBundle("testing-fake-proofs"))
+	} else {
+		require.NoError(t, build.UseNetworkBundle("testing"))
 	}
 
 	return n
