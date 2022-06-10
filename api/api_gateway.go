@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
@@ -30,6 +31,7 @@ import (
 
 type Gateway interface {
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
+	ChainPutObj(context.Context, blocks.Block) error
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 	ChainGetParentMessages(context.Context, cid.Cid) ([]Message, error)
 	ChainGetParentReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)

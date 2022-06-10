@@ -29,6 +29,7 @@
   * [ChainHasObj](#ChainHasObj)
   * [ChainHead](#ChainHead)
   * [ChainNotify](#ChainNotify)
+  * [ChainPutObj](#ChainPutObj)
   * [ChainReadObj](#ChainReadObj)
   * [ChainSetHead](#ChainSetHead)
   * [ChainStatObj](#ChainStatObj)
@@ -970,6 +971,21 @@ Response:
   }
 ]
 ```
+
+### ChainPutObj
+ChainPutObj puts and object into the blockstore
+
+
+Perms: 
+
+Inputs:
+```json
+[
+  {}
+]
+```
+
+Response: `{}`
 
 ### ChainReadObj
 ChainReadObj reads ipld nodes referenced by the specified CID from chain

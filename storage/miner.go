@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-bitfield"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
@@ -122,6 +123,7 @@ type fullNodeFilteredAPI interface {
 	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*api.HeadChange, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
+	ChainPutObj(context.Context, blocks.Block) error
 	ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error)
 
 	WalletSign(context.Context, address.Address, []byte) (*crypto.Signature, error)

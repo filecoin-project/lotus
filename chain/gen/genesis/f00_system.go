@@ -3,6 +3,8 @@ package genesis
 import (
 	"context"
 
+	"github.com/ipfs/go-cid"
+
 	systemtypes "github.com/filecoin-project/go-state-types/builtin/v8/system"
 
 	"github.com/filecoin-project/go-state-types/manifest"
@@ -25,7 +27,8 @@ import (
 func SetupSystemActor(ctx context.Context, bs bstore.Blockstore, av actors.Version) (*types.Actor, error) {
 
 	cst := cbor.NewCborStore(bs)
-	st, err := system.MakeState(adt.WrapStore(ctx, cst), av)
+	// TODO pass in built-in actors cid for V8 and later
+	st, err := system.MakeState(adt.WrapStore(ctx, cst), av, cid.Undef)
 	if err != nil {
 		return nil, err
 	}
