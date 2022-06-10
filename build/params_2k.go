@@ -51,7 +51,7 @@ var UpgradeHyperdriveHeight = abi.ChainEpoch(-16)
 var UpgradeChocolateHeight = abi.ChainEpoch(-17)
 
 var UpgradeOhSnapHeight = abi.ChainEpoch(-18)
-var UpgradeSkyrHeight = abi.ChainEpoch(100)
+var UpgradeSkyrHeight = abi.ChainEpoch(-19)
 
 var ActorsCIDs = map[actors.Version]cid.Cid{}
 
