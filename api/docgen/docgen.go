@@ -28,6 +28,7 @@ import (
 	filestore "github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
+	blocks "github.com/ipfs/go-block-format"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -94,6 +95,9 @@ func init() {
 	textSelExample := textselector.Expression("Links/21/Hash/Links/42/Hash")
 	apiSelExample := api.Selector("Links/21/Hash/Links/42/Hash")
 	clientEvent := retrievalmarket.ClientEventDealAccepted
+
+	block := blocks.Block(&blocks.BasicBlock{})
+	ExampleValues[reflect.TypeOf(&block).Elem()] = block
 
 	addExample(bitfield.NewFromSet([]uint64{5}))
 	addExample(abi.RegisteredSealProof_StackedDrg32GiBV1_1)

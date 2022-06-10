@@ -3,6 +3,7 @@ package storageadapter
 import (
 	"context"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
@@ -20,6 +21,7 @@ type apiWrapper struct {
 		StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 		ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 		ChainHasObj(context.Context, cid.Cid) (bool, error)
+		ChainPutObj(context.Context, blocks.Block) error
 	}
 }
 

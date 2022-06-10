@@ -15,6 +15,7 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
@@ -259,6 +260,10 @@ func (m *ChainModule) ChainReadObj(ctx context.Context, obj cid.Cid) ([]byte, er
 	}
 
 	return blk.RawData(), nil
+}
+
+func (a *ChainAPI) ChainPutObj(ctx context.Context, obj blocks.Block) error {
+	return a.ExposedBlockstore.Put(ctx, obj)
 }
 
 func (a *ChainAPI) ChainDeleteObj(ctx context.Context, obj cid.Cid) error {

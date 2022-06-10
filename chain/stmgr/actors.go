@@ -5,7 +5,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/filecoin-project/lotus/chain/rand"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -15,8 +15,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	cid "github.com/ipfs/go-cid"
 
-	"golang.org/x/xerrors"
-
 	miner_types "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -25,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/beacon"
+	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"

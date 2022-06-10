@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/stats"
 	"golang.org/x/time/rate"
@@ -55,6 +56,7 @@ type TargetAPI interface {
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
 	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*api.HeadChange, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+	ChainPutObj(context.Context, blocks.Block) error
 	ChainGetGenesis(context.Context) (*types.TipSet, error)
 	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
 	MpoolPushUntrusted(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
@@ -330,6 +332,10 @@ func (gw *Node) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
 		return nil, err
 	}
 	return gw.target.ChainReadObj(ctx, c)
+}
+
+func (gw *Node) ChainPutObj(context.Context, blocks.Block) error {
+	return xerrors.New("not supported")
 }
 
 func (gw *Node) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {
