@@ -42,8 +42,6 @@ func LoadBundle(ctx context.Context, bs blockstore.Blockstore, r io.Reader) (cid
 // LoadBundles loads the bundles for the specified actor versions into the passed blockstore, if and
 // only if the bundle's manifest is not already present in the blockstore.
 func LoadBundles(ctx context.Context, bs blockstore.Blockstore, versions ...actors.Version) error {
-	netw := build.NetworkBundle
-
 	for _, av := range versions {
 		// No bundles before version 8.
 		if av < actors.Version8 {
@@ -63,16 +61,11 @@ func LoadBundles(ctx context.Context, bs blockstore.Blockstore, versions ...acto
 			continue
 		}
 
-		bd, ok := build.BuiltinActorReleases[av]
-		if !ok {
-			return xerrors.Errorf("unknown actors version %d", av)
-		}
-
 		var (
 			root cid.Cid
 			err  error
 		)
-		if path, ok := bd.GetPathOverride(netw); ok {
+		if path, ok := build.BundleOverrides[av]; ok {
 			root, err = LoadBundleFromFile(ctx, bs, path)
 		} else if embedded, ok := build.GetEmbeddedBuiltinActorsBundle(av); ok {
 			root, err = LoadBundle(ctx, bs, bytes.NewReader(embedded))

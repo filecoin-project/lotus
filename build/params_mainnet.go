@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -20,6 +21,7 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 }
 
 var NetworkBundle = "mainnet"
+var BundleOverrides map[actors.Version]string
 
 const GenesisNetworkVersion = network.Version0
 

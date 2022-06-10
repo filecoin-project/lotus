@@ -2,7 +2,6 @@ package build
 
 import (
 	"archive/tar"
-	"bytes"
 	"context"
 	"embed"
 	"fmt"
@@ -13,7 +12,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -25,49 +23,19 @@ import (
 	"golang.org/x/xerrors"
 )
 
-var BuiltinActorReleases map[actors.Version]Bundle
-
-type BundleSpec struct {
-	Bundles []Bundle
-}
-
-type Bundle struct {
-	// Version is the actors version in this bundle
-	Version actors.Version
-	// Path is the (optional) bundle path; takes precedence over builtin bundles.
-	Path map[string]string
-}
-
-// GetPathOverride returns a bundle path that should override any builtin bundles. If the
-// `LOTUS_BUILTIN_ACTORS_VN_BUNDLE` is set for the appropriate actors version, that path will be
-// returned instead.
-func (bd *Bundle) GetPathOverride(network string) (string, bool) {
-	envvar := fmt.Sprintf("LOTUS_BUILTIN_ACTORS_V%d_BUNDLE", bd.Version)
-	if path := os.Getenv(envvar); path != "" {
-		return path, true
-	} else if path := bd.Path[network]; path != "" {
-		return path, true
-	} else {
-		return "", false
-	}
-}
-
-//go:embed bundles.toml
-var builtinActorBundles []byte
-
 //go:embed actors/*.tar.zst
 var embeddedBuiltinActorReleases embed.FS
 
 func init() {
-	var spec BundleSpec
-	if _, err := toml.NewDecoder(bytes.NewReader(builtinActorBundles)).Decode(&spec); err != nil {
-		panic(err)
+	if BundleOverrides == nil {
+		BundleOverrides = make(map[actors.Version]string)
 	}
-
-	BuiltinActorReleases = make(map[actors.Version]Bundle, len(spec.Bundles))
-
-	for _, bundle := range spec.Bundles {
-		BuiltinActorReleases[bundle.Version] = bundle
+	for _, av := range actors.Versions {
+		path := os.Getenv(fmt.Sprintf("LOTUS_BUILTIN_ACTORS_V%d_BUNDLE", av))
+		if path == "" {
+			continue
+		}
+		BundleOverrides[actors.Version(av)] = path
 	}
 	if err := loadManifests(NetworkBundle); err != nil {
 		panic(err)
@@ -87,40 +55,32 @@ func UseNetworkBundle(netw string) error {
 }
 
 func loadManifests(netw string) error {
-	embedded := make(map[actors.Version]struct{})
-	newMetadata := make([]*BuiltinActorsMetadata, 0, len(BuiltinActorReleases))
-	// First, prefer external bundles and overrides.
-	for av, bd := range BuiltinActorReleases {
-		if path, ok := bd.GetPathOverride(netw); ok {
-			root, actorCids, err := readBundleManifestFromFile(path)
-			if err != nil {
-				return err
-			}
-			newMetadata = append(newMetadata, &BuiltinActorsMetadata{
-				Network:     netw,
-				Version:     av,
-				ManifestCid: root,
-				Actors:      actorCids,
-			})
-		} else {
-			embedded[av] = struct{}{}
+	overridden := make(map[actors.Version]struct{})
+	var newMetadata []*BuiltinActorsMetadata
+	// First, prefer overrides.
+	for av, path := range BundleOverrides {
+		root, actorCids, err := readBundleManifestFromFile(path)
+		if err != nil {
+			return err
 		}
+		newMetadata = append(newMetadata, &BuiltinActorsMetadata{
+			Network:     netw,
+			Version:     av,
+			ManifestCid: root,
+			Actors:      actorCids,
+		})
+		overridden[av] = struct{}{}
 	}
 
-	// Then fallback on embedded bundles
+	// Then load embedded bundle metadata.
 	for _, meta := range EmbeddedBuiltinActorsMetadata {
 		if meta.Network != netw {
 			continue
 		}
-		if _, ok := embedded[meta.Version]; !ok {
+		if _, ok := overridden[meta.Version]; ok {
 			continue
 		}
-		delete(embedded, meta.Version)
 		newMetadata = append(newMetadata, meta)
-	}
-
-	if len(embedded) > 0 {
-		return xerrors.Errorf("failed to find some actor bundles: %v", embedded)
 	}
 
 	actors.ClearManifests()
