@@ -216,6 +216,15 @@ func readBundleManifest(r io.Reader) (cid.Cid, map[string]cid.Cid, error) {
 		return cid.Undef, nil, err
 	}
 
+	// Make sure we have all the actors.
+	for name, c := range actorCids {
+		if has, err := bs.Has(context.Background(), c); err != nil {
+			return cid.Undef, nil, xerrors.Errorf("got an error when checking that the bundle has the actor %q: %w", name, err)
+		} else if !has {
+			return cid.Undef, nil, xerrors.Errorf("actor %q missing from bundle", name)
+		}
+	}
+
 	return root, actorCids, nil
 }
 
