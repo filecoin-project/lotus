@@ -17,8 +17,9 @@ func init() {
 
 	policy.SetProviderCollateralSupplyTarget(big.Zero(), big.NewInt(1))
 	policy.SetConsensusMinerMinPower(abi.NewStoragePower(2048))
-	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1)
 	policy.SetMinVerifiedDealSize(abi.NewStoragePower(256))
+	policy.SetPreCommitChallengeDelay(10)
+	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg2KiBV1, abi.RegisteredSealProof_StackedDrg8MiBV1, abi.RegisteredSealProof_StackedDrg512MiBV1)
 
 	build.InsecurePoStValidation = true
 
