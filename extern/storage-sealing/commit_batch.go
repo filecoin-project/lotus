@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/proof"
+
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -14,14 +16,12 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/network"
-	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
-
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -38,7 +38,7 @@ var aggFeeDen = big.NewInt(100)
 
 type CommitBatcherApi interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
-	StateMinerInfo(context.Context, address.Address, TipSetToken) (miner.MinerInfo, error)
+	StateMinerInfo(context.Context, address.Address, TipSetToken) (api.MinerInfo, error)
 	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
 	ChainBaseFee(context.Context, TipSetToken) (abi.TokenAmount, error)
 
@@ -50,7 +50,7 @@ type CommitBatcherApi interface {
 
 type AggregateInput struct {
 	Spt   abi.RegisteredSealProof
-	Info  proof5.AggregateSealVerifyInfo
+	Info  proof.AggregateSealVerifyInfo
 	Proof []byte
 }
 
@@ -206,7 +206,7 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 
 	var res []sealiface.CommitBatchRes
 
-	individual := (total < cfg.MinCommitBatch) || (total < miner5.MinAggregatedSectors)
+	individual := (total < cfg.MinCommitBatch) || (total < miner.MinAggregatedSectors)
 
 	if !individual && !cfg.AggregateAboveBaseFee.Equals(big.Zero()) {
 		tok, _, err := b.api.ChainHead(b.mctx)
@@ -269,12 +269,12 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		FailedSectors: map[abi.SectorNumber]string{},
 	}
 
-	params := miner5.ProveCommitAggregateParams{
+	params := miner.ProveCommitAggregateParams{
 		SectorNumbers: bitfield.New(),
 	}
 
 	proofs := make([][]byte, 0, total)
-	infos := make([]proof5.AggregateSealVerifyInfo, 0, total)
+	infos := make([]proof.AggregateSealVerifyInfo, 0, total)
 	collateral := big.Zero()
 
 	for id, p := range b.todo {
@@ -314,7 +314,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting miner id: %w", err)
 	}
 
-	params.AggregateProof, err = b.prover.AggregateSealProofs(proof5.AggregateSealVerifyProofAndInfos{
+	params.AggregateProof, err = b.prover.AggregateSealProofs(proof.AggregateSealVerifyProofAndInfos{
 		Miner:          abi.ActorID(mid),
 		SealProof:      b.todo[infos[0].Number].Spt,
 		AggregateProof: arp,
@@ -368,7 +368,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("no good address found: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.ProveCommitAggregate, needFunds, maxFee, enc.Bytes())
+	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, builtin.MethodsMiner.ProveCommitAggregate, needFunds, maxFee, enc.Bytes())
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("sending message failed: %w", err)
 	}
@@ -427,7 +427,7 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 	return res, nil
 }
 
-func (b *CommitBatcher) processSingle(cfg sealiface.Config, mi miner.MinerInfo, avail *abi.TokenAmount, sn abi.SectorNumber, info AggregateInput, tok TipSetToken) (cid.Cid, error) {
+func (b *CommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo, avail *abi.TokenAmount, sn abi.SectorNumber, info AggregateInput, tok TipSetToken) (cid.Cid, error) {
 	enc := new(bytes.Buffer)
 	params := &miner.ProveCommitSectorParams{
 		SectorNumber: sn,
@@ -463,7 +463,7 @@ func (b *CommitBatcher) processSingle(cfg sealiface.Config, mi miner.MinerInfo, 
 		return cid.Undef, xerrors.Errorf("no good address to send commit message from: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, miner.Methods.ProveCommitSector, collateral, big.Int(b.feeCfg.MaxCommitGasFee), enc.Bytes())
+	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, builtin.MethodsMiner.ProveCommitSector, collateral, big.Int(b.feeCfg.MaxCommitGasFee), enc.Bytes())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("pushing message to mpool: %w", err)
 	}

@@ -5,8 +5,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
@@ -15,8 +15,8 @@ import (
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -165,7 +165,7 @@ type StorageMiner interface {
 	StorageStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, error) //perm:admin
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                        //perm:write
-	MarketListDeals(ctx context.Context) ([]MarketDeal, error)                                                                                                                           //perm:read
+	MarketListDeals(ctx context.Context) ([]*MarketDeal, error)                                                                                                                          //perm:read
 	MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error)                                                                                           //perm:read
 	MarketGetDealUpdates(ctx context.Context) (<-chan storagemarket.MinerDeal, error)                                                                                                    //perm:read
 	MarketListIncompleteDeals(ctx context.Context) ([]storagemarket.MinerDeal, error)                                                                                                    //perm:read
@@ -245,7 +245,7 @@ type StorageMiner interface {
 	RuntimeSubsystems(ctx context.Context) (MinerSubsystems, error) //perm:read
 
 	DealsImportData(ctx context.Context, dealPropCid cid.Cid, file string) error //perm:admin
-	DealsList(ctx context.Context) ([]MarketDeal, error)                         //perm:admin
+	DealsList(ctx context.Context) ([]*MarketDeal, error)                        //perm:admin
 	DealsConsiderOnlineStorageDeals(context.Context) (bool, error)               //perm:admin
 	DealsSetConsiderOnlineStorageDeals(context.Context, bool) error              //perm:admin
 	DealsConsiderOnlineRetrievalDeals(context.Context) (bool, error)             //perm:admin

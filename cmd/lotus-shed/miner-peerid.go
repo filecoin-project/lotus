@@ -102,7 +102,7 @@ var minerPeeridCmd = &cli.Command{
 					return err
 				}
 
-				if mi.PeerId != nil && *mi.PeerId == pid {
+				if mi.PeerId != nil && peer.ID(mi.PeerId) == pid {
 					fmt.Println(addr)
 				}
 			}

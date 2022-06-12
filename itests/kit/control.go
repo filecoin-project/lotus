@@ -3,6 +3,8 @@ package kit
 import (
 	"context"
 
+	"github.com/filecoin-project/go-state-types/builtin"
+
 	"github.com/stretchr/testify/require"
 
 	addr "github.com/filecoin-project/go-address"
@@ -10,7 +12,6 @@ import (
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -31,7 +32,7 @@ func (tm *TestMiner) SetControlAddresses(addrs ...addr.Address) {
 	smsg, err := tm.FullNode.MpoolPushMessage(ctx, &types.Message{
 		From:   mi.Owner,
 		To:     tm.ActorAddr,
-		Method: miner.Methods.ChangeWorkerAddress,
+		Method: builtin.MethodsMiner.ChangeWorkerAddress,
 
 		Value:  big.Zero(),
 		Params: sp,

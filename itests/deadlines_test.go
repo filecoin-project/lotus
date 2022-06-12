@@ -7,6 +7,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/builtin"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -238,7 +241,7 @@ func TestDeadlineToggling(t *testing.T) {
 		cr, err := cid.Parse("bagboea4b5abcatlxechwbp7kjpjguna6r6q7ejrhe6mdp3lf34pmswn27pkkiekz")
 		require.NoError(t, err)
 
-		params := &miner.SectorPreCommitInfo{
+		params := &minertypes.SectorPreCommitInfo{
 			Expiration:   2880 * 300,
 			SectorNumber: 22,
 			SealProof:    kit.TestSpt,
@@ -254,7 +257,7 @@ func TestDeadlineToggling(t *testing.T) {
 			To:     maddrE,
 			From:   defaultFrom,
 			Value:  types.FromFil(1),
-			Method: miner.Methods.PreCommitSector,
+			Method: builtin.MethodsMiner.PreCommitSector,
 			Params: enc.Bytes(),
 		}, nil)
 		require.NoError(t, err)
@@ -335,7 +338,7 @@ func TestDeadlineToggling(t *testing.T) {
 		smsg, err := client.MpoolPushMessage(ctx, &types.Message{
 			From:   defaultFrom,
 			To:     maddrD,
-			Method: miner.Methods.TerminateSectors,
+			Method: builtin.MethodsMiner.TerminateSectors,
 
 			Value:  big.Zero(),
 			Params: sp,

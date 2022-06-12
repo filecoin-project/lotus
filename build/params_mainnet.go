@@ -1,11 +1,14 @@
-//go:build !debug && !2k && !testground && !calibnet && !nerpanet && !butterflynet && !interopnet
-// +build !debug,!2k,!testground,!calibnet,!nerpanet,!butterflynet,!interopnet
+//go:build !debug && !2k && !testground && !calibnet && !butterflynet && !interopnet
+// +build !debug,!2k,!testground,!calibnet,!butterflynet,!interopnet
 
 package build
 
 import (
 	"math"
 	"os"
+
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/network"
 
@@ -18,6 +21,8 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0:                  DrandIncentinet,
 	UpgradeSmokeHeight: DrandMainnet,
 }
+
+var NetworkBundle = "mainnet"
 
 const GenesisNetworkVersion = network.Version0
 
@@ -68,7 +73,11 @@ const UpgradeHyperdriveHeight = 892800
 const UpgradeChocolateHeight = 1231620
 
 // 2022-03-01T15:00:00Z
-var UpgradeOhSnapHeight = abi.ChainEpoch(1594680)
+const UpgradeOhSnapHeight = 1594680
+
+var UpgradeSkyrHeight = abi.ChainEpoch(99999999999999)
+
+var ActorsCIDs = map[actors.Version]cid.Cid{}
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
@@ -83,8 +92,8 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_SNAPDEALS") == "1" {
-		UpgradeOhSnapHeight = math.MaxInt64
+	if os.Getenv("LOTUS_DISABLE_SKYR") == "1" {
+		UpgradeSkyrHeight = math.MaxInt64
 	}
 
 	Devnet = false

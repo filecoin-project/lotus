@@ -64,7 +64,7 @@ CLEAN+=build/.update-modules
 deps: $(BUILD_DEPS)
 .PHONY: deps
 
-build-devnets: build lotus-seed lotus-shed lotus-wallet lotus-gateway
+build-devnets: build lotus-seed lotus-shed lotus-wallet lotus-gateway lotus-fountain lotus-stats
 .PHONY: build-devnets
 
 debug: GOFLAGS+=-tags=debug
@@ -169,7 +169,7 @@ BINS+=lotus-fountain
 
 lotus-bench:
 	rm -f lotus-bench
-	$(GOCC) build -o lotus-bench ./cmd/lotus-bench
+	$(GOCC) build $(GOFLAGS) -o lotus-bench ./cmd/lotus-bench
 .PHONY: lotus-bench
 BINS+=lotus-bench
 

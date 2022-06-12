@@ -23,7 +23,7 @@ func TestDealsWithSealingAndRPC(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
+	policy.SetPreCommitChallengeDelay(10)
 	t.Cleanup(func() {
 		policy.SetPreCommitChallengeDelay(oldDelay)
 	})

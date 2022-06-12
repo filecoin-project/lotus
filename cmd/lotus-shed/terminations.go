@@ -7,7 +7,8 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/go-state-types/builtin"
+	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -111,7 +112,7 @@ var terminationsCmd = &cli.Command{
 
 			for _, v := range msgs {
 				msg := v.VMMessage()
-				if msg.Method != miner.Methods.TerminateSectors {
+				if msg.Method != builtin.MethodsMiner.TerminateSectors {
 					continue
 				}
 
@@ -125,7 +126,7 @@ var terminationsCmd = &cli.Command{
 					return err
 				}
 
-				if !builtin.IsStorageMinerActor(minerAct.Code) {
+				if !lbuiltin.IsStorageMinerActor(minerAct.Code) {
 					continue
 				}
 
@@ -167,8 +168,16 @@ var terminationsCmd = &cli.Command{
 							if err != nil {
 								return err
 							}
+							label, err := prop.Label.ToString()
+							if err != nil {
+								labelBs, err := prop.Label.ToBytes()
+								if err != nil {
+									return err
+								}
+								label = string(labelBs)
+							}
 							if find {
-								fmt.Printf("%s, %d, %d, %s, %s, %s\n", msg.To, sector.SectorNumber, deal, prop.Client, prop.PieceCID, prop.Label)
+								fmt.Printf("%s, %d, %d, %s, %s, %s\n", msg.To, sector.SectorNumber, deal, prop.Client, prop.PieceCID, label)
 							}
 						}
 					}

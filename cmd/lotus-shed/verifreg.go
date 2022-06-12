@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -479,14 +481,14 @@ var verifRegRemoveVerifiedClientDataCapCmd = &cli.Command{
 			return xerrors.Errorf("couldn't unmarshal sig: %w", err)
 		}
 
-		params, err := actors.SerializeParams(&verifreg.RemoveDataCapParams{
+		params, err := actors.SerializeParams(&verifregtypes.RemoveDataCapParams{
 			VerifiedClientToRemove: client,
 			DataCapAmountToRemove:  allowanceToRemove,
-			VerifierRequest1: verifreg.RemoveDataCapRequest{
+			VerifierRequest1: verifregtypes.RemoveDataCapRequest{
 				Verifier:          verifier1Addr,
 				VerifierSignature: sig1,
 			},
-			VerifierRequest2: verifreg.RemoveDataCapRequest{
+			VerifierRequest2: verifregtypes.RemoveDataCapRequest{
 				Verifier:          verifier2Addr,
 				VerifierSignature: sig2,
 			},

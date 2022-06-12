@@ -12,7 +12,7 @@ import (
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
 	network "github.com/filecoin-project/go-state-types/network"
-	miner "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	api "github.com/filecoin-project/lotus/api"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	gomock "github.com/golang/mock/gomock"
 	cid "github.com/ipfs/go-cid"
@@ -103,10 +103,10 @@ func (mr *MockPreCommitBatcherApiMockRecorder) StateMinerAvailableBalance(arg0, 
 }
 
 // StateMinerInfo mocks base method.
-func (m *MockPreCommitBatcherApi) StateMinerInfo(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (miner.MinerInfo, error) {
+func (m *MockPreCommitBatcherApi) StateMinerInfo(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (api.MinerInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerInfo", arg0, arg1, arg2)
-	ret0, _ := ret[0].(miner.MinerInfo)
+	ret0, _ := ret[0].(api.MinerInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

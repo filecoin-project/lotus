@@ -11,7 +11,6 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
-	ffiproof "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
 	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 
@@ -114,7 +113,7 @@ func (sb *Sealer) pubExtendedSectorToPriv(ctx context.Context, mid abi.ActorID, 
 			return ffi.SortedPrivateSectorInfo{}, nil, nil, xerrors.Errorf("acquiring registered PoSt proof from sector info %+v: %w", s, err)
 		}
 
-		ffiInfo := ffiproof.SectorInfo{
+		ffiInfo := proof.SectorInfo{
 			SealProof:    s.SealProof,
 			SectorNumber: s.SectorNumber,
 			SealedCID:    s.SealedCID,

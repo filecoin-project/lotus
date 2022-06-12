@@ -3,6 +3,8 @@ package genesis
 import (
 	"context"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 
@@ -41,7 +43,7 @@ func SetupVerifiedRegistryActor(ctx context.Context, bs bstore.Blockstore, av ac
 		return nil, err
 	}
 
-	actcid, err := verifreg.GetActorCodeID(av)
+	actcid, err := builtin.GetVerifregActorCodeID(av)
 	if err != nil {
 		return nil, err
 	}

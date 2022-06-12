@@ -40,7 +40,7 @@ func TestDealWithMarketAndMinerNode(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
+	policy.SetPreCommitChallengeDelay(10)
 	t.Cleanup(func() {
 		policy.SetPreCommitChallengeDelay(oldDelay)
 	})
@@ -92,7 +92,7 @@ func TestDealCyclesConcurrent(t *testing.T) {
 	}
 
 	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
+	policy.SetPreCommitChallengeDelay(10)
 	t.Cleanup(func() {
 		policy.SetPreCommitChallengeDelay(oldDelay)
 	})
@@ -143,7 +143,7 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
+	policy.SetPreCommitChallengeDelay(10)
 	t.Cleanup(func() {
 		policy.SetPreCommitChallengeDelay(oldDelay)
 	})
