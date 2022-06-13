@@ -295,6 +295,12 @@ actors-gen:
 	$(GOCC) run ./chain/actors/agen
 	$(GOCC) fmt ./...
 
+bundle-gen:
+	$(GOCC) run ./gen/bundle
+	$(GOCC) fmt ./build/...
+.PHONY: bundle-gen
+
+
 api-gen:
 	$(GOCC) run ./gen/api
 	goimports -w api
@@ -343,7 +349,7 @@ docsgen-openrpc-gateway: docsgen-openrpc-bin
 
 .PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
 
-gen: actors-gen type-gen method-gen cfgdoc-gen docsgen api-gen circleci
+gen: actors-gen type-gen method-gen cfgdoc-gen docsgen api-gen circleci bundle-gen
 	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO MAKE docsgen-cli"
 .PHONY: gen
 

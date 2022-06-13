@@ -15,8 +15,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/node/bundle"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
@@ -580,12 +578,7 @@ var genesisCarCmd = &cli.Command{
 		bstor := blockstore.WrapIDStore(blockstore.NewMemorySync())
 		sbldr := vm.Syscalls(ffiwrapper.ProofVerifier)
 
-		// load appropriate bundles
-		if err := bundle.FetchAndLoadBundles(c.Context, bstor, build.BuiltinActorReleases); err != nil {
-			return err
-		}
-
-		_, err := testing.MakeGenesis(ofile, c.Args().First())(bstor, sbldr, jrnl, dtypes.BuiltinActorsLoaded{})()
+		_, err := testing.MakeGenesis(ofile, c.Args().First())(bstor, sbldr, jrnl)()
 		return err
 	},
 }

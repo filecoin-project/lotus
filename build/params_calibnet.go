@@ -20,6 +20,7 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 const GenesisNetworkVersion = network.Version0
 
 var NetworkBundle = "calibrationnet"
+var BundleOverrides map[actors.Version]string
 
 const BootstrappersFile = "calibnet.pi"
 const GenesisFile = "calibnet.car"
@@ -61,8 +62,6 @@ const UpgradeChocolateHeight = 312746
 const UpgradeOhSnapHeight = 682006
 
 var UpgradeSkyrHeight = abi.ChainEpoch(99999999999999)
-
-var ActorsCIDs = map[actors.Version]cid.Cid{}
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
