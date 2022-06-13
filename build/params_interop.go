@@ -7,17 +7,17 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/filecoin-project/lotus/chain/actors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/ipfs/go-cid"
 )
 
 var NetworkBundle = "caterpillarnet"
+var BundleOverrides map[actors.Version]string
 
 const BootstrappersFile = "interopnet.pi"
 const GenesisFile = "interopnet.car"
@@ -52,10 +52,6 @@ var UpgradeHyperdriveHeight = abi.ChainEpoch(-16)
 var UpgradeChocolateHeight = abi.ChainEpoch(-17)
 var UpgradeOhSnapHeight = abi.ChainEpoch(-18)
 var UpgradeSkyrHeight = abi.ChainEpoch(100)
-
-var ActorsCIDs = map[actors.Version]cid.Cid{
-	actors.Version8: MustParseCid("bafy2bzacebjfypksxfieex7d6rh27lu2dk2m7chnok5mtzigj3txvb7leqbys"),
-}
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,

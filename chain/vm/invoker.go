@@ -164,9 +164,10 @@ func (ar *ActorRegistry) Register(av actors.Version, pred ActorPredicate, vmacto
 				Ret:    et.Out(0),
 			}
 		}
-		ar.Methods[a.Code()] = methods
 		if realCode.Defined() {
 			ar.Methods[realCode] = methods
+		} else {
+			ar.Methods[a.Code()] = methods
 		}
 	}
 }

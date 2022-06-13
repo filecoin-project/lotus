@@ -45,7 +45,6 @@ import (
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/api/v1api"
-	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -59,7 +58,6 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
 	storageminer "github.com/filecoin-project/lotus/miner"
-	"github.com/filecoin-project/lotus/node/bundle"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -215,13 +213,6 @@ var initCmd = &cli.Command{
 		{
 			lr, err := r.Lock(repo.StorageMiner)
 			if err != nil {
-				return err
-			}
-
-			// load bundles
-			bs := blockstore.NewMemory()
-
-			if err := bundle.FetchAndLoadBundles(ctx, bs, build.BuiltinActorReleases); err != nil {
 				return err
 			}
 

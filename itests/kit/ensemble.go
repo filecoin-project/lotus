@@ -160,6 +160,14 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 		})
 	}
 
+	// Ensure we're using the right actors. This really shouldn't be some global thing, but it's
+	// the best we can do for now.
+	if n.options.mockProofs {
+		require.NoError(t, build.UseNetworkBundle("testing-fake-proofs"))
+	} else {
+		require.NoError(t, build.UseNetworkBundle("testing"))
+	}
+
 	return n
 }
 

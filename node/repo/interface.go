@@ -52,6 +52,9 @@ type LockedRepo interface {
 	// Close closes repo and removes lock.
 	Close() error
 
+	// returns the type of this repo
+	RepoType() RepoType
+
 	// Returns datastore defined in this repo.
 	// The supplied context must only be used to initialize the datastore.
 	// The implementation should not retain the context for usage throughout
