@@ -21,6 +21,8 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 }
 
 var NetworkBundle = "mainnet"
+
+// NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
 var BundleOverrides map[actors.Version]string
 
 const GenesisNetworkVersion = network.Version0

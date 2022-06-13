@@ -6,7 +6,7 @@ lotus binary.
 
 ## Updating
 
-To update, run the `./pack.sh` script. For example, the following will pack the builtin actors release `dev/20220602` into the `v8` tarfile.
+To update, run the `./pack.sh` script. For example, the following will pack the [builtin actors release](https://github.com/filecoin-project/builtin-actors/releases) `dev/20220602` into the `v8` tarfile.
 
 ```bash
 ./pack.sh v8 dev/20220602
@@ -14,5 +14,5 @@ To update, run the `./pack.sh` script. For example, the following will pack the 
 
 This will:
 
-1. Download the actors bundles and pack them into the appropriate tarfile.
-2. Run `make bundle-gen` in the top-level directory to regenerate the bundle metadata file.
+1. Download the actors bundles and pack them into the appropriate tarfile (`$VERSION.tar.zst`).
+2. Run `make bundle-gen` in the top-level directory to regenerate the bundle metadata file for _all_ network versions (all `*.tar.zst` files in this directory).
