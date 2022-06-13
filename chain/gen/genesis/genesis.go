@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/node/bundle"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -153,6 +154,10 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	av, err := actors.VersionForNetwork(template.NetworkVersion)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("getting network version: %w", err)
+	}
+
+	if err := bundle.LoadBundles(ctx, bs, av); err != nil {
+		return nil, nil, xerrors.Errorf("loading actors for genesis block: %w", err)
 	}
 
 	// Create system actor

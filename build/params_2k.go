@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
@@ -19,6 +20,7 @@ const BootstrappersFile = ""
 const GenesisFile = ""
 
 var NetworkBundle = "devnet"
+var BundleOverrides map[actors.Version]string
 
 const GenesisNetworkVersion = network.Version16
 
@@ -52,8 +54,6 @@ var UpgradeChocolateHeight = abi.ChainEpoch(-17)
 
 var UpgradeOhSnapHeight = abi.ChainEpoch(-18)
 var UpgradeSkyrHeight = abi.ChainEpoch(-19)
-
-var ActorsCIDs = map[actors.Version]cid.Cid{}
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,

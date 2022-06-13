@@ -14,9 +14,9 @@ import (
 	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
-var manifestCids map[Version]cid.Cid
-var manifests map[Version]*manifest.Manifest
-var actorMeta map[cid.Cid]actorEntry
+var manifestCids map[Version]cid.Cid = make(map[Version]cid.Cid)
+var manifests map[Version]map[string]cid.Cid = make(map[Version]map[string]cid.Cid)
+var actorMeta map[cid.Cid]actorEntry = make(map[cid.Cid]actorEntry)
 
 const (
 	AccountKey  = "account"
@@ -57,17 +57,30 @@ type actorEntry struct {
 	version Version
 }
 
-func AddManifest(av Version, manifestCid cid.Cid) {
+// ClearManifest clears all known manifests. This is usually used in tests that need to switch networks.
+func ClearManifests() {
 	manifestMx.Lock()
 	defer manifestMx.Unlock()
 
-	if manifestCids == nil {
-		manifestCids = make(map[Version]cid.Cid)
-	}
-
-	manifestCids[av] = manifestCid
+	manifestCids = make(map[Version]cid.Cid)
+	manifests = make(map[Version]map[string]cid.Cid)
+	actorMeta = make(map[cid.Cid]actorEntry)
 }
 
+// RegisterManifest registers an actors manifest with lotus.
+func RegisterManifest(av Version, manifestCid cid.Cid, entries map[string]cid.Cid) {
+	manifestMx.Lock()
+	defer manifestMx.Unlock()
+
+	manifestCids[av] = manifestCid
+	manifests[av] = entries
+
+	for name, c := range entries {
+		actorMeta[c] = actorEntry{name: name, version: av}
+	}
+}
+
+// GetManifest gets a loaded manifest.
 func GetManifest(av Version) (cid.Cid, bool) {
 	manifestMx.RLock()
 	defer manifestMx.RUnlock()
@@ -76,53 +89,37 @@ func GetManifest(av Version) (cid.Cid, bool) {
 	return c, ok
 }
 
-func LoadManifests(ctx context.Context, store cbor.IpldStore) error {
-	manifestMx.Lock()
-	defer manifestMx.Unlock()
-
-	return loadManifests(ctx, store)
-}
-
-func loadManifests(ctx context.Context, store cbor.IpldStore) error {
+// ReadManifest reads a manifest from a blockstore. It does not "add" it.
+func ReadManifest(ctx context.Context, store cbor.IpldStore, mfCid cid.Cid) (map[string]cid.Cid, error) {
 	adtStore := adt.WrapStore(ctx, store)
 
-	manifests = make(map[Version]*manifest.Manifest)
-	actorMeta = make(map[cid.Cid]actorEntry)
+	var mf manifest.Manifest
+	if err := adtStore.Get(ctx, mfCid, &mf); err != nil {
+		return nil, xerrors.Errorf("error reading manifest (cid: %s): %w", mfCid, err)
+	}
 
-	for av, mfCid := range manifestCids {
-		mf := &manifest.Manifest{}
-		if err := adtStore.Get(ctx, mfCid, mf); err != nil {
-			return xerrors.Errorf("error reading manifest for network version %d (cid: %s): %w", av, mfCid, err)
-		}
+	if err := mf.Load(ctx, adtStore); err != nil {
+		return nil, xerrors.Errorf("error loading manifest (cid: %s): %w", mfCid, err)
+	}
 
-		if err := mf.Load(ctx, adtStore); err != nil {
-			return xerrors.Errorf("error loading manifest for network version %d: %w", av, err)
-		}
-
-		manifests[av] = mf
-
-		var actorKeys = GetBuiltinActorsKeys()
-		for _, name := range actorKeys {
-			c, ok := mf.Get(name)
-			if ok {
-				actorMeta[c] = actorEntry{name: name, version: av}
-			}
+	actorKeys := GetBuiltinActorsKeys() // TODO: we should be able to enumerate manifests directly.
+	metadata := make(map[string]cid.Cid, len(actorKeys))
+	for _, name := range actorKeys {
+		if c, ok := mf.Get(name); ok {
+			metadata[name] = c
 		}
 	}
 
-	return nil
+	return metadata, nil
 }
 
+// GetActorCodeID looks up a builtin actor's code CID by actor version and canonical actor name name.
 func GetActorCodeID(av Version, name string) (cid.Cid, bool) {
 	manifestMx.RLock()
 	defer manifestMx.RUnlock()
 
-	mf, ok := manifests[av]
-	if ok {
-		return mf.Get(name)
-	}
-
-	return cid.Undef, false
+	c, ok := manifests[av][name]
+	return c, ok
 }
 
 func GetActorMetaByCode(c cid.Cid) (string, Version, bool) {

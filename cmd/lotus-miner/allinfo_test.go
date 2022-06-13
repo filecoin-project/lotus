@@ -12,7 +12,6 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 
@@ -24,12 +23,6 @@ func TestMinerAllInfo(t *testing.T) {
 	_test = true
 
 	kit.QuietMiningLogs()
-
-	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
-	t.Cleanup(func() {
-		policy.SetPreCommitChallengeDelay(oldDelay)
-	})
 
 	client, miner, ens := kit.EnsembleMinimal(t)
 	ens.InterconnectAll().BeginMining(time.Second)

@@ -115,6 +115,7 @@ var (
 
 	GenesisNetworkVersion = network.Version0
 	NetworkBundle         = "devnet"
+	BundleOverrides       map[actors.Version]string
 
 	NewestNetworkVersion       = network.Version15
 	ActorUpgradeNetworkVersion = network.Version15
@@ -128,5 +129,3 @@ var (
 )
 
 const BootstrapPeerThreshold = 1
-
-var ActorsCIDs = map[actors.Version]cid.Cid{}

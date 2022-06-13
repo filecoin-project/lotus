@@ -1371,9 +1371,7 @@ func upgradeActorsV8Common(
 	store := store.ActorStore(ctx, buf)
 
 	// ensure that the manifest is loaded in the blockstore
-	if err := bundle.FetchAndLoadBundles(ctx, buf, map[actors.Version]build.Bundle{
-		actors.Version8: build.BuiltinActorReleases[actors.Version8],
-	}); err != nil {
+	if err := bundle.LoadBundles(ctx, buf, actors.Version8); err != nil {
 		return cid.Undef, xerrors.Errorf("failed to load manifest bundle: %w", err)
 	}
 
@@ -1393,12 +1391,6 @@ func upgradeActorsV8Common(
 	manifest, ok := actors.GetManifest(actors.Version8)
 	if !ok {
 		return cid.Undef, xerrors.Errorf("no manifest CID for v8 upgrade")
-	}
-
-	if val, ok := build.ActorsCIDs[actors.Version8]; ok {
-		if val != manifest {
-			return cid.Undef, xerrors.Errorf("actors V8 manifest CID %s did not match CID given in params file: %s", manifest, val)
-		}
 	}
 
 	// Perform the migration

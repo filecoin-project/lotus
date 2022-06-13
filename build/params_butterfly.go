@@ -20,6 +20,7 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 const GenesisNetworkVersion = network.Version14
 
 var NetworkBundle = "butterflynet"
+var BundleOverrides map[actors.Version]string
 
 const BootstrappersFile = "butterflynet.pi"
 const GenesisFile = "butterflynet.car"
@@ -49,10 +50,6 @@ const UpgradeOhSnapHeight = 240
 
 // 2022-05-31T14:32:00Z
 const UpgradeSkyrHeight = abi.ChainEpoch(333258)
-
-var ActorsCIDs = map[actors.Version]cid.Cid{
-	actors.Version8: MustParseCid("bafy2bzacedy4qgxbr6pbyfgcp7s7bdkc2whi5errnw67al5e2tk75j46iucv6"),
-}
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg512MiBV1,
