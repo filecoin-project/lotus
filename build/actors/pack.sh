@@ -14,7 +14,7 @@ NETWORKS=(devnet mainnet caterpillarnet butterflynet testing testing-fake-proofs
 echo "Downloading bundles for actors version ${VERSION}, release ${RELEASE}"
 
 TARGET_FILE="$(pwd)/${VERSION}.tar.zst"
-WORKDIR=$(mktemp --tmpdir -d "actor-bundles-${VERSION}.XXXXXXXXXX")
+WORKDIR=$(mktemp -d -t "actor-bundles-${VERSION}.XXXXXXXXXX")
 trap 'rm -rf -- "$WORKDIR"' EXIT
 
 pushd "${WORKDIR}"
