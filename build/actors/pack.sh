@@ -9,7 +9,7 @@ fi
 
 VERSION="$1" # actors version
 RELEASE="$2" # actors release name
-NETWORKS=(devnet mainnet caterpillarnet butterflynet testing testing-fake-proofs)
+NETWORKS=(devnet mainnet caterpillarnet butterflynet testing testing-fake-proofs calibrationnet)
 
 echo "Downloading bundles for actors version ${VERSION}, release ${RELEASE}"
 
@@ -31,7 +31,7 @@ sha256sum -c -- *.sha256
 echo "Packing..."
 
 rm -f -- "$TARGET_FILE"
-tar -cf "$TARGET_FILE" -I "zstd -19" -- *.car
+tar -cf "$TARGET_FILE" --use-compress-program "zstd -19" -- *.car
 popd
 
 echo "Generating metadata..."
