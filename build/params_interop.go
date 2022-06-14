@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+	"github.com/ipfs/go-cid"
 )
 
 var NetworkBundle = "caterpillarnet"
@@ -118,4 +119,4 @@ const PropagationDelaySecs = uint64(6)
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 2
 
-var WhitelistedBlock = MustParseCid("bafy2bzacebitcr6geekzzkiggl35gi7f32zph46ufgz5lxkd7pqccqgzvpqyc")
+var WhitelistedBlock = cid.Undef

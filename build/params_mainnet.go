@@ -108,4 +108,4 @@ const PropagationDelaySecs = uint64(6)
 const BootstrapPeerThreshold = 4
 
 // we skip checks on message validity in this block to sidestep the zero-bls signature
-var WhitelistedBlock = MustParseCid("bafy2bzaceclwsaafb4h7nofp64v7ctxq5cs75545mylvw3hwaxdign6xk5kka")
+var WhitelistedBlock = MustParseCid("bafy2bzaceapyg2uyzk7vueh3xccxkuwbz3nxewjyguoxvhx77malc2lzn2ybi")
