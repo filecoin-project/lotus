@@ -1,15 +1,21 @@
-package storage
+package wdpost
 
 import (
 	"context"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
+	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
@@ -20,7 +26,35 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/config"
+	storage2 "github.com/filecoin-project/lotus/storage"
 )
+
+var log = logging.Logger("wdpost")
+
+type NodeAPI interface {
+	ChainHead(context.Context) (*types.TipSet, error)
+	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
+
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
+	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
+	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
+	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
+	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
+	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
+	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
+	StateMinerPartitions(context.Context, address.Address, uint64, types.TipSetKey) ([]api.Partition, error)
+	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
+	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
+
+	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
+
+	GasEstimateMessageGas(context.Context, *types.Message, *api.MessageSendSpec, types.TipSetKey) (*types.Message, error)
+	GasEstimateFeeCap(context.Context, *types.Message, int64, types.TipSetKey) (types.BigInt, error)
+	GasEstimateGasPremium(_ context.Context, nblocksincl uint64, sender address.Address, gaslimit int64, tsk types.TipSetKey) (types.BigInt, error)
+
+	WalletBalance(context.Context, address.Address) (types.BigInt, error)
+	WalletHas(context.Context, address.Address) (bool, error)
+}
 
 // WindowPoStScheduler is the coordinator for WindowPoSt submissions, fault
 // declaration, and recovery declarations. It watches the chain for reverts and
@@ -29,9 +63,9 @@ import (
 // WindowPoStScheduler watches the chain though the changeHandler, which in turn
 // turn calls the scheduler when the time arrives to do work.
 type WindowPoStScheduler struct {
-	api              fullNodeFilteredAPI
+	api              NodeAPI
 	feeCfg           config.MinerFeeConfig
-	addrSel          *AddressSelector
+	addrSel          *storage2.AddressSelector
 	prover           storage.Prover
 	verifier         ffiwrapper.Verifier
 	faultTracker     sectorstorage.FaultTracker
@@ -49,9 +83,9 @@ type WindowPoStScheduler struct {
 }
 
 // NewWindowedPoStScheduler creates a new WindowPoStScheduler scheduler.
-func NewWindowedPoStScheduler(api fullNodeFilteredAPI,
+func NewWindowedPoStScheduler(api NodeAPI,
 	cfg config.MinerFeeConfig,
-	as *AddressSelector,
+	as *storage2.AddressSelector,
 	sp storage.Prover,
 	verif ffiwrapper.Verifier,
 	ft sectorstorage.FaultTracker,
@@ -88,7 +122,7 @@ func (s *WindowPoStScheduler) Run(ctx context.Context) {
 
 	// callbacks is a union of the fullNodeFilteredAPI and ourselves.
 	callbacks := struct {
-		fullNodeFilteredAPI
+		NodeAPI
 		*WindowPoStScheduler
 	}{s.api, s}
 

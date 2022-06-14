@@ -1,4 +1,4 @@
-package storage
+package wdpost
 
 import (
 	"github.com/ipfs/go-cid"

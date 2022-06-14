@@ -1,5 +1,5 @@
 //stm: #unit
-package storage
+package wdpost
 
 import (
 	"bytes"
@@ -32,12 +32,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/journal"
+	storage2 "github.com/filecoin-project/lotus/storage"
 )
 
 type mockStorageMinerAPI struct {
 	partitions     []api.Partition
 	pushedMessages chan *types.Message
-	fullNodeFilteredAPI
+	storage2.fullNodeFilteredAPI
 }
 
 func newMockStorageMinerAPI() *mockStorageMinerAPI {
@@ -236,7 +237,7 @@ func TestWDPostDoPost(t *testing.T) {
 		proofType:    proofType,
 		actor:        postAct,
 		journal:      journal.NilJournal(),
-		addrSel:      &AddressSelector{},
+		addrSel:      &storage2.AddressSelector{},
 	}
 
 	di := &dline.Info{
@@ -419,4 +420,4 @@ func (m *mockStorageMinerAPI) WalletHas(ctx context.Context, address address.Add
 	return true, nil
 }
 
-var _ fullNodeFilteredAPI = &mockStorageMinerAPI{}
+var _ storage2.fullNodeFilteredAPI = &mockStorageMinerAPI{}

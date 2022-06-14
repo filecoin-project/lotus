@@ -24,7 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
 func TestWorkerPledge(t *testing.T) {
@@ -145,7 +145,7 @@ func TestWindowPostWorker(t *testing.T) {
 	di = di.NextNotElapsed()
 
 	t.Log("Running one proving period")
-	waitUntil := di.Open + di.WPoStChallengeWindow*2 + storage.SubmitConfidence
+	waitUntil := di.Open + di.WPoStChallengeWindow*2 + wdpost.SubmitConfidence
 	client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
 
 	t.Log("Waiting for post message")
@@ -284,7 +284,7 @@ func TestWindowPostWorkerSkipBadSector(t *testing.T) {
 	di = di.NextNotElapsed()
 
 	t.Log("Running one proving period")
-	waitUntil := di.Open + di.WPoStChallengeWindow*2 + storage.SubmitConfidence
+	waitUntil := di.Open + di.WPoStChallengeWindow*2 + wdpost.SubmitConfidence
 	client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
 
 	t.Log("Waiting for post message")

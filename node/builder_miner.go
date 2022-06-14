@@ -38,6 +38,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
 var MinerNode = Options(
@@ -116,7 +117,7 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(*miner.Miner), modules.SetupBlockProducer),
 			Override(new(gen.WinningPoStProver), storage.NewWinningPoStProver),
 			Override(new(*storage.Miner), modules.StorageMiner(cfg.Fees)),
-			Override(new(*storage.WindowPoStScheduler), modules.WindowPostScheduler(cfg.Fees)),
+			Override(new(*wdpost.WindowPoStScheduler), modules.WindowPostScheduler(cfg.Fees)),
 			Override(new(sectorblocks.SectorBuilder), From(new(*storage.Miner))),
 		),
 

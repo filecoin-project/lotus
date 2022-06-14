@@ -1,5 +1,5 @@
 //stm: #unit
-package storage
+package wdpost
 
 import (
 	"testing"

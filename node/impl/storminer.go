@@ -54,6 +54,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
 type StorageMinerAPI struct {
@@ -91,7 +92,7 @@ type StorageMinerAPI struct {
 	storiface.WorkerReturn `optional:"true"`
 	AddrSel                *storage.AddressSelector
 
-	WdPoSt *storage.WindowPoStScheduler `optional:"true"`
+	WdPoSt *wdpost.WindowPoStScheduler `optional:"true"`
 
 	Epp gen.WinningPoStProver `optional:"true"`
 	DS  dtypes.MetadataDS
