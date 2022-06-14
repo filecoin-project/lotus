@@ -1,5 +1,43 @@
 # Lotus changelog
 
+# 1.16.0-rc1 / 2022-06-14
+
+This is the first release of the upcoming MANDATORY release of Lotus v1.16.0 that supports Filecoin network v16, codenamed the Skyr upgrade. 
+Filecoin nv16 upgrade will introduce non-programmable FVM(FVM m1) and switch the network from using go spec-actor to rust built-in actor. Full changelog will be published upon final release.
+
+## Calibration-net Upgrade
+
+This release candidate sets the caibration-net upgrade at epoch 1044660, 2022-06-16T17:30:00Z. The bundle that the network should be using is v8.0.0-rc.1(located at `build/actors/v8.tar.zst` ) upon migration, manifest CID `bafy2bzacedrdn6z3z7xz7lx4wll3tlgktirhllzqxb766dxpaqp3ukxsjfsba`.
+
+Your lotus node will switch from legacy VM to FVM atomically upon the upgrade. Easily enable envvar `LOTUS_USE_FVM_TO_SYNC_MAINNET_V15` to sync calibration using FVM to sync network v15.
+
+## 🆕 Things you may wanna know
+
+### Built-in actor bundles
+
+As the network introduces FVM, it's also switching from spec-actor (written in GoLang) to [built-in actor](https://github.com/filecoin-project/builtin-actors) (written in rust), in which the latter comes with[ importable bundles](https://github.com/filecoin-project/builtin-actors#importable-bundle). This means, like filecoin proof parameters, node operators now also need to fetch the actor bundles according to the network versions for the nodes to remain operational.
+
+In lotus [v1.16.0-rc1](https://github.com/filecoin-project/lotus/releases/tag/v1.16.0-rc1), the bundles for all networks(mainnet, calibnet, and etc) are included in the lotus source tree (`build/actors/`) and embedded on build. 
+
+Lotus verifies that the bundle CIDs are the right ones upon build & upgrade against the values in `build/builtin_actors_gen.go`, according to the network you are building. You may also check the bundle manifest CID matches the bundle gen-ed values by running `lotus state actor-cids --network-version 16`.
+(We will get into the CIDs more in the next section).
+
+As you may have noticed, all bundles are also available at https://github.com/filecoin-project/builtin-actors/releases, thus you can also manually download the bundles and place them in the right path.
+
+Note: use customized bundle will risk you to lose sync with the network!
+
+## Actor Code CIDs
+
+If you have followed the conversation in FIP discussion[ _Does the switch of CodeCIDs to _real_ content-addressing impact you_](https://github.com/filecoin-project/FIPs/discussions/310) and [FIP-0031](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0031.md)- [structure of the code cid](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0031.md#structure-of-code-cids), you should already know that from nv16, system actor code CIDs will be real content-addressing instead of being a static string like `(fil/7/account)`/ `(fil/8/storageminer)`.
+
+For lotus users, we are making the change minimal for you. This means the `CODE` output when you run `lotus state get-actor` will now be the actual CID that represents the executable code for the actor, followed by wrapped synthetic id like the ones you've got before, i.e `fil/8/system`.
+
+Moreover, this also means that in the future, whenever the actor code changes, the CID will change accordingly, in which will result in a need for a network upgrade for the network participants to have consensus over what executable code we should use for each system actor.
+
+### Execution Trace
+
+For developers that are dependent on lotus execution trace, you will need  to enable `LOTUS_VM_ENABLE_TRACING` envvar to get the exact execution trace response as before. Without the envvar enabled, `Duration` and `GasCharges` fields will be missing from the new FVM trace.
+
 # 1.15.3 / 2022-05-31
 
 This is an optional release of lotus that include new APIs, some improvements and bug fixes.
