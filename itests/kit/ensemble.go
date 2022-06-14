@@ -59,7 +59,6 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage/mockstorage"
 )
 
 func init() {
@@ -247,7 +246,7 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 
 		// Create the preseal commitment.
 		if n.options.mockProofs {
-			genm, k, err = mockstorage.PreSeal(proofType, actorAddr, sectors)
+			genm, k, err = mock.PreSeal(proofType, actorAddr, sectors)
 		} else {
 			genm, k, err = seed.PreSeal(actorAddr, proofType, 0, sectors, tdir, []byte("make genesis mem random"), nil, true)
 		}
