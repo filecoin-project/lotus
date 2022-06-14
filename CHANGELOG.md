@@ -1,67 +1,114 @@
 # Lotus changelog
 
-# 1.15.3-rc2 / 2022-05-24
+# 1.16.0-rc1 / 2022-06-14
 
-This is the second rc of an optional release of lotus, detailed changelog will be updated later.
+This is the first release of the upcoming MANDATORY release of Lotus v1.16.0 that supports Filecoin network v16, codenamed the Skyr upgrade. 
+Filecoin nv16 upgrade will introduce non-programmable FVM(FVM m1) and switch the network from using go spec-actor to rust built-in actor. Full changelog will be published upon final release.
 
-- fix: Make deal making logs much less noisy ([filecoin-project/lotus#8622](https://github.com/filecoin-project/lotus/pull/8622))
-- chore: merge releases back into master ([filecoin-project/lotus#8638](https://github.com/filecoin-project/lotus/pull/8638))
-- fix: mpool: avoid deadlock on unsubscribe  ([filecoin-project/lotus#8635](https://github.com/filecoin-project/lotus/pull/8635))
+## Calibration-net Upgrade
+
+This release candidate sets the caibration-net upgrade at epoch 1044660, 2022-06-16T17:30:00Z. The bundle that the network should be using is v8.0.0-rc.1(located at `build/actors/v8.tar.zst` ) upon migration, manifest CID `bafy2bzacedrdn6z3z7xz7lx4wll3tlgktirhllzqxb766dxpaqp3ukxsjfsba`.
+
+Your lotus node will switch from legacy VM to FVM atomically upon the upgrade. Easily enable envvar `LOTUS_USE_FVM_TO_SYNC_MAINNET_V15` to sync calibration using FVM to sync network v15.
+
+## 🆕 Things you may wanna know
+
+### Built-in actor bundles
+
+As the network introduces FVM, it's also switching from spec-actor (written in GoLang) to [built-in actor](https://github.com/filecoin-project/builtin-actors) (written in rust), in which the latter comes with[ importable bundles](https://github.com/filecoin-project/builtin-actors#importable-bundle). This means, like filecoin proof parameters, node operators now also need to fetch the actor bundles according to the network versions for the nodes to remain operational.
+
+In lotus [v1.16.0-rc1](https://github.com/filecoin-project/lotus/releases/tag/v1.16.0-rc1), the bundles for all networks(mainnet, calibnet, and etc) are included in the lotus source tree (`build/actors/`) and embedded on build. 
+
+Lotus verifies that the bundle CIDs are the right ones upon build & upgrade against the values in `build/builtin_actors_gen.go`, according to the network you are building. You may also check the bundle manifest CID matches the bundle gen-ed values by running `lotus state actor-cids --network-version 16`.
+(We will get into the CIDs more in the next section).
+
+As you may have noticed, all bundles are also available at https://github.com/filecoin-project/builtin-actors/releases, thus you can also manually download the bundles and place them in the right path.
+
+Note: use customized bundle will risk you to lose sync with the network!
+
+## Actor Code CIDs
+
+If you have followed the conversation in FIP discussion[ _Does the switch of CodeCIDs to _real_ content-addressing impact you_](https://github.com/filecoin-project/FIPs/discussions/310) and [FIP-0031](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0031.md)- [structure of the code cid](https://github.com/filecoin-project/FIPs/blob/master/FIPS/fip-0031.md#structure-of-code-cids), you should already know that from nv16, system actor code CIDs will be real content-addressing instead of being a static string like `(fil/7/account)`/ `(fil/8/storageminer)`.
+
+For lotus users, we are making the change minimal for you. This means the `CODE` output when you run `lotus state get-actor` will now be the actual CID that represents the executable code for the actor, followed by wrapped synthetic id like the ones you've got before, i.e `fil/8/system`.
+
+Moreover, this also means that in the future, whenever the actor code changes, the CID will change accordingly, in which will result in a need for a network upgrade for the network participants to have consensus over what executable code we should use for each system actor.
+
+### Execution Trace
+
+For developers that are dependent on lotus execution trace, you will need  to enable `LOTUS_VM_ENABLE_TRACING` envvar to get the exact execution trace response as before. Without the envvar enabled, `Duration` and `GasCharges` fields will be missing from the new FVM trace.
+
+# 1.15.3 / 2022-05-31
+
+This is an optional release of lotus that include new APIs, some improvements and bug fixes.
+
+## New Features
 - feat: api: add StateGetNetworkParams api ([filecoin-project/lotus#8546](https://github.com/filecoin-project/lotus/pull/8546))
+- feat: api: Implement StateLookupRobustAddress ([filecoin-project/lotus#8486](https://github.com/filecoin-project/lotus/pull/8486))
+- sealing: DataCid on workers ([filecoin-project/lotus#8557](https://github.com/filecoin-project/lotus/pull/8557))
+- feat: FVM: Support exectraces ([filecoin-project/lotus#8514](https://github.com/filecoin-project/lotus/pull/8514))
+
+## Improvements
+- ux: wallet: update delete usage ([filecoin-project/lotus#8442](https://github.com/filecoin-project/lotus/pull/8442))
+- chore: config: default-disable kvlog ([filecoin-project/lotus#8477](https://github.com/filecoin-project/lotus/pull/8477))
+- chore: cli: Alias cli commands for uniformity ([filecoin-project/lotus#8587](https://github.com/filecoin-project/lotus/pull/8587))
+
+## Bug Fixes
+- fix: Make deal making logs much less noisy ([filecoin-project/lotus#8622](https://github.com/filecoin-project/lotus/pull/8622))
+- fix: mpool: avoid deadlock on unsubscribe  ([filecoin-project/lotus#8635](https://github.com/filecoin-project/lotus/pull/8635))
 - fix: update StatApplied when fvm apply message ([filecoin-project/lotus#8545](https://github.com/filecoin-project/lotus/pull/8545))
 - fix: ci: build macos and linux assets on tagged releases ([filecoin-project/lotus#8597](https://github.com/filecoin-project/lotus/pull/8597))
 - fix: Clean up vanilla proof fetching errors for proper display ([filecoin-project/lotus#8564](https://github.com/filecoin-project/lotus/pull/8564))
 - fix: Make markets logger less noisy when doing retrievals ([filecoin-project/lotus#8604](https://github.com/filecoin-project/lotus/pull/8604))
 - fix: test: Fix flaky TestGatewayWalletMsig ([filecoin-project/lotus#8601](https://github.com/filecoin-project/lotus/pull/8601))
-- chore:ci:make codecov quiet ([filecoin-project/lotus#8600](https://github.com/filecoin-project/lotus/pull/8600))
 - fix: lotus-wallet: correct network in version ([filecoin-project/lotus#8563](https://github.com/filecoin-project/lotus/pull/8563))
-- chore: cli: Alias cli commands for uniformity ([filecoin-project/lotus#8587](https://github.com/filecoin-project/lotus/pull/8587))
-- chore: .gitignore: ignore built in actor bundles ([filecoin-project/lotus#8590](https://github.com/filecoin-project/lotus/pull/8590))
 - fix: worker: Download proofs if PRU2 is enabled ([filecoin-project/lotus#8555](https://github.com/filecoin-project/lotus/pull/8555))
-- ci: deps: macos build deps ([filecoin-project/lotus#8581](https://github.com/filecoin-project/lotus/pull/8581))
-- chore:chore:chore ([filecoin-project/lotus#8586](https://github.com/filecoin-project/lotus/pull/8586))
-- fix: sealing: Finalize snap sectors before submitting proofs ([filecoin-project/lotus#8582](https://github.com/filecoin-project/lotus/pull/8582))
-- feat: vm: add actor error backtraces to FVM ([filecoin-project/lotus#8524](https://github.com/filecoin-project/lotus/pull/8524))
-- sealing: DataCid on workers ([filecoin-project/lotus#8557](https://github.com/filecoin-project/lotus/pull/8557))
 - fix: ux: update `lotus-wallet run` description ([filecoin-project/lotus#8528](https://github.com/filecoin-project/lotus/pull/8528))
 - fix: market: Infer index provider topic from network name by default ([filecoin-project/lotus#8526](https://github.com/filecoin-project/lotus/pull/8526))
-- deps: update go-libp2p@v0.19 ([filecoin-project/lotus#8511](https://github.com/filecoin-project/lotus/pull/8511))
-- chore: fix lint issue ([filecoin-project/lotus#8531](https://github.com/filecoin-project/lotus/pull/8531))
-- chore: ci: update golang and go-ipfs ([filecoin-project/lotus#8512](https://github.com/filecoin-project/lotus/pull/8512))
-- feat: FVM: Support exectraces ([filecoin-project/lotus#8514](https://github.com/filecoin-project/lotus/pull/8514))
-- Feat: API: Implement StateLookupRobustAddress ([filecoin-project/lotus#8486](https://github.com/filecoin-project/lotus/pull/8486))
-- fix:sealing:check index out of bounds against correct param length not return length ([filecoin-project/lotus#8475](https://github.com/filecoin-project/lotus/pull/8475))
-- add 1475 bootstrapper ([filecoin-project/lotus#8495](https://github.com/filecoin-project/lotus/pull/8495))
-- Bump version for xtools ([filecoin-project/lotus#8494](https://github.com/filecoin-project/lotus/pull/8494))
 - fix: storiface: Make FSOverhead numbers more accurate ([filecoin-project/lotus#8481](https://github.com/filecoin-project/lotus/pull/8481))
 - fix: node: fix comment for IndexProvider ([filecoin-project/lotus#8480](https://github.com/filecoin-project/lotus/pull/8480))
-- ux: wallet: update delete usage ([filecoin-project/lotus#8442](https://github.com/filecoin-project/lotus/pull/8442))
-- Fail to add expired precommits to a batch ([filecoin-project/lotus#8479](https://github.com/filecoin-project/lotus/pull/8479))
-- chore: config: default-disable kvlog ([filecoin-project/lotus#8477](https://github.com/filecoin-project/lotus/pull/8477))
-- chore: version: bump the version to v1.15.3-dev ([filecoin-project/lotus#8473](https://github.com/filecoin-project/lotus/pull/8473))
-- github.com/filecoin-project/specs-storage (v0.2.2 -> v0.2.3-0.20220426183226-1a0a63c5990f):
+- fix: sealing: fail to add expired precommits to a batch ([filecoin-project/lotus#8479](https://github.com/filecoin-project/lotus/pull/8479))
+- fix:sealing:check index out of bounds against correct param length not return length ([filecoin-project/lotus#8475](https://github.com/filecoin-project/lotus/pull/8475))
+- fix: sealing: Finalize snap sectors before submitting proofs ([filecoin-project/lotus#8582](https://github.com/filecoin-project/lotus/pull/8582))
+- chore: fix lint issue ([filecoin-project/lotus#8531](https://github.com/filecoin-project/lotus/pull/8531))
+- feat: vm: add actor error backtraces to FVM ([filecoin-project/lotus#8524](https://github.com/filecoin-project/lotus/pull/8524))
 
+## Dependency Updates
+- github.com/filecoin-project/specs-storage (v0.2.2 -> v0.2.3-0.20220426183226-1a0a63c5990f):
+- deps: update go-libp2p@v0.19 ([filecoin-project/lotus#8511](https://github.com/filecoin-project/lotus/pull/8511))
+- chore: deps: Use tagged version of specs-storage #8764
+
+## Others
+- chore: merge releases back into master ([filecoin-project/lotus#8638](https://github.com/filecoin-project/lotus/pull/8638))
+- chore:ci:make codecov quiet ([filecoin-project/lotus#8600](https://github.com/filecoin-project/lotus/pull/8600))
+- chore: version: bump the version to v1.15.3-dev ([filecoin-project/lotus#8473](https://github.com/filecoin-project/lotus/pull/8473))
+- chore: .gitignore: ignore built in actor bundles ([filecoin-project/lotus#8590](https://github.com/filecoin-project/lotus/pull/8590))
+- ci: deps: macos build deps ([filecoin-project/lotus#8581](https://github.com/filecoin-project/lotus/pull/8581))
+- chore:chore:chore remove the wrong TODO ([filecoin-project/lotus#8586](https://github.com/filecoin-project/lotus/pull/8586))
+- add 1475 bootstrapper ([filecoin-project/lotus#8495](https://github.com/filecoin-project/lotus/pull/8495))
+- Bump version for xtools ([filecoin-project/lotus#8494](https://github.com/filecoin-project/lotus/pull/8494))
+- chore: bundle: remove wrongly committed bundle cars #8763
 ## Contributors
 
 | Contributor | Commits | Lines ± | Files Changed |
 |-------------|---------|---------|---------------|
-| Steven Allen | 4 | +607/-95 | 19 |
-| Łukasz Magiera | 9 | +550/-37 | 43 |
-| Geoff Stuart | 5 | +279/-219 | 27 |
-| simlecode | 1 | +306/-39 | 20 |
-| Aayush | 1 | +256/-34 | 10 |
-| zenground0 | 11 | +214/-66 | 31 |
-| Aayush Rajasekaran | 2 | +149/-99 | 8 |
-| vyzo | 3 | +125/-81 | 4 |
-| Masih H. Derkani | 1 | +134/-15 | 7 |
-| Travis Person | 3 | +24/-32 | 6 |
-| Rjan | 6 | +16/-16 | 9 |
-| jennijuju | 3 | +9/-8 | 15 |
+| @stebalien | 4 | +607/-95 | 19 |
+| @magik6k  | 9 | +550/-37 | 43 |
+| @geoff-vball | 5 | +279/-219 | 27 |
+| @simlecode | 1 | +306/-39 | 20 |
+| @arajasek | 1 | +256/-34 | 10 |
+| @zenground0 | 11 | +214/-66 | 31 |
+| @arajasek | 2 | +149/-99 | 8 |
+| @vyzo | 3 | +125/-81 | 4 |
+| @Masih| 1 | +134/-15 | 7 |
+| @travisperson | 3 | +24/-32 | 6 |
+| @Rjan | 6 | +16/-16 | 9 |
+| @jennijuju | 3 | +9/-8 | 15 |
 | Rob Quist | 3 | +12/-4 | 3 |
-| Icarus9913 | 1 | +3/-3 | 3 |
-| swift-mx | 1 | +3/-0 | 1 |
-| Phi-rjan | 1 | +1/-1 | 1 |
-| lifei | 1 | +1/-0 | 1 |
+| @Icarus9913 | 1 | +3/-3 | 3 |
+| @swift-mx | 1 | +3/-0 | 1 |
+| @Phi-rjan | 1 | +1/-1 | 1 |
+| @lifei | 1 | +1/-0 | 1 |
 
 
 # 1.15.2 / 2022-05-06

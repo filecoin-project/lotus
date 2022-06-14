@@ -60,16 +60,18 @@ func (t *FvmExecutionTrace) ToExecutionTrace() types.ExecutionTrace {
 	}
 
 	ret := types.ExecutionTrace{
-		Msg:        t.Msg,
-		MsgRct:     t.MsgRct,
-		Error:      t.Error,
-		Duration:   0,
-		GasCharges: nil,
-		Subcalls:   make([]types.ExecutionTrace, len(t.Subcalls)),
+		Msg:      t.Msg,
+		MsgRct:   t.MsgRct,
+		Error:    t.Error,
+		Subcalls: nil, // Should be nil when there are no subcalls for backwards compatibility
 	}
 
-	for i, v := range t.Subcalls {
-		ret.Subcalls[i] = v.ToExecutionTrace()
+	if len(t.Subcalls) > 0 {
+		ret.Subcalls = make([]types.ExecutionTrace, len(t.Subcalls))
+
+		for i, v := range t.Subcalls {
+			ret.Subcalls[i] = v.ToExecutionTrace()
+		}
 	}
 
 	return ret
