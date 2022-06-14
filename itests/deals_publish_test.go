@@ -16,7 +16,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node"
@@ -41,7 +41,7 @@ func TestPublishDealsBatching(t *testing.T) {
 
 	kit.QuietMiningLogs()
 
-	publisherKey, err := wallet.GenerateKey(types.KTSecp256k1)
+	publisherKey, err := key.GenerateKey(types.KTSecp256k1)
 	require.NoError(t, err)
 
 	opts := node.Options(

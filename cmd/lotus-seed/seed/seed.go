@@ -26,7 +26,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -36,7 +36,7 @@ import (
 
 var log = logging.Logger("preseal")
 
-func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte, key *types.KeyInfo, fakeSectors bool) (*genesis.Miner, *types.KeyInfo, error) {
+func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte, ki *types.KeyInfo, fakeSectors bool) (*genesis.Miner, *types.KeyInfo, error) {
 	mid, err := address.IDFromAddress(maddr)
 	if err != nil {
 		return nil, nil, err
@@ -84,14 +84,14 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 		sealedSectors = append(sealedSectors, preseal)
 	}
 
-	var minerAddr *wallet.Key
-	if key != nil {
-		minerAddr, err = wallet.NewKey(*key)
+	var minerAddr *key.Key
+	if ki != nil {
+		minerAddr, err = key.NewKey(*ki)
 		if err != nil {
 			return nil, nil, err
 		}
 	} else {
-		minerAddr, err = wallet.GenerateKey(types.KTBLS)
+		minerAddr, err = key.GenerateKey(types.KTBLS)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -249,7 +249,7 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, 
 	return nil
 }
 
-func createDeals(m *genesis.Miner, k *wallet.Key, maddr address.Address, ssize abi.SectorSize) error {
+func createDeals(m *genesis.Miner, k *key.Key, maddr address.Address, ssize abi.SectorSize) error {
 	for i, sector := range m.Sectors {
 		label, err := market8.NewLabelFromString(fmt.Sprintf("%d", i))
 		if err != nil {

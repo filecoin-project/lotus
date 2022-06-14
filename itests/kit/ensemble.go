@@ -42,7 +42,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
@@ -183,7 +183,7 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 		require.NoError(n.t, err)
 	}
 
-	key, err := wallet.GenerateKey(types.KTBLS)
+	key, err := key.GenerateKey(types.KTBLS)
 	require.NoError(n.t, err)
 
 	if !n.bootstrapped && !options.balance.IsZero() {
@@ -256,7 +256,7 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 		genm.PeerId = peerId
 
 		// create an owner key, and assign it some FIL.
-		ownerKey, err = wallet.NewKey(*k)
+		ownerKey, err = key.NewKey(*k)
 		require.NoError(n.t, err)
 
 		genacc := genesis.Actor{

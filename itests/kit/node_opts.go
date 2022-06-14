@@ -6,7 +6,7 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
@@ -31,7 +31,7 @@ type nodeOpts struct {
 	lite          bool
 	sectors       int
 	rpc           bool
-	ownerKey      *wallet.Key
+	ownerKey      *key.Key
 	extraNodeOpts []node.Option
 
 	subsystems             MinerSubsystem
@@ -165,7 +165,7 @@ func ThroughRPC() NodeOpt {
 
 // OwnerAddr sets the owner address of a miner. Only relevant when creating
 // a miner.
-func OwnerAddr(wk *wallet.Key) NodeOpt {
+func OwnerAddr(wk *key.Key) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.ownerKey = wk
 		return nil

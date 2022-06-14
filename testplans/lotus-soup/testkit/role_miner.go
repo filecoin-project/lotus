@@ -32,7 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	genesis_chain "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -78,7 +78,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 	}
 
 	// first create a wallet
-	walletKey, err := wallet.GenerateKey(types.KTBLS)
+	walletKey, err := key.GenerateKey(types.KTBLS)
 	if err != nil {
 		return nil, err
 	}

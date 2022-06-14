@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node"
@@ -42,7 +42,7 @@ func TestDealsRetryLackOfFunds(t *testing.T) {
 	// Allow 8MB sectors
 	eightMBSectorsOpt := kit.SectorSize(8 << 20)
 
-	publishStorageDealKey, err := wallet.GenerateKey(types.KTSecp256k1)
+	publishStorageDealKey, err := key.GenerateKey(types.KTSecp256k1)
 	require.NoError(t, err)
 
 	opts := node.Options(
@@ -118,7 +118,7 @@ func TestDealsRetryLackOfFunds_blockInPublishDeal(t *testing.T) {
 	// Allow 8MB sectors
 	eightMBSectorsOpt := kit.SectorSize(8 << 20)
 
-	publishStorageDealKey, err := wallet.GenerateKey(types.KTSecp256k1)
+	publishStorageDealKey, err := key.GenerateKey(types.KTSecp256k1)
 	require.NoError(t, err)
 
 	opts := node.Options(
@@ -191,7 +191,7 @@ func TestDealsRetryLackOfFunds_belowLimit(t *testing.T) {
 	// Allow 8MB sectors
 	eightMBSectorsOpt := kit.SectorSize(8 << 20)
 
-	publishStorageDealKey, err := wallet.GenerateKey(types.KTSecp256k1)
+	publishStorageDealKey, err := key.GenerateKey(types.KTSecp256k1)
 	require.NoError(t, err)
 
 	opts := node.Options(

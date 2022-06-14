@@ -1,4 +1,4 @@
-package wallet
+package key
 
 import (
 	"golang.org/x/xerrors"
