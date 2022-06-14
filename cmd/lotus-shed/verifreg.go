@@ -4,6 +4,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 
 	"github.com/filecoin-project/go-state-types/crypto"
@@ -193,7 +195,7 @@ var verifRegVerifyClientCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
-		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
+		fmt.Println("DEPRECATED: This behavior is being moved to `lotus filplus`")
 		froms := cctx.String("from")
 		if froms == "" {
 			return fmt.Errorf("must specify from address with --from")
@@ -262,7 +264,7 @@ var verifRegListVerifiersCmd = &cli.Command{
 	Usage:  "list all verifiers",
 	Hidden: true,
 	Action: func(cctx *cli.Context) error {
-		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
+		fmt.Println("DEPRECATED: This behavior is being moved to `lotus filplus`")
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -294,7 +296,7 @@ var verifRegListClientsCmd = &cli.Command{
 	Usage:  "list all verified clients",
 	Hidden: true,
 	Action: func(cctx *cli.Context) error {
-		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
+		fmt.Println("DEPRECATED: This behavior is being moved to `lotus filplus`")
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
 			return err
@@ -326,7 +328,7 @@ var verifRegCheckClientCmd = &cli.Command{
 	Usage:  "check verified client remaining bytes",
 	Hidden: true,
 	Action: func(cctx *cli.Context) error {
-		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
+		fmt.Println("DEPRECATED: This behavior is being moved to `lotus filplus`")
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify client address to check")
 		}
@@ -362,7 +364,7 @@ var verifRegCheckVerifierCmd = &cli.Command{
 	Usage:  "check verifiers remaining bytes",
 	Hidden: true,
 	Action: func(cctx *cli.Context) error {
-		fmt.Println("DEPRECATED: This behavior is being moved to `lotus verifreg`")
+		fmt.Println("DEPRECATED: This behavior is being moved to `lotus filplus`")
 		if !cctx.Args().Present() {
 			return fmt.Errorf("must specify verifier address to check")
 		}
@@ -479,14 +481,14 @@ var verifRegRemoveVerifiedClientDataCapCmd = &cli.Command{
 			return xerrors.Errorf("couldn't unmarshal sig: %w", err)
 		}
 
-		params, err := actors.SerializeParams(&verifreg.RemoveDataCapParams{
+		params, err := actors.SerializeParams(&verifregtypes.RemoveDataCapParams{
 			VerifiedClientToRemove: client,
 			DataCapAmountToRemove:  allowanceToRemove,
-			VerifierRequest1: verifreg.RemoveDataCapRequest{
+			VerifierRequest1: verifregtypes.RemoveDataCapRequest{
 				Verifier:          verifier1Addr,
 				VerifierSignature: sig1,
 			},
-			VerifierRequest2: verifreg.RemoveDataCapRequest{
+			VerifierRequest2: verifregtypes.RemoveDataCapRequest{
 				Verifier:          verifier2Addr,
 				VerifierSignature: sig2,
 			},

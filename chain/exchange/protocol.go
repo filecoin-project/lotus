@@ -16,10 +16,6 @@ import (
 var log = logging.Logger("chainxchg")
 
 const (
-	// BlockSyncProtocolID is the protocol ID of the former blocksync protocol.
-	// Deprecated.
-	BlockSyncProtocolID = "/fil/sync/blk/0.0.1"
-
 	// ChainExchangeProtocolID is the protocol ID of the chain exchange
 	// protocol.
 	ChainExchangeProtocolID = "/fil/chain/xchg/0.0.1"

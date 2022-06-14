@@ -290,8 +290,9 @@ type SealingConfig struct {
 
 	// enable / disable commit aggregation (takes effect after nv13)
 	AggregateCommits bool
-	// maximum batched commit size - batches will be sent immediately above this size
+	// minimum batched commit size - batches above this size will eventually be sent on a timeout
 	MinCommitBatch int
+	// maximum batched commit size - batches will be sent immediately above this size
 	MaxCommitBatch int
 	// how long to wait before submitting a batch after crossing the minimum batch size
 	CommitBatchWait Duration
@@ -328,6 +329,24 @@ type SealerConfig struct {
 	AllowReplicaUpdate       bool
 	AllowProveReplicaUpdate2 bool
 	AllowRegenSectorKey      bool
+
+	// Assigner specifies the worker assigner to use when scheduling tasks.
+	// "utilization" (default) - assign tasks to workers with lowest utilization.
+	// "spread" - assign tasks to as many distinct workers as possible.
+	Assigner string
+
+	// DisallowRemoteFinalize when set to true will force all Finalize tasks to
+	// run on workers with local access to both long-term storage and the sealing
+	// path containing the sector.
+	// --
+	// WARNING: Only set this if all workers have access to long-term storage
+	// paths. If this flag is enabled, and there are workers without long-term
+	// storage access, sectors will not be moved from them, and Finalize tasks
+	// will appear to be stuck.
+	// --
+	// If you see stuck Finalize tasks after enabling this setting, check
+	// 'lotus-miner sealing sched-diag' and 'lotus-miner storage find [sector num]'
+	DisallowRemoteFinalize bool
 
 	// ResourceFiltering instructs the system which resource filtering strategy
 	// to use when evaluating tasks against this worker. An empty value defaults

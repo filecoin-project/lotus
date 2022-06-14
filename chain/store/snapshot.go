@@ -8,6 +8,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-car"
 	carutil "github.com/ipld/go-car/util"
+	mh "github.com/multiformats/go-multihash"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -142,7 +143,18 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 
 		for _, c := range out {
 			if seen.Visit(c) {
-				if c.Prefix().Codec != cid.DagCBOR {
+				prefix := c.Prefix()
+
+				// Don't include identity CIDs.
+				if prefix.MhType == mh.IDENTITY {
+					continue
+				}
+
+				// We only include raw and dagcbor, for now.
+				// Raw for "code" CIDs.
+				switch prefix.Codec {
+				case cid.Raw, cid.DagCBOR:
+				default:
 					continue
 				}
 

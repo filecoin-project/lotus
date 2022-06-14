@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"unicode/utf8"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 
@@ -99,7 +98,7 @@ var dealLabelCmd = &cli.Command{
 
 		var deals []abi.DealID
 		if err = ps.ForEach(func(id abi.DealID, dp market.DealProposal) error {
-			if !utf8.Valid([]byte(dp.Label)) {
+			if dp.Label.IsBytes() {
 				deals = append(deals, id)
 			}
 

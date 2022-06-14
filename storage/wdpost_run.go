@@ -5,6 +5,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/proof"
+
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/specs-storage/storage"
 
@@ -19,13 +21,13 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-actors/v3/actors/runtime/proof"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -323,7 +325,7 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 
 	msg := &types.Message{
 		To:     s.actor,
-		Method: miner.Methods.DeclareFaultsRecovered,
+		Method: builtin.MethodsMiner.DeclareFaultsRecovered,
 		Params: enc,
 		Value:  types.NewInt(0),
 	}
@@ -421,7 +423,7 @@ func (s *WindowPoStScheduler) declareFaults(ctx context.Context, dlIdx uint64, p
 
 	msg := &types.Message{
 		To:     s.actor,
-		Method: miner.Methods.DeclareFaults,
+		Method: builtin.MethodsMiner.DeclareFaults,
 		Params: enc,
 		Value:  types.NewInt(0), // TODO: Is there a fee?
 	}
@@ -594,6 +596,11 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 				toProve, err := bitfield.SubtractBitField(partition.LiveSectors, partition.FaultySectors)
 				if err != nil {
 					return nil, xerrors.Errorf("removing faults from set of sectors to prove: %w", err)
+				}
+				if manual {
+					// this is a check run, we want to prove faulty sectors, even
+					// if they are not declared as recovering.
+					toProve = partition.LiveSectors
 				}
 				toProve, err = bitfield.MergeBitFields(toProve, partition.RecoveringSectors)
 				if err != nil {
@@ -854,7 +861,7 @@ func (s *WindowPoStScheduler) submitPoStMessage(ctx context.Context, proof *mine
 
 	msg := &types.Message{
 		To:     s.actor,
-		Method: miner.Methods.SubmitWindowedPoSt,
+		Method: builtin.MethodsMiner.SubmitWindowedPoSt,
 		Params: enc,
 		Value:  types.NewInt(0),
 	}

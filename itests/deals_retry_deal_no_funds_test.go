@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -35,14 +34,7 @@ func TestDealsRetryLackOfFunds(t *testing.T) {
 	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
 	//stm: @CLIENT_STORAGE_DEALS_LIST_IMPORTS_001
 	ctx := context.Background()
-	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
 
-	t.Cleanup(func() {
-		policy.SetPreCommitChallengeDelay(oldDelay)
-	})
-
-	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg8MiBV1)
 	kit.QuietMiningLogs()
 
 	// Allow 8MB sectors
@@ -119,14 +111,6 @@ func TestDealsRetryLackOfFunds_blockInPublishDeal(t *testing.T) {
 	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 	//stm: @CLIENT_STORAGE_DEALS_LIST_IMPORTS_001
 	ctx := context.Background()
-	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
-
-	t.Cleanup(func() {
-		policy.SetPreCommitChallengeDelay(oldDelay)
-	})
-
-	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg8MiBV1)
 	kit.QuietMiningLogs()
 
 	// Allow 8MB sectors
@@ -200,14 +184,6 @@ func TestDealsRetryLackOfFunds_belowLimit(t *testing.T) {
 	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 	//stm: @CLIENT_STORAGE_DEALS_LIST_IMPORTS_001
 	ctx := context.Background()
-	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
-
-	t.Cleanup(func() {
-		policy.SetPreCommitChallengeDelay(oldDelay)
-	})
-
-	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg8MiBV1)
 	kit.QuietMiningLogs()
 
 	// Allow 8MB sectors
@@ -261,7 +237,7 @@ func TestDealsRetryLackOfFunds_belowLimit(t *testing.T) {
 	dp.EpochPrice = abi.NewTokenAmount(62500000) // minimum asking price.
 	deal := dh.StartDeal(ctx, dp)
 
-	err = dh.ExpectDealFailure(ctx, deal, "actor balance less than needed")
+	err = dh.ExpectDealFailure(ctx, deal, "Actor balance less than needed")
 	if err != nil {
 		t.Fatal(err)
 	}

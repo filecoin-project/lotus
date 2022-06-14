@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/proof"
+
 	"github.com/elastic/go-sysinfo"
 	"github.com/google/uuid"
 	"github.com/hashicorp/go-multierror"
@@ -20,7 +22,6 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
-	"github.com/filecoin-project/specs-actors/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
@@ -289,7 +290,7 @@ func (l *LocalWorker) asyncCall(ctx context.Context, sector storage.SectorRef, r
 				log.Errorf("get hostname err: %+v", err)
 			}
 
-			err = xerrors.Errorf("%w [Hostname: %s]", err.Error(), hostname)
+			err = xerrors.Errorf("%w [Hostname: %s]", err, hostname)
 		}
 
 		if doReturn(ctx, rt, ci, l.ret, res, toCallError(err)) {

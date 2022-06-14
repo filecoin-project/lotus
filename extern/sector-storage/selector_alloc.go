@@ -26,18 +26,18 @@ func newAllocSelector(index stores.SectorIndex, alloc storiface.SectorFileType, 
 	}
 }
 
-func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, whnd *workerHandle) (bool, error) {
+func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.RegisteredSealProof, whnd *WorkerHandle) (bool, bool, error) {
 	tasks, err := whnd.TaskTypes(ctx)
 	if err != nil {
-		return false, xerrors.Errorf("getting supported worker task types: %w", err)
+		return false, false, xerrors.Errorf("getting supported worker task types: %w", err)
 	}
 	if _, supported := tasks[task]; !supported {
-		return false, nil
+		return false, false, nil
 	}
 
 	paths, err := whnd.workerRpc.Paths(ctx)
 	if err != nil {
-		return false, xerrors.Errorf("getting worker paths: %w", err)
+		return false, false, xerrors.Errorf("getting worker paths: %w", err)
 	}
 
 	have := map[storiface.ID]struct{}{}
@@ -47,25 +47,25 @@ func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi
 
 	ssize, err := spt.SectorSize()
 	if err != nil {
-		return false, xerrors.Errorf("getting sector size: %w", err)
+		return false, false, xerrors.Errorf("getting sector size: %w", err)
 	}
 
 	best, err := s.index.StorageBestAlloc(ctx, s.alloc, ssize, s.ptype)
 	if err != nil {
-		return false, xerrors.Errorf("finding best alloc storage: %w", err)
+		return false, false, xerrors.Errorf("finding best alloc storage: %w", err)
 	}
 
 	for _, info := range best {
 		if _, ok := have[info.ID]; ok {
-			return true, nil
+			return true, false, nil
 		}
 	}
 
-	return false, nil
+	return false, false, nil
 }
 
-func (s *allocSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *workerHandle) (bool, error) {
-	return a.utilization() < b.utilization(), nil
+func (s *allocSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *WorkerHandle) (bool, error) {
+	return a.Utilization() < b.Utilization(), nil
 }
 
 var _ WorkerSelector = &allocSelector{}

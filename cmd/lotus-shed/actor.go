@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/fatih/color"
@@ -20,7 +21,6 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
@@ -119,7 +119,7 @@ var actorWithdrawCmd = &cli.Command{
 			To:     maddr,
 			From:   mi.Owner,
 			Value:  types.NewInt(0),
-			Method: miner.Methods.WithdrawBalance,
+			Method: builtin.MethodsMiner.WithdrawBalance,
 			Params: params,
 		}, &api.MessageSendSpec{MaxFee: abi.TokenAmount(types.MustParseFIL("0.1"))})
 		if err != nil {
@@ -253,7 +253,7 @@ var actorSetOwnerCmd = &cli.Command{
 		smsg, err := nodeAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   fromAddrId,
 			To:     maddr,
-			Method: miner.Methods.ChangeOwnerAddress,
+			Method: builtin.MethodsMiner.ChangeOwnerAddress,
 			Value:  big.Zero(),
 			Params: sp,
 		}, nil)
@@ -513,7 +513,7 @@ var actorControlSet = &cli.Command{
 		smsg, err := nodeAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: miner.Methods.ChangeWorkerAddress,
+			Method: builtin.MethodsMiner.ChangeWorkerAddress,
 
 			Value:  big.Zero(),
 			Params: sp,
@@ -621,7 +621,7 @@ var actorProposeChangeWorker = &cli.Command{
 		smsg, err := nodeAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: miner.Methods.ChangeWorkerAddress,
+			Method: builtin.MethodsMiner.ChangeWorkerAddress,
 			Value:  big.Zero(),
 			Params: sp,
 		}, nil)
@@ -743,7 +743,7 @@ var actorConfirmChangeWorker = &cli.Command{
 		smsg, err := nodeAPI.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: miner.Methods.ConfirmUpdateWorkerKey,
+			Method: builtin.MethodsMiner.ConfirmUpdateWorkerKey,
 			Value:  big.Zero(),
 		}, nil)
 		if err != nil {

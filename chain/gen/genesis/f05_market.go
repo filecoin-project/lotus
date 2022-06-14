@@ -3,6 +3,8 @@ package genesis
 import (
 	"context"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -26,7 +28,7 @@ func SetupStorageMarketActor(ctx context.Context, bs bstore.Blockstore, av actor
 		return nil, err
 	}
 
-	actcid, err := market.GetActorCodeID(av)
+	actcid, err := builtin.GetMarketActorCodeID(av)
 	if err != nil {
 		return nil, err
 	}

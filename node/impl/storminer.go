@@ -11,12 +11,13 @@ import (
 	"strconv"
 	"time"
 
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/dagstore/shard"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/gen"
 
 	"github.com/google/uuid"
@@ -37,8 +38,10 @@ import (
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	filmktsstore "github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+	mktsdagstore "github.com/filecoin-project/lotus/markets/dagstore"
 
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
@@ -83,6 +86,7 @@ type StorageMinerAPI struct {
 	SectorBlocks      *sectorblocks.SectorBlocks        `optional:"true"`
 	Host              host.Host                         `optional:"true"`
 	DAGStore          *dagstore.DAGStore                `optional:"true"`
+	DAGStoreWrapper   *mktsdagstore.Wrapper             `optional:"true"`
 
 	// Miner / storage
 	Miner       *storage.Miner              `optional:"true"`
@@ -410,7 +414,7 @@ func (sm *StorageMinerAPI) SectorMatchPendingPiecesToOpenSectors(ctx context.Con
 	return sm.Miner.SectorMatchPendingPiecesToOpenSectors(ctx)
 }
 
-func (sm *StorageMinerAPI) ComputeWindowPoSt(ctx context.Context, dlIdx uint64, tsk types.TipSetKey) ([]lminer.SubmitWindowedPoStParams, error) {
+func (sm *StorageMinerAPI) ComputeWindowPoSt(ctx context.Context, dlIdx uint64, tsk types.TipSetKey) ([]minertypes.SubmitWindowedPoStParams, error) {
 	var ts *types.TipSet
 	var err error
 	if tsk == types.EmptyTSK {
@@ -458,7 +462,7 @@ func (sm *StorageMinerAPI) MarketImportDealData(ctx context.Context, propCid cid
 	return sm.StorageProvider.ImportDataForDeal(ctx, propCid, fi)
 }
 
-func (sm *StorageMinerAPI) listDeals(ctx context.Context) ([]api.MarketDeal, error) {
+func (sm *StorageMinerAPI) listDeals(ctx context.Context) ([]*api.MarketDeal, error) {
 	ts, err := sm.Full.ChainHead(ctx)
 	if err != nil {
 		return nil, err
@@ -469,7 +473,7 @@ func (sm *StorageMinerAPI) listDeals(ctx context.Context) ([]api.MarketDeal, err
 		return nil, err
 	}
 
-	var out []api.MarketDeal
+	var out []*api.MarketDeal
 
 	for _, deal := range allDeals {
 		if deal.Proposal.Provider == sm.Miner.Address() {
@@ -480,7 +484,7 @@ func (sm *StorageMinerAPI) listDeals(ctx context.Context) ([]api.MarketDeal, err
 	return out, nil
 }
 
-func (sm *StorageMinerAPI) MarketListDeals(ctx context.Context) ([]api.MarketDeal, error) {
+func (sm *StorageMinerAPI) MarketListDeals(ctx context.Context) ([]*api.MarketDeal, error) {
 	return sm.listDeals(ctx)
 }
 
@@ -792,6 +796,35 @@ func (sm *StorageMinerAPI) DagstoreListShards(ctx context.Context) ([]api.Dagsto
 	return ret, nil
 }
 
+func (sm *StorageMinerAPI) DagstoreRegisterShard(ctx context.Context, key string) error {
+	if sm.DAGStore == nil {
+		return fmt.Errorf("dagstore not available on this node")
+	}
+
+	// First check if the shard has already been registered
+	k := shard.KeyFromString(key)
+	_, err := sm.DAGStore.GetShardInfo(k)
+	if err == nil {
+		// Shard already registered, nothing further to do
+		return nil
+	}
+	// If the shard is not registered we would expect ErrShardUnknown
+	if !errors.Is(err, dagstore.ErrShardUnknown) {
+		return fmt.Errorf("getting shard info from DAG store: %w", err)
+	}
+
+	pieceCid, err := cid.Parse(key)
+	if err != nil {
+		return fmt.Errorf("parsing shard key as piece cid: %w", err)
+	}
+
+	if err = filmktsstore.RegisterShardSync(ctx, sm.DAGStoreWrapper, pieceCid, "", true); err != nil {
+		return fmt.Errorf("failed to register shard: %w", err)
+	}
+
+	return nil
+}
+
 func (sm *StorageMinerAPI) DagstoreInitializeShard(ctx context.Context, key string) error {
 	if sm.DAGStore == nil {
 		return fmt.Errorf("dagstore not available on this node")
@@ -1076,7 +1109,7 @@ func (sm *StorageMinerAPI) DagstoreLookupPieces(ctx context.Context, cid cid.Cid
 	return ret, nil
 }
 
-func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]api.MarketDeal, error) {
+func (sm *StorageMinerAPI) DealsList(ctx context.Context) ([]*api.MarketDeal, error) {
 	return sm.listDeals(ctx)
 }
 

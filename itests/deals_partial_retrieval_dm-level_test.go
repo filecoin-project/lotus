@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/api"
 	api0 "github.com/filecoin-project/lotus/api/v0api"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/itests/kit"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -46,7 +45,6 @@ func TestDMLevelPartialRetrieval(t *testing.T) {
 	//stm: @CLIENT_RETRIEVAL_RETRIEVE_001, @CLIENT_RETRIEVAL_FIND_001
 	ctx := context.Background()
 
-	policy.SetPreCommitChallengeDelay(2)
 	kit.QuietMiningLogs()
 	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.MockProofs())
 	dh := kit.NewDealHarness(t, client, miner, miner)

@@ -757,6 +757,30 @@ This parameter is ONLY applicable if the retrieval pricing policy strategy has b
 			Comment: ``,
 		},
 		{
+			Name: "Assigner",
+			Type: "string",
+
+			Comment: `Assigner specifies the worker assigner to use when scheduling tasks.
+"utilization" (default) - assign tasks to workers with lowest utilization.
+"spread" - assign tasks to as many distinct workers as possible.`,
+		},
+		{
+			Name: "DisallowRemoteFinalize",
+			Type: "bool",
+
+			Comment: `DisallowRemoteFinalize when set to true will force all Finalize tasks to
+run on workers with local access to both long-term storage and the sealing
+path containing the sector.
+--
+WARNING: Only set this if all workers have access to long-term storage
+paths. If this flag is enabled, and there are workers without long-term
+storage access, sectors will not be moved from them, and Finalize tasks
+will appear to be stuck.
+--
+If you see stuck Finalize tasks after enabling this setting, check
+'lotus-miner sealing sched-diag' and 'lotus-miner storage find [sector num]'`,
+		},
+		{
 			Name: "ResourceFiltering",
 			Type: "sectorstorage.ResourceFilteringStrategy",
 
@@ -897,13 +921,13 @@ This is useful for forcing all deals to be assigned as snap deals to sectors mar
 			Name: "MinCommitBatch",
 			Type: "int",
 
-			Comment: `maximum batched commit size - batches will be sent immediately above this size`,
+			Comment: `minimum batched commit size - batches above this size will eventually be sent on a timeout`,
 		},
 		{
 			Name: "MaxCommitBatch",
 			Type: "int",
 
-			Comment: ``,
+			Comment: `maximum batched commit size - batches will be sent immediately above this size`,
 		},
 		{
 			Name: "CommitBatchWait",

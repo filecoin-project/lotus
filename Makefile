@@ -64,7 +64,7 @@ CLEAN+=build/.update-modules
 deps: $(BUILD_DEPS)
 .PHONY: deps
 
-build-devnets: build lotus-seed lotus-shed lotus-wallet lotus-gateway
+build-devnets: build lotus-seed lotus-shed lotus-wallet lotus-gateway lotus-fountain lotus-stats
 .PHONY: build-devnets
 
 debug: GOFLAGS+=-tags=debug
@@ -169,7 +169,7 @@ BINS+=lotus-fountain
 
 lotus-bench:
 	rm -f lotus-bench
-	$(GOCC) build -o lotus-bench ./cmd/lotus-bench
+	$(GOCC) build $(GOFLAGS) -o lotus-bench ./cmd/lotus-bench
 .PHONY: lotus-bench
 BINS+=lotus-bench
 
@@ -295,6 +295,12 @@ actors-gen:
 	$(GOCC) run ./chain/actors/agen
 	$(GOCC) fmt ./...
 
+bundle-gen:
+	$(GOCC) run ./gen/bundle
+	$(GOCC) fmt ./build/...
+.PHONY: bundle-gen
+
+
 api-gen:
 	$(GOCC) run ./gen/api
 	goimports -w api
@@ -330,7 +336,7 @@ docsgen-md-storage: docsgen-md-bin
 docsgen-md-worker: docsgen-md-bin
 	./docgen-md "api/api_worker.go" "Worker" "api" "./api" > documentation/en/api-v0-methods-worker.md
 
-docsgen-openrpc: docsgen-openrpc-full docsgen-openrpc-storage docsgen-openrpc-worker
+docsgen-openrpc: docsgen-openrpc-full docsgen-openrpc-storage docsgen-openrpc-worker docsgen-openrpc-gateway
 
 docsgen-openrpc-full: docsgen-openrpc-bin
 	./docgen-openrpc "api/api_full.go" "FullNode" "api" "./api" -gzip > build/openrpc/full.json.gz
@@ -338,10 +344,12 @@ docsgen-openrpc-storage: docsgen-openrpc-bin
 	./docgen-openrpc "api/api_storage.go" "StorageMiner" "api" "./api" -gzip > build/openrpc/miner.json.gz
 docsgen-openrpc-worker: docsgen-openrpc-bin
 	./docgen-openrpc "api/api_worker.go" "Worker" "api" "./api" -gzip > build/openrpc/worker.json.gz
+docsgen-openrpc-gateway: docsgen-openrpc-bin
+	./docgen-openrpc "api/api_gateway.go" "Gateway" "api" "./api" -gzip > build/openrpc/gateway.json.gz
 
 .PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
 
-gen: actors-gen type-gen method-gen cfgdoc-gen docsgen api-gen circleci
+gen: actors-gen type-gen method-gen cfgdoc-gen docsgen api-gen circleci bundle-gen
 	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO MAKE docsgen-cli"
 .PHONY: gen
 

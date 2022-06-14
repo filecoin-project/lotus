@@ -4,12 +4,13 @@ package stages
 import (
 	"testing"
 
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
@@ -19,31 +20,31 @@ func TestCommitQueue(t *testing.T) {
 	addr1, err := address.NewIDAddress(1000)
 	require.NoError(t, err)
 	proofType := abi.RegisteredSealProof_StackedDrg64GiBV1_1
-	require.NoError(t, q.enqueueProveCommit(addr1, 0, miner.SectorPreCommitInfo{
+	require.NoError(t, q.enqueueProveCommit(addr1, 0, minertypes.SectorPreCommitInfo{
 		SealProof:    proofType,
 		SectorNumber: 0,
 	}))
-	require.NoError(t, q.enqueueProveCommit(addr1, 0, miner.SectorPreCommitInfo{
+	require.NoError(t, q.enqueueProveCommit(addr1, 0, minertypes.SectorPreCommitInfo{
 		SealProof:    proofType,
 		SectorNumber: 1,
 	}))
-	require.NoError(t, q.enqueueProveCommit(addr1, 1, miner.SectorPreCommitInfo{
+	require.NoError(t, q.enqueueProveCommit(addr1, 1, minertypes.SectorPreCommitInfo{
 		SealProof:    proofType,
 		SectorNumber: 2,
 	}))
-	require.NoError(t, q.enqueueProveCommit(addr1, 1, miner.SectorPreCommitInfo{
+	require.NoError(t, q.enqueueProveCommit(addr1, 1, minertypes.SectorPreCommitInfo{
 		SealProof:    proofType,
 		SectorNumber: 3,
 	}))
-	require.NoError(t, q.enqueueProveCommit(addr1, 3, miner.SectorPreCommitInfo{
+	require.NoError(t, q.enqueueProveCommit(addr1, 3, minertypes.SectorPreCommitInfo{
 		SealProof:    proofType,
 		SectorNumber: 4,
 	}))
-	require.NoError(t, q.enqueueProveCommit(addr1, 4, miner.SectorPreCommitInfo{
+	require.NoError(t, q.enqueueProveCommit(addr1, 4, minertypes.SectorPreCommitInfo{
 		SealProof:    proofType,
 		SectorNumber: 5,
 	}))
-	require.NoError(t, q.enqueueProveCommit(addr1, 6, miner.SectorPreCommitInfo{
+	require.NoError(t, q.enqueueProveCommit(addr1, 6, minertypes.SectorPreCommitInfo{
 		SealProof:    proofType,
 		SectorNumber: 6,
 	}))

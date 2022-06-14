@@ -59,7 +59,7 @@ var genesisNewCmd = &cli.Command{
 			return xerrors.New("seed genesis new [genesis.json]")
 		}
 		out := genesis.Template{
-			NetworkVersion:   build.NewestNetworkVersion,
+			NetworkVersion:   build.GenesisNetworkVersion,
 			Accounts:         []genesis.Actor{},
 			Miners:           []genesis.Miner{},
 			VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
@@ -577,6 +577,7 @@ var genesisCarCmd = &cli.Command{
 		jrnl := journal.NilJournal()
 		bstor := blockstore.WrapIDStore(blockstore.NewMemorySync())
 		sbldr := vm.Syscalls(ffiwrapper.ProofVerifier)
+
 		_, err := testing.MakeGenesis(ofile, c.Args().First())(bstor, sbldr, jrnl)()
 		return err
 	},

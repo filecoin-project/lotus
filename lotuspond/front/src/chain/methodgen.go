@@ -5,10 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/multiformats/go-multihash"
-
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 )
 
@@ -46,12 +45,7 @@ func main() {
 	out := map[string][]string{}
 
 	for c, methods := range filcns.NewActorRegistry().Methods {
-		cmh, err := multihash.Decode(c.Hash())
-		if err != nil {
-			panic(err)
-		}
-
-		name := string(cmh.Digest)
+		name := builtin.ActorNameByCode(c)
 		remaining := len(methods)
 
 		// iterate over actor methods in order.

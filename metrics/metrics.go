@@ -167,6 +167,9 @@ var (
 	RcmgrBlockSvcPeer   = stats.Int64("rcmgr/block_svc", "Number of blocked blocked streams attached to a service for a specific peer", stats.UnitDimensionless)
 	RcmgrAllowMem       = stats.Int64("rcmgr/allow_mem", "Number of allowed memory reservations", stats.UnitDimensionless)
 	RcmgrBlockMem       = stats.Int64("rcmgr/block_mem", "Number of blocked memory reservations", stats.UnitDimensionless)
+
+	// gateway rate limit
+	RateLimitCount = stats.Int64("ratelimit/limited", "rate limited connections", stats.UnitDimensionless)
 )
 
 var (
@@ -599,6 +602,10 @@ var (
 		Measure:     RcmgrBlockMem,
 		Aggregation: view.Count(),
 	}
+	RateLimitedView = &view.View{
+		Measure:     RateLimitCount,
+		Aggregation: view.Count(),
+	}
 )
 
 // DefaultViews is an array of OpenCensus views for metric gathering purposes
@@ -710,6 +717,10 @@ var MinerNodeViews = append([]*view.View{
 	DagStorePRSeekBackBytesView,
 	DagStorePRSeekForwardBytesView,
 }, DefaultViews...)
+
+var GatewayNodeViews = append([]*view.View{
+	RateLimitedView,
+}, ChainNodeViews...)
 
 // SinceInMilliseconds returns the duration of time since the provide time as a float64.
 func SinceInMilliseconds(startTime time.Time) float64 {

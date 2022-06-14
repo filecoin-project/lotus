@@ -133,13 +133,33 @@ var runCmd = &cli.Command{
 			Usage: "maximum number of blocks to search back through for message inclusion",
 			Value: int64(gateway.DefaultStateWaitLookbackLimit),
 		},
+		&cli.Int64Flag{
+			Name:  "rate-limit",
+			Usage: "rate-limit API calls. Use 0 to disable",
+			Value: 0,
+		},
+		&cli.Int64Flag{
+			Name:  "per-conn-rate-limit",
+			Usage: "rate-limit API calls per each connection. Use 0 to disable",
+			Value: 0,
+		},
+		&cli.DurationFlag{
+			Name:  "rate-limit-timeout",
+			Usage: "the maximum time to wait for the rate limter before returning an error to clients",
+			Value: gateway.DefaultRateLimitTimeout,
+		},
+		&cli.Int64Flag{
+			Name:  "conn-per-minute",
+			Usage: "The number of incomming connections to accept from a single IP per minute.  Use 0 to disable",
+			Value: 0,
+		},
 	},
 	Action: func(cctx *cli.Context) error {
 		log.Info("Starting lotus gateway")
 
 		// Register all metric views
 		if err := view.Register(
-			metrics.ChainNodeViews...,
+			metrics.GatewayNodeViews...,
 		); err != nil {
 			log.Fatalf("Cannot register the view: %v", err)
 		}
@@ -151,9 +171,13 @@ var runCmd = &cli.Command{
 		defer closer()
 
 		var (
-			lookbackCap  = cctx.Duration("api-max-lookback")
-			address      = cctx.String("listen")
-			waitLookback = abi.ChainEpoch(cctx.Int64("api-wait-lookback-limit"))
+			lookbackCap      = cctx.Duration("api-max-lookback")
+			address          = cctx.String("listen")
+			waitLookback     = abi.ChainEpoch(cctx.Int64("api-wait-lookback-limit"))
+			rateLimit        = cctx.Int64("rate-limit")
+			perConnRateLimit = cctx.Int64("per-conn-rate-limit")
+			rateLimitTimeout = cctx.Duration("rate-limit-timeout")
+			connPerMinute    = cctx.Int64("conn-per-minute")
 		)
 
 		serverOptions := make([]jsonrpc.ServerOption, 0)
@@ -173,8 +197,8 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("failed to convert endpoint address to multiaddr: %w", err)
 		}
 
-		gwapi := gateway.NewNode(api, lookbackCap, waitLookback)
-		h, err := gateway.Handler(gwapi, serverOptions...)
+		gwapi := gateway.NewNode(api, lookbackCap, waitLookback, rateLimit, rateLimitTimeout)
+		h, err := gateway.Handler(gwapi, api, perConnRateLimit, connPerMinute, serverOptions...)
 		if err != nil {
 			return xerrors.Errorf("failed to set up gateway HTTP handler")
 		}

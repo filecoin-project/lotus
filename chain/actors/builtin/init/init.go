@@ -10,7 +10,6 @@ import (
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 
@@ -27,45 +26,29 @@ import (
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
+
+	builtin8 "github.com/filecoin-project/go-state-types/builtin"
 )
 
-func init() {
-
-	builtin.RegisterActorState(builtin0.InitActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load0(store, root)
-	})
-
-	builtin.RegisterActorState(builtin2.InitActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load2(store, root)
-	})
-
-	builtin.RegisterActorState(builtin3.InitActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load3(store, root)
-	})
-
-	builtin.RegisterActorState(builtin4.InitActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load4(store, root)
-	})
-
-	builtin.RegisterActorState(builtin5.InitActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load5(store, root)
-	})
-
-	builtin.RegisterActorState(builtin6.InitActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load6(store, root)
-	})
-
-	builtin.RegisterActorState(builtin7.InitActorCodeID, func(store adt.Store, root cid.Cid) (cbor.Marshaler, error) {
-		return load7(store, root)
-	})
-}
-
 var (
-	Address = builtin7.InitActorAddr
-	Methods = builtin7.MethodsInit
+	Address = builtin8.InitActorAddr
+	Methods = builtin8.MethodsInit
 )
 
 func Load(store adt.Store, act *types.Actor) (State, error) {
+	if name, av, ok := actors.GetActorMetaByCode(act.Code); ok {
+		if name != actors.InitKey {
+			return nil, xerrors.Errorf("actor code is not init: %s", name)
+		}
+
+		switch av {
+
+		case actors.Version8:
+			return load8(store, act.Head)
+
+		}
+	}
+
 	switch act.Code {
 
 	case builtin0.InitActorCodeID:
@@ -90,6 +73,7 @@ func Load(store adt.Store, act *types.Actor) (State, error) {
 		return load7(store, act.Head)
 
 	}
+
 	return nil, xerrors.Errorf("unknown actor code %s", act.Code)
 }
 
@@ -117,37 +101,11 @@ func MakeState(store adt.Store, av actors.Version, networkName string) (State, e
 	case actors.Version7:
 		return make7(store, networkName)
 
+	case actors.Version8:
+		return make8(store, networkName)
+
 	}
 	return nil, xerrors.Errorf("unknown actor version %d", av)
-}
-
-func GetActorCodeID(av actors.Version) (cid.Cid, error) {
-	switch av {
-
-	case actors.Version0:
-		return builtin0.InitActorCodeID, nil
-
-	case actors.Version2:
-		return builtin2.InitActorCodeID, nil
-
-	case actors.Version3:
-		return builtin3.InitActorCodeID, nil
-
-	case actors.Version4:
-		return builtin4.InitActorCodeID, nil
-
-	case actors.Version5:
-		return builtin5.InitActorCodeID, nil
-
-	case actors.Version6:
-		return builtin6.InitActorCodeID, nil
-
-	case actors.Version7:
-		return builtin7.InitActorCodeID, nil
-
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
 
 type State interface {

@@ -182,10 +182,14 @@ var runCmd = &cli.Command{
 			Usage: "enable window post",
 			Value: false,
 		},
-
 		&cli.BoolFlag{
 			Name:  "winningpost",
 			Usage: "enable winning post",
+			Value: false,
+		},
+		&cli.BoolFlag{
+			Name:  "no-default",
+			Usage: "disable all default compute tasks, use the worker for storage/fetching only",
 			Value: false,
 		},
 		&cli.IntFlag{
@@ -289,27 +293,27 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		if cctx.Bool("commit") || cctx.Bool("prove-replica-update2") {
-			if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(ssize)); err != nil {
-				return xerrors.Errorf("get params: %w", err)
-			}
-		}
-
 		var taskTypes []sealtasks.TaskType
 		var workerType string
+		var needParams bool
 
 		if cctx.Bool("windowpost") {
+			needParams = true
 			workerType = sealtasks.WorkerWindowPoSt
 			taskTypes = append(taskTypes, sealtasks.TTGenerateWindowPoSt)
 		}
 		if cctx.Bool("winningpost") {
+			needParams = true
 			workerType = sealtasks.WorkerWinningPoSt
 			taskTypes = append(taskTypes, sealtasks.TTGenerateWinningPoSt)
 		}
 
 		if workerType == "" {
-			workerType = sealtasks.WorkerSealing
 			taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFinalizeReplicaUpdate)
+
+			if !cctx.Bool("no-default") {
+				workerType = sealtasks.WorkerSealing
+			}
 		}
 
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("addpiece")) && cctx.Bool("addpiece") {
@@ -325,16 +329,22 @@ var runCmd = &cli.Command{
 			taskTypes = append(taskTypes, sealtasks.TTPreCommit2)
 		}
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("commit")) && cctx.Bool("commit") {
+			needParams = true
 			taskTypes = append(taskTypes, sealtasks.TTCommit2)
 		}
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("replica-update")) && cctx.Bool("replica-update") {
 			taskTypes = append(taskTypes, sealtasks.TTReplicaUpdate)
 		}
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("prove-replica-update2")) && cctx.Bool("prove-replica-update2") {
+			needParams = true
 			taskTypes = append(taskTypes, sealtasks.TTProveReplicaUpdate2)
 		}
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("regen-sector-key")) && cctx.Bool("regen-sector-key") {
 			taskTypes = append(taskTypes, sealtasks.TTRegenSectorKey)
+		}
+
+		if cctx.Bool("no-default") && workerType == "" {
+			workerType = sealtasks.WorkerSealing
 		}
 
 		if len(taskTypes) == 0 {
@@ -343,6 +353,12 @@ var runCmd = &cli.Command{
 		for _, taskType := range taskTypes {
 			if taskType.WorkerType() != workerType {
 				return xerrors.Errorf("expected all task types to be for %s worker, but task %s is for %s worker", workerType, taskType, taskType.WorkerType())
+			}
+		}
+
+		if needParams {
+			if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(ssize)); err != nil {
+				return xerrors.Errorf("get params: %w", err)
 			}
 		}
 

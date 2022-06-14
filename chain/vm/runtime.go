@@ -29,7 +29,9 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -57,7 +59,7 @@ func (m *Message) ValueReceived() abi.TokenAmount {
 }
 
 // EnableDetailedTracing, if true, outputs gas tracing in execution traces.
-var EnableDetailedTracing = os.Getenv("LOTUS_VM_ENABLE_GAS_TRACING_VERY_SLOW") == "1"
+var EnableDetailedTracing = os.Getenv("LOTUS_VM_ENABLE_TRACING") == "1"
 
 type Runtime struct {
 	rt7.Message
@@ -364,6 +366,20 @@ func (rt *Runtime) ValidateImmediateCallerType(ts ...cid.Cid) {
 	for _, t := range ts {
 		if t == callerCid {
 			return
+		}
+
+		// this really only for genesis in tests; nv16 will be running on FVM anyway.
+		if nv := rt.NetworkVersion(); nv >= network.Version16 {
+			av, err := actors.VersionForNetwork(nv)
+			if err != nil {
+				panic(aerrors.Fatalf("failed to get actors version for network version %d", nv))
+			}
+
+			name := actors.CanonicalName(builtin.ActorNameByCode(t))
+			ac, ok := actors.GetActorCodeID(av, name)
+			if ok && ac == callerCid {
+				return
+			}
 		}
 	}
 	rt.Abortf(exitcode.SysErrForbidden, "caller cid type %q was not one of %v", callerCid, ts)

@@ -63,6 +63,9 @@ func (c *StorageMiner) StorageManager() sectorstorage.Config {
 		AllowProveReplicaUpdate2: c.Storage.AllowProveReplicaUpdate2,
 		AllowRegenSectorKey:      c.Storage.AllowRegenSectorKey,
 		ResourceFiltering:        c.Storage.ResourceFiltering,
+		DisallowRemoteFinalize:   c.Storage.DisallowRemoteFinalize,
+
+		Assigner: c.Storage.Assigner,
 
 		ParallelCheckLimit: c.Proving.ParallelCheckLimit,
 	}

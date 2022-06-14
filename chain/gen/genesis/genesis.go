@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/node/bundle"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -153,6 +154,10 @@ func MakeInitialStateTree(ctx context.Context, bs bstore.Blockstore, template ge
 	av, err := actors.VersionForNetwork(template.NetworkVersion)
 	if err != nil {
 		return nil, nil, xerrors.Errorf("getting network version: %w", err)
+	}
+
+	if err := bundle.LoadBundles(ctx, bs, av); err != nil {
+		return nil, nil, xerrors.Errorf("loading actors for genesis block: %w", err)
 	}
 
 	// Create system actor
@@ -376,7 +381,7 @@ func MakeAccountActor(ctx context.Context, cst cbor.IpldStore, av actors.Version
 		return nil, err
 	}
 
-	actcid, err := account.GetActorCodeID(av)
+	actcid, err := builtin.GetAccountActorCodeID(av)
 	if err != nil {
 		return nil, err
 	}
@@ -458,7 +463,7 @@ func CreateMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *state
 		return err
 	}
 
-	actcid, err := multisig.GetActorCodeID(av)
+	actcid, err := builtin.GetMultisigActorCodeID(av)
 	if err != nil {
 		return err
 	}
@@ -491,11 +496,10 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 		Actors:         filcns.NewActorRegistry(),
 		Syscalls:       mkFakedSigSyscalls(sys),
 		CircSupplyCalc: csc,
-		FilVested:      big.Zero(),
 		NetworkVersion: nv,
 		BaseFee:        big.Zero(),
 	}
-	vm, err := vm.NewLegacyVM(ctx, &vmopt)
+	vm, err := vm.NewVM(ctx, &vmopt)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to create NewLegacyVM: %w", err)
 	}

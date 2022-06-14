@@ -16,6 +16,7 @@ func TestOpenRPCDiscoverJSON_Version(t *testing.T) {
 		OpenRPCDiscoverJSON_Full,
 		OpenRPCDiscoverJSON_Miner,
 		OpenRPCDiscoverJSON_Worker,
+		OpenRPCDiscoverJSON_Gateway,
 	} {
 		doc := docFn()
 		if got, ok := doc["openrpc"]; !ok || got != openRPCDocVersion {
