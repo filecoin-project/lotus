@@ -34,6 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 )
 
 var log = logging.Logger("storageminer")
@@ -54,7 +55,7 @@ type Miner struct {
 	sc      sealing.SectorIDCounter
 	verif   ffiwrapper.Verifier
 	prover  ffiwrapper.Prover
-	addrSel *AddressSelector
+	addrSel *ctladdr.AddressSelector
 
 	maddr address.Address
 
@@ -139,7 +140,7 @@ func NewMiner(api fullNodeFilteredAPI,
 	gsd dtypes.GetSealingConfigFunc,
 	feeCfg config.MinerFeeConfig,
 	journal journal.Journal,
-	as *AddressSelector) (*Miner, error) {
+	as *ctladdr.AddressSelector) (*Miner, error) {
 	m := &Miner{
 		api:     api,
 		feeCfg:  feeCfg,

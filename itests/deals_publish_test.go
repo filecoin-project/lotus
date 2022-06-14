@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
-	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 )
 
 func TestPublishDealsBatching(t *testing.T) {
@@ -51,7 +51,7 @@ func TestPublishDealsBatching(t *testing.T) {
 				MaxDealsPerMsg: maxDealsPerMsg,
 			}),
 		),
-		node.Override(new(*storage.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
+		node.Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
 			DealPublishControl: []string{
 				publisherKey.Address.String(),
 			},

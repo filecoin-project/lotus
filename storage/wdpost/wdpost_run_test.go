@@ -32,7 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/journal"
-	storage2 "github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 )
 
 type mockStorageMinerAPI struct {
@@ -237,7 +237,7 @@ func TestWDPostDoPost(t *testing.T) {
 		proofType:    proofType,
 		actor:        postAct,
 		journal:      journal.NilJournal(),
-		addrSel:      &storage2.AddressSelector{},
+		addrSel:      &ctladdr.AddressSelector{},
 	}
 
 	di := &dline.Info{

@@ -1,7 +1,9 @@
-package storage
+package ctladdr
 
 import (
 	"context"
+
+	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -10,6 +12,8 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 )
+
+var log = logging.Logger("ctladdr")
 
 type addrSelectApi interface {
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)

@@ -37,6 +37,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/filecoin-project/lotus/storage/wdpost"
 )
@@ -51,7 +52,7 @@ var MinerNode = Options(
 	Override(new(dtypes.NetworkName), modules.StorageNetworkName),
 
 	// Mining / proving
-	Override(new(*storage.AddressSelector), modules.AddressSelector(nil)),
+	Override(new(*ctladdr.AddressSelector), modules.AddressSelector(nil)),
 )
 
 func ConfigStorageMiner(c interface{}) Option {
@@ -221,7 +222,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		),
 
 		Override(new(sectorstorage.Config), cfg.StorageManager()),
-		Override(new(*storage.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
+		Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
 	)
 }
 

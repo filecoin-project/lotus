@@ -53,6 +53,7 @@ import (
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/filecoin-project/lotus/storage/wdpost"
 )
@@ -90,7 +91,7 @@ type StorageMinerAPI struct {
 	IStorageMgr sectorstorage.SectorManager `optional:"true"`
 	stores.SectorIndex
 	storiface.WorkerReturn `optional:"true"`
-	AddrSel                *storage.AddressSelector
+	AddrSel                *ctladdr.AddressSelector
 
 	WdPoSt *wdpost.WindowPoStScheduler `optional:"true"`
 

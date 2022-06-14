@@ -26,7 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/config"
-	storage2 "github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 )
 
 var log = logging.Logger("wdpost")
@@ -65,7 +65,7 @@ type NodeAPI interface {
 type WindowPoStScheduler struct {
 	api              NodeAPI
 	feeCfg           config.MinerFeeConfig
-	addrSel          *storage2.AddressSelector
+	addrSel          *ctladdr.AddressSelector
 	prover           storage.Prover
 	verifier         ffiwrapper.Verifier
 	faultTracker     sectorstorage.FaultTracker
@@ -85,7 +85,7 @@ type WindowPoStScheduler struct {
 // NewWindowedPoStScheduler creates a new WindowPoStScheduler scheduler.
 func NewWindowedPoStScheduler(api NodeAPI,
 	cfg config.MinerFeeConfig,
-	as *storage2.AddressSelector,
+	as *ctladdr.AddressSelector,
 	sp storage.Prover,
 	verif ffiwrapper.Verifier,
 	ft sectorstorage.FaultTracker,

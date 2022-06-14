@@ -70,6 +70,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
@@ -151,9 +152,9 @@ func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
 	return &sidsc{sc}
 }
 
-func AddressSelector(addrConf *config.MinerAddressConfig) func() (*storage.AddressSelector, error) {
-	return func() (*storage.AddressSelector, error) {
-		as := &storage.AddressSelector{}
+func AddressSelector(addrConf *config.MinerAddressConfig) func() (*ctladdr.AddressSelector, error) {
+	return func() (*ctladdr.AddressSelector, error) {
+		as := &ctladdr.AddressSelector{}
 		if addrConf == nil {
 			return as, nil
 		}
@@ -214,7 +215,7 @@ type StorageMinerParams struct {
 	Prover             ffiwrapper.Prover
 	GetSealingConfigFn dtypes.GetSealingConfigFunc
 	Journal            journal.Journal
-	AddrSel            *storage.AddressSelector
+	AddrSel            *ctladdr.AddressSelector
 	Maddr              dtypes.MinerAddress
 }
 

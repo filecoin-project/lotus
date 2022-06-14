@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
-	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 )
 
 var (
@@ -52,7 +52,7 @@ func TestDealsRetryLackOfFunds(t *testing.T) {
 				MaxDealsPerMsg: maxDealsPerMsg,
 			}),
 		),
-		node.Override(new(*storage.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
+		node.Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
 			DealPublishControl: []string{
 				publishStorageDealKey.Address.String(),
 			},
@@ -128,7 +128,7 @@ func TestDealsRetryLackOfFunds_blockInPublishDeal(t *testing.T) {
 				MaxDealsPerMsg: maxDealsPerMsg,
 			}),
 		),
-		node.Override(new(*storage.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
+		node.Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
 			DealPublishControl: []string{
 				publishStorageDealKey.Address.String(),
 			},
@@ -201,7 +201,7 @@ func TestDealsRetryLackOfFunds_belowLimit(t *testing.T) {
 				MaxDealsPerMsg: maxDealsPerMsg,
 			}),
 		),
-		node.Override(new(*storage.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
+		node.Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
 			DealPublishControl: []string{
 				publishStorageDealKey.Address.String(),
 			},
