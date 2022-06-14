@@ -10,7 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	fr322 "github.com/filecoin-project/lotus/storage/sealer/fr32"
+	fr32 "github.com/filecoin-project/lotus/storage/sealer/fr32"
 )
 
 func TestUnpadReader(t *testing.T) {
@@ -19,9 +19,9 @@ func TestUnpadReader(t *testing.T) {
 	raw := bytes.Repeat([]byte{0x77}, int(ps))
 
 	padOut := make([]byte, ps.Padded())
-	fr322.Pad(raw, padOut)
+	fr32.Pad(raw, padOut)
 
-	r, err := fr322.NewUnpadReader(bytes.NewReader(padOut), ps.Padded())
+	r, err := fr32.NewUnpadReader(bytes.NewReader(padOut), ps.Padded())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -20,7 +20,7 @@ import (
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/types"
-	sealing2 "github.com/filecoin-project/lotus/storage/pipeline"
+	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 )
 
 type eventsCalledAPI interface {
@@ -28,7 +28,7 @@ type eventsCalledAPI interface {
 }
 
 type dealInfoAPI interface {
-	GetCurrentDealInfo(ctx context.Context, tok sealing2.TipSetToken, proposal *market.DealProposal, publishCid cid.Cid) (sealing2.CurrentDealInfo, error)
+	GetCurrentDealInfo(ctx context.Context, tok pipeline.TipSetToken, proposal *market.DealProposal, publishCid cid.Cid) (pipeline.CurrentDealInfo, error)
 }
 
 type diffPreCommitsAPI interface {
@@ -41,9 +41,9 @@ type SectorCommittedManager struct {
 	dpc      diffPreCommitsAPI
 }
 
-func NewSectorCommittedManager(ev eventsCalledAPI, tskAPI sealing2.CurrentDealInfoTskAPI, dpcAPI diffPreCommitsAPI) *SectorCommittedManager {
-	dim := &sealing2.CurrentDealInfoManager{
-		CDAPI: &sealing2.CurrentDealInfoAPIAdapter{CurrentDealInfoTskAPI: tskAPI},
+func NewSectorCommittedManager(ev eventsCalledAPI, tskAPI pipeline.CurrentDealInfoTskAPI, dpcAPI diffPreCommitsAPI) *SectorCommittedManager {
+	dim := &pipeline.CurrentDealInfoManager{
+		CDAPI: &pipeline.CurrentDealInfoAPIAdapter{CurrentDealInfoTskAPI: tskAPI},
 	}
 	return newSectorCommittedManager(ev, dim, dpcAPI)
 }
@@ -280,7 +280,7 @@ func (mgr *SectorCommittedManager) OnDealSectorCommitted(ctx context.Context, pr
 	return nil
 }
 
-func dealSectorInReplicaUpdateSuccess(msg *types.Message, rec *types.MessageReceipt, res sealing2.CurrentDealInfo) (*abi.SectorNumber, error) {
+func dealSectorInReplicaUpdateSuccess(msg *types.Message, rec *types.MessageReceipt, res pipeline.CurrentDealInfo) (*abi.SectorNumber, error) {
 	var params miner.ProveReplicaUpdatesParams
 	if err := params.UnmarshalCBOR(bytes.NewReader(msg.Params)); err != nil {
 		return nil, xerrors.Errorf("unmarshal prove replica update: %w", err)
@@ -317,7 +317,7 @@ func dealSectorInReplicaUpdateSuccess(msg *types.Message, rec *types.MessageRece
 }
 
 // dealSectorInPreCommitMsg tries to find a sector containing the specified deal
-func dealSectorInPreCommitMsg(msg *types.Message, res sealing2.CurrentDealInfo) (*abi.SectorNumber, error) {
+func dealSectorInPreCommitMsg(msg *types.Message, res pipeline.CurrentDealInfo) (*abi.SectorNumber, error) {
 	switch msg.Method {
 	case builtin.MethodsMiner.PreCommitSector:
 		var params miner.SectorPreCommitInfo
@@ -383,7 +383,7 @@ func sectorInCommitMsg(msg *types.Message, sectorNumber abi.SectorNumber) (bool,
 	}
 }
 
-func (mgr *SectorCommittedManager) checkIfDealAlreadyActive(ctx context.Context, ts *types.TipSet, proposal *market.DealProposal, publishCid cid.Cid) (sealing2.CurrentDealInfo, bool, error) {
+func (mgr *SectorCommittedManager) checkIfDealAlreadyActive(ctx context.Context, ts *types.TipSet, proposal *market.DealProposal, publishCid cid.Cid) (pipeline.CurrentDealInfo, bool, error) {
 	res, err := mgr.dealInfo.GetCurrentDealInfo(ctx, ts.Key().Bytes(), proposal, publishCid)
 	if err != nil {
 		// TODO: This may be fine for some errors

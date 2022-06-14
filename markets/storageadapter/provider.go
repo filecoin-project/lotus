@@ -31,7 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
-	sealing2 "github.com/filecoin-project/lotus/storage/pipeline"
+	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -108,7 +108,7 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 	curTime := build.Clock.Now()
 	for build.Clock.Since(curTime) < addPieceRetryTimeout {
 		// Check if there was an error because of too many sectors being sealed
-		if !xerrors.Is(err, sealing2.ErrTooManySectorsSealing) {
+		if !xerrors.Is(err, pipeline.ErrTooManySectorsSealing) {
 			if err != nil {
 				log.Errorf("failed to addPiece for deal %d, err: %v", deal.DealID, err)
 			}
@@ -258,13 +258,13 @@ func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context
 		if err != nil {
 			return 0, 0, 0, xerrors.Errorf("getting sector info: %w", err)
 		}
-		if si.State == api.SectorState(sealing2.Proving) {
+		if si.State == api.SectorState(pipeline.Proving) {
 			best = r
 			bestSi = si
 			break
 		}
 	}
-	if bestSi.State == api.SectorState(sealing2.UndefinedSectorState) {
+	if bestSi.State == api.SectorState(pipeline.UndefinedSectorState) {
 		return 0, 0, 0, xerrors.New("no sealed sector found")
 	}
 	return best.SectorID, best.Offset, best.Size.Padded(), nil

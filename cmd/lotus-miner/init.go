@@ -55,7 +55,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/paths"
-	sealing2 "github.com/filecoin-project/lotus/storage/pipeline"
+	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -303,7 +303,7 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 
 	maxSectorID := abi.SectorNumber(0)
 	for _, sector := range meta.Sectors {
-		sectorKey := datastore.NewKey(sealing2.SectorStorePrefix).ChildString(fmt.Sprint(sector.SectorID))
+		sectorKey := datastore.NewKey(pipeline.SectorStorePrefix).ChildString(fmt.Sprint(sector.SectorID))
 
 		dealID, err := findMarketDealID(ctx, api, sector.Deal)
 		if err != nil {
@@ -312,10 +312,10 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 		commD := sector.CommD
 		commR := sector.CommR
 
-		info := &sealing2.SectorInfo{
-			State:        sealing2.Proving,
+		info := &pipeline.SectorInfo{
+			State:        pipeline.Proving,
 			SectorNumber: sector.SectorID,
-			Pieces: []sealing2.Piece{
+			Pieces: []pipeline.Piece{
 				{
 					Piece: abi.PieceInfo{
 						Size:     abi.PaddedPieceSize(meta.SectorSize),

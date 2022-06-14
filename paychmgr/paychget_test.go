@@ -529,8 +529,8 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 	mock.close()
 
 	// Create a new manager with the same datastore
-	mock2 := newMockManagerAPI()
-	defer mock2.close()
+	mock := newMockManagerAPI()
+	defer mock.close()
 
 	act := &types.Actor{
 		Code:    builtin.AccountActorCodeID,
@@ -538,9 +538,9 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 		Nonce:   0,
 		Balance: types.NewInt(20),
 	}
-	mock2.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
-	mgr2, err := newManager(store, mock2)
+	mgr2, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	// Should have no channels yet (message sent but channel not created)
@@ -586,7 +586,7 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 	}()
 
 	// 3. Send create channel response
-	mock2.receiveMsgResponse(createMsgCid, response)
+	mock.receiveMsgResponse(createMsgCid, response)
 
 	<-done
 }
@@ -634,16 +634,16 @@ func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
 	require.NoError(t, mgr.Stop())
 
 	// Create a new manager with the same datastore
-	mock2 := newMockManagerAPI()
-	defer mock2.close()
+	mock := newMockManagerAPI()
+	defer mock.close()
 
-	mock2.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
+	mock.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
-	mgr2, err := newManager(store, mock2)
+	mgr2, err := newManager(store, mock)
 	require.NoError(t, err)
 
 	// Send success add funds response
-	mock2.receiveMsgResponse(mcid2, types.MessageReceipt{
+	mock.receiveMsgResponse(mcid2, types.MessageReceipt{
 		ExitCode: 0,
 		Return:   []byte{},
 	})

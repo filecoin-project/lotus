@@ -30,7 +30,7 @@ import (
 
 	"github.com/filecoin-project/lotus/lib/nullreader"
 	nr "github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
-	fr322 "github.com/filecoin-project/lotus/storage/sealer/fr32"
+	fr32 "github.com/filecoin-project/lotus/storage/sealer/fr32"
 	"github.com/filecoin-project/lotus/storage/sealer/partialfile"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -237,7 +237,7 @@ func (sb *Sealer) AddPiece(ctx context.Context, sector storage.SectorRef, existi
 		return abi.PieceInfo{}, xerrors.Errorf("getting partial file writer: %w", err)
 	}
 
-	pw := fr322.NewPadWriter(w)
+	pw := fr32.NewPadWriter(w)
 
 	pr := io.TeeReader(io.LimitReader(file, int64(pieceSize)), pw)
 
@@ -537,11 +537,11 @@ func (sb *Sealer) UnsealPiece(ctx context.Context, sector storage.SectorRef, off
 				defer close(outWait)
 				defer opr.Close() // nolint
 
-				padwriter := fr322.NewPadWriter(out)
+				padwriter := fr32.NewPadWriter(out)
 
 				bsize := uint64(size.Padded())
-				if bsize > uint64(runtime.NumCPU())*fr322.MTTresh {
-					bsize = uint64(runtime.NumCPU()) * fr322.MTTresh
+				if bsize > uint64(runtime.NumCPU())*fr32.MTTresh {
+					bsize = uint64(runtime.NumCPU()) * fr32.MTTresh
 				}
 
 				bw := bufio.NewWriterSize(padwriter, int(abi.PaddedPieceSize(bsize).Unpadded()))
@@ -644,7 +644,7 @@ func (sb *Sealer) ReadPiece(ctx context.Context, writer io.Writer, sector storag
 		return false, xerrors.Errorf("getting partial file reader: %w", err)
 	}
 
-	upr, err := fr322.NewUnpadReader(f, size.Padded())
+	upr, err := fr32.NewUnpadReader(f, size.Padded())
 	if err != nil {
 		return false, xerrors.Errorf("creating unpadded reader: %w", err)
 	}
