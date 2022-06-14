@@ -319,7 +319,7 @@ appimage: lotus
 	cp ./lotus AppDir/usr/bin/
 	appimage-builder
 
-docsgen: docsgen-md docsgen-openrpc
+docsgen: docsgen-md docsgen-openrpc fiximports
 
 docsgen-md-bin: api-gen actors-gen
 	$(GOCC) build $(GOFLAGS) -o docgen-md ./api/docgen/cmd
