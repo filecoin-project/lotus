@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
@@ -38,7 +37,7 @@ import (
 type mockStorageMinerAPI struct {
 	partitions     []api.Partition
 	pushedMessages chan *types.Message
-	storage2.fullNodeFilteredAPI
+	NodeAPI
 }
 
 func newMockStorageMinerAPI() *mockStorageMinerAPI {
@@ -293,26 +292,6 @@ func mockTipSet(t *testing.T) *types.TipSet {
 // All the mock methods below here are unused
 //
 
-func (m *mockStorageMinerAPI) StateCall(ctx context.Context, message *types.Message, key types.TipSetKey) (*api.InvocResult, error) {
-	panic("implement me")
-}
-
-func (m *mockStorageMinerAPI) StateMinerDeadlines(ctx context.Context, maddr address.Address, tok types.TipSetKey) ([]api.Deadline, error) {
-	panic("implement me")
-}
-
-func (m *mockStorageMinerAPI) StateSectorPreCommitInfo(ctx context.Context, address address.Address, number abi.SectorNumber, key types.TipSetKey) (minertypes.SectorPreCommitOnChainInfo, error) {
-	panic("implement me")
-}
-
-func (m *mockStorageMinerAPI) StateSectorGetInfo(ctx context.Context, address address.Address, number abi.SectorNumber, key types.TipSetKey) (*minertypes.SectorOnChainInfo, error) {
-	panic("implement me")
-}
-
-func (m *mockStorageMinerAPI) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorLocation, error) {
-	panic("implement me")
-}
-
 func (m *mockStorageMinerAPI) StateMinerProvingDeadline(ctx context.Context, address address.Address, key types.TipSetKey) (*dline.Info, error) {
 	return &dline.Info{
 		CurrentEpoch:           0,
@@ -330,18 +309,6 @@ func (m *mockStorageMinerAPI) StateMinerProvingDeadline(ctx context.Context, add
 	}, nil
 }
 
-func (m *mockStorageMinerAPI) StateMinerPreCommitDepositForPower(ctx context.Context, address address.Address, info minertypes.SectorPreCommitInfo, key types.TipSetKey) (types.BigInt, error) {
-	panic("implement me")
-}
-
-func (m *mockStorageMinerAPI) StateMinerInitialPledgeCollateral(ctx context.Context, address address.Address, info minertypes.SectorPreCommitInfo, key types.TipSetKey) (types.BigInt, error) {
-	panic("implement me")
-}
-
-func (m *mockStorageMinerAPI) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
-	panic("implement me")
-}
-
 func (m *mockStorageMinerAPI) StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error) {
 	code, err := lbuiltin.GetMinerActorCodeID(actors.Version7)
 	if err != nil {
@@ -350,22 +317,6 @@ func (m *mockStorageMinerAPI) StateGetActor(ctx context.Context, actor address.A
 	return &types.Actor{
 		Code: code,
 	}, nil
-}
-
-func (m *mockStorageMinerAPI) StateGetReceipt(ctx context.Context, cid cid.Cid, key types.TipSetKey) (*types.MessageReceipt, error) {
-	panic("implement me")
-}
-
-func (m *mockStorageMinerAPI) StateMarketStorageDeal(ctx context.Context, id abi.DealID, key types.TipSetKey) (*api.MarketDeal, error) {
-	panic("implement me")
-}
-
-func (m *mockStorageMinerAPI) StateMinerFaults(ctx context.Context, address address.Address, key types.TipSetKey) (bitfield.BitField, error) {
-	panic("implement me")
-}
-
-func (m *mockStorageMinerAPI) StateMinerRecoveries(ctx context.Context, address address.Address, key types.TipSetKey) (bitfield.BitField, error) {
-	panic("implement me")
 }
 
 func (m *mockStorageMinerAPI) StateAccountKey(ctx context.Context, address address.Address, key types.TipSetKey) (address.Address, error) {
@@ -384,30 +335,6 @@ func (m *mockStorageMinerAPI) ChainHead(ctx context.Context) (*types.TipSet, err
 	return nil, nil
 }
 
-func (m *mockStorageMinerAPI) ChainNotify(ctx context.Context) (<-chan []*api.HeadChange, error) {
-	panic("implement me")
-}
-
-func (m *mockStorageMinerAPI) ChainGetTipSetByHeight(ctx context.Context, epoch abi.ChainEpoch, key types.TipSetKey) (*types.TipSet, error) {
-	panic("implement me")
-}
-
-func (m *mockStorageMinerAPI) ChainGetBlockMessages(ctx context.Context, cid cid.Cid) (*api.BlockMessages, error) {
-	panic("implement me")
-}
-
-func (m *mockStorageMinerAPI) ChainReadObj(ctx context.Context, cid cid.Cid) ([]byte, error) {
-	panic("implement me")
-}
-
-func (m *mockStorageMinerAPI) ChainHasObj(ctx context.Context, cid cid.Cid) (bool, error) {
-	panic("implement me")
-}
-
-func (m *mockStorageMinerAPI) ChainGetTipSet(ctx context.Context, key types.TipSetKey) (*types.TipSet, error) {
-	panic("implement me")
-}
-
 func (m *mockStorageMinerAPI) WalletSign(ctx context.Context, address address.Address, bytes []byte) (*crypto.Signature, error) {
 	return nil, nil
 }
@@ -420,4 +347,4 @@ func (m *mockStorageMinerAPI) WalletHas(ctx context.Context, address address.Add
 	return true, nil
 }
 
-var _ storage2.fullNodeFilteredAPI = &mockStorageMinerAPI{}
+var _ NodeAPI = &mockStorageMinerAPI{}
