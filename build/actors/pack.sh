@@ -9,7 +9,7 @@ fi
 
 VERSION="$1" # actors version
 RELEASE="$2" # actors release name
-NETWORKS=(devnet mainnet caterpillarnet butterflynet testing testing-fake-proofs)
+NETWORKS=(devnet mainnet caterpillarnet butterflynet testing testing-fake-proofs calibrationnet)
 
 echo "Downloading bundles for actors version ${VERSION}, release ${RELEASE}"
 
