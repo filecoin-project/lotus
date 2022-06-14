@@ -352,4 +352,8 @@ func (w *WrapperV1Full) ClientQueryAsk(ctx context.Context, p peer.ID, miner add
 	return a.Response, nil
 }
 
+func (w *WrapperV1Full) BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+	return w.StateGetBeaconEntry(ctx, epoch)
+}
+
 var _ FullNode = &WrapperV1Full{}

@@ -397,14 +397,14 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 	}()
 	// -- TRACE --
 
-	supported, err := c.host.Peerstore().SupportsProtocols(peer, BlockSyncProtocolID, ChainExchangeProtocolID)
+	supported, err := c.host.Peerstore().SupportsProtocols(peer, ChainExchangeProtocolID)
 	if err != nil {
 		c.RemovePeer(peer)
 		return nil, xerrors.Errorf("failed to get protocols for peer: %w", err)
 	}
-	if len(supported) == 0 || (supported[0] != BlockSyncProtocolID && supported[0] != ChainExchangeProtocolID) {
+	if len(supported) == 0 || (supported[0] != ChainExchangeProtocolID) {
 		return nil, xerrors.Errorf("peer %s does not support protocols %s",
-			peer, []string{BlockSyncProtocolID, ChainExchangeProtocolID})
+			peer, []string{ChainExchangeProtocolID})
 	}
 
 	connectionStart := build.Clock.Now()
@@ -413,7 +413,7 @@ func (c *client) sendRequestToPeer(ctx context.Context, peer peer.ID, req *Reque
 	stream, err := c.host.NewStream(
 		network.WithNoDial(ctx, "should already have connection"),
 		peer,
-		ChainExchangeProtocolID, BlockSyncProtocolID)
+		ChainExchangeProtocolID)
 	if err != nil {
 		c.RemovePeer(peer)
 		return nil, xerrors.Errorf("failed to open stream to peer: %w", err)

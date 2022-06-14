@@ -5,18 +5,21 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/filecoin-project/lotus/chain/rand"
-
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/manifest"
+	gstStore "github.com/filecoin-project/go-state-types/store"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/api"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/system"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -79,11 +82,6 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		// future. It's not guaranteed to be accurate... but that's fine.
 	}
 
-	filVested, err := sm.GetFilVested(ctx, height)
-	if err != nil {
-		return cid.Undef, nil, err
-	}
-
 	r := rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, sm.GetNetworkVersion)
 	vmopt := &vm.VMOpts{
 		StateBase:      base,
@@ -95,7 +93,6 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NetworkVersion: sm.GetNetworkVersion(ctx, height),
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
-		FilVested:      filVested,
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 	}
 	vmi, err := sm.newVM(ctx, vmopt)
@@ -216,4 +213,43 @@ func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]
 	}
 
 	return out, nil
+}
+
+func GetManifest(ctx context.Context, st *state.StateTree) (*manifest.Manifest, error) {
+	wrapStore := gstStore.WrapStore(ctx, st.Store)
+
+	systemActor, err := st.GetActor(system.Address)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get system actor: %w", err)
+	}
+	systemActorState, err := system.Load(wrapStore, systemActor)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load system actor state: %w", err)
+	}
+	actorsManifestCid := systemActorState.GetBuiltinActors()
+
+	mf := manifest.Manifest{
+		Version: 1,
+		Data:    actorsManifestCid,
+	}
+	if err := mf.Load(ctx, wrapStore); err != nil {
+		return nil, xerrors.Errorf("failed to load actor manifest: %w", err)
+	}
+	manifestData := manifest.ManifestData{}
+	if err := st.Store.Get(ctx, mf.Data, &manifestData); err != nil {
+		return nil, xerrors.Errorf("failed to load manifest data: %w", err)
+	}
+	return &mf, nil
+}
+
+func GetManifestEntries(ctx context.Context, st *state.StateTree) ([]manifest.ManifestEntry, error) {
+	mf, err := GetManifest(ctx, st)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to get manifest: %w", err)
+	}
+	manifestData := manifest.ManifestData{}
+	if err := st.Store.Get(ctx, mf.Data, &manifestData); err != nil {
+		return nil, xerrors.Errorf("filed to load manifest data: %w", err)
+	}
+	return manifestData.Entries, nil
 }

@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/filecoin-project/lotus/blockstore"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/specs-actors/v7/actors/util/adt"
@@ -36,8 +38,8 @@ var sectorPreCommitsCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-		preCommitSector := make([]miner.SectorPreCommitOnChainInfo, 0)
-		err = mst.ForEachPrecommittedSector(func(info miner.SectorPreCommitOnChainInfo) error {
+		preCommitSector := make([]minertypes.SectorPreCommitOnChainInfo, 0)
+		err = mst.ForEachPrecommittedSector(func(info minertypes.SectorPreCommitOnChainInfo) error {
 			preCommitSector = append(preCommitSector, info)
 			return err
 		})

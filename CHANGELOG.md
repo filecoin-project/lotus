@@ -1,5 +1,69 @@
 # Lotus changelog
 
+# 1.15.3-rc2 / 2022-05-24
+
+This is the second rc of an optional release of lotus, detailed changelog will be updated later.
+
+- fix: Make deal making logs much less noisy ([filecoin-project/lotus#8622](https://github.com/filecoin-project/lotus/pull/8622))
+- chore: merge releases back into master ([filecoin-project/lotus#8638](https://github.com/filecoin-project/lotus/pull/8638))
+- fix: mpool: avoid deadlock on unsubscribe  ([filecoin-project/lotus#8635](https://github.com/filecoin-project/lotus/pull/8635))
+- feat: api: add StateGetNetworkParams api ([filecoin-project/lotus#8546](https://github.com/filecoin-project/lotus/pull/8546))
+- fix: update StatApplied when fvm apply message ([filecoin-project/lotus#8545](https://github.com/filecoin-project/lotus/pull/8545))
+- fix: ci: build macos and linux assets on tagged releases ([filecoin-project/lotus#8597](https://github.com/filecoin-project/lotus/pull/8597))
+- fix: Clean up vanilla proof fetching errors for proper display ([filecoin-project/lotus#8564](https://github.com/filecoin-project/lotus/pull/8564))
+- fix: Make markets logger less noisy when doing retrievals ([filecoin-project/lotus#8604](https://github.com/filecoin-project/lotus/pull/8604))
+- fix: test: Fix flaky TestGatewayWalletMsig ([filecoin-project/lotus#8601](https://github.com/filecoin-project/lotus/pull/8601))
+- chore:ci:make codecov quiet ([filecoin-project/lotus#8600](https://github.com/filecoin-project/lotus/pull/8600))
+- fix: lotus-wallet: correct network in version ([filecoin-project/lotus#8563](https://github.com/filecoin-project/lotus/pull/8563))
+- chore: cli: Alias cli commands for uniformity ([filecoin-project/lotus#8587](https://github.com/filecoin-project/lotus/pull/8587))
+- chore: .gitignore: ignore built in actor bundles ([filecoin-project/lotus#8590](https://github.com/filecoin-project/lotus/pull/8590))
+- fix: worker: Download proofs if PRU2 is enabled ([filecoin-project/lotus#8555](https://github.com/filecoin-project/lotus/pull/8555))
+- ci: deps: macos build deps ([filecoin-project/lotus#8581](https://github.com/filecoin-project/lotus/pull/8581))
+- chore:chore:chore ([filecoin-project/lotus#8586](https://github.com/filecoin-project/lotus/pull/8586))
+- fix: sealing: Finalize snap sectors before submitting proofs ([filecoin-project/lotus#8582](https://github.com/filecoin-project/lotus/pull/8582))
+- feat: vm: add actor error backtraces to FVM ([filecoin-project/lotus#8524](https://github.com/filecoin-project/lotus/pull/8524))
+- sealing: DataCid on workers ([filecoin-project/lotus#8557](https://github.com/filecoin-project/lotus/pull/8557))
+- fix: ux: update `lotus-wallet run` description ([filecoin-project/lotus#8528](https://github.com/filecoin-project/lotus/pull/8528))
+- fix: market: Infer index provider topic from network name by default ([filecoin-project/lotus#8526](https://github.com/filecoin-project/lotus/pull/8526))
+- deps: update go-libp2p@v0.19 ([filecoin-project/lotus#8511](https://github.com/filecoin-project/lotus/pull/8511))
+- chore: fix lint issue ([filecoin-project/lotus#8531](https://github.com/filecoin-project/lotus/pull/8531))
+- chore: ci: update golang and go-ipfs ([filecoin-project/lotus#8512](https://github.com/filecoin-project/lotus/pull/8512))
+- feat: FVM: Support exectraces ([filecoin-project/lotus#8514](https://github.com/filecoin-project/lotus/pull/8514))
+- Feat: API: Implement StateLookupRobustAddress ([filecoin-project/lotus#8486](https://github.com/filecoin-project/lotus/pull/8486))
+- fix:sealing:check index out of bounds against correct param length not return length ([filecoin-project/lotus#8475](https://github.com/filecoin-project/lotus/pull/8475))
+- add 1475 bootstrapper ([filecoin-project/lotus#8495](https://github.com/filecoin-project/lotus/pull/8495))
+- Bump version for xtools ([filecoin-project/lotus#8494](https://github.com/filecoin-project/lotus/pull/8494))
+- fix: storiface: Make FSOverhead numbers more accurate ([filecoin-project/lotus#8481](https://github.com/filecoin-project/lotus/pull/8481))
+- fix: node: fix comment for IndexProvider ([filecoin-project/lotus#8480](https://github.com/filecoin-project/lotus/pull/8480))
+- ux: wallet: update delete usage ([filecoin-project/lotus#8442](https://github.com/filecoin-project/lotus/pull/8442))
+- Fail to add expired precommits to a batch ([filecoin-project/lotus#8479](https://github.com/filecoin-project/lotus/pull/8479))
+- chore: config: default-disable kvlog ([filecoin-project/lotus#8477](https://github.com/filecoin-project/lotus/pull/8477))
+- chore: version: bump the version to v1.15.3-dev ([filecoin-project/lotus#8473](https://github.com/filecoin-project/lotus/pull/8473))
+- github.com/filecoin-project/specs-storage (v0.2.2 -> v0.2.3-0.20220426183226-1a0a63c5990f):
+
+## Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Steven Allen | 4 | +607/-95 | 19 |
+| Łukasz Magiera | 9 | +550/-37 | 43 |
+| Geoff Stuart | 5 | +279/-219 | 27 |
+| simlecode | 1 | +306/-39 | 20 |
+| Aayush | 1 | +256/-34 | 10 |
+| zenground0 | 11 | +214/-66 | 31 |
+| Aayush Rajasekaran | 2 | +149/-99 | 8 |
+| vyzo | 3 | +125/-81 | 4 |
+| Masih H. Derkani | 1 | +134/-15 | 7 |
+| Travis Person | 3 | +24/-32 | 6 |
+| Rjan | 6 | +16/-16 | 9 |
+| jennijuju | 3 | +9/-8 | 15 |
+| Rob Quist | 3 | +12/-4 | 3 |
+| Icarus9913 | 1 | +3/-3 | 3 |
+| swift-mx | 1 | +3/-0 | 1 |
+| Phi-rjan | 1 | +1/-1 | 1 |
+| lifei | 1 | +1/-0 | 1 |
+
+
 # 1.15.2 / 2022-05-06
 
 This is a highly recommended feature lotus release v1.15.2. This feature release introduces many new features and  for SPs, including PoSt workers, sealing scheduler, snap deal queue and so on. 

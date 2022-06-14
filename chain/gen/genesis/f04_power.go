@@ -3,6 +3,8 @@ package genesis
 import (
 	"context"
 
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 
@@ -28,7 +30,7 @@ func SetupStoragePowerActor(ctx context.Context, bs bstore.Blockstore, av actors
 		return nil, err
 	}
 
-	actcid, err := power.GetActorCodeID(av)
+	actcid, err := builtin.GetPowerActorCodeID(av)
 	if err != nil {
 		return nil, err
 	}

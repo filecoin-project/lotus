@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -31,14 +30,7 @@ func TestDealRetrieveByAnyCid(t *testing.T) {
 	}
 
 	ctx := context.Background()
-	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
-	t.Cleanup(func() {
-		policy.SetPreCommitChallengeDelay(oldDelay)
-	})
 
-	// Allow 8MB sectors
-	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg8MiBV1)
 	kit.QuietMiningLogs()
 
 	// For these tests where the block time is artificially short, just use

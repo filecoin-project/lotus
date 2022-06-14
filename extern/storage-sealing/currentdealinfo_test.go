@@ -9,10 +9,12 @@ import (
 	"time"
 
 	"github.com/filecoin-project/go-bitfield"
+
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
+
 	"github.com/filecoin-project/go-state-types/network"
 
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
-	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 
 	"golang.org/x/net/context"
 	"golang.org/x/xerrors"
@@ -25,7 +27,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	evtmock "github.com/filecoin-project/lotus/chain/events/state/mock"
 	"github.com/filecoin-project/lotus/chain/types"
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
@@ -34,6 +35,15 @@ import (
 var errNotFound = errors.New("could not find")
 
 func TestGetCurrentDealInfo(t *testing.T) {
+	success, err := markettypes.NewLabelFromString("success")
+	require.NoError(t, err)
+
+	other, err := markettypes.NewLabelFromString("other")
+	require.NoError(t, err)
+
+	another, err := markettypes.NewLabelFromString("another")
+	require.NoError(t, err)
+
 	ctx := context.Background()
 	dummyCid, _ := cid.Parse("bafkqaaa")
 	dummyCid2, _ := cid.Parse("bafkqaab")
@@ -49,7 +59,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 		StoragePricePerEpoch: abi.NewTokenAmount(1),
 		ProviderCollateral:   abi.NewTokenAmount(1),
 		ClientCollateral:     abi.NewTokenAmount(1),
-		Label:                "success",
+		Label:                success,
 	}
 	otherProposal := market.DealProposal{
 		PieceCID:             dummyCid2,
@@ -59,7 +69,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 		StoragePricePerEpoch: abi.NewTokenAmount(1),
 		ProviderCollateral:   abi.NewTokenAmount(1),
 		ClientCollateral:     abi.NewTokenAmount(1),
-		Label:                "other",
+		Label:                other,
 	}
 	anotherProposal := market.DealProposal{
 		PieceCID:             dummyCid2,
@@ -69,7 +79,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 		StoragePricePerEpoch: abi.NewTokenAmount(1),
 		ProviderCollateral:   abi.NewTokenAmount(1),
 		ClientCollateral:     abi.NewTokenAmount(1),
-		Label:                "another",
+		Label:                another,
 	}
 	successDeal := &api.MarketDeal{
 		Proposal: proposal,
@@ -328,11 +338,11 @@ func (mapi *CurrentDealInfoMockAPI) ChainGetMessage(ctx context.Context, c cid.C
 		return keys[i].DealID < keys[j].DealID
 	})
 
-	var deals []market2.ClientDealProposal
+	var deals []markettypes.ClientDealProposal
 	for _, k := range keys {
 		dl := mapi.MarketDeals[k]
-		deals = append(deals, market2.ClientDealProposal{
-			Proposal: market2.DealProposal(dl.Proposal),
+		deals = append(deals, markettypes.ClientDealProposal{
+			Proposal: dl.Proposal,
 			ClientSignature: crypto.Signature{
 				Data: []byte("foo bar cat dog"),
 				Type: crypto.SigTypeBLS,
@@ -341,7 +351,7 @@ func (mapi *CurrentDealInfoMockAPI) ChainGetMessage(ctx context.Context, c cid.C
 	}
 
 	buf := new(bytes.Buffer)
-	params := market2.PublishStorageDealsParams{Deals: deals}
+	params := markettypes.PublishStorageDealsParams{Deals: deals}
 	err := params.MarshalCBOR(buf)
 	if err != nil {
 		panic(err)
@@ -393,7 +403,7 @@ func makePublishDealsReturnBytesOldVersion(t *testing.T, dealIDs []abi.DealID) [
 
 func makePublishDealsReturn(t *testing.T, dealIDs []abi.DealID, validIdxs []uint64) []byte {
 	buf := new(bytes.Buffer)
-	dealsReturn := market7.PublishStorageDealsReturn{
+	dealsReturn := markettypes.PublishStorageDealsReturn{
 		IDs:        dealIDs,
 		ValidDeals: bitfield.NewFromSet(validIdxs),
 	}

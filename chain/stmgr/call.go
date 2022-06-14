@@ -80,11 +80,6 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		return nil, fmt.Errorf("failed to handle fork: %w", err)
 	}
 
-	filVested, err := sm.GetFilVested(ctx, vmHeight)
-	if err != nil {
-		return nil, err
-	}
-
 	vmopt := &vm.VMOpts{
 		StateBase:      bstate,
 		Epoch:          vmHeight,
@@ -95,7 +90,6 @@ func (sm *StateManager) Call(ctx context.Context, msg *types.Message, ts *types.
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NetworkVersion: sm.GetNetworkVersion(ctx, pheight+1),
 		BaseFee:        types.NewInt(0),
-		FilVested:      filVested,
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 	}
 
@@ -218,11 +212,6 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		)
 	}
 
-	filVested, err := sm.GetFilVested(ctx, vmHeight)
-	if err != nil {
-		return nil, err
-	}
-
 	buffStore := blockstore.NewTieredBstore(sm.cs.StateBlockstore(), blockstore.NewMemorySync())
 	vmopt := &vm.VMOpts{
 		StateBase:      stateCid,
@@ -234,7 +223,6 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NetworkVersion: sm.GetNetworkVersion(ctx, ts.Height()+1),
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
-		FilVested:      filVested,
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 	}
 	vmi, err := sm.newVM(ctx, vmopt)

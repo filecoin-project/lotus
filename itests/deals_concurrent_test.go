@@ -16,7 +16,6 @@ import (
 	provider "github.com/filecoin-project/index-provider"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules"
@@ -38,12 +37,6 @@ func TestDealWithMarketAndMinerNode(t *testing.T) {
 	t.Skip("skipping due to flakiness: see #6956")
 
 	kit.QuietMiningLogs()
-
-	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
-	t.Cleanup(func() {
-		policy.SetPreCommitChallengeDelay(oldDelay)
-	})
 
 	// For these tests where the block time is artificially short, just use
 	// a deal start epoch that is guaranteed to be far enough in the future
@@ -91,12 +84,6 @@ func TestDealCyclesConcurrent(t *testing.T) {
 		t.Skip("skipping test in short mode")
 	}
 
-	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
-	t.Cleanup(func() {
-		policy.SetPreCommitChallengeDelay(oldDelay)
-	})
-
 	kit.QuietMiningLogs()
 
 	// For these tests where the block time is artificially short, just use
@@ -141,12 +128,6 @@ func TestSimultanenousTransferLimit(t *testing.T) {
 	}
 
 	kit.QuietMiningLogs()
-
-	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
-	t.Cleanup(func() {
-		policy.SetPreCommitChallengeDelay(oldDelay)
-	})
 
 	// For these tests where the block time is artificially short, just use
 	// a deal start epoch that is guaranteed to be far enough in the future

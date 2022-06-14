@@ -7,6 +7,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	"github.com/ipfs/go-cid"
@@ -17,6 +18,9 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 }
 
 const GenesisNetworkVersion = network.Version14
+
+var NetworkBundle = "butterflynet"
+var BundleOverrides map[actors.Version]string
 
 const BootstrappersFile = "butterflynet.pi"
 const GenesisFile = "butterflynet.car"
@@ -43,6 +47,9 @@ const UpgradeHyperdriveHeight = -16
 const UpgradeChocolateHeight = -17
 
 const UpgradeOhSnapHeight = 240
+
+// 2022-05-31T14:32:00Z
+const UpgradeSkyrHeight = abi.ChainEpoch(333258)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg512MiBV1,

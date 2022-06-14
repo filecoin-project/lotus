@@ -16,7 +16,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/go-state-types/builtin"
+
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+
+	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
 	lcli "github.com/filecoin-project/lotus/cli"
 
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
@@ -635,9 +639,9 @@ type refunderNodeApi interface {
 	ChainGetParentReceipts(ctx context.Context, blockCid cid.Cid) ([]*types.MessageReceipt, error)
 	ChainGetTipSetByHeight(ctx context.Context, epoch abi.ChainEpoch, tsk types.TipSetKey) (*types.TipSet, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
-	StateMinerInitialPledgeCollateral(ctx context.Context, addr address.Address, precommitInfo miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error)
-	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
-	StateSectorPreCommitInfo(ctx context.Context, addr address.Address, sector abi.SectorNumber, tsk types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
+	StateMinerInitialPledgeCollateral(ctx context.Context, addr address.Address, precommitInfo minertypes.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
+	StateSectorPreCommitInfo(ctx context.Context, addr address.Address, sector abi.SectorNumber, tsk types.TipSetKey) (minertypes.SectorPreCommitOnChainInfo, error)
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
 	StateMinerSectors(ctx context.Context, addr address.Address, filter *bitfield.BitField, tsk types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
 	StateMinerFaults(ctx context.Context, addr address.Address, tsk types.TipSetKey) (bitfield.BitField, error)
@@ -937,7 +941,7 @@ func (r *refunder) processTipsetStorageMinerActor(ctx context.Context, tipset *t
 	}
 
 	switch m.Method {
-	case miner.Methods.SubmitWindowedPoSt:
+	case builtin.MethodsMiner.SubmitWindowedPoSt:
 		if !r.windowedPoStEnabled {
 			return false, messageMethod, types.NewInt(0), nil
 		}
@@ -950,7 +954,7 @@ func (r *refunder) processTipsetStorageMinerActor(ctx context.Context, tipset *t
 		}
 
 		refundValue = types.BigMul(types.NewInt(uint64(recp.GasUsed)), tipset.Blocks()[0].ParentBaseFee)
-	case miner.Methods.ProveCommitSector:
+	case builtin.MethodsMiner.ProveCommitSector:
 		if !r.proveCommitEnabled {
 			return false, messageMethod, types.NewInt(0), nil
 		}
@@ -1011,7 +1015,7 @@ func (r *refunder) processTipsetStorageMinerActor(ctx context.Context, tipset *t
 		if r.refundPercent > 0 {
 			refundValue = types.BigMul(types.BigDiv(refundValue, types.NewInt(100)), types.NewInt(uint64(r.refundPercent)))
 		}
-	case miner.Methods.PreCommitSector:
+	case builtin.MethodsMiner.PreCommitSector:
 		if !r.preCommitEnabled {
 			return false, messageMethod, types.NewInt(0), nil
 		}
@@ -1033,7 +1037,7 @@ func (r *refunder) processTipsetStorageMinerActor(ctx context.Context, tipset *t
 			return false, messageMethod, types.NewInt(0), nil
 		}
 
-		var precommitInfo miner.SectorPreCommitInfo
+		var precommitInfo minertypes.SectorPreCommitInfo
 		if err := precommitInfo.UnmarshalCBOR(bytes.NewBuffer(m.Params)); err != nil {
 			log.Warnw("failed to decode precommit params", "err", err, "method", messageMethod, "cid", msg.Cid, "miner", m.To)
 			return false, messageMethod, types.NewInt(0), nil
@@ -1098,7 +1102,7 @@ func (r *refunder) ProcessTipset(ctx context.Context, tipset *types.TipSet, refu
 			processed, messageMethod, refundValue, err = r.processTipsetStorageMarketActor(ctx, tipset, msg, recps[i])
 		}
 
-		if builtin.IsStorageMinerActor(a.Code) {
+		if lbuiltin.IsStorageMinerActor(a.Code) {
 			processed, messageMethod, refundValue, err = r.processTipsetStorageMinerActor(ctx, tipset, msg, recps[i])
 		}
 
