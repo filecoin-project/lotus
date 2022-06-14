@@ -163,7 +163,7 @@ func (sr *stateRand) getBeaconRandomnessV3(ctx context.Context, pers crypto.Doma
 
 	be, err := sr.extractBeaconEntryForEpoch(ctx, filecoinEpoch)
 	if err != nil {
-		log.Errorf("failed to get beacon entry as expected: %w", err)
+		log.Errorf("failed to get beacon entry as expected: %s", err)
 		return nil, err
 	}
 
