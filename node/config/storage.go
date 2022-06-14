@@ -8,8 +8,8 @@ import (
 
 	"golang.org/x/xerrors"
 
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/stores"
 )
 
 func StorageFromFile(path string, def *stores.StorageConfig) (*stores.StorageConfig, error) {
@@ -51,8 +51,8 @@ func WriteStorageFile(path string, config stores.StorageConfig) error {
 	return nil
 }
 
-func (c *StorageMiner) StorageManager() sectorstorage.Config {
-	return sectorstorage.Config{
+func (c *StorageMiner) StorageManager() sealer.Config {
+	return sealer.Config{
 		ParallelFetchLimit:       c.Storage.ParallelFetchLimit,
 		AllowAddPiece:            c.Storage.AllowAddPiece,
 		AllowPreCommit1:          c.Storage.AllowPreCommit1,

@@ -42,10 +42,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	mktsdagstore "github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
@@ -54,6 +50,10 @@ import (
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
+	"github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
+	stores "github.com/filecoin-project/lotus/storage/sealer/stores"
+	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/filecoin-project/lotus/storage/wdpost"
 )
@@ -85,10 +85,10 @@ type StorageMinerAPI struct {
 	DAGStoreWrapper   *mktsdagstore.Wrapper             `optional:"true"`
 
 	// Miner / storage
-	Miner       *storage.Miner              `optional:"true"`
-	BlockMiner  *miner.Miner                `optional:"true"`
-	StorageMgr  *sectorstorage.Manager      `optional:"true"`
-	IStorageMgr sectorstorage.SectorManager `optional:"true"`
+	Miner       *storage.Miner       `optional:"true"`
+	BlockMiner  *miner.Miner         `optional:"true"`
+	StorageMgr  *sealer.Manager      `optional:"true"`
+	IStorageMgr sealer.SectorManager `optional:"true"`
 	stores.SectorIndex
 	storiface.WorkerReturn `optional:"true"`
 	AddrSel                *ctladdr.AddressSelector

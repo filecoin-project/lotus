@@ -13,8 +13,8 @@ import (
 	"golang.org/x/xerrors"
 
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/storage/sealer/stores"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 const metaFile = "sectorstore.json"

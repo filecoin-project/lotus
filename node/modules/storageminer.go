@@ -53,9 +53,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/markets"
 	"github.com/filecoin-project/lotus/markets/dagstore"
@@ -71,6 +68,9 @@ import (
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
+	"github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	stores "github.com/filecoin-project/lotus/storage/sealer/stores"
 	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
@@ -209,7 +209,7 @@ type StorageMinerParams struct {
 	MetricsCtx         helpers.MetricsCtx
 	API                v1api.FullNode
 	MetadataDS         dtypes.MetadataDS
-	Sealer             sectorstorage.SectorManager
+	Sealer             sealer.SectorManager
 	SectorIDCounter    sealing.SectorIDCounter
 	Verifier           ffiwrapper.Verifier
 	Prover             ffiwrapper.Prover
@@ -740,17 +740,17 @@ func LocalStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStora
 	return stores.NewLocal(ctx, ls, si, urls)
 }
 
-func RemoteStorage(lstor *stores.Local, si stores.SectorIndex, sa sectorstorage.StorageAuth, sc sectorstorage.Config) *stores.Remote {
+func RemoteStorage(lstor *stores.Local, si stores.SectorIndex, sa sealer.StorageAuth, sc sealer.Config) *stores.Remote {
 	return stores.NewRemote(lstor, si, http.Header(sa), sc.ParallelFetchLimit, &stores.DefaultPartialFileHandler{})
 }
 
-func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *stores.Local, stor stores.Store, ls stores.LocalStorage, si stores.SectorIndex, sc sectorstorage.Config, ds dtypes.MetadataDS) (*sectorstorage.Manager, error) {
+func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *stores.Local, stor stores.Store, ls stores.LocalStorage, si stores.SectorIndex, sc sealer.Config, ds dtypes.MetadataDS) (*sealer.Manager, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	wsts := statestore.New(namespace.Wrap(ds, WorkerCallsPrefix))
 	smsts := statestore.New(namespace.Wrap(ds, ManagerWorkPrefix))
 
-	sst, err := sectorstorage.New(ctx, lstor, stor, ls, si, sc, wsts, smsts)
+	sst, err := sealer.New(ctx, lstor, stor, ls, si, sc, wsts, smsts)
 	if err != nil {
 		return nil, err
 	}
@@ -762,7 +762,7 @@ func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *stores.Local
 	return sst, nil
 }
 
-func StorageAuth(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
+func StorageAuth(ctx helpers.MetricsCtx, ca v0api.Common) (sealer.StorageAuth, error) {
 	token, err := ca.AuthNew(ctx, []auth.Permission{"admin"})
 	if err != nil {
 		return nil, xerrors.Errorf("creating storage auth header: %w", err)
@@ -770,18 +770,18 @@ func StorageAuth(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.Storage
 
 	headers := http.Header{}
 	headers.Add("Authorization", "Bearer "+string(token))
-	return sectorstorage.StorageAuth(headers), nil
+	return sealer.StorageAuth(headers), nil
 }
 
-func StorageAuthWithURL(apiInfo string) func(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
-	return func(ctx helpers.MetricsCtx, ca v0api.Common) (sectorstorage.StorageAuth, error) {
+func StorageAuthWithURL(apiInfo string) func(ctx helpers.MetricsCtx, ca v0api.Common) (sealer.StorageAuth, error) {
+	return func(ctx helpers.MetricsCtx, ca v0api.Common) (sealer.StorageAuth, error) {
 		s := strings.Split(apiInfo, ":")
 		if len(s) != 2 {
 			return nil, errors.New("unexpected format of `apiInfo`")
 		}
 		headers := http.Header{}
 		headers.Add("Authorization", "Bearer "+s[0])
-		return sectorstorage.StorageAuth(headers), nil
+		return sealer.StorageAuth(headers), nil
 	}
 }
 

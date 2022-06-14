@@ -22,11 +22,11 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
+	"github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
 var log = logging.Logger("wdpost")
@@ -68,7 +68,7 @@ type WindowPoStScheduler struct {
 	addrSel          *ctladdr.AddressSelector
 	prover           storage.Prover
 	verifier         ffiwrapper.Verifier
-	faultTracker     sectorstorage.FaultTracker
+	faultTracker     sealer.FaultTracker
 	proofType        abi.RegisteredPoStProof
 	partitionSectors uint64
 	ch               *changeHandler
@@ -88,7 +88,7 @@ func NewWindowedPoStScheduler(api NodeAPI,
 	as *ctladdr.AddressSelector,
 	sp storage.Prover,
 	verif ffiwrapper.Verifier,
-	ft sectorstorage.FaultTracker,
+	ft sealer.FaultTracker,
 	j journal.Journal,
 	actor address.Address) (*WindowPoStScheduler, error) {
 	mi, err := api.StateMinerInfo(context.TODO(), actor, types.EmptyTSK)

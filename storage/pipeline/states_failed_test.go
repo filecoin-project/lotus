@@ -21,7 +21,7 @@ import (
 	api2 "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	sealing2 "github.com/filecoin-project/lotus/storage/pipeline"
-	mocks2 "github.com/filecoin-project/lotus/storage/pipeline/mocks"
+	mocks "github.com/filecoin-project/lotus/storage/pipeline/mocks"
 )
 
 func TestStateRecoverDealIDs(t *testing.T) {
@@ -31,14 +31,14 @@ func TestStateRecoverDealIDs(t *testing.T) {
 
 	ctx := context.Background()
 
-	api := mocks2.NewMockSealingAPI(mockCtrl)
+	api := mocks.NewMockSealingAPI(mockCtrl)
 
 	fakeSealing := &sealing2.Sealing{
 		Api:      api,
 		DealInfo: &sealing2.CurrentDealInfoManager{CDAPI: api},
 	}
 
-	sctx := mocks2.NewMockContext(mockCtrl)
+	sctx := mocks.NewMockContext(mockCtrl)
 	sctx.EXPECT().Context().AnyTimes().Return(ctx)
 
 	api.EXPECT().ChainHead(ctx).Times(2).Return(nil, abi.ChainEpoch(10), nil)

@@ -46,10 +46,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
@@ -59,6 +55,10 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
 	sealing2 "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	stores "github.com/filecoin-project/lotus/storage/sealer/stores"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var initCmd = &cli.Command{
@@ -466,7 +466,7 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 			}
 			stor := stores.NewRemote(lstor, si, http.Header(sa), 10, &stores.DefaultPartialFileHandler{})
 
-			smgr, err := sectorstorage.New(ctx, lstor, stor, lr, si, sectorstorage.Config{
+			smgr, err := sealer.New(ctx, lstor, stor, lr, si, sealer.Config{
 				ParallelFetchLimit:       10,
 				AllowAddPiece:            true,
 				AllowPreCommit1:          true,

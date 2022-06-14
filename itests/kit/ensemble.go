@@ -45,10 +45,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/markets/idxprov"
 	idxprov_test "github.com/filecoin-project/lotus/markets/idxprov/idxprov_test"
@@ -59,6 +55,10 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
+	sectorstorage "github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	mock2 "github.com/filecoin-project/lotus/storage/sealer/mock"
+	stores "github.com/filecoin-project/lotus/storage/sealer/stores"
 )
 
 func init() {
@@ -246,7 +246,7 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 
 		// Create the preseal commitment.
 		if n.options.mockProofs {
-			genm, k, err = mock.PreSeal(proofType, actorAddr, sectors)
+			genm, k, err = mock2.PreSeal(proofType, actorAddr, sectors)
 		} else {
 			genm, k, err = seed.PreSeal(actorAddr, proofType, 0, sectors, tdir, []byte("make genesis mem random"), nil, true)
 		}
@@ -363,8 +363,8 @@ func (n *Ensemble) Start() *Ensemble {
 		// Are we mocking proofs?
 		if n.options.mockProofs {
 			opts = append(opts,
-				node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
-				node.Override(new(ffiwrapper.Prover), mock.MockProver),
+				node.Override(new(ffiwrapper.Verifier), mock2.MockVerifier),
+				node.Override(new(ffiwrapper.Prover), mock2.MockProver),
 			)
 		}
 
@@ -636,15 +636,15 @@ func (n *Ensemble) Start() *Ensemble {
 
 		if n.options.mockProofs {
 			opts = append(opts,
-				node.Override(new(*mock.SectorMgr), func() (*mock.SectorMgr, error) {
-					return mock.NewMockSectorMgr(presealSectors), nil
+				node.Override(new(*mock2.SectorMgr), func() (*mock2.SectorMgr, error) {
+					return mock2.NewMockSectorMgr(presealSectors), nil
 				}),
-				node.Override(new(sectorstorage.SectorManager), node.From(new(*mock.SectorMgr))),
-				node.Override(new(sectorstorage.Unsealer), node.From(new(*mock.SectorMgr))),
-				node.Override(new(sectorstorage.PieceProvider), node.From(new(*mock.SectorMgr))),
+				node.Override(new(sectorstorage.SectorManager), node.From(new(*mock2.SectorMgr))),
+				node.Override(new(sectorstorage.Unsealer), node.From(new(*mock2.SectorMgr))),
+				node.Override(new(sectorstorage.PieceProvider), node.From(new(*mock2.SectorMgr))),
 
-				node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
-				node.Override(new(ffiwrapper.Prover), mock.MockProver),
+				node.Override(new(ffiwrapper.Verifier), mock2.MockVerifier),
+				node.Override(new(ffiwrapper.Prover), mock2.MockProver),
 				node.Unset(new(*sectorstorage.Manager)),
 			)
 		}

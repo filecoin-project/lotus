@@ -13,8 +13,8 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
+	"github.com/filecoin-project/lotus/storage/sealer"
 )
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/statemachine.go -package=mocks . Context
@@ -157,7 +157,7 @@ func (t *SectorInfo) sealingCtx(ctx context.Context) context.Context {
 	//  we need sealed sooner
 
 	if t.hasDeals() {
-		return sectorstorage.WithPriority(ctx, DealSectorPriority)
+		return sealer.WithPriority(ctx, DealSectorPriority)
 	}
 
 	return ctx

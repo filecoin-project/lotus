@@ -28,13 +28,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	sealing2 "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
 var log = logging.Logger("storageminer")
@@ -50,7 +50,7 @@ var log = logging.Logger("storageminer")
 type Miner struct {
 	api     fullNodeFilteredAPI
 	feeCfg  config.MinerFeeConfig
-	sealer  sectorstorage.SectorManager
+	sealer  sealer.SectorManager
 	ds      datastore.Batching
 	sc      sealing2.SectorIDCounter
 	verif   ffiwrapper.Verifier
@@ -133,7 +133,7 @@ type fullNodeFilteredAPI interface {
 func NewMiner(api fullNodeFilteredAPI,
 	maddr address.Address,
 	ds datastore.Batching,
-	sealer sectorstorage.SectorManager,
+	sealer sealer.SectorManager,
 	sc sealing2.SectorIDCounter,
 	verif ffiwrapper.Verifier,
 	prover ffiwrapper.Prover,
