@@ -3,8 +3,9 @@ package adt
 import (
 	"bytes"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	typegen "github.com/whyrusleeping/cbor-gen"
+
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 // AdtArrayDiff generalizes adt.Array diffing by accepting a Deferred type that can unmarshalled to its corresponding struct

@@ -12,9 +12,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"golang.org/x/xerrors"
-
 	"github.com/ipfs/go-datastore"
+	"golang.org/x/xerrors"
 )
 
 var loghead = datastore.NewKey("/backupds/log/head") // string([logfile base name];[uuid];[unix ts])

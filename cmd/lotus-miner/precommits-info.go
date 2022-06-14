@@ -4,15 +4,16 @@ import (
 	"fmt"
 	"sort"
 
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-
-	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/types"
-	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/specs-actors/v7/actors/util/adt"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
+
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/specs-actors/v7/actors/util/adt"
+
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/types"
+	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 var sectorPreCommitsCmd = &cli.Command{

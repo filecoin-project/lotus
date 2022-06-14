@@ -11,11 +11,22 @@ import (
 	"time"
 
 	"contrib.go.opencensus.io/exporter/prometheus"
+	"github.com/google/uuid"
+	"github.com/gorilla/mux"
+	"github.com/hashicorp/go-multierror"
+	"github.com/ipfs/go-datastore"
+	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/testground/sdk-go/sync"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-storedcounter"
+	"github.com/filecoin-project/specs-actors/actors/builtin"
+	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -32,15 +43,6 @@ import (
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/specs-actors/actors/builtin"
-	saminer "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/google/uuid"
-	"github.com/gorilla/mux"
-	"github.com/hashicorp/go-multierror"
-	"github.com/ipfs/go-datastore"
-	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/testground/sdk-go/sync"
 )
 
 const (

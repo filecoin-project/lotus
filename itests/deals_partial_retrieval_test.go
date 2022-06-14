@@ -10,17 +10,18 @@ import (
 	"testing"
 	"time"
 
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	"github.com/ipld/go-car"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/itests/kit"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	"github.com/ipld/go-car"
-	"github.com/stretchr/testify/require"
 )
 
 // use the mainnet carfile as text fixture: it will always be here

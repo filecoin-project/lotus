@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
@@ -12,6 +11,7 @@ import (
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
 var ErrTemporal = errors.New("temporal error")

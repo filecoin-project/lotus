@@ -9,12 +9,12 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/go-state-types/manifest"
-	gstStore "github.com/filecoin-project/go-state-types/store"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/manifest"
+	gstStore "github.com/filecoin-project/go-state-types/store"
+
 	"github.com/filecoin-project/lotus/api"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/system"

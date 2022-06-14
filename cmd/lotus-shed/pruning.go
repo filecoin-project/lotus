@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/ipfs/bbloom"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-state-types/abi"
+
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/node/repo"
 )

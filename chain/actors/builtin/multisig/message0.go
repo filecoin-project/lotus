@@ -5,7 +5,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	init0 "github.com/filecoin-project/specs-actors/actors/builtin/init"
 	multisig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"

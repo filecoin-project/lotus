@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/lotus/api/v0api"
-
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	"github.com/google/uuid"
@@ -26,6 +24,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"

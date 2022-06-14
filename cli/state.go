@@ -18,18 +18,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/network"
-
-	"github.com/filecoin-project/lotus/chain/actors"
-
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-
-	"github.com/filecoin-project/lotus/api/v0api"
-
 	"github.com/fatih/color"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/multiformats/go-multiaddr"
@@ -40,12 +29,18 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"

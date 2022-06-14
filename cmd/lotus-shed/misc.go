@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
 )
 
 var miscCmd = &cli.Command{

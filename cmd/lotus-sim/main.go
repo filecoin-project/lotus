@@ -7,9 +7,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/urfave/cli/v2"
-
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/urfave/cli/v2"
 )
 
 var root []*cli.Command = []*cli.Command{

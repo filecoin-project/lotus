@@ -7,10 +7,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
 	lcli "github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/lotus/api"
 )
 
 type MockCLI struct {

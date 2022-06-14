@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/lotus/testplans/lotus-soup/testkit"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/testplans/lotus-soup/testkit"
 	tsync "github.com/filecoin-project/lotus/tools/stats/sync"
-	"github.com/ipfs/go-cid"
 )
 
 func FetchChainState(t *testkit.TestEnvironment, m *testkit.LotusMiner) error {

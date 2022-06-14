@@ -9,15 +9,17 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-storage/storage"
+
 	"github.com/filecoin-project/lotus/extern/sector-storage/partialfile"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores/mocks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	"github.com/filecoin-project/specs-storage/storage"
-	"github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/xerrors"
 )
 
 func TestRemoteGetAllocated(t *testing.T) {

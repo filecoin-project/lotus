@@ -4,11 +4,10 @@ import (
 	"context"
 	"io"
 
-	"github.com/filecoin-project/go-state-types/proof"
-
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"

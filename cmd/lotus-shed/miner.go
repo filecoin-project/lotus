@@ -9,7 +9,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
+	"github.com/mitchellh/go-homedir"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -21,18 +25,12 @@ import (
 	power7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
-	"github.com/docker/go-units"
-
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-
-	"github.com/mitchellh/go-homedir"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 )
 
 var minerCmd = &cli.Command{

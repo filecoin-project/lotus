@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"time"
 
-	cborutil "github.com/filecoin-project/go-cbor-util"
-	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/libp2p/go-libp2p"
 	inet "github.com/libp2p/go-libp2p-core/network"
 	"github.com/urfave/cli/v2"
+
+	cborutil "github.com/filecoin-project/go-cbor-util"
+
+	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/node/hello"
 )
 
 var resultCh chan bool

@@ -10,25 +10,6 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/sync/errgroup"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-
-	"github.com/filecoin-project/lotus/api"
-	bstore "github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/metrics"
-
-	"go.opencensus.io/stats"
-	"go.opencensus.io/trace"
-	"go.uber.org/multierr"
-
-	"github.com/filecoin-project/lotus/chain/types"
-
-	"github.com/filecoin-project/pubsub"
 	lru "github.com/hashicorp/golang-lru"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -36,7 +17,23 @@ import (
 	"github.com/ipfs/go-datastore/query"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/trace"
+	"go.uber.org/multierr"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/pubsub"
+
+	"github.com/filecoin-project/lotus/api"
+	bstore "github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/metrics"
 )
 
 var log = logging.Logger("chainstore")

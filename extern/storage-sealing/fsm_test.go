@@ -3,11 +3,11 @@ package sealing
 import (
 	"testing"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statemachine"
 )
 

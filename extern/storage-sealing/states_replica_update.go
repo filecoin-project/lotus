@@ -5,15 +5,17 @@ import (
 	"context"
 	"time"
 
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	statemachine "github.com/filecoin-project/go-statemachine"
+
 	api "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
-	"golang.org/x/xerrors"
 )
 
 func (m *Sealing) handleReplicaUpdate(ctx statemachine.Context, sector SectorInfo) error {

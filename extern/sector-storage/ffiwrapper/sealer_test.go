@@ -15,22 +15,18 @@ import (
 	"testing"
 	"time"
 
-	prooftypes "github.com/filecoin-project/go-state-types/proof"
-
-	commpffi "github.com/filecoin-project/go-commp-utils/ffiwrapper"
-
 	"github.com/ipfs/go-cid"
-
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
-	paramfetch "github.com/filecoin-project/go-paramfetch"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-storage/storage"
-
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/filecoin-ffi/cgo"
+	commpffi "github.com/filecoin-project/go-commp-utils/ffiwrapper"
+	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-state-types/abi"
+	prooftypes "github.com/filecoin-project/go-state-types/proof"
+	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"

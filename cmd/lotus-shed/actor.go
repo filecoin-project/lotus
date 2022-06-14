@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/go-state-types/builtin"
-	"github.com/filecoin-project/go-state-types/network"
-
 	"github.com/fatih/color"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
@@ -15,10 +12,11 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/api"
-
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/network"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"

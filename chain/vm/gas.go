@@ -3,14 +3,14 @@ package vm
 import (
 	"fmt"
 
-	vmr "github.com/filecoin-project/specs-actors/v7/actors/runtime"
-	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/ipfs/go-cid"
+	vmr "github.com/filecoin-project/specs-actors/v7/actors/runtime"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/build"
 )

@@ -3,12 +3,11 @@ package store
 import (
 	"context"
 
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
-
 	block "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"

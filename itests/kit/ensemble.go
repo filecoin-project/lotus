@@ -12,8 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/builtin"
-
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
@@ -24,10 +22,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	power3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/power"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -59,8 +60,6 @@ import (
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/mockstorage"
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-	power3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/power"
 )
 
 func init() {

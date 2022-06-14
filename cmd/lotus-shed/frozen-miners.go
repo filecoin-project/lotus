@@ -3,11 +3,13 @@ package main
 import (
 	"fmt"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+
+	lcli "github.com/filecoin-project/lotus/cli"
 )
 
 var frozenMinersCmd = &cli.Command{

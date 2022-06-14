@@ -4,15 +4,14 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/lotus/build"
-
-	"golang.org/x/xerrors"
-
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 

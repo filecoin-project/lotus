@@ -6,14 +6,15 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/ipld/go-car"
-
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
+	"github.com/ipld/go-car"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/blockstore"
 )
 
 var cidCmd = &cli.Command{

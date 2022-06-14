@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	lpaych "github.com/filecoin-project/lotus/chain/actors/builtin/paych"
-
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -16,6 +14,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
+	lpaych "github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/lib/sigs"
 )

@@ -4,12 +4,11 @@ package stages
 import (
 	"testing"
 
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
-
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )

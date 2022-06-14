@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -19,8 +20,6 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/config"
-
-	"go.opencensus.io/trace"
 )
 
 // WindowPoStScheduler is the coordinator for WindowPoSt submissions, fault

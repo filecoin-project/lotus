@@ -6,23 +6,24 @@ import (
 	"io"
 	"math/big"
 
-	big2 "github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
-	"github.com/filecoin-project/lotus/chain/state"
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/repo"
-	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
-	"github.com/filecoin-project/specs-actors/v4/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	big2 "github.com/filecoin-project/go-state-types/big"
+	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
+	"github.com/filecoin-project/specs-actors/v4/actors/util/adt"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var minerTypesCmd = &cli.Command{

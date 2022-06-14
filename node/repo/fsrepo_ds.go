@@ -6,13 +6,12 @@ import (
 	"path/filepath"
 
 	dgbadger "github.com/dgraph-io/badger/v2"
-	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
-	"golang.org/x/xerrors"
-
 	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger2"
 	levelds "github.com/ipfs/go-ds-leveldb"
 	measure "github.com/ipfs/go-ds-measure"
+	ldbopts "github.com/syndtr/goleveldb/leveldb/opt"
+	"golang.org/x/xerrors"
 )
 
 type dsCtor func(path string, readonly bool) (datastore.Batching, error)

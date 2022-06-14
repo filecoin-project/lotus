@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/filecoin-project/lotus/api/v0api"
-
 	"github.com/gbrlsnchs/jwt/v3"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
@@ -21,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-jsonrpc/auth"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"

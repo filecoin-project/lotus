@@ -7,15 +7,13 @@ import (
 	"os"
 	"testing"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/fr32"
+	"github.com/stretchr/testify/require"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
-
 	commpffi "github.com/filecoin-project/go-commp-utils/ffiwrapper"
-
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/stretchr/testify/require"
+	"github.com/filecoin-project/lotus/extern/sector-storage/fr32"
 )
 
 func TestWriteTwoPcs(t *testing.T) {

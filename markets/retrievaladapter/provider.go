@@ -4,18 +4,18 @@ import (
 	"context"
 
 	"github.com/hashicorp/go-multierror"
-	"golang.org/x/xerrors"
-
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-state-types/abi"
 	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/types"
-	logging "github.com/ipfs/go-log/v2"
 )
 
 var log = logging.Logger("retrievaladapter")

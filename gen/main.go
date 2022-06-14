@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/lotus/chain/vm"
-
 	gen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/cmd/lotus-shed/shedgen"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"

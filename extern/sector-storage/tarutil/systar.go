@@ -7,9 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"golang.org/x/xerrors"
-
 	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("tarutil") // nolint

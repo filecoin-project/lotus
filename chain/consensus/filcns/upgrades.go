@@ -17,7 +17,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/rt"
 	gstStore "github.com/filecoin-project/go-state-types/store"
-
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	multisig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"

@@ -10,7 +10,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
-
 	"go.opencensus.io/trace"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"

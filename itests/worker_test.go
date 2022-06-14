@@ -7,13 +7,14 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	storage2 "github.com/filecoin-project/specs-storage/storage"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
@@ -24,7 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
-	storage2 "github.com/filecoin-project/specs-storage/storage"
 )
 
 func TestWorkerPledge(t *testing.T) {

@@ -3,9 +3,9 @@ package cron
 import (
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-
 	cron8 "github.com/filecoin-project/go-state-types/builtin/v8/cron"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
 var _ State = (*state8)(nil)

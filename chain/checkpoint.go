@@ -3,9 +3,9 @@ package chain
 import (
 	"context"
 
-	"github.com/filecoin-project/lotus/chain/types"
-
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func (syncer *Syncer) SyncCheckpoint(ctx context.Context, tsk types.TipSetKey) error {

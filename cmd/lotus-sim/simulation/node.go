@@ -4,11 +4,10 @@ import (
 	"context"
 	"strings"
 
-	"go.uber.org/multierr"
-	"golang.org/x/xerrors"
-
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
+	"go.uber.org/multierr"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"

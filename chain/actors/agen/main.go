@@ -10,9 +10,9 @@ import (
 	"strconv"
 	"text/template"
 
-	lotusactors "github.com/filecoin-project/lotus/chain/actors"
-
 	"golang.org/x/xerrors"
+
+	lotusactors "github.com/filecoin-project/lotus/chain/actors"
 )
 
 var actors = map[string][]int{

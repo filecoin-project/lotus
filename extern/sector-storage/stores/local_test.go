@@ -8,11 +8,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )
 
 const pathSize = 16 << 20

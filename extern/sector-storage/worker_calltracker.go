@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/filecoin-project/go-statestore"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )

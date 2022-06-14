@@ -8,28 +8,25 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-bitfield"
-
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
-
-	"github.com/filecoin-project/go-state-types/network"
-
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
-
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/net/context"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	evtmock "github.com/filecoin-project/lotus/chain/events/state/mock"
 	"github.com/filecoin-project/lotus/chain/types"
-	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
-	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/require"
 )
 
 var errNotFound = errors.New("could not find")

@@ -11,8 +11,6 @@ import (
 	"path/filepath"
 	"time"
 
-	prooftypes "github.com/filecoin-project/go-state-types/proof"
-
 	"github.com/docker/go-units"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/minio/blake2b-simd"
@@ -23,16 +21,17 @@ import (
 	"github.com/filecoin-project/go-address"
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
-	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	prooftypes "github.com/filecoin-project/go-state-types/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/genesis"
 )
 

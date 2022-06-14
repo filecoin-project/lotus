@@ -4,12 +4,11 @@ import (
 	"context"
 	"fmt"
 
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/lotus/api/v1api"
-
-	logging "github.com/ipfs/go-log/v2"
 )
 
 var log = logging.Logger("idxprov")

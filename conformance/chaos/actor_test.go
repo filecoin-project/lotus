@@ -5,11 +5,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/ipfs/go-cid"
-
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	mock2 "github.com/filecoin-project/specs-actors/v2/support/mock"
 	atesting2 "github.com/filecoin-project/specs-actors/v2/support/testing"

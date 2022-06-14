@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin"

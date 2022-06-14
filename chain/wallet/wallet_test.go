@@ -5,8 +5,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func TestWallet(t *testing.T) {

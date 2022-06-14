@@ -12,10 +12,9 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	u "github.com/ipfs/go-ipfs-util"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/blockstore"
-
-	"github.com/stretchr/testify/require"
 )
 
 // TODO: move this to go-ipfs-blockstore.

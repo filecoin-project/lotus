@@ -1,10 +1,11 @@
 package storage
 
 import (
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/dline"
-	"github.com/ipfs/go-cid"
 )
 
 // SchedulerState defines the possible states in which the scheduler could be,

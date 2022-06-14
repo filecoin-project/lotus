@@ -5,10 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 )
 
 // autolog is a logger for the autobatching blockstore. It is subscoped from the

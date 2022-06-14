@@ -10,8 +10,6 @@ import (
 	"testing"
 	"time"
 
-	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
-
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
@@ -25,6 +23,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-state-types/abi"
+	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 )
 
 const unsealedSectorID = abi.SectorNumber(1)

@@ -7,17 +7,16 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/filecoin-project/go-statestore"
-	"github.com/hashicorp/go-multierror"
-	"github.com/mitchellh/go-homedir"
-
 	"github.com/google/uuid"
+	"github.com/hashicorp/go-multierror"
 	cid "github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/mitchellh/go-homedir"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"

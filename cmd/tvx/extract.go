@@ -8,8 +8,9 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/filecoin-project/test-vectors/schema"
 	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/test-vectors/schema"
 )
 
 const (
