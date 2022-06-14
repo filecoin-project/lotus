@@ -5,13 +5,14 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ipfs/go-datastore"
+	"github.com/minio/blake2b-simd"
+	cbg "github.com/whyrusleeping/cbor-gen"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/ipfs/go-datastore"
-	"github.com/minio/blake2b-simd"
-	cbg "github.com/whyrusleeping/cbor-gen"
 )
 
 type cachingVerifier struct {

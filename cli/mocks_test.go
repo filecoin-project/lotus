@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/mocks"
 	"github.com/golang/mock/gomock"
 	ucli "github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/mocks"
 )
 
 // newMockAppWithFullAPI returns a gomock-ed CLI app used for unit tests

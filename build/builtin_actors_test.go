@@ -3,9 +3,10 @@ package build_test
 import (
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/stretchr/testify/require"
 )
 
 // Test that the embedded metadata is correct.

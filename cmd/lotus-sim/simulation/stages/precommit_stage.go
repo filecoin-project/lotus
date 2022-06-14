@@ -5,16 +5,14 @@ import (
 	"sort"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/builtin"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
-
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/network"
-
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors"

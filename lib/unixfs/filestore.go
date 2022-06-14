@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-cidutil"
@@ -21,6 +20,8 @@ import (
 	ihelper "github.com/ipfs/go-unixfs/importer/helpers"
 	mh "github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-fil-markets/stores"
 
 	"github.com/filecoin-project/lotus/build"
 )

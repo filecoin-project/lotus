@@ -4,12 +4,11 @@ import (
 	"context"
 	"strings"
 
-	"golang.org/x/xerrors"
-
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	rcmgr "github.com/libp2p/go-libp2p-resource-manager"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 )

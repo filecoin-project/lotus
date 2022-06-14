@@ -6,11 +6,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-
 	paych8 "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	adt8 "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
 var _ State = (*state8)(nil)

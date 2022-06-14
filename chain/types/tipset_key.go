@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 var EmptyTSK = TipSetKey{}

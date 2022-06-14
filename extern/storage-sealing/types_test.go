@@ -4,16 +4,15 @@ import (
 	"bytes"
 	"testing"
 
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
-
 	"github.com/ipfs/go-cid"
-
 	"gotest.tools/assert"
 
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
-	api "github.com/filecoin-project/lotus/api"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
+
+	api "github.com/filecoin-project/lotus/api"
 )
 
 func TestSectorInfoSerialization(t *testing.T) {

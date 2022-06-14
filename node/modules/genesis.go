@@ -4,10 +4,9 @@ import (
 	"bytes"
 	"os"
 
-	"go.uber.org/fx"
-
 	"github.com/ipfs/go-datastore"
 	"github.com/ipld/go-car"
+	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/store"

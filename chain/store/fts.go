@@ -1,8 +1,9 @@
 package store
 
 import (
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // FullTipSet is an expanded version of the TipSet that contains all the blocks and messages

@@ -17,9 +17,19 @@ import (
 	"time"
 
 	ocprom "contrib.go.opencensus.io/exporter/prometheus"
+	bdg "github.com/dgraph-io/badger/v2"
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	badger "github.com/ipfs/go-ds-badger2"
+	measure "github.com/ipfs/go-ds-measure"
+	metricsprometheus "github.com/ipfs/go-metrics-prometheus"
+	"github.com/ipld/go-car"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -30,23 +40,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/lotus/node/repo"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	metricsprometheus "github.com/ipfs/go-metrics-prometheus"
-	"github.com/ipld/go-car"
-
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-
-	bdg "github.com/dgraph-io/badger/v2"
-	"github.com/ipfs/go-datastore"
-	badger "github.com/ipfs/go-ds-badger2"
-	measure "github.com/ipfs/go-ds-measure"
-
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 )
 
 type TipSetExec struct {

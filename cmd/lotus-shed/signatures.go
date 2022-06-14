@@ -5,16 +5,16 @@ import (
 	"fmt"
 	"strconv"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
-	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/lotus/lib/sigs"
-
-	"github.com/filecoin-project/go-address"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+
+	ffi "github.com/filecoin-project/filecoin-ffi"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/crypto"
+
+	lcli "github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
 var signaturesCmd = &cli.Command{

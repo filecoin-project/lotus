@@ -7,15 +7,17 @@ import (
 	"time"
 
 	"contrib.go.opencensus.io/exporter/prometheus"
+	"github.com/gorilla/mux"
+	"github.com/hashicorp/go-multierror"
+
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-jsonrpc/auth"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/gorilla/mux"
-	"github.com/hashicorp/go-multierror"
 )
 
 type LotusClient struct {

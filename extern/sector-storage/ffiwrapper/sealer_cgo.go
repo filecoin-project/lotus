@@ -15,18 +15,17 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/filecoin-project/go-state-types/proof"
-
+	"github.com/detailyang/go-fallocate"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
-	"github.com/detailyang/go-fallocate"
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	commpffi "github.com/filecoin-project/go-commp-utils/ffiwrapper"
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/fr32"

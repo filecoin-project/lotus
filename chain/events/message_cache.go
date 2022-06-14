@@ -4,9 +4,10 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/lotus/api"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/api"
 )
 
 type messageCache struct {

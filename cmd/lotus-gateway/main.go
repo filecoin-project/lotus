@@ -6,18 +6,16 @@ import (
 	"net"
 	"os"
 
+	logging "github.com/ipfs/go-log/v2"
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/urfave/cli/v2"
 	"go.opencensus.io/stats/view"
 	"golang.org/x/xerrors"
 
-	logging "github.com/ipfs/go-log/v2"
-
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
 
-	manet "github.com/multiformats/go-multiaddr/net"
-
-	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"

@@ -8,18 +8,19 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/itests/kit"
 	verifreg4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/verifreg"
-	"github.com/stretchr/testify/require"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/impl"
 )
 

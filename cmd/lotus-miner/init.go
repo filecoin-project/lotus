@@ -13,11 +13,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/filecoin-project/go-state-types/builtin"
-	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
-
-	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
-
 	"github.com/docker/go-units"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
@@ -33,14 +28,12 @@ import (
 	paramfetch "github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-statestore"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
+	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
@@ -53,6 +46,10 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
+	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/journal"

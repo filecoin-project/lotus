@@ -11,15 +11,6 @@ import (
 	"strconv"
 	"time"
 
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
-
-	"github.com/filecoin-project/dagstore"
-	"github.com/filecoin-project/dagstore/shard"
-	"github.com/filecoin-project/go-jsonrpc/auth"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/gen"
-
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
@@ -30,8 +21,8 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/build"
-
+	"github.com/filecoin-project/dagstore"
+	"github.com/filecoin-project/dagstore/shard"
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	gst "github.com/filecoin-project/go-data-transfer/transport/graphsync"
@@ -39,22 +30,25 @@ import (
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	filmktsstore "github.com/filecoin-project/go-fil-markets/stores"
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/network"
-	mktsdagstore "github.com/filecoin-project/lotus/markets/dagstore"
+	sto "github.com/filecoin-project/specs-storage/storage"
 
+	"github.com/filecoin-project/lotus/api"
+	apitypes "github.com/filecoin-project/lotus/api/types"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/types"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
-
-	sto "github.com/filecoin-project/specs-storage/storage"
-
-	"github.com/filecoin-project/lotus/api"
-	apitypes "github.com/filecoin-project/lotus/api/types"
-	"github.com/filecoin-project/lotus/chain/types"
+	mktsdagstore "github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"

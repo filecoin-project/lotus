@@ -8,10 +8,12 @@ import (
 	context "context"
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
+
 	abi "github.com/filecoin-project/go-state-types/abi"
+
 	fsutil "github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
 	storiface "github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	gomock "github.com/golang/mock/gomock"
 )
 
 // MockSectorIndex is a mock of SectorIndex interface.

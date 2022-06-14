@@ -6,9 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/v0api"
-
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -21,7 +18,9 @@ import (
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"

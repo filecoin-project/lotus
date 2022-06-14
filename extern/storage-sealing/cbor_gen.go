@@ -8,12 +8,14 @@ import (
 	"math"
 	"sort"
 
-	abi "github.com/filecoin-project/go-state-types/abi"
-	miner "github.com/filecoin-project/go-state-types/builtin/v8/miner"
-	api "github.com/filecoin-project/lotus/api"
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
+
+	abi "github.com/filecoin-project/go-state-types/abi"
+	miner "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+
+	api "github.com/filecoin-project/lotus/api"
 )
 
 var _ = xerrors.Errorf

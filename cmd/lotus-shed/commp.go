@@ -5,9 +5,10 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+
+	commcid "github.com/filecoin-project/go-fil-commcid"
 )
 
 var commpToCidCmd = &cli.Command{

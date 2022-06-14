@@ -3,9 +3,9 @@ package sealing
 import (
 	"testing"
 
-	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/stretchr/testify/assert"
+
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 func testFill(t *testing.T, n abi.UnpaddedPieceSize, exp []abi.UnpaddedPieceSize) {

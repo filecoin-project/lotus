@@ -1,11 +1,11 @@
 package main
 
 import (
+	"github.com/testground/sdk-go/run"
+
 	"github.com/filecoin-project/lotus/testplans/lotus-soup/paych"
 	"github.com/filecoin-project/lotus/testplans/lotus-soup/rfwp"
 	"github.com/filecoin-project/lotus/testplans/lotus-soup/testkit"
-
-	"github.com/testground/sdk-go/run"
 )
 
 var cases = map[string]interface{}{

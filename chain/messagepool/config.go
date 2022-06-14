@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ipfs/go-datastore"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/ipfs/go-datastore"
 )
 
 var (

@@ -6,9 +6,6 @@ import (
 	"bytes"
 	"context"
 
-	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
-	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
-
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
@@ -19,8 +16,10 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"

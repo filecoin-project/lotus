@@ -4,10 +4,9 @@ import (
 	"encoding/base64"
 	"fmt"
 
+	"github.com/ipfs/go-cid"
 	blake2b "github.com/minio/blake2b-simd"
 	"github.com/urfave/cli/v2"
-
-	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"

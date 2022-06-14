@@ -17,15 +17,15 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	"github.com/filecoin-project/lotus/extern/sector-storage/tarutil"
+	"github.com/hashicorp/go-multierror"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
-	"github.com/hashicorp/go-multierror"
-	"golang.org/x/xerrors"
+	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
+	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/extern/sector-storage/tarutil"
 )
 
 var FetchTempSubdir = "fetching"

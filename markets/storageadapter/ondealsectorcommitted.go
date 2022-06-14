@@ -5,14 +5,11 @@ import (
 	"context"
 	"sync"
 
-	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-
-	"github.com/filecoin-project/go-bitfield"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
@@ -20,8 +17,10 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 
 	"github.com/filecoin-project/lotus/build"
+	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/types"
+	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 )
 
 type eventsCalledAPI interface {

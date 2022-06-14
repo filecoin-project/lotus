@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	eventbus "github.com/libp2p/go-eventbus"
@@ -24,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/beacon/drand"
+	"github.com/filecoin-project/lotus/chain/consensus"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"

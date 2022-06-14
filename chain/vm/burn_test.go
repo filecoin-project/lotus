@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func TestGasBurn(t *testing.T) {

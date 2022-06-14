@@ -5,18 +5,18 @@ import (
 	"context"
 	"fmt"
 
-	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-
-	"github.com/filecoin-project/go-state-types/network"
+	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 )
 
 type CurrentDealInfoAPI interface {

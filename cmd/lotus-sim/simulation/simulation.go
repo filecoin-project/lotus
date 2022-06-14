@@ -5,15 +5,14 @@ import (
 	"encoding/json"
 	"runtime"
 
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	logging "github.com/ipfs/go-log/v2"
-
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"

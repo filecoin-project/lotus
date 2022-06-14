@@ -1,11 +1,9 @@
 package paychmgr
 
 import (
-	"golang.org/x/xerrors"
-
 	"github.com/hannahhoward/go-pubsub"
-
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 )
 
 type msgListeners struct {

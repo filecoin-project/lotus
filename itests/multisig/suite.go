@@ -7,12 +7,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/stretchr/testify/require"
 )
 
 func RunMultisigTests(t *testing.T, client *kit.TestFullNode) {

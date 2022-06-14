@@ -2,7 +2,6 @@ package config
 
 import (
 	"encoding"
-
 	"os"
 	"strconv"
 	"time"

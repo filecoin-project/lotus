@@ -7,16 +7,17 @@ import (
 	"testing"
 	"time"
 
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/stretchr/testify/require"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
-	logging "github.com/ipfs/go-log/v2"
 )
 
 func TestAPI(t *testing.T) {

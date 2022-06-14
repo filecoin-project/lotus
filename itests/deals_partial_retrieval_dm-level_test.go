@@ -9,16 +9,18 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/api"
-	api0 "github.com/filecoin-project/lotus/api/v0api"
-	"github.com/filecoin-project/lotus/itests/kit"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-car"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/api"
+	api0 "github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/itests/kit"
 )
 
 // please talk to @ribasushi or @mikeal before modifying these test: there are
