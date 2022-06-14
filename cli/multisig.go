@@ -899,13 +899,13 @@ var msigAddProposeCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
-
+		
+		addrId, err := api.StateLookupID(ctx, addr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+		
 		for _, s := range signers {
-			addrId, err := api.StateLookupID(ctx, addr, types.EmptyTSK)
-			if err != nil {
-				return err
-			}
-
 			if s == addrId {
 				return fmt.Errorf("The add a signer address(%s) is included in the signers", addr.String())
 			}
