@@ -31,7 +31,7 @@ sha256sum -c -- *.sha256
 echo "Packing..."
 
 rm -f -- "$TARGET_FILE"
-tar -cf "$TARGET_FILE" -I "zstd -19" -- *.car
+tar -cf "$TARGET_FILE" --use-compress-program "zstd -19" -- *.car
 popd
 
 echo "Generating metadata..."
