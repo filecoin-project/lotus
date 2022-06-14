@@ -10,7 +10,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	"github.com/ipfs/go-cid"
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
@@ -79,4 +78,4 @@ const PropagationDelaySecs = uint64(6)
 // BootstrapPeerThreshold is the minimum number peers we need to track for a sync worker to start
 const BootstrapPeerThreshold = 2
 
-var WhitelistedBlock = cid.Undef
+var WhitelistedBlock = MustParseCid("bafy2bzaced6uuyvoidi5gmqk6wsx7hlchpjfvzrkqlbnto2p5tvzcnaf6gmey")
