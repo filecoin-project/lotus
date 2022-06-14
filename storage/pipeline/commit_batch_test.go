@@ -22,9 +22,9 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
-	sealing2 "github.com/filecoin-project/lotus/storage/pipeline"
+	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/mocks"
-	sealiface2 "github.com/filecoin-project/lotus/storage/pipeline/sealiface"
+	sealiface "github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
@@ -42,8 +42,8 @@ func TestCommitBatcher(t *testing.T) {
 	maxBatch := miner5.MaxAggregatedSectors
 	minBatch := miner5.MinAggregatedSectors
 
-	cfg := func() (sealiface2.Config, error) {
-		return sealiface2.Config{
+	cfg := func() (sealiface.Config, error) {
+		return sealiface.Config{
 			MaxWaitDealsSectors:       2,
 			MaxSealingSectors:         0,
 			MaxSealingSectorsForDeals: 0,
@@ -71,10 +71,10 @@ func TestCommitBatcher(t *testing.T) {
 	}
 
 	type promise func(t *testing.T)
-	type action func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing2.CommitBatcher) promise
+	type action func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *pipeline.CommitBatcher) promise
 
 	actions := func(as ...action) action {
-		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing2.CommitBatcher) promise {
+		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *pipeline.CommitBatcher) promise {
 			var ps []promise
 			for _, a := range as {
 				p := a(t, s, pcb)
@@ -95,13 +95,13 @@ func TestCommitBatcher(t *testing.T) {
 	}
 
 	addSector := func(sn abi.SectorNumber) action {
-		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing2.CommitBatcher) promise {
-			var pcres sealiface2.CommitBatchRes
+		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *pipeline.CommitBatcher) promise {
+			var pcres sealiface.CommitBatchRes
 			var pcerr error
 			done := sync.Mutex{}
 			done.Lock()
 
-			si := sealing2.SectorInfo{
+			si := pipeline.SectorInfo{
 				SectorNumber: sn,
 			}
 
@@ -113,7 +113,7 @@ func TestCommitBatcher(t *testing.T) {
 
 			go func() {
 				defer done.Unlock()
-				pcres, pcerr = pcb.AddCommit(ctx, si, sealing2.AggregateInput{
+				pcres, pcerr = pcb.AddCommit(ctx, si, pipeline.AggregateInput{
 					Info: prooftypes.AggregateSealVerifyInfo{
 						Number: sn,
 					},
@@ -138,7 +138,7 @@ func TestCommitBatcher(t *testing.T) {
 	}
 
 	waitPending := func(n int) action {
-		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing2.CommitBatcher) promise {
+		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *pipeline.CommitBatcher) promise {
 			require.Eventually(t, func() bool {
 				p, err := pcb.Pending(ctx)
 				require.NoError(t, err)
@@ -151,7 +151,7 @@ func TestCommitBatcher(t *testing.T) {
 
 	//stm: @CHAIN_STATE_MINER_INFO_001, @CHAIN_STATE_NETWORK_VERSION_001, @CHAIN_STATE_MINER_GET_COLLATERAL_001
 	expectSend := func(expect []abi.SectorNumber, aboveBalancer, failOnePCI bool) action {
-		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing2.CommitBatcher) promise {
+		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *pipeline.CommitBatcher) promise {
 			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(api.MinerInfo{Owner: t0123, Worker: t0123}, nil)
 
 			ti := len(expect)
@@ -217,7 +217,7 @@ func TestCommitBatcher(t *testing.T) {
 	}
 
 	flush := func(expect []abi.SectorNumber, aboveBalancer, failOnePCI bool) action {
-		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing2.CommitBatcher) promise {
+		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *pipeline.CommitBatcher) promise {
 			_ = expectSend(expect, aboveBalancer, failOnePCI)(t, s, pcb)
 
 			batch := len(expect) >= minBatch && aboveBalancer
@@ -357,7 +357,7 @@ func TestCommitBatcher(t *testing.T) {
 			// create them mocks
 			pcapi := mocks.NewMockCommitBatcherApi(mockCtrl)
 
-			pcb := sealing2.NewCommitBatcher(ctx, t0123, pcapi, as, fc, cfg, &fakeProver{})
+			pcb := pipeline.NewCommitBatcher(ctx, t0123, pcapi, as, fc, cfg, &fakeProver{})
 
 			var promises []promise
 

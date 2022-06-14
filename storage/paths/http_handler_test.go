@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/storage/paths"
-	mocks2 "github.com/filecoin-project/lotus/storage/paths/mocks"
+	mocks "github.com/filecoin-project/lotus/storage/paths/mocks"
 	"github.com/filecoin-project/lotus/storage/sealer/partialfile"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -64,8 +64,8 @@ func TestRemoteGetAllocated(t *testing.T) {
 
 	tcs := map[string]struct {
 		piFnc    func(pi *pieceInfo)
-		storeFnc func(s *mocks2.MockStore)
-		pfFunc   func(s *mocks2.MockPartialFileHandler)
+		storeFnc func(s *mocks.MockStore)
+		pfFunc   func(s *mocks.MockPartialFileHandler)
 
 		// expectation
 		expectedStatusCode int
@@ -102,7 +102,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 		},
 		"fails when errors out during acquiring unsealed sector file": {
 			expectedStatusCode: http.StatusInternalServerError,
-			storeFnc: func(l *mocks2.MockStore) {
+			storeFnc: func(l *mocks.MockStore) {
 
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
@@ -113,7 +113,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 		},
 		"fails when unsealed sector file is not found locally": {
 			expectedStatusCode: http.StatusInternalServerError,
-			storeFnc: func(l *mocks2.MockStore) {
+			storeFnc: func(l *mocks.MockStore) {
 
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{},
@@ -122,7 +122,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 		},
 		"fails when error while opening partial file": {
 			expectedStatusCode: http.StatusInternalServerError,
-			storeFnc: func(l *mocks2.MockStore) {
+			storeFnc: func(l *mocks.MockStore) {
 
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
@@ -131,7 +131,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 					storiface.SectorPaths{}, nil).Times(1)
 			},
 
-			pfFunc: func(pf *mocks2.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks.MockPartialFileHandler) {
 				pf.EXPECT().OpenPartialFile(abi.PaddedPieceSize(sectorSize), pfPath).Return(&partialfile.PartialFile{},
 					xerrors.New("some error")).Times(1)
 			},
@@ -139,7 +139,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 
 		"fails when determining partial file allocation returns an error": {
 			expectedStatusCode: http.StatusInternalServerError,
-			storeFnc: func(l *mocks2.MockStore) {
+			storeFnc: func(l *mocks.MockStore) {
 
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
@@ -148,7 +148,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 					storiface.SectorPaths{}, nil).Times(1)
 			},
 
-			pfFunc: func(pf *mocks2.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks.MockPartialFileHandler) {
 				pf.EXPECT().OpenPartialFile(abi.PaddedPieceSize(sectorSize), pfPath).Return(emptyPartialFile,
 					nil).Times(1)
 
@@ -158,7 +158,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 		},
 		"StatusRequestedRangeNotSatisfiable when piece is NOT allocated in partial file": {
 			expectedStatusCode: http.StatusRequestedRangeNotSatisfiable,
-			storeFnc: func(l *mocks2.MockStore) {
+			storeFnc: func(l *mocks.MockStore) {
 
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
@@ -167,7 +167,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 					storiface.SectorPaths{}, nil).Times(1)
 			},
 
-			pfFunc: func(pf *mocks2.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks.MockPartialFileHandler) {
 				pf.EXPECT().OpenPartialFile(abi.PaddedPieceSize(sectorSize), pfPath).Return(emptyPartialFile,
 					nil).Times(1)
 
@@ -177,7 +177,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 		},
 		"OK when piece is allocated in partial file": {
 			expectedStatusCode: http.StatusOK,
-			storeFnc: func(l *mocks2.MockStore) {
+			storeFnc: func(l *mocks.MockStore) {
 
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
@@ -186,7 +186,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 					storiface.SectorPaths{}, nil).Times(1)
 			},
 
-			pfFunc: func(pf *mocks2.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks.MockPartialFileHandler) {
 				pf.EXPECT().OpenPartialFile(abi.PaddedPieceSize(sectorSize), pfPath).Return(emptyPartialFile,
 					nil).Times(1)
 
@@ -204,8 +204,8 @@ func TestRemoteGetAllocated(t *testing.T) {
 			// when test is done, assert expectations on all mock objects.
 			defer mockCtrl.Finish()
 
-			lstore := mocks2.NewMockStore(mockCtrl)
-			pfhandler := mocks2.NewMockPartialFileHandler(mockCtrl)
+			lstore := mocks.NewMockStore(mockCtrl)
+			pfhandler := mocks.NewMockPartialFileHandler(mockCtrl)
 
 			handler := &paths.FetchHandler{
 				lstore,
@@ -274,7 +274,7 @@ func TestRemoteGetSector(t *testing.T) {
 
 	tcs := map[string]struct {
 		siFnc    func(pi *sectorInfo)
-		storeFnc func(s *mocks2.MockStore, path string)
+		storeFnc func(s *mocks.MockStore, path string)
 
 		// reading a file or a dir
 		isDir bool
@@ -300,7 +300,7 @@ func TestRemoteGetSector(t *testing.T) {
 			noResponseBytes:    true,
 		},
 		"fails when error while acquiring sector file": {
-			storeFnc: func(l *mocks2.MockStore, _ string) {
+			storeFnc: func(l *mocks.MockStore, _ string) {
 
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
@@ -313,7 +313,7 @@ func TestRemoteGetSector(t *testing.T) {
 		},
 		"fails when acquired sector file path is empty": {
 			expectedStatusCode: http.StatusInternalServerError,
-			storeFnc: func(l *mocks2.MockStore, _ string) {
+			storeFnc: func(l *mocks.MockStore, _ string) {
 
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{},
@@ -323,7 +323,7 @@ func TestRemoteGetSector(t *testing.T) {
 		},
 		"fails when acquired file does not exist": {
 			expectedStatusCode: http.StatusInternalServerError,
-			storeFnc: func(l *mocks2.MockStore, _ string) {
+			storeFnc: func(l *mocks.MockStore, _ string) {
 
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
@@ -334,7 +334,7 @@ func TestRemoteGetSector(t *testing.T) {
 			noResponseBytes: true,
 		},
 		"successfully read a sector file": {
-			storeFnc: func(l *mocks2.MockStore, path string) {
+			storeFnc: func(l *mocks.MockStore, path string) {
 
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
@@ -349,7 +349,7 @@ func TestRemoteGetSector(t *testing.T) {
 			expectedResponseBytes: fileBytes,
 		},
 		"successfully read a sector dir": {
-			storeFnc: func(l *mocks2.MockStore, path string) {
+			storeFnc: func(l *mocks.MockStore, path string) {
 
 				l.EXPECT().AcquireSector(gomock.Any(), expectedSectorRef, storiface.FTUnsealed,
 					storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
@@ -372,8 +372,8 @@ func TestRemoteGetSector(t *testing.T) {
 			mockCtrl := gomock.NewController(t)
 			// when test is done, assert expectations on all mock objects.
 			defer mockCtrl.Finish()
-			lstore := mocks2.NewMockStore(mockCtrl)
-			pfhandler := mocks2.NewMockPartialFileHandler(mockCtrl)
+			lstore := mocks.NewMockStore(mockCtrl)
+			pfhandler := mocks.NewMockPartialFileHandler(mockCtrl)
 
 			var path string
 

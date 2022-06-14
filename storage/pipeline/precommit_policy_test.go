@@ -17,7 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
-	sealing2 "github.com/filecoin-project/lotus/storage/pipeline"
+	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
 
@@ -29,7 +29,7 @@ type fakeConfigStub struct {
 	CCSectorLifetime time.Duration
 }
 
-func fakeConfigGetter(stub *fakeConfigStub) sealing2.GetSealingConfigFunc {
+func fakeConfigGetter(stub *fakeConfigStub) pipeline.GetSealingConfigFunc {
 	return func() (sealiface.Config, error) {
 		if stub == nil {
 			return sealiface.Config{}, nil
@@ -41,11 +41,11 @@ func fakeConfigGetter(stub *fakeConfigStub) sealing2.GetSealingConfigFunc {
 	}
 }
 
-func (f *fakeChain) StateNetworkVersion(ctx context.Context, tok sealing2.TipSetToken) (network.Version, error) {
+func (f *fakeChain) StateNetworkVersion(ctx context.Context, tok pipeline.TipSetToken) (network.Version, error) {
 	return build.NewestNetworkVersion, nil
 }
 
-func (f *fakeChain) ChainHead(ctx context.Context) (sealing2.TipSetToken, abi.ChainEpoch, error) {
+func (f *fakeChain) ChainHead(ctx context.Context) (pipeline.TipSetToken, abi.ChainEpoch, error) {
 	return []byte{1, 2, 3}, f.h, nil
 }
 
@@ -60,7 +60,7 @@ func TestBasicPolicyEmptySector(t *testing.T) {
 	cfg := fakeConfigGetter(nil)
 	h := abi.ChainEpoch(55)
 	pBuffer := abi.ChainEpoch(2)
-	pcp := sealing2.NewBasicPreCommitPolicy(&fakeChain{h: h}, cfg, pBuffer)
+	pcp := pipeline.NewBasicPreCommitPolicy(&fakeChain{h: h}, cfg, pBuffer)
 	exp, err := pcp.Expiration(context.Background())
 
 	require.NoError(t, err)
@@ -77,7 +77,7 @@ func TestCustomCCSectorConfig(t *testing.T) {
 	cfg := fakeConfigGetter(&cfgStub)
 	h := abi.ChainEpoch(55)
 	pBuffer := abi.ChainEpoch(2)
-	pcp := sealing2.NewBasicPreCommitPolicy(&fakeChain{h: h}, cfg, pBuffer)
+	pcp := pipeline.NewBasicPreCommitPolicy(&fakeChain{h: h}, cfg, pBuffer)
 	exp, err := pcp.Expiration(context.Background())
 
 	require.NoError(t, err)
@@ -89,11 +89,11 @@ func TestCustomCCSectorConfig(t *testing.T) {
 
 func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
 	cfg := fakeConfigGetter(nil)
-	policy := sealing2.NewBasicPreCommitPolicy(&fakeChain{
+	policy := pipeline.NewBasicPreCommitPolicy(&fakeChain{
 		h: abi.ChainEpoch(55),
 	}, cfg, 2)
 	longestDealEpochEnd := abi.ChainEpoch(547300)
-	pieces := []sealing2.Piece{
+	pieces := []pipeline.Piece{
 		{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),
@@ -130,11 +130,11 @@ func TestBasicPolicyMostConstrictiveSchedule(t *testing.T) {
 
 func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
 	cfg := fakeConfigGetter(nil)
-	policy := sealing2.NewBasicPreCommitPolicy(&fakeChain{
+	policy := pipeline.NewBasicPreCommitPolicy(&fakeChain{
 		h: abi.ChainEpoch(55),
 	}, cfg, 0)
 
-	pieces := []sealing2.Piece{
+	pieces := []pipeline.Piece{
 		{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),
@@ -159,11 +159,11 @@ func TestBasicPolicyIgnoresExistingScheduleIfExpired(t *testing.T) {
 
 func TestMissingDealIsIgnored(t *testing.T) {
 	cfg := fakeConfigGetter(nil)
-	policy := sealing2.NewBasicPreCommitPolicy(&fakeChain{
+	policy := pipeline.NewBasicPreCommitPolicy(&fakeChain{
 		h: abi.ChainEpoch(55),
 	}, cfg, 0)
 
-	pieces := []sealing2.Piece{
+	pieces := []pipeline.Piece{
 		{
 			Piece: abi.PieceInfo{
 				Size:     abi.PaddedPieceSize(1024),

@@ -22,9 +22,9 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
-	sealing2 "github.com/filecoin-project/lotus/storage/pipeline"
+	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/mocks"
-	sealiface2 "github.com/filecoin-project/lotus/storage/pipeline/sealiface"
+	sealiface "github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
 
 var fc = config.MinerFeeConfig{
@@ -48,8 +48,8 @@ func TestPrecommitBatcher(t *testing.T) {
 
 	maxBatch := miner6.PreCommitSectorBatchMaxSize
 
-	cfg := func() (sealiface2.Config, error) {
-		return sealiface2.Config{
+	cfg := func() (sealiface.Config, error) {
+		return sealiface.Config{
 			MaxWaitDealsSectors:       2,
 			MaxSealingSectors:         0,
 			MaxSealingSectorsForDeals: 0,
@@ -75,10 +75,10 @@ func TestPrecommitBatcher(t *testing.T) {
 	}
 
 	type promise func(t *testing.T)
-	type action func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *sealing2.PreCommitBatcher) promise
+	type action func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *pipeline.PreCommitBatcher) promise
 
 	actions := func(as ...action) action {
-		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *sealing2.PreCommitBatcher) promise {
+		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *pipeline.PreCommitBatcher) promise {
 			var ps []promise
 			for _, a := range as {
 				p := a(t, s, pcb)
@@ -99,13 +99,13 @@ func TestPrecommitBatcher(t *testing.T) {
 	}
 
 	addSector := func(sn abi.SectorNumber) action {
-		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *sealing2.PreCommitBatcher) promise {
-			var pcres sealiface2.PreCommitBatchRes
+		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *pipeline.PreCommitBatcher) promise {
+			var pcres sealiface.PreCommitBatchRes
 			var pcerr error
 			done := sync.Mutex{}
 			done.Lock()
 
-			si := sealing2.SectorInfo{
+			si := pipeline.SectorInfo{
 				SectorNumber: sn,
 			}
 
@@ -139,7 +139,7 @@ func TestPrecommitBatcher(t *testing.T) {
 	}
 
 	waitPending := func(n int) action {
-		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *sealing2.PreCommitBatcher) promise {
+		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *pipeline.PreCommitBatcher) promise {
 			require.Eventually(t, func() bool {
 				p, err := pcb.Pending(ctx)
 				require.NoError(t, err)
@@ -152,7 +152,7 @@ func TestPrecommitBatcher(t *testing.T) {
 
 	//stm: @CHAIN_STATE_MINER_INFO_001, @CHAIN_STATE_NETWORK_VERSION_001
 	expectSend := func(expect []abi.SectorNumber) action {
-		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *sealing2.PreCommitBatcher) promise {
+		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *pipeline.PreCommitBatcher) promise {
 			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
 			s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(big.NewInt(10001), nil)
 			s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version14, nil)
@@ -173,7 +173,7 @@ func TestPrecommitBatcher(t *testing.T) {
 
 	//stm: @CHAIN_STATE_MINER_INFO_001, @CHAIN_STATE_NETWORK_VERSION_001
 	expectSendsSingle := func(expect []abi.SectorNumber) action {
-		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *sealing2.PreCommitBatcher) promise {
+		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *pipeline.PreCommitBatcher) promise {
 			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
 			s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(big.NewInt(9999), nil)
 			s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version14, nil)
@@ -194,7 +194,7 @@ func TestPrecommitBatcher(t *testing.T) {
 	}
 
 	flush := func(expect []abi.SectorNumber) action {
-		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *sealing2.PreCommitBatcher) promise {
+		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *pipeline.PreCommitBatcher) promise {
 			_ = expectSend(expect)(t, s, pcb)
 
 			r, err := pcb.Flush(ctx)
@@ -261,7 +261,7 @@ func TestPrecommitBatcher(t *testing.T) {
 			// create them mocks
 			pcapi := mocks.NewMockPreCommitBatcherApi(mockCtrl)
 
-			pcb := sealing2.NewPreCommitBatcher(ctx, t0123, pcapi, as, fc, cfg)
+			pcb := pipeline.NewPreCommitBatcher(ctx, t0123, pcapi, as, fc, cfg)
 
 			var promises []promise
 

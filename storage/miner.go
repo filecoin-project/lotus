@@ -32,7 +32,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
-	sealing2 "github.com/filecoin-project/lotus/storage/pipeline"
+	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
@@ -52,7 +52,7 @@ type Miner struct {
 	feeCfg  config.MinerFeeConfig
 	sealer  sealer.SectorManager
 	ds      datastore.Batching
-	sc      sealing2.SectorIDCounter
+	sc      pipeline.SectorIDCounter
 	verif   ffiwrapper.Verifier
 	prover  ffiwrapper.Prover
 	addrSel *ctladdr.AddressSelector
@@ -60,7 +60,7 @@ type Miner struct {
 	maddr address.Address
 
 	getSealConfig dtypes.GetSealingConfigFunc
-	sealing       *sealing2.Sealing
+	sealing       *pipeline.Sealing
 
 	sealingEvtType journal.EventType
 
@@ -71,8 +71,8 @@ type Miner struct {
 type SealingStateEvt struct {
 	SectorNumber abi.SectorNumber
 	SectorType   abi.RegisteredSealProof
-	From         sealing2.SectorState
-	After        sealing2.SectorState
+	From         pipeline.SectorState
+	After        pipeline.SectorState
 	Error        string
 }
 
@@ -134,7 +134,7 @@ func NewMiner(api fullNodeFilteredAPI,
 	maddr address.Address,
 	ds datastore.Batching,
 	sealer sealer.SectorManager,
-	sc sealing2.SectorIDCounter,
+	sc pipeline.SectorIDCounter,
 	verif ffiwrapper.Verifier,
 	prover ffiwrapper.Prover,
 	gsd dtypes.GetSealingConfigFunc,
@@ -185,10 +185,10 @@ func (m *Miner) Run(ctx context.Context) error {
 	adaptedAPI := NewSealingAPIAdapter(m.api)
 
 	// Instantiate a precommit policy.
-	cfg := sealing2.GetSealingConfigFunc(m.getSealConfig)
+	cfg := pipeline.GetSealingConfigFunc(m.getSealConfig)
 	provingBuffer := md.WPoStProvingPeriod * 2
 
-	pcp := sealing2.NewBasicPreCommitPolicy(adaptedAPI, cfg, provingBuffer)
+	pcp := pipeline.NewBasicPreCommitPolicy(adaptedAPI, cfg, provingBuffer)
 
 	// address selector.
 	as := func(ctx context.Context, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
@@ -196,7 +196,7 @@ func (m *Miner) Run(ctx context.Context) error {
 	}
 
 	// Instantiate the sealing FSM.
-	m.sealing = sealing2.New(ctx, adaptedAPI, m.feeCfg, evtsAdapter, m.maddr, m.ds, m.sealer, m.sc, m.verif, m.prover, &pcp, cfg, m.handleSealingNotifications, as)
+	m.sealing = pipeline.New(ctx, adaptedAPI, m.feeCfg, evtsAdapter, m.maddr, m.ds, m.sealer, m.sc, m.verif, m.prover, &pcp, cfg, m.handleSealingNotifications, as)
 
 	// Run the sealing FSM.
 	go m.sealing.Run(ctx) //nolint:errcheck // logged intside the function
@@ -204,7 +204,7 @@ func (m *Miner) Run(ctx context.Context) error {
 	return nil
 }
 
-func (m *Miner) handleSealingNotifications(before, after sealing2.SectorInfo) {
+func (m *Miner) handleSealingNotifications(before, after pipeline.SectorInfo) {
 	m.journal.RecordEvent(m.sealingEvtType, func() interface{} {
 		return SealingStateEvt{
 			SectorNumber: before.SectorNumber,

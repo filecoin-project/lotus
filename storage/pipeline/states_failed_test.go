@@ -20,7 +20,7 @@ import (
 
 	api2 "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	sealing2 "github.com/filecoin-project/lotus/storage/pipeline"
+	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	mocks "github.com/filecoin-project/lotus/storage/pipeline/mocks"
 )
 
@@ -33,9 +33,9 @@ func TestStateRecoverDealIDs(t *testing.T) {
 
 	api := mocks.NewMockSealingAPI(mockCtrl)
 
-	fakeSealing := &sealing2.Sealing{
+	fakeSealing := &pipeline.Sealing{
 		Api:      api,
-		DealInfo: &sealing2.CurrentDealInfoManager{CDAPI: api},
+		DealInfo: &pipeline.CurrentDealInfoManager{CDAPI: api},
 	}
 
 	sctx := mocks.NewMockContext(mockCtrl)
@@ -55,8 +55,8 @@ func TestStateRecoverDealIDs(t *testing.T) {
 
 	// expect GetCurrentDealInfo
 	{
-		api.EXPECT().StateSearchMsg(ctx, pc).Return(&sealing2.MsgLookup{
-			Receipt: sealing2.MessageReceipt{
+		api.EXPECT().StateSearchMsg(ctx, pc).Return(&pipeline.MsgLookup{
+			Receipt: pipeline.MessageReceipt{
 				ExitCode: exitcode.Ok,
 				Return: cborRet(&market0.PublishStorageDealsReturn{
 					IDs: []abi.DealID{dealId},
@@ -70,12 +70,12 @@ func TestStateRecoverDealIDs(t *testing.T) {
 
 	}
 
-	sctx.EXPECT().Send(sealing2.SectorRemove{}).Return(nil)
+	sctx.EXPECT().Send(pipeline.SectorRemove{}).Return(nil)
 
 	// TODO sctx should satisfy an interface so it can be useable for mocking.  This will fail because we are passing in an empty context now to get this to build.
 	// https://github.com/filecoin-project/lotus/issues/7867
-	err := fakeSealing.HandleRecoverDealIDs(statemachine.Context{}, sealing2.SectorInfo{
-		Pieces: []sealing2.Piece{
+	err := fakeSealing.HandleRecoverDealIDs(statemachine.Context{}, pipeline.SectorInfo{
+		Pieces: []pipeline.Piece{
 			{
 				DealInfo: &api2.PieceDealInfo{
 					DealID:     dealId,
