@@ -912,7 +912,6 @@ var msigAddProposeCmd = &cli.Command{
 			if signerActor == addr {
 				return fmt.Errorf("The add a signer address(%s) is included in the signers", addr.String())
 			}
-
 		}
 
 		proto, err := api.MsigAddPropose(ctx, msig, from, addr, cctx.Bool("increase-threshold"))
