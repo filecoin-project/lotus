@@ -1819,6 +1819,7 @@ OPTIONS:
    --expiration-ignore value  when extending v1 or all sectors, skip sectors whose current expiration is less than <ignore> epochs from now (default: 120)
    --expiration-cutoff value  when extending v1 sectors, skip sectors whose current expiration is more than <cutoff> epochs from now (infinity if unspecified) (default: 0)
    --max-base-fee value       only submit extend message when base fee is lower than this amount of nanoFIL, pass this flag to save your gas (default: 1)
+   --sectors-discount value   extend less sectors in one message, set this flag less than 1.0 to avoid gas limit error (default: 1)
    --max-fee value            use up to this amount of FIL for one message, pass this flag to avoid message congestion (default: "10")
    --help, -h                 show help (default: false)
    

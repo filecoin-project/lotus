@@ -1150,6 +1150,12 @@ var sectorsExtendCmd = &cli.Command{
 			Usage:    "only submit extend message when base fee is lower than this amount of nanoFIL, pass this flag to save your gas",
 			Required: false,
 		},
+		&cli.Float64Flag{
+			Name:     "sectors-discount",
+			Value:    1.0,
+			Usage:    "extend less sectors in one message, set this flag less than 1.0 to avoid gas limit error",
+			Required: false,
+		},
 		&cli.StringFlag{
 			Name:     "max-fee",
 			Value:    "10",
@@ -1289,7 +1295,7 @@ var sectorsExtendCmd = &cli.Command{
 					if err != nil {
 						return xerrors.Errorf("failed to get declarations max")
 					}
-					if scount > addressedMax || len(p.Extensions) == declMax {
+					if scount > int(float64(addressedMax)*cctx.Float64("sectors-discount")) || len(p.Extensions) == declMax {
 						params = append(params, p)
 						p = miner5.ExtendSectorExpirationParams{}
 						scount = len(numbers)
