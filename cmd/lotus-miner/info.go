@@ -34,8 +34,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/journal/alerting"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 )
 
 var infoCmd = &cli.Command{

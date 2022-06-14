@@ -31,8 +31,8 @@ import (
 	"github.com/filecoin-project/lotus/extern/sector-storage/fr32"
 	"github.com/filecoin-project/lotus/extern/sector-storage/partialfile"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	nr "github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
 	"github.com/filecoin-project/lotus/lib/nullreader"
+	nr "github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 )
 
 var _ Storage = &Sealer{}

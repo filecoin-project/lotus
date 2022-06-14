@@ -31,7 +31,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	"github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
+	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 )
 
 func init() {

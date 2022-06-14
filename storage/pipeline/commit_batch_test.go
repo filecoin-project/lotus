@@ -23,9 +23,9 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/extern/storage-sealing/mocks"
-	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
+	sealing2 "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/pipeline/mocks"
+	sealiface2 "github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
 
 func TestCommitBatcher(t *testing.T) {
@@ -42,8 +42,8 @@ func TestCommitBatcher(t *testing.T) {
 	maxBatch := miner5.MaxAggregatedSectors
 	minBatch := miner5.MinAggregatedSectors
 
-	cfg := func() (sealiface.Config, error) {
-		return sealiface.Config{
+	cfg := func() (sealiface2.Config, error) {
+		return sealiface2.Config{
 			MaxWaitDealsSectors:       2,
 			MaxSealingSectors:         0,
 			MaxSealingSectorsForDeals: 0,
@@ -71,10 +71,10 @@ func TestCommitBatcher(t *testing.T) {
 	}
 
 	type promise func(t *testing.T)
-	type action func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing.CommitBatcher) promise
+	type action func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing2.CommitBatcher) promise
 
 	actions := func(as ...action) action {
-		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing.CommitBatcher) promise {
+		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing2.CommitBatcher) promise {
 			var ps []promise
 			for _, a := range as {
 				p := a(t, s, pcb)
@@ -95,13 +95,13 @@ func TestCommitBatcher(t *testing.T) {
 	}
 
 	addSector := func(sn abi.SectorNumber) action {
-		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing.CommitBatcher) promise {
-			var pcres sealiface.CommitBatchRes
+		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing2.CommitBatcher) promise {
+			var pcres sealiface2.CommitBatchRes
 			var pcerr error
 			done := sync.Mutex{}
 			done.Lock()
 
-			si := sealing.SectorInfo{
+			si := sealing2.SectorInfo{
 				SectorNumber: sn,
 			}
 
@@ -113,7 +113,7 @@ func TestCommitBatcher(t *testing.T) {
 
 			go func() {
 				defer done.Unlock()
-				pcres, pcerr = pcb.AddCommit(ctx, si, sealing.AggregateInput{
+				pcres, pcerr = pcb.AddCommit(ctx, si, sealing2.AggregateInput{
 					Info: prooftypes.AggregateSealVerifyInfo{
 						Number: sn,
 					},
@@ -138,7 +138,7 @@ func TestCommitBatcher(t *testing.T) {
 	}
 
 	waitPending := func(n int) action {
-		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing.CommitBatcher) promise {
+		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing2.CommitBatcher) promise {
 			require.Eventually(t, func() bool {
 				p, err := pcb.Pending(ctx)
 				require.NoError(t, err)
@@ -151,7 +151,7 @@ func TestCommitBatcher(t *testing.T) {
 
 	//stm: @CHAIN_STATE_MINER_INFO_001, @CHAIN_STATE_NETWORK_VERSION_001, @CHAIN_STATE_MINER_GET_COLLATERAL_001
 	expectSend := func(expect []abi.SectorNumber, aboveBalancer, failOnePCI bool) action {
-		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing.CommitBatcher) promise {
+		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing2.CommitBatcher) promise {
 			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(api.MinerInfo{Owner: t0123, Worker: t0123}, nil)
 
 			ti := len(expect)
@@ -217,7 +217,7 @@ func TestCommitBatcher(t *testing.T) {
 	}
 
 	flush := func(expect []abi.SectorNumber, aboveBalancer, failOnePCI bool) action {
-		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing.CommitBatcher) promise {
+		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *sealing2.CommitBatcher) promise {
 			_ = expectSend(expect, aboveBalancer, failOnePCI)(t, s, pcb)
 
 			batch := len(expect) >= minBatch && aboveBalancer
@@ -357,7 +357,7 @@ func TestCommitBatcher(t *testing.T) {
 			// create them mocks
 			pcapi := mocks.NewMockCommitBatcherApi(mockCtrl)
 
-			pcb := sealing.NewCommitBatcher(ctx, t0123, pcapi, as, fc, cfg, &fakeProver{})
+			pcb := sealing2.NewCommitBatcher(ctx, t0123, pcapi, as, fc, cfg, &fakeProver{})
 
 			var promises []promise
 

@@ -14,7 +14,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
+	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/statemachine.go -package=mocks . Context

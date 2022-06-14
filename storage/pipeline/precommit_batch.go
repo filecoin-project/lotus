@@ -21,8 +21,8 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	"github.com/filecoin-project/lotus/node/config"
+	sealiface2 "github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_precommit_batcher.go -package=mocks . PreCommitBatcherApi
@@ -51,10 +51,10 @@ type PreCommitBatcher struct {
 
 	cutoffs map[abi.SectorNumber]time.Time
 	todo    map[abi.SectorNumber]*preCommitEntry
-	waiting map[abi.SectorNumber][]chan sealiface.PreCommitBatchRes
+	waiting map[abi.SectorNumber][]chan sealiface2.PreCommitBatchRes
 
 	notify, stop, stopped chan struct{}
-	force                 chan chan []sealiface.PreCommitBatchRes
+	force                 chan chan []sealiface2.PreCommitBatchRes
 	lk                    sync.Mutex
 }
 
@@ -69,10 +69,10 @@ func NewPreCommitBatcher(mctx context.Context, maddr address.Address, api PreCom
 
 		cutoffs: map[abi.SectorNumber]time.Time{},
 		todo:    map[abi.SectorNumber]*preCommitEntry{},
-		waiting: map[abi.SectorNumber][]chan sealiface.PreCommitBatchRes{},
+		waiting: map[abi.SectorNumber][]chan sealiface2.PreCommitBatchRes{},
 
 		notify:  make(chan struct{}, 1),
-		force:   make(chan chan []sealiface.PreCommitBatchRes),
+		force:   make(chan chan []sealiface2.PreCommitBatchRes),
 		stop:    make(chan struct{}),
 		stopped: make(chan struct{}),
 	}
@@ -83,8 +83,8 @@ func NewPreCommitBatcher(mctx context.Context, maddr address.Address, api PreCom
 }
 
 func (b *PreCommitBatcher) run() {
-	var forceRes chan []sealiface.PreCommitBatchRes
-	var lastRes []sealiface.PreCommitBatchRes
+	var forceRes chan []sealiface2.PreCommitBatchRes
+	var lastRes []sealiface2.PreCommitBatchRes
 
 	cfg, err := b.getConfig()
 	if err != nil {
@@ -170,7 +170,7 @@ func (b *PreCommitBatcher) batchWait(maxWait, slack time.Duration) time.Duration
 	return wait
 }
 
-func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBatchRes, error) {
+func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface2.PreCommitBatchRes, error) {
 	b.lk.Lock()
 	defer b.lk.Unlock()
 
@@ -210,7 +210,7 @@ func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBat
 	}
 
 	// todo support multiple batches
-	var res []sealiface.PreCommitBatchRes
+	var res []sealiface2.PreCommitBatchRes
 	if !individual {
 		res, err = b.processBatch(cfg, tok, bf, nv)
 	} else {
@@ -239,7 +239,7 @@ func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBat
 	return res, nil
 }
 
-func (b *PreCommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.PreCommitBatchRes, error) {
+func (b *PreCommitBatcher) processIndividually(cfg sealiface2.Config) ([]sealiface2.PreCommitBatchRes, error) {
 	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't get miner info: %w", err)
@@ -259,10 +259,10 @@ func (b *PreCommitBatcher) processIndividually(cfg sealiface.Config) ([]sealifac
 		}
 	}
 
-	var res []sealiface.PreCommitBatchRes
+	var res []sealiface2.PreCommitBatchRes
 
 	for sn, info := range b.todo {
-		r := sealiface.PreCommitBatchRes{
+		r := sealiface2.PreCommitBatchRes{
 			Sectors: []abi.SectorNumber{sn},
 		}
 
@@ -279,7 +279,7 @@ func (b *PreCommitBatcher) processIndividually(cfg sealiface.Config) ([]sealifac
 	return res, nil
 }
 
-func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo, avail *abi.TokenAmount, params *preCommitEntry) (cid.Cid, error) {
+func (b *PreCommitBatcher) processSingle(cfg sealiface2.Config, mi api.MinerInfo, avail *abi.TokenAmount, params *preCommitEntry) (cid.Cid, error) {
 	enc := new(bytes.Buffer)
 
 	if err := params.pci.MarshalCBOR(enc); err != nil {
@@ -315,10 +315,10 @@ func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo,
 	return mcid, nil
 }
 
-func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tok TipSetToken, bf abi.TokenAmount, nv network.Version) ([]sealiface.PreCommitBatchRes, error) {
+func (b *PreCommitBatcher) processBatch(cfg sealiface2.Config, tok TipSetToken, bf abi.TokenAmount, nv network.Version) ([]sealiface2.PreCommitBatchRes, error) {
 	params := miner.PreCommitSectorBatchParams{}
 	deposit := big.Zero()
-	var res sealiface.PreCommitBatchRes
+	var res sealiface2.PreCommitBatchRes
 
 	for _, p := range b.todo {
 		if len(params.Sectors) >= cfg.MaxPreCommitBatch {
@@ -333,12 +333,12 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tok TipSetToken, b
 
 	enc := new(bytes.Buffer)
 	if err := params.MarshalCBOR(enc); err != nil {
-		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("couldn't serialize PreCommitSectorBatchParams: %w", err)
+		return []sealiface2.PreCommitBatchRes{res}, xerrors.Errorf("couldn't serialize PreCommitSectorBatchParams: %w", err)
 	}
 
 	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, nil)
 	if err != nil {
-		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("couldn't get miner info: %w", err)
+		return []sealiface2.PreCommitBatchRes{res}, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
 
 	maxFee := b.feeCfg.MaxPreCommitBatchGasFee.FeeForSectors(len(params.Sectors))
@@ -346,7 +346,7 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tok TipSetToken, b
 	aggFeeRaw, err := policy.AggregatePreCommitNetworkFee(nv, len(params.Sectors), bf)
 	if err != nil {
 		log.Errorf("getting aggregate precommit network fee: %s", err)
-		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("getting aggregate precommit network fee: %s", err)
+		return []sealiface2.PreCommitBatchRes{res}, xerrors.Errorf("getting aggregate precommit network fee: %s", err)
 	}
 
 	aggFee := big.Div(big.Mul(aggFeeRaw, aggFeeNum), aggFeeDen)
@@ -354,39 +354,39 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tok TipSetToken, b
 	needFunds := big.Add(deposit, aggFee)
 	needFunds, err = collateralSendAmount(b.mctx, b.api, b.maddr, cfg, needFunds)
 	if err != nil {
-		return []sealiface.PreCommitBatchRes{res}, err
+		return []sealiface2.PreCommitBatchRes{res}, err
 	}
 
 	goodFunds := big.Add(maxFee, needFunds)
 
 	from, _, err := b.addrSel(b.mctx, mi, api.PreCommitAddr, goodFunds, deposit)
 	if err != nil {
-		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("no good address found: %w", err)
+		return []sealiface2.PreCommitBatchRes{res}, xerrors.Errorf("no good address found: %w", err)
 	}
 
 	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, builtin.MethodsMiner.PreCommitSectorBatch, needFunds, maxFee, enc.Bytes())
 	if err != nil {
-		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("sending message failed: %w", err)
+		return []sealiface2.PreCommitBatchRes{res}, xerrors.Errorf("sending message failed: %w", err)
 	}
 
 	res.Msg = &mcid
 
 	log.Infow("Sent PreCommitSectorBatch message", "cid", mcid, "from", from, "sectors", len(b.todo))
 
-	return []sealiface.PreCommitBatchRes{res}, nil
+	return []sealiface2.PreCommitBatchRes{res}, nil
 }
 
 // register PreCommit, wait for batch message, return message CID
-func (b *PreCommitBatcher) AddPreCommit(ctx context.Context, s SectorInfo, deposit abi.TokenAmount, in *miner.SectorPreCommitInfo) (res sealiface.PreCommitBatchRes, err error) {
+func (b *PreCommitBatcher) AddPreCommit(ctx context.Context, s SectorInfo, deposit abi.TokenAmount, in *miner.SectorPreCommitInfo) (res sealiface2.PreCommitBatchRes, err error) {
 	_, curEpoch, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		log.Errorf("getting chain head: %s", err)
-		return sealiface.PreCommitBatchRes{}, err
+		return sealiface2.PreCommitBatchRes{}, err
 	}
 
 	cutoff, err := getPreCommitCutoff(curEpoch, s)
 	if err != nil {
-		return sealiface.PreCommitBatchRes{}, xerrors.Errorf("failed to calculate cutoff: %w", err)
+		return sealiface2.PreCommitBatchRes{}, xerrors.Errorf("failed to calculate cutoff: %w", err)
 	}
 
 	sn := s.SectorNumber
@@ -398,7 +398,7 @@ func (b *PreCommitBatcher) AddPreCommit(ctx context.Context, s SectorInfo, depos
 		pci:     in,
 	}
 
-	sent := make(chan sealiface.PreCommitBatchRes, 1)
+	sent := make(chan sealiface2.PreCommitBatchRes, 1)
 	b.waiting[sn] = append(b.waiting[sn], sent)
 
 	select {
@@ -411,12 +411,12 @@ func (b *PreCommitBatcher) AddPreCommit(ctx context.Context, s SectorInfo, depos
 	case c := <-sent:
 		return c, nil
 	case <-ctx.Done():
-		return sealiface.PreCommitBatchRes{}, ctx.Err()
+		return sealiface2.PreCommitBatchRes{}, ctx.Err()
 	}
 }
 
-func (b *PreCommitBatcher) Flush(ctx context.Context) ([]sealiface.PreCommitBatchRes, error) {
-	resCh := make(chan []sealiface.PreCommitBatchRes, 1)
+func (b *PreCommitBatcher) Flush(ctx context.Context) ([]sealiface2.PreCommitBatchRes, error) {
+	resCh := make(chan []sealiface2.PreCommitBatchRes, 1)
 	select {
 	case b.force <- resCh:
 		select {

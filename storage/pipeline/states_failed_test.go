@@ -20,8 +20,8 @@ import (
 
 	api2 "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/extern/storage-sealing/mocks"
+	sealing2 "github.com/filecoin-project/lotus/storage/pipeline"
+	mocks2 "github.com/filecoin-project/lotus/storage/pipeline/mocks"
 )
 
 func TestStateRecoverDealIDs(t *testing.T) {
@@ -31,14 +31,14 @@ func TestStateRecoverDealIDs(t *testing.T) {
 
 	ctx := context.Background()
 
-	api := mocks.NewMockSealingAPI(mockCtrl)
+	api := mocks2.NewMockSealingAPI(mockCtrl)
 
-	fakeSealing := &sealing.Sealing{
+	fakeSealing := &sealing2.Sealing{
 		Api:      api,
-		DealInfo: &sealing.CurrentDealInfoManager{CDAPI: api},
+		DealInfo: &sealing2.CurrentDealInfoManager{CDAPI: api},
 	}
 
-	sctx := mocks.NewMockContext(mockCtrl)
+	sctx := mocks2.NewMockContext(mockCtrl)
 	sctx.EXPECT().Context().AnyTimes().Return(ctx)
 
 	api.EXPECT().ChainHead(ctx).Times(2).Return(nil, abi.ChainEpoch(10), nil)
@@ -55,8 +55,8 @@ func TestStateRecoverDealIDs(t *testing.T) {
 
 	// expect GetCurrentDealInfo
 	{
-		api.EXPECT().StateSearchMsg(ctx, pc).Return(&sealing.MsgLookup{
-			Receipt: sealing.MessageReceipt{
+		api.EXPECT().StateSearchMsg(ctx, pc).Return(&sealing2.MsgLookup{
+			Receipt: sealing2.MessageReceipt{
 				ExitCode: exitcode.Ok,
 				Return: cborRet(&market0.PublishStorageDealsReturn{
 					IDs: []abi.DealID{dealId},
@@ -70,12 +70,12 @@ func TestStateRecoverDealIDs(t *testing.T) {
 
 	}
 
-	sctx.EXPECT().Send(sealing.SectorRemove{}).Return(nil)
+	sctx.EXPECT().Send(sealing2.SectorRemove{}).Return(nil)
 
 	// TODO sctx should satisfy an interface so it can be useable for mocking.  This will fail because we are passing in an empty context now to get this to build.
 	// https://github.com/filecoin-project/lotus/issues/7867
-	err := fakeSealing.HandleRecoverDealIDs(statemachine.Context{}, sealing.SectorInfo{
-		Pieces: []sealing.Piece{
+	err := fakeSealing.HandleRecoverDealIDs(statemachine.Context{}, sealing2.SectorInfo{
+		Pieces: []sealing2.Piece{
 			{
 				DealInfo: &api2.PieceDealInfo{
 					DealID:     dealId,

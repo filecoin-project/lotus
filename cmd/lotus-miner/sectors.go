@@ -32,8 +32,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 )
 
 var sectorsCmd = &cli.Command{

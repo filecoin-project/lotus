@@ -26,8 +26,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/miner"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 )
 
 type MinerSubsystem int

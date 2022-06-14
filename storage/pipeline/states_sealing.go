@@ -22,7 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
-	"github.com/filecoin-project/lotus/extern/storage-sealing/lib/nullreader"
+	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 )
 
 var DealSectorPriority = 1024
