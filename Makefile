@@ -349,7 +349,10 @@ docsgen-openrpc-gateway: docsgen-openrpc-bin
 
 .PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
 
-gen: actors-gen type-gen method-gen cfgdoc-gen docsgen api-gen circleci bundle-gen
+fiximports:
+	./scripts/fiximports
+
+gen: actors-gen type-gen method-gen cfgdoc-gen docsgen api-gen circleci bundle-gen fiximports
 	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO MAKE docsgen-cli"
 .PHONY: gen
 
