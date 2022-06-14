@@ -7,11 +7,13 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
-	"github.com/ipfs/go-cid"
 )
 
 const BootstrappersFile = ""
