@@ -167,8 +167,8 @@ func TestCommitBatcher(t *testing.T) {
 				basefee = types.NanoFil
 			}
 
+			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
 			if batch {
-				s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
 				s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(basefee, nil)
 			}
 
