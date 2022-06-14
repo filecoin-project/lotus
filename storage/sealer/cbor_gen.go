@@ -12,7 +12,7 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
+	sealtasks "github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 )
 
 var _ = xerrors.Errorf
@@ -48,7 +48,7 @@ func (t *Call) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.RetType (sectorstorage.ReturnType) (string)
+	// t.RetType (sealer.ReturnType) (string)
 	if len("RetType") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"RetType\" was too long")
 	}
@@ -71,7 +71,7 @@ func (t *Call) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.State (sectorstorage.CallState) (uint64)
+	// t.State (sealer.CallState) (uint64)
 	if len("State") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"State\" was too long")
 	}
@@ -87,7 +87,7 @@ func (t *Call) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Result (sectorstorage.ManyBytes) (struct)
+	// t.Result (sealer.ManyBytes) (struct)
 	if len("Result") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Result\" was too long")
 	}
@@ -153,7 +153,7 @@ func (t *Call) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
-			// t.RetType (sectorstorage.ReturnType) (string)
+			// t.RetType (sealer.ReturnType) (string)
 		case "RetType":
 
 			{
@@ -164,7 +164,7 @@ func (t *Call) UnmarshalCBOR(r io.Reader) (err error) {
 
 				t.RetType = ReturnType(sval)
 			}
-			// t.State (sectorstorage.CallState) (uint64)
+			// t.State (sealer.CallState) (uint64)
 		case "State":
 
 			{
@@ -179,7 +179,7 @@ func (t *Call) UnmarshalCBOR(r io.Reader) (err error) {
 				t.State = CallState(extra)
 
 			}
-			// t.Result (sectorstorage.ManyBytes) (struct)
+			// t.Result (sealer.ManyBytes) (struct)
 		case "Result":
 
 			{
@@ -220,7 +220,7 @@ func (t *WorkState) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.ID (sectorstorage.WorkID) (struct)
+	// t.ID (sealer.WorkID) (struct)
 	if len("ID") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"ID\" was too long")
 	}
@@ -236,7 +236,7 @@ func (t *WorkState) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	// t.Status (sectorstorage.WorkStatus) (string)
+	// t.Status (sealer.WorkStatus) (string)
 	if len("Status") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"Status\" was too long")
 	}
@@ -383,7 +383,7 @@ func (t *WorkState) UnmarshalCBOR(r io.Reader) (err error) {
 		}
 
 		switch name {
-		// t.ID (sectorstorage.WorkID) (struct)
+		// t.ID (sealer.WorkID) (struct)
 		case "ID":
 
 			{
@@ -393,7 +393,7 @@ func (t *WorkState) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
-			// t.Status (sectorstorage.WorkStatus) (string)
+			// t.Status (sealer.WorkStatus) (string)
 		case "Status":
 
 			{

@@ -99,7 +99,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = gen.WriteMapEncodersToFile("./extern/sealer/storiface/cbor_gen.go", "storiface",
+	err = gen.WriteMapEncodersToFile("./storage/sealer/storiface/cbor_gen.go", "storiface",
 		storiface.CallID{},
 	)
 	if err != nil {
@@ -107,7 +107,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = gen.WriteMapEncodersToFile("./extern/sealer/cbor_gen.go", "sealer",
+	err = gen.WriteMapEncodersToFile("./storage/sealer/cbor_gen.go", "sealer",
 		sectorstorage.Call{},
 		sectorstorage.WorkState{},
 		sectorstorage.WorkID{},
