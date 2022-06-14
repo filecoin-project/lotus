@@ -35,9 +35,9 @@ import (
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	stores "github.com/filecoin-project/lotus/storage/sealer/stores"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -384,10 +384,10 @@ var runCmd = &cli.Command{
 				return err
 			}
 
-			var localPaths []stores.LocalPath
+			var localPaths []paths.LocalPath
 
 			if !cctx.Bool("no-local-storage") {
-				b, err := json.MarshalIndent(&stores.LocalStorageMeta{
+				b, err := json.MarshalIndent(&paths.LocalStorageMeta{
 					ID:       storiface.ID(uuid.New().String()),
 					Weight:   10,
 					CanSeal:  true,
@@ -401,12 +401,12 @@ var runCmd = &cli.Command{
 					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
 				}
 
-				localPaths = append(localPaths, stores.LocalPath{
+				localPaths = append(localPaths, paths.LocalPath{
 					Path: lr.Path(),
 				})
 			}
 
-			if err := lr.SetStorage(func(sc *stores.StorageConfig) {
+			if err := lr.SetStorage(func(sc *paths.StorageConfig) {
 				sc.StoragePaths = append(sc.StoragePaths, localPaths...)
 			}); err != nil {
 				return xerrors.Errorf("set storage config: %w", err)
@@ -456,7 +456,7 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		localStore, err := stores.NewLocal(ctx, lr, nodeApi, []string{"http://" + address + "/remote"})
+		localStore, err := paths.NewLocal(ctx, lr, nodeApi, []string{"http://" + address + "/remote"})
 		if err != nil {
 			return err
 		}
@@ -467,10 +467,10 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("could not get api info: %w", err)
 		}
 
-		remote := stores.NewRemote(localStore, nodeApi, sminfo.AuthHeader(), cctx.Int("parallel-fetch-limit"),
-			&stores.DefaultPartialFileHandler{})
+		remote := paths.NewRemote(localStore, nodeApi, sminfo.AuthHeader(), cctx.Int("parallel-fetch-limit"),
+			&paths.DefaultPartialFileHandler{})
 
-		fh := &stores.FetchHandler{Local: localStore, PfHandler: &stores.DefaultPartialFileHandler{}}
+		fh := &paths.FetchHandler{Local: localStore, PfHandler: &paths.DefaultPartialFileHandler{}}
 		remoteHandler := func(w http.ResponseWriter, r *http.Request) {
 			if !auth.HasPerm(r.Context(), nil, api.PermAdmin) {
 				w.WriteHeader(401)
@@ -561,7 +561,7 @@ var runCmd = &cli.Command{
 		}
 
 		go func() {
-			heartbeats := time.NewTicker(stores.HeartbeatInterval)
+			heartbeats := time.NewTicker(paths.HeartbeatInterval)
 			defer heartbeats.Stop()
 
 			var redeclareStorage bool

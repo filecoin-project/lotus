@@ -55,10 +55,10 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/paths"
 	sectorstorage "github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	mock2 "github.com/filecoin-project/lotus/storage/sealer/mock"
-	stores "github.com/filecoin-project/lotus/storage/sealer/stores"
 )
 
 func init() {
@@ -546,8 +546,8 @@ func (n *Ensemble) Start() *Ensemble {
 		// using real proofs, therefore need real sectors.
 		if !n.bootstrapped && !n.options.mockProofs {
 			psd := m.PresealDir
-			err := lr.SetStorage(func(sc *stores.StorageConfig) {
-				sc.StoragePaths = append(sc.StoragePaths, stores.LocalPath{Path: psd})
+			err := lr.SetStorage(func(sc *paths.StorageConfig) {
+				sc.StoragePaths = append(sc.StoragePaths, paths.LocalPath{Path: psd})
 			})
 
 			require.NoError(n.t, err)
@@ -698,15 +698,15 @@ func (n *Ensemble) Start() *Ensemble {
 
 		addr := m.RemoteListener.Addr().String()
 
-		localStore, err := stores.NewLocal(ctx, lr, m.MinerNode, []string{"http://" + addr + "/remote"})
+		localStore, err := paths.NewLocal(ctx, lr, m.MinerNode, []string{"http://" + addr + "/remote"})
 		require.NoError(n.t, err)
 
 		auth := http.Header(nil)
 
-		remote := stores.NewRemote(localStore, m.MinerNode, auth, 20, &stores.DefaultPartialFileHandler{})
+		remote := paths.NewRemote(localStore, m.MinerNode, auth, 20, &paths.DefaultPartialFileHandler{})
 		store := m.options.workerStorageOpt(remote)
 
-		fh := &stores.FetchHandler{Local: localStore, PfHandler: &stores.DefaultPartialFileHandler{}}
+		fh := &paths.FetchHandler{Local: localStore, PfHandler: &paths.DefaultPartialFileHandler{}}
 		m.FetchHandler = fh.ServeHTTP
 
 		wsts := statestore.New(namespace.Wrap(ds, modules.WorkerCallsPrefix))

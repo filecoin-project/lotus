@@ -48,11 +48,11 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
+	"github.com/filecoin-project/lotus/storage/paths"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
-	stores "github.com/filecoin-project/lotus/storage/sealer/stores"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/filecoin-project/lotus/storage/wdpost"
@@ -67,8 +67,8 @@ type StorageMinerAPI struct {
 	EnabledSubsystems api.MinerSubsystems
 
 	Full        api.FullNode
-	LocalStore  *stores.Local
-	RemoteStore *stores.Remote
+	LocalStore  *paths.Local
+	RemoteStore *paths.Remote
 
 	// Markets
 	PieceStore        dtypes.ProviderPieceStore         `optional:"true"`
@@ -89,7 +89,7 @@ type StorageMinerAPI struct {
 	BlockMiner  *miner.Miner         `optional:"true"`
 	StorageMgr  *sealer.Manager      `optional:"true"`
 	IStorageMgr sealer.SectorManager `optional:"true"`
-	stores.SectorIndex
+	paths.SectorIndex
 	storiface.WorkerReturn `optional:"true"`
 	AddrSel                *ctladdr.AddressSelector
 

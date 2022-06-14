@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-storage/storage"
 
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/fr32"
-	stores "github.com/filecoin-project/lotus/storage/sealer/stores"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -35,12 +35,12 @@ type PieceProvider interface {
 var _ PieceProvider = &pieceProvider{}
 
 type pieceProvider struct {
-	storage *stores.Remote
-	index   stores.SectorIndex
+	storage *paths.Remote
+	index   paths.SectorIndex
 	uns     Unsealer
 }
 
-func NewPieceProvider(storage *stores.Remote, index stores.SectorIndex, uns Unsealer) PieceProvider {
+func NewPieceProvider(storage *paths.Remote, index paths.SectorIndex, uns Unsealer) PieceProvider {
 	return &pieceProvider{
 		storage: storage,
 		index:   index,

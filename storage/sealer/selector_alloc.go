@@ -7,18 +7,18 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	"github.com/filecoin-project/lotus/storage/sealer/stores"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type allocSelector struct {
-	index stores.SectorIndex
+	index paths.SectorIndex
 	alloc storiface.SectorFileType
 	ptype storiface.PathType
 }
 
-func newAllocSelector(index stores.SectorIndex, alloc storiface.SectorFileType, ptype storiface.PathType) *allocSelector {
+func newAllocSelector(index paths.SectorIndex, alloc storiface.SectorFileType, ptype storiface.PathType) *allocSelector {
 	return &allocSelector{
 		index: index,
 		alloc: alloc,

@@ -7,13 +7,13 @@ import (
 
 	"github.com/filecoin-project/specs-storage/storage"
 
-	stores "github.com/filecoin-project/lotus/storage/sealer/stores"
+	"github.com/filecoin-project/lotus/storage/paths"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type readonlyProvider struct {
-	index stores.SectorIndex
-	stor  *stores.Local
+	index paths.SectorIndex
+	stor  *paths.Local
 }
 
 func (l *readonlyProvider) AcquireSector(ctx context.Context, id storage.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, sealing storiface.PathType) (storiface.SectorPaths, func(), error) {

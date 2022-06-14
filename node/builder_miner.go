@@ -33,10 +33,10 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
+	"github.com/filecoin-project/lotus/storage/paths"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	sectorstorage "github.com/filecoin-project/lotus/storage/sealer"
 	ffiwrapper "github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
-	stores "github.com/filecoin-project/lotus/storage/sealer/stores"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 	"github.com/filecoin-project/lotus/storage/wdpost"
@@ -87,10 +87,10 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(CheckFDLimit, modules.CheckFdLimit(build.MinerFDLimit)), // recommend at least 100k FD limit to miners
 
 		Override(new(api.MinerSubsystems), modules.ExtractEnabledMinerSubsystems(cfg.Subsystems)),
-		Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
-		Override(new(*stores.Local), modules.LocalStorage),
-		Override(new(*stores.Remote), modules.RemoteStorage),
-		Override(new(stores.Store), From(new(*stores.Remote))),
+		Override(new(paths.LocalStorage), From(new(repo.LockedRepo))),
+		Override(new(*paths.Local), modules.LocalStorage),
+		Override(new(*paths.Remote), modules.RemoteStorage),
+		Override(new(paths.Store), From(new(*paths.Remote))),
 		Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
 
 		If(!cfg.Subsystems.EnableMining,
@@ -124,8 +124,8 @@ func ConfigStorageMiner(c interface{}) Option {
 
 		If(cfg.Subsystems.EnableSectorStorage,
 			// Sector storage
-			Override(new(*stores.Index), stores.NewIndex),
-			Override(new(stores.SectorIndex), From(new(*stores.Index))),
+			Override(new(*paths.Index), paths.NewIndex),
+			Override(new(paths.SectorIndex), From(new(*paths.Index))),
 			Override(new(*sectorstorage.Manager), modules.SectorStorage),
 			Override(new(sectorstorage.Unsealer), From(new(*sectorstorage.Manager))),
 			Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
@@ -140,7 +140,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		),
 		If(!cfg.Subsystems.EnableSealing,
 			Override(new(modules.MinerSealingService), modules.ConnectSealingService(cfg.Subsystems.SealerApiInfo)),
-			Override(new(stores.SectorIndex), From(new(modules.MinerSealingService))),
+			Override(new(paths.SectorIndex), From(new(modules.MinerSealingService))),
 		),
 
 		If(cfg.Subsystems.EnableMarkets,

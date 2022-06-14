@@ -7,19 +7,19 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	"github.com/filecoin-project/lotus/storage/sealer/stores"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type existingSelector struct {
-	index      stores.SectorIndex
+	index      paths.SectorIndex
 	sector     abi.SectorID
 	alloc      storiface.SectorFileType
 	allowFetch bool
 }
 
-func newExistingSelector(index stores.SectorIndex, sector abi.SectorID, alloc storiface.SectorFileType, allowFetch bool) *existingSelector {
+func newExistingSelector(index paths.SectorIndex, sector abi.SectorID, alloc storiface.SectorFileType, allowFetch bool) *existingSelector {
 	return &existingSelector{
 		index:      index,
 		sector:     sector,

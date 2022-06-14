@@ -22,8 +22,8 @@ import (
 	"github.com/filecoin-project/go-statestore"
 	specstorage "github.com/filecoin-project/specs-storage/storage"
 
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	stores "github.com/filecoin-project/lotus/storage/sealer/stores"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -180,13 +180,13 @@ func TestReadPieceRemoteWorkers(t *testing.T) {
 
 type pieceProviderTestHarness struct {
 	ctx         context.Context
-	index       *stores.Index
+	index       *paths.Index
 	pp          PieceProvider
 	sector      specstorage.SectorRef
 	mgr         *Manager
 	ticket      abi.SealRandomness
 	commD       cid.Cid
-	localStores []*stores.Local
+	localStores []*paths.Local
 
 	servers []*http.Server
 
@@ -207,11 +207,11 @@ func newPieceProviderTestHarness(t *testing.T, mgrConfig Config, sectorProofType
 	require.NoError(t, err)
 
 	// create index, storage, local store & remote store.
-	index := stores.NewIndex()
+	index := paths.NewIndex()
 	storage := newTestStorage(t)
-	localStore, err := stores.NewLocal(ctx, storage, index, []string{"http://" + nl.Addr().String() + "/remote"})
+	localStore, err := paths.NewLocal(ctx, storage, index, []string{"http://" + nl.Addr().String() + "/remote"})
 	require.NoError(t, err)
-	remoteStore := stores.NewRemote(localStore, index, nil, 6000, &stores.DefaultPartialFileHandler{})
+	remoteStore := paths.NewRemote(localStore, index, nil, 6000, &paths.DefaultPartialFileHandler{})
 
 	// data stores for state tracking.
 	dstore := ds_sync.MutexWrap(datastore.NewMapDatastore())
@@ -261,12 +261,12 @@ func (p *pieceProviderTestHarness) addRemoteWorker(t *testing.T, tasks []sealtas
 	nl, err := net.Listen("tcp", address)
 	require.NoError(t, err)
 
-	localStore, err := stores.NewLocal(p.ctx, newTestStorage(t), p.index, []string{"http://" + nl.Addr().String() + "/remote"})
+	localStore, err := paths.NewLocal(p.ctx, newTestStorage(t), p.index, []string{"http://" + nl.Addr().String() + "/remote"})
 	require.NoError(t, err)
 
-	fh := &stores.FetchHandler{
+	fh := &paths.FetchHandler{
 		Local:     localStore,
-		PfHandler: &stores.DefaultPartialFileHandler{},
+		PfHandler: &paths.DefaultPartialFileHandler{},
 	}
 
 	mux := mux.NewRouter()
@@ -280,8 +280,8 @@ func (p *pieceProviderTestHarness) addRemoteWorker(t *testing.T, tasks []sealtas
 		_ = svc.Serve(nl)
 	}()
 
-	remote := stores.NewRemote(localStore, p.index, nil, 1000,
-		&stores.DefaultPartialFileHandler{})
+	remote := paths.NewRemote(localStore, p.index, nil, 1000,
+		&paths.DefaultPartialFileHandler{})
 
 	dstore := ds_sync.MutexWrap(datastore.NewMapDatastore())
 	csts := statestore.New(namespace.Wrap(dstore, datastore.NewKey("/stmgr/calls")))

@@ -1,5 +1,5 @@
 //stm: #unit
-package stores_test
+package paths_test
 
 import (
 	"context"
@@ -24,22 +24,22 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/paths"
+	mocks2 "github.com/filecoin-project/lotus/storage/paths/mocks"
 	"github.com/filecoin-project/lotus/storage/sealer/partialfile"
-	stores "github.com/filecoin-project/lotus/storage/sealer/stores"
-	mocks "github.com/filecoin-project/lotus/storage/sealer/stores/mocks"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 const metaFile = "sectorstore.json"
 
-func createTestStorage(t *testing.T, p string, seal bool, att ...*stores.Local) storiface.ID {
+func createTestStorage(t *testing.T, p string, seal bool, att ...*paths.Local) storiface.ID {
 	if err := os.MkdirAll(p, 0755); err != nil {
 		if !os.IsExist(err) {
 			require.NoError(t, err)
 		}
 	}
 
-	cfg := &stores.LocalStorageMeta{
+	cfg := &paths.LocalStorageMeta{
 		ID:       storiface.ID(uuid.New().String()),
 		Weight:   10,
 		CanSeal:  seal,
@@ -61,7 +61,7 @@ func createTestStorage(t *testing.T, p string, seal bool, att ...*stores.Local) 
 func TestMoveShared(t *testing.T) {
 	logging.SetAllLoggers(logging.LevelDebug)
 
-	index := stores.NewIndex()
+	index := paths.NewIndex()
 
 	ctx := context.Background()
 
@@ -78,8 +78,8 @@ func TestMoveShared(t *testing.T) {
 			_ = lr.Close()
 		})
 
-		err = lr.SetStorage(func(config *stores.StorageConfig) {
-			*config = stores.StorageConfig{}
+		err = lr.SetStorage(func(config *paths.StorageConfig) {
+			*config = paths.StorageConfig{}
 		})
 		require.NoError(t, err)
 
@@ -98,9 +98,9 @@ func TestMoveShared(t *testing.T) {
 	hs1 := httptest.NewServer(mux1)
 	hs2 := httptest.NewServer(mux2)
 
-	ls1, err := stores.NewLocal(ctx, lr1, index, []string{hs1.URL + "/remote"})
+	ls1, err := paths.NewLocal(ctx, lr1, index, []string{hs1.URL + "/remote"})
 	require.NoError(t, err)
-	ls2, err := stores.NewLocal(ctx, lr2, index, []string{hs2.URL + "/remote"})
+	ls2, err := paths.NewLocal(ctx, lr2, index, []string{hs2.URL + "/remote"})
 	require.NoError(t, err)
 
 	dirStor := filepath.Join(dir, "stor")
@@ -109,11 +109,11 @@ func TestMoveShared(t *testing.T) {
 	id1 := createTestStorage(t, dirStor, false, ls1, ls2)
 	id2 := createTestStorage(t, dirSeal, true, ls1)
 
-	rs1 := stores.NewRemote(ls1, index, nil, 20, &stores.DefaultPartialFileHandler{})
-	rs2 := stores.NewRemote(ls2, index, nil, 20, &stores.DefaultPartialFileHandler{})
+	rs1 := paths.NewRemote(ls1, index, nil, 20, &paths.DefaultPartialFileHandler{})
+	rs2 := paths.NewRemote(ls2, index, nil, 20, &paths.DefaultPartialFileHandler{})
 	_ = rs2
-	mux1.PathPrefix("/").Handler(&stores.FetchHandler{Local: ls1, PfHandler: &stores.DefaultPartialFileHandler{}})
-	mux2.PathPrefix("/").Handler(&stores.FetchHandler{Local: ls2, PfHandler: &stores.DefaultPartialFileHandler{}})
+	mux1.PathPrefix("/").Handler(&paths.FetchHandler{Local: ls1, PfHandler: &paths.DefaultPartialFileHandler{}})
+	mux2.PathPrefix("/").Handler(&paths.FetchHandler{Local: ls2, PfHandler: &paths.DefaultPartialFileHandler{}})
 
 	// add a sealed replica file to the sealing (non-shared) path
 
@@ -175,9 +175,9 @@ func TestReader(t *testing.T) {
 	ctx := context.Background()
 
 	tcs := map[string]struct {
-		storeFnc func(s *mocks.MockStore)
-		pfFunc   func(s *mocks.MockPartialFileHandler)
-		indexFnc func(s *mocks.MockSectorIndex, serverURL string)
+		storeFnc func(s *mocks2.MockStore)
+		pfFunc   func(s *mocks2.MockPartialFileHandler)
+		indexFnc func(s *mocks2.MockSectorIndex, serverURL string)
 
 		needHttpServer bool
 
@@ -194,7 +194,7 @@ func TestReader(t *testing.T) {
 
 		// -------- have the unsealed file locally
 		"fails when error while acquiring unsealed file": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, pfPath, xerrors.New("acquire error"))
 			},
 
@@ -202,22 +202,22 @@ func TestReader(t *testing.T) {
 		},
 
 		"fails when error while opening local partial (unsealed) file": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, pfPath, nil)
 			},
 
-			pfFunc: func(pf *mocks.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks2.MockPartialFileHandler) {
 				mockPartialFileOpen(pf, sectorSize, pfPath, xerrors.New("pf open error"))
 			},
 			errStr: "pf open error",
 		},
 
 		"fails when error while checking if local unsealed file has piece": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, pfPath, nil)
 			},
 
-			pfFunc: func(pf *mocks.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks2.MockPartialFileHandler) {
 				mockPartialFileOpen(pf, sectorSize, pfPath, nil)
 				mockCheckAllocation(pf, offset, size, emptyPartialFile,
 					true, xerrors.New("piece check error"))
@@ -227,11 +227,11 @@ func TestReader(t *testing.T) {
 		},
 
 		"fails when error while closing local unsealed file that does not have the piece": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, pfPath, nil)
 			},
 
-			pfFunc: func(pf *mocks.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks2.MockPartialFileHandler) {
 				mockPartialFileOpen(pf, sectorSize, pfPath, nil)
 				mockCheckAllocation(pf, offset, size, emptyPartialFile,
 					false, nil)
@@ -241,11 +241,11 @@ func TestReader(t *testing.T) {
 		},
 
 		"fails when error while fetching reader for the local unsealed file that has the unsealed piece": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, pfPath, nil)
 			},
 
-			pfFunc: func(pf *mocks.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks2.MockPartialFileHandler) {
 				mockPartialFileOpen(pf, sectorSize, pfPath, nil)
 				mockCheckAllocation(pf, offset, size, emptyPartialFile,
 					true, nil)
@@ -258,11 +258,11 @@ func TestReader(t *testing.T) {
 		// ------------------- don't have the unsealed file locally
 
 		"fails when error while finding sector": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, "", nil)
 			},
 
-			indexFnc: func(in *mocks.MockSectorIndex, _ string) {
+			indexFnc: func(in *mocks2.MockSectorIndex, _ string) {
 				in.EXPECT().StorageFindSector(gomock.Any(), sectorRef.ID, storiface.FTUnsealed, gomock.Any(),
 					false).Return(nil, xerrors.New("find sector error"))
 			},
@@ -270,11 +270,11 @@ func TestReader(t *testing.T) {
 		},
 
 		"fails when no worker has unsealed file": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, "", nil)
 			},
 
-			indexFnc: func(in *mocks.MockSectorIndex, _ string) {
+			indexFnc: func(in *mocks2.MockSectorIndex, _ string) {
 				in.EXPECT().StorageFindSector(gomock.Any(), sectorRef.ID, storiface.FTUnsealed, gomock.Any(),
 					false).Return(nil, nil)
 			},
@@ -283,11 +283,11 @@ func TestReader(t *testing.T) {
 
 		// --- nil reader when local unsealed file does NOT have unsealed piece
 		"nil reader when local unsealed file does not have the unsealed piece and remote sector also dosen't have the unsealed piece": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, pfPath, nil)
 			},
 
-			pfFunc: func(pf *mocks.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks2.MockPartialFileHandler) {
 				mockPartialFileOpen(pf, sectorSize, pfPath, nil)
 				mockCheckAllocation(pf, offset, size, emptyPartialFile,
 					false, nil)
@@ -296,7 +296,7 @@ func TestReader(t *testing.T) {
 
 			},
 
-			indexFnc: func(in *mocks.MockSectorIndex, url string) {
+			indexFnc: func(in *mocks2.MockSectorIndex, url string) {
 				si := storiface.SectorStorageInfo{
 					URLs: []string{url},
 				}
@@ -311,11 +311,11 @@ func TestReader(t *testing.T) {
 
 		// ---- nil reader when none of the remote unsealed file has unsealed piece
 		"nil reader when none of the worker has the unsealed piece": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, "", nil)
 			},
 
-			indexFnc: func(in *mocks.MockSectorIndex, url string) {
+			indexFnc: func(in *mocks2.MockSectorIndex, url string) {
 				si := storiface.SectorStorageInfo{
 					URLs: []string{url},
 				}
@@ -329,11 +329,11 @@ func TestReader(t *testing.T) {
 		},
 
 		"nil reader when none of the worker is able to serve the unsealed piece even though they have it": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, "", nil)
 			},
 
-			indexFnc: func(in *mocks.MockSectorIndex, url string) {
+			indexFnc: func(in *mocks2.MockSectorIndex, url string) {
 				si := storiface.SectorStorageInfo{
 					URLs: []string{url},
 				}
@@ -349,11 +349,11 @@ func TestReader(t *testing.T) {
 
 		// ---- Success for local unsealed file
 		"successfully fetches reader for piece from local unsealed file": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, pfPath, nil)
 			},
 
-			pfFunc: func(pf *mocks.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks2.MockPartialFileHandler) {
 				mockPartialFileOpen(pf, sectorSize, pfPath, nil)
 				mockCheckAllocation(pf, offset, size, emptyPartialFile,
 					true, nil)
@@ -377,11 +377,11 @@ func TestReader(t *testing.T) {
 		// --- Success for remote unsealed file
 		// --- Success for remote unsealed file
 		"successfully fetches reader from remote unsealed piece when local unsealed file does NOT have the unsealed Piece": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, pfPath, nil)
 			},
 
-			pfFunc: func(pf *mocks.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks2.MockPartialFileHandler) {
 				mockPartialFileOpen(pf, sectorSize, pfPath, nil)
 				mockCheckAllocation(pf, offset, size, emptyPartialFile,
 					false, nil)
@@ -390,7 +390,7 @@ func TestReader(t *testing.T) {
 
 			},
 
-			indexFnc: func(in *mocks.MockSectorIndex, url string) {
+			indexFnc: func(in *mocks2.MockSectorIndex, url string) {
 				si := storiface.SectorStorageInfo{
 					URLs: []string{url},
 				}
@@ -407,11 +407,11 @@ func TestReader(t *testing.T) {
 		},
 
 		"successfully fetches reader for piece from remote unsealed piece": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, "", nil)
 			},
 
-			indexFnc: func(in *mocks.MockSectorIndex, url string) {
+			indexFnc: func(in *mocks2.MockSectorIndex, url string) {
 				si := storiface.SectorStorageInfo{
 					URLs: []string{url},
 				}
@@ -437,9 +437,9 @@ func TestReader(t *testing.T) {
 			defer mockCtrl.Finish()
 
 			// create them mocks
-			lstore := mocks.NewMockStore(mockCtrl)
-			pfhandler := mocks.NewMockPartialFileHandler(mockCtrl)
-			index := mocks.NewMockSectorIndex(mockCtrl)
+			lstore := mocks2.NewMockStore(mockCtrl)
+			pfhandler := mocks2.NewMockPartialFileHandler(mockCtrl)
+			index := mocks2.NewMockSectorIndex(mockCtrl)
 
 			if tc.storeFnc != nil {
 				tc.storeFnc(lstore)
@@ -468,7 +468,7 @@ func TestReader(t *testing.T) {
 				tc.indexFnc(index, tc.serverUrl)
 			}
 
-			remoteStore := stores.NewRemote(lstore, index, nil, 6000, pfhandler)
+			remoteStore := paths.NewRemote(lstore, index, nil, 6000, pfhandler)
 
 			rdg, err := remoteStore.Reader(ctx, sectorRef, offset, size)
 			var rd io.ReadCloser
@@ -533,9 +533,9 @@ func TestCheckIsUnsealed(t *testing.T) {
 	ctx := context.Background()
 
 	tcs := map[string]struct {
-		storeFnc func(s *mocks.MockStore)
-		pfFunc   func(s *mocks.MockPartialFileHandler)
-		indexFnc func(s *mocks.MockSectorIndex, serverURL string)
+		storeFnc func(s *mocks2.MockStore)
+		pfFunc   func(s *mocks2.MockPartialFileHandler)
+		indexFnc func(s *mocks2.MockSectorIndex, serverURL string)
 
 		needHttpServer bool
 
@@ -550,7 +550,7 @@ func TestCheckIsUnsealed(t *testing.T) {
 
 		// -------- have the unsealed file locally
 		"fails when error while acquiring unsealed file": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, pfPath, xerrors.New("acquire error"))
 			},
 
@@ -558,22 +558,22 @@ func TestCheckIsUnsealed(t *testing.T) {
 		},
 
 		"fails when error while opening local partial (unsealed) file": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, pfPath, nil)
 			},
 
-			pfFunc: func(pf *mocks.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks2.MockPartialFileHandler) {
 				mockPartialFileOpen(pf, sectorSize, pfPath, xerrors.New("pf open error"))
 			},
 			errStr: "pf open error",
 		},
 
 		"fails when error while checking if local unsealed file has piece": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, pfPath, nil)
 			},
 
-			pfFunc: func(pf *mocks.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks2.MockPartialFileHandler) {
 				mockPartialFileOpen(pf, sectorSize, pfPath, nil)
 				mockCheckAllocation(pf, offset, size, emptyPartialFile,
 					true, xerrors.New("piece check error"))
@@ -583,11 +583,11 @@ func TestCheckIsUnsealed(t *testing.T) {
 		},
 
 		"fails when error while closing local unsealed file": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, pfPath, nil)
 			},
 
-			pfFunc: func(pf *mocks.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks2.MockPartialFileHandler) {
 				mockPartialFileOpen(pf, sectorSize, pfPath, nil)
 
 				mockCheckAllocation(pf, offset, size, emptyPartialFile,
@@ -601,11 +601,11 @@ func TestCheckIsUnsealed(t *testing.T) {
 		// ------------------- don't have the unsealed file locally
 
 		"fails when error while finding sector": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, "", nil)
 			},
 
-			indexFnc: func(in *mocks.MockSectorIndex, _ string) {
+			indexFnc: func(in *mocks2.MockSectorIndex, _ string) {
 				in.EXPECT().StorageFindSector(gomock.Any(), sectorRef.ID, storiface.FTUnsealed, gomock.Any(),
 					false).Return(nil, xerrors.New("find sector error"))
 			},
@@ -613,11 +613,11 @@ func TestCheckIsUnsealed(t *testing.T) {
 		},
 
 		"false when no worker has unsealed file": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, "", nil)
 			},
 
-			indexFnc: func(in *mocks.MockSectorIndex, _ string) {
+			indexFnc: func(in *mocks2.MockSectorIndex, _ string) {
 				in.EXPECT().StorageFindSector(gomock.Any(), sectorRef.ID, storiface.FTUnsealed, gomock.Any(),
 					false).Return(nil, nil)
 			},
@@ -625,11 +625,11 @@ func TestCheckIsUnsealed(t *testing.T) {
 
 		// false when local unsealed file does NOT have unsealed piece
 		"false when local unsealed file does not have the piece and remote sector too dosen't have the piece": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, pfPath, nil)
 			},
 
-			pfFunc: func(pf *mocks.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks2.MockPartialFileHandler) {
 				mockPartialFileOpen(pf, sectorSize, pfPath, nil)
 				mockCheckAllocation(pf, offset, size, emptyPartialFile,
 					false, nil)
@@ -637,7 +637,7 @@ func TestCheckIsUnsealed(t *testing.T) {
 				pf.EXPECT().Close(emptyPartialFile).Return(nil).Times(1)
 			},
 
-			indexFnc: func(in *mocks.MockSectorIndex, url string) {
+			indexFnc: func(in *mocks2.MockSectorIndex, url string) {
 				si := storiface.SectorStorageInfo{
 					URLs: []string{url},
 				}
@@ -651,11 +651,11 @@ func TestCheckIsUnsealed(t *testing.T) {
 		},
 
 		"false when none of the worker has the unsealed piece": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, "", nil)
 			},
 
-			indexFnc: func(in *mocks.MockSectorIndex, url string) {
+			indexFnc: func(in *mocks2.MockSectorIndex, url string) {
 				si := storiface.SectorStorageInfo{
 					URLs: []string{url},
 				}
@@ -670,11 +670,11 @@ func TestCheckIsUnsealed(t *testing.T) {
 
 		// ---- Success for local unsealed file
 		"true when local unsealed file has the piece": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, pfPath, nil)
 			},
 
-			pfFunc: func(pf *mocks.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks2.MockPartialFileHandler) {
 				mockPartialFileOpen(pf, sectorSize, pfPath, nil)
 				mockCheckAllocation(pf, offset, size, emptyPartialFile,
 					true, nil)
@@ -687,11 +687,11 @@ func TestCheckIsUnsealed(t *testing.T) {
 
 		// --- Success for remote unsealed file
 		"true if we have a  remote unsealed piece": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, "", nil)
 			},
 
-			indexFnc: func(in *mocks.MockSectorIndex, url string) {
+			indexFnc: func(in *mocks2.MockSectorIndex, url string) {
 				si := storiface.SectorStorageInfo{
 					URLs: []string{url},
 				}
@@ -706,11 +706,11 @@ func TestCheckIsUnsealed(t *testing.T) {
 		},
 
 		"true when local unsealed file does NOT have the unsealed Piece but remote sector has the unsealed piece": {
-			storeFnc: func(l *mocks.MockStore) {
+			storeFnc: func(l *mocks2.MockStore) {
 				mockSectorAcquire(l, sectorRef, pfPath, nil)
 			},
 
-			pfFunc: func(pf *mocks.MockPartialFileHandler) {
+			pfFunc: func(pf *mocks2.MockPartialFileHandler) {
 				mockPartialFileOpen(pf, sectorSize, pfPath, nil)
 				mockCheckAllocation(pf, offset, size, emptyPartialFile,
 					false, nil)
@@ -718,7 +718,7 @@ func TestCheckIsUnsealed(t *testing.T) {
 				pf.EXPECT().Close(emptyPartialFile).Return(nil).Times(1)
 			},
 
-			indexFnc: func(in *mocks.MockSectorIndex, url string) {
+			indexFnc: func(in *mocks2.MockSectorIndex, url string) {
 				si := storiface.SectorStorageInfo{
 					URLs: []string{url},
 				}
@@ -742,9 +742,9 @@ func TestCheckIsUnsealed(t *testing.T) {
 			defer mockCtrl.Finish()
 
 			// create them mocks
-			lstore := mocks.NewMockStore(mockCtrl)
-			pfhandler := mocks.NewMockPartialFileHandler(mockCtrl)
-			index := mocks.NewMockSectorIndex(mockCtrl)
+			lstore := mocks2.NewMockStore(mockCtrl)
+			pfhandler := mocks2.NewMockPartialFileHandler(mockCtrl)
+			index := mocks2.NewMockSectorIndex(mockCtrl)
 
 			if tc.storeFnc != nil {
 				tc.storeFnc(lstore)
@@ -771,7 +771,7 @@ func TestCheckIsUnsealed(t *testing.T) {
 				tc.indexFnc(index, tc.serverUrl)
 			}
 
-			remoteStore := stores.NewRemote(lstore, index, nil, 6000, pfhandler)
+			remoteStore := paths.NewRemote(lstore, index, nil, 6000, pfhandler)
 
 			isUnsealed, err := remoteStore.CheckIsUnsealed(ctx, sectorRef, offset, size)
 
@@ -789,7 +789,7 @@ func TestCheckIsUnsealed(t *testing.T) {
 	}
 }
 
-func mockSectorAcquire(l *mocks.MockStore, sectorRef storage.SectorRef, pfPath string, err error) {
+func mockSectorAcquire(l *mocks2.MockStore, sectorRef storage.SectorRef, pfPath string, err error) {
 	l.EXPECT().AcquireSector(gomock.Any(), sectorRef, storiface.FTUnsealed,
 		storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
 		Unsealed: pfPath,
@@ -797,18 +797,18 @@ func mockSectorAcquire(l *mocks.MockStore, sectorRef storage.SectorRef, pfPath s
 		storiface.SectorPaths{}, err).Times(1)
 }
 
-func mockPartialFileOpen(pf *mocks.MockPartialFileHandler, sectorSize abi.SectorSize, pfPath string, err error) {
+func mockPartialFileOpen(pf *mocks2.MockPartialFileHandler, sectorSize abi.SectorSize, pfPath string, err error) {
 	pf.EXPECT().OpenPartialFile(abi.PaddedPieceSize(sectorSize), pfPath).Return(&partialfile.PartialFile{},
 		err).Times(1)
 }
 
-func mockCheckAllocation(pf *mocks.MockPartialFileHandler, offset, size abi.PaddedPieceSize, file *partialfile.PartialFile,
+func mockCheckAllocation(pf *mocks2.MockPartialFileHandler, offset, size abi.PaddedPieceSize, file *partialfile.PartialFile,
 	out bool, err error) {
 	pf.EXPECT().HasAllocated(file, storiface.UnpaddedByteIndex(offset.Unpadded()),
 		size.Unpadded()).Return(out, err).Times(1)
 }
 
-func mockPfReader(pf *mocks.MockPartialFileHandler, file *partialfile.PartialFile, offset, size abi.PaddedPieceSize,
+func mockPfReader(pf *mocks2.MockPartialFileHandler, file *partialfile.PartialFile, offset, size abi.PaddedPieceSize,
 	outFile *os.File, err error) {
 	pf.EXPECT().Reader(file, storiface.PaddedByteIndex(offset), size).Return(outFile, err)
 }

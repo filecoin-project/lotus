@@ -23,9 +23,9 @@ import (
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/specs-storage/storage"
 
+	"github.com/filecoin-project/lotus/storage/paths"
 	ffiwrapper "github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	stores "github.com/filecoin-project/lotus/storage/sealer/stores"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -49,9 +49,9 @@ type ExecutorFunc func() (ffiwrapper.Storage, error)
 type EnvFunc func(string) (string, bool)
 
 type LocalWorker struct {
-	storage    stores.Store
-	localStore *stores.Local
-	sindex     stores.SectorIndex
+	storage    paths.Store
+	localStore *paths.Local
+	sindex     paths.SectorIndex
 	ret        storiface.WorkerReturn
 	executor   ExecutorFunc
 	noSwap     bool
@@ -73,7 +73,7 @@ type LocalWorker struct {
 	closing     chan struct{}
 }
 
-func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, envLookup EnvFunc, store stores.Store, local *stores.Local, sindex stores.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore) *LocalWorker {
+func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, envLookup EnvFunc, store paths.Store, local *paths.Local, sindex paths.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore) *LocalWorker {
 	acceptTasks := map[sealtasks.TaskType]struct{}{}
 	for _, taskType := range wcfg.TaskTypes {
 		acceptTasks[taskType] = struct{}{}
@@ -135,7 +135,7 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, envLookup EnvFunc,
 	return w
 }
 
-func NewLocalWorker(wcfg WorkerConfig, store stores.Store, local *stores.Local, sindex stores.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore) *LocalWorker {
+func NewLocalWorker(wcfg WorkerConfig, store paths.Store, local *paths.Local, sindex paths.SectorIndex, ret storiface.WorkerReturn, cst *statestore.StateStore) *LocalWorker {
 	return newLocalWorker(nil, wcfg, os.LookupEnv, store, local, sindex, ret, cst)
 }
 

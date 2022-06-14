@@ -18,8 +18,8 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/lib/rpcenc"
 	"github.com/filecoin-project/lotus/metrics/proxy"
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer"
-	"github.com/filecoin-project/lotus/storage/sealer/stores"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -55,8 +55,8 @@ func WorkerHandler(authv func(ctx context.Context, token string) ([]auth.Permiss
 type Worker struct {
 	*sealer.LocalWorker
 
-	LocalStore *stores.Local
-	Storage    stores.LocalStorage
+	LocalStore *paths.Local
+	Storage    paths.LocalStorage
 
 	disabled int64
 }
@@ -75,8 +75,8 @@ func (w *Worker) StorageAddLocal(ctx context.Context, path string) error {
 		return xerrors.Errorf("opening local path: %w", err)
 	}
 
-	if err := w.Storage.SetStorage(func(sc *stores.StorageConfig) {
-		sc.StoragePaths = append(sc.StoragePaths, stores.LocalPath{Path: path})
+	if err := w.Storage.SetStorage(func(sc *paths.StorageConfig) {
+		sc.StoragePaths = append(sc.StoragePaths, paths.LocalPath{Path: path})
 	}); err != nil {
 		return xerrors.Errorf("get storage config: %w", err)
 	}

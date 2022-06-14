@@ -28,9 +28,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/storage/paths"
 	ffiwrapper "github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper/basicfs"
-	"github.com/filecoin-project/lotus/storage/sealer/stores"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -127,7 +127,7 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 	}
 
 	{
-		b, err := json.MarshalIndent(&stores.LocalStorageMeta{
+		b, err := json.MarshalIndent(&paths.LocalStorageMeta{
 			ID:       storiface.ID(uuid.New().String()),
 			Weight:   0, // read-only
 			CanSeal:  false,

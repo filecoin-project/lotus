@@ -41,7 +41,7 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/lp2p"
 	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage/sealer/stores"
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/system"
 )
 
@@ -262,10 +262,10 @@ func ConfigCommon(cfg *config.Common, enableLibp2pNode bool) Option {
 		Override(SetApiEndpointKey, func(lr repo.LockedRepo, e dtypes.APIEndpoint) error {
 			return lr.SetAPIEndpoint(e)
 		}),
-		Override(new(stores.URLs), func(e dtypes.APIEndpoint) (stores.URLs, error) {
+		Override(new(paths.URLs), func(e dtypes.APIEndpoint) (paths.URLs, error) {
 			ip := cfg.API.RemoteListenAddress
 
-			var urls stores.URLs
+			var urls paths.URLs
 			urls = append(urls, "http://"+ip+"/remote") // TODO: This makes no assumptions, and probably could...
 			return urls, nil
 		}),

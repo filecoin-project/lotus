@@ -21,8 +21,8 @@ import (
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	stores "github.com/filecoin-project/lotus/storage/sealer/stores"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/wdpost"
 )
@@ -227,7 +227,7 @@ func TestWindowPostWorker(t *testing.T) {
 }
 
 type badWorkerStorage struct {
-	stores.Store
+	paths.Store
 
 	badsector   *uint64
 	notBadCount int
@@ -258,14 +258,14 @@ func TestWindowPostWorkerSkipBadSector(t *testing.T) {
 		kit.LatestActorsAt(-1),
 		kit.ThroughRPC(),
 		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTGenerateWindowPoSt}),
-		kit.WithWorkerStorage(func(store stores.Store) stores.Store {
+		kit.WithWorkerStorage(func(store paths.Store) paths.Store {
 			return &badWorkerStorage{
 				Store:     store,
 				badsector: &badsector,
 			}
 		}),
 		kit.ConstructorOpts(node.ApplyIf(node.IsType(repo.StorageMiner),
-			node.Override(new(stores.Store), func(store *stores.Remote) stores.Store {
+			node.Override(new(paths.Store), func(store *paths.Remote) paths.Store {
 				return &badWorkerStorage{
 					Store:       store,
 					badsector:   &badsector,

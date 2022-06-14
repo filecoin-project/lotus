@@ -19,10 +19,10 @@ import (
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/specs-storage/storage"
 
+	"github.com/filecoin-project/lotus/storage/paths"
 	ffiwrapper "github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	stores "github.com/filecoin-project/lotus/storage/sealer/stores"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -55,11 +55,11 @@ type SectorManager interface {
 var ClosedWorkerID = uuid.UUID{}
 
 type Manager struct {
-	ls         stores.LocalStorage
-	storage    stores.Store
-	localStore *stores.Local
-	remoteHnd  *stores.FetchHandler
-	index      stores.SectorIndex
+	ls         paths.LocalStorage
+	storage    paths.Store
+	localStore *paths.Local
+	remoteHnd  *paths.FetchHandler
+	index      paths.SectorIndex
 
 	sched            *Scheduler
 	windowPoStSched  *poStScheduler
@@ -133,7 +133,7 @@ type StorageAuth http.Header
 type WorkerStateStore *statestore.StateStore
 type ManagerStateStore *statestore.StateStore
 
-func New(ctx context.Context, lstor *stores.Local, stor stores.Store, ls stores.LocalStorage, si stores.SectorIndex, sc Config, wss WorkerStateStore, mss ManagerStateStore) (*Manager, error) {
+func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.LocalStorage, si paths.SectorIndex, sc Config, wss WorkerStateStore, mss ManagerStateStore) (*Manager, error) {
 	prover, err := ffiwrapper.New(&readonlyProvider{stor: lstor, index: si})
 	if err != nil {
 		return nil, xerrors.Errorf("creating prover instance: %w", err)
@@ -148,7 +148,7 @@ func New(ctx context.Context, lstor *stores.Local, stor stores.Store, ls stores.
 		ls:         ls,
 		storage:    stor,
 		localStore: lstor,
-		remoteHnd:  &stores.FetchHandler{Local: lstor, PfHandler: &stores.DefaultPartialFileHandler{}},
+		remoteHnd:  &paths.FetchHandler{Local: lstor, PfHandler: &paths.DefaultPartialFileHandler{}},
 		index:      si,
 
 		sched:            sh,
@@ -222,8 +222,8 @@ func (m *Manager) AddLocalStorage(ctx context.Context, path string) error {
 		return xerrors.Errorf("opening local path: %w", err)
 	}
 
-	if err := m.ls.SetStorage(func(sc *stores.StorageConfig) {
-		sc.StoragePaths = append(sc.StoragePaths, stores.LocalPath{Path: path})
+	if err := m.ls.SetStorage(func(sc *paths.StorageConfig) {
+		sc.StoragePaths = append(sc.StoragePaths, paths.LocalPath{Path: path})
 	}); err != nil {
 		return xerrors.Errorf("get storage config: %w", err)
 	}

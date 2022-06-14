@@ -20,9 +20,9 @@ import (
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 	"github.com/filecoin-project/specs-storage/storage"
 
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	"github.com/filecoin-project/lotus/storage/sealer/stores"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -183,7 +183,7 @@ func (s *schedTestWorker) Close() error {
 
 var _ Worker = &schedTestWorker{}
 
-func addTestWorker(t *testing.T, sched *Scheduler, index *stores.Index, name string, taskTypes map[sealtasks.TaskType]struct{}, resources storiface.WorkerResources, ignoreResources bool) {
+func addTestWorker(t *testing.T, sched *Scheduler, index *paths.Index, name string, taskTypes map[sealtasks.TaskType]struct{}, resources storiface.WorkerResources, ignoreResources bool) {
 	w := &schedTestWorker{
 		name:      name,
 		taskTypes: taskTypes,
@@ -227,7 +227,7 @@ func TestSchedStartStop(t *testing.T) {
 	require.NoError(t, err)
 	go sched.runSched()
 
-	addTestWorker(t, sched, stores.NewIndex(), "fred", nil, decentWorkerResources, false)
+	addTestWorker(t, sched, paths.NewIndex(), "fred", nil, decentWorkerResources, false)
 
 	require.NoError(t, sched.Close(context.TODO()))
 }
@@ -260,13 +260,13 @@ func TestSched(t *testing.T) {
 		wg sync.WaitGroup
 	}
 
-	type task func(*testing.T, *Scheduler, *stores.Index, *runMeta)
+	type task func(*testing.T, *Scheduler, *paths.Index, *runMeta)
 
 	sched := func(taskName, expectWorker string, sid abi.SectorNumber, taskType sealtasks.TaskType) task {
 		_, _, l, _ := runtime.Caller(1)
 		_, _, l2, _ := runtime.Caller(2)
 
-		return func(t *testing.T, sched *Scheduler, index *stores.Index, rm *runMeta) {
+		return func(t *testing.T, sched *Scheduler, index *paths.Index, rm *runMeta) {
 			done := make(chan struct{})
 			rm.done[taskName] = done
 
@@ -315,7 +315,7 @@ func TestSched(t *testing.T) {
 	taskStarted := func(name string) task {
 		_, _, l, _ := runtime.Caller(1)
 		_, _, l2, _ := runtime.Caller(2)
-		return func(t *testing.T, sched *Scheduler, index *stores.Index, rm *runMeta) {
+		return func(t *testing.T, sched *Scheduler, index *paths.Index, rm *runMeta) {
 			select {
 			case rm.done[name] <- struct{}{}:
 			case <-ctx.Done():
@@ -327,7 +327,7 @@ func TestSched(t *testing.T) {
 	taskDone := func(name string) task {
 		_, _, l, _ := runtime.Caller(1)
 		_, _, l2, _ := runtime.Caller(2)
-		return func(t *testing.T, sched *Scheduler, index *stores.Index, rm *runMeta) {
+		return func(t *testing.T, sched *Scheduler, index *paths.Index, rm *runMeta) {
 			select {
 			case rm.done[name] <- struct{}{}:
 			case <-ctx.Done():
@@ -340,7 +340,7 @@ func TestSched(t *testing.T) {
 	taskNotScheduled := func(name string) task {
 		_, _, l, _ := runtime.Caller(1)
 		_, _, l2, _ := runtime.Caller(2)
-		return func(t *testing.T, sched *Scheduler, index *stores.Index, rm *runMeta) {
+		return func(t *testing.T, sched *Scheduler, index *paths.Index, rm *runMeta) {
 			select {
 			case rm.done[name] <- struct{}{}:
 				t.Fatal("not expected", l, l2)
@@ -351,7 +351,7 @@ func TestSched(t *testing.T) {
 
 	testFunc := func(workers []workerSpec, tasks []task) func(t *testing.T) {
 		return func(t *testing.T) {
-			index := stores.NewIndex()
+			index := paths.NewIndex()
 
 			sched, err := newScheduler("")
 			require.NoError(t, err)
@@ -380,7 +380,7 @@ func TestSched(t *testing.T) {
 	}
 
 	multTask := func(tasks ...task) task {
-		return func(t *testing.T, s *Scheduler, index *stores.Index, meta *runMeta) {
+		return func(t *testing.T, s *Scheduler, index *paths.Index, meta *runMeta) {
 			for _, tsk := range tasks {
 				tsk(t, s, index, meta)
 			}
@@ -494,7 +494,7 @@ func TestSched(t *testing.T) {
 	}
 
 	diag := func() task {
-		return func(t *testing.T, s *Scheduler, index *stores.Index, meta *runMeta) {
+		return func(t *testing.T, s *Scheduler, index *paths.Index, meta *runMeta) {
 			time.Sleep(20 * time.Millisecond)
 			for _, request := range s.diag().Requests {
 				log.Infof("!!! sDIAG: sid(%d) task(%s)", request.Sector.Number, request.TaskType)

@@ -1,4 +1,4 @@
-package stores
+package paths
 
 import (
 	"bytes"

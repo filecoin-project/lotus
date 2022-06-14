@@ -10,8 +10,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	"github.com/filecoin-project/lotus/storage/sealer/stores"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -155,7 +155,7 @@ func (ps *poStScheduler) enable(wid storiface.WorkerID) {
 }
 
 func (ps *poStScheduler) watch(wid storiface.WorkerID, worker *WorkerHandle) {
-	heartbeatTimer := time.NewTicker(stores.HeartbeatInterval)
+	heartbeatTimer := time.NewTicker(paths.HeartbeatInterval)
 	defer heartbeatTimer.Stop()
 
 	ctx, cancel := context.WithCancel(context.TODO())
@@ -169,7 +169,7 @@ func (ps *poStScheduler) watch(wid storiface.WorkerID, worker *WorkerHandle) {
 	}()
 
 	for {
-		sctx, scancel := context.WithTimeout(ctx, stores.HeartbeatInterval/2)
+		sctx, scancel := context.WithTimeout(ctx, paths.HeartbeatInterval/2)
 		curSes, err := worker.workerRpc.Session(sctx)
 		scancel()
 		if err != nil {

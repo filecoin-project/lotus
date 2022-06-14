@@ -66,11 +66,11 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
+	"github.com/filecoin-project/lotus/storage/paths"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
-	stores "github.com/filecoin-project/lotus/storage/sealer/stores"
 	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
@@ -735,16 +735,16 @@ func RetrievalProvider(
 var WorkerCallsPrefix = datastore.NewKey("/worker/calls")
 var ManagerWorkPrefix = datastore.NewKey("/stmgr/calls")
 
-func LocalStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls stores.LocalStorage, si stores.SectorIndex, urls stores.URLs) (*stores.Local, error) {
+func LocalStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, ls paths.LocalStorage, si paths.SectorIndex, urls paths.URLs) (*paths.Local, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
-	return stores.NewLocal(ctx, ls, si, urls)
+	return paths.NewLocal(ctx, ls, si, urls)
 }
 
-func RemoteStorage(lstor *stores.Local, si stores.SectorIndex, sa sealer.StorageAuth, sc sealer.Config) *stores.Remote {
-	return stores.NewRemote(lstor, si, http.Header(sa), sc.ParallelFetchLimit, &stores.DefaultPartialFileHandler{})
+func RemoteStorage(lstor *paths.Local, si paths.SectorIndex, sa sealer.StorageAuth, sc sealer.Config) *paths.Remote {
+	return paths.NewRemote(lstor, si, http.Header(sa), sc.ParallelFetchLimit, &paths.DefaultPartialFileHandler{})
 }
 
-func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *stores.Local, stor stores.Store, ls stores.LocalStorage, si stores.SectorIndex, sc sealer.Config, ds dtypes.MetadataDS) (*sealer.Manager, error) {
+func SectorStorage(mctx helpers.MetricsCtx, lc fx.Lifecycle, lstor *paths.Local, stor paths.Store, ls paths.LocalStorage, si paths.SectorIndex, sc sealer.Config, ds dtypes.MetadataDS) (*sealer.Manager, error) {
 	ctx := helpers.LifecycleCtx(mctx, lc)
 
 	wsts := statestore.New(namespace.Wrap(ds, WorkerCallsPrefix))

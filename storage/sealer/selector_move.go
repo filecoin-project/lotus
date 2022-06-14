@@ -7,20 +7,20 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	"github.com/filecoin-project/lotus/storage/sealer/stores"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type moveSelector struct {
-	index       stores.SectorIndex
+	index       paths.SectorIndex
 	sector      abi.SectorID
 	alloc       storiface.SectorFileType
 	destPtype   storiface.PathType
 	allowRemote bool
 }
 
-func newMoveSelector(index stores.SectorIndex, sector abi.SectorID, alloc storiface.SectorFileType, destPtype storiface.PathType, allowRemote bool) *moveSelector {
+func newMoveSelector(index paths.SectorIndex, sector abi.SectorID, alloc storiface.SectorFileType, destPtype storiface.PathType, allowRemote bool) *moveSelector {
 	return &moveSelector{
 		index:       index,
 		sector:      sector,

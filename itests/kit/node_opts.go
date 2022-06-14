@@ -12,9 +12,9 @@ import (
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	"github.com/filecoin-project/lotus/storage/sealer/stores"
 )
 
 // DefaultPresealsPerBootstrapMiner is the number of preseals that every
@@ -45,7 +45,7 @@ type nodeOpts struct {
 	disallowRemoteFinalize bool
 
 	workerTasks      []sealtasks.TaskType
-	workerStorageOpt func(stores.Store) stores.Store
+	workerStorageOpt func(paths.Store) paths.Store
 }
 
 // DefaultNodeOpts are the default options that will be applied to test nodes.
@@ -55,7 +55,7 @@ var DefaultNodeOpts = nodeOpts{
 	sectorSize: abi.SectorSize(2 << 10), // 2KiB.
 
 	workerTasks:      []sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize},
-	workerStorageOpt: func(store stores.Store) stores.Store { return store },
+	workerStorageOpt: func(store paths.Store) paths.Store { return store },
 }
 
 // OptBuilder is used to create an option after some other node is already
@@ -210,7 +210,7 @@ func WithTaskTypes(tt []sealtasks.TaskType) NodeOpt {
 	}
 }
 
-func WithWorkerStorage(transform func(stores.Store) stores.Store) NodeOpt {
+func WithWorkerStorage(transform func(paths.Store) paths.Store) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.workerStorageOpt = transform
 		return nil

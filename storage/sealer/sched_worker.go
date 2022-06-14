@@ -6,8 +6,8 @@ import (
 
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	"github.com/filecoin-project/lotus/storage/sealer/stores"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -66,7 +66,7 @@ func (sh *Scheduler) runWorker(ctx context.Context, wid storiface.WorkerID, work
 
 		wid: wid,
 
-		heartbeatTimer:   time.NewTicker(stores.HeartbeatInterval),
+		heartbeatTimer:   time.NewTicker(paths.HeartbeatInterval),
 		scheduledWindows: make(chan *SchedWindow, SchedWindows),
 		taskDone:         make(chan struct{}, 1),
 
@@ -200,7 +200,7 @@ func (sw *schedWorker) disable(ctx context.Context) error {
 
 func (sw *schedWorker) checkSession(ctx context.Context) bool {
 	for {
-		sctx, scancel := context.WithTimeout(ctx, stores.HeartbeatInterval/2)
+		sctx, scancel := context.WithTimeout(ctx, paths.HeartbeatInterval/2)
 		curSes, err := sw.worker.workerRpc.Session(sctx)
 		scancel()
 		if err != nil {

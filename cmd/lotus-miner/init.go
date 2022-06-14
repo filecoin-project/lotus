@@ -54,10 +54,10 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/paths"
 	sealing2 "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
-	stores "github.com/filecoin-project/lotus/storage/sealer/stores"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -213,7 +213,7 @@ var initCmd = &cli.Command{
 				return err
 			}
 
-			var localPaths []stores.LocalPath
+			var localPaths []paths.LocalPath
 
 			if pssb := cctx.StringSlice("pre-sealed-sectors"); len(pssb) != 0 {
 				log.Infof("Setting up storage config with presealed sectors: %v", pssb)
@@ -223,14 +223,14 @@ var initCmd = &cli.Command{
 					if err != nil {
 						return err
 					}
-					localPaths = append(localPaths, stores.LocalPath{
+					localPaths = append(localPaths, paths.LocalPath{
 						Path: psp,
 					})
 				}
 			}
 
 			if !cctx.Bool("no-local-storage") {
-				b, err := json.MarshalIndent(&stores.LocalStorageMeta{
+				b, err := json.MarshalIndent(&paths.LocalStorageMeta{
 					ID:       storiface.ID(uuid.New().String()),
 					Weight:   10,
 					CanSeal:  true,
@@ -244,12 +244,12 @@ var initCmd = &cli.Command{
 					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
 				}
 
-				localPaths = append(localPaths, stores.LocalPath{
+				localPaths = append(localPaths, paths.LocalPath{
 					Path: lr.Path(),
 				})
 			}
 
-			if err := lr.SetStorage(func(sc *stores.StorageConfig) {
+			if err := lr.SetStorage(func(sc *paths.StorageConfig) {
 				sc.StoragePaths = append(sc.StoragePaths, localPaths...)
 			}); err != nil {
 				return xerrors.Errorf("set storage config: %w", err)
@@ -458,13 +458,13 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 			wsts := statestore.New(namespace.Wrap(mds, modules.WorkerCallsPrefix))
 			smsts := statestore.New(namespace.Wrap(mds, modules.ManagerWorkPrefix))
 
-			si := stores.NewIndex()
+			si := paths.NewIndex()
 
-			lstor, err := stores.NewLocal(ctx, lr, si, nil)
+			lstor, err := paths.NewLocal(ctx, lr, si, nil)
 			if err != nil {
 				return err
 			}
-			stor := stores.NewRemote(lstor, si, http.Header(sa), 10, &stores.DefaultPartialFileHandler{})
+			stor := paths.NewRemote(lstor, si, http.Header(sa), 10, &paths.DefaultPartialFileHandler{})
 
 			smgr, err := sealer.New(ctx, lstor, stor, lr, si, sealer.Config{
 				ParallelFetchLimit:       10,
