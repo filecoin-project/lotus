@@ -5,17 +5,15 @@ import (
 	"context"
 	"io/ioutil"
 
-	"golang.org/x/xerrors"
-
-	"github.com/multiformats/go-multiaddr"
-	"github.com/multiformats/go-multihash"
-
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	httpapi "github.com/ipfs/go-ipfs-http-client"
 	iface "github.com/ipfs/interface-go-ipfs-core"
 	"github.com/ipfs/interface-go-ipfs-core/options"
 	"github.com/ipfs/interface-go-ipfs-core/path"
+	"github.com/multiformats/go-multiaddr"
+	"github.com/multiformats/go-multihash"
+	"golang.org/x/xerrors"
 )
 
 type IPFSBlockstore struct {

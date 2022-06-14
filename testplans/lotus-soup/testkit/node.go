@@ -8,7 +8,14 @@ import (
 	"sort"
 	"time"
 
+	influxdb "github.com/kpacha/opencensus-influxdb"
+	ma "github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
+
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/wallet"
@@ -17,17 +24,10 @@ import (
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	modtest "github.com/filecoin-project/lotus/node/modules/testing"
-
 	tinflux "github.com/filecoin-project/lotus/tools/stats/influx"
 	tipldstore "github.com/filecoin-project/lotus/tools/stats/ipldstore"
 	tpoints "github.com/filecoin-project/lotus/tools/stats/points"
 	tsync "github.com/filecoin-project/lotus/tools/stats/sync"
-
-	influxdb "github.com/kpacha/opencensus-influxdb"
-	ma "github.com/multiformats/go-multiaddr"
-	manet "github.com/multiformats/go-multiaddr/net"
-	"go.opencensus.io/stats"
-	"go.opencensus.io/stats/view"
 )
 
 var PrepareNodeTimeout = 3 * time.Minute

@@ -4,12 +4,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/lotus/paychmgr"
-
-	"go.uber.org/fx"
-
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
+	"go.uber.org/fx"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -23,6 +20,7 @@ import (
 	"github.com/filecoin-project/lotus/node/impl/full"
 	payapi "github.com/filecoin-project/lotus/node/impl/paych"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
+	"github.com/filecoin-project/lotus/paychmgr"
 )
 
 var log = logging.Logger("payment-channel-settler")

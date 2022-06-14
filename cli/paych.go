@@ -8,17 +8,16 @@ import (
 	"sort"
 	"strings"
 
-	lapi "github.com/filecoin-project/lotus/api"
-
-	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
-	"github.com/filecoin-project/lotus/paychmgr"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/urfave/cli/v2"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+
+	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	lpaych "github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/paychmgr"
 )
 
 var paychCmd = &cli.Command{

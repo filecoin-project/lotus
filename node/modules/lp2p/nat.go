@@ -10,9 +10,7 @@ import (
 	host "github.com/libp2p/go-libp2p-core/host"
 	libp2pquic "github.com/libp2p/go-libp2p-quic-transport"
 	"go.uber.org/fx"
-
 	"github.com/ipfs/go-ipfs/repo"
-
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 )
 

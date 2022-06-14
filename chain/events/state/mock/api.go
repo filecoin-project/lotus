@@ -5,12 +5,13 @@ import (
 	"sync"
 
 	blocks "github.com/ipfs/go-block-format"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type MockAPI struct {

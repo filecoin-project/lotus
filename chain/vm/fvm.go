@@ -8,30 +8,25 @@ import (
 	"time"
 
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
-
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/state"
 	cbor "github.com/ipfs/go-ipld-cbor"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/lotus/lib/sigs"
-
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/lotus/blockstore"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	ffi_cgo "github.com/filecoin-project/filecoin-ffi/cgo"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/exitcode"
 
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
 var _ Interface = (*FVM)(nil)
@@ -60,16 +55,18 @@ func (t *FvmExecutionTrace) ToExecutionTrace() types.ExecutionTrace {
 	}
 
 	ret := types.ExecutionTrace{
-		Msg:        t.Msg,
-		MsgRct:     t.MsgRct,
-		Error:      t.Error,
-		Duration:   0,
-		GasCharges: nil,
-		Subcalls:   make([]types.ExecutionTrace, len(t.Subcalls)),
+		Msg:      t.Msg,
+		MsgRct:   t.MsgRct,
+		Error:    t.Error,
+		Subcalls: nil, // Should be nil when there are no subcalls for backwards compatibility
 	}
 
-	for i, v := range t.Subcalls {
-		ret.Subcalls[i] = v.ToExecutionTrace()
+	if len(t.Subcalls) > 0 {
+		ret.Subcalls = make([]types.ExecutionTrace, len(t.Subcalls))
+
+		for i, v := range t.Subcalls {
+			ret.Subcalls[i] = v.ToExecutionTrace()
+		}
 	}
 
 	return ret

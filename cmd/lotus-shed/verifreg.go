@@ -4,30 +4,25 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
-
-	"github.com/filecoin-project/go-state-types/crypto"
-
-	"github.com/filecoin-project/go-state-types/big"
-
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-
+	"github.com/filecoin-project/go-state-types/big"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
+	"github.com/filecoin-project/go-state-types/crypto"
 	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/multisig"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 var verifRegCmd = &cli.Command{

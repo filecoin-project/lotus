@@ -8,10 +8,11 @@ import (
 	"math"
 	"sort"
 
-	sealtasks "github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	cid "github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	xerrors "golang.org/x/xerrors"
+
+	sealtasks "github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 )
 
 var _ = xerrors.Errorf

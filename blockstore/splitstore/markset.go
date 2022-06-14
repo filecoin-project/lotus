@@ -3,9 +3,8 @@ package splitstore
 import (
 	"errors"
 
-	"golang.org/x/xerrors"
-
 	cid "github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 )
 
 var errMarkSetClosed = errors.New("markset closed")

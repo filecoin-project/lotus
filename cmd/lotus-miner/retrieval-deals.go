@@ -7,9 +7,10 @@ import (
 	"text/tabwriter"
 
 	"github.com/docker/go-units"
+	"github.com/urfave/cli/v2"
+
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"

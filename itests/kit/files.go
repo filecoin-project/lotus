@@ -25,7 +25,6 @@ import (
 	"github.com/ipld/go-car"
 	"github.com/minio/blake2b-simd"
 	mh "github.com/multiformats/go-multihash"
-
 	"github.com/stretchr/testify/require"
 )
 

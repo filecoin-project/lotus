@@ -6,14 +6,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-address"
-	provider "github.com/filecoin-project/index-provider"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/host"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/fx"
+
+	"github.com/filecoin-project/go-address"
+	provider "github.com/filecoin-project/index-provider"
 
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"

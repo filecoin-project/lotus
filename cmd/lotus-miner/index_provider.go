@@ -3,9 +3,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/ipfs/go-cid"
-
 	"github.com/fatih/color"
+	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
 	lcli "github.com/filecoin-project/lotus/cli"

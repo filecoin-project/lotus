@@ -4,6 +4,7 @@ import (
 	"os"
 	"strings"
 
+	logging "github.com/ipfs/go-log/v2"
 	octrace "go.opencensus.io/trace"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/bridge/opencensus"
@@ -12,8 +13,6 @@ import (
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"
 	semconv "go.opentelemetry.io/otel/semconv/v1.7.0"
 	"go.uber.org/zap"
-
-	logging "github.com/ipfs/go-log/v2"
 )
 
 var log = logging.Logger("tracing")

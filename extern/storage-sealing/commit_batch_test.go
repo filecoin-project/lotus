@@ -9,24 +9,23 @@ import (
 	"testing"
 	"time"
 
-	prooftypes "github.com/filecoin-project/go-state-types/proof"
-
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
-
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/network"
+	prooftypes "github.com/filecoin-project/go-state-types/proof"
+	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/mocks"
 	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
-	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 )
 
 func TestCommitBatcher(t *testing.T) {

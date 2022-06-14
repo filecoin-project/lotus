@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-state-types/abi"
-
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 )
 

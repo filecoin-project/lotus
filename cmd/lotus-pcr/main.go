@@ -16,36 +16,29 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/builtin"
-
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
-
-	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
-	lcli "github.com/filecoin-project/lotus/cli"
-
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-
-	"github.com/filecoin-project/go-state-types/network"
-
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
-
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
-
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/tools/stats/sync"
 )
 

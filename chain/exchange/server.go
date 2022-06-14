@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	inet "github.com/libp2p/go-libp2p-core/network"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
@@ -13,9 +15,6 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
-
-	"github.com/ipfs/go-cid"
-	inet "github.com/libp2p/go-libp2p-core/network"
 )
 
 // server implements exchange.Server. It services requests for the
