@@ -47,7 +47,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/lib/sigs"
 )
@@ -240,7 +240,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 						return cid.Undef, fmt.Errorf("failed to marshal proposal: %w", err)
 					}
 
-					sig, err := sigs.Sign(wallet.ActSigType(preseal.DealClientKey.Type), preseal.DealClientKey.PrivateKey, buf)
+					sig, err := sigs.Sign(key.ActSigType(preseal.DealClientKey.Type), preseal.DealClientKey.PrivateKey, buf)
 					if err != nil {
 						return cid.Undef, fmt.Errorf("failed to sign proposal: %w", err)
 					}

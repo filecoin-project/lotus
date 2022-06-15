@@ -15,7 +15,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 )
 
 // TestFullNode represents a full node enrolled in an Ensemble.
@@ -27,7 +27,7 @@ type TestFullNode struct {
 	// ListenAddr is the address on which an API server is listening, if an
 	// API server is created for this Node.
 	ListenAddr multiaddr.Multiaddr
-	DefaultKey *wallet.Key
+	DefaultKey *key.Key
 
 	options nodeOpts
 }

@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-car"
 	"golang.org/x/xerrors"
 

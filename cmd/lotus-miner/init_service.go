@@ -16,8 +16,8 @@ import (
 	"github.com/filecoin-project/lotus/api/client"
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/storage/paths"
 )
 
 const (
@@ -78,7 +78,7 @@ var serviceCmd = &cli.Command{
 			return xerrors.Errorf("please provide Lotus markets repo path via flag %s", FlagMarketsRepo)
 		}
 
-		if err := restore(ctx, cctx, repoPath, &stores.StorageConfig{}, func(cfg *config.StorageMiner) error {
+		if err := restore(ctx, cctx, repoPath, &paths.StorageConfig{}, func(cfg *config.StorageMiner) error {
 			cfg.Subsystems.EnableMarkets = es.Contains(MarketsService)
 			cfg.Subsystems.EnableMining = false
 			cfg.Subsystems.EnableSealing = false

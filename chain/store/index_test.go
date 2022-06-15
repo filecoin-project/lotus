@@ -6,7 +6,7 @@ import (
 	"context"
 	"testing"
 
-	datastore "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore"
 	syncds "github.com/ipfs/go-datastore/sync"
 	"github.com/stretchr/testify/assert"
 

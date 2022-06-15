@@ -8,7 +8,7 @@ import (
 
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 )

@@ -23,11 +23,11 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/storage/paths"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type MinerSubsystem int
@@ -72,7 +72,7 @@ type TestMiner struct {
 	ListenAddr multiaddr.Multiaddr
 
 	ActorAddr address.Address
-	OwnerKey  *wallet.Key
+	OwnerKey  *key.Key
 	MineOne   func(context.Context, miner.MineReq) error
 	Stop      func(context.Context) error
 
@@ -182,7 +182,7 @@ func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, weight uint64
 		require.NoError(t, err)
 	}
 
-	cfg := &stores.LocalStorageMeta{
+	cfg := &paths.LocalStorageMeta{
 		ID:       storiface.ID(uuid.New().String()),
 		Weight:   weight,
 		CanSeal:  seal,

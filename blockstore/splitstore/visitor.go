@@ -3,7 +3,7 @@ package splitstore
 import (
 	"sync"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 )
 
 // ObjectVisitor is an interface for deduplicating objects during walks

@@ -515,18 +515,21 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 	from := tutils.NewIDAddr(t, 101)
 	to := tutils.NewIDAddr(t, 102)
 
-	mock := newMockManagerAPI()
+	var createMsgCid cid.Cid
+	{
+		mock := newMockManagerAPI()
 
-	mgr, err := newManager(store, mock)
-	require.NoError(t, err)
+		mgr, err := newManager(store, mock)
+		require.NoError(t, err)
 
-	// Send create message for a channel with value 10
-	amt := big.NewInt(10)
-	_, createMsgCid, err := mgr.GetPaych(ctx, from, to, amt, onChainReserve)
-	require.NoError(t, err)
+		// Send create message for a channel with value 10
+		amt := big.NewInt(10)
+		_, createMsgCid, err = mgr.GetPaych(ctx, from, to, amt, onChainReserve)
+		require.NoError(t, err)
 
-	// Simulate shutting down system
-	mock.close()
+		// Simulate shutting down system
+		mock.close()
+	}
 
 	// Create a new manager with the same datastore
 	mock2 := newMockManagerAPI()

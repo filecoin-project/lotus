@@ -29,7 +29,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	test "github.com/filecoin-project/lotus/chain/events/state/mock"
 	"github.com/filecoin-project/lotus/chain/types"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 )
 
 func TestOnDealSectorPreCommitted(t *testing.T) {
@@ -76,7 +76,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 		},
 	}
 	type testCase struct {
-		currentDealInfo        sealing.CurrentDealInfo
+		currentDealInfo        pipeline.CurrentDealInfo
 		currentDealInfoErr     error
 		currentDealInfoErr2    error
 		preCommitDiff          *miner.PreCommitChanges
@@ -90,7 +90,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 	}
 	testCases := map[string]testCase{
 		"normal sequence": {
-			currentDealInfo: sealing.CurrentDealInfo{
+			currentDealInfo: pipeline.CurrentDealInfo{
 				DealID:     dealID,
 				MarketDeal: unfinishedDeal,
 			},
@@ -108,7 +108,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			expectedCBSectorNumber: sectorNumber,
 		},
 		"ignores unsuccessful pre-commit message": {
-			currentDealInfo: sealing.CurrentDealInfo{
+			currentDealInfo: pipeline.CurrentDealInfo{
 				DealID:     dealID,
 				MarketDeal: unfinishedDeal,
 			},
@@ -126,7 +126,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			expectedCBCallCount: 0,
 		},
 		"deal already pre-committed": {
-			currentDealInfo: sealing.CurrentDealInfo{
+			currentDealInfo: pipeline.CurrentDealInfo{
 				DealID:     dealID,
 				MarketDeal: unfinishedDeal,
 			},
@@ -148,7 +148,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			expectedError:       xerrors.Errorf("failed to set up called handler: failed to look up deal on chain: something went wrong"),
 		},
 		"sector already active": {
-			currentDealInfo: sealing.CurrentDealInfo{
+			currentDealInfo: pipeline.CurrentDealInfo{
 				DealID:     dealID,
 				MarketDeal: activeDeal,
 			},
@@ -156,7 +156,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			expectedCBIsActive:  true,
 		},
 		"sector was slashed": {
-			currentDealInfo: sealing.CurrentDealInfo{
+			currentDealInfo: pipeline.CurrentDealInfo{
 				DealID:           dealID,
 				MarketDeal:       slashedDeal,
 				PublishMsgTipSet: nil,
@@ -165,7 +165,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			expectedError:       xerrors.Errorf("failed to set up called handler: deal %d was slashed at epoch %d", dealID, slashedDeal.State.SlashEpoch),
 		},
 		"error getting current deal info in called func": {
-			currentDealInfo: sealing.CurrentDealInfo{
+			currentDealInfo: pipeline.CurrentDealInfo{
 				DealID:     dealID,
 				MarketDeal: unfinishedDeal,
 			},
@@ -183,7 +183,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			expectedCBError:     errors.New("handling applied event: something went wrong"),
 		},
 		"proposed deal epoch timeout": {
-			currentDealInfo: sealing.CurrentDealInfo{
+			currentDealInfo: pipeline.CurrentDealInfo{
 				DealID:     dealID,
 				MarketDeal: activeDeal,
 			},
@@ -298,9 +298,9 @@ func TestOnDealSectorCommitted(t *testing.T) {
 		},
 	}
 	type testCase struct {
-		currentDealInfo       sealing.CurrentDealInfo
+		currentDealInfo       pipeline.CurrentDealInfo
 		currentDealInfoErr    error
-		currentDealInfo2      sealing.CurrentDealInfo
+		currentDealInfo2      pipeline.CurrentDealInfo
 		currentDealInfoErr2   error
 		matchStates           []matchState
 		dealStartEpochTimeout bool
@@ -310,11 +310,11 @@ func TestOnDealSectorCommitted(t *testing.T) {
 	}
 	testCases := map[string]testCase{
 		"normal sequence": {
-			currentDealInfo: sealing.CurrentDealInfo{
+			currentDealInfo: pipeline.CurrentDealInfo{
 				DealID:     dealID,
 				MarketDeal: unfinishedDeal,
 			},
-			currentDealInfo2: sealing.CurrentDealInfo{
+			currentDealInfo2: pipeline.CurrentDealInfo{
 				DealID:     dealID,
 				MarketDeal: activeDeal,
 			},
@@ -328,11 +328,11 @@ func TestOnDealSectorCommitted(t *testing.T) {
 			expectedCBCallCount: 1,
 		},
 		"ignores unsuccessful prove-commit message": {
-			currentDealInfo: sealing.CurrentDealInfo{
+			currentDealInfo: pipeline.CurrentDealInfo{
 				DealID:     dealID,
 				MarketDeal: unfinishedDeal,
 			},
-			currentDealInfo2: sealing.CurrentDealInfo{
+			currentDealInfo2: pipeline.CurrentDealInfo{
 				DealID:     dealID,
 				MarketDeal: activeDeal,
 			},
@@ -353,14 +353,14 @@ func TestOnDealSectorCommitted(t *testing.T) {
 			expectedError:       xerrors.Errorf("failed to set up called handler: failed to look up deal on chain: something went wrong"),
 		},
 		"sector already active": {
-			currentDealInfo: sealing.CurrentDealInfo{
+			currentDealInfo: pipeline.CurrentDealInfo{
 				DealID:     dealID,
 				MarketDeal: activeDeal,
 			},
 			expectedCBCallCount: 1,
 		},
 		"sector was slashed": {
-			currentDealInfo: sealing.CurrentDealInfo{
+			currentDealInfo: pipeline.CurrentDealInfo{
 				DealID:     dealID,
 				MarketDeal: slashedDeal,
 			},
@@ -368,7 +368,7 @@ func TestOnDealSectorCommitted(t *testing.T) {
 			expectedError:       xerrors.Errorf("failed to set up called handler: deal %d was slashed at epoch %d", dealID, slashedDeal.State.SlashEpoch),
 		},
 		"error getting current deal info in called func": {
-			currentDealInfo: sealing.CurrentDealInfo{
+			currentDealInfo: pipeline.CurrentDealInfo{
 				DealID:     dealID,
 				MarketDeal: unfinishedDeal,
 			},
@@ -384,7 +384,7 @@ func TestOnDealSectorCommitted(t *testing.T) {
 			expectedCBError:     xerrors.Errorf("handling applied event: failed to look up deal on chain: something went wrong"),
 		},
 		"proposed deal epoch timeout": {
-			currentDealInfo: sealing.CurrentDealInfo{
+			currentDealInfo: pipeline.CurrentDealInfo{
 				DealID:     dealID,
 				MarketDeal: unfinishedDeal,
 			},
@@ -393,11 +393,11 @@ func TestOnDealSectorCommitted(t *testing.T) {
 			expectedCBError:       xerrors.Errorf("handling applied event: deal with piece CID %s was not activated by proposed deal start epoch 0", unfinishedDeal.Proposal.PieceCID),
 		},
 		"got prove-commit but deal not active": {
-			currentDealInfo: sealing.CurrentDealInfo{
+			currentDealInfo: pipeline.CurrentDealInfo{
 				DealID:     dealID,
 				MarketDeal: unfinishedDeal,
 			},
-			currentDealInfo2: sealing.CurrentDealInfo{
+			currentDealInfo2: pipeline.CurrentDealInfo{
 				DealID:     dealID,
 				MarketDeal: unfinishedDeal,
 			},
@@ -568,13 +568,13 @@ func (m *mockPreCommitsAPI) diffPreCommits(ctx context.Context, actor address.Ad
 
 type mockDealInfoAPI struct {
 	count            int
-	CurrentDealInfo  sealing.CurrentDealInfo
+	CurrentDealInfo  pipeline.CurrentDealInfo
 	Err              error
-	CurrentDealInfo2 sealing.CurrentDealInfo
+	CurrentDealInfo2 pipeline.CurrentDealInfo
 	Err2             error
 }
 
-func (m *mockDealInfoAPI) GetCurrentDealInfo(ctx context.Context, tok sealing.TipSetToken, proposal *market.DealProposal, publishCid cid.Cid) (sealing.CurrentDealInfo, error) {
+func (m *mockDealInfoAPI) GetCurrentDealInfo(ctx context.Context, tok pipeline.TipSetToken, proposal *market.DealProposal, publishCid cid.Cid) (pipeline.CurrentDealInfo, error) {
 	m.count++
 	if m.count == 2 {
 		return m.CurrentDealInfo2, m.Err2

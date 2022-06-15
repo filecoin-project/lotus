@@ -42,18 +42,20 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	mktsdagstore "github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
+	"github.com/filecoin-project/lotus/storage/paths"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
+	"github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
 type StorageMinerAPI struct {
@@ -65,8 +67,8 @@ type StorageMinerAPI struct {
 	EnabledSubsystems api.MinerSubsystems
 
 	Full        api.FullNode
-	LocalStore  *stores.Local
-	RemoteStore *stores.Remote
+	LocalStore  *paths.Local
+	RemoteStore *paths.Remote
 
 	// Markets
 	PieceStore        dtypes.ProviderPieceStore         `optional:"true"`
@@ -83,15 +85,15 @@ type StorageMinerAPI struct {
 	DAGStoreWrapper   *mktsdagstore.Wrapper             `optional:"true"`
 
 	// Miner / storage
-	Miner       *storage.Miner              `optional:"true"`
-	BlockMiner  *miner.Miner                `optional:"true"`
-	StorageMgr  *sectorstorage.Manager      `optional:"true"`
-	IStorageMgr sectorstorage.SectorManager `optional:"true"`
-	stores.SectorIndex
+	Miner       *storage.Miner       `optional:"true"`
+	BlockMiner  *miner.Miner         `optional:"true"`
+	StorageMgr  *sealer.Manager      `optional:"true"`
+	IStorageMgr sealer.SectorManager `optional:"true"`
+	paths.SectorIndex
 	storiface.WorkerReturn `optional:"true"`
-	AddrSel                *storage.AddressSelector
+	AddrSel                *ctladdr.AddressSelector
 
-	WdPoSt *storage.WindowPoStScheduler `optional:"true"`
+	WdPoSt *wdpost.WindowPoStScheduler `optional:"true"`
 
 	Epp gen.WinningPoStProver `optional:"true"`
 	DS  dtypes.MetadataDS
