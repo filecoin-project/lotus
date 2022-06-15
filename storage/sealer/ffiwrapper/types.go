@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper/basicfs"
-	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type Validator interface {

@@ -1,7 +1,7 @@
 package dtypes
 
 import (
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 )
 
 type GCReferenceProtector interface {

@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
-	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 // LocalStorageMeta [path]/sectorstore.json

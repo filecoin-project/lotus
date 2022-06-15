@@ -24,7 +24,7 @@ import (
 
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
-	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 // TestPieceProviderReadPiece verifies that the ReadPiece method works correctly

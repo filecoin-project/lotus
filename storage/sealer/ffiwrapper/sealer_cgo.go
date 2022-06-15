@@ -30,9 +30,9 @@ import (
 
 	"github.com/filecoin-project/lotus/lib/nullreader"
 	nr "github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
-	fr32 "github.com/filecoin-project/lotus/storage/sealer/fr32"
+	"github.com/filecoin-project/lotus/storage/sealer/fr32"
 	"github.com/filecoin-project/lotus/storage/sealer/partialfile"
-	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var _ Storage = &Sealer{}

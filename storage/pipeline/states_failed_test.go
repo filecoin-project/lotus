@@ -15,13 +15,13 @@ import (
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
-	statemachine "github.com/filecoin-project/go-statemachine"
+	"github.com/filecoin-project/go-statemachine"
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 
 	api2 "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
-	mocks "github.com/filecoin-project/lotus/storage/pipeline/mocks"
+	"github.com/filecoin-project/lotus/storage/pipeline/mocks"
 )
 
 func TestStateRecoverDealIDs(t *testing.T) {

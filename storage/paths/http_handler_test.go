@@ -17,9 +17,9 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/storage/paths"
-	mocks "github.com/filecoin-project/lotus/storage/paths/mocks"
+	"github.com/filecoin-project/lotus/storage/paths/mocks"
 	"github.com/filecoin-project/lotus/storage/sealer/partialfile"
-	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 func TestRemoteGetAllocated(t *testing.T) {

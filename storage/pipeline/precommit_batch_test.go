@@ -24,7 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/mocks"
-	sealiface "github.com/filecoin-project/lotus/storage/pipeline/sealiface"
+	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
 
 var fc = config.MinerFeeConfig{

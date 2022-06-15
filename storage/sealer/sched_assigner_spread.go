@@ -3,7 +3,7 @@ package sealer
 import (
 	"math"
 
-	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 func NewSpreadAssigner() Assigner {

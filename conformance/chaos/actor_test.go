@@ -11,7 +11,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	mock "github.com/filecoin-project/specs-actors/v2/support/mock"
+	"github.com/filecoin-project/specs-actors/v2/support/mock"
 	atesting2 "github.com/filecoin-project/specs-actors/v2/support/testing"
 )
 
