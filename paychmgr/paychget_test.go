@@ -637,16 +637,16 @@ func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
 	require.NoError(t, mgr.Stop())
 
 	// Create a new manager with the same datastore
-	mock := newMockManagerAPI()
-	defer mock.close()
+	mock2 := newMockManagerAPI()
+	defer mock2.close()
 
-	mock.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
+	mock2.setPaychState(ch, act, paychmock.NewMockPayChState(from, to, abi.ChainEpoch(0), make(map[uint64]paych.LaneState)))
 
-	mgr2, err := newManager(store, mock)
+	mgr2, err := newManager(store, mock2)
 	require.NoError(t, err)
 
 	// Send success add funds response
-	mock.receiveMsgResponse(mcid2, types.MessageReceipt{
+	mock2.receiveMsgResponse(mcid2, types.MessageReceipt{
 		ExitCode: 0,
 		Return:   []byte{},
 	})
