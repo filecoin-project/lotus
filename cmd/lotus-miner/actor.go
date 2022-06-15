@@ -2,8 +2,15 @@ package main
 
 import (
 	"bytes"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
+	builtint "github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
+	"github.com/ipfs/go-cid"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/filecoin-project/lotus/api"
@@ -26,7 +33,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
-	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
@@ -132,7 +138,7 @@ var actorSetAddrsCmd = &cli.Command{
 			From:     minfo.Worker,
 			Value:    types.NewInt(0),
 			GasLimit: gasLimit,
-			Method:   builtin.MethodsMiner.ChangeMultiaddrs,
+			Method:   builtint.MethodsMiner.ChangeMultiaddrs,
 			Params:   params,
 		}, nil)
 		if err != nil {
@@ -144,7 +150,6 @@ var actorSetAddrsCmd = &cli.Command{
 
 	},
 }
-
 var actorSetPeeridCmd = &cli.Command{
 	Name:  "set-peer-id",
 	Usage: "set the peer id of your miner",
@@ -197,7 +202,7 @@ var actorSetPeeridCmd = &cli.Command{
 			From:     minfo.Worker,
 			Value:    types.NewInt(0),
 			GasLimit: gasLimit,
-			Method:   builtin.MethodsMiner.ChangePeerID,
+			Method:   builtint.MethodsMiner.ChangePeerID,
 			Params:   params,
 		}, nil)
 		if err != nil {
@@ -210,10 +215,302 @@ var actorSetPeeridCmd = &cli.Command{
 	},
 }
 
+var actorWithdrawMsigProposeCmd = &cli.Command{
+	Name:      "propose",
+	Usage:     "Propose a multisig transaction",
+	ArgsUsage: "[multisigAddress destinationAddress value <methodId methodParams> (optional)]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "encoding",
+			Value: "hex",
+			Usage: "specify params encoding to parse (base64, hex)",
+		},
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the propose message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() < 3 {
+			return lcli.ShowHelp(cctx, fmt.Errorf("must pass at least multisig address, destination, and value"))
+		}
+
+		if cctx.Args().Len() > 3 && cctx.Args().Len() != 5 {
+			return lcli.ShowHelp(cctx, fmt.Errorf("must either pass three or five arguments"))
+		}
+
+		srv, err := lcli.GetFullNodeServices(cctx)
+		if err != nil {
+			return err
+		}
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
+		ctx := lcli.ReqContext(cctx)
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		dest, err := address.NewFromString(cctx.Args().Get(1))
+		if err != nil {
+			return err
+		}
+
+		value, err := types.ParseFIL(cctx.Args().Get(2))
+		if err != nil {
+			return err
+		}
+
+		var method uint64
+		var params []byte
+		var paramsStr string
+
+		if cctx.Args().Len() == 5 {
+			m, err := strconv.ParseUint(cctx.Args().Get(3), 10, 64)
+			if err != nil {
+				return err
+			}
+			method = m
+
+			p, err := srv.DecodeTypedParamsFromJSON(ctx, dest, abi.MethodNum(method), cctx.Args().Get(4))
+			if err != nil {
+				return xerrors.Errorf("decoding json params: %w", err)
+			}
+
+			switch cctx.String("encoding") {
+			case "base64", "b64":
+				paramsStr = base64.StdEncoding.EncodeToString(p)
+			case "hex":
+				paramsStr = hex.EncodeToString(p)
+			default:
+				return xerrors.Errorf("unknown encoding")
+			}
+
+			params = []byte(paramsStr)
+		}
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		act, err := api.StateGetActor(ctx, msig, types.EmptyTSK)
+		if err != nil {
+			return fmt.Errorf("failed to look up multisig %s: %w", msig, err)
+		}
+
+		if !builtin.IsMultisigActor(act.Code) {
+			return fmt.Errorf("actor %s is not a multisig actor", msig)
+		}
+
+		proto, err := api.MsigPropose(ctx, msig, dest, types.BigInt(value), from, method, params)
+		if err != nil {
+			return err
+		}
+
+		sm, err := lcli.InteractiveSend(ctx, cctx, srv, proto)
+		if err != nil {
+			return err
+		}
+
+		msgCid := sm.Cid()
+
+		fmt.Println("sent proposal in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("proposal returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		var retval msig2.ProposeReturn
+		if err := retval.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
+			return fmt.Errorf("failed to unmarshal propose return value: %w", err)
+		}
+
+		fmt.Printf("Transaction ID: %d\n", retval.TxnID)
+		if retval.Applied {
+			fmt.Printf("Transaction was executed during propose\n")
+			fmt.Printf("Exit Code: %d\n", retval.Code)
+			fmt.Printf("Return Value: %x\n", retval.Ret)
+		}
+
+		return nil
+	},
+}
+var actorWithdrawMsigApproveCmd = &cli.Command{
+	Name:      "approve",
+	Usage:     "Approve a multisig message",
+	ArgsUsage: "<multisigAddress messageId> [proposerAddress destination value [methodId methodParams]]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "account to send the approve message from",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+
+		// pass to msigCommand
+		if cctx.Args().Len() < 2 {
+			return lcli.ShowHelp(cctx, fmt.Errorf("must pass at least multisig address and message ID"))
+		}
+
+		if cctx.Args().Len() > 2 && cctx.Args().Len() < 5 {
+			return lcli.ShowHelp(cctx, fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value>"))
+		}
+
+		if cctx.Args().Len() > 5 && cctx.Args().Len() != 7 {
+			return lcli.ShowHelp(cctx, fmt.Errorf("usage: msig approve <msig addr> <message ID> <proposer address> <desination> <value> [ <method> <params> ]"))
+		}
+
+		srv, err := lcli.GetFullNodeServices(cctx)
+		if err != nil {
+			return err
+		}
+		defer srv.Close() //nolint:errcheck
+
+		api := srv.FullNodeAPI()
+		ctx := lcli.ReqContext(cctx)
+
+		msig, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return err
+		}
+
+		txid, err := strconv.ParseUint(cctx.Args().Get(1), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		var from address.Address
+		if cctx.IsSet("from") {
+			f, err := address.NewFromString(cctx.String("from"))
+			if err != nil {
+				return err
+			}
+			from = f
+		} else {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+			from = defaddr
+		}
+
+		var msgCid cid.Cid
+		if cctx.Args().Len() == 2 {
+			proto, err := api.MsigApprove(ctx, msig, txid, from)
+			if err != nil {
+				return err
+			}
+
+			sm, err := lcli.InteractiveSend(ctx, cctx, srv, proto)
+			if err != nil {
+				return err
+			}
+
+			msgCid = sm.Cid()
+		} else {
+			proposer, err := address.NewFromString(cctx.Args().Get(2))
+			if err != nil {
+				return err
+			}
+
+			if proposer.Protocol() != address.ID {
+				proposer, err = api.StateLookupID(ctx, proposer, types.EmptyTSK)
+				if err != nil {
+					return err
+				}
+			}
+
+			dest, err := address.NewFromString(cctx.Args().Get(3))
+			if err != nil {
+				return err
+			}
+
+			value, err := types.ParseFIL(cctx.Args().Get(4))
+			if err != nil {
+				return err
+			}
+
+			var method uint64
+			var params []byte
+			var paramsStr string
+			if cctx.Args().Len() == 7 {
+				m, err := strconv.ParseUint(cctx.Args().Get(5), 10, 64)
+				if err != nil {
+					return err
+				}
+				method = m
+
+				p, err := srv.DecodeTypedParamsFromJSON(ctx, dest, abi.MethodNum(method), cctx.Args().Get(6))
+				if err != nil {
+					return xerrors.Errorf("decoding json params: %w", err)
+				}
+
+				switch cctx.String("encoding") {
+				case "base64", "b64":
+					paramsStr = base64.StdEncoding.EncodeToString(p)
+				case "hex":
+					paramsStr = hex.EncodeToString(p)
+				default:
+					return xerrors.Errorf("unknown encoding")
+				}
+
+				params = []byte(paramsStr)
+			}
+
+			proto, err := api.MsigApproveTxnHash(ctx, msig, txid, proposer, dest, types.BigInt(value), from, method, params)
+			if err != nil {
+				return err
+			}
+
+			sm, err := lcli.InteractiveSend(ctx, cctx, srv, proto)
+			if err != nil {
+				return err
+			}
+
+			msgCid = sm.Cid()
+		}
+
+		fmt.Println("sent approval in message: ", msgCid)
+
+		wait, err := api.StateWaitMsg(ctx, msgCid, uint64(cctx.Int("confidence")), build.Finality, true)
+		if err != nil {
+			return err
+		}
+
+		if wait.Receipt.ExitCode != 0 {
+			return fmt.Errorf("approve returned exit %d", wait.Receipt.ExitCode)
+		}
+
+		return nil
+	},
+}
+
 var actorWithdrawCmd = &cli.Command{
 	Name:      "withdraw",
 	Usage:     "withdraw available balance",
 	ArgsUsage: "[amount (FIL)]",
+	Subcommands: []*cli.Command{
+		actorWithdrawMsigProposeCmd,
+		actorWithdrawMsigApproveCmd,
+	},
 	Flags: []cli.Flag{
 		&cli.IntFlag{
 			Name:  "confidence",
@@ -276,7 +573,7 @@ var actorWithdrawCmd = &cli.Command{
 			To:     maddr,
 			From:   mi.Owner,
 			Value:  types.NewInt(0),
-			Method: builtin.MethodsMiner.WithdrawBalance,
+			Method: builtint.MethodsMiner.WithdrawBalance,
 			Params: params,
 		}, nil)
 		if err != nil {
@@ -406,7 +703,7 @@ var actorRepayDebtCmd = &cli.Command{
 			To:     maddr,
 			From:   fromId,
 			Value:  amount,
-			Method: builtin.MethodsMiner.RepayDebt,
+			Method: builtint.MethodsMiner.RepayDebt,
 			Params: nil,
 		}, nil)
 		if err != nil {
@@ -698,7 +995,7 @@ var actorControlSet = &cli.Command{
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: builtin.MethodsMiner.ChangeWorkerAddress,
+			Method: builtint.MethodsMiner.ChangeWorkerAddress,
 
 			Value:  big.Zero(),
 			Params: sp,
@@ -784,7 +1081,7 @@ var actorSetOwnerCmd = &cli.Command{
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			From:   fromAddrId,
 			To:     maddr,
-			Method: builtin.MethodsMiner.ChangeOwnerAddress,
+			Method: builtint.MethodsMiner.ChangeOwnerAddress,
 			Value:  big.Zero(),
 			Params: sp,
 		}, nil)
@@ -890,7 +1187,7 @@ var actorProposeChangeWorker = &cli.Command{
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: builtin.MethodsMiner.ChangeWorkerAddress,
+			Method: builtint.MethodsMiner.ChangeWorkerAddress,
 			Value:  big.Zero(),
 			Params: sp,
 		}, nil)
@@ -997,7 +1294,7 @@ var actorConfirmChangeWorker = &cli.Command{
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Owner,
 			To:     maddr,
-			Method: builtin.MethodsMiner.ConfirmUpdateWorkerKey,
+			Method: builtint.MethodsMiner.ConfirmUpdateWorkerKey,
 			Value:  big.Zero(),
 		}, nil)
 		if err != nil {
@@ -1155,7 +1452,7 @@ var actorCompactAllocatedCmd = &cli.Command{
 		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
 			From:   mi.Worker,
 			To:     maddr,
-			Method: builtin.MethodsMiner.CompactSectorNumbers,
+			Method: builtint.MethodsMiner.CompactSectorNumbers,
 			Value:  big.Zero(),
 			Params: sp,
 		}, nil)
@@ -1193,4 +1490,23 @@ func isController(mi api.MinerInfo, addr address.Address) bool {
 	}
 
 	return false
+}
+
+func getInputs(cctx *cli.Context) (address.Address, address.Address, address.Address, error) {
+	multisigAddr, err := address.NewFromString(cctx.String("multisig"))
+	if err != nil {
+		return address.Undef, address.Undef, address.Undef, err
+	}
+
+	sender, err := address.NewFromString(cctx.String("from"))
+	if err != nil {
+		return address.Undef, address.Undef, address.Undef, err
+	}
+
+	minerAddr, err := address.NewFromString(cctx.String("miner"))
+	if err != nil {
+		return address.Undef, address.Undef, address.Undef, err
+	}
+
+	return multisigAddr, sender, minerAddr, nil
 }
