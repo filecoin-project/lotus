@@ -1484,22 +1484,3 @@ func isController(mi api.MinerInfo, addr address.Address) bool {
 
 	return false
 }
-
-func getInputs(cctx *cli.Context) (address.Address, address.Address, address.Address, error) {
-	multisigAddr, err := address.NewFromString(cctx.String("multisig"))
-	if err != nil {
-		return address.Undef, address.Undef, address.Undef, err
-	}
-
-	sender, err := address.NewFromString(cctx.String("from"))
-	if err != nil {
-		return address.Undef, address.Undef, address.Undef, err
-	}
-
-	minerAddr, err := address.NewFromString(cctx.String("miner"))
-	if err != nil {
-		return address.Undef, address.Undef, address.Undef, err
-	}
-
-	return multisigAddr, sender, minerAddr, nil
-}
