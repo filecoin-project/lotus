@@ -18,7 +18,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/beacon"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
@@ -36,11 +36,11 @@ type LotusNode struct {
 	FullApi  api.FullNode
 	MinerApi api.StorageMiner
 	StopFn   node.StopFunc
-	Wallet   *wallet.Key
+	Wallet   *key.Key
 	MineOne  func(context.Context, miner.MineReq) error
 }
 
-func (n *LotusNode) setWallet(ctx context.Context, walletKey *wallet.Key) error {
+func (n *LotusNode) setWallet(ctx context.Context, walletKey *key.Key) error {
 	_, err := n.FullApi.WalletImport(ctx, &walletKey.KeyInfo)
 	if err != nil {
 		return err

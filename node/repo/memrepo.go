@@ -17,10 +17,10 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type MemRepo struct {
@@ -37,7 +37,7 @@ type MemRepo struct {
 	keystore   map[string]types.KeyInfo
 	blockstore blockstore.Blockstore
 
-	sc      *stores.StorageConfig
+	sc      *paths.StorageConfig
 	tempDir string
 
 	// holds the current config value
@@ -59,13 +59,13 @@ func (lmem *lockedMemRepo) RepoType() RepoType {
 	return lmem.t
 }
 
-func (lmem *lockedMemRepo) GetStorage() (stores.StorageConfig, error) {
+func (lmem *lockedMemRepo) GetStorage() (paths.StorageConfig, error) {
 	if err := lmem.checkToken(); err != nil {
-		return stores.StorageConfig{}, err
+		return paths.StorageConfig{}, err
 	}
 
 	if lmem.mem.sc == nil {
-		lmem.mem.sc = &stores.StorageConfig{StoragePaths: []stores.LocalPath{
+		lmem.mem.sc = &paths.StorageConfig{StoragePaths: []paths.LocalPath{
 			{Path: lmem.Path()},
 		}}
 	}
@@ -73,7 +73,7 @@ func (lmem *lockedMemRepo) GetStorage() (stores.StorageConfig, error) {
 	return *lmem.mem.sc, nil
 }
 
-func (lmem *lockedMemRepo) SetStorage(c func(*stores.StorageConfig)) error {
+func (lmem *lockedMemRepo) SetStorage(c func(*paths.StorageConfig)) error {
 	if err := lmem.checkToken(); err != nil {
 		return err
 	}
@@ -126,14 +126,14 @@ func (lmem *lockedMemRepo) Path() string {
 }
 
 func (lmem *lockedMemRepo) initSectorStore(t string) {
-	if err := config.WriteStorageFile(filepath.Join(t, fsStorageConfig), stores.StorageConfig{
-		StoragePaths: []stores.LocalPath{
+	if err := config.WriteStorageFile(filepath.Join(t, fsStorageConfig), paths.StorageConfig{
+		StoragePaths: []paths.LocalPath{
 			{Path: t},
 		}}); err != nil {
 		panic(err)
 	}
 
-	b, err := json.MarshalIndent(&stores.LocalStorageMeta{
+	b, err := json.MarshalIndent(&paths.LocalStorageMeta{
 		ID:       storiface.ID(uuid.New().String()),
 		Weight:   10,
 		CanSeal:  true,

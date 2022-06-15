@@ -562,7 +562,7 @@
   # to use when evaluating tasks against this worker. An empty value defaults
   # to "hardware".
   #
-  # type: sectorstorage.ResourceFilteringStrategy
+  # type: sealer.ResourceFilteringStrategy
   # env var: LOTUS_STORAGE_RESOURCEFILTERING
   #ResourceFiltering = "hardware"
 

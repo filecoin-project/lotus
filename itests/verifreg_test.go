@@ -19,7 +19,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/impl"
 )
@@ -35,13 +35,13 @@ func TestVerifiedClientTopUp(t *testing.T) {
 
 	test := func(nv network.Version, shouldWork bool) func(*testing.T) {
 		return func(t *testing.T) {
-			rootKey, err := wallet.GenerateKey(types.KTSecp256k1)
+			rootKey, err := key.GenerateKey(types.KTSecp256k1)
 			require.NoError(t, err)
 
-			verifierKey, err := wallet.GenerateKey(types.KTSecp256k1)
+			verifierKey, err := key.GenerateKey(types.KTSecp256k1)
 			require.NoError(t, err)
 
-			verifiedClientKey, err := wallet.GenerateKey(types.KTBLS)
+			verifiedClientKey, err := key.GenerateKey(types.KTBLS)
 			require.NoError(t, err)
 
 			bal, err := types.ParseFIL("100fil")

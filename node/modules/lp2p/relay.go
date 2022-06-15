@@ -5,7 +5,7 @@ import (
 
 	"github.com/libp2p/go-libp2p"
 	coredisc "github.com/libp2p/go-libp2p-core/discovery"
-	routing "github.com/libp2p/go-libp2p-core/routing"
+	"github.com/libp2p/go-libp2p-core/routing"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 )
 

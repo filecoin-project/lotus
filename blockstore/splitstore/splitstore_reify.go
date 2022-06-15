@@ -6,7 +6,7 @@ import (
 	"sync/atomic"
 
 	blocks "github.com/ipfs/go-block-format"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 )
 

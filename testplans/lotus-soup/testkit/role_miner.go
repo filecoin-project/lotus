@@ -32,10 +32,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	genesis_chain "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
@@ -43,6 +41,8 @@ import (
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 const (
@@ -78,7 +78,7 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 	}
 
 	// first create a wallet
-	walletKey, err := wallet.GenerateKey(types.KTBLS)
+	walletKey, err := key.GenerateKey(types.KTBLS)
 	if err != nil {
 		return nil, err
 	}
@@ -198,9 +198,9 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 			}
 		}
 
-		var localPaths []stores.LocalPath
+		var localPaths []paths.LocalPath
 
-		b, err := json.MarshalIndent(&stores.LocalStorageMeta{
+		b, err := json.MarshalIndent(&paths.LocalStorageMeta{
 			ID:       storiface.ID(uuid.New().String()),
 			Weight:   10,
 			CanSeal:  true,
@@ -214,11 +214,11 @@ func PrepareMiner(t *TestEnvironment) (*LotusMiner, error) {
 			return nil, fmt.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
 		}
 
-		localPaths = append(localPaths, stores.LocalPath{
+		localPaths = append(localPaths, paths.LocalPath{
 			Path: lr.Path(),
 		})
 
-		if err := lr.SetStorage(func(sc *stores.StorageConfig) {
+		if err := lr.SetStorage(func(sc *paths.StorageConfig) {
 			sc.StoragePaths = append(sc.StoragePaths, localPaths...)
 		}); err != nil {
 			return nil, err

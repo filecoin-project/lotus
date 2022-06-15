@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"

@@ -10,11 +10,11 @@ import (
 	"github.com/google/uuid"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	metrics "github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	xerrors "golang.org/x/xerrors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
@@ -36,13 +36,13 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
 	"github.com/filecoin-project/lotus/journal/alerting"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
+	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
+	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
+	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var ErrNotSupported = xerrors.New("method not supported")

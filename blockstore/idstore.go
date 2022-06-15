@@ -5,7 +5,7 @@ import (
 	"io"
 
 	blocks "github.com/ipfs/go-block-format"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
 	"golang.org/x/xerrors"
 )

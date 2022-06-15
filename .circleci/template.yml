@@ -782,7 +782,7 @@ workflows:
       - test:
           go-test-flags: "-run=TestMulticoreSDR"
           suite: multicore-sdr-check
-          target: "./extern/sector-storage/ffiwrapper"
+          target: "./storage/sealer/ffiwrapper"
           proofs-log-test: "1"
       - test-conformance:
           suite: conformance

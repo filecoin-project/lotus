@@ -6,7 +6,7 @@ import (
 	"bytes"
 	"testing"
 
-	gomock "github.com/golang/mock/gomock"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	ucli "github.com/urfave/cli/v2"
 
@@ -14,7 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
-	types "github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func mustAddr(a address.Address, err error) address.Address {

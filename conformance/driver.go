@@ -25,9 +25,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/conformance/chaos"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"  // enable bls signatures
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp" // enable secp signatures
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
 var (

@@ -8,8 +8,8 @@ import (
 
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
-	eventbus "github.com/libp2p/go-eventbus"
-	event "github.com/libp2p/go-libp2p-core/event"
+	"github.com/libp2p/go-eventbus"
+	"github.com/libp2p/go-libp2p-core/event"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"

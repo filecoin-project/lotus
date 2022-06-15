@@ -28,7 +28,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	"github.com/filecoin-project/lotus/chain/wallet/remotewallet"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node/config"
@@ -40,6 +39,7 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/paychmgr"
 	"github.com/filecoin-project/lotus/paychmgr/settler"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
 // Chain node provides access to the Filecoin blockchain, by setting up a full

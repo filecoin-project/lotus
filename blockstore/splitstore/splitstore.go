@@ -9,7 +9,7 @@ import (
 	"time"
 
 	blocks "github.com/ipfs/go-block-format"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/stats"

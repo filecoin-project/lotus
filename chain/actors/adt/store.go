@@ -5,7 +5,7 @@ import (
 
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	adt "github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
 )
 
 type Store interface {

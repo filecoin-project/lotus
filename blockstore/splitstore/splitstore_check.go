@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"

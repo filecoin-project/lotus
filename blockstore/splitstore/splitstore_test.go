@@ -12,8 +12,8 @@ import (
 	"time"
 
 	blocks "github.com/ipfs/go-block-format"
-	cid "github.com/ipfs/go-cid"
-	datastore "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
 	logging "github.com/ipfs/go-log/v2"
 	mh "github.com/multiformats/go-multihash"

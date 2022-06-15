@@ -12,8 +12,8 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
+	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -27,7 +27,7 @@ func (m *Miner) StartPackingSector(sectorNum abi.SectorNumber) error {
 	return m.sealing.StartPacking(sectorNum)
 }
 
-func (m *Miner) ListSectors() ([]sealing.SectorInfo, error) {
+func (m *Miner) ListSectors() ([]pipeline.SectorInfo, error) {
 	return m.sealing.ListSectors()
 }
 
@@ -35,7 +35,7 @@ func (m *Miner) PledgeSector(ctx context.Context) (storage.SectorRef, error) {
 	return m.sealing.PledgeSector(ctx)
 }
 
-func (m *Miner) ForceSectorState(ctx context.Context, id abi.SectorNumber, state sealing.SectorState) error {
+func (m *Miner) ForceSectorState(ctx context.Context, id abi.SectorNumber, state pipeline.SectorState) error {
 	return m.sealing.ForceSectorState(ctx, id, state)
 }
 

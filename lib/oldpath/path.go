@@ -5,7 +5,7 @@ import (
 	"path"
 	"strings"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 )
 
 // helper type so path parsing errors include the path

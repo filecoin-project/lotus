@@ -10,7 +10,7 @@ import (
 	"contrib.go.opencensus.io/exporter/prometheus"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/urfave/cli/v2"
-	stats "go.opencensus.io/stats"
+	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 
 	"github.com/filecoin-project/go-state-types/abi"
