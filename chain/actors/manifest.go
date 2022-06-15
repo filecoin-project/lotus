@@ -5,13 +5,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/filecoin-project/go-state-types/manifest"
-
-	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/lotus/chain/actors/adt"
 	cid "github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/manifest"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
 var manifestCids map[Version]cid.Cid = make(map[Version]cid.Cid)

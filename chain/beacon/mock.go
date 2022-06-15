@@ -6,12 +6,13 @@ import (
 	"encoding/binary"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/network"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/minio/blake2b-simd"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // Mock beacon assumes that filecoin rounds are 1:1 mapped with the beacon rounds

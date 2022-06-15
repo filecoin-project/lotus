@@ -5,8 +5,16 @@ import (
 	gobig "math/big"
 	"os"
 
-	"github.com/filecoin-project/go-state-types/network"
+	"github.com/ipfs/go-cid"
+	ds "github.com/ipfs/go-datastore"
 	cbor "github.com/ipfs/go-ipld-cbor"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/test-vectors/schema"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -18,20 +26,8 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/conformance/chaos"
 	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"  // enable bls signatures
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp" // enable secp signatures
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/crypto"
-
-	"github.com/filecoin-project/test-vectors/schema"
-
-	"github.com/filecoin-project/go-address"
-
-	"github.com/ipfs/go-cid"
-	ds "github.com/ipfs/go-datastore"
 )
 
 var (

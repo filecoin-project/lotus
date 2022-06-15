@@ -8,18 +8,16 @@ import (
 	"testing"
 	"time"
 
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
-
-	tutils "github.com/filecoin-project/specs-actors/support/testing"
-
-	"github.com/filecoin-project/go-state-types/crypto"
-
 	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
+	tutils "github.com/filecoin-project/specs-actors/support/testing"
+
 	"github.com/filecoin-project/lotus/chain/types"
 )
 

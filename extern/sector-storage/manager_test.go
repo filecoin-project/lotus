@@ -22,7 +22,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/proof"
 	"github.com/filecoin-project/go-statestore"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 	"github.com/filecoin-project/specs-storage/storage"
@@ -324,6 +326,147 @@ func TestSnapDeals(t *testing.T) {
 	require.NoError(t, m.ReleaseSectorKey(ctx, sid))
 	fmt.Printf("Unseal Replica\n")
 	require.NoError(t, m.SectorsUnsealPiece(ctx, sid, 0, p1.Size.Unpadded(), ticket, &out.NewUnsealed))
+}
+
+func TestSnarkPackV2(t *testing.T) {
+	logging.SetAllLoggers(logging.LevelWarn)
+	ctx := context.Background()
+	m, lstor, stor, idx, cleanup := newTestMgr(ctx, t, datastore.NewMapDatastore())
+	defer cleanup()
+
+	localTasks := []sealtasks.TaskType{
+		sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit1, sealtasks.TTCommit2, sealtasks.TTFinalize,
+		sealtasks.TTFetch, sealtasks.TTReplicaUpdate, sealtasks.TTProveReplicaUpdate1, sealtasks.TTProveReplicaUpdate2, sealtasks.TTUnseal,
+		sealtasks.TTRegenSectorKey,
+	}
+	wds := datastore.NewMapDatastore()
+
+	w := NewLocalWorker(WorkerConfig{TaskTypes: localTasks}, stor, lstor, idx, m, statestore.New(wds))
+	err := m.AddWorker(ctx, w)
+	require.NoError(t, err)
+
+	proofType := abi.RegisteredSealProof_StackedDrg2KiBV1
+	ptStr := os.Getenv("LOTUS_TEST_SNAP_DEALS_PROOF_TYPE")
+	switch ptStr {
+	case "2k":
+	case "8M":
+		proofType = abi.RegisteredSealProof_StackedDrg8MiBV1
+	case "512M":
+		proofType = abi.RegisteredSealProof_StackedDrg512MiBV1
+	case "32G":
+		proofType = abi.RegisteredSealProof_StackedDrg32GiBV1
+	case "64G":
+		proofType = abi.RegisteredSealProof_StackedDrg64GiBV1
+	default:
+		log.Warn("Unspecified proof type, make sure to set LOTUS_TEST_SNAP_DEALS_PROOF_TYPE to '2k', '8M', '512M', '32G' or '64G'")
+		log.Warn("Continuing test with 2k sectors")
+	}
+
+	mid := abi.ActorID(1000)
+
+	sid1 := storage.SectorRef{
+		ID:        abi.SectorID{Miner: mid, Number: 1},
+		ProofType: proofType,
+	}
+
+	sid2 := storage.SectorRef{
+		ID:        abi.SectorID{Miner: mid, Number: 2},
+		ProofType: proofType,
+	}
+
+	ss, err := proofType.SectorSize()
+	require.NoError(t, err)
+
+	unpaddedSectorSize := abi.PaddedPieceSize(ss).Unpadded()
+
+	// Pack sector with no pieces
+	p1, err := m.AddPiece(ctx, sid1, nil, unpaddedSectorSize, NewNullReader(unpaddedSectorSize))
+	require.NoError(t, err)
+	ccPieces1 := []abi.PieceInfo{p1}
+
+	p2, err := m.AddPiece(ctx, sid2, nil, unpaddedSectorSize, NewNullReader(unpaddedSectorSize))
+	require.NoError(t, err)
+	ccPieces2 := []abi.PieceInfo{p2}
+
+	// Precommit and Seal 2 CC sectors
+	fmt.Printf("PC1\n")
+
+	ticket1 := abi.SealRandomness{9, 9, 9, 9, 9, 9, 9, 9}
+	ticket2 := abi.SealRandomness{1, 9, 8, 9, 1, 9, 8, 9}
+	interactiveRandomness1 := abi.InteractiveSealRandomness{1, 9, 2, 1, 2, 5, 3, 0}
+	interactiveRandomness2 := abi.InteractiveSealRandomness{1, 5, 2, 2, 1, 5, 2, 2}
+
+	pc1Out1, err := m.SealPreCommit1(ctx, sid1, ticket1, ccPieces1)
+	require.NoError(t, err)
+	pc1Out2, err := m.SealPreCommit1(ctx, sid2, ticket2, ccPieces2)
+	require.NoError(t, err)
+
+	fmt.Printf("PC2\n")
+
+	pc2Out1, err := m.SealPreCommit2(ctx, sid1, pc1Out1)
+	require.NoError(t, err)
+	pc2Out2, err := m.SealPreCommit2(ctx, sid2, pc1Out2)
+	require.NoError(t, err)
+
+	// Commit the sector
+
+	fmt.Printf("C1\n")
+
+	c1Out1, err := m.SealCommit1(ctx, sid1, ticket1, interactiveRandomness1, ccPieces1, pc2Out1)
+	require.NoError(t, err)
+	c1Out2, err := m.SealCommit1(ctx, sid2, ticket2, interactiveRandomness2, ccPieces2, pc2Out2)
+	require.NoError(t, err)
+
+	fmt.Printf("C2\n")
+
+	c2Out1, err := m.SealCommit2(ctx, sid1, c1Out1)
+	require.NoError(t, err)
+	c2Out2, err := m.SealCommit2(ctx, sid2, c1Out2)
+	require.NoError(t, err)
+
+	fmt.Println("Aggregate")
+	agg, err := ffi.AggregateSealProofs(proof.AggregateSealVerifyProofAndInfos{
+		Miner:          mid,
+		SealProof:      proofType,
+		AggregateProof: abi.RegisteredAggregationProof_SnarkPackV2,
+		Infos: []proof.AggregateSealVerifyInfo{{
+			Number:                sid1.ID.Number,
+			Randomness:            ticket1,
+			InteractiveRandomness: interactiveRandomness1,
+			SealedCID:             pc2Out1.Sealed,
+			UnsealedCID:           pc2Out1.Unsealed,
+		}, {
+			Number:                sid2.ID.Number,
+			Randomness:            ticket2,
+			InteractiveRandomness: interactiveRandomness2,
+			SealedCID:             pc2Out2.Sealed,
+			UnsealedCID:           pc2Out2.Unsealed,
+		}},
+	}, [][]byte{c2Out1, c2Out2})
+	require.NoError(t, err)
+
+	fmt.Println("Verifying aggregate")
+	ret, err := ffi.VerifyAggregateSeals(proof.AggregateSealVerifyProofAndInfos{
+		Miner:          mid,
+		SealProof:      proofType,
+		AggregateProof: abi.RegisteredAggregationProof_SnarkPackV2,
+		Proof:          agg,
+		Infos: []proof.AggregateSealVerifyInfo{{
+			Number:                sid1.ID.Number,
+			Randomness:            ticket1,
+			InteractiveRandomness: interactiveRandomness1,
+			SealedCID:             pc2Out1.Sealed,
+			UnsealedCID:           pc2Out1.Unsealed,
+		}, {
+			Number:                sid2.ID.Number,
+			Randomness:            ticket2,
+			InteractiveRandomness: interactiveRandomness2,
+			SealedCID:             pc2Out2.Sealed,
+			UnsealedCID:           pc2Out2.Unsealed,
+		}},
+	})
+	require.NoError(t, err)
+	require.True(t, ret, "proof should be good")
 }
 
 func TestRedoPC1(t *testing.T) {

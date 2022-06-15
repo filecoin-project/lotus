@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"os"
 
+	logging "github.com/ipfs/go-log/v2"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	logging "github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"

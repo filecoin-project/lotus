@@ -4,19 +4,17 @@ import (
 	"context"
 	"encoding/binary"
 
-	"github.com/filecoin-project/go-state-types/network"
-
-	logging "github.com/ipfs/go-log/v2"
-
-	"github.com/filecoin-project/lotus/chain/beacon"
-
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/minio/blake2b-simd"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
+
+	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
@@ -163,7 +161,7 @@ func (sr *stateRand) getBeaconRandomnessV3(ctx context.Context, pers crypto.Doma
 
 	be, err := sr.extractBeaconEntryForEpoch(ctx, filecoinEpoch)
 	if err != nil {
-		log.Errorf("failed to get beacon entry as expected: %w", err)
+		log.Errorf("failed to get beacon entry as expected: %s", err)
 		return nil, err
 	}
 

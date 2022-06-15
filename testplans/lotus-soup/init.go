@@ -3,12 +3,12 @@ package main
 import (
 	"os"
 
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/ipfs/go-log/v2"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	"github.com/ipfs/go-log/v2"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
 func init() {

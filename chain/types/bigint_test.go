@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/docker/go-units"
-
 	"github.com/stretchr/testify/assert"
 )
 

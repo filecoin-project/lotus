@@ -6,14 +6,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/multiformats/go-multiaddr"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/multiformats/go-multiaddr"
-	"github.com/stretchr/testify/require"
 )
 
 // TestFullNode represents a full node enrolled in an Ensemble.

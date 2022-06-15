@@ -1,11 +1,13 @@
 package testkit
 
 import (
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/genesis"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/testground/sdk-go/sync"
+
+	"github.com/filecoin-project/go-address"
+
+	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 var (

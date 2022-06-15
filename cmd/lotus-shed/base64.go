@@ -8,11 +8,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-address"
-
-	"github.com/urfave/cli/v2"
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 var base64Cmd = &cli.Command{

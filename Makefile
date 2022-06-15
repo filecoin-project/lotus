@@ -319,7 +319,7 @@ appimage: lotus
 	cp ./lotus AppDir/usr/bin/
 	appimage-builder
 
-docsgen: docsgen-md docsgen-openrpc
+docsgen: docsgen-md docsgen-openrpc fiximports
 
 docsgen-md-bin: api-gen actors-gen
 	$(GOCC) build $(GOFLAGS) -o docgen-md ./api/docgen/cmd
@@ -349,7 +349,10 @@ docsgen-openrpc-gateway: docsgen-openrpc-bin
 
 .PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
 
-gen: actors-gen type-gen method-gen cfgdoc-gen docsgen api-gen circleci bundle-gen
+fiximports:
+	./scripts/fiximports
+
+gen: actors-gen type-gen method-gen cfgdoc-gen docsgen api-gen circleci bundle-gen fiximports
 	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO MAKE docsgen-cli"
 .PHONY: gen
 

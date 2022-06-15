@@ -5,10 +5,9 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 )
 
 // UnwrapFallbackStore takes a blockstore, and returns the underlying blockstore

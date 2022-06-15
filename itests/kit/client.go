@@ -12,12 +12,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+	lcli "github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	"github.com/stretchr/testify/require"
-	lcli "github.com/urfave/cli/v2"
 )
 
 // RunClientTest exercises some of the Client CLI commands

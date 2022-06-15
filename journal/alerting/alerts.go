@@ -6,8 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/lotus/journal"
 	logging "github.com/ipfs/go-log/v2"
+
+	"github.com/filecoin-project/lotus/journal"
 )
 
 var log = logging.Logger("alerting")

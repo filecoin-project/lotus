@@ -7,16 +7,14 @@ import (
 	"testing"
 	"time"
 
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
-
 	"github.com/ipfs/go-cid"
 	"github.com/raulk/clock"
-	"golang.org/x/xerrors"
-
 	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"

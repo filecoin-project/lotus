@@ -13,13 +13,12 @@ import (
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
 	"github.com/dgraph-io/badger/v2/pb"
-	"github.com/multiformats/go-base32"
-	"go.uber.org/zap"
-
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	logger "github.com/ipfs/go-log/v2"
 	pool "github.com/libp2p/go-buffer-pool"
+	"github.com/multiformats/go-base32"
+	"go.uber.org/zap"
 
 	"github.com/filecoin-project/lotus/blockstore"
 )

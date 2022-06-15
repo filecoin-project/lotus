@@ -3,9 +3,10 @@ package chain
 import (
 	"fmt"
 
-	"github.com/filecoin-project/lotus/build"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/lotus/build"
 )
 
 type BadBlockCache struct {

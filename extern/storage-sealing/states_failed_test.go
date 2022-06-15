@@ -6,11 +6,6 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/go-state-types/network"
-	statemachine "github.com/filecoin-project/go-statemachine"
-
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
-
 	"github.com/golang/mock/gomock"
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
@@ -19,6 +14,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
+	statemachine "github.com/filecoin-project/go-statemachine"
+	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 
 	api2 "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"

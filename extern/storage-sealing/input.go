@@ -5,15 +5,14 @@ import (
 	"sort"
 	"time"
 
-	"github.com/filecoin-project/go-padreader"
-	"github.com/filecoin-project/go-statemachine"
 	"github.com/ipfs/go-cid"
-
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
+	"github.com/filecoin-project/go-padreader"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-statemachine"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"

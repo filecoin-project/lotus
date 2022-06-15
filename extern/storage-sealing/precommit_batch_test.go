@@ -9,18 +9,15 @@ import (
 	"testing"
 	"time"
 
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
-
-	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
-
-	"github.com/filecoin-project/go-state-types/network"
-
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/network"
+	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"

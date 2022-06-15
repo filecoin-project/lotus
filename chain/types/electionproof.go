@@ -3,8 +3,9 @@ package types
 import (
 	"math/big"
 
-	"github.com/filecoin-project/lotus/build"
 	"github.com/minio/blake2b-simd"
+
+	"github.com/filecoin-project/lotus/build"
 )
 
 type ElectionProof struct {

@@ -7,19 +7,17 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/lotus/chain/types"
-
-	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	dsq "github.com/ipfs/go-datastore/query"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	cborrpc "github.com/filecoin-project/go-cbor-util"
-
+	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var ErrChannelNotTracked = errors.New("channel not tracked")

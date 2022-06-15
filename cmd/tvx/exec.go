@@ -12,10 +12,10 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/filecoin-project/go-address"
 	cbornode "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/test-vectors/schema"
 
 	"github.com/filecoin-project/lotus/blockstore"

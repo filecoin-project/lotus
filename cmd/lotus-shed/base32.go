@@ -7,9 +7,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/urfave/cli/v2"
-
 	"github.com/multiformats/go-base32"
+	"github.com/urfave/cli/v2"
 )
 
 var base32Cmd = &cli.Command{

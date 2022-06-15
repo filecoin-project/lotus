@@ -10,10 +10,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-statestore"
-	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
-	specstorage "github.com/filecoin-project/specs-storage/storage"
 	"github.com/gorilla/mux"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
@@ -22,6 +18,11 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-statestore"
+	specstorage "github.com/filecoin-project/specs-storage/storage"
+
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 )

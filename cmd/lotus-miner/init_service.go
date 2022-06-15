@@ -4,8 +4,13 @@ import (
 	"context"
 	"strings"
 
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
@@ -13,9 +18,6 @@ import (
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 )
 
 const (
