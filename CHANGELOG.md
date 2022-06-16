@@ -2,7 +2,7 @@
 
 # 1.17.0-rc1 / 2022-06-16
 
-This is the first release of the upcoming release of the optional release Lotus v1.17.0. This optional release supports the Filecoin network v16 upgrade, codenamed the Skyr. Full changelog will be published upon final release.
+This is the first release candidate of the upcoming OPTIONAL release Lotus v1.17.0. This optional release also supports the Filecoin network v16 Skyr upgrade (FVM) with some small bug fixes, new features & improvements. Full changelog will be published upon final release.
 
 - github.com/filecoin-project/lotus:
   - bump version
