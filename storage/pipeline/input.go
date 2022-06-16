@@ -124,7 +124,7 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 		sealTime := time.Unix(sector.CreationTime, 0).Add(cfg.WaitDealsDelay)
 
 		// check deal age, start sealing when the deal closest to starting is within slack time
-		_, current, err := m.Api.ChainHead(ctx.Context())
+		ts, err := m.Api.ChainHead(ctx.Context())
 		blockTime := time.Second * time.Duration(build.BlockDelaySecs)
 		if err != nil {
 			return false, xerrors.Errorf("API error getting head: %w", err)
@@ -134,7 +134,7 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 				continue
 			}
 			dealSafeSealEpoch := piece.DealInfo.DealProposal.StartEpoch - cfg.StartEpochSealingBuffer
-			dealSafeSealTime := time.Now().Add(time.Duration(dealSafeSealEpoch-current) * blockTime)
+			dealSafeSealTime := time.Now().Add(time.Duration(dealSafeSealEpoch-ts.Height()) * blockTime)
 			if dealSafeSealTime.Before(sealTime) {
 				sealTime = dealSafeSealTime
 			}
@@ -303,14 +303,14 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 		return api.SectorOffset{}, xerrors.Errorf("getting config: %w", err)
 	}
 
-	_, head, err := m.Api.ChainHead(ctx)
+	ts, err := m.Api.ChainHead(ctx)
 	if err != nil {
 		return api.SectorOffset{}, xerrors.Errorf("couldnt get chain head: %w", err)
 	}
-	if head+cfg.StartEpochSealingBuffer > deal.DealProposal.StartEpoch {
+	if ts.Height()+cfg.StartEpochSealingBuffer > deal.DealProposal.StartEpoch {
 		return api.SectorOffset{}, xerrors.Errorf(
 			"cannot add piece for deal with piece CID %s: current epoch %d has passed deal proposal start epoch %d",
-			deal.DealProposal.PieceCID, head, deal.DealProposal.StartEpoch)
+			deal.DealProposal.PieceCID, ts.Height(), deal.DealProposal.StartEpoch)
 	}
 
 	m.inputLk.Lock()
@@ -544,14 +544,14 @@ func (m *Sealing) calcTargetExpiration(ctx context.Context, ssize abi.SectorSize
 		}
 	}
 
-	_, curEpoch, err := m.Api.ChainHead(ctx)
+	ts, err := m.Api.ChainHead(ctx)
 	if err != nil {
 		return 0, 0, xerrors.Errorf("getting current epoch: %w", err)
 	}
 
 	minDur, maxDur := policy.DealDurationBounds(0)
 
-	return curEpoch + minDur, curEpoch + maxDur, nil
+	return ts.Height() + minDur, ts.Height() + maxDur, nil
 }
 
 func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealProof, ef expFn) (bool, error) {

@@ -37,7 +37,7 @@ var aggFeeDen = big.NewInt(100)
 type CommitBatcherApi interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
-	ChainHead(ctx context.Context) (types.TipSetKey, abi.ChainEpoch, error)
+	ChainHead(ctx context.Context) (*types.TipSet, error)
 	ChainBaseFee(context.Context, types.TipSetKey) (abi.TokenAmount, error)
 
 	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error)
@@ -204,14 +204,14 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 
 	var res []sealiface.CommitBatchRes
 
-	tok, h, err := b.api.ChainHead(b.mctx)
+	ts, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		return nil, err
 	}
 
 	blackedOut := func() bool {
 		const nv16BlackoutWindow = abi.ChainEpoch(20) // a magik number
-		if h <= build.UpgradeSkyrHeight && build.UpgradeSkyrHeight-h < nv16BlackoutWindow {
+		if ts.Height() <= build.UpgradeSkyrHeight && build.UpgradeSkyrHeight-ts.Height() < nv16BlackoutWindow {
 			return true
 		}
 		return false
@@ -221,7 +221,7 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 
 	if !individual && !cfg.AggregateAboveBaseFee.Equals(big.Zero()) {
 
-		bf, err := b.api.ChainBaseFee(b.mctx, tok)
+		bf, err := b.api.ChainBaseFee(b.mctx, ts.Key())
 		if err != nil {
 			return nil, xerrors.Errorf("couldn't get base fee: %w", err)
 		}
@@ -265,7 +265,7 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 }
 
 func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBatchRes, error) {
-	tok, _, err := b.api.ChainHead(b.mctx)
+	ts, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +292,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 
 		res.Sectors = append(res.Sectors, id)
 
-		sc, err := b.getSectorCollateral(id, tok)
+		sc, err := b.getSectorCollateral(id, ts.Key())
 		if err != nil {
 			res.FailedSectors[id] = err.Error()
 			continue
@@ -321,7 +321,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting miner id: %w", err)
 	}
 
-	nv, err := b.api.StateNetworkVersion(b.mctx, tok)
+	nv, err := b.api.StateNetworkVersion(b.mctx, ts.Key())
 	if err != nil {
 		log.Errorf("getting network version: %s", err)
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting network version: %s", err)
@@ -354,7 +354,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 
 	maxFee := b.feeCfg.MaxCommitBatchGasFee.FeeForSectors(len(infos))
 
-	bf, err := b.api.ChainBaseFee(b.mctx, tok)
+	bf, err := b.api.ChainBaseFee(b.mctx, ts.Key())
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't get base fee: %w", err)
 	}
@@ -412,7 +412,7 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 		}
 	}
 
-	tok, _, err := b.api.ChainHead(b.mctx)
+	ts, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		return nil, err
 	}
@@ -425,7 +425,7 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 			FailedSectors: map[abi.SectorNumber]string{},
 		}
 
-		mcid, err := b.processSingle(cfg, mi, &avail, sn, info, tok)
+		mcid, err := b.processSingle(cfg, mi, &avail, sn, info, ts.Key())
 		if err != nil {
 			log.Errorf("process single error: %+v", err) // todo: return to user
 			r.FailedSectors[sn] = err.Error()
@@ -569,18 +569,18 @@ func (b *CommitBatcher) Stop(ctx context.Context) error {
 
 // TODO: If this returned epochs, it would make testing much easier
 func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
-	tok, curEpoch, err := b.api.ChainHead(b.mctx)
+	ts, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		return time.Now(), xerrors.Errorf("getting chain head: %s", err)
 	}
 
-	nv, err := b.api.StateNetworkVersion(b.mctx, tok)
+	nv, err := b.api.StateNetworkVersion(b.mctx, ts.Key())
 	if err != nil {
 		log.Errorf("getting network version: %s", err)
 		return time.Now(), xerrors.Errorf("getting network version: %s", err)
 	}
 
-	pci, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, si.SectorNumber, tok)
+	pci, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, si.SectorNumber, ts.Key())
 	if err != nil {
 		log.Errorf("getting precommit info: %s", err)
 		return time.Now(), err
@@ -609,11 +609,11 @@ func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
 		}
 	}
 
-	if cutoffEpoch <= curEpoch {
+	if cutoffEpoch <= ts.Height() {
 		return time.Now(), nil
 	}
 
-	return time.Now().Add(time.Duration(cutoffEpoch-curEpoch) * time.Duration(build.BlockDelaySecs) * time.Second), nil
+	return time.Now().Add(time.Duration(cutoffEpoch-ts.Height()) * time.Duration(build.BlockDelaySecs) * time.Second), nil
 }
 
 func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tok types.TipSetKey) (abi.TokenAmount, error) {

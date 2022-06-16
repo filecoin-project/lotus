@@ -4,7 +4,6 @@ package sealing_test
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/lotus/chain/types"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -21,6 +20,7 @@ import (
 
 	api2 "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/types"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/mocks"
 )

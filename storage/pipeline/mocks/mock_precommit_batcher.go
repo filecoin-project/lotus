@@ -59,13 +59,12 @@ func (mr *MockPreCommitBatcherApiMockRecorder) ChainBaseFee(arg0, arg1 interface
 }
 
 // ChainHead mocks base method.
-func (m *MockPreCommitBatcherApi) ChainHead(arg0 context.Context) (types.TipSetKey, abi.ChainEpoch, error) {
+func (m *MockPreCommitBatcherApi) ChainHead(arg0 context.Context) (*types.TipSet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChainHead", arg0)
-	ret0, _ := ret[0].(types.TipSetKey)
-	ret1, _ := ret[1].(abi.ChainEpoch)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret0, _ := ret[0].(*types.TipSet)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // ChainHead indicates an expected call of ChainHead.

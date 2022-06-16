@@ -40,7 +40,7 @@ type ErrBadRU struct{ error }
 type ErrBadPR struct{ error }
 
 func checkPieces(ctx context.Context, maddr address.Address, si SectorInfo, api SealingAPI, mustHaveDeals bool) error {
-	tok, height, err := api.ChainHead(ctx)
+	ts, err := api.ChainHead(ctx)
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("getting chain head: %w", err)}
 	}
@@ -60,7 +60,7 @@ func checkPieces(ctx context.Context, maddr address.Address, si SectorInfo, api 
 
 		dealCount++
 
-		proposal, err := api.StateMarketStorageDealProposal(ctx, p.DealInfo.DealID, tok)
+		proposal, err := api.StateMarketStorageDealProposal(ctx, p.DealInfo.DealID, ts.Key())
 		if err != nil {
 			return &ErrInvalidDeals{xerrors.Errorf("getting deal %d for piece %d: %w", p.DealInfo.DealID, i, err)}
 		}
@@ -77,8 +77,8 @@ func checkPieces(ctx context.Context, maddr address.Address, si SectorInfo, api 
 			return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with different size: %d != %d", i, len(si.Pieces), si.SectorNumber, p.DealInfo.DealID, p.Piece.Size, proposal.PieceSize)}
 		}
 
-		if height >= proposal.StartEpoch {
-			return &ErrExpiredDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(si.Pieces), si.SectorNumber, p.DealInfo.DealID, proposal.StartEpoch, height)}
+		if ts.Height() >= proposal.StartEpoch {
+			return &ErrExpiredDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(si.Pieces), si.SectorNumber, p.DealInfo.DealID, proposal.StartEpoch, ts.Height())}
 		}
 	}
 

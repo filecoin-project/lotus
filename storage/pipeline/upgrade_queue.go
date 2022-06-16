@@ -25,16 +25,16 @@ func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) e
 		return xerrors.Errorf("not a committed-capacity sector, has deals")
 	}
 
-	tok, head, err := m.Api.ChainHead(ctx)
+	ts, err := m.Api.ChainHead(ctx)
 	if err != nil {
 		return xerrors.Errorf("couldnt get chain head: %w", err)
 	}
-	onChainInfo, err := m.Api.StateSectorGetInfo(ctx, m.maddr, id, tok)
+	onChainInfo, err := m.Api.StateSectorGetInfo(ctx, m.maddr, id, ts.Key())
 	if err != nil {
 		return xerrors.Errorf("failed to read sector on chain info: %w", err)
 	}
 
-	active, err := m.sectorActive(ctx, tok, id)
+	active, err := m.sectorActive(ctx, ts.Key(), id)
 	if err != nil {
 		return xerrors.Errorf("failed to check if sector is active")
 	}
@@ -42,7 +42,7 @@ func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) e
 		return xerrors.Errorf("cannot mark inactive sector for upgrade")
 	}
 
-	if onChainInfo.Expiration-head < market7.DealMinDuration {
+	if onChainInfo.Expiration-ts.Height() < market7.DealMinDuration {
 		return xerrors.Errorf("pointless to upgrade sector %d, expiration %d is less than a min deal duration away from current epoch."+
 			"Upgrade expiration before marking for upgrade", id, onChainInfo.Expiration)
 	}

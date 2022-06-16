@@ -1,7 +1,6 @@
 package sealing
 
 import (
-	"github.com/filecoin-project/lotus/api"
 	"time"
 
 	"golang.org/x/xerrors"
@@ -9,6 +8,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-statemachine"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -98,21 +98,21 @@ func (m *Sealing) handleTerminateWait(ctx statemachine.Context, sector SectorInf
 
 func (m *Sealing) handleTerminateFinality(ctx statemachine.Context, sector SectorInfo) error {
 	for {
-		tok, epoch, err := m.Api.ChainHead(ctx.Context())
+		ts, err := m.Api.ChainHead(ctx.Context())
 		if err != nil {
 			return ctx.Send(SectorTerminateFailed{xerrors.Errorf("getting chain head: %w", err)})
 		}
 
-		nv, err := m.Api.StateNetworkVersion(ctx.Context(), tok)
+		nv, err := m.Api.StateNetworkVersion(ctx.Context(), ts.Key())
 		if err != nil {
 			return ctx.Send(SectorTerminateFailed{xerrors.Errorf("getting network version: %w", err)})
 		}
 
-		if epoch >= sector.TerminatedAt+policy.GetWinningPoStSectorSetLookback(nv) {
+		if ts.Height() >= sector.TerminatedAt+policy.GetWinningPoStSectorSetLookback(nv) {
 			return ctx.Send(SectorRemove{})
 		}
 
-		toWait := time.Duration(epoch-sector.TerminatedAt+policy.GetWinningPoStSectorSetLookback(nv)) * time.Duration(build.BlockDelaySecs) * time.Second
+		toWait := time.Duration(ts.Height()-sector.TerminatedAt+policy.GetWinningPoStSectorSetLookback(nv)) * time.Duration(build.BlockDelaySecs) * time.Second
 		select {
 		case <-time.After(toWait):
 			continue

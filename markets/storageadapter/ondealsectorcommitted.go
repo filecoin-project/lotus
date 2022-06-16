@@ -41,9 +41,9 @@ type SectorCommittedManager struct {
 	dpc      diffPreCommitsAPI
 }
 
-func NewSectorCommittedManager(ev eventsCalledAPI, tskAPI pipeline.CurrentDealInfoTskAPI, dpcAPI diffPreCommitsAPI) *SectorCommittedManager {
+func NewSectorCommittedManager(ev eventsCalledAPI, tskAPI pipeline.CurrentDealInfoAPI, dpcAPI diffPreCommitsAPI) *SectorCommittedManager {
 	dim := &pipeline.CurrentDealInfoManager{
-		CDAPI: &pipeline.CurrentDealInfoAPIAdapter{CurrentDealInfoTskAPI: tskAPI},
+		CDAPI: tskAPI,
 	}
 	return newSectorCommittedManager(ev, dim, dpcAPI)
 }

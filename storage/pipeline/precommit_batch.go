@@ -31,7 +31,7 @@ type PreCommitBatcherApi interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (big.Int, error)
-	ChainHead(ctx context.Context) (types.TipSetKey, abi.ChainEpoch, error)
+	ChainHead(ctx context.Context) (*types.TipSet, error)
 	ChainBaseFee(context.Context, types.TipSetKey) (abi.TokenAmount, error)
 	StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error)
 }
@@ -188,18 +188,18 @@ func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBat
 		return nil, nil
 	}
 
-	tok, _, err := b.api.ChainHead(b.mctx)
+	ts, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		return nil, err
 	}
 
-	bf, err := b.api.ChainBaseFee(b.mctx, tok)
+	bf, err := b.api.ChainBaseFee(b.mctx, ts.Key())
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't get base fee: %w", err)
 	}
 
 	// TODO: Drop this once nv14 has come and gone
-	nv, err := b.api.StateNetworkVersion(b.mctx, tok)
+	nv, err := b.api.StateNetworkVersion(b.mctx, ts.Key())
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't get network version: %w", err)
 	}
@@ -212,7 +212,7 @@ func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBat
 	// todo support multiple batches
 	var res []sealiface.PreCommitBatchRes
 	if !individual {
-		res, err = b.processBatch(cfg, tok, bf, nv)
+		res, err = b.processBatch(cfg, ts.Key(), bf, nv)
 	} else {
 		res, err = b.processIndividually(cfg)
 	}
@@ -378,13 +378,13 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tok types.TipSetKe
 
 // register PreCommit, wait for batch message, return message CID
 func (b *PreCommitBatcher) AddPreCommit(ctx context.Context, s SectorInfo, deposit abi.TokenAmount, in *miner.SectorPreCommitInfo) (res sealiface.PreCommitBatchRes, err error) {
-	_, curEpoch, err := b.api.ChainHead(b.mctx)
+	ts, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		log.Errorf("getting chain head: %s", err)
 		return sealiface.PreCommitBatchRes{}, err
 	}
 
-	cutoff, err := getPreCommitCutoff(curEpoch, s)
+	cutoff, err := getPreCommitCutoff(ts.Height(), s)
 	if err != nil {
 		return sealiface.PreCommitBatchRes{}, xerrors.Errorf("failed to calculate cutoff: %w", err)
 	}

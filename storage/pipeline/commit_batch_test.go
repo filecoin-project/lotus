@@ -10,12 +10,14 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
@@ -105,7 +107,7 @@ func TestCommitBatcher(t *testing.T) {
 				SectorNumber: sn,
 			}
 
-			s.EXPECT().ChainHead(gomock.Any()).Return(types.EmptyTSK, abi.ChainEpoch(1), nil)
+			s.EXPECT().ChainHead(gomock.Any()).Return(makeTs(t, 1), nil)
 			s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version13, nil)
 			s.EXPECT().StateSectorPreCommitInfo(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&minertypes.SectorPreCommitOnChainInfo{
 				PreCommitDeposit: big.Zero(),
@@ -166,7 +168,7 @@ func TestCommitBatcher(t *testing.T) {
 				basefee = types.NanoFil
 			}
 
-			s.EXPECT().ChainHead(gomock.Any()).Return(types.EmptyTSK, abi.ChainEpoch(1), nil)
+			s.EXPECT().ChainHead(gomock.Any()).Return(makeTs(t, 1), nil)
 			if batch {
 				s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(basefee, nil)
 			}
@@ -176,7 +178,7 @@ func TestCommitBatcher(t *testing.T) {
 				ti = len(expect)
 			}
 
-			s.EXPECT().ChainHead(gomock.Any()).Return(types.EmptyTSK, abi.ChainEpoch(1), nil)
+			s.EXPECT().ChainHead(gomock.Any()).Return(makeTs(t, 1), nil)
 
 			pciC := len(expect)
 			if failOnePCI {
@@ -385,3 +387,31 @@ func (f fakeProver) AggregateSealProofs(aggregateInfo prooftypes.AggregateSealVe
 }
 
 var _ ffiwrapper.Prover = &fakeProver{}
+
+func makeTs(t *testing.T, h abi.ChainEpoch) *types.TipSet {
+	a, _ := address.NewFromString("t00")
+	dummyCid, _ := cid.Parse("bafkqaaa")
+
+	var ts, err = types.NewTipSet([]*types.BlockHeader{
+		{
+			Height: h,
+			Miner:  a,
+
+			Parents: []cid.Cid{},
+
+			Ticket: &types.Ticket{VRFProof: []byte{byte(h % 2)}},
+
+			ParentStateRoot:       dummyCid,
+			Messages:              dummyCid,
+			ParentMessageReceipts: dummyCid,
+
+			BlockSig:     &crypto.Signature{Type: crypto.SigTypeBLS},
+			BLSAggregate: &crypto.Signature{Type: crypto.SigTypeBLS},
+		},
+	})
+	if t != nil {
+		require.NoError(t, err)
+	}
+
+	return ts
+}

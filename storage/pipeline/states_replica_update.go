@@ -3,7 +3,6 @@ package sealing
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/lotus/build"
 	"time"
 
 	"golang.org/x/xerrors"
@@ -16,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-statemachine"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -41,12 +41,12 @@ func (m *Sealing) handleProveReplicaUpdate(ctx statemachine.Context, sector Sect
 		return xerrors.Errorf("invalid sector %d with nil CommR", sector.SectorNumber)
 	}
 	// Abort upgrade for sectors that went faulty since being marked for upgrade
-	tok, _, err := m.Api.ChainHead(ctx.Context())
+	ts, err := m.Api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handleProveReplicaUpdate: api error, not proceeding: %+v", err)
 		return nil
 	}
-	active, err := m.sectorActive(ctx.Context(), tok, sector.SectorNumber)
+	active, err := m.sectorActive(ctx.Context(), ts.Key(), sector.SectorNumber)
 	if err != nil {
 		log.Errorf("sector active check: api error, not proceeding: %+v", err)
 		return nil
@@ -77,17 +77,17 @@ func (m *Sealing) handleProveReplicaUpdate(ctx statemachine.Context, sector Sect
 
 func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector SectorInfo) error {
 
-	tok, _, err := m.Api.ChainHead(ctx.Context())
+	ts, err := m.Api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handleSubmitReplicaUpdate: api error, not proceeding: %+v", err)
 		return nil
 	}
 
-	if err := checkReplicaUpdate(ctx.Context(), m.maddr, sector, tok, m.Api); err != nil {
+	if err := checkReplicaUpdate(ctx.Context(), m.maddr, sector, ts.Key(), m.Api); err != nil {
 		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
 	}
 
-	sl, err := m.Api.StateSectorPartition(ctx.Context(), m.maddr, sector.SectorNumber, tok)
+	sl, err := m.Api.StateSectorPartition(ctx.Context(), m.maddr, sector.SectorNumber, ts.Key())
 	if err != nil {
 		log.Errorf("handleSubmitReplicaUpdate: api error, not proceeding: %+v", err)
 		return nil
@@ -121,7 +121,7 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		return xerrors.Errorf("getting config: %w", err)
 	}
 
-	onChainInfo, err := m.Api.StateSectorGetInfo(ctx.Context(), m.maddr, sector.SectorNumber, tok)
+	onChainInfo, err := m.Api.StateSectorGetInfo(ctx.Context(), m.maddr, sector.SectorNumber, ts.Key())
 	if err != nil {
 		log.Errorf("handleSubmitReplicaUpdate: api error, not proceeding: %+v", err)
 		return nil
@@ -144,7 +144,7 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		//ReplaceSectorNumber: 0,
 	}
 
-	collateral, err := m.Api.StateMinerInitialPledgeCollateral(ctx.Context(), m.maddr, virtualPCI, tok)
+	collateral, err := m.Api.StateMinerInitialPledgeCollateral(ctx.Context(), m.maddr, virtualPCI, ts.Key())
 	if err != nil {
 		return xerrors.Errorf("getting initial pledge collateral: %w", err)
 	}
@@ -162,7 +162,7 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 
 	goodFunds := big.Add(collateral, big.Int(m.feeCfg.MaxCommitGasFee))
 
-	mi, err := m.Api.StateMinerInfo(ctx.Context(), m.maddr, tok)
+	mi, err := m.Api.StateMinerInfo(ctx.Context(), m.maddr, ts.Key())
 	if err != nil {
 		log.Errorf("handleSubmitReplicaUpdate: api error, not proceeding: %+v", err)
 		return nil
@@ -241,12 +241,12 @@ func (m *Sealing) handleUpdateActivating(ctx statemachine.Context, sector Sector
 			return err
 		}
 
-		tok, _, err := m.Api.ChainHead(ctx.Context())
+		ts, err := m.Api.ChainHead(ctx.Context())
 		if err != nil {
 			return err
 		}
 
-		nv, err := m.Api.StateNetworkVersion(ctx.Context(), tok)
+		nv, err := m.Api.StateNetworkVersion(ctx.Context(), ts.Key())
 		if err != nil {
 			return err
 		}

@@ -8,6 +8,9 @@ import (
 	context "context"
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
+	cid "github.com/ipfs/go-cid"
+
 	address "github.com/filecoin-project/go-address"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
@@ -16,11 +19,10 @@ import (
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	dline "github.com/filecoin-project/go-state-types/dline"
 	network "github.com/filecoin-project/go-state-types/network"
+
 	api "github.com/filecoin-project/lotus/api"
 	types "github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
-	gomock "github.com/golang/mock/gomock"
-	cid "github.com/ipfs/go-cid"
 )
 
 // MockSealingAPI is a mock of SealingAPI interface.
@@ -77,13 +79,12 @@ func (mr *MockSealingAPIMockRecorder) ChainGetMessage(arg0, arg1 interface{}) *g
 }
 
 // ChainHead mocks base method.
-func (m *MockSealingAPI) ChainHead(arg0 context.Context) (types.TipSetKey, abi.ChainEpoch, error) {
+func (m *MockSealingAPI) ChainHead(arg0 context.Context) (*types.TipSet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChainHead", arg0)
-	ret0, _ := ret[0].(types.TipSetKey)
-	ret1, _ := ret[1].(abi.ChainEpoch)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret0, _ := ret[0].(*types.TipSet)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // ChainHead indicates an expected call of ChainHead.

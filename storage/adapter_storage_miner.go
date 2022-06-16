@@ -111,6 +111,10 @@ func (s SealingAPIAdapter) StateSearchMsg(ctx context.Context, from types.TipSet
 	return s.delegate.StateSearchMsg(ctx, from, msg, limit, allowReplaced)
 }
 
+func (s SealingAPIAdapter) ChainHead(ctx context.Context) (*types.TipSet, error) {
+	return s.delegate.ChainHead(ctx)
+}
+
 func (s SealingAPIAdapter) StateComputeDataCommitment(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) {
 
 	nv, err := s.delegate.StateNetworkVersion(ctx, tsk)
@@ -231,15 +235,6 @@ func (s SealingAPIAdapter) StateMarketStorageDealProposal(ctx context.Context, d
 	}
 
 	return deal.Proposal, nil
-}
-
-func (s SealingAPIAdapter) ChainHead(ctx context.Context) (types.TipSetKey, abi.ChainEpoch, error) {
-	head, err := s.delegate.ChainHead(ctx)
-	if err != nil {
-		return types.EmptyTSK, 0, err
-	}
-
-	return head.Key(), head.Height(), nil
 }
 
 func (s SealingAPIAdapter) ChainBaseFee(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error) {

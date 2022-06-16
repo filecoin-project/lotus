@@ -46,8 +46,8 @@ func (f *fakeChain) StateNetworkVersion(ctx context.Context, tok types.TipSetKey
 	return build.NewestNetworkVersion, nil
 }
 
-func (f *fakeChain) ChainHead(ctx context.Context) (types.TipSetKey, abi.ChainEpoch, error) {
-	return types.NewTipSetKey(), f.h, nil
+func (f *fakeChain) ChainHead(ctx context.Context) (*types.TipSet, error) {
+	return makeTs(nil, f.h), nil
 }
 
 func fakePieceCid(t *testing.T) cid.Cid {
