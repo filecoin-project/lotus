@@ -261,7 +261,7 @@ OPTIONS:
 ```
 NAME:
    lotus-miner actor withdraw - withdraw available balance
-   
+
 USAGE:
    lotus-miner actor withdraw [command options] [amount (FIL)]
 
@@ -269,7 +269,7 @@ COMMANDS:
    propose  Propose a multisig transaction
    approve  Approve a multisig message
    help, h  Shows a list of commands or help for one command
-   
+
 OPTIONS:
    --confidence value  number of block confirmations to wait for (default: 5)
    --help, -h          show help (default: false)
@@ -288,7 +288,7 @@ OPTIONS:
    --encoding value  specify params encoding to parse (base64, hex) (default: "hex")
    --from value      account to send the propose message from
    --help, -h        show help (default: false)
-   
+
 ```
 
 #### lotus-miner actor withdraw approve
@@ -302,7 +302,7 @@ USAGE:
 OPTIONS:
    --from value  account to send the approve message from
    --help, -h    show help (default: false)
-   
+
 ```
 
 ### lotus-miner actor repay-debt
