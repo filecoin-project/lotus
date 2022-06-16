@@ -170,6 +170,7 @@
   * [StateChangedActors](#StateChangedActors)
   * [StateCirculatingSupply](#StateCirculatingSupply)
   * [StateCompute](#StateCompute)
+  * [StateComputeDataCID](#StateComputeDataCID)
   * [StateDealProviderCollateralBounds](#StateDealProviderCollateralBounds)
   * [StateDecodeParams](#StateDecodeParams)
   * [StateEncodeParams](#StateEncodeParams)
@@ -5518,6 +5519,38 @@ Response:
       "Duration": 60000000000
     }
   ]
+}
+```
+
+### StateComputeDataCID
+StateComputeDataCID computes DataCID from a set of on-chain deals
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  8,
+  [
+    5432
+  ],
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
 }
 ```
 

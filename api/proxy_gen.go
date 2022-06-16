@@ -350,6 +350,8 @@ type FullNodeStruct struct {
 
 		StateCompute func(p0 context.Context, p1 abi.ChainEpoch, p2 []*types.Message, p3 types.TipSetKey) (*ComputeStateOutput, error) `perm:"read"`
 
+		StateComputeDataCID func(p0 context.Context, p1 address.Address, p2 abi.RegisteredSealProof, p3 []abi.DealID, p4 types.TipSetKey) (cid.Cid, error) `perm:"read"`
+
 		StateDealProviderCollateralBounds func(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (DealCollateralBounds, error) `perm:"read"`
 
 		StateDecodeParams func(p0 context.Context, p1 address.Address, p2 abi.MethodNum, p3 []byte, p4 types.TipSetKey) (interface{}, error) `perm:"read"`
@@ -2451,6 +2453,17 @@ func (s *FullNodeStruct) StateCompute(p0 context.Context, p1 abi.ChainEpoch, p2 
 
 func (s *FullNodeStub) StateCompute(p0 context.Context, p1 abi.ChainEpoch, p2 []*types.Message, p3 types.TipSetKey) (*ComputeStateOutput, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) StateComputeDataCID(p0 context.Context, p1 address.Address, p2 abi.RegisteredSealProof, p3 []abi.DealID, p4 types.TipSetKey) (cid.Cid, error) {
+	if s.Internal.StateComputeDataCID == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
+	return s.Internal.StateComputeDataCID(p0, p1, p2, p3, p4)
+}
+
+func (s *FullNodeStub) StateComputeDataCID(p0 context.Context, p1 address.Address, p2 abi.RegisteredSealProof, p3 []abi.DealID, p4 types.TipSetKey) (cid.Cid, error) {
+	return *new(cid.Cid), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateDealProviderCollateralBounds(p0 context.Context, p1 abi.PaddedPieceSize, p2 bool, p3 types.TipSetKey) (DealCollateralBounds, error) {

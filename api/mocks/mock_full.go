@@ -2348,6 +2348,21 @@ func (mr *MockFullNodeMockRecorder) StateCompute(arg0, arg1, arg2, arg3 interfac
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateCompute", reflect.TypeOf((*MockFullNode)(nil).StateCompute), arg0, arg1, arg2, arg3)
 }
 
+// StateComputeDataCID mocks base method.
+func (m *MockFullNode) StateComputeDataCID(arg0 context.Context, arg1 address.Address, arg2 abi.RegisteredSealProof, arg3 []abi.DealID, arg4 types.TipSetKey) (cid.Cid, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateComputeDataCID", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(cid.Cid)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateComputeDataCID indicates an expected call of StateComputeDataCID.
+func (mr *MockFullNodeMockRecorder) StateComputeDataCID(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateComputeDataCID", reflect.TypeOf((*MockFullNode)(nil).StateComputeDataCID), arg0, arg1, arg2, arg3, arg4)
+}
+
 // StateDealProviderCollateralBounds mocks base method.
 func (m *MockFullNode) StateDealProviderCollateralBounds(arg0 context.Context, arg1 abi.PaddedPieceSize, arg2 bool, arg3 types.TipSetKey) (api.DealCollateralBounds, error) {
 	m.ctrl.T.Helper()
