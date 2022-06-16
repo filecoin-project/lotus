@@ -9,7 +9,6 @@ import (
 	reflect "reflect"
 
 	address "github.com/filecoin-project/go-address"
-	bitfield "github.com/filecoin-project/go-bitfield"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
 	market "github.com/filecoin-project/go-state-types/builtin/v8/market"
@@ -213,21 +212,6 @@ func (mr *MockSealingAPIMockRecorder) StateMarketStorageDealProposal(arg0, arg1,
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMarketStorageDealProposal", reflect.TypeOf((*MockSealingAPI)(nil).StateMarketStorageDealProposal), arg0, arg1, arg2)
 }
 
-// StateMinerActiveSectors mocks base method.
-func (m *MockSealingAPI) StateMinerActiveSectors(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (bitfield.BitField, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateMinerActiveSectors", arg0, arg1, arg2)
-	ret0, _ := ret[0].(bitfield.BitField)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StateMinerActiveSectors indicates an expected call of StateMinerActiveSectors.
-func (mr *MockSealingAPIMockRecorder) StateMinerActiveSectors(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerActiveSectors", reflect.TypeOf((*MockSealingAPI)(nil).StateMinerActiveSectors), arg0, arg1, arg2)
-}
-
 // StateMinerAvailableBalance mocks base method.
 func (m *MockSealingAPI) StateMinerAvailableBalance(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()
@@ -241,6 +225,21 @@ func (m *MockSealingAPI) StateMinerAvailableBalance(arg0 context.Context, arg1 a
 func (mr *MockSealingAPIMockRecorder) StateMinerAvailableBalance(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerAvailableBalance", reflect.TypeOf((*MockSealingAPI)(nil).StateMinerAvailableBalance), arg0, arg1, arg2)
+}
+
+// StateMinerDeadlines mocks base method.
+func (m *MockSealingAPI) StateMinerDeadlines(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) ([]api.Deadline, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateMinerDeadlines", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]api.Deadline)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateMinerDeadlines indicates an expected call of StateMinerDeadlines.
+func (mr *MockSealingAPIMockRecorder) StateMinerDeadlines(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerDeadlines", reflect.TypeOf((*MockSealingAPI)(nil).StateMinerDeadlines), arg0, arg1, arg2)
 }
 
 // StateMinerInfo mocks base method.

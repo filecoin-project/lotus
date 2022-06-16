@@ -51,10 +51,27 @@ func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) e
 }
 
 func (m *Sealing) sectorActive(ctx context.Context, tok types.TipSetKey, sector abi.SectorNumber) (bool, error) {
-	active, err := m.Api.StateMinerActiveSectors(ctx, m.maddr, tok)
+	dls, err := m.Api.StateMinerDeadlines(ctx, m.maddr, tok)
 	if err != nil {
-		return false, xerrors.Errorf("failed to check active sectors: %w", err)
+		return false, xerrors.Errorf("getting proving deadlines: %w", err)
 	}
 
-	return active.IsSet(uint64(sector))
+	for dl := range dls {
+		parts, err := m.Api.StateMinerPartitions(ctx, m.maddr, uint64(dl), tok)
+		if err != nil {
+			return false, xerrors.Errorf("getting partitions for deadline %d: %w", dl, err)
+		}
+
+		for p, part := range parts {
+			set, err := part.ActiveSectors.IsSet(uint64(sector))
+			if err != nil {
+				return false, xerrors.Errorf("checking if sector %d is in deadline %d partition %d: %w", sector, dl, p, err)
+			}
+			if set {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
 }
