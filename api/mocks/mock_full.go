@@ -2949,10 +2949,10 @@ func (mr *MockFullNodeMockRecorder) StateSectorPartition(arg0, arg1, arg2, arg3 
 }
 
 // StateSectorPreCommitInfo mocks base method.
-func (m *MockFullNode) StateSectorPreCommitInfo(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
+func (m *MockFullNode) StateSectorPreCommitInfo(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateSectorPreCommitInfo", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(miner.SectorPreCommitOnChainInfo)
+	ret0, _ := ret[0].(*miner.SectorPreCommitOnChainInfo)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

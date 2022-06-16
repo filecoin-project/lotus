@@ -107,10 +107,6 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 
 	pci, err := api.StateSectorPreCommitInfo(ctx, maddr, si.SectorNumber, tok)
 	if err != nil {
-		if err == ErrSectorAllocated {
-			//committed P2 message  but commit C2 message too late, pci should be null in this case
-			return &ErrSectorNumberAllocated{err}
-		}
 		return &ErrApi{xerrors.Errorf("getting precommit info: %w", err)}
 	}
 
@@ -120,6 +116,15 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 			return &ErrBadTicket{xerrors.Errorf("bad ticket epoch: %d != %d", pci.Info.SealRandEpoch, si.TicketEpoch)}
 		}
 		return &ErrPrecommitOnChain{xerrors.Errorf("precommit already on chain")}
+	}
+
+	alloc, err := api.StateMinerSectorAllocated(ctx, maddr, si.SectorNumber, tok)
+	if err != nil {
+		return xerrors.Errorf("checking if sector is allocated: %w", err)
+	}
+	if alloc {
+		//committed P2 message  but commit C2 message too late, pci should be null in this case
+		return &ErrSectorNumberAllocated{xerrors.Errorf("sector %d is allocated, but PreCommit info wasn't found on chain", si.SectorNumber)}
 	}
 
 	//never commit P2 message before, check ticket expiration
@@ -137,21 +142,26 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 	}
 
 	pci, err := m.Api.StateSectorPreCommitInfo(ctx, m.maddr, si.SectorNumber, tok)
-	if err == ErrSectorAllocated {
-		// not much more we can check here, basically try to wait for commit,
-		// and hope that this will work
-
-		if si.CommitMessage != nil {
-			return &ErrCommitWaitFailed{err}
-		}
-
-		return err
-	}
 	if err != nil {
 		return xerrors.Errorf("getting precommit info: %w", err)
 	}
 
 	if pci == nil {
+		alloc, err := m.Api.StateMinerSectorAllocated(ctx, m.maddr, si.SectorNumber, tok)
+		if err != nil {
+			return xerrors.Errorf("checking if sector is allocated: %w", err)
+		}
+		if alloc {
+			// not much more we can check here, basically try to wait for commit,
+			// and hope that this will work
+
+			if si.CommitMessage != nil {
+				return &ErrCommitWaitFailed{err}
+			}
+
+			return xerrors.Errorf("sector %d is allocated, but PreCommit info wasn't found on chain", si.SectorNumber)
+		}
+
 		return &ErrNoPrecommit{xerrors.Errorf("precommit info not found on-chain")}
 	}
 

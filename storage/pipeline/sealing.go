@@ -2,7 +2,6 @@ package sealing
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"time"
 
@@ -36,8 +35,6 @@ const SectorStorePrefix = "/sectors"
 var ErrTooManySectorsSealing = xerrors.New("too many sectors sealing")
 
 var log = logging.Logger("sectors")
-
-var ErrSectorAllocated = errors.New("sectorNumber is allocated, but PreCommit info wasn't found on chain")
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/api.go -package=mocks . SealingAPI
 

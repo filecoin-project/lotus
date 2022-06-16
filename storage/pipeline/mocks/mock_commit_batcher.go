@@ -8,15 +8,17 @@ import (
 	context "context"
 	reflect "reflect"
 
+	gomock "github.com/golang/mock/gomock"
+	cid "github.com/ipfs/go-cid"
+
 	address "github.com/filecoin-project/go-address"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
 	miner "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	network "github.com/filecoin-project/go-state-types/network"
+
 	api "github.com/filecoin-project/lotus/api"
 	types "github.com/filecoin-project/lotus/chain/types"
-	gomock "github.com/golang/mock/gomock"
-	cid "github.com/ipfs/go-cid"
 )
 
 // MockCommitBatcherApi is a mock of CommitBatcherApi interface.

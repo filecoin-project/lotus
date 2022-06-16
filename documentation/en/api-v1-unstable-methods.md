@@ -300,7 +300,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131584,
+  "APIVersion": 131840,
   "BlockDelay": 42
 }
 ```
@@ -6477,7 +6477,7 @@ Response:
 ```
 
 ### StateMinerSectorAllocated
-StateMinerSectorAllocated checks if a sector is allocated
+StateMinerSectorAllocated checks if a sector number is marked as allocated.
 
 
 Perms: read
@@ -6990,7 +6990,12 @@ Response:
 ```
 
 ### StateSectorPreCommitInfo
-StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector
+StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector.
+Returns nil and no error if the sector isn't precommitted.
+
+Note that the sector number may be allocated while PreCommitInfo is nil. This means that either allocated sector
+numbers were compacted, and the sector number was marked as allocated in order to reduce size of the allocated
+sectors bitfield, or that the sector was precommitted, but the precommit has expired.
 
 
 Perms: read

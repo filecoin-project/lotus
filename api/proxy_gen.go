@@ -430,7 +430,7 @@ type FullNodeStruct struct {
 
 		StateSectorPartition func(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*lminer.SectorLocation, error) `perm:"read"`
 
-		StateSectorPreCommitInfo func(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) `perm:"read"`
+		StateSectorPreCommitInfo func(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) `perm:"read"`
 
 		StateVMCirculatingSupplyInternal func(p0 context.Context, p1 types.TipSetKey) (CirculatingSupply, error) `perm:"read"`
 
@@ -2895,15 +2895,15 @@ func (s *FullNodeStub) StateSectorPartition(p0 context.Context, p1 address.Addre
 	return nil, ErrNotSupported
 }
 
-func (s *FullNodeStruct) StateSectorPreCommitInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
+func (s *FullNodeStruct) StateSectorPreCommitInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) {
 	if s.Internal.StateSectorPreCommitInfo == nil {
-		return *new(miner.SectorPreCommitOnChainInfo), ErrNotSupported
+		return nil, ErrNotSupported
 	}
 	return s.Internal.StateSectorPreCommitInfo(p0, p1, p2, p3)
 }
 
-func (s *FullNodeStub) StateSectorPreCommitInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
-	return *new(miner.SectorPreCommitOnChainInfo), ErrNotSupported
+func (s *FullNodeStub) StateSectorPreCommitInfo(p0 context.Context, p1 address.Address, p2 abi.SectorNumber, p3 types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) {
+	return nil, ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateVMCirculatingSupplyInternal(p0 context.Context, p1 types.TipSetKey) (CirculatingSupply, error) {

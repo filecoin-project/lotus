@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -15,9 +14,7 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 )
@@ -118,36 +115,7 @@ func (s SealingAPIAdapter) StateSectorPartition(ctx context.Context, maddr addre
 }
 
 func (s SealingAPIAdapter) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*minertypes.SectorPreCommitOnChainInfo, error) {
-
-	act, err := s.delegate.StateGetActor(ctx, maddr, tsk)
-	if err != nil {
-		return nil, xerrors.Errorf("handleSealFailed(%d): temp error: %+v", sectorNumber, err)
-	}
-
-	stor := store.ActorStore(ctx, blockstore.NewAPIBlockstore(s.delegate))
-
-	state, err := miner.Load(stor, act)
-	if err != nil {
-		return nil, xerrors.Errorf("handleSealFailed(%d): temp error: loading miner state: %+v", sectorNumber, err)
-	}
-
-	pci, err := state.GetPrecommittedSector(sectorNumber)
-	if err != nil {
-		return nil, err
-	}
-	if pci == nil {
-		set, err := state.IsAllocated(sectorNumber)
-		if err != nil {
-			return nil, xerrors.Errorf("checking if sector is allocated: %w", err)
-		}
-		if set {
-			return nil, pipeline.ErrSectorAllocated
-		}
-
-		return nil, nil
-	}
-
-	return pci, nil
+	return s.delegate.StateSectorPreCommitInfo(ctx, maddr, sectorNumber, tsk)
 }
 
 func (s SealingAPIAdapter) SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error) {

@@ -3,7 +3,6 @@ package sealing
 import (
 	"bytes"
 	"context"
-	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"sort"
 	"sync"
 	"time"
@@ -20,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 
 	"github.com/filecoin-project/lotus/api"
+	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
 )

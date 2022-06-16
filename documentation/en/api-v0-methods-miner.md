@@ -233,7 +233,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131584,
+  "APIVersion": 131840,
   "BlockDelay": 42
 }
 ```

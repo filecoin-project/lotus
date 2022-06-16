@@ -880,20 +880,18 @@ func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Addre
 	return api.MinerSectors{Live: liveCount, Active: activeCount, Faulty: faultyCount}, nil
 }
 
-func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (minertypes.SectorPreCommitOnChainInfo, error) {
+func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*minertypes.SectorPreCommitOnChainInfo, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
-		return minertypes.SectorPreCommitOnChainInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
 	pci, err := stmgr.PreCommitInfo(ctx, a.StateManager, maddr, n, ts)
 	if err != nil {
-		return minertypes.SectorPreCommitOnChainInfo{}, err
-	} else if pci == nil {
-		return minertypes.SectorPreCommitOnChainInfo{}, xerrors.Errorf("precommit info is not exists")
+		return nil, err
 	}
 
-	return *pci, err
+	return pci, err
 }
 
 func (m *StateModule) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error) {
