@@ -118,19 +118,6 @@ func (s SealingAPIAdapter) StateSectorPreCommitInfo(ctx context.Context, maddr a
 	return s.delegate.StateSectorPreCommitInfo(ctx, maddr, sectorNumber, tsk)
 }
 
-func (s SealingAPIAdapter) SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error) {
-	msg := types.Message{
-		To:     to,
-		From:   from,
-		Value:  value,
-		Method: method,
-		Params: params,
-	}
-
-	smsg, err := s.delegate.MpoolPushMessage(ctx, &msg, &api.MessageSendSpec{MaxFee: maxFee})
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	return smsg.Cid(), nil
+func (s SealingAPIAdapter) MpoolPushMessage(ctx context.Context, msg *types.Message, mss *api.MessageSendSpec) (*types.SignedMessage, error) {
+	return s.delegate.MpoolPushMessage(ctx, msg, mss)
 }

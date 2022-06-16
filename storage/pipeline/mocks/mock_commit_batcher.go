@@ -9,7 +9,6 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	cid "github.com/ipfs/go-cid"
 
 	address "github.com/filecoin-project/go-address"
 	abi "github.com/filecoin-project/go-state-types/abi"
@@ -59,19 +58,19 @@ func (mr *MockCommitBatcherApiMockRecorder) ChainHead(arg0 interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainHead", reflect.TypeOf((*MockCommitBatcherApi)(nil).ChainHead), arg0)
 }
 
-// SendMsg mocks base method.
-func (m *MockCommitBatcherApi) SendMsg(arg0 context.Context, arg1, arg2 address.Address, arg3 abi.MethodNum, arg4, arg5 big.Int, arg6 []byte) (cid.Cid, error) {
+// MpoolPushMessage mocks base method.
+func (m *MockCommitBatcherApi) MpoolPushMessage(arg0 context.Context, arg1 *types.Message, arg2 *api.MessageSendSpec) (*types.SignedMessage, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SendMsg", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
-	ret0, _ := ret[0].(cid.Cid)
+	ret := m.ctrl.Call(m, "MpoolPushMessage", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*types.SignedMessage)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// SendMsg indicates an expected call of SendMsg.
-func (mr *MockCommitBatcherApiMockRecorder) SendMsg(arg0, arg1, arg2, arg3, arg4, arg5, arg6 interface{}) *gomock.Call {
+// MpoolPushMessage indicates an expected call of MpoolPushMessage.
+func (mr *MockCommitBatcherApiMockRecorder) MpoolPushMessage(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMsg", reflect.TypeOf((*MockCommitBatcherApi)(nil).SendMsg), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MpoolPushMessage", reflect.TypeOf((*MockCommitBatcherApi)(nil).MpoolPushMessage), arg0, arg1, arg2)
 }
 
 // StateMinerAvailableBalance mocks base method.

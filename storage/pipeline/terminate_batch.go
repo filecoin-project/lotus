@@ -26,7 +26,7 @@ import (
 
 type TerminateBatcherApi interface {
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*lminer.SectorLocation, error)
-	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
+	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
 	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tok types.TipSetKey) ([]api.Partition, error)
@@ -222,7 +222,7 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		return nil, xerrors.Errorf("no good address found: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, builtin.MethodsMiner.TerminateSectors, big.Zero(), big.Int(b.feeCfg.MaxTerminateGasFee), enc.Bytes())
+	mcid, err := sendMsg(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.TerminateSectors, big.Zero(), big.Int(b.feeCfg.MaxTerminateGasFee), enc.Bytes())
 	if err != nil {
 		return nil, xerrors.Errorf("sending message failed: %w", err)
 	}

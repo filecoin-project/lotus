@@ -4,12 +4,14 @@ import (
 	"context"
 	"math/bits"
 
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
@@ -89,4 +91,23 @@ func collateralSendAmount(ctx context.Context, api interface {
 	}
 
 	return collateral, nil
+}
+
+func sendMsg(ctx context.Context, sa interface {
+	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
+}, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error) {
+	msg := types.Message{
+		To:     to,
+		From:   from,
+		Value:  value,
+		Method: method,
+		Params: params,
+	}
+
+	smsg, err := sa.MpoolPushMessage(ctx, &msg, &api.MessageSendSpec{MaxFee: maxFee})
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	return smsg.Cid(), nil
 }

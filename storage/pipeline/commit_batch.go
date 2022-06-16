@@ -35,7 +35,7 @@ var aggFeeDen = big.NewInt(100)
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_commit_batcher.go -package=mocks . CommitBatcherApi
 
 type CommitBatcherApi interface {
-	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
+	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 
@@ -368,7 +368,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("no good address found: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, builtin.MethodsMiner.ProveCommitAggregate, needFunds, maxFee, enc.Bytes())
+	mcid, err := sendMsg(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitAggregate, needFunds, maxFee, enc.Bytes())
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("sending message failed: %w", err)
 	}
@@ -463,7 +463,7 @@ func (b *CommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo, av
 		return cid.Undef, xerrors.Errorf("no good address to send commit message from: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, builtin.MethodsMiner.ProveCommitSector, collateral, big.Int(b.feeCfg.MaxCommitGasFee), enc.Bytes())
+	mcid, err := sendMsg(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitSector, collateral, big.Int(b.feeCfg.MaxCommitGasFee), enc.Bytes())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("pushing message to mpool: %w", err)
 	}

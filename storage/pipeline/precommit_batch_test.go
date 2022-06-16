@@ -162,15 +162,15 @@ func TestPrecommitBatcher(t *testing.T) {
 			s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version14, nil)
 
 			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(api.MinerInfo{Owner: t0123, Worker: t0123}, nil)
-			s.EXPECT().SendMsg(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), funMatcher(func(i interface{}) bool {
-				b := i.([]byte)
+			s.EXPECT().MpoolPushMessage(gomock.Any(), funMatcher(func(i interface{}) bool {
+				b := i.(*types.Message)
 				var params miner6.PreCommitSectorBatchParams
-				require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b)))
+				require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b.Params)))
 				for s, number := range expect {
 					require.Equal(t, number, params.Sectors[s].SectorNumber)
 				}
 				return true
-			}))
+			}), gomock.Any()).Return(dummySmsg, nil)
 			return nil
 		}
 	}
@@ -184,13 +184,13 @@ func TestPrecommitBatcher(t *testing.T) {
 			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(api.MinerInfo{Owner: t0123, Worker: t0123}, nil)
 			for _, number := range expect {
 				numClone := number
-				s.EXPECT().SendMsg(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), funMatcher(func(i interface{}) bool {
-					b := i.([]byte)
+				s.EXPECT().MpoolPushMessage(gomock.Any(), funMatcher(func(i interface{}) bool {
+					b := i.(*types.Message)
 					var params miner6.PreCommitSectorParams
-					require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b)))
+					require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b.Params)))
 					require.Equal(t, numClone, params.SectorNumber)
 					return true
-				}))
+				}), gomock.Any()).Return(dummySmsg, nil)
 			}
 			return nil
 		}

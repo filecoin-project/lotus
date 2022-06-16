@@ -203,11 +203,11 @@ func TestCommitBatcher(t *testing.T) {
 				//s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(basefee, nil)
 			}
 
-			s.EXPECT().SendMsg(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), funMatcher(func(i interface{}) bool {
-				b := i.([]byte)
+			s.EXPECT().MpoolPushMessage(gomock.Any(), funMatcher(func(i interface{}) bool {
+				b := i.(*types.Message)
 				if batch {
 					var params miner5.ProveCommitAggregateParams
-					require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b)))
+					require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b.Params)))
 					for _, number := range expect {
 						set, err := params.SectorNumbers.IsSet(uint64(number))
 						require.NoError(t, err)
@@ -215,10 +215,10 @@ func TestCommitBatcher(t *testing.T) {
 					}
 				} else {
 					var params miner5.ProveCommitSectorParams
-					require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b)))
+					require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b.Params)))
 				}
 				return true
-			})).Times(ti)
+			}), gomock.Any()).Return(dummySmsg, nil).Times(ti)
 			return nil
 		}
 	}
@@ -393,14 +393,18 @@ func (f fakeProver) AggregateSealProofs(aggregateInfo prooftypes.AggregateSealVe
 
 var _ ffiwrapper.Prover = &fakeProver{}
 
-func makeBFTs(t *testing.T, basefee abi.TokenAmount, h abi.ChainEpoch) *types.TipSet {
+var dummyAddr = func() address.Address {
 	a, _ := address.NewFromString("t00")
+	return a
+}()
+
+func makeBFTs(t *testing.T, basefee abi.TokenAmount, h abi.ChainEpoch) *types.TipSet {
 	dummyCid, _ := cid.Parse("bafkqaaa")
 
 	var ts, err = types.NewTipSet([]*types.BlockHeader{
 		{
 			Height: h,
-			Miner:  a,
+			Miner:  dummyAddr,
 
 			Parents: []cid.Cid{},
 
@@ -425,4 +429,12 @@ func makeBFTs(t *testing.T, basefee abi.TokenAmount, h abi.ChainEpoch) *types.Ti
 
 func makeTs(t *testing.T, h abi.ChainEpoch) *types.TipSet {
 	return makeBFTs(t, big.NewInt(0), h)
+}
+
+var dummySmsg = &types.SignedMessage{
+	Message: types.Message{
+		From: dummyAddr,
+		To:   dummyAddr,
+	},
+	Signature: crypto.Signature{Type: crypto.SigTypeBLS},
 }
