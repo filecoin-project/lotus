@@ -8,9 +8,6 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
-	cid "github.com/ipfs/go-cid"
-
 	address "github.com/filecoin-project/go-address"
 	bitfield "github.com/filecoin-project/go-bitfield"
 	abi "github.com/filecoin-project/go-state-types/abi"
@@ -20,10 +17,11 @@ import (
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	dline "github.com/filecoin-project/go-state-types/dline"
 	network "github.com/filecoin-project/go-state-types/network"
-
 	api "github.com/filecoin-project/lotus/api"
 	types "github.com/filecoin-project/lotus/chain/types"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	gomock "github.com/golang/mock/gomock"
+	cid "github.com/ipfs/go-cid"
 )
 
 // MockSealingAPI is a mock of SealingAPI interface.
@@ -333,36 +331,6 @@ func (m *MockSealingAPI) StateMinerSectorAllocated(arg0 context.Context, arg1 ad
 func (mr *MockSealingAPIMockRecorder) StateMinerSectorAllocated(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerSectorAllocated", reflect.TypeOf((*MockSealingAPI)(nil).StateMinerSectorAllocated), arg0, arg1, arg2, arg3)
-}
-
-// StateMinerSectorSize mocks base method.
-func (m *MockSealingAPI) StateMinerSectorSize(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (abi.SectorSize, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateMinerSectorSize", arg0, arg1, arg2)
-	ret0, _ := ret[0].(abi.SectorSize)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StateMinerSectorSize indicates an expected call of StateMinerSectorSize.
-func (mr *MockSealingAPIMockRecorder) StateMinerSectorSize(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerSectorSize", reflect.TypeOf((*MockSealingAPI)(nil).StateMinerSectorSize), arg0, arg1, arg2)
-}
-
-// StateMinerWorkerAddress mocks base method.
-func (m *MockSealingAPI) StateMinerWorkerAddress(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (address.Address, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateMinerWorkerAddress", arg0, arg1, arg2)
-	ret0, _ := ret[0].(address.Address)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StateMinerWorkerAddress indicates an expected call of StateMinerWorkerAddress.
-func (mr *MockSealingAPIMockRecorder) StateMinerWorkerAddress(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerWorkerAddress", reflect.TypeOf((*MockSealingAPI)(nil).StateMinerWorkerAddress), arg0, arg1, arg2)
 }
 
 // StateNetworkVersion mocks base method.

@@ -40,15 +40,6 @@ func NewSealingAPIAdapter(api fullNodeFilteredAPI) SealingAPIAdapter {
 	return SealingAPIAdapter{delegate: api}
 }
 
-func (s SealingAPIAdapter) StateMinerSectorSize(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (abi.SectorSize, error) {
-	// TODO: update storage-fsm to just StateMinerInfo
-	mi, err := s.StateMinerInfo(ctx, maddr, tsk)
-	if err != nil {
-		return 0, err
-	}
-	return mi.SectorSize, nil
-}
-
 func (s SealingAPIAdapter) StateMinerPreCommitDepositForPower(ctx context.Context, a address.Address, pci minertypes.SectorPreCommitInfo, tsk types.TipSetKey) (big.Int, error) {
 
 	return s.delegate.StateMinerPreCommitDepositForPower(ctx, a, pci, tsk)
@@ -60,21 +51,11 @@ func (s SealingAPIAdapter) StateMinerInitialPledgeCollateral(ctx context.Context
 }
 
 func (s SealingAPIAdapter) StateMinerInfo(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (api.MinerInfo, error) {
-	// TODO: update storage-fsm to just StateMinerInfo
 	return s.delegate.StateMinerInfo(ctx, maddr, tsk)
 }
 
 func (s SealingAPIAdapter) StateMinerAvailableBalance(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (big.Int, error) {
 	return s.delegate.StateMinerAvailableBalance(ctx, maddr, tsk)
-}
-
-func (s SealingAPIAdapter) StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tsk types.TipSetKey) (address.Address, error) {
-	// TODO: update storage-fsm to just StateMinerInfo
-	mi, err := s.StateMinerInfo(ctx, maddr, tsk)
-	if err != nil {
-		return address.Undef, err
-	}
-	return mi.Worker, nil
 }
 
 func (s SealingAPIAdapter) StateMinerDeadlines(ctx context.Context, maddr address.Address, tsk types.TipSetKey) ([]api.Deadline, error) {
