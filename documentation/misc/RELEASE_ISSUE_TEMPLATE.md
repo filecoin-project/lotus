@@ -21,7 +21,7 @@
 First steps:
 
   - [ ] Fork a new branch (`release/vX.Y.Z`) from `master` and make any further release related changes to this branch. If any "non-trivial" changes get added to the release, uncheck all the checkboxes and return to this stage.
-  - [ ] Bump the version in `version.go` in the `master` branch to `vX.(Y+1).0-dev`.
+  - [ ] Bump the version in `version.go` in the `master` branch to `vX.Y.(Z+1)-dev` (bump from feature release) or `vX.(Y+1).0-dev` (bump from mandatory release) 
     
 Prepping an RC:
 
@@ -59,7 +59,7 @@ Testing an RC:
     - [ ] (optional) let a sector go faulty, and see it be recovered
     
 - [ ] **Stage 2 - Community Testing**
-  - [ ] Test with [MinerX.3](https://github.com/filecoin-project/lotus/discussions/7461) fellows
+  - [ ] Test with [SPX](https://github.com/filecoin-project/lotus/discussions/7461) fellows
   - [ ] Work on documentations for new features, configuration changes and so on.
 
 - [ ] **Stage 3 - Community Prod Testing**
