@@ -3,6 +3,7 @@ package sealing
 import (
 	"bytes"
 	"context"
+	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"sort"
 	"sync"
 	"time"
@@ -24,7 +25,7 @@ import (
 )
 
 type TerminateBatcherApi interface {
-	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*SectorLocation, error)
+	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*lminer.SectorLocation, error)
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
@@ -39,7 +40,7 @@ type TerminateBatcher struct {
 	feeCfg    config.MinerFeeConfig
 	getConfig GetSealingConfigFunc
 
-	todo map[SectorLocation]*bitfield.BitField // MinerSectorLocation -> BitField
+	todo map[lminer.SectorLocation]*bitfield.BitField // MinerSectorLocation -> BitField
 
 	waiting map[abi.SectorNumber][]chan cid.Cid
 
@@ -57,7 +58,7 @@ func NewTerminationBatcher(mctx context.Context, maddr address.Address, api Term
 		feeCfg:    feeCfg,
 		getConfig: getConfig,
 
-		todo:    map[SectorLocation]*bitfield.BitField{},
+		todo:    map[lminer.SectorLocation]*bitfield.BitField{},
 		waiting: map[abi.SectorNumber][]chan cid.Cid{},
 
 		notify:  make(chan struct{}, 1),
@@ -228,7 +229,7 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 	log.Infow("Sent TerminateSectors message", "cid", mcid, "from", from, "terminations", len(params.Terminations))
 
 	for _, t := range params.Terminations {
-		delete(b.todo, SectorLocation{
+		delete(b.todo, lminer.SectorLocation{
 			Deadline:  t.Deadline,
 			Partition: t.Partition,
 		})

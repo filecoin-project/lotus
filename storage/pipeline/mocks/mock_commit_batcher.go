@@ -8,17 +8,15 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
-	cid "github.com/ipfs/go-cid"
-
 	address "github.com/filecoin-project/go-address"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
 	miner "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	network "github.com/filecoin-project/go-state-types/network"
-
 	api "github.com/filecoin-project/lotus/api"
 	types "github.com/filecoin-project/lotus/chain/types"
+	gomock "github.com/golang/mock/gomock"
+	cid "github.com/ipfs/go-cid"
 )
 
 // MockCommitBatcherApi is a mock of CommitBatcherApi interface.
@@ -42,21 +40,6 @@ func NewMockCommitBatcherApi(ctrl *gomock.Controller) *MockCommitBatcherApi {
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockCommitBatcherApi) EXPECT() *MockCommitBatcherApiMockRecorder {
 	return m.recorder
-}
-
-// ChainBaseFee mocks base method.
-func (m *MockCommitBatcherApi) ChainBaseFee(arg0 context.Context, arg1 types.TipSetKey) (big.Int, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChainBaseFee", arg0, arg1)
-	ret0, _ := ret[0].(big.Int)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ChainBaseFee indicates an expected call of ChainBaseFee.
-func (mr *MockCommitBatcherApiMockRecorder) ChainBaseFee(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainBaseFee", reflect.TypeOf((*MockCommitBatcherApi)(nil).ChainBaseFee), arg0, arg1)
 }
 
 // ChainHead mocks base method.

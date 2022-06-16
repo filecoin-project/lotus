@@ -8,21 +8,18 @@ import (
 	context "context"
 	reflect "reflect"
 
-	gomock "github.com/golang/mock/gomock"
-	cid "github.com/ipfs/go-cid"
-
 	address "github.com/filecoin-project/go-address"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
-	market "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	miner "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	dline "github.com/filecoin-project/go-state-types/dline"
 	network "github.com/filecoin-project/go-state-types/network"
-
 	api "github.com/filecoin-project/lotus/api"
+	miner0 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	types "github.com/filecoin-project/lotus/chain/types"
-	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	gomock "github.com/golang/mock/gomock"
+	cid "github.com/ipfs/go-cid"
 )
 
 // MockSealingAPI is a mock of SealingAPI interface.
@@ -198,21 +195,6 @@ func (mr *MockSealingAPIMockRecorder) StateMarketStorageDeal(arg0, arg1, arg2 in
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMarketStorageDeal", reflect.TypeOf((*MockSealingAPI)(nil).StateMarketStorageDeal), arg0, arg1, arg2)
 }
 
-// StateMarketStorageDealProposal mocks base method.
-func (m *MockSealingAPI) StateMarketStorageDealProposal(arg0 context.Context, arg1 abi.DealID, arg2 types.TipSetKey) (market.DealProposal, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateMarketStorageDealProposal", arg0, arg1, arg2)
-	ret0, _ := ret[0].(market.DealProposal)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StateMarketStorageDealProposal indicates an expected call of StateMarketStorageDealProposal.
-func (mr *MockSealingAPIMockRecorder) StateMarketStorageDealProposal(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMarketStorageDealProposal", reflect.TypeOf((*MockSealingAPI)(nil).StateMarketStorageDealProposal), arg0, arg1, arg2)
-}
-
 // StateMinerAvailableBalance mocks base method.
 func (m *MockSealingAPI) StateMinerAvailableBalance(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()
@@ -379,10 +361,10 @@ func (mr *MockSealingAPIMockRecorder) StateSectorGetInfo(arg0, arg1, arg2, arg3 
 }
 
 // StateSectorPartition mocks base method.
-func (m *MockSealingAPI) StateSectorPartition(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types.TipSetKey) (*sealing.SectorLocation, error) {
+func (m *MockSealingAPI) StateSectorPartition(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types.TipSetKey) (*miner0.SectorLocation, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateSectorPartition", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*sealing.SectorLocation)
+	ret0, _ := ret[0].(*miner0.SectorLocation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

@@ -32,7 +32,6 @@ type PreCommitBatcherApi interface {
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (big.Int, error)
 	ChainHead(ctx context.Context) (*types.TipSet, error)
-	ChainBaseFee(context.Context, types.TipSetKey) (abi.TokenAmount, error)
 	StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error)
 }
 
@@ -193,11 +192,6 @@ func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBat
 		return nil, err
 	}
 
-	bf, err := b.api.ChainBaseFee(b.mctx, ts.Key())
-	if err != nil {
-		return nil, xerrors.Errorf("couldn't get base fee: %w", err)
-	}
-
 	// TODO: Drop this once nv14 has come and gone
 	nv, err := b.api.StateNetworkVersion(b.mctx, ts.Key())
 	if err != nil {
@@ -205,14 +199,14 @@ func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBat
 	}
 
 	individual := false
-	if !cfg.BatchPreCommitAboveBaseFee.Equals(big.Zero()) && bf.LessThan(cfg.BatchPreCommitAboveBaseFee) && nv >= network.Version14 {
+	if !cfg.BatchPreCommitAboveBaseFee.Equals(big.Zero()) && ts.MinTicketBlock().ParentBaseFee.LessThan(cfg.BatchPreCommitAboveBaseFee) && nv >= network.Version14 {
 		individual = true
 	}
 
 	// todo support multiple batches
 	var res []sealiface.PreCommitBatchRes
 	if !individual {
-		res, err = b.processBatch(cfg, ts.Key(), bf, nv)
+		res, err = b.processBatch(cfg, ts.Key(), ts.MinTicketBlock().ParentBaseFee, nv)
 	} else {
 		res, err = b.processIndividually(cfg)
 	}

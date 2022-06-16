@@ -38,7 +38,6 @@ type CommitBatcherApi interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	ChainHead(ctx context.Context) (*types.TipSet, error)
-	ChainBaseFee(context.Context, types.TipSetKey) (abi.TokenAmount, error)
 
 	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (big.Int, error)
@@ -220,13 +219,7 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 	individual := (total < cfg.MinCommitBatch) || (total < miner.MinAggregatedSectors) || blackedOut()
 
 	if !individual && !cfg.AggregateAboveBaseFee.Equals(big.Zero()) {
-
-		bf, err := b.api.ChainBaseFee(b.mctx, ts.Key())
-		if err != nil {
-			return nil, xerrors.Errorf("couldn't get base fee: %w", err)
-		}
-
-		if bf.LessThan(cfg.AggregateAboveBaseFee) {
+		if ts.MinTicketBlock().ParentBaseFee.LessThan(cfg.AggregateAboveBaseFee) {
 			individual = true
 		}
 	}
@@ -354,12 +347,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 
 	maxFee := b.feeCfg.MaxCommitBatchGasFee.FeeForSectors(len(infos))
 
-	bf, err := b.api.ChainBaseFee(b.mctx, ts.Key())
-	if err != nil {
-		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't get base fee: %w", err)
-	}
-
-	aggFeeRaw, err := policy.AggregateProveCommitNetworkFee(nv, len(infos), bf)
+	aggFeeRaw, err := policy.AggregateProveCommitNetworkFee(nv, len(infos), ts.MinTicketBlock().ParentBaseFee)
 	if err != nil {
 		log.Errorf("getting aggregate commit network fee: %s", err)
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting aggregate commit network fee: %s", err)

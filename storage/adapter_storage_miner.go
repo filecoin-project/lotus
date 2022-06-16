@@ -113,6 +113,10 @@ func (s SealingAPIAdapter) StateComputeDataCommitment(ctx context.Context, maddr
 	return s.delegate.StateComputeDataCID(ctx, maddr, sectorType, deals, tsk)
 }
 
+func (s SealingAPIAdapter) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorLocation, error) {
+	return s.delegate.StateSectorPartition(ctx, maddr, sectorNumber, tsk)
+}
+
 func (s SealingAPIAdapter) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*minertypes.SectorPreCommitOnChainInfo, error) {
 
 	act, err := s.delegate.StateGetActor(ctx, maddr, tsk)
@@ -144,31 +148,6 @@ func (s SealingAPIAdapter) StateSectorPreCommitInfo(ctx context.Context, maddr a
 	}
 
 	return pci, nil
-}
-
-func (s SealingAPIAdapter) StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*pipeline.SectorLocation, error) {
-
-	l, err := s.delegate.StateSectorPartition(ctx, maddr, sectorNumber, tsk)
-	if err != nil {
-		return nil, err
-	}
-	if l != nil {
-		return &pipeline.SectorLocation{
-			Deadline:  l.Deadline,
-			Partition: l.Partition,
-		}, nil
-	}
-
-	return nil, nil // not found
-}
-
-func (s SealingAPIAdapter) ChainBaseFee(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error) {
-	ts, err := s.delegate.ChainGetTipSet(ctx, tsk)
-	if err != nil {
-		return big.Zero(), err
-	}
-
-	return ts.Blocks()[0].ParentBaseFee, nil
 }
 
 func (s SealingAPIAdapter) SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error) {

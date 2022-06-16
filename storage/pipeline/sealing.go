@@ -37,11 +37,6 @@ var ErrTooManySectorsSealing = xerrors.New("too many sectors sealing")
 
 var log = logging.Logger("sectors")
 
-type SectorLocation struct {
-	Deadline  uint64
-	Partition uint64
-}
-
 var ErrSectorAllocated = errors.New("sectorNumber is allocated, but PreCommit info wasn't found on chain")
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/api.go -package=mocks . SealingAPI
@@ -54,7 +49,7 @@ type SealingAPI interface {
 	// Can return ErrSectorAllocated in case precommit info wasn't found, but the sector number is marked as allocated
 	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error)
 	StateSectorGetInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorOnChainInfo, error)
-	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*SectorLocation, error)
+	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*lminer.SectorLocation, error)
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (big.Int, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (big.Int, error)
@@ -68,7 +63,6 @@ type SealingAPI interface {
 	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tok types.TipSetKey) ([]api.Partition, error)
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
 	ChainHead(ctx context.Context) (*types.TipSet, error)
-	ChainBaseFee(context.Context, types.TipSetKey) (abi.TokenAmount, error)
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
 	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tok types.TipSetKey) (abi.Randomness, error)
 	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tok types.TipSetKey) (abi.Randomness, error)
