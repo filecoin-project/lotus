@@ -105,7 +105,7 @@ func TestCommitBatcher(t *testing.T) {
 				SectorNumber: sn,
 			}
 
-			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
+			s.EXPECT().ChainHead(gomock.Any()).Return(types.EmptyTSK, abi.ChainEpoch(1), nil)
 			s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version13, nil)
 			s.EXPECT().StateSectorPreCommitInfo(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&minertypes.SectorPreCommitOnChainInfo{
 				PreCommitDeposit: big.Zero(),
@@ -166,7 +166,7 @@ func TestCommitBatcher(t *testing.T) {
 				basefee = types.NanoFil
 			}
 
-			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
+			s.EXPECT().ChainHead(gomock.Any()).Return(types.EmptyTSK, abi.ChainEpoch(1), nil)
 			if batch {
 				s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(basefee, nil)
 			}
@@ -176,7 +176,7 @@ func TestCommitBatcher(t *testing.T) {
 				ti = len(expect)
 			}
 
-			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
+			s.EXPECT().ChainHead(gomock.Any()).Return(types.EmptyTSK, abi.ChainEpoch(1), nil)
 
 			pciC := len(expect)
 			if failOnePCI {

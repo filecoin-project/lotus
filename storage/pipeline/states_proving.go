@@ -10,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func (m *Sealing) handleFaulty(ctx statemachine.Context, sector SectorInfo) error {
@@ -46,7 +47,7 @@ func (m *Sealing) handleTerminating(ctx statemachine.Context, sector SectorInfo)
 	// * Check for correct termination
 	// * wait for expiration (+winning lookback?)
 
-	si, err := m.Api.StateSectorGetInfo(ctx.Context(), m.maddr, sector.SectorNumber, nil)
+	si, err := m.Api.StateSectorGetInfo(ctx.Context(), m.maddr, sector.SectorNumber, types.EmptyTSK)
 	if err != nil {
 		return ctx.Send(SectorTerminateFailed{xerrors.Errorf("getting sector info: %w", err)})
 	}
@@ -54,7 +55,7 @@ func (m *Sealing) handleTerminating(ctx statemachine.Context, sector SectorInfo)
 	if si == nil {
 		// either already terminated or not committed yet
 
-		pci, err := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, nil)
+		pci, err := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, types.EmptyTSK)
 		if err != nil {
 			return ctx.Send(SectorTerminateFailed{xerrors.Errorf("checking precommit presence: %w", err)})
 		}

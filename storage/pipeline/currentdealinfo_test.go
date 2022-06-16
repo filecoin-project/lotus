@@ -298,7 +298,7 @@ func TestGetCurrentDealInfo(t *testing.T) {
 			}
 			dealInfoMgr := CurrentDealInfoManager{mockApi}
 
-			res, err := dealInfoMgr.GetCurrentDealInfo(ctx, ts.Key().Bytes(), data.targetProposal, data.publishCid)
+			res, err := dealInfoMgr.GetCurrentDealInfo(ctx, ts.Key(), data.targetProposal, data.publishCid)
 			require.Equal(t, data.expectedDealID, res.DealID)
 			require.Equal(t, data.expectedMarketDeal, res.MarketDeal)
 			if data.expectedError == nil {
@@ -359,15 +359,11 @@ func (mapi *CurrentDealInfoMockAPI) ChainGetMessage(ctx context.Context, c cid.C
 	}, nil
 }
 
-func (mapi *CurrentDealInfoMockAPI) StateLookupID(ctx context.Context, addr address.Address, token TipSetToken) (address.Address, error) {
+func (mapi *CurrentDealInfoMockAPI) StateLookupID(ctx context.Context, addr address.Address, token types.TipSetKey) (address.Address, error) {
 	return addr, nil
 }
 
-func (mapi *CurrentDealInfoMockAPI) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tok TipSetToken) (*api.MarketDeal, error) {
-	tsk, err := types.TipSetKeyFromBytes(tok)
-	if err != nil {
-		return nil, err
-	}
+func (mapi *CurrentDealInfoMockAPI) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error) {
 	deal, ok := mapi.MarketDeals[marketDealKey{dealID, tsk}]
 	if !ok {
 		return nil, errNotFound
@@ -383,7 +379,7 @@ func (mapi *CurrentDealInfoMockAPI) StateSearchMsg(ctx context.Context, c cid.Ci
 	return mapi.SearchMessageLookup, mapi.SearchMessageErr
 }
 
-func (mapi *CurrentDealInfoMockAPI) StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error) {
+func (mapi *CurrentDealInfoMockAPI) StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error) {
 	return mapi.Version, nil
 }
 

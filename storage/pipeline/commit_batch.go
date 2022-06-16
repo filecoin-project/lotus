@@ -36,14 +36,14 @@ var aggFeeDen = big.NewInt(100)
 
 type CommitBatcherApi interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
-	StateMinerInfo(context.Context, address.Address, TipSetToken) (api.MinerInfo, error)
-	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
-	ChainBaseFee(context.Context, TipSetToken) (abi.TokenAmount, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
+	ChainHead(ctx context.Context) (types.TipSetKey, abi.ChainEpoch, error)
+	ChainBaseFee(context.Context, types.TipSetKey) (abi.TokenAmount, error)
 
-	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorPreCommitOnChainInfo, error)
-	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
-	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
-	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
+	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error)
+	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (big.Int, error)
+	StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error)
+	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (big.Int, error)
 }
 
 type AggregateInput struct {
@@ -347,7 +347,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't serialize ProveCommitAggregateParams: %w", err)
 	}
 
-	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, nil)
+	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, types.EmptyTSK)
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
@@ -393,7 +393,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 }
 
 func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.CommitBatchRes, error) {
-	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, nil)
+	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
@@ -401,7 +401,7 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 	avail := types.TotalFilecoinInt
 
 	if cfg.CollateralFromMinerBalance && !cfg.DisableCollateralFallback {
-		avail, err = b.api.StateMinerAvailableBalance(b.mctx, b.maddr, nil)
+		avail, err = b.api.StateMinerAvailableBalance(b.mctx, b.maddr, types.EmptyTSK)
 		if err != nil {
 			return nil, xerrors.Errorf("getting available miner balance: %w", err)
 		}
@@ -439,7 +439,7 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 	return res, nil
 }
 
-func (b *CommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo, avail *abi.TokenAmount, sn abi.SectorNumber, info AggregateInput, tok TipSetToken) (cid.Cid, error) {
+func (b *CommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo, avail *abi.TokenAmount, sn abi.SectorNumber, info AggregateInput, tok types.TipSetKey) (cid.Cid, error) {
 	enc := new(bytes.Buffer)
 	params := &miner.ProveCommitSectorParams{
 		SectorNumber: sn,
@@ -616,7 +616,7 @@ func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
 	return time.Now().Add(time.Duration(cutoffEpoch-curEpoch) * time.Duration(build.BlockDelaySecs) * time.Second), nil
 }
 
-func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tok TipSetToken) (abi.TokenAmount, error) {
+func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tok types.TipSetKey) (abi.TokenAmount, error) {
 	pci, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, sn, tok)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting precommit info: %w", err)

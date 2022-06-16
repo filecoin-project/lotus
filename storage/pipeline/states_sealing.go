@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
 )
 
@@ -126,7 +127,7 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 
 	// the reason why the StateMinerSectorAllocated function is placed here, if it is outside,
 	//	if the MarshalCBOR function and StateSectorPreCommitInfo function return err, it will be executed
-	allocated, aerr := m.Api.StateMinerSectorAllocated(ctx.Context(), m.maddr, sector.SectorNumber, nil)
+	allocated, aerr := m.Api.StateMinerSectorAllocated(ctx.Context(), m.maddr, sector.SectorNumber, types.EmptyTSK)
 	if aerr != nil {
 		log.Errorf("getTicket: api error, checking if sector is allocated: %+v", aerr)
 		return nil, 0, false, nil
@@ -281,57 +282,57 @@ func (m *Sealing) handlePreCommit2(ctx statemachine.Context, sector SectorInfo) 
 	})
 }
 
-func (m *Sealing) preCommitParams(ctx statemachine.Context, sector SectorInfo) (*miner.SectorPreCommitInfo, big.Int, TipSetToken, error) {
+func (m *Sealing) preCommitParams(ctx statemachine.Context, sector SectorInfo) (*miner.SectorPreCommitInfo, big.Int, types.TipSetKey, error) {
 	tok, height, err := m.Api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handlePreCommitting: api error, not proceeding: %+v", err)
-		return nil, big.Zero(), nil, nil
+		return nil, big.Zero(), types.EmptyTSK, nil
 	}
 
 	if err := checkPrecommit(ctx.Context(), m.Address(), sector, tok, height, m.Api); err != nil {
 		switch err := err.(type) {
 		case *ErrApi:
 			log.Errorf("handlePreCommitting: api error, not proceeding: %+v", err)
-			return nil, big.Zero(), nil, nil
+			return nil, big.Zero(), types.EmptyTSK, nil
 		case *ErrBadCommD: // TODO: Should this just back to packing? (not really needed since handlePreCommit1 will do that too)
-			return nil, big.Zero(), nil, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad CommD error: %w", err)})
+			return nil, big.Zero(), types.EmptyTSK, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad CommD error: %w", err)})
 		case *ErrExpiredTicket:
-			return nil, big.Zero(), nil, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("ticket expired: %w", err)})
+			return nil, big.Zero(), types.EmptyTSK, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("ticket expired: %w", err)})
 		case *ErrBadTicket:
-			return nil, big.Zero(), nil, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad ticket: %w", err)})
+			return nil, big.Zero(), types.EmptyTSK, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("bad ticket: %w", err)})
 		case *ErrInvalidDeals:
 			log.Warnf("invalid deals in sector %d: %v", sector.SectorNumber, err)
-			return nil, big.Zero(), nil, ctx.Send(SectorInvalidDealIDs{Return: RetPreCommitting})
+			return nil, big.Zero(), types.EmptyTSK, ctx.Send(SectorInvalidDealIDs{Return: RetPreCommitting})
 		case *ErrExpiredDeals:
-			return nil, big.Zero(), nil, ctx.Send(SectorDealsExpired{xerrors.Errorf("sector deals expired: %w", err)})
+			return nil, big.Zero(), types.EmptyTSK, ctx.Send(SectorDealsExpired{xerrors.Errorf("sector deals expired: %w", err)})
 		case *ErrPrecommitOnChain:
-			return nil, big.Zero(), nil, ctx.Send(SectorPreCommitLanded{TipSet: tok}) // we re-did precommit
+			return nil, big.Zero(), types.EmptyTSK, ctx.Send(SectorPreCommitLanded{TipSet: tok}) // we re-did precommit
 		case *ErrSectorNumberAllocated:
 			log.Errorf("handlePreCommitFailed: sector number already allocated, not proceeding: %+v", err)
 			// TODO: check if the sector is committed (not sure how we'd end up here)
-			return nil, big.Zero(), nil, nil
+			return nil, big.Zero(), types.EmptyTSK, nil
 		default:
-			return nil, big.Zero(), nil, xerrors.Errorf("checkPrecommit sanity check error: %w", err)
+			return nil, big.Zero(), types.EmptyTSK, xerrors.Errorf("checkPrecommit sanity check error: %w", err)
 		}
 	}
 
 	expiration, err := m.pcp.Expiration(ctx.Context(), sector.Pieces...)
 	if err != nil {
-		return nil, big.Zero(), nil, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("handlePreCommitting: failed to compute pre-commit expiry: %w", err)})
+		return nil, big.Zero(), types.EmptyTSK, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("handlePreCommitting: failed to compute pre-commit expiry: %w", err)})
 	}
 
 	nv, err := m.Api.StateNetworkVersion(ctx.Context(), tok)
 	if err != nil {
-		return nil, big.Zero(), nil, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("failed to get network version: %w", err)})
+		return nil, big.Zero(), types.EmptyTSK, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("failed to get network version: %w", err)})
 	}
 
 	av, err := actors.VersionForNetwork(nv)
 	if err != nil {
-		return nil, big.Zero(), nil, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("failed to get actors version: %w", err)})
+		return nil, big.Zero(), types.EmptyTSK, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("failed to get actors version: %w", err)})
 	}
 	msd, err := policy.GetMaxProveCommitDuration(av, sector.SectorType)
 	if err != nil {
-		return nil, big.Zero(), nil, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("failed to get max prove commit duration: %w", err)})
+		return nil, big.Zero(), types.EmptyTSK, ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("failed to get max prove commit duration: %w", err)})
 	}
 
 	if minExpiration := sector.TicketEpoch + policy.MaxPreCommitRandomnessLookback + msd + miner.MinSectorExpiration; expiration < minExpiration {
@@ -356,7 +357,7 @@ func (m *Sealing) preCommitParams(ctx statemachine.Context, sector SectorInfo) (
 
 	collateral, err := m.Api.StateMinerPreCommitDepositForPower(ctx.Context(), m.maddr, *params, tok)
 	if err != nil {
-		return nil, big.Zero(), nil, xerrors.Errorf("getting initial pledge collateral: %w", err)
+		return nil, big.Zero(), types.EmptyTSK, xerrors.Errorf("getting initial pledge collateral: %w", err)
 	}
 
 	return params, collateral, tok, nil
@@ -369,7 +370,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 	}
 
 	if cfg.BatchPreCommits {
-		nv, err := m.Api.StateNetworkVersion(ctx.Context(), nil)
+		nv, err := m.Api.StateNetworkVersion(ctx.Context(), types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting network version: %w", err)
 		}
@@ -496,7 +497,7 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 
 	randHeight := pci.PreCommitEpoch + policy.GetPreCommitChallengeDelay()
 
-	err = m.events.ChainAt(func(ectx context.Context, _ TipSetToken, curH abi.ChainEpoch) error {
+	err = m.events.ChainAt(func(ectx context.Context, _ types.TipSetKey, curH abi.ChainEpoch) error {
 		// in case of null blocks the randomness can land after the tipset we
 		// get from the events API
 		tok, _, err := m.Api.ChainHead(ctx.Context())
@@ -520,7 +521,7 @@ func (m *Sealing) handleWaitSeed(ctx statemachine.Context, sector SectorInfo) er
 		_ = ctx.Send(SectorSeedReady{SeedValue: abi.InteractiveSealRandomness(rand), SeedEpoch: randHeight})
 
 		return nil
-	}, func(ctx context.Context, ts TipSetToken) error {
+	}, func(ctx context.Context, ts types.TipSetKey) error {
 		log.Warn("revert in interactive commit sector step")
 		// TODO: need to cancel running process and restart...
 		return nil
@@ -604,7 +605,7 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 	}
 
 	if cfg.AggregateCommits {
-		nv, err := m.Api.StateNetworkVersion(ctx.Context(), nil)
+		nv, err := m.Api.StateNetworkVersion(ctx.Context(), types.EmptyTSK)
 		if err != nil {
 			return xerrors.Errorf("getting network version: %w", err)
 		}

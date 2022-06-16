@@ -399,7 +399,7 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 		if e, ok := memo[sn]; ok {
 			return e.e, e.p, nil
 		}
-		onChainInfo, err := m.Api.StateSectorGetInfo(ctx, m.maddr, sn, TipSetToken{})
+		onChainInfo, err := m.Api.StateSectorGetInfo(ctx, m.maddr, sn, types.TipSetKey{})
 		if err != nil {
 			return 0, big.Zero(), err
 		}
@@ -580,7 +580,7 @@ func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealP
 		}
 
 		slowChecks := func(sid abi.SectorNumber) bool {
-			active, err := m.sectorActive(ctx, TipSetToken{}, sid)
+			active, err := m.sectorActive(ctx, types.TipSetKey{}, sid)
 			if err != nil {
 				log.Errorw("checking sector active", "error", err)
 				return false

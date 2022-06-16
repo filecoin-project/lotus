@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-statemachine"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 const minRetryTime = 1 * time.Minute
@@ -365,7 +366,7 @@ func (m *Sealing) handleTerminateFailed(ctx statemachine.Context, sector SectorI
 	// ignoring error as it's most likely an API error - `pci` will be nil, and we'll go back to
 	// the Terminating state after cooldown. If the API is still failing, well get back to here
 	// with the error in SectorInfo log.
-	pci, _ := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, nil)
+	pci, _ := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, types.EmptyTSK)
 	if pci != nil {
 		return nil // pause the fsm, needs manual user action
 	}
@@ -379,7 +380,7 @@ func (m *Sealing) handleTerminateFailed(ctx statemachine.Context, sector SectorI
 
 func (m *Sealing) handleDealsExpired(ctx statemachine.Context, sector SectorInfo) error {
 	// First make vary sure the sector isn't committed
-	si, err := m.Api.StateSectorGetInfo(ctx.Context(), m.maddr, sector.SectorNumber, nil)
+	si, err := m.Api.StateSectorGetInfo(ctx.Context(), m.maddr, sector.SectorNumber, types.EmptyTSK)
 	if err != nil {
 		return xerrors.Errorf("getting sector info: %w", err)
 	}

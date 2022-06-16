@@ -16,6 +16,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func (m *Sealing) handleReplicaUpdate(ctx statemachine.Context, sector SectorInfo) error {
@@ -253,9 +254,9 @@ func (m *Sealing) handleUpdateActivating(ctx statemachine.Context, sector Sector
 
 		targetHeight := mw.Height + lb + InteractivePoRepConfidence
 
-		return m.events.ChainAt(func(context.Context, TipSetToken, abi.ChainEpoch) error {
+		return m.events.ChainAt(func(context.Context, types.TipSetKey, abi.ChainEpoch) error {
 			return ctx.Send(SectorUpdateActive{})
-		}, func(ctx context.Context, ts TipSetToken) error {
+		}, func(ctx context.Context, ts types.TipSetKey) error {
 			log.Warn("revert in handleUpdateActivating")
 			return nil
 		}, InteractivePoRepConfidence, targetHeight)

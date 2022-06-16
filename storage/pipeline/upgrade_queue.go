@@ -7,6 +7,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) error {
@@ -48,7 +50,7 @@ func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) e
 	return m.sectors.Send(uint64(id), SectorMarkForUpdate{})
 }
 
-func (m *Sealing) sectorActive(ctx context.Context, tok TipSetToken, sector abi.SectorNumber) (bool, error) {
+func (m *Sealing) sectorActive(ctx context.Context, tok types.TipSetKey, sector abi.SectorNumber) (bool, error) {
 	active, err := m.Api.StateMinerActiveSectors(ctx, m.maddr, tok)
 	if err != nil {
 		return false, xerrors.Errorf("failed to check active sectors: %w", err)

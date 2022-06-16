@@ -10,6 +10,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
 
@@ -64,14 +65,14 @@ func (m *Sealing) GetSectorInfo(sid abi.SectorNumber) (SectorInfo, error) {
 }
 
 func collateralSendAmount(ctx context.Context, api interface {
-	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
+	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (big.Int, error)
 }, maddr address.Address, cfg sealiface.Config, collateral abi.TokenAmount) (abi.TokenAmount, error) {
 	if cfg.CollateralFromMinerBalance {
 		if cfg.DisableCollateralFallback {
 			return big.Zero(), nil
 		}
 
-		avail, err := api.StateMinerAvailableBalance(ctx, maddr, nil)
+		avail, err := api.StateMinerAvailableBalance(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return big.Zero(), xerrors.Errorf("getting available miner balance: %w", err)
 		}

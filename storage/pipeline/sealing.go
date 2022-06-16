@@ -51,32 +51,32 @@ var ErrSectorAllocated = errors.New("sectorNumber is allocated, but PreCommit in
 type SealingAPI interface {
 	StateWaitMsg(context.Context, cid.Cid) (MsgLookup, error)
 	StateSearchMsg(context.Context, cid.Cid) (*MsgLookup, error)
-	StateComputeDataCommitment(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tok TipSetToken) (cid.Cid, error)
+	StateComputeDataCommitment(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tok types.TipSetKey) (cid.Cid, error)
 
 	// Can return ErrSectorAllocated in case precommit info wasn't found, but the sector number is marked as allocated
-	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorPreCommitOnChainInfo, error)
-	StateSectorGetInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorOnChainInfo, error)
-	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*SectorLocation, error)
-	StateLookupID(context.Context, address.Address, TipSetToken) (address.Address, error)
-	StateMinerSectorSize(context.Context, address.Address, TipSetToken) (abi.SectorSize, error)
-	StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tok TipSetToken) (address.Address, error)
-	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
-	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
-	StateMinerInfo(context.Context, address.Address, TipSetToken) (api.MinerInfo, error)
-	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
-	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, TipSetToken) (bool, error)
-	StateMinerActiveSectors(context.Context, address.Address, TipSetToken) (bitfield.BitField, error)
-	StateMarketStorageDeal(context.Context, abi.DealID, TipSetToken) (*api.MarketDeal, error)
-	StateMarketStorageDealProposal(context.Context, abi.DealID, TipSetToken) (market.DealProposal, error)
-	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
-	StateMinerProvingDeadline(context.Context, address.Address, TipSetToken) (*dline.Info, error)
-	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tok TipSetToken) ([]api.Partition, error)
+	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error)
+	StateSectorGetInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorOnChainInfo, error)
+	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*SectorLocation, error)
+	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
+	StateMinerSectorSize(context.Context, address.Address, types.TipSetKey) (abi.SectorSize, error)
+	StateMinerWorkerAddress(ctx context.Context, maddr address.Address, tok types.TipSetKey) (address.Address, error)
+	StateMinerPreCommitDepositForPower(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (big.Int, error)
+	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (big.Int, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
+	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (big.Int, error)
+	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (bool, error)
+	StateMinerActiveSectors(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
+	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*api.MarketDeal, error)
+	StateMarketStorageDealProposal(context.Context, abi.DealID, types.TipSetKey) (market.DealProposal, error)
+	StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error)
+	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
+	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tok types.TipSetKey) ([]api.Partition, error)
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
-	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
-	ChainBaseFee(context.Context, TipSetToken) (abi.TokenAmount, error)
+	ChainHead(ctx context.Context) (types.TipSetKey, abi.ChainEpoch, error)
+	ChainBaseFee(context.Context, types.TipSetKey) (abi.TokenAmount, error)
 	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
-	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tok TipSetToken) (abi.Randomness, error)
-	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tok TipSetToken) (abi.Randomness, error)
+	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tok types.TipSetKey) (abi.Randomness, error)
+	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tok types.TipSetKey) (abi.Randomness, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 }
 
@@ -259,12 +259,12 @@ func (m *Sealing) CommitPending(ctx context.Context) ([]abi.SectorID, error) {
 }
 
 func (m *Sealing) currentSealProof(ctx context.Context) (abi.RegisteredSealProof, error) {
-	mi, err := m.Api.StateMinerInfo(ctx, m.maddr, nil)
+	mi, err := m.Api.StateMinerInfo(ctx, m.maddr, types.EmptyTSK)
 	if err != nil {
 		return 0, err
 	}
 
-	ver, err := m.Api.StateNetworkVersion(ctx, nil)
+	ver, err := m.Api.StateNetworkVersion(ctx, types.EmptyTSK)
 	if err != nil {
 		return 0, err
 	}

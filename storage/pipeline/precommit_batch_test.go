@@ -109,7 +109,7 @@ func TestPrecommitBatcher(t *testing.T) {
 				SectorNumber: sn,
 			}
 
-			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
+			s.EXPECT().ChainHead(gomock.Any()).Return(types.EmptyTSK, abi.ChainEpoch(1), nil)
 
 			go func() {
 				defer done.Unlock()
@@ -153,7 +153,7 @@ func TestPrecommitBatcher(t *testing.T) {
 	//stm: @CHAIN_STATE_MINER_INFO_001, @CHAIN_STATE_NETWORK_VERSION_001
 	expectSend := func(expect []abi.SectorNumber) action {
 		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *pipeline.PreCommitBatcher) promise {
-			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
+			s.EXPECT().ChainHead(gomock.Any()).Return(types.EmptyTSK, abi.ChainEpoch(1), nil)
 			s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(big.NewInt(10001), nil)
 			s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version14, nil)
 
@@ -174,7 +174,7 @@ func TestPrecommitBatcher(t *testing.T) {
 	//stm: @CHAIN_STATE_MINER_INFO_001, @CHAIN_STATE_NETWORK_VERSION_001
 	expectSendsSingle := func(expect []abi.SectorNumber) action {
 		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *pipeline.PreCommitBatcher) promise {
-			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
+			s.EXPECT().ChainHead(gomock.Any()).Return(types.EmptyTSK, abi.ChainEpoch(1), nil)
 			s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(big.NewInt(9999), nil)
 			s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version14, nil)
 

@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type PreCommitPolicy interface {
@@ -18,8 +19,8 @@ type PreCommitPolicy interface {
 }
 
 type Chain interface {
-	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
-	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
+	ChainHead(ctx context.Context) (types.TipSetKey, abi.ChainEpoch, error)
+	StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error)
 }
 
 // BasicPreCommitPolicy satisfies PreCommitPolicy. It has two modes:

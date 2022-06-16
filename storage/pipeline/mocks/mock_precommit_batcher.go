@@ -17,7 +17,7 @@ import (
 	network "github.com/filecoin-project/go-state-types/network"
 
 	api "github.com/filecoin-project/lotus/api"
-	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	types "github.com/filecoin-project/lotus/chain/types"
 )
 
 // MockPreCommitBatcherApi is a mock of PreCommitBatcherApi interface.
@@ -44,7 +44,7 @@ func (m *MockPreCommitBatcherApi) EXPECT() *MockPreCommitBatcherApiMockRecorder 
 }
 
 // ChainBaseFee mocks base method.
-func (m *MockPreCommitBatcherApi) ChainBaseFee(arg0 context.Context, arg1 sealing.TipSetToken) (big.Int, error) {
+func (m *MockPreCommitBatcherApi) ChainBaseFee(arg0 context.Context, arg1 types.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChainBaseFee", arg0, arg1)
 	ret0, _ := ret[0].(big.Int)
@@ -59,10 +59,10 @@ func (mr *MockPreCommitBatcherApiMockRecorder) ChainBaseFee(arg0, arg1 interface
 }
 
 // ChainHead mocks base method.
-func (m *MockPreCommitBatcherApi) ChainHead(arg0 context.Context) (sealing.TipSetToken, abi.ChainEpoch, error) {
+func (m *MockPreCommitBatcherApi) ChainHead(arg0 context.Context) (types.TipSetKey, abi.ChainEpoch, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChainHead", arg0)
-	ret0, _ := ret[0].(sealing.TipSetToken)
+	ret0, _ := ret[0].(types.TipSetKey)
 	ret1, _ := ret[1].(abi.ChainEpoch)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
@@ -90,7 +90,7 @@ func (mr *MockPreCommitBatcherApiMockRecorder) SendMsg(arg0, arg1, arg2, arg3, a
 }
 
 // StateMinerAvailableBalance mocks base method.
-func (m *MockPreCommitBatcherApi) StateMinerAvailableBalance(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (big.Int, error) {
+func (m *MockPreCommitBatcherApi) StateMinerAvailableBalance(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerAvailableBalance", arg0, arg1, arg2)
 	ret0, _ := ret[0].(big.Int)
@@ -105,7 +105,7 @@ func (mr *MockPreCommitBatcherApiMockRecorder) StateMinerAvailableBalance(arg0, 
 }
 
 // StateMinerInfo mocks base method.
-func (m *MockPreCommitBatcherApi) StateMinerInfo(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (api.MinerInfo, error) {
+func (m *MockPreCommitBatcherApi) StateMinerInfo(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (api.MinerInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerInfo", arg0, arg1, arg2)
 	ret0, _ := ret[0].(api.MinerInfo)
@@ -120,7 +120,7 @@ func (mr *MockPreCommitBatcherApiMockRecorder) StateMinerInfo(arg0, arg1, arg2 i
 }
 
 // StateNetworkVersion mocks base method.
-func (m *MockPreCommitBatcherApi) StateNetworkVersion(arg0 context.Context, arg1 sealing.TipSetToken) (network.Version, error) {
+func (m *MockPreCommitBatcherApi) StateNetworkVersion(arg0 context.Context, arg1 types.TipSetKey) (network.Version, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateNetworkVersion", arg0, arg1)
 	ret0, _ := ret[0].(network.Version)

@@ -13,6 +13,7 @@ import (
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer"
 )
@@ -79,7 +80,7 @@ type SectorInfo struct {
 	PreCommitInfo    *miner.SectorPreCommitInfo
 	PreCommitDeposit big.Int
 	PreCommitMessage *cid.Cid
-	PreCommitTipSet  TipSetToken
+	PreCommitTipSet  types.TipSetKey
 
 	PreCommit2Fails uint64
 
@@ -196,11 +197,11 @@ type SectorIDCounter interface {
 	Next() (abi.SectorNumber, error)
 }
 
-type TipSetToken []byte
+type CborTipSetToken []byte
 
 type MsgLookup struct {
 	Receipt   MessageReceipt
-	TipSetTok TipSetToken
+	TipSetTok types.TipSetKey
 	Height    abi.ChainEpoch
 }
 

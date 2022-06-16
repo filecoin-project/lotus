@@ -13,6 +13,7 @@ import (
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // TODO: For now we handle this by halting state execution, when we get jsonrpc reconnecting
@@ -90,7 +91,7 @@ func checkPieces(ctx context.Context, maddr address.Address, si SectorInfo, api 
 
 // checkPrecommit checks that data commitment generated in the sealing process
 //  matches pieces, and that the seal ticket isn't expired
-func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, tok TipSetToken, height abi.ChainEpoch, api SealingAPI) (err error) {
+func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, tok types.TipSetKey, height abi.ChainEpoch, api SealingAPI) (err error) {
 	if err := checkPieces(ctx, maddr, si, api, false); err != nil {
 		return err
 	}
@@ -130,7 +131,7 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 	return nil
 }
 
-func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, tok TipSetToken) (err error) {
+func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, tok types.TipSetKey) (err error) {
 	if si.SeedEpoch == 0 {
 		return &ErrBadSeed{xerrors.Errorf("seed epoch was not set")}
 	}
@@ -200,7 +201,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 }
 
 // check that sector info is good after running a replica update
-func checkReplicaUpdate(ctx context.Context, maddr address.Address, si SectorInfo, tok TipSetToken, api SealingAPI) error {
+func checkReplicaUpdate(ctx context.Context, maddr address.Address, si SectorInfo, tok types.TipSetKey, api SealingAPI) error {
 
 	if err := checkPieces(ctx, maddr, si, api, true); err != nil {
 		return err

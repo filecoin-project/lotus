@@ -22,8 +22,8 @@ func NewEventsAdapter(api *events.Events) EventsAdapter {
 
 func (e EventsAdapter) ChainAt(hnd sealing.HeightHandler, rev sealing.RevertHandler, confidence int, h abi.ChainEpoch) error {
 	return e.delegate.ChainAt(context.TODO(), func(ctx context.Context, ts *types.TipSet, curH abi.ChainEpoch) error {
-		return hnd(ctx, ts.Key().Bytes(), curH)
+		return hnd(ctx, ts.Key(), curH)
 	}, func(ctx context.Context, ts *types.TipSet) error {
-		return rev(ctx, ts.Key().Bytes())
+		return rev(ctx, ts.Key())
 	}, confidence, h)
 }

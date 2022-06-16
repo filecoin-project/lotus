@@ -29,11 +29,11 @@ import (
 
 type PreCommitBatcherApi interface {
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
-	StateMinerInfo(context.Context, address.Address, TipSetToken) (api.MinerInfo, error)
-	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
-	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
-	ChainBaseFee(context.Context, TipSetToken) (abi.TokenAmount, error)
-	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
+	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (big.Int, error)
+	ChainHead(ctx context.Context) (types.TipSetKey, abi.ChainEpoch, error)
+	ChainBaseFee(context.Context, types.TipSetKey) (abi.TokenAmount, error)
+	StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error)
 }
 
 type preCommitEntry struct {
@@ -240,7 +240,7 @@ func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBat
 }
 
 func (b *PreCommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.PreCommitBatchRes, error) {
-	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, nil)
+	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
@@ -248,7 +248,7 @@ func (b *PreCommitBatcher) processIndividually(cfg sealiface.Config) ([]sealifac
 	avail := types.TotalFilecoinInt
 
 	if cfg.CollateralFromMinerBalance && !cfg.DisableCollateralFallback {
-		avail, err = b.api.StateMinerAvailableBalance(b.mctx, b.maddr, nil)
+		avail, err = b.api.StateMinerAvailableBalance(b.mctx, b.maddr, types.EmptyTSK)
 		if err != nil {
 			return nil, xerrors.Errorf("getting available miner balance: %w", err)
 		}
@@ -315,7 +315,7 @@ func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo,
 	return mcid, nil
 }
 
-func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tok TipSetToken, bf abi.TokenAmount, nv network.Version) ([]sealiface.PreCommitBatchRes, error) {
+func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tok types.TipSetKey, bf abi.TokenAmount, nv network.Version) ([]sealiface.PreCommitBatchRes, error) {
 	params := miner.PreCommitSectorBatchParams{}
 	deposit := big.Zero()
 	var res sealiface.PreCommitBatchRes
@@ -336,7 +336,7 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tok TipSetToken, b
 		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("couldn't serialize PreCommitSectorBatchParams: %w", err)
 	}
 
-	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, nil)
+	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, types.EmptyTSK)
 	if err != nil {
 		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("couldn't get miner info: %w", err)
 	}

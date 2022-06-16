@@ -19,15 +19,16 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
 )
 
 type TerminateBatcherApi interface {
-	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*SectorLocation, error)
+	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*SectorLocation, error)
 	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
-	StateMinerInfo(context.Context, address.Address, TipSetToken) (api.MinerInfo, error)
-	StateMinerProvingDeadline(context.Context, address.Address, TipSetToken) (*dline.Info, error)
-	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tok TipSetToken) ([]api.Partition, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
+	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
+	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tok types.TipSetKey) ([]api.Partition, error)
 }
 
 type TerminateBatcher struct {
@@ -107,7 +108,7 @@ func (b *TerminateBatcher) run() {
 }
 
 func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
-	dl, err := b.api.StateMinerProvingDeadline(b.mctx, b.maddr, nil)
+	dl, err := b.api.StateMinerProvingDeadline(b.mctx, b.maddr, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("getting proving deadline info failed: %w", err)
 	}
@@ -147,7 +148,7 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 			continue
 		}
 
-		ps, err := b.api.StateMinerPartitions(b.mctx, b.maddr, loc.Deadline, nil)
+		ps, err := b.api.StateMinerPartitions(b.mctx, b.maddr, loc.Deadline, types.EmptyTSK)
 		if err != nil {
 			log.Warnw("TerminateBatcher: getting miner partitions", "deadline", loc.Deadline, "partition", loc.Partition, "error", err)
 			continue
@@ -210,7 +211,7 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		return nil, xerrors.Errorf("couldn't serialize TerminateSectors params: %w", err)
 	}
 
-	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, nil)
+	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
@@ -256,7 +257,7 @@ func (b *TerminateBatcher) AddTermination(ctx context.Context, s abi.SectorID) (
 		return cid.Undef, false, err
 	}
 
-	loc, err := b.api.StateSectorPartition(ctx, maddr, s.Number, nil)
+	loc, err := b.api.StateSectorPartition(ctx, maddr, s.Number, types.EmptyTSK)
 	if err != nil {
 		return cid.Undef, false, xerrors.Errorf("getting sector location: %w", err)
 	}
@@ -266,7 +267,7 @@ func (b *TerminateBatcher) AddTermination(ctx context.Context, s abi.SectorID) (
 
 	{
 		// check if maybe already terminated
-		parts, err := b.api.StateMinerPartitions(ctx, maddr, loc.Deadline, nil)
+		parts, err := b.api.StateMinerPartitions(ctx, maddr, loc.Deadline, types.EmptyTSK)
 		if err != nil {
 			return cid.Cid{}, false, xerrors.Errorf("getting partitions: %w", err)
 		}

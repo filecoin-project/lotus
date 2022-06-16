@@ -10,6 +10,8 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/specs-storage/storage"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type mutator interface {
@@ -166,7 +168,7 @@ func (evt SectorPreCommitBatchSent) apply(state *SectorInfo) {
 }
 
 type SectorPreCommitLanded struct {
-	TipSet TipSetToken
+	TipSet types.TipSetKey
 }
 
 func (evt SectorPreCommitLanded) apply(si *SectorInfo) {
