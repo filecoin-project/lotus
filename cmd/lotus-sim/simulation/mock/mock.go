@@ -15,10 +15,10 @@ import (
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 	tutils "github.com/filecoin-project/specs-actors/v5/support/testing"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
-// Ideally, we'd use extern/sector-storage/mock. Unfortunately, those mocks are a bit _too_ accurate
+// Ideally, we'd use extern/sealer/mock. Unfortunately, those mocks are a bit _too_ accurate
 // and would force us to load sector info for window post proofs.
 
 const (

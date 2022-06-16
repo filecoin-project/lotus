@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-state-types/abi"

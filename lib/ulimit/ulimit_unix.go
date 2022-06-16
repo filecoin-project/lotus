@@ -4,7 +4,7 @@
 package ulimit
 
 import (
-	unix "golang.org/x/sys/unix"
+	"golang.org/x/sys/unix"
 )
 
 func init() {

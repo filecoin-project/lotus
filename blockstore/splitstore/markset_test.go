@@ -4,7 +4,7 @@ package splitstore
 import (
 	"testing"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 )
 

@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ipfs/go-cid"
-	blake2b "github.com/minio/blake2b-simd"
+	"github.com/minio/blake2b-simd"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/chain/types"

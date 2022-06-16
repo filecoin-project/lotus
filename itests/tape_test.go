@@ -12,8 +12,8 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/itests/kit"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 )
 
 func TestTapeFix(t *testing.T) {

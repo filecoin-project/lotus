@@ -42,16 +42,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/markets/idxprov"
-	idxprov_test "github.com/filecoin-project/lotus/markets/idxprov/idxprov_test"
+	"github.com/filecoin-project/lotus/markets/idxprov/idxprov_test"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
@@ -59,7 +55,10 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage/mockstorage"
+	"github.com/filecoin-project/lotus/storage/paths"
+	sectorstorage "github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/mock"
 )
 
 func init() {
@@ -183,7 +182,7 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 		require.NoError(n.t, err)
 	}
 
-	key, err := wallet.GenerateKey(types.KTBLS)
+	key, err := key.GenerateKey(types.KTBLS)
 	require.NoError(n.t, err)
 
 	if !n.bootstrapped && !options.balance.IsZero() {
@@ -247,7 +246,7 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 
 		// Create the preseal commitment.
 		if n.options.mockProofs {
-			genm, k, err = mockstorage.PreSeal(proofType, actorAddr, sectors)
+			genm, k, err = mock.PreSeal(proofType, actorAddr, sectors)
 		} else {
 			genm, k, err = seed.PreSeal(actorAddr, proofType, 0, sectors, tdir, []byte("make genesis mem random"), nil, true)
 		}
@@ -256,7 +255,7 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 		genm.PeerId = peerId
 
 		// create an owner key, and assign it some FIL.
-		ownerKey, err = wallet.NewKey(*k)
+		ownerKey, err = key.NewKey(*k)
 		require.NoError(n.t, err)
 
 		genacc := genesis.Actor{
@@ -547,8 +546,8 @@ func (n *Ensemble) Start() *Ensemble {
 		// using real proofs, therefore need real sectors.
 		if !n.bootstrapped && !n.options.mockProofs {
 			psd := m.PresealDir
-			err := lr.SetStorage(func(sc *stores.StorageConfig) {
-				sc.StoragePaths = append(sc.StoragePaths, stores.LocalPath{Path: psd})
+			err := lr.SetStorage(func(sc *paths.StorageConfig) {
+				sc.StoragePaths = append(sc.StoragePaths, paths.LocalPath{Path: psd})
 			})
 
 			require.NoError(n.t, err)
@@ -699,15 +698,15 @@ func (n *Ensemble) Start() *Ensemble {
 
 		addr := m.RemoteListener.Addr().String()
 
-		localStore, err := stores.NewLocal(ctx, lr, m.MinerNode, []string{"http://" + addr + "/remote"})
+		localStore, err := paths.NewLocal(ctx, lr, m.MinerNode, []string{"http://" + addr + "/remote"})
 		require.NoError(n.t, err)
 
 		auth := http.Header(nil)
 
-		remote := stores.NewRemote(localStore, m.MinerNode, auth, 20, &stores.DefaultPartialFileHandler{})
+		remote := paths.NewRemote(localStore, m.MinerNode, auth, 20, &paths.DefaultPartialFileHandler{})
 		store := m.options.workerStorageOpt(remote)
 
-		fh := &stores.FetchHandler{Local: localStore, PfHandler: &stores.DefaultPartialFileHandler{}}
+		fh := &paths.FetchHandler{Local: localStore, PfHandler: &paths.DefaultPartialFileHandler{}}
 		m.FetchHandler = fh.ServeHTTP
 
 		wsts := statestore.New(namespace.Wrap(ds, modules.WorkerCallsPrefix))

@@ -3,7 +3,7 @@ package api
 import (
 	"fmt"
 
-	xerrors "golang.org/x/xerrors"
+	"golang.org/x/xerrors"
 )
 
 type Version uint32
