@@ -530,35 +530,35 @@ func recoveryPiecesToFix(ctx context.Context, api SealingAPI, sector SectorInfo,
 			continue
 		}
 
-		proposal, err := api.StateMarketStorageDealProposal(ctx, p.DealInfo.DealID, ts.Key())
+		deal, err := api.StateMarketStorageDeal(ctx, p.DealInfo.DealID, ts.Key())
 		if err != nil {
 			log.Warnf("getting deal %d for piece %d: %+v", p.DealInfo.DealID, i, err)
 			toFix = append(toFix, i)
 			continue
 		}
 
-		if proposal.Provider != maddr {
-			log.Warnf("piece %d (of %d) of sector %d refers deal %d with wrong provider: %s != %s", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, proposal.Provider, maddr)
+		if deal.Proposal.Provider != maddr {
+			log.Warnf("piece %d (of %d) of sector %d refers deal %d with wrong provider: %s != %s", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, deal.Proposal.Provider, maddr)
 			toFix = append(toFix, i)
 			continue
 		}
 
-		if proposal.PieceCID != p.Piece.PieceCID {
-			log.Warnf("piece %d (of %d) of sector %d refers deal %d with wrong PieceCID: %s != %s", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, p.Piece.PieceCID, proposal.PieceCID)
+		if deal.Proposal.PieceCID != p.Piece.PieceCID {
+			log.Warnf("piece %d (of %d) of sector %d refers deal %d with wrong PieceCID: %s != %s", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, p.Piece.PieceCID, deal.Proposal.PieceCID)
 			toFix = append(toFix, i)
 			continue
 		}
 
-		if p.Piece.Size != proposal.PieceSize {
-			log.Warnf("piece %d (of %d) of sector %d refers deal %d with different size: %d != %d", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, p.Piece.Size, proposal.PieceSize)
+		if p.Piece.Size != deal.Proposal.PieceSize {
+			log.Warnf("piece %d (of %d) of sector %d refers deal %d with different size: %d != %d", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, p.Piece.Size, deal.Proposal.PieceSize)
 			toFix = append(toFix, i)
 			continue
 		}
 
-		if ts.Height() >= proposal.StartEpoch {
+		if ts.Height() >= deal.Proposal.StartEpoch {
 			// TODO: check if we are in an early enough state (before precommit), try to remove the offending pieces
 			//  (tricky as we have to 'defragment' the sector while doing that, and update piece references for retrieval)
-			return nil, 0, xerrors.Errorf("can't fix sector deals: piece %d (of %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, proposal.StartEpoch, ts.Height())
+			return nil, 0, xerrors.Errorf("can't fix sector deals: piece %d (of %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, deal.Proposal.StartEpoch, ts.Height())
 		}
 	}
 

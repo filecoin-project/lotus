@@ -16,7 +16,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -161,15 +160,6 @@ func (s SealingAPIAdapter) StateSectorPartition(ctx context.Context, maddr addre
 	}
 
 	return nil, nil // not found
-}
-
-func (s SealingAPIAdapter) StateMarketStorageDealProposal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (market.DealProposal, error) {
-	deal, err := s.delegate.StateMarketStorageDeal(ctx, dealID, tsk)
-	if err != nil {
-		return market.DealProposal{}, err
-	}
-
-	return deal.Proposal, nil
 }
 
 func (s SealingAPIAdapter) ChainBaseFee(ctx context.Context, tsk types.TipSetKey) (abi.TokenAmount, error) {
