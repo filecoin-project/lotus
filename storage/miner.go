@@ -177,19 +177,12 @@ func (m *Miner) Run(ctx context.Context) error {
 	if err != nil {
 		return xerrors.Errorf("failed to subscribe to events: %w", err)
 	}
-	evtsAdapter := NewEventsAdapter(evts)
-
-	// Create a shim to glue the API required by the sealing component
-	// with the API that Lotus is capable of providing.
-	// The shim translates between "tipset tokens" and tipset keys, and
-	// provides extra methods.
-	adaptedAPI := NewSealingAPIAdapter(m.api)
 
 	// Instantiate a precommit policy.
 	cfg := pipeline.GetSealingConfigFunc(m.getSealConfig)
 	provingBuffer := md.WPoStProvingPeriod * 2
 
-	pcp := pipeline.NewBasicPreCommitPolicy(adaptedAPI, cfg, provingBuffer)
+	pcp := pipeline.NewBasicPreCommitPolicy(m.api, cfg, provingBuffer)
 
 	// address selector.
 	as := func(ctx context.Context, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
@@ -197,7 +190,7 @@ func (m *Miner) Run(ctx context.Context) error {
 	}
 
 	// Instantiate the sealing FSM.
-	m.sealing = pipeline.New(ctx, adaptedAPI, m.feeCfg, evtsAdapter, m.maddr, m.ds, m.sealer, m.sc, m.verif, m.prover, &pcp, cfg, m.handleSealingNotifications, as)
+	m.sealing = pipeline.New(ctx, m.api, m.feeCfg, evts, m.maddr, m.ds, m.sealer, m.sc, m.verif, m.prover, &pcp, cfg, m.handleSealingNotifications, as)
 
 	// Run the sealing FSM.
 	go m.sealing.Run(ctx) //nolint:errcheck // logged intside the function

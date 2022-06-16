@@ -96,7 +96,7 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 		return err
 	}
 
-	commD, err := api.StateComputeDataCommitment(ctx, maddr, si.SectorType, si.dealIDs(), tok)
+	commD, err := api.StateComputeDataCID(ctx, maddr, si.SectorType, si.dealIDs(), tok)
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("calling StateComputeDataCommitment: %w", err)}
 	}
@@ -220,7 +220,7 @@ func checkReplicaUpdate(ctx context.Context, maddr address.Address, si SectorInf
 		return xerrors.Errorf("replica update on sector not marked for update")
 	}
 
-	commD, err := api.StateComputeDataCommitment(ctx, maddr, si.SectorType, si.dealIDs(), tok)
+	commD, err := api.StateComputeDataCID(ctx, maddr, si.SectorType, si.dealIDs(), tok)
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("calling StateComputeDataCommitment: %w", err)}
 	}

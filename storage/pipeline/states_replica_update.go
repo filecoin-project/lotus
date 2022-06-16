@@ -255,9 +255,9 @@ func (m *Sealing) handleUpdateActivating(ctx statemachine.Context, sector Sector
 
 		targetHeight := mw.Height + lb + InteractivePoRepConfidence
 
-		return m.events.ChainAt(func(context.Context, types.TipSetKey, abi.ChainEpoch) error {
+		return m.events.ChainAt(context.Background(), func(context.Context, *types.TipSet, abi.ChainEpoch) error {
 			return ctx.Send(SectorUpdateActive{})
-		}, func(ctx context.Context, ts types.TipSetKey) error {
+		}, func(ctx context.Context, ts *types.TipSet) error {
 			log.Warn("revert in handleUpdateActivating")
 			return nil
 		}, InteractivePoRepConfidence, targetHeight)
