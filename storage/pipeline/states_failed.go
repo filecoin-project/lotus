@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/api"
 	"time"
 
 	"github.com/hashicorp/go-multierror"
@@ -80,7 +81,7 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 	}
 
 	if sector.PreCommitMessage != nil {
-		mw, err := m.Api.StateSearchMsg(ctx.Context(), *sector.PreCommitMessage)
+		mw, err := m.Api.StateSearchMsg(ctx.Context(), tok, *sector.PreCommitMessage, api.LookbackNoLimit, true)
 		if err != nil {
 			// API error
 			if err := failedCooldown(ctx, sector); err != nil {
@@ -189,7 +190,7 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 	}
 
 	if sector.ReplicaUpdateMessage != nil {
-		mw, err := m.Api.StateSearchMsg(ctx.Context(), *sector.ReplicaUpdateMessage)
+		mw, err := m.Api.StateSearchMsg(ctx.Context(), types.EmptyTSK, *sector.ReplicaUpdateMessage, api.LookbackNoLimit, true)
 		if err != nil {
 			// API error
 			return ctx.Send(SectorRetrySubmitReplicaUpdateWait{})
@@ -269,7 +270,7 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 	}
 
 	if sector.CommitMessage != nil {
-		mw, err := m.Api.StateSearchMsg(ctx.Context(), *sector.CommitMessage)
+		mw, err := m.Api.StateSearchMsg(ctx.Context(), tok, *sector.CommitMessage, api.LookbackNoLimit, true)
 		if err != nil {
 			// API error
 			if err := failedCooldown(ctx, sector); err != nil {

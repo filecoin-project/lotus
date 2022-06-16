@@ -348,18 +348,18 @@ func (mr *MockSealingAPIMockRecorder) StateNetworkVersion(arg0, arg1 interface{}
 }
 
 // StateSearchMsg mocks base method.
-func (m *MockSealingAPI) StateSearchMsg(arg0 context.Context, arg1 cid.Cid) (*sealing.MsgLookup, error) {
+func (m *MockSealingAPI) StateSearchMsg(arg0 context.Context, arg1 types.TipSetKey, arg2 cid.Cid, arg3 abi.ChainEpoch, arg4 bool) (*api.MsgLookup, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateSearchMsg", arg0, arg1)
-	ret0, _ := ret[0].(*sealing.MsgLookup)
+	ret := m.ctrl.Call(m, "StateSearchMsg", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(*api.MsgLookup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // StateSearchMsg indicates an expected call of StateSearchMsg.
-func (mr *MockSealingAPIMockRecorder) StateSearchMsg(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockSealingAPIMockRecorder) StateSearchMsg(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateSearchMsg", reflect.TypeOf((*MockSealingAPI)(nil).StateSearchMsg), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateSearchMsg", reflect.TypeOf((*MockSealingAPI)(nil).StateSearchMsg), arg0, arg1, arg2, arg3, arg4)
 }
 
 // StateSectorGetInfo mocks base method.
@@ -408,16 +408,16 @@ func (mr *MockSealingAPIMockRecorder) StateSectorPreCommitInfo(arg0, arg1, arg2,
 }
 
 // StateWaitMsg mocks base method.
-func (m *MockSealingAPI) StateWaitMsg(arg0 context.Context, arg1 cid.Cid) (sealing.MsgLookup, error) {
+func (m *MockSealingAPI) StateWaitMsg(arg0 context.Context, arg1 cid.Cid, arg2 uint64, arg3 abi.ChainEpoch, arg4 bool) (*api.MsgLookup, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateWaitMsg", arg0, arg1)
-	ret0, _ := ret[0].(sealing.MsgLookup)
+	ret := m.ctrl.Call(m, "StateWaitMsg", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(*api.MsgLookup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // StateWaitMsg indicates an expected call of StateWaitMsg.
-func (mr *MockSealingAPIMockRecorder) StateWaitMsg(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockSealingAPIMockRecorder) StateWaitMsg(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateWaitMsg", reflect.TypeOf((*MockSealingAPI)(nil).StateWaitMsg), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateWaitMsg", reflect.TypeOf((*MockSealingAPI)(nil).StateWaitMsg), arg0, arg1, arg2, arg3, arg4)
 }

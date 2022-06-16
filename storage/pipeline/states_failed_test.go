@@ -4,6 +4,7 @@ package sealing_test
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/lotus/chain/types"
 	"testing"
 
 	"github.com/golang/mock/gomock"
@@ -55,8 +56,8 @@ func TestStateRecoverDealIDs(t *testing.T) {
 
 	// expect GetCurrentDealInfo
 	{
-		api.EXPECT().StateSearchMsg(ctx, pc).Return(&pipeline.MsgLookup{
-			Receipt: pipeline.MessageReceipt{
+		api.EXPECT().StateSearchMsg(ctx, gomock.Any(), pc, gomock.Any(), gomock.Any()).Return(&api2.MsgLookup{
+			Receipt: types.MessageReceipt{
 				ExitCode: exitcode.Ok,
 				Return: cborRet(&market0.PublishStorageDealsReturn{
 					IDs: []abi.DealID{dealId},

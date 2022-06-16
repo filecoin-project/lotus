@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -23,7 +22,7 @@ type CurrentDealInfoAPI interface {
 	ChainGetMessage(context.Context, cid.Cid) (*types.Message, error)
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*api.MarketDeal, error)
-	StateSearchMsg(context.Context, cid.Cid) (*MsgLookup, error)
+	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
 	StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error)
 }
 
@@ -69,7 +68,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 	dealID := abi.DealID(0)
 
 	// Get the return value of the publish deals message
-	lookup, err := mgr.CDAPI.StateSearchMsg(ctx, publishCid)
+	lookup, err := mgr.CDAPI.StateSearchMsg(ctx, tok, publishCid, api.LookbackNoLimit, true)
 	if err != nil {
 		return dealID, types.EmptyTSK, xerrors.Errorf("looking for publish deal message %s: search msg failed: %w", publishCid, err)
 	}
@@ -82,7 +81,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 		return dealID, types.EmptyTSK, xerrors.Errorf("looking for publish deal message %s: non-ok exit code: %s", publishCid, lookup.Receipt.ExitCode)
 	}
 
-	nv, err := mgr.CDAPI.StateNetworkVersion(ctx, lookup.TipSetTok)
+	nv, err := mgr.CDAPI.StateNetworkVersion(ctx, lookup.TipSet)
 	if err != nil {
 		return dealID, types.EmptyTSK, xerrors.Errorf("getting network version: %w", err)
 	}
@@ -113,7 +112,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 		// There is a single deal in this publish message and no deal proposal
 		// was supplied, so we have nothing to compare against. Just assume
 		// the deal ID is correct and that it was valid
-		return dealIDs[0], lookup.TipSetTok, nil
+		return dealIDs[0], lookup.TipSet, nil
 	}
 
 	// Get the parameters to the publish deals message
@@ -166,7 +165,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 	if outIdx >= len(dealIDs) {
 		return dealID, types.EmptyTSK, xerrors.Errorf("invalid publish storage deals ret marking %d as valid while only returning %d valid deals in publish deal message %s", outIdx, len(dealIDs), publishCid)
 	}
-	return dealIDs[outIdx], lookup.TipSetTok, nil
+	return dealIDs[outIdx], lookup.TipSet, nil
 }
 
 func (mgr *CurrentDealInfoManager) CheckDealEquality(ctx context.Context, tok types.TipSetKey, p1, p2 market.DealProposal) (bool, error) {
@@ -190,50 +189,3 @@ func (mgr *CurrentDealInfoManager) CheckDealEquality(ctx context.Context, tok ty
 		p1.Provider == p2.Provider &&
 		p1ClientID == p2ClientID, nil
 }
-
-type CurrentDealInfoTskAPI interface {
-	ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.Message, error)
-	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
-	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*api.MarketDeal, error)
-	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
-	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
-}
-
-type CurrentDealInfoAPIAdapter struct {
-	CurrentDealInfoTskAPI
-}
-
-func (c *CurrentDealInfoAPIAdapter) StateLookupID(ctx context.Context, a address.Address, tsk types.TipSetKey) (address.Address, error) {
-	return c.CurrentDealInfoTskAPI.StateLookupID(ctx, a, tsk)
-}
-
-func (c *CurrentDealInfoAPIAdapter) StateMarketStorageDeal(ctx context.Context, dealID abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error) {
-	return c.CurrentDealInfoTskAPI.StateMarketStorageDeal(ctx, dealID, tsk)
-}
-
-func (c *CurrentDealInfoAPIAdapter) StateSearchMsg(ctx context.Context, k cid.Cid) (*MsgLookup, error) {
-	wmsg, err := c.CurrentDealInfoTskAPI.StateSearchMsg(ctx, types.EmptyTSK, k, api.LookbackNoLimit, true)
-	if err != nil {
-		return nil, err
-	}
-
-	if wmsg == nil {
-		return nil, nil
-	}
-
-	return &MsgLookup{
-		Receipt: MessageReceipt{
-			ExitCode: wmsg.Receipt.ExitCode,
-			Return:   wmsg.Receipt.Return,
-			GasUsed:  wmsg.Receipt.GasUsed,
-		},
-		TipSetTok: wmsg.TipSet,
-		Height:    wmsg.Height,
-	}, nil
-}
-
-func (c *CurrentDealInfoAPIAdapter) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
-	return c.CurrentDealInfoTskAPI.StateNetworkVersion(ctx, tsk)
-}
-
-var _ CurrentDealInfoAPI = (*CurrentDealInfoAPIAdapter)(nil)

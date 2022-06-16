@@ -1,7 +1,6 @@
 package sealing
 
 import (
-	"bytes"
 	"context"
 
 	"github.com/ipfs/go-cid"
@@ -9,7 +8,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
-	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
@@ -197,22 +195,4 @@ type SectorIDCounter interface {
 	Next() (abi.SectorNumber, error)
 }
 
-type CborTipSetToken []byte
-
-type MsgLookup struct {
-	Receipt   MessageReceipt
-	TipSetTok types.TipSetKey
-	Height    abi.ChainEpoch
-}
-
-type MessageReceipt struct {
-	ExitCode exitcode.ExitCode
-	Return   []byte
-	GasUsed  int64
-}
-
 type GetSealingConfigFunc func() (sealiface.Config, error)
-
-func (mr *MessageReceipt) Equals(o *MessageReceipt) bool {
-	return mr.ExitCode == o.ExitCode && bytes.Equal(mr.Return, o.Return) && mr.GasUsed == o.GasUsed
-}

@@ -20,7 +20,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -103,42 +102,13 @@ func (s SealingAPIAdapter) ChainReadObj(ctx context.Context, ocid cid.Cid) ([]by
 	return s.delegate.ChainReadObj(ctx, ocid)
 }
 
-func (s SealingAPIAdapter) StateWaitMsg(ctx context.Context, mcid cid.Cid) (pipeline.MsgLookup, error) {
-	wmsg, err := s.delegate.StateWaitMsg(ctx, mcid, build.MessageConfidence, api.LookbackNoLimit, true)
-	if err != nil {
-		return pipeline.MsgLookup{}, err
-	}
+func (s SealingAPIAdapter) StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
+	return s.delegate.StateWaitMsg(ctx, cid, confidence, limit, allowReplaced)
 
-	return pipeline.MsgLookup{
-		Receipt: pipeline.MessageReceipt{
-			ExitCode: wmsg.Receipt.ExitCode,
-			Return:   wmsg.Receipt.Return,
-			GasUsed:  wmsg.Receipt.GasUsed,
-		},
-		TipSetTok: wmsg.TipSet,
-		Height:    wmsg.Height,
-	}, nil
 }
 
-func (s SealingAPIAdapter) StateSearchMsg(ctx context.Context, c cid.Cid) (*pipeline.MsgLookup, error) {
-	wmsg, err := s.delegate.StateSearchMsg(ctx, types.EmptyTSK, c, api.LookbackNoLimit, true)
-	if err != nil {
-		return nil, err
-	}
-
-	if wmsg == nil {
-		return nil, nil
-	}
-
-	return &pipeline.MsgLookup{
-		Receipt: pipeline.MessageReceipt{
-			ExitCode: wmsg.Receipt.ExitCode,
-			Return:   wmsg.Receipt.Return,
-			GasUsed:  wmsg.Receipt.GasUsed,
-		},
-		TipSetTok: wmsg.TipSet,
-		Height:    wmsg.Height,
-	}, nil
+func (s SealingAPIAdapter) StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error) {
+	return s.delegate.StateSearchMsg(ctx, from, msg, limit, allowReplaced)
 }
 
 func (s SealingAPIAdapter) StateComputeDataCommitment(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) {

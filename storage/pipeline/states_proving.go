@@ -1,6 +1,7 @@
 package sealing
 
 import (
+	"github.com/filecoin-project/lotus/api"
 	"time"
 
 	"golang.org/x/xerrors"
@@ -25,7 +26,7 @@ func (m *Sealing) handleFaultReported(ctx statemachine.Context, sector SectorInf
 		return xerrors.Errorf("entered fault reported state without a FaultReportMsg cid")
 	}
 
-	mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.FaultReportMsg)
+	mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.FaultReportMsg, build.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		return xerrors.Errorf("failed to wait for fault declaration: %w", err)
 	}
@@ -83,7 +84,7 @@ func (m *Sealing) handleTerminateWait(ctx statemachine.Context, sector SectorInf
 		return xerrors.New("entered TerminateWait with nil TerminateMessage")
 	}
 
-	mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.TerminateMessage)
+	mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.TerminateMessage, build.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		return ctx.Send(SectorTerminateFailed{xerrors.Errorf("waiting for terminate message to land on chain: %w", err)})
 	}
