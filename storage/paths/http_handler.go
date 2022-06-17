@@ -13,7 +13,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/storage/sealer/partialfile"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -105,7 +104,7 @@ func (handler *FetchHandler) remoteGetSector(w http.ResponseWriter, r *http.Requ
 
 	// The caller has a lock on this sector already, no need to get one here
 	// passing 0 spt because we don't allocate anything
-	si := storage.SectorRef{
+	si := storiface.SectorRef{
 		ID:        id,
 		ProofType: 0,
 	}
@@ -238,7 +237,7 @@ func (handler *FetchHandler) remoteGetAllocated(w http.ResponseWriter, r *http.R
 	// The caller has a lock on this sector already, no need to get one here
 
 	// passing 0 spt because we don't allocate anything
-	si := storage.SectorRef{
+	si := storiface.SectorRef{
 		ID:        id,
 		ProofType: 0,
 	}

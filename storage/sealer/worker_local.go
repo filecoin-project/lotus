@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
 	"github.com/filecoin-project/go-statestore"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
@@ -144,7 +143,7 @@ type localWorkerPathProvider struct {
 	op storiface.AcquireMode
 }
 
-func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector storage.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, sealing storiface.PathType) (storiface.SectorPaths, func(), error) {
+func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector storiface.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, sealing storiface.PathType) (storiface.SectorPaths, func(), error) {
 	paths, storageIDs, err := l.w.storage.AcquireSector(ctx, sector, existing, allocate, sealing, l.op)
 	if err != nil {
 		return storiface.SectorPaths{}, nil, err
@@ -251,7 +250,7 @@ var returnFunc = map[ReturnType]func(context.Context, storiface.CallID, storifac
 	Fetch:                 rfunc(storiface.WorkerReturn.ReturnFetch),
 }
 
-func (l *LocalWorker) asyncCall(ctx context.Context, sector storage.SectorRef, rt ReturnType, work func(ctx context.Context, ci storiface.CallID) (interface{}, error)) (storiface.CallID, error) {
+func (l *LocalWorker) asyncCall(ctx context.Context, sector storiface.SectorRef, rt ReturnType, work func(ctx context.Context, ci storiface.CallID) (interface{}, error)) (storiface.CallID, error) {
 	ci := storiface.CallID{
 		Sector: sector.ID,
 		ID:     uuid.New(),
@@ -334,7 +333,7 @@ func doReturn(ctx context.Context, rt ReturnType, ci storiface.CallID, ret stori
 	return true
 }
 
-func (l *LocalWorker) NewSector(ctx context.Context, sector storage.SectorRef) error {
+func (l *LocalWorker) NewSector(ctx context.Context, sector storiface.SectorRef) error {
 	sb, err := l.executor()
 	if err != nil {
 		return err
@@ -343,18 +342,18 @@ func (l *LocalWorker) NewSector(ctx context.Context, sector storage.SectorRef) e
 	return sb.NewSector(ctx, sector)
 }
 
-func (l *LocalWorker) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (storiface.CallID, error) {
+func (l *LocalWorker) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data) (storiface.CallID, error) {
 	sb, err := l.executor()
 	if err != nil {
 		return storiface.UndefCall, err
 	}
 
-	return l.asyncCall(ctx, storage.NoSectorRef, DataCid, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
+	return l.asyncCall(ctx, storiface.NoSectorRef, DataCid, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
 		return sb.DataCid(ctx, pieceSize, pieceData)
 	})
 }
 
-func (l *LocalWorker) AddPiece(ctx context.Context, sector storage.SectorRef, epcs []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (storiface.CallID, error) {
+func (l *LocalWorker) AddPiece(ctx context.Context, sector storiface.SectorRef, epcs []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (storiface.CallID, error) {
 	sb, err := l.executor()
 	if err != nil {
 		return storiface.UndefCall, err
@@ -365,7 +364,7 @@ func (l *LocalWorker) AddPiece(ctx context.Context, sector storage.SectorRef, ep
 	})
 }
 
-func (l *LocalWorker) Fetch(ctx context.Context, sector storage.SectorRef, fileType storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) (storiface.CallID, error) {
+func (l *LocalWorker) Fetch(ctx context.Context, sector storiface.SectorRef, fileType storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) (storiface.CallID, error) {
 	return l.asyncCall(ctx, sector, Fetch, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
 		_, done, err := (&localWorkerPathProvider{w: l, op: am}).AcquireSector(ctx, sector, fileType, storiface.FTNone, ptype)
 		if err == nil {
@@ -376,7 +375,7 @@ func (l *LocalWorker) Fetch(ctx context.Context, sector storage.SectorRef, fileT
 	})
 }
 
-func (l *LocalWorker) SealPreCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error) {
+func (l *LocalWorker) SealPreCommit1(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (storiface.CallID, error) {
 	return l.asyncCall(ctx, sector, SealPreCommit1, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
 
 		{
@@ -399,7 +398,7 @@ func (l *LocalWorker) SealPreCommit1(ctx context.Context, sector storage.SectorR
 	})
 }
 
-func (l *LocalWorker) SealPreCommit2(ctx context.Context, sector storage.SectorRef, phase1Out storage.PreCommit1Out) (storiface.CallID, error) {
+func (l *LocalWorker) SealPreCommit2(ctx context.Context, sector storiface.SectorRef, phase1Out storiface.PreCommit1Out) (storiface.CallID, error) {
 	sb, err := l.executor()
 	if err != nil {
 		return storiface.UndefCall, err
@@ -410,7 +409,7 @@ func (l *LocalWorker) SealPreCommit2(ctx context.Context, sector storage.SectorR
 	})
 }
 
-func (l *LocalWorker) SealCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (storiface.CallID, error) {
+func (l *LocalWorker) SealCommit1(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storiface.SectorCids) (storiface.CallID, error) {
 	sb, err := l.executor()
 	if err != nil {
 		return storiface.UndefCall, err
@@ -421,7 +420,7 @@ func (l *LocalWorker) SealCommit1(ctx context.Context, sector storage.SectorRef,
 	})
 }
 
-func (l *LocalWorker) SealCommit2(ctx context.Context, sector storage.SectorRef, phase1Out storage.Commit1Out) (storiface.CallID, error) {
+func (l *LocalWorker) SealCommit2(ctx context.Context, sector storiface.SectorRef, phase1Out storiface.Commit1Out) (storiface.CallID, error) {
 	sb, err := l.executor()
 	if err != nil {
 		return storiface.UndefCall, err
@@ -432,7 +431,7 @@ func (l *LocalWorker) SealCommit2(ctx context.Context, sector storage.SectorRef,
 	})
 }
 
-func (l *LocalWorker) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, pieces []abi.PieceInfo) (storiface.CallID, error) {
+func (l *LocalWorker) ReplicaUpdate(ctx context.Context, sector storiface.SectorRef, pieces []abi.PieceInfo) (storiface.CallID, error) {
 	sb, err := l.executor()
 	if err != nil {
 		return storiface.UndefCall, err
@@ -444,7 +443,7 @@ func (l *LocalWorker) ReplicaUpdate(ctx context.Context, sector storage.SectorRe
 	})
 }
 
-func (l *LocalWorker) ProveReplicaUpdate1(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid) (storiface.CallID, error) {
+func (l *LocalWorker) ProveReplicaUpdate1(ctx context.Context, sector storiface.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid) (storiface.CallID, error) {
 	sb, err := l.executor()
 	if err != nil {
 		return storiface.UndefCall, err
@@ -455,7 +454,7 @@ func (l *LocalWorker) ProveReplicaUpdate1(ctx context.Context, sector storage.Se
 	})
 }
 
-func (l *LocalWorker) ProveReplicaUpdate2(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid, vanillaProofs storage.ReplicaVanillaProofs) (storiface.CallID, error) {
+func (l *LocalWorker) ProveReplicaUpdate2(ctx context.Context, sector storiface.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid, vanillaProofs storiface.ReplicaVanillaProofs) (storiface.CallID, error) {
 	sb, err := l.executor()
 	if err != nil {
 		return storiface.UndefCall, err
@@ -466,7 +465,7 @@ func (l *LocalWorker) ProveReplicaUpdate2(ctx context.Context, sector storage.Se
 	})
 }
 
-func (l *LocalWorker) GenerateSectorKeyFromData(ctx context.Context, sector storage.SectorRef, commD cid.Cid) (storiface.CallID, error) {
+func (l *LocalWorker) GenerateSectorKeyFromData(ctx context.Context, sector storiface.SectorRef, commD cid.Cid) (storiface.CallID, error) {
 	sb, err := l.executor()
 	if err != nil {
 		return storiface.UndefCall, err
@@ -477,7 +476,7 @@ func (l *LocalWorker) GenerateSectorKeyFromData(ctx context.Context, sector stor
 	})
 }
 
-func (l *LocalWorker) FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) (storiface.CallID, error) {
+func (l *LocalWorker) FinalizeSector(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) (storiface.CallID, error) {
 	sb, err := l.executor()
 	if err != nil {
 		return storiface.UndefCall, err
@@ -498,7 +497,7 @@ func (l *LocalWorker) FinalizeSector(ctx context.Context, sector storage.SectorR
 	})
 }
 
-func (l *LocalWorker) FinalizeReplicaUpdate(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) (storiface.CallID, error) {
+func (l *LocalWorker) FinalizeReplicaUpdate(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) (storiface.CallID, error) {
 	sb, err := l.executor()
 	if err != nil {
 		return storiface.UndefCall, err
@@ -519,7 +518,7 @@ func (l *LocalWorker) FinalizeReplicaUpdate(ctx context.Context, sector storage.
 	})
 }
 
-func (l *LocalWorker) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) (storiface.CallID, error) {
+func (l *LocalWorker) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, safeToFree []storiface.Range) (storiface.CallID, error) {
 	return storiface.UndefCall, xerrors.Errorf("implement me")
 }
 
@@ -539,7 +538,7 @@ func (l *LocalWorker) Remove(ctx context.Context, sector abi.SectorID) error {
 	return err
 }
 
-func (l *LocalWorker) MoveStorage(ctx context.Context, sector storage.SectorRef, types storiface.SectorFileType) (storiface.CallID, error) {
+func (l *LocalWorker) MoveStorage(ctx context.Context, sector storiface.SectorRef, types storiface.SectorFileType) (storiface.CallID, error) {
 	return l.asyncCall(ctx, sector, MoveStorage, func(ctx context.Context, ci storiface.CallID) (interface{}, error) {
 		if err := l.storage.MoveStorage(ctx, sector, types); err != nil {
 			return nil, xerrors.Errorf("move to storage: %w", err)
@@ -558,7 +557,7 @@ func (l *LocalWorker) MoveStorage(ctx context.Context, sector storage.SectorRef,
 	})
 }
 
-func (l *LocalWorker) UnsealPiece(ctx context.Context, sector storage.SectorRef, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, cid cid.Cid) (storiface.CallID, error) {
+func (l *LocalWorker) UnsealPiece(ctx context.Context, sector storiface.SectorRef, index storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, cid cid.Cid) (storiface.CallID, error) {
 	sb, err := l.executor()
 	if err != nil {
 		return storiface.UndefCall, err

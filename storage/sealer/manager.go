@@ -17,7 +17,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
@@ -47,7 +46,7 @@ type Worker interface {
 
 type SectorManager interface {
 	ffiwrapper.StorageSealer
-	storage.Prover
+	storiface.Prover
 	storiface.WorkerReturn
 	FaultTracker
 }
@@ -65,7 +64,7 @@ type Manager struct {
 	windowPoStSched  *poStScheduler
 	winningPoStSched *poStScheduler
 
-	localProver storage.Prover
+	localProver storiface.Prover
 
 	workLk sync.Mutex
 	work   *statestore.StateStore
@@ -81,7 +80,7 @@ type Manager struct {
 	waitRes map[WorkID]chan struct{}
 }
 
-var _ storage.Prover = &Manager{}
+var _ storiface.Prover = &Manager{}
 
 type result struct {
 	r   interface{}
@@ -267,7 +266,7 @@ func schedNop(context.Context, Worker) error {
 	return nil
 }
 
-func (m *Manager) schedFetch(sector storage.SectorRef, ft storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) func(context.Context, Worker) error {
+func (m *Manager) schedFetch(sector storiface.SectorRef, ft storiface.SectorFileType, ptype storiface.PathType, am storiface.AcquireMode) func(context.Context, Worker) error {
 	return func(ctx context.Context, worker Worker) error {
 		_, err := m.waitSimpleCall(ctx)(worker.Fetch(ctx, sector, ft, ptype, am))
 		return err
@@ -278,7 +277,7 @@ func (m *Manager) schedFetch(sector storage.SectorRef, ft storiface.SectorFileTy
 // It will schedule the Unsealing task on a worker that either already has the sealed sector files or has space in
 // one of it's sealing scratch spaces to store them after fetching them from another worker.
 // If the chosen worker already has the Unsealed sector file, we will NOT Unseal the sealed sector file again.
-func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed *cid.Cid) error {
+func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storiface.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed *cid.Cid) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -335,19 +334,19 @@ func (m *Manager) SectorsUnsealPiece(ctx context.Context, sector storage.SectorR
 	return nil
 }
 
-func (m *Manager) NewSector(ctx context.Context, sector storage.SectorRef) error {
+func (m *Manager) NewSector(ctx context.Context, sector storiface.SectorRef) error {
 	log.Warnf("stub NewSector")
 	return nil
 }
 
-func (m *Manager) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (abi.PieceInfo, error) {
+func (m *Manager) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data) (abi.PieceInfo, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	selector := newTaskSelector()
 
 	var out abi.PieceInfo
-	err := m.sched.Schedule(ctx, storage.NoSectorRef, sealtasks.TTDataCid, selector, schedNop, func(ctx context.Context, w Worker) error {
+	err := m.sched.Schedule(ctx, storiface.NoSectorRef, sealtasks.TTDataCid, selector, schedNop, func(ctx context.Context, w Worker) error {
 		p, err := m.waitSimpleCall(ctx)(w.DataCid(ctx, pieceSize, pieceData))
 		if err != nil {
 			return err
@@ -361,7 +360,7 @@ func (m *Manager) DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, 
 	return out, err
 }
 
-func (m *Manager) AddPiece(ctx context.Context, sector storage.SectorRef, existingPieces []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
+func (m *Manager) AddPiece(ctx context.Context, sector storiface.SectorRef, existingPieces []abi.UnpaddedPieceSize, sz abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -392,7 +391,7 @@ func (m *Manager) AddPiece(ctx context.Context, sector storage.SectorRef, existi
 	return out, err
 }
 
-func (m *Manager) SealPreCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage.PreCommit1Out, err error) {
+func (m *Manager) SealPreCommit1(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storiface.PreCommit1Out, err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -410,7 +409,7 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector storage.SectorRef, 
 			return
 		}
 		if p != nil {
-			out = p.(storage.PreCommit1Out)
+			out = p.(storiface.PreCommit1Out)
 		}
 	}
 
@@ -443,13 +442,13 @@ func (m *Manager) SealPreCommit1(ctx context.Context, sector storage.SectorRef, 
 	return out, waitErr
 }
 
-func (m *Manager) SealPreCommit2(ctx context.Context, sector storage.SectorRef, phase1Out storage.PreCommit1Out) (out storage.SectorCids, err error) {
+func (m *Manager) SealPreCommit2(ctx context.Context, sector storiface.SectorRef, phase1Out storiface.PreCommit1Out) (out storiface.SectorCids, err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	wk, wait, cancel, err := m.getWork(ctx, sealtasks.TTPreCommit2, sector, phase1Out)
 	if err != nil {
-		return storage.SectorCids{}, xerrors.Errorf("getWork: %w", err)
+		return storiface.SectorCids{}, xerrors.Errorf("getWork: %w", err)
 	}
 	defer cancel()
 
@@ -461,7 +460,7 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector storage.SectorRef, 
 			return
 		}
 		if p != nil {
-			out = p.(storage.SectorCids)
+			out = p.(storiface.SectorCids)
 		}
 	}
 
@@ -471,7 +470,7 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector storage.SectorRef, 
 	}
 
 	if err := m.index.StorageLock(ctx, sector.ID, storiface.FTSealed, storiface.FTCache); err != nil {
-		return storage.SectorCids{}, xerrors.Errorf("acquiring sector lock: %w", err)
+		return storiface.SectorCids{}, xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
 	selector := newExistingSelector(m.index, sector.ID, storiface.FTCache|storiface.FTSealed, true)
@@ -486,19 +485,19 @@ func (m *Manager) SealPreCommit2(ctx context.Context, sector storage.SectorRef, 
 		return nil
 	})
 	if err != nil {
-		return storage.SectorCids{}, err
+		return storiface.SectorCids{}, err
 	}
 
 	return out, waitErr
 }
 
-func (m *Manager) SealCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (out storage.Commit1Out, err error) {
+func (m *Manager) SealCommit1(ctx context.Context, sector storiface.SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storiface.SectorCids) (out storiface.Commit1Out, err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	wk, wait, cancel, err := m.getWork(ctx, sealtasks.TTCommit1, sector, ticket, seed, pieces, cids)
 	if err != nil {
-		return storage.Commit1Out{}, xerrors.Errorf("getWork: %w", err)
+		return storiface.Commit1Out{}, xerrors.Errorf("getWork: %w", err)
 	}
 	defer cancel()
 
@@ -510,7 +509,7 @@ func (m *Manager) SealCommit1(ctx context.Context, sector storage.SectorRef, tic
 			return
 		}
 		if p != nil {
-			out = p.(storage.Commit1Out)
+			out = p.(storiface.Commit1Out)
 		}
 	}
 
@@ -520,7 +519,7 @@ func (m *Manager) SealCommit1(ctx context.Context, sector storage.SectorRef, tic
 	}
 
 	if err := m.index.StorageLock(ctx, sector.ID, storiface.FTSealed, storiface.FTCache); err != nil {
-		return storage.Commit1Out{}, xerrors.Errorf("acquiring sector lock: %w", err)
+		return storiface.Commit1Out{}, xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
 	// NOTE: We set allowFetch to false in so that we always execute on a worker
@@ -544,10 +543,10 @@ func (m *Manager) SealCommit1(ctx context.Context, sector storage.SectorRef, tic
 	return out, waitErr
 }
 
-func (m *Manager) SealCommit2(ctx context.Context, sector storage.SectorRef, phase1Out storage.Commit1Out) (out storage.Proof, err error) {
+func (m *Manager) SealCommit2(ctx context.Context, sector storiface.SectorRef, phase1Out storiface.Commit1Out) (out storiface.Proof, err error) {
 	wk, wait, cancel, err := m.getWork(ctx, sealtasks.TTCommit2, sector, phase1Out)
 	if err != nil {
-		return storage.Proof{}, xerrors.Errorf("getWork: %w", err)
+		return storiface.Proof{}, xerrors.Errorf("getWork: %w", err)
 	}
 	defer cancel()
 
@@ -559,7 +558,7 @@ func (m *Manager) SealCommit2(ctx context.Context, sector storage.SectorRef, pha
 			return
 		}
 		if p != nil {
-			out = p.(storage.Proof)
+			out = p.(storiface.Proof)
 		}
 	}
 
@@ -587,7 +586,7 @@ func (m *Manager) SealCommit2(ctx context.Context, sector storage.SectorRef, pha
 	return out, waitErr
 }
 
-func (m *Manager) FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error {
+func (m *Manager) FinalizeSector(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -664,7 +663,7 @@ func (m *Manager) FinalizeSector(ctx context.Context, sector storage.SectorRef, 
 	return nil
 }
 
-func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) error {
+func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storiface.SectorRef, keepUnsealed []storiface.Range) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -750,7 +749,7 @@ func (m *Manager) FinalizeReplicaUpdate(ctx context.Context, sector storage.Sect
 	return nil
 }
 
-func (m *Manager) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) error {
+func (m *Manager) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, safeToFree []storiface.Range) error {
 	ssize, err := sector.ProofType.SectorSize()
 	if err != nil {
 		return err
@@ -770,7 +769,7 @@ func (m *Manager) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef,
 	return m.storage.Remove(ctx, sector.ID, storiface.FTUnsealed, true, nil)
 }
 
-func (m *Manager) ReleaseSectorKey(ctx context.Context, sector storage.SectorRef) error {
+func (m *Manager) ReleaseSectorKey(ctx context.Context, sector storiface.SectorRef) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -781,7 +780,7 @@ func (m *Manager) ReleaseSectorKey(ctx context.Context, sector storage.SectorRef
 	return m.storage.Remove(ctx, sector.ID, storiface.FTSealed, true, nil)
 }
 
-func (m *Manager) ReleaseReplicaUpgrade(ctx context.Context, sector storage.SectorRef) error {
+func (m *Manager) ReleaseReplicaUpgrade(ctx context.Context, sector storiface.SectorRef) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -798,7 +797,7 @@ func (m *Manager) ReleaseReplicaUpgrade(ctx context.Context, sector storage.Sect
 	return nil
 }
 
-func (m *Manager) GenerateSectorKeyFromData(ctx context.Context, sector storage.SectorRef, commD cid.Cid) error {
+func (m *Manager) GenerateSectorKeyFromData(ctx context.Context, sector storiface.SectorRef, commD cid.Cid) error {
 
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
@@ -848,7 +847,7 @@ func (m *Manager) GenerateSectorKeyFromData(ctx context.Context, sector storage.
 	return waitErr
 }
 
-func (m *Manager) Remove(ctx context.Context, sector storage.SectorRef) error {
+func (m *Manager) Remove(ctx context.Context, sector storiface.SectorRef) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -877,13 +876,13 @@ func (m *Manager) Remove(ctx context.Context, sector storage.SectorRef) error {
 	return err
 }
 
-func (m *Manager) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, pieces []abi.PieceInfo) (out storage.ReplicaUpdateOut, err error) {
+func (m *Manager) ReplicaUpdate(ctx context.Context, sector storiface.SectorRef, pieces []abi.PieceInfo) (out storiface.ReplicaUpdateOut, err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	log.Debugf("manager is doing replica update")
 	wk, wait, cancel, err := m.getWork(ctx, sealtasks.TTReplicaUpdate, sector, pieces)
 	if err != nil {
-		return storage.ReplicaUpdateOut{}, xerrors.Errorf("getWork: %w", err)
+		return storiface.ReplicaUpdateOut{}, xerrors.Errorf("getWork: %w", err)
 	}
 	defer cancel()
 
@@ -895,7 +894,7 @@ func (m *Manager) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, p
 			return
 		}
 		if p != nil {
-			out = p.(storage.ReplicaUpdateOut)
+			out = p.(storiface.ReplicaUpdateOut)
 		}
 	}
 
@@ -905,7 +904,7 @@ func (m *Manager) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, p
 	}
 
 	if err := m.index.StorageLock(ctx, sector.ID, storiface.FTUnsealed|storiface.FTSealed|storiface.FTCache, storiface.FTUpdate|storiface.FTUpdateCache); err != nil {
-		return storage.ReplicaUpdateOut{}, xerrors.Errorf("acquiring sector lock: %w", err)
+		return storiface.ReplicaUpdateOut{}, xerrors.Errorf("acquiring sector lock: %w", err)
 	}
 
 	selector := newAllocSelector(m.index, storiface.FTUpdate|storiface.FTUpdateCache, storiface.PathSealing)
@@ -920,12 +919,12 @@ func (m *Manager) ReplicaUpdate(ctx context.Context, sector storage.SectorRef, p
 		return nil
 	})
 	if err != nil {
-		return storage.ReplicaUpdateOut{}, xerrors.Errorf("Schedule: %w", err)
+		return storiface.ReplicaUpdateOut{}, xerrors.Errorf("Schedule: %w", err)
 	}
 	return out, waitErr
 }
 
-func (m *Manager) ProveReplicaUpdate1(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid) (out storage.ReplicaVanillaProofs, err error) {
+func (m *Manager) ProveReplicaUpdate1(ctx context.Context, sector storiface.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid) (out storiface.ReplicaVanillaProofs, err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -943,7 +942,7 @@ func (m *Manager) ProveReplicaUpdate1(ctx context.Context, sector storage.Sector
 			return
 		}
 		if p != nil {
-			out = p.(storage.ReplicaVanillaProofs)
+			out = p.(storiface.ReplicaVanillaProofs)
 		}
 	}
 
@@ -978,7 +977,7 @@ func (m *Manager) ProveReplicaUpdate1(ctx context.Context, sector storage.Sector
 	return out, waitErr
 }
 
-func (m *Manager) ProveReplicaUpdate2(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid, vanillaProofs storage.ReplicaVanillaProofs) (out storage.ReplicaUpdateProof, err error) {
+func (m *Manager) ProveReplicaUpdate2(ctx context.Context, sector storiface.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid, vanillaProofs storiface.ReplicaVanillaProofs) (out storiface.ReplicaUpdateProof, err error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -996,7 +995,7 @@ func (m *Manager) ProveReplicaUpdate2(ctx context.Context, sector storage.Sector
 			return
 		}
 		if p != nil {
-			out = p.(storage.ReplicaUpdateProof)
+			out = p.(storiface.ReplicaUpdateProof)
 		}
 	}
 
@@ -1032,19 +1031,19 @@ func (m *Manager) ReturnAddPiece(ctx context.Context, callID storiface.CallID, p
 	return m.returnResult(ctx, callID, pi, err)
 }
 
-func (m *Manager) ReturnSealPreCommit1(ctx context.Context, callID storiface.CallID, p1o storage.PreCommit1Out, err *storiface.CallError) error {
+func (m *Manager) ReturnSealPreCommit1(ctx context.Context, callID storiface.CallID, p1o storiface.PreCommit1Out, err *storiface.CallError) error {
 	return m.returnResult(ctx, callID, p1o, err)
 }
 
-func (m *Manager) ReturnSealPreCommit2(ctx context.Context, callID storiface.CallID, sealed storage.SectorCids, err *storiface.CallError) error {
+func (m *Manager) ReturnSealPreCommit2(ctx context.Context, callID storiface.CallID, sealed storiface.SectorCids, err *storiface.CallError) error {
 	return m.returnResult(ctx, callID, sealed, err)
 }
 
-func (m *Manager) ReturnSealCommit1(ctx context.Context, callID storiface.CallID, out storage.Commit1Out, err *storiface.CallError) error {
+func (m *Manager) ReturnSealCommit1(ctx context.Context, callID storiface.CallID, out storiface.Commit1Out, err *storiface.CallError) error {
 	return m.returnResult(ctx, callID, out, err)
 }
 
-func (m *Manager) ReturnSealCommit2(ctx context.Context, callID storiface.CallID, proof storage.Proof, err *storiface.CallError) error {
+func (m *Manager) ReturnSealCommit2(ctx context.Context, callID storiface.CallID, proof storiface.Proof, err *storiface.CallError) error {
 	return m.returnResult(ctx, callID, proof, err)
 }
 
@@ -1056,15 +1055,15 @@ func (m *Manager) ReturnReleaseUnsealed(ctx context.Context, callID storiface.Ca
 	return m.returnResult(ctx, callID, nil, err)
 }
 
-func (m *Manager) ReturnReplicaUpdate(ctx context.Context, callID storiface.CallID, out storage.ReplicaUpdateOut, err *storiface.CallError) error {
+func (m *Manager) ReturnReplicaUpdate(ctx context.Context, callID storiface.CallID, out storiface.ReplicaUpdateOut, err *storiface.CallError) error {
 	return m.returnResult(ctx, callID, out, err)
 }
 
-func (m *Manager) ReturnProveReplicaUpdate1(ctx context.Context, callID storiface.CallID, out storage.ReplicaVanillaProofs, err *storiface.CallError) error {
+func (m *Manager) ReturnProveReplicaUpdate1(ctx context.Context, callID storiface.CallID, out storiface.ReplicaVanillaProofs, err *storiface.CallError) error {
 	return m.returnResult(ctx, callID, out, err)
 }
 
-func (m *Manager) ReturnProveReplicaUpdate2(ctx context.Context, callID storiface.CallID, proof storage.ReplicaUpdateProof, err *storiface.CallError) error {
+func (m *Manager) ReturnProveReplicaUpdate2(ctx context.Context, callID storiface.CallID, proof storiface.ReplicaUpdateProof, err *storiface.CallError) error {
 	return m.returnResult(ctx, callID, proof, err)
 }
 

@@ -22,7 +22,6 @@ import (
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -537,7 +536,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 		return nil, nil, fmt.Errorf("parallelism factor must cleanly divide numSectors")
 	}
 	for i := abi.SectorNumber(0); i < abi.SectorNumber(numSectors); i++ {
-		sid := storage.SectorRef{
+		sid := storiface.SectorRef{
 			ID: abi.SectorID{
 				Miner:  mid,
 				Number: i,
@@ -569,7 +568,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 				start := worker * sectorsPerWorker
 				end := start + sectorsPerWorker
 				for i := abi.SectorNumber(start); i < abi.SectorNumber(end); i++ {
-					sid := storage.SectorRef{
+					sid := storiface.SectorRef{
 						ID: abi.SectorID{
 							Miner:  mid,
 							Number: i,
@@ -643,7 +642,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 						}
 					}
 
-					var proof storage.Proof
+					var proof storiface.Proof
 					if !skipc2 {
 						proof, err = sb.SealCommit2(context.TODO(), sid, c1o)
 						if err != nil {
@@ -780,7 +779,7 @@ var proveCmd = &cli.Command{
 			return err
 		}
 
-		ref := storage.SectorRef{
+		ref := storiface.SectorRef{
 			ID: abi.SectorID{
 				Miner:  abi.ActorID(mid),
 				Number: abi.SectorNumber(c2in.SectorNum),

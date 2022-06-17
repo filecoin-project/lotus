@@ -12,7 +12,6 @@ import (
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -76,7 +75,7 @@ func (sb *Sealer) pubExtendedSectorToPriv(ctx context.Context, mid abi.ActorID, 
 			continue
 		}
 
-		sid := storage.SectorRef{
+		sid := storiface.SectorRef{
 			ID:        abi.SectorID{Miner: mid, Number: s.SectorNumber},
 			ProofType: s.SealProof,
 		}

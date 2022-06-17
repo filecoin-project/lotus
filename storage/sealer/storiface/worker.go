@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/proof"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 )
@@ -119,22 +118,22 @@ var UndefCall CallID
 
 type WorkerCalls interface {
 	// async
-	DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (CallID, error)
-	AddPiece(ctx context.Context, sector storage.SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData storage.Data) (CallID, error)
-	SealPreCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (CallID, error)
-	SealPreCommit2(ctx context.Context, sector storage.SectorRef, pc1o storage.PreCommit1Out) (CallID, error)
-	SealCommit1(ctx context.Context, sector storage.SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (CallID, error)
-	SealCommit2(ctx context.Context, sector storage.SectorRef, c1o storage.Commit1Out) (CallID, error)
-	FinalizeSector(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) (CallID, error)
-	FinalizeReplicaUpdate(ctx context.Context, sector storage.SectorRef, keepUnsealed []storage.Range) (CallID, error)
-	ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) (CallID, error)
-	ReplicaUpdate(ctx context.Context, sector storage.SectorRef, pieces []abi.PieceInfo) (CallID, error)
-	ProveReplicaUpdate1(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid) (CallID, error)
-	ProveReplicaUpdate2(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid, vanillaProofs storage.ReplicaVanillaProofs) (CallID, error)
-	GenerateSectorKeyFromData(ctx context.Context, sector storage.SectorRef, commD cid.Cid) (CallID, error)
-	MoveStorage(ctx context.Context, sector storage.SectorRef, types SectorFileType) (CallID, error)
-	UnsealPiece(context.Context, storage.SectorRef, UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (CallID, error)
-	Fetch(context.Context, storage.SectorRef, SectorFileType, PathType, AcquireMode) (CallID, error)
+	DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData Data) (CallID, error)
+	AddPiece(ctx context.Context, sector SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData Data) (CallID, error)
+	SealPreCommit1(ctx context.Context, sector SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (CallID, error)
+	SealPreCommit2(ctx context.Context, sector SectorRef, pc1o PreCommit1Out) (CallID, error)
+	SealCommit1(ctx context.Context, sector SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids SectorCids) (CallID, error)
+	SealCommit2(ctx context.Context, sector SectorRef, c1o Commit1Out) (CallID, error)
+	FinalizeSector(ctx context.Context, sector SectorRef, keepUnsealed []Range) (CallID, error)
+	FinalizeReplicaUpdate(ctx context.Context, sector SectorRef, keepUnsealed []Range) (CallID, error)
+	ReleaseUnsealed(ctx context.Context, sector SectorRef, safeToFree []Range) (CallID, error)
+	ReplicaUpdate(ctx context.Context, sector SectorRef, pieces []abi.PieceInfo) (CallID, error)
+	ProveReplicaUpdate1(ctx context.Context, sector SectorRef, sectorKey, newSealed, newUnsealed cid.Cid) (CallID, error)
+	ProveReplicaUpdate2(ctx context.Context, sector SectorRef, sectorKey, newSealed, newUnsealed cid.Cid, vanillaProofs ReplicaVanillaProofs) (CallID, error)
+	GenerateSectorKeyFromData(ctx context.Context, sector SectorRef, commD cid.Cid) (CallID, error)
+	MoveStorage(ctx context.Context, sector SectorRef, types SectorFileType) (CallID, error)
+	UnsealPiece(context.Context, SectorRef, UnpaddedByteIndex, abi.UnpaddedPieceSize, abi.SealRandomness, cid.Cid) (CallID, error)
+	Fetch(context.Context, SectorRef, SectorFileType, PathType, AcquireMode) (CallID, error)
 
 	// sync
 	GenerateWinningPoSt(ctx context.Context, ppt abi.RegisteredPoStProof, mid abi.ActorID, sectors []PostSectorChallenge, randomness abi.PoStRandomness) ([]proof.PoStProof, error)
@@ -202,15 +201,15 @@ func Err(code ErrorCode, sub error) *CallError {
 type WorkerReturn interface {
 	ReturnDataCid(ctx context.Context, callID CallID, pi abi.PieceInfo, err *CallError) error
 	ReturnAddPiece(ctx context.Context, callID CallID, pi abi.PieceInfo, err *CallError) error
-	ReturnSealPreCommit1(ctx context.Context, callID CallID, p1o storage.PreCommit1Out, err *CallError) error
-	ReturnSealPreCommit2(ctx context.Context, callID CallID, sealed storage.SectorCids, err *CallError) error
-	ReturnSealCommit1(ctx context.Context, callID CallID, out storage.Commit1Out, err *CallError) error
-	ReturnSealCommit2(ctx context.Context, callID CallID, proof storage.Proof, err *CallError) error
+	ReturnSealPreCommit1(ctx context.Context, callID CallID, p1o PreCommit1Out, err *CallError) error
+	ReturnSealPreCommit2(ctx context.Context, callID CallID, sealed SectorCids, err *CallError) error
+	ReturnSealCommit1(ctx context.Context, callID CallID, out Commit1Out, err *CallError) error
+	ReturnSealCommit2(ctx context.Context, callID CallID, proof Proof, err *CallError) error
 	ReturnFinalizeSector(ctx context.Context, callID CallID, err *CallError) error
 	ReturnReleaseUnsealed(ctx context.Context, callID CallID, err *CallError) error
-	ReturnReplicaUpdate(ctx context.Context, callID CallID, out storage.ReplicaUpdateOut, err *CallError) error
-	ReturnProveReplicaUpdate1(ctx context.Context, callID CallID, proofs storage.ReplicaVanillaProofs, err *CallError) error
-	ReturnProveReplicaUpdate2(ctx context.Context, callID CallID, proof storage.ReplicaUpdateProof, err *CallError) error
+	ReturnReplicaUpdate(ctx context.Context, callID CallID, out ReplicaUpdateOut, err *CallError) error
+	ReturnProveReplicaUpdate1(ctx context.Context, callID CallID, proofs ReplicaVanillaProofs, err *CallError) error
+	ReturnProveReplicaUpdate2(ctx context.Context, callID CallID, proof ReplicaUpdateProof, err *CallError) error
 	ReturnGenerateSectorKeyFromData(ctx context.Context, callID CallID, err *CallError) error
 	ReturnFinalizeReplicaUpdate(ctx context.Context, callID CallID, err *CallError) error
 	ReturnMoveStorage(ctx context.Context, callID CallID, err *CallError) error

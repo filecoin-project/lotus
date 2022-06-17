@@ -19,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-statemachine"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -29,6 +28,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 const SectorStorePrefix = "/sectors"
@@ -144,7 +144,7 @@ type pendingPiece struct {
 	size abi.UnpaddedPieceSize
 	deal api.PieceDealInfo
 
-	data storage.Data
+	data storiface.Data
 
 	assigned bool // assigned to a sector?
 	accepted func(abi.SectorNumber, abi.UnpaddedPieceSize, error)
@@ -262,8 +262,8 @@ func (m *Sealing) currentSealProof(ctx context.Context) (abi.RegisteredSealProof
 	return lminer.PreferredSealProofTypeFromWindowPoStType(ver, mi.WindowPoStProofType)
 }
 
-func (m *Sealing) minerSector(spt abi.RegisteredSealProof, num abi.SectorNumber) storage.SectorRef {
-	return storage.SectorRef{
+func (m *Sealing) minerSector(spt abi.RegisteredSealProof, num abi.SectorNumber) storiface.SectorRef {
+	return storiface.SectorRef{
 		ID:        m.minerSectorID(num),
 		ProofType: spt,
 	}

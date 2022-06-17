@@ -27,7 +27,6 @@ import (
 	"github.com/filecoin-project/go-state-types/proof"
 	"github.com/filecoin-project/go-statestore"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
@@ -157,7 +156,7 @@ func TestSimple(t *testing.T) {
 	}, lstor, m))
 	require.NoError(t, err)
 
-	sid := storage.SectorRef{
+	sid := storiface.SectorRef{
 		ID:        abi.SectorID{Miner: 1000, Number: 1},
 		ProofType: abi.RegisteredSealProof_StackedDrg2KiBV1,
 	}
@@ -233,7 +232,7 @@ func TestSnapDeals(t *testing.T) {
 		log.Warn("Continuing test with 2k sectors")
 	}
 
-	sid := storage.SectorRef{
+	sid := storiface.SectorRef{
 		ID:        abi.SectorID{Miner: 1000, Number: 1},
 		ProofType: proofType,
 	}
@@ -311,7 +310,7 @@ func TestSnapDeals(t *testing.T) {
 	fmt.Printf("Decode duration (%s): %s\n", ss.ShortString(), time.Since(startDecode))
 
 	// Remove just the first piece and decode for retrieval
-	require.NoError(t, m.FinalizeSector(ctx, sid, []storage.Range{{Offset: p1.Size.Unpadded(), Size: p2.Size.Unpadded()}}))
+	require.NoError(t, m.FinalizeSector(ctx, sid, []storiface.Range{{Offset: p1.Size.Unpadded(), Size: p2.Size.Unpadded()}}))
 	require.NoError(t, m.SectorsUnsealPiece(ctx, sid, 0, p1.Size.Unpadded(), ticket, &out.NewUnsealed))
 
 	fmt.Printf("GSK\n")
@@ -364,12 +363,12 @@ func TestSnarkPackV2(t *testing.T) {
 
 	mid := abi.ActorID(1000)
 
-	sid1 := storage.SectorRef{
+	sid1 := storiface.SectorRef{
 		ID:        abi.SectorID{Miner: mid, Number: 1},
 		ProofType: proofType,
 	}
 
-	sid2 := storage.SectorRef{
+	sid2 := storiface.SectorRef{
 		ID:        abi.SectorID{Miner: mid, Number: 2},
 		ProofType: proofType,
 	}
@@ -487,7 +486,7 @@ func TestRedoPC1(t *testing.T) {
 	err := m.AddWorker(ctx, tw)
 	require.NoError(t, err)
 
-	sid := storage.SectorRef{
+	sid := storiface.SectorRef{
 		ID:        abi.SectorID{Miner: 1000, Number: 1},
 		ProofType: abi.RegisteredSealProof_StackedDrg2KiBV1,
 	}
@@ -542,7 +541,7 @@ func TestRestartManager(t *testing.T) {
 			err := m.AddWorker(ctx, tw)
 			require.NoError(t, err)
 
-			sid := storage.SectorRef{
+			sid := storiface.SectorRef{
 				ID:        abi.SectorID{Miner: 1000, Number: 1},
 				ProofType: abi.RegisteredSealProof_StackedDrg2KiBV1,
 			}
@@ -645,7 +644,7 @@ func TestRestartWorker(t *testing.T) {
 	err := m.AddWorker(ctx, w)
 	require.NoError(t, err)
 
-	sid := storage.SectorRef{
+	sid := storiface.SectorRef{
 		ID:        abi.SectorID{Miner: 1000, Number: 1},
 		ProofType: abi.RegisteredSealProof_StackedDrg2KiBV1,
 	}
@@ -793,7 +792,7 @@ func TestResUse(t *testing.T) {
 	err := m.AddWorker(ctx, w)
 	require.NoError(t, err)
 
-	sid := storage.SectorRef{
+	sid := storiface.SectorRef{
 		ID:        abi.SectorID{Miner: 1000, Number: 1},
 		ProofType: abi.RegisteredSealProof_StackedDrg2KiBV1,
 	}
@@ -855,7 +854,7 @@ func TestResOverride(t *testing.T) {
 	err := m.AddWorker(ctx, w)
 	require.NoError(t, err)
 
-	sid := storage.SectorRef{
+	sid := storiface.SectorRef{
 		ID:        abi.SectorID{Miner: 1000, Number: 1},
 		ProofType: abi.RegisteredSealProof_StackedDrg2KiBV1,
 	}
