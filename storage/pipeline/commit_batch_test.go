@@ -27,7 +27,7 @@ import (
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/mocks"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 func TestCommitBatcher(t *testing.T) {
@@ -391,7 +391,7 @@ func (f fakeProver) AggregateSealProofs(aggregateInfo prooftypes.AggregateSealVe
 	return []byte("Trust me, I'm a proof"), nil
 }
 
-var _ ffiwrapper.Prover = &fakeProver{}
+var _ storiface.Prover = &fakeProver{}
 
 var dummyAddr = func() address.Address {
 	a, _ := address.NewFromString("t00")

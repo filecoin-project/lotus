@@ -26,7 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var aggFeeNum = big.NewInt(110)
@@ -58,7 +58,7 @@ type CommitBatcher struct {
 	addrSel   AddrSel
 	feeCfg    config.MinerFeeConfig
 	getConfig GetSealingConfigFunc
-	prover    ffiwrapper.Prover
+	prover    storiface.Prover
 
 	cutoffs map[abi.SectorNumber]time.Time
 	todo    map[abi.SectorNumber]AggregateInput
@@ -69,7 +69,7 @@ type CommitBatcher struct {
 	lk                    sync.Mutex
 }
 
-func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddrSel, feeCfg config.MinerFeeConfig, getConfig GetSealingConfigFunc, prov ffiwrapper.Prover) *CommitBatcher {
+func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddrSel, feeCfg config.MinerFeeConfig, getConfig GetSealingConfigFunc, prov storiface.Prover) *CommitBatcher {
 	b := &CommitBatcher{
 		api:       api,
 		maddr:     maddr,

@@ -25,7 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/storage/sealer"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -66,8 +65,8 @@ type WindowPoStScheduler struct {
 	api              NodeAPI
 	feeCfg           config.MinerFeeConfig
 	addrSel          *ctladdr.AddressSelector
-	prover           storiface.Prover
-	verifier         ffiwrapper.Verifier
+	prover           storiface.ProverPoSt
+	verifier         storiface.Verifier
 	faultTracker     sealer.FaultTracker
 	proofType        abi.RegisteredPoStProof
 	partitionSectors uint64
@@ -86,8 +85,8 @@ type WindowPoStScheduler struct {
 func NewWindowedPoStScheduler(api NodeAPI,
 	cfg config.MinerFeeConfig,
 	as *ctladdr.AddressSelector,
-	sp storiface.Prover,
-	verif ffiwrapper.Verifier,
+	sp storiface.ProverPoSt,
+	verif storiface.Verifier,
 	ft sealer.FaultTracker,
 	j journal.Journal,
 	actor address.Address) (*WindowPoStScheduler, error) {

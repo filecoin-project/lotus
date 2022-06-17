@@ -34,7 +34,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-var _ Storage = &Sealer{}
+var _ storiface.Storage = &Sealer{}
 
 func New(sectors SectorProvider) (*Sealer, error) {
 	sb := &Sealer{

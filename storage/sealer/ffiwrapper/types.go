@@ -2,51 +2,10 @@ package ffiwrapper
 
 import (
 	"context"
-	"io"
-
-	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper/basicfs"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
-
-type Validator interface {
-	CanCommit(sector storiface.SectorPaths) (bool, error)
-	CanProve(sector storiface.SectorPaths) (bool, error)
-}
-
-type StorageSealer interface {
-	storiface.Sealer
-	storiface.Storage
-}
-
-type Storage interface {
-	storiface.Prover
-	StorageSealer
-
-	UnsealPiece(ctx context.Context, sector storiface.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd cid.Cid) error
-	ReadPiece(ctx context.Context, writer io.Writer, sector storiface.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error)
-}
-
-type Verifier interface {
-	VerifySeal(proof.SealVerifyInfo) (bool, error)
-	VerifyAggregateSeals(aggregate proof.AggregateSealVerifyProofAndInfos) (bool, error)
-	VerifyReplicaUpdate(update proof.ReplicaUpdateInfo) (bool, error)
-	VerifyWinningPoSt(ctx context.Context, info proof.WinningPoStVerifyInfo) (bool, error)
-	VerifyWindowPoSt(ctx context.Context, info proof.WindowPoStVerifyInfo) (bool, error)
-
-	GenerateWinningPoStSectorChallenge(context.Context, abi.RegisteredPoStProof, abi.ActorID, abi.PoStRandomness, uint64) ([]uint64, error)
-}
-
-// Prover contains cheap proving-related methods
-type Prover interface {
-	// TODO: move GenerateWinningPoStSectorChallenge from the Verifier interface to here
-
-	AggregateSealProofs(aggregateInfo proof.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error)
-}
 
 type SectorProvider interface {
 	// * returns storiface.ErrSectorNotFound if a requested existing sector doesn't exist

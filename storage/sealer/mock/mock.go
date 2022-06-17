@@ -735,5 +735,5 @@ var MockVerifier = mockVerifProver{
 var MockProver = MockVerifier
 
 var _ storiface.Sealer = &SectorMgr{}
-var _ ffiwrapper.Verifier = MockVerifier
-var _ ffiwrapper.Prover = MockProver
+var _ storiface.Verifier = MockVerifier
+var _ storiface.Prover = MockProver

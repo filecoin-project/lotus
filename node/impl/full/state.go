@@ -45,7 +45,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type StateModuleAPI interface {
@@ -93,7 +93,7 @@ type StateAPI struct {
 
 	StateModuleAPI
 
-	ProofVerifier ffiwrapper.Verifier
+	ProofVerifier storiface.Verifier
 	StateManager  *stmgr.StateManager
 	Chain         *store.ChainStore
 	Beacon        beacon.Schedule

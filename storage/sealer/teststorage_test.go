@@ -9,7 +9,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
@@ -121,4 +120,4 @@ func (t *testExec) ReadPiece(ctx context.Context, writer io.Writer, sector stori
 	panic("implement me")
 }
 
-var _ ffiwrapper.Storage = &testExec{}
+var _ storiface.Storage = &testExec{}

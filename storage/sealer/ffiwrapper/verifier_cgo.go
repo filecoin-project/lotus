@@ -128,7 +128,7 @@ func (sb *Sealer) pubExtendedSectorToPriv(ctx context.Context, mid abi.ActorID, 
 	return ffi.NewSortedPrivateSectorInfo(out...), skipped, done, nil
 }
 
-var _ Verifier = ProofVerifier
+var _ storiface.Verifier = ProofVerifier
 
 type proofVerifier struct{}
 

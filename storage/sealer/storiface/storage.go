@@ -19,17 +19,7 @@ type SectorRef struct {
 
 var NoSectorRef = SectorRef{}
 
-type Storage interface {
-	// Creates a new empty sector (only allocate on disk. Layers above
-	//  storage are responsible for assigning sector IDs)
-	NewSector(ctx context.Context, sector SectorRef) error
-	// Compute Data CID
-	DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData Data) (abi.PieceInfo, error)
-	// Add a piece to an existing *unsealed* sector
-	AddPiece(ctx context.Context, sector SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData Data) (abi.PieceInfo, error)
-}
-
-type Prover interface {
+type ProverPoSt interface {
 	GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, error)
 	GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) (proof []proof.PoStProof, skipped []abi.SectorID, err error)
 
@@ -62,6 +52,10 @@ type ReplicaUpdateOut struct {
 }
 
 type Sealer interface {
+	NewSector(ctx context.Context, sector SectorRef) error
+	DataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData Data) (abi.PieceInfo, error)
+	AddPiece(ctx context.Context, sector SectorRef, pieceSizes []abi.UnpaddedPieceSize, newPieceSize abi.UnpaddedPieceSize, pieceData Data) (abi.PieceInfo, error)
+
 	SealPreCommit1(ctx context.Context, sector SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (PreCommit1Out, error)
 	SealPreCommit2(ctx context.Context, sector SectorRef, pc1o PreCommit1Out) (SectorCids, error)
 
@@ -91,4 +85,37 @@ type Sealer interface {
 	GenerateSectorKeyFromData(ctx context.Context, sector SectorRef, unsealed cid.Cid) error
 
 	FinalizeReplicaUpdate(ctx context.Context, sector SectorRef, keepUnsealed []Range) error
+}
+
+type Unsealer interface {
+	UnsealPiece(ctx context.Context, sector SectorRef, offset UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd cid.Cid) error
+	ReadPiece(ctx context.Context, writer io.Writer, sector SectorRef, offset UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error)
+}
+
+type Storage interface {
+	ProverPoSt
+	Sealer
+	Unsealer
+}
+
+type Validator interface {
+	CanCommit(sector SectorPaths) (bool, error)
+	CanProve(sector SectorPaths) (bool, error)
+}
+
+type Verifier interface {
+	VerifySeal(proof.SealVerifyInfo) (bool, error)
+	VerifyAggregateSeals(aggregate proof.AggregateSealVerifyProofAndInfos) (bool, error)
+	VerifyReplicaUpdate(update proof.ReplicaUpdateInfo) (bool, error)
+	VerifyWinningPoSt(ctx context.Context, info proof.WinningPoStVerifyInfo) (bool, error)
+	VerifyWindowPoSt(ctx context.Context, info proof.WindowPoStVerifyInfo) (bool, error)
+
+	GenerateWinningPoStSectorChallenge(context.Context, abi.RegisteredPoStProof, abi.ActorID, abi.PoStRandomness, uint64) ([]uint64, error)
+}
+
+// Prover contains cheap proving-related methods
+type Prover interface {
+	// TODO: move GenerateWinningPoStSectorChallenge from the Verifier interface to here
+
+	AggregateSealProofs(aggregateInfo proof.AggregateSealVerifyProofAndInfos, proofs [][]byte) ([]byte, error)
 }

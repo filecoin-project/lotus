@@ -45,8 +45,8 @@ type Worker interface {
 }
 
 type SectorManager interface {
-	ffiwrapper.StorageSealer
-	storiface.Prover
+	storiface.Sealer
+	storiface.ProverPoSt
 	storiface.WorkerReturn
 	FaultTracker
 }
@@ -64,7 +64,7 @@ type Manager struct {
 	windowPoStSched  *poStScheduler
 	winningPoStSched *poStScheduler
 
-	localProver storiface.Prover
+	localProver storiface.ProverPoSt
 
 	workLk sync.Mutex
 	work   *statestore.StateStore
@@ -80,7 +80,7 @@ type Manager struct {
 	waitRes map[WorkID]chan struct{}
 }
 
-var _ storiface.Prover = &Manager{}
+var _ storiface.ProverPoSt = &Manager{}
 
 type result struct {
 	r   interface{}

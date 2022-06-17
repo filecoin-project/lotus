@@ -44,7 +44,7 @@ type WorkerConfig struct {
 }
 
 // used do provide custom proofs impl (mostly used in testing)
-type ExecutorFunc func() (ffiwrapper.Storage, error)
+type ExecutorFunc func() (storiface.Storage, error)
 type EnvFunc func(string) (string, bool)
 
 type LocalWorker struct {
@@ -172,7 +172,7 @@ func (l *localWorkerPathProvider) AcquireSector(ctx context.Context, sector stor
 	}, nil
 }
 
-func (l *LocalWorker) ffiExec() (ffiwrapper.Storage, error) {
+func (l *LocalWorker) ffiExec() (storiface.Storage, error) {
 	return ffiwrapper.New(&localWorkerPathProvider{w: l})
 }
 

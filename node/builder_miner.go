@@ -101,9 +101,9 @@ func ConfigStorageMiner(c interface{}) Option {
 			If(!cfg.Subsystems.EnableSectorStorage, Error(xerrors.Errorf("sealing can't be disabled on a mining node yet"))),
 
 			// Sector storage: Proofs
-			Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
-			Override(new(ffiwrapper.Prover), ffiwrapper.ProofProver),
-			Override(new(storiface.Prover), From(new(sectorstorage.SectorManager))),
+			Override(new(storiface.Verifier), ffiwrapper.ProofVerifier),
+			Override(new(storiface.Prover), ffiwrapper.ProofProver),
+			Override(new(storiface.ProverPoSt), From(new(sectorstorage.SectorManager))),
 
 			// Sealing (todo should be under EnableSealing, but storagefsm is currently bundled with storage.Miner)
 			Override(new(sealing.SectorIDCounter), modules.SectorIDCounter),

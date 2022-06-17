@@ -57,8 +57,8 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/paths"
 	sectorstorage "github.com/filecoin-project/lotus/storage/sealer"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/mock"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 func init() {
@@ -363,8 +363,8 @@ func (n *Ensemble) Start() *Ensemble {
 		// Are we mocking proofs?
 		if n.options.mockProofs {
 			opts = append(opts,
-				node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
-				node.Override(new(ffiwrapper.Prover), mock.MockProver),
+				node.Override(new(storiface.Verifier), mock.MockVerifier),
+				node.Override(new(storiface.Prover), mock.MockProver),
 			)
 		}
 
@@ -643,8 +643,8 @@ func (n *Ensemble) Start() *Ensemble {
 				node.Override(new(sectorstorage.Unsealer), node.From(new(*mock.SectorMgr))),
 				node.Override(new(sectorstorage.PieceProvider), node.From(new(*mock.SectorMgr))),
 
-				node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
-				node.Override(new(ffiwrapper.Prover), mock.MockProver),
+				node.Override(new(storiface.Verifier), mock.MockVerifier),
+				node.Override(new(storiface.Prover), mock.MockProver),
 				node.Unset(new(*sectorstorage.Manager)),
 			)
 		}
