@@ -28,7 +28,7 @@ type eventsCalledAPI interface {
 }
 
 type dealInfoAPI interface {
-	GetCurrentDealInfo(ctx context.Context, tok types.TipSetKey, proposal *market.DealProposal, publishCid cid.Cid) (pipeline.CurrentDealInfo, error)
+	GetCurrentDealInfo(ctx context.Context, tsk types.TipSetKey, proposal *market.DealProposal, publishCid cid.Cid) (pipeline.CurrentDealInfo, error)
 }
 
 type diffPreCommitsAPI interface {

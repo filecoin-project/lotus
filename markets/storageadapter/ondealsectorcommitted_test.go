@@ -574,7 +574,7 @@ type mockDealInfoAPI struct {
 	Err2             error
 }
 
-func (m *mockDealInfoAPI) GetCurrentDealInfo(ctx context.Context, tok types.TipSetKey, proposal *market.DealProposal, publishCid cid.Cid) (pipeline.CurrentDealInfo, error) {
+func (m *mockDealInfoAPI) GetCurrentDealInfo(ctx context.Context, tsk types.TipSetKey, proposal *market.DealProposal, publishCid cid.Cid) (pipeline.CurrentDealInfo, error) {
 	m.count++
 	if m.count == 2 {
 		return m.CurrentDealInfo2, m.Err2
