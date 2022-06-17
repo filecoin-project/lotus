@@ -39,9 +39,9 @@ type CommitBatcherApi interface {
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 
-	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error)
+	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error)
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (big.Int, error)
-	StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error)
+	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (big.Int, error)
 }
 
@@ -427,7 +427,7 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 	return res, nil
 }
 
-func (b *CommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo, avail *abi.TokenAmount, sn abi.SectorNumber, info AggregateInput, tok types.TipSetKey) (cid.Cid, error) {
+func (b *CommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo, avail *abi.TokenAmount, sn abi.SectorNumber, info AggregateInput, tsk types.TipSetKey) (cid.Cid, error) {
 	enc := new(bytes.Buffer)
 	params := &miner.ProveCommitSectorParams{
 		SectorNumber: sn,
@@ -438,7 +438,7 @@ func (b *CommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo, av
 		return cid.Undef, xerrors.Errorf("marshaling commit params: %w", err)
 	}
 
-	collateral, err := b.getSectorCollateral(sn, tok)
+	collateral, err := b.getSectorCollateral(sn, tsk)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -604,8 +604,8 @@ func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
 	return time.Now().Add(time.Duration(cutoffEpoch-ts.Height()) * time.Duration(build.BlockDelaySecs) * time.Second), nil
 }
 
-func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tok types.TipSetKey) (abi.TokenAmount, error) {
-	pci, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, sn, tok)
+func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tsk types.TipSetKey) (abi.TokenAmount, error) {
+	pci, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, sn, tsk)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting precommit info: %w", err)
 	}
@@ -613,7 +613,7 @@ func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tok types.TipSe
 		return big.Zero(), xerrors.Errorf("precommit info not found on chain")
 	}
 
-	collateral, err := b.api.StateMinerInitialPledgeCollateral(b.mctx, b.maddr, pci.Info, tok)
+	collateral, err := b.api.StateMinerInitialPledgeCollateral(b.mctx, b.maddr, pci.Info, tsk)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting initial pledge collateral: %w", err)
 	}

@@ -24,7 +24,7 @@ type CurrentDealInfoAPI interface {
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*api.MarketDeal, error)
 	StateSearchMsg(ctx context.Context, from types.TipSetKey, msg cid.Cid, limit abi.ChainEpoch, allowReplaced bool) (*api.MsgLookup, error)
-	StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error)
+	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
 }
 
 type CurrentDealInfo struct {
@@ -40,19 +40,19 @@ type CurrentDealInfoManager struct {
 // GetCurrentDealInfo gets the current deal state and deal ID.
 // Note that the deal ID is assigned when the deal is published, so it may
 // have changed if there was a reorg after the deal was published.
-func (mgr *CurrentDealInfoManager) GetCurrentDealInfo(ctx context.Context, tok types.TipSetKey, proposal *market.DealProposal, publishCid cid.Cid) (CurrentDealInfo, error) {
+func (mgr *CurrentDealInfoManager) GetCurrentDealInfo(ctx context.Context, tsk types.TipSetKey, proposal *market.DealProposal, publishCid cid.Cid) (CurrentDealInfo, error) {
 	// Lookup the deal ID by comparing the deal proposal to the proposals in
 	// the publish deals message, and indexing into the message return value
-	dealID, pubMsgTok, err := mgr.dealIDFromPublishDealsMsg(ctx, tok, proposal, publishCid)
+	dealID, pubMsgTok, err := mgr.dealIDFromPublishDealsMsg(ctx, tsk, proposal, publishCid)
 	if err != nil {
 		return CurrentDealInfo{}, err
 	}
 
 	// Lookup the deal state by deal ID
-	marketDeal, err := mgr.CDAPI.StateMarketStorageDeal(ctx, dealID, tok)
+	marketDeal, err := mgr.CDAPI.StateMarketStorageDeal(ctx, dealID, tsk)
 	if err == nil && proposal != nil {
 		// Make sure the retrieved deal proposal matches the target proposal
-		equal, err := mgr.CheckDealEquality(ctx, tok, *proposal, marketDeal.Proposal)
+		equal, err := mgr.CheckDealEquality(ctx, tsk, *proposal, marketDeal.Proposal)
 		if err != nil {
 			return CurrentDealInfo{}, err
 		}
@@ -65,11 +65,11 @@ func (mgr *CurrentDealInfoManager) GetCurrentDealInfo(ctx context.Context, tok t
 
 // dealIDFromPublishDealsMsg looks up the publish deals message by cid, and finds the deal ID
 // by looking at the message return value
-func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context, tok types.TipSetKey, proposal *market.DealProposal, publishCid cid.Cid) (abi.DealID, types.TipSetKey, error) {
+func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context, tsk types.TipSetKey, proposal *market.DealProposal, publishCid cid.Cid) (abi.DealID, types.TipSetKey, error) {
 	dealID := abi.DealID(0)
 
 	// Get the return value of the publish deals message
-	lookup, err := mgr.CDAPI.StateSearchMsg(ctx, tok, publishCid, api.LookbackNoLimit, true)
+	lookup, err := mgr.CDAPI.StateSearchMsg(ctx, tsk, publishCid, api.LookbackNoLimit, true)
 	if err != nil {
 		return dealID, types.EmptyTSK, xerrors.Errorf("looking for publish deal message %s: search msg failed: %w", publishCid, err)
 	}
@@ -131,7 +131,7 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 	// index of the target deal proposal
 	dealIdx := -1
 	for i, paramDeal := range pubDealsParams.Deals {
-		eq, err := mgr.CheckDealEquality(ctx, tok, *proposal, paramDeal.Proposal)
+		eq, err := mgr.CheckDealEquality(ctx, tsk, *proposal, paramDeal.Proposal)
 		if err != nil {
 			return dealID, types.EmptyTSK, xerrors.Errorf("comparing publish deal message %s proposal to deal proposal: %w", publishCid, err)
 		}
@@ -169,12 +169,12 @@ func (mgr *CurrentDealInfoManager) dealIDFromPublishDealsMsg(ctx context.Context
 	return dealIDs[outIdx], lookup.TipSet, nil
 }
 
-func (mgr *CurrentDealInfoManager) CheckDealEquality(ctx context.Context, tok types.TipSetKey, p1, p2 market.DealProposal) (bool, error) {
-	p1ClientID, err := mgr.CDAPI.StateLookupID(ctx, p1.Client, tok)
+func (mgr *CurrentDealInfoManager) CheckDealEquality(ctx context.Context, tsk types.TipSetKey, p1, p2 market.DealProposal) (bool, error) {
+	p1ClientID, err := mgr.CDAPI.StateLookupID(ctx, p1.Client, tsk)
 	if err != nil {
 		return false, err
 	}
-	p2ClientID, err := mgr.CDAPI.StateLookupID(ctx, p2.Client, tok)
+	p2ClientID, err := mgr.CDAPI.StateLookupID(ctx, p2.Client, tsk)
 	if err != nil {
 		return false, err
 	}

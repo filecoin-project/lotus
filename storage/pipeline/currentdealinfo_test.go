@@ -359,7 +359,7 @@ func (mapi *CurrentDealInfoMockAPI) ChainGetMessage(ctx context.Context, c cid.C
 	}, nil
 }
 
-func (mapi *CurrentDealInfoMockAPI) StateLookupID(ctx context.Context, addr address.Address, token types.TipSetKey) (address.Address, error) {
+func (mapi *CurrentDealInfoMockAPI) StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error) {
 	return addr, nil
 }
 
@@ -379,7 +379,7 @@ func (mapi *CurrentDealInfoMockAPI) StateSearchMsg(ctx context.Context, from typ
 	return mapi.SearchMessageLookup, mapi.SearchMessageErr
 }
 
-func (mapi *CurrentDealInfoMockAPI) StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error) {
+func (mapi *CurrentDealInfoMockAPI) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
 	return mapi.Version, nil
 }
 

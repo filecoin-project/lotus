@@ -50,14 +50,14 @@ func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) e
 	return m.sectors.Send(uint64(id), SectorMarkForUpdate{})
 }
 
-func (m *Sealing) sectorActive(ctx context.Context, tok types.TipSetKey, sector abi.SectorNumber) (bool, error) {
-	dls, err := m.Api.StateMinerDeadlines(ctx, m.maddr, tok)
+func (m *Sealing) sectorActive(ctx context.Context, tsk types.TipSetKey, sector abi.SectorNumber) (bool, error) {
+	dls, err := m.Api.StateMinerDeadlines(ctx, m.maddr, tsk)
 	if err != nil {
 		return false, xerrors.Errorf("getting proving deadlines: %w", err)
 	}
 
 	for dl := range dls {
-		parts, err := m.Api.StateMinerPartitions(ctx, m.maddr, uint64(dl), tok)
+		parts, err := m.Api.StateMinerPartitions(ctx, m.maddr, uint64(dl), tsk)
 		if err != nil {
 			return false, xerrors.Errorf("getting partitions for deadline %d: %w", dl, err)
 		}

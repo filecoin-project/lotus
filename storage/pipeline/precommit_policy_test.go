@@ -42,7 +42,7 @@ func fakeConfigGetter(stub *fakeConfigStub) pipeline.GetSealingConfigFunc {
 	}
 }
 
-func (f *fakeChain) StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error) {
+func (f *fakeChain) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
 	return build.NewestNetworkVersion, nil
 }
 

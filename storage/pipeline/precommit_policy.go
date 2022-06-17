@@ -20,7 +20,7 @@ type PreCommitPolicy interface {
 
 type Chain interface {
 	ChainHead(context.Context) (*types.TipSet, error)
-	StateNetworkVersion(ctx context.Context, tok types.TipSetKey) (network.Version, error)
+	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
 }
 
 // BasicPreCommitPolicy satisfies PreCommitPolicy. It has two modes:

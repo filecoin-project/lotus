@@ -381,7 +381,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		}
 	}
 
-	params, pcd, tok, err := m.preCommitParams(ctx, sector)
+	params, pcd, tsk, err := m.preCommitParams(ctx, sector)
 	if err != nil {
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("preCommitParams: %w", err)})
 	}
@@ -399,7 +399,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("could not serialize pre-commit sector parameters: %w", err)})
 	}
 
-	mi, err := m.Api.StateMinerInfo(ctx.Context(), m.maddr, tok)
+	mi, err := m.Api.StateMinerInfo(ctx.Context(), m.maddr, tsk)
 	if err != nil {
 		log.Errorf("handlePreCommitting: api error, not proceeding: %+v", err)
 		return nil
