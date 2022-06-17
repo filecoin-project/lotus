@@ -312,7 +312,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.PreCommit1Out (storage.PreCommit1Out) (slice)
+	// t.PreCommit1Out (storiface.PreCommit1Out) (slice)
 	if len("PreCommit1Out") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"PreCommit1Out\" was too long")
 	}
@@ -659,7 +659,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.ReplicaUpdateProof (storage.ReplicaUpdateProof) (slice)
+	// t.ReplicaUpdateProof (storiface.ReplicaUpdateProof) (slice)
 	if len("ReplicaUpdateProof") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"ReplicaUpdateProof\" was too long")
 	}
@@ -1038,7 +1038,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 
 				t.TicketEpoch = abi.ChainEpoch(extraI)
 			}
-			// t.PreCommit1Out (storage.PreCommit1Out) (slice)
+			// t.PreCommit1Out (storiface.PreCommit1Out) (slice)
 		case "PreCommit1Out":
 
 			maj, extra, err = cr.ReadHeader()
@@ -1386,7 +1386,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
-			// t.ReplicaUpdateProof (storage.ReplicaUpdateProof) (slice)
+			// t.ReplicaUpdateProof (storiface.ReplicaUpdateProof) (slice)
 		case "ReplicaUpdateProof":
 
 			maj, extra, err = cr.ReadHeader()

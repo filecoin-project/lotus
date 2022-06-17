@@ -70,7 +70,7 @@ import (
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
@@ -211,8 +211,8 @@ type StorageMinerParams struct {
 	MetadataDS         dtypes.MetadataDS
 	Sealer             sealer.SectorManager
 	SectorIDCounter    sealing.SectorIDCounter
-	Verifier           ffiwrapper.Verifier
-	Prover             ffiwrapper.Prover
+	Verifier           storiface.Verifier
+	Prover             storiface.Prover
 	GetSealingConfigFn dtypes.GetSealingConfigFunc
 	Journal            journal.Journal
 	AddrSel            *ctladdr.AddressSelector

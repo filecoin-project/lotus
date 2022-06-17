@@ -16,7 +16,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -26,7 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/storage/sealer"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var log = logging.Logger("wdpost")
@@ -66,8 +65,8 @@ type WindowPoStScheduler struct {
 	api              NodeAPI
 	feeCfg           config.MinerFeeConfig
 	addrSel          *ctladdr.AddressSelector
-	prover           storage.Prover
-	verifier         ffiwrapper.Verifier
+	prover           storiface.ProverPoSt
+	verifier         storiface.Verifier
 	faultTracker     sealer.FaultTracker
 	proofType        abi.RegisteredPoStProof
 	partitionSectors uint64
@@ -86,8 +85,8 @@ type WindowPoStScheduler struct {
 func NewWindowedPoStScheduler(api NodeAPI,
 	cfg config.MinerFeeConfig,
 	as *ctladdr.AddressSelector,
-	sp storage.Prover,
-	verif ffiwrapper.Verifier,
+	sp storiface.ProverPoSt,
+	verif storiface.Verifier,
 	ft sealer.FaultTracker,
 	j journal.Journal,
 	actor address.Address) (*WindowPoStScheduler, error) {

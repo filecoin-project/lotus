@@ -44,6 +44,7 @@ import (
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 const msgsPerBlock = 20
@@ -592,7 +593,7 @@ type MiningCheckAPI interface {
 type mca struct {
 	w   *wallet.LocalWallet
 	sm  *stmgr.StateManager
-	pv  ffiwrapper.Verifier
+	pv  storiface.Verifier
 	bcn beacon.Schedule
 }
 
@@ -674,7 +675,7 @@ func ComputeVRF(ctx context.Context, sign SignFunc, worker address.Address, sigI
 
 type genFakeVerifier struct{}
 
-var _ ffiwrapper.Verifier = (*genFakeVerifier)(nil)
+var _ storiface.Verifier = (*genFakeVerifier)(nil)
 
 func (m genFakeVerifier) VerifySeal(svi proof7.SealVerifyInfo) (bool, error) {
 	return true, nil

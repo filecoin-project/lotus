@@ -20,7 +20,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-statestore"
-	specstorage "github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
@@ -182,7 +181,7 @@ type pieceProviderTestHarness struct {
 	ctx         context.Context
 	index       *paths.Index
 	pp          PieceProvider
-	sector      specstorage.SectorRef
+	sector      storiface.SectorRef
 	mgr         *Manager
 	ticket      abi.SealRandomness
 	commD       cid.Cid
@@ -232,7 +231,7 @@ func newPieceProviderTestHarness(t *testing.T, mgrConfig Config, sectorProofType
 
 	pp := NewPieceProvider(remoteStore, index, mgr)
 
-	sector := specstorage.SectorRef{
+	sector := storiface.SectorRef{
 		ID: abi.SectorID{
 			Miner:  100,
 			Number: 10,
@@ -318,13 +317,13 @@ func (p *pieceProviderTestHarness) addPiece(t *testing.T, pieceData []byte) abi.
 	return pieceInfo
 }
 
-func (p *pieceProviderTestHarness) preCommit1(t *testing.T) specstorage.PreCommit1Out {
+func (p *pieceProviderTestHarness) preCommit1(t *testing.T) storiface.PreCommit1Out {
 	preCommit1, err := p.mgr.SealPreCommit1(p.ctx, p.sector, p.ticket, p.addedPieces)
 	require.NoError(t, err)
 	return preCommit1
 }
 
-func (p *pieceProviderTestHarness) preCommit2(t *testing.T, pc1 specstorage.PreCommit1Out) {
+func (p *pieceProviderTestHarness) preCommit2(t *testing.T, pc1 storiface.PreCommit1Out) {
 	sectorCids, err := p.mgr.SealPreCommit2(p.ctx, p.sector, pc1)
 	require.NoError(t, err)
 	commD := sectorCids.Unsealed
@@ -351,7 +350,7 @@ func (p *pieceProviderTestHarness) readPiece(t *testing.T, offset storiface.Unpa
 	require.Equal(t, expectedBytes, readData)
 }
 
-func (p *pieceProviderTestHarness) finalizeSector(t *testing.T, keepUnseal []specstorage.Range) {
+func (p *pieceProviderTestHarness) finalizeSector(t *testing.T, keepUnseal []storiface.Range) {
 	require.NoError(t, p.mgr.FinalizeSector(p.ctx, p.sector, keepUnseal))
 }
 

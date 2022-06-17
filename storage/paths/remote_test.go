@@ -21,7 +21,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/paths"
@@ -117,7 +116,7 @@ func TestMoveShared(t *testing.T) {
 
 	// add a sealed replica file to the sealing (non-shared) path
 
-	s1ref := storage.SectorRef{
+	s1ref := storiface.SectorRef{
 		ID: abi.SectorID{
 			Miner:  12,
 			Number: 1,
@@ -162,7 +161,7 @@ func TestReader(t *testing.T) {
 
 	ft := storiface.FTUnsealed
 
-	sectorRef := storage.SectorRef{
+	sectorRef := storiface.SectorRef{
 		ID: abi.SectorID{
 			Miner:  123,
 			Number: 123,
@@ -519,7 +518,7 @@ func TestCheckIsUnsealed(t *testing.T) {
 	ft := storiface.FTUnsealed
 	emptyPartialFile := &partialfile.PartialFile{}
 
-	sectorRef := storage.SectorRef{
+	sectorRef := storiface.SectorRef{
 		ID: abi.SectorID{
 			Miner:  123,
 			Number: 123,
@@ -789,7 +788,7 @@ func TestCheckIsUnsealed(t *testing.T) {
 	}
 }
 
-func mockSectorAcquire(l *mocks.MockStore, sectorRef storage.SectorRef, pfPath string, err error) {
+func mockSectorAcquire(l *mocks.MockStore, sectorRef storiface.SectorRef, pfPath string, err error) {
 	l.EXPECT().AcquireSector(gomock.Any(), sectorRef, storiface.FTUnsealed,
 		storiface.FTNone, storiface.PathStorage, storiface.AcquireMove).Return(storiface.SectorPaths{
 		Unsealed: pfPath,

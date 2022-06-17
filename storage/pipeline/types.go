@@ -8,12 +8,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/statemachine.go -package=mocks . Context
@@ -68,7 +68,7 @@ type SectorInfo struct {
 	// PreCommit1
 	TicketValue   abi.SealRandomness
 	TicketEpoch   abi.ChainEpoch
-	PreCommit1Out storage.PreCommit1Out
+	PreCommit1Out storiface.PreCommit1Out
 
 	// PreCommit2
 	CommD *cid.Cid
@@ -95,7 +95,7 @@ type SectorInfo struct {
 	CCPieces             []Piece
 	UpdateSealed         *cid.Cid
 	UpdateUnsealed       *cid.Cid
-	ReplicaUpdateProof   storage.ReplicaUpdateProof
+	ReplicaUpdateProof   storiface.ReplicaUpdateProof
 	ReplicaUpdateMessage *cid.Cid
 
 	// Faults
@@ -164,8 +164,8 @@ func (t *SectorInfo) sealingCtx(ctx context.Context) context.Context {
 
 // Returns list of offset/length tuples of sector data ranges which clients
 // requested to keep unsealed
-func (t *SectorInfo) keepUnsealedRanges(pieces []Piece, invert, alwaysKeep bool) []storage.Range {
-	var out []storage.Range
+func (t *SectorInfo) keepUnsealedRanges(pieces []Piece, invert, alwaysKeep bool) []storiface.Range {
+	var out []storiface.Range
 
 	var at abi.UnpaddedPieceSize
 	for _, piece := range pieces {
@@ -182,7 +182,7 @@ func (t *SectorInfo) keepUnsealedRanges(pieces []Piece, invert, alwaysKeep bool)
 			continue
 		}
 
-		out = append(out, storage.Range{
+		out = append(out, storiface.Range{
 			Offset: at - psize,
 			Size:   psize,
 		})

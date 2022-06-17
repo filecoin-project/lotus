@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/proof"
 	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -28,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 // recordPoStFailure records a failure in the journal.
@@ -202,13 +202,13 @@ func (s *WindowPoStScheduler) checkSectors(ctx context.Context, check bitfield.B
 	}
 
 	sectors := make(map[abi.SectorNumber]checkSector)
-	var tocheck []storage.SectorRef
+	var tocheck []storiface.SectorRef
 	for _, info := range sectorInfos {
 		sectors[info.SectorNumber] = checkSector{
 			sealed: info.SealedCID,
 			update: info.SectorKeyCID != nil,
 		}
-		tocheck = append(tocheck, storage.SectorRef{
+		tocheck = append(tocheck, storiface.SectorRef{
 			ProofType: info.SealProof,
 			ID: abi.SectorID{
 				Miner:  abi.ActorID(mid),

@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -34,7 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var log = logging.Logger("storageminer")
@@ -53,8 +52,8 @@ type Miner struct {
 	sealer  sealer.SectorManager
 	ds      datastore.Batching
 	sc      pipeline.SectorIDCounter
-	verif   ffiwrapper.Verifier
-	prover  ffiwrapper.Prover
+	verif   storiface.Verifier
+	prover  storiface.Prover
 	addrSel *ctladdr.AddressSelector
 
 	maddr address.Address
@@ -136,8 +135,8 @@ func NewMiner(api fullNodeFilteredAPI,
 	ds datastore.Batching,
 	sealer sealer.SectorManager,
 	sc pipeline.SectorIDCounter,
-	verif ffiwrapper.Verifier,
-	prover ffiwrapper.Prover,
+	verif storiface.Verifier,
+	prover storiface.Prover,
 	gsd dtypes.GetSealingConfigFunc,
 	feeCfg config.MinerFeeConfig,
 	journal journal.Journal,
@@ -240,13 +239,13 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 }
 
 type StorageWpp struct {
-	prover   storage.Prover
-	verifier ffiwrapper.Verifier
+	prover   storiface.ProverPoSt
+	verifier storiface.Verifier
 	miner    abi.ActorID
 	winnRpt  abi.RegisteredPoStProof
 }
 
-func NewWinningPoStProver(api v1api.FullNode, prover storage.Prover, verifier ffiwrapper.Verifier, miner dtypes.MinerID) (*StorageWpp, error) {
+func NewWinningPoStProver(api v1api.FullNode, prover storiface.ProverPoSt, verifier storiface.Verifier, miner dtypes.MinerID) (*StorageWpp, error) {
 	ma, err := address.NewIDAddress(uint64(miner))
 	if err != nil {
 		return nil, err
