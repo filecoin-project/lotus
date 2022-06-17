@@ -98,7 +98,7 @@ func TestPrecommitBatcher(t *testing.T) {
 		}
 	}
 
-	addSector := func(sn abi.SectorNumber) action {
+	addSector := func(sn abi.SectorNumber, aboveBalancer bool) action {
 		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *pipeline.PreCommitBatcher) promise {
 			var pcres sealiface.PreCommitBatchRes
 			var pcerr error
@@ -109,7 +109,12 @@ func TestPrecommitBatcher(t *testing.T) {
 				SectorNumber: sn,
 			}
 
-			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
+			basefee := big.NewInt(9999)
+			if aboveBalancer {
+				basefee = big.NewInt(10001)
+			}
+
+			s.EXPECT().ChainHead(gomock.Any()).Return(makeBFTs(t, basefee, 1), nil)
 
 			go func() {
 				defer done.Unlock()
@@ -130,10 +135,10 @@ func TestPrecommitBatcher(t *testing.T) {
 		}
 	}
 
-	addSectors := func(sectors []abi.SectorNumber) action {
+	addSectors := func(sectors []abi.SectorNumber, aboveBalancer bool) action {
 		as := make([]action, len(sectors))
 		for i, sector := range sectors {
-			as[i] = addSector(sector)
+			as[i] = addSector(sector, aboveBalancer)
 		}
 		return actions(as...)
 	}
@@ -153,20 +158,19 @@ func TestPrecommitBatcher(t *testing.T) {
 	//stm: @CHAIN_STATE_MINER_INFO_001, @CHAIN_STATE_NETWORK_VERSION_001
 	expectSend := func(expect []abi.SectorNumber) action {
 		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *pipeline.PreCommitBatcher) promise {
-			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
-			s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(big.NewInt(10001), nil)
+			s.EXPECT().ChainHead(gomock.Any()).Return(makeBFTs(t, big.NewInt(10001), 1), nil)
 			s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version14, nil)
 
 			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(api.MinerInfo{Owner: t0123, Worker: t0123}, nil)
-			s.EXPECT().SendMsg(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), funMatcher(func(i interface{}) bool {
-				b := i.([]byte)
+			s.EXPECT().MpoolPushMessage(gomock.Any(), funMatcher(func(i interface{}) bool {
+				b := i.(*types.Message)
 				var params miner6.PreCommitSectorBatchParams
-				require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b)))
+				require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b.Params)))
 				for s, number := range expect {
 					require.Equal(t, number, params.Sectors[s].SectorNumber)
 				}
 				return true
-			}))
+			}), gomock.Any()).Return(dummySmsg, nil)
 			return nil
 		}
 	}
@@ -174,20 +178,19 @@ func TestPrecommitBatcher(t *testing.T) {
 	//stm: @CHAIN_STATE_MINER_INFO_001, @CHAIN_STATE_NETWORK_VERSION_001
 	expectSendsSingle := func(expect []abi.SectorNumber) action {
 		return func(t *testing.T, s *mocks.MockPreCommitBatcherApi, pcb *pipeline.PreCommitBatcher) promise {
-			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
-			s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(big.NewInt(9999), nil)
+			s.EXPECT().ChainHead(gomock.Any()).Return(makeBFTs(t, big.NewInt(9999), 1), nil)
 			s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version14, nil)
 
 			s.EXPECT().StateMinerInfo(gomock.Any(), gomock.Any(), gomock.Any()).Return(api.MinerInfo{Owner: t0123, Worker: t0123}, nil)
 			for _, number := range expect {
 				numClone := number
-				s.EXPECT().SendMsg(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), funMatcher(func(i interface{}) bool {
-					b := i.([]byte)
+				s.EXPECT().MpoolPushMessage(gomock.Any(), funMatcher(func(i interface{}) bool {
+					b := i.(*types.Message)
 					var params miner6.PreCommitSectorParams
-					require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b)))
+					require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b.Params)))
 					require.Equal(t, numClone, params.SectorNumber)
 					return true
-				}))
+				}), gomock.Any()).Return(dummySmsg, nil)
 			}
 			return nil
 		}
@@ -223,14 +226,14 @@ func TestPrecommitBatcher(t *testing.T) {
 	}{
 		"addSingle": {
 			actions: []action{
-				addSector(0),
+				addSector(0, false),
 				waitPending(1),
 				flush([]abi.SectorNumber{0}),
 			},
 		},
 		"addTwo": {
 			actions: []action{
-				addSectors(getSectors(2)),
+				addSectors(getSectors(2), false),
 				waitPending(2),
 				flush(getSectors(2)),
 			},
@@ -238,13 +241,13 @@ func TestPrecommitBatcher(t *testing.T) {
 		"addMax": {
 			actions: []action{
 				expectSend(getSectors(maxBatch)),
-				addSectors(getSectors(maxBatch)),
+				addSectors(getSectors(maxBatch), true),
 			},
 		},
 		"addMax-belowBaseFee": {
 			actions: []action{
 				expectSendsSingle(getSectors(maxBatch)),
-				addSectors(getSectors(maxBatch)),
+				addSectors(getSectors(maxBatch), false),
 			},
 		},
 	}

@@ -23,7 +23,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/wallet/key"
@@ -65,7 +64,7 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 	var sealedSectors []*genesis.PreSeal
 	for i := 0; i < sectors; i++ {
 		sid := abi.SectorID{Miner: abi.ActorID(mid), Number: next}
-		ref := storage.SectorRef{ID: sid, ProofType: spt}
+		ref := storiface.SectorRef{ID: sid, ProofType: spt}
 		next++
 
 		var preseal *genesis.PreSeal
@@ -145,7 +144,7 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 	return miner, &minerAddr.KeyInfo, nil
 }
 
-func presealSector(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, sid storage.SectorRef, ssize abi.SectorSize, preimage []byte) (*genesis.PreSeal, error) {
+func presealSector(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, sid storiface.SectorRef, ssize abi.SectorSize, preimage []byte) (*genesis.PreSeal, error) {
 	pi, err := sb.AddPiece(context.TODO(), sid, nil, abi.PaddedPieceSize(ssize).Unpadded(), rand.Reader)
 	if err != nil {
 		return nil, err
@@ -184,7 +183,7 @@ func presealSector(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, sid storage.Se
 	}, nil
 }
 
-func presealSectorFake(sbfs *basicfs.Provider, sid storage.SectorRef, ssize abi.SectorSize) (*genesis.PreSeal, error) {
+func presealSectorFake(sbfs *basicfs.Provider, sid storiface.SectorRef, ssize abi.SectorSize) (*genesis.PreSeal, error) {
 	paths, done, err := sbfs.AcquireSector(context.TODO(), sid, 0, storiface.FTSealed|storiface.FTCache, storiface.PathSealing)
 	if err != nil {
 		return nil, xerrors.Errorf("acquire unsealed sector: %w", err)
@@ -208,7 +207,7 @@ func presealSectorFake(sbfs *basicfs.Provider, sid storage.SectorRef, ssize abi.
 	}, nil
 }
 
-func cleanupUnsealed(sbfs *basicfs.Provider, ref storage.SectorRef) error {
+func cleanupUnsealed(sbfs *basicfs.Provider, ref storiface.SectorRef) error {
 	paths, done, err := sbfs.AcquireSector(context.TODO(), ref, storiface.FTUnsealed, storiface.FTNone, storiface.PathSealing)
 	if err != nil {
 		return err

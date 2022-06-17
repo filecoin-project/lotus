@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/types"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
@@ -41,12 +42,12 @@ func fakeConfigGetter(stub *fakeConfigStub) pipeline.GetSealingConfigFunc {
 	}
 }
 
-func (f *fakeChain) StateNetworkVersion(ctx context.Context, tok pipeline.TipSetToken) (network.Version, error) {
+func (f *fakeChain) StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error) {
 	return build.NewestNetworkVersion, nil
 }
 
-func (f *fakeChain) ChainHead(ctx context.Context) (pipeline.TipSetToken, abi.ChainEpoch, error) {
-	return []byte{1, 2, 3}, f.h, nil
+func (f *fakeChain) ChainHead(ctx context.Context) (*types.TipSet, error) {
+	return makeTs(nil, f.h), nil
 }
 
 func fakePieceCid(t *testing.T) cid.Cid {

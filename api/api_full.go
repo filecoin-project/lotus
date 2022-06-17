@@ -457,10 +457,15 @@ type FullNode interface {
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error) //perm:read
 	// StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or spent
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error) //perm:read
-	// StateMinerSectorAllocated checks if a sector is allocated
+	// StateMinerSectorAllocated checks if a sector number is marked as allocated.
 	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (bool, error) //perm:read
-	// StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector
-	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) //perm:read
+	// StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector.
+	// Returns nil and no error if the sector isn't precommitted.
+	//
+	// Note that the sector number may be allocated while PreCommitInfo is nil. This means that either allocated sector
+	// numbers were compacted, and the sector number was marked as allocated in order to reduce size of the allocated
+	// sectors bitfield, or that the sector was precommitted, but the precommit has expired.
+	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) //perm:read
 	// StateSectorGetInfo returns the on-chain info for the specified miner's sector. Returns null in case the sector info isn't found
 	// NOTE: returned info.Expiration may not be accurate in some cases, use StateSectorExpiration to get accurate
 	// expiration epoch
@@ -517,6 +522,8 @@ type FullNode interface {
 	StateMarketDeals(context.Context, types.TipSetKey) (map[string]*MarketDeal, error) //perm:read
 	// StateMarketStorageDeal returns information about the indicated deal
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*MarketDeal, error) //perm:read
+	// StateComputeDataCID computes DataCID from a set of on-chain deals
+	StateComputeDataCID(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) //perm:read
 	// StateLookupID retrieves the ID address of the given address
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error) //perm:read
 	// StateAccountKey returns the public key address of the given ID address for secp and bls accounts

@@ -5,8 +5,6 @@ import (
 
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/specs-storage/storage"
-
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -16,7 +14,7 @@ type readonlyProvider struct {
 	stor  *paths.Local
 }
 
-func (l *readonlyProvider) AcquireSector(ctx context.Context, id storage.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, sealing storiface.PathType) (storiface.SectorPaths, func(), error) {
+func (l *readonlyProvider) AcquireSector(ctx context.Context, id storiface.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, sealing storiface.PathType) (storiface.SectorPaths, func(), error) {
 	if allocate != storiface.FTNone {
 		return storiface.SectorPaths{}, nil, xerrors.New("read-only storage")
 	}

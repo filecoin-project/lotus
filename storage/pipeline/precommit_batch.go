@@ -28,12 +28,11 @@ import (
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_precommit_batcher.go -package=mocks . PreCommitBatcherApi
 
 type PreCommitBatcherApi interface {
-	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
-	StateMinerInfo(context.Context, address.Address, TipSetToken) (api.MinerInfo, error)
-	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
-	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
-	ChainBaseFee(context.Context, TipSetToken) (abi.TokenAmount, error)
-	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
+	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
+	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (big.Int, error)
+	ChainHead(ctx context.Context) (*types.TipSet, error)
+	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
 }
 
 type preCommitEntry struct {
@@ -188,31 +187,26 @@ func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBat
 		return nil, nil
 	}
 
-	tok, _, err := b.api.ChainHead(b.mctx)
+	ts, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		return nil, err
 	}
 
-	bf, err := b.api.ChainBaseFee(b.mctx, tok)
-	if err != nil {
-		return nil, xerrors.Errorf("couldn't get base fee: %w", err)
-	}
-
 	// TODO: Drop this once nv14 has come and gone
-	nv, err := b.api.StateNetworkVersion(b.mctx, tok)
+	nv, err := b.api.StateNetworkVersion(b.mctx, ts.Key())
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't get network version: %w", err)
 	}
 
 	individual := false
-	if !cfg.BatchPreCommitAboveBaseFee.Equals(big.Zero()) && bf.LessThan(cfg.BatchPreCommitAboveBaseFee) && nv >= network.Version14 {
+	if !cfg.BatchPreCommitAboveBaseFee.Equals(big.Zero()) && ts.MinTicketBlock().ParentBaseFee.LessThan(cfg.BatchPreCommitAboveBaseFee) && nv >= network.Version14 {
 		individual = true
 	}
 
 	// todo support multiple batches
 	var res []sealiface.PreCommitBatchRes
 	if !individual {
-		res, err = b.processBatch(cfg, tok, bf, nv)
+		res, err = b.processBatch(cfg, ts.Key(), ts.MinTicketBlock().ParentBaseFee, nv)
 	} else {
 		res, err = b.processIndividually(cfg)
 	}
@@ -240,7 +234,7 @@ func (b *PreCommitBatcher) maybeStartBatch(notif bool) ([]sealiface.PreCommitBat
 }
 
 func (b *PreCommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.PreCommitBatchRes, error) {
-	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, nil)
+	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
@@ -248,7 +242,7 @@ func (b *PreCommitBatcher) processIndividually(cfg sealiface.Config) ([]sealifac
 	avail := types.TotalFilecoinInt
 
 	if cfg.CollateralFromMinerBalance && !cfg.DisableCollateralFallback {
-		avail, err = b.api.StateMinerAvailableBalance(b.mctx, b.maddr, nil)
+		avail, err = b.api.StateMinerAvailableBalance(b.mctx, b.maddr, types.EmptyTSK)
 		if err != nil {
 			return nil, xerrors.Errorf("getting available miner balance: %w", err)
 		}
@@ -307,7 +301,7 @@ func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo,
 		return cid.Undef, xerrors.Errorf("no good address to send precommit message from: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, builtin.MethodsMiner.PreCommitSector, deposit, big.Int(b.feeCfg.MaxPreCommitGasFee), enc.Bytes())
+	mcid, err := sendMsg(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.PreCommitSector, deposit, big.Int(b.feeCfg.MaxPreCommitGasFee), enc.Bytes())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("pushing message to mpool: %w", err)
 	}
@@ -315,7 +309,7 @@ func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo,
 	return mcid, nil
 }
 
-func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tok TipSetToken, bf abi.TokenAmount, nv network.Version) ([]sealiface.PreCommitBatchRes, error) {
+func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tsk types.TipSetKey, bf abi.TokenAmount, nv network.Version) ([]sealiface.PreCommitBatchRes, error) {
 	params := miner.PreCommitSectorBatchParams{}
 	deposit := big.Zero()
 	var res sealiface.PreCommitBatchRes
@@ -336,7 +330,7 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tok TipSetToken, b
 		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("couldn't serialize PreCommitSectorBatchParams: %w", err)
 	}
 
-	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, nil)
+	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, types.EmptyTSK)
 	if err != nil {
 		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
@@ -364,7 +358,7 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tok TipSetToken, b
 		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("no good address found: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, builtin.MethodsMiner.PreCommitSectorBatch, needFunds, maxFee, enc.Bytes())
+	mcid, err := sendMsg(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.PreCommitSectorBatch, needFunds, maxFee, enc.Bytes())
 	if err != nil {
 		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("sending message failed: %w", err)
 	}
@@ -378,13 +372,13 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tok TipSetToken, b
 
 // register PreCommit, wait for batch message, return message CID
 func (b *PreCommitBatcher) AddPreCommit(ctx context.Context, s SectorInfo, deposit abi.TokenAmount, in *miner.SectorPreCommitInfo) (res sealiface.PreCommitBatchRes, err error) {
-	_, curEpoch, err := b.api.ChainHead(b.mctx)
+	ts, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		log.Errorf("getting chain head: %s", err)
 		return sealiface.PreCommitBatchRes{}, err
 	}
 
-	cutoff, err := getPreCommitCutoff(curEpoch, s)
+	cutoff, err := getPreCommitCutoff(ts.Height(), s)
 	if err != nil {
 		return sealiface.PreCommitBatchRes{}, xerrors.Errorf("failed to calculate cutoff: %w", err)
 	}

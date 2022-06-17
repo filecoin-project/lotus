@@ -12,18 +12,16 @@ import (
 	cid "github.com/ipfs/go-cid"
 
 	address "github.com/filecoin-project/go-address"
-	bitfield "github.com/filecoin-project/go-bitfield"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
-	market "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	miner "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	crypto "github.com/filecoin-project/go-state-types/crypto"
 	dline "github.com/filecoin-project/go-state-types/dline"
 	network "github.com/filecoin-project/go-state-types/network"
 
 	api "github.com/filecoin-project/lotus/api"
+	miner0 "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	types "github.com/filecoin-project/lotus/chain/types"
-	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 )
 
 // MockSealingAPI is a mock of SealingAPI interface.
@@ -49,21 +47,6 @@ func (m *MockSealingAPI) EXPECT() *MockSealingAPIMockRecorder {
 	return m.recorder
 }
 
-// ChainBaseFee mocks base method.
-func (m *MockSealingAPI) ChainBaseFee(arg0 context.Context, arg1 sealing.TipSetToken) (big.Int, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ChainBaseFee", arg0, arg1)
-	ret0, _ := ret[0].(big.Int)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ChainBaseFee indicates an expected call of ChainBaseFee.
-func (mr *MockSealingAPIMockRecorder) ChainBaseFee(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainBaseFee", reflect.TypeOf((*MockSealingAPI)(nil).ChainBaseFee), arg0, arg1)
-}
-
 // ChainGetMessage mocks base method.
 func (m *MockSealingAPI) ChainGetMessage(arg0 context.Context, arg1 cid.Cid) (*types.Message, error) {
 	m.ctrl.T.Helper()
@@ -80,13 +63,12 @@ func (mr *MockSealingAPIMockRecorder) ChainGetMessage(arg0, arg1 interface{}) *g
 }
 
 // ChainHead mocks base method.
-func (m *MockSealingAPI) ChainHead(arg0 context.Context) (sealing.TipSetToken, abi.ChainEpoch, error) {
+func (m *MockSealingAPI) ChainHead(arg0 context.Context) (*types.TipSet, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChainHead", arg0)
-	ret0, _ := ret[0].(sealing.TipSetToken)
-	ret1, _ := ret[1].(abi.ChainEpoch)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret0, _ := ret[0].(*types.TipSet)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // ChainHead indicates an expected call of ChainHead.
@@ -110,38 +92,38 @@ func (mr *MockSealingAPIMockRecorder) ChainReadObj(arg0, arg1 interface{}) *gomo
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainReadObj", reflect.TypeOf((*MockSealingAPI)(nil).ChainReadObj), arg0, arg1)
 }
 
-// SendMsg mocks base method.
-func (m *MockSealingAPI) SendMsg(arg0 context.Context, arg1, arg2 address.Address, arg3 abi.MethodNum, arg4, arg5 big.Int, arg6 []byte) (cid.Cid, error) {
+// MpoolPushMessage mocks base method.
+func (m *MockSealingAPI) MpoolPushMessage(arg0 context.Context, arg1 *types.Message, arg2 *api.MessageSendSpec) (*types.SignedMessage, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SendMsg", arg0, arg1, arg2, arg3, arg4, arg5, arg6)
+	ret := m.ctrl.Call(m, "MpoolPushMessage", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*types.SignedMessage)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MpoolPushMessage indicates an expected call of MpoolPushMessage.
+func (mr *MockSealingAPIMockRecorder) MpoolPushMessage(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MpoolPushMessage", reflect.TypeOf((*MockSealingAPI)(nil).MpoolPushMessage), arg0, arg1, arg2)
+}
+
+// StateComputeDataCID mocks base method.
+func (m *MockSealingAPI) StateComputeDataCID(arg0 context.Context, arg1 address.Address, arg2 abi.RegisteredSealProof, arg3 []abi.DealID, arg4 types.TipSetKey) (cid.Cid, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateComputeDataCID", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(cid.Cid)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// SendMsg indicates an expected call of SendMsg.
-func (mr *MockSealingAPIMockRecorder) SendMsg(arg0, arg1, arg2, arg3, arg4, arg5, arg6 interface{}) *gomock.Call {
+// StateComputeDataCID indicates an expected call of StateComputeDataCID.
+func (mr *MockSealingAPIMockRecorder) StateComputeDataCID(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendMsg", reflect.TypeOf((*MockSealingAPI)(nil).SendMsg), arg0, arg1, arg2, arg3, arg4, arg5, arg6)
-}
-
-// StateComputeDataCommitment mocks base method.
-func (m *MockSealingAPI) StateComputeDataCommitment(arg0 context.Context, arg1 address.Address, arg2 abi.RegisteredSealProof, arg3 []abi.DealID, arg4 sealing.TipSetToken) (cid.Cid, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateComputeDataCommitment", arg0, arg1, arg2, arg3, arg4)
-	ret0, _ := ret[0].(cid.Cid)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StateComputeDataCommitment indicates an expected call of StateComputeDataCommitment.
-func (mr *MockSealingAPIMockRecorder) StateComputeDataCommitment(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateComputeDataCommitment", reflect.TypeOf((*MockSealingAPI)(nil).StateComputeDataCommitment), arg0, arg1, arg2, arg3, arg4)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateComputeDataCID", reflect.TypeOf((*MockSealingAPI)(nil).StateComputeDataCID), arg0, arg1, arg2, arg3, arg4)
 }
 
 // StateGetRandomnessFromBeacon mocks base method.
-func (m *MockSealingAPI) StateGetRandomnessFromBeacon(arg0 context.Context, arg1 crypto.DomainSeparationTag, arg2 abi.ChainEpoch, arg3 []byte, arg4 sealing.TipSetToken) (abi.Randomness, error) {
+func (m *MockSealingAPI) StateGetRandomnessFromBeacon(arg0 context.Context, arg1 crypto.DomainSeparationTag, arg2 abi.ChainEpoch, arg3 []byte, arg4 types.TipSetKey) (abi.Randomness, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateGetRandomnessFromBeacon", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(abi.Randomness)
@@ -156,7 +138,7 @@ func (mr *MockSealingAPIMockRecorder) StateGetRandomnessFromBeacon(arg0, arg1, a
 }
 
 // StateGetRandomnessFromTickets mocks base method.
-func (m *MockSealingAPI) StateGetRandomnessFromTickets(arg0 context.Context, arg1 crypto.DomainSeparationTag, arg2 abi.ChainEpoch, arg3 []byte, arg4 sealing.TipSetToken) (abi.Randomness, error) {
+func (m *MockSealingAPI) StateGetRandomnessFromTickets(arg0 context.Context, arg1 crypto.DomainSeparationTag, arg2 abi.ChainEpoch, arg3 []byte, arg4 types.TipSetKey) (abi.Randomness, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateGetRandomnessFromTickets", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(abi.Randomness)
@@ -171,7 +153,7 @@ func (mr *MockSealingAPIMockRecorder) StateGetRandomnessFromTickets(arg0, arg1, 
 }
 
 // StateLookupID mocks base method.
-func (m *MockSealingAPI) StateLookupID(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (address.Address, error) {
+func (m *MockSealingAPI) StateLookupID(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (address.Address, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateLookupID", arg0, arg1, arg2)
 	ret0, _ := ret[0].(address.Address)
@@ -186,7 +168,7 @@ func (mr *MockSealingAPIMockRecorder) StateLookupID(arg0, arg1, arg2 interface{}
 }
 
 // StateMarketStorageDeal mocks base method.
-func (m *MockSealingAPI) StateMarketStorageDeal(arg0 context.Context, arg1 abi.DealID, arg2 sealing.TipSetToken) (*api.MarketDeal, error) {
+func (m *MockSealingAPI) StateMarketStorageDeal(arg0 context.Context, arg1 abi.DealID, arg2 types.TipSetKey) (*api.MarketDeal, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMarketStorageDeal", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*api.MarketDeal)
@@ -200,38 +182,8 @@ func (mr *MockSealingAPIMockRecorder) StateMarketStorageDeal(arg0, arg1, arg2 in
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMarketStorageDeal", reflect.TypeOf((*MockSealingAPI)(nil).StateMarketStorageDeal), arg0, arg1, arg2)
 }
 
-// StateMarketStorageDealProposal mocks base method.
-func (m *MockSealingAPI) StateMarketStorageDealProposal(arg0 context.Context, arg1 abi.DealID, arg2 sealing.TipSetToken) (market.DealProposal, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateMarketStorageDealProposal", arg0, arg1, arg2)
-	ret0, _ := ret[0].(market.DealProposal)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StateMarketStorageDealProposal indicates an expected call of StateMarketStorageDealProposal.
-func (mr *MockSealingAPIMockRecorder) StateMarketStorageDealProposal(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMarketStorageDealProposal", reflect.TypeOf((*MockSealingAPI)(nil).StateMarketStorageDealProposal), arg0, arg1, arg2)
-}
-
-// StateMinerActiveSectors mocks base method.
-func (m *MockSealingAPI) StateMinerActiveSectors(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (bitfield.BitField, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateMinerActiveSectors", arg0, arg1, arg2)
-	ret0, _ := ret[0].(bitfield.BitField)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StateMinerActiveSectors indicates an expected call of StateMinerActiveSectors.
-func (mr *MockSealingAPIMockRecorder) StateMinerActiveSectors(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerActiveSectors", reflect.TypeOf((*MockSealingAPI)(nil).StateMinerActiveSectors), arg0, arg1, arg2)
-}
-
 // StateMinerAvailableBalance mocks base method.
-func (m *MockSealingAPI) StateMinerAvailableBalance(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (big.Int, error) {
+func (m *MockSealingAPI) StateMinerAvailableBalance(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerAvailableBalance", arg0, arg1, arg2)
 	ret0, _ := ret[0].(big.Int)
@@ -245,8 +197,23 @@ func (mr *MockSealingAPIMockRecorder) StateMinerAvailableBalance(arg0, arg1, arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerAvailableBalance", reflect.TypeOf((*MockSealingAPI)(nil).StateMinerAvailableBalance), arg0, arg1, arg2)
 }
 
+// StateMinerDeadlines mocks base method.
+func (m *MockSealingAPI) StateMinerDeadlines(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) ([]api.Deadline, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateMinerDeadlines", arg0, arg1, arg2)
+	ret0, _ := ret[0].([]api.Deadline)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateMinerDeadlines indicates an expected call of StateMinerDeadlines.
+func (mr *MockSealingAPIMockRecorder) StateMinerDeadlines(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerDeadlines", reflect.TypeOf((*MockSealingAPI)(nil).StateMinerDeadlines), arg0, arg1, arg2)
+}
+
 // StateMinerInfo mocks base method.
-func (m *MockSealingAPI) StateMinerInfo(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (api.MinerInfo, error) {
+func (m *MockSealingAPI) StateMinerInfo(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (api.MinerInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerInfo", arg0, arg1, arg2)
 	ret0, _ := ret[0].(api.MinerInfo)
@@ -261,7 +228,7 @@ func (mr *MockSealingAPIMockRecorder) StateMinerInfo(arg0, arg1, arg2 interface{
 }
 
 // StateMinerInitialPledgeCollateral mocks base method.
-func (m *MockSealingAPI) StateMinerInitialPledgeCollateral(arg0 context.Context, arg1 address.Address, arg2 miner.SectorPreCommitInfo, arg3 sealing.TipSetToken) (big.Int, error) {
+func (m *MockSealingAPI) StateMinerInitialPledgeCollateral(arg0 context.Context, arg1 address.Address, arg2 miner.SectorPreCommitInfo, arg3 types.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerInitialPledgeCollateral", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(big.Int)
@@ -276,7 +243,7 @@ func (mr *MockSealingAPIMockRecorder) StateMinerInitialPledgeCollateral(arg0, ar
 }
 
 // StateMinerPartitions mocks base method.
-func (m *MockSealingAPI) StateMinerPartitions(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 sealing.TipSetToken) ([]api.Partition, error) {
+func (m *MockSealingAPI) StateMinerPartitions(arg0 context.Context, arg1 address.Address, arg2 uint64, arg3 types.TipSetKey) ([]api.Partition, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerPartitions", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].([]api.Partition)
@@ -291,7 +258,7 @@ func (mr *MockSealingAPIMockRecorder) StateMinerPartitions(arg0, arg1, arg2, arg
 }
 
 // StateMinerPreCommitDepositForPower mocks base method.
-func (m *MockSealingAPI) StateMinerPreCommitDepositForPower(arg0 context.Context, arg1 address.Address, arg2 miner.SectorPreCommitInfo, arg3 sealing.TipSetToken) (big.Int, error) {
+func (m *MockSealingAPI) StateMinerPreCommitDepositForPower(arg0 context.Context, arg1 address.Address, arg2 miner.SectorPreCommitInfo, arg3 types.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerPreCommitDepositForPower", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(big.Int)
@@ -306,7 +273,7 @@ func (mr *MockSealingAPIMockRecorder) StateMinerPreCommitDepositForPower(arg0, a
 }
 
 // StateMinerProvingDeadline mocks base method.
-func (m *MockSealingAPI) StateMinerProvingDeadline(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (*dline.Info, error) {
+func (m *MockSealingAPI) StateMinerProvingDeadline(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (*dline.Info, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerProvingDeadline", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*dline.Info)
@@ -321,7 +288,7 @@ func (mr *MockSealingAPIMockRecorder) StateMinerProvingDeadline(arg0, arg1, arg2
 }
 
 // StateMinerSectorAllocated mocks base method.
-func (m *MockSealingAPI) StateMinerSectorAllocated(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 sealing.TipSetToken) (bool, error) {
+func (m *MockSealingAPI) StateMinerSectorAllocated(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types.TipSetKey) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateMinerSectorAllocated", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(bool)
@@ -335,38 +302,8 @@ func (mr *MockSealingAPIMockRecorder) StateMinerSectorAllocated(arg0, arg1, arg2
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerSectorAllocated", reflect.TypeOf((*MockSealingAPI)(nil).StateMinerSectorAllocated), arg0, arg1, arg2, arg3)
 }
 
-// StateMinerSectorSize mocks base method.
-func (m *MockSealingAPI) StateMinerSectorSize(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (abi.SectorSize, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateMinerSectorSize", arg0, arg1, arg2)
-	ret0, _ := ret[0].(abi.SectorSize)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StateMinerSectorSize indicates an expected call of StateMinerSectorSize.
-func (mr *MockSealingAPIMockRecorder) StateMinerSectorSize(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerSectorSize", reflect.TypeOf((*MockSealingAPI)(nil).StateMinerSectorSize), arg0, arg1, arg2)
-}
-
-// StateMinerWorkerAddress mocks base method.
-func (m *MockSealingAPI) StateMinerWorkerAddress(arg0 context.Context, arg1 address.Address, arg2 sealing.TipSetToken) (address.Address, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateMinerWorkerAddress", arg0, arg1, arg2)
-	ret0, _ := ret[0].(address.Address)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// StateMinerWorkerAddress indicates an expected call of StateMinerWorkerAddress.
-func (mr *MockSealingAPIMockRecorder) StateMinerWorkerAddress(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerWorkerAddress", reflect.TypeOf((*MockSealingAPI)(nil).StateMinerWorkerAddress), arg0, arg1, arg2)
-}
-
 // StateNetworkVersion mocks base method.
-func (m *MockSealingAPI) StateNetworkVersion(arg0 context.Context, arg1 sealing.TipSetToken) (network.Version, error) {
+func (m *MockSealingAPI) StateNetworkVersion(arg0 context.Context, arg1 types.TipSetKey) (network.Version, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateNetworkVersion", arg0, arg1)
 	ret0, _ := ret[0].(network.Version)
@@ -381,22 +318,22 @@ func (mr *MockSealingAPIMockRecorder) StateNetworkVersion(arg0, arg1 interface{}
 }
 
 // StateSearchMsg mocks base method.
-func (m *MockSealingAPI) StateSearchMsg(arg0 context.Context, arg1 cid.Cid) (*sealing.MsgLookup, error) {
+func (m *MockSealingAPI) StateSearchMsg(arg0 context.Context, arg1 types.TipSetKey, arg2 cid.Cid, arg3 abi.ChainEpoch, arg4 bool) (*api.MsgLookup, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateSearchMsg", arg0, arg1)
-	ret0, _ := ret[0].(*sealing.MsgLookup)
+	ret := m.ctrl.Call(m, "StateSearchMsg", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(*api.MsgLookup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // StateSearchMsg indicates an expected call of StateSearchMsg.
-func (mr *MockSealingAPIMockRecorder) StateSearchMsg(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockSealingAPIMockRecorder) StateSearchMsg(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateSearchMsg", reflect.TypeOf((*MockSealingAPI)(nil).StateSearchMsg), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateSearchMsg", reflect.TypeOf((*MockSealingAPI)(nil).StateSearchMsg), arg0, arg1, arg2, arg3, arg4)
 }
 
 // StateSectorGetInfo mocks base method.
-func (m *MockSealingAPI) StateSectorGetInfo(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 sealing.TipSetToken) (*miner.SectorOnChainInfo, error) {
+func (m *MockSealingAPI) StateSectorGetInfo(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types.TipSetKey) (*miner.SectorOnChainInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateSectorGetInfo", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(*miner.SectorOnChainInfo)
@@ -411,10 +348,10 @@ func (mr *MockSealingAPIMockRecorder) StateSectorGetInfo(arg0, arg1, arg2, arg3 
 }
 
 // StateSectorPartition mocks base method.
-func (m *MockSealingAPI) StateSectorPartition(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 sealing.TipSetToken) (*sealing.SectorLocation, error) {
+func (m *MockSealingAPI) StateSectorPartition(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types.TipSetKey) (*miner0.SectorLocation, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateSectorPartition", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*sealing.SectorLocation)
+	ret0, _ := ret[0].(*miner0.SectorLocation)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -426,7 +363,7 @@ func (mr *MockSealingAPIMockRecorder) StateSectorPartition(arg0, arg1, arg2, arg
 }
 
 // StateSectorPreCommitInfo mocks base method.
-func (m *MockSealingAPI) StateSectorPreCommitInfo(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 sealing.TipSetToken) (*miner.SectorPreCommitOnChainInfo, error) {
+func (m *MockSealingAPI) StateSectorPreCommitInfo(arg0 context.Context, arg1 address.Address, arg2 abi.SectorNumber, arg3 types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "StateSectorPreCommitInfo", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(*miner.SectorPreCommitOnChainInfo)
@@ -441,16 +378,16 @@ func (mr *MockSealingAPIMockRecorder) StateSectorPreCommitInfo(arg0, arg1, arg2,
 }
 
 // StateWaitMsg mocks base method.
-func (m *MockSealingAPI) StateWaitMsg(arg0 context.Context, arg1 cid.Cid) (sealing.MsgLookup, error) {
+func (m *MockSealingAPI) StateWaitMsg(arg0 context.Context, arg1 cid.Cid, arg2 uint64, arg3 abi.ChainEpoch, arg4 bool) (*api.MsgLookup, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "StateWaitMsg", arg0, arg1)
-	ret0, _ := ret[0].(sealing.MsgLookup)
+	ret := m.ctrl.Call(m, "StateWaitMsg", arg0, arg1, arg2, arg3, arg4)
+	ret0, _ := ret[0].(*api.MsgLookup)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // StateWaitMsg indicates an expected call of StateWaitMsg.
-func (mr *MockSealingAPIMockRecorder) StateWaitMsg(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockSealingAPIMockRecorder) StateWaitMsg(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateWaitMsg", reflect.TypeOf((*MockSealingAPI)(nil).StateWaitMsg), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateWaitMsg", reflect.TypeOf((*MockSealingAPI)(nil).StateWaitMsg), arg0, arg1, arg2, arg3, arg4)
 }

@@ -12,12 +12,12 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type cachingVerifier struct {
 	ds      datastore.Datastore
-	backend ffiwrapper.Verifier
+	backend storiface.Verifier
 }
 
 const bufsize = 128
@@ -107,4 +107,4 @@ func (cv cachingVerifier) VerifyReplicaUpdate(update prooftypes.ReplicaUpdateInf
 	return cv.backend.VerifyReplicaUpdate(update)
 }
 
-var _ ffiwrapper.Verifier = (*cachingVerifier)(nil)
+var _ storiface.Verifier = (*cachingVerifier)(nil)

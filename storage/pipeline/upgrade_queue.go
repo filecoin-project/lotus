@@ -7,6 +7,8 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
+
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) error {
@@ -23,16 +25,16 @@ func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) e
 		return xerrors.Errorf("not a committed-capacity sector, has deals")
 	}
 
-	tok, head, err := m.Api.ChainHead(ctx)
+	ts, err := m.Api.ChainHead(ctx)
 	if err != nil {
 		return xerrors.Errorf("couldnt get chain head: %w", err)
 	}
-	onChainInfo, err := m.Api.StateSectorGetInfo(ctx, m.maddr, id, tok)
+	onChainInfo, err := m.Api.StateSectorGetInfo(ctx, m.maddr, id, ts.Key())
 	if err != nil {
 		return xerrors.Errorf("failed to read sector on chain info: %w", err)
 	}
 
-	active, err := m.sectorActive(ctx, tok, id)
+	active, err := m.sectorActive(ctx, ts.Key(), id)
 	if err != nil {
 		return xerrors.Errorf("failed to check if sector is active")
 	}
@@ -40,7 +42,7 @@ func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) e
 		return xerrors.Errorf("cannot mark inactive sector for upgrade")
 	}
 
-	if onChainInfo.Expiration-head < market7.DealMinDuration {
+	if onChainInfo.Expiration-ts.Height() < market7.DealMinDuration {
 		return xerrors.Errorf("pointless to upgrade sector %d, expiration %d is less than a min deal duration away from current epoch."+
 			"Upgrade expiration before marking for upgrade", id, onChainInfo.Expiration)
 	}
@@ -48,11 +50,28 @@ func (m *Sealing) MarkForSnapUpgrade(ctx context.Context, id abi.SectorNumber) e
 	return m.sectors.Send(uint64(id), SectorMarkForUpdate{})
 }
 
-func (m *Sealing) sectorActive(ctx context.Context, tok TipSetToken, sector abi.SectorNumber) (bool, error) {
-	active, err := m.Api.StateMinerActiveSectors(ctx, m.maddr, tok)
+func (m *Sealing) sectorActive(ctx context.Context, tsk types.TipSetKey, sector abi.SectorNumber) (bool, error) {
+	dls, err := m.Api.StateMinerDeadlines(ctx, m.maddr, tsk)
 	if err != nil {
-		return false, xerrors.Errorf("failed to check active sectors: %w", err)
+		return false, xerrors.Errorf("getting proving deadlines: %w", err)
 	}
 
-	return active.IsSet(uint64(sector))
+	for dl := range dls {
+		parts, err := m.Api.StateMinerPartitions(ctx, m.maddr, uint64(dl), tsk)
+		if err != nil {
+			return false, xerrors.Errorf("getting partitions for deadline %d: %w", dl, err)
+		}
+
+		for p, part := range parts {
+			set, err := part.ActiveSectors.IsSet(uint64(sector))
+			if err != nil {
+				return false, xerrors.Errorf("checking if sector %d is in deadline %d partition %d: %w", sector, dl, p, err)
+			}
+			if set {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
 }

@@ -2,6 +2,7 @@
 package types
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -10,6 +11,8 @@ import (
 	"github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	cborrpc "github.com/filecoin-project/go-cbor-util"
 )
 
 func TestTipSetKey(t *testing.T) {
@@ -70,6 +73,13 @@ func TestTipSetKey(t *testing.T) {
 			`{"/":"bafy2bzacebxfyh2fzoxrt6kcgc5dkaodpcstgwxxdizrww225vrhsizsfcg4g"},`+
 			`{"/":"bafy2bzacedwviarjtjraqakob5pslltmuo5n3xev3nt5zylezofkbbv5jclyu"}`+
 			`]`, k3)
+	})
+
+	t.Run("CBOR", func(t *testing.T) {
+		k3 := NewTipSetKey(c1, c2, c3)
+		b, err := cborrpc.Dump(k3)
+		require.NoError(t, err)
+		fmt.Println(hex.EncodeToString(b))
 	})
 }
 

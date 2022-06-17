@@ -11,7 +11,6 @@ import (
 	gomock "github.com/golang/mock/gomock"
 
 	abi "github.com/filecoin-project/go-state-types/abi"
-	storage "github.com/filecoin-project/specs-storage/storage"
 
 	fsutil "github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	storiface "github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -41,7 +40,7 @@ func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 }
 
 // AcquireSector mocks base method.
-func (m *MockStore) AcquireSector(arg0 context.Context, arg1 storage.SectorRef, arg2, arg3 storiface.SectorFileType, arg4 storiface.PathType, arg5 storiface.AcquireMode) (storiface.SectorPaths, storiface.SectorPaths, error) {
+func (m *MockStore) AcquireSector(arg0 context.Context, arg1 storiface.SectorRef, arg2, arg3 storiface.SectorFileType, arg4 storiface.PathType, arg5 storiface.AcquireMode) (storiface.SectorPaths, storiface.SectorPaths, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "AcquireSector", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(storiface.SectorPaths)
@@ -87,7 +86,7 @@ func (mr *MockStoreMockRecorder) GenerateSingleVanillaProof(arg0, arg1, arg2, ar
 }
 
 // MoveStorage mocks base method.
-func (m *MockStore) MoveStorage(arg0 context.Context, arg1 storage.SectorRef, arg2 storiface.SectorFileType) error {
+func (m *MockStore) MoveStorage(arg0 context.Context, arg1 storiface.SectorRef, arg2 storiface.SectorFileType) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "MoveStorage", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
@@ -129,7 +128,7 @@ func (mr *MockStoreMockRecorder) RemoveCopies(arg0, arg1, arg2 interface{}) *gom
 }
 
 // Reserve mocks base method.
-func (m *MockStore) Reserve(arg0 context.Context, arg1 storage.SectorRef, arg2 storiface.SectorFileType, arg3 storiface.SectorPaths, arg4 map[storiface.SectorFileType]int) (func(), error) {
+func (m *MockStore) Reserve(arg0 context.Context, arg1 storiface.SectorRef, arg2 storiface.SectorFileType, arg3 storiface.SectorPaths, arg4 map[storiface.SectorFileType]int) (func(), error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "Reserve", arg0, arg1, arg2, arg3, arg4)
 	ret0, _ := ret[0].(func())

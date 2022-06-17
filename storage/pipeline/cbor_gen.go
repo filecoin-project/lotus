@@ -312,7 +312,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.PreCommit1Out (storage.PreCommit1Out) (slice)
+	// t.PreCommit1Out (storiface.PreCommit1Out) (slice)
 	if len("PreCommit1Out") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"PreCommit1Out\" was too long")
 	}
@@ -458,7 +458,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.PreCommitTipSet (sealing.TipSetToken) (slice)
+	// t.PreCommitTipSet (types.TipSetKey) (struct)
 	if len("PreCommitTipSet") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"PreCommitTipSet\" was too long")
 	}
@@ -470,15 +470,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		return err
 	}
 
-	if len(t.PreCommitTipSet) > cbg.ByteArrayMaxLen {
-		return xerrors.Errorf("Byte array in field t.PreCommitTipSet was too long")
-	}
-
-	if err := cw.WriteMajorTypeHeader(cbg.MajByteString, uint64(len(t.PreCommitTipSet))); err != nil {
-		return err
-	}
-
-	if _, err := cw.Write(t.PreCommitTipSet[:]); err != nil {
+	if err := t.PreCommitTipSet.MarshalCBOR(cw); err != nil {
 		return err
 	}
 
@@ -667,7 +659,7 @@ func (t *SectorInfo) MarshalCBOR(w io.Writer) error {
 		}
 	}
 
-	// t.ReplicaUpdateProof (storage.ReplicaUpdateProof) (slice)
+	// t.ReplicaUpdateProof (storiface.ReplicaUpdateProof) (slice)
 	if len("ReplicaUpdateProof") > cbg.MaxLength {
 		return xerrors.Errorf("Value in field \"ReplicaUpdateProof\" was too long")
 	}
@@ -1046,7 +1038,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 
 				t.TicketEpoch = abi.ChainEpoch(extraI)
 			}
-			// t.PreCommit1Out (storage.PreCommit1Out) (slice)
+			// t.PreCommit1Out (storiface.PreCommit1Out) (slice)
 		case "PreCommit1Out":
 
 			maj, extra, err = cr.ReadHeader()
@@ -1189,27 +1181,15 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
-			// t.PreCommitTipSet (sealing.TipSetToken) (slice)
+			// t.PreCommitTipSet (types.TipSetKey) (struct)
 		case "PreCommitTipSet":
 
-			maj, extra, err = cr.ReadHeader()
-			if err != nil {
-				return err
-			}
+			{
 
-			if extra > cbg.ByteArrayMaxLen {
-				return fmt.Errorf("t.PreCommitTipSet: byte array too large (%d)", extra)
-			}
-			if maj != cbg.MajByteString {
-				return fmt.Errorf("expected byte array")
-			}
+				if err := t.PreCommitTipSet.UnmarshalCBOR(cr); err != nil {
+					return xerrors.Errorf("unmarshaling t.PreCommitTipSet: %w", err)
+				}
 
-			if extra > 0 {
-				t.PreCommitTipSet = make([]uint8, extra)
-			}
-
-			if _, err := io.ReadFull(cr, t.PreCommitTipSet[:]); err != nil {
-				return err
 			}
 			// t.PreCommit2Fails (uint64) (uint64)
 		case "PreCommit2Fails":
@@ -1406,7 +1386,7 @@ func (t *SectorInfo) UnmarshalCBOR(r io.Reader) (err error) {
 				}
 
 			}
-			// t.ReplicaUpdateProof (storage.ReplicaUpdateProof) (slice)
+			// t.ReplicaUpdateProof (storiface.ReplicaUpdateProof) (slice)
 		case "ReplicaUpdateProof":
 
 			maj, extra, err = cr.ReadHeader()
