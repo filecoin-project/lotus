@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"html/template"
 	"io"
 	"mime"
@@ -147,12 +150,18 @@ var dataexplCmd = &cli.Command{
 				return
 			}
 
-			dcid, err := cid.Parse(d.Proposal.Label)
+			lstr, err := d.Proposal.Label.ToString()
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			d.Proposal.Label = dcid.String() // if it's b64, will break urls
+			dcid, err := cid.Parse(lstr)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			lstr = dcid.String()
+			d.Proposal.Label, _ = market.NewLabelFromString(lstr) // if it's b64, will break urls
 
 			var typ string
 			var sz string
@@ -282,8 +291,9 @@ var dataexplCmd = &cli.Command{
 			w.Header().Set("Content-Type", "text/html")
 			w.WriteHeader(http.StatusOK)
 			data := map[string]interface{}{
-				"deal": d,
-				"id":   did,
+				"deal":  d,
+				"label": lstr,
+				"id":    did,
 
 				"type":  typ,
 				"size":  sz,
@@ -451,6 +461,19 @@ var dataexplCmd = &cli.Command{
 				}
 			case cid.Raw:
 				rd = bytes.NewReader(node.RawData())
+			case cid.DagCBOR:
+				var i interface{}
+				err := cbor.DecodeInto(node.RawData(), &i)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				m, err := json.Marshal(&i)
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				rd = bytes.NewReader(m)
 			default:
 				http.Error(w, "unknown codec "+fmt.Sprint(root.Type()), http.StatusInternalServerError)
 				return
