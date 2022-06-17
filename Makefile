@@ -133,6 +133,18 @@ install-worker:
 install-app:
 	install -C ./$(APP) /usr/local/bin/$(APP)
 
+uninstall: uninstall-daemon uninstall-miner uninstall-worker
+.PHONY: uninstall
+
+uninstall-daemon:
+	rm -f /usr/local/bin/lotus
+
+uninstall-miner:
+	rm -f /usr/local/bin/lotus-miner
+
+uninstall-worker:
+	rm -f /usr/local/bin/lotus-worker
+
 # TOOLS
 
 lotus-seed: $(BUILD_DEPS)
