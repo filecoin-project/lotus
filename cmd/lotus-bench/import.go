@@ -44,6 +44,7 @@ import (
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type TipSetExec struct {
@@ -204,7 +205,7 @@ var importBenchCmd = &cli.Command{
 			defer c.Close() //nolint:errcheck
 		}
 
-		var verifier ffiwrapper.Verifier = ffiwrapper.ProofVerifier
+		var verifier storiface.Verifier = ffiwrapper.ProofVerifier
 		if cctx.IsSet("syscall-cache") {
 			scds, err := badger.NewDatastore(cctx.String("syscall-cache"), &badger.DefaultOptions)
 			if err != nil {

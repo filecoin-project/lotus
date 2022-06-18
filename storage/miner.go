@@ -18,7 +18,6 @@ import (
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -34,7 +33,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var log = logging.Logger("storageminer")
@@ -53,8 +52,8 @@ type Miner struct {
 	sealer  sealer.SectorManager
 	ds      datastore.Batching
 	sc      pipeline.SectorIDCounter
-	verif   ffiwrapper.Verifier
-	prover  ffiwrapper.Prover
+	verif   storiface.Verifier
+	prover  storiface.Prover
 	addrSel *ctladdr.AddressSelector
 
 	maddr address.Address
@@ -82,7 +81,7 @@ type fullNodeFilteredAPI interface {
 	// Call a read only method on actors (no interaction with the chain required)
 	StateCall(context.Context, *types.Message, types.TipSetKey) (*api.InvocResult, error)
 	StateMinerSectors(context.Context, address.Address, *bitfield.BitField, types.TipSetKey) ([]*miner.SectorOnChainInfo, error)
-	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error)
+	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error)
 	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error)
 	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*lminer.SectorLocation, error)
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
@@ -102,6 +101,7 @@ type fullNodeFilteredAPI interface {
 	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
 	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 	StateNetworkVersion(context.Context, types.TipSetKey) (network.Version, error)
+	StateComputeDataCID(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error)
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 
 	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
@@ -135,8 +135,8 @@ func NewMiner(api fullNodeFilteredAPI,
 	ds datastore.Batching,
 	sealer sealer.SectorManager,
 	sc pipeline.SectorIDCounter,
-	verif ffiwrapper.Verifier,
-	prover ffiwrapper.Prover,
+	verif storiface.Verifier,
+	prover storiface.Prover,
 	gsd dtypes.GetSealingConfigFunc,
 	feeCfg config.MinerFeeConfig,
 	journal journal.Journal,
@@ -176,19 +176,12 @@ func (m *Miner) Run(ctx context.Context) error {
 	if err != nil {
 		return xerrors.Errorf("failed to subscribe to events: %w", err)
 	}
-	evtsAdapter := NewEventsAdapter(evts)
-
-	// Create a shim to glue the API required by the sealing component
-	// with the API that Lotus is capable of providing.
-	// The shim translates between "tipset tokens" and tipset keys, and
-	// provides extra methods.
-	adaptedAPI := NewSealingAPIAdapter(m.api)
 
 	// Instantiate a precommit policy.
 	cfg := pipeline.GetSealingConfigFunc(m.getSealConfig)
 	provingBuffer := md.WPoStProvingPeriod * 2
 
-	pcp := pipeline.NewBasicPreCommitPolicy(adaptedAPI, cfg, provingBuffer)
+	pcp := pipeline.NewBasicPreCommitPolicy(m.api, cfg, provingBuffer)
 
 	// address selector.
 	as := func(ctx context.Context, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
@@ -196,7 +189,7 @@ func (m *Miner) Run(ctx context.Context) error {
 	}
 
 	// Instantiate the sealing FSM.
-	m.sealing = pipeline.New(ctx, adaptedAPI, m.feeCfg, evtsAdapter, m.maddr, m.ds, m.sealer, m.sc, m.verif, m.prover, &pcp, cfg, m.handleSealingNotifications, as)
+	m.sealing = pipeline.New(ctx, m.api, m.feeCfg, evts, m.maddr, m.ds, m.sealer, m.sc, m.verif, m.prover, &pcp, cfg, m.handleSealingNotifications, as)
 
 	// Run the sealing FSM.
 	go m.sealing.Run(ctx) //nolint:errcheck // logged intside the function
@@ -246,13 +239,13 @@ func (m *Miner) runPreflightChecks(ctx context.Context) error {
 }
 
 type StorageWpp struct {
-	prover   storage.Prover
-	verifier ffiwrapper.Verifier
+	prover   storiface.ProverPoSt
+	verifier storiface.Verifier
 	miner    abi.ActorID
 	winnRpt  abi.RegisteredPoStProof
 }
 
-func NewWinningPoStProver(api v1api.FullNode, prover storage.Prover, verifier ffiwrapper.Verifier, miner dtypes.MinerID) (*StorageWpp, error) {
+func NewWinningPoStProver(api v1api.FullNode, prover storiface.ProverPoSt, verifier storiface.Verifier, miner dtypes.MinerID) (*StorageWpp, error) {
 	ma, err := address.NewIDAddress(uint64(miner))
 	if err != nil {
 		return nil, err

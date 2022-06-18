@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	"github.com/filecoin-project/go-state-types/abi"
 	provider "github.com/filecoin-project/index-provider"
-	storage2 "github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -102,9 +101,9 @@ func ConfigStorageMiner(c interface{}) Option {
 			If(!cfg.Subsystems.EnableSectorStorage, Error(xerrors.Errorf("sealing can't be disabled on a mining node yet"))),
 
 			// Sector storage: Proofs
-			Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
-			Override(new(ffiwrapper.Prover), ffiwrapper.ProofProver),
-			Override(new(storage2.Prover), From(new(sectorstorage.SectorManager))),
+			Override(new(storiface.Verifier), ffiwrapper.ProofVerifier),
+			Override(new(storiface.Prover), ffiwrapper.ProofProver),
+			Override(new(storiface.ProverPoSt), From(new(sectorstorage.SectorManager))),
 
 			// Sealing (todo should be under EnableSealing, but storagefsm is currently bundled with storage.Miner)
 			Override(new(sealing.SectorIDCounter), modules.SectorIDCounter),

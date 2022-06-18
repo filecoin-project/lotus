@@ -20,6 +20,7 @@ import (
 
 	api2 "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/types"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/mocks"
 )
@@ -49,14 +50,14 @@ func TestStateRecoverDealIDs(t *testing.T) {
 	}
 
 	//stm: @CHAIN_STATE_MARKET_STORAGE_DEAL_001, @CHAIN_STATE_NETWORK_VERSION_001
-	api.EXPECT().StateMarketStorageDealProposal(ctx, dealId, nil).Return(dealProposal, nil)
+	api.EXPECT().StateMarketStorageDeal(ctx, dealId, nil).Return(&api2.MarketDeal{Proposal: dealProposal}, nil)
 
 	pc := idCid("publishCID")
 
 	// expect GetCurrentDealInfo
 	{
-		api.EXPECT().StateSearchMsg(ctx, pc).Return(&pipeline.MsgLookup{
-			Receipt: pipeline.MessageReceipt{
+		api.EXPECT().StateSearchMsg(ctx, gomock.Any(), pc, gomock.Any(), gomock.Any()).Return(&api2.MsgLookup{
+			Receipt: types.MessageReceipt{
 				ExitCode: exitcode.Ok,
 				Return: cborRet(&market0.PublishStorageDealsReturn{
 					IDs: []abi.DealID{dealId},

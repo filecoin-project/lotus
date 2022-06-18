@@ -43,6 +43,7 @@ import (
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var log = logging.Logger("fil-consensus")
@@ -57,7 +58,7 @@ type FilecoinEC struct {
 	// the state manager handles making state queries
 	sm *stmgr.StateManager
 
-	verifier ffiwrapper.Verifier
+	verifier storiface.Verifier
 
 	genesis *types.TipSet
 }
@@ -66,7 +67,7 @@ type FilecoinEC struct {
 // the theoretical max height based on systime are quickly rejected
 const MaxHeightDrift = 5
 
-func NewFilecoinExpectedConsensus(sm *stmgr.StateManager, beacon beacon.Schedule, verifier ffiwrapper.Verifier, genesis chain.Genesis) consensus.Consensus {
+func NewFilecoinExpectedConsensus(sm *stmgr.StateManager, beacon beacon.Schedule, verifier storiface.Verifier, genesis chain.Genesis) consensus.Consensus {
 	if build.InsecurePoStValidation {
 		log.Warn("*********************************************************************************************")
 		log.Warn(" [INSECURE-POST-VALIDATION] Insecure test validation is enabled. If you see this outside of a test, it is a severe bug! ")

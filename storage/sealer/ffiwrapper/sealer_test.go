@@ -26,7 +26,6 @@ import (
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/storage/pipeline/lib/nullreader"
@@ -44,8 +43,8 @@ var sectorSize, _ = sealProofType.SectorSize()
 var sealRand = abi.SealRandomness{1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 1, 2}
 
 type seal struct {
-	ref    storage.SectorRef
-	cids   storage.SectorCids
+	ref    storiface.SectorRef
+	cids   storiface.SectorCids
 	pi     abi.PieceInfo
 	ticket abi.SealRandomness
 }
@@ -57,7 +56,7 @@ func data(sn abi.SectorNumber, dlen abi.UnpaddedPieceSize) io.Reader {
 	)
 }
 
-func (s *seal) precommit(t *testing.T, sb *Sealer, id storage.SectorRef, done func()) {
+func (s *seal) precommit(t *testing.T, sb *Sealer, id storiface.SectorRef, done func()) {
 	defer done()
 	dlen := abi.PaddedPieceSize(sectorSize).Unpadded()
 
@@ -86,7 +85,7 @@ func (s *seal) precommit(t *testing.T, sb *Sealer, id storage.SectorRef, done fu
 
 var seed = abi.InteractiveSealRandomness{0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9, 8, 7, 6, 45, 3, 2, 1, 0, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0, 9}
 
-func (s *seal) commit(t *testing.T, sb *Sealer, done func()) storage.Proof {
+func (s *seal) commit(t *testing.T, sb *Sealer, done func()) storiface.Proof {
 	defer done()
 
 	pc1, err := sb.SealCommit1(context.TODO(), s.ref, s.ticket, seed, []abi.PieceInfo{s.pi}, s.cids)
@@ -122,7 +121,7 @@ func (s *seal) commit(t *testing.T, sb *Sealer, done func()) storage.Proof {
 	return proof
 }
 
-func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si storage.SectorRef, done func()) {
+func (s *seal) unseal(t *testing.T, sb *Sealer, sp *basicfs.Provider, si storiface.SectorRef, done func()) {
 	defer done()
 
 	var b bytes.Buffer
@@ -225,7 +224,7 @@ func post(t *testing.T, sealer *Sealer, skipped []abi.SectorID, seals ...seal) {
 	}
 }
 
-func corrupt(t *testing.T, sealer *Sealer, id storage.SectorRef) {
+func corrupt(t *testing.T, sealer *Sealer, id storiface.SectorRef) {
 	paths, done, err := sealer.sectors.AcquireSector(context.Background(), id, storiface.FTSealed, 0, storiface.PathStorage)
 	require.NoError(t, err)
 	defer done()
@@ -306,7 +305,7 @@ func TestSealAndVerify(t *testing.T) {
 		}
 	})
 
-	si := storage.SectorRef{
+	si := storiface.SectorRef{
 		ID:        abi.SectorID{Miner: miner, Number: 1},
 		ProofType: sealProofType,
 	}
@@ -379,7 +378,7 @@ func TestSealPoStNoCommit(t *testing.T) {
 		}
 	})
 
-	si := storage.SectorRef{
+	si := storiface.SectorRef{
 		ID:        abi.SectorID{Miner: miner, Number: 1},
 		ProofType: sealProofType,
 	}
@@ -441,15 +440,15 @@ func TestSealAndVerify3(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	si1 := storage.SectorRef{
+	si1 := storiface.SectorRef{
 		ID:        abi.SectorID{Miner: miner, Number: 1},
 		ProofType: sealProofType,
 	}
-	si2 := storage.SectorRef{
+	si2 := storiface.SectorRef{
 		ID:        abi.SectorID{Miner: miner, Number: 2},
 		ProofType: sealProofType,
 	}
-	si3 := storage.SectorRef{
+	si3 := storiface.SectorRef{
 		ID:        abi.SectorID{Miner: miner, Number: 3},
 		ProofType: sealProofType,
 	}
@@ -529,7 +528,7 @@ func TestSealAndVerifyAggregate(t *testing.T) {
 
 	toAggregate := make([][]byte, numAgg)
 	for i := 0; i < numAgg; i++ {
-		si := storage.SectorRef{
+		si := storiface.SectorRef{
 			ID:        abi.SectorID{Miner: miner, Number: abi.SectorNumber(i + 1)},
 			ProofType: sealProofType,
 		}
@@ -763,7 +762,7 @@ func TestAddPiece512M(t *testing.T) {
 
 	r := rand.New(rand.NewSource(0x7e5))
 
-	c, err := sb.AddPiece(context.TODO(), storage.SectorRef{
+	c, err := sb.AddPiece(context.TODO(), storiface.SectorRef{
 		ID: abi.SectorID{
 			Miner:  miner,
 			Number: 0,
@@ -806,7 +805,7 @@ func BenchmarkAddPiece512M(b *testing.B) {
 	b.Cleanup(cleanup)
 
 	for i := 0; i < b.N; i++ {
-		c, err := sb.AddPiece(context.TODO(), storage.SectorRef{
+		c, err := sb.AddPiece(context.TODO(), storiface.SectorRef{
 			ID: abi.SectorID{
 				Miner:  miner,
 				Number: abi.SectorNumber(i),
@@ -849,7 +848,7 @@ func TestAddPiece512MPadded(t *testing.T) {
 
 	r := rand.New(rand.NewSource(0x7e5))
 
-	c, err := sb.AddPiece(context.TODO(), storage.SectorRef{
+	c, err := sb.AddPiece(context.TODO(), storiface.SectorRef{
 		ID: abi.SectorID{
 			Miner:  miner,
 			Number: 0,
@@ -917,7 +916,7 @@ func TestMulticoreSDR(t *testing.T) {
 		}
 	})
 
-	si := storage.SectorRef{
+	si := storiface.SectorRef{
 		ID:        abi.SectorID{Miner: miner, Number: 1},
 		ProofType: sealProofType,
 	}

@@ -8,8 +8,10 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-statemachine"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func (m *Sealing) handleFaulty(ctx statemachine.Context, sector SectorInfo) error {
@@ -24,7 +26,7 @@ func (m *Sealing) handleFaultReported(ctx statemachine.Context, sector SectorInf
 		return xerrors.Errorf("entered fault reported state without a FaultReportMsg cid")
 	}
 
-	mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.FaultReportMsg)
+	mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.FaultReportMsg, build.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		return xerrors.Errorf("failed to wait for fault declaration: %w", err)
 	}
@@ -46,7 +48,7 @@ func (m *Sealing) handleTerminating(ctx statemachine.Context, sector SectorInfo)
 	// * Check for correct termination
 	// * wait for expiration (+winning lookback?)
 
-	si, err := m.Api.StateSectorGetInfo(ctx.Context(), m.maddr, sector.SectorNumber, nil)
+	si, err := m.Api.StateSectorGetInfo(ctx.Context(), m.maddr, sector.SectorNumber, types.EmptyTSK)
 	if err != nil {
 		return ctx.Send(SectorTerminateFailed{xerrors.Errorf("getting sector info: %w", err)})
 	}
@@ -54,7 +56,7 @@ func (m *Sealing) handleTerminating(ctx statemachine.Context, sector SectorInfo)
 	if si == nil {
 		// either already terminated or not committed yet
 
-		pci, err := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, nil)
+		pci, err := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, types.EmptyTSK)
 		if err != nil {
 			return ctx.Send(SectorTerminateFailed{xerrors.Errorf("checking precommit presence: %w", err)})
 		}
@@ -82,7 +84,7 @@ func (m *Sealing) handleTerminateWait(ctx statemachine.Context, sector SectorInf
 		return xerrors.New("entered TerminateWait with nil TerminateMessage")
 	}
 
-	mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.TerminateMessage)
+	mw, err := m.Api.StateWaitMsg(ctx.Context(), *sector.TerminateMessage, build.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
 		return ctx.Send(SectorTerminateFailed{xerrors.Errorf("waiting for terminate message to land on chain: %w", err)})
 	}
@@ -96,21 +98,21 @@ func (m *Sealing) handleTerminateWait(ctx statemachine.Context, sector SectorInf
 
 func (m *Sealing) handleTerminateFinality(ctx statemachine.Context, sector SectorInfo) error {
 	for {
-		tok, epoch, err := m.Api.ChainHead(ctx.Context())
+		ts, err := m.Api.ChainHead(ctx.Context())
 		if err != nil {
 			return ctx.Send(SectorTerminateFailed{xerrors.Errorf("getting chain head: %w", err)})
 		}
 
-		nv, err := m.Api.StateNetworkVersion(ctx.Context(), tok)
+		nv, err := m.Api.StateNetworkVersion(ctx.Context(), ts.Key())
 		if err != nil {
 			return ctx.Send(SectorTerminateFailed{xerrors.Errorf("getting network version: %w", err)})
 		}
 
-		if epoch >= sector.TerminatedAt+policy.GetWinningPoStSectorSetLookback(nv) {
+		if ts.Height() >= sector.TerminatedAt+policy.GetWinningPoStSectorSetLookback(nv) {
 			return ctx.Send(SectorRemove{})
 		}
 
-		toWait := time.Duration(epoch-sector.TerminatedAt+policy.GetWinningPoStSectorSetLookback(nv)) * time.Duration(build.BlockDelaySecs) * time.Second
+		toWait := time.Duration(ts.Height()-sector.TerminatedAt+policy.GetWinningPoStSectorSetLookback(nv)) * time.Duration(build.BlockDelaySecs) * time.Second
 		select {
 		case <-time.After(toWait):
 			continue

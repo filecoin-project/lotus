@@ -14,7 +14,9 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-statemachine"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 const minRetryTime = 1 * time.Minute
@@ -36,13 +38,13 @@ func failedCooldown(ctx statemachine.Context, sector SectorInfo) error {
 }
 
 func (m *Sealing) checkPreCommitted(ctx statemachine.Context, sector SectorInfo) (*miner.SectorPreCommitOnChainInfo, bool) {
-	tok, _, err := m.Api.ChainHead(ctx.Context())
+	ts, err := m.Api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handleSealPrecommit1Failed(%d): temp error: %+v", sector.SectorNumber, err)
 		return nil, false
 	}
 
-	info, err := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, tok)
+	info, err := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, ts.Key())
 	if err != nil {
 		log.Errorf("handleSealPrecommit1Failed(%d): temp error: %+v", sector.SectorNumber, err)
 		return nil, false
@@ -72,14 +74,14 @@ func (m *Sealing) handleSealPrecommit2Failed(ctx statemachine.Context, sector Se
 }
 
 func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorInfo) error {
-	tok, height, err := m.Api.ChainHead(ctx.Context())
+	ts, err := m.Api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handlePreCommitFailed: api error, not proceeding: %+v", err)
 		return nil
 	}
 
 	if sector.PreCommitMessage != nil {
-		mw, err := m.Api.StateSearchMsg(ctx.Context(), *sector.PreCommitMessage)
+		mw, err := m.Api.StateSearchMsg(ctx.Context(), ts.Key(), *sector.PreCommitMessage, api.LookbackNoLimit, true)
 		if err != nil {
 			// API error
 			if err := failedCooldown(ctx, sector); err != nil {
@@ -106,7 +108,7 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 		}
 	}
 
-	if err := checkPrecommit(ctx.Context(), m.Address(), sector, tok, height, m.Api); err != nil {
+	if err := checkPrecommit(ctx.Context(), m.Address(), sector, ts.Key(), ts.Height(), m.Api); err != nil {
 		switch err.(type) {
 		case *ErrApi:
 			log.Errorf("handlePreCommitFailed: api error, not proceeding: %+v", err)
@@ -139,7 +141,7 @@ func (m *Sealing) handlePreCommitFailed(ctx statemachine.Context, sector SectorI
 	if pci, is := m.checkPreCommitted(ctx, sector); is && pci != nil {
 		if sector.PreCommitMessage == nil {
 			log.Warnf("sector %d is precommitted on chain, but we don't have precommit message", sector.SectorNumber)
-			return ctx.Send(SectorPreCommitLanded{TipSet: tok})
+			return ctx.Send(SectorPreCommitLanded{TipSet: ts.Key()})
 		}
 
 		if pci.Info.SealedCID != *sector.CommR {
@@ -188,7 +190,7 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 	}
 
 	if sector.ReplicaUpdateMessage != nil {
-		mw, err := m.Api.StateSearchMsg(ctx.Context(), *sector.ReplicaUpdateMessage)
+		mw, err := m.Api.StateSearchMsg(ctx.Context(), types.EmptyTSK, *sector.ReplicaUpdateMessage, api.LookbackNoLimit, true)
 		if err != nil {
 			// API error
 			return ctx.Send(SectorRetrySubmitReplicaUpdateWait{})
@@ -208,13 +210,13 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 		}
 	}
 
-	tok, _, err := m.Api.ChainHead(ctx.Context())
+	ts, err := m.Api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handleSubmitReplicaUpdateFailed: api error, not proceeding: %+v", err)
 		return nil
 	}
 
-	if err := checkReplicaUpdate(ctx.Context(), m.maddr, sector, tok, m.Api); err != nil {
+	if err := checkReplicaUpdate(ctx.Context(), m.maddr, sector, ts.Key(), m.Api); err != nil {
 		switch err.(type) {
 		case *ErrApi:
 			log.Errorf("handleSubmitReplicaUpdateFailed: api error, not proceeding: %+v", err)
@@ -237,7 +239,7 @@ func (m *Sealing) handleSubmitReplicaUpdateFailed(ctx statemachine.Context, sect
 	}
 
 	// Abort upgrade for sectors that went faulty since being marked for upgrade
-	active, err := m.sectorActive(ctx.Context(), tok, sector.SectorNumber)
+	active, err := m.sectorActive(ctx.Context(), ts.Key(), sector.SectorNumber)
 	if err != nil {
 		log.Errorf("sector active check: api error, not proceeding: %+v", err)
 		return nil
@@ -261,14 +263,14 @@ func (m *Sealing) handleReleaseSectorKeyFailed(ctx statemachine.Context, sector 
 }
 
 func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo) error {
-	tok, _, err := m.Api.ChainHead(ctx.Context())
+	ts, err := m.Api.ChainHead(ctx.Context())
 	if err != nil {
 		log.Errorf("handleCommitting: api error, not proceeding: %+v", err)
 		return nil
 	}
 
 	if sector.CommitMessage != nil {
-		mw, err := m.Api.StateSearchMsg(ctx.Context(), *sector.CommitMessage)
+		mw, err := m.Api.StateSearchMsg(ctx.Context(), ts.Key(), *sector.CommitMessage, api.LookbackNoLimit, true)
 		if err != nil {
 			// API error
 			if err := failedCooldown(ctx, sector); err != nil {
@@ -295,7 +297,7 @@ func (m *Sealing) handleCommitFailed(ctx statemachine.Context, sector SectorInfo
 		}
 	}
 
-	if err := m.checkCommit(ctx.Context(), sector, sector.Proof, tok); err != nil {
+	if err := m.checkCommit(ctx.Context(), sector, sector.Proof, ts.Key()); err != nil {
 		switch err.(type) {
 		case *ErrApi:
 			log.Errorf("handleCommitFailed: api error, not proceeding: %+v", err)
@@ -365,7 +367,7 @@ func (m *Sealing) handleTerminateFailed(ctx statemachine.Context, sector SectorI
 	// ignoring error as it's most likely an API error - `pci` will be nil, and we'll go back to
 	// the Terminating state after cooldown. If the API is still failing, well get back to here
 	// with the error in SectorInfo log.
-	pci, _ := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, nil)
+	pci, _ := m.Api.StateSectorPreCommitInfo(ctx.Context(), m.maddr, sector.SectorNumber, types.EmptyTSK)
 	if pci != nil {
 		return nil // pause the fsm, needs manual user action
 	}
@@ -379,7 +381,7 @@ func (m *Sealing) handleTerminateFailed(ctx statemachine.Context, sector SectorI
 
 func (m *Sealing) handleDealsExpired(ctx statemachine.Context, sector SectorInfo) error {
 	// First make vary sure the sector isn't committed
-	si, err := m.Api.StateSectorGetInfo(ctx.Context(), m.maddr, sector.SectorNumber, nil)
+	si, err := m.Api.StateSectorGetInfo(ctx.Context(), m.maddr, sector.SectorNumber, types.EmptyTSK)
 	if err != nil {
 		return xerrors.Errorf("getting sector info: %w", err)
 	}
@@ -435,7 +437,7 @@ func (m *Sealing) handleRecoverDealIDsOrFailWith(ctx statemachine.Context, secto
 	if err != nil {
 		return err
 	}
-	tok, _, err := m.Api.ChainHead(ctx.Context())
+	ts, err := m.Api.ChainHead(ctx.Context())
 	if err != nil {
 		return err
 	}
@@ -457,7 +459,7 @@ func (m *Sealing) handleRecoverDealIDsOrFailWith(ctx statemachine.Context, secto
 			mdp := *p.DealInfo.DealProposal
 			dp = &mdp
 		}
-		res, err := m.DealInfo.GetCurrentDealInfo(ctx.Context(), tok, dp, *p.DealInfo.PublishCid)
+		res, err := m.DealInfo.GetCurrentDealInfo(ctx.Context(), ts.Key(), dp, *p.DealInfo.PublishCid)
 		if err != nil {
 			failed[i] = xerrors.Errorf("getting current deal info for piece %d: %w", i, err)
 			continue
@@ -508,7 +510,7 @@ func (m *Sealing) handleSnapDealsRecoverDealIDs(ctx statemachine.Context, sector
 }
 
 func recoveryPiecesToFix(ctx context.Context, api SealingAPI, sector SectorInfo, maddr address.Address) ([]int, int, error) {
-	tok, height, err := api.ChainHead(ctx)
+	ts, err := api.ChainHead(ctx)
 	if err != nil {
 		return nil, 0, xerrors.Errorf("getting chain head: %w", err)
 	}
@@ -528,35 +530,35 @@ func recoveryPiecesToFix(ctx context.Context, api SealingAPI, sector SectorInfo,
 			continue
 		}
 
-		proposal, err := api.StateMarketStorageDealProposal(ctx, p.DealInfo.DealID, tok)
+		deal, err := api.StateMarketStorageDeal(ctx, p.DealInfo.DealID, ts.Key())
 		if err != nil {
 			log.Warnf("getting deal %d for piece %d: %+v", p.DealInfo.DealID, i, err)
 			toFix = append(toFix, i)
 			continue
 		}
 
-		if proposal.Provider != maddr {
-			log.Warnf("piece %d (of %d) of sector %d refers deal %d with wrong provider: %s != %s", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, proposal.Provider, maddr)
+		if deal.Proposal.Provider != maddr {
+			log.Warnf("piece %d (of %d) of sector %d refers deal %d with wrong provider: %s != %s", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, deal.Proposal.Provider, maddr)
 			toFix = append(toFix, i)
 			continue
 		}
 
-		if proposal.PieceCID != p.Piece.PieceCID {
-			log.Warnf("piece %d (of %d) of sector %d refers deal %d with wrong PieceCID: %s != %s", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, p.Piece.PieceCID, proposal.PieceCID)
+		if deal.Proposal.PieceCID != p.Piece.PieceCID {
+			log.Warnf("piece %d (of %d) of sector %d refers deal %d with wrong PieceCID: %s != %s", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, p.Piece.PieceCID, deal.Proposal.PieceCID)
 			toFix = append(toFix, i)
 			continue
 		}
 
-		if p.Piece.Size != proposal.PieceSize {
-			log.Warnf("piece %d (of %d) of sector %d refers deal %d with different size: %d != %d", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, p.Piece.Size, proposal.PieceSize)
+		if p.Piece.Size != deal.Proposal.PieceSize {
+			log.Warnf("piece %d (of %d) of sector %d refers deal %d with different size: %d != %d", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, p.Piece.Size, deal.Proposal.PieceSize)
 			toFix = append(toFix, i)
 			continue
 		}
 
-		if height >= proposal.StartEpoch {
+		if ts.Height() >= deal.Proposal.StartEpoch {
 			// TODO: check if we are in an early enough state (before precommit), try to remove the offending pieces
 			//  (tricky as we have to 'defragment' the sector while doing that, and update piece references for retrieval)
-			return nil, 0, xerrors.Errorf("can't fix sector deals: piece %d (of %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, proposal.StartEpoch, height)
+			return nil, 0, xerrors.Errorf("can't fix sector deals: piece %d (of %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(sector.Pieces), sector.SectorNumber, p.DealInfo.DealID, deal.Proposal.StartEpoch, ts.Height())
 		}
 	}
 
