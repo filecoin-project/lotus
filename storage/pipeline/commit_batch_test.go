@@ -10,12 +10,14 @@ import (
 	"time"
 
 	"github.com/golang/mock/gomock"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
@@ -25,7 +27,7 @@ import (
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/mocks"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 func TestCommitBatcher(t *testing.T) {
@@ -94,7 +96,7 @@ func TestCommitBatcher(t *testing.T) {
 		}
 	}
 
-	addSector := func(sn abi.SectorNumber) action {
+	addSector := func(sn abi.SectorNumber, aboveBalancer bool) action {
 		return func(t *testing.T, s *mocks.MockCommitBatcherApi, pcb *pipeline.CommitBatcher) promise {
 			var pcres sealiface.CommitBatchRes
 			var pcerr error
@@ -105,7 +107,12 @@ func TestCommitBatcher(t *testing.T) {
 				SectorNumber: sn,
 			}
 
-			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
+			basefee := types.PicoFil
+			if aboveBalancer {
+				basefee = types.NanoFil
+			}
+
+			s.EXPECT().ChainHead(gomock.Any()).Return(makeBFTs(t, basefee, 1), nil)
 			s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version13, nil)
 			s.EXPECT().StateSectorPreCommitInfo(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(&minertypes.SectorPreCommitOnChainInfo{
 				PreCommitDeposit: big.Zero(),
@@ -129,10 +136,10 @@ func TestCommitBatcher(t *testing.T) {
 		}
 	}
 
-	addSectors := func(sectors []abi.SectorNumber) action {
+	addSectors := func(sectors []abi.SectorNumber, aboveBalancer bool) action {
 		as := make([]action, len(sectors))
 		for i, sector := range sectors {
-			as[i] = addSector(sector)
+			as[i] = addSector(sector, aboveBalancer)
 		}
 		return actions(as...)
 	}
@@ -166,17 +173,17 @@ func TestCommitBatcher(t *testing.T) {
 				basefee = types.NanoFil
 			}
 
-			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
-			if batch {
+			s.EXPECT().ChainHead(gomock.Any()).Return(makeBFTs(t, basefee, 1), nil)
+			/*if batch {
 				s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(basefee, nil)
-			}
+			}*/
 
 			if !aboveBalancer {
 				batch = false
 				ti = len(expect)
 			}
 
-			s.EXPECT().ChainHead(gomock.Any()).Return(nil, abi.ChainEpoch(1), nil)
+			s.EXPECT().ChainHead(gomock.Any()).Return(makeBFTs(t, basefee, 1), nil)
 
 			pciC := len(expect)
 			if failOnePCI {
@@ -193,14 +200,14 @@ func TestCommitBatcher(t *testing.T) {
 
 			if batch {
 				s.EXPECT().StateNetworkVersion(gomock.Any(), gomock.Any()).Return(network.Version13, nil)
-				s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(basefee, nil)
+				//s.EXPECT().ChainBaseFee(gomock.Any(), gomock.Any()).Return(basefee, nil)
 			}
 
-			s.EXPECT().SendMsg(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), funMatcher(func(i interface{}) bool {
-				b := i.([]byte)
+			s.EXPECT().MpoolPushMessage(gomock.Any(), funMatcher(func(i interface{}) bool {
+				b := i.(*types.Message)
 				if batch {
 					var params miner5.ProveCommitAggregateParams
-					require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b)))
+					require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b.Params)))
 					for _, number := range expect {
 						set, err := params.SectorNumbers.IsSet(uint64(number))
 						require.NoError(t, err)
@@ -208,10 +215,10 @@ func TestCommitBatcher(t *testing.T) {
 					}
 				} else {
 					var params miner5.ProveCommitSectorParams
-					require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b)))
+					require.NoError(t, params.UnmarshalCBOR(bytes.NewReader(b.Params)))
 				}
 				return true
-			})).Times(ti)
+			}), gomock.Any()).Return(dummySmsg, nil).Times(ti)
 			return nil
 		}
 	}
@@ -276,21 +283,21 @@ func TestCommitBatcher(t *testing.T) {
 	}{
 		"addSingle-aboveBalancer": {
 			actions: []action{
-				addSector(0),
+				addSector(0, true),
 				waitPending(1),
 				flush([]abi.SectorNumber{0}, true, false),
 			},
 		},
 		"addTwo-aboveBalancer": {
 			actions: []action{
-				addSectors(getSectors(2)),
+				addSectors(getSectors(2), true),
 				waitPending(2),
 				flush(getSectors(2), true, false),
 			},
 		},
 		"addAte-aboveBalancer": {
 			actions: []action{
-				addSectors(getSectors(8)),
+				addSectors(getSectors(8), true),
 				waitPending(8),
 				flush(getSectors(8), true, false),
 			},
@@ -298,26 +305,26 @@ func TestCommitBatcher(t *testing.T) {
 		"addMax-aboveBalancer": {
 			actions: []action{
 				expectSend(getSectors(maxBatch), true, false),
-				addSectors(getSectors(maxBatch)),
+				addSectors(getSectors(maxBatch), true),
 			},
 		},
 		"addSingle-belowBalancer": {
 			actions: []action{
-				addSector(0),
+				addSector(0, false),
 				waitPending(1),
 				flush([]abi.SectorNumber{0}, false, false),
 			},
 		},
 		"addTwo-belowBalancer": {
 			actions: []action{
-				addSectors(getSectors(2)),
+				addSectors(getSectors(2), false),
 				waitPending(2),
 				flush(getSectors(2), false, false),
 			},
 		},
 		"addAte-belowBalancer": {
 			actions: []action{
-				addSectors(getSectors(8)),
+				addSectors(getSectors(8), false),
 				waitPending(8),
 				flush(getSectors(8), false, false),
 			},
@@ -325,20 +332,20 @@ func TestCommitBatcher(t *testing.T) {
 		"addMax-belowBalancer": {
 			actions: []action{
 				expectSend(getSectors(maxBatch), false, false),
-				addSectors(getSectors(maxBatch)),
+				addSectors(getSectors(maxBatch), false),
 			},
 		},
 
 		"addAte-aboveBalancer-failOne": {
 			actions: []action{
-				addSectors(getSectors(8)),
+				addSectors(getSectors(8), true),
 				waitPending(8),
 				flush(getSectors(8), true, true),
 			},
 		},
 		"addAte-belowBalancer-failOne": {
 			actions: []action{
-				addSectors(getSectors(8)),
+				addSectors(getSectors(8), false),
 				waitPending(8),
 				flush(getSectors(8), false, true),
 			},
@@ -384,4 +391,50 @@ func (f fakeProver) AggregateSealProofs(aggregateInfo prooftypes.AggregateSealVe
 	return []byte("Trust me, I'm a proof"), nil
 }
 
-var _ ffiwrapper.Prover = &fakeProver{}
+var _ storiface.Prover = &fakeProver{}
+
+var dummyAddr = func() address.Address {
+	a, _ := address.NewFromString("t00")
+	return a
+}()
+
+func makeBFTs(t *testing.T, basefee abi.TokenAmount, h abi.ChainEpoch) *types.TipSet {
+	dummyCid, _ := cid.Parse("bafkqaaa")
+
+	var ts, err = types.NewTipSet([]*types.BlockHeader{
+		{
+			Height: h,
+			Miner:  dummyAddr,
+
+			Parents: []cid.Cid{},
+
+			Ticket: &types.Ticket{VRFProof: []byte{byte(h % 2)}},
+
+			ParentStateRoot:       dummyCid,
+			Messages:              dummyCid,
+			ParentMessageReceipts: dummyCid,
+
+			BlockSig:     &crypto.Signature{Type: crypto.SigTypeBLS},
+			BLSAggregate: &crypto.Signature{Type: crypto.SigTypeBLS},
+
+			ParentBaseFee: basefee,
+		},
+	})
+	if t != nil {
+		require.NoError(t, err)
+	}
+
+	return ts
+}
+
+func makeTs(t *testing.T, h abi.ChainEpoch) *types.TipSet {
+	return makeBFTs(t, big.NewInt(0), h)
+}
+
+var dummySmsg = &types.SignedMessage{
+	Message: types.Message{
+		From: dummyAddr,
+		To:   dummyAddr,
+	},
+	Signature: crypto.Signature{Type: crypto.SigTypeBLS},
+}

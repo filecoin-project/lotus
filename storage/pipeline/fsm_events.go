@@ -9,7 +9,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
-	"github.com/filecoin-project/specs-storage/storage"
+
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type mutator interface {
@@ -133,7 +135,7 @@ type SectorOldTicket struct{}
 func (evt SectorOldTicket) apply(*SectorInfo) {}
 
 type SectorPreCommit1 struct {
-	PreCommit1Out storage.PreCommit1Out
+	PreCommit1Out storiface.PreCommit1Out
 }
 
 func (evt SectorPreCommit1) apply(state *SectorInfo) {
@@ -166,7 +168,7 @@ func (evt SectorPreCommitBatchSent) apply(state *SectorInfo) {
 }
 
 type SectorPreCommitLanded struct {
-	TipSet TipSetToken
+	TipSet types.TipSetKey
 }
 
 func (evt SectorPreCommitLanded) apply(si *SectorInfo) {
@@ -314,7 +316,7 @@ func (evt SectorStartCCUpdate) apply(state *SectorInfo) {
 }
 
 type SectorReplicaUpdate struct {
-	Out storage.ReplicaUpdateOut
+	Out storiface.ReplicaUpdateOut
 }
 
 func (evt SectorReplicaUpdate) apply(state *SectorInfo) {
@@ -323,7 +325,7 @@ func (evt SectorReplicaUpdate) apply(state *SectorInfo) {
 }
 
 type SectorProveReplicaUpdate struct {
-	Proof storage.ReplicaUpdateProof
+	Proof storiface.ReplicaUpdateProof
 }
 
 func (evt SectorProveReplicaUpdate) apply(state *SectorInfo) {

@@ -19,7 +19,6 @@ import (
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	"github.com/filecoin-project/go-state-types/abi"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -72,11 +71,11 @@ type sectorState struct {
 	lk sync.Mutex
 }
 
-func (mgr *SectorMgr) NewSector(ctx context.Context, sector storage.SectorRef) error {
+func (mgr *SectorMgr) NewSector(ctx context.Context, sector storiface.SectorRef) error {
 	return nil
 }
 
-func (mgr *SectorMgr) SectorsUnsealPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error {
+func (mgr *SectorMgr) SectorsUnsealPiece(ctx context.Context, sector storiface.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error {
 	panic("SectorMgr: unsealing piece: implement me")
 }
 
@@ -84,7 +83,7 @@ func (mgr *SectorMgr) DataCid(ctx context.Context, size abi.UnpaddedPieceSize, r
 	panic("todo")
 }
 
-func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorID storage.SectorRef, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
+func (mgr *SectorMgr) AddPiece(ctx context.Context, sectorID storiface.SectorRef, existingPieces []abi.UnpaddedPieceSize, size abi.UnpaddedPieceSize, r io.Reader) (abi.PieceInfo, error) {
 	log.Warn("Add piece: ", sectorID, size, sectorID.ProofType)
 
 	var b bytes.Buffer
@@ -128,11 +127,11 @@ func (mgr *SectorMgr) AcquireSectorNumber() (abi.SectorNumber, error) {
 	return id, nil
 }
 
-func (mgr *SectorMgr) IsUnsealed(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
+func (mgr *SectorMgr) IsUnsealed(ctx context.Context, sector storiface.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize) (bool, error) {
 	return false, nil
 }
 
-func (mgr *SectorMgr) ForceState(sid storage.SectorRef, st int) error {
+func (mgr *SectorMgr) ForceState(sid storiface.SectorRef, st int) error {
 	mgr.lk.Lock()
 	ss, ok := mgr.sectors[sid.ID]
 	mgr.lk.Unlock()
@@ -145,7 +144,7 @@ func (mgr *SectorMgr) ForceState(sid storage.SectorRef, st int) error {
 	return nil
 }
 
-func (mgr *SectorMgr) SealPreCommit1(ctx context.Context, sid storage.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storage.PreCommit1Out, err error) {
+func (mgr *SectorMgr) SealPreCommit1(ctx context.Context, sid storiface.SectorRef, ticket abi.SealRandomness, pieces []abi.PieceInfo) (out storiface.PreCommit1Out, err error) {
 	mgr.lk.Lock()
 	ss, ok := mgr.sectors[sid.ID]
 	mgr.lk.Unlock()
@@ -205,7 +204,7 @@ func (mgr *SectorMgr) SealPreCommit1(ctx context.Context, sid storage.SectorRef,
 	return cc, nil
 }
 
-func (mgr *SectorMgr) SealPreCommit2(ctx context.Context, sid storage.SectorRef, phase1Out storage.PreCommit1Out) (cids storage.SectorCids, err error) {
+func (mgr *SectorMgr) SealPreCommit2(ctx context.Context, sid storiface.SectorRef, phase1Out storiface.PreCommit1Out) (cids storiface.SectorCids, err error) {
 	db := []byte(string(phase1Out))
 	db[0] ^= 'd'
 
@@ -218,13 +217,13 @@ func (mgr *SectorMgr) SealPreCommit2(ctx context.Context, sid storage.SectorRef,
 
 	commR, _ := commcid.ReplicaCommitmentV1ToCID(commr)
 
-	return storage.SectorCids{
+	return storiface.SectorCids{
 		Unsealed: d,
 		Sealed:   commR,
 	}, nil
 }
 
-func (mgr *SectorMgr) SealCommit1(ctx context.Context, sid storage.SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storage.SectorCids) (output storage.Commit1Out, err error) {
+func (mgr *SectorMgr) SealCommit1(ctx context.Context, sid storiface.SectorRef, ticket abi.SealRandomness, seed abi.InteractiveSealRandomness, pieces []abi.PieceInfo, cids storiface.SectorCids) (output storiface.Commit1Out, err error) {
 	mgr.lk.Lock()
 	ss, ok := mgr.sectors[sid.ID]
 	mgr.lk.Unlock()
@@ -252,7 +251,7 @@ func (mgr *SectorMgr) SealCommit1(ctx context.Context, sid storage.SectorRef, ti
 	return out[:], nil
 }
 
-func (mgr *SectorMgr) SealCommit2(ctx context.Context, sid storage.SectorRef, phase1Out storage.Commit1Out) (proof storage.Proof, err error) {
+func (mgr *SectorMgr) SealCommit2(ctx context.Context, sid storiface.SectorRef, phase1Out storiface.Commit1Out) (proof storiface.Proof, err error) {
 	plen, err := sid.ProofType.ProofSize()
 	if err != nil {
 		return nil, err
@@ -266,31 +265,31 @@ func (mgr *SectorMgr) SealCommit2(ctx context.Context, sid storage.SectorRef, ph
 	return out[:], nil
 }
 
-func (mgr *SectorMgr) ReplicaUpdate(ctx context.Context, sid storage.SectorRef, pieces []abi.PieceInfo) (storage.ReplicaUpdateOut, error) {
-	out := storage.ReplicaUpdateOut{}
+func (mgr *SectorMgr) ReplicaUpdate(ctx context.Context, sid storiface.SectorRef, pieces []abi.PieceInfo) (storiface.ReplicaUpdateOut, error) {
+	out := storiface.ReplicaUpdateOut{}
 	return out, nil
 }
 
-func (mgr *SectorMgr) ProveReplicaUpdate1(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid) (storage.ReplicaVanillaProofs, error) {
+func (mgr *SectorMgr) ProveReplicaUpdate1(ctx context.Context, sector storiface.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid) (storiface.ReplicaVanillaProofs, error) {
 	out := make([][]byte, 0)
 	return out, nil
 }
 
-func (mgr *SectorMgr) ProveReplicaUpdate2(ctx context.Context, sector storage.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid, vanillaProofs storage.ReplicaVanillaProofs) (storage.ReplicaUpdateProof, error) {
+func (mgr *SectorMgr) ProveReplicaUpdate2(ctx context.Context, sector storiface.SectorRef, sectorKey, newSealed, newUnsealed cid.Cid, vanillaProofs storiface.ReplicaVanillaProofs) (storiface.ReplicaUpdateProof, error) {
 	return make([]byte, 0), nil
 }
 
-func (mgr *SectorMgr) GenerateSectorKeyFromData(ctx context.Context, sector storage.SectorRef, commD cid.Cid) error {
+func (mgr *SectorMgr) GenerateSectorKeyFromData(ctx context.Context, sector storiface.SectorRef, commD cid.Cid) error {
 	return nil
 }
 
-func (mgr *SectorMgr) ReleaseSealed(ctx context.Context, sid storage.SectorRef) error {
+func (mgr *SectorMgr) ReleaseSealed(ctx context.Context, sid storiface.SectorRef) error {
 	return nil
 }
 
 // Test Instrumentation Methods
 
-func (mgr *SectorMgr) MarkFailed(sid storage.SectorRef, failed bool) error {
+func (mgr *SectorMgr) MarkFailed(sid storiface.SectorRef, failed bool) error {
 	mgr.lk.Lock()
 	defer mgr.lk.Unlock()
 	ss, ok := mgr.sectors[sid.ID]
@@ -310,7 +309,7 @@ func (mgr *SectorMgr) Fail() {
 	return
 }
 
-func (mgr *SectorMgr) MarkCorrupted(sid storage.SectorRef, corrupted bool) error {
+func (mgr *SectorMgr) MarkCorrupted(sid storiface.SectorRef, corrupted bool) error {
 	mgr.lk.Lock()
 	defer mgr.lk.Unlock()
 	ss, ok := mgr.sectors[sid.ID]
@@ -437,7 +436,7 @@ func (mgr *SectorMgr) GenerateWindowPoStWithVanilla(ctx context.Context, proofTy
 	panic("implement me")
 }
 
-func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (mount.Reader, bool, error) {
+func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storiface.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, ticket abi.SealRandomness, unsealed cid.Cid) (mount.Reader, bool, error) {
 	off := storiface.UnpaddedByteIndex(0)
 	var piece cid.Cid
 	for _, c := range mgr.sectors[sector.ID].pieces {
@@ -463,21 +462,21 @@ func (mgr *SectorMgr) ReadPiece(ctx context.Context, sector storage.SectorRef, o
 	}, false, nil
 }
 
-func (mgr *SectorMgr) StageFakeData(mid abi.ActorID, spt abi.RegisteredSealProof) (storage.SectorRef, []abi.PieceInfo, error) {
+func (mgr *SectorMgr) StageFakeData(mid abi.ActorID, spt abi.RegisteredSealProof) (storiface.SectorRef, []abi.PieceInfo, error) {
 	psize, err := spt.SectorSize()
 	if err != nil {
-		return storage.SectorRef{}, nil, err
+		return storiface.SectorRef{}, nil, err
 	}
 	usize := abi.PaddedPieceSize(psize).Unpadded()
 	sid, err := mgr.AcquireSectorNumber()
 	if err != nil {
-		return storage.SectorRef{}, nil, err
+		return storiface.SectorRef{}, nil, err
 	}
 
 	buf := make([]byte, usize)
 	_, _ = rand.Read(buf) // nolint:gosec
 
-	id := storage.SectorRef{
+	id := storiface.SectorRef{
 		ID: abi.SectorID{
 			Miner:  mid,
 			Number: sid,
@@ -487,33 +486,33 @@ func (mgr *SectorMgr) StageFakeData(mid abi.ActorID, spt abi.RegisteredSealProof
 
 	pi, err := mgr.AddPiece(context.TODO(), id, nil, usize, bytes.NewReader(buf))
 	if err != nil {
-		return storage.SectorRef{}, nil, err
+		return storiface.SectorRef{}, nil, err
 	}
 
 	return id, []abi.PieceInfo{pi}, nil
 }
 
-func (mgr *SectorMgr) FinalizeSector(context.Context, storage.SectorRef, []storage.Range) error {
+func (mgr *SectorMgr) FinalizeSector(context.Context, storiface.SectorRef, []storiface.Range) error {
 	return nil
 }
 
-func (mgr *SectorMgr) FinalizeReplicaUpdate(context.Context, storage.SectorRef, []storage.Range) error {
+func (mgr *SectorMgr) FinalizeReplicaUpdate(context.Context, storiface.SectorRef, []storiface.Range) error {
 	return nil
 }
 
-func (mgr *SectorMgr) ReleaseUnsealed(ctx context.Context, sector storage.SectorRef, safeToFree []storage.Range) error {
+func (mgr *SectorMgr) ReleaseUnsealed(ctx context.Context, sector storiface.SectorRef, safeToFree []storiface.Range) error {
 	return nil
 }
 
-func (mgr *SectorMgr) ReleaseReplicaUpgrade(ctx context.Context, sector storage.SectorRef) error {
+func (mgr *SectorMgr) ReleaseReplicaUpgrade(ctx context.Context, sector storiface.SectorRef) error {
 	return nil
 }
 
-func (mgr *SectorMgr) ReleaseSectorKey(ctx context.Context, sector storage.SectorRef) error {
+func (mgr *SectorMgr) ReleaseSectorKey(ctx context.Context, sector storiface.SectorRef) error {
 	return nil
 }
 
-func (mgr *SectorMgr) Remove(ctx context.Context, sector storage.SectorRef) error {
+func (mgr *SectorMgr) Remove(ctx context.Context, sector storiface.SectorRef) error {
 	mgr.lk.Lock()
 	defer mgr.lk.Unlock()
 
@@ -525,7 +524,7 @@ func (mgr *SectorMgr) Remove(ctx context.Context, sector storage.SectorRef) erro
 	return nil
 }
 
-func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, ids []storage.SectorRef, rg storiface.RGetter) (map[abi.SectorID]string, error) {
+func (mgr *SectorMgr) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, ids []storiface.SectorRef, rg storiface.RGetter) (map[abi.SectorID]string, error) {
 	bad := map[abi.SectorID]string{}
 
 	for _, sid := range ids {
@@ -549,19 +548,19 @@ func (mgr *SectorMgr) ReturnAddPiece(ctx context.Context, callID storiface.CallI
 	panic("not supported")
 }
 
-func (mgr *SectorMgr) ReturnSealPreCommit1(ctx context.Context, callID storiface.CallID, p1o storage.PreCommit1Out, err *storiface.CallError) error {
+func (mgr *SectorMgr) ReturnSealPreCommit1(ctx context.Context, callID storiface.CallID, p1o storiface.PreCommit1Out, err *storiface.CallError) error {
 	panic("not supported")
 }
 
-func (mgr *SectorMgr) ReturnSealPreCommit2(ctx context.Context, callID storiface.CallID, sealed storage.SectorCids, err *storiface.CallError) error {
+func (mgr *SectorMgr) ReturnSealPreCommit2(ctx context.Context, callID storiface.CallID, sealed storiface.SectorCids, err *storiface.CallError) error {
 	panic("not supported")
 }
 
-func (mgr *SectorMgr) ReturnSealCommit1(ctx context.Context, callID storiface.CallID, out storage.Commit1Out, err *storiface.CallError) error {
+func (mgr *SectorMgr) ReturnSealCommit1(ctx context.Context, callID storiface.CallID, out storiface.Commit1Out, err *storiface.CallError) error {
 	panic("not supported")
 }
 
-func (mgr *SectorMgr) ReturnSealCommit2(ctx context.Context, callID storiface.CallID, proof storage.Proof, err *storiface.CallError) error {
+func (mgr *SectorMgr) ReturnSealCommit2(ctx context.Context, callID storiface.CallID, proof storiface.Proof, err *storiface.CallError) error {
 	panic("not supported")
 }
 
@@ -589,15 +588,15 @@ func (mgr *SectorMgr) ReturnFetch(ctx context.Context, callID storiface.CallID, 
 	panic("not supported")
 }
 
-func (mgr *SectorMgr) ReturnReplicaUpdate(ctx context.Context, callID storiface.CallID, out storage.ReplicaUpdateOut, err *storiface.CallError) error {
+func (mgr *SectorMgr) ReturnReplicaUpdate(ctx context.Context, callID storiface.CallID, out storiface.ReplicaUpdateOut, err *storiface.CallError) error {
 	panic("not supported")
 }
 
-func (mgr *SectorMgr) ReturnProveReplicaUpdate1(ctx context.Context, callID storiface.CallID, out storage.ReplicaVanillaProofs, err *storiface.CallError) error {
+func (mgr *SectorMgr) ReturnProveReplicaUpdate1(ctx context.Context, callID storiface.CallID, out storiface.ReplicaVanillaProofs, err *storiface.CallError) error {
 	panic("not supported")
 }
 
-func (mgr *SectorMgr) ReturnProveReplicaUpdate2(ctx context.Context, callID storiface.CallID, out storage.ReplicaUpdateProof, err *storiface.CallError) error {
+func (mgr *SectorMgr) ReturnProveReplicaUpdate2(ctx context.Context, callID storiface.CallID, out storiface.ReplicaUpdateProof, err *storiface.CallError) error {
 	panic("not supported")
 }
 
@@ -735,6 +734,6 @@ var MockVerifier = mockVerifProver{
 
 var MockProver = MockVerifier
 
-var _ storage.Sealer = &SectorMgr{}
-var _ ffiwrapper.Verifier = MockVerifier
-var _ ffiwrapper.Prover = MockProver
+var _ storiface.Sealer = &SectorMgr{}
+var _ storiface.Verifier = MockVerifier
+var _ storiface.Prover = MockProver

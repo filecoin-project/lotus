@@ -557,6 +557,10 @@ func interactiveDeal(cctx *cli.Context) error {
 		a = def
 	}
 
+	if _, err := api.StateGetActor(ctx, a, types.EmptyTSK); err != nil {
+		return xerrors.Errorf("address not initialized on chain: %w", err)
+	}
+
 	fromBal, err := api.WalletBalance(ctx, a)
 	if err != nil {
 		return xerrors.Errorf("checking from address balance: %w", err)

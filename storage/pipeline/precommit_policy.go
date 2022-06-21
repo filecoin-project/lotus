@@ -11,6 +11,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type PreCommitPolicy interface {
@@ -18,8 +19,8 @@ type PreCommitPolicy interface {
 }
 
 type Chain interface {
-	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
-	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
+	ChainHead(context.Context) (*types.TipSet, error)
+	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
 }
 
 // BasicPreCommitPolicy satisfies PreCommitPolicy. It has two modes:
@@ -58,7 +59,7 @@ func NewBasicPreCommitPolicy(api Chain, cfgGetter GetSealingConfigFunc, provingB
 // Expiration produces the pre-commit sector expiration epoch for an encoded
 // replica containing the provided enumeration of pieces and deals.
 func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...Piece) (abi.ChainEpoch, error) {
-	_, epoch, err := p.api.ChainHead(ctx)
+	ts, err := p.api.ChainHead(ctx)
 	if err != nil {
 		return 0, err
 	}
@@ -70,8 +71,8 @@ func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...Piece) (abi
 			continue
 		}
 
-		if p.DealInfo.DealSchedule.EndEpoch < epoch {
-			log.Warnf("piece schedule %+v ended before current epoch %d", p, epoch)
+		if p.DealInfo.DealSchedule.EndEpoch < ts.Height() {
+			log.Warnf("piece schedule %+v ended before current epoch %d", p, ts.Height())
 			continue
 		}
 
@@ -88,13 +89,13 @@ func (p *BasicPreCommitPolicy) Expiration(ctx context.Context, ps ...Piece) (abi
 			return 0, err
 		}
 
-		tmp := epoch + expirationDuration
+		tmp := ts.Height() + expirationDuration
 		end = &tmp
 	}
 
 	// Ensure there is at least one day for the PC message to land without falling below min sector lifetime
 	// TODO: The "one day" should probably be a config, though it doesn't matter too much
-	minExp := epoch + policy.GetMinSectorExpiration() + miner.WPoStProvingPeriod
+	minExp := ts.Height() + policy.GetMinSectorExpiration() + miner.WPoStProvingPeriod
 	if *end < minExp {
 		end = &minExp
 	}

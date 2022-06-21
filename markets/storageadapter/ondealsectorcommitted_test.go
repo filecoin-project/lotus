@@ -159,7 +159,7 @@ func TestOnDealSectorPreCommitted(t *testing.T) {
 			currentDealInfo: pipeline.CurrentDealInfo{
 				DealID:           dealID,
 				MarketDeal:       slashedDeal,
-				PublishMsgTipSet: nil,
+				PublishMsgTipSet: types.EmptyTSK,
 			},
 			expectedCBCallCount: 0,
 			expectedError:       xerrors.Errorf("failed to set up called handler: deal %d was slashed at epoch %d", dealID, slashedDeal.State.SlashEpoch),
@@ -574,7 +574,7 @@ type mockDealInfoAPI struct {
 	Err2             error
 }
 
-func (m *mockDealInfoAPI) GetCurrentDealInfo(ctx context.Context, tok pipeline.TipSetToken, proposal *market.DealProposal, publishCid cid.Cid) (pipeline.CurrentDealInfo, error) {
+func (m *mockDealInfoAPI) GetCurrentDealInfo(ctx context.Context, tsk types.TipSetKey, proposal *market.DealProposal, publishCid cid.Cid) (pipeline.CurrentDealInfo, error) {
 	m.count++
 	if m.count == 2 {
 		return m.CurrentDealInfo2, m.Err2

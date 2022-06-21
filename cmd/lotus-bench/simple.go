@@ -20,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	prf "github.com/filecoin-project/specs-actors/actors/runtime/proof"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -122,7 +121,7 @@ p: pvC0JBrEyUqtIIUvB2UUx/2a24c3Cvnu6AZ0D3IMBYAu...
 
 type benchSectorProvider map[storiface.SectorFileType]string
 
-func (b benchSectorProvider) AcquireSector(ctx context.Context, id storage.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, ptype storiface.PathType) (storiface.SectorPaths, func(), error) {
+func (b benchSectorProvider) AcquireSector(ctx context.Context, id storiface.SectorRef, existing storiface.SectorFileType, allocate storiface.SectorFileType, ptype storiface.PathType) (storiface.SectorPaths, func(), error) {
 	out := storiface.SectorPaths{
 		ID:          id.ID,
 		Unsealed:    b[storiface.FTUnsealed],
@@ -178,7 +177,7 @@ var simpleAddPiece = &cli.Command{
 			return err
 		}
 
-		sr := storage.SectorRef{
+		sr := storiface.SectorRef{
 			ID: abi.SectorID{
 				Miner:  mid,
 				Number: 1,
@@ -251,7 +250,7 @@ var simplePreCommit1 = &cli.Command{
 			return err
 		}
 
-		sr := storage.SectorRef{
+		sr := storiface.SectorRef{
 			ID: abi.SectorID{
 				Miner:  mid,
 				Number: 1,
@@ -329,7 +328,7 @@ var simplePreCommit2 = &cli.Command{
 			return err
 		}
 
-		sr := storage.SectorRef{
+		sr := storiface.SectorRef{
 			ID: abi.SectorID{
 				Miner:  mid,
 				Number: 1,
@@ -395,7 +394,7 @@ var simpleCommit1 = &cli.Command{
 			return err
 		}
 
-		sr := storage.SectorRef{
+		sr := storiface.SectorRef{
 			ID: abi.SectorID{
 				Miner:  mid,
 				Number: 1,
@@ -422,7 +421,7 @@ var simpleCommit1 = &cli.Command{
 				Size:     abi.PaddedPieceSize(sectorSize),
 				PieceCID: commd,
 			},
-		}, storage.SectorCids{
+		}, storiface.SectorCids{
 			Unsealed: commd,
 			Sealed:   commr,
 		})
@@ -507,7 +506,7 @@ var simpleCommit2 = &cli.Command{
 			return err
 		}
 
-		ref := storage.SectorRef{
+		ref := storiface.SectorRef{
 			ID: abi.SectorID{
 				Miner:  abi.ActorID(mid),
 				Number: abi.SectorNumber(c2in.SectorNum),
@@ -755,7 +754,7 @@ var simpleReplicaUpdate = &cli.Command{
 		if err != nil {
 			return err
 		}
-		sr := storage.SectorRef{
+		sr := storiface.SectorRef{
 			ID: abi.SectorID{
 				Miner:  mid,
 				Number: 1,
@@ -823,7 +822,7 @@ var simpleProveReplicaUpdate1 = &cli.Command{
 			return err
 		}
 
-		sr := storage.SectorRef{
+		sr := storiface.SectorRef{
 			ID: abi.SectorID{
 				Miner:  mid,
 				Number: 1,
@@ -910,7 +909,7 @@ var simpleProveReplicaUpdate2 = &cli.Command{
 			return err
 		}
 
-		sr := storage.SectorRef{
+		sr := storiface.SectorRef{
 			ID: abi.SectorID{
 				Miner:  mid,
 				Number: 1,
@@ -940,7 +939,7 @@ var simpleProveReplicaUpdate2 = &cli.Command{
 			return xerrors.Errorf("reading valilla proof file: %w", err)
 		}
 
-		var vp storage.ReplicaVanillaProofs
+		var vp storiface.ReplicaVanillaProofs
 		if err := json.Unmarshal(vpb, &vp); err != nil {
 			return xerrors.Errorf("unmarshalling vanilla proofs: %w", err)
 		}

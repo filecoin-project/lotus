@@ -21,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -173,7 +172,7 @@ func (m mockVerif) GenerateWinningPoStSectorChallenge(context.Context, abi.Regis
 type mockFaultTracker struct {
 }
 
-func (m mockFaultTracker) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storage.SectorRef, rg storiface.RGetter) (map[abi.SectorID]string, error) {
+func (m mockFaultTracker) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storiface.SectorRef, rg storiface.RGetter) (map[abi.SectorID]string, error) {
 	// Returns "bad" sectors so just return empty map meaning all sectors are good
 	return map[abi.SectorID]string{}, nil
 }

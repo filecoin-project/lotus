@@ -26,7 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
-	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var aggFeeNum = big.NewInt(110)
@@ -35,15 +35,14 @@ var aggFeeDen = big.NewInt(100)
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_commit_batcher.go -package=mocks . CommitBatcherApi
 
 type CommitBatcherApi interface {
-	SendMsg(ctx context.Context, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error)
-	StateMinerInfo(context.Context, address.Address, TipSetToken) (api.MinerInfo, error)
-	ChainHead(ctx context.Context) (TipSetToken, abi.ChainEpoch, error)
-	ChainBaseFee(context.Context, TipSetToken) (abi.TokenAmount, error)
+	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
+	ChainHead(ctx context.Context) (*types.TipSet, error)
 
-	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok TipSetToken) (*miner.SectorPreCommitOnChainInfo, error)
-	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, TipSetToken) (big.Int, error)
-	StateNetworkVersion(ctx context.Context, tok TipSetToken) (network.Version, error)
-	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
+	StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error)
+	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (big.Int, error)
+	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
+	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (big.Int, error)
 }
 
 type AggregateInput struct {
@@ -59,7 +58,7 @@ type CommitBatcher struct {
 	addrSel   AddrSel
 	feeCfg    config.MinerFeeConfig
 	getConfig GetSealingConfigFunc
-	prover    ffiwrapper.Prover
+	prover    storiface.Prover
 
 	cutoffs map[abi.SectorNumber]time.Time
 	todo    map[abi.SectorNumber]AggregateInput
@@ -70,7 +69,7 @@ type CommitBatcher struct {
 	lk                    sync.Mutex
 }
 
-func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddrSel, feeCfg config.MinerFeeConfig, getConfig GetSealingConfigFunc, prov ffiwrapper.Prover) *CommitBatcher {
+func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddrSel, feeCfg config.MinerFeeConfig, getConfig GetSealingConfigFunc, prov storiface.Prover) *CommitBatcher {
 	b := &CommitBatcher{
 		api:       api,
 		maddr:     maddr,
@@ -204,14 +203,14 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 
 	var res []sealiface.CommitBatchRes
 
-	tok, h, err := b.api.ChainHead(b.mctx)
+	ts, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		return nil, err
 	}
 
 	blackedOut := func() bool {
 		const nv16BlackoutWindow = abi.ChainEpoch(20) // a magik number
-		if h <= build.UpgradeSkyrHeight && build.UpgradeSkyrHeight-h < nv16BlackoutWindow {
+		if ts.Height() <= build.UpgradeSkyrHeight && build.UpgradeSkyrHeight-ts.Height() < nv16BlackoutWindow {
 			return true
 		}
 		return false
@@ -220,13 +219,7 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 	individual := (total < cfg.MinCommitBatch) || (total < miner.MinAggregatedSectors) || blackedOut()
 
 	if !individual && !cfg.AggregateAboveBaseFee.Equals(big.Zero()) {
-
-		bf, err := b.api.ChainBaseFee(b.mctx, tok)
-		if err != nil {
-			return nil, xerrors.Errorf("couldn't get base fee: %w", err)
-		}
-
-		if bf.LessThan(cfg.AggregateAboveBaseFee) {
+		if ts.MinTicketBlock().ParentBaseFee.LessThan(cfg.AggregateAboveBaseFee) {
 			individual = true
 		}
 	}
@@ -265,7 +258,7 @@ func (b *CommitBatcher) maybeStartBatch(notif bool) ([]sealiface.CommitBatchRes,
 }
 
 func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBatchRes, error) {
-	tok, _, err := b.api.ChainHead(b.mctx)
+	ts, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		return nil, err
 	}
@@ -292,7 +285,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 
 		res.Sectors = append(res.Sectors, id)
 
-		sc, err := b.getSectorCollateral(id, tok)
+		sc, err := b.getSectorCollateral(id, ts.Key())
 		if err != nil {
 			res.FailedSectors[id] = err.Error()
 			continue
@@ -321,7 +314,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting miner id: %w", err)
 	}
 
-	nv, err := b.api.StateNetworkVersion(b.mctx, tok)
+	nv, err := b.api.StateNetworkVersion(b.mctx, ts.Key())
 	if err != nil {
 		log.Errorf("getting network version: %s", err)
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting network version: %s", err)
@@ -347,19 +340,14 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't serialize ProveCommitAggregateParams: %w", err)
 	}
 
-	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, nil)
+	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, types.EmptyTSK)
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
 
 	maxFee := b.feeCfg.MaxCommitBatchGasFee.FeeForSectors(len(infos))
 
-	bf, err := b.api.ChainBaseFee(b.mctx, tok)
-	if err != nil {
-		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("couldn't get base fee: %w", err)
-	}
-
-	aggFeeRaw, err := policy.AggregateProveCommitNetworkFee(nv, len(infos), bf)
+	aggFeeRaw, err := policy.AggregateProveCommitNetworkFee(nv, len(infos), ts.MinTicketBlock().ParentBaseFee)
 	if err != nil {
 		log.Errorf("getting aggregate commit network fee: %s", err)
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("getting aggregate commit network fee: %s", err)
@@ -380,7 +368,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("no good address found: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, builtin.MethodsMiner.ProveCommitAggregate, needFunds, maxFee, enc.Bytes())
+	mcid, err := sendMsg(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitAggregate, needFunds, maxFee, enc.Bytes())
 	if err != nil {
 		return []sealiface.CommitBatchRes{res}, xerrors.Errorf("sending message failed: %w", err)
 	}
@@ -393,7 +381,7 @@ func (b *CommitBatcher) processBatch(cfg sealiface.Config) ([]sealiface.CommitBa
 }
 
 func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.CommitBatchRes, error) {
-	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, nil)
+	mi, err := b.api.StateMinerInfo(b.mctx, b.maddr, types.EmptyTSK)
 	if err != nil {
 		return nil, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
@@ -401,7 +389,7 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 	avail := types.TotalFilecoinInt
 
 	if cfg.CollateralFromMinerBalance && !cfg.DisableCollateralFallback {
-		avail, err = b.api.StateMinerAvailableBalance(b.mctx, b.maddr, nil)
+		avail, err = b.api.StateMinerAvailableBalance(b.mctx, b.maddr, types.EmptyTSK)
 		if err != nil {
 			return nil, xerrors.Errorf("getting available miner balance: %w", err)
 		}
@@ -412,7 +400,7 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 		}
 	}
 
-	tok, _, err := b.api.ChainHead(b.mctx)
+	ts, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		return nil, err
 	}
@@ -425,7 +413,7 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 			FailedSectors: map[abi.SectorNumber]string{},
 		}
 
-		mcid, err := b.processSingle(cfg, mi, &avail, sn, info, tok)
+		mcid, err := b.processSingle(cfg, mi, &avail, sn, info, ts.Key())
 		if err != nil {
 			log.Errorf("process single error: %+v", err) // todo: return to user
 			r.FailedSectors[sn] = err.Error()
@@ -439,7 +427,7 @@ func (b *CommitBatcher) processIndividually(cfg sealiface.Config) ([]sealiface.C
 	return res, nil
 }
 
-func (b *CommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo, avail *abi.TokenAmount, sn abi.SectorNumber, info AggregateInput, tok TipSetToken) (cid.Cid, error) {
+func (b *CommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo, avail *abi.TokenAmount, sn abi.SectorNumber, info AggregateInput, tsk types.TipSetKey) (cid.Cid, error) {
 	enc := new(bytes.Buffer)
 	params := &miner.ProveCommitSectorParams{
 		SectorNumber: sn,
@@ -450,7 +438,7 @@ func (b *CommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo, av
 		return cid.Undef, xerrors.Errorf("marshaling commit params: %w", err)
 	}
 
-	collateral, err := b.getSectorCollateral(sn, tok)
+	collateral, err := b.getSectorCollateral(sn, tsk)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -475,7 +463,7 @@ func (b *CommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo, av
 		return cid.Undef, xerrors.Errorf("no good address to send commit message from: %w", err)
 	}
 
-	mcid, err := b.api.SendMsg(b.mctx, from, b.maddr, builtin.MethodsMiner.ProveCommitSector, collateral, big.Int(b.feeCfg.MaxCommitGasFee), enc.Bytes())
+	mcid, err := sendMsg(b.mctx, b.api, from, b.maddr, builtin.MethodsMiner.ProveCommitSector, collateral, big.Int(b.feeCfg.MaxCommitGasFee), enc.Bytes())
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("pushing message to mpool: %w", err)
 	}
@@ -569,18 +557,18 @@ func (b *CommitBatcher) Stop(ctx context.Context) error {
 
 // TODO: If this returned epochs, it would make testing much easier
 func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
-	tok, curEpoch, err := b.api.ChainHead(b.mctx)
+	ts, err := b.api.ChainHead(b.mctx)
 	if err != nil {
 		return time.Now(), xerrors.Errorf("getting chain head: %s", err)
 	}
 
-	nv, err := b.api.StateNetworkVersion(b.mctx, tok)
+	nv, err := b.api.StateNetworkVersion(b.mctx, ts.Key())
 	if err != nil {
 		log.Errorf("getting network version: %s", err)
 		return time.Now(), xerrors.Errorf("getting network version: %s", err)
 	}
 
-	pci, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, si.SectorNumber, tok)
+	pci, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, si.SectorNumber, ts.Key())
 	if err != nil {
 		log.Errorf("getting precommit info: %s", err)
 		return time.Now(), err
@@ -609,15 +597,15 @@ func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
 		}
 	}
 
-	if cutoffEpoch <= curEpoch {
+	if cutoffEpoch <= ts.Height() {
 		return time.Now(), nil
 	}
 
-	return time.Now().Add(time.Duration(cutoffEpoch-curEpoch) * time.Duration(build.BlockDelaySecs) * time.Second), nil
+	return time.Now().Add(time.Duration(cutoffEpoch-ts.Height()) * time.Duration(build.BlockDelaySecs) * time.Second), nil
 }
 
-func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tok TipSetToken) (abi.TokenAmount, error) {
-	pci, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, sn, tok)
+func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tsk types.TipSetKey) (abi.TokenAmount, error) {
+	pci, err := b.api.StateSectorPreCommitInfo(b.mctx, b.maddr, sn, tsk)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting precommit info: %w", err)
 	}
@@ -625,7 +613,7 @@ func (b *CommitBatcher) getSectorCollateral(sn abi.SectorNumber, tok TipSetToken
 		return big.Zero(), xerrors.Errorf("precommit info not found on chain")
 	}
 
-	collateral, err := b.api.StateMinerInitialPledgeCollateral(b.mctx, b.maddr, pci.Info, tok)
+	collateral, err := b.api.StateMinerInitialPledgeCollateral(b.mctx, b.maddr, pci.Info, tsk)
 	if err != nil {
 		return big.Zero(), xerrors.Errorf("getting initial pledge collateral: %w", err)
 	}
