@@ -231,12 +231,7 @@ var provingDeadlinesCmd = &cli.Command{
 		fmt.Printf("Miner: %s\n", color.BlueString("%s", maddr))
 
 		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
-		if !cctx.IsSet("detailed") {
-			_, _ = fmt.Fprintln(tw, "deadline\tpartitions\tsectors (faults|recovering|live|active)\tproven partitions")
-		} else {
-			_, _ = fmt.Fprintln(tw, "deadline\tpartitions\tsectors (faults|recovering|live|active)\t")
-		}
-
+		_, _ = fmt.Fprintln(tw, "deadline\tpartitions\tsectors (faults|recovering|live|active)\tproven partitions")
 		for dlIdx, deadline := range deadlines {
 			partitions, err := api.StateMinerPartitions(ctx, maddr, uint64(dlIdx), types.EmptyTSK)
 			if err != nil {
@@ -254,7 +249,7 @@ var provingDeadlinesCmd = &cli.Command{
 			live := uint64(0)
 			recovering := uint64(0)
 
-			for partIdx, partition := range partitions {
+			for _, partition := range partitions {
 				sc, err := partition.AllSectors.Count()
 				if err != nil {
 					return err
@@ -284,9 +279,6 @@ var provingDeadlinesCmd = &cli.Command{
 					return err
 				}
 				live += lc
-				if cctx.IsSet("detailed") {
-					_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d|%d|%d|%d)\t\n", dlIdx, partIdx, sc, fc, rc, lc, ac)
-				}
 			}
 
 			var cur string
@@ -354,12 +346,12 @@ var provingDeadlineInfoCmd = &cli.Command{
 		fmt.Printf("Current:                  %t\n\n", di.Index == dlIdx)
 
 		for pIdx, partition := range partitions {
-			sectorCount, err := partition.ActiveSectors.Count()
+			sectorCount, err := partition.LiveSectors.Count()
 			if err != nil {
 				return err
 			}
 
-			sectorNumbers, err := partition.ActiveSectors.All(sectorCount)
+			sectorNumbers, err := partition.LiveSectors.All(sectorCount)
 			if err != nil {
 				return err
 			}
