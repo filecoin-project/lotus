@@ -77,7 +77,7 @@ const UpgradeChocolateHeight = 1231620
 const UpgradeOhSnapHeight = 1594680
 
 // 2022-07-06T14:00:00Z
-const UpgradeSkyrHeight = 1960320
+var UpgradeSkyrHeight = abi.ChainEpoch(1960320)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
