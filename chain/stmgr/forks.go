@@ -1,9 +1,12 @@
 package stmgr
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/binary"
+	"fmt"
+	"os"
 	"sort"
 	"sync"
 	"time"
@@ -192,6 +195,13 @@ func (sm *StateManager) HandleStateForks(ctx context.Context, root cid.Cid, heig
 			"to", retCid,
 			"duration", time.Since(startTime),
 		)
+
+		f, _ := os.Open("/Users/jennijuju/filecoin/lotus/FVMLiftoff.txt")
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			line := scanner.Text()
+			fmt.Println(line)
+		}
 	}
 
 	return retCid, nil
