@@ -198,12 +198,6 @@ var provingInfoCmd = &cli.Command{
 var provingDeadlinesCmd = &cli.Command{
 	Name:  "deadlines",
 	Usage: "View the current proving period deadlines information",
-	Flags: []cli.Flag{
-		&cli.BoolFlag{
-			Name:  "detailed",
-			Usage: "print each partition deadlines information",
-		},
-	},
 	Action: func(cctx *cli.Context) error {
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
@@ -293,8 +287,14 @@ var provingDeadlinesCmd = &cli.Command{
 }
 
 var provingDeadlineInfoCmd = &cli.Command{
-	Name:      "deadline",
-	Usage:     "View the current proving period deadline information by its index ",
+	Name:  "deadline",
+	Usage: "View the current proving period deadline information by its index ",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "detailed",
+			Usage: "print all sector numbers",
+		},
+	},
 	ArgsUsage: "<deadlineIdx>",
 	Action: func(cctx *cli.Context) error {
 
@@ -346,12 +346,12 @@ var provingDeadlineInfoCmd = &cli.Command{
 		fmt.Printf("Current:                  %t\n\n", di.Index == dlIdx)
 
 		for pIdx, partition := range partitions {
-			sectorCount, err := partition.LiveSectors.Count()
+			liveSectorCount, err := partition.LiveSectors.Count()
 			if err != nil {
 				return err
 			}
 
-			sectorNumbers, err := partition.LiveSectors.All(sectorCount)
+			liveSectorNumbers, err := partition.LiveSectors.All(liveSectorCount)
 			if err != nil {
 				return err
 			}
@@ -367,8 +367,10 @@ var provingDeadlineInfoCmd = &cli.Command{
 			}
 
 			fmt.Printf("Partition Index:          %d\n", pIdx)
-			fmt.Printf("Sectors:                  %d\n", sectorCount)
-			fmt.Printf("Sector Numbers:           %v\n", sectorNumbers)
+			fmt.Printf("Live Sectors:                  %d\n", liveSectorCount)
+			if cctx.IsSet("detailed") {
+				fmt.Printf("Live Sector Numbers:           %v\n", liveSectorNumbers)
+			}
 			fmt.Printf("Faults:                   %d\n", faultsCount)
 			fmt.Printf("Faulty Sectors:           %d\n", fn)
 		}
