@@ -2,8 +2,11 @@ package filcns
 
 import (
 	"context"
+	"fmt"
 	"runtime"
 	"time"
+
+	_ "embed"
 
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
@@ -46,6 +49,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/node/bundle"
 )
+
+//go:embed FVMLiftoff.txt
+var fvmLiftoffBanner string
 
 func DefaultUpgradeSchedule() stmgr.UpgradeSchedule {
 	var us stmgr.UpgradeSchedule
@@ -1337,6 +1343,8 @@ func UpgradeActorsV8(ctx context.Context, sm *stmgr.StateManager, cache stmgr.Mi
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("migrating actors v7 state: %w", err)
 	}
+
+	fmt.Print(fvmLiftoffBanner)
 
 	return newRoot, nil
 }
