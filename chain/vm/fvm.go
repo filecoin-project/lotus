@@ -344,13 +344,14 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 			return nil, xerrors.Errorf("failed to unmarshal exectrace: %w", err)
 		}
 		et = fvmEt.ToExecutionTrace()
-	} else {
-		et.Msg = vmMsg
-		et.MsgRct = &receipt
-		et.Duration = duration
-		if aerr != nil {
-			et.Error = aerr.Error()
-		}
+	}
+
+	// Set the top-level exectrace info from the message and receipt for backwards compatibility
+	et.Msg = vmMsg
+	et.MsgRct = &receipt
+	et.Duration = duration
+	if aerr != nil {
+		et.Error = aerr.Error()
 	}
 
 	return &ApplyRet{
