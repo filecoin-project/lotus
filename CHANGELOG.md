@@ -1,15 +1,25 @@
 # Lotus changelog
 
-# 1.16.0-rc1 / 2022-06-14
+# 1.16.0-rc2 / 2022-06-22
 
-This is the first release of the upcoming MANDATORY release of Lotus v1.16.0 that supports Filecoin network v16, codenamed the Skyr upgrade. 
+This is the second release candidate for the upcoming MANDATORY release of Lotus v1.16.0 that supports Filecoin network v16, codenamed the Skyr upgrade.
 Filecoin nv16 upgrade will introduce non-programmable FVM(FVM m1) and switch the network from using go spec-actor to rust built-in actor. Full changelog will be published upon final release.
+
+## Mainnet nv16 Skyr Upgrade
+
+This release candidate sets mainnet upgrade at epoch 1044660, 2022-06-16T17:30:00Z. The bundle that the network will be using is v8.0.0, manifest CID will be included upon final release.
+
+Your lotus node will switch from the Legacy VM (that depended on go-based specs-actors) to FVM (that uses Rust-based builtin-actors) atomically upon the upgrade. 
+
 
 ## Calibration-net Upgrade
 
 This release candidate sets the caibration-net upgrade at epoch 1044660, 2022-06-16T17:30:00Z. The bundle that the network should be using is v8.0.0-rc.1(located at `build/actors/v8.tar.zst` ) upon migration, manifest CID `bafy2bzacedrdn6z3z7xz7lx4wll3tlgktirhllzqxb766dxpaqp3ukxsjfsba`.
 
-Your lotus node will switch from legacy VM to FVM atomically upon the upgrade. Easily enable envvar `LOTUS_USE_FVM_TO_SYNC_MAINNET_V15` to sync calibration using FVM to sync network v15.
+## Between rc2 & rc1
+
+- We fixed a execution trace bug in ffi for implicit messages, and the execution trace should be more like legacy VM ones now!
+- Your market node will now perform a light migration to migrate non-utf deal labels, as needed by FIP-0027.
 
 ## 🆕 Things you may wanna know
 
@@ -17,7 +27,7 @@ Your lotus node will switch from legacy VM to FVM atomically upon the upgrade. E
 
 As the network introduces FVM, it's also switching from spec-actor (written in GoLang) to [built-in actor](https://github.com/filecoin-project/builtin-actors) (written in rust), in which the latter comes with[ importable bundles](https://github.com/filecoin-project/builtin-actors#importable-bundle). This means, like filecoin proof parameters, node operators now also need to fetch the actor bundles according to the network versions for the nodes to remain operational.
 
-In lotus [v1.16.0-rc1](https://github.com/filecoin-project/lotus/releases/tag/v1.16.0-rc1), the bundles for all networks(mainnet, calibnet, and etc) are included in the lotus source tree (`build/actors/`) and embedded on build. 
+In lotus [v1.16.0-rc2](https://github.com/filecoin-project/lotus/releases/tag/v1.16.0-rc1), the bundles for all networks(mainnet, calibnet, and etc) are included in the lotus source tree (`build/actors/`) and embedded on build.
 
 Lotus verifies that the bundle CIDs are the right ones upon build & upgrade against the values in `build/builtin_actors_gen.go`, according to the network you are building. You may also check the bundle manifest CID matches the bundle gen-ed values by running `lotus state actor-cids --network-version 16`.
 (We will get into the CIDs more in the next section).
@@ -113,7 +123,7 @@ This is an optional release of lotus that include new APIs, some improvements an
 
 # 1.15.2 / 2022-05-06
 
-This is a highly recommended feature lotus release v1.15.2. This feature release introduces many new features and  for SPs, including PoSt workers, sealing scheduler, snap deal queue and so on. 
+This is a highly recommended feature lotus release v1.15.2. This feature release introduces many new features and  for SPs, including PoSt workers, sealing scheduler, snap deal queue and so on.
 
 Note: You need to be using go v1.17.9&up from this release onwards.
 
@@ -271,31 +281,31 @@ This feature release introduces Index Provider, GraphSync v2, and many other lat
 
 ### 🔥🔥🔥 FVM (Experimental) 🔥🔥🔥
 - feat: fvm: FVM integration  ([filecoin-project/lotus#8332](https://github.com/filecoin-project/lotus/pull/8332))
-The lotus team is excited to announce the launch of experimental non-programmable FVM on mainnet. By enabling `"LOTUS_USE_FVM_EXPERIMENTAL=1` envvar, the lotus daemon will be running the [WASM-compiled built-in actors](https://github.com/filecoin-project/builtin-actors) that is compatible with the existing chain(Network v15 OhSnap). If you are trying it out and having any questions or feedbacks, please leave a comment [here](https://github.com/filecoin-project/lotus/discussions/8334)!
+  The lotus team is excited to announce the launch of experimental non-programmable FVM on mainnet. By enabling `"LOTUS_USE_FVM_EXPERIMENTAL=1` envvar, the lotus daemon will be running the [WASM-compiled built-in actors](https://github.com/filecoin-project/builtin-actors) that is compatible with the existing chain(Network v15 OhSnap). If you are trying it out and having any questions or feedbacks, please leave a comment [here](https://github.com/filecoin-project/lotus/discussions/8334)!
   - chore: FVM: log when fvm is used([filecoin-project/lotus#8363](https://github.com/filecoin-project/lotus/pull/8363))
   - chore: ffi: the latest fvm release([filecoin-project/lotus#8382](https://github.com/filecoin-project/lotus/pull/8382))
-  
+
 ### 🌟🌟🌟 Index Provider (Production Ready!) 🌟🌟🌟
 - feat: markets: Integrate index ingest protocol and retrieve by any CID ([filecoin-project/lotus#7313](https://github.com/filecoin-project/lotus/pull/7313))
 
-More and more useful data is being stored on Filecoin via deals made by clients to Storage Providers. The goal is that this content is discoverable when people need them. To achieve that goal, one of the projects [the Bedrock team](https://www.notion.so/pl-strflt/Bedrock-2e956d5d8143432080a1d84435ccf0ff) is working on is building an Indexer Ecosystem, a project that's focus on content addressing on Filecoin, then potentially have interoperability with IPFS in the future and eventually serve the retrieval market. The Indexer Ecosystem high level architecture overview diagram can be found [here](https://github.com/filecoin-project/storetheindex/blob/main/doc/indexer_ecosys.png) and a detailed write up about can be found [here](https://www.notion.so/pl-strflt/Introducing-Indexer-to-SP-90bf296794174a8281c121d4ce6747a0).  
+More and more useful data is being stored on Filecoin via deals made by clients to Storage Providers. The goal is that this content is discoverable when people need them. To achieve that goal, one of the projects [the Bedrock team](https://www.notion.so/pl-strflt/Bedrock-2e956d5d8143432080a1d84435ccf0ff) is working on is building an Indexer Ecosystem, a project that's focus on content addressing on Filecoin, then potentially have interoperability with IPFS in the future and eventually serve the retrieval market. The Indexer Ecosystem high level architecture overview diagram can be found [here](https://github.com/filecoin-project/storetheindex/blob/main/doc/indexer_ecosys.png) and a detailed write up about can be found [here](https://www.notion.so/pl-strflt/Introducing-Indexer-to-SP-90bf296794174a8281c121d4ce6747a0).
 
 That being said, with this release, lotus Storage Providers can easily become an Index Provider and serve the Indexer Content Addressing System. Index Providers generate advertisements from the deals made by a storage provider and announces the data to the indexer nodes for further processing:
 - To learn more about *what is an Index Provider and how to be an Index Provider*, read it [here](https://lotus.filecoin.io/storage-providers/operate/index-provider/) in lotus docuementation.
 - An [one-off migration](https://lotus.filecoin.io/storage-providers/operate/index-provider/#first-time-migration) is needed in order for a Storage Provider to become an Index Provider and announce the proper formatted index. It's *highly recommended* for all Index Provider to do a [force bulk initialization](https://lotus.filecoin.io/storage-providers/configure/dagstore/#forcing-bulk-initialization) to enable index announcement on all existing deals.
   - Note that the Initialization places IO workload on your storage system. SP should set a proper `concurrency` based on your hardware or can stop/start initialization at their wish/convenience as proving deadlines approach and elapse, to avoid IOPS starvation or competition with window PoSt.
-- After the first one-time migration, being an Index Provider barely puts any extra usage on SP's market system.  
+- After the first one-time migration, being an Index Provider barely puts any extra usage on SP's market system.
   - You can find the testing result by SPX fellows [here](https://github.com/filecoin-project/lotus/discussions/8087).
- 
-We recommend all Storage Providers that are serving deals in the Filecoin network to become a Index Provider, make the data you are storing discoverable for the retrieval market and retrieval clients! 
-  - If you have any questions about becoming an index provider, or the indexer system in general, leave a comment [here](https://github.com/filecoin-project/lotus/discussions/8341).
-  - Follow the indexer project at https://github.com/filecoin-project/go-indexer-core.
-  - If you have any feature request or bug reports of running an index provider, create an issue in https://github.com/filecoin-project/index-provider.
-  - You may also join the #storetheindex channel in the Filecoin Slack to engage with the team & the community!
+
+We recommend all Storage Providers that are serving deals in the Filecoin network to become a Index Provider, make the data you are storing discoverable for the retrieval market and retrieval clients!
+- If you have any questions about becoming an index provider, or the indexer system in general, leave a comment [here](https://github.com/filecoin-project/lotus/discussions/8341).
+- Follow the indexer project at https://github.com/filecoin-project/go-indexer-core.
+- If you have any feature request or bug reports of running an index provider, create an issue in https://github.com/filecoin-project/index-provider.
+- You may also join the #storetheindex channel in the Filecoin Slack to engage with the team & the community!
 
 ### ❗️❗️❗️ Dag Migration For New CAR index format in DagStore ❗️❗️❗️
 The index provider leverages the latest CARv2 indexing format `MultihashIndexSorted`, which stores the multihash code as well as the digest of all CIDs in a CAR file. Thus, all Storage Providers SHOULD perform an one-off DAG mirgation to regenerate DagStore CARv2 indices. You have to do it to become an index provider, failing to do so may also impact your future deal making.
-Follow the instruction [here](https://lotus.filecoin.io/storage-providers/operate/index-provider/) to perform the migration. 
+Follow the instruction [here](https://lotus.filecoin.io/storage-providers/operate/index-provider/) to perform the migration.
 
 ## New Features
 - feat: sealing: Sector upgrade queue ([filecoin-project/lotus#8333](https://github.com/filecoin-project/lotus/pull/8333))
@@ -335,7 +345,7 @@ Follow the instruction [here](https://lotus.filecoin.io/storage-providers/operat
 ## Bug Fixes
 - fix: FVM: add finality check for consensus faults #8452
 - fix: market: Reuse the market PubSub in index provider #8451
-- fix: market: set all index provider options based on lotus config #8444  
+- fix: market: set all index provider options based on lotus config #8444
 - fix: sealing: Fix PR1 worker selection (#8421)
 - fix: miner: dead loop on removing sector (#8421)
 - fix: sealing: Remove sector copies from workers after snapdeals ([filecoin-project/lotus#8331](https://github.com/filecoin-project/lotus/pull/8331))
