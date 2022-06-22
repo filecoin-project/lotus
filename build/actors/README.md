@@ -16,3 +16,11 @@ This will:
 
 1. Download the actors bundles and pack them into the appropriate tarfile (`$VERSION.tar.zst`).
 2. Run `make bundle-gen` in the top-level directory to regenerate the bundle metadata file for _all_ network versions (all `*.tar.zst` files in this directory).
+
+## Overriding
+
+To build a bundle, but specify a different release/tag for a specific network, append `$network=$alternative_release` on the command line. For example:
+
+```bash
+./pack.sh v8 dev/20220602 mainnet=v8.0.0 calibrationnet=v8.0.0-rc.1
+```
