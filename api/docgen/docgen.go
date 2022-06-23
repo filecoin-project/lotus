@@ -196,6 +196,7 @@ func init() {
 	addExample(&si)
 	addExample(retrievalmarket.DealID(5))
 	addExample(abi.ActorID(1000))
+	addExample(map[string]cid.Cid{})
 	addExample(map[string][]api.SealedRef{
 		"98000": {
 			api.SealedRef{

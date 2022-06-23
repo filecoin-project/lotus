@@ -7,12 +7,14 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/filecoin-project/lotus/chain/actors"
+
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/go-state-types/cbor"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -1458,6 +1460,33 @@ func (m *StateModule) StateNetworkVersion(ctx context.Context, tsk types.TipSetK
 	// TODO: Height-1 to be consistent with the rest of the APIs?
 	// But that's likely going to break a bunch of stuff.
 	return m.StateManager.GetNetworkVersion(ctx, ts.Height()), nil
+}
+
+func (a *StateAPI) StateActorCodeCIDs(ctx context.Context, nv network.Version) (map[string]cid.Cid, error) {
+	actorVersion, err := actors.VersionForNetwork(nv)
+	if err != nil {
+		return nil, xerrors.Errorf("invalid network version")
+	}
+
+	cids := make(map[string]cid.Cid)
+
+	manifestCid, ok := actors.GetManifest(actorVersion)
+	if !ok {
+		return nil, xerrors.Errorf("cannot get manifest CID")
+	}
+
+	cids["_manifest"] = manifestCid
+
+	var actorKeys = actors.GetBuiltinActorsKeys()
+	for _, name := range actorKeys {
+		actorCID, ok := actors.GetActorCodeID(actorVersion, name)
+		if !ok {
+			return nil, xerrors.Errorf("didn't find actor %v code id for actor version %d", name,
+				actorVersion)
+		}
+		cids[name] = actorCID
+	}
+	return cids, nil
 }
 
 func (a *StateAPI) StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {

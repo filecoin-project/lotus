@@ -113,7 +113,7 @@ func ReadManifest(ctx context.Context, store cbor.IpldStore, mfCid cid.Cid) (map
 	return metadata, nil
 }
 
-// GetActorCodeID looks up a builtin actor's code CID by actor version and canonical actor name name.
+// GetActorCodeID looks up a builtin actor's code CID by actor version and canonical actor name.
 func GetActorCodeID(av Version, name string) (cid.Cid, bool) {
 	manifestMx.RLock()
 	defer manifestMx.RUnlock()

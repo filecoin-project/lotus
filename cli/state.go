@@ -1927,24 +1927,15 @@ var StateSysActorCIDsCmd = &cli.Command{
 		}
 		fmt.Printf("Actor Version: %d\n", actorVersion)
 
-		manifestCid, ok := actors.GetManifest(actorVersion)
-		if !ok {
-			return xerrors.Errorf("cannot get manifest CID")
-		}
-		fmt.Printf("Manifest CID: %v\n", manifestCid)
-
 		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 		_, _ = fmt.Fprintln(tw, "\nActor\tCID\t")
 
-		var actorKeys = actors.GetBuiltinActorsKeys()
-		for _, name := range actorKeys {
-			sysActorCID, ok := actors.GetActorCodeID(actorVersion, name)
-			if !ok {
-				return xerrors.Errorf("error getting actor %v code id for actor version %d", name,
-					actorVersion)
-			}
-			_, _ = fmt.Fprintf(tw, "%v\t%v\n", name, sysActorCID)
-
+		actorsCids, err := api.StateActorCodeCIDs(ctx, nv)
+		if err != nil {
+			return err
+		}
+		for name, cid := range actorsCids {
+			_, _ = fmt.Fprintf(tw, "%v\t%v\n", name, cid)
 		}
 		return tw.Flush()
 	},
