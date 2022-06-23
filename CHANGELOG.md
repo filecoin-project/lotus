@@ -1,13 +1,13 @@
 # Lotus changelog
 
-# 1.16.0-rc2 / 2022-06-22
+# 1.16.0-rc3 / 2022-06-22
 
-This is the second release candidate for the upcoming MANDATORY release of Lotus v1.16.0 that supports Filecoin network v16, codenamed the Skyr upgrade.
+This is the third release candidate for the upcoming MANDATORY release of Lotus v1.16.0 that supports Filecoin network v16, codenamed the Skyr upgrade. (Fix the mainnet upgrade epoch info in Changelog)
 Filecoin nv16 upgrade will introduce non-programmable FVM(FVM m1) and switch the network from using go spec-actor to rust built-in actor. Full changelog will be published upon final release.
 
 ## Mainnet nv16 Skyr Upgrade
 
-This release candidate sets mainnet upgrade at epoch 1044660, 2022-06-16T17:30:00Z. The bundle that the network will be using is v8.0.0, manifest CID will be included upon final release.
+This release candidate sets mainnet upgrade at epoch 1960320, 2022-07-06T14:00:00Z. The bundle that the network will be using is v8.0.0, manifest CID will be included upon final release.
 
 Your lotus node will switch from the Legacy VM (that depended on go-based specs-actors) to FVM (that uses Rust-based builtin-actors) atomically upon the upgrade. 
 
