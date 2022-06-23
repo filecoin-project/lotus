@@ -4641,7 +4641,7 @@ Inputs:
 Response: `"f01234"`
 
 ### StateActorCodeCIDs
-StateActorCids returns the CIDs of all the builtin actors for the given network version
+StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version
 
 
 Perms: read

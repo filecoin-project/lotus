@@ -1475,7 +1475,7 @@ func (a *StateAPI) StateActorCodeCIDs(ctx context.Context, nv network.Version) (
 		return nil, xerrors.Errorf("cannot get manifest CID")
 	}
 
-	cids["manifest"] = manifestCid
+	cids["_manifest"] = manifestCid
 
 	var actorKeys = actors.GetBuiltinActorsKeys()
 	for _, name := range actorKeys {

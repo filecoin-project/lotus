@@ -586,7 +586,7 @@ type FullNode interface {
 	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (CirculatingSupply, error) //perm:read
 	// StateNetworkVersion returns the network version at the given tipset
 	StateNetworkVersion(context.Context, types.TipSetKey) (apitypes.NetworkVersion, error) //perm:read
-	// StateActorCids returns the CIDs of all the builtin actors for the given network version
+	// StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version
 	StateActorCodeCIDs(context.Context, abinetwork.Version) (map[string]cid.Cid, error) //perm:read
 
 	// StateGetRandomnessFromTickets is used to sample the chain for randomness.
