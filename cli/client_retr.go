@@ -194,6 +194,8 @@ func retrieve(ctx context.Context, cctx *cli.Context, fapi lapi.FullNode, sel *l
 				break readEvents
 			case retrievalmarket.DealStatusRejected:
 				return nil, xerrors.Errorf("Retrieval Proposal Rejected: %s", evt.Message)
+			case retrievalmarket.DealStatusCancelled:
+				return nil, xerrors.Errorf("Retrieval Proposal Cancelled: %s", evt.Message)
 			case
 				retrievalmarket.DealStatusDealNotFound,
 				retrievalmarket.DealStatusErrored:
