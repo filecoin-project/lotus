@@ -340,7 +340,7 @@ func (n *Ensemble) Start() *Ensemble {
 			node.FullAPI(&full.FullNode, node.Lite(full.options.lite)),
 			node.Base(),
 			node.Repo(r),
-			node.MockHost(n.mn),
+			node.If(full.options.disableLibp2p, node.MockHost(n.mn)),
 			node.Test(),
 
 			// so that we subscribe to pubsub topics immediately
@@ -583,7 +583,7 @@ func (n *Ensemble) Start() *Ensemble {
 			node.Repo(r),
 			node.Test(),
 
-			node.If(!m.options.disableLibp2p, node.MockHost(n.mn)),
+			node.If(m.options.disableLibp2p, node.MockHost(n.mn)),
 
 			node.Override(new(v1api.FullNode), m.FullNode.FullNode),
 			node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, m.ActorAddr)),
