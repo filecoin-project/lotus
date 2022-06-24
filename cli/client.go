@@ -624,8 +624,9 @@ uiLoop:
 				continue
 			}
 
-			if days < int(build.MinDealDuration/builtin.EpochsInDay) {
-				printErr(xerrors.Errorf("minimum duration is %d days", int(build.MinDealDuration/builtin.EpochsInDay)))
+			minDealDurationDays := uint64(build.MinDealDuration) / (builtin.SecondsInDay / build.BlockDelaySecs)
+			if days < int(minDealDurationDays) {
+				printErr(xerrors.Errorf("minimum duration is %d days", minDealDurationDays))
 				continue
 			}
 
