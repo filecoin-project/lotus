@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -46,6 +47,7 @@ type TargetAPI interface {
 	ChainNotify(context.Context) (<-chan []*api.HeadChange, error)
 	ChainGetPath(ctx context.Context, from, to types.TipSetKey) ([]*api.HeadChange, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+	ChainPutObj(context.Context, blocks.Block) error
 	ChainGetGenesis(context.Context) (*types.TipSet, error)
 	GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error)
 	MpoolPushUntrusted(ctx context.Context, sm *types.SignedMessage) (cid.Cid, error)
@@ -67,7 +69,7 @@ type TargetAPI interface {
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
 	StateMinerFaults(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
 	StateMinerRecoveries(context.Context, address.Address, types.TipSetKey) (bitfield.BitField, error)
-	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]api.Deadline, error)
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error)
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
@@ -251,6 +253,10 @@ func (gw *Node) ChainReadObj(ctx context.Context, c cid.Cid) ([]byte, error) {
 	return gw.target.ChainReadObj(ctx, c)
 }
 
+func (gw *Node) ChainPutObj(context.Context, blocks.Block) error {
+	return xerrors.New("not supported")
+}
+
 func (gw *Node) GasEstimateMessageGas(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec, tsk types.TipSetKey) (*types.Message, error) {
 	if err := gw.checkTipsetKey(ctx, tsk); err != nil {
 		return nil, err
@@ -414,9 +420,9 @@ func (gw *Node) StateMinerRecoveries(ctx context.Context, m address.Address, tsk
 	return gw.target.StateMinerRecoveries(ctx, m, tsk)
 }
 
-func (gw *Node) StateMinerInfo(ctx context.Context, m address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
+func (gw *Node) StateMinerInfo(ctx context.Context, m address.Address, tsk types.TipSetKey) (api.MinerInfo, error) {
 	if err := gw.checkTipsetKey(ctx, tsk); err != nil {
-		return miner.MinerInfo{}, err
+		return api.MinerInfo{}, err
 	}
 	return gw.target.StateMinerInfo(ctx, m, tsk)
 }

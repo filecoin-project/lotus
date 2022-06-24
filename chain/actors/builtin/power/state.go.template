@@ -11,11 +11,17 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 
-{{if (ge .v 3)}}
-	builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
-{{end}}
+{{if (le .v 7)}}
+    {{if (ge .v 3)}}
+        builtin{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin"
+    {{end}}
 	power{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/builtin/power"
 	adt{{.v}} "github.com/filecoin-project/specs-actors{{.import}}actors/util/adt"
+{{else}}
+	builtin{{.v}} "github.com/filecoin-project/go-state-types/builtin"
+	power{{.v}} "github.com/filecoin-project/go-state-types/builtin{{.import}}power"
+	adt{{.v}} "github.com/filecoin-project/go-state-types/builtin/v8/util/adt"
+{{end}}
 )
 
 var _ State = (*state{{.v}})(nil)
@@ -100,7 +106,7 @@ func (s *state{{.v}}) MinerNominalPowerMeetsConsensusMinimum(a address.Address) 
 }
 
 func (s *state{{.v}}) TotalPowerSmoothed() (builtin.FilterEstimate, error) {
-	return builtin.FromV{{.v}}FilterEstimate({{if (le .v 1)}}*{{end}}s.State.ThisEpochQAPowerSmoothed), nil
+	return builtin.FilterEstimate({{if (le .v 1)}}*{{end}}s.State.ThisEpochQAPowerSmoothed), nil
 }
 
 func (s *state{{.v}}) MinerCounts() (uint64, uint64, error) {

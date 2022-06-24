@@ -33,3 +33,9 @@ type state4 struct {
 func (s *state4) GetState() interface{} {
 	return &s.State
 }
+
+func (s *state4) GetBuiltinActors() cid.Cid {
+
+	return cid.Undef
+
+}

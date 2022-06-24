@@ -1,5 +1,5 @@
-//go:build !debug && !2k && !testground && !calibnet && !nerpanet && !butterflynet && !interopnet
-// +build !debug,!2k,!testground,!calibnet,!nerpanet,!butterflynet,!interopnet
+//go:build !debug && !2k && !testground && !calibnet && !butterflynet && !interopnet
+// +build !debug,!2k,!testground,!calibnet,!butterflynet,!interopnet
 
 package build
 
@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/lotus/chain/actors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -18,6 +19,11 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0:                  DrandIncentinet,
 	UpgradeSmokeHeight: DrandMainnet,
 }
+
+var NetworkBundle = "mainnet"
+
+// NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
+var BundleOverrides map[actors.Version]string
 
 const GenesisNetworkVersion = network.Version0
 
@@ -68,7 +74,10 @@ const UpgradeHyperdriveHeight = 892800
 const UpgradeChocolateHeight = 1231620
 
 // 2022-03-01T15:00:00Z
-var UpgradeOhSnapHeight = abi.ChainEpoch(1594680)
+const UpgradeOhSnapHeight = 1594680
+
+// 2022-07-06T14:00:00Z
+var UpgradeSkyrHeight = abi.ChainEpoch(1960320)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,
@@ -83,8 +92,8 @@ func init() {
 		SetAddressNetwork(address.Mainnet)
 	}
 
-	if os.Getenv("LOTUS_DISABLE_SNAPDEALS") == "1" {
-		UpgradeOhSnapHeight = math.MaxInt64
+	if os.Getenv("LOTUS_DISABLE_SKYR") == "1" {
+		UpgradeSkyrHeight = math.MaxInt64
 	}
 
 	Devnet = false

@@ -6,9 +6,9 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
@@ -99,7 +99,7 @@ var serviceCmd = &cli.Command{
 			}
 
 			return nil
-		}, func(api lapi.FullNode, maddr address.Address, peerid peer.ID, mi miner.MinerInfo) error {
+		}, func(api lapi.FullNode, maddr address.Address, peerid peer.ID, mi api.MinerInfo) error {
 			if es.Contains(MarketsService) {
 				log.Info("Configuring miner actor")
 

@@ -6,11 +6,12 @@ import (
 	"os"
 	"time"
 
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"

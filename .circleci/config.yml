@@ -83,7 +83,6 @@ commands:
           name: fetch all tags
           command: |
             git fetch --all
-
   packer_build:
     description: "Run a packer build"
     parameters:
@@ -197,6 +196,7 @@ jobs:
           environment:
             TEST_RUSTPROOFS_LOGS: << parameters.proofs-log-test >>
             SKIP_CONFORMANCE: "1"
+            LOTUS_SRC_DIR: /home/circleci/project
           command: |
             mkdir -p /tmp/test-reports/<< parameters.suite >>
             mkdir -p /tmp/test-artifacts
@@ -223,7 +223,7 @@ jobs:
 
   test-conformance:
     description: |
-      Run tests using a corpus of interoperable test vectors for Filecoin 
+      Run tests using a corpus of interoperable test vectors for Filecoin
       implementations to test their correctness and compliance with the Filecoin
       specifications.
     parameters:
@@ -804,6 +804,11 @@ workflows:
           target: "./itests/deals_concurrent_test.go"
       
       - test:
+          name: test-itest-deals_invalid_utf8_label
+          suite: itest-deals_invalid_utf8_label
+          target: "./itests/deals_invalid_utf8_label_test.go"
+      
+      - test:
           name: test-itest-deals_max_staging_deals
           suite: itest-deals_max_staging_deals
           target: "./itests/deals_max_staging_deals_test.go"
@@ -862,6 +867,11 @@ workflows:
           name: test-itest-get_messages_in_ts
           suite: itest-get_messages_in_ts
           target: "./itests/get_messages_in_ts_test.go"
+      
+      - test:
+          name: test-itest-lite_migration
+          suite: itest-lite_migration
+          target: "./itests/lite_migration_test.go"
       
       - test:
           name: test-itest-lookup_robust_address

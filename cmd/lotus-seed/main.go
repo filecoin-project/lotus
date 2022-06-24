@@ -97,7 +97,7 @@ var preSealCmd = &cli.Command{
 		&cli.UintFlag{
 			Name:  "network-version",
 			Usage: "specify network version",
-			Value: uint(build.NewestNetworkVersion),
+			Value: uint(build.GenesisNetworkVersion),
 		},
 	},
 	Action: func(c *cli.Context) error {
@@ -134,7 +134,7 @@ var preSealCmd = &cli.Command{
 		}
 		sectorSize := abi.SectorSize(sectorSizeInt)
 
-		nv := build.NewestNetworkVersion
+		nv := build.GenesisNetworkVersion
 		if c.IsSet("network-version") {
 			nv = network.Version(c.Uint64("network-version"))
 		}

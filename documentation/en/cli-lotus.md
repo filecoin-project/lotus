@@ -7,7 +7,7 @@ USAGE:
    lotus [global options] command [command options] [arguments...]
 
 VERSION:
-   1.15.3
+   1.16.0
 
 COMMANDS:
    daemon   Start a lotus daemon process
@@ -1749,6 +1749,7 @@ COMMANDS:
    exec-trace                  Get the execution trace of a given message
    network-version             Returns the network version
    miner-proving-deadline      Retrieve information about a given miner's proving deadline
+   actor-cids                  Returns the built-in actor bundle manifest ID & system actor cids
    help, h                     Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2063,6 +2064,20 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help (default: false)
+   
+```
+
+### lotus state actor-cids
+```
+NAME:
+   lotus state actor-cids - Returns the built-in actor bundle manifest ID & system actor cids
+
+USAGE:
+   lotus state actor-cids [command options] [arguments...]
+
+OPTIONS:
+   --network-version value  specify network version (default: 16)
+   --help, -h               show help (default: false)
    
 ```
 
