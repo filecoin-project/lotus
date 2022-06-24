@@ -9,7 +9,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -119,7 +118,7 @@ type workerDisableReq struct {
 }
 
 type WorkerRequest struct {
-	Sector   storage.SectorRef
+	Sector   storiface.SectorRef
 	TaskType sealtasks.TaskType
 	Priority int // larger values more important
 	Sel      WorkerSelector
@@ -176,7 +175,7 @@ func newScheduler(assigner string) (*Scheduler, error) {
 	}, nil
 }
 
-func (sh *Scheduler) Schedule(ctx context.Context, sector storage.SectorRef, taskType sealtasks.TaskType, sel WorkerSelector, prepare WorkerAction, work WorkerAction) error {
+func (sh *Scheduler) Schedule(ctx context.Context, sector storiface.SectorRef, taskType sealtasks.TaskType, sel WorkerSelector, prepare WorkerAction, work WorkerAction) error {
 	ret := make(chan workerResponse)
 
 	select {

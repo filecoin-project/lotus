@@ -13,7 +13,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-statemachine"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -23,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) error {
@@ -124,7 +124,7 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 		sealTime := time.Unix(sector.CreationTime, 0).Add(cfg.WaitDealsDelay)
 
 		// check deal age, start sealing when the deal closest to starting is within slack time
-		_, current, err := m.Api.ChainHead(ctx.Context())
+		ts, err := m.Api.ChainHead(ctx.Context())
 		blockTime := time.Second * time.Duration(build.BlockDelaySecs)
 		if err != nil {
 			return false, xerrors.Errorf("API error getting head: %w", err)
@@ -134,7 +134,7 @@ func (m *Sealing) maybeStartSealing(ctx statemachine.Context, sector SectorInfo,
 				continue
 			}
 			dealSafeSealEpoch := piece.DealInfo.DealProposal.StartEpoch - cfg.StartEpochSealingBuffer
-			dealSafeSealTime := time.Now().Add(time.Duration(dealSafeSealEpoch-current) * blockTime)
+			dealSafeSealTime := time.Now().Add(time.Duration(dealSafeSealEpoch-ts.Height()) * blockTime)
 			if dealSafeSealTime.Before(sealTime) {
 				sealTime = dealSafeSealTime
 			}
@@ -274,7 +274,7 @@ func (m *Sealing) handleAddPieceFailed(ctx statemachine.Context, sector SectorIn
 	return ctx.Send(SectorRetryWaitDeals{})
 }
 
-func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, data storage.Data, deal api.PieceDealInfo) (api.SectorOffset, error) {
+func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, data storiface.Data, deal api.PieceDealInfo) (api.SectorOffset, error) {
 	log.Infof("Adding piece for deal %d (publish msg: %s)", deal.DealID, deal.PublishCid)
 	if (padreader.PaddedSize(uint64(size))) != size {
 		return api.SectorOffset{}, xerrors.Errorf("cannot allocate unpadded piece")
@@ -303,14 +303,14 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 		return api.SectorOffset{}, xerrors.Errorf("getting config: %w", err)
 	}
 
-	_, head, err := m.Api.ChainHead(ctx)
+	ts, err := m.Api.ChainHead(ctx)
 	if err != nil {
 		return api.SectorOffset{}, xerrors.Errorf("couldnt get chain head: %w", err)
 	}
-	if head+cfg.StartEpochSealingBuffer > deal.DealProposal.StartEpoch {
+	if ts.Height()+cfg.StartEpochSealingBuffer > deal.DealProposal.StartEpoch {
 		return api.SectorOffset{}, xerrors.Errorf(
 			"cannot add piece for deal with piece CID %s: current epoch %d has passed deal proposal start epoch %d",
-			deal.DealProposal.PieceCID, head, deal.DealProposal.StartEpoch)
+			deal.DealProposal.PieceCID, ts.Height(), deal.DealProposal.StartEpoch)
 	}
 
 	m.inputLk.Lock()
@@ -341,7 +341,7 @@ func (m *Sealing) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPiec
 }
 
 // called with m.inputLk; transfers the lock to another goroutine!
-func (m *Sealing) addPendingPiece(ctx context.Context, size abi.UnpaddedPieceSize, data storage.Data, deal api.PieceDealInfo, sp abi.RegisteredSealProof) *pendingPiece {
+func (m *Sealing) addPendingPiece(ctx context.Context, size abi.UnpaddedPieceSize, data storiface.Data, deal api.PieceDealInfo, sp abi.RegisteredSealProof) *pendingPiece {
 	doneCh := make(chan struct{})
 	pp := &pendingPiece{
 		doneCh:   doneCh,
@@ -399,7 +399,7 @@ func (m *Sealing) updateInput(ctx context.Context, sp abi.RegisteredSealProof) e
 		if e, ok := memo[sn]; ok {
 			return e.e, e.p, nil
 		}
-		onChainInfo, err := m.Api.StateSectorGetInfo(ctx, m.maddr, sn, TipSetToken{})
+		onChainInfo, err := m.Api.StateSectorGetInfo(ctx, m.maddr, sn, types.TipSetKey{})
 		if err != nil {
 			return 0, big.Zero(), err
 		}
@@ -544,14 +544,14 @@ func (m *Sealing) calcTargetExpiration(ctx context.Context, ssize abi.SectorSize
 		}
 	}
 
-	_, curEpoch, err := m.Api.ChainHead(ctx)
+	ts, err := m.Api.ChainHead(ctx)
 	if err != nil {
 		return 0, 0, xerrors.Errorf("getting current epoch: %w", err)
 	}
 
 	minDur, maxDur := policy.DealDurationBounds(0)
 
-	return curEpoch + minDur, curEpoch + maxDur, nil
+	return ts.Height() + minDur, ts.Height() + maxDur, nil
 }
 
 func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealProof, ef expFn) (bool, error) {
@@ -580,7 +580,7 @@ func (m *Sealing) maybeUpgradeSector(ctx context.Context, sp abi.RegisteredSealP
 		}
 
 		slowChecks := func(sid abi.SectorNumber) bool {
-			active, err := m.sectorActive(ctx, TipSetToken{}, sid)
+			active, err := m.sectorActive(ctx, types.TipSetKey{}, sid)
 			if err != nil {
 				log.Errorw("checking sector active", "error", err)
 				return false

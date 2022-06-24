@@ -13,6 +13,7 @@ import (
 	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 // TODO: For now we handle this by halting state execution, when we get jsonrpc reconnecting
@@ -39,7 +40,7 @@ type ErrBadRU struct{ error }
 type ErrBadPR struct{ error }
 
 func checkPieces(ctx context.Context, maddr address.Address, si SectorInfo, api SealingAPI, mustHaveDeals bool) error {
-	tok, height, err := api.ChainHead(ctx)
+	ts, err := api.ChainHead(ctx)
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("getting chain head: %w", err)}
 	}
@@ -59,25 +60,25 @@ func checkPieces(ctx context.Context, maddr address.Address, si SectorInfo, api 
 
 		dealCount++
 
-		proposal, err := api.StateMarketStorageDealProposal(ctx, p.DealInfo.DealID, tok)
+		deal, err := api.StateMarketStorageDeal(ctx, p.DealInfo.DealID, ts.Key())
 		if err != nil {
 			return &ErrInvalidDeals{xerrors.Errorf("getting deal %d for piece %d: %w", p.DealInfo.DealID, i, err)}
 		}
 
-		if proposal.Provider != maddr {
-			return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with wrong provider: %s != %s", i, len(si.Pieces), si.SectorNumber, p.DealInfo.DealID, proposal.Provider, maddr)}
+		if deal.Proposal.Provider != maddr {
+			return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with wrong provider: %s != %s", i, len(si.Pieces), si.SectorNumber, p.DealInfo.DealID, deal.Proposal.Provider, maddr)}
 		}
 
-		if proposal.PieceCID != p.Piece.PieceCID {
-			return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with wrong PieceCID: %s != %s", i, len(si.Pieces), si.SectorNumber, p.DealInfo.DealID, p.Piece.PieceCID, proposal.PieceCID)}
+		if deal.Proposal.PieceCID != p.Piece.PieceCID {
+			return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with wrong PieceCID: %s != %s", i, len(si.Pieces), si.SectorNumber, p.DealInfo.DealID, p.Piece.PieceCID, deal.Proposal.PieceCID)}
 		}
 
-		if p.Piece.Size != proposal.PieceSize {
-			return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with different size: %d != %d", i, len(si.Pieces), si.SectorNumber, p.DealInfo.DealID, p.Piece.Size, proposal.PieceSize)}
+		if p.Piece.Size != deal.Proposal.PieceSize {
+			return &ErrInvalidDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers deal %d with different size: %d != %d", i, len(si.Pieces), si.SectorNumber, p.DealInfo.DealID, p.Piece.Size, deal.Proposal.PieceSize)}
 		}
 
-		if height >= proposal.StartEpoch {
-			return &ErrExpiredDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(si.Pieces), si.SectorNumber, p.DealInfo.DealID, proposal.StartEpoch, height)}
+		if ts.Height() >= deal.Proposal.StartEpoch {
+			return &ErrExpiredDeals{xerrors.Errorf("piece %d (of %d) of sector %d refers expired deal %d - should start at %d, head %d", i, len(si.Pieces), si.SectorNumber, p.DealInfo.DealID, deal.Proposal.StartEpoch, ts.Height())}
 		}
 	}
 
@@ -90,12 +91,12 @@ func checkPieces(ctx context.Context, maddr address.Address, si SectorInfo, api 
 
 // checkPrecommit checks that data commitment generated in the sealing process
 //  matches pieces, and that the seal ticket isn't expired
-func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, tok TipSetToken, height abi.ChainEpoch, api SealingAPI) (err error) {
+func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, tsk types.TipSetKey, height abi.ChainEpoch, api SealingAPI) (err error) {
 	if err := checkPieces(ctx, maddr, si, api, false); err != nil {
 		return err
 	}
 
-	commD, err := api.StateComputeDataCommitment(ctx, maddr, si.SectorType, si.dealIDs(), tok)
+	commD, err := api.StateComputeDataCID(ctx, maddr, si.SectorType, si.dealIDs(), tsk)
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("calling StateComputeDataCommitment: %w", err)}
 	}
@@ -104,12 +105,8 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 		return &ErrBadCommD{xerrors.Errorf("on chain CommD differs from sector: %s != %s", commD, si.CommD)}
 	}
 
-	pci, err := api.StateSectorPreCommitInfo(ctx, maddr, si.SectorNumber, tok)
+	pci, err := api.StateSectorPreCommitInfo(ctx, maddr, si.SectorNumber, tsk)
 	if err != nil {
-		if err == ErrSectorAllocated {
-			//committed P2 message  but commit C2 message too late, pci should be null in this case
-			return &ErrSectorNumberAllocated{err}
-		}
 		return &ErrApi{xerrors.Errorf("getting precommit info: %w", err)}
 	}
 
@@ -121,6 +118,15 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 		return &ErrPrecommitOnChain{xerrors.Errorf("precommit already on chain")}
 	}
 
+	alloc, err := api.StateMinerSectorAllocated(ctx, maddr, si.SectorNumber, tsk)
+	if err != nil {
+		return xerrors.Errorf("checking if sector is allocated: %w", err)
+	}
+	if alloc {
+		//committed P2 message  but commit C2 message too late, pci should be null in this case
+		return &ErrSectorNumberAllocated{xerrors.Errorf("sector %d is allocated, but PreCommit info wasn't found on chain", si.SectorNumber)}
+	}
+
 	//never commit P2 message before, check ticket expiration
 	ticketEarliest := height - policy.MaxPreCommitRandomnessLookback
 
@@ -130,27 +136,32 @@ func checkPrecommit(ctx context.Context, maddr address.Address, si SectorInfo, t
 	return nil
 }
 
-func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, tok TipSetToken) (err error) {
+func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, tsk types.TipSetKey) (err error) {
 	if si.SeedEpoch == 0 {
 		return &ErrBadSeed{xerrors.Errorf("seed epoch was not set")}
 	}
 
-	pci, err := m.Api.StateSectorPreCommitInfo(ctx, m.maddr, si.SectorNumber, tok)
-	if err == ErrSectorAllocated {
-		// not much more we can check here, basically try to wait for commit,
-		// and hope that this will work
-
-		if si.CommitMessage != nil {
-			return &ErrCommitWaitFailed{err}
-		}
-
-		return err
-	}
+	pci, err := m.Api.StateSectorPreCommitInfo(ctx, m.maddr, si.SectorNumber, tsk)
 	if err != nil {
 		return xerrors.Errorf("getting precommit info: %w", err)
 	}
 
 	if pci == nil {
+		alloc, err := m.Api.StateMinerSectorAllocated(ctx, m.maddr, si.SectorNumber, tsk)
+		if err != nil {
+			return xerrors.Errorf("checking if sector is allocated: %w", err)
+		}
+		if alloc {
+			// not much more we can check here, basically try to wait for commit,
+			// and hope that this will work
+
+			if si.CommitMessage != nil {
+				return &ErrCommitWaitFailed{err}
+			}
+
+			return xerrors.Errorf("sector %d is allocated, but PreCommit info wasn't found on chain", si.SectorNumber)
+		}
+
 		return &ErrNoPrecommit{xerrors.Errorf("precommit info not found on-chain")}
 	}
 
@@ -163,7 +174,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 		return err
 	}
 
-	seed, err := m.Api.StateGetRandomnessFromBeacon(ctx, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, si.SeedEpoch, buf.Bytes(), tok)
+	seed, err := m.Api.StateGetRandomnessFromBeacon(ctx, crypto.DomainSeparationTag_InteractiveSealChallengeSeed, si.SeedEpoch, buf.Bytes(), tsk)
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("failed to get randomness for computing seal proof: %w", err)}
 	}
@@ -200,7 +211,7 @@ func (m *Sealing) checkCommit(ctx context.Context, si SectorInfo, proof []byte, 
 }
 
 // check that sector info is good after running a replica update
-func checkReplicaUpdate(ctx context.Context, maddr address.Address, si SectorInfo, tok TipSetToken, api SealingAPI) error {
+func checkReplicaUpdate(ctx context.Context, maddr address.Address, si SectorInfo, tsk types.TipSetKey, api SealingAPI) error {
 
 	if err := checkPieces(ctx, maddr, si, api, true); err != nil {
 		return err
@@ -209,7 +220,7 @@ func checkReplicaUpdate(ctx context.Context, maddr address.Address, si SectorInf
 		return xerrors.Errorf("replica update on sector not marked for update")
 	}
 
-	commD, err := api.StateComputeDataCommitment(ctx, maddr, si.SectorType, si.dealIDs(), tok)
+	commD, err := api.StateComputeDataCID(ctx, maddr, si.SectorType, si.dealIDs(), tsk)
 	if err != nil {
 		return &ErrApi{xerrors.Errorf("calling StateComputeDataCommitment: %w", err)}
 	}

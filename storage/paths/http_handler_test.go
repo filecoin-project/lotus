@@ -14,7 +14,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/paths/mocks"
@@ -26,7 +25,7 @@ func TestRemoteGetAllocated(t *testing.T) {
 
 	emptyPartialFile := &partialfile.PartialFile{}
 	pfPath := "path"
-	expectedSectorRef := storage.SectorRef{
+	expectedSectorRef := storiface.SectorRef{
 		ID: abi.SectorID{
 			Miner:  123,
 			Number: 123,
@@ -255,7 +254,7 @@ func TestRemoteGetSector(t *testing.T) {
 
 	validSectorName := fmt.Sprintf("s-t0%d-%d", 123, 123)
 	validSectorFileType := storiface.FTUnsealed.String()
-	expectedSectorRef := storage.SectorRef{
+	expectedSectorRef := storiface.SectorRef{
 		ID: abi.SectorID{
 			Miner:  123,
 			Number: 123,

@@ -4,12 +4,15 @@ import (
 	"context"
 	"math/bits"
 
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
 
@@ -64,14 +67,14 @@ func (m *Sealing) GetSectorInfo(sid abi.SectorNumber) (SectorInfo, error) {
 }
 
 func collateralSendAmount(ctx context.Context, api interface {
-	StateMinerAvailableBalance(context.Context, address.Address, TipSetToken) (big.Int, error)
+	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (big.Int, error)
 }, maddr address.Address, cfg sealiface.Config, collateral abi.TokenAmount) (abi.TokenAmount, error) {
 	if cfg.CollateralFromMinerBalance {
 		if cfg.DisableCollateralFallback {
 			return big.Zero(), nil
 		}
 
-		avail, err := api.StateMinerAvailableBalance(ctx, maddr, nil)
+		avail, err := api.StateMinerAvailableBalance(ctx, maddr, types.EmptyTSK)
 		if err != nil {
 			return big.Zero(), xerrors.Errorf("getting available miner balance: %w", err)
 		}
@@ -88,4 +91,23 @@ func collateralSendAmount(ctx context.Context, api interface {
 	}
 
 	return collateral, nil
+}
+
+func sendMsg(ctx context.Context, sa interface {
+	MpoolPushMessage(context.Context, *types.Message, *api.MessageSendSpec) (*types.SignedMessage, error)
+}, from, to address.Address, method abi.MethodNum, value, maxFee abi.TokenAmount, params []byte) (cid.Cid, error) {
+	msg := types.Message{
+		To:     to,
+		From:   from,
+		Value:  value,
+		Method: method,
+		Params: params,
+	}
+
+	smsg, err := sa.MpoolPushMessage(ctx, &msg, &api.MessageSendSpec{MaxFee: maxFee})
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	return smsg.Cid(), nil
 }

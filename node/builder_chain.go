@@ -40,6 +40,7 @@ import (
 	"github.com/filecoin-project/lotus/paychmgr"
 	"github.com/filecoin-project/lotus/paychmgr/settler"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 // Chain node provides access to the Filecoin blockchain, by setting up a full
@@ -62,8 +63,8 @@ var ChainNode = Options(
 	Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
 
 	// Consensus: crypto dependencies
-	Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
-	Override(new(ffiwrapper.Prover), ffiwrapper.ProofProver),
+	Override(new(storiface.Verifier), ffiwrapper.ProofVerifier),
+	Override(new(storiface.Prover), ffiwrapper.ProofProver),
 
 	// Consensus: LegacyVM
 	Override(new(vm.SyscallBuilder), vm.Syscalls),

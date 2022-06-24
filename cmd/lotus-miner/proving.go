@@ -14,7 +14,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -477,7 +476,7 @@ var provingCheckProvableCmd = &cli.Command{
 				return err
 			}
 
-			var tocheck []storage.SectorRef
+			var tocheck []storiface.SectorRef
 			for _, info := range sectorInfos {
 				si := abi.SectorID{
 					Miner:  abi.ActorID(mid),
@@ -491,7 +490,7 @@ var provingCheckProvableCmd = &cli.Command{
 				}
 
 				sectors[info.SectorNumber] = struct{}{}
-				tocheck = append(tocheck, storage.SectorRef{
+				tocheck = append(tocheck, storiface.SectorRef{
 					ProofType: info.SealProof,
 					ID:        si,
 				})
