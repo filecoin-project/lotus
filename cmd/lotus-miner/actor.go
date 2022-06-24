@@ -259,10 +259,13 @@ var actorWithdrawMsigProposeCmd = &cli.Command{
 			return err
 		}
 
+		available, err := api.StateMinerAvailableBalance(ctx, msig, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
 		var method uint64
 		var params []byte
-		var paramsStr string
-
 		if cctx.Args().Len() == 5 {
 			m, err := strconv.ParseUint(cctx.Args().Get(3), 10, 64)
 			if err != nil {
@@ -270,21 +273,28 @@ var actorWithdrawMsigProposeCmd = &cli.Command{
 			}
 			method = m
 
-			p, err := srv.DecodeTypedParamsFromJSON(ctx, dest, abi.MethodNum(method), cctx.Args().Get(4))
+			// get amount
+			amount := available
+			if cctx.Args().Present() {
+				f, err := types.ParseFIL(cctx.Args().Get(4))
+				if err != nil {
+					return xerrors.Errorf("parsing 'amount' argument: %w", err)
+				}
+
+				amount = abi.TokenAmount(f)
+
+				if amount.GreaterThan(available) {
+					return xerrors.Errorf("can't withdraw more funds than available; requested: %s; available: %s", types.FIL(amount), types.FIL(available))
+				}
+			}
+
+			params, err = actors.SerializeParams(&miner.WithdrawBalanceParams{
+				AmountRequested: amount, // Default to attempting to withdraw all the extra funds in the miner actor
+			})
 			if err != nil {
-				return xerrors.Errorf("decoding json params: %w", err)
+				return err
 			}
 
-			switch cctx.String("encoding") {
-			case "base64", "b64":
-				paramsStr = base64.StdEncoding.EncodeToString(p)
-			case "hex":
-				paramsStr = hex.EncodeToString(p)
-			default:
-				return xerrors.Errorf("unknown encoding")
-			}
-
-			params = []byte(paramsStr)
 		}
 
 		var from address.Address
@@ -439,11 +449,6 @@ var actorWithdrawMsigApproveCmd = &cli.Command{
 				return err
 			}
 
-			value, err := types.ParseFIL(cctx.Args().Get(4))
-			if err != nil {
-				return err
-			}
-
 			var method uint64
 			var params []byte
 			var paramsStr string
@@ -471,7 +476,7 @@ var actorWithdrawMsigApproveCmd = &cli.Command{
 				params = []byte(paramsStr)
 			}
 
-			proto, err := api.MsigApproveTxnHash(ctx, msig, txid, proposer, dest, types.BigInt(value), from, method, params)
+			proto, err := api.MsigApproveTxnHash(ctx, msig, txid, proposer, dest, big.Zero(), from, uint64(builtint.MethodsMiner.WithdrawBalance), params)
 			if err != nil {
 				return err
 			}
