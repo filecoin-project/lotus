@@ -1023,7 +1023,7 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-appimage:
-        name: build-appimage-tmp
+          name: build-appimage-tmp
       - build-appimage:
           filters:
             branches:
