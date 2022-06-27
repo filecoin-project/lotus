@@ -447,6 +447,7 @@ jobs:
           command: |
             sed -i "s/version: latest/version: ${CIRCLE_TAG:-latest}/" AppImageBuilder.yml
             make appimage
+          no_output_timeout: 30m
       - run:
           name: prepare workspace
           command: |
