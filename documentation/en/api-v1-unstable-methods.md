@@ -165,6 +165,7 @@
   * [PaychVoucherSubmit](#PaychVoucherSubmit)
 * [State](#State)
   * [StateAccountKey](#StateAccountKey)
+  * [StateActorCodeCIDs](#StateActorCodeCIDs)
   * [StateAllMinerFaults](#StateAllMinerFaults)
   * [StateCall](#StateCall)
   * [StateChangedActors](#StateChangedActors)
@@ -5048,6 +5049,21 @@ Inputs:
 ```
 
 Response: `"f01234"`
+
+### StateActorCodeCIDs
+StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  16
+]
+```
+
+Response: `{}`
 
 ### StateAllMinerFaults
 StateAllMinerFaults returns all non-expired Faults that occur within lookback epochs of the given tipset
