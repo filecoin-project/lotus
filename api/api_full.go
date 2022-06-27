@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
+	abinetwork "github.com/filecoin-project/go-state-types/network"
 
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
@@ -590,6 +591,8 @@ type FullNode interface {
 	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (CirculatingSupply, error) //perm:read
 	// StateNetworkVersion returns the network version at the given tipset
 	StateNetworkVersion(context.Context, types.TipSetKey) (apitypes.NetworkVersion, error) //perm:read
+	// StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version
+	StateActorCodeCIDs(context.Context, abinetwork.Version) (map[string]cid.Cid, error) //perm:read
 
 	// StateGetRandomnessFromTickets is used to sample the chain for randomness.
 	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) //perm:read

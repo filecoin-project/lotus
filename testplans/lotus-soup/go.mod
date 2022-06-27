@@ -9,7 +9,7 @@ require (
 	github.com/drand/drand v1.3.0
 	github.com/filecoin-project/go-address v1.0.0
 	github.com/filecoin-project/go-data-transfer v1.15.1
-	github.com/filecoin-project/go-fil-markets v1.21.0
+	github.com/filecoin-project/go-fil-markets v1.22.0
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-state-types v0.1.10
 	github.com/filecoin-project/go-storedcounter v0.1.0
@@ -52,7 +52,7 @@ require (
 	github.com/benbjohnson/clock v1.3.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bep/debounce v1.2.0 // indirect
-	github.com/btcsuite/btcd v0.22.0-beta // indirect
+	github.com/btcsuite/btcd v0.22.1 // indirect
 	github.com/buger/goterm v1.0.3 // indirect
 	github.com/cespare/xxhash v1.1.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
