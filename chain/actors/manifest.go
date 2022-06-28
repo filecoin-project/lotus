@@ -113,6 +113,15 @@ func ReadManifest(ctx context.Context, store cbor.IpldStore, mfCid cid.Cid) (map
 	return metadata, nil
 }
 
+// GetActorCodeIDs looks up a builtin actor's code CID by actor version.
+func GetActorCodeIDsFromManifest(av Version) (map[string]cid.Cid, bool) {
+	manifestMx.RLock()
+	defer manifestMx.RUnlock()
+
+	cids, ok := manifests[av]
+	return cids, ok
+}
+
 // Given a Manifest CID, get the manifest from the store and Load data into its entries
 func LoadManifest(ctx context.Context, mfCid cid.Cid, adtStore adt.Store) (*manifest.Manifest, error) {
 	var mf manifest.Manifest
@@ -126,15 +135,6 @@ func LoadManifest(ctx context.Context, mfCid cid.Cid, adtStore adt.Store) (*mani
 	}
 
 	return &mf, nil
-}
-
-// GetActorCodeID looks up a builtin actor's code CID by actor version and canonical actor name.
-func GetActorCodeID(av Version, name string) (cid.Cid, bool) {
-	manifestMx.RLock()
-	defer manifestMx.RUnlock()
-
-	c, ok := manifests[av][name]
-	return c, ok
 }
 
 func GetActorMetaByCode(c cid.Cid) (string, Version, bool) {
