@@ -6,6 +6,7 @@ import (
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	ipld "github.com/ipfs/go-ipld-format"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -44,7 +45,7 @@ func (cs *ChainStore) GetCMessage(ctx context.Context, c cid.Cid) (types.ChainMs
 	if err == nil {
 		return m, nil
 	}
-	if err != bstore.ErrNotFound {
+	if !ipld.IsNotFound(err) {
 		log.Warnf("GetCMessage: unexpected error getting unsigned message: %s", err)
 	}
 
