@@ -435,8 +435,6 @@ jobs:
             # docs: https://appimage-builder.readthedocs.io/en/latest/intro/install.html
             sudo apt update
             sudo apt install -y python3-pip python3-setuptools patchelf desktop-file-utils libgdk-pixbuf2.0-dev fakeroot strace
-            sudo curl -Lo /usr/local/bin/appimage-builder https://github.com/AppImageCrafters/appimage-builder/releases/download/v1.0.0-beta.1/appimage-builder-1.0.0-677acbd-x86_64.AppImage
-            sudo chmod +x /usr/local/bin/appimage-builder
             sudo curl -Lo /usr/local/bin/appimagetool https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage
             sudo chmod +x /usr/local/bin/appimagetool
             sudo pip3 install appimage-builder
@@ -448,7 +446,6 @@ jobs:
           command: |
             sed -i "s/version: latest/version: ${CIRCLE_TAG:-latest}/" AppImageBuilder.yml
             make appimage
-          no_output_timeout: 30m
       - run:
           name: prepare workspace
           command: |
@@ -1024,8 +1021,6 @@ workflows:
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - build-appimage:
-          name: build-appimage-tmp
       - build-appimage:
           filters:
             branches:
