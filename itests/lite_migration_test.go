@@ -47,17 +47,11 @@ func TestLiteMigration(t *testing.T) {
 	oldStateTree, err := state.LoadStateTree(ctxStore, stateRoot)
 	require.NoError(t, err)
 
-	oldManifest, err := stmgr.GetManifest(ctx, oldStateTree)
+	oldManifestData, err := stmgr.GetManifestData(ctx, oldStateTree)
 	require.NoError(t, err)
 	newManifestCid := makeTestManifest(t, ctxStore)
 	// Use the Cid we generated to get the new manifest instead of loading it from the state tree, because that would not test that we have the correct manifest in the state
-	var newManifest manifest.Manifest
-	err = ctxStore.Get(ctx, newManifestCid, &newManifest)
-	require.NoError(t, err)
-	err = newManifest.Load(ctx, ctxStore)
-	require.NoError(t, err)
-	newManifestData := manifest.ManifestData{}
-	err = ctxStore.Get(ctx, newManifest.Data, &newManifestData)
+	newManifestData, err := actors.LoadManifestData(ctx, newManifestCid, ctxStore)
 	require.NoError(t, err)
 
 	newStateRoot, err := filcns.LiteMigration(ctx, bs, newManifestCid, stateRoot, actors.Version8, types.StateTreeVersion4, types.StateTreeVersion4)
@@ -67,10 +61,8 @@ func TestLiteMigration(t *testing.T) {
 	require.NoError(t, err)
 
 	migrations := make(map[cid.Cid]cid.Cid)
-	for _, entry := range newManifestData.Entries {
-		oldCodeCid, ok := oldManifest.Get(entry.Name)
-		require.True(t, ok)
-		migrations[oldCodeCid] = entry.Code
+	for i, entry := range newManifestData.Entries {
+		migrations[oldManifestData.Entries[i].Code] = entry.Code
 	}
 
 	err = newStateTree.ForEach(func(addr address.Address, newActorState *types.Actor) error {

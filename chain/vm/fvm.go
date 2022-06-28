@@ -10,11 +10,9 @@ import (
 	"sync"
 	"time"
 
-	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
-	cbg "github.com/whyrusleeping/cbor-gen"
-
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
@@ -22,7 +20,6 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/go-state-types/manifest"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
@@ -324,6 +321,7 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 
 	baseBstore := opts.Bstore
 	overlayBstore := blockstore.NewMemorySync()
+	cborStore := cbor.NewCborStore(overlayBstore)
 	vmBstore := blockstore.NewTieredBstore(overlayBstore, baseBstore)
 
 	fvmopts := &ffi.FVMOpts{
@@ -344,14 +342,6 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		Debug:          true,
 	}
 
-	loadBundle := func(path string) (cid.Cid, error) {
-		return bundle.LoadBundleData(ctx, path, overlayBstore)
-	}
-
-	loadManifest := func(mfCid cid.Cid) (manifest.ManifestData, error) {
-		return bundle.LoadManifestData(ctx, mfCid, overlayBstore)
-	}
-
 	putMapping := func(ar map[cid.Cid]cid.Cid) (cid.Cid, error) {
 		var mapping xMapping
 
@@ -364,7 +354,6 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		})
 
 		// Passing this as a pointer of structs has proven to be an enormous PiTA; hence this code.
-		cborStore := cbor.NewCborStore(overlayBstore)
 		mappingCid, err := cborStore.Put(context.TODO(), &mapping)
 		if err != nil {
 			return cid.Undef, err
@@ -379,57 +368,14 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 	}
 
 	switch av {
-	case actors.Version7:
-		if bundle := os.Getenv("LOTUS_FVM_DEBUG_BUNDLE_V7"); bundle != "" {
-			mfCid, err := loadBundle(bundle)
-			if err != nil {
-				return nil, err
-			}
-
-			mf, err := loadManifest(mfCid)
-			if err != nil {
-				return nil, err
-			}
-
-			// create actor redirect mapping from the synthetic Cid to the debug code
-			actorRedirect := make(map[cid.Cid]cid.Cid)
-			fromMap := map[string]cid.Cid{
-				"init":             builtin7.InitActorCodeID,
-				"cron":             builtin7.CronActorCodeID,
-				"account":          builtin7.AccountActorCodeID,
-				"storagepower":     builtin7.StoragePowerActorCodeID,
-				"storageminer":     builtin7.StorageMinerActorCodeID,
-				"paymentchannel":   builtin7.PaymentChannelActorCodeID,
-				"multisig":         builtin7.MultisigActorCodeID,
-				"reward":           builtin7.RewardActorCodeID,
-				"verifiedregistry": builtin7.VerifiedRegistryActorCodeID,
-			}
-
-			for _, e := range mf.Entries {
-				from, ok := fromMap[e.Name]
-				if !ok {
-					return nil, xerrors.Errorf("error mapping %s for debug redirect: %w", e.Name, err)
-				}
-				actorRedirect[from] = e.Code
-			}
-
-			if len(actorRedirect) > 0 {
-				mappingCid, err := putMapping(actorRedirect)
-				if err != nil {
-					return nil, xerrors.Errorf("error writing redirect mapping: %w", err)
-				}
-				fvmopts.ActorRedirect = mappingCid
-			}
-		}
-
 	case actors.Version8:
-		if bundle := os.Getenv("LOTUS_FVM_DEBUG_BUNDLE_V8"); bundle != "" {
-			mfCid, err := loadBundle(bundle)
+		if bundlePath := os.Getenv("LOTUS_FVM_DEBUG_BUNDLE_V8"); bundlePath != "" {
+			mfCid, err := bundle.LoadBundleFromFile(ctx, overlayBstore, bundlePath)
 			if err != nil {
 				return nil, err
 			}
 
-			mf, err := loadManifest(mfCid)
+			mf, err := actors.LoadManifestData(ctx, mfCid, adt.WrapStore(ctx, cborStore))
 			if err != nil {
 				return nil, err
 			}
