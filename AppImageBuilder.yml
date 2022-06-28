@@ -68,6 +68,6 @@ AppDir:
       use_host_x: false
 AppImage:
   arch: x86_64
-  update-information: guess
+  update-information: None
   sign-key: None
 
