@@ -1483,13 +1483,18 @@ func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsM
 	}
 
 	// load new manifest
-	newManifest := manifest.Manifest{}
+	var newManifest manifest.Manifest
 	if err := store.Get(ctx, newActorsManifestCid, &newManifest); err != nil {
+		return cid.Undef, xerrors.Errorf("error getting new manifest: %w", err)
+	}
+
+	// populate the entries field of the manifest
+	if err = newManifest.Load(ctx, store); err != nil {
 		return cid.Undef, xerrors.Errorf("error loading new manifest: %w", err)
 	}
 
-	newManifestData, err := actors.LoadManifestData(ctx, newActorsManifestCid, store)
-	if err != nil {
+	var newManifestData manifest.ManifestData
+	if err := store.Get(ctx, newManifest.Data, &newManifestData); err != nil {
 		return cid.Undef, xerrors.Errorf("error loading new manifest data: %w", err)
 	}
 
@@ -1503,8 +1508,13 @@ func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsM
 	// Maps prior version code CIDs to migration functions.
 	migrations := make(map[cid.Cid]cid.Cid)
 
-	for i, entry := range newManifestData.Entries {
-		migrations[oldManifestData.Entries[i].Code] = entry.Code
+	for _, entry := range oldManifestData.Entries {
+		newCodeCid, ok := newManifest.Get(entry.Name)
+		if !ok {
+			return cid.Undef, xerrors.Errorf("code cid for %s actor not found in new manifest", entry.Name)
+		}
+
+		migrations[entry.Code] = newCodeCid
 	}
 
 	startTime := time.Now()

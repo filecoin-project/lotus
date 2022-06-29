@@ -36,6 +36,7 @@ import (
 
 var _ Interface = (*FVM)(nil)
 var _ ffi_cgo.Externs = (*FvmExtern)(nil)
+var debugBundleV8path = os.Getenv("LOTUS_FVM_DEBUG_BUNDLE_V8")
 
 type FvmExtern struct {
 	Rand
@@ -255,18 +256,18 @@ type FVM struct {
 	fvm *ffi.FVM
 }
 
-func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
+func defaultFVMOpts(ctx context.Context, opts *VMOpts) (*ffi.FVMOpts, error) {
 	state, err := state.LoadStateTree(cbor.NewCborStore(opts.Bstore), opts.StateBase)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("loading state tree: %w", err)
 	}
 
 	circToReport, err := opts.CircSupplyCalc(ctx, opts.Epoch, state)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("calculating circ supply: %w", err)
 	}
 
-	fvmopts := &ffi.FVMOpts{
+	return &ffi.FVMOpts{
 		FVMVersion: 0,
 		Externs: &FvmExtern{
 			Rand:       opts.Rand,
@@ -281,6 +282,14 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		NetworkVersion: opts.NetworkVersion,
 		StateBase:      opts.StateBase,
 		Tracing:        EnableDetailedTracing,
+	}, nil
+
+}
+
+func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
+	fvmOpts, err := defaultFVMOpts(ctx, opts)
+	if err != nil {
+		return nil, xerrors.Errorf("creating fvm opts: %w", err)
 	}
 
 	if os.Getenv("LOTUS_USE_FVM_CUSTOM_BUNDLE") == "1" {
@@ -294,10 +303,10 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 			return nil, xerrors.Errorf("no manifest for custom bundle (actors version %d)", av)
 		}
 
-		fvmopts.Manifest = c
+		fvmOpts.Manifest = c
 	}
 
-	fvm, err := ffi.CreateFVM(fvmopts)
+	fvm, err := ffi.CreateFVM(fvmOpts)
 
 	if err != nil {
 		return nil, err
@@ -309,38 +318,18 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 }
 
 func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
-	state, err := state.LoadStateTree(cbor.NewCborStore(opts.Bstore), opts.StateBase)
-	if err != nil {
-		return nil, err
-	}
-
-	circToReport, err := opts.CircSupplyCalc(ctx, opts.Epoch, state)
-	if err != nil {
-		return nil, err
-	}
-
 	baseBstore := opts.Bstore
 	overlayBstore := blockstore.NewMemorySync()
 	cborStore := cbor.NewCborStore(overlayBstore)
 	vmBstore := blockstore.NewTieredBstore(overlayBstore, baseBstore)
 
-	fvmopts := &ffi.FVMOpts{
-		FVMVersion: 0,
-		Externs: &FvmExtern{
-			Rand:       opts.Rand,
-			Blockstore: vmBstore,
-			lbState:    opts.LookbackState,
-			base:       opts.StateBase,
-			epoch:      opts.Epoch,
-		},
-		Epoch:          opts.Epoch,
-		BaseFee:        opts.BaseFee,
-		BaseCircSupply: circToReport,
-		NetworkVersion: opts.NetworkVersion,
-		StateBase:      opts.StateBase,
-		Tracing:        EnableDetailedTracing,
-		Debug:          true,
+	opts.Bstore = vmBstore
+	fvmOpts, err := defaultFVMOpts(ctx, opts)
+	if err != nil {
+		return nil, xerrors.Errorf("creating fvm opts: %w", err)
 	}
+
+	fvmOpts.Debug = true
 
 	putMapping := func(ar map[cid.Cid]cid.Cid) (cid.Cid, error) {
 		var mapping xMapping
@@ -362,6 +351,46 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		return mappingCid, nil
 	}
 
+	createMapping := func(debugBundlePath string) error {
+		mfCid, err := bundle.LoadBundleFromFile(ctx, overlayBstore, debugBundlePath)
+		if err != nil {
+			return xerrors.Errorf("loading debug bundle: %w", err)
+		}
+
+		mf, err := actors.LoadManifest(ctx, mfCid, adt.WrapStore(ctx, cborStore))
+		if err != nil {
+			return xerrors.Errorf("loading debug manifest: %w", err)
+		}
+
+		// create actor redirect mapping
+		actorRedirect := make(map[cid.Cid]cid.Cid)
+		for _, key := range actors.GetBuiltinActorsKeys() {
+			from, ok := actors.GetActorCodeID(actors.Version8, key)
+			if !ok {
+				log.Warnf("actor missing in the from manifest %s", key)
+				continue
+			}
+
+			to, ok := mf.Get(key)
+			if !ok {
+				log.Warnf("actor missing in the to manifest %s", key)
+				continue
+			}
+
+			actorRedirect[from] = to
+		}
+
+		if len(actorRedirect) > 0 {
+			mappingCid, err := putMapping(actorRedirect)
+			if err != nil {
+				return xerrors.Errorf("error writing redirect mapping: %w", err)
+			}
+			fvmOpts.ActorRedirect = mappingCid
+		}
+
+		return nil
+	}
+
 	av, err := actors.VersionForNetwork(opts.NetworkVersion)
 	if err != nil {
 		return nil, xerrors.Errorf("error determining actors version for network version %d: %w", opts.NetworkVersion, err)
@@ -369,40 +398,14 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 
 	switch av {
 	case actors.Version8:
-		if bundlePath := os.Getenv("LOTUS_FVM_DEBUG_BUNDLE_V8"); bundlePath != "" {
-			mfCid, err := bundle.LoadBundleFromFile(ctx, overlayBstore, bundlePath)
-			if err != nil {
-				return nil, err
-			}
-
-			mf, err := actors.LoadManifestData(ctx, mfCid, adt.WrapStore(ctx, cborStore))
-			if err != nil {
-				return nil, err
-			}
-
-			// create actor redirect mapping
-			actorRedirect := make(map[cid.Cid]cid.Cid)
-			for _, e := range mf.Entries {
-				from, ok := actors.GetActorCodeID(actors.Version8, e.Name)
-				if !ok {
-					log.Warnf("unknown actor %s", e.Name)
-					continue
-				}
-
-				actorRedirect[from] = e.Code
-			}
-
-			if len(actorRedirect) > 0 {
-				mappingCid, err := putMapping(actorRedirect)
-				if err != nil {
-					return nil, xerrors.Errorf("error writing redirect mapping: %w", err)
-				}
-				fvmopts.ActorRedirect = mappingCid
+		if debugBundleV8path != "" {
+			if err := createMapping(debugBundleV8path); err != nil {
+				log.Errorf("failed to create v8 debug mapping")
 			}
 		}
 	}
 
-	fvm, err := ffi.CreateFVM(fvmopts)
+	fvm, err := ffi.CreateFVM(fvmOpts)
 
 	if err != nil {
 		return nil, err
