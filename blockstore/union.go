@@ -5,6 +5,7 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 )
 
 type unionBlockstore []Blockstore
@@ -13,7 +14,7 @@ type unionBlockstore []Blockstore
 //
 // * Reads return from the first blockstore that has the value, querying in the
 //   supplied order.
-// * Writes (puts and deltes) are broadcast to all stores.
+// * Writes (puts and deletes) are broadcast to all stores.
 //
 func Union(stores ...Blockstore) Blockstore {
 	return unionBlockstore(stores)
@@ -30,7 +31,7 @@ func (m unionBlockstore) Has(ctx context.Context, cid cid.Cid) (has bool, err er
 
 func (m unionBlockstore) Get(ctx context.Context, cid cid.Cid) (blk blocks.Block, err error) {
 	for _, bs := range m {
-		if blk, err = bs.Get(ctx, cid); err == nil || err != ErrNotFound {
+		if blk, err = bs.Get(ctx, cid); err == nil || !ipld.IsNotFound(err) {
 			break
 		}
 	}
@@ -39,7 +40,7 @@ func (m unionBlockstore) Get(ctx context.Context, cid cid.Cid) (blk blocks.Block
 
 func (m unionBlockstore) View(ctx context.Context, cid cid.Cid, callback func([]byte) error) (err error) {
 	for _, bs := range m {
-		if err = bs.View(ctx, cid, callback); err == nil || err != ErrNotFound {
+		if err = bs.View(ctx, cid, callback); err == nil || !ipld.IsNotFound(err) {
 			break
 		}
 	}
@@ -48,7 +49,7 @@ func (m unionBlockstore) View(ctx context.Context, cid cid.Cid, callback func([]
 
 func (m unionBlockstore) GetSize(ctx context.Context, cid cid.Cid) (size int, err error) {
 	for _, bs := range m {
-		if size, err = bs.GetSize(ctx, cid); err == nil || err != ErrNotFound {
+		if size, err = bs.GetSize(ctx, cid); err == nil || !ipld.IsNotFound(err) {
 			break
 		}
 	}

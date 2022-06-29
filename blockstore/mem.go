@@ -5,6 +5,7 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 )
 
 // NewMemory returns a temporary memory-backed blockstore.
@@ -35,7 +36,7 @@ func (m MemBlockstore) Has(ctx context.Context, k cid.Cid) (bool, error) {
 func (m MemBlockstore) View(ctx context.Context, k cid.Cid, callback func([]byte) error) error {
 	b, ok := m[k]
 	if !ok {
-		return ErrNotFound
+		return ipld.ErrNotFound{Cid: k}
 	}
 	return callback(b.RawData())
 }
@@ -43,7 +44,7 @@ func (m MemBlockstore) View(ctx context.Context, k cid.Cid, callback func([]byte
 func (m MemBlockstore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
 	b, ok := m[k]
 	if !ok {
-		return nil, ErrNotFound
+		return nil, ipld.ErrNotFound{Cid: k}
 	}
 	return b, nil
 }
@@ -52,7 +53,7 @@ func (m MemBlockstore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error)
 func (m MemBlockstore) GetSize(ctx context.Context, k cid.Cid) (int, error) {
 	b, ok := m[k]
 	if !ok {
-		return 0, ErrNotFound
+		return 0, ipld.ErrNotFound{Cid: k}
 	}
 	return len(b.RawData()), nil
 }
