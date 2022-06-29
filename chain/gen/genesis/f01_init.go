@@ -16,7 +16,6 @@ import (
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
@@ -174,9 +173,9 @@ func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, i
 		return 0, nil, nil, err
 	}
 
-	actcid, err := builtin.GetInitActorCodeID(av)
-	if err != nil {
-		return 0, nil, nil, err
+	actcid, ok := actors.GetActorCodeID(av, actors.InitKey)
+	if !ok {
+		return 0, nil, nil, xerrors.Errorf("failed to get init actor code ID for actors version %d", av)
 	}
 
 	act := &types.Actor{

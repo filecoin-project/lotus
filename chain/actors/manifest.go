@@ -113,7 +113,7 @@ func ReadManifest(ctx context.Context, store cbor.IpldStore, mfCid cid.Cid) (map
 	return metadata, nil
 }
 
-// GetActorCodeIDs looks up a builtin actor's code CID by actor version.
+// GetActorCodeIDsFromManifest looks up all builtin actor's code CIDs by actor version for versions that have a manifest.
 func GetActorCodeIDsFromManifest(av Version) (map[string]cid.Cid, bool) {
 	manifestMx.RLock()
 	defer manifestMx.RUnlock()
