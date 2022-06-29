@@ -1483,13 +1483,8 @@ func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsM
 	}
 
 	// load new manifest
-	var newManifest manifest.Manifest
-	if err := store.Get(ctx, newActorsManifestCid, &newManifest); err != nil {
-		return cid.Undef, xerrors.Errorf("error getting new manifest: %w", err)
-	}
-
-	// populate the entries field of the manifest
-	if err = newManifest.Load(ctx, store); err != nil {
+	newManifest, err := actors.LoadManifest(ctx, newActorsManifestCid, store)
+	if err != nil {
 		return cid.Undef, xerrors.Errorf("error loading new manifest: %w", err)
 	}
 
