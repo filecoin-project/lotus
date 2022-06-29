@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strings"
 	"testing"
@@ -323,10 +322,7 @@ func (dh *DealHarness) PerformRetrieval(ctx context.Context, deal *cid.Cid, root
 		offer = offers[0]
 	}
 
-	carFile, err := ioutil.TempFile(dh.t.TempDir(), "ret-car")
-	require.NoError(dh.t, err)
-
-	defer carFile.Close() //nolint:errcheck
+	carFile := dh.t.TempDir() + string(os.PathSeparator) + "ret-car-" + root.String()
 
 	caddr, err := dh.client.WalletDefaultAddress(ctx)
 	require.NoError(dh.t, err)
@@ -367,16 +363,16 @@ consumeEvents:
 			DealID: retrievalRes.DealID,
 		},
 		api.FileRef{
-			Path:  carFile.Name(),
+			Path:  carFile,
 			IsCAR: carExport,
 		}))
 
-	ret := carFile.Name()
+	ret := carFile
 
 	return ret
 }
 
-func (dh *DealHarness) ExtractFileFromCAR(ctx context.Context, file *os.File) (out *os.File) {
+func (dh *DealHarness) ExtractFileFromCAR(ctx context.Context, file *os.File) string {
 	bserv := dstest.Bserv()
 	ch, err := car.LoadCar(ctx, bserv.Blockstore(), file)
 	require.NoError(dh.t, err)
@@ -391,12 +387,9 @@ func (dh *DealHarness) ExtractFileFromCAR(ctx context.Context, file *os.File) (o
 	fil, err := unixfile.NewUnixfsFile(ctx, dserv, nd)
 	require.NoError(dh.t, err)
 
-	tmpfile, err := ioutil.TempFile(dh.t.TempDir(), "file-in-car")
-	require.NoError(dh.t, err)
+	tmpfile := dh.t.TempDir() + string(os.PathSeparator) + "file-in-car" + b.Cid().String()
 
-	defer tmpfile.Close() //nolint:errcheck
-
-	err = files.WriteTo(fil, tmpfile.Name())
+	err = files.WriteTo(fil, tmpfile)
 	require.NoError(dh.t, err)
 
 	return tmpfile
@@ -452,7 +445,7 @@ func (dh *DealHarness) RunConcurrentDeals(opts RunConcurrentDealsOpts) {
 				actualFile := dh.ExtractFileFromCAR(ctx, f)
 				require.NoError(dh.t, f.Close())
 
-				AssertFilesEqual(dh.t, inPath, actualFile.Name())
+				AssertFilesEqual(dh.t, inPath, actualFile)
 			} else {
 				AssertFilesEqual(dh.t, inPath, outPath)
 			}
