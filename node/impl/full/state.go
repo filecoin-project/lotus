@@ -1526,7 +1526,7 @@ func (m *StateModule) StateNetworkVersion(ctx context.Context, tsk types.TipSetK
 func (a *StateAPI) StateActorCodeCIDs(ctx context.Context, nv network.Version) (map[string]cid.Cid, error) {
 	actorVersion, err := actors.VersionForNetwork(nv)
 	if err != nil {
-		return nil, xerrors.Errorf("invalid network version")
+		return nil, xerrors.Errorf("invalid network version %d: %w", nv, err)
 	}
 
 	cids, err := actors.GetActorCodeIDs(actorVersion)

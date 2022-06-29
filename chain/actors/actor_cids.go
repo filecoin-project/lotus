@@ -16,9 +16,10 @@ import (
 func GetActorCodeID(av Version, name string) (cid.Cid, bool) {
 
 	// Actors V8 and above
-	if cids, ok := GetActorCodeIDsFromManifest(av); ok {
-		if c, ok := cids[name]; ok {
-			return c, true
+	if av >= Version8 {
+		if cids, ok := GetActorCodeIDsFromManifest(av); ok {
+			c, ok := cids[name]
+			return c, ok
 		}
 	}
 
@@ -304,7 +305,7 @@ func GetActorCodeID(av Version, name string) (cid.Cid, bool) {
 	return cid.Undef, false
 }
 
-// GetActorCodeIDs looks up a builtin actor's code CID by actor version.
+// GetActorCodeIDs looks up all builtin actor's code CIDs by actor version.
 func GetActorCodeIDs(av Version) (map[string]cid.Cid, error) {
 	cids, ok := GetActorCodeIDsFromManifest(av)
 	if ok {
