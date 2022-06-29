@@ -321,7 +321,7 @@ func GetActorCodeIDs(av Version) (map[string]cid.Cid, error) {
 		if !ok {
 			return nil, xerrors.Errorf("could not find builtin actor cids for Actors version %d", av)
 		}
-		cids[key] = c
+		synthCids[key] = c
 	}
 
 	return synthCids, nil

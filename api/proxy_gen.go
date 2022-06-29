@@ -341,8 +341,6 @@ type FullNodeStruct struct {
 
 		StateActorCodeCIDs func(p0 context.Context, p1 abinetwork.Version) (map[string]cid.Cid, error) `perm:"read"`
 
-		StateActorManifestCID func(p0 context.Context, p1 abinetwork.Version) (cid.Cid, error) `perm:"read"`
-
 		StateAllMinerFaults func(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) ([]*Fault, error) `perm:"read"`
 
 		StateCall func(p0 context.Context, p1 *types.Message, p2 types.TipSetKey) (*InvocResult, error) `perm:"read"`
@@ -2412,17 +2410,6 @@ func (s *FullNodeStruct) StateActorCodeCIDs(p0 context.Context, p1 abinetwork.Ve
 
 func (s *FullNodeStub) StateActorCodeCIDs(p0 context.Context, p1 abinetwork.Version) (map[string]cid.Cid, error) {
 	return *new(map[string]cid.Cid), ErrNotSupported
-}
-
-func (s *FullNodeStruct) StateActorManifestCID(p0 context.Context, p1 abinetwork.Version) (cid.Cid, error) {
-	if s.Internal.StateActorManifestCID == nil {
-		return *new(cid.Cid), ErrNotSupported
-	}
-	return s.Internal.StateActorManifestCID(p0, p1)
-}
-
-func (s *FullNodeStub) StateActorManifestCID(p0 context.Context, p1 abinetwork.Version) (cid.Cid, error) {
-	return *new(cid.Cid), ErrNotSupported
 }
 
 func (s *FullNodeStruct) StateAllMinerFaults(p0 context.Context, p1 abi.ChainEpoch, p2 types.TipSetKey) ([]*Fault, error) {
