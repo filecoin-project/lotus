@@ -1526,27 +1526,14 @@ func (m *StateModule) StateNetworkVersion(ctx context.Context, tsk types.TipSetK
 func (a *StateAPI) StateActorCodeCIDs(ctx context.Context, nv network.Version) (map[string]cid.Cid, error) {
 	actorVersion, err := actors.VersionForNetwork(nv)
 	if err != nil {
-		return nil, xerrors.Errorf("invalid network version")
+		return nil, xerrors.Errorf("invalid network version %d: %w", nv, err)
 	}
 
-	cids := make(map[string]cid.Cid)
-
-	manifestCid, ok := actors.GetManifest(actorVersion)
-	if !ok {
-		return nil, xerrors.Errorf("cannot get manifest CID")
+	cids, err := actors.GetActorCodeIDs(actorVersion)
+	if err != nil {
+		return nil, xerrors.Errorf("could not find cids for network version %d, actors version %d: %w", nv, actorVersion, err)
 	}
 
-	cids["_manifest"] = manifestCid
-
-	var actorKeys = actors.GetBuiltinActorsKeys()
-	for _, name := range actorKeys {
-		actorCID, ok := actors.GetActorCodeID(actorVersion, name)
-		if !ok {
-			return nil, xerrors.Errorf("didn't find actor %v code id for actor version %d", name,
-				actorVersion)
-		}
-		cids[name] = actorCID
-	}
 	return cids, nil
 }
 

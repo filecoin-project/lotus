@@ -1900,19 +1900,7 @@ var StateSysActorCIDsCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		ts, err := LoadTipSet(ctx, cctx, api)
-		if err != nil {
-			return err
-		}
-
-		nv, err := api.StateNetworkVersion(ctx, ts.Key())
-		if err != nil {
-			return err
-		}
-
-		if cctx.IsSet("network-version") {
-			nv = network.Version(cctx.Uint64("network-version"))
-		}
+		nv := network.Version(cctx.Uint64("network-version"))
 
 		fmt.Printf("Network Version: %d\n", nv)
 
@@ -1921,6 +1909,11 @@ var StateSysActorCIDsCmd = &cli.Command{
 			return err
 		}
 		fmt.Printf("Actor Version: %d\n", actorVersion)
+
+		manifestCid, ok := actors.GetManifest(actorVersion)
+		if ok {
+			fmt.Printf("Manifest CID: %v\n", manifestCid)
+		}
 
 		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 		_, _ = fmt.Fprintln(tw, "\nActor\tCID\t")

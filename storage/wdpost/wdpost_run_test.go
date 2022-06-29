@@ -25,7 +25,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
@@ -309,9 +308,9 @@ func (m *mockStorageMinerAPI) StateMinerProvingDeadline(ctx context.Context, add
 }
 
 func (m *mockStorageMinerAPI) StateGetActor(ctx context.Context, actor address.Address, ts types.TipSetKey) (*types.Actor, error) {
-	code, err := lbuiltin.GetMinerActorCodeID(actors.Version7)
-	if err != nil {
-		return nil, err
+	code, ok := actors.GetActorCodeID(actors.Version7, actors.MinerKey)
+	if !ok {
+		return nil, xerrors.Errorf("failed to get miner actor code ID for actors version %d", actors.Version7)
 	}
 	return &types.Actor{
 		Code: code,

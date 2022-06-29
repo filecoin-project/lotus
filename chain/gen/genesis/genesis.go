@@ -367,9 +367,9 @@ func MakeAccountActor(ctx context.Context, cst cbor.IpldStore, av actors.Version
 		return nil, err
 	}
 
-	actcid, err := builtin.GetAccountActorCodeID(av)
-	if err != nil {
-		return nil, err
+	actcid, ok := actors.GetActorCodeID(av, actors.AccountKey)
+	if !ok {
+		return nil, xerrors.Errorf("failed to get account actor code ID for actors version %d", av)
 	}
 
 	act := &types.Actor{
@@ -449,9 +449,9 @@ func CreateMultisigAccount(ctx context.Context, cst cbor.IpldStore, state *state
 		return err
 	}
 
-	actcid, err := builtin.GetMultisigActorCodeID(av)
-	if err != nil {
-		return err
+	actcid, ok := actors.GetActorCodeID(av, actors.MultisigKey)
+	if !ok {
+		return xerrors.Errorf("failed to get multisig code ID for actors version %d", av)
 	}
 
 	err = state.SetActor(ida, &types.Actor{
