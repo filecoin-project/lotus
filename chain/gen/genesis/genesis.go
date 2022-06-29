@@ -487,7 +487,7 @@ func VerifyPreSealedData(ctx context.Context, cs *store.ChainStore, sys vm.Sysca
 	}
 	vm, err := vm.NewVM(ctx, &vmopt)
 	if err != nil {
-		return cid.Undef, xerrors.Errorf("failed to create NewLegacyVM: %w", err)
+		return cid.Undef, xerrors.Errorf("failed to create VM: %w", err)
 	}
 
 	for mi, m := range template.Miners {

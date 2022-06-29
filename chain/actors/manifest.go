@@ -113,6 +113,21 @@ func ReadManifest(ctx context.Context, store cbor.IpldStore, mfCid cid.Cid) (map
 	return metadata, nil
 }
 
+// Given a Manifest CID, get the manifest from the store and Load data into its entries
+func LoadManifest(ctx context.Context, mfCid cid.Cid, adtStore adt.Store) (*manifest.Manifest, error) {
+	var mf manifest.Manifest
+
+	if err := adtStore.Get(ctx, mfCid, &mf); err != nil {
+		return nil, xerrors.Errorf("error reading manifest: %w", err)
+	}
+
+	if err := mf.Load(ctx, adtStore); err != nil {
+		return nil, xerrors.Errorf("error loading manifest entries data: %w", err)
+	}
+
+	return &mf, nil
+}
+
 // GetActorCodeID looks up a builtin actor's code CID by actor version and canonical actor name.
 func GetActorCodeID(av Version, name string) (cid.Cid, bool) {
 	manifestMx.RLock()
