@@ -61,11 +61,12 @@ The Skyr upgrade introduces the following FIPs, enhancements and bug fixes, deli
 ## Dependency Updates
 
 - github.com/filecoin-project/go-address (v0.0.6 -> v1.0.0)
-- github.com/filecoin-project/go-fil-markets (v1.20.1 -> v1.22.0)
+- github.com/filecoin-project/go-fil-markets (v1.20.1 -> v1.22.2)
 - github.com/filecoin-project/go-indexer-core (v0.2.8 -> v0.2.9)
-- github.com/filecoin-project/go-legs (v0.3.7 -> v0.3.10)
+- github.com/filecoin-project/go-data-transfer (v1.15.1 -> v1.15.2)
+- github.com/filecoin-project/go-legs (v0.3.7 -> v0.4.4)
 - github.com/filecoin-project/go-state-types (v0.1.8 -> v0.1.9)
-- github.com/filecoin-project/index-provider (v0.5.0 -> v0.6.1)
+- github.com/filecoin-project/index-provider (v0.5.0 -> v0.8.1)
 - github.com/filecoin-project/specs-actors (v0.9.14 -> v0.9.15)
 - github.com/filecoin-project/specs-actors/v3 (v3.1.1 -> v3.1.2)
 - github.com/filecoin-project/specs-actors/v4 (v4.0.1 -> v4.0.2)
