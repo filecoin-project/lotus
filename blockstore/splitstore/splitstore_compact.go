@@ -12,6 +12,7 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
 	"golang.org/x/sync/errgroup"
@@ -19,7 +20,6 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
@@ -1064,13 +1064,10 @@ func (s *SplitStore) view(c cid.Cid, cb func([]byte) error) error {
 	}
 
 	err := s.hot.View(s.ctx, c, cb)
-	switch err {
-	case bstore.ErrNotFound:
+	if ipld.IsNotFound(err) {
 		return s.cold.View(s.ctx, c, cb)
-
-	default:
-		return err
 	}
+	return err
 }
 
 func (s *SplitStore) has(c cid.Cid) (bool, error) {
@@ -1089,10 +1086,10 @@ func (s *SplitStore) has(c cid.Cid) (bool, error) {
 
 func (s *SplitStore) get(c cid.Cid) (blocks.Block, error) {
 	blk, err := s.hot.Get(s.ctx, c)
-	switch err {
-	case nil:
+	switch {
+	case err == nil:
 		return blk, nil
-	case bstore.ErrNotFound:
+	case ipld.IsNotFound(err):
 		return s.cold.Get(s.ctx, c)
 	default:
 		return nil, err
@@ -1101,10 +1098,10 @@ func (s *SplitStore) get(c cid.Cid) (blocks.Block, error) {
 
 func (s *SplitStore) getSize(c cid.Cid) (int, error) {
 	sz, err := s.hot.GetSize(s.ctx, c)
-	switch err {
-	case nil:
+	switch {
+	case err == nil:
 		return sz, nil
-	case bstore.ErrNotFound:
+	case ipld.IsNotFound(err):
 		return s.cold.GetSize(s.ctx, c)
 	default:
 		return 0, err
@@ -1121,7 +1118,7 @@ func (s *SplitStore) moveColdBlocks(coldr *ColdSetReader) error {
 
 		blk, err := s.hot.Get(s.ctx, c)
 		if err != nil {
-			if err == bstore.ErrNotFound {
+			if ipld.IsNotFound(err) {
 				log.Warnf("hotstore missing block %s", c)
 				return nil
 			}

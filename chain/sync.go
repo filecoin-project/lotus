@@ -14,6 +14,7 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -763,7 +764,7 @@ loop:
 			at = ts.Parents()
 			continue
 		}
-		if !xerrors.Is(err, bstore.ErrNotFound) {
+		if !ipld.IsNotFound(err) {
 			log.Warnf("loading local tipset: %s", err)
 		}
 

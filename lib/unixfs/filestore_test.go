@@ -113,11 +113,9 @@ func TestRoundtripUnixFS_Filestore(t *testing.T) {
 	require.Equal(t, inputContents, bz2)
 }
 
+// creates a new tempdir each time, guaranteeing uniqueness
 func newTmpFile(t *testing.T) string {
-	f, err := os.CreateTemp("", "")
-	require.NoError(t, err)
-	require.NoError(t, f.Close())
-	return f.Name()
+	return t.TempDir() + string(os.PathSeparator) + "tmp"
 }
 
 func genInputFile(t *testing.T) (filepath string, contents []byte) {
