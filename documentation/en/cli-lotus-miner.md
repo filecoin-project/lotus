@@ -1168,6 +1168,7 @@ COMMANDS:
    peers                Print peers
    ping                 Ping peers
    connect              Connect to a peer
+   disconnect           Disconnect from a peer
    listen               List listen addresses
    id                   Get node identity
    find-peer, findpeer  Find the addresses of a given peerID
@@ -1222,6 +1223,19 @@ NAME:
 
 USAGE:
    lotus-miner net connect [command options] [peerMultiaddr|minerActorAddress]
+
+OPTIONS:
+   --help, -h  show help (default: false)
+   
+```
+
+### lotus-miner net disconnect
+```
+NAME:
+   lotus-miner net disconnect - Disconnect from a peer
+
+USAGE:
+   lotus-miner net disconnect [command options] [peerID]
 
 OPTIONS:
    --help, -h  show help (default: false)
