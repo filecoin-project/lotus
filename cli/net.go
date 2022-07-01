@@ -276,9 +276,9 @@ var NetDisconnect = &cli.Command{
 
 		ids := cctx.Args().Slice()
 		for _, id := range ids {
-			pid, err := peer.IDFromString(id)
+			pid, err := peer.Decode(id)
 			if err != nil {
-				fmt.Printf("failure")
+				fmt.Println("failure")
 				return err
 			}
 			fmt.Printf("disconnect %s: ", pid.Pretty())
