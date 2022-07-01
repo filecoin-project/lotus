@@ -309,11 +309,27 @@
 
 
 [Proving]
-  # Maximum number of sector checks to run in parallel. (0 = unlimited)
+  # WARNING: Setting this value too high may make the node crash by running out of stack
+  # WARNING: Setting this value too low may make sector challenge reading much slower, resulting in failed PoSt due
+  # to late submission.
   #
   # type: int
   # env var: LOTUS_PROVING_PARALLELCHECKLIMIT
   #ParallelCheckLimit = 128
+
+  # WARNING: If no windowPoSt workers are connected, window PoSt WILL FAIL resulting in faulty sectors which will need
+  # to be recovered. Before enabling this option, make sure your PoSt workers work correctly.
+  #
+  # type: bool
+  # env var: LOTUS_PROVING_DISABLEBUILTINWINDOWPOST
+  #DisableBuiltinWindowPoSt = false
+
+  # WARNING: If no WinningPoSt workers are connected, Winning PoSt WILL FAIL resulting in lost block rewards.
+  # Before enabling this option, make sure your PoSt workers work correctly.
+  #
+  # type: bool
+  # env var: LOTUS_PROVING_DISABLEBUILTINWINNINGPOST
+  #DisableBuiltinWinningPoSt = false
 
 
 [Sealing]

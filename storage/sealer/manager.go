@@ -69,8 +69,10 @@ type Manager struct {
 	workLk sync.Mutex
 	work   *statestore.StateStore
 
-	parallelCheckLimit     int
-	disallowRemoteFinalize bool
+	parallelCheckLimit        int
+	disableBuiltinWindowPoSt  bool
+	disableBuiltinWinningPoSt bool
+	disallowRemoteFinalize    bool
 
 	callToWork map[storiface.CallID]WorkID
 	// used when we get an early return and there's no callToWork mapping
@@ -120,7 +122,9 @@ type Config struct {
 	ResourceFiltering ResourceFilteringStrategy
 
 	// PoSt config
-	ParallelCheckLimit int
+	ParallelCheckLimit        int
+	DisableBuiltinWindowPoSt  bool
+	DisableBuiltinWinningPoSt bool
 
 	DisallowRemoteFinalize bool
 
@@ -156,8 +160,10 @@ func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.Loc
 
 		localProver: prover,
 
-		parallelCheckLimit:     sc.ParallelCheckLimit,
-		disallowRemoteFinalize: sc.DisallowRemoteFinalize,
+		parallelCheckLimit:        sc.ParallelCheckLimit,
+		disableBuiltinWindowPoSt:  sc.DisableBuiltinWindowPoSt,
+		disableBuiltinWinningPoSt: sc.DisableBuiltinWinningPoSt,
+		disallowRemoteFinalize:    sc.DisallowRemoteFinalize,
 
 		work:       mss,
 		callToWork: map[storiface.CallID]WorkID{},

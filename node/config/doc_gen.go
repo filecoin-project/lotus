@@ -627,7 +627,23 @@ over the worker address if this flag is set.`,
 			Name: "ParallelCheckLimit",
 			Type: "int",
 
-			Comment: `Maximum number of sector checks to run in parallel. (0 = unlimited)`,
+			Comment: `WARNING: Setting this value too high may make the node crash by running out of stack
+WARNING: Setting this value too low may make sector challenge reading much slower, resulting in failed PoSt due
+to late submission.`,
+		},
+		{
+			Name: "DisableBuiltinWindowPoSt",
+			Type: "bool",
+
+			Comment: `WARNING: If no windowPoSt workers are connected, window PoSt WILL FAIL resulting in faulty sectors which will need
+to be recovered. Before enabling this option, make sure your PoSt workers work correctly.`,
+		},
+		{
+			Name: "DisableBuiltinWinningPoSt",
+			Type: "bool",
+
+			Comment: `WARNING: If no WinningPoSt workers are connected, Winning PoSt WILL FAIL resulting in lost block rewards.
+Before enabling this option, make sure your PoSt workers work correctly.`,
 		},
 	},
 	"Pubsub": []DocField{

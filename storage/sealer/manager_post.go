@@ -17,7 +17,9 @@ import (
 )
 
 func (m *Manager) GenerateWinningPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) ([]proof.PoStProof, error) {
-	if !m.winningPoStSched.CanSched(ctx) {
+	if !m.disableBuiltinWinningPoSt && !m.winningPoStSched.CanSched(ctx) {
+		// if builtin PoSt isn't disabled, and there are no workers, compute the PoSt locally
+
 		log.Info("GenerateWinningPoSt run at lotus-miner")
 		return m.localProver.GenerateWinningPoSt(ctx, minerID, sectorInfo, randomness)
 	}
@@ -76,7 +78,9 @@ func (m *Manager) generateWinningPoSt(ctx context.Context, minerID abi.ActorID, 
 }
 
 func (m *Manager) GenerateWindowPoSt(ctx context.Context, minerID abi.ActorID, sectorInfo []proof.ExtendedSectorInfo, randomness abi.PoStRandomness) (proof []proof.PoStProof, skipped []abi.SectorID, err error) {
-	if !m.windowPoStSched.CanSched(ctx) {
+	if !m.disableBuiltinWindowPoSt && !m.windowPoStSched.CanSched(ctx) {
+		// if builtin PoSt isn't disabled, and there are no workers, compute the PoSt locally
+
 		log.Info("GenerateWindowPoSt run at lotus-miner")
 		return m.localProver.GenerateWindowPoSt(ctx, minerID, sectorInfo, randomness)
 	}
@@ -230,11 +234,9 @@ func (m *Manager) generatePartitionWindowPost(ctx context.Context, spt abi.Regis
 }
 
 func (m *Manager) GenerateWinningPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte) ([]proof.PoStProof, error) {
-	//TODO implement me
-	panic("implement me")
+	panic("worker-level api shouldn't be called at this level")
 }
 
 func (m *Manager) GenerateWindowPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, proofs [][]byte, partitionIdx int) (proof.PoStProof, error) {
-	//TODO implement me
-	panic("implement me")
+	panic("worker-level api shouldn't be called at this level")
 }

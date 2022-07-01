@@ -221,9 +221,23 @@ type RetrievalPricingDefault struct {
 
 type ProvingConfig struct {
 	// Maximum number of sector checks to run in parallel. (0 = unlimited)
+	//
+	// WARNING: Setting this value too high may make the node crash by running out of stack
+	// WARNING: Setting this value too low may make sector challenge reading much slower, resulting in failed PoSt due
+	// to late submission.
 	ParallelCheckLimit int
 
-	// todo disable builtin post
+	// Disable Window PoSt computation on the lotus-miner process even if no window PoSt workers are present.
+	//
+	// WARNING: If no windowPoSt workers are connected, window PoSt WILL FAIL resulting in faulty sectors which will need
+	// to be recovered. Before enabling this option, make sure your PoSt workers work correctly.
+	DisableBuiltinWindowPoSt bool
+
+	// Disable Winning PoSt computation on the lotus-miner process even if no winning PoSt workers are present.
+	//
+	// WARNING: If no WinningPoSt workers are connected, Winning PoSt WILL FAIL resulting in lost block rewards.
+	// Before enabling this option, make sure your PoSt workers work correctly.
+	DisableBuiltinWinningPoSt bool
 }
 
 type SealingConfig struct {
