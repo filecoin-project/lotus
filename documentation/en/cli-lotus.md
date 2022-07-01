@@ -2552,7 +2552,7 @@ NAME:
    lotus net disconnect - Disconnect from a peer
 
 USAGE:
-   lotus net disconnect [command options] [peerMultiaddr|minerActorAddress]
+   lotus net disconnect [command options] [peerID]
 
 OPTIONS:
    --help, -h  show help (default: false)

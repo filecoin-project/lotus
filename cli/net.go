@@ -265,7 +265,7 @@ var NetListen = &cli.Command{
 var NetDisconnect = &cli.Command{
 	Name:      "disconnect",
 	Usage:     "Disconnect from a peer",
-	ArgsUsage: "[peerMultiaddr|minerActorAddress]",
+	ArgsUsage: "[peerID]",
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := GetAPI(cctx)
 		if err != nil {
@@ -274,13 +274,11 @@ var NetDisconnect = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		pis, err := AddrInfoFromArg(ctx, cctx)
-		if err != nil {
-			return err
-		}
-		for _, pi := range pis {
-			fmt.Printf("disconnect %s: ", pi.ID.Pretty())
-			err := api.NetDisconnect(ctx, pi.ID)
+		ids := cctx.Args().Slice()
+		for _, id := range ids {
+			pid := peer.ID(id)
+			fmt.Printf("disconnect %s: ", pid.Pretty())
+			err := api.NetDisconnect(ctx, pid)
 			if err != nil {
 				fmt.Println("failure")
 				return err
