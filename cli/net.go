@@ -34,6 +34,7 @@ var NetCmd = &cli.Command{
 		NetPeers,
 		NetPing,
 		NetConnect,
+		NetDisconnect,
 		NetListen,
 		NetId,
 		NetFindPeer,
@@ -256,6 +257,35 @@ var NetListen = &cli.Command{
 
 		for _, peer := range addrs.Addrs {
 			fmt.Printf("%s/p2p/%s\n", peer, addrs.ID)
+		}
+		return nil
+	},
+}
+
+var NetDisconnect = &cli.Command{
+	Name:      "disconnect",
+	Usage:     "Disconnect from a peer",
+	ArgsUsage: "[peerMultiaddr|minerActorAddress]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		pis, err := AddrInfoFromArg(ctx, cctx)
+		if err != nil {
+			return err
+		}
+		for _, pi := range pis {
+			fmt.Printf("disconnect %s: ", pi.ID.Pretty())
+			err := api.NetDisconnect(ctx, pi.ID)
+			if err != nil {
+				fmt.Println("failure")
+				return err
+			}
+			fmt.Println("success")
 		}
 		return nil
 	},
