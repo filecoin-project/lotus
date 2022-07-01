@@ -268,8 +268,15 @@ var provingDeadlinesCmd = &cli.Command{
 }
 
 var provingDeadlineInfoCmd = &cli.Command{
-	Name:      "deadline",
-	Usage:     "View the current proving period deadline information by its index ",
+	Name:  "deadline",
+	Usage: "View the current proving period deadline information by its index",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "sector-nums",
+			Aliases: []string{"n"},
+			Usage:   "Print sector/fault numbers belonging to this deadline",
+		},
+	},
 	ArgsUsage: "<deadlineIdx>",
 	Action: func(cctx *cli.Context) error {
 
@@ -342,10 +349,14 @@ var provingDeadlineInfoCmd = &cli.Command{
 			}
 
 			fmt.Printf("Partition Index:          %d\n", pIdx)
-			fmt.Printf("Sectors:                  %d\n", sectorCount)
-			fmt.Printf("Sector Numbers:           %v\n", sectorNumbers)
-			fmt.Printf("Faults:                   %d\n", faultsCount)
-			fmt.Printf("Faulty Sectors:           %d\n", fn)
+			fmt.Printf("\tSectors:                  %d\n", sectorCount)
+			if cctx.Bool("sector-nums") {
+				fmt.Printf("\tSector Numbers:           %v\n", sectorNumbers)
+			}
+			fmt.Printf("\tFaults:                   %d\n", faultsCount)
+			if cctx.Bool("sector-nums") {
+				fmt.Printf("\tFaulty Sectors:           %d\n", fn)
+			}
 		}
 		return nil
 	},
