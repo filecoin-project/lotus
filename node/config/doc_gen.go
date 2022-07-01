@@ -627,16 +627,15 @@ over the worker address if this flag is set.`,
 			Name: "ParallelCheckLimit",
 			Type: "int",
 
-			Comment: `WARNING: Setting this value too high may make the node crash by running out of stack
-WARNING: Setting this value too low may make sector challenge reading much slower, resulting in failed PoSt due
-to late submission.`,
+			Comment: `After changing this option, confirm that the new value works in your setup by invoking
+'lotus-miner proving compute window-post 0'`,
 		},
 		{
 			Name: "DisableBuiltinWindowPoSt",
 			Type: "bool",
 
-			Comment: `WARNING: If no windowPoSt workers are connected, window PoSt WILL FAIL resulting in faulty sectors which will need
-to be recovered. Before enabling this option, make sure your PoSt workers work correctly.`,
+			Comment: `After changing this option, confirm that the new value works in your setup by invoking
+'lotus-miner proving compute window-post 0'`,
 		},
 		{
 			Name: "DisableBuiltinWinningPoSt",
@@ -644,6 +643,13 @@ to be recovered. Before enabling this option, make sure your PoSt workers work c
 
 			Comment: `WARNING: If no WinningPoSt workers are connected, Winning PoSt WILL FAIL resulting in lost block rewards.
 Before enabling this option, make sure your PoSt workers work correctly.`,
+		},
+		{
+			Name: "DisableWDPoStPreChecks",
+			Type: "bool",
+
+			Comment: `After changing this option, confirm that the new value works in your setup by invoking
+'lotus-miner proving compute window-post 0'`,
 		},
 	},
 	"Pubsub": []DocField{

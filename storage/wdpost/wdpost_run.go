@@ -335,9 +335,15 @@ func (s *WindowPoStScheduler) runPoStCycle(ctx context.Context, manual bool, di 
 					return nil, xerrors.Errorf("adding recoveries to set of sectors to prove: %w", err)
 				}
 
-				good, err := s.checkSectors(ctx, toProve, ts.Key())
+				good, err := toProve.Copy()
 				if err != nil {
-					return nil, xerrors.Errorf("checking sectors to skip: %w", err)
+					return nil, xerrors.Errorf("copy toProve: %w", err)
+				}
+				if !s.disablePreChecks {
+					good, err = s.checkSectors(ctx, toProve, ts.Key())
+					if err != nil {
+						return nil, xerrors.Errorf("checking sectors to skip: %w", err)
+					}
 				}
 
 				good, err = bitfield.SubtractBitField(good, postSkipped)

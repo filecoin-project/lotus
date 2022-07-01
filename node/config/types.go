@@ -225,12 +225,18 @@ type ProvingConfig struct {
 	// WARNING: Setting this value too high may make the node crash by running out of stack
 	// WARNING: Setting this value too low may make sector challenge reading much slower, resulting in failed PoSt due
 	// to late submission.
+	//
+	// After changing this option, confirm that the new value works in your setup by invoking
+	// 'lotus-miner proving compute window-post 0'
 	ParallelCheckLimit int
 
 	// Disable Window PoSt computation on the lotus-miner process even if no window PoSt workers are present.
 	//
 	// WARNING: If no windowPoSt workers are connected, window PoSt WILL FAIL resulting in faulty sectors which will need
 	// to be recovered. Before enabling this option, make sure your PoSt workers work correctly.
+	//
+	// After changing this option, confirm that the new value works in your setup by invoking
+	// 'lotus-miner proving compute window-post 0'
 	DisableBuiltinWindowPoSt bool
 
 	// Disable Winning PoSt computation on the lotus-miner process even if no winning PoSt workers are present.
@@ -238,6 +244,32 @@ type ProvingConfig struct {
 	// WARNING: If no WinningPoSt workers are connected, Winning PoSt WILL FAIL resulting in lost block rewards.
 	// Before enabling this option, make sure your PoSt workers work correctly.
 	DisableBuiltinWinningPoSt bool
+
+	// Disable WindowPoSt provable sector readability checks.
+	//
+	// In normal operation, when preparing to compute WindowPoSt, lotus-miner will perform a round of reading challenges
+	// from all sectors to confirm that those sectors can be proven. Challenges read in this process are discarded, as
+	// we're only interested in checkdng that sector data can be read.
+	//
+	// When using builtin proof computation (no PoSt workers, and DisableBuiltinWindowPoSt is set to false), this process
+	// can save a lot of time and compute resources in the case that some sectors are not readable - this is caused by
+	// the builtin logic not skipping snark computation when some sectors need to be skipped.
+	//
+	// When using PoSt workers, this process is mostly redundant, with PoSt workers challenges will be read once, and
+	// if challenges for some sectors aren't readable, those sectors will just get skipped.
+	//
+	// Disabling sector pre-checks will slightly requice IO load when proving sectors, possibly resulting in shorter
+	// time to produce window PoSt. In setups with good IO capabilities the effect of this option on proving time should
+	// be negligible.
+	//
+	// NOTE: It likely is a bad idea to disable sector pre-checks in setups with no PoSt workers.
+	//
+	// NOTE: Even when this option is enabled, recovering sectors will be checked before recovery declaration message is
+	// sent to the chain
+	//
+	// After changing this option, confirm that the new value works in your setup by invoking
+	// 'lotus-miner proving compute window-post 0'
+	DisableWDPoStPreChecks bool
 }
 
 type SealingConfig struct {
