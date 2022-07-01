@@ -4,19 +4,17 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	adt6 "github.com/filecoin-project/specs-actors/v6/actors/util/adt"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
-
 	msig6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/multisig"
+	adt6 "github.com/filecoin-project/specs-actors/v6/actors/util/adt"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
 var _ State = (*state6)(nil)
@@ -111,7 +109,7 @@ func (s *state6) decodeTransaction(val *cbg.Deferred) (Transaction, error) {
 	if err := tx.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return Transaction{}, err
 	}
-	return tx, nil
+	return Transaction(tx), nil
 }
 
 func (s *state6) GetState() interface{} {

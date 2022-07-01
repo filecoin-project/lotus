@@ -8,7 +8,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/extern/sector-storage/fr32"
+
+	"github.com/filecoin-project/lotus/storage/sealer/fr32"
 )
 
 var fr32Cmd = &cli.Command{

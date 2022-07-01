@@ -14,24 +14,22 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 )
 
 type dealPublisherAPI interface {
 	ChainHead(context.Context) (*types.TipSet, error)
 	MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error)
-	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error)
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 	WalletHas(context.Context, address.Address) (bool, error)
@@ -50,7 +48,7 @@ type dealPublisherAPI interface {
 // publish message with all deals in the queue.
 type DealPublisher struct {
 	api dealPublisherAPI
-	as  *storage.AddressSelector
+	as  *ctladdr.AddressSelector
 
 	ctx      context.Context
 	Shutdown context.CancelFunc
@@ -69,7 +67,7 @@ type DealPublisher struct {
 // A deal that is queued to be published
 type pendingDeal struct {
 	ctx    context.Context
-	deal   market2.ClientDealProposal
+	deal   market.ClientDealProposal
 	Result chan publishResult
 }
 
@@ -79,7 +77,7 @@ type publishResult struct {
 	err    error
 }
 
-func newPendingDeal(ctx context.Context, deal market2.ClientDealProposal) *pendingDeal {
+func newPendingDeal(ctx context.Context, deal market.ClientDealProposal) *pendingDeal {
 	return &pendingDeal{
 		ctx:    ctx,
 		deal:   deal,
@@ -101,8 +99,8 @@ type PublishMsgConfig struct {
 func NewDealPublisher(
 	feeConfig *config.MinerFeeConfig,
 	publishMsgCfg PublishMsgConfig,
-) func(lc fx.Lifecycle, full api.FullNode, as *storage.AddressSelector) *DealPublisher {
-	return func(lc fx.Lifecycle, full api.FullNode, as *storage.AddressSelector) *DealPublisher {
+) func(lc fx.Lifecycle, full api.FullNode, as *ctladdr.AddressSelector) *DealPublisher {
+	return func(lc fx.Lifecycle, full api.FullNode, as *ctladdr.AddressSelector) *DealPublisher {
 		maxFee := abi.NewTokenAmount(0)
 		if feeConfig != nil {
 			maxFee = abi.TokenAmount(feeConfig.MaxPublishDealsFee)
@@ -121,7 +119,7 @@ func NewDealPublisher(
 
 func newDealPublisher(
 	dpapi dealPublisherAPI,
-	as *storage.AddressSelector,
+	as *ctladdr.AddressSelector,
 	publishMsgCfg PublishMsgConfig,
 	publishSpec *api.MessageSendSpec,
 ) *DealPublisher {
@@ -151,7 +149,7 @@ func (p *DealPublisher) PendingDeals() api.PendingDealInfo {
 		}
 	}
 
-	pending := make([]market2.ClientDealProposal, len(deals))
+	pending := make([]market.ClientDealProposal, len(deals))
 	for i, deal := range deals {
 		pending[i] = deal.deal
 	}
@@ -173,7 +171,7 @@ func (p *DealPublisher) ForcePublishPendingDeals() {
 	p.publishAllDeals()
 }
 
-func (p *DealPublisher) Publish(ctx context.Context, deal market2.ClientDealProposal) (cid.Cid, error) {
+func (p *DealPublisher) Publish(ctx context.Context, deal market.ClientDealProposal) (cid.Cid, error) {
 	pdeal := newPendingDeal(ctx, deal)
 
 	// Add the deal to the queue
@@ -297,7 +295,7 @@ func (p *DealPublisher) publishReady(ready []*pendingDeal) {
 
 	// Validate each deal to make sure it can be published
 	validated := make([]*pendingDeal, 0, len(ready))
-	deals := make([]market2.ClientDealProposal, 0, len(ready))
+	deals := make([]market.ClientDealProposal, 0, len(ready))
 	for _, pd := range ready {
 		// Validate the deal
 		if err := p.validateDeal(pd.deal); err != nil {
@@ -321,7 +319,7 @@ func (p *DealPublisher) publishReady(ready []*pendingDeal) {
 
 // validateDeal checks that the deal proposal start epoch hasn't already
 // elapsed
-func (p *DealPublisher) validateDeal(deal market2.ClientDealProposal) error {
+func (p *DealPublisher) validateDeal(deal market.ClientDealProposal) error {
 	start := time.Now()
 
 	pcid, err := deal.Proposal.Cid()
@@ -344,8 +342,8 @@ func (p *DealPublisher) validateDeal(deal market2.ClientDealProposal) error {
 		return xerrors.Errorf("getting provider info: %w", err)
 	}
 
-	params, err := actors.SerializeParams(&market2.PublishStorageDealsParams{
-		Deals: []market0.ClientDealProposal{deal},
+	params, err := actors.SerializeParams(&market.PublishStorageDealsParams{
+		Deals: []market.ClientDealProposal{deal},
 	})
 	if err != nil {
 		return xerrors.Errorf("serializing PublishStorageDeals params failed: %w", err)
@@ -357,10 +355,10 @@ func (p *DealPublisher) validateDeal(deal market2.ClientDealProposal) error {
 	}
 
 	res, err := p.api.StateCall(p.ctx, &types.Message{
-		To:     market.Address,
+		To:     builtin.StorageMarketActorAddr,
 		From:   addr,
 		Value:  types.NewInt(0),
-		Method: market.Methods.PublishStorageDeals,
+		Method: builtin.MethodsMarket.PublishStorageDeals,
 		Params: params,
 	}, head.Key())
 	if err != nil {
@@ -377,7 +375,7 @@ func (p *DealPublisher) validateDeal(deal market2.ClientDealProposal) error {
 }
 
 // Sends the publish message
-func (p *DealPublisher) publishDealProposals(deals []market2.ClientDealProposal) (cid.Cid, error) {
+func (p *DealPublisher) publishDealProposals(deals []market.ClientDealProposal) (cid.Cid, error) {
 	if len(deals) == 0 {
 		return cid.Undef, nil
 	}
@@ -400,7 +398,7 @@ func (p *DealPublisher) publishDealProposals(deals []market2.ClientDealProposal)
 		return cid.Undef, err
 	}
 
-	params, err := actors.SerializeParams(&market2.PublishStorageDealsParams{
+	params, err := actors.SerializeParams(&market.PublishStorageDealsParams{
 		Deals: deals,
 	})
 
@@ -414,10 +412,10 @@ func (p *DealPublisher) publishDealProposals(deals []market2.ClientDealProposal)
 	}
 
 	smsg, err := p.api.MpoolPushMessage(p.ctx, &types.Message{
-		To:     market.Address,
+		To:     builtin.StorageMarketActorAddr,
 		From:   addr,
 		Value:  types.NewInt(0),
-		Method: market.Methods.PublishStorageDeals,
+		Method: builtin.MethodsMarket.PublishStorageDeals,
 		Params: params,
 	}, p.publishSpec)
 
@@ -427,7 +425,7 @@ func (p *DealPublisher) publishDealProposals(deals []market2.ClientDealProposal)
 	return smsg.Cid(), nil
 }
 
-func pieceCids(deals []market2.ClientDealProposal) string {
+func pieceCids(deals []market.ClientDealProposal) string {
 	cids := make([]string, 0, len(deals))
 	for _, dl := range deals {
 		cids = append(cids, dl.Proposal.PieceCID.String())

@@ -6,11 +6,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-
 	paych7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/paych"
 	adt7 "github.com/filecoin-project/specs-actors/v7/actors/util/adt"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
 var _ State = (*state7)(nil)
@@ -111,20 +110,4 @@ func (ls *laneState7) Redeemed() (big.Int, error) {
 
 func (ls *laneState7) Nonce() (uint64, error) {
 	return ls.LaneState.Nonce, nil
-}
-
-func toV7SignedVoucher(sv SignedVoucher) paych7.SignedVoucher {
-	return paych7.SignedVoucher{
-		ChannelAddr:     sv.ChannelAddr,
-		TimeLockMin:     sv.TimeLockMin,
-		TimeLockMax:     sv.TimeLockMax,
-		SecretHash:      sv.SecretPreimage,
-		Extra:           sv.Extra,
-		Lane:            sv.Lane,
-		Nonce:           sv.Nonce,
-		Amount:          sv.Amount,
-		MinSettleHeight: sv.MinSettleHeight,
-		Merges:          sv.Merges,
-		Signature:       sv.Signature,
-	}
 }

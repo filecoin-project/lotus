@@ -3,18 +3,17 @@ package power
 import (
 	"bytes"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
-
 	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
 	adt6 "github.com/filecoin-project/specs-actors/v6/actors/util/adt"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
 
 var _ State = (*state6)(nil)
@@ -86,7 +85,7 @@ func (s *state6) MinerNominalPowerMeetsConsensusMinimum(a address.Address) (bool
 }
 
 func (s *state6) TotalPowerSmoothed() (builtin.FilterEstimate, error) {
-	return builtin.FromV6FilterEstimate(s.State.ThisEpochQAPowerSmoothed), nil
+	return builtin.FilterEstimate(s.State.ThisEpochQAPowerSmoothed), nil
 }
 
 func (s *state6) MinerCounts() (uint64, uint64, error) {

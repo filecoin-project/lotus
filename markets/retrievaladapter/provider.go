@@ -4,18 +4,18 @@ import (
 	"context"
 
 	"github.com/hashicorp/go-multierror"
-	"golang.org/x/xerrors"
-
 	"github.com/ipfs/go-cid"
+	logging "github.com/ipfs/go-log/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-state-types/abi"
+	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+
 	"github.com/filecoin-project/lotus/api/v1api"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/types"
-	logging "github.com/ipfs/go-log/v2"
 )
 
 var log = logging.Logger("retrievaladapter")
@@ -42,7 +42,7 @@ func (rpn *retrievalProviderNode) GetMinerWorkerAddress(ctx context.Context, min
 	return mi.Worker, err
 }
 
-func (rpn *retrievalProviderNode) SavePaymentVoucher(ctx context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expectedAmount abi.TokenAmount, tok shared.TipSetToken) (abi.TokenAmount, error) {
+func (rpn *retrievalProviderNode) SavePaymentVoucher(ctx context.Context, paymentChannel address.Address, voucher *paychtypes.SignedVoucher, proof []byte, expectedAmount abi.TokenAmount, tok shared.TipSetToken) (abi.TokenAmount, error) {
 	// TODO: respect the provided TipSetToken (a serialized TipSetKey) when
 	// querying the chain
 	added, err := rpn.full.PaychVoucherAdd(ctx, paymentChannel, voucher, proof, expectedAmount)

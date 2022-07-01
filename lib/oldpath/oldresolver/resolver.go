@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"time"
 
-	path "github.com/filecoin-project/lotus/lib/oldpath"
-
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	dag "github.com/ipfs/go-merkledag"
+
+	path "github.com/filecoin-project/lotus/lib/oldpath"
 )
 
 var log = logging.Logger("pathresolv")

@@ -5,8 +5,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation/blockbuilder"
 )
@@ -23,5 +23,5 @@ type Funding interface {
 }
 
 type Committer interface {
-	EnqueueProveCommit(addr address.Address, preCommitEpoch abi.ChainEpoch, info miner.SectorPreCommitInfo) error
+	EnqueueProveCommit(addr address.Address, preCommitEpoch abi.ChainEpoch, info minertypes.SectorPreCommitInfo) error
 }

@@ -4,20 +4,19 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"unicode/utf8"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/state"
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/specs-actors/v4/actors/util/adt"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/specs-actors/v4/actors/util/adt"
+
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/state"
+	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 var dealLabelCmd = &cli.Command{
@@ -99,7 +98,7 @@ var dealLabelCmd = &cli.Command{
 
 		var deals []abi.DealID
 		if err = ps.ForEach(func(id abi.DealID, dp market.DealProposal) error {
-			if !utf8.Valid([]byte(dp.Label)) {
+			if dp.Label.IsBytes() {
 				deals = append(deals, id)
 			}
 

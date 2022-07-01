@@ -11,7 +11,7 @@ import (
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
-	cidutil "github.com/ipfs/go-cidutil"
+	"github.com/ipfs/go-cidutil"
 	ds "github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
 	bstore "github.com/ipfs/go-ipfs-blockstore"
@@ -25,7 +25,6 @@ import (
 	"github.com/ipld/go-car"
 	"github.com/minio/blake2b-simd"
 	mh "github.com/multiformats/go-multihash"
-
 	"github.com/stretchr/testify/require"
 )
 

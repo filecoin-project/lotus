@@ -9,16 +9,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/consensus"
-
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
-
 	"github.com/Gurpartap/async"
-	"github.com/filecoin-project/pubsub"
 	"github.com/hashicorp/go-multierror"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
+	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/connmgr"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -28,6 +24,11 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/pubsub"
+
+	"github.com/filecoin-project/lotus/chain/consensus"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
+
 	// named msgarray here to make it clear that these are the types used by
 	// messages, regardless of specs-actors version.
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
@@ -763,7 +764,7 @@ loop:
 			at = ts.Parents()
 			continue
 		}
-		if !xerrors.Is(err, bstore.ErrNotFound) {
+		if !ipld.IsNotFound(err) {
 			log.Warnf("loading local tipset: %s", err)
 		}
 

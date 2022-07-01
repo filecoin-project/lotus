@@ -8,28 +8,26 @@ import (
 	"os"
 	"path/filepath"
 
-	"go.uber.org/fx"
-
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	rcmgr "github.com/libp2p/go-libp2p-resource-manager"
-
-	logging "github.com/ipfs/go-log/v2"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/tag"
+	"go.uber.org/fx"
 
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/repo"
-
-	"go.opencensus.io/stats"
-	"go.opencensus.io/tag"
 )
 
 func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo) (network.ResourceManager, error) {
 	return func(lc fx.Lifecycle, repo repo.LockedRepo) (network.ResourceManager, error) {
+		isFullNode := repo.RepoType().Type() == "FullNode"
 		envvar := os.Getenv("LOTUS_RCMGR")
-		if envvar == "0" {
-			// this is enabled by default; specify LOTUS_RCMGR=0 to disable
+		if (isFullNode && envvar == "0") || // only set NullResourceManager if envvar is explicitly "0"
+			(!isFullNode && envvar != "1") { // set NullResourceManager *unless* envvar is explicitly "1"
 			log.Info("libp2p resource manager is disabled")
 			return network.NullResourceManager, nil
 		}

@@ -10,9 +10,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-jsonrpc"
 	"github.com/filecoin-project/go-state-types/abi"
+	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
+	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -22,13 +29,6 @@ import (
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/itests/multisig"
 	"github.com/filecoin-project/lotus/node"
-
-	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
-	multisig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
-
-	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/require"
-	"golang.org/x/xerrors"
 )
 
 const (
@@ -290,8 +290,8 @@ func startNodes(
 	ens.InterconnectAll().BeginMining(blocktime)
 
 	// Create a gateway server in front of the full node
-	gwapi := gateway.NewNode(full, lookbackCap, stateWaitLookbackLimit)
-	handler, err := gateway.Handler(gwapi)
+	gwapi := gateway.NewNode(full, lookbackCap, stateWaitLookbackLimit, 0, time.Minute)
+	handler, err := gateway.Handler(gwapi, full, 0, 0)
 	require.NoError(t, err)
 
 	l, err := net.Listen("tcp", "127.0.0.1:0")

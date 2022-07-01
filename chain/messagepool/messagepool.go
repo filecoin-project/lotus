@@ -11,15 +11,6 @@ import (
 	"sync"
 	"time"
 
-	ffi "github.com/filecoin-project/filecoin-ffi"
-
-	"github.com/minio/blake2b-simd"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/go-state-types/network"
-	lps "github.com/filecoin-project/pubsub"
 	"github.com/hashicorp/go-multierror"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
@@ -28,9 +19,17 @@ import (
 	"github.com/ipfs/go-datastore/query"
 	logging "github.com/ipfs/go-log/v2"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/minio/blake2b-simd"
+	"github.com/raulk/clock"
 	"golang.org/x/xerrors"
 
+	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
+	lps "github.com/filecoin-project/pubsub"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -42,8 +41,6 @@ import (
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-
-	"github.com/raulk/clock"
 )
 
 var log = logging.Logger("messagepool")
@@ -629,11 +626,7 @@ func (mp *MessagePool) addLocal(ctx context.Context, m *types.SignedMessage) err
 // a (soft) validation error.
 func (mp *MessagePool) verifyMsgBeforeAdd(m *types.SignedMessage, curTs *types.TipSet, local bool) (bool, error) {
 	epoch := curTs.Height() + 1
-	nv, err := mp.getNtwkVersion(epoch)
-	if err != nil {
-		return false, xerrors.Errorf("getting network version: %w", err)
-	}
-	minGas := vm.PricelistByEpochAndNetworkVersion(epoch, nv).OnChainMessage(m.ChainLength())
+	minGas := vm.PricelistByEpoch(epoch).OnChainMessage(m.ChainLength())
 
 	if err := m.VMMessage().ValidForBlockInclusion(minGas.Total(), build.NewestNetworkVersion); err != nil {
 		return false, xerrors.Errorf("message will not be included in a block: %w", err)

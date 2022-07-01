@@ -8,15 +8,17 @@ import (
 	"strings"
 
 	"github.com/Kubuxu/imtui"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
-	types "github.com/filecoin-project/lotus/chain/types"
 	"github.com/gdamore/tcell/v2"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 func InteractiveSend(ctx context.Context, cctx *cli.Context, srv ServicesAPI,

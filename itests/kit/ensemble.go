@@ -22,12 +22,13 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-statestore"
 	"github.com/filecoin-project/go-storedcounter"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
+	power3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/power"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -41,16 +42,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/messagepool"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/markets/idxprov"
-	idxprov_test "github.com/filecoin-project/lotus/markets/idxprov/idxprov_test"
+	"github.com/filecoin-project/lotus/markets/idxprov/idxprov_test"
 	lotusminer "github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
@@ -58,7 +55,10 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	testing2 "github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage/mockstorage"
+	"github.com/filecoin-project/lotus/storage/paths"
+	sectorstorage "github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/mock"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 func init() {
@@ -158,6 +158,14 @@ func NewEnsemble(t *testing.T, opts ...EnsembleOpt) *Ensemble {
 		})
 	}
 
+	// Ensure we're using the right actors. This really shouldn't be some global thing, but it's
+	// the best we can do for now.
+	if n.options.mockProofs {
+		require.NoError(t, build.UseNetworkBundle("testing-fake-proofs"))
+	} else {
+		require.NoError(t, build.UseNetworkBundle("testing"))
+	}
+
 	return n
 }
 
@@ -174,7 +182,7 @@ func (n *Ensemble) FullNode(full *TestFullNode, opts ...NodeOpt) *Ensemble {
 		require.NoError(n.t, err)
 	}
 
-	key, err := wallet.GenerateKey(types.KTBLS)
+	key, err := key.GenerateKey(types.KTBLS)
 	require.NoError(n.t, err)
 
 	if !n.bootstrapped && !options.balance.IsZero() {
@@ -238,7 +246,7 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 
 		// Create the preseal commitment.
 		if n.options.mockProofs {
-			genm, k, err = mockstorage.PreSeal(proofType, actorAddr, sectors)
+			genm, k, err = mock.PreSeal(proofType, actorAddr, sectors)
 		} else {
 			genm, k, err = seed.PreSeal(actorAddr, proofType, 0, sectors, tdir, []byte("make genesis mem random"), nil, true)
 		}
@@ -247,7 +255,7 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 		genm.PeerId = peerId
 
 		// create an owner key, and assign it some FIL.
-		ownerKey, err = wallet.NewKey(*k)
+		ownerKey, err = key.NewKey(*k)
 		require.NoError(n.t, err)
 
 		genacc := genesis.Actor{
@@ -355,8 +363,8 @@ func (n *Ensemble) Start() *Ensemble {
 		// Are we mocking proofs?
 		if n.options.mockProofs {
 			opts = append(opts,
-				node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
-				node.Override(new(ffiwrapper.Prover), mock.MockProver),
+				node.Override(new(storiface.Verifier), mock.MockVerifier),
+				node.Override(new(storiface.Prover), mock.MockProver),
 			)
 		}
 
@@ -406,19 +414,14 @@ func (n *Ensemble) Start() *Ensemble {
 				// this is a miner created after genesis, so it won't have a preseal.
 				// we need to create it on chain.
 
-				// we get the proof type for the requested sector size, for
-				// the current network version.
-				nv, err := m.FullNode.FullNode.StateNetworkVersion(ctx, types.EmptyTSK)
+				proofType, err := miner.WindowPoStProofTypeFromSectorSize(m.options.sectorSize)
 				require.NoError(n.t, err)
 
-				proofType, err := miner.SealProofTypeFromSectorSize(m.options.sectorSize, nv)
-				require.NoError(n.t, err)
-
-				params, aerr := actors.SerializeParams(&power2.CreateMinerParams{
-					Owner:         m.OwnerKey.Address,
-					Worker:        m.OwnerKey.Address,
-					SealProofType: proofType,
-					Peer:          abi.PeerID(m.Libp2p.PeerID),
+				params, aerr := actors.SerializeParams(&power3.CreateMinerParams{
+					Owner:               m.OwnerKey.Address,
+					Worker:              m.OwnerKey.Address,
+					WindowPoStProofType: proofType,
+					Peer:                abi.PeerID(m.Libp2p.PeerID),
 				})
 				require.NoError(n.t, aerr)
 
@@ -437,7 +440,7 @@ func (n *Ensemble) Start() *Ensemble {
 				require.NoError(n.t, err)
 				require.Equal(n.t, exitcode.Ok, mw.Receipt.ExitCode)
 
-				var retval power2.CreateMinerReturn
+				var retval power3.CreateMinerReturn
 				err = retval.UnmarshalCBOR(bytes.NewReader(mw.Receipt.Return))
 				require.NoError(n.t, err, "failed to create miner")
 
@@ -449,7 +452,7 @@ func (n *Ensemble) Start() *Ensemble {
 				msg := &types.Message{
 					To:     m.options.mainMiner.ActorAddr,
 					From:   m.options.mainMiner.OwnerKey.Address,
-					Method: miner.Methods.ChangePeerID,
+					Method: builtin.MethodsMiner.ChangePeerID,
 					Params: params,
 					Value:  types.NewInt(0),
 				}
@@ -543,8 +546,8 @@ func (n *Ensemble) Start() *Ensemble {
 		// using real proofs, therefore need real sectors.
 		if !n.bootstrapped && !n.options.mockProofs {
 			psd := m.PresealDir
-			err := lr.SetStorage(func(sc *stores.StorageConfig) {
-				sc.StoragePaths = append(sc.StoragePaths, stores.LocalPath{Path: psd})
+			err := lr.SetStorage(func(sc *paths.StorageConfig) {
+				sc.StoragePaths = append(sc.StoragePaths, paths.LocalPath{Path: psd})
 			})
 
 			require.NoError(n.t, err)
@@ -560,7 +563,7 @@ func (n *Ensemble) Start() *Ensemble {
 			msg := &types.Message{
 				From:   m.OwnerKey.Address,
 				To:     m.ActorAddr,
-				Method: miner.Methods.ChangePeerID,
+				Method: builtin.MethodsMiner.ChangePeerID,
 				Params: enc,
 				Value:  types.NewInt(0),
 			}
@@ -570,6 +573,8 @@ func (n *Ensemble) Start() *Ensemble {
 		}
 
 		noLocal := m.options.minerNoLocalSealing
+		assigner := m.options.minerAssigner
+		disallowRemoteFinalize := m.options.disallowRemoteFinalize
 
 		var mineBlock = make(chan lotusminer.MineReq)
 		opts := []node.Option{
@@ -595,6 +600,8 @@ func (n *Ensemble) Start() *Ensemble {
 					scfg.Storage.AllowCommit = false
 				}
 
+				scfg.Storage.Assigner = assigner
+				scfg.Storage.DisallowRemoteFinalize = disallowRemoteFinalize
 				scfg.Storage.ResourceFiltering = sectorstorage.ResourceFilteringDisabled
 				return scfg.StorageManager()
 			}),
@@ -636,8 +643,8 @@ func (n *Ensemble) Start() *Ensemble {
 				node.Override(new(sectorstorage.Unsealer), node.From(new(*mock.SectorMgr))),
 				node.Override(new(sectorstorage.PieceProvider), node.From(new(*mock.SectorMgr))),
 
-				node.Override(new(ffiwrapper.Verifier), mock.MockVerifier),
-				node.Override(new(ffiwrapper.Prover), mock.MockProver),
+				node.Override(new(storiface.Verifier), mock.MockVerifier),
+				node.Override(new(storiface.Prover), mock.MockProver),
 				node.Unset(new(*sectorstorage.Manager)),
 			)
 		}
@@ -691,15 +698,15 @@ func (n *Ensemble) Start() *Ensemble {
 
 		addr := m.RemoteListener.Addr().String()
 
-		localStore, err := stores.NewLocal(ctx, lr, m.MinerNode, []string{"http://" + addr + "/remote"})
+		localStore, err := paths.NewLocal(ctx, lr, m.MinerNode, []string{"http://" + addr + "/remote"})
 		require.NoError(n.t, err)
 
 		auth := http.Header(nil)
 
-		remote := stores.NewRemote(localStore, m.MinerNode, auth, 20, &stores.DefaultPartialFileHandler{})
+		remote := paths.NewRemote(localStore, m.MinerNode, auth, 20, &paths.DefaultPartialFileHandler{})
 		store := m.options.workerStorageOpt(remote)
 
-		fh := &stores.FetchHandler{Local: localStore, PfHandler: &stores.DefaultPartialFileHandler{}}
+		fh := &paths.FetchHandler{Local: localStore, PfHandler: &paths.DefaultPartialFileHandler{}}
 		m.FetchHandler = fh.ServeHTTP
 
 		wsts := statestore.New(namespace.Wrap(ds, modules.WorkerCallsPrefix))

@@ -8,14 +8,13 @@ import (
 	"reflect"
 	"testing"
 
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
-
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
+	prooftypes "github.com/filecoin-project/go-state-types/proof"
 )
 
 func testBlockHeader(t testing.TB) *BlockHeader {
@@ -85,7 +84,7 @@ func TestInteropBH(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	posts := []proof2.PoStProof{
+	posts := []prooftypes.PoStProof{
 		{PoStProof: abi.RegisteredPoStProof_StackedDrgWinning2KiBV1, ProofBytes: []byte{0x07}},
 	}
 

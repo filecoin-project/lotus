@@ -8,7 +8,15 @@ import (
 	"strings"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru"
+	client "github.com/influxdata/influxdb1-client/v2"
+	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multihash"
+	"go.opencensus.io/stats"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -18,13 +26,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/tools/stats/influx"
 	"github.com/filecoin-project/lotus/tools/stats/metrics"
-
-	lru "github.com/hashicorp/golang-lru"
-	client "github.com/influxdata/influxdb1-client/v2"
-	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-multihash"
-	"go.opencensus.io/stats"
-	"golang.org/x/xerrors"
 )
 
 type LotusApi interface {

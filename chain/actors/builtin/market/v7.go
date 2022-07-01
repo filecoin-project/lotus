@@ -3,20 +3,19 @@ package market
 import (
 	"bytes"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
+	"github.com/filecoin-project/go-state-types/abi"
+	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
+	adt7 "github.com/filecoin-project/specs-actors/v7/actors/util/adt"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
-
-	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
-	adt7 "github.com/filecoin-project/specs-actors/v7/actors/util/adt"
 )
 
 var _ State = (*state7)(nil)
@@ -197,14 +196,24 @@ func (s *dealProposals7) Get(dealID abi.DealID) (*DealProposal, bool, error) {
 	if !found {
 		return nil, false, nil
 	}
-	proposal := fromV7DealProposal(proposal7)
+
+	proposal, err := fromV7DealProposal(proposal7)
+	if err != nil {
+		return nil, true, xerrors.Errorf("decoding proposal: %w", err)
+	}
+
 	return &proposal, true, nil
 }
 
 func (s *dealProposals7) ForEach(cb func(dealID abi.DealID, dp DealProposal) error) error {
 	var dp7 market7.DealProposal
 	return s.Array.ForEach(&dp7, func(idx int64) error {
-		return cb(abi.DealID(idx), fromV7DealProposal(dp7))
+		dp, err := fromV7DealProposal(dp7)
+		if err != nil {
+			return xerrors.Errorf("decoding proposal: %w", err)
+		}
+
+		return cb(abi.DealID(idx), dp)
 	})
 }
 
@@ -213,7 +222,12 @@ func (s *dealProposals7) decode(val *cbg.Deferred) (*DealProposal, error) {
 	if err := dp7.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
-	dp := fromV7DealProposal(dp7)
+
+	dp, err := fromV7DealProposal(dp7)
+	if err != nil {
+		return nil, err
+	}
+
 	return &dp, nil
 }
 
@@ -221,8 +235,29 @@ func (s *dealProposals7) array() adt.Array {
 	return s.Array
 }
 
-func fromV7DealProposal(v7 market7.DealProposal) DealProposal {
-	return (DealProposal)(v7)
+func fromV7DealProposal(v7 market7.DealProposal) (DealProposal, error) {
+
+	label, err := labelFromGoString(v7.Label)
+	if err != nil {
+		return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
+	}
+
+	return DealProposal{
+		PieceCID:     v7.PieceCID,
+		PieceSize:    v7.PieceSize,
+		VerifiedDeal: v7.VerifiedDeal,
+		Client:       v7.Client,
+		Provider:     v7.Provider,
+
+		Label: label,
+
+		StartEpoch:           v7.StartEpoch,
+		EndEpoch:             v7.EndEpoch,
+		StoragePricePerEpoch: v7.StoragePricePerEpoch,
+
+		ProviderCollateral: v7.ProviderCollateral,
+		ClientCollateral:   v7.ClientCollateral,
+	}, nil
 }
 
 func (s *state7) GetState() interface{} {

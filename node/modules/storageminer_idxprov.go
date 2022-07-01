@@ -3,15 +3,16 @@ package modules
 import (
 	"context"
 
-	"github.com/filecoin-project/go-address"
-	provider "github.com/filecoin-project/index-provider"
-	"github.com/filecoin-project/index-provider/engine"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	"github.com/libp2p/go-libp2p-core/host"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	provider "github.com/filecoin-project/index-provider"
+	"github.com/filecoin-project/index-provider/engine"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/node/config"

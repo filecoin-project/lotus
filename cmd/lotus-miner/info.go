@@ -12,22 +12,20 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/mattn/go-isatty"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-
-	cbor "github.com/ipfs/go-ipld-cbor"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/api/v0api"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
@@ -35,8 +33,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/journal/alerting"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 )
 
 var infoCmd = &cli.Command{

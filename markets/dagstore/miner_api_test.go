@@ -18,13 +18,12 @@ import (
 
 	"github.com/filecoin-project/dagstore/mount"
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/specs-actors/actors/builtin/paych"
-
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	piecestoreimpl "github.com/filecoin-project/go-fil-markets/piecestore/impl"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
+	"github.com/filecoin-project/go-state-types/abi"
+	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 )
 
 const unsealedSectorID = abi.SectorNumber(1)
@@ -242,7 +241,7 @@ func (m *mockRPN) GetMinerWorkerAddress(ctx context.Context, miner address.Addre
 	panic("implement me")
 }
 
-func (m *mockRPN) SavePaymentVoucher(ctx context.Context, paymentChannel address.Address, voucher *paych.SignedVoucher, proof []byte, expectedAmount abi.TokenAmount, tok shared.TipSetToken) (abi.TokenAmount, error) {
+func (m *mockRPN) SavePaymentVoucher(ctx context.Context, paymentChannel address.Address, voucher *paychtypes.SignedVoucher, proof []byte, expectedAmount abi.TokenAmount, tok shared.TipSetToken) (abi.TokenAmount, error) {
 	panic("implement me")
 }
 

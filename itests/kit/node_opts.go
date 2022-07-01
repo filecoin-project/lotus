@@ -3,18 +3,18 @@ package kit
 import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
+
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
+	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
-
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
+	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 )
 
 // DefaultPresealsPerBootstrapMiner is the number of preseals that every
@@ -31,19 +31,21 @@ type nodeOpts struct {
 	lite          bool
 	sectors       int
 	rpc           bool
-	ownerKey      *wallet.Key
+	ownerKey      *key.Key
 	extraNodeOpts []node.Option
 
-	subsystems           MinerSubsystem
-	mainMiner            *TestMiner
-	disableLibp2p        bool
-	optBuilders          []OptBuilder
-	sectorSize           abi.SectorSize
-	maxStagingDealsBytes int64
-	minerNoLocalSealing  bool // use worker
+	subsystems             MinerSubsystem
+	mainMiner              *TestMiner
+	disableLibp2p          bool
+	optBuilders            []OptBuilder
+	sectorSize             abi.SectorSize
+	maxStagingDealsBytes   int64
+	minerNoLocalSealing    bool // use worker
+	minerAssigner          string
+	disallowRemoteFinalize bool
 
 	workerTasks      []sealtasks.TaskType
-	workerStorageOpt func(stores.Store) stores.Store
+	workerStorageOpt func(paths.Store) paths.Store
 }
 
 // DefaultNodeOpts are the default options that will be applied to test nodes.
@@ -53,7 +55,7 @@ var DefaultNodeOpts = nodeOpts{
 	sectorSize: abi.SectorSize(2 << 10), // 2KiB.
 
 	workerTasks:      []sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize},
-	workerStorageOpt: func(store stores.Store) stores.Store { return store },
+	workerStorageOpt: func(store paths.Store) paths.Store { return store },
 }
 
 // OptBuilder is used to create an option after some other node is already
@@ -93,6 +95,20 @@ func WithMaxStagingDealsBytes(size int64) NodeOpt {
 func WithNoLocalSealing(nope bool) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.minerNoLocalSealing = nope
+		return nil
+	}
+}
+
+func WithAssigner(a string) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.minerAssigner = a
+		return nil
+	}
+}
+
+func WithDisallowRemoteFinalize(d bool) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.disallowRemoteFinalize = d
 		return nil
 	}
 }
@@ -149,7 +165,7 @@ func ThroughRPC() NodeOpt {
 
 // OwnerAddr sets the owner address of a miner. Only relevant when creating
 // a miner.
-func OwnerAddr(wk *wallet.Key) NodeOpt {
+func OwnerAddr(wk *key.Key) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.ownerKey = wk
 		return nil
@@ -194,7 +210,7 @@ func WithTaskTypes(tt []sealtasks.TaskType) NodeOpt {
 	}
 }
 
-func WithWorkerStorage(transform func(stores.Store) stores.Store) NodeOpt {
+func WithWorkerStorage(transform func(paths.Store) paths.Store) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.workerStorageOpt = transform
 		return nil

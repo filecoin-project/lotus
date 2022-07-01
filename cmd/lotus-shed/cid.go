@@ -4,12 +4,21 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"os"
+	"text/tabwriter"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/ipld/go-car"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
 var cidCmd = &cli.Command{
@@ -17,6 +26,7 @@ var cidCmd = &cli.Command{
 	Usage: "Cid command",
 	Subcommands: cli.Commands{
 		cidIdCmd,
+		inspectBundleCmd,
 	},
 }
 
@@ -81,5 +91,47 @@ var cidIdCmd = &cli.Command{
 		}
 
 		return nil
+	},
+}
+
+var inspectBundleCmd = &cli.Command{
+	Name:      "inspect-bundle",
+	Usage:     "Get the manifest CID from a car file, as well as the actor code CIDs",
+	ArgsUsage: "[path]",
+	Action: func(cctx *cli.Context) error {
+		ctx := cctx.Context
+
+		cf := cctx.Args().Get(0)
+		f, err := os.OpenFile(cf, os.O_RDONLY, 0664)
+		if err != nil {
+			return xerrors.Errorf("opening the car file: %w", err)
+		}
+
+		bs := blockstore.NewMemory()
+		wrapBs := adt.WrapStore(ctx, cbor.NewCborStore(bs))
+
+		hdr, err := car.LoadCar(ctx, bs, f)
+		if err != nil {
+			return xerrors.Errorf("error loading car file: %w", err)
+		}
+
+		manifestCid := hdr.Roots[0]
+
+		fmt.Printf("Manifest CID: %s\n", manifestCid.String())
+
+		entries, err := actors.ReadManifest(ctx, wrapBs, manifestCid)
+		if err != nil {
+			return xerrors.Errorf("error loading manifest: %w", err)
+		}
+
+		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
+		_, _ = fmt.Fprintln(tw, "\nActor\tCID\t")
+
+		for name, cid := range entries {
+			_, _ = fmt.Fprintf(tw, "%v\t%v\n", name, cid)
+
+		}
+
+		return tw.Flush()
 	},
 }

@@ -5,20 +5,23 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/impl/full"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
+
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/impl/full"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 var log = logging.Logger("market_adapter")
@@ -677,10 +680,10 @@ func (env *fundManagerEnvironment) AddFunds(
 	}
 
 	smsg, aerr := env.api.MpoolPushMessage(ctx, &types.Message{
-		To:     market.Address,
+		To:     builtin.StorageMarketActorAddr,
 		From:   wallet,
 		Value:  amt,
-		Method: market.Methods.AddBalance,
+		Method: builtin.MethodsMarket.AddBalance,
 		Params: params,
 	}, nil)
 
@@ -706,10 +709,10 @@ func (env *fundManagerEnvironment) WithdrawFunds(
 	}
 
 	smsg, aerr := env.api.MpoolPushMessage(ctx, &types.Message{
-		To:     market.Address,
+		To:     builtin.StorageMarketActorAddr,
 		From:   wallet,
 		Value:  types.NewInt(0),
-		Method: market.Methods.WithdrawBalance,
+		Method: builtin.MethodsMarket.WithdrawBalance,
 		Params: params,
 	}, nil)
 

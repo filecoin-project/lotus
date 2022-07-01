@@ -9,16 +9,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
-
-	"github.com/filecoin-project/lotus/chain/rand"
-
-	"github.com/filecoin-project/go-state-types/network"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -29,7 +19,12 @@ import (
 	"github.com/ipld/go-car"
 	"golang.org/x/xerrors"
 
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/network"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -38,16 +33,18 @@ import (
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
+	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/cmd/lotus-seed/seed"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 const msgsPerBlock = 20
@@ -55,7 +52,7 @@ const msgsPerBlock = 20
 //nolint:deadcode,varcheck
 var log = logging.Logger("gen")
 
-var ValidWpostForTesting = []proof5.PoStProof{{
+var ValidWpostForTesting = []proof7.PoStProof{{
 	ProofBytes: []byte("valid proof"),
 }}
 
@@ -492,7 +489,7 @@ func (cg *ChainGen) NextTipSetFromMinersWithMessagesAndNulls(base *types.TipSet,
 
 func (cg *ChainGen) makeBlock(parents *types.TipSet, m address.Address, vrfticket *types.Ticket,
 	eticket *types.ElectionProof, bvals []types.BeaconEntry, height abi.ChainEpoch,
-	wpost []proof5.PoStProof, msgs []*types.SignedMessage) (*types.FullBlock, error) {
+	wpost []proof7.PoStProof, msgs []*types.SignedMessage) (*types.FullBlock, error) {
 
 	var ts uint64
 	if cg.Timestamper != nil {
@@ -596,7 +593,7 @@ type MiningCheckAPI interface {
 type mca struct {
 	w   *wallet.LocalWallet
 	sm  *stmgr.StateManager
-	pv  ffiwrapper.Verifier
+	pv  storiface.Verifier
 	bcn beacon.Schedule
 }
 
@@ -620,7 +617,7 @@ func (mca mca) WalletSign(ctx context.Context, a address.Address, v []byte) (*cr
 
 type WinningPoStProver interface {
 	GenerateCandidates(context.Context, abi.PoStRandomness, uint64) ([]uint64, error)
-	ComputeProof(context.Context, []proof7.ExtendedSectorInfo, abi.PoStRandomness, abi.ChainEpoch, network.Version) ([]proof5.PoStProof, error)
+	ComputeProof(context.Context, []proof7.ExtendedSectorInfo, abi.PoStRandomness, abi.ChainEpoch, network.Version) ([]proof7.PoStProof, error)
 }
 
 type wppProvider struct{}
@@ -629,7 +626,7 @@ func (wpp *wppProvider) GenerateCandidates(ctx context.Context, _ abi.PoStRandom
 	return []uint64{0}, nil
 }
 
-func (wpp *wppProvider) ComputeProof(context.Context, []proof7.ExtendedSectorInfo, abi.PoStRandomness, abi.ChainEpoch, network.Version) ([]proof5.PoStProof, error) {
+func (wpp *wppProvider) ComputeProof(context.Context, []proof7.ExtendedSectorInfo, abi.PoStRandomness, abi.ChainEpoch, network.Version) ([]proof7.PoStProof, error) {
 	return ValidWpostForTesting, nil
 }
 
@@ -678,13 +675,13 @@ func ComputeVRF(ctx context.Context, sign SignFunc, worker address.Address, sigI
 
 type genFakeVerifier struct{}
 
-var _ ffiwrapper.Verifier = (*genFakeVerifier)(nil)
+var _ storiface.Verifier = (*genFakeVerifier)(nil)
 
-func (m genFakeVerifier) VerifySeal(svi proof5.SealVerifyInfo) (bool, error) {
+func (m genFakeVerifier) VerifySeal(svi proof7.SealVerifyInfo) (bool, error) {
 	return true, nil
 }
 
-func (m genFakeVerifier) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) (bool, error) {
+func (m genFakeVerifier) VerifyAggregateSeals(aggregate proof7.AggregateSealVerifyProofAndInfos) (bool, error) {
 	panic("not supported")
 }
 

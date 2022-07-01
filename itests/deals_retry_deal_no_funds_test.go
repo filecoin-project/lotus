@@ -6,17 +6,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
+
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
-	"github.com/filecoin-project/lotus/storage"
-	"github.com/stretchr/testify/require"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 )
 
 var (
@@ -35,20 +36,13 @@ func TestDealsRetryLackOfFunds(t *testing.T) {
 	//stm: @CHAIN_INCOMING_HANDLE_INCOMING_BLOCKS_001, @CHAIN_INCOMING_VALIDATE_BLOCK_PUBSUB_001, @CHAIN_INCOMING_VALIDATE_MESSAGE_PUBSUB_001
 	//stm: @CLIENT_STORAGE_DEALS_LIST_IMPORTS_001
 	ctx := context.Background()
-	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
 
-	t.Cleanup(func() {
-		policy.SetPreCommitChallengeDelay(oldDelay)
-	})
-
-	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg8MiBV1)
 	kit.QuietMiningLogs()
 
 	// Allow 8MB sectors
 	eightMBSectorsOpt := kit.SectorSize(8 << 20)
 
-	publishStorageDealKey, err := wallet.GenerateKey(types.KTSecp256k1)
+	publishStorageDealKey, err := key.GenerateKey(types.KTSecp256k1)
 	require.NoError(t, err)
 
 	opts := node.Options(
@@ -58,7 +52,7 @@ func TestDealsRetryLackOfFunds(t *testing.T) {
 				MaxDealsPerMsg: maxDealsPerMsg,
 			}),
 		),
-		node.Override(new(*storage.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
+		node.Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
 			DealPublishControl: []string{
 				publishStorageDealKey.Address.String(),
 			},
@@ -119,20 +113,12 @@ func TestDealsRetryLackOfFunds_blockInPublishDeal(t *testing.T) {
 	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 	//stm: @CLIENT_STORAGE_DEALS_LIST_IMPORTS_001
 	ctx := context.Background()
-	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
-
-	t.Cleanup(func() {
-		policy.SetPreCommitChallengeDelay(oldDelay)
-	})
-
-	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg8MiBV1)
 	kit.QuietMiningLogs()
 
 	// Allow 8MB sectors
 	eightMBSectorsOpt := kit.SectorSize(8 << 20)
 
-	publishStorageDealKey, err := wallet.GenerateKey(types.KTSecp256k1)
+	publishStorageDealKey, err := key.GenerateKey(types.KTSecp256k1)
 	require.NoError(t, err)
 
 	opts := node.Options(
@@ -142,7 +128,7 @@ func TestDealsRetryLackOfFunds_blockInPublishDeal(t *testing.T) {
 				MaxDealsPerMsg: maxDealsPerMsg,
 			}),
 		),
-		node.Override(new(*storage.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
+		node.Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
 			DealPublishControl: []string{
 				publishStorageDealKey.Address.String(),
 			},
@@ -200,20 +186,12 @@ func TestDealsRetryLackOfFunds_belowLimit(t *testing.T) {
 	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
 	//stm: @CLIENT_STORAGE_DEALS_LIST_IMPORTS_001
 	ctx := context.Background()
-	oldDelay := policy.GetPreCommitChallengeDelay()
-	policy.SetPreCommitChallengeDelay(5)
-
-	t.Cleanup(func() {
-		policy.SetPreCommitChallengeDelay(oldDelay)
-	})
-
-	policy.SetSupportedProofTypes(abi.RegisteredSealProof_StackedDrg8MiBV1)
 	kit.QuietMiningLogs()
 
 	// Allow 8MB sectors
 	eightMBSectorsOpt := kit.SectorSize(8 << 20)
 
-	publishStorageDealKey, err := wallet.GenerateKey(types.KTSecp256k1)
+	publishStorageDealKey, err := key.GenerateKey(types.KTSecp256k1)
 	require.NoError(t, err)
 
 	opts := node.Options(
@@ -223,7 +201,7 @@ func TestDealsRetryLackOfFunds_belowLimit(t *testing.T) {
 				MaxDealsPerMsg: maxDealsPerMsg,
 			}),
 		),
-		node.Override(new(*storage.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
+		node.Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
 			DealPublishControl: []string{
 				publishStorageDealKey.Address.String(),
 			},
@@ -261,7 +239,7 @@ func TestDealsRetryLackOfFunds_belowLimit(t *testing.T) {
 	dp.EpochPrice = abi.NewTokenAmount(62500000) // minimum asking price.
 	deal := dh.StartDeal(ctx, dp)
 
-	err = dh.ExpectDealFailure(ctx, deal, "actor balance less than needed")
+	err = dh.ExpectDealFailure(ctx, deal, "Actor balance less than needed")
 	if err != nil {
 		t.Fatal(err)
 	}

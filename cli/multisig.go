@@ -10,18 +10,15 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	cbg "github.com/whyrusleeping/cbor-gen"
-
-	"github.com/filecoin-project/go-state-types/big"
-
-	"github.com/filecoin-project/go-state-types/abi"
-
-	"github.com/filecoin-project/go-address"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 

@@ -3,10 +3,14 @@ package types
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
+	"io"
 	"strings"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
+	typegen "github.com/whyrusleeping/cbor-gen"
+
+	"github.com/filecoin-project/go-state-types/abi"
 )
 
 var EmptyTSK = TipSetKey{}
@@ -94,6 +98,45 @@ func (k *TipSetKey) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
+func (k TipSetKey) MarshalCBOR(writer io.Writer) error {
+	if err := typegen.WriteMajorTypeHeader(writer, typegen.MajByteString, uint64(len(k.Bytes()))); err != nil {
+		return err
+	}
+
+	_, err := writer.Write(k.Bytes())
+	return err
+}
+
+func (k *TipSetKey) UnmarshalCBOR(reader io.Reader) error {
+	cr := typegen.NewCborReader(reader)
+
+	maj, extra, err := cr.ReadHeader()
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err == io.EOF {
+			err = io.ErrUnexpectedEOF
+		}
+	}()
+
+	if extra > typegen.ByteArrayMaxLen {
+		return fmt.Errorf("t.Binary: byte array too large (%d)", extra)
+	}
+	if maj != typegen.MajByteString {
+		return fmt.Errorf("expected byte array")
+	}
+
+	b := make([]uint8, extra)
+
+	if _, err := io.ReadFull(cr, b); err != nil {
+		return err
+	}
+
+	*k, err = TipSetKeyFromBytes(b)
+	return err
+}
+
 func (k TipSetKey) IsEmpty() bool {
 	return len(k.value) == 0
 }
@@ -123,3 +166,6 @@ func decodeKey(encoded []byte) ([]cid.Cid, error) {
 	}
 	return cids, nil
 }
+
+var _ typegen.CBORMarshaler = &TipSetKey{}
+var _ typegen.CBORUnmarshaler = &TipSetKey{}

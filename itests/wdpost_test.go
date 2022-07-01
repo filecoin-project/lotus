@@ -13,14 +13,14 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/extern/sector-storage/mock"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/impl"
+	"github.com/filecoin-project/lotus/storage/sealer/mock"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 func TestWindowedPost(t *testing.T) {
@@ -105,7 +105,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 
 		// Drop the partition
 		err = secs.ForEach(func(sid uint64) error {
-			return miner.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).MarkCorrupted(storage.SectorRef{
+			return miner.StorageMiner.(*impl.StorageMinerAPI).IStorageMgr.(*mock.SectorMgr).MarkCorrupted(storiface.SectorRef{
 				ID: abi.SectorID{
 					Miner:  abi.ActorID(mid),
 					Number: abi.SectorNumber(sid),
@@ -115,7 +115,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 		require.NoError(t, err)
 	}
 
-	var s storage.SectorRef
+	var s storiface.SectorRef
 
 	// Drop 1 sectors from deadline 3 partition 0
 	{
@@ -137,7 +137,7 @@ func testWindowPostUpgrade(t *testing.T, blocktime time.Duration, nSectors int, 
 		require.NoError(t, err)
 		t.Log("the sectors", all)
 
-		s = storage.SectorRef{
+		s = storiface.SectorRef{
 			ID: abi.SectorID{
 				Miner:  abi.ActorID(mid),
 				Number: abi.SectorNumber(sn),

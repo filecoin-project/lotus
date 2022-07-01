@@ -3,10 +3,11 @@ package stmgr
 import (
 	"context"
 
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/ipfs/go-cid"
 )
 
 type ExecMonitor interface {

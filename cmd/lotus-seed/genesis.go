@@ -9,13 +9,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/filecoin-project/go-state-types/network"
-
-	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/journal"
-	"github.com/filecoin-project/lotus/node/modules/testing"
 	"github.com/google/uuid"
 	"github.com/mitchellh/go-homedir"
 	"github.com/urfave/cli/v2"
@@ -24,12 +17,18 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 
+	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
 	genesis2 "github.com/filecoin-project/lotus/chain/gen/genesis"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/journal"
+	"github.com/filecoin-project/lotus/node/modules/testing"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
 var genesisCmd = &cli.Command{
@@ -59,7 +58,7 @@ var genesisNewCmd = &cli.Command{
 			return xerrors.New("seed genesis new [genesis.json]")
 		}
 		out := genesis.Template{
-			NetworkVersion:   build.NewestNetworkVersion,
+			NetworkVersion:   build.GenesisNetworkVersion,
 			Accounts:         []genesis.Actor{},
 			Miners:           []genesis.Miner{},
 			VerifregRootKey:  gen.DefaultVerifregRootkeyActor,
@@ -577,6 +576,7 @@ var genesisCarCmd = &cli.Command{
 		jrnl := journal.NilJournal()
 		bstor := blockstore.WrapIDStore(blockstore.NewMemorySync())
 		sbldr := vm.Syscalls(ffiwrapper.ProofVerifier)
+
 		_, err := testing.MakeGenesis(ofile, c.Args().First())(bstor, sbldr, jrnl)()
 		return err
 	},

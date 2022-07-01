@@ -7,20 +7,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
-	"github.com/filecoin-project/lotus/storage"
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
-	"github.com/stretchr/testify/require"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 )
 
 func TestPublishDealsBatching(t *testing.T) {
@@ -39,7 +41,7 @@ func TestPublishDealsBatching(t *testing.T) {
 
 	kit.QuietMiningLogs()
 
-	publisherKey, err := wallet.GenerateKey(types.KTSecp256k1)
+	publisherKey, err := key.GenerateKey(types.KTSecp256k1)
 	require.NoError(t, err)
 
 	opts := node.Options(
@@ -49,7 +51,7 @@ func TestPublishDealsBatching(t *testing.T) {
 				MaxDealsPerMsg: maxDealsPerMsg,
 			}),
 		),
-		node.Override(new(*storage.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
+		node.Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
 			DealPublishControl: []string{
 				publisherKey.Address.String(),
 			},

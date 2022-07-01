@@ -5,8 +5,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
 
@@ -166,7 +166,7 @@ func (q *commitQueue) advanceEpoch(epoch abi.ChainEpoch) {
 }
 
 // enquueProveCommit enqueues prove-commit for the given pre-commit for the given miner.
-func (q *commitQueue) enqueueProveCommit(addr address.Address, preCommitEpoch abi.ChainEpoch, info miner.SectorPreCommitInfo) error {
+func (q *commitQueue) enqueueProveCommit(addr address.Address, preCommitEpoch abi.ChainEpoch, info minertypes.SectorPreCommitInfo) error {
 	// Compute the epoch at which we can start trying to commit.
 	preCommitDelay := policy.GetPreCommitChallengeDelay()
 	minCommitEpoch := preCommitEpoch + preCommitDelay + 1

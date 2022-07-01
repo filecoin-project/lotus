@@ -11,9 +11,10 @@ import (
 	"os/exec"
 
 	"github.com/fatih/color"
+	"github.com/urfave/cli/v2"
+
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/test-vectors/schema"
-	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"

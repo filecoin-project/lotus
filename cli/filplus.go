@@ -6,15 +6,14 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	verifreg4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/verifreg"
-
-	"github.com/filecoin-project/go-state-types/big"
-
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	verifregtypes "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
 
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/blockstore"
@@ -23,7 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/verifreg"
 	"github.com/filecoin-project/lotus/chain/types"
-	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 var filplusCmd = &cli.Command{
@@ -96,7 +94,7 @@ var filplusVerifyClientCmd = &cli.Command{
 		}
 
 		// TODO: This should be abstracted over actor versions
-		params, err := actors.SerializeParams(&verifreg4.AddVerifiedClientParams{Address: target, Allowance: allowance})
+		params, err := actors.SerializeParams(&verifregtypes.AddVerifiedClientParams{Address: target, Allowance: allowance})
 		if err != nil {
 			return err
 		}
@@ -361,14 +359,14 @@ var filplusSignRemoveDataCapProposal = &cli.Command{
 			}
 		}
 
-		params := verifreg.RemoveDataCapProposal{
-			RemovalProposalID: verifreg.RmDcProposalID{ProposalID: id},
+		params := verifregtypes.RemoveDataCapProposal{
+			RemovalProposalID: verifregtypes.RmDcProposalID{ProposalID: id},
 			DataCapAmount:     allowanceToRemove,
 			VerifiedClient:    clientIdAddr,
 		}
 
 		paramBuf := new(bytes.Buffer)
-		paramBuf.WriteString(verifreg.SignatureDomainSeparation_RemoveDataCap)
+		paramBuf.WriteString(verifregtypes.SignatureDomainSeparation_RemoveDataCap)
 		err = params.MarshalCBOR(paramBuf)
 		if err != nil {
 			return xerrors.Errorf("failed to marshall paramBuf: %w", err)

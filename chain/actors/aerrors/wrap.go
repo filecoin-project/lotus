@@ -4,9 +4,10 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/filecoin-project/go-state-types/exitcode"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/exitcode"
 )
 
 // New creates a new non-fatal error

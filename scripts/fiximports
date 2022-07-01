@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+go_files() {
+    find . -type f -name \*.go -not -name \*_cbor_gen.go | grep -v './extern/filecoin-ffi' | grep -v './extern/test-vectors'
+}
+
+go_files | xargs -I '{}' sed -i.ifixbak -e '/import (/ {
+  :1
+  $!N
+  s/\n\n/\'$'\n''/
+  /)/!b1
+}' '{}'
+
+find . -type f -name \*.go.ifixbak | xargs rm
+
+go_files | xargs -I '{}' goimports -w -local "github.com/filecoin-project" '{}'
+go_files | xargs -I '{}' goimports -w -local "github.com/filecoin-project/lotus" '{}'

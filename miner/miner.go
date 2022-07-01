@@ -10,31 +10,27 @@ import (
 	"sync"
 	"time"
 
-	lrand "github.com/filecoin-project/lotus/chain/rand"
-
-	"github.com/filecoin-project/lotus/api/v1api"
-
-	proof2 "github.com/filecoin-project/specs-actors/v2/actors/runtime/proof"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
-	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
+	lru "github.com/hashicorp/golang-lru"
+	logging "github.com/ipfs/go-log/v2"
+	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
-	lru "github.com/hashicorp/golang-lru"
+	"github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/gen"
+	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
+	lrand "github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
-
-	logging "github.com/ipfs/go-log/v2"
-	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("miner")
@@ -260,7 +256,7 @@ minerLoop:
 			}
 
 			// just wait for the beacon entry to become available before we select our final mining base
-			_, err = m.api.BeaconGetEntry(ctx, prebase.TipSet.Height()+prebase.NullRounds+1)
+			_, err = m.api.StateGetBeaconEntry(ctx, prebase.TipSet.Height()+prebase.NullRounds+1)
 			if err != nil {
 				log.Errorf("failed getting beacon entry: %s", err)
 				if !m.niceSleep(time.Second) {
@@ -611,7 +607,7 @@ func (m *Miner) computeTicket(ctx context.Context, brand *types.BeaconEntry, bas
 }
 
 func (m *Miner) createBlock(base *MiningBase, addr address.Address, ticket *types.Ticket,
-	eproof *types.ElectionProof, bvals []types.BeaconEntry, wpostProof []proof2.PoStProof, msgs []*types.SignedMessage) (*types.BlockMsg, error) {
+	eproof *types.ElectionProof, bvals []types.BeaconEntry, wpostProof []proof.PoStProof, msgs []*types.SignedMessage) (*types.BlockMsg, error) {
 	uts := base.TipSet.MinTimestamp() + build.BlockDelaySecs*(uint64(base.NullRounds)+1)
 
 	nheight := base.TipSet.Height() + base.NullRounds + 1

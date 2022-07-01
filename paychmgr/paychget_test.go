@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
-	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
+	cborrpc "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
@@ -515,18 +515,21 @@ func TestPaychGetRestartAfterCreateChannelMsg(t *testing.T) {
 	from := tutils.NewIDAddr(t, 101)
 	to := tutils.NewIDAddr(t, 102)
 
-	mock := newMockManagerAPI()
+	var createMsgCid cid.Cid
+	{
+		mock := newMockManagerAPI()
 
-	mgr, err := newManager(store, mock)
-	require.NoError(t, err)
+		mgr, err := newManager(store, mock)
+		require.NoError(t, err)
 
-	// Send create message for a channel with value 10
-	amt := big.NewInt(10)
-	_, createMsgCid, err := mgr.GetPaych(ctx, from, to, amt, onChainReserve)
-	require.NoError(t, err)
+		// Send create message for a channel with value 10
+		amt := big.NewInt(10)
+		_, createMsgCid, err = mgr.GetPaych(ctx, from, to, amt, onChainReserve)
+		require.NoError(t, err)
 
-	// Simulate shutting down system
-	mock.close()
+		// Simulate shutting down system
+		mock.close()
+	}
 
 	// Create a new manager with the same datastore
 	mock2 := newMockManagerAPI()
@@ -631,7 +634,7 @@ func TestPaychGetRestartAfterAddFundsMsg(t *testing.T) {
 	require.NoError(t, err)
 
 	// Simulate shutting down system
-	mock.close()
+	require.NoError(t, mgr.Stop())
 
 	// Create a new manager with the same datastore
 	mock2 := newMockManagerAPI()

@@ -6,12 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	commp "github.com/filecoin-project/go-fil-commp-hashhash"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
+
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/stretchr/testify/require"
 )
 
 func TestDealPadding(t *testing.T) {
@@ -26,7 +27,6 @@ func TestDealPadding(t *testing.T) {
 
 	var blockTime = 250 * time.Millisecond
 	startEpoch := abi.ChainEpoch(2 << 12)
-	policy.SetPreCommitChallengeDelay(2)
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.ThroughRPC(), kit.WithAllSubsystems()) // no mock proofs.
 	ens.InterconnectAll().BeginMining(blockTime)

@@ -9,11 +9,11 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
+	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -27,15 +27,15 @@ func (m *Miner) StartPackingSector(sectorNum abi.SectorNumber) error {
 	return m.sealing.StartPacking(sectorNum)
 }
 
-func (m *Miner) ListSectors() ([]sealing.SectorInfo, error) {
+func (m *Miner) ListSectors() ([]pipeline.SectorInfo, error) {
 	return m.sealing.ListSectors()
 }
 
-func (m *Miner) PledgeSector(ctx context.Context) (storage.SectorRef, error) {
+func (m *Miner) PledgeSector(ctx context.Context) (storiface.SectorRef, error) {
 	return m.sealing.PledgeSector(ctx)
 }
 
-func (m *Miner) ForceSectorState(ctx context.Context, id abi.SectorNumber, state sealing.SectorState) error {
+func (m *Miner) ForceSectorState(ctx context.Context, id abi.SectorNumber, state pipeline.SectorState) error {
 	return m.sealing.ForceSectorState(ctx, id, state)
 }
 
@@ -86,7 +86,7 @@ func (m *Miner) SectorAbortUpgrade(sectorNum abi.SectorNumber) error {
 	return m.sealing.AbortUpgrade(sectorNum)
 }
 
-func (m *Miner) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storage.Data, d api.PieceDealInfo) (api.SectorOffset, error) {
+func (m *Miner) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storiface.Data, d api.PieceDealInfo) (api.SectorOffset, error) {
 	return m.sealing.SectorAddPieceToAny(ctx, size, r, d)
 }
 

@@ -9,8 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/rand"
-
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
@@ -35,15 +33,17 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/beacon"
 	"github.com/filecoin-project/lotus/chain/consensus"
+	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/lib/async"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/metrics"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var log = logging.Logger("fil-consensus")
@@ -58,7 +58,7 @@ type FilecoinEC struct {
 	// the state manager handles making state queries
 	sm *stmgr.StateManager
 
-	verifier ffiwrapper.Verifier
+	verifier storiface.Verifier
 
 	genesis *types.TipSet
 }
@@ -67,7 +67,7 @@ type FilecoinEC struct {
 // the theoretical max height based on systime are quickly rejected
 const MaxHeightDrift = 5
 
-func NewFilecoinExpectedConsensus(sm *stmgr.StateManager, beacon beacon.Schedule, verifier ffiwrapper.Verifier, genesis chain.Genesis) consensus.Consensus {
+func NewFilecoinExpectedConsensus(sm *stmgr.StateManager, beacon beacon.Schedule, verifier storiface.Verifier, genesis chain.Genesis) consensus.Consensus {
 	if build.InsecurePoStValidation {
 		log.Warn("*********************************************************************************************")
 		log.Warn(" [INSECURE-POST-VALIDATION] Insecure test validation is enabled. If you see this outside of a test, it is a severe bug! ")
@@ -264,7 +264,8 @@ func (filec *FilecoinEC) ValidateBlock(ctx context.Context, b *types.FullBlock) 
 			return nil
 		}
 
-		if err := beacon.ValidateBlockValues(filec.beacon, h, baseTs.Height(), *prevBeacon); err != nil {
+		nv := filec.sm.GetNetworkVersion(ctx, h.Height)
+		if err := beacon.ValidateBlockValues(filec.beacon, nv, h, baseTs.Height(), *prevBeacon); err != nil {
 			return xerrors.Errorf("failed to validate blocks random beacon values: %w", err)
 		}
 		return nil
@@ -467,7 +468,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 	}
 
 	nv := filec.sm.GetNetworkVersion(ctx, b.Header.Height)
-	pl := vm.PricelistByEpochAndNetworkVersion(b.Header.Height, nv)
+	pl := vm.PricelistByEpoch(b.Header.Height)
 	var sumGasLimit int64
 	checkMsg := func(msg types.ChainMsg) error {
 		m := msg.VMMessage()
@@ -488,7 +489,7 @@ func (filec *FilecoinEC) checkBlockMessages(ctx context.Context, b *types.FullBl
 		// Phase 2: (Partial) semantic validation:
 		// the sender exists and is an account actor, and the nonces make sense
 		var sender address.Address
-		if filec.sm.GetNetworkVersion(ctx, b.Header.Height) >= network.Version13 {
+		if nv >= network.Version13 {
 			sender, err = st.LookupID(m.From)
 			if err != nil {
 				return xerrors.Errorf("failed to lookup sender %s: %w", m.From, err)

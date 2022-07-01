@@ -5,10 +5,10 @@ import (
 	"sync"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
+	"golang.org/x/xerrors"
 )
 
 // autolog is a logger for the autobatching blockstore. It is subscoped from the
@@ -176,7 +176,7 @@ func (bs *AutobatchBlockstore) Get(ctx context.Context, c cid.Cid) (block.Block,
 		return blk, nil
 	}
 
-	if err != ErrNotFound {
+	if !ipld.IsNotFound(err) {
 		return blk, err
 	}
 
@@ -214,7 +214,7 @@ func (bs *AutobatchBlockstore) Has(ctx context.Context, c cid.Cid) (bool, error)
 	if err == nil {
 		return true, nil
 	}
-	if err == ErrNotFound {
+	if ipld.IsNotFound(err) {
 		return false, nil
 	}
 

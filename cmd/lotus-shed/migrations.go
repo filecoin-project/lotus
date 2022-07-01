@@ -6,18 +6,18 @@ import (
 	"io"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
-
-	"github.com/filecoin-project/lotus/chain/types"
-
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
+
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
 var migrationsCmd = &cli.Command{

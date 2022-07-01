@@ -12,15 +12,14 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-state-types/abi"
-	specstorage "github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/chain/types"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -29,13 +28,13 @@ var log = logging.Logger("sectoraccessor")
 type sectorAccessor struct {
 	maddr address.Address
 	secb  sectorblocks.SectorBuilder
-	pp    sectorstorage.PieceProvider
+	pp    sealer.PieceProvider
 	full  v1api.FullNode
 }
 
 var _ retrievalmarket.SectorAccessor = (*sectorAccessor)(nil)
 
-func NewSectorAccessor(maddr dtypes.MinerAddress, secb sectorblocks.SectorBuilder, pp sectorstorage.PieceProvider, full v1api.FullNode) dagstore.SectorAccessor {
+func NewSectorAccessor(maddr dtypes.MinerAddress, secb sectorblocks.SectorBuilder, pp sealer.PieceProvider, full v1api.FullNode) dagstore.SectorAccessor {
 	return &sectorAccessor{address.Address(maddr), secb, pp, full}
 }
 
@@ -55,7 +54,7 @@ func (sa *sectorAccessor) UnsealSectorAt(ctx context.Context, sectorID abi.Secto
 		return nil, err
 	}
 
-	ref := specstorage.SectorRef{
+	ref := storiface.SectorRef{
 		ID: abi.SectorID{
 			Miner:  abi.ActorID(mid),
 			Number: sectorID,
@@ -90,7 +89,7 @@ func (sa *sectorAccessor) IsUnsealed(ctx context.Context, sectorID abi.SectorNum
 		return false, err
 	}
 
-	ref := specstorage.SectorRef{
+	ref := storiface.SectorRef{
 		ID: abi.SectorID{
 			Miner:  abi.ActorID(mid),
 			Number: sectorID,

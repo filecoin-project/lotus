@@ -5,13 +5,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 	"golang.org/x/xerrors"
 
-	blocks "github.com/ipfs/go-block-format"
-	cid "github.com/ipfs/go-cid"
-
 	"github.com/filecoin-project/go-state-types/abi"
-	bstore "github.com/filecoin-project/lotus/blockstore"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -88,7 +88,7 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 
 			blk, err := s.cold.Get(s.ctx, c)
 			if err != nil {
-				if err == bstore.ErrNotFound {
+				if ipld.IsNotFound(err) {
 					atomic.AddInt64(missing, 1)
 					return errStopWalk
 				}

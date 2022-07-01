@@ -12,14 +12,19 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
 )
+
+var NetworkBundle = "caterpillarnet"
+var BundleOverrides map[actors.Version]string
 
 const BootstrappersFile = "interopnet.pi"
 const GenesisFile = "interopnet.car"
 
-const GenesisNetworkVersion = network.Version13
+const GenesisNetworkVersion = network.Version15
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
@@ -48,6 +53,7 @@ var UpgradeTurboHeight = abi.ChainEpoch(-15)
 var UpgradeHyperdriveHeight = abi.ChainEpoch(-16)
 var UpgradeChocolateHeight = abi.ChainEpoch(-17)
 var UpgradeOhSnapHeight = abi.ChainEpoch(-18)
+var UpgradeSkyrHeight = abi.ChainEpoch(100)
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
@@ -98,6 +104,9 @@ func init() {
 	UpgradeNorwegianHeight = getUpgradeHeight("LOTUS_NORWEGIAN_HEIGHT", UpgradeNorwegianHeight)
 	UpgradeTurboHeight = getUpgradeHeight("LOTUS_ACTORSV4_HEIGHT", UpgradeTurboHeight)
 	UpgradeHyperdriveHeight = getUpgradeHeight("LOTUS_HYPERDRIVE_HEIGHT", UpgradeHyperdriveHeight)
+	UpgradeChocolateHeight = getUpgradeHeight("LOTUS_CHOCOLATE_HEIGHT", UpgradeChocolateHeight)
+	UpgradeOhSnapHeight = getUpgradeHeight("LOTUS_OHSNAP_HEIGHT", UpgradeOhSnapHeight)
+	UpgradeSkyrHeight = getUpgradeHeight("LOTUS_SKYR_HEIGHT", UpgradeSkyrHeight)
 
 	BuildType |= BuildInteropnet
 	SetAddressNetwork(address.Testnet)

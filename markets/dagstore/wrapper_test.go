@@ -8,13 +8,10 @@ import (
 	"testing"
 	"time"
 
-	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
-
-	mh "github.com/multiformats/go-multihash"
-
-	carindex "github.com/ipld/go-car/v2/index"
-
 	"github.com/ipfs/go-cid"
+	carindex "github.com/ipld/go-car/v2/index"
+	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
+	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 

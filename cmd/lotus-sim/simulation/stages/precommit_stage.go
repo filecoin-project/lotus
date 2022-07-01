@@ -10,8 +10,9 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/network"
-
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -176,9 +177,9 @@ func (stage *PreCommitStage) packMiner(
 	}
 
 	expiration := epoch + policy.GetMaxSectorExpirationExtension()
-	infos := make([]miner.SectorPreCommitInfo, len(sectorNos))
+	infos := make([]minertypes.SectorPreCommitInfo, len(sectorNos))
 	for i, sno := range sectorNos {
-		infos[i] = miner.SectorPreCommitInfo{
+		infos[i] = minertypes.SectorPreCommitInfo{
 			SealProof:     sealType,
 			SectorNumber:  sno,
 			SealedCID:     mock.MockCommR(minerAddr, sno),
@@ -196,7 +197,7 @@ func (stage *PreCommitStage) packMiner(
 			if len(batch) > targetBatchSize {
 				batch = batch[:targetBatchSize]
 			}
-			params := miner5.PreCommitSectorBatchParams{
+			params := minertypes.PreCommitSectorBatchParams{
 				Sectors: batch,
 			}
 			enc, err := actors.SerializeParams(&params)
@@ -209,7 +210,7 @@ func (stage *PreCommitStage) packMiner(
 				To:     minerAddr,
 				From:   minerInfo.Worker,
 				Value:  abi.NewTokenAmount(0),
-				Method: miner.Methods.PreCommitSectorBatch,
+				Method: builtin.MethodsMiner.PreCommitSectorBatch,
 				Params: enc,
 			}); blockbuilder.IsOutOfGas(err) {
 				// try again with a smaller batch.
@@ -244,7 +245,7 @@ func (stage *PreCommitStage) packMiner(
 			To:     minerAddr,
 			From:   minerInfo.Worker,
 			Value:  abi.NewTokenAmount(0),
-			Method: miner.Methods.PreCommitSector,
+			Method: builtin.MethodsMiner.PreCommitSector,
 			Params: enc,
 		}); blockbuilder.IsOutOfGas(err) {
 			return added, true, nil

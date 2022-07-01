@@ -6,25 +6,21 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/abi"
-
-	"github.com/filecoin-project/go-address"
-
-	"github.com/filecoin-project/lotus/chain/actors"
-
-	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
-
-	"github.com/filecoin-project/go-state-types/big"
-	lapi "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
-	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
 
-	logging "github.com/ipfs/go-log/v2"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
+	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
 
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/urfave/cli/v2"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var disputeLog = logging.Logger("disputer")

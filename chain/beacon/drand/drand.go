@@ -13,13 +13,13 @@ import (
 	"github.com/drand/kyber"
 	kzap "github.com/go-kit/kit/log/zap"
 	lru "github.com/hashicorp/golang-lru"
+	logging "github.com/ipfs/go-log/v2"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"go.uber.org/zap/zapcore"
 	"golang.org/x/xerrors"
 
-	logging "github.com/ipfs/go-log/v2"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
-
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/beacon"
@@ -201,11 +201,32 @@ func (db *DrandBeacon) VerifyEntry(curr types.BeaconEntry, prev types.BeaconEntr
 	return err
 }
 
-func (db *DrandBeacon) MaxBeaconRoundForEpoch(filEpoch abi.ChainEpoch) uint64 {
+func (db *DrandBeacon) MaxBeaconRoundForEpoch(nv network.Version, filEpoch abi.ChainEpoch) uint64 {
 	// TODO: sometimes the genesis time for filecoin is zero and this goes negative
 	latestTs := ((uint64(filEpoch) * db.filRoundTime) + db.filGenTime) - db.filRoundTime
+
+	if nv <= network.Version15 {
+		return db.maxBeaconRoundV1(latestTs)
+	}
+
+	return db.maxBeaconRoundV2(latestTs)
+}
+
+func (db *DrandBeacon) maxBeaconRoundV1(latestTs uint64) uint64 {
 	dround := (latestTs - db.drandGenTime) / uint64(db.interval.Seconds())
 	return dround
+}
+
+func (db *DrandBeacon) maxBeaconRoundV2(latestTs uint64) uint64 {
+	if latestTs < db.drandGenTime {
+		return 1
+	}
+
+	fromGenesis := latestTs - db.drandGenTime
+	// we take the time from genesis divided by the periods in seconds, that
+	// gives us the number of periods since genesis.  We also add +1 because
+	// round 1 starts at genesis time.
+	return fromGenesis/uint64(db.interval.Seconds()) + 1
 }
 
 var _ beacon.RandomBeacon = (*DrandBeacon)(nil)

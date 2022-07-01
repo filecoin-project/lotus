@@ -8,23 +8,22 @@ import (
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
-	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
-	cbg "github.com/whyrusleeping/cbor-gen"
-
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/types"
-
 	states0 "github.com/filecoin-project/specs-actors/actors/states"
 	states2 "github.com/filecoin-project/specs-actors/v2/actors/states"
 	states3 "github.com/filecoin-project/specs-actors/v3/actors/states"
 	states4 "github.com/filecoin-project/specs-actors/v4/actors/states"
 	states5 "github.com/filecoin-project/specs-actors/v5/actors/states"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var log = logging.Logger("statetree")
@@ -159,7 +158,7 @@ func VersionForNetwork(ver network.Version) (types.StateTreeVersion, error) {
 
 		/* inline-gen start */
 
-	case network.Version13, network.Version14, network.Version15:
+	case network.Version13, network.Version14, network.Version15, network.Version16:
 
 		/* inline-gen end */
 		return types.StateTreeVersion4, nil

@@ -3,7 +3,7 @@ package paych
 import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-
+	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 	init6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/init"
 	paych6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/paych"
@@ -16,12 +16,15 @@ import (
 type message6 struct{ from address.Address }
 
 func (m message6) Create(to address.Address, initialAmount abi.TokenAmount) (*types.Message, error) {
+
+	actorCodeID := builtin6.PaymentChannelActorCodeID
+
 	params, aerr := actors.SerializeParams(&paych6.ConstructorParams{From: m.from, To: to})
 	if aerr != nil {
 		return nil, aerr
 	}
 	enc, aerr := actors.SerializeParams(&init6.ExecParams{
-		CodeCID:           builtin6.PaymentChannelActorCodeID,
+		CodeCID:           actorCodeID,
 		ConstructorParams: params,
 	})
 	if aerr != nil {
@@ -37,10 +40,10 @@ func (m message6) Create(to address.Address, initialAmount abi.TokenAmount) (*ty
 	}, nil
 }
 
-func (m message6) Update(paych address.Address, sv *SignedVoucher, secret []byte) (*types.Message, error) {
+func (m message6) Update(paych address.Address, sv *paychtypes.SignedVoucher, secret []byte) (*types.Message, error) {
 	params, aerr := actors.SerializeParams(&paych6.UpdateChannelStateParams{
 
-		Sv: *sv,
+		Sv: toV0SignedVoucher(*sv),
 
 		Secret: secret,
 	})

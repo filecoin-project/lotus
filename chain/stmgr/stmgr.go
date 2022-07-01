@@ -4,14 +4,6 @@ import (
 	"context"
 	"sync"
 
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-
-	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
-
-	"github.com/filecoin-project/lotus/chain/rand"
-
-	"github.com/filecoin-project/lotus/chain/beacon"
-
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	logging "github.com/ipfs/go-log/v2"
@@ -21,12 +13,16 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/specs-actors/v8/actors/migration/nv16"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	_init "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/beacon"
+	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -57,7 +53,7 @@ type versionSpec struct {
 type migration struct {
 	upgrade       MigrationFunc
 	preMigrations []PreMigration
-	cache         *nv15.MemMigrationCache
+	cache         *nv16.MemMigrationCache
 }
 
 type Executor interface {
@@ -125,7 +121,7 @@ func NewStateManager(cs *store.ChainStore, exec Executor, sys vm.SyscallBuilder,
 				migration := &migration{
 					upgrade:       upgrade.Migration,
 					preMigrations: upgrade.PreMigrations,
-					cache:         nv15.NewMemMigrationCache(),
+					cache:         nv16.NewMemMigrationCache(),
 				}
 				stateMigrations[upgrade.Height] = migration
 			}

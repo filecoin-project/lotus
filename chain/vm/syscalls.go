@@ -7,8 +7,6 @@ import (
 	goruntime "runtime"
 	"sync"
 
-	proof5 "github.com/filecoin-project/specs-actors/v5/actors/runtime/proof"
-
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/minio/blake2b-simd"
@@ -19,17 +17,18 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+	runtime7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
+	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/lib/sigs"
-
-	runtime7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
-	proof7 "github.com/filecoin-project/specs-actors/v7/actors/runtime/proof"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 func init() {
@@ -40,7 +39,7 @@ func init() {
 
 type SyscallBuilder func(ctx context.Context, rt *Runtime) runtime7.Syscalls
 
-func Syscalls(verifier ffiwrapper.Verifier) SyscallBuilder {
+func Syscalls(verifier storiface.Verifier) SyscallBuilder {
 	return func(ctx context.Context, rt *Runtime) runtime7.Syscalls {
 
 		return &syscallShim{
@@ -67,7 +66,7 @@ type syscallShim struct {
 	actor          address.Address
 	cstate         *state.StateTree
 	cst            cbor.IpldStore
-	verifier       ffiwrapper.Verifier
+	verifier       storiface.Verifier
 }
 
 func (ss *syscallShim) ComputeUnsealedSectorCID(st abi.RegisteredSealProof, pieces []abi.PieceInfo) (cid.Cid, error) {
@@ -245,7 +244,7 @@ func (ss *syscallShim) workerKeyAtLookback(height abi.ChainEpoch) (address.Addre
 	return ResolveToKeyAddr(ss.cstate, ss.cst, info.Worker)
 }
 
-func (ss *syscallShim) VerifyPoSt(info proof5.WindowPoStVerifyInfo) error {
+func (ss *syscallShim) VerifyPoSt(info proof7.WindowPoStVerifyInfo) error {
 	ok, err := ss.verifier.VerifyWindowPoSt(context.TODO(), info)
 	if err != nil {
 		return err
@@ -256,7 +255,7 @@ func (ss *syscallShim) VerifyPoSt(info proof5.WindowPoStVerifyInfo) error {
 	return nil
 }
 
-func (ss *syscallShim) VerifySeal(info proof5.SealVerifyInfo) error {
+func (ss *syscallShim) VerifySeal(info proof7.SealVerifyInfo) error {
 	//_, span := trace.StartSpan(ctx, "ValidatePoRep")
 	//defer span.End()
 
@@ -283,7 +282,7 @@ func (ss *syscallShim) VerifySeal(info proof5.SealVerifyInfo) error {
 	return nil
 }
 
-func (ss *syscallShim) VerifyAggregateSeals(aggregate proof5.AggregateSealVerifyProofAndInfos) error {
+func (ss *syscallShim) VerifyAggregateSeals(aggregate proof7.AggregateSealVerifyProofAndInfos) error {
 	ok, err := ss.verifier.VerifyAggregateSeals(aggregate)
 	if err != nil {
 		return xerrors.Errorf("failed to verify aggregated PoRep: %w", err)
@@ -322,7 +321,7 @@ func (ss *syscallShim) VerifySignature(sig crypto.Signature, addr address.Addres
 
 var BatchSealVerifyParallelism = goruntime.NumCPU()
 
-func (ss *syscallShim) BatchVerifySeals(inp map[address.Address][]proof5.SealVerifyInfo) (map[address.Address][]bool, error) {
+func (ss *syscallShim) BatchVerifySeals(inp map[address.Address][]proof7.SealVerifyInfo) (map[address.Address][]bool, error) {
 	out := make(map[address.Address][]bool)
 
 	sema := make(chan struct{}, BatchSealVerifyParallelism)
@@ -334,7 +333,7 @@ func (ss *syscallShim) BatchVerifySeals(inp map[address.Address][]proof5.SealVer
 
 		for i, s := range seals {
 			wg.Add(1)
-			go func(ma address.Address, ix int, svi proof5.SealVerifyInfo, res []bool) {
+			go func(ma address.Address, ix int, svi proof7.SealVerifyInfo, res []bool) {
 				defer wg.Done()
 				sema <- struct{}{}
 

@@ -13,8 +13,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
-
 	"github.com/docker/go-units"
 	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
@@ -27,18 +25,15 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
-	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-statestore"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	power2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/power"
+	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
@@ -51,7 +46,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/genesis"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/journal/fsjournal"
@@ -60,6 +54,11 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/paths"
+	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var initCmd = &cli.Command{
@@ -214,7 +213,7 @@ var initCmd = &cli.Command{
 				return err
 			}
 
-			var localPaths []stores.LocalPath
+			var localPaths []paths.LocalPath
 
 			if pssb := cctx.StringSlice("pre-sealed-sectors"); len(pssb) != 0 {
 				log.Infof("Setting up storage config with presealed sectors: %v", pssb)
@@ -224,14 +223,14 @@ var initCmd = &cli.Command{
 					if err != nil {
 						return err
 					}
-					localPaths = append(localPaths, stores.LocalPath{
+					localPaths = append(localPaths, paths.LocalPath{
 						Path: psp,
 					})
 				}
 			}
 
 			if !cctx.Bool("no-local-storage") {
-				b, err := json.MarshalIndent(&stores.LocalStorageMeta{
+				b, err := json.MarshalIndent(&paths.LocalStorageMeta{
 					ID:       storiface.ID(uuid.New().String()),
 					Weight:   10,
 					CanSeal:  true,
@@ -245,12 +244,12 @@ var initCmd = &cli.Command{
 					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
 				}
 
-				localPaths = append(localPaths, stores.LocalPath{
+				localPaths = append(localPaths, paths.LocalPath{
 					Path: lr.Path(),
 				})
 			}
 
-			if err := lr.SetStorage(func(sc *stores.StorageConfig) {
+			if err := lr.SetStorage(func(sc *paths.StorageConfig) {
 				sc.StoragePaths = append(sc.StoragePaths, localPaths...)
 			}); err != nil {
 				return xerrors.Errorf("set storage config: %w", err)
@@ -304,7 +303,7 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 
 	maxSectorID := abi.SectorNumber(0)
 	for _, sector := range meta.Sectors {
-		sectorKey := datastore.NewKey(sealing.SectorStorePrefix).ChildString(fmt.Sprint(sector.SectorID))
+		sectorKey := datastore.NewKey(pipeline.SectorStorePrefix).ChildString(fmt.Sprint(sector.SectorID))
 
 		dealID, err := findMarketDealID(ctx, api, sector.Deal)
 		if err != nil {
@@ -313,10 +312,10 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 		commD := sector.CommD
 		commR := sector.CommR
 
-		info := &sealing.SectorInfo{
-			State:        sealing.Proving,
+		info := &pipeline.SectorInfo{
+			State:        pipeline.Proving,
 			SectorNumber: sector.SectorID,
-			Pieces: []sealing.Piece{
+			Pieces: []pipeline.Piece{
 				{
 					Piece: abi.PieceInfo{
 						Size:     abi.PaddedPieceSize(meta.SectorSize),
@@ -391,7 +390,7 @@ func migratePreSealMeta(ctx context.Context, api v1api.FullNode, metadata string
 	return mds.Put(ctx, datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
 }
 
-func findMarketDealID(ctx context.Context, api v1api.FullNode, deal market2.DealProposal) (abi.DealID, error) {
+func findMarketDealID(ctx context.Context, api v1api.FullNode, deal market8.DealProposal) (abi.DealID, error) {
 	// TODO: find a better way
 	//  (this is only used by genesis miners)
 
@@ -459,15 +458,15 @@ func storageMinerInit(ctx context.Context, cctx *cli.Context, api v1api.FullNode
 			wsts := statestore.New(namespace.Wrap(mds, modules.WorkerCallsPrefix))
 			smsts := statestore.New(namespace.Wrap(mds, modules.ManagerWorkPrefix))
 
-			si := stores.NewIndex()
+			si := paths.NewIndex()
 
-			lstor, err := stores.NewLocal(ctx, lr, si, nil)
+			lstor, err := paths.NewLocal(ctx, lr, si, nil)
 			if err != nil {
 				return err
 			}
-			stor := stores.NewRemote(lstor, si, http.Header(sa), 10, &stores.DefaultPartialFileHandler{})
+			stor := paths.NewRemote(lstor, si, http.Header(sa), 10, &paths.DefaultPartialFileHandler{})
 
-			smgr, err := sectorstorage.New(ctx, lstor, stor, lr, si, sectorstorage.Config{
+			smgr, err := sealer.New(ctx, lstor, stor, lr, si, sealer.Config{
 				ParallelFetchLimit:       10,
 				AllowAddPiece:            true,
 				AllowPreCommit1:          true,
@@ -599,7 +598,7 @@ func configureStorageMiner(ctx context.Context, api v1api.FullNode, addr address
 	msg := &types.Message{
 		To:         addr,
 		From:       mi.Worker,
-		Method:     miner.Methods.ChangePeerID,
+		Method:     builtin.MethodsMiner.ChangePeerID,
 		Params:     enc,
 		Value:      types.NewInt(0),
 		GasPremium: gasPrice,

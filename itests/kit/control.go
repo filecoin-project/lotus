@@ -7,10 +7,10 @@ import (
 
 	addr "github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -31,7 +31,7 @@ func (tm *TestMiner) SetControlAddresses(addrs ...addr.Address) {
 	smsg, err := tm.FullNode.MpoolPushMessage(ctx, &types.Message{
 		From:   mi.Owner,
 		To:     tm.ActorAddr,
-		Method: miner.Methods.ChangeWorkerAddress,
+		Method: builtin.MethodsMiner.ChangeWorkerAddress,
 
 		Value:  big.Zero(),
 		Params: sp,

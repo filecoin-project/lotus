@@ -6,12 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/stretchr/testify/require"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 )
 
 func TestTapeFix(t *testing.T) {

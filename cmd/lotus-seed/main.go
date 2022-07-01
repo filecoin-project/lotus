@@ -7,8 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/filecoin-project/go-state-types/network"
-
 	"github.com/docker/go-units"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
@@ -17,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -97,7 +96,7 @@ var preSealCmd = &cli.Command{
 		&cli.UintFlag{
 			Name:  "network-version",
 			Usage: "specify network version",
-			Value: uint(build.NewestNetworkVersion),
+			Value: uint(build.GenesisNetworkVersion),
 		},
 	},
 	Action: func(c *cli.Context) error {
@@ -134,7 +133,7 @@ var preSealCmd = &cli.Command{
 		}
 		sectorSize := abi.SectorSize(sectorSizeInt)
 
-		nv := build.NewestNetworkVersion
+		nv := build.GenesisNetworkVersion
 		if c.IsSet("network-version") {
 			nv = network.Version(c.Uint64("network-version"))
 		}

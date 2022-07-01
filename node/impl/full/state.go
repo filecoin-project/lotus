@@ -4,12 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 
-	"github.com/filecoin-project/go-state-types/crypto"
-
-	"github.com/filecoin-project/go-state-types/cbor"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/peer"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
@@ -17,12 +17,17 @@ import (
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/cbor"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/dline"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
+	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -40,6 +45,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/chain/wallet"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type StateModuleAPI interface {
@@ -53,7 +59,7 @@ type StateModuleAPI interface {
 	StateLookupID(ctx context.Context, addr address.Address, tsk types.TipSetKey) (address.Address, error)
 	StateMarketBalance(ctx context.Context, addr address.Address, tsk types.TipSetKey) (api.MarketBalance, error)
 	StateMarketStorageDeal(ctx context.Context, dealId abi.DealID, tsk types.TipSetKey) (*api.MarketDeal, error)
-	StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error)
+	StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (api.MinerInfo, error)
 	StateMinerProvingDeadline(ctx context.Context, addr address.Address, tsk types.TipSetKey) (*dline.Info, error)
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*api.MinerPower, error)
 	StateNetworkVersion(ctx context.Context, key types.TipSetKey) (network.Version, error)
@@ -87,7 +93,7 @@ type StateAPI struct {
 
 	StateModuleAPI
 
-	ProofVerifier ffiwrapper.Verifier
+	ProofVerifier storiface.Verifier
 	StateManager  *stmgr.StateManager
 	Chain         *store.ChainStore
 	Beacon        beacon.Schedule
@@ -132,27 +138,52 @@ func (a *StateAPI) StateMinerActiveSectors(ctx context.Context, maddr address.Ad
 	return mas.LoadSectors(&activeSectors)
 }
 
-func (m *StateModule) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (miner.MinerInfo, error) {
+func (m *StateModule) StateMinerInfo(ctx context.Context, actor address.Address, tsk types.TipSetKey) (api.MinerInfo, error) {
 	ts, err := m.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
-		return miner.MinerInfo{}, xerrors.Errorf("failed to load tipset: %w", err)
+		return api.MinerInfo{}, xerrors.Errorf("failed to load tipset: %w", err)
 	}
 
 	act, err := m.StateManager.LoadActor(ctx, actor, ts)
 	if err != nil {
-		return miner.MinerInfo{}, xerrors.Errorf("failed to load miner actor: %w", err)
+		return api.MinerInfo{}, xerrors.Errorf("failed to load miner actor: %w", err)
 	}
 
 	mas, err := miner.Load(m.StateManager.ChainStore().ActorStore(ctx), act)
 	if err != nil {
-		return miner.MinerInfo{}, xerrors.Errorf("failed to load miner actor state: %w", err)
+		return api.MinerInfo{}, xerrors.Errorf("failed to load miner actor state: %w", err)
 	}
 
 	info, err := mas.Info()
 	if err != nil {
-		return miner.MinerInfo{}, err
+		return api.MinerInfo{}, err
 	}
-	return info, nil
+
+	var pid *peer.ID
+	if peerID, err := peer.IDFromBytes(info.PeerId); err == nil {
+		pid = &peerID
+	}
+
+	ret := api.MinerInfo{
+		Owner:                      info.Owner,
+		Worker:                     info.Worker,
+		ControlAddresses:           info.ControlAddresses,
+		NewWorker:                  address.Undef,
+		WorkerChangeEpoch:          -1,
+		PeerId:                     pid,
+		Multiaddrs:                 info.Multiaddrs,
+		WindowPoStProofType:        info.WindowPoStProofType,
+		SectorSize:                 info.SectorSize,
+		WindowPoStPartitionSectors: info.WindowPoStPartitionSectors,
+		ConsensusFaultElapsed:      info.ConsensusFaultElapsed,
+	}
+
+	if info.PendingWorkerKey != nil {
+		ret.NewWorker = info.PendingWorkerKey.NewWorker
+		ret.WorkerChangeEpoch = info.PendingWorkerKey.EffectiveAt
+	}
+
+	return ret, nil
 }
 
 func (a *StateAPI) StateMinerDeadlines(ctx context.Context, m address.Address, tsk types.TipSetKey) ([]api.Deadline, error) {
@@ -680,8 +711,8 @@ func (a *StateAPI) StateMarketParticipants(ctx context.Context, tsk types.TipSet
 	return out, nil
 }
 
-func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]api.MarketDeal, error) {
-	out := map[string]api.MarketDeal{}
+func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (map[string]*api.MarketDeal, error) {
+	out := map[string]*api.MarketDeal{}
 
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
@@ -710,7 +741,7 @@ func (a *StateAPI) StateMarketDeals(ctx context.Context, tsk types.TipSetKey) (m
 		} else if !found {
 			s = market.EmptyDealState()
 		}
-		out[strconv.FormatInt(int64(dealID), 10)] = api.MarketDeal{
+		out[strconv.FormatInt(int64(dealID), 10)] = &api.MarketDeal{
 			Proposal: d,
 			State:    *s,
 		}
@@ -727,6 +758,69 @@ func (m *StateModule) StateMarketStorageDeal(ctx context.Context, dealId abi.Dea
 		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 	return stmgr.GetStorageDeal(ctx, m.StateManager, dealId, ts)
+}
+
+func (a *StateAPI) StateComputeDataCID(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) {
+	nv, err := a.StateNetworkVersion(ctx, tsk)
+	if err != nil {
+		return cid.Cid{}, err
+	}
+
+	var ccparams []byte
+	if nv < network.Version13 {
+		ccparams, err = actors.SerializeParams(&market2.ComputeDataCommitmentParams{
+			DealIDs:    deals,
+			SectorType: sectorType,
+		})
+	} else {
+		ccparams, err = actors.SerializeParams(&market5.ComputeDataCommitmentParams{
+			Inputs: []*market5.SectorDataSpec{
+				{
+					DealIDs:    deals,
+					SectorType: sectorType,
+				},
+			},
+		})
+	}
+
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("computing params for ComputeDataCommitment: %w", err)
+	}
+
+	ccmt := &types.Message{
+		To:     market.Address,
+		From:   maddr,
+		Value:  types.NewInt(0),
+		Method: market.Methods.ComputeDataCommitment,
+		Params: ccparams,
+	}
+	r, err := a.StateCall(ctx, ccmt, tsk)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("calling ComputeDataCommitment: %w", err)
+	}
+	if r.MsgRct.ExitCode != 0 {
+		return cid.Undef, xerrors.Errorf("receipt for ComputeDataCommitment had exit code %d", r.MsgRct.ExitCode)
+	}
+
+	if nv < network.Version13 {
+		var c cbg.CborCid
+		if err := c.UnmarshalCBOR(bytes.NewReader(r.MsgRct.Return)); err != nil {
+			return cid.Undef, xerrors.Errorf("failed to unmarshal CBOR to CborCid: %w", err)
+		}
+
+		return cid.Cid(c), nil
+	}
+
+	var cr market5.ComputeDataCommitmentReturn
+	if err := cr.UnmarshalCBOR(bytes.NewReader(r.MsgRct.Return)); err != nil {
+		return cid.Undef, xerrors.Errorf("failed to unmarshal CBOR to CborCid: %w", err)
+	}
+
+	if len(cr.CommDs) != 1 {
+		return cid.Undef, xerrors.Errorf("CommD output must have 1 entry")
+	}
+
+	return cid.Cid(cr.CommDs[0]), nil
 }
 
 func (a *StateAPI) StateChangedActors(ctx context.Context, old cid.Cid, new cid.Cid) (map[string]types.Actor, error) {
@@ -786,20 +880,18 @@ func (a *StateAPI) StateMinerSectorCount(ctx context.Context, addr address.Addre
 	return api.MinerSectors{Live: liveCount, Active: activeCount, Faulty: faultyCount}, nil
 }
 
-func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) {
+func (a *StateAPI) StateSectorPreCommitInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*minertypes.SectorPreCommitOnChainInfo, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
-		return miner.SectorPreCommitOnChainInfo{}, xerrors.Errorf("loading tipset %s: %w", tsk, err)
+		return nil, xerrors.Errorf("loading tipset %s: %w", tsk, err)
 	}
 
 	pci, err := stmgr.PreCommitInfo(ctx, a.StateManager, maddr, n, ts)
 	if err != nil {
-		return miner.SectorPreCommitOnChainInfo{}, err
-	} else if pci == nil {
-		return miner.SectorPreCommitOnChainInfo{}, xerrors.Errorf("precommit info is not exists")
+		return nil, err
 	}
 
-	return *pci, err
+	return pci, err
 }
 
 func (m *StateModule) StateSectorGetInfo(ctx context.Context, maddr address.Address, n abi.SectorNumber, tsk types.TipSetKey) (*miner.SectorOnChainInfo, error) {
@@ -1062,7 +1154,7 @@ func (m *StateModule) MsigGetPending(ctx context.Context, addr address.Address, 
 var initialPledgeNum = types.NewInt(110)
 var initialPledgeDen = types.NewInt(100)
 
-func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
+func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr address.Address, pci minertypes.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
 		return types.EmptyInt, xerrors.Errorf("loading tipset %s: %w", tsk, err)
@@ -1122,7 +1214,7 @@ func (a *StateAPI) StateMinerPreCommitDepositForPower(ctx context.Context, maddr
 	return types.BigDiv(types.BigMul(deposit, initialPledgeNum), initialPledgeDen), nil
 }
 
-func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci miner.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
+func (a *StateAPI) StateMinerInitialPledgeCollateral(ctx context.Context, maddr address.Address, pci minertypes.SectorPreCommitInfo, tsk types.TipSetKey) (types.BigInt, error) {
 	// TODO: this repeats a lot of the previous function. Fix that.
 	ts, err := a.Chain.GetTipSetFromKey(ctx, tsk)
 	if err != nil {
@@ -1431,6 +1523,20 @@ func (m *StateModule) StateNetworkVersion(ctx context.Context, tsk types.TipSetK
 	return m.StateManager.GetNetworkVersion(ctx, ts.Height()), nil
 }
 
+func (a *StateAPI) StateActorCodeCIDs(ctx context.Context, nv network.Version) (map[string]cid.Cid, error) {
+	actorVersion, err := actors.VersionForNetwork(nv)
+	if err != nil {
+		return nil, xerrors.Errorf("invalid network version %d: %w", nv, err)
+	}
+
+	cids, err := actors.GetActorCodeIDs(actorVersion)
+	if err != nil {
+		return nil, xerrors.Errorf("could not find cids for network version %d, actors version %d: %w", nv, actorVersion, err)
+	}
+
+	return cids, nil
+}
+
 func (a *StateAPI) StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
 	return a.StateManager.GetRandomnessFromTickets(ctx, personalization, randEpoch, entropy, tsk)
 }
@@ -1438,6 +1544,25 @@ func (a *StateAPI) StateGetRandomnessFromTickets(ctx context.Context, personaliz
 func (a *StateAPI) StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
 	return a.StateManager.GetRandomnessFromBeacon(ctx, personalization, randEpoch, entropy, tsk)
 
+}
+
+func (a *StateAPI) StateGetBeaconEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) {
+	b := a.Beacon.BeaconForEpoch(epoch)
+	rr := b.MaxBeaconRoundForEpoch(a.StateManager.GetNetworkVersion(ctx, epoch), epoch)
+	e := b.Entry(ctx, rr)
+
+	select {
+	case be, ok := <-e:
+		if !ok {
+			return nil, fmt.Errorf("beacon get returned no value")
+		}
+		if be.Err != nil {
+			return nil, be.Err
+		}
+		return &be.Entry, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 func (a *StateAPI) StateGetNetworkParams(ctx context.Context) (*api.NetworkParams, error) {

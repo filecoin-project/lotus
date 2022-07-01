@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/filecoin-project/lotus/chain/rand"
-
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -14,9 +12,14 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/manifest"
+	gstStore "github.com/filecoin-project/go-state-types/store"
+
 	"github.com/filecoin-project/lotus/api"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/system"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -79,11 +82,6 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		// future. It's not guaranteed to be accurate... but that's fine.
 	}
 
-	filVested, err := sm.GetFilVested(ctx, height)
-	if err != nil {
-		return cid.Undef, nil, err
-	}
-
 	r := rand.NewStateRand(sm.cs, ts.Cids(), sm.beacon, sm.GetNetworkVersion)
 	vmopt := &vm.VMOpts{
 		StateBase:      base,
@@ -95,7 +93,6 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		CircSupplyCalc: sm.GetVMCirculatingSupply,
 		NetworkVersion: sm.GetNetworkVersion(ctx, height),
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
-		FilVested:      filVested,
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
 	}
 	vmi, err := sm.newVM(ctx, vmopt)
@@ -216,4 +213,26 @@ func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]
 	}
 
 	return out, nil
+}
+
+func GetManifestData(ctx context.Context, st *state.StateTree) (*manifest.ManifestData, error) {
+	wrapStore := gstStore.WrapStore(ctx, st.Store)
+
+	systemActor, err := st.GetActor(system.Address)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get system actor: %w", err)
+	}
+	systemActorState, err := system.Load(wrapStore, systemActor)
+	if err != nil {
+		return nil, xerrors.Errorf("failed to load system actor state: %w", err)
+	}
+
+	actorsManifestDataCid := systemActorState.GetBuiltinActors()
+
+	var mfData manifest.ManifestData
+	if err := wrapStore.Get(ctx, actorsManifestDataCid, &mfData); err != nil {
+		return nil, xerrors.Errorf("error fetching data: %w", err)
+	}
+
+	return &mfData, nil
 }

@@ -6,13 +6,11 @@ import (
 	"runtime"
 	"sync"
 
-	"golang.org/x/xerrors"
-
 	"github.com/dgraph-io/badger/v2"
 	"github.com/dgraph-io/badger/v2/options"
+	"github.com/ipfs/go-cid"
 	"go.uber.org/zap"
-
-	cid "github.com/ipfs/go-cid"
+	"golang.org/x/xerrors"
 )
 
 type BadgerMarkSetEnv struct {

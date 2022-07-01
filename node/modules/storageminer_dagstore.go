@@ -8,11 +8,11 @@ import (
 	"strconv"
 
 	"github.com/libp2p/go-libp2p-core/host"
-
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/dagstore"
+
 	mdagstore "github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"

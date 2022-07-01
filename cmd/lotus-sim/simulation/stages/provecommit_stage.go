@@ -7,9 +7,10 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
-
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 	power5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/power"
 
@@ -48,7 +49,7 @@ func (*ProveCommitStage) Name() string {
 }
 
 func (stage *ProveCommitStage) EnqueueProveCommit(
-	minerAddr address.Address, preCommitEpoch abi.ChainEpoch, info miner.SectorPreCommitInfo,
+	minerAddr address.Address, preCommitEpoch abi.ChainEpoch, info minertypes.SectorPreCommitInfo,
 ) error {
 	return stage.commitQueue.enqueueProveCommit(minerAddr, preCommitEpoch, info)
 }
@@ -161,7 +162,7 @@ func (stage *ProveCommitStage) packProveCommitsMiner(
 					From:   info.Worker,
 					To:     minerAddr,
 					Value:  abi.NewTokenAmount(0),
-					Method: miner.Methods.ProveCommitAggregate,
+					Method: builtin.MethodsMiner.ProveCommitAggregate,
 					Params: enc,
 				}); err == nil {
 					res.done += len(batch)
@@ -237,7 +238,7 @@ func (stage *ProveCommitStage) packProveCommitsMiner(
 			if err != nil {
 				return res, err
 			}
-			params := miner.ProveCommitSectorParams{
+			params := minertypes.ProveCommitSectorParams{
 				SectorNumber: sno,
 				Proof:        proof,
 			}
@@ -249,7 +250,7 @@ func (stage *ProveCommitStage) packProveCommitsMiner(
 				From:   info.Worker,
 				To:     minerAddr,
 				Value:  abi.NewTokenAmount(0),
-				Method: miner.Methods.ProveCommitSector,
+				Method: builtin.MethodsMiner.ProveCommitSector,
 				Params: enc,
 			}); err == nil {
 				res.unbatched++
@@ -293,7 +294,7 @@ func (stage *ProveCommitStage) loadMiner(ctx context.Context, bb *blockbuilder.B
 	// Find all pending prove commits and group by proof type. Really, there should never
 	// (except during upgrades be more than one type.
 	var total, dropped int
-	err = minerState.ForEachPrecommittedSector(func(info miner.SectorPreCommitOnChainInfo) error {
+	err = minerState.ForEachPrecommittedSector(func(info minertypes.SectorPreCommitOnChainInfo) error {
 		total++
 		msd, err := policy.GetMaxProveCommitDuration(av, info.Info.SealProof)
 		if err != nil {

@@ -8,10 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/lotus/build"
-
-	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
-
 	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
@@ -19,6 +15,9 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/specs-actors/v8/actors/migration/nv16"
+
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
@@ -49,7 +48,8 @@ type MigrationCache interface {
 type MigrationFunc func(
 	ctx context.Context,
 	sm *StateManager, cache MigrationCache,
-	cb ExecMonitor, oldState cid.Cid,
+	cb ExecMonitor,
+	oldState cid.Cid,
 	height abi.ChainEpoch, ts *types.TipSet,
 ) (newState cid.Cid, err error)
 
@@ -214,7 +214,7 @@ func (sm *StateManager) hasExpensiveFork(height abi.ChainEpoch) bool {
 	return ok
 }
 
-func runPreMigration(ctx context.Context, sm *StateManager, fn PreMigrationFunc, cache *nv15.MemMigrationCache, ts *types.TipSet) {
+func runPreMigration(ctx context.Context, sm *StateManager, fn PreMigrationFunc, cache *nv16.MemMigrationCache, ts *types.TipSet) {
 	height := ts.Height()
 	parent := ts.ParentState()
 

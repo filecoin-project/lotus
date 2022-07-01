@@ -8,13 +8,11 @@ import (
 	"time"
 
 	cbg "github.com/whyrusleeping/cbor-gen"
-
-	"github.com/filecoin-project/go-state-types/crypto"
-
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	tbig "github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/messagepool/gasguess"
@@ -781,7 +779,6 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 	//   cannot exceed the block limit; drop all messages that exceed the limit
 	// - the total gasReward cannot exceed the actor's balance; drop all messages that exceed
 	//   the balance
-
 	a, err := mp.api.GetActorAfter(actor, ts)
 	if err != nil {
 		log.Errorf("failed to load actor state, not building chain for %s: %v", actor, err)
@@ -794,12 +791,6 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 	skip := 0
 	i := 0
 	rewards := make([]*big.Int, 0, len(msgs))
-
-	nv, err := mp.getNtwkVersion(ts.Height())
-	if err != nil {
-		log.Errorf("getting network version: %v", err)
-		return nil
-	}
 	for i = 0; i < len(msgs); i++ {
 		m := msgs[i]
 
@@ -815,7 +806,7 @@ func (mp *MessagePool) createMessageChains(actor address.Address, mset map[uint6
 		}
 		curNonce++
 
-		minGas := vm.PricelistByEpochAndNetworkVersion(ts.Height(), nv).OnChainMessage(m.ChainLength()).Total()
+		minGas := vm.PricelistByEpoch(ts.Height()).OnChainMessage(m.ChainLength()).Total()
 		if m.Message.GasLimit < minGas {
 			break
 		}

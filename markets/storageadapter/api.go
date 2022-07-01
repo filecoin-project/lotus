@@ -3,14 +3,15 @@ package storageadapter
 import (
 	"context"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -20,6 +21,7 @@ type apiWrapper struct {
 		StateGetActor(ctx context.Context, actor address.Address, tsk types.TipSetKey) (*types.Actor, error)
 		ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 		ChainHasObj(context.Context, cid.Cid) (bool, error)
+		ChainPutObj(context.Context, blocks.Block) error
 	}
 }
 

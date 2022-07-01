@@ -3,23 +3,13 @@ package vm
 import (
 	"context"
 
-	"github.com/filecoin-project/go-state-types/network"
-
-	"github.com/filecoin-project/lotus/build"
-
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/lotus/chain/actors"
-
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 
-	/* inline-gen template
-	   {{range .actorVersions}}
-	   	builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"{{end}}
-
-	/* inline-gen start */
-
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
@@ -28,9 +18,8 @@ import (
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
 
-	/* inline-gen end */
-
-	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
@@ -51,7 +40,7 @@ var EmptyObjectCid cid.Cid
 
 // TryCreateAccountActor creates account actors from only BLS/SECP256K1 addresses.
 func TryCreateAccountActor(rt *Runtime, addr address.Address) (*types.Actor, address.Address, aerrors.ActorError) {
-	if err := rt.chargeGasSafe(PricelistByEpochAndNetworkVersion(rt.height, rt.NetworkVersion()).OnCreateActor()); err != nil {
+	if err := rt.chargeGasSafe(PricelistByEpoch(rt.height).OnCreateActor()); err != nil {
 		return nil, address.Undef, err
 	}
 
@@ -113,12 +102,6 @@ func newAccountActor(ver actors.Version) *types.Actor {
 	// TODO: ActorsUpgrade use a global actor registry?
 	var code cid.Cid
 	switch ver {
-	/* inline-gen template
-	   {{range .actorVersions}}
-		case actors.Version{{.}}:
-			code = builtin{{.}}.AccountActorCodeID{{end}}
-	/* inline-gen start */
-
 	case actors.Version0:
 		code = builtin0.AccountActorCodeID
 	case actors.Version2:
@@ -133,7 +116,6 @@ func newAccountActor(ver actors.Version) *types.Actor {
 		code = builtin6.AccountActorCodeID
 	case actors.Version7:
 		code = builtin7.AccountActorCodeID
-		/* inline-gen end */
 	default:
 		panic("unsupported actors version")
 	}

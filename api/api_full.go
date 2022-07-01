@@ -6,25 +6,27 @@ import (
 	"fmt"
 	"time"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/crypto"
-	"github.com/filecoin-project/go-state-types/dline"
-
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin/v8/market"
+	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/dline"
+	abinetwork "github.com/filecoin-project/go-state-types/network"
 
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
+	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
@@ -37,6 +39,7 @@ import (
 type ChainIO interface {
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
+	ChainPutObj(context.Context, blocks.Block) error
 }
 
 const LookbackNoLimit = abi.ChainEpoch(-1)
@@ -122,6 +125,9 @@ type FullNode interface {
 	// ChainHasObj checks if a given CID exists in the chain blockstore.
 	ChainHasObj(context.Context, cid.Cid) (bool, error) //perm:read
 
+	// ChainPutObj puts a given object into the block store
+	ChainPutObj(context.Context, blocks.Block) error //perm:admin
+
 	// ChainStatObj returns statistics about the graph referenced by 'obj'.
 	// If 'base' is also specified, then the returned stat will be a diff
 	// between the two objects.
@@ -169,14 +175,6 @@ type FullNode interface {
 
 	// ChainBlockstoreInfo returns some basic information about the blockstore
 	ChainBlockstoreInfo(context.Context) (map[string]interface{}, error) //perm:read
-
-	// MethodGroup: Beacon
-	// The Beacon method group contains methods for interacting with the random beacon (DRAND)
-
-	// BeaconGetEntry returns the beacon entry for the given filecoin epoch. If
-	// the entry has not yet been produced, the call will block until the entry
-	// becomes available
-	BeaconGetEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) //perm:read
 
 	// GasEstimateFeeCap estimates gas fee cap
 	GasEstimateFeeCap(context.Context, *types.Message, int64, types.TipSetKey) (types.BigInt, error) //perm:read
@@ -443,7 +441,7 @@ type FullNode interface {
 	// StateMinerPower returns the power of the indicated miner
 	StateMinerPower(context.Context, address.Address, types.TipSetKey) (*MinerPower, error) //perm:read
 	// StateMinerInfo returns info about the indicated miner
-	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (miner.MinerInfo, error) //perm:read
+	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (MinerInfo, error) //perm:read
 	// StateMinerDeadlines returns all the proving deadlines for the given miner
 	StateMinerDeadlines(context.Context, address.Address, types.TipSetKey) ([]Deadline, error) //perm:read
 	// StateMinerPartitions returns all partitions in the specified deadline
@@ -460,18 +458,23 @@ type FullNode interface {
 	StateMinerInitialPledgeCollateral(context.Context, address.Address, miner.SectorPreCommitInfo, types.TipSetKey) (types.BigInt, error) //perm:read
 	// StateMinerAvailableBalance returns the portion of a miner's balance that can be withdrawn or spent
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (types.BigInt, error) //perm:read
-	// StateMinerSectorAllocated checks if a sector is allocated
+	// StateMinerSectorAllocated checks if a sector number is marked as allocated.
 	StateMinerSectorAllocated(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (bool, error) //perm:read
-	// StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector
-	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (miner.SectorPreCommitOnChainInfo, error) //perm:read
+	// StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector.
+	// Returns nil and no error if the sector isn't precommitted.
+	//
+	// Note that the sector number may be allocated while PreCommitInfo is nil. This means that either allocated sector
+	// numbers were compacted, and the sector number was marked as allocated in order to reduce size of the allocated
+	// sectors bitfield, or that the sector was precommitted, but the precommit has expired.
+	StateSectorPreCommitInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorPreCommitOnChainInfo, error) //perm:read
 	// StateSectorGetInfo returns the on-chain info for the specified miner's sector. Returns null in case the sector info isn't found
 	// NOTE: returned info.Expiration may not be accurate in some cases, use StateSectorExpiration to get accurate
 	// expiration epoch
 	StateSectorGetInfo(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorOnChainInfo, error) //perm:read
 	// StateSectorExpiration returns epoch at which given sector will expire
-	StateSectorExpiration(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*miner.SectorExpiration, error) //perm:read
+	StateSectorExpiration(context.Context, address.Address, abi.SectorNumber, types.TipSetKey) (*lminer.SectorExpiration, error) //perm:read
 	// StateSectorPartition finds deadline/partition with the specified sector
-	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*miner.SectorLocation, error) //perm:read
+	StateSectorPartition(ctx context.Context, maddr address.Address, sectorNumber abi.SectorNumber, tok types.TipSetKey) (*lminer.SectorLocation, error) //perm:read
 	// StateSearchMsg looks back up to limit epochs in the chain for a message, and returns its receipt and the tipset where it was executed
 	//
 	// NOTE: If a replacing message is found on chain, this method will return
@@ -517,9 +520,11 @@ type FullNode interface {
 	// StateMarketParticipants returns the Escrow and Locked balances of every participant in the Storage Market
 	StateMarketParticipants(context.Context, types.TipSetKey) (map[string]MarketBalance, error) //perm:read
 	// StateMarketDeals returns information about every deal in the Storage Market
-	StateMarketDeals(context.Context, types.TipSetKey) (map[string]MarketDeal, error) //perm:read
+	StateMarketDeals(context.Context, types.TipSetKey) (map[string]*MarketDeal, error) //perm:read
 	// StateMarketStorageDeal returns information about the indicated deal
 	StateMarketStorageDeal(context.Context, abi.DealID, types.TipSetKey) (*MarketDeal, error) //perm:read
+	// StateComputeDataCID computes DataCID from a set of on-chain deals
+	StateComputeDataCID(ctx context.Context, maddr address.Address, sectorType abi.RegisteredSealProof, deals []abi.DealID, tsk types.TipSetKey) (cid.Cid, error) //perm:read
 	// StateLookupID retrieves the ID address of the given address
 	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error) //perm:read
 	// StateAccountKey returns the public key address of the given ID address for secp and bls accounts
@@ -586,11 +591,18 @@ type FullNode interface {
 	StateVMCirculatingSupplyInternal(context.Context, types.TipSetKey) (CirculatingSupply, error) //perm:read
 	// StateNetworkVersion returns the network version at the given tipset
 	StateNetworkVersion(context.Context, types.TipSetKey) (apitypes.NetworkVersion, error) //perm:read
+	// StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version
+	StateActorCodeCIDs(context.Context, abinetwork.Version) (map[string]cid.Cid, error) //perm:read
 
 	// StateGetRandomnessFromTickets is used to sample the chain for randomness.
 	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
 	// StateGetRandomnessFromBeacon is used to sample the beacon for randomness.
 	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) //perm:read
+
+	// StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If
+	// the entry has not yet been produced, the call will block until the entry
+	// becomes available
+	StateGetBeaconEntry(ctx context.Context, epoch abi.ChainEpoch) (*types.BeaconEntry, error) //perm:read
 
 	// StateGetNetworkParams return current network params
 	StateGetNetworkParams(ctx context.Context) (*NetworkParams, error) //perm:read

@@ -7,13 +7,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	commcid "github.com/filecoin-project/go-fil-commcid"
 	commp "github.com/filecoin-project/go-fil-commp-hashhash"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/itests/kit"
-	"github.com/stretchr/testify/require"
 )
 
 func TestOfflineDealFlow(t *testing.T) {

@@ -10,15 +10,13 @@ import (
 	"runtime"
 
 	"github.com/dgraph-io/badger/v2"
-	"github.com/urfave/cli/v2"
-	"go.uber.org/multierr"
-	"golang.org/x/sync/errgroup"
-	"golang.org/x/xerrors"
-
-	"go.uber.org/zap"
-
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
+	"github.com/urfave/cli/v2"
+	"go.uber.org/multierr"
+	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
+	"golang.org/x/xerrors"
 
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/node/config"

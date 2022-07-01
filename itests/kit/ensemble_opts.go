@@ -7,14 +7,13 @@ import (
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/stmgr"
-
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 )
 
 type EnsembleOpt func(opts *ensembleOpts) error
 
 type genesisAccount struct {
-	key            *wallet.Key
+	key            *key.Key
 	initialBalance abi.TokenAmount
 }
 
@@ -48,7 +47,7 @@ func MockProofs() EnsembleOpt {
 
 // RootVerifier specifies the key to be enlisted as the verified registry root,
 // as well as the initial balance to be attributed during genesis.
-func RootVerifier(key *wallet.Key, balance abi.TokenAmount) EnsembleOpt {
+func RootVerifier(key *key.Key, balance abi.TokenAmount) EnsembleOpt {
 	return func(opts *ensembleOpts) error {
 		opts.verifiedRoot.key = key
 		opts.verifiedRoot.initialBalance = balance
@@ -57,7 +56,7 @@ func RootVerifier(key *wallet.Key, balance abi.TokenAmount) EnsembleOpt {
 }
 
 // Account sets up an account at genesis with the specified key and balance.
-func Account(key *wallet.Key, balance abi.TokenAmount) EnsembleOpt {
+func Account(key *key.Key, balance abi.TokenAmount) EnsembleOpt {
 	return func(opts *ensembleOpts) error {
 		opts.accounts = append(opts.accounts, genesisAccount{
 			key:            key,

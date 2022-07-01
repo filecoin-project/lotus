@@ -7,23 +7,23 @@ import (
 	"io"
 	"strconv"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
+	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/types"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/go-state-types/builtin"
+	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/repo"
-	miner2 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/urfave/cli/v2"
 )
 
 var terminationsCmd = &cli.Command{
@@ -111,7 +111,7 @@ var terminationsCmd = &cli.Command{
 
 			for _, v := range msgs {
 				msg := v.VMMessage()
-				if msg.Method != miner.Methods.TerminateSectors {
+				if msg.Method != builtin.MethodsMiner.TerminateSectors {
 					continue
 				}
 
@@ -125,7 +125,7 @@ var terminationsCmd = &cli.Command{
 					return err
 				}
 
-				if !builtin.IsStorageMinerActor(minerAct.Code) {
+				if !lbuiltin.IsStorageMinerActor(minerAct.Code) {
 					continue
 				}
 
@@ -167,8 +167,16 @@ var terminationsCmd = &cli.Command{
 							if err != nil {
 								return err
 							}
+							label, err := prop.Label.ToString()
+							if err != nil {
+								labelBs, err := prop.Label.ToBytes()
+								if err != nil {
+									return err
+								}
+								label = string(labelBs)
+							}
 							if find {
-								fmt.Printf("%s, %d, %d, %s, %s, %s\n", msg.To, sector.SectorNumber, deal, prop.Client, prop.PieceCID, prop.Label)
+								fmt.Printf("%s, %d, %d, %s, %s, %s\n", msg.To, sector.SectorNumber, deal, prop.Client, prop.PieceCID, label)
 							}
 						}
 					}

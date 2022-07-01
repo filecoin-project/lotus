@@ -4,13 +4,14 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	tutils2 "github.com/filecoin-project/specs-actors/v2/support/testing"
 
@@ -68,7 +69,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 	require.NoError(t, err)
 
 	// Create a voucher with a value equal to the channel balance
-	voucher := paych.SignedVoucher{Amount: createAmt, Lane: 1}
+	voucher := paychtypes.SignedVoucher{Amount: createAmt, Lane: 1}
 	res, err := mgr.CreateVoucher(ctx, ch, voucher)
 	require.NoError(t, err)
 	require.NotNil(t, res.Voucher)
@@ -76,7 +77,7 @@ func TestPaychAddVoucherAfterAddFunds(t *testing.T) {
 	// Create a voucher in a different lane with an amount that exceeds the
 	// channel balance
 	excessAmt := types.NewInt(5)
-	voucher = paych.SignedVoucher{Amount: excessAmt, Lane: 2}
+	voucher = paychtypes.SignedVoucher{Amount: excessAmt, Lane: 2}
 	res, err = mgr.CreateVoucher(ctx, ch, voucher)
 	require.NoError(t, err)
 	require.Nil(t, res.Voucher)

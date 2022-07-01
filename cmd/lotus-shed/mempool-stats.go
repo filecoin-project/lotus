@@ -15,9 +15,10 @@ import (
 	"go.opencensus.io/tag"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/builtin"
+
 	lapi "github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
@@ -122,7 +123,7 @@ var mpoolStatsCmd = &cli.Command{
 				return false, err
 			}
 
-			ism := builtin.IsStorageMinerActor(act.Code)
+			ism := lbuiltin.IsStorageMinerActor(act.Code)
 			mcache[addr] = ism
 			return ism, nil
 		}
@@ -144,7 +145,7 @@ var mpoolStatsCmd = &cli.Command{
 						seen: time.Now(),
 					}
 
-					if u.Message.Message.Method == miner.Methods.SubmitWindowedPoSt {
+					if u.Message.Message.Method == builtin.MethodsMiner.SubmitWindowedPoSt {
 
 						miner, err := isMiner(u.Message.Message.To)
 						if err != nil {

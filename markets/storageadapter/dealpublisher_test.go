@@ -9,23 +9,20 @@ import (
 
 	"github.com/ipfs/go-cid"
 	"github.com/raulk/clock"
-	"golang.org/x/xerrors"
-
 	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
-	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 )
 
 func TestDealPublisher(t *testing.T) {
@@ -120,7 +117,7 @@ func TestDealPublisher(t *testing.T) {
 			}, &api.MessageSendSpec{MaxFee: abi.NewTokenAmount(1)})
 
 			// Keep a record of the deals that were submitted to be published
-			var dealsToPublish []market.ClientDealProposal
+			var dealsToPublish []markettypes.ClientDealProposal
 
 			// Publish deals within publish period
 			for i := 0; i < tc.dealCountWithinPublishPeriod; i++ {
@@ -203,7 +200,7 @@ func TestForcePublish(t *testing.T) {
 	}, &api.MessageSendSpec{MaxFee: abi.NewTokenAmount(1)})
 
 	// Queue three deals for publishing, one with a cancelled context
-	var dealsToPublish []market.ClientDealProposal
+	var dealsToPublish []markettypes.ClientDealProposal
 	// 1. Regular deal
 	deal := publishDeal(t, dp, 0, false, false)
 	dealsToPublish = append(dealsToPublish, deal)
@@ -235,7 +232,7 @@ func TestForcePublish(t *testing.T) {
 	checkPublishedDeals(t, dpapi, dealsToPublish, []int{2})
 }
 
-func publishDeal(t *testing.T, dp *DealPublisher, invalid int, ctxCancelled bool, expired bool) market.ClientDealProposal {
+func publishDeal(t *testing.T, dp *DealPublisher, invalid int, ctxCancelled bool, expired bool) markettypes.ClientDealProposal {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
 
@@ -249,8 +246,8 @@ func publishDeal(t *testing.T, dp *DealPublisher, invalid int, ctxCancelled bool
 	if expired {
 		startEpoch = abi.ChainEpoch(5)
 	}
-	deal := market.ClientDealProposal{
-		Proposal: market0.DealProposal{
+	deal := markettypes.ClientDealProposal{
+		Proposal: markettypes.DealProposal{
 			PieceCID:   generateCids(1)[0],
 			Client:     getClientActor(t),
 			Provider:   getProviderActor(t),
@@ -282,9 +279,9 @@ func publishDeal(t *testing.T, dp *DealPublisher, invalid int, ctxCancelled bool
 	return deal
 }
 
-func checkPublishedDeals(t *testing.T, dpapi *dpAPI, dealsToPublish []market.ClientDealProposal, expectedDealsPerMsg []int) {
+func checkPublishedDeals(t *testing.T, dpapi *dpAPI, dealsToPublish []markettypes.ClientDealProposal, expectedDealsPerMsg []int) {
 	// For each message that was expected to be sent
-	var publishedDeals []market.ClientDealProposal
+	var publishedDeals []markettypes.ClientDealProposal
 	for _, expectedDealsInMsg := range expectedDealsPerMsg {
 		// Should have called StateMinerInfo with the provider address
 		stateMinerInfoAddr := <-dpapi.stateMinerInfoCalls
@@ -297,7 +294,7 @@ func checkPublishedDeals(t *testing.T, dpapi *dpAPI, dealsToPublish []market.Cli
 		require.Equal(t, market.Methods.PublishStorageDeals, msg.Method)
 
 		// Check that the expected number of deals was included in the message
-		var params market2.PublishStorageDealsParams
+		var params markettypes.PublishStorageDealsParams
 		err := params.UnmarshalCBOR(bytes.NewReader(msg.Params))
 		require.NoError(t, err)
 		require.Len(t, params.Deals, expectedDealsInMsg)
@@ -313,7 +310,7 @@ func checkPublishedDeals(t *testing.T, dpapi *dpAPI, dealsToPublish []market.Cli
 	require.True(t, matchPieceCids(publishedDeals, dealsToPublish))
 }
 
-func matchPieceCids(sent []market.ClientDealProposal, exp []market.ClientDealProposal) bool {
+func matchPieceCids(sent []markettypes.ClientDealProposal, exp []markettypes.ClientDealProposal) bool {
 	cidsA := dealPieceCids(sent)
 	cidsB := dealPieceCids(exp)
 
@@ -335,7 +332,7 @@ func matchPieceCids(sent []market.ClientDealProposal, exp []market.ClientDealPro
 	return true
 }
 
-func dealPieceCids(deals []market2.ClientDealProposal) []cid.Cid {
+func dealPieceCids(deals []markettypes.ClientDealProposal) []cid.Cid {
 	cids := make([]cid.Cid, 0, len(deals))
 	for _, dl := range deals {
 		cids = append(cids, dl.Proposal.PieceCID)
@@ -374,9 +371,9 @@ func (d *dpAPI) ChainHead(ctx context.Context) (*types.TipSet, error) {
 	}})
 }
 
-func (d *dpAPI) StateMinerInfo(ctx context.Context, address address.Address, key types.TipSetKey) (miner.MinerInfo, error) {
+func (d *dpAPI) StateMinerInfo(ctx context.Context, address address.Address, key types.TipSetKey) (api.MinerInfo, error) {
 	d.stateMinerInfoCalls <- address
-	return miner.MinerInfo{Worker: d.worker}, nil
+	return api.MinerInfo{Worker: d.worker}, nil
 }
 
 func (d *dpAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error) {
@@ -401,7 +398,7 @@ func (d *dpAPI) StateLookupID(ctx context.Context, a address.Address, key types.
 }
 
 func (d *dpAPI) StateCall(ctx context.Context, message *types.Message, key types.TipSetKey) (*api.InvocResult, error) {
-	var p market2.PublishStorageDealsParams
+	var p markettypes.PublishStorageDealsParams
 	if err := p.UnmarshalCBOR(bytes.NewReader(message.Params)); err != nil {
 		return nil, xerrors.Errorf("unmarshal market params: %w", err)
 	}

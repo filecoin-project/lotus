@@ -6,19 +6,18 @@ import (
 	"strings"
 	"time"
 
-	"go.uber.org/fx"
-	"golang.org/x/xerrors"
-
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
-	swarm "github.com/libp2p/go-libp2p-swarm"
 	basichost "github.com/libp2p/go-libp2p/p2p/host/basic"
 	"github.com/libp2p/go-libp2p/p2p/net/conngater"
+	"github.com/libp2p/go-libp2p/p2p/net/swarm"
 	"github.com/libp2p/go-libp2p/p2p/protocol/ping"
 	ma "github.com/multiformats/go-multiaddr"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"

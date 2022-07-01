@@ -8,8 +8,6 @@
 * [Auth](#Auth)
   * [AuthNew](#AuthNew)
   * [AuthVerify](#AuthVerify)
-* [Beacon](#Beacon)
-  * [BeaconGetEntry](#BeaconGetEntry)
 * [Chain](#Chain)
   * [ChainBlockstoreInfo](#ChainBlockstoreInfo)
   * [ChainCheckBlockstore](#ChainCheckBlockstore)
@@ -30,6 +28,7 @@
   * [ChainHasObj](#ChainHasObj)
   * [ChainHead](#ChainHead)
   * [ChainNotify](#ChainNotify)
+  * [ChainPutObj](#ChainPutObj)
   * [ChainReadObj](#ChainReadObj)
   * [ChainSetHead](#ChainSetHead)
   * [ChainStatObj](#ChainStatObj)
@@ -166,15 +165,18 @@
   * [PaychVoucherSubmit](#PaychVoucherSubmit)
 * [State](#State)
   * [StateAccountKey](#StateAccountKey)
+  * [StateActorCodeCIDs](#StateActorCodeCIDs)
   * [StateAllMinerFaults](#StateAllMinerFaults)
   * [StateCall](#StateCall)
   * [StateChangedActors](#StateChangedActors)
   * [StateCirculatingSupply](#StateCirculatingSupply)
   * [StateCompute](#StateCompute)
+  * [StateComputeDataCID](#StateComputeDataCID)
   * [StateDealProviderCollateralBounds](#StateDealProviderCollateralBounds)
   * [StateDecodeParams](#StateDecodeParams)
   * [StateEncodeParams](#StateEncodeParams)
   * [StateGetActor](#StateGetActor)
+  * [StateGetBeaconEntry](#StateGetBeaconEntry)
   * [StateGetNetworkParams](#StateGetNetworkParams)
   * [StateGetRandomnessFromBeacon](#StateGetRandomnessFromBeacon)
   * [StateGetRandomnessFromTickets](#StateGetRandomnessFromTickets)
@@ -299,7 +301,7 @@ Response:
 ```json
 {
   "Version": "string value",
-  "APIVersion": 131584,
+  "APIVersion": 131840,
   "BlockDelay": 42
 }
 ```
@@ -340,33 +342,6 @@ Response:
 [
   "write"
 ]
-```
-
-## Beacon
-The Beacon method group contains methods for interacting with the random beacon (DRAND)
-
-
-### BeaconGetEntry
-BeaconGetEntry returns the beacon entry for the given filecoin epoch. If
-the entry has not yet been produced, the call will block until the entry
-becomes available
-
-
-Perms: read
-
-Inputs:
-```json
-[
-  10101
-]
-```
-
-Response:
-```json
-{
-  "Round": 42,
-  "Data": "Ynl0ZSBhcnJheQ=="
-}
 ```
 
 ## Chain
@@ -986,6 +961,21 @@ Response:
   }
 ]
 ```
+
+### ChainPutObj
+ChainPutObj puts a given object into the block store
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {}
+]
+```
+
+Response: `{}`
 
 ### ChainReadObj
 ChainReadObj reads ipld nodes referenced by the specified CID from chain
@@ -4712,7 +4702,7 @@ Response:
       "ChannelAddr": "f01234",
       "TimeLockMin": 10101,
       "TimeLockMax": 10101,
-      "SecretPreimage": "Ynl0ZSBhcnJheQ==",
+      "SecretHash": "Ynl0ZSBhcnJheQ==",
       "Extra": {
         "Actor": "f01234",
         "Method": 1,
@@ -4789,7 +4779,7 @@ Inputs:
     "ChannelAddr": "f01234",
     "TimeLockMin": 10101,
     "TimeLockMax": 10101,
-    "SecretPreimage": "Ynl0ZSBhcnJheQ==",
+    "SecretHash": "Ynl0ZSBhcnJheQ==",
     "Extra": {
       "Actor": "f01234",
       "Method": 1,
@@ -4830,7 +4820,7 @@ Inputs:
     "ChannelAddr": "f01234",
     "TimeLockMin": 10101,
     "TimeLockMax": 10101,
-    "SecretPreimage": "Ynl0ZSBhcnJheQ==",
+    "SecretHash": "Ynl0ZSBhcnJheQ==",
     "Extra": {
       "Actor": "f01234",
       "Method": 1,
@@ -4871,7 +4861,7 @@ Inputs:
     "ChannelAddr": "f01234",
     "TimeLockMin": 10101,
     "TimeLockMax": 10101,
-    "SecretPreimage": "Ynl0ZSBhcnJheQ==",
+    "SecretHash": "Ynl0ZSBhcnJheQ==",
     "Extra": {
       "Actor": "f01234",
       "Method": 1,
@@ -4918,7 +4908,7 @@ Response:
     "ChannelAddr": "f01234",
     "TimeLockMin": 10101,
     "TimeLockMax": 10101,
-    "SecretPreimage": "Ynl0ZSBhcnJheQ==",
+    "SecretHash": "Ynl0ZSBhcnJheQ==",
     "Extra": {
       "Actor": "f01234",
       "Method": 1,
@@ -4962,7 +4952,7 @@ Response:
     "ChannelAddr": "f01234",
     "TimeLockMin": 10101,
     "TimeLockMax": 10101,
-    "SecretPreimage": "Ynl0ZSBhcnJheQ==",
+    "SecretHash": "Ynl0ZSBhcnJheQ==",
     "Extra": {
       "Actor": "f01234",
       "Method": 1,
@@ -4999,7 +4989,7 @@ Inputs:
     "ChannelAddr": "f01234",
     "TimeLockMin": 10101,
     "TimeLockMax": 10101,
-    "SecretPreimage": "Ynl0ZSBhcnJheQ==",
+    "SecretHash": "Ynl0ZSBhcnJheQ==",
     "Extra": {
       "Actor": "f01234",
       "Method": 1,
@@ -5060,6 +5050,21 @@ Inputs:
 ```
 
 Response: `"f01234"`
+
+### StateActorCodeCIDs
+StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  16
+]
+```
+
+Response: `{}`
 
 ### StateAllMinerFaults
 StateAllMinerFaults returns all non-expired Faults that occur within lookback epochs of the given tipset
@@ -5533,6 +5538,38 @@ Response:
 }
 ```
 
+### StateComputeDataCID
+StateComputeDataCID computes DataCID from a set of on-chain deals
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "f01234",
+  8,
+  [
+    5432
+  ],
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ]
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
+
 ### StateDealProviderCollateralBounds
 StateDealProviderCollateralBounds returns the min and max collateral a storage provider
 can issue. It takes the deal size and verified status as parameters.
@@ -5640,6 +5677,29 @@ Response:
   },
   "Nonce": 42,
   "Balance": "0"
+}
+```
+
+### StateGetBeaconEntry
+StateGetBeaconEntry returns the beacon entry for the given filecoin epoch. If
+the entry has not yet been produced, the call will block until the entry
+becomes available
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  10101
+]
+```
+
+Response:
+```json
+{
+  "Round": 42,
+  "Data": "Ynl0ZSBhcnJheQ=="
 }
 ```
 
@@ -5931,7 +5991,7 @@ Response:
       "VerifiedDeal": true,
       "Client": "f01234",
       "Provider": "f01234",
-      "Label": "string value",
+      "Label": "",
       "StartEpoch": 10101,
       "EndEpoch": 10101,
       "StoragePricePerEpoch": "0",
@@ -6009,7 +6069,7 @@ Response:
     "VerifiedDeal": true,
     "Client": "f01234",
     "Provider": "f01234",
-    "Label": "string value",
+    "Label": "",
     "StartEpoch": 10101,
     "EndEpoch": 10101,
     "StoragePricePerEpoch": "0",
@@ -6064,6 +6124,8 @@ Response:
     "InitialPledge": "0",
     "ExpectedDayReward": "0",
     "ExpectedStoragePledge": "0",
+    "ReplacedSectorAge": 10101,
+    "ReplacedDayReward": "0",
     "SectorKeyCID": null
   }
 ]
@@ -6431,7 +6493,7 @@ Response:
 ```
 
 ### StateMinerSectorAllocated
-StateMinerSectorAllocated checks if a sector is allocated
+StateMinerSectorAllocated checks if a sector number is marked as allocated.
 
 
 Perms: read
@@ -6527,6 +6589,8 @@ Response:
     "InitialPledge": "0",
     "ExpectedDayReward": "0",
     "ExpectedStoragePledge": "0",
+    "ReplacedSectorAge": 10101,
+    "ReplacedDayReward": "0",
     "SectorKeyCID": null
   }
 ]
@@ -6562,7 +6626,7 @@ Inputs:
 ]
 ```
 
-Response: `15`
+Response: `16`
 
 ### StateReadState
 StateReadState returns the indicated actor's state.
@@ -6905,6 +6969,8 @@ Response:
   "InitialPledge": "0",
   "ExpectedDayReward": "0",
   "ExpectedStoragePledge": "0",
+  "ReplacedSectorAge": 10101,
+  "ReplacedDayReward": "0",
   "SectorKeyCID": null
 }
 ```
@@ -6940,7 +7006,12 @@ Response:
 ```
 
 ### StateSectorPreCommitInfo
-StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector
+StateSectorPreCommitInfo returns the PreCommit info for the specified miner's sector.
+Returns nil and no error if the sector isn't precommitted.
+
+Note that the sector number may be allocated while PreCommitInfo is nil. This means that either allocated sector
+numbers were compacted, and the sector number was marked as allocated in order to reduce size of the allocated
+sectors bitfield, or that the sector was precommitted, but the precommit has expired.
 
 
 Perms: read

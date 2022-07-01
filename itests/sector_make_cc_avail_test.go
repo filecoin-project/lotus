@@ -13,9 +13,9 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/config"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 )
 
 func TestMakeAvailable(t *testing.T) {

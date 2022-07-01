@@ -5,12 +5,12 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/filecoin-project/lotus/tools/stats/metrics"
-
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
+
+	"github.com/filecoin-project/lotus/tools/stats/metrics"
 )
 
 type ApiIpldStore struct {

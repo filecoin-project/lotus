@@ -5,23 +5,22 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/libp2p/go-libp2p-core/peer"
-
-	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
-
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/specs-actors/v4/actors/util/adt"
+	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
+
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/specs-actors/v4/actors/util/adt"
-	"github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 )
 
 var minerPeeridCmd = &cli.Command{
@@ -102,7 +101,7 @@ var minerPeeridCmd = &cli.Command{
 					return err
 				}
 
-				if mi.PeerId != nil && *mi.PeerId == pid {
+				if mi.PeerId != nil && peer.ID(mi.PeerId) == pid {
 					fmt.Println(addr)
 				}
 			}

@@ -6,10 +6,9 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/cmd/lotus-sim/simulation"
@@ -48,7 +47,7 @@ var infoWindowPostBandwidthSimCommand = &cli.Command{
 				if m.ExitCode != exitcode.Ok {
 					continue
 				}
-				if m.Method == miner.Methods.SubmitWindowedPoSt {
+				if m.Method == builtin.MethodsMiner.SubmitWindowedPoSt {
 					postGas += m.GasUsed
 				}
 			}

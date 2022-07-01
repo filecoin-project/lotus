@@ -5,9 +5,19 @@ import (
 	gobig "math/big"
 	"os"
 
+	"github.com/ipfs/go-cid"
+	ds "github.com/ipfs/go-datastore"
+	cbor "github.com/ipfs/go-ipld-cbor"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/filecoin-project/test-vectors/schema"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -15,21 +25,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/conformance/chaos"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-
 	_ "github.com/filecoin-project/lotus/lib/sigs/bls"  // enable bls signatures
 	_ "github.com/filecoin-project/lotus/lib/sigs/secp" // enable secp signatures
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/crypto"
-
-	"github.com/filecoin-project/test-vectors/schema"
-
-	"github.com/filecoin-project/go-address"
-
-	"github.com/ipfs/go-cid"
-	ds "github.com/ipfs/go-datastore"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
 var (
@@ -199,6 +197,9 @@ type ExecuteMessageParams struct {
 	// Rand is an optional vm.Rand implementation to use. If nil, the driver
 	// will use a vm.Rand that returns a fixed value for all calls.
 	Rand vm.Rand
+
+	// Lookback is the LookbackStateGetter; returns the state tree at a given epoch.
+	Lookback vm.LookbackStateGetter
 }
 
 // ExecuteMessage executes a conformance test vector message in a temporary VM.
@@ -213,6 +214,17 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		params.Rand = NewFixedRand()
 	}
 
+	// TODO: This lookback state returns the supplied precondition state tree, unconditionally.
+	//  This is obviously not correct, but the lookback state tree is only used to validate the
+	//  worker key when verifying a consensus fault. If the worker key hasn't changed in the
+	//  current finality window, this workaround is enough.
+	//  The correct solutions are documented in https://github.com/filecoin-project/ref-fvm/issues/381,
+	//  but they're much harder to implement, and the tradeoffs aren't clear.
+	var lookback vm.LookbackStateGetter = func(ctx context.Context, epoch abi.ChainEpoch) (*state.StateTree, error) {
+		cst := cbor.NewCborStore(bs)
+		return state.LoadStateTree(cst, params.Preroot)
+	}
+
 	vmOpts := &vm.VMOpts{
 		StateBase: params.Preroot,
 		Epoch:     params.Epoch,
@@ -224,6 +236,7 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 		Rand:           params.Rand,
 		BaseFee:        params.BaseFee,
 		NetworkVersion: params.NetworkVersion,
+		LookbackState:  lookback,
 	}
 
 	lvm, err := vm.NewLegacyVM(context.TODO(), vmOpts)
@@ -235,7 +248,8 @@ func (d *Driver) ExecuteMessage(bs blockstore.Blockstore, params ExecuteMessageP
 
 	// register the chaos actor if required by the vector.
 	if chaosOn, ok := d.selector["chaos_actor"]; ok && chaosOn == "true" {
-		invoker.Register(nil, chaos.Actor{})
+		av, _ := actors.VersionForNetwork(params.NetworkVersion)
+		invoker.Register(av, nil, chaos.Actor{})
 	}
 
 	lvm.SetInvoker(invoker)

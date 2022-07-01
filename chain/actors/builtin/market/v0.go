@@ -3,17 +3,17 @@ package market
 import (
 	"bytes"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/types"
-
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	adt0 "github.com/filecoin-project/specs-actors/actors/util/adt"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var _ State = (*state0)(nil)
@@ -199,14 +199,24 @@ func (s *dealProposals0) Get(dealID abi.DealID) (*DealProposal, bool, error) {
 	if !found {
 		return nil, false, nil
 	}
-	proposal := fromV0DealProposal(proposal0)
+
+	proposal, err := fromV0DealProposal(proposal0)
+	if err != nil {
+		return nil, true, xerrors.Errorf("decoding proposal: %w", err)
+	}
+
 	return &proposal, true, nil
 }
 
 func (s *dealProposals0) ForEach(cb func(dealID abi.DealID, dp DealProposal) error) error {
 	var dp0 market0.DealProposal
 	return s.Array.ForEach(&dp0, func(idx int64) error {
-		return cb(abi.DealID(idx), fromV0DealProposal(dp0))
+		dp, err := fromV0DealProposal(dp0)
+		if err != nil {
+			return xerrors.Errorf("decoding proposal: %w", err)
+		}
+
+		return cb(abi.DealID(idx), dp)
 	})
 }
 
@@ -215,7 +225,12 @@ func (s *dealProposals0) decode(val *cbg.Deferred) (*DealProposal, error) {
 	if err := dp0.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
 	}
-	dp := fromV0DealProposal(dp0)
+
+	dp, err := fromV0DealProposal(dp0)
+	if err != nil {
+		return nil, err
+	}
+
 	return &dp, nil
 }
 
@@ -223,8 +238,29 @@ func (s *dealProposals0) array() adt.Array {
 	return s.Array
 }
 
-func fromV0DealProposal(v0 market0.DealProposal) DealProposal {
-	return (DealProposal)(v0)
+func fromV0DealProposal(v0 market0.DealProposal) (DealProposal, error) {
+
+	label, err := labelFromGoString(v0.Label)
+	if err != nil {
+		return DealProposal{}, xerrors.Errorf("error setting deal label: %w", err)
+	}
+
+	return DealProposal{
+		PieceCID:     v0.PieceCID,
+		PieceSize:    v0.PieceSize,
+		VerifiedDeal: v0.VerifiedDeal,
+		Client:       v0.Client,
+		Provider:     v0.Provider,
+
+		Label: label,
+
+		StartEpoch:           v0.StartEpoch,
+		EndEpoch:             v0.EndEpoch,
+		StoragePricePerEpoch: v0.StoragePricePerEpoch,
+
+		ProviderCollateral: v0.ProviderCollateral,
+		ClientCollateral:   v0.ClientCollateral,
+	}, nil
 }
 
 func (s *state0) GetState() interface{} {

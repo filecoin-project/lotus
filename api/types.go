@@ -5,19 +5,20 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/network"
-
-	datatransfer "github.com/filecoin-project/go-data-transfer"
-	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
-
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	ma "github.com/multiformats/go-multiaddr"
+
+	"github.com/filecoin-project/go-address"
+	datatransfer "github.com/filecoin-project/go-data-transfer"
+	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
+	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 type MultiaddrSlice []ma.Multiaddr
@@ -284,6 +285,20 @@ type ExportRef struct {
 
 	FromLocalCAR string // if specified, get data from a local CARv2 file.
 	DealID       retrievalmarket.DealID
+}
+
+type MinerInfo struct {
+	Owner                      address.Address   // Must be an ID-address.
+	Worker                     address.Address   // Must be an ID-address.
+	NewWorker                  address.Address   // Must be an ID-address.
+	ControlAddresses           []address.Address // Must be an ID-addresses.
+	WorkerChangeEpoch          abi.ChainEpoch
+	PeerId                     *peer.ID
+	Multiaddrs                 []abi.Multiaddrs
+	WindowPoStProofType        abi.RegisteredPoStProof
+	SectorSize                 abi.SectorSize
+	WindowPoStPartitionSectors uint64
+	ConsensusFaultElapsed      abi.ChainEpoch
 }
 
 type NetworkParams struct {

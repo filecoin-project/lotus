@@ -28,7 +28,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	"github.com/filecoin-project/lotus/chain/wallet/remotewallet"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node/config"
@@ -40,6 +39,8 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/paychmgr"
 	"github.com/filecoin-project/lotus/paychmgr/settler"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 // Chain node provides access to the Filecoin blockchain, by setting up a full
@@ -50,7 +51,7 @@ var ChainNode = Options(
 
 	// Consensus settings
 	Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
-	Override(new(stmgr.UpgradeSchedule), filcns.DefaultUpgradeSchedule()),
+	Override(new(stmgr.UpgradeSchedule), modules.UpgradeSchedule),
 	Override(new(dtypes.NetworkName), modules.NetworkName),
 	Override(new(modules.Genesis), modules.ErrorGenesis),
 	Override(new(dtypes.AfterGenesisSet), modules.SetGenesis),
@@ -62,8 +63,8 @@ var ChainNode = Options(
 	Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
 
 	// Consensus: crypto dependencies
-	Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
-	Override(new(ffiwrapper.Prover), ffiwrapper.ProofProver),
+	Override(new(storiface.Verifier), ffiwrapper.ProofVerifier),
+	Override(new(storiface.Prover), ffiwrapper.ProofProver),
 
 	// Consensus: LegacyVM
 	Override(new(vm.SyscallBuilder), vm.Syscalls),

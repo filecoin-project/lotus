@@ -6,8 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/itests/kit"
 )
@@ -22,8 +23,6 @@ func TestStorageDealMissingBlock(t *testing.T) {
 	//stm: @CLIENT_STORAGE_DEALS_LIST_IMPORTS_001
 	ctx := context.Background()
 
-	// enable 512MiB proofs so we can conduct larger transfers.
-	kit.EnableLargeSectors(t)
 	kit.QuietMiningLogs()
 
 	client, miner, ens := kit.EnsembleMinimal(t,

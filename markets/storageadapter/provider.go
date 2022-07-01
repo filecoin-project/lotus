@@ -15,9 +15,9 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v1api"
@@ -27,11 +27,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
+	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -108,7 +108,7 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 	curTime := build.Clock.Now()
 	for build.Clock.Since(curTime) < addPieceRetryTimeout {
 		// Check if there was an error because of too many sectors being sealed
-		if !xerrors.Is(err, sealing.ErrTooManySectorsSealing) {
+		if !xerrors.Is(err, pipeline.ErrTooManySectorsSealing) {
 			if err != nil {
 				log.Errorf("failed to addPiece for deal %d, err: %v", deal.DealID, err)
 			}
@@ -258,13 +258,13 @@ func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context
 		if err != nil {
 			return 0, 0, 0, xerrors.Errorf("getting sector info: %w", err)
 		}
-		if si.State == api.SectorState(sealing.Proving) {
+		if si.State == api.SectorState(pipeline.Proving) {
 			best = r
 			bestSi = si
 			break
 		}
 	}
-	if bestSi.State == api.SectorState(sealing.UndefinedSectorState) {
+	if bestSi.State == api.SectorState(pipeline.UndefinedSectorState) {
 		return 0, 0, 0, xerrors.New("no sealed sector found")
 	}
 	return best.SectorID, best.Offset, best.Size.Padded(), nil
@@ -284,13 +284,13 @@ func (n *ProviderNodeAdapter) DealProviderCollateralBounds(ctx context.Context, 
 }
 
 // TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
-func (n *ProviderNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
-	return n.scMgr.OnDealSectorPreCommitted(ctx, provider, market.DealProposal(proposal), *publishCid, cb)
+func (n *ProviderNodeAdapter) OnDealSectorPreCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, proposal market8.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorPreCommittedCallback) error {
+	return n.scMgr.OnDealSectorPreCommitted(ctx, provider, proposal, *publishCid, cb)
 }
 
 // TODO: Remove dealID parameter, change publishCid to be cid.Cid (instead of pointer)
-func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market2.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
-	return n.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, market.DealProposal(proposal), *publishCid, cb)
+func (n *ProviderNodeAdapter) OnDealSectorCommitted(ctx context.Context, provider address.Address, dealID abi.DealID, sectorNumber abi.SectorNumber, proposal market8.DealProposal, publishCid *cid.Cid, cb storagemarket.DealSectorCommittedCallback) error {
+	return n.scMgr.OnDealSectorCommitted(ctx, provider, sectorNumber, proposal, *publishCid, cb)
 }
 
 func (n *ProviderNodeAdapter) GetChainHead(ctx context.Context) (shared.TipSetToken, abi.ChainEpoch, error) {
@@ -310,7 +310,7 @@ func (n *ProviderNodeAdapter) WaitForMessage(ctx context.Context, mcid cid.Cid, 
 	return cb(receipt.Receipt.ExitCode, receipt.Receipt.Return, receipt.Message, nil)
 }
 
-func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCid cid.Cid, proposal market2.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
+func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCid cid.Cid, proposal market8.DealProposal) (*storagemarket.PublishDealsWaitResult, error) {
 	// Wait for deal to be published (plus additional time for confidence)
 	receipt, err := n.StateWaitMsg(ctx, publishCid, 2*build.MessageConfidence, api.LookbackNoLimit, true)
 	if err != nil {
@@ -327,7 +327,7 @@ func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCi
 		return nil, xerrors.Errorf("WaitForPublishDeals failed to get chain head: %w", err)
 	}
 
-	res, err := n.scMgr.dealInfo.GetCurrentDealInfo(ctx, head.Key().Bytes(), (*market.DealProposal)(&proposal), publishCid)
+	res, err := n.scMgr.dealInfo.GetCurrentDealInfo(ctx, head.Key(), &proposal, publishCid)
 	if err != nil {
 		return nil, xerrors.Errorf("WaitForPublishDeals getting deal info errored: %w", err)
 	}
