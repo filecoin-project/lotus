@@ -140,20 +140,21 @@ func (r *Remote) AcquireSector(ctx context.Context, s storiface.SectorRef, exist
 		}
 	}
 
-	apaths, ids, err := r.local.AcquireSector(ctx, s, storiface.FTNone, toFetch, pathType, op)
+	// get a list of paths to fetch data into. Note: file type filters will apply inside this call.
+	fetchPaths, ids, err := r.local.AcquireSector(ctx, s, storiface.FTNone, toFetch, pathType, op)
 	if err != nil {
 		return storiface.SectorPaths{}, storiface.SectorPaths{}, xerrors.Errorf("allocate local sector for fetching: %w", err)
 	}
 
-	odt := storiface.FSOverheadSeal
+	overheadTable := storiface.FSOverheadSeal
 	if pathType == storiface.PathStorage {
-		odt = storiface.FsOverheadFinalized
+		overheadTable = storiface.FsOverheadFinalized
 	}
 
 	// If any path types weren't found in local storage, try fetching them
 
 	// First reserve storage
-	releaseStorage, err := r.local.Reserve(ctx, s, toFetch, ids, odt)
+	releaseStorage, err := r.local.Reserve(ctx, s, toFetch, ids, overheadTable)
 	if err != nil {
 		return storiface.SectorPaths{}, storiface.SectorPaths{}, xerrors.Errorf("reserving storage space: %w", err)
 	}
@@ -168,7 +169,7 @@ func (r *Remote) AcquireSector(ctx context.Context, s storiface.SectorRef, exist
 			continue
 		}
 
-		dest := storiface.PathByType(apaths, fileType)
+		dest := storiface.PathByType(fetchPaths, fileType)
 		storageID := storiface.PathByType(ids, fileType)
 
 		url, err := r.acquireFromRemote(ctx, s.ID, fileType, dest)

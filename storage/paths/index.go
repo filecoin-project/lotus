@@ -107,6 +107,22 @@ func (i *Index) StorageList(ctx context.Context) (map[storiface.ID][]storiface.D
 }
 
 func (i *Index) StorageAttach(ctx context.Context, si storiface.StorageInfo, st fsutil.FsStat) error {
+	for i, typ := range si.AllowTypes {
+		_, err := storiface.TypeFromString(typ)
+		if err != nil {
+			// No need no hard-fail here, just warn the user
+			// (note that even with all-invalid entries we'll deny all types, so nothing unexpected should enter the path)
+			log.Errorw("bad path type in AllowTypes", "path", si.ID, "idx", i, "type", typ, "error", err)
+		}
+	}
+	for i, typ := range si.DenyTypes {
+		_, err := storiface.TypeFromString(typ)
+		if err != nil {
+			// No need no hard-fail here, just warn the user
+			log.Errorw("bad path type in DenyTypes", "path", si.ID, "idx", i, "type", typ, "error", err)
+		}
+	}
+
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
@@ -136,6 +152,8 @@ func (i *Index) StorageAttach(ctx context.Context, si storiface.StorageInfo, st 
 		i.stores[si.ID].info.CanStore = si.CanStore
 		i.stores[si.ID].info.Groups = si.Groups
 		i.stores[si.ID].info.AllowTo = si.AllowTo
+		i.stores[si.ID].info.AllowTypes = si.AllowTypes
+		i.stores[si.ID].info.DenyTypes = si.DenyTypes
 
 		return nil
 	}
@@ -312,6 +330,9 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft storif
 			CanStore: st.info.CanStore,
 
 			Primary: isprimary[id],
+
+			AllowTypes: st.info.AllowTypes,
+			DenyTypes:  st.info.DenyTypes,
 		})
 	}
 
@@ -342,6 +363,11 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft storif
 			}
 
 			if _, ok := storageIDs[id]; ok {
+				continue
+			}
+
+			if !ft.AnyAllowed(st.info.AllowTypes, st.info.DenyTypes) {
+				log.Debugf("not selecting on %s, not allowed by file type filters", st.info.ID)
 				continue
 			}
 
@@ -383,6 +409,9 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft storif
 				CanStore: st.info.CanStore,
 
 				Primary: false,
+
+				AllowTypes: st.info.AllowTypes,
+				DenyTypes:  st.info.DenyTypes,
 			})
 		}
 	}
