@@ -515,7 +515,8 @@ var provingCheckProvableCmd = &cli.Command{
 }
 
 var provingComputeCmd = &cli.Command{
-	Name: "compute",
+	Name:  "compute",
+	Usage: "Compute simulated proving tasks",
 	Subcommands: []*cli.Command{
 		provingComputeWindowPoStCmd,
 	},
