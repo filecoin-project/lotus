@@ -70,6 +70,7 @@ type WindowPoStScheduler struct {
 	faultTracker     sealer.FaultTracker
 	proofType        abi.RegisteredPoStProof
 	partitionSectors uint64
+	disablePreChecks bool
 	ch               *changeHandler
 
 	actor address.Address
@@ -84,6 +85,7 @@ type WindowPoStScheduler struct {
 // NewWindowedPoStScheduler creates a new WindowPoStScheduler scheduler.
 func NewWindowedPoStScheduler(api NodeAPI,
 	cfg config.MinerFeeConfig,
+	pcfg config.ProvingConfig,
 	as *ctladdr.AddressSelector,
 	sp storiface.ProverPoSt,
 	verif storiface.Verifier,
@@ -104,6 +106,7 @@ func NewWindowedPoStScheduler(api NodeAPI,
 		faultTracker:     ft,
 		proofType:        mi.WindowPoStProofType,
 		partitionSectors: mi.WindowPoStPartitionSectors,
+		disablePreChecks: pcfg.DisableWDPoStPreChecks,
 
 		actor: actor,
 		evtTypes: [...]journal.EventType{

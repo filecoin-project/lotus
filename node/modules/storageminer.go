@@ -254,7 +254,7 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 	}
 }
 
-func WindowPostScheduler(fc config.MinerFeeConfig) func(params StorageMinerParams) (*wdpost.WindowPoStScheduler, error) {
+func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func(params StorageMinerParams) (*wdpost.WindowPoStScheduler, error) {
 	return func(params StorageMinerParams) (*wdpost.WindowPoStScheduler, error) {
 		var (
 			mctx   = params.MetricsCtx
@@ -269,7 +269,7 @@ func WindowPostScheduler(fc config.MinerFeeConfig) func(params StorageMinerParam
 
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
-		fps, err := wdpost.NewWindowedPoStScheduler(api, fc, as, sealer, verif, sealer, j, maddr)
+		fps, err := wdpost.NewWindowedPoStScheduler(api, fc, pc, as, sealer, verif, sealer, j, maddr)
 		if err != nil {
 			return nil, err
 		}
