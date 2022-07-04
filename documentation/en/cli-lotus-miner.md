@@ -2021,7 +2021,7 @@ USAGE:
 COMMANDS:
    info       View current state information
    deadlines  View the current proving period deadlines information
-   deadline   View the current proving period deadline information by its index 
+   deadline   View the current proving period deadline information by its index
    faults     View the currently known proving faulty sectors information
    check      Check sectors provable
    workers    list workers
@@ -2062,13 +2062,13 @@ OPTIONS:
 ### lotus-miner proving deadline
 ```
 NAME:
-   lotus-miner proving deadline - View the current proving period deadline information by its index 
+   lotus-miner proving deadline - View the current proving period deadline information by its index
 
 USAGE:
    lotus-miner proving deadline [command options] <deadlineIdx>
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --sector-nums, -n  Print sector/fault numbers belonging to this deadline (default: false)
    
 ```
 
