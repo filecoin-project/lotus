@@ -178,8 +178,8 @@ var provingInfoCmd = &cli.Command{
 		fmt.Printf("Current Epoch:           %d\n", cd.CurrentEpoch)
 
 		fmt.Printf("Proving Period Boundary: %d\n", cd.PeriodStart%cd.WPoStProvingPeriod)
-		fmt.Printf("Proving Period Start:    %s\n", lcli.EpochTime(cd.CurrentEpoch, cd.PeriodStart))
-		fmt.Printf("Next Period Start:       %s\n\n", lcli.EpochTime(cd.CurrentEpoch, cd.PeriodStart+cd.WPoStProvingPeriod))
+		fmt.Printf("Proving Period Start:    %s\n", lcli.EpochTimeTs(cd.CurrentEpoch, cd.PeriodStart, head))
+		fmt.Printf("Next Period Start:       %s\n\n", lcli.EpochTimeTs(cd.CurrentEpoch, cd.PeriodStart+cd.WPoStProvingPeriod, head))
 
 		fmt.Printf("Faults:      %d (%.2f%%)\n", faults, faultPerc)
 		fmt.Printf("Recovering:  %d\n", recovering)
