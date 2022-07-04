@@ -249,7 +249,7 @@ type ProvingConfig struct {
 	//
 	// In normal operation, when preparing to compute WindowPoSt, lotus-miner will perform a round of reading challenges
 	// from all sectors to confirm that those sectors can be proven. Challenges read in this process are discarded, as
-	// we're only interested in checkdng that sector data can be read.
+	// we're only interested in checking that sector data can be read.
 	//
 	// When using builtin proof computation (no PoSt workers, and DisableBuiltinWindowPoSt is set to false), this process
 	// can save a lot of time and compute resources in the case that some sectors are not readable - this is caused by
@@ -258,7 +258,7 @@ type ProvingConfig struct {
 	// When using PoSt workers, this process is mostly redundant, with PoSt workers challenges will be read once, and
 	// if challenges for some sectors aren't readable, those sectors will just get skipped.
 	//
-	// Disabling sector pre-checks will slightly requice IO load when proving sectors, possibly resulting in shorter
+	// Disabling sector pre-checks will slightly reduce IO load when proving sectors, possibly resulting in shorter
 	// time to produce window PoSt. In setups with good IO capabilities the effect of this option on proving time should
 	// be negligible.
 	//
