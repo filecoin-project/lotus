@@ -2025,7 +2025,7 @@ COMMANDS:
    faults     View the currently known proving faulty sectors information
    check      Check sectors provable
    workers    list workers
-   compute    
+   compute    Compute simulated proving tasks
    help, h    Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2117,7 +2117,7 @@ OPTIONS:
 ### lotus-miner proving compute
 ```
 NAME:
-   lotus-miner proving compute - A new cli application
+   lotus-miner proving compute - Compute simulated proving tasks
 
 USAGE:
    lotus-miner proving compute command [command options] [arguments...]
