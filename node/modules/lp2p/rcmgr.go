@@ -137,11 +137,17 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 		}
 
 		// Hook up resource manager metrics
-		view.Register(rcmgrObs.DefaultViews...)
-		ocprom.NewExporter(ocprom.Options{
+		err = view.Register(rcmgrObs.DefaultViews...)
+		if err != nil {
+			return nil, fmt.Errorf("error registering metrics: %w", err)
+		}
+		_, err = ocprom.NewExporter(ocprom.Options{
 			Registry:  prometheus.DefaultRegisterer.(*prometheus.Registry),
 			Namespace: "rcmgr_trace_metrics",
 		})
+		if err != nil {
+			return nil, fmt.Errorf("error registering metrics: %w", err)
+		}
 
 		lc.Append(fx.Hook{
 			OnStop: func(_ context.Context) error {
