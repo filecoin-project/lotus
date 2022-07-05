@@ -730,13 +730,16 @@ jobs:
           name: docker build
           command: |
             docker build --target lotus -t filecoin/lotus:<< parameters.tag >> -f Dockerfile.lotus .
+            docker build --target lotus-gateway -t filecoin/lotus-gateway:<< parameters.tag >> -f Dockerfile.lotus .
             docker build --target lotus-all-in-one -t filecoin/lotus-all-in-one:<< parameters.tag >> -f Dockerfile.lotus .
             if [["[[ ! -z $CIRCLE_SHA1 ]]"]]; then
               docker build --target lotus -t filecoin/lotus:$CIRCLE_SHA1 -f Dockerfile.lotus .
+              docker build --target lotus-gateway -t filecoin/lotus-gateway:$CIRCLE_SHA1 -f Dockerfile.lotus .
               docker build --target lotus-all-in-one -t filecoin/lotus-all-in-one:$CIRCLE_SHA1 -f Dockerfile.lotus .
             fi
             if [["[[ ! -z $CIRCLE_TAG ]]"]]; then
               docker build --target lotus -t filecoin/lotus:$CIRCLE_TAG -f Dockerfile.lotus .
+              docker build --target lotus-gateway -t filecoin/lotus-gateway:$CIRCLE_TAG -f Dockerfile.lotus .
               docker build --target lotus-all-in-one -t filecoin/lotus-all-in-one:$CIRCLE_TAG -f Dockerfile.lotus .
             fi
       - run:
