@@ -16,14 +16,12 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 	rcmgr "github.com/libp2p/go-libp2p-resource-manager"
 	rcmgrObs "github.com/libp2p/go-libp2p-resource-manager/obs"
-	"github.com/pbnjay/memory"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/stats"
 	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"go.uber.org/fx"
 
-	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/repo"
 )
@@ -54,11 +52,7 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 		defaultLimits.SystemBaseLimit.Memory = 1 << 30
 		// For every extra 1GB of memory we have available, increase our limit by 1GiB
 		defaultLimits.SystemLimitIncrease.Memory = 1 << 30
-		availFDs, _, err := ulimit.GetLimit()
-		if err != nil {
-			availFDs = 0
-		}
-		defaultLimitConfig := defaultLimits.Scale(int64(memory.TotalMemory())/8, int(availFDs>>1))
+		defaultLimitConfig := defaultLimits.AutoScale()
 		if defaultLimitConfig.System.Memory > 4<<30 {
 			// Cap our memory limit
 			defaultLimitConfig.System.Memory = 4 << 30
