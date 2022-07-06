@@ -6,7 +6,7 @@ This is the second release candidate of the upcoming OPTIONAL release Lotus v1.1
 
 ## Mainnet nv16 Skyr Upgrade
 
-This release candidate sets mainnet upgrade at epoch 1044660, 2022-06-16T17:30:00Z. All node operators, including storage providers, must upgrade to v1.16.0 (or a later release) before that time. Storage providers must update their daemons, miners, market and worker(s).
+The network is scheduled to upgrade to nv16 at epoch 1960320, on July 6th at 2022-07-06T14:00:00Z. All node operators, including storage providers, must upgrade to this release (or a later release) before that time. Storage providers must update their daemons, miners, market and worker(s).
 
 Your lotus node will switch from the Legacy VM (that depended on go-based specs-actors) to Filecoin Virtual Machine FVM (that uses Rust-based builtin-actors) atomically upon the upgrade.
 
