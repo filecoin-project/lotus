@@ -37,7 +37,7 @@ require (
 	github.com/filecoin-project/go-data-transfer v1.15.2
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
-	github.com/filecoin-project/go-fil-markets v1.22.2
+	github.com/filecoin-project/go-fil-markets v1.23.0
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-legs v0.4.4
 	github.com/filecoin-project/go-padreader v0.0.1
@@ -102,8 +102,8 @@ require (
 	github.com/ipfs/go-unixfs v0.3.1
 	github.com/ipfs/go-unixfsnode v1.4.0
 	github.com/ipfs/interface-go-ipfs-core v0.7.0
-	github.com/ipld/go-car v0.3.3
-	github.com/ipld/go-car/v2 v2.2.0
+	github.com/ipld/go-car v0.4.0
+	github.com/ipld/go-car/v2 v2.4.0
 	github.com/ipld/go-codec-dagpb v1.3.2
 	github.com/ipld/go-ipld-prime v0.17.0
 	github.com/ipld/go-ipld-selector-text-lite v0.0.1
