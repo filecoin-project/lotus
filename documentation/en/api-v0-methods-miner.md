@@ -157,6 +157,7 @@
 * [Storage](#Storage)
   * [StorageAddLocal](#StorageAddLocal)
   * [StorageAttach](#StorageAttach)
+  * [StorageAuthVerify](#StorageAuthVerify)
   * [StorageBestAlloc](#StorageBestAlloc)
   * [StorageDeclareSector](#StorageDeclareSector)
   * [StorageDropSector](#StorageDropSector)
@@ -3306,6 +3307,25 @@ Inputs:
 ```
 
 Response: `{}`
+
+### StorageAuthVerify
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response:
+```json
+[
+  "write"
+]
+```
 
 ### StorageBestAlloc
 
