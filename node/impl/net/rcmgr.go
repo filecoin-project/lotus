@@ -82,7 +82,7 @@ func (a *NetAPI) NetStat(ctx context.Context, scope string) (result api.NetStat,
 
 	case strings.HasPrefix(scope, "peer:"):
 		p := scope[5:]
-		pid, err := peer.IDFromString(p)
+		pid, err := peer.Decode(p)
 		if err != nil {
 			return result, xerrors.Errorf("invalid peer ID: %s: %w", p, err)
 		}
@@ -168,7 +168,7 @@ func (a *NetAPI) NetLimit(ctx context.Context, scope string) (result api.NetLimi
 
 	case strings.HasPrefix(scope, "peer:"):
 		p := scope[5:]
-		pid, err := peer.IDFromString(p)
+		pid, err := peer.Decode(p)
 		if err != nil {
 			return result, xerrors.Errorf("invalid peer ID: %s: %w", p, err)
 		}
@@ -255,7 +255,7 @@ func (a *NetAPI) NetSetLimit(ctx context.Context, scope string, limit api.NetLim
 
 	case strings.HasPrefix(scope, "peer:"):
 		p := scope[5:]
-		pid, err := peer.IDFromString(p)
+		pid, err := peer.Decode(p)
 		if err != nil {
 			return xerrors.Errorf("invalid peer ID: %s: %w", p, err)
 		}

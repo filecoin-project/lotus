@@ -75,7 +75,7 @@ func ConnectionManager(low, high uint, grace time.Duration, protected []string) 
 		}
 
 		for _, p := range protected {
-			pid, err := peer.IDFromString(p)
+			pid, err := peer.Decode(p)
 			if err != nil {
 				return Libp2pOpts{}, xerrors.Errorf("failed to parse peer ID in protected peers array: %w", err)
 			}
