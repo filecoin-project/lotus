@@ -31,7 +31,7 @@ Please send an email to security@filecoin.org. See our [security policy](SECURIT
 These repos are independent and reusable modules, but are tightly integrated into Lotus to make up a fully featured Filecoin implementation:
 
 - [go-fil-markets](https://github.com/filecoin-project/go-fil-markets) which has its own [kanban work tracker available here](https://app.zenhub.com/workspaces/markets-shared-components-5daa144a7046a60001c6e253/board)
-- [specs-actors](https://github.com/filecoin-project/specs-actors) which has its own [kanban work tracker available here](https://app.zenhub.com/workspaces/actors-5ee6f3aa87591f0016c05685/board)
+- [builtin-actors](https://github.com/filecoin-project/builtin-actors)
 
 ## Contribute
 
