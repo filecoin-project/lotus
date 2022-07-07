@@ -275,6 +275,196 @@ func TestWDPostDoPost(t *testing.T) {
 	}
 }
 
+// TestWDPostDoPostPartLimitConfig verifies that doPost will send the correct number of window
+// PoST messages for a given number of partitions based on user config
+func TestWDPostDoPostPartLimitConfig(t *testing.T) {
+	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
+	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
+	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
+	ctx := context.Background()
+	expectedMsgCount := 364
+
+	proofType := abi.RegisteredPoStProof_StackedDrgWindow2KiBV1
+	postAct := tutils.NewIDAddr(t, 100)
+
+	mockStgMinerAPI := newMockStorageMinerAPI()
+
+	// Get the number of sectors allowed in a partition for this proof type
+	sectorsPerPartition, err := builtin.PoStProofWindowPoStPartitionSectors(proofType)
+	require.NoError(t, err)
+	// Work out the number of partitions that can be included in a message
+	// without exceeding the message sector limit
+
+	//stm: @BLOCKCHAIN_POLICY_GET_MAX_POST_PARTITIONS_001
+	partitionsPerMsg, err := policy.GetMaxPoStPartitions(network.Version13, proofType)
+	require.NoError(t, err)
+	if partitionsPerMsg > minertypes.AddressedPartitionsMax {
+		partitionsPerMsg = minertypes.AddressedPartitionsMax
+	}
+
+	partitionCount := 4 * partitionsPerMsg
+
+	// Assert that user config is less than network limit
+	userPartLimit := 33
+	lastMsgParts := 21
+	require.Greater(t, partitionCount, userPartLimit)
+
+	// Assert that we consts are correct
+	require.Equal(t, (expectedMsgCount-1)*userPartLimit+lastMsgParts, 4*partitionsPerMsg)
+
+	var partitions []api.Partition
+	for p := 0; p < partitionCount; p++ {
+		sectors := bitfield.New()
+		for s := uint64(0); s < sectorsPerPartition; s++ {
+			sectors.Set(s)
+		}
+		partitions = append(partitions, api.Partition{
+			AllSectors:        sectors,
+			FaultySectors:     bitfield.New(),
+			RecoveringSectors: bitfield.New(),
+			LiveSectors:       sectors,
+			ActiveSectors:     sectors,
+		})
+	}
+	mockStgMinerAPI.setPartitions(partitions)
+
+	// Run window PoST
+	scheduler := &WindowPoStScheduler{
+		api:          mockStgMinerAPI,
+		prover:       &mockProver{},
+		verifier:     &mockVerif{},
+		faultTracker: &mockFaultTracker{},
+		proofType:    proofType,
+		actor:        postAct,
+		journal:      journal.NilJournal(),
+
+		maxPartitionsPerPostMessage: userPartLimit,
+	}
+
+	di := &dline.Info{
+		WPoStPeriodDeadlines:   minertypes.WPoStPeriodDeadlines,
+		WPoStProvingPeriod:     minertypes.WPoStProvingPeriod,
+		WPoStChallengeWindow:   minertypes.WPoStChallengeWindow,
+		WPoStChallengeLookback: minertypes.WPoStChallengeLookback,
+		FaultDeclarationCutoff: minertypes.FaultDeclarationCutoff,
+	}
+	ts := mockTipSet(t)
+
+	scheduler.startGeneratePoST(ctx, ts, di, func(posts []minertypes.SubmitWindowedPoStParams, err error) {
+		scheduler.startSubmitPoST(ctx, ts, di, posts, func(err error) {})
+	})
+
+	// Read the window PoST messages
+	for i := 0; i < expectedMsgCount; i++ {
+		msg := <-mockStgMinerAPI.pushedMessages
+		require.Equal(t, builtin.MethodsMiner.SubmitWindowedPoSt, msg.Method)
+		var params minertypes.SubmitWindowedPoStParams
+		err := params.UnmarshalCBOR(bytes.NewReader(msg.Params))
+		require.NoError(t, err)
+
+		if i == expectedMsgCount-1 {
+			// In the last message we only included a 21 partitions
+			require.Len(t, params.Partitions, lastMsgParts)
+		} else {
+			// All previous messages should include the full number of partitions
+			require.Len(t, params.Partitions, userPartLimit)
+		}
+	}
+}
+
+// TestWDPostDeclareRecoveriesPartLimitConfig verifies that declareRecoveries will send the correct number of
+// DeclareFaultsRecovered messages for a given number of partitions based on user config
+func TestWDPostDeclareRecoveriesPartLimitConfig(t *testing.T) {
+	//stm: @CHAIN_SYNCER_LOAD_GENESIS_001, @CHAIN_SYNCER_FETCH_TIPSET_001,
+	//stm: @CHAIN_SYNCER_START_001, @CHAIN_SYNCER_SYNC_001, @BLOCKCHAIN_BEACON_VALIDATE_BLOCK_VALUES_01
+	//stm: @CHAIN_SYNCER_COLLECT_CHAIN_001, @CHAIN_SYNCER_COLLECT_HEADERS_001, @CHAIN_SYNCER_VALIDATE_TIPSET_001
+	//stm: @CHAIN_SYNCER_NEW_PEER_HEAD_001, @CHAIN_SYNCER_VALIDATE_MESSAGE_META_001, @CHAIN_SYNCER_STOP_001
+	ctx := context.Background()
+
+	proofType := abi.RegisteredPoStProof_StackedDrgWindow2KiBV1
+	postAct := tutils.NewIDAddr(t, 100)
+
+	mockStgMinerAPI := newMockStorageMinerAPI()
+
+	// Get the number of sectors allowed in a partition for this proof type
+	sectorsPerPartition, err := builtin.PoStProofWindowPoStPartitionSectors(proofType)
+	require.NoError(t, err)
+
+	// Let's have 11/20 partitions with faulty sectors, and a config of 3 partitions per message
+	userPartLimit := 3
+	partitionCount := 20
+	faultyPartitionCount := 11
+
+	var partitions []api.Partition
+	for p := 0; p < partitionCount; p++ {
+		sectors := bitfield.New()
+		for s := uint64(0); s < sectorsPerPartition; s++ {
+			sectors.Set(s)
+		}
+
+		partition := api.Partition{
+			AllSectors:        sectors,
+			FaultySectors:     bitfield.New(),
+			RecoveringSectors: bitfield.New(),
+			LiveSectors:       sectors,
+			ActiveSectors:     sectors,
+		}
+
+		if p < faultyPartitionCount {
+			partition.FaultySectors = sectors
+		}
+
+		partitions = append(partitions, partition)
+	}
+
+	mockStgMinerAPI.setPartitions(partitions)
+
+	// Run declareRecoverios
+	scheduler := &WindowPoStScheduler{
+		api:          mockStgMinerAPI,
+		prover:       &mockProver{},
+		verifier:     &mockVerif{},
+		faultTracker: &mockFaultTracker{},
+		proofType:    proofType,
+		actor:        postAct,
+		journal:      journal.NilJournal(),
+
+		maxPartitionsPerRecoveryMessage: userPartLimit,
+	}
+
+	di := uint64(0)
+	ts := mockTipSet(t)
+
+	expectedMsgCount := faultyPartitionCount/userPartLimit + 1
+	lastMsgParts := faultyPartitionCount % userPartLimit
+
+	go func() {
+		batchedRecoveries, msgs, err := scheduler.declareRecoveries(ctx, di, partitions, ts.Key())
+		require.NoError(t, err, "failed to declare recoveries")
+		require.Equal(t, len(batchedRecoveries), len(msgs))
+		require.Equal(t, expectedMsgCount, len(msgs))
+	}()
+
+	// Read the window PoST messages
+	for i := 0; i < expectedMsgCount; i++ {
+		msg := <-mockStgMinerAPI.pushedMessages
+		require.Equal(t, builtin.MethodsMiner.DeclareFaultsRecovered, msg.Method)
+		var params minertypes.DeclareFaultsRecoveredParams
+		err := params.UnmarshalCBOR(bytes.NewReader(msg.Params))
+		require.NoError(t, err)
+
+		if i == expectedMsgCount-1 {
+			// In the last message we only included a 21 partitions
+			require.Len(t, params.Recoveries, lastMsgParts)
+		} else {
+			// All previous messages should include the full number of partitions
+			require.Len(t, params.Recoveries, userPartLimit)
+		}
+
+	}
+}
+
 func mockTipSet(t *testing.T) *types.TipSet {
 	minerAct := tutils.NewActorAddr(t, "miner")
 	c, err := cid.Decode("QmbFMke1KXqnYyBBWxB74N4c5SBnJMVAiMNRcGu6x1AwQH")

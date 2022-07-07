@@ -315,6 +315,22 @@
   # env var: LOTUS_PROVING_PARALLELCHECKLIMIT
   #ParallelCheckLimit = 128
 
+  # Setting this value above the network limit has no effect
+  #
+  # type: int
+  # env var: LOTUS_PROVING_MAXPARTITIONSPERPOSTMESSAGE
+  #MaxPartitionsPerPoStMessage = 0
+
+  # In some cases when submitting DeclareFaultsRecovered messages,
+  # there may be too many recoveries to fit in a BlockGasLimit.
+  # In those cases it may be necessary to set this value to something low (eg 1);
+  # Note that setting this value lower may result in less efficient gas use - more messages will be sent than needed,
+  # resulting in more total gas use (but each message will have lower gas limit)
+  #
+  # type: int
+  # env var: LOTUS_PROVING_MAXPARTITIONSPERRECOVERYMESSAGE
+  #MaxPartitionsPerRecoveryMessage = 0
+
 
 [Sealing]
   # Upper bound on how many sectors can be waiting for more deals to be packed in it before it begins sealing at any given time.
