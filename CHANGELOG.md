@@ -1,7 +1,17 @@
 # Lotus changelog
 
-# 1.16.0 / 2022-06-24
+# 1.16.1 / 2022-07-07
 
+This is an OPTIONAL PATCH releases for storage providers who have failed to publish `SubmitWindowedPoSt` due to out of gas error. The error log looks like `/wdpost_run.go:xxx	estimating gas	{"error": "estimating gas used: message execution failed: exit SysErrOutOfGas(7)...`.
+
+## New Features
+
+- feat: declare fault recovery: Config for maximum partition count per message (#8988 / #8986)
+  - configure `MaxPartitionsPerRecoveryMessage` in miner configuration setting.
+- feat: wdpost: Config for maximum partition count per message (#8982 / #8986)
+  - configure `MaxPartitionsPerPoStMessage` in miner configuration setting.
+  
+# 1.16.0 / 2022-06-24
 
 This is a MANDATORY release of Lotus that introduces [Filecoin network v16,
 codenamed the Skyr upgrade](https://github.com/filecoin-project/community/discussions/74?sort=new#discussioncomment-2392151).
