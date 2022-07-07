@@ -517,6 +517,13 @@ func (s *WindowPoStScheduler) batchPartitions(partitions []api.Partition, nv net
 		partitionsPerMsg = declMax
 	}
 
+	// respect user config if set
+	if s.maxPartitionsPerMessage > 0 {
+		if partitionsPerMsg > s.maxPartitionsPerMessage {
+			partitionsPerMsg = s.maxPartitionsPerMessage
+		}
+	}
+
 	// The number of messages will be:
 	// ceiling(number of partitions / partitions per message)
 	batchCount := len(partitions) / partitionsPerMsg
