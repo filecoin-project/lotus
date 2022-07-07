@@ -284,7 +284,16 @@ type ProvingConfig struct {
 	// to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
 	//
 	// Setting this value above the network limit has no effect
-	MaxPartitionsPerMessage int
+	MaxPartitionsPerPoStMessage int
+
+	// Maximum number of partitions to declare in a single DeclareFaultsRecovered message. 0 = no limit.
+
+	// In some cases when submitting DeclareFaultsRecovered messages,
+	// there may be too many recoveries to fit in a BlockGasLimit.
+	// In those cases it may be necessary to set this value to something low (eg 1);
+	// Note that setting this value lower may result in less efficient gas use - more messages will be sent than needed,
+	// resulting in more total gas use (but each message will have lower gas limit)
+	MaxPartitionsPerRecoveryMessage int
 }
 
 type SealingConfig struct {

@@ -518,9 +518,9 @@ func (s *WindowPoStScheduler) batchPartitions(partitions []api.Partition, nv net
 	}
 
 	// respect user config if set
-	if s.maxPartitionsPerMessage > 0 {
-		if partitionsPerMsg > s.maxPartitionsPerMessage {
-			partitionsPerMsg = s.maxPartitionsPerMessage
+	if s.maxPartitionsPerPostMessage > 0 {
+		if partitionsPerMsg > s.maxPartitionsPerPostMessage {
+			partitionsPerMsg = s.maxPartitionsPerPostMessage
 		}
 	}
 
