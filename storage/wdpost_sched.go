@@ -30,15 +30,16 @@ import (
 // WindowPoStScheduler watches the chain though the changeHandler, which in turn
 // turn calls the scheduler when the time arrives to do work.
 type WindowPoStScheduler struct {
-	api              fullNodeFilteredAPI
-	feeCfg           config.MinerFeeConfig
-	addrSel          *AddressSelector
-	prover           storage.Prover
-	verifier         ffiwrapper.Verifier
-	faultTracker     sectorstorage.FaultTracker
-	proofType        abi.RegisteredPoStProof
-	partitionSectors uint64
-	ch               *changeHandler
+	api                     fullNodeFilteredAPI
+	feeCfg                  config.MinerFeeConfig
+	addrSel                 *AddressSelector
+	prover                  storage.Prover
+	verifier                ffiwrapper.Verifier
+	faultTracker            sectorstorage.FaultTracker
+	proofType               abi.RegisteredPoStProof
+	partitionSectors        uint64
+	maxPartitionsPerMessage int
+	ch                      *changeHandler
 
 	actor address.Address
 
@@ -52,6 +53,7 @@ type WindowPoStScheduler struct {
 // NewWindowedPoStScheduler creates a new WindowPoStScheduler scheduler.
 func NewWindowedPoStScheduler(api fullNodeFilteredAPI,
 	cfg config.MinerFeeConfig,
+	pcfg config.ProvingConfig,
 	as *AddressSelector,
 	sp storage.Prover,
 	verif ffiwrapper.Verifier,
@@ -64,14 +66,15 @@ func NewWindowedPoStScheduler(api fullNodeFilteredAPI,
 	}
 
 	return &WindowPoStScheduler{
-		api:              api,
-		feeCfg:           cfg,
-		addrSel:          as,
-		prover:           sp,
-		verifier:         verif,
-		faultTracker:     ft,
-		proofType:        mi.WindowPoStProofType,
-		partitionSectors: mi.WindowPoStPartitionSectors,
+		api:                     api,
+		feeCfg:                  cfg,
+		addrSel:                 as,
+		prover:                  sp,
+		verifier:                verif,
+		faultTracker:            ft,
+		proofType:               mi.WindowPoStProofType,
+		partitionSectors:        mi.WindowPoStPartitionSectors,
+		maxPartitionsPerMessage: pcfg.MaxPartitionsPerMessage,
 
 		actor: actor,
 		evtTypes: [...]journal.EventType{

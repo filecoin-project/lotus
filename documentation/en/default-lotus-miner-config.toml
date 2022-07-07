@@ -315,6 +315,12 @@
   # env var: LOTUS_PROVING_PARALLELCHECKLIMIT
   #ParallelCheckLimit = 128
 
+  # Setting this value above the network limit has no effect
+  #
+  # type: int
+  # env var: LOTUS_PROVING_MAXPARTITIONSPERMESSAGE
+  #MaxPartitionsPerMessage = 0
+
 
 [Sealing]
   # Upper bound on how many sectors can be waiting for more deals to be packed in it before it begins sealing at any given time.

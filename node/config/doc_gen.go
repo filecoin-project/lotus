@@ -629,6 +629,12 @@ over the worker address if this flag is set.`,
 
 			Comment: `Maximum number of sector checks to run in parallel. (0 = unlimited)`,
 		},
+		{
+			Name: "MaxPartitionsPerMessage",
+			Type: "int",
+
+			Comment: `Setting this value above the network limit has no effect`,
+		},
 	},
 	"Pubsub": []DocField{
 		{
