@@ -1045,7 +1045,7 @@ workflows:
           filters:
             branches:
               only:
-                - /^release/v\d+\.\d+\.\d+(-rc\d+)?$/
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
@@ -1057,7 +1057,7 @@ workflows:
           filters:
             branches:
               only:
-                - /^release/v\d+\.\d+\.\d+(-rc\d+)?$/
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
@@ -1079,7 +1079,7 @@ workflows:
           filters:
             branches:
               only:
-                - /^release/v\d+\.\d+\.\d+(-rc\d+)?$/
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
@@ -1089,7 +1089,7 @@ workflows:
           filters:
             branches:
               only:
-                - /^release/v\d+\.\d+\.\d+(-rc\d+)?$/
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
