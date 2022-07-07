@@ -62,17 +62,18 @@ type NodeAPI interface {
 // WindowPoStScheduler watches the chain though the changeHandler, which in turn
 // turn calls the scheduler when the time arrives to do work.
 type WindowPoStScheduler struct {
-	api                     NodeAPI
-	feeCfg                  config.MinerFeeConfig
-	addrSel                 *ctladdr.AddressSelector
-	prover                  storiface.ProverPoSt
-	verifier                storiface.Verifier
-	faultTracker            sealer.FaultTracker
-	proofType               abi.RegisteredPoStProof
-	partitionSectors        uint64
-	disablePreChecks        bool
-	maxPartitionsPerMessage int
-	ch                      *changeHandler
+	api                             NodeAPI
+	feeCfg                          config.MinerFeeConfig
+	addrSel                         *ctladdr.AddressSelector
+	prover                          storiface.ProverPoSt
+	verifier                        storiface.Verifier
+	faultTracker                    sealer.FaultTracker
+	proofType                       abi.RegisteredPoStProof
+	partitionSectors                uint64
+	disablePreChecks                bool
+	maxPartitionsPerPostMessage     int
+	maxPartitionsPerRecoveryMessage int
+	ch                              *changeHandler
 
 	actor address.Address
 
@@ -99,16 +100,17 @@ func NewWindowedPoStScheduler(api NodeAPI,
 	}
 
 	return &WindowPoStScheduler{
-		api:                     api,
-		feeCfg:                  cfg,
-		addrSel:                 as,
-		prover:                  sp,
-		verifier:                verif,
-		faultTracker:            ft,
-		proofType:               mi.WindowPoStProofType,
-		partitionSectors:        mi.WindowPoStPartitionSectors,
-		disablePreChecks:        pcfg.DisableWDPoStPreChecks,
-		maxPartitionsPerMessage: pcfg.MaxPartitionsPerMessage,
+		api:                             api,
+		feeCfg:                          cfg,
+		addrSel:                         as,
+		prover:                          sp,
+		verifier:                        verif,
+		faultTracker:                    ft,
+		proofType:                       mi.WindowPoStProofType,
+		partitionSectors:                mi.WindowPoStPartitionSectors,
+		disablePreChecks:                pcfg.DisableWDPoStPreChecks,
+		maxPartitionsPerPostMessage:     pcfg.MaxPartitionsPerPoStMessage,
+		maxPartitionsPerRecoveryMessage: pcfg.MaxPartitionsPerRecoveryMessage,
 
 		actor: actor,
 		evtTypes: [...]journal.EventType{
