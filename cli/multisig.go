@@ -907,7 +907,7 @@ var msigAddProposeCmd = &cli.Command{
 
 		for _, s := range signers {
 			if s == addrId {
-				return fmt.Errorf("The add a signer address(%s) is included in the signers", addr.String())
+				return fmt.Errorf("%s is already a signer", addr.String())
 			}
 		}
 
