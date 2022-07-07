@@ -30,15 +30,17 @@ import (
 // WindowPoStScheduler watches the chain though the changeHandler, which in turn
 // turn calls the scheduler when the time arrives to do work.
 type WindowPoStScheduler struct {
-	api              fullNodeFilteredAPI
-	feeCfg           config.MinerFeeConfig
-	addrSel          *AddressSelector
-	prover           storage.Prover
-	verifier         ffiwrapper.Verifier
-	faultTracker     sectorstorage.FaultTracker
-	proofType        abi.RegisteredPoStProof
-	partitionSectors uint64
-	ch               *changeHandler
+	api                             fullNodeFilteredAPI
+	feeCfg                          config.MinerFeeConfig
+	addrSel                         *AddressSelector
+	prover                          storage.Prover
+	verifier                        ffiwrapper.Verifier
+	faultTracker                    sectorstorage.FaultTracker
+	proofType                       abi.RegisteredPoStProof
+	partitionSectors                uint64
+	maxPartitionsPerPostMessage     int
+	maxPartitionsPerRecoveryMessage int
+	ch                              *changeHandler
 
 	actor address.Address
 
@@ -52,6 +54,7 @@ type WindowPoStScheduler struct {
 // NewWindowedPoStScheduler creates a new WindowPoStScheduler scheduler.
 func NewWindowedPoStScheduler(api fullNodeFilteredAPI,
 	cfg config.MinerFeeConfig,
+	pcfg config.ProvingConfig,
 	as *AddressSelector,
 	sp storage.Prover,
 	verif ffiwrapper.Verifier,
@@ -73,7 +76,9 @@ func NewWindowedPoStScheduler(api fullNodeFilteredAPI,
 		proofType:        mi.WindowPoStProofType,
 		partitionSectors: mi.WindowPoStPartitionSectors,
 
-		actor: actor,
+		maxPartitionsPerPostMessage:     pcfg.MaxPartitionsPerPoStMessage,
+		maxPartitionsPerRecoveryMessage: pcfg.MaxPartitionsPerRecoveryMessage,
+		actor:                           actor,
 		evtTypes: [...]journal.EventType{
 			evtTypeWdPoStScheduler:  j.RegisterEventType("wdpost", "scheduler"),
 			evtTypeWdPoStProofs:     j.RegisterEventType("wdpost", "proofs_processed"),

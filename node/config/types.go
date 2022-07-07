@@ -222,6 +222,29 @@ type ProvingConfig struct {
 	// Maximum number of sector checks to run in parallel. (0 = unlimited)
 	ParallelCheckLimit int
 
+	// Maximum number of partitions to prove in a single SubmitWindowPoSt messace. 0 = network limit (10 in nv16)
+	//
+	// A single partition may contain up to 2349 32GiB sectors, or 2300 64GiB sectors.
+	//
+	// The maximum number of sectors which can be proven in a single PoSt message is 25000 in network version 16, which
+	// means that a single message can prove at most 10 partinions
+	//
+	// In some cases when submitting PoSt messages which are recovering sectors, the default network limit may still be
+	// too high to fit in the block gas limit; In those cases it may be necessary to set this value to something lower
+	// than 10; Note that setting this value lower may result in less efficient gas use - more messages will be sent,
+	// to prove each deadline, resulting in more total gas use (but each message will have lower gas limit)
+	//
+	// Setting this value above the network limit has no effect
+	MaxPartitionsPerPoStMessage int
+
+	// Maximum number of partitions to declare in a single DeclareFaultsRecovered message. 0 = no limit.
+
+	// In some cases when submitting DeclareFaultsRecovered messages,
+	// there may be too many recoveries to fit in a BlockGasLimit.
+	// In those cases it may be necessary to set this value to something low (eg 1);
+	// Note that setting this value lower may result in less efficient gas use - more messages will be sent than needed,
+	// resulting in more total gas use (but each message will have lower gas limit)
+	MaxPartitionsPerRecoveryMessage int
 	// todo disable builtin post
 }
 
