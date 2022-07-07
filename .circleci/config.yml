@@ -1044,8 +1044,8 @@ workflows:
       - build-appimage:
           filters:
             branches:
-              ignore:
-                - /.*/
+              only:
+                - /^release/v\d+\.\d+\.\d+(-rc\d+)?$/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
@@ -1056,8 +1056,8 @@ workflows:
             - build-appimage
           filters:
             branches:
-              ignore:
-                - /.*/
+              only:
+                - /^release/v\d+\.\d+\.\d+(-rc\d+)?$/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
@@ -1078,8 +1078,8 @@ workflows:
           channel: stable
           filters:
             branches:
-              ignore:
-                - /.*/
+              only:
+                - /^release/v\d+\.\d+\.\d+(-rc\d+)?$/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
@@ -1088,8 +1088,8 @@ workflows:
           tag: stable
           filters:
             branches:
-              ignore:
-                - /.*/
+              only:
+                - /^release/v\d+\.\d+\.\d+(-rc\d+)?$/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
