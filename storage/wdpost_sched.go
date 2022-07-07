@@ -30,16 +30,17 @@ import (
 // WindowPoStScheduler watches the chain though the changeHandler, which in turn
 // turn calls the scheduler when the time arrives to do work.
 type WindowPoStScheduler struct {
-	api                     fullNodeFilteredAPI
-	feeCfg                  config.MinerFeeConfig
-	addrSel                 *AddressSelector
-	prover                  storage.Prover
-	verifier                ffiwrapper.Verifier
-	faultTracker            sectorstorage.FaultTracker
-	proofType               abi.RegisteredPoStProof
-	partitionSectors        uint64
-	maxPartitionsPerMessage int
-	ch                      *changeHandler
+	api                             fullNodeFilteredAPI
+	feeCfg                          config.MinerFeeConfig
+	addrSel                         *AddressSelector
+	prover                          storage.Prover
+	verifier                        ffiwrapper.Verifier
+	faultTracker                    sectorstorage.FaultTracker
+	proofType                       abi.RegisteredPoStProof
+	partitionSectors                uint64
+	maxPartitionsPerPostMessage     int
+	maxPartitionsPerRecoveryMessage int
+	ch                              *changeHandler
 
 	actor address.Address
 
@@ -66,17 +67,18 @@ func NewWindowedPoStScheduler(api fullNodeFilteredAPI,
 	}
 
 	return &WindowPoStScheduler{
-		api:                     api,
-		feeCfg:                  cfg,
-		addrSel:                 as,
-		prover:                  sp,
-		verifier:                verif,
-		faultTracker:            ft,
-		proofType:               mi.WindowPoStProofType,
-		partitionSectors:        mi.WindowPoStPartitionSectors,
-		maxPartitionsPerMessage: pcfg.MaxPartitionsPerMessage,
+		api:              api,
+		feeCfg:           cfg,
+		addrSel:          as,
+		prover:           sp,
+		verifier:         verif,
+		faultTracker:     ft,
+		proofType:        mi.WindowPoStProofType,
+		partitionSectors: mi.WindowPoStPartitionSectors,
 
-		actor: actor,
+		maxPartitionsPerPostMessage:     pcfg.MaxPartitionsPerPoStMessage,
+		maxPartitionsPerRecoveryMessage: pcfg.MaxPartitionsPerRecoveryMessage,
+		actor:                           actor,
 		evtTypes: [...]journal.EventType{
 			evtTypeWdPoStScheduler:  j.RegisterEventType("wdpost", "scheduler"),
 			evtTypeWdPoStProofs:     j.RegisterEventType("wdpost", "proofs_processed"),
