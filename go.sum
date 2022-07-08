@@ -1386,7 +1386,6 @@ github.com/libp2p/go-libp2p-yamux v0.7.0/go.mod h1:fMyA0CsPfHkIuBU0wjRGrCjTBFiXT
 github.com/libp2p/go-libp2p-yamux v0.8.0/go.mod h1:yTkPgN2ib8FHyU1ZcVD7aelzyAqXXwEPbyx+aSKm9h8=
 github.com/libp2p/go-libp2p-yamux v0.8.1/go.mod h1:rUozF8Jah2dL9LLGyBaBeTQeARdwhefMCTQVQt6QobE=
 github.com/libp2p/go-libp2p-yamux v0.8.2/go.mod h1:rUozF8Jah2dL9LLGyBaBeTQeARdwhefMCTQVQt6QobE=
-github.com/libp2p/go-libp2p-yamux v0.9.1 h1:oplewiRix8s45SOrI30rCPZG5mM087YZp+VYhXAh4+c=
 github.com/libp2p/go-libp2p-yamux v0.9.1/go.mod h1:wRc6wvyxQINFcKe7daL4BeQ02Iyp+wxyC8WCNfngBrA=
 github.com/libp2p/go-maddr-filter v0.0.1/go.mod h1:6eT12kSQMA9x2pvFQa+xesMKUBlj9VImZbj3B9FBH/Q=
 github.com/libp2p/go-maddr-filter v0.0.4/go.mod h1:6eT12kSQMA9x2pvFQa+xesMKUBlj9VImZbj3B9FBH/Q=
