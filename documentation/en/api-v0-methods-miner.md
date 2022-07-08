@@ -105,6 +105,9 @@
   * [PiecesListPieces](#PiecesListPieces)
 * [Pledge](#Pledge)
   * [PledgeSector](#PledgeSector)
+* [Remote](#Remote)
+  * [RemoteSectorProverId](#RemoteSectorProverId)
+  * [RemoteSectorStart](#RemoteSectorStart)
 * [Return](#Return)
   * [ReturnAddPiece](#ReturnAddPiece)
   * [ReturnDataCid](#ReturnDataCid)
@@ -146,6 +149,7 @@
   * [SectorTerminate](#SectorTerminate)
   * [SectorTerminateFlush](#SectorTerminateFlush)
   * [SectorTerminatePending](#SectorTerminatePending)
+  * [SectorTryCreateNewSector](#SectorTryCreateNewSector)
 * [Sectors](#Sectors)
   * [SectorsList](#SectorsList)
   * [SectorsListInStates](#SectorsListInStates)
@@ -2232,6 +2236,39 @@ Response:
 }
 ```
 
+## Remote
+
+
+### RemoteSectorProverId
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs:
+```json
+[
+  1000
+]
+```
+
+Response: `{}`
+
+### RemoteSectorStart
+Remote Sealing
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  9,
+  8
+]
+```
+
+Response: `{}`
+
 ## Return
 
 
@@ -3044,6 +3081,16 @@ Response:
 ]
 ```
 
+### SectorTryCreateNewSector
+Add a new unassigned sector
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `9`
+
 ## Sectors
 
 
@@ -3199,6 +3246,7 @@ Response:
 ```
 
 ### SectorsSummary
+GetSectorInfo(sid abi.SectorNumber) (SectorInfo, error)                                               //perm:admin retry:true
 Get summary info of sectors
 
 

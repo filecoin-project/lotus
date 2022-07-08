@@ -365,6 +365,16 @@ func (sm *StorageMinerAPI) SectorsUpdate(ctx context.Context, id abi.SectorNumbe
 	return sm.Miner.ForceSectorState(ctx, id, sealing.SectorState(state))
 }
 
+func (sm *StorageMinerAPI) GetSectorInfo(sid abi.SectorNumber) (api.SectorInfo, error) {
+	// sec, err := sm.Miner.GetSectorInfo(sid)
+	// return api.SectorInfo{
+	// 	sec,
+	// 	SectorId: sec.Sesec.SectorNumber,
+	// }, err
+	// TODO: fix this
+	return api.SectorInfo{}, nil
+}
+
 func (sm *StorageMinerAPI) SectorRemove(ctx context.Context, id abi.SectorNumber) error {
 	return sm.Miner.RemoveSector(ctx, id)
 }
@@ -411,6 +421,25 @@ func (sm *StorageMinerAPI) SectorMatchPendingPiecesToOpenSectors(ctx context.Con
 
 func (sm *StorageMinerAPI) SectorTryCreateNewSector(ctx context.Context) (abi.SectorNumber, error) {
 	return sm.Miner.SectorTryCreateNewSector(ctx)
+}
+
+func (sm *StorageMinerAPI) RemoteSectorStart(ctx context.Context, id abi.SectorNumber, sectorType abi.RegisteredSealProof) error {
+	return sm.Miner.RemoteSectorStart(ctx, id, sectorType)
+}
+
+func (sm *StorageMinerAPI) RemoteSectorProverId(ctx context.Context, miner abi.ActorID) ([]uint16, error) {
+	a, e := sm.Miner.RemoteSectorProverId(miner)
+	fmt.Printf("prover id:: %v", a)
+
+	return a, e
+}
+
+func (sm *StorageMinerAPI) RemotePreCommit2Finished(ctx context.Context, id abi.SectorNumber, commR []byte, commD []byte) error {
+	return sm.Miner.RemotePreCommit2Finished(ctx, id, commR, commD)
+}
+
+func (sm *StorageMinerAPI) RemoteGetTicket(ctx context.Context, id abi.SectorNumber) error {
+	return nil
 }
 
 func (sm *StorageMinerAPI) ComputeWindowPoSt(ctx context.Context, dlIdx uint64, tsk types.TipSetKey) ([]minertypes.SubmitWindowedPoStParams, error) {

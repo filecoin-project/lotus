@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"context"
+	"fmt"
 	"sort"
 	"time"
 
@@ -641,8 +642,17 @@ func (m *Sealing) createSector(ctx context.Context, cfg sealiface.Config, sp abi
 	return sid, err
 }
 
+func (m *Sealing) SectorTryRemoteStart(ctx context.Context) {
+
+}
+
+func (m *Sealing) ToProverID(minerId abi.ActorID) ([]uint16, error) {
+	return ffiwrapper.ToProverId(minerId)
+}
+
 func (m *Sealing) SectorTryCreateNewSector(ctx context.Context) (abi.SectorNumber, error) {
 	sp, err := m.currentSealProof(ctx)
+	fmt.Printf("sector info:: %v\n", sp)
 	if err != nil {
 		return 0, xerrors.Errorf("failed to get current seal proof: %w", err)
 	}
@@ -721,6 +731,28 @@ func (m *Sealing) tryGetDealSector(ctx context.Context, sp abi.RegisteredSealPro
 		}
 	}
 	return nil
+}
+
+func (m *Sealing) RemoteUnsealedSectorPacked(sid abi.SectorNumber) error {
+	m.startupWait.Wait()
+
+	log.Infow("sector was already created and pieces were packed remotely", "sector", sid, "trigger", "user")
+	return m.sectors.Send(uint64(sid), RemoteSectorStart{})
+}
+
+func (m *Sealing) RemotePreCommit2Finished(sid abi.SectorNumber, commr []byte, commd []byte) error {
+	m.startupWait.Wait()
+	log.Infow("Pre Commit 2 finished", commr, commd)
+	CommR, CommD, err := ffiwrapper.SealPreCommitPhase2ToCid(commr, commd)
+
+	if err != nil {
+		//TODO: abort sealing or retry
+	}
+	log.Infow("sector was already created and pieces were packed remotely", "sector", sid, "trigger", "user")
+	return m.sectors.Send(uint64(sid), RemotePreCommit2Finished{
+		CommR: CommR,
+		CommD: CommD,
+	})
 }
 
 func (m *Sealing) StartPacking(sid abi.SectorNumber) error {

@@ -119,6 +119,12 @@ func checkProveCommitExpired(preCommitEpoch, msd abi.ChainEpoch, currEpoch abi.C
 	return currEpoch > preCommitEpoch+msd
 }
 
+func (m *Sealing) GetTicket(ctx context.Context, sector SectorInfo) (abi.SealRandomness, abi.ChainEpoch, bool, error) {
+	a := statemachine.Context{}
+
+	return m.getTicket(a, sector)
+}
+
 func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.SealRandomness, abi.ChainEpoch, bool, error) {
 	ts, err := m.Api.ChainHead(ctx.Context())
 	if err != nil {
@@ -179,7 +185,34 @@ func (m *Sealing) getTicket(ctx statemachine.Context, sector SectorInfo) (abi.Se
 	return abi.SealRandomness(rand), ticketEpoch, allocated, nil
 }
 
+func (m *Sealing) handleRemoteUnsealedSectorPacked(ctx statemachine.Context, sector SectorInfo) error {
+	return ctx.Send(RemoteSectorGetTicket{})
+}
+
 func (m *Sealing) handleGetTicket(ctx statemachine.Context, sector SectorInfo) error {
+	ticketValue, ticketEpoch, allocated, err := m.getTicket(ctx, sector)
+	if err != nil {
+		if allocated {
+			if sector.CommitMessage != nil {
+				// Some recovery paths with unfortunate timing lead here
+				return ctx.Send(SectorCommitFailed{xerrors.Errorf("sector %s is committed but got into the GetTicket state", sector.SectorNumber)})
+			}
+
+			log.Errorf("Sector %s precommitted but expired", sector.SectorNumber)
+			return ctx.Send(SectorRemove{})
+		}
+
+		return ctx.Send(SectorSealPreCommit1Failed{xerrors.Errorf("getting ticket failed: %w", err)})
+	}
+
+	return ctx.Send(SectorTicket{
+		TicketValue: ticketValue,
+		TicketEpoch: ticketEpoch,
+	})
+}
+
+// TODO:!
+func (m *Sealing) handleRemoteGetTicket(ctx statemachine.Context, sector SectorInfo) error {
 	ticketValue, ticketEpoch, allocated, err := m.getTicket(ctx, sector)
 	if err != nil {
 		if allocated {

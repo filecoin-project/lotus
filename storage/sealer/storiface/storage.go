@@ -12,6 +12,8 @@ import (
 
 type Data = io.Reader
 
+type ProverId = [32]byte
+
 type SectorRef struct {
 	ID        abi.SectorID
 	ProofType abi.RegisteredSealProof

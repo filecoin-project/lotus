@@ -56,6 +56,50 @@ func (evt SectorForceState) applyGlobal(state *SectorInfo) bool {
 	return true
 }
 
+// Remote "stateless" path
+
+type RemoteSectorStart struct {
+	ID         abi.SectorNumber
+	SectorType abi.RegisteredSealProof
+}
+
+func (evt RemoteSectorStart) apply(state *SectorInfo) {
+	state.SectorNumber = evt.ID
+	state.SectorType = evt.SectorType
+	// TODO: potentially we should add the info
+	// about our filler pieces
+	// for idx := range evt.FillerPieces {
+	// 	state.Pieces = append(state.Pieces, Piece{
+	// 		Piece:    evt.FillerPieces[idx],
+	// 		DealInfo: nil, // filler pieces don't have deals associated with them
+	// 	})
+	// }
+}
+
+type RemotePreCommit1Finished struct{}
+
+func (evt RemotePreCommit1Finished) apply(state *SectorInfo) {
+	// state.SectorNumber = evt.ID
+}
+
+type RemotePreCommit2Finished struct {
+	CommD cid.Cid
+	CommR cid.Cid
+}
+
+func (evt RemotePreCommit2Finished) apply(state *SectorInfo) {
+	commd := evt.CommD
+	state.CommD = &commd
+	commr := evt.CommR
+	state.CommR = &commr
+}
+
+type RemoteSectorGetTicket struct {
+}
+
+func (evt RemoteSectorGetTicket) apply(state *SectorInfo) {
+}
+
 // Normal path
 
 type SectorStart struct {

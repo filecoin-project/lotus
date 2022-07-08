@@ -7,15 +7,6 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/google/uuid"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/metrics"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -30,7 +21,6 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/proof"
-
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -42,6 +32,14 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/google/uuid"
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/protocol"
+	"golang.org/x/xerrors"
 )
 
 var ErrNotSupported = xerrors.New("method not supported")
@@ -761,6 +759,12 @@ type StorageMinerStruct struct {
 		PiecesListPieces func(p0 context.Context) ([]cid.Cid, error) `perm:"read"`
 
 		PledgeSector func(p0 context.Context) (abi.SectorID, error) `perm:"write"`
+
+		RemotePreCommit2Finished func(p0 context.Context, p1 abi.SectorNumber, p2 []byte, p3 []byte) error `perm:"admin"`
+
+		RemoteSectorProverId func(p0 context.Context, p1 abi.ActorID) ([]uint16, error) `perm:"admin"`
+
+		RemoteSectorStart func(p0 context.Context, p1 abi.SectorNumber, p2 abi.RegisteredSealProof) error `perm:"admin"`
 
 		ReturnAddPiece func(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error `perm:"admin"`
 
@@ -4535,6 +4539,39 @@ func (s *StorageMinerStruct) PledgeSector(p0 context.Context) (abi.SectorID, err
 
 func (s *StorageMinerStub) PledgeSector(p0 context.Context) (abi.SectorID, error) {
 	return *new(abi.SectorID), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) RemotePreCommit2Finished(p0 context.Context, p1 abi.SectorNumber, p2 []byte, p3 []byte) error {
+	if s.Internal.RemotePreCommit2Finished == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.RemotePreCommit2Finished(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStub) RemotePreCommit2Finished(p0 context.Context, p1 abi.SectorNumber, p2 []byte, p3 []byte) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) RemoteSectorProverId(p0 context.Context, p1 abi.ActorID) ([]uint16, error) {
+	if s.Internal.RemoteSectorProverId == nil {
+		return *new([]uint16), ErrNotSupported
+	}
+	return s.Internal.RemoteSectorProverId(p0, p1)
+}
+
+func (s *StorageMinerStub) RemoteSectorProverId(p0 context.Context, p1 abi.ActorID) ([]uint16, error) {
+	return *new([]uint16), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) RemoteSectorStart(p0 context.Context, p1 abi.SectorNumber, p2 abi.RegisteredSealProof) error {
+	if s.Internal.RemoteSectorStart == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.RemoteSectorStart(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) RemoteSectorStart(p0 context.Context, p1 abi.SectorNumber, p2 abi.RegisteredSealProof) error {
+	return ErrNotSupported
 }
 
 func (s *StorageMinerStruct) ReturnAddPiece(p0 context.Context, p1 storiface.CallID, p2 abi.PieceInfo, p3 *storiface.CallError) error {

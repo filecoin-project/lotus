@@ -39,6 +39,22 @@ func (m *Miner) ForceSectorState(ctx context.Context, id abi.SectorNumber, state
 	return m.sealing.ForceSectorState(ctx, id, state)
 }
 
+func (m *Miner) RemoteSectorStart(ctx context.Context, id abi.SectorNumber, sectorType abi.RegisteredSealProof) error {
+	return m.sealing.RemoteSectorStart(ctx, id, sectorType)
+}
+
+func (m *Miner) RemoteSectorProverId(miner abi.ActorID) ([]uint16, error) {
+	return m.sealing.ToProverID(miner)
+}
+
+func (m *Miner) RemotePreCommit2Finished(ctx context.Context, id abi.SectorNumber, commD []byte, commR []byte) error {
+	return m.sealing.RemotePreCommit2Finished(id, commR, commD)
+}
+
+// func (m *Miner) GetSectorInfo(sid abi.SectorNumber) (sealing.SectorInfo, error) {
+// 	return m.sealing.GetSectorInfo(sid)
+// }
+
 func (m *Miner) RemoveSector(ctx context.Context, id abi.SectorNumber) error {
 	return m.sealing.Remove(ctx, id)
 }

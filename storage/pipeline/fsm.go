@@ -40,12 +40,33 @@ func (m *Sealing) Plan(events []statemachine.Event, user interface{}) (interface
 }
 
 var fsmPlanners = map[SectorState]func(events []statemachine.Event, state *SectorInfo) (uint64, error){
-	// Sealing
 
+	//Sealing + RemoteSealing Init State
 	UndefinedSectorState: planOne(
 		on(SectorStart{}, WaitDeals),
 		on(SectorStartCC{}, Packing),
+		on(RemoteSectorStart{}, RemoteUnsealedSectorPacked),
 	),
+
+	//Remote Sealing
+	RemoteUnsealedSectorPacked: planOne(
+		on(RemoteSectorGetTicket{}, RemoteGetTicket),
+	),
+	RemoteGetTicket: planOne(
+		on(SectorTicket{}, WaitRemotePreCommit),
+	),
+	WaitRemotePreCommit: planOne(
+		on(RemotePreCommit1Finished{}, WaitRemotePreCommit),
+		on(RemotePreCommit2Finished{}, RemotePreCommiting),
+	),
+	RemotePreCommiting: planOne(
+		on(RemoteSectorStart{}, PreCommitting),
+	),
+	// RemotePreCommitingChainCheck: planOne(
+	// 	on(RemoteSectorStart{}, WaitDeals),
+	// ),
+
+	//Sealing
 	Empty: planOne( // deprecated
 		on(SectorAddPiece{}, AddPiece),
 		on(SectorStartPacking{}, Packing),
@@ -457,6 +478,12 @@ func (m *Sealing) plan(events []statemachine.Event, state *SectorInfo) (func(sta
 	}
 
 	switch state.State {
+	// Remote path
+	case RemoteUnsealedSectorPacked:
+		return m.handleRemoteUnsealedSectorPacked, processed, nil
+	case RemoteGetTicket:
+		return m.handleRemoteGetTicket, processed, nil
+
 	// Happy path
 	case Empty:
 		fallthrough
@@ -687,6 +714,12 @@ func (m *Sealing) restartSectors(ctx context.Context) error {
 	// TODO: Grab on-chain sector set and diff with trackedSectors
 
 	return nil
+}
+
+func (m *Sealing) RemoteSectorStart(ctx context.Context, id abi.SectorNumber, sectorType abi.RegisteredSealProof) error {
+	m.startupWait.Wait()
+	log.Infow("sector was already created and pieces were packed remotely", "sector", id, "trigger", "user")
+	return m.sectors.Send(id, RemoteSectorStart{ID: id, SectorType: sectorType})
 }
 
 func (m *Sealing) ForceSectorState(ctx context.Context, id abi.SectorNumber, state SectorState) error {

@@ -4,6 +4,7 @@
 package ffiwrapper
 
 import (
+	"C"
 	"bufio"
 	"bytes"
 	"context"
@@ -1178,6 +1179,22 @@ func GenerateUnsealedCID(proofType abi.RegisteredSealProof, pieces []abi.PieceIn
 	}
 
 	return ffi.GenerateUnsealedCID(proofType, allPieces)
+}
+
+type ProverId = []uint16
+
+func ToProverId(minerID abi.ActorID) (ProverId, error) {
+	return ffi.ToProverId(minerID)
+}
+
+func SealPreCommitPhase2ToCid(
+	commRRaw []byte,
+	commDRaw []byte,
+) (sealedCID cid.Cid, unsealedCID cid.Cid, err error) {
+	return ffi.SealPreCommitPhase2ToCid(
+		commRRaw,
+		commDRaw,
+	)
 }
 
 func (sb *Sealer) GenerateWinningPoStWithVanilla(ctx context.Context, proofType abi.RegisteredPoStProof, minerID abi.ActorID, randomness abi.PoStRandomness, vanillas [][]byte) ([]proof.PoStProof, error) {

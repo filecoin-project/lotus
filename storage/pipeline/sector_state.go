@@ -70,6 +70,12 @@ var ExistSectorStateList = map[SectorState]struct{}{
 const (
 	UndefinedSectorState SectorState = ""
 
+	RemoteUnsealedSectorPacked   SectorState = "RemoteUnsealedSectorPacked"
+	RemoteGetTicket              SectorState = "RemoteGetTicket"
+	WaitRemotePreCommit          SectorState = "WaitRemotePreCommit"
+	RemotePreCommiting           SectorState = "RemotePreCommiting"
+	RemotePreCommitingChainCheck SectorState = "RemotePreCommitingChainCheck"
+
 	// happy path
 	Empty      SectorState = "Empty"      // deprecated
 	WaitDeals  SectorState = "WaitDeals"  // waiting for more pieces (deals) to be added to the sector

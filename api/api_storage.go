@@ -68,11 +68,14 @@ type StorageMiner interface {
 	// Add a new unassigned sector
 	SectorTryCreateNewSector(ctx context.Context) (abi.SectorNumber, error) //perm:admin
 
-	SectorsUnsealPiece(ctx context.Context, sector storage.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error //perm:admin
-
 	// List all staged sectors
 	SectorsList(context.Context) ([]abi.SectorNumber, error) //perm:read
 
+	// Remote Sealing
+	RemoteSectorStart(ctx context.Context, id abi.SectorNumber, sectorType abi.RegisteredSealProof) error //perm:admin
+	RemoteSectorProverId(ctx context.Context, miner abi.ActorID) ([]uint16, error)                        //perm:admin
+	RemotePreCommit2Finished(ctx context.Context, id abi.SectorNumber, commR []byte, commD []byte) error  //perm:admin
+	// GetSectorInfo(sid abi.SectorNumber) (SectorInfo, error)                                               //perm:admin retry:true
 	// Get summary info of sectors
 	SectorsSummary(ctx context.Context) (map[SectorState]int, error) //perm:read
 
