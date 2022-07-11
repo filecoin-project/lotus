@@ -43,6 +43,7 @@ type nodeOpts struct {
 	minerNoLocalSealing    bool // use worker
 	minerAssigner          string
 	disallowRemoteFinalize bool
+	noMinerStorage         bool
 
 	workerTasks      []sealtasks.TaskType
 	workerStorageOpt func(paths.Store) paths.Store
@@ -154,6 +155,14 @@ func PresealSectors(sectors int) NodeOpt {
 	}
 }
 
+// NoMinerStorage initializes miners with no writable storage paths (just read-only preseal paths)
+func NoMinerStorage() NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.noMinerStorage = true
+		return nil
+	}
+}
+
 // ThroughRPC makes interactions with this node throughout the test flow through
 // the JSON-RPC API.
 func ThroughRPC() NodeOpt {
@@ -209,6 +218,8 @@ func WithTaskTypes(tt []sealtasks.TaskType) NodeOpt {
 		return nil
 	}
 }
+
+var WithSealWorkerTasks = WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2, sealtasks.TTUnseal})
 
 func WithWorkerStorage(transform func(paths.Store) paths.Store) NodeOpt {
 	return func(opts *nodeOpts) error {

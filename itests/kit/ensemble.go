@@ -546,7 +546,12 @@ func (n *Ensemble) Start() *Ensemble {
 		// using real proofs, therefore need real sectors.
 		if !n.bootstrapped && !n.options.mockProofs {
 			psd := m.PresealDir
+			noPaths := m.options.noMinerStorage
+
 			err := lr.SetStorage(func(sc *paths.StorageConfig) {
+				if noPaths {
+					sc.StoragePaths = []paths.LocalPath{}
+				}
 				sc.StoragePaths = append(sc.StoragePaths, paths.LocalPath{Path: psd})
 			})
 

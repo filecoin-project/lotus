@@ -969,6 +969,11 @@ workflows:
           target: "./itests/wdpost_dispute_test.go"
       
       - test:
+          name: test-itest-wdpost_no_miner_storage
+          suite: itest-wdpost_no_miner_storage
+          target: "./itests/wdpost_no_miner_storage_test.go"
+      
+      - test:
           name: test-itest-wdpost
           suite: itest-wdpost
           target: "./itests/wdpost_test.go"
