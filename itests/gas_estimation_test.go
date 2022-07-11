@@ -40,7 +40,7 @@ func TestEstimateGasNoFunds(t *testing.T) {
 	_, err = client.StateWaitMsg(ctx, sm.Cid(), 3, api.LookbackNoLimit, true)
 	require.NoError(t, err)
 
-	// Create that address.
+	// Make sure we can estimate gas even if we have no funds.
 	msg2 := &types.Message{
 		From:   addr,
 		To:     client.DefaultKey.Address,
