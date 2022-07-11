@@ -151,7 +151,6 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 // to our miner actor.
 //
 // NOTE: THIS CODE ISN'T INVOKED AFTER THE IGNITION UPGRADE
-//
 // This is always invoked ahead of time, before the deadline for the evaluated
 // sectors arrives. That way, faults are declared before a penalty is accrued.
 //
