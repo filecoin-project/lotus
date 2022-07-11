@@ -78,12 +78,13 @@ func TestWrapperAcquireRecoveryDestroy(t *testing.T) {
 	// Destroy the shard
 	dr := make(chan dagstore.ShardResult, 1)
 	err = w.DestroyShard(ctx, pieceCid, dr)
+	require.NoError(t, err)
 
 	dctx, cancel := context.WithTimeout(ctx, time.Second)
 	defer cancel()
 	select {
 	case <-dctx.Done():
-		require.Fail(t, "failed to call register")
+		require.Fail(t, "failed to call destroy")
 	case k := <-mock.destroy:
 		require.Equal(t, k.String(), pieceCid.String())
 	}
