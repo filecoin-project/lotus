@@ -111,8 +111,7 @@ func NewWindowedPoStScheduler(api NodeAPI,
 		disablePreChecks:                pcfg.DisableWDPoStPreChecks,
 		maxPartitionsPerPostMessage:     pcfg.MaxPartitionsPerPoStMessage,
 		maxPartitionsPerRecoveryMessage: pcfg.MaxPartitionsPerRecoveryMessage,
-
-		actor: actor,
+		actor:                           actor,
 		evtTypes: [...]journal.EventType{
 			evtTypeWdPoStScheduler:  j.RegisterEventType("wdpost", "scheduler"),
 			evtTypeWdPoStProofs:     j.RegisterEventType("wdpost", "proofs_processed"),
