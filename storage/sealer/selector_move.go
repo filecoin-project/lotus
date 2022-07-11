@@ -96,7 +96,7 @@ func (s *moveSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.
 		}
 	}
 
-	return ok && s.allowRemote, pref, nil
+	return (ok && s.allowRemote) || pref, pref, nil
 }
 
 func (s *moveSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *WorkerHandle) (bool, error) {
