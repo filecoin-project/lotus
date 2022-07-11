@@ -14,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
@@ -160,6 +161,8 @@ type StorageMiner interface {
 
 	StorageLocal(ctx context.Context) (map[storiface.ID]string, error)       //perm:admin
 	StorageStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, error) //perm:admin
+
+	StorageAuthVerify(ctx context.Context, token string) ([]auth.Permission, error) //perm:read
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                        //perm:write
 	MarketListDeals(ctx context.Context) ([]*MarketDeal, error)                                                                                                                          //perm:read
