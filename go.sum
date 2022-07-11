@@ -356,8 +356,8 @@ github.com/filecoin-project/go-fil-commcid v0.1.0 h1:3R4ds1A9r6cr8mvZBfMYxTS88Oq
 github.com/filecoin-project/go-fil-commcid v0.1.0/go.mod h1:Eaox7Hvus1JgPrL5+M3+h7aSPHc0cVqpSxA+TxIEpZQ=
 github.com/filecoin-project/go-fil-commp-hashhash v0.1.0 h1:imrrpZWEHRnNqqv0tN7LXep5bFEVOVmQWHJvl2mgsGo=
 github.com/filecoin-project/go-fil-commp-hashhash v0.1.0/go.mod h1:73S8WSEWh9vr0fDJVnKADhfIv/d6dCbAGaAGWbdJEI8=
-github.com/filecoin-project/go-fil-markets v1.23.0 h1:gF138KL5QDAoDOJJqrUbFK9jwS+Sjq2P3qMSdHFtkA8=
-github.com/filecoin-project/go-fil-markets v1.23.0/go.mod h1:bBa1d5mnlgwXPnH+MdqpCUsI+gxyrPUPSRePQDY36Hw=
+github.com/filecoin-project/go-fil-markets v1.23.1 h1:F2jr4qldYrpbLgdtKe5LqUHXv2eRxeuWTMr+nX4gASc=
+github.com/filecoin-project/go-fil-markets v1.23.1/go.mod h1:V+1vFO34RZmpdECdikKGiyWhSNJK81Q89Kn0egA9iAk=
 github.com/filecoin-project/go-hamt-ipld v0.1.5 h1:uoXrKbCQZ49OHpsTCkrThPNelC4W3LPEk0OrS/ytIBM=
 github.com/filecoin-project/go-hamt-ipld v0.1.5/go.mod h1:6Is+ONR5Cd5R6XZoCse1CWaXZc0Hdb/JeX+EQCQzX24=
 github.com/filecoin-project/go-hamt-ipld/v2 v2.0.0 h1:b3UDemBYN2HNfk3KOXNuxgTTxlWi3xVvbQP0IT38fvM=
@@ -958,8 +958,8 @@ github.com/ipld/go-car v0.3.2/go.mod h1:WEjynkVt04dr0GwJhry0KlaTeSDEiEYyMPOxDBQ1
 github.com/ipld/go-car v0.4.0 h1:U6W7F1aKF/OJMHovnOVdst2cpQE5GhmHibQkAixgNcQ=
 github.com/ipld/go-car v0.4.0/go.mod h1:Uslcn4O9cBKK9wqHm/cLTFacg6RAPv6LZx2mxd2Ypl4=
 github.com/ipld/go-car/v2 v2.1.1/go.mod h1:+2Yvf0Z3wzkv7NeI69i8tuZ+ft7jyjPYIWZzeVNeFcI=
-github.com/ipld/go-car/v2 v2.4.0 h1:8jI6/iKlyLqRZzLz31jFWTqKvslaVzFsin305sOuqNQ=
-github.com/ipld/go-car/v2 v2.4.0/go.mod h1:zjpRf0Jew9gHqSvjsKVyoq9OY9SWoEKdYCQUKVaaPT0=
+github.com/ipld/go-car/v2 v2.4.1 h1:9S+FYbQzQJ/XzsdiOV13W5Iu/i+gUnr6csbSD9laFEg=
+github.com/ipld/go-car/v2 v2.4.1/go.mod h1:zjpRf0Jew9gHqSvjsKVyoq9OY9SWoEKdYCQUKVaaPT0=
 github.com/ipld/go-codec-dagpb v1.2.0/go.mod h1:6nBN7X7h8EOsEejZGqC7tej5drsdBAXbMHyBT+Fne5s=
 github.com/ipld/go-codec-dagpb v1.3.0/go.mod h1:ga4JTU3abYApDC3pZ00BC2RSvC3qfBb9MSJkMLSwnhA=
 github.com/ipld/go-codec-dagpb v1.3.1/go.mod h1:ErNNglIi5KMur/MfFE/svtgQthzVvf+43MrzLbpcIZY=
