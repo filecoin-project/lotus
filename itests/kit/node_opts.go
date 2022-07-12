@@ -43,7 +43,7 @@ type nodeOpts struct {
 	minerNoLocalSealing    bool // use worker
 	minerAssigner          string
 	disallowRemoteFinalize bool
-	noMinerStorage         bool
+	noStorage              bool
 
 	workerTasks      []sealtasks.TaskType
 	workerStorageOpt func(paths.Store) paths.Store
@@ -155,10 +155,10 @@ func PresealSectors(sectors int) NodeOpt {
 	}
 }
 
-// NoMinerStorage initializes miners with no writable storage paths (just read-only preseal paths)
-func NoMinerStorage() NodeOpt {
+// NoStorage initializes miners with no writable storage paths (just read-only preseal paths)
+func NoStorage() NodeOpt {
 	return func(opts *nodeOpts) error {
-		opts.noMinerStorage = true
+		opts.noStorage = true
 		return nil
 	}
 }

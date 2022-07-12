@@ -167,9 +167,8 @@ func (tm *TestMiner) FlushSealingBatches(ctx context.Context) {
 
 const metaFile = "sectorstore.json"
 
-func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, weight uint64, seal, store bool) {
-	p, err := ioutil.TempDir("", "lotus-testsectors-")
-	require.NoError(t, err)
+func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, conf func(*paths.LocalStorageMeta)) storiface.ID {
+	p := t.TempDir()
 
 	if err := os.MkdirAll(p, 0755); err != nil {
 		if !os.IsExist(err) {
@@ -177,17 +176,19 @@ func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, weight uint64
 		}
 	}
 
-	_, err = os.Stat(filepath.Join(p, metaFile))
+	_, err := os.Stat(filepath.Join(p, metaFile))
 	if !os.IsNotExist(err) {
 		require.NoError(t, err)
 	}
 
 	cfg := &paths.LocalStorageMeta{
 		ID:       storiface.ID(uuid.New().String()),
-		Weight:   weight,
-		CanSeal:  seal,
-		CanStore: store,
+		Weight:   10,
+		CanSeal:  false,
+		CanStore: false,
 	}
+
+	conf(cfg)
 
 	if !(cfg.CanStore || cfg.CanSeal) {
 		t.Fatal("must specify at least one of CanStore or cfg.CanSeal")
@@ -201,4 +202,6 @@ func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, weight uint64
 
 	err = tm.StorageAddLocal(ctx, p)
 	require.NoError(t, err)
+
+	return cfg.ID
 }

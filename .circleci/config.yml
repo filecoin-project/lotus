@@ -894,6 +894,11 @@ workflows:
           target: "./itests/nonce_test.go"
       
       - test:
+          name: test-itest-path_type_filters
+          suite: itest-path_type_filters
+          target: "./itests/path_type_filters_test.go"
+      
+      - test:
           name: test-itest-paych_api
           suite: itest-paych_api
           target: "./itests/paych_api_test.go"

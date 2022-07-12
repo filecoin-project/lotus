@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -184,7 +185,9 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 
 			var target abi.ChainEpoch
 			reportSuccessFn := func(success bool, epoch abi.ChainEpoch, err error) {
-				require.NoError(bm.t, err)
+				if err != nil && !strings.Contains(err.Error(), "websocket connection closed") {
+					require.NoError(bm.t, err)
+				}
 				target = epoch
 				wait <- success
 			}
