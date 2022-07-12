@@ -90,9 +90,10 @@ func main() {
 				Usage:   fmt.Sprintf("Specify miner repo path. flag storagerepo and env LOTUS_STORAGE_PATH are DEPRECATION, will REMOVE SOON"),
 			},
 			&cli.BoolFlag{
-				Name:  "enable-gpu-proving",
-				Usage: "enable use of GPU for mining operations",
-				Value: true,
+				Name:    "enable-gpu-proving",
+				Usage:   "enable use of GPU for mining operations",
+				Value:   true,
+				EnvVars: []string{"LOTUS_WORKER_ENABLE_GPU_PROVING"},
 			},
 		},
 
