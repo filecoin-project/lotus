@@ -66,7 +66,7 @@ func (s *existingSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt 
 				return true, false, nil
 			}
 
-			requested = requested.SubAllowed(info.AllowTypes, info.AllowTypes)
+			requested = requested.SubAllowed(info.AllowTypes, info.DenyTypes)
 
 			// got all paths
 			if requested == storiface.FTNone {

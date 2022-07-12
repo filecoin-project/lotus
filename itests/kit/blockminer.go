@@ -185,9 +185,12 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 
 			var target abi.ChainEpoch
 			reportSuccessFn := func(success bool, epoch abi.ChainEpoch, err error) {
+				// if api shuts down before mining, we may get an error which we should probably just ignore
+				// (fixing it will require rewriting most of the mining loop)
 				if err != nil && !strings.Contains(err.Error(), "websocket connection closed") {
 					require.NoError(bm.t, err)
 				}
+
 				target = epoch
 				wait <- success
 			}

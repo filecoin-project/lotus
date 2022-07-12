@@ -59,7 +59,7 @@ func (s *allocSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi
 
 	for _, info := range best {
 		if _, ok := have[info.ID]; ok {
-			requested = requested.SubAllowed(info.AllowTypes, info.AllowTypes)
+			requested = requested.SubAllowed(info.AllowTypes, info.DenyTypes)
 
 			// got all paths
 			if requested == storiface.FTNone {

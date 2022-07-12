@@ -87,7 +87,7 @@ func (s *moveSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt abi.
 				pref = true
 			}
 
-			requested = requested.SubAllowed(info.AllowTypes, info.AllowTypes)
+			requested = requested.SubAllowed(info.AllowTypes, info.DenyTypes)
 
 			// got all paths
 			if requested == storiface.FTNone {
