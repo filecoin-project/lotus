@@ -24,6 +24,13 @@ const (
 	FTNone SectorFileType = 0
 )
 
+var FTAll = func() (out SectorFileType) {
+	for _, pathType := range PathTypes {
+		out |= pathType
+	}
+	return out
+}()
+
 const FSOverheadDen = 10
 
 var FSOverheadSeal = map[SectorFileType]int{ // 10x overheads
