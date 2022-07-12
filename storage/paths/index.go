@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/lotus/journal/alerting"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -63,15 +64,23 @@ type Index struct {
 	*indexLocks
 	lk sync.RWMutex
 
+	// optional
+	alerting   *alerting.Alerting
+	pathAlerts map[storiface.ID]alerting.AlertType
+
 	sectors map[storiface.Decl][]*declMeta
 	stores  map[storiface.ID]*storageEntry
 }
 
-func NewIndex() *Index {
+func NewIndex(al *alerting.Alerting) *Index {
 	return &Index{
 		indexLocks: &indexLocks{
 			locks: map[abi.SectorID]*sectorLock{},
 		},
+
+		alerting:   al,
+		pathAlerts: map[storiface.ID]alerting.AlertType{},
+
 		sectors: map[storiface.Decl][]*declMeta{},
 		stores:  map[storiface.ID]*storageEntry{},
 	}
@@ -107,20 +116,62 @@ func (i *Index) StorageList(ctx context.Context) (map[storiface.ID][]storiface.D
 }
 
 func (i *Index) StorageAttach(ctx context.Context, si storiface.StorageInfo, st fsutil.FsStat) error {
-	for i, typ := range si.AllowTypes {
+	var allow, deny = make([]string, 0, len(si.AllowTypes)), make([]string, 0, len(si.DenyTypes))
+
+	if _, hasAlert := i.pathAlerts[si.ID]; i.alerting != nil && !hasAlert {
+		i.pathAlerts[si.ID] = i.alerting.AddAlertType("sector-index", "pathconf-"+string(si.ID))
+	}
+
+	var hasConfigIsses bool
+
+	for id, typ := range si.AllowTypes {
 		_, err := storiface.TypeFromString(typ)
 		if err != nil {
 			// No need no hard-fail here, just warn the user
 			// (note that even with all-invalid entries we'll deny all types, so nothing unexpected should enter the path)
-			log.Errorw("bad path type in AllowTypes", "path", si.ID, "idx", i, "type", typ, "error", err)
+			hasConfigIsses = true
+
+			if i.alerting != nil {
+				i.alerting.Raise(i.pathAlerts[si.ID], map[string]interface{}{
+					"message":   "bad path type in AllowTypes",
+					"path":      string(si.ID),
+					"idx":       id,
+					"path_type": typ,
+					"error":     err.Error(),
+				})
+			}
+
+			continue
 		}
+		allow = append(allow, typ)
 	}
-	for i, typ := range si.DenyTypes {
+	for id, typ := range si.DenyTypes {
 		_, err := storiface.TypeFromString(typ)
 		if err != nil {
 			// No need no hard-fail here, just warn the user
-			log.Errorw("bad path type in DenyTypes", "path", si.ID, "idx", i, "type", typ, "error", err)
+			hasConfigIsses = true
+
+			if i.alerting != nil {
+				i.alerting.Raise(i.pathAlerts[si.ID], map[string]interface{}{
+					"message":   "bad path type in DenyTypes",
+					"path":      string(si.ID),
+					"idx":       id,
+					"path_type": typ,
+					"error":     err.Error(),
+				})
+			}
+
+			continue
 		}
+		deny = append(deny, typ)
+	}
+	si.AllowTypes = allow
+	si.DenyTypes = deny
+
+	if i.alerting != nil && !hasConfigIsses && i.alerting.IsRaised(i.pathAlerts[si.ID]) {
+		i.alerting.Resolve(i.pathAlerts[si.ID], map[string]string{
+			"message": "path config is now correct",
+		})
 	}
 
 	i.lk.Lock()
@@ -152,8 +203,8 @@ func (i *Index) StorageAttach(ctx context.Context, si storiface.StorageInfo, st 
 		i.stores[si.ID].info.CanStore = si.CanStore
 		i.stores[si.ID].info.Groups = si.Groups
 		i.stores[si.ID].info.AllowTo = si.AllowTo
-		i.stores[si.ID].info.AllowTypes = si.AllowTypes
-		i.stores[si.ID].info.DenyTypes = si.DenyTypes
+		i.stores[si.ID].info.AllowTypes = allow
+		i.stores[si.ID].info.DenyTypes = deny
 
 		return nil
 	}

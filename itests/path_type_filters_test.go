@@ -2,6 +2,7 @@ package itests
 
 import (
 	"context"
+	"strings"
 	"testing"
 	"time"
 
@@ -42,6 +43,39 @@ func TestPathTypeFilters(t *testing.T) {
 			})
 		})
 	}
+
+	runTest(t, "invalid-type-alert", func(t *testing.T, ctx context.Context, miner *kit.TestMiner, run func()) {
+		slU := miner.AddStorage(ctx, t, func(meta *paths.LocalStorageMeta) {
+			meta.CanSeal = true
+			meta.AllowTypes = []string{"unsealed", "seeled"}
+		})
+
+		storlist, err := miner.StorageList(ctx)
+		require.NoError(t, err)
+
+		require.Len(t, storlist, 2) // 1 path we've added + preseal
+
+		si, err := miner.StorageInfo(ctx, slU)
+		require.NoError(t, err)
+
+		// check that bad entries are filtered
+		require.Len(t, si.DenyTypes, 0)
+		require.Len(t, si.AllowTypes, 1)
+		require.Equal(t, "unsealed", si.AllowTypes[0])
+
+		as, err := miner.LogAlerts(ctx)
+		require.NoError(t, err)
+
+		var found bool
+		for _, a := range as {
+			if a.Active && a.Type.System == "sector-index" && strings.HasPrefix(a.Type.Subsystem, "pathconf-") {
+				require.False(t, found)
+				require.Contains(t, string(a.LastActive.Message), "unknown sector file type 'seeled'")
+				found = true
+			}
+		}
+		require.True(t, found)
+	})
 
 	runTest(t, "seal-to-stor-unseal-allowdeny", func(t *testing.T, ctx context.Context, miner *kit.TestMiner, run func()) {
 		// allow all types in the sealing path
