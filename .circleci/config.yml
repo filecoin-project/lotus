@@ -894,6 +894,11 @@ workflows:
           target: "./itests/multisig_test.go"
       
       - test:
+          name: test-itest-net
+          suite: itest-net
+          target: "./itests/net_test.go"
+      
+      - test:
           name: test-itest-nonce
           suite: itest-nonce
           target: "./itests/nonce_test.go"
