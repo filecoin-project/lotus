@@ -12,6 +12,7 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
 
 	"github.com/filecoin-project/lotus/api"
@@ -156,6 +157,10 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 	ctx, span := trace.StartSpan(ctx, "statemanager.CallWithGas")
 	defer span.End()
 
+	// Copy the message as we'll be modifying the nonce.
+	msgCopy := *msg
+	msg = &msgCopy
+
 	if ts == nil {
 		ts = sm.cs.GetHeaviestTipSet()
 
@@ -273,9 +278,21 @@ func (sm *StateManager) CallWithGas(ctx context.Context, msg *types.Message, pri
 
 	}
 
+	// If the fee cap is set to zero, make gas free.
+	if msg.GasFeeCap.NilOrZero() {
+		// Now estimate with a new VM with no base fee.
+		vmopt.BaseFee = big.Zero()
+		vmopt.StateBase = stateCid
+
+		vmi, err = sm.newVM(ctx, vmopt)
+		if err != nil {
+			return nil, xerrors.Errorf("failed to set up estimation vm: %w", err)
+		}
+	}
+
 	ret, err := vmi.ApplyMessage(ctx, msgApply)
 	if err != nil {
-		return nil, xerrors.Errorf("apply message failed: %w", err)
+		return nil, xerrors.Errorf("gas estimation failed: %w", err)
 	}
 
 	var errs string

@@ -859,6 +859,11 @@ workflows:
           target: "./itests/deals_test.go"
       
       - test:
+          name: test-itest-gas_estimation
+          suite: itest-gas_estimation
+          target: "./itests/gas_estimation_test.go"
+      
+      - test:
           name: test-itest-gateway
           suite: itest-gateway
           target: "./itests/gateway_test.go"
