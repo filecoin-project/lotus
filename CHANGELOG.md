@@ -1,5 +1,535 @@
 # Lotus changelog
 
+# v1.17.0-rc3 / 2022-07-13
+
+This is the third release candidate of the OPTIONAL release 1.17.0.
+
+Note that: due to circumstances, we have decided to reset the code freeze to the latest master for this release and restart the testing flow. This also means we are skipping the feature release of June, and have everthing in the July feature release.
+
+Detailed Changelog will be added later!
+
+- github.com/filecoin-project/lotus:
+  - build: merge: release v1.17.0 to master ([filecoin-project/lotus#9017](https://github.com/filecoin-project/lotus/pull/9017))
+  - change 1475 bootstrap peer ([filecoin-project/lotus#9008](https://github.com/filecoin-project/lotus/pull/9008))
+  - feat: dagstore: Add DestroyShard() in dagstore wrapper ([filecoin-project/lotus#9010](https://github.com/filecoin-project/lotus/pull/9010))
+  - build: merge: v1.16.1 to master ([filecoin-project/lotus#9014](https://github.com/filecoin-project/lotus/pull/9014))
+  - chore: market: Upgrade to `go-car` `2.4.1` ([filecoin-project/lotus#8985](https://github.com/filecoin-project/lotus/pull/8985))
+  - fix: Delegate storage auth on market nodes ([filecoin-project/lotus#8978](https://github.com/filecoin-project/lotus/pull/8978))
+  - Docs: readme: use proper hwloc dependency for Fedora ([filecoin-project/lotus#8999](https://github.com/filecoin-project/lotus/pull/8999))
+  - chore: stop using the deprecated github.com/libp2p/go-libp2p-yamux (#8998) ([filecoin-project/lotus#8998](https://github.com/filecoin-project/lotus/pull/8998))
+  - chore: update and fix libp2p ([filecoin-project/lotus#8996](https://github.com/filecoin-project/lotus/pull/8996))
+  - fix incorrect usage of peer.IDFromString (should be peer.Decode) ([filecoin-project/lotus#8993](https://github.com/filecoin-project/lotus/pull/8993))
+  - remove mock file
+  - feat: recovery: Config for maximum partition count per message ([filecoin-project/lotus#8986](https://github.com/filecoin-project/lotus/pull/8986))
+  - feat: wdpost: Config for maximum partition count per message ([filecoin-project/lotus#8982](https://github.com/filecoin-project/lotus/pull/8982))
+  - deps: update go-fil-markets to v1.23.0 ([filecoin-project/lotus#8976](https://github.com/filecoin-project/lotus/pull/8976))
+  - feat: msig cli: Check for existing signers in add-propose ([filecoin-project/lotus#8833](https://github.com/filecoin-project/lotus/pull/8833))
+  - feat: shed: migrate-nv16 ([filecoin-project/lotus#8942](https://github.com/filecoin-project/lotus/pull/8942))
+  - fix: lotus-stats: actor code string ([filecoin-project/lotus#8977](https://github.com/filecoin-project/lotus/pull/8977))
+  - sealer: Config for disabling builtin PoSt / PoSt pre-checks ([filecoin-project/lotus#8959](https://github.com/filecoin-project/lotus/pull/8959))
+  - feat: cli: Hide sector nums in 'proving deadline' by default ([filecoin-project/lotus#8952](https://github.com/filecoin-project/lotus/pull/8952))
+  - ux: print absolute time for proving period start in proving cli ([filecoin-project/lotus#8954](https://github.com/filecoin-project/lotus/pull/8954))
+  - ux: cli: add compute description ([filecoin-project/lotus#8963](https://github.com/filecoin-project/lotus/pull/8963))
+  - chore:networking:disconnect cmd  ([filecoin-project/lotus#8955](https://github.com/filecoin-project/lotus/pull/8955))
+  - go mod tidy
+  - Update deps
+  - chore: state: clarify state tree versioning in comment ([filecoin-project/lotus#8947](https://github.com/filecoin-project/lotus/pull/8947))
+  - Feat: api: Api call to get actor cids works for versions < 16 ([filecoin-project/lotus#8941](https://github.com/filecoin-project/lotus/pull/8941))
+  - chore: market: upgrade index-provider and related dependencies ([filecoin-project/lotus#8945](https://github.com/filecoin-project/lotus/pull/8945))
+  - PoC: FVM Debug Dual Execution ([filecoin-project/lotus#8841](https://github.com/filecoin-project/lotus/pull/8841))
+  - fix appimage build ([filecoin-project/lotus#8931](https://github.com/filecoin-project/lotus/pull/8931))
+  - build: chore: releases back to master ([filecoin-project/lotus#8929](https://github.com/filecoin-project/lotus/pull/8929))
+  - fix: readme: Update install instructions link ([filecoin-project/lotus#8460](https://github.com/filecoin-project/lotus/pull/8460))
+  - docs: update ./documentation/en/README.md ([filecoin-project/lotus#8887](https://github.com/filecoin-project/lotus/pull/8887))
+  - deps: upgrade go-fil-markets to v1.22.0 ([filecoin-project/lotus#8905](https://github.com/filecoin-project/lotus/pull/8905))
+  - Fix: cli: Break out of retrieval if provider cancels ([filecoin-project/lotus#8912](https://github.com/filecoin-project/lotus/pull/8912))
+  - feat: shed: print out actor code CIDs in manifest cid checker ([filecoin-project/lotus#8911](https://github.com/filecoin-project/lotus/pull/8911))
+  - Make cli deal command get Block Delay specific to build ([filecoin-project/lotus#8896](https://github.com/filecoin-project/lotus/pull/8896))
+  - fix: fvm: make exectraces match legacyVM some more ([filecoin-project/lotus#8889](https://github.com/filecoin-project/lotus/pull/8889))
+  - Add a reentrant multisig test ([filecoin-project/lotus#8816](https://github.com/filecoin-project/lotus/pull/8816))
+  - chore: deps: Update to go-state-types v0.1.10 ([filecoin-project/lotus#8883](https://github.com/filecoin-project/lotus/pull/8883))
+  - fix: deps: Update butterfly artifacts ([filecoin-project/lotus#8881](https://github.com/filecoin-project/lotus/pull/8881))
+  - chore: sealing pipeline: Remove adapter code (storage refactors part 2) ([filecoin-project/lotus#8871](https://github.com/filecoin-project/lotus/pull/8871))
+  - build: deps: add uninstall make target ([filecoin-project/lotus#8814](https://github.com/filecoin-project/lotus/pull/8814))
+  - fix: ux: Check for client deal addrs on-chain ([filecoin-project/lotus#8830](https://github.com/filecoin-project/lotus/pull/8830))
+  - update release template ([filecoin-project/lotus#7715](https://github.com/filecoin-project/lotus/pull/7715))
+  - build: bump master version to v1.17.1-dev ([filecoin-project/lotus#8875](https://github.com/filecoin-project/lotus/pull/8875))
+  - chore: backport: v1.16.0 bundle to master ([filecoin-project/lotus#8872](https://github.com/filecoin-project/lotus/pull/8872))
+  - feat: update go-fil-markets to v1.21.0 ([filecoin-project/lotus#8856](https://github.com/filecoin-project/lotus/pull/8856))
+  - chore: storage refactors part 1 ([filecoin-project/lotus#8858](https://github.com/filecoin-project/lotus/pull/8858))
+  - feat: shed: report the "user version" ([filecoin-project/lotus#8864](https://github.com/filecoin-project/lotus/pull/8864))
+  - chore: fix imports conflict ([filecoin-project/lotus#8863](https://github.com/filecoin-project/lotus/pull/8863))
+  - chore: Fix imports ([filecoin-project/lotus#8859](https://github.com/filecoin-project/lotus/pull/8859))
+  - chore: backport: release v1.16.0 back to master ([filecoin-project/lotus#8855](https://github.com/filecoin-project/lotus/pull/8855))
+  - fix: format error log ([filecoin-project/lotus#8854](https://github.com/filecoin-project/lotus/pull/8854))
+  - fix: build: really make macos compatible (#8853) ([filecoin-project/lotus#8853](https://github.com/filecoin-project/lotus/pull/8853))
+  - fix: build: fix pack script and add calibrationnet to bundle ([filecoin-project/lotus#8852](https://github.com/filecoin-project/lotus/pull/8852))
+  - Add new proofs version type ([filecoin-project/lotus#8848](https://github.com/filecoin-project/lotus/pull/8848))
+  - feat: refactor: actor bundling system (#8838) ([filecoin-project/lotus#8838](https://github.com/filecoin-project/lotus/pull/8838))
+  - refactor: remove old BlockSyncProtocolID ([filecoin-project/lotus#8820](https://github.com/filecoin-project/lotus/pull/8820))
+  - chore: deps: Update to go-address v1.0.0 ([filecoin-project/lotus#8826](https://github.com/filecoin-project/lotus/pull/8826))
+  - Revert "deps: update go-libp2p-pubsub to v0.7.0" ([filecoin-project/lotus#8842](https://github.com/filecoin-project/lotus/pull/8842))
+  - Feat: migration: Implement function to migrate actors with only code changes ([filecoin-project/lotus#8843](https://github.com/filecoin-project/lotus/pull/8843))
+  - feat: Add rate limiting to the lotus gateway ([filecoin-project/lotus#8517](https://github.com/filecoin-project/lotus/pull/8517))
+  - gofmt
+  - fix: build: fix 2k build params ([filecoin-project/lotus#8835](https://github.com/filecoin-project/lotus/pull/8835))
+  - Merge nv16 changes into master ([filecoin-project/lotus#8810](https://github.com/filecoin-project/lotus/pull/8810))
+  - chore: improve error message when maxPrice is too low ([filecoin-project/lotus#8818](https://github.com/filecoin-project/lotus/pull/8818))
+  - Fix: PaychGetRestartAfterAddFundsMsg may stuck in forever waiting ([filecoin-project/lotus#8829](https://github.com/filecoin-project/lotus/pull/8829))
+  - fix: paych: Print "waiting for confirmation.." ([filecoin-project/lotus#8823](https://github.com/filecoin-project/lotus/pull/8823))
+  - feat: conformance & tvx: support ReportConsensusFault messages ([filecoin-project/lotus#8302](https://github.com/filecoin-project/lotus/pull/8302))
+  - fix: build: genesis miner network version ([filecoin-project/lotus#8756](https://github.com/filecoin-project/lotus/pull/8756))
+  - deps: update go-libp2p@v0.19.4 ([filecoin-project/lotus#8799](https://github.com/filecoin-project/lotus/pull/8799))
+  - feat: lotus-shed get remote peer hello message ([filecoin-project/lotus#8787](https://github.com/filecoin-project/lotus/pull/8787))
+  - feat: cli: Nicer net stat ([filecoin-project/lotus#8797](https://github.com/filecoin-project/lotus/pull/8797))
+  - fix: bench: consistency in description ([filecoin-project/lotus#8777](https://github.com/filecoin-project/lotus/pull/8777))
+  - deps: update go-libp2p-pubsub to v0.7.0 ([filecoin-project/lotus#8770](https://github.com/filecoin-project/lotus/pull/8770))
+  - feat: only enable rcmgr by default in full nodes ([filecoin-project/lotus#8769](https://github.com/filecoin-project/lotus/pull/8769))
+  - chore: bundle: remove wrongly committed bundle cars ([filecoin-project/lotus#8762](https://github.com/filecoin-project/lotus/pull/8762))
+  - Revert "VM: Refactor pricelist to be based on network versions" ([filecoin-project/lotus#8758](https://github.com/filecoin-project/lotus/pull/8758))
+  - feat: bench: simple sealing operations commands ([filecoin-project/lotus#8373](https://github.com/filecoin-project/lotus/pull/8373))
+  - feat: networking: add healthz and livez endpoints ([filecoin-project/lotus#8692](https://github.com/filecoin-project/lotus/pull/8692))
+  - fix: worker: don't log normal storage stat calls ([filecoin-project/lotus#8744](https://github.com/filecoin-project/lotus/pull/8744))
+  - fix: worker: don't check params with --no-default when not needed ([filecoin-project/lotus#8741](https://github.com/filecoin-project/lotus/pull/8741))
+  - feat: add create ledger wallet address by account index command ([filecoin-project/lotus#8657](https://github.com/filecoin-project/lotus/pull/8657))
+  - fix: rpc: readd rpc.discover aliases; lotus-gateway openrpc ([filecoin-project/lotus#8738](https://github.com/filecoin-project/lotus/pull/8738))
+  - feat: wdpost: Ignore faults in lotus-miner proving compute window-post ([filecoin-project/lotus#8737](https://github.com/filecoin-project/lotus/pull/8737))
+  - fix: post workers: check proving params on startup ([filecoin-project/lotus#8736](https://github.com/filecoin-project/lotus/pull/8736))
+  - feat: sched: Per worker concurrent task count limits ([filecoin-project/lotus#8725](https://github.com/filecoin-project/lotus/pull/8725))
+  - feat: sched: Finalize* move selectors ([filecoin-project/lotus#8710](https://github.com/filecoin-project/lotus/pull/8710))
+  - feat: sched: Add scheduler interfaces, configurable assigner ([filecoin-project/lotus#8700](https://github.com/filecoin-project/lotus/pull/8700))
+  - feat: miner cli: sealing data-cid command ([filecoin-project/lotus#8715](https://github.com/filecoin-project/lotus/pull/8715))
+  - Snap Deals full unseal ([filecoin-project/lotus#8478](https://github.com/filecoin-project/lotus/pull/8478))
+  - deps: libp2p: update to the latest golibp2p tag ([filecoin-project/lotus#8704](https://github.com/filecoin-project/lotus/pull/8704))
+  - fix: deps: restore butterfly network genesis from v1.14.4 ([filecoin-project/lotus#8708](https://github.com/filecoin-project/lotus/pull/8708))
+  - build: version: bump the version to v1.15.4-rc1 ([filecoin-project/lotus#8646](https://github.com/filecoin-project/lotus/pull/8646))
+  - ci: deps: Use testground-github-action from testground org ([filecoin-project/lotus#8490](https://github.com/filecoin-project/lotus/pull/8490))
+  - feat: worker: lotus-worker run --no-default ([filecoin-project/lotus#8672](https://github.com/filecoin-project/lotus/pull/8672))
+  - docs:sealing:fix default miner config comments ([filecoin-project/lotus#8689](https://github.com/filecoin-project/lotus/pull/8689))
+  - fix: verifreg: update deprecation log ([filecoin-project/lotus#8690](https://github.com/filecoin-project/lotus/pull/8690))
+  - fix: vm: support raw blocks in chain export ([filecoin-project/lotus#8691](https://github.com/filecoin-project/lotus/pull/8691))
+  - feat: precommits info ([filecoin-project/lotus#8696](https://github.com/filecoin-project/lotus/pull/8696))
+  - Implement cli command for compactPartitions ([filecoin-project/lotus#8637](https://github.com/filecoin-project/lotus/pull/8637))
+  - feat: dagstore: add dagstore register-shard command ([filecoin-project/lotus#8645](https://github.com/filecoin-project/lotus/pull/8645))
+  - stores: Deduplicate parallel stat requests ([filecoin-project/lotus#8589](https://github.com/filecoin-project/lotus/pull/8589))
+- github.com/filecoin-project/go-address (v0.0.6 -> v1.0.0):
+  - add more checks and define constants ([filecoin-project/go-address#31](https://github.com/filecoin-project/go-address/pull/31))
+  - enforce that the trailing bits of an address string are standard ([filecoin-project/go-address#28](https://github.com/filecoin-project/go-address/pull/28))
+  - sync: update CI config files ([filecoin-project/go-address#29](https://github.com/filecoin-project/go-address/pull/29))
+  - chore: fix test on 32bit and non-cgo platforms ([filecoin-project/go-address#30](https://github.com/filecoin-project/go-address/pull/30))
+- github.com/filecoin-project/go-data-transfer (v1.15.1 -> v1.15.2):
+  - chore(deps): update libp2p v0.19.4 (#341) ([filecoin-project/go-data-transfer#341](https://github.com/filecoin-project/go-data-transfer/pull/341))
+  - Fix transfer message bindnode wrap passing pointer to pointer
+  - Log less important messages at debug level (#334) ([filecoin-project/go-data-transfer#334](https://github.com/filecoin-project/go-data-transfer/pull/334))
+  - fix(message): do not EncodeToNode selectors (#326) ([filecoin-project/go-data-transfer#326](https://github.com/filecoin-project/go-data-transfer/pull/326))
+  - ci(circle): update to non-legacy image (#328) ([filecoin-project/go-data-transfer#328](https://github.com/filecoin-project/go-data-transfer/pull/328))
+  - Merge branch 'release/v1.15.1'
+- github.com/filecoin-project/go-fil-markets (v1.20.1-v16-2 -> v1.23.1):
+  - release: v1.23.1
+  - Upgrade to `go-car` `2.4.1` (#733) ([filecoin-project/go-fil-markets#733](https://github.com/filecoin-project/go-fil-markets/pull/733))
+  - release: v1.23.0 (#732) ([filecoin-project/go-fil-markets#732](https://github.com/filecoin-project/go-fil-markets/pull/732))
+  - feat: update deps (#731) ([filecoin-project/go-fil-markets#731](https://github.com/filecoin-project/go-fil-markets/pull/731))
+  - release: v1.22.2 (#729) ([filecoin-project/go-fil-markets#729](https://github.com/filecoin-project/go-fil-markets/pull/729))
+  - Upgrade to go-ipfs-blockstore `v1.2.0` (#728) ([filecoin-project/go-fil-markets#728](https://github.com/filecoin-project/go-fil-markets/pull/728))
+  - release: v1.22.1 (#727) ([filecoin-project/go-fil-markets#727](https://github.com/filecoin-project/go-fil-markets/pull/727))
+  - Upgrade index-provider and related dependencies (#722) ([filecoin-project/go-fil-markets#722](https://github.com/filecoin-project/go-fil-markets/pull/722))
+  - release: v1.22.0 (#726) ([filecoin-project/go-fil-markets#726](https://github.com/filecoin-project/go-fil-markets/pull/726))
+  - migrate provider deal proposal label to the new format (#721) ([filecoin-project/go-fil-markets#721](https://github.com/filecoin-project/go-fil-markets/pull/721))
+  - release: v1.21.0 (#720) ([filecoin-project/go-fil-markets#720](https://github.com/filecoin-project/go-fil-markets/pull/720))
+  - Use new go-state-types state accessors (#711) (#719) ([filecoin-project/go-fil-markets#719](https://github.com/filecoin-project/go-fil-markets/pull/719))
+  - chore: update go-car dependency (#709) ([filecoin-project/go-fil-markets#709](https://github.com/filecoin-project/go-fil-markets/pull/709))
+  - fix:close ask/dealstatus stream (#710) ([filecoin-project/go-fil-markets#710](https://github.com/filecoin-project/go-fil-markets/pull/710))
+  - fix: fire storage deal provider ready event after startup completes (#708) ([filecoin-project/go-fil-markets#708](https://github.com/filecoin-project/go-fil-markets/pull/708))
+  - release: v1.20.3 (#703) ([filecoin-project/go-fil-markets#703](https://github.com/filecoin-project/go-fil-markets/pull/703))
+  - validate deal proposal (#702) ([filecoin-project/go-fil-markets#702](https://github.com/filecoin-project/go-fil-markets/pull/702))
+  - FIP 0027 integration (#694) ([filecoin-project/go-fil-markets#694](https://github.com/filecoin-project/go-fil-markets/pull/694))
+  - Update index provider library (#698) ([filecoin-project/go-fil-markets#698](https://github.com/filecoin-project/go-fil-markets/pull/698))
+  - feat: add offset to ListLocalDealsPage (#695) ([filecoin-project/go-fil-markets#695](https://github.com/filecoin-project/go-fil-markets/pull/695))
+  - feat: provider deals pagination (#692) ([filecoin-project/go-fil-markets#692](https://github.com/filecoin-project/go-fil-markets/pull/692))
+  - better answer message on ErrNotFound (#690) ([filecoin-project/go-fil-markets#690](https://github.com/filecoin-project/go-fil-markets/pull/690))
+  - api to fetch a deal state (#691) ([filecoin-project/go-fil-markets#691](https://github.com/filecoin-project/go-fil-markets/pull/691))
+  - release: v1.20.1 ([filecoin-project/go-fil-markets#689](https://github.com/filecoin-project/go-fil-markets/pull/689))
+- github.com/filecoin-project/go-indexer-core (v0.2.8 -> v0.2.16):
+  - Use sth with bad key recovery (#58) ([filecoin-project/go-indexer-core#58](https://github.com/filecoin-project/go-indexer-core/pull/58))
+  - Update storethehash to get index recovery fix
+  - Update to storethehash with panic fix
+  - Update storethehash dependency
+  - update .github/workflows/go-check.yml
+  - update .github/workflows/go-test.yml
+  - update .github/workflows/automerge.yml
+  - Upgrade storethehash
+  - Sth with file fixer (#53) ([filecoin-project/go-indexer-core#53](https://github.com/filecoin-project/go-indexer-core/pull/53))
+  - oops
+  - Use the new storethehash with index GC
+  - Update storethehash
+- github.com/filecoin-project/go-legs (v0.3.10 -> v0.4.4):
+  - New version
+  - Update libp2p dependencies
+  - Put tests of non-exported functions into internal_test.go
+  - Compare with error instance instead of err string
+  - Fix derived protocol ID so there are no double slashes
+  - Update deps
+  - Bump version for rate limiter and test changes
+  - Simplify rate limiter configuration (#130) ([filecoin-project/go-legs#130](https://github.com/filecoin-project/go-legs/pull/130))
+  - Bump version in preparation of rolling out http addr fix
+  - Learn HTTP publisher address from announce message
+  - Bump version
+  - Fix equality check during segmented sync
+  - Bump version in prep for releasing segmented sync feature
+  - Implement the ability to sync a DAG in segments of configurable depth
+  - Update version (#125) ([filecoin-project/go-legs#125](https://github.com/filecoin-project/go-legs/pull/125))
+  - Fix rate limit burst refresh for graphsync (#124) ([filecoin-project/go-legs#124](https://github.com/filecoin-project/go-legs/pull/124))
+  - Retry on rate limit error during HTTP sync
+  - Option for publisher to allow/reject data transfers (#122) ([filecoin-project/go-legs#122](https://github.com/filecoin-project/go-legs/pull/122))
+  - Revert "Fix derived protocol ID so there are no double slashes"
+  - Fix derived protocol ID so there are no double slashes
+  - Do not let async goroutines build up (#119) ([filecoin-project/go-legs#119](https://github.com/filecoin-project/go-legs/pull/119))
+  - Add ability to get subscriber http peerstore (#116) ([filecoin-project/go-legs#116](https://github.com/filecoin-project/go-legs/pull/116))
+  - sync: update CI config files (#114) ([filecoin-project/go-legs#114](https://github.com/filecoin-project/go-legs/pull/114))
+  - Better error if we cannot query head for sync (#115) ([filecoin-project/go-legs#115](https://github.com/filecoin-project/go-legs/pull/115))
+  - Update version
+  - Update go-data-transfer and go-graphsync deps
+  - Fix out of date cborgen and regenerate voucher serialization
+  - Upgrade to the latest graphsync and datatransfer
+  - Implement rate limiting for subscribers (#111) ([filecoin-project/go-legs#111](https://github.com/filecoin-project/go-legs/pull/111))
+- github.com/filecoin-project/index-provider (v0.5.0 -> v0.8.1):
+  - Bump version in preparation for release
+  - Ignore staticcheck erros in generated cbor-gen
+  - Upgrade to tagged release of `go-data-transfer`
+  - Cache links of a root entry instead of resolving them on the fly
+  - Do not bother restoring cache when purge cache is set
+  - Upgrade dependencies
+  - Policy to allow/block indexers from syncing with provider (#230) ([filecoin-project/index-provider#230](https://github.com/filecoin-project/index-provider/pull/230))
+  - Bump version to `0.8.0` in preparation for release
+  - Recover from corrupted cached chunks gracefully
+  - Smaller default MultihashIterator implementation (#228) ([filecoin-project/index-provider#228](https://github.com/filecoin-project/index-provider/pull/228))
+  - Restore TAG in makefile after discussion
+  - Do not assume build system has bash shell
+  - Make linksystem less noisy
+  - add a getter to metadata ([filecoin-project/index-provider#221](https://github.com/filecoin-project/index-provider/pull/221))
+  - Upgrade to go-legs `0.3.13`
+  - Remove nested `cmd` module now that go mod is upgraded to `1.17`
+  - Bump version to `0.7.0` in preparation for release
+  - Fix bug where no publisher caused panic when previous root is present
+  - Bump github.com/ipld/go-codec-dagpb from 1.3.0 to 1.3.1 (#215) ([filecoin-project/index-provider#215](https://github.com/filecoin-project/index-provider/pull/215))
+  - Bump github.com/ipfs/go-ipfs from 0.11.0 to 0.12.1 in /cmd
+  - allow option specifying provider addrinfo ([filecoin-project/index-provider#214](https://github.com/filecoin-project/index-provider/pull/214))
+  - sync: update CI config files (#210) ([filecoin-project/index-provider#210](https://github.com/filecoin-project/index-provider/pull/210))
+  - Fix encoding of error in logs when instantiating publisher
+  - Bump version to `0.6.0`
+  - New announce command to announce latest advertisement
+  - Add `list car` command and refactor CAR admin server handlers
+  - Remove dependency to `go-ipfs-blocksutil` used only for testing
+  - Upgrade index provider to sti with bindnode schema
+  - Replace IPLD accumulate with IPLD schema file
+  - Update version and go-logs and storetheindex dependencies
+  - Remove temporary fixed by depending on head of main in sti
+  - Support multiple metadata transport protocols
+  - Fix incomplete sentence in README (#197) ([filecoin-project/index-provider#197](https://github.com/filecoin-project/index-provider/pull/197))
+  - Rename `Callback` to a more specific name: `MultihashLister`
+  - Fix intermittently failing tests that use gossipsub
+  - Re-implement engine tests and re-enable all tests
+  - Refactor `config` package to `cmd` since that's where it is used
+  - Print ad chain stats and retry when syncing ads
+- github.com/filecoin-project/specs-actors/v8 (v8.0.0 -> v8.0.1):
+  - don't panic during migration (#1598) ([filecoin-project/specs-actors#1598](https://github.com/filecoin-project/specs-actors/pull/1598))
+- github.com/filecoin-project/storetheindex (v0.3.5 -> v0.4.17):
+  - Update version and go-legs with new libp2p
+  - Add command to import providers from another indexer (#574) ([filecoin-project/storetheindex#574](https://github.com/filecoin-project/storetheindex/pull/574))
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update config with logging and missing settings
+  - Update config with logging and missing settings
+  - Update dev config with logging and missing settings
+  - More config items (#569) ([filecoin-project/storetheindex#569](https://github.com/filecoin-project/storetheindex/pull/569))
+  - Deploy latest to `dev` environment (#567) ([filecoin-project/storetheindex#567](https://github.com/filecoin-project/storetheindex/pull/567))
+  - Log levels are configurable in config file and reloadable (#564) ([filecoin-project/storetheindex#564](https://github.com/filecoin-project/storetheindex/pull/564))
+  - Update storetheindex/storetheindex in `prod` environment
+  - Bump version to release reframe upgrade
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - update dependency on delegated routing; this change moves Reframe queries from the URL to the HTTP body ([filecoin-project/storetheindex#563](https://github.com/filecoin-project/storetheindex/pull/563))
+  - Fix `/reframe` routing through CloudFront in `prod`
+  - Update storetheindex/storetheindex in `prod` environment
+  - Only log first bad multihash error to prevent log flooding.
+  - Create new version tag
+  - Deploy latest to `dev` environment (#557) ([filecoin-project/storetheindex#557](https://github.com/filecoin-project/storetheindex/pull/557))
+  - Ignore invalid multihashes (#555) ([filecoin-project/storetheindex#555](https://github.com/filecoin-project/storetheindex/pull/555))
+  - Skip ads with context deleted later in chain (#553) ([filecoin-project/storetheindex#553](https://github.com/filecoin-project/storetheindex/pull/553))
+  - Do not create a PR in CD branches if there is no commit
+  - Add `INDEXER_WATCH_CONFIG` env var back to avoid race condition
+  - Do not trigger rolling deployment when indexer config changes
+  - Enable automatic config reload
+  - Deploy latest to `dev` environment (#548) ([filecoin-project/storetheindex#548](https://github.com/filecoin-project/storetheindex/pull/548))
+  - Reload policy and rate limit settings without restarting daemon (#529) ([filecoin-project/storetheindex#529](https://github.com/filecoin-project/storetheindex/pull/529))
+  - Assert ongoing announce does not deadlock ingestion (#546) ([filecoin-project/storetheindex#546](https://github.com/filecoin-project/storetheindex/pull/546))
+  - Update storetheindex/storetheindex in `prod` environment
+  - Bump version to release CPU contention fix and corrupt key skip
+  - Update storetheindex/storetheindex in `dev` environment
+  - Use sth with bad key recovery (#543) ([filecoin-project/storetheindex#543](https://github.com/filecoin-project/storetheindex/pull/543))
+  - Update storetheindex/storetheindex in `dev` environment
+  - Defer handling of announce until ad chain processing is finished
+  - Increase CPU resources in `prod` to `3.5`
+  - Increase CPU limit in `dev` to `3.5`
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Move changes in prod config from #528 to combine deployment
+  - Update storetheindex/storetheindex in `prod` environment
+  - update dep on delgated routing to v0.2.1 (#538) ([filecoin-project/storetheindex#538](https://github.com/filecoin-project/storetheindex/pull/538))
+  - add metrics to reframe endpoint (#536) ([filecoin-project/storetheindex#536](https://github.com/filecoin-project/storetheindex/pull/536))
+  - Move changes in dev config from #528 to combine deployment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update version and deps (#533) ([filecoin-project/storetheindex#533](https://github.com/filecoin-project/storetheindex/pull/533))
+  - Ignore multihash entries that are too short (#530) ([filecoin-project/storetheindex#530](https://github.com/filecoin-project/storetheindex/pull/530))
+  - Deploy latest to `dev` environment (#527) ([filecoin-project/storetheindex#527](https://github.com/filecoin-project/storetheindex/pull/527))
+  - Upgrade go-legs to fix HTTP publisher address issue
+  - Use `http.Client` instead of `cleanhttp` in `retryablehttp`
+  - Re-allow all peers on `prod` and separate the config from `base`
+  - Update storetheindex/storetheindex in `prod` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Allow other randomly selected peer IDs in `dev`
+  - Update storetheindex/storetheindex in `dev` environment
+  - Bump version in preparation to release segmented sync
+  - Reduce verbose logging of HTTP sync requests
+  - Deploy latest to `dev` environment (#509) ([filecoin-project/storetheindex#509](https://github.com/filecoin-project/storetheindex/pull/509))
+  - Fix bug where tail of chain is synced twice
+  - Retry HTTP sync requests
+  - Use concrete `go-legs` version with segmented sync
+  - Deploy latest to `dev` environment (#499) ([filecoin-project/storetheindex#499](https://github.com/filecoin-project/storetheindex/pull/499))
+  - Sync ads and entries in configurable segments
+  - Update config document for version 2
+  - Improve test stability by asserting multihashes are eventually indexed
+  - Remove overriding std in/err in E2E test
+  - Fix intermittent test failures
+  - Update storetheindex/storetheindex in `prod` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Create new version tag
+  - Add memory optimized `r5a.2xlarge` workers to `dev`
+  - Configure rate limit (#488) ([filecoin-project/storetheindex#488](https://github.com/filecoin-project/storetheindex/pull/488))
+  - Cleanup policy evaluation (#479) ([filecoin-project/storetheindex#479](https://github.com/filecoin-project/storetheindex/pull/479))
+  - Add logging around announce messages (#481) ([filecoin-project/storetheindex#481](https://github.com/filecoin-project/storetheindex/pull/481))
+  - Fix invalid json in dev config
+  - Only whitelist ingestion from a specific provider in `dev` for testing
+  - Use larger instance types and override config in dev to limit providers
+  - Upgrade indexer config base layer (#441) ([filecoin-project/storetheindex#441](https://github.com/filecoin-project/storetheindex/pull/441))
+  - Define dedicated KMS keys used to encrypt autoretrieve secrets
+  - Allow `put` via cloudfront sitting in front of `cid.contact`
+  - Add a Reframe API server at HTTP `/reframe`. ([filecoin-project/storetheindex#464](https://github.com/filecoin-project/storetheindex/pull/464))
+  - Allow GitHub Actions from ARG autoretrieve repo to publish to ECR
+  - GitOps deployment of dev-v2 cluster (#449) ([filecoin-project/storetheindex#449](https://github.com/filecoin-project/storetheindex/pull/449))
+  - Onboard `autoretrieve` as a temporary tenant of sti `dev` cluster
+  - Stop deployment to `fil-dev` and `fil-prod` via CircleCI
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - update doc with current codes
+  - Add encrypted credentials to access GitHub for `index-observer`
+  - Add `index-observer` to dev cluster manifests
+  - Configure flux cd for `index-observer` on `dev` cluster
+  - Define `index-observer` ECR repo and CI to build and push images
+  - use default cidlink length (#450) ([filecoin-project/storetheindex#450](https://github.com/filecoin-project/storetheindex/pull/450))
+  - Point `cid.contact` to `prod` CloudFront distribution
+  - Disable autoscaler in prod to investigate the selection policy
+  - Configure Promtail to forward host and container logs to PL loki
+  - Increase memory and CPU for indexer on `prod`
+  - Fix version written by init (#435) ([filecoin-project/storetheindex#435](https://github.com/filecoin-project/storetheindex/pull/435))
+  - Update link to config documentation
+  - Create config file description
+  - Update README.md (#434) ([filecoin-project/storetheindex#434](https://github.com/filecoin-project/storetheindex/pull/434))
+  - Log and config update (#429) ([filecoin-project/storetheindex#429](https://github.com/filecoin-project/storetheindex/pull/429))
+  - Update storetheindex/storetheindex in `dev` environment
+  - Fix regex replacement in automated PR creation template
+  - Configure image update automation for `prod`
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Scale up `dev` to 2 instances
+  - Point infra.cid.contact to `prod` running in sti AWS account
+  - Update kustomization.yaml
+  - Deploy the latest release to `prod` environment
+  - Announce handling (#418) ([filecoin-project/storetheindex#418](https://github.com/filecoin-project/storetheindex/pull/418))
+  - Update storethehash to get index recovery fix
+  - Deploy latest to `dev` environment (#400) ([filecoin-project/storetheindex#400](https://github.com/filecoin-project/storetheindex/pull/400))
+  - If no value for "indexer" CLI flag, then read from config (#407) ([filecoin-project/storetheindex#407](https://github.com/filecoin-project/storetheindex/pull/407))
+  - Configure resources for `dev` amd `prod`
+  - Write `prod` metrics to a dedicated AWS managed prometheus
+  - Create pl-grafana IAM user to integrate with PL Grafana
+  - Spread indexer instances across AZs when possible
+  - Publish containers to ECR repo when a release is created
+  - Define base promtail kustomization used for log forwarding
+  - Send metrics to AWS managed prometheus via private link
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update to core with storehash panic filx (#387) ([filecoin-project/storetheindex#387](https://github.com/filecoin-project/storetheindex/pull/387))
+  - Use new flag names in commands
+  - Set up remote write for dev metrics to aws managed prometheus
+  - Upgrade monitoring manifests now that K8S clusters are on 1.22
+  - Upgrade dev cluster to 1.22
+  - Reduce iops per GiB for storage classes to unblock deployment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Quote glob format to select tags
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Skip dev CD job if PR it should create exists already
+  - Don't override image in prod until auto deploy is set up
+  - Update version
+  - Use `io2` storage class for `prod` instances
+  - support a list of peers from which we accept advertisements for other providers (#344) ([filecoin-project/storetheindex#344](https://github.com/filecoin-project/storetheindex/pull/344))
+  - Add AWS EBS CSI to dev cluster manifests
+  - Use io2 storage class for indexer pods in `dev`
+  - Update storetheindex/storetheindex in `dev` environment
+  - Fix ECR build still running on sti bot pushes to `deploy` directory
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Remove skip message from image update automation
+  - Specify pod disruption budget for storetheindex
+  - Add readiness probe to base storetheindex K8S manifests
+  - Fix wrong publisher address when using HTTP (#357) ([filecoin-project/storetheindex#357](https://github.com/filecoin-project/storetheindex/pull/357))
+  - Update storetheindex/storetheindex in `dev` environment
+  - Update storetheindex/storetheindex in `dev` environment
+  - Do not publish to ECR if pusher is `sti-bot`
+  - Update storetheindex/storetheindex in `dev` environment
+  - Configure automated image deployment for `dev` environment
+  - Configure private ECR repo for storetheindex in `common` infra
+  - Revert "Remove redundant private ECR repo"
+  - Remove redundant private ECR repo
+  - Create GitHub Actions credentials and set container publish to ECR
+  - Bump github.com/ipfs/go-ipfs from 0.11.0 to 0.12.1
+  - Configure EBS CSI controller to run on all nodes
+  - Define production infrastructure in `us-east-2`
+  - Add README on how to interact with `sops` encrypted secrets
+  - Define prod kustomization overlay
+  - Upgrade storethehash
+  - Use storethehash with corrupted file fixer (#339) ([filecoin-project/storetheindex#339](https://github.com/filecoin-project/storetheindex/pull/339))
+  - Use storethehash that has index GC
+  - Bump chart version to include templated readiness probe
+  - Add `io2` storage class to dev cluster
+  - Restructure identity settings to allow per instance key
+  - Specify remote build for `monitoring` in HTTP but different format
+  - Update version.json (#333) ([filecoin-project/storetheindex#333](https://github.com/filecoin-project/storetheindex/pull/333))
+  - Update version.json (#332) ([filecoin-project/storetheindex#332](https://github.com/filecoin-project/storetheindex/pull/332))
+  - Fix `MalformedYAMLError` when kustomization uses HTTPS to clone repo
+  - Set up K8S monitoring
+  - Allow Kyle to interact with dev KMS
+  - sync: update CI config files (#317) ([filecoin-project/storetheindex#317](https://github.com/filecoin-project/storetheindex/pull/317))
+  - Fix out of bounds panic in registery
+  - Add `cluster-autoscaler` to list of cluster level kustomizations
+  - Set up cluster-autoscaler on `dev`
+  - Cache 404s in cloudfront (#314) ([filecoin-project/storetheindex#314](https://github.com/filecoin-project/storetheindex/pull/314))
+  - Added users cmharden and steveFraser to kms.tf and aws-auth.yaml (#313) ([filecoin-project/storetheindex#313](https://github.com/filecoin-project/storetheindex/pull/313))
+  - Set up caching layer for dev endpoint using CloudFront
+  - Give Kyle access to `dev` cluster
+  - Update version
+  - Fix pprof handlers
+  - Update dependencies
+  - Add comments and tests for ad signature
+  - Set up `dev.cid.contact` with all things manged by K8S
+  - Store publisher address with publisher ID (#298) ([filecoin-project/storetheindex#298](https://github.com/filecoin-project/storetheindex/pull/298))
+  - Define base kustomization and dev overlay for storetheindex
+  - Define KMS key to encrypt secrets used by storetheindex
+  - Allow the ability to configure private key via file
+  - Install `nginx` ingress controller on dev K8S cluster
+  - Replace target CD branch to `main`
+  - Define base and dev overlay K8S manifests
+  - Define terraform infrastructure for dev EKS cluster
+  - Fix `.gitignore` to not ignore all directories named `storetheindex`
+  - Add PR Template (#292) ([filecoin-project/storetheindex#292](https://github.com/filecoin-project/storetheindex/pull/292))
+  - Fix find latency metric (#284) ([filecoin-project/storetheindex#284](https://github.com/filecoin-project/storetheindex/pull/284))
+  - About doc (#283) ([filecoin-project/storetheindex#283](https://github.com/filecoin-project/storetheindex/pull/283))
+  - Bump version to `0.4.0` after bindnode merge (#281) ([filecoin-project/storetheindex#281](https://github.com/filecoin-project/storetheindex/pull/281))
+  - More efficient batch processing of multihashes (#282) ([filecoin-project/storetheindex#282](https://github.com/filecoin-project/storetheindex/pull/282))
+  - Fix goroutine leak in go-statemachine (#280) ([filecoin-project/storetheindex#280](https://github.com/filecoin-project/storetheindex/pull/280))
+  - Use IPLD bindnode and reduce boilerplate code in ingest schema
+  - Update version and go-legs
+  - Build docker image using go1.18
+  - Fix a goroutine leak in go-libp2p-swarm
+  - Limit number of open connection to the http server (#273) ([filecoin-project/storetheindex#273](https://github.com/filecoin-project/storetheindex/pull/273))
+  - Remove recursion depth limits for sync (#270) ([filecoin-project/storetheindex#270](https://github.com/filecoin-project/storetheindex/pull/270))
+  - Fair share ingest workers (#259) ([filecoin-project/storetheindex#259](https://github.com/filecoin-project/storetheindex/pull/259))
+  - Drop support for Go 1.16 (#267) ([filecoin-project/storetheindex#267](https://github.com/filecoin-project/storetheindex/pull/267))
+  - Set the maximum acceptable length for advertisement metadata
+  - Revert "Skip e2e tests until provider side is upgraded."
+  - Add indexer ecosystem diagram and source ([filecoin-project/storetheindex#264](https://github.com/filecoin-project/storetheindex/pull/264))
+  - Skip e2e tests until provider side is upgraded.
+  - Replace `v0.Metadata` with `[]byte`
+  - Don't optimistically delete an Ad (#258) ([filecoin-project/storetheindex#258](https://github.com/filecoin-project/storetheindex/pull/258))
+  - Use go1.17 for docker build
+  - Set latestsynchandler on go legs (#256) ([filecoin-project/storetheindex#256](https://github.com/filecoin-project/storetheindex/pull/256))
+  - Update to latest legs and update version
+  - don't be as aggressive about using :3000 / :3001 on client request (#254) ([filecoin-project/storetheindex#254](https://github.com/filecoin-project/storetheindex/pull/254))
+  - Create creating-an-index-provider.md (#253) ([filecoin-project/storetheindex#253](https://github.com/filecoin-project/storetheindex/pull/253))
+  - add cors headers to find interface (#252) ([filecoin-project/storetheindex#252](https://github.com/filecoin-project/storetheindex/pull/252))
+  - Update dependencies and version
+  - Reduce log volume and log progress (#246) ([filecoin-project/storetheindex#246](https://github.com/filecoin-project/storetheindex/pull/246))
+  - Indexer auto-syncs after period of no contact with publisher (#247) ([filecoin-project/storetheindex#247](https://github.com/filecoin-project/storetheindex/pull/247))
+  - Only increase error metric on error
+  - Remove readBeforeErr hack now that cbor-gen bug is fixed
+
+Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Masih H. Derkani | 153 | +15515/-16832 | 660 |
+| Łukasz Magiera | 92 | +10429/-8024 | 1580 |
+| Andrew Gillis | 43 | +4149/-1765 | 208 |
+| Jennifer Wang | 10 | +1441/-1138 | 34 |
+| Geoff Stuart | 18 | +1348/-859 | 113 |
+| dirkmc | 11 | +1827/-210 | 70 |
+| Aayush | 21 | +1134/-894 | 69 |
+| Steven Allen | 9 | +743/-889 | 66 |
+| Marco Munizaga | 15 | +990/-252 | 36 |
+| gammazero | 47 | +681/-411 | 104 |
+| Will | 4 | +514/-246 | 29 |
+| web3-bot | 15 | +409/-348 | 20 |
+| Steven Fraser | 1 | +671/-0 | 36 |
+| Cory Schwartz | 27 | +520/-89 | 36 |
+| Hannah Howard | 3 | +318/-105 | 8 |
+| Piotr Galar | 2 | +337/-59 | 7 |
+| swift-mx | 14 | +264/-131 | 17 |
+| vyzo | 7 | +357/-15 | 16 |
+| Petar Maymounkov | 6 | +221/-23 | 14 |
+| LexLuthr | 7 | +182/-21 | 14 |
+| Aayush Rajasekaran | 5 | +97/-70 | 33 |
+| Raúl Kripalani | 5 | +87/-45 | 7 |
+| unknown | 1 | +114/-0 | 8 |
+| sti-bot | 44 | +54/-60 | 44 |
+| Aarsh Shah | 2 | +61/-50 | 8 |
+| Lucas Molas | 1 | +74/-27 | 3 |
+| zenground0 | 8 | +80/-18 | 14 |
+| Dirk McCormick | 3 | +52/-33 | 8 |
+| frank | 3 | +73/-7 | 3 |
+| Will Scott | 4 | +45/-11 | 5 |
+| kaola526 | 5 | +44/-11 | 5 |
+| dependabot[bot] | 3 | +16/-10 | 8 |
+| zl | 1 | +15/-4 | 4 |
+| Phi | 5 | +12/-6 | 6 |
+| Marcin Rataj | 1 | +11/-7 | 1 |
+| github-actions[bot] | 7 | +8/-8 | 7 |
+| Anton Evangelatov | 2 | +13/-0 | 4 |
+| Nicolas Gimenez | 1 | +12/-0 | 1 |
+| Marten Seemann | 2 | +5/-7 | 5 |
+| Chris Harden | 1 | +10/-0 | 2 |
+| jennijuju | 1 | +4/-4 | 7 |
+| Travis Person | 2 | +2/-6 | 2 |
+| Rod Vagg | 1 | +3/-3 | 2 |
+| Rob Quist | 1 | +3/-3 | 1 |
+| Jiaying Wang | 1 | +2/-3 | 2 |
+| zengroundumbass | 1 | +3/-1 | 1 |
+| lifei | 1 | +1/-1 | 1 |
+| Mike | 1 | +2/-0 | 1 |
+| Hubert | 1 | +1/-1 | 1 |
+| Daniel N | 1 | +1/-1 | 1 |
+| BMZ | 1 | +1/-1 | 1 |
+
+
 # 1.16.1 / 2022-07-07
 
 This is an OPTIONAL PATCH releases for storage providers who have failed to publish `SubmitWindowedPoSt` due to out of gas error. The error log looks like `/wdpost_run.go:xxx	estimating gas	{"error": "estimating gas used: message execution failed: exit SysErrOutOfGas(7)...`.
