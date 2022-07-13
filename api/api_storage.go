@@ -175,6 +175,10 @@ type StorageMiner interface {
 
 	StorageAuthVerify(ctx context.Context, token string) ([]auth.Permission, error) //perm:read
 
+	StorageAddLocal(ctx context.Context, path string) error //perm:admin
+	//StorageDetachLocal(ctx context.Context, path string) error    //perm:admin
+	//StorageRedeclareLocal(ctx context.Context, id storiface.ID) error //perm:admin
+
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                        //perm:write
 	MarketListDeals(ctx context.Context) ([]*MarketDeal, error)                                                                                                                          //perm:read
 	MarketListRetrievalDeals(ctx context.Context) ([]retrievalmarket.ProviderDealState, error)                                                                                           //perm:read
@@ -271,8 +275,6 @@ type StorageMiner interface {
 	DealsSetConsiderVerifiedStorageDeals(context.Context, bool) error            //perm:admin
 	DealsConsiderUnverifiedStorageDeals(context.Context) (bool, error)           //perm:admin
 	DealsSetConsiderUnverifiedStorageDeals(context.Context, bool) error          //perm:admin
-
-	StorageAddLocal(ctx context.Context, path string) error //perm:admin
 
 	PiecesListPieces(ctx context.Context) ([]cid.Cid, error)                                 //perm:read
 	PiecesListCidInfos(ctx context.Context) ([]cid.Cid, error)                               //perm:read

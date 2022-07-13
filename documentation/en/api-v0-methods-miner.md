@@ -3259,7 +3259,7 @@ Response: `{}`
 ### StorageAddLocal
 
 
-Perms: admin
+Perms: 
 
 Inputs:
 ```json

@@ -850,7 +850,7 @@ type StorageMinerStruct struct {
 
 		SectorsUpdate func(p0 context.Context, p1 abi.SectorNumber, p2 SectorState) error `perm:"admin"`
 
-		StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
+		StorageAddLocal func(p0 context.Context, p1 string) error ``
 
 		StorageAttach func(p0 context.Context, p1 storiface.StorageInfo, p2 fsutil.FsStat) error `perm:"admin"`
 
@@ -966,6 +966,10 @@ type WorkerStruct struct {
 		SetEnabled func(p0 context.Context, p1 bool) error `perm:"admin"`
 
 		StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
+
+		StorageDetachLocal func(p0 context.Context, p1 string) error `perm:"admin"`
+
+		StorageRedeclareLocal func(p0 context.Context, p1 storiface.ID) error `perm:"admin"`
 
 		TaskDisable func(p0 context.Context, p1 sealtasks.TaskType) error `perm:"admin"`
 
@@ -5568,6 +5572,28 @@ func (s *WorkerStruct) StorageAddLocal(p0 context.Context, p1 string) error {
 }
 
 func (s *WorkerStub) StorageAddLocal(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
+func (s *WorkerStruct) StorageDetachLocal(p0 context.Context, p1 string) error {
+	if s.Internal.StorageDetachLocal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageDetachLocal(p0, p1)
+}
+
+func (s *WorkerStub) StorageDetachLocal(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
+func (s *WorkerStruct) StorageRedeclareLocal(p0 context.Context, p1 storiface.ID) error {
+	if s.Internal.StorageRedeclareLocal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageRedeclareLocal(p0, p1)
+}
+
+func (s *WorkerStub) StorageRedeclareLocal(p0 context.Context, p1 storiface.ID) error {
 	return ErrNotSupported
 }
 

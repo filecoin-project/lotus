@@ -84,6 +84,57 @@ func (w *Worker) StorageAddLocal(ctx context.Context, path string) error {
 	return nil
 }
 
+func (w *Worker) StorageDetachLocal(ctx context.Context, path string) error {
+	path, err := homedir.Expand(path)
+	if err != nil {
+		return xerrors.Errorf("expanding local path: %w", err)
+	}
+
+	// check that we have the path opened
+	lps, err := w.LocalStore.Local(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting local path list: %w", err)
+	}
+
+	var localPath *storiface.StoragePath
+	for _, lp := range lps {
+		if lp.LocalPath == path {
+			localPath = &lp
+			break
+		}
+	}
+	if localPath == nil {
+		return xerrors.Errorf("no local paths match '%s'", path)
+	}
+
+	// drop from the persisted storage.json
+	var found bool
+	if err := w.Storage.SetStorage(func(sc *paths.StorageConfig) {
+		out := make([]paths.LocalPath, 0, len(sc.StoragePaths))
+		for _, storagePath := range sc.StoragePaths {
+			if storagePath.Path != path {
+				out = append(out, storagePath)
+				return
+			}
+			found = true
+		}
+	}); err != nil {
+		return xerrors.Errorf("set storage config: %w", err)
+	}
+	if !found {
+		// maybe this is fine?
+		return xerrors.Errorf("path not found in storage.json")
+	}
+
+	// unregister locally, drop from sector index
+	return w.LocalStore.ClosePath(ctx, localPath.ID)
+}
+
+func (w *Worker) StorageRedeclareLocal(ctx context.Context, id storiface.ID) error {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (w *Worker) SetEnabled(ctx context.Context, enabled bool) error {
 	disabled := int64(1)
 	if enabled {
@@ -119,3 +170,4 @@ func (w *Worker) Discover(ctx context.Context) (apitypes.OpenRPCDocument, error)
 }
 
 var _ storiface.WorkerCalls = &Worker{}
+var _ api.Worker = &Worker{}

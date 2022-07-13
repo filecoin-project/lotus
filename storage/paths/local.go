@@ -218,6 +218,10 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		return xerrors.Errorf("unmarshalling storage metadata for %s: %w", p, err)
 	}
 
+	if p, exists := st.paths[meta.ID]; exists {
+		return xerrors.Errorf("path with ID %s already opened: '%s'", meta.ID, p.local)
+	}
+
 	// TODO: Check existing / dedupe
 
 	out := &path{
@@ -254,6 +258,25 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 	}
 
 	st.paths[meta.ID] = out
+
+	return nil
+}
+
+func (st *Local) ClosePath(ctx context.Context, id storiface.ID) error {
+	st.localLk.Lock()
+	defer st.localLk.Unlock()
+
+	if _, exists := st.paths[id]; !exists {
+		return xerrors.Errorf("path with ID %s isn't opened")
+	}
+
+	for _, url := range st.urls {
+		if err := st.index.StorageDetach(ctx, id, url); err != nil {
+			return xerrors.Errorf("dropping path (id='%s' url=''): %w", id, url, err)
+		}
+	}
+
+	delete(st.paths, id)
 
 	return nil
 }
