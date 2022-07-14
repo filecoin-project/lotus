@@ -94,6 +94,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		NetworkVersion: sm.GetNetworkVersion(ctx, height),
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
+		Tracing:        true,
 	}
 	vmi, err := sm.newVM(ctx, vmopt)
 	if err != nil {

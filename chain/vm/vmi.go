@@ -21,8 +21,6 @@ type Interface interface {
 	Flush(ctx context.Context) (cid.Cid, error)
 }
 
-var useFvmForMainnetV15 = os.Getenv("LOTUS_USE_FVM_TO_SYNC_MAINNET_V15") == "1"
-
 // WARNING: You will not affect your node's execution by misusing this feature, but you will confuse yourself thoroughly!
 // An envvar that allows the user to specify debug actors bundles to be used by the FVM
 // alongside regular execution. This is basically only to be used to print out specific logging information.

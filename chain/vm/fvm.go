@@ -281,7 +281,7 @@ func defaultFVMOpts(ctx context.Context, opts *VMOpts) (*ffi.FVMOpts, error) {
 		BaseCircSupply: circToReport,
 		NetworkVersion: opts.NetworkVersion,
 		StateBase:      opts.StateBase,
-		Tracing:        EnableDetailedTracing,
+		Tracing:        opts.Tracing || EnableDetailedTracing,
 	}, nil
 
 }
