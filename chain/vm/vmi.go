@@ -37,13 +37,5 @@ func NewVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 		return NewFVM(ctx, opts)
 	}
 
-	// Remove after v16 upgrade, this is only to support testing and validation of the FVM
-	if useFvmForMainnetV15 && opts.NetworkVersion >= network.Version15 {
-		if useFvmDebug {
-			return NewDualExecutionFVM(ctx, opts)
-		}
-		return NewFVM(ctx, opts)
-	}
-
 	return NewLegacyVM(ctx, opts)
 }
