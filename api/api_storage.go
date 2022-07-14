@@ -148,6 +148,7 @@ type StorageMiner interface {
 
 	// paths.SectorIndex
 	StorageAttach(context.Context, storiface.StorageInfo, fsutil.FsStat) error                                                         //perm:admin
+	StorageDetach(ctx context.Context, id storiface.ID, url string) error                                                              //perm:admin
 	StorageInfo(context.Context, storiface.ID) (storiface.StorageInfo, error)                                                          //perm:admin
 	StorageReportHealth(context.Context, storiface.ID, storiface.HealthReport) error                                                   //perm:admin
 	StorageDeclareSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error //perm:admin
