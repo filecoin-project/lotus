@@ -32,6 +32,7 @@ func TestFileTypeAnyAllow(t *testing.T) {
 
 	// one denied
 	require.False(t, FTCache.AnyAllowed(nil, (FTCache).Strings()))
+	require.True(t, FTCache.AnyAllowed(nil, (FTUnsealed).Strings()))
 
 	// one denied, one allowed = allowed
 	require.True(t, (FTCache|FTUpdateCache).AnyAllowed(nil, (FTCache).Strings()))
