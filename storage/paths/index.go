@@ -127,7 +127,7 @@ func (i *Index) StorageAttach(ctx context.Context, si storiface.StorageInfo, st 
 	for id, typ := range si.AllowTypes {
 		_, err := storiface.TypeFromString(typ)
 		if err != nil {
-			// No need no hard-fail here, just warn the user
+			// No need to hard-fail here, just warn the user
 			// (note that even with all-invalid entries we'll deny all types, so nothing unexpected should enter the path)
 			hasConfigIsses = true
 
@@ -148,7 +148,7 @@ func (i *Index) StorageAttach(ctx context.Context, si storiface.StorageInfo, st 
 	for id, typ := range si.DenyTypes {
 		_, err := storiface.TypeFromString(typ)
 		if err != nil {
-			// No need no hard-fail here, just warn the user
+			// No need to hard-fail here, just warn the user
 			hasConfigIsses = true
 
 			if i.alerting != nil {
