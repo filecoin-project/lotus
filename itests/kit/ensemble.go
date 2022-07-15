@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/binary"
 	"fmt"
+	cborutil "github.com/filecoin-project/go-cbor-util"
+	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -26,7 +29,6 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-statestore"
-	"github.com/filecoin-project/go-storedcounter"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	power3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/power"
 
@@ -535,13 +537,7 @@ func (n *Ensemble) Start() *Ensemble {
 		err = ds.Put(ctx, datastore.NewKey("miner-address"), m.ActorAddr.Bytes())
 		require.NoError(n.t, err)
 
-		nic := storedcounter.New(ds, datastore.NewKey(modules.StorageCounterDSPrefix))
-		for i := 0; i < m.options.sectors; i++ {
-			_, err := nic.Next()
-			require.NoError(n.t, err)
-		}
-		_, err = nic.Next()
-		require.NoError(n.t, err)
+		require.NoError(n.t, importPreSealMeta(ctx, n.genesis.miners[i], ds))
 
 		// using real proofs, therefore need real sectors.
 		if !n.bootstrapped && !n.options.mockProofs {
@@ -911,4 +907,47 @@ func (n *Ensemble) generateGenesis() *genesis.Template {
 	}
 
 	return templ
+}
+
+func importPreSealMeta(ctx context.Context, meta genesis.Miner, mds dtypes.MetadataDS) error {
+	maxSectorID := abi.SectorNumber(0)
+	for _, sector := range meta.Sectors {
+		sectorKey := datastore.NewKey(pipeline.SectorStorePrefix).ChildString(fmt.Sprint(sector.SectorID))
+
+		commD := sector.CommD
+		commR := sector.CommR
+
+		info := &pipeline.SectorInfo{
+			State:        pipeline.Proving,
+			SectorNumber: sector.SectorID,
+			Pieces: []pipeline.Piece{
+				{
+					Piece: abi.PieceInfo{
+						Size:     abi.PaddedPieceSize(meta.SectorSize),
+						PieceCID: commD,
+					},
+					DealInfo: nil, // todo: likely possible to get, but not really that useful
+				},
+			},
+			CommD: &commD,
+			CommR: &commR,
+		}
+
+		b, err := cborutil.Dump(info)
+		if err != nil {
+			return err
+		}
+
+		if err := mds.Put(ctx, sectorKey, b); err != nil {
+			return err
+		}
+
+		if sector.SectorID > maxSectorID {
+			maxSectorID = sector.SectorID
+		}
+	}
+
+	buf := make([]byte, binary.MaxVarintLen64)
+	size := binary.PutUvarint(buf, uint64(maxSectorID))
+	return mds.Put(ctx, datastore.NewKey(modules.StorageCounterDSPrefix), buf[:size])
 }
