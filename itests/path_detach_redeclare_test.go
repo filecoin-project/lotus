@@ -58,7 +58,7 @@ func TestPathDetachRedeclare(t *testing.T) {
 	oldLocal := local[id]
 
 	// check sectors
-	checkSectors(t, ctx, client, miner, 2, 0)
+	checkSectors(ctx, t, client, miner, 2, 0)
 
 	// detach preseal path
 	require.NoError(t, miner.StorageDetachLocal(ctx, local[id]))
@@ -71,7 +71,7 @@ func TestPathDetachRedeclare(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, local, 0)
 
-	checkSectors(t, ctx, client, miner, 2, 2)
+	checkSectors(ctx, t, client, miner, 2, 2)
 
 	// attach a new path
 	newId := miner.AddStorage(ctx, t, func(cfg *paths.LocalStorageMeta) {
@@ -110,12 +110,12 @@ func TestPathDetachRedeclare(t *testing.T) {
 	require.Len(t, sps, 1)
 	require.Len(t, sps[newId], 2)
 
-	checkSectors(t, ctx, client, miner, 2, 0)
+	checkSectors(ctx, t, client, miner, 2, 0)
 
 	// remove one sector, one post check fails
 	require.NoError(t, os.RemoveAll(filepath.Join(newLocal, "sealed", "s-t01000-0")))
 	require.NoError(t, os.RemoveAll(filepath.Join(newLocal, "cache", "s-t01000-0")))
-	checkSectors(t, ctx, client, miner, 2, 1)
+	checkSectors(ctx, t, client, miner, 2, 1)
 
 	// redeclare with no drop, still see sector in the index
 	require.NoError(t, miner.StorageRedeclareLocal(ctx, nil, false))
@@ -178,7 +178,7 @@ func TestPathDetachRedeclareWorker(t *testing.T) {
 	require.Len(t, local, 0)
 
 	// check sectors
-	checkSectors(t, ctx, client, miner, 2, 0)
+	checkSectors(ctx, t, client, miner, 2, 0)
 
 	// detach preseal path from the miner
 	require.NoError(t, miner.StorageDetachLocal(ctx, oldLocal))
@@ -191,7 +191,7 @@ func TestPathDetachRedeclareWorker(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, local, 0)
 
-	checkSectors(t, ctx, client, miner, 2, 2)
+	checkSectors(ctx, t, client, miner, 2, 2)
 
 	// attach a new path
 	newId := sealw.AddStorage(ctx, t, func(cfg *paths.LocalStorageMeta) {
@@ -230,7 +230,7 @@ func TestPathDetachRedeclareWorker(t *testing.T) {
 	require.Len(t, sps, 1)
 	require.Len(t, sps[newId], 2)
 
-	checkSectors(t, ctx, client, miner, 2, 0)
+	checkSectors(ctx, t, client, miner, 2, 0)
 
 	// drop the path from the worker
 	require.NoError(t, sealw.StorageDetachLocal(ctx, newLocalTemp))
@@ -269,12 +269,12 @@ func TestPathDetachRedeclareWorker(t *testing.T) {
 	require.Len(t, sps, 1)
 	require.Len(t, sps[newId], 2)
 
-	checkSectors(t, ctx, client, miner, 2, 0)
+	checkSectors(ctx, t, client, miner, 2, 0)
 
 	// remove one sector, one check fails
 	require.NoError(t, os.RemoveAll(filepath.Join(newLocal, "sealed", "s-t01000-0")))
 	require.NoError(t, os.RemoveAll(filepath.Join(newLocal, "cache", "s-t01000-0")))
-	checkSectors(t, ctx, client, miner, 2, 1)
+	checkSectors(ctx, t, client, miner, 2, 1)
 
 	// redeclare with no drop, still see sector in the index
 	require.NoError(t, sealw.StorageRedeclareLocal(ctx, nil, false))
@@ -294,7 +294,7 @@ func TestPathDetachRedeclareWorker(t *testing.T) {
 	require.Equal(t, abi.SectorNumber(1), sps[newId][0].SectorID.Number)
 }
 
-func checkSectors(t *testing.T, ctx context.Context, api kit.TestFullNode, miner kit.TestMiner, expectChecked, expectBad int) {
+func checkSectors(ctx context.Context, t *testing.T, api kit.TestFullNode, miner kit.TestMiner, expectChecked, expectBad int) {
 	addr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)
 
