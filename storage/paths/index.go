@@ -122,14 +122,14 @@ func (i *Index) StorageAttach(ctx context.Context, si storiface.StorageInfo, st 
 		i.pathAlerts[si.ID] = i.alerting.AddAlertType("sector-index", "pathconf-"+string(si.ID))
 	}
 
-	var hasConfigIsses bool
+	var hasConfigIssues bool
 
 	for id, typ := range si.AllowTypes {
 		_, err := storiface.TypeFromString(typ)
 		if err != nil {
 			// No need to hard-fail here, just warn the user
 			// (note that even with all-invalid entries we'll deny all types, so nothing unexpected should enter the path)
-			hasConfigIsses = true
+			hasConfigIssues = true
 
 			if i.alerting != nil {
 				i.alerting.Raise(i.pathAlerts[si.ID], map[string]interface{}{
@@ -149,7 +149,7 @@ func (i *Index) StorageAttach(ctx context.Context, si storiface.StorageInfo, st 
 		_, err := storiface.TypeFromString(typ)
 		if err != nil {
 			// No need to hard-fail here, just warn the user
-			hasConfigIsses = true
+			hasConfigIssues = true
 
 			if i.alerting != nil {
 				i.alerting.Raise(i.pathAlerts[si.ID], map[string]interface{}{
@@ -168,7 +168,7 @@ func (i *Index) StorageAttach(ctx context.Context, si storiface.StorageInfo, st 
 	si.AllowTypes = allow
 	si.DenyTypes = deny
 
-	if i.alerting != nil && !hasConfigIsses && i.alerting.IsRaised(i.pathAlerts[si.ID]) {
+	if i.alerting != nil && !hasConfigIssues && i.alerting.IsRaised(i.pathAlerts[si.ID]) {
 		i.alerting.Resolve(i.pathAlerts[si.ID], map[string]string{
 			"message": "path config is now correct",
 		})
