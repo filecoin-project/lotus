@@ -2150,12 +2150,14 @@ DESCRIPTION:
    stored while moving through the sealing pipeline (references as 'seal').
 
 COMMANDS:
-   attach   attach local storage path
-   list     list local storage paths
-   find     find sector in the storage system
-   cleanup  trigger cleanup actions
-   locks    show active sector locks
-   help, h  Shows a list of commands or help for one command
+   attach     attach local storage path
+   detach     detach local storage path
+   redeclare  redeclare sectors in a local storage path
+   list       list local storage paths
+   find       find sector in the storage system
+   cleanup    trigger cleanup actions
+   locks      show active sector locks
+   help, h    Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -2198,6 +2200,34 @@ OPTIONS:
    --seal               (for init) use path for sealing (default: false)
    --store              (for init) use path for long-term storage (default: false)
    --weight value       (for init) path weight (default: 10)
+   
+```
+
+### lotus-miner storage detach
+```
+NAME:
+   lotus-miner storage detach - detach local storage path
+
+USAGE:
+   lotus-miner storage detach [command options] [path]
+
+OPTIONS:
+   --really-do-it  (default: false)
+   
+```
+
+### lotus-miner storage redeclare
+```
+NAME:
+   lotus-miner storage redeclare - redeclare sectors in a local storage path
+
+USAGE:
+   lotus-miner storage redeclare [command options] [arguments...]
+
+OPTIONS:
+   --all           redeclare all storage paths (default: false)
+   --drop-missing  Drop index entries with missing files (default: false)
+   --id value      storage path ID
    
 ```
 

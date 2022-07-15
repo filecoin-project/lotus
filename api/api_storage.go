@@ -176,9 +176,9 @@ type StorageMiner interface {
 
 	StorageAuthVerify(ctx context.Context, token string) ([]auth.Permission, error) //perm:read
 
-	StorageAddLocal(ctx context.Context, path string) error //perm:admin
-	//StorageDetachLocal(ctx context.Context, path string) error    //perm:admin
-	//StorageRedeclareLocal(ctx context.Context, id storiface.ID, dropMissing bool) error //perm:admin
+	StorageAddLocal(ctx context.Context, path string) error                              //perm:admin
+	StorageDetachLocal(ctx context.Context, path string) error                           //perm:admin
+	StorageRedeclareLocal(ctx context.Context, id *storiface.ID, dropMissing bool) error //perm:admin
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                        //perm:write
 	MarketListDeals(ctx context.Context) ([]*MarketDeal, error)                                                                                                                          //perm:read

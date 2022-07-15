@@ -80,8 +80,10 @@ USAGE:
    lotus-worker storage command [command options] [arguments...]
 
 COMMANDS:
-   attach   attach local storage path
-   help, h  Shows a list of commands or help for one command
+   attach     attach local storage path
+   detach     detach local storage path
+   redeclare  redeclare sectors in a local storage path
+   help, h    Shows a list of commands or help for one command
 
 OPTIONS:
    --help, -h  show help (default: false)
@@ -104,6 +106,34 @@ OPTIONS:
    --seal               (for init) use path for sealing (default: false)
    --store              (for init) use path for long-term storage (default: false)
    --weight value       (for init) path weight (default: 10)
+   
+```
+
+### lotus-worker storage detach
+```
+NAME:
+   lotus-worker storage detach - detach local storage path
+
+USAGE:
+   lotus-worker storage detach [command options] [path]
+
+OPTIONS:
+   --really-do-it  (default: false)
+   
+```
+
+### lotus-worker storage redeclare
+```
+NAME:
+   lotus-worker storage redeclare - redeclare sectors in a local storage path
+
+USAGE:
+   lotus-worker storage redeclare [command options] [arguments...]
+
+OPTIONS:
+   --all           redeclare all storage paths (default: false)
+   --drop-missing  Drop index entries with missing files (default: false)
+   --id value      storage path ID
    
 ```
 

@@ -161,6 +161,7 @@
   * [StorageBestAlloc](#StorageBestAlloc)
   * [StorageDeclareSector](#StorageDeclareSector)
   * [StorageDetach](#StorageDetach)
+  * [StorageDetachLocal](#StorageDetachLocal)
   * [StorageDropSector](#StorageDropSector)
   * [StorageFindSector](#StorageFindSector)
   * [StorageGetLocks](#StorageGetLocks)
@@ -168,6 +169,7 @@
   * [StorageList](#StorageList)
   * [StorageLocal](#StorageLocal)
   * [StorageLock](#StorageLock)
+  * [StorageRedeclareLocal](#StorageRedeclareLocal)
   * [StorageReportHealth](#StorageReportHealth)
   * [StorageStat](#StorageStat)
   * [StorageTryLock](#StorageTryLock)
@@ -3260,7 +3262,7 @@ Response: `{}`
 ### StorageAddLocal
 
 
-Perms: 
+Perms: admin
 
 Inputs:
 ```json
@@ -3408,6 +3410,20 @@ Inputs:
 ```json
 [
   "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8",
+  "string value"
+]
+```
+
+Response: `{}`
+
+### StorageDetachLocal
+
+
+Perms: admin
+
+Inputs:
+```json
+[
   "string value"
 ]
 ```
@@ -3605,6 +3621,21 @@ Inputs:
   },
   1,
   1
+]
+```
+
+Response: `{}`
+
+### StorageRedeclareLocal
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "1399aa04-2625-44b1-bad4-bd07b59b22c4",
+  true
 ]
 ```
 

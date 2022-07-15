@@ -571,7 +571,7 @@ var runCmd = &cli.Command{
 				if redeclareStorage {
 					log.Info("Redeclaring local storage")
 
-					if err := localStore.Redeclare(ctx); err != nil {
+					if err := localStore.Redeclare(ctx, nil, false); err != nil {
 						log.Errorf("Redeclaring local storage failed: %+v", err)
 
 						select {
