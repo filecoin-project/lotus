@@ -546,7 +546,12 @@ func (n *Ensemble) Start() *Ensemble {
 		// using real proofs, therefore need real sectors.
 		if !n.bootstrapped && !n.options.mockProofs {
 			psd := m.PresealDir
+			noPaths := m.options.noStorage
+
 			err := lr.SetStorage(func(sc *paths.StorageConfig) {
+				if noPaths {
+					sc.StoragePaths = []paths.LocalPath{}
+				}
 				sc.StoragePaths = append(sc.StoragePaths, paths.LocalPath{Path: psd})
 			})
 
@@ -692,6 +697,13 @@ func (n *Ensemble) Start() *Ensemble {
 
 		lr, err := r.Lock(repo.Worker)
 		require.NoError(n.t, err)
+
+		if m.options.noStorage {
+			err := lr.SetStorage(func(sc *paths.StorageConfig) {
+				sc.StoragePaths = []paths.LocalPath{}
+			})
+			require.NoError(n.t, err)
+		}
 
 		ds, err := lr.Datastore(context.Background(), "/metadata")
 		require.NoError(n.t, err)

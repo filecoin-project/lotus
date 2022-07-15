@@ -146,18 +146,29 @@ type StorageMiner interface {
 	SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error) //perm:admin
 	SealingAbort(ctx context.Context, call storiface.CallID) error           //perm:admin
 
-	// SectorIndex
-	StorageAttach(context.Context, storiface.StorageInfo, fsutil.FsStat) error                                                                                             //perm:admin
-	StorageInfo(context.Context, storiface.ID) (storiface.StorageInfo, error)                                                                                              //perm:admin
-	StorageReportHealth(context.Context, storiface.ID, storiface.HealthReport) error                                                                                       //perm:admin
-	StorageDeclareSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error                                     //perm:admin
-	StorageDropSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType) error                                                      //perm:admin
+	// paths.SectorIndex
+	StorageAttach(context.Context, storiface.StorageInfo, fsutil.FsStat) error                                                         //perm:admin
+	StorageInfo(context.Context, storiface.ID) (storiface.StorageInfo, error)                                                          //perm:admin
+	StorageReportHealth(context.Context, storiface.ID, storiface.HealthReport) error                                                   //perm:admin
+	StorageDeclareSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType, primary bool) error //perm:admin
+	StorageDropSector(ctx context.Context, storageID storiface.ID, s abi.SectorID, ft storiface.SectorFileType) error                  //perm:admin
+	// StorageFindSector returns list of paths where the specified sector files exist.
+	//
+	// If allowFetch is set, list of paths to which the sector can be fetched will also be returned.
+	// - Paths which have sector files locally (don't require fetching) will be listed first.
+	// - Paths which have sector files locally will not be filtered based on based on AllowTypes/DenyTypes.
+	// - Paths which require fetching will be filtered based on AllowTypes/DenyTypes. If multiple
+	//   file types are specified, each type will be considered individually, and a union of all paths
+	//   which can accommodate each file type will be returned.
 	StorageFindSector(ctx context.Context, sector abi.SectorID, ft storiface.SectorFileType, ssize abi.SectorSize, allowFetch bool) ([]storiface.SectorStorageInfo, error) //perm:admin
-	StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]storiface.StorageInfo, error)           //perm:admin
-	StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error                                             //perm:admin
-	StorageTryLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error)                                  //perm:admin
-	StorageList(ctx context.Context) (map[storiface.ID][]storiface.Decl, error)                                                                                            //perm:admin
-	StorageGetLocks(ctx context.Context) (storiface.SectorLocks, error)                                                                                                    //perm:admin
+	// StorageBestAlloc returns list of paths where sector files of the specified type can be allocated, ordered by preference.
+	// Paths with more weight and more % of free space are preferred.
+	// Note: This method doesn't filter paths based on AllowTypes/DenyTypes.
+	StorageBestAlloc(ctx context.Context, allocate storiface.SectorFileType, ssize abi.SectorSize, pathType storiface.PathType) ([]storiface.StorageInfo, error) //perm:admin
+	StorageLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) error                                   //perm:admin
+	StorageTryLock(ctx context.Context, sector abi.SectorID, read storiface.SectorFileType, write storiface.SectorFileType) (bool, error)                        //perm:admin
+	StorageList(ctx context.Context) (map[storiface.ID][]storiface.Decl, error)                                                                                  //perm:admin
+	StorageGetLocks(ctx context.Context) (storiface.SectorLocks, error)                                                                                          //perm:admin
 
 	StorageLocal(ctx context.Context) (map[storiface.ID]string, error)       //perm:admin
 	StorageStat(ctx context.Context, id storiface.ID) (fsutil.FsStat, error) //perm:admin

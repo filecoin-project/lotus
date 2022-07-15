@@ -15,7 +15,7 @@ import (
 type existingSelector struct {
 	index      paths.SectorIndex
 	sector     abi.SectorID
-	alloc      storiface.SectorFileType
+	fileType   storiface.SectorFileType
 	allowFetch bool
 }
 
@@ -23,7 +23,7 @@ func newExistingSelector(index paths.SectorIndex, sector abi.SectorID, alloc sto
 	return &existingSelector{
 		index:      index,
 		sector:     sector,
-		alloc:      alloc,
+		fileType:   alloc,
 		allowFetch: allowFetch,
 	}
 }
@@ -52,18 +52,30 @@ func (s *existingSelector) Ok(ctx context.Context, task sealtasks.TaskType, spt 
 		return false, false, xerrors.Errorf("getting sector size: %w", err)
 	}
 
-	best, err := s.index.StorageFindSector(ctx, s.sector, s.alloc, ssize, s.allowFetch)
+	best, err := s.index.StorageFindSector(ctx, s.sector, s.fileType, ssize, s.allowFetch)
 	if err != nil {
 		return false, false, xerrors.Errorf("finding best storage: %w", err)
 	}
 
+	requested := s.fileType
+
 	for _, info := range best {
 		if _, ok := have[info.ID]; ok {
-			return true, false, nil
+			// we're not putting new sector files anywhere
+			if !s.allowFetch {
+				return true, false, nil
+			}
+
+			requested = requested.SubAllowed(info.AllowTypes, info.DenyTypes)
+
+			// got all paths
+			if requested == storiface.FTNone {
+				break
+			}
 		}
 	}
 
-	return false, false, nil
+	return requested == storiface.FTNone, false, nil
 }
 
 func (s *existingSelector) Cmp(ctx context.Context, task sealtasks.TaskType, a, b *WorkerHandle) (bool, error) {

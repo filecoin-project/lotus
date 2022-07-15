@@ -904,6 +904,11 @@ workflows:
           target: "./itests/nonce_test.go"
       
       - test:
+          name: test-itest-path_type_filters
+          suite: itest-path_type_filters
+          target: "./itests/path_type_filters_test.go"
+      
+      - test:
           name: test-itest-paych_api
           suite: itest-paych_api
           target: "./itests/paych_api_test.go"
@@ -977,6 +982,11 @@ workflows:
           name: test-itest-wdpost_dispute
           suite: itest-wdpost_dispute
           target: "./itests/wdpost_dispute_test.go"
+      
+      - test:
+          name: test-itest-wdpost_no_miner_storage
+          suite: itest-wdpost_no_miner_storage
+          target: "./itests/wdpost_no_miner_storage_test.go"
       
       - test:
           name: test-itest-wdpost
