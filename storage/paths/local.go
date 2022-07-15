@@ -267,12 +267,12 @@ func (st *Local) ClosePath(ctx context.Context, id storiface.ID) error {
 	defer st.localLk.Unlock()
 
 	if _, exists := st.paths[id]; !exists {
-		return xerrors.Errorf("path with ID %s isn't opened")
+		return xerrors.Errorf("path with ID %s isn't opened", id)
 	}
 
 	for _, url := range st.urls {
 		if err := st.index.StorageDetach(ctx, id, url); err != nil {
-			return xerrors.Errorf("dropping path (id='%s' url=''): %w", id, url, err)
+			return xerrors.Errorf("dropping path (id='%s' url='%s'): %w", id, url, err)
 		}
 	}
 

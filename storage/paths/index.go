@@ -225,7 +225,7 @@ func (i *Index) StorageDetach(ctx context.Context, id storiface.ID, url string) 
 	// ent: *storageEntry
 	ent, ok := i.stores[id]
 	if !ok {
-		return xerrors.Errorf("storage '%s' isn't registerd", id)
+		return xerrors.Errorf("storage '%s' isn't registered", id)
 	}
 
 	// check if this is the only path provider/url for this pathID

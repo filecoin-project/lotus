@@ -99,6 +99,7 @@ func (w *Worker) StorageDetachLocal(ctx context.Context, path string) error {
 	var localPath *storiface.StoragePath
 	for _, lp := range lps {
 		if lp.LocalPath == path {
+			lp := lp // copy to make the linter happy
 			localPath = &lp
 			break
 		}
@@ -114,10 +115,11 @@ func (w *Worker) StorageDetachLocal(ctx context.Context, path string) error {
 		for _, storagePath := range sc.StoragePaths {
 			if storagePath.Path != path {
 				out = append(out, storagePath)
-				return
+				continue
 			}
 			found = true
 		}
+		sc.StoragePaths = out
 	}); err != nil {
 		return xerrors.Errorf("set storage config: %w", err)
 	}
