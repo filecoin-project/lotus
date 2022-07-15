@@ -130,9 +130,8 @@ func (w *Worker) StorageDetachLocal(ctx context.Context, path string) error {
 	return w.LocalStore.ClosePath(ctx, localPath.ID)
 }
 
-func (w *Worker) StorageRedeclareLocal(ctx context.Context, id storiface.ID) error {
-	//TODO implement me
-	panic("implement me")
+func (w *Worker) StorageRedeclareLocal(ctx context.Context, id storiface.ID, dropMissing bool) error {
+	return w.LocalStore.Redeclare(ctx, &id, dropMissing)
 }
 
 func (w *Worker) SetEnabled(ctx context.Context, enabled bool) error {

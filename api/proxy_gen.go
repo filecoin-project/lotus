@@ -7,6 +7,15 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	"github.com/libp2p/go-libp2p-core/metrics"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/protocol"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
@@ -21,6 +30,7 @@ import (
 	"github.com/filecoin-project/go-state-types/dline"
 	abinetwork "github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/proof"
+
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
@@ -32,14 +42,6 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	"github.com/google/uuid"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	"github.com/libp2p/go-libp2p-core/metrics"
-	"github.com/libp2p/go-libp2p-core/network"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p-core/protocol"
-	"golang.org/x/xerrors"
 )
 
 var ErrNotSupported = xerrors.New("method not supported")
@@ -969,7 +971,7 @@ type WorkerStruct struct {
 
 		StorageDetachLocal func(p0 context.Context, p1 string) error `perm:"admin"`
 
-		StorageRedeclareLocal func(p0 context.Context, p1 storiface.ID) error `perm:"admin"`
+		StorageRedeclareLocal func(p0 context.Context, p1 storiface.ID, p2 bool) error `perm:"admin"`
 
 		TaskDisable func(p0 context.Context, p1 sealtasks.TaskType) error `perm:"admin"`
 
@@ -5597,14 +5599,14 @@ func (s *WorkerStub) StorageDetachLocal(p0 context.Context, p1 string) error {
 	return ErrNotSupported
 }
 
-func (s *WorkerStruct) StorageRedeclareLocal(p0 context.Context, p1 storiface.ID) error {
+func (s *WorkerStruct) StorageRedeclareLocal(p0 context.Context, p1 storiface.ID, p2 bool) error {
 	if s.Internal.StorageRedeclareLocal == nil {
 		return ErrNotSupported
 	}
-	return s.Internal.StorageRedeclareLocal(p0, p1)
+	return s.Internal.StorageRedeclareLocal(p0, p1, p2)
 }
 
-func (s *WorkerStub) StorageRedeclareLocal(p0 context.Context, p1 storiface.ID) error {
+func (s *WorkerStub) StorageRedeclareLocal(p0 context.Context, p1 storiface.ID, p2 bool) error {
 	return ErrNotSupported
 }
 

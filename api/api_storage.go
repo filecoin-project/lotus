@@ -178,7 +178,7 @@ type StorageMiner interface {
 
 	StorageAddLocal(ctx context.Context, path string) error //perm:admin
 	//StorageDetachLocal(ctx context.Context, path string) error    //perm:admin
-	//StorageRedeclareLocal(ctx context.Context, id storiface.ID) error //perm:admin
+	//StorageRedeclareLocal(ctx context.Context, id storiface.ID, dropMissing bool) error //perm:admin
 
 	MarketImportDealData(ctx context.Context, propcid cid.Cid, path string) error                                                                                                        //perm:write
 	MarketListDeals(ctx context.Context) ([]*MarketDeal, error)                                                                                                                          //perm:read
