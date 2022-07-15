@@ -59,6 +59,7 @@ type Worker interface {
 	// Storage / Other
 	Remove(ctx context.Context, sector abi.SectorID) error //perm:admin
 
+	StorageLocal(ctx context.Context) (map[storiface.ID]string, error)                   //perm:admin
 	StorageAddLocal(ctx context.Context, path string) error                              //perm:admin
 	StorageDetachLocal(ctx context.Context, path string) error                           //perm:admin
 	StorageRedeclareLocal(ctx context.Context, id *storiface.ID, dropMissing bool) error //perm:admin

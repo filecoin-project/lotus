@@ -65,6 +65,20 @@ func (w *Worker) Version(context.Context) (api.Version, error) {
 	return api.WorkerAPIVersion0, nil
 }
 
+func (w *Worker) StorageLocal(ctx context.Context) (map[storiface.ID]string, error) {
+	l, err := w.LocalStore.Local(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	out := map[storiface.ID]string{}
+	for _, st := range l {
+		out[st.ID] = st.LocalPath
+	}
+
+	return out, nil
+}
+
 func (w *Worker) StorageAddLocal(ctx context.Context, path string) error {
 	path, err := homedir.Expand(path)
 	if err != nil {

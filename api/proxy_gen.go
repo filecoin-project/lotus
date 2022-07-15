@@ -975,6 +975,8 @@ type WorkerStruct struct {
 
 		StorageDetachLocal func(p0 context.Context, p1 string) error `perm:"admin"`
 
+		StorageLocal func(p0 context.Context) (map[storiface.ID]string, error) `perm:"admin"`
+
 		StorageRedeclareLocal func(p0 context.Context, p1 *storiface.ID, p2 bool) error `perm:"admin"`
 
 		TaskDisable func(p0 context.Context, p1 sealtasks.TaskType) error `perm:"admin"`
@@ -5623,6 +5625,17 @@ func (s *WorkerStruct) StorageDetachLocal(p0 context.Context, p1 string) error {
 
 func (s *WorkerStub) StorageDetachLocal(p0 context.Context, p1 string) error {
 	return ErrNotSupported
+}
+
+func (s *WorkerStruct) StorageLocal(p0 context.Context) (map[storiface.ID]string, error) {
+	if s.Internal.StorageLocal == nil {
+		return *new(map[storiface.ID]string), ErrNotSupported
+	}
+	return s.Internal.StorageLocal(p0)
+}
+
+func (s *WorkerStub) StorageLocal(p0 context.Context) (map[storiface.ID]string, error) {
+	return *new(map[storiface.ID]string), ErrNotSupported
 }
 
 func (s *WorkerStruct) StorageRedeclareLocal(p0 context.Context, p1 *storiface.ID, p2 bool) error {

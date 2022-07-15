@@ -2,19 +2,22 @@ package itests
 
 import (
 	"context"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"testing"
+
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/storage/paths"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/stretchr/testify/require"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"testing"
 )
 
 func TestPathDetachRedeclare(t *testing.T) {
@@ -124,6 +127,165 @@ func TestPathDetachRedeclare(t *testing.T) {
 
 	// redeclare with drop, don't see the sector in the index
 	require.NoError(t, miner.StorageRedeclareLocal(ctx, nil, true))
+
+	sps, err = miner.StorageList(ctx)
+	require.NoError(t, err)
+	require.Len(t, sps, 1)
+	require.Len(t, sps[newId], 1)
+	require.Equal(t, abi.SectorNumber(1), sps[newId][0].SectorID.Number)
+}
+
+func TestPathDetachRedeclareWorker(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_ = logging.SetLogLevel("storageminer", "INFO")
+
+	var (
+		client          kit.TestFullNode
+		miner           kit.TestMiner
+		wiw, wdw, sealw kit.TestWorker
+	)
+	ens := kit.NewEnsemble(t, kit.LatestActorsAt(-1)).
+		FullNode(&client, kit.ThroughRPC()).
+		Miner(&miner, &client, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.PresealSectors(2), kit.NoStorage()).
+		Worker(&miner, &wiw, kit.ThroughRPC(), kit.NoStorage(), kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTGenerateWinningPoSt})).
+		Worker(&miner, &wdw, kit.ThroughRPC(), kit.NoStorage(), kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTGenerateWindowPoSt})).
+		Worker(&miner, &sealw, kit.ThroughRPC(), kit.NoStorage(), kit.WithSealWorkerTasks).
+		Start()
+
+	ens.InterconnectAll()
+
+	// check there's only one path on the miner, none on the worker
+	sps, err := miner.StorageList(ctx)
+	require.NoError(t, err)
+	require.Len(t, sps, 1)
+
+	var id storiface.ID
+	for s := range sps {
+		id = s
+	}
+
+	local, err := miner.StorageLocal(ctx)
+	require.NoError(t, err)
+	require.Len(t, local, 1)
+	require.Greater(t, len(local[id]), 1)
+
+	oldLocal := local[id]
+
+	local, err = sealw.StorageLocal(ctx)
+	require.NoError(t, err)
+	require.Len(t, local, 0)
+
+	// check sectors
+	checkSectors(t, ctx, client, miner, 2, 0)
+
+	// detach preseal path from the miner
+	require.NoError(t, miner.StorageDetachLocal(ctx, oldLocal))
+
+	// check that there are no paths, post checks fail
+	sps, err = miner.StorageList(ctx)
+	require.NoError(t, err)
+	require.Len(t, sps, 0)
+	local, err = miner.StorageLocal(ctx)
+	require.NoError(t, err)
+	require.Len(t, local, 0)
+
+	checkSectors(t, ctx, client, miner, 2, 2)
+
+	// attach a new path
+	newId := sealw.AddStorage(ctx, t, func(cfg *paths.LocalStorageMeta) {
+		cfg.CanStore = true
+	})
+
+	sps, err = miner.StorageList(ctx)
+	require.NoError(t, err)
+	require.Len(t, sps, 1)
+	local, err = sealw.StorageLocal(ctx)
+	require.NoError(t, err)
+	require.Len(t, local, 1)
+	require.Greater(t, len(local[newId]), 1)
+
+	newLocalTemp := local[newId]
+
+	// move sector data to the new path
+
+	// note: dest path already exist so we only want to .Join src
+	require.NoError(t, exec.Command("cp", "--recursive", filepath.Join(oldLocal, "sealed"), newLocalTemp).Run())
+	require.NoError(t, exec.Command("cp", "--recursive", filepath.Join(oldLocal, "cache"), newLocalTemp).Run())
+	require.NoError(t, exec.Command("cp", "--recursive", filepath.Join(oldLocal, "unsealed"), newLocalTemp).Run())
+
+	// check that sector files aren't indexed, post checks fail
+	sps, err = miner.StorageList(ctx)
+	require.NoError(t, err)
+	require.Len(t, sps, 1)
+	require.Len(t, sps[newId], 0)
+
+	// redeclare sectors
+	require.NoError(t, sealw.StorageRedeclareLocal(ctx, nil, false))
+
+	// check that sector files exist, post checks work
+	sps, err = miner.StorageList(ctx)
+	require.NoError(t, err)
+	require.Len(t, sps, 1)
+	require.Len(t, sps[newId], 2)
+
+	checkSectors(t, ctx, client, miner, 2, 0)
+
+	// drop the path from the worker
+	require.NoError(t, sealw.StorageDetachLocal(ctx, newLocalTemp))
+	local, err = sealw.StorageLocal(ctx)
+	require.NoError(t, err)
+	require.Len(t, local, 0)
+
+	// add a new one again, and move the sectors there
+	newId = sealw.AddStorage(ctx, t, func(cfg *paths.LocalStorageMeta) {
+		cfg.CanStore = true
+	})
+
+	sps, err = miner.StorageList(ctx)
+	require.NoError(t, err)
+	require.Len(t, sps, 1)
+	local, err = sealw.StorageLocal(ctx)
+	require.NoError(t, err)
+	require.Len(t, local, 1)
+	require.Greater(t, len(local[newId]), 1)
+
+	newLocal := local[newId]
+
+	// move sector data to the new path
+
+	// note: dest path already exist so we only want to .Join src
+	require.NoError(t, exec.Command("cp", "--recursive", filepath.Join(newLocalTemp, "sealed"), newLocal).Run())
+	require.NoError(t, exec.Command("cp", "--recursive", filepath.Join(newLocalTemp, "cache"), newLocal).Run())
+	require.NoError(t, exec.Command("cp", "--recursive", filepath.Join(newLocalTemp, "unsealed"), newLocal).Run())
+
+	// redeclare sectors
+	require.NoError(t, sealw.StorageRedeclareLocal(ctx, nil, false))
+
+	// check that sector files exist, post checks work
+	sps, err = miner.StorageList(ctx)
+	require.NoError(t, err)
+	require.Len(t, sps, 1)
+	require.Len(t, sps[newId], 2)
+
+	checkSectors(t, ctx, client, miner, 2, 0)
+
+	// remove one sector, one check fails
+	require.NoError(t, os.RemoveAll(filepath.Join(newLocal, "sealed", "s-t01000-0")))
+	require.NoError(t, os.RemoveAll(filepath.Join(newLocal, "cache", "s-t01000-0")))
+	checkSectors(t, ctx, client, miner, 2, 1)
+
+	// redeclare with no drop, still see sector in the index
+	require.NoError(t, sealw.StorageRedeclareLocal(ctx, nil, false))
+
+	sps, err = miner.StorageList(ctx)
+	require.NoError(t, err)
+	require.Len(t, sps, 1)
+	require.Len(t, sps[newId], 2)
+
+	// redeclare with drop, don't see the sector in the index
+	require.NoError(t, sealw.StorageRedeclareLocal(ctx, nil, true))
 
 	sps, err = miner.StorageList(ctx)
 	require.NoError(t, err)

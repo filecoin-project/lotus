@@ -39,6 +39,7 @@
 * [Storage](#Storage)
   * [StorageAddLocal](#StorageAddLocal)
   * [StorageDetachLocal](#StorageDetachLocal)
+  * [StorageLocal](#StorageLocal)
   * [StorageRedeclareLocal](#StorageRedeclareLocal)
 * [Task](#Task)
   * [TaskDisable](#TaskDisable)
@@ -2122,6 +2123,20 @@ Inputs:
 ```
 
 Response: `{}`
+
+### StorageLocal
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8": "/data/path"
+}
+```
 
 ### StorageRedeclareLocal
 
