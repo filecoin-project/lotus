@@ -1219,7 +1219,7 @@ func (sm *StorageMinerAPI) StorageRedeclareLocal(ctx context.Context, id *storif
 		return xerrors.Errorf("no storage manager")
 	}
 
-	return sm.StorageMgr.RedeclareLocalStorage(ctx, id, false)
+	return sm.StorageMgr.RedeclareLocalStorage(ctx, id, dropMissing)
 }
 
 func (sm *StorageMinerAPI) PiecesListPieces(ctx context.Context) ([]cid.Cid, error) {

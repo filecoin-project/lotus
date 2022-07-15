@@ -360,7 +360,12 @@ func (st *Local) declareSectors(ctx context.Context, p string, id storiface.ID, 
 		}
 
 		for _, decl := range decls[id] {
-			indexed[decl] = struct{}{}
+			for _, fileType := range decl.SectorFileType.AllSet() {
+				indexed[storiface.Decl{
+					SectorID:       decl.SectorID,
+					SectorFileType: fileType,
+				}] = struct{}{}
+			}
 		}
 	}
 
