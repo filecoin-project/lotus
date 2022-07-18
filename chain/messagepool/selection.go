@@ -258,7 +258,7 @@ func (mp *MessagePool) selectMessagesOptimal(ctx context.Context, curTs, ts *typ
 	nextChain := 0
 	partitions := make([][]*msgChain, MaxBlocks)
 	for i := 0; i < MaxBlocks && nextChain < len(chains); i++ {
-		gasLimit := int64(build.BlockGasLimit)
+		gasLimit := build.BlockGasLimit
 		msgLimit := build.BlockMessageLimit
 		for nextChain < len(chains) {
 			chain := chains[nextChain]
@@ -590,7 +590,7 @@ func (mp *MessagePool) selectPriorityMessages(ctx context.Context, pending map[a
 	mpCfg := mp.getConfig()
 	result := &selectedMessages{
 		msgs:      make([]*types.SignedMessage, 0, mpCfg.SizeLimitLow),
-		gasLimit:  int64(build.BlockGasLimit),
+		gasLimit:  build.BlockGasLimit,
 		blsLimit:  cbg.MaxLength,
 		secpLimit: cbg.MaxLength,
 	}
