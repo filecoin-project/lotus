@@ -31,6 +31,7 @@ import (
 	"github.com/filecoin-project/go-paramfetch"
 
 	"github.com/filecoin-project/lotus/api"
+	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/stmgr"
@@ -303,7 +304,7 @@ var DaemonCmd = &cli.Command{
 			}
 
 			defer closer()
-			liteModeDeps = node.Override(new(api.Gateway), gapi)
+			liteModeDeps = node.Override(new(lapi.Gateway), gapi)
 		}
 
 		// some libraries like ipfs/go-ds-measure and ipfs/go-ipfs-blockstore
@@ -360,7 +361,7 @@ var DaemonCmd = &cli.Command{
 		// ----
 
 		// Populate JSON-RPC options.
-		serverOptions := make([]jsonrpc.ServerOption, 0)
+		serverOptions := []jsonrpc.ServerOption{jsonrpc.WithServerErrors(lapi.RPCErrors)}
 		if maxRequestSize := cctx.Int("api-max-req-size"); maxRequestSize != 0 {
 			serverOptions = append(serverOptions, jsonrpc.WithMaxRequestSize(int64(maxRequestSize)))
 		}
