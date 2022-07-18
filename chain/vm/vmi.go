@@ -11,6 +11,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
+// stat counters
+var (
+	StatSends   uint64
+	StatApplied uint64
+)
+
 type Interface interface {
 	// Applies the given message onto the VM's current state, returning the result of the execution
 	ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error)
