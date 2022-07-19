@@ -195,7 +195,6 @@ jobs:
               --junitfile /tmp/test-reports/<< parameters.suite >>/junit.xml \
               --jsonfile /tmp/test-artifacts/<< parameters.suite >>.json \
               -- \
-              << parameters.coverage >> \
               << parameters.go-test-flags >> \
               << parameters.target >>
           no_output_timeout: 30m
