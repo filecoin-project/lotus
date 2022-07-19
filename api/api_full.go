@@ -169,6 +169,10 @@ type FullNode interface {
 	// If oldmsgskip is set, messages from before the requested roots are also not included.
 	ChainExport(ctx context.Context, nroots abi.ChainEpoch, oldmsgskip bool, tsk types.TipSetKey) (<-chan []byte, error) //perm:read
 
+	// ChainPrune prunes the stored chain state and garbage collects; only supported if you
+	// are using the splitstore
+	ChainPrune(ctx context.Context, opts map[string]interface{}) error //perm:admin
+
 	// ChainCheckBlockstore performs an (asynchronous) health check on the chain/state blockstore
 	// if supported by the underlying implementation.
 	ChainCheckBlockstore(context.Context) error //perm:admin

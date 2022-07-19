@@ -25,6 +25,7 @@ func (s *SplitStore) Check() error {
 	if !atomic.CompareAndSwapInt32(&s.compacting, 0, 1) {
 		return xerrors.Errorf("can't acquire compaction lock; compacting operation in progress")
 	}
+	s.compactType = check
 
 	if s.compactionIndex == 0 {
 		atomic.StoreInt32(&s.compacting, 0)

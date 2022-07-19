@@ -81,7 +81,7 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	//       this is guaranteed by the chainstore, and it is pervasive in all lotus
 	//       -- if that ever changes then all hell will break loose in general and
 	//       we will have a rance to protectTipSets here.
-	//      Reagrdless, we put a mutex in HeadChange just to be safe
+	//      Regardless, we put a mutex in HeadChange just to be safe
 
 	if !atomic.CompareAndSwapInt32(&s.compacting, 0, 1) {
 		// we are currently compacting -- protect the new tipset(s)
@@ -111,6 +111,7 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	if epoch-s.baseEpoch > CompactionThreshold {
 		// it's time to compact -- prepare the transaction and go!
 		s.beginTxnProtect()
+		s.compactType = hot
 		go func() {
 			defer atomic.StoreInt32(&s.compacting, 0)
 			defer s.endTxnProtect()
@@ -1221,8 +1222,17 @@ func (s *SplitStore) purgeBatch(batch, deadCids []cid.Cid, checkpoint *Checkpoin
 		return 0, liveCnt, nil
 	}
 
-	if err := s.hot.DeleteMany(s.ctx, deadCids); err != nil {
-		return 0, liveCnt, xerrors.Errorf("error purging cold objects: %w", err)
+	switch s.compactType {
+	case hot:
+		if err := s.hot.DeleteMany(s.ctx, deadCids); err != nil {
+			return 0, liveCnt, xerrors.Errorf("error purging cold objects: %w", err)
+		}
+	case cold:
+		if err := s.cold.DeleteMany(s.ctx, deadCids); err != nil {
+			return 0, liveCnt, xerrors.Errorf("error purging dead objects: %w", err)
+		}
+	default:
+		return 0, liveCnt, xerrors.Errorf("invalid compaction type %d, only hot and cold allowed for critical section", s.compactType)
 	}
 
 	s.debug.LogDelete(deadCids)
@@ -1239,8 +1249,16 @@ func (s *SplitStore) coldSetPath() string {
 	return filepath.Join(s.path, "coldset")
 }
 
+func (s *SplitStore) deadSetPath() string {
+	return filepath.Join(s.path, "deadset")
+}
+
 func (s *SplitStore) checkpointPath() string {
 	return filepath.Join(s.path, "checkpoint")
+}
+
+func (s *SplitStore) coldCheckpointPath() string {
+	return filepath.Join(s.path, "cold-checkpoint")
 }
 
 func (s *SplitStore) checkpointExists() bool {

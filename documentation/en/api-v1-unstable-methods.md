@@ -28,6 +28,7 @@
   * [ChainHasObj](#ChainHasObj)
   * [ChainHead](#ChainHead)
   * [ChainNotify](#ChainNotify)
+  * [ChainPrune](#ChainPrune)
   * [ChainPutObj](#ChainPutObj)
   * [ChainReadObj](#ChainReadObj)
   * [ChainSetHead](#ChainSetHead)
@@ -961,6 +962,24 @@ Response:
   }
 ]
 ```
+
+### ChainPrune
+ChainPrune prunes the stored chain state and garbage collects; only supported if you
+are using the splitstore
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "abc": 123
+  }
+]
+```
+
+Response: `{}`
 
 ### ChainPutObj
 ChainPutObj puts a given object into the block store
