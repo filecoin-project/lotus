@@ -104,7 +104,6 @@ func runTestCCUpgrade(t *testing.T) *kit.TestFullNode {
 
 func TestCCUpgradeAndPoSt(t *testing.T) {
 	kit.QuietMiningLogs()
-	t.Skip("Flaky")
 	t.Run("upgrade and then post", func(t *testing.T) {
 		ctx := context.Background()
 		n := runTestCCUpgrade(t)
