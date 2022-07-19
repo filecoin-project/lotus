@@ -23,6 +23,7 @@ import (
 )
 
 func TestBatchDealInput(t *testing.T) {
+	t.Skip("Flaky")
 	//stm: @MINER_SECTOR_STATUS_001, @MINER_SECTOR_LIST_001
 	kit.QuietMiningLogs()
 
