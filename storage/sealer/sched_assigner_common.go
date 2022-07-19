@@ -174,6 +174,9 @@ func (a *AssignerCommon) TrySched(sh *Scheduler) {
 		case sh.OpenWindows[wnd].Done <- &window:
 		default:
 			log.Error("expected sh.OpenWindows[wnd].Done to be buffered")
+			for _, request := range window.Todo {
+				sh.SchedQueue.Push(request)
+			}
 		}
 	}
 
