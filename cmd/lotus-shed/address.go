@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 )
@@ -32,7 +33,7 @@ var addressCmd = &cli.Command{
 		// next try raw payload
 		a, err = address.NewFromBytes(bs)
 		if err != nil {
-			return err
+			return xerrors.New("could not decode as CBOR or raw payload, failing")
 		}
 		fmt.Printf("%s\n", a)
 		return nil
