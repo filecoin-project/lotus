@@ -1168,6 +1168,12 @@ func (m *Manager) SchedDiag(ctx context.Context, doSched bool) (interface{}, err
 	return i, nil
 }
 
+func (m *Manager) RemoveSchedRequest(ctx context.Context, sectorID abi.SectorID, tasktype sealtasks.TaskType, priority int) error {
+	m.workLk.Lock()
+	defer m.workLk.Unlock()
+	return m.sched.RemoveRequest(ctx, sectorID, tasktype, priority)
+}
+
 func (m *Manager) Close(ctx context.Context) error {
 	m.windowPoStSched.schedClose()
 	m.winningPoStSched.schedClose()

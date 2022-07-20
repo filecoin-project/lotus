@@ -381,6 +381,22 @@ func (sh *Scheduler) Info(ctx context.Context) (interface{}, error) {
 	}
 }
 
+func (sh *Scheduler) RemoveRequest(ctx context.Context, sectorID abi.SectorID, tasktype sealtasks.TaskType, priority int) error {
+	if sh.SchedQueue.Len() < 0 {
+		return xerrors.Errorf("No requests in the scheduler")
+	}
+	sh.workersLk.Lock()
+	defer sh.workersLk.Unlock()
+	queue := sh.SchedQueue
+	for i, r := range *queue {
+		if r.Sector.ID == sectorID && r.Priority == priority && r.TaskType == tasktype { // TODO: Add check to ensure request in not scheduled
+			queue.Remove(i)
+			return nil
+		}
+	}
+	return xerrors.Errorf("No request with provided details found")
+}
+
 func (sh *Scheduler) Close(ctx context.Context) error {
 	close(sh.closing)
 	select {
