@@ -173,16 +173,6 @@ jobs:
         type: string
         default: standard-verbose
         description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
-      coverage:
-        type: string
-        default: -coverprofile=coverage.txt -coverpkg=github.com/filecoin-project/lotus/...
-        description: Coverage flag. Set to the empty string to disable.
-      codecov-upload:
-        type: boolean
-        default: true
-        description: |
-          Upload coverage report to https://codecov.io/. Requires the codecov API token to be
-          set as an environment variable for private projects.
     executor: << parameters.executor >>
     steps:
       - install-deps
@@ -205,7 +195,6 @@ jobs:
               --junitfile /tmp/test-reports/<< parameters.suite >>/junit.xml \
               --jsonfile /tmp/test-artifacts/<< parameters.suite >>.json \
               -- \
-              << parameters.coverage >> \
               << parameters.go-test-flags >> \
               << parameters.target >>
           no_output_timeout: 30m
@@ -213,13 +202,6 @@ jobs:
           path: /tmp/test-reports
       - store_artifacts:
           path: /tmp/test-artifacts/<< parameters.suite >>.json
-      - when:
-          condition: << parameters.codecov-upload >>
-          steps:
-            - run:
-                shell: /bin/bash -eo pipefail
-                command: |
-                  bash <(curl -s https://codecov.io/bash)
 
   test-conformance:
     description: |
@@ -1026,11 +1008,9 @@ workflows:
           proofs-log-test: "1"
       - test-conformance:
           suite: conformance
-          codecov-upload: false
           target: "./conformance"
       - test-conformance:
           name: test-conformance-bleeding-edge
-          codecov-upload: false
           suite: conformance-bleeding-edge
           target: "./conformance"
           vectors-branch: specs-actors-v7
