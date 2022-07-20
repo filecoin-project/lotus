@@ -106,6 +106,7 @@
   * [RuntimeSubsystems](#RuntimeSubsystems)
 * [Sealing](#Sealing)
   * [SealingAbort](#SealingAbort)
+  * [SealingRemoveRequest](#SealingRemoveRequest)
   * [SealingSchedDiag](#SealingSchedDiag)
 * [Sector](#Sector)
   * [SectorAddPieceToAny](#SectorAddPieceToAny)
@@ -1706,6 +1707,26 @@ Inputs:
     },
     "ID": "07070707-0707-0707-0707-070707070707"
   }
+]
+```
+
+Response: `{}`
+
+### SealingRemoveRequest
+SealingSchedRemove removes a request from sealing pipeline
+
+
+Perms: 
+
+Inputs:
+```json
+[
+  {
+    "Miner": 1000,
+    "Number": 9
+  },
+  "string value",
+  123
 ]
 ```
 

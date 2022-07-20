@@ -18,6 +18,8 @@ import (
 
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )
@@ -291,6 +293,58 @@ var sealingSchedDiagCmd = &cli.Command{
 		fmt.Println(string(j))
 
 		return nil
+	},
+}
+
+var sealingSchedRemoveRequestCmd = &cli.Command{
+	Name:  "sched-remove-request",
+	Usage: "Removes an internal scheduler request",
+	Flags: []cli.Flag{
+		&cli.Int64Flag{
+			Name:     "sector",
+			Required: true,
+		},
+		&cli.StringFlag{
+			Name:     "tasktype",
+			Required: true,
+		},
+		&cli.Int64Flag{
+			Name:     "priroty",
+			Required: true,
+		},
+		&cli.BoolFlag{
+			Name:  "really-do-it",
+			Usage: "pass this flag if you know what you are doing",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if !cctx.Bool("really-do-it") {
+			return xerrors.Errorf("this is a command for advanced users, only use it if you are sure of what you are doing")
+		}
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		ma, err := nodeApi.ActorAddress(ctx)
+		if err != nil {
+			return err
+		}
+
+		mid, err := address.IDFromAddress(ma)
+		if err != nil {
+			return err
+		}
+
+		sid := abi.SectorID{
+			Miner:  abi.ActorID(mid),
+			Number: abi.SectorNumber(cctx.Int64("sector")),
+		}
+
+		return nodeApi.SealingRemoveRequest(ctx, sid, cctx.String("tasktype"), int(cctx.Int64("priority")))
 	},
 }
 

@@ -736,6 +736,8 @@ type StorageMinerStruct struct {
 
 		SealingAbort func(p0 context.Context, p1 storiface.CallID) error `perm:"admin"`
 
+		SealingRemoveRequest func(p0 context.Context, p1 abi.SectorID, p2 string, p3 int) error ``
+
 		SealingSchedDiag func(p0 context.Context, p1 bool) (interface{}, error) `perm:"admin"`
 
 		SectorAddPieceToAny func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storage.Data, p3 PieceDealInfo) (SectorOffset, error) `perm:"admin"`
@@ -4327,6 +4329,17 @@ func (s *StorageMinerStruct) SealingAbort(p0 context.Context, p1 storiface.CallI
 }
 
 func (s *StorageMinerStub) SealingAbort(p0 context.Context, p1 storiface.CallID) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SealingRemoveRequest(p0 context.Context, p1 abi.SectorID, p2 string, p3 int) error {
+	if s.Internal.SealingRemoveRequest == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SealingRemoveRequest(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStub) SealingRemoveRequest(p0 context.Context, p1 abi.SectorID, p2 string, p3 int) error {
 	return ErrNotSupported
 }
 

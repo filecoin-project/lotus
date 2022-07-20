@@ -35,6 +35,7 @@ import (
 
 	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
 	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
+	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
 	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
@@ -408,6 +409,10 @@ func (sm *StorageMinerAPI) SealingSchedDiag(ctx context.Context, doSched bool) (
 
 func (sm *StorageMinerAPI) SealingAbort(ctx context.Context, call storiface.CallID) error {
 	return sm.StorageMgr.Abort(ctx, call)
+}
+
+func (sm *StorageMinerAPI) SealingRemoveRequest(ctx context.Context, sectorID abi.SectorID, task sealtasks.TaskType, priority int) error {
+	return sm.StorageMgr.RemoveSchedRequest(ctx, sectorID, task, priority)
 }
 
 func (sm *StorageMinerAPI) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {
