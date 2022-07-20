@@ -249,8 +249,8 @@ var provingDeadlinesCmd = &cli.Command{
 			faults := uint64(0)
 			var PartitionSum int
 
-			if cctx.Bool("live") {
-				for _, partition := range partitions {
+			for _, partition := range partitions {
+				if cctx.Bool("live") {
 					sc, err := partition.LiveSectors.Count()
 					if err != nil {
 						return err
@@ -261,34 +261,24 @@ var provingDeadlinesCmd = &cli.Command{
 					}
 
 					sectors += sc
-
-					fc, err := partition.FaultySectors.Count()
-					if err != nil {
-						return err
-					}
-
-					faults += fc
-
-				}
-			} else {
-				for _, partition := range partitions {
-					PartitionSum++
-
+				} else {
 					sc, err := partition.AllSectors.Count()
 					if err != nil {
 						return err
 					}
 
+					PartitionSum++
 					sectors += sc
-
-					fc, err := partition.FaultySectors.Count()
-					if err != nil {
-						return err
-					}
-
-					faults += fc
 				}
+
+				fc, err := partition.FaultySectors.Count()
+				if err != nil {
+					return err
+				}
+
+				faults += fc
 			}
+
 			var cur string
 			if di.Index == uint64(dlIdx) {
 				cur += "\t(current)"
@@ -361,64 +351,52 @@ var provingDeadlineInfoCmd = &cli.Command{
 		fmt.Printf("Proven Partitions:        %d\n", provenPartitions)
 		fmt.Printf("Current:                  %t\n\n", di.Index == dlIdx)
 
-		if !cctx.Bool("live") {
-			for pIdx, partition := range partitions {
-				sectorCount, err := partition.AllSectors.Count()
+		var sectorCount uint64
+		var sectorNumbers []uint64
+
+		for pIdx, partition := range partitions {
+			if !cctx.Bool("live") {
+				sectorCount, err = partition.AllSectors.Count()
 				if err != nil {
 					return err
 				}
 
-				sectorNumbers, err := partition.AllSectors.All(sectorCount)
+				sectorNumbers, err = partition.AllSectors.All(sectorCount)
 				if err != nil {
 					return err
 				}
 
-				faultsCount, err := partition.FaultySectors.Count()
+			} else {
+				sectorCount, err = partition.LiveSectors.Count()
 				if err != nil {
 					return err
 				}
 
-				fn, err := partition.FaultySectors.All(faultsCount)
-				if err != nil {
-					return err
+				if sectorCount != 0 {
+					sectorNumbers, err = partition.LiveSectors.All(sectorCount)
+					if err != nil {
+						return err
+					}
 				}
 
-				fmt.Printf("Partition Index:          %d\n", pIdx)
-				fmt.Printf("Sectors:                  %d\n", sectorCount)
-				fmt.Printf("Sector Numbers:           %v\n", sectorNumbers)
-				fmt.Printf("Faults:                   %d\n", faultsCount)
-				fmt.Printf("Faulty Sectors:           %d\n", fn)
 			}
-		} else {
-			for pIdx, partition := range partitions {
-				sectorCount, err := partition.LiveSectors.Count()
-				if err != nil {
-					return err
-				}
 
-				sectorNumbers, err := partition.LiveSectors.All(sectorCount)
-				if err != nil {
-					return err
-				}
-
-				faultsCount, err := partition.FaultySectors.Count()
-				if err != nil {
-					return err
-				}
-
-				fn, err := partition.FaultySectors.All(faultsCount)
-				if err != nil {
-					return err
-				}
-
-				fmt.Printf("Partition Index:          %d\n", pIdx)
-				fmt.Printf("Sectors:                  %d\n", sectorCount)
-				fmt.Printf("Sector Numbers:           %v\n", sectorNumbers)
-				fmt.Printf("Faults:                   %d\n", faultsCount)
-				fmt.Printf("Faulty Sectors:           %d\n", fn)
+			faultsCount, err := partition.FaultySectors.Count()
+			if err != nil {
+				return err
 			}
+
+			fn, err := partition.FaultySectors.All(faultsCount)
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Partition Index:          %d\n", pIdx)
+			fmt.Printf("Sectors:                  %d\n", sectorCount)
+			fmt.Printf("Sector Numbers:           %v\n", sectorNumbers)
+			fmt.Printf("Faults:                   %d\n", faultsCount)
+			fmt.Printf("Faulty Sectors:           %d\n", fn)
 		}
-
 		return nil
 	},
 }
