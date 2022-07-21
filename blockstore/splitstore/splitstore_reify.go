@@ -83,16 +83,13 @@ func (s *SplitStore) reifyWorker(workch chan cid.Cid) {
 }
 
 func (s *SplitStore) doReify(c cid.Cid) {
-	var toreify, totrack, toforget []cid.Cid
+	var toreify, toforget []cid.Cid
 
 	defer func() {
 		s.reifyMx.Lock()
 		defer s.reifyMx.Unlock()
 
 		for _, c := range toreify {
-			delete(s.reifyInProgress, c)
-		}
-		for _, c := range totrack {
 			delete(s.reifyInProgress, c)
 		}
 		for _, c := range toforget {
@@ -131,19 +128,10 @@ func (s *SplitStore) doReify(c cid.Cid) {
 				return xerrors.Errorf("error checking hotstore: %w", err)
 			}
 
+			// All reified blocks are tracked at reification start
 			if has {
-				if s.txnMarkSet != nil {
-					hasMark, err := s.txnMarkSet.Has(c)
-					if err != nil {
-						log.Warnf("error checking markset: %s", err)
-					} else if hasMark {
-						toforget = append(toforget, c)
-						return errStopWalk
-					}
-				} else {
-					totrack = append(totrack, c)
-					return errStopWalk
-				}
+				toforget = append(toforget, c)
+				return errStopWalk
 			}
 
 			toreify = append(toreify, c)
@@ -155,7 +143,7 @@ func (s *SplitStore) doReify(c cid.Cid) {
 		})
 
 	if err != nil {
-		if xerrors.Is(err, errReifyLimit) {
+		if errors.Is(err, errReifyLimit) {
 			log.Debug("reification aborted; reify limit reached")
 			return
 		}
@@ -190,24 +178,4 @@ func (s *SplitStore) doReify(c cid.Cid) {
 		}
 	}
 
-	if s.txnMarkSet != nil {
-		if len(toreify) > 0 {
-			if err := s.txnMarkSet.MarkMany(toreify); err != nil {
-				log.Warnf("error marking reified objects: %s", err)
-			}
-		}
-		if len(totrack) > 0 {
-			if err := s.txnMarkSet.MarkMany(totrack); err != nil {
-				log.Warnf("error marking tracked objects: %s", err)
-			}
-		}
-	} else {
-		// if txnActive is false these are noops
-		if len(toreify) > 0 {
-			s.trackTxnRefMany(toreify)
-		}
-		if len(totrack) > 0 {
-			s.trackTxnRefMany(totrack)
-		}
-	}
 }
