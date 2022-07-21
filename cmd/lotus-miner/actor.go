@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	builtin2 "github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -448,7 +449,7 @@ var actorControlList = &cli.Command{
 		}
 		defer closer()
 
-		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		api, acloser, err := lcli.GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
@@ -530,16 +531,25 @@ var actorControlList = &cli.Command{
 		}
 
 		printKey := func(name string, a address.Address) {
-			b, err := api.WalletBalance(ctx, a)
-			if err != nil {
-				fmt.Printf("%s\t%s: error getting balance: %s\n", name, a, err)
+			var actor *types.Actor
+			if actor, err = api.StateGetActor(ctx, a, types.EmptyTSK); err != nil {
+				fmt.Printf("%s\t%s: error getting actor: %s\n", name, a, err)
 				return
 			}
+			b := actor.Balance
 
-			k, err := api.StateAccountKey(ctx, a, types.EmptyTSK)
-			if err != nil {
-				fmt.Printf("%s\t%s: error getting account key: %s\n", name, a, err)
-				return
+			var k address.Address
+			// 'a' maybe a 'robust', in that case, 'StateAccountKey' returns an error.
+			if builtin2.IsAccountActor(actor.Code) {
+				if k, err = api.StateAccountKey(ctx, a, types.EmptyTSK); err != nil {
+					fmt.Printf("%s\t%s: error getting account key: %s\n", name, a, err)
+					return
+				}
+			} else { // if builtin2.IsMultisigActor(actor.Code), Are there any other cases exist?
+				if k, err = api.StateLookupRobustAddress(ctx, a, types.EmptyTSK); err != nil {
+					fmt.Printf("%s\t%s: error getting robust address: %s\n", name, a, err)
+					return
+				}
 			}
 
 			kstr := k.String()
