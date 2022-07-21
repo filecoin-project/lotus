@@ -342,6 +342,31 @@ func (n *Ensemble) Start() *Ensemble {
 	// Create all inactive full nodes.
 	for i, full := range n.inactive.fullnodes {
 		r := repo.NewMemory(nil)
+		n.t.Cleanup(r.Cleanup)
+
+		// setup config with options
+		lr, err := r.Lock(repo.FullNode)
+		require.NoError(n.t, err)
+
+		c, err := lr.Config()
+		require.NoError(n.t, err)
+
+		cfg, ok := c.(*config.FullNode)
+		if !ok {
+			n.t.Fatalf("invalid config from repo, got: %T", c)
+		}
+		for _, opt := range full.options.cfgOpts {
+			opt(cfg)
+		}
+		err = lr.SetConfig(func(raw interface{}) {
+			rcfg := raw.(*config.FullNode)
+			*rcfg = *cfg
+		})
+		require.NoError(n.t, err)
+
+		err = lr.Close()
+		require.NoError(n.t, err)
+
 		opts := []node.Option{
 			node.FullAPI(&full.FullNode, node.Lite(full.options.lite)),
 			node.Base(),

@@ -266,3 +266,15 @@ func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
 
 	require.Equal(t, uint64(1001), tid)
 }
+
+// Startup a node with hotstore and discard coldstore, create some unreachable state
+// and check that compaction carries it away
+func TestHotstore(t *testing.T) {
+	//	ctx := context.Background()
+	opts := []interface{}{kit.MockProofs(), kit.WithCfgOpt(kit.SplitstoreDiscard())}
+	full, genesisMiner, ens := kit.EnsembleMinimal(t, opts...)
+	ens.InterconnectAll().BeginMining(4 * time.Millisecond)
+	_ = full
+	_ = genesisMiner
+	time.Sleep(100 * time.Second)
+}

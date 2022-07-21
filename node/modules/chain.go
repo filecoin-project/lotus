@@ -2,6 +2,7 @@ package modules
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ipfs/go-bitswap"
@@ -90,7 +91,9 @@ func ChainStore(lc fx.Lifecycle,
 	}
 
 	var startHook func(context.Context) error
+	fmt.Printf("XXXXXXXXX\n Checking if we are starting a splitstore\n XXXXXXXXXXX\n")
 	if ss, ok := basebs.(*splitstore.SplitStore); ok {
+		fmt.Printf("basebs is Splitstore: starting\n")
 		startHook = func(_ context.Context) error {
 			err := ss.Start(chain, us)
 			if err != nil {
@@ -98,6 +101,8 @@ func ChainStore(lc fx.Lifecycle,
 			}
 			return err
 		}
+	} else {
+		fmt.Printf("basebs is not Splitstore\n")
 	}
 
 	lc.Append(fx.Hook{

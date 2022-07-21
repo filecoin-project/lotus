@@ -70,7 +70,6 @@ func (s *SplitStore) PruneChain(opts map[string]interface{}) error {
 		}
 	}
 
-	doGC := func() error { return nil }
 	if onlineGC && movingGC {
 		return xerrors.Errorf("at most one of online, moving GC can be specified")
 	}
@@ -81,7 +80,7 @@ func (s *SplitStore) PruneChain(opts map[string]interface{}) error {
 	if movingGC {
 		gcOpts = append(gcOpts, bstore.WithFullGC(true))
 	}
-	doGC = func() error { return s.gcBlockstore(s.cold, gcOpts) }
+	doGC := func() error { return s.gcBlockstore(s.cold, gcOpts) }
 
 	var retainStateP func(int64) bool
 	switch {

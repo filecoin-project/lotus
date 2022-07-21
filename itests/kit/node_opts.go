@@ -33,6 +33,7 @@ type nodeOpts struct {
 	rpc           bool
 	ownerKey      *key.Key
 	extraNodeOpts []node.Option
+	cfgOpts       []cfgOption
 
 	subsystems             MinerSubsystem
 	mainMiner              *TestMiner
@@ -232,6 +233,27 @@ var WithSealWorkerTasks = WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, 
 func WithWorkerStorage(transform func(paths.Store) paths.Store) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.workerStorageOpt = transform
+		return nil
+	}
+}
+
+func WithCfgOpt(opt cfgOption) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.cfgOpts = append(opts.cfgOpts, opt)
+		return nil
+	}
+}
+
+type cfgOption func(cfg *config.FullNode) error
+
+func SplitstoreDiscard() cfgOption {
+	return func(cfg *config.FullNode) error {
+		//cfg.Chainstore.Splitstore.HotStoreType = "badger" // default
+		//cfg.Chainstore.Splitstore.MarkSetType = "badger" // default
+		//cfg.Chainstore.Splitstore.HotStoreMessageRetention = 0 // default
+		cfg.Chainstore.EnableSplitstore = true
+		cfg.Chainstore.Splitstore.HotStoreFullGCFrequency = 0 // turn off full gc
+		cfg.Chainstore.Splitstore.ColdStoreType = "discard"   // no cold store
 		return nil
 	}
 }
