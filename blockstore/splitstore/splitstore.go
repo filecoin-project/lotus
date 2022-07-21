@@ -240,6 +240,13 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 			return nil, xerrors.Errorf("error resuming compaction: %w", err)
 		}
 	}
+	if ss.pruneCheckpointExists() {
+		log.Info("found prune checkpoint; resuming prune")
+		if err := ss.completePrune(); err != nil {
+			markSetEnv.Close() //nolint:errcheck
+			return nil, xerrors.Errorf("error resuming prune: %w", err)
+		}
+	}
 
 	return ss, nil
 }

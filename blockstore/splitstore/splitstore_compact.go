@@ -1257,12 +1257,17 @@ func (s *SplitStore) checkpointPath() string {
 	return filepath.Join(s.path, "checkpoint")
 }
 
-func (s *SplitStore) coldCheckpointPath() string {
-	return filepath.Join(s.path, "cold-checkpoint")
+func (s *SplitStore) pruneCheckpointPath() string {
+	return filepath.Join(s.path, "prune-checkpoint")
 }
 
 func (s *SplitStore) checkpointExists() bool {
 	_, err := os.Stat(s.checkpointPath())
+	return err == nil
+}
+
+func (s *SplitStore) pruneCheckpointExists() bool {
+	_, err := os.Stat(s.pruneCheckpointPath())
 	return err == nil
 }
 
@@ -1286,6 +1291,7 @@ func (s *SplitStore) completeCompaction() error {
 	defer markSet.Close() //nolint:errcheck
 
 	// PURGE
+	s.compactType = hot
 	log.Info("purging cold objects from the hotstore")
 	startPurge := time.Now()
 	err = s.completePurge(coldr, checkpoint, last, markSet)
@@ -1308,6 +1314,7 @@ func (s *SplitStore) completeCompaction() error {
 	if err := os.Remove(s.coldSetPath()); err != nil {
 		log.Warnf("error removing coldset: %s", err)
 	}
+	s.compactType = none
 
 	// Note: at this point we can start the splitstore; a compaction should run on
 	//       the first head change, which will trigger gc on the hotstore.

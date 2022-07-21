@@ -2,6 +2,7 @@ package splitstore
 
 import (
 	"bytes"
+	"os"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -210,8 +211,6 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 		return xerrors.Errorf("error marking: %w", err)
 	}
 
-	s.markSetSize = *count + *count>>2 // overestimate a bit
-
 	log.Infow("marking done", "took", time.Since(startMark), "marked", count)
 
 	if err := s.checkClosing(); err != nil {
@@ -283,9 +282,13 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 		return err
 	}
 
-	// XXX: check for missing refs?
+	// now that we have collected dead objects, check for missing references from transactional i/o
+	// this is carried over from hot compaction for completeness
+	s.waitForMissingRefs(markSet)
 
-	// XXX: wait for sync?
+	if err := s.checkClosing(); err != nil {
+		return err
+	}
 
 	deadr, err := NewColdSetReader(s.deadSetPath())
 	if err != nil {
@@ -293,26 +296,22 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 	}
 	defer deadr.Close() //nolint:errcheck
 
-	// 3 Purge dead objects with checkpointing for recovery.
+	// 3. Purge dead objects with checkpointing for recovery.
 	// This is the critical section of prune, whereby any dead object not in the markSet is
 	// considered already deleted.
 	// We delete dead objects in batches, holding the transaction lock, where we check the markSet
-	// again for new references created by the VM.
+	// again for new references created by the caller.
 	// After each batch we write a checkpoint to disk; if the process is interrupted before completion
 	// the process will continue from the checkpoint in the next recovery.
 	if err := s.beginCriticalSection(markSet); err != nil {
 		return xerrors.Errorf("error beginning critical section: %w", err)
-	}
-	err = s.protectTxnRefs(markSet)
-	if err != nil {
-		return xerrors.Errorf("error protecting transactional refs: %w", err)
 	}
 
 	if err := s.checkClosing(); err != nil {
 		return err
 	}
 
-	checkpoint, err := NewCheckpoint(s.coldCheckpointPath())
+	checkpoint, err := NewCheckpoint(s.pruneCheckpointPath())
 	if err != nil {
 		return xerrors.Errorf("error creating checkpoint: %w", err)
 	}
@@ -326,12 +325,74 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 	}
 	log.Infow("purging dead objects from coldstore done", "took", time.Since(startPurge))
 
-	// we are done; end the transaction and garbage collect
-	s.endTxnProtect()
+	s.endCriticalSection()
 
+	if err := checkpoint.Close(); err != nil {
+		log.Warnf("error closing checkpoint: %s", err)
+	}
+	if err := os.Remove(s.pruneCheckpointPath()); err != nil {
+		log.Warnf("error removing checkpoint: %s", err)
+	}
+	if deadr.Close(); err != nil {
+		log.Warnf("error closing deadset: %s", err)
+	}
+	if err := os.Remove(s.deadSetPath()); err != nil {
+		log.Warnf("error removing deadset: %s", err)
+	}
+
+	// we are done; do some housekeeping
+	s.endTxnProtect()
 	err = doGC()
 	if err != nil {
 		log.Warnf("error garbage collecting cold store: %s", err)
+	}
+
+	return nil
+}
+
+func (s *SplitStore) completePrune() error {
+	checkpoint, last, err := OpenCheckpoint(s.pruneCheckpointPath())
+	if err != nil {
+		return xerrors.Errorf("error opening checkpoint: %w", err)
+	}
+	defer checkpoint.Close() //nolint:errcheck
+
+	deadr, err := NewColdSetReader(s.deadSetPath())
+	if err != nil {
+		return xerrors.Errorf("error opening deadset: %w", err)
+	}
+	defer deadr.Close() //nolint:errcheck
+
+	markSet, err := s.markSetEnv.Recover("live")
+	if err != nil {
+		return xerrors.Errorf("error recovering markset: %w", err)
+	}
+	defer markSet.Close() //nolint:errcheck
+
+	// PURGE!
+	s.compactType = cold
+	log.Info("purging dead objects from the coldstore")
+	startPurge := time.Now()
+	err = s.completePurge(deadr, checkpoint, last, markSet)
+	if err != nil {
+		return xerrors.Errorf("error purgin dead objects: %w", err)
+	}
+	log.Infow("purging dead objects from the coldstore done", "took", time.Since(startPurge))
+
+	markSet.EndCriticalSection()
+	s.compactType = none
+
+	if err := checkpoint.Close(); err != nil {
+		log.Warnf("error closing checkpoint: %s", err)
+	}
+	if err := os.Remove(s.pruneCheckpointPath()); err != nil {
+		log.Warnf("error removing checkpoint: %s", err)
+	}
+	if deadr.Close(); err != nil {
+		log.Warnf("error closing deadset: %s", err)
+	}
+	if err := os.Remove(s.deadSetPath()); err != nil {
+		log.Warnf("error removing deadset: %s", err)
 	}
 
 	return nil
