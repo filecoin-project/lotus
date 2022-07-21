@@ -333,7 +333,7 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 	if err := os.Remove(s.pruneCheckpointPath()); err != nil {
 		log.Warnf("error removing checkpoint: %s", err)
 	}
-	if deadr.Close(); err != nil {
+	if err := deadr.Close(); err != nil {
 		log.Warnf("error closing deadset: %s", err)
 	}
 	if err := os.Remove(s.deadSetPath()); err != nil {
@@ -388,7 +388,7 @@ func (s *SplitStore) completePrune() error {
 	if err := os.Remove(s.pruneCheckpointPath()); err != nil {
 		log.Warnf("error removing checkpoint: %s", err)
 	}
-	if deadr.Close(); err != nil {
+	if err := deadr.Close(); err != nil {
 		log.Warnf("error closing deadset: %s", err)
 	}
 	if err := os.Remove(s.deadSetPath()); err != nil {
