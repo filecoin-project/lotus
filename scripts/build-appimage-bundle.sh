@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 set -ex
 
-ARCHS=(
-    "darwin"
-    "linux"
-)
-
 REQUIRED=(
     "ipfs"
     "sha512sum"
@@ -31,24 +26,6 @@ PID="$!"
 trap "kill -9 ${PID}" EXIT
 sleep 30
 
-for ARCH in "${ARCHS[@]}"
-do
-    mkdir -p "${ARCH}/lotus"
-    pushd "${ARCH}"
-    for BINARY in "${BINARIES[@]}"
-    do
-        cp "../../${ARCH}/${BINARY}" "lotus/"
-        chmod +x "lotus/${BINARY}"
-    done
-
-    tar -zcvf "../lotus_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz" lotus
-    popd
-    rm -rf "${ARCH}"
-
-    sha512sum "lotus_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz" > "lotus_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz.sha512"
-
-    ipfs add -q "lotus_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz" > "lotus_${CIRCLE_TAG}_${ARCH}-amd64.tar.gz.cid"
-done
 cp "../appimage/Lotus-${CIRCLE_TAG}-x86_64.AppImage" .
 sha512sum "Lotus-${CIRCLE_TAG}-x86_64.AppImage" > "Lotus-${CIRCLE_TAG}-x86_64.AppImage.sha512"
 ipfs add -q "Lotus-${CIRCLE_TAG}-x86_64.AppImage" > "Lotus-${CIRCLE_TAG}-x86_64.AppImage.cid"
