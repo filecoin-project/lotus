@@ -19,7 +19,7 @@ const (
 )
 
 func main() {
-	db, err := ioutil.ReadFile(os.Args[2])
+	db, err := ioutil.ReadFile(file)
 	if err != nil {
 		panic(err)
 	}
