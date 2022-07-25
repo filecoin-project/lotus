@@ -13,12 +13,6 @@ done
 mkdir bundle
 pushd bundle
 
-BINARIES=(
-    "lotus"
-    "lotus-miner"
-    "lotus-worker"
-)
-
 export IPFS_PATH=`mktemp -d`
 ipfs init
 ipfs daemon &
