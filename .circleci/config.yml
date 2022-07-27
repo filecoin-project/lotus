@@ -1123,7 +1123,17 @@ workflows:
                 - /.*/
             tags:
               only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+                - /^v\d+\.\d+\.\d+$/
+      - publish-snapcraft:
+          name: publish-snapcraft-candidate
+          channel: candidate
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+-rc\d+$/
       - publish-dockerhub:
           name: publish-dockerhub
           tag: stable
