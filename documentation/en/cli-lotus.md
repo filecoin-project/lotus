@@ -2059,6 +2059,9 @@ COMMANDS:
    decode                            decode various types
    encode                            encode various types
    disputer                          interact with the window post disputer
+   install-actor                     Install a new actor and return the actor code CID
+   create-actor                      Create an new actor via the init actor and return its address
+   invoke                            Invoke a method in an actor
    help, h                           Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2378,6 +2381,45 @@ USAGE:
 
 OPTIONS:
    --help, -h  show help (default: false)
+   
+```
+
+### lotus chain install-actor
+```
+NAME:
+   lotus chain install-actor - Install a new actor and return the actor code CID
+
+USAGE:
+   lotus chain install-actor [command options] code
+
+OPTIONS:
+   --from value  optionally specify the account to use for sending the installation message
+   
+```
+
+### lotus chain create-actor
+```
+NAME:
+   lotus chain create-actor - Create an new actor via the init actor and return its address
+
+USAGE:
+   lotus chain create-actor [command options] code-cid [params]
+
+OPTIONS:
+   --from value  optionally specify the account to use for sending the exec message
+   
+```
+
+### lotus chain invoke
+```
+NAME:
+   lotus chain invoke - Invoke a method in an actor
+
+USAGE:
+   lotus chain invoke [command options] address method [params]
+
+OPTIONS:
+   --from value  optionally specify the account to use for sending the exec message
    
 ```
 
