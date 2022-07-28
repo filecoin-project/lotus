@@ -574,10 +574,13 @@ jobs:
           command: sudo snap install snapcraft --classic
       - run:
           name: build snap
-          command: snapcraft --use-lxd
+          command: snapcraft --use-lxd --debug
       - run:
           name: publish snap
-          command: snapcraft push *.snap --release << parameters.channel >>
+          command: |
+            pwd
+            ls *.snap
+            snapcraft upload lotus-filecoin_latest_amd64.snap --release << parameters.channel >>
 
   build-and-push-image:
     description: build and push docker images to public AWS ECR registry
@@ -883,7 +886,17 @@ workflows:
                 - /.*/
             tags:
               only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+                - /^v\d+\.\d+\.\d+$/
+      - publish-snapcraft:
+          name: publish-snapcraft-candidate
+          channel: candidate
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+-rc\d+$/
       - publish-dockerhub:
           name: publish-dockerhub
           tag: stable
