@@ -19,7 +19,8 @@ import (
 const BootstrappersFile = ""
 const GenesisFile = ""
 
-var NetworkBundle = "devnet"
+// VERY experimental! Should not be merged into master / any release branch yet!
+var NetworkBundle = "devnet-wasm"
 var BundleOverrides map[actors.Version]string
 
 const GenesisNetworkVersion = network.Version16
