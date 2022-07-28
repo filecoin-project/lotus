@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/multiformats/go-multiaddr"
+
+	"github.com/filecoin-project/lotus/api"
 )
 
 // TestWorker represents a worker enrolled in an Ensemble.

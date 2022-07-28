@@ -6,16 +6,18 @@ import (
 	"context"
 	"testing"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-legs/dtsync"
-	"github.com/filecoin-project/lotus/api/mocks"
-	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/golang/mock/gomock"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pb "github.com/libp2p/go-libp2p-pubsub/pb"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-legs/dtsync"
+
+	"github.com/filecoin-project/lotus/api/mocks"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type getter struct {

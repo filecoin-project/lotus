@@ -6,8 +6,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/lotus/journal"
 	logging "github.com/ipfs/go-log/v2"
+
+	"github.com/filecoin-project/lotus/journal"
 )
 
 var log = logging.Logger("alerting")
@@ -158,4 +159,11 @@ func (a *Alerting) GetAlerts() []Alert {
 	})
 
 	return out
+}
+
+func (a *Alerting) IsRaised(at AlertType) bool {
+	a.lk.Lock()
+	defer a.lk.Unlock()
+
+	return a.alerts[at].Active
 }

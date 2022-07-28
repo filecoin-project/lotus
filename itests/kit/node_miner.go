@@ -13,20 +13,21 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/miner"
-	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/multiformats/go-multiaddr"
+	"github.com/filecoin-project/lotus/storage/paths"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type MinerSubsystem int
@@ -71,7 +72,7 @@ type TestMiner struct {
 	ListenAddr multiaddr.Multiaddr
 
 	ActorAddr address.Address
-	OwnerKey  *wallet.Key
+	OwnerKey  *key.Key
 	MineOne   func(context.Context, miner.MineReq) error
 	Stop      func(context.Context) error
 
@@ -166,9 +167,8 @@ func (tm *TestMiner) FlushSealingBatches(ctx context.Context) {
 
 const metaFile = "sectorstore.json"
 
-func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, weight uint64, seal, store bool) {
-	p, err := ioutil.TempDir("", "lotus-testsectors-")
-	require.NoError(t, err)
+func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, conf func(*paths.LocalStorageMeta)) storiface.ID {
+	p := t.TempDir()
 
 	if err := os.MkdirAll(p, 0755); err != nil {
 		if !os.IsExist(err) {
@@ -176,17 +176,19 @@ func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, weight uint64
 		}
 	}
 
-	_, err = os.Stat(filepath.Join(p, metaFile))
+	_, err := os.Stat(filepath.Join(p, metaFile))
 	if !os.IsNotExist(err) {
 		require.NoError(t, err)
 	}
 
-	cfg := &stores.LocalStorageMeta{
+	cfg := &paths.LocalStorageMeta{
 		ID:       storiface.ID(uuid.New().String()),
-		Weight:   weight,
-		CanSeal:  seal,
-		CanStore: store,
+		Weight:   10,
+		CanSeal:  false,
+		CanStore: false,
 	}
+
+	conf(cfg)
 
 	if !(cfg.CanStore || cfg.CanSeal) {
 		t.Fatal("must specify at least one of CanStore or cfg.CanSeal")
@@ -200,4 +202,6 @@ func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, weight uint64
 
 	err = tm.StorageAddLocal(ctx, p)
 	require.NoError(t, err)
+
+	return cfg.ID
 }

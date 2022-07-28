@@ -3,8 +3,9 @@ package aerrors
 import (
 	"fmt"
 
-	"github.com/filecoin-project/go-state-types/exitcode"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/exitcode"
 )
 
 func IsFatal(err ActorError) bool {

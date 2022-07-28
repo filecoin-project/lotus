@@ -9,6 +9,11 @@ import (
 	gruntime "runtime"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	ipldcbor "github.com/ipfs/go-ipld-cbor"
+	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -23,11 +28,6 @@ import (
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	rt6 "github.com/filecoin-project/specs-actors/v6/actors/runtime"
 	rt7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
-	"github.com/ipfs/go-cid"
-	ipldcbor "github.com/ipfs/go-ipld-cbor"
-	mh "github.com/multiformats/go-multihash"
-	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -59,7 +59,9 @@ func (m *Message) ValueReceived() abi.TokenAmount {
 	return m.msg.Value
 }
 
-// EnableDetailedTracing, if true, outputs gas tracing in execution traces.
+// EnableDetailedTracing has different behaviour in the LegacyVM and FVM.
+// In the LegacyVM, it enables detailed gas tracing, slowing down execution.
+// In the FVM, it enables execution traces, which are primarily used to observe subcalls.
 var EnableDetailedTracing = os.Getenv("LOTUS_VM_ENABLE_TRACING") == "1"
 
 type Runtime struct {
@@ -221,23 +223,6 @@ func (rt *Runtime) GetActorCodeCID(addr address.Address) (ret cid.Cid, ok bool) 
 		}
 
 		panic(aerrors.Fatalf("failed to get actor: %s", err))
-	}
-
-	// required for genesis/testing
-	if nv := rt.NetworkVersion(); nv >= network.Version16 {
-		name, av, ok := actors.GetActorMetaByCode(act.Code)
-
-		if ok {
-			// lies, lies, lies
-			builder := cid.V1Builder{Codec: cid.Raw, MhType: mh.IDENTITY}
-			synthetic := fmt.Sprintf("fil/%d/%s", av, name)
-			syntheticCid, err := builder.Sum([]byte(synthetic))
-			if err != nil {
-				panic(aerrors.Fatalf("failed to generate synthetic CID: %s", err))
-			}
-
-			return syntheticCid, true
-		}
 	}
 
 	return act.Code, true

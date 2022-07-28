@@ -10,18 +10,15 @@ import (
 	"strconv"
 	"text/tabwriter"
 
-	cbg "github.com/whyrusleeping/cbor-gen"
-
-	"github.com/filecoin-project/go-state-types/big"
-
-	"github.com/filecoin-project/go-state-types/abi"
-
-	"github.com/filecoin-project/go-address"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/urfave/cli/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 	msig2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/multisig"
 
@@ -879,6 +876,39 @@ var msigAddProposeCmd = &cli.Command{
 				return err
 			}
 			from = defaddr
+		}
+
+		store := adt.WrapStore(ctx, cbor.NewCborStore(blockstore.NewAPIBlockstore(api)))
+
+		head, err := api.ChainHead(ctx)
+		if err != nil {
+			return err
+		}
+
+		act, err := api.StateGetActor(ctx, msig, head.Key())
+		if err != nil {
+			return err
+		}
+
+		mstate, err := multisig.Load(store, act)
+		if err != nil {
+			return err
+		}
+
+		signers, err := mstate.Signers()
+		if err != nil {
+			return err
+		}
+
+		addrId, err := api.StateLookupID(ctx, addr, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		for _, s := range signers {
+			if s == addrId {
+				return fmt.Errorf("%s is already a signer", addr.String())
+			}
 		}
 
 		proto, err := api.MsigAddPropose(ctx, msig, from, addr, cctx.Bool("increase-threshold"))

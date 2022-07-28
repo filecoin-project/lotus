@@ -7,16 +7,18 @@ import (
 	"testing"
 	"time"
 
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/stretchr/testify/require"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
-	logging "github.com/ipfs/go-log/v2"
 )
 
 func TestAPI(t *testing.T) {
@@ -97,11 +99,21 @@ func (ts *apiSuite) testConnectTwo(t *testing.T) {
 
 	peers, err := one.NetPeers(ctx)
 	require.NoError(t, err)
-	require.Lenf(t, peers, 2, "node one doesn't have 2 peers")
+
+	countPeerIDs := func(peers []peer.AddrInfo) int {
+		peerIDs := make(map[peer.ID]struct{})
+		for _, p := range peers {
+			peerIDs[p.ID] = struct{}{}
+		}
+
+		return len(peerIDs)
+	}
+
+	require.Equal(t, countPeerIDs(peers), 2, "node one doesn't have 2 peers")
 
 	peers, err = two.NetPeers(ctx)
 	require.NoError(t, err)
-	require.Lenf(t, peers, 2, "node two doesn't have 2 peers")
+	require.Equal(t, countPeerIDs(peers), 2, "node one doesn't have 2 peers")
 }
 
 func (ts *apiSuite) testSearchMsg(t *testing.T) {

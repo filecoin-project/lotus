@@ -5,21 +5,23 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	logging "github.com/ipfs/go-log/v2"
+	"go.uber.org/fx"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v8/market"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/ipfs/go-cid"
-	"github.com/ipfs/go-datastore"
-	logging "github.com/ipfs/go-log/v2"
-	"go.uber.org/fx"
-	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("market_adapter")

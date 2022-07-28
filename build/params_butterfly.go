@@ -4,22 +4,25 @@
 package build
 
 import (
+	"github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/network"
+	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
-	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-	"github.com/ipfs/go-cid"
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 	0: DrandMainnet,
 }
 
-const GenesisNetworkVersion = network.Version14
+const GenesisNetworkVersion = network.Version15
 
 var NetworkBundle = "butterflynet"
+var BundleOverrides map[actors.Version]string
 
 const BootstrappersFile = "butterflynet.pi"
 const GenesisFile = "butterflynet.car"
@@ -45,14 +48,9 @@ const UpgradeTurboHeight = -15
 const UpgradeHyperdriveHeight = -16
 const UpgradeChocolateHeight = -17
 
-const UpgradeOhSnapHeight = 240
+const UpgradeOhSnapHeight = -18
 
-// 2022-05-31T14:32:00Z
-const UpgradeSkyrHeight = abi.ChainEpoch(333258)
-
-var ActorsCIDs = map[actors.Version]cid.Cid{
-	actors.Version8: MustParseCid("bafy2bzacedy4qgxbr6pbyfgcp7s7bdkc2whi5errnw67al5e2tk75j46iucv6"),
-}
+const UpgradeSkyrHeight = abi.ChainEpoch(50)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg512MiBV1,

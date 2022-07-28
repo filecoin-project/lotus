@@ -11,13 +11,15 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/hashicorp/go-multierror"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/exitcode"
+
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 )
 
 var extractManyFlags struct {
@@ -176,7 +178,7 @@ func runExtractMany(c *cli.Context) error {
 		// Vector filename, using a base of outdir.
 		file := filepath.Join(outdir, actorcodename, methodname, exitcodename, id) + ".json"
 
-		log.Println(color.YellowString("processing message cid with 'sender' precursor mode: %s", id))
+		log.Println(color.YellowString("processing message cid with 'participants' precursor mode: %s", id))
 
 		opts := extractOpts{
 			id:        id,
@@ -185,7 +187,7 @@ func runExtractMany(c *cli.Context) error {
 			cid:       mcid,
 			file:      file,
 			retain:    "accessed-cids",
-			precursor: PrecursorSelectSender,
+			precursor: PrecursorSelectParticipants,
 		}
 
 		if err := doExtractMessage(opts); err != nil {
@@ -199,7 +201,7 @@ func runExtractMany(c *cli.Context) error {
 		generated = append(generated, file)
 	}
 
-	log.Printf("extractions to try with canonical precursor selection mode: %d", len(retry))
+	log.Printf("extractions to try with 'all' precursor selection mode: %d", len(retry))
 
 	for _, r := range retry {
 		log.Printf("retrying %s: %s", r.cid, r.id)

@@ -7,14 +7,12 @@ import (
 	"math"
 	"os"
 
-	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/go-state-types/network"
-
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
+
+	"github.com/filecoin-project/lotus/chain/actors"
 )
 
 var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
@@ -23,6 +21,9 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 }
 
 var NetworkBundle = "mainnet"
+
+// NOTE: DO NOT change this unless you REALLY know what you're doing. This is consensus critical.
+var BundleOverrides map[actors.Version]string
 
 const GenesisNetworkVersion = network.Version0
 
@@ -75,9 +76,8 @@ const UpgradeChocolateHeight = 1231620
 // 2022-03-01T15:00:00Z
 const UpgradeOhSnapHeight = 1594680
 
-var UpgradeSkyrHeight = abi.ChainEpoch(99999999999999)
-
-var ActorsCIDs = map[actors.Version]cid.Cid{}
+// 2022-07-06T14:00:00Z
+var UpgradeSkyrHeight = abi.ChainEpoch(1960320)
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
 	abi.RegisteredSealProof_StackedDrg32GiBV1,

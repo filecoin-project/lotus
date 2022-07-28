@@ -12,11 +12,10 @@ import (
 	"sync"
 	"time"
 
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
 	"go.uber.org/multierr"
 	"golang.org/x/xerrors"
-
-	blocks "github.com/ipfs/go-block-format"
-	cid "github.com/ipfs/go-cid"
 )
 
 type debugLog struct {

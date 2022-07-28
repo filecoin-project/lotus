@@ -3,10 +3,9 @@ package splitstore
 import (
 	"encoding/binary"
 
-	"golang.org/x/xerrors"
-
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 )

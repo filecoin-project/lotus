@@ -28,7 +28,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/wallet"
 	ledgerwallet "github.com/filecoin-project/lotus/chain/wallet/ledger"
 	"github.com/filecoin-project/lotus/chain/wallet/remotewallet"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/filecoin-project/lotus/lib/peermgr"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node/config"
@@ -40,6 +39,8 @@ import (
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/paychmgr"
 	"github.com/filecoin-project/lotus/paychmgr/settler"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 // Chain node provides access to the Filecoin blockchain, by setting up a full
@@ -47,13 +48,6 @@ import (
 var ChainNode = Options(
 	// Full node or lite node
 	// TODO: Fix offline mode
-
-	// FVM: builtin actor bundle loading
-	//      Note: this has to load before the upgrade schedule, so that we can patch in the
-	//      right manifest cid.
-	//      This restriction will be lifted once we have the final actors v8 bundle and we know
-	//      the manifest cid.
-	Override(new(dtypes.BuiltinActorsLoaded), modules.LoadBuiltinActors),
 
 	// Consensus settings
 	Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
@@ -69,8 +63,8 @@ var ChainNode = Options(
 	Override(new(dtypes.DrandBootstrap), modules.DrandBootstrap),
 
 	// Consensus: crypto dependencies
-	Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
-	Override(new(ffiwrapper.Prover), ffiwrapper.ProofProver),
+	Override(new(storiface.Verifier), ffiwrapper.ProofVerifier),
+	Override(new(storiface.Prover), ffiwrapper.ProofProver),
 
 	// Consensus: LegacyVM
 	Override(new(vm.SyscallBuilder), vm.Syscalls),

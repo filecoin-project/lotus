@@ -3,9 +3,9 @@ package system
 import (
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-
 	system4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/system"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
 var _ State = (*state4)(nil)
@@ -32,4 +32,10 @@ type state4 struct {
 
 func (s *state4) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state4) GetBuiltinActors() cid.Cid {
+
+	return cid.Undef
+
 }

@@ -8,9 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
-
-	cid "github.com/ipfs/go-cid"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/types"

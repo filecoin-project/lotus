@@ -7,7 +7,14 @@ import (
 	"os"
 	"time"
 
+	"contrib.go.opencensus.io/exporter/prometheus"
+	logging "github.com/ipfs/go-log/v2"
+	"github.com/urfave/cli/v2"
+	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
+
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/build"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/tools/stats/influx"
@@ -15,13 +22,6 @@ import (
 	"github.com/filecoin-project/lotus/tools/stats/metrics"
 	"github.com/filecoin-project/lotus/tools/stats/points"
 	"github.com/filecoin-project/lotus/tools/stats/sync"
-
-	logging "github.com/ipfs/go-log/v2"
-	"github.com/urfave/cli/v2"
-
-	"contrib.go.opencensus.io/exporter/prometheus"
-	stats "go.opencensus.io/stats"
-	"go.opencensus.io/stats/view"
 )
 
 var log = logging.Logger("stats")

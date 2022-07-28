@@ -6,10 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 func TestQuotePriceForUnsealedRetrieval(t *testing.T) {
@@ -27,7 +29,7 @@ func TestQuotePriceForUnsealedRetrieval(t *testing.T) {
 	kit.QuietMiningLogs()
 
 	client, miner, ens := kit.EnsembleMinimal(t)
-	ens.InterconnectAll().BeginMining(blocktime)
+	ens.InterconnectAll().BeginMiningMustPost(blocktime)
 
 	var (
 		ppb         = int64(1)
@@ -129,7 +131,7 @@ func TestZeroPricePerByteRetrieval(t *testing.T) {
 	)
 
 	client, miner, ens := kit.EnsembleMinimal(t, kit.MockProofs())
-	ens.InterconnectAll().BeginMining(blockTime)
+	ens.InterconnectAll().BeginMiningMustPost(blockTime)
 
 	ctx := context.Background()
 

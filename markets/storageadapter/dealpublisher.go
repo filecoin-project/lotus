@@ -14,16 +14,16 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/go-state-types/exitcode"
-
 	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/builtin/v8/market"
+	"github.com/filecoin-project/go-state-types/exitcode"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
-	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 )
 
 type dealPublisherAPI interface {
@@ -48,7 +48,7 @@ type dealPublisherAPI interface {
 // publish message with all deals in the queue.
 type DealPublisher struct {
 	api dealPublisherAPI
-	as  *storage.AddressSelector
+	as  *ctladdr.AddressSelector
 
 	ctx      context.Context
 	Shutdown context.CancelFunc
@@ -99,8 +99,8 @@ type PublishMsgConfig struct {
 func NewDealPublisher(
 	feeConfig *config.MinerFeeConfig,
 	publishMsgCfg PublishMsgConfig,
-) func(lc fx.Lifecycle, full api.FullNode, as *storage.AddressSelector) *DealPublisher {
-	return func(lc fx.Lifecycle, full api.FullNode, as *storage.AddressSelector) *DealPublisher {
+) func(lc fx.Lifecycle, full api.FullNode, as *ctladdr.AddressSelector) *DealPublisher {
+	return func(lc fx.Lifecycle, full api.FullNode, as *ctladdr.AddressSelector) *DealPublisher {
 		maxFee := abi.NewTokenAmount(0)
 		if feeConfig != nil {
 			maxFee = abi.TokenAmount(feeConfig.MaxPublishDealsFee)
@@ -119,7 +119,7 @@ func NewDealPublisher(
 
 func newDealPublisher(
 	dpapi dealPublisherAPI,
-	as *storage.AddressSelector,
+	as *ctladdr.AddressSelector,
 	publishMsgCfg PublishMsgConfig,
 	publishSpec *api.MessageSendSpec,
 ) *DealPublisher {

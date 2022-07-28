@@ -6,17 +6,15 @@ import (
 	"os"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
-
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/build"
+	"github.com/testground/sdk-go/sync"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/testground/sdk-go/sync"
+	"github.com/filecoin-project/go-state-types/builtin/v8/paych"
 
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/testplans/lotus-soup/testkit"
 )
 

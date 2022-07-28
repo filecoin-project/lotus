@@ -12,10 +12,10 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	u "github.com/ipfs/go-ipfs-util"
+	ipld "github.com/ipfs/go-ipld-format"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/lotus/blockstore"
-
-	"github.com/stretchr/testify/require"
 )
 
 // TODO: move this to go-ipfs-blockstore.
@@ -56,7 +56,7 @@ func (s *Suite) TestGetWhenKeyNotPresent(t *testing.T) {
 	c := cid.NewCidV0(u.Hash([]byte("stuff")))
 	bl, err := bs.Get(ctx, c)
 	require.Nil(t, bl)
-	require.Equal(t, blockstore.ErrNotFound, err)
+	require.Equal(t, ipld.ErrNotFound{Cid: c}, err)
 }
 
 func (s *Suite) TestGetWhenKeyIsNil(t *testing.T) {
@@ -69,7 +69,7 @@ func (s *Suite) TestGetWhenKeyIsNil(t *testing.T) {
 	}
 
 	_, err := bs.Get(ctx, cid.Undef)
-	require.Equal(t, blockstore.ErrNotFound, err)
+	require.Equal(t, ipld.ErrNotFound{Cid: cid.Undef}, err)
 }
 
 func (s *Suite) TestPutThenGetBlock(t *testing.T) {
@@ -164,8 +164,9 @@ func (s *Suite) TestPutThenGetSizeBlock(t *testing.T) {
 	require.NoError(t, err)
 	require.Zero(t, emptySize)
 
-	missingSize, err := bs.GetSize(ctx, missingBlock.Cid())
-	require.Equal(t, blockstore.ErrNotFound, err)
+	missingCid := missingBlock.Cid()
+	missingSize, err := bs.GetSize(ctx, missingCid)
+	require.Equal(t, ipld.ErrNotFound{Cid: missingCid}, err)
 	require.Equal(t, -1, missingSize)
 }
 

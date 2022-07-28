@@ -5,10 +5,9 @@ import (
 	"io"
 	"os"
 
-	"golang.org/x/xerrors"
-
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
+	"golang.org/x/xerrors"
 )
 
 type Checkpoint struct {

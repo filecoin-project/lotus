@@ -115,7 +115,7 @@ jobs:
           command: |
             git --no-pager diff go.mod go.sum
             git --no-pager diff --quiet go.mod go.sum
-  build-all:
+  build-linux:
     executor: golang
     steps:
       - install-deps
@@ -173,16 +173,6 @@ jobs:
         type: string
         default: standard-verbose
         description: gotestsum format. https://github.com/gotestyourself/gotestsum#format
-      coverage:
-        type: string
-        default: -coverprofile=coverage.txt -coverpkg=github.com/filecoin-project/lotus/...
-        description: Coverage flag. Set to the empty string to disable.
-      codecov-upload:
-        type: boolean
-        default: true
-        description: |
-          Upload coverage report to https://codecov.io/. Requires the codecov API token to be
-          set as an environment variable for private projects.
     executor: << parameters.executor >>
     steps:
       - install-deps
@@ -205,7 +195,6 @@ jobs:
               --junitfile /tmp/test-reports/<< parameters.suite >>/junit.xml \
               --jsonfile /tmp/test-artifacts/<< parameters.suite >>.json \
               -- \
-              << parameters.coverage >> \
               << parameters.go-test-flags >> \
               << parameters.target >>
           no_output_timeout: 30m
@@ -213,13 +202,6 @@ jobs:
           path: /tmp/test-reports
       - store_artifacts:
           path: /tmp/test-artifacts/<< parameters.suite >>.json
-      - when:
-          condition: << parameters.codecov-upload >>
-          steps:
-            - run:
-                shell: /bin/bash -eo pipefail
-                command: |
-                  bash <(curl -s https://codecov.io/bash)
 
   test-conformance:
     description: |
@@ -536,6 +518,19 @@ jobs:
   publish:
     description: publish binary artifacts
     executor: ubuntu
+    parameters:
+      linux:
+        default: false
+        description: publish linux binaries?
+        type: boolean
+      darwin:
+        default: false
+        description: publish darwin binaries?
+        type: boolean
+      appimage:
+        default: false
+        description: publish appimage binaries?
+        type: boolean
     steps:
       - run:
           name: Install git jq curl
@@ -546,12 +541,21 @@ jobs:
       - install_ipfs
       - attach_workspace:
           at: "."
-      - run:
-          name: Create bundles
-          command: ./scripts/build-bundle.sh
-      - run:
-          name: Publish release
-          command: ./scripts/publish-release.sh
+      - when:
+          condition: << parameters.linux >>
+          steps:
+            - run: ./scripts/build-arch-bundle.sh linux
+            - run: ./scripts/publish-arch-release.sh linux
+      - when:
+          condition: << parameters.darwin>>
+          steps:
+            - run: ./scripts/build-arch-bundle.sh darwin
+            - run: ./scripts/publish-arch-release.sh darwin
+      - when:
+          condition: << parameters.appimage >>
+          steps:
+            - run: ./scripts/build-appimage-bundle.sh
+            - run: ./scripts/publish-arch-release.sh appimage
 
   publish-snapcraft:
     description: build and push snapcraft
@@ -568,11 +572,6 @@ jobs:
       - run:
           name: install snapcraft
           command: sudo snap install snapcraft --classic
-      - run:
-          name: create snapcraft config file
-          command: |
-            mkdir -p ~/.config/snapcraft
-            echo "$SNAPCRAFT_LOGIN_FILE" | base64 -d > ~/.config/snapcraft/snapcraft.cfg
       - run:
           name: build snap
           command: snapcraft --use-lxd
@@ -859,6 +858,11 @@ workflows:
           target: "./itests/deals_test.go"
       
       - test:
+          name: test-itest-gas_estimation
+          suite: itest-gas_estimation
+          target: "./itests/gas_estimation_test.go"
+      
+      - test:
           name: test-itest-gateway
           suite: itest-gateway
           target: "./itests/gateway_test.go"
@@ -867,6 +871,11 @@ workflows:
           name: test-itest-get_messages_in_ts
           suite: itest-get_messages_in_ts
           target: "./itests/get_messages_in_ts_test.go"
+      
+      - test:
+          name: test-itest-lite_migration
+          suite: itest-lite_migration
+          target: "./itests/lite_migration_test.go"
       
       - test:
           name: test-itest-lookup_robust_address
@@ -884,9 +893,19 @@ workflows:
           target: "./itests/multisig_test.go"
       
       - test:
+          name: test-itest-net
+          suite: itest-net
+          target: "./itests/net_test.go"
+      
+      - test:
           name: test-itest-nonce
           suite: itest-nonce
           target: "./itests/nonce_test.go"
+      
+      - test:
+          name: test-itest-path_type_filters
+          suite: itest-path_type_filters
+          target: "./itests/path_type_filters_test.go"
       
       - test:
           name: test-itest-paych_api
@@ -954,14 +973,29 @@ workflows:
           target: "./itests/verifreg_test.go"
       
       - test:
+          name: test-itest-wdpost_check_config
+          suite: itest-wdpost_check_config
+          target: "./itests/wdpost_check_config_test.go"
+      
+      - test:
           name: test-itest-wdpost_dispute
           suite: itest-wdpost_dispute
           target: "./itests/wdpost_dispute_test.go"
       
       - test:
+          name: test-itest-wdpost_no_miner_storage
+          suite: itest-wdpost_no_miner_storage
+          target: "./itests/wdpost_no_miner_storage_test.go"
+      
+      - test:
           name: test-itest-wdpost
           suite: itest-wdpost
           target: "./itests/wdpost_test.go"
+      
+      - test:
+          name: test-itest-wdpost_worker_config
+          suite: itest-wdpost_worker_config
+          target: "./itests/wdpost_worker_config_test.go"
       
       - test:
           name: test-itest-worker
@@ -987,15 +1021,13 @@ workflows:
       - test:
           go-test-flags: "-run=TestMulticoreSDR"
           suite: multicore-sdr-check
-          target: "./extern/sector-storage/ffiwrapper"
+          target: "./storage/sealer/ffiwrapper"
           proofs-log-test: "1"
       - test-conformance:
           suite: conformance
-          codecov-upload: false
           target: "./conformance"
       - test-conformance:
           name: test-conformance-bleeding-edge
-          codecov-upload: false
           suite: conformance-bleeding-edge
           target: "./conformance"
           vectors-branch: specs-actors-v7
@@ -1005,7 +1037,7 @@ workflows:
               only:
                 - master
       - build-debug
-      - build-all:
+      - build-linux:
           filters:
             tags:
               only:
@@ -1029,15 +1061,39 @@ workflows:
       - build-appimage:
           filters:
             branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - publish:
+          name: publish-macos
+          darwin: true
+          requires:
+            - build-macos
+          filters:
+            branches:
               ignore:
                 - /.*/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish:
+          name: publish-linux
+          linux: true
           requires:
-            - build-all
-            - build-macos
+            - build-linux
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - publish:
+          name: publish-appimage
+          appimage: true
+          requires:
             - build-appimage
           filters:
             branches:

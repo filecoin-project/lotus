@@ -4,21 +4,23 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/builtin"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/dline"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/miner"
-	"github.com/stretchr/testify/require"
 )
 
 // BlockMiner is a utility that makes a test miner Mine blocks on a timer.
@@ -183,7 +185,12 @@ func (bm *BlockMiner) MineBlocksMustPost(ctx context.Context, blocktime time.Dur
 
 			var target abi.ChainEpoch
 			reportSuccessFn := func(success bool, epoch abi.ChainEpoch, err error) {
-				require.NoError(bm.t, err)
+				// if api shuts down before mining, we may get an error which we should probably just ignore
+				// (fixing it will require rewriting most of the mining loop)
+				if err != nil && !strings.Contains(err.Error(), "websocket connection closed") {
+					require.NoError(bm.t, err)
+				}
+
 				target = epoch
 				wait <- success
 			}

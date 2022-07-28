@@ -18,18 +18,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/network"
-
-	"github.com/filecoin-project/lotus/chain/actors"
-
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-
-	"github.com/filecoin-project/lotus/api/v0api"
-
 	"github.com/fatih/color"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/multiformats/go-multiaddr"
@@ -40,12 +29,18 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -1782,8 +1777,8 @@ var StateSectorCmd = &cli.Command{
 		}
 		fmt.Println("DealIDs: ", si.DealIDs)
 		fmt.Println()
-		fmt.Println("Activation: ", EpochTime(ts.Height(), si.Activation))
-		fmt.Println("Expiration: ", EpochTime(ts.Height(), si.Expiration))
+		fmt.Println("Activation: ", EpochTimeTs(ts.Height(), si.Activation, ts))
+		fmt.Println("Expiration: ", EpochTimeTs(ts.Height(), si.Expiration, ts))
 		fmt.Println()
 		fmt.Println("DealWeight: ", si.DealWeight)
 		fmt.Println("VerifiedDealWeight: ", si.VerifiedDealWeight)
@@ -1905,19 +1900,7 @@ var StateSysActorCIDsCmd = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		ts, err := LoadTipSet(ctx, cctx, api)
-		if err != nil {
-			return err
-		}
-
-		nv, err := api.StateNetworkVersion(ctx, ts.Key())
-		if err != nil {
-			return err
-		}
-
-		if cctx.IsSet("network-version") {
-			nv = network.Version(cctx.Uint64("network-version"))
-		}
+		nv := network.Version(cctx.Uint64("network-version"))
 
 		fmt.Printf("Network Version: %d\n", nv)
 
@@ -1928,23 +1911,19 @@ var StateSysActorCIDsCmd = &cli.Command{
 		fmt.Printf("Actor Version: %d\n", actorVersion)
 
 		manifestCid, ok := actors.GetManifest(actorVersion)
-		if !ok {
-			return xerrors.Errorf("cannot get manifest CID")
+		if ok {
+			fmt.Printf("Manifest CID: %v\n", manifestCid)
 		}
-		fmt.Printf("Manifest CID: %v\n", manifestCid)
 
 		tw := tabwriter.NewWriter(os.Stdout, 2, 4, 2, ' ', 0)
 		_, _ = fmt.Fprintln(tw, "\nActor\tCID\t")
 
-		var actorKeys = actors.GetBuiltinActorsKeys()
-		for _, name := range actorKeys {
-			sysActorCID, ok := actors.GetActorCodeID(actorVersion, name)
-			if !ok {
-				return xerrors.Errorf("error getting actor %v code id for actor version %d", name,
-					actorVersion)
-			}
-			_, _ = fmt.Fprintf(tw, "%v\t%v\n", name, sysActorCID)
-
+		actorsCids, err := api.StateActorCodeCIDs(ctx, nv)
+		if err != nil {
+			return err
+		}
+		for name, cid := range actorsCids {
+			_, _ = fmt.Fprintf(tw, "%v\t%v\n", name, cid)
 		}
 		return tw.Flush()
 	},

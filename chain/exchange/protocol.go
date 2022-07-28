@@ -3,23 +3,18 @@ package exchange
 import (
 	"time"
 
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/store"
-
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var log = logging.Logger("chainxchg")
 
 const (
-	// BlockSyncProtocolID is the protocol ID of the former blocksync protocol.
-	// Deprecated.
-	BlockSyncProtocolID = "/fil/sync/blk/0.0.1"
-
 	// ChainExchangeProtocolID is the protocol ID of the chain exchange
 	// protocol.
 	ChainExchangeProtocolID = "/fil/chain/xchg/0.0.1"

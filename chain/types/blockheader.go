@@ -4,18 +4,15 @@ import (
 	"bytes"
 	"math/big"
 
-	"github.com/filecoin-project/go-state-types/proof"
-
-	"github.com/minio/blake2b-simd"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/crypto"
-
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	xerrors "golang.org/x/xerrors"
+	"github.com/minio/blake2b-simd"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
+	"github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/build"
 )

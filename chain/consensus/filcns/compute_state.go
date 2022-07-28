@@ -4,8 +4,20 @@ import (
 	"context"
 	"sync/atomic"
 
-	"github.com/filecoin-project/lotus/chain/rand"
+	/* inline-gen template
+	   {{range .actorVersions}}
+	   	exported{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin/exported"{{end}}
+	/* inline-gen start */
+	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
+	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
+	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
+	exported4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/exported"
+	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
+	exported6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/exported"
+	exported7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/exported"
+	exported8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/exported"
 
+	/* inline-gen end */
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"go.opencensus.io/stats"
@@ -16,21 +28,13 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 	blockadt "github.com/filecoin-project/specs-actors/actors/util/adt"
 
-	exported0 "github.com/filecoin-project/specs-actors/actors/builtin/exported"
-	exported2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/exported"
-	exported3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/exported"
-	exported4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/exported"
-	exported5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/exported"
-	exported6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/exported"
-	exported7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/exported"
-	exported8 "github.com/filecoin-project/specs-actors/v8/actors/builtin/exported"
-
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/cron"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
+	"github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -41,6 +45,13 @@ import (
 func NewActorRegistry() *vm.ActorRegistry {
 	inv := vm.NewActorRegistry()
 
+	/* inline-gen template
+	{{range .actorVersions}}
+	inv.Register(actors.Version{{.}}, vm.ActorsVersionPredicate(actors.Version{{.}}), exported{{.}}.BuiltinActors()...){{end}}
+
+
+	/* inline-gen start */
+
 	inv.Register(actors.Version0, vm.ActorsVersionPredicate(actors.Version0), exported0.BuiltinActors()...)
 	inv.Register(actors.Version2, vm.ActorsVersionPredicate(actors.Version2), exported2.BuiltinActors()...)
 	inv.Register(actors.Version3, vm.ActorsVersionPredicate(actors.Version3), exported3.BuiltinActors()...)
@@ -49,6 +60,8 @@ func NewActorRegistry() *vm.ActorRegistry {
 	inv.Register(actors.Version6, vm.ActorsVersionPredicate(actors.Version6), exported6.BuiltinActors()...)
 	inv.Register(actors.Version7, vm.ActorsVersionPredicate(actors.Version7), exported7.BuiltinActors()...)
 	inv.Register(actors.Version8, vm.ActorsVersionPredicate(actors.Version8), exported8.BuiltinActors()...)
+
+	/* inline-gen end */
 
 	return inv
 }
@@ -69,7 +82,17 @@ type FilecoinBlockMessages struct {
 	WinCount int64
 }
 
-func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager, parentEpoch abi.ChainEpoch, pstate cid.Cid, bms []FilecoinBlockMessages, epoch abi.ChainEpoch, r vm.Rand, em stmgr.ExecMonitor, baseFee abi.TokenAmount, ts *types.TipSet) (cid.Cid, cid.Cid, error) {
+func (t *TipSetExecutor) ApplyBlocks(ctx context.Context,
+	sm *stmgr.StateManager,
+	parentEpoch abi.ChainEpoch,
+	pstate cid.Cid,
+	bms []FilecoinBlockMessages,
+	epoch abi.ChainEpoch,
+	r vm.Rand,
+	em stmgr.ExecMonitor,
+	vmTracing bool,
+	baseFee abi.TokenAmount,
+	ts *types.TipSet) (cid.Cid, cid.Cid, error) {
 	done := metrics.Timer(ctx, metrics.VMApplyBlocksTotal)
 	defer done()
 
@@ -91,6 +114,7 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 			NetworkVersion: sm.GetNetworkVersion(ctx, e),
 			BaseFee:        baseFee,
 			LookbackState:  stmgr.LookbackStateGetterForTipset(sm, ts),
+			Tracing:        vmTracing,
 		}
 
 		return sm.VMConstructor()(ctx, vmopt)
@@ -256,7 +280,11 @@ func (t *TipSetExecutor) ApplyBlocks(ctx context.Context, sm *stmgr.StateManager
 	return st, rectroot, nil
 }
 
-func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context, sm *stmgr.StateManager, ts *types.TipSet, em stmgr.ExecMonitor) (stateroot cid.Cid, rectsroot cid.Cid, err error) {
+func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context,
+	sm *stmgr.StateManager,
+	ts *types.TipSet,
+	em stmgr.ExecMonitor,
+	vmTracing bool) (stateroot cid.Cid, rectsroot cid.Cid, err error) {
 	ctx, span := trace.StartSpan(ctx, "computeTipSetState")
 	defer span.End()
 
@@ -296,7 +324,7 @@ func (t *TipSetExecutor) ExecuteTipSet(ctx context.Context, sm *stmgr.StateManag
 	}
 	baseFee := blks[0].ParentBaseFee
 
-	return t.ApplyBlocks(ctx, sm, parentEpoch, pstate, fbmsgs, blks[0].Height, r, em, baseFee, ts)
+	return t.ApplyBlocks(ctx, sm, parentEpoch, pstate, fbmsgs, blks[0].Height, r, em, vmTracing, baseFee, ts)
 }
 
 var _ stmgr.Executor = &TipSetExecutor{}

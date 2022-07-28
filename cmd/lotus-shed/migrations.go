@@ -6,23 +6,23 @@ import (
 	"io"
 	"time"
 
-	"github.com/filecoin-project/lotus/chain/stmgr"
-	"github.com/filecoin-project/lotus/chain/vm"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
-
-	"github.com/filecoin-project/lotus/chain/types"
-
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
-	"github.com/filecoin-project/lotus/chain/store"
-	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
+
+	"github.com/filecoin-project/specs-actors/v7/actors/migration/nv15"
+
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
+	"github.com/filecoin-project/lotus/chain/stmgr"
+	"github.com/filecoin-project/lotus/chain/store"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 )
 
 var migrationsCmd = &cli.Command{
-	Name:        "migrate-nv15",
-	Description: "Run the specified migration",
+	Name:        "migrate-nv16",
+	Description: "Run the nv16 migration",
 	ArgsUsage:   "[block to look back from]",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
@@ -92,14 +92,14 @@ var migrationsCmd = &cli.Command{
 			return err
 		}
 
-		ts1, err := cs.GetTipsetByHeight(ctx, blk.Height-240, migrationTs, false)
+		ts1, err := cs.GetTipsetByHeight(ctx, blk.Height-180, migrationTs, false)
 		if err != nil {
 			return err
 		}
 
 		startTime := time.Now()
 
-		err = filcns.PreUpgradeActorsV7(ctx, sm, cache, ts1.ParentState(), ts1.Height()-1, ts1)
+		err = filcns.PreUpgradeActorsV8(ctx, sm, cache, ts1.ParentState(), ts1.Height()-1, ts1)
 		if err != nil {
 			return err
 		}
@@ -107,7 +107,7 @@ var migrationsCmd = &cli.Command{
 		fmt.Println("completed round 1, took ", time.Since(startTime))
 		startTime = time.Now()
 
-		newCid1, err := filcns.UpgradeActorsV7(ctx, sm, cache, nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
+		newCid1, err := filcns.UpgradeActorsV8(ctx, sm, cache, nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
 		if err != nil {
 			return err
 		}
@@ -115,7 +115,7 @@ var migrationsCmd = &cli.Command{
 
 		fmt.Println("new cid", newCid1)
 
-		newCid2, err := filcns.UpgradeActorsV7(ctx, sm, nv15.NewMemMigrationCache(), nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
+		newCid2, err := filcns.UpgradeActorsV8(ctx, sm, nv15.NewMemMigrationCache(), nil, blk.ParentStateRoot, blk.Height-1, migrationTs)
 		if err != nil {
 			return err
 		}

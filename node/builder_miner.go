@@ -13,17 +13,11 @@ import (
 	"github.com/filecoin-project/go-fil-markets/storagemarket/impl/storedask"
 	"github.com/filecoin-project/go-state-types/abi"
 	provider "github.com/filecoin-project/index-provider"
-	storage2 "github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/markets/dealfilter"
 	"github.com/filecoin-project/lotus/markets/idxprov"
@@ -37,7 +31,14 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
+	"github.com/filecoin-project/lotus/storage/paths"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	sectorstorage "github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
 var MinerNode = Options(
@@ -50,11 +51,7 @@ var MinerNode = Options(
 	Override(new(dtypes.NetworkName), modules.StorageNetworkName),
 
 	// Mining / proving
-	Override(new(*storage.AddressSelector), modules.AddressSelector(nil)),
-
-	// builtin actors manifest
-	Override(new(dtypes.BuiltinActorsLoaded), modules.LoadBuiltinActors),
-	Override(new(dtypes.UniversalBlockstore), modules.MemoryBlockstore),
+	Override(new(*ctladdr.AddressSelector), modules.AddressSelector(nil)),
 )
 
 func ConfigStorageMiner(c interface{}) Option {
@@ -89,10 +86,10 @@ func ConfigStorageMiner(c interface{}) Option {
 		Override(CheckFDLimit, modules.CheckFdLimit(build.MinerFDLimit)), // recommend at least 100k FD limit to miners
 
 		Override(new(api.MinerSubsystems), modules.ExtractEnabledMinerSubsystems(cfg.Subsystems)),
-		Override(new(stores.LocalStorage), From(new(repo.LockedRepo))),
-		Override(new(*stores.Local), modules.LocalStorage),
-		Override(new(*stores.Remote), modules.RemoteStorage),
-		Override(new(stores.Store), From(new(*stores.Remote))),
+		Override(new(paths.LocalStorage), From(new(repo.LockedRepo))),
+		Override(new(*paths.Local), modules.LocalStorage),
+		Override(new(*paths.Remote), modules.RemoteStorage),
+		Override(new(paths.Store), From(new(*paths.Remote))),
 		Override(new(dtypes.RetrievalPricingFunc), modules.RetrievalPricingFunc(cfg.Dealmaking)),
 
 		If(!cfg.Subsystems.EnableMining,
@@ -104,9 +101,9 @@ func ConfigStorageMiner(c interface{}) Option {
 			If(!cfg.Subsystems.EnableSectorStorage, Error(xerrors.Errorf("sealing can't be disabled on a mining node yet"))),
 
 			// Sector storage: Proofs
-			Override(new(ffiwrapper.Verifier), ffiwrapper.ProofVerifier),
-			Override(new(ffiwrapper.Prover), ffiwrapper.ProofProver),
-			Override(new(storage2.Prover), From(new(sectorstorage.SectorManager))),
+			Override(new(storiface.Verifier), ffiwrapper.ProofVerifier),
+			Override(new(storiface.Prover), ffiwrapper.ProofProver),
+			Override(new(storiface.ProverPoSt), From(new(sectorstorage.SectorManager))),
 
 			// Sealing (todo should be under EnableSealing, but storagefsm is currently bundled with storage.Miner)
 			Override(new(sealing.SectorIDCounter), modules.SectorIDCounter),
@@ -120,14 +117,14 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(*miner.Miner), modules.SetupBlockProducer),
 			Override(new(gen.WinningPoStProver), storage.NewWinningPoStProver),
 			Override(new(*storage.Miner), modules.StorageMiner(cfg.Fees)),
-			Override(new(*storage.WindowPoStScheduler), modules.WindowPostScheduler(cfg.Fees)),
+			Override(new(*wdpost.WindowPoStScheduler), modules.WindowPostScheduler(cfg.Fees, cfg.Proving)),
 			Override(new(sectorblocks.SectorBuilder), From(new(*storage.Miner))),
 		),
 
 		If(cfg.Subsystems.EnableSectorStorage,
 			// Sector storage
-			Override(new(*stores.Index), stores.NewIndex),
-			Override(new(stores.SectorIndex), From(new(*stores.Index))),
+			Override(new(*paths.Index), paths.NewIndex),
+			Override(new(paths.SectorIndex), From(new(*paths.Index))),
 			Override(new(*sectorstorage.Manager), modules.SectorStorage),
 			Override(new(sectorstorage.Unsealer), From(new(*sectorstorage.Manager))),
 			Override(new(sectorstorage.SectorManager), From(new(*sectorstorage.Manager))),
@@ -142,7 +139,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		),
 		If(!cfg.Subsystems.EnableSealing,
 			Override(new(modules.MinerSealingService), modules.ConnectSealingService(cfg.Subsystems.SealerApiInfo)),
-			Override(new(stores.SectorIndex), From(new(modules.MinerSealingService))),
+			Override(new(paths.SectorIndex), From(new(modules.MinerSealingService))),
 		),
 
 		If(cfg.Subsystems.EnableMarkets,
@@ -224,7 +221,7 @@ func ConfigStorageMiner(c interface{}) Option {
 		),
 
 		Override(new(sectorstorage.Config), cfg.StorageManager()),
-		Override(new(*storage.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
+		Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&cfg.Addresses)),
 	)
 }
 

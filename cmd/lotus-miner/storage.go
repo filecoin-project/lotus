@@ -5,14 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/bits"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/filecoin-project/lotus/api/v0api"
 
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
@@ -26,13 +25,14 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
+	"github.com/filecoin-project/lotus/storage/paths"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 const metaFile = "sectorstore.json"
@@ -146,7 +146,7 @@ over time
 				}
 			}
 
-			cfg := &stores.LocalStorageMeta{
+			cfg := &paths.LocalStorageMeta{
 				ID:         storiface.ID(uuid.New().String()),
 				Weight:     cctx.Uint64("weight"),
 				CanSeal:    cctx.Bool("seal"),
@@ -344,6 +344,20 @@ var storageListCmd = &cli.Command{
 			}
 			if len(si.AllowTo) > 0 {
 				fmt.Printf("\tAllowTo: %s\n", strings.Join(si.AllowTo, ", "))
+			}
+
+			if len(si.AllowTypes) > 0 || len(si.DenyTypes) > 0 {
+				denied := storiface.FTAll.SubAllowed(si.AllowTypes, si.DenyTypes)
+				allowed := storiface.FTAll ^ denied
+
+				switch {
+				case bits.OnesCount64(uint64(allowed)) == 0:
+					fmt.Printf("\tAllow Types: %s\n", color.RedString("None"))
+				case bits.OnesCount64(uint64(allowed)) < bits.OnesCount64(uint64(denied)):
+					fmt.Printf("\tAllow Types: %s\n", color.GreenString(strings.Join(allowed.Strings(), " ")))
+				default:
+					fmt.Printf("\tDeny Types:  %s\n", color.RedString(strings.Join(denied.Strings(), " ")))
+				}
 			}
 
 			if localPath, ok := local[s.ID]; ok {

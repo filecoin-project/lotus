@@ -8,10 +8,9 @@ import (
 	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/lotus/blockstore"
-	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 )
 
 // BlockstoreDomain represents the domain of a blockstore.
@@ -52,6 +51,9 @@ type LockedRepo interface {
 	// Close closes repo and removes lock.
 	Close() error
 
+	// returns the type of this repo
+	RepoType() RepoType
+
 	// Returns datastore defined in this repo.
 	// The supplied context must only be used to initialize the datastore.
 	// The implementation should not retain the context for usage throughout
@@ -71,8 +73,8 @@ type LockedRepo interface {
 	Config() (interface{}, error)
 	SetConfig(func(interface{})) error
 
-	GetStorage() (stores.StorageConfig, error)
-	SetStorage(func(*stores.StorageConfig)) error
+	GetStorage() (paths.StorageConfig, error)
+	SetStorage(func(*paths.StorageConfig)) error
 	Stat(path string) (fsutil.FsStat, error)
 	DiskUsage(path string) (int64, error)
 

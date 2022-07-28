@@ -4,14 +4,13 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	prooftypes "github.com/filecoin-project/go-state-types/proof"
-
+	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/ipfs/go-cid"
+	prooftypes "github.com/filecoin-project/go-state-types/proof"
 )
 
 var proofsCmd = &cli.Command{

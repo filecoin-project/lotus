@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/crypto"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/crypto"
 )
 
 func (sm *SignedMessage) ToStorageBlock() (block.Block, error) {

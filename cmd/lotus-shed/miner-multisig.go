@@ -5,23 +5,21 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/filecoin-project/go-state-types/builtin"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
-
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-
-	msig5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/multisig"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/builtin"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
+	msig5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/multisig"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
 )
 
 var minerMultisigsCmd = &cli.Command{

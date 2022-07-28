@@ -3,11 +3,10 @@ package main
 import (
 	"fmt"
 
-	"github.com/filecoin-project/go-state-types/builtin"
-
 	"github.com/ipfs/go-cid"
 	"github.com/urfave/cli/v2"
 
+	"github.com/filecoin-project/go-state-types/builtin"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	"github.com/filecoin-project/lotus/chain/stmgr"

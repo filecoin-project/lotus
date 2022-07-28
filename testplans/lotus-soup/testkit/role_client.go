@@ -7,15 +7,17 @@ import (
 	"time"
 
 	"contrib.go.opencensus.io/exporter/prometheus"
-	"github.com/filecoin-project/go-jsonrpc"
-	"github.com/filecoin-project/go-jsonrpc/auth"
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/node"
-	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/gorilla/mux"
 	"github.com/hashicorp/go-multierror"
+
+	"github.com/filecoin-project/go-jsonrpc"
+	"github.com/filecoin-project/go-jsonrpc/auth"
+
+	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
+	"github.com/filecoin-project/lotus/node"
+	"github.com/filecoin-project/lotus/node/repo"
 )
 
 type LotusClient struct {
@@ -42,7 +44,7 @@ func PrepareClient(t *TestEnvironment) (*LotusClient, error) {
 	}
 
 	// first create a wallet
-	walletKey, err := wallet.GenerateKey(types.KTBLS)
+	walletKey, err := key.GenerateKey(types.KTBLS)
 	if err != nil {
 		return nil, err
 	}

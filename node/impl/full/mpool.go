@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -177,8 +179,9 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 		return nil, xerrors.Errorf("mpool push: getting origin balance: %w", err)
 	}
 
-	if b.LessThan(msg.Value) {
-		return nil, xerrors.Errorf("mpool push: not enough funds: %s < %s", b, msg.Value)
+	requiredFunds := big.Add(msg.Value, msg.RequiredFunds())
+	if b.LessThan(requiredFunds) {
+		return nil, xerrors.Errorf("mpool push: not enough funds: %s < %s", b, requiredFunds)
 	}
 
 	// Sign and push the message

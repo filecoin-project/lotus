@@ -5,23 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-
-	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
-
-	"github.com/filecoin-project/lotus/chain/actors"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-
-	"github.com/filecoin-project/specs-actors/actors/util/adt"
-
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/specs-actors/actors/util/adt"
+
 	bstore "github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/chain/actors"
+	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/genesis"
 )
@@ -178,9 +173,9 @@ func SetupInitActor(ctx context.Context, bs bstore.Blockstore, netname string, i
 		return 0, nil, nil, err
 	}
 
-	actcid, err := builtin.GetInitActorCodeID(av)
-	if err != nil {
-		return 0, nil, nil, err
+	actcid, ok := actors.GetActorCodeID(av, actors.InitKey)
+	if !ok {
+		return 0, nil, nil, xerrors.Errorf("failed to get init actor code ID for actors version %d", av)
 	}
 
 	act := &types.Actor{

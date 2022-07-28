@@ -7,7 +7,7 @@ USAGE:
    lotus-worker [global options] command [command options] [arguments...]
 
 VERSION:
-   1.16.0-dev
+   1.17.1-dev
 
 COMMANDS:
    run         Start lotus worker
@@ -20,11 +20,12 @@ COMMANDS:
    help, h     Shows a list of commands or help for one command
 
 GLOBAL OPTIONS:
-   --worker-repo value, --workerrepo value  Specify worker repo path. flag workerrepo and env WORKER_PATH are DEPRECATION, will REMOVE SOON (default: "~/.lotusworker") [$LOTUS_WORKER_PATH, $WORKER_PATH]
-   --miner-repo value, --storagerepo value  Specify miner repo path. flag storagerepo and env LOTUS_STORAGE_PATH are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
    --enable-gpu-proving                     enable use of GPU for mining operations (default: true)
    --help, -h                               show help (default: false)
+   --miner-repo value, --storagerepo value  Specify miner repo path. flag storagerepo and env LOTUS_STORAGE_PATH are DEPRECATION, will REMOVE SOON (default: "~/.lotusminer") [$LOTUS_MINER_PATH, $LOTUS_STORAGE_PATH]
    --version, -v                            print the version (default: false)
+   --worker-repo value, --workerrepo value  Specify worker repo path. flag workerrepo and env WORKER_PATH are DEPRECATION, will REMOVE SOON (default: "~/.lotusworker") [$LOTUS_WORKER_PATH, $WORKER_PATH]
+   
 ```
 
 ## lotus-worker run
@@ -36,24 +37,24 @@ USAGE:
    lotus-worker run [command options] [arguments...]
 
 OPTIONS:
+   --addpiece                    enable addpiece (default: true)
+   --commit                      enable commit (32G sectors: all cores or GPUs, 128GiB Memory + 64GiB swap) (default: true)
    --listen value                host address and port the worker api will listen on (default: "0.0.0.0:3456")
+   --no-default                  disable all default compute tasks, use the worker for storage/fetching only (default: false)
    --no-local-storage            don't use storageminer repo for sector storage (default: false)
    --no-swap                     don't use swap (default: false)
-   --addpiece                    enable addpiece (default: true)
-   --precommit1                  enable precommit1 (32G sectors: 1 core, 128GiB Memory) (default: true)
-   --unseal                      enable unsealing (32G sectors: 1 core, 128GiB Memory) (default: true)
-   --precommit2                  enable precommit2 (32G sectors: all cores, 96GiB Memory) (default: true)
-   --commit                      enable commit (32G sectors: all cores or GPUs, 128GiB Memory + 64GiB swap) (default: true)
-   --replica-update              enable replica update (default: true)
-   --prove-replica-update2       enable prove replica update 2 (default: true)
-   --regen-sector-key            enable regen sector key (default: true)
-   --windowpost                  enable window post (default: false)
-   --winningpost                 enable winning post (default: false)
    --parallel-fetch-limit value  maximum fetch operations to run in parallel (default: 5)
    --post-parallel-reads value   maximum number of parallel challenge reads (0 = no limit) (default: 128)
    --post-read-timeout value     time limit for reading PoSt challenges (0 = no limit) (default: 0s)
+   --precommit1                  enable precommit1 (32G sectors: 1 core, 128GiB Memory) (default: true)
+   --precommit2                  enable precommit2 (32G sectors: all cores, 96GiB Memory) (default: true)
+   --prove-replica-update2       enable prove replica update 2 (default: true)
+   --regen-sector-key            enable regen sector key (default: true)
+   --replica-update              enable replica update (default: true)
    --timeout value               used when 'listen' is unspecified. must be a valid duration recognized by golang's time.ParseDuration function (default: "30m")
-   --help, -h                    show help (default: false)
+   --unseal                      enable unsealing (32G sectors: 1 core, 128GiB Memory) (default: true)
+   --windowpost                  enable window post (default: false)
+   --winningpost                 enable winning post (default: false)
    
 ```
 
@@ -96,14 +97,13 @@ USAGE:
    lotus-worker storage attach [command options] [arguments...]
 
 OPTIONS:
+   --allow-to value     path groups allowed to pull data from this path (allow all if not specified)  (accepts multiple inputs)
+   --groups value       path group names                                                              (accepts multiple inputs)
    --init               initialize the path first (default: false)
-   --weight value       (for init) path weight (default: 10)
+   --max-storage value  (for init) limit storage space for sectors (expensive for very large paths!)
    --seal               (for init) use path for sealing (default: false)
    --store              (for init) use path for long-term storage (default: false)
-   --max-storage value  (for init) limit storage space for sectors (expensive for very large paths!)
-   --groups value       path group names
-   --allow-to value     path groups allowed to pull data from this path (allow all if not specified)
-   --help, -h           show help (default: false)
+   --weight value       (for init) path weight (default: 10)
    
 ```
 
@@ -116,8 +116,7 @@ USAGE:
    lotus-worker set [command options] [arguments...]
 
 OPTIONS:
-   --enabled   enable/disable new task processing (default: true)
-   --help, -h  show help (default: false)
+   --enabled  enable/disable new task processing (default: true)
    
 ```
 
@@ -143,9 +142,8 @@ USAGE:
    lotus-worker resources [command options] [arguments...]
 
 OPTIONS:
-   --all       print all resource envvars (default: false)
-   --default   print default resource envvars (default: false)
-   --help, -h  show help (default: false)
+   --all      print all resource envvars (default: false)
+   --default  print default resource envvars (default: false)
    
 ```
 

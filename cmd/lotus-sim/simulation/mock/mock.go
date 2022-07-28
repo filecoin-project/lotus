@@ -6,20 +6,19 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	prooftypes "github.com/filecoin-project/go-state-types/proof"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	prooftypes "github.com/filecoin-project/go-state-types/proof"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 	tutils "github.com/filecoin-project/specs-actors/v5/support/testing"
 
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
-// Ideally, we'd use extern/sector-storage/mock. Unfortunately, those mocks are a bit _too_ accurate
+// Ideally, we'd use extern/sealer/mock. Unfortunately, those mocks are a bit _too_ accurate
 // and would force us to load sector info for window post proofs.
 
 const (
@@ -33,7 +32,7 @@ var log = logging.Logger("simulation-mock")
 // mockVerifier is a simple mock for verifying "fake" proofs.
 type mockVerifier struct{}
 
-var Verifier ffiwrapper.Verifier = mockVerifier{}
+var Verifier storiface.Verifier = mockVerifier{}
 
 func (mockVerifier) VerifySeal(proof prooftypes.SealVerifyInfo) (bool, error) {
 	addr, err := address.NewIDAddress(uint64(proof.Miner))

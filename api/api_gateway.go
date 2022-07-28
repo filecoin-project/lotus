@@ -3,13 +3,14 @@ package api
 import (
 	"context"
 
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/dline"
 
-	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -30,6 +31,7 @@ import (
 
 type Gateway interface {
 	ChainHasObj(context.Context, cid.Cid) (bool, error)
+	ChainPutObj(context.Context, blocks.Block) error
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 	ChainGetParentMessages(context.Context, cid.Cid) ([]Message, error)
 	ChainGetParentReceipts(context.Context, cid.Cid) ([]*types.MessageReceipt, error)
@@ -66,4 +68,5 @@ type Gateway interface {
 	StateWaitMsg(ctx context.Context, cid cid.Cid, confidence uint64, limit abi.ChainEpoch, allowReplaced bool) (*MsgLookup, error)
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 	Version(context.Context) (APIVersion, error)
+	Discover(context.Context) (apitypes.OpenRPCDocument, error)
 }

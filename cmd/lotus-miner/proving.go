@@ -14,13 +14,13 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	"github.com/filecoin-project/specs-storage/storage"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var provingCmd = &cli.Command{
@@ -178,8 +178,8 @@ var provingInfoCmd = &cli.Command{
 		fmt.Printf("Current Epoch:           %d\n", cd.CurrentEpoch)
 
 		fmt.Printf("Proving Period Boundary: %d\n", cd.PeriodStart%cd.WPoStProvingPeriod)
-		fmt.Printf("Proving Period Start:    %s\n", lcli.EpochTime(cd.CurrentEpoch, cd.PeriodStart))
-		fmt.Printf("Next Period Start:       %s\n\n", lcli.EpochTime(cd.CurrentEpoch, cd.PeriodStart+cd.WPoStProvingPeriod))
+		fmt.Printf("Proving Period Start:    %s\n", lcli.EpochTimeTs(cd.CurrentEpoch, cd.PeriodStart, head))
+		fmt.Printf("Next Period Start:       %s\n\n", lcli.EpochTimeTs(cd.CurrentEpoch, cd.PeriodStart+cd.WPoStProvingPeriod, head))
 
 		fmt.Printf("Faults:      %d (%.2f%%)\n", faults, faultPerc)
 		fmt.Printf("Recovering:  %d\n", recovering)
@@ -268,8 +268,15 @@ var provingDeadlinesCmd = &cli.Command{
 }
 
 var provingDeadlineInfoCmd = &cli.Command{
-	Name:      "deadline",
-	Usage:     "View the current proving period deadline information by its index ",
+	Name:  "deadline",
+	Usage: "View the current proving period deadline information by its index",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "sector-nums",
+			Aliases: []string{"n"},
+			Usage:   "Print sector/fault numbers belonging to this deadline",
+		},
+	},
 	ArgsUsage: "<deadlineIdx>",
 	Action: func(cctx *cli.Context) error {
 
@@ -342,10 +349,14 @@ var provingDeadlineInfoCmd = &cli.Command{
 			}
 
 			fmt.Printf("Partition Index:          %d\n", pIdx)
-			fmt.Printf("Sectors:                  %d\n", sectorCount)
-			fmt.Printf("Sector Numbers:           %v\n", sectorNumbers)
-			fmt.Printf("Faults:                   %d\n", faultsCount)
-			fmt.Printf("Faulty Sectors:           %d\n", fn)
+			fmt.Printf("\tSectors:                  %d\n", sectorCount)
+			if cctx.Bool("sector-nums") {
+				fmt.Printf("\tSector Numbers:           %v\n", sectorNumbers)
+			}
+			fmt.Printf("\tFaults:                   %d\n", faultsCount)
+			if cctx.Bool("sector-nums") {
+				fmt.Printf("\tFaulty Sectors:           %d\n", fn)
+			}
 		}
 		return nil
 	},
@@ -476,7 +487,7 @@ var provingCheckProvableCmd = &cli.Command{
 				return err
 			}
 
-			var tocheck []storage.SectorRef
+			var tocheck []storiface.SectorRef
 			for _, info := range sectorInfos {
 				si := abi.SectorID{
 					Miner:  abi.ActorID(mid),
@@ -490,7 +501,7 @@ var provingCheckProvableCmd = &cli.Command{
 				}
 
 				sectors[info.SectorNumber] = struct{}{}
-				tocheck = append(tocheck, storage.SectorRef{
+				tocheck = append(tocheck, storiface.SectorRef{
 					ProofType: info.SealProof,
 					ID:        si,
 				})
@@ -515,7 +526,8 @@ var provingCheckProvableCmd = &cli.Command{
 }
 
 var provingComputeCmd = &cli.Command{
-	Name: "compute",
+	Name:  "compute",
+	Usage: "Compute simulated proving tasks",
 	Subcommands: []*cli.Command{
 		provingComputeWindowPoStCmd,
 	},
