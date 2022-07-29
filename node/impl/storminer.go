@@ -32,12 +32,15 @@ import (
 	filmktsstore "github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -1278,4 +1281,54 @@ func (sm *StorageMinerAPI) ComputeProof(ctx context.Context, ssi []builtin.Exten
 
 func (sm *StorageMinerAPI) RuntimeSubsystems(context.Context) (res api.MinerSubsystems, err error) {
 	return sm.EnabledSubsystems, nil
+}
+
+func (sm *StorageMinerAPI) WithdrawBalance(ctx context.Context, amount abi.TokenAmount, confidence uint64) (cid.Cid, error) {
+	available, err := sm.Full.StateMinerAvailableBalance(ctx, sm.Miner.Address(), types.EmptyTSK)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("Error getting miner balance: %w", err)
+	}
+
+	if amount.GreaterThan(available) {
+		return cid.Undef, xerrors.Errorf("can't withdraw more funds than available; requested: %s; available: %s", types.FIL(amount), types.FIL(available))
+	}
+
+	if amount.Equals(big.Zero()) {
+		amount = available
+	}
+
+	params, err := actors.SerializeParams(&minertypes.WithdrawBalanceParams{
+		AmountRequested: amount, // Default to attempting to withdraw all the extra funds in the miner actor
+	})
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	mi, err := sm.Full.StateMinerInfo(ctx, sm.Miner.Address(), types.EmptyTSK)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("Error getting miner's owner address: %w", err)
+	}
+
+	smsg, err := sm.Full.MpoolPushMessage(ctx, &types.Message{
+		To:     sm.Miner.Address(),
+		From:   mi.Owner,
+		Value:  types.NewInt(0),
+		Method: builtintypes.MethodsMiner.WithdrawBalance,
+		Params: params,
+	}, nil)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	// wait for it to get mined into a block
+	wait, err := sm.Full.StateWaitMsg(ctx, smsg.Cid(), confidence, abi.ChainEpoch(2), true)
+	if err != nil {
+		return smsg.Cid(), xerrors.Errorf("Timeout waiting for withdrawl message")
+	}
+
+	if wait.Receipt.ExitCode != 0 {
+		return wait.Message, xerrors.Errorf("Failed to execute withdrawl message: %w", err)
+	}
+
+	return wait.Message, nil
 }

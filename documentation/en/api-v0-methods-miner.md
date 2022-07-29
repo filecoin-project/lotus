@@ -170,6 +170,8 @@
   * [StorageReportHealth](#StorageReportHealth)
   * [StorageStat](#StorageStat)
   * [StorageTryLock](#StorageTryLock)
+* [Withdraw](#Withdraw)
+  * [WithdrawBalance](#WithdrawBalance)
 * [Worker](#Worker)
   * [WorkerConnect](#WorkerConnect)
   * [WorkerJobs](#WorkerJobs)
@@ -3661,6 +3663,34 @@ Inputs:
 ```
 
 Response: `true`
+
+## Withdraw
+
+
+### WithdrawBalance
+WithdrawBalance allows to withdraw balance from miner actor to owner address
+Specify amount as "0" to withdraw full balance. This method returns a message CID
+even when StateWaitMessage() fails and reciept exit code is non-zero
+User should check for message execution manually if this method returns a
+"Timeout waiting for withdrawl message" error.
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "0",
+  42
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
 
 ## Worker
 

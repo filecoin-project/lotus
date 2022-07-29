@@ -880,6 +880,8 @@ type StorageMinerStruct struct {
 
 		StorageTryLock func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) (bool, error) `perm:"admin"`
 
+		WithdrawBalance func(p0 context.Context, p1 abi.TokenAmount, p2 uint64) (cid.Cid, error) `perm:"admin"`
+
 		WorkerConnect func(p0 context.Context, p1 string) error `perm:"admin"`
 
 		WorkerJobs func(p0 context.Context) (map[uuid.UUID][]storiface.WorkerJob, error) `perm:"admin"`
@@ -5184,6 +5186,17 @@ func (s *StorageMinerStruct) StorageTryLock(p0 context.Context, p1 abi.SectorID,
 
 func (s *StorageMinerStub) StorageTryLock(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) (bool, error) {
 	return false, ErrNotSupported
+}
+
+func (s *StorageMinerStruct) WithdrawBalance(p0 context.Context, p1 abi.TokenAmount, p2 uint64) (cid.Cid, error) {
+	if s.Internal.WithdrawBalance == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
+	return s.Internal.WithdrawBalance(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) WithdrawBalance(p0 context.Context, p1 abi.TokenAmount, p2 uint64) (cid.Cid, error) {
+	return *new(cid.Cid), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) WorkerConnect(p0 context.Context, p1 string) error {

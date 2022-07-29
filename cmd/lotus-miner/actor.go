@@ -218,6 +218,17 @@ var actorWithdrawCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		amount := abi.NewTokenAmount(0)
+
+		if cctx.Args().Present() {
+			f, err := types.ParseFIL(cctx.Args().First())
+			if err != nil {
+				return xerrors.Errorf("parsing 'amount' argument: %w", err)
+			}
+
+			amount = abi.TokenAmount(f)
+		}
+
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
@@ -232,77 +243,24 @@ var actorWithdrawCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		res, err := nodeApi.WithdrawBalance(ctx, amount, uint64(cctx.Int("confidence")))
 		if err != nil {
 			return err
 		}
 
-		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
+		msg, err := api.StateSearchMsg(ctx, res)
 		if err != nil {
 			return err
 		}
 
-		available, err := api.StateMinerAvailableBalance(ctx, maddr, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
-		amount := available
-		if cctx.Args().Present() {
-			f, err := types.ParseFIL(cctx.Args().First())
-			if err != nil {
-				return xerrors.Errorf("parsing 'amount' argument: %w", err)
-			}
-
-			amount = abi.TokenAmount(f)
-
-			if amount.GreaterThan(available) {
-				return xerrors.Errorf("can't withdraw more funds than available; requested: %s; available: %s", types.FIL(amount), types.FIL(available))
-			}
-		}
-
-		params, err := actors.SerializeParams(&miner.WithdrawBalanceParams{
-			AmountRequested: amount, // Default to attempting to withdraw all the extra funds in the miner actor
-		})
-		if err != nil {
-			return err
-		}
-
-		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
-			To:     maddr,
-			From:   mi.Owner,
-			Value:  types.NewInt(0),
-			Method: builtin.MethodsMiner.WithdrawBalance,
-			Params: params,
-		}, nil)
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("Requested rewards withdrawal in message %s\n", smsg.Cid())
-
-		// wait for it to get mined into a block
-		fmt.Printf("waiting for %d epochs for confirmation..\n", uint64(cctx.Int("confidence")))
-
-		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), uint64(cctx.Int("confidence")))
-		if err != nil {
-			return err
-		}
-
-		// check it executed successfully
-		if wait.Receipt.ExitCode != 0 {
-			fmt.Println(cctx.App.Writer, "withdrawal failed!")
-			return err
-		}
-
-		nv, err := api.StateNetworkVersion(ctx, wait.TipSet)
+		nv, err := api.StateNetworkVersion(ctx, msg.TipSet)
 		if err != nil {
 			return err
 		}
 
 		if nv >= network.Version14 {
 			var withdrawn abi.TokenAmount
-			if err := withdrawn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
+			if err := withdrawn.UnmarshalCBOR(bytes.NewReader(msg.Receipt.Return)); err != nil {
 				return err
 			}
 
