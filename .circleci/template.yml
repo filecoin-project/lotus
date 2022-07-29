@@ -878,12 +878,14 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-and-push-image:
+          name: build-and-push/lotus-all-in-one
           dockerfile: Dockerfile.lotus
           path: .
           repo: lotus-dev
           tag: '${CIRCLE_SHA1:0:8}'
           target: lotus-all-in-one
       - build-and-push-image:
+          name: build-and-push/lotus-test
           dockerfile: Dockerfile.lotus
           path: .
           repo: lotus-test
