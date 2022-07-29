@@ -65,3 +65,10 @@ func Account(key *key.Key, balance abi.TokenAmount) EnsembleOpt {
 		return nil
 	}
 }
+
+func Time(offset time.Duration) EnsembleOpt {
+	return func(opts *ensembleOpts) error {
+		opts.pastOffset = offset
+		return nil
+	}
+}

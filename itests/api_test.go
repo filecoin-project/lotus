@@ -3,6 +3,7 @@ package itests
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -16,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/exitcode"
 
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/blockstore/splitstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -267,14 +269,33 @@ func (ts *apiSuite) testNonGenesisMiner(t *testing.T) {
 	require.Equal(t, uint64(1001), tid)
 }
 
-// Startup a node with hotstore and discard coldstore, create some unreachable state
+// Startup a node with hotstore and discard coldstore.  Compact once and return
+
+//, create some unreachable state
 // and check that compaction carries it away
-func TestHotstore(t *testing.T) {
-	//	ctx := context.Background()
+func TestHotstoreCompactsOnce(t *testing.T) {
+
+	ctx := context.Background()
+	// disable sync checking because efficient itests require that the node is out of sync : /
+	splitstore.CheckSyncGap = false
 	opts := []interface{}{kit.MockProofs(), kit.WithCfgOpt(kit.SplitstoreDiscard())}
 	full, genesisMiner, ens := kit.EnsembleMinimal(t, opts...)
+	fmt.Printf("begin mining\n")
 	ens.InterconnectAll().BeginMining(4 * time.Millisecond)
 	_ = full
 	_ = genesisMiner
-	time.Sleep(100 * time.Second)
+	for {
+		time.Sleep(1 * time.Second)
+		info, err := full.ChainBlockstoreInfo(ctx)
+		require.NoError(t, err)
+		compact, ok := info["compactions"]
+		require.True(t, ok, "compactions not on blockstore info")
+		compactionIndex, ok := compact.(int64)
+		require.True(t, ok, "compaction key on blockstore info wrong type")
+		fmt.Printf("compactions: %d\n", compactionIndex)
+		if compactionIndex >= 1 {
+			break
+		}
+	}
+	require.NoError(t, genesisMiner.Stop(ctx))
 }

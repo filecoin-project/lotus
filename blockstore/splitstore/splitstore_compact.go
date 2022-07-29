@@ -3,6 +3,7 @@ package splitstore
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -52,6 +53,12 @@ var (
 	// SyncWaitTime is the time delay from a tipset's min timestamp before we decide
 	// we have synced.
 	SyncWaitTime = 30 * time.Second
+
+	// This is a testing flag that should always be true when running a node. itests rely on the rough hack
+	// of starting genesis so far in the past that they exercise catchup mining to mine
+	// blocks quickly and so disabling syncgap checking is necessary to test compaction
+	// without a deep structural improvement of itests.
+	CheckSyncGap = true
 )
 
 var (
@@ -96,8 +103,11 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	}
 
 	timestamp := time.Unix(int64(curTs.MinTimestamp()), 0)
-	if time.Since(timestamp) > SyncGapTime {
+	fmt.Printf("base height: %d, timestamp: %v, epoch: %d, gap: %v", apply[0].Height(), curTs.MinTimestamp(), curTs.Height(), time.Since(timestamp))
+
+	if CheckSyncGap && time.Since(timestamp) > SyncGapTime {
 		// don't attempt compaction before we have caught up syncing
+		fmt.Printf("sync gap detected\n")
 		atomic.StoreInt32(&s.compacting, 0)
 		return nil
 	}
@@ -109,6 +119,7 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	}
 
 	if epoch-s.baseEpoch > CompactionThreshold {
+		fmt.Printf("YYYYYYYYY\n Begin compaction \nYYYYYYY\n")
 		// it's time to compact -- prepare the transaction and go!
 		s.beginTxnProtect()
 		s.compactType = hot
@@ -778,6 +789,10 @@ func (s *SplitStore) beginCriticalSection(markSet MarkSet) error {
 
 func (s *SplitStore) waitForSync() {
 	log.Info("waiting for sync")
+	if !CheckSyncGap {
+		log.Warnf("If you see this outside of test it is a serious splitstore issue")
+		return
+	}
 	startWait := time.Now()
 	defer func() {
 		log.Infow("waiting for sync done", "took", time.Since(startWait))
