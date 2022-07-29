@@ -3670,9 +3670,9 @@ Response: `true`
 ### WithdrawBalance
 WithdrawBalance allows to withdraw balance from miner actor to owner address
 Specify amount as "0" to withdraw full balance. This method returns a message CID
-even when StateWaitMessage() fails and reciept exit code is non-zero
+even when StateWaitMessage() fails and receipt exit code is non-zero
 User should check for message execution manually if this method returns a
-"Timeout waiting for withdrawl message" error.
+"Timeout waiting for withdrawal message" error.
 
 
 Perms: admin
