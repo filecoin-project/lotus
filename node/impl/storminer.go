@@ -1323,11 +1323,11 @@ func (sm *StorageMinerAPI) WithdrawBalance(ctx context.Context, amount abi.Token
 	// wait for it to get mined into a block
 	wait, err := sm.Full.StateWaitMsg(ctx, smsg.Cid(), confidence, abi.ChainEpoch(2), true)
 	if err != nil {
-		return smsg.Cid(), xerrors.Errorf("Timeout waiting for withdrawl message")
+		return smsg.Cid(), xerrors.Errorf("Timeout waiting for withdrawal message")
 	}
 
 	if wait.Receipt.ExitCode != 0 {
-		return wait.Message, xerrors.Errorf("Failed to execute withdrawl message: %w", err)
+		return wait.Message, xerrors.Errorf("Failed to execute withdrawal message: %w", err)
 	}
 
 	return wait.Message, nil
