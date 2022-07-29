@@ -118,4 +118,8 @@ func (w *Worker) Discover(ctx context.Context) (apitypes.OpenRPCDocument, error)
 	return build.OpenRPCDiscoverJSON_Worker(), nil
 }
 
+func (w *Worker) Shutdown(ctx context.Context) error {
+	return w.LocalWorker.Close()
+}
+
 var _ storiface.WorkerCalls = &Worker{}

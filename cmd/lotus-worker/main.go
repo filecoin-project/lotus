@@ -55,6 +55,7 @@ func main() {
 
 	local := []*cli.Command{
 		runCmd,
+		stopCmd,
 		infoCmd,
 		storageCmd,
 		setCmd,
@@ -113,6 +114,27 @@ func main() {
 		log.Warnf("%+v", err)
 		return
 	}
+}
+
+var stopCmd = &cli.Command{
+	Name:  "stop",
+	Usage: "Stop a running lotus worker",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetWorkerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+		err = api.Shutdown(ctx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	},
 }
 
 var runCmd = &cli.Command{
@@ -621,6 +643,15 @@ var runCmd = &cli.Command{
 
 				redeclareStorage = true
 			}
+		}()
+
+		go func() {
+			<-workerApi.Done()
+			log.Warn("Shutting down...")
+			if err := srv.Shutdown(context.TODO()); err != nil {
+				log.Errorf("shutting down RPC server failed: %s", err)
+			}
+			log.Warn("Graceful shutdown successful")
 		}()
 
 		return srv.Serve(nl)
