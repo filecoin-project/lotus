@@ -126,7 +126,7 @@ archives:
 
 release:
   github:
-    owner: ianconsolata
+    owner: filecoin-project
     name: lotus
   prerelease: auto
   mode: append
@@ -135,7 +135,7 @@ release:
 
 brews:
   - tap:
-      owner: ianconsolata
+      owner: filecoin-project
       name: homebrew-lotus
       branch: master
     ids:
