@@ -1298,7 +1298,7 @@ func (sm *StorageMinerAPI) WithdrawBalance(ctx context.Context, amount abi.Token
 	}
 
 	params, err := actors.SerializeParams(&minertypes.WithdrawBalanceParams{
-		AmountRequested: amount, // Default to attempting to withdraw all the extra funds in the miner actor
+		AmountRequested: amount,
 	})
 	if err != nil {
 		return cid.Undef, err
