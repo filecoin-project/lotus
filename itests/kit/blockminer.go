@@ -29,15 +29,18 @@ type BlockMiner struct {
 	miner *TestMiner
 
 	nextNulls int64
+	pause     int64 // 0 not paused, 1 paused
+	unpause   chan struct{}
 	wg        sync.WaitGroup
 	cancel    context.CancelFunc
 }
 
 func NewBlockMiner(t *testing.T, miner *TestMiner) *BlockMiner {
 	return &BlockMiner{
-		t:      t,
-		miner:  miner,
-		cancel: func() {},
+		t:       t,
+		miner:   miner,
+		cancel:  func() {},
+		unpause: make(chan struct{}),
 	}
 }
 
@@ -255,6 +258,15 @@ func (bm *BlockMiner) MineBlocks(ctx context.Context, blocktime time.Duration) {
 		defer bm.wg.Done()
 
 		for {
+			if paused := atomic.LoadInt64(&bm.pause); paused == 1 {
+				select {
+				case <-bm.unpause:
+					atomic.StoreInt64(&bm.pause, 0)
+				case <-ctx.Done():
+					return
+				}
+			}
+
 			select {
 			case <-time.After(blocktime):
 			case <-ctx.Done():
@@ -281,6 +293,18 @@ func (bm *BlockMiner) MineBlocks(ctx context.Context, blocktime time.Duration) {
 // mining rounds.
 func (bm *BlockMiner) InjectNulls(rounds abi.ChainEpoch) {
 	atomic.AddInt64(&bm.nextNulls, int64(rounds))
+}
+
+// Pause compels the miner to wait for a signal to restart
+func (bm *BlockMiner) Pause() {
+	atomic.SwapInt64(&bm.pause, 1)
+}
+
+// Restart continues mining after a pause
+func (bm *BlockMiner) Restart() {
+	paused := atomic.LoadInt64(&bm.pause)
+	require.True(bm.t, paused == 1, "invalid call of restart on un-paused state, no Pause or double Restart?")
+	bm.unpause <- struct{}{}
 }
 
 func (bm *BlockMiner) MineUntilBlock(ctx context.Context, fn *TestFullNode, cb func(abi.ChainEpoch)) {
@@ -335,4 +359,5 @@ func (bm *BlockMiner) Stop() {
 	bm.t.Log("shutting down mining")
 	bm.cancel()
 	bm.wg.Wait()
+	close(bm.unpause)
 }

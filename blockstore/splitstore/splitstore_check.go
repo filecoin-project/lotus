@@ -147,6 +147,7 @@ func (s *SplitStore) Info() map[string]interface{} {
 	info["base epoch"] = s.baseEpoch
 	info["warmup epoch"] = s.warmupEpoch
 	info["compactions"] = s.compactionIndex
+	info["compacting"] = s.compacting == 1
 
 	sizer, ok := s.hot.(bstore.BlockstoreSize)
 	if ok {
