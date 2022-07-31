@@ -157,6 +157,7 @@
 * [Storage](#Storage)
   * [StorageAddLocal](#StorageAddLocal)
   * [StorageAttach](#StorageAttach)
+  * [StorageAuthVerify](#StorageAuthVerify)
   * [StorageBestAlloc](#StorageBestAlloc)
   * [StorageDeclareSector](#StorageDeclareSector)
   * [StorageDropSector](#StorageDropSector)
@@ -3270,7 +3271,7 @@ Inputs:
 Response: `{}`
 
 ### StorageAttach
-SectorIndex
+paths.SectorIndex
 
 
 Perms: admin
@@ -3292,6 +3293,12 @@ Inputs:
     ],
     "AllowTo": [
       "string value"
+    ],
+    "AllowTypes": [
+      "string value"
+    ],
+    "DenyTypes": [
+      "string value"
     ]
   },
   {
@@ -3307,7 +3314,29 @@ Inputs:
 
 Response: `{}`
 
+### StorageAuthVerify
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response:
+```json
+[
+  "write"
+]
+```
+
 ### StorageBestAlloc
+StorageBestAlloc returns list of paths where sector files of the specified type can be allocated, ordered by preference.
+Paths with more weight and more % of free space are preferred.
+Note: This method doesn't filter paths based on AllowTypes/DenyTypes.
 
 
 Perms: admin
@@ -3337,6 +3366,12 @@ Response:
       "string value"
     ],
     "AllowTo": [
+      "string value"
+    ],
+    "AllowTypes": [
+      "string value"
+    ],
+    "DenyTypes": [
       "string value"
     ]
   }
@@ -3383,6 +3418,14 @@ Inputs:
 Response: `{}`
 
 ### StorageFindSector
+StorageFindSector returns list of paths where the specified sector files exist.
+
+If allowFetch is set, list of paths to which the sector can be fetched will also be returned.
+- Paths which have sector files locally (don't require fetching) will be listed first.
+- Paths which have sector files locally will not be filtered based on based on AllowTypes/DenyTypes.
+- Paths which require fetching will be filtered based on AllowTypes/DenyTypes. If multiple
+  file types are specified, each type will be considered individually, and a union of all paths
+  which can accommodate each file type will be returned.
 
 
 Perms: admin
@@ -3414,7 +3457,13 @@ Response:
     "Weight": 42,
     "CanSeal": true,
     "CanStore": true,
-    "Primary": true
+    "Primary": true,
+    "AllowTypes": [
+      "string value"
+    ],
+    "DenyTypes": [
+      "string value"
+    ]
   }
 ]
 ```
@@ -3481,6 +3530,12 @@ Response:
     "string value"
   ],
   "AllowTo": [
+    "string value"
+  ],
+  "AllowTypes": [
+    "string value"
+  ],
+  "DenyTypes": [
     "string value"
   ]
 }

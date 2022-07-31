@@ -340,7 +340,7 @@ func (n *Ensemble) Start() *Ensemble {
 			node.FullAPI(&full.FullNode, node.Lite(full.options.lite)),
 			node.Base(),
 			node.Repo(r),
-			node.MockHost(n.mn),
+			node.If(full.options.disableLibp2p, node.MockHost(n.mn)),
 			node.Test(),
 
 			// so that we subscribe to pubsub topics immediately
@@ -546,7 +546,12 @@ func (n *Ensemble) Start() *Ensemble {
 		// using real proofs, therefore need real sectors.
 		if !n.bootstrapped && !n.options.mockProofs {
 			psd := m.PresealDir
+			noPaths := m.options.noStorage
+
 			err := lr.SetStorage(func(sc *paths.StorageConfig) {
+				if noPaths {
+					sc.StoragePaths = []paths.LocalPath{}
+				}
 				sc.StoragePaths = append(sc.StoragePaths, paths.LocalPath{Path: psd})
 			})
 
@@ -583,7 +588,7 @@ func (n *Ensemble) Start() *Ensemble {
 			node.Repo(r),
 			node.Test(),
 
-			node.If(!m.options.disableLibp2p, node.MockHost(n.mn)),
+			node.If(m.options.disableLibp2p, node.MockHost(n.mn)),
 
 			node.Override(new(v1api.FullNode), m.FullNode.FullNode),
 			node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, m.ActorAddr)),
@@ -692,6 +697,13 @@ func (n *Ensemble) Start() *Ensemble {
 
 		lr, err := r.Lock(repo.Worker)
 		require.NoError(n.t, err)
+
+		if m.options.noStorage {
+			err := lr.SetStorage(func(sc *paths.StorageConfig) {
+				sc.StoragePaths = []paths.LocalPath{}
+			})
+			require.NoError(n.t, err)
+		}
 
 		ds, err := lr.Datastore(context.Background(), "/metadata")
 		require.NoError(n.t, err)

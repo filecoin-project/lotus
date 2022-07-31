@@ -11,6 +11,7 @@ import (
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
+	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	"go.opencensus.io/stats"
 	"go.uber.org/multierr"
@@ -312,12 +313,12 @@ func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error)
 
 	blk, err := s.hot.Get(ctx, cid)
 
-	switch err {
-	case nil:
+	switch {
+	case err == nil:
 		s.trackTxnRef(cid)
 		return blk, nil
 
-	case bstore.ErrNotFound:
+	case ipld.IsNotFound(err):
 		if s.isWarm() {
 			s.debug.LogReadMiss(cid)
 		}
@@ -366,12 +367,12 @@ func (s *SplitStore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 
 	size, err := s.hot.GetSize(ctx, cid)
 
-	switch err {
-	case nil:
+	switch {
+	case err == nil:
 		s.trackTxnRef(cid)
 		return size, nil
 
-	case bstore.ErrNotFound:
+	case ipld.IsNotFound(err):
 		if s.isWarm() {
 			s.debug.LogReadMiss(cid)
 		}
@@ -551,8 +552,7 @@ func (s *SplitStore) View(ctx context.Context, cid cid.Cid, cb func([]byte) erro
 	defer s.viewDone()
 
 	err := s.hot.View(ctx, cid, cb)
-	switch err {
-	case bstore.ErrNotFound:
+	if ipld.IsNotFound(err) {
 		if s.isWarm() {
 			s.debug.LogReadMiss(cid)
 		}
@@ -566,10 +566,8 @@ func (s *SplitStore) View(ctx context.Context, cid cid.Cid, cb func([]byte) erro
 			stats.Record(s.ctx, metrics.SplitstoreMiss.M(1))
 		}
 		return err
-
-	default:
-		return err
 	}
+	return err
 }
 
 func (s *SplitStore) isWarm() bool {

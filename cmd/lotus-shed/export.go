@@ -19,6 +19,7 @@ import (
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
 	offline "github.com/ipfs/go-ipfs-exchange-offline"
+	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipld/go-car"
 	"github.com/multiformats/go-base32"
@@ -355,7 +356,7 @@ func (rc *rawCarb) Has(ctx context.Context, c cid.Cid) (bool, error) {
 func (rc *rawCarb) Get(ctx context.Context, c cid.Cid) (block.Block, error) {
 	b, has := rc.blocks[c]
 	if !has {
-		return nil, blockstore.ErrNotFound
+		return nil, ipld.ErrNotFound{Cid: c}
 	}
 	return b, nil
 }
@@ -363,7 +364,7 @@ func (rc *rawCarb) Get(ctx context.Context, c cid.Cid) (block.Block, error) {
 func (rc *rawCarb) GetSize(ctx context.Context, c cid.Cid) (int, error) {
 	b, has := rc.blocks[c]
 	if !has {
-		return 0, blockstore.ErrNotFound
+		return 0, ipld.ErrNotFound{Cid: c}
 	}
 	return len(b.RawData()), nil
 }

@@ -44,6 +44,7 @@ import (
 	mktsdagstore "github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
@@ -97,6 +98,9 @@ type StorageMinerAPI struct {
 	Epp gen.WinningPoStProver `optional:"true"`
 	DS  dtypes.MetadataDS
 
+	// StorageService is populated when we're not the main storage node (e.g. we're a markets node)
+	StorageService modules.MinerStorageService `optional:"true"`
+
 	ConsiderOnlineStorageDealsConfigFunc        dtypes.ConsiderOnlineStorageDealsConfigFunc        `optional:"true"`
 	SetConsiderOnlineStorageDealsConfigFunc     dtypes.SetConsiderOnlineStorageDealsConfigFunc     `optional:"true"`
 	ConsiderOnlineRetrievalDealsConfigFunc      dtypes.ConsiderOnlineRetrievalDealsConfigFunc      `optional:"true"`
@@ -118,6 +122,14 @@ type StorageMinerAPI struct {
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}
+
+func (sm *StorageMinerAPI) StorageAuthVerify(ctx context.Context, token string) ([]auth.Permission, error) {
+	if sm.StorageService != nil {
+		return sm.StorageService.AuthVerify(ctx, token)
+	}
+
+	return sm.AuthVerify(ctx, token)
+}
 
 func (sm *StorageMinerAPI) ServeRemote(perm bool) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {

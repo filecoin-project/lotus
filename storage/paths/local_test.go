@@ -81,7 +81,7 @@ func TestLocalStorage(t *testing.T) {
 		root: root,
 	}
 
-	index := NewIndex()
+	index := NewIndex(nil)
 
 	st, err := NewLocal(ctx, tstor, index, nil)
 	require.NoError(t, err)

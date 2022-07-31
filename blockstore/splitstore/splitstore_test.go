@@ -15,6 +15,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	dssync "github.com/ipfs/go-datastore/sync"
+	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	mh "github.com/multiformats/go-multihash"
 
@@ -697,7 +698,7 @@ func (b *mockStore) Get(_ context.Context, cid cid.Cid) (blocks.Block, error) {
 
 	blk, ok := b.set[b.keyOf(cid)]
 	if !ok {
-		return nil, blockstore.ErrNotFound
+		return nil, ipld.ErrNotFound{Cid: cid}
 	}
 	return blk, nil
 }

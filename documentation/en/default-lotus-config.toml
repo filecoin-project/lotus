@@ -15,6 +15,9 @@
 
 
 [Backup]
+  # When set to true disables metadata log (.lotus/kvlog). This can save disk
+  # space by reducing metadata redundancy.
+  # 
   # Note that in case of metadata corruption it might be much harder to recover
   # your node if metadata log is disabled
   #

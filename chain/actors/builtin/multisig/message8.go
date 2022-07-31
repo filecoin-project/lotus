@@ -10,7 +10,6 @@ import (
 	multisig8 "github.com/filecoin-project/go-state-types/builtin/v8/multisig"
 
 	"github.com/filecoin-project/lotus/chain/actors"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	init_ "github.com/filecoin-project/lotus/chain/actors/builtin/init"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -50,8 +49,8 @@ func (m message8) Create(
 		return nil, actErr
 	}
 
-	code, err := builtin.GetMultisigActorCodeID(actors.Version8)
-	if err != nil {
+	code, ok := actors.GetActorCodeID(actors.Version8, actors.MultisigKey)
+	if !ok {
 		return nil, xerrors.Errorf("failed to get multisig code ID")
 	}
 

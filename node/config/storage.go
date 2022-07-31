@@ -67,6 +67,8 @@ func (c *StorageMiner) StorageManager() sealer.Config {
 
 		Assigner: c.Storage.Assigner,
 
-		ParallelCheckLimit: c.Proving.ParallelCheckLimit,
+		ParallelCheckLimit:        c.Proving.ParallelCheckLimit,
+		DisableBuiltinWindowPoSt:  c.Proving.DisableBuiltinWindowPoSt,
+		DisableBuiltinWinningPoSt: c.Proving.DisableBuiltinWinningPoSt,
 	}
 }

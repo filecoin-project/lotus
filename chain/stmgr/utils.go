@@ -94,6 +94,7 @@ func ComputeState(ctx context.Context, sm *StateManager, height abi.ChainEpoch, 
 		NetworkVersion: sm.GetNetworkVersion(ctx, height),
 		BaseFee:        ts.Blocks()[0].ParentBaseFee,
 		LookbackState:  LookbackStateGetterForTipset(sm, ts),
+		Tracing:        true,
 	}
 	vmi, err := sm.newVM(ctx, vmopt)
 	if err != nil {
@@ -215,7 +216,7 @@ func (sm *StateManager) ListAllActors(ctx context.Context, ts *types.TipSet) ([]
 	return out, nil
 }
 
-func GetManifest(ctx context.Context, st *state.StateTree) (*manifest.Manifest, error) {
+func GetManifestData(ctx context.Context, st *state.StateTree) (*manifest.ManifestData, error) {
 	wrapStore := gstStore.WrapStore(ctx, st.Store)
 
 	systemActor, err := st.GetActor(system.Address)
@@ -226,30 +227,13 @@ func GetManifest(ctx context.Context, st *state.StateTree) (*manifest.Manifest, 
 	if err != nil {
 		return nil, xerrors.Errorf("failed to load system actor state: %w", err)
 	}
-	actorsManifestCid := systemActorState.GetBuiltinActors()
 
-	mf := manifest.Manifest{
-		Version: 1,
-		Data:    actorsManifestCid,
-	}
-	if err := mf.Load(ctx, wrapStore); err != nil {
-		return nil, xerrors.Errorf("failed to load actor manifest: %w", err)
-	}
-	manifestData := manifest.ManifestData{}
-	if err := st.Store.Get(ctx, mf.Data, &manifestData); err != nil {
-		return nil, xerrors.Errorf("failed to load manifest data: %w", err)
-	}
-	return &mf, nil
-}
+	actorsManifestDataCid := systemActorState.GetBuiltinActors()
 
-func GetManifestEntries(ctx context.Context, st *state.StateTree) ([]manifest.ManifestEntry, error) {
-	mf, err := GetManifest(ctx, st)
-	if err != nil {
-		return nil, xerrors.Errorf("failed to get manifest: %w", err)
+	var mfData manifest.ManifestData
+	if err := wrapStore.Get(ctx, actorsManifestDataCid, &mfData); err != nil {
+		return nil, xerrors.Errorf("error fetching data: %w", err)
 	}
-	manifestData := manifest.ManifestData{}
-	if err := st.Store.Get(ctx, mf.Data, &manifestData); err != nil {
-		return nil, xerrors.Errorf("filed to load manifest data: %w", err)
-	}
-	return manifestData.Entries, nil
+
+	return &mfData, nil
 }

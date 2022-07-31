@@ -44,6 +44,30 @@ type LocalStorageMeta struct {
 	// List of storage groups to which data from this path can be moved. If none
 	// are specified, allow to all
 	AllowTo []string
+
+	// AllowTypes lists sector file types which are allowed to be put into this
+	// path. If empty, all file types are allowed.
+	//
+	// Valid values:
+	// - "unsealed"
+	// - "sealed"
+	// - "cache"
+	// - "update"
+	// - "update-cache"
+	// Any other value will generate a warning and be ignored.
+	AllowTypes []string
+
+	// DenyTypes lists sector file types which aren't allowed to be put into this
+	// path.
+	//
+	// Valid values:
+	// - "unsealed"
+	// - "sealed"
+	// - "cache"
+	// - "update"
+	// - "update-cache"
+	// Any other value will generate a warning and be ignored.
+	DenyTypes []string
 }
 
 // StorageConfig .lotusstorage/storage.json
@@ -218,6 +242,8 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		CanStore:   meta.CanStore,
 		Groups:     meta.Groups,
 		AllowTo:    meta.AllowTo,
+		AllowTypes: meta.AllowTypes,
+		DenyTypes:  meta.DenyTypes,
 	}, fst)
 	if err != nil {
 		return xerrors.Errorf("declaring storage in index: %w", err)
@@ -284,6 +310,8 @@ func (st *Local) Redeclare(ctx context.Context) error {
 			CanStore:   meta.CanStore,
 			Groups:     meta.Groups,
 			AllowTo:    meta.AllowTo,
+			AllowTypes: meta.AllowTypes,
+			DenyTypes:  meta.DenyTypes,
 		}, fst)
 		if err != nil {
 			return xerrors.Errorf("redeclaring storage in index: %w", err)
@@ -503,6 +531,10 @@ func (st *Local) AcquireSector(ctx context.Context, sid storiface.SectorRef, exi
 			}
 
 			if (pathType == storiface.PathStorage) && !si.CanStore {
+				continue
+			}
+
+			if !fileType.Allowed(si.AllowTypes, si.DenyTypes) {
 				continue
 			}
 

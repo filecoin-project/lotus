@@ -128,7 +128,7 @@ func (i *IPFSBlockstore) Put(ctx context.Context, block blocks.Block) error {
 
 	_, err = i.api.Block().Put(ctx, bytes.NewReader(block.RawData()),
 		options.Block.Hash(mhd.Code, mhd.Length),
-		options.Block.Format(cid.CodecToStr[block.Cid().Type()]))
+		options.Block.Format(multihash.Codes[block.Cid().Type()]))
 	return err
 }
 
