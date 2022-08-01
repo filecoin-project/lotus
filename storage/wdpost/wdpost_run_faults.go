@@ -58,7 +58,7 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 
 	var batchedRecoveryDecls [][]miner.RecoveryDeclaration
 	batchedRecoveryDecls = append(batchedRecoveryDecls, []miner.RecoveryDeclaration{})
-	totalRecoveries := 0
+	totalSectorsToRecover := uint64(0)
 
 	for partIdx, partition := range partitions {
 		unrecovered, err := bitfield.SubtractBitField(partition.FaultySectors, partition.RecoveringSectors)
@@ -104,15 +104,17 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 			Sectors:   recovered,
 		})
 
-		if recoveringSectorLimit > 0 && int64(totalRecoveries) >= recoveringSectorLimit {
-			log.Errorw("reached recovering sector limit, not all sectors will be marked as recovered")
+		totalSectorsToRecover += recoveredCount
+
+		if recoveringSectorLimit > 0 && int64(totalSectorsToRecover) >= recoveringSectorLimit {
+			log.Errorf("reached recovering sector limit %d, only marking %d sectors for recovery now",
+				recoveringSectorLimit,
+				totalSectorsToRecover)
 			break
 		}
-
-		totalRecoveries++
 	}
 
-	if totalRecoveries == 0 {
+	if totalSectorsToRecover == 0 {
 		if faulty != 0 {
 			log.Warnw("No recoveries to declare", "deadline", dlIdx, "faulty", faulty)
 		}
@@ -120,6 +122,7 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 		return nil, nil, nil
 	}
 
+	log.Infof("attempting recovery declarations for %d sectors", totalSectorsToRecover)
 	var msgs []*types.SignedMessage
 	for _, recovery := range batchedRecoveryDecls {
 		params := &miner.DeclareFaultsRecoveredParams{
@@ -141,7 +144,6 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 		if err := s.prepareMessage(ctx, msg, spec); err != nil {
 			return nil, nil, err
 		}
-
 		sm, err := s.api.MpoolPushMessage(ctx, msg, &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)})
 		if err != nil {
 			return nil, nil, xerrors.Errorf("pushing message to mpool: %w", err)
