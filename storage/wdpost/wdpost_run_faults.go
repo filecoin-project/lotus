@@ -2,6 +2,8 @@ package wdpost
 
 import (
 	"context"
+	"os"
+	"strconv"
 
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
@@ -18,6 +20,18 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
+
+var recoveringSectorLimit int64 = 0
+
+func init() {
+	if rcl := os.Getenv("LOTUS_RECOVERING_SECTOR_LIMIT"); rcl != "" {
+		var err error
+		recoveringSectorLimit, err = strconv.ParseInt(rcl, 10, 64)
+		if err != nil {
+			log.Errorw("parsing LOTUS_RECOVERING_SECTOR_LIMIT", "error", err)
+		}
+	}
+}
 
 // declareRecoveries identifies sectors that were previously marked as faulty
 // for our miner, but are now recovered (i.e. are now provable again) and
@@ -89,6 +103,11 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 			Partition: uint64(partIdx),
 			Sectors:   recovered,
 		})
+
+		if recoveringSectorLimit > 0 && int64(totalRecoveries) >= recoveringSectorLimit {
+			log.Errorw("reached recovering sector limit, not all sectors will be marked as recovered")
+			break
+		}
 
 		totalRecoveries++
 	}
