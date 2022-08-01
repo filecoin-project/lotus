@@ -243,24 +243,29 @@ var actorWithdrawCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		res, err := nodeApi.WithdrawBalance(ctx, amount, uint64(cctx.Int("confidence")))
+		res, err := nodeApi.WithdrawBalance(ctx, amount)
 		if err != nil {
 			return err
 		}
 
-		msg, err := api.StateSearchMsg(ctx, res)
+		// wait for it to get mined into a block
+		wait, err := api.StateWaitMsg(ctx, res, uint64(cctx.Int("confidence")))
 		if err != nil {
-			return err
+			return xerrors.Errorf("Timeout waiting for withdrawal message %s", wait.Message)
 		}
 
-		nv, err := api.StateNetworkVersion(ctx, msg.TipSet)
+		if wait.Receipt.ExitCode != 0 {
+			return xerrors.Errorf("Failed to execute withdrawal message %s: %w", wait.Message, wait.Receipt.ExitCode.Error())
+		}
+
+		nv, err := api.StateNetworkVersion(ctx, wait.TipSet)
 		if err != nil {
 			return err
 		}
 
 		if nv >= network.Version14 {
 			var withdrawn abi.TokenAmount
-			if err := withdrawn.UnmarshalCBOR(bytes.NewReader(msg.Receipt.Return)); err != nil {
+			if err := withdrawn.UnmarshalCBOR(bytes.NewReader(wait.Receipt.Return)); err != nil {
 				return err
 			}
 
