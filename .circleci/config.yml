@@ -46,6 +46,35 @@ commands:
           steps:
             - run: sudo apt-get update
             - run: sudo apt-get install ocl-icd-opencl-dev libhwloc-dev
+      - when:
+          condition: <<parameters.darwin>>
+          steps:
+            - run:
+               name: Install Go
+               command: |
+                 curl https://dl.google.com/go/go1.17.9.darwin-amd64.pkg -o /tmp/go.pkg && \
+                 sudo installer -pkg /tmp/go.pkg -target /
+            - run:
+                name: Export Go
+                command: |
+                 echo 'export GOPATH="${HOME}/go"' >> $BASH_ENV
+            - run: go version
+            - run:
+                name: Install pkg-config, goreleaser, and sha512sum
+                command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config goreleaser/tap/goreleaser coreutils
+            - run:
+                name: Install Rust
+                command: |
+                  curl https://sh.rustup.rs -sSf | sh -s -- -y
+            - run:
+                name: Install hwloc
+                command: |
+                  mkdir ~/hwloc
+                  curl --location https://download.open-mpi.org/release/hwloc/v2.4/hwloc-2.4.1.tar.gz --output ~/hwloc/hwloc-2.4.1.tar.gz
+                  cd ~/hwloc
+                  tar -xvzpf hwloc-2.4.1.tar.gz
+                  cd hwloc-2.4.1
+                  ./configure && make && sudo make install
       - run: git submodule sync
       - run: git submodule update --init
   download-params:
@@ -77,6 +106,16 @@ commands:
           tar -xf go-ipfs_v0.12.2_linux-amd64.tar.gz
           mv go-ipfs/ipfs /usr/local/bin/ipfs
           chmod +x /usr/local/bin/ipfs
+  install_ipfs_macos:
+    steps:
+      - run: |
+          curl -O https://dist.ipfs.io/kubo/v0.14.0/kubo_v0.14.0_darwin-amd64.tar.gz
+          tar -xvzf kubo_v0.14.0_darwin-amd64.tar.gz
+          pushd kubo
+          sudo bash install.sh
+          popd
+          rm -rf kubo/
+          rm kubo_v0.14.0_darwin-amd64.tar.gz
   git_fetch_all_tags:
     steps:
       - run:
@@ -335,9 +374,13 @@ jobs:
       - run:
           name: "trigger payment channel stress testplan on taas"
           command: ~/testground-cli run composition -f $HOME/testground/plans/lotus-soup/_compositions/paych-stress-k8s.toml --metadata-commit=$CIRCLE_SHA1 --metadata-repo=filecoin-project/lotus --metadata-branch=$CIRCLE_BRANCH
-
   build-macos:
     description: build darwin lotus binary
+    parameters:
+      publish:
+        default: false
+        description: publish github release and homebrew?
+        type: boolean
     macos:
       xcode: "12.5.0"
     working_directory: ~/go/src/github.com/filecoin-project/lotus
@@ -345,48 +388,28 @@ jobs:
       - prepare:
           linux: false
           darwin: true
-      - run:
-          name: Install go
-          command: |
-            curl -O https://dl.google.com/go/go1.17.9.darwin-amd64.pkg && \
-            sudo installer -pkg go1.17.9.darwin-amd64.pkg -target /
-      - run:
-          name: Install pkg-config
-          command: HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
-      - run: go version
-      - run:
-          name: Install Rust
-          command: |
-            curl https://sh.rustup.rs -sSf | sh -s -- -y
-      - run:
-          name: Install hwloc
-          command: |
-            mkdir ~/hwloc
-            curl --location https://download.open-mpi.org/release/hwloc/v2.4/hwloc-2.4.1.tar.gz --output ~/hwloc/hwloc-2.4.1.tar.gz
-            cd ~/hwloc
-            tar -xvzpf hwloc-2.4.1.tar.gz
-            cd hwloc-2.4.1
-            ./configure && make && sudo make install
+      - install_ipfs_macos
       - restore_cache:
           name: restore cargo cache
           key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
-      - run:
-          command: make build
-          no_output_timeout: 30m
-      - run:
-          name: check tag and version output match
-          command: ./scripts/version-check.sh ./lotus
+      - when:
+          condition: << parameters.publish >>
+          steps:
+            - run: goreleaser release --rm-dist
+            - run: ./scripts/generate-checksums.sh
+            - run: ./scripts/publish-checksums.sh
+      - when:
+          condition:
+            not: << parameters.publish >>
+          steps:
+            - run: goreleaser release --rm-dist --snapshot
+            - run: ./scripts/generate-checksums.sh
       - store_artifacts:
-          path: lotus
-      - store_artifacts:
-          path: lotus-miner
-      - store_artifacts:
-          path: lotus-worker
-      - run: mkdir darwin && mv lotus lotus-miner lotus-worker darwin/
+          path: dist
       - persist_to_workspace:
           root: "."
           paths:
-            - darwin
+            - dist
       - save_cache:
           name: save cargo cache
           key: v3-go-deps-{{ arch }}-{{ checksum "~/go/src/github.com/filecoin-project/lotus/go.sum" }}
@@ -523,10 +546,6 @@ jobs:
         default: false
         description: publish linux binaries?
         type: boolean
-      darwin:
-        default: false
-        description: publish darwin binaries?
-        type: boolean
       appimage:
         default: false
         description: publish appimage binaries?
@@ -546,11 +565,6 @@ jobs:
           steps:
             - run: ./scripts/build-arch-bundle.sh linux
             - run: ./scripts/publish-arch-release.sh linux
-      - when:
-          condition: << parameters.darwin>>
-          steps:
-            - run: ./scripts/build-arch-bundle.sh darwin
-            - run: ./scripts/publish-arch-release.sh darwin
       - when:
           condition: << parameters.appimage >>
           steps:
@@ -1057,27 +1071,25 @@ workflows:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-lotus-soup
       - build-macos:
+          name: publish-macos
+          publish: true
           filters:
+            branches:
+              ignore:
+                - /.*/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - build-macos:
+          filters:
+            branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-appimage:
           filters:
             branches:
               only:
                 - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
-            tags:
-              only:
-                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
-      - publish:
-          name: publish-macos
-          darwin: true
-          requires:
-            - build-macos
-          filters:
-            branches:
-              ignore:
-                - /.*/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
@@ -1106,12 +1118,14 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - build-and-push-image:
+          name: build-and-push/lotus-all-in-one
           dockerfile: Dockerfile.lotus
           path: .
           repo: lotus-dev
           tag: '${CIRCLE_SHA1:0:8}'
           target: lotus-all-in-one
       - build-and-push-image:
+          name: build-and-push/lotus-test
           dockerfile: Dockerfile.lotus
           path: .
           repo: lotus-test
