@@ -151,7 +151,7 @@ type StorageMiner interface {
 	SealingSchedDiag(ctx context.Context, doSched bool) (interface{}, error) //perm:admin
 	SealingAbort(ctx context.Context, call storiface.CallID) error           //perm:admin
 	//SealingSchedRemove removes a request from sealing pipeline
-	SealingRemoveRequest(ctx context.Context, sectorID abi.SectorID, task string, priority int) error //perm:admin
+	SealingRemoveRequest(ctx context.Context, SchedId uuid.UUID) error //perm:admin
 
 	// paths.SectorIndex
 	StorageAttach(context.Context, storiface.StorageInfo, fsutil.FsStat) error                                                         //perm:admin

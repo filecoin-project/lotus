@@ -2759,12 +2759,7 @@ Perms: admin
 Inputs:
 ```json
 [
-  {
-    "Miner": 1000,
-    "Number": 9
-  },
-  "string value",
-  123
+  "07070707-0707-0707-0707-070707070707"
 ]
 ```
 

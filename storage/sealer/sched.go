@@ -68,7 +68,8 @@ type Scheduler struct {
 
 	workTracker *workTracker
 
-	info chan func(interface{})
+	info      chan func(interface{})
+	rmRequest chan *rmRequest
 
 	closing  chan struct{}
 	closed   chan struct{}
@@ -122,6 +123,7 @@ type WorkerRequest struct {
 	TaskType sealtasks.TaskType
 	Priority int // larger values more important
 	Sel      WorkerSelector
+	SchedId  uuid.UUID
 
 	prepare WorkerAction
 	work    WorkerAction
@@ -137,6 +139,13 @@ type WorkerRequest struct {
 
 type workerResponse struct {
 	err error
+}
+
+type rmRequest struct {
+	id     uuid.UUID
+	rmresE chan error
+	rmresC chan struct{}
+	Ctx    context.Context
 }
 
 func newScheduler(assigner string) (*Scheduler, error) {
@@ -168,7 +177,8 @@ func newScheduler(assigner string) (*Scheduler, error) {
 			prepared: map[uuid.UUID]trackedWork{},
 		},
 
-		info: make(chan func(interface{})),
+		info:      make(chan func(interface{})),
+		rmRequest: make(chan *rmRequest, 1),
 
 		closing: make(chan struct{}),
 		closed:  make(chan struct{}),
@@ -184,6 +194,7 @@ func (sh *Scheduler) Schedule(ctx context.Context, sector storiface.SectorRef, t
 		TaskType: taskType,
 		Priority: getPriority(ctx),
 		Sel:      sel,
+		SchedId:  uuid.New(),
 
 		prepare: prepare,
 		work:    work,
@@ -228,6 +239,7 @@ type SchedDiagRequestInfo struct {
 	Sector   abi.SectorID
 	TaskType sealtasks.TaskType
 	Priority int
+	SchedId  uuid.UUID
 }
 
 type SchedDiagInfo struct {
@@ -246,6 +258,9 @@ func (sh *Scheduler) runSched() {
 		var toDisable []workerDisableReq
 
 		select {
+		case rmreq := <-sh.rmRequest:
+			sh.removeRequest(rmreq)
+			doSched = true
 		case <-sh.workerChange:
 			doSched = true
 		case dreq := <-sh.workerDisable:
@@ -263,7 +278,6 @@ func (sh *Scheduler) runSched() {
 			doSched = true
 		case ireq := <-sh.info:
 			ireq(sh.diag())
-
 		case <-iw:
 			initialised = true
 			iw = nil
@@ -332,6 +346,7 @@ func (sh *Scheduler) diag() SchedDiagInfo {
 			Sector:   task.Sector.ID,
 			TaskType: task.TaskType,
 			Priority: task.Priority,
+			SchedId:  task.SchedId,
 		})
 	}
 
@@ -381,20 +396,49 @@ func (sh *Scheduler) Info(ctx context.Context) (interface{}, error) {
 	}
 }
 
-func (sh *Scheduler) RemoveRequest(ctx context.Context, sectorID abi.SectorID, tasktype sealtasks.TaskType, priority int) error {
+func (sh *Scheduler) removeRequest(rmrequest *rmRequest) {
+
 	if sh.SchedQueue.Len() < 0 {
-		return xerrors.Errorf("No requests in the scheduler")
+		rmrequest.rmresE <- xerrors.New("No requests in the scheduler")
 	}
-	sh.workersLk.Lock()
-	defer sh.workersLk.Unlock()
+
 	queue := sh.SchedQueue
 	for i, r := range *queue {
-		if r.Sector.ID == sectorID && r.Priority == priority && r.TaskType == tasktype { // TODO: Add check to ensure request in not scheduled
+		if r.SchedId == rmrequest.id {
 			queue.Remove(i)
-			return nil
+			rmrequest.rmresC <- struct{}{}
 		}
 	}
-	return xerrors.Errorf("No request with provided details found")
+	rmrequest.rmresE <- xerrors.New("No request with provided details found")
+}
+
+func (sh *Scheduler) RemoveRequest(ctx context.Context, schedId uuid.UUID) error {
+	retE := make(chan error)
+	retC := make(chan struct{})
+
+	select {
+	case sh.rmRequest <- &rmRequest{
+		id:     schedId,
+		rmresE: retE,
+		rmresC: retC,
+		Ctx:    ctx,
+	}:
+	case <-sh.closing:
+		return xerrors.New("closing")
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+	select {
+	case resp := <-retE:
+		return resp
+	case <-sh.closing:
+		return xerrors.New("closing")
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-retC:
+		return nil
+	}
 }
 
 func (sh *Scheduler) Close(ctx context.Context) error {

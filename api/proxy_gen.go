@@ -802,7 +802,7 @@ type StorageMinerStruct struct {
 
 		SealingAbort func(p0 context.Context, p1 storiface.CallID) error `perm:"admin"`
 
-		SealingRemoveRequest func(p0 context.Context, p1 abi.SectorID, p2 string, p3 int) error `perm:"admin"`
+		SealingRemoveRequest func(p0 context.Context, p1 uuid.UUID) error `perm:"admin"`
 
 		SealingSchedDiag func(p0 context.Context, p1 bool) (interface{}, error) `perm:"admin"`
 
@@ -4763,14 +4763,14 @@ func (s *StorageMinerStub) SealingAbort(p0 context.Context, p1 storiface.CallID)
 	return ErrNotSupported
 }
 
-func (s *StorageMinerStruct) SealingRemoveRequest(p0 context.Context, p1 abi.SectorID, p2 string, p3 int) error {
+func (s *StorageMinerStruct) SealingRemoveRequest(p0 context.Context, p1 uuid.UUID) error {
 	if s.Internal.SealingRemoveRequest == nil {
 		return ErrNotSupported
 	}
-	return s.Internal.SealingRemoveRequest(p0, p1, p2, p3)
+	return s.Internal.SealingRemoveRequest(p0, p1)
 }
 
-func (s *StorageMinerStub) SealingRemoveRequest(p0 context.Context, p1 abi.SectorID, p2 string, p3 int) error {
+func (s *StorageMinerStub) SealingRemoveRequest(p0 context.Context, p1 uuid.UUID) error {
 	return ErrNotSupported
 }
 

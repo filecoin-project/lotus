@@ -2342,7 +2342,7 @@ USAGE:
    lotus-miner sealing abort [command options] [callid]
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --requestId  Specifies that the argument is SchedId of the request to be removed from scheduler (default: false)
    
 ```
 
