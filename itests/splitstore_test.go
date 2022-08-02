@@ -96,6 +96,62 @@ func TestHotstoreCompactCleansGarbage(t *testing.T) {
 	assert.False(t, g.Exists(ctx, garbage), "Garbage still exists in blockstore")
 }
 
+// Create unreachable state
+// Check that it moves to coldstore
+// Prune coldstore and check that it is deleted
+func TestColdStore(t *testing.T) {
+	ctx := context.Background()
+	// disable sync checking because efficient itests require that the node is out of sync : /
+	splitstore.CheckSyncGap = false
+	opts := []interface{}{kit.MockProofs(), kit.WithCfgOpt(kit.SplitstoreUniversal()), kit.FsRepo()}
+	full, genesisMiner, ens := kit.EnsembleMinimal(t, opts...)
+	bm := ens.InterconnectAll().BeginMining(4 * time.Millisecond)[0]
+	_ = full
+	_ = genesisMiner
+
+	// create garbage
+	g := NewGarbager(ctx, t, full)
+	garbage, e := g.Drop(ctx)
+	assert.True(g.t, g.Exists(ctx, garbage), "Garbage not found in splitstore")
+
+	// calculate next compaction where we should actually see cleanup
+
+	// pause, check for compacting and get compaction info
+	// we do this to remove the (very unlikely) race where compaction index
+	// and compaction epoch are in the middle of update, or a whole compaction
+	// runs between the two
+	for {
+		bm.Pause()
+		if splitStoreCompacting(ctx, t, full) {
+			bm.Restart()
+			time.Sleep(3 * time.Second)
+		} else {
+			break
+		}
+	}
+	lastCompactionEpoch := splitStoreBaseEpoch(ctx, t, full)
+	garbageCompactionIndex := splitStoreCompactionIndex(ctx, t, full) + 1
+	boundary := lastCompactionEpoch + splitstore.CompactionThreshold - splitstore.CompactionBoundary
+
+	for e > boundary {
+		boundary += splitstore.CompactionThreshold - splitstore.CompactionBoundary
+		garbageCompactionIndex += 1
+	}
+	bm.Restart()
+
+	// wait for compaction to occur
+	waitForCompaction(ctx, t, garbageCompactionIndex, full)
+
+	bm.Pause()
+
+	// This data should now be moved to the coldstore.
+	// Access it without hotview to keep it there while checking that it still exists
+	// Only state compute uses hot view so garbager Exists backed by ChainReadObj is all good
+	assert.True(g.t, g.Exists(ctx, garbage), "Garbage not found in splitstore")
+	bm.Restart()
+
+}
+
 func waitForCompaction(ctx context.Context, t *testing.T, cIdx int64, n *kit.TestFullNode) {
 	for {
 		if splitStoreCompactionIndex(ctx, t, n) >= cIdx {
@@ -138,7 +194,7 @@ func splitStoreCompactionIndex(ctx context.Context, t *testing.T, n *kit.TestFul
 // Create on chain unreachable garbage for a network to exercise splitstore
 // one garbage cid created at a time
 //
-// Internally it works by rewriting an internally maintained miner actor's peer ID
+// It works by rewriting an internally maintained miner actor's peer ID
 type Garbager struct {
 	t      *testing.T
 	node   *kit.TestFullNode

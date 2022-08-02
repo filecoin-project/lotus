@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	dssync "github.com/ipfs/go-datastore/sync"
@@ -261,6 +262,15 @@ func (lmem *lockedMemRepo) Datastore(_ context.Context, ns string) (datastore.Ba
 	}
 
 	return namespace.Wrap(lmem.mem.datastore, datastore.NewKey(ns)), nil
+}
+
+func isTestCid(c cid.Cid) bool {
+	testCid, err := cid.Decode("bafy2bzacec4ek45pyx2ihisbmbhbit5htk2ovrry4mpmxkhjasbln3ikvzanu")
+	if err != nil {
+		panic(err)
+	}
+
+	return c.Hash().HexString() == testCid.Hash().HexString()
 }
 
 func (lmem *lockedMemRepo) Blockstore(ctx context.Context, domain BlockstoreDomain) (blockstore.Blockstore, error) {

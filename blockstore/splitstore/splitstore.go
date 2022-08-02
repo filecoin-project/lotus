@@ -3,6 +3,7 @@ package splitstore
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"sync"
 	"sync/atomic"
@@ -10,6 +11,7 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	cidtype "github.com/ipfs/go-cid"
 	dstore "github.com/ipfs/go-datastore"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
@@ -314,6 +316,12 @@ func (s *SplitStore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 }
 
 func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
+	if compare, ok := ctx.Value("verbose-cid").(cidtype.Cid); ok && compare == cid {
+		fmt.Printf("[SS] Get cid: %s\n", cid)
+	}
+	if compare, ok := ctx.Value("verbose-cid").(cidtype.Cid); ok && compare == cid {
+		defer fmt.Printf("[SS] finish get: %s\n", cid)
+	}
 	if isIdentiyCid(cid) {
 		data, err := decodeIdentityCid(cid)
 		if err != nil {
@@ -328,6 +336,10 @@ func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error)
 
 	// critical section
 	if s.txnMarkSet != nil {
+		if compare, ok := ctx.Value("verbose-cid").(cidtype.Cid); ok && compare == cid {
+			fmt.Printf("[SS] Get in critical section\n")
+		}
+
 		has, err := s.txnMarkSet.Has(cid)
 		if err != nil {
 			return nil, err
@@ -350,6 +362,10 @@ func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error)
 
 	switch {
 	case err == nil:
+		if compare, ok := ctx.Value("verbose-cid").(cidtype.Cid); ok && compare == cid {
+
+			fmt.Printf("[SS] hot had it\n")
+		}
 		s.trackTxnRef(cid)
 		return blk, nil
 
@@ -360,6 +376,11 @@ func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error)
 
 		blk, err = s.cold.Get(ctx, cid)
 		if err == nil {
+			if compare, ok := ctx.Value("verbose-cid").(cidtype.Cid); ok && compare == cid {
+
+				fmt.Printf("[SS] cold had it\n")
+			}
+
 			s.trackTxnRef(cid)
 			if bstore.IsHotView(ctx) {
 				s.reifyColdObject(cid)

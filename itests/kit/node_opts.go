@@ -34,6 +34,7 @@ type nodeOpts struct {
 	ownerKey      *key.Key
 	extraNodeOpts []node.Option
 	cfgOpts       []cfgOption
+	fsrepo        bool
 
 	subsystems             MinerSubsystem
 	mainMiner              *TestMiner
@@ -237,6 +238,13 @@ func WithWorkerStorage(transform func(paths.Store) paths.Store) NodeOpt {
 	}
 }
 
+func FsRepo() NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.fsrepo = true
+		return nil
+	}
+}
+
 func WithCfgOpt(opt cfgOption) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.cfgOpts = append(opts.cfgOpts, opt)
@@ -254,6 +262,18 @@ func SplitstoreDiscard() cfgOption {
 		cfg.Chainstore.EnableSplitstore = true
 		cfg.Chainstore.Splitstore.HotStoreFullGCFrequency = 0 // turn off full gc
 		cfg.Chainstore.Splitstore.ColdStoreType = "discard"   // no cold store
+		return nil
+	}
+}
+
+func SplitstoreUniversal() cfgOption {
+	return func(cfg *config.FullNode) error {
+		//cfg.Chainstore.Splitstore.HotStoreType = "badger" // default
+		//cfg.Chainstore.Splitstore.MarkSetType = "badger" // default
+		//cfg.Chainstore.Splitstore.HotStoreMessageRetention = 0 // default
+		cfg.Chainstore.EnableSplitstore = true
+		cfg.Chainstore.Splitstore.HotStoreFullGCFrequency = 0 // turn off full gc
+		cfg.Chainstore.Splitstore.ColdStoreType = "universal" // universal bs is coldstore
 		return nil
 	}
 }

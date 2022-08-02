@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"os"
 	"sync"
 	"testing"
 	"time"
@@ -341,8 +342,25 @@ func (n *Ensemble) Start() *Ensemble {
 
 	// Create all inactive full nodes.
 	for i, full := range n.inactive.fullnodes {
-		r := repo.NewMemory(nil)
-		n.t.Cleanup(r.Cleanup)
+
+		var r repo.Repo
+		if full.options.fsrepo {
+			rmem := repo.NewMemory(nil)
+			n.t.Cleanup(rmem.Cleanup)
+			r = rmem
+		} else {
+			repoPath, err := ioutil.TempDir(os.TempDir(), "lotus-itest-fsrepo-temp-")
+			if err != nil {
+				panic(err) // only used in tests, probably fine
+			}
+			n.t.Cleanup(func() {
+				os.RemoveAll(repoPath) //nolint: errcheck
+			})
+			rfs, err := repo.NewFS(repoPath)
+			require.NoError(n.t, err)
+			rfs.Init(repo.FullNode)
+			r = rfs
+		}
 
 		// setup config with options
 		lr, err := r.Lock(repo.FullNode)
@@ -421,7 +439,10 @@ func (n *Ensemble) Start() *Ensemble {
 			n.inactive.fullnodes[i] = withRPC
 		}
 
-		n.t.Cleanup(func() { _ = stop(context.Background()) })
+		n.t.Cleanup(func() {
+			_ = stop(context.Background())
+
+		})
 
 		n.active.fullnodes = append(n.active.fullnodes, full)
 	}
