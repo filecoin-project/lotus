@@ -202,7 +202,7 @@ var storageDetachCmd = &cli.Command{
 			return xerrors.Errorf("expanding path: %w", err)
 		}
 
-		if !cctx.Bool("really-do-id") {
+		if !cctx.Bool("really-do-it") {
 			return xerrors.Errorf("pass --really-do-it to execute the action")
 		}
 
