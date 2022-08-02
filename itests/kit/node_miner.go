@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -128,7 +129,7 @@ func (tm *TestMiner) StartPledge(ctx context.Context, n, existing int, blockNoti
 	}
 
 	for {
-		s, err := tm.StorageMiner.SectorsList(ctx) // Note - the test builder doesn't import genesis sectors into FSM
+		s, err := tm.SectorsListNonGenesis(ctx)
 		require.NoError(tm.t, err)
 		fmt.Printf("Sectors: %d\n", len(s))
 		if len(s) >= n+existing {
@@ -140,7 +141,7 @@ func (tm *TestMiner) StartPledge(ctx context.Context, n, existing int, blockNoti
 
 	fmt.Printf("All sectors is fsm\n")
 
-	s, err := tm.StorageMiner.SectorsList(ctx)
+	s, err := tm.SectorsListNonGenesis(ctx)
 	require.NoError(tm.t, err)
 
 	toCheck := map[abi.SectorNumber]struct{}{}
@@ -204,4 +205,16 @@ func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, conf func(*pa
 	require.NoError(t, err)
 
 	return cfg.ID
+}
+func (tm *TestMiner) SectorsListNonGenesis(ctx context.Context) ([]abi.SectorNumber, error) {
+	l, err := tm.SectorsList(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// sort just in case
+	sort.Slice(l, func(i, j int) bool {
+		return l[i] < l[j]
+	})
+
+	return l[tm.options.sectors:], nil
 }

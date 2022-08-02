@@ -39,7 +39,7 @@ func TestPreferNoUpgrade(t *testing.T) {
 
 	{
 		miner.PledgeSectors(ctx, 1, 0, nil)
-		sl, err := miner.SectorsList(ctx)
+		sl, err := miner.SectorsListNonGenesis(ctx)
 		require.NoError(t, err)
 		require.Len(t, sl, 1, "expected 1 sector")
 		require.Equal(t, CCUpgrade, sl[0], "unexpected sector number")
@@ -53,7 +53,7 @@ func TestPreferNoUpgrade(t *testing.T) {
 		err = miner.SectorMarkForUpgrade(ctx, sl[0], true)
 		require.NoError(t, err)
 
-		sl, err = miner.SectorsList(ctx)
+		sl, err = miner.SectorsListNonGenesis(ctx)
 		require.NoError(t, err)
 		require.Len(t, sl, 1, "expected 1 sector")
 	}
@@ -68,7 +68,7 @@ func TestPreferNoUpgrade(t *testing.T) {
 		kit.AssertFilesEqual(t, inPath, outPath)
 	}
 
-	sl, err := miner.SectorsList(ctx)
+	sl, err := miner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)
 	require.Len(t, sl, 2, "expected 2 sectors")
 

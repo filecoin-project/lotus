@@ -35,7 +35,7 @@ func TestAbortUpgradeAvailable(t *testing.T) {
 	fmt.Printf("CCUpgrade: %d\n", CCUpgrade)
 
 	miner.PledgeSectors(ctx, 1, 0, nil)
-	sl, err := miner.SectorsList(ctx)
+	sl, err := miner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)
 	require.Len(t, sl, 1, "expected 1 sector")
 	require.Equal(t, CCUpgrade, sl[0], "unexpected sector number")
@@ -49,7 +49,7 @@ func TestAbortUpgradeAvailable(t *testing.T) {
 	err = miner.SectorMarkForUpgrade(ctx, sl[0], true)
 	require.NoError(t, err)
 
-	sl, err = miner.SectorsList(ctx)
+	sl, err = miner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)
 	require.Len(t, sl, 1, "expected 1 sector")
 
