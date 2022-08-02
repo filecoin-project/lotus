@@ -22,12 +22,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var recoveringSectorLimit uint64 = 0
+var RecoveringSectorLimit uint64 = 0
 
 func init() {
 	if rcl := os.Getenv("LOTUS_RECOVERING_SECTOR_LIMIT"); rcl != "" {
 		var err error
-		recoveringSectorLimit, err = strconv.ParseUint(rcl, 10, 64)
+		RecoveringSectorLimit, err = strconv.ParseUint(rcl, 10, 64)
 		if err != nil {
 			log.Errorw("parsing LOTUS_RECOVERING_SECTOR_LIMIT", "error", err)
 		}
@@ -94,14 +94,14 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 		}
 
 		// rules to follow if we have indicated that we don't want to recover more than X sectors in a deadline
-		if recoveringSectorLimit > 0 {
+		if RecoveringSectorLimit > 0 {
 			// something weird happened, break because we can't recover any more
-			if recoveringSectorLimit < totalSectorsToRecover {
-				log.Warnf("accepted more recoveries (%d) than recoveringSectorLimit (%d)", totalSectorsToRecover, recoveringSectorLimit)
+			if RecoveringSectorLimit < totalSectorsToRecover {
+				log.Warnf("accepted more recoveries (%d) than RecoveringSectorLimit (%d)", totalSectorsToRecover, RecoveringSectorLimit)
 				break
 			}
 
-			maxNewRecoverable := recoveringSectorLimit - totalSectorsToRecover
+			maxNewRecoverable := RecoveringSectorLimit - totalSectorsToRecover
 
 			// we need to trim the recover bitfield
 			if recoveredCount > maxNewRecoverable {
@@ -111,9 +111,9 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 					break
 				}
 
-				log.Warnf("only adding %d sectors to respect recoveringSectorLimit %d", maxNewRecoverable, recoveringSectorLimit)
+				log.Warnf("only adding %d sectors to respect RecoveringSectorLimit %d", maxNewRecoverable, RecoveringSectorLimit)
 
-				recovered = bitfield.NewFromSet(recoverySlice[0:maxNewRecoverable])
+				recovered = bitfield.NewFromSet(recoverySlice[:maxNewRecoverable])
 				recoveredCount = maxNewRecoverable
 			}
 		}
@@ -132,9 +132,9 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 
 		totalSectorsToRecover += recoveredCount
 
-		if recoveringSectorLimit > 0 && totalSectorsToRecover >= recoveringSectorLimit {
+		if RecoveringSectorLimit > 0 && totalSectorsToRecover >= RecoveringSectorLimit {
 			log.Errorf("reached recovering sector limit %d, only marking %d sectors for recovery now",
-				recoveringSectorLimit,
+				RecoveringSectorLimit,
 				totalSectorsToRecover)
 			break
 		}

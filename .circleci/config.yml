@@ -976,9 +976,9 @@ workflows:
           target: "./itests/verifreg_test.go"
       
       - test:
-          name: test-itest-wdpost_check_config
-          suite: itest-wdpost_check_config
-          target: "./itests/wdpost_check_config_test.go"
+          name: test-itest-wdpost_config
+          suite: itest-wdpost_config
+          target: "./itests/wdpost_config_test.go"
       
       - test:
           name: test-itest-wdpost_dispute
