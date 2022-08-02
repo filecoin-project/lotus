@@ -185,6 +185,10 @@ func GetDealFees(deal market{{.latestVersion}}.DealProposal, height abi.ChainEpo
 	   return ef, big.Sub(tf, ef)
 }
 
+func IsDealActive(state market{{.latestVersion}}.DealState) bool {
+    return state.SectorStartEpoch > -1 && state.SlashEpoch == -1
+}
+
 func labelFromGoString(s string) (market{{.latestVersion}}.DealLabel, error) {
 	if utf8.ValidString(s) {
 		return market{{.latestVersion}}.NewLabelFromString(s)
