@@ -4,7 +4,7 @@
 
 This is an optional release of Lotus. This feature release introduces a lot of new sealing and scheduler improvements, and many other functionalities and bug fixes.
 
-PSA: Markets related features, enhancements and fixes is now lower priority for Lotus, and is going to be in the hands of ([Boost](https://boost.filecoin.io)), built by the amazing ([Bedrock team](https://www.notion.so/pl-strflt/Bedrock-2e956d5d8143432080a1d84435ccf0ff)). You can find Lotus mission scope in the (([Lotus Roadmap])(https://www.notion.so/Lotus-8352bbb6c321431abd8790a7a3401ed3#805c645f592840ad893c272723362d3d))
+PSA: Markets related features, enhancements and fixes is now lower priority for Lotus, and is going to be in the hands of ([Boost](https://boost.filecoin.io)), built by the amazing ([Bedrock team](https://www.notion.so/pl-strflt/Bedrock-2e956d5d8143432080a1d84435ccf0ff)). You can find Lotus mission scope in the ([Lotus Roadmap](https://www.notion.so/Lotus-8352bbb6c321431abd8790a7a3401ed3#805c645f592840ad893c272723362d3d))
 
 ## New features
 
