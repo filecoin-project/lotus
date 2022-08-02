@@ -32,6 +32,7 @@ var marketCmd = &cli.Command{
 		marketDealFeesCmd,
 		marketExportDatastoreCmd,
 		marketImportDatastoreCmd,
+		marketDealsTotalStorageCmd,
 	},
 }
 
@@ -278,6 +279,48 @@ var marketImportDatastoreCmd = &cli.Command{
 		}
 
 		fmt.Println("Completed importing from backup file " + backupPath)
+
+		return nil
+	},
+}
+
+var marketDealsTotalStorageCmd = &cli.Command{
+	Name:  "get-deals-total-storage",
+	Usage: "View the total storage available in all active market deals",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		ts, err := lcli.LoadTipSet(ctx, cctx, api)
+		if err != nil {
+			return err
+		}
+
+		deals, err := api.StateMarketDeals(ctx, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		total := big.Zero()
+		count := 0
+
+		for _, deal := range deals {
+			if market.IsDealActive(deal.State) {
+				dealStorage := big.NewIntUnsigned(uint64(deal.Proposal.PieceSize))
+				total = big.Add(total, dealStorage)
+				count++
+			}
+
+		}
+
+		fmt.Println("Total deals: ", count)
+		fmt.Println("Total storage: ", total)
 
 		return nil
 	},
