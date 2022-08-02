@@ -199,10 +199,9 @@ var provingDeadlinesCmd = &cli.Command{
 	Usage: "View the current proving period deadlines information",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:    "live",
-			Usage:   "View live deadlines information",
-			Value:   false,
-			Aliases: []string{"l"},
+			Name:    "all",
+			Usage:   "Count all sectors (only live sectors are counted by default)",
+			Aliases: []string{"a"},
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -250,7 +249,7 @@ var provingDeadlinesCmd = &cli.Command{
 			var partitionCount int
 
 			for _, partition := range partitions {
-				if cctx.Bool("live") {
+				if !cctx.Bool("all") {
 					sc, err := partition.LiveSectors.Count()
 					if err != nil {
 						return err
