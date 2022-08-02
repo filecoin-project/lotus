@@ -367,8 +367,8 @@ var sealingAbortCmd = &cli.Command{
 	ArgsUsage: "[callid]",
 	Flags: []cli.Flag{
 		&cli.BoolFlag{
-			Name:  "requestId",
-			Usage: "Specifies that the argument is SchedId of the request to be removed from scheduler",
+			Name:  "sched",
+			Usage: "Specifies that the argument is UUID of the request to be removed from scheduler",
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -384,7 +384,7 @@ var sealingAbortCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		if cctx.Bool("requestId") {
+		if cctx.Bool("sched") {
 			err = nodeApi.SealingRemoveRequest(ctx, uuid.Must(uuid.Parse(cctx.Args().First())))
 			if err != nil {
 				return xerrors.Errorf("Failed to removed the request with UUID %s: %w", cctx.Args().First(), err)

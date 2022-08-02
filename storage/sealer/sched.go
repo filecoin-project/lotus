@@ -142,10 +142,8 @@ type workerResponse struct {
 }
 
 type rmRequest struct {
-	id     uuid.UUID
-	rmresE chan error
-	rmresC chan struct{}
-	Ctx    context.Context
+	id  uuid.UUID
+	res chan error
 }
 
 func newScheduler(assigner string) (*Scheduler, error) {
@@ -178,7 +176,7 @@ func newScheduler(assigner string) (*Scheduler, error) {
 		},
 
 		info:      make(chan func(interface{})),
-		rmRequest: make(chan *rmRequest, 1),
+		rmRequest: make(chan *rmRequest),
 
 		closing: make(chan struct{}),
 		closed:  make(chan struct{}),
@@ -399,29 +397,28 @@ func (sh *Scheduler) Info(ctx context.Context) (interface{}, error) {
 func (sh *Scheduler) removeRequest(rmrequest *rmRequest) {
 
 	if sh.SchedQueue.Len() < 0 {
-		rmrequest.rmresE <- xerrors.New("No requests in the scheduler")
+		rmrequest.res <- xerrors.New("No requests in the scheduler")
+		return
 	}
 
 	queue := sh.SchedQueue
 	for i, r := range *queue {
 		if r.SchedId == rmrequest.id {
 			queue.Remove(i)
-			rmrequest.rmresC <- struct{}{}
+			rmrequest.res <- nil
+			return
 		}
 	}
-	rmrequest.rmresE <- xerrors.New("No request with provided details found")
+	rmrequest.res <- xerrors.New("No request with provided details found")
 }
 
 func (sh *Scheduler) RemoveRequest(ctx context.Context, schedId uuid.UUID) error {
-	retE := make(chan error)
-	retC := make(chan struct{})
+	ret := make(chan error, 1)
 
 	select {
 	case sh.rmRequest <- &rmRequest{
-		id:     schedId,
-		rmresE: retE,
-		rmresC: retC,
-		Ctx:    ctx,
+		id:  schedId,
+		res: ret,
 	}:
 	case <-sh.closing:
 		return xerrors.New("closing")
@@ -430,14 +427,15 @@ func (sh *Scheduler) RemoveRequest(ctx context.Context, schedId uuid.UUID) error
 	}
 
 	select {
-	case resp := <-retE:
-		return resp
+	case resp := <-ret:
+		if resp != nil {
+			return resp
+		}
+		return nil
 	case <-sh.closing:
 		return xerrors.New("closing")
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-retC:
-		return nil
 	}
 }
 

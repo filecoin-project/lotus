@@ -1168,10 +1168,8 @@ func (m *Manager) SchedDiag(ctx context.Context, doSched bool) (interface{}, err
 	return i, nil
 }
 
-func (m *Manager) RemoveSchedRequest(ctx context.Context, SchedId uuid.UUID) error {
-	m.workLk.Lock()
-	defer m.workLk.Unlock()
-	return m.sched.RemoveRequest(ctx, SchedId)
+func (m *Manager) RemoveSchedRequest(ctx context.Context, schedId uuid.UUID) error {
+	return m.sched.RemoveRequest(ctx, schedId)
 }
 
 func (m *Manager) Close(ctx context.Context) error {
