@@ -647,6 +647,8 @@ var runCmd = &cli.Command{
 
 		go func() {
 			<-workerApi.Done()
+			// Wait 20s to allow the miner to unregister the worker on next heartbeat
+			time.Sleep(20 * time.Second)
 			log.Warn("Shutting down...")
 			if err := srv.Shutdown(context.TODO()); err != nil {
 				log.Errorf("shutting down RPC server failed: %s", err)
