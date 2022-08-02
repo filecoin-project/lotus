@@ -1,10 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/filecoin-project/go-bitfield"
 	"os"
 	"strconv"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -298,12 +301,6 @@ var provingDeadlineInfoCmd = &cli.Command{
 			Aliases: []string{"n"},
 			Usage:   "Print sector/fault numbers belonging to this deadline",
 		},
-		&cli.BoolFlag{
-			Name:    "live",
-			Usage:   "View deadline live sectors",
-			Value:   false,
-			Aliases: []string{"l"},
-		},
 	},
 	ArgsUsage: "<deadlineIdx>",
 	Action: func(cctx *cli.Context) error {
@@ -355,54 +352,72 @@ var provingDeadlineInfoCmd = &cli.Command{
 		fmt.Printf("Proven Partitions:        %d\n", provenPartitions)
 		fmt.Printf("Current:                  %t\n\n", di.Index == dlIdx)
 
-		var sectorCount uint64
-		var sectorNumbers []uint64
-
 		for pIdx, partition := range partitions {
-			if !cctx.Bool("live") {
-				sectorCount, err = partition.AllSectors.Count()
+			fmt.Printf("Partition Index:          %d\n", pIdx)
+
+			printStats := func(bf bitfield.BitField, name string) error {
+				count, err := bf.Count()
 				if err != nil {
 					return err
 				}
 
-				sectorNumbers, err = partition.AllSectors.All(sectorCount)
+				rit, err := bf.RunIterator()
 				if err != nil {
 					return err
 				}
 
-			} else {
-				sectorCount, err = partition.LiveSectors.Count()
-				if err != nil {
-					return err
-				}
-
-				if sectorCount != 0 {
-					sectorNumbers, err = partition.LiveSectors.All(sectorCount)
+				var ones, zeros, oneRuns, zeroRuns, invalid uint64
+				for rit.HasNext() {
+					r, err := rit.NextRun()
 					if err != nil {
-						return err
+						return xerrors.Errorf("next run: %w", err)
+					}
+					if !r.Valid() {
+						invalid++
+					}
+					if r.Val {
+						ones += r.Len
+						oneRuns++
+					} else {
+						zeros += r.Len
+						zeroRuns++
 					}
 				}
 
+				var buf bytes.Buffer
+				if err := bf.MarshalCBOR(&buf); err != nil {
+					return err
+				}
+				sz := len(buf.Bytes())
+				szstr := types.SizeStr(types.NewInt(uint64(sz)))
+
+				fmt.Printf("\t%s Sectors:%s%d (bitfield - runs %d+%d=%d - %d 0s %d 1s - %d inv - %s %dB)\n", name, strings.Repeat(" ", 18-len(name)), count, zeroRuns, oneRuns, zeroRuns+oneRuns, zeros, ones, invalid, szstr, sz)
+
+				if cctx.Bool("sector-nums") {
+					nums, err := bf.All(count)
+					if err != nil {
+						return err
+					}
+					fmt.Printf("\t%s Sector Numbers:%s%v\n", name, strings.Repeat(" ", 12-len(name)), nums)
+				}
+
+				return nil
 			}
 
-			faultsCount, err := partition.FaultySectors.Count()
-			if err != nil {
+			if err := printStats(partition.AllSectors, "All"); err != nil {
 				return err
 			}
-
-			fn, err := partition.FaultySectors.All(faultsCount)
-			if err != nil {
+			if err := printStats(partition.LiveSectors, "Live"); err != nil {
 				return err
 			}
-
-			fmt.Printf("Partition Index:          %d\n", pIdx)
-			fmt.Printf("\tSectors:                  %d\n", sectorCount)
-			if cctx.Bool("sector-nums") {
-				fmt.Printf("\tSector Numbers:           %v\n", sectorNumbers)
+			if err := printStats(partition.ActiveSectors, "Active"); err != nil {
+				return err
 			}
-			fmt.Printf("\tFaults:                   %d\n", faultsCount)
-			if cctx.Bool("sector-nums") {
-				fmt.Printf("\tFaulty Sectors:           %d\n", fn)
+			if err := printStats(partition.FaultySectors, "Faulty"); err != nil {
+				return err
+			}
+			if err := printStats(partition.RecoveringSectors, "Recovering"); err != nil {
+				return err
 			}
 		}
 		return nil
