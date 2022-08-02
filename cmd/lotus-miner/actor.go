@@ -243,7 +243,7 @@ var actorWithdrawCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		res, err := nodeApi.WithdrawBalance(ctx, amount)
+		res, err := nodeApi.ActorWithdrawBalance(ctx, amount)
 		if err != nil {
 			return err
 		}

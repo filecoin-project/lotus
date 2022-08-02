@@ -656,6 +656,8 @@ type StorageMinerStruct struct {
 
 		ActorSectorSize func(p0 context.Context, p1 address.Address) (abi.SectorSize, error) `perm:"read"`
 
+		ActorWithdrawBalance func(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) `perm:"admin"`
+
 		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
 
 		ComputeDataCid func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (abi.PieceInfo, error) `perm:"admin"`
@@ -879,8 +881,6 @@ type StorageMinerStruct struct {
 		StorageStat func(p0 context.Context, p1 storiface.ID) (fsutil.FsStat, error) `perm:"admin"`
 
 		StorageTryLock func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) (bool, error) `perm:"admin"`
-
-		WithdrawBalance func(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) `perm:"admin"`
 
 		WorkerConnect func(p0 context.Context, p1 string) error `perm:"admin"`
 
@@ -3956,6 +3956,17 @@ func (s *StorageMinerStub) ActorSectorSize(p0 context.Context, p1 address.Addres
 	return *new(abi.SectorSize), ErrNotSupported
 }
 
+func (s *StorageMinerStruct) ActorWithdrawBalance(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) {
+	if s.Internal.ActorWithdrawBalance == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
+	return s.Internal.ActorWithdrawBalance(p0, p1)
+}
+
+func (s *StorageMinerStub) ActorWithdrawBalance(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) {
+	return *new(cid.Cid), ErrNotSupported
+}
+
 func (s *StorageMinerStruct) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) {
 	if s.Internal.CheckProvable == nil {
 		return *new(map[abi.SectorNumber]string), ErrNotSupported
@@ -5186,17 +5197,6 @@ func (s *StorageMinerStruct) StorageTryLock(p0 context.Context, p1 abi.SectorID,
 
 func (s *StorageMinerStub) StorageTryLock(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) (bool, error) {
 	return false, ErrNotSupported
-}
-
-func (s *StorageMinerStruct) WithdrawBalance(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) {
-	if s.Internal.WithdrawBalance == nil {
-		return *new(cid.Cid), ErrNotSupported
-	}
-	return s.Internal.WithdrawBalance(p0, p1)
-}
-
-func (s *StorageMinerStub) WithdrawBalance(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) {
-	return *new(cid.Cid), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) WorkerConnect(p0 context.Context, p1 string) error {

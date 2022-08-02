@@ -1283,7 +1283,7 @@ func (sm *StorageMinerAPI) RuntimeSubsystems(context.Context) (res api.MinerSubs
 	return sm.EnabledSubsystems, nil
 }
 
-func (sm *StorageMinerAPI) WithdrawBalance(ctx context.Context, amount abi.TokenAmount) (cid.Cid, error) {
+func (sm *StorageMinerAPI) ActorWithdrawBalance(ctx context.Context, amount abi.TokenAmount) (cid.Cid, error) {
 	available, err := sm.Full.StateMinerAvailableBalance(ctx, sm.Miner.Address(), types.EmptyTSK)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("Error getting miner balance: %w", err)

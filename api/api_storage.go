@@ -51,7 +51,7 @@ type StorageMiner interface {
 	// WithdrawBalance allows to withdraw balance from miner actor to owner address
 	// Specify amount as "0" to withdraw full balance. This method returns a message CID
 	// and does not wait for message execution
-	WithdrawBalance(ctx context.Context, amount abi.TokenAmount) (cid.Cid, error) //perm:admin
+	ActorWithdrawBalance(ctx context.Context, amount abi.TokenAmount) (cid.Cid, error) //perm:admin
 
 	MiningBase(context.Context) (*types.TipSet, error) //perm:read
 
