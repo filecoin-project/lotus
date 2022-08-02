@@ -2,6 +2,7 @@ package wdpost
 
 import (
 	"context"
+	"math"
 	"os"
 	"strconv"
 
@@ -21,12 +22,12 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
-var recoveringSectorLimit int64 = 0
+var RecoveringSectorLimit uint64 = 0
 
 func init() {
 	if rcl := os.Getenv("LOTUS_RECOVERING_SECTOR_LIMIT"); rcl != "" {
 		var err error
-		recoveringSectorLimit, err = strconv.ParseInt(rcl, 10, 64)
+		RecoveringSectorLimit, err = strconv.ParseUint(rcl, 10, 64)
 		if err != nil {
 			log.Errorw("parsing LOTUS_RECOVERING_SECTOR_LIMIT", "error", err)
 		}
@@ -92,6 +93,31 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 			continue
 		}
 
+		// rules to follow if we have indicated that we don't want to recover more than X sectors in a deadline
+		if RecoveringSectorLimit > 0 {
+			// something weird happened, break because we can't recover any more
+			if RecoveringSectorLimit < totalSectorsToRecover {
+				log.Warnf("accepted more recoveries (%d) than RecoveringSectorLimit (%d)", totalSectorsToRecover, RecoveringSectorLimit)
+				break
+			}
+
+			maxNewRecoverable := RecoveringSectorLimit - totalSectorsToRecover
+
+			// we need to trim the recover bitfield
+			if recoveredCount > maxNewRecoverable {
+				recoverySlice, err := recovered.All(math.MaxUint64)
+				if err != nil {
+					log.Errorw("failed to slice recovery bitfield, breaking out of recovery loop", err)
+					break
+				}
+
+				log.Warnf("only adding %d sectors to respect RecoveringSectorLimit %d", maxNewRecoverable, RecoveringSectorLimit)
+
+				recovered = bitfield.NewFromSet(recoverySlice[:maxNewRecoverable])
+				recoveredCount = maxNewRecoverable
+			}
+		}
+
 		// respect user config if set
 		if s.maxPartitionsPerRecoveryMessage > 0 &&
 			len(batchedRecoveryDecls[len(batchedRecoveryDecls)-1]) >= s.maxPartitionsPerRecoveryMessage {
@@ -106,9 +132,9 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 
 		totalSectorsToRecover += recoveredCount
 
-		if recoveringSectorLimit > 0 && int64(totalSectorsToRecover) >= recoveringSectorLimit {
+		if RecoveringSectorLimit > 0 && totalSectorsToRecover >= RecoveringSectorLimit {
 			log.Errorf("reached recovering sector limit %d, only marking %d sectors for recovery now",
-				recoveringSectorLimit,
+				RecoveringSectorLimit,
 				totalSectorsToRecover)
 			break
 		}
