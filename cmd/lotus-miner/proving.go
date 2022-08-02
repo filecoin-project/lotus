@@ -247,7 +247,7 @@ var provingDeadlinesCmd = &cli.Command{
 
 			sectors := uint64(0)
 			faults := uint64(0)
-			var PartitionSum int
+			var partitionCount int
 
 			for _, partition := range partitions {
 				if cctx.Bool("live") {
@@ -257,7 +257,7 @@ var provingDeadlinesCmd = &cli.Command{
 					}
 
 					if sc > 0 {
-						PartitionSum++
+						partitionCount++
 					}
 
 					sectors += sc
@@ -267,7 +267,7 @@ var provingDeadlinesCmd = &cli.Command{
 						return err
 					}
 
-					PartitionSum++
+					partitionCount++
 					sectors += sc
 				}
 
@@ -283,7 +283,7 @@ var provingDeadlinesCmd = &cli.Command{
 			if di.Index == uint64(dlIdx) {
 				cur += "\t(current)"
 			}
-			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d)\t%d%s\n", dlIdx, PartitionSum, sectors, faults, provenPartitions, cur)
+			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d)\t%d%s\n", dlIdx, partitionCount, sectors, faults, provenPartitions, cur)
 		}
 
 		return tw.Flush()
@@ -299,9 +299,6 @@ var provingDeadlineInfoCmd = &cli.Command{
 			Aliases: []string{"n"},
 			Usage:   "Print sector/fault numbers belonging to this deadline",
 		},
-	},
-	ArgsUsage: "<deadlineIdx>",
-	Flags: []cli.Flag{
 		&cli.BoolFlag{
 			Name:    "live",
 			Usage:   "View deadline live sectors",
@@ -309,6 +306,7 @@ var provingDeadlineInfoCmd = &cli.Command{
 			Aliases: []string{"l"},
 		},
 	},
+	ArgsUsage: "<deadlineIdx>",
 	Action: func(cctx *cli.Context) error {
 
 		if cctx.Args().Len() != 1 {
