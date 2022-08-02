@@ -2055,7 +2055,7 @@ USAGE:
    lotus-miner proving deadlines [command options] [arguments...]
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --all, -a  Count all sectors (only live sectors are counted by default) (default: false)
    
 ```
 
