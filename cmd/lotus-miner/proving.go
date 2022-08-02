@@ -197,6 +197,14 @@ var provingInfoCmd = &cli.Command{
 var provingDeadlinesCmd = &cli.Command{
 	Name:  "deadlines",
 	Usage: "View the current proving period deadlines information",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "live",
+			Usage:   "View live deadlines information",
+			Value:   false,
+			Aliases: []string{"l"},
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		api, acloser, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
@@ -239,14 +247,29 @@ var provingDeadlinesCmd = &cli.Command{
 
 			sectors := uint64(0)
 			faults := uint64(0)
+			var PartitionSum int
 
 			for _, partition := range partitions {
-				sc, err := partition.AllSectors.Count()
-				if err != nil {
-					return err
-				}
+				if cctx.Bool("live") {
+					sc, err := partition.LiveSectors.Count()
+					if err != nil {
+						return err
+					}
 
-				sectors += sc
+					if sc > 0 {
+						PartitionSum++
+					}
+
+					sectors += sc
+				} else {
+					sc, err := partition.AllSectors.Count()
+					if err != nil {
+						return err
+					}
+
+					PartitionSum++
+					sectors += sc
+				}
 
 				fc, err := partition.FaultySectors.Count()
 				if err != nil {
@@ -260,7 +283,7 @@ var provingDeadlinesCmd = &cli.Command{
 			if di.Index == uint64(dlIdx) {
 				cur += "\t(current)"
 			}
-			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d)\t%d%s\n", dlIdx, len(partitions), sectors, faults, provenPartitions, cur)
+			_, _ = fmt.Fprintf(tw, "%d\t%d\t%d (%d)\t%d%s\n", dlIdx, PartitionSum, sectors, faults, provenPartitions, cur)
 		}
 
 		return tw.Flush()
@@ -278,6 +301,14 @@ var provingDeadlineInfoCmd = &cli.Command{
 		},
 	},
 	ArgsUsage: "<deadlineIdx>",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "live",
+			Usage:   "View deadline live sectors",
+			Value:   false,
+			Aliases: []string{"l"},
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 
 		if cctx.Args().Len() != 1 {
@@ -327,15 +358,34 @@ var provingDeadlineInfoCmd = &cli.Command{
 		fmt.Printf("Proven Partitions:        %d\n", provenPartitions)
 		fmt.Printf("Current:                  %t\n\n", di.Index == dlIdx)
 
-		for pIdx, partition := range partitions {
-			sectorCount, err := partition.AllSectors.Count()
-			if err != nil {
-				return err
-			}
+		var sectorCount uint64
+		var sectorNumbers []uint64
 
-			sectorNumbers, err := partition.AllSectors.All(sectorCount)
-			if err != nil {
-				return err
+		for pIdx, partition := range partitions {
+			if !cctx.Bool("live") {
+				sectorCount, err = partition.AllSectors.Count()
+				if err != nil {
+					return err
+				}
+
+				sectorNumbers, err = partition.AllSectors.All(sectorCount)
+				if err != nil {
+					return err
+				}
+
+			} else {
+				sectorCount, err = partition.LiveSectors.Count()
+				if err != nil {
+					return err
+				}
+
+				if sectorCount != 0 {
+					sectorNumbers, err = partition.LiveSectors.All(sectorCount)
+					if err != nil {
+						return err
+					}
+				}
+
 			}
 
 			faultsCount, err := partition.FaultySectors.Count()
