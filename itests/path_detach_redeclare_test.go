@@ -294,6 +294,87 @@ func TestPathDetachRedeclareWorker(t *testing.T) {
 	require.Equal(t, abi.SectorNumber(1), sps[newId][0].SectorID.Number)
 }
 
+func TestPathDetachShared(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	_ = logging.SetLogLevel("storageminer", "INFO")
+
+	var (
+		client          kit.TestFullNode
+		miner           kit.TestMiner
+		wiw, wdw, sealw kit.TestWorker
+	)
+	ens := kit.NewEnsemble(t, kit.LatestActorsAt(-1)).
+		FullNode(&client, kit.ThroughRPC()).
+		Miner(&miner, &client, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.PresealSectors(2), kit.NoStorage()).
+		Worker(&miner, &wiw, kit.ThroughRPC(), kit.NoStorage(), kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTGenerateWinningPoSt})).
+		Worker(&miner, &wdw, kit.ThroughRPC(), kit.NoStorage(), kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTGenerateWindowPoSt})).
+		Worker(&miner, &sealw, kit.ThroughRPC(), kit.NoStorage(), kit.WithSealWorkerTasks).
+		Start()
+
+	ens.InterconnectAll()
+
+	// check there's only one path on the miner, none on the worker
+	sps, err := miner.StorageList(ctx)
+	require.NoError(t, err)
+	require.Len(t, sps, 1)
+
+	var id storiface.ID
+	for s := range sps {
+		id = s
+	}
+
+	// check that there's only one URL for the path (provided by the miner node)
+	si, err := miner.StorageInfo(ctx, id)
+	require.NoError(t, err)
+	require.Len(t, si.URLs, 1)
+
+	local, err := miner.StorageLocal(ctx)
+	require.NoError(t, err)
+	require.Len(t, local, 1)
+	require.Greater(t, len(local[id]), 1)
+
+	minerLocal := local[id]
+
+	local, err = sealw.StorageLocal(ctx)
+	require.NoError(t, err)
+	require.Len(t, local, 0)
+
+	// share the genesis sector path with the worker
+	require.NoError(t, sealw.StorageAddLocal(ctx, minerLocal))
+
+	// still just one path, but accessible from two places
+	sps, err = miner.StorageList(ctx)
+	require.NoError(t, err)
+	require.Len(t, sps, 1)
+
+	// should see 2 urls now
+	si, err = miner.StorageInfo(ctx, id)
+	require.NoError(t, err)
+	require.Len(t, si.URLs, 2)
+
+	// drop the path from the worker
+	require.NoError(t, sealw.StorageDetachLocal(ctx, minerLocal))
+
+	// the path is still registered
+	sps, err = miner.StorageList(ctx)
+	require.NoError(t, err)
+	require.Len(t, sps, 1)
+
+	// but with just one URL (the miner)
+	si, err = miner.StorageInfo(ctx, id)
+	require.NoError(t, err)
+	require.Len(t, si.URLs, 1)
+
+	// now also drop from the minel and check that the path is gone
+	require.NoError(t, miner.StorageDetachLocal(ctx, minerLocal))
+
+	sps, err = miner.StorageList(ctx)
+	require.NoError(t, err)
+	require.Len(t, sps, 0)
+}
+
 func checkSectors(ctx context.Context, t *testing.T, api kit.TestFullNode, miner kit.TestMiner, expectChecked, expectBad int) {
 	addr, err := miner.ActorAddress(ctx)
 	require.NoError(t, err)

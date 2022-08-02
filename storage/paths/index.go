@@ -233,7 +233,7 @@ func (i *Index) StorageDetach(ctx context.Context, id storiface.ID, url string) 
 	if len(ent.info.URLs) > 0 {
 		drop = len(ent.info.URLs) == 1 // only one url
 
-		if ent.info.URLs[0] != url {
+		if drop && ent.info.URLs[0] != url {
 			return xerrors.Errorf("not dropping path, requested and index urls don't match ('%s' != '%s')", url, ent.info.URLs[0])
 		}
 	}
