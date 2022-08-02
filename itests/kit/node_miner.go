@@ -77,8 +77,9 @@ type TestMiner struct {
 	MineOne   func(context.Context, miner.MineReq) error
 	Stop      func(context.Context) error
 
-	FullNode   *TestFullNode
-	PresealDir string
+	FullNode       *TestFullNode
+	PresealDir     string
+	PresealSectors int
 
 	Libp2p struct {
 		PeerID  peer.ID
@@ -131,7 +132,7 @@ func (tm *TestMiner) StartPledge(ctx context.Context, n, existing int, blockNoti
 	for {
 		s, err := tm.SectorsListNonGenesis(ctx)
 		require.NoError(tm.t, err)
-		fmt.Printf("Sectors: %d\n", len(s))
+		fmt.Printf("Sectors: %d (n %d, ex %d)\n", len(s), n, existing)
 		if len(s) >= n+existing {
 			break
 		}
@@ -216,5 +217,5 @@ func (tm *TestMiner) SectorsListNonGenesis(ctx context.Context) ([]abi.SectorNum
 		return l[i] < l[j]
 	})
 
-	return l[tm.options.sectors:], nil
+	return l[tm.PresealSectors:], nil
 }

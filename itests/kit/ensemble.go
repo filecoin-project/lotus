@@ -235,11 +235,14 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 	}
 
 	ownerKey := options.ownerKey
+	var presealSectors int
+
 	if !n.bootstrapped {
+		presealSectors = options.sectors
+
 		var (
-			sectors = options.sectors
-			k       *types.KeyInfo
-			genm    *genesis.Miner
+			k    *types.KeyInfo
+			genm *genesis.Miner
 		)
 
 		// Will use 2KiB sectors by default (default value of sectorSize).
@@ -248,9 +251,9 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 
 		// Create the preseal commitment.
 		if n.options.mockProofs {
-			genm, k, err = mock.PreSeal(proofType, actorAddr, sectors)
+			genm, k, err = mock.PreSeal(proofType, actorAddr, presealSectors)
 		} else {
-			genm, k, err = seed.PreSeal(actorAddr, proofType, 0, sectors, tdir, []byte("make genesis mem random"), nil, true)
+			genm, k, err = seed.PreSeal(actorAddr, proofType, 0, presealSectors, tdir, []byte("make genesis mem random"), nil, true)
 		}
 		require.NoError(n.t, err)
 
@@ -281,6 +284,7 @@ func (n *Ensemble) Miner(minerNode *TestMiner, full *TestFullNode, opts ...NodeO
 		OwnerKey:       ownerKey,
 		FullNode:       full,
 		PresealDir:     tdir,
+		PresealSectors: presealSectors,
 		options:        options,
 		RemoteListener: rl,
 	}
@@ -537,7 +541,10 @@ func (n *Ensemble) Start() *Ensemble {
 		err = ds.Put(ctx, datastore.NewKey("miner-address"), m.ActorAddr.Bytes())
 		require.NoError(n.t, err)
 
-		require.NoError(n.t, importPreSealMeta(ctx, n.genesis.miners[i], ds))
+		if i < len(n.genesis.miners) && !n.bootstrapped {
+			// if this is a genesis miner, import preseal metadata
+			require.NoError(n.t, importPreSealMeta(ctx, n.genesis.miners[i], ds))
+		}
 
 		// using real proofs, therefore need real sectors.
 		if !n.bootstrapped && !n.options.mockProofs {

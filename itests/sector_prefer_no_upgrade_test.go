@@ -34,8 +34,8 @@ func TestPreferNoUpgrade(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	CCUpgrade := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner + 1)
-	Sealed := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner + 2)
+	CCUpgrade := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner)
+	Sealed := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner + 1)
 
 	{
 		miner.PledgeSectors(ctx, 1, 0, nil)

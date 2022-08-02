@@ -34,7 +34,7 @@ func TestMakeAvailable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	CCUpgrade := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner + 1)
+	CCUpgrade := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner)
 
 	miner.PledgeSectors(ctx, 1, 0, nil)
 	sl, err := miner.SectorsListNonGenesis(ctx)

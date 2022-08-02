@@ -60,7 +60,7 @@ func runTestCCUpgrade(t *testing.T) *kit.TestFullNode {
 		t.Fatal(err)
 	}
 
-	CCUpgrade := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner + 1)
+	CCUpgrade := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner)
 	fmt.Printf("CCUpgrade: %d\n", CCUpgrade)
 
 	miner.PledgeSectors(ctx, 1, 0, nil)
