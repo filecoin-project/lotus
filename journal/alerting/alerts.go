@@ -160,3 +160,10 @@ func (a *Alerting) GetAlerts() []Alert {
 
 	return out
 }
+
+func (a *Alerting) IsRaised(at AlertType) bool {
+	a.lk.Lock()
+	defer a.lk.Unlock()
+
+	return a.alerts[at].Active
+}

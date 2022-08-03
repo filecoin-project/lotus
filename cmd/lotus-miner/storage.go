@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math/bits"
 	"os"
 	"path/filepath"
 	"sort"
@@ -343,6 +344,20 @@ var storageListCmd = &cli.Command{
 			}
 			if len(si.AllowTo) > 0 {
 				fmt.Printf("\tAllowTo: %s\n", strings.Join(si.AllowTo, ", "))
+			}
+
+			if len(si.AllowTypes) > 0 || len(si.DenyTypes) > 0 {
+				denied := storiface.FTAll.SubAllowed(si.AllowTypes, si.DenyTypes)
+				allowed := storiface.FTAll ^ denied
+
+				switch {
+				case bits.OnesCount64(uint64(allowed)) == 0:
+					fmt.Printf("\tAllow Types: %s\n", color.RedString("None"))
+				case bits.OnesCount64(uint64(allowed)) < bits.OnesCount64(uint64(denied)):
+					fmt.Printf("\tAllow Types: %s\n", color.GreenString(strings.Join(allowed.Strings(), " ")))
+				default:
+					fmt.Printf("\tDeny Types:  %s\n", color.RedString(strings.Join(denied.Strings(), " ")))
+				}
 			}
 
 			if localPath, ok := local[s.ID]; ok {

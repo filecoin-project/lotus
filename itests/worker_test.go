@@ -29,7 +29,7 @@ import (
 func TestWorkerPledge(t *testing.T) {
 	ctx := context.Background()
 	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
-		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2, sealtasks.TTUnseal})) // no mock proofs
+		kit.WithSealWorkerTasks) // no mock proofs
 
 	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
 
@@ -43,7 +43,7 @@ func TestWorkerPledge(t *testing.T) {
 func TestWorkerPledgeSpread(t *testing.T) {
 	ctx := context.Background()
 	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(),
-		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2, sealtasks.TTUnseal}),
+		kit.WithSealWorkerTasks,
 		kit.WithAssigner("spread"),
 	) // no mock proofs
 
@@ -59,7 +59,7 @@ func TestWorkerPledgeSpread(t *testing.T) {
 func TestWorkerPledgeLocalFin(t *testing.T) {
 	ctx := context.Background()
 	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(),
-		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2, sealtasks.TTUnseal}),
+		kit.WithSealWorkerTasks,
 		kit.WithDisallowRemoteFinalize(true),
 	) // no mock proofs
 

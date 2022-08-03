@@ -656,6 +656,8 @@ type StorageMinerStruct struct {
 
 		ActorSectorSize func(p0 context.Context, p1 address.Address) (abi.SectorSize, error) `perm:"read"`
 
+		ActorWithdrawBalance func(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) `perm:"admin"`
+
 		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
 
 		ComputeDataCid func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (abi.PieceInfo, error) `perm:"admin"`
@@ -853,6 +855,8 @@ type StorageMinerStruct struct {
 		StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
 
 		StorageAttach func(p0 context.Context, p1 storiface.StorageInfo, p2 fsutil.FsStat) error `perm:"admin"`
+
+		StorageAuthVerify func(p0 context.Context, p1 string) ([]auth.Permission, error) `perm:"read"`
 
 		StorageBestAlloc func(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]storiface.StorageInfo, error) `perm:"admin"`
 
@@ -3952,6 +3956,17 @@ func (s *StorageMinerStub) ActorSectorSize(p0 context.Context, p1 address.Addres
 	return *new(abi.SectorSize), ErrNotSupported
 }
 
+func (s *StorageMinerStruct) ActorWithdrawBalance(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) {
+	if s.Internal.ActorWithdrawBalance == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
+	return s.Internal.ActorWithdrawBalance(p0, p1)
+}
+
+func (s *StorageMinerStub) ActorWithdrawBalance(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) {
+	return *new(cid.Cid), ErrNotSupported
+}
+
 func (s *StorageMinerStruct) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) {
 	if s.Internal.CheckProvable == nil {
 		return *new(map[abi.SectorNumber]string), ErrNotSupported
@@ -5039,6 +5054,17 @@ func (s *StorageMinerStruct) StorageAttach(p0 context.Context, p1 storiface.Stor
 
 func (s *StorageMinerStub) StorageAttach(p0 context.Context, p1 storiface.StorageInfo, p2 fsutil.FsStat) error {
 	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) StorageAuthVerify(p0 context.Context, p1 string) ([]auth.Permission, error) {
+	if s.Internal.StorageAuthVerify == nil {
+		return *new([]auth.Permission), ErrNotSupported
+	}
+	return s.Internal.StorageAuthVerify(p0, p1)
+}
+
+func (s *StorageMinerStub) StorageAuthVerify(p0 context.Context, p1 string) ([]auth.Permission, error) {
+	return *new([]auth.Permission), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) StorageBestAlloc(p0 context.Context, p1 storiface.SectorFileType, p2 abi.SectorSize, p3 storiface.PathType) ([]storiface.StorageInfo, error) {

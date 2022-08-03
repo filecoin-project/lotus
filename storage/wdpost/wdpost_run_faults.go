@@ -2,6 +2,9 @@ package wdpost
 
 import (
 	"context"
+	"math"
+	"os"
+	"strconv"
 
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
@@ -18,6 +21,18 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
+
+var RecoveringSectorLimit uint64 = 0
+
+func init() {
+	if rcl := os.Getenv("LOTUS_RECOVERING_SECTOR_LIMIT"); rcl != "" {
+		var err error
+		RecoveringSectorLimit, err = strconv.ParseUint(rcl, 10, 64)
+		if err != nil {
+			log.Errorw("parsing LOTUS_RECOVERING_SECTOR_LIMIT", "error", err)
+		}
+	}
+}
 
 // declareRecoveries identifies sectors that were previously marked as faulty
 // for our miner, but are now recovered (i.e. are now provable again) and
@@ -36,14 +51,15 @@ import (
 // TODO: the waiting should happen in the background. Right now this
 //  is blocking/delaying the actual generation and submission of WindowPoSts in
 //  this deadline!
-func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint64, partitions []api.Partition, tsk types.TipSetKey) ([]miner.RecoveryDeclaration, *types.SignedMessage, error) {
+func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint64, partitions []api.Partition, tsk types.TipSetKey) ([][]miner.RecoveryDeclaration, []*types.SignedMessage, error) {
 	ctx, span := trace.StartSpan(ctx, "storage.declareRecoveries")
 	defer span.End()
 
 	faulty := uint64(0)
-	params := &miner.DeclareFaultsRecoveredParams{
-		Recoveries: []miner.RecoveryDeclaration{},
-	}
+
+	var batchedRecoveryDecls [][]miner.RecoveryDeclaration
+	batchedRecoveryDecls = append(batchedRecoveryDecls, []miner.RecoveryDeclaration{})
+	totalSectorsToRecover := uint64(0)
 
 	for partIdx, partition := range partitions {
 		unrecovered, err := bitfield.SubtractBitField(partition.FaultySectors, partition.RecoveringSectors)
@@ -77,55 +93,104 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 			continue
 		}
 
-		params.Recoveries = append(params.Recoveries, miner.RecoveryDeclaration{
+		// rules to follow if we have indicated that we don't want to recover more than X sectors in a deadline
+		if RecoveringSectorLimit > 0 {
+			// something weird happened, break because we can't recover any more
+			if RecoveringSectorLimit < totalSectorsToRecover {
+				log.Warnf("accepted more recoveries (%d) than RecoveringSectorLimit (%d)", totalSectorsToRecover, RecoveringSectorLimit)
+				break
+			}
+
+			maxNewRecoverable := RecoveringSectorLimit - totalSectorsToRecover
+
+			// we need to trim the recover bitfield
+			if recoveredCount > maxNewRecoverable {
+				recoverySlice, err := recovered.All(math.MaxUint64)
+				if err != nil {
+					log.Errorw("failed to slice recovery bitfield, breaking out of recovery loop", err)
+					break
+				}
+
+				log.Warnf("only adding %d sectors to respect RecoveringSectorLimit %d", maxNewRecoverable, RecoveringSectorLimit)
+
+				recovered = bitfield.NewFromSet(recoverySlice[:maxNewRecoverable])
+				recoveredCount = maxNewRecoverable
+			}
+		}
+
+		// respect user config if set
+		if s.maxPartitionsPerRecoveryMessage > 0 &&
+			len(batchedRecoveryDecls[len(batchedRecoveryDecls)-1]) >= s.maxPartitionsPerRecoveryMessage {
+			batchedRecoveryDecls = append(batchedRecoveryDecls, []miner.RecoveryDeclaration{})
+		}
+
+		batchedRecoveryDecls[len(batchedRecoveryDecls)-1] = append(batchedRecoveryDecls[len(batchedRecoveryDecls)-1], miner.RecoveryDeclaration{
 			Deadline:  dlIdx,
 			Partition: uint64(partIdx),
 			Sectors:   recovered,
 		})
+
+		totalSectorsToRecover += recoveredCount
+
+		if RecoveringSectorLimit > 0 && totalSectorsToRecover >= RecoveringSectorLimit {
+			log.Errorf("reached recovering sector limit %d, only marking %d sectors for recovery now",
+				RecoveringSectorLimit,
+				totalSectorsToRecover)
+			break
+		}
 	}
 
-	recoveries := params.Recoveries
-	if len(recoveries) == 0 {
+	if totalSectorsToRecover == 0 {
 		if faulty != 0 {
 			log.Warnw("No recoveries to declare", "deadline", dlIdx, "faulty", faulty)
 		}
 
-		return recoveries, nil, nil
+		return nil, nil, nil
 	}
 
-	enc, aerr := actors.SerializeParams(params)
-	if aerr != nil {
-		return recoveries, nil, xerrors.Errorf("could not serialize declare recoveries parameters: %w", aerr)
+	log.Infof("attempting recovery declarations for %d sectors", totalSectorsToRecover)
+	var msgs []*types.SignedMessage
+	for _, recovery := range batchedRecoveryDecls {
+		params := &miner.DeclareFaultsRecoveredParams{
+			Recoveries: recovery,
+		}
+
+		enc, aerr := actors.SerializeParams(params)
+		if aerr != nil {
+			return nil, nil, xerrors.Errorf("could not serialize declare recoveries parameters: %w", aerr)
+		}
+
+		msg := &types.Message{
+			To:     s.actor,
+			Method: builtin.MethodsMiner.DeclareFaultsRecovered,
+			Params: enc,
+			Value:  types.NewInt(0),
+		}
+		spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)}
+		if err := s.prepareMessage(ctx, msg, spec); err != nil {
+			return nil, nil, err
+		}
+		sm, err := s.api.MpoolPushMessage(ctx, msg, &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)})
+		if err != nil {
+			return nil, nil, xerrors.Errorf("pushing message to mpool: %w", err)
+		}
+
+		log.Warnw("declare faults recovered Message CID", "cid", sm.Cid())
+		msgs = append(msgs, sm)
 	}
 
-	msg := &types.Message{
-		To:     s.actor,
-		Method: builtin.MethodsMiner.DeclareFaultsRecovered,
-		Params: enc,
-		Value:  types.NewInt(0),
-	}
-	spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)}
-	if err := s.prepareMessage(ctx, msg, spec); err != nil {
-		return recoveries, nil, err
-	}
+	for _, msg := range msgs {
+		rec, err := s.api.StateWaitMsg(context.TODO(), msg.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
+		if err != nil {
+			return batchedRecoveryDecls, msgs, xerrors.Errorf("declare faults recovered wait error: %w", err)
+		}
 
-	sm, err := s.api.MpoolPushMessage(ctx, msg, &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)})
-	if err != nil {
-		return recoveries, sm, xerrors.Errorf("pushing message to mpool: %w", err)
+		if rec.Receipt.ExitCode != 0 {
+			return batchedRecoveryDecls, msgs, xerrors.Errorf("declare faults recovered wait non-0 exit code: %d", rec.Receipt.ExitCode)
+		}
 	}
 
-	log.Warnw("declare faults recovered Message CID", "cid", sm.Cid())
-
-	rec, err := s.api.StateWaitMsg(context.TODO(), sm.Cid(), build.MessageConfidence, api.LookbackNoLimit, true)
-	if err != nil {
-		return recoveries, sm, xerrors.Errorf("declare faults recovered wait error: %w", err)
-	}
-
-	if rec.Receipt.ExitCode != 0 {
-		return recoveries, sm, xerrors.Errorf("declare faults recovered wait non-0 exit code: %d", rec.Receipt.ExitCode)
-	}
-
-	return recoveries, sm, nil
+	return batchedRecoveryDecls, msgs, nil
 }
 
 // declareFaults identifies the sectors on the specified proving deadline that
@@ -133,7 +198,6 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 // to our miner actor.
 //
 // NOTE: THIS CODE ISN'T INVOKED AFTER THE IGNITION UPGRADE
-//
 // This is always invoked ahead of time, before the deadline for the evaluated
 // sectors arrives. That way, faults are declared before a penalty is accrued.
 //
@@ -241,9 +305,8 @@ func (s *WindowPoStScheduler) asyncFaultRecover(di dline.Info, ts *types.TipSet)
 		}
 
 		var (
-			sigmsg     *types.SignedMessage
-			recoveries []miner.RecoveryDeclaration
-			faults     []miner.FaultDeclaration
+			sigmsgs    []*types.SignedMessage
+			recoveries [][]miner.RecoveryDeclaration
 
 			// optionalCid returns the CID of the message, or cid.Undef is the
 			// message is nil. We don't need the argument (could capture the
@@ -256,36 +319,27 @@ func (s *WindowPoStScheduler) asyncFaultRecover(di dline.Info, ts *types.TipSet)
 			}
 		)
 
-		if recoveries, sigmsg, err = s.declareRecoveries(context.TODO(), declDeadline, partitions, ts.Key()); err != nil {
+		if recoveries, sigmsgs, err = s.declareRecoveries(context.TODO(), declDeadline, partitions, ts.Key()); err != nil {
 			// TODO: This is potentially quite bad, but not even trying to post when this fails is objectively worse
 			log.Errorf("checking sector recoveries: %v", err)
 		}
 
-		s.journal.RecordEvent(s.evtTypes[evtTypeWdPoStRecoveries], func() interface{} {
-			j := WdPoStRecoveriesProcessedEvt{
-				evtCommon:    s.getEvtCommon(err),
-				Declarations: recoveries,
-				MessageCID:   optionalCid(sigmsg),
+		// should always be true, skip journaling if not for some reason
+		if len(recoveries) == len(sigmsgs) {
+			for i, recovery := range recoveries {
+				// clone for function literal
+				recovery := recovery
+				msgCID := optionalCid(sigmsgs[i])
+				s.journal.RecordEvent(s.evtTypes[evtTypeWdPoStRecoveries], func() interface{} {
+					j := WdPoStRecoveriesProcessedEvt{
+						evtCommon:    s.getEvtCommon(err),
+						Declarations: recovery,
+						MessageCID:   msgCID,
+					}
+					j.Error = err
+					return j
+				})
 			}
-			j.Error = err
-			return j
-		})
-
-		if ts.Height() > build.UpgradeIgnitionHeight {
-			return // FORK: declaring faults after ignition upgrade makes no sense
 		}
-
-		if faults, sigmsg, err = s.declareFaults(context.TODO(), declDeadline, partitions, ts.Key()); err != nil {
-			// TODO: This is also potentially really bad, but we try to post anyways
-			log.Errorf("checking sector faults: %v", err)
-		}
-
-		s.journal.RecordEvent(s.evtTypes[evtTypeWdPoStFaults], func() interface{} {
-			return WdPoStFaultsProcessedEvt{
-				evtCommon:    s.getEvtCommon(err),
-				Declarations: faults,
-				MessageCID:   optionalCid(sigmsg),
-			}
-		})
 	}()
 }
