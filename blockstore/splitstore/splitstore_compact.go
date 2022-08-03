@@ -3,7 +3,6 @@ package splitstore
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -70,22 +69,6 @@ const (
 	batchSize = 16384
 )
 
-func (s *SplitStore) lookupTestCid() (bool, bool) {
-	c, err := cid.Decode("bafy2bzacec4ek45pyx2ihisbmbhbit5htk2ovrry4mpmxkhjasbln3ikvzanu")
-	if err != nil {
-		panic(err)
-	}
-	hHas, err := s.hot.Has(s.ctx, c)
-	if err != nil {
-		panic(err)
-	}
-	cHas, err := s.cold.Has(s.ctx, c)
-	if err != nil {
-		panic(err)
-	}
-	return hHas, cHas
-}
-
 func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	s.headChangeMx.Lock()
 	defer s.headChangeMx.Unlock()
@@ -119,11 +102,9 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	}
 
 	timestamp := time.Unix(int64(curTs.MinTimestamp()), 0)
-	fmt.Printf("base height: %d, timestamp: %v, epoch: %d, gap: %v", apply[0].Height(), curTs.MinTimestamp(), curTs.Height(), time.Since(timestamp))
 
 	if CheckSyncGap && time.Since(timestamp) > SyncGapTime {
 		// don't attempt compaction before we have caught up syncing
-		fmt.Printf("sync gap detected\n")
 		atomic.StoreInt32(&s.compacting, 0)
 		return nil
 	}
@@ -1137,31 +1118,31 @@ func (s *SplitStore) getSize(c cid.Cid) (int, error) {
 	}
 }
 
-type codecPreservingBlock struct {
-	blocks.Block
-	codec uint64
-}
+// type codecPreservingBlock struct {
+// 	blocks.Block
+// 	codec uint64
+// }
 
-func (b *codecPreservingBlock) RawData() []byte {
-	return b.Block.RawData()
-}
+// func (b *codecPreservingBlock) RawData() []byte {
+// 	return b.Block.RawData()
+// }
 
-func (b *codecPreservingBlock) Cid() cid.Cid {
-	raw := b.Block.Cid()
-	if raw.Version() == 0 {
-		return raw
-	}
-	return cid.NewCidV1(b.codec, raw.Hash())
-}
+// func (b *codecPreservingBlock) Cid() cid.Cid {
+// 	raw := b.Block.Cid()
+// 	if raw.Version() == 0 {
+// 		return raw
+// 	}
+// 	return cid.NewCidV1(b.codec, raw.Hash())
+// }
 
-func (b *codecPreservingBlock) String() string {
-	c := b.Cid()
-	return fmt.Sprintf("[Block %s]", c)
-}
+// func (b *codecPreservingBlock) String() string {
+// 	c := b.Cid()
+// 	return fmt.Sprintf("[Block %s]", c)
+// }
 
-func (b *codecPreservingBlock) Loggable() map[string]interface{} {
-	return b.Block.Loggable()
-}
+// func (b *codecPreservingBlock) Loggable() map[string]interface{} {
+// 	return b.Block.Loggable()
+// }
 
 func (s *SplitStore) moveColdBlocks(coldr *ColdSetReader) error {
 	batch := make([]blocks.Block, 0, batchSize)
@@ -1180,20 +1161,11 @@ func (s *SplitStore) moveColdBlocks(coldr *ColdSetReader) error {
 			return xerrors.Errorf("error retrieving block %s from hotstore: %w", c, err)
 		}
 
-		batch = append(batch, &codecPreservingBlock{blk, c.Prefix().Codec})
+		batch = append(batch, blk)
 		if len(batch) == batchSize {
 			err = s.cold.PutMany(s.ctx, batch)
 			if err != nil {
 				return xerrors.Errorf("error putting batch to coldstore: %w", err)
-			}
-			for _, b := range batch {
-				h, err := s.cold.Has(s.ctx, c)
-				if err != nil {
-					return err
-				}
-				if !h {
-					fmt.Printf("[COMPACT] cold store has %s(%s) failed immediately after writing to cold store/n", b.Cid(), c)
-				}
 			}
 			batch = batch[:0]
 
