@@ -8,12 +8,20 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
 	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/exitcode"
+	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
+	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
+
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore/splitstore"
@@ -22,13 +30,6 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
-	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
-	power6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/power"
-	ipld "github.com/ipfs/go-ipld-format"
-
-	"github.com/ipfs/go-cid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // Startup a node with hotstore and discard coldstore.  Compact once and return
