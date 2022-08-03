@@ -2055,7 +2055,7 @@ USAGE:
    lotus-miner proving deadlines [command options] [arguments...]
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --all, -a  Count all sectors (only live sectors are counted by default) (default: false)
    
 ```
 
@@ -2068,6 +2068,7 @@ USAGE:
    lotus-miner proving deadline [command options] <deadlineIdx>
 
 OPTIONS:
+   --bitfield, -b     Print partition bitfield stats (default: false)
    --sector-nums, -n  Print sector/fault numbers belonging to this deadline (default: false)
    
 ```
