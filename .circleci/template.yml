@@ -762,13 +762,16 @@ jobs:
           name: docker push
           command: |
             docker push filecoin/lotus:<< parameters.tag >>
+            docker push filecoin/lotus-gateway:<< parameters.tag >>
             docker push filecoin/lotus-all-in-one:<< parameters.tag >>
             if [["[[ ! -z $CIRCLE_SHA1 ]]"]]; then
               docker push filecoin/lotus:$CIRCLE_SHA1
+              docker push filecoin/lotus-gateway:$CIRCLE_SHA1
               docker push filecoin/lotus-all-in-one:$CIRCLE_SHA1
             fi
             if [["[[ ! -z $CIRCLE_TAG ]]"]]; then
               docker push filecoin/lotus:$CIRCLE_TAG
+              docker push filecoin/lotus-gateway:$CIRCLE_TAG
               docker push filecoin/lotus-all-in-one:$CIRCLE_TAG
             fi
 
