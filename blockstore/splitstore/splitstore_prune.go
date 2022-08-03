@@ -50,6 +50,8 @@ func (s *SplitStore) PruneChain(opts map[string]interface{}) error {
 	var onlineGC, movingGC bool
 	var retainState int64 = -1
 
+	fmt.Printf("opts: %v\n", opts)
+
 	for k, v := range opts {
 		switch k {
 		case PruneOnlineGC:
@@ -84,6 +86,7 @@ func (s *SplitStore) PruneChain(opts map[string]interface{}) error {
 	doGC := func() error { return s.gcBlockstore(s.cold, gcOpts) }
 
 	var retainStateP func(int64) bool
+	fmt.Printf("[PRUNE]: retainState %d\n", retainState)
 	switch {
 	case retainState > 0:
 		retainStateP = func(depth int64) bool {
@@ -204,6 +207,9 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 		func(c cid.Cid) error {
 			if isUnitaryObject(c) {
 				return errStopWalk
+			}
+			if isTestCid(c) {
+				fmt.Printf("found test cid while doing the deep chain walk...\n")
 			}
 
 			mark, err := markSet.Has(c)

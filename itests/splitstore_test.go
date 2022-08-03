@@ -150,7 +150,9 @@ func TestColdStorePrune(t *testing.T) {
 	assert.True(g.t, g.Exists(ctx, garbage), "Garbage not found in splitstore")
 	bm.Restart()
 
-	require.NoError(t, full.ChainPrune(ctx, nil))
+	pruneOpts := make(map[string]interface{})
+	pruneOpts[splitstore.PruneRetainState] = int64(0) // Prune from compaction boundary
+	require.NoError(t, full.ChainPrune(ctx, pruneOpts))
 	waitForPrune(ctx, t, 1, full)
 	assert.False(g.t, g.Exists(ctx, garbage), "Garbage should be removed from cold store after prune but it's still there")
 
