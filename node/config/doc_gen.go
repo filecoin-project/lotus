@@ -845,6 +845,13 @@ This parameter is ONLY applicable if the retrieval pricing policy strategy has b
 			Comment: ``,
 		},
 		{
+			Name: "LocalWorkerName",
+			Type: "string",
+
+			Comment: `LocalWorkerName specifies a custom name for the builtin worker.
+If set to an empty string (default) os hostname will be used`,
+		},
+		{
 			Name: "Assigner",
 			Type: "string",
 
