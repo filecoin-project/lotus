@@ -406,6 +406,7 @@ func (sh *Scheduler) removeRequest(rmrequest *rmRequest) {
 		if r.SchedId == rmrequest.id {
 			queue.Remove(i)
 			rmrequest.res <- nil
+			go r.respond(xerrors.Errorf("scheduling request removed"))
 			return
 		}
 	}
@@ -428,10 +429,7 @@ func (sh *Scheduler) RemoveRequest(ctx context.Context, schedId uuid.UUID) error
 
 	select {
 	case resp := <-ret:
-		if resp != nil {
-			return resp
-		}
-		return nil
+		return resp
 	case <-sh.closing:
 		return xerrors.New("closing")
 	case <-ctx.Done():
