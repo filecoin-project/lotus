@@ -401,6 +401,10 @@ type SealerConfig struct {
 	AllowProveReplicaUpdate2 bool
 	AllowRegenSectorKey      bool
 
+	// LocalWorkerName specifies a custom name for the builtin worker.
+	// If set to an empty string (default) os hostname will be used
+	LocalWorkerName string
+
 	// Assigner specifies the worker assigner to use when scheduling tasks.
 	// "utilization" (default) - assign tasks to workers with lowest utilization.
 	// "spread" - assign tasks to as many distinct workers as possible.

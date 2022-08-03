@@ -159,6 +159,12 @@ var runCmd = &cli.Command{
 			Usage: "don't use swap",
 			Value: false,
 		},
+		&cli.StringFlag{
+			Name:        "name",
+			Usage:       "custom worker name",
+			EnvVars:     []string{"LOTUS_WORKER_NAME"},
+			DefaultText: "hostname",
+		},
 		&cli.BoolFlag{
 			Name:  "addpiece",
 			Usage: "enable addpiece",
@@ -513,6 +519,7 @@ var runCmd = &cli.Command{
 				NoSwap:                    cctx.Bool("no-swap"),
 				MaxParallelChallengeReads: cctx.Int("post-parallel-reads"),
 				ChallengeReadTimeout:      cctx.Duration("post-read-timeout"),
+				Name:                      cctx.String("name"),
 			}, remote, localStore, nodeApi, nodeApi, wsts),
 			LocalStore: localStore,
 			Storage:    lr,

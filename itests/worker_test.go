@@ -499,4 +499,29 @@ func TestSchedulerRemoveRequest(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEqual(t, schedida, schedidb)
 	}
+ }
+
+func TestWorkerName(t *testing.T) {
+	name := "thisstringisprobablynotahostnameihope"
+
+	ctx := context.Background()
+	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithWorkerName(name))
+
+	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
+
+	e, err := worker.Info(ctx)
+	require.NoError(t, err)
+	require.Equal(t, name, e.Hostname)
+
+	ws, err := miner.WorkerStats(ctx)
+	require.NoError(t, err)
+
+	var found bool
+	for _, stats := range ws {
+		if stats.Info.Hostname == name {
+			found = true
+		}
+	}
+
+	require.True(t, found)
 }
