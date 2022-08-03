@@ -2,12 +2,13 @@ package itests
 
 import (
 	"context"
+	"encoding/json"
+	"github.com/google/uuid"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
@@ -416,22 +417,24 @@ func TestSchedulerRemoveRequest(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, e)
 
-	type SchedDiagRequestInfo struct {
-		Sector   abi.SectorID
-		TaskType sealtasks.TaskType
-		Priority int
-		SchedId  uuid.UUID
-	}
-	type SchedDiagInfo struct {
-		Requests    []SchedDiagRequestInfo
-		OpenWindows []string
-	}
 	type info struct {
-		SchedInfo    interface{}
-		ReturnedWork []string
-		Waiting      []string
-		CallToWork   map[string]string
-		EarlyRet     []string
+		CallToWork struct {
+		} `json:"CallToWork"`
+		EarlyRet     interface{} `json:"EarlyRet"`
+		ReturnedWork interface{} `json:"ReturnedWork"`
+		SchedInfo    struct {
+			OpenWindows []string `json:"OpenWindows"`
+			Requests    []struct {
+				Priority int    `json:"Priority"`
+				SchedID  string `json:"SchedId"`
+				Sector   struct {
+					Miner  int `json:"Miner"`
+					Number int `json:"Number"`
+				} `json:"Sector"`
+				TaskType string `json:"TaskType"`
+			} `json:"Requests"`
+		} `json:"SchedInfo"`
+		Waiting interface{} `json:"Waiting"`
 	}
 
 	tocheck := miner.StartPledge(ctx, 1, 0, nil)
@@ -446,6 +449,7 @@ func TestSchedulerRemoveRequest(t *testing.T) {
 		if st.State == api.SectorState(sealing.PreCommit2) {
 			break
 		}
+		time.Sleep(time.Second)
 	}
 
 	// Dump current scheduler info
@@ -455,11 +459,18 @@ func TestSchedulerRemoveRequest(t *testing.T) {
 		t.FailNow()
 	}
 
+	j, err := json.MarshalIndent(&schedb, "", "  ")
+
+	var b info
+	err = json.Unmarshal(j, &b)
+	require.NoError(t, err)
+
 	var schedidb uuid.UUID
 
 	// cast scheduler info and get the request UUID. Call the SealingRemoveRequest()
-	if schedb.(info).SchedInfo.(SchedDiagInfo).Requests[0].TaskType == "seal/v0/precommit/2" {
-		schedidb = schedb.(info).SchedInfo.(SchedDiagInfo).Requests[0].SchedId
+	if b.SchedInfo.Requests[0].TaskType == "seal/v0/precommit/2" {
+		schedidb, err = uuid.Parse(b.SchedInfo.Requests[0].SchedID)
+		require.NoError(t, err)
 		err = miner.SealingRemoveRequest(ctx, schedidb)
 		if err != nil {
 			t.Log("Failed to dump scheduler state before: %w", err)
@@ -475,8 +486,15 @@ func TestSchedulerRemoveRequest(t *testing.T) {
 		t.FailNow()
 	}
 
-	if len(scheda.(info).SchedInfo.(SchedDiagInfo).Requests) > 0 && scheda.(info).SchedInfo.(SchedDiagInfo).Requests[0].TaskType == "seal/v0/precommit/2" {
-		schedida := scheda.(info).SchedInfo.(SchedDiagInfo).Requests[0].SchedId
+	k, err := json.MarshalIndent(&scheda, "", "  ")
+
+	var a info
+	err = json.Unmarshal(k, &a)
+	require.NoError(t, err)
+
+	if len(a.SchedInfo.Requests) > 0 && a.SchedInfo.Requests[0].TaskType == "seal/v0/precommit/2" {
+		schedida, err := uuid.Parse(a.SchedInfo.Requests[0].SchedID)
+		require.NoError(t, err)
 		require.NotEqual(t, schedida, schedidb)
 	}
 }
