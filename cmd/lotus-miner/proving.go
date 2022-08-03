@@ -301,6 +301,11 @@ var provingDeadlineInfoCmd = &cli.Command{
 			Aliases: []string{"n"},
 			Usage:   "Print sector/fault numbers belonging to this deadline",
 		},
+		&cli.BoolFlag{
+			Name:    "bitfield",
+			Aliases: []string{"b"},
+			Usage:   "Print partition bitfield stats",
+		},
 	},
 	ArgsUsage: "<deadlineIdx>",
 	Action: func(cctx *cli.Context) error {
@@ -366,32 +371,36 @@ var provingDeadlineInfoCmd = &cli.Command{
 					return err
 				}
 
-				var ones, zeros, oneRuns, zeroRuns, invalid uint64
-				for rit.HasNext() {
-					r, err := rit.NextRun()
-					if err != nil {
-						return xerrors.Errorf("next run: %w", err)
+				if cctx.Bool("bitfield") {
+					var ones, zeros, oneRuns, zeroRuns, invalid uint64
+					for rit.HasNext() {
+						r, err := rit.NextRun()
+						if err != nil {
+							return xerrors.Errorf("next run: %w", err)
+						}
+						if !r.Valid() {
+							invalid++
+						}
+						if r.Val {
+							ones += r.Len
+							oneRuns++
+						} else {
+							zeros += r.Len
+							zeroRuns++
+						}
 					}
-					if !r.Valid() {
-						invalid++
-					}
-					if r.Val {
-						ones += r.Len
-						oneRuns++
-					} else {
-						zeros += r.Len
-						zeroRuns++
-					}
-				}
 
-				var buf bytes.Buffer
-				if err := bf.MarshalCBOR(&buf); err != nil {
-					return err
-				}
-				sz := len(buf.Bytes())
-				szstr := types.SizeStr(types.NewInt(uint64(sz)))
+					var buf bytes.Buffer
+					if err := bf.MarshalCBOR(&buf); err != nil {
+						return err
+					}
+					sz := len(buf.Bytes())
+					szstr := types.SizeStr(types.NewInt(uint64(sz)))
 
-				fmt.Printf("\t%s Sectors:%s%d (bitfield - runs %d+%d=%d - %d 0s %d 1s - %d inv - %s %dB)\n", name, strings.Repeat(" ", 18-len(name)), count, zeroRuns, oneRuns, zeroRuns+oneRuns, zeros, ones, invalid, szstr, sz)
+					fmt.Printf("\t%s Sectors:%s%d (bitfield - runs %d+%d=%d - %d 0s %d 1s - %d inv - %s %dB)\n", name, strings.Repeat(" ", 18-len(name)), count, zeroRuns, oneRuns, zeroRuns+oneRuns, zeros, ones, invalid, szstr, sz)
+				} else {
+					fmt.Printf("\t%s Sectors:%s%d\n", name, strings.Repeat(" ", 18-len(name)), count)
+				}
 
 				if cctx.Bool("sector-nums") {
 					nums, err := bf.All(count)

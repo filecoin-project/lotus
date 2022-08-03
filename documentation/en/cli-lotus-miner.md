@@ -2068,6 +2068,7 @@ USAGE:
    lotus-miner proving deadline [command options] <deadlineIdx>
 
 OPTIONS:
+   --bitfield, -b     Print partition bitfield stats (default: false)
    --sector-nums, -n  Print sector/fault numbers belonging to this deadline (default: false)
    
 ```
