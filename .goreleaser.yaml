@@ -129,7 +129,6 @@ release:
     owner: filecoin-project
     name: lotus
   prerelease: auto
-  mode: append
   name_template: "Release v{{.Version}}"
 
 
