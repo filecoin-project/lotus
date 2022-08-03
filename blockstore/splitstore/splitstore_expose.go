@@ -52,14 +52,6 @@ func (es *exposedSplitStore) Get(ctx context.Context, c cid.Cid) (blocks.Block, 
 
 		return blocks.NewBlockWithCid(data, c)
 	}
-	ch, err := es.s.cold.AllKeysChan(ctx)
-	if err != nil {
-		return nil, err
-	}
-	count := 0
-	for range ch {
-		count += 1
-	}
 
 	blk, err := es.s.hot.Get(ctx, c)
 	if ipld.IsNotFound(err) {

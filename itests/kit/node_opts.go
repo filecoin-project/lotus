@@ -33,7 +33,7 @@ type nodeOpts struct {
 	rpc           bool
 	ownerKey      *key.Key
 	extraNodeOpts []node.Option
-	cfgOpts       []cfgOption
+	cfgOpts       []CfgOption
 	fsrepo        bool
 
 	subsystems             MinerSubsystem
@@ -245,16 +245,16 @@ func FsRepo() NodeOpt {
 	}
 }
 
-func WithCfgOpt(opt cfgOption) NodeOpt {
+func WithCfgOpt(opt CfgOption) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.cfgOpts = append(opts.cfgOpts, opt)
 		return nil
 	}
 }
 
-type cfgOption func(cfg *config.FullNode) error
+type CfgOption func(cfg *config.FullNode) error
 
-func SplitstoreDiscard() cfgOption {
+func SplitstoreDiscard() CfgOption {
 	return func(cfg *config.FullNode) error {
 		//cfg.Chainstore.Splitstore.HotStoreType = "badger" // default
 		//cfg.Chainstore.Splitstore.MarkSetType = "badger" // default
@@ -266,7 +266,7 @@ func SplitstoreDiscard() cfgOption {
 	}
 }
 
-func SplitstoreUniversal() cfgOption {
+func SplitstoreUniversal() CfgOption {
 	return func(cfg *config.FullNode) error {
 		//cfg.Chainstore.Splitstore.HotStoreType = "badger" // default
 		//cfg.Chainstore.Splitstore.MarkSetType = "badger" // default

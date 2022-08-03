@@ -358,7 +358,7 @@ func (n *Ensemble) Start() *Ensemble {
 			})
 			rfs, err := repo.NewFS(repoPath)
 			require.NoError(n.t, err)
-			rfs.Init(repo.FullNode)
+			require.NoError(n.t, rfs.Init(repo.FullNode))
 			r = rfs
 		}
 
@@ -374,7 +374,7 @@ func (n *Ensemble) Start() *Ensemble {
 			n.t.Fatalf("invalid config from repo, got: %T", c)
 		}
 		for _, opt := range full.options.cfgOpts {
-			opt(cfg)
+			require.NoError(n.t, opt(cfg))
 		}
 		err = lr.SetConfig(func(raw interface{}) {
 			rcfg := raw.(*config.FullNode)

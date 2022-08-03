@@ -85,7 +85,7 @@ func TestHotstoreCompactCleansGarbage(t *testing.T) {
 
 	for e > boundary {
 		boundary += splitstore.CompactionThreshold - splitstore.CompactionBoundary
-		garbageCompactionIndex += 1
+		garbageCompactionIndex++
 	}
 	bm.Restart()
 
@@ -135,7 +135,7 @@ func TestColdStorePrune(t *testing.T) {
 
 	for e > boundary {
 		boundary += splitstore.CompactionThreshold - splitstore.CompactionBoundary
-		garbageCompactionIndex += 1
+		garbageCompactionIndex++
 	}
 	bm.Restart()
 
@@ -150,12 +150,22 @@ func TestColdStorePrune(t *testing.T) {
 	assert.True(g.t, g.Exists(ctx, garbage), "Garbage not found in splitstore")
 	bm.Restart()
 
+	// wait for compaction to finsih and pause to make sure it doesn't start to avoid racing
+	for {
+		bm.Pause()
+		if splitStoreCompacting(ctx, t, full) {
+			bm.Restart()
+			time.Sleep(1 * time.Second)
+		} else {
+			break
+		}
+	}
 	pruneOpts := make(map[string]interface{})
 	pruneOpts[splitstore.PruneRetainState] = int64(0) // Prune from compaction boundary
 	require.NoError(t, full.ChainPrune(ctx, pruneOpts))
+	bm.Restart()
 	waitForPrune(ctx, t, 1, full)
 	assert.False(g.t, g.Exists(ctx, garbage), "Garbage should be removed from cold store after prune but it's still there")
-
 }
 
 func waitForCompaction(ctx context.Context, t *testing.T, cIdx int64, n *kit.TestFullNode) {
@@ -275,7 +285,7 @@ func (g *Garbager) Exists(ctx context.Context, c cid.Cid) bool {
 func (g *Garbager) newPeerID(ctx context.Context) abi.ChainEpoch {
 	dataStr := fmt.Sprintf("Garbager-Data-%d", g.latest)
 	dataID := []byte(dataStr)
-	params, err := actors.SerializeParams(&miner2.ChangePeerIDParams{NewID: abi.PeerID(dataID)})
+	params, err := actors.SerializeParams(&miner2.ChangePeerIDParams{NewID: dataID})
 	require.NoError(g.t, err)
 
 	msg := &types.Message{
@@ -302,6 +312,7 @@ func (g *Garbager) mInfoCid(ctx context.Context) cid.Cid {
 	act, err := g.node.StateGetActor(ctx, g.maddr4Data, ts.Key())
 	require.NoError(g.t, err)
 	raw, err := g.node.ChainReadObj(ctx, act.Head)
+	require.NoError(g.t, err)
 	var mSt miner8.State
 	require.NoError(g.t, mSt.UnmarshalCBOR(bytes.NewReader(raw)))
 
