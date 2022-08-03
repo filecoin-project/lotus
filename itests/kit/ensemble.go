@@ -727,6 +727,7 @@ func (n *Ensemble) Start() *Ensemble {
 			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
 				TaskTypes: m.options.workerTasks,
 				NoSwap:    false,
+				Name:      m.options.workerName,
 			}, store, localStore, m.MinerNode, m.MinerNode, wsts),
 			LocalStore: localStore,
 			Storage:    lr,
