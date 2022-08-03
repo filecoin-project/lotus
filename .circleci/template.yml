@@ -587,14 +587,24 @@ jobs:
           name: install snapcraft
           command: sudo snap install snapcraft --classic
       - run:
-          name: build snap
+          name: build `lotus-filecoin` snap
           command: snapcraft --use-lxd --debug
       - run:
-          name: publish snap
+          name: publish `lotus-filecoin` snap
           command: |
-            pwd
-            ls *.snap
             snapcraft upload lotus-filecoin_latest_amd64.snap --release << parameters.channel >>
+      - run:
+          name: Rewrite snapcraft.yaml to use `lotus` name
+          command:
+            cat snap/snapcraft.yaml | sed 's/lotus-filecoin/lotus/' > lotus-snapcraft.yaml
+            mv lotus-snapcrat.yaml snap/snapcraft.yaml
+      - run:
+          name: build `lotus` snap
+          command: snapcraft --use-lxd --debug
+      - run:
+          name: publish `lotus` snap
+          command: |
+            snapcraft upload lotus_latest_amd64.snap --release << parameters.channel >>
 
   build-and-push-image:
     description: build and push docker images to public AWS ECR registry
