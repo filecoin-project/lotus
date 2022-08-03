@@ -344,7 +344,7 @@ func (n *Ensemble) Start() *Ensemble {
 	for i, full := range n.inactive.fullnodes {
 
 		var r repo.Repo
-		if full.options.fsrepo {
+		if !full.options.fsrepo {
 			rmem := repo.NewMemory(nil)
 			n.t.Cleanup(rmem.Cleanup)
 			r = rmem

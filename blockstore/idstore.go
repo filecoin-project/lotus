@@ -103,6 +103,14 @@ func (b *idstore) Put(ctx context.Context, blk blocks.Block) error {
 	return b.bs.Put(ctx, blk)
 }
 
+func (b *idstore) ForEachKey(f func(cid.Cid) error) error {
+	iterBstore, ok := b.bs.(BlockstoreIterator)
+	if !ok {
+		return xerrors.Errorf("underlying blockstore (type %T) doesn't support fast iteration", b.bs)
+	}
+	return iterBstore.ForEachKey(f)
+}
+
 func isTestCid(c cid.Cid) bool {
 	testCid, err := cid.Decode("bafy2bzacec4ek45pyx2ihisbmbhbit5htk2ovrry4mpmxkhjasbln3ikvzanu")
 	if err != nil {

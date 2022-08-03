@@ -70,20 +70,6 @@ const (
 	batchSize = 16384
 )
 
-func isTestCid(c cid.Cid) bool {
-	testCid, err := cid.Decode("bafy2bzacec4ek45pyx2ihisbmbhbit5htk2ovrry4mpmxkhjasbln3ikvzanu")
-	if err != nil {
-		panic(err)
-	}
-
-	return c.Hash().HexString() == testCid.Hash().HexString()
-}
-
-func (s *SplitStore) fmtDebug(extra string) {
-	hHas, cHas := s.lookupTestCid()
-	fmt.Printf("[COMPACT]: %s, has test cid (hot %t) (cold %t))", extra, hHas, cHas)
-}
-
 func (s *SplitStore) lookupTestCid() (bool, bool) {
 	c, err := cid.Decode("bafy2bzacec4ek45pyx2ihisbmbhbit5htk2ovrry4mpmxkhjasbln3ikvzanu")
 	if err != nil {
@@ -149,9 +135,7 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	}
 
 	if epoch-s.baseEpoch > CompactionThreshold {
-		fmt.Printf("YYYYYYYYY\n Begin compaction \nYYYYYYY\n")
 		// it's time to compact -- prepare the transaction and go!
-		s.fmtDebug("right before compaction")
 		s.beginTxnProtect()
 		s.compactType = hot
 		go func() {
@@ -571,8 +555,6 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		return err
 	}
 
-	s.fmtDebug("before chain walk")
-
 	// 1. mark reachable objects by walking the chain from the current epoch; we keep state roots
 	//   and messages until the boundary epoch.
 	log.Info("marking reachable objects")
@@ -581,9 +563,6 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	count := new(int64)
 	err = s.walkChain(curTs, boundaryEpoch, inclMsgsEpoch, &noopVisitor{},
 		func(c cid.Cid) error {
-			if isTestCid(c) {
-				fmt.Printf("\n\n[COMPACT] found the cid %s during chain traversal!\n\n", c.String())
-			}
 			if isUnitaryObject(c) {
 				return errStopWalk
 			}
@@ -604,8 +583,6 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	if err != nil {
 		return xerrors.Errorf("error marking: %w", err)
 	}
-
-	s.fmtDebug("after chain walk")
 
 	s.markSetSize = *count + *count>>2 // overestimate a bit
 
@@ -637,11 +614,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	// some stats for logging
 	var hotCnt, coldCnt int
-	fmt.Printf("\n\n[COMPACT]: traversing hot store of type %T\n\n", s.hot)
 	err = s.hot.ForEachKey(func(c cid.Cid) error {
-		if isTestCid(c) {
-			fmt.Printf("\n\n[COMPACT]: found %s(%s) in hot store during compact\n\n", c, c.String())
-		}
 		// was it marked?
 		mark, err := markSet.Has(c)
 		if err != nil {
@@ -661,8 +634,6 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 		return nil
 	})
-
-	s.fmtDebug("after traversing hot store")
 	if err != nil {
 		return xerrors.Errorf("error collecting cold objects: %w", err)
 	}
@@ -714,7 +685,6 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 			return xerrors.Errorf("error resetting coldset: %w", err)
 		}
 	}
-	s.fmtDebug("after moving to cold store")
 
 	// 4. Purge cold objects with checkpointing for recovery.
 	// This is the critical section of compaction, whereby any cold object not in the markSet is
@@ -738,8 +708,6 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		return err
 	}
 
-	s.fmtDebug("inside critical section")
-
 	checkpoint, err := NewCheckpoint(s.checkpointPath())
 	if err != nil {
 		return xerrors.Errorf("error creating checkpoint: %w", err)
@@ -755,7 +723,6 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	}
 	log.Infow("purging cold objects from hotstore done", "took", time.Since(startPurge))
 
-	s.fmtDebug("after purge")
 	s.endCriticalSection()
 
 	if err := checkpoint.Close(); err != nil {
@@ -773,9 +740,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 
 	// we are done; do some housekeeping
 	s.endTxnProtect()
-	s.fmtDebug("critical section done")
 	s.gcHotstore()
-	s.fmtDebug("hot store gc")
 
 	err = s.setBaseEpoch(boundaryEpoch)
 	if err != nil {
@@ -1205,10 +1170,6 @@ func (s *SplitStore) moveColdBlocks(coldr *ColdSetReader) error {
 		if err := s.checkClosing(); err != nil {
 			return err
 		}
-		if isTestCid(c) {
-			fmt.Printf("[COMPACT]: foudn test cid while moving cold blocks %s\n\n", c)
-		}
-
 		blk, err := s.hot.Get(s.ctx, c)
 		if err != nil {
 			if ipld.IsNotFound(err) {
@@ -1276,9 +1237,6 @@ func (s *SplitStore) purge(coldr *ColdSetReader, checkpoint *Checkpoint, markSet
 
 	err := coldr.ForEach(func(c cid.Cid) error {
 		batch = append(batch, c)
-		if isTestCid(c) {
-			fmt.Printf("[COMPACT]: found test cid while purging\n\n")
-		}
 		if len(batch) == batchSize {
 			return deleteBatch()
 		}

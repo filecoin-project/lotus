@@ -2,6 +2,7 @@ package splitstore
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"runtime"
 	"sync"
@@ -97,6 +98,7 @@ func (s *SplitStore) PruneChain(opts map[string]interface{}) error {
 	}
 
 	if _, ok := s.cold.(bstore.BlockstoreIterator); !ok {
+		fmt.Printf("cold store type: %T\n", s.cold)
 		return xerrors.Errorf("coldstore does not support efficient iteration")
 	}
 
@@ -146,12 +148,22 @@ func (s *SplitStore) pruneChain(retainStateP func(int64) bool, doGC func() error
 	return nil
 }
 
+func isTestCid(c cid.Cid) bool {
+	testCid, err := cid.Decode("bafy2bzacec4ek45pyx2ihisbmbhbit5htk2ovrry4mpmxkhjasbln3ikvzanu")
+	if err != nil {
+		panic(err)
+	}
+
+	return c.Hash().HexString() == testCid.Hash().HexString()
+}
+
 func (s *SplitStore) prune(curTs *types.TipSet, retainStateP func(int64) bool, doGC func() error) {
 	log.Info("waiting for active views to complete")
 	start := time.Now()
 	s.viewWait()
 	log.Infow("waiting for active views done", "took", time.Since(start))
 
+	fmt.Printf("[PRUNE]: starting\n")
 	err := s.doPrune(curTs, retainStateP, doGC)
 	if err != nil {
 		log.Errorf("PRUNE ERROR: %s", err)
@@ -185,6 +197,7 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 	//    and chain headers; state and reciepts are retained only if it is within retention policy scope
 	log.Info("marking reachable objects")
 	startMark := time.Now()
+	fmt.Printf("[PRUNE]: marking\n")
 
 	count := new(int64)
 	err = s.walkChainDeep(curTs, retainStateP,
@@ -226,6 +239,8 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 		return err
 	}
 
+	fmt.Printf("[PRUNE]: iter cold store to find dead\n")
+
 	// 2. iterate through the coldstore to collect dead objects
 	log.Info("collecting dead objects")
 	startCollect := time.Now()
@@ -241,6 +256,9 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 
 	err = s.cold.(bstore.BlockstoreIterator).ForEachKey(func(c cid.Cid) error {
 		// was it marked?
+		if isTestCid(c) {
+			fmt.Printf("[PRUNE] found test cid %s in deadset collection iteration\n", c)
+		}
 		mark, err := markSet.Has(c)
 		if err != nil {
 			return xerrors.Errorf("error checking mark set for %s: %w", c, err)
@@ -248,6 +266,9 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 
 		if mark {
 			liveCnt++
+			if isTestCid(c) {
+				fmt.Printf("[PRUNE] huh found the test cid as marked, no prune for us...\n")
+			}
 			return nil
 		}
 
@@ -295,6 +316,8 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 	}
 	defer deadr.Close() //nolint:errcheck
 
+	fmt.Printf("[PRUNE]: purge the dead\n")
+
 	// 3. Purge dead objects with checkpointing for recovery.
 	// This is the critical section of prune, whereby any dead object not in the markSet is
 	// considered already deleted.
@@ -305,6 +328,7 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 	if err := s.beginCriticalSection(markSet); err != nil {
 		return xerrors.Errorf("error beginning critical section: %w", err)
 	}
+	fmt.Printf("[PRUNE]: critical\n")
 
 	if err := s.checkClosing(); err != nil {
 		return err
@@ -325,6 +349,7 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 	log.Infow("purging dead objects from coldstore done", "took", time.Since(startPurge))
 
 	s.endCriticalSection()
+	fmt.Printf("[PRUNE]: done with critical\n")
 
 	if err := checkpoint.Close(); err != nil {
 		log.Warnf("error closing checkpoint: %s", err)
@@ -344,6 +369,12 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 	err = doGC()
 	if err != nil {
 		log.Warnf("error garbage collecting cold store: %s", err)
+	}
+
+	s.pruneIndex++
+	err = s.ds.Put(s.ctx, pruneIndexKey, int64ToBytes(s.compactionIndex))
+	if err != nil {
+		return xerrors.Errorf("error saving compaction index: %w", err)
 	}
 
 	return nil

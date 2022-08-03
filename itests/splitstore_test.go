@@ -99,7 +99,7 @@ func TestHotstoreCompactCleansGarbage(t *testing.T) {
 // Create unreachable state
 // Check that it moves to coldstore
 // Prune coldstore and check that it is deleted
-func TestColdStore(t *testing.T) {
+func TestColdStorePrune(t *testing.T) {
 	ctx := context.Background()
 	// disable sync checking because efficient itests require that the node is out of sync : /
 	splitstore.CheckSyncGap = false
@@ -150,11 +150,24 @@ func TestColdStore(t *testing.T) {
 	assert.True(g.t, g.Exists(ctx, garbage), "Garbage not found in splitstore")
 	bm.Restart()
 
+	require.NoError(t, full.ChainPrune(ctx, nil))
+	waitForPrune(ctx, t, 1, full)
+	assert.False(g.t, g.Exists(ctx, garbage), "Garbage should be removed from cold store after prune but it's still there")
+
 }
 
 func waitForCompaction(ctx context.Context, t *testing.T, cIdx int64, n *kit.TestFullNode) {
 	for {
 		if splitStoreCompactionIndex(ctx, t, n) >= cIdx {
+			break
+		}
+		time.Sleep(1 * time.Second)
+	}
+}
+
+func waitForPrune(ctx context.Context, t *testing.T, pIdx int64, n *kit.TestFullNode) {
+	for {
+		if splitStorePruneIndex(ctx, t, n) >= pIdx {
 			break
 		}
 		time.Sleep(1 * time.Second)
@@ -189,6 +202,16 @@ func splitStoreCompactionIndex(ctx context.Context, t *testing.T, n *kit.TestFul
 	compactionIndex, ok := compact.(int64)
 	require.True(t, ok, "compaction key on blockstore info wrong type")
 	return compactionIndex
+}
+
+func splitStorePruneIndex(ctx context.Context, t *testing.T, n *kit.TestFullNode) int64 {
+	info, err := n.ChainBlockstoreInfo(ctx)
+	require.NoError(t, err)
+	prune, ok := info["prunes"]
+	require.True(t, ok, "prunes not on blockstore info")
+	pruneIndex, ok := prune.(int64)
+	require.True(t, ok, "prune key on blockstore info wrong type")
+	return pruneIndex
 }
 
 // Create on chain unreachable garbage for a network to exercise splitstore
