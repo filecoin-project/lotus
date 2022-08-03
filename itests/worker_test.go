@@ -437,7 +437,7 @@ func TestSchedulerRemoveRequest(t *testing.T) {
 	go miner.PledgeSectors(ctx, 1, 0, nil)
 	// Keep checking till sector state is PC2, the request should get stuck as worker cannot process PC2
 	for {
-		st, err := miner.SectorsStatus(ctx, 1, false)
+		st, err := miner.SectorsStatus(ctx, 0, false)
 		require.NoError(t, err)
 		if st.State == api.SectorState(sealing.PreCommit2) {
 			break
