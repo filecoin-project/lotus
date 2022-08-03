@@ -65,6 +65,8 @@ func (c *StorageMiner) StorageManager() sealer.Config {
 		ResourceFiltering:        c.Storage.ResourceFiltering,
 		DisallowRemoteFinalize:   c.Storage.DisallowRemoteFinalize,
 
+		LocalWorkerName: c.Storage.LocalWorkerName,
+
 		Assigner: c.Storage.Assigner,
 
 		ParallelCheckLimit:        c.Proving.ParallelCheckLimit,

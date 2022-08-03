@@ -47,6 +47,7 @@ type nodeOpts struct {
 
 	workerTasks      []sealtasks.TaskType
 	workerStorageOpt func(paths.Store) paths.Store
+	workerName       string
 }
 
 // DefaultNodeOpts are the default options that will be applied to test nodes.
@@ -215,6 +216,13 @@ func SectorSize(sectorSize abi.SectorSize) NodeOpt {
 func WithTaskTypes(tt []sealtasks.TaskType) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.workerTasks = tt
+		return nil
+	}
+}
+
+func WithWorkerName(n string) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.workerName = n
 		return nil
 	}
 }
