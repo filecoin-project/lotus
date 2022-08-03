@@ -2,7 +2,6 @@ package blockstore
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	blocks "github.com/ipfs/go-block-format"
@@ -103,29 +102,17 @@ func (b *idstore) Put(ctx context.Context, blk blocks.Block) error {
 	return b.bs.Put(ctx, blk)
 }
 
-func (b *idstore) ForEachKey(f func(cid.Cid) error) error {
-	iterBstore, ok := b.bs.(BlockstoreIterator)
-	if !ok {
-		return xerrors.Errorf("underlying blockstore (type %T) doesn't support fast iteration", b.bs)
-	}
-	return iterBstore.ForEachKey(f)
-}
-
-func isTestCid(c cid.Cid) bool {
-	testCid, err := cid.Decode("bafy2bzacec4ek45pyx2ihisbmbhbit5htk2ovrry4mpmxkhjasbln3ikvzanu")
-	if err != nil {
-		panic(err)
-	}
-
-	return c.Hash().HexString() == testCid.Hash().HexString()
-}
+// func (b *idstore) ForEachKey(f func(cid.Cid) error) error {
+// 	iterBstore, ok := b.bs.(BlockstoreIterator)
+// 	if !ok {
+// 		return xerrors.Errorf("underlying blockstore (type %T) doesn't support fast iteration", b.bs)
+// 	}
+// 	return iterBstore.ForEachKey(f)
+// }
 
 func (b *idstore) PutMany(ctx context.Context, blks []blocks.Block) error {
 	toPut := make([]blocks.Block, 0, len(blks))
 	for _, blk := range blks {
-		if isTestCid(blk.Cid()) {
-			fmt.Printf("[ID STORE]: putting the test cid\n\n")
-		}
 		inline, _, err := decodeCid(blk.Cid())
 		if err != nil {
 			return xerrors.Errorf("error decoding Cid: %w", err)
