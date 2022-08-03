@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/backupds"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -287,7 +288,6 @@ var marketImportDatastoreCmd = &cli.Command{
 var marketDealsTotalStorageCmd = &cli.Command{
 	Name:  "get-deals-total-storage",
 	Usage: "View the total storage available in all active market deals",
-	Flags: []cli.Flag{},
 	Action: func(cctx *cli.Context) error {
 		api, closer, err := lcli.GetFullNodeAPI(cctx)
 		if err != nil {
@@ -297,12 +297,7 @@ var marketDealsTotalStorageCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		ts, err := lcli.LoadTipSet(ctx, cctx, api)
-		if err != nil {
-			return err
-		}
-
-		deals, err := api.StateMarketDeals(ctx, ts.Key())
+		deals, err := api.StateMarketDeals(ctx, types.EmptyTSK)
 		if err != nil {
 			return err
 		}
