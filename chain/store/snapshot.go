@@ -25,6 +25,20 @@ func (cs *ChainStore) UnionStore() bstore.Blockstore {
 }
 
 func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, w io.Writer) error {
+	pleaseVisit := func(b types.BlockHeader) bool {
+		return b.Height > ts.Height()-inclRecentRoots
+	}
+	return cs.exportIf(ctx, ts, pleaseVisit, skipOldMsgs, w)
+}
+
+func (cs *ChainStore) ExportRange(ctx context.Context, from, to *types.TipSet, skipOldMsgs bool, w io.Writer) error {
+	pleaseVisit := func(b types.BlockHeader) bool {
+		return b.Height >= from.Height() && b.Height < to.Height()
+	}
+	return cs.exportIf(ctx, to, pleaseVisit, skipOldMsgs, w)
+}
+
+func (cs *ChainStore) exportIf(ctx context.Context, ts *types.TipSet, visit func(b types.BlockHeader) bool, skipOldMsgs bool, w io.Writer) error {
 	h := &car.CarHeader{
 		Roots:   ts.Cids(),
 		Version: 1,
@@ -35,7 +49,7 @@ func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRo
 	}
 
 	unionBs := cs.UnionStore()
-	return cs.WalkSnapshot(ctx, ts, inclRecentRoots, skipOldMsgs, true, func(c cid.Cid) error {
+	return cs.WalkSnapshot(ctx, ts, visit, skipOldMsgs, true, func(c cid.Cid) error {
 		blk, err := unionBs.Get(ctx, c)
 		if err != nil {
 			return xerrors.Errorf("writing object to car, bs.Get: %w", err)
@@ -68,7 +82,7 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (*types.TipSet, e
 	return root, nil
 }
 
-func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs, skipMsgReceipts bool, cb func(cid.Cid) error) error {
+func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, visit func(b types.BlockHeader) bool, skipOldMsgs bool, skipMsgReceipts bool, cb func(cid.Cid) error) error {
 	if ts == nil {
 		ts = cs.GetHeaviestTipSet()
 	}
@@ -106,7 +120,7 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 		}
 
 		var cids []cid.Cid
-		if !skipOldMsgs || b.Height > ts.Height()-inclRecentRoots {
+		if !skipOldMsgs || visit(b) {
 			if walked.Visit(b.Messages) {
 				mcids, err := recurseLinks(ctx, cs.chainBlockstore, walked, b.Messages, []cid.Cid{b.Messages})
 				if err != nil {
@@ -127,7 +141,7 @@ func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRe
 
 		out := cids
 
-		if b.Height == 0 || b.Height > ts.Height()-inclRecentRoots {
+		if b.Height == 0 || visit(b) {
 			if walked.Visit(b.ParentStateRoot) {
 				cids, err := recurseLinks(ctx, cs.stateBlockstore, walked, b.ParentStateRoot, []cid.Cid{b.ParentStateRoot})
 				if err != nil {
