@@ -426,7 +426,7 @@ func TestSchedulerRemoveRequest(t *testing.T) {
 		Requests    []SchedDiagRequestInfo
 		OpenWindows []string
 	}
-	type i struct {
+	type info struct {
 		SchedInfo    interface{}
 		ReturnedWork []string
 		Waiting      []string
@@ -434,10 +434,14 @@ func TestSchedulerRemoveRequest(t *testing.T) {
 		EarlyRet     []string
 	}
 
-	go miner.PledgeSectors(ctx, 1, 0, nil)
+	tocheck := miner.StartPledge(ctx, 1, 0, nil)
+	var sn abi.SectorNumber
+	for n := range tocheck {
+		sn = n
+	}
 	// Keep checking till sector state is PC2, the request should get stuck as worker cannot process PC2
 	for {
-		st, err := miner.SectorsStatus(ctx, abi.SectorNumber(1), false)
+		st, err := miner.SectorsStatus(ctx, sn, false)
 		require.NoError(t, err)
 		if st.State == api.SectorState(sealing.PreCommit2) {
 			break
@@ -454,8 +458,8 @@ func TestSchedulerRemoveRequest(t *testing.T) {
 	var schedidb uuid.UUID
 
 	// cast scheduler info and get the request UUID. Call the SealingRemoveRequest()
-	if schedb.(i).SchedInfo.(SchedDiagInfo).Requests[0].TaskType == "seal/v0/precommit/2" {
-		schedidb = schedb.(i).SchedInfo.(SchedDiagInfo).Requests[0].SchedId
+	if schedb.(info).SchedInfo.(SchedDiagInfo).Requests[0].TaskType == "seal/v0/precommit/2" {
+		schedidb = schedb.(info).SchedInfo.(SchedDiagInfo).Requests[0].SchedId
 		err = miner.SealingRemoveRequest(ctx, schedidb)
 		if err != nil {
 			t.Log("Failed to dump scheduler state before: %w", err)
@@ -471,8 +475,8 @@ func TestSchedulerRemoveRequest(t *testing.T) {
 		t.FailNow()
 	}
 
-	if len(scheda.(i).SchedInfo.(SchedDiagInfo).Requests) > 0 && scheda.(i).SchedInfo.(SchedDiagInfo).Requests[0].TaskType == "seal/v0/precommit/2" {
-		schedida := scheda.(i).SchedInfo.(SchedDiagInfo).Requests[0].SchedId
+	if len(scheda.(info).SchedInfo.(SchedDiagInfo).Requests) > 0 && scheda.(info).SchedInfo.(SchedDiagInfo).Requests[0].TaskType == "seal/v0/precommit/2" {
+		schedida := scheda.(info).SchedInfo.(SchedDiagInfo).Requests[0].SchedId
 		require.NotEqual(t, schedida, schedidb)
 	}
 }
