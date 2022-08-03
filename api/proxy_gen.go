@@ -967,6 +967,8 @@ type WorkerStruct struct {
 
 		SetEnabled func(p0 context.Context, p1 bool) error `perm:"admin"`
 
+		Shutdown func(p0 context.Context) error `perm:"admin"`
+
 		StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
 
 		TaskDisable func(p0 context.Context, p1 sealtasks.TaskType) error `perm:"admin"`
@@ -5570,6 +5572,17 @@ func (s *WorkerStruct) SetEnabled(p0 context.Context, p1 bool) error {
 }
 
 func (s *WorkerStub) SetEnabled(p0 context.Context, p1 bool) error {
+	return ErrNotSupported
+}
+
+func (s *WorkerStruct) Shutdown(p0 context.Context) error {
+	if s.Internal.Shutdown == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.Shutdown(p0)
+}
+
+func (s *WorkerStub) Shutdown(p0 context.Context) error {
 	return ErrNotSupported
 }
 

@@ -829,6 +829,10 @@ func (l *LocalWorker) Close() error {
 	return nil
 }
 
+func (l *LocalWorker) Done() <-chan struct{} {
+	return l.closing
+}
+
 // WaitQuiet blocks as long as there are tasks running
 func (l *LocalWorker) WaitQuiet() {
 	l.running.Wait()
