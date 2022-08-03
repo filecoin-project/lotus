@@ -499,7 +499,7 @@ func TestSchedulerRemoveRequest(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEqual(t, schedida, schedidb)
 	}
- }
+}
 
 func TestWorkerName(t *testing.T) {
 	name := "thisstringisprobablynotahostnameihope"
