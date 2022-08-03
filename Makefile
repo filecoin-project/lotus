@@ -133,6 +133,18 @@ install-worker:
 install-app:
 	install -C ./$(APP) /usr/local/bin/$(APP)
 
+uninstall: uninstall-daemon uninstall-miner uninstall-worker
+.PHONY: uninstall
+
+uninstall-daemon:
+	rm -f /usr/local/bin/lotus
+
+uninstall-miner:
+	rm -f /usr/local/bin/lotus-miner
+
+uninstall-worker:
+	rm -f /usr/local/bin/lotus-worker
+
 # TOOLS
 
 lotus-seed: $(BUILD_DEPS)
@@ -319,7 +331,7 @@ appimage: lotus
 	cp ./lotus AppDir/usr/bin/
 	appimage-builder
 
-docsgen: docsgen-md docsgen-openrpc
+docsgen: docsgen-md docsgen-openrpc fiximports
 
 docsgen-md-bin: api-gen actors-gen
 	$(GOCC) build $(GOFLAGS) -o docgen-md ./api/docgen/cmd
@@ -336,7 +348,7 @@ docsgen-md-storage: docsgen-md-bin
 docsgen-md-worker: docsgen-md-bin
 	./docgen-md "api/api_worker.go" "Worker" "api" "./api" > documentation/en/api-v0-methods-worker.md
 
-docsgen-openrpc: docsgen-openrpc-full docsgen-openrpc-storage docsgen-openrpc-worker
+docsgen-openrpc: docsgen-openrpc-full docsgen-openrpc-storage docsgen-openrpc-worker docsgen-openrpc-gateway
 
 docsgen-openrpc-full: docsgen-openrpc-bin
 	./docgen-openrpc "api/api_full.go" "FullNode" "api" "./api" -gzip > build/openrpc/full.json.gz
@@ -344,10 +356,15 @@ docsgen-openrpc-storage: docsgen-openrpc-bin
 	./docgen-openrpc "api/api_storage.go" "StorageMiner" "api" "./api" -gzip > build/openrpc/miner.json.gz
 docsgen-openrpc-worker: docsgen-openrpc-bin
 	./docgen-openrpc "api/api_worker.go" "Worker" "api" "./api" -gzip > build/openrpc/worker.json.gz
+docsgen-openrpc-gateway: docsgen-openrpc-bin
+	./docgen-openrpc "api/api_gateway.go" "Gateway" "api" "./api" -gzip > build/openrpc/gateway.json.gz
 
 .PHONY: docsgen docsgen-md-bin docsgen-openrpc-bin
 
-gen: actors-gen type-gen method-gen cfgdoc-gen docsgen api-gen circleci bundle-gen
+fiximports:
+	./scripts/fiximports
+
+gen: actors-gen type-gen method-gen cfgdoc-gen docsgen api-gen circleci bundle-gen fiximports
 	@echo ">>> IF YOU'VE MODIFIED THE CLI OR CONFIG, REMEMBER TO ALSO MAKE docsgen-cli"
 .PHONY: gen
 

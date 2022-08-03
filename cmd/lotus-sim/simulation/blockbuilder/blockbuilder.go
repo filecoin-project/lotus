@@ -4,7 +4,6 @@ import (
 	"context"
 	"math"
 
-	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"go.uber.org/zap"
 	"golang.org/x/xerrors"
 
@@ -17,11 +16,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/account"
+	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	lrand "github.com/filecoin-project/lotus/chain/rand"
 	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
-
 	"github.com/filecoin-project/lotus/chain/vm"
 )
 

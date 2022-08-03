@@ -6,20 +6,17 @@ import (
 	"io"
 	"testing"
 
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
-
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
-
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/dagstore/mount"
-	"github.com/filecoin-project/go-state-types/abi"
-
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket/impl/testnodes"
 	tut "github.com/filecoin-project/go-fil-markets/shared_testutil"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-state-types/abi"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
 
 	"github.com/filecoin-project/lotus/node/config"
 )

@@ -10,11 +10,10 @@ import (
 	"strings"
 	"testing"
 
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sync/errgroup"
-
-	blocks "github.com/ipfs/go-block-format"
-	cid "github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/lotus/blockstore"
 )

@@ -2,11 +2,10 @@ package filcns
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"runtime"
 	"time"
-
-	_ "embed"
 
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-cid"
@@ -20,7 +19,6 @@ import (
 	"github.com/filecoin-project/go-state-types/network"
 	"github.com/filecoin-project/go-state-types/rt"
 	gstStore "github.com/filecoin-project/go-state-types/store"
-
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	multisig0 "github.com/filecoin-project/specs-actors/actors/builtin/multisig"
@@ -1479,21 +1477,18 @@ func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsM
 		return cid.Undef, xerrors.Errorf("failed to load state tree: %w", err)
 	}
 
-	oldManifest, err := stmgr.GetManifest(ctx, st)
+	oldManifestData, err := stmgr.GetManifestData(ctx, st)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("error loading old actor manifest: %w", err)
 	}
-	oldManifestData := manifest.ManifestData{}
-	if err := store.Get(ctx, oldManifest.Data, &oldManifestData); err != nil {
-		return cid.Undef, xerrors.Errorf("error loading old manifest data: %w", err)
-	}
 
 	// load new manifest
-	newManifest := manifest.Manifest{}
-	if err := store.Get(ctx, newActorsManifestCid, &newManifest); err != nil {
+	newManifest, err := actors.LoadManifest(ctx, newActorsManifestCid, store)
+	if err != nil {
 		return cid.Undef, xerrors.Errorf("error loading new manifest: %w", err)
 	}
-	newManifestData := manifest.ManifestData{}
+
+	var newManifestData manifest.ManifestData
 	if err := store.Get(ctx, newManifest.Data, &newManifestData); err != nil {
 		return cid.Undef, xerrors.Errorf("error loading new manifest data: %w", err)
 	}
@@ -1508,12 +1503,13 @@ func LiteMigration(ctx context.Context, bstore blockstore.Blockstore, newActorsM
 	// Maps prior version code CIDs to migration functions.
 	migrations := make(map[cid.Cid]cid.Cid)
 
-	for _, entry := range newManifestData.Entries {
-		oldCodeCid, ok := oldManifest.Get(entry.Name)
+	for _, entry := range oldManifestData.Entries {
+		newCodeCid, ok := newManifest.Get(entry.Name)
 		if !ok {
-			return cid.Undef, xerrors.Errorf("code cid for %s actor not found in old manifest", entry.Name)
+			return cid.Undef, xerrors.Errorf("code cid for %s actor not found in new manifest", entry.Name)
 		}
-		migrations[oldCodeCid] = entry.Code
+
+		migrations[entry.Code] = newCodeCid
 	}
 
 	startTime := time.Now()

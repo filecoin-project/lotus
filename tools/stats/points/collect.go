@@ -8,23 +8,24 @@ import (
 	"strings"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru"
+	client "github.com/influxdata/influxdb1-client/v2"
+	"github.com/ipfs/go-cid"
+	"go.opencensus.io/stats"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/tools/stats/influx"
 	"github.com/filecoin-project/lotus/tools/stats/metrics"
-
-	lru "github.com/hashicorp/golang-lru"
-	client "github.com/influxdata/influxdb1-client/v2"
-	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-multihash"
-	"go.opencensus.io/stats"
-	"golang.org/x/xerrors"
 )
 
 type LotusApi interface {
@@ -69,12 +70,8 @@ func (c *ChainPointCollector) actorDigest(ctx context.Context, addr address.Addr
 		return "", err
 	}
 
-	dm, err := multihash.Decode(actor.Code.Hash())
-	if err != nil {
-		return "", err
-	}
+	digest := builtin.ActorNameByCode(actor.Code)
 
-	digest := string(dm.Digest)
 	c.actorDigestCache.Add(addr, digest)
 
 	return digest, nil

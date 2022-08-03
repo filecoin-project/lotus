@@ -4,19 +4,18 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/filecoin-project/lotus/chain/vm"
-
 	gen "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/exchange"
 	"github.com/filecoin-project/lotus/chain/market"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/chain/vm"
 	"github.com/filecoin-project/lotus/cmd/lotus-shed/shedgen"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/node/hello"
 	"github.com/filecoin-project/lotus/paychmgr"
+	sectorstorage "github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 func main() {
@@ -100,7 +99,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = gen.WriteMapEncodersToFile("./extern/sector-storage/storiface/cbor_gen.go", "storiface",
+	err = gen.WriteMapEncodersToFile("./storage/sealer/storiface/cbor_gen.go", "storiface",
 		storiface.CallID{},
 	)
 	if err != nil {
@@ -108,7 +107,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	err = gen.WriteMapEncodersToFile("./extern/sector-storage/cbor_gen.go", "sectorstorage",
+	err = gen.WriteMapEncodersToFile("./storage/sealer/cbor_gen.go", "sealer",
 		sectorstorage.Call{},
 		sectorstorage.WorkState{},
 		sectorstorage.WorkID{},

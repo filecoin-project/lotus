@@ -4,23 +4,17 @@ import (
 	"context"
 
 	"github.com/ipfs/go-cid"
-
-	systemtypes "github.com/filecoin-project/go-state-types/builtin/v8/system"
-
-	"github.com/filecoin-project/go-state-types/manifest"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/big"
+	systemtypes "github.com/filecoin-project/go-state-types/builtin/v8/system"
+	"github.com/filecoin-project/go-state-types/manifest"
+
+	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/system"
-
-	cbor "github.com/ipfs/go-ipld-cbor"
-
-	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 
@@ -53,9 +47,9 @@ func SetupSystemActor(ctx context.Context, bs bstore.Blockstore, av actors.Versi
 		return nil, err
 	}
 
-	actcid, err := builtin.GetSystemActorCodeID(av)
-	if err != nil {
-		return nil, err
+	actcid, ok := actors.GetActorCodeID(av, actors.SystemKey)
+	if !ok {
+		return nil, xerrors.Errorf("failed to get system actor code ID for actors version %d", av)
 	}
 
 	act := &types.Actor{

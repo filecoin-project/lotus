@@ -4,9 +4,11 @@ import (
 	"context"
 	"os"
 
+	cid "github.com/ipfs/go-cid"
+
 	"github.com/filecoin-project/go-state-types/network"
+
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/ipfs/go-cid"
 )
 
 type Interface interface {
@@ -21,13 +23,25 @@ type Interface interface {
 
 var useFvmForMainnetV15 = os.Getenv("LOTUS_USE_FVM_TO_SYNC_MAINNET_V15") == "1"
 
+// WARNING: You will not affect your node's execution by misusing this feature, but you will confuse yourself thoroughly!
+// An envvar that allows the user to specify debug actors bundles to be used by the FVM
+// alongside regular execution. This is basically only to be used to print out specific logging information.
+// Message failures, unexpected terminations,gas costs, etc. should all be ignored.
+var useFvmDebug = os.Getenv("LOTUS_FVM_DEVELOPER_DEBUG") == "1"
+
 func NewVM(ctx context.Context, opts *VMOpts) (Interface, error) {
 	if opts.NetworkVersion >= network.Version16 {
+		if useFvmDebug {
+			return NewDualExecutionFVM(ctx, opts)
+		}
 		return NewFVM(ctx, opts)
 	}
 
 	// Remove after v16 upgrade, this is only to support testing and validation of the FVM
 	if useFvmForMainnetV15 && opts.NetworkVersion >= network.Version15 {
+		if useFvmDebug {
+			return NewDualExecutionFVM(ctx, opts)
+		}
 		return NewFVM(ctx, opts)
 	}
 

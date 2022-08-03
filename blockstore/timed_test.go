@@ -6,11 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/raulk/clock"
-	"github.com/stretchr/testify/require"
-
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	"github.com/raulk/clock"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTimedCacheBlockstoreSimple(t *testing.T) {

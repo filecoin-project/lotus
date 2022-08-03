@@ -9,7 +9,7 @@ import (
 
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
+	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 )
 
 var infoCmd = &cli.Command{

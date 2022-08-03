@@ -6,11 +6,11 @@ import (
 	"os"
 	"testing"
 
-	"github.com/filecoin-project/go-state-types/network"
-
 	dchain "github.com/drand/drand/chain"
 	hclient "github.com/drand/drand/client/http"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/build"
 )

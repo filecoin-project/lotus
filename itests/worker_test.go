@@ -7,30 +7,61 @@ import (
 	"testing"
 	"time"
 
-	"golang.org/x/xerrors"
-
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage"
-	storage2 "github.com/filecoin-project/specs-storage/storage"
+	"github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
 func TestWorkerPledge(t *testing.T) {
 	ctx := context.Background()
 	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
 		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2, sealtasks.TTUnseal})) // no mock proofs
+
+	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
+
+	e, err := worker.Enabled(ctx)
+	require.NoError(t, err)
+	require.True(t, e)
+
+	miner.PledgeSectors(ctx, 1, 0, nil)
+}
+
+func TestWorkerPledgeSpread(t *testing.T) {
+	ctx := context.Background()
+	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(),
+		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2, sealtasks.TTUnseal}),
+		kit.WithAssigner("spread"),
+	) // no mock proofs
+
+	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
+
+	e, err := worker.Enabled(ctx)
+	require.NoError(t, err)
+	require.True(t, e)
+
+	miner.PledgeSectors(ctx, 1, 0, nil)
+}
+
+func TestWorkerPledgeLocalFin(t *testing.T) {
+	ctx := context.Background()
+	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(),
+		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2, sealtasks.TTUnseal}),
+		kit.WithDisallowRemoteFinalize(true),
+	) // no mock proofs
 
 	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
 
@@ -49,17 +80,23 @@ func TestWorkerDataCid(t *testing.T) {
 	e, err := worker.Enabled(ctx)
 	require.NoError(t, err)
 	require.True(t, e)
-	/*
-		pi, err := miner.ComputeDataCid(ctx, 1016, strings.NewReader(strings.Repeat("a", 1016)))
-		require.NoError(t, err)
-		require.Equal(t, abi.PaddedPieceSize(1024), pi.Size)
-		require.Equal(t, "baga6ea4seaqlhznlutptgfwhffupyer6txswamerq5fc2jlwf2lys2mm5jtiaeq", pi.PieceCID.String())
-	*/
+
+	pi, err := miner.ComputeDataCid(ctx, 1016, strings.NewReader(strings.Repeat("a", 1016)))
+	require.NoError(t, err)
+	require.Equal(t, abi.PaddedPieceSize(1024), pi.Size)
+	require.Equal(t, "baga6ea4seaqlhznlutptgfwhffupyer6txswamerq5fc2jlwf2lys2mm5jtiaeq", pi.PieceCID.String())
+
 	bigPiece := abi.PaddedPieceSize(16 << 20).Unpadded()
-	pi, err := miner.ComputeDataCid(ctx, bigPiece, strings.NewReader(strings.Repeat("a", int(bigPiece))))
+	pi, err = miner.ComputeDataCid(ctx, bigPiece, strings.NewReader(strings.Repeat("a", int(bigPiece))))
 	require.NoError(t, err)
 	require.Equal(t, bigPiece.Padded(), pi.Size)
 	require.Equal(t, "baga6ea4seaqmhoxl2ybw5m2wyd3pt3h4zmp7j52yumzu2rar26twns3uocq7yfa", pi.PieceCID.String())
+
+	nonFullPiece := abi.PaddedPieceSize(10 << 20).Unpadded()
+	pi, err = miner.ComputeDataCid(ctx, bigPiece, strings.NewReader(strings.Repeat("a", int(nonFullPiece))))
+	require.NoError(t, err)
+	require.Equal(t, bigPiece.Padded(), pi.Size)
+	require.Equal(t, "baga6ea4seaqbxib4pdxs5cqdn3fmtj4rcxk6rx6ztiqmrx7fcpo3ymuxbp2rodi", pi.PieceCID.String())
 }
 
 func TestWinningPostWorker(t *testing.T) {
@@ -107,7 +144,7 @@ func TestWindowPostWorker(t *testing.T) {
 	di = di.NextNotElapsed()
 
 	t.Log("Running one proving period")
-	waitUntil := di.Open + di.WPoStChallengeWindow*2 + storage.SubmitConfidence
+	waitUntil := di.Open + di.WPoStChallengeWindow*2 + wdpost.SubmitConfidence
 	client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
 
 	t.Log("Waiting for post message")
@@ -168,7 +205,7 @@ func TestWindowPostWorker(t *testing.T) {
 
 		t.Logf("Drop sector %d; dl %d part %d", sid, di.Index+1, 0)
 
-		err = miner.BaseAPI.(*impl.StorageMinerAPI).IStorageMgr.Remove(ctx, storage2.SectorRef{
+		err = miner.BaseAPI.(*impl.StorageMinerAPI).IStorageMgr.Remove(ctx, storiface.SectorRef{
 			ID: abi.SectorID{
 				Miner:  abi.ActorID(mid),
 				Number: abi.SectorNumber(sid),
@@ -189,7 +226,7 @@ func TestWindowPostWorker(t *testing.T) {
 }
 
 type badWorkerStorage struct {
-	stores.Store
+	paths.Store
 
 	badsector   *uint64
 	notBadCount int
@@ -220,14 +257,14 @@ func TestWindowPostWorkerSkipBadSector(t *testing.T) {
 		kit.LatestActorsAt(-1),
 		kit.ThroughRPC(),
 		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTGenerateWindowPoSt}),
-		kit.WithWorkerStorage(func(store stores.Store) stores.Store {
+		kit.WithWorkerStorage(func(store paths.Store) paths.Store {
 			return &badWorkerStorage{
 				Store:     store,
 				badsector: &badsector,
 			}
 		}),
 		kit.ConstructorOpts(node.ApplyIf(node.IsType(repo.StorageMiner),
-			node.Override(new(stores.Store), func(store *stores.Remote) stores.Store {
+			node.Override(new(paths.Store), func(store *paths.Remote) paths.Store {
 				return &badWorkerStorage{
 					Store:       store,
 					badsector:   &badsector,
@@ -246,7 +283,7 @@ func TestWindowPostWorkerSkipBadSector(t *testing.T) {
 	di = di.NextNotElapsed()
 
 	t.Log("Running one proving period")
-	waitUntil := di.Open + di.WPoStChallengeWindow*2 + storage.SubmitConfidence
+	waitUntil := di.Open + di.WPoStChallengeWindow*2 + wdpost.SubmitConfidence
 	client.WaitTillChain(ctx, kit.HeightAtLeast(waitUntil))
 
 	t.Log("Waiting for post message")

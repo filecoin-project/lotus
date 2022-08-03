@@ -3,6 +3,7 @@ package paychmgr
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sort"
 	"sync"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
-
 	init2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/init"
 
 	"github.com/filecoin-project/lotus/api"
@@ -351,6 +351,11 @@ func (ca *channelAccessor) queueSize() int {
 // msgWaitComplete is called when the message for a previous task is confirmed
 // or there is an error.
 func (ca *channelAccessor) msgWaitComplete(ctx context.Context, mcid cid.Cid, err error) {
+	// if context is canceled, should Not mark message to 'bad', just return.
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return
+	}
+
 	ca.lk.Lock()
 	defer ca.lk.Unlock()
 

@@ -7,14 +7,16 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/golang/mock/gomock"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/crypto"
+
 	"github.com/filecoin-project/lotus/api"
-	mocks "github.com/filecoin-project/lotus/api/mocks"
-	types "github.com/filecoin-project/lotus/chain/types"
-	gomock "github.com/golang/mock/gomock"
-	"github.com/stretchr/testify/assert"
+	"github.com/filecoin-project/lotus/api/mocks"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 type markerKeyType struct{}

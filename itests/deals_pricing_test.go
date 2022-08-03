@@ -6,10 +6,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/itests/kit"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 func TestQuotePriceForUnsealedRetrieval(t *testing.T) {

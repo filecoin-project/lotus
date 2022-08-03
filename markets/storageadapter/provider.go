@@ -6,8 +6,6 @@ import (
 	"context"
 	"time"
 
-	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
-
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
 	"go.uber.org/fx"
@@ -17,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
 
@@ -28,11 +27,11 @@ import (
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/events/state"
 	"github.com/filecoin-project/lotus/chain/types"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/lib/sigs"
 	"github.com/filecoin-project/lotus/markets/utils"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
+	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
@@ -109,7 +108,7 @@ func (n *ProviderNodeAdapter) OnDealComplete(ctx context.Context, deal storagema
 	curTime := build.Clock.Now()
 	for build.Clock.Since(curTime) < addPieceRetryTimeout {
 		// Check if there was an error because of too many sectors being sealed
-		if !xerrors.Is(err, sealing.ErrTooManySectorsSealing) {
+		if !xerrors.Is(err, pipeline.ErrTooManySectorsSealing) {
 			if err != nil {
 				log.Errorf("failed to addPiece for deal %d, err: %v", deal.DealID, err)
 			}
@@ -259,13 +258,13 @@ func (n *ProviderNodeAdapter) LocatePieceForDealWithinSector(ctx context.Context
 		if err != nil {
 			return 0, 0, 0, xerrors.Errorf("getting sector info: %w", err)
 		}
-		if si.State == api.SectorState(sealing.Proving) {
+		if si.State == api.SectorState(pipeline.Proving) {
 			best = r
 			bestSi = si
 			break
 		}
 	}
-	if bestSi.State == api.SectorState(sealing.UndefinedSectorState) {
+	if bestSi.State == api.SectorState(pipeline.UndefinedSectorState) {
 		return 0, 0, 0, xerrors.New("no sealed sector found")
 	}
 	return best.SectorID, best.Offset, best.Size.Padded(), nil
@@ -328,7 +327,7 @@ func (n *ProviderNodeAdapter) WaitForPublishDeals(ctx context.Context, publishCi
 		return nil, xerrors.Errorf("WaitForPublishDeals failed to get chain head: %w", err)
 	}
 
-	res, err := n.scMgr.dealInfo.GetCurrentDealInfo(ctx, head.Key().Bytes(), &proposal, publishCid)
+	res, err := n.scMgr.dealInfo.GetCurrentDealInfo(ctx, head.Key(), &proposal, publishCid)
 	if err != nil {
 		return nil, xerrors.Errorf("WaitForPublishDeals getting deal info errored: %w", err)
 	}

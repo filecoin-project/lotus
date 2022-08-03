@@ -3,14 +3,15 @@ package retrievaladapter
 import (
 	"context"
 
+	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multiaddr"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/shared"
 	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/ipfs/go-cid"
-	"github.com/multiformats/go-multiaddr"
-
 	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/impl/full"

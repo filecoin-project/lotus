@@ -5,16 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/filecoin-project/go-state-types/network"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/lotus/build"
 	block "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	xerrors "golang.org/x/xerrors"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	"github.com/filecoin-project/go-state-types/network"
+
+	"github.com/filecoin-project/lotus/build"
 )
 
 const MessageVersion = 0
@@ -196,7 +196,7 @@ func (m *Message) ValidForBlockInclusion(minGas int64, version network.Version) 
 	}
 
 	if m.GasLimit > build.BlockGasLimit {
-		return xerrors.New("'GasLimit' field cannot be greater than a block's gas limit")
+		return xerrors.Errorf("'GasLimit' field cannot be greater than a block's gas limit (%d > %d)", m.GasLimit, build.BlockGasLimit)
 	}
 
 	// since prices might vary with time, this is technically semantic validation

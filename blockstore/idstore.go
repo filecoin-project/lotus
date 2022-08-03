@@ -4,11 +4,10 @@ import (
 	"context"
 	"io"
 
-	"golang.org/x/xerrors"
-
 	blocks "github.com/ipfs/go-block-format"
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
+	"golang.org/x/xerrors"
 )
 
 var _ Blockstore = (*idstore)(nil)

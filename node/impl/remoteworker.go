@@ -12,7 +12,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/client"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
+	"github.com/filecoin-project/lotus/storage/sealer"
 )
 
 type remoteWorker struct {
@@ -56,4 +56,4 @@ func (r *remoteWorker) Close() error {
 	return nil
 }
 
-var _ sectorstorage.Worker = &remoteWorker{}
+var _ sealer.Worker = &remoteWorker{}

@@ -7,9 +7,8 @@ import (
 	"path/filepath"
 	"sync"
 
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
-
-	cid "github.com/ipfs/go-cid"
 )
 
 type MapMarkSetEnv struct {

@@ -6,19 +6,22 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/go-fil-markets/storagemarket"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/api"
-	api0 "github.com/filecoin-project/lotus/api/v0api"
-	"github.com/filecoin-project/lotus/itests/kit"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-car"
 	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/api"
+	api0 "github.com/filecoin-project/lotus/api/v0api"
+	"github.com/filecoin-project/lotus/itests/kit"
 )
 
 // please talk to @ribasushi or @mikeal before modifying these test: there are
@@ -141,36 +144,44 @@ func TestDMLevelPartialRetrieval(t *testing.T) {
 }
 
 func testDMExportAsFile(ctx context.Context, client *kit.TestFullNode, expDirective api.ExportRef, tempDir string) error {
-	out, err := ioutil.TempFile(tempDir, "exp-test")
-	if err != nil {
-		return err
-	}
-	defer out.Close() //nolint:errcheck
+	out := tempDir + string(os.PathSeparator) + "exp-test" + expDirective.Root.String()
 
 	fileDest := api.FileRef{
-		Path: out.Name(),
+		Path: out,
 	}
-	err = client.ClientExport(ctx, expDirective, fileDest)
+	err := client.ClientExport(ctx, expDirective, fileDest)
 	if err != nil {
 		return err
 	}
-	return validateDMUnixFile(out)
+
+	f, err := os.Open(out)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close() //nolint:errcheck
+
+	return validateDMUnixFile(f)
 }
 func testV0RetrievalAsFile(ctx context.Context, client *kit.TestFullNode, retOrder api0.RetrievalOrder, tempDir string) error {
-	out, err := ioutil.TempFile(tempDir, "exp-test")
-	if err != nil {
-		return err
-	}
-	defer out.Close() //nolint:errcheck
+	out := tempDir + string(os.PathSeparator) + "exp-test" + retOrder.Root.String()
 
 	cv0 := &api0.WrapperV1Full{client.FullNode} //nolint:govet
-	err = cv0.ClientRetrieve(ctx, retOrder, &api.FileRef{
-		Path: out.Name(),
+	err := cv0.ClientRetrieve(ctx, retOrder, &api.FileRef{
+		Path: out,
 	})
 	if err != nil {
 		return err
 	}
-	return validateDMUnixFile(out)
+
+	f, err := os.Open(out)
+	if err != nil {
+		return err
+	}
+
+	defer f.Close() //nolint:errcheck
+
+	return validateDMUnixFile(f)
 }
 func validateDMUnixFile(r io.Reader) error {
 	data, err := io.ReadAll(r)

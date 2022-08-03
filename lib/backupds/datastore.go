@@ -7,13 +7,12 @@ import (
 	"sync"
 	"time"
 
-	"go.uber.org/multierr"
-	"golang.org/x/xerrors"
-
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	logging "github.com/ipfs/go-log/v2"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"go.uber.org/multierr"
+	"golang.org/x/xerrors"
 )
 
 var log = logging.Logger("backupds")

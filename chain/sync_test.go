@@ -8,13 +8,7 @@ import (
 	"testing"
 	"time"
 
-	prooftypes "github.com/filecoin-project/go-state-types/proof"
-
-	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/chain/stmgr"
-
 	"github.com/ipfs/go-cid"
-
 	ds "github.com/ipfs/go-datastore"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -23,6 +17,8 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/network"
+	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
@@ -30,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	mocktypes "github.com/filecoin-project/lotus/chain/types/mock"

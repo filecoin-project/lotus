@@ -6,8 +6,6 @@ import (
 	"context"
 	"testing"
 
-	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
-
 	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
@@ -16,6 +14,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	paychtypes "github.com/filecoin-project/go-state-types/builtin/v8/paych"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/specs-actors/v2/actors/builtin"
 	tutils "github.com/filecoin-project/specs-actors/v2/support/testing"

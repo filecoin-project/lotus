@@ -3,61 +3,46 @@ package policy
 import (
 	"sort"
 
-	"github.com/filecoin-project/go-state-types/big"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	builtin8 "github.com/filecoin-project/go-state-types/builtin"
+	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
+	paych8 "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	verifreg8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
 	"github.com/filecoin-project/go-state-types/network"
-	"github.com/filecoin-project/lotus/chain/actors"
-
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
 	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
-
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
-
+	verifreg0 "github.com/filecoin-project/specs-actors/actors/builtin/verifreg"
 	builtin2 "github.com/filecoin-project/specs-actors/v2/actors/builtin"
-
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	miner2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/miner"
 	verifreg2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/verifreg"
-
 	builtin3 "github.com/filecoin-project/specs-actors/v3/actors/builtin"
-
 	market3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
 	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
 	verifreg3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/verifreg"
-
 	builtin4 "github.com/filecoin-project/specs-actors/v4/actors/builtin"
-
 	market4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/market"
 	miner4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/miner"
 	verifreg4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/verifreg"
-
 	builtin5 "github.com/filecoin-project/specs-actors/v5/actors/builtin"
-
 	market5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/market"
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 	verifreg5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/verifreg"
-
 	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
-
 	market6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/market"
 	miner6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/miner"
 	verifreg6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/verifreg"
-
 	builtin7 "github.com/filecoin-project/specs-actors/v7/actors/builtin"
-
 	market7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/market"
 	miner7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/miner"
 	verifreg7 "github.com/filecoin-project/specs-actors/v7/actors/builtin/verifreg"
 
-	builtin8 "github.com/filecoin-project/go-state-types/builtin"
-	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
-	miner8 "github.com/filecoin-project/go-state-types/builtin/v8/miner"
-	verifreg8 "github.com/filecoin-project/go-state-types/builtin/v8/verifreg"
-
-	paych8 "github.com/filecoin-project/go-state-types/builtin/v8/paych"
+	"github.com/filecoin-project/lotus/chain/actors"
 )
 
 const (

@@ -6,9 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/v0api"
-
 	"github.com/docker/go-units"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -21,14 +18,16 @@ import (
 	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
 	"github.com/filecoin-project/lotus/lib/backupds"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/paths"
 )
 
 var restoreCmd = &cli.Command{
@@ -53,7 +52,7 @@ var restoreCmd = &cli.Command{
 		ctx := lcli.ReqContext(cctx)
 		log.Info("Initializing lotus miner using a backup")
 
-		var storageCfg *stores.StorageConfig
+		var storageCfg *paths.StorageConfig
 		if cctx.IsSet("storage-config") {
 			cf, err := homedir.Expand(cctx.String("storage-config"))
 			if err != nil {
@@ -65,7 +64,7 @@ var restoreCmd = &cli.Command{
 				return xerrors.Errorf("reading storage config: %w", err)
 			}
 
-			storageCfg = &stores.StorageConfig{}
+			storageCfg = &paths.StorageConfig{}
 			err = json.Unmarshal(cfb, storageCfg)
 			if err != nil {
 				return xerrors.Errorf("cannot unmarshal json for storage config: %w", err)
@@ -96,7 +95,7 @@ var restoreCmd = &cli.Command{
 	},
 }
 
-func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfig *stores.StorageConfig, manageConfig func(*config.StorageMiner) error, after func(api lapi.FullNode, addr address.Address, peerid peer.ID, mi api.MinerInfo) error) error {
+func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfig *paths.StorageConfig, manageConfig func(*config.StorageMiner) error, after func(api lapi.FullNode, addr address.Address, peerid peer.ID, mi api.MinerInfo) error) error {
 	if cctx.Args().Len() != 1 {
 		return xerrors.Errorf("expected 1 argument")
 	}
@@ -215,7 +214,7 @@ func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfi
 	if strConfig != nil {
 		log.Info("Restoring storage path config")
 
-		err = lr.SetStorage(func(scfg *stores.StorageConfig) {
+		err = lr.SetStorage(func(scfg *paths.StorageConfig) {
 			*scfg = *strConfig
 		})
 		if err != nil {
@@ -224,8 +223,8 @@ func restore(ctx context.Context, cctx *cli.Context, targetPath string, strConfi
 	} else {
 		log.Warn("--storage-config NOT SET. NO SECTOR PATHS WILL BE CONFIGURED")
 		// setting empty config to allow miner to be started
-		if err := lr.SetStorage(func(sc *stores.StorageConfig) {
-			sc.StoragePaths = append(sc.StoragePaths, stores.LocalPath{})
+		if err := lr.SetStorage(func(sc *paths.StorageConfig) {
+			sc.StoragePaths = append(sc.StoragePaths, paths.LocalPath{})
 		}); err != nil {
 			return xerrors.Errorf("set storage config: %w", err)
 		}

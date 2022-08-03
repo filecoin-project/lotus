@@ -5,22 +5,22 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
 
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	"github.com/ipld/go-car"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/itests/kit"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	"github.com/ipld/go-car"
-	"github.com/stretchr/testify/require"
 )
 
 // use the mainnet carfile as text fixture: it will always be here
@@ -108,9 +108,7 @@ func TestPartialRetrieval(t *testing.T) {
 
 			// test retrieval of either data or constructing a partial selective-car
 			for _, retrieveAsCar := range []bool{false, true} {
-				outFile, err := ioutil.TempFile(t.TempDir(), "ret-file")
-				require.NoError(t, err)
-				defer outFile.Close() //nolint:errcheck
+				outFile := t.TempDir() + string(os.PathSeparator) + "ret-file" + retOrder.Root.String()
 
 				require.NoError(t, testGenesisRetrieval(
 					ctx,
@@ -118,10 +116,9 @@ func TestPartialRetrieval(t *testing.T) {
 					retOrder,
 					eref,
 					&api.FileRef{
-						Path:  outFile.Name(),
+						Path:  outFile,
 						IsCAR: retrieveAsCar,
 					},
-					outFile,
 				))
 
 				// UGH if I do not sleep here, I get things like:
@@ -151,7 +148,6 @@ func TestPartialRetrieval(t *testing.T) {
 				DAGs:         []api.DagSpec{{DataSelector: &textSelectorNonexistent}},
 			},
 			&api.FileRef{},
-			nil,
 		),
 		fmt.Sprintf("parsing dag spec: path selection does not match a node within %s", carRoot),
 	)
@@ -172,13 +168,12 @@ func TestPartialRetrieval(t *testing.T) {
 				DAGs:         []api.DagSpec{{DataSelector: &textSelectorNonLink}},
 			},
 			&api.FileRef{},
-			nil,
 		),
 		fmt.Sprintf("parsing dag spec: error while locating partial retrieval sub-root: unsupported selection path '%s' does not correspond to a block boundary (a.k.a. CID link)", textSelectorNonLink),
 	)
 }
 
-func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrder api.RetrievalOrder, eref api.ExportRef, retRef *api.FileRef, outFile *os.File) error {
+func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrder api.RetrievalOrder, eref api.ExportRef, retRef *api.FileRef) error {
 
 	if retOrder.Total.Nil() {
 		retOrder.Total = big.Zero()
@@ -203,6 +198,13 @@ func testGenesisRetrieval(ctx context.Context, client *kit.TestFullNode, retOrde
 	if err != nil {
 		return err
 	}
+
+	outFile, err := os.Open(retRef.Path)
+	if err != nil {
+		return err
+	}
+
+	defer outFile.Close() //nolint:errcheck
 
 	var data []byte
 	if !retRef.IsCAR {

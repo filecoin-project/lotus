@@ -115,7 +115,7 @@ jobs:
           command: |
             git --no-pager diff go.mod go.sum
             git --no-pager diff --quiet go.mod go.sum
-  build-all:
+  build-linux:
     executor: golang
     steps:
       - install-deps
@@ -536,6 +536,19 @@ jobs:
   publish:
     description: publish binary artifacts
     executor: ubuntu
+    parameters:
+      linux:
+        default: false
+        description: publish linux binaries?
+        type: boolean
+      darwin:
+        default: false
+        description: publish darwin binaries?
+        type: boolean
+      appimage:
+        default: false
+        description: publish appimage binaries?
+        type: boolean
     steps:
       - run:
           name: Install git jq curl
@@ -546,12 +559,21 @@ jobs:
       - install_ipfs
       - attach_workspace:
           at: "."
-      - run:
-          name: Create bundles
-          command: ./scripts/build-bundle.sh
-      - run:
-          name: Publish release
-          command: ./scripts/publish-release.sh
+      - when:
+          condition: << parameters.linux >>
+          steps:
+            - run: ./scripts/build-arch-bundle.sh linux
+            - run: ./scripts/publish-arch-release.sh linux
+      - when:
+          condition: << parameters.darwin>>
+          steps:
+            - run: ./scripts/build-arch-bundle.sh darwin
+            - run: ./scripts/publish-arch-release.sh darwin
+      - when:
+          condition: << parameters.appimage >>
+          steps:
+            - run: ./scripts/build-appimage-bundle.sh
+            - run: ./scripts/publish-arch-release.sh appimage
 
   publish-snapcraft:
     description: build and push snapcraft
@@ -568,11 +590,6 @@ jobs:
       - run:
           name: install snapcraft
           command: sudo snap install snapcraft --classic
-      - run:
-          name: create snapcraft config file
-          command: |
-            mkdir -p ~/.config/snapcraft
-            echo "$SNAPCRAFT_LOGIN_FILE" | base64 -d > ~/.config/snapcraft/snapcraft.cfg
       - run:
           name: build snap
           command: snapcraft --use-lxd
@@ -782,7 +799,7 @@ workflows:
       - test:
           go-test-flags: "-run=TestMulticoreSDR"
           suite: multicore-sdr-check
-          target: "./extern/sector-storage/ffiwrapper"
+          target: "./storage/sealer/ffiwrapper"
           proofs-log-test: "1"
       - test-conformance:
           suite: conformance
@@ -800,7 +817,7 @@ workflows:
               only:
                 - master
       - build-debug
-      - build-all:
+      - build-linux:
           filters:
             tags:
               only:
@@ -824,15 +841,39 @@ workflows:
       - build-appimage:
           filters:
             branches:
+              only:
+                - /^release\/v\d+\.\d+\.\d+(-rc\d+)?$/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - publish:
+          name: publish-macos
+          darwin: true
+          requires:
+            - build-macos
+          filters:
+            branches:
               ignore:
                 - /.*/
             tags:
               only:
                 - /^v\d+\.\d+\.\d+(-rc\d+)?$/
       - publish:
+          name: publish-linux
+          linux: true
           requires:
-            - build-all
-            - build-macos
+            - build-linux
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+(-rc\d+)?$/
+      - publish:
+          name: publish-appimage
+          appimage: true
+          requires:
             - build-appimage
           filters:
             branches:

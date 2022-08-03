@@ -11,15 +11,6 @@ import (
 	"strconv"
 	"time"
 
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
-
-	"github.com/filecoin-project/dagstore"
-	"github.com/filecoin-project/dagstore/shard"
-	"github.com/filecoin-project/go-jsonrpc/auth"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	"github.com/filecoin-project/lotus/chain/gen"
-
 	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
@@ -30,34 +21,41 @@ import (
 	"go.uber.org/fx"
 	"golang.org/x/xerrors"
 
-	"github.com/filecoin-project/lotus/build"
-
+	"github.com/filecoin-project/dagstore"
+	"github.com/filecoin-project/dagstore/shard"
 	"github.com/filecoin-project/go-address"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	gst "github.com/filecoin-project/go-data-transfer/transport/graphsync"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	filmktsstore "github.com/filecoin-project/go-fil-markets/stores"
+	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/network"
-
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
-	"github.com/filecoin-project/lotus/extern/storage-sealing/sealiface"
-
-	sto "github.com/filecoin-project/specs-storage/storage"
 
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
+	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
+	mktsdagstore "github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
+	"github.com/filecoin-project/lotus/storage/paths"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
+	"github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/sectorblocks"
+	"github.com/filecoin-project/lotus/storage/wdpost"
 )
 
 type StorageMinerAPI struct {
@@ -69,8 +67,8 @@ type StorageMinerAPI struct {
 	EnabledSubsystems api.MinerSubsystems
 
 	Full        api.FullNode
-	LocalStore  *stores.Local
-	RemoteStore *stores.Remote
+	LocalStore  *paths.Local
+	RemoteStore *paths.Remote
 
 	// Markets
 	PieceStore        dtypes.ProviderPieceStore         `optional:"true"`
@@ -84,20 +82,24 @@ type StorageMinerAPI struct {
 	SectorBlocks      *sectorblocks.SectorBlocks        `optional:"true"`
 	Host              host.Host                         `optional:"true"`
 	DAGStore          *dagstore.DAGStore                `optional:"true"`
+	DAGStoreWrapper   *mktsdagstore.Wrapper             `optional:"true"`
 
 	// Miner / storage
-	Miner       *storage.Miner              `optional:"true"`
-	BlockMiner  *miner.Miner                `optional:"true"`
-	StorageMgr  *sectorstorage.Manager      `optional:"true"`
-	IStorageMgr sectorstorage.SectorManager `optional:"true"`
-	stores.SectorIndex
+	Miner       *storage.Miner       `optional:"true"`
+	BlockMiner  *miner.Miner         `optional:"true"`
+	StorageMgr  *sealer.Manager      `optional:"true"`
+	IStorageMgr sealer.SectorManager `optional:"true"`
+	paths.SectorIndex
 	storiface.WorkerReturn `optional:"true"`
-	AddrSel                *storage.AddressSelector
+	AddrSel                *ctladdr.AddressSelector
 
-	WdPoSt *storage.WindowPoStScheduler `optional:"true"`
+	WdPoSt *wdpost.WindowPoStScheduler `optional:"true"`
 
 	Epp gen.WinningPoStProver `optional:"true"`
 	DS  dtypes.MetadataDS
+
+	// StorageService is populated when we're not the main storage node (e.g. we're a markets node)
+	StorageService modules.MinerStorageService `optional:"true"`
 
 	ConsiderOnlineStorageDealsConfigFunc        dtypes.ConsiderOnlineStorageDealsConfigFunc        `optional:"true"`
 	SetConsiderOnlineStorageDealsConfigFunc     dtypes.SetConsiderOnlineStorageDealsConfigFunc     `optional:"true"`
@@ -120,6 +122,14 @@ type StorageMinerAPI struct {
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}
+
+func (sm *StorageMinerAPI) StorageAuthVerify(ctx context.Context, token string) ([]auth.Permission, error) {
+	if sm.StorageService != nil {
+		return sm.StorageService.AuthVerify(ctx, token)
+	}
+
+	return sm.AuthVerify(ctx, token)
+}
 
 func (sm *StorageMinerAPI) ServeRemote(perm bool) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -223,7 +233,7 @@ func (sm *StorageMinerAPI) SectorsStatus(ctx context.Context, sid abi.SectorNumb
 	return sInfo, nil
 }
 
-func (sm *StorageMinerAPI) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r sto.Data, d api.PieceDealInfo) (api.SectorOffset, error) {
+func (sm *StorageMinerAPI) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceSize, r storiface.Data, d api.PieceDealInfo) (api.SectorOffset, error) {
 	so, err := sm.Miner.SectorAddPieceToAny(ctx, size, r, d)
 	if err != nil {
 		// jsonrpc doesn't support returning values with errors, make sure we never do that
@@ -233,7 +243,7 @@ func (sm *StorageMinerAPI) SectorAddPieceToAny(ctx context.Context, size abi.Unp
 	return so, nil
 }
 
-func (sm *StorageMinerAPI) SectorsUnsealPiece(ctx context.Context, sector sto.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error {
+func (sm *StorageMinerAPI) SectorsUnsealPiece(ctx context.Context, sector storiface.SectorRef, offset storiface.UnpaddedByteIndex, size abi.UnpaddedPieceSize, randomness abi.SealRandomness, commd *cid.Cid) error {
 	return sm.StorageMgr.SectorsUnsealPiece(ctx, sector, offset, size, randomness, commd)
 }
 
@@ -426,7 +436,7 @@ func (sm *StorageMinerAPI) ComputeWindowPoSt(ctx context.Context, dlIdx uint64, 
 	return sm.WdPoSt.ComputePoSt(ctx, dlIdx, ts)
 }
 
-func (sm *StorageMinerAPI) ComputeDataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData sto.Data) (abi.PieceInfo, error) {
+func (sm *StorageMinerAPI) ComputeDataCid(ctx context.Context, pieceSize abi.UnpaddedPieceSize, pieceData storiface.Data) (abi.PieceInfo, error) {
 	return sm.StorageMgr.DataCid(ctx, pieceSize, pieceData)
 }
 
@@ -791,6 +801,35 @@ func (sm *StorageMinerAPI) DagstoreListShards(ctx context.Context) ([]api.Dagsto
 	})
 
 	return ret, nil
+}
+
+func (sm *StorageMinerAPI) DagstoreRegisterShard(ctx context.Context, key string) error {
+	if sm.DAGStore == nil {
+		return fmt.Errorf("dagstore not available on this node")
+	}
+
+	// First check if the shard has already been registered
+	k := shard.KeyFromString(key)
+	_, err := sm.DAGStore.GetShardInfo(k)
+	if err == nil {
+		// Shard already registered, nothing further to do
+		return nil
+	}
+	// If the shard is not registered we would expect ErrShardUnknown
+	if !errors.Is(err, dagstore.ErrShardUnknown) {
+		return fmt.Errorf("getting shard info from DAG store: %w", err)
+	}
+
+	pieceCid, err := cid.Parse(key)
+	if err != nil {
+		return fmt.Errorf("parsing shard key as piece cid: %w", err)
+	}
+
+	if err = filmktsstore.RegisterShardSync(ctx, sm.DAGStoreWrapper, pieceCid, "", true); err != nil {
+		return fmt.Errorf("failed to register shard: %w", err)
+	}
+
+	return nil
 }
 
 func (sm *StorageMinerAPI) DagstoreInitializeShard(ctx context.Context, key string) error {
@@ -1196,7 +1235,7 @@ func (sm *StorageMinerAPI) CreateBackup(ctx context.Context, fpath string) error
 	return backup(ctx, sm.DS, fpath)
 }
 
-func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []sto.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) {
+func (sm *StorageMinerAPI) CheckProvable(ctx context.Context, pp abi.RegisteredPoStProof, sectors []storiface.SectorRef, expensive bool) (map[abi.SectorNumber]string, error) {
 	var rg storiface.RGetter
 	if expensive {
 		rg = func(ctx context.Context, id abi.SectorID) (cid.Cid, bool, error) {

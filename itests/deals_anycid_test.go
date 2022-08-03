@@ -7,15 +7,14 @@ import (
 	"testing"
 	"time"
 
-	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
-
-	"github.com/filecoin-project/go-state-types/abi"
 	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/ipld/go-car"
 	"github.com/ipld/go-car/v2/blockstore"
+	selectorparse "github.com/ipld/go-ipld-prime/traversal/selector/parse"
 	"github.com/stretchr/testify/require"
 
 	"github.com/filecoin-project/go-fil-markets/storagemarket"
+	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/itests/kit"

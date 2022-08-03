@@ -3,16 +3,13 @@ package blockstore
 import (
 	"context"
 
-	cid "github.com/ipfs/go-cid"
+	"github.com/ipfs/go-cid"
 	ds "github.com/ipfs/go-datastore"
-	logging "github.com/ipfs/go-log/v2"
-
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	logging "github.com/ipfs/go-log/v2"
 )
 
 var log = logging.Logger("blockstore")
-
-var ErrNotFound = blockstore.ErrNotFound
 
 // Blockstore is the blockstore interface used by Lotus. It is the union
 // of the basic go-ipfs blockstore, with other capabilities required by Lotus,

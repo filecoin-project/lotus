@@ -5,13 +5,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/filecoin-project/go-state-types/manifest"
-
+	"github.com/ipfs/go-cid"
+	cbor "github.com/ipfs/go-ipld-cbor"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-state-types/manifest"
+
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-	cid "github.com/ipfs/go-cid"
-	cbor "github.com/ipfs/go-ipld-cbor"
 )
 
 var manifestCids map[Version]cid.Cid = make(map[Version]cid.Cid)
@@ -113,13 +113,28 @@ func ReadManifest(ctx context.Context, store cbor.IpldStore, mfCid cid.Cid) (map
 	return metadata, nil
 }
 
-// GetActorCodeID looks up a builtin actor's code CID by actor version and canonical actor name.
-func GetActorCodeID(av Version, name string) (cid.Cid, bool) {
+// GetActorCodeIDsFromManifest looks up all builtin actor's code CIDs by actor version for versions that have a manifest.
+func GetActorCodeIDsFromManifest(av Version) (map[string]cid.Cid, bool) {
 	manifestMx.RLock()
 	defer manifestMx.RUnlock()
 
-	c, ok := manifests[av][name]
-	return c, ok
+	cids, ok := manifests[av]
+	return cids, ok
+}
+
+// Given a Manifest CID, get the manifest from the store and Load data into its entries
+func LoadManifest(ctx context.Context, mfCid cid.Cid, adtStore adt.Store) (*manifest.Manifest, error) {
+	var mf manifest.Manifest
+
+	if err := adtStore.Get(ctx, mfCid, &mf); err != nil {
+		return nil, xerrors.Errorf("error reading manifest: %w", err)
+	}
+
+	if err := mf.Load(ctx, adtStore); err != nil {
+		return nil, xerrors.Errorf("error loading manifest entries data: %w", err)
+	}
+
+	return &mf, nil
 }
 
 func GetActorMetaByCode(c cid.Cid) (string, Version, bool) {

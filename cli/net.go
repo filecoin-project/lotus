@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"sort"
 	"strings"
@@ -11,12 +12,13 @@ import (
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"github.com/fatih/color"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p-core/protocol"
+	"github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	"golang.org/x/xerrors"
-
-	"github.com/libp2p/go-libp2p-core/peer"
-	protocol "github.com/libp2p/go-libp2p-core/protocol"
-	"github.com/multiformats/go-multiaddr"
 
 	"github.com/filecoin-project/go-address"
 
@@ -32,6 +34,7 @@ var NetCmd = &cli.Command{
 		NetPeers,
 		NetPing,
 		NetConnect,
+		NetDisconnect,
 		NetListen,
 		NetId,
 		NetFindPeer,
@@ -150,7 +153,7 @@ var NetPing = &cli.Command{
 
 		ctx := ReqContext(cctx)
 
-		pis, err := addrInfoFromArg(ctx, cctx)
+		pis, err := AddrInfoFromArg(ctx, cctx)
 		if err != nil {
 			return err
 		}
@@ -259,6 +262,37 @@ var NetListen = &cli.Command{
 	},
 }
 
+var NetDisconnect = &cli.Command{
+	Name:      "disconnect",
+	Usage:     "Disconnect from a peer",
+	ArgsUsage: "[peerID]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		ids := cctx.Args().Slice()
+		for _, id := range ids {
+			pid, err := peer.Decode(id)
+			if err != nil {
+				fmt.Println("failure")
+				return err
+			}
+			fmt.Printf("disconnect %s: ", pid.Pretty())
+			err = api.NetDisconnect(ctx, pid)
+			if err != nil {
+				fmt.Println("failure")
+				return err
+			}
+			fmt.Println("success")
+		}
+		return nil
+	},
+}
+
 var NetConnect = &cli.Command{
 	Name:      "connect",
 	Usage:     "Connect to a peer",
@@ -271,7 +305,7 @@ var NetConnect = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		pis, err := addrInfoFromArg(ctx, cctx)
+		pis, err := AddrInfoFromArg(ctx, cctx)
 		if err != nil {
 			return err
 		}
@@ -290,7 +324,7 @@ var NetConnect = &cli.Command{
 	},
 }
 
-func addrInfoFromArg(ctx context.Context, cctx *cli.Context) ([]peer.AddrInfo, error) {
+func AddrInfoFromArg(ctx context.Context, cctx *cli.Context) ([]peer.AddrInfo, error) {
 	pis, err := addrutil.ParseAddresses(ctx, cctx.Args().Slice())
 	if err != nil {
 		a, perr := address.NewFromString(cctx.Args().First())
@@ -701,9 +735,34 @@ var NetBlockListCmd = &cli.Command{
 	},
 }
 
+var BarCols = float64(64)
+
+func BarString(total, y, g float64) string {
+	yBars := int(math.Round(y / total * BarCols))
+	gBars := int(math.Round(g / total * BarCols))
+	if yBars < 0 {
+		yBars = 0
+	}
+	if gBars < 0 {
+		gBars = 0
+	}
+	eBars := int(BarCols) - yBars - gBars
+	var barString = color.YellowString(strings.Repeat("|", yBars)) +
+		color.GreenString(strings.Repeat("|", gBars))
+	if eBars >= 0 {
+		barString += strings.Repeat(" ", eBars)
+	}
+	return barString
+}
+
 var NetStatCmd = &cli.Command{
-	Name:      "stat",
-	Usage:     "Report resource usage for a scope",
+	Name:  "stat",
+	Usage: "Report resource usage for a scope",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name: "json",
+		},
+	},
 	ArgsUsage: "scope",
 	Description: `Report resource usage for a scope.
 
@@ -731,11 +790,72 @@ var NetStatCmd = &cli.Command{
 
 		result, err := api.NetStat(ctx, scope)
 		if err != nil {
-			return err
+			return xerrors.Errorf("get stat: %w", err)
 		}
 
-		enc := json.NewEncoder(os.Stdout)
-		return enc.Encode(result)
+		if cctx.Bool("json") {
+			enc := json.NewEncoder(os.Stdout)
+			return enc.Encode(result)
+		}
+
+		printScope := func(stat *network.ScopeStat, scope string) {
+			if stat == nil {
+				return
+			}
+
+			limit, err := api.NetLimit(ctx, scope)
+			if err != nil {
+				fmt.Printf("error: %s\n", color.RedString("%s", err))
+			}
+
+			fmt.Printf("%s\n", scope)
+			fmt.Printf("\tmemory:      [%s] %s/%s\n", BarString(float64(limit.Memory), 0, float64(stat.Memory)),
+				types.SizeStr(types.NewInt(uint64(stat.Memory))),
+				types.SizeStr(types.NewInt(uint64(limit.Memory))))
+
+			fmt.Printf("\tstreams in:  [%s] %d/%d\n", BarString(float64(limit.StreamsInbound), 0, float64(stat.NumStreamsInbound)), stat.NumStreamsInbound, limit.StreamsInbound)
+			fmt.Printf("\tstreams out: [%s] %d/%d\n", BarString(float64(limit.StreamsOutbound), 0, float64(stat.NumStreamsOutbound)), stat.NumStreamsOutbound, limit.StreamsOutbound)
+			fmt.Printf("\tconn in:     [%s] %d/%d\n", BarString(float64(limit.ConnsInbound), 0, float64(stat.NumConnsInbound)), stat.NumConnsInbound, limit.ConnsInbound)
+			fmt.Printf("\tconn out:    [%s] %d/%d\n", BarString(float64(limit.ConnsOutbound), 0, float64(stat.NumConnsOutbound)), stat.NumConnsOutbound, limit.ConnsOutbound)
+			fmt.Printf("\tfile desc:   [%s] %d/%d\n", BarString(float64(limit.FD), 0, float64(stat.NumFD)), stat.NumFD, limit.FD)
+			fmt.Println()
+		}
+
+		printScope(result.System, "system")
+		printScope(result.Transient, "transient")
+
+		printScopes := func(name string, st map[string]network.ScopeStat) {
+			type namedStat struct {
+				name string
+				stat network.ScopeStat
+			}
+
+			stats := make([]namedStat, 0, len(st))
+			for n, stat := range st {
+				stats = append(stats, namedStat{
+					name: n,
+					stat: stat,
+				})
+			}
+			sort.Slice(stats, func(i, j int) bool {
+				if stats[i].stat.Memory == stats[j].stat.Memory {
+					return stats[i].name < stats[j].name
+				}
+
+				return stats[i].stat.Memory > stats[j].stat.Memory
+			})
+
+			for _, stat := range stats {
+				printScope(&stat.stat, name+stat.name)
+			}
+
+		}
+
+		printScopes("svc:", result.Services)
+		printScopes("proto:", result.Protocols)
+		printScopes("peer:", result.Peers)
+
+		return nil
 	},
 }
 

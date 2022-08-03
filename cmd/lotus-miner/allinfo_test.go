@@ -7,11 +7,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/node/repo"
 )
 

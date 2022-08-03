@@ -12,8 +12,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/filecoin-project/lotus/api/v0api"
-
 	"github.com/docker/go-units"
 	"github.com/fatih/color"
 	"github.com/google/uuid"
@@ -26,13 +24,14 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/lib/tablewriter"
+	"github.com/filecoin-project/lotus/storage/paths"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 const metaFile = "sectorstore.json"
@@ -146,7 +145,7 @@ over time
 				}
 			}
 
-			cfg := &stores.LocalStorageMeta{
+			cfg := &paths.LocalStorageMeta{
 				ID:         storiface.ID(uuid.New().String()),
 				Weight:     cctx.Uint64("weight"),
 				CanSeal:    cctx.Bool("seal"),

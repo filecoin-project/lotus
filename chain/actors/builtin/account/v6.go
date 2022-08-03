@@ -1,12 +1,12 @@
 package account
 
 import (
-	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-
+	"github.com/filecoin-project/go-address"
 	account6 "github.com/filecoin-project/specs-actors/v6/actors/builtin/account"
+
+	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
 var _ State = (*state6)(nil)

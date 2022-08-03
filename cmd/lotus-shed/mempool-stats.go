@@ -6,9 +6,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/filecoin-project/go-state-types/builtin"
-	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
-
 	"contrib.go.opencensus.io/exporter/prometheus"
 	"github.com/ipfs/go-cid"
 	logging "github.com/ipfs/go-log/v2"
@@ -18,7 +15,10 @@ import (
 	"go.opencensus.io/tag"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/builtin"
+
 	lapi "github.com/filecoin-project/lotus/api"
+	lbuiltin "github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 )

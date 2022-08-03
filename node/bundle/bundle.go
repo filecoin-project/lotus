@@ -6,15 +6,13 @@ import (
 	"io"
 	"os"
 
+	"github.com/ipfs/go-cid"
 	"github.com/ipld/go-car"
-
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
-
-	cid "github.com/ipfs/go-cid"
 )
 
 func LoadBundleFromFile(ctx context.Context, bs blockstore.Blockstore, path string) (cid.Cid, error) {

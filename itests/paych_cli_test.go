@@ -11,21 +11,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/itests/kit"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	"github.com/stretchr/testify/require"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin/paych"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/cli"
+	"github.com/filecoin-project/lotus/itests/kit"
 )
 
 // TestPaymentChannelsBasic does a basic test to exercise the payment channel CLI

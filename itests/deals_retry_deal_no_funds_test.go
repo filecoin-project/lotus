@@ -6,16 +6,18 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/itests/kit"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/node"
 	"github.com/filecoin-project/lotus/node/config"
 	"github.com/filecoin-project/lotus/node/modules"
-	"github.com/filecoin-project/lotus/storage"
-	"github.com/stretchr/testify/require"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 )
 
 var (
@@ -40,7 +42,7 @@ func TestDealsRetryLackOfFunds(t *testing.T) {
 	// Allow 8MB sectors
 	eightMBSectorsOpt := kit.SectorSize(8 << 20)
 
-	publishStorageDealKey, err := wallet.GenerateKey(types.KTSecp256k1)
+	publishStorageDealKey, err := key.GenerateKey(types.KTSecp256k1)
 	require.NoError(t, err)
 
 	opts := node.Options(
@@ -50,7 +52,7 @@ func TestDealsRetryLackOfFunds(t *testing.T) {
 				MaxDealsPerMsg: maxDealsPerMsg,
 			}),
 		),
-		node.Override(new(*storage.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
+		node.Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
 			DealPublishControl: []string{
 				publishStorageDealKey.Address.String(),
 			},
@@ -116,7 +118,7 @@ func TestDealsRetryLackOfFunds_blockInPublishDeal(t *testing.T) {
 	// Allow 8MB sectors
 	eightMBSectorsOpt := kit.SectorSize(8 << 20)
 
-	publishStorageDealKey, err := wallet.GenerateKey(types.KTSecp256k1)
+	publishStorageDealKey, err := key.GenerateKey(types.KTSecp256k1)
 	require.NoError(t, err)
 
 	opts := node.Options(
@@ -126,7 +128,7 @@ func TestDealsRetryLackOfFunds_blockInPublishDeal(t *testing.T) {
 				MaxDealsPerMsg: maxDealsPerMsg,
 			}),
 		),
-		node.Override(new(*storage.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
+		node.Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
 			DealPublishControl: []string{
 				publishStorageDealKey.Address.String(),
 			},
@@ -189,7 +191,7 @@ func TestDealsRetryLackOfFunds_belowLimit(t *testing.T) {
 	// Allow 8MB sectors
 	eightMBSectorsOpt := kit.SectorSize(8 << 20)
 
-	publishStorageDealKey, err := wallet.GenerateKey(types.KTSecp256k1)
+	publishStorageDealKey, err := key.GenerateKey(types.KTSecp256k1)
 	require.NoError(t, err)
 
 	opts := node.Options(
@@ -199,7 +201,7 @@ func TestDealsRetryLackOfFunds_belowLimit(t *testing.T) {
 				MaxDealsPerMsg: maxDealsPerMsg,
 			}),
 		),
-		node.Override(new(*storage.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
+		node.Override(new(*ctladdr.AddressSelector), modules.AddressSelector(&config.MinerAddressConfig{
 			DealPublishControl: []string{
 				publishStorageDealKey.Address.String(),
 			},

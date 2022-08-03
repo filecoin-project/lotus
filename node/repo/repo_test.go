@@ -6,12 +6,11 @@ import (
 
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
-
-	"github.com/stretchr/testify/require"
 )
 
 func basicTest(t *testing.T, repo Repo) {

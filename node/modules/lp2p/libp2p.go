@@ -4,17 +4,17 @@ import (
 	"crypto/rand"
 	"time"
 
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/types"
-	"golang.org/x/xerrors"
-
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
-	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
+	"github.com/libp2p/go-libp2p/p2p/net/connmgr"
 	"go.uber.org/fx"
+	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var log = logging.Logger("p2pnode")
@@ -75,7 +75,7 @@ func ConnectionManager(low, high uint, grace time.Duration, protected []string) 
 		}
 
 		for _, p := range protected {
-			pid, err := peer.IDFromString(p)
+			pid, err := peer.Decode(p)
 			if err != nil {
 				return Libp2pOpts{}, xerrors.Errorf("failed to parse peer ID in protected peers array: %w", err)
 			}

@@ -5,9 +5,8 @@ import (
 	"io"
 	"os"
 
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
-
-	cid "github.com/ipfs/go-cid"
 )
 
 type ColdSetWriter struct {

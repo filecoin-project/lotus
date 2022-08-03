@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/filecoin-project/lotus/build"
-
 	_ "github.com/influxdata/influxdb1-client"
-	models "github.com/influxdata/influxdb1-client/models"
+	"github.com/influxdata/influxdb1-client/models"
 	client "github.com/influxdata/influxdb1-client/v2"
+
+	"github.com/filecoin-project/lotus/build"
 )
 
 type PointList struct {

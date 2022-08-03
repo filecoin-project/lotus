@@ -12,11 +12,11 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-bitfield"
 	"github.com/google/uuid"
+	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
+	textselector "github.com/ipld/go-ipld-selector-text-lite"
 	"github.com/libp2p/go-libp2p-core/metrics"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -24,13 +24,12 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/multiformats/go-multiaddr"
 
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
-	filestore "github.com/filecoin-project/go-fil-markets/filestore"
+	"github.com/filecoin-project/go-fil-markets/filestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	blocks "github.com/ipfs/go-block-format"
-	textselector "github.com/ipld/go-ipld-selector-text-lite"
-
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/exitcode"
@@ -40,11 +39,11 @@ import (
 	"github.com/filecoin-project/lotus/api/v0api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	sealing "github.com/filecoin-project/lotus/extern/storage-sealing"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/repo/imports"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
+	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var ExampleValues = map[reflect.Type]interface{}{
@@ -359,6 +358,10 @@ func GetAPIType(name, pkg string) (i interface{}, t reflect.Type, permStruct []r
 			i = &api.WorkerStruct{}
 			t = reflect.TypeOf(new(struct{ api.Worker })).Elem()
 			permStruct = append(permStruct, reflect.TypeOf(api.WorkerStruct{}.Internal))
+		case "Gateway":
+			i = &api.GatewayStruct{}
+			t = reflect.TypeOf(new(struct{ api.Gateway })).Elem()
+			permStruct = append(permStruct, reflect.TypeOf(api.GatewayStruct{}.Internal))
 		default:
 			panic("unknown type")
 		}

@@ -1,8 +1,9 @@
 package kit
 
 import (
-	"github.com/filecoin-project/lotus/lib/lotuslog"
 	logging "github.com/ipfs/go-log/v2"
+
+	"github.com/filecoin-project/lotus/lib/lotuslog"
 )
 
 func QuietMiningLogs() {

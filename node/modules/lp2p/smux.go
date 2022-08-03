@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/libp2p/go-libp2p"
-	yamux "github.com/libp2p/go-libp2p-yamux"
+	"github.com/libp2p/go-libp2p/p2p/muxer/yamux"
 )
 
 func makeSmuxTransportOption() libp2p.Option {

@@ -6,16 +6,18 @@ import (
 	"sort"
 
 	"github.com/Kubuxu/imtui"
+	"github.com/gdamore/tcell/v2"
+	"github.com/ipfs/go-cid"
+	"github.com/urfave/cli/v2"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/messagepool"
-	types "github.com/filecoin-project/lotus/chain/types"
-	"github.com/gdamore/tcell/v2"
-	cid "github.com/ipfs/go-cid"
-	"github.com/urfave/cli/v2"
-	"golang.org/x/xerrors"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var mpoolManage = &cli.Command{

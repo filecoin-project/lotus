@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/filecoin-project/lotus/build"
-
 	logging "github.com/ipfs/go-log/v2"
+
+	"github.com/filecoin-project/lotus/build"
 )
 
 var log = logging.Logger("ulimit")

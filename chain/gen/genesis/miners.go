@@ -6,47 +6,37 @@ import (
 	"fmt"
 	"math/rand"
 
-	"github.com/filecoin-project/lotus/chain/wallet"
-
-	cborutil "github.com/filecoin-project/go-cbor-util"
-
-	"github.com/filecoin-project/lotus/lib/sigs"
-
-	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"
-
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
-	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
-
-	runtime7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
-
-	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
-
 	"github.com/ipfs/go-cid"
 	cbor "github.com/ipfs/go-ipld-cbor"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
+	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
+	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/crypto"
 	"github.com/filecoin-project/go-state-types/network"
-
 	builtin0 "github.com/filecoin-project/specs-actors/actors/builtin"
 	market0 "github.com/filecoin-project/specs-actors/actors/builtin/market"
+	miner0 "github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	power0 "github.com/filecoin-project/specs-actors/actors/builtin/power"
 	reward0 "github.com/filecoin-project/specs-actors/actors/builtin/reward"
+	smoothing0 "github.com/filecoin-project/specs-actors/actors/util/smoothing"
 	market2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/market"
 	reward2 "github.com/filecoin-project/specs-actors/v2/actors/builtin/reward"
 	market4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/market"
 	power4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/power"
 	reward4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/reward"
+	builtin6 "github.com/filecoin-project/specs-actors/v6/actors/builtin"
+	runtime7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
 
-	builtintypes "github.com/filecoin-project/go-state-types/builtin"
-	markettypes "github.com/filecoin-project/go-state-types/builtin/v8/market"
-	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/power"
@@ -57,7 +47,9 @@ import (
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/vm"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/lib/sigs"
 )
 
 func MinerAddress(genesisIndex uint64) address.Address {
@@ -248,7 +240,7 @@ func SetupStorageMiners(ctx context.Context, cs *store.ChainStore, sys vm.Syscal
 						return cid.Undef, fmt.Errorf("failed to marshal proposal: %w", err)
 					}
 
-					sig, err := sigs.Sign(wallet.ActSigType(preseal.DealClientKey.Type), preseal.DealClientKey.PrivateKey, buf)
+					sig, err := sigs.Sign(key.ActSigType(preseal.DealClientKey.Type), preseal.DealClientKey.PrivateKey, buf)
 					if err != nil {
 						return cid.Undef, fmt.Errorf("failed to sign proposal: %w", err)
 					}

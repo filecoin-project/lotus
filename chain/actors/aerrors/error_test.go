@@ -4,11 +4,12 @@ package aerrors_test
 import (
 	"testing"
 
-	"github.com/filecoin-project/go-state-types/exitcode"
-	. "github.com/filecoin-project/lotus/chain/actors/aerrors"
-
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/xerrors"
+
+	"github.com/filecoin-project/go-state-types/exitcode"
+
+	. "github.com/filecoin-project/lotus/chain/actors/aerrors"
 )
 
 func TestFatalError(t *testing.T) {

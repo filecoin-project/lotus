@@ -5,18 +5,19 @@ import (
 	"context"
 	"errors"
 
-	"github.com/filecoin-project/go-state-types/abi"
-	prooftypes "github.com/filecoin-project/go-state-types/proof"
-
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
 	"github.com/ipfs/go-datastore"
 	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
+
+	"github.com/filecoin-project/go-state-types/abi"
+	prooftypes "github.com/filecoin-project/go-state-types/proof"
+
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 type cachingVerifier struct {
 	ds      datastore.Datastore
-	backend ffiwrapper.Verifier
+	backend storiface.Verifier
 }
 
 const bufsize = 128
@@ -106,4 +107,4 @@ func (cv cachingVerifier) VerifyReplicaUpdate(update prooftypes.ReplicaUpdateInf
 	return cv.backend.VerifyReplicaUpdate(update)
 }
 
-var _ ffiwrapper.Verifier = (*cachingVerifier)(nil)
+var _ storiface.Verifier = (*cachingVerifier)(nil)

@@ -9,6 +9,11 @@ import (
 	gruntime "runtime"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	ipldcbor "github.com/ipfs/go-ipld-cbor"
+	"go.opencensus.io/trace"
+	"golang.org/x/xerrors"
+
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/cbor"
@@ -23,10 +28,6 @@ import (
 	rt5 "github.com/filecoin-project/specs-actors/v5/actors/runtime"
 	rt6 "github.com/filecoin-project/specs-actors/v6/actors/runtime"
 	rt7 "github.com/filecoin-project/specs-actors/v7/actors/runtime"
-	"github.com/ipfs/go-cid"
-	ipldcbor "github.com/ipfs/go-ipld-cbor"
-	"go.opencensus.io/trace"
-	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"

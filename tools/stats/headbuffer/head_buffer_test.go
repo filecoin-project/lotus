@@ -4,8 +4,9 @@ package headbuffer
 import (
 	"testing"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/lotus/api"
 )
 
 func TestHeadBuffer(t *testing.T) {

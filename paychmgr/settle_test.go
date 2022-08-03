@@ -6,12 +6,12 @@ import (
 	"testing"
 
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/go-state-types/big"
-	tutils "github.com/filecoin-project/specs-actors/support/testing"
 	ds "github.com/ipfs/go-datastore"
 	ds_sync "github.com/ipfs/go-datastore/sync"
 	"github.com/stretchr/testify/require"
+
+	"github.com/filecoin-project/go-state-types/big"
+	tutils "github.com/filecoin-project/specs-actors/support/testing"
 )
 
 func TestPaychSettle(t *testing.T) {

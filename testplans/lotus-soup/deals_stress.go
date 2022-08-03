@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/filecoin-project/lotus/api"
 	"github.com/ipfs/go-cid"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/testplans/lotus-soup/testkit"
 )
 

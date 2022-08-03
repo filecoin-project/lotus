@@ -11,8 +11,6 @@ import (
 	"path/filepath"
 	"time"
 
-	prooftypes "github.com/filecoin-project/go-state-types/proof"
-
 	"github.com/docker/go-units"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/minio/blake2b-simd"
@@ -21,19 +19,19 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-state-types/abi"
-	lcli "github.com/filecoin-project/lotus/cli"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
-	"github.com/filecoin-project/specs-storage/storage"
+	prooftypes "github.com/filecoin-project/go-state-types/proof"
 
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
+	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper/basicfs"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var log = logging.Logger("lotus-bench")
@@ -107,6 +105,7 @@ func main() {
 		Commands: []*cli.Command{
 			proveCmd,
 			sealBenchCmd,
+			simpleCmd,
 			importBenchCmd,
 		},
 	}
@@ -537,7 +536,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 		return nil, nil, fmt.Errorf("parallelism factor must cleanly divide numSectors")
 	}
 	for i := abi.SectorNumber(0); i < abi.SectorNumber(numSectors); i++ {
-		sid := storage.SectorRef{
+		sid := storiface.SectorRef{
 			ID: abi.SectorID{
 				Miner:  mid,
 				Number: i,
@@ -569,7 +568,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 				start := worker * sectorsPerWorker
 				end := start + sectorsPerWorker
 				for i := abi.SectorNumber(start); i < abi.SectorNumber(end); i++ {
-					sid := storage.SectorRef{
+					sid := storiface.SectorRef{
 						ID: abi.SectorID{
 							Miner:  mid,
 							Number: i,
@@ -643,7 +642,7 @@ func runSeals(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, numSectors int, par
 						}
 					}
 
-					var proof storage.Proof
+					var proof storiface.Proof
 					if !skipc2 {
 						proof, err = sb.SealCommit2(context.TODO(), sid, c1o)
 						if err != nil {
@@ -780,7 +779,7 @@ var proveCmd = &cli.Command{
 			return err
 		}
 
-		ref := storage.SectorRef{
+		ref := storiface.SectorRef{
 			ID: abi.SectorID{
 				Miner:  abi.ActorID(mid),
 				Number: abi.SectorNumber(c2in.SectorNum),

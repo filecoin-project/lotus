@@ -22,7 +22,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-jsonrpc/auth"
-	paramfetch "github.com/filecoin-project/go-paramfetch"
+	"github.com/filecoin-project/go-paramfetch"
 	"github.com/filecoin-project/go-statestore"
 
 	"github.com/filecoin-project/lotus/api"
@@ -30,15 +30,15 @@ import (
 	lcli "github.com/filecoin-project/lotus/cli"
 	cliutil "github.com/filecoin-project/lotus/cli/util"
 	"github.com/filecoin-project/lotus/cmd/lotus-worker/sealworker"
-	sectorstorage "github.com/filecoin-project/lotus/extern/sector-storage"
-	"github.com/filecoin-project/lotus/extern/sector-storage/sealtasks"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
 	"github.com/filecoin-project/lotus/lib/lotuslog"
 	"github.com/filecoin-project/lotus/lib/ulimit"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/repo"
+	"github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/sealer"
+	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var log = logging.Logger("main")
@@ -182,10 +182,14 @@ var runCmd = &cli.Command{
 			Usage: "enable window post",
 			Value: false,
 		},
-
 		&cli.BoolFlag{
 			Name:  "winningpost",
 			Usage: "enable winning post",
+			Value: false,
+		},
+		&cli.BoolFlag{
+			Name:  "no-default",
+			Usage: "disable all default compute tasks, use the worker for storage/fetching only",
 			Value: false,
 		},
 		&cli.IntFlag{
@@ -289,27 +293,27 @@ var runCmd = &cli.Command{
 			return err
 		}
 
-		if cctx.Bool("commit") || cctx.Bool("prove-replica-update2") {
-			if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(ssize)); err != nil {
-				return xerrors.Errorf("get params: %w", err)
-			}
-		}
-
 		var taskTypes []sealtasks.TaskType
 		var workerType string
+		var needParams bool
 
 		if cctx.Bool("windowpost") {
+			needParams = true
 			workerType = sealtasks.WorkerWindowPoSt
 			taskTypes = append(taskTypes, sealtasks.TTGenerateWindowPoSt)
 		}
 		if cctx.Bool("winningpost") {
+			needParams = true
 			workerType = sealtasks.WorkerWinningPoSt
 			taskTypes = append(taskTypes, sealtasks.TTGenerateWinningPoSt)
 		}
 
 		if workerType == "" {
-			workerType = sealtasks.WorkerSealing
 			taskTypes = append(taskTypes, sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTProveReplicaUpdate1, sealtasks.TTFinalize, sealtasks.TTFinalizeReplicaUpdate)
+
+			if !cctx.Bool("no-default") {
+				workerType = sealtasks.WorkerSealing
+			}
 		}
 
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("addpiece")) && cctx.Bool("addpiece") {
@@ -325,16 +329,22 @@ var runCmd = &cli.Command{
 			taskTypes = append(taskTypes, sealtasks.TTPreCommit2)
 		}
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("commit")) && cctx.Bool("commit") {
+			needParams = true
 			taskTypes = append(taskTypes, sealtasks.TTCommit2)
 		}
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("replica-update")) && cctx.Bool("replica-update") {
 			taskTypes = append(taskTypes, sealtasks.TTReplicaUpdate)
 		}
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("prove-replica-update2")) && cctx.Bool("prove-replica-update2") {
+			needParams = true
 			taskTypes = append(taskTypes, sealtasks.TTProveReplicaUpdate2)
 		}
 		if (workerType == sealtasks.WorkerSealing || cctx.IsSet("regen-sector-key")) && cctx.Bool("regen-sector-key") {
 			taskTypes = append(taskTypes, sealtasks.TTRegenSectorKey)
+		}
+
+		if cctx.Bool("no-default") && workerType == "" {
+			workerType = sealtasks.WorkerSealing
 		}
 
 		if len(taskTypes) == 0 {
@@ -343,6 +353,12 @@ var runCmd = &cli.Command{
 		for _, taskType := range taskTypes {
 			if taskType.WorkerType() != workerType {
 				return xerrors.Errorf("expected all task types to be for %s worker, but task %s is for %s worker", workerType, taskType, taskType.WorkerType())
+			}
+		}
+
+		if needParams {
+			if err := paramfetch.GetParams(ctx, build.ParametersJSON(), build.SrsJSON(), uint64(ssize)); err != nil {
+				return xerrors.Errorf("get params: %w", err)
 			}
 		}
 
@@ -368,10 +384,10 @@ var runCmd = &cli.Command{
 				return err
 			}
 
-			var localPaths []stores.LocalPath
+			var localPaths []paths.LocalPath
 
 			if !cctx.Bool("no-local-storage") {
-				b, err := json.MarshalIndent(&stores.LocalStorageMeta{
+				b, err := json.MarshalIndent(&paths.LocalStorageMeta{
 					ID:       storiface.ID(uuid.New().String()),
 					Weight:   10,
 					CanSeal:  true,
@@ -385,12 +401,12 @@ var runCmd = &cli.Command{
 					return xerrors.Errorf("persisting storage metadata (%s): %w", filepath.Join(lr.Path(), "sectorstore.json"), err)
 				}
 
-				localPaths = append(localPaths, stores.LocalPath{
+				localPaths = append(localPaths, paths.LocalPath{
 					Path: lr.Path(),
 				})
 			}
 
-			if err := lr.SetStorage(func(sc *stores.StorageConfig) {
+			if err := lr.SetStorage(func(sc *paths.StorageConfig) {
 				sc.StoragePaths = append(sc.StoragePaths, localPaths...)
 			}); err != nil {
 				return xerrors.Errorf("set storage config: %w", err)
@@ -440,7 +456,7 @@ var runCmd = &cli.Command{
 			}
 		}
 
-		localStore, err := stores.NewLocal(ctx, lr, nodeApi, []string{"http://" + address + "/remote"})
+		localStore, err := paths.NewLocal(ctx, lr, nodeApi, []string{"http://" + address + "/remote"})
 		if err != nil {
 			return err
 		}
@@ -451,10 +467,10 @@ var runCmd = &cli.Command{
 			return xerrors.Errorf("could not get api info: %w", err)
 		}
 
-		remote := stores.NewRemote(localStore, nodeApi, sminfo.AuthHeader(), cctx.Int("parallel-fetch-limit"),
-			&stores.DefaultPartialFileHandler{})
+		remote := paths.NewRemote(localStore, nodeApi, sminfo.AuthHeader(), cctx.Int("parallel-fetch-limit"),
+			&paths.DefaultPartialFileHandler{})
 
-		fh := &stores.FetchHandler{Local: localStore, PfHandler: &stores.DefaultPartialFileHandler{}}
+		fh := &paths.FetchHandler{Local: localStore, PfHandler: &paths.DefaultPartialFileHandler{}}
 		remoteHandler := func(w http.ResponseWriter, r *http.Request) {
 			if !auth.HasPerm(r.Context(), nil, api.PermAdmin) {
 				w.WriteHeader(401)
@@ -470,7 +486,7 @@ var runCmd = &cli.Command{
 		wsts := statestore.New(namespace.Wrap(ds, modules.WorkerCallsPrefix))
 
 		workerApi := &sealworker.Worker{
-			LocalWorker: sectorstorage.NewLocalWorker(sectorstorage.WorkerConfig{
+			LocalWorker: sealer.NewLocalWorker(sealer.WorkerConfig{
 				TaskTypes:                 taskTypes,
 				NoSwap:                    cctx.Bool("no-swap"),
 				MaxParallelChallengeReads: cctx.Int("post-parallel-reads"),
@@ -545,7 +561,7 @@ var runCmd = &cli.Command{
 		}
 
 		go func() {
-			heartbeats := time.NewTicker(stores.HeartbeatInterval)
+			heartbeats := time.NewTicker(paths.HeartbeatInterval)
 			defer heartbeats.Stop()
 
 			var redeclareStorage bool

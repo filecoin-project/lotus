@@ -3,10 +3,9 @@ package events
 import (
 	"context"
 
-	"github.com/filecoin-project/lotus/chain/stmgr"
-
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 )
 

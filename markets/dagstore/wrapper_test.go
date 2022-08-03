@@ -8,13 +8,10 @@ import (
 	"testing"
 	"time"
 
-	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
-
-	mh "github.com/multiformats/go-multihash"
-
-	carindex "github.com/ipld/go-car/v2/index"
-
 	"github.com/ipfs/go-cid"
+	carindex "github.com/ipld/go-car/v2/index"
+	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
+	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
@@ -27,7 +24,7 @@ import (
 
 // TestWrapperAcquireRecovery verifies that if acquire shard returns a "not found"
 // error, the wrapper will attempt to register the shard then reacquire
-func TestWrapperAcquireRecovery(t *testing.T) {
+func TestWrapperAcquireRecoveryDestroy(t *testing.T) {
 	ctx := context.Background()
 	pieceCid, err := cid.Parse("bafkqaaa")
 	require.NoError(t, err)
@@ -54,6 +51,7 @@ func TestWrapperAcquireRecovery(t *testing.T) {
 			Accessor: getShardAccessor(t),
 		},
 		register: make(chan shard.Key, 1),
+		destroy:  make(chan shard.Key, 1),
 	}
 	w.dagst = mock
 
@@ -80,6 +78,28 @@ func TestWrapperAcquireRecovery(t *testing.T) {
 		count++
 	}
 	require.Greater(t, count, 0)
+
+	// Destroy the shard
+	dr := make(chan dagstore.ShardResult, 1)
+	err = w.DestroyShard(ctx, pieceCid, dr)
+	require.NoError(t, err)
+
+	dctx, cancel := context.WithTimeout(ctx, time.Second)
+	defer cancel()
+	select {
+	case <-dctx.Done():
+		require.Fail(t, "failed to call destroy")
+	case k := <-mock.destroy:
+		require.Equal(t, k.String(), pieceCid.String())
+	}
+
+	var dcount int
+	dch, err := mybs.AllKeysChan(ctx)
+	require.NoError(t, err)
+	for range dch {
+		count++
+	}
+	require.Equal(t, dcount, 0)
 }
 
 // TestWrapperBackground verifies the behaviour of the background go routine
@@ -142,6 +162,7 @@ type mockDagStore struct {
 
 	gc      chan struct{}
 	recover chan shard.Key
+	destroy chan shard.Key
 	close   chan struct{}
 }
 
@@ -158,7 +179,9 @@ func (m *mockDagStore) GetShardKeysForCid(c cid.Cid) ([]shard.Key, error) {
 }
 
 func (m *mockDagStore) DestroyShard(ctx context.Context, key shard.Key, out chan dagstore.ShardResult, _ dagstore.DestroyOpts) error {
-	panic("implement me")
+	m.destroy <- key
+	out <- dagstore.ShardResult{Key: key}
+	return nil
 }
 
 func (m *mockDagStore) GetShardInfo(k shard.Key) (dagstore.ShardInfo, error) {

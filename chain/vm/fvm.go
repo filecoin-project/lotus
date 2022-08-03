@@ -4,38 +4,39 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
+	"sort"
+	"sync"
 	"time"
 
 	"github.com/ipfs/go-cid"
-
-	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/lotus/chain/actors/aerrors"
-	"github.com/filecoin-project/lotus/chain/actors/policy"
-
-	"github.com/filecoin-project/lotus/build"
-	"github.com/filecoin-project/lotus/chain/state"
 	cbor "github.com/ipfs/go-ipld-cbor"
-
-	"github.com/filecoin-project/go-state-types/abi"
-	"github.com/filecoin-project/go-state-types/exitcode"
-	"github.com/filecoin-project/lotus/lib/sigs"
-
+	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
-
-	"github.com/filecoin-project/lotus/blockstore"
 
 	ffi "github.com/filecoin-project/filecoin-ffi"
 	ffi_cgo "github.com/filecoin-project/filecoin-ffi/cgo"
+	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/exitcode"
 
+	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors/aerrors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+	"github.com/filecoin-project/lotus/chain/state"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/lib/sigs"
+	"github.com/filecoin-project/lotus/node/bundle"
 )
 
 var _ Interface = (*FVM)(nil)
 var _ ffi_cgo.Externs = (*FvmExtern)(nil)
+var debugBundleV8path = os.Getenv("LOTUS_FVM_DEBUG_BUNDLE_V8")
 
 type FvmExtern struct {
 	Rand
@@ -255,18 +256,18 @@ type FVM struct {
 	fvm *ffi.FVM
 }
 
-func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
+func defaultFVMOpts(ctx context.Context, opts *VMOpts) (*ffi.FVMOpts, error) {
 	state, err := state.LoadStateTree(cbor.NewCborStore(opts.Bstore), opts.StateBase)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("loading state tree: %w", err)
 	}
 
 	circToReport, err := opts.CircSupplyCalc(ctx, opts.Epoch, state)
 	if err != nil {
-		return nil, err
+		return nil, xerrors.Errorf("calculating circ supply: %w", err)
 	}
 
-	fvmopts := &ffi.FVMOpts{
+	return &ffi.FVMOpts{
 		FVMVersion: 0,
 		Externs: &FvmExtern{
 			Rand:       opts.Rand,
@@ -281,6 +282,14 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 		NetworkVersion: opts.NetworkVersion,
 		StateBase:      opts.StateBase,
 		Tracing:        EnableDetailedTracing,
+	}, nil
+
+}
+
+func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
+	fvmOpts, err := defaultFVMOpts(ctx, opts)
+	if err != nil {
+		return nil, xerrors.Errorf("creating fvm opts: %w", err)
 	}
 
 	if os.Getenv("LOTUS_USE_FVM_CUSTOM_BUNDLE") == "1" {
@@ -294,10 +303,109 @@ func NewFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 			return nil, xerrors.Errorf("no manifest for custom bundle (actors version %d)", av)
 		}
 
-		fvmopts.Manifest = c
+		fvmOpts.Manifest = c
 	}
 
-	fvm, err := ffi.CreateFVM(fvmopts)
+	fvm, err := ffi.CreateFVM(fvmOpts)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &FVM{
+		fvm: fvm,
+	}, nil
+}
+
+func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
+	baseBstore := opts.Bstore
+	overlayBstore := blockstore.NewMemorySync()
+	cborStore := cbor.NewCborStore(overlayBstore)
+	vmBstore := blockstore.NewTieredBstore(overlayBstore, baseBstore)
+
+	opts.Bstore = vmBstore
+	fvmOpts, err := defaultFVMOpts(ctx, opts)
+	if err != nil {
+		return nil, xerrors.Errorf("creating fvm opts: %w", err)
+	}
+
+	fvmOpts.Debug = true
+
+	putMapping := func(ar map[cid.Cid]cid.Cid) (cid.Cid, error) {
+		var mapping xMapping
+
+		mapping.redirects = make([]xRedirect, 0, len(ar))
+		for from, to := range ar {
+			mapping.redirects = append(mapping.redirects, xRedirect{from: from, to: to})
+		}
+		sort.Slice(mapping.redirects, func(i, j int) bool {
+			return bytes.Compare(mapping.redirects[i].from.Bytes(), mapping.redirects[j].from.Bytes()) < 0
+		})
+
+		// Passing this as a pointer of structs has proven to be an enormous PiTA; hence this code.
+		mappingCid, err := cborStore.Put(context.TODO(), &mapping)
+		if err != nil {
+			return cid.Undef, err
+		}
+
+		return mappingCid, nil
+	}
+
+	createMapping := func(debugBundlePath string) error {
+		mfCid, err := bundle.LoadBundleFromFile(ctx, overlayBstore, debugBundlePath)
+		if err != nil {
+			return xerrors.Errorf("loading debug bundle: %w", err)
+		}
+
+		mf, err := actors.LoadManifest(ctx, mfCid, adt.WrapStore(ctx, cborStore))
+		if err != nil {
+			return xerrors.Errorf("loading debug manifest: %w", err)
+		}
+
+		// create actor redirect mapping
+		actorRedirect := make(map[cid.Cid]cid.Cid)
+		for _, key := range actors.GetBuiltinActorsKeys() {
+			from, ok := actors.GetActorCodeID(actors.Version8, key)
+			if !ok {
+				log.Warnf("actor missing in the from manifest %s", key)
+				continue
+			}
+
+			to, ok := mf.Get(key)
+			if !ok {
+				log.Warnf("actor missing in the to manifest %s", key)
+				continue
+			}
+
+			actorRedirect[from] = to
+		}
+
+		if len(actorRedirect) > 0 {
+			mappingCid, err := putMapping(actorRedirect)
+			if err != nil {
+				return xerrors.Errorf("error writing redirect mapping: %w", err)
+			}
+			fvmOpts.ActorRedirect = mappingCid
+		}
+
+		return nil
+	}
+
+	av, err := actors.VersionForNetwork(opts.NetworkVersion)
+	if err != nil {
+		return nil, xerrors.Errorf("error determining actors version for network version %d: %w", opts.NetworkVersion, err)
+	}
+
+	switch av {
+	case actors.Version8:
+		if debugBundleV8path != "" {
+			if err := createMapping(debugBundleV8path); err != nil {
+				log.Errorf("failed to create v8 debug mapping")
+			}
+		}
+	}
+
+	fvm, err := ffi.CreateFVM(fvmOpts)
 
 	if err != nil {
 		return nil, err
@@ -431,4 +539,111 @@ func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*
 
 func (vm *FVM) Flush(ctx context.Context) (cid.Cid, error) {
 	return vm.fvm.Flush()
+}
+
+type dualExecutionFVM struct {
+	main  *FVM
+	debug *FVM
+}
+
+var _ Interface = (*dualExecutionFVM)(nil)
+
+func NewDualExecutionFVM(ctx context.Context, opts *VMOpts) (Interface, error) {
+	main, err := NewFVM(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	debug, err := NewDebugFVM(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &dualExecutionFVM{
+		main:  main,
+		debug: debug,
+	}, nil
+}
+
+func (vm *dualExecutionFVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (ret *ApplyRet, err error) {
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		ret, err = vm.main.ApplyMessage(ctx, cmsg)
+	}()
+
+	go func() {
+		defer wg.Done()
+		if _, err := vm.debug.ApplyMessage(ctx, cmsg); err != nil {
+			log.Errorf("debug execution failed: %w", err)
+		}
+	}()
+
+	wg.Wait()
+	return ret, err
+}
+
+func (vm *dualExecutionFVM) ApplyImplicitMessage(ctx context.Context, msg *types.Message) (ret *ApplyRet, err error) {
+	var wg sync.WaitGroup
+
+	wg.Add(2)
+
+	go func() {
+		defer wg.Done()
+		ret, err = vm.main.ApplyImplicitMessage(ctx, msg)
+	}()
+
+	go func() {
+		defer wg.Done()
+		if _, err := vm.debug.ApplyImplicitMessage(ctx, msg); err != nil {
+			log.Errorf("debug execution failed: %s", err)
+		}
+	}()
+
+	wg.Wait()
+	return ret, err
+}
+
+func (vm *dualExecutionFVM) Flush(ctx context.Context) (cid.Cid, error) {
+	return vm.main.Flush(ctx)
+}
+
+// Passing this as a pointer of structs has proven to be an enormous PiTA; hence this code.
+type xRedirect struct{ from, to cid.Cid }
+type xMapping struct{ redirects []xRedirect }
+
+func (m *xMapping) MarshalCBOR(w io.Writer) error {
+	scratch := make([]byte, 9)
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajArray, uint64(len(m.redirects))); err != nil {
+		return err
+	}
+
+	for _, v := range m.redirects {
+		if err := v.MarshalCBOR(w); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *xRedirect) MarshalCBOR(w io.Writer) error {
+	scratch := make([]byte, 9)
+
+	if err := cbg.WriteMajorTypeHeaderBuf(scratch, w, cbg.MajArray, uint64(2)); err != nil {
+		return err
+	}
+
+	if err := cbg.WriteCidBuf(scratch, w, r.from); err != nil {
+		return xerrors.Errorf("failed to write cid field from: %w", err)
+	}
+
+	if err := cbg.WriteCidBuf(scratch, w, r.to); err != nil {
+		return xerrors.Errorf("failed to write cid field from: %w", err)
+	}
+
+	return nil
 }

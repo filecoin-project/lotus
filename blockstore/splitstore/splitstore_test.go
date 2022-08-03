@@ -11,18 +11,20 @@ import (
 	"testing"
 	"time"
 
+	blocks "github.com/ipfs/go-block-format"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
+	dssync "github.com/ipfs/go-datastore/sync"
+	ipld "github.com/ipfs/go-ipld-format"
+	logging "github.com/ipfs/go-log/v2"
+	mh "github.com/multiformats/go-multihash"
+
 	"github.com/filecoin-project/go-state-types/abi"
+
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/chain/stmgr"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/chain/types/mock"
-
-	blocks "github.com/ipfs/go-block-format"
-	cid "github.com/ipfs/go-cid"
-	datastore "github.com/ipfs/go-datastore"
-	dssync "github.com/ipfs/go-datastore/sync"
-	logging "github.com/ipfs/go-log/v2"
-	mh "github.com/multiformats/go-multihash"
 )
 
 func init() {
@@ -696,7 +698,7 @@ func (b *mockStore) Get(_ context.Context, cid cid.Cid) (blocks.Block, error) {
 
 	blk, ok := b.set[b.keyOf(cid)]
 	if !ok {
-		return nil, blockstore.ErrNotFound
+		return nil, ipld.ErrNotFound{Cid: cid}
 	}
 	return blk, nil
 }

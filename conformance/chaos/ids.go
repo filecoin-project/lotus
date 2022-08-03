@@ -1,9 +1,10 @@
 package chaos
 
 import (
-	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
+
+	"github.com/filecoin-project/go-address"
 )
 
 // ChaosActorCodeCID is the CID by which this kind of actor will be identified.

@@ -13,7 +13,6 @@ import (
 	"sync"
 
 	"github.com/BurntSushi/toml"
-
 	"github.com/ipfs/go-datastore"
 	fslock "github.com/ipfs/go-fs-lock"
 	logging "github.com/ipfs/go-log/v2"
@@ -24,11 +23,10 @@ import (
 
 	"github.com/filecoin-project/lotus/blockstore"
 	badgerbs "github.com/filecoin-project/lotus/blockstore/badger"
-	"github.com/filecoin-project/lotus/extern/sector-storage/fsutil"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 )
 
 const (
@@ -574,26 +572,26 @@ func (fsr *fsLockedRepo) SetConfig(c func(interface{})) error {
 	return nil
 }
 
-func (fsr *fsLockedRepo) GetStorage() (stores.StorageConfig, error) {
+func (fsr *fsLockedRepo) GetStorage() (paths.StorageConfig, error) {
 	fsr.storageLk.Lock()
 	defer fsr.storageLk.Unlock()
 
 	return fsr.getStorage(nil)
 }
 
-func (fsr *fsLockedRepo) getStorage(def *stores.StorageConfig) (stores.StorageConfig, error) {
+func (fsr *fsLockedRepo) getStorage(def *paths.StorageConfig) (paths.StorageConfig, error) {
 	c, err := config.StorageFromFile(fsr.join(fsStorageConfig), def)
 	if err != nil {
-		return stores.StorageConfig{}, err
+		return paths.StorageConfig{}, err
 	}
 	return *c, nil
 }
 
-func (fsr *fsLockedRepo) SetStorage(c func(*stores.StorageConfig)) error {
+func (fsr *fsLockedRepo) SetStorage(c func(*paths.StorageConfig)) error {
 	fsr.storageLk.Lock()
 	defer fsr.storageLk.Unlock()
 
-	sc, err := fsr.getStorage(&stores.StorageConfig{})
+	sc, err := fsr.getStorage(&paths.StorageConfig{})
 	if err != nil {
 		return xerrors.Errorf("get storage: %w", err)
 	}

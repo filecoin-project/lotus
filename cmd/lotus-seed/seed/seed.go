@@ -22,22 +22,20 @@ import (
 	"github.com/filecoin-project/go-commp-utils/zerocomm"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
-	"github.com/filecoin-project/specs-storage/storage"
-
 	market8 "github.com/filecoin-project/go-state-types/builtin/v8/market"
 
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/chain/wallet"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper"
-	"github.com/filecoin-project/lotus/extern/sector-storage/ffiwrapper/basicfs"
-	"github.com/filecoin-project/lotus/extern/sector-storage/stores"
-	"github.com/filecoin-project/lotus/extern/sector-storage/storiface"
+	"github.com/filecoin-project/lotus/chain/wallet/key"
 	"github.com/filecoin-project/lotus/genesis"
+	"github.com/filecoin-project/lotus/storage/paths"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
+	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper/basicfs"
+	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
 
 var log = logging.Logger("preseal")
 
-func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte, key *types.KeyInfo, fakeSectors bool) (*genesis.Miner, *types.KeyInfo, error) {
+func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.SectorNumber, sectors int, sbroot string, preimage []byte, ki *types.KeyInfo, fakeSectors bool) (*genesis.Miner, *types.KeyInfo, error) {
 	mid, err := address.IDFromAddress(maddr)
 	if err != nil {
 		return nil, nil, err
@@ -66,7 +64,7 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 	var sealedSectors []*genesis.PreSeal
 	for i := 0; i < sectors; i++ {
 		sid := abi.SectorID{Miner: abi.ActorID(mid), Number: next}
-		ref := storage.SectorRef{ID: sid, ProofType: spt}
+		ref := storiface.SectorRef{ID: sid, ProofType: spt}
 		next++
 
 		var preseal *genesis.PreSeal
@@ -85,14 +83,14 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 		sealedSectors = append(sealedSectors, preseal)
 	}
 
-	var minerAddr *wallet.Key
-	if key != nil {
-		minerAddr, err = wallet.NewKey(*key)
+	var minerAddr *key.Key
+	if ki != nil {
+		minerAddr, err = key.NewKey(*ki)
 		if err != nil {
 			return nil, nil, err
 		}
 	} else {
-		minerAddr, err = wallet.GenerateKey(types.KTBLS)
+		minerAddr, err = key.GenerateKey(types.KTBLS)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -128,7 +126,7 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 	}
 
 	{
-		b, err := json.MarshalIndent(&stores.LocalStorageMeta{
+		b, err := json.MarshalIndent(&paths.LocalStorageMeta{
 			ID:       storiface.ID(uuid.New().String()),
 			Weight:   0, // read-only
 			CanSeal:  false,
@@ -146,7 +144,7 @@ func PreSeal(maddr address.Address, spt abi.RegisteredSealProof, offset abi.Sect
 	return miner, &minerAddr.KeyInfo, nil
 }
 
-func presealSector(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, sid storage.SectorRef, ssize abi.SectorSize, preimage []byte) (*genesis.PreSeal, error) {
+func presealSector(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, sid storiface.SectorRef, ssize abi.SectorSize, preimage []byte) (*genesis.PreSeal, error) {
 	pi, err := sb.AddPiece(context.TODO(), sid, nil, abi.PaddedPieceSize(ssize).Unpadded(), rand.Reader)
 	if err != nil {
 		return nil, err
@@ -185,7 +183,7 @@ func presealSector(sb *ffiwrapper.Sealer, sbfs *basicfs.Provider, sid storage.Se
 	}, nil
 }
 
-func presealSectorFake(sbfs *basicfs.Provider, sid storage.SectorRef, ssize abi.SectorSize) (*genesis.PreSeal, error) {
+func presealSectorFake(sbfs *basicfs.Provider, sid storiface.SectorRef, ssize abi.SectorSize) (*genesis.PreSeal, error) {
 	paths, done, err := sbfs.AcquireSector(context.TODO(), sid, 0, storiface.FTSealed|storiface.FTCache, storiface.PathSealing)
 	if err != nil {
 		return nil, xerrors.Errorf("acquire unsealed sector: %w", err)
@@ -209,7 +207,7 @@ func presealSectorFake(sbfs *basicfs.Provider, sid storage.SectorRef, ssize abi.
 	}, nil
 }
 
-func cleanupUnsealed(sbfs *basicfs.Provider, ref storage.SectorRef) error {
+func cleanupUnsealed(sbfs *basicfs.Provider, ref storiface.SectorRef) error {
 	paths, done, err := sbfs.AcquireSector(context.TODO(), ref, storiface.FTUnsealed, storiface.FTNone, storiface.PathSealing)
 	if err != nil {
 		return err
@@ -250,7 +248,7 @@ func WriteGenesisMiner(maddr address.Address, sbroot string, gm *genesis.Miner, 
 	return nil
 }
 
-func createDeals(m *genesis.Miner, k *wallet.Key, maddr address.Address, ssize abi.SectorSize) error {
+func createDeals(m *genesis.Miner, k *key.Key, maddr address.Address, ssize abi.SectorSize) error {
 	for i, sector := range m.Sectors {
 		label, err := market8.NewLabelFromString(fmt.Sprintf("%d", i))
 		if err != nil {
