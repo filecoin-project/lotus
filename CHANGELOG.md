@@ -1,8 +1,10 @@
 # Lotus changelog
 
-# v1.17.0-rc4 / 2022-07-22
+# v1.17.0 / 2022-08-02
 
-This is the fourth release candidate of the OPTIONAL release 1.17.0. This feature release introduces a lot of new sealing and scheduler improvements, and many other functionalities and bug fixes.
+This is an optional release of Lotus. This feature release introduces a lot of new sealing and scheduler improvements, and many other functionalities and bug fixes.
+
+PSA: Markets related features, enhancements and fixes is now lower priority for Lotus, and is going to be in the hands of [Boost](https://boost.filecoin.io), built by the amazing [Bedrock team](https://www.notion.so/pl-strflt/Bedrock-2e956d5d8143432080a1d84435ccf0ff). You can find Lotus mission scope [here](https://www.notion.so/Lotus-8352bbb6c321431abd8790a7a3401ed3#805c645f592840ad893c272723362d3d)
 
 ## New features
 
@@ -21,7 +23,7 @@ This is the fourth release candidate of the OPTIONAL release 1.17.0. This featur
 - feat: precommits info ([filecoin-project/lotus#8696](https://github.com/filecoin-project/lotus/pull/8696))
   - Check the on-chain precommit info with the `lotus-miner sectors precommits` command.
 - feat: dagstore: add dagstore register-shard command ([filecoin-project/lotus#8645](https://github.com/filecoin-project/lotus/pull/8645))
-  - If you have broken indexes in your market’s datastore, you can try to recover it by using `lotus-miner dagstore register-shard`. [Link to documentation](https://lotus.filecoin.io/kb/dagstore-register/)
+  - If you have broken indexes in your market’s dagstore, you can try to recover it by using `lotus-miner dagstore register-shard`. [Link to documentation](https://lotus.filecoin.io/kb/dagstore-register/)
 - feat: Implement cli command for compactPartitions ([filecoin-project/lotus#8637](https://github.com/filecoin-project/lotus/pull/8637))
   - Remove dead sectors from partitions and reduce the number of partitions used if possible with the `lotus-miner sectors compact-partitions`command. [Link to documentation](https://lotus.filecoin.io/storage-providers/operate/daily-chores/#compacting-partitions)
 - feat: recovery: Config for maximum partition count per message ([filecoin-project/lotus#8986](https://github.com/filecoin-project/lotus/pull/8986)
@@ -30,6 +32,7 @@ This is the fourth release candidate of the OPTIONAL release 1.17.0. This featur
   - Adds config for setting the maximum amount of partitions to prove in a SubmitWindowPoSt message [Link to documentation](https://lotus.filecoin.io/storage-providers/seal-workers/post-workers/#multiple-partitions)
 - feat: sealer: Config for disabling builtin PoSt / PoSt pre-checks ([filecoin-project/lotus#8959](https://github.com/filecoin-project/lotus/pull/8959))
   - Adds the ability to fully disable PoSt tasks on the `lotus-miner` and disabling windowPoSt pre-checks. [Link to documentation](https://lotus.filecoin.io/storage-providers/advanced-configurations/workers/#post-computations)
+- feat: add create ledger wallet address by account index command ([filecoin-project/lotus#8657](https://github.com/filecoin-project/lotus/pull/8657))
  
 ## Improvements
 
@@ -38,8 +41,21 @@ This is the fourth release candidate of the OPTIONAL release 1.17.0. This featur
 - feat: networking: add healthz and livez endpoints ([filecoin-project/lotus#8692](https://github.com/filecoin-project/lotus/pull/8692))
 - feat: Snap Deals full unseal ([filecoin-project/lotus#8478](https://github.com/filecoin-project/lotus/pull/8478))
 - feat: cli: Hide sector nums in 'proving deadline' by default ([filecoin-project/lotus#8952](https://github.com/filecoin-project/lotus/pull/8952))
+- feat: Add rate limiting to the lotus gateway ([filecoin-project/lotus#8517](https://github.com/filecoin-project/lotus/pull/8517))
 - feat: networking: disconnect cmd ([filecoin-project/lotus#8955](https://github.com/filecoin-project/lotus/pull/8955))
 - feat: dagstore: Add DestroyShard() in dagstore wrapper ([filecoin-project/lotus#9010](https://github.com/filecoin-project/lotus/pull/9010))
+- feat: shed: report the "user version" ([filecoin-project/lotus#8864](https://github.com/filecoin-project/lotus/pull/8864))
+- feat: lotus-shed get remote peer hello message ([filecoin-project/lotus#8787](https://github.com/filecoin-project/lotus/pull/8787))
+- feat: only enable rcmgr by default in full nodes ([filecoin-project/lotus#8769](https://github.com/filecoin-project/lotus/pull/8769))
+- feat: refactor: actor bundling system (#8838) ([filecoin-project/lotus#8838](https://github.com/filecoin-project/lotus/pull/8838))
+- feat: migration: Implement function to migrate actors with only code changes ([filecoin-project/lotus#8843](https://github.com/filecoin-project/lotus/pull/8843))
+- feat: conformance & tvx: support ReportConsensusFault messages ([filecoin-project/lotus#8302](https://github.com/filecoin-project/lotus/pull/8302))
+- feat: wdpost: Envvar for limiting recovering sectors ([filecoin-project/lotus#9106](https://github.com/filecoin-project/lotus/pull/9106))
+- fix: post: restrict recoveries per deadline ([filecoin-project/lotus#9111](https://github.com/filecoin-project/lotus/pull/9111))
+- ux: print absolute time for proving period start in proving cli ([filecoin-project/lotus#8954](https://github.com/filecoin-project/lotus/pull/8954))
+- chore: storage refactors part 1 ([filecoin-project/lotus#8858](https://github.com/filecoin-project/lotus/pull/8858))
+- chore: sealing pipeline: Remove adapter code (storage refactors part 2) ([filecoin-project/lotus#8871](https://github.com/filecoin-project/lotus/pull/8871))
+- refactor: remove old BlockSyncProtocolID ([filecoin-project/lotus#8820](https://github.com/filecoin-project/lotus/pull/8820))
 
 ## Bug Fixes
 
@@ -53,15 +69,21 @@ This is the fourth release candidate of the OPTIONAL release 1.17.0. This featur
 - fix: bench: consistency in description ([filecoin-project/lotus#8777](https://github.com/filecoin-project/lotus/pull/8777))
 - fix: worker: don't log normal storage stat calls ([filecoin-project/lotus#8744](https://github.com/filecoin-project/lotus/pull/8744))
 - fix: worker: don't check params with --no-default when not needed ([filecoin-project/lotus#8741](https://github.com/filecoin-project/lotus/pull/8741))
+- fix: Deduplicate parallel stat requests ([filecoin-project/lotus#8589](https://github.com/filecoin-project/lotus/pull/8589))
+- fix: Delegate storage auth on market nodes ([filecoin-project/lotus#8978](https://github.com/filecoin-project/lotus/pull/8978))
 - fix: post workers: check proving params on startup ([filecoin-project/lotus#8736](https://github.com/filecoin-project/lotus/pull/8736))
 - fix: rpc: readd rpc.discover aliases; lotus-gateway openrpc ([filecoin-project/lotus#8738](https://github.com/filecoin-project/lotus/pull/8738))
+- fix: change 1475 bootstrap peer ([filecoin-project/lotus#9008](https://github.com/filecoin-project/lotus/pull/9008))
 - fix: verifreg: update deprecation log ([filecoin-project/lotus#8690](https://github.com/filecoin-project/lotus/pull/8690))
 - fix: vm: support raw blocks in chain export ([filecoin-project/lotus#8691](https://github.com/filecoin-project/lotus/pull/8691))
 - fix: deps: restore butterfly network genesis from v1.14.4 ([filecoin-project/lotus#8708](https://github.com/filecoin-project/lotus/pull/8708))
+- fix: improve error message when maxPrice is too low ([filecoin-project/lotus#8818](https://github.com/filecoin-project/lotus/pull/8818))
 - fix: msig cli: Check for existing signers in add-propose ([filecoin-project/lotus#8833](https://github.com/filecoin-project/lotus/pull/8833))
+- Add new proofs version type ([filecoin-project/lotus#8848](https://github.com/filecoin-project/lotus/pull/8848))
+- fix: Make cli deal command get Block Delay specific to build ([filecoin-project/lotus#8896](https://github.com/filecoin-project/lotus/pull/8896))
 - fix: cli: Break out of retrieval if provider cancels ([filecoin-project/lotus#8912](https://github.com/filecoin-project/lotus/pull/8912))
 - fix: appimage build ([filecoin-project/lotus#8931](https://github.com/filecoin-project/lotus/pull/8931))
-- fix: Make cli deal command get Block Delay specific to build ([filecoin-project/lotus#8896](https://github.com/filecoin-project/lotus/pull/8896))
+- fix: incorrect usage of peer.IDFromString (should be peer.Decode) ([filecoin-project/lotus#8993](https://github.com/filecoin-project/lotus/pull/8993))
 - fix: deps: update FFI to fix a slow memory leak ([filecoin-project/lotus#9044](https://github.com/filecoin-project/lotus/pull/9044))
 - fix: sealing: hacky sealing fix backport ([filecoin-project/lotus#9055](https://github.com/filecoin-project/lotus/pull/9055))
 
@@ -83,36 +105,17 @@ This is the fourth release candidate of the OPTIONAL release 1.17.0. This featur
 - github.com/filecoin-project/specs-actors/v8 (null -> v8.0.1)
 - github.com/filecoin-project/specs-storage (v0.2.4 -> v0.4.1)
 - github.com/filecoin-project/storetheindex (v0.3.5 -> v0.4.17)
+- deps: libp2p: update to the latest golibp2p tag ([filecoin-project/lotus#8704](https://github.com/filecoin-project/lotus/pull/8704))
 - chore: update and fix libp2p ([filecoin-project/lotus#8996](https://github.com/filecoin-project/lotus/pull/8996))
 
 ## Others
 
-- chore: storage refactors part 1 ([filecoin-project/lotus#8858](https://github.com/filecoin-project/lotus/pull/8858))
 - chore: fix imports conflict ([filecoin-project/lotus#8863](https://github.com/filecoin-project/lotus/pull/8863))
 - chore: Fix imports ([filecoin-project/lotus#8859](https://github.com/filecoin-project/lotus/pull/8859))
 - chore: backport: release v1.16.0 back to master ([filecoin-project/lotus#8855](https://github.com/filecoin-project/lotus/pull/8855))
-- chore: improve error message when maxPrice is too low ([filecoin-project/lotus#8818](https://github.com/filecoin-project/lotus/pull/8818))
 - chore: bundle: remove wrongly committed bundle cars ([filecoin-project/lotus#8762](https://github.com/filecoin-project/lotus/pull/8762))
-- chore: storage refactors part 1 ([filecoin-project/lotus#8858](https://github.com/filecoin-project/lotus/pull/8858))
-- chore: sealing pipeline: Remove adapter code (storage refactors part 2) ([filecoin-project/lotus#8871](https://github.com/filecoin-project/lotus/pull/8871))
-- deps: libp2p: update to the latest golibp2p tag ([filecoin-project/lotus#8704](https://github.com/filecoin-project/lotus/pull/8704))
-- feat: shed: report the "user version" ([filecoin-project/lotus#8864](https://github.com/filecoin-project/lotus/pull/8864))
-- feat: Add rate limiting to the lotus gateway ([filecoin-project/lotus#8517](https://github.com/filecoin-project/lotus/pull/8517))
-- feat: lotus-shed get remote peer hello message ([filecoin-project/lotus#8787](https://github.com/filecoin-project/lotus/pull/8787))
-- feat: refactor: actor bundling system (#8838) ([filecoin-project/lotus#8838](https://github.com/filecoin-project/lotus/pull/8838))
-- feat: add create ledger wallet address by account index command ([filecoin-project/lotus#8657](https://github.com/filecoin-project/lotus/pull/8657))
-- feat: conformance & tvx: support ReportConsensusFault messages ([filecoin-project/lotus#8302](https://github.com/filecoin-project/lotus/pull/8302))
-- feat: migration: Implement function to migrate actors with only code changes ([filecoin-project/lotus#8843](https://github.com/filecoin-project/lotus/pull/8843))
-- feat: only enable rcmgr by default in full nodes ([filecoin-project/lotus#8769](https://github.com/filecoin-project/lotus/pull/8769))
 - docs:sealing:fix default miner config comments ([filecoin-project/lotus#8689](https://github.com/filecoin-project/lotus/pull/8689))
 - ci: deps: Use testground-github-action from testground org ([filecoin-project/lotus#8490](https://github.com/filecoin-project/lotus/pull/8490))
-- ux: print absolute time for proving period start in proving cli ([filecoin-project/lotus#8954](https://github.com/filecoin-project/lotus/pull/8954))
-- fix incorrect usage of peer.IDFromString (should be peer.Decode) ([filecoin-project/lotus#8993](https://github.com/filecoin-project/lotus/pull/8993))
-- fix: Delegate storage auth on market nodes ([filecoin-project/lotus#8978](https://github.com/filecoin-project/lotus/pull/8978))
-- Add new proofs version type ([filecoin-project/lotus#8848](https://github.com/filecoin-project/lotus/pull/8848))
-- refactor: remove old BlockSyncProtocolID ([filecoin-project/lotus#8820](https://github.com/filecoin-project/lotus/pull/8820))
-- stores: Deduplicate parallel stat requests ([filecoin-project/lotus#8589](https://github.com/filecoin-project/lotus/pull/8589))
-- change 1475 bootstrap peer ([filecoin-project/lotus#9008](https://github.com/filecoin-project/lotus/pull/9008))
  
 Contributors
 
