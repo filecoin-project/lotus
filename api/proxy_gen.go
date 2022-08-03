@@ -656,6 +656,8 @@ type StorageMinerStruct struct {
 
 		ActorSectorSize func(p0 context.Context, p1 address.Address) (abi.SectorSize, error) `perm:"read"`
 
+		ActorWithdrawBalance func(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) `perm:"admin"`
+
 		CheckProvable func(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) `perm:"admin"`
 
 		ComputeDataCid func(p0 context.Context, p1 abi.UnpaddedPieceSize, p2 storiface.Data) (abi.PieceInfo, error) `perm:"admin"`
@@ -3952,6 +3954,17 @@ func (s *StorageMinerStruct) ActorSectorSize(p0 context.Context, p1 address.Addr
 
 func (s *StorageMinerStub) ActorSectorSize(p0 context.Context, p1 address.Address) (abi.SectorSize, error) {
 	return *new(abi.SectorSize), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) ActorWithdrawBalance(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) {
+	if s.Internal.ActorWithdrawBalance == nil {
+		return *new(cid.Cid), ErrNotSupported
+	}
+	return s.Internal.ActorWithdrawBalance(p0, p1)
+}
+
+func (s *StorageMinerStub) ActorWithdrawBalance(p0 context.Context, p1 abi.TokenAmount) (cid.Cid, error) {
+	return *new(cid.Cid), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) CheckProvable(p0 context.Context, p1 abi.RegisteredPoStProof, p2 []storiface.SectorRef, p3 bool) (map[abi.SectorNumber]string, error) {

@@ -9,6 +9,7 @@
   * [ActorAddress](#ActorAddress)
   * [ActorAddressConfig](#ActorAddressConfig)
   * [ActorSectorSize](#ActorSectorSize)
+  * [ActorWithdrawBalance](#ActorWithdrawBalance)
 * [Auth](#Auth)
   * [AuthNew](#AuthNew)
   * [AuthVerify](#AuthVerify)
@@ -291,6 +292,28 @@ Inputs:
 ```
 
 Response: `34359738368`
+
+### ActorWithdrawBalance
+WithdrawBalance allows to withdraw balance from miner actor to owner address
+Specify amount as "0" to withdraw full balance. This method returns a message CID
+and does not wait for message execution
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "0"
+]
+```
+
+Response:
+```json
+{
+  "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+}
+```
 
 ## Auth
 
