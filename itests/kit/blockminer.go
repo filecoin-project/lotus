@@ -359,5 +359,8 @@ func (bm *BlockMiner) Stop() {
 	bm.t.Log("shutting down mining")
 	bm.cancel()
 	bm.wg.Wait()
-	close(bm.unpause)
+	if bm.unpause != nil {
+		close(bm.unpause)
+		bm.unpause = nil
+	}
 }

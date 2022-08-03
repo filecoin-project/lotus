@@ -1118,32 +1118,6 @@ func (s *SplitStore) getSize(c cid.Cid) (int, error) {
 	}
 }
 
-// type codecPreservingBlock struct {
-// 	blocks.Block
-// 	codec uint64
-// }
-
-// func (b *codecPreservingBlock) RawData() []byte {
-// 	return b.Block.RawData()
-// }
-
-// func (b *codecPreservingBlock) Cid() cid.Cid {
-// 	raw := b.Block.Cid()
-// 	if raw.Version() == 0 {
-// 		return raw
-// 	}
-// 	return cid.NewCidV1(b.codec, raw.Hash())
-// }
-
-// func (b *codecPreservingBlock) String() string {
-// 	c := b.Cid()
-// 	return fmt.Sprintf("[Block %s]", c)
-// }
-
-// func (b *codecPreservingBlock) Loggable() map[string]interface{} {
-// 	return b.Block.Loggable()
-// }
-
 func (s *SplitStore) moveColdBlocks(coldr *ColdSetReader) error {
 	batch := make([]blocks.Block, 0, batchSize)
 
