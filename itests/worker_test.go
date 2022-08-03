@@ -3,12 +3,12 @@ package itests
 import (
 	"context"
 	"encoding/json"
-	"github.com/google/uuid"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
@@ -460,6 +460,7 @@ func TestSchedulerRemoveRequest(t *testing.T) {
 	}
 
 	j, err := json.MarshalIndent(&schedb, "", "  ")
+	require.NoError(t, err)
 
 	var b info
 	err = json.Unmarshal(j, &b)
@@ -487,6 +488,7 @@ func TestSchedulerRemoveRequest(t *testing.T) {
 	}
 
 	k, err := json.MarshalIndent(&scheda, "", "  ")
+	require.NoError(t, err)
 
 	var a info
 	err = json.Unmarshal(k, &a)
