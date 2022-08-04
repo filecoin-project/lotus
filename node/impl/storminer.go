@@ -311,6 +311,10 @@ func (sm *StorageMinerAPI) SectorsSummary(ctx context.Context) (map[api.SectorSt
 	return out, nil
 }
 
+func (sm *StorageMinerAPI) SectorPipelineStats(ctx context.Context) (api.PipelineStats, error) {
+	return sm.Miner.PipelineStats(ctx)
+}
+
 func (sm *StorageMinerAPI) StorageLocal(ctx context.Context) (map[storiface.ID]string, error) {
 	l, err := sm.LocalStore.Local(ctx)
 	if err != nil {

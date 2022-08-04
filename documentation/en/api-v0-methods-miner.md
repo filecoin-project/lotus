@@ -138,6 +138,7 @@
   * [SectorGetSealDelay](#SectorGetSealDelay)
   * [SectorMarkForUpgrade](#SectorMarkForUpgrade)
   * [SectorMatchPendingPiecesToOpenSectors](#SectorMatchPendingPiecesToOpenSectors)
+  * [SectorPipelineStats](#SectorPipelineStats)
   * [SectorPreCommitFlush](#SectorPreCommitFlush)
   * [SectorPreCommitPending](#SectorPreCommitPending)
   * [SectorRemove](#SectorRemove)
@@ -2918,6 +2919,33 @@ Perms: admin
 Inputs: `null`
 
 Response: `{}`
+
+### SectorPipelineStats
+Get pipeline stats
+
+
+Perms: 
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "SectorsStaging": 42,
+  "SectorsSealing": 42,
+  "OpenSectors": [
+    42
+  ],
+  "OpenCapacity": 42,
+  "MaxWaitDealsSectors": 42,
+  "MaxSealingSectors": 42,
+  "MaxSealingSectorsForDeals": 42,
+  "PreferNewSectorsForDeals": true,
+  "MaxUpgradingSectors": 42,
+  "FinalizeEarly": true,
+  "MakeNewSectorForDeals": true
+}
+```
 
 ### SectorPreCommitFlush
 SectorPreCommitFlush immediately sends a PreCommit message with sectors batched for PreCommit.

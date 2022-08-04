@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"context"
+	"math/bits"
 	"sync"
 
 	"go.opencensus.io/stats"
@@ -9,6 +10,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
@@ -99,4 +101,53 @@ func (ss *SectorStats) curStaging() uint64 {
 	defer ss.lk.Unlock()
 
 	return ss.curStagingLocked()
+}
+
+func (m *Sealing) PipelineStats(ctx context.Context) (api.PipelineStats, error) {
+	cfg, err := m.getConfig()
+	if err != nil {
+		return api.PipelineStats{}, err
+	}
+
+	out := api.PipelineStats{
+		SectorsStaging: m.stats.curStaging(),
+		SectorsSealing: m.stats.curSealing(),
+
+		OpenSectors:  nil,
+		OpenCapacity: 0,
+
+		MaxWaitDealsSectors:       cfg.MaxWaitDealsSectors,
+		MaxSealingSectors:         cfg.MaxSealingSectors,
+		MaxSealingSectorsForDeals: cfg.MaxSealingSectorsForDeals,
+		PreferNewSectorsForDeals:  cfg.PreferNewSectorsForDeals,
+		MaxUpgradingSectors:       cfg.MaxUpgradingSectors,
+		FinalizeEarly:             cfg.FinalizeEarly,
+		MakeNewSectorForDeals:     cfg.MakeNewSectorForDeals,
+	}
+
+	m.inputLk.Lock()
+
+	for _, sector := range m.openSectors {
+		maxPiece := abi.PaddedPieceSize(1<<bits.LeadingZeros64(uint64(sector.used.Padded())) - 1).Unpadded()
+		out.OpenCapacity += uint64(maxPiece)
+		out.OpenSectors = append(out.OpenSectors, uint64(maxPiece))
+	}
+
+	m.inputLk.Unlock()
+
+	/*	spt, err := m.currentSealProof(ctx)
+		if err != nil {
+			return api.PipelineStats{}, err
+		}
+		ssize, err := spt.SectorSize()
+		if err != nil {
+			return api.PipelineStats{}, err
+		}
+
+		m.stats.lk.Lock()
+		defer m.stats.lk.Unlock()
+
+
+	*/
+	return out, err
 }

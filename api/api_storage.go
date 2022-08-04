@@ -65,6 +65,9 @@ type StorageMiner interface {
 	// Get the status of a given sector by ID
 	SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (SectorInfo, error) //perm:read
 
+	// Get pipeline stats
+	SectorPipelineStats(ctx context.Context) (PipelineStats, error)
+
 	// Add piece to an open sector. If no sectors with enough space are open,
 	// either a new sector will be created, or this call will block until more
 	// sectors can be created.
@@ -462,4 +465,55 @@ type DagstoreInitializeAllEvent struct {
 	Error   string
 	Total   int
 	Current int
+}
+
+type PipelineStats struct {
+	// Number of sectors waiting for deal data
+	SectorsStaging uint64
+
+	// Number of sectors in process of being sealed
+	SectorsSealing uint64
+
+	// List of free space in each of open sectors (sectors waiting for deals)
+	// Note: this is the size of the largest piece that can still fit into the sector,
+	// It's possible that there's actually up to 33% more space in open sectors
+	OpenSectors []uint64 // unpadded bytes
+
+	// Amount of unpadded bytes which can be accepted by the sealing pipeline right now
+	OpenCapacity uint64 // unpadded bytes
+
+	// todo estimates based on current pipeline state
+	// OpenCapacityEstimate map[string]uint64 // map[string(unixTsSecs)] -> bytes
+
+	// Current config values
+
+	// Upper bound on how many sectors can be waiting for more deals to be packed in it before it begins sealing at any given time.
+	// If the miner is accepting multiple deals in parallel, up to MaxWaitDealsSectors of new sectors will be created.
+	// If more than MaxWaitDealsSectors deals are accepted in parallel, only MaxWaitDealsSectors deals will be processed in parallel
+	// Note that setting this number too high in relation to deal ingestion rate may result in poor sector packing efficiency
+	// 0 = no limit
+	MaxWaitDealsSectors uint64
+
+	// Upper bound on how many sectors can be sealing+upgrading at the same time when creating new CC sectors (0 = unlimited)
+	MaxSealingSectors uint64
+
+	// Upper bound on how many sectors can be sealing+upgrading at the same time when creating new sectors with deals (0 = unlimited)
+	MaxSealingSectorsForDeals uint64
+
+	// Prefer creating new sectors even if there are sectors Available for upgrading.
+	// This setting combined with MaxUpgradingSectors set to a value higher than MaxSealingSectorsForDeals makes it
+	// possible to use fast sector upgrades to handle high volumes of storage deals, while still using the simple sealing
+	// flow when the volume of storage deals is lower.
+	PreferNewSectorsForDeals bool
+
+	// Upper bound on how many sectors can be sealing+upgrading at the same time when upgrading CC sectors with deals (0 = MaxSealingSectorsForDeals)
+	MaxUpgradingSectors uint64
+
+	// Run sector finalization before submitting sector proof to the chain
+	FinalizeEarly bool
+
+	// Whether new sectors are created to pack incoming deals
+	// When this is set to false no new sectors will be created for sealing incoming deals
+	// This is useful for forcing all deals to be assigned as snap deals to sectors marked for upgrade
+	MakeNewSectorForDeals bool
 }

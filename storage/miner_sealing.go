@@ -90,6 +90,10 @@ func (m *Miner) SectorAddPieceToAny(ctx context.Context, size abi.UnpaddedPieceS
 	return m.sealing.SectorAddPieceToAny(ctx, size, r, d)
 }
 
+func (m *Miner) PipelineStats(ctx context.Context) (api.PipelineStats, error) {
+	return m.sealing.PipelineStats(ctx)
+}
+
 func (m *Miner) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {
 	if showOnChainInfo {
 		return api.SectorInfo{}, xerrors.Errorf("on-chain info not supported")

@@ -820,6 +820,8 @@ type StorageMinerStruct struct {
 
 		SectorMatchPendingPiecesToOpenSectors func(p0 context.Context) error `perm:"admin"`
 
+		SectorPipelineStats func(p0 context.Context) (PipelineStats, error) ``
+
 		SectorPreCommitFlush func(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) `perm:"admin"`
 
 		SectorPreCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
@@ -4858,6 +4860,17 @@ func (s *StorageMinerStruct) SectorMatchPendingPiecesToOpenSectors(p0 context.Co
 
 func (s *StorageMinerStub) SectorMatchPendingPiecesToOpenSectors(p0 context.Context) error {
 	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorPipelineStats(p0 context.Context) (PipelineStats, error) {
+	if s.Internal.SectorPipelineStats == nil {
+		return *new(PipelineStats), ErrNotSupported
+	}
+	return s.Internal.SectorPipelineStats(p0)
+}
+
+func (s *StorageMinerStub) SectorPipelineStats(p0 context.Context) (PipelineStats, error) {
+	return *new(PipelineStats), ErrNotSupported
 }
 
 func (s *StorageMinerStruct) SectorPreCommitFlush(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) {
