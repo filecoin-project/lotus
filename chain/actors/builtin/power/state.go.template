@@ -2,6 +2,7 @@ package power
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -9,7 +10,14 @@ import (
 	cbg "github.com/whyrusleeping/cbor-gen"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
+
+    {{if (le .v 1)}}
+        sha256simd "github.com/minio/sha256-simd"
+    {{else}}
+        "crypto/sha256"
+    {{end}}
 
 {{if (le .v 7)}}
     {{if (ge .v 3)}}
@@ -86,7 +94,7 @@ func (s *state{{.v}}) TotalCommitted() (Claim, error) {
 }
 
 func (s *state{{.v}}) MinerPower(addr address.Address) (Claim, bool, error) {
-	claims, err := s.claims()
+	claims, err := s.ClaimsMap()
 	if err != nil {
 		return Claim{}, false, err
 	}
@@ -114,7 +122,7 @@ func (s *state{{.v}}) MinerCounts() (uint64, uint64, error) {
 }
 
 func (s *state{{.v}}) ListAllMiners() ([]address.Address, error) {
-	claims, err := s.claims()
+	claims, err := s.ClaimsMap()
 	if err != nil {
 		return nil, err
 	}
@@ -136,7 +144,7 @@ func (s *state{{.v}}) ListAllMiners() ([]address.Address, error) {
 }
 
 func (s *state{{.v}}) ForEachClaim(cb func(miner address.Address, claim Claim) error) error {
-	claims, err := s.claims()
+	claims, err := s.ClaimsMap()
 	if err != nil {
 		return err
 	}
@@ -187,11 +195,50 @@ func (s *state{{.v}}) GetState() interface{} {
 	return &s.State
 }
 
-func (s *state{{.v}}) claims() (adt.Map, error) {
+func (s *state{{.v}}) ClaimsMap() (adt.Map, error) {
 	return adt{{.v}}.AsMap(s.store, s.Claims{{if (ge .v 3)}}, builtin{{.v}}.DefaultHamtBitwidth{{end}})
 }
 
-func (s *state{{.v}}) decodeClaim(val *cbg.Deferred) (Claim, error) {
+func (s *state{{.v}}) ClaimsMapBitWidth() int {
+    {{- if (ge .v 3)}}
+        return builtin{{.v}}.DefaultHamtBitwidth
+    {{- else}}
+        return 5
+    {{- end}}
+}
+
+func (s *state{{.v}}) ClaimsMapHashFunction() func(input []byte) []byte {
+    {{- if (le .v 1)}}
+        return func(input []byte) []byte {
+            res := sha256simd.Sum256(input)
+            return res[:]
+        }
+    {{- else}}
+        return func(input []byte) []byte {
+            res := sha256.Sum256(input)
+            return res[:]
+        }
+    {{- end}}
+}
+
+func (s *state{{.v}}) ActorKey() string {
+    return actors.PowerKey
+}
+
+func (s *state{{.v}}) ActorVersion() actors.Version {
+    return actors.Version{{.v}}
+}
+
+func (s *state{{.v}}) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
+}
+
+func (s *state{{.v}}) DecodeClaim(val *cbg.Deferred) (Claim, error) {
 	var ci power{{.v}}.Claim
 	if err := ci.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return Claim{}, err

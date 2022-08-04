@@ -2,6 +2,8 @@ package power
 
 import (
 	"bytes"
+	"crypto/sha256"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -12,6 +14,7 @@ import (
 	power3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/power"
 	adt3 "github.com/filecoin-project/specs-actors/v3/actors/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 )
@@ -65,7 +68,7 @@ func (s *state3) TotalCommitted() (Claim, error) {
 }
 
 func (s *state3) MinerPower(addr address.Address) (Claim, bool, error) {
-	claims, err := s.claims()
+	claims, err := s.ClaimsMap()
 	if err != nil {
 		return Claim{}, false, err
 	}
@@ -93,7 +96,7 @@ func (s *state3) MinerCounts() (uint64, uint64, error) {
 }
 
 func (s *state3) ListAllMiners() ([]address.Address, error) {
-	claims, err := s.claims()
+	claims, err := s.ClaimsMap()
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +118,7 @@ func (s *state3) ListAllMiners() ([]address.Address, error) {
 }
 
 func (s *state3) ForEachClaim(cb func(miner address.Address, claim Claim) error) error {
-	claims, err := s.claims()
+	claims, err := s.ClaimsMap()
 	if err != nil {
 		return err
 	}
@@ -166,11 +169,39 @@ func (s *state3) GetState() interface{} {
 	return &s.State
 }
 
-func (s *state3) claims() (adt.Map, error) {
+func (s *state3) ClaimsMap() (adt.Map, error) {
 	return adt3.AsMap(s.store, s.Claims, builtin3.DefaultHamtBitwidth)
 }
 
-func (s *state3) decodeClaim(val *cbg.Deferred) (Claim, error) {
+func (s *state3) ClaimsMapBitWidth() int {
+	return builtin3.DefaultHamtBitwidth
+}
+
+func (s *state3) ClaimsMapHashFunction() func(input []byte) []byte {
+	return func(input []byte) []byte {
+		res := sha256.Sum256(input)
+		return res[:]
+	}
+}
+
+func (s *state3) ActorKey() string {
+	return actors.PowerKey
+}
+
+func (s *state3) ActorVersion() actors.Version {
+	return actors.Version3
+}
+
+func (s *state3) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
+}
+
+func (s *state3) DecodeClaim(val *cbg.Deferred) (Claim, error) {
 	var ci power3.Claim
 	if err := ci.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return Claim{}, err

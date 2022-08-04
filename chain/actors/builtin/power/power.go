@@ -1,6 +1,7 @@
 package power
 
 import (
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -125,9 +126,14 @@ type State interface {
 	SetThisEpochQualityAdjPower(abi.StoragePower) error
 	SetThisEpochRawBytePower(abi.StoragePower) error
 
-	// Diff helpers. Used by Diff* functions internally.
-	claims() (adt.Map, error)
-	decodeClaim(*cbg.Deferred) (Claim, error)
+	ClaimsMap() (adt.Map, error)
+	ClaimsMapBitWidth() int
+	ClaimsMapHashFunction() func(input []byte) []byte
+	DecodeClaim(*cbg.Deferred) (Claim, error)
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actors.Version
 }
 
 type Claim struct {
