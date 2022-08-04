@@ -1106,6 +1106,30 @@ the compaction boundary; default is 0.`,
 A value of 0 disables, while a value 1 will do full GC in every compaction.
 Default is 20 (about once a week).`,
 		},
+		{
+			Name: "EnableColdStoreAutoPrune",
+			Type: "bool",
+
+			Comment: `EnableColdStoreAutoPrune turns on compaction of the cold store i.e. pruning
+where hotstore compaction occurs every finality epochs pruning happens every 3 finalities
+Default is false`,
+		},
+		{
+			Name: "ColdStoreFullGCFrequency",
+			Type: "uint64",
+
+			Comment: `ColdStoreFullGCFrequency specifies how often to performa a full (moving) GC on the coldstore.
+Only applies if auto prune is enabled.  A value of 0 disables while a value of 1 will do
+full GC in every prune.
+Default is 7 (about once every a week)`,
+		},
+		{
+			Name: "ColdStoreRetention",
+			Type: "int64",
+
+			Comment: `ColdStoreRetention specifies the retention policy for data reachable from the chain, in
+finalities beyond the compaction boundary, default is 0, -1 retains everything`,
+		},
 	},
 	"StorageMiner": []DocField{
 		{

@@ -277,3 +277,11 @@ func SplitstoreUniversal() NodeOpt {
 		return nil
 	})
 }
+
+func SplitstoreAutoPrune() NodeOpt {
+	return WithCfgOpt(func(cfg *config.FullNode) error {
+		cfg.Chainstore.Splitstore.EnableColdStoreAutoPrune = true // turn on
+		cfg.Chainstore.Splitstore.ColdStoreFullGCFrequency = 0    // turn off full gc
+		return nil
+	})
+}

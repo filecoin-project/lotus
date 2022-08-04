@@ -20,6 +20,7 @@ import (
 
 	"github.com/filecoin-project/go-state-types/abi"
 
+	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/metrics"
@@ -81,6 +82,8 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	curTs := apply[len(apply)-1]
 	epoch := curTs.Height()
 
+	log.Warnf("Head epoch %d", epoch)
+
 	// NOTE: there is an implicit invariant assumption that HeadChange is invoked
 	//       synchronously and no other HeadChange can be invoked while one is in
 	//       progress.
@@ -115,6 +118,8 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 		return nil
 	}
 
+	// Prioritize hot store compaction over cold store prune
+
 	if epoch-s.baseEpoch > CompactionThreshold {
 		// it's time to compact -- prepare the transaction and go!
 		s.beginTxnProtect()
@@ -129,6 +134,40 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 			s.compact(curTs)
 
 			log.Infow("compaction done", "took", time.Since(start))
+		}()
+		// only prune if auto prune is enabled and after at least one compaction
+	} else if s.cfg.EnableColdStoreAutoPrune && epoch-s.pruneEpoch > PruneThreshold && s.compactionIndex > 0 {
+		s.beginTxnProtect()
+		s.compactType = cold
+		go func() {
+			defer atomic.StoreInt32(&s.compacting, 0)
+			defer s.endTxnProtect()
+
+			log.Info("pruning splitstore")
+			start := time.Now()
+
+			var retainP func(int64) bool
+			switch {
+			case s.cfg.ColdStoreRetention > int64(0):
+				retainP = func(depth int64) bool {
+					return depth <= int64(CompactionBoundary)+s.cfg.ColdStoreRetention*int64(build.Finality)
+				}
+			case s.cfg.ColdStoreRetention < 0:
+				retainP = func(_ int64) bool { return true }
+			default:
+				retainP = func(depth int64) bool {
+					return depth <= int64(CompactionBoundary)
+				}
+			}
+			movingGC := s.cfg.ColdStoreFullGCFrequency > 0 && s.pruneIndex%int64(s.cfg.ColdStoreFullGCFrequency) == 0
+			var gcOpts []bstore.BlockstoreGCOption
+			if movingGC {
+				gcOpts = append(gcOpts, bstore.WithFullGC(true))
+			}
+			doGC := func() error { return s.gcBlockstore(s.cold, gcOpts) }
+
+			s.prune(curTs, retainP, doGC)
+			log.Infow("prune done", "took", time.Since(start))
 		}()
 	} else {
 		// no compaction necessary
