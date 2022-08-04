@@ -138,6 +138,8 @@ func toStatState(st SectorState, finEarly bool) statSectorState {
 
 	if finEarly && statState == sstLateSeal {
 		return sstProving
+	} else if statState == sstLateSeal {
+		statState = sstSealing
 	}
 
 	return statState
