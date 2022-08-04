@@ -1,6 +1,9 @@
 package verifreg
 
 import (
+	"crypto/sha256"
+	"fmt"
+
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
@@ -81,4 +84,51 @@ func (s *state4) removeDataCapProposalIDs() (adt.Map, error) {
 
 func (s *state4) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state4) VerifiedClientsMap() (adt.Map, error) {
+	return adt4.AsMap(s.store, s.VerifiedClients, builtin4.DefaultHamtBitwidth)
+}
+
+func (s *state4) VerifiedClientsMapBitWidth() int {
+	return builtin4.DefaultHamtBitwidth
+}
+
+func (s *state4) VerifiedClientsMapHashFunction() func(input []byte) []byte {
+	return func(input []byte) []byte {
+		res := sha256.Sum256(input)
+		return res[:]
+	}
+}
+
+func (s *state4) VerifiersMap() (adt.Map, error) {
+	return adt4.AsMap(s.store, s.Verifiers, builtin4.DefaultHamtBitwidth)
+}
+
+func (s *state4) VerifiersMapBitWidth() int {
+	return builtin4.DefaultHamtBitwidth
+}
+
+func (s *state4) VerifiersMapHashFunction() func(input []byte) []byte {
+	return func(input []byte) []byte {
+		res := sha256.Sum256(input)
+		return res[:]
+	}
+}
+
+func (s *state4) ActorKey() string {
+	return actors.VerifregKey
+}
+
+func (s *state4) ActorVersion() actors.Version {
+	return actors.Version4
+}
+
+func (s *state4) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

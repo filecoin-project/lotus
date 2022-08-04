@@ -2,6 +2,7 @@ package verifreg
 
 import (
 	"golang.org/x/xerrors"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -73,4 +74,31 @@ type State interface {
 	ForEachVerifier(func(addr address.Address, dcap abi.StoragePower) error) error
 	ForEachClient(func(addr address.Address, dcap abi.StoragePower) error) error
 	GetState() interface{}
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actors.Version
+
+	VerifiersMap() (adt.Map, error)
+	VerifiersMapBitWidth() int
+	VerifiersMapHashFunction() func(input []byte) []byte
+
+	VerifiedClientsMap() (adt.Map, error)
+	VerifiedClientsMapBitWidth() int
+	VerifiedClientsMapHashFunction() func(input []byte) []byte
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
+}
+
+func VersionCodes() map[actors.Version]cid.Cid {
+	return map[actors.Version]cid.Cid{
+        {{- range .versions}}
+            actors.Version{{.}}: (&state{{.}}{}).Code(),
+        {{- end}}
+	}
 }
