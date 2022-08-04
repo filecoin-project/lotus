@@ -272,7 +272,7 @@ func (sm *StorageMinerAPI) SectorsListInStates(ctx context.Context, states []api
 	filterStates := make(map[sealing.SectorState]struct{})
 	for _, state := range states {
 		st := sealing.SectorState(state)
-		if _, ok := sealing.ExistSectorStateList[st]; !ok {
+		if _, ok := sealing.ValidSectorStateList[st]; !ok {
 			continue
 		}
 		filterStates[st] = struct{}{}

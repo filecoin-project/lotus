@@ -48,7 +48,7 @@ type Log struct {
 
 type ReturnState string
 
-const (
+var (
 	RetPreCommit1      = ReturnState(PreCommit1)
 	RetPreCommitting   = ReturnState(PreCommitting)
 	RetPreCommitFailed = ReturnState(PreCommitFailed)

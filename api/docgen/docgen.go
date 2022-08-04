@@ -272,6 +272,9 @@ func init() {
 			Read:   [storiface.FileTypes]uint{2, 3, 0},
 		},
 	})
+	addExample(map[string]uint64{
+		"235254398": 1024,
+	})
 
 	// worker specific
 	addExample(storiface.AcquireMove)

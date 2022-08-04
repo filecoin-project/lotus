@@ -2,8 +2,11 @@ package sealing
 
 import (
 	"context"
+	"fmt"
 	"math/bits"
+	"sort"
 	"sync"
+	"time"
 
 	"go.opencensus.io/stats"
 	"go.opencensus.io/tag"
@@ -23,6 +26,9 @@ const (
 	sstFailed
 	sstProving
 	nsst
+
+	// internal
+	sstLateSeal
 )
 
 type SectorStats struct {
@@ -113,8 +119,7 @@ func (m *Sealing) PipelineStats(ctx context.Context) (api.PipelineStats, error) 
 		SectorsStaging: m.stats.curStaging(),
 		SectorsSealing: m.stats.curSealing(),
 
-		OpenSectors:  nil,
-		OpenCapacity: 0,
+		OpenCapacityEstimate: map[string]uint64{},
 
 		MaxWaitDealsSectors:       cfg.MaxWaitDealsSectors,
 		MaxSealingSectors:         cfg.MaxSealingSectors,
@@ -135,19 +140,62 @@ func (m *Sealing) PipelineStats(ctx context.Context) (api.PipelineStats, error) 
 
 	m.inputLk.Unlock()
 
-	/*	spt, err := m.currentSealProof(ctx)
-		if err != nil {
-			return api.PipelineStats{}, err
+	spt, err := m.currentSealProof(ctx)
+	if err != nil {
+		return api.PipelineStats{}, err
+	}
+	ssizeRaw, err := spt.SectorSize()
+	if err != nil {
+		return api.PipelineStats{}, err
+	}
+	ssize := uint64(abi.PaddedPieceSize(ssizeRaw).Unpadded())
+
+	// account for unused sealing sector limits in OpenCapacity
+	maxDealSectors := cfg.MaxSealingSectorsForDeals
+	if cfg.MaxUpgradingSectors > cfg.MaxSealingSectorsForDeals {
+		maxDealSectors = cfg.MaxUpgradingSectors
+	}
+	maxDealSectors -= out.SectorsSealing
+	if maxDealSectors > 0 {
+		out.OpenCapacity += maxDealSectors * ssize
+	}
+
+	// calculate estimated future capacity
+
+	m.stats.lk.Lock()
+
+	doneIn := map[time.Duration]int64{}
+	for state, n := range m.stats.byState {
+		durEst := ValidSectorStateList[state].sealDurationEstimate
+		if durEst != 0 {
+			continue
 		}
-		ssize, err := spt.SectorSize()
-		if err != nil {
-			return api.PipelineStats{}, err
-		}
 
-		m.stats.lk.Lock()
-		defer m.stats.lk.Unlock()
+		doneIn[durEst] += n
+	}
 
+	m.stats.lk.Unlock()
 
-	*/
+	type estimateBucket struct {
+		in time.Duration
+		n  int64
+	}
+
+	doneList := make([]estimateBucket, 0, len(doneIn))
+	for duration, n := range doneIn {
+		doneList = append(doneList, estimateBucket{in: duration, n: n})
+	}
+
+	sort.Slice(doneList, func(i, j int) bool {
+		return doneList[i].in < doneList[j].in
+	})
+
+	var doneSectors uint64
+	for i := range doneList {
+		doneSectors += uint64(doneList[i].n)
+
+		out.OpenCapacityEstimate[fmt.Sprint(time.Now().Add(doneList[i].in).Unix())] = ssize*doneSectors + out.OpenCapacity
+	}
+
 	return out, err
 }

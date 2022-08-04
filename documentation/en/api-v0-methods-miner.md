@@ -2937,6 +2937,9 @@ Response:
     42
   ],
   "OpenCapacity": 42,
+  "OpenCapacityEstimate": {
+    "235254398": 1024
+  },
   "MaxWaitDealsSectors": 42,
   "MaxSealingSectors": 42,
   "MaxSealingSectorsForDeals": 42,

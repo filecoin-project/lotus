@@ -480,10 +480,22 @@ type PipelineStats struct {
 	OpenSectors []uint64 // unpadded bytes
 
 	// Amount of unpadded bytes which can be accepted by the sealing pipeline right now
+	// This number includes free space in OpenSectors, as well as available sealing
+	// pipeline capacity
 	OpenCapacity uint64 // unpadded bytes
 
-	// todo estimates based on current pipeline state
-	// OpenCapacityEstimate map[string]uint64 // map[string(unixTsSecs)] -> bytes
+	// Estimated sealing pipeline capacity at a number of points in near future
+	// based on the current sealing pipeline state and estimated time it will take
+	// sectors to seal. Includes OpenCapacity bytes.
+	//
+	// Note that estimates for later points in time are always larger than
+	// earlier estimates
+	//
+	// Example output:
+	// unix(+30min) -> 128G
+	// unix(+1h30m) -> 512G
+	// unix(+3h) -> 1T
+	OpenCapacityEstimate map[string]uint64 // map[string(unixTsSecs)] -> unpadded bytes
 
 	// Current config values
 

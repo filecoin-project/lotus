@@ -348,7 +348,7 @@ var sectorsListCmd = &cli.Command{
 		}
 
 		if cctx.Bool("unproven") {
-			for state := range sealing.ExistSectorStateList {
+			for state := range sealing.ValidSectorStateList {
 				if state == sealing.Proving || state == sealing.Available {
 					continue
 				}
@@ -1719,9 +1719,9 @@ var sectorsUpdateCmd = &cli.Command{
 		}
 
 		newState := cctx.Args().Get(1)
-		if _, ok := sealing.ExistSectorStateList[sealing.SectorState(newState)]; !ok {
+		if _, ok := sealing.ValidSectorStateList[sealing.SectorState(newState)]; !ok {
 			fmt.Printf(" \"%s\" is not a valid state. Possible states for sectors are: \n", newState)
-			for state := range sealing.ExistSectorStateList {
+			for state := range sealing.ValidSectorStateList {
 				fmt.Printf("%s\n", string(state))
 			}
 			return nil

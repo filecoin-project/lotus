@@ -1,173 +1,146 @@
 package sealing
 
+import (
+	"time"
+
+	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors/policy"
+)
+
 type SectorState string
 
-var ExistSectorStateList = map[SectorState]struct{}{
-	Empty:                       {},
-	WaitDeals:                   {},
-	Packing:                     {},
-	AddPiece:                    {},
-	AddPieceFailed:              {},
-	GetTicket:                   {},
-	PreCommit1:                  {},
-	PreCommit2:                  {},
-	PreCommitting:               {},
-	PreCommitWait:               {},
-	SubmitPreCommitBatch:        {},
-	PreCommitBatchWait:          {},
-	WaitSeed:                    {},
-	Committing:                  {},
-	CommitFinalize:              {},
-	CommitFinalizeFailed:        {},
-	SubmitCommit:                {},
-	CommitWait:                  {},
-	SubmitCommitAggregate:       {},
-	CommitAggregateWait:         {},
-	FinalizeSector:              {},
-	Proving:                     {},
-	Available:                   {},
-	FailedUnrecoverable:         {},
-	SealPreCommit1Failed:        {},
-	SealPreCommit2Failed:        {},
-	PreCommitFailed:             {},
-	ComputeProofFailed:          {},
-	CommitFailed:                {},
-	PackingFailed:               {},
-	FinalizeFailed:              {},
-	DealsExpired:                {},
-	RecoverDealIDs:              {},
-	Faulty:                      {},
-	FaultReported:               {},
-	FaultedFinal:                {},
-	Terminating:                 {},
-	TerminateWait:               {},
-	TerminateFinality:           {},
-	TerminateFailed:             {},
-	Removing:                    {},
-	RemoveFailed:                {},
-	Removed:                     {},
-	SnapDealsWaitDeals:          {},
-	SnapDealsAddPiece:           {},
-	SnapDealsPacking:            {},
-	UpdateReplica:               {},
-	ProveReplicaUpdate:          {},
-	SubmitReplicaUpdate:         {},
-	ReplicaUpdateWait:           {},
-	UpdateActivating:            {},
-	ReleaseSectorKey:            {},
-	FinalizeReplicaUpdate:       {},
-	SnapDealsAddPieceFailed:     {},
-	SnapDealsDealsExpired:       {},
-	SnapDealsRecoverDealIDs:     {},
-	ReplicaUpdateFailed:         {},
-	ReleaseSectorKeyFailed:      {},
-	FinalizeReplicaUpdateFailed: {},
-	AbortUpgrade:                {},
+type stateMeta struct {
+	stat statSectorState
+
+	sealDurationEstimate time.Duration
 }
 
-// cmd/lotus-miner/info.go defines CLI colors corresponding to these states
+var ValidSectorStateList = map[SectorState]stateMeta{}
+
+// this function should only be used to initialize new sector states
+// DO NOT USE THIS TO cast strings to SectorState
+func makeSectorState(name string, statState statSectorState, opts ...func(meta *stateMeta)) SectorState {
+	st := SectorState(name)
+	m := stateMeta{
+		stat: statState,
+	}
+
+	for _, opt := range opts {
+		opt(&m)
+	}
+
+	ValidSectorStateList[st] = m
+	return st
+}
+
+func sealDurationEstimate(d time.Duration) func(meta *stateMeta) {
+	return func(meta *stateMeta) {
+		meta.sealDurationEstimate = d
+	}
+}
+
+// rough seal timing estimates, used for estimating future pipeline state in pipeline stats
+var (
+	sealTimePC1      = 3*60*time.Minute + sealTimePC2
+	sealTimePC2      = 30*time.Minute + sealTimeWaitSeed
+	sealTimeWaitSeed = time.Duration(uint64(policy.GetPreCommitChallengeDelay())*build.BlockDelaySecs)*time.Second + sealTimeCommit
+	sealTimeCommit   = 30*time.Minute + sealTimeFinalize
+	sealTimeFinalize = 10 * time.Minute
+
+	snapTime = 40 * time.Minute
+)
+
+// cmd/lotus-miner/info.go defines CLI colors/order corresponding to these states
 // update files there when adding new states
-const (
-	UndefinedSectorState SectorState = ""
+var (
+	UndefinedSectorState = makeSectorState("", sstStaging)
 
 	// happy path
-	Empty      SectorState = "Empty"      // deprecated
-	WaitDeals  SectorState = "WaitDeals"  // waiting for more pieces (deals) to be added to the sector
-	AddPiece   SectorState = "AddPiece"   // put deal data (and padding if required) into the sector
-	Packing    SectorState = "Packing"    // sector not in sealStore, and not on chain
-	GetTicket  SectorState = "GetTicket"  // generate ticket
-	PreCommit1 SectorState = "PreCommit1" // do PreCommit1
-	PreCommit2 SectorState = "PreCommit2" // do PreCommit2
+	Empty         = makeSectorState("Empty", sstStaging)                                                 // deprecated
+	WaitDeals     = makeSectorState("WaitDeals", sstStaging)                                             // waiting for more pieces (deals) to be added to the sector
+	AddPiece      = makeSectorState("AddPiece", sstStaging)                                              // put deal data (and padding if required) into the sector
+	Packing       = makeSectorState("Packing", sstSealing, sealDurationEstimate(sealTimePC1))            // sector not in sealStore, and not on chain
+	GetTicket     = makeSectorState("GetTicket", sstSealing, sealDurationEstimate(sealTimePC1))          // generate ticket
+	PreCommit1    = makeSectorState("PreCommit1", sstSealing, sealDurationEstimate(sealTimePC1))         // do PreCommit1
+	PreCommit2    = makeSectorState("PreCommit2", sstSealing, sealDurationEstimate(sealTimePC2))         // do PreCommit2
+	PreCommitting = makeSectorState("PreCommitting", sstSealing, sealDurationEstimate(sealTimeWaitSeed)) // on chain pre-commit
 
-	PreCommitting SectorState = "PreCommitting" // on chain pre-commit
-	PreCommitWait SectorState = "PreCommitWait" // waiting for precommit to land on chain
+	PreCommitWait        = makeSectorState("PreCommitWait", sstSealing, sealDurationEstimate(sealTimeWaitSeed)) // waiting for precommit to land on chain
+	SubmitPreCommitBatch = makeSectorState("SubmitPreCommitBatch", sstSealing, sealDurationEstimate(sealTimeWaitSeed))
 
-	SubmitPreCommitBatch SectorState = "SubmitPreCommitBatch"
-	PreCommitBatchWait   SectorState = "PreCommitBatchWait"
+	PreCommitBatchWait = makeSectorState("PreCommitBatchWait", sstSealing, sealDurationEstimate(sealTimeWaitSeed))
+	WaitSeed           = makeSectorState("WaitSeed", sstSealing, sealDurationEstimate(sealTimeWaitSeed)) // waiting for seed
 
-	WaitSeed             SectorState = "WaitSeed"       // waiting for seed
-	Committing           SectorState = "Committing"     // compute PoRep
-	CommitFinalize       SectorState = "CommitFinalize" // cleanup sector metadata before submitting the proof (early finalize)
-	CommitFinalizeFailed SectorState = "CommitFinalizeFailed"
+	Committing           = makeSectorState("Committing", sstSealing, sealDurationEstimate(sealTimeCommit))       // compute PoRep
+	CommitFinalize       = makeSectorState("CommitFinalize", sstSealing, sealDurationEstimate(sealTimeFinalize)) // cleanup sector metadata before submitting the proof (early finalize)
+	CommitFinalizeFailed = makeSectorState("CommitFinalizeFailed", sstFailed)
 
 	// single commit
-	SubmitCommit SectorState = "SubmitCommit" // send commit message to the chain
-	CommitWait   SectorState = "CommitWait"   // wait for the commit message to land on chain
+	SubmitCommit = makeSectorState("SubmitCommit", sstLateSeal) // send commit message to the chain
+	CommitWait   = makeSectorState("CommitWait", sstLateSeal)   // wait for the commit message to land on chain
 
-	SubmitCommitAggregate SectorState = "SubmitCommitAggregate"
-	CommitAggregateWait   SectorState = "CommitAggregateWait"
+	SubmitCommitAggregate = makeSectorState("SubmitCommitAggregate", sstLateSeal)
+	CommitAggregateWait   = makeSectorState("CommitAggregateWait", sstLateSeal)
 
-	FinalizeSector SectorState = "FinalizeSector"
-	Proving        SectorState = "Proving"
-	Available      SectorState = "Available" // proving CC available for SnapDeals
+	FinalizeSector = makeSectorState("FinalizeSector", sstSealing, sealDurationEstimate(sealTimeFinalize))
+	Proving        = makeSectorState("Proving", sstProving)
+	Available      = makeSectorState("Available", sstProving) // proving CC available for SnapDeals
 
 	// snap deals / cc update
-	SnapDealsWaitDeals    SectorState = "SnapDealsWaitDeals"
-	SnapDealsAddPiece     SectorState = "SnapDealsAddPiece"
-	SnapDealsPacking      SectorState = "SnapDealsPacking"
-	UpdateReplica         SectorState = "UpdateReplica"
-	ProveReplicaUpdate    SectorState = "ProveReplicaUpdate"
-	SubmitReplicaUpdate   SectorState = "SubmitReplicaUpdate"
-	ReplicaUpdateWait     SectorState = "ReplicaUpdateWait"
-	FinalizeReplicaUpdate SectorState = "FinalizeReplicaUpdate"
-	UpdateActivating      SectorState = "UpdateActivating"
-	ReleaseSectorKey      SectorState = "ReleaseSectorKey"
+	SnapDealsWaitDeals    = makeSectorState("SnapDealsWaitDeals", sstStaging)
+	SnapDealsAddPiece     = makeSectorState("SnapDealsAddPiece", sstStaging)
+	SnapDealsPacking      = makeSectorState("SnapDealsPacking", sstSealing, sealDurationEstimate(snapTime))
+	UpdateReplica         = makeSectorState("UpdateReplica", sstSealing, sealDurationEstimate(snapTime))
+	ProveReplicaUpdate    = makeSectorState("ProveReplicaUpdate", sstSealing, sealDurationEstimate(snapTime))
+	SubmitReplicaUpdate   = makeSectorState("SubmitReplicaUpdate", sstLateSeal)
+	ReplicaUpdateWait     = makeSectorState("ReplicaUpdateWait", sstLateSeal)
+	FinalizeReplicaUpdate = makeSectorState("FinalizeReplicaUpdate", sstSealing, sealDurationEstimate(snapTime))
+	UpdateActivating      = makeSectorState("UpdateActivating", sstProving)
+	ReleaseSectorKey      = makeSectorState("ReleaseSectorKey", sstProving)
 
 	// error modes
-	FailedUnrecoverable  SectorState = "FailedUnrecoverable"
-	AddPieceFailed       SectorState = "AddPieceFailed"
-	SealPreCommit1Failed SectorState = "SealPreCommit1Failed"
-	SealPreCommit2Failed SectorState = "SealPreCommit2Failed"
-	PreCommitFailed      SectorState = "PreCommitFailed"
-	ComputeProofFailed   SectorState = "ComputeProofFailed"
-	CommitFailed         SectorState = "CommitFailed"
-	PackingFailed        SectorState = "PackingFailed" // TODO: deprecated, remove
-	FinalizeFailed       SectorState = "FinalizeFailed"
-	DealsExpired         SectorState = "DealsExpired"
-	RecoverDealIDs       SectorState = "RecoverDealIDs"
+	FailedUnrecoverable  = makeSectorState("FailedUnrecoverable", sstFailed)
+	AddPieceFailed       = makeSectorState("AddPieceFailed", sstStaging) // yes, we still consider this sector as staging for stats
+	SealPreCommit1Failed = makeSectorState("SealPreCommit1Failed", sstFailed)
+	SealPreCommit2Failed = makeSectorState("SealPreCommit2Failed", sstFailed)
+	PreCommitFailed      = makeSectorState("PreCommitFailed", sstFailed)
+	ComputeProofFailed   = makeSectorState("ComputeProofFailed", sstFailed)
+	CommitFailed         = makeSectorState("CommitFailed", sstFailed)
+	PackingFailed        = makeSectorState("PackingFailed", sstFailed) // TODO: deprecated, remove
+	FinalizeFailed       = makeSectorState("FinalizeFailed", sstFailed)
+	DealsExpired         = makeSectorState("DealsExpired", sstFailed)
+	RecoverDealIDs       = makeSectorState("RecoverDealIDs", sstFailed)
 
 	// snap deals error modes
-	SnapDealsAddPieceFailed     SectorState = "SnapDealsAddPieceFailed"
-	SnapDealsDealsExpired       SectorState = "SnapDealsDealsExpired"
-	SnapDealsRecoverDealIDs     SectorState = "SnapDealsRecoverDealIDs"
-	AbortUpgrade                SectorState = "AbortUpgrade"
-	ReplicaUpdateFailed         SectorState = "ReplicaUpdateFailed"
-	ReleaseSectorKeyFailed      SectorState = "ReleaseSectorKeyFailed"
-	FinalizeReplicaUpdateFailed SectorState = "FinalizeReplicaUpdateFailed"
+	SnapDealsAddPieceFailed     = makeSectorState("SnapDealsAddPieceFailed", sstFailed)
+	SnapDealsDealsExpired       = makeSectorState("SnapDealsDealsExpired", sstFailed)
+	SnapDealsRecoverDealIDs     = makeSectorState("SnapDealsRecoverDealIDs", sstFailed)
+	AbortUpgrade                = makeSectorState("AbortUpgrade", sstFailed)
+	ReplicaUpdateFailed         = makeSectorState("ReplicaUpdateFailed", sstFailed)
+	ReleaseSectorKeyFailed      = makeSectorState("ReleaseSectorKeyFailed", sstFailed)
+	FinalizeReplicaUpdateFailed = makeSectorState("FinalizeReplicaUpdateFailed", sstFailed)
 
-	Faulty        SectorState = "Faulty"        // sector is corrupted or gone for some reason
-	FaultReported SectorState = "FaultReported" // sector has been declared as a fault on chain
-	FaultedFinal  SectorState = "FaultedFinal"  // fault declared on chain
+	Faulty            = makeSectorState("Faulty", sstFailed)        // sector is corrupted or gone for some reason
+	FaultReported     = makeSectorState("FaultReported", sstFailed) // sector has been declared as a fault on chain
+	FaultedFinal      = makeSectorState("FaultedFinal", sstFailed)  // fault declared on chain
+	Terminating       = makeSectorState("Terminating", sstProving)
+	TerminateWait     = makeSectorState("TerminateWait", sstProving)
+	TerminateFinality = makeSectorState("TerminateFinality", sstProving)
+	TerminateFailed   = makeSectorState("TerminateFailed", sstProving)
 
-	Terminating       SectorState = "Terminating"
-	TerminateWait     SectorState = "TerminateWait"
-	TerminateFinality SectorState = "TerminateFinality"
-	TerminateFailed   SectorState = "TerminateFailed"
-
-	Removing     SectorState = "Removing"
-	RemoveFailed SectorState = "RemoveFailed"
-	Removed      SectorState = "Removed"
+	Removing     = makeSectorState("Removing", sstProving)
+	RemoveFailed = makeSectorState("RemoveFailed", sstFailed)
+	Removed      = makeSectorState("Removed", sstProving)
 )
 
 func toStatState(st SectorState, finEarly bool) statSectorState {
-	switch st {
-	case UndefinedSectorState, Empty, WaitDeals, AddPiece, AddPieceFailed, SnapDealsWaitDeals, SnapDealsAddPiece:
-		return sstStaging
-	case Packing, GetTicket, PreCommit1, PreCommit2, PreCommitting, PreCommitWait, SubmitPreCommitBatch, PreCommitBatchWait, WaitSeed, Committing, CommitFinalize, FinalizeSector, SnapDealsPacking, UpdateReplica, ProveReplicaUpdate, FinalizeReplicaUpdate:
-		return sstSealing
-	case SubmitCommit, CommitWait, SubmitCommitAggregate, CommitAggregateWait, SubmitReplicaUpdate, ReplicaUpdateWait:
-		if finEarly {
-			// we use statSectorState for throttling storage use. With FinalizeEarly
-			// we can consider sectors in states after CommitFinalize as finalized, so
-			// that more sectors can enter the sealing pipeline (and later be aggregated together)
-			return sstProving
-		}
-		return sstSealing
-	case Proving, Available, UpdateActivating, ReleaseSectorKey, Removed, Removing, Terminating, TerminateWait, TerminateFinality, TerminateFailed:
+	statState := ValidSectorStateList[st].stat
+
+	if finEarly && statState == sstLateSeal {
 		return sstProving
 	}
 
-	return sstFailed
+	return statState
 }
 
 func IsUpgradeState(st SectorState) bool {
