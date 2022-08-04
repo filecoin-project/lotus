@@ -591,6 +591,7 @@ jobs:
           command: snapcraft --use-lxd --debug
       - run:
           name: publish `lotus-filecoin` snap
+          shell: /bin/bash -o pipefail
           command: |
             snapcraft upload lotus-filecoin_latest_amd64.snap --release << parameters.channel >>
       - run:
@@ -603,6 +604,7 @@ jobs:
           command: snapcraft --use-lxd --debug
       - run:
           name: publish `lotus` snap
+          shell: /bin/bash -o pipefail
           command: |
             snapcraft upload lotus_latest_amd64.snap --release << parameters.channel >>
 
