@@ -11,12 +11,12 @@ import (
 func DiffPreCommits(pre, cur State) (*PreCommitChanges, error) {
 	results := new(PreCommitChanges)
 
-	prep, err := pre.precommits()
+	prep, err := pre.PreCommitsMap()
 	if err != nil {
 		return nil, err
 	}
 
-	curp, err := cur.precommits()
+	curp, err := cur.PreCommitsMap()
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func (m *preCommitDiffer) AsKey(key string) (abi.Keyer, error) {
 }
 
 func (m *preCommitDiffer) Add(key string, val *cbg.Deferred) error {
-	sp, err := m.after.decodeSectorPreCommitOnChainInfo(val)
+	sp, err := m.after.DecodeSectorPreCommitOnChainInfo(val)
 	if err != nil {
 		return err
 	}
@@ -56,7 +56,7 @@ func (m *preCommitDiffer) Modify(key string, from, to *cbg.Deferred) error {
 }
 
 func (m *preCommitDiffer) Remove(key string, val *cbg.Deferred) error {
-	sp, err := m.pre.decodeSectorPreCommitOnChainInfo(val)
+	sp, err := m.pre.DecodeSectorPreCommitOnChainInfo(val)
 	if err != nil {
 		return err
 	}
@@ -67,12 +67,12 @@ func (m *preCommitDiffer) Remove(key string, val *cbg.Deferred) error {
 func DiffSectors(pre, cur State) (*SectorChanges, error) {
 	results := new(SectorChanges)
 
-	pres, err := pre.sectors()
+	pres, err := pre.SectorsArray()
 	if err != nil {
 		return nil, err
 	}
 
-	curs, err := cur.sectors()
+	curs, err := cur.SectorsArray()
 	if err != nil {
 		return nil, err
 	}
@@ -91,7 +91,7 @@ type sectorDiffer struct {
 }
 
 func (m *sectorDiffer) Add(key uint64, val *cbg.Deferred) error {
-	si, err := m.after.decodeSectorOnChainInfo(val)
+	si, err := m.after.DecodeSectorOnChainInfo(val)
 	if err != nil {
 		return err
 	}
@@ -100,12 +100,12 @@ func (m *sectorDiffer) Add(key uint64, val *cbg.Deferred) error {
 }
 
 func (m *sectorDiffer) Modify(key uint64, from, to *cbg.Deferred) error {
-	siFrom, err := m.pre.decodeSectorOnChainInfo(from)
+	siFrom, err := m.pre.DecodeSectorOnChainInfo(from)
 	if err != nil {
 		return err
 	}
 
-	siTo, err := m.after.decodeSectorOnChainInfo(to)
+	siTo, err := m.after.DecodeSectorOnChainInfo(to)
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func (m *sectorDiffer) Modify(key uint64, from, to *cbg.Deferred) error {
 }
 
 func (m *sectorDiffer) Remove(key uint64, val *cbg.Deferred) error {
-	si, err := m.pre.decodeSectorOnChainInfo(val)
+	si, err := m.pre.DecodeSectorOnChainInfo(val)
 	if err != nil {
 		return err
 	}

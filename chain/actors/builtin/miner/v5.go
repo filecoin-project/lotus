@@ -2,7 +2,9 @@ package miner
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -17,6 +19,7 @@ import (
 	miner5 "github.com/filecoin-project/specs-actors/v5/actors/builtin/miner"
 	adt5 "github.com/filecoin-project/specs-actors/v5/actors/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
@@ -396,34 +399,6 @@ func (s *state5) DeadlineCronActive() (bool, error) {
 	return s.State.DeadlineCronActive, nil
 }
 
-func (s *state5) sectors() (adt.Array, error) {
-	return adt5.AsArray(s.store, s.Sectors, miner5.SectorsAmtBitwidth)
-}
-
-func (s *state5) decodeSectorOnChainInfo(val *cbg.Deferred) (SectorOnChainInfo, error) {
-	var si miner5.SectorOnChainInfo
-	err := si.UnmarshalCBOR(bytes.NewReader(val.Raw))
-	if err != nil {
-		return SectorOnChainInfo{}, err
-	}
-
-	return fromV5SectorOnChainInfo(si), nil
-}
-
-func (s *state5) precommits() (adt.Map, error) {
-	return adt5.AsMap(s.store, s.PreCommittedSectors, builtin5.DefaultHamtBitwidth)
-}
-
-func (s *state5) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (minertypes.SectorPreCommitOnChainInfo, error) {
-	var sp miner5.SectorPreCommitOnChainInfo
-	err := sp.UnmarshalCBOR(bytes.NewReader(val.Raw))
-	if err != nil {
-		return minertypes.SectorPreCommitOnChainInfo{}, err
-	}
-
-	return fromV5SectorPreCommitOnChainInfo(sp), nil
-}
-
 func (s *state5) EraseAllUnproven() error {
 
 	dls, err := s.State.LoadDeadlines(s.store)
@@ -552,4 +527,64 @@ func fromV5SectorPreCommitOnChainInfo(v5 miner5.SectorPreCommitOnChainInfo) mine
 
 func (s *state5) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state5) ActorKey() string {
+	return actors.MinerKey
+}
+
+func (s *state5) ActorVersion() actors.Version {
+	return actors.Version5
+}
+
+func (s *state5) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
+}
+
+func (s *state5) SectorsArray() (adt.Array, error) {
+	return adt5.AsArray(s.store, s.Sectors, miner5.SectorsAmtBitwidth)
+}
+
+func (s *state5) SectorsAmtBitWidth() int {
+	return miner5.SectorsAmtBitwidth
+}
+
+func (s *state5) DecodeSectorOnChainInfo(val *cbg.Deferred) (SectorOnChainInfo, error) {
+	var si miner5.SectorOnChainInfo
+	err := si.UnmarshalCBOR(bytes.NewReader(val.Raw))
+	if err != nil {
+		return SectorOnChainInfo{}, err
+	}
+
+	return fromV5SectorOnChainInfo(si), nil
+}
+
+func (s *state5) PreCommitsMap() (adt.Map, error) {
+	return adt5.AsMap(s.store, s.PreCommittedSectors, builtin5.DefaultHamtBitwidth)
+}
+
+func (s *state5) PreCommitsMapBitWidth() int {
+	return builtin5.DefaultHamtBitwidth
+}
+
+func (s *state5) PreCommitsMapHashFunction() func(input []byte) []byte {
+	return func(input []byte) []byte {
+		res := sha256.Sum256(input)
+		return res[:]
+	}
+}
+
+func (s *state5) DecodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (minertypes.SectorPreCommitOnChainInfo, error) {
+	var sp miner5.SectorPreCommitOnChainInfo
+	err := sp.UnmarshalCBOR(bytes.NewReader(val.Raw))
+	if err != nil {
+		return minertypes.SectorPreCommitOnChainInfo{}, err
+	}
+
+	return fromV5SectorPreCommitOnChainInfo(sp), nil
 }

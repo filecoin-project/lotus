@@ -6,6 +6,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
+	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -102,12 +103,21 @@ type State interface {
 	DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error)
 	DeadlineCronActive() (bool, error)
 
-	// Diff helpers. Used by Diff* functions internally.
-	sectors() (adt.Array, error)
-	decodeSectorOnChainInfo(*cbg.Deferred) (SectorOnChainInfo, error)
-	precommits() (adt.Map, error)
-	decodeSectorPreCommitOnChainInfo(*cbg.Deferred) (miner{{.latestVersion}}.SectorPreCommitOnChainInfo, error)
 	GetState() interface{}
+
+	SectorsArray() (adt.Array, error)
+	SectorsAmtBitWidth() int
+	DecodeSectorOnChainInfo(*cbg.Deferred) (SectorOnChainInfo, error)
+
+	PreCommitsMap() (adt.Map, error)
+	PreCommitsMapBitWidth() int
+	PreCommitsMapHashFunction() func(input []byte) []byte
+	DecodeSectorPreCommitOnChainInfo(*cbg.Deferred) (miner{{.latestVersion}}.SectorPreCommitOnChainInfo, error)
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actors.Version
+
 }
 
 type Deadline interface {
@@ -240,4 +250,19 @@ type LockedFunds struct {
 
 func (lf LockedFunds) TotalLockedFunds() abi.TokenAmount {
 	return big.Add(lf.VestingFunds, big.Add(lf.InitialPledgeRequirement, lf.PreCommitDeposits))
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
+}
+
+func VersionCodes() map[actors.Version]cid.Cid {
+	return map[actors.Version]cid.Cid{
+        {{- range .versions}}
+            actors.Version{{.}}: (&state{{.}}{}).Code(),
+        {{- end}}
+	}
 }

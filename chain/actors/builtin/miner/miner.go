@@ -1,6 +1,7 @@
 package miner
 
 import (
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -138,12 +139,20 @@ type State interface {
 	DeadlineInfo(epoch abi.ChainEpoch) (*dline.Info, error)
 	DeadlineCronActive() (bool, error)
 
-	// Diff helpers. Used by Diff* functions internally.
-	sectors() (adt.Array, error)
-	decodeSectorOnChainInfo(*cbg.Deferred) (SectorOnChainInfo, error)
-	precommits() (adt.Map, error)
-	decodeSectorPreCommitOnChainInfo(*cbg.Deferred) (miner8.SectorPreCommitOnChainInfo, error)
 	GetState() interface{}
+
+	SectorsArray() (adt.Array, error)
+	SectorsAmtBitWidth() int
+	DecodeSectorOnChainInfo(*cbg.Deferred) (SectorOnChainInfo, error)
+
+	PreCommitsMap() (adt.Map, error)
+	PreCommitsMapBitWidth() int
+	PreCommitsMapHashFunction() func(input []byte) []byte
+	DecodeSectorPreCommitOnChainInfo(*cbg.Deferred) (miner8.SectorPreCommitOnChainInfo, error)
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actors.Version
 }
 
 type Deadline interface {
@@ -276,4 +285,30 @@ type LockedFunds struct {
 
 func (lf LockedFunds) TotalLockedFunds() abi.TokenAmount {
 	return big.Add(lf.VestingFunds, big.Add(lf.InitialPledgeRequirement, lf.PreCommitDeposits))
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+	}
+}
+
+func VersionCodes() map[actors.Version]cid.Cid {
+	return map[actors.Version]cid.Cid{
+		actors.Version0: (&state0{}).Code(),
+		actors.Version2: (&state2{}).Code(),
+		actors.Version3: (&state3{}).Code(),
+		actors.Version4: (&state4{}).Code(),
+		actors.Version5: (&state5{}).Code(),
+		actors.Version6: (&state6{}).Code(),
+		actors.Version7: (&state7{}).Code(),
+		actors.Version8: (&state8{}).Code(),
+	}
 }

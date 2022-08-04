@@ -2,7 +2,9 @@ package miner
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"errors"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -17,6 +19,7 @@ import (
 	miner3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/miner"
 	adt3 "github.com/filecoin-project/specs-actors/v3/actors/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
@@ -396,34 +399,6 @@ func (s *state3) DeadlineCronActive() (bool, error) {
 	return true, nil // always active in this version
 }
 
-func (s *state3) sectors() (adt.Array, error) {
-	return adt3.AsArray(s.store, s.Sectors, miner3.SectorsAmtBitwidth)
-}
-
-func (s *state3) decodeSectorOnChainInfo(val *cbg.Deferred) (SectorOnChainInfo, error) {
-	var si miner3.SectorOnChainInfo
-	err := si.UnmarshalCBOR(bytes.NewReader(val.Raw))
-	if err != nil {
-		return SectorOnChainInfo{}, err
-	}
-
-	return fromV3SectorOnChainInfo(si), nil
-}
-
-func (s *state3) precommits() (adt.Map, error) {
-	return adt3.AsMap(s.store, s.PreCommittedSectors, builtin3.DefaultHamtBitwidth)
-}
-
-func (s *state3) decodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (minertypes.SectorPreCommitOnChainInfo, error) {
-	var sp miner3.SectorPreCommitOnChainInfo
-	err := sp.UnmarshalCBOR(bytes.NewReader(val.Raw))
-	if err != nil {
-		return minertypes.SectorPreCommitOnChainInfo{}, err
-	}
-
-	return fromV3SectorPreCommitOnChainInfo(sp), nil
-}
-
 func (s *state3) EraseAllUnproven() error {
 
 	dls, err := s.State.LoadDeadlines(s.store)
@@ -552,4 +527,64 @@ func fromV3SectorPreCommitOnChainInfo(v3 miner3.SectorPreCommitOnChainInfo) mine
 
 func (s *state3) GetState() interface{} {
 	return &s.State
+}
+
+func (s *state3) ActorKey() string {
+	return actors.MinerKey
+}
+
+func (s *state3) ActorVersion() actors.Version {
+	return actors.Version3
+}
+
+func (s *state3) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
+}
+
+func (s *state3) SectorsArray() (adt.Array, error) {
+	return adt3.AsArray(s.store, s.Sectors, miner3.SectorsAmtBitwidth)
+}
+
+func (s *state3) SectorsAmtBitWidth() int {
+	return miner3.SectorsAmtBitwidth
+}
+
+func (s *state3) DecodeSectorOnChainInfo(val *cbg.Deferred) (SectorOnChainInfo, error) {
+	var si miner3.SectorOnChainInfo
+	err := si.UnmarshalCBOR(bytes.NewReader(val.Raw))
+	if err != nil {
+		return SectorOnChainInfo{}, err
+	}
+
+	return fromV3SectorOnChainInfo(si), nil
+}
+
+func (s *state3) PreCommitsMap() (adt.Map, error) {
+	return adt3.AsMap(s.store, s.PreCommittedSectors, builtin3.DefaultHamtBitwidth)
+}
+
+func (s *state3) PreCommitsMapBitWidth() int {
+	return builtin3.DefaultHamtBitwidth
+}
+
+func (s *state3) PreCommitsMapHashFunction() func(input []byte) []byte {
+	return func(input []byte) []byte {
+		res := sha256.Sum256(input)
+		return res[:]
+	}
+}
+
+func (s *state3) DecodeSectorPreCommitOnChainInfo(val *cbg.Deferred) (minertypes.SectorPreCommitOnChainInfo, error) {
+	var sp miner3.SectorPreCommitOnChainInfo
+	err := sp.UnmarshalCBOR(bytes.NewReader(val.Raw))
+	if err != nil {
+		return minertypes.SectorPreCommitOnChainInfo{}, err
+	}
+
+	return fromV3SectorPreCommitOnChainInfo(sp), nil
 }
