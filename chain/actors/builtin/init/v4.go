@@ -1,6 +1,9 @@
 package init
 
 import (
+	"crypto/sha256"
+	"fmt"
+
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
@@ -11,6 +14,7 @@ import (
 	init4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/init"
 	adt4 "github.com/filecoin-project/specs-actors/v4/actors/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
@@ -104,10 +108,38 @@ func (s *state4) SetAddressMap(mcid cid.Cid) error {
 	return nil
 }
 
+func (s *state4) GetState() interface{} {
+	return &s.State
+}
+
+func (s *state4) ActorKey() string {
+	return actors.InitKey
+}
+
+func (s *state4) ActorVersion() actors.Version {
+	return actors.Version4
+}
+
+func (s *state4) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
+}
+
 func (s *state4) AddressMap() (adt.Map, error) {
 	return adt4.AsMap(s.store, s.State.AddressMap, builtin4.DefaultHamtBitwidth)
 }
 
-func (s *state4) GetState() interface{} {
-	return &s.State
+func (s *state4) AddressMapBitWidth() int {
+	return builtin4.DefaultHamtBitwidth
+}
+
+func (s *state4) AddressMapHashFunction() func(input []byte) []byte {
+	return func(input []byte) []byte {
+		res := sha256.Sum256(input)
+		return res[:]
+	}
 }

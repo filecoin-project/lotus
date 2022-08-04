@@ -87,6 +87,28 @@ type State interface {
 	// Sets the address map for the init actor. This should only be used for testing.
 	SetAddressMap(mcid cid.Cid) error
 
-	AddressMap() (adt.Map, error)
 	GetState() interface{}
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actors.Version
+
+	AddressMap() (adt.Map, error)
+    AddressMapBitWidth() int
+    AddressMapHashFunction() func(input []byte) []byte
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
+}
+
+func VersionCodes() map[actors.Version]cid.Cid {
+	return map[actors.Version]cid.Cid{
+        {{- range .versions}}
+            actors.Version{{.}}: (&state{{.}}{}).Code(),
+        {{- end}}
+	}
 }
