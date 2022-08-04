@@ -5,6 +5,7 @@ import (
 
 	"github.com/minio/blake2b-simd"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -76,9 +77,17 @@ type State interface {
 	ForEachPendingTxn(func(id int64, txn Transaction) error) error
 	PendingTxnChanged(State) (bool, error)
 
-	transactions() (adt.Map, error)
-	decodeTransaction(val *cbg.Deferred) (Transaction, error)
 	GetState() interface{}
+
+	Code() cid.Cid
+	ActorKey() string
+	ActorVersion() actors.Version
+
+	PendingTransactionsMap() (adt.Map, error)
+	PendingTransactionsMapBitWidth() int
+	PendingTransactionsMapHashFunction() func(input []byte) []byte
+	DecodeTransaction(val *cbg.Deferred) (Transaction, error)
+
 }
 
 type Transaction = msig{{.latestVersion}}.Transaction
@@ -139,4 +148,19 @@ func txnParams(id uint64, data *ProposalHashData) ([]byte, error) {
 	}
 
 	return actors.SerializeParams(&params)
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
+}
+
+func VersionCodes() map[actors.Version]cid.Cid {
+	return map[actors.Version]cid.Cid{
+        {{- range .versions}}
+            actors.Version{{.}}: (&state{{.}}{}).Code(),
+        {{- end}}
+	}
 }

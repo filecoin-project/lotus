@@ -2,6 +2,7 @@ package multisig
 
 import (
 	"bytes"
+	"fmt"
 	"encoding/binary"
 
 
@@ -12,6 +13,13 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	"github.com/filecoin-project/lotus/chain/actors"
+
+    {{if (le .v 1)}}
+        sha256simd "github.com/minio/sha256-simd"
+    {{else}}
+        "crypto/sha256"
+    {{end}}
 
 {{if (le .v 7)}}
     {{if (ge .v 3)}}
@@ -116,11 +124,38 @@ func (s *state{{.v}}) PendingTxnChanged(other State) (bool, error) {
 	return !s.State.PendingTxns.Equals(other{{.v}}.PendingTxns), nil
 }
 
-func (s *state{{.v}}) transactions() (adt.Map, error) {
+func (s *state{{.v}}) GetState() interface{} {
+	return &s.State
+}
+
+func (s *state{{.v}}) PendingTransactionsMap() (adt.Map, error) {
 	return adt{{.v}}.AsMap(s.store, s.PendingTxns{{if (ge .v 3)}}, builtin{{.v}}.DefaultHamtBitwidth{{end}})
 }
 
-func (s *state{{.v}}) decodeTransaction(val *cbg.Deferred) (Transaction, error) {
+func (s *state{{.v}}) PendingTransactionsMapBitWidth() int {
+    {{- if (ge .v 3)}}
+        return builtin{{.v}}.DefaultHamtBitwidth
+    {{- else}}
+        return 5
+    {{- end}}
+}
+
+func (s *state{{.v}}) PendingTransactionsMapHashFunction() func(input []byte) []byte {
+    {{- if (le .v 1)}}
+        return func(input []byte) []byte {
+            res := sha256simd.Sum256(input)
+            return res[:]
+        }
+    {{- else}}
+        return func(input []byte) []byte {
+            res := sha256.Sum256(input)
+            return res[:]
+        }
+    {{- end}}
+}
+
+
+func (s *state{{.v}}) DecodeTransaction(val *cbg.Deferred) (Transaction, error) {
 	var tx msig{{.v}}.Transaction
 	if err := tx.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return Transaction{}, err
@@ -128,6 +163,19 @@ func (s *state{{.v}}) decodeTransaction(val *cbg.Deferred) (Transaction, error) 
 	return Transaction(tx), nil
 }
 
-func (s *state{{.v}}) GetState() interface{} {
-	return &s.State
+func (s *state{{.v}}) ActorKey() string {
+    return actors.MultisigKey
+}
+
+func (s *state{{.v}}) ActorVersion() actors.Version {
+    return actors.Version{{.v}}
+}
+
+func (s *state{{.v}}) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }

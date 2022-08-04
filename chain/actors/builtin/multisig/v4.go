@@ -2,7 +2,9 @@ package multisig
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"encoding/binary"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -14,6 +16,7 @@ import (
 	msig4 "github.com/filecoin-project/specs-actors/v4/actors/builtin/multisig"
 	adt4 "github.com/filecoin-project/specs-actors/v4/actors/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 )
 
@@ -100,11 +103,26 @@ func (s *state4) PendingTxnChanged(other State) (bool, error) {
 	return !s.State.PendingTxns.Equals(other4.PendingTxns), nil
 }
 
-func (s *state4) transactions() (adt.Map, error) {
+func (s *state4) GetState() interface{} {
+	return &s.State
+}
+
+func (s *state4) PendingTransactionsMap() (adt.Map, error) {
 	return adt4.AsMap(s.store, s.PendingTxns, builtin4.DefaultHamtBitwidth)
 }
 
-func (s *state4) decodeTransaction(val *cbg.Deferred) (Transaction, error) {
+func (s *state4) PendingTransactionsMapBitWidth() int {
+	return builtin4.DefaultHamtBitwidth
+}
+
+func (s *state4) PendingTransactionsMapHashFunction() func(input []byte) []byte {
+	return func(input []byte) []byte {
+		res := sha256.Sum256(input)
+		return res[:]
+	}
+}
+
+func (s *state4) DecodeTransaction(val *cbg.Deferred) (Transaction, error) {
 	var tx msig4.Transaction
 	if err := tx.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return Transaction{}, err
@@ -112,6 +130,19 @@ func (s *state4) decodeTransaction(val *cbg.Deferred) (Transaction, error) {
 	return Transaction(tx), nil
 }
 
-func (s *state4) GetState() interface{} {
-	return &s.State
+func (s *state4) ActorKey() string {
+	return actors.MultisigKey
+}
+
+func (s *state4) ActorVersion() actors.Version {
+	return actors.Version4
+}
+
+func (s *state4) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
 }
