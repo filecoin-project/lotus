@@ -538,20 +538,14 @@ var actorControlList = &cli.Command{
 			}
 			b := actor.Balance
 
-			var k address.Address
+			var k = a
 			// 'a' maybe a 'robust', in that case, 'StateAccountKey' returns an error.
 			if builtin2.IsAccountActor(actor.Code) {
 				if k, err = api.StateAccountKey(ctx, a, types.EmptyTSK); err != nil {
 					fmt.Printf("%s\t%s: error getting account key: %s\n", name, a, err)
 					return
 				}
-			} else { // if builtin2.IsMultisigActor(actor.Code), Are there any other cases exist?
-				if k, err = api.StateLookupRobustAddress(ctx, a, types.EmptyTSK); err != nil {
-					fmt.Printf("%s\t%s: error getting robust address: %s\n", name, a, err)
-					return
-				}
 			}
-
 			kstr := k.String()
 			if !cctx.Bool("verbose") {
 				kstr = kstr[:9] + "..."
