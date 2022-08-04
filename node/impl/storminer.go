@@ -32,18 +32,22 @@ import (
 	filmktsstore "github.com/filecoin-project/go-fil-markets/stores"
 	"github.com/filecoin-project/go-jsonrpc/auth"
 	"github.com/filecoin-project/go-state-types/abi"
+	"github.com/filecoin-project/go-state-types/big"
+	builtintypes "github.com/filecoin-project/go-state-types/builtin"
 	minertypes "github.com/filecoin-project/go-state-types/builtin/v8/miner"
 	"github.com/filecoin-project/go-state-types/network"
 
 	"github.com/filecoin-project/lotus/api"
 	apitypes "github.com/filecoin-project/lotus/api/types"
 	"github.com/filecoin-project/lotus/build"
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/types"
 	mktsdagstore "github.com/filecoin-project/lotus/markets/dagstore"
 	"github.com/filecoin-project/lotus/markets/storageadapter"
 	"github.com/filecoin-project/lotus/miner"
+	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
@@ -97,6 +101,9 @@ type StorageMinerAPI struct {
 	Epp gen.WinningPoStProver `optional:"true"`
 	DS  dtypes.MetadataDS
 
+	// StorageService is populated when we're not the main storage node (e.g. we're a markets node)
+	StorageService modules.MinerStorageService `optional:"true"`
+
 	ConsiderOnlineStorageDealsConfigFunc        dtypes.ConsiderOnlineStorageDealsConfigFunc        `optional:"true"`
 	SetConsiderOnlineStorageDealsConfigFunc     dtypes.SetConsiderOnlineStorageDealsConfigFunc     `optional:"true"`
 	ConsiderOnlineRetrievalDealsConfigFunc      dtypes.ConsiderOnlineRetrievalDealsConfigFunc      `optional:"true"`
@@ -118,6 +125,14 @@ type StorageMinerAPI struct {
 }
 
 var _ api.StorageMiner = &StorageMinerAPI{}
+
+func (sm *StorageMinerAPI) StorageAuthVerify(ctx context.Context, token string) ([]auth.Permission, error) {
+	if sm.StorageService != nil {
+		return sm.StorageService.AuthVerify(ctx, token)
+	}
+
+	return sm.AuthVerify(ctx, token)
+}
 
 func (sm *StorageMinerAPI) ServeRemote(perm bool) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -1266,4 +1281,44 @@ func (sm *StorageMinerAPI) ComputeProof(ctx context.Context, ssi []builtin.Exten
 
 func (sm *StorageMinerAPI) RuntimeSubsystems(context.Context) (res api.MinerSubsystems, err error) {
 	return sm.EnabledSubsystems, nil
+}
+
+func (sm *StorageMinerAPI) ActorWithdrawBalance(ctx context.Context, amount abi.TokenAmount) (cid.Cid, error) {
+	available, err := sm.Full.StateMinerAvailableBalance(ctx, sm.Miner.Address(), types.EmptyTSK)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("Error getting miner balance: %w", err)
+	}
+
+	if amount.GreaterThan(available) {
+		return cid.Undef, xerrors.Errorf("can't withdraw more funds than available; requested: %s; available: %s", types.FIL(amount), types.FIL(available))
+	}
+
+	if amount.Equals(big.Zero()) {
+		amount = available
+	}
+
+	params, err := actors.SerializeParams(&minertypes.WithdrawBalanceParams{
+		AmountRequested: amount,
+	})
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	mi, err := sm.Full.StateMinerInfo(ctx, sm.Miner.Address(), types.EmptyTSK)
+	if err != nil {
+		return cid.Undef, xerrors.Errorf("Error getting miner's owner address: %w", err)
+	}
+
+	smsg, err := sm.Full.MpoolPushMessage(ctx, &types.Message{
+		To:     sm.Miner.Address(),
+		From:   mi.Owner,
+		Value:  types.NewInt(0),
+		Method: builtintypes.MethodsMiner.WithdrawBalance,
+		Params: params,
+	}, nil)
+	if err != nil {
+		return cid.Undef, err
+	}
+
+	return smsg.Cid(), nil
 }

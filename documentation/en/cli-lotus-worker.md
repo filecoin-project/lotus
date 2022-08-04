@@ -11,6 +11,7 @@ VERSION:
 
 COMMANDS:
    run         Start lotus worker
+   stop        Stop a running lotus worker
    info        Print worker info
    storage     manage sector storage
    set         Manage worker settings
@@ -40,6 +41,7 @@ OPTIONS:
    --addpiece                    enable addpiece (default: true)
    --commit                      enable commit (32G sectors: all cores or GPUs, 128GiB Memory + 64GiB swap) (default: true)
    --listen value                host address and port the worker api will listen on (default: "0.0.0.0:3456")
+   --name value                  custom worker name (default: hostname) [$LOTUS_WORKER_NAME]
    --no-default                  disable all default compute tasks, use the worker for storage/fetching only (default: false)
    --no-local-storage            don't use storageminer repo for sector storage (default: false)
    --no-swap                     don't use swap (default: false)
@@ -55,6 +57,19 @@ OPTIONS:
    --unseal                      enable unsealing (32G sectors: 1 core, 128GiB Memory) (default: true)
    --windowpost                  enable window post (default: false)
    --winningpost                 enable winning post (default: false)
+   
+```
+
+## lotus-worker stop
+```
+NAME:
+   lotus-worker stop - Stop a running lotus worker
+
+USAGE:
+   lotus-worker stop [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
    
 ```
 

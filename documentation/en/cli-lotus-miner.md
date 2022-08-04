@@ -2021,11 +2021,11 @@ USAGE:
 COMMANDS:
    info       View current state information
    deadlines  View the current proving period deadlines information
-   deadline   View the current proving period deadline information by its index 
+   deadline   View the current proving period deadline information by its index
    faults     View the currently known proving faulty sectors information
    check      Check sectors provable
    workers    list workers
-   compute    
+   compute    Compute simulated proving tasks
    help, h    Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2055,20 +2055,21 @@ USAGE:
    lotus-miner proving deadlines [command options] [arguments...]
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --all, -a  Count all sectors (only live sectors are counted by default) (default: false)
    
 ```
 
 ### lotus-miner proving deadline
 ```
 NAME:
-   lotus-miner proving deadline - View the current proving period deadline information by its index 
+   lotus-miner proving deadline - View the current proving period deadline information by its index
 
 USAGE:
    lotus-miner proving deadline [command options] <deadlineIdx>
 
 OPTIONS:
-   --help, -h  show help (default: false)
+   --bitfield, -b     Print partition bitfield stats (default: false)
+   --sector-nums, -n  Print sector/fault numbers belonging to this deadline (default: false)
    
 ```
 
@@ -2117,7 +2118,7 @@ OPTIONS:
 ### lotus-miner proving compute
 ```
 NAME:
-   lotus-miner proving compute - A new cli application
+   lotus-miner proving compute - Compute simulated proving tasks
 
 USAGE:
    lotus-miner proving compute command [command options] [arguments...]

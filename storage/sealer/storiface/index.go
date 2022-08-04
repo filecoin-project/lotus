@@ -36,16 +36,55 @@ func ParseIDList(s string) IDList {
 type Group = string
 
 type StorageInfo struct {
-	ID         ID
-	URLs       []string // TODO: Support non-http transports
-	Weight     uint64
+	// ID is the UUID of the storage path
+	ID ID
+
+	// URLs for remote access
+	URLs []string // TODO: Support non-http transports
+
+	// Storage path weight; higher number means that the path will be preferred more often
+	Weight uint64
+
+	// MaxStorage is the number of bytes allowed to be used by files in the
+	// storage path
 	MaxStorage uint64
 
-	CanSeal  bool
+	// CanStore is true when the path is allowed to be used for io-intensive
+	// sealing operations
+	CanSeal bool
+
+	// CanStore is true when the path is allowed to be used for long-term storage
 	CanStore bool
 
-	Groups  []Group
+	// Groups is the list of path groups this path belongs to
+	Groups []Group
+
+	// AllowTo is the list of paths to which data from this path can be moved to
 	AllowTo []Group
+
+	// AllowTypes lists sector file types which are allowed to be put into this
+	// path. If empty, all file types are allowed.
+	//
+	// Valid values:
+	// - "unsealed"
+	// - "sealed"
+	// - "cache"
+	// - "update"
+	// - "update-cache"
+	// Any other value will generate a warning and be ignored.
+	AllowTypes []string
+
+	// DenyTypes lists sector file types which aren't allowed to be put into this
+	// path.
+	//
+	// Valid values:
+	// - "unsealed"
+	// - "sealed"
+	// - "cache"
+	// - "update"
+	// - "update-cache"
+	// Any other value will generate a warning and be ignored.
+	DenyTypes []string
 }
 
 type HealthReport struct {
@@ -63,6 +102,9 @@ type SectorStorageInfo struct {
 	CanStore bool
 
 	Primary bool
+
+	AllowTypes []string
+	DenyTypes  []string
 }
 
 type Decl struct {

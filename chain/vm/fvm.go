@@ -5,9 +5,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -281,7 +283,7 @@ func defaultFVMOpts(ctx context.Context, opts *VMOpts) (*ffi.FVMOpts, error) {
 		BaseCircSupply: circToReport,
 		NetworkVersion: opts.NetworkVersion,
 		StateBase:      opts.StateBase,
-		Tracing:        EnableDetailedTracing,
+		Tracing:        opts.Tracing || EnableDetailedTracing,
 	}, nil
 
 }
@@ -418,6 +420,7 @@ func NewDebugFVM(ctx context.Context, opts *VMOpts) (*FVM, error) {
 
 func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet, error) {
 	start := build.Clock.Now()
+	defer atomic.AddUint64(&StatApplied, 1)
 	vmMsg := cmsg.VMMessage()
 	msgBytes, err := vmMsg.Serialize()
 	if err != nil {
@@ -481,6 +484,8 @@ func (vm *FVM) ApplyMessage(ctx context.Context, cmsg types.ChainMsg) (*ApplyRet
 
 func (vm *FVM) ApplyImplicitMessage(ctx context.Context, cmsg *types.Message) (*ApplyRet, error) {
 	start := build.Clock.Now()
+	defer atomic.AddUint64(&StatApplied, 1)
+	cmsg.GasLimit = math.MaxInt64 / 2
 	vmMsg := cmsg.VMMessage()
 	msgBytes, err := vmMsg.Serialize()
 	if err != nil {

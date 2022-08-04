@@ -55,6 +55,7 @@ func main() {
 
 	local := []*cli.Command{
 		runCmd,
+		stopCmd,
 		infoCmd,
 		storageCmd,
 		setCmd,
@@ -115,6 +116,27 @@ func main() {
 	}
 }
 
+var stopCmd = &cli.Command{
+	Name:  "stop",
+	Usage: "Stop a running lotus worker",
+	Flags: []cli.Flag{},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetWorkerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+		err = api.Shutdown(ctx)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	},
+}
+
 var runCmd = &cli.Command{
 	Name:  "run",
 	Usage: "Start lotus worker",
@@ -136,6 +158,12 @@ var runCmd = &cli.Command{
 			Name:  "no-swap",
 			Usage: "don't use swap",
 			Value: false,
+		},
+		&cli.StringFlag{
+			Name:        "name",
+			Usage:       "custom worker name",
+			EnvVars:     []string{"LOTUS_WORKER_NAME"},
+			DefaultText: "hostname",
 		},
 		&cli.BoolFlag{
 			Name:  "addpiece",
@@ -491,6 +519,7 @@ var runCmd = &cli.Command{
 				NoSwap:                    cctx.Bool("no-swap"),
 				MaxParallelChallengeReads: cctx.Int("post-parallel-reads"),
 				ChallengeReadTimeout:      cctx.Duration("post-read-timeout"),
+				Name:                      cctx.String("name"),
 			}, remote, localStore, nodeApi, nodeApi, wsts),
 			LocalStore: localStore,
 			Storage:    lr,
@@ -621,6 +650,17 @@ var runCmd = &cli.Command{
 
 				redeclareStorage = true
 			}
+		}()
+
+		go func() {
+			<-workerApi.Done()
+			// Wait 20s to allow the miner to unregister the worker on next heartbeat
+			time.Sleep(20 * time.Second)
+			log.Warn("Shutting down...")
+			if err := srv.Shutdown(context.TODO()); err != nil {
+				log.Errorf("shutting down RPC server failed: %s", err)
+			}
+			log.Warn("Graceful shutdown successful")
 		}()
 
 		return srv.Serve(nl)

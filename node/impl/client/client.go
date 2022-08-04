@@ -660,7 +660,10 @@ func (a *API) ClientImportLocal(ctx context.Context, r io.Reader) (cid.Cid, erro
 	headerOff := reader.Header.DataOffset
 
 	// read the old header.
-	dr := reader.DataReader()
+	dr, err := reader.DataReader()
+	if err != nil {
+		return cid.Undef, fmt.Errorf("failed to get car data reader: %w", err)
+	}
 	header, err := readHeader(dr)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("failed to read car reader: %w", err)

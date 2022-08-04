@@ -69,8 +69,10 @@ type Manager struct {
 	workLk sync.Mutex
 	work   *statestore.StateStore
 
-	parallelCheckLimit     int
-	disallowRemoteFinalize bool
+	parallelCheckLimit        int
+	disableBuiltinWindowPoSt  bool
+	disableBuiltinWinningPoSt bool
+	disallowRemoteFinalize    bool
 
 	callToWork map[storiface.CallID]WorkID
 	// used when we get an early return and there's no callToWork mapping
@@ -114,13 +116,17 @@ type Config struct {
 	AllowProveReplicaUpdate2 bool
 	AllowRegenSectorKey      bool
 
+	LocalWorkerName string
+
 	// ResourceFiltering instructs the system which resource filtering strategy
 	// to use when evaluating tasks against this worker. An empty value defaults
 	// to "hardware".
 	ResourceFiltering ResourceFilteringStrategy
 
 	// PoSt config
-	ParallelCheckLimit int
+	ParallelCheckLimit        int
+	DisableBuiltinWindowPoSt  bool
+	DisableBuiltinWinningPoSt bool
 
 	DisallowRemoteFinalize bool
 
@@ -156,8 +162,10 @@ func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.Loc
 
 		localProver: prover,
 
-		parallelCheckLimit:     sc.ParallelCheckLimit,
-		disallowRemoteFinalize: sc.DisallowRemoteFinalize,
+		parallelCheckLimit:        sc.ParallelCheckLimit,
+		disableBuiltinWindowPoSt:  sc.DisableBuiltinWindowPoSt,
+		disableBuiltinWinningPoSt: sc.DisableBuiltinWinningPoSt,
+		disallowRemoteFinalize:    sc.DisallowRemoteFinalize,
 
 		work:       mss,
 		callToWork: map[storiface.CallID]WorkID{},
@@ -201,6 +209,7 @@ func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.Loc
 	wcfg := WorkerConfig{
 		IgnoreResourceFiltering: sc.ResourceFiltering == ResourceFilteringDisabled,
 		TaskTypes:               localTasks,
+		Name:                    sc.LocalWorkerName,
 	}
 	worker := NewLocalWorker(wcfg, stor, lstor, si, m, wss)
 	err = m.AddWorker(ctx, worker)
