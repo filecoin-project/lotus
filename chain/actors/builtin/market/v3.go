@@ -2,6 +2,7 @@ package market
 
 import (
 	"bytes"
+	"fmt"
 
 	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
@@ -12,6 +13,7 @@ import (
 	market3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/market"
 	adt3 "github.com/filecoin-project/specs-actors/v3/actors/util/adt"
 
+	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -164,7 +166,7 @@ func (s *dealStates3) ForEach(cb func(dealID abi.DealID, ds DealState) error) er
 	})
 }
 
-func (s *dealStates3) decode(val *cbg.Deferred) (*DealState, error) {
+func (s *dealStates3) Decode(val *cbg.Deferred) (*DealState, error) {
 	var ds3 market3.DealState
 	if err := ds3.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
@@ -173,7 +175,7 @@ func (s *dealStates3) decode(val *cbg.Deferred) (*DealState, error) {
 	return &ds, nil
 }
 
-func (s *dealStates3) array() adt.Array {
+func (s *dealStates3) StatesArray() adt.Array {
 	return s.Array
 }
 
@@ -215,7 +217,7 @@ func (s *dealProposals3) ForEach(cb func(dealID abi.DealID, dp DealProposal) err
 	})
 }
 
-func (s *dealProposals3) decode(val *cbg.Deferred) (*DealProposal, error) {
+func (s *dealProposals3) Decode(val *cbg.Deferred) (*DealProposal, error) {
 	var dp3 market3.DealProposal
 	if err := dp3.UnmarshalCBOR(bytes.NewReader(val.Raw)); err != nil {
 		return nil, err
@@ -229,7 +231,7 @@ func (s *dealProposals3) decode(val *cbg.Deferred) (*DealProposal, error) {
 	return &dp, nil
 }
 
-func (s *dealProposals3) array() adt.Array {
+func (s *dealProposals3) ProposalsArray() adt.Array {
 	return s.Array
 }
 
@@ -286,4 +288,29 @@ func (r *publishStorageDealsReturn3) IsDealValid(index uint64) (bool, int, error
 
 func (r *publishStorageDealsReturn3) DealIDs() ([]abi.DealID, error) {
 	return r.IDs, nil
+}
+
+func (s *state3) ActorKey() string {
+	return actors.MarketKey
+}
+
+func (s *state3) ActorVersion() actors.Version {
+	return actors.Version3
+}
+
+func (s *state3) Code() cid.Cid {
+	code, ok := actors.GetActorCodeID(s.ActorVersion(), s.ActorKey())
+	if !ok {
+		panic(fmt.Errorf("didn't find actor %v code id for actor version %d", s.ActorKey(), s.ActorVersion()))
+	}
+
+	return code
+}
+
+func (s *state3) DealProposalsAmtBitWidth() int {
+	return market3.ProposalsAmtBitwidth
+}
+
+func (s *state3) DealStatesAmtBitWidth() int {
+	return market3.StatesAmtBitwidth
 }

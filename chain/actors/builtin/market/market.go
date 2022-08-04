@@ -3,6 +3,7 @@ package market
 import (
 	"unicode/utf8"
 
+	"github.com/ipfs/go-cid"
 	cbg "github.com/whyrusleeping/cbor-gen"
 	"golang.org/x/xerrors"
 
@@ -111,14 +112,18 @@ type State interface {
 	LockedTable() (BalanceTable, error)
 	TotalLocked() (abi.TokenAmount, error)
 	StatesChanged(State) (bool, error)
-	States() (DealStates, error)
-	ProposalsChanged(State) (bool, error)
-	Proposals() (DealProposals, error)
 	VerifyDealsForActivation(
 		minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
 	) (weight, verifiedWeight abi.DealWeight, err error)
 	NextID() (abi.DealID, error)
 	GetState() interface{}
+
+	Proposals() (DealProposals, error)
+	ProposalsChanged(State) (bool, error)
+	DealProposalsAmtBitWidth() int
+
+	States() (DealStates, error)
+	DealStatesAmtBitWidth() int
 }
 
 type BalanceTable interface {
@@ -130,16 +135,16 @@ type DealStates interface {
 	ForEach(cb func(id abi.DealID, ds DealState) error) error
 	Get(id abi.DealID) (*DealState, bool, error)
 
-	array() adt.Array
-	decode(*cbg.Deferred) (*DealState, error)
+	StatesArray() adt.Array
+	Decode(*cbg.Deferred) (*DealState, error)
 }
 
 type DealProposals interface {
 	ForEach(cb func(id abi.DealID, dp market8.DealProposal) error) error
 	Get(id abi.DealID) (*market8.DealProposal, bool, error)
 
-	array() adt.Array
-	decode(*cbg.Deferred) (*market8.DealProposal, error)
+	ProposalsArray() adt.Array
+	Decode(*cbg.Deferred) (*market8.DealProposal, error)
 }
 
 type PublishStorageDealsReturn interface {
@@ -249,5 +254,31 @@ func labelFromGoString(s string) (market8.DealLabel, error) {
 		return market8.NewLabelFromString(s)
 	} else {
 		return market8.NewLabelFromBytes([]byte(s))
+	}
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{
+		(&state0{}).Code(),
+		(&state2{}).Code(),
+		(&state3{}).Code(),
+		(&state4{}).Code(),
+		(&state5{}).Code(),
+		(&state6{}).Code(),
+		(&state7{}).Code(),
+		(&state8{}).Code(),
+	}
+}
+
+func VersionCodes() map[actors.Version]cid.Cid {
+	return map[actors.Version]cid.Cid{
+		actors.Version0: (&state0{}).Code(),
+		actors.Version2: (&state2{}).Code(),
+		actors.Version3: (&state3{}).Code(),
+		actors.Version4: (&state4{}).Code(),
+		actors.Version5: (&state5{}).Code(),
+		actors.Version6: (&state6{}).Code(),
+		actors.Version7: (&state7{}).Code(),
+		actors.Version8: (&state8{}).Code(),
 	}
 }

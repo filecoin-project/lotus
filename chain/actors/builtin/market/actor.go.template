@@ -4,6 +4,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/filecoin-project/go-state-types/network"
+	"github.com/ipfs/go-cid"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
@@ -76,14 +77,18 @@ type State interface {
 	LockedTable() (BalanceTable, error)
 	TotalLocked() (abi.TokenAmount, error)
 	StatesChanged(State) (bool, error)
-	States() (DealStates, error)
-	ProposalsChanged(State) (bool, error)
-	Proposals() (DealProposals, error)
 	VerifyDealsForActivation(
 		minerAddr address.Address, deals []abi.DealID, currEpoch, sectorExpiry abi.ChainEpoch,
 	) (weight, verifiedWeight abi.DealWeight, err error)
 	NextID() (abi.DealID, error)
 	GetState() interface{}
+
+	Proposals() (DealProposals, error)
+	ProposalsChanged(State) (bool, error)
+	DealProposalsAmtBitWidth() int
+
+	States() (DealStates, error)
+	DealStatesAmtBitWidth() int
 }
 
 type BalanceTable interface {
@@ -95,16 +100,16 @@ type DealStates interface {
 	ForEach(cb func(id abi.DealID, ds DealState) error) error
 	Get(id abi.DealID) (*DealState, bool, error)
 
-	array() adt.Array
-	decode(*cbg.Deferred) (*DealState, error)
+	StatesArray() adt.Array
+	Decode(*cbg.Deferred) (*DealState, error)
 }
 
 type DealProposals interface {
 	ForEach(cb func(id abi.DealID, dp market{{.latestVersion}}.DealProposal) error) error
 	Get(id abi.DealID) (*market{{.latestVersion}}.DealProposal, bool, error)
 
-	array() adt.Array
-	decode(*cbg.Deferred) (*market{{.latestVersion}}.DealProposal, error)
+	ProposalsArray() adt.Array
+	Decode(*cbg.Deferred) (*market{{.latestVersion}}.DealProposal, error)
 }
 
 
@@ -194,5 +199,20 @@ func labelFromGoString(s string) (market{{.latestVersion}}.DealLabel, error) {
 		return market{{.latestVersion}}.NewLabelFromString(s)
 	} else {
 		return market{{.latestVersion}}.NewLabelFromBytes([]byte(s))
+	}
+}
+
+func AllCodes() []cid.Cid {
+	return []cid.Cid{ {{range .versions}}
+        (&state{{.}}{}).Code(),
+    {{- end}}
+    }
+}
+
+func VersionCodes() map[actors.Version]cid.Cid {
+	return map[actors.Version]cid.Cid{
+        {{- range .versions}}
+            actors.Version{{.}}: (&state{{.}}{}).Code(),
+        {{- end}}
 	}
 }
