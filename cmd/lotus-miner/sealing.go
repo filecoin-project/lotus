@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -38,6 +39,7 @@ var sealingCmd = &cli.Command{
 		sealingSchedDiagCmd,
 		sealingAbortCmd,
 		sealingDataCidCmd,
+		sealingStatsCmd,
 	},
 }
 
@@ -506,6 +508,57 @@ var sealingDataCidCmd = &cli.Command{
 		}
 
 		fmt.Println(pc.PieceCID, " ", pc.Size)
+		return nil
+	},
+}
+
+var sealingStatsCmd = &cli.Command{
+	Name:  "stats",
+	Usage: "Print sealing pipeline stats",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		stats, err := nodeApi.SectorPipelineStats(ctx)
+		if err != nil {
+			return err
+		}
+
+		fmt.Println("staging: ", stats.SectorsStaging)
+		fmt.Println("sealing: ", stats.SectorsSealing)
+		fmt.Println("open capacity: ", types.SizeStr(types.NewInt(stats.OpenCapacity)))
+		fmt.Println("open capacity estimates: ")
+
+		type estimate struct {
+			in    time.Duration
+			bytes string
+		}
+		estimates := make([]estimate, 0, len(stats.OpenCapacityEstimate))
+
+		for t, u := range stats.OpenCapacityEstimate {
+			usecs, err := strconv.ParseInt(t, 10, 64)
+			if err != nil {
+				return err
+			}
+			estimates = append(estimates, estimate{
+				in:    time.Unix(usecs, 0).Sub(time.Now()).Round(time.Minute),
+				bytes: types.SizeStr(types.NewInt(u)),
+			})
+		}
+
+		sort.Slice(estimates, func(i, j int) bool {
+			return estimates[i].in < estimates[j].in
+		})
+
+		for _, e := range estimates {
+			fmt.Printf("\t+%s\t%s\n", e.in, e.bytes)
+		}
+
 		return nil
 	},
 }

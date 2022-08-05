@@ -2286,6 +2286,7 @@ COMMANDS:
    sched-diag  Dump internal scheduler state
    abort       Abort a running job
    data-cid    Compute data CID using workers
+   stats       Print sealing pipeline stats
    help, h     Shows a list of commands or help for one command
 
 OPTIONS:
@@ -2356,5 +2357,18 @@ USAGE:
 
 OPTIONS:
    --file-size value  real file size (default: 0)
+   
+```
+
+### lotus-miner sealing stats
+```
+NAME:
+   lotus-miner sealing stats - Print sealing pipeline stats
+
+USAGE:
+   lotus-miner sealing stats [command options] [arguments...]
+
+OPTIONS:
+   --help, -h  show help (default: false)
    
 ```
