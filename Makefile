@@ -174,8 +174,8 @@ lotus-pond-app: lotus-pond-front lotus-pond
 
 lotus-fountain:
 	rm -f lotus-fountain
-	go build $(GOFLAGS) -o lotus-fountain ./cmd/lotus-fountain
-	go run github.com/GeertJohan/go.rice/rice append --exec lotus-fountain -i ./cmd/lotus-fountain -i ./build
+	$(GOCC) build $(GOFLAGS) -o lotus-fountain ./cmd/lotus-fountain
+	$(GOCC) run github.com/GeertJohan/go.rice/rice append --exec lotus-fountain -i ./cmd/lotus-fountain -i ./build
 .PHONY: lotus-fountain
 BINS+=lotus-fountain
 

@@ -128,6 +128,7 @@
   * [RuntimeSubsystems](#RuntimeSubsystems)
 * [Sealing](#Sealing)
   * [SealingAbort](#SealingAbort)
+  * [SealingRemoveRequest](#SealingRemoveRequest)
   * [SealingSchedDiag](#SealingSchedDiag)
 * [Sector](#Sector)
   * [SectorAbortUpgrade](#SectorAbortUpgrade)
@@ -2745,6 +2746,21 @@ Inputs:
     },
     "ID": "07070707-0707-0707-0707-070707070707"
   }
+]
+```
+
+Response: `{}`
+
+### SealingRemoveRequest
+SealingSchedRemove removes a request from sealing pipeline
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "07070707-0707-0707-0707-070707070707"
 ]
 ```
 
