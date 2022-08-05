@@ -181,7 +181,7 @@ func (t *TimedCacheBlockstore) AllKeysChan(_ context.Context) (<-chan cid.Cid, e
 	}
 	for _, b := range t.inactive {
 		c := b.Cid()
-		if _, ok := t.active[c.Hash().HexString()]; ok {
+		if _, ok := t.active[string(c.Hash())]; ok {
 			continue
 		}
 		ch <- c

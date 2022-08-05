@@ -38,7 +38,7 @@ func TestHotstoreCompactsOnce(t *testing.T) {
 	ctx := context.Background()
 	// disable sync checking because efficient itests require that the node is out of sync : /
 	splitstore.CheckSyncGap = false
-	opts := []interface{}{kit.MockProofs(), kit.WithCfgOpt(kit.SplitstoreDiscard())}
+	opts := []interface{}{kit.MockProofs(), kit.SplitstoreDiscard()}
 	full, genesisMiner, ens := kit.EnsembleMinimal(t, opts...)
 	bm := ens.InterconnectAll().BeginMining(4 * time.Millisecond)[0]
 	_ = full
@@ -55,7 +55,7 @@ func TestHotstoreCompactCleansGarbage(t *testing.T) {
 	ctx := context.Background()
 	// disable sync checking because efficient itests require that the node is out of sync : /
 	splitstore.CheckSyncGap = false
-	opts := []interface{}{kit.MockProofs(), kit.WithCfgOpt(kit.SplitstoreDiscard())}
+	opts := []interface{}{kit.MockProofs(), kit.SplitstoreDiscard()}
 	full, genesisMiner, ens := kit.EnsembleMinimal(t, opts...)
 	bm := ens.InterconnectAll().BeginMining(4 * time.Millisecond)[0]
 	_ = full
@@ -104,7 +104,7 @@ func TestColdStorePrune(t *testing.T) {
 	ctx := context.Background()
 	// disable sync checking because efficient itests require that the node is out of sync : /
 	splitstore.CheckSyncGap = false
-	opts := []interface{}{kit.MockProofs(), kit.WithCfgOpt(kit.SplitstoreUniversal()), kit.FsRepo()}
+	opts := []interface{}{kit.MockProofs(), kit.SplitstoreUniversal(), kit.FsRepo()}
 	full, genesisMiner, ens := kit.EnsembleMinimal(t, opts...)
 	bm := ens.InterconnectAll().BeginMining(4 * time.Millisecond)[0]
 	_ = full

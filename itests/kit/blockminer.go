@@ -261,7 +261,6 @@ func (bm *BlockMiner) MineBlocks(ctx context.Context, blocktime time.Duration) {
 			if paused := atomic.LoadInt64(&bm.pause); paused == 1 {
 				select {
 				case <-bm.unpause:
-					atomic.StoreInt64(&bm.pause, 0)
 				case <-ctx.Done():
 					return
 				}
@@ -302,7 +301,7 @@ func (bm *BlockMiner) Pause() {
 
 // Restart continues mining after a pause
 func (bm *BlockMiner) Restart() {
-	paused := atomic.LoadInt64(&bm.pause)
+	paused := atomic.SwapInt64(&bm.pause, 0)
 	require.True(bm.t, paused == 1, "invalid call of restart on un-paused state, no Pause or double Restart?")
 	bm.unpause <- struct{}{}
 }
@@ -361,6 +360,5 @@ func (bm *BlockMiner) Stop() {
 	bm.wg.Wait()
 	if bm.unpause != nil {
 		close(bm.unpause)
-		bm.unpause = nil
 	}
 }

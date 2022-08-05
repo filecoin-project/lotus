@@ -18,24 +18,24 @@ func NewMemory() MemBlockstore {
 type MemBlockstore map[string]blocks.Block
 
 func (m MemBlockstore) DeleteBlock(ctx context.Context, k cid.Cid) error {
-	delete(m, k.Hash().HexString())
+	delete(m, string(k.Hash()))
 	return nil
 }
 
 func (m MemBlockstore) DeleteMany(ctx context.Context, ks []cid.Cid) error {
 	for _, k := range ks {
-		delete(m, k.Hash().HexString())
+		delete(m, string(k.Hash()))
 	}
 	return nil
 }
 
 func (m MemBlockstore) Has(ctx context.Context, k cid.Cid) (bool, error) {
-	_, ok := m[k.Hash().HexString()]
+	_, ok := m[string(k.Hash())]
 	return ok, nil
 }
 
 func (m MemBlockstore) View(ctx context.Context, k cid.Cid, callback func([]byte) error) error {
-	b, ok := m[k.Hash().HexString()]
+	b, ok := m[string(k.Hash())]
 	if !ok {
 		return ipld.ErrNotFound{Cid: k}
 	}
@@ -43,7 +43,7 @@ func (m MemBlockstore) View(ctx context.Context, k cid.Cid, callback func([]byte
 }
 
 func (m MemBlockstore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error) {
-	b, ok := m[k.Hash().HexString()]
+	b, ok := m[string(k.Hash())]
 	if !ok {
 		return nil, ipld.ErrNotFound{Cid: k}
 	}
@@ -52,7 +52,7 @@ func (m MemBlockstore) Get(ctx context.Context, k cid.Cid) (blocks.Block, error)
 
 // GetSize returns the CIDs mapped BlockSize
 func (m MemBlockstore) GetSize(ctx context.Context, k cid.Cid) (int, error) {
-	b, ok := m[k.Hash().HexString()]
+	b, ok := m[string(k.Hash())]
 	if !ok {
 		return 0, ipld.ErrNotFound{Cid: k}
 	}
@@ -63,7 +63,7 @@ func (m MemBlockstore) GetSize(ctx context.Context, k cid.Cid) (int, error) {
 func (m MemBlockstore) Put(ctx context.Context, b blocks.Block) error {
 	// Convert to a basic block for safety, but try to reuse the existing
 	// block if it's already a basic block.
-	k := b.Cid().Hash().HexString()
+	k := string(b.Cid().Hash())
 	if _, ok := b.(*blocks.BasicBlock); !ok {
 		// If we already have the block, abort.
 		if _, ok := m[k]; ok {

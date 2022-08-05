@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
-	"os"
 	"sync"
 	"testing"
 	"time"
@@ -349,13 +348,7 @@ func (n *Ensemble) Start() *Ensemble {
 			n.t.Cleanup(rmem.Cleanup)
 			r = rmem
 		} else {
-			repoPath, err := ioutil.TempDir(os.TempDir(), "lotus-itest-fsrepo-temp-")
-			if err != nil {
-				panic(err) // only used in tests, probably fine
-			}
-			n.t.Cleanup(func() {
-				os.RemoveAll(repoPath) //nolint: errcheck
-			})
+			repoPath := n.t.TempDir()
 			rfs, err := repo.NewFS(repoPath)
 			require.NoError(n.t, err)
 			require.NoError(n.t, rfs.Init(repo.FullNode))

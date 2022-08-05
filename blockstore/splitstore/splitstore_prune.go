@@ -147,10 +147,10 @@ func (s *SplitStore) pruneChain(retainStateP func(int64) bool, doGC func() error
 }
 
 func (s *SplitStore) prune(curTs *types.TipSet, retainStateP func(int64) bool, doGC func() error) {
-	log.Info("waiting for active views to complete")
+	log.Debug("waiting for active views to complete")
 	start := time.Now()
 	s.viewWait()
-	log.Infow("waiting for active views done", "took", time.Since(start))
+	log.Debugw("waiting for active views done", "took", time.Since(start))
 
 	err := s.doPrune(curTs, retainStateP, doGC)
 	if err != nil {

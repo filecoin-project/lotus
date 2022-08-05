@@ -254,8 +254,8 @@ func WithCfgOpt(opt CfgOption) NodeOpt {
 
 type CfgOption func(cfg *config.FullNode) error
 
-func SplitstoreDiscard() CfgOption {
-	return func(cfg *config.FullNode) error {
+func SplitstoreDiscard() NodeOpt {
+	return WithCfgOpt(func(cfg *config.FullNode) error {
 		//cfg.Chainstore.Splitstore.HotStoreType = "badger" // default
 		//cfg.Chainstore.Splitstore.MarkSetType = "badger" // default
 		//cfg.Chainstore.Splitstore.HotStoreMessageRetention = 0 // default
@@ -263,11 +263,11 @@ func SplitstoreDiscard() CfgOption {
 		cfg.Chainstore.Splitstore.HotStoreFullGCFrequency = 0 // turn off full gc
 		cfg.Chainstore.Splitstore.ColdStoreType = "discard"   // no cold store
 		return nil
-	}
+	})
 }
 
-func SplitstoreUniversal() CfgOption {
-	return func(cfg *config.FullNode) error {
+func SplitstoreUniversal() NodeOpt {
+	return WithCfgOpt(func(cfg *config.FullNode) error {
 		//cfg.Chainstore.Splitstore.HotStoreType = "badger" // default
 		//cfg.Chainstore.Splitstore.MarkSetType = "badger" // default
 		//cfg.Chainstore.Splitstore.HotStoreMessageRetention = 0 // default
@@ -275,5 +275,5 @@ func SplitstoreUniversal() CfgOption {
 		cfg.Chainstore.Splitstore.HotStoreFullGCFrequency = 0 // turn off full gc
 		cfg.Chainstore.Splitstore.ColdStoreType = "universal" // universal bs is coldstore
 		return nil
-	}
+	})
 }
