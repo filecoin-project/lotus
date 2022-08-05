@@ -590,7 +590,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	coldCount := new(int64)
 	fCold := func(c cid.Cid) error {
 		// Nothing gets written to cold store during discard
-		if s.cfg.DiscardColdBlocks {
+		if s.cfg.DiscardColdBlocks { // TODO || cfg.Universal , universal and discard don't write to set
 			return nil
 		}
 
@@ -610,25 +610,25 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		atomic.AddInt64(coldCount, 1)
 		return nil
 	}
+	fHot := func(c cid.Cid) error {
+		if isUnitaryObject(c) {
+			return errStopWalk
+		}
 
-	err = s.walkChain(curTs, boundaryEpoch, inclMsgsEpoch, &noopVisitor{},
-		func(c cid.Cid) error {
-			if isUnitaryObject(c) {
-				return errStopWalk
-			}
+		visit, err := markSet.Visit(c)
+		if err != nil {
+			return xerrors.Errorf("error visiting object: %w", err)
+		}
 
-			visit, err := markSet.Visit(c)
-			if err != nil {
-				return xerrors.Errorf("error visiting object: %w", err)
-			}
+		if !visit {
+			return errStopWalk
+		}
 
-			if !visit {
-				return errStopWalk
-			}
+		atomic.AddInt64(count, 1)
+		return nil
+	}
 
-			atomic.AddInt64(count, 1)
-			return nil
-		})
+	err = s.walkChain(curTs, boundaryEpoch, inclMsgsEpoch, &noopVisitor{}, fHot, fCold)
 
 	if err != nil {
 		return xerrors.Errorf("error marking: %w", err)
@@ -693,7 +693,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 			return xerrors.Errorf("error checking cold mark set for %s: %w", c, err)
 		}
 
-		if !coldMark {
+		if !coldMark { // TODO && !s.cfg.unversal, universal mode will just mark everything as cold
 			return nil
 		}
 
@@ -924,7 +924,7 @@ func (s *SplitStore) endCriticalSection() {
 }
 
 func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEpoch,
-	visitor ObjectVisitor, f func(cid.Cid) error) error {
+	visitor ObjectVisitor, fHot, fCold func(cid.Cid) error) error {
 	var walked ObjectVisitor
 	var mx sync.Mutex
 	// we copy the tipset first into a new slice, which allows us to reuse it in every epoch.
@@ -946,7 +946,7 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 
 		atomic.AddInt64(walkCnt, 1)
 
-		if err := f(c); err != nil {
+		if err := fHot(c); err != nil {
 			return err
 		}
 
@@ -964,27 +964,36 @@ func (s *SplitStore) walkChain(ts *types.TipSet, inclState, inclMsgs abi.ChainEp
 			if inclMsgs < inclState {
 				// we need to use walkObjectIncomplete here, as messages/receipts may be missing early on if we
 				// synced from snapshot and have a long HotStoreMessageRetentionPolicy.
-				if err := s.walkObjectIncomplete(hdr.Messages, visitor, f, stopWalk); err != nil {
+				if err := s.walkObjectIncomplete(hdr.Messages, visitor, fHot, stopWalk); err != nil {
 					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 				}
 
-				if err := s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, f, stopWalk); err != nil {
+				if err := s.walkObjectIncomplete(hdr.ParentMessageReceipts, visitor, fHot, stopWalk); err != nil {
 					return xerrors.Errorf("error walking messages receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 				}
 			} else {
-				if err := s.walkObject(hdr.Messages, visitor, f); err != nil {
+				if err := s.walkObject(hdr.Messages, visitor, fHot); err != nil {
 					return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
 				}
 
-				if err := s.walkObject(hdr.ParentMessageReceipts, visitor, f); err != nil {
+				if err := s.walkObject(hdr.ParentMessageReceipts, visitor, fHot); err != nil {
 					return xerrors.Errorf("error walking message receipts (cid: %s): %w", hdr.ParentMessageReceipts, err)
 				}
 			}
 		}
 
+		// messages outside if inclMsgs may be included in the cold store
+		if hdr.Height < inclMsgs && hdr.Height > 0 {
+			if err := s.walkObjectIncomplete(hdr.Messages, visitor, fCold, stopWalk); err != nil {
+				return xerrors.Errorf("error walking messages (cid: %s): %w", hdr.Messages, err)
+			}
+		}
+
+		// TODO maybe also fCold states depending on a filtering function?  Maybe this comes later
+
 		// state is only retained if within the inclState boundary, with the exception of genesis
 		if hdr.Height >= inclState || hdr.Height == 0 {
-			if err := s.walkObject(hdr.ParentStateRoot, visitor, f); err != nil {
+			if err := s.walkObject(hdr.ParentStateRoot, visitor, fHot); err != nil {
 				return xerrors.Errorf("error walking state root (cid: %s): %w", hdr.ParentStateRoot, err)
 			}
 			atomic.AddInt64(scanCnt, 1)
