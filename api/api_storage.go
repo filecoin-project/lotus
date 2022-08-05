@@ -66,7 +66,7 @@ type StorageMiner interface {
 	SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (SectorInfo, error) //perm:read
 
 	// Get pipeline stats
-	SectorPipelineStats(ctx context.Context) (PipelineStats, error)
+	SectorPipelineStats(ctx context.Context) (PipelineStats, error) //perm:read
 
 	// Add piece to an open sector. If no sectors with enough space are open,
 	// either a new sector will be created, or this call will block until more

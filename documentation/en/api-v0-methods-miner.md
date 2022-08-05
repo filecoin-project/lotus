@@ -2940,7 +2940,7 @@ Response: `{}`
 Get pipeline stats
 
 
-Perms: 
+Perms: read
 
 Inputs: `null`
 

@@ -822,7 +822,7 @@ type StorageMinerStruct struct {
 
 		SectorMatchPendingPiecesToOpenSectors func(p0 context.Context) error `perm:"admin"`
 
-		SectorPipelineStats func(p0 context.Context) (PipelineStats, error) ``
+		SectorPipelineStats func(p0 context.Context) (PipelineStats, error) `perm:"read"`
 
 		SectorPreCommitFlush func(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) `perm:"admin"`
 
