@@ -562,6 +562,12 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	defer markSet.Close() //nolint:errcheck
 	defer s.debug.Flush()
 
+	coldSet, err := s.markSetEnv.New("cold", s.markSetSize)
+	if err != nil {
+		return xerrors.Errorf("error creating cold mark set: %w", err)
+	}
+	defer coldSet.Close() //nolint:errcheck
+
 	if err := s.checkClosing(); err != nil {
 		return err
 	}
@@ -580,6 +586,31 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	startMark := time.Now()
 
 	count := new(int64)
+
+	coldCount := new(int64)
+	fCold := func(c cid.Cid) error {
+		// Nothing gets written to cold store during discard
+		if s.cfg.DiscardColdBlocks {
+			return nil
+		}
+
+		if isUnitaryObject(c) {
+			return errStopWalk
+		}
+
+		visit, err := coldSet.Visit(c)
+		if err != nil {
+			return xerrors.Errorf("error visiting object: %w", err)
+		}
+
+		if !visit {
+			return errStopWalk
+		}
+
+		atomic.AddInt64(coldCount, 1)
+		return nil
+	}
+
 	err = s.walkChain(curTs, boundaryEpoch, inclMsgsEpoch, &noopVisitor{},
 		func(c cid.Cid) error {
 			if isUnitaryObject(c) {
@@ -631,8 +662,14 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	}
 	defer coldw.Close() //nolint:errcheck
 
+	purgew, err := NewColdSetWriter(s.deadSetPath())
+	if err != nil {
+		return xerrors.Errorf("error creating deadset: %w", err)
+	}
+	defer purgew.Close() //nolint:errcheck
+
 	// some stats for logging
-	var hotCnt, coldCnt int
+	var hotCnt, coldCnt, purgeCnt int
 	err = s.hot.ForEachKey(func(c cid.Cid) error {
 		// was it marked?
 		mark, err := markSet.Has(c)
@@ -645,9 +682,24 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 			return nil
 		}
 
-		// it's cold, mark it as candidate for move
+		// it needs to be removed from hot store, mark it as candidate for purge
+		if err := purgew.Write(c); err != nil {
+			return xerrors.Errorf("error writing cid to purge set: %w", err)
+		}
+		purgeCnt++
+
+		coldMark, err := coldSet.Has(c)
+		if err != nil {
+			return xerrors.Errorf("error checking cold mark set for %s: %w", c, err)
+		}
+
+		if !coldMark {
+			return nil
+		}
+
+		// it's cold, mark as candidate for move
 		if err := coldw.Write(c); err != nil {
-			return xerrors.Errorf("error writing cid to coldstore: %w", err)
+			return xerrors.Errorf("error writing cid to cold set")
 		}
 		coldCnt++
 
@@ -656,7 +708,9 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	if err != nil {
 		return xerrors.Errorf("error collecting cold objects: %w", err)
 	}
-
+	if err := purgew.Close(); err != nil {
+		return xerrors.Errorf("erroring closing purgeset: %w", err)
+	}
 	if err := coldw.Close(); err != nil {
 		return xerrors.Errorf("error closing coldset: %w", err)
 	}
@@ -705,6 +759,12 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 		}
 	}
 
+	purger, err := NewColdSetReader(s.deadSetPath())
+	if err != nil {
+		return xerrors.Errorf("error opening coldset: %w", err)
+	}
+	defer purger.Close() //nolint:errcheck
+
 	// 4. Purge cold objects with checkpointing for recovery.
 	// This is the critical section of compaction, whereby any cold object not in the markSet is
 	// considered already deleted.
@@ -736,7 +796,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	// 5. purge cold objects from the hotstore, taking protected references into account
 	log.Info("purging cold objects from the hotstore")
 	startPurge := time.Now()
-	err = s.purge(coldr, checkpoint, markSet)
+	err = s.purge(purger, checkpoint, markSet)
 	if err != nil {
 		return xerrors.Errorf("error purging cold objects: %w", err)
 	}
