@@ -79,6 +79,10 @@ type Worker interface {
 
 	// Like ProcessSession, but returns an error when worker is disabled
 	Session(context.Context) (uuid.UUID, error) //perm:admin
+
+	// Trigger shutdown
+	Shutdown(context.Context) error //perm:admin
+
 }
 
 var _ storiface.WorkerCalls = *new(Worker)

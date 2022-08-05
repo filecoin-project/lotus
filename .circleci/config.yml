@@ -587,14 +587,26 @@ jobs:
           name: install snapcraft
           command: sudo snap install snapcraft --classic
       - run:
-          name: build snap
+          name: build `lotus-filecoin` snap
           command: snapcraft --use-lxd --debug
       - run:
-          name: publish snap
+          name: publish `lotus-filecoin` snap
+          shell: /bin/bash -o pipefail
           command: |
-            pwd
-            ls *.snap
             snapcraft upload lotus-filecoin_latest_amd64.snap --release << parameters.channel >>
+      - run:
+          name: Rewrite snapcraft.yaml to use `lotus` name
+          command:
+            cat snap/snapcraft.yaml | sed 's/lotus-filecoin/lotus/' > lotus-snapcraft.yaml
+            mv lotus-snapcrat.yaml snap/snapcraft.yaml
+      - run:
+          name: build `lotus` snap
+          command: snapcraft --use-lxd --debug
+      - run:
+          name: publish `lotus` snap
+          shell: /bin/bash -o pipefail
+          command: |
+            snapcraft upload lotus_latest_amd64.snap --release << parameters.channel >>
 
   build-and-push-image:
     description: build and push docker images to public AWS ECR registry
@@ -746,26 +758,32 @@ jobs:
           name: docker build
           command: |
             docker build --target lotus -t filecoin/lotus:<< parameters.tag >> -f Dockerfile.lotus .
+            docker build --target lotus-gateway -t filecoin/lotus-gateway:<< parameters.tag >> -f Dockerfile.lotus .
             docker build --target lotus-all-in-one -t filecoin/lotus-all-in-one:<< parameters.tag >> -f Dockerfile.lotus .
             if [[ ! -z $CIRCLE_SHA1 ]]; then
               docker build --target lotus -t filecoin/lotus:$CIRCLE_SHA1 -f Dockerfile.lotus .
+              docker build --target lotus-gateway -t filecoin/lotus-gateway:$CIRCLE_SHA1 -f Dockerfile.lotus .
               docker build --target lotus-all-in-one -t filecoin/lotus-all-in-one:$CIRCLE_SHA1 -f Dockerfile.lotus .
             fi
             if [[ ! -z $CIRCLE_TAG ]]; then
               docker build --target lotus -t filecoin/lotus:$CIRCLE_TAG -f Dockerfile.lotus .
+              docker build --target lotus-gateway -t filecoin/lotus-gateway:$CIRCLE_TAG -f Dockerfile.lotus .
               docker build --target lotus-all-in-one -t filecoin/lotus-all-in-one:$CIRCLE_TAG -f Dockerfile.lotus .
             fi
       - run:
           name: docker push
           command: |
             docker push filecoin/lotus:<< parameters.tag >>
+            docker push filecoin/lotus-gateway:<< parameters.tag >>
             docker push filecoin/lotus-all-in-one:<< parameters.tag >>
             if [[ ! -z $CIRCLE_SHA1 ]]; then
               docker push filecoin/lotus:$CIRCLE_SHA1
+              docker push filecoin/lotus-gateway:$CIRCLE_SHA1
               docker push filecoin/lotus-all-in-one:$CIRCLE_SHA1
             fi
             if [[ ! -z $CIRCLE_TAG ]]; then
               docker push filecoin/lotus:$CIRCLE_TAG
+              docker push filecoin/lotus-gateway:$CIRCLE_TAG
               docker push filecoin/lotus-all-in-one:$CIRCLE_TAG
             fi
 

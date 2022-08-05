@@ -6,6 +6,7 @@
   * [Paths](#Paths)
   * [Remove](#Remove)
   * [Session](#Session)
+  * [Shutdown](#Shutdown)
   * [Version](#Version)
 * [Add](#Add)
   * [AddPiece](#AddPiece)
@@ -1455,6 +1456,16 @@ Perms: admin
 Inputs: `null`
 
 Response: `"07070707-0707-0707-0707-070707070707"`
+
+### Shutdown
+Trigger shutdown
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response: `{}`
 
 ### Version
 

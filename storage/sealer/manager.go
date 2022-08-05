@@ -116,6 +116,8 @@ type Config struct {
 	AllowProveReplicaUpdate2 bool
 	AllowRegenSectorKey      bool
 
+	LocalWorkerName string
+
 	// ResourceFiltering instructs the system which resource filtering strategy
 	// to use when evaluating tasks against this worker. An empty value defaults
 	// to "hardware".
@@ -207,6 +209,7 @@ func New(ctx context.Context, lstor *paths.Local, stor paths.Store, ls paths.Loc
 	wcfg := WorkerConfig{
 		IgnoreResourceFiltering: sc.ResourceFiltering == ResourceFilteringDisabled,
 		TaskTypes:               localTasks,
+		Name:                    sc.LocalWorkerName,
 	}
 	worker := NewLocalWorker(wcfg, stor, lstor, si, m, wss)
 	err = m.AddWorker(ctx, worker)
