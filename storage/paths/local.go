@@ -218,6 +218,10 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		return xerrors.Errorf("unmarshalling storage metadata for %s: %w", p, err)
 	}
 
+	if p, exists := st.paths[meta.ID]; exists {
+		return xerrors.Errorf("path with ID %s already opened: '%s'", meta.ID, p.local)
+	}
+
 	// TODO: Check existing / dedupe
 
 	out := &path{
@@ -249,11 +253,30 @@ func (st *Local) OpenPath(ctx context.Context, p string) error {
 		return xerrors.Errorf("declaring storage in index: %w", err)
 	}
 
-	if err := st.declareSectors(ctx, p, meta.ID, meta.CanStore); err != nil {
+	if err := st.declareSectors(ctx, p, meta.ID, meta.CanStore, false); err != nil {
 		return err
 	}
 
 	st.paths[meta.ID] = out
+
+	return nil
+}
+
+func (st *Local) ClosePath(ctx context.Context, id storiface.ID) error {
+	st.localLk.Lock()
+	defer st.localLk.Unlock()
+
+	if _, exists := st.paths[id]; !exists {
+		return xerrors.Errorf("path with ID %s isn't opened", id)
+	}
+
+	for _, url := range st.urls {
+		if err := st.index.StorageDetach(ctx, id, url); err != nil {
+			return xerrors.Errorf("dropping path (id='%s' url='%s'): %w", id, url, err)
+		}
+	}
+
+	delete(st.paths, id)
 
 	return nil
 }
@@ -276,7 +299,7 @@ func (st *Local) open(ctx context.Context) error {
 	return nil
 }
 
-func (st *Local) Redeclare(ctx context.Context) error {
+func (st *Local) Redeclare(ctx context.Context, filterId *storiface.ID, dropMissingDecls bool) error {
 	st.localLk.Lock()
 	defer st.localLk.Unlock()
 
@@ -300,6 +323,9 @@ func (st *Local) Redeclare(ctx context.Context) error {
 			log.Errorf("storage path ID changed: %s; %s -> %s", p.local, id, meta.ID)
 			continue
 		}
+		if filterId != nil && *filterId != id {
+			continue
+		}
 
 		err = st.index.StorageAttach(ctx, storiface.StorageInfo{
 			ID:         id,
@@ -317,7 +343,7 @@ func (st *Local) Redeclare(ctx context.Context) error {
 			return xerrors.Errorf("redeclaring storage in index: %w", err)
 		}
 
-		if err := st.declareSectors(ctx, p.local, meta.ID, meta.CanStore); err != nil {
+		if err := st.declareSectors(ctx, p.local, meta.ID, meta.CanStore, dropMissingDecls); err != nil {
 			return xerrors.Errorf("redeclaring sectors: %w", err)
 		}
 	}
@@ -325,7 +351,24 @@ func (st *Local) Redeclare(ctx context.Context) error {
 	return nil
 }
 
-func (st *Local) declareSectors(ctx context.Context, p string, id storiface.ID, primary bool) error {
+func (st *Local) declareSectors(ctx context.Context, p string, id storiface.ID, primary, dropMissing bool) error {
+	indexed := map[storiface.Decl]struct{}{}
+	if dropMissing {
+		decls, err := st.index.StorageList(ctx)
+		if err != nil {
+			return xerrors.Errorf("getting declaration list: %w", err)
+		}
+
+		for _, decl := range decls[id] {
+			for _, fileType := range decl.SectorFileType.AllSet() {
+				indexed[storiface.Decl{
+					SectorID:       decl.SectorID,
+					SectorFileType: fileType,
+				}] = struct{}{}
+			}
+		}
+	}
+
 	for _, t := range storiface.PathTypes {
 		ents, err := ioutil.ReadDir(filepath.Join(p, t.String()))
 		if err != nil {
@@ -349,8 +392,25 @@ func (st *Local) declareSectors(ctx context.Context, p string, id storiface.ID, 
 				return xerrors.Errorf("parse sector id %s: %w", ent.Name(), err)
 			}
 
+			delete(indexed, storiface.Decl{
+				SectorID:       sid,
+				SectorFileType: t,
+			})
+
 			if err := st.index.StorageDeclareSector(ctx, id, sid, t, primary); err != nil {
 				return xerrors.Errorf("declare sector %d(t:%d) -> %s: %w", sid, t, id, err)
+			}
+		}
+	}
+
+	if len(indexed) > 0 {
+		log.Warnw("index contains sectors which are missing in the storage path", "count", len(indexed), "dropMissing", dropMissing)
+	}
+
+	if dropMissing {
+		for decl := range indexed {
+			if err := st.index.StorageDropSector(ctx, id, decl.SectorID, decl.SectorFileType); err != nil {
+				return xerrors.Errorf("dropping sector %v from index: %w", decl, err)
 			}
 		}
 	}

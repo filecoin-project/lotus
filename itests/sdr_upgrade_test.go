@@ -95,7 +95,7 @@ func TestSDRUpgrade(t *testing.T) {
 	// before.
 	miner.PledgeSectors(ctx, 9, 0, pledge)
 
-	s, err := miner.SectorsList(ctx)
+	s, err := miner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)
 	sort.Slice(s, func(i, j int) bool {
 		return s[i] < s[j]

@@ -99,6 +99,18 @@ func (t SectorFileType) Strings() []string {
 	return out
 }
 
+func (t SectorFileType) AllSet() []SectorFileType {
+	var out []SectorFileType
+	for _, fileType := range PathTypes {
+		if fileType&t == 0 {
+			continue
+		}
+
+		out = append(out, fileType)
+	}
+	return out
+}
+
 func (t SectorFileType) Has(singleType SectorFileType) bool {
 	return t&singleType == singleType
 }

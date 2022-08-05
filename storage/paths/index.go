@@ -30,6 +30,7 @@ var SkippedHeartbeatThresh = HeartbeatInterval * 5
 
 type SectorIndex interface { // part of storage-miner api
 	StorageAttach(context.Context, storiface.StorageInfo, fsutil.FsStat) error
+	StorageDetach(ctx context.Context, id storiface.ID, url string) error
 	StorageInfo(context.Context, storiface.ID) (storiface.StorageInfo, error)
 	StorageReportHealth(context.Context, storiface.ID, storiface.HealthReport) error
 
@@ -214,6 +215,94 @@ func (i *Index) StorageAttach(ctx context.Context, si storiface.StorageInfo, st 
 
 		lastHeartbeat: time.Now(),
 	}
+	return nil
+}
+
+func (i *Index) StorageDetach(ctx context.Context, id storiface.ID, url string) error {
+	i.lk.Lock()
+	defer i.lk.Unlock()
+
+	// ent: *storageEntry
+	ent, ok := i.stores[id]
+	if !ok {
+		return xerrors.Errorf("storage '%s' isn't registered", id)
+	}
+
+	// check if this is the only path provider/url for this pathID
+	drop := true
+	if len(ent.info.URLs) > 0 {
+		drop = len(ent.info.URLs) == 1 // only one url
+
+		if drop && ent.info.URLs[0] != url {
+			return xerrors.Errorf("not dropping path, requested and index urls don't match ('%s' != '%s')", url, ent.info.URLs[0])
+		}
+	}
+
+	if drop {
+		if a, hasAlert := i.pathAlerts[id]; hasAlert && i.alerting != nil {
+			if i.alerting.IsRaised(a) {
+				i.alerting.Resolve(a, map[string]string{
+					"message": "path detached",
+				})
+			}
+			delete(i.pathAlerts, id)
+		}
+
+		// stats
+		var droppedEntries, primaryEntries, droppedDecls int
+
+		// drop declarations
+		for decl, dms := range i.sectors {
+			var match bool
+			for _, dm := range dms {
+				if dm.storage == id {
+					match = true
+					droppedEntries++
+					if dm.primary {
+						primaryEntries++
+					}
+					break
+				}
+			}
+
+			// if no entries match, nothing to do here
+			if !match {
+				continue
+			}
+
+			// if there's a match, and only one entry, drop the whole declaration
+			if len(dms) <= 1 {
+				delete(i.sectors, decl)
+				droppedDecls++
+				continue
+			}
+
+			// rewrite entries with the path we're dropping filtered out
+			filtered := make([]*declMeta, 0, len(dms)-1)
+			for _, dm := range dms {
+				if dm.storage != id {
+					filtered = append(filtered, dm)
+				}
+			}
+
+			i.sectors[decl] = filtered
+		}
+
+		delete(i.stores, id)
+
+		log.Warnw("Dropping sector storage", "path", id, "url", url, "droppedEntries", droppedEntries, "droppedPrimaryEntries", primaryEntries, "droppedDecls", droppedDecls)
+	} else {
+		newUrls := make([]string, 0, len(ent.info.URLs))
+		for _, u := range ent.info.URLs {
+			if u != url {
+				newUrls = append(newUrls, u)
+			}
+		}
+		ent.info.URLs = newUrls
+
+		log.Warnw("Dropping sector path endpoint", "path", id, "url", url)
+	}
+
 	return nil
 }
 

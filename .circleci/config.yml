@@ -938,6 +938,11 @@ workflows:
           target: "./itests/nonce_test.go"
       
       - test:
+          name: test-itest-path_detach_redeclare
+          suite: itest-path_detach_redeclare
+          target: "./itests/path_detach_redeclare_test.go"
+      
+      - test:
           name: test-itest-path_type_filters
           suite: itest-path_type_filters
           target: "./itests/path_type_filters_test.go"

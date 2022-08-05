@@ -864,6 +864,10 @@ type StorageMinerStruct struct {
 
 		StorageDeclareSector func(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType, p4 bool) error `perm:"admin"`
 
+		StorageDetach func(p0 context.Context, p1 storiface.ID, p2 string) error `perm:"admin"`
+
+		StorageDetachLocal func(p0 context.Context, p1 string) error `perm:"admin"`
+
 		StorageDropSector func(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error `perm:"admin"`
 
 		StorageFindSector func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 abi.SectorSize, p4 bool) ([]storiface.SectorStorageInfo, error) `perm:"admin"`
@@ -877,6 +881,8 @@ type StorageMinerStruct struct {
 		StorageLocal func(p0 context.Context) (map[storiface.ID]string, error) `perm:"admin"`
 
 		StorageLock func(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) error `perm:"admin"`
+
+		StorageRedeclareLocal func(p0 context.Context, p1 *storiface.ID, p2 bool) error `perm:"admin"`
 
 		StorageReportHealth func(p0 context.Context, p1 storiface.ID, p2 storiface.HealthReport) error `perm:"admin"`
 
@@ -972,6 +978,12 @@ type WorkerStruct struct {
 		Shutdown func(p0 context.Context) error `perm:"admin"`
 
 		StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
+
+		StorageDetachLocal func(p0 context.Context, p1 string) error `perm:"admin"`
+
+		StorageLocal func(p0 context.Context) (map[storiface.ID]string, error) `perm:"admin"`
+
+		StorageRedeclareLocal func(p0 context.Context, p1 *storiface.ID, p2 bool) error `perm:"admin"`
 
 		TaskDisable func(p0 context.Context, p1 sealtasks.TaskType) error `perm:"admin"`
 
@@ -5104,6 +5116,28 @@ func (s *StorageMinerStub) StorageDeclareSector(p0 context.Context, p1 storiface
 	return ErrNotSupported
 }
 
+func (s *StorageMinerStruct) StorageDetach(p0 context.Context, p1 storiface.ID, p2 string) error {
+	if s.Internal.StorageDetach == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageDetach(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) StorageDetach(p0 context.Context, p1 storiface.ID, p2 string) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) StorageDetachLocal(p0 context.Context, p1 string) error {
+	if s.Internal.StorageDetachLocal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageDetachLocal(p0, p1)
+}
+
+func (s *StorageMinerStub) StorageDetachLocal(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
 func (s *StorageMinerStruct) StorageDropSector(p0 context.Context, p1 storiface.ID, p2 abi.SectorID, p3 storiface.SectorFileType) error {
 	if s.Internal.StorageDropSector == nil {
 		return ErrNotSupported
@@ -5178,6 +5212,17 @@ func (s *StorageMinerStruct) StorageLock(p0 context.Context, p1 abi.SectorID, p2
 }
 
 func (s *StorageMinerStub) StorageLock(p0 context.Context, p1 abi.SectorID, p2 storiface.SectorFileType, p3 storiface.SectorFileType) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) StorageRedeclareLocal(p0 context.Context, p1 *storiface.ID, p2 bool) error {
+	if s.Internal.StorageRedeclareLocal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageRedeclareLocal(p0, p1, p2)
+}
+
+func (s *StorageMinerStub) StorageRedeclareLocal(p0 context.Context, p1 *storiface.ID, p2 bool) error {
 	return ErrNotSupported
 }
 
@@ -5607,6 +5652,39 @@ func (s *WorkerStruct) StorageAddLocal(p0 context.Context, p1 string) error {
 }
 
 func (s *WorkerStub) StorageAddLocal(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
+func (s *WorkerStruct) StorageDetachLocal(p0 context.Context, p1 string) error {
+	if s.Internal.StorageDetachLocal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageDetachLocal(p0, p1)
+}
+
+func (s *WorkerStub) StorageDetachLocal(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
+func (s *WorkerStruct) StorageLocal(p0 context.Context) (map[storiface.ID]string, error) {
+	if s.Internal.StorageLocal == nil {
+		return *new(map[storiface.ID]string), ErrNotSupported
+	}
+	return s.Internal.StorageLocal(p0)
+}
+
+func (s *WorkerStub) StorageLocal(p0 context.Context) (map[storiface.ID]string, error) {
+	return *new(map[storiface.ID]string), ErrNotSupported
+}
+
+func (s *WorkerStruct) StorageRedeclareLocal(p0 context.Context, p1 *storiface.ID, p2 bool) error {
+	if s.Internal.StorageRedeclareLocal == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageRedeclareLocal(p0, p1, p2)
+}
+
+func (s *WorkerStub) StorageRedeclareLocal(p0 context.Context, p1 *storiface.ID, p2 bool) error {
 	return ErrNotSupported
 }
 

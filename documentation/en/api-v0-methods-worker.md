@@ -39,6 +39,9 @@
   * [SetEnabled](#SetEnabled)
 * [Storage](#Storage)
   * [StorageAddLocal](#StorageAddLocal)
+  * [StorageDetachLocal](#StorageDetachLocal)
+  * [StorageLocal](#StorageLocal)
+  * [StorageRedeclareLocal](#StorageRedeclareLocal)
 * [Task](#Task)
   * [TaskDisable](#TaskDisable)
   * [TaskEnable](#TaskEnable)
@@ -2113,6 +2116,49 @@ Inputs:
 ```json
 [
   "string value"
+]
+```
+
+Response: `{}`
+
+### StorageDetachLocal
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
+
+### StorageLocal
+
+
+Perms: admin
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "76f1988b-ef30-4d7e-b3ec-9a627f4ba5a8": "/data/path"
+}
+```
+
+### StorageRedeclareLocal
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  "1399aa04-2625-44b1-bad4-bd07b59b22c4",
+  true
 ]
 ```
 

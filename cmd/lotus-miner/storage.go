@@ -46,6 +46,8 @@ long term for proving (references as 'store') as well as how sectors will be
 stored while moving through the sealing pipeline (references as 'seal').`,
 	Subcommands: []*cli.Command{
 		storageAttachCmd,
+		storageDetachCmd,
+		storageRedeclareCmd,
 		storageListCmd,
 		storageFindCmd,
 		storageCleanupCmd,
@@ -171,6 +173,82 @@ over time
 		}
 
 		return nodeApi.StorageAddLocal(ctx, p)
+	},
+}
+
+var storageDetachCmd = &cli.Command{
+	Name:  "detach",
+	Usage: "detach local storage path",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name: "really-do-it",
+		},
+	},
+	ArgsUsage: "[path]",
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return xerrors.Errorf("must specify storage path")
+		}
+
+		p, err := homedir.Expand(cctx.Args().First())
+		if err != nil {
+			return xerrors.Errorf("expanding path: %w", err)
+		}
+
+		if !cctx.Bool("really-do-it") {
+			return xerrors.Errorf("pass --really-do-it to execute the action")
+		}
+
+		return nodeApi.StorageDetachLocal(ctx, p)
+	},
+}
+
+var storageRedeclareCmd = &cli.Command{
+	Name:  "redeclare",
+	Usage: "redeclare sectors in a local storage path",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "id",
+			Usage: "storage path ID",
+		},
+		&cli.BoolFlag{
+			Name:  "all",
+			Usage: "redeclare all storage paths",
+		},
+		&cli.BoolFlag{
+			Name:  "drop-missing",
+			Usage: "Drop index entries with missing files",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		if cctx.IsSet("id") && cctx.Bool("all") {
+			return xerrors.Errorf("--id and --all can't be passed at the same time")
+		}
+
+		if cctx.IsSet("id") {
+			id := storiface.ID(cctx.String("id"))
+			return nodeApi.StorageRedeclareLocal(ctx, &id, cctx.Bool("drop-missing"))
+		}
+
+		if cctx.Bool("all") {
+			return nodeApi.StorageRedeclareLocal(ctx, nil, cctx.Bool("drop-missing"))
+		}
+
+		return xerrors.Errorf("either --all or --id must be specified")
 	},
 }
 

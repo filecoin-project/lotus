@@ -96,7 +96,7 @@ func TestMinerBalanceCollateral(t *testing.T) {
 		}
 
 		// check that sector messages had zero value set
-		sl, err := miner.SectorsList(ctx)
+		sl, err := miner.SectorsListNonGenesis(ctx)
 		require.NoError(t, err)
 
 		for _, number := range sl {
