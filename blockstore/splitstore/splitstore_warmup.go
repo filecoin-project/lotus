@@ -21,14 +21,14 @@ var (
 	WarmupBoundary = build.Finality
 )
 
-// warmup acuiqres the compaction lock and spawns a goroutine to warm up the hotstore;
+// warmup acquires the compaction lock and spawns a goroutine to warm up the hotstore;
 // this is necessary when we sync from a snapshot or when we enable the splitstore
 // on top of an existing blockstore (which becomes the coldstore).
 func (s *SplitStore) warmup(curTs *types.TipSet) error {
 	if !atomic.CompareAndSwapInt32(&s.compacting, 0, 1) {
 		return xerrors.Errorf("error locking compaction")
 	}
-
+	s.compactType = warmup
 	go func() {
 		defer atomic.StoreInt32(&s.compacting, 0)
 

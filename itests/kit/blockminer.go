@@ -29,15 +29,19 @@ type BlockMiner struct {
 	miner *TestMiner
 
 	nextNulls int64
+	pause     chan struct{}
+	unpause   chan struct{}
 	wg        sync.WaitGroup
 	cancel    context.CancelFunc
 }
 
 func NewBlockMiner(t *testing.T, miner *TestMiner) *BlockMiner {
 	return &BlockMiner{
-		t:      t,
-		miner:  miner,
-		cancel: func() {},
+		t:       t,
+		miner:   miner,
+		cancel:  func() {},
+		unpause: make(chan struct{}),
+		pause:   make(chan struct{}),
 	}
 }
 
@@ -256,6 +260,18 @@ func (bm *BlockMiner) MineBlocks(ctx context.Context, blocktime time.Duration) {
 
 		for {
 			select {
+			case <-bm.pause:
+				select {
+				case <-bm.unpause:
+				case <-ctx.Done():
+					return
+				}
+			case <-ctx.Done():
+				return
+			default:
+			}
+
+			select {
 			case <-time.After(blocktime):
 			case <-ctx.Done():
 				return
@@ -281,6 +297,16 @@ func (bm *BlockMiner) MineBlocks(ctx context.Context, blocktime time.Duration) {
 // mining rounds.
 func (bm *BlockMiner) InjectNulls(rounds abi.ChainEpoch) {
 	atomic.AddInt64(&bm.nextNulls, int64(rounds))
+}
+
+// Pause compels the miner to wait for a signal to restart
+func (bm *BlockMiner) Pause() {
+	bm.pause <- struct{}{}
+}
+
+// Restart continues mining after a pause. This will hang if called before pause
+func (bm *BlockMiner) Restart() {
+	bm.unpause <- struct{}{}
 }
 
 func (bm *BlockMiner) MineUntilBlock(ctx context.Context, fn *TestFullNode, cb func(abi.ChainEpoch)) {
@@ -335,4 +361,12 @@ func (bm *BlockMiner) Stop() {
 	bm.t.Log("shutting down mining")
 	bm.cancel()
 	bm.wg.Wait()
+	if bm.unpause != nil {
+		close(bm.unpause)
+		bm.unpause = nil
+	}
+	if bm.pause != nil {
+		close(bm.pause)
+		bm.pause = nil
+	}
 }

@@ -145,6 +145,8 @@ type FullNodeStruct struct {
 
 		ChainNotify func(p0 context.Context) (<-chan []*HeadChange, error) `perm:"read"`
 
+		ChainPrune func(p0 context.Context, p1 PruneOpts) error `perm:"admin"`
+
 		ChainPutObj func(p0 context.Context, p1 blocks.Block) error `perm:"admin"`
 
 		ChainReadObj func(p0 context.Context, p1 cid.Cid) ([]byte, error) `perm:"read"`
@@ -1352,6 +1354,17 @@ func (s *FullNodeStruct) ChainNotify(p0 context.Context) (<-chan []*HeadChange, 
 
 func (s *FullNodeStub) ChainNotify(p0 context.Context) (<-chan []*HeadChange, error) {
 	return nil, ErrNotSupported
+}
+
+func (s *FullNodeStruct) ChainPrune(p0 context.Context, p1 PruneOpts) error {
+	if s.Internal.ChainPrune == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.ChainPrune(p0, p1)
+}
+
+func (s *FullNodeStub) ChainPrune(p0 context.Context, p1 PruneOpts) error {
+	return ErrNotSupported
 }
 
 func (s *FullNodeStruct) ChainPutObj(p0 context.Context, p1 blocks.Block) error {

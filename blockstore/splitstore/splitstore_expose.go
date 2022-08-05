@@ -43,6 +43,7 @@ func (es *exposedSplitStore) Has(ctx context.Context, c cid.Cid) (bool, error) {
 }
 
 func (es *exposedSplitStore) Get(ctx context.Context, c cid.Cid) (blocks.Block, error) {
+
 	if isIdentiyCid(c) {
 		data, err := decodeIdentityCid(c)
 		if err != nil {

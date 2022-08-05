@@ -341,7 +341,43 @@ func (n *Ensemble) Start() *Ensemble {
 
 	// Create all inactive full nodes.
 	for i, full := range n.inactive.fullnodes {
-		r := repo.NewMemory(nil)
+
+		var r repo.Repo
+		if !full.options.fsrepo {
+			rmem := repo.NewMemory(nil)
+			n.t.Cleanup(rmem.Cleanup)
+			r = rmem
+		} else {
+			repoPath := n.t.TempDir()
+			rfs, err := repo.NewFS(repoPath)
+			require.NoError(n.t, err)
+			require.NoError(n.t, rfs.Init(repo.FullNode))
+			r = rfs
+		}
+
+		// setup config with options
+		lr, err := r.Lock(repo.FullNode)
+		require.NoError(n.t, err)
+
+		c, err := lr.Config()
+		require.NoError(n.t, err)
+
+		cfg, ok := c.(*config.FullNode)
+		if !ok {
+			n.t.Fatalf("invalid config from repo, got: %T", c)
+		}
+		for _, opt := range full.options.cfgOpts {
+			require.NoError(n.t, opt(cfg))
+		}
+		err = lr.SetConfig(func(raw interface{}) {
+			rcfg := raw.(*config.FullNode)
+			*rcfg = *cfg
+		})
+		require.NoError(n.t, err)
+
+		err = lr.Close()
+		require.NoError(n.t, err)
+
 		opts := []node.Option{
 			node.FullAPI(&full.FullNode, node.Lite(full.options.lite)),
 			node.Base(),
@@ -396,7 +432,10 @@ func (n *Ensemble) Start() *Ensemble {
 			n.inactive.fullnodes[i] = withRPC
 		}
 
-		n.t.Cleanup(func() { _ = stop(context.Background()) })
+		n.t.Cleanup(func() {
+			_ = stop(context.Background())
+
+		})
 
 		n.active.fullnodes = append(n.active.fullnodes, full)
 	}

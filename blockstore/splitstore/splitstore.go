@@ -43,7 +43,12 @@ var (
 	// compactionIndexKey stores the compaction index (serial number)
 	compactionIndexKey = dstore.NewKey("/splitstore/compactionIndex")
 
+	// stores the prune index (serial number)
+	pruneIndexKey = dstore.NewKey("/splitstore/pruneIndex")
+
 	log = logging.Logger("splitstore")
+
+	errClosing = errors.New("splitstore is closing")
 
 	// set this to true if you are debugging the splitstore to enable debug logging
 	enableDebugLog = false
@@ -52,6 +57,16 @@ var (
 
 	// upgradeBoundary is the boundary before and after an upgrade where we suppress compaction
 	upgradeBoundary = build.Finality
+)
+
+type CompactType int
+
+const (
+	none CompactType = iota
+	warmup
+	hot
+	cold
+	check
 )
 
 func init() {
@@ -117,8 +132,9 @@ type hotstore interface {
 }
 
 type SplitStore struct {
-	compacting int32 // compaction/prune/warmup in progress
-	closing    int32 // the splitstore is closing
+	compacting  int32       // flag for when compaction is in progress
+	compactType CompactType // compaction type, protected by compacting atomic, only meaningful when compacting == 1
+	closing     int32       // the splitstore is closing
 
 	cfg  *Config
 	path string
@@ -140,6 +156,7 @@ type SplitStore struct {
 	markSetSize int64
 
 	compactionIndex int64
+	pruneIndex      int64
 
 	ctx    context.Context
 	cancel func()
@@ -227,6 +244,13 @@ func Open(path string, ds dstore.Datastore, hot, cold bstore.Blockstore, cfg *Co
 			return nil, xerrors.Errorf("error resuming compaction: %w", err)
 		}
 	}
+	if ss.pruneCheckpointExists() {
+		log.Info("found prune checkpoint; resuming prune")
+		if err := ss.completePrune(); err != nil {
+			markSetEnv.Close() //nolint:errcheck
+			return nil, xerrors.Errorf("error resuming prune: %w", err)
+		}
+	}
 
 	return ss, nil
 }
@@ -260,8 +284,14 @@ func (s *SplitStore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 		if has {
 			return s.has(cid)
 		}
-
-		return s.cold.Has(ctx, cid)
+		switch s.compactType {
+		case hot:
+			return s.cold.Has(ctx, cid)
+		case cold:
+			return s.hot.Has(ctx, cid)
+		default:
+			return false, xerrors.Errorf("invalid compaction type %d, only hot and cold allowed for critical section", s.compactType)
+		}
 	}
 
 	has, err := s.hot.Has(ctx, cid)
@@ -276,8 +306,11 @@ func (s *SplitStore) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 	}
 
 	has, err = s.cold.Has(ctx, cid)
-	if has && bstore.IsHotView(ctx) {
-		s.reifyColdObject(cid)
+	if has {
+		s.trackTxnRef(cid)
+		if bstore.IsHotView(ctx) {
+			s.reifyColdObject(cid)
+		}
 	}
 
 	return has, err
@@ -307,8 +340,14 @@ func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error)
 		if has {
 			return s.get(cid)
 		}
-
-		return s.cold.Get(ctx, cid)
+		switch s.compactType {
+		case hot:
+			return s.cold.Get(ctx, cid)
+		case cold:
+			return s.hot.Get(ctx, cid)
+		default:
+			return nil, xerrors.Errorf("invalid compaction type %d, only hot and cold allowed for critical section", s.compactType)
+		}
 	}
 
 	blk, err := s.hot.Get(ctx, cid)
@@ -325,6 +364,7 @@ func (s *SplitStore) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error)
 
 		blk, err = s.cold.Get(ctx, cid)
 		if err == nil {
+			s.trackTxnRef(cid)
 			if bstore.IsHotView(ctx) {
 				s.reifyColdObject(cid)
 			}
@@ -361,8 +401,14 @@ func (s *SplitStore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 		if has {
 			return s.getSize(cid)
 		}
-
-		return s.cold.GetSize(ctx, cid)
+		switch s.compactType {
+		case hot:
+			return s.cold.GetSize(ctx, cid)
+		case cold:
+			return s.hot.GetSize(ctx, cid)
+		default:
+			return 0, xerrors.Errorf("invalid compaction type %d, only hot and cold allowed for critical section", s.compactType)
+		}
 	}
 
 	size, err := s.hot.GetSize(ctx, cid)
@@ -379,6 +425,7 @@ func (s *SplitStore) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 
 		size, err = s.cold.GetSize(ctx, cid)
 		if err == nil {
+			s.trackTxnRef(cid)
 			if bstore.IsHotView(ctx) {
 				s.reifyColdObject(cid)
 			}
@@ -408,12 +455,12 @@ func (s *SplitStore) Put(ctx context.Context, blk blocks.Block) error {
 	s.debug.LogWrite(blk)
 
 	// critical section
-	if s.txnMarkSet != nil {
+	if s.txnMarkSet != nil && s.compactType == hot { // puts only touch hot store
 		s.markLiveRefs([]cid.Cid{blk.Cid()})
 		return nil
 	}
-
 	s.trackTxnRef(blk.Cid())
+
 	return nil
 }
 
@@ -459,12 +506,12 @@ func (s *SplitStore) PutMany(ctx context.Context, blks []blocks.Block) error {
 	s.debug.LogWriteMany(blks)
 
 	// critical section
-	if s.txnMarkSet != nil {
+	if s.txnMarkSet != nil && s.compactType == hot { // puts only touch hot store
 		s.markLiveRefs(batch)
 		return nil
 	}
-
 	s.trackTxnRefMany(batch)
+
 	return nil
 }
 
@@ -536,8 +583,14 @@ func (s *SplitStore) View(ctx context.Context, cid cid.Cid, cb func([]byte) erro
 		if has {
 			return s.view(cid, cb)
 		}
-
-		return s.cold.View(ctx, cid, cb)
+		switch s.compactType {
+		case hot:
+			return s.cold.View(ctx, cid, cb)
+		case cold:
+			return s.hot.View(ctx, cid, cb)
+		default:
+			return xerrors.Errorf("invalid compaction type %d, only hot and cold allowed for critical section", s.compactType)
+		}
 	}
 
 	// views are (optimistically) protected two-fold:

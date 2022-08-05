@@ -1462,3 +1462,49 @@ func createExportFile(app *cli.App, path string) (io.WriteCloser, error) {
 	}
 	return fi, nil
 }
+
+var ChainPruneCmd = &cli.Command{
+	Name:  "prune",
+	Usage: "prune the stored chain state and perform garbage collection",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "online-gc",
+			Value: false,
+			Usage: "use online gc for garbage collecting the coldstore",
+		},
+		&cli.BoolFlag{
+			Name:  "moving-gc",
+			Value: false,
+			Usage: "use moving gc for garbage collecting the coldstore",
+		},
+		&cli.StringFlag{
+			Name:  "move-to",
+			Value: "",
+			Usage: "specify new path for coldstore during moving gc",
+		},
+		&cli.IntFlag{
+			Name:  "retention",
+			Value: -1,
+			Usage: "specify state retention policy",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPIV1(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		opts := lapi.PruneOpts{}
+		if cctx.Bool("online-gc") {
+			opts.MovingGC = false
+		}
+		if cctx.Bool("moving-gc") {
+			opts.MovingGC = true
+		}
+		opts.RetainState = int64(cctx.Int("retention"))
+
+		return api.ChainPrune(ctx, opts)
+	},
+}
