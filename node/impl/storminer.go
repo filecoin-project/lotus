@@ -462,6 +462,10 @@ func (sm *StorageMinerAPI) SealingAbort(ctx context.Context, call storiface.Call
 	return sm.StorageMgr.Abort(ctx, call)
 }
 
+func (sm *StorageMinerAPI) SealingRemoveRequest(ctx context.Context, schedId uuid.UUID) error {
+	return sm.StorageMgr.RemoveSchedRequest(ctx, schedId)
+}
+
 func (sm *StorageMinerAPI) MarketImportDealData(ctx context.Context, propCid cid.Cid, path string) error {
 	fi, err := os.Open(path)
 	if err != nil {

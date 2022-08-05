@@ -1171,6 +1171,10 @@ func (m *Manager) SchedDiag(ctx context.Context, doSched bool) (interface{}, err
 	return i, nil
 }
 
+func (m *Manager) RemoveSchedRequest(ctx context.Context, schedId uuid.UUID) error {
+	return m.sched.RemoveRequest(ctx, schedId)
+}
+
 func (m *Manager) Close(ctx context.Context) error {
 	m.windowPoStSched.schedClose()
 	m.winningPoStSched.schedClose()
