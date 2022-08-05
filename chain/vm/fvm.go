@@ -48,13 +48,21 @@ type FvmExtern struct {
 	base    cid.Cid
 }
 
+type FvmGasCharge struct {
+	Name       string
+	TotalGas   int64
+	ComputeGas int64
+	StorageGas int64
+}
+
 // This may eventually become identical to ExecutionTrace, but we can make incremental progress towards that
 type FvmExecutionTrace struct {
-	Msg    *types.Message
-	MsgRct *types.MessageReceipt
-	Error  string
+	Msg        *types.Message
+	MsgRct     *types.MessageReceipt
+	Error      string
+	GasCharges []FvmGasCharge `cborgen:"maxlen=1000000000"`
 
-	Subcalls []FvmExecutionTrace
+	Subcalls []FvmExecutionTrace `cborgen:"maxlen=1000000000"`
 }
 
 func (t *FvmExecutionTrace) ToExecutionTrace() types.ExecutionTrace {
@@ -67,6 +75,18 @@ func (t *FvmExecutionTrace) ToExecutionTrace() types.ExecutionTrace {
 		MsgRct:   t.MsgRct,
 		Error:    t.Error,
 		Subcalls: nil, // Should be nil when there are no subcalls for backwards compatibility
+	}
+
+	if len(t.GasCharges) > 0 {
+		ret.GasCharges = make([]*types.GasTrace, len(t.GasCharges))
+		for i, v := range t.GasCharges {
+			ret.GasCharges[i] = &types.GasTrace{
+				Name:       v.Name,
+				TotalGas:   v.TotalGas,
+				ComputeGas: v.ComputeGas,
+				StorageGas: v.StorageGas,
+			}
+		}
 	}
 
 	if len(t.Subcalls) > 0 {
