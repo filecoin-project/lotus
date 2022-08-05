@@ -41,6 +41,7 @@ func NewBlockMiner(t *testing.T, miner *TestMiner) *BlockMiner {
 		miner:   miner,
 		cancel:  func() {},
 		unpause: make(chan struct{}),
+		pause:   make(chan struct{}),
 	}
 }
 
