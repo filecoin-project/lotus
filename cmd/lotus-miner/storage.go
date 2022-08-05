@@ -235,10 +235,6 @@ var storageRedeclareCmd = &cli.Command{
 		defer closer()
 		ctx := lcli.ReqContext(cctx)
 
-		if !cctx.Args().Present() {
-			return xerrors.Errorf("must specify storage path")
-		}
-
 		if cctx.IsSet("id") && cctx.Bool("all") {
 			return xerrors.Errorf("--id and --all can't be passed at the same time")
 		}
