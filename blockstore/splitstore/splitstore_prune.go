@@ -14,6 +14,7 @@ import (
 	"go.opencensus.io/stats"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/lotus/api"
 	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -44,40 +45,11 @@ var (
 
 // PruneChain instructs the SplitStore to prune chain state in the coldstore, according to the
 // options specified.
-func (s *SplitStore) PruneChain(opts map[string]interface{}) error {
-	// options
-	var onlineGC, movingGC bool
-	var retainState int64 = -1
+func (s *SplitStore) PruneChain(opts api.PruneOpts) error {
+	retainState := opts.RetainState
 
-	for k, v := range opts {
-		switch k {
-		case PruneOnlineGC:
-			onlineGC = true
-		case PruneRetainState:
-			retaini64, ok := v.(int64)
-			if !ok {
-				// deal with json-rpc types...
-				retainf64, ok := v.(float64)
-				if !ok {
-					return xerrors.Errorf("bad state retention specification; expected int64 or float64 but got %T", v)
-				}
-				retainState = int64(retainf64)
-			} else {
-				retainState = retaini64
-			}
-		default:
-			return xerrors.Errorf("unrecognized option %s", k)
-		}
-	}
-
-	if onlineGC && movingGC {
-		return xerrors.Errorf("at most one of online, moving GC can be specified")
-	}
-	if !onlineGC && !movingGC {
-		onlineGC = true
-	}
 	var gcOpts []bstore.BlockstoreGCOption
-	if movingGC {
+	if opts.MovingGC {
 		gcOpts = append(gcOpts, bstore.WithFullGC(true))
 	}
 	doGC := func() error { return s.gcBlockstore(s.cold, gcOpts) }

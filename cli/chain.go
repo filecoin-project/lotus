@@ -35,7 +35,6 @@ import (
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/api/v0api"
-	"github.com/filecoin-project/lotus/blockstore/splitstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/consensus/filcns"
@@ -1497,14 +1496,14 @@ var ChainPruneCmd = &cli.Command{
 		defer closer()
 		ctx := ReqContext(cctx)
 
-		opts := make(map[string]interface{})
+		opts := lapi.PruneOpts{}
 		if cctx.Bool("online-gc") {
-			opts[splitstore.PruneOnlineGC] = true
+			opts.MovingGC = false
 		}
 		if cctx.Bool("moving-gc") {
-			opts[splitstore.PruneMovingGC] = cctx.String("move-to")
+			opts.MovingGC = true
 		}
-		opts[splitstore.PruneRetainState] = int64(cctx.Int("retention"))
+		opts.RetainState = int64(cctx.Int("retention"))
 
 		return api.ChainPrune(ctx, opts)
 	},

@@ -974,7 +974,8 @@ Inputs:
 ```json
 [
   {
-    "abc": 123
+    "MovingGC": true,
+    "RetainState": 9
   }
 ]
 ```

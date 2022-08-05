@@ -171,7 +171,7 @@ type FullNode interface {
 
 	// ChainPrune prunes the stored chain state and garbage collects; only supported if you
 	// are using the splitstore
-	ChainPrune(ctx context.Context, opts map[string]interface{}) error //perm:admin
+	ChainPrune(ctx context.Context, opts PruneOpts) error //perm:admin
 
 	// ChainCheckBlockstore performs an (asynchronous) health check on the chain/state blockstore
 	// if supported by the underlying implementation.
@@ -1222,4 +1222,9 @@ type MsigTransaction struct {
 	Params []byte
 
 	Approved []address.Address
+}
+
+type PruneOpts struct {
+	MovingGC    bool
+	RetainState int64
 }

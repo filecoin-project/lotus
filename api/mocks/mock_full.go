@@ -378,7 +378,7 @@ func (mr *MockFullNodeMockRecorder) ChainNotify(arg0 interface{}) *gomock.Call {
 }
 
 // ChainPrune mocks base method.
-func (m *MockFullNode) ChainPrune(arg0 context.Context, arg1 map[string]interface{}) error {
+func (m *MockFullNode) ChainPrune(arg0 context.Context, arg1 api.PruneOpts) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ChainPrune", arg0, arg1)
 	ret0, _ := ret[0].(error)

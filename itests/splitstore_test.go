@@ -161,8 +161,7 @@ func TestColdStorePrune(t *testing.T) {
 			break
 		}
 	}
-	pruneOpts := make(map[string]interface{})
-	pruneOpts[splitstore.PruneRetainState] = int64(0) // Prune from compaction boundary
+	pruneOpts := api.PruneOpts{RetainState: int64(0), MovingGC: false}
 	require.NoError(t, full.ChainPrune(ctx, pruneOpts))
 	bm.Restart()
 	waitForPrune(ctx, t, 1, full)
