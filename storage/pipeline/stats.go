@@ -167,7 +167,7 @@ func (m *Sealing) PipelineStats(ctx context.Context) (api.PipelineStats, error) 
 	doneIn := map[time.Duration]int64{}
 	for state, n := range m.stats.byState {
 		durEst := ValidSectorStateList[state].sealDurationEstimate
-		if durEst != 0 {
+		if durEst > 0 {
 			continue
 		}
 
@@ -194,7 +194,7 @@ func (m *Sealing) PipelineStats(ctx context.Context) (api.PipelineStats, error) 
 	for i := range doneList {
 		doneSectors += uint64(doneList[i].n)
 
-		out.OpenCapacityEstimate[fmt.Sprint(time.Now().Add(doneList[i].in).Unix())] = ssize*doneSectors + out.OpenCapacity
+		out.OpenCapacityEstimate[fmt.Sprint(time.Now().Add(doneList[i].in).Unix())] = (ssize * doneSectors) + out.OpenCapacity
 	}
 
 	return out, err
