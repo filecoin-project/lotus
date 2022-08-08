@@ -82,8 +82,6 @@ func (s *SplitStore) HeadChange(_, apply []*types.TipSet) error {
 	curTs := apply[len(apply)-1]
 	epoch := curTs.Height()
 
-	log.Warnf("Head epoch %d", epoch)
-
 	// NOTE: there is an implicit invariant assumption that HeadChange is invoked
 	//       synchronously and no other HeadChange can be invoked while one is in
 	//       progress.
