@@ -41,6 +41,10 @@ var (
 	// - if it is a positive integer, then it's the number of finalities past the compaction boundary
 	//   for which chain-reachable state objects are retained.
 	PruneRetainState = "splitstore.PruneRetainState"
+
+	// PruneThreshold is the number of epochs that need to have elapsed
+	// from the previously pruned epoch to trigger a new prune
+	PruneThreshold = 7 * build.Finality
 )
 
 // PruneChain instructs the SplitStore to prune chain state in the coldstore, according to the
@@ -132,7 +136,9 @@ func (s *SplitStore) prune(curTs *types.TipSet, retainStateP func(int64) bool, d
 
 func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool, doGC func() error) error {
 	currentEpoch := curTs.Height()
-	log.Infow("running prune", "currentEpoch", currentEpoch, "baseEpoch", s.baseEpoch)
+	boundaryEpoch := currentEpoch - CompactionBoundary
+
+	log.Infow("running prune", "currentEpoch", currentEpoch, "pruneEpoch", s.pruneEpoch)
 
 	markSet, err := s.markSetEnv.New("live", s.markSetSize)
 	if err != nil {
@@ -316,6 +322,10 @@ func (s *SplitStore) doPrune(curTs *types.TipSet, retainStateP func(int64) bool,
 	err = doGC()
 	if err != nil {
 		log.Warnf("error garbage collecting cold store: %s", err)
+	}
+
+	if err := s.setPruneEpoch(boundaryEpoch); err != nil {
+		return xerrors.Errorf("error saving prune base epoch: %w", err)
 	}
 
 	s.pruneIndex++

@@ -46,6 +46,9 @@ var (
 	// stores the prune index (serial number)
 	pruneIndexKey = dstore.NewKey("/splitstore/pruneIndex")
 
+	// stores the base epoch of last prune in the metadata store
+	pruneEpochKey = dstore.NewKey("/splitstore/pruneEpoch")
+
 	log = logging.Logger("splitstore")
 
 	errClosing = errors.New("splitstore is closing")
@@ -108,6 +111,21 @@ type Config struct {
 	// A positive value is the number of compactions before a full GC is performed;
 	// a value of 1 will perform full GC in every compaction.
 	HotStoreFullGCFrequency uint64
+
+	// EnableColdStoreAutoPrune turns on compaction of the cold store i.e. pruning
+	// where hotstore compaction occurs every finality epochs pruning happens every 3 finalities
+	// Default is false
+	EnableColdStoreAutoPrune bool
+
+	// ColdStoreFullGCFrequency specifies how often to performa a full (moving) GC on the coldstore.
+	// Only applies if auto prune is enabled.  A value of 0 disables while a value of 1 will do
+	// full GC in every prune.
+	// Default is 7 (about once every a week)
+	ColdStoreFullGCFrequency uint64
+
+	// ColdStoreRetention specifies the retention policy for data reachable from the chain, in
+	// finalities beyond the compaction boundary, default is 0, -1 retains everything
+	ColdStoreRetention int64
 }
 
 // ChainAccessor allows the Splitstore to access the chain. It will most likely
@@ -142,6 +160,7 @@ type SplitStore struct {
 	mx          sync.Mutex
 	warmupEpoch abi.ChainEpoch // protected by mx
 	baseEpoch   abi.ChainEpoch // protected by compaction lock
+	pruneEpoch  abi.ChainEpoch // protected by compaction lock
 
 	headChangeMx sync.Mutex
 
@@ -676,6 +695,23 @@ func (s *SplitStore) Start(chain ChainAccessor, us stmgr.UpgradeSchedule) error 
 		return xerrors.Errorf("error loading base epoch: %w", err)
 	}
 
+	// load prune epoch from metadata ds
+	bs, err = s.ds.Get(s.ctx, pruneEpochKey)
+	switch err {
+	case nil:
+		s.pruneEpoch = bytesToEpoch(bs)
+	case dstore.ErrNotFound:
+		if curTs == nil {
+			//this can happen in some tests
+			break
+		}
+		if err := s.setPruneEpoch(curTs.Height()); err != nil {
+			return xerrors.Errorf("error saving prune epoch: %w", err)
+		}
+	default:
+		return xerrors.Errorf("error loading prune epoch: %w", err)
+	}
+
 	// load warmup epoch from metadata ds
 	bs, err = s.ds.Get(s.ctx, warmupEpochKey)
 	switch err {
@@ -774,4 +810,9 @@ func (s *SplitStore) checkClosing() error {
 func (s *SplitStore) setBaseEpoch(epoch abi.ChainEpoch) error {
 	s.baseEpoch = epoch
 	return s.ds.Put(s.ctx, baseEpochKey, epochToBytes(epoch))
+}
+
+func (s *SplitStore) setPruneEpoch(epoch abi.ChainEpoch) error {
+	s.pruneEpoch = epoch
+	return s.ds.Put(s.ctx, pruneEpochKey, epochToBytes(epoch))
 }
