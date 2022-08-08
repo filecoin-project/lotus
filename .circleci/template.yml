@@ -581,32 +581,29 @@ jobs:
         type: string
         default: "edge"
         description: snapcraft channel
+      snap-name:
+        type: string
+        default: 'lotus-filecoin'
+        description: name of snap in snap store
     steps:
       - checkout
       - run:
-          name: install snapcraft
+          name: Install snapcraft
           command: sudo snap install snapcraft --classic
       - run:
-          name: build `lotus-filecoin` snap
-          command: snapcraft --use-lxd --debug
+          name: Build << parameters.snap-name >> snap
+          command: |
+            if [ "<< parameters.snap-name >>" != 'lotus-filecoin' ]; then
+              cat snap/snapcraft.yaml | sed 's/lotus-filecoin/lotus/' > edited-snapcraft.yaml
+              mv edited-snapcraft.yaml snap/snapcraft.yaml
+            fi
+
+            snapcraft --use-lxd --debug
       - run:
-          name: publish `lotus-filecoin` snap
+          name: Publish snap to << parameters.channel >> channel
           shell: /bin/bash -o pipefail
           command: |
-            snapcraft upload lotus-filecoin_latest_amd64.snap --release << parameters.channel >>
-      - run:
-          name: Rewrite snapcraft.yaml to use `lotus` name
-          command:
-            cat snap/snapcraft.yaml | sed 's/lotus-filecoin/lotus/' > lotus-snapcraft.yaml
-            mv lotus-snapcrat.yaml snap/snapcraft.yaml
-      - run:
-          name: build `lotus` snap
-          command: snapcraft --use-lxd --debug
-      - run:
-          name: publish `lotus` snap
-          shell: /bin/bash -o pipefail
-          command: |
-            snapcraft upload lotus_latest_amd64.snap --release << parameters.channel >>
+            snapcraft upload *.snap --release << parameters.channel >>
 
   build-and-push-image:
     description: build and push docker images to public AWS ECR registry
@@ -910,8 +907,9 @@ workflows:
           tag: '${CIRCLE_SHA1:0:8}'
           target: lotus-test
       - publish-snapcraft:
-          name: publish-snapcraft-stable
+          name: "Publish Snapcraft (lotus-filecoin / candidate)"
           channel: stable
+          snap-name: lotus-filecoin
           filters:
             branches:
               ignore:
@@ -920,8 +918,31 @@ workflows:
               only:
                 - /^v\d+\.\d+\.\d+$/
       - publish-snapcraft:
-          name: publish-snapcraft-candidate
+          name: "Publish Snapcraft (lotus-filecoin / candidate)"
           channel: candidate
+          snap-name: lotus-filecoin
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+-rc\d+$/
+      - publish-snapcraft:
+          name: "Publish Snapcraft (lotus / stable)"
+          channel: stable
+          snap-name: lotus
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only:
+                - /^v\d+\.\d+\.\d+$/
+      - publish-snapcraft:
+          name: "Publish Snapcraft (lotus / candidate)"
+          channel: candidate
+          snap-name: lotus
           filters:
             branches:
               ignore:
@@ -950,8 +971,13 @@ workflows:
                 - master
     jobs:
       - publish-snapcraft:
-          name: publish-snapcraft-nightly
+          name: "Publish Snapcraft Nightly (lotus-filecoin / edge)"
           channel: edge
+          snap-name: lotus-filecoin
+      - publish-snapcraft:
+          name: "Publish Snapcraft Nightly (lotus / edge)"
+          channel: edge
+          snap-name: lotus
       - publish-dockerhub:
           name: publish-dockerhub-nightly
           tag: nightly
