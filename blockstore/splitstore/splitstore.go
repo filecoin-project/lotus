@@ -98,6 +98,10 @@ type Config struct {
 	// and directly purges cold blocks.
 	DiscardColdBlocks bool
 
+	// UniversalColdBlocks indicates whether all blocks being garbage collected and purged
+	// from the hotstore should be written to the cold store
+	UniversalColdBlocks bool
+
 	// HotstoreMessageRetention indicates the hotstore retention policy for messages.
 	// It has the following semantics:
 	// - a value of 0 will only retain messages within the compaction boundary (4 finalities)

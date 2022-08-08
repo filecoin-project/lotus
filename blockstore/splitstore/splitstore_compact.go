@@ -590,7 +590,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 	coldCount := new(int64)
 	fCold := func(c cid.Cid) error {
 		// Nothing gets written to cold store during discard
-		if s.cfg.DiscardColdBlocks { // TODO || cfg.Universal , universal and discard don't write to set
+		if s.cfg.DiscardColdBlocks || s.cfg.UniversalColdBlocks {
 			return nil
 		}
 
@@ -693,7 +693,7 @@ func (s *SplitStore) doCompact(curTs *types.TipSet) error {
 			return xerrors.Errorf("error checking cold mark set for %s: %w", c, err)
 		}
 
-		if !coldMark { // TODO && !s.cfg.unversal, universal mode will just mark everything as cold
+		if !coldMark && !s.cfg.UniversalColdBlocks { // universal mode means mark everything as cold
 			return nil
 		}
 
