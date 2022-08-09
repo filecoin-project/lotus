@@ -4,7 +4,6 @@ package sealing_test
 import (
 	"bytes"
 	"context"
-	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"sort"
 	"sync"
 	"testing"
@@ -25,6 +24,7 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/mocks"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"

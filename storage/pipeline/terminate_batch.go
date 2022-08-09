@@ -22,6 +22,7 @@ import (
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 type TerminateBatcherApi interface {
@@ -44,7 +45,7 @@ type TerminateBatcher struct {
 	mctx      context.Context
 	addrSel   AddressSelector
 	feeCfg    config.MinerFeeConfig
-	getConfig GetSealingConfigFunc
+	getConfig dtypes.GetSealingConfigFunc
 
 	todo map[lminer.SectorLocation]*bitfield.BitField // MinerSectorLocation -> BitField
 
@@ -55,7 +56,7 @@ type TerminateBatcher struct {
 	lk                    sync.Mutex
 }
 
-func NewTerminationBatcher(mctx context.Context, maddr address.Address, api TerminateBatcherApi, addrSel AddressSelector, feeCfg config.MinerFeeConfig, getConfig GetSealingConfigFunc) *TerminateBatcher {
+func NewTerminationBatcher(mctx context.Context, maddr address.Address, api TerminateBatcherApi, addrSel AddressSelector, feeCfg config.MinerFeeConfig, getConfig dtypes.GetSealingConfigFunc) *TerminateBatcher {
 	b := &TerminateBatcher{
 		api:       api,
 		maddr:     maddr,

@@ -11,7 +11,6 @@ import (
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/types"
-	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -194,8 +193,6 @@ func (t *SectorInfo) keepUnsealedRanges(pieces []Piece, invert, alwaysKeep bool)
 type SectorIDCounter interface {
 	Next() (abi.SectorNumber, error)
 }
-
-type GetSealingConfigFunc func() (sealiface.Config, error)
 
 // SealingStateEvt is a journal event that records a sector state transition.
 type SealingStateEvt struct {

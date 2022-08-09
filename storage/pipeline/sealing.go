@@ -26,6 +26,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer"
@@ -119,7 +120,7 @@ type Sealing struct {
 	precommiter *PreCommitBatcher
 	commiter    *CommitBatcher
 
-	getConfig GetSealingConfigFunc
+	getConfig dtypes.GetSealingConfigFunc
 }
 
 type openSector struct {
@@ -160,7 +161,7 @@ type pendingPiece struct {
 	accepted func(abi.SectorNumber, abi.UnpaddedPieceSize, error)
 }
 
-func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sealer.SectorManager, sc SectorIDCounter, verif storiface.Verifier, prov storiface.Prover, pcp PreCommitPolicy, gc GetSealingConfigFunc, journal journal.Journal, addrSel AddressSelector) *Sealing {
+func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sealer.SectorManager, sc SectorIDCounter, verif storiface.Verifier, prov storiface.Prover, pcp PreCommitPolicy, gc dtypes.GetSealingConfigFunc, journal journal.Journal, addrSel AddressSelector) *Sealing {
 	s := &Sealing{
 		Api:      api,
 		DealInfo: &CurrentDealInfoManager{api},
@@ -218,6 +219,7 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 }
 
 func (m *Sealing) Run(ctx context.Context) error {
+
 	if err := m.restartSectors(ctx); err != nil {
 		log.Errorf("%+v", err)
 		return xerrors.Errorf("failed load sector states: %w", err)
@@ -237,13 +239,13 @@ func (m *Sealing) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (m *Sealing) Remove(ctx context.Context, sid abi.SectorNumber) error {
+func (m *Sealing) RemoveSector(ctx context.Context, sid abi.SectorNumber) error {
 	m.startupWait.Wait()
 
 	return m.sectors.Send(uint64(sid), SectorRemove{})
 }
 
-func (m *Sealing) Terminate(ctx context.Context, sid abi.SectorNumber) error {
+func (m *Sealing) TerminateSector(ctx context.Context, sid abi.SectorNumber) error {
 	m.startupWait.Wait()
 
 	return m.sectors.Send(uint64(sid), SectorTerminate{})

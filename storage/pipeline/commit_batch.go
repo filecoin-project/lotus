@@ -25,6 +25,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
@@ -63,7 +64,7 @@ type CommitBatcher struct {
 	mctx      context.Context
 	addrSel   AddressSelector
 	feeCfg    config.MinerFeeConfig
-	getConfig GetSealingConfigFunc
+	getConfig dtypes.GetSealingConfigFunc
 	prover    storiface.Prover
 
 	cutoffs map[abi.SectorNumber]time.Time
@@ -75,7 +76,7 @@ type CommitBatcher struct {
 	lk                    sync.Mutex
 }
 
-func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddressSelector, feeCfg config.MinerFeeConfig, getConfig GetSealingConfigFunc, prov storiface.Prover) *CommitBatcher {
+func NewCommitBatcher(mctx context.Context, maddr address.Address, api CommitBatcherApi, addrSel AddressSelector, feeCfg config.MinerFeeConfig, getConfig dtypes.GetSealingConfigFunc, prov storiface.Prover) *CommitBatcher {
 	b := &CommitBatcher{
 		api:       api,
 		maddr:     maddr,

@@ -50,6 +50,7 @@ import (
 	"github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
+	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -64,7 +65,6 @@ import (
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/node/modules/helpers"
 	"github.com/filecoin-project/lotus/node/repo"
-	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/storage/paths"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
@@ -202,7 +202,37 @@ func AddressSelector(addrConf *config.MinerAddressConfig) func() (*ctladdr.Addre
 	}
 }
 
-type StorageMinerParams struct {
+func PreflightChecks(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNode, maddr dtypes.MinerAddress) error {
+	ctx := helpers.LifecycleCtx(mctx, lc)
+
+	lc.Append(fx.Hook{OnStart: func(context.Context) error {
+		mi, err := api.StateMinerInfo(ctx, address.Address(maddr), types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("failed to resolve miner info: %w", err)
+		}
+
+		workerKey, err := api.StateAccountKey(ctx, mi.Worker, types.EmptyTSK)
+		if err != nil {
+			return xerrors.Errorf("failed to resolve worker key: %w", err)
+		}
+
+		has, err := api.WalletHas(ctx, workerKey)
+		if err != nil {
+			return xerrors.Errorf("failed to check wallet for worker key: %w", err)
+		}
+
+		if !has {
+			return errors.New("key for worker not found in local wallet")
+		}
+
+		log.Infof("starting up miner %s, worker addr %s", maddr, workerKey)
+		return nil
+	}})
+
+	return nil
+}
+
+type SealingPipelineParams struct {
 	fx.In
 
 	Lifecycle          fx.Lifecycle
@@ -219,8 +249,8 @@ type StorageMinerParams struct {
 	Maddr              dtypes.MinerAddress
 }
 
-func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*storage.Miner, error) {
-	return func(params StorageMinerParams) (*storage.Miner, error) {
+func SealingPipeline(fc config.MinerFeeConfig) func(params SealingPipelineParams) (*sealing.Sealing, error) {
+	return func(params SealingPipelineParams) (*sealing.Sealing, error) {
 		var (
 			ds     = params.MetadataDS
 			mctx   = params.MetricsCtx
@@ -238,24 +268,34 @@ func StorageMiner(fc config.MinerFeeConfig) func(params StorageMinerParams) (*st
 
 		ctx := helpers.LifecycleCtx(mctx, lc)
 
-		sm, err := storage.NewMiner(api, maddr, ds, sealer, sc, verif, prover, gsd, fc, j, as)
+		evts, err := events.NewEvents(ctx, api)
 		if err != nil {
-			return nil, err
+			return nil, xerrors.Errorf("failed to subscribe to events: %w", err)
 		}
+
+		md, err := api.StateMinerProvingDeadline(ctx, maddr, types.EmptyTSK)
+		if err != nil {
+			return nil, xerrors.Errorf("getting miner info: %w", err)
+		}
+		provingBuffer := md.WPoStProvingPeriod * 2
+		pcp := sealing.NewBasicPreCommitPolicy(api, gsd, provingBuffer)
+
+		pipeline := sealing.New(ctx, api, fc, evts, maddr, ds, sealer, sc, verif, prover, &pcp, gsd, j, as)
 
 		lc.Append(fx.Hook{
 			OnStart: func(context.Context) error {
-				return sm.Run(ctx)
+				go pipeline.Run(ctx)
+				return nil
 			},
-			OnStop: sm.Stop,
+			OnStop: pipeline.Stop,
 		})
 
-		return sm, nil
+		return pipeline, nil
 	}
 }
 
-func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func(params StorageMinerParams) (*wdpost.WindowPoStScheduler, error) {
-	return func(params StorageMinerParams) (*wdpost.WindowPoStScheduler, error) {
+func WindowPostScheduler(fc config.MinerFeeConfig, pc config.ProvingConfig) func(params SealingPipelineParams) (*wdpost.WindowPoStScheduler, error) {
+	return func(params SealingPipelineParams) (*wdpost.WindowPoStScheduler, error) {
 		var (
 			mctx   = params.MetricsCtx
 			lc     = params.Lifecycle

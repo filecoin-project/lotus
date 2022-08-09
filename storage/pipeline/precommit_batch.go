@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
 
@@ -52,7 +53,7 @@ type PreCommitBatcher struct {
 	mctx      context.Context
 	addrSel   AddressSelector
 	feeCfg    config.MinerFeeConfig
-	getConfig GetSealingConfigFunc
+	getConfig dtypes.GetSealingConfigFunc
 
 	cutoffs map[abi.SectorNumber]time.Time
 	todo    map[abi.SectorNumber]*preCommitEntry
@@ -63,7 +64,7 @@ type PreCommitBatcher struct {
 	lk                    sync.Mutex
 }
 
-func NewPreCommitBatcher(mctx context.Context, maddr address.Address, api PreCommitBatcherApi, addrSel AddressSelector, feeCfg config.MinerFeeConfig, getConfig GetSealingConfigFunc) *PreCommitBatcher {
+func NewPreCommitBatcher(mctx context.Context, maddr address.Address, api PreCommitBatcherApi, addrSel AddressSelector, feeCfg config.MinerFeeConfig, getConfig dtypes.GetSealingConfigFunc) *PreCommitBatcher {
 	b := &PreCommitBatcher{
 		api:       api,
 		maddr:     maddr,

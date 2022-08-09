@@ -12,6 +12,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 )
 
 type PreCommitPolicy interface {
@@ -39,7 +40,7 @@ type Chain interface {
 // current epoch + the provided default duration.
 type BasicPreCommitPolicy struct {
 	api              Chain
-	getSealingConfig GetSealingConfigFunc
+	getSealingConfig dtypes.GetSealingConfigFunc
 
 	provingBuffer abi.ChainEpoch
 }
@@ -48,7 +49,7 @@ type BasicPreCommitPolicy struct {
 //
 // The provided duration is used as the default sector expiry when the sector
 // contains no deals. The proving boundary is used to adjust/align the sector's expiration.
-func NewBasicPreCommitPolicy(api Chain, cfgGetter GetSealingConfigFunc, provingBuffer abi.ChainEpoch) BasicPreCommitPolicy {
+func NewBasicPreCommitPolicy(api Chain, cfgGetter dtypes.GetSealingConfigFunc, provingBuffer abi.ChainEpoch) BasicPreCommitPolicy {
 	return BasicPreCommitPolicy{
 		api:              api,
 		getSealingConfig: cfgGetter,
