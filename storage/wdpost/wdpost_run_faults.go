@@ -10,6 +10,7 @@ import (
 	"go.opencensus.io/trace"
 	"golang.org/x/xerrors"
 
+	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-bitfield"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/builtin"
@@ -344,4 +345,143 @@ func (s *WindowPoStScheduler) asyncFaultRecover(di dline.Info, ts *types.TipSet)
 			}
 		}
 	}()
+}
+
+// declareRecoveries identifies sectors that were previously marked as faulty
+// for our miner, but are now recovered (i.e. are now provable again) and
+// still not reported as such.
+//
+// It then reports the recovery on chain via a `DeclareFaultsRecovered`
+// message to our miner actor.
+//
+// This is always invoked ahead of time, before the deadline for the evaluated
+// sectors arrives. That way, recoveries are declared in preparation for those
+// sectors to be proven.
+//
+// If a declaration is made, it awaits for build.MessageConfidence confirmations
+// on chain before returning.
+func (s *WindowPoStScheduler) declareManualRecoveries(ctx context.Context, maddr address.Address, sectors []abi.SectorNumber, tsk types.TipSetKey) ([]cid.Cid, error) {
+
+	var RecoveryDecls []miner.RecoveryDeclaration
+
+	type ptx struct {
+		deadline  uint64
+		partition uint64
+	}
+
+	var smap map[ptx][]uint64
+
+	var mcids []cid.Cid
+
+	for _, sector := range sectors {
+		ptxID, err := s.api.StateSectorPartition(ctx, maddr, sector, types.TipSetKey{})
+		if err != nil {
+			return nil, xerrors.Errorf("failed to fetch partition and deadline details for sector %d: %w", sector, err)
+		}
+		ptxinfo := ptx{
+			deadline:  ptxID.Deadline,
+			partition: ptxID.Partition,
+		}
+
+		slist := smap[ptxinfo]
+		sn := uint64(sector)
+		slist = append(slist, sn)
+		smap[ptxinfo] = slist
+	}
+
+	for i, v := range smap {
+		sectorinbit := bitfield.NewFromSet(v)
+		RecoveryDecls = append(RecoveryDecls, miner.RecoveryDeclaration{
+			Deadline:  i.deadline,
+			Partition: i.partition,
+			Sectors:   sectorinbit,
+		})
+	}
+
+	// Batch if maxPartitionsPerRecoveryMessage is set
+	if s.maxPartitionsPerRecoveryMessage > 0 {
+		tmpRecoveryDecls := RecoveryDecls
+		var msgs []*types.SignedMessage
+		var RecoveryBatches [][]miner.RecoveryDeclaration
+		I := 0
+
+		// Create batched
+		for len(tmpRecoveryDecls) > s.maxPartitionsPerPostMessage {
+			Batch := tmpRecoveryDecls[len(tmpRecoveryDecls)-s.maxPartitionsPerRecoveryMessage:]
+			tmpRecoveryDecls = tmpRecoveryDecls[:len(tmpRecoveryDecls)-s.maxPartitionsPerPostMessage]
+			RecoveryBatches = append(RecoveryBatches, Batch)
+			I++
+		}
+
+		// Add remaining as new batch
+		RecoveryBatches = append(RecoveryBatches, tmpRecoveryDecls)
+
+		for _, Batch := range RecoveryBatches {
+			params := &miner.DeclareFaultsRecoveredParams{
+				Recoveries: Batch,
+			}
+
+			enc, aerr := actors.SerializeParams(params)
+
+			if aerr != nil {
+				return nil, xerrors.Errorf("could not serialize declare recoveries parameters: %w", aerr)
+			}
+
+			msg := &types.Message{
+				To:     s.actor,
+				Method: builtin.MethodsMiner.DeclareFaultsRecovered,
+				Params: enc,
+				Value:  types.NewInt(0),
+			}
+
+			spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)}
+
+			if err := s.prepareMessage(ctx, msg, spec); err != nil {
+				return nil, err
+			}
+
+			sm, err := s.api.MpoolPushMessage(ctx, msg, &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)})
+
+			if err != nil {
+				return nil, xerrors.Errorf("pushing message to mpool: %w", err)
+			}
+
+			msgs = append(msgs, sm)
+		}
+
+		for _, v := range msgs {
+			mcid := v.Cid()
+			mcids = append(mcids, mcid)
+		}
+
+		return mcids, nil
+
+	}
+
+	params := &miner.DeclareFaultsRecoveredParams{
+		Recoveries: RecoveryDecls,
+	}
+
+	enc, aerr := actors.SerializeParams(params)
+	if aerr != nil {
+		return nil, xerrors.Errorf("could not serialize declare recoveries parameters: %w", aerr)
+	}
+
+	msg := &types.Message{
+		To:     s.actor,
+		Method: builtin.MethodsMiner.DeclareFaultsRecovered,
+		Params: enc,
+		Value:  types.NewInt(0),
+	}
+	spec := &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)}
+	if err := s.prepareMessage(ctx, msg, spec); err != nil {
+		return nil, err
+	}
+	sm, err := s.api.MpoolPushMessage(ctx, msg, &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)})
+	if err != nil {
+		return nil, xerrors.Errorf("pushing message to mpool: %w", err)
+	}
+
+	mcids = append(mcids, sm.Cid())
+	return mcids, nil
 }

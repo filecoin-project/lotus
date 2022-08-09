@@ -717,3 +717,7 @@ func (s *WindowPoStScheduler) ComputePoSt(ctx context.Context, dlIdx uint64, ts 
 
 	return s.runPoStCycle(ctx, true, *dl, ts)
 }
+
+func (s *WindowPoStScheduler) ManualFaultRecovery(ctx context.Context, maddr address.Address, sectors []abi.SectorNumber) ([]cid.Cid, error) {
+	return s.declareManualRecoveries(ctx, maddr, sectors, types.TipSetKey{})
+}

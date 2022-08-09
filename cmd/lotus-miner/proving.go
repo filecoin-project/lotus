@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/blockstore"
+	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/store"
 	"github.com/filecoin-project/lotus/chain/types"
@@ -37,6 +38,7 @@ var provingCmd = &cli.Command{
 		provingCheckProvableCmd,
 		workersCmd(false),
 		provingComputeCmd,
+		provingRecoverFaultsCmd,
 	},
 }
 
@@ -641,6 +643,78 @@ It will not send any messages to the chain.`,
 		}
 		fmt.Println(string(jr))
 
+		return nil
+	},
+}
+
+var provingRecoverFaultsCmd = &cli.Command{
+	Name:      "recover-faults",
+	Usage:     "Manually recovers faulty sectors on chain",
+	ArgsUsage: "<list of sectors>",
+	Flags: []cli.Flag{
+		&cli.IntFlag{
+			Name:  "confidence",
+			Usage: "number of block confirmations to wait for",
+			Value: int(build.MessageConfidence),
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("must pass at least 1 sector number")
+		}
+
+		arglist := cctx.Args().Slice()
+		var sectors []abi.SectorNumber
+		for _, v := range arglist {
+			s, err := strconv.ParseUint(v, 10, 64)
+			if err != nil {
+				return xerrors.Errorf("failed to convert sectors, please check the arguments: %w", err)
+			}
+			sectors = append(sectors, abi.SectorNumber(s))
+		}
+
+		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer acloser()
+
+		ctx := lcli.ReqContext(cctx)
+
+		msgs, err := nodeApi.RecoverFault(ctx, sectors)
+		if err != nil {
+			return err
+		}
+
+		// wait for msgs to get mined into a block
+		results := make(chan error, len(msgs))
+		for _, msg := range msgs {
+			go func() {
+				wait, err := api.StateWaitMsg(ctx, msg, uint64(cctx.Int("confidence")))
+				if err != nil {
+					results <- xerrors.Errorf("Timeout waiting for message to land on chain %s", wait.Message)
+				}
+
+				if wait.Receipt.ExitCode != 0 {
+					results <- xerrors.Errorf("Failed to execute message %s: %w", wait.Message, wait.Receipt.ExitCode.Error())
+				}
+				results <- nil
+			}()
+		}
+
+		time.Sleep(time.Duration((cctx.Int("confidence")*30)+30) * time.Second)
+		for v := range results {
+			if v != nil {
+				fmt.Println("Failed to execute the message %w", v)
+			}
+			time.Sleep(1 * time.Second)
+		}
 		return nil
 	},
 }

@@ -1323,6 +1323,25 @@ func (sm *StorageMinerAPI) ComputeProof(ctx context.Context, ssi []builtin.Exten
 	return sm.Epp.ComputeProof(ctx, ssi, rand, poStEpoch, nv)
 }
 
+func (sm *StorageMinerAPI) RecoverFault(ctx context.Context, sectors []abi.SectorNumber) ([]cid.Cid, error) {
+	allsectors, err := sm.Miner.ListSectors()
+	if err != nil {
+		return nil, xerrors.Errorf("could not get a list of all sectors from the miner: %w", err)
+	}
+	found := false
+	for _, v := range sectors {
+		for _, s := range allsectors {
+			if v == s.SectorNumber {
+				found = true
+			}
+		}
+		if !found {
+			return nil, xerrors.Errorf("sectors %d not found in the sector list for miner", v)
+		}
+	}
+	return sm.WdPoSt.ManualFaultRecovery(ctx, sm.Miner.Address(), sectors)
+}
+
 func (sm *StorageMinerAPI) RuntimeSubsystems(context.Context) (res api.MinerSubsystems, err error) {
 	return sm.EnabledSubsystems, nil
 }
