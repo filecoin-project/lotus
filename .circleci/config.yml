@@ -50,14 +50,14 @@ commands:
           condition: <<parameters.darwin>>
           steps:
             - run:
-               name: Install Go
-               command: |
-                 curl https://dl.google.com/go/go1.17.9.darwin-amd64.pkg -o /tmp/go.pkg && \
-                 sudo installer -pkg /tmp/go.pkg -target /
+                name: Install Go
+                command: |
+                  curl https://dl.google.com/go/go1.17.9.darwin-amd64.pkg -o /tmp/go.pkg && \
+                  sudo installer -pkg /tmp/go.pkg -target /
             - run:
                 name: Export Go
                 command: |
-                 echo 'export GOPATH="${HOME}/go"' >> $BASH_ENV
+                  echo 'export GOPATH="${HOME}/go"' >> $BASH_ENV
             - run: go version
             - run:
                 name: Install pkg-config, goreleaser, and sha512sum
