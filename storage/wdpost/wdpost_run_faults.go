@@ -369,7 +369,7 @@ func (s *WindowPoStScheduler) declareManualRecoveries(ctx context.Context, maddr
 		partition uint64
 	}
 
-	var smap map[ptx][]uint64
+	smap := make(map[ptx][]uint64)
 
 	var mcids []cid.Cid
 
