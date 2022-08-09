@@ -1,5 +1,82 @@
 # Lotus changelog
 
+# v1.17.1-rc1 / 2022-08-08
+
+This is the first release candidate of the upcoming OPTIONAL release Lotus v1.17.1. This optional release includes splitstore and has some small bug fixes, new features & improvements. Full changelog will be published upon final release.
+
+- github.com/filecoin-project/lotus:
+  - chore: merge: releases (v1.17.0) to master ([filecoin-project/lotus#9146](https://github.com/filecoin-project/lotus/pull/9146))
+  - fix: storage: don't panic in getCommitCutoff when precommit is not found ([filecoin-project/lotus#9141](https://github.com/filecoin-project/lotus/pull/9141))
+  - Update FFI ([filecoin-project/lotus#9139](https://github.com/filecoin-project/lotus/pull/9139))
+  - _ci_: Run snap builds for lotus and lotus-filecoin in parallel ([filecoin-project/lotus#9133](https://github.com/filecoin-project/lotus/pull/9133))
+  - feat:chain:splitstore auto prune (#9123) ([filecoin-project/lotus#9123](https://github.com/filecoin-project/lotus/pull/9123))
+  - feat:chain:splitstore chain prune (#9056) ([filecoin-project/lotus#9056](https://github.com/filecoin-project/lotus/pull/9056))
+  - feat: sealing: storage redeclare/detach ([filecoin-project/lotus#9032](https://github.com/filecoin-project/lotus/pull/9032))
+  - Merge branch 'LexLuthr-feat/SchedRemoveRequest'
+  - Merge branch 'feat/f8-worker-env'
+  - base256emoji ([filecoin-project/lotus#9038](https://github.com/filecoin-project/lotus/pull/9038))
+  - Merge branch 'docs/ysrotciv-desc'
+  - fix: cli: `./lotus-miner actor control list`, if the `owner` is not account ([filecoin-project/lotus#9072](https://github.com/filecoin-project/lotus/pull/9072))
+  - chore:docs:remove readme reference to deprecated specs-actors ([filecoin-project/lotus#8984](https://github.com/filecoin-project/lotus/pull/8984))
+  - fix: build: use GOCC when building lotus-fountain ([filecoin-project/lotus#9127](https://github.com/filecoin-project/lotus/pull/9127))
+  - _ci_ : Change default shell options for snapcraft publish ([filecoin-project/lotus#9122](https://github.com/filecoin-project/lotus/pull/9122))
+  - _ci_: Switches goreleaser notes back to default (keep-existing) ([filecoin-project/lotus#9120](https://github.com/filecoin-project/lotus/pull/9120))
+  - feat: sealing: Allow overriding worker hostname ([filecoin-project/lotus#9116](https://github.com/filecoin-project/lotus/pull/9116))
+  - _ci_: Publish to both `lotus` and `lotus-filecoin` for snap ([filecoin-project/lotus#9119](https://github.com/filecoin-project/lotus/pull/9119))
+  - feat: miner cli: proving deadline command enchantments ([filecoin-project/lotus#9109](https://github.com/filecoin-project/lotus/pull/9109))
+  - feat: market: Add lotus-shed cmd to get total active deal storage ([filecoin-project/lotus#9113](https://github.com/filecoin-project/lotus/pull/9113))
+  - push lotus-gateway to docker hub ([filecoin-project/lotus#8969](https://github.com/filecoin-project/lotus/pull/8969))
+  - feat: worker: Add stop cmd for lotus worker ([filecoin-project/lotus#9101](https://github.com/filecoin-project/lotus/pull/9101))
+  - Merge branch 'LexLuthr-feat/minerWithdrawBalanceAPI'
+  - feat: build: run fiximports on make actors-gen ([filecoin-project/lotus#9114](https://github.com/filecoin-project/lotus/pull/9114))
+  - fix makegen
+  - fix: post: restrict recoveries per deadline ([filecoin-project/lotus#9111](https://github.com/filecoin-project/lotus/pull/9111))
+  - feat: wdpost: Envvar for limiting recovering sectors ([filecoin-project/lotus#9106](https://github.com/filecoin-project/lotus/pull/9106))
+  - _ci_: Use goreleaser to build macos universal binaries (including M1 macs) ([filecoin-project/lotus#9096](https://github.com/filecoin-project/lotus/pull/9096))
+  - _ci_: More tweaks to snapcraft release process ([filecoin-project/lotus#9090](https://github.com/filecoin-project/lotus/pull/9090))
+  - chore: interop: update interop assets ([filecoin-project/lotus#9093](https://github.com/filecoin-project/lotus/pull/9093))
+  - fix: ci: Forgot a .sh on the end of a the new publish script ([filecoin-project/lotus#9088](https://github.com/filecoin-project/lotus/pull/9088))
+  - fix: test: deflake TestQuotePriceForUnsealedRetrieval ([filecoin-project/lotus#9084](https://github.com/filecoin-project/lotus/pull/9084))
+  - _ci_: update snapcraft and release flow logic ([filecoin-project/lotus#8994](https://github.com/filecoin-project/lotus/pull/8994))
+  - Review Response
+  - lotus shed addr decode
+  - ci:testing:remove codecov  ([filecoin-project/lotus#9062](https://github.com/filecoin-project/lotus/pull/9062))
+  - fix: FVM: record message applied metrics ([filecoin-project/lotus#9052](https://github.com/filecoin-project/lotus/pull/9052))
+  - fix: sealing: Workaround for sealing bug ([filecoin-project/lotus#9043](https://github.com/filecoin-project/lotus/pull/9043))
+  - FVM: Use MaxInt64 for Implicit Message gas limits ([filecoin-project/lotus#9037](https://github.com/filecoin-project/lotus/pull/9037))
+  - feat: FVM: always enable tracing for user-triggered executions ([filecoin-project/lotus#9036](https://github.com/filecoin-project/lotus/pull/9036))
+  - chore: sealer: Fixup typos ([filecoin-project/lotus#9040](https://github.com/filecoin-project/lotus/pull/9040))
+  - fix: deps: update FFI to fix a slow memory leak (#9042) ([filecoin-project/lotus#9042](https://github.com/filecoin-project/lotus/pull/9042))
+  - feat: storage: Path type filters ([filecoin-project/lotus#9013](https://github.com/filecoin-project/lotus/pull/9013))
+  - test: net: net and conngater tests ([filecoin-project/lotus#8084](https://github.com/filecoin-project/lotus/pull/8084))
+  - fix: gas: estimate gas with a zero base-fee ([filecoin-project/lotus#8991](https://github.com/filecoin-project/lotus/pull/8991))
+
+Contributors
+
+| Contributor | Commits | Lines ± | Files Changed |
+|-------------|---------|---------|---------------|
+| Łukasz Magiera | 34 | +2329/-317 | 163 |
+| ZenGround0 | 2 | +1527/-89 | 38 |
+| Ian Davis | 14 | +751/-232 | 30 |
+| LexLuthr | 17 | +480/-225 | 63 |
+| TheMenko | 4 | +323/-61 | 5 |
+| Aayush | 10 | +285/-92 | 30 |
+| beck | 3 | +143/-93 | 3 |
+| Steven Allen | 4 | +95/-75 | 9 |
+| zenground0 | 5 | +44/-116 | 9 |
+| Shrenuj Bansal | 7 | +136/-7 | 16 |
+| Patrick Deuse | 3 | +76/-57 | 3 |
+| Jennifer Wang | 3 | +6/-52 | 11 |
+| zl | 2 | +20/-16 | 2 |
+| Aayush Rajasekaran | 2 | +6/-6 | 2 |
+| Clint Armstrong | 1 | +7/-3 | 1 |
+| Cory Schwartz | 2 | +9/-0 | 2 |
+| Jorropo | 1 | +3/-2 | 2 |
+| Geoff Stuart | 1 | +5/-0 | 1 |
+| Frank Y | 1 | +2/-2 | 2 |
+| Aloxaf | 1 | +2/-2 | 1 |
+
+
 # v1.17.0 / 2022-08-02
 
 This is an optional release of Lotus. This feature release introduces a lot of new sealing and scheduler improvements, and many other functionalities and bug fixes.
