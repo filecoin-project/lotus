@@ -171,13 +171,8 @@ func (m *Miner) Run(ctx context.Context) error {
 
 	pcp := pipeline.NewBasicPreCommitPolicy(m.api, cfg, provingBuffer)
 
-	// address selector.
-	as := func(ctx context.Context, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
-		return m.addrSel.AddressFor(ctx, m.api, mi, use, goodFunds, minFunds)
-	}
-
 	// Instantiate the sealing FSM.
-	m.sealing = pipeline.New(ctx, m.api, m.feeCfg, evts, m.maddr, m.ds, m.sealer, m.sc, m.verif, m.prover, &pcp, cfg, m.journal, as)
+	m.sealing = pipeline.New(ctx, m.api, m.feeCfg, evts, m.maddr, m.ds, m.sealer, m.sc, m.verif, m.prover, &pcp, cfg, m.journal, m.addrSel)
 
 	// Run the sealing FSM.
 	go m.sealing.Run(ctx) //nolint:errcheck // logged intside the function

@@ -2,7 +2,6 @@ package sealing
 
 import (
 	"context"
-	"github.com/filecoin-project/lotus/journal"
 	"sync"
 	"time"
 
@@ -25,7 +24,9 @@ import (
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/events"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/journal"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -64,14 +65,21 @@ type SealingAPI interface {
 	StateGetRandomnessFromBeacon(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
 	StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error)
 	ChainReadObj(context.Context, cid.Cid) ([]byte, error)
+
+	// Address selector
+	WalletBalance(context.Context, address.Address) (types.BigInt, error)
+	WalletHas(context.Context, address.Address) (bool, error)
+	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 }
 
 type SectorStateNotifee func(before, after SectorInfo)
 
-type AddrSel func(ctx context.Context, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error)
-
 type Events interface {
 	ChainAt(ctx context.Context, hnd events.HeightHandler, rev events.RevertHandler, confidence int, h abi.ChainEpoch) error
+}
+
+type AddressSelector interface {
+	AddressFor(ctx context.Context, a ctladdr.NodeApi, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error)
 }
 
 type Sealing struct {
@@ -103,7 +111,7 @@ type Sealing struct {
 	journal        journal.Journal
 	sealingEvtType journal.EventType
 	notifee        SectorStateNotifee
-	addrSel        AddrSel
+	addrSel        AddressSelector
 
 	stats SectorStats
 
@@ -152,7 +160,7 @@ type pendingPiece struct {
 	accepted func(abi.SectorNumber, abi.UnpaddedPieceSize, error)
 }
 
-func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sealer.SectorManager, sc SectorIDCounter, verif storiface.Verifier, prov storiface.Prover, pcp PreCommitPolicy, gc GetSealingConfigFunc, journal journal.Journal, as AddrSel) *Sealing {
+func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sealer.SectorManager, sc SectorIDCounter, verif storiface.Verifier, prov storiface.Prover, pcp PreCommitPolicy, gc GetSealingConfigFunc, journal journal.Journal, addrSel AddressSelector) *Sealing {
 	s := &Sealing{
 		Api:      api,
 		DealInfo: &CurrentDealInfoManager{api},
@@ -176,11 +184,11 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 		journal:        journal,
 		sealingEvtType: journal.RegisterEventType("storage", "sealing_states"),
 
-		addrSel: as,
+		addrSel: addrSel,
 
-		terminator:  NewTerminationBatcher(mctx, maddr, api, as, fc, gc),
-		precommiter: NewPreCommitBatcher(mctx, maddr, api, as, fc, gc),
-		commiter:    NewCommitBatcher(mctx, maddr, api, as, fc, gc, prov),
+		terminator:  NewTerminationBatcher(mctx, maddr, api, addrSel, fc, gc),
+		precommiter: NewPreCommitBatcher(mctx, maddr, api, addrSel, fc, gc),
+		commiter:    NewCommitBatcher(mctx, maddr, api, addrSel, fc, gc, prov),
 
 		getConfig: gc,
 

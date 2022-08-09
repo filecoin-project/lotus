@@ -15,7 +15,7 @@ import (
 
 var log = logging.Logger("ctladdr")
 
-type addrSelectApi interface {
+type NodeApi interface {
 	WalletBalance(context.Context, address.Address) (types.BigInt, error)
 	WalletHas(context.Context, address.Address) (bool, error)
 
@@ -27,7 +27,7 @@ type AddressSelector struct {
 	api.AddressConfig
 }
 
-func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
+func (as *AddressSelector) AddressFor(ctx context.Context, a NodeApi, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
 	if as == nil {
 		// should only happen in some tests
 		log.Warnw("smart address selection disabled, using worker address")
@@ -85,7 +85,7 @@ func (as *AddressSelector) AddressFor(ctx context.Context, a addrSelectApi, mi a
 	return pickAddress(ctx, a, mi, goodFunds, minFunds, addrs)
 }
 
-func pickAddress(ctx context.Context, a addrSelectApi, mi api.MinerInfo, goodFunds, minFunds abi.TokenAmount, addrs []address.Address) (address.Address, abi.TokenAmount, error) {
+func pickAddress(ctx context.Context, a NodeApi, mi api.MinerInfo, goodFunds, minFunds abi.TokenAmount, addrs []address.Address) (address.Address, abi.TokenAmount, error) {
 	leastBad := mi.Worker
 	bestAvail := minFunds
 
@@ -119,7 +119,7 @@ func pickAddress(ctx context.Context, a addrSelectApi, mi api.MinerInfo, goodFun
 	return leastBad, bestAvail, nil
 }
 
-func maybeUseAddress(ctx context.Context, a addrSelectApi, addr address.Address, goodFunds abi.TokenAmount, leastBad *address.Address, bestAvail *abi.TokenAmount) bool {
+func maybeUseAddress(ctx context.Context, a NodeApi, addr address.Address, goodFunds abi.TokenAmount, leastBad *address.Address, bestAvail *abi.TokenAmount) bool {
 	b, err := a.WalletBalance(ctx, addr)
 	if err != nil {
 		log.Errorw("checking control address balance", "addr", addr, "error", err)

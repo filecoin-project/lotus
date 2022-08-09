@@ -30,13 +30,19 @@ type TerminateBatcherApi interface {
 	StateMinerInfo(context.Context, address.Address, types.TipSetKey) (api.MinerInfo, error)
 	StateMinerProvingDeadline(context.Context, address.Address, types.TipSetKey) (*dline.Info, error)
 	StateMinerPartitions(ctx context.Context, m address.Address, dlIdx uint64, tsk types.TipSetKey) ([]api.Partition, error)
+
+	// Address selector
+	WalletBalance(context.Context, address.Address) (types.BigInt, error)
+	WalletHas(context.Context, address.Address) (bool, error)
+	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
+	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 }
 
 type TerminateBatcher struct {
 	api       TerminateBatcherApi
 	maddr     address.Address
 	mctx      context.Context
-	addrSel   AddrSel
+	addrSel   AddressSelector
 	feeCfg    config.MinerFeeConfig
 	getConfig GetSealingConfigFunc
 
@@ -49,7 +55,7 @@ type TerminateBatcher struct {
 	lk                    sync.Mutex
 }
 
-func NewTerminationBatcher(mctx context.Context, maddr address.Address, api TerminateBatcherApi, addrSel AddrSel, feeCfg config.MinerFeeConfig, getConfig GetSealingConfigFunc) *TerminateBatcher {
+func NewTerminationBatcher(mctx context.Context, maddr address.Address, api TerminateBatcherApi, addrSel AddressSelector, feeCfg config.MinerFeeConfig, getConfig GetSealingConfigFunc) *TerminateBatcher {
 	b := &TerminateBatcher{
 		api:       api,
 		maddr:     maddr,
@@ -217,7 +223,7 @@ func (b *TerminateBatcher) processBatch(notif, after bool) (*cid.Cid, error) {
 		return nil, xerrors.Errorf("couldn't get miner info: %w", err)
 	}
 
-	from, _, err := b.addrSel(b.mctx, mi, api.TerminateSectorsAddr, big.Int(b.feeCfg.MaxTerminateGasFee), big.Int(b.feeCfg.MaxTerminateGasFee))
+	from, _, err := b.addrSel.AddressFor(b.mctx, b.api, mi, api.TerminateSectorsAddr, big.Int(b.feeCfg.MaxTerminateGasFee), big.Int(b.feeCfg.MaxTerminateGasFee))
 	if err != nil {
 		return nil, xerrors.Errorf("no good address found: %w", err)
 	}

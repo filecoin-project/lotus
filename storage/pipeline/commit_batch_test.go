@@ -4,6 +4,7 @@ package sealing_test
 import (
 	"bytes"
 	"context"
+	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"sort"
 	"sync"
 	"testing"
@@ -37,9 +38,9 @@ func TestCommitBatcher(t *testing.T) {
 
 	ctx := context.Background()
 
-	as := func(ctx context.Context, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
+	as := asel(func(ctx context.Context, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
 		return t0123, big.Zero(), nil
-	}
+	})
 
 	maxBatch := miner5.MaxAggregatedSectors
 	minBatch := miner5.MinAggregatedSectors
@@ -438,3 +439,11 @@ var dummySmsg = &types.SignedMessage{
 	},
 	Signature: crypto.Signature{Type: crypto.SigTypeBLS},
 }
+
+type asel func(ctx context.Context, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error)
+
+func (s asel) AddressFor(ctx context.Context, _ ctladdr.NodeApi, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
+	return s(ctx, mi, use, goodFunds, minFunds)
+}
+
+var _ pipeline.AddressSelector = asel(nil)

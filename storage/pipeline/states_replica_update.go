@@ -168,7 +168,7 @@ func (m *Sealing) handleSubmitReplicaUpdate(ctx statemachine.Context, sector Sec
 		return nil
 	}
 
-	from, _, err := m.addrSel(ctx.Context(), mi, api.CommitAddr, goodFunds, collateral)
+	from, _, err := m.addrSel.AddressFor(ctx.Context(), m.Api, mi, api.CommitAddr, goodFunds, collateral)
 	if err != nil {
 		log.Errorf("no good address to send replica update message from: %+v", err)
 		return ctx.Send(SectorSubmitReplicaUpdateFailed{})
