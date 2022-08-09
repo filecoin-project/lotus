@@ -4,9 +4,6 @@
 package build
 
 import (
-	"os"
-	"strconv"
-
 	"github.com/ipfs/go-cid"
 
 	"github.com/filecoin-project/go-address"
@@ -28,7 +25,7 @@ const GenesisNetworkVersion = network.Version16
 
 var UpgradeBreezeHeight = abi.ChainEpoch(-1)
 
-const BreezeGasTampingDuration = 0
+const BreezeGasTampingDuration = 120
 
 var UpgradeSmokeHeight = abi.ChainEpoch(-1)
 var UpgradeIgnitionHeight = abi.ChainEpoch(-2)
@@ -60,12 +57,12 @@ var DrandSchedule = map[abi.ChainEpoch]DrandEnum{
 }
 
 var SupportedProofTypes = []abi.RegisteredSealProof{
-	abi.RegisteredSealProof_StackedDrg2KiBV1,
-	abi.RegisteredSealProof_StackedDrg8MiBV1,
 	abi.RegisteredSealProof_StackedDrg512MiBV1,
+	abi.RegisteredSealProof_StackedDrg32GiBV1,
+	abi.RegisteredSealProof_StackedDrg64GiBV1,
 }
-var ConsensusMinerMinPower = abi.NewStoragePower(2048)
-var MinVerifiedDealSize = abi.NewStoragePower(256)
+var ConsensusMinerMinPower = abi.NewStoragePower(16 << 30)
+var MinVerifiedDealSize = abi.NewStoragePower(1 << 20)
 var PreCommitChallengeDelay = abi.ChainEpoch(10)
 
 func init() {
@@ -74,41 +71,7 @@ func init() {
 	policy.SetMinVerifiedDealSize(MinVerifiedDealSize)
 	policy.SetPreCommitChallengeDelay(PreCommitChallengeDelay)
 
-	getUpgradeHeight := func(ev string, def abi.ChainEpoch) abi.ChainEpoch {
-		hs, found := os.LookupEnv(ev)
-		if found {
-			h, err := strconv.Atoi(hs)
-			if err != nil {
-				log.Panicf("failed to parse %s env var", ev)
-			}
-
-			return abi.ChainEpoch(h)
-		}
-
-		return def
-	}
-
-	UpgradeBreezeHeight = getUpgradeHeight("LOTUS_BREEZE_HEIGHT", UpgradeBreezeHeight)
-	UpgradeSmokeHeight = getUpgradeHeight("LOTUS_SMOKE_HEIGHT", UpgradeSmokeHeight)
-	UpgradeIgnitionHeight = getUpgradeHeight("LOTUS_IGNITION_HEIGHT", UpgradeIgnitionHeight)
-	UpgradeRefuelHeight = getUpgradeHeight("LOTUS_REFUEL_HEIGHT", UpgradeRefuelHeight)
-	UpgradeTapeHeight = getUpgradeHeight("LOTUS_TAPE_HEIGHT", UpgradeTapeHeight)
-	UpgradeAssemblyHeight = getUpgradeHeight("LOTUS_ACTORSV2_HEIGHT", UpgradeAssemblyHeight)
-	UpgradeLiftoffHeight = getUpgradeHeight("LOTUS_LIFTOFF_HEIGHT", UpgradeLiftoffHeight)
-	UpgradeKumquatHeight = getUpgradeHeight("LOTUS_KUMQUAT_HEIGHT", UpgradeKumquatHeight)
-	UpgradeCalicoHeight = getUpgradeHeight("LOTUS_CALICO_HEIGHT", UpgradeCalicoHeight)
-	UpgradePersianHeight = getUpgradeHeight("LOTUS_PERSIAN_HEIGHT", UpgradePersianHeight)
-	UpgradeOrangeHeight = getUpgradeHeight("LOTUS_ORANGE_HEIGHT", UpgradeOrangeHeight)
-	UpgradeClausHeight = getUpgradeHeight("LOTUS_CLAUS_HEIGHT", UpgradeClausHeight)
-	UpgradeTrustHeight = getUpgradeHeight("LOTUS_ACTORSV3_HEIGHT", UpgradeTrustHeight)
-	UpgradeNorwegianHeight = getUpgradeHeight("LOTUS_NORWEGIAN_HEIGHT", UpgradeNorwegianHeight)
-	UpgradeTurboHeight = getUpgradeHeight("LOTUS_ACTORSV4_HEIGHT", UpgradeTurboHeight)
-	UpgradeHyperdriveHeight = getUpgradeHeight("LOTUS_HYPERDRIVE_HEIGHT", UpgradeHyperdriveHeight)
-	UpgradeChocolateHeight = getUpgradeHeight("LOTUS_CHOCOLATE_HEIGHT", UpgradeChocolateHeight)
-	UpgradeOhSnapHeight = getUpgradeHeight("LOTUS_OHSNAP_HEIGHT", UpgradeOhSnapHeight)
-	UpgradeSkyrHeight = getUpgradeHeight("LOTUS_SKYR_HEIGHT", UpgradeSkyrHeight)
-
-	BuildType |= BuildInteropnet
+	BuildType = BuildWallabynet
 	SetAddressNetwork(address.Testnet)
 	Devnet = true
 
