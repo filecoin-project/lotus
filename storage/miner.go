@@ -61,18 +61,7 @@ type Miner struct {
 	getSealConfig dtypes.GetSealingConfigFunc
 	sealing       *pipeline.Sealing
 
-	sealingEvtType journal.EventType
-
 	journal journal.Journal
-}
-
-// SealingStateEvt is a journal event that records a sector state transition.
-type SealingStateEvt struct {
-	SectorNumber abi.SectorNumber
-	SectorType   abi.RegisteredSealProof
-	From         pipeline.SectorState
-	After        pipeline.SectorState
-	Error        string
 }
 
 // fullNodeFilteredAPI is the subset of the full node API the Miner needs from
@@ -151,10 +140,9 @@ func NewMiner(api fullNodeFilteredAPI,
 		prover:  prover,
 		addrSel: as,
 
-		maddr:          maddr,
-		getSealConfig:  gsd,
-		journal:        journal,
-		sealingEvtType: journal.RegisterEventType("storage", "sealing_states"),
+		maddr:         maddr,
+		getSealConfig: gsd,
+		journal:       journal,
 	}
 
 	return m, nil
@@ -189,24 +177,12 @@ func (m *Miner) Run(ctx context.Context) error {
 	}
 
 	// Instantiate the sealing FSM.
-	m.sealing = pipeline.New(ctx, m.api, m.feeCfg, evts, m.maddr, m.ds, m.sealer, m.sc, m.verif, m.prover, &pcp, cfg, m.handleSealingNotifications, as)
+	m.sealing = pipeline.New(ctx, m.api, m.feeCfg, evts, m.maddr, m.ds, m.sealer, m.sc, m.verif, m.prover, &pcp, cfg, m.journal, as)
 
 	// Run the sealing FSM.
 	go m.sealing.Run(ctx) //nolint:errcheck // logged intside the function
 
 	return nil
-}
-
-func (m *Miner) handleSealingNotifications(before, after pipeline.SectorInfo) {
-	m.journal.RecordEvent(m.sealingEvtType, func() interface{} {
-		return SealingStateEvt{
-			SectorNumber: before.SectorNumber,
-			SectorType:   before.SectorType,
-			From:         before.State,
-			After:        after.State,
-			Error:        after.LastErr,
-		}
-	})
 }
 
 func (m *Miner) Stop(ctx context.Context) error {

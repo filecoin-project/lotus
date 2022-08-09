@@ -196,3 +196,12 @@ type SectorIDCounter interface {
 }
 
 type GetSealingConfigFunc func() (sealiface.Config, error)
+
+// SealingStateEvt is a journal event that records a sector state transition.
+type SealingStateEvt struct {
+	SectorNumber abi.SectorNumber
+	SectorType   abi.RegisteredSealProof
+	From         SectorState
+	After        SectorState
+	Error        string
+}

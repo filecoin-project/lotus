@@ -2,6 +2,7 @@ package sealing
 
 import (
 	"context"
+	"github.com/filecoin-project/lotus/journal"
 	"sync"
 	"time"
 
@@ -99,8 +100,10 @@ type Sealing struct {
 
 	available map[abi.SectorID]struct{}
 
-	notifee SectorStateNotifee
-	addrSel AddrSel
+	journal        journal.Journal
+	sealingEvtType journal.EventType
+	notifee        SectorStateNotifee
+	addrSel        AddrSel
 
 	stats SectorStats
 
@@ -149,7 +152,7 @@ type pendingPiece struct {
 	accepted func(abi.SectorNumber, abi.UnpaddedPieceSize, error)
 }
 
-func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sealer.SectorManager, sc SectorIDCounter, verif storiface.Verifier, prov storiface.Prover, pcp PreCommitPolicy, gc GetSealingConfigFunc, notifee SectorStateNotifee, as AddrSel) *Sealing {
+func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events Events, maddr address.Address, ds datastore.Batching, sealer sealer.SectorManager, sc SectorIDCounter, verif storiface.Verifier, prov storiface.Prover, pcp PreCommitPolicy, gc GetSealingConfigFunc, journal journal.Journal, as AddrSel) *Sealing {
 	s := &Sealing{
 		Api:      api,
 		DealInfo: &CurrentDealInfoManager{api},
@@ -170,7 +173,9 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 
 		available: map[abi.SectorID]struct{}{},
 
-		notifee: notifee,
+		journal:        journal,
+		sealingEvtType: journal.RegisterEventType("storage", "sealing_states"),
+
 		addrSel: as,
 
 		terminator:  NewTerminationBatcher(mctx, maddr, api, as, fc, gc),
@@ -184,6 +189,19 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 			byState:  map[SectorState]int64{},
 		},
 	}
+
+	s.notifee = func(before, after SectorInfo) {
+		s.journal.RecordEvent(s.sealingEvtType, func() interface{} {
+			return SealingStateEvt{
+				SectorNumber: before.SectorNumber,
+				SectorType:   before.SectorType,
+				From:         before.State,
+				After:        after.State,
+				Error:        after.LastErr,
+			}
+		})
+	}
+
 	s.startupWait.Add(1)
 
 	s.sectors = statemachine.New(namespace.Wrap(ds, datastore.NewKey(SectorStorePrefix)), s, SectorInfo{})
