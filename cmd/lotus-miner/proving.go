@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/ipfs/go-cid"
 	"os"
 	"strconv"
 	"strings"
@@ -695,8 +696,8 @@ var provingRecoverFaultsCmd = &cli.Command{
 		// wait for msgs to get mined into a block
 		results := make(chan error, len(msgs))
 		for _, msg := range msgs {
-			go func() {
-				wait, err := api.StateWaitMsg(ctx, msg, uint64(cctx.Int("confidence")))
+			go func(m cid.Cid) {
+				wait, err := api.StateWaitMsg(ctx, m, uint64(cctx.Int("confidence")))
 				if err != nil {
 					results <- xerrors.Errorf("Timeout waiting for message to land on chain %s", wait.Message)
 				}
@@ -705,7 +706,7 @@ var provingRecoverFaultsCmd = &cli.Command{
 					results <- xerrors.Errorf("Failed to execute message %s: %w", wait.Message, wait.Receipt.ExitCode.Error())
 				}
 				results <- nil
-			}()
+			}(msg)
 		}
 
 		time.Sleep(time.Duration((cctx.Int("confidence")*30)+30) * time.Second)
