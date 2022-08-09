@@ -573,6 +573,9 @@ func (b *CommitBatcher) getCommitCutoff(si SectorInfo) (time.Time, error) {
 		log.Errorf("getting precommit info: %s", err)
 		return time.Now(), err
 	}
+	if pci == nil {
+		return time.Now(), xerrors.Errorf("precommit info not found")
+	}
 	av, err := actors.VersionForNetwork(nv)
 	if err != nil {
 		log.Errorf("unsupported network vrsion: %s", err)
