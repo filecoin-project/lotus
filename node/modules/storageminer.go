@@ -222,7 +222,7 @@ func PreflightChecks(mctx helpers.MetricsCtx, lc fx.Lifecycle, api v1api.FullNod
 		}
 
 		if !has {
-			return errors.New("key for worker not found in local wallet")
+			return xerrors.New("key for worker not found in local wallet")
 		}
 
 		log.Infof("starting up miner %s, worker addr %s", maddr, workerKey)

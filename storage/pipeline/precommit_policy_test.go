@@ -18,6 +18,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	pipeline "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
@@ -30,7 +31,7 @@ type fakeConfigStub struct {
 	CCSectorLifetime time.Duration
 }
 
-func fakeConfigGetter(stub *fakeConfigStub) pipeline.GetSealingConfigFunc {
+func fakeConfigGetter(stub *fakeConfigStub) dtypes.GetSealingConfigFunc {
 	return func() (sealiface.Config, error) {
 		if stub == nil {
 			return sealiface.Config{}, nil

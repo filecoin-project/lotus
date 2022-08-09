@@ -218,14 +218,10 @@ func New(mctx context.Context, api SealingAPI, fc config.MinerFeeConfig, events 
 	return s
 }
 
-func (m *Sealing) Run(ctx context.Context) error {
-
+func (m *Sealing) Run(ctx context.Context) {
 	if err := m.restartSectors(ctx); err != nil {
-		log.Errorf("%+v", err)
-		return xerrors.Errorf("failed load sector states: %w", err)
+		log.Errorf("failed load sector states: %+v", err)
 	}
-
-	return nil
 }
 
 func (m *Sealing) Stop(ctx context.Context) error {
