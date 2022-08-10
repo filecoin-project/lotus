@@ -981,6 +981,8 @@ type WorkerStruct struct {
 
 		StorageAddLocal func(p0 context.Context, p1 string) error `perm:"admin"`
 
+		StorageDetachAll func(p0 context.Context) error `perm:"admin"`
+
 		StorageDetachLocal func(p0 context.Context, p1 string) error `perm:"admin"`
 
 		StorageLocal func(p0 context.Context) (map[storiface.ID]string, error) `perm:"admin"`
@@ -5665,6 +5667,17 @@ func (s *WorkerStruct) StorageAddLocal(p0 context.Context, p1 string) error {
 }
 
 func (s *WorkerStub) StorageAddLocal(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
+func (s *WorkerStruct) StorageDetachAll(p0 context.Context) error {
+	if s.Internal.StorageDetachAll == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.StorageDetachAll(p0)
+}
+
+func (s *WorkerStub) StorageDetachAll(p0 context.Context) error {
 	return ErrNotSupported
 }
 

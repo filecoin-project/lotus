@@ -146,6 +146,20 @@ func (w *Worker) StorageDetachLocal(ctx context.Context, path string) error {
 	return w.LocalStore.ClosePath(ctx, localPath.ID)
 }
 
+func (w *Worker) StorageDetachAll(ctx context.Context) error {
+
+	lps, err := w.LocalStore.Local(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting local path list: %w", err)
+	}
+
+	for _, lp := range lps {
+		w.LocalStore.ClosePath(ctx, lp.ID)
+	}
+
+	return nil
+}
+
 func (w *Worker) StorageRedeclareLocal(ctx context.Context, id *storiface.ID, dropMissing bool) error {
 	return w.LocalStore.Redeclare(ctx, id, dropMissing)
 }

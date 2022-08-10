@@ -39,6 +39,7 @@
   * [SetEnabled](#SetEnabled)
 * [Storage](#Storage)
   * [StorageAddLocal](#StorageAddLocal)
+  * [StorageDetachAll](#StorageDetachAll)
   * [StorageDetachLocal](#StorageDetachLocal)
   * [StorageLocal](#StorageLocal)
   * [StorageRedeclareLocal](#StorageRedeclareLocal)
@@ -2118,6 +2119,15 @@ Inputs:
   "string value"
 ]
 ```
+
+Response: `{}`
+
+### StorageDetachAll
+
+
+Perms: admin
+
+Inputs: `null`
 
 Response: `{}`
 
