@@ -9,6 +9,7 @@ import (
 	"go.opencensus.io/tag"
 
 	rpcmetrics "github.com/filecoin-project/go-jsonrpc/metrics"
+	"github.com/libp2p/go-libp2p-resource-manager/obs"
 
 	"github.com/filecoin-project/lotus/blockstore"
 )
@@ -645,6 +646,7 @@ var DefaultViews = func() []*view.View {
 	}
 	views = append(views, blockstore.DefaultViews...)
 	views = append(views, rpcmetrics.DefaultViews...)
+	views = append(views, obs.DefaultViews...)
 	return views
 }()
 

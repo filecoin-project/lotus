@@ -8,7 +8,6 @@ import (
 	"os"
 	"path/filepath"
 
-	ocprom "contrib.go.opencensus.io/exporter/prometheus"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/network"
@@ -16,9 +15,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/protocol"
 	rcmgr "github.com/libp2p/go-libp2p-resource-manager"
 	rcmgrObs "github.com/libp2p/go-libp2p-resource-manager/obs"
-	"github.com/prometheus/client_golang/prometheus"
 	"go.opencensus.io/stats"
-	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"go.uber.org/fx"
 
@@ -128,19 +125,6 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 		mgr, err := rcmgr.NewResourceManager(limiter, opts...)
 		if err != nil {
 			return nil, fmt.Errorf("error creating resource manager: %w", err)
-		}
-
-		// Hook up resource manager metrics
-		err = view.Register(rcmgrObs.DefaultViews...)
-		if err != nil {
-			return nil, fmt.Errorf("error registering metrics: %w", err)
-		}
-		_, err = ocprom.NewExporter(ocprom.Options{
-			Registry:  prometheus.DefaultRegisterer.(*prometheus.Registry),
-			Namespace: "rcmgr_trace_metrics",
-		})
-		if err != nil {
-			return nil, fmt.Errorf("error registering metrics: %w", err)
 		}
 
 		lc.Append(fx.Hook{
