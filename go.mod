@@ -112,7 +112,7 @@ require (
 	github.com/libp2p/go-eventbus v0.2.1
 	github.com/libp2p/go-libp2p v0.21.0
 	github.com/libp2p/go-libp2p-core v0.19.1
-	github.com/libp2p/go-libp2p-kad-dht v0.15.0
+	github.com/libp2p/go-libp2p-kad-dht v0.16.1-0.20220811151450-6a2603e9927e
 	github.com/libp2p/go-libp2p-peerstore v0.7.1
 	github.com/libp2p/go-libp2p-pubsub v0.7.1
 	github.com/libp2p/go-libp2p-record v0.1.3
