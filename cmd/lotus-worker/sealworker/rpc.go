@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 
@@ -22,6 +23,8 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
+
+var log = logging.Logger("sealworker")
 
 func WorkerHandler(authv func(ctx context.Context, token string) ([]auth.Permission, error), remote http.HandlerFunc, a api.Worker, permissioned bool) http.Handler {
 	mux := mux.NewRouter()
@@ -144,6 +147,23 @@ func (w *Worker) StorageDetachLocal(ctx context.Context, path string) error {
 
 	// unregister locally, drop from sector index
 	return w.LocalStore.ClosePath(ctx, localPath.ID)
+}
+
+func (w *Worker) StorageDetachAll(ctx context.Context) error {
+
+	lps, err := w.LocalStore.Local(ctx)
+	if err != nil {
+		return xerrors.Errorf("getting local path list: %w", err)
+	}
+
+	for _, lp := range lps {
+		err = w.LocalStore.ClosePath(ctx, lp.ID)
+		if err != nil {
+			log.Warnf("unable to close path: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func (w *Worker) StorageRedeclareLocal(ctx context.Context, id *storiface.ID, dropMissing bool) error {
