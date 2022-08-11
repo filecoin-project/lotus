@@ -366,7 +366,7 @@ assignLoop:
 
 			todo := firstWindow.Todo[tidx]
 
-			log.Debugf("assign worker sector %d", todo.Sector.ID.Number)
+			log.Debugf("assign worker sector %d to %s", todo.Sector.ID.Number, worker.Info.Hostname)
 			err := sw.startProcessingTask(todo)
 
 			if err != nil {
