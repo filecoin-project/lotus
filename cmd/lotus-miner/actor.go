@@ -249,6 +249,8 @@ var actorWithdrawCmd = &cli.Command{
 			return err
 		}
 
+		fmt.Printf("Requested withdrawal in message %s\nwaiting for it to be included in a block..\n", res)
+
 		// wait for it to get mined into a block
 		wait, err := api.StateWaitMsg(ctx, res, uint64(cctx.Int("confidence")))
 		if err != nil {
