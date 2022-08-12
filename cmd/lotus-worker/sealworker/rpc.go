@@ -154,7 +154,10 @@ func (w *Worker) StorageDetachAll(ctx context.Context) error {
 	}
 
 	for _, lp := range lps {
-		w.LocalStore.ClosePath(ctx, lp.ID)
+		err = w.LocalStore.ClosePath(ctx, lp.ID)
+		if err != nil {
+			return xerrors.Errorf("unable to close path: %w", err)
+		}
 	}
 
 	return nil
