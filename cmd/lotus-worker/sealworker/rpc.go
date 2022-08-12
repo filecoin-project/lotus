@@ -2,12 +2,12 @@ package sealworker
 
 import (
 	"context"
-	logging "github.com/ipfs/go-log/v2"
 	"net/http"
 	"sync/atomic"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	logging "github.com/ipfs/go-log/v2"
 	"github.com/mitchellh/go-homedir"
 	"golang.org/x/xerrors"
 
