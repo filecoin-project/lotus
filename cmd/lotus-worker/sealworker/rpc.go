@@ -2,6 +2,7 @@ package sealworker
 
 import (
 	"context"
+	logging "github.com/ipfs/go-log/v2"
 	"net/http"
 	"sync/atomic"
 
@@ -22,6 +23,8 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 )
+
+var log = logging.Logger("sealworker")
 
 func WorkerHandler(authv func(ctx context.Context, token string) ([]auth.Permission, error), remote http.HandlerFunc, a api.Worker, permissioned bool) http.Handler {
 	mux := mux.NewRouter()
@@ -156,7 +159,7 @@ func (w *Worker) StorageDetachAll(ctx context.Context) error {
 	for _, lp := range lps {
 		err = w.LocalStore.ClosePath(ctx, lp.ID)
 		if err != nil {
-			return xerrors.Errorf("unable to close path: %w", err)
+			log.Warnf("unable to close path: %w", err)
 		}
 	}
 
