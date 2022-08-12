@@ -14,8 +14,10 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/protocol"
 	rcmgr "github.com/libp2p/go-libp2p-resource-manager"
+	"github.com/libp2p/go-libp2p-resource-manager/obs"
 	rcmgrObs "github.com/libp2p/go-libp2p-resource-manager/obs"
 	"go.opencensus.io/stats"
+	"go.opencensus.io/stats/view"
 	"go.opencensus.io/tag"
 	"go.uber.org/fx"
 
@@ -109,6 +111,7 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 		if err != nil {
 			return nil, fmt.Errorf("error creating resource manager stats reporter: %w", err)
 		}
+		view.Register(obs.DefaultViews...)
 
 		// Metrics
 		opts = append(opts, rcmgr.WithMetrics(rcmgrMetrics{}), rcmgr.WithTraceReporter(str))
