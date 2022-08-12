@@ -6687,7 +6687,7 @@ Inputs:
 Response: `"0"`
 
 ### StateVerifiedRegistryRootKey
-StateVerifiedClientStatus returns the address of the Verified Registry's root key
+StateVerifiedRegistryRootKey returns the address of the Verified Registry's root key
 
 
 Perms: read
