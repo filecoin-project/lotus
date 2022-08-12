@@ -129,6 +129,13 @@ var stopCmd = &cli.Command{
 		defer closer()
 
 		ctx := lcli.ReqContext(cctx)
+
+		// Detach any storage associated with this worker
+		err = api.StorageDetachAll(ctx)
+		if err != nil {
+			return err
+		}
+
 		err = api.Shutdown(ctx)
 		if err != nil {
 			return err
