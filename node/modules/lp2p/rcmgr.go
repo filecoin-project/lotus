@@ -111,7 +111,10 @@ func ResourceManager(connMgrHi uint) func(lc fx.Lifecycle, repo repo.LockedRepo)
 		if err != nil {
 			return nil, fmt.Errorf("error creating resource manager stats reporter: %w", err)
 		}
-		view.Register(obs.DefaultViews...)
+		err = view.Register(obs.DefaultViews...)
+		if err != nil {
+			return nil, fmt.Errorf("error registering rcmgr metrics: %w", err)
+		}
 
 		// Metrics
 		opts = append(opts, rcmgr.WithMetrics(rcmgrMetrics{}), rcmgr.WithTraceReporter(str))
