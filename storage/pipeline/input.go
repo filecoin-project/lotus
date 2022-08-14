@@ -23,6 +23,7 @@ import (
 	"github.com/filecoin-project/lotus/storage/sealer"
 	"github.com/filecoin-project/lotus/storage/sealer/ffiwrapper"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
+	"github.com/filecoin-project/lotus/storage/sectorblocks"
 )
 
 func (m *Sealing) handleWaitDeals(ctx statemachine.Context, sector SectorInfo) error {
@@ -376,7 +377,7 @@ func waitAddPieceResp(ctx context.Context, pp *pendingPiece) (*pieceAcceptResp, 
 	}
 }
 
-func (m *Sealing) MatchPendingPiecesToOpenSectors(ctx context.Context) error {
+func (m *Sealing) SectorMatchPendingPiecesToOpenSectors(ctx context.Context) error {
 	sp, err := m.currentSealProof(ctx)
 	if err != nil {
 		return xerrors.Errorf("failed to get current seal proof: %w", err)
@@ -708,14 +709,14 @@ func (m *Sealing) tryGetDealSector(ctx context.Context, sp abi.RegisteredSealPro
 	return nil
 }
 
-func (m *Sealing) StartPacking(sid abi.SectorNumber) error {
+func (m *Sealing) StartPackingSector(sid abi.SectorNumber) error {
 	m.startupWait.Wait()
 
 	log.Infow("starting to seal deal sector", "sector", sid, "trigger", "user")
 	return m.sectors.Send(uint64(sid), SectorStartPacking{})
 }
 
-func (m *Sealing) AbortUpgrade(sid abi.SectorNumber) error {
+func (m *Sealing) SectorAbortUpgrade(sid abi.SectorNumber) error {
 	m.startupWait.Wait()
 
 	m.inputLk.Lock()
@@ -727,6 +728,78 @@ func (m *Sealing) AbortUpgrade(sid abi.SectorNumber) error {
 	return m.sectors.Send(uint64(sid), SectorAbortUpgrade{xerrors.New("triggered by user")})
 }
 
+func (m *Sealing) SectorsStatus(ctx context.Context, sid abi.SectorNumber, showOnChainInfo bool) (api.SectorInfo, error) {
+	if showOnChainInfo {
+		return api.SectorInfo{}, xerrors.Errorf("on-chain info not supported")
+	}
+
+	info, err := m.GetSectorInfo(sid)
+	if err != nil {
+		return api.SectorInfo{}, err
+	}
+
+	deals := make([]abi.DealID, len(info.Pieces))
+	pieces := make([]api.SectorPiece, len(info.Pieces))
+	for i, piece := range info.Pieces {
+		pieces[i].Piece = piece.Piece
+		if piece.DealInfo == nil {
+			continue
+		}
+
+		pdi := *piece.DealInfo // copy
+		pieces[i].DealInfo = &pdi
+
+		deals[i] = piece.DealInfo.DealID
+	}
+
+	log := make([]api.SectorLog, len(info.Log))
+	for i, l := range info.Log {
+		log[i] = api.SectorLog{
+			Kind:      l.Kind,
+			Timestamp: l.Timestamp,
+			Trace:     l.Trace,
+			Message:   l.Message,
+		}
+	}
+
+	sInfo := api.SectorInfo{
+		SectorID: sid,
+		State:    api.SectorState(info.State),
+		CommD:    info.CommD,
+		CommR:    info.CommR,
+		Proof:    info.Proof,
+		Deals:    deals,
+		Pieces:   pieces,
+		Ticket: api.SealTicket{
+			Value: info.TicketValue,
+			Epoch: info.TicketEpoch,
+		},
+		Seed: api.SealSeed{
+			Value: info.SeedValue,
+			Epoch: info.SeedEpoch,
+		},
+		PreCommitMsg:         info.PreCommitMessage,
+		CommitMsg:            info.CommitMessage,
+		Retries:              info.InvalidProofs,
+		ToUpgrade:            false,
+		ReplicaUpdateMessage: info.ReplicaUpdateMessage,
+
+		LastErr: info.LastErr,
+		Log:     log,
+		// on chain info
+		SealProof:          info.SectorType,
+		Activation:         0,
+		Expiration:         0,
+		DealWeight:         big.Zero(),
+		VerifiedDealWeight: big.Zero(),
+		InitialPledge:      big.Zero(),
+		OnTime:             0,
+		Early:              0,
+	}
+
+	return sInfo, nil
+}
+
 func proposalCID(deal api.PieceDealInfo) cid.Cid {
 	pc, err := deal.DealProposal.Cid()
 	if err != nil {
@@ -736,3 +809,5 @@ func proposalCID(deal api.PieceDealInfo) cid.Cid {
 
 	return pc
 }
+
+var _ sectorblocks.SectorBuilder = &Sealing{}

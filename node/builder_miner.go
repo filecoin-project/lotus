@@ -116,9 +116,11 @@ func ConfigStorageMiner(c interface{}) Option {
 			Override(new(*slashfilter.SlashFilter), modules.NewSlashFilter),
 			Override(new(*miner.Miner), modules.SetupBlockProducer),
 			Override(new(gen.WinningPoStProver), storage.NewWinningPoStProver),
-			Override(new(*storage.Miner), modules.StorageMiner(cfg.Fees)),
+			Override(PreflightChecksKey, modules.PreflightChecks),
+			Override(new(*sealing.Sealing), modules.SealingPipeline(cfg.Fees)),
+
 			Override(new(*wdpost.WindowPoStScheduler), modules.WindowPostScheduler(cfg.Fees, cfg.Proving)),
-			Override(new(sectorblocks.SectorBuilder), From(new(*storage.Miner))),
+			Override(new(sectorblocks.SectorBuilder), From(new(*sealing.Sealing))),
 		),
 
 		If(cfg.Subsystems.EnableSectorStorage,

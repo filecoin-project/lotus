@@ -407,7 +407,7 @@ func (m *Sealing) handlePreCommitting(ctx statemachine.Context, sector SectorInf
 
 	goodFunds := big.Add(deposit, big.Int(m.feeCfg.MaxPreCommitGasFee))
 
-	from, _, err := m.addrSel(ctx.Context(), mi, api.PreCommitAddr, goodFunds, deposit)
+	from, _, err := m.addrSel.AddressFor(ctx.Context(), m.Api, mi, api.PreCommitAddr, goodFunds, deposit)
 	if err != nil {
 		return ctx.Send(SectorChainPreCommitFailed{xerrors.Errorf("no good address to send precommit message from: %w", err)})
 	}
@@ -667,7 +667,7 @@ func (m *Sealing) handleSubmitCommit(ctx statemachine.Context, sector SectorInfo
 
 	goodFunds := big.Add(collateral, big.Int(m.feeCfg.MaxCommitGasFee))
 
-	from, _, err := m.addrSel(ctx.Context(), mi, api.CommitAddr, goodFunds, collateral)
+	from, _, err := m.addrSel.AddressFor(ctx.Context(), m.Api, mi, api.CommitAddr, goodFunds, collateral)
 	if err != nil {
 		return ctx.Send(SectorCommitFailed{xerrors.Errorf("no good address to send commit message from: %w", err)})
 	}

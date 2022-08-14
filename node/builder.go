@@ -106,6 +106,7 @@ const (
 	RelayIndexerMessagesKey
 
 	// miner
+	PreflightChecksKey
 	GetParamsKey
 	HandleMigrateProviderFundsKey
 	HandleDealsKey

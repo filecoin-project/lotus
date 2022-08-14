@@ -49,7 +49,6 @@ import (
 	"github.com/filecoin-project/lotus/miner"
 	"github.com/filecoin-project/lotus/node/modules"
 	"github.com/filecoin-project/lotus/node/modules/dtypes"
-	"github.com/filecoin-project/lotus/storage"
 	"github.com/filecoin-project/lotus/storage/ctladdr"
 	"github.com/filecoin-project/lotus/storage/paths"
 	sealing "github.com/filecoin-project/lotus/storage/pipeline"
@@ -88,7 +87,7 @@ type StorageMinerAPI struct {
 	DAGStoreWrapper   *mktsdagstore.Wrapper             `optional:"true"`
 
 	// Miner / storage
-	Miner       *storage.Miner       `optional:"true"`
+	Miner       *sealing.Sealing     `optional:"true"`
 	BlockMiner  *miner.Miner         `optional:"true"`
 	StorageMgr  *sealer.Manager      `optional:"true"`
 	IStorageMgr sealer.SectorManager `optional:"true"`
@@ -405,7 +404,11 @@ func (sm *StorageMinerAPI) SectorPreCommitPending(ctx context.Context) ([]abi.Se
 }
 
 func (sm *StorageMinerAPI) SectorMarkForUpgrade(ctx context.Context, id abi.SectorNumber, snap bool) error {
-	return sm.Miner.MarkForUpgrade(ctx, id, snap)
+	if !snap {
+		return fmt.Errorf("non-snap upgrades are not supported")
+	}
+
+	return sm.Miner.MarkForUpgrade(ctx, id)
 }
 
 func (sm *StorageMinerAPI) SectorAbortUpgrade(ctx context.Context, number abi.SectorNumber) error {

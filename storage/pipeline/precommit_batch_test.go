@@ -42,9 +42,9 @@ func TestPrecommitBatcher(t *testing.T) {
 
 	ctx := context.Background()
 
-	as := func(ctx context.Context, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
+	as := asel(func(ctx context.Context, mi api.MinerInfo, use api.AddrUse, goodFunds, minFunds abi.TokenAmount) (address.Address, abi.TokenAmount, error) {
 		return t0123, big.Zero(), nil
-	}
+	})
 
 	maxBatch := miner6.PreCommitSectorBatchMaxSize
 
