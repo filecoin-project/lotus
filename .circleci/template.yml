@@ -382,7 +382,7 @@ jobs:
         description: publish github release and homebrew?
         type: boolean
     macos:
-      xcode: "12.5.0"
+      xcode: "13.4.1"
     working_directory: ~/go/src/github.com/filecoin-project/lotus
     steps:
       - prepare:
