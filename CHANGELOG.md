@@ -1,8 +1,8 @@
 # Lotus changelog
 
-# v1.17.1-rc1 / 2022-08-08
+# v1.17.1-rc2 / 2022-08-15
 
-This is the first release candidate of the upcoming OPTIONAL release Lotus v1.17.1. This optional release includes splitstore and has some small bug fixes, new features & improvements. Full changelog will be published upon final release.
+This is the second release candidate of the upcoming OPTIONAL release Lotus v1.17.1. This optional release includes splitstore and has some small bug fixes, new features & improvements. Full changelog will be published upon final release.
 
 - github.com/filecoin-project/lotus:
   - chore: merge: releases (v1.17.0) to master ([filecoin-project/lotus#9146](https://github.com/filecoin-project/lotus/pull/9146))
