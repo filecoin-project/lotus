@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -32,7 +33,6 @@ import (
 	power3 "github.com/filecoin-project/specs-actors/v3/actors/builtin/power"
 
 	"github.com/filecoin-project/lotus/api"
-	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain"
 	"github.com/filecoin-project/lotus/chain/actors"
@@ -628,8 +628,7 @@ func (n *Ensemble) Start() *Ensemble {
 			node.Test(),
 
 			node.If(m.options.disableLibp2p, node.MockHost(n.mn)),
-
-			node.Override(new(v1api.FullNode), m.FullNode.FullNode),
+			node.Override(new(v1api.RawFullNodeAPI), m.FullNode.FullNode),
 			node.Override(new(*lotusminer.Miner), lotusminer.NewTestMiner(mineBlock, m.ActorAddr)),
 
 			// disable resource filtering so that local worker gets assigned tasks

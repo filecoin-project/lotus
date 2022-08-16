@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-graphsync"
+
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -53,7 +55,8 @@ type PubsubScore struct {
 }
 
 type MessageSendSpec struct {
-	MaxFee abi.TokenAmount
+	MaxFee  abi.TokenAmount
+	MsgUuid uuid.UUID
 }
 
 // GraphSyncDataTransfer provides diagnostics on a data transfer happening over graphsync
@@ -252,10 +255,10 @@ type RestrievalRes struct {
 }
 
 // Selector specifies ipld selector string
-// - if the string starts with '{', it's interpreted as json selector string
-//   see https://ipld.io/specs/selectors/ and https://ipld.io/specs/selectors/fixtures/selector-fixtures-1/
-// - otherwise the string is interpreted as ipld-selector-text-lite (simple ipld path)
-//   see https://github.com/ipld/go-ipld-selector-text-lite
+//   - if the string starts with '{', it's interpreted as json selector string
+//     see https://ipld.io/specs/selectors/ and https://ipld.io/specs/selectors/fixtures/selector-fixtures-1/
+//   - otherwise the string is interpreted as ipld-selector-text-lite (simple ipld path)
+//     see https://github.com/ipld/go-ipld-selector-text-lite
 type Selector string
 
 type DagSpec struct {

@@ -2,6 +2,7 @@ package node
 
 import (
 	"errors"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"time"
 
 	"go.uber.org/fx"
@@ -77,6 +78,7 @@ func ConfigStorageMiner(c interface{}) Option {
 
 	return Options(
 
+		Override(new(v1api.FullNode), modules.GetUuidWrapper),
 		// Needed to instantiate pubsub used by index provider via ConfigCommon
 		Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
 		Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),

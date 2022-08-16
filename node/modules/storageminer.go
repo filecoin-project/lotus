@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -78,6 +79,19 @@ var (
 	StorageCounterDSPrefix = "/storage/nextid"
 	StagingAreaDirName     = "deal-staging"
 )
+
+type UuidWrapper struct {
+	v1api.FullNode
+}
+
+func (a *UuidWrapper) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error) {
+	spec.MsgUuid = uuid.New()
+	return a.FullNode.MpoolPushMessage(ctx, msg, spec)
+}
+
+func GetUuidWrapper(a v1api.RawFullNodeAPI) v1api.FullNode {
+	return &UuidWrapper{a}
+}
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 	maddrb, err := ds.Get(context.TODO(), datastore.NewKey("miner-address"))
