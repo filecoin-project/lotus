@@ -305,6 +305,25 @@ var sectorsListCmd = &cli.Command{
 			Name:  "states",
 			Usage: "filter sectors by a comma-separated list of states",
 		},
+		&cli.StringFlag{
+			Name:  "sectors",
+			Usage: "filter sectors by a comma-separated list of ids",
+		},
+		&cli.IntFlag{
+			Name:  "page-no",
+			Usage: "page number",
+			Value: -1,
+		},
+		&cli.IntFlag{
+			Name:  "page-data-count",
+			Usage: "number of datas per page",
+			Value: 100,
+		},
+		&cli.BoolFlag{
+			Name:  "order-by-asc",
+			Usage: "whether to arrange in positive order",
+			Value: true,
+		},
 		&cli.BoolFlag{
 			Name:    "unproven",
 			Usage:   "only show sectors which aren't in the 'Proving' state",
@@ -364,6 +383,46 @@ var sectorsListCmd = &cli.Command{
 
 		if err != nil {
 			return err
+		}
+
+		sectors := cctx.String("sectors")
+		if len(sectors) > 0 {
+			idList := strings.Split(sectors, ",")
+			var tmpList []abi.SectorNumber
+			for _, s := range list {
+				for _, id := range idList {
+					if s.String() == id {
+						tmpList = append(tmpList, s)
+						break
+					}
+				}
+			}
+			list = tmpList
+		}
+
+		orderByAsc := cctx.Bool("order-by-asc")
+
+		sort.Slice(list, func(i, j int) bool {
+			if orderByAsc {
+				return list[i] < list[j]
+			} else {
+				return list[i] > list[j]
+			}
+		})
+
+		pageNo := cctx.Int("page-no")
+		if pageNo >= 0 {
+			pageDataCount := cctx.Int("page-data-count")
+			if pageDataCount > 0 {
+				listLen := len(list)
+				if listLen >= pageNo*pageDataCount+pageDataCount {
+					list = list[pageNo*pageDataCount : pageNo*pageDataCount+pageDataCount]
+				} else if listLen >= pageNo*pageDataCount {
+					list = list[pageNo*pageDataCount:]
+				} else {
+					list = nil
+				}
+			}
 		}
 
 		maddr, err := nodeApi.ActorAddress(ctx)
