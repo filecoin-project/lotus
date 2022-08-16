@@ -95,7 +95,7 @@ func (ms *MessageSigner) SignMessage(ctx context.Context, msg *types.Message, cb
 
 func (ms *MessageSigner) GetSignedMessage(ctx context.Context, uuid uuid.UUID) (*types.SignedMessage, error) {
 
-	key := datastore.KeyWithNamespaces([]string{dsKeyMsgUuidSet, uuid.String()})
+	key := datastore.KeyWithNamespaces([]string{dsKeyMsgUUIDSet, uuid.String()})
 	bytes, err := ms.ds.Get(ctx, key)
 	if err != nil {
 		return nil, err
@@ -105,7 +105,7 @@ func (ms *MessageSigner) GetSignedMessage(ctx context.Context, uuid uuid.UUID) (
 
 func (ms *MessageSigner) StoreSignedMessage(ctx context.Context, uuid uuid.UUID, message *types.SignedMessage) error {
 
-	key := datastore.KeyWithNamespaces([]string{dsKeyMsgUuidSet, uuid.String()})
+	key := datastore.KeyWithNamespaces([]string{dsKeyMsgUUIDSet, uuid.String()})
 	serializedMsg, err := message.Serialize()
 	if err != nil {
 		return err
