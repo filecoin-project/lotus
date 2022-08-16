@@ -20,7 +20,7 @@ import (
 )
 
 const dsKeyActorNonce = "ActorNextNonce"
-const dsKeyMsgUuidSet = "MsgUuidSet"
+const dsKeyMsgUUIDSet = "MsgUuidSet"
 
 var log = logging.Logger("messagesigner")
 
