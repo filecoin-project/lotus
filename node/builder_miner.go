@@ -2,7 +2,6 @@ package node
 
 import (
 	"errors"
-	"github.com/filecoin-project/lotus/api/v1api"
 	"time"
 
 	"go.uber.org/fx"
@@ -16,6 +15,7 @@ import (
 	provider "github.com/filecoin-project/index-provider"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"

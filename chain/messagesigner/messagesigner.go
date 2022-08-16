@@ -3,9 +3,9 @@ package messagesigner
 import (
 	"bytes"
 	"context"
-	"github.com/google/uuid"
 	"sync"
 
+	"github.com/google/uuid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
 	logging "github.com/ipfs/go-log/v2"
