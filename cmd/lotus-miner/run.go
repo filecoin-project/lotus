@@ -150,7 +150,7 @@ var runCmd = &cli.Command{
 				node.Override(new(dtypes.APIEndpoint), func() (dtypes.APIEndpoint, error) {
 					return multiaddr.NewMultiaddr("/ip4/127.0.0.1/tcp/" + cctx.String("miner-api"))
 				})),
-			node.Override(new(v1api.FullNode), nodeApi),
+			node.Override(new(v1api.RawFullNodeAPI), nodeApi),
 		)
 		if err != nil {
 			return xerrors.Errorf("creating node: %w", err)

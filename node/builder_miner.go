@@ -15,6 +15,7 @@ import (
 	provider "github.com/filecoin-project/index-provider"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/api/v1api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/gen"
 	"github.com/filecoin-project/lotus/chain/gen/slashfilter"
@@ -77,6 +78,7 @@ func ConfigStorageMiner(c interface{}) Option {
 
 	return Options(
 
+		Override(new(v1api.FullNode), modules.MakeUuidWrapper),
 		// Needed to instantiate pubsub used by index provider via ConfigCommon
 		Override(new(dtypes.DrandSchedule), modules.BuiltinDrandConfig),
 		Override(new(dtypes.BootstrapPeers), modules.BuiltinBootstrap),

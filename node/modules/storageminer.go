@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/namespace"
@@ -78,6 +79,22 @@ var (
 	StorageCounterDSPrefix = "/storage/nextid"
 	StagingAreaDirName     = "deal-staging"
 )
+
+type UuidWrapper struct {
+	v1api.FullNode
+}
+
+func (a *UuidWrapper) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error) {
+	if spec == nil {
+		spec = new(api.MessageSendSpec)
+	}
+	spec.MsgUuid = uuid.New()
+	return a.FullNode.MpoolPushMessage(ctx, msg, spec)
+}
+
+func MakeUuidWrapper(a v1api.RawFullNodeAPI) v1api.FullNode {
+	return &UuidWrapper{a}
+}
 
 func minerAddrFromDS(ds dtypes.MetadataDS) (address.Address, error) {
 	maddrb, err := ds.Get(context.TODO(), datastore.NewKey("miner-address"))
