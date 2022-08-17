@@ -1,10 +1,14 @@
 # Lotus changelog
 
-# v1.17.1-rc1 / 2022-08-08
+# v1.17.1-rc3 / 2022-08-16
 
-This is the first release candidate of the upcoming OPTIONAL release Lotus v1.17.1. This optional release includes splitstore and has some small bug fixes, new features & improvements. Full changelog will be published upon final release.
+This is the third release candidate of the upcoming OPTIONAL release Lotus v1.17.1. This optional release includes splitstore and has some small bug fixes, new features & improvements. Full changelog will be published upon final release.
 
 - github.com/filecoin-project/lotus:
+  - Bump version for RC
+  - chore: ci: Update xcode version for macos builds ([filecoin-project/lotus#9164](https://github.com/filecoin-project/lotus/pull/9164))
+  - backport: 9153: detach storage on worker shutdown ([filecoin-project/lotus#9165](https://github.com/filecoin-project/lotus/pull/9165))
+  - chore: versioning: Bump version for RC and add changelog ([filecoin-project/lotus#9148](https://github.com/filecoin-project/lotus/pull/9148))
   - chore: merge: releases (v1.17.0) to master ([filecoin-project/lotus#9146](https://github.com/filecoin-project/lotus/pull/9146))
   - fix: storage: don't panic in getCommitCutoff when precommit is not found ([filecoin-project/lotus#9141](https://github.com/filecoin-project/lotus/pull/9141))
   - Update FFI ([filecoin-project/lotus#9139](https://github.com/filecoin-project/lotus/pull/9139))
