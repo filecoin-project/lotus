@@ -42,7 +42,6 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-statestore"
-	"github.com/filecoin-project/go-storedcounter"
 	provider "github.com/filecoin-project/index-provider"
 
 	"github.com/filecoin-project/lotus/api"
@@ -76,8 +75,7 @@ import (
 )
 
 var (
-	StorageCounterDSPrefix = "/storage/nextid"
-	StagingAreaDirName     = "deal-staging"
+	StagingAreaDirName = "deal-staging"
 )
 
 type UuidWrapper struct {
@@ -153,20 +151,6 @@ func SealProofType(maddr dtypes.MinerAddress, fnapi v1api.FullNode) (abi.Registe
 	}
 
 	return miner.PreferredSealProofTypeFromWindowPoStType(networkVersion, mi.WindowPoStProofType)
-}
-
-type sidsc struct {
-	sc *storedcounter.StoredCounter
-}
-
-func (s *sidsc) Next() (abi.SectorNumber, error) {
-	i, err := s.sc.Next()
-	return abi.SectorNumber(i), err
-}
-
-func SectorIDCounter(ds dtypes.MetadataDS) sealing.SectorIDCounter {
-	sc := storedcounter.New(ds, datastore.NewKey(StorageCounterDSPrefix))
-	return &sidsc{sc}
 }
 
 func AddressSelector(addrConf *config.MinerAddressConfig) func() (*ctladdr.AddressSelector, error) {
@@ -257,7 +241,6 @@ type SealingPipelineParams struct {
 	API                v1api.FullNode
 	MetadataDS         dtypes.MetadataDS
 	Sealer             sealer.SectorManager
-	SectorIDCounter    sealing.SectorIDCounter
 	Verifier           storiface.Verifier
 	Prover             storiface.Prover
 	GetSealingConfigFn dtypes.GetSealingConfigFunc
@@ -274,7 +257,6 @@ func SealingPipeline(fc config.MinerFeeConfig) func(params SealingPipelineParams
 			lc     = params.Lifecycle
 			api    = params.API
 			sealer = params.Sealer
-			sc     = params.SectorIDCounter
 			verif  = params.Verifier
 			prover = params.Prover
 			gsd    = params.GetSealingConfigFn
@@ -297,7 +279,7 @@ func SealingPipeline(fc config.MinerFeeConfig) func(params SealingPipelineParams
 		provingBuffer := md.WPoStProvingPeriod * 2
 		pcp := sealing.NewBasicPreCommitPolicy(api, gsd, provingBuffer)
 
-		pipeline := sealing.New(ctx, api, fc, evts, maddr, ds, sealer, sc, verif, prover, &pcp, gsd, j, as)
+		pipeline := sealing.New(ctx, api, fc, evts, maddr, ds, sealer, verif, prover, &pcp, gsd, j, as)
 
 		lc.Append(fx.Hook{
 			OnStart: func(context.Context) error {
