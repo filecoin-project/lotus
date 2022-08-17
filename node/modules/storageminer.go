@@ -85,11 +85,14 @@ type UuidWrapper struct {
 }
 
 func (a *UuidWrapper) MpoolPushMessage(ctx context.Context, msg *types.Message, spec *api.MessageSendSpec) (*types.SignedMessage, error) {
+	if spec == nil {
+		spec = new(api.MessageSendSpec)
+	}
 	spec.MsgUuid = uuid.New()
 	return a.FullNode.MpoolPushMessage(ctx, msg, spec)
 }
 
-func GetUuidWrapper(a v1api.RawFullNodeAPI) v1api.FullNode {
+func MakeUuidWrapper(a v1api.RawFullNodeAPI) v1api.FullNode {
 	return &UuidWrapper{a}
 }
 
