@@ -2,15 +2,18 @@ package itests
 
 import (
 	"context"
+	"testing"
+	"time"
+
+	uuid2 "github.com/google/uuid"
+	"github.com/stretchr/testify/require"
+
 	"github.com/filecoin-project/go-state-types/big"
+
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
-	uuid2 "github.com/google/uuid"
-	"github.com/stretchr/testify/require"
-	"testing"
-	"time"
 )
 
 func TestDuplicateMpoolMessages(t *testing.T) {
@@ -24,7 +27,6 @@ func TestDuplicateMpoolMessages(t *testing.T) {
 	client, _, ens := kit.EnsembleMinimal(t, kit.MockProofs())
 	ens.InterconnectAll().BeginMining(blockTime)
 
-	// send f099 half of account balance
 	msgBal := &types.Message{
 		From:  client.DefaultKey.Address,
 		To:    builtin.BurntFundsActorAddr,

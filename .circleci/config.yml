@@ -890,6 +890,11 @@ workflows:
           target: "./itests/deals_test.go"
       
       - test:
+          name: test-itest-dup_mpool_messages
+          suite: itest-dup_mpool_messages
+          target: "./itests/dup_mpool_messages_test.go"
+      
+      - test:
           name: test-itest-gas_estimation
           suite: itest-gas_estimation
           target: "./itests/gas_estimation_test.go"
