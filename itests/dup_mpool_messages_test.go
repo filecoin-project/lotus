@@ -39,7 +39,8 @@ func TestDuplicateMpoolMessages(t *testing.T) {
 	msg, err := client.MpoolPushMessage(ctx, msgBal, msgSpec)
 	require.NoError(t, err)
 
-	client.StateWaitMsg(ctx, msg.Cid(), 3, api.LookbackNoLimit, true)
+	_, err = client.StateWaitMsg(ctx, msg.Cid(), 3, api.LookbackNoLimit, true)
+	require.NoError(t, err)
 
 	remBal, err := client.WalletBalance(ctx, client.DefaultKey.Address)
 	require.NoError(t, err)
