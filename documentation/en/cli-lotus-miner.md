@@ -1789,6 +1789,7 @@ OPTIONS:
    --from value            only consider sectors whose current expiration epoch is in the range of [from, to], <from> defaults to: now + 120 (1 hour) (default: 0)
    --max-fee value         use up to this amount of FIL for one message. pass this flag to avoid message congestion. (default: "0")
    --new-expiration value  try to extend selected sectors to this epoch, ignoring extension (default: 0)
+   --only-cc               only extend CC sectors (useful for making sector ready for snap upgrade) (default: false)
    --really-do-it          pass this flag to really renew sectors, otherwise will only print out json representation of parameters (default: false)
    --sector-file value     provide a file containing one sector number in each line, ignoring above selecting criteria
    --to value              only consider sectors whose current expiration epoch is in the range of [from, to], <to> defaults to: now + 92160 (32 days) (default: 0)
