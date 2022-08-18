@@ -34,6 +34,9 @@ type WorkerConfig struct {
 	TaskTypes []sealtasks.TaskType
 	NoSwap    bool
 
+	// os.Hostname if not set
+	Name string
+
 	// IgnoreResourceFiltering enables task distribution to happen on this
 	// worker regardless of its currently available resources. Used in testing
 	// with the local worker.
@@ -55,6 +58,8 @@ type LocalWorker struct {
 	executor   ExecutorFunc
 	noSwap     bool
 	envLookup  EnvFunc
+
+	name string
 
 	// see equivalent field on WorkerConfig.
 	ignoreResources bool
@@ -83,6 +88,7 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, envLookup EnvFunc,
 		localStore: local,
 		sindex:     sindex,
 		ret:        ret,
+		name:       wcfg.Name,
 
 		ct: &workerCallTracker{
 			st: cst,
@@ -95,6 +101,14 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, envLookup EnvFunc,
 		challengeReadTimeout: wcfg.ChallengeReadTimeout,
 		session:              uuid.New(),
 		closing:              make(chan struct{}),
+	}
+
+	if w.name == "" {
+		var err error
+		w.name, err = os.Hostname()
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	if wcfg.MaxParallelChallengeReads > 0 {
@@ -113,13 +127,7 @@ func newLocalWorker(executor ExecutorFunc, wcfg WorkerConfig, envLookup EnvFunc,
 
 	go func() {
 		for _, call := range unfinished {
-			hostname, osErr := os.Hostname()
-			if osErr != nil {
-				log.Errorf("get hostname err: %+v", err)
-				hostname = ""
-			}
-
-			err := storiface.Err(storiface.ErrTempWorkerRestart, xerrors.Errorf("worker [Hostname: %s] restarted", hostname))
+			err := storiface.Err(storiface.ErrTempWorkerRestart, xerrors.Errorf("worker [name: %s] restarted", w.name))
 
 			// TODO: Handle restarting PC1 once support is merged
 
@@ -283,12 +291,7 @@ func (l *LocalWorker) asyncCall(ctx context.Context, sector storiface.SectorRef,
 		}
 
 		if err != nil {
-			hostname, osErr := os.Hostname()
-			if osErr != nil {
-				log.Errorf("get hostname err: %+v", err)
-			}
-
-			err = xerrors.Errorf("%w [Hostname: %s]", err, hostname)
+			err = xerrors.Errorf("%w [name: %s]", err, l.name)
 		}
 
 		if doReturn(ctx, rt, ci, l.ret, res, toCallError(err)) {
@@ -774,11 +777,6 @@ func (l *LocalWorker) memInfo() (memPhysical, memUsed, memSwap, memSwapUsed uint
 }
 
 func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
-	hostname, err := os.Hostname() // TODO: allow overriding from config
-	if err != nil {
-		panic(err)
-	}
-
 	gpus, err := ffi.GetGPUDevices()
 	if err != nil {
 		log.Errorf("getting gpu devices failed: %+v", err)
@@ -797,7 +795,7 @@ func (l *LocalWorker) Info(context.Context) (storiface.WorkerInfo, error) {
 	}
 
 	return storiface.WorkerInfo{
-		Hostname:        hostname,
+		Hostname:        l.name,
 		IgnoreResources: l.ignoreResources,
 		Resources: storiface.WorkerResources{
 			MemPhysical: memPhysical,
@@ -827,6 +825,10 @@ func (l *LocalWorker) Session(ctx context.Context) (uuid.UUID, error) {
 func (l *LocalWorker) Close() error {
 	close(l.closing)
 	return nil
+}
+
+func (l *LocalWorker) Done() <-chan struct{} {
+	return l.closing
 }
 
 // WaitQuiet blocks as long as there are tasks running

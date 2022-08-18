@@ -22,6 +22,7 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors/policy"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/node/config"
+	"github.com/filecoin-project/lotus/node/modules/dtypes"
 	"github.com/filecoin-project/lotus/storage/pipeline/sealiface"
 )
 
@@ -33,6 +34,12 @@ type PreCommitBatcherApi interface {
 	StateMinerAvailableBalance(context.Context, address.Address, types.TipSetKey) (big.Int, error)
 	ChainHead(ctx context.Context) (*types.TipSet, error)
 	StateNetworkVersion(ctx context.Context, tsk types.TipSetKey) (network.Version, error)
+
+	// Address selector
+	WalletBalance(context.Context, address.Address) (types.BigInt, error)
+	WalletHas(context.Context, address.Address) (bool, error)
+	StateAccountKey(context.Context, address.Address, types.TipSetKey) (address.Address, error)
+	StateLookupID(context.Context, address.Address, types.TipSetKey) (address.Address, error)
 }
 
 type preCommitEntry struct {
@@ -44,9 +51,9 @@ type PreCommitBatcher struct {
 	api       PreCommitBatcherApi
 	maddr     address.Address
 	mctx      context.Context
-	addrSel   AddrSel
+	addrSel   AddressSelector
 	feeCfg    config.MinerFeeConfig
-	getConfig GetSealingConfigFunc
+	getConfig dtypes.GetSealingConfigFunc
 
 	cutoffs map[abi.SectorNumber]time.Time
 	todo    map[abi.SectorNumber]*preCommitEntry
@@ -57,7 +64,7 @@ type PreCommitBatcher struct {
 	lk                    sync.Mutex
 }
 
-func NewPreCommitBatcher(mctx context.Context, maddr address.Address, api PreCommitBatcherApi, addrSel AddrSel, feeCfg config.MinerFeeConfig, getConfig GetSealingConfigFunc) *PreCommitBatcher {
+func NewPreCommitBatcher(mctx context.Context, maddr address.Address, api PreCommitBatcherApi, addrSel AddressSelector, feeCfg config.MinerFeeConfig, getConfig dtypes.GetSealingConfigFunc) *PreCommitBatcher {
 	b := &PreCommitBatcher{
 		api:       api,
 		maddr:     maddr,
@@ -296,7 +303,7 @@ func (b *PreCommitBatcher) processSingle(cfg sealiface.Config, mi api.MinerInfo,
 
 	goodFunds := big.Add(deposit, big.Int(b.feeCfg.MaxPreCommitGasFee))
 
-	from, _, err := b.addrSel(b.mctx, mi, api.PreCommitAddr, goodFunds, deposit)
+	from, _, err := b.addrSel.AddressFor(b.mctx, b.api, mi, api.PreCommitAddr, goodFunds, deposit)
 	if err != nil {
 		return cid.Undef, xerrors.Errorf("no good address to send precommit message from: %w", err)
 	}
@@ -353,7 +360,7 @@ func (b *PreCommitBatcher) processBatch(cfg sealiface.Config, tsk types.TipSetKe
 
 	goodFunds := big.Add(maxFee, needFunds)
 
-	from, _, err := b.addrSel(b.mctx, mi, api.PreCommitAddr, goodFunds, deposit)
+	from, _, err := b.addrSel.AddressFor(b.mctx, b.api, mi, api.PreCommitAddr, goodFunds, deposit)
 	if err != nil {
 		return []sealiface.PreCommitBatchRes{res}, xerrors.Errorf("no good address found: %w", err)
 	}

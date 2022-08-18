@@ -7,11 +7,11 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
 
-	bstore "github.com/filecoin-project/lotus/blockstore"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -21,14 +21,14 @@ var (
 	WarmupBoundary = build.Finality
 )
 
-// warmup acuiqres the compaction lock and spawns a goroutine to warm up the hotstore;
+// warmup acquires the compaction lock and spawns a goroutine to warm up the hotstore;
 // this is necessary when we sync from a snapshot or when we enable the splitstore
 // on top of an existing blockstore (which becomes the coldstore).
 func (s *SplitStore) warmup(curTs *types.TipSet) error {
 	if !atomic.CompareAndSwapInt32(&s.compacting, 0, 1) {
 		return xerrors.Errorf("error locking compaction")
 	}
-
+	s.compactType = warmup
 	go func() {
 		defer atomic.StoreInt32(&s.compacting, 0)
 
@@ -88,7 +88,7 @@ func (s *SplitStore) doWarmup(curTs *types.TipSet) error {
 
 			blk, err := s.cold.Get(s.ctx, c)
 			if err != nil {
-				if err == bstore.ErrNotFound {
+				if ipld.IsNotFound(err) {
 					atomic.AddInt64(missing, 1)
 					return errStopWalk
 				}

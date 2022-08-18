@@ -8,6 +8,7 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 	"github.com/raulk/clock"
 	"go.uber.org/multierr"
 )
@@ -112,7 +113,7 @@ func (t *TimedCacheBlockstore) View(ctx context.Context, k cid.Cid, callback fun
 	// calling an arbitrary callback while holding a lock.
 	t.mu.RLock()
 	block, err := t.active.Get(ctx, k)
-	if err == ErrNotFound {
+	if ipld.IsNotFound(err) {
 		block, err = t.inactive.Get(ctx, k)
 	}
 	t.mu.RUnlock()
@@ -127,7 +128,7 @@ func (t *TimedCacheBlockstore) Get(ctx context.Context, k cid.Cid) (blocks.Block
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	b, err := t.active.Get(ctx, k)
-	if err == ErrNotFound {
+	if ipld.IsNotFound(err) {
 		b, err = t.inactive.Get(ctx, k)
 	}
 	return b, err
@@ -137,7 +138,7 @@ func (t *TimedCacheBlockstore) GetSize(ctx context.Context, k cid.Cid) (int, err
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	size, err := t.active.GetSize(ctx, k)
-	if err == ErrNotFound {
+	if ipld.IsNotFound(err) {
 		size, err = t.inactive.GetSize(ctx, k)
 	}
 	return size, err
@@ -175,11 +176,12 @@ func (t *TimedCacheBlockstore) AllKeysChan(_ context.Context) (<-chan cid.Cid, e
 	defer t.mu.RUnlock()
 
 	ch := make(chan cid.Cid, len(t.active)+len(t.inactive))
-	for c := range t.active {
-		ch <- c
+	for _, b := range t.active {
+		ch <- b.Cid()
 	}
-	for c := range t.inactive {
-		if _, ok := t.active[c]; ok {
+	for _, b := range t.inactive {
+		c := b.Cid()
+		if _, ok := t.active[string(c.Hash())]; ok {
 			continue
 		}
 		ch <- c

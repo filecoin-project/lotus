@@ -308,7 +308,7 @@ func TestDeadlineToggling(t *testing.T) {
 	// terminate sectors on minerD
 	{
 		var terminationDeclarationParams []miner2.TerminationDeclaration
-		secs, err := minerD.SectorsList(ctx)
+		secs, err := minerD.SectorsListNonGenesis(ctx)
 		require.NoError(t, err)
 		require.Len(t, secs, sectorsD)
 

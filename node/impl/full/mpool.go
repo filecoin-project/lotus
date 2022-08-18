@@ -9,6 +9,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/chain/messagepool"
@@ -140,6 +141,16 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 	cp := *msg
 	msg = &cp
 	inMsg := *msg
+
+	// Check if this uuid has already been processed
+	if spec != nil {
+		signedMessage, err := a.MessageSigner.GetSignedMessage(ctx, spec.MsgUuid)
+		if err == nil {
+			log.Warnf("Message already processed. cid=%s", signedMessage.Cid())
+			return signedMessage, nil
+		}
+	}
+
 	fromA, err := a.Stmgr.ResolveToKeyAddress(ctx, msg.From, nil)
 	if err != nil {
 		return nil, xerrors.Errorf("getting key address: %w", err)
@@ -178,17 +189,31 @@ func (a *MpoolAPI) MpoolPushMessage(ctx context.Context, msg *types.Message, spe
 		return nil, xerrors.Errorf("mpool push: getting origin balance: %w", err)
 	}
 
-	if b.LessThan(msg.Value) {
-		return nil, xerrors.Errorf("mpool push: not enough funds: %s < %s", b, msg.Value)
+	requiredFunds := big.Add(msg.Value, msg.RequiredFunds())
+	if b.LessThan(requiredFunds) {
+		return nil, xerrors.Errorf("mpool push: not enough funds: %s < %s", b, requiredFunds)
 	}
 
 	// Sign and push the message
-	return a.MessageSigner.SignMessage(ctx, msg, func(smsg *types.SignedMessage) error {
+	signedMsg, err := a.MessageSigner.SignMessage(ctx, msg, func(smsg *types.SignedMessage) error {
 		if _, err := a.MpoolModuleAPI.MpoolPush(ctx, smsg); err != nil {
 			return xerrors.Errorf("mpool push: failed to push message: %w", err)
 		}
 		return nil
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Store uuid->signed message in datastore
+	if spec != nil {
+		err = a.MessageSigner.StoreSignedMessage(ctx, spec.MsgUuid, signedMsg)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return signedMsg, nil
 }
 
 func (a *MpoolAPI) MpoolBatchPush(ctx context.Context, smsgs []*types.SignedMessage) ([]cid.Cid, error) {

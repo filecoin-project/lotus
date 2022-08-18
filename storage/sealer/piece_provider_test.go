@@ -206,7 +206,7 @@ func newPieceProviderTestHarness(t *testing.T, mgrConfig Config, sectorProofType
 	require.NoError(t, err)
 
 	// create index, storage, local store & remote store.
-	index := paths.NewIndex()
+	index := paths.NewIndex(nil)
 	storage := newTestStorage(t)
 	localStore, err := paths.NewLocal(ctx, storage, index, []string{"http://" + nl.Addr().String() + "/remote"})
 	require.NoError(t, err)

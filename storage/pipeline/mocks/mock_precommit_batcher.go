@@ -71,6 +71,36 @@ func (mr *MockPreCommitBatcherApiMockRecorder) MpoolPushMessage(arg0, arg1, arg2
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MpoolPushMessage", reflect.TypeOf((*MockPreCommitBatcherApi)(nil).MpoolPushMessage), arg0, arg1, arg2)
 }
 
+// StateAccountKey mocks base method.
+func (m *MockPreCommitBatcherApi) StateAccountKey(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (address.Address, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateAccountKey", arg0, arg1, arg2)
+	ret0, _ := ret[0].(address.Address)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateAccountKey indicates an expected call of StateAccountKey.
+func (mr *MockPreCommitBatcherApiMockRecorder) StateAccountKey(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateAccountKey", reflect.TypeOf((*MockPreCommitBatcherApi)(nil).StateAccountKey), arg0, arg1, arg2)
+}
+
+// StateLookupID mocks base method.
+func (m *MockPreCommitBatcherApi) StateLookupID(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (address.Address, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateLookupID", arg0, arg1, arg2)
+	ret0, _ := ret[0].(address.Address)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateLookupID indicates an expected call of StateLookupID.
+func (mr *MockPreCommitBatcherApiMockRecorder) StateLookupID(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateLookupID", reflect.TypeOf((*MockPreCommitBatcherApi)(nil).StateLookupID), arg0, arg1, arg2)
+}
+
 // StateMinerAvailableBalance mocks base method.
 func (m *MockPreCommitBatcherApi) StateMinerAvailableBalance(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()
@@ -114,4 +144,34 @@ func (m *MockPreCommitBatcherApi) StateNetworkVersion(arg0 context.Context, arg1
 func (mr *MockPreCommitBatcherApiMockRecorder) StateNetworkVersion(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateNetworkVersion", reflect.TypeOf((*MockPreCommitBatcherApi)(nil).StateNetworkVersion), arg0, arg1)
+}
+
+// WalletBalance mocks base method.
+func (m *MockPreCommitBatcherApi) WalletBalance(arg0 context.Context, arg1 address.Address) (big.Int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WalletBalance", arg0, arg1)
+	ret0, _ := ret[0].(big.Int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// WalletBalance indicates an expected call of WalletBalance.
+func (mr *MockPreCommitBatcherApiMockRecorder) WalletBalance(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WalletBalance", reflect.TypeOf((*MockPreCommitBatcherApi)(nil).WalletBalance), arg0, arg1)
+}
+
+// WalletHas mocks base method.
+func (m *MockPreCommitBatcherApi) WalletHas(arg0 context.Context, arg1 address.Address) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WalletHas", arg0, arg1)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// WalletHas indicates an expected call of WalletHas.
+func (mr *MockPreCommitBatcherApiMockRecorder) WalletHas(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WalletHas", reflect.TypeOf((*MockPreCommitBatcherApi)(nil).WalletHas), arg0, arg1)
 }

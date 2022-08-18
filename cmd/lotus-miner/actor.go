@@ -27,6 +27,7 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
+	builtin2 "github.com/filecoin-project/lotus/chain/actors/builtin"
 	lminer "github.com/filecoin-project/lotus/chain/actors/builtin/miner"
 	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
@@ -218,6 +219,17 @@ var actorWithdrawCmd = &cli.Command{
 		},
 	},
 	Action: func(cctx *cli.Context) error {
+		amount := abi.NewTokenAmount(0)
+
+		if cctx.Args().Present() {
+			f, err := types.ParseFIL(cctx.Args().First())
+			if err != nil {
+				return xerrors.Errorf("parsing 'amount' argument: %w", err)
+			}
+
+			amount = abi.TokenAmount(f)
+		}
+
 		nodeApi, closer, err := lcli.GetStorageMinerAPI(cctx)
 		if err != nil {
 			return err
@@ -232,67 +244,21 @@ var actorWithdrawCmd = &cli.Command{
 
 		ctx := lcli.ReqContext(cctx)
 
-		maddr, err := nodeApi.ActorAddress(ctx)
+		res, err := nodeApi.ActorWithdrawBalance(ctx, amount)
 		if err != nil {
 			return err
 		}
 
-		mi, err := api.StateMinerInfo(ctx, maddr, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
-		available, err := api.StateMinerAvailableBalance(ctx, maddr, types.EmptyTSK)
-		if err != nil {
-			return err
-		}
-
-		amount := available
-		if cctx.Args().Present() {
-			f, err := types.ParseFIL(cctx.Args().First())
-			if err != nil {
-				return xerrors.Errorf("parsing 'amount' argument: %w", err)
-			}
-
-			amount = abi.TokenAmount(f)
-
-			if amount.GreaterThan(available) {
-				return xerrors.Errorf("can't withdraw more funds than available; requested: %s; available: %s", types.FIL(amount), types.FIL(available))
-			}
-		}
-
-		params, err := actors.SerializeParams(&miner.WithdrawBalanceParams{
-			AmountRequested: amount, // Default to attempting to withdraw all the extra funds in the miner actor
-		})
-		if err != nil {
-			return err
-		}
-
-		smsg, err := api.MpoolPushMessage(ctx, &types.Message{
-			To:     maddr,
-			From:   mi.Owner,
-			Value:  types.NewInt(0),
-			Method: builtin.MethodsMiner.WithdrawBalance,
-			Params: params,
-		}, nil)
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("Requested rewards withdrawal in message %s\n", smsg.Cid())
+		fmt.Printf("Requested withdrawal in message %s\nwaiting for it to be included in a block..\n", res)
 
 		// wait for it to get mined into a block
-		fmt.Printf("waiting for %d epochs for confirmation..\n", uint64(cctx.Int("confidence")))
-
-		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), uint64(cctx.Int("confidence")))
+		wait, err := api.StateWaitMsg(ctx, res, uint64(cctx.Int("confidence")))
 		if err != nil {
-			return err
+			return xerrors.Errorf("Timeout waiting for withdrawal message %s", wait.Message)
 		}
 
-		// check it executed successfully
 		if wait.Receipt.ExitCode != 0 {
-			fmt.Println(cctx.App.Writer, "withdrawal failed!")
-			return err
+			return xerrors.Errorf("Failed to execute withdrawal message %s: %w", wait.Message, wait.Receipt.ExitCode.Error())
 		}
 
 		nv, err := api.StateNetworkVersion(ctx, wait.TipSet)
@@ -448,7 +414,7 @@ var actorControlList = &cli.Command{
 		}
 		defer closer()
 
-		api, acloser, err := lcli.GetFullNodeAPI(cctx)
+		api, acloser, err := lcli.GetFullNodeAPIV1(cctx)
 		if err != nil {
 			return err
 		}
@@ -530,18 +496,21 @@ var actorControlList = &cli.Command{
 		}
 
 		printKey := func(name string, a address.Address) {
-			b, err := api.WalletBalance(ctx, a)
-			if err != nil {
-				fmt.Printf("%s\t%s: error getting balance: %s\n", name, a, err)
+			var actor *types.Actor
+			if actor, err = api.StateGetActor(ctx, a, types.EmptyTSK); err != nil {
+				fmt.Printf("%s\t%s: error getting actor: %s\n", name, a, err)
 				return
 			}
+			b := actor.Balance
 
-			k, err := api.StateAccountKey(ctx, a, types.EmptyTSK)
-			if err != nil {
-				fmt.Printf("%s\t%s: error getting account key: %s\n", name, a, err)
-				return
+			var k = a
+			// 'a' maybe a 'robust', in that case, 'StateAccountKey' returns an error.
+			if builtin2.IsAccountActor(actor.Code) {
+				if k, err = api.StateAccountKey(ctx, a, types.EmptyTSK); err != nil {
+					fmt.Printf("%s\t%s: error getting account key: %s\n", name, a, err)
+					return
+				}
 			}
-
 			kstr := k.String()
 			if !cctx.Bool("verbose") {
 				kstr = kstr[:9] + "..."

@@ -195,6 +195,7 @@ func init() {
 	addExample(&si)
 	addExample(retrievalmarket.DealID(5))
 	addExample(abi.ActorID(1000))
+	addExample(map[string]cid.Cid{})
 	addExample(map[string][]api.SealedRef{
 		"98000": {
 			api.SealedRef{
@@ -271,6 +272,8 @@ func init() {
 			Read:   [storiface.FileTypes]uint{2, 3, 0},
 		},
 	})
+	storifaceid := storiface.ID("1399aa04-2625-44b1-bad4-bd07b59b22c4")
+	addExample(&storifaceid)
 
 	// worker specific
 	addExample(storiface.AcquireMove)

@@ -365,6 +365,12 @@ var sealingAbortCmd = &cli.Command{
 	Name:      "abort",
 	Usage:     "Abort a running job",
 	ArgsUsage: "[callid]",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "sched",
+			Usage: "Specifies that the argument is UUID of the request to be removed from scheduler",
+		},
+	},
 	Action: func(cctx *cli.Context) error {
 		if cctx.Args().Len() != 1 {
 			return xerrors.Errorf("expected 1 argument")
@@ -377,6 +383,14 @@ var sealingAbortCmd = &cli.Command{
 		defer closer()
 
 		ctx := lcli.ReqContext(cctx)
+
+		if cctx.Bool("sched") {
+			err = nodeApi.SealingRemoveRequest(ctx, uuid.Must(uuid.Parse(cctx.Args().First())))
+			if err != nil {
+				return xerrors.Errorf("Failed to removed the request with UUID %s: %w", cctx.Args().First(), err)
+			}
+			return nil
+		}
 
 		jobs, err := nodeApi.WorkerJobs(ctx)
 		if err != nil {

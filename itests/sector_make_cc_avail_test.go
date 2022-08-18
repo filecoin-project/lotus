@@ -34,10 +34,10 @@ func TestMakeAvailable(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	CCUpgrade := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner + 1)
+	CCUpgrade := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner)
 
 	miner.PledgeSectors(ctx, 1, 0, nil)
-	sl, err := miner.SectorsList(ctx)
+	sl, err := miner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)
 	require.Len(t, sl, 1, "expected 1 sector")
 	require.Equal(t, CCUpgrade, sl[0], "unexpected sector number")
@@ -48,7 +48,7 @@ func TestMakeAvailable(t *testing.T) {
 	}
 	client.WaitForSectorActive(ctx, t, CCUpgrade, maddr)
 
-	sl, err = miner.SectorsList(ctx)
+	sl, err = miner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)
 	require.Len(t, sl, 1, "expected 1 sector")
 
@@ -64,7 +64,7 @@ func TestMakeAvailable(t *testing.T) {
 	outPath := dh.PerformRetrieval(context.Background(), deal, res.Root, false)
 	kit.AssertFilesEqual(t, inPath, outPath)
 
-	sl, err = miner.SectorsList(ctx)
+	sl, err = miner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)
 	require.Len(t, sl, 1, "expected 1 sector")
 

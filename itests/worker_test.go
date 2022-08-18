@@ -2,11 +2,13 @@ package itests
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
@@ -14,6 +16,7 @@ import (
 	"github.com/filecoin-project/go-address"
 	"github.com/filecoin-project/go-state-types/abi"
 
+	"github.com/filecoin-project/lotus/api"
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/types"
 	"github.com/filecoin-project/lotus/itests/kit"
@@ -21,6 +24,7 @@ import (
 	"github.com/filecoin-project/lotus/node/impl"
 	"github.com/filecoin-project/lotus/node/repo"
 	"github.com/filecoin-project/lotus/storage/paths"
+	sealing "github.com/filecoin-project/lotus/storage/pipeline"
 	"github.com/filecoin-project/lotus/storage/sealer/sealtasks"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
 	"github.com/filecoin-project/lotus/storage/wdpost"
@@ -29,7 +33,7 @@ import (
 func TestWorkerPledge(t *testing.T) {
 	ctx := context.Background()
 	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
-		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2, sealtasks.TTUnseal})) // no mock proofs
+		kit.WithSealWorkerTasks) // no mock proofs
 
 	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
 
@@ -43,7 +47,7 @@ func TestWorkerPledge(t *testing.T) {
 func TestWorkerPledgeSpread(t *testing.T) {
 	ctx := context.Background()
 	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(),
-		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2, sealtasks.TTUnseal}),
+		kit.WithSealWorkerTasks,
 		kit.WithAssigner("spread"),
 	) // no mock proofs
 
@@ -59,7 +63,7 @@ func TestWorkerPledgeSpread(t *testing.T) {
 func TestWorkerPledgeLocalFin(t *testing.T) {
 	ctx := context.Background()
 	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(),
-		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2, sealtasks.TTUnseal}),
+		kit.WithSealWorkerTasks,
 		kit.WithDisallowRemoteFinalize(true),
 	) // no mock proofs
 
@@ -400,4 +404,113 @@ func TestWindowPostWorkerManualPoSt(t *testing.T) {
 	lastPending, err := client.MpoolPending(ctx, types.EmptyTSK)
 	require.NoError(t, err)
 	require.Len(t, lastPending, 0)
+}
+
+func TestSchedulerRemoveRequest(t *testing.T) {
+	ctx := context.Background()
+	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithNoLocalSealing(true),
+		kit.WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTDataCid, sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTCommit2, sealtasks.TTUnseal})) // no mock proofs
+
+	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
+
+	e, err := worker.Enabled(ctx)
+	require.NoError(t, err)
+	require.True(t, e)
+
+	type info struct {
+		CallToWork struct {
+		} `json:"CallToWork"`
+		EarlyRet     interface{} `json:"EarlyRet"`
+		ReturnedWork interface{} `json:"ReturnedWork"`
+		SchedInfo    struct {
+			OpenWindows []string `json:"OpenWindows"`
+			Requests    []struct {
+				Priority int    `json:"Priority"`
+				SchedID  string `json:"SchedId"`
+				Sector   struct {
+					Miner  int `json:"Miner"`
+					Number int `json:"Number"`
+				} `json:"Sector"`
+				TaskType string `json:"TaskType"`
+			} `json:"Requests"`
+		} `json:"SchedInfo"`
+		Waiting interface{} `json:"Waiting"`
+	}
+
+	tocheck := miner.StartPledge(ctx, 1, 0, nil)
+	var sn abi.SectorNumber
+	for n := range tocheck {
+		sn = n
+	}
+	// Keep checking till sector state is PC2, the request should get stuck as worker cannot process PC2
+	for {
+		st, err := miner.SectorsStatus(ctx, sn, false)
+		require.NoError(t, err)
+		if st.State == api.SectorState(sealing.PreCommit2) {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+
+	// Dump current scheduler info
+	schedb, err := miner.SealingSchedDiag(ctx, false)
+	require.NoError(t, err)
+
+	j, err := json.MarshalIndent(&schedb, "", "  ")
+	require.NoError(t, err)
+
+	var b info
+	err = json.Unmarshal(j, &b)
+	require.NoError(t, err)
+
+	var schedidb uuid.UUID
+
+	// cast scheduler info and get the request UUID. Call the SealingRemoveRequest()
+	require.Len(t, b.SchedInfo.Requests, 1)
+	require.Equal(t, "seal/v0/precommit/2", b.SchedInfo.Requests[0].TaskType)
+
+	schedidb, err = uuid.Parse(b.SchedInfo.Requests[0].SchedID)
+	require.NoError(t, err)
+
+	err = miner.SealingRemoveRequest(ctx, schedidb)
+	require.NoError(t, err)
+
+	// Dump the schduler again and compare the UUID if a request is present
+	// If no request present then pass the test
+	scheda, err := miner.SealingSchedDiag(ctx, false)
+	require.NoError(t, err)
+
+	k, err := json.MarshalIndent(&scheda, "", "  ")
+	require.NoError(t, err)
+
+	var a info
+	err = json.Unmarshal(k, &a)
+	require.NoError(t, err)
+
+	require.Len(t, a.SchedInfo.Requests, 0)
+}
+
+func TestWorkerName(t *testing.T) {
+	name := "thisstringisprobablynotahostnameihope"
+
+	ctx := context.Background()
+	_, miner, worker, ens := kit.EnsembleWorker(t, kit.WithAllSubsystems(), kit.ThroughRPC(), kit.WithWorkerName(name))
+
+	ens.InterconnectAll().BeginMining(50 * time.Millisecond)
+
+	e, err := worker.Info(ctx)
+	require.NoError(t, err)
+	require.Equal(t, name, e.Hostname)
+
+	ws, err := miner.WorkerStats(ctx)
+	require.NoError(t, err)
+
+	var found bool
+	for _, stats := range ws {
+		if stats.Info.Hostname == name {
+			found = true
+		}
+	}
+
+	require.True(t, found)
 }

@@ -1523,6 +1523,20 @@ func (m *StateModule) StateNetworkVersion(ctx context.Context, tsk types.TipSetK
 	return m.StateManager.GetNetworkVersion(ctx, ts.Height()), nil
 }
 
+func (a *StateAPI) StateActorCodeCIDs(ctx context.Context, nv network.Version) (map[string]cid.Cid, error) {
+	actorVersion, err := actors.VersionForNetwork(nv)
+	if err != nil {
+		return nil, xerrors.Errorf("invalid network version %d: %w", nv, err)
+	}
+
+	cids, err := actors.GetActorCodeIDs(actorVersion)
+	if err != nil {
+		return nil, xerrors.Errorf("could not find cids for network version %d, actors version %d: %w", nv, actorVersion, err)
+	}
+
+	return cids, nil
+}
+
 func (a *StateAPI) StateGetRandomnessFromTickets(ctx context.Context, personalization crypto.DomainSeparationTag, randEpoch abi.ChainEpoch, entropy []byte, tsk types.TipSetKey) (abi.Randomness, error) {
 	return a.StateManager.GetRandomnessFromTickets(ctx, personalization, randEpoch, entropy, tsk)
 }

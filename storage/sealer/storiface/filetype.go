@@ -24,6 +24,13 @@ const (
 	FTNone SectorFileType = 0
 )
 
+var FTAll = func() (out SectorFileType) {
+	for _, pathType := range PathTypes {
+		out |= pathType
+	}
+	return out
+}()
+
 const FSOverheadDen = 10
 
 var FSOverheadSeal = map[SectorFileType]int{ // 10x overheads
@@ -46,6 +53,23 @@ var FsOverheadFinalized = map[SectorFileType]int{
 
 type SectorFileType int
 
+func TypeFromString(s string) (SectorFileType, error) {
+	switch s {
+	case "unsealed":
+		return FTUnsealed, nil
+	case "sealed":
+		return FTSealed, nil
+	case "cache":
+		return FTCache, nil
+	case "update":
+		return FTUpdate, nil
+	case "update-cache":
+		return FTUpdateCache, nil
+	default:
+		return 0, xerrors.Errorf("unknown sector file type '%s'", s)
+	}
+}
+
 func (t SectorFileType) String() string {
 	switch t {
 	case FTUnsealed:
@@ -61,6 +85,30 @@ func (t SectorFileType) String() string {
 	default:
 		return fmt.Sprintf("<unknown %d>", t)
 	}
+}
+
+func (t SectorFileType) Strings() []string {
+	var out []string
+	for _, fileType := range PathTypes {
+		if fileType&t == 0 {
+			continue
+		}
+
+		out = append(out, fileType.String())
+	}
+	return out
+}
+
+func (t SectorFileType) AllSet() []SectorFileType {
+	var out []SectorFileType
+	for _, fileType := range PathTypes {
+		if fileType&t == 0 {
+			continue
+		}
+
+		out = append(out, fileType)
+	}
+	return out
 }
 
 func (t SectorFileType) Has(singleType SectorFileType) bool {
@@ -83,6 +131,43 @@ func (t SectorFileType) SealSpaceUse(ssize abi.SectorSize) (uint64, error) {
 	}
 
 	return need, nil
+}
+
+func (t SectorFileType) SubAllowed(allowTypes []string, denyTypes []string) SectorFileType {
+	var denyMask SectorFileType // 1s deny
+
+	if len(allowTypes) > 0 {
+		denyMask = ^denyMask
+
+		for _, allowType := range allowTypes {
+			pt, err := TypeFromString(allowType)
+			if err != nil {
+				// we've told the user about this already, don't spam logs and ignore
+				continue
+			}
+
+			denyMask = denyMask & (^pt) // unset allowed types
+		}
+	}
+
+	for _, denyType := range denyTypes {
+		pt, err := TypeFromString(denyType)
+		if err != nil {
+			// we've told the user about this already, don't spam logs and ignore
+			continue
+		}
+		denyMask |= pt
+	}
+
+	return t & denyMask
+}
+
+func (t SectorFileType) AnyAllowed(allowTypes []string, denyTypes []string) bool {
+	return t.SubAllowed(allowTypes, denyTypes) != t
+}
+
+func (t SectorFileType) Allowed(allowTypes []string, denyTypes []string) bool {
+	return t.SubAllowed(allowTypes, denyTypes) == 0
 }
 
 func (t SectorFileType) StoreSpaceUse(ssize abi.SectorSize) (uint64, error) {

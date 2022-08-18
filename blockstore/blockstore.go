@@ -11,8 +11,6 @@ import (
 
 var log = logging.Logger("blockstore")
 
-var ErrNotFound = blockstore.ErrNotFound
-
 // Blockstore is the blockstore interface used by Lotus. It is the union
 // of the basic go-ipfs blockstore, with other capabilities required by Lotus,
 // e.g. View or Sync.

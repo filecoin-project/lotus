@@ -272,6 +272,22 @@ func (w *Wrapper) RegisterShard(ctx context.Context, pieceCid cid.Cid, carPath s
 	return nil
 }
 
+func (w *Wrapper) DestroyShard(ctx context.Context, pieceCid cid.Cid, resch chan dagstore.ShardResult) error {
+	key := shard.KeyFromCID(pieceCid)
+
+	opts := dagstore.DestroyOpts{}
+
+	err := w.dagst.DestroyShard(ctx, key, resch, opts)
+
+	if err != nil {
+		return xerrors.Errorf("failed to schedule destroy shard for piece CID %s: %w", pieceCid, err)
+	}
+	log.Debugf("successfully submitted destroy Shard request for piece CID %s", pieceCid)
+
+	return nil
+
+}
+
 func (w *Wrapper) MigrateDeals(ctx context.Context, deals []storagemarket.MinerDeal) (bool, error) {
 	log := log.Named("migrator")
 

@@ -8,6 +8,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -76,8 +77,9 @@ type TestMiner struct {
 	MineOne   func(context.Context, miner.MineReq) error
 	Stop      func(context.Context) error
 
-	FullNode   *TestFullNode
-	PresealDir string
+	FullNode       *TestFullNode
+	PresealDir     string
+	PresealSectors int
 
 	Libp2p struct {
 		PeerID  peer.ID
@@ -128,9 +130,9 @@ func (tm *TestMiner) StartPledge(ctx context.Context, n, existing int, blockNoti
 	}
 
 	for {
-		s, err := tm.StorageMiner.SectorsList(ctx) // Note - the test builder doesn't import genesis sectors into FSM
+		s, err := tm.SectorsListNonGenesis(ctx)
 		require.NoError(tm.t, err)
-		fmt.Printf("Sectors: %d\n", len(s))
+		fmt.Printf("Sectors: %d (n %d, ex %d)\n", len(s), n, existing)
 		if len(s) >= n+existing {
 			break
 		}
@@ -140,7 +142,7 @@ func (tm *TestMiner) StartPledge(ctx context.Context, n, existing int, blockNoti
 
 	fmt.Printf("All sectors is fsm\n")
 
-	s, err := tm.StorageMiner.SectorsList(ctx)
+	s, err := tm.SectorsListNonGenesis(ctx)
 	require.NoError(tm.t, err)
 
 	toCheck := map[abi.SectorNumber]struct{}{}
@@ -167,9 +169,8 @@ func (tm *TestMiner) FlushSealingBatches(ctx context.Context) {
 
 const metaFile = "sectorstore.json"
 
-func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, weight uint64, seal, store bool) {
-	p, err := ioutil.TempDir("", "lotus-testsectors-")
-	require.NoError(t, err)
+func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, conf func(*paths.LocalStorageMeta)) storiface.ID {
+	p := t.TempDir()
 
 	if err := os.MkdirAll(p, 0755); err != nil {
 		if !os.IsExist(err) {
@@ -177,17 +178,19 @@ func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, weight uint64
 		}
 	}
 
-	_, err = os.Stat(filepath.Join(p, metaFile))
+	_, err := os.Stat(filepath.Join(p, metaFile))
 	if !os.IsNotExist(err) {
 		require.NoError(t, err)
 	}
 
 	cfg := &paths.LocalStorageMeta{
 		ID:       storiface.ID(uuid.New().String()),
-		Weight:   weight,
-		CanSeal:  seal,
-		CanStore: store,
+		Weight:   10,
+		CanSeal:  false,
+		CanStore: false,
 	}
+
+	conf(cfg)
 
 	if !(cfg.CanStore || cfg.CanSeal) {
 		t.Fatal("must specify at least one of CanStore or cfg.CanSeal")
@@ -201,4 +204,18 @@ func (tm *TestMiner) AddStorage(ctx context.Context, t *testing.T, weight uint64
 
 	err = tm.StorageAddLocal(ctx, p)
 	require.NoError(t, err)
+
+	return cfg.ID
+}
+func (tm *TestMiner) SectorsListNonGenesis(ctx context.Context) ([]abi.SectorNumber, error) {
+	l, err := tm.SectorsList(ctx)
+	if err != nil {
+		return nil, err
+	}
+	// sort just in case
+	sort.Slice(l, func(i, j int) bool {
+		return l[i] < l[j]
+	})
+
+	return l[tm.PresealSectors:], nil
 }

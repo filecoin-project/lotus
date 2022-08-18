@@ -82,6 +82,20 @@ func (mr *MockSectorIndexMockRecorder) StorageDeclareSector(arg0, arg1, arg2, ar
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorageDeclareSector", reflect.TypeOf((*MockSectorIndex)(nil).StorageDeclareSector), arg0, arg1, arg2, arg3, arg4)
 }
 
+// StorageDetach mocks base method.
+func (m *MockSectorIndex) StorageDetach(arg0 context.Context, arg1 storiface.ID, arg2 string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StorageDetach", arg0, arg1, arg2)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// StorageDetach indicates an expected call of StorageDetach.
+func (mr *MockSectorIndexMockRecorder) StorageDetach(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StorageDetach", reflect.TypeOf((*MockSectorIndex)(nil).StorageDetach), arg0, arg1, arg2)
+}
+
 // StorageDropSector mocks base method.
 func (m *MockSectorIndex) StorageDropSector(arg0 context.Context, arg1 storiface.ID, arg2 abi.SectorID, arg3 storiface.SectorFileType) error {
 	m.ctrl.T.Helper()

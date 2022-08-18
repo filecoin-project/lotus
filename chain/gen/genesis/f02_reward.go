@@ -4,6 +4,7 @@ import (
 	"context"
 
 	cbor "github.com/ipfs/go-ipld-cbor"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/big"
 
@@ -11,7 +12,6 @@ import (
 	"github.com/filecoin-project/lotus/build"
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/actors/adt"
-	"github.com/filecoin-project/lotus/chain/actors/builtin"
 	"github.com/filecoin-project/lotus/chain/actors/builtin/reward"
 	"github.com/filecoin-project/lotus/chain/types"
 )
@@ -28,9 +28,9 @@ func SetupRewardActor(ctx context.Context, bs bstore.Blockstore, qaPower big.Int
 		return nil, err
 	}
 
-	actcid, err := builtin.GetRewardActorCodeID(av)
-	if err != nil {
-		return nil, err
+	actcid, ok := actors.GetActorCodeID(av, actors.RewardKey)
+	if !ok {
+		return nil, xerrors.Errorf("failed to get reward actor code ID for actors version %d", av)
 	}
 
 	act := &types.Actor{

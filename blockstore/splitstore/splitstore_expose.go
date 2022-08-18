@@ -6,6 +6,7 @@ import (
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
+	ipld "github.com/ipfs/go-ipld-format"
 
 	bstore "github.com/filecoin-project/lotus/blockstore"
 )
@@ -42,6 +43,7 @@ func (es *exposedSplitStore) Has(ctx context.Context, c cid.Cid) (bool, error) {
 }
 
 func (es *exposedSplitStore) Get(ctx context.Context, c cid.Cid) (blocks.Block, error) {
+
 	if isIdentiyCid(c) {
 		data, err := decodeIdentityCid(c)
 		if err != nil {
@@ -52,12 +54,10 @@ func (es *exposedSplitStore) Get(ctx context.Context, c cid.Cid) (blocks.Block, 
 	}
 
 	blk, err := es.s.hot.Get(ctx, c)
-	switch err {
-	case bstore.ErrNotFound:
+	if ipld.IsNotFound(err) {
 		return es.s.cold.Get(ctx, c)
-	default:
-		return blk, err
 	}
+	return blk, err
 }
 
 func (es *exposedSplitStore) GetSize(ctx context.Context, c cid.Cid) (int, error) {
@@ -71,12 +71,10 @@ func (es *exposedSplitStore) GetSize(ctx context.Context, c cid.Cid) (int, error
 	}
 
 	size, err := es.s.hot.GetSize(ctx, c)
-	switch err {
-	case bstore.ErrNotFound:
+	if ipld.IsNotFound(err) {
 		return es.s.cold.GetSize(ctx, c)
-	default:
-		return size, err
 	}
+	return size, err
 }
 
 func (es *exposedSplitStore) Put(ctx context.Context, blk blocks.Block) error {
@@ -104,11 +102,9 @@ func (es *exposedSplitStore) View(ctx context.Context, c cid.Cid, f func([]byte)
 	}
 
 	err := es.s.hot.View(ctx, c, f)
-	switch err {
-	case bstore.ErrNotFound:
+	if ipld.IsNotFound(err) {
 		return es.s.cold.View(ctx, c, f)
-
-	default:
-		return err
 	}
+
+	return err
 }

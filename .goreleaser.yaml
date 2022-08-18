@@ -1,0 +1,165 @@
+project_name: lotus
+before:
+  hooks:
+    - go mod tidy
+    - make deps
+
+universal_binaries:
+  - id: lotus
+    replace: true
+    name_template: lotus
+    ids:
+      - lotus_darwin_amd64
+      - lotus_darwin_arm64
+  - id: lotus-miner
+    replace: true
+    name_template: lotus-miner
+    ids:
+      - lotus-miner_darwin_amd64
+      - lotus-miner_darwin_arm64
+  - id: lotus-worker
+    replace: true
+    name_template: lotus-worker
+    ids:
+      - lotus-worker_darwin_amd64
+      - lotus-worker_darwin_arm64
+
+builds:
+  - id: lotus_darwin_amd64
+    main: ./cmd/lotus
+    binary: lotus
+    goos:
+      - darwin
+    goarch:
+      - amd64
+    env:
+      - CGO_ENABLED=1
+      - FFI_BUILD_FROM_SOURCE=1
+    ldflags:
+      - -X=github.com/filecoin-project/lotus/build.CurrentCommit=+git.{{.ShortCommit}}
+  - id: lotus-miner_darwin_amd64
+    main: ./cmd/lotus-miner
+    binary: lotus-miner
+    goos:
+      - darwin
+    goarch:
+      - amd64
+    env:
+      - CGO_ENABLED=1
+      - FFI_BUILD_FROM_SOURCE=1
+    ldflags:
+      - -X=github.com/filecoin-project/lotus/build.CurrentCommit=+git.{{.ShortCommit}}
+  - id: lotus-worker_darwin_amd64
+    main: ./cmd/lotus-worker
+    binary: lotus-worker
+    goos:
+      - darwin
+    goarch:
+      - amd64
+    env:
+      - CGO_ENABLED=1
+      - FFI_BUILD_FROM_SOURCE=1
+    ldflags:
+      - -X=github.com/filecoin-project/lotus/build.CurrentCommit=+git.{{.ShortCommit}}
+  - id: lotus_darwin_arm64
+    main: ./cmd/lotus
+    binary: lotus
+    goos:
+      - darwin
+    goarch:
+      - arm64
+    env:
+      - CGO_ENABLED=1
+      - FFI_BUILD_FROM_SOURCE=1
+      - CPATH=/opt/homebrew/include
+      - LIBRARY_PATH=/opt/homebrew/lib
+    ldflags:
+      - -X=github.com/filecoin-project/lotus/build.CurrentCommit=+git.{{.ShortCommit}}
+  - id: lotus-miner_darwin_arm64
+    main: ./cmd/lotus-miner
+    binary: lotus-miner
+    goos:
+      - darwin
+    goarch:
+      - arm64
+    env:
+      - CGO_ENABLED=1
+      - FFI_BUILD_FROM_SOURCE=1
+      - CPATH=/opt/homebrew/include
+      - LIBRARY_PATH=/opt/homebrew/lib
+    ldflags:
+      - -X=github.com/filecoin-project/lotus/build.CurrentCommit=+git.{{.ShortCommit}}
+  - id: lotus-worker_darwin_arm64
+    main: ./cmd/lotus-worker
+    binary: lotus-worker
+    goos:
+      - darwin
+    goarch:
+      - arm64
+    env:
+      - CGO_ENABLED=1
+      - FFI_BUILD_FROM_SOURCE=1
+      - CPATH=/opt/homebrew/include
+      - LIBRARY_PATH=/opt/homebrew/lib
+    ldflags:
+      - -X=github.com/filecoin-project/lotus/build.CurrentCommit=+git.{{.ShortCommit}}
+#  - id: linux
+#    main: ./cmd/lotus
+#    binary: lotus
+#    goos:
+#      - linux
+#    goarch:
+#      - amd64
+#    env:
+#      - CGO_ENABLED=1
+#    ldflags:
+#      - -X=github.com/filecoin-project/lotus/build.CurrentCommit=+git.{{.ShortCommit}}
+
+archives:
+  - id: primary
+    format: tar.gz
+    wrap_in_directory: true
+    files:
+      # this is a dumb but required hack so it doesn't include the default files
+      # https://github.com/goreleaser/goreleaser/issues/602
+      - _n_o_n_e_*
+
+release:
+  github:
+    owner: filecoin-project
+    name: lotus
+  prerelease: auto
+  name_template: "Release v{{.Version}}"
+
+
+brews:
+  - tap:
+      owner: filecoin-project
+      name: homebrew-lotus
+      branch: master
+    ids:
+      - primary
+    install: |
+      bin.install "lotus"
+      bin.install "lotus-miner"
+      bin.install "lotus-worker"
+    test: |
+      system "#{bin}/lotus --version"
+      system "#{bin}/lotus-miner --version"
+      system "#{bin}/lotus-worker --version"
+    folder: Formula
+    homepage: "https://filecoin.io"
+    description: "A homebrew cask for installing filecoin-project/lotus on MacOS"
+    license: MIT
+    dependencies:
+      - name: pkg-config
+      - name: jq
+      - name: bzr
+      - name: hwloc
+
+# produced manually so we can include cid checksums
+checksum:
+  disable: true
+
+snapshot:
+  name_template: "{{ .Tag }}"

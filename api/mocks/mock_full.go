@@ -377,6 +377,20 @@ func (mr *MockFullNodeMockRecorder) ChainNotify(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainNotify", reflect.TypeOf((*MockFullNode)(nil).ChainNotify), arg0)
 }
 
+// ChainPrune mocks base method.
+func (m *MockFullNode) ChainPrune(arg0 context.Context, arg1 api.PruneOpts) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChainPrune", arg0, arg1)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// ChainPrune indicates an expected call of ChainPrune.
+func (mr *MockFullNodeMockRecorder) ChainPrune(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChainPrune", reflect.TypeOf((*MockFullNode)(nil).ChainPrune), arg0, arg1)
+}
+
 // ChainPutObj mocks base method.
 func (m *MockFullNode) ChainPutObj(arg0 context.Context, arg1 blocks.Block) error {
 	m.ctrl.T.Helper()
@@ -2271,6 +2285,21 @@ func (m *MockFullNode) StateAccountKey(arg0 context.Context, arg1 address.Addres
 func (mr *MockFullNodeMockRecorder) StateAccountKey(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateAccountKey", reflect.TypeOf((*MockFullNode)(nil).StateAccountKey), arg0, arg1, arg2)
+}
+
+// StateActorCodeCIDs mocks base method.
+func (m *MockFullNode) StateActorCodeCIDs(arg0 context.Context, arg1 network.Version) (map[string]cid.Cid, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateActorCodeCIDs", arg0, arg1)
+	ret0, _ := ret[0].(map[string]cid.Cid)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateActorCodeCIDs indicates an expected call of StateActorCodeCIDs.
+func (mr *MockFullNodeMockRecorder) StateActorCodeCIDs(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateActorCodeCIDs", reflect.TypeOf((*MockFullNode)(nil).StateActorCodeCIDs), arg0, arg1)
 }
 
 // StateAllMinerFaults mocks base method.

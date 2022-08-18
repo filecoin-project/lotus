@@ -60,11 +60,11 @@ func runTestCCUpgrade(t *testing.T) *kit.TestFullNode {
 		t.Fatal(err)
 	}
 
-	CCUpgrade := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner + 1)
+	CCUpgrade := abi.SectorNumber(kit.DefaultPresealsPerBootstrapMiner)
 	fmt.Printf("CCUpgrade: %d\n", CCUpgrade)
 
 	miner.PledgeSectors(ctx, 1, 0, nil)
-	sl, err := miner.SectorsList(ctx)
+	sl, err := miner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)
 	require.Len(t, sl, 1, "expected 1 sector")
 	require.Equal(t, CCUpgrade, sl[0], "unexpected sector number")
@@ -79,7 +79,7 @@ func runTestCCUpgrade(t *testing.T) *kit.TestFullNode {
 	err = miner.SectorMarkForUpgrade(ctx, sl[0], true)
 	require.NoError(t, err)
 
-	sl, err = miner.SectorsList(ctx)
+	sl, err = miner.SectorsListNonGenesis(ctx)
 	require.NoError(t, err)
 	require.Len(t, sl, 1, "expected 1 sector")
 

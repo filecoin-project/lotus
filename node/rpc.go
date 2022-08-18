@@ -124,8 +124,6 @@ func FullNodeHandler(a v1api.FullNode, permissioned bool, opts ...jsonrpc.Server
 
 // MinerHandler returns a miner handler, to be mounted as-is on the server.
 func MinerHandler(a api.StorageMiner, permissioned bool) (http.Handler, error) {
-	m := mux.NewRouter()
-
 	mapi := proxy.MetricedStorMinerAPI(a)
 	if permissioned {
 		mapi = api.PermissionedStorMinerAPI(mapi)
@@ -136,23 +134,45 @@ func MinerHandler(a api.StorageMiner, permissioned bool) (http.Handler, error) {
 	rpcServer.Register("Filecoin", mapi)
 	rpcServer.AliasMethod("rpc.discover", "Filecoin.Discover")
 
-	m.Handle("/rpc/v0", rpcServer)
-	m.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)
-	m.PathPrefix("/remote").HandlerFunc(a.(*impl.StorageMinerAPI).ServeRemote(permissioned))
+	rootMux := mux.NewRouter()
 
-	// debugging
-	m.Handle("/debug/metrics", metrics.Exporter())
-	m.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
+	// remote storage
+	{
+		m := mux.NewRouter()
+		m.PathPrefix("/remote").HandlerFunc(a.(*impl.StorageMinerAPI).ServeRemote(permissioned))
 
-	if !permissioned {
-		return m, nil
+		var hnd http.Handler = m
+		if permissioned {
+			hnd = &auth.Handler{
+				Verify: a.StorageAuthVerify,
+				Next:   m.ServeHTTP,
+			}
+		}
+
+		rootMux.PathPrefix("/remote").Handler(hnd)
 	}
 
-	ah := &auth.Handler{
-		Verify: a.AuthVerify,
-		Next:   m.ServeHTTP,
+	// local APIs
+	{
+		m := mux.NewRouter()
+		m.Handle("/rpc/v0", rpcServer)
+		m.Handle("/rpc/streams/v0/push/{uuid}", readerHandler)
+		// debugging
+		m.Handle("/debug/metrics", metrics.Exporter())
+		m.PathPrefix("/").Handler(http.DefaultServeMux) // pprof
+
+		var hnd http.Handler = m
+		if permissioned {
+			hnd = &auth.Handler{
+				Verify: a.AuthVerify,
+				Next:   m.ServeHTTP,
+			}
+		}
+
+		rootMux.PathPrefix("/").Handler(hnd)
 	}
-	return ah, nil
+
+	return rootMux, nil
 }
 
 func handleImport(a *impl.FullNodeAPI) func(w http.ResponseWriter, r *http.Request) {

@@ -27,7 +27,7 @@ func (s *SplitStore) gcBlockstore(b bstore.Blockstore, opts []bstore.BlockstoreG
 			return err
 		}
 
-		log.Infow("garbage collecting hotstore done", "took", time.Since(startGC))
+		log.Infow("garbage collecting blockstore done", "took", time.Since(startGC))
 		return nil
 	}
 

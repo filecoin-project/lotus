@@ -59,7 +59,11 @@ type Worker interface {
 	// Storage / Other
 	Remove(ctx context.Context, sector abi.SectorID) error //perm:admin
 
-	StorageAddLocal(ctx context.Context, path string) error //perm:admin
+	StorageLocal(ctx context.Context) (map[storiface.ID]string, error)                   //perm:admin
+	StorageAddLocal(ctx context.Context, path string) error                              //perm:admin
+	StorageDetachLocal(ctx context.Context, path string) error                           //perm:admin
+	StorageDetachAll(ctx context.Context) error                                          //perm:admin
+	StorageRedeclareLocal(ctx context.Context, id *storiface.ID, dropMissing bool) error //perm:admin
 
 	// SetEnabled marks the worker as enabled/disabled. Not that this setting
 	// may take a few seconds to propagate to task scheduler
@@ -76,6 +80,10 @@ type Worker interface {
 
 	// Like ProcessSession, but returns an error when worker is disabled
 	Session(context.Context) (uuid.UUID, error) //perm:admin
+
+	// Trigger shutdown
+	Shutdown(context.Context) error //perm:admin
+
 }
 
 var _ storiface.WorkerCalls = *new(Worker)

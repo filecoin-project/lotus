@@ -271,7 +271,11 @@ func (lmem *lockedMemRepo) Blockstore(ctx context.Context, domain BlockstoreDoma
 }
 
 func (lmem *lockedMemRepo) SplitstorePath() (string, error) {
-	return ioutil.TempDir("", "splitstore.*")
+	splitstorePath := filepath.Join(lmem.Path(), "splitstore")
+	if err := os.MkdirAll(splitstorePath, 0755); err != nil {
+		return "", err
+	}
+	return splitstorePath, nil
 }
 
 func (lmem *lockedMemRepo) ListDatastores(ns string) ([]int64, error) {

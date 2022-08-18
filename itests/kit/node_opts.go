@@ -33,6 +33,8 @@ type nodeOpts struct {
 	rpc           bool
 	ownerKey      *key.Key
 	extraNodeOpts []node.Option
+	cfgOpts       []CfgOption
+	fsrepo        bool
 
 	subsystems             MinerSubsystem
 	mainMiner              *TestMiner
@@ -43,9 +45,11 @@ type nodeOpts struct {
 	minerNoLocalSealing    bool // use worker
 	minerAssigner          string
 	disallowRemoteFinalize bool
+	noStorage              bool
 
 	workerTasks      []sealtasks.TaskType
 	workerStorageOpt func(paths.Store) paths.Store
+	workerName       string
 }
 
 // DefaultNodeOpts are the default options that will be applied to test nodes.
@@ -154,6 +158,14 @@ func PresealSectors(sectors int) NodeOpt {
 	}
 }
 
+// NoStorage initializes miners with no writable storage paths (just read-only preseal paths)
+func NoStorage() NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.noStorage = true
+		return nil
+	}
+}
+
 // ThroughRPC makes interactions with this node throughout the test flow through
 // the JSON-RPC API.
 func ThroughRPC() NodeOpt {
@@ -210,9 +222,66 @@ func WithTaskTypes(tt []sealtasks.TaskType) NodeOpt {
 	}
 }
 
+func WithWorkerName(n string) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.workerName = n
+		return nil
+	}
+}
+
+var WithSealWorkerTasks = WithTaskTypes([]sealtasks.TaskType{sealtasks.TTFetch, sealtasks.TTCommit1, sealtasks.TTFinalize, sealtasks.TTAddPiece, sealtasks.TTPreCommit1, sealtasks.TTPreCommit2, sealtasks.TTCommit2, sealtasks.TTUnseal})
+
 func WithWorkerStorage(transform func(paths.Store) paths.Store) NodeOpt {
 	return func(opts *nodeOpts) error {
 		opts.workerStorageOpt = transform
 		return nil
 	}
+}
+
+func FsRepo() NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.fsrepo = true
+		return nil
+	}
+}
+
+func WithCfgOpt(opt CfgOption) NodeOpt {
+	return func(opts *nodeOpts) error {
+		opts.cfgOpts = append(opts.cfgOpts, opt)
+		return nil
+	}
+}
+
+type CfgOption func(cfg *config.FullNode) error
+
+func SplitstoreDiscard() NodeOpt {
+	return WithCfgOpt(func(cfg *config.FullNode) error {
+		//cfg.Chainstore.Splitstore.HotStoreType = "badger" // default
+		//cfg.Chainstore.Splitstore.MarkSetType = "badger" // default
+		//cfg.Chainstore.Splitstore.HotStoreMessageRetention = 0 // default
+		cfg.Chainstore.EnableSplitstore = true
+		cfg.Chainstore.Splitstore.HotStoreFullGCFrequency = 0 // turn off full gc
+		cfg.Chainstore.Splitstore.ColdStoreType = "discard"   // no cold store
+		return nil
+	})
+}
+
+func SplitstoreUniversal() NodeOpt {
+	return WithCfgOpt(func(cfg *config.FullNode) error {
+		//cfg.Chainstore.Splitstore.HotStoreType = "badger" // default
+		//cfg.Chainstore.Splitstore.MarkSetType = "badger" // default
+		//cfg.Chainstore.Splitstore.HotStoreMessageRetention = 0 // default
+		cfg.Chainstore.EnableSplitstore = true
+		cfg.Chainstore.Splitstore.HotStoreFullGCFrequency = 0 // turn off full gc
+		cfg.Chainstore.Splitstore.ColdStoreType = "universal" // universal bs is coldstore
+		return nil
+	})
+}
+
+func SplitstoreAutoPrune() NodeOpt {
+	return WithCfgOpt(func(cfg *config.FullNode) error {
+		cfg.Chainstore.Splitstore.EnableColdStoreAutoPrune = true // turn on
+		cfg.Chainstore.Splitstore.ColdStoreFullGCFrequency = 0    // turn off full gc
+		return nil
+	})
 }

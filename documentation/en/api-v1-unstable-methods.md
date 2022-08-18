@@ -28,6 +28,7 @@
   * [ChainHasObj](#ChainHasObj)
   * [ChainHead](#ChainHead)
   * [ChainNotify](#ChainNotify)
+  * [ChainPrune](#ChainPrune)
   * [ChainPutObj](#ChainPutObj)
   * [ChainReadObj](#ChainReadObj)
   * [ChainSetHead](#ChainSetHead)
@@ -165,6 +166,7 @@
   * [PaychVoucherSubmit](#PaychVoucherSubmit)
 * [State](#State)
   * [StateAccountKey](#StateAccountKey)
+  * [StateActorCodeCIDs](#StateActorCodeCIDs)
   * [StateAllMinerFaults](#StateAllMinerFaults)
   * [StateCall](#StateCall)
   * [StateChangedActors](#StateChangedActors)
@@ -960,6 +962,25 @@ Response:
   }
 ]
 ```
+
+### ChainPrune
+ChainPrune prunes the stored chain state and garbage collects; only supported if you
+are using the splitstore
+
+
+Perms: admin
+
+Inputs:
+```json
+[
+  {
+    "MovingGC": true,
+    "RetainState": 9
+  }
+]
+```
+
+Response: `{}`
 
 ### ChainPutObj
 ChainPutObj puts a given object into the block store
@@ -2222,7 +2243,8 @@ Inputs:
     }
   },
   {
-    "MaxFee": "0"
+    "MaxFee": "0",
+    "MsgUuid": "07070707-0707-0707-0707-070707070707"
   },
   [
     {
@@ -2696,7 +2718,8 @@ Inputs:
     }
   ],
   {
-    "MaxFee": "0"
+    "MaxFee": "0",
+    "MsgUuid": "07070707-0707-0707-0707-070707070707"
   }
 ]
 ```
@@ -3085,7 +3108,8 @@ Inputs:
     }
   },
   {
-    "MaxFee": "0"
+    "MaxFee": "0",
+    "MsgUuid": "07070707-0707-0707-0707-070707070707"
   }
 ]
 ```
@@ -5050,6 +5074,21 @@ Inputs:
 
 Response: `"f01234"`
 
+### StateActorCodeCIDs
+StateActorCodeCIDs returns the CIDs of all the builtin actors for the given network version
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  16
+]
+```
+
+Response: `{}`
+
 ### StateAllMinerFaults
 StateAllMinerFaults returns all non-expired Faults that occur within lookback epochs of the given tipset
 
@@ -6647,7 +6686,7 @@ Response:
 ### StateReplay
 StateReplay replays a given message, assuming it was included in a block in the specified tipset.
 
-If a tipset key is provided, and a replacing message is found on chain,
+If a tipset key is provided, and a replacing message is not found on chain,
 the method will return an error saying that the message wasn't found
 
 If no tipset key is provided, the appropriate tipset is looked up, and if
@@ -7101,7 +7140,7 @@ Inputs:
 Response: `"0"`
 
 ### StateVerifiedRegistryRootKey
-StateVerifiedClientStatus returns the address of the Verified Registry's root key
+StateVerifiedRegistryRootKey returns the address of the Verified Registry's root key
 
 
 Perms: read

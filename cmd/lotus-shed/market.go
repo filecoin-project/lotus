@@ -19,6 +19,7 @@ import (
 	"github.com/filecoin-project/go-state-types/big"
 
 	"github.com/filecoin-project/lotus/chain/actors/builtin/market"
+	"github.com/filecoin-project/lotus/chain/types"
 	lcli "github.com/filecoin-project/lotus/cli"
 	"github.com/filecoin-project/lotus/lib/backupds"
 	"github.com/filecoin-project/lotus/node/repo"
@@ -32,6 +33,7 @@ var marketCmd = &cli.Command{
 		marketDealFeesCmd,
 		marketExportDatastoreCmd,
 		marketImportDatastoreCmd,
+		marketDealsTotalStorageCmd,
 	},
 }
 
@@ -278,6 +280,42 @@ var marketImportDatastoreCmd = &cli.Command{
 		}
 
 		fmt.Println("Completed importing from backup file " + backupPath)
+
+		return nil
+	},
+}
+
+var marketDealsTotalStorageCmd = &cli.Command{
+	Name:  "get-deals-total-storage",
+	Usage: "View the total storage available in all active market deals",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+
+		ctx := lcli.ReqContext(cctx)
+
+		deals, err := api.StateMarketDeals(ctx, types.EmptyTSK)
+		if err != nil {
+			return err
+		}
+
+		total := big.Zero()
+		count := 0
+
+		for _, deal := range deals {
+			if market.IsDealActive(deal.State) {
+				dealStorage := big.NewIntUnsigned(uint64(deal.Proposal.PieceSize))
+				total = big.Add(total, dealStorage)
+				count++
+			}
+
+		}
+
+		fmt.Println("Total deals: ", count)
+		fmt.Println("Total storage: ", total)
 
 		return nil
 	},

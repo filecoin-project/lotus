@@ -74,7 +74,7 @@ func TestBatchDealInput(t *testing.T) {
 			require.NoError(t, err)
 
 			checkNoPadding := func() {
-				sl, err := miner.SectorsList(ctx)
+				sl, err := miner.SectorsListNonGenesis(ctx)
 				require.NoError(t, err)
 
 				sort.Slice(sl, func(i, j int) bool {
@@ -125,7 +125,7 @@ func TestBatchDealInput(t *testing.T) {
 
 			checkNoPadding()
 
-			sl, err := miner.SectorsList(ctx)
+			sl, err := miner.SectorsListNonGenesis(ctx)
 			require.NoError(t, err)
 			require.Equal(t, len(sl), expectSectors)
 		}

@@ -16,6 +16,7 @@ func main() {
 	logging.SetLogLevel("*", "INFO")
 
 	local := []*cli.Command{
+		addressCmd,
 		base64Cmd,
 		base32Cmd,
 		base16Cmd,

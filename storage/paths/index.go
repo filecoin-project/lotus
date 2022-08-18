@@ -17,6 +17,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 
+	"github.com/filecoin-project/lotus/journal/alerting"
 	"github.com/filecoin-project/lotus/metrics"
 	"github.com/filecoin-project/lotus/storage/sealer/fsutil"
 	"github.com/filecoin-project/lotus/storage/sealer/storiface"
@@ -29,6 +30,7 @@ var SkippedHeartbeatThresh = HeartbeatInterval * 5
 
 type SectorIndex interface { // part of storage-miner api
 	StorageAttach(context.Context, storiface.StorageInfo, fsutil.FsStat) error
+	StorageDetach(ctx context.Context, id storiface.ID, url string) error
 	StorageInfo(context.Context, storiface.ID) (storiface.StorageInfo, error)
 	StorageReportHealth(context.Context, storiface.ID, storiface.HealthReport) error
 
@@ -63,15 +65,23 @@ type Index struct {
 	*indexLocks
 	lk sync.RWMutex
 
+	// optional
+	alerting   *alerting.Alerting
+	pathAlerts map[storiface.ID]alerting.AlertType
+
 	sectors map[storiface.Decl][]*declMeta
 	stores  map[storiface.ID]*storageEntry
 }
 
-func NewIndex() *Index {
+func NewIndex(al *alerting.Alerting) *Index {
 	return &Index{
 		indexLocks: &indexLocks{
 			locks: map[abi.SectorID]*sectorLock{},
 		},
+
+		alerting:   al,
+		pathAlerts: map[storiface.ID]alerting.AlertType{},
+
 		sectors: map[storiface.Decl][]*declMeta{},
 		stores:  map[storiface.ID]*storageEntry{},
 	}
@@ -107,6 +117,64 @@ func (i *Index) StorageList(ctx context.Context) (map[storiface.ID][]storiface.D
 }
 
 func (i *Index) StorageAttach(ctx context.Context, si storiface.StorageInfo, st fsutil.FsStat) error {
+	var allow, deny = make([]string, 0, len(si.AllowTypes)), make([]string, 0, len(si.DenyTypes))
+
+	if _, hasAlert := i.pathAlerts[si.ID]; i.alerting != nil && !hasAlert {
+		i.pathAlerts[si.ID] = i.alerting.AddAlertType("sector-index", "pathconf-"+string(si.ID))
+	}
+
+	var hasConfigIssues bool
+
+	for id, typ := range si.AllowTypes {
+		_, err := storiface.TypeFromString(typ)
+		if err != nil {
+			// No need to hard-fail here, just warn the user
+			// (note that even with all-invalid entries we'll deny all types, so nothing unexpected should enter the path)
+			hasConfigIssues = true
+
+			if i.alerting != nil {
+				i.alerting.Raise(i.pathAlerts[si.ID], map[string]interface{}{
+					"message":   "bad path type in AllowTypes",
+					"path":      string(si.ID),
+					"idx":       id,
+					"path_type": typ,
+					"error":     err.Error(),
+				})
+			}
+
+			continue
+		}
+		allow = append(allow, typ)
+	}
+	for id, typ := range si.DenyTypes {
+		_, err := storiface.TypeFromString(typ)
+		if err != nil {
+			// No need to hard-fail here, just warn the user
+			hasConfigIssues = true
+
+			if i.alerting != nil {
+				i.alerting.Raise(i.pathAlerts[si.ID], map[string]interface{}{
+					"message":   "bad path type in DenyTypes",
+					"path":      string(si.ID),
+					"idx":       id,
+					"path_type": typ,
+					"error":     err.Error(),
+				})
+			}
+
+			continue
+		}
+		deny = append(deny, typ)
+	}
+	si.AllowTypes = allow
+	si.DenyTypes = deny
+
+	if i.alerting != nil && !hasConfigIssues && i.alerting.IsRaised(i.pathAlerts[si.ID]) {
+		i.alerting.Resolve(i.pathAlerts[si.ID], map[string]string{
+			"message": "path config is now correct",
+		})
+	}
+
 	i.lk.Lock()
 	defer i.lk.Unlock()
 
@@ -136,6 +204,8 @@ func (i *Index) StorageAttach(ctx context.Context, si storiface.StorageInfo, st 
 		i.stores[si.ID].info.CanStore = si.CanStore
 		i.stores[si.ID].info.Groups = si.Groups
 		i.stores[si.ID].info.AllowTo = si.AllowTo
+		i.stores[si.ID].info.AllowTypes = allow
+		i.stores[si.ID].info.DenyTypes = deny
 
 		return nil
 	}
@@ -145,6 +215,94 @@ func (i *Index) StorageAttach(ctx context.Context, si storiface.StorageInfo, st 
 
 		lastHeartbeat: time.Now(),
 	}
+	return nil
+}
+
+func (i *Index) StorageDetach(ctx context.Context, id storiface.ID, url string) error {
+	i.lk.Lock()
+	defer i.lk.Unlock()
+
+	// ent: *storageEntry
+	ent, ok := i.stores[id]
+	if !ok {
+		return xerrors.Errorf("storage '%s' isn't registered", id)
+	}
+
+	// check if this is the only path provider/url for this pathID
+	drop := true
+	if len(ent.info.URLs) > 0 {
+		drop = len(ent.info.URLs) == 1 // only one url
+
+		if drop && ent.info.URLs[0] != url {
+			return xerrors.Errorf("not dropping path, requested and index urls don't match ('%s' != '%s')", url, ent.info.URLs[0])
+		}
+	}
+
+	if drop {
+		if a, hasAlert := i.pathAlerts[id]; hasAlert && i.alerting != nil {
+			if i.alerting.IsRaised(a) {
+				i.alerting.Resolve(a, map[string]string{
+					"message": "path detached",
+				})
+			}
+			delete(i.pathAlerts, id)
+		}
+
+		// stats
+		var droppedEntries, primaryEntries, droppedDecls int
+
+		// drop declarations
+		for decl, dms := range i.sectors {
+			var match bool
+			for _, dm := range dms {
+				if dm.storage == id {
+					match = true
+					droppedEntries++
+					if dm.primary {
+						primaryEntries++
+					}
+					break
+				}
+			}
+
+			// if no entries match, nothing to do here
+			if !match {
+				continue
+			}
+
+			// if there's a match, and only one entry, drop the whole declaration
+			if len(dms) <= 1 {
+				delete(i.sectors, decl)
+				droppedDecls++
+				continue
+			}
+
+			// rewrite entries with the path we're dropping filtered out
+			filtered := make([]*declMeta, 0, len(dms)-1)
+			for _, dm := range dms {
+				if dm.storage != id {
+					filtered = append(filtered, dm)
+				}
+			}
+
+			i.sectors[decl] = filtered
+		}
+
+		delete(i.stores, id)
+
+		log.Warnw("Dropping sector storage", "path", id, "url", url, "droppedEntries", droppedEntries, "droppedPrimaryEntries", primaryEntries, "droppedDecls", droppedDecls)
+	} else {
+		newUrls := make([]string, 0, len(ent.info.URLs))
+		for _, u := range ent.info.URLs {
+			if u != url {
+				newUrls = append(newUrls, u)
+			}
+		}
+		ent.info.URLs = newUrls
+
+		log.Warnw("Dropping sector path endpoint", "path", id, "url", url)
+	}
+
 	return nil
 }
 
@@ -312,6 +470,9 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft storif
 			CanStore: st.info.CanStore,
 
 			Primary: isprimary[id],
+
+			AllowTypes: st.info.AllowTypes,
+			DenyTypes:  st.info.DenyTypes,
 		})
 	}
 
@@ -342,6 +503,11 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft storif
 			}
 
 			if _, ok := storageIDs[id]; ok {
+				continue
+			}
+
+			if !ft.AnyAllowed(st.info.AllowTypes, st.info.DenyTypes) {
+				log.Debugf("not selecting on %s, not allowed by file type filters", st.info.ID)
 				continue
 			}
 
@@ -383,6 +549,9 @@ func (i *Index) StorageFindSector(ctx context.Context, s abi.SectorID, ft storif
 				CanStore: st.info.CanStore,
 
 				Primary: false,
+
+				AllowTypes: st.info.AllowTypes,
+				DenyTypes:  st.info.DenyTypes,
 			})
 		}
 	}

@@ -5,7 +5,6 @@ import (
 
 	"github.com/filecoin-project/go-address"
 	"github.com/ipfs/go-cid"
-	"golang.org/x/xerrors"
 
 {{range .versions}}
 	    builtin{{.}} "github.com/filecoin-project/specs-actors{{import .}}actors/builtin"
@@ -85,23 +84,6 @@ func IsBuiltinActor(c cid.Cid) bool {
 	return false
 }
 
-func GetAccountActorCodeID(av actors.Version) (cid.Cid, error) {
-	if c, ok := actors.GetActorCodeID(av, actors.AccountKey); ok {
-		return c, nil
-	}
-
-	switch av {
-        {{range .versions}}
-            {{if (le . 7)}}
-            case actors.Version{{.}}:
-                return builtin{{.}}.AccountActorCodeID, nil
-            {{end}}
-        {{end}}
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
-}
-
 func IsAccountActor(c cid.Cid) bool {
 	name, _, ok := actors.GetActorMetaByCode(c)
     if ok {
@@ -116,74 +98,6 @@ func IsAccountActor(c cid.Cid) bool {
         {{end}}
 	{{end}}
 	return false
-}
-
-func GetCronActorCodeID(av actors.Version) (cid.Cid, error) {
-	if c, ok := actors.GetActorCodeID(av, actors.CronKey); ok {
-		return c, nil
-	}
-
-	switch av {
-        {{range .versions}}
-            {{if (le . 7)}}
-            case actors.Version{{.}}:
-                return builtin{{.}}.CronActorCodeID, nil
-            {{end}}
-        {{end}}
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
-}
-
-func GetInitActorCodeID(av actors.Version) (cid.Cid, error) {
-	if c, ok := actors.GetActorCodeID(av, actors.InitKey); ok {
-		return c, nil
-	}
-
-	switch av {
-        {{range .versions}}
-            {{if (le . 7)}}
-            case actors.Version{{.}}:
-                return builtin{{.}}.InitActorCodeID, nil
-            {{end}}
-        {{end}}
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
-}
-
-func GetMarketActorCodeID(av actors.Version) (cid.Cid, error) {
-	if c, ok := actors.GetActorCodeID(av, actors.MarketKey); ok {
-		return c, nil
-	}
-
-	switch av {
-        {{range .versions}}
-            {{if (le . 7)}}
-            case actors.Version{{.}}:
-                return builtin{{.}}.StorageMarketActorCodeID, nil
-            {{end}}
-        {{end}}
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
-}
-
-func GetMinerActorCodeID(av actors.Version) (cid.Cid, error) {
-	if c, ok := actors.GetActorCodeID(av, actors.MinerKey); ok {
-		return c, nil
-	}
-
-	switch av {
-        {{range .versions}}
-            {{if (le . 7)}}
-            case actors.Version{{.}}:
-                return builtin{{.}}.StorageMinerActorCodeID, nil
-            {{end}}
-        {{end}}
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
 
 func IsStorageMinerActor(c cid.Cid) bool {
@@ -202,23 +116,6 @@ func IsStorageMinerActor(c cid.Cid) bool {
 	return false
 }
 
-func GetMultisigActorCodeID(av actors.Version) (cid.Cid, error) {
-	if c, ok := actors.GetActorCodeID(av, actors.MultisigKey); ok {
-		return c, nil
-	}
-
-	switch av {
-        {{range .versions}}
-            {{if (le . 7)}}
-            case actors.Version{{.}}:
-                return builtin{{.}}.MultisigActorCodeID, nil
-            {{end}}
-        {{end}}
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
-}
-
 func IsMultisigActor(c cid.Cid) bool {
 	name, _, ok := actors.GetActorMetaByCode(c)
     if ok {
@@ -235,23 +132,6 @@ func IsMultisigActor(c cid.Cid) bool {
 	return false
 }
 
-func GetPaymentChannelActorCodeID(av actors.Version) (cid.Cid, error) {
-	if c, ok := actors.GetActorCodeID(av, actors.PaychKey); ok {
-		return c, nil
-	}
-
-	switch av {
-        {{range .versions}}
-            {{if (le . 7)}}
-            case actors.Version{{.}}:
-                return builtin{{.}}.PaymentChannelActorCodeID, nil
-            {{end}}
-        {{end}}
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
-}
-
 func IsPaymentChannelActor(c cid.Cid) bool {
 	name, _, ok := actors.GetActorMetaByCode(c)
     if ok {
@@ -266,74 +146,6 @@ func IsPaymentChannelActor(c cid.Cid) bool {
         {{end}}
 	{{end}}
 	return false
-}
-
-func GetPowerActorCodeID(av actors.Version) (cid.Cid, error) {
-	if c, ok := actors.GetActorCodeID(av, actors.PowerKey); ok {
-		return c, nil
-	}
-
-	switch av {
-        {{range .versions}}
-            {{if (le . 7)}}
-            case actors.Version{{.}}:
-                return builtin{{.}}.StoragePowerActorCodeID, nil
-            {{end}}
-        {{end}}
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
-}
-
-func GetRewardActorCodeID(av actors.Version) (cid.Cid, error) {
-	if c, ok := actors.GetActorCodeID(av, actors.RewardKey); ok {
-		return c, nil
-	}
-
-	switch av {
-        {{range .versions}}
-            {{if (le . 7)}}
-            case actors.Version{{.}}:
-                return builtin{{.}}.RewardActorCodeID, nil
-            {{end}}
-        {{end}}
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
-}
-
-func GetSystemActorCodeID(av actors.Version) (cid.Cid, error) {
-	if c, ok := actors.GetActorCodeID(av, actors.SystemKey); ok {
-		return c, nil
-	}
-
-	switch av {
-        {{range .versions}}
-            {{if (le . 7)}}
-            case actors.Version{{.}}:
-                return builtin{{.}}.SystemActorCodeID, nil
-            {{end}}
-        {{end}}
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
-}
-
-func GetVerifregActorCodeID(av actors.Version) (cid.Cid, error) {
-	if c, ok := actors.GetActorCodeID(av, actors.VerifregKey); ok {
-		return c, nil
-	}
-
-	switch av {
-        {{range .versions}}
-            {{if (le . 7)}}
-            case actors.Version{{.}}:
-                return builtin{{.}}.VerifiedRegistryActorCodeID, nil
-            {{end}}
-        {{end}}
-	}
-
-	return cid.Undef, xerrors.Errorf("unknown actor version %d", av)
 }
 
 func makeAddress(addr string) address.Address {
