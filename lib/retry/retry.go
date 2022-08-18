@@ -2,6 +2,7 @@ package retry
 
 import (
 	"errors"
+	"reflect"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -11,8 +12,8 @@ var log = logging.Logger("retry")
 
 func errorIsIn(err error, errorTypes []error) bool {
 	for _, etype := range errorTypes {
-		tmp := etype
-		if errors.As(err, &tmp) {
+		tmp := reflect.New(reflect.PointerTo(reflect.ValueOf(etype).Elem().Type())).Interface()
+		if errors.As(err, tmp) {
 			return true
 		}
 	}
