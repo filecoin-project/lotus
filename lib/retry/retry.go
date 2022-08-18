@@ -1,6 +1,7 @@
 package retry
 
 import (
+	"errors"
 	"time"
 
 	logging "github.com/ipfs/go-log/v2"
@@ -8,7 +9,17 @@ import (
 
 var log = logging.Logger("retry")
 
-func Retry[T any](attempts int, sleep int, f func() (T, error)) (result T, err error) {
+func errorIsIn(err error, errorTypes []error) bool {
+	for _, etype := range errorTypes {
+		tmp := etype
+		if errors.As(err, &tmp) {
+			return true
+		}
+	}
+	return false
+}
+
+func Retry[T any](attempts int, sleep int, errorTypes []error, f func() (T, error)) (result T, err error) {
 	for i := 0; i < attempts; i++ {
 		if i > 0 {
 			log.Info("Retrying after error:", err)
@@ -16,7 +27,7 @@ func Retry[T any](attempts int, sleep int, f func() (T, error)) (result T, err e
 			sleep *= 2
 		}
 		result, err = f()
-		if err == nil {
+		if err == nil || !errorIsIn(err, errorTypes) {
 			return result, nil
 		}
 	}

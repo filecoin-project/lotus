@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/filecoin-project/go-jsonrpc"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -90,7 +91,8 @@ func (a *UuidWrapper) MpoolPushMessage(ctx context.Context, msg *types.Message, 
 		spec = new(api.MessageSendSpec)
 	}
 	spec.MsgUuid = uuid.New()
-	return retry.Retry(5, 1, func() (*types.SignedMessage, error) { return a.FullNode.MpoolPushMessage(ctx, msg, spec) })
+	errorsToRetry := []error{&jsonrpc.RPCConnectionError{}}
+	return retry.Retry(5, 1, errorsToRetry, func() (*types.SignedMessage, error) { return a.FullNode.MpoolPushMessage(ctx, msg, spec) })
 }
 
 func MakeUuidWrapper(a v1api.RawFullNodeAPI) v1api.FullNode {
