@@ -10,6 +10,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
 	"github.com/filecoin-project/go-fil-markets/retrievalmarket"
@@ -122,6 +123,12 @@ type StorageMiner interface {
 	SectorMatchPendingPiecesToOpenSectors(ctx context.Context) error //perm:admin
 	// SectorAbortUpgrade can be called on sectors that are in the process of being upgraded to abort it
 	SectorAbortUpgrade(context.Context, abi.SectorNumber) error //perm:admin
+
+	// SectorNumAssignerMeta returns sector number assigner metadata - reserved/allocated
+	SectorNumAssignerMeta(ctx context.Context) (NumAssignerMeta, error)
+	SectorNumReservations(ctx context.Context) (map[string]bitfield.BitField, error)
+	SectorNumReserve(ctx context.Context, name string, field bitfield.BitField, force bool) error
+	SectorNumFree(ctx context.Context, name string) error
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error                              //perm:admin retry:true
@@ -467,4 +474,11 @@ type DagstoreInitializeAllEvent struct {
 	Error   string
 	Total   int
 	Current int
+}
+
+type NumAssignerMeta struct {
+	Reserved  bitfield.BitField
+	Allocated bitfield.BitField
+
+	Next abi.SectorNumber
 }

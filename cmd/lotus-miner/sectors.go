@@ -18,6 +18,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-bitfield"
+	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin"
@@ -45,6 +46,7 @@ var sectorsCmd = &cli.Command{
 		sectorsRefsCmd,
 		sectorsUpdateCmd,
 		sectorsPledgeCmd,
+		sectorsNumbersCmd,
 		sectorPreCommitsCmd,
 		sectorsCheckExpireCmd,
 		sectorsExpiredCmd,
@@ -2200,4 +2202,230 @@ var sectorsCompactPartitionsCmd = &cli.Command{
 
 		return nil
 	},
+}
+
+var sectorsNumbersCmd = &cli.Command{
+	Name:  "numbers",
+	Usage: "manage sector number assignments",
+	Subcommands: []*cli.Command{
+		sectorsNumbersInfoCmd,
+		sectorsNumbersReservationsCmd,
+		sectorsNumbersReserveCmd,
+		sectorsNumbersFreeCmd,
+	},
+}
+
+var sectorsNumbersInfoCmd = &cli.Command{
+	Name:  "info",
+	Usage: "view sector assigner state",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		am, err := api.SectorNumAssignerMeta(ctx)
+		if err != nil {
+			return err
+		}
+
+		alloc, err := bitfieldToHumanRanges(am.Allocated)
+		if err != nil {
+			return err
+		}
+
+		reserved, err := bitfieldToHumanRanges(am.Reserved)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("Next free: %s\n", am.Next)
+		fmt.Printf("Allocated: %s\n", alloc)
+		fmt.Printf("Reserved: %s\n", reserved)
+
+		return nil
+	},
+}
+
+var sectorsNumbersReservationsCmd = &cli.Command{
+	Name:  "reservations",
+	Usage: "list sector number reservations",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		rs, err := api.SectorNumReservations(ctx)
+		if err != nil {
+			return err
+		}
+
+		var out []string
+
+		for name, field := range rs {
+			hr, err := bitfieldToHumanRanges(field)
+			if err != nil {
+				return err
+			}
+			count, err := field.Count()
+			if err != nil {
+				return err
+			}
+
+			out = append(out, fmt.Sprintf("%s: count=%d %s", name, count, hr))
+		}
+
+		fmt.Printf("reservations: %d\n", len(out))
+
+		sort.Strings(out)
+
+		for _, s := range out {
+			fmt.Println(s)
+		}
+
+		return nil
+	},
+}
+
+var sectorsNumbersReserveCmd = &cli.Command{
+	Name:  "reserve",
+	Usage: "create sector number reservations",
+	Flags: []cli.Flag{
+		&cli.BoolFlag{
+			Name:  "force",
+			Usage: "skip duplicate reservation checks (note: can lead to damaging other reservations on free)",
+		},
+	},
+	ArgsUsage: "[reservation name] [reserved ranges]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		if cctx.Args().Len() != 2 {
+			return xerrors.Errorf("expected 2 arguments: [reservation name] [reserved ranges]")
+		}
+
+		bf, err := humanRangesToBitField(cctx.Args().Get(1))
+		if err != nil {
+			return xerrors.Errorf("parsing ranges: %w", err)
+		}
+
+		return api.SectorNumReserve(ctx, cctx.Args().First(), bf, cctx.Bool("force"))
+	},
+}
+
+var sectorsNumbersFreeCmd = &cli.Command{
+	Name:      "free",
+	Usage:     "remove sector number reservations",
+	ArgsUsage: "[reservation name]",
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := lcli.GetStorageMinerAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := lcli.ReqContext(cctx)
+
+		if cctx.Args().Len() != 1 {
+			return xerrors.Errorf("expected 1 argument: [reservation name]")
+		}
+
+		return api.SectorNumFree(ctx, cctx.Args().First())
+	},
+}
+
+func humanRangesToBitField(h string) (bitfield.BitField, error) {
+	var runs []rlepluslazy.Run
+	var last uint64
+
+	strRanges := strings.Split(h, ",")
+	for i, strRange := range strRanges {
+		lr := strings.Split(strRange, "-")
+
+		var start, end uint64
+		var err error
+
+		switch len(lr) {
+		case 1: // one number
+			start, err = strconv.ParseUint(lr[0], 10, 64)
+			if err != nil {
+				return bitfield.BitField{}, xerrors.Errorf("parsing left side of run %d: %w", i, err)
+			}
+
+			end = start
+		case 2: // x-y
+			start, err = strconv.ParseUint(lr[0], 10, 64)
+			if err != nil {
+				return bitfield.BitField{}, xerrors.Errorf("parsing left side of run %d: %w", i, err)
+			}
+			end, err = strconv.ParseUint(lr[1], 10, 64)
+			if err != nil {
+				return bitfield.BitField{}, xerrors.Errorf("parsing right side of run %d: %w", i, err)
+			}
+		}
+
+		if start < last {
+			return bitfield.BitField{}, xerrors.Errorf("run %d start(%d) was less than last run end(%d)", i, start, last)
+		}
+
+		if start == last && last > 0 {
+			return bitfield.BitField{}, xerrors.Errorf("run %d start(%d) was equal to last run end(%d)", i, start, last)
+		}
+
+		if start > end {
+			return bitfield.BitField{}, xerrors.Errorf("run start(%d) can't be greater than run end(%d) (run %d)", start, end, i)
+		}
+
+		if start > last {
+			runs = append(runs, rlepluslazy.Run{Val: false, Len: start - last})
+		}
+
+		runs = append(runs, rlepluslazy.Run{Val: true, Len: end - start + 1})
+		last = end + 1
+	}
+
+	return bitfield.NewFromIter(&rlepluslazy.RunSliceIterator{Runs: runs})
+}
+
+func bitfieldToHumanRanges(bf bitfield.BitField) (string, error) {
+	bj, err := bf.MarshalJSON()
+	if err != nil {
+		return "", err
+	}
+
+	var bints []int64
+	if err := json.Unmarshal(bj, &bints); err != nil {
+		return "", err
+	}
+
+	var at int64
+	var out string
+
+	for i, bi := range bints {
+		at += bi
+
+		if i%2 == 0 {
+			if i > 0 {
+				out += ","
+			}
+			out += fmt.Sprint(at)
+			continue
+		}
+
+		if bi > 1 {
+			out += "-"
+			out += fmt.Sprint(at - 1)
+		}
+	}
+
+	return out, err
 }

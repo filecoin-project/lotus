@@ -139,6 +139,10 @@
   * [SectorGetSealDelay](#SectorGetSealDelay)
   * [SectorMarkForUpgrade](#SectorMarkForUpgrade)
   * [SectorMatchPendingPiecesToOpenSectors](#SectorMatchPendingPiecesToOpenSectors)
+  * [SectorNumAssignerMeta](#SectorNumAssignerMeta)
+  * [SectorNumFree](#SectorNumFree)
+  * [SectorNumReservations](#SectorNumReservations)
+  * [SectorNumReserve](#SectorNumReserve)
   * [SectorPreCommitFlush](#SectorPreCommitFlush)
   * [SectorPreCommitPending](#SectorPreCommitPending)
   * [SectorRemove](#SectorRemove)
@@ -2935,6 +2939,81 @@ Response: `{}`
 Perms: admin
 
 Inputs: `null`
+
+Response: `{}`
+
+### SectorNumAssignerMeta
+SectorNumAssignerMeta returns sector number assigner metadata - reserved/allocated
+
+
+Perms: 
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "Reserved": [
+    5,
+    1
+  ],
+  "Allocated": [
+    5,
+    1
+  ],
+  "Next": 9
+}
+```
+
+### SectorNumFree
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs:
+```json
+[
+  "string value"
+]
+```
+
+Response: `{}`
+
+### SectorNumReservations
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs: `null`
+
+Response:
+```json
+{
+  "": [
+    5,
+    3,
+    2,
+    1
+  ]
+}
+```
+
+### SectorNumReserve
+There are not yet any comments for this method.
+
+Perms: 
+
+Inputs:
+```json
+[
+  "string value",
+  [
+    5,
+    1
+  ],
+  true
+]
+```
 
 Response: `{}`
 

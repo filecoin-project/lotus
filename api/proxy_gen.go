@@ -824,6 +824,14 @@ type StorageMinerStruct struct {
 
 		SectorMatchPendingPiecesToOpenSectors func(p0 context.Context) error `perm:"admin"`
 
+		SectorNumAssignerMeta func(p0 context.Context) (NumAssignerMeta, error) ``
+
+		SectorNumFree func(p0 context.Context, p1 string) error ``
+
+		SectorNumReservations func(p0 context.Context) (map[string]bitfield.BitField, error) ``
+
+		SectorNumReserve func(p0 context.Context, p1 string, p2 bitfield.BitField, p3 bool) error ``
+
 		SectorPreCommitFlush func(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) `perm:"admin"`
 
 		SectorPreCommitPending func(p0 context.Context) ([]abi.SectorID, error) `perm:"admin"`
@@ -4897,6 +4905,50 @@ func (s *StorageMinerStruct) SectorMatchPendingPiecesToOpenSectors(p0 context.Co
 }
 
 func (s *StorageMinerStub) SectorMatchPendingPiecesToOpenSectors(p0 context.Context) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorNumAssignerMeta(p0 context.Context) (NumAssignerMeta, error) {
+	if s.Internal.SectorNumAssignerMeta == nil {
+		return *new(NumAssignerMeta), ErrNotSupported
+	}
+	return s.Internal.SectorNumAssignerMeta(p0)
+}
+
+func (s *StorageMinerStub) SectorNumAssignerMeta(p0 context.Context) (NumAssignerMeta, error) {
+	return *new(NumAssignerMeta), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorNumFree(p0 context.Context, p1 string) error {
+	if s.Internal.SectorNumFree == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SectorNumFree(p0, p1)
+}
+
+func (s *StorageMinerStub) SectorNumFree(p0 context.Context, p1 string) error {
+	return ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorNumReservations(p0 context.Context) (map[string]bitfield.BitField, error) {
+	if s.Internal.SectorNumReservations == nil {
+		return *new(map[string]bitfield.BitField), ErrNotSupported
+	}
+	return s.Internal.SectorNumReservations(p0)
+}
+
+func (s *StorageMinerStub) SectorNumReservations(p0 context.Context) (map[string]bitfield.BitField, error) {
+	return *new(map[string]bitfield.BitField), ErrNotSupported
+}
+
+func (s *StorageMinerStruct) SectorNumReserve(p0 context.Context, p1 string, p2 bitfield.BitField, p3 bool) error {
+	if s.Internal.SectorNumReserve == nil {
+		return ErrNotSupported
+	}
+	return s.Internal.SectorNumReserve(p0, p1, p2, p3)
+}
+
+func (s *StorageMinerStub) SectorNumReserve(p0 context.Context, p1 string, p2 bitfield.BitField, p3 bool) error {
 	return ErrNotSupported
 }
 

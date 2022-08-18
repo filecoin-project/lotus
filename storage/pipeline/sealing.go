@@ -1,9 +1,7 @@
 package sealing
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
 	"sync"
 	"time"
 
@@ -14,8 +12,6 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-address"
-	"github.com/filecoin-project/go-bitfield"
-	rlepluslazy "github.com/filecoin-project/go-bitfield/rle"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
 	"github.com/filecoin-project/go-state-types/builtin/v8/miner"
@@ -39,9 +35,6 @@ import (
 )
 
 const SectorStorePrefix = "/sectors"
-
-var StorageCounterDSPrefix = "/storage/nextid"
-var SectorBitfieldsDSPrefix = "/storage/sectors/"
 
 var ErrTooManySectorsSealing = xerrors.New("too many sectors sealing")
 
@@ -328,108 +321,4 @@ func getDealPerSectorLimit(size abi.SectorSize) (int, error) {
 		return 256, nil
 	}
 	return 512, nil
-}
-
-func (m *Sealing) loadBitField(ctx context.Context, name string) (*bitfield.BitField, error) {
-	raw, err := m.ds.Get(ctx, datastore.NewKey(SectorBitfieldsDSPrefix+name))
-	if err == datastore.ErrNotFound {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	var bf bitfield.BitField
-
-	if err := bf.UnmarshalCBOR(bytes.NewBuffer(raw)); err != nil {
-		return nil, err
-	}
-	return &bf, nil
-}
-
-func (m *Sealing) saveBitField(ctx context.Context, name string, bf *bitfield.BitField) error {
-	var bb bytes.Buffer
-	err := bf.MarshalCBOR(&bb)
-	if err != nil {
-		return err
-	}
-	return m.ds.Put(ctx, datastore.NewKey(SectorBitfieldsDSPrefix+name), bb.Bytes())
-}
-
-func (m *Sealing) NextSectorNumber(ctx context.Context) (abi.SectorNumber, error) {
-	m.sclk.Lock()
-	defer m.sclk.Unlock()
-
-	reserved, err := m.loadBitField(ctx, "reserved")
-	if err != nil {
-		return 0, err
-	}
-	allocated, err := m.loadBitField(ctx, "allocated")
-	if err != nil {
-		return 0, err
-	}
-
-	if allocated == nil {
-		i, err := m.legacySc.Next()
-		if err != nil {
-			return 0, err
-		}
-
-		rl := &rlepluslazy.RunSliceIterator{Runs: []rlepluslazy.Run{
-			{
-				Val: true,
-				Len: i,
-			},
-		}}
-
-		bf, err := bitfield.NewFromIter(rl)
-		if err != nil {
-			return 0, err
-		}
-		allocated = &bf
-	}
-
-	if reserved == nil {
-		reserved = allocated
-	}
-
-	// todo union with miner allocated nums
-	inuse, err := bitfield.MergeBitFields(*reserved, *allocated)
-	if err != nil {
-		return 0, err
-	}
-
-	iri, err := inuse.RunIterator()
-	if err != nil {
-		return 0, err
-	}
-
-	var firstFree abi.SectorNumber
-	for iri.HasNext() {
-		r, err := iri.NextRun()
-		if err != nil {
-			return 0, err
-		}
-		if !r.Val {
-			break
-		}
-		firstFree += abi.SectorNumber(r.Len)
-	}
-
-	allocated.Set(uint64(firstFree))
-
-	if err := m.saveBitField(ctx, "allocated", allocated); err != nil {
-		return 0, err
-	}
-
-	// save legacy counter so that in case of a miner downgrade things keep working
-	{
-		buf := make([]byte, binary.MaxVarintLen64)
-		size := binary.PutUvarint(buf, uint64(firstFree))
-
-		if err := m.ds.Put(ctx, datastore.NewKey(StorageCounterDSPrefix), buf[:size]); err != nil {
-			return 0, err
-		}
-	}
-
-	return firstFree, nil
 }

@@ -24,6 +24,7 @@ import (
 	"github.com/filecoin-project/dagstore"
 	"github.com/filecoin-project/dagstore/shard"
 	"github.com/filecoin-project/go-address"
+	"github.com/filecoin-project/go-bitfield"
 	datatransfer "github.com/filecoin-project/go-data-transfer"
 	gst "github.com/filecoin-project/go-data-transfer/transport/graphsync"
 	"github.com/filecoin-project/go-fil-markets/piecestore"
@@ -425,6 +426,22 @@ func (sm *StorageMinerAPI) SectorCommitPending(ctx context.Context) ([]abi.Secto
 
 func (sm *StorageMinerAPI) SectorMatchPendingPiecesToOpenSectors(ctx context.Context) error {
 	return sm.Miner.SectorMatchPendingPiecesToOpenSectors(ctx)
+}
+
+func (sm *StorageMinerAPI) SectorNumAssignerMeta(ctx context.Context) (api.NumAssignerMeta, error) {
+	return sm.Miner.NumAssignerMeta(ctx)
+}
+
+func (sm *StorageMinerAPI) SectorNumReservations(ctx context.Context) (map[string]bitfield.BitField, error) {
+	return sm.Miner.NumReservations(ctx)
+}
+
+func (sm *StorageMinerAPI) SectorNumReserve(ctx context.Context, name string, field bitfield.BitField, force bool) error {
+	return sm.Miner.NumReserve(ctx, name, field, force)
+}
+
+func (sm *StorageMinerAPI) SectorNumFree(ctx context.Context, name string) error {
+	return sm.Miner.NumFree(ctx, name)
 }
 
 func (sm *StorageMinerAPI) ComputeWindowPoSt(ctx context.Context, dlIdx uint64, tsk types.TipSetKey) ([]minertypes.SubmitWindowedPoStParams, error) {
