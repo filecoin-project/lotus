@@ -37,7 +37,7 @@ require (
 	github.com/filecoin-project/go-data-transfer v1.15.2
 	github.com/filecoin-project/go-fil-commcid v0.1.0
 	github.com/filecoin-project/go-fil-commp-hashhash v0.1.0
-	github.com/filecoin-project/go-fil-markets v1.23.1
+	github.com/filecoin-project/go-fil-markets v1.24.0
 	github.com/filecoin-project/go-jsonrpc v0.1.5
 	github.com/filecoin-project/go-legs v0.4.4
 	github.com/filecoin-project/go-padreader v0.0.1
@@ -339,7 +339,5 @@ require (
 )
 
 replace github.com/filecoin-project/filecoin-ffi => ./extern/filecoin-ffi
-
-replace github.com/filecoin-project/go-fil-markets => github.com/marcopolo/go-fil-markets v1.23.1-0.20220811180806-b8e84162b48e
 
 replace github.com/filecoin-project/test-vectors => ./extern/test-vectors
