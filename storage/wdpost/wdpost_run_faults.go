@@ -2,6 +2,9 @@ package wdpost
 
 import (
 	"context"
+	"math"
+	"os"
+	"strconv"
 
 	"github.com/ipfs/go-cid"
 	"go.opencensus.io/trace"
@@ -18,6 +21,18 @@ import (
 	"github.com/filecoin-project/lotus/chain/actors"
 	"github.com/filecoin-project/lotus/chain/types"
 )
+
+var RecoveringSectorLimit uint64 = 0
+
+func init() {
+	if rcl := os.Getenv("LOTUS_RECOVERING_SECTOR_LIMIT"); rcl != "" {
+		var err error
+		RecoveringSectorLimit, err = strconv.ParseUint(rcl, 10, 64)
+		if err != nil {
+			log.Errorw("parsing LOTUS_RECOVERING_SECTOR_LIMIT", "error", err)
+		}
+	}
+}
 
 // declareRecoveries identifies sectors that were previously marked as faulty
 // for our miner, but are now recovered (i.e. are now provable again) and
@@ -44,7 +59,7 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 
 	var batchedRecoveryDecls [][]miner.RecoveryDeclaration
 	batchedRecoveryDecls = append(batchedRecoveryDecls, []miner.RecoveryDeclaration{})
-	totalRecoveries := 0
+	totalSectorsToRecover := uint64(0)
 
 	for partIdx, partition := range partitions {
 		unrecovered, err := bitfield.SubtractBitField(partition.FaultySectors, partition.RecoveringSectors)
@@ -78,6 +93,31 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 			continue
 		}
 
+		// rules to follow if we have indicated that we don't want to recover more than X sectors in a deadline
+		if RecoveringSectorLimit > 0 {
+			// something weird happened, break because we can't recover any more
+			if RecoveringSectorLimit < totalSectorsToRecover {
+				log.Warnf("accepted more recoveries (%d) than RecoveringSectorLimit (%d)", totalSectorsToRecover, RecoveringSectorLimit)
+				break
+			}
+
+			maxNewRecoverable := RecoveringSectorLimit - totalSectorsToRecover
+
+			// we need to trim the recover bitfield
+			if recoveredCount > maxNewRecoverable {
+				recoverySlice, err := recovered.All(math.MaxUint64)
+				if err != nil {
+					log.Errorw("failed to slice recovery bitfield, breaking out of recovery loop", err)
+					break
+				}
+
+				log.Warnf("only adding %d sectors to respect RecoveringSectorLimit %d", maxNewRecoverable, RecoveringSectorLimit)
+
+				recovered = bitfield.NewFromSet(recoverySlice[:maxNewRecoverable])
+				recoveredCount = maxNewRecoverable
+			}
+		}
+
 		// respect user config if set
 		if s.maxPartitionsPerRecoveryMessage > 0 &&
 			len(batchedRecoveryDecls[len(batchedRecoveryDecls)-1]) >= s.maxPartitionsPerRecoveryMessage {
@@ -90,10 +130,17 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 			Sectors:   recovered,
 		})
 
-		totalRecoveries++
+		totalSectorsToRecover += recoveredCount
+
+		if RecoveringSectorLimit > 0 && totalSectorsToRecover >= RecoveringSectorLimit {
+			log.Errorf("reached recovering sector limit %d, only marking %d sectors for recovery now",
+				RecoveringSectorLimit,
+				totalSectorsToRecover)
+			break
+		}
 	}
 
-	if totalRecoveries == 0 {
+	if totalSectorsToRecover == 0 {
 		if faulty != 0 {
 			log.Warnw("No recoveries to declare", "deadline", dlIdx, "faulty", faulty)
 		}
@@ -101,6 +148,7 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 		return nil, nil, nil
 	}
 
+	log.Infof("attempting recovery declarations for %d sectors", totalSectorsToRecover)
 	var msgs []*types.SignedMessage
 	for _, recovery := range batchedRecoveryDecls {
 		params := &miner.DeclareFaultsRecoveredParams{
@@ -122,7 +170,6 @@ func (s *WindowPoStScheduler) declareRecoveries(ctx context.Context, dlIdx uint6
 		if err := s.prepareMessage(ctx, msg, spec); err != nil {
 			return nil, nil, err
 		}
-
 		sm, err := s.api.MpoolPushMessage(ctx, msg, &api.MessageSendSpec{MaxFee: abi.TokenAmount(s.feeCfg.MaxWindowPoStGasFee)})
 		if err != nil {
 			return nil, nil, xerrors.Errorf("pushing message to mpool: %w", err)
