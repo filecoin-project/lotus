@@ -796,6 +796,10 @@ var sectorsRenewCmd = &cli.Command{
 			Name:  "new-expiration",
 			Usage: "try to extend selected sectors to this epoch, ignoring extension",
 		},
+		&cli.BoolFlag{
+			Name:  "only-cc",
+			Usage: "only extend CC sectors (useful for making sector ready for snap upgrade)",
+		},
 		&cli.Int64Flag{
 			Name:  "tolerance",
 			Usage: "don't try to extend sectors by fewer than this number of epochs, defaults to 7 days",
@@ -931,6 +935,10 @@ var sectorsRenewCmd = &cli.Command{
 			}
 
 			for _, si := range activeSet {
+				if len(si.DealIDs) > 0 && cctx.Bool("only-cc") {
+					continue
+				}
+
 				if si.Expiration >= from && si.Expiration <= to {
 					if _, exclude := excludeSet[uint64(si.SectorNumber)]; !exclude {
 						sis = append(sis, si)

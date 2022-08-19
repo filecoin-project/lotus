@@ -292,7 +292,10 @@ func handleMiningInfo(ctx context.Context, cctx *cli.Context, fullapi v0api.Full
 	if err != nil {
 		return xerrors.Errorf("getting available balance: %w", err)
 	}
-	spendable = big.Add(spendable, availBalance)
+
+	if availBalance.GreaterThan(big.Zero()) {
+		spendable = big.Add(spendable, availBalance)
+	}
 
 	fmt.Printf("Miner Balance:    %s\n", color.YellowString("%s", types.FIL(mact.Balance).Short()))
 	fmt.Printf("      PreCommit:  %s\n", types.FIL(lockedFunds.PreCommitDeposits).Short())
