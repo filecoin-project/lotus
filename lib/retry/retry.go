@@ -29,7 +29,7 @@ func Retry[T any](attempts int, sleep int, errorTypes []error, f func() (T, erro
 		}
 		result, err = f()
 		if err == nil || !errorIsIn(err, errorTypes) {
-			return result, nil
+			return result, err
 		}
 	}
 	log.Errorf("Failed after %d attempts, last error: %s", attempts, err)
