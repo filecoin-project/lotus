@@ -228,6 +228,7 @@ var clientCommPCmd = &cli.Command{
 
 		fmt.Println("CID: ", encoder.Encode(ret.Root))
 		fmt.Println("Piece size: ", types.SizeStr(types.NewInt(uint64(ret.Size))))
+		fmt.Println("Piece size in bytes: ", types.NewInt(uint64(ret.Size)))
 		return nil
 	},
 }
