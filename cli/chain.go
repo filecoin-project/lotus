@@ -25,6 +25,7 @@ import (
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
 	"github.com/filecoin-project/go-state-types/big"
+	evm "github.com/filecoin-project/go-state-types/builtin/v8/evm"
 	init8 "github.com/filecoin-project/go-state-types/builtin/v8/init"
 	"github.com/filecoin-project/specs-actors/actors/builtin"
 	"github.com/filecoin-project/specs-actors/actors/builtin/account"
@@ -66,6 +67,8 @@ var ChainCmd = &cli.Command{
 		ChainInstallCmd,
 		ChainExecCmd,
 		ChainInvokeCmd,
+		ChainExecEVMCmd,
+		ChainInvokeEVMCmd,
 	},
 }
 
@@ -1758,6 +1761,226 @@ var ChainInvokeCmd = &cli.Command{
 
 		if len(wait.Receipt.Return) > 0 {
 			result := base64.StdEncoding.EncodeToString(wait.Receipt.Return)
+			afmt.Println(result)
+		} else {
+			afmt.Println("OK")
+		}
+
+		return nil
+	},
+}
+
+var ChainExecEVMCmd = &cli.Command{
+	Name:      "create-evm-actor",
+	Usage:     "Create an new EVM actor via the init actor and return its address",
+	ArgsUsage: "contract [params]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "optionally specify the account to use for sending the exec message",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if argc := cctx.Args().Len(); argc < 1 || argc > 2 {
+			return xerrors.Errorf("must pass the contract and (optionally) constructor input data")
+		}
+
+		contract, err := os.ReadFile(cctx.Args().First())
+		if err != nil {
+			return xerrors.Errorf("failed to read contract: %w", err)
+		}
+
+		var inputData []byte
+		if cctx.Args().Len() == 2 {
+			inputData, err = base64.StdEncoding.DecodeString(cctx.Args().Get(1))
+			if err != nil {
+				return xerrors.Errorf("decoding base64 value: %w", err)
+			}
+		}
+
+		constructorParams, err := actors.SerializeParams(&evm.ConstructorParams{
+			Bytecode:  contract,
+			InputData: inputData,
+		})
+		if err != nil {
+			return xerrors.Errorf("failed to serialize constructor params: %w", err)
+		}
+
+		evmActorCid, ok := actors.GetActorCodeID(actors.Version8, "evm")
+		if !ok {
+			return xerrors.Errorf("failed to lookup evm actor code CID")
+		}
+
+		params, err := actors.SerializeParams(&init8.ExecParams{
+			CodeCID:           evmActorCid,
+			ConstructorParams: constructorParams,
+		})
+		if err != nil {
+			return xerrors.Errorf("failed to serialize init actor exec params: %w", err)
+		}
+
+		var fromAddr address.Address
+		if from := cctx.String("from"); from == "" {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = defaddr
+		} else {
+			addr, err := address.NewFromString(from)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = addr
+		}
+
+		msg := &types.Message{
+			To:     builtin.InitActorAddr,
+			From:   fromAddr,
+			Value:  big.Zero(),
+			Method: 2,
+			Params: params,
+		}
+
+		afmt.Println("sending message...")
+		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
+		if err != nil {
+			return xerrors.Errorf("failed to push message: %w", err)
+		}
+
+		afmt.Println("waiting for message to execute...")
+		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 0)
+		if err != nil {
+			return xerrors.Errorf("error waiting for message: %w", err)
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			return xerrors.Errorf("actor execution failed")
+		}
+
+		var result init8.ExecReturn
+		r := bytes.NewReader(wait.Receipt.Return)
+		if err := result.UnmarshalCBOR(r); err != nil {
+			return xerrors.Errorf("error unmarshaling return value: %w", err)
+		}
+
+		afmt.Printf("ID Address: %s\n", result.IDAddress)
+		afmt.Printf("Robust Address: %s\n", result.RobustAddress)
+
+		if len(wait.Receipt.Return) > 0 {
+			result := base64.StdEncoding.EncodeToString(wait.Receipt.Return)
+			afmt.Printf("Return: %s\n", result)
+		}
+
+		return nil
+	},
+}
+
+var ChainInvokeEVMCmd = &cli.Command{
+	Name:      "invoke-evm-actor",
+	Usage:     "Invoke a contract entry point in an EVM actor",
+	ArgsUsage: "address contract-entry-point [input-data]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "from",
+			Usage: "optionally specify the account to use for sending the exec message",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		afmt := NewAppFmt(cctx.App)
+
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if argc := cctx.Args().Len(); argc < 2 || argc > 3 {
+			return xerrors.Errorf("must pass the address, entry point and (optionally) input data")
+		}
+
+		addr, err := address.NewFromString(cctx.Args().Get(0))
+		if err != nil {
+			return xerrors.Errorf("failed to decode address: %w", err)
+		}
+
+		entryPoint, err := hex.DecodeString(cctx.Args().Get(1))
+		if err != nil {
+			return xerrors.Errorf("failed to decode hex entry point: %w", err)
+		}
+
+		var inputData []byte
+		if cctx.Args().Len() == 3 {
+			inputData, err = hex.DecodeString(cctx.Args().Get(2))
+			if err != nil {
+				return xerrors.Errorf("decoding hex input data: %w", err)
+			}
+		}
+
+		params, err := actors.SerializeParams(&evm.InvokeParams{
+			InputData: append(entryPoint, inputData...),
+		})
+		if err != nil {
+			return xerrors.Errorf("failed to serialize evm actor invoke params: %w", err)
+		}
+
+		var fromAddr address.Address
+		if from := cctx.String("from"); from == "" {
+			defaddr, err := api.WalletDefaultAddress(ctx)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = defaddr
+		} else {
+			addr, err := address.NewFromString(from)
+			if err != nil {
+				return err
+			}
+
+			fromAddr = addr
+		}
+
+		msg := &types.Message{
+			To:     addr,
+			From:   fromAddr,
+			Value:  big.Zero(),
+			Method: abi.MethodNum(2),
+			Params: params,
+		}
+
+		afmt.Println("sending message...")
+		smsg, err := api.MpoolPushMessage(ctx, msg, nil)
+		if err != nil {
+			return xerrors.Errorf("failed to push message: %w", err)
+		}
+
+		afmt.Println("waiting for message to execute...")
+		wait, err := api.StateWaitMsg(ctx, smsg.Cid(), 0)
+		if err != nil {
+			return xerrors.Errorf("error waiting for message: %w", err)
+		}
+
+		// check it executed successfully
+		if wait.Receipt.ExitCode != 0 {
+			return xerrors.Errorf("actor execution failed")
+		}
+
+		if len(wait.Receipt.Return) > 0 {
+			result := hex.EncodeToString(wait.Receipt.Return)
 			afmt.Println(result)
 		} else {
 			afmt.Println("OK")
