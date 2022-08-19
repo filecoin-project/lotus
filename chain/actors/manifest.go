@@ -30,6 +30,7 @@ const (
 	RewardKey   = "reward"
 	SystemKey   = "system"
 	VerifregKey = "verifiedregistry"
+	EvmKey      = "evm"
 )
 
 func GetBuiltinActorsKeys() []string {
@@ -45,6 +46,7 @@ func GetBuiltinActorsKeys() []string {
 		RewardKey,
 		SystemKey,
 		VerifregKey,
+		EvmKey,
 	}
 }
 
