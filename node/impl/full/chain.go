@@ -599,9 +599,9 @@ func (a ChainAPI) ChainExportRange(ctx context.Context, head, tail types.TipSetK
 	r, w := io.Pipe()
 	out := make(chan []byte)
 	go func() {
-		bw := bufio.NewWriterSize(w, 1<<20)
+		bw := bufio.NewWriterSize(w, cfg.WriteBufferSize)
 
-		err := a.Chain.ExportRange(ctx, headTs, tailTs, bw)
+		err := a.Chain.ExportRange(ctx, headTs, tailTs, cfg.IncludeMessages, cfg.IncludeReceipts, cfg.IncludeStateRoots, cfg.Workers, bw)
 		bw.Flush()            //nolint:errcheck // it is a write to a pipe
 		w.CloseWithError(err) //nolint:errcheck // it is a pipe
 	}()
@@ -609,7 +609,7 @@ func (a ChainAPI) ChainExportRange(ctx context.Context, head, tail types.TipSetK
 	go func() {
 		defer close(out)
 		for {
-			buf := make([]byte, 1<<20)
+			buf := make([]byte, cfg.WriteBufferSize)
 			n, err := r.Read(buf)
 			if err != nil && err != io.EOF {
 				log.Errorf("chain export pipe read failed: %s", err)

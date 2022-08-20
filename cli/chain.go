@@ -16,11 +16,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ipfs/go-cid"
-	"github.com/urfave/cli/v2"
-	cbg "github.com/whyrusleeping/cbor-gen"
-	"golang.org/x/xerrors"
-
 	"github.com/filecoin-project/go-address"
 	cborutil "github.com/filecoin-project/go-cbor-util"
 	"github.com/filecoin-project/go-state-types/abi"
@@ -31,6 +26,10 @@ import (
 	"github.com/filecoin-project/specs-actors/actors/builtin/miner"
 	"github.com/filecoin-project/specs-actors/actors/builtin/power"
 	"github.com/filecoin-project/specs-actors/actors/util/adt"
+	"github.com/ipfs/go-cid"
+	"github.com/urfave/cli/v2"
+	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/lotus/api"
 	lapi "github.com/filecoin-project/lotus/api"
@@ -1139,8 +1138,32 @@ var ChainExportRangeCmd = &cli.Command{
 		&cli.StringFlag{
 			Name:  "tail",
 			Usage: "specify tipset to end the export at",
-			//Value: "bafy2bzaceapgfhcgvbtuci5uep6g6vvk2vjplejzrkk3un2uippapf4cw7ddu,bafy2bzacebu44yllfr57iigs3z4w5z5px54arfw2shz2z5t7gh4y3qw3j64s2,bafy2bzacecwfm5bmsxzxteiwttvyleiiut5rvbsciheyiwnj4slbqiu6bvtry,bafy2bzacea7d5tsmtmx5exyvq2a7qcxrrzz2obwq73dxtg2tdh2ebsekkoln6",
-			Value: "bafy2bzacedvkcybh6fxthdhbbammsi4pq5lcgddeuwtl3fcfwjmtwvsq4tuqg",
+			Value: "@tail",
+		},
+		&cli.BoolFlag{
+			Name:  "messages",
+			Usage: "specify if messages should be include",
+			Value: false,
+		},
+		&cli.BoolFlag{
+			Name:  "receipts",
+			Usage: "specify if receipts should be include",
+			Value: false,
+		},
+		&cli.BoolFlag{
+			Name:  "stateroots",
+			Usage: "specify if stateroots should be include",
+			Value: false,
+		},
+		&cli.Int64Flag{
+			Name:  "workers",
+			Usage: "specify the number of workers",
+			Value: 1,
+		},
+		&cli.IntFlag{
+			Name:  "write-buffer",
+			Usage: "specify write buffer size",
+			Value: 1 << 20,
 		},
 	},
 	Action: func(cctx *cli.Context) error {
@@ -1180,8 +1203,11 @@ var ChainExportRangeCmd = &cli.Command{
 			}
 		}
 		tailstr := cctx.String("tail")
-		if tailstr == "" {
-			return fmt.Errorf("tail required")
+		if tailstr == "@tail" {
+			tail, err = api.ChainGetGenesis(ctx)
+			if err != nil {
+				return err
+			}
 		} else {
 			tail, err = ParseTipSetRef(ctx, api, tailstr)
 			if err != nil {
@@ -1189,7 +1215,13 @@ var ChainExportRangeCmd = &cli.Command{
 			}
 		}
 
-		stream, err := api.ChainExportRange(ctx, head.Key(), tail.Key(), nil)
+		stream, err := api.ChainExportRange(ctx, head.Key(), tail.Key(), &lapi.ChainExportConfig{
+			WriteBufferSize:   cctx.Int("write-buffer"),
+			Workers:           cctx.Int64("workers"),
+			IncludeMessages:   cctx.Bool("messages"),
+			IncludeReceipts:   cctx.Bool("receipts"),
+			IncludeStateRoots: cctx.Bool("stateroots"),
+		})
 		if err != nil {
 			return err
 		}
