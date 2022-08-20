@@ -56,6 +56,7 @@ var ChainCmd = &cli.Command{
 		ChainGetCmd,
 		ChainBisectCmd,
 		ChainExportCmd,
+		ChainExportRangeCmd,
 		SlashConsensusFault,
 		ChainGasPriceCmd,
 		ChainInspectUsage,
@@ -1103,6 +1104,92 @@ var ChainExportCmd = &cli.Command{
 		}
 
 		stream, err := api.ChainExport(ctx, rsrs, skipold, ts.Key())
+		if err != nil {
+			return err
+		}
+
+		var last bool
+		for b := range stream {
+			last = len(b) == 0
+
+			_, err := fi.Write(b)
+			if err != nil {
+				return err
+			}
+		}
+
+		if !last {
+			return xerrors.Errorf("incomplete export (remote connection lost?)")
+		}
+
+		return nil
+	},
+}
+
+var ChainExportRangeCmd = &cli.Command{
+	Name:      "export-range",
+	Usage:     "export chain to a car file",
+	ArgsUsage: "[outputPath]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "head",
+			Usage: "specify tipset to start the export from",
+			Value: "@head",
+		},
+		&cli.StringFlag{
+			Name:  "tail",
+			Usage: "specify tipset to end the export at",
+			//Value: "bafy2bzaceapgfhcgvbtuci5uep6g6vvk2vjplejzrkk3un2uippapf4cw7ddu,bafy2bzacebu44yllfr57iigs3z4w5z5px54arfw2shz2z5t7gh4y3qw3j64s2,bafy2bzacecwfm5bmsxzxteiwttvyleiiut5rvbsciheyiwnj4slbqiu6bvtry,bafy2bzacea7d5tsmtmx5exyvq2a7qcxrrzz2obwq73dxtg2tdh2ebsekkoln6",
+			Value: "bafy2bzacedvkcybh6fxthdhbbammsi4pq5lcgddeuwtl3fcfwjmtwvsq4tuqg",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify filename to export chain to")
+		}
+
+		fi, err := createExportFile(cctx.App, cctx.Args().First())
+		if err != nil {
+			return err
+		}
+		defer func() {
+			err := fi.Close()
+			if err != nil {
+				fmt.Printf("error closing output file: %+v", err)
+			}
+		}()
+
+		head, tail := &types.TipSet{}, &types.TipSet{}
+		headstr := cctx.String("head")
+		if headstr == "@head" {
+			head, err = api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+		} else {
+			head, err = ParseTipSetRef(ctx, api, headstr)
+			if err != nil {
+				return fmt.Errorf("parsing head: %w", err)
+			}
+		}
+		tailstr := cctx.String("tail")
+		if tailstr == "" {
+			return fmt.Errorf("tail required")
+		} else {
+			tail, err = ParseTipSetRef(ctx, api, tailstr)
+			if err != nil {
+				return fmt.Errorf("parsing tail: %w", err)
+			}
+		}
+
+		stream, err := api.ChainExportRange(ctx, head.Key(), tail.Key(), nil)
 		if err != nil {
 			return err
 		}

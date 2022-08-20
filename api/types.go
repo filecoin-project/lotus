@@ -397,3 +397,8 @@ func (m *MsgUuidMapType) UnmarshalJSON(b []byte) error {
 	}
 	return nil
 }
+
+type ChainExportConfig struct {
+	IncludeMessages bool
+	IncludeReceipts bool
+}

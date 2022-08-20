@@ -3,7 +3,9 @@ package store
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
+	"sync"
 
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
@@ -12,6 +14,7 @@ import (
 	carv2 "github.com/ipld/go-car/v2"
 	mh "github.com/multiformats/go-multihash"
 	cbg "github.com/whyrusleeping/cbor-gen"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
 
 	"github.com/filecoin-project/go-state-types/abi"
@@ -24,6 +27,32 @@ import (
 
 func (cs *ChainStore) UnionStore() bstore.Blockstore {
 	return bstore.Union(cs.stateBlockstore, cs.chainBlockstore)
+}
+
+func (cs *ChainStore) ExportRange(ctx context.Context, head, tail *types.TipSet, w io.Writer) error {
+	h := &car.CarHeader{
+		Roots:   head.Cids(),
+		Version: 1,
+	}
+
+	if err := car.WriteHeader(h, w); err != nil {
+		return xerrors.Errorf("failed to write car header: %s", err)
+	}
+
+	unionBs := cs.UnionStore()
+	return cs.WalkSnapshotRange(ctx, head, tail, true, true, func(c cid.Cid) error {
+		blk, err := unionBs.Get(ctx, c)
+		if err != nil {
+			return xerrors.Errorf("writing object to car, bs.Get: %w", err)
+		}
+
+		if err := carutil.LdWrite(w, c.Bytes(), blk.RawData()); err != nil {
+			return xerrors.Errorf("failed to write block to car output: %w", err)
+		}
+
+		return nil
+	})
+
 }
 
 func (cs *ChainStore) Export(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs bool, w io.Writer) error {
@@ -114,6 +143,308 @@ func (cs *ChainStore) Import(ctx context.Context, r io.Reader) (*types.TipSet, e
 	}
 
 	return root, nil
+}
+
+type walkTask struct {
+	c        cid.Cid
+	taskType taskType
+}
+
+type walkResult struct {
+	c cid.Cid
+}
+
+/*
+func newDiffScheduler(ctx context.Context, numWorkers int64, rootTasks ...*task) (*diffScheduler, context.Context) {
+	grp, ctx := errgroup.WithContext(ctx)
+	s := &diffScheduler{
+		numWorkers: numWorkers,
+		stack:      rootTasks,
+		in:         make(chan *task, numWorkers),
+		out:        make(chan *task, numWorkers),
+		grp:        grp,
+	}
+	s.taskWg.Add(len(rootTasks))
+	return s, ctx
+}
+
+*/
+
+type walkSchedulerConfig struct {
+	numWorkers      int64
+	tail            *types.TipSet
+	includeMessages bool
+	includeReceipts bool
+	includeState    bool
+}
+
+func newWalkScheduler(ctx context.Context, store bstore.Blockstore, cfg *walkSchedulerConfig, rootTasks ...*walkTask) (*walkScheduler, context.Context) {
+	tailSet := cid.NewSet()
+	for i := range cfg.tail.Cids() {
+		tailSet.Add(cfg.tail.Cids()[i])
+	}
+	grp, ctx := errgroup.WithContext(ctx)
+	s := &walkScheduler{
+		store:      store,
+		numWorkers: cfg.numWorkers,
+		stack:      rootTasks,
+		in:         make(chan *walkTask, cfg.numWorkers*64),
+		out:        make(chan *walkTask, cfg.numWorkers*64),
+		grp:        grp,
+		tail:       tailSet,
+		cfg:        cfg,
+	}
+	s.taskWg.Add(len(rootTasks))
+	return s, ctx
+}
+
+type walkScheduler struct {
+	store bstore.Blockstore
+	// number of worker routine to spawn
+	numWorkers int64
+	// buffer holds tasks until they are processed
+	stack []*walkTask
+	// inbound and outbound tasks
+	in, out chan *walkTask
+	// tracks number of inflight tasks
+	taskWg sync.WaitGroup
+	// launches workers and collects errors if any occur
+	grp *errgroup.Group
+	// set of tasks seen
+	seen sync.Map
+
+	tail *cid.Set
+	cfg  *walkSchedulerConfig
+}
+
+func (s *walkScheduler) enqueueIfNew(task *walkTask) {
+	if _, ok := s.seen.Load(task.c); ok {
+		return
+	}
+	log.Infow("enqueue", "type", task.taskType.String(), "cid", task.c.String())
+	s.taskWg.Add(1)
+	s.in <- task
+	s.seen.Store(task.c, struct{}{})
+}
+
+func (s *walkScheduler) startScheduler(ctx context.Context) {
+	s.grp.Go(func() error {
+		defer func() {
+			close(s.out)
+			// Because the workers may have exited early (due to the context being canceled).
+			for range s.out {
+				s.taskWg.Done()
+			}
+			// Because the workers may have enqueued additional tasks.
+			for range s.in {
+				s.taskWg.Done()
+			}
+			// now, the waitgroup should be at 0, and the goroutine that was _waiting_ on it should have exited.
+		}()
+		go func() {
+			s.taskWg.Wait()
+			close(s.in)
+		}()
+		for {
+			if n := len(s.stack) - 1; n >= 0 {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case newJob, ok := <-s.in:
+					if !ok {
+						return nil
+					}
+					s.stack = append(s.stack, newJob)
+				case s.out <- s.stack[n]:
+					s.stack[n] = nil
+					s.stack = s.stack[:n]
+				}
+			} else {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case newJob, ok := <-s.in:
+					if !ok {
+						return nil
+					}
+					s.stack = append(s.stack, newJob)
+				}
+			}
+		}
+	})
+}
+
+func (s *walkScheduler) startWorkers(ctx context.Context, out chan *walkResult) {
+	for i := int64(0); i < s.numWorkers; i++ {
+		s.grp.Go(func() error {
+			for task := range s.out {
+				if err := s.work(ctx, task, out); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
+	}
+}
+
+type taskType int
+
+func (t taskType) String() string {
+	switch t {
+	case Block:
+		return "block"
+	case Message:
+		return "message"
+	case Receipt:
+		return "receipt"
+	case State:
+		return "state"
+	case Dag:
+		return "dag"
+	}
+	panic(fmt.Sprintf("unknow task %d", t))
+}
+
+const (
+	Block taskType = iota
+	Message
+	Receipt
+	State
+	Dag
+)
+
+func (s *walkScheduler) work(ctx context.Context, todo *walkTask, results chan *walkResult) error {
+	defer s.taskWg.Done()
+	if todo.c.Prefix().MhType == mh.IDENTITY {
+		log.Infow("ignored", "cid", todo.c.String())
+		return nil
+	}
+	if todo.c.Prefix().Codec != cid.Raw && todo.c.Prefix().Codec != cid.DagCBOR {
+		log.Infow("ignored", "cid", todo.c.String())
+		return nil
+	}
+	// unseen cid, its a result
+	results <- &walkResult{c: todo.c}
+
+	// extract relevant dags to walk from the block
+	if todo.taskType == 0 {
+		blk := todo.c
+		data, err := s.store.Get(ctx, blk)
+		if err != nil {
+			return err
+		}
+		var b types.BlockHeader
+		if err := b.UnmarshalCBOR(bytes.NewBuffer(data.RawData())); err != nil {
+			return xerrors.Errorf("unmarshaling block header (cid=%s): %w", blk, err)
+		}
+		if b.Height == 0 {
+			log.Infow("GENESIS")
+			for i := range b.Parents {
+				s.enqueueIfNew(&walkTask{
+					c:        b.Parents[i],
+					taskType: Dag,
+				})
+			}
+			s.enqueueIfNew(&walkTask{
+				c:        b.ParentStateRoot,
+				taskType: State,
+			})
+			return nil
+		}
+		// enqueue block parents
+		for i := range b.Parents {
+			s.enqueueIfNew(&walkTask{
+				c:        b.Parents[i],
+				taskType: Block,
+			})
+		}
+		if s.cfg.tail.Height() >= b.Height {
+			//log.Infow("tail reached", "cid", blk.String())
+			return nil
+		}
+
+		if s.cfg.includeMessages {
+			// enqueue block messages
+			s.enqueueIfNew(&walkTask{
+				c:        b.Messages,
+				taskType: Message,
+			})
+		}
+		if s.cfg.includeReceipts {
+			// enqueue block receipts
+			s.enqueueIfNew(&walkTask{
+				c:        b.ParentMessageReceipts,
+				taskType: Receipt,
+			})
+		}
+		if s.cfg.includeState {
+			s.enqueueIfNew(&walkTask{
+				c:        b.ParentStateRoot,
+				taskType: State,
+			})
+		}
+
+		return nil
+	}
+	data, err := s.store.Get(ctx, todo.c)
+	if err != nil {
+		return err
+	}
+	return cbg.ScanForLinks(bytes.NewReader(data.RawData()), func(c cid.Cid) {
+		if todo.c.Prefix().Codec != cid.DagCBOR || todo.c.Prefix().MhType == mh.IDENTITY {
+			return
+		}
+
+		s.enqueueIfNew(&walkTask{
+			c:        c,
+			taskType: Dag,
+		})
+	})
+}
+
+func (cs *ChainStore) WalkSnapshotRange(ctx context.Context, head, tail *types.TipSet, messages, receipts bool, cb func(cid.Cid) error) error {
+	tasks := []*walkTask{}
+	for i := range head.Blocks() {
+		tasks = append(tasks, &walkTask{
+			c:        head.Blocks()[i].Cid(),
+			taskType: 0,
+		})
+	}
+
+	cfg := &walkSchedulerConfig{
+		numWorkers:      64,
+		tail:            tail,
+		includeMessages: true,
+		includeState:    true,
+		includeReceipts: false,
+	}
+
+	pw, ctx := newWalkScheduler(ctx, cs.chainBlockstore, cfg, tasks...)
+	results := make(chan *walkResult)
+	pw.startScheduler(ctx)
+	pw.startWorkers(ctx, results)
+
+	resultGroup, ctx := errgroup.WithContext(ctx)
+	resultGroup.Go(func() error {
+		for res := range results {
+			if err := cb(res.c); err != nil {
+				log.Errorw("callback error", "error", err)
+				return err
+			}
+		}
+		return nil
+	})
+
+	err := pw.grp.Wait()
+	if err != nil {
+		log.Errorw("walker scheduler", "error", err)
+	}
+	close(results)
+	err = resultGroup.Wait()
+	if err != nil {
+		log.Errorw("result group", "error", err)
+	}
+	return err
 }
 
 func (cs *ChainStore) WalkSnapshot(ctx context.Context, ts *types.TipSet, inclRecentRoots abi.ChainEpoch, skipOldMsgs, skipMsgReceipts bool, cb func(cid.Cid) error) error {

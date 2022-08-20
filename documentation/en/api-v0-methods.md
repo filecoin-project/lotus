@@ -13,6 +13,7 @@
 * [Chain](#Chain)
   * [ChainDeleteObj](#ChainDeleteObj)
   * [ChainExport](#ChainExport)
+  * [ChainExportRange](#ChainExportRange)
   * [ChainGetBlock](#ChainGetBlock)
   * [ChainGetBlockMessages](#ChainGetBlockMessages)
   * [ChainGetGenesis](#ChainGetGenesis)
@@ -416,6 +417,39 @@ Inputs:
       "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
     }
   ]
+]
+```
+
+Response: `"Ynl0ZSBhcnJheQ=="`
+
+### ChainExportRange
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  {
+    "IncludeMessages": true,
+    "IncludeReceipts": true
+  }
 ]
 ```
 
