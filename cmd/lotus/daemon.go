@@ -76,10 +76,11 @@ var daemonStopCmd = &cli.Command{
 	},
 }
 
-// DaemonCmd is the `go-lotus daemon` command
+// DaemonCmd is the `lotus daemon` command
 var DaemonCmd = &cli.Command{
 	Name:  "daemon",
 	Usage: "Start a lotus daemon process",
+	Aliases: []string{"run"},
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "api",
