@@ -398,3 +398,12 @@ func (m *MsgUuidMapType) UnmarshalJSON(b []byte) error {
 	}
 	return nil
 }
+
+type ChainExportConfig struct {
+	WriteBufferSize   int
+	Workers           int64
+	CacheSize         int
+	IncludeMessages   bool
+	IncludeReceipts   bool
+	IncludeStateRoots bool
+}

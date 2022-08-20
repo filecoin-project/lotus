@@ -56,6 +56,7 @@ var ChainCmd = &cli.Command{
 		ChainGetCmd,
 		ChainBisectCmd,
 		ChainExportCmd,
+		ChainExportRangeCmd,
 		SlashConsensusFault,
 		ChainGasPriceCmd,
 		ChainInspectUsage,
@@ -1126,6 +1127,149 @@ var ChainExportCmd = &cli.Command{
 		if err != nil {
 			return err
 		}
+
+		var last bool
+		for b := range stream {
+			last = len(b) == 0
+
+			_, err := fi.Write(b)
+			if err != nil {
+				return err
+			}
+		}
+
+		if !last {
+			return xerrors.Errorf("incomplete export (remote connection lost?)")
+		}
+
+		return nil
+	},
+}
+
+var ChainExportRangeCmd = &cli.Command{
+	Name:      "export-range",
+	Usage:     "export chain to a car file",
+	ArgsUsage: "[outputPath]",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:  "head",
+			Usage: "specify tipset to start the export from",
+			Value: "@head",
+		},
+		&cli.StringFlag{
+			Name:  "tail",
+			Usage: "specify tipset to end the export at",
+			Value: "@tail",
+		},
+		&cli.BoolFlag{
+			Name:  "messages",
+			Usage: "specify if messages should be include",
+			Value: false,
+		},
+		&cli.BoolFlag{
+			Name:  "receipts",
+			Usage: "specify if receipts should be include",
+			Value: false,
+		},
+		&cli.BoolFlag{
+			Name:  "stateroots",
+			Usage: "specify if stateroots should be include",
+			Value: false,
+		},
+		&cli.Int64Flag{
+			Name:  "workers",
+			Usage: "specify the number of workers",
+			Value: 1,
+		},
+		&cli.IntFlag{
+			Name:  "cache-size",
+			Usage: "specify the size of the cache (in objects) to use while exporting",
+			Value: 100_000,
+		},
+		&cli.IntFlag{
+			Name:  "write-buffer",
+			Usage: "specify write buffer size",
+			Value: 1 << 20,
+		},
+		&cli.BoolFlag{
+			Name:  "internal",
+			Usage: "will cause the daemon to write the file locally",
+		},
+	},
+	Action: func(cctx *cli.Context) error {
+		api, closer, err := GetFullNodeAPI(cctx)
+		if err != nil {
+			return err
+		}
+		defer closer()
+		ctx := ReqContext(cctx)
+
+		if !cctx.Args().Present() {
+			return fmt.Errorf("must specify filename to export chain to")
+		}
+
+		head, tail := &types.TipSet{}, &types.TipSet{}
+		headstr := cctx.String("head")
+		if headstr == "@head" {
+			head, err = api.ChainHead(ctx)
+			if err != nil {
+				return err
+			}
+		} else {
+			head, err = ParseTipSetRef(ctx, api, headstr)
+			if err != nil {
+				return fmt.Errorf("parsing head: %w", err)
+			}
+		}
+		tailstr := cctx.String("tail")
+		if tailstr == "@tail" {
+			tail, err = api.ChainGetGenesis(ctx)
+			if err != nil {
+				return err
+			}
+		} else {
+			tail, err = ParseTipSetRef(ctx, api, tailstr)
+			if err != nil {
+				return fmt.Errorf("parsing tail: %w", err)
+			}
+		}
+
+		if cctx.Bool("internal") {
+			if err := api.ChainExportRangeInternal(ctx, head.Key(), tail.Key(), &lapi.ChainExportConfig{
+				WriteBufferSize:   cctx.Int("write-buffer"),
+				Workers:           cctx.Int64("workers"),
+				CacheSize:         cctx.Int("cache-size"),
+				IncludeMessages:   cctx.Bool("messages"),
+				IncludeReceipts:   cctx.Bool("receipts"),
+				IncludeStateRoots: cctx.Bool("stateroots"),
+			}); err != nil {
+				return err
+			}
+			return nil
+		}
+
+		stream, err := api.ChainExportRange(ctx, head.Key(), tail.Key(), &lapi.ChainExportConfig{
+			WriteBufferSize:   cctx.Int("write-buffer"),
+			Workers:           cctx.Int64("workers"),
+			CacheSize:         cctx.Int("cache-size"),
+			IncludeMessages:   cctx.Bool("messages"),
+			IncludeReceipts:   cctx.Bool("receipts"),
+			IncludeStateRoots: cctx.Bool("stateroots"),
+		})
+		if err != nil {
+			return err
+		}
+
+		fi, err := createExportFile(cctx.App, cctx.Args().First())
+		if err != nil {
+			return err
+		}
+		defer func() {
+			err := fi.Close()
+			if err != nil {
+				fmt.Printf("error closing output file: %+v", err)
+			}
+		}()
 
 		var last bool
 		for b := range stream {

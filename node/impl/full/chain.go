@@ -5,11 +5,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"math"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/ipfs/go-blockservice"
 	"github.com/ipfs/go-cid"
@@ -587,6 +590,91 @@ func (m *ChainModule) ChainGetMessage(ctx context.Context, mc cid.Cid) (*types.M
 	}
 
 	return cm.VMMessage(), nil
+}
+
+func (a ChainAPI) ChainExportRangeInternal(ctx context.Context, head, tail types.TipSetKey, cfg *api.ChainExportConfig) error {
+	headTs, err := a.Chain.GetTipSetFromKey(ctx, head)
+	if err != nil {
+		return xerrors.Errorf("loading tipset %s: %w", head, err)
+	}
+	tailTs, err := a.Chain.GetTipSetFromKey(ctx, tail)
+	if err != nil {
+		return xerrors.Errorf("loading tipset %s: %w", tail, err)
+	}
+	f, err := os.Create(fmt.Sprintf("./snapshot_%d_%d_%d.car", tailTs.Height(), headTs.Height(), time.Now().Unix()))
+	if err != nil {
+		return err
+	}
+	// buffer writes to the chain export file.
+	bw := bufio.NewWriterSize(f, cfg.WriteBufferSize)
+
+	defer func() {
+		if err := bw.Flush(); err != nil {
+			log.Errorw("failed to flush buffer", "error", err)
+		}
+		if err := f.Close(); err != nil {
+			log.Errorw("failed to close file", "error", err)
+		}
+	}()
+
+	if err := a.Chain.ExportRange(ctx, headTs, tailTs, cfg.IncludeMessages, cfg.IncludeReceipts, cfg.IncludeStateRoots, cfg.Workers, cfg.CacheSize, bw); err != nil {
+		return fmt.Errorf("exporting chain range: %w", err)
+	}
+
+	return nil
+}
+
+func (a ChainAPI) ChainExportRange(ctx context.Context, head, tail types.TipSetKey, cfg *api.ChainExportConfig) (<-chan []byte, error) {
+	headTs, err := a.Chain.GetTipSetFromKey(ctx, head)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", head, err)
+	}
+	tailTs, err := a.Chain.GetTipSetFromKey(ctx, tail)
+	if err != nil {
+		return nil, xerrors.Errorf("loading tipset %s: %w", tail, err)
+	}
+	r, w := io.Pipe()
+	out := make(chan []byte)
+	go func() {
+		bw := bufio.NewWriterSize(w, cfg.WriteBufferSize)
+
+		err := a.Chain.ExportRange(ctx, headTs, tailTs, cfg.IncludeMessages, cfg.IncludeReceipts, cfg.IncludeStateRoots, cfg.Workers, cfg.CacheSize, bw)
+		bw.Flush()            //nolint:errcheck // it is a write to a pipe
+		w.CloseWithError(err) //nolint:errcheck // it is a pipe
+	}()
+
+	go func() {
+		defer close(out)
+		for {
+			buf := make([]byte, cfg.WriteBufferSize)
+			n, err := r.Read(buf)
+			if err != nil && err != io.EOF {
+				log.Errorf("chain export pipe read failed: %s", err)
+				return
+			}
+			if n > 0 {
+				select {
+				case out <- buf[:n]:
+				case <-ctx.Done():
+					log.Warnf("export writer failed: %s", ctx.Err())
+					return
+				}
+			}
+			if err == io.EOF {
+				// send empty slice to indicate correct eof
+				select {
+				case out <- []byte{}:
+				case <-ctx.Done():
+					log.Warnf("export writer failed: %s", ctx.Err())
+					return
+				}
+
+				return
+			}
+		}
+	}()
+
+	return out, nil
 }
 
 func (a *ChainAPI) ChainExport(ctx context.Context, nroots abi.ChainEpoch, skipoldmsgs bool, tsk types.TipSetKey) (<-chan []byte, error) {

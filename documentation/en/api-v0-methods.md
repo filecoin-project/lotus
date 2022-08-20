@@ -13,6 +13,8 @@
 * [Chain](#Chain)
   * [ChainDeleteObj](#ChainDeleteObj)
   * [ChainExport](#ChainExport)
+  * [ChainExportRange](#ChainExportRange)
+  * [ChainExportRangeInternal](#ChainExportRangeInternal)
   * [ChainGetBlock](#ChainGetBlock)
   * [ChainGetBlockMessages](#ChainGetBlockMessages)
   * [ChainGetGenesis](#ChainGetGenesis)
@@ -420,6 +422,80 @@ Inputs:
 ```
 
 Response: `"Ynl0ZSBhcnJheQ=="`
+
+### ChainExportRange
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  {
+    "WriteBufferSize": 123,
+    "Workers": 9,
+    "CacheSize": 123,
+    "IncludeMessages": true,
+    "IncludeReceipts": true,
+    "IncludeStateRoots": true
+  }
+]
+```
+
+Response: `"Ynl0ZSBhcnJheQ=="`
+
+### ChainExportRangeInternal
+
+
+Perms: read
+
+Inputs:
+```json
+[
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  [
+    {
+      "/": "bafy2bzacea3wsdh6y3a36tb3skempjoxqpuyompjbmfeyf34fi3uy6uue42v4"
+    },
+    {
+      "/": "bafy2bzacebp3shtrn43k7g3unredz7fxn4gj533d3o43tqn2p2ipxxhrvchve"
+    }
+  ],
+  {
+    "WriteBufferSize": 123,
+    "Workers": 9,
+    "CacheSize": 123,
+    "IncludeMessages": true,
+    "IncludeReceipts": true,
+    "IncludeStateRoots": true
+  }
+]
+```
+
+Response: `{}`
 
 ### ChainGetBlock
 ChainGetBlock returns the block specified by the given CID.
