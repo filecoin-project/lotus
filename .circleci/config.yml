@@ -960,6 +960,11 @@ workflows:
           target: "./itests/paych_cli_test.go"
       
       - test:
+          name: test-itest-retry
+          suite: itest-retry
+          target: "./itests/retry_test.go"
+      
+      - test:
           name: test-itest-sdr_upgrade
           suite: itest-sdr_upgrade
           target: "./itests/sdr_upgrade_test.go"

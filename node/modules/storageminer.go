@@ -92,7 +92,11 @@ func (a *UuidWrapper) MpoolPushMessage(ctx context.Context, msg *types.Message, 
 	}
 	spec.MsgUuid = uuid.New()
 	errorsToRetry := []error{&jsonrpc.RPCConnectionError{}}
-	return retry.Retry(5, 1, errorsToRetry, func() (*types.SignedMessage, error) { return a.FullNode.MpoolPushMessage(ctx, msg, spec) })
+	initialBackoff, err := time.ParseDuration("1s")
+	if err != nil {
+		return nil, err
+	}
+	return retry.Retry(5, initialBackoff, errorsToRetry, func() (*types.SignedMessage, error) { return a.FullNode.MpoolPushMessage(ctx, msg, spec) })
 }
 
 func MakeUuidWrapper(a v1api.RawFullNodeAPI) v1api.FullNode {
