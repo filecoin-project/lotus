@@ -391,7 +391,7 @@ type FullNodeStruct struct {
 
 		StateMinerActiveSectors func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) ([]*miner.SectorOnChainInfo, error) `perm:"read"`
 
-		StateMinerAllocated func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*bitfield.BitField, error) ``
+		StateMinerAllocated func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (*bitfield.BitField, error) `perm:"read"`
 
 		StateMinerAvailableBalance func(p0 context.Context, p1 address.Address, p2 types.TipSetKey) (types.BigInt, error) `perm:"read"`
 
@@ -826,13 +826,13 @@ type StorageMinerStruct struct {
 
 		SectorMatchPendingPiecesToOpenSectors func(p0 context.Context) error `perm:"admin"`
 
-		SectorNumAssignerMeta func(p0 context.Context) (NumAssignerMeta, error) ``
+		SectorNumAssignerMeta func(p0 context.Context) (NumAssignerMeta, error) `perm:"read"`
 
-		SectorNumFree func(p0 context.Context, p1 string) error ``
+		SectorNumFree func(p0 context.Context, p1 string) error `perm:"admin"`
 
-		SectorNumReservations func(p0 context.Context) (map[string]bitfield.BitField, error) ``
+		SectorNumReservations func(p0 context.Context) (map[string]bitfield.BitField, error) `perm:"read"`
 
-		SectorNumReserve func(p0 context.Context, p1 string, p2 bitfield.BitField, p3 bool) error ``
+		SectorNumReserve func(p0 context.Context, p1 string, p2 bitfield.BitField, p3 bool) error `perm:"admin"`
 
 		SectorPreCommitFlush func(p0 context.Context) ([]sealiface.PreCommitBatchRes, error) `perm:"admin"`
 

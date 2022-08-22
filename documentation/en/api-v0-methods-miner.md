@@ -2946,7 +2946,7 @@ Response: `{}`
 SectorNumAssignerMeta returns sector number assigner metadata - reserved/allocated
 
 
-Perms: 
+Perms: read
 
 Inputs: `null`
 
@@ -2966,9 +2966,9 @@ Response:
 ```
 
 ### SectorNumFree
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: admin
 
 Inputs:
 ```json
@@ -2980,9 +2980,9 @@ Inputs:
 Response: `{}`
 
 ### SectorNumReservations
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: read
 
 Inputs: `null`
 
@@ -2999,9 +2999,9 @@ Response:
 ```
 
 ### SectorNumReserve
-There are not yet any comments for this method.
 
-Perms: 
+
+Perms: admin
 
 Inputs:
 ```json

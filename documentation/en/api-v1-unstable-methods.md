@@ -6159,7 +6159,7 @@ Response:
 StateMinerAllocated returns a bitfield containing all sector numbers marked as allocated in miner state
 
 
-Perms: 
+Perms: read
 
 Inputs:
 ```json

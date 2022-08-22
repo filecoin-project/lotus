@@ -125,10 +125,10 @@ type StorageMiner interface {
 	SectorAbortUpgrade(context.Context, abi.SectorNumber) error //perm:admin
 
 	// SectorNumAssignerMeta returns sector number assigner metadata - reserved/allocated
-	SectorNumAssignerMeta(ctx context.Context) (NumAssignerMeta, error)
-	SectorNumReservations(ctx context.Context) (map[string]bitfield.BitField, error)
-	SectorNumReserve(ctx context.Context, name string, field bitfield.BitField, force bool) error
-	SectorNumFree(ctx context.Context, name string) error
+	SectorNumAssignerMeta(ctx context.Context) (NumAssignerMeta, error)                           //perm:read
+	SectorNumReservations(ctx context.Context) (map[string]bitfield.BitField, error)              //perm:read
+	SectorNumReserve(ctx context.Context, name string, field bitfield.BitField, force bool) error //perm:admin
+	SectorNumFree(ctx context.Context, name string) error                                         //perm:admin
 
 	// WorkerConnect tells the node to connect to workers RPC
 	WorkerConnect(context.Context, string) error                              //perm:admin retry:true
