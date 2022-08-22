@@ -15,6 +15,7 @@ import (
 	"github.com/filecoin-project/go-state-types/abi"
 
 	"github.com/filecoin-project/lotus/api"
+	"github.com/filecoin-project/lotus/chain/types"
 )
 
 var StorageCounterDSPrefix = "/storage/nextid"
@@ -135,6 +136,15 @@ func (m *Sealing) numAssignerMetaLocked(ctx context.Context) (api.NumAssignerMet
 		return api.NumAssignerMeta{}, xerrors.Errorf("merge reserved/allocated: %w", err)
 	}
 
+	stateAllocated, err := m.Api.StateMinerAllocated(ctx, m.maddr, types.EmptyTSK)
+	if err != nil || stateAllocated == nil {
+		return api.NumAssignerMeta{}, xerrors.Errorf("getting state-allocated sector numbers: %w", err)
+	}
+	inuse, err = bitfield.MergeBitFields(inuse, *stateAllocated)
+	if err != nil {
+		return api.NumAssignerMeta{}, xerrors.Errorf("merge inuse/stateAllocated: %w", err)
+	}
+
 	// find first available sector number
 	iri, err := inuse.RunIterator()
 	if err != nil {
@@ -160,6 +170,7 @@ func (m *Sealing) numAssignerMetaLocked(ctx context.Context) (api.NumAssignerMet
 	}, nil
 }
 
+// NumReservations returns a list of named sector reservations
 func (m *Sealing) NumReservations(ctx context.Context) (map[string]bitfield.BitField, error) {
 	res, err := m.ds.Query(ctx, dsq.Query{Prefix: SectorReservationsDSPrefix})
 	if err != nil {
@@ -190,6 +201,7 @@ func (m *Sealing) NumReservations(ctx context.Context) (map[string]bitfield.BitF
 	return out, nil
 }
 
+// NumReserve creates a new sector reservation
 func (m *Sealing) NumReserve(ctx context.Context, name string, reserving bitfield.BitField, force bool) error {
 	m.sclk.Lock()
 	defer m.sclk.Unlock()
@@ -280,6 +292,7 @@ func (m *Sealing) NumReserve(ctx context.Context, name string, reserving bitfiel
 	return nil
 }
 
+// NumFree removes a named sector reservation
 func (m *Sealing) NumFree(ctx context.Context, name string) error {
 	rk, err := reservationKey(name)
 	if err != nil {

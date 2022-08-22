@@ -2662,6 +2662,21 @@ func (mr *MockFullNodeMockRecorder) StateMinerActiveSectors(arg0, arg1, arg2 int
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerActiveSectors", reflect.TypeOf((*MockFullNode)(nil).StateMinerActiveSectors), arg0, arg1, arg2)
 }
 
+// StateMinerAllocated mocks base method.
+func (m *MockFullNode) StateMinerAllocated(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (*bitfield.BitField, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateMinerAllocated", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*bitfield.BitField)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateMinerAllocated indicates an expected call of StateMinerAllocated.
+func (mr *MockFullNodeMockRecorder) StateMinerAllocated(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerAllocated", reflect.TypeOf((*MockFullNode)(nil).StateMinerAllocated), arg0, arg1, arg2)
+}
+
 // StateMinerAvailableBalance mocks base method.
 func (m *MockFullNode) StateMinerAvailableBalance(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (big.Int, error) {
 	m.ctrl.T.Helper()

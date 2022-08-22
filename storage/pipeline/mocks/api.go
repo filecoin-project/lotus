@@ -12,6 +12,7 @@ import (
 	cid "github.com/ipfs/go-cid"
 
 	address "github.com/filecoin-project/go-address"
+	bitfield "github.com/filecoin-project/go-bitfield"
 	abi "github.com/filecoin-project/go-state-types/abi"
 	big "github.com/filecoin-project/go-state-types/big"
 	miner "github.com/filecoin-project/go-state-types/builtin/v8/miner"
@@ -195,6 +196,21 @@ func (m *MockSealingAPI) StateMarketStorageDeal(arg0 context.Context, arg1 abi.D
 func (mr *MockSealingAPIMockRecorder) StateMarketStorageDeal(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMarketStorageDeal", reflect.TypeOf((*MockSealingAPI)(nil).StateMarketStorageDeal), arg0, arg1, arg2)
+}
+
+// StateMinerAllocated mocks base method.
+func (m *MockSealingAPI) StateMinerAllocated(arg0 context.Context, arg1 address.Address, arg2 types.TipSetKey) (*bitfield.BitField, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "StateMinerAllocated", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*bitfield.BitField)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// StateMinerAllocated indicates an expected call of StateMinerAllocated.
+func (mr *MockSealingAPIMockRecorder) StateMinerAllocated(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "StateMinerAllocated", reflect.TypeOf((*MockSealingAPI)(nil).StateMinerAllocated), arg0, arg1, arg2)
 }
 
 // StateMinerAvailableBalance mocks base method.
