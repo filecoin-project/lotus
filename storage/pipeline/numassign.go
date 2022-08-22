@@ -224,7 +224,7 @@ func (m *Sealing) NumReserve(ctx context.Context, name string, reserving bitfiel
 		if err := cur.UnmarshalCBOR(bytes.NewReader(curRes)); err != nil {
 			return xerrors.Errorf("unmarshaling existing reservation: %w", err)
 		}
-	} else if err == datastore.ErrNotFound {
+	} else if err != datastore.ErrNotFound {
 		return xerrors.Errorf("checking if reservation exists: %w", err)
 	}
 
@@ -332,7 +332,7 @@ func (m *Sealing) NumFree(ctx context.Context, name string) error {
 }
 
 func reservationKey(name string) (datastore.Key, error) {
-	ok, err := regexp.Match("[a-zA-Z0-9_\\-]+]", []byte(name))
+	ok, err := regexp.Match("^[a-zA-Z0-9_\\-]+$", []byte(name))
 	if err != nil {
 		return datastore.Key{}, err
 	}
