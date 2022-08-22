@@ -103,11 +103,13 @@ func (m *Sealing) numAssignerMetaLocked(ctx context.Context) (api.NumAssignerMet
 		var i uint64
 		{
 			curBytes, err := m.ds.Get(ctx, datastore.NewKey(StorageCounterDSPrefix))
-			if err != nil {
+			if err != nil && err != datastore.ErrNotFound {
 				return api.NumAssignerMeta{}, err
 			}
-			cur, _ := binary.Uvarint(curBytes)
-			i = cur + 1
+			if err == nil {
+				cur, _ := binary.Uvarint(curBytes)
+				i = cur + 1
+			}
 		}
 
 		rl := &rlepluslazy.RunSliceIterator{Runs: []rlepluslazy.Run{
