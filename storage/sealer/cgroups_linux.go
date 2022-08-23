@@ -40,7 +40,7 @@ func cgroupV1Mem() (memoryMax, memoryUsed, swapMax, swapUsed uint64, err error) 
 	if err != nil {
 		return 0, 0, 0, 0, err
 	}
-	stats, err := c.Stat()
+	stats, err := c.Stat(cgroups.IgnoreNotExist)
 	if err != nil {
 		return 0, 0, 0, 0, err
 	}
